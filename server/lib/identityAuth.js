@@ -922,6 +922,25 @@ async function _audit(entry) {
   } catch (e) {
     logger().warn?.({ err: e }, "[identityAuth] audit insert failed");
   }
+  // Dual-write to identity.user_activity_log so this event surfaces in
+  // /mi-espacio Historial and /hub/admin/analytics. Action name passes
+  // through unchanged — taxonomy includes the legacy strings (auth.login,
+  // auth.logout, user.revoke) explicitly for this transition.
+  try {
+    const { logActivity } = await import("./userActivityLog.js");
+    await logActivity({
+      pool: _pool,
+      actorId: entry.actorId || null,
+      sessionId: entry.payload?.session_id || null,
+      action: entry.action,
+      resourceType: entry.resource || null,
+      resourceId: entry.resourceId || null,
+      payload: entry.payload || {},
+      req: entry.ip ? { ip: entry.ip, get: () => entry.userAgent } : undefined,
+    });
+  } catch (e) {
+    logger().warn?.({ err: e }, "[identityAuth] activity-log dual-write failed");
+  }
 }
 
 // ─── Test helpers ──────────────────────────────────────────────────────

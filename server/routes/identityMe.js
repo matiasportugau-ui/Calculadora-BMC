@@ -17,6 +17,11 @@ import { requireUser } from "../lib/identityAuth.js";
 // Shared with quoteExport.js — see server/lib/safeErr.js.
 import { safeErr as _safeErr } from "../lib/safeErr.js";
 import {
+  logActivity,
+  ACTION_TAXONOMY,
+  CLIENT_EMITTABLE,
+} from "../lib/userActivityLog.js";
+import {
   listMyQuotes,
   getMyQuote,
   softDeleteQuote,
@@ -452,6 +457,108 @@ router.post("/api/admin/sheets/clientes/sync/:quote_id", requireUser({ role: "ad
       actorUserId: req.user.id,
     });
     res.json(result);
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// ─── User activity log (per-user history + client-emit intent) ────────
+
+const activityWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const activityReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// POST /api/me/activity — client emits intent events (nav, ui). Restricted to
+// CLIENT_EMITTABLE subset; server actions can NEVER be claimed by the client.
+router.post("/api/me/activity", requireUser(), activityWriteLimiter, async (req, res) => {
+  try {
+    const { action, module, resource_type, resource_id, duration_ms, payload } = req.body || {};
+    if (typeof action !== "string" || !action) {
+      return res.status(400).json({ ok: false, error: "missing_action" });
+    }
+    if (!ACTION_TAXONOMY.has(action)) {
+      return res.status(400).json({ ok: false, error: "unknown_action", action });
+    }
+    if (!CLIENT_EMITTABLE.has(action)) {
+      // server-side actions cannot be forged by the client
+      return res.status(403).json({ ok: false, error: "action_not_client_emittable", action });
+    }
+    await logActivity({
+      pool: pool(),
+      actorId: req.user.id,
+      sessionId: req.user.sessionId,
+      action,
+      module: typeof module === "string" ? module : undefined,
+      resourceType: typeof resource_type === "string" ? resource_type : undefined,
+      resourceId: typeof resource_id === "string" ? resource_id : undefined,
+      durationMs: typeof duration_ms === "number" ? duration_ms : undefined,
+      clientEmitted: true,
+      payload: typeof payload === "object" && payload !== null ? payload : {},
+      req,
+    });
+    res.status(202).json({ ok: true });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// GET /api/me/activity — per-user history with filters + keyset pagination.
+// Per-user isolation enforced via WHERE actor_user_id = req.user.id (NOT RLS).
+router.get("/api/me/activity", requireUser(), activityReadLimiter, async (req, res) => {
+  try {
+    const fromIso = req.query.from ? String(req.query.from) : null;
+    const toIso = req.query.to ? String(req.query.to) : null;
+    const moduleFilter = req.query.module ? String(req.query.module) : null;
+    const actionFilter = req.query.action ? String(req.query.action) : null;
+    const outcomeFilter = req.query.outcome ? String(req.query.outcome) : null;
+    const q = req.query.q ? String(req.query.q).slice(0, 100) : null;
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const cursorTs = req.query.cursor_ts ? String(req.query.cursor_ts) : null;
+    const cursorId = req.query.cursor_id ? Number(req.query.cursor_id) : null;
+
+    const params = [req.user.id];
+    const where = ["actor_user_id = $1"];
+    if (fromIso) { params.push(fromIso); where.push(`at >= $${params.length}::timestamptz`); }
+    if (toIso) { params.push(toIso); where.push(`at <= $${params.length}::timestamptz`); }
+    if (moduleFilter) { params.push(moduleFilter); where.push(`module = $${params.length}`); }
+    if (actionFilter) { params.push(actionFilter); where.push(`action = $${params.length}`); }
+    if (outcomeFilter) { params.push(outcomeFilter); where.push(`outcome = $${params.length}`); }
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(action ILIKE $${params.length} OR resource_id ILIKE $${params.length} OR payload::text ILIKE $${params.length})`);
+    }
+    if (cursorTs && cursorId) {
+      params.push(cursorTs, cursorId);
+      where.push(`(at, event_id) < ($${params.length - 1}::timestamptz, $${params.length})`);
+    }
+    params.push(limit + 1);
+
+    const sql = `
+      SELECT event_id, action, module, resource_type, resource_id,
+             outcome, duration_ms, client_emitted, payload, at
+      FROM identity.user_activity_log
+      WHERE ${where.join(" AND ")}
+      ORDER BY at DESC, event_id DESC
+      LIMIT $${params.length}
+    `;
+    const { rows } = await pool().query(sql, params);
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const last = items[items.length - 1];
+    res.json({
+      ok: true,
+      items,
+      next_cursor: hasMore && last ? { ts: last.at, id: last.event_id } : null,
+    });
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }

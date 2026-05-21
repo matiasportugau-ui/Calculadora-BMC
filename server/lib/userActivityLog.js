@@ -21,12 +21,16 @@
 // pivot). Do NOT runtime-configure this set.
 
 export const ACTION_TAXONOMY = new Set([
-  // auth.* (mirror identity.audit_log entries)
-  "auth.session.start",
-  "auth.session.end",
+  // auth.* (mirror identity.audit_log entries; legacy + new names coexist
+  // during the transition — analytics can pick either)
+  "auth.session.start",       // new canonical
+  "auth.session.end",         // new canonical (also emitted from BmcAuthProvider flush)
+  "auth.login",               // legacy (still emitted by _audit() dual-write)
+  "auth.logout",              // legacy
   "auth.refresh",
   "auth.mfa_required",
   "auth.token_reuse_detected",
+  "user.revoke",              // legacy — identityAuth.revokeUser()
 
   // admin.* (mirror identityAdmin.js audit() calls)
   "admin.role_grant.add",

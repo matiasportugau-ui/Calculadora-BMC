@@ -20,6 +20,7 @@ import { getWaPool } from "../lib/waDb.js";
 import { config } from "../config.js";
 import { requireUser } from "../lib/identityAuth.js";
 import { safeErr as _safeErr } from "../lib/safeErr.js";
+import { logActivity } from "../lib/userActivityLog.js";
 
 const router = express.Router();
 
@@ -40,7 +41,7 @@ const VALID_ROLES = new Set(["comprador", "operator", "admin", "superadmin"]);
 const VALID_LEVELS = new Set(["none", "read", "write", "admin"]);
 const ROLE_RANK = { superadmin: 4, admin: 3, operator: 2, comprador: 1 };
 
-async function audit({ actorId, action, resourceId, ip, userAgent, payload }) {
+async function audit({ actorId, action, resourceId, ip, userAgent, payload, req }) {
   try {
     await pool().query(
       `insert into identity.audit_log (actor_user_id, actor_kind, action, resource, resource_id, ip, user_agent, payload)
@@ -49,6 +50,22 @@ async function audit({ actorId, action, resourceId, ip, userAgent, payload }) {
     );
   } catch {
     // audit failures must not block the action; surfaced via Cloud Logging from pino
+  }
+  // Dual-write to identity.user_activity_log so admin actions show up in
+  // the /hub/admin/analytics surface and (for the actor) their own /mi-espacio
+  // Historial. Same action name passes through.
+  try {
+    await logActivity({
+      pool: pool(),
+      actorId,
+      action,
+      resourceType: "identity.users",
+      resourceId,
+      payload: payload || {},
+      req: req || (ip ? { ip, get: () => userAgent } : undefined),
+    });
+  } catch {
+    // dual-write failure should never block the original action
   }
 }
 
