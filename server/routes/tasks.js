@@ -177,6 +177,16 @@ router.get("/lists/:id/tasks/:taskId", async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function handleGoogleError(err, res) {
+  // Local errors (not Google) — discriminate by err.message before falling
+  // into the status-based mapping. Surfaces clearer codes the frontend can
+  // route on: oauth_required (user has not connected) vs google_token_revoked
+  // (was connected, now invalid) vs decrypt_failed (our crypto/config issue).
+  if (err?.message === "no_oauth_token") {
+    return res.status(401).json({ ok: false, error: "oauth_required" });
+  }
+  if (err?.message === "decrypt_failed") {
+    return res.status(500).json({ ok: false, error: "decrypt_failed" });
+  }
   if (err?.status === 504 || err?.message === "google_timeout") {
     return res.status(504).json({ ok: false, error: "google_timeout" });
   }
