@@ -65,44 +65,92 @@ async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
 
   // fetchWithRefresh: makes a Google API call with the current access_token.
   // On 401, attempts ONE refresh using the stored refresh_token; on success,
-  // retries the request with the new token. If refresh itself fails, the
-  // original 401 Response is returned so the caller can fall through to its
-  // existing mark-revoked path (preserves backward-compatible behavior for
-  // users whose refresh_token never landed in the DB).
+  // retries the request with the new token. Returns BOTH the final response
+  // AND any refresh-attempt error so the caller can decide whether the 401
+  // is permanent (revoke) or transient (skip-and-retry).
   async function fetchWithRefresh(url) {
     const auth = () => ({ Authorization: `Bearer ${currentToken}` });
     let res = await fetch(url, { headers: auth() });
+    let refreshError = null;
     if (res.status === 401) {
       try {
         const newToken = await refreshAccessToken(pool, userId);
         currentToken = newToken;
         res = await fetch(url, { headers: auth() });
-      } catch {
-        // refresh failed — surface the original 401 so the caller can revoke.
+      } catch (err) {
+        // Capture for the caller's revoke-vs-retry decision. We do NOT
+        // re-throw — let the original 401 surface so caller can branch.
+        refreshError = err;
       }
     }
-    return res;
+    return { res, refreshError };
   }
 
   // 1) Fetch the user's task lists.
-  const listsRes = await fetchWithRefresh(TASKS_LISTS_URL);
+  const listsResult = await fetchWithRefresh(TASKS_LISTS_URL);
+  const listsRes = listsResult.res;
+  const listsRefreshErr = listsResult.refreshError;
 
   if (listsRes.status === 401) {
-    // Token rejected → mark revoked so we don't keep hammering Google.
-    await pool.query(
-      `UPDATE tasks.oauth_tokens
-          SET revoked_at = now(), updated_at = now()
-        WHERE user_id = $1`,
-      [userId],
-    );
+    // Classify: is this a PERMANENT auth failure (revoke + force re-OAuth) or
+    // a TRANSIENT one (preserve token, retry next 60s cycle)?
+    //
+    // Permanent: Google explicitly rejected the refresh_token (invalid_grant,
+    // unauthorized_client, invalid_client) OR no refresh_token was stored OR
+    // refresh succeeded but the retry STILL returned 401 (token Google
+    // just issued is also bad — unusual but treat as permanent).
+    //
+    // Transient: refresh-attempt itself had a transport/server-side failure
+    // (Google 5xx, network blip, timeout). Token is probably still good once
+    // Google recovers — don't revoke it, just wait and try again.
+    const errBody = listsRefreshErr?.body || null;
+    const permanentMessages = new Set([
+      "no_oauth_token_for_refresh",
+      "no_refresh_token_stored",
+      "refresh_no_access_token",
+    ]);
+    const isPermanent =
+      !listsRefreshErr ||
+      permanentMessages.has(listsRefreshErr.message) ||
+      errBody?.error === "invalid_grant" ||
+      errBody?.error === "unauthorized_client" ||
+      errBody?.error === "invalid_client";
+
+    const refreshDetails = listsRefreshErr
+      ? {
+          refresh_attempted: true,
+          refresh_status: listsRefreshErr.status,
+          refresh_error: listsRefreshErr.message,
+          refresh_body: errBody,
+        }
+      : { refresh_attempted: false };
+
+    if (isPermanent) {
+      await pool.query(
+        `UPDATE tasks.oauth_tokens
+            SET revoked_at = now(), updated_at = now()
+          WHERE user_id = $1`,
+        [userId],
+      );
+      await pool
+        .query(
+          `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details, http_status_code)
+           VALUES ($1, $2, 'token_revoked', $3::jsonb, 401)`,
+          [userId, cycleId, JSON.stringify({ reason: "google_401_permanent", ...refreshDetails })],
+        )
+        .catch(() => {});
+      return { itemsSynced: 0, conflicts: 0, listsTouched: 0, skipped: true };
+    }
+
+    // Transient — preserve token, log so operator can see what happened.
     await pool
       .query(
         `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details, http_status_code)
-         VALUES ($1, $2, 'token_revoked', $3::jsonb, 401)`,
-        [userId, cycleId, JSON.stringify({ reason: "google_401" })],
+         VALUES ($1, $2, 'sync_failed', $3::jsonb, 401)`,
+        [userId, cycleId, JSON.stringify({ reason: "google_401_transient_refresh_failure", ...refreshDetails })],
       )
       .catch(() => {});
-    return { itemsSynced: 0, conflicts: 0, listsTouched: 0, skipped: true };
+    return { itemsSynced: 0, conflicts: 0, listsTouched: 0, transient: true };
   }
 
   if (listsRes.status === 429) {
@@ -167,7 +215,9 @@ async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
         maxResults: "100",
       });
       if (pageToken) params.set("pageToken", pageToken);
-      const tasksRes = await fetchWithRefresh(
+      // Per-list tasks fetch reuses fetchWithRefresh but only cares about
+      // res — any refresh attempt during the loop is best-effort.
+      const { res: tasksRes } = await fetchWithRefresh(
         `${TASKS_BY_LIST_URL(gl.id)}?${params.toString()}`,
       );
 
