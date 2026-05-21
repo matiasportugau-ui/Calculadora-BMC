@@ -17,6 +17,7 @@
 
 import { config } from "../config.js";
 
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const TASKS_LISTS_URL = "https://www.googleapis.com/tasks/v1/users/@me/lists";
 const TASKS_LIST_URL = (listId) =>
   `https://www.googleapis.com/tasks/v1/users/@me/lists/${encodeURIComponent(listId)}`;
@@ -53,23 +54,124 @@ async function getAccessToken(pool, userId) {
   return token;
 }
 
-// Generic Google Tasks API caller. Surfaces 401 / 4xx / 5xx as
-// GoogleTasksError so the route can map to user-facing HTTP. A 30s
-// AbortController fires google_timeout (504) before Cloud Run's 300s
-// request timeout, so a hung Google upstream doesn't tie up the worker.
-async function call({ token, method, url, body, timeoutMs = 30000 }) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
+// Refresh the user's access_token using their stored refresh_token. Returns
+// the new access token and updates tasks.oauth_tokens in place. Used by:
+//   - call() retry-on-401 path (outbound writes BMC→Google)
+//   - server/routes/tasksSync.js retry-on-401 path (inbound pulls)
+// Throws GoogleTasksError on failure so callers can decide whether to mark
+// the token revoked (when Google rejects the refresh_token too).
+export async function refreshAccessToken(pool, userId) {
+  const r = await pool.query(
+    `SELECT pgp_sym_decrypt(refresh_token_encrypted::bytea, $2)::text AS rt
+       FROM tasks.oauth_tokens
+      WHERE user_id = $1 AND revoked_at IS NULL`,
+    [userId, config.supabasePgpEncryptKey],
+  );
+  if (!r.rows.length) {
+    throw new GoogleTasksError("no_oauth_token_for_refresh", 401, null);
+  }
+  const refreshToken = r.rows[0].rt;
+  if (!refreshToken || refreshToken.length < 10) {
+    // No refresh_token stored — user must re-consent. Surface as 401 so the
+    // caller can fall through to its existing mark-revoked path.
+    throw new GoogleTasksError("no_refresh_token_stored", 401, null);
+  }
+  if (!config.googleTasksClientId || !config.googleTasksClientSecret) {
+    throw new GoogleTasksError("oauth_client_not_configured", 503, null);
+  }
+
+  const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: config.googleTasksClientId,
+      client_secret: config.googleTasksClientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+  if (!tokenRes.ok) {
+    const body = await tokenRes.json().catch(() => null);
+    throw new GoogleTasksError(
+      `refresh_failed_http_${tokenRes.status}`,
+      tokenRes.status,
+      body,
+    );
+  }
+  const tokenJson = await tokenRes.json();
+  const {
+    access_token: newAccessToken,
+    expires_in: expiresIn,
+    refresh_token: newRefreshToken,
+  } = tokenJson;
+  if (!newAccessToken) {
+    throw new GoogleTasksError("refresh_no_access_token", 502, tokenJson);
+  }
+
+  // Encrypt + persist via SQL. Google usually omits refresh_token on refresh;
+  // COALESCE preserves the existing one so we don't orphan the user.
+  await pool.query(
+    `UPDATE tasks.oauth_tokens
+        SET access_token_encrypted = pgp_sym_encrypt($1::text, $3),
+            refresh_token_encrypted = COALESCE(pgp_sym_encrypt($2::text, $3), refresh_token_encrypted),
+            expires_at = $4,
+            updated_at = now()
+      WHERE user_id = $5`,
+    [
+      newAccessToken,
+      newRefreshToken || null,
+      config.supabasePgpEncryptKey,
+      new Date(Date.now() + (expiresIn || 3600) * 1000),
+      userId,
+    ],
+  );
+
+  await pool
+    .query(
+      `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details)
+       VALUES ($1, gen_random_uuid()::text, 'token_refreshed', $2::jsonb)`,
+      [userId, JSON.stringify({ source: "refresh_helper", expires_in: expiresIn || 3600 })],
+    )
+    .catch(() => {});
+
+  return newAccessToken;
+}
+
+// Generic Google Tasks API caller. Combines:
+//   - transparent 401-refresh retry (refresh access_token, replay once)
+//   - 30s AbortController guard so a hung Google upstream surfaces as
+//     google_timeout (504) rather than tying up a Cloud Run worker
+// Non-401 4xx/5xx surface as GoogleTasksError so the route can map to
+// user-facing HTTP. If the refresh itself fails, the original 401 falls
+// through so the route can decide to mark the token revoked.
+async function call({ pool, userId, method, url, body, timeoutMs = 30000 }) {
+  const doFetch = (tok) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    return fetch(url, {
       method,
       signal: ctrl.signal,
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${tok}`,
         ...(body ? { "Content-Type": "application/json" } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
-    });
+    }).finally(() => clearTimeout(timer));
+  };
+
+  try {
+    let token = await getAccessToken(pool, userId);
+    let res = await doFetch(token);
+
+    if (res.status === 401) {
+      try {
+        token = await refreshAccessToken(pool, userId);
+        res = await doFetch(token);
+      } catch {
+        // Refresh itself failed — fall through with the original 401 below.
+      }
+    }
+
     if (res.status === 204) return null; // DELETE success
     const json = await res.json().catch(() => null);
     if (!res.ok) {
@@ -85,56 +187,35 @@ async function call({ token, method, url, body, timeoutMs = 30000 }) {
       throw new GoogleTasksError("google_timeout", 504, null);
     }
     throw err;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────
 
 export async function createList({ pool, userId, title }) {
-  const token = await getAccessToken(pool, userId);
-  return call({
-    token,
-    method: "POST",
-    url: TASKS_LISTS_URL,
-    body: { title },
-  });
+  return call({ pool, userId, method: "POST", url: TASKS_LISTS_URL, body: { title } });
 }
 
 export async function deleteList({ pool, userId, googleListId }) {
-  const token = await getAccessToken(pool, userId);
-  return call({
-    token,
-    method: "DELETE",
-    url: TASKS_LIST_URL(googleListId),
-  });
+  return call({ pool, userId, method: "DELETE", url: TASKS_LIST_URL(googleListId) });
 }
 
 export async function createTask({ pool, userId, googleListId, title, notes, due }) {
-  const token = await getAccessToken(pool, userId);
   const body = { title };
   if (notes !== undefined) body.notes = notes;
   if (due !== undefined && due !== null) {
-    // Google expects RFC 3339 with Z suffix; accept either YYYY-MM-DD or full ISO
     body.due =
       typeof due === "string" && due.length === 10
         ? `${due}T00:00:00.000Z`
         : new Date(due).toISOString();
   }
-  return call({
-    token,
-    method: "POST",
-    url: TASKS_BY_LIST_URL(googleListId),
-    body,
-  });
+  return call({ pool, userId, method: "POST", url: TASKS_BY_LIST_URL(googleListId), body });
 }
 
 export async function updateTask({
   pool, userId, googleListId, googleTaskId,
   title, notes, due, status,
 }) {
-  const token = await getAccessToken(pool, userId);
   const body = {};
   if (title !== undefined) body.title = title;
   if (notes !== undefined) body.notes = notes;
@@ -147,18 +228,12 @@ export async function updateTask({
         : new Date(due).toISOString();
   }
   return call({
-    token,
-    method: "PATCH",
-    url: TASK_URL(googleListId, googleTaskId),
-    body,
+    pool, userId, method: "PATCH", url: TASK_URL(googleListId, googleTaskId), body,
   });
 }
 
 export async function deleteTask({ pool, userId, googleListId, googleTaskId }) {
-  const token = await getAccessToken(pool, userId);
   return call({
-    token,
-    method: "DELETE",
-    url: TASK_URL(googleListId, googleTaskId),
+    pool, userId, method: "DELETE", url: TASK_URL(googleListId, googleTaskId),
   });
 }

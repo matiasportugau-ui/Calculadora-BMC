@@ -17,6 +17,7 @@ import express from "express";
 import crypto from "crypto";
 import { config } from "../config.js";
 import { getTasksPool } from "../lib/tasksDb.js";
+import { refreshAccessToken } from "../lib/googleTasksClient.js";
 
 const router = express.Router();
 
@@ -57,15 +58,34 @@ async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
     `SELECT pgp_sym_decrypt($1::bytea, $2)::text AS token`,
     [encryptedAccessToken, config.supabasePgpEncryptKey],
   );
-  const accessToken = decRow.rows[0]?.token;
-  if (!accessToken) {
+  let currentToken = decRow.rows[0]?.token;
+  if (!currentToken) {
     throw new Error("decrypt_returned_empty");
   }
 
-  const authHeader = { Authorization: `Bearer ${accessToken}` };
+  // fetchWithRefresh: makes a Google API call with the current access_token.
+  // On 401, attempts ONE refresh using the stored refresh_token; on success,
+  // retries the request with the new token. If refresh itself fails, the
+  // original 401 Response is returned so the caller can fall through to its
+  // existing mark-revoked path (preserves backward-compatible behavior for
+  // users whose refresh_token never landed in the DB).
+  async function fetchWithRefresh(url) {
+    const auth = () => ({ Authorization: `Bearer ${currentToken}` });
+    let res = await fetch(url, { headers: auth() });
+    if (res.status === 401) {
+      try {
+        const newToken = await refreshAccessToken(pool, userId);
+        currentToken = newToken;
+        res = await fetch(url, { headers: auth() });
+      } catch {
+        // refresh failed — surface the original 401 so the caller can revoke.
+      }
+    }
+    return res;
+  }
 
   // 1) Fetch the user's task lists.
-  const listsRes = await fetch(TASKS_LISTS_URL, { headers: authHeader });
+  const listsRes = await fetchWithRefresh(TASKS_LISTS_URL);
 
   if (listsRes.status === 401) {
     // Token rejected → mark revoked so we don't keep hammering Google.
@@ -109,19 +129,31 @@ async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
   for (const gl of googleLists) {
     if (!gl?.id || !gl?.title) continue;
 
-    // Upsert the list and capture its internal UUID + last synced_at.
+    // Detect "first sync for this list" BEFORE the upsert clobbers synced_at.
+    // - If row doesn't exist yet → backfill from EPOCH (pull full Google history).
+    // - If row exists with prior synced_at → incremental pull from that timestamp.
+    // This is what allows historical Google tasks (created before the user
+    // connected) to be ingested into BMC on the first cycle, instead of
+    // being silently filtered out by updatedMin=now().
+    const prior = await pool.query(
+      `SELECT synced_at FROM tasks.task_lists
+        WHERE user_id = $1 AND google_id = $2`,
+      [userId, gl.id],
+    );
+    const priorSyncedAt = prior.rows[0]?.synced_at || null;
+
+    // Upsert the list and capture its internal UUID. synced_at gets bumped to now().
     const listUpsert = await pool.query(
       `INSERT INTO tasks.task_lists (user_id, google_id, title, synced_at)
        VALUES ($1, $2, $3, now())
        ON CONFLICT (google_id) DO UPDATE
          SET title = EXCLUDED.title, synced_at = now()
-       RETURNING id, synced_at`,
+       RETURNING id`,
       [userId, gl.id, gl.title],
     );
     const internalListId = listUpsert.rows[0].id;
-    const lastSyncedAt = listUpsert.rows[0].synced_at;
-    const updatedMin = lastSyncedAt
-      ? new Date(lastSyncedAt).toISOString()
+    const updatedMin = priorSyncedAt
+      ? new Date(priorSyncedAt).toISOString()
       : EPOCH_ISO;
 
     // 2) Fetch tasks for this list, paginated. updatedMin trims the payload.
@@ -135,9 +167,8 @@ async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
         maxResults: "100",
       });
       if (pageToken) params.set("pageToken", pageToken);
-      const tasksRes = await fetch(
+      const tasksRes = await fetchWithRefresh(
         `${TASKS_BY_LIST_URL(gl.id)}?${params.toString()}`,
-        { headers: authHeader },
       );
 
       if (tasksRes.status === 429) {

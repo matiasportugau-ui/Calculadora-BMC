@@ -211,13 +211,19 @@ router.get("/callback", async (req, res) => {
     );
     const { at_enc: atEnc, rt_enc: rtEnc } = encRow.rows[0];
 
+    // Preserve the existing refresh_token if Google didn't return one. Google only
+    // issues a refresh_token on the FIRST consent (or when prompt=consent forces
+    // re-issuance). Subsequent re-auth flows often omit it. Overwriting with NULL
+    // would orphan the user — they'd have no way to refresh the 1h access_token.
+    // Using COALESCE in the UPDATE clause keeps the prior refresh_token intact when
+    // EXCLUDED is NULL.
     await pool.query(
       `INSERT INTO tasks.oauth_tokens
          (user_id, access_token_encrypted, refresh_token_encrypted, expires_at, scope)
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (user_id) DO UPDATE SET
          access_token_encrypted = EXCLUDED.access_token_encrypted,
-         refresh_token_encrypted = EXCLUDED.refresh_token_encrypted,
+         refresh_token_encrypted = COALESCE(EXCLUDED.refresh_token_encrypted, tasks.oauth_tokens.refresh_token_encrypted),
          expires_at = EXCLUDED.expires_at,
          scope = EXCLUDED.scope,
          revoked_at = NULL,
