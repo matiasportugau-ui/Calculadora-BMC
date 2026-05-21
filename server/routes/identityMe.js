@@ -457,6 +457,39 @@ router.post("/api/admin/sheets/clientes/sync/:quote_id", requireUser({ role: "ad
   }
 });
 
+// ─── User directory (lightweight, for any authenticated user) ─────────
+
+const userSearchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Returns minimal user info — used by the Mensajes flow to look up other
+// users by email/name. Does NOT expose roles, status, or audit details
+// (those belong to the admin surface). Requires q with ≥2 chars.
+router.get("/api/me/users/search", requireUser(), userSearchLimiter, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim().slice(0, 100);
+    if (q.length < 2) return res.json({ ok: true, items: [] });
+    const limit = Math.min(Number(req.query.limit) || 10, 20);
+    const { rows } = await pool().query(
+      `SELECT user_id, email, name, picture_url
+         FROM identity.users
+        WHERE status = 'active'
+          AND user_id <> $1
+          AND (email ILIKE $2 OR name ILIKE $2)
+        ORDER BY (CASE WHEN email ILIKE $3 THEN 0 ELSE 1 END), email
+        LIMIT $4`,
+      [req.user.id, `%${q}%`, `${q}%`, limit],
+    );
+    res.json({ ok: true, items: rows });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
 // ─── Internal Messages (threads + messages) ────────────────────────────
 
 const messagesLimiter = rateLimit({

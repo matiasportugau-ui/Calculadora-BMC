@@ -549,7 +549,7 @@ function NewThreadButton({ token, onCreated }) {
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [memberIds, setMemberIds] = useState(""); // comma-separated uuids/emails
+  const [members, setMembers] = useState([]); // [{user_id, email, name}]
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -568,15 +568,15 @@ function NewThreadButton({ token, onCreated }) {
   }
 
   const submit = async () => {
+    if (!members.length) { setErr("missing_members"); return; }
     setBusy(true); setErr(null);
     try {
-      const ids = memberIds.split(",").map((s) => s.trim()).filter(Boolean);
       const j = await api("/api/me/threads", {
         token, method: "POST",
-        body: { subject, body, member_user_ids: ids },
+        body: { subject, body, member_user_ids: members.map((m) => m.user_id) },
       });
       onCreated?.(j.thread);
-      setOpen(false); setSubject(""); setBody(""); setMemberIds("");
+      setOpen(false); setSubject(""); setBody(""); setMembers([]);
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -587,7 +587,7 @@ function NewThreadButton({ token, onCreated }) {
   return (
     <div style={{
       position: "absolute", marginTop: 30, marginLeft: -120, zIndex: 10,
-      width: 320, background: "#fff", border: "1px solid #e2e8f0",
+      width: 340, background: "#fff", border: "1px solid #e2e8f0",
       borderRadius: 8, padding: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
     }}>
       <input
@@ -595,10 +595,11 @@ function NewThreadButton({ token, onCreated }) {
         value={subject} onChange={(e) => setSubject(e.target.value)}
         style={{ width: "100%", padding: 6, marginBottom: 6, border: "1px solid #e2e8f0", borderRadius: 4, fontSize: 13 }}
       />
-      <input
-        placeholder="user_id de destinatarios (coma)"
-        value={memberIds} onChange={(e) => setMemberIds(e.target.value)}
-        style={{ width: "100%", padding: 6, marginBottom: 6, border: "1px solid #e2e8f0", borderRadius: 4, fontSize: 12, fontFamily: "monospace" }}
+      <UserPicker
+        token={token}
+        selected={members}
+        onAdd={(u) => setMembers((prev) => prev.find((x) => x.user_id === u.user_id) ? prev : [...prev, u])}
+        onRemove={(uid) => setMembers((prev) => prev.filter((x) => x.user_id !== uid))}
       />
       <textarea
         placeholder="Mensaje inicial"
@@ -608,13 +609,87 @@ function NewThreadButton({ token, onCreated }) {
       />
       {err ? <div style={{ color: "#b91c1c", fontSize: 11, marginBottom: 6 }}>Error: {err}</div> : null}
       <div style={{ display: "flex", gap: 6 }}>
-        <button type="button" onClick={submit} disabled={busy || !subject || !body || !memberIds} style={btnPrimary()}>
+        <button type="button" onClick={submit} disabled={busy || !subject || !body || !members.length} style={btnPrimary()}>
           {busy ? "…" : "Crear hilo"}
         </button>
         <button type="button" onClick={() => setOpen(false)} style={{ ...btnPrimary(), background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0" }}>
           Cancelar
         </button>
       </div>
+    </div>
+  );
+}
+
+// Lightweight user picker — searches /api/me/users/search (open to any
+// authenticated user; returns only id/email/name/picture). Used inside
+// MySpacePage's NewThreadButton so compradores can find each other
+// without depending on the admin-only /api/admin/users endpoint.
+function UserPicker({ token, selected, onAdd, onRemove }) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = React.useRef(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (q.length < 2) { setResults([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const r = await api(`/api/me/users/search?q=${encodeURIComponent(q)}`, { token });
+        setResults(r.items || []);
+      } catch { setResults([]); }
+      finally { setLoading(false); }
+    }, 250);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [q, token]);
+
+  return (
+    <div style={{ marginBottom: 6 }}>
+      {selected.length > 0 ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
+          {selected.map((u) => (
+            <span key={u.user_id} style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              padding: "2px 6px 2px 8px", fontSize: 11, background: "#eff6ff",
+              color: "#1d4ed8", borderRadius: 12,
+            }}>
+              {u.email}
+              <button
+                type="button"
+                onClick={() => onRemove(u.user_id)}
+                style={{ background: "none", border: "none", color: "#1d4ed8", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                aria-label={`Quitar ${u.email}`}
+              >×</button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <input
+        placeholder="Buscar destinatarios por email o nombre…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        style={{ width: "100%", padding: 6, border: "1px solid #e2e8f0", borderRadius: 4, fontSize: 12 }}
+      />
+      {loading && q.length >= 2 ? <div style={{ fontSize: 11, color: "#94a3b8", padding: "4px 0" }}>Buscando…</div> : null}
+      {results.length > 0 ? (
+        <ul style={{
+          listStyle: "none", padding: 4, margin: "4px 0 0",
+          border: "1px solid #e2e8f0", borderRadius: 4, maxHeight: 140, overflowY: "auto",
+          background: "#fff",
+        }}>
+          {results.map((u) => (
+            <li
+              key={u.user_id}
+              onClick={() => { onAdd(u); setQ(""); setResults([]); }}
+              style={{ padding: "6px 8px", cursor: "pointer", fontSize: 12, borderRadius: 4 }}
+            >
+              <div style={{ fontWeight: 600, color: "#0f172a" }}>{u.email}</div>
+              {u.name ? <div style={{ fontSize: 11, color: "#64748b" }}>{u.name}</div> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }
