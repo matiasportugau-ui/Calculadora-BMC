@@ -305,9 +305,12 @@ export default function createTraktimeRouter(config, logger) {
     requireDb,
     asyncHandler(async (req, res) => {
       const { rows } = await pool.query(
-        `select project_id, user_id, role, added_at
-           from tk_project_members where project_id = $1
-          order by added_at`,
+        `select m.project_id, m.user_id, m.role, m.added_at,
+                u.email, u.name, u.picture_url
+           from tk_project_members m
+           left join identity.users u on u.user_id = m.user_id
+          where m.project_id = $1
+          order by m.added_at`,
         [req.params.id],
       );
       res.json({ ok: true, members: rows });

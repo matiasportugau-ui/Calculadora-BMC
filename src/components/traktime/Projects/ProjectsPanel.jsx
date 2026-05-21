@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { tkApi } from "../shared/api.js";
 import { button, card, colors, dot, input } from "../shared/styles.js";
+import UserCombobox from "../../admin/users/UserCombobox.jsx";
+import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
 
 const ROUNDING_OPTS = [1, 5, 15, 30, 60];
 
 export default function ProjectsPanel({ canEdit, onChange }) {
+  const auth = useBmcAuth();
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [members, setMembers] = useState({}); // project_id -> [members]
@@ -18,6 +21,7 @@ export default function ProjectsPanel({ canEdit, onChange }) {
     hourly_rate_usd: 0,
     rounding_minutes: 15,
   });
+  // memberDraft now only holds the role per project; user_id arrives from UserCombobox
   const [memberDraft, setMemberDraft] = useState({});
 
   async function loadAll() {
@@ -46,8 +50,7 @@ export default function ProjectsPanel({ canEdit, onChange }) {
 
   async function fetchMembers(projectId) {
     const base = (await import("../../../utils/calcApiBase.js")).getCalcApiBase();
-    const token =
-      (typeof window !== "undefined" && window.localStorage?.getItem("bmc_access_jwt")) || "";
+    const token = auth?.accessToken || "";
     const resp = await fetch(`${base}/api/traktime/projects/${projectId}/members`, {
       credentials: "include",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -81,13 +84,12 @@ export default function ProjectsPanel({ canEdit, onChange }) {
     }
   }
 
-  async function addMember(projectId) {
-    const d = memberDraft[projectId];
-    if (!d?.user_id) return;
+  async function addMember(projectId, userId) {
+    if (!userId) return;
+    const role = memberDraft[projectId]?.role || "member";
     try {
       const base = (await import("../../../utils/calcApiBase.js")).getCalcApiBase();
-      const token =
-        (typeof window !== "undefined" && window.localStorage?.getItem("bmc_access_jwt")) || "";
+      const token = auth?.accessToken || "";
       await fetch(`${base}/api/traktime/projects/${projectId}/members`, {
         method: "POST",
         credentials: "include",
@@ -95,9 +97,9 @@ export default function ProjectsPanel({ canEdit, onChange }) {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ user_id: d.user_id, role: d.role || "member" }),
+        body: JSON.stringify({ user_id: userId, role }),
       });
-      setMemberDraft((m) => ({ ...m, [projectId]: { user_id: "", role: "member" } }));
+      setMemberDraft((m) => ({ ...m, [projectId]: { role: "member" } }));
       await loadMembers(projectId);
     } catch (e) {
       setError(e.message || "add_member_failed");
@@ -238,7 +240,16 @@ export default function ProjectsPanel({ canEdit, onChange }) {
                           fontSize: 13,
                         }}
                       >
-                        <code style={{ flex: 1 }}>{m.user_id}</code>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, color: colors.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {m.email || <span style={{ fontFamily: "monospace", fontSize: 11 }}>{m.user_id}</span>}
+                          </div>
+                          {m.name ? (
+                            <div style={{ fontSize: 11, color: colors.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {m.name}
+                            </div>
+                          ) : null}
+                        </div>
                         <span style={{ color: colors.textMuted }}>{m.role}</span>
                         <button
                           onClick={() => removeMember(p.project_id, m.user_id)}
@@ -253,18 +264,13 @@ export default function ProjectsPanel({ canEdit, onChange }) {
                       </div>
                     ))
                   )}
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <input
-                      placeholder="user_id (uuid)"
-                      value={memberDraft[p.project_id]?.user_id || ""}
-                      onChange={(e) =>
-                        setMemberDraft((m) => ({
-                          ...m,
-                          [p.project_id]: { ...(m[p.project_id] || {}), user_id: e.target.value },
-                        }))
-                      }
-                      style={{ ...input, flex: 1 }}
-                    />
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <UserCombobox
+                        placeholder="Buscar usuario por email o nombre…"
+                        onSelect={(u) => addMember(p.project_id, u.user_id)}
+                      />
+                    </div>
                     <select
                       value={memberDraft[p.project_id]?.role || "member"}
                       onChange={(e) =>
@@ -274,13 +280,11 @@ export default function ProjectsPanel({ canEdit, onChange }) {
                         }))
                       }
                       style={input}
+                      title="Rol asignado al agregar"
                     >
                       <option value="member">member</option>
                       <option value="admin">admin</option>
                     </select>
-                    <button onClick={() => addMember(p.project_id)} style={button("primary")}>
-                      +
-                    </button>
                   </div>
                 </div>
               ) : null}
