@@ -96,7 +96,8 @@ router.get("/callback", async (req, res) => {
 
   if (error) {
     const msg = encodeURIComponent(errorDesc || error);
-    return res.redirect(`/hub/tareas?error=${msg}`);
+    const base = (config.frontendBaseUrl || "").replace(/\/$/, "");
+    return res.redirect(`${base}/hub/tareas?error=${msg}`);
   }
   if (!code || !state) {
     return res.status(400).json({ ok: false, error: "missing_params" });
@@ -237,7 +238,8 @@ router.get("/callback", async (req, res) => {
     });
   }
 
-  return res.redirect("/hub/tareas?connected=1");
+  const base = (config.frontendBaseUrl || "").replace(/\/$/, "");
+  return res.redirect(`${base}/hub/tareas?connected=1`);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

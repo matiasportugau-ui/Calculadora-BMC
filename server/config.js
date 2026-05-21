@@ -10,11 +10,17 @@ const bool = (value, fallback = false) => {
 
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3001";
 const isCloudRun = process.env.K_SERVICE || /\.run\.app$/i.test(publicBaseUrl);
+// Vite SPA host (different from publicBaseUrl, which is the Express API host).
+// Used by OAuth flows whose callback runs on the backend but must bounce the
+// user to the frontend afterwards (e.g. /auth/tasks/callback → /hub/tareas).
+const frontendBaseUrl =
+  process.env.FRONTEND_BASE_URL || "https://calculadora-bmc.vercel.app";
 
 export const config = {
   appEnv: process.env.APP_ENV || process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 3001),
   publicBaseUrl,
+  frontendBaseUrl,
   mlClientId: process.env.ML_CLIENT_ID || "742811153438318",
   mlClientSecret: process.env.ML_CLIENT_SECRET || "",
   mlAuthBase: process.env.ML_AUTH_BASE || "https://auth.mercadolibre.com.uy",
