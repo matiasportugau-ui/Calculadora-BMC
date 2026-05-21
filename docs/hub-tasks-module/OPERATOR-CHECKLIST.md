@@ -47,11 +47,21 @@ gcloud secrets list --project chatbot-bmc-live | head -5
 3. Click **+ Create Credentials** → **OAuth 2.0 Client ID**
 4. Application type: **Web application**
 5. Name: `Calculadora-BMC-Tareas` (or similar)
-6. **Authorized redirect URIs**: Add exactly one:
+6. **Authorized redirect URIs**: Add the Vercel SPA domain entry (primary) — the OAuth code uses
+   `${config.frontendBaseUrl}/auth/tasks/callback` by default so the user stays on a single host
+   the whole flow. `vercel.json` rewrites `/auth/*` to Cloud Run so the request still lands in the
+   Express backend.
+   ```
+   https://calculadora-bmc.vercel.app/auth/tasks/callback
+   ```
+   Optionally also add the Cloud Run host (useful for local-dev with `GOOGLE_TASKS_REDIRECT_URI`
+   env-var override pointing at a tunnel like ngrok, or any backend-direct testing):
    ```
    https://panelin-calc.run.app/auth/tasks/callback
    ```
-   (Replace `panelin-calc` with your actual Cloud Run service name if different)
+   Google's `redirect_uri` check is byte-exact — if the value the backend sends doesn't match one
+   of the registered URIs, the consent flow returns `redirect_uri_mismatch` before the user ever
+   sees the consent screen.
 7. Click **Create**
 8. A popup shows **Client ID** and **Client Secret** — **copy both immediately** (they won't be shown again)
 
