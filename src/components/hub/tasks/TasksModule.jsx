@@ -15,6 +15,11 @@ import {
   useTaskLists,
   useTaskList,
   useTasks,
+  useCreateTaskList,
+  useDeleteTaskList,
+  useCreateTask,
+  useUpdateTask,
+  useDeleteTask,
 } from "./hooks/useTasks.js";
 import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
 
@@ -106,6 +111,8 @@ function ErrorPanel({ error }) {
 
 function TaskListPicker({ selectedListId, onSelect }) {
   const { data, isLoading, error } = useTaskLists();
+  const createList = useCreateTaskList();
+  const deleteList = useDeleteTaskList();
 
   if (isLoading) {
     return <p style={muted}>Cargando listas…</p>;
@@ -113,36 +120,69 @@ function TaskListPicker({ selectedListId, onSelect }) {
   if (error) return <ErrorPanel error={error} />;
   const lists = data?.lists || [];
 
-  if (lists.length === 0) {
-    return (
-      <p style={muted}>
-        Aún no hay listas. Conectá Google Tasks para empezar.
-      </p>
-    );
-  }
+  const onNewList = () => {
+    const title = window.prompt("Nombre de la nueva lista:");
+    if (!title || !title.trim()) return;
+    createList.mutate({ title: title.trim() }, {
+      onSuccess: (res) => onSelect(res?.list?.id),
+      onError: (e) => window.alert(`No se pudo crear: ${e.message}`),
+    });
+  };
+
+  const onDeleteList = (l) => {
+    if (!window.confirm(`Borrar "${l.title}" y todas sus tareas? Se borrará también de Google Tasks.`)) return;
+    deleteList.mutate(l.id, {
+      onSuccess: () => { if (l.id === selectedListId) onSelect(null); },
+      onError: (e) => window.alert(`No se pudo borrar: ${e.message}`),
+    });
+  };
 
   return (
-    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-      {lists.map((l) => {
-        const isActive = l.id === selectedListId;
-        return (
-          <li key={l.id}>
-            <button
-              type="button"
-              onClick={() => onSelect(l.id)}
-              style={{
-                ...listItem,
-                background: isActive ? "#eff6ff" : "transparent",
-                color: isActive ? "#1d4ed8" : "#111827",
-                fontWeight: isActive ? 600 : 400,
-              }}
-            >
-              {l.title || "(sin nombre)"}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      <button
+        type="button"
+        onClick={onNewList}
+        disabled={createList.isPending}
+        style={{ ...primaryBtn, width: "100%", marginBottom: "0.75rem", padding: "0.5rem", fontSize: "0.875rem" }}
+      >
+        {createList.isPending ? "Creando…" : "+ Nueva lista"}
+      </button>
+      {lists.length === 0 ? (
+        <p style={muted}>Aún no hay listas. Crea una con el botón arriba.</p>
+      ) : (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {lists.map((l) => {
+            const isActive = l.id === selectedListId;
+            return (
+              <li key={l.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(l.id)}
+                  style={{
+                    ...listItem,
+                    background: isActive ? "#eff6ff" : "transparent",
+                    color: isActive ? "#1d4ed8" : "#111827",
+                    fontWeight: isActive ? 600 : 400,
+                    flex: 1,
+                  }}
+                >
+                  {l.title || "(sin nombre)"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeleteList(l)}
+                  title={`Borrar lista "${l.title}"`}
+                  style={{ border: "none", background: "transparent", color: "#9ca3af", cursor: "pointer", padding: "0 6px", fontSize: 14 }}
+                  aria-label={`Borrar ${l.title}`}
+                >
+                  ×
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
   );
 }
 
@@ -153,6 +193,8 @@ function TaskListPicker({ selectedListId, onSelect }) {
 function TaskListDetail({ listId }) {
   const list = useTaskList(listId);
   const tasksQ = useTasks(listId);
+  const createTask = useCreateTask(listId);
+  const [newTitle, setNewTitle] = useState("");
 
   if (list.isLoading || tasksQ.isLoading) {
     return <p style={muted}>Cargando tareas…</p>;
@@ -162,6 +204,19 @@ function TaskListDetail({ listId }) {
 
   const meta = list.data?.list;
   const tasks = tasksQ.data?.tasks || [];
+
+  const onCreate = (e) => {
+    e?.preventDefault?.();
+    const title = newTitle.trim();
+    if (!title) return;
+    createTask.mutate(
+      { title },
+      {
+        onSuccess: () => setNewTitle(""),
+        onError: (err) => window.alert(`No se pudo crear la tarea: ${err.message}`),
+      },
+    );
+  };
 
   return (
     <div>
@@ -180,41 +235,127 @@ function TaskListDetail({ listId }) {
         </p>
       </header>
 
+      <form
+        onSubmit={onCreate}
+        style={{ display: "flex", gap: 8, marginBottom: "1rem" }}
+      >
+        <input
+          type="text"
+          placeholder="Nueva tarea — Enter para crear"
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          style={{
+            flex: 1, padding: "0.5rem 0.75rem", fontSize: "0.9375rem",
+            border: "1px solid #e5e7eb", borderRadius: 6,
+          }}
+        />
+        <button
+          type="submit"
+          disabled={createTask.isPending || !newTitle.trim()}
+          style={{ ...primaryBtn, padding: "0.5rem 1rem" }}
+        >
+          {createTask.isPending ? "Creando…" : "Agregar"}
+        </button>
+      </form>
+
       {tasks.length === 0 ? (
-        <p style={muted}>No hay tareas en esta lista.</p>
+        <p style={muted}>No hay tareas en esta lista. Escribí arriba para crear la primera.</p>
       ) : (
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {tasks.map((t) => (
-            <li key={t.id} style={taskItem}>
-              <span style={{ marginRight: "0.5rem" }}>
-                {t.status === "completed" ? "☑" : "☐"}
-              </span>
-              <span
-                style={{
-                  textDecoration:
-                    t.status === "completed" ? "line-through" : "none",
-                  color: t.status === "completed" ? "#6b7280" : "#111827",
-                }}
-              >
-                {t.title}
-              </span>
-              {t.due ? (
-                <span style={{ ...muted, fontSize: "0.75rem", marginLeft: "0.5rem" }}>
-                  · vence {t.due}
-                </span>
-              ) : null}
-            </li>
+            <TaskRow key={t.id} task={t} listId={listId} />
           ))}
         </ul>
       )}
-
-      <div style={{ marginTop: "1.5rem", padding: "0.75rem", border: "1px dashed #d1d5db", borderRadius: 6 }}>
-        <p style={{ ...muted, fontSize: "0.875rem", margin: 0 }}>
-          ⏳ Crear, editar y borrar tareas estará disponible cuando el operador
-          provisione el sync con Google Tasks.
-        </p>
-      </div>
     </div>
+  );
+}
+
+function TaskRow({ task, listId }) {
+  const updateTask = useUpdateTask(listId, task.id);
+  const deleteTask = useDeleteTask(listId, task.id);
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(task.title);
+
+  const toggleStatus = () => {
+    updateTask.mutate({
+      status: task.status === "completed" ? "needsAction" : "completed",
+    });
+  };
+
+  const saveTitle = () => {
+    const title = draftTitle.trim();
+    if (!title || title === task.title) { setEditing(false); return; }
+    updateTask.mutate({ title }, { onSuccess: () => setEditing(false) });
+  };
+
+  const onDelete = () => {
+    if (!window.confirm(`Borrar "${task.title}"? Se borrará también de Google Tasks.`)) return;
+    deleteTask.mutate(undefined, {
+      onError: (e) => window.alert(`No se pudo borrar: ${e.message}`),
+    });
+  };
+
+  return (
+    <li style={taskItem}>
+      <button
+        type="button"
+        onClick={toggleStatus}
+        disabled={updateTask.isPending}
+        title={task.status === "completed" ? "Marcar como pendiente" : "Marcar como completada"}
+        style={{
+          background: "transparent", border: "none", cursor: "pointer",
+          fontSize: 18, padding: 0, marginRight: 8, lineHeight: 1,
+        }}
+        aria-label={task.status === "completed" ? "Marcar como pendiente" : "Marcar como completada"}
+      >
+        {task.status === "completed" ? "☑" : "☐"}
+      </button>
+      {editing ? (
+        <input
+          type="text"
+          value={draftTitle}
+          autoFocus
+          onChange={(e) => setDraftTitle(e.target.value)}
+          onBlur={saveTitle}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") saveTitle();
+            if (e.key === "Escape") { setDraftTitle(task.title); setEditing(false); }
+          }}
+          style={{ flex: 1, padding: "0.25rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 4 }}
+        />
+      ) : (
+        <span
+          onClick={() => { setDraftTitle(task.title); setEditing(true); }}
+          style={{
+            flex: 1, cursor: "pointer",
+            textDecoration: task.status === "completed" ? "line-through" : "none",
+            color: task.status === "completed" ? "#6b7280" : "#111827",
+          }}
+          title="Click para editar"
+        >
+          {task.title}
+        </span>
+      )}
+      {task.due ? (
+        <span style={{ ...muted, fontSize: "0.75rem", marginLeft: 8 }}>
+          · vence {task.due.slice(0, 10)}
+        </span>
+      ) : null}
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={deleteTask.isPending}
+        style={{
+          background: "transparent", border: "none", color: "#9ca3af",
+          cursor: "pointer", fontSize: 14, marginLeft: 8, padding: "0 4px",
+        }}
+        title={`Borrar "${task.title}"`}
+        aria-label={`Borrar ${task.title}`}
+      >
+        ×
+      </button>
+    </li>
   );
 }
 

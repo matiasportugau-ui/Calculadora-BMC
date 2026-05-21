@@ -28,6 +28,7 @@ import express from "express";
 import { config } from "../config.js";
 import { requireUser } from "../lib/identityAuth.js";
 import { getTasksPool } from "../lib/tasksDb.js";
+import * as googleTasks from "../lib/googleTasksClient.js";
 
 const router = express.Router();
 
@@ -172,18 +173,225 @@ router.get("/lists/:id/tasks/:taskId", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Task Lists — WRITE (503 until sync provisioned)
+// Task Lists — WRITE (BMC source of truth; pushes through to Google Tasks)
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.post("/lists", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
-router.delete("/lists/:id", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
+function handleGoogleError(err, res) {
+  if (err?.status === 401) {
+    return res.status(401).json({ ok: false, error: "google_token_revoked" });
+  }
+  if (err?.status === 429) {
+    return res.status(429).json({ ok: false, error: "google_rate_limit" });
+  }
+  if (err?.status === 404) {
+    return res.status(404).json({ ok: false, error: "google_resource_not_found" });
+  }
+  if (err?.status === 403) {
+    return res.status(403).json({ ok: false, error: "google_forbidden" });
+  }
+  console.error("[tasks] google api error:", err?.message, err?.body);
+  return res.status(502).json({ ok: false, error: "google_upstream_error" });
+}
+
+// POST /api/tasks/lists { title }
+router.post("/lists", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  const title = (req.body?.title || "").toString().trim().slice(0, 200);
+  if (!title) return res.status(400).json({ ok: false, error: "missing_title" });
+  let gList;
+  try {
+    gList = await googleTasks.createList({ pool, userId: req.user.id, title });
+  } catch (err) {
+    return handleGoogleError(err, res);
+  }
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO tasks.task_lists (user_id, google_id, title, synced_at)
+       VALUES ($1, $2, $3, now())
+       ON CONFLICT (user_id, google_id) DO UPDATE
+         SET title = EXCLUDED.title, synced_at = now()
+       RETURNING id, google_id, title, description, updated_at, created_at, synced_at`,
+      [req.user.id, gList.id, gList.title || title],
+    );
+    res.status(201).json({ ok: true, list: rows[0] });
+  } catch (err) {
+    console.error("[tasks] POST /lists persist failed:", err.message);
+    res.status(500).json({ ok: false, error: "persist_failed" });
+  }
+});
+
+// DELETE /api/tasks/lists/:id
+router.delete("/lists/:id", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  const r = await pool.query(
+    `SELECT google_id FROM tasks.task_lists WHERE id = $1 AND user_id = $2`,
+    [req.params.id, req.user.id],
+  );
+  if (!r.rows.length) {
+    return res.status(404).json({ ok: false, error: "list_not_found" });
+  }
+  try {
+    await googleTasks.deleteList({
+      pool, userId: req.user.id, googleListId: r.rows[0].google_id,
+    });
+  } catch (err) {
+    // 404 from Google means already gone; treat as success
+    if (err?.status !== 404) return handleGoogleError(err, res);
+  }
+  await pool.query(
+    `DELETE FROM tasks.task_lists WHERE id = $1 AND user_id = $2`,
+    [req.params.id, req.user.id],
+  );
+  res.json({ ok: true });
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tasks — WRITE (503 until sync provisioned)
+// Tasks — WRITE
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.post("/lists/:id/tasks", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
-router.patch("/lists/:id/tasks/:taskId", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
-router.delete("/lists/:id/tasks/:taskId", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
+async function loadListWithGoogleId(pool, listId, userId) {
+  const r = await pool.query(
+    `SELECT google_id FROM tasks.task_lists WHERE id = $1 AND user_id = $2`,
+    [listId, userId],
+  );
+  return r.rows[0] || null;
+}
+
+// POST /api/tasks/lists/:id/tasks { title, notes?, due? }
+router.post("/lists/:id/tasks", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  const list = await loadListWithGoogleId(pool, req.params.id, req.user.id);
+  if (!list) return res.status(404).json({ ok: false, error: "list_not_found" });
+
+  const title = (req.body?.title || "").toString().trim().slice(0, 1024);
+  if (!title) return res.status(400).json({ ok: false, error: "missing_title" });
+  const notes = req.body?.notes ? String(req.body.notes).slice(0, 8192) : undefined;
+  const due = req.body?.due || undefined;
+
+  let gTask;
+  try {
+    gTask = await googleTasks.createTask({
+      pool, userId: req.user.id, googleListId: list.google_id, title, notes, due,
+    });
+  } catch (err) {
+    return handleGoogleError(err, res);
+  }
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO tasks.tasks
+         (user_id, list_id, google_id, title, notes, due, status, synced_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+       RETURNING id, list_id, google_id, title, notes, due, status,
+                 parent_id, updated_at, created_at, synced_at, is_deleted`,
+      [
+        req.user.id, req.params.id, gTask.id,
+        gTask.title || title, gTask.notes || notes || null,
+        gTask.due || (due ? new Date(due) : null),
+        gTask.status || "needsAction",
+      ],
+    );
+    res.status(201).json({ ok: true, task: rows[0] });
+  } catch (err) {
+    console.error("[tasks] POST .../tasks persist failed:", err.message);
+    res.status(500).json({ ok: false, error: "persist_failed" });
+  }
+});
+
+// PATCH /api/tasks/lists/:id/tasks/:taskId
+router.patch("/lists/:id/tasks/:taskId", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  const list = await loadListWithGoogleId(pool, req.params.id, req.user.id);
+  if (!list) return res.status(404).json({ ok: false, error: "list_not_found" });
+
+  const tr = await pool.query(
+    `SELECT google_id FROM tasks.tasks
+      WHERE id = $1 AND user_id = $2 AND list_id = $3 AND is_deleted = FALSE`,
+    [req.params.taskId, req.user.id, req.params.id],
+  );
+  if (!tr.rows.length) {
+    return res.status(404).json({ ok: false, error: "task_not_found" });
+  }
+
+  const patch = {};
+  if (typeof req.body?.title === "string") patch.title = req.body.title.slice(0, 1024);
+  if ("notes" in (req.body || {})) patch.notes = req.body.notes == null ? null : String(req.body.notes).slice(0, 8192);
+  if ("due" in (req.body || {})) patch.due = req.body.due;
+  if (req.body?.status === "needsAction" || req.body?.status === "completed") {
+    patch.status = req.body.status;
+  }
+
+  let gTask;
+  try {
+    gTask = await googleTasks.updateTask({
+      pool, userId: req.user.id,
+      googleListId: list.google_id, googleTaskId: tr.rows[0].google_id,
+      ...patch,
+    });
+  } catch (err) {
+    return handleGoogleError(err, res);
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE tasks.tasks SET
+         title    = COALESCE($3, title),
+         notes    = COALESCE($4, notes),
+         due      = $5,
+         status   = COALESCE($6, status),
+         synced_at = now(),
+         updated_at = now()
+       WHERE id = $1 AND user_id = $2
+       RETURNING id, list_id, google_id, title, notes, due, status,
+                 parent_id, updated_at, created_at, synced_at, is_deleted`,
+      [
+        req.params.taskId, req.user.id,
+        gTask.title ?? null,
+        "notes" in patch ? (gTask.notes ?? null) : null,
+        "due" in patch ? (gTask.due ? new Date(gTask.due) : null) : tr.rows[0].due ?? null,
+        gTask.status ?? null,
+      ],
+    );
+    res.json({ ok: true, task: rows[0] });
+  } catch (err) {
+    console.error("[tasks] PATCH task persist failed:", err.message);
+    res.status(500).json({ ok: false, error: "persist_failed" });
+  }
+});
+
+// DELETE /api/tasks/lists/:id/tasks/:taskId (soft delete in BMC + push to Google)
+router.delete("/lists/:id/tasks/:taskId", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  const list = await loadListWithGoogleId(pool, req.params.id, req.user.id);
+  if (!list) return res.status(404).json({ ok: false, error: "list_not_found" });
+
+  const tr = await pool.query(
+    `SELECT google_id FROM tasks.tasks
+      WHERE id = $1 AND user_id = $2 AND list_id = $3 AND is_deleted = FALSE`,
+    [req.params.taskId, req.user.id, req.params.id],
+  );
+  if (!tr.rows.length) {
+    return res.status(404).json({ ok: false, error: "task_not_found" });
+  }
+
+  try {
+    await googleTasks.deleteTask({
+      pool, userId: req.user.id,
+      googleListId: list.google_id, googleTaskId: tr.rows[0].google_id,
+    });
+  } catch (err) {
+    if (err?.status !== 404) return handleGoogleError(err, res);
+  }
+  await pool.query(
+    `UPDATE tasks.tasks SET is_deleted = TRUE, updated_at = now()
+      WHERE id = $1 AND user_id = $2`,
+    [req.params.taskId, req.user.id],
+  );
+  res.json({ ok: true });
+});
 
 export default router;
