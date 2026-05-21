@@ -45,6 +45,7 @@ const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.j
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
 const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
 const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
+const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
 
 const suspenseFallback = (
   <div
@@ -216,6 +217,16 @@ export default function App() {
             <RequireGrant role="admin">
               <Suspense fallback={suspenseFallback}>
                 <UserAdminModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/admin/analytics"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <AnalyticsModule />
               </Suspense>
             </RequireGrant>
           }

@@ -72,6 +72,11 @@ export default function BmcModuleNav() {
           Usuarios
         </Link>
       ) : null}
+      {isAdmin ? (
+        <Link to="/hub/admin/analytics" style={btn(pathname.startsWith("/hub/admin/analytics"))}>
+          Analytics
+        </Link>
+      ) : null}
     </nav>
   );
 }
