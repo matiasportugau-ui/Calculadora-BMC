@@ -209,7 +209,7 @@ router.post("/lists", async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO tasks.task_lists (user_id, google_id, title, synced_at)
        VALUES ($1, $2, $3, now())
-       ON CONFLICT (user_id, google_id) DO UPDATE
+       ON CONFLICT (google_id) DO UPDATE
          SET title = EXCLUDED.title, synced_at = now()
        RETURNING id, google_id, title, description, updated_at, created_at, synced_at`,
       [req.user.id, gList.id, gList.title || title],
