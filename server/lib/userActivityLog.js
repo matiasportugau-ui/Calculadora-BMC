@@ -84,6 +84,11 @@ export const CLIENT_EMITTABLE = new Set([
   "nav.route.change",
   "ui.drawer.open",
   "ui.search.submit",
+  // The browser knows when the user navigates away. Allowing client-emitted
+  // session.end + sendBeacon on `beforeunload` captures graceful tab closes
+  // that would otherwise look like orphan sessions and only get cleaned up
+  // by the hourly TTL job.
+  "auth.session.end",
 ]);
 
 // Derive module from action prefix for quick fill-in if caller didn't supply it.

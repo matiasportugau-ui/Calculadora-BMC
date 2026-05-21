@@ -12,6 +12,7 @@ import { BmcAuthProvider } from "./contexts/BmcAuthProvider.jsx";
 import AuthGateModal from "./components/auth/AuthGateModal.jsx";
 import AuthHeader from "./components/auth/AuthHeader.jsx";
 import RequireGrant from "./components/auth/RequireGrant.jsx";
+import ActivityTracker from "./components/activity/ActivityTracker.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
@@ -139,6 +140,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <BmcAuthProvider>
+      <ActivityTracker />
       <LegacyAppQueryRedirect />
       <AuthGateModal />
       <Routes>

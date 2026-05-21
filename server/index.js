@@ -51,6 +51,7 @@ import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
 import authGoogleRouter from "./routes/authGoogle.js";
 import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
+import { startOrphanCloseScheduler } from "./jobs/closeOrphanSessions.js";
 import identityMeRouter from "./routes/identityMe.js";
 import identityAdminRouter from "./routes/identityAdmin.js";
 import quoteExportRouter from "./routes/quoteExport.js";
@@ -1119,6 +1120,10 @@ const server = app.listen(config.port, async () => {
       initAuthMfa({ pool: waPool, logger });
       initWaWebhooks({ pool: waPool, logger });
       setWaConfigModuleForQuoteParams(waConfigModule);
+      // Hourly TTL pass: insert synthetic auth.session.end for users idle
+      // > ACTIVITY_LOG_ORPHAN_TTL_HOURS (default 24h) so the activity log
+      // captures session boundaries even when the browser dies silently.
+      startOrphanCloseScheduler({ pool: waPool, logger });
     } catch (e) {
       logger.warn({ err: e }, "WA config/auth prime failed (continúo sin runtime config)");
     }
