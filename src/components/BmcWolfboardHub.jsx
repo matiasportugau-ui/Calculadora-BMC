@@ -148,6 +148,15 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
+            <h2 style={cardTitle}>Tareas · Google Tasks</h2>
+            <p style={cardDesc}>
+              Espejo bidireccional de tus listas y tareas de Google Tasks. Conectá tu cuenta una vez y sincronizamos cada 60 segundos.
+            </p>
+            <Link to="/hub/tareas" style={{ ...cta, background: "#0b8043" }}>
+              Abrir Tareas
+            </Link>
+          </div>
+          <div style={card}>
             <h2 style={cardTitle}>Panelin · Admin IA</h2>
             <p style={cardDesc}>
               Gestioná la base de conocimiento, editá el system prompt, revisá logs de conversaciones, estadísticas y configuración de scoring.
