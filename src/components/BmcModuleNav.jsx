@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { useBmcAuth } from "../hooks/useBmcAuth.js";
 
 const bar = {
   display: "flex",
@@ -28,6 +29,8 @@ const btn = (active) => ({
 
 export default function BmcModuleNav() {
   const { pathname } = useLocation();
+  const auth = useBmcAuth();
+  const isAdmin = auth?.role === "admin" || auth?.role === "superadmin";
   const hubActive =
     pathname === "/hub" ||
     pathname.startsWith("/hub/ml") ||
@@ -64,6 +67,11 @@ export default function BmcModuleNav() {
       <Link to="/hub/marketing" style={btn(marketingActive)}>
         Market Intel
       </Link>
+      {isAdmin ? (
+        <Link to="/hub/admin/users" style={btn(pathname.startsWith("/hub/admin/users"))}>
+          Usuarios
+        </Link>
+      ) : null}
     </nav>
   );
 }

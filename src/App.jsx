@@ -43,6 +43,7 @@ const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
 const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
+const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
 
 const suspenseFallback = (
   <div
@@ -204,6 +205,16 @@ export default function App() {
           element={
             <RequireGrant role="admin">
               <AdminRoute />
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/admin/users"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <UserAdminModule />
+              </Suspense>
             </RequireGrant>
           }
         />
