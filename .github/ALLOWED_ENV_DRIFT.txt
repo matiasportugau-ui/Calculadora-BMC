@@ -2,7 +2,6 @@
 # Each entry is an env var referenced in server/ that is set
 # manually in the Cloud Run console (not in deploy-calc-api.yml or .env.example).
 # Migrate these to the workflow over time, then delete the entry from this file.
-ACTIVITY_LOG_ORPHAN_TTL_HOURS
 AI_KNOWLEDGE_EVENTS_LOG
 ANTHROPIC_CHAT_MODEL
 API_AUTH_TOKEN
@@ -32,7 +31,6 @@ GCS_KB_OBJECT
 GCS_QUOTES_BUCKET
 GEMINI_CHAT_MODEL
 GIT_SHA
-GOOGLE_TASKS_REDIRECT_URI
 GROK_CHAT_MODEL
 KNOWLEDGE_CACHE_TTL_MS
 K_SERVICE
