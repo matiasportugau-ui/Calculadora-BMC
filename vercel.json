@@ -13,6 +13,14 @@
       "destination": "https://panelin-calc-642127786762.us-central1.run.app/calc/:path*"
     },
     {
+      "source": "/auth/:path*",
+      "destination": "https://panelin-calc-642127786762.us-central1.run.app/auth/:path*"
+    },
+    {
+      "source": "/sync/:path*",
+      "destination": "https://panelin-calc-642127786762.us-central1.run.app/sync/:path*"
+    },
+    {
       "source": "/logistica",
       "destination": "/index.html"
     },
