@@ -336,24 +336,35 @@ router.patch("/lists/:id/tasks/:taskId", async (req, res) => {
   }
 
   try {
+    // Build SET clause dynamically so explicit `null` in the patch (e.g.
+    // clearing notes or due) propagates immediately to BMC instead of being
+    // absorbed by COALESCE — which would keep the old value and leave a
+    // ~60s desync window until the sync cycle pulled Google's null state.
+    const setClauses = ["synced_at = now()", "updated_at = now()"];
+    const params = [req.params.taskId, req.user.id];
+    if ("title" in patch) {
+      params.push(gTask.title ?? patch.title);
+      setClauses.push(`title = $${params.length}`);
+    }
+    if ("notes" in patch) {
+      params.push(gTask.notes ?? null);
+      setClauses.push(`notes = $${params.length}`);
+    }
+    if ("due" in patch) {
+      params.push(gTask.due ? new Date(gTask.due) : null);
+      setClauses.push(`due = $${params.length}`);
+    }
+    if ("status" in patch) {
+      params.push(gTask.status ?? patch.status);
+      setClauses.push(`status = $${params.length}`);
+    }
+
     const { rows } = await pool.query(
-      `UPDATE tasks.tasks SET
-         title    = COALESCE($3, title),
-         notes    = COALESCE($4, notes),
-         due      = $5,
-         status   = COALESCE($6, status),
-         synced_at = now(),
-         updated_at = now()
+      `UPDATE tasks.tasks SET ${setClauses.join(", ")}
        WHERE id = $1 AND user_id = $2
        RETURNING id, list_id, google_id, title, notes, due, status,
                  parent_id, updated_at, created_at, synced_at, is_deleted`,
-      [
-        req.params.taskId, req.user.id,
-        gTask.title ?? null,
-        "notes" in patch ? (gTask.notes ?? null) : null,
-        "due" in patch ? (gTask.due ? new Date(gTask.due) : null) : tr.rows[0].due ?? null,
-        gTask.status ?? null,
-      ],
+      params,
     );
     res.json({ ok: true, task: rows[0] });
   } catch (err) {
