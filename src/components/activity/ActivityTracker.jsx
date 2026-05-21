@@ -27,10 +27,14 @@ export default function ActivityTracker() {
   const auth = useBmcAuth();
   const { pathname } = useLocation();
   const lastNavRef = useRef(null);
-  const sessionStartRef = useRef(Date.now());
+  const sessionStartRef = useRef(null);
   const navCountRef = useRef(0);
   const modulesTouchedRef = useRef(new Set());
   const debounceRef = useRef(null);
+
+  useEffect(() => {
+    if (sessionStartRef.current === null) sessionStartRef.current = Date.now();
+  }, []);
 
   // 1. nav.route.change emitter (debounced)
   useEffect(() => {
