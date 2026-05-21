@@ -33,7 +33,7 @@ function maskToken(value) {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /init — requires Bearer JWT; returns Google consent URL for the SPA to redirect to
 // ─────────────────────────────────────────────────────────────────────────────
-router.get("/init", requireUser, async (req, res) => {
+router.get("/init", requireUser(), async (req, res) => {
   if (!config.googleTasksClientId || !config.googleTasksClientSecret) {
     return res.status(503).json({
       ok: false,
@@ -245,7 +245,7 @@ router.get("/callback", async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /revoke — Bearer JWT; revoke at Google and soft-mark in oauth_tokens
 // ─────────────────────────────────────────────────────────────────────────────
-router.post("/revoke", requireUser, async (req, res) => {
+router.post("/revoke", requireUser(), async (req, res) => {
   if (!config.supabasePgpEncryptKey) {
     return res.status(503).json({ ok: false, error: "pgp_key_not_configured" });
   }

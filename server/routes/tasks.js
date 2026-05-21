@@ -31,8 +31,8 @@ import { getTasksPool } from "../lib/tasksDb.js";
 
 const router = express.Router();
 
-// All tasks routes require authenticated user
-router.use(requireUser);
+// All tasks routes require authenticated user (factory must be called)
+router.use(requireUser());
 
 const SYNC_NOT_CONFIGURED = {
   ok: false,
