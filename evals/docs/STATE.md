@@ -17,7 +17,9 @@ Bitácora viva del sistema de evaluación. Actualizar al cerrar cada corrida.
 - [x] **CLI con subcomandos**: `discover` / `ingest` / `run` / `batch` con `--resume`
 - [x] **Runbook operativo** (`RUNBOOK.md`) — pre-requisitos, flujo paso a paso, troubleshooting
 - [x] **Extracción de findings** — `runs/*/findings-candidates.json` por corrida
-- [ ] PDF parser — golden se carga a mano en el fixture (i3 pendiente)
+- [x] **Cloud Run proxy** (`server/routes/evalsRead.js`) — `/api/admin-cot/enviados/discover` + `/api/admin-cot/enviados?from=N&to=M`. Auth via `Bearer BMC_EVALS_API_TOKEN`. Permite correr el harness desde contenedores efímeros sin SA mounted.
+- [x] **Fetcher abstraction** (`evals/lib/enviadosFetcher.js`) — auto-decide entre Sheets directo vs proxy según `BMC_EVALS_API_BASE` env
+- [x] **PDF parser** (`evals/lib/parsePdfGolden.js`) — descarga PDFs (Drive shared incluido) y extrae total sin/con IVA + líneas BOM. Flag `--parse-pdfs` en ingest. Falla a status semántico (`no_text`, `no_total`, `download_error`) sin crashear.
 - [ ] NLU agent probe LLM-based (Claude Haiku reemplaza regex heurística) — i4 pendiente
 - [ ] Assumption agent probe + KB de convenciones inicializada — i5 pendiente
 - [ ] Auto-injection al KB via `/api/ai-training/save-correction` — i6 pendiente

@@ -96,10 +96,9 @@ function readJsonIfExists(file) {
 // ── Subcomando: discover ───────────────────────────────────────────────
 
 async function cmdDiscover() {
-  const { discoverHeaders } = await import("./lib/readEnviados.js");
-  const { getSheetId } = await import("./lib/sheetsClient.js");
-  console.log(`Sheet: ${getSheetId()}`);
-  const { headers, sampleRows } = await discoverHeaders();
+  const { discoverFromAny } = await import("./lib/enviadosFetcher.js");
+  const { headers, sampleRows, sheetId, mode } = await discoverFromAny();
+  console.log(`Sheet: ${sheetId} (mode: ${mode})`);
   console.log("\nHEADERS detectados:");
   for (const h of headers) {
     const mapStr = h.mapped ? ` → ${h.mapped}` : "  (no mapeado)";
@@ -117,20 +116,31 @@ async function cmdDiscover() {
 // ── Subcomando: ingest ─────────────────────────────────────────────────
 
 async function cmdIngest(flags) {
-  const { readRowsRange, readRowsByDate } = await import("./lib/readEnviados.js");
-  const { getSheetId } = await import("./lib/sheetsClient.js");
+  const { fetchRows } = await import("./lib/enviadosFetcher.js");
   const { rowToFixture } = await import("./lib/rowToFixture.js");
-  const sheetId = getSheetId();
+  let parsePdfGolden = null;
+  if (flags["parse-pdfs"]) {
+    parsePdfGolden = (await import("./lib/parsePdfGolden.js")).parsePdfGolden;
+  }
   ensureDir(FIXTURES_DIR);
 
   let rows;
+  let sheetId;
   if (flags.rows) {
     const { from, to } = parseRowRange(flags.rows);
     console.log(`▶ Leyendo filas ${from}..${to} de Enviados...`);
-    rows = await readRowsRange(from, to);
+    const result = await fetchRows({ mode: "range", from, to });
+    rows = result.rows;
+    sheetId = result.sheetId;
   } else if (flags["from-date"] || flags["to-date"]) {
     console.log(`▶ Leyendo por fechas ${flags["from-date"] || "*"} .. ${flags["to-date"] || "*"} ...`);
-    rows = await readRowsByDate(flags["from-date"], flags["to-date"]);
+    const result = await fetchRows({
+      mode: "date-range",
+      fromDate: flags["from-date"],
+      toDate: flags["to-date"],
+    });
+    rows = result.rows;
+    sheetId = result.sheetId;
   } else {
     console.error("Uso: ingest --rows N-M  |  ingest --from-date YYYY-MM-DD --to-date YYYY-MM-DD");
     process.exit(1);
@@ -138,12 +148,26 @@ async function cmdIngest(flags) {
 
   let created = 0;
   let skipped = 0;
+  let pdfsParsed = 0;
+  let pdfsFailed = 0;
   const created_ids = [];
   for (const row of rows) {
     if (!row.cliente && !row.consulta) {
       continue;
     }
-    const fixture = rowToFixture(row, { sheetId });
+    let pdfGolden = null;
+    if (parsePdfGolden && row.link_pdf) {
+      process.stdout.write(`  · parsing PDF ${row.link_pdf.slice(0, 60)}... `);
+      pdfGolden = await parsePdfGolden(row.link_pdf);
+      if (pdfGolden.status === "parsed") {
+        pdfsParsed++;
+        console.log(`OK (sin IVA: ${pdfGolden.total_sin_iva_usd ?? "?"}, con IVA: ${pdfGolden.total_con_iva_usd ?? "?"})`);
+      } else {
+        pdfsFailed++;
+        console.log(`${pdfGolden.status}`);
+      }
+    }
+    const fixture = rowToFixture(row, { sheetId, pdfGolden });
     const file = fixturePath(fixture.case_id);
     if (fs.existsSync(file) && !flags.force) {
       skipped++;
@@ -156,6 +180,9 @@ async function cmdIngest(flags) {
     console.log(`  ✓ ${fixture.case_id} ← fila ${row._rowNumber}`);
   }
   console.log(`\nIngesta: ${created} creados, ${skipped} skipeados.`);
+  if (parsePdfGolden) {
+    console.log(`PDFs: ${pdfsParsed} parseados, ${pdfsFailed} fallaron.`);
+  }
   return created_ids;
 }
 

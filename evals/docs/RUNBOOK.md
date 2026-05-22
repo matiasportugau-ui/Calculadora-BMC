@@ -5,10 +5,28 @@ batch largo, caso por caso en detalle.
 
 ## Pre-requisitos
 
-### 1. Credenciales de Google Sheets
+### 1. Credenciales — dos modos
 
-El reader necesita acceso a la planilla `1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0`
-(`Enviados`). Setear UNA de estas opciones en `.env`:
+**Modo recomendado (proxy via Cloud Run API):** el server desplegado ya tiene
+la SA mounted desde Secret Manager. El harness le pega por HTTPS y no necesita
+credenciales locales. Setear en `.env`:
+
+```
+BMC_EVALS_API_BASE=https://panelin-calc-q74zutv7dq-uc.a.run.app
+BMC_EVALS_API_TOKEN=<token random — el mismo que en el server>
+```
+
+En el server (Cloud Run env vars o `.env`), setear el mismo token:
+
+```
+BMC_EVALS_API_TOKEN=<token random>
+```
+
+Si `BMC_EVALS_API_TOKEN` no está set en el server, el endpoint `/api/admin-cot/enviados*`
+responde 404 (política conservadora — no se expone la planilla por accidente).
+
+**Modo directo (cuando corrés local con tus credenciales):** el harness habla
+directo con Sheets API. Setear UNA de estas opciones:
 
 **Opción A — archivo (más simple en local):**
 ```
@@ -71,6 +89,25 @@ npm run evals:ingest -- --rows 14-50
 Lee filas 14..50 de `Enviados`. Por cada una con `cliente` o `consulta`
 no vacíos, escribe un fixture en `evals/fixtures/<cliente>-fila-N.json`.
 Skipea las ya existentes a menos que pases `--force`.
+
+#### Con extracción automática de PDFs (recomendado)
+
+```bash
+npm run evals:ingest -- --rows 14-50 --parse-pdfs
+```
+
+Para cada fila con `link_pdf`, descarga el PDF (resuelve Drive shared links),
+extrae texto con `pdf-parse` y completa `expected_output.monto_total_sin_iva_usd`
++ `monto_total_con_iva_usd` + `bom` cuando puede. Status posibles del parser:
+
+- `parsed` — todo OK
+- `no_total` — texto extraído pero no encontró pattern de total
+- `no_text` — PDF es escaneo/imagen sin OCR
+- `download_error` — falló descarga (link roto o restringido)
+- `invalid_url` — URL no parseable
+- `dep_missing` — falta `npm install pdf-parse`
+
+El fixture queda igual escrito; los goldens fallidos se completan a mano.
 
 ### Paso 3 — corrida del motor + reporte por caso
 
@@ -146,8 +183,9 @@ Comparar score global del nuevo run vs el anterior. Promover casos
 
 - **i0**: motor + fixture format ✓
 - **i1**: docs multi-etapa + worked example Carmen ✓
-- **i2**: reader Sheets API + ingest + batch ✓ ← **acá estamos**
-- **i3**: PDF parser (pdf-parse) — extracción automática de goldens
+- **i2**: reader Sheets API + ingest + batch ✓
+- **i2.5**: Cloud Run proxy `/api/admin-cot/enviados*` ✓
+- **i3**: PDF parser (pdf-parse) — extracción automática de goldens ✓ ← **acá estamos**
 - **i4**: NLU probe con Claude Haiku (reemplaza regex heurística)
 - **i5**: Assumption probe + KB de convenciones inicializada
 - **i6**: Auto-injection de findings al KB via /api/ai-training/save-correction

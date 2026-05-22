@@ -90,8 +90,13 @@ function defaultAssumptions({ familia, direccion_zona }) {
 /**
  * Construye un fixture del harness a partir de una fila parseada.
  * No infiere ancho del techo (campo crítico que el agente debería preguntar).
+ *
+ * @param {Object} row     fila parseada por enviadosSchema.parseRow
+ * @param {Object} opts
+ * @param {string} opts.sheetId          ID de la planilla origen
+ * @param {Object} opts.pdfGolden        output de parsePdfGolden (opcional)
  */
-export function rowToFixture(row, { sheetId } = {}) {
+export function rowToFixture(row, { sheetId, pdfGolden } = {}) {
   const consulta = row.consulta || "";
   const familia = detectFamilia(consulta);
   const espesores = detectEspesores(consulta);
@@ -169,24 +174,65 @@ export function rowToFixture(row, { sheetId } = {}) {
       opciones_solicitadas: opciones,
     },
     assumptions,
-    expected_output: row.link_pdf
-      ? {
-          status: row.monto_total ? "monto_disponible_sin_bom" : "pdf_disponible_sin_monto",
-          pdf_url: row.link_pdf,
-          monto_total_sin_iva_usd: null,
-          monto_total_con_iva_usd: null,
-          monto_total_raw: row.monto_total,
-          moneda: row.moneda,
-          bom: [],
-        }
-      : {
-          status: "pendiente_de_envio_por_usuario",
-          pdf_url: null,
-          monto_total_sin_iva_usd: null,
-          monto_total_con_iva_usd: null,
-          bom: [],
-        },
+    expected_output: buildExpectedOutput(row, pdfGolden),
     extra_planilla: row.extra,
+  };
+}
+
+function buildExpectedOutput(row, pdfGolden) {
+  if (pdfGolden && pdfGolden.status === "parsed") {
+    return {
+      status: "golden_parsed_from_pdf",
+      pdf_url: row.link_pdf,
+      pdf_resolved_url: pdfGolden.resolved_url,
+      monto_total_sin_iva_usd: pdfGolden.total_sin_iva_usd,
+      monto_total_con_iva_usd: pdfGolden.total_con_iva_usd,
+      monto_total_raw: row.monto_total,
+      moneda: row.moneda,
+      bom: pdfGolden.bom_lines.map((l) => ({
+        qty: l.qty,
+        familia: l.familia,
+        espesor: l.espesor,
+        largo: l.largo,
+        ancho: l.ancho,
+        raw: l.raw,
+        confidence: 0.5,
+      })),
+      pdf_parser_meta: {
+        text_sample: pdfGolden.raw_text_sample,
+      },
+    };
+  }
+  if (pdfGolden && pdfGolden.status !== "parsed") {
+    return {
+      status: `pdf_parser_${pdfGolden.status}`,
+      pdf_url: row.link_pdf,
+      pdf_resolved_url: pdfGolden.resolved_url,
+      monto_total_sin_iva_usd: null,
+      monto_total_con_iva_usd: null,
+      monto_total_raw: row.monto_total,
+      moneda: row.moneda,
+      bom: [],
+      pdf_parser_error: pdfGolden.error || null,
+    };
+  }
+  if (row.link_pdf) {
+    return {
+      status: row.monto_total ? "monto_disponible_sin_bom" : "pdf_disponible_sin_monto",
+      pdf_url: row.link_pdf,
+      monto_total_sin_iva_usd: null,
+      monto_total_con_iva_usd: null,
+      monto_total_raw: row.monto_total,
+      moneda: row.moneda,
+      bom: [],
+    };
+  }
+  return {
+    status: "pendiente_de_envio_por_usuario",
+    pdf_url: null,
+    monto_total_sin_iva_usd: null,
+    monto_total_con_iva_usd: null,
+    bom: [],
   };
 }
 
