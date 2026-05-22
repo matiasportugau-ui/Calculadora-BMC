@@ -11,13 +11,18 @@ Bitácora viva del sistema de evaluación. Actualizar al cerrar cada corrida.
 - [x] Reporte markdown por caso + run summary
 - [x] **Doc de arquitectura multi-etapa** (`TRAINING-LOOP-PLAN.md`) — NLU + Asunciones + Motor + Presentación
 - [x] **Worked example Carmen por etapas** (`CARMEN-RUN-MANUAL.md`) — 8 findings priorizados con canal de fix
-- [ ] Reader Sheets API (`Enviados`) — requiere `service-account.json` en el contenedor
-- [ ] PDF parser — golden se carga a mano en el fixture
-- [ ] Loopback HTTP a /calc/cotizar — para alinear 100% con cómo Panelin invoca al motor
-- [ ] NLU agent probe automatizado (invoca `agentChat` con `surface=eval`)
-- [ ] Assumption agent probe + KB de convenciones inicializada
-- [ ] Inyección automática a `data/training-kb.json` vía `/api/ai-training/save-correction`
-- [ ] Regression set en CI que bloquee merges si baja el score global
+- [x] **Reader Sheets API** (`evals/lib/sheetsClient.js` + `readEnviados.js`) — auth multi-source (file / inline / JSON env)
+- [x] **Schema configurable** (`evals/lib/enviadosSchema.js`) — mapeo columnas → campos, ajustable por planilla
+- [x] **Ingest automático** — fila Enviados → fixture con NLU heurística y defaults
+- [x] **CLI con subcomandos**: `discover` / `ingest` / `run` / `batch` con `--resume`
+- [x] **Runbook operativo** (`RUNBOOK.md`) — pre-requisitos, flujo paso a paso, troubleshooting
+- [x] **Extracción de findings** — `runs/*/findings-candidates.json` por corrida
+- [ ] PDF parser — golden se carga a mano en el fixture (i3 pendiente)
+- [ ] NLU agent probe LLM-based (Claude Haiku reemplaza regex heurística) — i4 pendiente
+- [ ] Assumption agent probe + KB de convenciones inicializada — i5 pendiente
+- [ ] Auto-injection al KB via `/api/ai-training/save-correction` — i6 pendiente
+- [ ] Regression set en CI que bloquee merges si baja el score global — i7 pendiente
+- [ ] Loopback HTTP a /calc/cotizar — paridad con runtime de Panelin — i8 pendiente
 
 ## Fixtures cargadas
 
