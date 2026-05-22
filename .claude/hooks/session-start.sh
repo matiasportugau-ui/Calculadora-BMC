@@ -17,10 +17,15 @@
 #   ANTHROPIC_API_KEY         = <optional, for LLM-based evals (i4+)>
 #   BMC_EVALS_API_TOKEN       = <optional, alt path via Cloud Run proxy>
 #
-# Run synchronously (no async mode). Container state caches after first
-# run so subsequent resumes are fast.
+# Runs in async mode: the session starts immediately while npm install
+# happens in background. Trade-off documented in the commit message.
+# Container state caches after first run so resumes are fast.
 
 set -euo pipefail
+
+# Announce async mode to Claude Code BEFORE any other stdout. Timeout 300s
+# to cover the first-ever npm install.
+echo '{"async": true, "asyncTimeout": 300000}'
 
 cd "${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
