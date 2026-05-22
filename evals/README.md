@@ -5,6 +5,14 @@ cotizaciones reales históricas de la planilla **2.0 Administrador de
 Cotizaciones** (`Enviados`). Cada gap detectado se vuelve un fix propuesto
 (código, datos o KB de Panelin).
 
+## Loop completo (multi-etapa)
+
+Este harness mide hoy solo la **etapa 3** (motor). El loop completo es de 4
+etapas — ver **`evals/docs/TRAINING-LOOP-PLAN.md`** para la arquitectura
+y **`evals/docs/CARMEN-RUN-MANUAL.md`** para un worked example de Carmen
+corrida por las 4 etapas a mano (Stages 1-2 manuales, Stage 3 automatizada,
+Stage 4 dormida sin golden).
+
 ## Para qué sirve
 
 1. Tomar una fila de la planilla `Enviados` (cotización que ya salió al cliente).

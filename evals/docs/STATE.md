@@ -9,10 +9,15 @@ Bitácora viva del sistema de evaluación. Actualizar al cerrar cada corrida.
 - [x] Motor de cálculo invocado in-process (sin HTTP loopback todavía)
 - [x] Comparador con tolerancias ±1% total / qty exacta
 - [x] Reporte markdown por caso + run summary
-- [ ] **Reader Sheets API** (`Enviados`) — requiere `service-account.json` en el contenedor
-- [ ] **PDF parser** — golden se carga a mano en el fixture
-- [ ] **Loopback HTTP a /calc/cotizar** — para alinear 100% con cómo Panelin invoca al motor
-- [ ] **Inyección automática a `data/training-kb.json`** — los findings `convencion` hoy se anotan en el reporte md y se trasladan a mano
+- [x] **Doc de arquitectura multi-etapa** (`TRAINING-LOOP-PLAN.md`) — NLU + Asunciones + Motor + Presentación
+- [x] **Worked example Carmen por etapas** (`CARMEN-RUN-MANUAL.md`) — 8 findings priorizados con canal de fix
+- [ ] Reader Sheets API (`Enviados`) — requiere `service-account.json` en el contenedor
+- [ ] PDF parser — golden se carga a mano en el fixture
+- [ ] Loopback HTTP a /calc/cotizar — para alinear 100% con cómo Panelin invoca al motor
+- [ ] NLU agent probe automatizado (invoca `agentChat` con `surface=eval`)
+- [ ] Assumption agent probe + KB de convenciones inicializada
+- [ ] Inyección automática a `data/training-kb.json` vía `/api/ai-training/save-correction`
+- [ ] Regression set en CI que bloquee merges si baja el score global
 
 ## Fixtures cargadas
 
