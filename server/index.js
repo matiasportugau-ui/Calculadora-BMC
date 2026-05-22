@@ -43,6 +43,7 @@ import { initWaWebhooks } from "./lib/waWebhooks.js";
 import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
+import evalsReadRouter from "./routes/evalsRead.js";
 import marketingRouter from "./routes/marketing.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
@@ -927,6 +928,8 @@ app.use("/api", agentFeedbackRouter);
 app.use("/api", agentVoiceRouter);
 app.use("/api", agentTranscribeRouter);
 app.use("/api", aiAnalyticsRouter);
+// Evals read-only proxy — protegido por BMC_EVALS_API_TOKEN
+app.use(evalsReadRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));

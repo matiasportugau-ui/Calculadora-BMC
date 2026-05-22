@@ -1,0 +1,83 @@
+{
+  "case_id": "carmen-fila-13",
+  "fila_planilla": 13,
+  "fuente": {
+    "planilla_id": "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
+    "tab": "Enviados",
+    "url": "https://docs.google.com/spreadsheets/d/1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0/edit"
+  },
+  "inputs_raw": {
+    "asignado": "TIN",
+    "estado": "Enviado",
+    "fecha": "2026-05-19",
+    "cliente": "Carmen",
+    "origen": "WA",
+    "telefono": "94 789 407",
+    "direccion_zona": "Mvdeo, Zona Colón",
+    "consulta": "Isodec 100 y 150 mm // 5p de 4.2 mts // completo",
+    "comentarios": "",
+    "monto": null,
+    "link_pdf": null
+  },
+  "parsed_inputs": {
+    "lista": "venta",
+    "alcance": "completo",
+    "flete": "intervencion_humana",
+    "destino": "Mvdeo, Zona Colón",
+    "opciones_solicitadas": [
+      {
+        "label": "ISODEC EPS 100mm",
+        "escenario": "solo_techo",
+        "techo": {
+          "familia": "ISODEC_EPS",
+          "espesor": 100,
+          "largo": 4.2,
+          "ancho": 5.6,
+          "tipoEst": "metal",
+          "color": "Blanco",
+          "borders": { "frente": "gotero", "fondo": "gotero_sup", "latIzq": "gotero_lat", "latDer": "gotero_lat" },
+          "opciones": { "inclCanalon": false, "inclGotSup": true, "inclSell": true }
+        },
+        "assumptions": [
+          "Estructura metal (residencial Mvdeo, no especificado)",
+          "Color blanco default",
+          "Bordes ISODEC: gotero frontal + gotero superior + 2 goteros laterales"
+        ]
+      },
+      {
+        "label": "ISODEC EPS 150mm",
+        "escenario": "solo_techo",
+        "techo": {
+          "familia": "ISODEC_EPS",
+          "espesor": 150,
+          "largo": 4.2,
+          "ancho": 5.6,
+          "tipoEst": "metal",
+          "color": "Blanco",
+          "borders": { "frente": "gotero", "fondo": "gotero_sup", "latIzq": "gotero_lat", "latDer": "gotero_lat" },
+          "opciones": { "inclCanalon": false, "inclGotSup": true, "inclSell": true }
+        },
+        "assumptions": [
+          "Mismas assumptions que 100mm",
+          "Caso candidato para BUG-001: warning lmin espurio en 4.2m"
+        ]
+      }
+    ]
+  },
+  "expected_output": {
+    "status": "pendiente_de_envio_por_usuario",
+    "pdf_url": null,
+    "monto_total_sin_iva_usd": null,
+    "monto_total_con_iva_usd": null,
+    "bom": []
+  },
+  "gaps_pendientes": [
+    "Confirmar tipo de estructura (metal vs hormigón vs madera) — afecta fijaciones",
+    "Confirmar configuración del techo (1 agua, 2 aguas) — afecta cumbrera",
+    "Golden output (PDF + monto) no enviado todavía"
+  ],
+  "notas": [
+    "Caso identificado como golden #1 del Evals Pipeline (zip externo)",
+    "Carmen es un caso de oferta dual (2 espesores) — patrón común a soportar"
+  ]
+}
