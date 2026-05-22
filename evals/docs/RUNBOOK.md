@@ -93,8 +93,14 @@ Skipea las ya existentes a menos que pases `--force`.
 #### Con extracción automática de PDFs (recomendado)
 
 ```bash
+npm install pdf-parse        # dep opcional, no incluida en el lockfile
 npm run evals:ingest -- --rows 14-50 --parse-pdfs
 ```
+
+`pdf-parse` es una dep opcional (no listada en `package.json` para no
+romper `npm ci` en CI). Instalarla una sola vez cuando se quiera usar
+`--parse-pdfs`. Sin ella, el parser devuelve `status: "dep_missing"` y
+el ingest sigue normal sin goldens automáticos.
 
 Para cada fila con `link_pdf`, descarga el PDF (resuelve Drive shared links),
 extrae texto con `pdf-parse` y completa `expected_output.monto_total_sin_iva_usd`
