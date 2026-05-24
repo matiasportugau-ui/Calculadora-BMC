@@ -64,12 +64,13 @@ function makePool({ accessToken = "old-access-token", refreshToken = "refresh-to
       }
 
       if (norm.startsWith("insert into tasks.sync_log")) {
+        const statusMatch = sql.match(/,\s*(\d+)\)\s*$/m);
         state.logs.push({
           eventType: sql.match(/values \(\$1, \$2, '([^']+)'/i)?.[1]
             || sql.match(/values \(\$1, gen_random_uuid\(\)::text, '([^']+)'/i)?.[1]
             || "unknown",
           details: params[2] ? JSON.parse(params[2]) : JSON.parse(params[1] || "{}"),
-          httpStatusCode: params[3] ?? null,
+          httpStatusCode: params[3] ?? (statusMatch ? Number(statusMatch[1]) : null),
         });
         return { rows: [] };
       }
