@@ -456,4 +456,6 @@ router.post("/google-tasks/pull", async (req, res) => {
   });
 });
 
+export const __test__ = { syncUser, verifyHmacSignature };
+
 export default router;

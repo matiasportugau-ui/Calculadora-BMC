@@ -60,7 +60,7 @@
     "test:browser:full:local": "node scripts/browser-test-suite.mjs --local",
     "smoke:browser": "node scripts/playwright-route-audit-smoke.mjs",
     "smoke:browser:prod": "node scripts/playwright-route-audit-smoke.mjs --base=https://calculadora-bmc.vercel.app",
-    "test:api": "node tests/calc-routes.validation.js && node tests/panelinInternalApi.test.js && node tests/auth-routes.test.js && node tests/ml-search-routes.test.js && node tests/agentMcpRoutes.test.js && node tests/agentTranscribe.test.js && node tests/sheetsCsvGuard.test.js && node tests/suggestResponseKb.test.js && node --test tests/identity-auth.test.js && node --test tests/identity-default-admin.test.js && node --test tests/identity-mfa.test.js && node tests/ml-etl-run-routes.test.js && node tests/traktime-contract.test.js",
+    "test:api": "node tests/calc-routes.validation.js && node tests/panelinInternalApi.test.js && node tests/auth-routes.test.js && node tests/ml-search-routes.test.js && node tests/agentMcpRoutes.test.js && node tests/agentTranscribe.test.js && node tests/sheetsCsvGuard.test.js && node tests/suggestResponseKb.test.js && node --test tests/tasksSync.test.js && node --test tests/identity-auth.test.js && node --test tests/identity-default-admin.test.js && node --test tests/identity-mfa.test.js && node tests/ml-etl-run-routes.test.js && node tests/traktime-contract.test.js",
     "test:wa-integration": "node tests/wa-enricher-integration.test.js",
     "test:wa-pro": "node tests/wa-config.test.js && node tests/wa-operator-auth.test.js && node tests/wa-rules.test.js && node tests/wa-webhooks.test.js && node tests/wa-sla.test.js",
     "test:chat": "node tests/chat-hardening.js",
