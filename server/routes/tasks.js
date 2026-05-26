@@ -28,18 +28,12 @@ import express from "express";
 import { config } from "../config.js";
 import { requireUser } from "../lib/identityAuth.js";
 import { getTasksPool } from "../lib/tasksDb.js";
+import { withTasksClient, mapDbTaskToGoogle, classifyGoogleError } from "../lib/tasksClient.js";
 
 const router = express.Router();
 
 // All tasks routes require authenticated user
 router.use(requireUser);
-
-const SYNC_NOT_CONFIGURED = {
-  ok: false,
-  error: "sync_not_configured",
-  message:
-    "Google Tasks sync is not yet provisioned. Connect a Google account at /auth/tasks/init first. See docs/hub-tasks-module/PHASE-1-INFRASTRUCTURE.md for operator setup.",
-};
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 200;
@@ -172,18 +166,198 @@ router.get("/lists/:id/tasks/:taskId", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Task Lists — WRITE (503 until sync provisioned)
+// Task Lists — WRITE
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.post("/lists", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
-router.delete("/lists/:id", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
+// POST /api/tasks/lists — create a new task list
+router.post("/lists", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  const { title } = req.body || {};
+  if (!title || typeof title !== "string" || !title.trim()) {
+    return res.status(400).json({ ok: false, error: "title_required" });
+  }
+  try {
+    const result = await withTasksClient(
+      pool, req.user.id, config.tasksEncryptionKey, config,
+      (client) => client.tasklists.insert({ requestBody: { title: title.trim() } }),
+    );
+    const gList = result.data;
+    const { rows } = await pool.query(
+      `INSERT INTO tasks.task_lists (user_id, google_id, title, synced_at)
+       VALUES ($1, $2, $3, now())
+       RETURNING id, google_id, title, updated_at, created_at, synced_at`,
+      [req.user.id, gList.id, gList.title],
+    );
+    res.json({ ok: true, list: rows[0] });
+  } catch (err) {
+    const c = classifyGoogleError(err);
+    if (c.type === "auth") return res.status(401).json({ ok: false, error: "token_expired" });
+    req.log.error({ err: err?.message }, "POST /lists failed");
+    res.status(c.status).json({ ok: false, error: c.type });
+  }
+});
+
+// DELETE /api/tasks/lists/:id
+router.delete("/lists/:id", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  try {
+    const { rows } = await pool.query(
+      `SELECT google_id FROM tasks.task_lists WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.user.id],
+    );
+    if (rows.length === 0) return res.status(404).json({ ok: false, error: "list_not_found" });
+    await withTasksClient(
+      pool, req.user.id, config.tasksEncryptionKey, config,
+      (client) => client.tasklists.delete({ tasklist: rows[0].google_id }),
+    );
+    await pool.query(`DELETE FROM tasks.task_lists WHERE id = $1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    const c = classifyGoogleError(err);
+    if (c.type === "auth") return res.status(401).json({ ok: false, error: "token_expired" });
+    req.log.error({ err: err?.message }, "DELETE /lists/:id failed");
+    res.status(c.status).json({ ok: false, error: c.type });
+  }
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tasks — WRITE (503 until sync provisioned)
+// Tasks — WRITE
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.post("/lists/:id/tasks", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
-router.patch("/lists/:id/tasks/:taskId", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
-router.delete("/lists/:id/tasks/:taskId", (_req, res) => res.status(503).json(SYNC_NOT_CONFIGURED));
+// POST /api/tasks/lists/:id/tasks — create a task
+router.post("/lists/:id/tasks", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  const { title, notes, due, status } = req.body || {};
+  if (!title || typeof title !== "string" || !title.trim()) {
+    return res.status(400).json({ ok: false, error: "title_required" });
+  }
+  try {
+    const listRow = await pool.query(
+      `SELECT google_id FROM tasks.task_lists WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.user.id],
+    );
+    if (listRow.rowCount === 0) return res.status(404).json({ ok: false, error: "list_not_found" });
+
+    const requestBody = mapDbTaskToGoogle({ title: title.trim(), notes, due, status });
+    const result = await withTasksClient(
+      pool, req.user.id, config.tasksEncryptionKey, config,
+      (client) => client.tasks.insert({ tasklist: listRow.rows[0].google_id, requestBody }),
+    );
+    const gTask = result.data;
+
+    const { rows } = await pool.query(
+      `INSERT INTO tasks.tasks (list_id, user_id, google_id, title, notes, due, status, synced_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+       RETURNING id, list_id, google_id, title, notes, due, status, updated_at, created_at, synced_at, is_deleted`,
+      [
+        req.params.id, req.user.id, gTask.id,
+        gTask.title || title.trim(),
+        gTask.notes || notes || null,
+        gTask.due ? gTask.due.split("T")[0] : (due || null),
+        gTask.status || "needsAction",
+      ],
+    );
+    res.json({ ok: true, task: rows[0] });
+  } catch (err) {
+    const c = classifyGoogleError(err);
+    if (c.type === "auth") return res.status(401).json({ ok: false, error: "token_expired" });
+    req.log.error({ err: err?.message }, "POST /lists/:id/tasks failed");
+    res.status(c.status).json({ ok: false, error: c.type });
+  }
+});
+
+// PATCH /api/tasks/lists/:id/tasks/:taskId — update a task
+router.patch("/lists/:id/tasks/:taskId", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  const { title, notes, due, status } = req.body || {};
+  if (!title && notes === undefined && due === undefined && !status) {
+    return res.status(400).json({ ok: false, error: "no_fields_to_update" });
+  }
+  try {
+    const taskRow = await pool.query(
+      `SELECT t.google_id AS task_google_id, tl.google_id AS list_google_id
+       FROM tasks.tasks t
+       JOIN tasks.task_lists tl ON tl.id = t.list_id
+       WHERE t.id = $1 AND t.list_id = $2 AND t.user_id = $3 AND t.is_deleted = FALSE`,
+      [req.params.taskId, req.params.id, req.user.id],
+    );
+    if (taskRow.rowCount === 0) return res.status(404).json({ ok: false, error: "task_not_found" });
+
+    const { task_google_id, list_google_id } = taskRow.rows[0];
+    const requestBody = {};
+    if (title) requestBody.title = title.trim();
+    if (notes !== undefined) requestBody.notes = notes;
+    if (due !== undefined) requestBody.due = due ? `${due}T00:00:00.000Z` : null;
+    if (status) requestBody.status = status;
+
+    const result = await withTasksClient(
+      pool, req.user.id, config.tasksEncryptionKey, config,
+      (client) => client.tasks.patch({
+        tasklist: list_google_id,
+        task: task_google_id,
+        requestBody,
+      }),
+    );
+    const gTask = result.data;
+
+    const setClauses = [];
+    const params = [req.params.taskId];
+    let idx = 2;
+    if (gTask.title != null) { setClauses.push(`title = $${idx++}`); params.push(gTask.title); }
+    if (gTask.notes != null) { setClauses.push(`notes = $${idx++}`); params.push(gTask.notes); }
+    if (gTask.due != null) { setClauses.push(`due = $${idx++}`); params.push(gTask.due.split("T")[0]); }
+    else if (due === null) { setClauses.push(`due = $${idx++}`); params.push(null); }
+    if (gTask.status != null) { setClauses.push(`status = $${idx++}`); params.push(gTask.status); }
+    setClauses.push(`synced_at = now()`);
+
+    const { rows } = await pool.query(
+      `UPDATE tasks.tasks SET ${setClauses.join(", ")} WHERE id = $1
+       RETURNING id, list_id, google_id, title, notes, due, status, updated_at, created_at, synced_at, is_deleted`,
+      params,
+    );
+    res.json({ ok: true, task: rows[0] });
+  } catch (err) {
+    const c = classifyGoogleError(err);
+    if (c.type === "auth") return res.status(401).json({ ok: false, error: "token_expired" });
+    req.log.error({ err: err?.message }, "PATCH /lists/:id/tasks/:taskId failed");
+    res.status(c.status).json({ ok: false, error: c.type });
+  }
+});
+
+// DELETE /api/tasks/lists/:id/tasks/:taskId — soft-delete + push to Google
+router.delete("/lists/:id/tasks/:taskId", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  try {
+    const taskRow = await pool.query(
+      `SELECT t.google_id AS task_google_id, tl.google_id AS list_google_id
+       FROM tasks.tasks t
+       JOIN tasks.task_lists tl ON tl.id = t.list_id
+       WHERE t.id = $1 AND t.list_id = $2 AND t.user_id = $3 AND t.is_deleted = FALSE`,
+      [req.params.taskId, req.params.id, req.user.id],
+    );
+    if (taskRow.rowCount === 0) return res.status(404).json({ ok: false, error: "task_not_found" });
+
+    const { task_google_id, list_google_id } = taskRow.rows[0];
+    await withTasksClient(
+      pool, req.user.id, config.tasksEncryptionKey, config,
+      (client) => client.tasks.delete({ tasklist: list_google_id, task: task_google_id }),
+    );
+    await pool.query(
+      `UPDATE tasks.tasks SET is_deleted = TRUE WHERE id = $1`,
+      [req.params.taskId],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    const c = classifyGoogleError(err);
+    if (c.type === "auth") return res.status(401).json({ ok: false, error: "token_expired" });
+    req.log.error({ err: err?.message }, "DELETE /lists/:id/tasks/:taskId failed");
+    res.status(c.status).json({ ok: false, error: c.type });
+  }
+});
 
 export default router;
