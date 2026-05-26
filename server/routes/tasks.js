@@ -360,4 +360,85 @@ router.delete("/lists/:id/tasks/:taskId", async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Sync Status + Conflicts (user-scoped queries for the frontend)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/tasks/sync/status — last sync info for current user
+router.get("/sync/status", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  try {
+    const { rows } = await pool.query(
+      `SELECT event_type, details, created_at
+       FROM tasks.sync_log
+       WHERE user_id = $1 AND event_type IN ('sync_completed', 'sync_failed')
+       ORDER BY created_at DESC LIMIT 1`,
+      [req.user.id],
+    );
+    const hasToken = await pool.query(
+      `SELECT 1 FROM tasks.oauth_tokens WHERE user_id = $1 AND revoked_at IS NULL`,
+      [req.user.id],
+    );
+    const conflicts = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM tasks.sync_conflicts
+       WHERE user_id = $1 AND resolution IS NULL AND expires_at > now()`,
+      [req.user.id],
+    );
+    res.json({
+      ok: true,
+      connected: hasToken.rowCount > 0,
+      lastSync: rows[0]?.created_at || null,
+      lastStatus: rows[0]?.event_type || null,
+      conflicts: conflicts.rows[0]?.count || 0,
+    });
+  } catch (err) {
+    req.log.error({ err: err?.message }, "GET /sync/status failed");
+    res.status(500).json({ ok: false, error: "internal_error" });
+  }
+});
+
+// GET /api/tasks/sync/conflicts — unresolved conflicts for current user
+router.get("/sync/conflicts", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, task_id, list_id, conflict_type, hub_version, google_version,
+              created_at, expires_at
+       FROM tasks.sync_conflicts
+       WHERE user_id = $1 AND resolution IS NULL AND expires_at > now()
+       ORDER BY created_at DESC`,
+      [req.user.id],
+    );
+    res.json({ ok: true, conflicts: rows, totalCount: rows.length });
+  } catch (err) {
+    req.log.error({ err: err?.message }, "GET /sync/conflicts failed");
+    res.status(500).json({ ok: false, error: "internal_error" });
+  }
+});
+
+// PATCH /api/tasks/sync/conflicts/:id — resolve a conflict
+router.patch("/sync/conflicts/:id", async (req, res) => {
+  const pool = poolOr503(res);
+  if (!pool) return;
+  const { resolution } = req.body || {};
+  if (!["take_google", "take_hub", "manual"].includes(resolution)) {
+    return res.status(400).json({ ok: false, error: "invalid_resolution" });
+  }
+  try {
+    const { rowCount } = await pool.query(
+      `UPDATE tasks.sync_conflicts
+       SET resolution = $1, resolved_by = $2, resolved_at = now()
+       WHERE id = $3 AND user_id = $2 AND resolution IS NULL`,
+      [resolution, req.user.id, req.params.id],
+    );
+    if (rowCount === 0) return res.status(404).json({ ok: false, error: "conflict_not_found" });
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err: err?.message }, "PATCH /sync/conflicts/:id failed");
+    res.status(500).json({ ok: false, error: "internal_error" });
+  }
+});
+
 export default router;
