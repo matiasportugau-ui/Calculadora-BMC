@@ -41,7 +41,7 @@ function verifyHmacSignature(signature, expectedSecret) {
 // ─────────────────────────────────────────────────────────────────────────────
 router.post("/google-tasks/pull", async (req, res) => {
   const signature = req.headers["x-sync-signature"];
-  const syncSecret = config.syncHmacSecret || process.env.SYNC_HMAC_SECRET;
+  const syncSecret = config.syncHmacSecret;
 
   // Verify HMAC signature
   if (!verifyHmacSignature(signature, syncSecret)) {
