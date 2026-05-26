@@ -1,7 +1,7 @@
 # Phase 1 — Master Prompt Drift Note
 
 **Date:** 2026-05-19
-**Status:** Documentation reconciliation, no code/schema changes.
+**Status: RESOLVED** — corrections applied inline to `PHASE-1-MASTER-PROMPT.md` on 2026-05-26.
 **Scope:** Resolve contradictions between `PHASE-1-MASTER-PROMPT.md` and the rest of the canonical sources (code, migration, ADRs) so Phase 1 implementation aligns with reality.
 
 ## TL;DR

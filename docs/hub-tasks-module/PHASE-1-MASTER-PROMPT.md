@@ -20,7 +20,7 @@ Backend + frontend implementation agent for Phase 1 of the Tareas Module (Google
 - OAuth 2.0 PKCE flow (not implicit grant)
 - Polling-based sync with exponential backoff (not WebSockets)
 - Soft-delete conflict resolution (mandatory human review, no automatic merge)
-- Application-layer AES-256 token encryption (not pgp_sym_encrypt) for key rotation flexibility
+- PostgreSQL-native `pgp_sym_encrypt` token encryption (pgcrypto extension), key `ENCRYPTION_KEY`
 - Theme: extend BMC palette (not isolated component theme)
 - Scope: Google Tasks only, no Outlook/Todoist/Asana
 - MCP server: Node.js + pg + @googleapis/tasks client
@@ -63,7 +63,7 @@ Implement Phase 1 of the Tareas Module by sequencing specialized skill invocatio
 - [CONFIRMED] Row-level security (RLS) enforced at database layer: service_role only (see `20260602000001_tasks_init.sql`).
 - [CONFIRMED] Soft-delete conflict model: sync conflicts marked for human review, no automatic resolution. Marked records remain in database until operator reviews.
 - [CONFIRMED] Polling-based sync: no WebSockets. Cloud Scheduler invokes POST /sync/google-tasks/pull on a cron schedule (operator configures schedule).
-- [CONFIRMED] Token encryption at rest: application-layer AES-256 (Phase 1 implements per decision record in `05-decisions.md`).
+- [CONFIRMED] Token encryption at rest: PostgreSQL-native `pgp_sym_encrypt` (pgcrypto extension, per ADR-01 in `05-decisions.md`).
 - [CONFIRMED] Identity module integration: "tareas" module must be registered in `server/lib/identityAuth.js` ALL_MODULES (already done Phase 0).
 
 **Read-only zones:**
@@ -72,7 +72,7 @@ Implement Phase 1 of the Tareas Module by sequencing specialized skill invocatio
 - `server/lib/identityAuth.js` — "tareas" already added; do not remove or rename.
 
 **Security:**
-- OAuth tokens stored encrypted in `identity.tasks_oauth_tokens.token_encrypted` (AES-256-GCM, key from `.env.GOOGLE_TASKS_TOKEN_KEY`).
+- OAuth tokens stored encrypted in `tasks.oauth_tokens.access_token_encrypted` (`pgp_sym_encrypt`, key from `.env.ENCRYPTION_KEY`).
 - Cloud Scheduler validates OIDC token in Authorization header: `POST /sync/google-tasks/pull` must verify `Bearer <OIDC token>` with Google's cert endpoints.
 - No credentials in logs, error messages, or frontend code. Use `pino-http` middleware in Express (already in stack).
 
@@ -101,7 +101,7 @@ Implement Phase 1 of the Tareas Module by sequencing specialized skill invocatio
 **Configuration (already present):**
 - `/Users/matias/calculadora-bmc/server/lib/identityAuth.js` — ALL_MODULES includes "tareas" (Phase 0); verify no changes needed.
 - `/Users/matias/calculadora-bmc/package.json` — @tanstack/react-query@latest installed Phase 0; check for other missing deps (googleapis, aes-js, etc.).
-- `/Users/matias/calculadora-bmc/.env.example` — verify GOOGLE_TASKS_TOKEN_KEY, GOOGLE_TASKS_CLIENT_ID, GOOGLE_TASKS_CLIENT_SECRET placeholders present.
+- `/Users/matias/calculadora-bmc/.env.example` — verify ENCRYPTION_KEY, GOOGLE_TASKS_CLIENT_ID, GOOGLE_TASKS_CLIENT_SECRET placeholders present.
 
 **Git state:**
 - Branch: `feat/tasks-module` (created Phase 0, currently active).
@@ -135,7 +135,7 @@ Implement Phase 1 of the Tareas Module by sequencing specialized skill invocatio
 1. **Assuming infrastructure is provisioned**: DATABASE_URL, OAuth credentials, Cloud Scheduler are operator responsibilities. Document blockers explicitly before implementing routes that depend on them. Phase 1 can implement routes, but tests will fail if infrastructure is missing.
 2. **Skipping the polling sync for WebSockets**: Architecture decided polling (not WebSockets) for simplicity and cost. Do not refactor to bidirectional sync without revisiting `05-decisions.md` and feasibility.
 3. **Automatic conflict resolution**: The soft-delete model requires human review; do not merge conflicts silently. Marked records stay in database until operator reviews.
-4. **Storing OAuth tokens plaintext**: Enforce encryption at rest. Do not store `refresh_token` or `access_token` without AES-256-GCM.
+4. **Storing OAuth tokens plaintext**: Enforce encryption at rest. Do not store `refresh_token` or `access_token` without `pgp_sym_encrypt`.
 5. **Logging sensitive data**: Do not log OAuth codes, tokens, or full error stack traces in production. Use `pino-http` and log only metadata.
 6. **Forgetting atomic commits**: User workflow requires one commit per goal, push after each. Do not batch multiple goals into one commit.
 7. **Changing schema mid-Phase**: The `20260602000001_tasks_init.sql` migration is final. Do not add columns, change indexes, or alter RLS policies in Phase 1 without a new migration and re-documentation.
@@ -145,8 +145,8 @@ Implement Phase 1 of the Tareas Module by sequencing specialized skill invocatio
 
 **Backend implementation (4 files, all server/routes/):**
 1. `server/routes/tasksOAuth.js` — OAuth PKCE endpoints, replace 501 stubs:
-   - `GET /auth/tasks/init` — Generate PKCE challenge, state, store in `identity.tasks_oauth_state` (TTL 10min), return challenge + state to frontend.
-   - `GET /auth/tasks/callback` — Verify state, exchange code for token (PKCE), store encrypted token in `identity.tasks_oauth_tokens`, return redirect to `/hub/tasks`.
+   - `GET /auth/tasks/init` — Generate PKCE challenge, state, store in `tasks.oauth_state` (TTL 10min), return challenge + state to frontend.
+   - `GET /auth/tasks/callback` — Verify state, exchange code for token (PKCE), store encrypted token in `tasks.oauth_tokens`, return redirect to `/hub/tareas`.
    - `POST /auth/tasks/revoke` — Revoke stored token from Google, mark as revoked in database.
    - Rate limiting: 20/15min per user for init, 30/15min for callback (Google's defaults).
    - Error handling: log errors to pino, return appropriate status (400 for invalid state, 503 for Google API errors).
@@ -162,13 +162,13 @@ Implement Phase 1 of the Tareas Module by sequencing specialized skill invocatio
    - Offline: store unsyncable edits in IndexedDB (frontend responsibility); routes return 503 if Google API unavailable.
 
 3. `server/routes/tasksSync.js` — Sync handler, replace 501 stub:
-   - `POST /sync/google-tasks/pull` — Cloud Scheduler target; validate OIDC token in Authorization header, pull updates from Google Tasks API for all users with active tokens, detect conflicts, store in `identity.sync_conflicts` (soft-delete model), run once per 15min (operator configures cron).
+   - `POST /sync/google-tasks/pull` — Cloud Scheduler target; validate OIDC token in Authorization header, pull updates from Google Tasks API for all users with active tokens, detect conflicts, store in `tasks.sync_conflicts` (soft-delete model), run once per 15min (operator configures cron).
    - Error handling: log errors, continue for other users on individual failures, return 503 if majority fail.
    - Idempotency: use `updatedMin` parameter to pull only changes since last sync.
 
 4. `server/lib/tasks.js` (new utility file) — Shared helpers:
    - `getTasksClient(userId)` — Instantiate Google Tasks client with user's decrypted OAuth token.
-   - `decryptToken(encryptedToken, key)` — Decrypt AES-256-GCM token from database.
+   - `decryptToken(pool, encryptedToken, key)` — Decrypt token via `pgp_sym_decrypt` from database.
    - `mapGoogleTaskToDb(googleTask)` — Transform Google Tasks API response to database schema.
    - `handleGoogleTasksError(error)` — Classify Google API errors (rate limit, auth, transient, etc.) for retry logic.
 
@@ -224,9 +224,9 @@ Implement Phase 1 of the Tareas Module by sequencing specialized skill invocatio
 - No console.log in production paths; use `pino` for all logging.
 
 **Functional correctness:**
-- OAuth callback correctly stores encrypted token in `identity.tasks_oauth_tokens`.
+- OAuth callback correctly stores encrypted token in `tasks.oauth_tokens`.
 - GET /api/tasks/lists returns non-empty array when user has active token.
-- Sync pull detects conflicts and stores them in `identity.sync_conflicts` with soft-delete marker.
+- Sync pull detects conflicts and stores them in `tasks.sync_conflicts` with soft-delete marker.
 - Frontend hooks (useTasks, useSyncStatus) render task lists and handle loading/error states.
 - Optimistic updates in frontend rollback on API error.
 
@@ -266,7 +266,7 @@ Implement Phase 1 of the Tareas Module by sequencing specialized skill invocatio
 
 **Security review (per CLAUDE.md):**
 - No credentials hardcoded; all secrets via `process.env` from `.env` or Secret Manager.
-- OAuth tokens encrypted at-rest (AES-256-GCM, key rotation via `.env.GOOGLE_TASKS_TOKEN_KEY`).
+- OAuth tokens encrypted at-rest (`pgp_sym_encrypt`, key rotation via `.env.ENCRYPTION_KEY`).
 - CORS: open in dev (handled by Vite dev server); restricted to known origins in prod (Cloud Run config).
 - RLS enforced at database layer: `identity.tasks` accessible only by service_role (no user-level queries).
 
@@ -276,7 +276,7 @@ Implement Phase 1 of the Tareas Module by sequencing specialized skill invocatio
 
 **[ASSUMPTION]**: Cloud Scheduler is available in the same GCP project as Cloud Run (`panelin-calc` service). Verify service account has `iam.serviceAccountTokenCreator` permission before Phase 1 testing. If not, Phase 1 can implement routes, but end-to-end sync testing will fail.
 
-**[ASSUMPTION]**: Token encryption key (`.env.GOOGLE_TASKS_TOKEN_KEY`) is a 32-byte hex string. Operator must provision this; Phase 1 assumes it's present and valid. If missing, all OAuth token storage will fail.
+**[ASSUMPTION]**: Token encryption key (`.env.ENCRYPTION_KEY`) is a 32-byte hex string. Operator must provision this; Phase 1 assumes it's present and valid. If missing, all OAuth token storage will fail.
 
 **[DUDA ABIERTA]**: Should conflict resolution UI allow three-way merge (local + remote + base) or only keep-local / keep-remote? Phase 0 decided two-way (keep-local or keep-remote); Phase 1 implements that. If operator requires three-way, Phase 2 scope change.
 
