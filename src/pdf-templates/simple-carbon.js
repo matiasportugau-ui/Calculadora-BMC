@@ -92,10 +92,10 @@ export function render(q) {
   const clientFields = [
     cl.nombre ? `<div><b>Cliente:</b> ${esc(cl.nombre)}</div>` : '<div></div>',
     `<div><b>Fecha:</b> ${esc(q.fecha)}</div>`,
+    cl.direccion ? `<div><b>Dir:</b> ${esc(cl.direccion)}</div>` : '<div></div>',
     `<div><b>Ref:</b> ${esc(q.ref)}</div>`,
     cl.rut ? `<div><b>RUT:</b> ${esc(cl.rut)}</div>` : '<div></div>',
     cl.telefono ? `<div><b>Tel:</b> ${esc(cl.telefono)}</div>` : '<div></div>',
-    `<div><b>Validez:</b> ${esc(q.validez)}</div>`,
   ].join('');
 
   return `<!DOCTYPE html><html lang="es"><head>

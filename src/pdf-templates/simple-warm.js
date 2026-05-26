@@ -99,10 +99,10 @@ export function render(q) {
   const sidebarFields = [
     cl.nombre ? `<div class="sf"><strong>Cliente:</strong> ${esc(cl.nombre)}</div>` : '<div></div>',
     `<div class="sf"><strong>Fecha:</strong> ${esc(q.fecha)}</div>`,
+    cl.direccion ? `<div class="sf"><strong>Dir:</strong> ${esc(cl.direccion)}</div>` : '<div></div>',
     `<div class="sf"><strong>Ref:</strong> ${esc(q.ref)}</div>`,
     cl.rut ? `<div class="sf"><strong>RUT:</strong> ${esc(cl.rut)}</div>` : '<div></div>',
     cl.telefono ? `<div class="sf"><strong>Tel:</strong> ${esc(cl.telefono)}</div>` : '<div></div>',
-    `<div class="sf"><strong>Validez:</strong> ${esc(q.validez)}</div>`,
   ].join('');
 
   return `<!DOCTYPE html><html lang="es"><head>

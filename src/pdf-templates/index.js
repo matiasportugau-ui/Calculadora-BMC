@@ -108,7 +108,7 @@ export function buildQuotationModel(data) {
   /** BMC PDF técnico: cliente, perímetro y extras no expuestos en raíz del modelo */
   const bmcExtra = {
     client: {
-      nombre: clienteSrc?.nombre,
+      nombre: clienteSrc?.nombre || clienteSrc?.razonSocial,
       razonSocial: clienteSrc?.razonSocial || clienteSrc?.nombre,
       rut: clienteSrc?.rut,
       direccion: clienteSrc?.direccion,
