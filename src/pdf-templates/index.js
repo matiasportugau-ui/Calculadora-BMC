@@ -4,6 +4,11 @@
 
 export const LAYOUT_OPTIONS = [
   { id: 'simple',            label: 'Presupuesto Simple' },
+  { id: 'simple-sage',       label: 'Simple — Sage' },
+  { id: 'simple-slate',      label: 'Simple — Slate' },
+  { id: 'simple-warm',       label: 'Simple — Warm' },
+  { id: 'simple-ocean',      label: 'Simple — Ocean' },
+  { id: 'simple-carbon',     label: 'Simple — Carbon' },
   { id: 'bmc-pdf',           label: 'BMC PDF — Blueprint Técnico' },
   { id: 'soft-modern',       label: 'E — Soft Modern' },
   { id: 'executive-dark',    label: 'A — Executive Dark' },
@@ -144,6 +149,11 @@ export function buildQuotationModel(data) {
 
 const TEMPLATE_MAP = {
   'simple':            () => import('./simple.js'),
+  'simple-sage':       () => import('./simple-sage.js'),
+  'simple-slate':      () => import('./simple-slate.js'),
+  'simple-warm':       () => import('./simple-warm.js'),
+  'simple-ocean':      () => import('./simple-ocean.js'),
+  'simple-carbon':     () => import('./simple-carbon.js'),
   'bmc-pdf':           () => import('./bmc-pdf.js'),
   'soft-modern':       () => import('./soft-modern.js'),
   'executive-dark':    () => import('./executive-dark.js'),
