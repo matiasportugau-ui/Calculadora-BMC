@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Frontend:** React 18 + **Vite 7** (dev server **:5173**)
 - **API:** **Express 5** on **Node.js** (`engines.node = "24.x"`; ES modules via `"type": "module"`) — **:3001**
-- **Data:** **PostgreSQL** (`pg`) for the Transportista and **WA Cockpit** flows (`DATABASE_URL`); **pgvector + provider-agnostic embeddings** power Panelin RAG retrieval; Google Sheets via service-account JSON for CRM/Finanzas; integrations for MercadoLibre OAuth, WhatsApp Cloud API, GCS, OpenAI/Anthropic.
+- **Data:** **PostgreSQL** (`pg`) for Transportista, **WA Cockpit**, and **TraKtiMe** (time tracking) flows (`DATABASE_URL`); **pgvector + provider-agnostic embeddings** power Panelin RAG retrieval; Google Sheets via service-account JSON for CRM/Finanzas; integrations for MercadoLibre OAuth, WhatsApp Cloud API, GCS, OpenAI/Anthropic.
 - **Modules:** **ES modules only** (`import` / `export`) — no `require()`.
 
 ## Key commands
@@ -34,6 +34,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `npm run pre-deploy` | Pre-deploy checklist (health, contracts, env, open `- [ ]` count in `docs/team/PROJECT-STATE.md`). |
 | `npm run transportista:migrate` | Apply Postgres migrations under `transportista-cursor-package/migrations/`. |
 | `npm run wa:migrate` | Apply WA Cockpit Postgres migrations under `wa-package/migrations/`. |
+| `npm run traktime:migrate` | Apply TraKtiMe Postgres migrations. |
 
 Running a single test: each file in `tests/` is a standalone Node script — run it directly, e.g. `node tests/validation.js` or `node tests/calcLoopbackClient.test.js`.
 
@@ -53,14 +54,46 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 - `src/data/constants.js` — pricing lists, panel catalogue, scenarios, profiles.
 - `src/utils/calculations.js` — pure calculation engine for techo/pared.
 - `src/utils/helpers.js` — PDF/WhatsApp export, BOM, formatters.
-- `src/App.jsx` — router for calculator + `/hub/wa`, `/hub/ml`, `/hub/canales`, `/hub/admin`.
+- `src/App.jsx` — router; 20+ routes including `/` (calculator), `/hub` (wolfboard), `/hub/ml`, `/hub/wa`, `/hub/canales`, `/hub/tareas`, `/hub/traktime/*`, `/hub/cotizaciones`, `/hub/marketing`, `/hub/admin`, `/hub/admin/users`, `/hub/admin/analytics`, `/logistica`, `/conductor`, `/inspector`, `/preview/pdf`.
+- `src/utils/quotationViews.js` — client visual HTML (`generateClientVisualHTML`), costeo HTML, PDF appendix builders.
+- `src/utils/pdfGenerator.js` — PDF pipeline (server-side Chromium + html2pdf.js fallback).
+- `src/pdf-templates/` — 7 template layouts + `index.js` dispatcher with `buildQuotationModel()` and `LAYOUT_OPTIONS`.
 
 ### Backend hot spots
 
 - `server/index.js` — app entry; mounts routes; exposes `GET /health` and `GET /capabilities`.
 - `server/config.js` — env + feature flags (always read sheet IDs/tokens from here, never hardcode).
-- `server/routes/` — one file per surface: `calc.js`, `agentChat.js` (SSE), `bmcDashboard.js` (Sheets-backed `/api/*`), `pdf.js`, `wa.js`, `mlSearch.js`, `transportista.js`, `wolfboard.js`, `superAgent.js`, etc.
+- `server/routes/` — one file per surface: `calc.js`, `agentChat.js` (SSE), `bmcDashboard.js` (Sheets-backed `/api/*`), `pdf.js`, `wa.js`, `mlSearch.js`, `transportista.js`, `wolfboard.js`, `superAgent.js`, `quotes.js` + `quoteExport.js` (quote CRUD/export), `tasks.js` + `tasksOAuth.js` (Google Tasks), `identityMe.js` + `identityAdmin.js` (user mgmt), `traktime.js` (time tracking), `marketing.js`, etc.
 - `server/lib/calcLoopbackClient.js` — agent tools call calc via loopback HTTP to `127.0.0.1:${config.port}/calc/*` (provenance `source: "ae_agent"`). See `docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md`.
+
+### PDF system
+
+- **7 template layouts** in `src/pdf-templates/` — each receives a `QuotationModel` (built by `buildQuotationModel()` in `index.js`) and returns self-contained HTML.
+- **Pipeline:** `src/utils/pdfGenerator.js` tries `POST /api/pdf/generate` (server-side Playwright/Chromium, vectorial) first; falls back to `html2pdf.js` (html2canvas + jsPDF, raster).
+- **Layout selector:** persisted in `localStorage` key `bmc.pdfLayout`; dropdown in PanelinCalculadoraV3 and GoogleDrivePanel.
+- **Classic output:** `generateClientVisualHTML()` in `src/utils/quotationViews.js` — inline-styled single-pass HTML (not template-based).
+- Templates: `bmc-pdf`, `soft-modern`, `executive-dark`, `blueprint`, `minimalist`, `construction-bold`, `simple`.
+
+### Auth system
+
+- **JWT** tokens issued by `server/lib/identityAuth.js`; validated by `server/middleware/requireAuth.js`.
+- **Google OAuth** login via `server/routes/authGoogle.js`.
+- **TOTP 2FA** via `server/routes/authMfa.js` + `server/lib/mfaTotp.js`.
+- **RBAC:** `server/middleware/requireGrant.js` — module-scoped grants (`read`/`write`/`admin`).
+- **Frontend:** `BmcAuthProvider` context (`src/contexts/BmcAuthProvider.jsx`) + `RequireGrant` HOC wrapping protected routes.
+
+### AI / Agent system
+
+- **agentCore.js** — shared brain for all channels (chat, ML, WA); provider chain (Anthropic Claude + OpenAI fallback).
+- **agentTools.js** — Anthropic `tool_use` definitions; live calc access via loopback HTTP.
+- **RAG:** `server/lib/rag.js` + `embeddings.js` — pgvector cosine search over training KB.
+- **Auto-learn:** `server/lib/autoLearnExtractor.js` — extracts new KB entries from conversations.
+- **Training KB:** `server/lib/trainingKB.js` + `kbSurface.js` + `kbAnalytics.js`.
+
+### Market intelligence
+
+- ETL pipeline for competitor price monitoring: `server/lib/marketIntel/` (scraper, deduplication, delta, alerts, scheduler).
+- Triggered via `server/routes/mlEtlRun.js`.
 
 ### Pricing model
 
