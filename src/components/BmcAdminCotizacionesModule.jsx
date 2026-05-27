@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import BmcFiscalCard from "./BmcFiscalCard.jsx";
+import WaMessagePreview from "./WaMessagePreview.jsx";
 
 const STORAGE_KEY = "bmc_cockpit_token";
 /** Persisted Wolfboard POST /quote-batch flags (matches server defaults when all true / force false). */
@@ -222,6 +223,7 @@ export default function BmcAdminCotizacionesModule() {
   const [dLink, setDLink]       = useState("");
   const [dReplay, setDReplay]   = useState("");
   const [saving, setSaving]     = useState(false);
+  const [aiLoadingRow, setAiLoadingRow] = useState(null);
 
   // Auto-load token
   useEffect(() => {
@@ -390,6 +392,48 @@ export default function BmcAdminCotizacionesModule() {
     showToast(`Fila ${rowNum} movida a Enviados${data.dryRun ? " [dry-run]" : ""}`);
     if (detail?.rowNum === rowNum) closeDetail();
     await loadPendientes();
+  };
+
+  const suggestAI = async (row) => {
+    if (!token || aiLoadingRow != null) return;
+    const consulta = (row.consulta || "").trim();
+    if (!consulta) { showToast("Sin consulta (I) — no se puede generar."); return; }
+    setAiLoadingRow(row.rowNum);
+    const { ok, data } = await apiFetch(token, "/api/crm/suggest-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        consulta,
+        origen: row.origen || "CRM",
+        cliente: row.cliente || "",
+        producto: "",
+        observaciones: "",
+      }),
+    });
+    const text = data?.text || data?.respuesta || "";
+    if (!ok || !text) {
+      setAiLoadingRow(null);
+      showToast(data?.error || "IA: respuesta vacía");
+      return;
+    }
+    if (detail?.rowNum === row.rowNum) {
+      setDRespuesta(text);
+      setAiLoadingRow(null);
+      showToast("Respuesta IA generada — revisá y guardá.");
+      return;
+    }
+    const save = await apiFetch(token, "/api/wolfboard/row", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminRow: row.rowNum, respuesta: text }),
+    });
+    setAiLoadingRow(null);
+    if (save.ok) {
+      showToast(`Fila ${row.rowNum}: respuesta IA guardada.`);
+      await loadPendientes();
+    } else {
+      showToast(save.data?.error || "Error al guardar respuesta IA");
+    }
   };
 
   return (
@@ -618,11 +662,16 @@ export default function BmcAdminCotizacionesModule() {
                           : <span style={{ color: "#aaa" }}>—</span>
                         }
                       </td>
-                      <td style={{ ...td, width: 120 }}>
+                      <td style={{ ...td, width: 170 }}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button type="button" style={{ ...btnGhost, fontSize: 11, padding: "4px 8px" }}
                             onClick={() => openDetail(row)}>
                             Editar
+                          </button>
+                          <button type="button" style={{ ...btnGhost, fontSize: 11, padding: "4px 8px", color: "#7c3aed" }}
+                            onClick={() => suggestAI(row)}
+                            disabled={aiLoadingRow === row.rowNum}>
+                            {aiLoadingRow === row.rowNum ? "⏳" : "IA"}
                           </button>
                           <button type="button" style={{ ...btnGhost, fontSize: 11, padding: "4px 8px", color: "#c86000" }}
                             onClick={() => markEnviado(row.rowNum)}>
@@ -666,7 +715,15 @@ export default function BmcAdminCotizacionesModule() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase" }}>Respuesta IA (J) — editable</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase" }}>Respuesta IA (J) — editable</p>
+                  <button type="button"
+                    style={{ ...btnGhost, fontSize: 10, padding: "2px 8px", color: "#7c3aed" }}
+                    onClick={() => suggestAI(detail)}
+                    disabled={aiLoadingRow != null}>
+                    {aiLoadingRow === detail.rowNum ? "Generando…" : "Sugerir IA"}
+                  </button>
+                </div>
                 <textarea
                   value={dRespuesta}
                   onChange={(e) => setDRespuesta(e.target.value)}
@@ -700,6 +757,16 @@ export default function BmcAdminCotizacionesModule() {
                   Lo llena el batch IA (cotización por cálculo) si hay bucket GCS; podés pegar un export de la calculadora para comparar humano vs sistema.
                 </p>
               </div>
+
+              {detail.telefono && detail.origen?.toUpperCase() === "WA" && (
+                <div style={{ marginBottom: 20 }}>
+                  <WaMessagePreview
+                    phone={detail.telefono}
+                    token={token}
+                    apiBase={getCalcApiBase().replace(/\/+$/, "")}
+                  />
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button type="button" style={btnPrimary} onClick={saveDetail} disabled={saving}>
