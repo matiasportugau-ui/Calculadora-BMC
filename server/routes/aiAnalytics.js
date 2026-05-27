@@ -24,8 +24,15 @@ function requireAnalyticsAuth(req, res, next) {
 /**
  * GET /api/ai-analytics/trends?days=90
  * Lee `AI_KNOWLEDGE_EVENTS_LOG` o por defecto `docs/team/knowledge/events-log.jsonl`.
+ *
+ * DEPRECATED — use GET /api/agent/training-kb/analytics?include=knowledge_events instead.
+ * Sunset: 2026-08-07 (90-day window from 2026-05-09).
  */
 router.get("/ai-analytics/trends", requireAnalyticsAuth, (req, res) => {
+  res.set("Deprecation", "true");
+  res.set("Sunset", "Fri, 07 Aug 2026 00:00:00 GMT");
+  res.set("Link", '</api/agent/training-kb/analytics?include=knowledge_events>; rel="successor-version"');
+
   try {
     const days = Math.max(7, Math.min(Number(req.query.days) || 60, 365));
     const custom = String(req.query.path || "").trim();
