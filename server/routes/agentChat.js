@@ -1065,6 +1065,17 @@ router.post("/agent/chat", async (req, res) => {
             responseLen: visibleAssistantText.length,
             hedgeCount,
           });
+          // KB miss event: opt-in capture of unmatched questions for admin review
+          if (trainingExamples.length === 0) {
+            appendTrainingSessionEvent({
+              type: "kb_miss",
+              channel,
+              conversationId,
+              question: config.kbAnalyticsLogMissQuestion
+                ? String(lastUserMessage || "").slice(0, 200)
+                : null,
+            });
+          }
         }
         send({ type: "done" });
 

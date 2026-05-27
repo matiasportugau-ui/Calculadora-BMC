@@ -433,6 +433,64 @@ router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, asyn
   res.json({ ok: true, processed: targets.length, generated: done, failed: results.filter((r) => !r.ok).length, results });
 });
 
+// ─── WA override batch generator ──────────────────────────────────────────────
+
+router.post("/agent/training-kb/generate-wa-overrides", requireDevModeAuth, async (req, res) => {
+  const useGateway = isAiGatewayEnabled();
+  if (!useGateway && !config.anthropicApiKey) {
+    return res.status(503).json({ ok: false, error: "AI Gateway not configured and ANTHROPIC_API_KEY not set" });
+  }
+
+  const { ids } = req.body || {};
+  const all = listTrainingEntries();
+  const targets = ids
+    ? all.filter((e) => ids.includes(e.id))
+    : all.filter((e) => (e.goodAnswer || "").length > 800 && !e.goodAnswerWA && e.status !== "rejected");
+
+  if (targets.length === 0) return res.json({ ok: true, processed: 0, generated: 0, message: "No WA gaps found" });
+
+  let anthropic = null;
+  if (!useGateway) {
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+  }
+
+  const SUMMARY_PROMPT_PREFIX = `Sintetizá esta respuesta en máximo 700 caracteres para WhatsApp. Tono conversacional directo, 1-2 emojis sutiles si es natural. Sin markdown. Mantené datos clave (precios, plazos, especificaciones). Solo devolvé el texto final, sin comillas ni explicaciones.\n\nRespuesta original:\n`;
+
+  const results = [];
+  for (const entry of targets) {
+    try {
+      let waText = "";
+      if (useGateway) {
+        const { text } = await generateTextViaGateway({
+          system: "",
+          prompt: `${SUMMARY_PROMPT_PREFIX}${entry.goodAnswer}`,
+          maxTokens: 200,
+        });
+        waText = String(text || "").trim().slice(0, 800);
+      } else {
+        const msg = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 200,
+          messages: [{ role: "user", content: `${SUMMARY_PROMPT_PREFIX}${entry.goodAnswer}` }],
+        });
+        waText = (msg.content?.[0]?.text || "").trim().slice(0, 800);
+      }
+      if (waText) {
+        updateTrainingEntry(entry.id, { goodAnswerWA: waText });
+        results.push({ id: entry.id, ok: true, chars: waText.length });
+      } else {
+        results.push({ id: entry.id, ok: false, error: "empty response" });
+      }
+    } catch (err) {
+      results.push({ id: entry.id, ok: false, error: err.message });
+    }
+  }
+
+  const done = results.filter((r) => r.ok).length;
+  res.json({ ok: true, processed: targets.length, generated: done, failed: results.filter((r) => !r.ok).length, results });
+});
+
 /**
  * GET /api/agent/training-kb/analytics
  * Compute KB analytics: coverage, health, trends, miss analysis.
