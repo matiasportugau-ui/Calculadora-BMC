@@ -21,7 +21,7 @@
 import { getConfig, getFlag } from "./waConfig.js";
 import { emitWaWebhook } from "./waWebhooks.js";
 
-export function startWaSlaWorker({ logger, pool }) {
+export function startWaSlaWorker({ logger, pool, tenantId = null }) {
   const log = logger || { info() {}, warn() {}, error() {} };
   if (!pool) {
     log.warn("[waSlaWorker] no pool, worker not started");
@@ -77,7 +77,8 @@ export function startWaSlaWorker({ logger, pool }) {
       // Detectar breaches nuevos. Usamos cálculo simple sin business hours
       // por defecto; si se configura businessHours en client time, aproximamos
       // restando una constante por día/noche. MVP: comparación directa.
-      // TODO multi-tenant: filtrar por tenant si llega.
+      // Multi-tenant: tenantId is accepted but query filtering deferred
+      // until wa_conversations.tenant_id column exists in the schema.
 
       // Unreplied: hay msg_in y NO hay out posterior, y han pasado >X horas.
       const unreplied = await pool.query(
@@ -95,7 +96,7 @@ export function startWaSlaWorker({ logger, pool }) {
         [rt.unrepliedHours],
       );
       for (const row of unreplied.rows) {
-        await _insertBreach(pool, row.chat_id, "unreplied", Number(row.age_hours), rt.action);
+        await _insertBreach(pool, row.chat_id, "unreplied", Number(row.age_hours), rt.action, tenantId);
         detected++;
       }
 
@@ -113,7 +114,7 @@ export function startWaSlaWorker({ logger, pool }) {
         [rt.unassignedHours],
       );
       for (const row of unassigned.rows) {
-        await _insertBreach(pool, row.chat_id, "unassigned", Number(row.age_hours), rt.action);
+        await _insertBreach(pool, row.chat_id, "unassigned", Number(row.age_hours), rt.action, tenantId);
         detected++;
       }
 
@@ -153,7 +154,7 @@ export function startWaSlaWorker({ logger, pool }) {
   };
 }
 
-async function _insertBreach(pool, chatId, kind, ageHours, action) {
+async function _insertBreach(pool, chatId, kind, ageHours, action, tenantId) {
   // Insert con ON CONFLICT DO NOTHING (índice parcial unique sobre resolved_at IS NULL).
   const ins = await pool.query(
     `insert into wa_sla_breaches (chat_id, kind, age_hours, breach_action)
@@ -174,6 +175,7 @@ async function _insertBreach(pool, chatId, kind, ageHours, action) {
       kind,
       age_hours: ageHours,
       breach_id: ins.rows[0].id,
+      tenant_id: tenantId,
     });
   }
 }
