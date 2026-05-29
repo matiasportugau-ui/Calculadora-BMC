@@ -964,8 +964,12 @@ app.use(createTraktimeRouter(config, logger));
 }
 // SuperAgent tool — single-call quoting for AI agents
 app.use("/api/agent", createSuperAgentRouter(config));
+// Presupuestación Orchestrator — testing y ejecución interna del conductor
+import presupOrchestratorRouter from "./routes/internal/presupOrchestrator.js";
+
 // Panelin interno — RBAC discovery + tool catalog (Bearer API_AUTH_TOKEN)
 app.use("/api/internal/panelin", createPanelinInternalRouter(config));
+app.use("/api/internal/presup", presupOrchestratorRouter);
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
 // Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
