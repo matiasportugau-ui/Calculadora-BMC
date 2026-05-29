@@ -380,6 +380,7 @@ function ModuleInner() {
           onApprove={onApproveDetail}
           onMarkEnviado={onMarkEnviadoDetail}
           onRequestSuggestion={cot.requestSuggestion}
+          onOpenBorrador={onOpenBorrador}
           busyOp={cot.busyOp}
           waToken={cot.token}
           waApiBase={getCalcApiBase()}
