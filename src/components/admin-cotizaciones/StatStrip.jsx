@@ -12,20 +12,23 @@ function Stat({ label, value, variant }) {
 }
 
 export default function StatStrip({ stats }) {
-  const { pendientes, aprobadas, conError, edadAlta } = stats;
+  const { pendientes, borrador, revision, aprobadas, enviadas, conError, urgentes } = stats;
   return (
-    <section className="adminCot__stats" aria-label="Indicadores">
+    <section className="adminCot__stats" aria-label="Indicadores del pipeline de leads">
       <Tooltip id={HELP_ANCHORS.KPI_PENDIENTES}>
         <Stat label="Pendientes" value={pendientes} />
       </Tooltip>
+      <Stat label="Borrador" value={borrador} variant={borrador > 0 ? "info" : undefined} />
+      <Stat label="En Revisión" value={revision} variant={revision > 0 ? "warn" : undefined} />
       <Tooltip id={HELP_ANCHORS.KPI_APROBADAS}>
         <Stat label="Aprobadas" value={aprobadas} variant="success" />
       </Tooltip>
+      <Stat label="Enviadas" value={enviadas} />
       <Tooltip id={HELP_ANCHORS.KPI_ERROR}>
-        <Stat label="Con error ⚠" value={conError} variant={conError > 0 ? "warn" : undefined} />
+        <Stat label="Error ⚠" value={conError} variant={conError > 0 ? "warn" : undefined} />
       </Tooltip>
       <Tooltip id={HELP_ANCHORS.KPI_STALE}>
-        <Stat label="≥14 días sin enviar" value={edadAlta} variant={edadAlta > 0 ? "error" : undefined} />
+        <Stat label="Urgentes (7d+)" value={urgentes} variant={urgentes > 0 ? "error" : undefined} />
       </Tooltip>
     </section>
   );

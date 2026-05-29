@@ -206,8 +206,12 @@ export function useAdminCotizaciones() {
       respuesta: p.respuesta || p.respuestaSugerida || "",
       link: p.linkPresupuesto || "",
       estado: p.estado || "",
+      // Borrador integration from Cotizar button work (hybrid model)
+      borradorPdf: p.borradorPdf || p["Borrador PDF"] || "",
+      borradorExplicacion: p.borradorExplicacion || p["Borrador Explicación"] || "",
+      responsable: p.responsable || p.ASIGNADO_A || p.asignado || "",
       replaySnapshotUrl: "",
-      sheetUrl: "",
+      sheetUrl: p.sheetUrl || "",
     };
   }
 
@@ -244,7 +248,15 @@ export function useAdminCotizaciones() {
       .map(mapCrmMlItemToRow)
       .filter((r) => !adminIds.has(String(r.id || "").trim()));
 
-    setRows([...adminRows, ...mlRows]);
+    // Enrich with any borrador/responsable data that may come from the sheet via wolfboard
+    const enrichedAdminRows = adminRows.map(r => ({
+      ...r,
+      borradorPdf: r.borradorPdf || r["Borrador PDF"] || r.borrador_pdf || "",
+      borradorExplicacion: r.borradorExplicacion || r["Borrador Explicación"] || "",
+      responsable: r.responsable || r.ASIGNADO_A || r.asignado || r.responsable || "",
+    }));
+
+    setRows([...enrichedAdminRows, ...mlRows]);
     setSheetRowCount(typeof adminRes.data.sheetRowCount === "number" ? adminRes.data.sheetRowCount : null);
     setSelected(new Set());
   }, [token, scope]);
@@ -380,6 +392,53 @@ export function useAdminCotizaciones() {
     showToast(`IA: ${data.successful ?? 0} generadas · ${data.failed ?? 0} fallidas · ${data.skipped ?? 0} omitidas`);
     await load();
   }, [token, load, showToast, batchOpts]);
+
+  // =====================================================
+  // TANDA 1: Ownership + Borrador Integration + Quick Actions
+  // =====================================================
+
+  const assignTo = useCallback(async (row, responsable) => {
+    if (!token || !row) return { ok: false };
+    setBusyOp("assign");
+    const body = {
+      adminRow: row.rowNum,
+      responsable: responsable || "",
+    };
+    const { ok, status, data } = await apiFetch(token, "/api/wolfboard/row", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setBusyOp(null);
+    if (!ok) {
+      showToast(data?.error || `Error al asignar (HTTP ${status})`);
+      return { ok: false };
+    }
+    await load();
+    showToast(`Asignado a ${responsable || "(sin responsable)"}`);
+    return { ok: true };
+  }, [token, load]);
+
+  const getBorradorInfo = useCallback((row) => {
+    if (!row) return { hasBorrador: false };
+    const pdf = row.borradorPdf || row["Borrador PDF"] || row.borrador_pdf || "";
+    const explic = row.borradorExplicacion || row["Borrador Explicación"] || "";
+    return {
+      hasBorrador: !!(pdf || explic),
+      pdfLink: pdf,
+      explicacion: explic,
+      fecha: row.fechaBorrador || row["Fecha Generación Borrador"] || "",
+    };
+  }, []);
+
+  const openBorrador = useCallback((row) => {
+    const info = getBorradorInfo(row);
+    if (info.pdfLink) {
+      window.open(info.pdfLink, "_blank");
+    } else if (row.sheetUrl) {
+      window.open(row.sheetUrl, "_blank");
+    }
+  }, [getBorradorInfo]);
 
   /**
    * Per-row AI suggestion. Calls `/api/crm/suggest-response` (4-LLM fallback with
@@ -529,6 +588,11 @@ export function useAdminCotizaciones() {
     requestSuggestion,
     createRow,
     exportCsvUrl,
+
+    // Tanda 1 - New best-practice lead management actions
+    assignTo,
+    getBorradorInfo,
+    openBorrador,
   };
 }
 
@@ -563,44 +627,64 @@ export function healthLevel(fechaStr, estado) {
 
 export function computeStats(rows) {
   let pendientes = 0;
+  let borrador = 0;
+  let revision = 0;
   let aprobadas = 0;
+  let enviadas = 0;
   let conError = 0;
-  let edadAlta = 0;
+  let urgentes = 0;
+
   for (const r of rows) {
-    const estado = String(r.estado || "").trim();
+    const estado = String(r.estado || "").trim().toLowerCase();
     const respuesta = String(r.respuesta || "");
-    if (estado === "Aprobado") aprobadas += 1;
-    if (estado === "" || estado !== "Aprobado") {
-      if (estado !== "Enviado") pendientes += 1;
-    }
+    const age = ageDays(r.fecha);
+
+    if (estado.includes("aprobado")) aprobadas += 1;
+    else if (estado.includes("enviado")) enviadas += 1;
+    else if (estado.includes("borrador")) borrador += 1;
+    else if (estado.includes("revis")) revision += 1;
+    else pendientes += 1;
+
     if (respuesta.startsWith("⚠")) conError += 1;
-    if (estado !== "Enviado") {
-      const age = ageDays(r.fecha);
-      if (age != null && age >= 14) edadAlta += 1;
-    }
+
+    if (!estado.includes("enviado") && age != null && age >= 7) urgentes += 1;
   }
-  return { pendientes, aprobadas, conError, edadAlta };
+
+  return { pendientes, borrador, revision, aprobadas, enviadas, conError, urgentes };
 }
 
 export function filterRows(rows, { statusFilter, search }) {
   const q = String(search || "").trim().toLowerCase();
   return rows.filter((r) => {
     if (q) {
-      const hay = `${r.cliente || ""} ${r.consulta || ""} ${r.telefono || ""}`.toLowerCase();
+      const hay = `${r.cliente || ""} ${r.consulta || ""} ${r.telefono || ""} ${r.respuesta || ""}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
-    const estado = String(r.estado || "").trim();
+    const estado = String(r.estado || "").trim().toLowerCase();
     const respuesta = String(r.respuesta || "");
+    const age = ageDays(r.fecha);
+
     switch (statusFilter) {
+      case "nuevas":
+        return age != null && age <= 2; // últimas 48h
       case "pendientes":
-        return estado !== "Aprobado" && estado !== "Enviado";
+        return !estado.includes("aprobado") && !estado.includes("enviado") && !estado.includes("borrador") && !estado.includes("revis");
+      case "borrador":
+        return estado.includes("borrador");
+      case "revision":
+        return estado.includes("revis");
       case "aprobadas":
-        return estado === "Aprobado";
+        return estado.includes("aprobado");
+      case "enviadas":
+        return estado.includes("enviado");
+      case "urgentes": {
+        if (estado.includes("enviado")) return false;
+        return age != null && age >= 7; // 7+ días sin cerrar = urgente
+      }
       case "error":
         return respuesta.startsWith("⚠");
       case "atrasadas": {
-        if (estado === "Enviado") return false;
-        const age = ageDays(r.fecha);
+        if (estado.includes("enviado")) return false;
         return age != null && age >= 14;
       }
       default:

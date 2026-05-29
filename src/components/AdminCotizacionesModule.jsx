@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useAdminCotizaciones } from "../hooks/useAdminCotizaciones.js";
+import { useAdminCotizaciones, ageDays } from "../hooks/useAdminCotizaciones.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import { getStoredPanelinRole } from "../hooks/useAdminCotizaciones.js"; // if not exported, we'll move logic inside
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import { SkinProvider, useSkin } from "./admin-cotizaciones/SkinProvider.jsx";
 import Topbar from "./admin-cotizaciones/Topbar.jsx";
@@ -27,6 +28,60 @@ function ModuleInner() {
   const [tokenInput, setTokenInput] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [detail, setDetail] = useState(null);
+
+  // Tanda 1 - Saved Views (best practice for lead management)
+  const currentRole = (typeof window !== "undefined" ? localStorage.getItem("bmc_panelin_role") : "") || "";
+
+  const SAVED_VIEWS = {
+    todas: { label: "Todas", filter: () => true },
+    misLeads: { 
+      label: "Mis Leads", 
+      filter: (r) => {
+        const resp = (r.responsable || "").toLowerCase();
+        return resp === currentRole.toLowerCase() || resp.includes(currentRole.toLowerCase()) || resp.includes("yo");
+      } 
+    },
+    urgentes: { 
+      label: "Urgentes (7d+)", 
+      filter: (r) => {
+        const age = ageDays(r.fecha);
+        return age != null && age >= 7 && !String(r.estado || "").toLowerCase().includes("enviado");
+      }
+    },
+    sinMovimiento: { 
+      label: "Sin movimiento 5d+", 
+      filter: (r) => {
+        const age = ageDays(r.fecha);
+        return age != null && age >= 5 && !String(r.estado || "").toLowerCase().includes("enviado");
+      }
+    },
+    borrador: { label: "En Borrador", filter: (r) => String(r.estado || "").toLowerCase().includes("borrador") },
+    revision: { label: "En Revisión", filter: (r) => String(r.estado || "").toLowerCase().includes("revis") },
+  };
+
+  const [activeSavedView, setActiveSavedView] = useState("todas");
+  const [viewMode, setViewMode] = useState("table"); // "table" | "kanban"
+
+  const displayedRows = (() => {
+    const base = cot.filtered;
+    const view = SAVED_VIEWS[activeSavedView] || SAVED_VIEWS.todas;
+    return base.filter(view.filter);
+  })();
+
+  // Basic Kanban stages for best practices (aligned with hybrid model)
+  const KANBAN_STAGES = ["Pendiente", "Borrador", "En Revisión", "Aprobado", "Enviado"];
+
+  const getKanbanRows = (stage) => {
+    return displayedRows.filter(r => {
+      const e = String(r.estado || "Pendiente").toLowerCase();
+      if (stage === "Pendiente") return !e.includes("borrador") && !e.includes("revis") && !e.includes("aprobado") && !e.includes("enviado");
+      if (stage === "Borrador") return e.includes("borrador");
+      if (stage === "En Revisión") return e.includes("revis");
+      if (stage === "Aprobado") return e.includes("aprobado") && !e.includes("enviado");
+      if (stage === "Enviado") return e.includes("enviado");
+      return false;
+    });
+  };
 
   // If we still don't have a token after auto-load, show the panel by default.
   useEffect(() => {
@@ -76,6 +131,22 @@ function ModuleInner() {
   const onApproveDetail = useCallback(async (adminRow) => {
     const { ok } = await cot.approve(adminRow);
     if (ok) setDetail(null);
+  }, [cot]);
+
+  // Tanda 1 - Aggressive additions for best practices
+  const onAssign = useCallback(async (row, responsable) => {
+    await cot.assignTo(row, responsable);
+  }, [cot]);
+
+  const onOpenBorrador = useCallback((row) => {
+    cot.openBorrador(row);
+  }, [cot]);
+
+  const onQuickAssign = useCallback((row) => {
+    const newResp = prompt("Asignar a (nombre o código):", row.responsable || "");
+    if (newResp !== null) {
+      cot.assignTo(row, newResp.trim());
+    }
   }, [cot]);
 
   const onMarkEnviadoDetail = useCallback(async (adminRow) => {
@@ -194,20 +265,91 @@ function ModuleInner() {
               </div>
             )}
 
-            <QuotesTable
-              rows={cot.filtered}
-              selected={cot.selected}
-              onToggleSelect={cot.toggleSelect}
-              onToggleSelectAll={cot.toggleSelectAll}
-              onEdit={(row) => setDetail(row)}
-              onMarkEnviado={onMarkEnviadoSingle}
-              onApprove={(row) => cot.approve(row.rowNum)}
-              onOpenPdf={(row) => row.link && window.open(row.link, "_blank", "noopener,noreferrer")}
-              onOpenReplay={(row) => row.replaySnapshotUrl && window.open(row.replaySnapshotUrl, "_blank", "noopener,noreferrer")}
-              onOpenSheet={(row) => row.sheetUrl && window.open(row.sheetUrl, "_blank", "noopener,noreferrer")}
-              loading={cot.loading}
-              emptyMessage={emptyMsg}
-            />
+            {/* Saved Views + View Mode - Tanda 1 Aggressive */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 4 }}>
+                {Object.keys(SAVED_VIEWS).map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveSavedView(key)}
+                    className="adminCot__btn adminCot__btn--sm"
+                    style={{
+                      background: activeSavedView === key ? "#0071e3" : "#fff",
+                      color: activeSavedView === key ? "#fff" : "#1d1d1f",
+                      border: activeSavedView === key ? "none" : "1.5px solid #e5e5ea",
+                    }}
+                  >
+                    {SAVED_VIEWS[key].label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+                <button 
+                  onClick={() => setViewMode("table")} 
+                  className="adminCot__btn adminCot__btn--sm"
+                  style={{ background: viewMode === "table" ? "#111" : "#fff", color: viewMode === "table" ? "#fff" : "#000" }}
+                >
+                  Tabla
+                </button>
+                <button 
+                  onClick={() => setViewMode("kanban")} 
+                  className="adminCot__btn adminCot__btn--sm"
+                  style={{ background: viewMode === "kanban" ? "#111" : "#fff", color: viewMode === "kanban" ? "#fff" : "#000" }}
+                >
+                  Kanban
+                </button>
+              </div>
+            </div>
+
+            {viewMode === "table" ? (
+              <QuotesTable
+                rows={displayedRows}
+                selected={cot.selected}
+                onToggleSelect={cot.toggleSelect}
+                onToggleSelectAll={cot.toggleSelectAll}
+                onEdit={(row) => setDetail(row)}
+                onMarkEnviado={onMarkEnviadoSingle}
+                onApprove={(row) => cot.approve(row.rowNum)}
+                onOpenPdf={(row) => row.link && window.open(row.link, "_blank", "noopener,noreferrer")}
+                onOpenReplay={(row) => row.replaySnapshotUrl && window.open(row.replaySnapshotUrl, "_blank", "noopener,noreferrer")}
+                onOpenSheet={(row) => row.sheetUrl && window.open(row.sheetUrl, "_blank", "noopener,noreferrer")}
+                onAssign={onAssign}
+                onOpenBorrador={onOpenBorrador}
+                onQuickAssign={onQuickAssign}
+                loading={cot.loading}
+                emptyMessage={emptyMsg}
+              />
+            ) : (
+              /* Basic Kanban - Tanda 1 Aggressive */
+              <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 20 }}>
+                {KANBAN_STAGES.map((stage) => {
+                  const stageRows = getKanbanRows(stage);
+                  return (
+                    <div key={stage} style={{ minWidth: 260, background: "#f8f8f8", borderRadius: 8, padding: 8, border: "1px solid #eee" }}>
+                      <div style={{ fontWeight: 600, marginBottom: 8, paddingBottom: 4, borderBottom: "1px solid #ddd", display: "flex", justifyContent: "space-between" }}>
+                        <span>{stage}</span>
+                        <span style={{ fontSize: 12, color: "#666" }}>{stageRows.length}</span>
+                      </div>
+                      {stageRows.length === 0 && <div style={{ fontSize: 12, color: "#999", padding: 8 }}>Sin leads</div>}
+                      {stageRows.map(row => (
+                        <div 
+                          key={row.rowNum || row.id} 
+                          style={{ background: "white", padding: 8, marginBottom: 6, borderRadius: 6, fontSize: 13, cursor: "pointer", border: "1px solid #eee" }}
+                          onClick={() => setDetail(row)}
+                        >
+                          <div style={{ fontWeight: 600 }}>{row.cliente || "Sin nombre"}</div>
+                          <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{(row.consulta || "").slice(0, 70)}...</div>
+                          <div style={{ marginTop: 6, fontSize: 11 }}>
+                            <span style={{ color: "#0071e3" }}>{row.responsable || "Sin asignar"}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="adminCot__cards" style={{ marginTop: 12 }}>
               {cot.filtered.length === 0 && !cot.loading && (

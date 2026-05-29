@@ -174,6 +174,36 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
             </p>
           </div>
 
+          {/* Tanda 1 - Rich Borrador Integration (from Cotizar button hybrid model) */}
+          <div className="adminCot__drawer-section" style={{ background: "#fefce8", padding: 12, borderRadius: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span className="adminCot__drawer-label" style={{ color: "#854d0e" }}>Borrador (flujo híbrido)</span>
+              {onOpenBorrador && (
+                <button 
+                  type="button" 
+                  className="adminCot__btn adminCot__btn--sm" 
+                  style={{ background: "#fef3c7", color: "#92400e" }}
+                  onClick={() => onOpenBorrador(row)}
+                >
+                  Ver Borrador
+                </button>
+              )}
+            </div>
+            <div style={{ fontSize: 12, color: "#713f12" }}>
+              {row.borradorPdf ? (
+                <a href={row.borradorPdf} target="_blank" rel="noopener" style={{ color: "#854d0e", textDecoration: "underline" }}>
+                  PDF del Borrador ↗
+                </a>
+              ) : "Sin PDF de borrador aún"}
+              <br />
+              {row.borradorExplicacion ? "Explicación generada ✓" : "Sin explicación de borrador"}
+            </div>
+            <p className="adminCot__hint" style={{ marginTop: 6, color: "#854d0e" }}>
+              Generado vía el botón "Cotizar" de la planilla (modelo híbrido). 
+              Si no existe, puedes usar el batch IA superior o el botón "Sugerir IA".
+            </p>
+          </div>
+
           <div className="adminCot__drawer-section">
             <span className="adminCot__drawer-label">Replay JSON (M)</span>
             <div style={{ display: "flex", gap: 8 }}>

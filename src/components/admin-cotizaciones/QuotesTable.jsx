@@ -34,14 +34,31 @@ function CanalPill({ origen }) {
 }
 
 function EstadoPill({ estado }) {
-  const v = String(estado || "").trim();
-  if (v === "Aprobado") return <span className="adminCot__pill" style={{ background: "#dcfce7", color: "#16a34a" }}>Aprobado</span>;
-  if (v === "Enviado") return <span className="adminCot__pill" style={{ background: "#dbeafe", color: "#1d4ed8" }}>Enviado</span>;
-  if (!v) return <span className="adminCot__pill">Pendiente</span>;
-  return <span className="adminCot__pill">{v.slice(0, 14)}</span>;
+  const v = String(estado || "").trim().toLowerCase();
+
+  if (v.includes("aprobado") || v === "aprobado oficial") {
+    return <span className="adminCot__pill" style={{ background: "#dcfce7", color: "#166534", fontWeight: 600 }}>Aprobado</span>;
+  }
+  if (v.includes("enviado")) {
+    return <span className="adminCot__pill" style={{ background: "#dbeafe", color: "#1e40af" }}>Enviado</span>;
+  }
+  if (v.includes("borrador")) {
+    return <span className="adminCot__pill" style={{ background: "#fef3c7", color: "#92400e" }}>Borrador</span>;
+  }
+  if (v.includes("revis")) {
+    return <span className="adminCot__pill" style={{ background: "#e0e7ff", color: "#3730a3" }}>En Revisión</span>;
+  }
+  if (v.includes("asignad")) {
+    return <span className="adminCot__pill" style={{ background: "#f3e8ff", color: "#6b21a8" }}>Asignado</span>;
+  }
+  if (!v || v === "pendiente") {
+    return <span className="adminCot__pill" style={{ background: "#f1f5f9", color: "#475569" }}>Pendiente</span>;
+  }
+  // Fallback for other states (e.g. Rechazado, Error, etc.)
+  return <span className="adminCot__pill" style={{ background: "#fee2e2", color: "#991b1b" }}>{String(estado).slice(0, 14)}</span>;
 }
 
-function Kebab({ row, onApprove, onOpenPdf, onOpenReplay, onOpenSheet }) {
+function Kebab({ row, onApprove, onOpenPdf, onOpenReplay, onOpenSheet, onOpenBorrador }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -99,6 +116,18 @@ function Kebab({ row, onApprove, onOpenPdf, onOpenReplay, onOpenSheet }) {
           >
             Abrir fila en Google Sheet ↗
           </button>
+
+          {/* Tanda 1 - Borrador integration */}
+          {row.borradorPdf || row.borradorExplicacion ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="adminCot__kebab-item"
+              onClick={() => { setOpen(false); onOpenBorrador?.(row); }}
+            >
+              Ver Borrador (PDF / Explicación)
+            </button>
+          ) : null}
         </div>
       )}
     </div>
@@ -124,6 +153,9 @@ export default function QuotesTable({
   onOpenPdf,
   onOpenReplay,
   onOpenSheet,
+  onAssign,
+  onOpenBorrador,
+  onQuickAssign,
   loading,
   emptyMessage,
 }) {
@@ -151,8 +183,9 @@ export default function QuotesTable({
               <th>Fecha</th>
               <th>Consulta</th>
               <th>Estado</th>
+              <th>Responsable</th>
               <th>Edad</th>
-              <th style={{ width: 180 }}>Acciones</th>
+              <th style={{ width: 220 }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -221,6 +254,32 @@ export default function QuotesTable({
                       >
                         Editar
                       </button>
+
+                      {/* Tanda 1 - Aggressive quick actions for best lead management */}
+                      {!isCrmOnly && onQuickAssign && (
+                        <button
+                          type="button"
+                          className="adminCot__btn adminCot__btn--sm"
+                          style={{ background: "#f3e8ff", color: "#6b21a8" }}
+                          onClick={() => onQuickAssign(row)}
+                          title="Asignar responsable rápido"
+                        >
+                          Asignar
+                        </button>
+                      )}
+
+                      {(row.borradorPdf || row.borradorExplicacion) && onOpenBorrador && (
+                        <button
+                          type="button"
+                          className="adminCot__btn adminCot__btn--sm"
+                          style={{ background: "#fef3c7", color: "#92400e" }}
+                          onClick={() => onOpenBorrador(row)}
+                          title="Ver Borrador generado por el flujo híbrido"
+                        >
+                          📄 Borrador
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         className="adminCot__btn adminCot__btn--sm adminCot__btn--ghost"
@@ -232,6 +291,7 @@ export default function QuotesTable({
                       >
                         ✓ Enviado
                       </button>
+
                       {!isCrmOnly && (
                         <Kebab
                           row={row}
@@ -239,6 +299,7 @@ export default function QuotesTable({
                           onOpenPdf={onOpenPdf}
                           onOpenReplay={onOpenReplay}
                           onOpenSheet={onOpenSheet}
+                          onOpenBorrador={onOpenBorrador}
                         />
                       )}
                     </div>

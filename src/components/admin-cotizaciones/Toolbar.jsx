@@ -6,10 +6,13 @@ import { HELP_ANCHORS } from "../help/anchors.js";
 
 const STATUS_OPTIONS = [
   { id: "todas", label: "Todas" },
+  { id: "nuevas", label: "Nuevas (48h)" },
   { id: "pendientes", label: "Pendientes" },
+  { id: "borrador", label: "Borrador" },
+  { id: "revision", label: "En Revisión" },
   { id: "aprobadas", label: "Aprobadas" },
-  { id: "error", label: "Con error" },
-  { id: "atrasadas", label: "+14d" },
+  { id: "urgentes", label: "Urgentes / Atrasadas" },
+  { id: "enviadas", label: "Enviadas" },
 ];
 
 const MANUAL_ORIGEN_OPTIONS = [
