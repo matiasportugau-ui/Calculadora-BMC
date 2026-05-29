@@ -29,6 +29,8 @@
     "local:stack:launchd:uninstall": "bash scripts/uninstall-local-stack-launchagent.sh",
     "dev:full:watch": "concurrently -n api,vite -c blue,green \"npm run dev:api\" \"npm run dev\"",
     "bmc-dashboard": "node docs/bmc-dashboard-modernization/sheets-api-server.js",
+    "finanzas:inspect": "node scripts/inspect-docker-context.cjs",
+    "finanzas:repro": "bash scripts/repro-finanzas-404.sh",
     "ml:cloud-run": "./run_ml_cloud_run_setup.sh",
     "ml:verify": "bash scripts/verify-ml-oauth.sh",
     "ml:corpus-export": "node scripts/ml-export-full-corpus.mjs",

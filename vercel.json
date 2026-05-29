@@ -6,19 +6,19 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://panelin-calc-642127786762.us-central1.run.app/api/:path*"
+      "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/:path*"
     },
     {
       "source": "/calc/:path*",
-      "destination": "https://panelin-calc-642127786762.us-central1.run.app/calc/:path*"
+      "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/:path*"
     },
     {
       "source": "/auth/:path*",
-      "destination": "https://panelin-calc-642127786762.us-central1.run.app/auth/:path*"
+      "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/auth/:path*"
     },
     {
       "source": "/sync/:path*",
-      "destination": "https://panelin-calc-642127786762.us-central1.run.app/sync/:path*"
+      "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/sync/:path*"
     },
     {
       "source": "/logistica",

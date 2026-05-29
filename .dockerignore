@@ -9,19 +9,14 @@ dist
 npm-debug.log
 public
 tests
-# docs excluded except dashboard (Dockerfile needs docs/bmc-dashboard-modernization/dashboard)
-# and logistica-carga-prototype/lib (Vite imports from BmcLogisticaApp)
+# We keep the Docker image small by excluding most of docs/,
+# but we explicitly include the few folders the full-stack image needs:
+# - Finanzas legacy dashboard (static UI served at /finanzas)
+# - Logistica prototype lib (imported by BmcLogisticaApp)
+# - Admin Cotizaciones walkthrough data
 docs/*
-!docs/bmc-dashboard-modernization
-docs/bmc-dashboard-modernization/*
 !docs/bmc-dashboard-modernization/dashboard
-!docs/bmc-dashboard-modernization/logistica-carga-prototype
 !docs/bmc-dashboard-modernization/logistica-carga-prototype/lib
-
-# Walkthrough data for Admin Cotizaciones module (static JSON import at build time)
-!docs/walkthrough
-docs/walkthrough/*
-!docs/walkthrough/admin-cot
 !docs/walkthrough/admin-cot/source.json
 
 *.md

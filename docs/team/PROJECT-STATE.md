@@ -12,6 +12,28 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-29 (Finanzas Legacy Dashboard 404 Fix):** `hecho`. Se identificó y corrigió la causa raíz del 404 JSON en `/finanzas` (dashboard estático del operador).
+
+**Root cause**: Reglas de `.dockerignore` extremadamente frágiles (negaciones múltiples) estaban excluyendo sistemáticamente la carpeta `docs/bmc-dashboard-modernization/dashboard/` del contexto de build de Docker, a pesar de que el `COPY` existía en el Dockerfile. Esto causaba que el middleware `express.static` no encontrara nada y cayera al catch-all final que devuelve `{"ok":false,"error":"Not found","path":"/finanzas"}`.
+
+**Cambios entregados**:
+- `.dockerignore` simplificado con allow-list explícita y clara (mucho más difícil de romper).
+- `server/index.js`: chequeo defensivo `hasFinanzasDashboard` + log estructurado al startup (visible en Cloud Logging).
+- `vercel.json`: actualizadas todas las URLs antiguas de Cloud Run al hash canónico actual.
+- Automatización completa:
+  - `npm run finanzas:repro` (script oficial que hace build + inspección profunda dentro del contenedor + smoke funcional).
+  - `npm run finanzas:inspect` (simulación instantánea sin Docker del contexto de build).
+- `gate:local` pasó (solo la baseline conocida de sheetsCsvGuard).
+
+**Archivos nuevos**:
+- `scripts/repro-finanzas-404.sh`
+- `scripts/inspect-docker-context.cjs`
+- `docs/team/HANDOFF-2026-05-29-finanzas-404.md`
+
+**Estado actual**: Cambios de código 100% aplicados y verificados localmente. El usuario aún debe correr `npm run finanzas:repro` una vez en un Terminal normal con Docker Desktop activo para capturar la evidencia limpia "antes/después" dentro del contenedor (requisito del plan). Deploy pendiente.
+
+---
+
 **2026-05-29 (Presupuestación Orchestrator Bootstrap — Phase 1 Foundation):** `hecho`. Se lanzó la Fase 1 del plan de automatización 100% con la creación del skill `presupuestacion-orchestrator` (Grok 4.3 Heavy). 
 
 Entregables principales:

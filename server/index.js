@@ -998,6 +998,7 @@ app.use("/auth/tasks", tasksOAuthRouter);
 app.use("/sync", tasksSyncRouter);
 
 const dashboardDir = path.join(__dirname, "../docs/bmc-dashboard-modernization/dashboard");
+const hasFinanzasDashboard = fs.existsSync(path.join(dashboardDir, "index.html"));
 const isDev = config.appEnv === "development";
 if (isDev) {
   app.get("/api/dev/dashboard-mtime", (req, res) => {
@@ -1101,6 +1102,8 @@ const server = app.listen(config.port, async () => {
       port: config.port,
       appEnv: config.appEnv,
       publicBaseUrl: config.publicBaseUrl,
+      hasFinanzasDashboard,
+      dashboardDir,
     },
     "MercadoLibre connector server started"
   );
