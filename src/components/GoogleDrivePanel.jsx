@@ -242,7 +242,9 @@ export default function GoogleDrivePanel({
               }}
             >
               {LAYOUT_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
+                <option key={o.id} value={o.id}>
+                  {o.label}{o.legacy ? ' (legacy)' : o.recommended ? ' ★' : ''}
+                </option>
               ))}
             </select>
             <div style={{ fontSize: 11, color: C.ts, marginTop: 6, lineHeight: 1.35 }}>

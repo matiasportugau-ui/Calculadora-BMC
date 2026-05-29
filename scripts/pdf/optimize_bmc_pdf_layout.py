@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
 """
-BMC PDF Layout Optimizer
-Compresses BMC-2026-0056 from 4 pages to 2 pages using improved layout
-patterns observed in reference PDFs (0057, 0060, 0061).
+BMC PDF Layout Optimizer (Legacy support)
+
+As of 2026-05-27, the main quote flow defaults to the lightweight "simple-*" templates
+which produce clean 1-2 page output directly from the browser/server.
+
+This script is now primarily maintained for:
+- Legacy heavy templates (bmc-pdf, soft-modern, etc.)
+- One-off optimization of existing large PDFs
+- Reference / migration use
+
+New quotes should not require this post-processor in most cases.
+"""
 
 Key optimizations:
 - Reduced table padding and row heights

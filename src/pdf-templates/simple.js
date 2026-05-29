@@ -120,7 +120,14 @@ export function render(q) {
     <div>Titular: <strong>Metalog SAS</strong></div><div>RUT: <strong>120403430012</strong></div>
     <div>BROU · Cta. Dólares: <strong>110520638-00002</strong></div><div>Consultas: <strong>092 663 245</strong></div>
   </div>
-  <div class="ftr"><span>bmcuruguay.com.uy · 092 663 245 · Metalog SAS</span><span style="color:#003366;font-weight:700">${esc(q.escenario)}</span></div>
+  <div class="ftr">
+    <span>bmcuruguay.com.uy · 092 663 245 · Metalog SAS</span>
+    <span style="color:#003366;font-weight:700">
+      ${esc(q.escenario)}
+      ${q.quoteId || q.ref ? ` · ${esc(q.quoteId || q.ref)}` : ''}
+      ${q.version ? `v${q.version}` : ''}
+    </span>
+  </div>
 </div>
 </body></html>`;
 }

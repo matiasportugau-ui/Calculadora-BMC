@@ -3,18 +3,21 @@
 // Each template receives a QuotationModel and returns a complete HTML string.
 
 export const LAYOUT_OPTIONS = [
+  // Modern lightweight family — strongly recommended for production quotes
+  { id: 'simple-carbon',     label: 'Simple — Carbon', recommended: true },
   { id: 'simple',            label: 'Presupuesto Simple' },
   { id: 'simple-sage',       label: 'Simple — Sage' },
   { id: 'simple-slate',      label: 'Simple — Slate' },
   { id: 'simple-warm',       label: 'Simple — Warm' },
   { id: 'simple-ocean',      label: 'Simple — Ocean' },
-  { id: 'simple-carbon',     label: 'Simple — Carbon' },
-  { id: 'bmc-pdf',           label: 'BMC PDF — Blueprint Técnico' },
-  { id: 'soft-modern',       label: 'E — Soft Modern' },
-  { id: 'executive-dark',    label: 'A — Executive Dark' },
-  { id: 'blueprint',         label: 'B — Blueprint' },
-  { id: 'minimalist',        label: 'C — Minimalist' },
-  { id: 'construction-bold', label: 'D — Construction Bold' },
+
+  // Legacy / heavy technical styles (kept for compatibility but not recommended)
+  { id: 'bmc-pdf',           label: 'BMC PDF — Blueprint Técnico', legacy: true },
+  { id: 'soft-modern',       label: 'E — Soft Modern', legacy: true },
+  { id: 'executive-dark',    label: 'A — Executive Dark', legacy: true },
+  { id: 'blueprint',         label: 'B — Blueprint', legacy: true },
+  { id: 'minimalist',        label: 'C — Minimalist', legacy: true },
+  { id: 'construction-bold', label: 'D — Construction Bold', legacy: true },
 ];
 
 export const PDF_LAYOUT_KEY = 'bmc.pdfLayout';
@@ -51,6 +54,9 @@ export function buildQuotationModel(data) {
     appendix,
     snapshotImages,
     bmcExtra: bmcExtraUser,
+    quoteId,           // NEW: stable identifier for the quote
+    version = 1,       // NEW: version number for iterations
+    createdBy,         // NEW: operator who generated it
   } = data;
   const clienteSrc = client ?? project;
   const scenarioLabel = appendix?.scenarioLabel || SCENARIO_LABELS[scenario] || scenario;
@@ -144,6 +150,12 @@ export function buildQuotationModel(data) {
     bomDetailGroups,
     conditionsText: 'Fabricación y entrega 10 a 45 días. Seña 60% al confirmar · saldo 40% previo a retiro de fábrica. Oferta válida 10 días. Precios en USD · IVA incluido.',
     bmcExtra,
+
+    // NEW — versioning & audit fields (2026-05-27 PDF improvements)
+    quoteId: quoteId || null,
+    version: Number(version) || 1,
+    createdBy: createdBy || null,
+    generatedAt: new Date().toISOString(),
   };
 }
 

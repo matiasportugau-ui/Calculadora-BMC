@@ -450,7 +450,20 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
             </div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 600, color: C.tp, ...TN }}>${typeof item.total === "number" ? item.total.toFixed(2) : item.total}</div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>${((item.cant ?? 0) * (item.costo ?? 0)).toFixed(2)}</div>
-            <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>{(() => { const t = item.total || 0; const ct = (item.cant ?? 0) * (item.costo ?? 0); return t > 0 ? ((t - ct) / t * 100).toFixed(1) + "%" : "—"; })()}</div>
+            <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>{(() => {
+  const modern = LAYOUT_OPTIONS.filter(o => !o.legacy);
+  const legacy = LAYOUT_OPTIONS.filter(o => o.legacy);
+  return (
+    <>
+      {modern.map(o => <option key={o.id} value={o.id}>{o.label}{o.recommended ? ' ★' : ''}</option>)}
+      {legacy.length > 0 && (
+        <optgroup label="Legacy (heavy templates)">
+          {legacy.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </optgroup>
+      )}
+    </>
+  );
+})()}</div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 500, color: C.success, ...TN }}>${((item.total || 0) - (item.cant ?? 0) * (item.costo ?? 0)).toFixed(2)}</div>
             <div style={{ padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
               {onOverride && <button title="Editar" aria-label="Editar fila" onClick={() => isEditing ? setEditingCell(null) : startEdit(item.lineId, "cant", item.cant)} style={{ background: "none", border: "none", cursor: "pointer", color: isEditing ? C.primary : C.tt, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><Edit3 size={13} /></button>}
@@ -2364,7 +2377,10 @@ export default function PanelinCalculadoraV3() {
   const [fleteCosto, setFleteCosto] = useState("");
   /** PDF+ (hoja cliente enriquecida): incluir página extra “Planta + resumen” (diseño hero marca). */
   const [pdfPlantaResumenPage, setPdfPlantaResumenPage] = useState(true);
-  const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'bmc-pdf');
+  // Default changed 2026-05-27 during PDF generator improvement session.
+// Old default 'bmc-pdf' was the heavy 50k+ template that required the Python optimizer post-process.
+// New default uses the modern lightweight "simple" family (much smaller, cleaner 1-2 page output).
+const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'simple-carbon');
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
@@ -3618,6 +3634,10 @@ export default function PanelinCalculadoraV3() {
         client: proyecto, project: proyecto, scenario,
         panel: panelInfo, groups: groupsMapped,
         totals: grandTotal, appendix, snapshotImages,
+        // Wire real identifiers (2026-05-27 PDF improvements)
+        quoteId: currentBudgetCode || proyecto?.quotationCode || null,
+        version: 1, // TODO: derive from Drive history when available
+        createdBy: null, // Can be wired from auth context later
       });
       return renderPdfLayout(pdfLayout, q);
     }
@@ -6785,9 +6805,24 @@ export default function PanelinCalculadoraV3() {
                 onChange={e => { const v = e.target.value; setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
                 style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13, cursor: "pointer", flex: 1, maxWidth: 320 }}
               >
-                {LAYOUT_OPTIONS.map((o) => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
-                ))}
+                {(() => {
+                  const modern = LAYOUT_OPTIONS.filter(o => !o.legacy);
+                  const legacy = LAYOUT_OPTIONS.filter(o => o.legacy);
+                  return <>
+                    {modern.map(o => (
+                      <option key={o.id} value={o.id}>
+                        {o.label}{o.recommended ? ' ★' : ''}
+                      </option>
+                    ))}
+                    {legacy.length > 0 && (
+                      <optgroup label="Legacy / Heavy templates (not recommended)">
+                        {legacy.map(o => (
+                          <option key={o.id} value={o.id}>{o.label}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </>;
+                })()}
               </select>
             </div>
           )}

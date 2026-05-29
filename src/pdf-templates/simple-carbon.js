@@ -143,7 +143,11 @@ export function render(q) {
       </div>
       <div class="ftr-line">
         <span>bmcuruguay.com.uy · 092 663 245 · Metalog SAS</span>
-        <span class="ftr-acc">${esc(q.escenario)}</span>
+        <span class="ftr-acc">
+          ${esc(q.escenario)}
+          ${q.quoteId || q.ref ? ` · ${esc(q.quoteId || q.ref)}` : ''}
+          ${q.version ? `v${q.version}` : ''}
+        </span>
       </div>
     </div>
   </div>

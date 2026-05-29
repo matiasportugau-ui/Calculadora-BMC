@@ -17,6 +17,13 @@ docs/bmc-dashboard-modernization/*
 !docs/bmc-dashboard-modernization/dashboard
 !docs/bmc-dashboard-modernization/logistica-carga-prototype
 !docs/bmc-dashboard-modernization/logistica-carga-prototype/lib
+
+# Walkthrough data for Admin Cotizaciones module (static JSON import at build time)
+!docs/walkthrough
+docs/walkthrough/*
+!docs/walkthrough/admin-cot
+!docs/walkthrough/admin-cot/source.json
+
 *.md
 !package.json
 !package-lock.json
