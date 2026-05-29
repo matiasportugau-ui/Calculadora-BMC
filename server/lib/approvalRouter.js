@@ -20,7 +20,10 @@
 
 import { getTasksPool } from "./tasksDb.js";
 import { config } from "../config.js";
+import pino from "pino";
 import * as googleTasks from "./googleTasksClient.js";
+
+const defaultLogger = pino({ name: "approval-router" });
 
 /**
  * createApprovalTask
@@ -48,6 +51,7 @@ export async function createApprovalTask(params = {}) {
     artifacts = {},
     calcSnapshot = null,
     pdfInfo = null,
+    logger = defaultLogger,
   } = params;
 
   const createdAt = new Date().toISOString();
@@ -127,10 +131,14 @@ export async function createApprovalTask(params = {}) {
     generatedBy: "presupOrchestrator.runPresupFlow",
   };
 
-  // Structured-ish log (will be upgraded in #4 to proper events + monitoring sink)
-  console.log(
-    `[approvalRouter] approval_request_created id=${syntheticId} requestId=${requestId} prioridad=${prioridad} status=fallback`
-  );
+  logger.info({
+    event: "approval.request_created",
+    requestId,
+    taskId: syntheticId,
+    prioridad,
+    status: approvalTask.status,
+    source: approvalTask.source,
+  }, "Approval request created (real or rich fallback metadata)");
 
   return approvalTask;
 }

@@ -16,8 +16,8 @@
  * Current status (2026-05-29):
  * - #1 internal testing route: DONE
  * - #2 prompt modules on disk: DONE
- * - #3 real ApprovalRouter (hub-tasks wiring + rich fallback): DONE (see approvalRouter.js)
- * - #4 structured logging + events: pending
+ * - #3 real ApprovalRouter (hub-tasks wiring + rich fallback): DONE
+ * - #4 structured logging + events: DONE (pino + rich events on flow/sub-agent/gate/approval)
  *
  * Feature freeze active for heavy new agents. This conductor + ApprovalRouter is
  * safe internal scaffolding that can be exercised via /api/internal/presup/run.
@@ -28,7 +28,11 @@ import { callAgentOnce } from "./agentCore.js";
 import { findRelevantExamples } from "./trainingKB.js";
 import fs from "node:fs";
 import path from "node:path";
+import pino from "pino";
 import { createApprovalTask } from "./approvalRouter.js";
+
+// Default structured logger for the orchestrator (can be overridden by caller)
+const defaultLogger = pino({ name: "presup-orchestrator" });
 
 /**
  * Main entry point: runs a full presupuestación flow.
@@ -43,6 +47,8 @@ import { createApprovalTask } from "./approvalRouter.js";
  * @returns {Promise<object>} final flow state
  */
 export async function runPresupFlow(input, opts = {}) {
+  const logger = opts.logger || defaultLogger;
+
   const state = {
     requestId: `BMC-${Date.now()}`,
     startedAt: new Date().toISOString(),
@@ -55,6 +61,13 @@ export async function runPresupFlow(input, opts = {}) {
     status: "running",
   };
 
+  logger.info({
+    event: "flow.started",
+    requestId: state.requestId,
+    channel: input.channel,
+    mode: state.mode,
+  }, "Presupuestación flow started");
+
   try {
     // 0 — Preflight + Scope
     await _recordStep(state, "scope", { mode: state.mode });
@@ -63,7 +76,7 @@ export async function runPresupFlow(input, opts = {}) {
     const intake = await _runSubAgent("IntakeClassification", {
       input,
       channel: input.channel,
-    }, state);
+    }, state, logger);
     state.artifacts.intake = intake;
 
     if (intake.prioridad === "alta" && state.mode === "profundo") {
@@ -71,17 +84,29 @@ export async function runPresupFlow(input, opts = {}) {
       const context = await _runSubAgent("ContextBuilder", {
         intake,
         useCachedEmbeddings: true,
-      }, state);
+      }, state, logger);
       state.artifacts.context = context;
 
       // 3 — Pricing & BOM Reviewer (core quality gate)
       const pricingReview = await _runSubAgent("PricingBOMReviewer", {
         context,
         proposedQuote: input,
-      }, state);
+      }, state, logger);
       state.gates.pricing = pricingReview;
 
+      logger.info({
+        event: "gate.pricing_evaluated",
+        requestId: state.requestId,
+        veredicto: pricingReview.veredicto,
+        costUsd: pricingReview.costUsd || 0,
+      }, `Pricing gate: ${pricingReview.veredicto}`);
+
       if (pricingReview.veredicto === "RECHAZAR") {
+        logger.warn({
+          event: "flow.rejected_by_pricing",
+          requestId: state.requestId,
+        }, "Flow rejected by Pricing & BOM Reviewer gate");
+
         return _closeFlow(state, {
           status: "rejected_by_pricing",
           reason: pricingReview,
@@ -94,10 +119,22 @@ export async function runPresupFlow(input, opts = {}) {
       layout: "simple-carbon",
       quoteId: state.requestId,
       version: 1,
-    }, state);
+    }, state, logger);
     state.gates.pdf = pdfGate;
 
+    logger.info({
+      event: "gate.pdf_evaluated",
+      requestId: state.requestId,
+      veredicto: pdfGate.veredicto,
+    }, `PDF Gatekeeper: ${pdfGate.veredicto}`);
+
     if (pdfGate.veredicto === "FAIL") {
+      logger.warn({
+        event: "flow.escalated_pdf_gate",
+        requestId: state.requestId,
+        issues: pdfGate.problemas,
+      }, "Flow escalated due to PDF Gatekeeper failure");
+
       return _escalate(state, {
         gate: "pdf",
         issues: pdfGate.problemas,
@@ -120,8 +157,16 @@ export async function runPresupFlow(input, opts = {}) {
       pdfInfo: state.artifacts?.pdf || null,
       calcSnapshot: input.calcState || state.artifacts?.context || null,
       userId: input.userId || state.input?.userId || null,
-    }, state);
+    }, state, logger);
     state.artifacts.approvalTask = approvalTask;
+
+    logger.info({
+      event: "approval.requested",
+      requestId: state.requestId,
+      taskId: approvalTask?.id,
+      status: approvalTask?.status,
+      prioridad: approvalTask?.prioridad,
+    }, "Approval task created (or fallback metadata)");
 
     // 6 — Close flow
     return _closeFlow(state, {
@@ -136,6 +181,13 @@ export async function runPresupFlow(input, opts = {}) {
       stack: err.stack?.slice(0, 500),
     };
     await _recordStep(state, "error", state.error);
+
+    logger.error({
+      event: "flow.error",
+      requestId: state.requestId,
+      error: err.message,
+    }, "Presupuestación flow failed");
+
     return state;
   }
 }
@@ -144,8 +196,14 @@ export async function runPresupFlow(input, opts = {}) {
  * Internal helper to run a sub-agent (prompt module or delegated logic).
  * In v1 this mostly calls through existing agent infrastructure + prompt templates.
  */
-async function _runSubAgent(name, input, state) {
+async function _runSubAgent(name, input, state, logger = defaultLogger) {
   const t0 = Date.now();
+
+  logger.info({
+    event: "subagent.started",
+    requestId: state.requestId,
+    subagent: name,
+  }, `Sub-agent started: ${name}`);
 
   let result;
 
@@ -173,6 +231,7 @@ async function _runSubAgent(name, input, state) {
         artifacts: input.artifacts,
         calcSnapshot: input.calcSnapshot,
         pdfInfo: input.pdfInfo,
+        logger,
       });
       break;
 
@@ -184,11 +243,21 @@ async function _runSubAgent(name, input, state) {
   const cost = result?.costUsd || 0;
   state.totalCostUsd = (state.totalCostUsd || 0) + cost;
 
+  const durationMs = Date.now() - t0;
+
   await _recordStep(state, name.toLowerCase(), {
-    durationMs: Date.now() - t0,
+    durationMs,
     costUsd: cost,
     summary: result?.veredicto || result?.flujo || "ok",
   });
+
+  logger.info({
+    event: "subagent.completed",
+    requestId: state.requestId,
+    subagent: name,
+    durationMs,
+    costUsd: cost,
+  }, `Sub-agent completed: ${name}`);
 
   return result;
 }
@@ -264,6 +333,9 @@ function _closeFlow(state, outcome) {
   // Always trigger Post-Mortem & Learning
   // (in real impl this would schedule a background job)
   schedulePostMortem(state, outcome);
+
+  // Note: logger is not in scope here, but the caller already logged key events.
+  // We keep trace as the primary structured artifact returned to the caller.
 
   return state;
 }

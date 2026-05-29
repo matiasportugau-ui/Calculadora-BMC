@@ -39,6 +39,7 @@ router.post('/run', async (req, res) => {
       });
     }
 
+    // Pass request-scoped pino logger (provided by pino-http middleware) when available
     const result = await runPresupFlow(
       {
         channel: channel || 'manual',
@@ -47,6 +48,7 @@ router.post('/run', async (req, res) => {
       },
       {
         mode: mode || 'ligero',
+        logger: req.log ? req.log.child({ component: 'presup-orchestrator' }) : undefined,
       }
     );
 
@@ -60,7 +62,7 @@ router.post('/run', async (req, res) => {
       gates: result.gates,
     });
   } catch (err) {
-    console.error('[presupOrchestrator] Error en /run:', err);
+    (req.log || console).error({ err, route: '/api/internal/presup/run' }, 'Error executing presup flow');
     res.status(500).json({
       ok: false,
       error: err.message || 'Error interno del orchestrator',
