@@ -213,7 +213,7 @@ router.post("/agent/autolearn", requireDevModeAuthMiddleware, async (req, res) =
     if (!Array.isArray(turns) || turns.length < 2) {
       return res.status(400).json({ ok: false, error: "turns array required (min 2)" });
     }
-    const pairs = await extractLearnablePairs(turns);
+    const pairs = await extractLearnablePairs(turns, { source: "manual_autolearn", convId: conversationId || null });
     const added = pairs.map((p) =>
       addTrainingEntry({
         question: p.question,
@@ -221,10 +221,10 @@ router.post("/agent/autolearn", requireDevModeAuthMiddleware, async (req, res) =
         badAnswer: p.badAnswer || "",
         category: p.category || "conversational",
         context: p.rationale || "",
-        source: "autolearned",
+        source: p.source || "autolearned",
         status: p.confidence >= 0.92 ? "active" : "pending",
         confidence: p.confidence,
-        convId: conversationId || null,
+        convId: p.convId || conversationId || null,
       })
     );
     const autoApproved = added.filter((e) => e.status === "active").length;

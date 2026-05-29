@@ -3,8 +3,9 @@
  * Uso desde scripts o rutas que necesiten un único completion sin duplicar lógica.
  */
 import { config } from "../config.js";
+import { getProviderChain, resolveModel, getApiKey, FAST_DEFAULT_MODELS, estimateCostUSD } from "./aiProviderConfig.js";
 
-const DEFAULT_RANKING = ["grok", "claude", "openai", "gemini"];
+const DEFAULT_RANKING = getProviderChain(true); // prefer fast models for completion paths
 
 /**
  * @param {object} opts
@@ -24,10 +25,10 @@ export async function callAiCompletion({
 }) {
   const chain = provider ? [provider] : ranking;
   const apiKeys = {
-    claude: config.anthropicApiKey,
-    openai: config.openaiApiKey,
-    grok: config.grokApiKey,
-    gemini: config.geminiApiKey,
+    claude: getApiKey("claude"),
+    openai: getApiKey("openai"),
+    grok: getApiKey("grok"),
+    gemini: getApiKey("gemini"),
   };
 
   const errors = [];
@@ -41,12 +42,16 @@ export async function callAiCompletion({
 
     try {
       let text = "";
+      let msg = null;
+      let completion = null;
+
+      const model = resolveModel(p, undefined, true); // prefer fast models for these paths
 
       if (p === "claude") {
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
         const anthropic = new Anthropic({ apiKey });
-        const msg = await anthropic.messages.create({
-          model: "claude-haiku-4-5-20251001",
+        msg = await anthropic.messages.create({
+          model,
           max_tokens: maxTokens,
           system: systemPrompt,
           messages: [{ role: "user", content: userMessage }],
@@ -55,8 +60,8 @@ export async function callAiCompletion({
       } else if (p === "openai") {
         const { default: OpenAI } = await import("openai");
         const openai = new OpenAI({ apiKey });
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+        completion = await openai.chat.completions.create({
+          model,
           max_tokens: maxTokens,
           messages: [
             { role: "system", content: systemPrompt },
@@ -67,8 +72,8 @@ export async function callAiCompletion({
       } else if (p === "grok") {
         const { default: OpenAI } = await import("openai");
         const grok = new OpenAI({ apiKey, baseURL: "https://api.x.ai/v1" });
-        const completion = await grok.chat.completions.create({
-          model: "grok-3-mini",
+        completion = await grok.chat.completions.create({
+          model,
           max_tokens: maxTokens,
           messages: [
             { role: "system", content: systemPrompt },
@@ -79,12 +84,23 @@ export async function callAiCompletion({
       } else if (p === "gemini") {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genai = new GoogleGenerativeAI(apiKey);
-        const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-        const result = await model.generateContent(`${systemPrompt}\n\n${userMessage}`);
+        const modelInstance = genai.getGenerativeModel({ model });
+        const result = await modelInstance.generateContent(`${systemPrompt}\n\n${userMessage}`);
         text = result.response.text() || "";
       }
 
       if (text.trim()) {
+        const usage = completion?.usage || msg?.usage || {};
+        const cost = estimateCostUSD(p, model, usage);
+        // TODO: thread pino logger here once cost-telemetry module exists
+        console.log(JSON.stringify({
+          event: "ai_completion",
+          provider: p,
+          model,
+          input_tokens: usage.input_tokens || usage.prompt_tokens || 0,
+          output_tokens: usage.output_tokens || usage.completion_tokens || 0,
+          estimated_cost_usd: cost,
+        }));
         return { text: text.trim(), provider: p };
       }
       errors.push(`${p}: empty response`);

@@ -31,6 +31,28 @@ import { mapOrigenToSurface } from "../lib/kbSurface.js";
 import { isAiGatewayEnabled, generateTextViaGateway, generateObjectViaGateway, DEFAULT_PROVIDER_ORDER } from "../lib/aiGatewayClient.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
 import { makeRequireEmailIngestAuth } from "../lib/emailIngestAuth.js";
+import {
+  estimateCostUSD,
+  resolveModel,
+  getExtractorModel,
+  FAST_DEFAULT_MODELS,
+} from "../lib/aiProviderConfig.js";
+
+/**
+ * Structured logging for AI calls (tokens + rough cost).
+ * Helps with training cost visibility and operational observability.
+ */
+function logAiCall(eventName, provider, model, usage = {}) {
+  const cost = estimateCostUSD(provider, model, usage);
+  console.log(JSON.stringify({
+    event: eventName,
+    provider,
+    model,
+    input_tokens: usage.input_tokens ?? usage.prompt_tokens ?? 0,
+    output_tokens: usage.output_tokens ?? usage.completion_tokens ?? 0,
+    estimated_cost_usd: cost,
+  }));
+}
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -2286,22 +2308,26 @@ export default function createBmcDashboardRouter(config) {
       try {
         let respuesta = "";
 
+        // Usar modelos centralizados (rápidos/baratos para herramientas CRM)
+        const model = resolveModel(p, undefined, true);
+
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001",
+            model,
             max_tokens: 300,
             system: systemPrompt,
             messages: [{ role: "user", content: userMsg }],
           });
           respuesta = msg.content[0]?.text || "";
+          logAiCall("ai_suggest_response", p, model, msg.usage || {});
 
         } else if (p === "openai") {
           const { default: OpenAI } = await import("openai");
           const openai = new OpenAI({ apiKey });
           const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model,
             max_tokens: 300,
             messages: [
               { role: "system", content: systemPrompt },
@@ -2309,12 +2335,13 @@ export default function createBmcDashboardRouter(config) {
             ],
           });
           respuesta = completion.choices[0]?.message?.content || "";
+          logAiCall("ai_suggest_response", p, model, completion.usage || {});
 
         } else if (p === "grok") {
           const { default: OpenAI } = await import("openai");
           const grok = new OpenAI({ apiKey, baseURL: "https://api.x.ai/v1" });
           const completion = await grok.chat.completions.create({
-            model: "grok-3-mini",
+            model,
             max_tokens: 300,
             messages: [
               { role: "system", content: systemPrompt },
@@ -2322,13 +2349,15 @@ export default function createBmcDashboardRouter(config) {
             ],
           });
           respuesta = completion.choices[0]?.message?.content || "";
+          logAiCall("ai_suggest_response", p, model, completion.usage || {});
 
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}`);
           respuesta = result.response.text() || "";
+          logAiCall("ai_suggest_response", p, model, {});
         }
 
         if (respuesta) return res.json({ ok: true, respuesta, provider: p });
@@ -2399,12 +2428,15 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
       try {
+        // Modelos centralizados (rápidos para extracción estructurada)
+        const model = resolveModel(p, undefined, true);
+
         let raw = "";
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001", max_tokens: 500, system: systemPrompt,
+            model, max_tokens: 500, system: systemPrompt,
             messages: [{ role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` }],
           });
           raw = msg.content[0]?.text || "";
@@ -2412,7 +2444,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           const { default: OpenAI } = await import("openai");
           const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
           const completion = await client.chat.completions.create({
-            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini", max_tokens: 500,
+            model, max_tokens: 500,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` },
@@ -2422,8 +2454,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
           raw = result.response.text() || "";
         }
         const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -2494,12 +2526,15 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
       try {
+        // Modelos centralizados (rápidos para extracción estructurada)
+        const model = resolveModel(p, undefined, true);
+
         let raw = "";
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001", max_tokens: 500, system: systemPrompt,
+            model, max_tokens: 500, system: systemPrompt,
             messages: [{ role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` }],
           });
           raw = msg.content[0]?.text || "";
@@ -2507,7 +2542,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           const { default: OpenAI } = await import("openai");
           const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
           const completion = await client.chat.completions.create({
-            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini", max_tokens: 500,
+            model, max_tokens: 500,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` },
@@ -2517,8 +2552,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
           raw = result.response.text() || "";
         }
         const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -2633,12 +2668,15 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
       try {
+        // Modelos centralizados (rápidos para extracción estructurada)
+        const model = resolveModel(p, undefined, true);
+
         let raw = "";
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001", max_tokens: 500, system: systemPrompt,
+            model, max_tokens: 500, system: systemPrompt,
             messages: [{ role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` }],
           });
           raw = msg.content[0]?.text || "";
@@ -2646,7 +2684,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           const { default: OpenAI } = await import("openai");
           const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
           const completion = await client.chat.completions.create({
-            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini", max_tokens: 500,
+            model, max_tokens: 500,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` },
@@ -2656,8 +2694,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
           raw = result.response.text() || "";
         }
         const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -2792,22 +2830,26 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         continue;
       }
       try {
+        // Usar modelos centralizados (rápidos para herramientas de CRM)
+        const model = resolveModel(p, undefined, true);
+
         let raw = "";
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001",
+            model,
             max_tokens: 600,
             system: systemPrompt,
             messages: [{ role: "user", content: userMsg }],
           });
           raw = msg.content[0]?.text || "";
+          logAiCall("ai_draft_outbound", p, model, msg.usage || {});
         } else if (p === "openai" || p === "grok") {
           const { default: OpenAI } = await import("openai");
           const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
           const completion = await client.chat.completions.create({
-            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini",
+            model,
             max_tokens: 600,
             messages: [
               { role: "system", content: systemPrompt },
@@ -2815,12 +2857,14 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
             ],
           });
           raw = completion.choices[0]?.message?.content || "";
+          logAiCall("ai_draft_outbound", p, model, completion.usage || {});
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}`);
           raw = result.response.text() || "";
+          logAiCall("ai_draft_outbound", p, model, {});
         }
         const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
         const parsed = JSON.parse(cleaned);

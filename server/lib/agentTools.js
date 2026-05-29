@@ -34,6 +34,7 @@ import {
 } from "./followUpStore.js";
 import { recordToolCall, classifyError } from "./toolStats.js";
 import { INTENT_HINTS } from "./userIntentClassifier.js";
+import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "./rag.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -613,6 +614,25 @@ export const AGENT_TOOLS = [
         limite:  { type: "number", description: "Máx filas/cotizaciones por sección. Default 10." },
       },
       required: ["cliente"],
+    },
+  },
+
+  {
+    name: "recuperar_casos_similares",
+    description:
+      "Busca cotizaciones históricas similares usando búsqueda semántica (RAG sobre quote_embeddings en Postgres). " +
+      "Devuelve casos reales de obras pasadas (cliente, familia de panel, espesor, m², precio total, similitud). " +
+      "Úsala cuando quieras fundamentar una recomendación, precio o propuesta con datos reales: " +
+      "'en obras similares de 150-200m² con ISOROOF qué cobramos', 'qué pidieron clientes industriales como este', 'casos parecidos para justificar el flete'. " +
+      "El 'query' debe ser una descripción rica y específica de la obra actual.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Descripción de la obra/requerimiento para buscar similitud semántica (ej: 'techo 180m2 ISOROOF_PLUS 100mm dos aguas cliente galpón industrial Montevideo')" },
+        k: { type: "number", description: "Máximo de casos a devolver. Default 5, máximo 10." },
+        threshold: { type: "number", description: "Similitud mínima requerida (0.4-0.95). Default 0.65" },
+      },
+      required: ["query"],
     },
   },
 
@@ -1608,6 +1628,35 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
           ? "No hay datos disponibles para este cliente (CRM/registry no configurados o sin matches)."
           : null,
       });
+    }
+
+    if (name === "recuperar_casos_similares") {
+      const query = String(input?.query || "").trim();
+      if (!query || query.length < 3) {
+        return JSON.stringify({ ok: false, error: "query es requerido (descripción rica de la obra actual, mínimo 3 caracteres)" });
+      }
+      const k = Math.max(1, Math.min(10, Number(input?.k || 5)));
+      const threshold = Math.max(0.4, Math.min(0.95, Number(input?.threshold || 0.65)));
+
+      try {
+        const results = await retrieveSimilarQuotes(query, k, threshold);
+        const contexto = formatRetrievedContextForPrompt(results);
+
+        return JSON.stringify({
+          ok: true,
+          query,
+          k,
+          threshold,
+          count: results.length,
+          cases: results,
+          contexto_markdown: contexto,   // ya formateado, listo para mostrar al usuario o razonar
+          nota: results.length === 0
+            ? "No se encontraron casos con suficiente similitud (RAG puede estar desactivado o no hay datos históricos similares)."
+            : null,
+        });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: `Error consultando casos similares: ${err.message}` });
+      }
     }
 
     if (name === "wolfboard_pendientes" || name === "wolfboard_export") {

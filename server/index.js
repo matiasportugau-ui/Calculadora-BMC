@@ -715,15 +715,15 @@ async function processWaConversation(chatId, conv) {
         setImmediate(() => {
           const waTurns = conv.messages.map((m) => ({ role: "user", content: m.text }));
           if (ai.ok && ai.respuesta) waTurns.push({ role: "assistant", content: ai.respuesta });
-          extractLearnablePairs(waTurns)
+          extractLearnablePairs(waTurns, { source: "wa", convId: chatId })
             .then((pairs) => {
               for (const p of pairs) {
                 addTrainingEntry({
                   question: p.question, goodAnswer: p.goodAnswer,
                   badAnswer: p.badAnswer || "", category: p.category || "conversational",
-                  context: `[WA] ${p.rationale || ""}`, source: "autolearned",
+                  context: `[WA] ${p.rationale || ""}`, source: p.source || "autolearned",
                   status: p.confidence >= 0.92 ? "active" : "pending",
-                  confidence: p.confidence, convId: chatId,
+                  confidence: p.confidence, convId: p.convId || chatId,
                 });
               }
               if (pairs.length > 0) logger.info(`[WA] autolearn: ${pairs.length} KB candidates from ${chatId}`);

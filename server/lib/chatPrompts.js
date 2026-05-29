@@ -532,6 +532,9 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 **Historial agregado:**
 - \`historial_cliente\` — un solo call que combina buscar_cliente_crm + listar_cotizaciones_recientes para un cliente dado. Usar cuando el usuario pide "historial de Juan" / "qué tenemos del cliente X" — más eficiente que llamar las dos por separado.
 
+**Casos históricos (RAG):**
+- \`recuperar_casos_similares\` — busca en la base de cotizaciones reales (RAG semántico). Pasa una query descriptiva de la obra actual ("techo 200m² ISOROOF_PLUS 100mm cliente galpón"). Devuelve casos parecidos con precios reales pagados, paneles usados y similitud. Úsala para fundamentar precios, plazos o recomendaciones con evidencia histórica ("en obras similares cobramos X").
+
 **HTML del PDF:**
 - \`obtener_pdf_html\` — retorna el HTML crudo de una cotización (no el link). Para inspección, traducción, branding override. Para compartir con el cliente preferí pdf_url.
 

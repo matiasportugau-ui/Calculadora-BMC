@@ -50,6 +50,13 @@ import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
 import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
 import { getIvaPct } from "../lib/policyLoader.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
+import {
+  ALLOWED_MODELS as CENTRAL_ALLOWED_MODELS,
+  PROVIDER_LABELS as CENTRAL_PROVIDER_LABELS,
+  resolveModel as centralResolveModel,
+  buildAiOptionsResponse,
+  estimateCostUSD,
+} from "../lib/aiProviderConfig.js";
 
 const router = Router();
 
@@ -57,36 +64,9 @@ const router = Router();
 const _autolearned = new Set();
 
 const SAFE_MODEL_ID = /^[a-zA-Z0-9._\-]{1,80}$/;
-/** @type {Record<string, Set<string>>} */
-const ALLOWED_MODELS = {
-  claude: new Set([
-    "claude-opus-4-7",
-    "claude-opus-4-6",
-    "claude-sonnet-4-6",
-    "claude-haiku-4-5-20251001",
-    "claude-sonnet-4-5-20250929",
-    "claude-sonnet-4-20250514",
-    "claude-3-5-haiku-20241022",
-    "claude-3-5-sonnet-20241022",
-    "claude-3-opus-20240229",
-  ]),
-  openai: new Set(["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4", "o4-mini", "o3-mini"]),
-  grok: new Set(["grok-3-mini", "grok-3", "grok-2-latest", "grok-2-vision-1212", "grok-2-1212"]),
-  gemini: new Set([
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
-    "gemini-1.5-pro",
-  ]),
-};
-
-const PROVIDER_LABELS = {
-  claude: "Claude (Anthropic)",
-  openai: "OpenAI",
-  grok: "Grok (xAI)",
-  gemini: "Gemini (Google)",
-};
+// Models and labels now come from the central aiProviderConfig.js (single source of truth)
+const ALLOWED_MODELS = CENTRAL_ALLOWED_MODELS;
+const PROVIDER_LABELS = CENTRAL_PROVIDER_LABELS;
 
 function isSafeModelId(id) {
   return typeof id === "string" && SAFE_MODEL_ID.test(id);
@@ -96,7 +76,7 @@ function resolveModelForProvider(provider, requested, configuredDefault) {
   const def =
     configuredDefault && isSafeModelId(String(configuredDefault))
       ? String(configuredDefault)
-      : [...(ALLOWED_MODELS[provider] || [])][0] || "gpt-4o-mini";
+      : centralResolveModel(provider, undefined, false);
   if (!requested || !String(requested).trim()) return def;
   const r = String(requested).trim();
   if (!isSafeModelId(r)) return def;
@@ -117,34 +97,9 @@ function modelsForProviderUi(provider, defaultModel) {
 
 /** GET /api/agent/ai-options — which providers/models the server can use (no secrets). */
 router.get("/agent/ai-options", (_req, res) => {
-  const defs = {
-    claude: config.anthropicChatModel,
-    openai: config.openaiChatModel,
-    grok: config.grokChatModel,
-    gemini: config.geminiChatModel,
-  };
-  const keys = {
-    claude: !!config.anthropicApiKey,
-    openai: !!config.openaiApiKey,
-    grok: !!config.grokApiKey,
-    gemini: !!config.geminiApiKey,
-  };
-  const providers = [];
-  for (const id of ["claude", "openai", "grok", "gemini"]) {
-    if (!keys[id]) continue;
-    const defaultModel = resolveModelForProvider(id, undefined, defs[id]);
-    providers.push({
-      id,
-      label: PROVIDER_LABELS[id] || id,
-      defaultModel,
-      models: modelsForProviderUi(id, defaultModel),
-    });
-  }
-  res.json({
-    ok: true,
-    autoOrder: ["claude", "grok", "gemini", "openai"].filter((p) => keys[p]),
-    providers,
-  });
+  // Now powered by the central config for consistency across the entire AI stack
+  const response = buildAiOptionsResponse();
+  res.json(response);
 });
 
 /**
@@ -202,6 +157,7 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "listar_cotizaciones_recientes",
   "obtener_cotizacion_por_id",
   "obtener_pdf_html",
+  "recuperar_casos_similares",
   // Wolfboard hub — all routes are admin-only and the underlying router
   // already enforces requireAuth. We mirror that gate at the MCP entry
   // so external clients can't poll pendientes / export without the token.
@@ -1047,6 +1003,23 @@ router.post("/agent/chat", async (req, res) => {
         if (req.log) req.log.info(turnLog, "chat_turn");
         else console.log(JSON.stringify(turnLog));
 
+        // Structured cost observability for the primary AI functionality path
+        const chatCost = estimateCostUSD(provider, resolvedModel, {
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+        });
+        const costLog = {
+          event: "chat_turn_cost",
+          provider,
+          model: resolvedModel,
+          inputTokens,
+          outputTokens,
+          estimated_cost_usd: chatCost,
+          conversationId,
+        };
+        if (req.log) req.log.info(costLog, "chat_turn_cost");
+        else console.log(JSON.stringify(costLog));
+
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {
           logConversationTurn(conversationId, {
@@ -1116,7 +1089,7 @@ router.post("/agent/chat", async (req, res) => {
           }
           const fullTurns = [...allTurns, { role: "assistant", content: visibleAssistantText }];
           setImmediate(() => {
-            extractLearnablePairs(fullTurns)
+            extractLearnablePairs(fullTurns, { source: "panelin_chat", convId: conversationId })
               .then((pairs) => {
                 for (const p of pairs) {
                   addTrainingEntry({
@@ -1125,10 +1098,10 @@ router.post("/agent/chat", async (req, res) => {
                     badAnswer: p.badAnswer || "",
                     category: p.category || "conversational",
                     context: p.rationale || "",
-                    source: "autolearned",
+                    source: p.source || "autolearned",
                     status: p.confidence >= 0.92 ? "active" : "pending",
                     confidence: p.confidence,
-                    convId: conversationId,
+                    convId: p.convId || conversationId,
                   });
                 }
                 if (pairs.length > 0) {
