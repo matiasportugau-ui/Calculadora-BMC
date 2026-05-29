@@ -563,3 +563,22 @@ CREATE INDEX idx_quotes_expires_at ON quotes(expires_at);
 
 **Next step:** Prioritize Phase 1 implementation (2-3 days) to solve immediate pain of version overwriting.
 
+
+---
+
+## 2026-05-27 Follow-up Improvements (executed in one session)
+
+**Major progress on PDF generator area:**
+
+1. **Default changed** from heavy 'bmc-pdf' → 'simple-carbon' (lightweight, recommended).
+2. Legacy templates now visually marked as "(legacy)" in all UI selectors (main calculator + Drive panel).
+3. `buildQuotationModel` now returns `quoteId`, `version`, `createdBy`, `generatedAt`.
+4. All main `simple-*` templates updated to display versioning info in the footer.
+5. `pdfGenerator.js` now logs detailed size + timing metrics on both server and fallback paths.
+6. `server/routes/pdf.js` accepts optional `layout` + `quoteId`, logs generation metadata, and returns `X-PDF-Generation-Time` header.
+7. Python optimizer script header updated to mark it as legacy support only (new quotes should not need it).
+
+The heavy template + external optimizer path is now de-emphasized for new quotes.
+
+**Next recommended step:** Wire real `quoteId` + `version` from the quote saving / Drive flow into `buildQuotationModel` when triggering PDF generation.
+

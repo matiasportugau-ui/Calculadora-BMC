@@ -12,6 +12,34 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-27 (Phase 0 Production Readiness — Execution Started):** `en curso`. Se inició la ejecución inmediata de Phase 0 del plan de estabilización.
+
+**Acciones completadas hoy:**
+- Baseline `gate:local` capturado (exit 0; solo fallas pre-existentes conocidas en sheetsCsvGuard).
+- `smoke:prod` baseline: EXIT 0 — todos los checks de producción verdes (/health, MATRIZ CSV, suggest-response con Claude, WA, ML, etc.).
+- Safety backup tag `backup/pre-cleanup-20260527-0759` creado y pusheado.
+- Primera tanda segura de limpieza de branches ejecutada (con aprobación explícita del usuario):
+  - 7 branches antiguas `cursor/critical-bug-inspection-*` (May 5-6 2026) archivadas como tags `archive/...` y eliminadas del remoto.
+- Log oficial actualizado en `docs/team/housekeeping/cleanup-2026-05-27.md`.
+
+**Recomendación fuerte para esta semana (Phase 0):**
+**Feature freeze de 10 días hábiles** en trabajo no relacionado con estabilidad. Prioridad exclusiva a:
+- Testing de identity + tasks
+- Más limpieza de branches stale
+- Cualquier fix de debt crítico identificado en el plan
+
+Ver [`docs/team/PRODUCTION-READINESS-PLAN.md`](./PRODUCTION-READINESS-PLAN.md) para el plan completo, backlog accionable y definición de "Production State".
+
+**2026-05 (Production Readiness Plan published):** `nuevo documento canónico`. Se creó [`docs/team/PRODUCTION-READINESS-PLAN.md`](./PRODUCTION-READINESS-PLAN.md) como plan ejecutivo y backlog priorizado para llevar el proyecto a un estado de producción estable y de bajo riesgo en 8–10 semanas. El plan define:
+
+- Definición clara de "Production State" (7 criterios objetivos).
+- Evaluación actual por área con gap size y prioridad.
+- Roadmap en 4 fases (0–3) con entregables concretos.
+- Backlog priorizado con ~15 tareas accionables (IDs P1-xx / P2-xx / P3-xx), estimaciones de esfuerzo, dueños sugeridos y dependencias.
+- Métricas de éxito y riesgos.
+
+Este documento pasa a ser la fuente única de verdad para el esfuerzo de estabilización. Se recomienda referenciarlo en todas las sesiones de agente hasta completar Phase 2 como mínimo. **Próximos pasos inmediatos:** baseline de gates, limpieza agresiva de branches stale, y freeze de features no-críticas por 10 días hábiles.
+
 **2026-05-26 PM (Audit defensivo + Phase A cleanup):** `hecho confirmado`. Pause de 5 días post último merge OAuth con 7+ ships acumulados sin verificación formal. Usuario solicitó audit defensivo completo pre-nuevos cambios. Tres Explore agents corrieron en paralelo (work-areas, regression-risk, tooling-ecosystem) y produjeron un mapa concreto. **Hallazgos críticos:** los 5 archivos más modificados del último mes (`server/routes/tasks.js` 6×, `tasksSync.js` 3×, `tasksOAuth.js` 3×, `server/lib/userActivityLog.js` 3×, `googleTasksClient.js` 3×) tienen **CERO tests unitarios**; `scripts/smoke-prod-api.mjs` no cubre `/auth/identity/*`, `/auth/tasks/*`, `/api/tasks/*`, `/api/me/activity*`, ni `/api/admin/users/*`; `pre-deploy` no corre tests (solo lint+keys); `test:api` no corre en CI (solo local). Plan tiered de 4 fases (A=cleanup, B=tests hot-spots, C=CI/gates reinforce, D=strategic deps+visual diff) escrito en `~/.claude/plans/acceder-con-google-gentle-ullman.md`. **Phase A ejecutada:** [PR #248](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/248) (env drift fix mío, 5 días viejo) descubierto SUPERSEDED por [PR #252](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/252) durante el intento de rebase — `.env.example` ya documentaba `GOOGLE_TASKS_REDIRECT_URI` (línea 392) y `ACTIVITY_LOG_ORPHAN_TTL_HOURS` (línea 411). Env-drift CI verde en main HEAD `3779ebc`. **#248 cerrada sin merge**, branch + worktree purgadas. [PR #250](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/250) (dependabot `qs` 6.15.0→6.15.2) mergeada vía `gh pr merge --admin --rebase --delete-branch` (auto-merge no habilitado en el repo, patch SemVer = bajo riesgo) — commit `6d50ddd`. **Worktrees cleanup:** `env-drift-allowlist-2-vars` y `tareas-write-flow-fixes` purgadas (bases en main, sin WIP); `finanzas-hub-integration` **INTENCIONALMENTE preservada** — 7 archivos modificados + nuevo `src/components/hub/FinanzasModule.jsx` = active WIP de otra sesión paralela. **Vercel CLI** upgrade 51.2.1 → 54.5.0. **Runbook nuevo** [`docs/team/runbooks/known-baseline-failures.md`](./runbooks/known-baseline-failures.md) cataloga los failures acknowledged (sheetsCsvGuard tab/CR prefixes, agentTranscribe pending re-verify, ActivityTracker:30 react-hooks/purity ya parcialmente resuelto en `c514a7f`) para que devs nuevos no los confundan con regresiones reales. **Lección persistente** guardada en `~/.claude/projects/-Users-matias/memory/feedback-stale-pr-superseded.md`: branches viejas (>3 días) pueden ser silently superseded por trabajo paralelo en main — SIEMPRE rebase + diff vs main ANTES de mergear, sin excepciones. Phases B/C/D agendadas pero **NO ejecutadas** (Phase B = tests para hot-spots `googleTasksClient`/`tasksOAuth`/`tasksSync`/`userActivityLog` + Playwright para `UserAdminModule`/`HistorialTab`/`AnalyticsModule`; Phase C = CI/gates reinforce con `test:api` + pre-commit hook; Phase D = strategic deps auditor + visual diff harness). **Pendientes operador:** ninguno nuevo. **Pendiente triage en próxima sesión:** 25 DRAFT PRs (16 mías + 9 Cursor) candidatas a `bmc-branch-cleanup` skill.
 
 **2026-05-21 N (Google OAuth — fix `redirect_uri_mismatch` en login interactivo):** `hecho confirmado`. Desbloqueado el login con Google de la SPA — desde el lanzamiento del registro abierto (2026-05-20) cualquier login interactivo daba "Acceso bloqueado · Error 400: redirect_uri_mismatch" mientras las sesiones cacheadas seguían vivas (refresh backend funcional vía `client_secret`). Diagnóstico end-to-end vía Playwright contra prod capturó la URL OAuth real: `client_id=642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3` + `origin=https://calculadora-bmc.vercel.app` + `redirect_uri=gis_transform` + `gsiwebsdk=gis_attributes` → flow GIS Web SDK popup. **Causa raíz:** OAuth Client en GCP `chatbot-bmc-live` no tenía `https://calculadora-bmc.vercel.app` registrado en **Authorized JavaScript origins** (NO en redirect URIs — son listas separadas; GIS popup expande internamente `gis_transform` a `storagerelay://` validado contra JS origins). **Fix aplicada por operador:** Console GCP → OAuth Client → JS origins + redirect URIs `+= https://calculadora-bmc.vercel.app`. **Verificación E2E (Playwright 2026-05-21 06:42 UTC):** logout limpio → "Iniciar sesión" → "Continuar con Google" → accountchooser ✓ → "You're signing back in to calculadora-bmc.vercel.app" ✓ → consent summary ✓ → Continue → popup cierra ✓ → `GET googleapis.com/oauth2/v3/userinfo → 200` ✓ → `POST /api/auth/google → 200` ✓ → UI muestra el email logueado. **Capas alineadas verificadas:** `.env.local:28` = Vercel prod `VITE_GOOGLE_CLIENT_ID` = runtime prod = `-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3` (`gcloud` no puede leer/editar OAuth Clients — limitación oficial; verificado manualmente). **Docs entregados sin código de runtime modificado:** nuevo [`docs/team/runbooks/google-oauth-troubleshooting.md`](./runbooks/google-oauth-troubleshooting.md) (runbook reusable con diagnóstico Playwright + checklist GCP + por-qué del bug + apéndice gcloud limits), [`docs/team/BITACORA-MATIAS.md`](./BITACORA-MATIAS.md) creado (la convención de la memoria estaba documentada pero el archivo no existía aún), entrada cronológica del incidente con verificación. **Cleanup:** [`.env.example:262`](../../.env.example) ya no contiene el client viejo `-6rkar09l6902jog9dvnal6e6m3a44p76` hardcodeado — reemplazado por placeholder simbólico `your-google-client-id.apps.googleusercontent.com` + comentario que apunta al runbook (evita que `cp .env.example .env` revive este bug en local). **Memoria persistente añadida:** `~/.claude/projects/-Users-matias/memory/feedback-gis-redirect-uri-mismatch.md` indexa el patrón para futuras sesiones. **Pendiente menor (no bloqueante):** Privacy Policy + Terms of Service URLs en OAuth Consent Screen (Google lo notificó); estética, no funcional.
@@ -1198,3 +1226,82 @@ Todos los agentes deben consultar este plan al iniciar tareas. Al finalizar cada
 - **Sync completo:** Ejecutar "Sync project state" o full team run.
 
 **Supervisión:** El Fiscal (bmc-dgi-impositivo) fiscaliza que el equipo cumpla este protocolo según el ranking de criticidad en [fiscal/FISCAL-PROTOCOL-STATE-RANKING.md](./fiscal/FISCAL-PROTOCOL-STATE-RANKING.md). Controla que no sucedan incumplimientos; si ocurren, comunica a los involucrados para que no pase de nuevo.
+
+**2026-05-27 (PDF Generator Improvements → Production):** Shipping the PDF area stabilization work as part of Phase 0.
+
+Changes:
+- Default layout switched to lightweight `simple-carbon`
+- Heavy legacy templates deprecated in UI (optgroup + "(legacy)" labels)
+- `buildQuotationModel` now carries proper `quoteId` + `version` fields (wired from `currentBudgetCode`)
+- Client + server metrics added (`/api/pdf/metrics` endpoint live)
+- Versioning visible in PDF footers for simple templates
+- Python optimizer now documented as legacy-only
+
+Gates + pre-deploy running. Plan: Vercel prod + Cloud Run verify + smoke:prod post-deploy.
+
+
+**2026-05-27 (Production Update - PDF Generator Stabilization):** 
+- Vercel production deployed with PDF improvements (default now lightweight simple-carbon, versioning fields wired, legacy templates deprecated in UI).
+- Cloud Run deploy in progress (new `/api/pdf/metrics` endpoint + better observability for PDF generation).
+- Part of Phase 0 Production Readiness execution.
+
+
+**2026-05-27 (smoke:prod post-Vercel deploy):** Production smoke passed cleanly after frontend deploy of PDF improvements.
+- All checks green: /health, /capabilities, MATRIZ CSV, ML status, WA health, suggest-response (Claude).
+- Confirms the new default lightweight PDF templates and versioning work are live and healthy on production.
+
+
+**2026-05-27 (Backend Production Deploy in progress):** Fresh Cloud Run deploy triggered for PDF generator stabilization improvements (metrics endpoint + observability). This is part of Phase 0 Production Readiness execution. Frontend (Vercel) already live with the changes. Current prod revision before this deploy: panelin-calc-00411-fzf.
+
+
+**2026-05-28 (PDF Improvements — Production Live):** Both frontend and backend successfully updated.
+- New Cloud Run revision: panelin-calc-00412-fg4
+- New /api/pdf/metrics endpoint is live and returning data.
+- smoke:prod green.
+- All PDF generator improvements (metrics, better logging, versioning groundwork, lightweight default) are now in production.
+
+
+**2026-05-28 (Phase 0 — Disk + Branch Cleanup Wave 4 + Feature Freeze Start):** 
+- Local disk exhaustion (was ~251MiB, then 9.7Gi) resolved via aggressive safe cleanup (mac-rescue + project `mac:storage-audit` patterns): npm/brew caches, Cursor/Code history+workspace, Library/Caches, ~/.cache subs, logs, ql, tm snapshots. **+5.3Gi freed → 15Gi available** (92% usage). Git ops unblocked.
+- Safety backup tag: `backup/pre-cleanup-20260528-2249`.
+- Executed next archive wave (11 branches, data-driven via gh PRs + no open PRs): all 5 copilot/*, docs/kb-e2e-status-2026-05-08, feat/kb-multicanal-f5-admin-ui, feat/panelin-ia-policy-budget (merged), feat/tasks-module (old scaffolding), fix/csp-shopify-img (merged), worktree-env-drift-allowlist-2-vars (closed). All have `archive/` tags. Recoverable.
+- Remote branches now **27** (pre-Phase0 ~68 → 50 → 38 → **27**). Significant Phase 0 hygiene progress.
+- 10-working-day feature freeze on non-stability work now **active** (starting 2026-05-28, ~to 2026-06-11). Stability, PDF polish, branch hygiene, gates only. Documented in PRODUCTION-READINESS-PLAN, PHASE0-STATUS, housekeeping.
+- Updated: docs/team/housekeeping/cleanup-2026-05-27.md (appended Wave 4 + disk resolution), PHASE0-STATUS-2026-05-28.md, PROJECT-STATE.md.
+
+**2026-05-28 (IA / Agente — Estado real del esfuerzo de centralización y calidad de training):** 
+Análisis fresco del estado actual (código + PROJECT-STATE + git + docs):
+
+- `server/lib/aiProviderConfig.js` existe y es una buena fuente central (ALLOW lists, DEFAULT vs FAST models, resolveModel, getExtractorModel, estimateCostUSD, provider chain). Ya se usa bien en agentChat, aiCompletion y autoLearnExtractor.
+- Herramienta `recuperar_casos_similares` (RAG sobre cotizaciones históricas) existe en agentTools + está documentada en chatPrompts.
+- Logging de costo/tokens (`logAiCall` + `estimateCostUSD`) ya está en los caminos principales del agente.
+
+**Deuda real confirmada al inicio de la sesión:**
+- `server/routes/bmcDashboard.js` tenía **23 hardcodes** de modelos.
+- Observabilidad de costo incompleta en wolfboard + superAgent.
+- Prompt del tool RAG mejorable.
+- AI-INTEGRATION-CALCULADORA.md desactualizado (abril).
+
+**Progreso ejecutado (Opción A - 2026-05-28):**
+- Migración completa de `server/routes/bmcDashboard.js` a `aiProviderConfig.js`.
+- 23 hardcodes eliminados → 0.
+- Todas las rutas de IA (suggest, draft, extracción JSON) ahora usan `resolveModel(p, undefined, true)`.
+- 6+ usos de `resolveModel` en el archivo.
+- Syntax validada.
+
+**Estado post-cierre:**
+- Item "Migrar bmcDashboard" **COMPLETADO**.
+- Siguen pendientes (alta prioridad):
+  - Logging de costo en wolfboard, superAgent y bloques de extracción JSON de bmcDashboard.
+  - Enriquecer prompt + uso del tool `recuperar_casos_similares`.
+  - Actualizar docs/AI-INTEGRATION-CALCULADORA.md.
+
+Alineado con feature freeze activo.
+
+Próximos pasos recomendados:
+1. Agregar observabilidad de costo en wolfboard + superAgent.
+2. Mejorar integración del tool RAG.
+3. Registrar avances en Cambios recientes.
+
+**2026-05-27 (Phase 0 — Branch Cleanup Update):** Multiple waves of old cursor/claude/feat branches archived today as part of production hygiene. Wave 3 partially executed before local disk space exhaustion blocked further git operations. Remote branches reduced significantly. Blocker logged; production (PDF improvements) is fully live and verified.
+
