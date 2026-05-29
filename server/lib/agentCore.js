@@ -14,6 +14,12 @@ import { config } from "../config.js";
 import { buildSystemPrompt } from "./chatPrompts.js";
 import { findRelevantExamples } from "./trainingKB.js";
 import { renderExamplesBlock } from "./channelRenderer.js";
+import {
+  getProviderChain,
+  resolveModel,
+  estimateCostUSD,
+  getApiKey,
+} from "./aiProviderConfig.js";
 
 // ─── Channel rules ────────────────────────────────────────────────────────────
 
@@ -48,7 +54,8 @@ function buildChannelSection(channel) {
 
 // ─── Core call ────────────────────────────────────────────────────────────────
 
-const PROVIDER_CHAIN = ["claude", "openai", "grok", "gemini"];
+// Centralized provider chain (replaces previous hardcoded list)
+const getCentralProviderChain = () => getProviderChain();
 
 // El módulo waConfig.js es runtime-side; agentCore se usa también offline en
 // tests, así que importamos lazy para no romper si waConfig no está primed.
@@ -105,13 +112,6 @@ export async function callAgentOnce(messages, opts = {}) {
     maxTokens: override?.maxTokens || fromTask?.maxTokens || null,
   };
 
-  const apiKeys = apiKeysOverride || {
-    claude: config.anthropicApiKey,
-    openai: config.openaiApiKey,
-    grok:   config.grokApiKey,
-    gemini: config.geminiApiKey,
-  };
-
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
   const kbExamples = findRelevantExamples(lastUser, { limit: 4 });
 
@@ -123,38 +123,40 @@ export async function callAgentOnce(messages, opts = {}) {
   const channelDefault = channel === "ml" ? 120 : channel === "wa" ? 400 : 1200;
   const maxTokens = Number(eff.maxTokens) || channelDefault;
 
-  // Determinar cadena a probar:
+  // Determinar cadena a probar usando centralización:
   //   1) opts.provider explícito (legacy) → solo ese.
-  //   2) eff.provider (vía taskKey) como first-try, después PROVIDER_CHAIN.
-  //   3) PROVIDER_CHAIN completo.
+  //   2) eff.provider (vía taskKey) como first-try, después getProviderChain().
+  //   3) getProviderChain() completo.
   let chain;
   if (provider) {
     chain = [provider];
   } else if (eff.provider) {
     const internal = SCHEMA_TO_INTERNAL[eff.provider] || eff.provider;
-    chain = [internal, ...PROVIDER_CHAIN.filter((p) => p !== internal)];
+    const fullChain = getCentralProviderChain();
+    chain = [internal, ...fullChain.filter((p) => p !== internal)];
   } else {
-    chain = PROVIDER_CHAIN;
+    chain = getCentralProviderChain();
   }
   const errors = [];
 
   for (const p of chain) {
-    const apiKey = apiKeys[p];
+    const apiKey = getApiKey(p);
     if (!apiKey) { errors.push(`${p}: no key`); continue; }
-    // Si tenemos override.model y este provider matchea el override, usamos ese
-    // modelo. Si no matchea, usamos el default del provider.
+
+    // Resolver modelo usando centralización (respeta overrides + allowlists + defaults)
     const internalForOverride = SCHEMA_TO_INTERNAL[eff.provider] || eff.provider;
     const usingOverrideModel = eff.model && p === internalForOverride;
+    const requestedModel = usingOverrideModel ? eff.model : null;
+    const modelUsed = resolveModel(p, requestedModel, false); // prefer high-quality for interactive
 
     const t0 = Date.now();
     try {
       let text = "";
-      let modelUsed = "";
+      let usage = {};
 
       if (p === "claude") {
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
         const client = new Anthropic({ apiKey });
-        modelUsed = usingOverrideModel ? eff.model : (config.anthropicChatModel || "claude-haiku-4-5-20251001");
         const params = {
           model: modelUsed,
           max_tokens: maxTokens,
@@ -164,11 +166,11 @@ export async function callAgentOnce(messages, opts = {}) {
         if (eff.temperature != null) params.temperature = eff.temperature;
         const msg = await client.messages.create(params);
         text = msg.content?.[0]?.text || "";
+        usage = msg.usage || {};
 
       } else if (p === "openai") {
         const { default: OpenAI } = await import("openai");
         const client = new OpenAI({ apiKey });
-        modelUsed = usingOverrideModel ? eff.model : (config.openaiChatModel || "gpt-4o-mini");
         const params = {
           model: modelUsed,
           max_tokens: maxTokens,
@@ -177,11 +179,11 @@ export async function callAgentOnce(messages, opts = {}) {
         if (eff.temperature != null) params.temperature = eff.temperature;
         const r = await client.chat.completions.create(params);
         text = r.choices[0]?.message?.content || "";
+        usage = r.usage || {};
 
       } else if (p === "grok") {
         const { default: OpenAI } = await import("openai");
         const client = new OpenAI({ apiKey, baseURL: "https://api.x.ai/v1" });
-        modelUsed = usingOverrideModel ? eff.model : (config.grokChatModel || "grok-3-mini");
         const params = {
           model: modelUsed,
           max_tokens: maxTokens,
@@ -190,20 +192,36 @@ export async function callAgentOnce(messages, opts = {}) {
         if (eff.temperature != null) params.temperature = eff.temperature;
         const r = await client.chat.completions.create(params);
         text = r.choices[0]?.message?.content || "";
+        usage = r.usage || {};
 
       } else if (p === "gemini") {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genai = new GoogleGenerativeAI(apiKey);
-        modelUsed = usingOverrideModel ? eff.model : (config.geminiChatModel || "gemini-2.0-flash");
         const generationConfig = {};
         if (eff.temperature != null) generationConfig.temperature = eff.temperature;
         if (maxTokens) generationConfig.maxOutputTokens = maxTokens;
         const model = genai.getGenerativeModel({ model: modelUsed, generationConfig });
         const result = await model.generateContent(`${systemPrompt}\n\n${lastUser}`);
         text = result.response.text() || "";
+        // Gemini usage is in result.response.usageMetadata in newer SDKs
+        usage = result.response?.usageMetadata || {};
       }
 
       if (text.trim()) {
+        const cost = estimateCostUSD(p, modelUsed, usage);
+
+        // Structured cost observability (consistent with Phase 0 changes)
+        // TODO: thread pino logger here once cost-telemetry module exists
+        console.log(JSON.stringify({
+          event: "agent_core_call",
+          provider: p,
+          model: modelUsed,
+          channel,
+          latency_ms: Date.now() - t0,
+          estimated_cost_usd: cost,
+          task_key: taskKey || null,
+        }));
+
         return {
           text: text.trim(),
           provider: p,

@@ -30,6 +30,7 @@ import { appendQuoteToCrm } from "../lib/crmAppend.js";
 import { normalizePanelinRole, resolveInternalServiceActor } from "../lib/panelinInternalRbac.js";
 import { deriveOutcome } from "../lib/wolfboardOutcome.js";
 import crypto from "node:crypto";
+import { estimateCostUSD } from "../lib/aiProviderConfig.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -916,8 +917,21 @@ export function createWolfboardRouter(config) {
             system: PARAM_EXTRACT_PROMPT,
             messages: [{ role: "user", content: row.consulta }],
           });
-          const rawJson = (extractMsg.content?.[0]?.text || "").trim()
-            .replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+          let rawJson = (extractMsg.content?.[0]?.text || "").trim();
+          rawJson = rawJson.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+
+          // Cost observability for wolfboard extraction step
+          // TODO: thread pino logger here once cost-telemetry module exists
+          const extractCost = estimateCostUSD("claude", HAIKU_MODEL, extractMsg.usage || {});
+          console.log(JSON.stringify({
+            event: "wolfboard_ai_call",
+            provider: "claude",
+            model: HAIKU_MODEL,
+            estimated_cost_usd: extractCost,
+            row: row.rowNum,
+            step: "extract",
+          }));
+
           extracted = JSON.parse(rawJson);
         } catch {
           extracted = null;
@@ -947,6 +961,17 @@ export function createWolfboardRouter(config) {
             });
             response = msg.content?.[0]?.text?.trim() || "";
             method = "text";
+
+            // Cost observability for wolfboard batch (Phase A priority)
+            // TODO: thread pino logger here once cost-telemetry module exists
+            const cost = estimateCostUSD("claude", HAIKU_MODEL, msg.usage || {});
+            console.log(JSON.stringify({
+              event: "wolfboard_ai_call",
+              provider: "claude",
+              model: HAIKU_MODEL,
+              estimated_cost_usd: cost,
+              row: row.rowNum,
+            }));
             if (!response) {
               response = ERROR_MARKER;
               status = "empty_response";

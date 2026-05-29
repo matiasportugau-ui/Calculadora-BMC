@@ -12,6 +12,21 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-29 (Presupuestación Orchestrator Bootstrap — Phase 1 Foundation):** `hecho`. Se lanzó la Fase 1 del plan de automatización 100% con la creación del skill `presupuestacion-orchestrator` (Grok 4.3 Heavy). 
+
+Entregables principales:
+- `~/.grok/skills/presupuestacion-orchestrator/SKILL.md` (conductor completo con sub-agentes para pricing/BOM, PDF gate, approval routing, monitoring, etc.).
+- `docs/team/PRESUPUESTACION-ORCHESTRATOR-ARCHITECTURE.md` (arquitectura detallada post-investigación paralela de Hub/Tasks, superficie AI y patrones históricos del proyecto).
+- `docs/team/PRESUPUESTACION-ORCHESTRATOR-IMPLEMENTATION-ROADMAP.md` (roadmap en 5 fases con separación clara freeze vs post-freeze, quick wins priorizados y métricas alineadas a los targets 90%/99%).
+- `docs/team/HANDOFF-2026-05-29-ORCHESTRATOR.md` (handoff de sesión con literal next prompt).
+
+Estado actual: Phase 0 completada y pusheada (3 commits atómicos). Skill del orquestador vivo y listo para uso. Se recomienda iniciar Phase A del roadmap (limpieza de superficie AI + primeros promptfoo evals + higiene de docs).
+
+**Próximos pasos recomendados (bajo feature freeze):**
+- Migrar `agentCore.js` + wolfboard/superAgent a `aiProviderConfig` + cost logging (mayor ROI disponible).
+- Crear primeros evals en promptfoo para los gates críticos (Pricing Reviewer, Document Gatekeeper).
+- Actualizar AGENTS.md y este documento.
+
 **2026-05-27 (Phase 0 Production Readiness — Execution Started):** `en curso`. Se inició la ejecución inmediata de Phase 0 del plan de estabilización.
 
 **Acciones completadas hoy:**
