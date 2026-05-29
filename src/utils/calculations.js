@@ -775,8 +775,8 @@ export function calcTechoCompleto(inputs) {
     if (!panel.col.includes(color)) warnings.push(`Color "${color}" no disponible para ${familia}`);
     if (panel.colMax && panel.colMax[color] && espesor > panel.colMax[color]) warnings.push(`Color ${color} solo hasta ${panel.colMax[color]}mm`);
   }
-  if (largoReal > panel.lmax) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) excede máximo fabricable ${panel.lmax}m`);
-  if (largoReal < panel.lmin) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) < mínimo ${panel.lmin}m`);
+  if (largoReal > panel.lmax) return { error: `Largo real ${largoReal}m excede lmax ${panel.lmax}m para ${familia} ${espesor}mm (rango fabricable ${panel.lmin || 0}-${panel.lmax}m, pendiente ${pendiente}°) — Requiere atención manual` };
+  if (largoReal < panel.lmin) return { error: `Largo real ${largoReal}m < lmin ${panel.lmin}m para ${familia} ${espesor}mm (rango fabricable ${panel.lmin || 0}-${panel.lmax}m) — Requiere atención manual` };
 
   const paneles = calcPanelesTecho(panel, espesor, largoReal, ancho);
   if (!paneles) return { error: "Error calculando paneles" };
@@ -1265,8 +1265,8 @@ export function calcParedCompleto(inputs) {
   if (!espData) return { error: `Espesor ${espesor}mm no disponible` };
   const warnings = [];
   if (familia === "ISOPANEL_EPS" && espesor === 50) warnings.push("50mm solo para subdivisiones interiores.");
-  if (alto > panel.lmax) warnings.push(`Alto ${alto}m > máximo ${panel.lmax}m`);
-  if (alto < panel.lmin) warnings.push(`Alto ${alto}m < mínimo ${panel.lmin}m`);
+  if (alto > panel.lmax) return { error: `Alto ${alto}m excede lmax ${panel.lmax}m para ${familia} ${espesor}mm (rango fabricable ${panel.lmin || 0}-${panel.lmax}m) — Requiere atención manual` };
+  if (alto < panel.lmin) return { error: `Alto ${alto}m < lmin ${panel.lmin}m para ${familia} ${espesor}mm (rango fabricable ${panel.lmin || 0}-${panel.lmax}m) — Requiere atención manual` };
   if ((numEsqExt || 0) === 0) warnings.push("Sin esquinas exteriores — verificar geometría");
   if (color && !panel.col.includes(color)) warnings.push(`Color "${color}" no disponible`);
   const paneles = calcPanelesPared(panel, espesor, alto, perimetro, aberturas || []);
