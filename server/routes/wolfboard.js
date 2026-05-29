@@ -84,7 +84,7 @@ Output: {"escenario":null,"techo":null,"pared":null,"confianza":"baja","faltan":
 Input: "Isopanel e Isodec 100mm / Ver planos en Ventas Altura minima 2,5m altura máxima 2,75m (en techo encajonado sumar 40cm)"
 Output: {"escenario":"techo_fachada","techo":{"familia":"ISODEC_EPS","espesor":100,"largo":0,"ancho":0},"pared":{"familia":"ISOPANEL_EPS","espesor":100,"alto":2.75},"confianza":"media","faltan":["largo/ancho o m2 exactos","perimetro de fachada"]}
 
-Formato de salida (SOLO este JSON, sin ```):
+Formato de salida (SOLO este JSON, sin markdown code fences):
 {"escenario":"solo_techo|solo_fachada|techo_fachada|camara_frig|null","techo":{"familia":"...|null","espesor":0,"largo":0,"ancho":0,"tipoEst":"metal|hormigon|madera|null"},"pared":{"familia":"...|null","espesor":0,"alto":0,"perimetro":0},"camara":{"largo_int":0,"ancho_int":0,"alto_int":0},"confianza":"alta|media|baja","faltan":["familia","espesor","largo","ancho","alto","perimetro"]}`;
 
 const ESCENARIO_LABELS = {
