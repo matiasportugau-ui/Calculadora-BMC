@@ -46,10 +46,34 @@ const CHANNEL_RULES = {
 - Markdown habilitado (**, ##, listas).
 - Podés usar las herramientas (tools) para calcular y generar PDF.
 - Tono: experto técnico y comercial.`,
+
+  internal: `## CANAL: Presup sub-agent (interno)
+- Responde en JSON estructurado cuando el prompt lo pida.
+- Sin saludo comercial ni cierre BMC Uruguay.
+- Sé conciso y técnico.`,
 };
 
 function buildChannelSection(channel) {
   return CHANNEL_RULES[channel] || CHANNEL_RULES.chat;
+}
+
+/** Anthropic Messages API rejects role:system inside messages[] (uses top-level system). */
+function sanitizeAnthropicMessages(messages) {
+  const out = (messages || [])
+    .filter((m) => m && (m.role === "user" || m.role === "assistant"))
+    .map((m) => ({
+      role: m.role,
+      content: typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? ""),
+    }))
+    .filter((m) => m.content.trim().length > 0);
+
+  if (!out.length) {
+    out.push({ role: "user", content: "Procesá la solicitud según las instrucciones del sistema." });
+  }
+  if (out[0].role !== "user") {
+    out.unshift({ role: "user", content: "Continuá según las instrucciones del sistema." });
+  }
+  return out;
 }
 
 // ─── Core call ────────────────────────────────────────────────────────────────
@@ -101,6 +125,8 @@ export async function callAgentOnce(messages, opts = {}) {
     taskKey,
     override = null,
     apiKeys: apiKeysOverride = null,
+    systemPromptOverride = null,
+    skipKb = false,
   } = opts;
 
   // Aplicar override directo, después taskKey desde waConfig, después fallback.
@@ -113,11 +139,12 @@ export async function callAgentOnce(messages, opts = {}) {
   };
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-  const kbExamples = findRelevantExamples(lastUser, { limit: 4 });
+  const kbExamples = skipKb ? [] : findRelevantExamples(lastUser, { limit: 4 });
 
-  const kbBlock = renderExamplesBlock(kbExamples, channel);
-  const basePrompt = buildSystemPrompt(calcState, { trainingExamples: kbExamples });
-  const channelSection = buildChannelSection(channel);
+  const kbBlock = skipKb ? "" : renderExamplesBlock(kbExamples, channel);
+  const basePrompt = systemPromptOverride
+    || buildSystemPrompt(calcState, { trainingExamples: kbExamples });
+  const channelSection = systemPromptOverride ? "" : buildChannelSection(channel);
   const systemPrompt = [basePrompt, channelSection, kbBlock].filter(Boolean).join("\n\n");
 
   const channelDefault = channel === "ml" ? 120 : channel === "wa" ? 400 : 1200;
@@ -157,11 +184,12 @@ export async function callAgentOnce(messages, opts = {}) {
       if (p === "claude") {
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
         const client = new Anthropic({ apiKey });
+        const anthropicMessages = sanitizeAnthropicMessages(messages);
         const params = {
           model: modelUsed,
           max_tokens: maxTokens,
           system: systemPrompt,
-          messages,
+          messages: anthropicMessages,
         };
         if (eff.temperature != null) params.temperature = eff.temperature;
         const msg = await client.messages.create(params);
