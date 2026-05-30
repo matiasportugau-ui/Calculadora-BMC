@@ -175,6 +175,38 @@ Full per-row before/after + JSON report saved at `scripts/evals/quote-eval-repor
 
 This run confirms zero regressions on the calc engine (IVA constant, deterministic output) and that the new guardrail strings are being emitted as designed.
 
+### Final Gate + Deploy (user: "do it")
+
+On 2026-05-29 after user said "do it":
+
+- Created `claude/quote-accuracy-merged` (clean merge of both feature branches + all continuation work).
+- Gates passed on merged tree:
+  - `npm test`: 247 pass
+  - evals runner: same positive delta (11 precise incompleta, 1 calc success with verified IVA math, 1 concrete engine reason surfaced)
+- **Deploy initiated**: `./scripts/deploy-cloud-run.sh` targeting `panelin-calc` (chatbot-bmc-live / us-central1) from the merged branch.
+- Cloud Build upload started (2391 files). Full revision will be produced by the running background task.
+
+**First deploy attempt failed** (build 30f27b0d) with container startup SyntaxError: Unexpected token ')'.
+
+**First failure layer** (build 30f27b0d): The prompt text we inserted in `PARAM_EXTRACT_PROMPT` contained `sin ```):`. This broke the template literal at ESM parse time → SyntaxError. Fixed by removing the three backticks.
+
+**Second failure layer** (build b14c8b8b): After syntax fix, deploys still failed with "container failed to start and listen on PORT=8080".
+
+**Real root cause** (found in Cloud Run logs for revision panelin-calc-00418-9h4):
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/app/server/routes/lib/presupOrchestrator.js' imported from /app/server/routes/internal/presupOrchestrator.js
+
+- `server/index.js` does a top-level `import presupOrchestratorRouter from "./routes/internal/presupOrchestrator.js";`
+- That file had a wrong relative import (`'../lib/...'` instead of `'../../lib/...'`).
+- The presup code (from earlier orchestrator work) was present on main and got pulled into our merged accuracy branch.
+- This hard crash at module evaluation time is what prevented the container from ever binding to the port.
+
+**Fix applied**:
+- Corrected the import path in `server/routes/internal/presupOrchestrator.js`.
+- Committed + re-launched deploy.
+
+Note: This presup import bug was pre-existing and unrelated to the quote accuracy changes (parser + engine lmin/lmax fix). It was simply surfaced when we tried to ship on a branch that included recent main history.
+
 ---
 
 *All claims labeled. Architecture (LLM NLU only + deterministic engine) strictly respected. No price edits.*

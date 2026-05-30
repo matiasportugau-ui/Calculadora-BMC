@@ -1,0 +1,157 @@
+{
+  "runAt": "2026-05-29T20:05:12.954Z",
+  "results": [
+    {
+      "row": 2,
+      "consulta": "HM para canalónes 100 mts / mandó video",
+      "baseline": "⚠ Requiere atención manual",
+      "improved": "Consulta incompleta — falta(n): familia",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia"
+      ]
+    },
+    {
+      "row": 3,
+      "consulta": "Impermeabilizacion Loza OCN HM",
+      "baseline": "⚠ Requiere atención manual",
+      "improved": "Consulta incompleta — falta(n): familia, espesor",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia",
+        "espesor"
+      ]
+    },
+    {
+      "row": 4,
+      "consulta": "Tornillos ver si se puede presupuestar",
+      "baseline": "⚠ Requiere atención manual",
+      "improved": "Consulta incompleta — falta(n): familia, espesor",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia",
+        "espesor"
+      ]
+    },
+    {
+      "row": 5,
+      "consulta": "Perfil U Largo: 3 metros Medidas: 10 x 10 cm Espesor: 2 mm Material: A",
+      "baseline": "(empty)",
+      "improved": "Consulta incompleta — falta(n): familia",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia"
+      ]
+    },
+    {
+      "row": 6,
+      "consulta": "Isodec PIR 200mm (ofrecemos 120mm y espero respuesta de Luis sobre fab",
+      "baseline": "⚠ Requiere atención manual",
+      "improved": "Consulta incompleta — falta(n): familia",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia"
+      ]
+    },
+    {
+      "row": 7,
+      "consulta": "5.5m * 6 panel",
+      "baseline": "(empty)",
+      "improved": "Consulta incompleta — falta(n): familia, espesor, dimensiones o largo/ancho",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia",
+        "espesor",
+        "dimensiones o largo/ancho"
+      ]
+    },
+    {
+      "row": 8,
+      "consulta": "Isodec 150 / Isoroof Foil 30mm / Cuanto me sale para un techo de 5 mts",
+      "baseline": "(empty)",
+      "improved": "Consulta incompleta — falta(n): familia",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia"
+      ]
+    },
+    {
+      "row": 9,
+      "consulta": "URGENTE: iSODEC eps 150MM + iSOPANEL 100MM / 350 M2 DE CADA UNO. / Ver",
+      "baseline": "(empty)",
+      "improved": "Cotización Pared — Área: 350.55 m². Subtotal: USD 29640.77 + IVA 22%: USD 6520.9",
+      "reachedCalc": true,
+      "numericSanity": true,
+      "faltan": []
+    },
+    {
+      "row": 10,
+      "consulta": "Precio de cahapas con aislante termico  ",
+      "baseline": "(empty)",
+      "improved": "Consulta incompleta — falta(n): familia, espesor",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia",
+        "espesor"
+      ]
+    },
+    {
+      "row": 11,
+      "consulta": "Isopanel e Isodec 100mm / Ver planos en Ventas Altura minima 2,5m altu",
+      "baseline": "(empty)",
+      "improved": "⚠ Requiere atención manual — Largo real 100m excede lmax 14m para ISODEC_EPS 100",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": []
+    },
+    {
+      "row": 12,
+      "consulta": "Plegados especiales Cal 24 BECAM galvanizadas / Ver detalles y cantida",
+      "baseline": "(empty)",
+      "improved": "Consulta incompleta — falta(n): familia",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia"
+      ]
+    },
+    {
+      "row": 13,
+      "consulta": "olicitamos su cotización para la realización de trabajos en Isopanel e",
+      "baseline": "(empty)",
+      "improved": "Consulta incompleta — falta(n): familia, espesor",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia",
+        "espesor"
+      ]
+    },
+    {
+      "row": 15,
+      "consulta": "a",
+      "baseline": "(empty)",
+      "improved": "Consulta incompleta — falta(n): familia, espesor, dimensiones o largo/ancho",
+      "reachedCalc": false,
+      "numericSanity": null,
+      "faltan": [
+        "familia",
+        "espesor",
+        "dimensiones o largo/ancho"
+      ]
+    }
+  ],
+  "summary": {
+    "reached": 1,
+    "preciseIncompleta": 11,
+    "atencionWithReason": 1
+  }
+}

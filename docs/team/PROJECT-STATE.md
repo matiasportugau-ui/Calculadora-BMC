@@ -49,6 +49,25 @@ Estado actual: Phase 0 completada y pusheada (3 commits atómicos). Skill del or
 - Crear primeros evals en promptfoo para los gates críticos (Pricing Reviewer, Document Gatekeeper).
 - Actualizar AGENTS.md y este documento.
 
+**2026-05-29 (Quote Accuracy Evals + Engine Guardrails — claude/quote-accuracy-merged):** `hecho + gate fixed`. Major improvements to the wolfboard quote-batch pipeline for precise failure surfacing on terse WA/consultas.
+
+**Deliverables:**
+- Widened `PARAM_EXTRACT_PROMPT` (server/routes/wolfboard.js) with 4 real snapshot few-shots, WA abbreviations (iSODEC, Isopanel, MM variants), strict `faltan` rule, "NLU only, never invent" guard.
+- Engine correctness (src/utils/calculations.js): `calcParedCompleto` / `calcTechoCompleto` now return explicit `{error: "... excede lmax / < lmin ... — Requiere atención manual"}` instead of silent bogus numbers (BUG-001 class).
+- Guardrails in `runBatchCalc` + quote-batch: emit `"Consulta incompleta — falta(n): familia, espesor..."` and `"⚠ Requiere atención manual — <exact engine reason>"`.
+- New offline evals harness: `scripts/evals/quote-eval-runner.mjs` + `quote-eval-report.json`. On the 13-row Admin snapshot: **11 precise incompleta** (was 0), **1 calc success with correct IVA math** on previously unparsable mixed case, **1 atención with concrete lmax reason**.
+- Two production startup crashes fixed on the branch (presupOrchestrator wrong import path + triple-backtick syntax in prompt template literal).
+- Lint gate restored (fixed `onOpenBorrador` undefined + JSX escaping in DetailDrawer + parent wiring in AdminCotizacionesModule).
+- `agentTools.test.js` contract updated for new `recuperar_casos_similares` tool (31 total).
+
+**Measured delta (offline proxy on real snapshot):** Dramatic lift in debuggability. "incompleta" cells now name exact missing campos; "atención" cells carry actionable engine reason instead of generic marker. Core validation: 399 passed. Full gate:local clean after fixes.
+
+**Artifacts:** `EVALS-DELTA.md`, `scripts/evals/quote-eval-report.json`, `HANDOFF-2026-05-29-QUOTE-EVALS-RUN.md`, two atomic feature branches merged to `claude/quote-accuracy-merged`.
+
+**Next (per handoff):** With Doppler + keys, run live `/quote-batch force` on Admin copy + golden PDF judge comparison on the (a) rows. Only then engine-only deploy of panelin-calc.
+
+---
+
 **2026-05-27 (Phase 0 Production Readiness — Execution Started):** `en curso`. Se inició la ejecución inmediata de Phase 0 del plan de estabilización.
 
 **Acciones completadas hoy:**

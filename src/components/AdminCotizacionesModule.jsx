@@ -383,6 +383,7 @@ function ModuleInner() {
           busyOp={cot.busyOp}
           waToken={cot.token}
           waApiBase={getCalcApiBase()}
+          onOpenBorrador={onOpenBorrador}
         />
       )}
 

@@ -3,7 +3,9 @@
 Instrucciones para agentes de IA (Codex, Claude Code, Cursor) que trabajen en este repositorio.
 Lee este archivo antes de cualquier tarea.
 
-**Intervención humana (un paso por vez):** cuando un bloqueo sea **cm-0 / cm-1 / cm-2** (Meta, OAuth ML, ingest correo), seguí [`docs/team/HUMAN-GATES-ONE-BY-ONE.md`](docs/team/HUMAN-GATES-ONE-BY-ONE.md) — enlaces concretos, opciones de menú y “listo cuando”. Regla Cursor opcional: [`.cursor/rules/human-gates-bmc.mdc`](.cursor/rules/human-gates-bmc.mdc).
+**Intervención humana (un paso por vez):** cuando un bloqueo sea **cm-0 / cm-1 / cm-2** (Meta, OAuth ML, ingest correo), seguí [`docs/team/HUMAN-GATES-ONE-BY-ONE.md`](docs/team/HUMAN-GATES-ONE-BY-ONE.md) — enlaces concretos, opciones de menú y “listo cuando”. Regla Cursor: [`.cursor/rules/human-gates-bmc.mdc`](.cursor/rules/human-gates-bmc.mdc).
+
+**Cursor environment**: Lee [`docs/team/CURSOR-SETUP.md`](docs/team/CURSOR-SETUP.md) para entender las 18 reglas + 66 skills + 24 agents específicas de este repo, el workspace recomendado (`calculadora-bmc.code-workspace`), y el protocolo de bootstrap obligatorio.
 
 **Deploy / verificación desde Cursor:** skill del repo [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md) — adjuntarla en el chat (“usá la skill bmc-calculadora-deploy-from-cursor”) o añadir una regla de proyecto que la cite cuando pidas redeploy Cloud Run / Vercel / smoke MATRIZ.
 

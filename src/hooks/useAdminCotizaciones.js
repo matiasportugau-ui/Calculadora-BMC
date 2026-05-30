@@ -440,6 +440,94 @@ export function useAdminCotizaciones() {
     }
   }, [getBorradorInfo]);
 
+  // Move a lead to a different stage (for Kanban and quick actions)
+  const moveLeadToStage = useCallback(async (row, newStage) => {
+    if (!token || !row) return { ok: false };
+
+    setBusyOp("move-stage");
+
+    // Map friendly stage names to what the backend/sheet expects
+    const stageMap = {
+      "Pendiente": "Pendiente",
+      "Borrador": "Borrador",
+      "En Revisión": "En Revisión",
+      "Aprobado": "Aprobado",
+      "Enviado": "Enviado",
+    };
+
+    const estadoToSave = stageMap[newStage] || newStage;
+
+    const body = {
+      adminRow: row.rowNum,
+      estado: estadoToSave,
+    };
+
+    const { ok, status, data } = await apiFetch(token, "/api/wolfboard/row", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    setBusyOp(null);
+
+    if (!ok) {
+      showToast(data?.error || `Error al mover a ${newStage} (HTTP ${status})`);
+      return { ok: false };
+    }
+
+    await load();
+    showToast(`Lead movido a "${newStage}"`);
+    return { ok: true };
+  }, [token, load, showToast]);
+
+  // Regenerate Borrador using the presupOrchestrator (aggressive automation)
+  const regenerateBorrador = useCallback(async (row) => {
+    if (!token || !row?.consulta) {
+      showToast("No hay consulta para regenerar el borrador");
+      return { ok: false };
+    }
+
+    setBusyOp("regenerate-borrador");
+
+    try {
+      const base = getCalcApiBase().replace(/\/+$/, "");
+      const res = await fetch(`${base}/api/internal/presup/run`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          channel: "sheet-admin-cotizar",
+          consulta: row.consulta,
+          mode: "profundo",
+          aclaraciones: JSON.stringify({
+            cliente: row.cliente,
+            zona: row.zona,
+            responsable: row.responsable,
+          }),
+        }),
+      });
+
+      const data = await res.json();
+
+      setBusyOp(null);
+
+      if (!res.ok || !data.ok) {
+        showToast(data?.error || "Error al regenerar borrador");
+        return { ok: false };
+      }
+
+      showToast("Borrador regenerado por IA. Refrescando...");
+      await load();
+      return { ok: true, data };
+    } catch (e) {
+      setBusyOp(null);
+      showToast("Error de red al llamar al orchestrator");
+      return { ok: false };
+    }
+  }, [token, load]);
+
   /**
    * Per-row AI suggestion. Calls `/api/crm/suggest-response` (4-LLM fallback with
    * KB + history injection — see `server/routes/bmcDashboard.js:2134`).
@@ -593,6 +681,8 @@ export function useAdminCotizaciones() {
     assignTo,
     getBorradorInfo,
     openBorrador,
+    moveLeadToStage,
+    regenerateBorrador,
   };
 }
 
