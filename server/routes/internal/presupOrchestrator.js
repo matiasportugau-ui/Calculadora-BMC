@@ -11,7 +11,7 @@
  */
 
 import { Router } from 'express';
-import { runPresupFlow } from '../lib/presupOrchestrator.js';
+import { runPresupFlow } from '../../lib/presupOrchestrator.js';
 
 const router = Router();
 
