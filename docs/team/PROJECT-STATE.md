@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-26
+**Última actualización:** 2026-05-30
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,20 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-30 (Cotizar Button + Presup Orchestrator — wip/cotizar-and-presup split):** `hecho`. Monolito `f09fde1` reemplazado por 7 commits atómicos en rama `wip/cotizar-and-presup`.
+
+**Entregables:**
+- **Cotizar Button:** spec completa en `docs/google-sheets-module/COTIZAR-BUTTON-*` + índice en README del módulo; Apps Script canónico `scripts/apps-script/cotizar-button/Code.gs` + `Sidebar.html` (variantes en `archive/`).
+- **Presup orchestrator docs:** `PRESUPUESTACION-ORCHESTRATOR-ARCHITECTURE.md`, `IMPLEMENTATION-ROADMAP.md`, goal prompt; `AGENTS.md` enlaza evals + Apps Script consumer.
+- **promptfoo Phase A starter:** `evals/promptfoo/presup-orchestrator.yaml` apunta a `server/prompts/presup-orchestrator/` (sin copias duplicadas).
+- **Handoffs:** `HANDOFF-2026-05-29*` + `HANDOFF-2026-05-30-cotizar-presup-split.md`.
+
+**Estado:** Phase A parcial — evals skeleton listo; wiring PDF real desde Apps Script y CONFIG con columnas reales pendientes. Rama separada de `claude/quote-accuracy-merged` (sin merge).
+
+**Próximo:** Completar CONFIG en Code.gs, smoke Sidebar → `POST /api/internal/presup/run`, expandir promptfoo a 4–6 casos reales.
+
+---
 
 **2026-05-29 (Finanzas Legacy Dashboard 404 Fix):** `hecho`. Se identificó y corrigió la causa raíz del 404 JSON en `/finanzas` (dashboard estático del operador).
 
