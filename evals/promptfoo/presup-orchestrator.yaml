@@ -1,7 +1,7 @@
 description: Presupuestacion Orchestrator — Core Gates Regression (Phase A starter)
 prompts:
-  - file://server/prompts/presup-orchestrator/PricingBOMReviewer.md
-  - file://server/prompts/presup-orchestrator/DocumentGatekeeper.md
+  - file://../../server/prompts/presup-orchestrator/PricingBOMReviewer.md
+  - file://../../server/prompts/presup-orchestrator/DocumentGatekeeper.md
 
 providers:
   # Primary high-quality models for the orchestrator
