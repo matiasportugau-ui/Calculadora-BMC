@@ -275,6 +275,7 @@ async function _callPromptModule(moduleName, input, state) {
 
   const promptInstructions = getPromptInstructions(moduleName);
 
+  // callAgentOnce builds its own system prompt; Anthropic rejects role:system in messages[].
   const messages = [
     {
       role: "user",
