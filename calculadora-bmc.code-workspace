@@ -1,0 +1,93 @@
+{
+  "folders": [
+    {
+      "name": "★ CALCULADORA BMC (PRIMARY)",
+      "path": "."
+    },
+    {
+      "name": "docs/team (state & handoffs)",
+      "path": "docs/team"
+    },
+    {
+      "name": "server (API + agents)",
+      "path": "server"
+    },
+    {
+      "name": "src (frontend SPA)",
+      "path": "src"
+    },
+    {
+      "name": "evals + tests",
+      "path": "evals"
+    },
+    {
+      "name": "scripts",
+      "path": "scripts"
+    }
+  ],
+  "settings": {
+    "workbench.colorTheme": "Default Dark+",
+    "workbench.colorCustomizations": {
+      "activityBar.background": "#1a2332",
+      "titleBar.activeBackground": "#1a2332"
+    },
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "eslint.validate": [
+      "javascript",
+      "javascriptreact",
+      "typescript",
+      "typescriptreact"
+    ],
+    "tailwindCSS.experimental.classRegex": [
+      ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+      ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+    ],
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.git": true,
+      "**/dist": true,
+      "**/.next": true,
+      "**/.runtime": true,
+      "**/coverage": true,
+      "**/*.log": true,
+      "**/tmp": true,
+      "**/PanelRendering": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.runtime": true,
+      "**/evals/runs": true,
+      "**/*.min.js": true,
+      "**/PanelRendering": true,
+      "**/ComfyUI": false
+    },
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/dist/**": true,
+      "**/.runtime/**": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "bradlc.vscode-tailwindcss",
+      "ms-vscode.vscode-typescript-next",
+      "github.copilot-chat",
+      "ms-azuretools.vscode-docker",
+      "prisma.prisma",
+      "supabase.supabase"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": []
+  }
+}
