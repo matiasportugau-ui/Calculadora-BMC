@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --bg-page: #f8f9fb;
+      --bg-card: #ffffff;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --border: #e5e7eb;
+      --border-strong: #d1d5db;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #dbeafe;
+      --success-bg: #ecfdf5;
+      --success-text: #065f46;
+      --success-border: #a7f3d0;
+      --warning-bg: #fefce8;
+      --warning-text: #854d0e;
+      --warning-border: #fde047;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.04);
+      --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", system-ui, sans-serif;
+      background: var(--bg-page);
+      margin: 0;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-primary);
+    }
+
+    .sidebar {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .sidebar-header {
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+      color: white;
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-content {
+      padding: 14px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .row-info {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px 10px;
+      font-size: 12.5px;
+      flex-shrink: 0;
+    }
+
+    .essentials-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .chip {
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .chip.dirty {
+      background: #fefce8;
+      border-color: #fde047;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin: 4px 0;
+    }
+
+    details {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    summary {
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      background: #f8fafc;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    summary:hover { background: #f1f5f9; }
+
+    .accordion-content {
+      padding: 10px;
+      border-top: 1px solid var(--border);
+      background: white;
+    }
+
+    .clarification-item {
+      margin-bottom: 8px;
+    }
+
+    .clarification-item label {
+      display: block;
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+      font-weight: 500;
+    }
+
+    .clarification-item input[type="text"],
+    .clarification-item select,
+    .clarification-item textarea {
+      width: 100%;
+      padding: 5px 7px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+    }
+
+    .clarification-item input:focus,
+    .clarification-item select:focus,
+    .clarification-item textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: var(--focus-ring);
+    }
+
+    .main-actions {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .button {
+      width: 100%;
+      padding: 9px 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .button:hover { background: var(--primary-hover); }
+    .button.secondary {
+      background: #f1f5f9;
+      color: var(--text-primary);
+      border: 1px solid var(--border-strong);
+    }
+
+    .buyer-preview {
+      margin-top: 10px;
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex: 1;
+      min-height: 180px;
+    }
+
+    .preview-header {
+      background: #f8fafc;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11.5px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .preview-content {
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #374151;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      flex: 1;
+    }
+
+    .status {
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .status.success { background: var(--success-bg); color: var(--success-text); }
+    .status.loading { background: var(--warning-bg); color: var(--warning-text); }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span>⚡ Cotizar</span>
+    </div>
+
+    <div class="sidebar-content">
+
+      <!-- Row Info -->
+      <div class="row-info">
+        <strong>Fila:</strong> <span id="rowNumber">—</span> | 
+        <strong>Cliente:</strong> <span id="cliente">—</span>
+      </div>
+
+      <!-- Essentials (live) -->
+      <div class="essentials-bar" id="essentials-bar">
+        <span class="chip"><span id="chip-panel">—</span></span>
+        <span class="chip"><span id="chip-dims">—</span></span>
+        <span class="chip"><span id="chip-estructura">—</span></span>
+        <span class="chip"><span id="chip-modo">—</span></span>
+      </div>
+
+      <!-- Aclaraciones -->
+      <div>
+        <div class="section-title">Aclaraciones del vendedor</div>
+        <textarea id="aclaraciones" placeholder="Confirmar medidas, flete, accesorios..." 
+                  style="width:100%; height:46px; resize:vertical; font-size:12px;" 
+                  oninput="updateLive()"></textarea>
+      </div>
+
+      <!-- Accordions -->
+      <details open>
+        <summary id="sum-principal">📐 Principales</summary>
+        <div class="accordion-content">
+          <div class="clarification-item">
+            <label>Proyecto</label>
+            <select id="projectType" onchange="updateLive()">
+              <option value="techo">Solo Techo</option>
+              <option value="pared">Solo Pared</option>
+              <option value="combinado">Techo + Pared</option>
+            </select>
+          </div>
+          <div class="clarification-item">
+            <label>Panel principal</label>
+            <select id="panelType" onchange="updateLive()">
+              <option value="isoroof">Isoroof</option>
+              <option value="isodec">Isodec EPS</option>
+              <option value="isowall">Isowall PIR</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary id="sum-dims">📏 Dimensiones</summary>
+        <div class="accordion-content">
+          <div class="clarification-item">
+            <label>Espesores</label>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:12px;">
+              <label><input type="checkbox" id="esp-30" onchange="updateLive()"> 30mm</label>
+              <label><input type="checkbox" id="esp-50" checked onchange="updateLive()"> 50mm</label>
+              <label><input type="checkbox" id="esp-80" onchange="updateLive()"> 80mm</label>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <div class="clarification-item">
+              <label>Largo (m)</label><input type="text" id="largo" value="7.5" oninput="updateLive()">
+            </div>
+            <div class="clarification-item">
+              <label>Cantidad paños</label><input type="text" id="cantidad" value="7" oninput="updateLive()">
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary id="sum-estructura">🏗️ Estructura y Terminación</summary>
+        <div class="accordion-content">
+          <div class="clarification-item">
+            <label>Estructura</label>
+            <select id="estructura" onchange="updateLive()">
+              <option>Metálica</option><option>Hormigón</option><option>Mixta</option>
+            </select>
+          </div>
+          <div class="clarification-item">
+            <label>Terminación</label>
+            <select id="terminacion" onchange="updateLive()">
+              <option>Blanco lisa</option><option>Gris</option>
+            </select>
+          </div>
+          <div class="clarification-item">
+            <label>Zona</label><input type="text" id="zona" oninput="updateLive()">
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary id="sum-accesorios">🔧 Accesorios</summary>
+        <div class="accordion-content">
+          <div style="display:flex; flex-wrap:wrap; gap:6px 10px; font-size:12px;">
+            <label><input type="checkbox" id="acc-cumbrera" checked onchange="updateLive()"> Cumbreras</label>
+            <label><input type="checkbox" id="acc-canalones" checked onchange="updateLive()"> Canalones</label>
+            <label><input type="checkbox" id="acc-fijaciones" checked onchange="updateLive()"> Fijaciones</label>
+            <label><input type="checkbox" id="acc-flete" checked onchange="updateLive()"> Flete</label>
+          </div>
+        </div>
+      </details>
+
+      <div class="main-actions">
+        <button class="button" onclick="doReinterpret()">Re-interpretar con estos datos</button>
+        <button class="button secondary" onclick="toggleBuyerPreview()">Mostrar / Ocultar vista previa del comprador</button>
+      </div>
+
+      <!-- Buyer Preview -->
+      <div class="buyer-preview" id="buyer-preview" style="display:none; flex:1; min-height:160px;">
+        <div class="preview-header">
+          <strong>Vista previa para el comprador</strong>
+        </div>
+        <div id="buyer-text" class="preview-content"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let currentRowInfo = {};
+
+    function updateRowInfo() {
+      google.script.run
+        .withSuccessHandler(function(info) {
+          currentRowInfo = info;
+          document.getElementById('rowNumber').textContent = info.row || '—';
+          document.getElementById('cliente').textContent = info.cliente || '—';
+          updateLive();
+        })
+        .getActiveRowInfo();
+    }
+
+    function getFormState() {
+      return {
+        consulta: currentRowInfo.consulta || '',
+        projectType: document.getElementById('projectType')?.value || 'techo',
+        panelType: document.getElementById('panelType')?.value || 'isoroof',
+        largo: document.getElementById('largo')?.value || '',
+        cantidad: document.getElementById('cantidad')?.value || '',
+        estructura: document.getElementById('estructura')?.value || '',
+        terminacion: document.getElementById('terminacion')?.value || '',
+        zona: document.getElementById('zona')?.value || '',
+        esp30: document.getElementById('esp-30')?.checked || false,
+        esp50: document.getElementById('esp-50')?.checked || false,
+        esp80: document.getElementById('esp-80')?.checked || false,
+        accCumbrera: document.getElementById('acc-cumbrera')?.checked || false,
+        accCanalones: document.getElementById('acc-canalones')?.checked || false,
+        accFijaciones: document.getElementById('acc-fijaciones')?.checked || false,
+        accFlete: document.getElementById('acc-flete')?.checked || false,
+        aclaraciones: document.getElementById('aclaraciones')?.value || '',
+        speedMode: false
+      };
+    }
+
+    function updateLive() {
+      const state = getFormState();
+
+      // Update chips (simplified but effective)
+      const panelText = `${state.panelType} ${state.esp50 ? '50mm' : (state.esp30 ? '30mm' : '')}`;
+      document.getElementById('chip-panel').textContent = panelText.trim();
+      document.getElementById('chip-dims').textContent = `${state.cantidad || '?'}×${state.largo || '?'}m`;
+      document.getElementById('chip-estructura').textContent = state.estructura || '—';
+      document.getElementById('chip-modo').textContent = 'Normal';
+
+      // Update summaries
+      const principal = document.getElementById('sum-principal');
+      if (principal) principal.textContent = `📐 Principales — ${state.projectType} ${state.panelType}`;
+
+      const dims = document.getElementById('sum-dims');
+      if (dims) dims.textContent = `📏 Dimensiones — ${state.cantidad || '?'} paños`;
+
+      const estr = document.getElementById('sum-estructura');
+      if (estr) estr.textContent = `🏗️ Estructura y Terminación`;
+
+      const acc = document.getElementById('sum-accesorios');
+      if (acc) acc.textContent = `🔧 Accesorios`;
+
+      // Update buyer preview if visible
+      updateBuyerPreview(state);
+    }
+
+    function updateBuyerPreview(state) {
+      const container = document.getElementById('buyer-text');
+      if (!container) return;
+
+      let text = `**Presupuesto generado automáticamente basado en tu consulta**\n\n`;
+      text += `**Tu consulta original:**\n> ${state.consulta}\n\n`;
+      text += `**Qué consideramos:**\n`;
+      text += `- Proyecto: ${state.projectType}\n`;
+      text += `- Superficie: ~${state.cantidad || '?'} paños\n`;
+      text += `- Zona: ${state.zona || '—'}\n`;
+      text += `- Panel: ${state.panelType}\n`;
+      if (state.aclaraciones) text += `\n**Aclaraciones:** ${state.aclaraciones}\n`;
+      text += `\n**Total estimado:** $X.XXX USD + IVA\n\n**PDF:** [Se generará al re-interpretar]`;
+
+      container.innerHTML = text.replace(/\n/g, '<br>');
+    }
+
+    function toggleBuyerPreview() {
+      const p = document.getElementById('buyer-preview');
+      p.style.display = (p.style.display === 'none' || p.style.display === '') ? 'flex' : 'none';
+    }
+
+    function doReinterpret() {
+      const state = getFormState();
+      const btns = document.querySelectorAll('.button');
+      btns.forEach(b => b.disabled = true);
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btns.forEach(b => b.disabled = false);
+          if (result.success) {
+            alert('Borrador actualizado correctamente en la hoja.');
+            // Optionally close sidebar or refresh info
+          } else {
+            alert('Error: ' + result.message);
+          }
+        })
+        .withFailureHandler(function(err) {
+          btns.forEach(b => b.disabled = false);
+          alert('Error inesperado: ' + err);
+        })
+        .performCotizar(state);
+    }
+
+    window.onload = function() {
+      updateRowInfo();
+    };
+  </script>
+</body>
+</html>
