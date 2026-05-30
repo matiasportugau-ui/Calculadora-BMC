@@ -121,8 +121,11 @@ function performCotizar(formState) {
     const duration = Math.round((Date.now() - startTime) / 1000);
     const mode = formState.speedMode ? 'Speed' : 'Normal';
 
-    // Extraer PDF (inteligente)
-    const pdfLink = extractPdfLink(orchestratorResult);
+    // Extraer PDF (inteligente) o generar borrador vía backend + Drive
+    let pdfLink = extractPdfLink(orchestratorResult);
+    if (!pdfLink) {
+      pdfLink = generateAndUploadPDF(orchestratorResult, activeRow, formState);
+    }
 
     // === IA Intelligence: Sintetizar explicación rica usando gates + artifacts ===
     const borradorExplanation = synthesizeProfessionalExplanation(formState, orchestratorResult, pdfLink, mode);
@@ -309,33 +312,88 @@ function logCotizacion(data) {
 }
 
 /**
- * Genera el PDF y lo sube a Drive.
- * 
- * NOTA: Esta función es un placeholder.
- * Debes adaptarla según cómo generes PDFs actualmente en el proyecto.
+ * Genera el PDF borrador vía POST /api/pdf/generate y lo sube a Drive.
+ * Requiere CONFIG.PDF_DRIVE_FOLDER_ID. Si el orchestrator ya devolvió pdfLink, lo reutiliza.
  */
-function generateAndUploadPDF(orchestratorResult, rowNumber) {
-  // Ejemplo: si el orchestrator ya devuelve un PDF link o artifact
+function generateAndUploadPDF(orchestratorResult, rowNumber, formState) {
   if (orchestratorResult.artifacts && orchestratorResult.artifacts.pdfLink) {
     return orchestratorResult.artifacts.pdfLink;
   }
-  
-  // TODO: Aquí iría la lógica real de:
-  // 1. Llamar a tu endpoint de PDF (probablemente /api/pdf)
-  // 2. Subir el PDF a Drive usando DriveApp
-  // 3. Devolver el link shareable
-  
-  // Placeholder por ahora:
+
+  if (!CONFIG.PDF_DRIVE_FOLDER_ID) {
+    console.warn('[Cotizar] PDF_DRIVE_FOLDER_ID vacío — omitiendo subida a Drive');
+    return null;
+  }
+
+  const requestId = orchestratorResult.requestId || ('BMC-' + rowNumber);
+  const html = buildBorradorPdfHtml(orchestratorResult, formState, rowNumber, requestId);
+  const pdfBytes = fetchPdfBytesFromBackend(html, requestId);
+
+  if (!pdfBytes || !pdfBytes.length) {
+    console.warn('[Cotizar] No se pudo generar PDF en backend — fallback omitido');
+    return null;
+  }
+
   const folder = DriveApp.getFolderById(CONFIG.PDF_DRIVE_FOLDER_ID);
-  const fileName = `Cotizacion_Auto_Fila${rowNumber}_${new Date().toISOString().slice(0,10)}.pdf`;
-  
-  // En producción reemplazar esto por la generación real del PDF
-  const dummyBlob = Utilities.newBlob('PDF generado automáticamente - placeholder', 'application/pdf', fileName);
-  const file = folder.createFile(dummyBlob);
-  
+  const fileName = 'Cotizacion_Borrador_Fila' + rowNumber + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+  const file = folder.createFile(Utilities.newBlob(pdfBytes, 'application/pdf', fileName));
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  
   return file.getUrl();
+}
+
+/** HTML mínimo para borrador Phase A (layout simple-carbon compatible). */
+function buildBorradorPdfHtml(orchestratorResult, formState, rowNumber, requestId) {
+  const consulta = (formState && formState.consulta) || orchestratorResult.input?.consulta || '';
+  const gates = orchestratorResult.gates ? JSON.stringify(orchestratorResult.gates, null, 2) : '{}';
+  const intake = orchestratorResult.artifacts?.intake
+    ? JSON.stringify(orchestratorResult.artifacts.intake, null, 2)
+    : '';
+
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Borrador ' + requestId + '</title>' +
+    '<style>body{font-family:Arial,sans-serif;margin:40px;color:#111}h1{font-size:20px}' +
+    'pre{background:#f5f5f5;padding:12px;white-space:pre-wrap;font-size:11px}' +
+    '.meta{color:#555;font-size:12px;margin-bottom:24px}</style></head><body>' +
+    '<h1>BMC Uruguay — Presupuesto borrador (no oficial)</h1>' +
+    '<p class="meta">ID: ' + requestId + ' · Fila Admin: ' + rowNumber + ' · Generado automáticamente</p>' +
+    '<h2>Consulta</h2><p>' + escapeHtml_(consulta) + '</p>' +
+    (intake ? '<h2>Clasificación</h2><pre>' + escapeHtml_(intake) + '</pre>' : '') +
+    '<h2>Gates</h2><pre>' + escapeHtml_(gates) + '</pre>' +
+    '<p><em>Documento borrador — revisión humana requerida antes de envío al cliente.</em></p>' +
+    '</body></html>';
+}
+
+function escapeHtml_(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** POST /api/pdf/generate → bytes del PDF (null si falla o 503 Chromium). */
+function fetchPdfBytesFromBackend(html, requestId) {
+  const url = CONFIG.BACKEND_BASE_URL + '/api/pdf/generate';
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      html: html,
+      filename: 'borrador-' + requestId + '.pdf',
+      layout: 'simple-carbon',
+      quoteId: requestId
+    }),
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(url, options);
+  const code = response.getResponseCode();
+
+  if (code === 200) {
+    return response.getBlob().getBytes();
+  }
+
+  console.warn('[Cotizar] /api/pdf/generate HTTP ' + code + ': ' + response.getContentText().slice(0, 200));
+  return null;
 }
 
 /**

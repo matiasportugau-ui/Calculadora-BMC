@@ -43,7 +43,7 @@ Evidencia: `.runtime/presup-orchestrator-smoke.json`. Si `status=error` con mens
 
 ## Próximos pasos recomendados
 
-- Conectar correctamente la generación de PDF real (actualmente hay un placeholder).
+- Conectar correctamente la generación de PDF real: `generateAndUploadPDF()` llama `POST /api/pdf/generate` y sube a Drive si `PDF_DRIVE_FOLDER_ID` está seteado.
 - Definir mejor el texto de la explicación que va en columna J.
 - Agregar manejo de errores más robusto.
 - Agregar logging en una pestaña separada.
