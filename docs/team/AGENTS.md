@@ -298,7 +298,9 @@ Ver [../google-sheets-module/README.md](../google-sheets-module/README.md) (mapp
 - [SKILL.md](../../.grok/skills/presupuestacion-orchestrator/SKILL.md)
 - [PRESUPUESTACION-ORCHESTRATOR-ARCHITECTURE.md](./PRESUPUESTACION-ORCHESTRATOR-ARCHITECTURE.md)
 - [PRESUPUESTACION-ORCHESTRATOR-IMPLEMENTATION-ROADMAP.md](./PRESUPUESTACION-ORCHESTRATOR-IMPLEMENTATION-ROADMAP.md)
-- `goal-prompt-presupuestacion-orchestrator-100.md`
+- [goal-prompt-presupuestacion-orchestrator-100.md](./goal-prompt-presupuestacion-orchestrator-100.md)
+- [evals/promptfoo/README.md](../../evals/promptfoo/README.md) — regression evals (Pricing Reviewer, Document Gatekeeper)
+- [scripts/apps-script/cotizar-button/](../../scripts/apps-script/cotizar-button/README.md) — Sheets Sidebar consumer (`POST /api/internal/presup/run`)
 - Base plan: `plan_cierre_automatizacion_100_quality.md`
 
 ---
