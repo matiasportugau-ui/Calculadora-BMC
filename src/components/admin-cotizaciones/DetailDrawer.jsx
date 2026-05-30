@@ -7,7 +7,7 @@ import Tooltip from "../help/Tooltip.jsx";
 import HelpButton from "../help/HelpButton.jsx";
 import { HELP_ANCHORS } from "../help/anchors.js";
 
-export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, onRequestSuggestion, busyOp, waToken, waApiBase, onOpenBorrador }) {
+export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, onRequestSuggestion, onOpenBorrador, busyOp, waToken, waApiBase }) {
   const [respuesta, setRespuesta] = useState(row?.respuesta || "");
   const [link, setLink] = useState(row?.link || "");
   const [replay, setReplay] = useState(row?.replaySnapshotUrl || "");
