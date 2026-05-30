@@ -1010,6 +1010,12 @@ if (isDev) {
     }
   });
 }
+// Security posture: this static mount and the /api/* endpoints under
+// createBmcDashboardRouter that it depends on are currently PUBLIC. The
+// user-facing entry point is /hub/finanzas in the React SPA, which is gated
+// by RequireGrant(module="finanzas"). Locking down the static mount alone
+// would be theatre while the API endpoints remain open — both need to be
+// hardened together (separate PR). Do not add a half-measure here.
 app.use(
   "/finanzas",
   (req, res, next) => {

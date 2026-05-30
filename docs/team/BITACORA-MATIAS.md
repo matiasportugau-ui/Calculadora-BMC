@@ -58,3 +58,35 @@ Logout limpio → Iniciar sesión → Continuar con Google →
 - Plan archivado: `~/.claude/plans/acceder-con-google-gentle-ullman.md`
 - Memoria persistente: `~/.claude/projects/-Users-matias/memory/feedback-gis-redirect-uri-mismatch.md`
 - Sin commits de código — fix de configuración GCP + 4 archivos de documentación (este, runbook, PROJECT-STATE update, `.env.example` placeholder)
+
+---
+
+## 2026-05-21 PM-3 — Wire financial dashboard into the SPA at `/hub/finanzas`
+
+**Contexto:** Auditoría descubrió que el dashboard financiero (KPI Financiero, calendario de vencimientos, próximas entregas, ventas, audit log) ya estaba 100% desarrollado como SPA estática en `docs/bmc-dashboard-modernization/dashboard/` (3,489 LOC) y servido por `express.static` en `/finanzas`, pero **no estaba enlazado** desde la SPA de React. Operadores que no conocían la URL directa nunca lo veían, y el endpoint estaba sin guard de auth — anyone con la URL podía leer KPIs financieros.
+
+**Acciones:**
+- Worktree aislado: `worktree-finanzas-hub-integration`.
+- Nuevo [`src/components/hub/FinanzasModule.jsx`](../../src/components/hub/FinanzasModule.jsx) — wrapper de iframe sobre `${getCalcApiBase()}/finanzas` reutilizando el patrón ya probado en [`PanelinCalculadoraV3_legacy_inline.jsx:1898`](../../src/components/PanelinCalculadoraV3_legacy_inline.jsx). Incluye link "Pestaña nueva" para ops que quieran full-screen.
+- Nueva ruta lazy-loaded `/hub/finanzas` en [`src/App.jsx`](../../src/App.jsx) con `<Shell>` + `<RequireGrant module="finanzas" minLevel="read">` — mismo shape que `/hub/tareas`.
+- Nuevo link "Finanzas" en [`src/components/BmcModuleNav.jsx`](../../src/components/BmcModuleNav.jsx) visible sólo para `isAdmin` (mismo gating que Usuarios/Analytics).
+- `"finanzas"` agregado a ambos enums backend de módulos: `ALL_MODULES` en [`server/lib/identityAuth.js`](../../server/lib/identityAuth.js) (línea 38) y `ALLOWED_MODULES` en [`server/routes/identityMe.js`](../../server/routes/identityMe.js) (línea 109) — esto hace que el grant sea reconocido por `requireUser` y por el endpoint de access-requests respectivamente.
+- Comment block en [`server/index.js`](../../server/index.js) sobre el mount estático documentando la postura de seguridad actual.
+
+**Decisión: iframe vs port-to-React** — iframe-first. Rationale: 3,489 LOC con KPI math no trivial + coupling a la forma del Sheets → portar arriesga drift numérico; el legacy component ya probó el patrón; sin trabajo de CORS (URLs relativas dentro del iframe se quedan same-origin). Reevaluar port en 2–4 semanas según feedback de ops.
+
+**Out-of-scope (follow-up necesario):** El mount estático `/finanzas` Y los endpoints `/api/kpi-financiero`, `/api/calendario-vencimientos`, `/api/ventas`, etc. en [`server/routes/bmcDashboard.js`](../../server/routes/bmcDashboard.js) siguen siendo **públicos**. Gatekeeping sólo del mount estático mientras el API está abierto sería teatro de seguridad. Un follow-up debe gatear ambas capas juntas.
+
+**Verificación:**
+- Pendiente al cierre de esta entrada: `npm run gate:local` y smoke manual en `http://localhost:5173/hub/finanzas`.
+- Smoke esperado: con sesión + grant finanzas → iframe carga; sin grant → fallback 403 de `RequireGrant`; sin login → `AuthGateModal`.
+
+**Próximo paso:**
+- Aprobar y mergear (Phase A).
+- Phase B (eval port-a-React) — agendar revisión en 2–4 semanas según feedback de operadores sobre la costura visual.
+- Follow-up de seguridad: cerrar el gap de endpoints `/api/*` públicos en `bmcDashboard.js` (PR separado).
+
+**Refs:**
+- Plan: `~/.claude/plans/research-the-fiacnial-dashboard-expressive-perlis.md`
+- Worktree branch: `worktree-finanzas-hub-integration`
+- Patrón reusado: `PanelinCalculadoraV3_legacy_inline.jsx:1898` (iframe a `/finanzas`)

@@ -28,6 +28,10 @@ const UNSAFE_LEADING = new Set(["=", "+", "-", "@", "\t", "\r", "\n"]);
 export function sanitizeCellValue(s) {
   const v = String(s ?? "");
   if (!v) return "";
+  // Raw first char check catches \t and \r directly (trimStart() would strip them
+  // before they could be detected by the space-bypass check below).
+  if (UNSAFE_LEADING.has(v.charAt(0))) return "'" + v;
+  // Trim leading spaces to catch the " =formula" space-hiding bypass.
   const trimmed = v.trimStart();
   if (trimmed && UNSAFE_LEADING.has(trimmed.charAt(0))) return "'" + v;
   return v;

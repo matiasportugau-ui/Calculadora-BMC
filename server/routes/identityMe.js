@@ -106,7 +106,7 @@ router.patch("/api/me/notifications/:id", requireUser(), async (req, res) => {
 // ─── Access requests ───────────────────────────────────────────────────
 
 const ALLOWED_MODULES = new Set([
-  "calc", "wa", "ml", "admin", "plan-import", "agent-admin", "canales", "crm-personal",
+  "calc", "wa", "ml", "admin", "plan-import", "agent-admin", "canales", "crm-personal", "finanzas",
 ]);
 // cursor[bot] F-2: canonical level set — anything else writes garbage into
 // identity.module_grants and breaks _levelAllows reasoning silently.

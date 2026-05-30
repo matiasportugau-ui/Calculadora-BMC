@@ -44,6 +44,7 @@ const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
 const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
+const FinanzasModule = lazy(() => import("./components/hub/FinanzasModule.jsx"));
 const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
 
@@ -198,6 +199,18 @@ export default function App() {
               <RequireGrant module="tareas" minLevel="read">
                 <Suspense fallback={suspenseFallback}>
                   <TasksModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/finanzas"
+          element={
+            <Shell>
+              <RequireGrant module="finanzas" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <FinanzasModule />
                 </Suspense>
               </RequireGrant>
             </Shell>

@@ -185,6 +185,22 @@ function makeShim() {
       return { rows: tables.module_grants.filter((r) => r.user_id === user_id) };
     }
 
+    // ── module_grants insert (idempotent: ON CONFLICT DO NOTHING)
+    // Literal module/level values are baked into the SQL string, not in params —
+    // parse them directly from the SQL via regex.
+    if (norm.startsWith("insert into identity.module_grants")) {
+      const [user_id] = params;
+      const tupleRe = /\(\$\d+,\s*'([^']+)',\s*'([^']+)'\)/g;
+      let m;
+      while ((m = tupleRe.exec(sql)) !== null) {
+        const [, module, level] = m;
+        if (!tables.module_grants.find((r) => r.user_id === user_id && r.module === module)) {
+          tables.module_grants.push({ user_id, module, level });
+        }
+      }
+      return { rows: [] };
+    }
+
     // ── audit insert
     if (norm.startsWith("insert into identity.audit_log")) {
       tables.audit_log.push({ params });

@@ -43,6 +43,7 @@ export default function BmcModuleNav() {
   const calcActive = pathname === "/" || pathname.endsWith("/calculadora");
   const traktimeActive = pathname.startsWith("/hub/traktime");
   const tareasActive = pathname.startsWith("/hub/tareas");
+  const finanzasActive = pathname.startsWith("/hub/finanzas");
 
   return (
     <nav style={bar} aria-label="Módulos BMC">
@@ -67,6 +68,11 @@ export default function BmcModuleNav() {
       <Link to="/hub/marketing" style={btn(marketingActive)}>
         Market Intel
       </Link>
+      {isAdmin ? (
+        <Link to="/hub/finanzas" style={btn(finanzasActive)}>
+          Finanzas
+        </Link>
+      ) : null}
       {isAdmin ? (
         <Link to="/hub/admin/users" style={btn(pathname.startsWith("/hub/admin/users"))}>
           Usuarios

@@ -35,6 +35,7 @@ const ALL_MODULES = [
   "crm-personal",
   "tareas",
   "traktime",
+  "finanzas",
 ];
 
 const ROLE_RANK = { superadmin: 4, admin: 3, operator: 2, comprador: 1 };
