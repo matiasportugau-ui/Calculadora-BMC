@@ -1,0 +1,73 @@
+description: Presupuestacion Orchestrator — Core Gates Regression (Phase A starter)
+prompts:
+  - file://server/prompts/presup-orchestrator/PricingBOMReviewer.md
+  - file://server/prompts/presup-orchestrator/DocumentGatekeeper.md
+
+providers:
+  # Primary high-quality models for the orchestrator
+  - anthropic:messages:claude-sonnet-4-6
+  - anthropic:messages:claude-opus-4-7
+  # Fast smoke / cost checks
+  - anthropic:messages:claude-haiku-4-5-20251001
+
+defaultTest:
+  options:
+    # Use the project's central provider config philosophy
+    provider: anthropic
+
+tests:
+  # Pricing & BOM Reviewer gate (highest impact per architecture)
+  - vars:
+      input: |
+        Cliente: Metalúrgica del Sur
+        Escenario: Techo + Fachada
+        Área total: 420 m²
+        Altura: 7.5 m
+        Zona: 3 (Montevideo)
+        Tipo: Naves industriales
+        Panel propuesto: PIR 80mm
+        Precio unitario web: USD 48.50 /m²
+        Descuento aplicado: 12%
+    assert:
+      - type: contains
+        value: "USD"
+      - type: llm-rubric
+        value: |
+          El reviewer debe:
+          - Detectar si el precio está dentro de rangos históricos razonables para la zona y tipo de obra.
+          - Señalar anomalías (precio demasiado bajo/alto, descuento excesivo).
+          - Sugerir verificación de espesor o tipo de panel si corresponde.
+          - Responder en español técnico pero claro.
+          - Nunca inventar precios de la matriz.
+      - type: cost
+        threshold: 0.08  # cheap enough for frequent regression
+
+  # Document Gatekeeper (PDF quality)
+  - vars:
+      input: |
+        PDF generado con layout: simple-carbon
+        quoteId: BMC-2026-0087
+        version: 2
+        Elementos presentes: Resumen técnico, BOM detallado, totales con IVA, pie con código QR y fecha.
+        Faltantes detectados por métricas: Ninguno crítico.
+        Observaciones visuales: Márgenes correctos, tipografía legible, sin solapamientos.
+    assert:
+      - type: contains
+        value: "simple-carbon"
+      - type: llm-rubric
+        value: |
+          El gatekeeper debe:
+          - Verificar que quoteId y version aparezcan claramente.
+          - Confirmar que el layout recomendado (simple-carbon) fue usado.
+          - Señalar si falta información obligatoria (totales, BOM, condiciones).
+          - Dar veredicto claro: PASS / CONDITIONAL / FAIL con razones.
+          - Mantener tono profesional y accionable.
+      - type: cost
+        threshold: 0.06
+
+# Usage:
+# npx -y dotenv-cli -e .env -- npx promptfoo eval -c evals/promptfoo/presup-orchestrator.yaml --no-cache
+# npx promptfoo view
+#
+# This is the starter set for the presupuestacion-orchestrator.
+# Expand with more cases from real runs + historical data as the skill matures.
