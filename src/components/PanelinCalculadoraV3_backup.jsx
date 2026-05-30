@@ -20,6 +20,7 @@ import {
 import { PANELIN_VERSION_BADGE } from "../appSemver.js";
 import { mqCompactPdfModal, isPhoneViewportWidth, isTabletViewportWidth, isCompactMainLayoutWidth } from "../constants/viewportBreakpoints.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
+import StockWebHintBanner from "./StockWebHintBanner.jsx";
 import {
   C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
   setListaPrecios,
@@ -6717,6 +6718,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
           {/* BOM Table */}
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
+            <StockWebHintBanner active={listaPrecios === "web"} />
             {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} onExclude={handleExclude} />)}
           </div>}
           {perfileriaMermaSugerencias.length > 0 && (

@@ -119,6 +119,8 @@
     "email:ingest-snapshot": "node scripts/email-snapshot-ingest.mjs",
     "matriz:reconcile": "node scripts/reconcile-matriz-csv.mjs",
     "matriz:pull-csv": "node scripts/pull-matriz-csv.mjs",
+    "productos-maestro:reconcile": "node scripts/reconcile-productos-maestro.mjs",
+    "productos-maestro:mirror": "node scripts/export-productos-maestro-mirror.mjs",
     "matriz:sync-fijaciones-isodec": "node scripts/sync-fijaciones-isodec-bromyros.mjs",
     "matriz:sync-silicona-300": "node scripts/sync-silicona-300-neutra-bromyros.mjs",
     "team:agent-matrix-skills": "node scripts/merge-agent-matrix-skills.mjs",

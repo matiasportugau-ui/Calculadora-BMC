@@ -12,6 +12,20 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-30 (Productos Maestro — hub catálogo precio+stock en Calculadora):** `hecho`. Implementación completa del plan por fases (reconcile → API → UI → push unificado).
+
+**Entregables:**
+- **Fase 1:** `scripts/reconcile-productos-maestro.mjs` + `npm run productos-maestro:reconcile` → reporte `.runtime/productos-maestro-reconcile-*.{json,md}`.
+- **Fase 2:** `server/lib/productosMaestro.js` (merge puro); rutas `GET/PUT /api/productos-maestro/*` + `POST push` en `bmcDashboard.js`; columna `sku` en CSV MATRIZ; tests SUITE 23c en `tests/validation.js`; RBAC + `agentCapabilitiesManifest`.
+- **Fase 3:** `ProductosMaestroEditor.jsx` en Config → tab **Productos** (tabla, filtros, edición inline precio/stock, links codigo↔path, simular/escribir planillas).
+- **Fase 4 (parcial):** `npm run productos-maestro:mirror` (CSV espejo); `StockWebHintBanner` en cotización lista `web`.
+
+**Verificación:** `npm test` + `npm run lint` OK. Doc: `planilla-inventory.md`, `AGENTS.md`.
+
+**Próximo:** deploy Cloud Run; operador prueba Config → Productos con `API_AUTH_TOKEN`; iterar gaps desde reconcile.
+
+---
+
 **2026-05-30 (Cotizar Button + Presup Orchestrator — wip/cotizar-and-presup split):** `hecho`. Monolito `f09fde1` reemplazado por 7 commits atómicos en rama `wip/cotizar-and-presup`.
 
 **Entregables:**

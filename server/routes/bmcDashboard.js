@@ -37,6 +37,13 @@ import {
   getExtractorModel,
   FAST_DEFAULT_MODELS,
 } from "../lib/aiProviderConfig.js";
+import {
+  mergeProductosMaestro,
+  parseMatrizCsvToRows,
+  formatReconcileMarkdown,
+  loadProductLinks,
+  saveProductLinks,
+} from "../lib/productosMaestro.js";
 
 /**
  * Structured logging for AI calls (tokens + rough cost).
@@ -1253,12 +1260,13 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 
   const approvedTabs = Object.keys(MATRIZ_TAB_COLUMNS);
   if (approvedTabs.length === 0) {
-    return { csv: "\uFEFFpath,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab\n", count: 0 };
+    return { csv: "\uFEFFpath,sku,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab\n", count: 0 };
   }
 
   const csvRows = [];
   const header = [
     "path",
+    "sku",
     "descripcion",
     "categoria",
     "costo",
@@ -1337,8 +1345,9 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
         : "Otros";
       const unidad = path.includes("esp.") ? "m²" : "unid";
 
+      const sku = String(skuRaw || "").trim();
       csvRows.push(
-        [path, esc(descripcion), categoria, costo, venta, ventaInc, ventaWeb, ventaWebIvaInc, unidad, tabName].join(","),
+        [path, esc(sku), esc(descripcion), categoria, costo, venta, ventaInc, ventaWeb, ventaWebIvaInc, unidad, tabName].join(","),
       );
       count++;
     }
@@ -1348,6 +1357,111 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
   normalizeIsodecEpsVentaLocalCsvRows(csvRows);
 
   return { csv: "\uFEFF" + csvRows.join("\n"), count };
+}
+
+/** Snapshot unificado precio (MATRIZ) + stock + links para Productos Maestro. */
+async function fetchProductosMaestroSnapshot(config) {
+  const matrizId = config.bmcMatrizSheetId;
+  const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  if (!matrizId || !credsPath) {
+    throw new Error("MATRIZ sheet no configurado (BMC_MATRIZ_SHEET_ID, GOOGLE_APPLICATION_CREDENTIALS)");
+  }
+
+  const { csv } = await buildPlanillaDesdeMatriz(matrizId);
+  const matrizRows = parseMatrizCsvToRows(csv);
+
+  let stockRows = [];
+  if (checkStockAvailable(config)) {
+    const stockSheetId = config.bmcStockSheetId;
+    const sheetName = await getFirstSheetName(stockSheetId);
+    const { rows } = await getSheetData(stockSheetId, sheetName, false, {
+      schema: "Stock_Ecommerce",
+      headerRowOffset: 2,
+    });
+    stockRows = rows || [];
+  }
+
+  let catalogPaths = [];
+  try {
+    const { getPricingItemsFlat } = await import("../../src/data/pricing.js");
+    catalogPaths = getPricingItemsFlat().map((i) => i.path);
+  } catch {
+    catalogPaths = matrizRows.map((r) => r.path);
+  }
+
+  const productLinks = loadProductLinks();
+  const merged = mergeProductosMaestro({ matrizRows, stockRows, productLinks, catalogPaths });
+  return { matrizRows, stockRows, productLinks, merged };
+}
+
+/**
+ * Push unificado precios → MATRIZ + stock → Stock sheet.
+ * @param {object} config
+ * @param {Array<{ path: string, costo?: number, venta_local?: number, venta_web?: number, stock?: number, pedido_pendiente?: number, codigo_stock?: string }>} items
+ * @param {boolean} dryRun
+ */
+async function pushProductosMaestroItems(config, items, dryRun) {
+  const matrizId = config.bmcMatrizSheetId;
+  const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  const mainSheetId = config.bmcSheetId;
+
+  /** @type {Record<string, number>} */
+  const overrides = {};
+  const stockPlanned = [];
+  const stockResults = [];
+  const stockSkipped = [];
+
+  for (const item of items || []) {
+    const p = String(item.path || "").trim();
+    if (!p) continue;
+    if (item.costo != null && item.costo !== "") overrides[`${p}.costo`] = item.costo;
+    if (item.venta_local != null && item.venta_local !== "") overrides[`${p}.venta`] = item.venta_local;
+    if (item.venta_web != null && item.venta_web !== "") overrides[`${p}.web`] = item.venta_web;
+
+    const codigo = String(item.codigo_stock || "").trim();
+    const hasStockUpdate = item.stock != null || item.pedido_pendiente != null;
+    if (hasStockUpdate) {
+      if (!codigo) {
+        stockSkipped.push({ path: p, reason: "sin codigo_stock" });
+        continue;
+      }
+      const body = {};
+      if (item.stock != null) body.STOCK = item.stock;
+      if (item.pedido_pendiente != null) body.PEDIDO_PENDIENTE = item.pedido_pendiente;
+      stockPlanned.push({ path: p, codigo, body });
+    }
+  }
+
+  let matrizResult = { ok: true, dryRun, updated: 0, planned: [], skippedPaths: [] };
+  if (Object.keys(overrides).length > 0) {
+    if (!matrizId || !credsPath) {
+      matrizResult = { ok: false, error: "MATRIZ no configurado" };
+    } else {
+      matrizResult = await pushMatrizPricingOverrides(matrizId, overrides, credsPath, dryRun);
+    }
+  }
+
+  if (!dryRun && checkStockAvailable(config) && stockPlanned.length > 0) {
+    for (const plan of stockPlanned) {
+      try {
+        const r = await handleUpdateStock(config.bmcStockSheetId, mainSheetId, plan.codigo, plan.body);
+        stockResults.push({ ...plan, ok: true, result: r });
+      } catch (e) {
+        stockResults.push({ ...plan, ok: false, error: e.message || String(e) });
+      }
+    }
+  }
+
+  return {
+    ok: matrizResult.ok !== false,
+    dryRun: Boolean(dryRun),
+    matriz: matrizResult,
+    stock: {
+      planned: stockPlanned,
+      applied: stockResults,
+      skipped: stockSkipped,
+    },
+  };
 }
 
 /**
@@ -2769,6 +2883,76 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     const dryRun = Boolean(req.body?.dryRun);
     try {
       const result = await pushMatrizPricingOverrides(matrizId, overrides, credsPath, dryRun);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+  /** Catálogo unificado precio + stock (Productos Maestro). */
+  router.get("/productos-maestro", requireCrmCockpitAuth, async (_req, res) => {
+    try {
+      const { merged } = await fetchProductosMaestroSnapshot(config);
+      res.json({
+        ok: true,
+        generatedAt: new Date().toISOString(),
+        items: merged.items,
+        summary: merged.summary,
+      });
+    } catch (e) {
+      if (String(e.message || "").includes("MATRIZ")) {
+        return res.status(503).json({ ok: false, error: e.message });
+      }
+      res.status(500).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+  /** Reconcile detallado (gaps, stock huérfano). */
+  router.get("/productos-maestro/reconcile", requireCrmCockpitAuth, async (_req, res) => {
+    try {
+      const { merged } = await fetchProductosMaestroSnapshot(config);
+      res.json({
+        ok: true,
+        generatedAt: new Date().toISOString(),
+        summary: merged.summary,
+        reconcile: merged.reconcile,
+        markdown: formatReconcileMarkdown(merged, new Date().toISOString()),
+      });
+    } catch (e) {
+      if (String(e.message || "").includes("MATRIZ")) {
+        return res.status(503).json({ ok: false, error: e.message });
+      }
+      res.status(500).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+  router.get("/productos-maestro/links", requireCrmCockpitAuth, (_req, res) => {
+    res.json({ ok: true, links: loadProductLinks() });
+  });
+
+  router.put("/productos-maestro/links", requireCrmCockpitAuth, (req, res) => {
+    const body = req.body?.links;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return res.status(400).json({ ok: false, error: "Body.links debe ser objeto { path: codigo_stock }" });
+    }
+    const current = loadProductLinks();
+    const next = { ...current };
+    for (const [p, code] of Object.entries(body)) {
+      if (code == null || code === "") delete next[p];
+      else next[p] = String(code).trim();
+    }
+    saveProductLinks(next);
+    res.json({ ok: true, links: next });
+  });
+
+  router.post("/productos-maestro/push", requireCrmCockpitAuth, async (req, res) => {
+    const items = req.body?.items;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ ok: false, error: "Body.items debe ser array no vacío" });
+    }
+    const dryRun = Boolean(req.body?.dryRun);
+    try {
+      const result = await pushProductosMaestroItems(config, items, dryRun);
       res.json(result);
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message || String(e) });

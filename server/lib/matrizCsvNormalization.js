@@ -38,6 +38,15 @@ export function splitCsvRowSafe(row) {
 }
 
 /**
+ * Column indices after header: path,sku,descripcion,categoria,costo,venta_local,venta_local_iva_inc,...
+ */
+const CSV_IDX = {
+  path: 0,
+  ventaLocal: 5,
+  ventaLocalIvaInc: 6,
+};
+
+/**
  * Normalizes CSV export rows so:
  * PANELS_TECHO.ISODEC_EPS.esp.X venta_local(+IVA)
  * matches PANELS_PARED.ISOPANEL_EPS.esp.X at same espesor.
@@ -50,17 +59,17 @@ export function normalizeIsodecEpsVentaLocalCsvRows(csvRows) {
   const rowByPath = new Map();
   for (let i = 1; i < csvRows.length; i++) {
     const parts = splitCsvRowSafe(csvRows[i]);
-    rowByPath.set(parts[0], { idx: i, parts });
+    rowByPath.set(parts[CSV_IDX.path], { idx: i, parts });
   }
 
   for (const esp of EPS_TO_NORMALIZE) {
     const paredEntry = rowByPath.get(`PANELS_PARED.ISOPANEL_EPS.esp.${esp}`);
     const techoEntry = rowByPath.get(`PANELS_TECHO.ISODEC_EPS.esp.${esp}`);
     if (!paredEntry || !techoEntry) continue;
-    if (paredEntry.parts[4] === techoEntry.parts[4]) continue;
+    if (paredEntry.parts[CSV_IDX.ventaLocal] === techoEntry.parts[CSV_IDX.ventaLocal]) continue;
 
-    techoEntry.parts[4] = paredEntry.parts[4];
-    techoEntry.parts[5] = paredEntry.parts[5];
+    techoEntry.parts[CSV_IDX.ventaLocal] = paredEntry.parts[CSV_IDX.ventaLocal];
+    techoEntry.parts[CSV_IDX.ventaLocalIvaInc] = paredEntry.parts[CSV_IDX.ventaLocalIvaInc];
     csvRows[techoEntry.idx] = techoEntry.parts.map(serializeCsvCell).join(",");
   }
 
