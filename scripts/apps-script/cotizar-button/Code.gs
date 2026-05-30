@@ -20,36 +20,42 @@
 // CONFIGURACIÓN CENTRAL (COMPLETA Y VALIDADA)
 // =====================================================
 
+// Índice de columna donde setupCotizarColumns / writeCotizarHeadersSafe escriben el grupo Borrador.
+// Si usaste otra columna al configurar la planilla, actualizá solo este valor y los COL_* se recalculan abajo.
+const COTIZAR_BORRADOR_START_COL = 60;
+
 const CONFIG = {
-  // --- BACKEND ---
-  BACKEND_BASE_URL: 'https://panelin-calc-[tu-hash].a.run.app', // ← REEMPLAZAR
+  // --- BACKEND (Cloud Run canónico — mismo host que vercel.json proxies) ---
+  BACKEND_BASE_URL: 'https://panelin-calc-q74zutv7dq-uc.a.run.app',
   ORCHESTRATOR_ENDPOINT: '/api/internal/presup/run',
 
-  // Carpeta Drive para PDFs de borradores (crear una dedicada)
-  PDF_DRIVE_FOLDER_ID: 'TU_CARPETA_ID_AQUI', // ← REEMPLAZAR
+  // Planilla origen Admin 2.0 (referencia; Apps Script corre dentro del spreadsheet)
+  SHEET_ID: '1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0',
+
+  // Carpeta Drive para PDFs de borrador — reemplazar tras crear carpeta dedicada en Drive BMC
+  PDF_DRIVE_FOLDER_ID: '', // ej: '1abc...' — vacío = no sube PDF a Drive desde Sidebar
 
   // --- HOJA ---
   TAB_NAME: 'Admin.',
 
-  // Columnas existentes (confirmar en tu hoja)
-  COL_CONSULTA: 9,
-  COL_RESPUESTA: 10,        // Se usa como Borrador Explicación inicialmente
-  COL_LINK_PRESUPUESTO: 11, // SOLO PDF Oficial - NUNCA tocar desde Cotizar
-  COL_ESTADO: 3,
+  // Columnas existentes (Admin. — fila 2 cabecera, datos ~fila 8+)
+  COL_ESTADO: 3,            // C — Estado
+  COL_CONSULTA: 9,          // I — Consulta (input Cotizar)
+  COL_RESPUESTA: 10,        // J — Respuesta AI (legacy; borrador va a COL_BORRADOR_EXPLICACION)
+  COL_LINK_PRESUPUESTO: 11, // K — Link Presupuesto OFICIAL — NUNCA escribir desde Cotizar
 
-  // NUEVAS COLUMNAS (rellenar después de correr setupCotizarColumns)
-  // Borrador group
-  COL_BORRADOR_PDF: null,
-  COL_BORRADOR_EXPLICACION: null,
-  COL_FECHA_BORRADOR: null,
-  COL_GENERADO_POR: null,
-  COL_MODO: null,
-  COL_DURACION: null,
+  // NUEVAS COLUMNAS — default startCol=60 (recomendado en setup para evitar timeouts)
+  // Borrador: 60–65 | separador 66 | Revisión: 67–69
+  COL_BORRADOR_PDF: COTIZAR_BORRADOR_START_COL,
+  COL_BORRADOR_EXPLICACION: COTIZAR_BORRADOR_START_COL + 1,
+  COL_FECHA_BORRADOR: COTIZAR_BORRADOR_START_COL + 2,
+  COL_GENERADO_POR: COTIZAR_BORRADOR_START_COL + 3,
+  COL_MODO: COTIZAR_BORRADOR_START_COL + 4,
+  COL_DURACION: COTIZAR_BORRADOR_START_COL + 5,
 
-  // Revisión group
-  COL_REVISADO_POR: null,
-  COL_FECHA_REVISION: null,
-  COL_COMENTARIO_REVISION: null,
+  COL_REVISADO_POR: COTIZAR_BORRADOR_START_COL + 7,
+  COL_FECHA_REVISION: COTIZAR_BORRADOR_START_COL + 8,
+  COL_COMENTARIO_REVISION: COTIZAR_BORRADOR_START_COL + 9,
 
   // --- IA / INTELLIGENCE ---
   MIN_CONSULTA_LENGTH: 25,           // Filtro barato antes de llamar al orquestador
@@ -59,12 +65,14 @@ const CONFIG = {
 
 // Validación rápida de CONFIG al cargar
 function _validateConfig() {
-  const requiredNullables = [
-    'COL_BORRADOR_PDF', 'COL_BORRADOR_EXPLICACION', 'COL_FECHA_BORRADOR',
-    'COL_GENERADO_POR', 'COL_MODO', 'COL_DURACION',
-    'COL_REVISADO_POR', 'COL_FECHA_REVISION', 'COL_COMENTARIO_REVISION'
-  ];
-  // En producción podés agregar chequeos más duros
+  const cols = getBorradorColumns();
+  const missing = Object.entries(cols).filter(([, v]) => v == null || v < 1);
+  if (missing.length) {
+    console.warn('[Cotizar] CONFIG incompleto — columnas borrador:', missing.map(([k]) => k).join(', '));
+  }
+  if (!CONFIG.BACKEND_BASE_URL || CONFIG.BACKEND_BASE_URL.indexOf('[tu-hash]') >= 0) {
+    console.warn('[Cotizar] BACKEND_BASE_URL no configurado');
+  }
 }
 
 // =====================================================

@@ -10,7 +10,22 @@ Este es el código inicial del botón **"Cotizar"** para la planilla "2.0 - Admi
 
 ## Backend
 
-El Sidebar llama `POST /api/internal/presup/run` en panelin-calc (ver `CONFIG.ORCHESTRATOR_ENDPOINT`). Completar `BACKEND_BASE_URL` con la URL canónica de Cloud Run antes de probar en la planilla.
+El Sidebar llama `POST /api/internal/presup/run` en panelin-calc (ver `CONFIG.ORCHESTRATOR_ENDPOINT`).
+
+**CONFIG ya incluye (2026-05-30):**
+- `BACKEND_BASE_URL`: `https://panelin-calc-q74zutv7dq-uc.a.run.app`
+- Columnas borrador/revisión con **startCol=60** (ajustar `COTIZAR_BORRADOR_START_COL` si usaste otra columna al correr `writeCotizarHeadersSafe`)
+- `SHEET_ID` de Admin 2.0 para referencia
+
+**Pendiente humano:** `PDF_DRIVE_FOLDER_ID` (crear carpeta Drive BMC) + ejecutar `writeCotizarHeadersSafe` en columna 60 si los headers aún no existen.
+
+**Smoke backend (sin Sheets):**
+```bash
+./scripts/smoke-presup-orchestrator.sh
+# prod explícito:
+BMC_API_BASE=https://panelin-calc-q74zutv7dq-uc.a.run.app ./scripts/smoke-presup-orchestrator.sh
+```
+Evidencia: `.runtime/presup-orchestrator-smoke.json`. Si `status=error` con mensaje de API keys, la ruta HTTP está OK — falta credencial IA en el entorno.
 
 ## Cómo instalar (pasos)
 

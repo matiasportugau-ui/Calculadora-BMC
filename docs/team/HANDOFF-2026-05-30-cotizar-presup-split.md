@@ -22,9 +22,10 @@
 
 ## Blockers / pending
 
-- `CONFIG` in `Code.gs`: column numbers after `setupCotizarColumns`, real `BACKEND_BASE_URL`, `PDF_DRIVE_FOLDER_ID`.
+- ~~`CONFIG` in `Code.gs`: column numbers after `setupCotizarColumns`, real `BACKEND_BASE_URL`~~ → **done 2026-05-30** (startCol=60, Cloud Run URL). Human: run `writeCotizarHeadersSafe` on sheet + set `PDF_DRIVE_FOLDER_ID`.
 - PDF generation from Apps Script is still placeholder — needs wiring to orchestrator artifacts.
-- promptfoo evals require `ANTHROPIC_API_KEY` in `.env` (not part of `gate:local`).
+- promptfoo evals require `ANTHROPIC_API_KEY` in `.env` (not part of `gate:local`). **Expanded to 7 cases** in `evals/promptfoo/presup-orchestrator.yaml`.
+- **Smoke 2026-05-30:** `POST /api/internal/presup/run` returns HTTP 200 locally and on prod; flow `status=error` until AI keys valid on target env (`scripts/smoke-presup-orchestrator.sh`).
 - **Not merged:** `claude/quote-accuracy-merged` (intentionally separate).
 
 ## Literal next prompt

@@ -20,9 +20,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 - **promptfoo Phase A starter:** `evals/promptfoo/presup-orchestrator.yaml` apunta a `server/prompts/presup-orchestrator/` (sin copias duplicadas).
 - **Handoffs:** `HANDOFF-2026-05-29*` + `HANDOFF-2026-05-30-cotizar-presup-split.md`.
 
-**Estado:** Phase A parcial — evals skeleton listo; wiring PDF real desde Apps Script y CONFIG con columnas reales pendientes. Rama separada de `claude/quote-accuracy-merged` (sin merge).
+**Estado:** Phase A parcial — CONFIG Code.gs completado (startCol 60 + Cloud Run URL); smoke HTTP OK en `/api/internal/presup/run` (IA keys pendientes en prod/local para flow completo); promptfoo expandido a 7 casos reales; wiring PDF real desde Apps Script pendiente.
 
-**Próximo:** Completar CONFIG en Code.gs, smoke Sidebar → `POST /api/internal/presup/run`, expandir promptfoo a 4–6 casos reales.
+**Próximo:** Matías — `writeCotizarHeadersSafe` col 60 en Admin 2.0 + `PDF_DRIVE_FOLDER_ID`; smoke Sidebar en fila real; `npx promptfoo eval` con `ANTHROPIC_API_KEY`; fix AI keys Cloud Run para Intake gate.
 
 ---
 

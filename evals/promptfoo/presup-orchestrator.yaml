@@ -65,6 +65,77 @@ tests:
       - type: cost
         threshold: 0.06
 
+  # --- Casos reales (snapshot Admin 2.0 — scripts/evals/quote-eval-report.json) ---
+
+  # Consulta incompleta WA — debe señalar datos faltantes, no inventar BOM
+  - vars:
+      input: |
+        Consulta cruda (WhatsApp): "5.5m * 6 panel"
+        Contexto: cliente no especificó familia ni espesor.
+        Propuesta parcial del sistema: Isopanel sin confirmar.
+    assert:
+      - type: llm-rubric
+        value: |
+          Debe indicar que faltan datos (familia, espesor, dimensiones o área).
+          No debe inventar precios ni totales cerrados.
+          Tono profesional en español.
+
+  # Cotización dual área — caso que sí llega a calc en evals offline
+  - vars:
+      input: |
+        Consulta: "URGENTE: iSODEC eps 150MM + iSOPANEL 100MM / 350 M2 DE CADA UNO. Montevideo"
+        Escenario: Pared
+        Área estimada: 350 m² por producto
+        Zona: 3
+        Precio referencia web Isodec 150mm: USD 42 /m²
+        Descuento aplicado: 0%
+    assert:
+      - type: contains
+        value: "350"
+      - type: llm-rubric
+        value: |
+          Debe revisar coherencia de áreas duplicadas y espesores.
+          Mencionar USD o rangos razonables.
+          Señalar si falta altura o detalle constructivo.
+
+  # Atención manual — largo excede lmax (engine guardrail)
+  - vars:
+      input: |
+        Consulta: "Isopanel e Isodec 100mm / Altura minima 2,5m — largo panel 100m"
+        Panel: ISODEC_EPS 100mm
+        Largo declarado: 100 m
+        Lmax catálogo: 14 m
+    assert:
+      - type: llm-rubric
+        value: |
+          Debe detectar que 100m excede lmax 14m o marcar riesgo de atención manual.
+          No debe aprobar silenciosamente un BOM imposible.
+
+  # Consulta vaga — chapas con aislante
+  - vars:
+      input: |
+        Consulta: "Precio de chapas con aislante termico"
+        Sin medidas ni espesor ni zona.
+    assert:
+      - type: llm-rubric
+        value: |
+          Debe pedir familia, espesor y dimensiones antes de cerrar precio.
+          No inventar cotización numérica completa.
+
+  # Document Gatekeeper — PDF con quoteId faltante (debe FAIL o CONDITIONAL)
+  - vars:
+      input: |
+        PDF generado con layout: simple-carbon
+        quoteId: (ausente)
+        version: 1
+        Elementos: BOM parcial, totales sin IVA desglosado.
+        Observaciones: pie de página cortado en móvil.
+    assert:
+      - type: llm-rubric
+        value: |
+          Debe marcar FAIL o CONDITIONAL por quoteId ausente o totales incompletos.
+          Listar acciones concretas para corregir antes de enviar al cliente.
+
 # Usage:
 # npx -y dotenv-cli -e .env -- npx promptfoo eval -c evals/promptfoo/presup-orchestrator.yaml --no-cache
 # npx promptfoo view
