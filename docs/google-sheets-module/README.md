@@ -25,6 +25,9 @@ Single entry point for all **Google Sheets–related** functionality: mapping, s
 | **Variables extraíbles + mapeo 1:1** | [VARIABLES-Y-MAPEO-UNO-A-UNO.md](VARIABLES-Y-MAPEO-UNO-A-UNO.md) | Lista por workbook/tab, campo canónico, consumidor API/UI/OmniCRM; plantilla de verificación fila a fila. |
 | **Mapeo preciso (código)** | [MAPPER-PRECISO-PLANILLAS-CODIGO.md](MAPPER-PRECISO-PLANILLAS-CODIGO.md) | Fuente única desde `server/config.js` + `bmcDashboard.js`: env, pestaña, fila de header, columnas y sinónimos `findKey`. |
 | **Sync full team (quién accede a qué)** | [SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md](SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md) | Dashboard, API, Calculadora, GPT, OmniCRM: rutas y planillas para mantener todo alineado. |
+| **Cotizar Button (Admin 2.0)** | [COTIZAR-BUTTON-WORKFLOW.md](COTIZAR-BUTTON-WORKFLOW.md) | Flujo Sidebar I→orchestrator→J+K en "2.0 - Administrador de Cotizaciones"; Apps Script en [scripts/apps-script/cotizar-button/](../../scripts/apps-script/cotizar-button/README.md). |
+
+**Orden de lectura Cotizar Button:** [COTIZAR-BUTTON-WORKFLOW.md](COTIZAR-BUTTON-WORKFLOW.md) → [COTIZAR-BUTTON-REQUIRED-COLUMNS.md](COTIZAR-BUTTON-REQUIRED-COLUMNS.md) → [COTIZAR-BUTTON-STATES-AND-COLUMNS.md](COTIZAR-BUTTON-STATES-AND-COLUMNS.md) → [COTIZAR-BUTTON-SIDEBAR-PRODUCTION-PROPOSAL.md](COTIZAR-BUTTON-SIDEBAR-PRODUCTION-PROPOSAL.md) → [COTIZAR-BUTTON-BORRADOR-EXPLICACION.md](COTIZAR-BUTTON-BORRADOR-EXPLICACION.md).
 
 ---
 
@@ -54,6 +57,8 @@ docs/google-sheets-module/
 ├── planilla-inventory.md
 ├── planilla-map.md
 ├── SHEETS-MAPPING-5-WORKBOOKS.md
+├── COTIZAR-BUTTON-*.md              ← spec Cotizar Sidebar (Admin 2.0)
+├── preview-sidebar-cotizar*.html    ← mockups UI del Sidebar
 ├── (otros: MAPPING-VALIDATION*, MATRIZ*, …)
 ├── reference/
 │   └── README.md                     ← skills reference + enlaces a los docs de arriba
