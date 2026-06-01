@@ -15,7 +15,9 @@ import RequireGrant from "./components/auth/RequireGrant.jsx";
 import ActivityTracker from "./components/activity/ActivityTracker.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// Tutorial interactivo (nuevo sistema)
+// Tutorial interactivo (nuevo sistema) — gated for safety
+const TUTORIAL_ENABLED = import.meta.env.VITE_FEATURE_TUTORIAL_MODE !== "false";
+
 import { TutorialProvider } from "./components/tutorial/TutorialProvider.jsx";
 import TutorialOverlay from "./components/tutorial/TutorialOverlay.jsx";
 import FloatingTutorialButton from "./components/tutorial/FloatingTutorialButton.jsx";
@@ -93,7 +95,7 @@ function Shell({ children }) {
       </div>
       {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
-      <FloatingTutorialButton />
+      {TUTORIAL_ENABLED && <FloatingTutorialButton />}
     </div>
   );
 }
@@ -152,7 +154,7 @@ export default function App() {
       <ActivityTracker />
       <LegacyAppQueryRedirect />
       <AuthGateModal />
-      <TutorialOverlay /> {/* Overlay del tutorial interactivo */}
+      <TutorialOverlay />
       <Routes>
         <Route
           path="/hub"

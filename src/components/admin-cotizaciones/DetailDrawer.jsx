@@ -253,6 +253,7 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
             <button
               type="button"
               className="adminCot__btn adminCot__btn--success"
+              data-tutorial-id="drawer-aprobar"
               onClick={() => onApprove(row.rowNum)}
               disabled={busy || row.estado === "Aprobado"}
             >
@@ -263,6 +264,7 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
             <button
               type="button"
               className="adminCot__btn"
+              data-tutorial-id="drawer-marcar-enviada"
               onClick={() => onMarkEnviado(row.rowNum)}
               disabled={busy}
               title="Mueve la fila a la pestaña Enviados y la borra del Admin."

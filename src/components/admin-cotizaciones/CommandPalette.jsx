@@ -61,6 +61,7 @@ export default function CommandPalette({
   return (
     <div
       className="adminCot__palette-backdrop"
+      data-tutorial-id="command-palette"
       role="presentation"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >

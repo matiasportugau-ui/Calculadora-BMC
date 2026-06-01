@@ -78,6 +78,20 @@ function makeShim() {
       return { rows: [] };
     }
 
+    // ── module_grants insert (idempotent default for new users)
+    if (norm.startsWith("insert into identity.module_grants")) {
+      const [user_id] = params;
+      for (const { module, level } of [
+        { module: "calc", level: "write" },
+        { module: "tareas", level: "read" },
+      ]) {
+        if (!tables.module_grants.find((r) => r.user_id === user_id && r.module === module)) {
+          tables.module_grants.push({ user_id, module, level });
+        }
+      }
+      return { rows: [] };
+    }
+
     // ── role_grants select
     if (norm.startsWith("select role from identity.role_grants")) {
       const [user_id] = params;

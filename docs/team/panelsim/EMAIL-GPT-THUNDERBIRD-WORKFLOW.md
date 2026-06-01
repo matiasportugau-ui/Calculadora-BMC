@@ -95,3 +95,4 @@ Roadmap recomendado: añadir categorías explícitas `fiscal_dgi`, `bps`, `prove
 - Ingest CRM: `npm run email:ingest-snapshot`, `server/lib/emailSnapshotIngest.js`
 - Endpoints CRM correo: `POST /api/crm/parse-email`, `POST /api/crm/ingest-email`
 - Manifiesto agente: `GET /capabilities`, `docs/api/AGENT-CAPABILITIES.json` (regenerar con `npm run capabilities:snapshot` si aplica)
+- **Uso en múltiples computadoras (Mac + oficina) con Thunderbird**: [EMAIL-MULTI-COMPUTER-THUNDERBIRD.md](./EMAIL-MULTI-COMPUTER-THUNDERBIRD.md)

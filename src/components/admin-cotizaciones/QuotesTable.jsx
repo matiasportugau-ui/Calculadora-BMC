@@ -165,7 +165,7 @@ export default function QuotesTable({
     [rows, selected],
   );
   return (
-    <div className="adminCot__tablewrap">
+    <div className="adminCot__tablewrap" data-tutorial-id="quotes-table">
       <div className="adminCot__tablescroll">
         <table className="adminCot__table">
           <thead>
