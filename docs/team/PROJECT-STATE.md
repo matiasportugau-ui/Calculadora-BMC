@@ -51,6 +51,21 @@ Estado actual: Phase 0 completada y pusheada (3 commits atómicos). Skill del or
 - Crear primeros evals en promptfoo para los gates críticos (Pricing Reviewer, Document Gatekeeper).
 - Actualizar AGENTS.md y este documento.
 
+**2026-06-01 (Presup Orchestrator — Seg specialist + thin consumer):** `hecho`. Se agregó el especialista concreto `Post-Mortem & Learning (Seguimiento)` con output estructurado (JSON-like) y se creó el thin consumer oficial (`server/lib/presupSegConsumer.js`) que convierte la salida del seg en follow-ups reales vía el `followUpStore` existente.
+
+Entregables:
+- Prompt mejorado del seg specialist (ahora produce `title`, `detail`, `tags`, `nextFollowUpAt`, `reasoning` listos para consumo).
+- `presupSegConsumer.js` (thin adapter limpio y reutilizable).
+- Cableado básico en el scaffolding del conductor (closeFlow ahora puede producir side-effects reales vía el consumer).
+- Documentación de uso dentro del skill.
+
+Estado actual: El "run" path para seg ya es funcional (aunque el ejemplo en el scaffolding aún usa dynamic import para claridad). El trabajo se mantuvo estrictamente dentro de feature freeze (solo skill + small helper). 
+
+**Próximos pasos recomendados:**
+- Pulir el ejemplo en el scaffolding para que sea más limpio y realista.
+- Actualizar el "Concrete Example: Full Presupuestación Run" en el skill.
+- Registrar el avance en este documento (ya hecho).
+
 **2026-05-27 (Phase 0 Production Readiness — Execution Started):** `en curso`. Se inició la ejecución inmediata de Phase 0 del plan de estabilización.
 
 **Acciones completadas hoy:**
