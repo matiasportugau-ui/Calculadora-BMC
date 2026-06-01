@@ -13,7 +13,7 @@ import { C, FONT } from '../data/constants.js';
 const API_BASE = getCalcApiBase();
 const TOKEN_KEY = 'bmc_productos_maestro_token';
 
-export default function ProductosMaestroEditor({ onSave }) {
+export default function ProductosMaestroEditor() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);

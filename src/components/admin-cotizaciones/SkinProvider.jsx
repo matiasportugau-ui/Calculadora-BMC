@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { loadSkin, persistSkin, isValidSkin } from "./skinUtils.js";
 
 /**
  * Skin system for Admin Cot v2.
@@ -8,41 +9,18 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
  * The token registry (with semantics for each variable) lives in the header
  * comment block of `admin-cotizaciones/styles.css`.
  *
- * To add a new skin, append it to SKINS below and add a matching CSS block.
+ * To add a new skin, append it to SKINS in skinUtils.js and add a matching CSS block.
  * See styles.css for the step-by-step contract.
  */
 
-const STORAGE_KEY = "bmc_admin_cot_skin";
 const DEFAULT_SKIN = "macos";
-
-export const SKINS = [
-  { id: "macos", label: "macOS Sequoia" },
-  { id: "bmc", label: "BMC Default" },
-  { id: "gnome", label: "Linux GNOME" },
-  { id: "anthropic", label: "Anthropic Warm" },
-  { id: "linear", label: "Linear" },
-];
-
-const VALID = new Set(SKINS.map((s) => s.id));
-
-function loadSkin() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw && VALID.has(raw)) return raw;
-  } catch { /* ignore */ }
-  return DEFAULT_SKIN;
-}
-
-function persistSkin(skin) {
-  try { localStorage.setItem(STORAGE_KEY, skin); } catch { /* ignore */ }
-}
 
 const SkinContext = createContext({ skin: DEFAULT_SKIN, setSkin: () => {} });
 
 export function SkinProvider({ children }) {
   const [skin, setSkinState] = useState(() => loadSkin());
   const setSkin = useCallback((next) => {
-    if (!VALID.has(next)) return;
+    if (!isValidSkin(next)) return;
     setSkinState(next);
     persistSkin(next);
   }, []);
@@ -51,6 +29,7 @@ export function SkinProvider({ children }) {
   return <SkinContext.Provider value={value}>{children}</SkinContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- useSkin hook is contextual to SkinProvider and must be exported together
 export function useSkin() {
   return useContext(SkinContext);
 }
