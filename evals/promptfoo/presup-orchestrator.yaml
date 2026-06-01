@@ -12,8 +12,9 @@ providers:
 
 defaultTest:
   options:
-    # Use the project's central provider config philosophy
-    provider: anthropic
+    # Grading provider for llm-rubric assertions (must be a concrete model ID in current promptfoo).
+    # Using Sonnet for quality of rubric judgments; swap to haiku for cheaper eval runs.
+    provider: anthropic:claude-sonnet-4-6
 
 tests:
   # Pricing & BOM Reviewer gate (highest impact per architecture)
@@ -136,9 +137,48 @@ tests:
           Debe marcar FAIL o CONDITIONAL por quoteId ausente o totales incompletos.
           Listar acciones concretas para corregir antes de enviar al cliente.
 
-# Usage:
-# npx -y dotenv-cli -e .env -- npx promptfoo eval -c evals/promptfoo/presup-orchestrator.yaml --no-cache
+# Usage (local):
+# doppler run -- npx promptfoo eval -c evals/promptfoo/presup-orchestrator.yaml --no-cache
 # npx promptfoo view
+#
+# (Secrets live in Doppler bmc-frontend/prd; plain .env does not contain the real ANTHROPIC_API_KEY.)
 #
 # This is the starter set for the presupuestacion-orchestrator.
 # Expand with more cases from real runs + historical data as the skill matures.
+
+  # --- Seg (Post-Mortem & Learning / Seguimiento) cases (Phase A extension) ---
+
+  # Typical successful quote → should recommend useful follow-up
+  - vars:
+      input: |
+        Flujo completado.
+        quoteId: BMC-2026-0142
+        Cliente: Frigorífico del Norte
+        Escenario: Techo industrial 850m²
+        Total: USD 48,200
+        Veredicto Pricing: OK (descuento 9%)
+        Veredicto PDF: PASS
+        Canal: WhatsApp
+        Observaciones conductor: Cliente pidió seguimiento en 5 días para confirmar pedido.
+    assert:
+      - type: llm-rubric
+        value: |
+          El especialista seg debe:
+          - Proponer un seguimiento concreto y accionable (título claro + detalle útil).
+          - Sugerir fecha razonable (ej. 5-7 días).
+          - Incluir tags útiles (presup, post-mortem, cliente).
+          - No inventar datos del caso.
+
+  # Caso con riesgo de precio → seguimiento más cercano
+  - vars:
+      input: |
+        quoteId: BMC-2026-0143
+        Cliente: Constructora Sur
+        Descuento aplicado: 22% (alto)
+        Pricing Reviewer: REVISAR
+        Estado final: awaiting_approval (con nota de revisión)
+    assert:
+      - type: llm-rubric
+        value: |
+          Debe recomendar seguimiento cercano (24-48h) para seguimiento de aprobación o ajuste de precio.
+          Título y detalle deben reflejar el riesgo de descuento alto.

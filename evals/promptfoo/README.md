@@ -6,15 +6,17 @@ This directory contains regression and quality evals for the `presupuestacion-or
 - `presup-orchestrator.yaml` — Main config (Pricing Reviewer + Document Gatekeeper gates)
 - Prompts canónicos en [`server/prompts/presup-orchestrator/`](../../server/prompts/presup-orchestrator/) (referenciados vía `file://` en el YAML)
 
-## How to run
+## How to run (local dev)
+
+Secrets are managed in Doppler (`bmc-frontend/prd`). Plain `.env` does **not** contain the real `ANTHROPIC_API_KEY`.
 
 ```bash
-# From repo root
-npx -y dotenv-cli -e .env -- npx promptfoo eval \
+# From repo root — use Doppler to inject secrets
+doppler run -- npx promptfoo eval \
   -c evals/promptfoo/presup-orchestrator.yaml \
   --no-cache
 
-# Open results UI
+# Open results UI (after a run)
 npx promptfoo view
 ```
 
@@ -33,14 +35,16 @@ As the orchestrator skill matures, add:
 These evals are **not** part of `gate:local` (they have cost and require Anthropic keys).  
 Run them manually before promoting changes to orchestrator prompts or sub-agent logic.
 
-Example in a workflow:
+Example in a workflow (GitHub Actions or manual):
 ```yaml
 - name: Orchestrator prompt regression
   run: |
-    npx -y dotenv-cli -e .env -- npx promptfoo eval \
+    # Doppler token must be available as DOPPLER_TOKEN secret in the runner
+    doppler run -- npx promptfoo eval \
       -c evals/promptfoo/presup-orchestrator.yaml \
       --no-cache --output evals/promptfoo/results/presup-$(date +%Y%m%d).json
 ```
+Note: For CI you will need a Doppler Service Token with read access to `bmc-frontend/prd`.
 
 ## Notes
 - Always use the same provider ordering philosophy as `aiProviderConfig` (prefer high-quality first for gates).
