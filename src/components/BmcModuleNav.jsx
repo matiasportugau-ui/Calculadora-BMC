@@ -43,6 +43,7 @@ export default function BmcModuleNav() {
   const calcActive = pathname === "/" || pathname.endsWith("/calculadora");
   const traktimeActive = pathname.startsWith("/hub/traktime");
   const tareasActive = pathname.startsWith("/hub/tareas");
+  const clientesActive = pathname.startsWith("/hub/clientes");
 
   return (
     <nav style={bar} aria-label="Módulos BMC">
@@ -63,6 +64,9 @@ export default function BmcModuleNav() {
       </Link>
       <Link to="/hub/tareas" style={btn(tareasActive)}>
         Tareas
+      </Link>
+      <Link to="/hub/clientes" style={btn(clientesActive)}>
+        Clientes
       </Link>
       <Link to="/hub/marketing" style={btn(marketingActive)}>
         Market Intel
