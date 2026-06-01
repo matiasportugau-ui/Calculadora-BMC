@@ -191,7 +191,7 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
             </div>
             <div style={{ fontSize: 12, color: "#713f12" }}>
               {row.borradorPdf ? (
-                <a href={row.borradorPdf} target="_blank" rel="noopener" style={{ color: "#854d0e", textDecoration: "underline" }}>
+                <a href={row.borradorPdf} target="_blank" rel="noopener noreferrer" style={{ color: "#854d0e", textDecoration: "underline" }}>
                   PDF del Borrador ↗
                 </a>
               ) : "Sin PDF de borrador aún"}
@@ -199,8 +199,8 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
               {row.borradorExplicacion ? "Explicación generada ✓" : "Sin explicación de borrador"}
             </div>
             <p className="adminCot__hint" style={{ marginTop: 6, color: "#854d0e" }}>
-              Generado vía el botón "Cotizar" de la planilla (modelo híbrido). 
-              Si no existe, puedes usar el batch IA superior o el botón "Sugerir IA".
+              Generado vía el botón «Cotizar» de la planilla (modelo híbrido). 
+              Si no existe, puedes usar el batch IA superior o el botón «Sugerir IA».
             </p>
           </div>
 
