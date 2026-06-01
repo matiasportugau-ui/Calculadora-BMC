@@ -84,3 +84,37 @@ Para que el sheet sea fuente de verdad **global y persistente**, hay dos caminos
 1. Completar/limpiar pestaña BROMYROS con `matriz-import-ready.csv` (y agregar los 18 SKU faltantes en col D + `matrizPreciosMapping.js`).
 2. `npm run matriz:pull-csv` y `npm run matriz:reconcile -- .runtime/matriz-precios-latest.csv` → 0 duplicados, 0 vacíos.
 3. Elegir camino A o B para la persistencia en producción.
+
+---
+
+## 5. Camino A — bake & deploy (elegido)
+
+`scripts/bake-matriz-to-constants.mjs` escribe los precios de un CSV (formato MATRIZ o export
+de la calculadora) dentro de `src/data/constants.js`. Modifica **solo** los valores numéricos de
+`venta` (col L), `web` (col T) y `costo` (col F); preserva `ap`, `sku`, `largo`, `label`,
+comentarios y formato. Funciona con hojas en una línea, anidadas (`ISODEC: { _all: { … } }`) y
+multilínea (`perfil_k2`, `perfil_5852`).
+
+```bash
+# 1) bajar el CSV en vivo de la MATRIZ (ya limpia)
+npm run matriz:pull-csv                                  # → .runtime/matriz-precios-latest.csv
+
+# 2) previsualizar el diff (no escribe nada)
+npm run matriz:bake -- .runtime/matriz-precios-latest.csv --dry-run
+
+# 3) aplicar a constants.js
+npm run matriz:bake -- .runtime/matriz-precios-latest.csv
+
+# 4) revisar diff, gate y deploy
+git diff src/data/constants.js
+npm run gate:local
+git add src/data/constants.js && git commit -m "chore: bake precios MATRIZ a constants" && git push
+# deploy: Vercel (frontend) toma el push; API en Cloud Run según pipeline.
+```
+
+**Garantía de seguridad:** el baker **omite valores numéricamente iguales** (diff mínimo) y reporta
+los paths del CSV que no tienen hoja en `constants.js`. Self-test: bakear el export actual de la
+calculadora produce **0 ediciones** (no-op), porque el export y `constants.js` ya coinciden.
+
+> El baker actualiza `venta` / `web` / `costo`. La columna **M** (`venta_local_iva_inc`) y **U**
+> (`venta_web_iva_inc`) son referencias c/IVA; la UI deriva c/IVA = ex IVA × 1,22 si hace falta.
