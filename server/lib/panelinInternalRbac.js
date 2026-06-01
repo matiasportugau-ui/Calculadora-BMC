@@ -95,6 +95,11 @@ const DASHBOARD_POLICIES = [
   { method: "POST", path: "/api/ventas", minRole: /** @type {PanelinRole} */ ("admin") },
   { method: "GET", path: "/api/actualizar-precios-calculadora", minRole: /** @type {PanelinRole} */ ("admin") },
   { method: "POST", path: "/api/matriz/push-pricing-overrides", minRole: /** @type {PanelinRole} */ ("director") },
+  { method: "GET", path: "/api/productos-maestro", minRole: /** @type {PanelinRole} */ ("admin") },
+  { method: "GET", path: "/api/productos-maestro/reconcile", minRole: /** @type {PanelinRole} */ ("admin") },
+  { method: "GET", path: "/api/productos-maestro/links", minRole: /** @type {PanelinRole} */ ("admin") },
+  { method: "PUT", path: "/api/productos-maestro/links", minRole: /** @type {PanelinRole} */ ("director") },
+  { method: "POST", path: "/api/productos-maestro/push", minRole: /** @type {PanelinRole} */ ("director") },
   { method: "GET", path: "/api/email/panelsim-summary", minRole: /** @type {PanelinRole} */ ("admin") },
   { method: "POST", path: "/api/email/draft-outbound", minRole: /** @type {PanelinRole} */ ("admin") },
 ];

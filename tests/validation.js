@@ -67,6 +67,11 @@ import {
   splitCsvRowSafe,
 } from "../server/lib/matrizCsvNormalization.js";
 import {
+  mergeProductosMaestro,
+  parseMatrizCsvToRows,
+  normalizeProductCode,
+} from "../server/lib/productosMaestro.js";
+import {
   parseAccesorioLine,
   parseLogisticaFromAdjuntoText,
   parsePanelLineHeuristic,
@@ -1005,11 +1010,11 @@ assert("getDuplicatePathReport one dup", dups.length === 1 && dups[0].path === "
 console.log("\n═══ SUITE 23b: matrizCsvNormalization ═══");
 
 const csvRowsNorm = [
-  "path,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab",
-  'PANELS_PARED.ISOPANEL_EPS.esp.100,"Pared ""EPS"" 100, blanca",Paneles Pared,30,3777,4607.94,3900,4758,m²,BROMYROS',
-  'PANELS_TECHO.ISODEC_EPS.esp.100,"Techo ""EPS"" 100, blanca",Paneles Techo,31,3903,4761.66,4100,5002,m²,BROMYROS',
-  "PANELS_TECHO.ISODEC_EPS.esp.150,Techo 150,Paneles Techo,35,4248,5182.56,4500,5490,m²,BROMYROS",
-  "PANELS_PARED.ISOPANEL_EPS.esp.150,Pared 150,Paneles Pared,35,4248,5182.56,4400,5368,m²,BROMYROS",
+  "path,sku,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab",
+  'PANELS_PARED.ISOPANEL_EPS.esp.100,ISP100EPSF,"Pared ""EPS"" 100, blanca",Paneles Pared,30,3777,4607.94,3900,4758,m²,BROMYROS',
+  'PANELS_TECHO.ISODEC_EPS.esp.100,ISDEC100,"Techo ""EPS"" 100, blanca",Paneles Techo,31,3903,4761.66,4100,5002,m²,BROMYROS',
+  "PANELS_TECHO.ISODEC_EPS.esp.150,ISDEC150,Techo 150,Paneles Techo,35,4248,5182.56,4500,5490,m²,BROMYROS",
+  "PANELS_PARED.ISOPANEL_EPS.esp.150,ISP150EPSF,Pared 150,Paneles Pared,35,4248,5182.56,4400,5368,m²,BROMYROS",
 ];
 const beforeSameRow = csvRowsNorm[3];
 const sameRef = normalizeIsodecEpsVentaLocalCsvRows(csvRowsNorm);
@@ -1022,17 +1027,51 @@ assert(
 
 const pared100 = splitCsvRowSafe(csvRowsNorm[1]);
 const techo100 = splitCsvRowSafe(csvRowsNorm[2]);
-assert("normalize copies venta_local from pared to techo", techo100[4] === pared100[4], techo100[4], pared100[4]);
-assert("normalize copies venta_local_iva_inc from pared to techo", techo100[5] === pared100[5], techo100[5], pared100[5]);
-assert("normalize keeps venta_web untouched", techo100[6] === "4100", techo100[6], "4100");
-assert("normalize keeps venta_web_iva_inc untouched", techo100[7] === "5002", techo100[7], "5002");
+assert("normalize copies venta_local from pared to techo", techo100[5] === pared100[5], techo100[5], pared100[5]);
+assert("normalize copies venta_local_iva_inc from pared to techo", techo100[6] === pared100[6], techo100[6], pared100[6]);
+assert("normalize keeps venta_web untouched", techo100[7] === "4100", techo100[7], "4100");
+assert("normalize keeps venta_web_iva_inc untouched", techo100[8] === "5002", techo100[8], "5002");
 assert(
   "normalize preserves quoted description with comma",
-  techo100[1] === 'Techo "EPS" 100, blanca',
-  techo100[1],
+  techo100[2] === 'Techo "EPS" 100, blanca',
+  techo100[2],
   'Techo "EPS" 100, blanca',
 );
 assert("normalize skips rows already aligned", csvRowsNorm[3] === beforeSameRow, csvRowsNorm[3], beforeSameRow);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 23c: Productos Maestro merge (offline)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 23c: productosMaestro ═══");
+
+const matrizCsvSample = [
+  "path,sku,descripcion,costo,venta_local,venta_web,tab",
+  "PANELS_TECHO.ISODEC_EPS.esp.100,ISDEC100,Panel techo,30,37.77,45.97,BROMYROS",
+  "FIJACIONES.varilla_38,VAR381ML,Varilla,2,3,3.5,BROMYROS",
+].join("\n");
+const matrizParsed = parseMatrizCsvToRows(matrizCsvSample);
+assert("parseMatrizCsvToRows count", matrizParsed.length === 2, matrizParsed.length, 2);
+assert("parseMatrizCsvToRows sku", matrizParsed[0].sku === "ISDEC100", matrizParsed[0].sku, "ISDEC100");
+
+const stockSample = [
+  { CODIGO: "ISDEC100", PRODUCTO: "Panel stock", VENTA_USD: 45.97, STOCK: 3 },
+  { CODIGO: "ORPHAN", PRODUCTO: "Sin matriz", STOCK: 10 },
+];
+const mergedPm = mergeProductosMaestro({
+  matrizRows: matrizParsed,
+  stockRows: stockSample,
+  productLinks: { "FIJACIONES.varilla_38": "VAR381ML" },
+  priceTolerancePct: 5,
+});
+assert("merge total items", mergedPm.items.length === 2, mergedPm.items.length, 2);
+const panelItem = mergedPm.items.find((i) => i.path.includes("ISODEC_EPS"));
+assert("merge panel stock match", panelItem?.stock === 3, panelItem?.stock, 3);
+assert("merge panel has stock link", panelItem?.codigo_stock === "ISDEC100", panelItem?.codigo_stock, "ISDEC100");
+const varillaItem = mergedPm.items.find((i) => i.path === "FIJACIONES.varilla_38");
+assert("merge varilla sin stock link", varillaItem?.estados.includes("sin_stock_link"), JSON.stringify(varillaItem?.estados), "sin_stock_link");
+assert("merge panel bajo stock", panelItem?.estados.includes("bajo_stock"), JSON.stringify(panelItem?.estados), "bajo_stock");
+assert("merge orphan stock", mergedPm.reconcile.orphan_stock.length === 1, mergedPm.reconcile.orphan_stock.length, 1);
+assert("normalizeProductCode", normalizeProductCode("is dec-100") === "ISDEC100", normalizeProductCode("is dec-100"), "ISDEC100");
 
 const splitQuoted = splitCsvRowSafe('A,"B, C","D ""Q"""');
 assert("splitCsvRowSafe handles comma in quoted cell", splitQuoted[1] === "B, C", splitQuoted[1], "B, C");
@@ -2716,6 +2755,10 @@ const dirMatriz = canAccessDashboardRoute("POST", "/api/matriz/push-pricing-over
 assert("director puede push matriz", dirMatriz.allowed === true, dirMatriz.allowed, true);
 const adminMatriz = canAccessDashboardRoute("POST", "/api/matriz/push-pricing-overrides", "admin");
 assert("admin no puede push matriz", adminMatriz.allowed === false, adminMatriz.allowed, false);
+const adminPm = canAccessDashboardRoute("GET", "/api/productos-maestro", "admin");
+assert("admin puede GET productos-maestro", adminPm.allowed === true, adminPm.allowed, true);
+const ventasPmPush = canAccessDashboardRoute("POST", "/api/productos-maestro/push", "ventas");
+assert("ventas no puede push productos-maestro", ventasPmPush.allowed === false, ventasPmPush.allowed, false);
 
 const toolCotGet = getInternalToolById("api_cotizaciones_get");
 assert("getInternalToolById api_cotizaciones_get", toolCotGet?.path === "/api/cotizaciones", toolCotGet?.path, "/api/cotizaciones");

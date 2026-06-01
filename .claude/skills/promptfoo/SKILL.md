@@ -15,13 +15,17 @@ npx promptfoo eval           # run evals
 npx promptfoo view           # open web UI on :15500
 ```
 
-## Loading .env
+## Loading secrets (BMC project)
 
-promptfoo does NOT auto-load `.env`. Run via:
+Secrets are in **Doppler** (`bmc-frontend/prd` since 2026-05-21), **not** in plain `.env`.
+
+Run via:
 
 ```bash
-npx -y dotenv-cli -e .env -- npx promptfoo eval
+doppler run -- npx promptfoo eval -c evals/promptfoo/<surface>.yaml --no-cache
 ```
+
+(Direct `dotenv-cli` on `.env` will fail for `ANTHROPIC_API_KEY` etc.)
 
 ## When NOT to use
 

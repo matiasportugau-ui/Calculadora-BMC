@@ -194,6 +194,10 @@ Ver planilla-map.md §2 para columnas completas y diff vs blueprint.
 | /api/stock-kpi | Stock E-Commerce | — |
 | /api/stock/history | Stock — tabs EXISTENCIAS_Y_PEDIDOS + Egresos | — |
 | /api/stock/:codigo | — | PATCH: actualiza STOCK, PEDIDO_PENDIENTE, SHOPIFY_SYNC_AT + AUDIT_LOG |
+| /api/productos-maestro | MATRIZ + Stock (merge) | — |
+| /api/productos-maestro/reconcile | Idem + gaps detallados | — |
+| /api/productos-maestro/links | `.runtime/product-links.json` | PUT: path ↔ codigo stock |
+| /api/productos-maestro/push | MATRIZ F/L/T + Stock | POST: push unificado (dryRun) |
 | /api/calendario-vencimientos | Calendario (BMC_CALENDARIO_SHEET_ID); ?month=2026-03 lee tab "MARZO 2026" | — |
 | /api/kpi-report | Agregado: Pagos_Pendientes, Metas_Ventas, proximas-entregas, ventas, stock-kpi | — |
 

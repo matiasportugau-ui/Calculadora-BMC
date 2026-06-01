@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview - Sidebar Cotizar (2.0 Administrador de Cotizaciones)</title>
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-hover: #1557b0;
+      --primary-light: #e8f0fe;
+      --text-primary: #202124;
+      --text-secondary: #5f6368;
+      --border: #dadce0;
+      --background: #f8f9fa;
+      --card-bg: #ffffff;
+      --success-bg: #e6f4ea;
+      --success-text: #0d652d;
+      --warning-bg: #fef7e0;
+      --warning-text: #8a5c00;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      background: #f1f3f4;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: var(--text-primary);
+    }
+    
+    .sidebar {
+      width: 280px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      border: 1px solid #e8eaed;
+      flex-shrink: 0;
+    }
+    
+    .sidebar-header {
+      background: linear-gradient(135deg, #1a73e8 0%, #1967d2 100%);
+      color: white;
+      padding: 16px 18px;
+      font-weight: 600;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: inset 0 -1px 0 rgba(255,255,255,0.15);
+    }
+    
+    .sidebar-content {
+      padding: 12px 14px;
+    }
+    
+    .row-info {
+      background: var(--background);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    
+    .button {
+      width: 100%;
+      padding: 12px 18px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 3px rgba(26, 115, 232, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .button:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(26, 115, 232, 0.3);
+    }
+    
+    .button:active {
+      transform: scale(0.985);
+      transition: transform 0.1s ease;
+    }
+    
+    .button.secondary {
+      background: white;
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      font-weight: 500;
+    }
+    
+    .button.secondary:hover {
+      background: #f8f9fa;
+      border-color: #bdc1c6;
+      transform: translateY(-1px);
+    }
+    
+    .section-title {
+      font-weight: 600;
+      margin: 20px 0 10px;
+      font-size: 13px;
+      color: var(--text-primary);
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .clarification-box {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: var(--card-bg);
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .clarification-item {
+      margin-bottom: 14px;
+    }
+    
+    .clarification-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .clarification-item label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 12.5px;
+      color: var(--text-primary);
+    }
+    
+    .clarification-item input[type="text"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13.5px;
+      transition: all 0.2s ease;
+      background: white;
+    }
+    
+    .clarification-item input[type="text"]:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12);
+    }
+    
+    .clarification-item .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .status {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+    
+    .status.success {
+      background: #e6f4ea;
+      color: var(--success-text);
+      border: 1px solid #a8d5b8;
+    }
+    
+    .status.loading {
+      background: #fef7e0;
+      color: var(--warning-text);
+      border: 1px solid #f9e7b8;
+    }
+    
+    .link {
+      color: #1a73e8;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+    
+    .link:hover {
+      color: #1557b0;
+      text-decoration: underline;
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+
+    /* Micro-interactions */
+    .button, .clarification-item input, .clarification-box {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar-content p {
+      margin: 8px 0;
+    }
+
+    /* Icon styles */
+    .icon {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .section-title .icon {
+      color: #5f6368;
+    }
+
+    .buyer-preview {
+      width: 0px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid #e8eaed;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: fit-content;
+      max-height: 0px;
+    }
+
+    .preview-header {
+      background: #f1f3f4;
+      padding: 10px 14px;
+      border-bottom: 1px solid #dadce0;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #202124;
+      flex-shrink: 0;
+    }
+
+    .preview-content {
+      padding: 14px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: #202124;
+      white-space: pre-wrap;
+      flex: 1;
+      background: #fff;
+      overflow-y: auto;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .preview-content em {
+      color: #5f6368;
+      font-style: italic;
+    }
+
+    /* === A: Tighter distribution + dynamic summaries + collapsible preview === */
+    .essentials-bar {
+      background: linear-gradient(90deg, #f8f9fa 0%, #fff 100%);
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .essentials-bar .chip {
+      background: #fff;
+      border: 1px solid #dadce0;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: #202124;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+    }
+    .essentials-bar .chip .muted { color: #5f6368; font-weight: 400; }
+    .essentials-bar .chip.dirty { border-color: #f9ab00; background: #fef7e0; }
+
+    .accordion-content {
+      padding: 10px 4px 4px;
+      font-size: 12.5px;
+    }
+    .clarification-item {
+      margin-bottom: 9px;
+    }
+    .clarification-item label {
+      display: block;
+      font-size: 11.5px;
+      color: #5f6368;
+      margin-bottom: 3px;
+      font-weight: 500;
+    }
+    .clarification-item input[type="text"],
+    .clarification-item select,
+    .clarification-item textarea {
+      width: 100%;
+      padding: 6px 9px;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .clarification-item input:focus,
+    .clarification-item select:focus,
+    .clarification-item textarea:focus {
+      border-color: #1a73e8;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.12);
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      font-size: 12.5px;
+    }
+
+    .quote-summary {
+      font-size: 12.5px;
+      background: #f8f9fa;
+      border: 1px solid #dadce0;
+      padding: 7px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      line-height: 1.35;
+    }
+
+    /* Buyer preview — now properly collapsible */
+    .buyer-preview {
+      width: 320px;
+      max-height: 520px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid #e8eaed;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .buyer-preview.collapsed {
+      width: 0;
+      max-height: 0;
+      border: none;
+      box-shadow: none;
+      overflow: hidden;
+    }
+    .preview-header {
+      background: #f1f3f4;
+      padding: 9px 12px;
+      border-bottom: 1px solid #dadce0;
+      font-size: 12px;
+      font-weight: 600;
+      color: #202124;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .preview-header .toggle-btn {
+      background: none;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 10px;
+      padding: 1px 6px;
+      cursor: pointer;
+      color: #5f6368;
+    }
+    .preview-header .toggle-btn:hover { background: #fff; }
+
+    .preview-content {
+      padding: 13px 14px;
+      font-size: 12.2px;
+      line-height: 1.38;
+      color: #202124;
+      flex: 1;
+      background: #fff;
+      overflow-y: auto;
+      font-family: system-ui, -apple-system, sans-serif;
+      white-space: pre-wrap;
+    }
+    .preview-content .buyer-title {
+      font-weight: 600;
+      font-size: 12.8px;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .preview-content .disclaimer {
+      font-size: 10.8px;
+      color: #5f6368;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed #dadce0;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #3c4043;
+      margin: 14px 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dirty-badge {
+      font-size: 10px;
+      background: #f9ab00;
+      color: white;
+      padding: 0 5px;
+      border-radius: 3px;
+      margin-left: 6px;
+    }
+
+    .main-actions {
+      position: sticky;
+      bottom: 0;
+      background: linear-gradient(to top, #fff 70%, transparent);
+      padding: 10px 0 4px;
+      margin-top: 6px;
+      border-top: 1px solid #f1f3f4;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <!-- Header -->
+    <div class="sidebar-header">
+      <span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+        Cotizar - Fila 13 (Jonas)
+      </span>
+    </div>
+
+    <div class="sidebar-content">
+
+      <!-- Estado 1: Inicial -->
+      <div id="state-initial">
+        <div class="row-info">
+          <strong>Cliente:</strong> Jonas<br>
+          <strong>Zona:</strong> Parque del plata<br>
+          <strong>Estado actual:</strong> Enviado
+        </div>
+
+        <button class="button" onclick="simulateCotizar()">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Cotizar esta fila
+      </button>
+
+        <div style="margin-top: 8px; font-size: 11px; color: #5f6368;">
+          Modo por defecto: <strong>Normal</strong><br>
+          <label><input type="checkbox" id="speedMode"> Activar Speed Mode</label>
+        </div>
+      </div>
+
+      <!-- Estado 2: Después de primer Cotizar (mejor distribuido + abreviado por defecto) -->
+      <div id="state-after-first" class="hidden">
+        <div class="status success">
+          ✅ Borrador generado correctamente
+        </div>
+
+        <p style="margin: 6px 0 10px;"><strong>PDF del borrador:</strong> <a href="#" class="link" onclick="alert('En la versión real esto abre el PDF de Drive')">Ver PDF (temporal)</a></p>
+
+        <!-- NUEVO: Essentials bar - siempre visible, ultra compacto, live -->
+        <div class="essentials-bar" id="essentials-bar">
+          <span class="chip"><span id="chip-panel">Isoroof 50mm</span></span>
+          <span class="chip"><span id="chip-dims">7 paños × 7.5 m</span></span>
+          <span class="chip"><span id="chip-estructura">Metal</span></span>
+          <span class="chip"><span id="chip-total">~ $X.XXX</span></span>
+          <span class="chip"><span id="chip-modo">Normal</span></span>
+        </div>
+
+        <!-- Resumen ultra compacto -->
+        <div class="quote-summary">
+          <div><strong>Isoroof 50mm</strong> • 7×7.5m • Metal • ~$X.XXX</div>
+          <div style="font-size:10.5px; color:#5f6368;">Agente interpretó la consulta original. Editá abajo → Re-interpretar actualiza todo.</div>
+        </div>
+
+        <!-- ACLARACIONES DEL VENDEDOR - Prominente y siempre accesible -->
+        <div class="section-title" style="margin-top:2px;">
+          ✍️ Aclaraciones del vendedor
+          <span class="dirty-badge" id="dirty-badge" style="display:none;">editado</span>
+        </div>
+        <div class="clarification-item" style="margin-bottom:12px;">
+          <textarea id="aclaraciones" placeholder="Ej: Confirmar que son 50mm principales + 30mm opcional. Flete a Parque del Plata incluido. Sin cumbrera extra." style="width:100%; height:58px; resize:vertical; font-size:12.5px;" oninput="markDirtyAndUpdate()"></textarea>
+        </div>
+
+        <!-- Acordeones - la mayoría cerrados, summaries dinámicos y abreviados -->
+        <details open id="det-principal">
+          <summary id="sum-principal">📐 Principales — Techo Isoroof 50mm, 7 paños</summary>
+          <div class="accordion-content">
+            <div class="clarification-item">
+              <label>Tipo de proyecto</label>
+              <select id="projectType" onchange="markDirtyAndUpdate()">
+                <option value="techo" selected>Solo Techo (Cubierta)</option>
+                <option value="pared">Solo Pared</option>
+                <option value="combinado">Techo + Pared</option>
+              </select>
+            </div>
+            <div class="clarification-item">
+              <label>Tipo de panel principal</label>
+              <select id="panelType" onchange="markDirtyAndUpdate()">
+                <option value="isoroof" selected>Isoroof</option>
+                <option value="isodec">Isodec EPS</option>
+                <option value="isowall">Isowall PIR</option>
+              </select>
+            </div>
+          </div>
+        </details>
+
+        <details id="det-dims">
+          <summary id="sum-dims">📏 Dimensiones — 50mm + 30mm, 7 paños × 7.5m</summary>
+          <div class="accordion-content">
+            <div class="clarification-item">
+              <label>Espesores a cotizar</label>
+              <div class="checkbox-group">
+                <label><input type="checkbox" id="esp-30" onchange="markDirtyAndUpdate()"> 30mm</label>
+                <label><input type="checkbox" id="esp-50" checked onchange="markDirtyAndUpdate()"> 50mm</label>
+                <label><input type="checkbox" id="esp-80" onchange="markDirtyAndUpdate()"> 80mm</label>
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <div class="clarification-item">
+                <label>Largo por paño (m)</label>
+                <input type="text" id="largo" value="7.5" oninput="markDirtyAndUpdate()">
+              </div>
+              <div class="clarification-item">
+                <label>Cantidad de paños</label>
+                <input type="text" id="cantidad" value="7" oninput="markDirtyAndUpdate()">
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details id="det-estructura">
+          <summary id="sum-estructura">🏗️ Estructura y Terminación — Metal, Blanco lisa</summary>
+          <div class="accordion-content">
+            <div class="clarification-item">
+              <label>Estructura</label>
+              <select id="estructura" onchange="markDirtyAndUpdate()">
+                <option selected>Metálica (ºMetal)</option>
+                <option>Hormigón</option>
+                <option>Mixta</option>
+              </select>
+            </div>
+            <div class="clarification-item">
+              <label>Terminación</label>
+              <select id="terminacion" onchange="markDirtyAndUpdate()">
+                <option selected>Blanco lisa</option>
+                <option>Gris</option>
+                <option>Color especial</option>
+              </select>
+            </div>
+            <div class="clarification-item">
+              <label>Zona / Destino</label>
+              <input type="text" id="zona" value="Parque del plata" oninput="markDirtyAndUpdate()">
+            </div>
+          </div>
+        </details>
+
+        <details id="det-accesorios">
+          <summary id="sum-accesorios">🔧 Accesorios incluidos (4)</summary>
+          <div class="accordion-content">
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="acc-cumbrera" checked onchange="markDirtyAndUpdate()"> Cumbreras</label>
+              <label><input type="checkbox" id="acc-canalones" checked onchange="markDirtyAndUpdate()"> Canalones</label>
+              <label><input type="checkbox" id="acc-fijaciones" checked onchange="markDirtyAndUpdate()"> Fijaciones</label>
+              <label><input type="checkbox" id="acc-flete" checked onchange="markDirtyAndUpdate()"> Flete</label>
+            </div>
+          </div>
+        </details>
+
+        <details id="det-notas">
+          <summary id="sum-notas">📝 Notas adicionales</summary>
+          <div class="accordion-content">
+            <textarea id="notas" style="width:100%; height:46px; resize:vertical;" placeholder="Cualquier otra indicación..." oninput="markDirtyAndUpdate()"></textarea>
+          </div>
+        </details>
+
+        <!-- Sticky main actions for Re-interpretar (siempre visible) -->
+        <div class="main-actions">
+          <button class="button" onclick="simulateReinterpretar()" style="margin-bottom:6px;">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            Re-interpretar con estos datos
+          </button>
+          <button class="button secondary" onclick="toggleBuyerPreview()" style="background:#f1f3f4;color:#3c4043;border:1px solid #dadce0;margin-bottom:0;">
+            Ocultar / Mostrar vista previa comprador
+          </button>
+        </div>
+      </div>
+
+      <!-- Estado 3: Cargando re-interpretación -->
+      <div id="state-loading" class="hidden">
+        <div class="status loading">
+          <svg class="icon" style="animation: spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          Re-interpretando con las aclaraciones...<br>
+          (puede tardar entre 30 y 90 segundos)
+        </div>
+      </div>
+
+      <!-- Estado 4: Después de re-interpretar -->
+      <div id="state-after-reinterpret" class="hidden">
+        <div class="status success">
+          ✅ Borrador actualizado con las aclaraciones
+        </div>
+
+        <p><strong>PDF actualizado:</strong><br>
+          <a href="#" class="link" onclick="alert('En la versión real abre el PDF actualizado')">Ver PDF</a>
+        </p>
+
+        <button class="button" onclick="aprobarOficial()">Aprobar como Oficial</button>
+        
+        <button class="button secondary" onclick="showPreview()">Ver explicación actualizada</button>
+
+        <div style="margin-top: 16px; font-size: 11px; color: #5f6368;">
+          <strong>Historial:</strong><br>
+          • 14:32 - Primera versión generada<br>
+          • 14:35 - Re-interpretada con aclaraciones de espesor y accesorios
+        </div>
+      </div>
+
+    </div>
+
+  <!-- Buyer Preview Panel (collapsible) -->
+  <div class="buyer-preview">
+    <div class="preview-header">
+      <div>
+        <strong>Vista previa para el comprador</strong>
+        <span style="font-size:10.5px; color:#5f6368; margin-left:6px;">(lo que iría a la columna)</span>
+      </div>
+      <button class="toggle-btn" onclick="toggleBuyerPreview()" title="Ocultar/mostrar">−</button>
+    </div>
+    <div id="buyer-text" class="preview-content">
+      <em>Editá los campos de la izquierda. La vista previa se actualiza en vivo.</em>
+    </div>
+  </div>
+
+  </div>
+
+  <script>
+    let isDirty = false;
+
+    function getFormState() {
+      const speed = document.getElementById('speedMode')?.checked || false;
+      return {
+        projectType: document.getElementById('projectType')?.value || 'techo',
+        panelType: document.getElementById('panelType')?.value || 'isoroof',
+        largo: document.getElementById('largo')?.value || '7.5',
+        cantidad: document.getElementById('cantidad')?.value || '7',
+        estructura: document.getElementById('estructura')?.value || 'Metálica (ºMetal)',
+        terminacion: document.getElementById('terminacion')?.value || 'Blanco lisa',
+        zona: document.getElementById('zona')?.value || 'Parque del plata',
+        esp30: document.getElementById('esp-30')?.checked || false,
+        esp50: document.getElementById('esp-50')?.checked || true,
+        esp80: document.getElementById('esp-80')?.checked || false,
+        accCumbrera: document.getElementById('acc-cumbrera')?.checked || false,
+        accCanalones: document.getElementById('acc-canalones')?.checked || false,
+        accFijaciones: document.getElementById('acc-fijaciones')?.checked || false,
+        accFlete: document.getElementById('acc-flete')?.checked || false,
+        aclaraciones: document.getElementById('aclaraciones')?.value || '',
+        notas: document.getElementById('notas')?.value || '',
+        speedMode: speed
+      };
+    }
+
+    function getLabels(state) {
+      const projectLabel = state.projectType === 'pared' ? 'Pared' : 
+                          state.projectType === 'combinado' ? 'Techo + Pared' : 'Techo';
+      const panelLabel = state.panelType === 'isodec' ? 'Isodec EPS' : 
+                        state.panelType === 'isowall' ? 'Isowall PIR' : 'Isoroof';
+      const estructuraLabel = state.estructura.includes('Hormig') ? 'Hormigón' : 
+                              state.estructura.includes('Mixta') ? 'Mixta' : 'Metal';
+      const espesores = [];
+      if (state.esp50) espesores.push('50mm');
+      if (state.esp30) espesores.push('30mm');
+      if (state.esp80) espesores.push('80mm');
+      const espesorStr = espesores.length ? espesores.join('+') : '50mm';
+      const accCount = [state.accCumbrera, state.accCanalones, state.accFijaciones, state.accFlete].filter(Boolean).length;
+      return { projectLabel, panelLabel, estructuraLabel, espesorStr, accCount };
+    }
+
+    // Actualiza chips + todos los <summary> dinámicamente (lo que hace la UI "abreviada pero completa")
+    function rebuildEssentialsAndSummaries() {
+      const s = getFormState();
+      const l = getLabels(s);
+
+      // Essentials chips (siempre visibles, ultra compactos)
+      const chipPanel = document.getElementById('chip-panel');
+      if (chipPanel) chipPanel.textContent = `${l.panelLabel} ${s.esp50 ? '50mm' : (s.esp30 ? '30mm' : '80mm')}`;
+      const chipDims = document.getElementById('chip-dims');
+      if (chipDims) chipDims.textContent = `${s.cantidad} paños × ${s.largo}m`;
+      const chipEstruct = document.getElementById('chip-estructura');
+      if (chipEstruct) chipEstruct.textContent = l.estructuraLabel;
+      const chipTotal = document.getElementById('chip-total');
+      if (chipTotal) chipTotal.textContent = '~ $X.XXX';
+      const modoChip = document.getElementById('chip-modo');
+      if (modoChip) {
+        modoChip.textContent = s.speedMode ? 'Speed' : 'Normal';
+        modoChip.style.background = s.speedMode ? '#fef7e0' : '#fff';
+      }
+
+      // Dynamic summaries (abreviados, muestran valor actual en vivo)
+      const sumPrincipal = document.getElementById('sum-principal');
+      if (sumPrincipal) sumPrincipal.innerHTML = `📐 Principales — ${l.projectLabel} ${l.panelLabel} ${l.espesorStr}, ${s.cantidad} paños`;
+
+      const sumDims = document.getElementById('sum-dims');
+      if (sumDims) sumDims.innerHTML = `📏 Dimensiones — ${l.espesorStr}, ${s.cantidad}×${s.largo}m`;
+
+      const sumEstruct = document.getElementById('sum-estructura');
+      if (sumEstruct) sumEstruct.innerHTML = `🏗️ Estructura y Terminación — ${l.estructuraLabel}, ${s.terminacion}`;
+
+      const sumAcc = document.getElementById('sum-accesorios');
+      if (sumAcc) sumAcc.innerHTML = `🔧 Accesorios incluidos (${l.accCount})`;
+
+      const sumNotas = document.getElementById('sum-notas');
+      if (sumNotas) {
+        const hasNotas = (s.aclaraciones + s.notas).trim().length > 0;
+        sumNotas.innerHTML = hasNotas ? `📝 Notas adicionales <span style="color:#f9ab00">(con contenido)</span>` : `📝 Notas adicionales`;
+      }
+
+      // Dirty badge
+      const badge = document.getElementById('dirty-badge');
+      if (badge) badge.style.display = isDirty ? 'inline' : 'none';
+    }
+
+    function markDirtyAndUpdate() {
+      isDirty = true;
+      rebuildEssentialsAndSummaries();
+      updateBuyerPreviewLive();
+    }
+
+    function updateBuyerPreviewLive() {
+      const buyerDiv = document.getElementById('buyer-text');
+      if (!buyerDiv) return;
+
+      const s = getFormState();
+      const l = getLabels(s);
+      const speed = s.speedMode;
+      const consultaOriginal = 'Isoroof 30 y 50 mm / 7p de 7,5 mts // ºMetal / completo';
+
+      let accList = [];
+      if (s.accCumbrera) accList.push('cumbreras');
+      if (s.accCanalones) accList.push('canalones');
+      if (s.accFijaciones) accList.push('fijaciones');
+      if (s.accFlete) accList.push('flete');
+      const accText = accList.length ? accList.join(', ') : 'accesorios estructurales básicos';
+
+      const aclaracionesText = s.aclaraciones.trim() 
+        ? `\n\n**Aclaraciones del equipo:** ${s.aclaraciones.trim()}` 
+        : '';
+
+      // Professional template (estructura exacta del documento Borrador Explicación aprobado)
+      let text;
+      if (speed) {
+        text = `**Presupuesto generado automáticamente (modo rápido)**
+
+**Tu consulta original:**
+> ${consultaOriginal}
+
+**Qué se consideró:**
+- Proyecto: ${l.projectLabel}
+- Panel principal: ${l.panelLabel} ${l.espesorStr}
+- Superficie: ${s.cantidad} paños de ${s.largo}m
+- Estructura: ${l.estructuraLabel}
+- Terminación: ${s.terminacion}
+- Zona: ${s.zona}
+- Incluye: ${accText}
+
+**Total estimado:** $X.XXX USD + IVA
+
+El presupuesto completo con todos los detalles y condiciones comerciales está en el PDF.
+
+¿Necesitás algún ajuste?`;
+      } else {
+        text = `**Presupuesto generado automáticamente basado en tu consulta**
+
+**Tu consulta original:**
+> ${consultaOriginal}
+
+**Qué consideramos para esta cotización:**
+- Tipo de proyecto: ${l.projectLabel}
+- Superficie total: ~${(parseFloat(s.cantidad)*parseFloat(s.largo) || 52)} m²
+- Zona: ${s.zona}
+- Tipo de panel recomendado: ${l.panelLabel} ${l.espesorStr}
+- Terminación: ${s.terminacion}
+- Estructura: ${l.estructuraLabel}
+- Principales accesorios incluidos: ${accText}${aclaracionesText}
+
+**Resumen del presupuesto generado:**
+Se realizó el cálculo considerando las especificaciones de tu consulta y las aclaraciones del equipo. Se incluyeron los accesorios estructurales necesarios y el traslado a destino.
+
+**Total estimado:** $X.XXX USD + IVA
+
+(El desglose detallado con precios unitarios, cantidades y condiciones comerciales se encuentra en el PDF).
+
+---
+
+**Presupuesto detallado:**  
+[Link al PDF del borrador]
+
+---
+
+Este presupuesto fue generado automáticamente. Si hay datos que no estaban claros en tu consulta, es posible que el valor varíe.
+
+¿Querés que ajustemos algo (medidas, espesor, terminación, cantidad, etc.)?`;
+      }
+
+      buyerDiv.innerHTML = text.replace(/\n/g, '<br>');
+    }
+
+    function toggleBuyerPreview() {
+      const panel = document.querySelector('.buyer-preview');
+      if (!panel) return;
+      panel.classList.toggle('collapsed');
+    }
+
+    function simulateCotizar() {
+      document.getElementById('state-initial').classList.add('hidden');
+      const after = document.getElementById('state-after-first');
+      after.classList.remove('hidden');
+
+      // Valores por defecto del agente para Jonas
+      const esp50 = document.getElementById('esp-50');
+      if (esp50) esp50.checked = true;
+
+      isDirty = false;
+      rebuildEssentialsAndSummaries();
+
+      const buyerDiv = document.getElementById('buyer-text');
+      buyerDiv.innerHTML = `<span style="color:#5f6368;font-style:italic">Editá cualquier campo o agregá aclaraciones. La vista previa del texto para el comprador se actualiza en vivo a la derecha.</span>`;
+
+      // Live listeners (retro-alimentación inmediata al preview y summaries)
+      const allInputs = after.querySelectorAll('input, select, textarea');
+      allInputs.forEach(el => {
+        el.addEventListener('input', markDirtyAndUpdate);
+        el.addEventListener('change', markDirtyAndUpdate);
+      });
+
+      const speedCb = document.getElementById('speedMode');
+      if (speedCb) speedCb.addEventListener('change', markDirtyAndUpdate);
+    }
+
+    function simulateReinterpretar() {
+      const after = document.getElementById('state-after-first');
+      after.classList.add('hidden');
+      document.getElementById('state-loading').classList.remove('hidden');
+
+      setTimeout(() => {
+        document.getElementById('state-loading').classList.add('hidden');
+        document.getElementById('state-after-reinterpret').classList.remove('hidden');
+
+        updateBuyerPreviewLive();
+        isDirty = false;
+        const badge = document.getElementById('dirty-badge');
+        if (badge) badge.style.display = 'none';
+      }, 1650);
+    }
+
+    function aprobarOficial() {
+      alert('En la versión real:\n\n- Copia el PDF a carpeta oficial\n- Escribe el link en columna K (oficial)\n- Actualiza Estado a "Aprobado Oficial"\n- Registra "Revisado Por" + Fecha\n- Cierra el sidebar');
+    }
+  </script>
+
+</body>
+</html>

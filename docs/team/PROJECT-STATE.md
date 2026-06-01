@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-26
+**Última actualización:** 2026-05-30
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,34 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-30 (Productos Maestro — hub catálogo precio+stock en Calculadora):** `hecho`. Implementación completa del plan por fases (reconcile → API → UI → push unificado).
+
+**Entregables:**
+- **Fase 1:** `scripts/reconcile-productos-maestro.mjs` + `npm run productos-maestro:reconcile` → reporte `.runtime/productos-maestro-reconcile-*.{json,md}`.
+- **Fase 2:** `server/lib/productosMaestro.js` (merge puro); rutas `GET/PUT /api/productos-maestro/*` + `POST push` en `bmcDashboard.js`; columna `sku` en CSV MATRIZ; tests SUITE 23c en `tests/validation.js`; RBAC + `agentCapabilitiesManifest`.
+- **Fase 3:** `ProductosMaestroEditor.jsx` en Config → tab **Productos** (tabla, filtros, edición inline precio/stock, links codigo↔path, simular/escribir planillas).
+- **Fase 4 (parcial):** `npm run productos-maestro:mirror` (CSV espejo); `StockWebHintBanner` en cotización lista `web`.
+
+**Verificación:** `npm test` + `npm run lint` OK. Doc: `planilla-inventory.md`, `AGENTS.md`.
+
+**Próximo:** deploy Cloud Run; operador prueba Config → Productos con `API_AUTH_TOKEN`; iterar gaps desde reconcile.
+
+---
+
+**2026-05-30 (Cotizar Button + Presup Orchestrator — wip/cotizar-and-presup split):** `hecho`. Monolito `f09fde1` reemplazado por 7 commits atómicos en rama `wip/cotizar-and-presup`.
+
+**Entregables:**
+- **Cotizar Button:** spec completa en `docs/google-sheets-module/COTIZAR-BUTTON-*` + índice en README del módulo; Apps Script canónico `scripts/apps-script/cotizar-button/Code.gs` + `Sidebar.html` (variantes en `archive/`).
+- **Presup orchestrator docs:** `PRESUPUESTACION-ORCHESTRATOR-ARCHITECTURE.md`, `IMPLEMENTATION-ROADMAP.md`, goal prompt; `AGENTS.md` enlaza evals + Apps Script consumer.
+- **promptfoo Phase A starter:** `evals/promptfoo/presup-orchestrator.yaml` apunta a `server/prompts/presup-orchestrator/` (sin copias duplicadas).
+- **Handoffs:** `HANDOFF-2026-05-29*` + `HANDOFF-2026-05-30-cotizar-presup-split.md`.
+
+**Estado:** Phase A parcial — CONFIG Code.gs completado (startCol 60 + Cloud Run URL); smoke HTTP OK; **PDF borrador** wired a `/api/pdf/generate` + Drive (requiere `PDF_DRIVE_FOLDER_ID`); **agentCore** sanitiza messages Anthropic + channel `internal` para sub-agentes; scorecard `COTIZAR-PRESUP-PHASE-A-SCORECARD.md`. Prod smoke sigue `status=error` (Claude 400 pre-deploy + keys).
+
+**Próximo:** Deploy `wip/cotizar-and-presup` a Cloud Run; sync keys (Doppler/`ml:cloud-run`); re-run prod smoke hasta `awaiting_approval`; checklist `SHEETS-COTIZAR-SMOKE-CHECKLIST.md`.
+
+---
 
 **2026-05-29 (Finanzas Legacy Dashboard 404 Fix):** `hecho`. Se identificó y corrigió la causa raíz del 404 JSON en `/finanzas` (dashboard estático del operador).
 
@@ -48,6 +76,25 @@ Estado actual: Phase 0 completada y pusheada (3 commits atómicos). Skill del or
 - Migrar `agentCore.js` + wolfboard/superAgent a `aiProviderConfig` + cost logging (mayor ROI disponible).
 - Crear primeros evals en promptfoo para los gates críticos (Pricing Reviewer, Document Gatekeeper).
 - Actualizar AGENTS.md y este documento.
+
+**2026-05-29 (Quote Accuracy Evals + Engine Guardrails — claude/quote-accuracy-merged):** `hecho + gate fixed`. Major improvements to the wolfboard quote-batch pipeline for precise failure surfacing on terse WA/consultas.
+
+**Deliverables:**
+- Widened `PARAM_EXTRACT_PROMPT` (server/routes/wolfboard.js) with 4 real snapshot few-shots, WA abbreviations (iSODEC, Isopanel, MM variants), strict `faltan` rule, "NLU only, never invent" guard.
+- Engine correctness (src/utils/calculations.js): `calcParedCompleto` / `calcTechoCompleto` now return explicit `{error: "... excede lmax / < lmin ... — Requiere atención manual"}` instead of silent bogus numbers (BUG-001 class).
+- Guardrails in `runBatchCalc` + quote-batch: emit `"Consulta incompleta — falta(n): familia, espesor..."` and `"⚠ Requiere atención manual — <exact engine reason>"`.
+- New offline evals harness: `scripts/evals/quote-eval-runner.mjs` + `quote-eval-report.json`. On the 13-row Admin snapshot: **11 precise incompleta** (was 0), **1 calc success with correct IVA math** on previously unparsable mixed case, **1 atención with concrete lmax reason**.
+- Two production startup crashes fixed on the branch (presupOrchestrator wrong import path + triple-backtick syntax in prompt template literal).
+- Lint gate restored (fixed `onOpenBorrador` undefined + JSX escaping in DetailDrawer + parent wiring in AdminCotizacionesModule).
+- `agentTools.test.js` contract updated for new `recuperar_casos_similares` tool (31 total).
+
+**Measured delta (offline proxy on real snapshot):** Dramatic lift in debuggability. "incompleta" cells now name exact missing campos; "atención" cells carry actionable engine reason instead of generic marker. Core validation: 399 passed. Full gate:local clean after fixes.
+
+**Artifacts:** `EVALS-DELTA.md`, `scripts/evals/quote-eval-report.json`, `HANDOFF-2026-05-29-QUOTE-EVALS-RUN.md`, two atomic feature branches merged to `claude/quote-accuracy-merged`.
+
+**Next (per handoff):** With Doppler + keys, run live `/quote-batch force` on Admin copy + golden PDF judge comparison on the (a) rows. Only then engine-only deploy of panelin-calc.
+
+---
 
 **2026-05-27 (Phase 0 Production Readiness — Execution Started):** `en curso`. Se inició la ejecución inmediata de Phase 0 del plan de estabilización.
 

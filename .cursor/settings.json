@@ -9,5 +9,19 @@
     "vercel": {
       "enabled": true
     }
+  },
+  "cursor": {
+    "rules": {
+      "alwaysApply": [
+        "workspace-autostart-on-open",
+        "00-bootstrap-state"
+      ]
+    }
+  },
+  "editor": {
+    "formatOnSave": true,
+    "codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    }
   }
 }

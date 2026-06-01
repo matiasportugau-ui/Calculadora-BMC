@@ -279,13 +279,15 @@ async function _callPromptModule(moduleName, input, state) {
   const messages = [
     {
       role: "user",
-      content: `## Sub-agent: ${moduleName}\n${promptInstructions}\n\n## Input\n${JSON.stringify(input, null, 2)}`,
+      content: JSON.stringify({ subagent: moduleName, input }, null, 2),
     },
   ];
 
   const response = await callAgentOnce(messages, {
-    channel: "chat",
+    channel: "internal",
     calcState: state.artifacts?.context || {},
+    systemPromptOverride: promptInstructions,
+    skipKb: true,
   });
 
   // Best-effort JSON parsing for structured sub-agents

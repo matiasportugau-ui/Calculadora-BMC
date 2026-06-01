@@ -14,7 +14,7 @@ Datos de entrada:
 Tareas:
 1. Evalúa si el precio está dentro de rangos razonables para la zona y tipo de obra.
 2. Señala si el descuento es excesivo (>18-20% suele requerir justificación).
-3. Recomienda verificación de espesor o tipo de panel si corresponde.
+3. Recomienda verificación de espesor o alternativa si el precio parece demasiado agresivo.
 4. Da un veredicto claro: OK / REVISAR / RECHAZAR + razones concretas.
 5. Nunca inventes precios de la Matriz de BMC. Si no tienes datos suficientes, dilo.
 

@@ -61,22 +61,31 @@ Precios clave (USD/m² sin IVA, lista web):
 - ISOWALL PIR pared: 50mm=$54.54 | 80mm=$65.03 | 100mm=$71.71
 IVA Uruguay = 22% sobre el subtotal (no incluido en los precios anteriores).
 
-Si la consulta tiene menos de 10 palabras o no identifica ningún producto, respondé exactamente: "Consulta incompleta — necesito más detalles para cotizar."
+Si la consulta tiene menos de 10 palabras o no identifica ningún producto, respondé exactamente: "Consulta incompleta — falta(n): familia, espesor, dimensiones o largo/ancho".
 
 Respondé solo con el texto de respuesta al cliente, sin encabezados ni comentarios adicionales.`;
 
-const PARAM_EXTRACT_PROMPT = `Sos un extractor de datos para BMC Uruguay (paneles de aislamiento térmico).
-Dado el texto de consulta de un cliente, extraé los parámetros para calcular un presupuesto.
-Respondé SOLO con un objeto JSON válido, sin texto adicional, sin markdown.
+const PARAM_EXTRACT_PROMPT = `Sos un extractor de datos para BMC Uruguay (paneles de aislamiento térmico). Tu única tarea es NLU: mapear texto libre de WhatsApp/cliente a slots estructurados. NUNCA inventes números ni completes datos que no estén explícitos. Respondé SOLO JSON válido.
 
-Familias de paneles de techo: ISODEC_EPS (más común), ISOROOF_3G, ISODEC_PIR, ISOROOF_FOIL_3G, ISOROOF_PLUS_3G, ISOROOF_COLONIAL
-Familias de paneles de pared: ISOPANEL_EPS (más común), ISOWALL_PIR
-Espesores típicos techo (mm): 80, 100, 150, 200. Espesores típicos pared (mm): 50, 100, 150.
-Escenarios: solo_techo (galpón/nave/tinglado/depósito), solo_fachada (paredes/fachada), techo_fachada (ambos), camara_frig (cámara de frío).
+Familias techo (normalizá sinónimos/abreviaturas): ISODEC_EPS (sinónimos: isodec, isodec eps, iSODEC, ISODEC EPS), ISOROOF_3G (isoroof, isoroof foil, foil 3g), ISODEC_PIR, ISOROOF_FOIL_3G, ISOROOF_PLUS_3G, ISOROOF_COLONIAL.
+Familias pared: ISOPANEL_EPS (isopanel, isopanel eps, iSOPANEL), ISOWALL_PIR (isowall, isowall pir).
+Espesores: 30/50/80/100/120/150/200/250 mm (aceptá "150MM", "150 mm", "150", "15cm").
+Estructura/tipoEst: metal (por defecto), hormigon, madera, ºH, steel framing.
 
-{"escenario":"solo_techo|solo_fachada|techo_fachada|camara_frig|null","techo":{"familia":"string|null","espesor":0,"largo":0,"ancho":0,"tipoEst":"metal|hormigon|madera|null"},"pared":{"familia":"string|null","espesor":0,"alto":0,"perimetro":0},"camara":{"largo_int":0,"ancho_int":0,"alto_int":0},"confianza":"alta|media|baja","faltan":["lista de datos faltantes"]}
+REGLA OBLIGATORIA: si falta familia+espesor O (largo+ancho para techo / alto+perimetro para pared / m2 total sin dims), pon "faltan" con los campos requeridos y "escenario": null. No asumas.
 
-Usá null o 0 para valores desconocidos. Si no hay escenario claro, usá null.`;
+Ejemplos de variantes reales (entrenamiento):
+Input: "Isodec 150 / Isoroof Foil 30mm / Cuanto me sale para un techo de 5 mts de ancho x 4,50 de largo"
+Output: {"escenario":"solo_techo","techo":{"familia":"ISODEC_EPS","espesor":150,"largo":4.5,"ancho":5,"tipoEst":"metal"},"pared":null,"camara":null,"confianza":"media","faltan":[]}
+Input: "URGENTE: iSODEC eps 150MM + iSOPANEL 100MM / 350 M2 DE CADA UNO"
+Output: {"escenario":null,"techo":{"familia":"ISODEC_EPS","espesor":150,"largo":0,"ancho":0},"pared":{"familia":"ISOPANEL_EPS","espesor":100},"confianza":"baja","faltan":["dimensiones o largo/ancho","perimetro/altura para pared","confirmar si un solo producto o dos presupuestos"]}
+Input: "5.5m * 6 panel"
+Output: {"escenario":null,"techo":null,"pared":null,"confianza":"baja","faltan":["familia","espesor","largo o ancho completo","cantidad exacta de paneles o m2"]}
+Input: "Isopanel e Isodec 100mm / Ver planos en Ventas Altura minima 2,5m altura máxima 2,75m (en techo encajonado sumar 40cm)"
+Output: {"escenario":"techo_fachada","techo":{"familia":"ISODEC_EPS","espesor":100,"largo":0,"ancho":0},"pared":{"familia":"ISOPANEL_EPS","espesor":100,"alto":2.75},"confianza":"media","faltan":["largo/ancho o m2 exactos","perimetro de fachada"]}
+
+Formato de salida (SOLO este JSON, sin markdown code fences):
+{"escenario":"solo_techo|solo_fachada|techo_fachada|camara_frig|null","techo":{"familia":"...|null","espesor":0,"largo":0,"ancho":0,"tipoEst":"metal|hormigon|madera|null"},"pared":{"familia":"...|null","espesor":0,"alto":0,"perimetro":0},"camara":{"largo_int":0,"ancho_int":0,"alto_int":0},"confianza":"alta|media|baja","faltan":["familia","espesor","largo","ancho","alto","perimetro"]}`;
 
 const ESCENARIO_LABELS = {
   solo_techo: "Solo Techo", solo_fachada: "Solo Fachada",
@@ -102,7 +111,8 @@ function runBatchCalc(extracted, usedDefaults) {
         borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
         opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
       });
-      return r?.error ? null : { ...r, _escenario: "solo_techo" };
+      if (r?.error) return { _error: r.error };
+      return { ...r, _escenario: "solo_techo" };
     } catch { return null; }
   }
 
@@ -116,7 +126,8 @@ function runBatchCalc(extracted, usedDefaults) {
         familia, espesor, alto: pared.alto, perimetro: pared.perimetro,
         tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true,
       });
-      return r?.error ? null : { ...r, _escenario: "solo_fachada" };
+      if (r?.error) return { _error: r.error };
+      return { ...r, _escenario: "solo_fachada" };
     } catch { return null; }
   }
 
@@ -131,11 +142,13 @@ function runBatchCalc(extracted, usedDefaults) {
         familia, espesor, perimetro: perim, alto: camara.alto_int,
         tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true,
       });
+      if (rP?.error) return { _error: rP.error };
       const rT = calcTechoCompleto({
         familia, espesor, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal",
         borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
         opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: "Blanco",
       });
+      if (rT?.error) return { _error: rT.error };
       const allItems = [...(rP?.allItems || []), ...(rT?.allItems || [])];
       const totales = calcTotalesSinIVA(allItems);
       return { ...rP, techoResult: rT, allItems, totales, _escenario: "camara_frig" };
@@ -937,10 +950,21 @@ export function createWolfboardRouter(config) {
           extracted = null;
         }
 
-        // Step 2: Try the real calculator if we have enough params
-        if (extracted?.escenario && extracted.escenario !== "null") {
+        // PHASE 4 guardrail: if extractor reported missing required slots, emit precise "incompleta" naming them (do not fall to generic text LLM)
+        const reportedFaltan = (extracted && Array.isArray(extracted.faltan)) ? extracted.faltan.filter(Boolean) : [];
+        if (reportedFaltan.length > 0) {
+          response = `Consulta incompleta — falta(n): ${reportedFaltan.join(", ")}`;
+          status = "incompleta";
+        }
+
+        // Step 2: Try the real calculator if we have enough params (only if no explicit faltan from extractor)
+        if (extracted?.escenario && extracted.escenario !== "null" && reportedFaltan.length === 0) {
           calcRaw = runBatchCalc(extracted, usedDefaults);
-          if (calcRaw) {
+          if (calcRaw && calcRaw._error) {
+            response = `⚠ Requiere atención manual — ${calcRaw._error}`;
+            status = "engine_error";
+            method = "calc_error";
+          } else if (calcRaw) {
             const formatted = formatCalcResult(calcRaw, extracted, usedDefaults);
             if (formatted) {
               response = formatted;

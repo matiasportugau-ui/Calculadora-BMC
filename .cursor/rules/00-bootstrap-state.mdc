@@ -1,0 +1,50 @@
+---
+description: "Bootstrap — force loading of canonical state docs (PROJECT-STATE, latest HANDOFF, AGENTS.md, CLAUDE.md) at the start of relevant sessions."
+alwaysApply: true
+---
+
+# Project Bootstrap (Calculadora BMC)
+
+This rule ensures every serious agent session in this repository starts with the correct context.
+
+## Automatic Triggers
+
+When the user opens this workspace/folder **or** starts a conversation with any of these intents:
+- "continue", "siguiente", "resume", "next", "empezar", "trabajar en", "estado", "qué sigue"
+- Any reference to cotizaciones, admin, presupuestación, orchestrator, PDF, WA, ML, tareas, finanzas, etc.
+
+**You MUST first read (in order):**
+
+1. `AGENTS.md` (root) — command catalog + critical references
+2. `CLAUDE.md` (root) — technical overview
+3. `docs/team/PROJECT-STATE.md` — current priorities, recent changes, checkboxes (this is the contract)
+4. The **most recent** `docs/team/HANDOFF-*.md` file (use `ls -t docs/team/HANDOFF-*.md | head -1` or equivalent to find it)
+
+Only after loading these four sources should you ask the user for the specific task or propose the next action based on PROJECT-STATE.
+
+## For "nxt" / Executive Snapshot Requests
+
+When the user invokes anything resembling `nxt`, "executive status", "project health", "snapshot", "qué está pasando", or holistic status:
+- Also load:
+  - `docs/team/BITACORA-MATIAS.md` (last 50-80 lines)
+  - Latest `docs/team/HANDOFF-*-ORCHESTRATOR.md` or similar (if recent orchestrator work)
+  - `docs/team/PRODUCTION-READINESS-PLAN.md` (high level)
+
+## For Work Touching Human Gates (cm-0/1/2, Meta, ML OAuth, email ingest)
+
+Additionally load:
+- `docs/team/HUMAN-GATES-ONE-BY-ONE.md`
+- `.cursor/rules/human-gates-bmc.mdc`
+
+## Why This Rule Exists
+
+This repo moves extremely fast with parallel agent sessions. Without explicit bootstrap, agents operate on stale mental models. PROJECT-STATE.md + the latest handoff are the only reliable sources of "what is actually true right now".
+
+Do not skip this bootstrap unless the user explicitly says "skip state" or "no bootstrap".
+
+## Complementary Rules & Skills
+
+- `human-gates-bmc.mdc`
+- `bmc-holistic-project-health` skill
+- `nxt` (global skill, when available)
+- `presupuestacion-orchestrator` (global skill for full quote automation flows)

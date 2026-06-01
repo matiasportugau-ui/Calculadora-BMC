@@ -3,7 +3,9 @@
 Instrucciones para agentes de IA (Codex, Claude Code, Cursor) que trabajen en este repositorio.
 Lee este archivo antes de cualquier tarea.
 
-**Intervención humana (un paso por vez):** cuando un bloqueo sea **cm-0 / cm-1 / cm-2** (Meta, OAuth ML, ingest correo), seguí [`docs/team/HUMAN-GATES-ONE-BY-ONE.md`](docs/team/HUMAN-GATES-ONE-BY-ONE.md) — enlaces concretos, opciones de menú y “listo cuando”. Regla Cursor opcional: [`.cursor/rules/human-gates-bmc.mdc`](.cursor/rules/human-gates-bmc.mdc).
+**Intervención humana (un paso por vez):** cuando un bloqueo sea **cm-0 / cm-1 / cm-2** (Meta, OAuth ML, ingest correo), seguí [`docs/team/HUMAN-GATES-ONE-BY-ONE.md`](docs/team/HUMAN-GATES-ONE-BY-ONE.md) — enlaces concretos, opciones de menú y “listo cuando”. Regla Cursor: [`.cursor/rules/human-gates-bmc.mdc`](.cursor/rules/human-gates-bmc.mdc).
+
+**Cursor environment**: Lee [`docs/team/CURSOR-SETUP.md`](docs/team/CURSOR-SETUP.md) para entender las 18 reglas + 66 skills + 24 agents específicas de este repo, el workspace recomendado (`calculadora-bmc.code-workspace`), y el protocolo de bootstrap obligatorio.
 
 **Deploy / verificación desde Cursor:** skill del repo [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md) — adjuntarla en el chat (“usá la skill bmc-calculadora-deploy-from-cursor”) o añadir una regla de proyecto que la cite cuando pidas redeploy Cloud Run / Vercel / smoke MATRIZ.
 
@@ -54,6 +56,10 @@ Lee este archivo antes de cualquier tarea.
 | `npm run ml:pending-workup` | Preguntas ML **UNANSWERED**: checklist de puntos faltantes, precio ML vs Matriz, borrador sugerido (no publica en ML). `--json` |
 | `npm run ml:cloud-run` | Sincroniza vars a Cloud Run desde `.env`: ML OAuth, `PUBLIC_BASE_URL`, GCS tokens, y si están definidas: `WEBHOOK_VERIFY_TOKEN`, `BMC_SHEET_ID`, `API_AUTH_TOKEN` / `API_KEY`. Ver [`docs/ML-OAUTH-SETUP.md`](docs/ML-OAUTH-SETUP.md) §6–8 |
 | `./scripts/cloud-run-matriz-sheets-secret.sh` | Cloud Run **`panelin-calc`**: monta el JSON de Sheets desde Secret Manager (default secret `GOOGLE_APPLICATION_CREDENTIALS` → `/secrets/sa-key.json`) y setea `BMC_MATRIZ_SHEET_ID`; otorga `secretAccessor` al runtime SA. `SECRET_NAME=…` / `BMC_MATRIZ_SHEET_ID=…` opcionales. Checklist: [`docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md`](docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md) (Fase 2b). |
+| `npm run productos-maestro:reconcile` | **Productos Maestro:** cruza MATRIZ CSV + Stock E-Commerce; reporte gaps JSON/MD en `.runtime/productos-maestro-reconcile-*`. Requiere API (`:3001`) o Sheets en `.env`. Auth opcional `API_AUTH_TOKEN`. |
+| `npm run productos-maestro:mirror` | **Productos Maestro:** export CSV espejo read-only desde `GET /api/productos-maestro` → `.runtime/productos-maestro-mirror-*.csv`. |
+| `GET /api/productos-maestro` | Catálogo unificado precio+stock (MATRIZ + Stock + `.runtime/product-links.json`). Auth: `API_AUTH_TOKEN` o JWT cockpit. UI: Config → **Productos**. |
+| `POST /api/productos-maestro/push` | Push unificado precios MATRIZ + stock (`dryRun: true` para simular). Misma auth. |
 | `npm run mac:storage-audit` | macOS (solo lectura): snapshot de disco/memoria y tamaños de carpetas habituales; plan en [`.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md`](.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md). |
 | `npm run disk:precheck` | Comprueba espacio libre en el volumen del repo (default mín. **1024 MiB**). Se ejecuta **antes** de `npm run dev` (`predev`) y `npm run build` (`prebuild`). Si falla: mensaje con instrucciones; en Cursor usar regla/skill **disk-space-recovery** (propuesta agrupada → **tu aprobación** → limpiar → reanudar). `BMC_DISK_PRECHECK_SKIP=1`, `BMC_DISK_MIN_FREE_MIB`, `BMC_DISK_PRECHECK_MODE=warn` — ver [`docs/team/orientation/DISK-SPACE-RECOVERY-AGENT.md`](docs/team/orientation/DISK-SPACE-RECOVERY-AGENT.md). |
 | `npm run session:video-deps` | Video-User-interactive-dev: comprueba **ffmpeg** y **node** en PATH. |
