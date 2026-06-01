@@ -62,23 +62,12 @@ export function TutorialProvider({ children }) {
     if (!isTutorialMode) setIsTutorialMode(true);
   }, [isTutorialMode]);
 
-  const nextStep = useCallback(() => {
-    if (!activeWorkflow) return;
-
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex >= activeWorkflow.steps.length) {
-      // Finalizar workflow
-      completeCurrentWorkflow();
-    } else {
-      setCurrentStepIndex(nextIndex);
-    }
-  }, [activeWorkflow, currentStepIndex]);
-
-  const prevStep = useCallback(() => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(currentStepIndex - 1);
-    }
-  }, [currentStepIndex]);
+  const exitTutorial = useCallback(() => {
+    setActiveWorkflowId(null);
+    setCurrentStepIndex(0);
+    // Opcional: mantener modo tutorial activado o apagarlo
+    // setIsTutorialMode(false); // Comentado para que el usuario pueda saltar entre flujos
+  }, []);
 
   const completeCurrentWorkflow = useCallback(() => {
     if (activeWorkflowId) {
@@ -89,14 +78,25 @@ export function TutorialProvider({ children }) {
       });
     }
     exitTutorial();
-  }, [activeWorkflowId]);
+  }, [activeWorkflowId, exitTutorial]);
 
-  const exitTutorial = useCallback(() => {
-    setActiveWorkflowId(null);
-    setCurrentStepIndex(0);
-    // Opcional: mantener modo tutorial activado o apagarlo
-    // setIsTutorialMode(false); // Comentado para que el usuario pueda saltar entre flujos
-  }, []);
+  const nextStep = useCallback(() => {
+    if (!activeWorkflow) return;
+
+    const nextIndex = currentStepIndex + 1;
+    if (nextIndex >= activeWorkflow.steps.length) {
+      // Finalizar workflow
+      completeCurrentWorkflow();
+    } else {
+      setCurrentStepIndex(nextIndex);
+    }
+  }, [activeWorkflow, currentStepIndex, completeCurrentWorkflow]);
+
+  const prevStep = useCallback(() => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(currentStepIndex - 1);
+    }
+  }, [currentStepIndex]);
 
   const toggleTutorialMode = useCallback(() => {
     const newMode = !isTutorialMode;
