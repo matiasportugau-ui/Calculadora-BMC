@@ -101,6 +101,13 @@ Productos Maestro is considered **in production and 100% reviewed/verified** whe
 - Full re-run of `gate:local:full` in clean state
 - Stronger StockWebHint (better data + UX)
 
+**Turn 6–9 Update (Repeated Gate Timeouts + Pragmatic Adaptation):**
+- Both full gates timed out after 300s.
+- `scripts/fast-maestro-verify.sh` completed successfully: **0 errors** on maestro files, build passed cleanly.
+- Working tree is now significantly cleaner (only a handful of entries vs. 20+ earlier).
+- Created concrete stash/hygiene plan.
+- **Current status:** Feature is live in prod + fast verification green. Main remaining work is hygiene cleanup + dedicated smoke + final docs/sign-off.
+
 ---
 
 ## Pre-Deploy Checklist (Must be 100% before prod)
