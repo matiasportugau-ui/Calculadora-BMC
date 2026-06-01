@@ -33,6 +33,7 @@ export default function Topbar({ liveState = "ok", onOpenPalette, onChangeToken,
         <Tooltip id={HELP_ANCHORS.TOPBAR_LIVE}>
           <span
             className="adminCot__live"
+            data-tutorial-id="topbar-live"
             aria-live="polite"
             aria-label={
               liveState === "busy" ? "Procesando" :
@@ -48,6 +49,7 @@ export default function Topbar({ liveState = "ok", onOpenPalette, onChangeToken,
           <button
             type="button"
             className="adminCot__kbd"
+            data-tutorial-id="topbar-cmdk"
             onClick={onOpenPalette}
             title="Paleta de comandos (Cmd/Ctrl + K)"
           >

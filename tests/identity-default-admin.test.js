@@ -90,6 +90,19 @@ function makeShim() {
       return { rows: [] };
     }
 
+    if (norm.startsWith("insert into identity.module_grants")) {
+      const [user_id] = params;
+      for (const { module, level } of [
+        { module: "calc", level: "write" },
+        { module: "tareas", level: "read" },
+      ]) {
+        if (!tables.module_grants.find((r) => r.user_id === user_id && r.module === module)) {
+          tables.module_grants.push({ user_id, module, level });
+        }
+      }
+      return { rows: [] };
+    }
+
     if (norm.startsWith("select role from identity.role_grants")) {
       const [user_id] = params;
       return { rows: tables.role_grants.filter((r) => r.user_id === user_id) };

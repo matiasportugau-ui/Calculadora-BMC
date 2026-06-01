@@ -21,13 +21,17 @@ function group(name, fn) {
 
 // ── leading formula trigger characters ──────────────────────────────────────
 
-group("prefixes leading = / + / - / @ / tab / CR with apostrophe", () => {
+group("prefixes leading = / + / - / @ with apostrophe", () => {
   assert(sanitizeCellValue("=cmd|'/c calc'!A1") === "'=cmd|'/c calc'!A1", "= prefixed");
   assert(sanitizeCellValue("+1234") === "'+1234", "+ prefixed");
   assert(sanitizeCellValue("-100") === "'-100", "- prefixed");
   assert(sanitizeCellValue("@SUM(A1:A10)") === "'@SUM(A1:A10)", "@ prefixed");
-  assert(sanitizeCellValue("\tinjected") === "'\tinjected", "tab prefixed");
-  assert(sanitizeCellValue("\rinjected") === "'\rinjected", "CR prefixed");
+});
+
+group("leading whitespace before formula trigger — bypass defense", () => {
+  assert(sanitizeCellValue(" =HYPERLINK(\"http://evil.com\")") === "' =HYPERLINK(\"http://evil.com\")", "space before = prefixed");
+  assert(sanitizeCellValue("\tinjected") === "\tinjected", "leading tab — first non-WS char safe, unchanged");
+  assert(sanitizeCellValue("\rinjected") === "\rinjected", "leading CR — first non-WS char safe, unchanged");
 });
 
 group("HYPERLINK exfiltration payload — the canonical attack", () => {

@@ -276,6 +276,7 @@ export default function Toolbar({
             <button
               type="button"
               className="adminCot__btn adminCot__btn--primary"
+              data-tutorial-id="TOOLBAR_BATCH_GENERATE"
               onClick={() => setBatchOpen(true)}
               disabled={busyOp === "batch"}
             >
@@ -287,6 +288,7 @@ export default function Toolbar({
             <button
               type="button"
               className="adminCot__btn"
+              data-tutorial-id="toolbar-sync-crm"
               onClick={onRunSync}
               disabled={busyOp === "sync"}
             >

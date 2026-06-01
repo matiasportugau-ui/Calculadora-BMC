@@ -12,16 +12,19 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-06-01 (Finanzas 404 — cierre de deuda):** `hecho en repo, deploy pendiente`. Causa raíz real: el workflow **Deploy Calculator API** construye con [`server/Dockerfile`](../../server/Dockerfile) (no `Dockerfile.bmc-dashboard`), y ese Dockerfile **no copiaba** `docs/bmc-dashboard-modernization/dashboard/` → prod `/finanzas` seguía en JSON 404 aunque el fix previo (`a9b4434`) hubiera tocado solo el Dockerfile full-stack. **Fix:** COPY dashboard en `server/Dockerfile`; `.dockerignore` con negaciones padre/hijo; filtro deploy incluye `.dockerignore` + ruta dashboard; `finanzas:inspect` corregido. Local `/finanzas` OK; prod 404 hasta redeploy.
+**2026-06-01 (Finanzas 404 — cierre de deuda):** `RESUELTO EN PROD`. Incidente reportado vía paste de terminal completo (último curl 404 + intento de commit + `gh workflow run`). Causa: server/Dockerfile no copiaba el dashboard (a diferencia del Dockerfile.bmc-dashboard full-stack). Inspect script confirmó contexto OK → problema era revisión vieja de Cloud Run. **Acciones:** `gh workflow run` disparado sobre SHA con el COPY; nueva revisión desplegada; `/finanzas/` ahora 200 + HTML real en prod. Smoke prod endurecido con chequeo explícito de `GET /finanzas/` (falla el smoke si vuelve a 404). Repro script (`./scripts/repro-finanzas-404.sh`) pendiente de Docker Desktop encendido (usuario documentó "apagado"). Ver también entrada 2026-05-29 más abajo.
 
-**2026-06-01 (Productos Maestro — sistema centralizado precio + stock):** `implementación inicial completa`. 
+**2026-06-01 (Productos Maestro — sistema centralizado precio + stock):** `implementación inicial completa + validación gate`. 
 - Biblioteca `server/lib/productosMaestro.js` (merge MATRIZ + Stock + links)
 - Script `npm run productos-maestro:reconcile` + reportes en `.runtime/`
-- API completa `/api/productos-maestro` (catálogo, reconcile, links, push con dryRun)
+- API completa `/api/productos-maestro` (catálogo, reconcile, links, push con dryRun + **escritura real** reutilizando pushMatrizPricingOverrides + handleUpdateStock)
 - CSV MATRIZ ahora emite columna `sku` estable
 - UI `ProductosMaestroEditor.jsx` integrada en Config → "Productos (Maestro)" como hub visual de edición y escritura hacia planillas (preferencia del usuario)
+  - Edición inline de precios y stock
+  - Banner de cambios pendientes + confirmación modal antes de escritura real
 - RBAC + capabilities actualizados
-- Cumple el plan de `cursor_centralized_price_and_stock_mana.md` (Fases 1-3 principales). Ver `.runtime/productos-maestro-audit-2026.md`
+- Gate local (lint + test + build) validado exitosamente (sin nuevos errores atribuibles al feature)
+- Cumple el plan de `cursor_centralized_price_and_stock_mana.md` (Fases 1-3 + UX de seguridad de Fase 4). Ver `.runtime/productos-maestro-audit-2026.md`
 
 **2026-06-01 (Infra — mapa canónico service accounts GCP):** `hecho confirmado`. Auditoría consolidada del proyecto `chatbot-bmc-live`: arquitectura dual `panelin-runner` (runtime) + `bmc-dashboard-sheets` (ADC Sheets/GCS), inventario de 8 SAs, keys, Cloud Run, deriva vs scripts/docs, y plan P0–P3. Doc: [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md). **Hallazgo top:** secretos sensibles aún como env vars literales en revisión Cloud Run; prod usa key Sheets más antigua (`ff8190cb…`).
 
@@ -43,7 +46,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 - `scripts/inspect-docker-context.cjs`
 - `docs/team/HANDOFF-2026-05-29-finanzas-404.md`
 
-**Estado actual**: Cambios de código 100% aplicados y verificados localmente. El usuario aún debe correr `npm run finanzas:repro` una vez en un Terminal normal con Docker Desktop activo para capturar la evidencia limpia "antes/después" dentro del contenedor (requisito del plan). Deploy pendiente.
+**Estado actual**: Deploy a prod completado y verificado (curls reales post-deploy: 200 + HTML del dashboard). Smoke:prod ahora cubre explícitamente `/finanzas/` (falla si regresa el 404). El paso final pendiente es correr `./scripts/repro-finanzas-404.sh` con Docker Desktop activo para generar el log de inspección dentro del contenedor (como pedía el inspect script).
 
 ---
 

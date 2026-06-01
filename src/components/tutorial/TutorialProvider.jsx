@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { TUTORIAL_WORKFLOWS, getWorkflow } from './workflows.js';
+import { getWorkflow } from './workflows.js';
 
 const STORAGE_KEY = 'bmc_tutorial_mode';
 const PROGRESS_KEY = 'bmc_tutorial_progress';
@@ -62,23 +62,12 @@ export function TutorialProvider({ children }) {
     if (!isTutorialMode) setIsTutorialMode(true);
   }, [isTutorialMode]);
 
-  const nextStep = useCallback(() => {
-    if (!activeWorkflow) return;
-
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex >= activeWorkflow.steps.length) {
-      // Finalizar workflow
-      completeCurrentWorkflow();
-    } else {
-      setCurrentStepIndex(nextIndex);
-    }
-  }, [activeWorkflow, currentStepIndex]);
-
-  const prevStep = useCallback(() => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(currentStepIndex - 1);
-    }
-  }, [currentStepIndex]);
+  const exitTutorial = useCallback(() => {
+    setActiveWorkflowId(null);
+    setCurrentStepIndex(0);
+    // Opcional: mantener modo tutorial activado o apagarlo
+    // setIsTutorialMode(false); // Comentado para que el usuario pueda saltar entre flujos
+  }, []);
 
   const completeCurrentWorkflow = useCallback(() => {
     if (activeWorkflowId) {
@@ -89,14 +78,24 @@ export function TutorialProvider({ children }) {
       });
     }
     exitTutorial();
-  }, [activeWorkflowId]);
+  }, [activeWorkflowId, exitTutorial]);
 
-  const exitTutorial = useCallback(() => {
-    setActiveWorkflowId(null);
-    setCurrentStepIndex(0);
-    // Opcional: mantener modo tutorial activado o apagarlo
-    // setIsTutorialMode(false); // Comentado para que el usuario pueda saltar entre flujos
-  }, []);
+  const nextStep = useCallback(() => {
+    if (!activeWorkflow) return;
+
+    const nextIndex = currentStepIndex + 1;
+    if (nextIndex >= activeWorkflow.steps.length) {
+      completeCurrentWorkflow();
+    } else {
+      setCurrentStepIndex(nextIndex);
+    }
+  }, [activeWorkflow, currentStepIndex, completeCurrentWorkflow]);
+
+  const prevStep = useCallback(() => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(currentStepIndex - 1);
+    }
+  }, [currentStepIndex]);
 
   const toggleTutorialMode = useCallback(() => {
     const newMode = !isTutorialMode;
@@ -112,6 +111,25 @@ export function TutorialProvider({ children }) {
     localStorage.removeItem(PROGRESS_KEY);
     exitTutorial();
   }, [exitTutorial]);
+
+  // Listen for custom events from modules (e.g. "Start tutorial for Admin Cotizaciones")
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.type === 'start-admin-cot-tutorial') {
+        startWorkflow('admin-cotizaciones-gestion');
+      }
+      if (e.type === 'start-calculator-tutorial') {
+        startWorkflow('crear-cotizacion-completa');
+      }
+    };
+
+    window.addEventListener('start-admin-cot-tutorial', handler);
+    window.addEventListener('start-calculator-tutorial', handler);
+    return () => {
+      window.removeEventListener('start-admin-cot-tutorial', handler);
+      window.removeEventListener('start-calculator-tutorial', handler);
+    };
+  }, [startWorkflow]);
 
   const value = useMemo(() => ({
     // Estado

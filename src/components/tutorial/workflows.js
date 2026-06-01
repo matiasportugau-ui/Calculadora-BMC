@@ -129,6 +129,13 @@ export const TUTORIAL_WORKFLOWS = {
         placement: 'bottom',
       },
       {
+        id: '02b-main',
+        target: 'calc-main',
+        title: 'Interfaz principal',
+        content: 'Esta es la zona central de la calculadora donde se configuran todos los parámetros.',
+        placement: 'center',
+      },
+      {
         id: '03-dimensions',
         target: 'calc-dimensions',
         title: 'Cargar Medidas y Zonas',

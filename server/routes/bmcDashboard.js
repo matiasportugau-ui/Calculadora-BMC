@@ -1492,6 +1492,9 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
   };
 }
 
+// Export the core writers so Productos Maestro (and future surfaces) can reuse them
+export { pushMatrizPricingOverrides, handleUpdateStock };
+
 // ─── Router ───────────────────────────────────────────────────────────────
 
 export default function createBmcDashboardRouter(config) {
@@ -1724,14 +1727,11 @@ export default function createBmcDashboardRouter(config) {
   });
 
   // ────────────────────────────────────────────────────────────────────────────
-  // Productos Maestro — Catálogo unificado precio + stock (Fase 2 del plan)
-  // GET /api/productos-maestro
-  // GET /api/productos-maestro/reconcile
-  // GET/PUT /api/productos-maestro/links
-  // POST /api/productos-maestro/push  { items, dryRun? }
+  // Productos Maestro — Catálogo unificado precio + stock
+  // Full implementation: read + links + real write-back (reuses existing MATRIZ/Stock writers)
   // ────────────────────────────────────────────────────────────────────────────
-  import("../lib/productosMaestro.js").then(({ default: pm }) => {
-    // Lazy import so the module is only loaded when routes are mounted
+  (async () => {
+    const pm = await import("../lib/productosMaestro.js").then(m => m.default || m);
 
     router.get("/productos-maestro", async (_req, res) => {
       try {
@@ -1774,34 +1774,97 @@ export default function createBmcDashboardRouter(config) {
       }
     });
 
-    router.post("/productos-maestro/push", async (req, res) => {
+    /**
+     * Real implementation of push from Productos Maestro UI.
+     * Converts maestro items → calls the canonical writers:
+     *   - pushMatrizPricingOverrides for price changes (via sku → path)
+     *   - handleUpdateStock for stock changes
+     */
+    router.post("/productos-maestro/push", requireCrmCockpitAuth, async (req, res) => {
       try {
-        const { items = [], dryRun = true, token } = req.body || {};
+        const { items = [], dryRun = true } = req.body || {};
 
-        // Simple token gate (same pattern as other privileged writes)
-        const expected = process.env.API_AUTH_TOKEN || process.env.BMC_PUSH_TOKEN || '';
-        if (expected && token !== expected) {
-          return res.status(401).json({ ok: false, error: 'invalid_token' });
+        const matrizId = config.bmcMatrizSheetId;
+        const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+        const stockId = config.bmcStockSheetId;
+
+        // Prepare changes in maestro format
+        const prepared = pm.preparePushPayload(items, { dryRun });
+
+        if (dryRun) {
+          return res.json({
+            ok: true,
+            dryRun: true,
+            prepared,
+            message: "Dry run — no se escribió nada. Cambia dryRun=false para aplicar cambios reales.",
+          });
         }
 
-        const payload = pm.preparePushPayload(items, { dryRun });
-        // NOTE: real write execution (MATRIZ + Stock) is implemented in follow-up iteration
-        // For v1 we return the prepared payload + dryRun safety.
+        // Real write path
+        if (!matrizId || !credsPath) {
+          return res.status(503).json({ ok: false, error: "MATRIZ no configurada para escritura" });
+        }
+
+        const results = {
+          prices: null,
+          stock: [],
+        };
+
+        // 1. Price changes → reuse the existing MATRIZ override engine
+        //    We convert {sku, costo, venta, web...} into path-based overrides
+        const priceOverrides = {};
+        const { MATRIZ_SKU_TO_PATH } = await import("../../src/data/matrizPreciosMapping.js");
+
+        for (const change of prepared.priceChanges || []) {
+          const path = MATRIZ_SKU_TO_PATH[change.sku] || Object.keys(MATRIZ_SKU_TO_PATH).find(k => MATRIZ_SKU_TO_PATH[k] === change.sku);
+          if (!path) continue;
+
+          if (change.costo != null) priceOverrides[`${path}.costo`] = change.costo;
+          if (change.venta != null || change.ventaLocal != null) {
+            priceOverrides[`${path}.venta`] = change.venta ?? change.ventaLocal;
+          }
+          if (change.web != null || change.ventaWeb != null) {
+            priceOverrides[`${path}.web`] = change.web ?? change.ventaWeb;
+          }
+        }
+
+        if (Object.keys(priceOverrides).length > 0) {
+          results.prices = await pushMatrizPricingOverrides(matrizId, priceOverrides, credsPath, false);
+        }
+
+        // 2. Stock changes → reuse the existing stock updater
+        for (const s of prepared.stockChanges || []) {
+          if (!s.codigo) continue;
+          try {
+            const stockBody = {};
+            if (s.actual != null) stockBody.STOCK = s.actual;
+            if (s.pedidoPendiente != null) stockBody.PEDIDO_PENDIENTE = s.pedidoPendiente;
+
+            const r = await handleUpdateStock(stockId, sheetId, s.codigo, stockBody);
+            results.stock.push({ codigo: s.codigo, ok: true, result: r });
+          } catch (err) {
+            results.stock.push({ codigo: s.codigo, ok: false, error: err.message });
+          }
+        }
+
+        // Audit note: the individual writers already call appendAuditLog for stock.
+        // For prices we can add a maestro-specific audit later if needed.
+
         res.json({
           ok: true,
-          dryRun,
-          prepared: payload,
-          note: dryRun
-            ? 'dryRun=true — nada se escribió. Envía dryRun=false + token para aplicar.'
-            : 'dryRun=false — (stub) en esta versión solo se prepara. Escritura real en iteración siguiente.',
+          dryRun: false,
+          results,
+          summary: {
+            pricesUpdated: results.prices?.updated || 0,
+            stockTouched: results.stock.filter(x => x.ok).length,
+            stockErrors: results.stock.filter(x => !x.ok).length,
+          },
         });
       } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
       }
     });
-  }).catch(() => {
-    // If the module fails to load, the routes simply won't exist (graceful)
-  });
+  })();
 
   router.get("/kpi-financiero", async (_req, res) => {
     if (!checkPagosAvailable(config)) return noConfig(res);

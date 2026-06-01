@@ -678,7 +678,12 @@ export async function getModuleGrants(userId) {
     [userId],
   );
   const out = { ...baseline };
-  for (const r of explicit.rows) out[r.module] = r.level;
+  for (const r of explicit.rows) {
+    const current = out[r.module];
+    // Explicit grants may elevate access but never downgrade role defaults
+    // (e.g. comprador bootstrap inserts calc=write must not cap superadmin).
+    if (!current || _levelAllows(r.level, current)) out[r.module] = r.level;
+  }
   return out;
 }
 

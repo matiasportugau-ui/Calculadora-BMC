@@ -13,7 +13,7 @@ import { C, FONT } from '../data/constants.js';
 const API_BASE = getCalcApiBase();
 const TOKEN_KEY = 'bmc_productos_maestro_token';
 
-export default function ProductosMaestroEditor({ onSave }) {
+export default function ProductosMaestroEditor() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
@@ -22,8 +22,43 @@ export default function ProductosMaestroEditor({ onSave }) {
     try { return sessionStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
   });
   const [msg, setMsg] = useState(null);
-  const [filter, setFilter] = useState('all'); // all | linked | matriz-only | stock-only
+  const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+
+  // Local edits for push (dirty changes)
+  const [edits, setEdits] = useState({}); // key = id or sku/codigo, value = partial {precio, stock}
+
+  // Confirmation state for real writes
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // Derived pending changes (for banner + confirmation)
+  const pendingChanges = Object.keys(edits).length;
+  const hasPendingChanges = pendingChanges > 0;
+
+  function revertEdit(key) {
+    const next = { ...edits };
+    delete next[key];
+    setEdits(next);
+  }
+
+  function getEditKey(it) {
+    return it.id || it.sku || it.codigo;
+  }
+
+  // Editing helpers — declared early so JSX render can use them without TDZ issues
+  function setEdit(id, field, value) {
+    setEdits(prev => {
+      const current = prev[id] || { precio: {}, stock: {} };
+      const [group, key] = field.includes('.') ? field.split('.') : [field, null];
+      if (group === 'precio') {
+        return { ...prev, [id]: { ...current, precio: { ...current.precio, [key || 'costo']: parseFloat(value) || 0 } } };
+      }
+      if (group === 'stock') {
+        return { ...prev, [id]: { ...current, stock: { ...current.stock, [key || 'actual']: parseFloat(value) || 0 } } };
+      }
+      return prev;
+    });
+  }
 
   const apiHeaders = () => ({
     'Content-Type': 'application/json',
@@ -97,8 +132,18 @@ export default function ProductosMaestroEditor({ onSave }) {
     const next = { ...links, [sku]: codigo.trim() || null };
     if (!codigo.trim()) delete next[sku];
     setLinks(next);
-    // auto-guardar (UX simple)
     saveLinks(next);
+  }
+
+
+
+  function getEffectiveItem(it) {
+    const edit = edits[it.id] || edits[it.sku] || edits[it.codigo] || {};
+    return {
+      ...it,
+      precio: edit.precio ? { ...it.precio, ...edit.precio } : it.precio,
+      stock: edit.stock ? { ...it.stock, ...edit.stock } : it.stock,
+    };
   }
 
   async function doPush(dryRun) {
@@ -106,15 +151,19 @@ export default function ProductosMaestroEditor({ onSave }) {
       setMsg({ type: 'error', text: 'Ingresa el API_AUTH_TOKEN para escribir' });
       return;
     }
-    // Tomamos los items que tienen cambios locales (por ahora enviamos todo lo vinculado como ejemplo)
+
+    // Build payload from effective (edited) items + only those that have sku or codigo
     const payloadItems = items
-      .filter((i) => i.linkStatus === 'linked' || i.sku)
-      .map((i) => ({
-        sku: i.sku,
-        codigo: i.codigo,
-        precio: i.precio ? { ...i.precio } : undefined,
-        stock: i.stock ? { actual: i.stock.actual, pedidoPendiente: i.stock.pedidoPendiente } : undefined,
-      }));
+      .filter((i) => i.sku || i.codigo)
+      .map((raw) => {
+        const it = getEffectiveItem(raw);
+        return {
+          sku: it.sku,
+          codigo: it.codigo,
+          precio: it.precio ? { ...it.precio } : undefined,
+          stock: it.stock ? { actual: it.stock.actual, pedidoPendiente: it.stock.pedidoPendiente } : undefined,
+        };
+      });
 
     try {
       const res = await fetch(`${API_BASE}/api/productos-maestro/push`, {
@@ -124,13 +173,12 @@ export default function ProductosMaestroEditor({ onSave }) {
       });
       const j = await res.json();
       if (j.ok) {
-        setMsg({
-          type: 'success',
-          text: dryRun
-            ? `Simulación OK — ${j.prepared?.summary?.precios || 0} precios / ${j.prepared?.summary?.stock || 0} stock listos`
-            : 'Push enviado (ver logs del servidor)',
-        });
-        if (!dryRun) setTimeout(refreshAll, 1200);
+        const note = dryRun
+          ? `Simulación OK — ${j.prepared?.summary?.precios || 0} precios / ${j.prepared?.summary?.stock || 0} stock`
+          : `Escritura real completada — precios: ${j.results?.prices?.updated || 0}, stock: ${j.summary?.stockTouched || 0}`;
+        setMsg({ type: 'success', text: note });
+        setEdits({}); // clear local edits after successful operation
+        if (!dryRun) setTimeout(refreshAll, 1400);
       } else {
         throw new Error(j.error || 'Error en push');
       }
@@ -151,7 +199,12 @@ export default function ProductosMaestroEditor({ onSave }) {
         <button onClick={() => doPush(true)} style={btnStyle('#0ea5e9')}>
           <Download size={14} /> Simular envío
         </button>
-        <button onClick={() => doPush(false)} style={btnStyle('#dc2626')}>
+        <button 
+          onClick={() => hasPendingChanges ? setShowConfirm(true) : doPush(false)} 
+          disabled={!hasPendingChanges}
+          style={btnStyle(hasPendingChanges ? '#dc2626' : '#9ca3af')}
+          title={hasPendingChanges ? 'Escribir cambios reales' : 'Edita precios o stock para habilitar'}
+        >
           <Send size={14} /> Escribir en planillas (real)
         </button>
 
@@ -162,6 +215,33 @@ export default function ProductosMaestroEditor({ onSave }) {
           style={{ ...inputStyle(), width: 280 }}
         />
       </div>
+
+      {/* Pending changes banner */}
+      {hasPendingChanges && (
+        <div style={{
+          background: '#fef3c7',
+          border: '1px solid #f59e0b',
+          borderRadius: 8,
+          padding: '8px 12px',
+          marginBottom: 12,
+          fontSize: 13,
+          color: '#92400e',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          flexWrap: 'wrap'
+        }}>
+          <span>
+            ⚠️ <strong>{pendingChanges}</strong> cambio(s) local(es) pendiente(s)
+          </span>
+          <button 
+            onClick={() => setEdits({})}
+            style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, border: '1px solid #d97706', background: 'white', cursor: 'pointer' }}
+          >
+            Descartar todo
+          </button>
+        </div>
+      )}
 
       {msg && (
         <div style={{ padding: '8px 12px', borderRadius: 8, marginBottom: 12, background: msg.type === 'error' ? '#fee2e2' : '#dcfce7', color: msg.type === 'error' ? '#991b1b' : '#166534', fontSize: 13 }}>
@@ -215,15 +295,26 @@ export default function ProductosMaestroEditor({ onSave }) {
                 <td style={tdStyle()}><span style={{ fontSize: 11 }}>{it.path || it.nombre}</span></td>
                 <td style={tdStyle()}>
                   {it.precio ? (
-                    <span style={{ fontSize: 11 }}>
-                      ${it.precio.costo?.toFixed(2)} / ${it.precio.ventaLocal?.toFixed(2)} / ${it.precio.ventaWeb?.toFixed(2)}
-                    </span>
-                  ) : <span style={{ color: '#999' }}>—</span>}
+                    <div style={{ display: 'flex', gap: 4, fontSize: 10, alignItems: 'center' }}>
+                      <input type="number" step="0.01" value={getEffectiveItem(it).precio?.costo ?? ''} onChange={e => setEdit(getEditKey(it), 'precio.costo', e.target.value)} style={{width:58, background: edits[getEditKey(it)]?.precio?.costo != null ? '#fef3c7' : 'white'}} />
+                      <input type="number" step="0.01" value={getEffectiveItem(it).precio?.ventaLocal ?? ''} onChange={e => setEdit(getEditKey(it), 'precio.ventaLocal', e.target.value)} style={{width:58, background: edits[getEditKey(it)]?.precio?.ventaLocal != null ? '#fef3c7' : 'white'}} />
+                      <input type="number" step="0.01" value={getEffectiveItem(it).precio?.ventaWeb ?? ''} onChange={e => setEdit(getEditKey(it), 'precio.ventaWeb', e.target.value)} style={{width:58, background: edits[getEditKey(it)]?.precio?.ventaWeb != null ? '#fef3c7' : 'white'}} />
+                      {edits[getEditKey(it)] && (
+                        <button onClick={() => revertEdit(getEditKey(it))} style={{ fontSize: 10, padding: '0 4px', cursor: 'pointer', border: 'none', background: 'transparent', color: '#b45309' }} title="Revertir cambios de esta fila">↩</button>
+                      )}
+                    </div>
+                  ) : <span style={{ color: '#999', fontSize: 11 }}>—</span>}
                 </td>
                 <td style={tdStyle()}>
                   {it.stock ? (
-                    <span style={{ fontSize: 11 }}>{it.stock.actual} (pend: {it.stock.pedidoPendiente})</span>
-                  ) : <span style={{ color: '#999' }}>—</span>}
+                    <div style={{ display: 'flex', gap: 4, fontSize: 10, alignItems: 'center' }}>
+                      <input type="number" value={getEffectiveItem(it).stock?.actual ?? ''} onChange={e => setEdit(getEditKey(it), 'stock.actual', e.target.value)} style={{width:52, background: edits[getEditKey(it)]?.stock?.actual != null ? '#fef3c7' : 'white'}} />
+                      <input type="number" value={getEffectiveItem(it).stock?.pedidoPendiente ?? ''} onChange={e => setEdit(getEditKey(it), 'stock.pedidoPendiente', e.target.value)} style={{width:52, background: edits[getEditKey(it)]?.stock?.pedidoPendiente != null ? '#fef3c7' : 'white'}} />
+                      {edits[getEditKey(it)] && (
+                        <button onClick={() => revertEdit(getEditKey(it))} style={{ fontSize: 10, padding: '0 4px', cursor: 'pointer', border: 'none', background: 'transparent', color: '#b45309' }} title="Revertir cambios de esta fila">↩</button>
+                      )}
+                    </div>
+                  ) : <span style={{ color: '#999', fontSize: 11 }}>—</span>}
                 </td>
                 <td style={tdStyle()}>
                   <span style={{ color: statusColor(it.linkStatus), fontWeight: 600 }}>{it.linkStatus}</span>
@@ -249,6 +340,38 @@ export default function ProductosMaestroEditor({ onSave }) {
       <div style={{ marginTop: 12, fontSize: 11, color: C.ts }}>
         Los links se guardan automáticamente. Usa <b>Simular envío</b> antes de <b>Escribir en planillas</b>. El push real requiere token y rol admin.
       </div>
+
+      {/* Confirmation Modal for real writes */}
+      {showConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: C.bg, borderRadius: 12, padding: 24, maxWidth: 420, width: '90%', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 18 }}>¿Confirmas la escritura real?</h3>
+            
+            <p style={{ fontSize: 14, color: C.ts, marginBottom: 16 }}>
+              Se enviarán <strong>{pendingChanges}</strong> cambio(s) a las planillas de MATRIZ y/o Stock.
+              Esta acción modifica datos operativos.
+            </p>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowConfirm(false)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => {
+                  setShowConfirm(false);
+                  doPush(false);
+                }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#dc2626', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Sí, escribir cambios reales
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

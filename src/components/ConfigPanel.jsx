@@ -175,7 +175,7 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
           {tab === "precios" ? (
             <PricingEditor onSave={handlePricingSave} />
           ) : tab === "productos" ? (
-            <ProductosMaestroEditor onSave={handlePricingSave} />
+            <ProductosMaestroEditor />
           ) : tab === "formulas" ? (
             <DimensioningFormulasEditor onSave={handleFormulasSave} />
           ) : (
