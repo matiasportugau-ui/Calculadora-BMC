@@ -53,35 +53,33 @@ function parseDockerignore(filePath) {
   return rules;
 }
 
-// Improved matcher for current .dockerignore style (docs/* + targeted ! negations)
+// Match Docker .dockerignore semantics: * does not cross path separators.
 function matchesPattern(filePath, pattern) {
   const norm = filePath.replace(/\\/g, '/');
 
   if (norm === pattern) return true;
 
-  // Handle docs/* style exclusion
-  if (pattern === 'docs/*') {
-    return norm.startsWith('docs/');
+  if (pattern.endsWith('/*')) {
+    const base = pattern.slice(0, -2);
+    if (norm === base) return true;
+    if (!norm.startsWith(`${base}/`)) return false;
+    const rest = norm.slice(base.length + 1);
+    return !rest.includes('/');
   }
 
-  // Handle explicit negation targets like !docs/bmc-dashboard-modernization/dashboard
-  if (norm === pattern || norm.startsWith(pattern + '/')) return true;
-
-  // Wildcard at end
   if (pattern.endsWith('*')) {
     const prefix = pattern.slice(0, -1);
-    if (norm.startsWith(prefix)) return true;
+    return norm.startsWith(prefix);
   }
 
-  return false;
+  return norm.startsWith(`${pattern}/`);
 }
 
 function shouldInclude(filePath, rules) {
   let included = true;
-
   for (const rule of rules) {
     if (matchesPattern(filePath, rule.pattern)) {
-      included = !rule.negation;
+      included = rule.negation;
     }
   }
   return included;

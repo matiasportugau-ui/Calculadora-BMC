@@ -9,14 +9,19 @@ dist
 npm-debug.log
 public
 tests
-# We keep the Docker image small by excluding most of docs/,
-# but we explicitly include the few folders the full-stack image needs:
-# - Finanzas legacy dashboard (static UI served at /finanzas)
-# - Logistica prototype lib (imported by BmcLogisticaApp)
-# - Admin Cotizaciones walkthrough data
+# Exclude most of docs/, then re-include only what production images need.
+# Docker requires un-excluding parent directories before nested paths.
 docs/*
+!docs/bmc-dashboard-modernization
+docs/bmc-dashboard-modernization/*
 !docs/bmc-dashboard-modernization/dashboard
+!docs/bmc-dashboard-modernization/logistica-carga-prototype
+docs/bmc-dashboard-modernization/logistica-carga-prototype/*
 !docs/bmc-dashboard-modernization/logistica-carga-prototype/lib
+!docs/walkthrough
+docs/walkthrough/*
+!docs/walkthrough/admin-cot
+docs/walkthrough/admin-cot/*
 !docs/walkthrough/admin-cot/source.json
 
 *.md

@@ -35,6 +35,8 @@ COPY --from=deps /app/package.json ./package.json
 COPY server/ ./server/
 COPY src/utils/ ./src/utils/
 COPY src/data/ ./src/data/
+# Legacy operator dashboard served at GET /finanzas (see server/index.js)
+COPY docs/bmc-dashboard-modernization/dashboard ./docs/bmc-dashboard-modernization/dashboard
 
 RUN addgroup -g 1001 -S panelin && \
     adduser -S -u 1001 -G panelin panelin && \

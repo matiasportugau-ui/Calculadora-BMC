@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-01 (Finanzas 404 — cierre de deuda):** `hecho en repo, deploy pendiente`. Causa raíz real: el workflow **Deploy Calculator API** construye con [`server/Dockerfile`](../../server/Dockerfile) (no `Dockerfile.bmc-dashboard`), y ese Dockerfile **no copiaba** `docs/bmc-dashboard-modernization/dashboard/` → prod `/finanzas` seguía en JSON 404 aunque el fix previo (`a9b4434`) hubiera tocado solo el Dockerfile full-stack. **Fix:** COPY dashboard en `server/Dockerfile`; `.dockerignore` con negaciones padre/hijo; filtro deploy incluye `.dockerignore` + ruta dashboard; `finanzas:inspect` corregido. Local `/finanzas` OK; prod 404 hasta redeploy.
+
 **2026-06-01 (Productos Maestro — sistema centralizado precio + stock):** `implementación inicial completa`. 
 - Biblioteca `server/lib/productosMaestro.js` (merge MATRIZ + Stock + links)
 - Script `npm run productos-maestro:reconcile` + reportes en `.runtime/`
