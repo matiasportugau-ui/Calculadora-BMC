@@ -61,11 +61,25 @@ Dos usos:
 1. **Importar directo a la calculadora** (Config → Listado de precios → *Importar planilla modificada*) — funciona ya, clave por `path`.
 2. **Pegar en la pestaña BROMYROS** para dejar el sheet correcto — requiere alinear columnas D/F/L/M/T y completar los SKU que faltan (ver §4).
 
-> **18 paths quedan con `sku` vacío** en el documento (no existen en `matrizPreciosMapping.js`): no pueden ir al sheet por SKU hasta agregarles una entrada. Sí importan bien a la calculadora (clave por `path`).
+> **Cobertura SKU: 137/137.** Los 18 paths que antes no tenían SKU ya están mapeados en
+> `matrizPreciosMapping.js` (commit de cierre de gap). Donde el precio se comparte con otra
+> variante, se usó un **SKU disjunto** para que cada path tenga su propia fila en col D:
 
-Paths sin SKU (a resolver en `matrizPreciosMapping.js` + col D del sheet):
-`tornillo_hex_galv_4/6_mecha/aguja`, `varilla_roscada_8mm`, `taco_expansivo_8mm`,
-`gotero_frontal_greca.ISOROOF.50/80`, varios `ISODEC_PIR._all` (lateral cámara, babetas, cumbrera, soporte canalón), `canalon.ISODEC_PIR.120`, `perfil_u.ISOPANEL.250`, `perfil_u.ISOWALL.50/80/100`.
+| Path | SKU nuevo |
+|---|---|
+| `FIJACIONES.tornillo_hex_galv_4/6_mecha` | `THEXG4M` / `THEXG6M` |
+| `FIJACIONES.tornillo_hex_galv_4/6_aguja` | `THEXG4A` / `THEXG6A` |
+| `FIJACIONES.varilla_roscada_8mm` · `taco_expansivo_8mm` | `VAR8MM` · `TACEX8MM` |
+| `gotero_frontal_greca.ISOROOF.50/80` | `GFCGR50` / `GFCGR80` |
+| `babeta_adosar/empotrar.ISODEC_PIR._all` | `BBADPIR` / `BBEMPIR` |
+| `cumbrera` · `soporte_canalon` · `gotero_lateral_camara` `.ISODEC_PIR._all` | `CUMPIR` · `SOPCANPIR` · `GLDCAMPIR` |
+| `canalon.ISODEC_PIR.120` | `CANPIR120` |
+| `perfil_u.ISOPANEL.250` | `PU250MM` |
+| `perfil_u.ISOWALL.80/50/100` | `PU80MM` / `PUW50MM` / `PUW100MM` |
+
+> **Acción operativa:** para que estos productos se editen *desde el sheet*, agregar una fila por
+> cada SKU nuevo en la col D de BROMYROS (con su F/L/M/T). Mientras no existan esas filas, igual
+> se bakean correctamente vía el export de la calculadora (clave por `path`).
 
 ---
 
