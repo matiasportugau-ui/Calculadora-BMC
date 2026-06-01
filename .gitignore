@@ -114,3 +114,4 @@ tools/release-traceability/scripts/__pycache__/
 
 # Walkthrough — screenshots pesadas (el JSON sí se commitea)
 docs/walkthrough/**/screenshots/
+.env*

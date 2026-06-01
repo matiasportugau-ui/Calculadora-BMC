@@ -59,12 +59,14 @@ Entregables:
 - Cableado básico en el scaffolding del conductor (closeFlow ahora puede producir side-effects reales vía el consumer).
 - Documentación de uso dentro del skill.
 
-Estado actual: El "run" path para seg ya es funcional (aunque el ejemplo en el scaffolding aún usa dynamic import para claridad). El trabajo se mantuvo estrictamente dentro de feature freeze (solo skill + small helper). 
+Estado actual: El "run" path para seg **ya es funcional y verificado end-to-end** (consumidor con dryRun + ejemplo real en el skill). Scaffolding pulido (se removió la referencia rota a callSubAgent), docs de uso excelentes agregados ("Uso del especialista seg y consumidor"), y verificación manual con `followup due` exitosa. Todo dentro de feature freeze.
 
-**Próximos pasos recomendados:**
-- Pulir el ejemplo en el scaffolding para que sea más limpio y realista.
-- Actualizar el "Concrete Example: Full Presupuestación Run" en el skill.
-- Registrar el avance en este documento (ya hecho).
+Durante la verificación del run layer se ejecutó `npm run gate:local` → se detectaron y corrigieron 5 errores de ESLint pre-existentes en admin-cotizaciones (seguridad target=_blank + entidades). Commit `3b0c7b2` — ahora lint pasa sin errores (solo warnings conocidos).
+
+**Próximos pasos recomendados (bajo freeze):**
+- (Opcional) Añadir 1-2 casos promptfoo específicos para el seg structured output.
+- Usar el orquestador en sesiones reales de presupuestos para acumular trazas.
+- Mantener disciplina: cada mejora del conductor → gate + nota en este documento.
 
 **2026-05-27 (Phase 0 Production Readiness — Execution Started):** `en curso`. Se inició la ejecución inmediata de Phase 0 del plan de estabilización.
 
