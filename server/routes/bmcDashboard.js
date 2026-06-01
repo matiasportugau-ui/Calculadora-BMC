@@ -1253,11 +1253,12 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 
   const approvedTabs = Object.keys(MATRIZ_TAB_COLUMNS);
   if (approvedTabs.length === 0) {
-    return { csv: "\uFEFFpath,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab\n", count: 0 };
+    return { csv: "\uFEFFsku,path,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab\n", count: 0 };
   }
 
   const csvRows = [];
   const header = [
+    "sku",                    // ← clave estable para Productos Maestro (col D original de MATRIZ)
     "path",
     "descripcion",
     "categoria",
@@ -1337,8 +1338,9 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
         : "Otros";
       const unidad = path.includes("esp.") ? "m²" : "unid";
 
+      const skuForCsv = esc(skuRaw || "");
       csvRows.push(
-        [path, esc(descripcion), categoria, costo, venta, ventaInc, ventaWeb, ventaWebIvaInc, unidad, tabName].join(","),
+        [skuForCsv, path, esc(descripcion), categoria, costo, venta, ventaInc, ventaWeb, ventaWebIvaInc, unidad, tabName].join(","),
       );
       count++;
     }
@@ -1719,6 +1721,86 @@ export default function createBmcDashboardRouter(config) {
       }
       sheetsUnavailable(res, e.message);
     }
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Productos Maestro — Catálogo unificado precio + stock (Fase 2 del plan)
+  // GET /api/productos-maestro
+  // GET /api/productos-maestro/reconcile
+  // GET/PUT /api/productos-maestro/links
+  // POST /api/productos-maestro/push  { items, dryRun? }
+  // ────────────────────────────────────────────────────────────────────────────
+  import("../lib/productosMaestro.js").then(({ default: pm }) => {
+    // Lazy import so the module is only loaded when routes are mounted
+
+    router.get("/productos-maestro", async (_req, res) => {
+      try {
+        const data = await pm.getProductosMaestro({ includeUnmatched: true });
+        res.json(data);
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    router.get("/productos-maestro/reconcile", async (_req, res) => {
+      try {
+        const report = await pm.reconcileProductosMaestro();
+        res.json(report);
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    router.get("/productos-maestro/links", (_req, res) => {
+      try {
+        const links = pm.loadLinks();
+        res.json({ ok: true, links, count: Object.keys(links).length });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    router.put("/productos-maestro/links", async (req, res) => {
+      try {
+        const body = req.body || {};
+        const incoming = body.links || body;
+        if (typeof incoming !== 'object') {
+          return res.status(400).json({ ok: false, error: 'links must be an object' });
+        }
+        const saved = pm.saveLinks(incoming);
+        res.json({ ok: true, ...saved });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    router.post("/productos-maestro/push", async (req, res) => {
+      try {
+        const { items = [], dryRun = true, token } = req.body || {};
+
+        // Simple token gate (same pattern as other privileged writes)
+        const expected = process.env.API_AUTH_TOKEN || process.env.BMC_PUSH_TOKEN || '';
+        if (expected && token !== expected) {
+          return res.status(401).json({ ok: false, error: 'invalid_token' });
+        }
+
+        const payload = pm.preparePushPayload(items, { dryRun });
+        // NOTE: real write execution (MATRIZ + Stock) is implemented in follow-up iteration
+        // For v1 we return the prepared payload + dryRun safety.
+        res.json({
+          ok: true,
+          dryRun,
+          prepared: payload,
+          note: dryRun
+            ? 'dryRun=true — nada se escribió. Envía dryRun=false + token para aplicar.'
+            : 'dryRun=false — (stub) en esta versión solo se prepara. Escritura real en iteración siguiente.',
+        });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+  }).catch(() => {
+    // If the module fails to load, the routes simply won't exist (graceful)
   });
 
   router.get("/kpi-financiero", async (_req, res) => {

@@ -31,6 +31,13 @@ const DASHBOARD_ROUTES = [
   { method: "GET", path: "/api/stock-kpi", summary: "KPI stock" },
   { method: "GET", path: "/api/kpi-financiero", summary: "KPI financiero" },
   { method: "GET", path: "/api/stock/history", summary: "Historial stock" },
+
+  // Productos Maestro (centralizado)
+  { method: "GET", path: "/api/productos-maestro", summary: "Catálogo unificado precio + stock (Productos Maestro)" },
+  { method: "GET", path: "/api/productos-maestro/reconcile", summary: "Gaps MATRIZ ↔ Stock" },
+  { method: "GET", path: "/api/productos-maestro/links", summary: "Links SKU ↔ CODIGO" },
+  { method: "PUT", path: "/api/productos-maestro/links", summary: "Actualizar links (admin)" },
+  { method: "POST", path: "/api/productos-maestro/push", summary: "Push unificado a planillas (admin, dryRun recomendado)" },
   { method: "GET", path: "/api/kpi-report", summary: "Reporte KPI operativo" },
   { method: "POST", path: "/api/pagos", summary: "Pagos" },
   { method: "POST", path: "/api/ventas", summary: "POST ventas" },

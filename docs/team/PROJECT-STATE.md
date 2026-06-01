@@ -12,6 +12,15 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-01 (Productos Maestro — sistema centralizado precio + stock):** `implementación inicial completa`. 
+- Biblioteca `server/lib/productosMaestro.js` (merge MATRIZ + Stock + links)
+- Script `npm run productos-maestro:reconcile` + reportes en `.runtime/`
+- API completa `/api/productos-maestro` (catálogo, reconcile, links, push con dryRun)
+- CSV MATRIZ ahora emite columna `sku` estable
+- UI `ProductosMaestroEditor.jsx` integrada en Config → "Productos (Maestro)" como hub visual de edición y escritura hacia planillas (preferencia del usuario)
+- RBAC + capabilities actualizados
+- Cumple el plan de `cursor_centralized_price_and_stock_mana.md` (Fases 1-3 principales). Ver `.runtime/productos-maestro-audit-2026.md`
+
 **2026-06-01 (Infra — mapa canónico service accounts GCP):** `hecho confirmado`. Auditoría consolidada del proyecto `chatbot-bmc-live`: arquitectura dual `panelin-runner` (runtime) + `bmc-dashboard-sheets` (ADC Sheets/GCS), inventario de 8 SAs, keys, Cloud Run, deriva vs scripts/docs, y plan P0–P3. Doc: [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md). **Hallazgo top:** secretos sensibles aún como env vars literales en revisión Cloud Run; prod usa key Sheets más antigua (`ff8190cb…`).
 
 **2026-05-29 (Finanzas Legacy Dashboard 404 Fix):** `hecho`. Se identificó y corrigió la causa raíz del 404 JSON en `/finanzas` (dashboard estático del operador).
@@ -60,6 +69,8 @@ Entregables:
 - Documentación de uso dentro del skill.
 
 Estado actual: El "run" path para seg **ya es funcional y verificado end-to-end** (consumidor con dryRun + ejemplo real en el skill). Scaffolding pulido (se removió la referencia rota a callSubAgent), docs de uso excelentes agregados ("Uso del especialista seg y consumidor"), y verificación manual con `followup due` exitosa. Todo dentro de feature freeze.
+
+- **Actualización de documentación (2026-06-01):** Se modernizó la sección "Concrete Example: Full Presupuestación Run (High Level)" en el skill para reflejar el flujo real verificado: seg specialist → `createFollowupFromSegOutput(segOutput)` (con soporte dryRun) → followup visible vía `node scripts/followup.mjs due`.
 
 Durante la verificación del run layer se ejecutó `npm run gate:local` → se detectaron y corrigieron 5 errores de ESLint pre-existentes en admin-cotizaciones (seguridad target=_blank + entidades). Commit `3b0c7b2` — ahora lint pasa sin errores (solo warnings conocidos).
 

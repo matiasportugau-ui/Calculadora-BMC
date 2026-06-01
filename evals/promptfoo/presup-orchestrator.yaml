@@ -1,0 +1,63 @@
+description: Presupuestacion Orchestrator - Seg (Post-Mortem & Learning) specialist regression
+prompts:
+  - file://evals/promptfoo/prompts/presupuestacion-orchestrator/seg-post-mortem.md
+
+providers:
+  - anthropic:messages:claude-sonnet-4-6
+  - anthropic:messages:claude-opus-4-7
+  # - anthropic:messages:claude-haiku-4-5-20251001   # for cheap local runs
+
+defaultTest:
+  options:
+    provider: anthropic:messages:claude-sonnet-4-6
+
+tests:
+  # Happy path: standard approved quote, normal follow-up expected
+  - vars:
+      input: |
+        quoteId: C-4821
+        cliente: Acero del Sur
+        escenario: Techo nave industrial zona 3
+        area_m2: 420
+        total_usd: 18420
+        descuento_pct: 14
+        estado_final: awaiting_approval
+        canal: whatsapp
+        observaciones: "PDF enviado. Cliente pidió 2 días para revisar con el contador. Sin objeciones de precio hasta ahora."
+    assert:
+      - type: contains
+        value: "presup"
+      - type: llm-rubric
+        value: |
+          La salida debe ser un JSON válido con los campos title, detail, tags, nextFollowUpAt y reasoning.
+          El title es claro, accionable y corto (<80 chars).
+          El detail explica qué debe hacer el operador y por qué (2-4 frases).
+          Tags incluye al menos "presup" y "post-mortem".
+          nextFollowUpAt es una fecha ISO realista en 5-7 días.
+          reasoning explica brevemente la elección de fecha y acción.
+          Todo está en español técnico pero claro. No inventa datos del input.
+
+  # Risk case: high discount + pending issue from earlier gate
+  - vars:
+      input: |
+        quoteId: C-4917
+        cliente: Frigorífico del Norte
+        escenario: Cámara frigorífica + techo
+        area_m2: 180
+        total_usd: 31200
+        descuento_pct: 22
+        estado_final: awaiting_approval
+        canal: email
+        observaciones: "Pricing Reviewer marcó REVISAR por descuento >20%. Cliente es recurrente pero esta obra es más grande que las anteriores. Aún no confirmó el espesor de 150mm en la cámara."
+    assert:
+      - type: contains
+        value: "presup"
+      - type: llm-rubric
+        value: |
+          La salida es estructurada (title, detail, tags, nextFollowUpAt, reasoning).
+          El follow-up refleja el riesgo del descuento alto y la falta de confirmación de espesor.
+          nextFollowUpAt es más cercano (24-72h) por el riesgo identificado.
+          El detail es accionable para el operador (llamar / WA para confirmar espesor y justificación de descuento).
+          Tags incluye "presup" y "post-mortem".
+          No inventa información que no esté en el input.
+          Todo en español claro y profesional.

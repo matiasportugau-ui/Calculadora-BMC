@@ -15,6 +15,11 @@ import RequireGrant from "./components/auth/RequireGrant.jsx";
 import ActivityTracker from "./components/activity/ActivityTracker.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+// Tutorial interactivo (nuevo sistema)
+import { TutorialProvider } from "./components/tutorial/TutorialProvider.jsx";
+import TutorialOverlay from "./components/tutorial/TutorialOverlay.jsx";
+import FloatingTutorialButton from "./components/tutorial/FloatingTutorialButton.jsx";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },
@@ -88,6 +93,7 @@ function Shell({ children }) {
       </div>
       {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
+      <FloatingTutorialButton />
     </div>
   );
 }
@@ -142,9 +148,11 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <BmcAuthProvider>
+      <TutorialProvider>
       <ActivityTracker />
       <LegacyAppQueryRedirect />
       <AuthGateModal />
+      <TutorialOverlay /> {/* Overlay del tutorial interactivo */}
       <Routes>
         <Route
           path="/hub"
@@ -397,6 +405,7 @@ export default function App() {
         <Route path="/wa" element={<Navigate to="/hub/wa" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </TutorialProvider>
       </BmcAuthProvider>
     </BrowserRouter>
     </QueryClientProvider>
