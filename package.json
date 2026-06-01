@@ -117,6 +117,8 @@
     "channels:automated": "node scripts/channels-automated-pipeline.mjs",
     "email:ingest-snapshot": "node scripts/email-snapshot-ingest.mjs",
     "matriz:reconcile": "node scripts/reconcile-matriz-csv.mjs",
+    "matriz:reconcile-calc": "node scripts/reconcile-calc-vs-matriz.mjs",
+    "matriz:bake": "node scripts/bake-matriz-to-constants.mjs",
     "matriz:pull-csv": "node scripts/pull-matriz-csv.mjs",
     "matriz:sync-fijaciones-isodec": "node scripts/sync-fijaciones-isodec-bromyros.mjs",
     "matriz:sync-silicona-300": "node scripts/sync-silicona-300-neutra-bromyros.mjs",
