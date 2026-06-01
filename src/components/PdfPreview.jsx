@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { sampleClientVisualData } from '../utils/quotationPreviewSampleData.js';
 import { render as renderBmcPdf } from '../pdf-templates/bmc-pdf.js';
 
@@ -8,11 +8,11 @@ export default function PdfPreview() {
   const [error, setError] = useState(null);
   const [selectedSample, setSelectedSample] = useState('default');
 
-  const samples = {
+  const samples = useMemo(() => ({
     default: sampleClientVisualData,
-  };
+  }), []);
 
-  const generatePdf = async () => {
+  const generatePdf = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -39,11 +39,11 @@ export default function PdfPreview() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSample, samples]);
 
   useEffect(() => {
     generatePdf();
-  }, [selectedSample]);
+  }, [selectedSample, generatePdf]);
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#f5f5f7' }}>
