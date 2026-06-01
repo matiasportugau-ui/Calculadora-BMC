@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-01 (Infra — mapa canónico service accounts GCP):** `hecho confirmado`. Auditoría consolidada del proyecto `chatbot-bmc-live`: arquitectura dual `panelin-runner` (runtime) + `bmc-dashboard-sheets` (ADC Sheets/GCS), inventario de 8 SAs, keys, Cloud Run, deriva vs scripts/docs, y plan P0–P3. Doc: [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md). **Hallazgo top:** secretos sensibles aún como env vars literales en revisión Cloud Run; prod usa key Sheets más antigua (`ff8190cb…`).
+
 **2026-05-29 (Finanzas Legacy Dashboard 404 Fix):** `hecho`. Se identificó y corrigió la causa raíz del 404 JSON en `/finanzas` (dashboard estático del operador).
 
 **Root cause**: Reglas de `.dockerignore` extremadamente frágiles (negaciones múltiples) estaban excluyendo sistemáticamente la carpeta `docs/bmc-dashboard-modernization/dashboard/` del contexto de build de Docker, a pesar de que el `COPY` existía en el Dockerfile. Esto causaba que el middleware `express.static` no encontrara nada y cayera al catch-all final que devuelve `{"ok":false,"error":"Not found","path":"/finanzas"}`.
