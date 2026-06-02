@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-26
+**Última actualización:** 2026-06-01 (agente panel-product-visualization-specialist + entry en Cambios recientes)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,18 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-01 (Panel Product Visualization Specialist — agente + skill + rúbrica 2D/3D productos):** `hecho`. Se generó el especialista dedicado para mejorar la renderización 2D y 3D de los productos (paneles ISODEC / ISOROOF) en la calculadora, siguiendo exactamente el patrón de `roofplan-architect`.
+
+- Agente: `.cursor/agents/bmc-panel-product-visualization-specialist.md`
+- Skill + checklist: `.cursor/skills/panel-product-visualization-specialist/SKILL.md`
+- Rúbrica de calidad 100 pts (Geometric Fidelity, Material Appearance, 2D sections, 3D viewer UX, Coherence con calc, Integration en visor/PDF/showcase, Polish): `.cursor/skills/panel-product-visualization-specialist/reference.md`
+
+El agente cubre: PanelFamilyShowcase, RoofPanelRealisticScene (y viewers aislados de producto), perfiles visuales, texturas Shopify/PanelRendering, secciones 2D constructivas paramétricas, volumen/espesor en 3D, PBR, captura PDF, coherencia au/espesor/familia con motor de cálculo. Complementa a `roofplan-architect` (enfocado en layout de cubierta + cotas) y a `bmc-roof-2d-viewer-specialist`.
+
+Próximo: usuario compartirá info de evaluación (screenshots, pain points, objetivos específicos) para que el especialista audite con la rúbrica y ejecute mejoras.
+
+**2026-06-01 (GCP Service Accounts — doc sesión + Phase 0 prod):** `hecho confirmado`. Referencia canónica para retomar sin chat: [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-SESSION-REFERENCE.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-SESSION-REFERENCE.md) (dual SA `panelin-runner` + `bmc-dashboard-sheets`, Phase 0 P0-1..P0-3, comandos §8, Phase 1 pendiente). Prod verificado: revisión `panelin-calc-00426-dtr`, 1 key Sheets `489cffaa…`, smoke OK. Índice: [`docs/team/infrastructure/README.md`](./infrastructure/README.md).
 
 **2026-05-29 (Finanzas Legacy Dashboard 404 Fix):** `hecho`. Se identificó y corrigió la causa raíz del 404 JSON en `/finanzas` (dashboard estático del operador).
 
