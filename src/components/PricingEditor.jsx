@@ -166,18 +166,21 @@ export default function PricingEditor({ onSave }) {
       }
       const updates = {};
       let count = 0;
+      const skipped = [];
       for (let i = 1; i < rows.length; i++) {
         const cells = rows[i];
         const path = cells[pathIdx]?.trim();
         if (!path) continue;
+        const venta = ventaIdx >= 0 ? parseCsvNumber(cells[ventaIdx]) : null;
+        // Guard anti-MATRIZ-sucia: si el CSV trae columna de venta pero esta fila no tiene
+        // un `venta_local` válido (>0), la fila está incompleta → se omite completa para no
+        // dejar precios inconsistentes (p.ej. costo actualizado sin venta, o c/IVA suelto).
+        if (ventaIdx >= 0 && venta == null) { skipped.push(path); continue; }
         if (costoIdx >= 0 && cells[costoIdx]) {
           const v = parseCsvNumber(cells[costoIdx]);
           if (v != null) { updates[`${path}.costo`] = v; count++; }
         }
-        if (ventaIdx >= 0 && cells[ventaIdx]) {
-          const v = parseCsvNumber(cells[ventaIdx]);
-          if (v != null) { updates[`${path}.venta`] = v; count++; }
-        }
+        if (venta != null) { updates[`${path}.venta`] = venta; count++; }
         if (ventaIvaIdx >= 0 && cells[ventaIvaIdx]) {
           const v = parseCsvNumber(cells[ventaIvaIdx]);
           if (v != null) { updates[`${path}.ventaIvaInc`] = v; count++; }
@@ -193,6 +196,10 @@ export default function PricingEditor({ onSave }) {
       }
       const dupReport = getDuplicatePathReportFromRows(rows, pathIdx);
       let msg = `Cargados ${count} valores desde MATRIZ (F/L/T + columnas M/U cuando vienen en el CSV).`;
+      if (skipped.length) {
+        const preview = skipped.slice(0, 5).join("; ");
+        msg += ` Omitidas ${skipped.length} fila(s) sin venta_local válida (MATRIZ incompleta): ${preview}${skipped.length > 5 ? "…" : ""}`;
+      }
       if (ventaIvaIdx < 0 && webIvaIdx < 0) {
         msg += " Sin M/U en CSV: Venta BMC c/IVA y Web c/IVA = ex IVA × 1,22.";
       } else {
