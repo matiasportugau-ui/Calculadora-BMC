@@ -104,6 +104,7 @@ import RoofPreview, { RoofPreviewMetricsSidebar } from "./RoofPreview.jsx";
 
 const RoofPanelRealisticScene = lazy(() => import("./RoofPanelRealisticScene.jsx"));
 import { PanelFamilyShowcase } from "./PanelFamilyShowcase.jsx";
+import { PanelCrossSection } from "./panelViz/PanelCrossSection.jsx";
 import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
 import ScenarioStepIcon from "./ScenarioStepIcon.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
@@ -5061,6 +5062,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                             familiaKey={techo.familia}
                             onSelect={(fk) => setTechoFamilia(fk)}
                             compact
+                            espesorMm={techo.espesor}
                           />
                         </div>
                       </details>
@@ -5136,6 +5138,22 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                       </div>
                       {techoPanelData?.notas?.[Number(techo.espesor)] && (
                         <AlertBanner type="warning" message={techoPanelData.notas[Number(techo.espesor)]} />
+                      )}
+
+                      {/* Preview de sección constructiva 2D para el espesor seleccionado (integración Fase 1) */}
+                      {techo.familia && techo.espesor && (
+                        <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+                            Sección del panel (vista previa)
+                          </div>
+                          <PanelCrossSection
+                            familiaKey={techo.familia}
+                            espesorMm={techo.espesor}
+                            width={isPhone ? 280 : 320}
+                            showTitle={false}
+                            compact
+                          />
+                        </div>
                       )}
                     </div>
                   )}
@@ -6664,6 +6682,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             techoZonasBorders={techo.zonas?.map((z) => z.preview?.borders ?? {})}
             dimensionSummary={quoteVisorDimensionSummary}
             roof2DPreview={quoteVisorRoof2DPreview}
+            techoEspesor={techo.espesor}
             onSelectAgua={null}
             onNext={null}
           />

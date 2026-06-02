@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Visual Recabado • Isoroof / Isodec (BMC Uruguay) — Selección para Lio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --primary: #1a365d;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .heading-font {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .gallery-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #e5e7eb;
+        }
+        
+        .gallery-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+            border-color: #3b82f6;
+        }
+        
+        .gallery-card.selected {
+            border-color: #1e40af;
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.15);
+        }
+
+        .asset-img {
+            background: #f8fafc;
+            object-fit: contain;
+            max-height: 220px;
+            width: 100%;
+        }
+
+        .section-header {
+            font-size: 1.1rem;
+            letter-spacing: -.025em;
+        }
+
+        .material-tag {
+            font-size: 0.65rem;
+            padding: 1px 7px;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+
+        .filter-btn.active {
+            background-color: #1e40af;
+            color: white;
+            border-color: #1e40af;
+        }
+
+        .visual-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .asset-meta {
+            font-size: 0.75rem;
+            line-height: 1.3;
+        }
+
+        .bmc-header {
+            background: linear-gradient(90deg, #1a365d, #1e40af);
+        }
+
+        .selection-panel {
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .pdf-card {
+            background: linear-gradient(145deg, #f1f5f9, #e0e7ff);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div class="max-w-[1280px] mx-auto">
+        <!-- Header -->
+        <div class="bmc-header text-white px-8 py-6 rounded-b-3xl shadow-lg">
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="flex items-center gap-x-3">
+                        <div class="w-11 h-11 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
+                            <i class="fa-solid fa-images text-3xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl heading-font tracking-tighter font-semibold">Material Visual Recabado</h1>
+                            <p class="text-blue-200 text-lg -mt-1">Isoroof / Isodec — BMC / Kingspan Uruguay</p>
+                        </div>
+                    </div>
+                    <p class="mt-3 max-w-md text-blue-100 text-[15px]">
+                        Todo el material visual oficial recolectado de fuentes locales uruguayas (kingspan.com.uy, bmcuruguay.com.uy, Bromyros, fotos de obras reales).
+                        <strong>Para que Lio lo seleccione</strong> como referencia exacta de los productos reales que ya existen en la calculadora.
+                    </p>
+                </div>
+                <div class="text-right text-sm bg-white/10 px-4 py-3 rounded-2xl backdrop-blur">
+                    <div class="font-medium">Investigación completa • Jun 2026</div>
+                    <div class="text-blue-200 text-xs mt-0.5">Constraint: sin modificar datos reales del proyecto</div>
+                    <div class="mt-2 text-[10px] opacity-75">DWG de referencia: plegados en general.dwg (3 grecas trapezoidales)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 pt-6">
+            <!-- Quick stats + links -->
+            <div class="flex flex-wrap gap-3 items-center mb-6">
+                <div class="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 text-sm px-3.5 py-1.5 rounded-2xl shadow-sm">
+                    <i class="fa-solid fa-check-circle text-emerald-500"></i>
+                    <span><strong>18 assets locales</strong> bundled + decenas de referencias adicionales</span>
+                </div>
+                <a href="../knowledge/ISOROOF-PLEGADOS-REAL-REFERENCES-UY-2026.md" target="_blank" 
+                   class="inline-flex items-center gap-2 text-sm px-3.5 py-1.5 rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                    <i class="fa-solid fa-book"></i>
+                    <span>Ver reporte completo (contexto, excerpts, recomendaciones)</span>
+                </a>
+                <div class="text-xs text-slate-500 ml-auto">Abre este archivo con <code>file://</code> o cualquier servidor local. Las imágenes son relativas.</div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 mb-8 text-sm">
+                <div class="flex gap-4">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-info-circle text-blue-600 text-xl mt-0.5"></i>
+                    </div>
+                    <div class="space-y-2 text-slate-600">
+                        <p><strong>Cómo usar:</strong> Marca con el checkbox los materiales que Lio considere mejores referencias para las mejoras de visualización 2D (secciones CAD) y 3D (perfiles volumétricos, PBR, texturas).</p>
+                        <ul class="list-disc pl-5 text-xs space-y-0.5">
+                            <li><strong>Perfil / Plegados:</strong> Priorizar los que muestren claramente las 3 grecas trapezoidales superiores (match con el DWG).</li>
+                            <li><strong>Texturas / Apariencia real:</strong> Fotos de producto (studio) + bmcuruguay (comerciales exactas).</li>
+                            <li><strong>Contexto real UY:</strong> Fotos de obras instaladas (luz, juntas, instalaciones reales).</li>
+                            <li><strong>Dibujos técnicos 2D:</strong> Los PDFs de Bromyros (tienen specs + posibles secciones/perfiles).</li>
+                        </ul>
+                        <p class="text-xs">Al final de la página aparece tu selección actual lista para copiar y pasar al equipo o al especialista de visualización.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="mb-4 flex flex-wrap items-center gap-2">
+                <span class="text-xs uppercase tracking-widest font-semibold text-slate-500 mr-1">Filtrar por:</span>
+                
+                <button onclick="filterBy('all')" class="filter-btn active px-4 py-1.5 text-xs font-medium border border-slate-300 rounded-2xl flex items-center gap-1.5 hover:bg-slate-50 transition" data-filter="all">
+                    <i class="fa-solid fa-th"></i> <span>Todos</span>
+                </button>
+                
+                <button onclick="filterBy('isoroof')" class="filter-btn px-4 py-1.5 text-xs font-medium border border-slate-300 rounded-2xl flex items-center gap-1.5 hover:bg-slate-50 transition" data-filter="isoroof">
+                    <span>Isoroof (3G / Plus / Foil / Colonial)</span>
+                </button>
+                
+                <button onclick="filterBy('isodec')" class="filter-btn px-4 py-1.5 text-xs font-medium border border-slate-300 rounded-2xl flex items-center gap-1.5 hover:bg-slate-50 transition" data-filter="isodec">
+                    <span>Isodec (EPS / PIR)</span>
+                </button>
+                
+                <button onclick="filterBy('perfil')" class="filter-btn px-4 py-1.5 text-xs font-medium border border-slate-300 rounded-2xl flex items-center gap-1.5 hover:bg-slate-50 transition" data-filter="perfil">
+                    <i class="fa-solid fa-drafting-compass"></i> <span>Perfil / 2D / Dibujos</span>
+                </button>
+                
+                <button onclick="filterBy('producto')" class="filter-btn px-4 py-1.5 text-xs font-medium border border-slate-300 rounded-2xl flex items-center gap-1.5 hover:bg-slate-50 transition" data-filter="producto">
+                    <i class="fa-solid fa-camera"></i> <span>Fotos de producto</span>
+                </button>
+                
+                <button onclick="filterBy('obra')" class="filter-btn px-4 py-1.5 text-xs font-medium border border-slate-300 rounded-2xl flex items-center gap-1.5 hover:bg-slate-50 transition" data-filter="obra">
+                    <i class="fa-solid fa-hard-hat"></i> <span>Fotos de obra real</span>
+                </button>
+                
+                <button onclick="filterBy('tecnico')" class="filter-btn px-4 py-1.5 text-xs font-medium border border-slate-300 rounded-2xl flex items-center gap-1.5 hover:bg-slate-50 transition" data-filter="tecnico">
+                    <i class="fa-solid fa-file-pdf"></i> <span>PDFs / Técnicos</span>
+                </button>
+                
+                <button onclick="clearSelection()" class="ml-auto px-3 py-1 text-xs font-medium text-red-600 hover:text-red-700 flex items-center gap-1">
+                    <i class="fa-solid fa-times"></i> <span>Limpiar selección</span>
+                </button>
+            </div>
+
+            <!-- Gallery -->
+            <div id="gallery" class="visual-grid mb-8">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Selection panel -->
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="font-semibold flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-blue-600"></i> 
+                        <span>Selección de Lio (materiales elegidos)</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="copySelectionMarkdown()" 
+                                class="px-3 py-1.5 text-xs bg-slate-900 hover:bg-black transition text-white rounded-2xl flex items-center gap-2">
+                            <i class="fa-solid fa-copy"></i>
+                            <span>Copiar como Markdown</span>
+                        </button>
+                        <button onclick="copySelectionURLs()" 
+                                class="px-3 py-1.5 text-xs border border-slate-300 hover:bg-slate-50 transition rounded-2xl flex items-center gap-2">
+                            <i class="fa-solid fa-link"></i>
+                            <span>Copiar URLs</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="selection-list" class="selection-panel bg-slate-50 border border-slate-100 rounded-2xl p-4 min-h-[110px] text-sm">
+                    <div class="text-slate-400 italic text-center py-6">Ningún material seleccionado aún. Marca los checkboxes de arriba.</div>
+                </div>
+                
+                <div class="mt-3 text-[10px] text-slate-500">
+                    Esta lista se actualiza en vivo. Copia y pégala en un mensaje, ticket o al especialista <code>panel-product-visualization-specialist</code>.
+                </div>
+            </div>
+
+            <!-- Additional references -->
+            <div class="mt-8 border-t pt-6">
+                <h3 class="font-semibold mb-3 text-base">Más material visual de referencia (no bundled pero accesible inmediatamente)</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div class="bg-white border rounded-2xl p-4">
+                        <div class="font-medium mb-1">Fotos de obras completas (50+ installs UY reales)</div>
+                        <a href="https://kingspan.com.uy/fotos-de-obras/" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1">
+                            https://kingspan.com.uy/fotos-de-obras/ <i class="fa-solid fa-external-link-alt text-xs"></i>
+                        </a>
+                        <div class="text-xs mt-1 text-slate-500">Muchas muestran cubiertas con plegados/grecas en contexto real (rojo, gris, instalaciones industriales y viviendas). Ideal para validación final.</div>
+                    </div>
+                    
+                    <div class="bg-white border rounded-2xl p-4">
+                        <div class="font-medium mb-1">Biblioteca BIM oficial (Revit con geometría exacta de plegados)</div>
+                        <a href="https://kingspan.com.uy/biblioteca-bim/" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1">
+                            https://kingspan.com.uy/biblioteca-bim/ <i class="fa-solid fa-external-link-alt text-xs"></i>
+                        </a>
+                        <div class="text-xs mt-1 text-slate-500">Modelos Revit de Isoroof (incluye 3G/Plus/Foil perfil), Isodec, etc. Descargar para extraer el perfil 3-grecas y compararlo con el DWG.</div>
+                    </div>
+                    
+                    <div class="bg-white border rounded-2xl p-4">
+                        <div class="font-medium mb-1">bmcuruguay.com.uy — productos exactos que se cotizan</div>
+                        <a href="https://bmcuruguay.com.uy/collections/isoroof" target="_blank" class="text-blue-600 hover:underline">Colección Isoroof</a><br>
+                        <a href="https://bmcuruguay.com.uy/collections/isodec" target="_blank" class="text-blue-600 hover:underline">Colección Isodec</a>
+                        <div class="text-xs mt-1 text-slate-500">Fotos comerciales de los mismos productos de la calculadora + accesorios que mencionan "grecas".</div>
+                    </div>
+                    
+                    <div class="bg-white border rounded-2xl p-4">
+                        <div class="font-medium mb-1">Videos oficiales UY (apariencia 3D real + instalación)</div>
+                        <div class="text-xs">
+                            • "Conoce nuestro panel isoroof ®" — <a href="https://www.youtube.com/watch?v=5E7HX3VvFiM" target="_blank" class="text-blue-600">YouTube Kingspan Uruguay</a><br>
+                            • Canal: <a href="https://www.youtube.com/user/bromyros1/videos" target="_blank" class="text-blue-600">Kingspan Uruguay / Bromyros</a><br>
+                            • Instagram: <a href="https://www.instagram.com/kingspanuruguay/" target="_blank" class="text-blue-600">@kingspanuruguay</a> (reels de Plus, detalles, obra)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NEW: Internal CAD / DWG Constructive Details (investigated on request) -->
+            <div class="mt-8 border-t pt-6">
+                <h3 class="font-semibold mb-3 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-drafting-compass text-amber-600"></i>
+                    Internal CAD Details (TECHMET + BMC Accessories) — Investigados ahora
+                </h3>
+                <div class="bg-amber-50 border border-amber-200 rounded-3xl p-5 text-sm">
+                    <p class="mb-3"><strong>Estos DWG internos (Dropbox BMC) son la fuente de verdad CAD para los perfiles, forros (F1-MET etc.), plegados, babetas, frontales y detalles constructivos reales que se usan con los paneles Isoroof/Isodec en Uruguay.</strong> Complementan perfectamente las fotos y fichas externas recolectadas antes.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <div class="font-medium mb-1">TECHMET "Detalles Constructivos" (13 archivos, ~2017)</div>
+                            <div class="text-xs text-amber-700">Ruta: <code>bmc - interna/paneles/Detalles Constructivos TECHMET/MET-TECHMET-*.dwg</code></div>
+                            <ul class="text-xs list-disc pl-4 mt-1 space-y-0.5">
+                                <li>MET-07 (el más rico: FORRO F1-MET-1 a F5, FORRO LATERAL/ATRAQUE, "PANEL TECHMET", "ANCHO UTIL 1000 mm", 1@30 cms, tornillos, sello butilo, calzar panel).</li>
+                                <li>MET-09-10-11-12 (combinado: múltiples FORRO F*-MET-1, ESTANCO, estructura metálica).</li>
+                                <li>MET-01 (menciona "PLEGADO DOBLE").</li>
+                                <li>MET-16 (GLAMET TECHMET e=50 mm, PANEL H-WALL, ángulos 30x30, pletinas, tubos).</li>
+                                <li>MET-05/06/08/13/15/17 (notas "DESARROLLOS Y TIPOS DE FORROS SON DEMOSTRATIVOS", METECNO-10, espaciamientos, fijaciones).</li>
+                            </ul>
+                            <div class="text-[10px] mt-1">Dims repetidos: 30/50/80 mm espesor, 1000 mm au (Isoroof), 0.5/0.8 mm chapa, 30 cm centros.</div>
+                        </div>
+                        <div>
+                            <div class="font-medium mb-1">Accesorios BMC Uruguay (2023-2025)</div>
+                            <div class="text-xs text-amber-700">Ruta: <code>BMC - Uruguay/PDF Productos/Paneles BMC/Accesorios/...</code></div>
+                            <ul class="text-xs list-disc pl-4 mt-1 space-y-0.5">
+                                <li>Perfiles frontales/FRONTALES.dwg + FRONTALNuevo.dwg — geometría de perfiles frontales / gotero frontal (poco texto, puro perfil).</li>
+                                <li>Babetas/BabetaLateral.dwg — babeta lateral (trim lateral, gotero lateral). Geometría clave para borders.</li>
+                                <li>ETIQUETAS/Desarrollos/Desarrollos.dwg (AC1032, mismo vintage que tu plegados-en-general.dwg) — <strong>desarrollos/planos de plegado</strong> (flat patterns para fabricación de los perfiles y grecas). Contiene datos de objeto embebidos.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 text-xs">
+                        <strong>Reporte completo de la investigación:</strong> 
+                        <a href="../knowledge/INTERNAL-TECHMET-BMC-DWG-CONSTRUCTIVE-DETAILS-INVESTIGATION.md" class="text-amber-700 hover:underline font-medium">INTERNAL-TECHMET-BMC-DWG-CONSTRUCTIVE-DETAILS-INVESTIGATION.md</a>
+                        (lista todos los paths, excerpts, mapeo a PERFIL_TECHO / BORDER_OPTIONS / Isoroof 3G grecas, recomendaciones para 2D/3D).
+                    </div>
+                    
+                    <div class="mt-2 text-[10px] text-amber-600">Recomendado para Lio: abrir estos DWG en paralelo con el plegados-en-general.dwg y los PDFs Bromyros. Trazar/exportar los perfiles de forros + grecas + babetas/frontales para alimentar el código de 3D (extrusiones) y 2D (secciones CAD exactas). Son los detalles "reales" internos de BMC para los accesorios que ya usa la calculadora.</div>
+                </div>
+            </div>
+
+            <!-- Footer notes -->
+            <div class="mt-8 text-[10px] text-slate-500 border-t pt-4 pb-8 flex flex-col md:flex-row gap-y-1 justify-between">
+                <div>
+                    Fuentes 100% oficiales locales (Kingspan Uruguay / Bromyros / BMC Uruguay). 
+                    Las imágenes y PDFs son referencias públicas recolectadas para uso interno de diseño.
+                </div>
+                <div class="md:text-right">
+                    Generado automáticamente tras investigación completa • 2026 • Ver <a href="../knowledge/ISOROOF-PLEGADOS-REAL-REFERENCES-UY-2026.md" class="underline">reporte detallado</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Tailwind script
+        function initializeTailwind() {
+            document.querySelectorAll('script[src*="tailwindcss"]').forEach(s => s.remove());
+            // Already included via CDN in head
+        }
+
+        // All visual assets data (local bundled + originals)
+        const assets = [
+            {
+                id: "kp-plus",
+                family: "isoroof",
+                type: "producto",
+                title: "Isoroof Plus — Foto oficial de producto",
+                local: "material-visual-isoroof-uy/isoroof-plus.png",
+                original: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_plus.png",
+                page: "https://kingspan.com.uy/productos-kingspan/isoroof-plus/",
+                desc: "Cara superior con 3 grecas como terminación. Interior imitación madera. Colores ext: blanco/gris/rojo. PIR, au 1000mm. Fabricado en Planta Kingspan Uruguay.",
+                use: "Referencia principal de perfil 3 grecas + terminación interior. Excelente para albedo metal + textura madera. Match perfecto con DWG.",
+                tags: ["3 grecas", "interior madera", "oficial UY"]
+            },
+            {
+                id: "kp-3g",
+                family: "isoroof",
+                type: "producto",
+                title: "Isoroof 3G — Foto oficial de producto",
+                local: "material-visual-isoroof-uy/isoroof-3g.png",
+                original: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_3G.png",
+                page: "https://kingspan.com.uy/productos-kingspan/isoroof-3g/",
+                desc: "Perfil trapezoidal 3G estándar. Interior blanco. Múltiples espesores (30-100mm). Fabricado en Planta Kingspan Uruguay.",
+                use: "Perfil base 3G, color exterior real, juntas. Ideal para 3D base + texturas prepintadas.",
+                tags: ["3G", "trapezoidal", "oficial UY"]
+            },
+            {
+                id: "kp-foil",
+                family: "isoroof",
+                type: "producto",
+                title: "Isoroof Foil — Foto oficial de producto",
+                local: "material-visual-isoroof-uy/isoroof-foil.png",
+                original: "https://kingspan.com.uy/wp-content/uploads/2024/10/isoroof_foil-tabla.png",
+                page: "https://kingspan.com.uy/productos-kingspan/isoroof-foil/",
+                desc: "Misma familia de perfil 3G pero con cara interior foil flexible (blanco). Excelente para aplicaciones agro / industriales.",
+                use: "Textura foil reflectiva (sheen), perfil idéntico al 3G. Útil para variaciones de material PBR.",
+                tags: ["foil", "3G family", "interior especial"]
+            },
+            {
+                id: "kp-isodec-pir",
+                family: "isodec",
+                type: "producto",
+                title: "Isodec PIR — Foto oficial de producto",
+                local: "material-visual-isoroof-uy/isodec-pir.png",
+                original: "https://kingspan.com.uy/wp-content/uploads/2024/06/isodec-pir.png",
+                page: "https://kingspan.com.uy/productos-kingspan/isodec-pir/",
+                desc: "Sistema engrafado (diferente a grecas de Isoroof). au 1120mm. PIR 50/80/120mm. Fabricado en Uruguay.",
+                use: "Referencia del joint engrafado para 3D borders. Textura y color estándar.",
+                tags: ["engrafado", "au 1.12m", "oficial UY"]
+            },
+            {
+                id: "kp-colonial",
+                family: "isoroof",
+                type: "producto",
+                title: "Isoroof Colonial — Foto oficial de producto",
+                local: "material-visual-isoroof-uy/isoroof-colonial.jpg",
+                original: "https://kingspan.com.uy/wp-content/uploads/2024/06/Isoroof-colonial.jpg.webp",
+                page: "https://kingspan.com.uy/productos-kingspan/isoroof-colonial/",
+                desc: "Estética teja colonial exterior + interior blanco. au 1000mm. PIR. (Nota: una fuente indica planta Brasil).",
+                use: "Referencia de variante estética (teja). Perfil base probablemente compatible con familia 3G.",
+                tags: ["colonial", "teja", "estética"]
+            },
+            // bmcuruguay (distribuidor exacto)
+            {
+                id: "bmc-3g-1",
+                family: "isoroof",
+                type: "producto",
+                title: "ISOROOF 3G — Foto distribuidor BMC Uruguay",
+                local: "material-visual-isoroof-uy/bmcuruguay-isoroof-3g-1.jpg",
+                original: "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+                page: "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+                desc: "Foto comercial real del producto que se vende/cotiza en la calculadora. 'Trapezoidal 3G', chapa 0.55/0.45mm, fabricación nacional.",
+                use: "Visual más fiel al que ve el cliente. Excelente para texturas y validación de color/juntas reales.",
+                tags: ["comercial", "3G", "BMC exacto"]
+            },
+            {
+                id: "bmc-3g-2",
+                family: "isoroof",
+                type: "producto",
+                title: "ISOROOF 3G — Foto distribuidor BMC Uruguay (2)",
+                local: "material-visual-isoroof-uy/bmcuruguay-isoroof-3g-2.jpg",
+                original: "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+                page: "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+                desc: "Otra toma del mismo panel 3G. Muestra escala y terminación.",
+                use: "Variación de ángulo para entender volumen y grecas.",
+                tags: ["comercial", "3G"]
+            },
+            {
+                id: "bmc-3g-3",
+                family: "isoroof",
+                type: "producto",
+                title: "ISOROOF 3G — Foto distribuidor BMC Uruguay (3)",
+                local: "material-visual-isoroof-uy/bmcuruguay-isoroof-3g-3.png",
+                original: "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+                page: "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+                desc: "Vista adicional del panel 3G en el sitio del distribuidor.",
+                use: "Referencia adicional de apariencia.",
+                tags: ["comercial", "3G"]
+            },
+            // Installed obra (real context)
+            {
+                id: "obra-chacras",
+                family: "isoroof",
+                type: "obra",
+                title: "Chacras del Sur — Cubierta roja (plegados visibles)",
+                local: "material-visual-isoroof-uy/chacras-del-sur-cubierta-roja.jpg",
+                original: "https://kingspan.com.uy/fotos-de-obras/",
+                page: "https://kingspan.com.uy/fotos-de-obras/",
+                desc: "Cubierta roja real instalada. Excelente ejemplo de cómo se ven las grecas/plegados desde diferentes ángulos y con luz natural uruguaya.",
+                use: "Validación de apariencia final de cubierta. Referencia de color rojo + perfil en contexto.",
+                tags: ["obra real", "cubierta roja", "plegados"]
+            },
+            {
+                id: "obra-frigorifico",
+                family: "isoroof",
+                type: "obra",
+                title: "Frigorífico Sarubbi — Cubierta instalada",
+                local: "material-visual-isoroof-uy/frigorifico-sarubbi.jpg",
+                original: "https://kingspan.com.uy/fotos-de-obras/",
+                page: "https://kingspan.com.uy/fotos-de-obras/",
+                desc: "Instalación industrial grande. Muestra escala de paneles y cómo se integran las grecas en grandes superficies.",
+                use: "Escala real, juntas longitudinales, apariencia a distancia.",
+                tags: ["obra real", "industrial"]
+            },
+            {
+                id: "obra-bromyros",
+                family: "isoroof",
+                type: "obra",
+                title: "Planta Industrial Bromyros — Foto de planta",
+                local: "material-visual-isoroof-uy/planta-bromyros.jpg",
+                original: "https://kingspan.com.uy/fotos-de-obras/",
+                page: "https://kingspan.com.uy/fotos-de-obras/",
+                desc: "La propia planta donde se fabrican muchos de estos paneles. Buen contexto de producción local.",
+                use: "Contexto de fabricación UY + posibles techos en la foto.",
+                tags: ["planta", "fabricación"]
+            },
+            {
+                id: "obra-vivienda",
+                family: "isoroof",
+                type: "obra",
+                title: "Vivienda en paneles — Ejemplo residencial",
+                local: "material-visual-isoroof-uy/vivienda-paneles.jpg",
+                original: "https://kingspan.com.uy/fotos-de-obras/",
+                page: "https://kingspan.com.uy/fotos-de-obras/",
+                desc: "Uso residencial real de los paneles (Isoroof o Isodec).",
+                use: "Apariencia en vivienda (escala humana).",
+                tags: ["residencial", "obra real"]
+            },
+            {
+                id: "obra-techo-vivienda",
+                family: "isoroof",
+                type: "obra",
+                title: "Techo en vivienda particular",
+                local: "material-visual-isoroof-uy/techo-vivienda.jpg",
+                original: "https://kingspan.com.uy/fotos-de-obras/",
+                page: "https://kingspan.com.uy/fotos-de-obras/",
+                desc: "Close de techo residencial con el perfil.",
+                use: "Detalle de plegados en uso real.",
+                tags: ["detalle", "residencial"]
+            },
+            {
+                id: "obra-aeropuerto",
+                family: "isoroof",
+                type: "obra",
+                title: "Aeropuerto Internacional de Carrasco",
+                local: "material-visual-isoroof-uy/aeropuerto-carrasco.jpg",
+                original: "https://kingspan.com.uy/fotos-de-obras/",
+                page: "https://kingspan.com.uy/fotos-de-obras/",
+                desc: "Proyecto grande con paneles Kingspan. Muestra calidad de terminación a gran escala.",
+                use: "Referencia de calidad y escala en proyecto emblemático UY.",
+                tags: ["proyecto grande", "obra real"]
+            },
+            {
+                id: "obra-shopping",
+                family: "isoroof",
+                type: "obra",
+                title: "Shopping Tres Cruces — Cubierta",
+                local: "material-visual-isoroof-uy/shopping-tres-cruces.jpg",
+                original: "https://kingspan.com.uy/fotos-de-obras/",
+                page: "https://kingspan.com.uy/fotos-de-obras/",
+                desc: "Centro comercial. Buena vista de cubierta con paneles.",
+                use: "Apariencia en contexto comercial.",
+                tags: ["comercial", "obra real"]
+            },
+            {
+                id: "obra-frigo-modelo",
+                family: "isoroof",
+                type: "obra",
+                title: "Frigorífico Modelo",
+                local: "material-visual-isoroof-uy/frigo-modelo.jpg",
+                original: "https://kingspan.com.uy/fotos-de-obras/",
+                page: "https://kingspan.com.uy/fotos-de-obras/",
+                desc: "Otro frigorífico con cubierta de paneles.",
+                use: "Más ejemplos de plegados en entornos industriales.",
+                tags: ["industrial", "obra real"]
+            },
+            // PDFs técnicos (importantes para dibujos 2D y confirmación de grecas)
+            {
+                id: "pdf-plus",
+                family: "isoroof",
+                type: "tecnico",
+                title: "Ficha Bromyros Isoroof Plus (PDF)",
+                local: "material-visual-isoroof-uy/isoroof-plus-bromyros-ficha.pdf",
+                original: "https://justcrea.com/wp-content/uploads/2020/10/Isoroof-Plus-Bromyros.pdf",
+                page: "https://kingspan.com.uy/productos-kingspan/isoroof-plus/",
+                desc: "3 páginas. Texto clave: 'exterior en forma trapezoidal (3 grecas)'. Especificaciones técnicas, ventajas, propiedades térmicas y de fuego. Confirmación directa del perfil del DWG.",
+                use: "Fuente primaria de texto + posible dibujos para 2D sections y dims. '3 grecas' explícito.",
+                tags: ["PDF", "3 grecas", "Bromyros", "técnico"]
+            },
+            {
+                id: "pdf-isodec",
+                family: "isodec",
+                type: "tecnico",
+                title: "Ficha Bromyros Isodec (PDF)",
+                local: "material-visual-isoroof-uy/bromyros-isodec-ficha.pdf",
+                original: "https://justcrea.com/wp-content/uploads/2020/07/bromyros_isodec_ficha-tecnica.pdf",
+                page: "https://kingspan.com.uy/productos-kingspan/isodec-pir/",
+                desc: "Ficha técnica completa de Isodec. Incluye engrafado, distancias entre apoyos, especificaciones por espesor.",
+                use: "Detalles constructivos y engrafado para Isodec (diferente a las grecas).",
+                tags: ["PDF", "Isodec", "engrafado", "Bromyros"]
+            }
+        ]
+
+        let currentFilter = 'all'
+        let selectedIds = new Set()
+
+        function renderGallery(filteredAssets) {
+            const container = document.getElementById('gallery')
+            container.innerHTML = ''
+
+            const toRender = filteredAssets || assets
+
+            toRender.forEach(asset => {
+                const isSelected = selectedIds.has(asset.id)
+                
+                const card = document.createElement('div')
+                card.className = `gallery-card bg-white rounded-3xl overflow-hidden flex flex-col ${isSelected ? 'selected' : ''}`
+                card.dataset.id = asset.id
+                card.dataset.family = asset.family
+                card.dataset.type = asset.type
+
+                let imgHtml = ''
+                if (asset.type === 'tecnico') {
+                    imgHtml = `
+                        <div class="pdf-card h-[220px] flex items-center justify-center p-6">
+                            <div class="text-center">
+                                <i class="fa-solid fa-file-pdf text-6xl text-red-500 mb-3"></i>
+                                <div class="text-xs font-medium text-slate-600">PDF TÉCNICO</div>
+                            </div>
+                        </div>
+                    `
+                } else {
+                    imgHtml = `
+                        <img src="${asset.local}" 
+                             class="asset-img" 
+                             alt="${asset.title}"
+                             onerror="this.style.display='none'; this.parentNode.innerHTML='<div class=\\'h-48 bg-slate-100 flex items-center justify-center text-slate-400\\'>Imagen no disponible localmente<br><span class=\\'text-xs\\'>Usar enlace original</span></div>'">
+                    `
+                }
+
+                card.innerHTML = `
+                    <div class="relative">
+                        ${imgHtml}
+                        
+                        <div class="absolute top-3 right-3">
+                            <label class="flex items-center gap-1.5 bg-white/90 backdrop-blur px-2.5 py-1 rounded-2xl shadow text-xs cursor-pointer border border-white/60">
+                                <input type="checkbox" ${isSelected ? 'checked' : ''} 
+                                       onchange="toggleSelection('${asset.id}', this.checked)"
+                                       class="accent-blue-600 w-3.5 h-3.5">
+                                <span class="font-medium text-slate-700">Seleccionar</span>
+                            </label>
+                        </div>
+                        
+                        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent h-12"></div>
+                    </div>
+                    
+                    <div class="p-4 flex-1 flex flex-col">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="font-semibold text-[13.5px] leading-tight line-clamp-2">${asset.title}</div>
+                        </div>
+                        
+                        <div class="mt-2 flex flex-wrap gap-1">
+                            ${asset.tags.map(tag => `<span class="material-tag bg-blue-100 text-blue-700">${tag}</span>`).join('')}
+                        </div>
+                        
+                        <div class="asset-meta text-slate-600 mt-3 flex-1">
+                            ${asset.desc}
+                        </div>
+                        
+                        <div class="mt-3 pt-3 border-t text-[11px]">
+                            <div class="text-emerald-700 font-medium">Uso recomendado:</div>
+                            <div class="text-slate-600 leading-snug">${asset.use}</div>
+                        </div>
+                        
+                        <div class="mt-3 flex gap-2 text-xs">
+                            <a href="${asset.local}" target="_blank" class="flex-1 text-center px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition">Ver local</a>
+                            <a href="${asset.original}" target="_blank" class="flex-1 text-center px-2 py-1 border border-slate-200 hover:bg-slate-50 rounded-xl font-medium transition">Original</a>
+                            <a href="${asset.page}" target="_blank" class="flex-1 text-center px-2 py-1 border border-slate-200 hover:bg-slate-50 rounded-xl font-medium transition">Página</a>
+                        </div>
+                    </div>
+                `
+                
+                container.appendChild(card)
+            })
+        }
+
+        function filterBy(filter) {
+            currentFilter = filter
+            
+            // Update active button styles
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active')
+                if (btn.dataset.filter === filter) {
+                    btn.classList.add('active')
+                }
+            })
+            
+            let filtered = assets
+            
+            if (filter === 'isoroof') {
+                filtered = assets.filter(a => a.family === 'isoroof')
+            } else if (filter === 'isodec') {
+                filtered = assets.filter(a => a.family === 'isodec')
+            } else if (filter === 'perfil' || filter === 'producto' || filter === 'obra' || filter === 'tecnico') {
+                filtered = assets.filter(a => a.type === filter)
+            }
+            
+            renderGallery(filtered)
+        }
+
+        function toggleSelection(id, checked) {
+            if (checked) {
+                selectedIds.add(id)
+            } else {
+                selectedIds.delete(id)
+            }
+            
+            // Re-render the specific card to update visual selected state
+            renderGallery(getCurrentFiltered())
+            updateSelectionPanel()
+        }
+
+        function getCurrentFiltered() {
+            let filtered = assets
+            
+            if (currentFilter === 'isoroof') {
+                filtered = assets.filter(a => a.family === 'isoroof')
+            } else if (currentFilter === 'isodec') {
+                filtered = assets.filter(a => a.family === 'isodec')
+            } else if (['perfil','producto','obra','tecnico'].includes(currentFilter)) {
+                filtered = assets.filter(a => a.type === currentFilter)
+            }
+            
+            return filtered
+        }
+
+        function updateSelectionPanel() {
+            const container = document.getElementById('selection-list')
+            
+            if (selectedIds.size === 0) {
+                container.innerHTML = `<div class="text-slate-400 italic text-center py-6">Ningún material seleccionado aún. Marca los checkboxes de arriba.</div>`
+                return
+            }
+            
+            let html = '<div class="space-y-2">'
+            
+            selectedIds.forEach(id => {
+                const asset = assets.find(a => a.id === id)
+                if (!asset) return
+                
+                html += `
+                    <div class="flex gap-3 items-start bg-white border border-slate-200 rounded-2xl p-3 text-xs">
+                        <div class="flex-1">
+                            <div class="font-semibold">${asset.title}</div>
+                            <div class="text-slate-500 mt-0.5">${asset.use}</div>
+                            <div class="mt-1 text-[10px] text-blue-600">${asset.local}</div>
+                        </div>
+                        <button onclick="removeFromSelection('${id}')" class="text-red-400 hover:text-red-600 px-1">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                `
+            })
+            
+            html += '</div>'
+            container.innerHTML = html
+        }
+
+        function removeFromSelection(id) {
+            selectedIds.delete(id)
+            renderGallery(getCurrentFiltered())
+            updateSelectionPanel()
+        }
+
+        function clearSelection() {
+            selectedIds.clear()
+            renderGallery(getCurrentFiltered())
+            updateSelectionPanel()
+        }
+
+        function copySelectionMarkdown() {
+            if (selectedIds.size === 0) {
+                alert('No hay nada seleccionado todavía.')
+                return
+            }
+            
+            let md = '# Material Visual Seleccionado por Lio\n\n'
+            md += `Fecha: ${new Date().toLocaleDateString('es-UY')}\n\n`
+            
+            selectedIds.forEach(id => {
+                const asset = assets.find(a => a.id === id)
+                if (!asset) return
+                
+                md += `## ${asset.title}\n`
+                md += `- **Familia**: ${asset.family.toUpperCase()}\n`
+                md += `- **Tipo**: ${asset.type}\n`
+                md += `- **Uso recomendado**: ${asset.use}\n`
+                md += `- Archivo local: \`${asset.local}\`\n`
+                md += `- Original: ${asset.original}\n`
+                md += `- Página: ${asset.page}\n\n`
+            })
+            
+            navigator.clipboard.writeText(md).then(() => {
+                const origText = event.target ? event.target.innerText : ''
+                alert('Lista copiada al portapapeles en formato Markdown.')
+            }).catch(() => {
+                // Fallback
+                const textarea = document.createElement('textarea')
+                textarea.value = md
+                document.body.appendChild(textarea)
+                textarea.select()
+                document.execCommand('copy')
+                document.body.removeChild(textarea)
+                alert('Lista copiada (fallback).')
+            })
+        }
+
+        function copySelectionURLs() {
+            if (selectedIds.size === 0) {
+                alert('No hay nada seleccionado todavía.')
+                return
+            }
+            
+            let urls = ''
+            selectedIds.forEach(id => {
+                const asset = assets.find(a => a.id === id)
+                if (asset) urls += asset.original + '\n'
+            })
+            
+            navigator.clipboard.writeText(urls.trim()).then(() => {
+                alert('URLs copiadas al portapapeles.')
+            }).catch(() => {
+                const textarea = document.createElement('textarea')
+                textarea.value = urls.trim()
+                document.body.appendChild(textarea)
+                textarea.select()
+                document.execCommand('copy')
+                document.body.removeChild(textarea)
+                alert('URLs copiadas (fallback).')
+            })
+        }
+
+        function initializeFilters() {
+            // Set initial active
+            const allBtn = document.querySelector('.filter-btn[data-filter="all"]')
+            if (allBtn) allBtn.classList.add('active')
+            
+            // Keyboard hint
+            console.log('%c[Material Visual] Galería lista. Usa los filtros y checkboxes.', 'color:#64748b')
+        }
+
+        function initializeGallery() {
+            const container = document.getElementById('gallery')
+            
+            // Initial render all
+            renderGallery(assets)
+            
+            // Restore any previous selection if wanted (none on fresh load)
+            updateSelectionPanel()
+            
+            initializeFilters()
+            
+            // Bonus: allow clicking card (not checkbox area) to toggle too
+            container.addEventListener('click', function(e) {
+                const card = e.target.closest('.gallery-card')
+                if (!card) return
+                
+                // Ignore if clicking links or the label/checkbox area
+                if (e.target.closest('a') || e.target.closest('label') || e.target.tagName === 'INPUT') {
+                    return
+                }
+                
+                const id = card.dataset.id
+                const checkbox = card.querySelector('input[type="checkbox"]')
+                
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked
+                    toggleSelection(id, checkbox.checked)
+                }
+            })
+        }
+
+        // Boot
+        function boot() {
+            initializeTailwind()
+            initializeGallery()
+            
+            // Optional: pre-select a couple of the strongest ones for demo (comment in real)
+            // selectedIds.add('kp-plus')
+            // selectedIds.add('pdf-plus')
+            // selectedIds.add('bmc-3g-1')
+            // updateSelectionPanel()
+            // renderGallery(assets)
+            
+            console.log('%c[Material Visual para Lio] Documento listo. 18 assets bundled + referencias externas.', 'color:#0f172a')
+        }
+
+        window.onload = boot
+        
+        // Expose some helpers if needed in console
+        window.MATERIAL_VISUAL = { assets, selectedIds, filterBy, clearSelection }
+    </script>
+</body>
+</html>

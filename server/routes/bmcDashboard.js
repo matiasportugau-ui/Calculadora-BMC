@@ -1210,7 +1210,7 @@ async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
 }
 
 // ─── MATRIZ precios → planilla calculadora ──────────────────────────────────
-// MATRIZ: F, L, M, T = **tal cual** la celda (sin ÷ ni × IVA). F/L/T ex IVA en lista; M referencia c/IVA tal cual.
+// MATRIZ: G, J, K, R, S = **tal cual** la celda (sin ÷ ni × IVA). G/J/R ex IVA en lista; K referencia c/IVA tal cual.
 // Columnas buscadas por nombre: costo/costos, venta/venta_bmc, venta_web/web. Fallback índices fijos.
 
 function findColIndex(headers, ...patterns) {
@@ -1231,16 +1231,16 @@ const MATRIZ_TAB_COLUMNS = {
   BROMYROS: {
     sku: COL("D"),
     descripcion: COL("E"),
-    // F — Costo m² USD ex IVA: **tal cual** celda.
-    costo: COL("F"),
-    // L — venta local: **tal cual** celda.
-    ventaLocal: COL("L"),
-    // M — ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
-    ventaIvaInc: COL("M"),
-    // T — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
-    web: COL("T"),
-    // U — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
-    webIvaInc: COL("U"),
+    // G — Costo m² USD ex IVA: **tal cual** celda.
+    costo: COL("G"),
+    // J — venta local: **tal cual** celda.
+    ventaLocal: COL("J"),
+    // K — ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
+    ventaIvaInc: COL("K"),
+    // R — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
+    web: COL("R"),
+    // S — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
+    webIvaInc: COL("S"),
   },
   // Add more tabs here after mapping approval:
   // "R y C Tornillos": { sku: COL("D"), ... },
@@ -1318,9 +1318,9 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
       const webIvaIncRaw =
         cols.webIvaInc != null ? parseNum(row[cols.webIvaInc]) : null;
 
-      // F, L, M, T, U: copiar número de planilla sin transformar.
-      // Regla confirmada: T = venta web ex IVA.
-      // La UI calcula Web c/IVA desde `venta_web`; si U existe, se expone como referencia.
+      // G, J, K, R, S: copiar número de planilla sin transformar.
+      // Regla confirmada: R = venta web ex IVA.
+      // La UI calcula Web c/IVA desde `venta_web`; si S existe, se expone como referencia.
       const costo = costoRaw != null ? +costoRaw.toFixed(2) : "";
       const venta = ventaLocalRaw != null ? +ventaLocalRaw.toFixed(2) : "";
       const ventaInc = ventaIvaIncRaw != null ? +ventaIvaIncRaw.toFixed(2) : "";
@@ -1353,7 +1353,7 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 /**
  * Aplica overrides de la calculadora (keys `path.costo|venta|web|webIvaInc`) a filas MATRIZ
  * cuyo SKU (col D) mapea a `path` en `matrizPreciosMapping.js`.
- * Overrides `.costo` / `.venta` / `.web` / `.webIvaInc` → celdas **F**, **L**, **T**, **U** **tal cual** (sin ×/÷ IVA). No escribe **M**.
+ * Overrides `.costo` / `.venta` / `.web` / `.webIvaInc` → celdas **G**, **J**, **R**, **S** **tal cual** (sin ×/÷ IVA). No escribe **K**.
  * Requiere scope escritura Sheets y rol Editor en el workbook MATRIZ.
  */
 async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, dryRun) {

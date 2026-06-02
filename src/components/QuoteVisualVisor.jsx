@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Pencil } from "lucide-react";
 import { C, FONT, ROOF_2D_QUOTE_VISOR_STEP_IDS, SHC, TR } from "../data/constants.js";
+import { PanelCrossSection } from "./panelViz/PanelCrossSection.jsx";
 import { DEFAULT_AGUA_REFERENCE_IMAGES, getQuoteVisorContext, QUOTE_VISOR_SHOP_URLS } from "../data/quoteVisorMedia.js";
 import { getBorderAccentSlides, readShopifyImageOverrides, writeShopifyImageOverride } from "../data/quoteVisorShopifyResolve.js";
 
@@ -53,10 +54,12 @@ export default function QuoteVisualVisor({
   onSelectAgua = null,
   onNext = null,
   roof2DPreview = null,
+  techoEspesor = null,
 }) {
   const roof2dQuoteVisorLayout = Boolean(roof2DPreview) && Boolean(stepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(stepId));
   const [open, setOpen] = useState(() => !roof2dQuoteVisorLayout);
   const [roof3dOpen, setRoof3dOpen] = useState(() => !roof2dQuoteVisorLayout);
+  const [panelSectionOpen, setPanelSectionOpen] = useState(true);
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [overrideDraft, setOverrideDraft] = useState("");
@@ -627,6 +630,49 @@ export default function QuoteVisualVisor({
               }}
             >
               Vista previa al pasar el cursor · familia: {hoverTechoFamilia.replace(/_/g, " ")}
+            </div>
+          )}
+
+          {/* Sección constructiva 2D del panel — TechDraw / FreeCAD CAD quality (Fase 1 roadmap) */}
+          {techoFamilia && (
+            <div style={{ marginBottom: 12 }}>
+              <button
+                type="button"
+                onClick={() => setPanelSectionOpen(v => !v)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: `1px solid ${C.border}`,
+                  background: C.surfaceAlt,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: C.ts,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  cursor: "pointer",
+                }}
+              >
+                <span>Sección 2D del panel (constructiva)</span>
+                {panelSectionOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {panelSectionOpen && (
+                <div style={{ marginTop: 6, padding: 8, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                  <PanelCrossSection
+                    familiaKey={techoFamilia}
+                    espesorMm={techoEspesor}
+                    width={320}
+                    showTitle={false}
+                    compact
+                  />
+                  <div style={{ fontSize: 9, color: "#64748b", marginTop: 4, textAlign: "center" }}>
+                    Datos de fichas técnicas • Actualiza con espesor y familia elegidos
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

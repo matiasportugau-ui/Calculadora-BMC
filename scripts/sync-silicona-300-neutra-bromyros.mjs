@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Sincroniza **F/L/T** (cols F, L, T de BROMYROS, ex IVA) de la fila **Silicona 300 ml neutra**
+ * Sincroniza **G/J/R** (cols G, J, R de BROMYROS, ex IVA) de la fila **Silicona 300 ml neutra**
  * (SKU col D **SIL300N** típico) hacia `SELLADORES.silicona_300_neutra` en `src/data/constants.js`.
  *
  * Fila por defecto **168** (MATRIZ 2026-04); override: `MATRIZ_ROW_SILICONA_300_NEUTRA=168`.
@@ -37,9 +37,9 @@ const COL = (letter) => {
 const c = {
   sku: COL("D"),
   descripcion: COL("E"),
-  costo: COL("F"),
-  ventaLocal: COL("L"),
-  web: COL("T"),
+  costo: COL("G"),
+  ventaLocal: COL("J"),
+  web: COL("R"),
 };
 
 const DEFAULT_ROW = 168;

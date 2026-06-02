@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Previews UI - Integración 2D/3D Productos BMC | Evaluación Pre-Run</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif; background: #f5f5f7; color: #1d1d1f; margin: 0; padding: 20px; line-height: 1.5; }
+    .header { max-width: 1200px; margin: 0 auto 30px; text-align: center; }
+    h1 { color: #1a3a5c; }
+    .note { background: #fff; padding: 16px; border-radius: 12px; border: 1px solid #e5e5ea; max-width: 1200px; margin: 0 auto 30px; }
+    .gallery { max-width: 1200px; margin: 0 auto; display: grid; gap: 30px; }
+    .preview-card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.06); border: 1px solid #e5e5ea; }
+    .preview-card img { width: 100%; height: auto; display: block; border-bottom: 1px solid #e5e5ea; }
+    .preview-card .caption { padding: 16px; }
+    .preview-card h3 { margin: 0 0 8px; color: #0071e3; font-size: 15px; }
+    .preview-card p { margin: 0; font-size: 13px; color: #6e6e73; }
+    .meta { font-size: 11px; color: #aeaeb2; margin-top: 8px; }
+    .footer { max-width: 1200px; margin: 40px auto 0; text-align: center; font-size: 12px; color: #6e6e73; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Previews de Interfaz Propuesta — 2D/3D Renderización de Productos BMC</h1>
+    <p><strong>Pre-Run Evaluation</strong> | Basado en videos FreeCAD (TechDraw 2D, BIM 3D, Python automation, BIM Library)</p>
+    <p>Generadas con image_gen para evaluar el input de integración antes de full implementation.</p>
+  </div>
+
+  <div class="note">
+    <strong>Contexto:</strong> Estas previews muestran cómo quedaría la UI después de integrar <code>PanelCrossSection.jsx</code> (cortes 2D CAD-style estilo FreeCAD TechDraw) y mejoras 3D volumétricas (BIM-style con espesor real y perfiles).<br>
+    UI base: Apple-like limpio (blancos #F5F5F7, azul #0071E3, tarjetas, SF Pro). <br>
+    <strong>Archivos reales:</strong> Las imágenes están en <code>docs/team/visual/previews/</code> (copia de las generadas en la sesión).<br>
+    <strong>Próximo paso recomendado:</strong> Abre esta página localmente, evalúa, y dime qué ajustar o "implementa Fase 2 completa".
+  </div>
+
+  <div class="gallery">
+
+    <div class="preview-card">
+      <img src="preview-01-visor-section.jpg" alt="QuoteVisualVisor con nueva sección 2D del panel">
+      <div class="caption">
+        <h3>1. QuoteVisualVisor — Acordeón "Sección 2D del panel (constructiva)"</h3>
+        <p>En el visor derecho (durante pasos como dimensiones/espesor). Muestra carrusel + acordeón abierto con el corte técnico CAD (capas, hatching, cotas en mm, perfil para Isoroof). Actualiza live con familia y espesor del wizard. El 3D de ensamble sigue al lado (con posible "Vista 3D Producto" futuro).</p>
+        <div class="meta">Integración en: QuoteVisualVisor.jsx | Propósito: Evaluar visibilidad del 2D técnico durante cotización.</div>
+      </div>
+    </div>
+
+    <div class="preview-card">
+      <img src="preview-02-family-catalog.jpg" alt="Paso Familia con catálogo + sección 2D">
+      <div class="caption">
+        <h3>2. Paso "Familia" — Catálogo + Preview 2D en vivo</h3>
+        <p>Grid de familias (ISODEC, ISOROOF etc.) + debajo el corte constructivo del panel seleccionado (ISODEC PIR ejemplo). Muestra cómo el usuario ve inmediatamente el "qué es" el producto en términos técnicos reales (0.5mm chapa + núcleo + liner).</p>
+        <div class="meta">Integración en: PanelFamilyShowcase + main wizard (familia step) | Ya implementado parcialmente.</div>
+      </div>
+    </div>
+
+    <div class="preview-card">
+      <img src="preview-03-pdf-sections.jpg" alt="PDF con secciones técnicas de productos">
+      <div class="caption">
+        <h3>3. PDF Cotización — Secciones Técnicas de Productos</h3>
+        <p>Página de apéndice o sección de vistas con cortes 2D profesionales para diferentes familias + pequeño render 3D isométrico. Estilo vectorial limpio para impresión. Complementa el "Plano 2D de cubierta" actual.</p>
+        <div class="meta">Integración en: quotationViews.js (buildSnapshotSectionHtml) + captura desde componentes | Evalúa valor para entregables al cliente.</div>
+      </div>
+    </div>
+
+    <div class="preview-card">
+      <img src="preview-04-standalone-ficha.jpg" alt="Ficha visual standalone del producto">
+      <div class="caption">
+        <h3>4. Ficha Visual Standalone (propuesta para futuro modal/tab)</h3>
+        <p>Vista dedicada: 3D volumétrico realista del panel (espesor visible, perfil nervado, textura catálogo) + múltiples vistas 2D (corte, perfil lateral) + specs table + selector de color que actualiza todo en vivo. Como un mini configurador BIM.</p>
+        <div class="meta">Futuro: En visor, results, o /ficha. Muestra el target completo (2D + 3D integrado).</div>
+      </div>
+    </div>
+
+    <div class="preview-card">
+      <img src="preview-05-3d-before-after.jpg" alt="Comparativa 3D antes y después">
+      <div class="caption">
+        <h3>5. Comparativa 3D: Antes (actual) vs Después (propuesto)</h3>
+        <p>Izquierda: Ensamble actual (planos texturizados sin volumen). Derecha: Propuesto con paneles volumétricos (espesor real visible en bordes, perfiles nervados para Isoroof, laps laterales, iluminación realista). Mismo contexto de visor.</p>
+        <div class="meta">Impacto clave de Fase 2. Evalúa el salto en "renderización 3D de productos".</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <p>Previews generadas para evaluación del "input" de integración (plan Fases 1-2 del roadmap).<br>
+    Ubicación: <code>docs/team/visual/previews/</code> + <code>index.html</code><br>
+    Abre este archivo en el navegador para verlas en contexto. Usa las imágenes para feedback antes de más código.<br>
+    <strong>Siguiente:</strong> Dime "implementa Fase X" o "ajusta preview Y" o "copia estas a public para demo local".</p>
+  </div>
+</body>
+</html>

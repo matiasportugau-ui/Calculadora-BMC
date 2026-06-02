@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-01 (agente panel-product-visualization-specialist + entry en Cambios recientes)
+**Última actualización:** 2026-06-02 (Phase 1 GCP service accounts hardening)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -12,6 +12,29 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-02 (Infra GCP — Phase 1 service accounts):** Continuación desde [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-SESSION-REFERENCE.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-SESSION-REFERENCE.md). **P1-1:** [`.github/workflows/deploy-calc-api.yml`](../.github/workflows/deploy-calc-api.yml) monta sensibles vía `--set-secrets` (API/ML/claves IA + identity/DB); `SMTP_PASS`/`WA_JWT_SECRET` fuera del workflow hasta migración two-step (valores `-` en prod). **P1-2:** [`scripts/cloud-run-matriz-sheets-secret.sh`](../scripts/cloud-run-matriz-sheets-secret.sh) alineado a `panelin-service-account` + `/run/secrets/service-account.json` + runtime `panelin-runner`. Nuevo [`scripts/cloud-run-env-to-secret.sh`](../scripts/cloud-run-env-to-secret.sh); [`scripts/provision-secrets.sh`](../scripts/provision-secrets.sh) incluye `SMTP_PASS`/`WA_JWT_SECRET`. **Live:** remontados secretos GSM en Cloud Run → revisión **`panelin-calc-00427-mc7`**; **`npm run smoke:prod`** OK. **P1-3 pendiente (G4):** key user-managed en `github-deployer` (`4fc9699a…`). **P1-4:** bucket canónico `gs://bmc-ml-tokens` — IAM auditado (`bmc-dashboard-sheets` + compute legacy). Docs: [`ML-OAUTH-SETUP.md`](../ML-OAUTH-SETUP.md), checklist deploy.
+
+**2026-06 (MATRIZ precios — remapeo columnas BROMYROS):** Cols fuente actualizadas: costo → **G** (antes F), venta local → **J** (antes L), ref c/IVA → **K** (antes M), venta web → **R** (antes T), web c/IVA → **S** (antes U). Actualizado `server/routes/bmcDashboard.js` (MATRIZ_TAB_COLUMNS + push/build + comments), scripts de sync (fijaciones-isodec, silicona-300), `matriz-rename-bromyros-headers.mjs`, `matrizPreciosMapping.js`, `agentCapabilitiesManifest.js`, y docs canónicos (`MATRIZ-PRECIOS-CALCULADORA.md`, skill `actualizar-precios-calculadora`). `npm run lint` (sin nuevos errores por el cambio). El endpoint CSV y push ahora leen/escriben las columnas correctas de la planilla.
+
+**2026-06 (Investigación "mas completa" de renders reales UY para productos exactos + plegados DWG — sin modificaciones):** `hecho`. Bajo el constraint explícito "no modifiques naa , los datos reales ya los tenemos tenemos que encontrar los renders que los representen" y con el DWG de referencia `/Users/matias/Downloads/panelin_assets/videos/plegados en general.dwg`, se completó la investigación más exhaustiva posible de assets reales que representan fielmente los productos de la calculadora (nombres 1:1 de PANELS_TECHO).
+
+**2026-06 (Investigación DWGs internos TECHMET + Accesorios BMC Uruguay):** `hecho`. Inspección no-destructiva completa de los 17 DWG listados por el usuario (ruta Dropbox "bmc - interna/paneles/Detalles Constructivos TECHMET/" + "BMC - Uruguay/PDF Productos/Paneles BMC/Accesorios/..."). 
+- TECHMET (MET-*.dwg, ~2017): detalles constructivos ricos con "PANEL TECHMET", "GLAMET TECHMET", "FORRO F1-MET-1" a F6, "FORRO LATERAL", "PLEGADO DOBLE", "ANCHO UTIL 1000 mm", espesores 30/50/80 mm, "1@30 cms.", tornillos autoperforantes, "NOTA: LOS DESARROLLOS Y TIPOS DE FORROS SON DEMOSTRATIVOS", calzar/fijar al monte, sello butilo, etc. (MET-07 y 09-12 son los más densos).
+- Accesorios BMC (2023-2025): FRONTALES.dwg / FRONTALNuevo.dwg (perfiles frontales/goteros), BabetaLateral.dwg (babeta lateral), Desarrollos.dwg (AC1032, mismos vintage que plegados-en-general.dwg — flat patterns/desarrollos de plegados para fabricación).
+- Mapeo directo a productos calculadora (Isoroof au 1.0 / 30-80 mm + accesorios PERFIL_TECHO / BORDER_OPTIONS / FIJACIONES) y al plegados DWG previo. Estos son los detalles CAD "internos reales" de BMC para los forros y plegados que acompañan a los paneles Kingspan/Bromyros.
+- Entregables: nuevo reporte `docs/team/knowledge/INTERNAL-TECHMET-BMC-DWG-CONSTRUCTIVE-DETAILS-INVESTIGATION.md` (análisis por archivo/grupo, excerpts, insights geométricos, recomendaciones para 2D/3D viz) + sección agregada al HTML de selección para Lio (`MATERIAL-VISUAL-SELECCION-LIO.html`).
+
+Todo research + docs de conocimiento; cero cambios a datos/assets/código. Cierra el círculo con la investigación web previa (kingspan "3 grecas", Bromyros PDFs, bmcuruguay, BIM, fotos de obras).
+
+- DWG inspeccionado no-destructivamente (ACAD 2018-2020 válido, geometría pura 3-grecas trapezoidales ~73KB; strings mínimos).
+- Fuentes UY prioritarias mapeadas y fetchadas: kingspan.com.uy (páginas Isoroof Plus/3G/Foil/Isodec/Colonial con "3 grecas como terminación" explícito, "Fabricado en Planta Kingspan Uruguay", "Descargar información", imágenes wp-content directas); biblioteca-bim (Revit Isoroof/Isodec/Isopanel); fotos-de-obras (50+ installs reales UY con plegados visibles); bmcuruguay.com.uy (páginas 1:1 ISOROOF 3G/PLUS/FOIL/ISODEC con fotos cdn shop + "Trapezoidal 3G" + grecas en cumbreras/goteros + specs/precios exactos); Bromyros PDFs (Isoroof-Plus-Bromyros.pdf confirmando "trapezoidal (3 grecas)", isodec ficha, catálogo productos completo con specs "Planta de Canelones Kingspan Bromyros", tablas térmicas, perfiles).
+- Instagram @kingspanuruguay (reels/posts Isoroof Plus imitación madera, obra, detalles); YouTube oficial Kingspan Uruguay "Conoce nuestro panel isoroof ®" + canal bromyros.
+- Síntesis en nuevo artifact dedicado: `docs/team/knowledge/ISOROOF-PLEGADOS-REAL-REFERENCES-UY-2026.md` (inventario por tipo/familia, links directos, excerpts de "3 grecas"/au/espesores/núcleo/fábrica, recomendaciones de uso para viz 2D/3D/PDF, verificación completitud por familia ISOROOF_*/ISODEC_*, fidelidad DWG, global cross-checks).
+- Actualizado KINGSPAN-BIM-3D-DOWNLOAD-SOURCES.md con puntero y resumen.
+- Todo research externo + docs de conocimiento; **cero modificaciones** a src/data (constants, specs), assets (PanelRendering), componentes, o cualquier dato real del proyecto.
+
+Esto completa la fase de investigación pura solicitada ("haz la investigacion mas completa que tengas") y provee el input listo para delegar al panel-product-visualization-specialist cuando corresponda (usando solo estos renders reales como ground truth).
+
 **2026-06-01 (Panel Product Visualization Specialist — agente + skill + rúbrica 2D/3D productos):** `hecho`. Se generó el especialista dedicado para mejorar la renderización 2D y 3D de los productos (paneles ISODEC / ISOROOF) en la calculadora, siguiendo exactamente el patrón de `roofplan-architect`.
 
 - Agente: `.cursor/agents/bmc-panel-product-visualization-specialist.md`
@@ -20,7 +43,21 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 El agente cubre: PanelFamilyShowcase, RoofPanelRealisticScene (y viewers aislados de producto), perfiles visuales, texturas Shopify/PanelRendering, secciones 2D constructivas paramétricas, volumen/espesor en 3D, PBR, captura PDF, coherencia au/espesor/familia con motor de cálculo. Complementa a `roofplan-architect` (enfocado en layout de cubierta + cotas) y a `bmc-roof-2d-viewer-specialist`.
 
-Próximo: usuario compartirá info de evaluación (screenshots, pain points, objetivos específicos) para que el especialista audite con la rúbrica y ejecute mejoras.
+Entregables iniciales post-videos (FreeCAD BIM/TechDraw/Python refs):
+- `src/data/panelConstructionSpecs.js`: specs de capas reales (0.5 mm chapa ext/int + núcleo variable PIR/EPS/FOIL por familia, perfiles para Isoroof) desde fichas técnicas + au/espesores de constants.
+- `src/components/panelViz/PanelCrossSection.jsx`: SVG 2D técnico estilo CAD/TechDraw (stack layers con hatching por material, dims mm, perfil simplificado para Isoroof, labels, data-bmc-capture, totalmente data-driven).
+- Integraciones: 
+  - PanelFamilyShowcase con preview live.
+  - Paso "espesor" en wizard muestra sección constructiva bajo las tarjetas de mm (live).
+  - QuoteVisualVisor con nuevo acordeón "Sección 2D del panel (constructiva)" (usa el componente, actualiza con familia/espesor).
+- Previsualizaciones IA generadas (5 imágenes): mockups de familia+sección 2D, visor con acordeón, PDF con secciones de productos, ficha standalone con 3D+2D, antes/después 3D ensamble.
+- Roadmap detallado con estudio profundo y plan de integración exacta: `docs/team/visual/PANEL-PRODUCT-VIZ-ROADMAP-FROM-FREECAD.md`.
+- Lint limpio.
+- Agente/skill/rúbrica actualizados con referencias a los 4 videos y criterios CAD/BIM/parametric.
+
+Estudio en profundidad del proyecto completado (wizard steps, visor con portales/carrousels, PDF snapshots en quotationViews, geometría 3D planos, tokens UI C/FONT, etc.). Ver detalles y plan en respuesta + roadmap.
+
+Próximo: delega al especialista "implementa Fase 2 (3D volumétrico usando specs + viewer aislado)" o similar. Gates: lint/test + rúbrica + visual + PDF.
 
 **2026-06-01 (GCP Service Accounts — doc sesión + Phase 0 prod):** `hecho confirmado`. Referencia canónica para retomar sin chat: [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-SESSION-REFERENCE.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-SESSION-REFERENCE.md) (dual SA `panelin-runner` + `bmc-dashboard-sheets`, Phase 0 P0-1..P0-3, comandos §8, Phase 1 pendiente). Prod verificado: revisión `panelin-calc-00426-dtr`, 1 key Sheets `489cffaa…`, smoke OK. Índice: [`docs/team/infrastructure/README.md`](./infrastructure/README.md).
 

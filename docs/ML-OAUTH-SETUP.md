@@ -126,17 +126,17 @@ Si el backend está en Cloud Run (`*.run.app`), las variables `ML_CLIENT_ID` y `
 
 Por defecto los tokens se guardan en un archivo local que se pierde en cada deploy. Para que persistan:
 
-1. **Crear bucket GCS:**
+1. **Crear bucket GCS** (nombre canónico en prod: `bmc-ml-tokens`):
    ```bash
-   gsutil mb gs://panelin-calc-ml-tokens
+   gsutil mb -l us-central1 gs://bmc-ml-tokens
    ```
    O desde la consola de Google Cloud → Cloud Storage → Crear bucket.
 
-2. **Permisos IAM:** El service account de Cloud Run debe poder leer/escribir el bucket. Si usás el default (`PROJECT_NUMBER-compute@developer.gserviceaccount.com`), suele tener acceso. Para least-privilege, creá un SA dedicado y asignale `roles/storage.objectAdmin` en el bucket.
+2. **Permisos IAM:** La identidad que escribe tokens es **`bmc-dashboard-sheets@…`** (JSON montado en Cloud Run), no `panelin-runner`. Asignar `roles/storage.objectAdmin` en el bucket a esa SA. Legacy: `642127786762-compute@…` aún aparece en algunos buckets — no usar en servicios nuevos.
 
 3. **Variables en `.env`:**
    ```env
-   ML_TOKEN_GCS_BUCKET=panelin-calc-ml-tokens
+   ML_TOKEN_GCS_BUCKET=bmc-ml-tokens
    TOKEN_ENCRYPTION_KEY=64_caracteres_hex
    ```
 

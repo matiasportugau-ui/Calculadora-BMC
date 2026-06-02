@@ -89,7 +89,7 @@ cd /ruta/a/Calculadora-BMC
 ./scripts/cloud-run-matriz-sheets-secret.sh
 ```
 
-Por defecto usa secret **`GOOGLE_APPLICATION_CREDENTIALS`**, montaje **`/secrets/sa-key.json`** y MATRIZ **`1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo`**. Otro secret: `SECRET_NAME=tu-secret ./scripts/cloud-run-matriz-sheets-secret.sh`.
+Por defecto usa secret **`panelin-service-account`**, montaje **`/run/secrets/service-account.json`**, runtime **`panelin-runner@…`**, y MATRIZ **`1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo`**. Ver [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-SESSION-REFERENCE.md`](../team/infrastructure/GCP-SERVICE-ACCOUNTS-SESSION-REFERENCE.md).
 
 El endpoint `GET /api/actualizar-precios-calculadora` exige **ruta a un archivo JSON** que exista **dentro del contenedor** (`server/routes/bmcDashboard.js`). Si falta `GOOGLE_APPLICATION_CREDENTIALS` o el archivo no está montado, verás:
 

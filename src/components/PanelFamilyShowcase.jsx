@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { ROOF_PANEL_VISUAL_PROFILES } from "../data/roofPanelVisualProfiles.js";
+import { PanelCrossSection } from "./panelViz/PanelCrossSection.jsx";
 
 const FAMILIES = Object.keys(ROOF_PANEL_VISUAL_PROFILES);
 
@@ -80,24 +81,42 @@ function PanelFamilyCard({ familiaKey, selected, onSelect, compact }) {
  *   compact?: boolean,
  * }} props
  */
-export function PanelFamilyShowcase({ familiaKey, onSelect, compact = false }) {
+export function PanelFamilyShowcase({ familiaKey, onSelect, compact = false, espesorMm = null }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: compact ? "repeat(3, 1fr)" : "repeat(2, 1fr)",
-        gap: 8,
-      }}
-    >
-      {FAMILIES.map((fk) => (
-        <PanelFamilyCard
-          key={fk}
-          familiaKey={fk}
-          selected={fk === familiaKey}
-          onSelect={onSelect}
-          compact={compact}
-        />
-      ))}
+    <div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: compact ? "repeat(3, 1fr)" : "repeat(2, 1fr)",
+          gap: 8,
+        }}
+      >
+        {FAMILIES.map((fk) => (
+          <PanelFamilyCard
+            key={fk}
+            familiaKey={fk}
+            selected={fk === familiaKey}
+            onSelect={onSelect}
+            compact={compact}
+          />
+        ))}
+      </div>
+
+      {/* Live 2D technical section for selected family (FreeCAD/TechDraw inspired CAD quality) */}
+      {familiaKey && (
+        <div style={{ marginTop: 10, padding: 8, background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#334155", marginBottom: 4 }}>
+            Sección constructiva 2D (datos de ficha técnica)
+          </div>
+          <PanelCrossSection
+            familiaKey={familiaKey}
+            espesorMm={espesorMm}
+            width={compact ? 260 : 340}
+            showTitle={false}
+            compact
+          />
+        </div>
+      )}
     </div>
   );
 }

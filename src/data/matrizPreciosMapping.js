@@ -11,7 +11,7 @@
 // - Isowall 80 mm → SKU IW80 en col D (tres filas con mismo path = error de planilla).
 //
 // MATRIZ_TAB_COLUMNS.BROMYROS (ver MATRIZ-PRECIOS-CALCULADORA.md):
-//   F, L, T = tal cual; M = consumidor c/IVA tal cual; **U** = venta web c/IVA tal cual (solo CSV `venta_web_iva_inc`, sin push).
+//   G, J, R = tal cual; K = consumidor c/IVA tal cual; **S** = venta web c/IVA tal cual (solo CSV `venta_web_iva_inc`, sin push).
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Normaliza SKU para match (uppercase, sin espacios, guiones opcionales) */

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Renombra encabezados de columnas problemáticas en la pestaña BROMYROS de la MATRIZ
- * (F/L/M/T/U alineados a MATRIZ_TAB_COLUMNS; T = web ex IVA, U = web c/IVA).
+ * (G/J/K/R/S alineados a MATRIZ_TAB_COLUMNS; R = web ex IVA, S = web c/IVA).
  *
  * Requiere: GOOGLE_APPLICATION_CREDENTIALS + permiso **Editor** en el workbook.
  *
@@ -9,7 +9,7 @@
  *   node scripts/matriz-rename-bromyros-headers.mjs --dry-run
  *   node scripts/matriz-rename-bromyros-headers.mjs
  *   node scripts/matriz-rename-bromyros-headers.mjs --row 1 --tab BROMYROS
- *   node scripts/matriz-rename-bromyros-headers.mjs --include-g   # también col G (segundo “costo” confuso)
+ *   node scripts/matriz-rename-bromyros-headers.mjs --include-g   # también col G (si hay costo alternativo)
  *
  * Variables: BMC_MATRIZ_SHEET_ID (default = config del repo)
  */
@@ -26,12 +26,17 @@ const DEFAULT_SHEET_ID = "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 
 const HEADERS = {
-  F: "Costo m² USD ex IVA",
-  G: "Costo m² USD ex IVA (col. G)",
-  L: "Venta local USD ex IVA",
-  M: "Ref. consumidor c/IVA",
-  T: "Venta web USD ex IVA",
-  U: "Venta web USD c/IVA",
+  G: "Costo m² USD ex IVA",
+  J: "Venta local USD ex IVA",
+  K: "Ref. consumidor c/IVA",
+  R: "Venta web USD ex IVA",
+  S: "Venta web USD c/IVA",
+  // legacy aliases kept for --include-g etc. if needed
+  F: "Costo m² USD ex IVA (legacy F)",
+  L: "Venta local USD ex IVA (legacy L)",
+  M: "Ref. consumidor c/IVA (legacy M)",
+  T: "Venta web USD ex IVA (legacy T)",
+  U: "Venta web USD c/IVA (legacy U)",
 };
 
 function parseArgs(argv) {
@@ -64,13 +69,13 @@ async function main() {
   }
 
   const updates = [
-    { col: "F", text: HEADERS.F },
-    { col: "L", text: HEADERS.L },
-    { col: "M", text: HEADERS.M },
-    { col: "T", text: HEADERS.T },
-    { col: "U", text: HEADERS.U },
+    { col: "G", text: HEADERS.G },
+    { col: "J", text: HEADERS.J },
+    { col: "K", text: HEADERS.K },
+    { col: "R", text: HEADERS.R },
+    { col: "S", text: HEADERS.S },
   ];
-  if (includeG) updates.splice(1, 0, { col: "G", text: HEADERS.G });
+  if (includeG) updates.splice(1, 0, { col: "G", text: HEADERS.G }); // duplicate G ok, last wins or adjust manually
 
   console.log(`MATRIZ ${sheetId} · pestaña "${tab}" · fila ${row}`);
   if (dryRun) {

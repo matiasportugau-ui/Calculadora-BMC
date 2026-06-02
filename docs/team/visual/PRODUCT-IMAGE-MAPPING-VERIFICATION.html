@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Image Mapping Verification — BMC Paneles (Isoroof / Isodec)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .product-card { border: 1px solid #e2e8f0; }
+        .product-header { background: linear-gradient(90deg, #1e40af, #1e3a8a); color: white; }
+        img.asset { max-height: 320px; width: auto; max-width: 100%; border: 1px solid #cbd5e1; background: #f8fafc; object-fit: contain; }
+        .map-label { font-size: 0.7rem; padding: 1px 6px; background: #dbeafe; color: #1e40af; border-radius: 4px; display: inline-block; }
+        .dwg-note { background: #fef3c7; border-left: 4px solid #d97706; }
+    </style>
+</head>
+<body class="bg-slate-100 p-6">
+    <div class="max-w-[1200px] mx-auto">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900">Product Image Mapping — Verification</h1>
+            <p class="text-slate-600 mt-1">Imágenes recolectadas mapeadas explícitamente a los productos de la calculadora (PANELS_TECHO en constants.js).<br>
+            <strong>Para verificar fidelidad con productos reales (Isoroof 3G/Plus/Foil/Colonial + Isodec EPS/PIR).</strong></p>
+            <div class="mt-2 text-xs text-amber-700 bg-amber-100 inline-block px-3 py-1 rounded">Incluye mapeo cruzado con investigación DWG interna (TECHMET + Accesorios BMC) y fuentes UY oficiales.</div>
+            <div class="mt-3 text-sm">
+                <a href="MATERIAL-VISUAL-SELECCION-LIO.html" class="text-blue-600 hover:underline">← Volver al documento interactivo de selección para Lio</a> |
+                <a href="../knowledge/INTERNAL-TECHMET-BMC-DWG-CONSTRUCTIVE-DETAILS-INVESTIGATION.md" class="text-blue-600 hover:underline">Ver reporte completo de DWGs internos</a> |
+                <a href="../knowledge/ISOROOF-PLEGADOS-REAL-REFERENCES-UY-2026.md" class="text-blue-600 hover:underline">Reporte web UY completo</a>
+            </div>
+        </div>
+
+        <!-- Quick Reference Table -->
+        <div class="mb-8 bg-white rounded-xl shadow p-4 border">
+            <h2 class="font-semibold mb-3 text-lg">Mapeo Rápido: Imagen → Producto Calculadora</h2>
+            <table class="w-full text-xs border-collapse">
+                <thead>
+                    <tr class="bg-slate-100">
+                        <th class="p-2 text-left border">Archivo Local</th>
+                        <th class="p-2 text-left border">Producto(s) en Calculadora</th>
+                        <th class="p-2 text-left border">Qué muestra (para verificar)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    <tr><td class="p-2 border">isoroof-plus.png</td><td class="p-2 border font-medium">ISOROOF_PLUS ("ISOROOF PLUS 3G")</td><td class="p-2 border">3 grecas superiores + interior imitación madera. Colores ext. blanco/gris/rojo. 30/50/80mm, au=1.0m</td></tr>
+                    <tr><td class="p-2 border">isoroof-3g.png</td><td class="p-2 border font-medium">ISOROOF_3G ("ISOROOF 3G")</td><td class="p-2 border">Perfil trapezoidal 3G estándar, interior blanco. 30-100mm, au=1.0m</td></tr>
+                    <tr><td class="p-2 border">isoroof-foil.png</td><td class="p-2 border font-medium">ISOROOF_FOIL ("ISOROOF FOIL 3G")</td><td class="p-2 border">Mismo perfil 3G + interior foil flexible blanco. 30-80mm</td></tr>
+                    <tr><td class="p-2 border">isoroof-colonial.jpg</td><td class="p-2 border font-medium">ISOROOF_COLONIAL ("Isoroof Colonial")</td><td class="p-2 border">Estética teja colonial exterior + interior blanco. au=1.0m</td></tr>
+                    <tr><td class="p-2 border">isodec-pir.png</td><td class="p-2 border font-medium">ISODEC_PIR ("ISODEC PIR")</td><td class="p-2 border">Engrafado lateral, au=1.12m, 50/80/120mm, PIR. (También referencia para ISODEC_EPS)</td></tr>
+                    <tr><td class="p-2 border">bmcuruguay-isoroof-3g-*.jpg/png</td><td class="p-2 border font-medium">ISOROOF_3G (y familia Isoroof)</td><td class="p-2 border">Fotos comerciales reales del distribuidor BMC Uruguay. "Trapezoidal 3G", chapa 0.55/0.45mm</td></tr>
+                    <tr><td class="p-2 border">chacras-del-sur-cubierta-roja.jpg + otras obra</td><td class="p-2 border font-medium">ISOROOF_3G / ISOROOF_PLUS (techos reales instalados)</td><td class="p-2 border">Ejemplos de cubiertas instaladas en Uruguay (plegados/grecas visibles en contexto real)</td></tr>
+                    <tr><td class="p-2 border">bromyros-isodec-ficha.pdf + isoroof-plus-bromyros-ficha.pdf</td><td class="p-2 border font-medium">Todos los Isoroof + Isodec</td><td class="p-2 border">Fichas técnicas oficiales Bromyros con "trapezoidal (3 grecas)", especificaciones, forros</td></tr>
+                </tbody>
+            </table>
+            <div class="text-[10px] mt-2 text-slate-500">Las imágenes de obra y bmcuruguay muestran el aspecto real de los productos que ya están en la calculadora. Los PDFs confirman geometría de plegados (ver también DWGs TECHMET investigados recientemente para forros frontales/babetas/desarrollos exactos).</div>
+        </div>
+
+        <!-- ISOROOF PLUS -->
+        <div class="product-card bg-white rounded-xl overflow-hidden mb-8 shadow">
+            <div class="product-header px-5 py-3">
+                <div class="font-bold text-lg">ISOROOF PLUS 3G — ISOROOF_PLUS</div>
+                <div class="text-xs opacity-90">Techos Premium • au=1.0m • 30/50/80mm • PIR • 3 grecas superiores + interior imitación madera • Colores ext: blanco/gris/rojo</div>
+            </div>
+            <div class="p-5 grid md:grid-cols-2 gap-6">
+                <div>
+                    <img src="material-visual-isoroof-uy/isoroof-plus.png" class="asset w-full" alt="Isoroof Plus official">
+                    <div class="mt-2 text-xs"><span class="map-label">Fuente oficial</span> kingspan.com.uy/productos-kingspan/isoroof-plus/ + Bromyros PDF</div>
+                </div>
+                <div class="text-sm space-y-2">
+                    <div><strong>Por qué mapea perfectamente:</strong> Texto explícito en fuentes: "cara superior con 3 grecas como terminación e interior con acero galvanizado" + "cálida terminación interior de imitación madera".</div>
+                    <div class="dwg-note p-2 text-xs rounded">Cruzado con DWGs internos: Los forros F*-MET-1 y "PLEGADO DOBLE" de MET-TECHMET-01/07/09-12 confirman la geometría de las grecas y accesorios que acompañan a este panel.</div>
+                    <div><strong>Uso para verificación / viz:</strong> Referencia principal para perfil 3D de grecas superiores (extrusión en Three.js), textura albedo exterior + interior madera, color real. Base para PanelCrossSection hatching y dims.</div>
+                    <div class="text-xs text-emerald-700">Coincide 1:1 con PANELS_TECHO.ISOROOF_PLUS y PERFIL_TECHO (cumbrera/goteros para ISOROOF).</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ISOROOF 3G -->
+        <div class="product-card bg-white rounded-xl overflow-hidden mb-8 shadow">
+            <div class="product-header px-5 py-3">
+                <div class="font-bold text-lg">ISOROOF 3G — ISOROOF_3G</div>
+                <div class="text-xs opacity-90">Techos Livianos • au=1.0m • 30/40/50/80/100mm • PIR • Perfil trapezoidal 3G estándar • Interior blanco</div>
+            </div>
+            <div class="p-5 grid md:grid-cols-2 gap-6">
+                <div>
+                    <img src="material-visual-isoroof-uy/isoroof-3g.png" class="asset w-full" alt="Isoroof 3G official">
+                    <div class="mt-2 text-xs"><span class="map-label">Fuente oficial</span> kingspan.com.uy/productos-kingspan/isoroof-3g/</div>
+                </div>
+                <div class="text-sm space-y-2">
+                    <div><strong>Por qué mapea perfectamente:</strong> Perfil base de la familia "Trapezoidal 3G". Múltiples espesores que coinciden con la calculadora. "Fabricado en Planta Kingspan Uruguay".</div>
+                    <div class="dwg-note p-2 text-xs rounded">Cruzado con DWGs: MET-07 y 09-12 muestran "PANEL TECHMET" con el mismo perfil + forros laterales/atraque. Desarrollos.dwg + plegados-en-general.dwg dan la geometría exacta de las grecas.</div>
+                    <div><strong>Uso para verificación / viz:</strong> Perfil estándar 3G para extrusión 3D, texturas metal prepintado, joints. Fotos bmcuruguay (ver abajo) muestran versión comercial real.</div>
+                    <div class="text-xs text-emerald-700">Coincide con PANELS_TECHO.ISOROOF_3G y BORDER_OPTIONS (gotero_frontal_greca).</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ISOROOF FOIL -->
+        <div class="product-card bg-white rounded-xl overflow-hidden mb-8 shadow">
+            <div class="product-header px-5 py-3">
+                <div class="font-bold text-lg">ISOROOF FOIL 3G — ISOROOF_FOIL</div>
+                <div class="text-xs opacity-90">au=1.0m • 30/40/50/80mm • PIR • Mismo perfil 3G + interior foil flexible blanco</div>
+            </div>
+            <div class="p-5 grid md:grid-cols-2 gap-6">
+                <div>
+                    <img src="material-visual-isoroof-uy/isoroof-foil.png" class="asset w-full" alt="Isoroof Foil">
+                    <div class="mt-2 text-xs"><span class="map-label">Fuente oficial</span> kingspan.com.uy/productos-kingspan/isoroof-foil/</div>
+                </div>
+                <div class="text-sm space-y-2">
+                    <div><strong>Por qué mapea perfectamente:</strong> Mismo perfil trapezoidal 3G que el 3G/Plus pero con terminación interior foil (reflectiva). Especificaciones idénticas de au y espesores.</div>
+                    <div><strong>Uso para verificación / viz:</strong> Variación de material interior (foil sheen en PBR). Perfil superior idéntico al ISOROOF_3G.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ISOROOF COLONIAL -->
+        <div class="product-card bg-white rounded-xl overflow-hidden mb-8 shadow">
+            <div class="product-header px-5 py-3">
+                <div class="font-bold text-lg">ISOROOF COLONIAL — ISOROOF_COLONIAL</div>
+                <div class="text-xs opacity-90">au=1.0m • PIR • Teja exterior + interior blanco (estética diferenciada)</div>
+            </div>
+            <div class="p-5 grid md:grid-cols-2 gap-6">
+                <div>
+                    <img src="material-visual-isoroof-uy/isoroof-colonial.jpg" class="asset w-full" alt="Isoroof Colonial">
+                    <div class="mt-2 text-xs"><span class="map-label">Fuente oficial</span> kingspan.com.uy/productos-kingspan/isoroof-colonial/</div>
+                </div>
+                <div class="text-sm space-y-2">
+                    <div><strong>Por qué mapea perfectamente:</strong> "diferencial estético" con teja colonial. au 1000mm, PIR. Interior blanco. (Nota: una fuente indica origen Brasil, pero listado en sitio UY y calculadora).</div>
+                    <div><strong>Uso para verificación / viz:</strong> Variante estética exterior. Perfil base trapezoidal compatible con la familia Isoroof 3G.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ISODEC PIR -->
+        <div class="product-card bg-white rounded-xl overflow-hidden mb-8 shadow">
+            <div class="product-header px-5 py-3">
+                <div class="font-bold text-lg">ISODEC PIR — ISODEC_PIR (y referencia ISODEC_EPS)</div>
+                <div class="text-xs opacity-90">Techos y Cubiertas • au=1.12m • 50/80/120mm (EPS hasta 250mm) • Engrafado • PIR/EPS</div>
+            </div>
+            <div class="p-5 grid md:grid-cols-2 gap-6">
+                <div>
+                    <img src="material-visual-isoroof-uy/isodec-pir.png" class="asset w-full" alt="Isodec PIR">
+                    <div class="mt-2 text-xs"><span class="map-label">Fuente oficial</span> kingspan.com.uy/productos-kingspan/isodec-pir/ + Bromyros ficha</div>
+                </div>
+                <div class="text-sm space-y-2">
+                    <div><strong>Por qué mapea perfectamente:</strong> "sistema de unión engrafado". au 1120mm exacto. Espesores que coinciden. "Lugar de fabricación: Planta Kingspan Uruguay".</div>
+                    <div class="dwg-note p-2 text-xs rounded">Cruzado con DWGs: MET-16 menciona paneles e=50mm y estructura compatible. Las babetas y frontales de los accesorios BMC aplican también a Isodec.</div>
+                    <div><strong>Uso para verificación / viz:</strong> Joint engrafado (diferente a grecas de Isoroof) para 3D borders. Textura y color estándar. Ficha PDF para capas constructivas.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- bmcuruguay commercial shots -->
+        <div class="product-card bg-white rounded-xl overflow-hidden mb-8 shadow">
+            <div class="product-header px-5 py-3">
+                <div class="font-bold text-lg">Fotos Comerciales Reales — bmcuruguay.com.uy (distribuidor BMC)</div>
+                <div class="text-xs opacity-90">ISOROOF 3G (y familia) — las fotos exactas de los productos que se cotizan/venden</div>
+            </div>
+            <div class="p-5">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <img src="material-visual-isoroof-uy/bmcuruguay-isoroof-3g-1.jpg" class="asset w-full" alt="BMC Isoroof 3G 1">
+                        <div class="text-xs mt-1">Vista principal — "Trapezoidal 3G", chapa calibre 24/26, fabricación nacional.</div>
+                    </div>
+                    <div>
+                        <img src="material-visual-isoroof-uy/bmcuruguay-isoroof-3g-2.jpg" class="asset w-full" alt="BMC Isoroof 3G 2">
+                        <div class="text-xs mt-1">Otra toma — escala y terminación real que ve el cliente.</div>
+                    </div>
+                    <div>
+                        <img src="material-visual-isoroof-uy/bmcuruguay-isoroof-3g-3.png" class="asset w-full" alt="BMC Isoroof 3G 3">
+                        <div class="text-xs mt-1">Detalle adicional del panel 3G comercial.</div>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs">Página: <a href="https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros" class="text-blue-600" target="_blank">bmcuruguay.com.uy/products/isoroof-3g-...</a>. Especificaciones idénticas a la calculadora (au 1m, espesores, colores). Accesorios en el sitio mencionan "grecas del Panel Isoroof".</div>
+            </div>
+        </div>
+
+        <!-- Real installed obra examples -->
+        <div class="product-card bg-white rounded-xl overflow-hidden mb-8 shadow">
+            <div class="product-header px-5 py-3">
+                <div class="font-bold text-lg">Ejemplos de Obras Reales Instaladas en Uruguay (kingspan.com.uy/fotos-de-obras)</div>
+                <div class="text-xs opacity-90">Plegados/grecas de Isoroof/Isodec en contexto real (luz, escala, juntas)</div>
+            </div>
+            <div class="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                <div>
+                    <img src="material-visual-isoroof-uy/chacras-del-sur-cubierta-roja.jpg" class="asset w-full" alt="Chacras cubierta roja">
+                    <div class="mt-1"><strong>Chacras del Sur — Cubierta roja</strong><br>Excelente vista de plegados/grecas en techo residencial/comercial.</div>
+                </div>
+                <div>
+                    <img src="material-visual-isoroof-uy/frigorifico-sarubbi.jpg" class="asset w-full" alt="Frigorifico">
+                    <div class="mt-1"><strong>Frigorífico Sarubbi</strong><br>Instalación industrial grande — escala de las grecas.</div>
+                </div>
+                <div>
+                    <img src="material-visual-isoroof-uy/planta-bromyros.jpg" class="asset w-full" alt="Planta Bromyros">
+                    <div class="mt-1"><strong>Planta Industrial Bromyros</strong><br>Contexto de fabricación local + techos.</div>
+                </div>
+                <div>
+                    <img src="material-visual-isoroof-uy/techo-vivienda.jpg" class="asset w-full" alt="Techo vivienda">
+                    <div class="mt-1"><strong>Techo en vivienda particular</strong><br>Detalle cercano de plegados en uso real.</div>
+                </div>
+            </div>
+            <div class="px-5 pb-5 text-xs text-slate-600">Más de 50 fotos en https://kingspan.com.uy/fotos-de-obras/ (muchas con Isodec rojo, Isoroof en galpones, shoppings, escuelas, etc.). Útiles para validación de apariencia final, iluminación y joints en el visor 3D.</div>
+        </div>
+
+        <!-- PDFs Técnicos -->
+        <div class="product-card bg-white rounded-xl overflow-hidden mb-8 shadow">
+            <div class="product-header px-5 py-3">
+                <div class="font-bold text-lg">Fichas Técnicas y Dibujos (PDFs Bromyros)</div>
+            </div>
+            <div class="p-5">
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <a href="material-visual-isoroof-uy/isoroof-plus-bromyros-ficha.pdf" target="_blank" class="font-medium text-blue-700">isoroof-plus-bromyros-ficha.pdf</a>
+                        <div class="text-xs">Confirmación explícita: "exterior en forma trapezoidal (3 grecas)". Especificaciones térmicas, fuego, ventajas. 3 páginas.</div>
+                    </div>
+                    <div>
+                        <a href="material-visual-isoroof-uy/bromyros-isodec-ficha.pdf" target="_blank" class="font-medium text-blue-700">bromyros-isodec-ficha.pdf</a>
+                        <div class="text-xs">Ficha completa Isodec con engrafado, distancias entre apoyos, especificaciones por espesor.</div>
+                    </div>
+                </div>
+                <div class="text-xs mt-3">Estos PDFs + los DWGs TECHMET (forros F1-MET etc.) son la fuente para secciones constructivas precisas y perfiles de accesorios.</div>
+            </div>
+        </div>
+
+        <div class="text-xs text-slate-500 border-t pt-4">
+            Generado para verificación. Todas las imágenes y PDFs son referencias públicas oficiales (kingspan.com.uy, bmcuruguay.com.uy, Bromyros). 
+            Los DWGs internos investigados (TECHMET + Accesorios BMC) proveen la geometría CAD exacta de plegados y forros que acompañan a estos paneles.
+            Abre este archivo localmente para ver las imágenes embebidas al lado de los mapeos de productos.
+        </div>
+    </div>
+</body>
+</html>

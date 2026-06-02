@@ -36,7 +36,7 @@ const DASHBOARD_ROUTES = [
   { method: "POST", path: "/api/ventas", summary: "POST ventas" },
   { method: "POST", path: "/api/marcar-entregado", summary: "Marcar entregado" },
   { method: "GET", path: "/api/actualizar-precios-calculadora", summary: "Sincronizar precios hacia calculadora" },
-  { method: "POST", path: "/api/matriz/push-pricing-overrides", summary: "Overrides → MATRIZ BROMYROS (F/L/T tal cual s/IVA; auth token)" },
+  { method: "POST", path: "/api/matriz/push-pricing-overrides", summary: "Overrides → MATRIZ BROMYROS (G/J/R tal cual s/IVA; auth token)" },
   { method: "GET", path: "/api/email/panelsim-summary", summary: "PANELSIM: STATUS.json + reporte MD del repo IMAP (Bearer API_AUTH_TOKEN)" },
   { method: "POST", path: "/api/email/draft-outbound", summary: "Borrador email proveedor/cliente (no envía; misma auth que cockpit)" },
   { method: "GET", path: "/api/internal/panelin/whoami", summary: "Panelin interno: rol efectivo + muestra RBAC dashboard (Bearer + X-Panelin-Role)" },
