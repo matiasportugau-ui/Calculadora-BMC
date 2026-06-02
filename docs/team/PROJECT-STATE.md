@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-02 (MATRIZ precios — column mapping + key rotation deployed to prod):** `hecho`. Remapeo de columnas en BROMYROS para el motor de precios (costo G, venta local J, ref c/IVA K, venta web R, web c/IVA S) en `server/routes/bmcDashboard.js` (`MATRIZ_TAB_COLUMNS`), sync scripts (fijaciones/silicona), rename-headers, mapping comments, docs y skill. Nueva key para `bmc-dashboard-sheets@...` creada vía gcloud; actualizada en Doppler (bmc-backend/prd: GOOGLE_APPLICATION_CREDENTIALS + GOOGLE_SHEETS_CREDENTIALS + PANELIN_SERVICE_ACCOUNT); nueva versión en Secret Manager `panelin-service-account`; Cloud Run `panelin-calc` actualizado (mount + IAM) + full code deploy vía `deploy-cloud-run.sh` (nueva revisión con el mapping). Re-aplicado secret script post-deploy. Endpoint `/api/actualizar-precios-calculadora` 200 en prod (sin error de credenciales). Cambios persistentes vía Secret Manager + service config. Verificación smoke + curl OK. (Key fix + mapping ahora live.)
+
 **2026-06-01 (Phase 0 GCP SA hardening — panelin-calc prod):** `hecho confirmado`. **P0-1:** migrados a Secret Manager (env refs, no literales) `API_AUTH_TOKEN`, `ML_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GROK_API_KEY`, `TOKEN_ENCRYPTION_KEY` — revisión activa `panelin-calc-00424-jmd`+; patrón `--remove-env-vars` luego `--update-secrets` (Cloud Run rechaza cambio de tipo en un paso). **P0-2:** nueva key `bmc-dashboard-sheets` (`489cffaa…`) → secret `panelin-service-account` v2; keys viejas revocadas; MATRIZ CSV + `/health` OK (`panelin-calc-00425-g75`). **P0-3:** quitado `roles/editor` de `github-deployer@…` (queda `run.admin`, `artifactregistry.writer`, `iam.serviceAccountUser`). Smoke prod OK. Mapa: [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md). Pendiente Phase 1: alinear `deploy-calc-api.yml`, `WA_JWT_SECRET`/`SMTP_PASS` placeholders, keys legacy compute/github-deployer.
 
 **2026-06-01 (Finanzas 404 — cierre de deuda):** `RESUELTO EN PROD`. Incidente reportado vía paste de terminal completo (último curl 404 + intento de commit + `gh workflow run`). Causa: server/Dockerfile no copiaba el dashboard (a diferencia del Dockerfile.bmc-dashboard full-stack). Inspect script confirmó contexto OK → problema era revisión vieja de Cloud Run. **Acciones:** `gh workflow run` disparado sobre SHA con el COPY; nueva revisión desplegada; `/finanzas/` ahora 200 + HTML real en prod. Smoke prod endurecido con chequeo explícito de `GET /finanzas/` (falla el smoke si vuelve a 404). Repro script (`./scripts/repro-finanzas-404.sh`) pendiente de Docker Desktop encendido (usuario documentó "apagado"). Ver también entrada 2026-05-29 más abajo.
@@ -1381,4 +1383,32 @@ Próximos pasos recomendados:
 3. Registrar avances en Cambios recientes.
 
 **2026-05-27 (Phase 0 — Branch Cleanup Update):** Multiple waves of old cursor/claude/feat branches archived today as part of production hygiene. Wave 3 partially executed before local disk space exhaustion blocked further git operations. Remote branches reduced significantly. Blocker logged; production (PDF improvements) is fully live and verified.
+
+
+**2026-06 (Integración toggleable de mapeo visual + refs DWG en proyecto):** `hecho`. Añadida integración segura (nunca rompe estado actual) del material investigado (imágenes mapeadas a productos + perfiles plegados/grecas/forros/babetas de los DWGs TECHMET/BMC/Desarrollos + PDF de mapeo).
+- Toggle runtime `enhancedProductViz` (default OFF, persistido en local/sessionStorage; activable vía botón "PViz:OFF/ON" en header cuando devMode está activo — Ctrl/Cmd+Shift+D, o localStorage.setItem('bmc-enhanced-product-viz','1')).
+- En PanelFamilyShowcase (catálogo familias): cuando ON muestra "Real ref (investigación UY + DWG)" con imagen pública mapeada + nota.
+- En paso espesor del wizard: card no-intrusiva con ref real + link al PDF de mapeo.
+- En QuoteVisualVisor: bloque condicional con imágenes mapeadas por familia + notas DWG (perfiles para futura extrusión 3D/volumetría y secciones 2D).
+- Todo nuevo código/UI extra; renders existentes (texturas actuales, 3D ensamble, carruseles, PDF actual) intactos cuando OFF.
+- Archivo de mapeo visual: docs/team/visual/PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf (y .html) — 5 páginas con imágenes embebidas + tabla + cross DWG.
+- Futuro (detrás del mismo flag): mejorar RoofPanelRealisticScene con perfil real de grecas (de Desarrollos/plegados DWG) y 2D constructiva precisa en visor/PDF.
+- No se modificaron datos reales (constants, specs, assets actuales). Ver también el PDF de mapeo y reports de conocimiento para detalles de investigación.
+
+
+**2026-06-02 (Prod status check - enhanced product viz integration):** `verificado`. La integración del toggle `enhancedProductViz` (botón PViz en devMode, refs reales mapeadas de imágenes kingspan/bmcuruguay + notas de DWGs TECHMET/Desarrollos/BabetaLateral/FRONTALES en PanelFamilyShowcase, paso espesor y QuoteVisualVisor) **NO está en production**.
+- Cambios locales sin commitear: 126 inserciones en los 3 archivos de componentes + PROJECT-STATE + nuevos assets en docs/team/visual/.
+- Último commit en origin/main: a324626 (feat(tutorial)...) — anterior a este trabajo.
+- Deploy actual en Vercel (inspeccionado): dpl_5X6pb5UcnHQV6GMBdqVTx9GZH2bh, production, creado hace ~6h, desde el main de ese momento.
+- El flag es 100% runtime + default OFF + solo visible en devMode, por lo que pushear es seguro (usuarios normales no ven diferencia).
+- Comando recomendado para deploy:
+  git add src/components/PanelinCalculadoraV3_backup.jsx src/components/QuoteVisualVisor.jsx src/components/PanelFamilyShowcase.jsx docs/team/PROJECT-STATE.md docs/team/visual/
+  git commit -m "feat(viz): toggleable enhancedProductViz (real product refs + DWG plegados/forros) - default OFF, solo en devMode"
+  git push
+  # Vercel auto-deploy. Luego probar en prod activando devMode + PViz.
+
+
+**2026-06-02 (Session closeout — panel product viz research + toggleable integration):** Session wrapped with full handoff. Focus: deep "mas completa" research on real UY renders/DWGs (kingspan pages with "3 grecas", bmcuruguay photos, Bromyros PDFs, TECHMET forros/plegados + BMC frontales/babetas/desarrollos) matching exact calculator products (no data mods). Created mapping PDF/HTML + live interactive test HTML. Implemented safe `enhancedProductViz` runtime toggle (default OFF, localStorage, devMode-only "PViz" button in header; additive UI refs in PanelFamilyShowcase/espesor/QuoteVisualVisor with real images + DWG notes). Local run: http://localhost:5173/ (BMC_DISK_PRECHECK_SKIP=1 or after cache clean); standalone test HTML for quick demo. Uncommitted: the 3 component files + docs + visual/. Blockers: disk (partially cleaned), feature freeze. Handoff: docs/team/HANDOFF-2026-06-02-enhanced-product-viz.md (with literal resume prompt, git state, verification cmds). Ready to continue (e.g. 3D profile from DWGs behind flag, or commit/deploy).
+
+**2026-06-02 (Executed "recomend and run" — 2D CAD sections in visor):** Per handoff next + roadmap Fase 1/2, immediately implemented + verified: added CAD-style inline SVG "Sección 2D constructiva (inspirada TechDraw/DWG)" inside the enhancedProductViz block of QuoteVisualVisor (3-grecas trapezoid for ISOROOF families with ribs + hatch; engrafado polyline for ISODEC). Labels with AU dims + profile refs (TECHMET F*-MET, BMC Desarrollos). ESLint clean + gate:local (SKIP) passed relevant suites (0 new failures). Fully behind existing toggle. Updated handoff + recorded execution. Advances "add 2D CAD sections to visor" + prepares for 3D extrusion. Next: wire to other surfaces or start basic 3D profile.
 

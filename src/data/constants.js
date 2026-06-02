@@ -53,7 +53,7 @@ export const PANELS_TECHO = {
     label: "ISODEC EPS", sub: "Techos y Cubiertas", tipo: "techo",
     au: 1.12, lmin: 2.3, lmax: 14, sist: "varilla_tuerca", fam: "ISODEC",
     esp: {
-      100: { venta: 38.824, web: 47.264, costo: 33.76, ap: 5.5 },
+      100: { venta: 41.15, web: 50.1, costo: 35.79, ap: 5.5 },
       150: { venta: 43.677, web: 53.172, costo: 37.98, ap: 7.5 },
       200: { venta: 48.967, web: 59.612, costo: 42.58, ap: 9.1 },
       250: { venta: 53.82,  web: 65.52,  costo: 46.80, ap: 10.4 },
@@ -77,7 +77,7 @@ export const PANELS_TECHO = {
     label: "ISOROOF 3G", sub: "Techos Livianos", tipo: "techo",
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
-      30:  { venta: 41.0665, web: 49.994, costo: 35.71, ap: 2.8 },
+      30:  { venta: 43.53, web: 43.53, costo: 37.85, ap: 2.8 },
       40:  { venta: 43.148,  web: 52.528, costo: 37.52, ap: 3.0 },
       50:  { venta: 45.2295, web: 55.062, costo: 39.33, ap: 3.3 },
       80:  { venta: 53.176,  web: 64.736, costo: 46.24, ap: 4.0 },
@@ -91,7 +91,7 @@ export const PANELS_TECHO = {
     label: "ISOROOF FOIL 3G", sub: "Techos Livianos", tipo: "techo",
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
-      30: { venta: 33.2695, web: 40.502,  costo: 28.93,  ap: 2.8 },
+      30: { venta: 35.27, web: 35.27, costo: 30.67,  ap: 2.8 },
       // 2026-05-12: ajustado web a 46.00 (= costo 32.857 × ×1.40, markup estándar de la familia ISOROOF).
       // MATRIZ no trae venta/web para este SKU (solo costo 31.9); el commit 9ed59a5 había dejado web: 36.69, anómalo (web < venta).
       50: { venta: 37.7856, web: 46.00,   costo: 32.857, ap: 3.3 },
@@ -106,7 +106,7 @@ export const PANELS_TECHO = {
     label: "Isoroof Colonial", sub: "Teja exterior · interior blanco", tipo: "techo",
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF_COLONIAL",
     esp: {
-      40: { venta: 62.997, web: 76.692, costo: 54.78, ap: 3.0 },
+      40: { venta: 66.78, web: 66.78, costo: 58.07, ap: 3.0 },
     },
     col: ["Simil teja / Blanco"],
     colNotes: { _all: "Línea colonial Bromyros — no mezclar precios con FOIL 3G estándar." },
@@ -116,7 +116,7 @@ export const PANELS_TECHO = {
     label: "ISOROOF PLUS 3G", sub: "Techos Premium", tipo: "techo",
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
-      50: { venta: 51.4625, web: 62.65,  costo: 44.75, ap: 3.3 },
+      50: { venta: 54.55, web: 54.55, costo: 47.44, ap: 3.3 },
       80: { venta: 60.467,  web: 73.612, costo: 52.58, ap: 4.0 },
     },
     col: ["Blanco", "Gris", "Rojo"],
@@ -132,7 +132,7 @@ export const PANELS_PARED = {
     label: "ISOPANEL EPS", sub: "Paredes y Fachadas", tipo: "pared",
     au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOPANEL",
     esp: {
-      50:  { venta: 35.2935, web: 42.966, costo: 30.69, ap: null },
+      50:  { venta: 37.41, web: 45.54, costo: 32.53, ap: null },
       100: { venta: 38.824,  web: 47.264, costo: 33.76, ap: null },
       150: { venta: 43.677,  web: 53.172, costo: 37.98, ap: null },
       200: { venta: 48.967,  web: 59.612, costo: 42.58, ap: null },

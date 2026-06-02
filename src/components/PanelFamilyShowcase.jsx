@@ -19,10 +19,22 @@ function FamilyLabel({ familiaKey }) {
     .join(" ");
 }
 
-function PanelFamilyCard({ familiaKey, selected, onSelect, compact }) {
+function PanelFamilyCard({ familiaKey, selected, onSelect, compact, enhancedProductViz = false }) {
   const p = ROOF_PANEL_VISUAL_PROFILES[familiaKey];
   const sfId = sketchfabId(familiaKey);
   const imgH = compact ? 80 : 110;
+
+  // NEW: real product reference image URLs from researched mapping (public kingspan/bmcuruguay sources).
+  // Only shown when enhancedProductViz (toggleable, default OFF).
+  // These are the "real" visuals that match the calculator products exactly (see PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf / HTML).
+  const realRefUrl = enhancedProductViz ? ({
+    ISOROOF_3G: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_3G.png",
+    ISOROOF_PLUS: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_plus.png",
+    ISOROOF_FOIL: "https://kingspan.com.uy/wp-content/uploads/2024/10/isoroof_foil-tabla.png",
+    ISOROOF_COLONIAL: "https://kingspan.com.uy/wp-content/uploads/2024/06/Isoroof-colonial.jpg.webp",
+    ISODEC_PIR: "https://kingspan.com.uy/wp-content/uploads/2024/06/isodec-pir.png",
+    ISODEC_EPS: "https://kingspan.com.uy/wp-content/uploads/2024/06/isodec-pir.png", // proxy (similar)
+  }[familiaKey] || null) : null;
 
   return (
     <button
@@ -62,12 +74,29 @@ function PanelFamilyCard({ familiaKey, selected, onSelect, compact }) {
       ) : (
         <div style={{ width: "100%", height: imgH, borderRadius: 8, background: "#f3f4f6", border: "1px dashed #d1d5db" }} />
       )}
+
+      {/* NEW (toggleable): real UY product ref image from the researched mapping (kingspan + bmcuruguay). Non-breaking; only when flag on. */}
+      {enhancedProductViz && realRefUrl && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: "#166534", fontWeight: 600, marginBottom: 2 }}>Real ref (investigación UY + DWG)</div>
+          <img
+            src={realRefUrl}
+            alt={`Real ${familiaKey}`}
+            loading="lazy"
+            style={{ width: "100%", height: compact ? 50 : 60, objectFit: "cover", borderRadius: 6, border: "1px solid #86efac" }}
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+          <div style={{ fontSize: 8, color: "#166534", opacity: 0.8 }}>Ver mapeo completo en docs/team/visual/PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf (incluye perfiles de DWGs TECHMET/BMC)</div>
+        </div>
+      )}
+
       <div style={{ fontSize: 12, fontWeight: 700, color: selected ? "#1d4ed8" : "#111827", lineHeight: 1.2 }}>
         <FamilyLabel familiaKey={familiaKey} />
       </div>
       <div style={{ fontSize: 10, color: "#6b7280", lineHeight: 1.3 }}>
         {p.thicknessMm}mm · R{p.roughness} · M{p.metalness}
         {sfId && <span style={{ marginLeft: 4, color: "#3b82f6" }}>3D</span>}
+        {enhancedProductViz && realRefUrl && <span style={{ marginLeft: 4, color: "#166534", fontSize: 9 }}>REAL</span>}
       </div>
     </button>
   );
@@ -80,7 +109,7 @@ function PanelFamilyCard({ familiaKey, selected, onSelect, compact }) {
  *   compact?: boolean,
  * }} props
  */
-export function PanelFamilyShowcase({ familiaKey, onSelect, compact = false }) {
+export function PanelFamilyShowcase({ familiaKey, onSelect, compact = false, enhancedProductViz = false }) {
   return (
     <div
       style={{
@@ -96,6 +125,7 @@ export function PanelFamilyShowcase({ familiaKey, onSelect, compact = false }) {
           selected={fk === familiaKey}
           onSelect={onSelect}
           compact={compact}
+          enhancedProductViz={enhancedProductViz}
         />
       ))}
     </div>

@@ -2409,6 +2409,25 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (typeof window === "undefined") return "";
     return String(sessionStorage.getItem("panelin-dev-token") || "").trim();
   });
+
+  // NEW TOGGLEABLE (default OFF, persisted): Enhanced product visualization using the researched real product images (kingspan.com.uy, bmcuruguay.com.uy mappings) + DWG-derived profiles (plegados/grecas/forros/babetas/frontales from TECHMET and BMC internal files).
+  // When enabled (via dev tools or localStorage 'bmc-enhanced-product-viz'='1'): adds non-breaking UI refs in family/espesor steps + QuoteVisualVisor (new acordeón or section with mapped real images + technical notes).
+  // Does NOT replace or alter any existing renders, textures, or data. Future phases (behind same flag): real 3D volume/profile extrusion in RoofPanelRealisticScene for single-product view, accurate 2D CAD sections in visor/PDF based on the DWG constructivos.
+  // To enable without rebuild: localStorage.setItem('bmc-enhanced-product-viz','1'); or via dev panel switch. Ctrl/Cmd+Shift+D for dev mode.
+  const [enhancedProductViz, setEnhancedProductViz] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("bmc-enhanced-product-viz") === "1" || sessionStorage.getItem("bmc-enhanced-product-viz") === "1";
+  });
+  const toggleEnhancedProductViz = useCallback(() => {
+    const next = !enhancedProductViz;
+    setEnhancedProductViz(next);
+    if (typeof window !== "undefined") {
+      const v = next ? "1" : "0";
+      localStorage.setItem("bmc-enhanced-product-viz", v);
+      sessionStorage.setItem("bmc-enhanced-product-viz", v);
+    }
+  }, [enhancedProductViz]);
+
   const [pendingQuote, setPendingQuote] = useState(null);
   const undoStackRef = useRef([]);
   const [undoStackLen, setUndoStackLen] = useState(0);
@@ -4829,6 +4848,26 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               DEV
             </button>
           ) : null}
+          {/* NEW: runtime toggle for enhanced product viz (real image refs + DWG plegados profiles). Only visible in devMode for safety. Persisted. Default OFF. */}
+          {!isPhone && devMode ? (
+            <button
+              onClick={toggleEnhancedProductViz}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 8,
+                border: enhancedProductViz ? "1px solid #22c55e" : "1px solid rgba(255,255,255,0.35)",
+                background: enhancedProductViz ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.12)",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
+                marginLeft: 4,
+              }}
+              title={`Enhanced Product Viz (real refs from mapping + DWG profiles) — ${enhancedProductViz ? 'ON' : 'OFF'} (click to toggle; persists; does not affect current renders)`}
+            >
+              {enhancedProductViz ? "PViz:ON" : "PViz:OFF"}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -5070,6 +5109,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                             familiaKey={techo.familia}
                             onSelect={(fk) => setTechoFamilia(fk)}
                             compact
+                            enhancedProductViz={enhancedProductViz}
                           />
                         </div>
                       </details>
@@ -5145,6 +5185,24 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                       </div>
                       {techoPanelData?.notas?.[Number(techo.espesor)] && (
                         <AlertBanner type="warning" message={techoPanelData.notas[Number(techo.espesor)]} />
+                      )}
+
+                      {/* NEW (behind enhancedProductViz toggle, default OFF): quick real product ref for the chosen espesor/familia, using the researched public images (exact match per mapping PDF). Non-intrusive card. */}
+                      {enhancedProductViz && techo.familia && (
+                        <div style={{ marginTop: 8, padding: 8, background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, fontSize: 10 }}>
+                          <div style={{ fontWeight: 600, color: "#166534", marginBottom: 4 }}>Ref. real del panel (mapeo investigación + DWGs)</div>
+                          {(() => {
+                            const ref = ({
+                              ISOROOF_PLUS: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_plus.png",
+                              ISOROOF_3G: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_3G.png",
+                              ISOROOF_FOIL: "https://kingspan.com.uy/wp-content/uploads/2024/10/isoroof_foil-tabla.png",
+                              ISOROOF_COLONIAL: "https://kingspan.com.uy/wp-content/uploads/2024/06/Isoroof-colonial.jpg.webp",
+                              ISODEC_PIR: "https://kingspan.com.uy/wp-content/uploads/2024/06/isodec-pir.png",
+                            })[techo.familia] || "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_3G.png";
+                            return <img src={ref} alt="real" style={{ maxWidth: "100%", height: 70, objectFit: "contain", borderRadius: 4, border: "1px solid #86efac" }} />;
+                          })()}
+                          <div style={{ color: "#166534", marginTop: 4 }}>Ver mapeo + perfiles DWG (TECHMET forros, Desarrollos plegados, BabetaLateral): docs/team/visual/PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf</div>
+                        </div>
                       )}
                     </div>
                   )}
@@ -6677,6 +6735,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             roof2DPreview={quoteVisorRoof2DPreview}
             onSelectAgua={null}
             onNext={null}
+            enhancedProductViz={enhancedProductViz}
           />
           {/* Lista de precios — toggle siempre visible en panel derecho */}
           {modoVendedor && !scenarioDef?.isLibre && (

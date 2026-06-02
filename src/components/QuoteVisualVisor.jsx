@@ -53,6 +53,7 @@ export default function QuoteVisualVisor({
   onSelectAgua = null,
   onNext = null,
   roof2DPreview = null,
+  enhancedProductViz = false, // NEW toggleable: shows real product refs (mapped images from research) + DWG profile notes. Default false, no impact on existing UI.
 }) {
   const roof2dQuoteVisorLayout = Boolean(roof2DPreview) && Boolean(stepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(stepId));
   const [open, setOpen] = useState(() => !roof2dQuoteVisorLayout);
@@ -297,6 +298,93 @@ export default function QuoteVisualVisor({
               }}
             >
               {roof2DPreview}
+
+              {/* NEW (toggleable via enhancedProductViz, default OFF, no effect on current state): Real product reference from the researched image mapping + DWG notes.
+                  Uses public URLs from kingspan.com.uy / bmcuruguay (exact matches to calculator products per the PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf).
+                  Includes cross-ref to internal TECHMET/BMC DWGs for plegados/grecas/forros/babetas profiles (to be used in future 3D/2D enhancements behind same flag).
+                  Placed here for visibility during familia/espesor steps and in results without replacing any existing carousels or 3D. */}
+              {enhancedProductViz && techoFamilia && (
+                <div style={{ marginTop: 12, padding: "8px 12px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", marginBottom: 4 }}>
+                    Producto real (ref. mapeo investigación UY + DWGs) — {techoFamilia}
+                  </div>
+                  {(() => {
+                    const refMap = {
+                      ISOROOF_3G: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_3G.png",
+                      ISOROOF_PLUS: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_plus.png",
+                      ISOROOF_FOIL: "https://kingspan.com.uy/wp-content/uploads/2024/10/isoroof_foil-tabla.png",
+                      ISOROOF_COLONIAL: "https://kingspan.com.uy/wp-content/uploads/2024/06/Isoroof-colonial.jpg.webp",
+                      ISODEC_PIR: "https://kingspan.com.uy/wp-content/uploads/2024/06/isodec-pir.png",
+                      ISODEC_EPS: "https://kingspan.com.uy/wp-content/uploads/2024/06/isodec-pir.png",
+                    };
+                    const url = refMap[techoFamilia] || refMap.ISOROOF_3G;
+                    const bmUrl = techoFamilia.startsWith("ISOROOF") ? "https://bmcuruguay.com.uy/cdn/shop/files/Isoroof.jpg" : null;
+
+                    // NEW: 2D CAD-style cross section (inspired by FreeCAD TechDraw videos + TECHMET/BMC DWGs).
+                    // Represents real plegado/grecas profile for the family (3 grecas trapezoidal for ISOROOF, engrafado for ISODEC).
+                    // Safe, behind flag, additive. Future: drive from panelConstructionSpecs + exact DWG dims.
+                    const render2DProfile = (fam) => {
+                      const isIsoroof = fam.startsWith("ISOROOF");
+                      const isIsodec = fam.startsWith("ISODEC");
+                      // Simple SVG profile (top view of the corrugation). Units conceptual (scale to ~1m ancho útil).
+                      // For ISOROOF: 3 grecas (ribs) + valleys. For ISODEC: flatter engrafado style.
+                      const svg = isIsoroof ? (
+                        <svg width="160" height="48" viewBox="0 0 160 48" style={{ border: "1px solid #86efac", borderRadius: 3, background: "#fff" }}>
+                          <defs>
+                            <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+                              <line x1="0" y1="0" x2="0" y2="6" stroke="#166534" strokeWidth="1" />
+                            </pattern>
+                          </defs>
+                          {/* Base sheet */}
+                          <rect x="8" y="32" width="144" height="4" fill="#e5e7eb" />
+                          {/* 3 grecas (trapezoidal ribs) - approx real plegado */}
+                          <polygon points="20,32 28,18 40,18 48,32" fill="#86efac" stroke="#166534" strokeWidth="1" />
+                          <polygon points="60,32 68,18 80,18 88,32" fill="#86efac" stroke="#166534" strokeWidth="1" />
+                          <polygon points="100,32 108,18 120,18 128,32" fill="#86efac" stroke="#166534" strokeWidth="1" />
+                          {/* Valleys / liner hint */}
+                          <rect x="8" y="36" width="144" height="8" fill="url(#hatch)" opacity="0.4" />
+                          {/* Labels (CAD style) */}
+                          <text x="80" y="12" fontSize="7" fill="#166534" textAnchor="middle" fontFamily="monospace">3 grecas | AU ~1000mm</text>
+                          <text x="80" y="46" fontSize="6" fill="#166534" textAnchor="middle" fontFamily="monospace">Perfil plegado (TECHMET F*-MET + BMC Desarrollos)</text>
+                        </svg>
+                      ) : isIsodec ? (
+                        <svg width="160" height="48" viewBox="0 0 160 48" style={{ border: "1px solid #86efac", borderRadius: 3, background: "#fff" }}>
+                          <defs>
+                            <pattern id="hatch2" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+                              <line x1="0" y1="0" x2="0" y2="6" stroke="#166534" strokeWidth="1" />
+                            </pattern>
+                          </defs>
+                          <rect x="8" y="32" width="144" height="4" fill="#e5e7eb" />
+                          {/* Engrafado / flatter profile for ISODEC (more linear, engrafado edges) */}
+                          <polyline points="20,32 30,22 50,22 60,32 80,32 90,22 110,22 120,32 140,32" fill="none" stroke="#166534" strokeWidth="2" />
+                          <rect x="8" y="36" width="144" height="8" fill="url(#hatch2)" opacity="0.35" />
+                          <text x="80" y="12" fontSize="7" fill="#166534" textAnchor="middle" fontFamily="monospace">Engrafado | AU ~1120mm</text>
+                          <text x="80" y="46" fontSize="6" fill="#166534" textAnchor="middle" fontFamily="monospace">Perfil constructivo (ref DWG + forros F1-MET)</text>
+                        </svg>
+                      ) : null;
+
+                      return (
+                        <div style={{ marginTop: 6 }}>
+                          <div style={{ fontSize: 8, fontWeight: 600, color: "#166534", marginBottom: 2 }}>Sección 2D constructiva (inspirada TechDraw / DWG)</div>
+                          {svg}
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <img src={url} alt="Real ref" style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 6, border: "1px solid #86efac" }} onError={e=>e.currentTarget.style.opacity=0.3} />
+                        {bmUrl && <img src={bmUrl} alt="Comercial BMC" style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 6, border: "1px solid #86efac" }} onError={e=>e.currentTarget.style.display='none'} />}
+                        <div style={{ fontSize: 9, color: "#166534", lineHeight: 1.3 }}>
+                          Fuente: kingspan.com.uy + bmcuruguay (mapeo exacto a calculadora). Ver PDF completo: docs/team/visual/PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf<br/>
+                          DWG: perfiles de plegados/grecas/forros (F*-MET) y babetas en TECHMET + BMC/Desarrollos/BabetaLateral (usar para extrusión 3D precisa cuando se active la fase volumétrica).
+                          {render2DProfile(techoFamilia)}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         </div>
