@@ -175,7 +175,7 @@ export default function PricingEditor({ onSave }) {
         // Guard anti-MATRIZ-sucia: si el CSV trae columna de venta pero esta fila no tiene
         // un `venta_local` válido (>0), la fila está incompleta → se omite completa para no
         // dejar precios inconsistentes (p.ej. costo actualizado sin venta, o c/IVA suelto).
-        if (ventaIdx >= 0 && venta == null) { skipped.push(path); continue; }
+        if (ventaIdx >= 0 && (venta == null || venta <= 0)) { skipped.push(path); continue; }
         if (costoIdx >= 0 && cells[costoIdx]) {
           const v = parseCsvNumber(cells[costoIdx]);
           if (v != null) { updates[`${path}.costo`] = v; count++; }
