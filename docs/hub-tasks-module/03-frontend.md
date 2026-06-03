@@ -526,6 +526,7 @@ export function TaskListItem({ task, onEdit, onDelete, onStatusChange }) {
 
 ### ConflictBanner.jsx
 
+{% raw %}
 ```jsx
 export function ConflictBanner({ conflict, onResolve }) {
   const { taskId, conflictType, hubState, googleState } = conflict;
@@ -576,6 +577,7 @@ export function ConflictBanner({ conflict, onResolve }) {
   );
 }
 ```
+{% endraw %}
 
 ---
 
@@ -623,6 +625,7 @@ Decision on demo medium: see 05-decisions.md ADR "Demo Artifact Format".]
 
 ### ErrorBoundary Component
 
+{% raw %}
 ```jsx
 export class TasksErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -645,6 +648,7 @@ export class TasksErrorBoundary extends React.Component {
   }
 }
 ```
+{% endraw %}
 
 ---
 
