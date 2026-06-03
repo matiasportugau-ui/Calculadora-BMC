@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SKINS, useSkin } from "./SkinProvider.jsx";
+import { SKINS } from "./skins.js";
+import { useSkin } from "./useSkin.js";
 
 export default function CommandPalette({
   open, onClose,

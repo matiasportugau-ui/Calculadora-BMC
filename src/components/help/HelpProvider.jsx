@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { HelpContext } from "./helpContext.js";
 
 /**
  * Help / tutorial provider.
@@ -75,13 +76,6 @@ const FALLBACK_SOURCE = {
   ],
 };
 
-const HelpContext = createContext({
-  steps: new Map(),
-  dismissed: new Set(),
-  dismiss: () => {},
-  reset: () => {},
-});
-
 function loadDismissed() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -154,8 +148,4 @@ export function HelpProvider({ children, source = FALLBACK_SOURCE }) {
   const value = useMemo(() => ({ steps, dismissed, dismiss, reset }), [steps, dismissed, dismiss, reset]);
 
   return <HelpContext.Provider value={value}>{children}</HelpContext.Provider>;
-}
-
-export function useHelpContext() {
-  return useContext(HelpContext);
 }

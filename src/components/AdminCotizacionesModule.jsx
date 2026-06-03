@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdminCotizaciones, ageDays } from "../hooks/useAdminCotizaciones.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
-import { getStoredPanelinRole } from "../hooks/useAdminCotizaciones.js"; // if not exported, we'll move logic inside
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
-import { SkinProvider, useSkin } from "./admin-cotizaciones/SkinProvider.jsx";
+import { SkinProvider } from "./admin-cotizaciones/SkinProvider.jsx";
+import { useSkin } from "./admin-cotizaciones/useSkin.js";
 import Topbar from "./admin-cotizaciones/Topbar.jsx";
 import StatStrip from "./admin-cotizaciones/StatStrip.jsx";
 import Toolbar from "./admin-cotizaciones/Toolbar.jsx";

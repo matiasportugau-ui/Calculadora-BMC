@@ -153,7 +153,6 @@ export default function QuotesTable({
   onOpenPdf,
   onOpenReplay,
   onOpenSheet,
-  onAssign,
   onOpenBorrador,
   onQuickAssign,
   loading,

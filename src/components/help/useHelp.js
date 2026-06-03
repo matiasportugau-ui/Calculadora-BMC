@@ -1,4 +1,5 @@
-import { useHelpContext } from "./HelpProvider.jsx";
+import { useContext } from "react";
+import { HelpContext } from "./helpContext.js";
 import { isKnownAnchor } from "./anchors.js";
 
 // Per-id dedup so re-renders + React StrictMode double-invoke in DEV don't
@@ -11,6 +12,10 @@ function warnOnce(set, id, message) {
   if (set.has(id)) return;
   set.add(id);
   console.warn(message);
+}
+
+export function useHelpContext() {
+  return useContext(HelpContext);
 }
 
 /**

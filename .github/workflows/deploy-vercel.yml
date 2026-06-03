@@ -59,7 +59,7 @@ jobs:
 
       - name: Checkout at CI SHA
         if: steps.guard.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.1
         with:
           ref: ${{ steps.sha.outputs.sha }}
           fetch-depth: 0
@@ -80,7 +80,7 @@ jobs:
 
       - name: Setup Node.js
         if: steps.guard.outputs.skip != 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: '24'
           cache: 'npm'
@@ -144,11 +144,11 @@ jobs:
 
       - name: Checkout PR head
         if: steps.guard.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.1
 
       - name: Setup Node.js
         if: steps.guard.outputs.skip != 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: '24'
           cache: 'npm'

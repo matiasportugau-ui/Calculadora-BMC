@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: '24'
           cache: 'npm'
@@ -89,7 +89,7 @@ jobs:
 
       - name: Upload knowledge artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.1
         with:
           name: knowledge-antenna-${{ github.run_id }}
           path: |

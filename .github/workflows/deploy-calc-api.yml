@@ -43,7 +43,7 @@ jobs:
         run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout code at CI SHA
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.1
         with:
           ref: ${{ steps.sha.outputs.sha }}
           fetch-depth: 0
@@ -190,7 +190,7 @@ jobs:
 
       - name: Setup Node.js (for smoke)
         if: steps.paths.outputs.skip != 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: '24'
           cache: 'npm'
