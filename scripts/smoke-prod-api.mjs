@@ -304,6 +304,7 @@ async function main() {
       ok: true,
       note: "omitido (SMOKE_SKIP_SUGGEST / --skip-suggest)",
       skipped: true,
+      blocking: false,
     });
   } else {
     // Keep this blocking in all profiles: suggest-response powers channel-facing CRM (Customer Relationship Management) assistance.
