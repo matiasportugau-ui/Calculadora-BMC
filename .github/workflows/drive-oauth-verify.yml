@@ -2,6 +2,9 @@
 # No corre en push/PR. No sube nada a Vercel.
 name: Drive OAuth — verify Client ID
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 on:
   workflow_dispatch:
 

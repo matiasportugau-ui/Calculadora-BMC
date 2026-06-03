@@ -24,6 +24,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   PROJECT_ID: chatbot-bmc-live
   REGION: us-central1
   SERVICE_NAME: panelin-calc
