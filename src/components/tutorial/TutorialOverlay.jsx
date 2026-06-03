@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useTutorial } from './TutorialProvider.jsx';
+import { useTutorial } from './useTutorial.js';
 
 /**
  * TutorialOverlay
