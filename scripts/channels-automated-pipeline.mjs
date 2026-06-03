@@ -9,7 +9,7 @@
  *   npm run channels:automated
  *   npm run channels:automated -- --write   # escribe .channels/last-pipeline.json
  *
- * Exit 1 si el smoke falla (misma lógica que smoke-prod-api.mjs --json), incl. GET MATRIZ CSV.
+ * Exit 1 si el smoke falla (misma lógica que smoke-prod-api.mjs --json y perfil SMOKE_PROFILE activo).
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -28,14 +28,45 @@ const CHANNEL_TASK_IDS = ["cm-0", "cm-1", "cm-2"];
 async function runSmokeJson() {
   const t0 = Date.now();
   const script = path.join(ROOT, "scripts/smoke-prod-api.mjs");
-  const { stdout } = await execFileP(process.execPath, [script, "--json"], {
-    cwd: ROOT,
-    maxBuffer: 4 * 1024 * 1024,
-    env: process.env,
-  });
-  const ms = Date.now() - t0;
-  const data = JSON.parse(stdout.trim());
-  return { ms, data };
+  try {
+    const { stdout } = await execFileP(process.execPath, [script, "--json"], {
+      cwd: ROOT,
+      maxBuffer: 4 * 1024 * 1024,
+      env: process.env,
+    });
+    const ms = Date.now() - t0;
+    const data = JSON.parse(stdout.trim());
+    return { ms, data };
+  } catch (error) {
+    const ms = Date.now() - t0;
+    const stdout = typeof error?.stdout === "string" ? error.stdout.trim() : "";
+    const stderr = typeof error?.stderr === "string" ? error.stderr.trim() : "";
+    if (stdout) {
+      try {
+        const data = JSON.parse(stdout);
+        return { ms, data };
+      } catch {
+        throw new Error(
+          [
+            "smoke-prod-api.mjs falló y devolvió stdout no-JSON.",
+            `stdout: ${stdout.slice(0, 1200)}`,
+            stderr ? `stderr: ${stderr.slice(0, 1200)}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n")
+        );
+      }
+    }
+    throw new Error(
+      [
+        "smoke-prod-api.mjs falló sin JSON en stdout.",
+        error instanceof Error ? `error: ${error.message}` : `error: ${String(error)}`,
+        stderr ? `stderr: ${stderr.slice(0, 1200)}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+  }
 }
 
 function runFollowupsJson() {

@@ -7,6 +7,7 @@
  *   BMC_API_BASE=https://panelin-calc-....run.app npm run smoke:prod
  *   node scripts/smoke-prod-api.mjs --base https://...
  *   node scripts/smoke-prod-api.mjs --json
+ *   SMOKE_PROFILE=channels node scripts/smoke-prod-api.mjs --json
  *
  * Falla (exit 1) si GET /health o GET /capabilities no responden 200,
  * si GET /api/actualizar-precios-calculadora no devuelve CSV MATRIZ (200 + text/csv + cabecera),
@@ -18,10 +19,16 @@
  *
  * Omitir solo MATRIZ (p. ej. entorno sin Sheets): SMOKE_SKIP_MATRIZ=1 o --skip-matriz.
  * Omitir solo suggest-response (p. ej. IA no montada en prod o keys GSM en rotación): SMOKE_SKIP_SUGGEST=1 o --skip-suggest.
+ * Perfil channels: mantiene checks críticos de canales como bloqueantes y deja checks no relacionados en modo no bloqueante/omitido.
  */
 /** Default prod base — misma que `gcloud run services describe panelin-calc … status.url` y `PUBLIC_BASE_URL` en Cloud Run. */
 const DEFAULT_BASE = "https://panelin-calc-q74zutv7dq-uc.a.run.app";
 const TIMEOUT_MS = 25_000;
+
+function normalizeProfile(profile) {
+  const p = String(profile || "full").trim().toLowerCase();
+  return p === "channels" ? "channels" : "full";
+}
 
 function parseArgs(argv) {
   let base = process.env.BMC_API_BASE || process.env.SMOKE_BASE_URL || DEFAULT_BASE;
@@ -30,18 +37,21 @@ function parseArgs(argv) {
     process.env.SMOKE_SKIP_MATRIZ === "1" || process.env.SMOKE_SKIP_MATRIZ === "true";
   let skipSuggest =
     process.env.SMOKE_SKIP_SUGGEST === "1" || process.env.SMOKE_SKIP_SUGGEST === "true";
+  let profile = normalizeProfile(process.env.SMOKE_PROFILE || "full");
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--base" && argv[i + 1]) {
       base = argv[++i];
     } else if (argv[i] === "--json") {
       json = true;
+    } else if (argv[i] === "--profile" && argv[i + 1]) {
+      profile = normalizeProfile(argv[++i]);
     } else if (argv[i] === "--skip-matriz") {
       skipMatriz = true;
     } else if (argv[i] === "--skip-suggest") {
       skipSuggest = true;
     }
   }
-  return { base, json, skipMatriz, skipSuggest };
+  return { base, json, skipMatriz, skipSuggest, profile };
 }
 
 /** Redact tokens / long key-like strings in smoke notes (stderr-safe). */
@@ -137,7 +147,9 @@ function matrizCsvOk({ status, contentType, text }) {
 }
 
 async function main() {
-  const { base: rawBase, json, skipMatriz, skipSuggest } = parseArgs(process.argv.slice(2));
+  const { base: rawBase, json, skipMatriz, skipSuggest, profile } = parseArgs(process.argv.slice(2));
+  const isChannelsProfile = profile === "channels";
+  const skipMatrizByProfile = isChannelsProfile;
   let base;
   try {
     base = normalizeBase(rawBase);
@@ -148,53 +160,57 @@ async function main() {
 
   const rows = [];
   let criticalFail = false;
+  const pushCheck = ({ blocking = true, skipped = false, ...rest }) => {
+    const row = { ...rest, blocking, skipped };
+    rows.push(row);
+    if (blocking && !row.ok) criticalFail = true;
+  };
 
   const h = await fetchJson("GET", "/health", base);
   const healthOk = h.status === 200 && h.body && h.body.ok === true;
-  rows.push({
+  pushCheck({
     path: "/health",
     status: h.status,
     ok: healthOk,
     note: healthOk ? "servicio vivo" : "esperado 200 + { ok: true }",
   });
-  if (!healthOk) criticalFail = true;
 
   const c = await fetchJson("GET", "/capabilities", base);
   const capOk = c.status === 200 && c.body && typeof c.body === "object";
-  rows.push({
+  pushCheck({
     path: "/capabilities",
     status: c.status,
     ok: capOk,
     note: capOk ? "manifest agentes" : "esperado 200 JSON",
   });
-  if (!capOk) criticalFail = true;
 
   const pub = c.body?.public_base_url ? String(c.body.public_base_url).replace(/\/+$/, "") : "";
   const baseMatch = !pub || pub === base;
-  rows.push({
+  pushCheck({
     path: "public_base_url",
     status: pub ? 200 : 0,
     ok: baseMatch,
     note: baseMatch
       ? "coincide con la base del smoke"
       : `manifest dice ${pub || "?"} — smoke usa ${base} (ajustar PUBLIC_BASE_URL o --base)`,
+    blocking: false,
   });
-  if (!baseMatch) {
-    // No falla el job: solo alerta de drift; descomentar para endurecer:
-    // criticalFail = true;
-  }
 
-  if (skipMatriz) {
-    rows.push({
+  if (skipMatriz || skipMatrizByProfile) {
+    pushCheck({
       path: "GET /api/actualizar-precios-calculadora",
       status: 0,
       ok: true,
-      note: "omitido (SMOKE_SKIP_MATRIZ / --skip-matriz)",
+      note: skipMatrizByProfile
+        ? "omitido (perfil channels: check no bloqueante para readiness de canales)"
+        : "omitido (SMOKE_SKIP_MATRIZ / --skip-matriz)",
+      skipped: true,
+      blocking: !skipMatrizByProfile,
     });
   } else {
     const mat = await fetchText("GET", "/api/actualizar-precios-calculadora", base);
     const matrizOk = matrizCsvOk(mat);
-    rows.push({
+    pushCheck({
       path: "GET /api/actualizar-precios-calculadora",
       status: mat.status,
       ok: matrizOk,
@@ -202,12 +218,11 @@ async function main() {
         ? "CSV MATRIZ (precios calculadora)"
         : "esperado 200 + text/csv con cabecera path,descripcion — revisar Secret Manager, BMC_MATRIZ_SHEET_ID y share Sheets",
     });
-    if (!matrizOk) criticalFail = true;
   }
 
   const m = await fetchJson("GET", "/auth/ml/status", base);
   const mlOk = m.status === 200 || m.status === 404;
-  rows.push({
+  pushCheck({
     path: "/auth/ml/status",
     status: m.status,
     ok: mlOk,
@@ -217,6 +232,7 @@ async function main() {
         : m.status === 404
           ? "sin token ML (normal hasta OAuth)"
           : "revisar (informativo)",
+    blocking: false,
   });
 
   // WhatsApp webhook liveness — GET with wrong token → 403 expected; 200 if token matches; 404/5xx = route down
@@ -226,7 +242,7 @@ async function main() {
     base
   );
   const waRouteAlive = wa.status === 200 || wa.status === 403;
-  rows.push({
+  pushCheck({
     path: "GET /webhooks/whatsapp",
     status: wa.status,
     ok: waRouteAlive,
@@ -236,13 +252,12 @@ async function main() {
         : "webhook vivo (403 token incorrecto — esperado en smoke)"
       : `ruta caída o error — esperado 200 o 403, recibido ${wa.status}`,
   });
-  if (!waRouteAlive) criticalFail = true;
 
   // WA Cockpit health — 200 (db ok) o 503 (DATABASE_URL no configurado en este entorno)
   const waCockpit = await fetchJson("GET", "/api/wa/health", base);
   const waCockpitAlive =
     waCockpit.status === 200 || waCockpit.status === 503;
-  rows.push({
+  pushCheck({
     path: "GET /api/wa/health",
     status: waCockpit.status,
     ok: waCockpitAlive,
@@ -253,42 +268,44 @@ async function main() {
           ? "WA cockpit deshabilitado (DATABASE_URL no configurado en este entorno) — informativo"
           : `ruta caída — esperado 200 o 503, recibido ${waCockpit.status}`,
   });
-  if (!waCockpitAlive) criticalFail = true;
 
   // Legacy operator dashboard (Finanzas 404 incident — must never regress again)
   const fin = await fetchJson("GET", "/finanzas/", base);
   // 200 = files present; 3xx = static middleware redirecting /finanzas → /finanzas/ (still good)
   const finanzasOk = fin.status === 200 || (fin.status >= 300 && fin.status < 400);
-  rows.push({
+  pushCheck({
     path: "GET /finanzas/",
     status: fin.status,
     ok: finanzasOk,
     note: finanzasOk
       ? "legacy dashboard presente (Finanzas/Operaciones)"
-      : "404 o caído — dashboard estático no empaquetado en la imagen (revisar server/Dockerfile COPY + .dockerignore negations)",
+      : isChannelsProfile
+        ? "404 o caído — dashboard estático no empaquetado (no bloqueante en perfil channels)"
+        : "404 o caído — dashboard estático no empaquetado en la imagen Docker (revisar server/Dockerfile COPY + .dockerignore negations)",
+    blocking: !isChannelsProfile,
   });
-  if (!finanzasOk) criticalFail = true;
 
   if (skipSuggest) {
-    rows.push({
+    pushCheck({
       path: "POST /api/crm/suggest-response",
       status: 0,
       ok: true,
       note: "omitido (SMOKE_SKIP_SUGGEST / --skip-suggest)",
+      skipped: true,
     });
   } else {
+    // Keep this blocking in all profiles: suggest-response powers channel-facing CRM assistance.
     const sr = await fetchJson("POST", "/api/crm/suggest-response", base, {
       consulta: "smoke test automatizado — responder breve",
       origen: "smoke-prod",
     });
     const suggestOk = sr.status === 200 && sr.body && sr.body.ok === true;
-    rows.push({
+    pushCheck({
       path: "POST /api/crm/suggest-response",
       status: sr.status,
       ok: suggestOk,
       note: suggestOk ? `IA ok (${sr.body.provider || "?"})` : suggestFailureNote(sr.body),
     });
-    if (!suggestOk) criticalFail = true;
   }
 
   if (json) {
@@ -297,6 +314,7 @@ async function main() {
         {
           ok: !criticalFail,
           base,
+          profile,
           at: new Date().toISOString(),
           checks: rows,
         },
@@ -311,24 +329,30 @@ async function main() {
   console.log("");
   console.log("Smoke producción (API pública)");
   console.log(`  Base: ${base}`);
+  console.log(`  Perfil: ${profile}`);
   console.log("");
   for (const r of rows) {
     const mark = r.ok ? "✓" : "✗";
     const st = r.status != null ? r.status : "-";
-    console.log(`  ${mark}  ${st}  ${r.path}`);
+    const tags = [
+      r.blocking ? "blocking" : "non-blocking",
+      r.skipped ? "skipped" : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    console.log(`  ${mark}  ${st}  ${r.path}${tags ? ` [${tags}]` : ""}`);
     console.log(`      ${r.note}`);
   }
   console.log("");
   if (criticalFail) {
-    const bad = rows.filter((r) => !r.ok && ["/health", "GET /api/actualizar-precios-calculadora", "POST /api/crm/suggest-response", "GET /webhooks/whatsapp", "GET /finanzas/"].includes(r.path));
+    const bad = rows.filter((r) => !r.ok && r.blocking);
     const hint = bad.length ? bad.map((r) => `${r.path} (${r.status})`).join("; ") : "ver checks ✗ arriba";
     console.log(`RESULTADO: FALLA — ${hint}.`);
     process.exit(1);
   }
-  console.log(
-    "RESULTADO: OK — health, capabilities, MATRIZ CSV, WhatsApp webhook, /finanzas/" +
-      (skipSuggest ? " (suggest omitido)." : ", suggest-response."),
-  );
+  const matrizStatus = skipMatriz || skipMatrizByProfile ? "MATRIZ omitido" : "MATRIZ CSV";
+  const finStatus = isChannelsProfile ? "/finanzas/ no bloqueante" : "/finanzas/";
+  console.log(`RESULTADO: OK — health, capabilities, ${matrizStatus}, WhatsApp webhook, ${finStatus}${skipSuggest ? " (suggest omitido)." : ", suggest-response."}`);
   console.log("");
 }
 
