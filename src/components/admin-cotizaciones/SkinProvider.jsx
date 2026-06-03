@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SKINS } from "./skins.js";
-import { SkinContext } from "./skinContext.js";
+import { SkinContext, DEFAULT_SKIN } from "./skinContext.js";
 
 /**
  * Skin system for Admin Cot v2.
@@ -15,7 +15,6 @@ import { SkinContext } from "./skinContext.js";
  */
 
 const STORAGE_KEY = "bmc_admin_cot_skin";
-const DEFAULT_SKIN = "macos";
 
 const VALID = new Set(SKINS.map((s) => s.id));
 
