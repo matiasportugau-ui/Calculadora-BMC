@@ -1,4 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { SKINS } from "./skins.js";
+import { SkinContext } from "./skinContext.js";
 
 /**
  * Skin system for Admin Cot v2.
@@ -15,14 +17,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 const STORAGE_KEY = "bmc_admin_cot_skin";
 const DEFAULT_SKIN = "macos";
 
-export const SKINS = [
-  { id: "macos", label: "macOS Sequoia" },
-  { id: "bmc", label: "BMC Default" },
-  { id: "gnome", label: "Linux GNOME" },
-  { id: "anthropic", label: "Anthropic Warm" },
-  { id: "linear", label: "Linear" },
-];
-
 const VALID = new Set(SKINS.map((s) => s.id));
 
 function loadSkin() {
@@ -36,8 +30,6 @@ function loadSkin() {
 function persistSkin(skin) {
   try { localStorage.setItem(STORAGE_KEY, skin); } catch { /* ignore */ }
 }
-
-export const SkinContext = createContext({ skin: DEFAULT_SKIN, setSkin: () => {} });
 
 export function SkinProvider({ children }) {
   const [skin, setSkinState] = useState(() => loadSkin());

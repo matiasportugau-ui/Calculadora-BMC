@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { HelpContext } from "./HelpProvider.jsx";
+import { HelpContext } from "./helpContext.js";
 import { isKnownAnchor } from "./anchors.js";
 
 // Per-id dedup so re-renders + React StrictMode double-invoke in DEV don't

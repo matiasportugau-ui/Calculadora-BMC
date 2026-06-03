@@ -1,10 +1,9 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getWorkflow } from './workflows.js';
+import { TutorialContext } from './tutorialContext.js';
 
 const STORAGE_KEY = 'bmc_tutorial_mode';
 const PROGRESS_KEY = 'bmc_tutorial_progress';
-
-export const TutorialContext = createContext(null);
 
 export function TutorialProvider({ children }) {
   const [isTutorialMode, setIsTutorialMode] = useState(() => {

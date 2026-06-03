@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { HelpContext } from "./helpContext.js";
 
 /**
  * Help / tutorial provider.
@@ -74,13 +75,6 @@ const FALLBACK_SOURCE = {
     },
   ],
 };
-
-export const HelpContext = createContext({
-  steps: new Map(),
-  dismissed: new Set(),
-  dismiss: () => {},
-  reset: () => {},
-});
 
 function loadDismissed() {
   try {

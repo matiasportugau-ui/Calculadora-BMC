@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SKINS } from "./SkinProvider.jsx";
+import { SKINS } from "./skins.js";
 import { useSkin } from "./useSkin.js";
 
 export default function CommandPalette({

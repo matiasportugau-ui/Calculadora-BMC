@@ -8,11 +8,11 @@ export default function PdfPreview() {
   const [error, setError] = useState(null);
   const [selectedSample, setSelectedSample] = useState('default');
 
-  const samples = {
-    default: sampleClientVisualData,
-  };
-
   const generatePdf = useCallback(async () => {
+    const samples = {
+      default: sampleClientVisualData,
+    };
+
     setLoading(true);
     setError(null);
     try {
@@ -39,7 +39,7 @@ export default function PdfPreview() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSample, samples]);
+  }, [selectedSample]);
 
   useEffect(() => {
     generatePdf();
