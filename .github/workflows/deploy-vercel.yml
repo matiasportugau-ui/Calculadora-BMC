@@ -67,45 +67,49 @@ jobs:
       - name: Confirm SHA is still tip of main
         # Defends against re-running an old successful CI run from the Actions UI,
         # which would otherwise redeploy a stale SHA. workflow_dispatch is exempt.
+        # Stale runs emit a warning and skip the deploy steps instead of failing.
+        id: tip_guard
         if: steps.guard.outputs.skip != 'true' && github.event_name != 'workflow_dispatch'
         run: |
           set -e
           git fetch origin main --depth=1
           REMOTE_TIP=$(git rev-parse origin/main)
           if [[ "${{ steps.sha.outputs.sha }}" != "$REMOTE_TIP" ]]; then
-            echo "::error::SHA ${{ steps.sha.outputs.sha }} is no longer the tip of origin/main ($REMOTE_TIP). Aborting Vercel prod deploy."
-            exit 1
+            echo "::warning::SHA ${{ steps.sha.outputs.sha }} is no longer the tip of origin/main ($REMOTE_TIP). Skipping Vercel prod deploy."
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "stale=false" >> "$GITHUB_OUTPUT"
           echo "SHA matches origin/main tip: $REMOTE_TIP"
 
       - name: Setup Node.js
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.skip != 'true' && steps.tip_guard.outputs.stale != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Install Vercel CLI
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.skip != 'true' && steps.tip_guard.outputs.stale != 'true'
         run: npm install --global vercel@latest
 
       - name: Pull Vercel environment information
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.skip != 'true' && steps.tip_guard.outputs.stale != 'true'
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build project artifacts
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.skip != 'true' && steps.tip_guard.outputs.stale != 'true'
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy to Vercel (production)
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.skip != 'true' && steps.tip_guard.outputs.stale != 'true'
         run: |
           DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
           echo "Deployed: $DEPLOY_URL"
           echo "DEPLOY_URL=$DEPLOY_URL" >> "$GITHUB_ENV"
 
       - name: Smoke production HTML
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.skip != 'true' && steps.tip_guard.outputs.stale != 'true'
         run: |
           set -e
           STATUS=$(curl -sI -o /dev/null -w "%{http_code}" --max-time 15 https://calculadora-bmc.vercel.app/)
