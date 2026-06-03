@@ -417,7 +417,7 @@ export function useAdminCotizaciones() {
     await load();
     showToast(`Asignado a ${responsable || "(sin responsable)"}`);
     return { ok: true };
-  }, [token, load]);
+  }, [token, load, showToast]);
 
   const getBorradorInfo = useCallback((row) => {
     if (!row) return { hasBorrador: false };

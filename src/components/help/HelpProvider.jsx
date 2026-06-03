@@ -75,7 +75,7 @@ const FALLBACK_SOURCE = {
   ],
 };
 
-const HelpContext = createContext({
+export const HelpContext = createContext({
   steps: new Map(),
   dismissed: new Set(),
   dismiss: () => {},
@@ -154,8 +154,4 @@ export function HelpProvider({ children, source = FALLBACK_SOURCE }) {
   const value = useMemo(() => ({ steps, dismissed, dismiss, reset }), [steps, dismissed, dismiss, reset]);
 
   return <HelpContext.Provider value={value}>{children}</HelpContext.Provider>;
-}
-
-export function useHelpContext() {
-  return useContext(HelpContext);
 }

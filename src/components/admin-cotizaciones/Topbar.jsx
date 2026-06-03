@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { SKINS, useSkin } from "./SkinProvider.jsx";
+import { SKINS } from "./SkinProvider.jsx";
+import { useSkin } from "./useSkin.js";
 import Tooltip from "../help/Tooltip.jsx";
 import FirstTimeTip from "../help/FirstTimeTip.jsx";
 import { HELP_ANCHORS } from "../help/anchors.js";

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useTutorial } from './useTutorial.js';
-import TutorialToggle from './TutorialToggle.jsx';
 
 /**
  * Botón flotante discreto para activar el Modo Tutorial.

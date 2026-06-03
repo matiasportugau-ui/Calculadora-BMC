@@ -8,7 +8,8 @@
 
 import { Link } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import { SkinProvider, useSkin } from "../../admin-cotizaciones/SkinProvider.jsx";
+import { SkinProvider } from "../../admin-cotizaciones/SkinProvider.jsx";
+import { useSkin } from "../../admin-cotizaciones/useSkin.js";
 import "../../admin-cotizaciones/styles.css";
 import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
 

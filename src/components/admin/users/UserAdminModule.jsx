@@ -11,7 +11,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Link } from "react-router-dom";
-import { SkinProvider, useSkin } from "../../admin-cotizaciones/SkinProvider.jsx";
+import { SkinProvider } from "../../admin-cotizaciones/SkinProvider.jsx";
+import { useSkin } from "../../admin-cotizaciones/useSkin.js";
 import "../../admin-cotizaciones/styles.css";
 import { useUserAdmin } from "../../../hooks/useUserAdmin.js";
 import UserStatStrip from "./UserStatStrip.jsx";

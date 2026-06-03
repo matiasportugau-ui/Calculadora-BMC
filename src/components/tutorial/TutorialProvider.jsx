@@ -4,7 +4,7 @@ import { getWorkflow } from './workflows.js';
 const STORAGE_KEY = 'bmc_tutorial_mode';
 const PROGRESS_KEY = 'bmc_tutorial_progress';
 
-const TutorialContext = createContext(null);
+export const TutorialContext = createContext(null);
 
 export function TutorialProvider({ children }) {
   const [isTutorialMode, setIsTutorialMode] = useState(() => {
@@ -173,12 +173,4 @@ export function TutorialProvider({ children }) {
       {children}
     </TutorialContext.Provider>
   );
-}
-
-export function useTutorial() {
-  const context = useContext(TutorialContext);
-  if (!context) {
-    throw new Error('useTutorial debe usarse dentro de un TutorialProvider');
-  }
-  return context;
 }

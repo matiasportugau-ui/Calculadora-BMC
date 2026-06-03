@@ -37,7 +37,7 @@ function persistSkin(skin) {
   try { localStorage.setItem(STORAGE_KEY, skin); } catch { /* ignore */ }
 }
 
-const SkinContext = createContext({ skin: DEFAULT_SKIN, setSkin: () => {} });
+export const SkinContext = createContext({ skin: DEFAULT_SKIN, setSkin: () => {} });
 
 export function SkinProvider({ children }) {
   const [skin, setSkinState] = useState(() => loadSkin());
@@ -49,8 +49,4 @@ export function SkinProvider({ children }) {
   useEffect(() => { persistSkin(skin); }, [skin]);
   const value = useMemo(() => ({ skin, setSkin }), [skin, setSkin]);
   return <SkinContext.Provider value={value}>{children}</SkinContext.Provider>;
-}
-
-export function useSkin() {
-  return useContext(SkinContext);
 }

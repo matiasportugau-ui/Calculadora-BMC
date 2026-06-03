@@ -18,7 +18,6 @@ export default function TutorialOverlay() {
     nextStep,
     prevStep,
     exitTutorial,
-    activeWorkflowId,
   } = useTutorial();
 
   const [targetRect, setTargetRect] = useState(null);
