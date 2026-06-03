@@ -31,7 +31,7 @@ import {
   classifyAdjuntoUrl,
   extractStopFieldsFromPaste,
 } from "./lib/sheetPaste.js";
-import { estimateRouteLoadPhysical } from "./lib/loadCharacteristics.js";
+import { estimateRouteLoadPhysical } from "../../../src/utils/logistica/loadCharacteristics.js";
 
 const STORAGE_KEY = "bmc-carga-ruta-v1";
 const VENTAS_API_BASE_KEY = "bmc-carga-ventas-api-base";

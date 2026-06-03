@@ -33,7 +33,8 @@ En la barra superior, **Cliente (planilla)** lista **nombres únicos** detectado
 1. Levantá la API (`npm run start:api` desde la raíz del repo) con `BMC_VENTAS_SHEET_ID` y credenciales Sheets.
 2. En el prototipo, bloque **Ventas y Coordinaciones (API)**: base `http://localhost:3001` (se guarda en `localStorage`), **Cargar listado** → `GET /api/ventas?tab=Ventas%20y%20Coordinaciones&logistica=1`.
 3. Elegí **cliente / pedido** y **Añadir parada desde fila**: se rellenan cliente, teléfono, dirección, zona, mapa, ID pedido y **link CARPETA** (PDF). El texto de **ENCARGO/PEDIDO** queda en `rawSheet` para **Extraer desde NOTAS** si hace falta.
-4. **Características de la carga**: totales estimados de m², m³ y kg (heurística; no sustituye balanza). Detalle por parada en tabla.
+4. **Características de la carga**: totales estimados de m², m³ y kg (heurística; no sustituye balanza). Detalle por parada en tabla.  
+   (Source of truth: `src/utils/logistica/loadCharacteristics.js` — also re-exported from `src/utils/bmcLogisticaCargo.js` for the main online app.)
 5. **PDF escaneado:** el extractor usa capa de texto; **no hay OCR** en el navegador. Para escaneos, pegá líneas manualmente o usá un OCR externo y luego «Añadir desde texto».
 
 ## Reglas BMC (negocio + copy para operadores)
