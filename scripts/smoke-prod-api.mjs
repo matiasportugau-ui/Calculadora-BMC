@@ -24,10 +24,13 @@
 /** Default prod base — misma que `gcloud run services describe panelin-calc … status.url` y `PUBLIC_BASE_URL` en Cloud Run. */
 const DEFAULT_BASE = "https://panelin-calc-q74zutv7dq-uc.a.run.app";
 const TIMEOUT_MS = 25_000;
+/** full: todos los checks relevantes bloquean; channels: solo checks críticos de canales bloquean CI. */
+const VALID_PROFILES = new Set(["full", "channels"]);
 
+/** Accepted smoke profiles: "full" (default) and "channels". */
 function normalizeProfile(profile) {
   const p = String(profile || "full").trim().toLowerCase();
-  return p === "channels" ? "channels" : "full";
+  return VALID_PROFILES.has(p) ? p : "full";
 }
 
 function parseArgs(argv) {
@@ -160,10 +163,18 @@ async function main() {
 
   const rows = [];
   let criticalFail = false;
+  /**
+   * @param {object} args
+   * @param {boolean} [args.blocking=true] marca si el check bloquea el resultado final
+   * @param {boolean} [args.skipped=false] marca si el check fue omitido
+   * @returns {void}
+   *
+   * Side-effects: agrega el check a `rows` y, si es bloqueante y falla, activa `criticalFail`.
+   */
   const pushCheck = ({ blocking = true, skipped = false, ...rest }) => {
     const row = { ...rest, blocking, skipped };
     rows.push(row);
-    if (blocking && !row.ok) criticalFail = true;
+    if (blocking && row.ok === false) criticalFail = true;
   };
 
   const h = await fetchJson("GET", "/health", base);
@@ -193,6 +204,7 @@ async function main() {
     note: baseMatch
       ? "coincide con la base del smoke"
       : `manifest dice ${pub || "?"} — smoke usa ${base} (ajustar PUBLIC_BASE_URL o --base)`,
+    // Always advisory (drift tolerance): mismatch between manifest base and probed base is reported but does not block smoke.
     blocking: false,
   });
 
@@ -202,10 +214,10 @@ async function main() {
       status: 0,
       ok: true,
       note: skipMatrizByProfile
-        ? "omitido (perfil channels: check no bloqueante para readiness de canales)"
+        ? "omitido (perfil channels: check no-bloqueante para readiness de canales)"
         : "omitido (SMOKE_SKIP_MATRIZ / --skip-matriz)",
       skipped: true,
-      blocking: !skipMatrizByProfile,
+      blocking: false,
     });
   } else {
     const mat = await fetchText("GET", "/api/actualizar-precios-calculadora", base);
@@ -294,7 +306,7 @@ async function main() {
       skipped: true,
     });
   } else {
-    // Keep this blocking in all profiles: suggest-response powers channel-facing CRM assistance.
+    // Keep this blocking in all profiles: suggest-response powers channel-facing CRM (Customer Relationship Management) assistance.
     const sr = await fetchJson("POST", "/api/crm/suggest-response", base, {
       consulta: "smoke test automatizado — responder breve",
       origen: "smoke-prod",
@@ -305,6 +317,7 @@ async function main() {
       status: sr.status,
       ok: suggestOk,
       note: suggestOk ? `IA ok (${sr.body.provider || "?"})` : suggestFailureNote(sr.body),
+      blocking: true,
     });
   }
 
@@ -345,14 +358,17 @@ async function main() {
   }
   console.log("");
   if (criticalFail) {
+    // Blocking contract is defined per-row (`blocking`) instead of a hardcoded path list.
     const bad = rows.filter((r) => !r.ok && r.blocking);
     const hint = bad.length ? bad.map((r) => `${r.path} (${r.status})`).join("; ") : "ver checks ✗ arriba";
     console.log(`RESULTADO: FALLA — ${hint}.`);
     process.exit(1);
   }
-  const matrizStatus = skipMatriz || skipMatrizByProfile ? "MATRIZ omitido" : "MATRIZ CSV";
-  const finStatus = isChannelsProfile ? "/finanzas/ no bloqueante" : "/finanzas/";
-  console.log(`RESULTADO: OK — health, capabilities, ${matrizStatus}, WhatsApp webhook, ${finStatus}${skipSuggest ? " (suggest omitido)." : ", suggest-response."}`);
+  const okBlockingChecks = rows.filter((r) => r.blocking && r.ok).map((r) => r.path);
+  const skippedChecks = rows.filter((r) => r.skipped).map((r) => r.path);
+  const summary = okBlockingChecks.join(", ") || "checks bloqueantes";
+  const skippedSummary = skippedChecks.length ? ` | omitidos: ${skippedChecks.join(", ")}` : "";
+  console.log(`RESULTADO: OK — ${summary}${skippedSummary}.`);
   console.log("");
 }
 
