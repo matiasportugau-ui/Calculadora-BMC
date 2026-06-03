@@ -435,6 +435,7 @@ ObjectStore: "sync_metadata"
 
 ### TaskListItem.jsx
 
+{% raw %}
 ```jsx
 import { useState } from "react";
 import { tasksTheme } from "../hooks/useTasksTheme";
@@ -521,6 +522,7 @@ export function TaskListItem({ task, onEdit, onDelete, onStatusChange }) {
   );
 }
 ```
+{% endraw %}
 
 ### ConflictBanner.jsx
 
@@ -700,6 +702,6 @@ export function App() {
 
 ## Conclusion
 
-The Tareas frontend is **ready for Phase 1 implementation.** Component architecture is proven (matches /hub/wa, /hub/ml patterns). Theme extension is modular and non-breaking. State management via TanStack Query is standard for BMC. Offline queue via IndexedDB ensures mobile-first reliability.
+The Tareas frontend is **ready for Phase 1 implementation.** Component architecture is proven (matches /hub/wa, /hub/ml patterns). Theme extension is modular and non-breaking. State management vi[...]
 
 **Next step:** Advance to 04-roadmap.md + 05-decisions.md to complete the dossier.

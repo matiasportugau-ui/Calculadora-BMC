@@ -40,13 +40,16 @@ Numeric: `fontVariantNumeric: "tabular-nums"` para alineación de columnas numé
 ### 1. AnimNum
 Anima cambios de valor numérico con fade.
 
+{% raw %}
 ```jsx
 <AnimNum value="36.40" style={{ fontSize: 28 }} />
 ```
+{% endraw %}
 
 ### 2. CustomSelect
 Dropdown custom con soporte para badges y sublabels.
 
+{% raw %}
 ```jsx
 <CustomSelect
   label="Familia"
@@ -56,18 +59,22 @@ Dropdown custom con soporte para badges y sublabels.
   showBadge
 />
 ```
+{% endraw %}
 
 ### 3. StepperInput
 Input numérico con botones +/- y shake en límites.
 
+{% raw %}
 ```jsx
 <StepperInput label="Largo (m)" value={6.0} onChange={setLargo}
   min={1} max={20} step={0.5} unit="m" decimals={2} />
 ```
+{% endraw %}
 
 ### 4. SegmentedControl
 Control segmentado tipo iOS con estados disabled.
 
+{% raw %}
 ```jsx
 <SegmentedControl
   value="web"
@@ -76,24 +83,30 @@ Control segmentado tipo iOS con estados disabled.
   disabledIds={[]}
 />
 ```
+{% endraw %}
 
 ### 5. Toggle
 Switch on/off con label.
 
+{% raw %}
 ```jsx
 <Toggle label="Canalón" value={true} onChange={setInclCanalon} />
 ```
+{% endraw %}
 
 ### 6. KPICard
 Tarjeta de indicador clave con borde de color y número animado.
 
+{% raw %}
 ```jsx
 <KPICard label="Área" value="36.4m²" borderColor="#0071E3" />
 ```
+{% endraw %}
 
 ### 7. ColorChips
 Selector de color con chips visuales y tooltips de notas.
 
+{% raw %}
 ```jsx
 <ColorChips
   colors={["Blanco", "Gris", "Rojo"]}
@@ -102,28 +115,34 @@ Selector de color con chips visuales y tooltips de notas.
   notes={{ Gris: "Solo 100-150mm · +20 días" }}
 />
 ```
+{% endraw %}
 
 Colores mapeados: Blanco → `#FFFFFF`, Gris → `#8C8C8C`, Rojo → `#C0392B`
 
 ### 8. AlertBanner
 Banner de alerta con 3 tipos.
 
+{% raw %}
 ```jsx
 <AlertBanner type="success" message="Autoportante ✓" />
 <AlertBanner type="warning" message="Color requiere mínimo 500 m²" />
 <AlertBanner type="danger" message="Largo excede autoportancia" />
 ```
+{% endraw %}
 
 ### 9. Toast
 Notificación flotante temporal (fixed, bottom-right).
 
+{% raw %}
 ```jsx
 <Toast message="Copiado al portapapeles" visible={true} />
 ```
+{% endraw %}
 
 ### 10. TableGroup
 Tabla colapsable de items BOM con subtotal en header.
 
+{% raw %}
 ```jsx
 <TableGroup
   title="FIJACIONES"
@@ -133,18 +152,21 @@ Tabla colapsable de items BOM con subtotal en header.
   onToggle={() => toggleGroup("FIJACIONES")}
 />
 ```
+{% endraw %}
 
 Columnas: Descripción (2fr) | Cant. (0.6fr) | Unid. (0.6fr) | P.Unit. (0.8fr) | Total (0.8fr)
 
 ### 11. BorderConfigurator
 Configurador visual de bordes de techo (grid 3×3 con selección por lado).
 
+{% raw %}
 ```jsx
 <BorderConfigurator
   borders={{ frente: "gotero_frontal", fondo: "cumbrera", latIzq: "gotero_lateral", latDer: "none" }}
   onChange={(side, value) => updateBorder(side, value)}
 />
 ```
+{% endraw %}
 
 Visual grid:
 ```
