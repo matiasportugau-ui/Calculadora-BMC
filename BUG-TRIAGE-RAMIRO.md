@@ -1,5 +1,5 @@
 # BUG-TRIAGE-RAMIRO.md — Ledger Wolf Bug Hunter
-**Versión:** v0.1 — 03/06/2026 | **Triage:** Wolf (Claude) | **Fuente:** Reporte Ramiro Amaral 02/06/2026 (PDF) | **Triangulación:** repo `matiasportugau-ui/Calculadora-BMC@main` (verificado por fetch directo) ↔ Matriz de Costos y Ventas Dashboard (Sheet pegado en sesión, tabs BROMYROS / R y C Tornillos / MONTFRIO)
+**Versión:** v0.4 — 04/06/2026 | **Triage:** Wolf (Claude) | **Fuente:** Reporte Ramiro Amaral 02/06/2026 (PDF) | **Triangulación:** repo `matiasportugau-ui/Calculadora-BMC@main` (verificado por fetch directo) ↔ Matriz de Costos y Ventas Dashboard (Sheet pegado en sesión, tabs BROMYROS / R y C Tornillos / MONTFRIO)
 
 ---
 
@@ -12,7 +12,7 @@ Reporte con 6 hallazgos → **4 tickets** (2 hallazgos agrupados por causa raíz
 | ID | Título | Clase | Sev. | Estado | Golden case |
 |---|---|---|---|---|---|
 | WOLF-2026-0001 | Familia ISOFRIG completa ausente del catálogo | DATA | S2 | CONFIRMADO | Definido |
-| WOLF-2026-0002 | Precios desalineados con la Matriz por corrimiento de columna/fila (anclajes + goteros de cámara) | DATA | S1 | CONFIRMADO | Definido |
+| WOLF-2026-0002 | Precios desalineados con la Matriz por corrimiento de columna/fila (anclajes + goteros de cámara) | DATA | S1 | RESUELTO | Definido (GC-0002 verde, PR #276 merge) |
 | WOLF-2026-0003 | Accesorios de borde faltantes (Isoroof 100, GSDECAM 100, laterales cámara Isodec por espesor, superior PIR 120) | DATA | S3 | CONFIRMADO (parcial) | Definido (1 sub-item pendiente-dato) |
 | WOLF-2026-0004 | Sin fuente única de verdad + Matriz con datos sucios (meta-raíz) | DATA/INFRA | S2 | CONFIRMADO | Definido (eval de diff) |
 
@@ -46,7 +46,7 @@ Reporte con 6 hallazgos → **4 tickets** (2 hallazgos agrupados por causa raíz
 ---
 
 ## WOLF-2026-0002 — Precios desalineados con la Matriz por corrimiento de columna/fila en la extracción
-**Estado:** CONFIRMADO | **Clase:** DATA | **Severidad:** S1 (precio erróneo silencioso) | **Reportó:** Ramiro Amaral, 02/06/2026 (alcance ampliado por triage)
+**Estado:** RESUELTO (patch mergeado vía PR #276, branch `wolf/0002-precios`, commits `9c1ccf0` + `e937381` + `baa90a9`) | **Clase:** DATA | **Severidad:** S1 (precio erróneo silencioso) | **Reportó:** Ramiro Amaral, 02/06/2026 (alcance ampliado por triage)
 
 ### HUNT
 - Cita textual: *"Se detectaron precios mal cargados en anclajes usados para Isodec."* Causa probable según Ramiro: *"La IA o sistema de levantamiento de datos interpretó mal valores decimales de la Matriz de Costos."* Tarea delegada: *"Revisar errores de interpretación decimal en precios. (Evalualo vos)"*.
@@ -154,5 +154,7 @@ Citas textuales: *"Faltan accesorios Isoroof 100 mm — Agregar todos los acceso
 5. **D5 — Reglas técnicas ISOFRIG** (au, lmin/lmax, sistema de fijación) para la carga del 0001.
 
 ## Registro de versión
+- v0.4 (04/06/2026): WOLF-2026-0002 → **RESUELTO**. Matias autorizó el merge; PR #276 mergeado a `main` (admin override, merge commit conservando los 3 commits atómicos `9c1ccf0` + `e937381` + `baa90a9`) y deploy de producción verificado. Tabla índice y sección del ticket actualizadas. Sin reabrir alcance gateado (D2/D3/D5, GLDCAM-DC `_all`).
+- v0.3 (04/06/2026): WOLF-2026-0002 → **EN EVAL**. Patch aplicado en branch `wolf/0002-precios` (commit `9c1ccf0`): 11 entradas realineadas a la Matriz (6 anclajes + 5 goteros de cámara, ex-IVA, D1). Golden case **GC-0002** verde (`evals/golden-cases/GC-0002.test.mjs`): anclaje gris web ×100 = 215.00; gotero superior cámara 80 mm web = 37.07. Cierre del ticket pendiente del merge manual de Matias tras revisar el preview de Vercel.
 - v0.2 (03/06/2026): D1 resuelta por Matias (precios ex IVA; `venta`←local, `web`←web; default Local BMC). Feature "selector de listas Local/Web/ML" registrada. Alcance del patch 0002 ampliado a ambas columnas.
 - v0.1 (03/06/2026): triage inicial del reporte Ramiro 02/06. 4 tickets emitidos, todos CONFIRMADOS con triangulación repo+Matriz. Sin ledger previo (numeración inicia en 0001). Próximo paso: validar D1–D5 → goal de Claude Code para patch 0002 + cargas 0001/0003 + pipeline 0004 etapa 2, con golden cases en `calculadora-bmc-evals`.
