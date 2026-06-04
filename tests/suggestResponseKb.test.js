@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
+import { config as runtimeConfig } from "../server/config.js";
 
 let passed = 0;
 let failed = 0;
@@ -61,6 +62,46 @@ const FAKE_KEYS_CONFIG = {
   anthropicApiKey: "sk-ant-fake-test-key-not-real",
 };
 
+const PROVIDER_ENV_KEYS = [
+  "ANTHROPIC_API_KEY",
+  "OPENAI_API_KEY",
+  "GROK_API_KEY",
+  "GEMINI_API_KEY",
+  "AI_GATEWAY_API_KEY",
+  "VERCEL_OIDC_TOKEN",
+];
+
+const PROVIDER_CONFIG_KEYS = [
+  "anthropicApiKey",
+  "openaiApiKey",
+  "grokApiKey",
+  "geminiApiKey",
+  "aiGatewayApiKey",
+];
+
+async function withProviderConfig(envPatch, configPatch, fn) {
+  const originalEnv = Object.fromEntries(PROVIDER_ENV_KEYS.map((key) => [key, process.env[key]]));
+  const originalConfig = Object.fromEntries(PROVIDER_CONFIG_KEYS.map((key) => [key, runtimeConfig[key]]));
+
+  for (const key of PROVIDER_ENV_KEYS) delete process.env[key];
+  for (const [key, value] of Object.entries(envPatch || {})) {
+    if (value == null) delete process.env[key];
+    else process.env[key] = value;
+  }
+  for (const key of PROVIDER_CONFIG_KEYS) runtimeConfig[key] = "";
+  for (const [key, value] of Object.entries(configPatch || {})) runtimeConfig[key] = value || "";
+
+  try {
+    return await fn();
+  } finally {
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    for (const [key, value] of Object.entries(originalConfig)) runtimeConfig[key] = value;
+  }
+}
+
 async function run() {
   console.log("\n═══ /api/crm/suggest-response — KB delegation contract ═══\n");
 
@@ -109,38 +150,44 @@ async function run() {
     const original = process.env.SUGGEST_RESPONSE_USE_AGENT_CORE;
     process.env.SUGGEST_RESPONSE_USE_AGENT_CORE = "true";
     try {
-      // Re-import bmcDashboard to pick up the new env (top-level constant).
-      // Using import cache reset via dynamic import + cache busting query-style is
-      // not native ESM; instead, we trust the constant captured at module load.
-      // For this test we invoke a fresh module instance through path resolution.
-      const fresh = `../server/routes/bmcDashboard.js?t=${Date.now()}`;
-      const mod = await import(fresh);
-      const app = express();
-      app.use(express.json({ limit: "1mb" }));
-      app.use("/api", mod.default(FAKE_KEYS_CONFIG));
-      const server = await new Promise((resolve) => {
-        const s = app.listen(0, () => resolve(s));
-      });
-      const { port } = server.address();
-      const baseUrl = `http://127.0.0.1:${port}`;
-      try {
-        const { status, json } = await postJson(baseUrl, "/api/crm/suggest-response", {
-          consulta: "Plazo entrega?",
-          origen: "MLU123",
-          cliente: "TestCli",
-        });
-        assert(
-          "agentCore path with bogus key → 503 + details array",
-          status === 503 &&
-            json?.ok === false &&
-            Array.isArray(json?.details) &&
-            json.details.length > 0,
-          { status, hasDetails: Array.isArray(json?.details) },
-          { status: 503, hasDetails: true },
-        );
-      } finally {
-        server.close();
-      }
+      await withProviderConfig(
+        { ANTHROPIC_API_KEY: FAKE_KEYS_CONFIG.anthropicApiKey },
+        { anthropicApiKey: FAKE_KEYS_CONFIG.anthropicApiKey },
+        async () => {
+          // Re-import bmcDashboard to pick up the new env (top-level constant).
+          // Using import cache reset via dynamic import + cache busting query-style is
+          // not native ESM; instead, we trust the constant captured at module load.
+          // For this test we invoke a fresh module instance through path resolution.
+          const fresh = `../server/routes/bmcDashboard.js?t=${Date.now()}`;
+          const mod = await import(fresh);
+          const app = express();
+          app.use(express.json({ limit: "1mb" }));
+          app.use("/api", mod.default(FAKE_KEYS_CONFIG));
+          const server = await new Promise((resolve) => {
+            const s = app.listen(0, () => resolve(s));
+          });
+          const { port } = server.address();
+          const baseUrl = `http://127.0.0.1:${port}`;
+          try {
+            const { status, json } = await postJson(baseUrl, "/api/crm/suggest-response", {
+              consulta: "Plazo entrega?",
+              origen: "MLU123",
+              cliente: "TestCli",
+            });
+            assert(
+              "agentCore path with bogus key → 503 + details array",
+              status === 503 &&
+                json?.ok === false &&
+                Array.isArray(json?.details) &&
+                json.details.length > 0,
+              { status, hasDetails: Array.isArray(json?.details) },
+              { status: 503, hasDetails: true },
+            );
+          } finally {
+            server.close();
+          }
+        },
+      );
     } finally {
       if (original === undefined) delete process.env.SUGGEST_RESPONSE_USE_AGENT_CORE;
       else process.env.SUGGEST_RESPONSE_USE_AGENT_CORE = original;
@@ -154,34 +201,40 @@ async function run() {
     const original = process.env.SUGGEST_RESPONSE_USE_AGENT_CORE;
     process.env.SUGGEST_RESPONSE_USE_AGENT_CORE = "false";
     try {
-      const fresh = `../server/routes/bmcDashboard.js?t=${Date.now()}-2`;
-      const mod = await import(fresh);
-      const app = express();
-      app.use(express.json({ limit: "1mb" }));
-      app.use("/api", mod.default(FAKE_KEYS_CONFIG));
-      const server = await new Promise((resolve) => {
-        const s = app.listen(0, () => resolve(s));
-      });
-      const { port } = server.address();
-      const baseUrl = `http://127.0.0.1:${port}`;
-      try {
-        const { status, json } = await postJson(baseUrl, "/api/crm/suggest-response", {
-          consulta: "Plazo?",
-          origen: "MLU123",
-          cliente: "TestCli",
-        });
-        assert(
-          "legacy path (flag=false) → 503 + details array, no model field",
-          status === 503 &&
-            json?.ok === false &&
-            Array.isArray(json?.details) &&
-            !("model" in json),
-          { status, hasDetails: Array.isArray(json?.details), hasModel: "model" in (json || {}) },
-          { status: 503, hasDetails: true, hasModel: false },
-        );
-      } finally {
-        server.close();
-      }
+      await withProviderConfig(
+        { ANTHROPIC_API_KEY: FAKE_KEYS_CONFIG.anthropicApiKey },
+        { anthropicApiKey: FAKE_KEYS_CONFIG.anthropicApiKey },
+        async () => {
+          const fresh = `../server/routes/bmcDashboard.js?t=${Date.now()}-2`;
+          const mod = await import(fresh);
+          const app = express();
+          app.use(express.json({ limit: "1mb" }));
+          app.use("/api", mod.default(FAKE_KEYS_CONFIG));
+          const server = await new Promise((resolve) => {
+            const s = app.listen(0, () => resolve(s));
+          });
+          const { port } = server.address();
+          const baseUrl = `http://127.0.0.1:${port}`;
+          try {
+            const { status, json } = await postJson(baseUrl, "/api/crm/suggest-response", {
+              consulta: "Plazo?",
+              origen: "MLU123",
+              cliente: "TestCli",
+            });
+            assert(
+              "legacy path (flag=false) → 503 + details array, no model field",
+              status === 503 &&
+                json?.ok === false &&
+                Array.isArray(json?.details) &&
+                !("model" in json),
+              { status, hasDetails: Array.isArray(json?.details), hasModel: "model" in (json || {}) },
+              { status: 503, hasDetails: true, hasModel: false },
+            );
+          } finally {
+            server.close();
+          }
+        },
+      );
     } finally {
       if (original === undefined) delete process.env.SUGGEST_RESPONSE_USE_AGENT_CORE;
       else process.env.SUGGEST_RESPONSE_USE_AGENT_CORE = original;
