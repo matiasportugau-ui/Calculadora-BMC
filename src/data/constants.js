@@ -168,7 +168,7 @@ export const FIJACIONES = {
   taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 1.23, web: 1.353, costo: 0.82, unidad: "unid" },
   caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.51, web: 0.561, costo: 0.34, unidad: "unid" },
   /** Pared: kit anclaje a H° — alineado a fila “1 Anclaje de 100 mm” (planilla anclajes). */
-  anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 4.89, web: 5.96, costo: 0.90, unidad: "unid" },
+  anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 5.96, web: 8.00, costo: 1.10, unidad: "unid" },
   /** Perfilería techo y fijaciones Metálicas: T1 por tornillo (ex “×100” eliminado). */
   tornillo_t1:        { label: 'Tornillo T1 (perfilería)',  venta: 0.0492, web: 0.0574, costo: 0.0115, unidad: "unid" },
   tornillo_t2:        { label: 'Tornillo T2 (fachada)',     venta: 0.05, web: 0.05, costo: 0.035, unidad: "unid" },
@@ -191,11 +191,11 @@ export const FIJACIONES = {
   remache_pop:        { label: 'Remache POP 5/32 × 1/2',    venta: 0.0213, web: 0.0246, costo: 0.0139, unidad: "unid" },
   remache_pop_316:    { label: 'Remache POP 3/16 × 1/2',    venta: 0.3443, web: 0.4180, costo: 0.2295, unidad: "unid" },
   // ── Anclajes (catálogo planilla — principalmente Presupuesto libre; anclaje_h arriba para cálculo pared) ──
-  anclaje_isoroof_terracota: { label: 'Anclaje Isoroof TERRACOTAS (torn. punta mecha + arand. trap.)', venta: 1.31, web: 1.60, costo: 0.61, unidad: "unid" },
-  anclaje_isoroof_gris:      { label: 'Anclaje Isoroof GRISES (torn. punta mecha + arand. trap.)', venta: 1.31, web: 1.60, costo: 0.44, unidad: "unid" },
-  anclaje_chapa_bc18:        { label: 'Pac. anclaje chapas BC-18 (torn. mecha + arand. Vulca + caballete)', venta: 0.98, web: 1.20, costo: 0.37, unidad: "unid" },
-  anclaje_chapa_bc35:        { label: 'Pac. anclaje chapas BC-35 (torn. mecha + arand. Vulca + caballete)', venta: 0.98, web: 1.20, costo: 0.40, unidad: "unid" },
-  anclaje_kit_u_platea:     { label: 'Kin anclaje U-Platea (taco expans. + arand. + tuerca + varilla 1/8 6 mm)', venta: 0.89, web: 1.09, costo: 0.25, unidad: "unid" },
+  anclaje_isoroof_terracota: { label: 'Anclaje Isoroof TERRACOTAS (torn. punta mecha + arand. trap.)', venta: 1.60, web: 2.15, costo: 0.74, unidad: "unid" },
+  anclaje_isoroof_gris:      { label: 'Anclaje Isoroof GRISES (torn. punta mecha + arand. trap.)', venta: 1.60, web: 2.15, costo: 0.54, unidad: "unid" },
+  anclaje_chapa_bc18:        { label: 'Pac. anclaje chapas BC-18 (torn. mecha + arand. Vulca + caballete)', venta: 1.20, web: 1.61, costo: 0.45, unidad: "unid" },
+  anclaje_chapa_bc35:        { label: 'Pac. anclaje chapas BC-35 (torn. mecha + arand. Vulca + caballete)', venta: 1.20, web: 1.61, costo: 0.48, unidad: "unid" },
+  anclaje_kit_u_platea:     { label: 'Kin anclaje U-Platea (taco expans. + arand. + tuerca + varilla 1/8 6 mm)', venta: 1.09, web: 1.46, costo: 0.30, unidad: "unid" },
   // ── Tornillos hex./exagonales (presupuesto libre; c/IVA ÷1,22) ──
   tornillo_exagonal_12_34:     { label: 'Tornillo exagonal 12 × 3/4"', venta: 0.082, web: 0.098, costo: 0.041, unidad: "unid" },
   tornillo_exagonal_12_1_pm:    { label: 'Tornillo exagonal 12 × 1" punta mecha', venta: 0.207, web: 0.254, costo: 0.052, unidad: "unid" },
@@ -286,8 +286,8 @@ export const PERFIL_TECHO = {
   },
   gotero_lateral_camara: {
     ISOROOF: {
-      50: { sku: "GLDCAM50", venta: 22.32, web: 27.23, costo: 20.09, largo: 3.0 },
-      80: { sku: "GLDCAM80", venta: 25.11, web: 30.63, costo: 22.60, largo: 3.0 },
+      50: { sku: "GLDCAM50", venta: 23.68, web: 27.62, costo: 19.73, largo: 3.0 },
+      80: { sku: "GLDCAM80", venta: 26.64, web: 31.08, costo: 22.20, largo: 3.0 },
     },
     ISODEC:     { _all: { sku: "GLDCAM-DC", venta: 22.65, web: 27.63, costo: 20.39, largo: 3.0 } },
     ISODEC_PIR: { _all: { sku: "GLDCAM-DC", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
@@ -299,9 +299,9 @@ export const PERFIL_TECHO = {
       80: { sku: "GFSUP80", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
     },
     ISODEC_PIR: {
-      30: { sku: "GSDECAM30", venta: 31.66, web: 38.62, costo: 26.38, largo: 3.03 },
-      50: { sku: "GSDECAM50", venta: 27.32, web: 33.34, costo: 22.77, largo: 3.03 },
-      80: { sku: "GSDECAM80", venta: 29.94, web: 34.93, costo: 26.95, largo: 3.03 },
+      30: { sku: "GSDECAM30", venta: 31.66, web: 36.93, costo: 26.38, largo: 3.03 },
+      50: { sku: "GSDECAM50", venta: 28.99, web: 33.82, costo: 24.16, largo: 3.03 },
+      80: { sku: "GSDECAM80", venta: 31.78, web: 37.07, costo: 26.48, largo: 3.03 },
     },
   },
   babeta_adosar: {
