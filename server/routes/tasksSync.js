@@ -24,11 +24,37 @@ const router = express.Router();
 const TASKS_LISTS_URL = "https://www.googleapis.com/tasks/v1/users/@me/lists";
 const TASKS_BY_LIST_URL = (listId) =>
   `https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(listId)}/tasks`;
+// Phase D: paired Calendar event lookup (primary calendar) for drift detection.
+const CALENDAR_EVENT_URL = (eventId) =>
+  `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`;
 const EPOCH_ISO = "1970-01-01T00:00:00.000Z";
 
 function maskUserId(id) {
   if (!id || typeof id !== "string") return "***";
   return "***" + id.slice(-4);
+}
+
+// Compare BMC's stored time/all-day/recurrence against the paired Calendar
+// event. Returns a drift reason string or null. Minimal + conservative (avoids
+// false positives): time compared at HH:MM, recurrence at the first RRULE line.
+// `ev` null means the event was not found (404/410) → 'event_missing'.
+function detectCalendarDrift(bmc, ev) {
+  const bmcAllDay = bmc.is_all_day !== false;
+  const bmcTime = bmc.due_time ? String(bmc.due_time).slice(0, 5) : null;
+  const bmcRecur = bmc.recurrence_rule
+    ? String(bmc.recurrence_rule).toUpperCase().trim()
+    : null;
+  if (!ev) return "event_missing";
+  const evAllDay = !!ev.start?.date;
+  const evTime = ev.start?.dateTime ? ev.start.dateTime.slice(11, 16) : null;
+  const evRecur =
+    Array.isArray(ev.recurrence) && ev.recurrence.length
+      ? String(ev.recurrence[0]).toUpperCase().trim()
+      : null;
+  if (bmcAllDay !== evAllDay) return "all_day_mismatch";
+  if (!bmcAllDay && bmcTime && evTime && bmcTime !== evTime) return "time_mismatch";
+  if ((bmcRecur || null) !== (evRecur || null)) return "recurrence_mismatch";
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -173,6 +199,7 @@ async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
 
   let itemsSynced = 0;
   let conflicts = 0;
+  let calendarEventsTouched = 0;
 
   for (const gl of googleLists) {
     if (!gl?.id || !gl?.title) continue;
@@ -310,7 +337,11 @@ async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
         }
 
         // Upsert via the partial-unique index (list_id, google_id) WHERE NOT is_deleted.
-        await pool.query(
+        // Phase D columns (due_time/is_all_day/recurrence_rule/calendar_event_id)
+        // are BMC-owned — the Google Tasks payload can't carry them, so the
+        // DO UPDATE deliberately leaves them untouched. RETURNING surfaces the
+        // current values for the Calendar drift check below.
+        const upserted = await pool.query(
           `INSERT INTO tasks.tasks
              (list_id, user_id, google_id, title, notes, due, status, is_deleted, updated_at, synced_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
@@ -322,7 +353,8 @@ async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
              status = EXCLUDED.status,
              is_deleted = EXCLUDED.is_deleted,
              updated_at = now(),
-             synced_at = now()`,
+             synced_at = now()
+           RETURNING id, calendar_event_id, due_time, is_all_day, recurrence_rule`,
           [
             internalListId,
             userId,
@@ -335,13 +367,129 @@ async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
           ],
         );
         itemsSynced += 1;
+
+        // Phase D — reconcile the paired Calendar event (read-only drift detect).
+        // BMC is system-of-record: we never overwrite BMC from Calendar here —
+        // a divergence is recorded as a 'calendar_drift' conflict for review
+        // (mirrors the soft_delete_mismatch pattern; no auto-resolver this phase).
+        const bmcRow = upserted.rows[0];
+        if (bmcRow?.calendar_event_id && !googleDeleted) {
+          try {
+            const { res: evRes } = await fetchWithRefresh(
+              CALENDAR_EVENT_URL(bmcRow.calendar_event_id),
+            );
+            let ev = null;
+            let examined = false;
+            if (evRes.ok) {
+              ev = await evRes.json().catch(() => null);
+              examined = true;
+              calendarEventsTouched += 1;
+            } else if (evRes.status === 404 || evRes.status === 410) {
+              examined = true; // event gone → drift 'event_missing'
+            } else {
+              // Transient/permission error — log breadcrumb, skip drift this cycle.
+              await pool
+                .query(
+                  `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details, http_status_code)
+                   VALUES ($1, $2, 'sync_failed', $3::jsonb, $4)`,
+                  [
+                    userId,
+                    cycleId,
+                    JSON.stringify({
+                      reason: "calendar_fetch_failed",
+                      task_id: bmcRow.id,
+                    }),
+                    evRes.status,
+                  ],
+                )
+                .catch(() => {});
+            }
+
+            if (examined) {
+              const reason = detectCalendarDrift(bmcRow, ev);
+              if (reason) {
+                // De-dupe: only one unresolved calendar_drift per task, so the
+                // 60s cron doesn't spam an identical conflict every cycle.
+                const existing = await pool.query(
+                  `SELECT 1 FROM tasks.sync_conflicts
+                    WHERE task_id = $1 AND conflict_type = 'calendar_drift'
+                      AND resolved_at IS NULL LIMIT 1`,
+                  [bmcRow.id],
+                );
+                if (!existing.rows.length) {
+                  await pool
+                    .query(
+                      `INSERT INTO tasks.sync_conflicts
+                         (task_id, list_id, user_id, conflict_type, hub_version, google_version)
+                       VALUES ($1, $2, $3, 'calendar_drift', $4::jsonb, $5::jsonb)`,
+                      [
+                        bmcRow.id,
+                        internalListId,
+                        userId,
+                        JSON.stringify({
+                          due_time: bmcRow.due_time,
+                          is_all_day: bmcRow.is_all_day,
+                          recurrence_rule: bmcRow.recurrence_rule,
+                        }),
+                        JSON.stringify({
+                          reason,
+                          start: ev?.start || null,
+                          recurrence: ev?.recurrence || null,
+                          event_id: bmcRow.calendar_event_id,
+                        }),
+                      ],
+                    )
+                    .catch(() => {});
+                  await pool
+                    .query(
+                      `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details)
+                       VALUES ($1, $2, 'conflict_detected', $3::jsonb)`,
+                      [
+                        userId,
+                        cycleId,
+                        JSON.stringify({
+                          task_id: bmcRow.id,
+                          conflict_type: "calendar_drift",
+                          reason,
+                        }),
+                      ],
+                    )
+                    .catch(() => {});
+                  conflicts += 1;
+                }
+              }
+            }
+          } catch (err) {
+            // Never let a Calendar hiccup abort the whole user's task sync.
+            await pool
+              .query(
+                `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details)
+                 VALUES ($1, $2, 'sync_failed', $3::jsonb)`,
+                [
+                  userId,
+                  cycleId,
+                  JSON.stringify({
+                    reason: "calendar_drift_check_failed",
+                    task_id: bmcRow?.id,
+                    error: String(err?.message || err).slice(0, 300),
+                  }),
+                ],
+              )
+              .catch(() => {});
+          }
+        }
       }
 
       pageToken = tasksJson.nextPageToken || null;
     } while (pageToken);
   }
 
-  return { itemsSynced, conflicts, listsTouched: googleLists.length };
+  return {
+    itemsSynced,
+    conflicts,
+    listsTouched: googleLists.length,
+    calendarEventsTouched,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -421,6 +569,7 @@ router.post("/google-tasks/pull", async (req, res) => {
                 items_synced: result.itemsSynced,
                 conflicts: result.conflicts,
                 lists_touched: result.listsTouched,
+                calendar_events_touched: result.calendarEventsTouched || 0,
               }),
             ],
           )
