@@ -18,10 +18,26 @@ import {
   useCreateTaskList,
   useDeleteTaskList,
   useCreateTask,
+  useCreateTaskInList,
   useUpdateTask,
   useDeleteTask,
+  useTasksScopeProbe,
 } from "./hooks/useTasks.js";
 import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
+import TaskCreateModal from "./TaskCreateModal.jsx";
+
+// Kick off (or re-run) the Google Tasks OAuth consent. Shared by the initial
+// connect CTA and the Phase D "reconnect for Calendar scope" path.
+async function startGoogleTasksOAuth(accessToken) {
+  const res = await fetch("/auth/tasks/init", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.url) {
+    throw new Error(data?.message || data?.error || `init_failed (${res.status})`);
+  }
+  window.location.href = data.url;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Empty / error / unavailable states (reused across panels)
@@ -39,16 +55,7 @@ function EmptyConnectCTA({ accessToken }) {
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch("/auth/tasks/init", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.url) {
-        setErr(data?.message || data?.error || `init_failed (${res.status})`);
-        setBusy(false);
-        return;
-      }
-      window.location.href = data.url;
+      await startGoogleTasksOAuth(accessToken);
     } catch (e) {
       setErr(e?.message || "network_error");
       setBusy(false);
@@ -340,6 +347,17 @@ function TaskRow({ task, listId }) {
       {task.due ? (
         <span style={{ ...muted, fontSize: "0.75rem", marginLeft: 8 }}>
           · vence {task.due.slice(0, 10)}
+          {!task.is_all_day && task.due_time
+            ? ` ${String(task.due_time).slice(0, 5)}`
+            : ""}
+        </span>
+      ) : null}
+      {task.recurrence_rule ? (
+        <span
+          style={{ ...muted, fontSize: "0.75rem", marginLeft: 6 }}
+          title={task.recurrence_rule}
+        >
+          🔁
         </span>
       ) : null}
       <button
@@ -365,16 +383,70 @@ function TaskRow({ task, listId }) {
 
 export default function TasksModule() {
   const [selectedListId, setSelectedListId] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalErr, setModalErr] = useState(null);
   const { data, isLoading } = useTaskLists();
   const { accessToken } = useBmcAuth();
-  const hasLists = !isLoading && (data?.lists?.length || 0) > 0;
+  const scopeProbe = useTasksScopeProbe();
+  const createInList = useCreateTaskInList();
+  const lists = data?.lists || [];
+  const hasLists = !isLoading && lists.length > 0;
+
+  // Optimistic default: assume Calendar is available unless the probe explicitly
+  // says the connected grant lacks the calendar.events scope.
+  const calendarAvailable =
+    scopeProbe.data?.connected === true ? !!scopeProbe.data.hasCalendar : true;
+
+  const handleReconnect = () => {
+    startGoogleTasksOAuth(accessToken).catch((e) =>
+      setModalErr(e?.message || "No se pudo iniciar la reconexión."),
+    );
+  };
+
+  const handleModalSubmit = (payload) => {
+    setModalErr(null);
+    createInList.mutate(payload, {
+      onSuccess: () => {
+        setModalOpen(false);
+        setSelectedListId(payload.listId);
+      },
+      onError: (e) => setModalErr(e?.message || "No se pudo crear la tarea."),
+    });
+  };
 
   return (
     <div style={{ padding: "1.5rem", maxWidth: 1100, margin: "0 auto" }}>
-      <h1 style={{ marginTop: 0, marginBottom: "0.5rem" }}>Tareas</h1>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <h1 style={{ marginTop: 0, marginBottom: "0.5rem" }}>Tareas</h1>
+        {hasLists ? (
+          <button
+            type="button"
+            onClick={() => {
+              setModalErr(null);
+              setModalOpen(true);
+            }}
+            style={{ ...primaryBtn, marginTop: 0, padding: "0.5rem 1rem", border: "none", cursor: "pointer" }}
+          >
+            + Nueva tarea
+          </button>
+        ) : null}
+      </div>
       <p style={muted}>
         Espejo bidireccional de tus listas y tareas de Google Tasks.
       </p>
+
+      {modalOpen ? (
+        <TaskCreateModal
+          lists={lists}
+          defaultListId={selectedListId}
+          calendarAvailable={calendarAvailable}
+          onReconnect={handleReconnect}
+          onClose={() => setModalOpen(false)}
+          onSubmit={handleModalSubmit}
+          submitting={createInList.isPending}
+          error={modalErr}
+        />
+      ) : null}
 
       {!isLoading && !hasLists ? (
         <EmptyConnectCTA accessToken={accessToken} />
