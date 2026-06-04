@@ -1246,6 +1246,133 @@ const MATRIZ_TAB_COLUMNS = {
   // "R y C Tornillos": { sku: COL("D"), ... },
 };
 
+const MATRIZ_CSV_HEADER = [
+  "sku",                    // ← clave estable para Productos Maestro (col D original de MATRIZ)
+  "path",
+  "descripcion",
+  "categoria",
+  "costo",
+  "venta_local",
+  "venta_local_iva_inc",
+  "venta_web",
+  "venta_web_iva_inc",
+  "unidad",
+  "tab",
+];
+
+function parseMatrizSheetNumber(v) {
+  if (v == null || v === "") return null;
+  let s = String(v).trim().replace(/\s/g, "");
+  if (!s) return null;
+  // Support both 1.025,50 and 1025.50 without multiplying dot-decimal values by 100.
+  if (s.includes(",") && s.includes(".")) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (s.includes(",")) {
+    s = s.replace(",", ".");
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function serializeMatrizCsvCell(s) {
+  const str = String(s);
+  return str.includes(",") || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function matrizCategoryForPath(calcPath) {
+  return calcPath.startsWith("PANELS_TECHO") ? "Paneles Techo"
+    : calcPath.startsWith("PANELS_PARED") ? "Paneles Pared"
+    : calcPath.startsWith("PERFIL_") ? "Perfilería Techo"
+    : calcPath.startsWith("SELLADORES") ? "Selladores"
+    : calcPath.startsWith("FIJACIONES") ? "Fijaciones"
+    : calcPath.startsWith("SERVICIOS") ? "Servicios"
+    : "Otros";
+}
+
+function buildMatrizCsvRowFromSheetRow(row, cols, tabName, getPathForMatrizSku) {
+  const skuRaw = row[cols.sku];
+  const calcPath = getPathForMatrizSku(skuRaw);
+  if (!calcPath) return null;
+
+  const descripcion = row[cols.descripcion] || "";
+  const costoRaw = parseMatrizSheetNumber(row[cols.costo]);
+  const ventaLocalRaw = parseMatrizSheetNumber(row[cols.ventaLocal]);
+  const ventaIvaIncRaw = parseMatrizSheetNumber(row[cols.ventaIvaInc]);
+  const webRaw = parseMatrizSheetNumber(row[cols.web]);
+  const webIvaIncRaw =
+    cols.webIvaInc != null ? parseMatrizSheetNumber(row[cols.webIvaInc]) : null;
+
+  // F, L, M, T, U: copiar número de planilla sin transformar.
+  // Regla confirmada: T = venta web ex IVA.
+  // La UI calcula Web c/IVA desde `venta_web`; si U existe, se expone como referencia.
+  const costo = costoRaw != null ? +costoRaw.toFixed(2) : "";
+  const venta = ventaLocalRaw != null ? +ventaLocalRaw.toFixed(2) : "";
+  const ventaInc = ventaIvaIncRaw != null ? +ventaIvaIncRaw.toFixed(2) : "";
+  const ventaWeb = webRaw != null ? +webRaw.toFixed(2) : "";
+  const ventaWebIvaInc =
+    webIvaIncRaw != null ? +webIvaIncRaw.toFixed(2) : "";
+
+  const categoria = matrizCategoryForPath(calcPath);
+  const unidad = calcPath.includes("esp.") ? "m²" : "unid";
+  const skuForCsv = serializeMatrizCsvCell(skuRaw || "");
+
+  return [skuForCsv, calcPath, serializeMatrizCsvCell(descripcion), categoria, costo, venta, ventaInc, ventaWeb, ventaWebIvaInc, unidad, tabName].join(",");
+}
+
+function normalizeMatrizPricingOverrides(overrides) {
+  const byPath = new Map();
+  for (const [fullKey, val] of Object.entries(overrides || {})) {
+    const m = String(fullKey).match(/^(.+)\.(costo|venta|web|webIvaInc)$/);
+    if (!m) continue;
+    if (val === null || val === "") continue;
+    const num = typeof val === "number" ? val : parseFloat(String(val).replace(",", "."));
+    if (Number.isNaN(num) || num < 0) continue;
+    const basePath = m[1];
+    const field = m[2];
+    if (!byPath.has(basePath)) byPath.set(basePath, {});
+    byPath.get(basePath)[field] = +num.toFixed(2);
+  }
+  return byPath;
+}
+
+function planMatrizPricingOverridesForRows(tabName, colSpec, dataRows, byPath, getPathForMatrizSku) {
+  const planned = [];
+  const matchedPaths = new Set();
+
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataRows[i];
+    const skuRaw = row[colSpec.sku];
+    const calcPath = getPathForMatrizSku(skuRaw);
+    if (!calcPath || !byPath.has(calcPath)) continue;
+    matchedPaths.add(calcPath);
+    const changes = byPath.get(calcPath);
+    const sheetRowNum = i + 2;
+    const cells = {};
+    if (changes.costo != null) {
+      cells[colIndexToLetter(colSpec.costo)] = +(+changes.costo).toFixed(2);
+    }
+    if (changes.venta != null) {
+      cells[colIndexToLetter(colSpec.ventaLocal)] = +(+changes.venta).toFixed(2);
+    }
+    if (changes.web != null) {
+      cells[colIndexToLetter(colSpec.web)] = +(+changes.web).toFixed(2);
+    }
+    if (changes.webIvaInc != null && colSpec.webIvaInc != null) {
+      cells[colIndexToLetter(colSpec.webIvaInc)] = +(+changes.webIvaInc).toFixed(2);
+    }
+    if (Object.keys(cells).length === 0) continue;
+    planned.push({
+      tab: tabName,
+      row: sheetRowNum,
+      sku: String(skuRaw || "").trim(),
+      path: calcPath,
+      cells,
+    });
+  }
+
+  return { planned, matchedPaths };
+}
+
 async function buildPlanillaDesdeMatriz(matrizSheetId) {
   const { getPathForMatrizSku } = await import("../../src/data/matrizPreciosMapping.js");
   const authClient = await getGoogleAuthClient(SCOPE_READ);
@@ -1257,39 +1384,8 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
   }
 
   const csvRows = [];
-  const header = [
-    "sku",                    // ← clave estable para Productos Maestro (col D original de MATRIZ)
-    "path",
-    "descripcion",
-    "categoria",
-    "costo",
-    "venta_local",
-    "venta_local_iva_inc",
-    "venta_web",
-    "venta_web_iva_inc",
-    "unidad",
-    "tab",
-  ];
-  csvRows.push(header.join(","));
+  csvRows.push(MATRIZ_CSV_HEADER.join(","));
   let count = 0;
-
-  const parseNum = (v) => {
-    if (v == null || v === "") return null;
-    let s = String(v).trim().replace(/\s/g, "");
-    if (!s) return null;
-    // Support both 1.025,50 and 1025.50 without multiplying dot-decimal values by 100.
-    if (s.includes(",") && s.includes(".")) {
-      s = s.replace(/\./g, "").replace(",", ".");
-    } else if (s.includes(",")) {
-      s = s.replace(",", ".");
-    }
-    const n = parseFloat(s);
-    return isNaN(n) ? null : n;
-  };
-  const esc = (s) => {
-    const str = String(s);
-    return str.includes(",") || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
-  };
 
   for (const tabName of approvedTabs) {
     const cols = MATRIZ_TAB_COLUMNS[tabName];
@@ -1307,41 +1403,9 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 
     const dataRows = allRows.slice(1);
     for (const row of dataRows) {
-      const skuRaw = row[cols.sku];
-      const path = getPathForMatrizSku(skuRaw);
-      if (!path) continue;
-
-      const descripcion = row[cols.descripcion] || "";
-      const costoRaw = parseNum(row[cols.costo]);
-      const ventaLocalRaw = parseNum(row[cols.ventaLocal]);
-      const ventaIvaIncRaw = parseNum(row[cols.ventaIvaInc]);
-      const webRaw = parseNum(row[cols.web]);
-      const webIvaIncRaw =
-        cols.webIvaInc != null ? parseNum(row[cols.webIvaInc]) : null;
-
-      // F, L, M, T, U: copiar número de planilla sin transformar.
-      // Regla confirmada: T = venta web ex IVA.
-      // La UI calcula Web c/IVA desde `venta_web`; si U existe, se expone como referencia.
-      const costo = costoRaw != null ? +costoRaw.toFixed(2) : "";
-      const venta = ventaLocalRaw != null ? +ventaLocalRaw.toFixed(2) : "";
-      const ventaInc = ventaIvaIncRaw != null ? +ventaIvaIncRaw.toFixed(2) : "";
-      const ventaWeb = webRaw != null ? +webRaw.toFixed(2) : "";
-      const ventaWebIvaInc =
-        webIvaIncRaw != null ? +webIvaIncRaw.toFixed(2) : "";
-
-      const categoria = path.startsWith("PANELS_TECHO") ? "Paneles Techo"
-        : path.startsWith("PANELS_PARED") ? "Paneles Pared"
-        : path.startsWith("PERFIL_") ? "Perfilería Techo"
-        : path.startsWith("SELLADORES") ? "Selladores"
-        : path.startsWith("FIJACIONES") ? "Fijaciones"
-        : path.startsWith("SERVICIOS") ? "Servicios"
-        : "Otros";
-      const unidad = path.includes("esp.") ? "m²" : "unid";
-
-      const skuForCsv = esc(skuRaw || "");
-      csvRows.push(
-        [skuForCsv, path, esc(descripcion), categoria, costo, venta, ventaInc, ventaWeb, ventaWebIvaInc, unidad, tabName].join(","),
-      );
+      const csvRow = buildMatrizCsvRowFromSheetRow(row, cols, tabName, getPathForMatrizSku);
+      if (!csvRow) continue;
+      csvRows.push(csvRow);
       count++;
     }
   }
@@ -1363,18 +1427,7 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
   const resolved = path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath);
   if (!fs.existsSync(resolved)) throw new Error("Credenciales Google no encontradas");
 
-  const byPath = new Map();
-  for (const [fullKey, val] of Object.entries(overrides || {})) {
-    const m = String(fullKey).match(/^(.+)\.(costo|venta|web|webIvaInc)$/);
-    if (!m) continue;
-    if (val === null || val === "") continue;
-    const num = typeof val === "number" ? val : parseFloat(String(val).replace(",", "."));
-    if (Number.isNaN(num) || num < 0) continue;
-    const basePath = m[1];
-    const field = m[2];
-    if (!byPath.has(basePath)) byPath.set(basePath, {});
-    byPath.get(basePath)[field] = +num.toFixed(2);
-  }
+  const byPath = normalizeMatrizPricingOverrides(overrides);
 
   if (byPath.size === 0) {
     return {
@@ -1410,37 +1463,9 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
     }
     if (allRows.length < 2) continue;
     const dataRows = allRows.slice(1);
-
-    for (let i = 0; i < dataRows.length; i++) {
-      const row = dataRows[i];
-      const skuRaw = row[colSpec.sku];
-      const calcPath = getPathForMatrizSku(skuRaw);
-      if (!calcPath || !byPath.has(calcPath)) continue;
-      matchedPaths.add(calcPath);
-      const changes = byPath.get(calcPath);
-      const sheetRowNum = i + 2;
-      const cells = {};
-      if (changes.costo != null) {
-        cells[colIndexToLetter(colSpec.costo)] = +(+changes.costo).toFixed(2);
-      }
-      if (changes.venta != null) {
-        cells[colIndexToLetter(colSpec.ventaLocal)] = +(+changes.venta).toFixed(2);
-      }
-      if (changes.web != null) {
-        cells[colIndexToLetter(colSpec.web)] = +(+changes.web).toFixed(2);
-      }
-      if (changes.webIvaInc != null && colSpec.webIvaInc != null) {
-        cells[colIndexToLetter(colSpec.webIvaInc)] = +(+changes.webIvaInc).toFixed(2);
-      }
-      if (Object.keys(cells).length === 0) continue;
-      planned.push({
-        tab: tabName,
-        row: sheetRowNum,
-        sku: String(skuRaw || "").trim(),
-        path: calcPath,
-        cells,
-      });
-    }
+    const tabPlan = planMatrizPricingOverridesForRows(tabName, colSpec, dataRows, byPath, getPathForMatrizSku);
+    planned.push(...tabPlan.planned);
+    for (const matchedPath of tabPlan.matchedPaths) matchedPaths.add(matchedPath);
   }
 
   const skippedPaths = [...byPath.keys()].filter((p) => !matchedPaths.has(p));
@@ -1494,6 +1519,15 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
 
 // Export the core writers so Productos Maestro (and future surfaces) can reuse them
 export { pushMatrizPricingOverrides, handleUpdateStock };
+
+export const __test__ = {
+  MATRIZ_TAB_COLUMNS,
+  MATRIZ_CSV_HEADER,
+  parseMatrizSheetNumber,
+  buildMatrizCsvRowFromSheetRow,
+  normalizeMatrizPricingOverrides,
+  planMatrizPricingOverridesForRows,
+};
 
 // ─── Router ───────────────────────────────────────────────────────────────
 
