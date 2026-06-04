@@ -34,6 +34,15 @@ const REDIRECT_URI =
   process.env.GOOGLE_TASKS_REDIRECT_URI ||
   `${(config.frontendBaseUrl || "https://calculadora-bmc.vercel.app").replace(/\/$/, "")}/auth/tasks/callback`;
 const TASKS_SCOPE = "https://www.googleapis.com/auth/tasks";
+// Phase D: time-of-day + recurrence are backed by a paired Google Calendar
+// event, so the consent now also requests calendar.events. Space-separated per
+// OAuth 2.0. NOTE: existing users connected before Phase D have tokens scoped
+// to TASKS_SCOPE only — Calendar API calls will 403 until they re-consent.
+// GET /auth/tasks/scope-probe lets the SPA detect this and surface a reconnect
+// CTA. The operator must also add this scope to the GCP OAuth client + enable
+// the Google Calendar API (see docs/hub-tasks-module/OPERATOR-CHECKLIST.md).
+const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+const REQUESTED_SCOPES = `${TASKS_SCOPE} ${CALENDAR_SCOPE}`;
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
@@ -87,7 +96,7 @@ router.get("/init", requireUser(), async (req, res) => {
     client_id: config.googleTasksClientId,
     redirect_uri: REDIRECT_URI,
     response_type: "code",
-    scope: TASKS_SCOPE,
+    scope: REQUESTED_SCOPES,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
     state: stateNonce,
@@ -259,6 +268,51 @@ router.get("/callback", async (req, res) => {
 
   const base = (config.frontendBaseUrl || "").replace(/\/$/, "");
   return res.redirect(`${base}/hub/tareas?connected=1`);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /scope-probe — Bearer JWT; reports whether the user's stored token grant
+// includes the Phase D calendar.events scope. Pure DB read of the `scope`
+// column persisted at /callback — NO Google round-trip. The SPA uses this to
+// decide whether to show a "Reconnect to enable time / repeat" CTA for users
+// who connected before Phase D added the Calendar scope.
+//
+// Response: { ok, connected, hasTasks, hasCalendar }
+//   connected = false → never connected (no active token)
+//   hasCalendar = false while connected → needs re-consent
+// ─────────────────────────────────────────────────────────────────────────────
+router.get("/scope-probe", requireUser(), async (req, res) => {
+  const pool = getTasksPool(config.databaseUrl);
+  if (!pool) {
+    return res.status(503).json({ ok: false, error: "db_not_configured" });
+  }
+  try {
+    const r = await pool.query(
+      `SELECT scope
+         FROM tasks.oauth_tokens
+        WHERE user_id = $1 AND revoked_at IS NULL`,
+      [req.user.id],
+    );
+    if (!r.rows.length) {
+      return res.json({
+        ok: true,
+        connected: false,
+        hasTasks: false,
+        hasCalendar: false,
+      });
+    }
+    const scope = r.rows[0].scope || "";
+    return res.json({
+      ok: true,
+      connected: true,
+      hasTasks: scope.includes(TASKS_SCOPE),
+      hasCalendar: scope.includes(CALENDAR_SCOPE),
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ ok: false, error: "scope_probe_failed", message: err.message });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -298,6 +298,69 @@ gcloud scheduler jobs delete tasks-sync-60s --project chatbot-bmc-live --locatio
 
 ---
 
+## Phase D Supplement — Google Calendar scope (time / all-day / repeat)
+
+Phase D adds time-of-day, all-day, and recurrence to tasks. The Google Tasks
+REST API can't store those, so BMC mirrors them into a paired **Google Calendar
+event**. This requires the `calendar.events` scope on the existing OAuth client
+plus the Calendar API enabled in the project.
+
+> ⚠️ **Re-consent required.** Adding a scope does **not** retroactively grant it.
+> Every already-connected user must re-run the consent flow (the Tareas UI shows
+> a "Reconectar" CTA when `GET /auth/tasks/scope-probe` reports
+> `hasCalendar: false`). Until they re-consent, Calendar API calls return **403**
+> and tasks save **without** a paired event (BMC stays system-of-record; the
+> task itself is never lost). No code change is needed once they reconnect.
+
+### D.1 — Enable the Google Calendar API
+
+```bash
+gcloud services enable calendar-json.googleapis.com --project=chatbot-bmc-live
+
+# Verify
+gcloud services list --enabled --project=chatbot-bmc-live | grep calendar
+# Should return: calendar-json.googleapis.com
+```
+
+### D.2 — Add the scope to the OAuth consent screen
+
+In **GCP Console → APIs & Services → OAuth consent screen → Edit app → Scopes**,
+add:
+
+```
+https://www.googleapis.com/auth/calendar.events
+```
+
+The OAuth **client** itself (ID `642127786762-…`) does not list scopes per-client
+— scopes are requested at authorize time (already done in
+`server/routes/tasksOAuth.js`, `REQUESTED_SCOPES`) and must be present on the
+consent screen's allowed-scopes list. No new client or redirect URI is needed.
+
+### D.3 — (Optional) config flags
+
+The backend defaults are fine for production; override only if needed:
+
+| Env var | Default | Purpose |
+|---|---|---|
+| `GOOGLE_CALENDAR_ENABLED` | `true` | Master kill-switch for the Calendar pairing |
+| `GOOGLE_CALENDAR_TIME_ZONE` | `America/Montevideo` | IANA TZ for timed events |
+| `GOOGLE_CALENDAR_DEFAULT_DURATION_MIN` | `30` | Event length for a timed task |
+
+### D.4 — Verify
+
+```bash
+# With a fresh JWT, the consent URL must include BOTH scopes:
+curl -s -H "Authorization: Bearer $JWT" https://<host>/auth/tasks/init \
+  | grep -o 'scope=[^&]*'
+# Should contain auth%2Ftasks AND auth%2Fcalendar.events
+
+# After a user re-consents, the probe flips to hasCalendar:true:
+curl -s -H "Authorization: Bearer $JWT" https://<host>/auth/tasks/scope-probe
+# { "ok": true, "connected": true, "hasTasks": true, "hasCalendar": true }
+```
+
+---
+
 ## What Happens Next
 
 Once operator completes this checklist and all verifications pass:
