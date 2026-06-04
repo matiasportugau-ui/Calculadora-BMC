@@ -253,7 +253,7 @@
     "playwright": "^1.59.1",
     "vite": "^7.0.0",
     "vite-plugin-pwa": "^1.2.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "keywords": [
     "calculadora",
