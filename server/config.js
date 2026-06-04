@@ -145,6 +145,18 @@ export const config = {
   supabasePgpEncryptKey: process.env.SUPABASE_PGP_ENCRYPT_KEY || "",
   /** Static HMAC secret sent as X-Sync-Signature header by Cloud Scheduler */
   syncHmacSecret: process.env.SYNC_HMAC_SECRET || "",
+  /**
+   * Tareas Phase D — Google Calendar pairing for time-of-day + recurrence.
+   * Reuses the Google Tasks OAuth client (with the added calendar.events scope).
+   *   googleCalendarEnabled        — master kill-switch; off ⇒ tasks never pair a Calendar event.
+   *   googleCalendarTimeZone       — IANA TZ for timed (dateTime) events.
+   *   googleCalendarDefaultDurationMin — event length when a task has a time but no explicit end.
+   */
+  googleCalendarEnabled: bool(process.env.GOOGLE_CALENDAR_ENABLED, true),
+  googleCalendarTimeZone: process.env.GOOGLE_CALENDAR_TIME_ZONE || "America/Montevideo",
+  googleCalendarDefaultDurationMin: Number(
+    process.env.GOOGLE_CALENDAR_DEFAULT_DURATION_MIN || 30,
+  ),
   /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
   /** Bucket GCS para evidencias firmadas (opcional) */
