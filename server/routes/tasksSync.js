@@ -38,7 +38,7 @@ function maskUserId(id) {
 // event. Returns a drift reason string or null. Minimal + conservative (avoids
 // false positives): time compared at HH:MM, recurrence at the first RRULE line.
 // `ev` null means the event was not found (404/410) → 'event_missing'.
-function detectCalendarDrift(bmc, ev) {
+export function detectCalendarDrift(bmc, ev) {
   const bmcAllDay = bmc.is_all_day !== false;
   const bmcTime = bmc.due_time ? String(bmc.due_time).slice(0, 5) : null;
   const bmcRecur = bmc.recurrence_rule

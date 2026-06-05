@@ -234,7 +234,7 @@ function maskUserId(id) {
 // null/''/'none'/'does_not_repeat' → null. RRULE:* passes through. Bare freq
 // words (daily/weekly/…) map to canonical RRULE. Anything else → null (defensive,
 // matches the DB CHECK recurrence_rule LIKE 'RRULE:%').
-function normalizeRecurrence(raw) {
+export function normalizeRecurrence(raw) {
   if (raw == null) return null;
   const s = String(raw).trim();
   if (!s || /^(none|does_not_repeat)$/i.test(s)) return null;
@@ -243,7 +243,7 @@ function normalizeRecurrence(raw) {
 }
 
 // Returns 'HH:MM:SS' | null (cleared) | undefined (invalid → caller sends 400).
-function normalizeDueTime(raw) {
+export function normalizeDueTime(raw) {
   if (raw == null || raw === "") return null;
   const m = String(raw).match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
   if (!m) return undefined;
