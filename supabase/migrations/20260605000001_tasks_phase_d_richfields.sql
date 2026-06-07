@@ -1,4 +1,4 @@
--- Migration: 20260605000001_tasks_phase_d_richfields.sql
+gen-- Migration: 20260605000001_tasks_phase_d_richfields.sql
 -- Tareas Phase D — Rich Task Field Support
 -- Date: 2026-06-05 (after 20260602000001_tasks_init.sql)
 --

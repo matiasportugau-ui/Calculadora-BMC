@@ -103,3 +103,21 @@ gate:local:   pendiente correr al final de la sesión
 - PR que supersede #248: [PR #252](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/252)
 - Runbook nuevo: [`docs/team/runbooks/known-baseline-failures.md`](./runbooks/known-baseline-failures.md)
 - Memoria guardada: `~/.claude/projects/-Users-matias/memory/feedback-stale-pr-superseded.md`
+
+---
+
+## 2026-06-07 — Extracción e integración de Market Intelligence v1
+
+**Contexto:** un agente previo implementó el módulo completo (35 archivos) pero no pudo subir el código por falta de credenciales. Los eventos quedaron en un JSON local.
+**Acciones:**
+- Escribí y ejecuté `~/extract_session_files.py` para reconstruir los 35 archivos del módulo desde el JSON de la sesión `sesn_01TPkGGTQ4GW3RRGYcqYFTU5`.
+- Integración aditiva en `server/index.js` (router + scheduler), `src/App.jsx` (lazy route), `src/components/BmcModuleNav.jsx` (link nav) y `package.json` (3 deps + 3 scripts).
+- Limpieza de duplicados generados por el script de extracción en `App.jsx` y `index.js`.
+- Instalación de dependencias (`cheerio`, `robots-parser`, `node-cron`).
+- Ejecución de la nueva suite de tests: `npm run test:market-intel`.
+**Verificación:** 26/26 tests pasando exitosamente. PR #291 abierta en branch `feature/marketing-intel-v1`.
+**Hitos paralelos:**
+- **WhatsApp Export (TASK 1):** Diagnosticada la sesión Playwright; se encuentra en pantalla de QR. Screenshot generado y abierto para el usuario.
+- **bmc-control (TASK 2):** Bloqueado por conectividad LAN (PC1 offline).
+- **Skills:** Confirmada persistencia de `bmc-skin-customization-designer`.
+**Refs:** PR #291, `~/extract_session_files.py`, `AUTONOMOUS-GOALS.md`.
