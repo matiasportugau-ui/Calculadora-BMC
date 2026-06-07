@@ -283,7 +283,9 @@ export default function App() {
           path="/hub/bugs"
           element={
             <RequireGrant role="admin">
-              <BugReportsList />
+              <Suspense fallback={suspenseFallback}>
+                <BugReportsList />
+              </Suspense>
             </RequireGrant>
           }
         />
