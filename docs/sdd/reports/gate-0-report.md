@@ -11,6 +11,32 @@
 
 ---
 
+## Decisiones de Matias (2026-06-07)
+
+Tomadas en sesión sobre los 3 go/no-go de producción:
+
+1. **Branch protection → aplicar vía `gh api`.** ⛔ **No ejecutable desde esta sesión**: el entorno no tiene `gh` CLI, ni token de GitHub, ni la MCP de GitHub expone endpoint de branch-protection. Requiere un token con scope **repo-admin** (lo corro yo si me lo pasás) o que lo apliques por UI. Comando listo en el ítem 1.
+2. **Secretos de webhook → provisionar y DESPUÉS deployar** (orden seguro). Runbook en ítems 3–5. Pendiente de tu ejecución en GCP (`chatbot-bmc-live`).
+3. **Rotación de `API_AUTH_TOKEN` → NO rotar**, se mantiene el valor actual en Secret Manager. **Ítem 2 cerrado** (el enforcement 401/503 ya está testeado; no se requiere rotación para Gate 0).
+
+**Runbook "provisionar y después deployar" (ejecutar con tu sesión gcloud autenticada):**
+```bash
+# 1. En tu máquina con gcloud auth, setear los 2 valores en .env (NO commitear):
+#    WHATSAPP_APP_SECRET=<desde Meta App dashboard>
+#    WEBHOOK_VERIFY_TOKEN=<generar: openssl rand -hex 32>   # también registrarlo en ML
+# 2. Apuntar al proyecto correcto:
+gcloud config set project chatbot-bmc-live
+# 3. Provisionar a Secret Manager (idempotente; sólo agrega las 2 claves nuevas):
+./scripts/provision-secrets.sh
+# 4. Asegurar que el servicio MONTA los secrets (deploy workflow --update-secrets o consola),
+#    y recién entonces redeployar para tomar la nueva revisión:
+#    (deploy-calc-api.yml / gcloud run deploy panelin-calc --region us-central1 ...)
+# 5. Verificar: webhook con firma válida → 200; firma inválida o sin token → 401.
+```
+> Orden crítico: el código fail-closed rechaza webhooks ML/WhatsApp apenas se deploya **si los secrets aún no existen/montan**. Por eso: secrets primero, deploy después.
+
+---
+
 ## Resumen por ítem
 
 | # | Ítem Gate 0 | Estado | Evidencia |
@@ -18,7 +44,7 @@
 | — | Volcar ADR-0001 + Documento Maestro | ✅ Hecho | commit docs (verbatim) |
 | — | CLAUDE.md enseña vocabulario SDD | ✅ Hecho | sección "Proyecto Tablero (SDD)" |
 | 1 | Branch protection en `main` | ⛔ Bloqueado (prod, sin `gh`) | pasos manuales abajo |
-| 2 | Rotar `API_AUTH_TOKEN` | ⚠️ Parcial: ya en Secret Manager; rotación de valor = prod | test ya existente cubre 401/503 |
+| 2 | Rotar `API_AUTH_TOKEN` | ✅ Cerrado (decisión Matias: no rotar; ya en Secret Manager) | test ya existente cubre 401/503 |
 | 3 | HMAC obligatorio en webhook ML | ✅ Código + test (activación = redeploy) | `webhookGate.js`, `webhookGate.test.js` |
 | 4 | HMAC obligatorio en webhook WhatsApp | ✅ Código + test (activación = redeploy) | `webhookGate.js`, `webhookGate.test.js` |
 | 5 | Setear + exigir `WEBHOOK_VERIFY_TOKEN` | ✅ Código (exige); ⛔ valor a Secret Manager = prod | `webhookGate.js` |
