@@ -44,6 +44,7 @@ import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
 import marketingRouter from "./routes/marketing.js";
+import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
@@ -86,6 +87,17 @@ if (config.panelinRelaxDevAuth) {
   logger.warn(
     "PANELIN_RELAX_DEV_AUTH is enabled — Panelin developer endpoints skip API_AUTH_TOKEN checks. Do not use this on production APIs exposed to the public internet."
   );
+}
+
+// Phase 0 security hardening: fail loud in production if critical webhook secrets are missing
+const isProd = config.appEnv === "production" || process.env.NODE_ENV === "production";
+if (isProd) {
+  if (!config.whatsappAppSecret) {
+    logger.error("FATAL: WHATSAPP_APP_SECRET is not set in production — WhatsApp webhooks will be rejected");
+  }
+  if (!config.mlClientSecret) {
+    logger.error("FATAL: ML_CLIENT_SECRET is not set in production — MercadoLibre webhooks will be rejected");
+  }
 }
 
 const app = express();
@@ -131,8 +143,9 @@ app.use(
   })
 );
 
-const stateTtlMs = 10 * 60 * 1000;
-const oauthStates = new Map();
+// Replaced in-memory Map with persistent store (Phase 0 security fix).
+// See server/lib/oauthStateStore.js
+import { oauthStateStore } from "./lib/oauthStateStore.js";
 const webhookEvents = [];
 const maxWebhookEvents = 250;
 
@@ -167,12 +180,11 @@ const asyncHandler =
   (req, res, next) =>
     Promise.resolve(fn(req, res, next)).catch(next);
 
-const ensureValidState = (state) => {
-  const entry = oauthStates.get(state);
+const ensureValidState = async (state) => {
+  const entry = await oauthStateStore.get(state);
   if (!entry) return null;
-  const expired = Date.now() - entry.createdAt > stateTtlMs;
-  oauthStates.delete(state);
-  return expired ? null : entry;
+  // The store already handles TTL/expiry + deletion
+  return entry;
 };
 
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
@@ -247,7 +259,7 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
-  oauthStates.set(state, { createdAt: Date.now(), codeVerifier });
+  await oauthStateStore.set(state, { codeVerifier });
   const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {
@@ -268,7 +280,7 @@ app.get("/auth/ml/callback", asyncHandler(async (req, res) => {
   if (!code) {
     return res.status(400).json({ ok: false, error: "Missing code in callback querystring" });
   }
-  const stateEntry = ensureValidState(String(state));
+  const stateEntry = await ensureValidState(String(state));
   if (!state || !stateEntry) {
     return res.status(400).json({ ok: false, error: "Invalid or expired OAuth state" });
   }
@@ -773,8 +785,9 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   if (!verified.skipped && !verified.ok) {
     return res.status(401).json({ ok: false, error: "invalid webhook signature" });
   }
-  if (verified.skipped && config.appEnv !== "test") {
-    logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
+  if (verified.reason === "secret_not_configured") {
+    logger.error("WHATSAPP_APP_SECRET is not configured — rejecting webhook for security");
+    return res.status(503).json({ ok: false, error: "Webhook security not configured" });
   }
 
   let body = {};
@@ -979,6 +992,7 @@ app.use("/api/wolfboard", createWolfboardRouter(config));
 // Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
 // Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
 app.use("/api/marketing", marketingRouter);
+app.use("/api/bugs", createBugsRouter(config));
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
 app.use("/api", deepResearchRouter);

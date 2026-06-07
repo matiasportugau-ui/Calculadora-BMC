@@ -1,4 +1,6 @@
 import React from "react";
+import { openBugReport } from "../lib/bugReportBus.js";
+import { addErrorToBugLog } from "../utils/bugCapture.js";
 
 // Per-surface error boundary that lives *inside* the router (unlike the
 // top-level boundary in main.jsx, which can never reset once tripped and
@@ -29,6 +31,8 @@ class RouteErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error("RouteErrorBoundary caught:", error, info);
+    // Feed the bug capture buffer so the report gets rich context
+    addErrorToBugLog(error, { boundary: "RouteErrorBoundary", route: typeof window !== "undefined" ? window.location?.pathname : "" });
   }
 
   handleRetry = () => {
@@ -74,7 +78,7 @@ class RouteErrorBoundary extends React.Component {
         >
           {this.state.error.toString()}
         </pre>
-        <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
           <button
             type="button"
             onClick={this.handleRetry}
@@ -104,6 +108,29 @@ class RouteErrorBoundary extends React.Component {
           >
             Ir al inicio
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              openBugReport({
+                via: "RouteErrorBoundary",
+                description: this.state.error ? String(this.state.error) : "Error en la interfaz",
+                error: this.state.error,
+                extra: { route: where },
+              });
+            }}
+            style={{
+              padding: "8px 14px",
+              border: "1px solid #c0392b",
+              background: "transparent",
+              color: "#c0392b",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            🐛 Reportar este error al equipo
+          </button>
         </div>
       </div>
     );

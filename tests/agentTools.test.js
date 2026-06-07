@@ -132,6 +132,7 @@ group("AGENT_TOOLS surface", () => {
     "wolfboard_actualizar_fila",
     "wolfboard_marcar_enviado",
     "wolfboard_quote_batch",
+    "list_bug_reports",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);
@@ -662,6 +663,28 @@ await group("wolfboard_marcar_enviado — happy path", async () => {
 await group("wolfboard_quote_batch — requires user_confirmed", async () => {
   const { parsed } = await run("wolfboard_quote_batch", { force: true });
   assert(parsed.ok === false, "ok false without user_confirmed");
+});
+
+await group("list_bug_reports — no auth token configured", async () => {
+  const { config } = await import("../server/config.js");
+  config.apiAuthToken = "";
+  const { parsed } = await run("list_bug_reports", { limit: 5 });
+  assert(parsed.ok === false, "ok false when API_AUTH_TOKEN unset");
+  assert(typeof parsed.error === "string" && parsed.error.includes("API_AUTH_TOKEN"), "error mentions API_AUTH_TOKEN");
+});
+
+await group("list_bug_reports — happy path with auth", async () => {
+  const { config } = await import("../server/config.js");
+  config.apiAuthToken = "test-wolfb-token";
+  setFetch(async (url, init) => {
+    assert(url.includes("/api/bugs"), "hits bugs endpoint");
+    assert(url.includes("limit=5"), "forwards limit query");
+    assert(init?.headers?.Authorization === "Bearer test-wolfb-token", "Bearer auth forwarded");
+    return { ok: true, count: 1, data: [{ id: "BUG-1", shortDescription: "test" }] };
+  });
+  const { parsed } = await run("list_bug_reports", { limit: 5, severity: "alta" });
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.count === 1, "count carried");
 });
 
 await group("wolfboard_quote_batch — happy path", async () => {
