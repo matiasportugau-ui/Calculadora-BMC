@@ -171,9 +171,10 @@ create table clientes.customer_events (
   event_type text not null,          -- 'message','quote','purchase','visit','call','login','status_change'
   payload jsonb not null default '{}',
   occurred_at timestamptz not null,
-  source_ref text,
+  source_ref text not null,          -- NOT NULL: Postgres allows multiple NULLs in UNIQUE
   ingested_at timestamptz not null default now(),
-  unique (channel, source_ref)       -- ← UNIQUE compuesto, idempotencia por canal
+  primary key (id, occurred_at),     -- partitioned tables require partition key in PK/UNIQUE
+  unique (channel, source_ref, occurred_at)  -- ← idempotency per channel; occurred_at required because partition key
 ) partition by range (occurred_at);
 
 -- Particiones por mes desde el deploy (sec 11 mitigación volumen)

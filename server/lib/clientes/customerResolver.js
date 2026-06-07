@@ -76,6 +76,17 @@ import {
  * @param {ResolverOptions} [opts]
  * @returns {Promise<ResolverResult>}
  */
+// FIXME(security, Phase B): Cursor flagged identity-poisoning risk —
+// resolveCustomer() persists a permanent (channel, externalId) → customer_id
+// binding after matching only CLAIMED contactHint phone/email/RUT. Untrusted
+// inbound channels (WA/ML/Shopify webhook bodies, sheets import) can claim a
+// victim's identifier and bind the attacker's external_id to the victim. Today
+// this resolver is referenced ONLY from tests, so the risk is "fix-before-wiring".
+// Before any external ingester calls into this resolver, gate auto-link by
+// channel trust + proof-of-possession: only call createIdentity() for strong
+// matches when the channel verified the identifier (WA sender phone == hint,
+// authenticated email account, trusted back-office seed). Untrusted hints must
+// enqueue manual_review instead. See PR #262 review comments by cursor[bot].
 export async function resolveCustomer(input, store, opts = {}) {
   const { channel, externalId, displayName, contactHint } = _validateInput(input);
   _validateStore(store);

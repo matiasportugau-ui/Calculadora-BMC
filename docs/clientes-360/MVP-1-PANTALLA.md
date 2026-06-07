@@ -38,7 +38,7 @@ Por qué Sandra y no Matias o Ramiro:
 
 ## 4. La pantalla
 
-URL: `/clientes`
+URL: `/hub/clientes`
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -199,7 +199,7 @@ A los **30 días** post-deploy del MVP:
 Antes de Día 1:
 
 1. **¿Aprobás este alcance?** (Sí / "agregar X" / "cambiar Y" / no)
-2. **Email de Sandra** — ✅ confirmado: `sandra@bmc.com` (fuente: `docs/bmc-dashboard-modernization/Code.gs:142-146`, tab `EQUIPOS` del workbook CRM).
+2. **Email de Sandra** — resolver vía `identity.users` (fuente de verdad). No embeber direcciones reales en docs públicos.
 3. **¿Aplico migration en branch Supabase, o creás un proyecto Supabase separado para staging?**
 4. **¿Mergeo PR #188 como draft → ready, o lo cierro y rehago en chunks más chicos?**
 
@@ -227,12 +227,14 @@ No se construye nada que no tenga métrica. Punto.
 
 Fuente: `docs/bmc-dashboard-modernization/Code.gs` — tab `EQUIPOS` del workbook CRM.
 
-| Nombre | Email | Rol | Departamento | Grant Phase 1 (MVP) | Grant Phase 2 |
-|---|---|---|---|---|---|
-| Matías | `matias@bmc.com` | CEO | Dirección | `clientes.admin` (vía superadmin) | — |
-| **Sandra** | **`sandra@bmc.com`** | **Admin** | **Administración** | **`clientes.write`** | — |
-| Ramiro | `ramiro@bmc.com` | Vendedor | Ventas | — | `clientes.read` (mobile-first) |
-| Martin | `martin@bmc.com` | Vendedor | Ventas | — | `clientes.read` (oficina) |
+_Identidades reales viven en `identity.users`; aquí solo roles para evitar PII en git._
+
+| Persona | Rol | Departamento | Grant Phase 1 (MVP) | Grant Phase 2 |
+|---|---|---|---|---|
+| CEO | superadmin | Dirección | `clientes.admin` (vía superadmin) | — |
+| **Admin operativa** | **admin** | **Administración** | **`clientes.write`** | — |
+| Vendedor mobile-first | operator | Ventas | — | `clientes.read` |
+| Vendedor oficina | operator | Ventas | — | `clientes.read` |
 
 Notas:
 - Identity superadmin distinto: `matias@bmc.uy` (en `INTERNAL_SUPERADMIN_EMAILS`). Si el login Google de Matias usa `bmc.com`, hay que decidir cuál de los dos es la identidad canónica.

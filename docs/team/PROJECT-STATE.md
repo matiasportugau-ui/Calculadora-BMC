@@ -26,9 +26,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 - `src/components/hub/clientes/hooks/useClientes.js` — hooks react-query (useCustomers, useCustomersSummary, useMarkContacted).
 - `scripts/seed-clientes-from-existing.mjs` — seed con 6 usuarios reales de `identity.users` + 25 sintéticos UY realistas (marcados `metadata.source='synthetic_mvp_demo'` para purga controlada).
 
-**Grants aplicados:**
-- `sandraariasmachado@gmail.com` (user_id: `c5e8c20a-2105-4570-a902-c777930eda93`) → `clientes.write` ✅
-- `matias.portugau@gmail.com` → `clientes.admin` ✅ (vía rol admin global)
+**Grants aplicados** (source of truth: `identity.module_grants where module='clientes'`):
+- Sandra (admin operativa) → `clientes.write` ✅
+- Matías (admin global) → `clientes.admin` ✅
 
 **Kill switch (30 días):**
 ```sql
