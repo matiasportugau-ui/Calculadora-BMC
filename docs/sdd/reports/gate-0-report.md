@@ -28,12 +28,18 @@ Tomadas en sesión sobre los 3 go/no-go de producción:
 gcloud config set project chatbot-bmc-live
 # 3. Provisionar a Secret Manager (idempotente; sólo agrega las 2 claves nuevas):
 ./scripts/provision-secrets.sh
-# 4. Asegurar que el servicio MONTA los secrets (deploy workflow --update-secrets o consola),
+# 4. APLICAR LA MIGRACIÓN OAUTH ANTES del redeploy (no hay npm runner para supabase/migrations;
+#    se aplican a mano con psql, igual que las migraciones identity/mfa):
+#    psql "$DATABASE_URL" -f supabase/migrations/20260607000001_oauth_state_generic.sql
+#    Si el servicio se redeploya con DATABASE_URL seteado y la tabla public.oauth_state aún
+#    no existe, los flujos OAuth de ML y Shopify (/auth/ml/*, Shopify start/callback) tiran 500.
+# 5. Asegurar que el servicio MONTA los secrets (deploy workflow --update-secrets o consola),
 #    y recién entonces redeployar para tomar la nueva revisión:
 #    (deploy-calc-api.yml / gcloud run deploy panelin-calc --region us-central1 ...)
-# 5. Verificar: webhook con firma válida → 200; firma inválida o sin token → 401.
+# 6. Verificar: webhook con firma válida → 200; firma inválida o sin token → 401.
+#    Verificar también un login OAuth ML/Shopify de punta a punta (state persiste en Postgres).
 ```
-> Orden crítico: el código fail-closed rechaza webhooks ML/WhatsApp apenas se deploya **si los secrets aún no existen/montan**. Por eso: secrets primero, deploy después.
+> Orden crítico: (a) la migración `oauth_state` se aplica **antes** del redeploy o se rompe el login OAuth; (b) el código fail-closed rechaza webhooks ML/WhatsApp apenas se deploya **si los secrets aún no existen/montan**. Por eso: **migración + secrets primero, deploy después**.
 
 ---
 
