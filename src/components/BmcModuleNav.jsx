@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
+import { openBugReport } from "../lib/bugReportBus.js";
 
 const bar = {
   display: "flex",
@@ -81,6 +82,28 @@ export default function BmcModuleNav() {
           Analytics
         </Link>
       ) : null}
+
+      <button
+        type="button"
+        onClick={() => openBugReport({ via: "nav" })}
+        title="Reportar un bug o problema en la interfaz"
+        style={{
+          marginLeft: "auto",
+          padding: "4px 10px",
+          borderRadius: 999,
+          border: "1px solid #e5e5ea",
+          background: "transparent",
+          fontSize: 13,
+          cursor: "pointer",
+          color: "#c0392b",
+          fontWeight: 600,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+        }}
+      >
+        🐛 <span style={{ fontSize: 12 }}>Reportar</span>
+      </button>
     </nav>
   );
 }

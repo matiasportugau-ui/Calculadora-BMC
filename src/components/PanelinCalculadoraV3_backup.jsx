@@ -63,6 +63,7 @@ import {
   buildPdfAppendixPayload,
 } from "../utils/quotationViews.js";
 import { buildGoogleSheetReportTsv } from "../utils/sheetExport.js";
+import { addBugLog, addErrorToBugLog } from "../utils/bugCapture.js";
 import {
   getSharedSidesPerZona,
   layoutZonasEnPlanta,
@@ -2385,6 +2386,7 @@ export default function PanelinCalculadoraV3() {
   /** Costo interno del flete (USD s/IVA); opcional — afecta margen y hoja Costeo. */
   const [fleteCosto, setFleteCosto] = useState("");
   /** PDF+ (hoja cliente enriquecida): incluir página extra “Planta + resumen” (diseño hero marca). */
+  // Note: addBugLog calls seeded around executeScenario / PDF for richer bug reports (see bugCapture).
   const [pdfPlantaResumenPage, setPdfPlantaResumenPage] = useState(true);
   // Default changed 2026-05-27 during PDF generator improvement session.
 // Old default 'bmc-pdf' was the heavy 50k+ template that required the Python optimizer post-process.
@@ -3373,7 +3375,12 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         });
       }
       const techoForCalc = { ...techo, tipoAguas: derivedTipoAguas };
-      return executeScenario(sc, { techo: techoForCalc, pared, camara });
+      try {
+        return executeScenario(sc, { techo: techoForCalc, pared, camara });
+      } catch (e) {
+        addErrorToBugLog(e, { module: "calculadora", action: "execute_scenario" });
+        throw e;
+      }
     } catch (e) { return { error: e.message }; }
   }, [scenario, techo, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
@@ -3600,6 +3607,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       showToast("PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
+      addErrorToBugLog(err, { module: "calculadora", action: "pdf_generation" });
     }
   }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast, pdfPlantaResumenPage, currentBudgetCode]);
 
@@ -3693,6 +3701,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       showToast("PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
+      addErrorToBugLog(err, { module: "calculadora", action: "pdf_generation" });
     }
   }, [groups.length, buildClientePdfHtml, showToast, currentBudgetCode, proyecto]);
 

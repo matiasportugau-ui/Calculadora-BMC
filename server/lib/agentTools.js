@@ -773,6 +773,24 @@ export const AGENT_TOOLS = [
       required: ["user_confirmed"],
     },
   },
+
+  // New: list recent user-submitted bug reports (with logs, severity, optional screenshot URLs).
+  // Powers "recent bugs" list in Wolfboard hub + AI-assisted triage/debug (ties into WOLF flows).
+  {
+    name: "list_bug_reports",
+    description:
+      "Lista reportes recientes de bugs enviados por usuarios desde la interfaz (incluye logs capturados, ruta, severidad y URLs de capturas de pantalla si se adjuntaron). " +
+      "Úsalo para triage de problemas reportados, ver contexto de errores en calculadora o Wolfboard, o alimentar investigación de bugs WOLF. " +
+      "Soporta filtros simples (limit, severity). Lectura protegida (usa token de ops).",
+    input_schema: {
+      type: "object",
+      properties: {
+        limit: { type: "number", description: "Máx. resultados (default 20, máx 100)" },
+        severity: { type: "string", description: "Filtrar por severidad exacta: baja|media|alta|critica" },
+        routeContains: { type: "string", description: "Filtrar reportes cuya URL contenga este texto (ej. 'wolfboard' o '/hub/cotizaciones')" },
+      },
+    },
+  },
 ];
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -1701,6 +1719,17 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       return await wolfboardForward("/api/wolfboard/quote-batch", { method: "POST", body }, name);
     }
 
+    if (name === "list_bug_reports") {
+      // Read-only; no user_confirmed required (safe list operation)
+      const params = new URLSearchParams();
+      if (input?.limit) params.set("limit", String(input.limit));
+      if (input?.severity) params.set("severity", String(input.severity));
+      if (input?.routeContains) params.set("routeContains", String(input.routeContains));
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      // Reuse the same forward pattern (server-side token) but hit the bugs surface
+      return await bugsForward(`/api/bugs${qs}`, { method: "GET" }, name);
+    }
+
     return JSON.stringify({ error: `Tool "${name}" no implementada` });
   } catch (err) {
     return JSON.stringify({ error: err.message });
@@ -1753,6 +1782,47 @@ async function wolfboardForward(path, { method = "GET", body } = {}, toolName = 
     ok: true,
     contentType: ct || "text/plain",
     body: text.length > 100_000 ? `${text.slice(0, 100_000)}\n\n[truncated to 100KB]` : text,
+    length: text.length,
+    tool: toolName,
+  });
+}
+
+/**
+ * Forward helper for the bugs surface (modeled exactly on wolfboardForward).
+ * Used by list_bug_reports tool. Hits /api/bugs (protected by its own requireAuth on GET).
+ */
+async function bugsForward(path, { method = "GET", body } = {}, toolName = "bugs_*") {
+  if (!config.apiAuthToken) {
+    return JSON.stringify({
+      ok: false,
+      error: "API_AUTH_TOKEN no configurado — los reportes de bugs y su listado requieren autenticación de ops.",
+      tool: toolName,
+    });
+  }
+  const headers = { Authorization: `Bearer ${config.apiAuthToken}` };
+  const init = { method, headers };
+  if (method === "POST") {
+    headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body || {});
+  }
+  const url = `${apiBase()}${path}`;
+  const resp = await fetch(url, init);
+  const ct = resp.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      return JSON.stringify({ ok: false, status: resp.status, error: data?.error || `HTTP ${resp.status}`, tool: toolName });
+    }
+    return JSON.stringify({ ok: true, ...data });
+  }
+  const text = await resp.text();
+  if (!resp.ok) {
+    return JSON.stringify({ ok: false, status: resp.status, error: text.slice(0, 500), tool: toolName });
+  }
+  return JSON.stringify({
+    ok: true,
+    contentType: ct || "text/plain",
+    body: text.length > 100_000 ? `${text.slice(0, 100_000)}\n\n[truncated]` : text,
     length: text.length,
     tool: toolName,
   });

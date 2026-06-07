@@ -35,6 +35,7 @@ class ErrorBoundary extends React.Component {
             {this.state.error.toString()}
           </pre>
           <p style={{ fontSize: 12, color: '#666' }}>Revisá la consola del navegador (F12) para más detalles.</p>
+          <p style={{ fontSize: 12, color: '#666', marginTop: 8 }}>Cuando recuperes la app, usá el botón <strong>🐛 Reportar</strong> en la barra superior (o el enlace en Wolfboard / hubs) para enviar el contexto al equipo.</p>
         </div>
       );
     }

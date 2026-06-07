@@ -14,6 +14,7 @@ import AuthHeader from "./components/auth/AuthHeader.jsx";
 import RequireGrant from "./components/auth/RequireGrant.jsx";
 import ActivityTracker from "./components/activity/ActivityTracker.jsx";
 import RouteErrorBoundary from "./components/RouteErrorBoundary.jsx";
+import BugReportModal from "./components/BugReportModal.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Tutorial interactivo (nuevo sistema) — gated for safety
@@ -46,6 +47,7 @@ const BmcWaModuleWithTabs = lazy(() => import("./components/BmcWaModuleWithTabs.
 const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUnificadosModule.jsx"));
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
+const BugReportsList = lazy(() => import("./components/BugReportsList.jsx"));
 const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
@@ -168,6 +170,7 @@ export default function App() {
       <LegacyAppQueryRedirect />
       <AuthGateModal />
       <TutorialOverlay />
+      <BugReportModal />
       <RoutedErrorBoundary>
       <Routes>
         <Route
@@ -273,6 +276,14 @@ export default function App() {
           element={
             <RequireGrant role="admin">
               <CotizacionesRoute />
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/bugs"
+          element={
+            <RequireGrant role="admin">
+              <BugReportsList />
             </RequireGrant>
           }
         />

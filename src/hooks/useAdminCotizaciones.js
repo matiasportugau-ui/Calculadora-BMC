@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import { addBugLog, addErrorToBugLog } from "../utils/bugCapture.js";
 
 // TODO refactor split (no behavior change, ~407 LOC today): three slice hooks
 //   useToken          — load/save bmc_cockpit_token, autoLoad from /api/cockpit
@@ -72,8 +73,10 @@ async function apiFetch(token, path, options = {}) {
     return { ok: res.ok, status: res.status, data };
   } catch (e) {
     if (e.name === "AbortError") {
+      addBugLog("error", "wolfboard_api_timeout", { path, timeoutMs });
       return { ok: false, status: 0, data: { error: `Request timed out after ${Math.round(timeoutMs / 1000)}s` } };
     }
+    addErrorToBugLog(e, { module: "wolfboard", path });
     return { ok: false, status: 0, data: { error: e.message || "Network error" } };
   } finally {
     clearTimeout(timer);
@@ -387,6 +390,7 @@ export function useAdminCotizaciones() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (!ok) addBugLog("error", "wolfboard_batch_api_error", { status, err: data?.error });
     setBusyOp(null);
     if (!ok) { showToast(data?.error || `Error en batch IA (HTTP ${status})`); return; }
     showToast(`IA: ${data.successful ?? 0} generadas · ${data.failed ?? 0} fallidas · ${data.skipped ?? 0} omitidas`);
