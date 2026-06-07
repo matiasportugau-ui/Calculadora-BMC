@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Sincroniza precios F/L/T (cols F, L, T de BROMYROS, **sin IVA**) desde la MATRIZ hacia
+ * Sincroniza precios G/J/R (cols G, J, R de BROMYROS, **sin IVA**) desde la MATRIZ hacia
  * `src/data/constants.js` para el kit Isodec varilla/tuerca en filas fijas del libro.
  *
  * Contexto: esas filas suelen tener **col D vacía**, por eso no entran al CSV de
@@ -10,7 +10,7 @@
  *   161 Varilla, 162 Tuerca, 163 Carrocero, 164 Tortuga blanca, 165 Tortuga gris, 166 Taco
  *
  * **Arandela plana:** `MATRIZ_ROW_ARANDELA_PLANA` → fila explícita; si no, búsqueda por descripción + col D **ARPLA38**;
- * si aún no hay match, se intenta fila **167** (alta típica en BROMYROS) con F/L/T válidos y (**ARPLA38** en D o descripción que case).
+ * si aún no hay match, se intenta fila **167** (alta típica en BROMYROS) con G/J/R válidos y (**ARPLA38** en D o descripción que case).
  *
  * Requiere: GOOGLE_APPLICATION_CREDENTIALS, BMC_MATRIZ_SHEET_ID (opcional).
  *
@@ -132,7 +132,7 @@ async function main() {
     const venta = parseNum(rowArr[c.ventaLocal]);
     const web = parseNum(rowArr[c.web]);
     if (costo == null || venta == null || web == null) {
-      console.error(`Fila ${row} (${key}): faltan F/L/T`, { costo, venta, web });
+      console.error(`Fila ${row} (${key}): faltan G/J/R`, { costo, venta, web });
       process.exit(4);
     }
     updates.push({ key, row, costo, venta, web, desc: rowArr[c.descripcion] || "" });

@@ -110,10 +110,14 @@ export async function refreshAccessToken(pool, userId) {
 
   // Encrypt + persist via SQL. Google usually omits refresh_token on refresh;
   // COALESCE preserves the existing one so we don't orphan the user.
+  // The ::text casts match the TEXT column type — pgp_sym_encrypt returns
+  // bytea, and COALESCE refuses to reconcile bytea with the column's text.
+  // Without the casts, the entire UPDATE aborts with "COALESCE types bytea
+  // and text cannot be matched" — silently breaking the refresh loop.
   await pool.query(
     `UPDATE tasks.oauth_tokens
-        SET access_token_encrypted = pgp_sym_encrypt($1::text, $3),
-            refresh_token_encrypted = COALESCE(pgp_sym_encrypt($2::text, $3), refresh_token_encrypted),
+        SET access_token_encrypted = pgp_sym_encrypt($1::text, $3)::text,
+            refresh_token_encrypted = COALESCE(pgp_sym_encrypt($2::text, $3)::text, refresh_token_encrypted),
             expires_at = $4,
             updated_at = now()
       WHERE user_id = $5`,

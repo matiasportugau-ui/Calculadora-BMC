@@ -13,3 +13,14 @@ export function panelStableKey(stopId, panelId, chunkIdx) {
 export function accessoryStableKey(stopId) {
   return `${stopId}:accessory`;
 }
+
+/* Re-exports for the operational kg / volume / m2 estimator (canonical implementation
+   lives in ./logistica/loadCharacteristics.js; promoted here for easy consumption by
+   BmcLogisticaApp, remito generators, transportista flows, etc.). */
+export {
+  ROW_W,
+  kgPerM2ForEspesor,
+  estimatePanelLinePhysical,
+  estimateStopLoadPhysical,
+  estimateRouteLoadPhysical,
+} from "./logistica/loadCharacteristics.js";

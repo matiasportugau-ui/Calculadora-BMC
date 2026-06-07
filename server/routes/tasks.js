@@ -29,8 +29,15 @@ import { config } from "../config.js";
 import { requireUser } from "../lib/identityAuth.js";
 import { getTasksPool } from "../lib/tasksDb.js";
 import * as googleTasks from "../lib/googleTasksClient.js";
+import * as googleCalendar from "../lib/googleCalendarClient.js";
 
 const router = express.Router();
+
+// Columns returned to the client for a task row (single source so POST/PATCH/GET
+// stay in lockstep; Phase D added due_time/is_all_day/recurrence_rule/calendar_event_id).
+const TASK_RETURN_COLS = `id, list_id, google_id, title, notes, due,
+              due_time, is_all_day, recurrence_rule, calendar_event_id,
+              status, parent_id, updated_at, created_at, synced_at, is_deleted`;
 
 // All tasks routes require authenticated user (factory must be called)
 router.use(requireUser());
@@ -133,8 +140,7 @@ router.get("/lists/:id/tasks", async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      `SELECT id, list_id, google_id, title, notes, due, status,
-              parent_id, updated_at, created_at, synced_at, is_deleted
+      `SELECT ${TASK_RETURN_COLS}
        FROM tasks.tasks
        WHERE user_id = $1 AND list_id = $2 AND is_deleted = FALSE ${cursorClause}
        ORDER BY updated_at DESC NULLS LAST, id DESC
@@ -156,8 +162,7 @@ router.get("/lists/:id/tasks/:taskId", async (req, res) => {
   if (!pool) return;
   try {
     const { rows } = await pool.query(
-      `SELECT id, list_id, google_id, title, notes, due, status,
-              parent_id, updated_at, created_at, synced_at, is_deleted
+      `SELECT ${TASK_RETURN_COLS}
        FROM tasks.tasks
        WHERE user_id = $1 AND list_id = $2 AND id = $3 AND is_deleted = FALSE`,
       [req.user.id, req.params.id, req.params.taskId],
@@ -204,6 +209,124 @@ function handleGoogleError(err, res) {
   }
   console.error("[tasks] google api error:", err?.message, err?.body);
   return res.status(502).json({ ok: false, error: "google_upstream_error" });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase D — rich field normalizers + Google Calendar pairing
+// ───────────────────────────────────────────────────────────────────────────
+// Time-of-day + recurrence are mirrored into a paired Calendar event. BMC is
+// system-of-record: these fields live in tasks.tasks regardless of Calendar,
+// so a Calendar failure (incl. 403 missing-scope) is NON-FATAL to the write.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RRULE_FREQ_MAP = {
+  daily: "RRULE:FREQ=DAILY",
+  weekly: "RRULE:FREQ=WEEKLY",
+  monthly: "RRULE:FREQ=MONTHLY",
+  yearly: "RRULE:FREQ=YEARLY",
+};
+
+function maskUserId(id) {
+  if (!id || typeof id !== "string") return "***";
+  return "***" + id.slice(-4);
+}
+
+// null/''/'none'/'does_not_repeat' → null. RRULE:* passes through. Bare freq
+// words (daily/weekly/…) map to canonical RRULE. Anything else → null (defensive,
+// matches the DB CHECK recurrence_rule LIKE 'RRULE:%').
+function normalizeRecurrence(raw) {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s || /^(none|does_not_repeat)$/i.test(s)) return null;
+  if (/^RRULE:/i.test(s)) return s;
+  return RRULE_FREQ_MAP[s.toLowerCase()] || null;
+}
+
+// Returns 'HH:MM:SS' | null (cleared) | undefined (invalid → caller sends 400).
+function normalizeDueTime(raw) {
+  if (raw == null || raw === "") return null;
+  const m = String(raw).match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return undefined;
+  const h = parseInt(m[1], 10);
+  const mi = parseInt(m[2], 10);
+  if (h > 23 || mi > 59) return undefined;
+  return `${String(h).padStart(2, "0")}:${m[2]}:${m[3] || "00"}`;
+}
+
+function classifyCalendarError(err) {
+  if (err?.status === 403) return "calendar_scope_missing";
+  if (err?.status === 504 || err?.message === "google_timeout") return "calendar_timeout";
+  if (err?.message === "no_oauth_token") return "calendar_not_connected";
+  return "calendar_unavailable";
+}
+
+async function logCalendarFailure(pool, userId, err, meta) {
+  // Diagnostic visibility is non-negotiable (the f1d4bb5 lesson): a silent
+  // Calendar catch must leave a sync_log breadcrumb with the real error. No
+  // token/PII — only status + message + masked user.
+  await pool
+    .query(
+      `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details, http_status_code)
+       VALUES ($1, gen_random_uuid()::text, 'sync_failed', $2::jsonb, $3)`,
+      [
+        userId,
+        JSON.stringify({
+          reason: `calendar_${meta?.stage || "op"}_failed`,
+          calendar_error: String(err?.message || err).slice(0, 300),
+          user_id_mask: maskUserId(userId),
+        }),
+        Number.isInteger(err?.status) ? err.status : null,
+      ],
+    )
+    .catch(() => {});
+}
+
+// Reconcile the paired Calendar event with the task's effective fields.
+// Returns { calendarEventId, calendarError }. A task pairs an event when it has
+// a due date AND (a recurrence rule OR a real time-of-day). Otherwise any prior
+// event is deleted and the link cleared. NEVER throws — Calendar is a mirror.
+async function reconcileCalendarEvent({
+  pool, userId, existingEventId = null,
+  title, notes, due, dueTime, isAllDay, recurrenceRule,
+}) {
+  if (!config.googleCalendarEnabled) {
+    return { calendarEventId: existingEventId, calendarError: null };
+  }
+  const needsEvent = !!due && (!!recurrenceRule || (!isAllDay && !!dueTime));
+  try {
+    if (needsEvent) {
+      const { start, end } = googleCalendar.buildEventTimes({ due, dueTime, isAllDay });
+      if (existingEventId) {
+        await googleCalendar.updateEvent({
+          pool, userId, eventId: existingEventId,
+          summary: title, description: notes ?? null,
+          start, end, recurrence: recurrenceRule ? [recurrenceRule] : [],
+        });
+        return { calendarEventId: existingEventId, calendarError: null };
+      }
+      const ev = await googleCalendar.createEvent({
+        pool, userId, summary: title, description: notes ?? null,
+        start, end, recurrence: recurrenceRule ? [recurrenceRule] : undefined,
+      });
+      return { calendarEventId: ev?.id || null, calendarError: null };
+    }
+    // No event needed — remove a prior one (404/410 = already gone).
+    if (existingEventId) {
+      try {
+        await googleCalendar.deleteEvent({ pool, userId, eventId: existingEventId });
+      } catch (e) {
+        if (e?.status !== 404 && e?.status !== 410) throw e;
+      }
+    }
+    return { calendarEventId: null, calendarError: null };
+  } catch (err) {
+    const stage = needsEvent ? (existingEventId ? "update" : "create") : "delete";
+    await logCalendarFailure(pool, userId, err, { stage });
+    // Preserve the link on update/delete failure (so a later sync can repair);
+    // a failed create has no id to keep.
+    const keepId = stage === "create" ? null : existingEventId;
+    return { calendarEventId: keepId, calendarError: classifyCalendarError(err) };
+  }
 }
 
 // POST /api/tasks/lists { title }
@@ -272,7 +395,7 @@ async function loadListWithGoogleId(pool, listId, userId) {
   return r.rows[0] || null;
 }
 
-// POST /api/tasks/lists/:id/tasks { title, notes?, due? }
+// POST /api/tasks/lists/:id/tasks { title, notes?, due?, due_time?, is_all_day?, recurrence_rule? }
 router.post("/lists/:id/tasks", async (req, res) => {
   const pool = poolOr503(res);
   if (!pool) return;
@@ -284,6 +407,18 @@ router.post("/lists/:id/tasks", async (req, res) => {
   const notes = req.body?.notes ? String(req.body.notes).slice(0, 8192) : undefined;
   const due = req.body?.due || undefined;
 
+  // Phase D rich fields. is_all_day defaults TRUE (Google Tasks default). A
+  // timed task forces is_all_day=false; an all-day task drops any time.
+  const isAllDay = req.body?.is_all_day === undefined ? true : !!req.body.is_all_day;
+  let dueTime = normalizeDueTime(req.body?.due_time);
+  if (dueTime === undefined) {
+    return res.status(400).json({ ok: false, error: "invalid_due_time" });
+  }
+  if (isAllDay) dueTime = null;
+  const effectiveAllDay = isAllDay && dueTime == null;
+  const recurrenceRule = normalizeRecurrence(req.body?.recurrence_rule);
+
+  // 1) Google Tasks holds title/notes/due(date) — the canonical task resource.
   let gTask;
   try {
     gTask = await googleTasks.createTask({
@@ -292,21 +427,30 @@ router.post("/lists/:id/tasks", async (req, res) => {
   } catch (err) {
     return handleGoogleError(err, res);
   }
+
+  // 2) Pair a Calendar event for time/recurrence (non-fatal if it fails).
+  const { calendarEventId, calendarError } = await reconcileCalendarEvent({
+    pool, userId: req.user.id,
+    title: gTask.title || title, notes: gTask.notes ?? notes ?? null,
+    due, dueTime, isAllDay: effectiveAllDay, recurrenceRule,
+  });
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO tasks.tasks
-         (user_id, list_id, google_id, title, notes, due, status, synced_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, now())
-       RETURNING id, list_id, google_id, title, notes, due, status,
-                 parent_id, updated_at, created_at, synced_at, is_deleted`,
+         (user_id, list_id, google_id, title, notes, due,
+          due_time, is_all_day, recurrence_rule, calendar_event_id, status, synced_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
+       RETURNING ${TASK_RETURN_COLS}`,
       [
         req.user.id, req.params.id, gTask.id,
         gTask.title || title, gTask.notes || notes || null,
         gTask.due || (due ? new Date(due) : null),
+        dueTime, effectiveAllDay, recurrenceRule, calendarEventId,
         gTask.status || "needsAction",
       ],
     );
-    res.status(201).json({ ok: true, task: rows[0] });
+    res.status(201).json({ ok: true, task: rows[0], ...(calendarError ? { calendar_error: calendarError } : {}) });
   } catch (err) {
     console.error("[tasks] POST .../tasks persist failed:", err.message);
     res.status(500).json({ ok: false, error: "persist_failed" });
@@ -321,31 +465,77 @@ router.patch("/lists/:id/tasks/:taskId", async (req, res) => {
   if (!list) return res.status(404).json({ ok: false, error: "list_not_found" });
 
   const tr = await pool.query(
-    `SELECT google_id FROM tasks.tasks
+    `SELECT google_id, title, notes, due, due_time, is_all_day,
+            recurrence_rule, calendar_event_id
+       FROM tasks.tasks
       WHERE id = $1 AND user_id = $2 AND list_id = $3 AND is_deleted = FALSE`,
     [req.params.taskId, req.user.id, req.params.id],
   );
   if (!tr.rows.length) {
     return res.status(404).json({ ok: false, error: "task_not_found" });
   }
+  const current = tr.rows[0];
 
+  const body = req.body || {};
   const patch = {};
-  if (typeof req.body?.title === "string") patch.title = req.body.title.slice(0, 1024);
-  if ("notes" in (req.body || {})) patch.notes = req.body.notes == null ? null : String(req.body.notes).slice(0, 8192);
-  if ("due" in (req.body || {})) patch.due = req.body.due;
-  if (req.body?.status === "needsAction" || req.body?.status === "completed") {
-    patch.status = req.body.status;
+  if (typeof body.title === "string") patch.title = body.title.slice(0, 1024);
+  if ("notes" in body) patch.notes = body.notes == null ? null : String(body.notes).slice(0, 8192);
+  if ("due" in body) patch.due = body.due;
+  if (body.status === "needsAction" || body.status === "completed") {
+    patch.status = body.status;
   }
 
+  // Phase D rich-field patch. Presence flags distinguish "absent" (keep current)
+  // from explicit clear (null). Providing a time implies the task is no longer
+  // all-day; setting all-day clears the time.
+  const hasDue = "due" in body;
+  const hasDueTime = "due_time" in body;
+  const hasAllDay = "is_all_day" in body;
+  const hasRecur = "recurrence_rule" in body;
+
+  let newDueTime;
+  if (hasDueTime) {
+    newDueTime = normalizeDueTime(body.due_time);
+    if (newDueTime === undefined) {
+      return res.status(400).json({ ok: false, error: "invalid_due_time" });
+    }
+  }
+
+  let effDueTime = hasDueTime ? newDueTime : current.due_time;
+  let effAllDay = hasAllDay ? !!body.is_all_day : current.is_all_day;
+  if (hasDueTime && effDueTime != null) effAllDay = false;
+  if (effAllDay) effDueTime = null;
+  const effRecur = hasRecur ? normalizeRecurrence(body.recurrence_rule) : current.recurrence_rule;
+  const effDue = hasDue ? patch.due : current.due;
+  const effTitle = "title" in patch ? patch.title : current.title;
+  const effNotes = "notes" in patch ? patch.notes : current.notes;
+
+  // 1) Google Tasks update (title/notes/due/status).
   let gTask;
   try {
     gTask = await googleTasks.updateTask({
       pool, userId: req.user.id,
-      googleListId: list.google_id, googleTaskId: tr.rows[0].google_id,
+      googleListId: list.google_id, googleTaskId: current.google_id,
       ...patch,
     });
   } catch (err) {
     return handleGoogleError(err, res);
+  }
+
+  // 2) Calendar reconciliation — only when a scheduling- or content-relevant
+  // field changed. A bare status toggle (☐/☑) must NOT burn a Calendar API call.
+  const scheduleChanged = hasDue || hasDueTime || hasAllDay || hasRecur;
+  const shouldReconcile = scheduleChanged || "title" in patch || "notes" in patch;
+  let calendarEventId = current.calendar_event_id;
+  let calendarError = null;
+  if (shouldReconcile) {
+    const r = await reconcileCalendarEvent({
+      pool, userId: req.user.id, existingEventId: current.calendar_event_id,
+      title: gTask.title ?? effTitle, notes: gTask.notes ?? effNotes,
+      due: effDue, dueTime: effDueTime, isAllDay: effAllDay, recurrenceRule: effRecur,
+    });
+    calendarEventId = r.calendarEventId;
+    calendarError = r.calendarError;
   }
 
   try {
@@ -371,15 +561,26 @@ router.patch("/lists/:id/tasks/:taskId", async (req, res) => {
       params.push(gTask.status ?? patch.status);
       setClauses.push(`status = $${params.length}`);
     }
+    if (scheduleChanged) {
+      params.push(effDueTime);
+      setClauses.push(`due_time = $${params.length}`);
+      params.push(effAllDay);
+      setClauses.push(`is_all_day = $${params.length}`);
+      params.push(effRecur);
+      setClauses.push(`recurrence_rule = $${params.length}`);
+    }
+    if (shouldReconcile) {
+      params.push(calendarEventId);
+      setClauses.push(`calendar_event_id = $${params.length}`);
+    }
 
     const { rows } = await pool.query(
       `UPDATE tasks.tasks SET ${setClauses.join(", ")}
        WHERE id = $1 AND user_id = $2
-       RETURNING id, list_id, google_id, title, notes, due, status,
-                 parent_id, updated_at, created_at, synced_at, is_deleted`,
+       RETURNING ${TASK_RETURN_COLS}`,
       params,
     );
-    res.json({ ok: true, task: rows[0] });
+    res.json({ ok: true, task: rows[0], ...(calendarError ? { calendar_error: calendarError } : {}) });
   } catch (err) {
     console.error("[tasks] PATCH task persist failed:", err.message);
     res.status(500).json({ ok: false, error: "persist_failed" });
@@ -394,7 +595,7 @@ router.delete("/lists/:id/tasks/:taskId", async (req, res) => {
   if (!list) return res.status(404).json({ ok: false, error: "list_not_found" });
 
   const tr = await pool.query(
-    `SELECT google_id FROM tasks.tasks
+    `SELECT google_id, calendar_event_id FROM tasks.tasks
       WHERE id = $1 AND user_id = $2 AND list_id = $3 AND is_deleted = FALSE`,
     [req.params.taskId, req.user.id, req.params.id],
   );
@@ -410,6 +611,20 @@ router.delete("/lists/:id/tasks/:taskId", async (req, res) => {
   } catch (err) {
     if (err?.status !== 404) return handleGoogleError(err, res);
   }
+
+  // Best-effort: drop the paired Calendar event too. Non-fatal — the task
+  // delete still succeeds (404/410 = already gone; other errors logged).
+  const eventId = tr.rows[0].calendar_event_id;
+  if (eventId && config.googleCalendarEnabled) {
+    try {
+      await googleCalendar.deleteEvent({ pool, userId: req.user.id, eventId });
+    } catch (err) {
+      if (err?.status !== 404 && err?.status !== 410) {
+        await logCalendarFailure(pool, req.user.id, err, { stage: "delete" });
+      }
+    }
+  }
+
   await pool.query(
     `UPDATE tasks.tasks SET is_deleted = TRUE, updated_at = now()
       WHERE id = $1 AND user_id = $2`,

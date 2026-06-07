@@ -100,7 +100,7 @@ import {
   estimatePanelLinePhysical,
   estimateRouteLoadPhysical,
   kgPerM2ForEspesor,
-} from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/loadCharacteristics.js";
+} from "../src/utils/logistica/loadCharacteristics.js";
 import { parsePedidoRetiroFromFreeText, parsePedidoFromColumnC, parsePickupIdFromColumnF } from "../src/utils/ventasPedidoRetiroParse.js";
 import {
   LOGISTICA_PLAN_EXPORT_SCHEMA_VERSION,

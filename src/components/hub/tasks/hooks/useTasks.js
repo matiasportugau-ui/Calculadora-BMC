@@ -151,19 +151,58 @@ export function useDeleteTaskList() {
   });
 }
 
-/** Create task in list. Body: { title, notes?, due?, parent_id? } */
+/**
+ * Create task in a fixed list. Body may include the Phase D rich fields:
+ * { title, notes?, due?, parent_id?, due_time?, is_all_day?, recurrence_rule? }
+ */
 export function useCreateTask(listId) {
   const { accessToken } = useBmcAuthContext();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ title, notes, due, parent_id }) =>
+    mutationFn: ({ title, notes, due, parent_id, due_time, is_all_day, recurrence_rule }) =>
       apiFetch(`/api/tasks/lists/${listId}/tasks`, accessToken, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, notes, due, parent_id }),
+        body: JSON.stringify({ title, notes, due, parent_id, due_time, is_all_day, recurrence_rule }),
       }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["tasks", "lists", listId, "tasks"] }),
+  });
+}
+
+/**
+ * Create a task in a list chosen at submit time (the modal's list picker).
+ * Variables: { listId, title, notes?, due?, due_time?, is_all_day?, recurrence_rule? }
+ */
+export function useCreateTaskInList() {
+  const { accessToken } = useBmcAuthContext();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ listId, ...body }) =>
+      apiFetch(`/api/tasks/lists/${listId}/tasks`, accessToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (_data, vars) =>
+      queryClient.invalidateQueries({ queryKey: ["tasks", "lists", vars.listId, "tasks"] }),
+  });
+}
+
+/**
+ * Probe whether the connected Google grant includes the Phase D calendar.events
+ * scope. Pure backend DB read (GET /auth/tasks/scope-probe). Drives the
+ * "Reconnect to enable time / repeat" CTA for users connected before Phase D.
+ * @returns { data: { ok, connected, hasTasks, hasCalendar }, ... }
+ */
+export function useTasksScopeProbe() {
+  const { accessToken } = useBmcAuthContext();
+  return useQuery({
+    queryKey: ["tasks", "scope-probe"],
+    queryFn: () => apiFetch("/auth/tasks/scope-probe", accessToken),
+    staleTime: STALE_TIME_MS,
+    gcTime: GC_TIME_MS,
+    enabled: !!accessToken,
   });
 }
 
