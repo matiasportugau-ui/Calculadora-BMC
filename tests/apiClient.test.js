@@ -2,12 +2,27 @@
 // Run: node tests/apiClient.test.js
 import assert from "node:assert/strict";
 import { apiUrl, isEmptyPayload, ApiError } from "../src/utils/apiClient.js";
+import {
+  fetchTeamAssistChat,
+  TEAM_ASSIST_CHAT_TIMEOUT_MS,
+} from "../src/utils/teamAssistApi.js";
 
 let pass = 0;
 let fail = 0;
 function t(name, fn) {
   try {
     fn();
+    pass++;
+    console.log(`  ✅ ${name}`);
+  } catch (err) {
+    fail++;
+    console.error(`  ❌ ${name}\n     ${err.message}`);
+  }
+}
+
+async function tAsync(name, fn) {
+  try {
+    await fn();
     pass++;
     console.log(`  ✅ ${name}`);
   } catch (err) {
@@ -73,6 +88,47 @@ t("ApiError carries status and data payload", () => {
   const e = new ApiError("bad", { status: 422, data: { error: "invalid" } });
   assert.equal(e.status, 422);
   assert.deepEqual(e.data, { error: "invalid" });
+});
+
+await tAsync("fetchTeamAssistChat waits beyond the server OpenAI timeout", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const captured = {};
+
+  globalThis.setTimeout = (_fn, ms) => {
+    captured.timeoutMs = ms;
+    return { mockedTimer: true };
+  };
+  globalThis.clearTimeout = (timer) => {
+    captured.clearedTimer = timer;
+  };
+  globalThis.fetch = async (url, init) => {
+    captured.url = String(url);
+    captured.init = init;
+    return new Response(JSON.stringify({ ok: true, reply: "ok" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    const data = await fetchTeamAssistChat({
+      agentId: "orchestrator",
+      messages: [{ role: "user", content: "hola" }],
+    });
+
+    assert.equal(data.reply, "ok");
+    assert.ok(TEAM_ASSIST_CHAT_TIMEOUT_MS > 30_000);
+    assert.equal(captured.timeoutMs, TEAM_ASSIST_CHAT_TIMEOUT_MS);
+    assert.ok(captured.url.endsWith("/api/team-assist/chat"), `got ${captured.url}`);
+    assert.equal(captured.init.method, "POST");
+    assert.ok(captured.init.signal instanceof AbortSignal);
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
 });
 
 console.log(
