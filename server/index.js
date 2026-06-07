@@ -70,6 +70,7 @@ import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
+import webhooksRouter from "./routes/webhooks.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -141,6 +142,9 @@ app.use(
     genReqId: () => crypto.randomUUID(),
   })
 );
+
+// Mount extracted webhooks router (start of monolith decomposition - Phase 1)
+app.use("/webhooks", webhooksRouter);
 
 // Replaced in-memory Map with persistent store (Phase 0 security fix).
 // See server/lib/oauthStateStore.js
@@ -495,55 +499,7 @@ app.get("/ml/orders/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/webhooks/ml", asyncHandler(async (req, res) => {
-  // Layer 1: HMAC signature verification (Gap #1 fix)
-  // ML signs: "id:{data.id};request-id:{x-request-id};ts:{ts}" with ML_CLIENT_SECRET
-  const mlSigVerified = verifyMLSignature({
-    clientSecret: config.mlClientSecret,
-    signatureHeader: req.headers["x-signature"],
-    dataId: req.query.id ?? req.body?.id,
-    requestId: req.headers["x-request-id"],
-  });
-  if (!mlSigVerified.skipped && !mlSigVerified.ok) {
-    req.log.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
-    return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
-  }
-  if (mlSigVerified.reason === "secret_not_configured") {
-    req.log.error("ML_CLIENT_SECRET is not configured — rejecting webhook for security");
-    return res.status(503).json({ ok: false, error: "Webhook security not configured" });
-  }
-
-  // Layer 2: verify token (second layer — kept for defence in depth)
-  if (config.webhookVerifyToken) {
-    const received =
-      req.query.verify_token ||
-      req.headers["x-webhook-token"] ||
-      req.headers.authorization;
-    if (String(received) !== String(config.webhookVerifyToken)) {
-      return res.status(401).json({ ok: false, error: "Invalid webhook token" });
-    }
-  }
-
-  const event = {
-    id: crypto.randomUUID(),
-    receivedAt: new Date().toISOString(),
-    body: req.body,
-    query: req.query,
-    headers: {
-      "x-request-id": req.headers["x-request-id"],
-      topic: req.headers["x-topic"],
-      "x-signature": req.headers["x-signature"],
-    },
-  };
-  webhookEvents.unshift(event);
-  if (webhookEvents.length > maxWebhookEvents) webhookEvents.pop();
-
-  req.log.info({ eventId: event.id, topic: event.headers.topic }, "MercadoLibre webhook received");
-
-  // Trigger ML→CRM sync cuando llega una pregunta nueva (fire-and-forget — responde 200 de inmediato)
-  const topic = req.body?.topic || req.headers["x-topic"];
-  if (topic === "questions" && config.bmcSheetId) {
-    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+// /webhooks/ml moved to server/routes/webhooks.js (monolith decomposition)
     (async () => {
       try {
         const syncResult = await syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log });
