@@ -154,6 +154,10 @@ Verificados contra el commit base `3153b11` (antes de Gate 0):
 
 Recomiendo trackearlos aparte; no bloquean Gate 0 pero ensucian `gate:local`.
 
+### Hallazgos de CI en el PR #283
+- **`Env drift` (era rojo) → arreglado.** Drift preexistente de la feature Calendar Phase D (commit `77d6bae`): `GOOGLE_CALENDAR_ENABLED` / `_TIME_ZONE` / `_DEFAULT_DURATION_MIN` se leen en `server/config.js` pero nunca se documentaron. Como Gate 0 exige que `Env drift` sea un required check **verde** en `main`, los agregué a `.github/ALLOWED_ENV_DRIFT.txt` (commit `0aa3789`). `node scripts/check-env-drift.mjs` → `✅ No env drift`.
+- **`Channels — automated pipeline (prod)` (rojo) → fuera de alcance, sin acción.** Falla porque `scripts/smoke-prod-api.mjs` smoke-testea la API de **producción**; depende del estado de prod/red, no del diff del PR. No es uno de los required checks propuestos para branch protection. Ajeno a Gate 0.
+
 ---
 
 ## Preguntas abiertas para Matias
