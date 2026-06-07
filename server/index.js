@@ -71,6 +71,7 @@ import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
 import { shouldRejectWebhook, shouldRejectVerifyToken } from "./lib/webhookGate.js";
+import { saveOauthState, consumeOauthState } from "./lib/oauthStateStore.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -133,7 +134,6 @@ app.use(
 );
 
 const stateTtlMs = 10 * 60 * 1000;
-const oauthStates = new Map();
 const webhookEvents = [];
 const maxWebhookEvents = 250;
 
@@ -167,14 +167,6 @@ const asyncHandler =
   (fn) =>
   (req, res, next) =>
     Promise.resolve(fn(req, res, next)).catch(next);
-
-const ensureValidState = (state) => {
-  const entry = oauthStates.get(state);
-  if (!entry) return null;
-  const expired = Date.now() - entry.createdAt > stateTtlMs;
-  oauthStates.delete(state);
-  return expired ? null : entry;
-};
 
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
 app.get("/capabilities", (req, res) => {
@@ -248,7 +240,13 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
-  oauthStates.set(state, { createdAt: Date.now(), codeVerifier });
+  await saveOauthState({
+    databaseUrl: config.databaseUrl,
+    state,
+    provider: "ml",
+    codeVerifier,
+    ttlMs: stateTtlMs,
+  });
   const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {
@@ -269,8 +267,10 @@ app.get("/auth/ml/callback", asyncHandler(async (req, res) => {
   if (!code) {
     return res.status(400).json({ ok: false, error: "Missing code in callback querystring" });
   }
-  const stateEntry = ensureValidState(String(state));
-  if (!state || !stateEntry) {
+  const stateEntry = state
+    ? await consumeOauthState({ databaseUrl: config.databaseUrl, state: String(state), provider: "ml" })
+    : null;
+  if (!stateEntry) {
     return res.status(400).json({ ok: false, error: "Invalid or expired OAuth state" });
   }
 
