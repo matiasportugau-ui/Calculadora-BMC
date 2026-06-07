@@ -118,6 +118,8 @@ create table if not exists clientes.customer_events_2026_05 partition of cliente
   for values from ('2026-05-01') to ('2026-06-01');
 create table if not exists clientes.customer_events_2026_06 partition of clientes.customer_events
   for values from ('2026-06-01') to ('2026-07-01');
+create table if not exists clientes.customer_events_2026_07 partition of clientes.customer_events
+  for values from ('2026-07-01') to ('2026-08-01');
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- customer_quotes — link to identity.quotes + commercial status
