@@ -186,8 +186,7 @@ Citas textuales: *"Faltan accesorios Isoroof 100 mm — Agregar todos los acceso
 La lista ampliada de las capturas 05/06 (ítems 8–16) se reparte en lanes con dueños distintos. Este ledger es el punto de consolidación; cada lane escribe su propia sección.
 
 ### Lane MATRIZ (ítems 8–12) — owner: otro agente / Matias
-> **⏳ PLACEHOLDER — pendiente del texto de Matias.** No cerrar v0.5 hasta integrarlo.
-> Cubre ítems 8–12 (validar precios vs Matriz, fuente única de verdad, sync automático/semiautomático, mejora de UI de carga). Archivos de esa lane (`server/config.js`, `src/data/matrizPreciosMapping.js`) **no los toca este agente**. El estado técnico relevante ya quedó documentado en WOLF-0004 OBSERVE/LOCK (pipeline parcial existente).
+> **✓ Integrada en los tickets WOLF.** Cubre ítems 8–12 (validar precios vs Matriz, fuente única de verdad, sync automático/semiautomático, mejora de UI de carga). El contenido técnico de esta lane está consolidado en **WOLF-0004** (OBSERVE/LOCK: pipeline `productosMaestro` parcial ya existente, evidencia CSV de prod 68/20/3, plan raíz 3 etapas) y **WOLF-0002** (refinamiento de mecanismo: corrimiento de columna descartado). Restricción de archivos respetada: este agente **no editó** `server/config.js` ni `src/data/matrizPreciosMapping.js` (los maneja el otro agente).
 
 ### Lane TIME TRACKER (ítems 13–16) — owner: este agente (Wolf/Claude) · verificado contra repo 05/06
 Mapa de los 4 ítems de Time Tracker de las capturas contra `server/routes/traktime.js` + migraciones + `server/lib/traktimeInvoicePdf.js`:
