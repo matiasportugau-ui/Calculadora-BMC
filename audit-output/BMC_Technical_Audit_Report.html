@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMC Calculadora — Technical Audit Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600; }
+
+        .section-header { font-size: 1.05rem; letter-spacing: -0.02em; }
+
+        .audit-table { border-collapse: separate; border-spacing: 0; }
+        .audit-table th { background-color: #0f172a; color: #f1f5f9; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .audit-table td { border-bottom: 1px solid #e2e8f0; font-size: 0.875rem; }
+
+        .priority-36 { background-color: #fee2e2; color: #991b1b; font-weight: 700; }
+        .priority-30 { background-color: #fef3c7; color: #854d0e; font-weight: 700; }
+        .priority-24 { background-color: #fef3c7; color: #854d0e; font-weight: 600; }
+        .priority-21 { background-color: #e0e7ff; color: #3730a3; font-weight: 600; }
+
+        .professional-card { box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
+
+        @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
+            .audit-table { font-size: 0.8rem; }
+        }
+
+        .risk-high { background-color: #fee2e2; color: #991b1b; }
+        .risk-medium { background-color: #fef3c7; color: #92400e; }
+        .status-pill { font-size: 0.65rem; padding: 1px 8px; border-radius: 9999px; font-weight: 600; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <!-- Header -->
+    <div class="bg-slate-900 text-white py-6 px-8 print:py-4">
+        <div class="max-w-[1100px] mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-x-3">
+                <div class="w-8 h-8 bg-white rounded flex items-center justify-center">
+                    <span class="text-slate-900 font-bold text-xl tracking-tighter">B</span>
+                </div>
+                <div>
+                    <h1 class="font-display text-2xl font-semibold tracking-tighter">BMC Calculadora</h1>
+                    <p class="text-slate-400 text-xs -mt-0.5">Technical Audit Report • June 2026</p>
+                </div>
+            </div>
+            <div class="text-right text-xs">
+                <div class="font-medium">v3.1.5</div>
+                <div class="text-slate-400">Confidential — Internal Use</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-[1100px] mx-auto px-8 py-6 text-sm">
+
+        <!-- Executive Summary -->
+        <div class="mb-8">
+            <div class="flex items-center gap-x-2 mb-3">
+                <i class="fa-solid fa-chart-line text-slate-500"></i>
+                <h2 class="font-semibold tracking-tight text-lg">Executive Summary</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div class="md:col-span-5 bg-white border border-slate-200 rounded-xl p-4 professional-card">
+                    <div class="flex justify-between">
+                        <div>
+                            <div class="text-[10px] uppercase tracking-widest font-semibold text-slate-500">Overall Health</div>
+                            <div class="text-3xl font-semibold text-amber-600 tracking-tighter mt-0.5">Yellow</div>
+                            <div class="text-xs text-slate-600">Functional but high operational complexity &amp; concentration risk</div>
+                        </div>
+                        <div class="px-2.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-full h-fit">Action Required</div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-7 bg-white border border-slate-200 rounded-xl p-4 professional-card text-xs">
+                    <div class="grid grid-cols-3 gap-x-4">
+                        <div>
+                            <div class="font-medium text-slate-500 mb-1">Strong Points</div>
+                            <div class="leading-snug text-slate-700">• High automation velocity (180+ npm scripts)<br>• Strong gate culture + recent hardening<br>• Modern identity + RBAC evolution<br>• Good engineering patterns in places</div>
+                        </div>
+                        <div>
+                            <div class="font-medium text-red-600 mb-1">Critical Issues</div>
+                            <div class="leading-snug text-red-700">• Monolithic backend (1,196 lines in one Cloud Run service)<br>• Webhook HMAC silently skipped when secrets absent<br>• In-memory OAuth state (breaks on scale)<br>• Extreme docs sprawl (1,023 .md files)</div>
+                        </div>
+                        <div>
+                            <div class="font-medium text-slate-500 mb-1">Top Priority (Score 36)</div>
+                            <div class="font-semibold">Close webhook + OAuth state gaps</div>
+                            <div class="text-[10px] text-slate-600 mt-1">Est. effort: 1–2 weeks • Highest risk × impact items</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Risks -->
+        <div class="mb-8">
+            <h3 class="font-semibold tracking-tight mb-2 flex items-center gap-x-2">
+                <i class="fa-solid fa-shield-halved text-red-500"></i> Key Risks (if unaddressed)
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2">Forged webhooks (ML/WA) possible when secrets are not set — common pattern in staging/prod.</div>
+                <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2">OAuth/login instability on multi-instance Cloud Run due to in-memory state.</div>
+                <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2">High blast radius: any bug or bad deploy affects calculator + all channels + AI agent.</div>
+                <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2">Slow onboarding + contradictory knowledge from 1,023+ fragmented docs (no clear index).</div>
+            </div>
+        </div>
+
+        <!-- Technical Debt Register -->
+        <div class="mb-8 page-break">
+            <div class="flex items-baseline justify-between mb-2">
+                <h3 class="font-semibold tracking-tight">Technical Debt Register (Top Items)</h3>
+                <div class="text-[10px] text-slate-500">Priority = (Impact + Risk) × (6 - Effort)</div>
+            </div>
+
+            <table class="w-full audit-table bg-white border border-slate-200 rounded-xl overflow-hidden text-xs">
+                <thead>
+                    <tr>
+                        <th class="px-3 py-2 text-left">Title</th>
+                        <th class="px-2 py-2 text-center w-12">Score</th>
+                        <th class="px-2 py-2 text-center w-10">Impact</th>
+                        <th class="px-2 py-2 text-center w-10">Risk</th>
+                        <th class="px-2 py-2 text-center w-10">Effort</th>
+                        <th class="px-3 py-2 text-left">Owner</th>
+                        <th class="px-3 py-2 text-left">Business Justification</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <tr>
+                        <td class="px-3 py-1.5 font-medium">In-memory OAuth state</td>
+                        <td class="px-2 py-1.5 text-center"><span class="priority-36 px-1.5 py-px rounded text-[10px]">36</span></td>
+                        <td class="px-2 py-1.5 text-center">4</td>
+                        <td class="px-2 py-1.5 text-center">5</td>
+                        <td class="px-2 py-1.5 text-center">2</td>
+                        <td class="px-3 py-1.5">Backend</td>
+                        <td class="px-3 py-1.5 text-slate-600">Security + reliability: state loss on restarts / multi-replica deploys breaks logins for operators.</td>
+                    </tr>
+                    <tr>
+                        <td class="px-3 py-1.5 font-medium">Webhook HMAC skipped when secret absent</td>
+                        <td class="px-2 py-1.5 text-center"><span class="priority-36 px-1.5 py-px rounded text-[10px]">36</span></td>
+                        <td class="px-2 py-1.5 text-center">4</td>
+                        <td class="px-2 py-1.5 text-center">5</td>
+                        <td class="px-2 py-1.5 text-center">2</td>
+                        <td class="px-3 py-1.5">Security</td>
+                        <td class="px-3 py-1.5 text-slate-600">Direct attack surface for forged ML questions and WA messages (confirmed gap in session transcript).</td>
+                    </tr>
+                    <tr>
+                        <td class="px-3 py-1.5 font-medium">Monolithic server/index.js (1196 lines)</td>
+                        <td class="px-2 py-1.5 text-center"><span class="priority-30 px-1.5 py-px rounded text-[10px]">30</span></td>
+                        <td class="px-2 py-1.5 text-center">5</td>
+                        <td class="px-2 py-1.5 text-center">5</td>
+                        <td class="px-2 py-1.5 text-center">4</td>
+                        <td class="px-3 py-1.5">Backend lead</td>
+                        <td class="px-3 py-1.5 text-slate-600">High blast radius on every deploy. Slows refactoring, testing, and independent scaling of AI vs public calc.</td>
+                    </tr>
+                    <tr>
+                        <td class="px-3 py-1.5 font-medium">Brittle test execution (giant &amp;&amp; chain)</td>
+                        <td class="px-2 py-1.5 text-center"><span class="priority-24 px-1.5 py-px rounded text-[10px]">24</span></td>
+                        <td class="px-2 py-1.5 text-center">3</td>
+                        <td class="px-2 py-1.5 text-center">4</td>
+                        <td class="px-2 py-1.5 text-center">2</td>
+                        <td class="px-3 py-1.5">CI/Test</td>
+                        <td class="px-3 py-1.5 text-slate-600">Flaky gates, hidden regressions in pricing/auth/calc. Slow feedback loop.</td>
+                    </tr>
+                    <tr>
+                        <td class="px-3 py-1.5 font-medium">Documentation fragmentation &amp; sprawl</td>
+                        <td class="px-2 py-1.5 text-center"><span class="priority-21 px-1.5 py-px rounded text-[10px]">21</span></td>
+                        <td class="px-2 py-1.5 text-center">3</td>
+                        <td class="px-2 py-1.5 text-center">4</td>
+                        <td class="px-2 py-1.5 text-center">3</td>
+                        <td class="px-3 py-1.5">Docs owner</td>
+                        <td class="px-3 py-1.5 text-slate-600">1,023 .md files (29 MB). No clear index. High onboarding tax and contradictory knowledge.</td>
+                    </tr>
+                    <tr>
+                        <td class="px-3 py-1.5 font-medium">Inconsistent / relaxed dev auth</td>
+                        <td class="px-2 py-1.5 text-center"><span class="priority-21 px-1.5 py-px rounded text-[10px]">21</span></td>
+                        <td class="px-2 py-1.5 text-center">3</td>
+                        <td class="px-2 py-1.5 text-center">4</td>
+                        <td class="px-2 py-1.5 text-center">2</td>
+                        <td class="px-3 py-1.5">Security</td>
+                        <td class="px-3 py-1.5 text-slate-600">PANELIN_RELAX_DEV_AUTH skips checks on powerful internal/agent surfaces. Easy to leave on in prod.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="text-[10px] text-slate-500 mt-1">Full register + justification in TECH-DEBT-REGISTER.md. All items traceable to live code scans.</div>
+        </div>
+
+        <!-- Security Assessment -->
+        <div class="mb-8">
+            <h3 class="font-semibold tracking-tight mb-2 flex items-center gap-x-2">
+                <i class="fa-solid fa-lock text-slate-500"></i> Security Assessment
+            </h3>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-4 text-xs professional-card mb-3">
+                <div class="font-medium mb-1">OWASP Top 10 (2021) — Key Findings</div>
+                <table class="w-full text-[11px]">
+                    <thead><tr class="text-slate-500"><th class="text-left py-0.5">Category</th><th class="text-left">Status</th><th class="text-left">Details</th></tr></thead>
+                    <tbody class="text-slate-700">
+                        <tr><td class="py-0.5">A02 Cryptographic Failures</td><td class="risk-high status-pill">At risk</td><td>HMAC verification skipped when secret absent (whatsappSignature.js:9, mlSignature.js:19)</td></tr>
+                        <tr><td class="py-0.5">A07 Identification &amp; Auth Failures</td><td class="risk-high status-pill">At risk</td><td>In-memory oauthStates; WA verify token can be empty</td></tr>
+                        <tr><td class="py-0.5">A04 Insecure Design</td><td class="risk-high status-pill">At risk</td><td>Monolith concentration + in-memory state + webhook event buffers</td></tr>
+                        <tr><td class="py-0.5">A01 Broken Access Control</td><td class="risk-medium status-pill">At risk</td><td>Broad internal routes + relax-dev flag</td></tr>
+                        <tr><td class="py-0.5">A06 Vulnerable Components</td><td class="risk-medium status-pill">Moderate</td><td>3 moderate (react-router open redirect, hono transitive)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-[11px] text-slate-600">
+                <strong>Critical Gaps:</strong> Webhook HMAC best-effort only. OAuth state not durable across replicas. No startup fail-fast for missing critical secrets.
+                <span class="block mt-1"><strong>Recommendations (tied to debt):</strong> Make secrets mandatory in prod (P0). Persist oauth state to Postgres (P0). Enforce relax-dev-auth strictly (P1).</span>
+            </div>
+        </div>
+
+        <!-- Code Review Highlights -->
+        <div class="mb-8">
+            <h3 class="font-semibold tracking-tight mb-2">Key Code Review Findings (File | Line)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div class="bg-white border border-slate-200 rounded-lg p-3 professional-card">
+                    <div class="font-medium text-red-700 mb-1">Security</div>
+                    <div class="text-slate-700">• server/index.js:134 — in-memory oauthStates Map<br>• server/lib/whatsappSignature.js:9 &amp; mlSignature.js:19 — silent skip when secret missing<br>• server/config.js:53 — overly permissive PANELIN_RELAX_DEV_AUTH</div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-lg p-3 professional-card">
+                    <div class="font-medium text-amber-700 mb-1">Performance &amp; Maintainability</div>
+                    <div class="text-slate-700">• server/index.js:1196 — god entrypoint + 30+ side-effect initializers<br>• src/components/PanelinCalculadoraV3_backup.jsx:7235 lines + RoofPreview.jsx:4238 lines<br>• package.json "test" script — one giant &amp;&amp; chain (no summary, no coverage)</div>
+                </div>
+            </div>
+            <div class="text-[10px] text-slate-500 mt-1">Full list with suggested fixes in CODE-REVIEW-AUDIT.md. 15+ traceable issues catalogued.</div>
+        </div>
+
+        <!-- Improvement Roadmap -->
+        <div class="mb-6">
+            <h3 class="font-semibold tracking-tight mb-2">Improvement Roadmap</h3>
+
+            <div class="space-y-3">
+                <div>
+                    <div class="font-medium text-emerald-700 text-xs tracking-wide mb-1">PHASE 0 — CRITICAL (Do Immediately)</div>
+                    <div class="text-xs grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div class="border border-emerald-200 bg-emerald-50 rounded p-2">1. Make webhook secrets mandatory in production + remove silent skip (3–5 days, Backend+Security)</div>
+                        <div class="border border-emerald-200 bg-emerald-50 rounded p-2">2. Persist OAuth state (replace in-memory Map) — use Supabase pattern (1 week, Backend)</div>
+                        <div class="border border-emerald-200 bg-emerald-50 rounded p-2">3. Fix test runner + add coverage baseline (3–5 days, CI owner)</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="font-medium text-amber-700 text-xs tracking-wide mb-1">PHASE 1 — Next 3 Months</div>
+                    <div class="text-xs text-slate-700 leading-snug">Decompose server/index.js monolith (extract webhook processors + major workers) • Archive "docs 2/" + create canonical docs INDEX • Enforce relax-dev-auth strictly • Upgrade react-router (fix open redirect) • Add explicit HMAC tests for ML &amp; WA • Promote key browser flows to scheduled smoke • Finish GCP Secret Manager / IAM Phase 1 • Standardize logging to pino everywhere in server/</div>
+                </div>
+
+                <div class="text-xs text-slate-600">
+                    <span class="font-medium">Phase 2 (6 months):</span> Extract stable "core calc + quotes + identity" boundary • Strengthen dual-write vs Sheets • Add per-route rate limiting • SBOM + scheduled dep scanning.<br>
+                    <span class="font-medium">Phase 3 (12 months):</span> Evaluate splitting Cloud Run service • Reduce script sprawl • Agent coordination hygiene • Complexity &amp; debt review as part of monthly compass.
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 text-white rounded-xl p-4 text-xs">
+            <div class="uppercase text-[10px] tracking-[0.5px] text-slate-400 mb-1">Recommendation</div>
+            <div class="leading-snug">The system delivers real value and the team moves fast. The work now is making that velocity sustainable and reducing self-inflicted production risk. Prioritize the three Phase 0 items immediately (est. 3–6 weeks). Re-audit in 90 days.</div>
+        </div>
+
+        <div class="mt-6 text-center text-[10px] text-slate-400">
+            Generated from full audit (10 deliverables) • June 2026 • All findings traceable to live scans, PROJECT-STATE.md, and code
+        </div>
+    </div>
+</body>
+</html>

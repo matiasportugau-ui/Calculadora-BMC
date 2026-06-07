@@ -43,6 +43,7 @@ import { initWaWebhooks } from "./lib/waWebhooks.js";
 import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
+import { createBugsRouter } from "./routes/bugs.js";
 import marketingRouter from "./routes/marketing.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
@@ -70,6 +71,7 @@ import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
+import webhooksRouter from "./routes/webhooks.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -86,6 +88,17 @@ if (config.panelinRelaxDevAuth) {
   logger.warn(
     "PANELIN_RELAX_DEV_AUTH is enabled — Panelin developer endpoints skip API_AUTH_TOKEN checks. Do not use this on production APIs exposed to the public internet."
   );
+}
+
+// Phase 0 security hardening: fail loud in production if critical webhook secrets are missing
+const isProd = config.appEnv === "production" || process.env.NODE_ENV === "production";
+if (isProd) {
+  if (!config.whatsappAppSecret) {
+    logger.error("FATAL: WHATSAPP_APP_SECRET is not set in production — WhatsApp webhooks will be rejected");
+  }
+  if (!config.mlClientSecret) {
+    logger.error("FATAL: ML_CLIENT_SECRET is not set in production — MercadoLibre webhooks will be rejected");
+  }
 }
 
 const app = express();
@@ -131,8 +144,12 @@ app.use(
   })
 );
 
-const stateTtlMs = 10 * 60 * 1000;
-const oauthStates = new Map();
+// Mount extracted webhooks router (start of monolith decomposition - Phase 1)
+app.use("/webhooks", webhooksRouter);
+
+// Replaced in-memory Map with persistent store (Phase 0 security fix).
+// See server/lib/oauthStateStore.js
+import { oauthStateStore } from "./lib/oauthStateStore.js";
 const webhookEvents = [];
 const maxWebhookEvents = 250;
 
@@ -167,12 +184,11 @@ const asyncHandler =
   (req, res, next) =>
     Promise.resolve(fn(req, res, next)).catch(next);
 
-const ensureValidState = (state) => {
-  const entry = oauthStates.get(state);
+const ensureValidState = async (state) => {
+  const entry = await oauthStateStore.get(state);
   if (!entry) return null;
-  const expired = Date.now() - entry.createdAt > stateTtlMs;
-  oauthStates.delete(state);
-  return expired ? null : entry;
+  // The store already handles TTL/expiry + deletion
+  return entry;
 };
 
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
@@ -247,7 +263,7 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
-  oauthStates.set(state, { createdAt: Date.now(), codeVerifier });
+  await oauthStateStore.set(state, { codeVerifier });
   const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {
@@ -268,7 +284,7 @@ app.get("/auth/ml/callback", asyncHandler(async (req, res) => {
   if (!code) {
     return res.status(400).json({ ok: false, error: "Missing code in callback querystring" });
   }
-  const stateEntry = ensureValidState(String(state));
+  const stateEntry = await ensureValidState(String(state));
   if (!state || !stateEntry) {
     return res.status(400).json({ ok: false, error: "Invalid or expired OAuth state" });
   }
@@ -484,77 +500,7 @@ app.get("/ml/orders/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/webhooks/ml", asyncHandler(async (req, res) => {
-  // Layer 1: HMAC signature verification (Gap #1 fix)
-  // ML signs: "id:{data.id};request-id:{x-request-id};ts:{ts}" with ML_CLIENT_SECRET
-  const mlSigVerified = verifyMLSignature({
-    clientSecret: config.mlClientSecret,
-    signatureHeader: req.headers["x-signature"],
-    dataId: req.query.id ?? req.body?.id,
-    requestId: req.headers["x-request-id"],
-  });
-  if (!mlSigVerified.skipped && !mlSigVerified.ok) {
-    req.log.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
-    return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
-  }
-  if (mlSigVerified.skipped && config.appEnv !== "test") {
-    req.log.warn("ML_CLIENT_SECRET unset — POST /webhooks/ml HMAC verification skipped");
-  }
-
-  // Layer 2: verify token (second layer — kept for defence in depth)
-  if (config.webhookVerifyToken) {
-    const received =
-      req.query.verify_token ||
-      req.headers["x-webhook-token"] ||
-      req.headers.authorization;
-    if (String(received) !== String(config.webhookVerifyToken)) {
-      return res.status(401).json({ ok: false, error: "Invalid webhook token" });
-    }
-  }
-
-  const event = {
-    id: crypto.randomUUID(),
-    receivedAt: new Date().toISOString(),
-    body: req.body,
-    query: req.query,
-    headers: {
-      "x-request-id": req.headers["x-request-id"],
-      topic: req.headers["x-topic"],
-      "x-signature": req.headers["x-signature"],
-    },
-  };
-  webhookEvents.unshift(event);
-  if (webhookEvents.length > maxWebhookEvents) webhookEvents.pop();
-
-  req.log.info({ eventId: event.id, topic: event.headers.topic }, "MercadoLibre webhook received");
-
-  // Trigger ML→CRM sync cuando llega una pregunta nueva (fire-and-forget — responde 200 de inmediato)
-  const topic = req.body?.topic || req.headers["x-topic"];
-  if (topic === "questions" && config.bmcSheetId) {
-    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
-    (async () => {
-      try {
-        const syncResult = await syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log });
-        if (autoMode.fullAuto && syncResult.rows?.length > 0) {
-          req.log.info({ count: syncResult.rows.length }, "ML auto-mode ON — running auto-answer pipeline");
-          const { answered } = await autoAnswerPipeline({
-            rows:      syncResult.rows,
-            ml,
-            sheetId:   config.bmcSheetId,
-            credsPath,
-            config,
-            logger:    req.log,
-          });
-          req.log.info({ answered }, "ML auto-answer pipeline complete");
-        }
-      } catch (err) {
-        req.log.error({ err }, "ML→CRM webhook pipeline failed");
-      }
-    })();
-  }
-
-  res.status(200).json({ ok: true, eventId: event.id });
-}));
+// /webhooks/ml moved to server/routes/webhooks.js (monolith decomposition)
 
 app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
   res.json({ ok: true, count: webhookEvents.length, events: webhookEvents });
@@ -771,10 +717,11 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
     signatureHeader: sig,
   });
   if (!verified.skipped && !verified.ok) {
+    if (verified.reason === "secret_not_configured") {
+      logger.error("WHATSAPP_APP_SECRET is not configured — rejecting webhook for security");
+      return res.status(503).json({ ok: false, error: "Webhook security not configured" });
+    }
     return res.status(401).json({ ok: false, error: "invalid webhook signature" });
-  }
-  if (verified.skipped && config.appEnv !== "test") {
-    logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
   }
 
   let body = {};
@@ -976,6 +923,7 @@ app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 app.use("/api/internal/presup", presupOrchestratorRouter);
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
+app.use("/api/bugs", createBugsRouter(config));
 // Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
 // Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
 app.use("/api/marketing", marketingRouter);

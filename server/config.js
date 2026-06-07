@@ -87,6 +87,8 @@ export const config = {
   aiKnowledgeEventsLog: process.env.AI_KNOWLEDGE_EVENTS_LOG || "",
   bmcSheetSchema: process.env.BMC_SHEET_SCHEMA || "Master_Cotizaciones",
   bmcAuditTab: process.env.BMC_AUDIT_TAB || "AUDIT_LOG",
+  /** Tab para reportes de bugs desde la UI (con logs y contexto). Ops debe crear la pestaña con headers una vez. */
+  bugReportsTab: process.env.BMC_BUG_REPORTS_TAB || "BUG_REPORTS",
   bmcPagosTab: process.env.BMC_PAGOS_TAB || "Pagos_Pendientes",
   bmcMetasTab: process.env.BMC_METAS_TAB || "Metas_Ventas",
   bmcCalendarioTab: process.env.BMC_CALENDARIO_TAB || "Calendario de Vencimientos",

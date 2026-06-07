@@ -4,6 +4,12 @@ import { verifyMLSignature } from "../server/lib/mlSignature.js";
 
 const SECRET = "test-client-secret-abc123";
 
+// Helper: restore or delete an env var safely (avoid setting to the string "undefined")
+function restoreEnv(key, prev) {
+  if (prev === undefined) delete process.env[key];
+  else process.env[key] = prev;
+}
+
 // Helper: build a valid signature header for given params
 function buildSignature({ secret, dataId, requestId, ts }) {
   const parts = [];
@@ -47,8 +53,10 @@ const REQUEST_ID = "req-abc-123";
   assert.equal(result.ok, false, "tampered hash should return ok:false");
 }
 
-// 3. No client secret → skipped:true
+// 3. No client secret in test mode → skipped:true (allowed for tests)
 {
+  const prev = process.env.APP_ENV;
+  process.env.APP_ENV = "test";
   const result = verifyMLSignature({
     clientSecret: "",
     signatureHeader: "ts=123,v1=abc",
@@ -56,8 +64,25 @@ const REQUEST_ID = "req-abc-123";
     requestId: REQUEST_ID,
     nowMs: NOW,
   });
-  assert.equal(result.ok, true, "missing secret should not block (skipped)");
-  assert.equal(result.skipped, true, "missing secret should set skipped:true");
+  assert.equal(result.ok, true, "missing secret in test mode should skip");
+  assert.equal(result.skipped, true, "missing secret in test mode should set skipped:true");
+  restoreEnv("APP_ENV", prev);
+}
+
+// 3b. No client secret in production → hard reject (new secure behavior)
+{
+  const prev = process.env.APP_ENV;
+  process.env.APP_ENV = "production";
+  const result = verifyMLSignature({
+    clientSecret: "",
+    signatureHeader: "ts=123,v1=abc",
+    dataId: DATA_ID,
+    requestId: REQUEST_ID,
+    nowMs: NOW,
+  });
+  assert.equal(result.ok, false, "missing secret in prod must be rejected");
+  assert.equal(result.reason, "secret_not_configured");
+  restoreEnv("APP_ENV", prev);
 }
 
 // 4. dataId altered after signing → ok:false
@@ -114,8 +139,10 @@ const REQUEST_ID = "req-abc-123";
   assert.equal(result.reason, "malformed_signature_header");
 }
 
-// 8. No clientSecret=undefined (not just empty string) → skipped:true
+// 8. No clientSecret=undefined in test mode → skipped:true
 {
+  const prev = process.env.APP_ENV;
+  process.env.APP_ENV = "test";
   const result = verifyMLSignature({
     clientSecret: undefined,
     signatureHeader: "ts=123,v1=abc",
@@ -123,7 +150,8 @@ const REQUEST_ID = "req-abc-123";
     requestId: REQUEST_ID,
     nowMs: NOW,
   });
-  assert.equal(result.skipped, true, "undefined clientSecret should set skipped:true");
+  assert.equal(result.skipped, true, "undefined clientSecret in test should set skipped:true");
+  restoreEnv("APP_ENV", prev);
 }
 
 console.log("mlSignature tests OK (8/8)");
