@@ -10,7 +10,7 @@ Consolidates the 2026-06-07 exhaustive audit into:
 
 Read-only audit. No secret values, no client PII. Run: python3 audit/build_maestro.py
 """
-import csv, json, os, datetime
+import csv, json, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "MAESTRO_data")
@@ -528,10 +528,13 @@ for d in overview["deltas_vs_prior"]:
     ov_rows.append(["", d])
 for r in ov_rows:
     ws.append(r)
+# Style: title row + any section-header row (matched by label, not by fixed coords).
+SECTION_HEADERS = {"PRODUCCIÓN EN VIVO", "NÚMEROS CLAVE", "DELTAS vs AUDITORÍA PREVIA"}
 ws["A1"].font = Font(bold=True, size=16, color="1F2937")
-for cell in ("A9","A14") if False else ("A9","A15"):
-    ws[cell].font = Font(bold=True, size=12, color="B45309")
-ws["A30"].font = Font(bold=True, size=12, color="B45309") if ws.max_row >= 30 else Font()
+for ridx in range(2, ws.max_row + 1):
+    label = str(ws.cell(row=ridx, column=1).value or "").strip()
+    if label in SECTION_HEADERS:
+        ws.cell(row=ridx, column=1).font = Font(bold=True, size=12, color="B45309")
 ws.column_dimensions["A"].width = 26
 ws.column_dimensions["B"].width = 95
 for row in ws.iter_rows():
@@ -579,7 +582,7 @@ def to_objs(cols, rows):
     return [dict(zip(cols, r)) for r in rows]
 
 meta = {
-    "generated_at": datetime.datetime.now().isoformat(),
+    "generated_at": AUDIT_DATE,  # deterministic: audit date, not wall-clock (avoids diff churn)
     "overview": overview,
     "infrastructure": to_objs(infra_cols, infra),
     "sheets_analysis": to_objs(sheets_cols, sheets),
