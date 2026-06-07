@@ -32,15 +32,26 @@ function envMissing503(res, envVar) {
   });
 }
 
+function extractApiToken(req) {
+  return (
+    req.headers["x-api-key"] ||
+    (req.headers.authorization ? String(req.headers.authorization).replace(/^Bearer\s+/i, "") : "")
+  );
+}
+
+/** Pure check — no response side effects (for soft-auth on POST /report). */
+function hasValidApiToken(config, req) {
+  const expected = config.apiAuthToken;
+  if (!expected) return false;
+  return String(extractApiToken(req) || "") === String(expected);
+}
+
 function requireAuth(config, req, res) {
   const expected = config.apiAuthToken;
   if (!expected) {
     return envMissing503(res, "API_AUTH_TOKEN");
   }
-  const header =
-    req.headers["x-api-key"] ||
-    (req.headers.authorization ? String(req.headers.authorization).replace(/^Bearer\s+/i, "") : "");
-  if (String(header || "") !== String(expected)) {
+  if (!hasValidApiToken(config, req)) {
     res.status(401).json({ ok: false, error: "API key inválida o ausente" });
     return false;
   }
@@ -67,12 +78,8 @@ export function createBugsRouter(config) {
     // Soft auth: try dual-mode (token or JWT) but do not fail the report.
     // This enables pure calculator users and full BmcAuth JWT users without a cockpit token.
     let authMode = "none";
-    const hasStaticToken = !!config.apiAuthToken;
-    if (hasStaticToken) {
-      // Use the local requireAuth (token) for backward compat with existing ops callers.
-      // If it fails we still proceed (authMode=none) so reports always succeed.
-      const tokenOk = requireAuth(config, req, { /* dummy res to avoid early send */ sendStatus: () => {}, status: () => ({ json: () => {} }) });
-      if (tokenOk) authMode = "token";
+    if (hasValidApiToken(config, req)) {
+      authMode = "token";
     }
     // Note: full dual requireServiceOrUser can be layered here in future for JWT detection if headers present.
     // For now we detect presence of Authorization that is not the static one as "jwt-ish".

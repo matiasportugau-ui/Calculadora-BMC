@@ -99,7 +99,7 @@ await group("executeTool — telemetry wrapper records error call with class", a
 });
 
 group("AGENT_TOOLS not regressed by wrapper", () => {
-  assert(AGENT_TOOLS.length === 31, `31 tools exported (got ${AGENT_TOOLS.length})`);
+  assert(AGENT_TOOLS.length === 32, `32 tools exported (got ${AGENT_TOOLS.length})`);
 });
 
 await group("executeTool emits structured agent_tool_call log", async () => {
