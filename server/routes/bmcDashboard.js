@@ -1760,7 +1760,7 @@ export default function createBmcDashboardRouter(config) {
       }
     });
 
-    router.put("/productos-maestro/links", async (req, res) => {
+    router.put("/productos-maestro/links", requireCrmCockpitAuth, async (req, res) => {
       try {
         const body = req.body || {};
         const incoming = body.links || body;
