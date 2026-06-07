@@ -1,0 +1,26 @@
+Categoría,Métrica / Item,Valor,Notas / Deuda técnica
+Escala,Archivos trackeados,2413,
+Escala,Ramas remotas,53,Brief decía 84; hubo limpieza. Solo main protegida.
+Escala,PRs abiertas,45,Mayoría draft. Cluster copilot/* fix-deploy (churn de pipeline) + cursor[bot] test-coverage + dependabot.
+Código,Líneas .js,92804,374 archivos
+Código,.jsx,48281,112 archivos
+Código,.mjs,15539,86 archivos
+Código,TypeScript,52 (.ts) + 376 (.tsx),Adopción ~nula a pesar de presencia.
+Docs,Markdown,136325 líneas / 1310 archivos,Docs > todo el código de la app. SPRAWL = deuda dominante.
+Archivo grande,src/components/PanelinCalculadoraV3_backup.jsx,7235 líneas,Componente canónico monolítico (calculadora).
+Archivo grande,src/components/RoofPreview.jsx,4238 líneas,
+Archivo grande,server/routes/bmcDashboard.js,3603 líneas,Ruta Sheets-backed mega.
+Código muerto,src/components/PanelinCalculadoraV3_legacy_inline.jsx,2354 líneas,Legacy en src/.
+Código muerto,src/hooks/handoff/install-package/.../bmc-pdf-template.html.js,1247 líneas,Copia byte-idéntica del template PDF.
+Deuda inline,TODO/FIXME/HACK/console.log/eslint-disable,62 total,Baja densidad (32 src + 30 server). FIXME=0.
+Dockerfiles,Total,4 + .dockerignore,server/Dockerfile = CANÓNICA. 3 cloudbuild .yaml compiten -> drift.
+Dockerfiles,Inconsistencia,deploy-calc-api.yml,path-filter observa Dockerfile.bmc-dashboard pero buildea server/Dockerfile.
+Sub-app,shop-chat-agent,Node 18,Repo requiere Node 24 -> stack inconsistente. Dockerfile propio.
+Clutter raíz,docs 2/,Duplicado verbatim de docs/,Riesgo de edición divergente.
+Clutter raíz,docs.zip,133 KB,Snapshot zip commiteado.
+Clutter raíz,reporte.md,739 KB,Mayor doc; reporte ad-hoc en raíz.
+Clutter raíz,"Obsidian /, Untitled, GEMINI.md (0b), 'El sistema de cotas...ini'",varios,Vault Obsidian + archivos huérfanos trackeados.
+Sub-packages,transportista / wa / traktime / supabase,migraciones SQL,Aplicadas via npm run *:migrate.
+CI,Workflows,9,"ci, deploy-calc-api, deploy-vercel, smoke-prod-scheduled, knowledge-antenna(x2), drive-oauth-verify(x2), email-ingest."
+Tests,Scripts en tests/,~68,"Standalone node scripts (sin runner). Cubren identity, WA, agent, calc, pdf, ML, market-intel."
+Org,Repos hermanos en matiasportugau-ui,24,"Solo Calculadora-BMC (2026-06-04) y bmc-development-team (2026-06-03) activos. Resto stale/experimental, 0 archivados."

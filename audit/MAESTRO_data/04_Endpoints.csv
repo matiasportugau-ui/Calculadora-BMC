@@ -1,0 +1,151 @@
+METHOD,PATH,Router,Auth,Dependencia de datos
+GET,/capabilities,index.js,PUBLIC,compute (manifest; expone panelin_relax_dev_auth - H1)
+GET,/health,index.js,PUBLIC,Sheets probe + ML token store
+POST,/api/vitals,index.js,PUBLIC,none
+GET,/auth/ml/start,index.js,PUBLIC,ML OAuth
+GET,/auth/ml/callback,index.js,PUBLIC (state),ML OAuth
+GET,/auth/ml/status,index.js,PUBLIC,ML token store
+GET,/ml/users/me,index.js,PUBLIC,ext: MercadoLibre
+GET,/ml/users/:id,index.js,PUBLIC,ext: MercadoLibre
+GET,/ml/listings,index.js,PUBLIC,ext: MercadoLibre
+GET,/ml/items/:id,index.js,PUBLIC,ext: MercadoLibre
+PATCH,/ml/items/:id,index.js,PUBLIC,ext: MercadoLibre (WRITE proxy - riesgo)
+POST,/ml/items/:id/description,index.js,PUBLIC,ext: MercadoLibre (WRITE proxy - riesgo)
+GET,/ml/questions,index.js,PUBLIC,ext: MercadoLibre
+GET,/ml/questions/:id,index.js,PUBLIC,ext: MercadoLibre
+POST,/ml/questions/:id/answer,index.js,PUBLIC,ext: MercadoLibre (WRITE proxy - riesgo)
+GET,/ml/orders,index.js,PUBLIC,ext: MercadoLibre
+GET,/ml/orders/:id,index.js,PUBLIC,ext: MercadoLibre
+POST,/webhooks/ml,index.js,HMAC ML,ext ML + Sheets
+GET,/webhooks/ml/events,index.js,PUBLIC,in-memory buffer (H3 - expone payloads)
+GET,/api/ml/auto-mode,index.js,PUBLIC,file flag
+POST,/api/ml/auto-mode,index.js,API_TOKEN,file flag
+GET,/webhooks/whatsapp,index.js,PUBLIC (verify),none (Meta verify)
+POST,/webhooks/whatsapp,index.js,HMAC WA,Postgres + Sheets + agentCore
+GET,/,index.js,PUBLIC,redirect /finanzas
+GET,/calc/openapi,calc.js,PUBLIC,compute
+GET,/calc/gpt-entry-point,calc.js,PUBLIC,compute
+POST,/calc/interaction-log,calc.js,PUBLIC,log file
+GET,/calc/interaction-log/list,calc.js,JWT,log files
+GET,/calc/interaction-log/file/:name,calc.js,JWT,log file
+POST,/calc/cotizar/presupuesto-libre,calc.js,PUBLIC,compute (calc)
+POST,/calc/cotizar,calc.js,PUBLIC,compute (calc)
+POST,/calc/cotizar/pdf,calc.js,JWT opt,PDF + GCS + Sheets
+GET,/calc/pdf/:id,calc.js,PUBLIC,pdfStore
+GET,/calc/cotizaciones,calc.js,JWT,quote registry
+GET,/calc/cotizaciones/:id,calc.js,JWT,quote registry
+POST,/calc/cotizaciones/:id/cancelar,calc.js,JWT,quote registry
+GET,/calc/catalogo,calc.js,PUBLIC,constants
+GET,/calc/escenarios,calc.js,PUBLIC,constants
+GET,/calc/informe,calc.js,PUBLIC,compute
+GET,/ready,legacyQuote.js,PUBLIC,none
+POST,/find_products,legacyQuote.js,API_TOKEN,compute
+POST,/resolve_product,legacyQuote.js,API_TOKEN,compute
+POST,/product_price,legacyQuote.js,API_TOKEN,compute
+POST,/check_availability,legacyQuote.js,API_TOKEN,compute
+POST,/calculate_quote,legacyQuote.js,API_TOKEN,compute (calc)
+POST,/calculate_quote_v2,legacyQuote.js,API_TOKEN,compute (calc)
+POST,/api/research/deep,deepResearch.js,PUBLIC,ext: web search + LLM
+GET,/api/research/deep/:id,deepResearch.js,PUBLIC,job store
+POST,/api/research/deep/:id/cancel,deepResearch.js,PUBLIC,job store
+GET,/api/agent/ai-options,agentChat.js,PUBLIC,config
+GET,/api/agent/tool-stats,agentChat.js,PUBLIC,stats
+GET,/api/agent/tools-manifest,agentChat.js,PUBLIC,compute
+POST,/api/agent/exec-tool,agentChat.js,API_TOKEN (per-tool),loopback calc + ext
+POST,/api/agent/chat,agentChat.js,PUBLIC (rate-limited),LLM + RAG + loopback calc
+*,/api/agent/train* (27 rutas),agentTraining.js,DEVMODE,training KB (pgvector) + LLM
+*,/api/agent/conversations* + /stats (6 rutas),agentConversations.js,DEVMODE,conv logs + LLM
+POST,/api/agent/voice/session,agentVoice.js,JWT,ext: OpenAI Realtime
+POST,/api/agent/voice/action,agentVoice.js,PUBLIC,loopback calc
+GET,/api/agent/voice/errors,agentVoice.js,JWT,in-memory
+POST,/api/agent/voice/errors/clear,agentVoice.js,JWT,in-memory
+GET,/api/agent/voice/health,agentVoice.js,JWT,config
+POST,/api/agent/transcribe,agentTranscribe.js,PUBLIC (rate-limited),ext: OpenAI Whisper
+POST,/api/agent/feedback,agentFeedback.js,PUBLIC,store
+GET,/api/agent/feedback,agentFeedback.js,JWT,store
+GET,/api/agent/feedback/stats,agentFeedback.js,JWT,store
+GET,/api/ai-analytics/trends,aiAnalytics.js,API_TOKEN,analytics store
+GET,/api/cotizaciones,bmcDashboard.js,PUBLIC,Sheets
+POST,/api/cotizaciones,bmcDashboard.js,PUBLIC,Sheets WRITE (sin auth - riesgo)
+PATCH,/api/cotizaciones/:id,bmcDashboard.js,PUBLIC,Sheets WRITE (sin auth - riesgo)
+GET,/api/proximas-entregas,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/coordinacion-logistica,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/audit,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/pagos-pendientes,bmcDashboard.js,PUBLIC,Sheets (pagos)
+POST,/api/pagos,bmcDashboard.js,PUBLIC,Sheets WRITE (sin auth - riesgo)
+PATCH,/api/pagos/:id,bmcDashboard.js,PUBLIC,Sheets WRITE (sin auth - riesgo)
+GET,/api/metas-ventas,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/calendario-vencimientos,bmcDashboard.js,PUBLIC,Sheets (calendario)
+GET,/api/ventas,bmcDashboard.js,PUBLIC,Sheets
+POST,/api/ventas,bmcDashboard.js,PUBLIC,Sheets WRITE (sin auth - riesgo)
+GET,/api/ventas/tabs,bmcDashboard.js,PUBLIC,Sheets
+POST,/api/marcar-entregado,bmcDashboard.js,PUBLIC,Sheets WRITE (sin auth - riesgo)
+GET,/api/stock-ecommerce,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/stock-kpi,bmcDashboard.js,PUBLIC,Sheets
+PATCH,/api/stock/:codigo,bmcDashboard.js,API_TOKEN,Sheets WRITE
+GET,/api/stock/history,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/productos-maestro,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/productos-maestro/reconcile,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/productos-maestro/links,bmcDashboard.js,PUBLIC,Sheets/local
+PUT,/api/productos-maestro/links,bmcDashboard.js,PUBLIC,Sheets WRITE (sin auth - riesgo)
+POST,/api/productos-maestro/push,bmcDashboard.js,API_TOKEN,Sheets WRITE
+GET,/api/kpi-financiero,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/kpi-report,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/fiscal/bps-irae,bmcDashboard.js,PUBLIC,Sheets
+GET,/api/actualizar-precios-calculadora,bmcDashboard.js,PUBLIC,Sheets (MATRIZ CSV)
+POST,/api/matriz/push-pricing-overrides,bmcDashboard.js,API_TOKEN,Sheets WRITE
+POST,/api/crm/suggest-response,bmcDashboard.js,PUBLIC,LLM + Sheets
+POST,/api/crm/parse-email,bmcDashboard.js,PUBLIC,LLM
+POST,/api/crm/ingest-email,bmcDashboard.js,API_TOKEN,LLM + Sheets
+POST,/api/crm/parse-conversation,bmcDashboard.js,PUBLIC,LLM
+GET,/api/crm/cockpit-token,bmcDashboard.js,PUBLIC,config (DEVUELVE el token - riesgo)
+*,/api/crm/cockpit/* (13 rutas),bmcDashboard.js,API_TOKEN,Sheets + ML/WA
+GET,/api/consultations,bmcDashboard.js,API_TOKEN,Sheets
+GET,/api/email/panelsim-summary,bmcDashboard.js,API_TOKEN,local/Sheets
+POST,/api/email/draft-outbound,bmcDashboard.js,API_TOKEN,LLM + Sheets
+*,/api/followups* (7 rutas),followups.js,JWT,store local
+GET,/api/transportista/health,transportista.js,PUBLIC,Postgres ping
+*,/api/trips* (7 rutas),transportista.js,API_TOKEN,Postgres
+*,/api/driver/* (6 rutas),transportista.js,driver token,Postgres + GCS
+*,/api/wa/* config/settings/operators/rules/webhooks (12),wa.js,WA-access,Postgres + LLM
+*,"/api/wa/auth/* (magic-link, 6)",wa.js,PUBLIC (token),Postgres + email
+GET,/api/wa/health,wa.js,PUBLIC,Postgres ping
+GET,/api/wa/config/extension,wa.js,PUBLIC (intencional),config
+*,/api/wa/ingest|conversations|messages|suggestions|quotes|outbound|... (18),wa.js,API_TOKEN,Postgres + WA/LLM
+GET,/api/traktime/health,traktime.js,PUBLIC,Postgres ping
+*,/api/traktime/* user (timer/entries/reports/clients/projects) (13),traktime.js,JWT-user,Postgres
+*,/api/traktime/* admin (invoices/clients/projects/mirror) (18),traktime.js,JWT-admin,Postgres + GCS + Sheets
+GET,/api/quotes/counter,quotes.js,PUBLIC,counter atómico
+POST,/api/quotes/counter/next,quotes.js,PUBLIC,counter WRITE
+POST,/api/agent/quote-lead,superAgent.js,API_TOKEN,LLM + loopback calc
+*,/api/internal/panelin/* (4),panelinInternal.js,API_TOKEN,dispatch tools
+POST,/api/internal/presup/run,internal/presupOrchestrator.js,PUBLIC (auth = TODO!),orchestrator + LLM (riesgo)
+GET,/api/internal/presup/status,internal/presupOrchestrator.js,PUBLIC,in-memory
+GET,/api/internal/presup/run/example,internal/presupOrchestrator.js,PUBLIC,compute
+*,/api/wolfboard/* (7),wolfboard.js,API_TOKEN,Sheets + loopback calc
+*,/api/marketing/* (6),marketing.js,JWT,marketIntel ETL (Postgres)
+POST,/api/pdf/generate,pdf.js,PUBLIC,Playwright/Chromium
+GET,/api/pdf/metrics,pdf.js,PUBLIC,in-memory
+POST,/api/plan/interpret,planInterpret.js,PUBLIC (rate-limited),LLM vision
+GET,/api/ml/search,mlSearch.js,API_TOKEN,ext MercadoLibre (cached)
+*,/api/ml/etl-run* (3),mlEtlRun.js,API_TOKEN,marketIntel ETL (Postgres)
+*,/api/team-assist/* (3),teamAssist.js,PUBLIC,ext OpenAI
+GET,/auth/shopify,shopify.js,PUBLIC,Shopify OAuth
+GET,/auth/shopify/callback,shopify.js,HMAC,Shopify OAuth
+POST,/webhooks/shopify,shopify.js,HMAC,ext Shopify
+GET,/api/shopify/products,shopify.js,API_TOKEN,ext Shopify
+GET,/api/shopify/catalog/full,shopify.js,API_TOKEN,ext Shopify
+GET,/admin/questions,shopify.js,PUBLIC,ext Shopify (H2 - sin auth)
+POST,/admin/answer,shopify.js,PUBLIC,ext Shopify WRITE (H2 - sin auth)
+GET,/admin/auto-config,shopify.js,PUBLIC,config (H2)
+POST,/admin/auto-config,shopify.js,PUBLIC,config WRITE (H2)
+*,/api/auth/google|refresh|logout|me|me/grants (5),authGoogle.js,PUBLIC/JWT,Google OAuth + Postgres
+*,/api/auth/mfa/* (4),authMfa.js,JWT/PUBLIC(challenge),Postgres TOTP
+*,/api/me/* + access-requests + threads (25),identityMe.js,JWT-user (admin subset),Postgres (+Sheets admin)
+*,/api/admin/users* role-grants/suspend (8),identityAdmin.js,JWT-admin,Postgres identity
+*,/api/admin/analytics/* (5),identityAnalytics.js,JWT-admin,Postgres activity
+*,/api/clientes/customers|followups (4),clientes/*.js,JWT + grant,Sheets clientes
+*,/api/admin/export + /api/me/quotes/:id/export.* (5),quoteExport.js,JWT,Postgres + PDF
+*,/api/tasks/* lists+tasks (9),tasks.js,JWT-user,ext Google Tasks
+*,/auth/tasks/* (4),tasksOAuth.js,JWT/PUBLIC(callback),Google OAuth + Postgres
+POST,/sync/google-tasks/pull,tasksSync.js,HMAC (x-sync-signature),ext Google Tasks + Postgres

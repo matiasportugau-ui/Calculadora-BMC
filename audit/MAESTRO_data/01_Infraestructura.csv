@@ -1,0 +1,18 @@
+Capa,Componente,URL / ID,Auth / Acceso,Estado (vivo),Notas
+Frontend,Vercel SPA (Vite),https://calculadora-bmc.vercel.app,Pública + Google OAuth,ACTIVO,"Build vite -> dist/. Rewrites /api,/calc,/auth,/sync -> Cloud Run."
+API,Cloud Run 'panelin-calc' (us-central1),https://panelin-calc-q74zutv7dq-uc.a.run.app,JWT / API_AUTH_TOKEN / HMAC,ACTIVO (HTTP 200),"gitSha en vivo 3153b11 == main. Express 5, Node 24, server/Dockerfile."
+API (URL alt),"Mismo servicio, URL por nº de proyecto",https://panelin-calc-642127786762.us-central1.run.app,idem,ACTIVO (alias),Misma service; 642127786762 = nº proyecto. Canónica = q74 (public_base_url + vercel.json).
+GCP Project,chatbot-bmc-live / us-central1,Artifact Registry: cloud-run-repo/,WIF + deploy SA,ACTIVO,Phase 0 SA hardening 2026-06-01: secrets en Secret Manager.
+Imagen API (canónica),"server/Dockerfile (node:24-alpine, :8080)",deploy-calc-api.yml + cloudbuild-api.yaml,-,CANÓNICA,API-only + Chromium para PDF. ES la imagen de prod.
+Imagen full-stack (alt),Dockerfile.bmc-dashboard,cloudbuild.yaml + scripts/deploy-cloud-run.sh,-,ALTERNATIVA/MANUAL,SPA+API+Debian Chromium. NO es el path CI activo.
+Imagen frontend (alt),Dockerfile (root -> nginx),cloudbuild-frontend.yaml -> panelin-calc-web,-,ALTERNATIVA,nginx static. Servicio panelin-calc-web (legacy/fallback).
+Datos: Sheets,Google Sheets (8 libros) via service account,bmc-dashboard-sheets@chatbot-bmc-live.iam,Service account JSON (Secret Manager),ACTIVO,Fuente CRM/Finanzas/Precios. Ver tab Sheets Analysis.
+Datos: Postgres,"Supabase (htnwozvopveibwppyjhg, us-east-1)",DATABASE_URL (Secret Manager),Connection string,ACTIVO,"WA Cockpit, Transportista, TraKtiMe, Identity, Tasks, RAG pgvector."
+Datos: GCS,Bucket bmc-cotizaciones,allUsers:objectViewer (PDFs),Service account,ACTIVO,"PDFs de cotización, evidencias transportista, facturas traktime."
+Apps Script,5 .gs en docs/bmc-dashboard-modernization/,Container-bound a workbooks,Manual,SIN PIPELINE,"Code.gs, CalendarioRecordatorio, PagosPendientes, StockAlertas, VentasConsolidar. Sin deploy automatizado (P5)."
+Integración: MercadoLibre,OAuth + API (MLU),ML_CLIENT_ID 742811153438318,OAuth,PARCIAL,ML_CLIENT_SECRET FALTA en prod (/health missingConfig).
+Integración: WhatsApp,WhatsApp Cloud API + webhook HMAC,/webhooks/whatsapp,App secret (HMAC),CONFIG,WA Cockpit en Postgres.
+Integración: Shopify,OAuth + webhooks + shop-chat-agent/,/webhooks/shopify,HMAC,SUB-APP,shop-chat-agent tiene Dockerfile propio (Node 18) — posible servicio separado.
+Integración: LLM,Anthropic (claude-opus-4-7) + OpenAI fallback + Vercel AI Gateway,-,API keys (Secret Manager),ACTIVO,agentCore chain; RAG pgvector.
+CI/CD,GitHub Actions (9 workflows),.github/workflows/,-,ACTIVO,"ci.yml, deploy-calc-api.yml, deploy-vercel.yml, smoke-prod-scheduled, knowledge-antenna."
+Secret mgmt,Doppler (bmc-backend/prd) + GCP Secret Manager,-,-,ACTIVO,"Phase 0: API_AUTH_TOKEN, ML_CLIENT_SECRET, ANTHROPIC/GEMINI/GROK keys, TOKEN_ENCRYPTION_KEY."
