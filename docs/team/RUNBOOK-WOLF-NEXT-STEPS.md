@@ -25,21 +25,24 @@ npm run gate:local     # lint + tests + api tests — debe quedar verde
 
 ### 2a. Mapear la pestaña — `server/routes/bmcDashboard.js`, const `MATRIZ_TAB_COLUMNS` (~L1230)
 
+**Letras confirmadas (CSV R y C Tornillos, 07/06):**
+
 ```js
 const MATRIZ_TAB_COLUMNS = {
   BROMYROS: { /* ...existente... */ },
   "R y C Tornillos": {
-    sku:         COL("D"),   // ⚠️ CONFIRMAR letras reales en la pestaña
-    descripcion: COL("E"),
-    costo:       COL("?"),   // "Costo USD EX IVA"
-    ventaLocal:  COL("?"),   // "VENTA USD EX IVA"
-    ventaIvaInc: COL("?"),   // "Consumidor Final"
-    // SIN web: esta pestaña NO tiene columna web (→ D6 / ML-Shopify)
+    sku:         COL("B"),   // "Código RyC" — ⚠️ VACÍA en filas de anclajes (ver bloqueo)
+    descripcion: COL("F"),   // "Producto"
+    costo:       COL("G"),   // "Costo USD EX IVA"
+    ventaLocal:  COL("J"),   // "VENTA USD EX IVA"
+    ventaIvaInc: COL("K"),   // "Consumidor Final" (c/IVA)
+    web:         COL("M"),   // "Shopify" (web ex-IVA)  ← sí existe columna web
+    webIvaInc:   COL("N"),   // "Shopify IVA inc." (web c/IVA)
   },
 };
 ```
 
-> Abrir la pestaña y anotar la **letra exacta** de cada columna antes de codear. No tiene columna web → omitir `web` a propósito.
+> **⚠️ BLOQUEO REAL (no es solo código):** las filas de anclajes (114–125) **no tienen SKU** — col D es flag de estado (`PENDIENTE`), col B "Código RyC" vacía. El export/bake matchea por **SKU→path** (`matrizPreciosMapping.js`: `ANC100MM`, `ANCISOGR`…), así que mapear la pestaña **no alcanza**: primero hay que **poblar los SKUs `ANC*` en el sheet** para esas filas (higiene → WOLF-0004). Sin eso, los anclajes quedan fuera del export igual.
 
 ### 2b. Verificar el export contra la Matriz en vivo (necesita API + creds Sheets)
 
@@ -132,6 +135,6 @@ Relevado 2026-06-07 (MCP Shopify, tienda BMC URUGUAY). `web_unit = precio_pack /
 | **Kit Anclaje a H°** (torn. N.º10 + arand. + taco) | 11.80 | 10 | **1.180** | ⚠️ NO es `anclaje_h` | 8.00 | producto distinto (N10 vs varilla 1/4) |
 
 ### Hallazgos clave (Apéndice A)
-1. **Los 6 anclajes de WOLF-0002 NO están en Shopify** como publicación individual (Isoroof Gris/Terracota, Chapas BC-18/BC-35, Kit U-Platea, Anclaje 100 mm de varilla 1/4). El único "anclaje" en Shopify es el *Kit Anclaje a H°* con tornillo N.º10 — **producto distinto** del `anclaje_h` (varilla 1/4) de constants. → Para esos 6, el `web` debe salir de **ML** (Punto 3b), no de Shopify.
+1. **El `web` de los 6 anclajes YA tiene fuente y está validado** (CSV R y C Tornillos, col M "Shopify" ex-IVA): 8.00/2.15/2.15/1.61/1.61/1.46 = exacto al PR WOLF-0002. **No hace falta extracción ML aparte** (D6 RESUELTA). Nota: el *storefront* de Shopify no lista esos 6 como producto individual y vende en packs de 10, pero la col M de la Matriz ya es el precio por-unidad equivalente.
 2. **Varias fijaciones genéricas muestran `web` divergente** entre Shopify (unit) y `constants.js` (ej. `tornillo_t1` 0.10 vs 0.0574; `remache_pop` 0.10 vs 0.0246; `taco_expansivo` 0.87 vs 1.353; `caballete` 0.92 vs 0.561). **No tocar todavía** — registrar y decidir en WOLF-0003 si Shopify-unit pisa a constants (D6) o si hay diferencia de criterio (mayorista vs web). Es un sub-hallazgo nuevo a triage.
 3. **Regla de normalización confirmada:** Shopify publica en packs (N = 5, 10, 50, 1000). Cualquier carga automática debe dividir por N el precio del pack.
