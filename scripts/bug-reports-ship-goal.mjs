@@ -224,13 +224,16 @@ async function waitForPrMerged(branch, maxMs = MAX_WAIT_MS) {
       const pr = JSON.parse(state || "null");
       if (!pr) return { merged: true, note: "no open PR" };
       const checks = pr.statusCheckRollup || [];
-      const pending = checks.filter((c) => c.status === "IN_PROGRESS" || c.status === "QUEUED");
-      log("PR POLL", { state: pr.state, pendingChecks: pending.length, mergedAt: pr.mergedAt });
+      const pending = checks.filter((c) => c.status === "IN_PROGRESS" || c.status === "QUEUED" || c.status === "PENDING");
+      const completed = checks.filter((c) => c.status === "COMPLETED");
+      log("PR POLL", { state: pr.state, pendingChecks: pending.length, completedChecks: completed.length, mergedAt: pr.mergedAt });
       if (pr.state === "MERGED") return { merged: true, mergedAt: pr.mergedAt };
       if (pr.state === "CLOSED" && !pr.mergedAt) throw new Error("PR closed without merge");
-      const failed = checks.filter((c) => c.conclusion === "FAILURE");
-      if (failed.length) throw new Error(`PR checks failed: ${failed.map((c) => c.name).join(", ")}`);
-      if (pr.state === "OPEN" && pending.length === 0 && checks.length > 0) {
+      const failed = completed.filter((c) => c.conclusion === "FAILURE" || c.conclusion === "CANCELLED");
+      if (pending.length === 0 && failed.length) {
+        throw new Error(`PR checks failed: ${failed.map((c) => c.name).join(", ")}`);
+      }
+      if (pr.state === "OPEN" && pending.length === 0 && completed.length > 0 && !failed.length) {
         try {
           runSync(`gh pr merge ${branch} --squash --admin 2>/dev/null || gh pr merge ${branch} --squash`);
           log("STEP 2b — PR merged");
