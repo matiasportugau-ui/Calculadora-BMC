@@ -1,5 +1,7 @@
 # BUG-TRIAGE-RAMIRO.md — Ledger Wolf Bug Hunter
-**Versión:** v0.4 — 04/06/2026 | **Triage:** Wolf (Claude) | **Fuente:** Reporte Ramiro Amaral 02/06/2026 (PDF) | **Triangulación:** repo `matiasportugau-ui/Calculadora-BMC@main` (verificado por fetch directo) ↔ Matriz de Costos y Ventas Dashboard (Sheet pegado en sesión, tabs BROMYROS / R y C Tornillos / MONTFRIO)
+**Versión:** v0.5-WIP — 05/06/2026 | **Triage:** Wolf (Claude) | **Fuentes (3):** (1) Reporte Ramiro Amaral 02/06/2026 (PDF); (2) Capturas 05/06/2026 — lista ampliada de tareas (ítems 8–16) + bug "Sin proveedor IA"; (3) Verificación directa de código y CSV de **producción** (repo `matiasportugau-ui/Calculadora-BMC@main`). | **Triangulación:** repo ↔ Matriz de Costos y Ventas Dashboard (tabs BROMYROS / R y C Tornillos / MONTFRIO) ↔ CSV en prod.
+
+> **⚠ v0.5 EN PROGRESO** — consolidación por lanes. Falta integrar la **lane MATRIZ** (texto de Matias / otro agente) antes de cerrar. Restricción de propiedad: este agente **no edita** `server/config.js` ni `src/data/matrizPreciosMapping.js` (los maneja otro agente).
 
 ---
 
@@ -14,7 +16,8 @@ Reporte con 6 hallazgos → **4 tickets** (2 hallazgos agrupados por causa raíz
 | WOLF-2026-0001 | Familia ISOFRIG completa ausente del catálogo | DATA | S2 | CONFIRMADO | Definido |
 | WOLF-2026-0002 | Precios desalineados con la Matriz por corrimiento de columna/fila (anclajes + goteros de cámara) | DATA | S1 | RESUELTO | Definido (GC-0002 verde, PR #276 merge) |
 | WOLF-2026-0003 | Accesorios de borde faltantes (Isoroof 100, GSDECAM 100, laterales cámara Isodec por espesor, superior PIR 120) | DATA | S3 | CONFIRMADO (parcial) | Definido (1 sub-item pendiente-dato) |
-| WOLF-2026-0004 | Sin fuente única de verdad + Matriz con datos sucios (meta-raíz) | DATA/INFRA | S2 | CONFIRMADO | Definido (eval de diff) |
+| WOLF-2026-0004 | Sin fuente única de verdad + Matriz con datos sucios (meta-raíz) | DATA/INFRA | S2 | CONFIRMADO — **pipeline parcial YA existe** (ver corrección v0.5) | Definido (eval de diff) |
+| WOLF-2026-0005 | Sin proveedor IA en producción (intérprete de planos inactivo) | CONFIG/INFRA | S3 | ABIERTO | Definido (smoke `/api/planInterpret`) |
 
 ---
 
@@ -72,6 +75,7 @@ Reporte con 6 hallazgos → **4 tickets** (2 hallazgos agrupados por causa raíz
 - En todos, `web = venta × 1.22` (consistencia interna), pero la **base** está errada: el error vino de la extracción, no del cálculo.
 - `inferencia` (mecanismo): la Matriz tiene SKUs duplicados (GFSUP80 usado para 80 y 100 mm; GSDECAM80 para 80 y 100; GL80 para 80 y 100; GLDCAM80 para 80 y 100) y celdas `#VALUE!`/`#REF!` en la columna Costo, más celdas con coma decimal textual (`"32,84"`). Cualquier extractor (humano o IA) sin validación se corre de fila/columna ahí. La hipótesis "decimal" de Ramiro era razonable; la evidencia apunta a **mapeo fila/columna erróneo** como mecanismo dominante, con el formato mixto como agravante.
 - Dedup: **relacionado pero NO duplicado de BUG-004** (BUG-004 = subestimación de *cantidad* de anclajes, LOGIC; este = *precio*, DATA). Cross-referenciar.
+- **Refinamiento de mecanismo (v0.5, evidencia CSV de prod):** el conteo del CSV en producción (`costo` poblado 68/88 filas, `venta_local` 20/88, `venta_web` 3/88) **descarta el corrimiento de columna** como mecanismo dominante. La raíz real es **celdas de venta vacías en el origen**: cuando faltaba `venta_web`, el levantamiento rellenó con la columna disponible (venta+IVA local), produciendo la discrepancia. El fix de PR #276 sigue siendo válido (realineó a los valores correctos de la Matriz); lo que cambia es el *diagnóstico*, no la *resolución*. El título del ticket queda como histórico; la causa precisa migra a WOLF-0004. **Confianza mecanismo: 90% (revisada).**
 
 ### WHY
 - DATA. 5-Whys: cobra de menos en web → `web` carga la columna equivocada → la extracción Matriz→constants.js mapeó mal columnas/filas → la Matriz no tiene estructura estable (SKUs duplicados, headers inconsistentes, #VALUE!) → no hay validación post-extracción contra la fuente (→ WOLF-0004). **Confianza: 90%** (85% en el mecanismo exacto; 100% en la discrepancia).
@@ -113,7 +117,9 @@ Citas textuales: *"Faltan accesorios Isoroof 100 mm — Agregar todos los acceso
 ---
 
 ## WOLF-2026-0004 — Sin fuente única de verdad + Matriz con datos sucios (meta-raíz)
-**Estado:** CONFIRMADO | **Clase:** DATA/INFRA (estructural) | **Severidad:** S2 | **Reportó:** Ramiro Amaral (raíz) + hallazgos del triage, 02-03/06/2026
+**Estado:** CONFIRMADO — **corrección v0.5: el pipeline Matriz→Calc YA existe (parcial)** | **Clase:** DATA/INFRA (estructural) | **Severidad:** S2 | **Reportó:** Ramiro Amaral (raíz) + hallazgos del triage, 02-03/06/2026
+
+> **⚠ CORRECCIÓN v0.5 — el triage previo (v0.1–v0.4) subestimó lo ya construido.** Existe un pipeline de reconciliación Matriz↔Stock↔catálogo funcional, no era "etapa 0". Lo que falta es **automatizarlo** (diff determinístico en CI/cron) y definir la **tab limpia EXPORT_CATALOGO**. Ver OBSERVE actualizado.
 
 ### HUNT
 - Citas textuales del reporte: *"Falta de conexión directa con una fuente única de verdad"*; *"La principal mejora recomendada es conectar o validar la calculadora contra la Matriz de Costos y Ventas Dashboard. Eso eliminaría el problema de Raíz y nos evitaría tener que actualizar manualmente."*
@@ -126,25 +132,76 @@ Citas textuales: *"Faltan accesorios Isoroof 100 mm — Agregar todos los acceso
 - Anomalías de precio a validar: lateral cámara 200 > 250 (D3); "Gotero Lateral CAMARA 100mm" (16.848) más barato que el 50 mm (23.676).
 - `hecho confirmado` (repo): el comentario en `constants.js:164` ya pedía *"Sincronizar precios con MATRIZ"* — la intención existía, el proceso no.
 - El CSV `normalized_full_cleaned.csv` **no está en `main`** (404 en rutas estándar): el catálogo efectivo vive hardcodeado en `constants.js`. `duda abierta` D4: ubicación/estado real del CSV.
+- **`hecho confirmado` (CSV de prod, v0.5):** el CSV efectivo en producción tiene `costo` poblado en **68/88** filas, `venta_local` en **20/88** y `venta_web` en solo **3/88**. → La mayoría de las ventas **están vacías en el origen**; esa es la causa raíz de las discrepancias de precio (no un corrimiento de columna). Cualquier sync que no contemple celdas vacías va a propagar o inventar valores. La etapa de saneamiento debe **completar las ventas faltantes en el origen** antes de habilitar el push automático.
+- **`hecho confirmado` (repo, CORRECCIÓN v0.5): el pipeline Matriz→Calculadora YA EXISTE (parcial).** Componentes verificados:
+  - `server/lib/productosMaestro.js` → `reconcileProductosMaestro()`: compara **Matriz (CSV de Google Sheets, `config.bmcMatrizSheetId`) ↔ Stock workbook ↔ catálogo** y reporta gaps (`linked` / `matrizOnly` / `stockOnly`).
+  - Endpoints `GET /api/productos-maestro/reconcile` (reporte de links) y `POST /api/productos-maestro/push` (write real a Sheets, requiere token admin). Script npm asociado: `productos-maestro:reconcile`.
+  - UI admin `src/components/ProductosMaestroEditor.jsx` (Config → Productos): editar `costo` / `ventaLocal` / `ventaWeb`, ver vinculaciones, simular (`dryRun=true`) y escribir cambios reales a Sheets.
+  - Conclusión: las etapas 1 (UI de carga/edición) y parte de la 3 (carga asistida) **ya están**. Lo ausente es el **diff determinístico automatizado** (CI/cron) y la **tab limpia EXPORT_CATALOGO** como contrato de sincronización. **No edito** `src/data/matrizPreciosMapping.js` (otro agente / lane MATRIZ).
 
 ### WHY
 - Estructural. 5-Whys: los datos divergen → cada actualización es manual y sin verificación → no hay export validado de la Matriz → la Matriz mezcla costeo interno, notas y catálogo en una sola hoja sin esquema → nunca se definió la frontera "fuente de verdad limpia" vs "hoja de trabajo". **Confianza: 90%.**
 
 ### LOCK
 - Plan patch: ninguno (es la raíz, no se parchea).
-- Plan raíz (3 etapas, absorbe las "Tareas Profundas" de Ramiro):
-  1. **Sanear la Matriz**: corregir SKUs duplicados, #VALUE!/#REF!, anomalías D3, formato decimal único — o crear una tab `EXPORT_CATALOGO` limpia (SKU único, columnas fijas: costo, venta_ex_iva, web_ex_iva) que sea lo único que se sincroniza.
-  2. **Diff determinístico** (script, no LLM): compara `EXPORT_CATALOGO` ↔ `constants.js` y reporta divergencias/faltantes/fuera-de-rango. Costo por corrida ~cero; corre en CI o cron.
-  3. **Carga asistida**: los fixes 0001/0002/0003 entran por este pipeline, no a mano.
-- Owner sugerido: Matias manual (etapa 1, decisiones de negocio) + Claude Code (etapas 2–3).
+- Plan raíz (3 etapas, absorbe las "Tareas Profundas" de Ramiro + ítems 8–12 de las capturas 05/06). **Estado actualizado v0.5:**
+  1. **Sanear la Matriz / origen** — ⏳ PENDIENTE (decisión de negocio): corregir SKUs duplicados, #VALUE!/#REF!, anomalías D3, formato decimal único, **y completar las ventas vacías en el CSV de origen** (20/88 venta_local, 3/88 venta_web) — o crear una tab `EXPORT_CATALOGO` limpia (SKU único, columnas fijas: costo, venta_ex_iva, web_ex_iva) como único contrato de sync.
+  2. **Diff determinístico** (script, no LLM) — 🟡 PARCIAL: la reconciliación existe vía `reconcileProductosMaestro()` + `/api/productos-maestro/reconcile`, pero corre **a demanda desde la UI**, no automatizada. Falta el wrapper de CI/cron con umbrales de rango/orden de magnitud (control que pidió Ramiro).
+  3. **Carga asistida** — 🟢 EN GRAN PARTE HECHA: `ProductosMaestroEditor.jsx` permite editar precios y `push` real a Sheets con dry-run. Los fixes 0001/0003 pueden entrar por acá una vez resueltas las dudas de dato (D2/D3/D5).
+- Owner sugerido: Matias manual (etapa 1, decisiones de negocio + completar origen) + Claude Code (automatizar etapa 2). **Coordinación de lane:** los cambios sobre `matrizPreciosMapping.js` y `config.js` los hace el **otro agente (lane MATRIZ)**; este ledger solo documenta.
 - Golden case GC-0004: correr el diff sobre los SKUs de GC-0001/0002/0003 → cero divergencias.
 - Criterio de cierre: diff en verde integrado al pipeline de evals.
+
+---
+
+## WOLF-2026-0005 — Sin proveedor IA en producción (intérprete de planos inactivo)
+**Estado:** ABIERTO | **Clase:** CONFIG/INFRA (no es bug de código) | **Severidad:** S3 | **Reportó:** Matias, 05/06/2026 (capturas del wizard)
+
+### HUNT
+- Evidencia: capturas 05/06 del wizard de la calculadora (paso *Dimensiones* 5/11) con banner rojo *"Sin proveedor IA configurada. Configurá ANTHROPIC_API_KEY o GEMINI_API_KEY."* Nota de Matias: *"No estaría funcionando por el momento esa función."*
+
+### OBSERVE
+- `hecho confirmado` (repo): el string proviene de `server/lib/planInterpreter.js:37-41`, función `interpretPlan()` (expuesta por el endpoint `/api/planInterpret`). Si **ni** `ANTHROPIC_API_KEY` **ni** `GEMINI_API_KEY` están seteadas, lanza error 503 con ese mensaje.
+- **Feature:** interpretación de **planos** (imagen / PDF / DXF) para auto-extraer dimensiones de techo/pared en el wizard. Es una **ayuda opcional** — la entrada manual de medidas funciona sin IA; el resto del wizard no se bloquea.
+- **No es defecto de código:** el código maneja la ausencia de clave correctamente (degradación elegante con mensaje claro). El faltante es de **configuración de runtime en producción** (Cloud Run / Doppler `bmc-backend/prd`): no hay secret de proveedor IA cargado.
+- Alcance: este ticket **no toca `server/config.js`** (lo maneja otro agente). El fix es operacional: setear el secret y redeploy.
+
+### WHY
+- CONFIG. 5-Whys: el intérprete de planos devuelve 503 → no hay proveedor IA → no se cargó `ANTHROPIC_API_KEY`/`GEMINI_API_KEY` en el entorno de prod → la feature se deployó sin aprovisionar su secret → no hay check de capacidades que avise en deploy. **Confianza: 95%.**
+
+### LOCK
+- Plan patch: setear `ANTHROPIC_API_KEY` (o `GEMINI_API_KEY`) en GCP Secret Manager / Cloud Run del servicio `panelin-calc` y mirror en Doppler `bmc-backend/prd`; redeploy; verificar. **Decisión de Matias:** qué proveedor + costo asociado.
+- Owner sugerido: Matias / lane deploy (config de runtime). No requiere cambio de código.
+- Golden case GC-0005: `POST /api/planInterpret` con un plano de prueba en prod → responde 200 con dimensiones (no 503). Hoy: 503 esperado hasta aprovisionar el secret.
+- Criterio de cierre: smoke de `/api/planInterpret` en verde + banner desaparece del wizard en prod.
 
 ---
 
 ## FEATURES (derivados, no son tickets WOLF)
 - Selector de lista de precios en UI: default **Local BMC** (venta), opciones **Web** y **Mercado Libre** (hoy ML = Web). Definido por Matias 03/06 — a futuro, no bloquea los fixes.
 - Las "Tareas Profundas" del reporte (sistema de toma de datos de la Matriz, validación, mejora de ingreso de productos) son el plan raíz de WOLF-2026-0004.
+
+## LANES DE TRABAJO (v0.5) — consolidación multi-agente
+
+La lista ampliada de las capturas 05/06 (ítems 8–16) se reparte en lanes con dueños distintos. Este ledger es el punto de consolidación; cada lane escribe su propia sección.
+
+### Lane MATRIZ (ítems 8–12) — owner: otro agente / Matias
+> **⏳ PLACEHOLDER — pendiente del texto de Matias.** No cerrar v0.5 hasta integrarlo.
+> Cubre ítems 8–12 (validar precios vs Matriz, fuente única de verdad, sync automático/semiautomático, mejora de UI de carga). Archivos de esa lane (`server/config.js`, `src/data/matrizPreciosMapping.js`) **no los toca este agente**. El estado técnico relevante ya quedó documentado en WOLF-0004 OBSERVE/LOCK (pipeline parcial existente).
+
+### Lane TIME TRACKER (ítems 13–16) — owner: este agente (Wolf/Claude) · verificado contra repo 05/06
+Mapa de los 4 ítems de Time Tracker de las capturas contra `server/routes/traktime.js` + migraciones + `server/lib/traktimeInvoicePdf.js`:
+
+| Ítem captura | Descripción | Estado | Evidencia |
+|---|---|---|---|
+| 13 | Registrar cliente, tarea y tiempo | ✅ **IMPLEMENTADO** | `traktime.js`: endpoints `/clients`, `/projects`, `/tasks`, `/timer/start`, `/entries`; tablas `tk_clients/tk_projects/tk_tasks/tk_entries` con `user_id`, `project_id`, `task_id`, `started_at`, `stopped_at`, `duration_seconds` |
+| 14 | Microespacios de coordinación entre tareas (gaps) | ❌ **NO EXISTE** | Ningún reporte calcula huecos entre tareas consecutivas; migraciones 000–010 no tienen columna para esto |
+| 15 | Jornada total (primera → última tarea del día) | ❌ **NO EXISTE** | Los reportes suman `duration_seconds` (tiempo efectivo) pero no calculan el *span* del día (inicio de la 1ª − fin de la última) |
+| 16 | PDF mensual de tareas/horas para administración | ⚠ **PARCIAL — es de FACTURAS, no de horas** | `traktimeInvoicePdf.js` → `renderAndUploadInvoice()` genera PDF de **facturas mensuales** (subtotal + IVA, agrupado por proyecto) y sube a GCS; **no** es un reporte de jornada/horas trabajadas para RH/administración |
+
+**Conclusión de lane:** de 4 ítems, 1 está completo (13), 2 no existen (14 y 15 — *jornada-total* y *microespacios*) y 1 está parcial con propósito distinto (16 = invoicing, falta el reporte de horas). Trabajo nuevo acotado: agregar cálculo de jornada-total + gaps sobre `tk_entries` (no requiere decisiones de negocio) y un nuevo template de PDF de horas (vs. el de facturas).
+
+---
 
 ## Pendientes para Matias (priorizados)
 1. **D1 — RESUELTA (03/06):** los campos guardan precios **ex IVA** (IVA 22% una vez al total). Mapeo confirmado: `venta` ← columna venta local ex IVA (**lista default**, uso interno BMC); `web` ← columna web ex IVA (= ML por ahora). La aritmética ×1.22 de la fila testigo GSDECAM80 valida el mapeo. Consecuencia: el patch WOLF-0002 corrige **ambas** columnas de los anclajes (venta local ~−18%, web ~−25%).
@@ -154,6 +211,7 @@ Citas textuales: *"Faltan accesorios Isoroof 100 mm — Agregar todos los acceso
 5. **D5 — Reglas técnicas ISOFRIG** (au, lmin/lmax, sistema de fijación) para la carga del 0001.
 
 ## Registro de versión
+- **v0.5-WIP (05/06/2026) — NO CERRADA, pendiente lane MATRIZ.** Consolidación de 3 fuentes (PDF Ramiro 02/06 + capturas 05/06 con lista ampliada 8–16 y bug IA + verificación de código/CSV prod). Cambios: (1) **WOLF-0004 corregido** — el pipeline Matriz→Calc YA existe parcial (`productosMaestro.js` + `ProductosMaestroEditor.jsx` + `productos-maestro:reconcile`); falta automatizar diff (CI/cron) + tab `EXPORT_CATALOGO`. (2) **Evidencia CSV prod** (costo 68/88, venta_local 20/88, venta_web 3/88) → descarta corrimiento de columna; raíz = ventas vacías en origen; refina el mecanismo de WOLF-0002 (resolución sigue válida). (3) **WOLF-0005 abierto** — "Sin proveedor IA en prod" (config Cloud Run/Doppler, `planInterpreter.js`; no es bug de código). (4) **Lane Time Tracker documentada** (ítems 13–16): 13 ✅; 14 (microespacios) y 15 (jornada-total) ✗ no existen; 16 PDF mensual = facturas, no horas. Restricción: este agente no editó `server/config.js` ni `src/data/matrizPreciosMapping.js`. **Próximo paso para cerrar v0.5:** integrar el texto de la lane MATRIZ de Matias.
 - v0.4 (04/06/2026): WOLF-2026-0002 → **RESUELTO**. Matias autorizó el merge; PR #276 mergeado a `main` (admin override, merge commit conservando los 3 commits atómicos `9c1ccf0` + `e937381` + `baa90a9`) y deploy de producción verificado. Tabla índice y sección del ticket actualizadas. Sin reabrir alcance gateado (D2/D3/D5, GLDCAM-DC `_all`).
 - v0.3 (04/06/2026): WOLF-2026-0002 → **EN EVAL**. Patch aplicado en branch `wolf/0002-precios` (commit `9c1ccf0`): 11 entradas realineadas a la Matriz (6 anclajes + 5 goteros de cámara, ex-IVA, D1). Golden case **GC-0002** verde (`evals/golden-cases/GC-0002.test.mjs`): anclaje gris web ×100 = 215.00; gotero superior cámara 80 mm web = 37.07. Cierre del ticket pendiente del merge manual de Matias tras revisar el preview de Vercel.
 - v0.2 (03/06/2026): D1 resuelta por Matias (precios ex IVA; `venta`←local, `web`←web; default Local BMC). Feature "selector de listas Local/Web/ML" registrada. Alcance del patch 0002 ampliado a ambas columnas.
