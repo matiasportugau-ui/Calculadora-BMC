@@ -106,10 +106,13 @@ jobs:
 
   # Prod smoke + programa + humanGate (sin secretos; URL pública por defecto en smoke-prod-api).
   # Falla si Cloud Run no responde o IA/suggest-response cae; revisar antes de release.
+  # En PRs no bloquea (corre contra prod sin secretos del PR, señal informativa);
+  # en push (main/develop) sigue siendo gate duro.
   channels_pipeline:
     name: Channels — automated pipeline (prod)
     runs-on: ubuntu-latest
     needs: [validate, lint]
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
 
     steps:
       - name: Checkout
