@@ -21,7 +21,7 @@ function getPool() {
  *     payload jsonb NOT NULL,
  *     expires_at timestamptz NOT NULL
  *   );
- *   CREATE INDEX IF NOT EXISTS idx_oauth_states_expires ON public.oauth_states (expires_at);
+ *   CREATE INDEX IF NOT EXISTS idx_oauth_states_expires_at ON public.oauth_states (expires_at);
  */
 export const oauthStateStore = {
   async set(state, data) {
@@ -37,15 +37,15 @@ export const oauthStateStore = {
 
   async get(state) {
     const db = getPool();
+    // Consume-on-read: DELETE and RETURNING in one atomic query to prevent reuse
     const { rows } = await db.query(
-      `SELECT payload, expires_at FROM public.oauth_states WHERE state = $1`,
+      `DELETE FROM public.oauth_states WHERE state = $1 RETURNING payload, expires_at`,
       [state]
     );
     if (rows.length === 0) return null;
 
     const row = rows[0];
     if (new Date(row.expires_at) < new Date()) {
-      await this.delete(state);
       return null;
     }
     return row.payload;

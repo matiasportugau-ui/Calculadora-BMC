@@ -45,7 +45,7 @@ export function addBugLog(level, message, meta = {}) {
   push(entry);
   // Also mirror to console in dev for visibility (non-fatal)
   if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
-    const fn = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
+    const fn = entry.level === "error" ? console.error : entry.level === "warn" ? console.warn : console.log;
     try { fn("[bug]", entry.message, meta); } catch { /* ignore console noise */ }
   }
   return entry;

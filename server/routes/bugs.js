@@ -127,8 +127,9 @@ export function createBugsRouter(config) {
 
     // Process screenshot (simple canvas capture from client) if present.
     // Upload server-side if bucket configured (reuses gcs pattern), store URL not raw base64.
+    // Only allow GCS uploads for authenticated users to prevent abuse.
     let finalContext = context ? { ...context } : {};
-    if (finalContext.screenshotDataUrl && config.gcsQuotesBucket) {
+    if (finalContext.screenshotDataUrl && config.gcsQuotesBucket && authMode !== "none") {
       try {
         const shotFilename = `bug-${id}.jpg`;
         const shotUrl = await uploadBugScreenshotToGcs(finalContext.screenshotDataUrl, shotFilename, config.gcsQuotesBucket);
@@ -139,6 +140,9 @@ export function createBugsRouter(config) {
       } catch {
         // best-effort; keep dataUrl (will be truncated) if upload fails
       }
+    } else if (finalContext.screenshotDataUrl) {
+      // Unauthenticated: discard raw screenshot data to prevent bucket abuse
+      delete finalContext.screenshotDataUrl;
     }
 
     // Store the full context (logs + extra + optional screenshotUrl) as compact JSON.
@@ -165,12 +169,12 @@ export function createBugsRouter(config) {
       safeSeverity,
       safeUrl,
       safeUa,
-      capturedAt || now,
+      sanitizeCellValue(String(capturedAt || now)),
       safeContext,
       "nuevo",
       "api/bugs/report",
       authMode,
-      finalContext.screenshotUrl || "",
+      sanitizeCellValue(String(finalContext.screenshotUrl || "")),
     ];
 
     try {
