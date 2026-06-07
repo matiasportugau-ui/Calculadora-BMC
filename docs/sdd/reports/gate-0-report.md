@@ -15,7 +15,7 @@
 
 Tomadas en sesión sobre los 3 go/no-go de producción:
 
-1. **Branch protection → aplicar vía `gh api`.** ⛔ **No ejecutable desde esta sesión**: el entorno no tiene `gh` CLI, ni token de GitHub, ni la MCP de GitHub expone endpoint de branch-protection. Requiere un token con scope **repo-admin** (lo corro yo si me lo pasás) o que lo apliques por UI. Comando listo en el ítem 1.
+1. **Branch protection → ✅ APLICADO (2026-06-07)** vía REST API con token fine-grained (Administration: write) provisto por Matias. Estado final en `main`: required status checks (strict) = `Lint Check`, `Validate Calculations`, `Env drift`; required PR reviews = 1 (+ code-owner); `enforce_admins` = **true** (incluye administradores); force-pushes y deletions bloqueados. Token a revocar tras cierre.
 2. **Secretos de webhook → provisionar y DESPUÉS deployar** (orden seguro). Runbook en ítems 3–5. Pendiente de tu ejecución en GCP (`chatbot-bmc-live`).
 3. **Rotación de `API_AUTH_TOKEN` → NO rotar**, se mantiene el valor actual en Secret Manager. **Ítem 2 cerrado** (el enforcement 401/503 ya está testeado; no se requiere rotación para Gate 0).
 
@@ -43,7 +43,7 @@ gcloud config set project chatbot-bmc-live
 |---|-------------|--------|-----------|
 | — | Volcar ADR-0001 + Documento Maestro | ✅ Hecho | commit docs (verbatim) |
 | — | CLAUDE.md enseña vocabulario SDD | ✅ Hecho | sección "Proyecto Tablero (SDD)" |
-| 1 | Branch protection en `main` | ⛔ Bloqueado (prod, sin `gh`) | pasos manuales abajo |
+| 1 | Branch protection en `main` | ✅ Aplicado (2026-06-07) | strict checks + 1 review + enforce_admins=true; sin force-push/delete |
 | 2 | Rotar `API_AUTH_TOKEN` | ✅ Cerrado (decisión Matias: no rotar; ya en Secret Manager) | test ya existente cubre 401/503 |
 | 3 | HMAC obligatorio en webhook ML | ✅ Código + test (activación = redeploy) | `webhookGate.js`, `webhookGate.test.js` |
 | 4 | HMAC obligatorio en webhook WhatsApp | ✅ Código + test (activación = redeploy) | `webhookGate.js`, `webhookGate.test.js` |
