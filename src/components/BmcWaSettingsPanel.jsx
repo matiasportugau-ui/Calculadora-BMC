@@ -1,25 +1,24 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
-import { 
-  Settings, 
-  Flag, 
-  Cpu, 
-  Calculator, 
-  Clock, 
-  GitBranch, 
-  Bell, 
-  Send, 
-  Users, 
-  Webhook, 
-  MessageSquare, 
-  History, 
-  Download, 
-  ChevronRight,
+// Top-10 run 2026-05-11 (item #10): cleanup imports muertos + wire de loading/error/saving.
+import { useCallback, useEffect, useState } from "react";
+import {
+  Settings,
+  Flag,
+  Cpu,
+  Calculator,
+  Clock,
+  GitBranch,
+  Bell,
+  Send,
+  Users,
+  Webhook,
+  MessageSquare,
+  History,
+  Download,
   Save,
   Trash2,
   Plus,
   RefreshCw,
   AlertCircle,
-  CheckCircle2,
   Calendar
 } from "lucide-react";
 
@@ -258,8 +257,31 @@ export default function BmcWaSettingsPanel({ token, apiBase }) {
   };
 
   if (loading && !config) {
-    return <div style={{ padding: 40, color: "#86868b" }}>Cargando configuración...</div>;
+    // Frontend run 2026-05-12 (#FE11): spinner CSS para que se vea que está activamente cargando.
+    return (
+      <div style={{ padding: 40, color: "#86868b", display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{
+          display: "inline-block", width: 16, height: 16, borderRadius: "50%",
+          border: "2px solid #d0d7e2", borderTopColor: "#0071e3",
+          animation: "bmc-spin-settings 0.8s linear infinite",
+        }} />
+        <style>{`@keyframes bmc-spin-settings { to { transform: rotate(360deg); } }`}</style>
+        Cargando configuración…
+      </div>
+    );
   }
+
+  // Top-10 run 2026-05-11 (item #10): mostrar errores de fetch y estado "Guardando…" en lugar de silenciarlos.
+  const statusBanner = error ? (
+    <div style={{ margin: "12px 24px", padding: "10px 14px", background: "#fff1f0", border: "1px solid #ffa39e", borderRadius: 8, color: "#cf1322", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+      <AlertCircle size={16} /> Error cargando configuración: {error}
+      <button onClick={() => { setError(""); fetchConfig(); }} style={{ marginLeft: "auto", padding: "4px 10px", border: "1px solid #cf1322", background: "transparent", color: "#cf1322", borderRadius: 6, cursor: "pointer", fontSize: 12 }}>Reintentar</button>
+    </div>
+  ) : saving ? (
+    <div style={{ margin: "12px 24px", padding: "8px 12px", background: "#f0f9ff", border: "1px solid #91d5ff", borderRadius: 8, color: "#0958d9", fontSize: 13 }}>
+      Guardando cambios…
+    </div>
+  ) : null;
 
   return (
     <div style={styles.container}>
@@ -280,6 +302,7 @@ export default function BmcWaSettingsPanel({ token, apiBase }) {
       </div>
       
       <div style={styles.main}>
+        {statusBanner}
         {activeSection === "flags" && <FlagsSection config={config} onToggle={handleToggleFlag} />}
         {activeSection === "general" && <GeneralSection config={config} onUpdate={handleUpdateSetting} />}
         {activeSection === "ai" && <AiSection config={config} onUpdate={handleUpdateSetting} apiBase={apiBase} token={token} />}
@@ -430,8 +453,9 @@ function AiSection({ config, onUpdate, apiBase, token }) {
                   {task === "quoteParse" && "Parsing de Cotización"}
                   {task === "followupText" && "Texto de Follow-up"}
                 </h3>
-                <button 
-                  style={{ ...styles.btnGhost, padding: "4px 8px", fontSize: 11 }}
+                <button
+                  // Frontend run 2026-05-12 (#FE6): opacity visible mientras testing.
+                  style={{ ...styles.btnGhost, padding: "4px 8px", fontSize: 11, opacity: testing[task] ? 0.5 : 1 }}
                   onClick={() => handleTest(task)}
                   disabled={testing[task]}
                 >
@@ -770,7 +794,8 @@ function RuleEditor({ rule, onSave, onCancel }) {
               value={data.when_conditions.intent || ""} 
               onChange={e => updateCondition("intent", e.target.value)}
             >
-              <option value="">(cualquiera)</option>
+              {/* Frontend run 2026-05-12 (#FE9): placeholder grisado para diferenciarlo de selecciones válidas. */}
+              <option value="" style={{ color: "#aeaeb2" }}>(cualquiera)</option>
               <option value="quote">Cotización</option>
               <option value="technical">Técnica</option>
               <option value="followup">Seguimiento</option>
@@ -904,6 +929,12 @@ function OperatorsSection({ token, apiBase }) {
 
   useEffect(() => { fetchOperators(); }, [fetchOperators]);
 
+  if (loading && operators.length === 0) {
+    // Top-10 run 2026-05-11 (item #10): hint visible mientras carga.
+    // Frontend run 2026-05-12 (#FE2): padding aumentado a 24×32 para no pegarse al borde.
+    return <div style={{ padding: "24px 32px", color: "#86868b" }}>Cargando operadores…</div>;
+  }
+
   return (
     <div>
       <h2 style={styles.sectionTitle}>Operadores</h2>
@@ -943,7 +974,8 @@ function OperatorsSection({ token, apiBase }) {
   );
 }
 
-function WebhooksSection({ token, apiBase }) {
+// Top-10 run 2026-05-11 (item #10): la sección Webhooks es placeholder; los props token/apiBase no se usan acá.
+function WebhooksSection() {
   return (
     <div>
       <h2 style={styles.sectionTitle}>Webhooks</h2>
@@ -1041,13 +1073,16 @@ function ExportSection({ token, apiBase }) {
       <div style={{ display: "flex", gap: 16 }}>
         <div style={{ ...styles.card, flex: 1 }}>
           <h3 style={styles.cardTitle}><Download size={16} /> Exportar</h3>
-          <p style={{ fontSize: 13, color: "#86868b", marginBottom: 20 }}>Descarga toda la configuración actual en formato JSON.</p>
+          {/* Frontend run 2026-05-12 (#FE15): aviso de seguridad sobre el contenido del JSON. */}
+          <p style={{ fontSize: 13, color: "#86868b", marginBottom: 8 }}>Descarga toda la configuración actual en formato JSON.</p>
+          <p style={{ fontSize: 11, color: "#a35900", marginBottom: 16 }}>⚠ Contiene secrets/tokens — no compartir el archivo por canales públicos.</p>
           <button style={styles.btnPrimary} onClick={handleExport}><Download size={16} /> Descargar JSON</button>
         </div>
         <div style={{ ...styles.card, flex: 1 }}>
           <h3 style={styles.cardTitle}><Plus size={16} /> Importar</h3>
           <p style={{ fontSize: 13, color: "#86868b", marginBottom: 20 }}>Sube un archivo JSON para sobrescribir la configuración.</p>
-          <button style={styles.btnGhost} disabled><Plus size={16} /> Subir archivo</button>
+          {/* Frontend run 2026-05-12 (#FE3): title explícito en el botón disabled. */}
+          <button style={styles.btnGhost} disabled title="Próximamente — por ahora la importación se hace por API o consola"><Plus size={16} /> Subir archivo</button>
         </div>
       </div>
     </div>

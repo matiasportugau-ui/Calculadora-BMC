@@ -10,15 +10,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import React, {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
 import { signIn as gisSignIn, signOut as gisSignOut } from "../utils/googleDrive.js";
 import { getPendingClientQuoteIds, clearPending } from "../utils/clientQuoteId.js";
+// Top-30 run 2026-05-12 (#A13): context + hook extraídos a bmcAuthContext.js para que Fast Refresh trate este archivo como components-only.
+import { BmcAuthContext } from "./bmcAuthContext.js";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -26,8 +26,6 @@ const ApiBase = (() => {
   }
   return ""; // same-origin (Vercel rewrites /api → Cloud Run)
 })();
-
-const BmcAuthContext = createContext(null);
 
 export function BmcAuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -103,6 +101,13 @@ export function BmcAuthProvider({ children }) {
         const me = await fetchMeAndGrants(accessToken);
         if (cancelled) return;
         if (me) {
+          if (!accessToken) {
+            // Fetch token before applying auth so status="authenticated" and
+            // accessToken are set atomically, preventing a race in consumers.
+            const refreshed = await refreshAccess();
+            if (cancelled) return;
+            if (refreshed) return;
+          }
           applyAuth({ ...me });
           return;
         }
@@ -201,8 +206,4 @@ export function BmcAuthProvider({ children }) {
   return <BmcAuthContext.Provider value={value}>{children}</BmcAuthContext.Provider>;
 }
 
-export function useBmcAuthContext() {
-  const ctx = useContext(BmcAuthContext);
-  if (!ctx) throw new Error("useBmcAuth must be used inside <BmcAuthProvider>");
-  return ctx;
-}
+// useBmcAuthContext movido a ./bmcAuthContext.js (top-30 run #A13)

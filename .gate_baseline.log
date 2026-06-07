@@ -1,0 +1,8 @@
+
+> calculadora-bmc@3.1.5 gate:local
+> npm run lint && npm test && npm run test:api
+
+
+> calculadora-bmc@3.1.5 lint
+> eslint src/
+

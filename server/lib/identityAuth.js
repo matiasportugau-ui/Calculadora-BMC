@@ -33,6 +33,8 @@ const ALL_MODULES = [
   "agent-admin",
   "canales",
   "crm-personal",
+  "tareas",
+  "traktime",
 ];
 
 const ROLE_RANK = { superadmin: 4, admin: 3, operator: 2, comprador: 1 };
@@ -300,6 +302,16 @@ export async function verifyGoogleAndUpsert({
     await tx.query(
       `insert into identity.role_grants (user_id, role) values ($1, 'comprador')
        on conflict (user_id, role) do nothing`,
+      [u.user_id],
+    );
+
+    // Default module grants for every signed-in user: calc (write) so they can
+    // immediately use the quotation flow, tareas (read) so the Hub Tareas
+    // module is reachable. ON CONFLICT preserves any admin-tuned grants.
+    await tx.query(
+      `insert into identity.module_grants (user_id, module, level)
+       values ($1, 'calc', 'write'), ($1, 'tareas', 'read')
+       on conflict (user_id, module) do nothing`,
       [u.user_id],
     );
 
@@ -666,7 +678,12 @@ export async function getModuleGrants(userId) {
     [userId],
   );
   const out = { ...baseline };
-  for (const r of explicit.rows) out[r.module] = r.level;
+  for (const r of explicit.rows) {
+    const current = out[r.module];
+    // Explicit grants may elevate access but never downgrade role defaults
+    // (e.g. comprador bootstrap inserts calc=write must not cap superadmin).
+    if (!current || _levelAllows(r.level, current)) out[r.module] = r.level;
+  }
   return out;
 }
 
@@ -909,6 +926,25 @@ async function _audit(entry) {
     );
   } catch (e) {
     logger().warn?.({ err: e }, "[identityAuth] audit insert failed");
+  }
+  // Dual-write to identity.user_activity_log so this event surfaces in
+  // /mi-espacio Historial and /hub/admin/analytics. Action name passes
+  // through unchanged — taxonomy includes the legacy strings (auth.login,
+  // auth.logout, user.revoke) explicitly for this transition.
+  try {
+    const { logActivity } = await import("./userActivityLog.js");
+    await logActivity({
+      pool: _pool,
+      actorId: entry.actorId || null,
+      sessionId: entry.payload?.session_id || null,
+      action: entry.action,
+      resourceType: entry.resource || null,
+      resourceId: entry.resourceId || null,
+      payload: entry.payload || {},
+      req: entry.ip ? { ip: entry.ip, get: () => entry.userAgent } : undefined,
+    });
+  } catch (e) {
+    logger().warn?.({ err: e }, "[identityAuth] activity-log dual-write failed");
   }
 }
 

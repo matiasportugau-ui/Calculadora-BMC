@@ -10,11 +10,17 @@ const bool = (value, fallback = false) => {
 
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3001";
 const isCloudRun = process.env.K_SERVICE || /\.run\.app$/i.test(publicBaseUrl);
+// Vite SPA host (different from publicBaseUrl, which is the Express API host).
+// Used by OAuth flows whose callback runs on the backend but must bounce the
+// user to the frontend afterwards (e.g. /auth/tasks/callback → /hub/tareas).
+const frontendBaseUrl =
+  process.env.FRONTEND_BASE_URL || "https://calculadora-bmc.vercel.app";
 
 export const config = {
   appEnv: process.env.APP_ENV || process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 3001),
   publicBaseUrl,
+  frontendBaseUrl,
   mlClientId: process.env.ML_CLIENT_ID || "742811153438318",
   mlClientSecret: process.env.ML_CLIENT_SECRET || "",
   mlAuthBase: process.env.ML_AUTH_BASE || "https://auth.mercadolibre.com.uy",
@@ -40,6 +46,12 @@ export const config = {
   requestTimeoutMs: Number(process.env.ML_HTTP_TIMEOUT_MS || 15000),
   apiAuthToken: process.env.API_AUTH_TOKEN || process.env.API_KEY || "",
   /**
+   * Development-only: skip API_AUTH_TOKEN checks on Panelin developer routes (chat devMode,
+   * training KB, prompt editor, conversation stats). Set `PANELIN_RELAX_DEV_AUTH=1` on trusted
+   * local/staging APIs only — never on a publicly reachable production Cloud Run service.
+   */
+  panelinRelaxDevAuth: /^(1|true|yes)$/i.test(String(process.env.PANELIN_RELAX_DEV_AUTH || "").trim()),
+  /**
    * Opcional — POST /api/crm/ingest-email: si está definido, el bridge IMAP puede usar solo este secreto
    * (además de API_AUTH_TOKEN). Ver docs/team/panelsim/EMAIL-ADMINISTRATOR.md
    */
@@ -59,6 +71,9 @@ export const config = {
   /** Libro CRM (crm_automatizado). Vacío = mismo que bmcSheetId. */
   wolfbCrmSheetId: process.env.WOLFB_CRM_SHEET_ID || "",
   wolfbCrmEnviadosTab: process.env.WOLFB_CRM_ENVIADOS_TAB || "Enviados",
+  /** Dual-write Lead → Admin Cotizaciones tab "Enviados" (opt-in; default off). */
+  wolfbAdminCotDualWriteEnabled: bool(process.env.WOLFB_ADMIN_COT_DUAL_WRITE, false),
+  wolfbAdminCotEnviadosTab: process.env.WOLFB_ADMIN_COT_ENVIADOS_TAB || "Enviados",
   wolfbDryRun: process.env.WOLFB_DRY_RUN === "1",
   wolfbRitualLog: process.env.WOLFB_RITUAL_LOG === "1",
   wolfbCalcApiBase: process.env.WOLFB_CALC_API_BASE || "",
@@ -94,6 +109,13 @@ export const config = {
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash",
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
+  // Vercel AI Gateway (unified multi-provider).
+  // Set AI_GATEWAY_API_KEY (or rely on VERCEL_OIDC_TOKEN populated via `vercel env pull`)
+  // to route /crm/suggest-response, /crm/parse-email, /crm/ingest-email, and
+  // /agent/training-kb/generate-ml-overrides through the gateway. When unset,
+  // the legacy 4-SDK chain (Anthropic / OpenAI / Grok / Gemini) keeps working
+  // unchanged so deploys without env wiring don't regress.
+  aiGatewayApiKey: process.env.AI_GATEWAY_API_KEY || "",
   // WhatsApp Business Cloud API
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
@@ -106,8 +128,35 @@ export const config = {
     "read_products,write_products,read_orders,write_orders,read_customers,read_draft_orders,write_draft_orders",
   shopifyWebhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET || "",
   shopifyQuestionsSheetTab: process.env.SHOPIFY_QUESTIONS_SHEET_TAB || "Shopify_Preguntas",
-  /** Postgres — Modo Transportista (viajes / eventos / outbox) */
+  /**
+   * Postgres connection string. Usado por:
+   * - Modo Transportista (viajes / eventos / outbox) — `transportista-cursor-package/migrations/`.
+   * - WA Cockpit (`wa_conversations`, `wa_messages`, `wa_suggestions`) — `wa-package/migrations/`.
+   *
+   * Si falta: ambos módulos devuelven 503 en sus endpoints; el resto del API (calc, Sheets, ML) sigue funcionando.
+   * En Cloud Run: secret manager (no env-var directa). En local: `.env` (ver `.env.example`).
+   * (Top-20 run 2026-05-11 #L10: doc ampliado para reflejar el doble uso.)
+   */
   databaseUrl: process.env.DATABASE_URL || "",
+  /** Google Tasks OAuth 2.0 client (separate from identity.authGoogle login OAuth) */
+  googleTasksClientId: process.env.GOOGLE_TASKS_CLIENT_ID || "",
+  googleTasksClientSecret: process.env.GOOGLE_TASKS_CLIENT_SECRET || "",
+  /** PGP symmetric key used by pgp_sym_encrypt/decrypt in tasks.oauth_tokens */
+  supabasePgpEncryptKey: process.env.SUPABASE_PGP_ENCRYPT_KEY || "",
+  /** Static HMAC secret sent as X-Sync-Signature header by Cloud Scheduler */
+  syncHmacSecret: process.env.SYNC_HMAC_SECRET || "",
+  /**
+   * Tareas Phase D — Google Calendar pairing for time-of-day + recurrence.
+   * Reuses the Google Tasks OAuth client (with the added calendar.events scope).
+   *   googleCalendarEnabled        — master kill-switch; off ⇒ tasks never pair a Calendar event.
+   *   googleCalendarTimeZone       — IANA TZ for timed (dateTime) events.
+   *   googleCalendarDefaultDurationMin — event length when a task has a time but no explicit end.
+   */
+  googleCalendarEnabled: bool(process.env.GOOGLE_CALENDAR_ENABLED, true),
+  googleCalendarTimeZone: process.env.GOOGLE_CALENDAR_TIME_ZONE || "America/Montevideo",
+  googleCalendarDefaultDurationMin: Number(
+    process.env.GOOGLE_CALENDAR_DEFAULT_DURATION_MIN || 30,
+  ),
   /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
   /** Bucket GCS para evidencias firmadas (opcional) */
@@ -115,6 +164,17 @@ export const config = {
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
   transportistaOutboxIntervalMs: Number(process.env.TRANSPORTISTA_OUTBOX_INTERVAL_MS || 15000),
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
+  /** TraKtiMe — time tracking + invoicing. Reuses databaseUrl. */
+  traktimeSheetId: process.env.TRAKTIME_SHEET_ID || "",
+  traktimeMirrorTz: process.env.TRAKTIME_MIRROR_TZ || "America/Montevideo",
+  traktimeMirrorEnabled: bool(process.env.TRAKTIME_MIRROR_ENABLED, true),
+  traktimeInvoiceIssuerName:
+    process.env.TRAKTIME_INVOICE_ISSUER_NAME || "METALOG SAS — BMC Uruguay",
+  traktimeInvoiceIssuerRut: process.env.TRAKTIME_INVOICE_ISSUER_RUT || "21XXXXXXXXXX",
+  traktimeInvoiceIssuerAddress:
+    process.env.TRAKTIME_INVOICE_ISSUER_ADDRESS || "Direccion pendiente, Montevideo, Uruguay",
+  traktimeInvoiceGcsBucket:
+    process.env.TRAKTIME_INVOICE_GCS_BUCKET || process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
   /** WA Cockpit (F2 enricher) — flags */
   waEnricherEnabled: bool(process.env.WA_ENRICHER_ENABLED, false),
   waEnricherIntervalMs: Number(process.env.WA_ENRICHER_INTERVAL_MS || 8000),
@@ -163,6 +223,20 @@ export const config = {
       ? process.env.INTERNAL_SUPERADMIN_EMAILS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
       : []
   ),
+  /** KB Analytics — log missed questions for human review (opt-in; default off) */
+  kbAnalyticsLogMissQuestion: bool(process.env.KB_ANALYTICS_LOG_MISS_QUESTION, false),
+  /** KB Analytics — window size in days for metrics (default 30, max 365) */
+  kbAnalyticsWindowMaxDays: Math.max(1, Math.min(Number(process.env.KB_ANALYTICS_WINDOW_MAX_DAYS || 90), 365)),
+  /**
+   * RAG v1 — recuperación de cotizaciones históricas similares vía pgvector.
+   * Default OFF: activar solo después de correr la migración 0001 y embedQuotes.js.
+   * Ver docs/sprint-mayo/RAG-V1.md § Checklist de activación.
+   */
+  ragEnabled: bool(process.env.RAG_ENABLED, false),
+  /** Número de cotizaciones similares a recuperar por turno (default 5). */
+  ragTopK: Math.max(1, Math.min(10, Number(process.env.RAG_TOP_K || 5))),
+  /** Similitud mínima coseno para incluir un caso (0-1, default 0.70). */
+  ragThreshold: Math.max(0, Math.min(1, Number(process.env.RAG_THRESHOLD || 0.70))),
 };
 
 export const redirectUri = () => {

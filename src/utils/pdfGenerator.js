@@ -83,11 +83,20 @@ async function htmlToPdfViaHtml2Pdf(htmlString) {
  * @returns {Promise<Blob>}
  */
 export async function htmlToPdfBlob(htmlString, filename = "cotizacion.pdf") {
+  const start = performance.now();
+  const inputSize = new Blob([htmlString]).size;
+
   try {
-    return await htmlToPdfViaServer(htmlString, filename);
+    const blob = await htmlToPdfViaServer(htmlString, filename);
+    const duration = Math.round(performance.now() - start);
+    console.info(`[pdf] server success — ${filename} | ${(inputSize/1024).toFixed(1)}KB html → ${(blob.size/1024).toFixed(1)}KB pdf in ${duration}ms`);
+    return blob;
   } catch (serverErr) {
     console.warn("[pdfGenerator] server PDF failed, using html2pdf fallback:", serverErr.message);
-    return htmlToPdfViaHtml2Pdf(htmlString);
+    const blob = await htmlToPdfViaHtml2Pdf(htmlString);
+    const duration = Math.round(performance.now() - start);
+    console.info(`[pdf] html2pdf fallback — ${filename} | ${(inputSize/1024).toFixed(1)}KB html → ${(blob.size/1024).toFixed(1)}KB pdf in ${duration}ms`);
+    return blob;
   }
 }
 

@@ -1,0 +1,608 @@
+{
+  "generatedAt": "2026-05-15T04:19:27.931Z",
+  "baseUrl": "https://calculadora-bmc.vercel.app",
+  "url": "https://calculadora-bmc.vercel.app/hub/cotizaciones",
+  "flag": "VITE_FEATURE_ADMIN_COT_V2=true (required for /hub/cotizaciones to mount)",
+  "mode": "live",
+  "stepCount": 31,
+  "okCount": 31,
+  "skippedCount": 0,
+  "failCount": 0,
+  "steps": [
+    {
+      "id": "open-page",
+      "intent": "Aterrizar en /hub/cotizaciones y confirmar que el módulo monta",
+      "selector": "div.adminCot",
+      "helpType": "callout",
+      "helpText": {
+        "short": "Administrador de Cotizaciones",
+        "long": "Este tablero gestiona las cotizaciones en estado pendiente de respuesta. Lee directamente de la pestaña Admin. de la planilla y permite editar, aprobar, marcar como enviadas o generar respuestas IA en lote."
+      },
+      "screenshot": "screenshots/01-open-page.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 9835,
+      "boundingBox": {
+        "x": 0,
+        "y": 55,
+        "w": 1366,
+        "h": 3405
+      }
+    },
+    {
+      "id": "topbar-breadcrumb",
+      "intent": "Confirmar breadcrumb BMC › hub › cotizaciones",
+      "selector": "nav[aria-label=\"Breadcrumb\"]",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Estás en BMC → hub → cotizaciones",
+        "long": "El breadcrumb te ubica dentro del Hub de BMC. Hacé click en 'hub' para volver al menú de módulos."
+      },
+      "screenshot": "screenshots/02-topbar-breadcrumb.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 125,
+      "boundingBox": {
+        "x": 20,
+        "y": 73,
+        "w": 165,
+        "h": 16
+      }
+    },
+    {
+      "id": "topbar-live",
+      "intent": "Chip En vivo / Procesando / Error indica el estado de la sesión",
+      "selector": ".adminCot__live",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Indicador de conexión y actividad",
+        "long": "Verde = lista cargada y lista para operar. Amarillo pulsante = corriendo una acción (batch, sync, marcar enviada). Rojo = error de conexión o token inválido."
+      },
+      "screenshot": "screenshots/03-topbar-live.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 298,
+      "boundingBox": {
+        "x": 1208,
+        "y": 75,
+        "w": 54,
+        "h": 15
+      }
+    },
+    {
+      "id": "topbar-kbd-hint",
+      "intent": "Botón ⌘K abre la paleta de comandos",
+      "selector": "button.adminCot__kbd",
+      "helpType": "first-time-tip",
+      "helpText": {
+        "short": "Cmd/Ctrl + K abre la paleta",
+        "long": "La paleta de comandos te deja correr cualquier acción (refresh, generar IA, sync, export, cambiar skin) sin sacar las manos del teclado."
+      },
+      "screenshot": "screenshots/04-topbar-kbd-hint.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 204,
+      "boundingBox": {
+        "x": 1272,
+        "y": 69,
+        "w": 31,
+        "h": 23
+      }
+    },
+    {
+      "id": "kpi-pendientes",
+      "intent": "KPI: Pendientes",
+      "selector": ".adminCot__stat:has(.adminCot__stat-label:text-is(\"Pendientes\"))",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Filas con consulta sin respuesta o sin enviar",
+        "long": "Cuenta filas con consulta (col I) que aún no fueron marcadas como Aprobadas o Enviadas. Es el embudo principal del administrador."
+      },
+      "screenshot": "screenshots/05-kpi-pendientes.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 308,
+      "boundingBox": {
+        "x": 83,
+        "y": 219,
+        "w": 291,
+        "h": 80
+      }
+    },
+    {
+      "id": "kpi-aprobadas",
+      "intent": "KPI: Aprobadas",
+      "selector": ".adminCot__stat:has(.adminCot__stat-label:text-is(\"Aprobadas\"))",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Respuestas IA aprobadas por un humano",
+        "long": "Filas marcadas con estado 'Aprobado' (col L). Listas para enviar al cliente."
+      },
+      "screenshot": "screenshots/06-kpi-aprobadas.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 349,
+      "boundingBox": {
+        "x": 386,
+        "y": 219,
+        "w": 291,
+        "h": 80
+      }
+    },
+    {
+      "id": "kpi-error",
+      "intent": "KPI: Con error ⚠",
+      "selector": ".adminCot__stat:has(.adminCot__stat-label:text-is(\"Con error ⚠\"))",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Respuestas IA con error",
+        "long": "Filas donde la respuesta IA (col J) empieza con ⚠. Suele significar que faltó contexto o la consulta era ambigua — revisalas a mano antes de aprobar."
+      },
+      "screenshot": "screenshots/07-kpi-error.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 1131,
+      "boundingBox": {
+        "x": 689,
+        "y": 219,
+        "w": 291,
+        "h": 80
+      }
+    },
+    {
+      "id": "kpi-stale",
+      "intent": "KPI: ≥14 días sin enviar",
+      "selector": ".adminCot__stat:has(.adminCot__stat-label:text-is(\"≥14 días sin enviar\"))",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Cotizaciones envejecidas que conviene cerrar",
+        "long": "Filas con más de 14 días desde la consulta sin marcarse como enviadas. Alta prioridad: si no se cierran, perdés contexto del cliente y la oportunidad."
+      },
+      "screenshot": "screenshots/08-kpi-stale.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 189,
+      "boundingBox": {
+        "x": 992,
+        "y": 219,
+        "w": 291,
+        "h": 80
+      }
+    },
+    {
+      "id": "toolbar-search",
+      "intent": "Búsqueda client-side por cliente, consulta o teléfono",
+      "selector": "input[aria-label=\"Buscar\"]",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Filtra las filas ya cargadas",
+        "long": "El filtro funciona client-side sobre las filas leídas de la planilla. No vuelve a llamar al backend."
+      },
+      "screenshot": "screenshots/09-toolbar-search.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 364,
+      "boundingBox": {
+        "x": 98,
+        "y": 328,
+        "w": 564,
+        "h": 34
+      }
+    },
+    {
+      "id": "toolbar-scope-admin",
+      "intent": "Cambiar alcance a 'Toda la planilla' carga filas sin filtrar por col I",
+      "selector": "button.adminCot__pill[aria-pressed=\"true\"]",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Con consulta vs Toda la planilla",
+        "long": "'Con consulta' (default) solo muestra filas con texto en col I. 'Toda la planilla' lee todo el rango A2:M, útil para auditar filas viejas o vacías."
+      },
+      "screenshot": "screenshots/10-toolbar-scope-admin.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 536,
+      "boundingBox": {
+        "x": 771,
+        "y": 335,
+        "w": 101,
+        "h": 21
+      }
+    },
+    {
+      "id": "toolbar-status-pendientes",
+      "intent": "Filtro de estado: Pendientes",
+      "selector": "button.adminCot__pill[aria-pressed=\"true\"]:text-is(\"Pendientes\")",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Solo filas pendientes de respuesta",
+        "long": "Esconde Aprobadas y Enviadas. Útil para focalizar el trabajo del día."
+      },
+      "screenshot": "screenshots/11-toolbar-status-pendientes.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 873,
+      "boundingBox": {
+        "x": 973,
+        "y": 335,
+        "w": 81,
+        "h": 20
+      }
+    },
+    {
+      "id": "toolbar-status-error",
+      "intent": "Filtro de estado: Con error",
+      "selector": "button.adminCot__pill[aria-pressed=\"true\"]:text-is(\"Con error\")",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Filas con respuesta IA ⚠",
+        "long": "Muestra solo filas donde el batch IA falló. Suelen necesitar edición manual antes de aprobar."
+      },
+      "screenshot": "screenshots/12-toolbar-status-error.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 834,
+      "boundingBox": {
+        "x": 1141,
+        "y": 335,
+        "w": 72,
+        "h": 20
+      }
+    },
+    {
+      "id": "toolbar-status-stale",
+      "intent": "Filtro de estado: +14d",
+      "selector": "button.adminCot__pill[aria-pressed=\"true\"]:text-is(\"+14d\")",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Cotizaciones envejecidas",
+        "long": "Filas con consulta hace ≥14 días que siguen abiertas. Cerralas o archivalas."
+      },
+      "screenshot": "screenshots/13-toolbar-status-stale.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 596,
+      "boundingBox": {
+        "x": 1218,
+        "y": 335,
+        "w": 47,
+        "h": 20
+      }
+    },
+    {
+      "id": "table-row-health",
+      "intent": "Indicador de salud de la fila (color)",
+      "selector": ".adminCot__health",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Verde / amarillo / rojo según urgencia",
+        "long": "Verde = fresca (<7d). Amarillo = en camino (7–13d). Rojo = atrasada (≥14d) o con error. El color reemplaza la edad como señal visual rápida."
+      },
+      "screenshot": "screenshots/14-table-row-health.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 117,
+      "boundingBox": {
+        "x": 128,
+        "y": 521,
+        "w": 10,
+        "h": 10
+      }
+    },
+    {
+      "id": "row-edit-drawer",
+      "intent": "Click en Editar abre el drawer lateral con J/K/M editables",
+      "selector": "aside.adminCot__drawer",
+      "helpType": "callout",
+      "helpText": {
+        "short": "Editor de fila",
+        "long": "Editás los 3 campos clave: Respuesta IA (J), Link presupuesto (K), Replay JSON (M). Guardar persiste al sheet via POST /api/wolfboard/row."
+      },
+      "screenshot": "screenshots/15-row-edit-drawer.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 1126,
+      "boundingBox": {
+        "x": 806,
+        "y": 0,
+        "w": 560,
+        "h": 900
+      }
+    },
+    {
+      "id": "drawer-regenerate-hint",
+      "intent": "Hint explicando que regenerar IA es batch-only (limitación backend)",
+      "selector": ".adminCot__hint",
+      "helpType": "inline-?",
+      "helpText": {
+        "short": "Por qué no hay 'Regenerar IA' por fila",
+        "long": "El endpoint /api/wolfboard/quote-batch del backend procesa todas las filas pendientes en una sola pasada — no acepta un rowNum específico. Para regenerar una fila, vaciá su respuesta y corré Generar IA desde la barra superior."
+      },
+      "screenshot": "screenshots/16-drawer-regenerate-hint.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 158,
+      "boundingBox": {
+        "x": 825,
+        "y": 343,
+        "w": 523,
+        "h": 34
+      }
+    },
+    {
+      "id": "drawer-close",
+      "intent": "Cerrar drawer sin guardar (Cancelar o Escape)",
+      "selector": "button[aria-label=\"Cerrar\"]",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Escape o Cancelar cierran sin guardar",
+        "long": "Si tocaste algo y querés descartarlo, Escape cierra inmediato. Guardar persiste y cierra; Aprobar marca Aprobado y cierra."
+      },
+      "screenshot": "screenshots/17-drawer-close.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 30238,
+      "boundingBox": null
+    },
+    {
+      "id": "row-kebab",
+      "intent": "Kebab por fila: Aprobar, Abrir PDF, Replay, Abrir en Sheet",
+      "selector": ".adminCot__kebab-menu",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Acciones secundarias por fila",
+        "long": "Las acciones primarias (Editar / Marcar enviado) están inline. El kebab agrupa lo demás: Aprobar (sin abrir drawer), abrir PDF en pestaña nueva, ver replay JSON, saltar a la fila en Google Sheet."
+      },
+      "screenshot": "screenshots/18-row-kebab.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 30713,
+      "boundingBox": null
+    },
+    {
+      "id": "bulk-select",
+      "intent": "Seleccionar 2 filas → aparece la bulkbar con acción en serie",
+      "selector": ".adminCot__bulkbar",
+      "helpType": "first-time-tip",
+      "helpText": {
+        "short": "Selección múltiple",
+        "long": "Cuando seleccionás ≥1 fila, aparece la barra de acciones en serie. 'Marcar enviadas en serie' borra del Admin en orden descendente (preserva índices del sheet)."
+      },
+      "screenshot": "screenshots/19-bulk-select.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 31371,
+      "boundingBox": null
+    },
+    {
+      "id": "batch-modal",
+      "intent": "Modal de Generar IA en lote (4 flags)",
+      "selector": ".adminCot__modal",
+      "helpType": "callout",
+      "helpText": {
+        "short": "Genera respuestas IA para todas las filas pendientes",
+        "long": "Forzar = reprocesa filas con ⚠. SyncCRM = propaga a CRM. CrearCRM = crea fila si no hay match. SyncLink = escribe link de presupuesto en col AH del CRM. Tus selecciones se persisten en localStorage."
+      },
+      "screenshot": "screenshots/20-batch-modal.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 32583,
+      "boundingBox": null
+    },
+    {
+      "id": "toolbar-sync",
+      "intent": "Sync CRM → propaga Admin.J → CRM.AF (bulk, sin opciones)",
+      "selector": "button:has-text(\"Sync CRM\")",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Sincroniza respuestas IA al CRM",
+        "long": "Llama a /api/wolfboard/sync. Para cada fila con respuesta IA (J), busca un match en CRM_Operativo por correlation ID o texto de consulta y escribe la respuesta en AF y el link en AH. Sin opciones — bulk only."
+      },
+      "screenshot": "screenshots/21-toolbar-sync.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 2878,
+      "boundingBox": {
+        "x": 939,
+        "y": 372,
+        "w": 104,
+        "h": 34
+      }
+    },
+    {
+      "id": "toolbar-export",
+      "intent": "Export CSV abre el endpoint /api/wolfboard/export en otra pestaña",
+      "selector": "a:has-text(\"Export CSV\")",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Descarga la planilla como CSV",
+        "long": "Útil para auditorías o cargar a otra herramienta. El alcance del CSV depende del scope chip activo (Con consulta vs Toda la planilla)."
+      },
+      "screenshot": "screenshots/22-toolbar-export.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 1551,
+      "boundingBox": {
+        "x": 1051,
+        "y": 372,
+        "w": 116,
+        "h": 34
+      }
+    },
+    {
+      "id": "palette-open",
+      "intent": "⌘K abre la paleta",
+      "selector": ".adminCot__palette",
+      "helpType": "callout",
+      "helpText": {
+        "short": "Paleta de comandos",
+        "long": "Buscar acción por nombre y Enter. Flechas ↑↓ para mover, Esc para cerrar. Incluye refresh, batch IA, sync, export, cambio de skin, ir al módulo viejo."
+      },
+      "screenshot": "screenshots/23-palette-open.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 3716,
+      "boundingBox": {
+        "x": 403,
+        "y": 126,
+        "w": 560,
+        "h": 408
+      }
+    },
+    {
+      "id": "palette-search",
+      "intent": "Filtrado fuzzy por texto",
+      "selector": ".adminCot__palette-input",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Filtrá por nombre de acción",
+        "long": "El input filtra los items por substring. La selección activa se mantiene en el primer match."
+      },
+      "screenshot": "screenshots/24-palette-search.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 1953,
+      "boundingBox": {
+        "x": 404,
+        "y": 127,
+        "w": 558,
+        "h": 46
+      }
+    },
+    {
+      "id": "skin-macos",
+      "intent": "Aplicar skin macos y verificar data-skin en el wrapper raíz",
+      "selector": "div.adminCot[data-skin=\"macos\"]",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Skin: macos",
+        "long": "El skin cambia paleta + tipografía + radios sin tocar el layout. La elección se persiste en localStorage[bmc_admin_cot_skin]."
+      },
+      "screenshot": "screenshots/25-skin-macos.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 14042,
+      "boundingBox": {
+        "x": 0,
+        "y": 55,
+        "w": 1366,
+        "h": 3405
+      }
+    },
+    {
+      "id": "skin-bmc",
+      "intent": "Aplicar skin bmc y verificar data-skin en el wrapper raíz",
+      "selector": "div.adminCot[data-skin=\"bmc\"]",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Skin: bmc",
+        "long": "El skin cambia paleta + tipografía + radios sin tocar el layout. La elección se persiste en localStorage[bmc_admin_cot_skin]."
+      },
+      "screenshot": "screenshots/26-skin-bmc.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 1996,
+      "boundingBox": {
+        "x": 0,
+        "y": 55,
+        "w": 1366,
+        "h": 3405
+      }
+    },
+    {
+      "id": "skin-gnome",
+      "intent": "Aplicar skin gnome y verificar data-skin en el wrapper raíz",
+      "selector": "div.adminCot[data-skin=\"gnome\"]",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Skin: gnome",
+        "long": "El skin cambia paleta + tipografía + radios sin tocar el layout. La elección se persiste en localStorage[bmc_admin_cot_skin]."
+      },
+      "screenshot": "screenshots/27-skin-gnome.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 3956,
+      "boundingBox": {
+        "x": 0,
+        "y": 55,
+        "w": 1366,
+        "h": 3405
+      }
+    },
+    {
+      "id": "skin-anthropic",
+      "intent": "Aplicar skin anthropic y verificar data-skin en el wrapper raíz",
+      "selector": "div.adminCot[data-skin=\"anthropic\"]",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Skin: anthropic",
+        "long": "El skin cambia paleta + tipografía + radios sin tocar el layout. La elección se persiste en localStorage[bmc_admin_cot_skin]."
+      },
+      "screenshot": "screenshots/28-skin-anthropic.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 3241,
+      "boundingBox": {
+        "x": 0,
+        "y": 55,
+        "w": 1366,
+        "h": 3404
+      }
+    },
+    {
+      "id": "skin-linear",
+      "intent": "Aplicar skin linear y verificar data-skin en el wrapper raíz",
+      "selector": "div.adminCot[data-skin=\"linear\"]",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Skin: linear",
+        "long": "El skin cambia paleta + tipografía + radios sin tocar el layout. La elección se persiste en localStorage[bmc_admin_cot_skin]."
+      },
+      "screenshot": "screenshots/29-skin-linear.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 1351,
+      "boundingBox": {
+        "x": 0,
+        "y": 55,
+        "w": 1366,
+        "h": 3405
+      }
+    },
+    {
+      "id": "reduced-motion",
+      "intent": "prefers-reduced-motion desactiva el pulse del live-dot y animaciones",
+      "selector": ".adminCot__live-dot",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Respeta tus preferencias del sistema",
+        "long": "Si activaste Reduce Motion en el OS, las animaciones (pulse, drawer slide, shimmer) se cortan. WCAG 2.3.3."
+      },
+      "screenshot": "screenshots/30-reduced-motion.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 592,
+      "boundingBox": {
+        "x": 1208,
+        "y": 78,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "id": "a11y-focus-visible",
+      "intent": "Tab navega y muestra focus ring 2px en el elemento activo",
+      "selector": ":focus-visible",
+      "helpType": "tooltip",
+      "helpText": {
+        "short": "Accesible con teclado",
+        "long": "Tab recorre todos los interactivos en orden lógico. El outline 2px (criterio WCAG 2.4.13) hace visible el foco."
+      },
+      "screenshot": "screenshots/31-a11y-focus-visible.png",
+      "status": "ok",
+      "error": null,
+      "durationMs": 3984,
+      "boundingBox": null
+    }
+  ]
+}

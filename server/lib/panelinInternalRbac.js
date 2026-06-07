@@ -92,6 +92,13 @@ const DASHBOARD_POLICIES = [
   { method: "GET", path: "/api/stock-ecommerce", minRole: /** @type {PanelinRole} */ ("ventas") },
   { method: "GET", path: "/api/stock-kpi", minRole: /** @type {PanelinRole} */ ("ventas") },
   { method: "GET", path: "/api/stock/history", minRole: /** @type {PanelinRole} */ ("admin") },
+
+  // Productos Maestro (precio + stock unificado)
+  { method: "GET", path: "/api/productos-maestro", minRole: /** @type {PanelinRole} */ ("ventas") },
+  { method: "GET", path: "/api/productos-maestro/reconcile", minRole: /** @type {PanelinRole} */ ("ventas") },
+  { method: "GET", path: "/api/productos-maestro/links", minRole: /** @type {PanelinRole} */ ("ventas") },
+  { method: "PUT", path: "/api/productos-maestro/links", minRole: /** @type {PanelinRole} */ ("admin") },
+  { method: "POST", path: "/api/productos-maestro/push", minRole: /** @type {PanelinRole} */ ("admin") },
   { method: "POST", path: "/api/ventas", minRole: /** @type {PanelinRole} */ ("admin") },
   { method: "GET", path: "/api/actualizar-precios-calculadora", minRole: /** @type {PanelinRole} */ ("admin") },
   { method: "POST", path: "/api/matriz/push-pricing-overrides", minRole: /** @type {PanelinRole} */ ("director") },

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Sincroniza **F/L/T** (cols F, L, T de BROMYROS, ex IVA) de la fila **Silicona 300 ml neutra**
+ * Sincroniza **G/J/R** (cols G, J, R de BROMYROS, ex IVA) de la fila **Silicona 300 ml neutra**
  * (SKU col D **SIL300N** típico) hacia `SELLADORES.silicona_300_neutra` en `src/data/constants.js`.
  *
  * Fila por defecto **168** (MATRIZ 2026-04); override: `MATRIZ_ROW_SILICONA_300_NEUTRA=168`.
@@ -137,7 +137,7 @@ async function main() {
   const venta = parseNum(rowArr[c.ventaLocal]);
   const web = parseNum(rowArr[c.web]);
   if (costo == null || venta == null || web == null) {
-    console.error(`Fila ${usedRow}: faltan F/L/T`, { costo, venta, web });
+    console.error(`Fila ${usedRow}: faltan G/J/R`, { costo, venta, web });
     process.exit(4);
   }
 

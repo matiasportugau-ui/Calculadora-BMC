@@ -26,8 +26,13 @@ function requireWaAuth(config) {
   return (req, res, next) => {
     const token = config.apiAuthToken;
     if (!token) {
+      // Top-10 run 2026-05-11 (item #9): shape estructurado para que el frontend pueda surfacear el nombre exacto del env var.
       return res.status(503).json({
         ok: false,
+        code: "ENV_MISSING",
+        envVar: "API_AUTH_TOKEN",
+        where: "Cloud Run env / .env local",
+        docs: "AGENTS.md#env",
         error: "API_AUTH_TOKEN not configured — wa cockpit disabled",
       });
     }
@@ -149,14 +154,20 @@ export default function createWaRouter(config, logger) {
       if (tokenStr && tokenStr === config.apiAuthToken) {
         const opId = String(req.headers["x-operator-id"] || "").slice(0, 64).trim();
         req.waOperatorId = opId || null;
-        // Legacy token: read-only en endpoints write a menos que esté
-        // explicitamente whitelisted. Para el rollout gradual, permitimos
-        // escritura igual — en producción toggle requireWrite.
+        // Deprecation: shared token is legacy. Migrate operators to JWT.
+        // Sunset uses IMF-fixdate per RFC 8594 / RFC 7231.
+        res.setHeader("Deprecation", "true");
+        res.setHeader("Sunset", "Thu, 01 Jan 2027 00:00:00 GMT");
+        log.warn?.({ ip: req.ip, path: req.path }, "[waAuth] legacy shared-token used — migrate to operator JWT");
         return next();
       }
       const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
       if (xKey && xKey === config.apiAuthToken) {
         req.waOperatorId = null;
+        // Deprecation: shared token is legacy. Migrate operators to JWT.
+        res.setHeader("Deprecation", "true");
+        res.setHeader("Sunset", "Thu, 01 Jan 2027 00:00:00 GMT");
+        log.warn?.({ ip: req.ip, path: req.path }, "[waAuth] legacy x-api-key used — migrate to operator JWT");
         return next();
       }
       return res.status(401).json({ ok: false, error: "Unauthorized — JWT operador o token compartido" });
@@ -1048,7 +1059,7 @@ export default function createWaRouter(config, logger) {
       }
 
       const conv = await pool.query(
-        `select chat_id, phone, consent_at from wa_conversations where chat_id = $1`,
+        `select chat_id, phone, consent_at, last_msg_in_at from wa_conversations where chat_id = $1`,
         [chatId],
       );
       if (conv.rowCount === 0) return res.status(404).json({ ok: false, error: "conversation not found" });
@@ -1063,6 +1074,21 @@ export default function createWaRouter(config, logger) {
         }
         if (!row.consent_at) {
           return res.status(403).json({ ok: false, error: "no consent — set via /api/wa/conversations/:id/consent first" });
+        }
+
+        // Enforce 24-hour customer service window (WhatsApp Business Policy).
+        // Free-form text is only allowed within 24h of the customer's last inbound message.
+        // Outside this window, use a pre-approved template message instead.
+        const lastMsgIn = row.last_msg_in_at;
+        const windowMs = 24 * 60 * 60 * 1000;
+        if (!lastMsgIn || (Date.now() - new Date(lastMsgIn).getTime()) > windowMs) {
+          return res.status(403).json({
+            ok: false,
+            error: "outside_24h_window",
+            template_required: true,
+            last_msg_in_at: lastMsgIn || null,
+            message: "Last inbound message is older than 24 h. Use an approved template to re-engage (WhatsApp Business Policy).",
+          });
         }
         if (!config.whatsappAccessToken || !config.whatsappPhoneNumberId) {
           return res.status(503).json({ ok: false, error: "WhatsApp Cloud API not configured" });

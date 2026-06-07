@@ -80,6 +80,9 @@ export const MATRIZ_SKU_TO_PATH = {
   GLDCAM50: "PERFIL_TECHO.gotero_lateral_camara.ISOROOF.50",
   GLDCAM80: "PERFIL_TECHO.gotero_lateral_camara.ISOROOF.80",
   GFCGR30: "PERFIL_TECHO.gotero_frontal_greca.ISOROOF.30",
+  /** Greca 50/80 comparten precio y SKU físico GFCGR30 en constants; SKU disjunto para fila propia en col D */
+  GFCGR50: "PERFIL_TECHO.gotero_frontal_greca.ISOROOF.50",
+  GFCGR80: "PERFIL_TECHO.gotero_frontal_greca.ISOROOF.80",
 
   // Goteros / perfiles ISODEC EPS (códigos numéricos col D — ver MATRIZ-SKU-GAP-Y-PLAN.md)
   6838: "PERFIL_TECHO.gotero_frontal.ISODEC.100",
@@ -121,6 +124,14 @@ export const MATRIZ_SKU_TO_PATH = {
   /** Recomendado si PIR 50/80 debe importar aparte de 6801 (Isodec 100) */
   CANPIR50: "PERFIL_TECHO.canalon.ISODEC_PIR.50",
   CANPIR80: "PERFIL_TECHO.canalon.ISODEC_PIR.80",
+  /** Canalón 120 PIR — comparte precio con CAN.ISDC120 (Isodec EPS); SKU disjunto para fila propia */
+  CANPIR120: "PERFIL_TECHO.canalon.ISODEC_PIR.120",
+  /** Perfilería ISODEC_PIR _all — hoy comparten precio con la variante ISODEC; SKU disjunto para fila propia en col D */
+  BBADPIR: "PERFIL_TECHO.babeta_adosar.ISODEC_PIR._all",
+  BBEMPIR: "PERFIL_TECHO.babeta_empotrar.ISODEC_PIR._all",
+  CUMPIR: "PERFIL_TECHO.cumbrera.ISODEC_PIR._all",
+  SOPCANPIR: "PERFIL_TECHO.soporte_canalon.ISODEC_PIR._all",
+  GLDCAMPIR: "PERFIL_TECHO.gotero_lateral_camara.ISODEC_PIR._all",
 
   // Selladores
   CBUT: "SELLADORES.cinta_butilo",
@@ -154,6 +165,13 @@ export const MATRIZ_SKU_TO_PATH = {
   THEXPU204: "FIJACIONES.tornillo_hex_pu_20mm_4in",
   T1PERF: "FIJACIONES.tornillo_t1",
   T2FACH: "FIJACIONES.tornillo_t2",
+  /** Tornillos hexagonales galv. 4"/6" punta mecha/aguja y fijaciones 8 mm — SKU propuesto (confirmar col D en MATRIZ) */
+  THEXG4M: "FIJACIONES.tornillo_hex_galv_4_mecha",
+  THEXG6M: "FIJACIONES.tornillo_hex_galv_6_mecha",
+  THEXG4A: "FIJACIONES.tornillo_hex_galv_4_aguja",
+  THEXG6A: "FIJACIONES.tornillo_hex_galv_6_aguja",
+  VAR8MM: "FIJACIONES.varilla_roscada_8mm",
+  TACEX8MM: "FIJACIONES.taco_expansivo_8mm",
   TAGU14X5: "FIJACIONES.tornillo_aguja",
   ANC100MM: "FIJACIONES.anclaje_h",
   /** Arandela plana 3/8" — fijación varilla pasante (lado inferior). Confirmar col D en MATRIZ si difiere. */
@@ -185,6 +203,12 @@ export const MATRIZ_SKU_TO_PATH = {
   PU100MM: "PERFIL_PARED.perfil_u.ISOPANEL.100",
   PU150MM: "PERFIL_PARED.perfil_u.ISOPANEL.150",
   PU200MM: "PERFIL_PARED.perfil_u.ISOPANEL.200",
+  /** ISOPANEL 250 usa perfil/precio de 200 (PU200MM) en constants; SKU disjunto para fila propia */
+  PU250MM: "PERFIL_PARED.perfil_u.ISOPANEL.250",
+  /** Perfil U ISOWALL: 80 tiene SKU propio (PU80MM); 50/100 comparten con ISOPANEL → SKU disjunto PUW* */
+  PU80MM: "PERFIL_PARED.perfil_u.ISOWALL.80",
+  PUW50MM: "PERFIL_PARED.perfil_u.ISOWALL.50",
+  PUW100MM: "PERFIL_PARED.perfil_u.ISOWALL.100",
   G2100: "PERFIL_PARED.perfil_g2.ISOPANEL.100",
   G2150: "PERFIL_PARED.perfil_g2.ISOPANEL.150",
   G2200: "PERFIL_PARED.perfil_g2.ISOPANEL.200",

@@ -13,6 +13,7 @@
  */
 import { Router } from "express";
 import Anthropic from "@anthropic-ai/sdk";
+import { estimateCostUSD } from "../lib/aiProviderConfig.js";
 import {
   calcTechoCompleto,
   calcParedCompleto,
@@ -24,6 +25,19 @@ import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 
 const HAIKU = "claude-haiku-4-5-20251001";
+
+// Helper for consistent Phase A cost observability
+function logSuperAgentCost(usage, context = {}) {
+  const cost = estimateCostUSD("claude", HAIKU, usage || {});
+  // TODO: thread pino logger here once cost-telemetry module exists
+  console.log(JSON.stringify({
+    event: "superagent_ai_call",
+    provider: "claude",
+    model: HAIKU,
+    estimated_cost_usd: cost,
+    ...context,
+  }));
+}
 const MIN_LEN = 15;
 
 const EXTRACT_PROMPT = `Sos un extractor de datos para BMC Uruguay (paneles de aislamiento térmico).
@@ -145,6 +159,7 @@ export function createSuperAgentRouter(config) {
       const raw = (msg.content?.[0]?.text || "").trim()
         .replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
       extracted = JSON.parse(raw);
+      logSuperAgentCost(msg.usage, { call: "extract" });
     } catch (e) { console.error("[superAgent] extraction error:", e?.message); extracted = null; }
 
     // Step 2: run calculator
@@ -190,6 +205,7 @@ export function createSuperAgentRouter(config) {
           messages: [{ role: "user", content: `Cliente: ${cliente}\nCanal: ${canal || "N/A"}\nConsulta: ${consulta}\n\nPresupuesto calculado: ${resumenTexto}${usedDefaults.length ? `\nSupuestos usados: ${usedDefaults.join(", ")}.` : ""}${(extracted?.faltan || []).length ? `\nFaltan: ${extracted.faltan.join(", ")}.` : ""}` }],
         });
         responseText = respMsg.content?.[0]?.text?.trim() || resumenTexto + "\n\nSaludos, BMC URUGUAY!";
+        logSuperAgentCost(respMsg.usage, { call: "response" });
       } catch {
         responseText = resumenTexto + "\n\nSaludos, BMC URUGUAY!";
       }
@@ -231,6 +247,7 @@ export function createSuperAgentRouter(config) {
           messages: [{ role: "user", content: consulta }],
         });
         responseText = msg.content?.[0]?.text?.trim() || "Necesito más información para cotizar.";
+        logSuperAgentCost(msg.usage, { call: "text_fallback" });
       } catch (e) {
         console.error("[superAgent] text fallback error:", e?.message);
         responseText = "No pude procesar la consulta. Por favor contactanos directamente.";

@@ -114,7 +114,13 @@ await group("shouldBlockToolForUnauthenticatedChat — public chat blocks auth-r
   }
 
   // devMode chat (authenticated via API_AUTH_TOKEN at route entry) passes
-  for (const sensitive of ["listar_cotizaciones_recientes", "guardar_en_crm", "wolfboard_quote_batch"]) {
+  for (const sensitive of [
+    "listar_cotizaciones_recientes",
+    "guardar_en_crm",
+    "wolfboard_quote_batch",
+    "wolfboard_actualizar_fila",
+    "wolfboard_marcar_enviado",
+  ]) {
     assert(gate(sensitive, true) === false, `devMode chat allows ${sensitive}`);
   }
 

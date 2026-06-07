@@ -94,6 +94,9 @@ data/transportista-evidence/
 data/training-kb.json
 data/training-sessions/
 
+# Shadow training harness — cotizaciones históricas normalizadas (PII clientes reales)
+data/training/
+
 # UX — sesiones de vídeo locales (pesadas / posible PII; ver docs/team/ux-feedback/sessions/README.md)
 docs/team/ux-feedback/sessions/**/*.mp4
 docs/team/ux-feedback/sessions/**/*.mov
@@ -108,3 +111,7 @@ tools/release-traceability/scripts/__pycache__/
 # Accessible Base — local Sheets snapshots (auto-generated, not versioned except manifest)
 .accessible-base/*.json
 !.accessible-base/manifest.json
+
+# Walkthrough — screenshots pesadas (el JSON sí se commitea)
+docs/walkthrough/**/screenshots/
+.env*

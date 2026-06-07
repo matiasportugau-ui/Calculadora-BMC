@@ -101,7 +101,7 @@ jobs:
             exit 0
           fi
 
-          if git diff --name-only "$BASE" HEAD | grep -qE '^(server/|src/utils/|src/data/|Dockerfile\.bmc-dashboard$|\.github/workflows/deploy-calc-api\.yml$)'; then
+          if git diff --name-only "$BASE" HEAD | grep -qE '^(server/|src/utils/|src/data/|docs/bmc-dashboard-modernization/dashboard/|\.dockerignore$|package\.json$|package-lock\.json$|Dockerfile\.bmc-dashboard$|\.github/workflows/deploy-calc-api\.yml$)'; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
           else
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -130,6 +130,7 @@ jobs:
           IMAGE_NAME="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc"
           docker build \
             -f server/Dockerfile \
+            --build-arg GIT_SHA=${{ steps.sha.outputs.sha }} \
             -t "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}" \
             .
           docker push "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}"
@@ -171,7 +172,7 @@ jobs:
             --memory=512Mi
             --cpu=1
             --timeout=60
-            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest,MFA_KEK_HEX=MFA_KEK_HEX:latest
+            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest,MFA_KEK_HEX=MFA_KEK_HEX:latest,DATABASE_URL=DATABASE_URL:latest,GOOGLE_TASKS_CLIENT_ID=GOOGLE_TASKS_CLIENT_ID:latest,GOOGLE_TASKS_CLIENT_SECRET=GOOGLE_TASKS_CLIENT_SECRET:latest,SUPABASE_PGP_ENCRYPT_KEY=SUPABASE_PGP_ENCRYPT_KEY:latest,SYNC_HMAC_SECRET=SYNC_HMAC_SECRET:latest
 
       - name: Show service URL
         if: steps.paths.outputs.skip != 'true'

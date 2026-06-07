@@ -33,6 +33,22 @@ export default defineConfig({
         // while a deploy is in flight (also avoids the "TDZ-y" surprise of an
         // old index.html pointing to assets that no longer exist on edge).
         navigateFallback: '/index.html',
+        // CRITICAL: server-side paths (proxied by vercel.json to Cloud Run)
+        // must NOT be intercepted by the SW's navigateFallback — otherwise
+        // OAuth callbacks like /auth/tasks/callback get the SPA shell instead
+        // of hitting the Express handler.
+        //
+        // Symptom this prevents: Google redirects to /auth/tasks/callback?code=...
+        // → SW serves cached /index.html (200) → React Router catches the unknown
+        // path → catch-all redirects to / → token exchange never runs →
+        // tasks.oauth_tokens stays empty.
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/auth\//,
+          /^\/sync\//,
+          /^\/calc\//,
+          /^\/webhooks\//,
+        ],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
@@ -41,6 +57,9 @@ export default defineConfig({
             options: {
               cacheName: 'shopify-images',
               expiration: { maxEntries: 100, maxAgeSeconds: 30 * 24 * 3600 },
+              // Cross-origin <img> fetches are no-cors → responses are opaque (status 0).
+              // Without this, Workbox CacheFirst rejects them and surfaces ERR_FAILED.
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
           {

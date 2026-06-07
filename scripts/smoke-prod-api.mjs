@@ -10,6 +10,7 @@
  *
  * Falla (exit 1) si GET /health o GET /capabilities no responden 200,
  * si GET /api/actualizar-precios-calculadora no devuelve CSV MATRIZ (200 + text/csv + cabecera),
+ * si GET /finanzas/ devuelve 404 (dashboard estático faltante en la imagen Docker),
  * o si POST /api/crm/suggest-response no devuelve 200 + ok: true (salvo --skip-suggest / SMOKE_SKIP_SUGGEST).
  * GET /auth/ml/status: 200 o 404 OK; otro código avisa pero no falla el smoke.
  *
@@ -254,6 +255,20 @@ async function main() {
   });
   if (!waCockpitAlive) criticalFail = true;
 
+  // Legacy operator dashboard (Finanzas 404 incident — must never regress again)
+  const fin = await fetchJson("GET", "/finanzas/", base);
+  // 200 = files present; 3xx = static middleware redirecting /finanzas → /finanzas/ (still good)
+  const finanzasOk = fin.status === 200 || (fin.status >= 300 && fin.status < 400);
+  rows.push({
+    path: "GET /finanzas/",
+    status: fin.status,
+    ok: finanzasOk,
+    note: finanzasOk
+      ? "legacy dashboard presente (Finanzas/Operaciones)"
+      : "404 o caído — dashboard estático no empaquetado en la imagen (revisar server/Dockerfile COPY + .dockerignore negations)",
+  });
+  if (!finanzasOk) criticalFail = true;
+
   if (skipSuggest) {
     rows.push({
       path: "POST /api/crm/suggest-response",
@@ -305,13 +320,13 @@ async function main() {
   }
   console.log("");
   if (criticalFail) {
-    const bad = rows.filter((r) => !r.ok && ["/health", "GET /api/actualizar-precios-calculadora", "POST /api/crm/suggest-response", "GET /webhooks/whatsapp"].includes(r.path));
+    const bad = rows.filter((r) => !r.ok && ["/health", "GET /api/actualizar-precios-calculadora", "POST /api/crm/suggest-response", "GET /webhooks/whatsapp", "GET /finanzas/"].includes(r.path));
     const hint = bad.length ? bad.map((r) => `${r.path} (${r.status})`).join("; ") : "ver checks ✗ arriba";
     console.log(`RESULTADO: FALLA — ${hint}.`);
     process.exit(1);
   }
   console.log(
-    "RESULTADO: OK — health, capabilities, MATRIZ CSV, WhatsApp webhook" +
+    "RESULTADO: OK — health, capabilities, MATRIZ CSV, WhatsApp webhook, /finanzas/" +
       (skipSuggest ? " (suggest omitido)." : ", suggest-response."),
   );
   console.log("");

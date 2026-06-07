@@ -1,35 +1,26 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Cliente para /api/team-assist — asistente equipo (OpenAI vía servidor)
+// Migrado al apiClient central: resolución de base URL, headers (x-api-key),
+// timeout y manejo de errores ahora son consistentes con el resto de la app.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const API_KEY = import.meta.env.VITE_API_AUTH_TOKEN || "";
-
-function headersJson() {
-  const h = { "Content-Type": "application/json" };
-  if (API_KEY) h["x-api-key"] = API_KEY;
-  return h;
-}
+import { apiGet, apiPost, ApiError } from "./apiClient.js";
 
 export async function fetchTeamAssistHealth() {
-  const res = await fetch("/api/team-assist/health", { headers: headersJson() });
-  return res.json();
+  // Health devuelve el body aún cuando el endpoint reporte un estado no-ok.
+  try {
+    const { data } = await apiGet("/api/team-assist/health");
+    return data;
+  } catch (err) {
+    if (err instanceof ApiError && err.data) return err.data;
+    throw err;
+  }
 }
 
 /**
  * @param {{ agentId: string, messages: { role: string, content: string }[], context?: object }} body
  */
 export async function fetchTeamAssistChat(body) {
-  const res = await fetch("/api/team-assist/chat", {
-    method: "POST",
-    headers: headersJson(),
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(data.error || `HTTP ${res.status}`);
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
+  const { data } = await apiPost("/api/team-assist/chat", body);
   return data;
 }

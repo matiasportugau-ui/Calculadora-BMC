@@ -20,6 +20,7 @@ import {
 import { PANELIN_VERSION_BADGE } from "../appSemver.js";
 import { mqCompactPdfModal, isPhoneViewportWidth, isTabletViewportWidth, isCompactMainLayoutWidth } from "../constants/viewportBreakpoints.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
+import StockWebHint from "./StockWebHint.jsx";
 import {
   C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
   setListaPrecios,
@@ -45,6 +46,7 @@ import {
   fmtPrice, generatePrintHTML, generateInternalHTML, buildWhatsAppText,
   createPreviewUrl, revokePreviewUrl,
 } from "../utils/helpers.js";
+import { buildGlobalPdfFileName } from "../utils/quotationNaming.js";
 import {
   saveBudget, getAllLogs, deleteBudget, clearAllLogs,
   exportLogsAsJSON, exportSingleBudget,
@@ -92,6 +94,7 @@ import {
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
   saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
+import { LAYOUT_OPTIONS } from "../pdf-templates/index.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
 import PlanUploadModal from "./PlanUploadModal.jsx";
 import PlanInlineDropZone from "./PlanInlineDropZone.jsx";
@@ -237,7 +240,7 @@ function StepperInput({
     });
   };
 
-  const btnS = (dis) => ({ width: 36, height: 36, borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.surface, cursor: dis ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: dis ? 0.4 : 1, transition: TR, flexShrink: 0 });
+  const btnS = (dis) => ({ width: 36, height: 36, borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.surface, cursor: dis ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: dis ? 0.5 : 1, transition: TR, flexShrink: 0 });
   const show = draft !== null ? draft : formatNumDisplay(num, decimals);
   const effective = Number.isFinite(num) ? num : min;
 
@@ -288,7 +291,7 @@ function SegmentedControl({ value, onChange, options = [], disabledIds = [], onO
     <div style={{ display: "flex", flexWrap: "wrap", background: C.border, borderRadius: 12, padding: 4, gap: 4, fontFamily: FONT, width: "100%" }}>
       {options.map(opt => {
         const isD = disabledIds.includes(opt.id), isA = value === opt.id;
-        return <button key={opt.id} onClick={() => !isD && onChange(opt.id)} onDoubleClick={() => !isD && onOptionDoubleClick?.(opt.id)} style={{ flex: "1 1 140px", minWidth: 0, padding: "10px 16px", borderRadius: 10, border: "none", cursor: isD ? "not-allowed" : "pointer", background: isA ? C.surface : "transparent", boxShadow: isA ? "0 2px 6px rgba(0,0,0,0.1)" : "none", fontSize: 14, fontWeight: isA ? 600 : 500, color: isA ? C.tp : C.ts, opacity: isD ? 0.4 : 1, transition: TR, fontFamily: FONT, whiteSpace: "normal" }}>{opt.label}</button>;
+        return <button key={opt.id} onClick={() => !isD && onChange(opt.id)} onDoubleClick={() => !isD && onOptionDoubleClick?.(opt.id)} style={{ flex: "1 1 140px", minWidth: 0, padding: "10px 16px", borderRadius: 10, border: "none", cursor: isD ? "not-allowed" : "pointer", background: isA ? C.surface : "transparent", boxShadow: isA ? "0 2px 6px rgba(0,0,0,0.1)" : "none", fontSize: 14, fontWeight: isA ? 600 : 500, color: isA ? C.tp : C.ts, opacity: isD ? 0.5 : 1, transition: TR, fontFamily: FONT, whiteSpace: "normal" }}>{opt.label}</button>;
       })}
     </div>
   );
@@ -448,7 +451,20 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
             </div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 600, color: C.tp, ...TN }}>${typeof item.total === "number" ? item.total.toFixed(2) : item.total}</div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>${((item.cant ?? 0) * (item.costo ?? 0)).toFixed(2)}</div>
-            <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>{(() => { const t = item.total || 0; const ct = (item.cant ?? 0) * (item.costo ?? 0); return t > 0 ? ((t - ct) / t * 100).toFixed(1) + "%" : "—"; })()}</div>
+            <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>{(() => {
+  const modern = LAYOUT_OPTIONS.filter(o => !o.legacy);
+  const legacy = LAYOUT_OPTIONS.filter(o => o.legacy);
+  return (
+    <>
+      {modern.map(o => <option key={o.id} value={o.id}>{o.label}{o.recommended ? ' ★' : ''}</option>)}
+      {legacy.length > 0 && (
+        <optgroup label="Legacy (heavy templates)">
+          {legacy.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </optgroup>
+      )}
+    </>
+  );
+})()}</div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 500, color: C.success, ...TN }}>${((item.total || 0) - (item.cant ?? 0) * (item.costo ?? 0)).toFixed(2)}</div>
             <div style={{ padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
               {onOverride && <button title="Editar" aria-label="Editar fila" onClick={() => isEditing ? setEditingCell(null) : startEdit(item.lineId, "cant", item.cant)} style={{ background: "none", border: "none", cursor: "pointer", color: isEditing ? C.primary : C.tt, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><Edit3 size={13} /></button>}
@@ -517,8 +533,16 @@ function MobileBottomBar({
             <div style={{ fontSize: 24, fontWeight: 800, ...TN }}>${fmtPrice(total)}</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
-            <button type="button" onClick={onWhatsApp} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
-            <button type="button" onClick={onClientePdf} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
+            <button type="button" onClick={onWhatsApp} data-tutorial-id="calc-wa-export" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
+            <button type="button" onClick={onClientePdf} data-tutorial-id="calc-generate-pdf" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
+            <button 
+              type="button" 
+              onClick={() => window.dispatchEvent(new CustomEvent('start-calculator-tutorial'))}
+              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.4)", background: "transparent", color: "#fff", fontSize: 11, cursor: "pointer" }}
+              title="Iniciar tutorial guiado de la calculadora"
+            >
+              🎓 Tutorial
+            </button>
             <button type="button" aria-label="Más acciones" onClick={() => setSheetOpen(true)} style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.35)", background: "transparent", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <MoreHorizontal size={22} strokeWidth={2.25} />
             </button>
@@ -540,12 +564,9 @@ function MobileBottomBar({
               onChange={e => onPdfLayoutChange(e.target.value)}
               style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13 }}
             >
-              <option value="bmc-pdf">BMC PDF — Blueprint Técnico</option>
-              <option value="soft-modern">E — Soft Modern</option>
-              <option value="executive-dark">A — Executive Dark</option>
-              <option value="blueprint">B — Blueprint</option>
-              <option value="minimalist">C — Minimalist</option>
-              <option value="construction-bold">D — Construction Bold</option>
+              {LAYOUT_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
             </select>
           </label>
           <button type="button" onClick={() => run(onClientePdf)} style={{ ...sheetBtn, background: C.primary, color: "#fff" }}><Download size={18} />PDF Cliente</button>
@@ -2347,7 +2368,13 @@ export default function PanelinCalculadoraV3() {
   const [maxReachedStep, setMaxReachedStep] = useState(0);
   /** Zona seleccionada en planta 2D: sincroniza SVG (visor) y métricas en columna izquierda (paso Estructura). */
   const [estructuraMetricsSelectedGi, setEstructuraMetricsSelectedGi] = useState(0);
-  const [listaPrecios, _setLP] = useState(() => (typeof window !== "undefined" ? getListaDefault() : ""));
+  const [listaPrecios, _setLP] = useState(() => {
+    const initialLista = typeof window !== "undefined" ? getListaDefault() : "web";
+    // Sincronizar el singleton LISTA_ACTIVA antes del primer render para que p() use la lista correcta.
+    // No mutar dentro de useMemo — esta inicialización es síncrona y ocurre una sola vez en mount.
+    setListaPrecios(initialLista);
+    return initialLista;
+  });
   const [scenario, _setScenario] = useState("solo_techo");
   const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
@@ -2359,7 +2386,10 @@ export default function PanelinCalculadoraV3() {
   const [fleteCosto, setFleteCosto] = useState("");
   /** PDF+ (hoja cliente enriquecida): incluir página extra “Planta + resumen” (diseño hero marca). */
   const [pdfPlantaResumenPage, setPdfPlantaResumenPage] = useState(true);
-  const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'bmc-pdf');
+  // Default changed 2026-05-27 during PDF generator improvement session.
+// Old default 'bmc-pdf' was the heavy 50k+ template that required the Python optimizer post-process.
+// New default uses the modern lightweight "simple" family (much smaller, cleaner 1-2 page output).
+const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'simple-carbon');
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
@@ -2377,8 +2407,27 @@ export default function PanelinCalculadoraV3() {
   });
   const [devAuthToken, setDevAuthToken] = useState(() => {
     if (typeof window === "undefined") return "";
-    return sessionStorage.getItem("panelin-dev-token") || "";
+    return String(sessionStorage.getItem("panelin-dev-token") || "").trim();
   });
+
+  // NEW TOGGLEABLE (default OFF, persisted): Enhanced product visualization using the researched real product images (kingspan.com.uy, bmcuruguay.com.uy mappings) + DWG-derived profiles (plegados/grecas/forros/babetas/frontales from TECHMET and BMC internal files).
+  // When enabled (via dev tools or localStorage 'bmc-enhanced-product-viz'='1'): adds non-breaking UI refs in family/espesor steps + QuoteVisualVisor (new acordeón or section with mapped real images + technical notes).
+  // Does NOT replace or alter any existing renders, textures, or data. Future phases (behind same flag): real 3D volume/profile extrusion in RoofPanelRealisticScene for single-product view, accurate 2D CAD sections in visor/PDF based on the DWG constructivos.
+  // To enable without rebuild: localStorage.setItem('bmc-enhanced-product-viz','1'); or via dev panel switch. Ctrl/Cmd+Shift+D for dev mode.
+  const [enhancedProductViz, setEnhancedProductViz] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("bmc-enhanced-product-viz") === "1" || sessionStorage.getItem("bmc-enhanced-product-viz") === "1";
+  });
+  const toggleEnhancedProductViz = useCallback(() => {
+    const next = !enhancedProductViz;
+    setEnhancedProductViz(next);
+    if (typeof window !== "undefined") {
+      const v = next ? "1" : "0";
+      localStorage.setItem("bmc-enhanced-product-viz", v);
+      sessionStorage.setItem("bmc-enhanced-product-viz", v);
+    }
+  }, [enhancedProductViz]);
+
   const [pendingQuote, setPendingQuote] = useState(null);
   const undoStackRef = useRef([]);
   const [undoStackLen, setUndoStackLen] = useState(0);
@@ -2563,18 +2612,18 @@ export default function PanelinCalculadoraV3() {
       if (typeof window !== "undefined") sessionStorage.setItem("panelin-dev-mode", "0");
       return;
     }
-    let token = devAuthToken;
-    if (!token && typeof window !== "undefined") {
-      token = window.prompt("API_AUTH_TOKEN para activar Developer Mode:") || "";
+    let token = String(devAuthToken || "").trim();
+    if (!token && !chat.relaxDevAuth && typeof window !== "undefined") {
+      token = String(window.prompt("Pegá API_AUTH_TOKEN del servidor API (Cloud Run), el mismo que en variables de entorno — sin comillas ni espacios:") || "").trim();
     }
-    if (!token) return;
+    if (!chat.relaxDevAuth && !token) return;
     setDevAuthToken(token);
     setDevMode(true);
     if (typeof window !== "undefined") {
       sessionStorage.setItem("panelin-dev-token", token);
       sessionStorage.setItem("panelin-dev-mode", "1");
     }
-  }, [devMode, devAuthToken]);
+  }, [devMode, devAuthToken, chat.relaxDevAuth]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -2636,17 +2685,7 @@ export default function PanelinCalculadoraV3() {
 
   /** Siguiente paso (solo_techo): con >1 zona de techo se omite el paso global "Pendiente" (pendiente por zona en Dimensiones). */
   const advanceWizardStep = useCallback(() => {
-    // Identity gate — block at step 5 (Pendiente → Estructura) if anonymous.
-    // Master plan §Phase D. The modal listens to bmc-auth-gate-required and
-    // re-emits bmc-wizard-next on successful login so we resume here.
-    if (
-      scenario === "solo_techo" &&
-      wizardStep === SOLO_TECHO_PENDIENTE_STEP_INDEX &&
-      bmcAuth.status === "anonymous"
-    ) {
-      requestAuthGate("wizard-step-5");
-      return;
-    }
+    // Identity gate disabled — calculator is fully usable without login.
     setWizardStep((s) => {
       if (s >= SOLO_TECHO_STEPS.length - 1) return s;
       let next = s + 1;
@@ -2718,7 +2757,17 @@ export default function PanelinCalculadoraV3() {
       case "familia": return !!techo.familia;
       case "espesor": return !!techo.espesor;
       case "color": return !!techo.color;
-      case "dimensiones": return techo.zonas?.length > 0 && techo.zonas.every(z => z.largo > 0 && z.ancho > 0);
+      case "dimensiones": {
+        if (!(techo.zonas?.length > 0 && techo.zonas.every(z => z.largo > 0 && z.ancho > 0))) return false;
+        // Top-10 run 2026-05-11 (item #8): bloquear "Siguiente" si el área total no llega al mínimo del color (p. ej. ISOROOF_PLUS ≥ 800 m²).
+        const panelForMin = PANELS_TECHO[techo.familia];
+        const minArea = panelForMin?.colMinArea?.[techo.color];
+        if (minArea) {
+          const totalArea = techo.zonas.reduce((sum, z) => sum + ((Number(z.largo) || 0) * (Number(z.ancho) || 0)), 0);
+          if (totalArea < minArea) return false;
+        }
+        return true;
+      }
       case "pendiente": return typeof techo.pendiente === "number" && techo.pendiente >= 0;
       case "estructura": {
         if (!techo.tipoEst) return false;
@@ -3307,7 +3356,6 @@ export default function PanelinCalculadoraV3() {
 
   // ── Calculate results ──
   const results = useMemo(() => {
-    setListaPrecios(listaPrecios || "web"); // sync global LISTA_ACTIVA before any p() call
     const sc = scenario;
     try {
       if (sc === "presupuesto_libre") {
@@ -3454,6 +3502,8 @@ export default function PanelinCalculadoraV3() {
   // before the budget-log block; keeping the original declaration at ~L4075 caused a
   // TDZ ReferenceError "Cannot access 'currentBudgetCode' before initialization").
   const [currentBudgetCode, setCurrentBudgetCode] = useState(null);
+  const [globalCounter, setGlobalCounter] = useState(null);
+  const [showQuoteConfirm, setShowQuoteConfirm] = useState(false);
 
   const fleteCostoNum = useMemo(() => {
     const t = String(fleteCosto ?? "").trim().replace(",", ".");
@@ -3588,43 +3638,50 @@ export default function PanelinCalculadoraV3() {
     }
   }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfPlantaResumenPage]);
 
+  /** HTML for cliente PDF and Google Drive — same pipeline as “PDF Cliente” (plantilla + vista técnica). */
+  const buildClientePdfHtml = useCallback(async () => {
+    const svgEl = document.querySelector('[data-bmc-capture="roof-plan-2d"]');
+    const { serializeRoofPlanSvgToString } = await import("../utils/captureDomToPng.js");
+    const roofPlan2dSvg = serializeRoofPlanSvgToString(svgEl);
+    const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
+    const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
+    const appendix = buildPdfAppendixPayload({
+      scenario, scenarioDef: scenarioDef_, vis: vis_,
+      techo, pared, camara, results, grandTotal,
+      kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
+      kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
+      kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
+      kpiFij: results?.fijaciones?.puntosFijacion ?? null,
+      PANELS_TECHO, PANELS_PARED,
+    });
+    const snapshotImages = roofPlan2dSvg ? { roofPlan2dSvg } : {};
+    const groupsMapped = groups.map(g => ({ title: g.title, items: g.items }));
+    if (pdfLayout) {
+      const { renderPdfLayout, buildQuotationModel } = await import("../pdf-templates/index.js");
+      const q = buildQuotationModel({
+        client: proyecto, project: proyecto, scenario,
+        panel: panelInfo, groups: groupsMapped,
+        totals: grandTotal, appendix, snapshotImages,
+        // Wire real identifiers (2026-05-27 PDF improvements)
+        quoteId: currentBudgetCode || proyecto?.quotationCode || null,
+        version: 1, // TODO: derive from Drive history when available
+        createdBy: null, // Can be wired from auth context later
+      });
+      return renderPdfLayout(pdfLayout, q);
+    }
+    return generateClientVisualHTML({
+      client: proyecto, project: proyecto, scenario,
+      panel: panelInfo, groups: groupsMapped,
+      totals: grandTotal, appendix, snapshotImages,
+      includePlantaResumenPage: false,
+    });
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, pdfLayout]);
+
   const handleClientePdf = useCallback(async () => {
     if (!groups.length) return;
     showToast("Generando PDF…");
     try {
-      const svgEl = document.querySelector('[data-bmc-capture="roof-plan-2d"]');
-      const { serializeRoofPlanSvgToString } = await import("../utils/captureDomToPng.js");
-      const roofPlan2dSvg = serializeRoofPlanSvgToString(svgEl);
-      const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
-      const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
-      const appendix = buildPdfAppendixPayload({
-        scenario, scenarioDef: scenarioDef_, vis: vis_,
-        techo, pared, camara, results, grandTotal,
-        kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
-        kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
-        kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
-        kpiFij: results?.fijaciones?.puntosFijacion ?? null,
-        PANELS_TECHO, PANELS_PARED,
-      });
-      const snapshotImages = roofPlan2dSvg ? { roofPlan2dSvg } : {};
-      const groupsMapped = groups.map(g => ({ title: g.title, items: g.items }));
-      let html;
-      if (pdfLayout) {
-        const { renderPdfLayout, buildQuotationModel } = await import("../pdf-templates/index.js");
-        const q = buildQuotationModel({
-          client: proyecto, project: proyecto, scenario,
-          panel: panelInfo, groups: groupsMapped,
-          totals: grandTotal, appendix, snapshotImages,
-        });
-        html = await renderPdfLayout(pdfLayout, q);
-      } else {
-        html = generateClientVisualHTML({
-          client: proyecto, project: proyecto, scenario,
-          panel: panelInfo, groups: groupsMapped,
-          totals: grandTotal, appendix, snapshotImages,
-          includePlantaResumenPage: false,
-        });
-      }
+      const html = await buildClientePdfHtml();
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
       const resolvedCode =
@@ -3637,7 +3694,28 @@ export default function PanelinCalculadoraV3() {
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfLayout, currentBudgetCode]);
+  }, [groups.length, buildClientePdfHtml, showToast, currentBudgetCode, proyecto]);
+
+  const handleConfirmQuote = useCallback(async () => {
+    showToast("Obteniendo número de cotización…");
+    try {
+      const res = await fetch("/api/quotes/counter/next", { method: "POST" });
+      if (!res.ok) throw new Error("counter_failed");
+      const { counter, code } = await res.json();
+      setGlobalCounter(counter);
+      setCurrentBudgetCode(code);
+      const fname = buildGlobalPdfFileName(counter, proyecto);
+      showToast("Generando PDF…");
+      const html = await buildClientePdfHtml();
+      const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
+      const blob = await htmlToPdfBlob(html, fname);
+      downloadPdfBlob(blob, fname);
+      setShowQuoteConfirm(false);
+      showToast(`PDF descargado: ${fname}`);
+    } catch (err) {
+      showToast("Error: " + (err?.message || err));
+    }
+  }, [proyecto, buildClientePdfHtml, showToast]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -4095,7 +4173,13 @@ export default function PanelinCalculadoraV3() {
     const pd = PANELS_PARED[fam];
     if (!pd) return;
     const firstEsp = Number(Object.keys(pd.esp)[0]);
-    setPared(pd2 => ({ ...pd2, familia: fam, espesor: firstEsp }));
+    setPared(pd2 => ({
+      ...pd2,
+      familia: fam,
+      espesor: firstEsp,
+      // Si el color actual existe en la nueva familia se conserva; si no, se usa el primero disponible.
+      color: pd.col.includes(pd2.color) ? pd2.color : (pd.col[0] || ""),
+    }));
   };
 
   // ── Budget log state ──
@@ -4218,21 +4302,7 @@ export default function PanelinCalculadoraV3() {
     setDriveError(null);
     setDriveLastSave(null);
     try {
-      const dimensions = buildPrintDimensions();
-      const html = generatePrintHTML({
-        client: proyecto, project: proyecto, scenario,
-        panel: panelInfo,
-        autoportancia: results?.autoportancia || results?.techoResult?.autoportancia,
-        groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
-        totals: grandTotal,
-        warnings: results?.warnings || [],
-        dimensions,
-        descarte: results?.paneles?.descarte,
-        listaPrecios,
-        quotationId: currentBudgetCode || undefined,
-        showSKU: false,
-        showUnitPrices: true,
-      });
+      const html = await buildClientePdfHtml();
       const { htmlToPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
       const projectData = serializeProject({
@@ -4256,7 +4326,7 @@ export default function PanelinCalculadoraV3() {
     } finally {
       setDriveSaving(false);
     }
-  }, [groups, proyecto, scenario, panelInfo, results, grandTotal, listaPrecios, currentBudgetCode, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter, showToast, handleDriveRefresh, buildPrintDimensions]);
+  }, [groups, proyecto, currentBudgetCode, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter, showToast, handleDriveRefresh, buildClientePdfHtml]);
 
   const handleDriveLoad = useCallback(async (folderId) => {
     setDriveLoading(true);
@@ -4375,6 +4445,14 @@ export default function PanelinCalculadoraV3() {
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
   }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter]);
 
+  // ── Fetch global counter on mount ──
+  useEffect(() => {
+    fetch("/api/quotes/counter")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.ok) setGlobalCounter(data.counter); })
+      .catch(() => {});
+  }, []);
+
   // ── Manual save ──
   const handleManualSave = useCallback(() => {
     if (!groups.length) return;
@@ -4438,7 +4516,7 @@ export default function PanelinCalculadoraV3() {
   }, []);
 
   return (
-    <div style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
+    <div data-tutorial-id="calc-main" style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
       {/* HEADER */}
       <div style={{ background: C.brand, color: "#fff", padding: isPhone ? "12px 14px" : "16px 24px", display: "flex", alignItems: isCompactLayout ? "stretch" : "center", flexDirection: isCompactLayout ? "column" : "row", justifyContent: "space-between", gap: isCompactLayout ? 10 : 16, position: "sticky", top: 0, zIndex: 40 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -4452,6 +4530,11 @@ export default function PanelinCalculadoraV3() {
           )}
           {currentBudgetCode && (
             <div style={{ fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.04em", ...TN }}>{currentBudgetCode}</div>
+          )}
+          {globalCounter !== null && (
+            <div style={{ fontSize: 11, fontWeight: 500, background: "rgba(255,255,255,0.12)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.03em", ...TN }}>
+              Cotizaciones: {String(globalCounter).padStart(4, "0")}
+            </div>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", width: isCompactLayout ? "100%" : "auto" }}>
@@ -4566,7 +4649,7 @@ export default function PanelinCalculadoraV3() {
                     onClick={() => { setShowLogPanel(true); fetchGptQuotations(); setMobileHeaderMenuOpen(false); }}
                     style={{ position: "relative", width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
                   >
-                    <Archive size={14} color="#555" />Presupuestos
+                    <Archive size={14} color="#555" />Borradores
                     {(logEntries.length + gptQuotations.length) > 0 ? (
                       <span style={{ marginLeft: "auto", background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
                     ) : null}
@@ -4635,10 +4718,12 @@ export default function PanelinCalculadoraV3() {
             </div>
           ) : (
             <>
+              {import.meta.env.VITE_FEATURE_ROLE_TOGGLE === "true" && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", background: "rgba(255,255,255,0.1)", borderRadius: 8 }}>
                 <button onClick={() => { setModoVendedor(true); setTecho({ ...TECHO_INITIAL_VENDEDOR }); setWizardStep(0); setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
                 <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
               </div>
+              )}
               <div ref={toolsMenuRef} style={{ position: "relative" }}>
                 <button
                   type="button"
@@ -4705,7 +4790,7 @@ export default function PanelinCalculadoraV3() {
           {!isPhone ? (
             <>
               <button onClick={() => { setShowLogPanel(true); fetchGptQuotations(); }} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                <Archive size={14} />Presupuestos
+                <Archive size={14} />Borradores
                 {(logEntries.length + gptQuotations.length) > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
                 )}
@@ -4763,6 +4848,26 @@ export default function PanelinCalculadoraV3() {
               DEV
             </button>
           ) : null}
+          {/* NEW: runtime toggle for enhanced product viz (real image refs + DWG plegados profiles). Only visible in devMode for safety. Persisted. Default OFF. */}
+          {!isPhone && devMode ? (
+            <button
+              onClick={toggleEnhancedProductViz}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 8,
+                border: enhancedProductViz ? "1px solid #22c55e" : "1px solid rgba(255,255,255,0.35)",
+                background: enhancedProductViz ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.12)",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
+                marginLeft: 4,
+              }}
+              title={`Enhanced Product Viz (real refs from mapping + DWG profiles) — ${enhancedProductViz ? 'ON' : 'OFF'} (click to toggle; persists; does not affect current renders)`}
+            >
+              {enhancedProductViz ? "PViz:ON" : "PViz:OFF"}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -4786,7 +4891,7 @@ export default function PanelinCalculadoraV3() {
       >
         <Panel defaultSize={isCompactLayout ? 55 : 35} minSize={isCompactLayout ? 24 : 24} maxSize={isCompactLayout ? 85 : 55} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
         {/* LEFT PANEL — Wizard (Modo Vendedor) o formulario completo (Modo Cliente) */}
-        <div className="bmc-left-panel" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isPhone ? 0 : 12, paddingRight: isPhone ? 0 : 12 }}>
+        <div data-tutorial-id="calc-dimensions" className="bmc-left-panel" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isPhone ? 0 : 12, paddingRight: isPhone ? 0 : 12 }}>
           {modoVendedor && scenario === "solo_techo" ? (
             /* ── WIZARD: una variable a la vez ── */
             (() => {
@@ -5004,6 +5109,7 @@ export default function PanelinCalculadoraV3() {
                             familiaKey={techo.familia}
                             onSelect={(fk) => setTechoFamilia(fk)}
                             compact
+                            enhancedProductViz={enhancedProductViz}
                           />
                         </div>
                       </details>
@@ -5077,6 +5183,27 @@ export default function PanelinCalculadoraV3() {
                           );
                         })}
                       </div>
+                      {techoPanelData?.notas?.[Number(techo.espesor)] && (
+                        <AlertBanner type="warning" message={techoPanelData.notas[Number(techo.espesor)]} />
+                      )}
+
+                      {/* NEW (behind enhancedProductViz toggle, default OFF): quick real product ref for the chosen espesor/familia, using the researched public images (exact match per mapping PDF). Non-intrusive card. */}
+                      {enhancedProductViz && techo.familia && (
+                        <div style={{ marginTop: 8, padding: 8, background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, fontSize: 10 }}>
+                          <div style={{ fontWeight: 600, color: "#166534", marginBottom: 4 }}>Ref. real del panel (mapeo investigación + DWGs)</div>
+                          {(() => {
+                            const ref = ({
+                              ISOROOF_PLUS: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_plus.png",
+                              ISOROOF_3G: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_3G.png",
+                              ISOROOF_FOIL: "https://kingspan.com.uy/wp-content/uploads/2024/10/isoroof_foil-tabla.png",
+                              ISOROOF_COLONIAL: "https://kingspan.com.uy/wp-content/uploads/2024/06/Isoroof-colonial.jpg.webp",
+                              ISODEC_PIR: "https://kingspan.com.uy/wp-content/uploads/2024/06/isodec-pir.png",
+                            })[techo.familia] || "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_3G.png";
+                            return <img src={ref} alt="real" style={{ maxWidth: "100%", height: 70, objectFit: "contain", borderRadius: 4, border: "1px solid #86efac" }} />;
+                          })()}
+                          <div style={{ color: "#166534", marginTop: 4 }}>Ver mapeo + perfiles DWG (TECHMET forros, Desarrollos plegados, BabetaLateral): docs/team/visual/PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf</div>
+                        </div>
+                      )}
                     </div>
                   )}
                   {stepId === "color" && techoPanelData && (
@@ -5115,6 +5242,19 @@ export default function PanelinCalculadoraV3() {
                         }
                         disabled={false}
                       />
+                      {/* Top-10 run 2026-05-11 (item #8): aviso bloqueante de pedido mínimo por color (ISOROOF_PLUS ≥ 800 m²). */}
+                      {(() => {
+                        const minArea = techoPanelData?.colMinArea?.[techo.color];
+                        if (!minArea) return null;
+                        const total = (techo.zonas || []).reduce((sum, z) => sum + ((Number(z.largo) || 0) * (Number(z.ancho) || 0)), 0);
+                        if (total === 0 || total >= minArea) return null;
+                        return (
+                          <AlertBanner
+                            type="danger"
+                            message={`Pedido mínimo ${minArea} m² para color ${techo.color}. Cotización actual: ${total.toFixed(1)} m². Aumentá las medidas o cambiá de color para continuar.`}
+                          />
+                        );
+                      })()}
                       {(techo.zonas?.length ? techo.zonas : [{ largo: 0, ancho: 0 }]).map((zona, idx) => (
                         <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, background: C.surfaceAlt, borderRadius: 12, border: `1.5px solid ${C.border}` }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
@@ -5713,7 +5853,10 @@ export default function PanelinCalculadoraV3() {
                     {isPhone ? (
                       <>
                         {!canNext && (
-                          <span style={{ fontSize: 14, color: C.success, fontWeight: 700, textAlign: "center" }}>✓ Cotización lista</span>
+                          <button type="button" onClick={() => setShowQuoteConfirm(true)}
+                            style={{ fontSize: 14, color: "#fff", fontWeight: 700, background: C.success, border: "none", borderRadius: 10, padding: "10px 20px", cursor: "pointer" }}>
+                            ✓ Cotización lista
+                          </button>
                         )}
                         {canNext && !isValid && (
                           <span style={{ fontSize: 12, color: C.warning, textAlign: "center", lineHeight: 1.35 }}>Completá este paso para avanzar</span>
@@ -5735,7 +5878,10 @@ export default function PanelinCalculadoraV3() {
                             Siguiente
                           </button>
                         ) : (
-                          <span style={{ fontSize: 14, color: C.success, fontWeight: 700 }}>✓ Cotización lista</span>
+                          <button type="button" onClick={() => setShowQuoteConfirm(true)}
+                            style={{ fontSize: 14, color: "#fff", fontWeight: 700, background: C.success, border: "none", borderRadius: 10, padding: "12px 24px", cursor: "pointer" }}>
+                            ✓ Cotización lista
+                          </button>
                         )}
                       </>
                     )}
@@ -5809,9 +5955,11 @@ export default function PanelinCalculadoraV3() {
           <div style={sectionS}>
             <div style={labelS}>LISTA DE PRECIOS</div>
             <SegmentedControl value={listaPrecios || "web"} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
+            <StockWebHint listaPrecios={listaPrecios} />
             <div style={{ marginTop: 16 }}>
               <div style={labelS}>ESCENARIO DE OBRA</div>
               <div
+                data-tutorial-id="calc-scenario-select"
                 style={{ display: "grid", gridTemplateColumns: scenarioGridCols, gap: 12 }}
                 onMouseLeave={() => setScenarioHoverId(null)}
               >
@@ -5984,6 +6132,11 @@ export default function PanelinCalculadoraV3() {
             <div style={{ marginTop: 12 }}>
               <CustomSelect label="Espesor" value={techo.espesor} options={techoEspesorOptions} onChange={v => uT("espesor", v)} showBadge />
             </div>
+            {techoPanelData?.notas?.[Number(techo.espesor)] && (
+              <div style={{ marginTop: 8 }}>
+                <AlertBanner type="warning" message={techoPanelData.notas[Number(techo.espesor)]} />
+              </div>
+            )}
             {techoPanelData && <div style={{ marginTop: 12 }}>
               <div style={labelS}>Color</div>
               <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} onHover={setHoverTechoColor} notes={techoPanelData.colNotes || {}} familia={techo.familia} />
@@ -6582,6 +6735,7 @@ export default function PanelinCalculadoraV3() {
             roof2DPreview={quoteVisorRoof2DPreview}
             onSelectAgua={null}
             onNext={null}
+            enhancedProductViz={enhancedProductViz}
           />
           {/* Lista de precios — toggle siempre visible en panel derecho */}
           {modoVendedor && !scenarioDef?.isLibre && (
@@ -6719,13 +6873,26 @@ export default function PanelinCalculadoraV3() {
                 id="bmc-pdf-layout"
                 value={pdfLayout}
                 onChange={e => { const v = e.target.value; setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
-                style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13, cursor: "pointer", flex: 1, maxWidth: 260 }}
+                style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13, cursor: "pointer", flex: 1, maxWidth: 320 }}
               >
-                <option value="soft-modern">E — Soft Modern</option>
-                <option value="executive-dark">A — Executive Dark</option>
-                <option value="blueprint">B — Blueprint</option>
-                <option value="minimalist">C — Minimalist</option>
-                <option value="construction-bold">D — Construction Bold</option>
+                {(() => {
+                  const modern = LAYOUT_OPTIONS.filter(o => !o.legacy);
+                  const legacy = LAYOUT_OPTIONS.filter(o => o.legacy);
+                  return <>
+                    {modern.map(o => (
+                      <option key={o.id} value={o.id}>
+                        {o.label}{o.recommended ? ' ★' : ''}
+                      </option>
+                    ))}
+                    {legacy.length > 0 && (
+                      <optgroup label="Legacy / Heavy templates (not recommended)">
+                        {legacy.map(o => (
+                          <option key={o.id} value={o.id}>{o.label}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </>;
+                })()}
               </select>
             </div>
           )}
@@ -6912,6 +7079,8 @@ export default function PanelinCalculadoraV3() {
         onRefresh={handleDriveRefresh}
         currentQuotationCode={currentBudgetCode}
         lastSaveResult={driveLastSave}
+        pdfLayout={pdfLayout}
+        onPdfLayoutChange={(v) => { setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
         provisionalQuotationCode={
           !currentBudgetCode ||
           String(currentBudgetCode || "").includes("-TEMP")
@@ -6926,7 +7095,7 @@ export default function PanelinCalculadoraV3() {
             {/* Drawer header */}
             <div style={{ padding: "20px 24px", background: C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>Presupuestos guardados</div>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>Borradores guardados</div>
                 <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{logEntries.length} registros</div>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -7014,6 +7183,49 @@ export default function PanelinCalculadoraV3() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {showQuoteConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+          zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: C.surface, borderRadius: 16, padding: 32,
+            maxWidth: 480, width: "90%", boxShadow: "0 8px 40px rgba(0,0,0,0.25)", fontFamily: FONT }}>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: C.tp }}>
+              Confirmar cotización
+            </div>
+            {/* Customer details */}
+            <div style={{ fontSize: 13, color: C.tp, marginBottom: 16, lineHeight: 1.7 }}>
+              <div><b>Cliente:</b> {proyecto.razonSocial || proyecto.nombre || "—"}</div>
+              {proyecto.rut && <div><b>RUT:</b> {proyecto.rut}</div>}
+              {proyecto.telefono && <div><b>Tel:</b> {proyecto.telefono}</div>}
+              {proyecto.direccion && <div><b>Dir:</b> {proyecto.direccion}</div>}
+            </div>
+            {/* Totals */}
+            <div style={{ fontSize: 13, color: C.tp, marginBottom: 16, lineHeight: 1.7 }}>
+              <div><b>Total (con IVA):</b> USD {grandTotal.totalFinal?.toFixed(2)}</div>
+            </div>
+            {/* Filename preview */}
+            <div style={{ fontSize: 11, fontFamily: "monospace",
+              background: C.border, borderRadius: 6, padding: "8px 12px",
+              color: C.ts, marginBottom: 20 }}>
+              {buildGlobalPdfFileName((globalCounter ?? 0) + 1, proyecto)}
+            </div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button type="button" onClick={() => setShowQuoteConfirm(false)}
+                style={{ flex: 1, padding: "12px 0", borderRadius: 10,
+                  border: `1px solid ${C.border}`, background: C.surface,
+                  fontSize: 14, cursor: "pointer", color: C.tp, fontFamily: FONT }}>
+                Cancelar
+              </button>
+              <button type="button" onClick={handleConfirmQuote}
+                style={{ flex: 2, padding: "12px 0", borderRadius: 10,
+                  border: "none", background: C.success,
+                  color: "#fff", fontSize: 14, fontWeight: 700,
+                  cursor: "pointer", fontFamily: FONT }}>
+                Confirmar y descargar PDF
+              </button>
             </div>
           </div>
         </div>

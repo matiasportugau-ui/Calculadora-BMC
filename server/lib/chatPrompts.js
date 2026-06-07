@@ -5,6 +5,7 @@
 
 import { PANELS_PARED, PANELS_TECHO, IVA, IVA_MULT } from "../../src/data/constants.js";
 import { loadKnowledgeDocs } from "./knowledgeLoader.js";
+import { renderExamplesBlock } from "./channelRenderer.js";
 
 const IDENTITY = `Tu nombre es Panelin. Sos el asistente experto de ventas de BMC Uruguay (METALOG SAS).
 BMC Uruguay fabrica y vende paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
@@ -420,11 +421,18 @@ Reglas de salida ESTRICTAS (override de cualquier otra instrucción de formato):
 
 /**
  * @param {object} calcState
- * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object }} options
+ * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object, channel?: "chat"|"ml"|"wa", ragContext?: string }} options
  * @returns {string}
  */
 export function buildSystemPrompt(calcState = {}, options = {}) {
-  const { trainingExamples = [], devMode = false, recentAssistantMessages = [], preferences = null } = options;
+  const {
+    trainingExamples = [],
+    devMode = false,
+    recentAssistantMessages = [],
+    preferences = null,
+    channel = "chat",
+    ragContext = "",
+  } = options;
   const {
     scenario = "sin seleccionar",
     listaPrecios = "sin seleccionar",
@@ -470,23 +478,9 @@ Flete: USD ${flete}
 Proyecto: nombre="${sanitizeForPrompt(proyecto.nombre)}" | cliente="${sanitizeForPrompt(proyecto.tipoCliente)}" | tel="${sanitizeForPrompt(proyecto.telefono)}" | dir="${sanitizeForPrompt(proyecto.direccion)}" | desc="${sanitizeForPrompt(proyecto.descripcion, 300)}" | ref="${sanitizeForPrompt(proyecto.refInterna)}"
 </user_data>`;
 
-  const examplesBlock = Array.isArray(trainingExamples) && trainingExamples.length > 0
-    ? `## CORRECCIONES DE ENTRENAMIENTO (MODO DESARROLLADOR)
-Aplicá estas correcciones como guía prioritaria cuando el usuario pregunte algo similar.
-
-${trainingExamples
-  .map((entry, idx) => {
-    return [
-      `Ejemplo ${idx + 1} [${sanitizeForPrompt(entry.category || "conversational", 50)}]`,
-      `Pregunta: ${sanitizeForPrompt(entry.question, 500)}`,
-      `Respuesta esperada: ${sanitizeForPrompt(entry.goodAnswer, 1000)}`,
-      entry.context ? `Contexto: ${sanitizeForPrompt(entry.context, 300)}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-  })
-  .join("\n\n")}`
-    : "";
+  // Examples block — delegate to channelRenderer so goodAnswerML / goodAnswerWA
+  // overrides are respected and per-channel length caps apply.
+  const examplesBlock = renderExamplesBlock(trainingExamples, channel);
 
   const devModeRules = devMode
     ? `## MODO DESARROLLADOR
@@ -537,6 +531,9 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 
 **Historial agregado:**
 - \`historial_cliente\` — un solo call que combina buscar_cliente_crm + listar_cotizaciones_recientes para un cliente dado. Usar cuando el usuario pide "historial de Juan" / "qué tenemos del cliente X" — más eficiente que llamar las dos por separado.
+
+**Casos históricos (RAG):**
+- \`recuperar_casos_similares\` — busca en la base de cotizaciones reales (RAG semántico). Pasa una query descriptiva de la obra actual ("techo 200m² ISOROOF_PLUS 100mm cliente galpón"). Devuelve casos parecidos con precios reales pagados, paneles usados y similitud. Úsala para fundamentar precios, plazos o recomendaciones con evidencia histórica ("en obras similares cobramos X").
 
 **HTML del PDF:**
 - \`obtener_pdf_html\` — retorna el HTML crudo de una cotización (no el link). Para inspección, traducción, branding override. Para compartir con el cliente preferí pdf_url.
@@ -611,7 +608,7 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
 - ❌ Llamar \`guardar_en_crm\` sin confirmación explícita del usuario.
 - ❌ Re-preguntar la familia si \`calcState.techo.familia\` ya está seteado.`;
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }

@@ -17,6 +17,11 @@ import { requireUser } from "../lib/identityAuth.js";
 // Shared with quoteExport.js — see server/lib/safeErr.js.
 import { safeErr as _safeErr } from "../lib/safeErr.js";
 import {
+  logActivity,
+  ACTION_TAXONOMY,
+  CLIENT_EMITTABLE,
+} from "../lib/userActivityLog.js";
+import {
   listMyQuotes,
   getMyQuote,
   softDeleteQuote,
@@ -452,6 +457,351 @@ router.post("/api/admin/sheets/clientes/sync/:quote_id", requireUser({ role: "ad
       actorUserId: req.user.id,
     });
     res.json(result);
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// ─── User activity log (per-user history + client-emit intent) ────────
+
+const activityWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const activityReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// POST /api/me/activity — client emits intent events (nav, ui). Restricted to
+// CLIENT_EMITTABLE subset; server actions can NEVER be claimed by the client.
+router.post("/api/me/activity", requireUser(), activityWriteLimiter, async (req, res) => {
+  try {
+    const { action, module, resource_type, resource_id, duration_ms, payload } = req.body || {};
+    if (typeof action !== "string" || !action) {
+      return res.status(400).json({ ok: false, error: "missing_action" });
+    }
+    if (!ACTION_TAXONOMY.has(action)) {
+      return res.status(400).json({ ok: false, error: "unknown_action", action });
+    }
+    if (!CLIENT_EMITTABLE.has(action)) {
+      // server-side actions cannot be forged by the client
+      return res.status(403).json({ ok: false, error: "action_not_client_emittable", action });
+    }
+    await logActivity({
+      pool: pool(),
+      actorId: req.user.id,
+      sessionId: req.user.sessionId,
+      action,
+      module: typeof module === "string" ? module : undefined,
+      resourceType: typeof resource_type === "string" ? resource_type : undefined,
+      resourceId: typeof resource_id === "string" ? resource_id : undefined,
+      durationMs: typeof duration_ms === "number" ? duration_ms : undefined,
+      clientEmitted: true,
+      payload: typeof payload === "object" && payload !== null ? payload : {},
+      req,
+    });
+    res.status(202).json({ ok: true });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// GET /api/me/activity — per-user history with filters + keyset pagination.
+// Per-user isolation enforced via WHERE actor_user_id = req.user.id (NOT RLS).
+router.get("/api/me/activity", requireUser(), activityReadLimiter, async (req, res) => {
+  try {
+    const fromIso = req.query.from ? String(req.query.from) : null;
+    const toIso = req.query.to ? String(req.query.to) : null;
+    const moduleFilter = req.query.module ? String(req.query.module) : null;
+    const actionFilter = req.query.action ? String(req.query.action) : null;
+    const outcomeFilter = req.query.outcome ? String(req.query.outcome) : null;
+    const q = req.query.q ? String(req.query.q).slice(0, 100) : null;
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const cursorTs = req.query.cursor_ts ? String(req.query.cursor_ts) : null;
+    const cursorId = req.query.cursor_id ? Number(req.query.cursor_id) : null;
+
+    const params = [req.user.id];
+    const where = ["actor_user_id = $1"];
+    if (fromIso) { params.push(fromIso); where.push(`at >= $${params.length}::timestamptz`); }
+    if (toIso) { params.push(toIso); where.push(`at <= $${params.length}::timestamptz`); }
+    if (moduleFilter) { params.push(moduleFilter); where.push(`module = $${params.length}`); }
+    if (actionFilter) { params.push(actionFilter); where.push(`action = $${params.length}`); }
+    if (outcomeFilter) { params.push(outcomeFilter); where.push(`outcome = $${params.length}`); }
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(action ILIKE $${params.length} OR resource_id ILIKE $${params.length} OR payload::text ILIKE $${params.length})`);
+    }
+    if (cursorTs && cursorId) {
+      params.push(cursorTs, cursorId);
+      where.push(`(at, event_id) < ($${params.length - 1}::timestamptz, $${params.length})`);
+    }
+    params.push(limit + 1);
+
+    const sql = `
+      SELECT event_id, action, module, resource_type, resource_id,
+             outcome, duration_ms, client_emitted, payload, at
+      FROM identity.user_activity_log
+      WHERE ${where.join(" AND ")}
+      ORDER BY at DESC, event_id DESC
+      LIMIT $${params.length}
+    `;
+    const { rows } = await pool().query(sql, params);
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const last = items[items.length - 1];
+    res.json({
+      ok: true,
+      items,
+      next_cursor: hasMore && last ? { ts: last.at, id: last.event_id } : null,
+    });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// ─── User directory (lightweight, for any authenticated user) ─────────
+
+const userSearchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Returns minimal user info — used by the Mensajes flow to look up other
+// users by email/name. Does NOT expose roles, status, or audit details
+// (those belong to the admin surface). Requires q with ≥2 chars.
+router.get("/api/me/users/search", requireUser(), userSearchLimiter, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim().slice(0, 100);
+    if (q.length < 2) return res.json({ ok: true, items: [] });
+    const limit = Math.min(Number(req.query.limit) || 10, 20);
+    const { rows } = await pool().query(
+      `SELECT user_id, email, name, picture_url
+         FROM identity.users
+        WHERE status = 'active'
+          AND user_id <> $1
+          AND (email ILIKE $2 OR name ILIKE $2)
+        ORDER BY (CASE WHEN email ILIKE $3 THEN 0 ELSE 1 END), email
+        LIMIT $4`,
+      [req.user.id, `%${q}%`, `${q}%`, limit],
+    );
+    res.json({ ok: true, items: rows });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// ─── Internal Messages (threads + messages) ────────────────────────────
+
+const messagesLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// List threads where the user is a member, with unread count + last message preview
+router.get("/api/me/threads", requireUser(), async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const { rows } = await pool().query(
+      `SELECT t.thread_id, t.subject, t.created_at, t.last_message_at,
+              tm.last_read_at,
+              (SELECT count(*) FROM identity.messages m
+                WHERE m.thread_id = t.thread_id
+                  AND m.created_at > COALESCE(tm.last_read_at, '1970-01-01'::timestamptz)
+                  AND m.from_user_id <> $1) AS unread_count,
+              (SELECT count(*) FROM identity.message_thread_members WHERE thread_id = t.thread_id) AS member_count,
+              (SELECT json_build_object(
+                  'body', m2.body,
+                  'from_user_id', m2.from_user_id,
+                  'created_at', m2.created_at
+                ) FROM identity.messages m2
+                WHERE m2.thread_id = t.thread_id
+                ORDER BY m2.created_at DESC LIMIT 1) AS last_message
+         FROM identity.message_threads t
+         JOIN identity.message_thread_members tm ON tm.thread_id = t.thread_id AND tm.user_id = $1
+         ORDER BY t.last_message_at DESC
+         LIMIT $2`,
+      [req.user.id, limit],
+    );
+    res.json({ ok: true, items: rows });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// Messages in a thread (only if user is a member)
+router.get("/api/me/threads/:id/messages", requireUser(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const member = await pool().query(
+      `SELECT 1 FROM identity.message_thread_members WHERE thread_id = $1 AND user_id = $2`,
+      [id, req.user.id],
+    );
+    if (!member.rows.length) return res.status(403).json({ ok: false, error: "not_a_member" });
+    const [thread, messages, members] = await Promise.all([
+      pool().query(
+        `SELECT thread_id, subject, created_by, created_at, last_message_at
+           FROM identity.message_threads WHERE thread_id = $1`,
+        [id],
+      ),
+      pool().query(
+        `SELECT m.message_id, m.from_user_id, m.body, m.created_at,
+                u.email AS from_email, u.name AS from_name, u.picture_url AS from_picture
+           FROM identity.messages m
+           LEFT JOIN identity.users u ON u.user_id = m.from_user_id
+           WHERE m.thread_id = $1
+           ORDER BY m.created_at ASC`,
+        [id],
+      ),
+      pool().query(
+        `SELECT tm.user_id, tm.last_read_at, u.email, u.name, u.picture_url
+           FROM identity.message_thread_members tm
+           JOIN identity.users u ON u.user_id = tm.user_id
+           WHERE tm.thread_id = $1`,
+        [id],
+      ),
+    ]);
+    res.json({
+      ok: true,
+      thread: thread.rows[0] || null,
+      messages: messages.rows,
+      members: members.rows,
+    });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// Create a thread with the given members + first message
+router.post("/api/me/threads", requireUser(), messagesLimiter, async (req, res) => {
+  try {
+    const subject = String(req.body?.subject || "").trim().slice(0, 200);
+    const body = String(req.body?.body || "").trim().slice(0, 4000);
+    const memberIds = Array.isArray(req.body?.member_user_ids) ? req.body.member_user_ids : [];
+    if (!subject) return res.status(400).json({ ok: false, error: "missing_subject" });
+    if (!body) return res.status(400).json({ ok: false, error: "missing_body" });
+    if (!memberIds.length) return res.status(400).json({ ok: false, error: "missing_members" });
+
+    const allIds = Array.from(new Set([req.user.id, ...memberIds]));
+    // Validate all member ids exist as real users.
+    const validated = await pool().query(
+      `SELECT user_id FROM identity.users WHERE user_id = ANY($1::uuid[])`,
+      [allIds],
+    );
+    if (validated.rows.length !== allIds.length) {
+      return res.status(400).json({ ok: false, error: "invalid_member_id" });
+    }
+
+    const client = await pool().connect();
+    try {
+      await client.query("BEGIN");
+      const t = await client.query(
+        `INSERT INTO identity.message_threads (subject, created_by)
+         VALUES ($1, $2) RETURNING thread_id, subject, created_at, last_message_at`,
+        [subject, req.user.id],
+      );
+      const thread = t.rows[0];
+      const memberValues = allIds.map((_, i) => `($1, $${i + 2})`).join(",");
+      await client.query(
+        `INSERT INTO identity.message_thread_members (thread_id, user_id) VALUES ${memberValues}`,
+        [thread.thread_id, ...allIds],
+      );
+      const m = await client.query(
+        `INSERT INTO identity.messages (thread_id, from_user_id, body)
+         VALUES ($1, $2, $3) RETURNING message_id, body, created_at`,
+        [thread.thread_id, req.user.id, body],
+      );
+      // Sender already saw the message they just sent
+      await client.query(
+        `UPDATE identity.message_thread_members SET last_read_at = now()
+         WHERE thread_id = $1 AND user_id = $2`,
+        [thread.thread_id, req.user.id],
+      );
+      await client.query(
+        `UPDATE identity.message_threads SET last_message_at = now() WHERE thread_id = $1`,
+        [thread.thread_id],
+      );
+      await client.query("COMMIT");
+
+      // Notify other members (best-effort, outside the transaction)
+      const others = allIds.filter((id) => id !== req.user.id);
+      if (others.length) {
+        const otherValues = others.map((_, i) => `($${i * 5 + 1}, $${i * 5 + 2}, $${i * 5 + 3}, $${i * 5 + 4}, $${i * 5 + 5}::jsonb)`).join(",");
+        const params = others.flatMap((uid) => [
+          uid,
+          "message",
+          `Nuevo hilo: ${subject}`,
+          body.slice(0, 120),
+          JSON.stringify({ thread_id: thread.thread_id }),
+        ]);
+        await pool().query(
+          `INSERT INTO identity.notifications (user_id, kind, title, body, payload) VALUES ${otherValues}`,
+          params,
+        );
+      }
+
+      res.status(201).json({ ok: true, thread, first_message: m.rows[0] });
+    } catch (err) {
+      try { await client.query("ROLLBACK"); } catch { /* ignore */ }
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// Reply to an existing thread
+router.post("/api/me/threads/:id/messages", requireUser(), messagesLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = String(req.body?.body || "").trim().slice(0, 4000);
+    if (!body) return res.status(400).json({ ok: false, error: "missing_body" });
+    const member = await pool().query(
+      `SELECT 1 FROM identity.message_thread_members WHERE thread_id = $1 AND user_id = $2`,
+      [id, req.user.id],
+    );
+    if (!member.rows.length) return res.status(403).json({ ok: false, error: "not_a_member" });
+    const m = await pool().query(
+      `INSERT INTO identity.messages (thread_id, from_user_id, body)
+       VALUES ($1, $2, $3) RETURNING message_id, body, created_at`,
+      [id, req.user.id, body],
+    );
+    await pool().query(
+      `UPDATE identity.message_threads SET last_message_at = now() WHERE thread_id = $1`,
+      [id],
+    );
+    await pool().query(
+      `UPDATE identity.message_thread_members SET last_read_at = now()
+       WHERE thread_id = $1 AND user_id = $2`,
+      [id, req.user.id],
+    );
+    res.status(201).json({ ok: true, message: m.rows[0] });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// Mark thread as read (bumps last_read_at for this user)
+router.patch("/api/me/threads/:id/read", requireUser(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rowCount } = await pool().query(
+      `UPDATE identity.message_thread_members SET last_read_at = now()
+       WHERE thread_id = $1 AND user_id = $2`,
+      [id, req.user.id],
+    );
+    if (!rowCount) return res.status(403).json({ ok: false, error: "not_a_member" });
+    res.json({ ok: true });
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }

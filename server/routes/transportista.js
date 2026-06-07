@@ -660,7 +660,9 @@ export default function createTransportistaRouter(config, logger) {
       let buf;
       try {
         buf = Buffer.from(String(data_base64), "base64");
-      } catch {
+      } catch (err) {
+        // Top-20 run 2026-05-11 (#F8): loguear intento fallido para debug de cliente roto/payload corrupto.
+        if (req.log) req.log.warn({ trip_id, len: String(data_base64).length, err: err?.message }, "transportista evidence base64 decode failed");
         return res.status(400).json({ ok: false, error: "invalid base64" });
       }
       if (buf.length > 6 * 1024 * 1024) {

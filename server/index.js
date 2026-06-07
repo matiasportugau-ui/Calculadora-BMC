@@ -15,6 +15,7 @@ import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
+import deepResearchRouter from "./routes/deepResearch.js";
 import agentChatRouter from "./routes/agentChat.js";
 import agentTrainingRouter from "./routes/agentTraining.js";
 import agentConversationsRouter from "./routes/agentConversations.js";
@@ -30,6 +31,8 @@ import createMlEtlRunRouter from "./routes/mlEtlRun.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import createWaRouter from "./routes/wa.js";
+import createTraktimeRouter from "./routes/traktime.js";
+import { createQuotesRouter } from "./routes/quotes.js";
 import * as waConfigModule from "./lib/waConfig.js";
 const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
 import { initWaOperatorAuth } from "./lib/waOperatorAuth.js";
@@ -40,6 +43,7 @@ import { initWaWebhooks } from "./lib/waWebhooks.js";
 import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
+import marketingRouter from "./routes/marketing.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
@@ -47,13 +51,25 @@ import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
 import authGoogleRouter from "./routes/authGoogle.js";
 import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
+import { startOrphanCloseScheduler } from "./jobs/closeOrphanSessions.js";
 import identityMeRouter from "./routes/identityMe.js";
+import identityAdminRouter from "./routes/identityAdmin.js";
+import identityAnalyticsRouter from "./routes/identityAnalytics.js";
+import clientesCustomersRouter from "./routes/clientes/customers.js";
+import clientesFollowupsRouter from "./routes/clientes/followups.js";
 import quoteExportRouter from "./routes/quoteExport.js";
+import tasksRouter from "./routes/tasks.js";
+import tasksOAuthRouter from "./routes/tasksOAuth.js";
+import tasksSyncRouter from "./routes/tasksSync.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
+import "./lib/marketIntel/scheduler.js"; // registers daily ETL cron at 03:00 UTC
+import { getTraktimePool } from "./lib/traktimeDb.js";
+import { startTraktimeMirrorWorker } from "./lib/traktimeMirrorWorker.js";
 import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
+import { verifyMLSignature } from "./lib/mlSignature.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -65,6 +81,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const logger = pino({
   level: process.env.LOG_LEVEL || "info",
 });
+
+if (config.panelinRelaxDevAuth) {
+  logger.warn(
+    "PANELIN_RELAX_DEV_AUTH is enabled — Panelin developer endpoints skip API_AUTH_TOKEN checks. Do not use this on production APIs exposed to the public internet."
+  );
+}
 
 const app = express();
 app.disable("x-powered-by"); // hide Express signature (defense in depth)
@@ -463,6 +485,23 @@ app.get("/ml/orders/:id", asyncHandler(async (req, res) => {
 }));
 
 app.post("/webhooks/ml", asyncHandler(async (req, res) => {
+  // Layer 1: HMAC signature verification (Gap #1 fix)
+  // ML signs: "id:{data.id};request-id:{x-request-id};ts:{ts}" with ML_CLIENT_SECRET
+  const mlSigVerified = verifyMLSignature({
+    clientSecret: config.mlClientSecret,
+    signatureHeader: req.headers["x-signature"],
+    dataId: req.query.id ?? req.body?.id,
+    requestId: req.headers["x-request-id"],
+  });
+  if (!mlSigVerified.skipped && !mlSigVerified.ok) {
+    req.log.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
+    return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
+  }
+  if (mlSigVerified.skipped && config.appEnv !== "test") {
+    req.log.warn("ML_CLIENT_SECRET unset — POST /webhooks/ml HMAC verification skipped");
+  }
+
+  // Layer 2: verify token (second layer — kept for defence in depth)
   if (config.webhookVerifyToken) {
     const received =
       req.query.verify_token ||
@@ -565,6 +604,9 @@ app.get("/webhooks/whatsapp", (req, res) => {
 });
 
 // POST — mensajes entrantes
+// Note: rate-limiting is intentionally omitted on this endpoint. Meta's Cloud API
+// retries on 5xx; an over-aggressive limiter would cause webhook delivery failures.
+// Unauthorized requests are blocked by HMAC signature verification above.
 // ── Procesar conversación WA completa → CRM + Form responses ──
 async function processWaConversation(chatId, conv) {
   const dialogo = conv.messages
@@ -675,15 +717,15 @@ async function processWaConversation(chatId, conv) {
         setImmediate(() => {
           const waTurns = conv.messages.map((m) => ({ role: "user", content: m.text }));
           if (ai.ok && ai.respuesta) waTurns.push({ role: "assistant", content: ai.respuesta });
-          extractLearnablePairs(waTurns)
+          extractLearnablePairs(waTurns, { source: "wa", convId: chatId })
             .then((pairs) => {
               for (const p of pairs) {
                 addTrainingEntry({
                   question: p.question, goodAnswer: p.goodAnswer,
                   badAnswer: p.badAnswer || "", category: p.category || "conversational",
-                  context: `[WA] ${p.rationale || ""}`, source: "autolearned",
+                  context: `[WA] ${p.rationale || ""}`, source: p.source || "autolearned",
                   status: p.confidence >= 0.92 ? "active" : "pending",
-                  confidence: p.confidence, convId: chatId,
+                  confidence: p.confidence, convId: p.convId || chatId,
                 });
               }
               if (pairs.length > 0) logger.info(`[WA] autolearn: ${pairs.length} KB candidates from ${chatId}`);
@@ -747,6 +789,61 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   const entry = body?.entry?.[0];
   const changes = entry?.changes?.[0];
   const value = changes?.value;
+
+  // ── Delivery status updates (delivered / read / failed) ──────────────────
+  // WhatsApp sends `statuses` in the same payload as messages.
+  // Wire status updates into wa_messages.status for the cockpit.
+  if (value?.statuses?.length) {
+    const waPoolForStatus = getWaPool(config.databaseUrl);
+    if (waPoolForStatus) {
+      const VALID_STATUSES = new Set(["sent", "delivered", "read", "failed"]);
+      for (const statusUpdate of value.statuses) {
+        const msgId = statusUpdate.id;
+        const newStatus = statusUpdate.status;
+        if (!msgId || !newStatus || !VALID_STATUSES.has(newStatus)) continue;
+        const statusMeta = {
+          status_ts: statusUpdate.timestamp
+            ? new Date(Number(statusUpdate.timestamp) * 1000).toISOString()
+            : new Date().toISOString(),
+        };
+        if (newStatus === "failed" && statusUpdate.errors) {
+          statusMeta.wa_errors = statusUpdate.errors;
+        }
+        try {
+          // Prevent status regression (e.g. don't move from 'read' back to 'delivered').
+          // WhatsApp delivers statuses out-of-order and retries on failures.
+          // Rank: sent=1 < delivered=2 < read=3 < failed=4
+          await waPoolForStatus.query(
+            `update wa_messages
+                set status = $1,
+                    meta = coalesce(meta, '{}'::jsonb) || $2::jsonb
+              where msg_id = $3
+                and (
+                  case status
+                    when 'sent'      then 1
+                    when 'delivered' then 2
+                    when 'read'      then 3
+                    when 'failed'    then 4
+                    else 0
+                  end
+                ) < (
+                  case $1
+                    when 'sent'      then 1
+                    when 'delivered' then 2
+                    when 'read'      then 3
+                    when 'failed'    then 4
+                    else 0
+                  end
+                )`,
+            [newStatus, JSON.stringify(statusMeta), String(msgId)],
+          );
+        } catch (e) {
+          logger.warn({ err: e?.message, msg_id: msgId, status: newStatus }, "WA status-update DB write failed");
+        }
+      }
+    }
+  }
+
   if (!value?.messages) return;
 
   for (const msg of value.messages) {
@@ -822,6 +919,10 @@ app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", authGoogleRouter);
 app.use("/api", authMfaRouter);
 app.use(identityMeRouter);
+app.use(identityAdminRouter);
+app.use(identityAnalyticsRouter);
+app.use(clientesCustomersRouter);
+app.use(clientesFollowupsRouter);
 app.use(quoteExportRouter);
 app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
@@ -834,6 +935,7 @@ app.use("/api", aiAnalyticsRouter);
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
+app.use(createTraktimeRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";
@@ -866,23 +968,41 @@ app.use("/api", createWaRouter(config, logger));
 }
 // SuperAgent tool — single-call quoting for AI agents
 app.use("/api/agent", createSuperAgentRouter(config));
+// Presupuestación Orchestrator — testing y ejecución interna del conductor
+import presupOrchestratorRouter from "./routes/internal/presupOrchestrator.js";
+
 // Panelin interno — RBAC discovery + tool catalog (Bearer API_AUTH_TOKEN)
 app.use("/api/internal/panelin", createPanelinInternalRouter(config));
+app.use("/api/internal/presup", presupOrchestratorRouter);
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
+// Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
+// Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
+app.use("/api/marketing", marketingRouter);
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
+app.use("/api", deepResearchRouter);
 app.use("/api", planInterpretRouter);
 // ML search (competitors lookup) — Bearer API_AUTH_TOKEN, 30-min TTL cache, 60 req/min
 app.use(createMlSearchRouter({ ml, config, logger }));
 // Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
 app.use(createMlEtlRunRouter({ config, logger }));
+// Quote counter (atomic global counter, annual reset)
+app.use("/api", createQuotesRouter(config));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
 app.use(createShopifyRouter(config, logger));
+// Tareas (Google Tasks bidirectional mirror) — Phase 0 stubs return 501
+// CRUD under /api/tasks/* (Bearer JWT via requireUser inside router)
+app.use("/api/tasks", tasksRouter);
+// OAuth PKCE flow for Google Tasks scope — /auth/tasks/{init,callback,revoke}
+app.use("/auth/tasks", tasksOAuthRouter);
+// Cloud Scheduler sync target (HMAC-verified) — /sync/google-tasks/pull
+app.use("/sync", tasksSyncRouter);
 
 const dashboardDir = path.join(__dirname, "../docs/bmc-dashboard-modernization/dashboard");
+const hasFinanzasDashboard = fs.existsSync(path.join(dashboardDir, "index.html"));
 const isDev = config.appEnv === "development";
 if (isDev) {
   app.get("/api/dev/dashboard-mtime", (req, res) => {
@@ -975,6 +1095,7 @@ const transportistaPool = getTransportistaPool(config.databaseUrl);
 // Cleanups capturados en el listen callback. Inicializados a noop para que
 // el shutdown handler sea seguro aunque la señal llegue antes del listen.
 let stopTransportista = () => {};
+let stopTraktimeMirror = () => {};
 let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
@@ -985,11 +1106,20 @@ const server = app.listen(config.port, async () => {
       port: config.port,
       appEnv: config.appEnv,
       publicBaseUrl: config.publicBaseUrl,
+      hasFinanzasDashboard,
+      dashboardDir,
     },
     "MercadoLibre connector server started"
   );
   if (transportistaPool) {
     stopTransportista = startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
+  }
+  // TraKtiMe nightly Sheets mirror (no-op if TRAKTIME_SHEET_ID unset or disabled).
+  {
+    const traktimePool = getTraktimePool(config.databaseUrl);
+    if (traktimePool) {
+      stopTraktimeMirror = startTraktimeMirrorWorker({ config, logger, pool: traktimePool });
+    }
   }
   // WA Cockpit — F-A4: prime config (settings + flags + LISTEN/NOTIFY) y auth.
   // Se hace ANTES de los workers para que lean ya el cache caliente.
@@ -1003,6 +1133,10 @@ const server = app.listen(config.port, async () => {
       initAuthMfa({ pool: waPool, logger });
       initWaWebhooks({ pool: waPool, logger });
       setWaConfigModuleForQuoteParams(waConfigModule);
+      // Hourly TTL pass: insert synthetic auth.session.end for users idle
+      // > ACTIVITY_LOG_ORPHAN_TTL_HOURS (default 24h) so the activity log
+      // captures session boundaries even when the browser dies silently.
+      startOrphanCloseScheduler({ pool: waPool, logger });
     } catch (e) {
       logger.warn({ err: e }, "WA config/auth prime failed (continúo sin runtime config)");
     }
@@ -1042,6 +1176,7 @@ function shutdown(signal) {
   logger.info({ signal }, "shutdown signal received");
 
   try { stopTransportista(); } catch (e) { logger.warn({ err: e?.message }, "stopTransportista failed"); }
+  try { stopTraktimeMirror(); } catch (e) { logger.warn({ err: e?.message }, "stopTraktimeMirror failed"); }
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }

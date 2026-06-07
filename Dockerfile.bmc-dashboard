@@ -23,6 +23,9 @@ COPY src/ ./src/
 COPY scripts/ ./scripts/
 # BmcLogisticaApp imports from docs/.../lib (adjuntoLineParse, pdfTextExtract + deps)
 COPY docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/ ./docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/
+
+# Admin Cotizaciones walkthrough data (static JSON import in AdminCotizacionesModule.jsx)
+COPY docs/walkthrough/admin-cot/source.json ./docs/walkthrough/admin-cot/source.json
 # Same Cloud Run URL serves SPA (/calculadora) and API (/api): browser uses origin (see src/utils/calcApiBase.js)
 ENV VITE_BASE=/calculadora/ \
     VITE_SAME_ORIGIN_API=1 \

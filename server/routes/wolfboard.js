@@ -27,7 +27,10 @@ import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
 import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 import { appendQuoteToCrm } from "../lib/crmAppend.js";
+import { normalizePanelinRole, resolveInternalServiceActor } from "../lib/panelinInternalRbac.js";
+import { deriveOutcome } from "../lib/wolfboardOutcome.js";
 import crypto from "node:crypto";
+import { estimateCostUSD } from "../lib/aiProviderConfig.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -252,10 +255,23 @@ function mapCrmRowsForWolfboardMatch(values) {
   }));
 }
 
+// Top-10 run 2026-05-11 (item #9): helper para 503 ENV_MISSING con shape estructurado (envVar, where, docs).
+// `error` se mantiene en formato `<EnvVar> not configured` por compat (auth-routes.test.js parsea este string).
+function envMissing503(res, envVar, where = "Cloud Run env / .env local") {
+  return res.status(503).json({
+    ok: false,
+    code: "ENV_MISSING",
+    envVar,
+    where,
+    docs: "AGENTS.md#env",
+    error: `${envVar} not configured`,
+  });
+}
+
 function requireAuth(config, req, res) {
   const expected = config.apiAuthToken;
   if (!expected) {
-    res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+    envMissing503(res, "API_AUTH_TOKEN");
     return false;
   }
   const header =
@@ -270,9 +286,35 @@ function requireAuth(config, req, res) {
   return true;
 }
 
+/**
+ * Soft role hint logger — Hybrid RBAC step 1 (per drafts/01-outcome-rbac-proposal.md).
+ * Logs the resolved role via pino (req.log) WITHOUT enforcement. Decision to add
+ * enforcement (roleMeetsMin checks) is gated on log data; not part of this commit.
+ * Called AFTER requireAuth passes — the actor token is already verified.
+ */
+function logRoleHint(req, config) {
+  if (!req.log) return; // pino-http may be absent in tests
+  const actor = resolveInternalServiceActor(req, config);
+  if (!actor.ok) return;
+  // roleSource derived AFTER resolution so an invalid header (e.g. typo) that
+  // got ignored doesn't get mislabeled as "header" — we compare the effective
+  // role to what each source would have produced.
+  const headerRole = normalizePanelinRole(req.headers["x-panelin-role"]);
+  const envRole = normalizePanelinRole(process.env.PANELIN_SERVICE_DEFAULT_ROLE);
+  const roleSource =
+    headerRole && headerRole === actor.role ? "header" :
+    envRole && envRole === actor.role ? "env" :
+    "default";
+  req.log.info(
+    { role: actor.role, route: req.path, method: req.method, roleSource },
+    "wolfboard role hint",
+  );
+}
+
 /** Mapa de fila Admin 2.0 (A2:M) → objeto unificado (índices según comentario de cabecera). */
 function mapAdminSheetRow(row, idx, adminSheetId) {
   const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
+  const estado = String(row[11] ?? "").trim();
   return {
     rowNum: idx + 2,
     id: String(row[0] ?? "").trim(),
@@ -285,7 +327,8 @@ function mapAdminSheetRow(row, idx, adminSheetId) {
     consulta: String(row[8] ?? "").trim(),
     respuesta: String(row[9] ?? "").trim(),
     link: String(row[10] ?? "").trim(),
-    estado: String(row[11] ?? "").trim(),
+    estado,
+    outcome: deriveOutcome(estado),
     replaySnapshotUrl: String(row[12] ?? "").trim(),
     sheetUrl: sheetBase,
   };
@@ -326,9 +369,10 @@ export function createWolfboardRouter(config) {
   // ── GET /pendientes ───────────────────────────────────────────────────────
   router.get("/pendientes", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     const scopeRaw = String(req.query.scope || "consulta").trim().toLowerCase();
     const scope = scopeRaw === "admin" || scopeRaw === "all" || scopeRaw === "sheet" ? "admin" : "consulta";
@@ -364,12 +408,13 @@ export function createWolfboardRouter(config) {
   // ── POST /sync ────────────────────────────────────────────────────────────
   router.post("/sync", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
     const crmSheetId = config.bmcSheetId;
     const crmTab = config.wolfbCrmMainTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     let sheets;
     try { sheets = await getSheetsClient(); }
@@ -389,6 +434,8 @@ export function createWolfboardRouter(config) {
         respuesta: String(row[9] ?? "").trim(),
       })).filter(r => r.consulta && r.respuesta && !r.respuesta.startsWith("⚠"));
     } catch (e) {
+      // Top-30 run 2026-05-12 (#A9): log estructurado antes del 503 para visibilizar el origen.
+      if (req.log) req.log.error({ err: e?.message || String(e), adminSheetId, adminTab }, "wolfboard sync — read Admin failed");
       return res.status(503).json({ ok: false, error: "Error al leer Admin: " + e.message });
     }
 
@@ -404,7 +451,10 @@ export function createWolfboardRouter(config) {
         valueRenderOption: "FORMATTED_VALUE",
       });
       crmRows = mapCrmRowsForWolfboardMatch(crmResp.data.values || []);
-    } catch { /* best-effort */ }
+    } catch (e) {
+      // Top-30 run 2026-05-12 (#A9): el read de CRM era best-effort; ahora al menos lo logueamos para no perder señal.
+      if (req.log) req.log.warn({ err: e?.message || String(e), crmSheetId, crmTab }, "wolfboard sync — read CRM best-effort failed");
+    }
 
     const crmUpdates = [];
     let skipped = 0;
@@ -428,6 +478,8 @@ export function createWolfboardRouter(config) {
           requestBody: { valueInputOption: "USER_ENTERED", data: crmUpdates },
         });
       } catch (e) {
+        // Top-30 run 2026-05-12 (#A9): log estructurado antes del 503 — write CRM falló, este es el origen del 503 más opaco antes.
+        if (req.log) req.log.error({ err: e?.message || String(e), crmSheetId, crmTab, updates: crmUpdates.length }, "wolfboard sync — batchUpdate CRM failed");
         return res.status(503).json({ ok: false, error: "Error al escribir en CRM: " + e.message });
       }
     }
@@ -438,6 +490,7 @@ export function createWolfboardRouter(config) {
   // ── POST /row ─────────────────────────────────────────────────────────────
   router.post("/row", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const { adminRow, respuesta, link, aprobado, replaySnapshotUrl } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
@@ -446,7 +499,7 @@ export function createWolfboardRouter(config) {
     const adminTab = config.wolfbAdminTab;
     const crmSheetId = config.bmcSheetId;
     const crmTab = config.wolfbCrmMainTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     let sheets;
     try { sheets = await getSheetsClient(); }
@@ -516,9 +569,86 @@ export function createWolfboardRouter(config) {
     return res.json({ ok: true, adminRow, crmRow, dryRun });
   });
 
+  // ── POST /row-create ──────────────────────────────────────────────────────
+  //
+  // Append a new row to Admin 2.0 for a manually-captured cotización (Step 4
+  // of the F1 plan / Gap 3c). Used by the "+ Nueva consulta" button in the
+  // toolbar for channels that don't auto-ingest: CL (cliente físico), LL
+  // (llamada), LO (local), FB / IG (residual).
+  //
+  // Body: { telefono, cliente, origen, zona, consulta }
+  //   - consulta (string, required, non-empty after trim)
+  //   - origen (string, optional — UI restricts to CL/LL/LO/FB/IG)
+  //   - telefono / cliente / zona (strings, optional — sanitized for Sheets)
+  //
+  // Generates a synthetic ID `MAN-<timestamp>` so the row can later be matched
+  // back to CRM_Operativo via the existing ID flow in `/sync`. Estado is set
+  // to "Pendiente" to enter the standard triage queue.
+  router.post("/row-create", async (req, res) => {
+    if (!requireAuth(config, req, res)) return;
+    const dryRun = config.wolfbDryRun;
+    const body = req.body || {};
+    const consulta = String(body.consulta ?? "").trim();
+    if (!consulta) {
+      return res.status(400).json({ ok: false, error: "consulta requerida (no vacía)" });
+    }
+
+    const adminSheetId = config.wolfbAdminSheetId;
+    const adminTab = config.wolfbAdminTab;
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
+
+    let sheets;
+    try { sheets = await getSheetsClient(); }
+    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+
+    const id = `MAN-${Date.now()}`;
+    const now = new Date();
+    const fecha = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+
+    // Schema (A2:M): A=id, B=fecha, C=?, D=telefono, E=cliente, F=origen,
+    // G=?, H=zona, I=consulta, J=respuesta, K=link, L=estado, M=replay
+    const safeRow = [
+      id,
+      fecha,
+      "",
+      sanitizeCellValue(String(body.telefono ?? "")),
+      sanitizeCellValue(String(body.cliente ?? "")),
+      sanitizeCellValue(String(body.origen ?? "")),
+      "",
+      sanitizeCellValue(String(body.zona ?? "")),
+      sanitizeCellValue(consulta),
+      "",
+      "",
+      "Pendiente",
+      "",
+    ];
+
+    if (dryRun) {
+      return res.json({ ok: true, dryRun: true, id, fecha });
+    }
+
+    try {
+      const result = await sheets.spreadsheets.values.append({
+        spreadsheetId: adminSheetId,
+        range: `'${adminTab}'!A:M`,
+        valueInputOption: "USER_ENTERED",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: { values: [safeRow] },
+      });
+      // Append result has updatedRange like "Admin 2.0!A42:M42" — extract rowNum
+      const updatedRange = String(result.data?.updates?.updatedRange || "");
+      const m = updatedRange.match(/![A-Z]+(\d+):/);
+      const adminRow = m ? Number(m[1]) : null;
+      return res.json({ ok: true, id, fecha, adminRow });
+    } catch (e) {
+      return res.status(503).json({ ok: false, error: "Error al crear fila: " + e.message });
+    }
+  });
+
   // ── POST /enviados ────────────────────────────────────────────────────────
   router.post("/enviados", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const { adminRow } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
@@ -527,7 +657,7 @@ export function createWolfboardRouter(config) {
     const adminTab = config.wolfbAdminTab;
     const crmSheetId = config.bmcSheetId;
     const enviadosTab = config.wolfbCrmEnviadosTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     let sheets;
     try { sheets = await getSheetsClient(); }
@@ -607,9 +737,10 @@ export function createWolfboardRouter(config) {
       req.headers.authorization = `Bearer ${tokenFromQuery}`;
     }
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     const scopeRaw = String(req.query.scope || "consulta").trim().toLowerCase();
     const scope = scopeRaw === "admin" || scopeRaw === "all" || scopeRaw === "sheet" ? "admin" : "consulta";
@@ -647,6 +778,7 @@ export function createWolfboardRouter(config) {
 
   router.post("/quote-batch", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
 
     const {
       force = false,
@@ -660,10 +792,10 @@ export function createWolfboardRouter(config) {
     const crmTab = config.wolfbCrmMainTab;
 
     if (!adminSheetId) {
-      return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+      return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
     }
     if (!config.anthropicApiKey) {
-      return res.status(503).json({ ok: false, error: "ANTHROPIC_API_KEY no configurado" });
+      return envMissing503(res, "ANTHROPIC_API_KEY", "Cloud Run secret / .env local");
     }
     if (!config.googleApplicationCredentials && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       return res.status(503).json({ ok: false, error: "GOOGLE_APPLICATION_CREDENTIALS no configurado" });
@@ -785,8 +917,21 @@ export function createWolfboardRouter(config) {
             system: PARAM_EXTRACT_PROMPT,
             messages: [{ role: "user", content: row.consulta }],
           });
-          const rawJson = (extractMsg.content?.[0]?.text || "").trim()
-            .replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+          let rawJson = (extractMsg.content?.[0]?.text || "").trim();
+          rawJson = rawJson.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+
+          // Cost observability for wolfboard extraction step
+          // TODO: thread pino logger here once cost-telemetry module exists
+          const extractCost = estimateCostUSD("claude", HAIKU_MODEL, extractMsg.usage || {});
+          console.log(JSON.stringify({
+            event: "wolfboard_ai_call",
+            provider: "claude",
+            model: HAIKU_MODEL,
+            estimated_cost_usd: extractCost,
+            row: row.rowNum,
+            step: "extract",
+          }));
+
           extracted = JSON.parse(rawJson);
         } catch {
           extracted = null;
@@ -816,6 +961,17 @@ export function createWolfboardRouter(config) {
             });
             response = msg.content?.[0]?.text?.trim() || "";
             method = "text";
+
+            // Cost observability for wolfboard batch (Phase A priority)
+            // TODO: thread pino logger here once cost-telemetry module exists
+            const cost = estimateCostUSD("claude", HAIKU_MODEL, msg.usage || {});
+            console.log(JSON.stringify({
+              event: "wolfboard_ai_call",
+              provider: "claude",
+              model: HAIKU_MODEL,
+              estimated_cost_usd: cost,
+              row: row.rowNum,
+            }));
             if (!response) {
               response = ERROR_MARKER;
               status = "empty_response";

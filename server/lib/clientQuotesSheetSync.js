@@ -30,6 +30,8 @@ import { google } from "googleapis";
 import { getGoogleAuthClient } from "./googleAuthCache.js";
 import { config } from "../config.js";
 import { getWaPool } from "./waDb.js";
+// Top-30 run 2026-05-12 (#S7): formula injection guard para escrituras USER_ENTERED.
+import { sanitizeCellValue } from "./sheetsCsvGuard.js";
 
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const COLUMNS = ["quote_id","user_email","user_name","created_at","status","total_usd","total_uyu","pdf_url","drive_file_id","sync_batch_id","wizard_payload_json"];
@@ -65,22 +67,24 @@ async function _sheets() {
   return google.sheets({ version: "v4", auth });
 }
 
+// Top-30 run 2026-05-12 (#S7): sanitizar antes de escribir con USER_ENTERED. Antes este path no usaba sheetsCsvGuard;
+// user_email / user_name / payloadJson podían contener `=` / `+` / `-` / `@` y ejecutarse como fórmula al abrir Sheets.
 function _row(quote) {
   const payloadJson = (() => {
     try { return JSON.stringify(quote.payload || {}); } catch { return ""; }
   })();
   return [
-    quote.quote_id,
-    quote.user_email || "",
-    quote.user_name || "",
+    sanitizeCellValue(quote.quote_id),
+    sanitizeCellValue(quote.user_email || ""),
+    sanitizeCellValue(quote.user_name || ""),
     quote.created_at instanceof Date ? quote.created_at.toISOString() : String(quote.created_at || ""),
-    quote.status || "",
+    sanitizeCellValue(quote.status || ""),
     quote.total_usd != null ? Number(quote.total_usd).toFixed(2) : "",
     quote.total_uyu != null ? Number(quote.total_uyu).toFixed(2) : "",
-    quote.pdf_url || "",
-    quote.drive_file_id || "",
-    quote.sync_batch_id || "",
-    payloadJson,
+    sanitizeCellValue(quote.pdf_url || ""),
+    sanitizeCellValue(quote.drive_file_id || ""),
+    sanitizeCellValue(quote.sync_batch_id || ""),
+    sanitizeCellValue(payloadJson),
   ];
 }
 

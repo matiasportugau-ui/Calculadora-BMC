@@ -1,11 +1,23 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './styles/applied-ai.css';
 import './styles/bmc-mobile.css';
+
+// Route-aware error labels — the previous "Error en la Calculadora" copy
+// misled users who hit errors on /hub/tareas, /mi-espacio, /hub/admin/users
+// etc. We now show "Error en la aplicación" + the current pathname so the
+// user can report exactly which surface broke.
+function currentPathLabel() {
+  if (typeof window === 'undefined') return '';
+  const p = window.location.pathname || '/';
+  return p === '/' || p === '/calculadora' ? 'la Calculadora' : `la app (${p})`;
+}
 
 function showError(msg, stack = '') {
   const root = document.getElementById('root');
   if (root) {
-    root.innerHTML = `<div style="padding:24px;font-family:system-ui;max-width:600"><h2 style="color:#c00">Error en la Calculadora</h2><pre style="background:#f5f5f5;padding:16px;overflow:auto;font-size:12px">${msg}${stack ? '\n\n' + stack : ''}</pre><p style="font-size:12px;color:#666">Revisá la consola (F12) para más detalles.</p></div>`;
+    const where = currentPathLabel();
+    root.innerHTML = `<div style="padding:24px;font-family:system-ui;max-width:600"><h2 style="color:#c00">Error en ${where}</h2><pre style="background:#f5f5f5;padding:16px;overflow:auto;font-size:12px">${msg}${stack ? '\n\n' + stack : ''}</pre><p style="font-size:12px;color:#666">Revisá la consola (F12) para más detalles.</p></div>`;
   }
 }
 
@@ -15,9 +27,10 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(err, info) { console.error('App error:', err, info); }
   render() {
     if (this.state.error) {
+      const where = currentPathLabel();
       return (
         <div style={{ padding: 24, fontFamily: 'system-ui', maxWidth: 600 }}>
-          <h2 style={{ color: '#c00' }}>Error en la Calculadora</h2>
+          <h2 style={{ color: '#c00' }}>Error en {where}</h2>
           <pre style={{ background: '#f5f5f5', padding: 16, overflow: 'auto', fontSize: 12 }}>
             {this.state.error.toString()}
           </pre>

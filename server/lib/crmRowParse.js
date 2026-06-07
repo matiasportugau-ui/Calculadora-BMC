@@ -20,6 +20,8 @@ function extractPdfUrl(cellValue) {
 export function parseCrmRowAtoAK(values) {
   const v = values?.[0] || [];
   const get = (i) => (v[i] != null ? String(v[i]).trim() : "");
+  // Server run 2026-05-12 (#S2): metadata sobre el largo de la fila — consumers pueden detectar filas truncadas (silent "" hasta hoy).
+  const EXPECTED_LAST_INDEX = 39; // columna AN (notasTaxonomia)
   return {
     fecha: get(1), // B
     cliente: get(2), // C
@@ -41,6 +43,11 @@ export function parseCrmRowAtoAK(values) {
     tagsTaxonomia: get(38),
     /** AN — notas de clasificación. */
     notasTaxonomia: get(39),
+    /** Metadata: si la fila Sheets tiene menos columnas de las esperadas, los campos altos quedan "". Consumers críticos pueden chequear esto. */
+    _meta: {
+      rowLength: v.length,
+      truncated: v.length <= EXPECTED_LAST_INDEX,
+    },
   };
 }
 

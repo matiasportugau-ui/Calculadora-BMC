@@ -14,6 +14,9 @@ LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="Panelin Calculator API for GPT Actions"
 WORKDIR /app
 
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 # Chromium + dependencies for server-side PDF via puppeteer-core
 RUN apk add --no-cache \
     chromium \
@@ -32,6 +35,8 @@ COPY --from=deps /app/package.json ./package.json
 COPY server/ ./server/
 COPY src/utils/ ./src/utils/
 COPY src/data/ ./src/data/
+# Legacy operator dashboard served at GET /finanzas (see server/index.js)
+COPY docs/bmc-dashboard-modernization/dashboard ./docs/bmc-dashboard-modernization/dashboard
 
 RUN addgroup -g 1001 -S panelin && \
     adduser -S -u 1001 -G panelin panelin && \

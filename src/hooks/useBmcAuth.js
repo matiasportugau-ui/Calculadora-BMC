@@ -1,5 +1,5 @@
 // Sugar wrapper around BmcAuthProvider's context.
-import { useBmcAuthContext } from "../contexts/BmcAuthProvider.jsx";
+import { useBmcAuthContext } from "../contexts/bmcAuthContext.js";
 
 export function useBmcAuth() {
   return useBmcAuthContext();

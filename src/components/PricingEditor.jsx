@@ -126,7 +126,7 @@ export default function PricingEditor({ onSave }) {
       }
       setPushMsg(msg);
     } catch (err) {
-      setPushMsg("Error de red: " + (err.message || String(err)));
+      setPushMsg("Error: " + (err.message || String(err)));
     } finally {
       setPushLoading(false);
     }

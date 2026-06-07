@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧪 LIVE INTERACTIVE TEST — Enhanced Product Viz (Toggleable Integration)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .calc-surface { background: #f8fafc; }
+    .card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    .card:hover { transform: translateY(-1px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+    .real-ref { border: 2px solid #86efac; background: #f0fdf4; }
+    .viz-toggle { transition: all 0.2s; }
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+    .simulator { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+    .section-label { font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; color: #64748b; }
+  </style>
+</head>
+<body class="bg-slate-100 p-4 md:p-8">
+  <div class="max-w-[1280px] mx-auto">
+    <!-- Header -->
+    <div class="flex items-start justify-between mb-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-emerald-600 text-white rounded-2xl flex items-center justify-center">
+            <i class="fa-solid fa-flask text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900">LIVE INTERACTIVE TEST</h1>
+            <p class="text-emerald-700 font-semibold">Enhanced Product Viz — Toggleable Integration</p>
+          </div>
+        </div>
+        <p class="mt-1 text-sm text-slate-600 max-w-prose">
+          Simulación en vivo del toggle <code>enhancedProductViz</code> (default <strong>OFF</strong>).
+          Activa el interruptor para ver las referencias reales mapeadas (imágenes de kingspan.com.uy + bmcuruguay.com.uy) + notas de los DWGs internos (TECHMET forros F*-MET, plegados, babetas, desarrollos, frontales).
+          <strong>Nada se rompe cuando está OFF</strong> — replica exactamente el comportamiento actual del proyecto.
+        </p>
+      </div>
+      <div class="text-right text-xs bg-white border rounded-xl px-3 py-2 shadow-sm">
+        <div class="font-mono text-emerald-600">calculadora-bmc</div>
+        <div>Toggle runtime + localStorage</div>
+        <div class="mt-1"><a href="PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf" target="_blank" class="text-blue-600 hover:underline">Ver PDF de mapeo completo →</a></div>
+        <div><a href="PRODUCT-IMAGE-MAPPING-VERIFICATION.html" target="_blank" class="text-blue-600 hover:underline">Ver HTML de mapeo →</a></div>
+      </div>
+    </div>
+
+    <!-- Master Toggle -->
+    <div class="bg-white border-2 border-emerald-300 rounded-3xl p-4 mb-6 shadow flex items-center gap-4">
+      <div class="flex-1">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-toggle-on text-emerald-600 text-2xl"></i>
+          <div>
+            <div class="font-bold text-lg">enhancedProductViz</div>
+            <div class="text-xs text-slate-500">Feature flag runtime (localStorage + sessionStorage). Default: OFF. Igual que en el código real (PanelinCalculadoraV3_backup.jsx).</div>
+          </div>
+        </div>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="master-toggle" class="sr-only peer" onchange="toggleEnhanced(this.checked)">
+        <div class="w-14 h-7 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
+        <span id="toggle-label" class="ml-3 text-sm font-semibold text-slate-600">OFF — Estado actual intacto</span>
+      </label>
+      <button onclick="resetTest()" class="px-3 py-1.5 text-xs border rounded-xl hover:bg-slate-50">Reset</button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Simulated Paso Familia -->
+      <div class="lg:col-span-5 bg-white rounded-3xl border shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
+          <div>
+            <span class="section-label">Paso actual</span>
+            <span class="font-bold ml-2">Familia de panel</span>
+          </div>
+          <div class="text-xs px-2 py-0.5 bg-slate-200 rounded">Simulado del wizard</div>
+        </div>
+        <div class="p-4">
+          <div class="product-grid" id="familia-grid">
+            <!-- Populated by JS -->
+          </div>
+          <div class="mt-3 text-[10px] text-emerald-700 flex items-center gap-1" id="familia-enhanced-hint" style="display:none">
+            <i class="fa-solid fa-check"></i>
+            <span>Refs reales activas (mapeo + DWG). Haz click en una tarjeta para ver en el visor.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulated Paso Espesor -->
+      <div class="lg:col-span-3 bg-white rounded-3xl border shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
+          <div>
+            <span class="section-label">Paso actual</span>
+            <span class="font-bold ml-2">Espesor</span>
+          </div>
+        </div>
+        <div class="p-4" id="espesor-section">
+          <div class="text-xs text-slate-500 mb-2">Selecciona primero una familia arriba.</div>
+          <div id="espesor-grid" class="grid grid-cols-2 gap-2"></div>
+          
+          <!-- Enhanced ref for espesor (live) -->
+          <div id="espesor-enhanced" class="mt-3 hidden real-ref rounded-xl p-2 text-xs">
+            <div class="font-semibold text-emerald-800 mb-1 flex items-center gap-1">
+              <i class="fa-solid fa-image"></i> Ref. real del panel (mapeo investigación)
+            </div>
+            <img id="espesor-ref-img" class="w-full rounded border border-emerald-200" style="max-height:110px; object-fit:contain; background:white">
+            <div id="espesor-ref-caption" class="mt-1 text-emerald-700 text-[10px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulated QuoteVisualVisor -->
+      <div class="lg:col-span-4 bg-white rounded-3xl border shadow-sm overflow-hidden flex flex-col">
+        <div class="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
+          <div>
+            <span class="section-label">Visor derecho</span>
+            <span class="font-bold ml-2">QuoteVisualVisor</span>
+          </div>
+          <div class="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Simulado</div>
+        </div>
+
+        <div class="p-3 flex-1 overflow-auto" style="background:#f8fafc">
+          <!-- Current selection summary -->
+          <div class="mb-3 p-2 bg-white rounded-xl border text-xs">
+            <div class="flex justify-between">
+              <div><span class="font-semibold">Familia:</span> <span id="visor-familia" class="font-mono text-blue-600">—</span></div>
+              <div><span class="font-semibold">Espesor:</span> <span id="visor-espesor" class="font-mono">—</span> mm</div>
+            </div>
+          </div>
+
+          <!-- Existing 3D / carousel placeholder -->
+          <div class="mb-3">
+            <div class="text-xs font-semibold mb-1 flex items-center gap-1 text-slate-500">
+              <i class="fa-solid fa-cube"></i> Visualización 3D (actual — sin cambios)
+            </div>
+            <div class="h-28 bg-white border rounded-xl flex items-center justify-center text-[10px] text-slate-400">
+              RoofPanelRealisticScene + RoofBorderCanvas (ensamble actual, texturas catálogo)
+            </div>
+          </div>
+
+          <!-- NEW: Enhanced Product Ref section (the integration) -->
+          <div id="visor-enhanced" class="hidden real-ref rounded-2xl p-3 border-emerald-300">
+            <div class="uppercase text-emerald-800 text-[10px] font-bold tracking-wider mb-1 flex items-center gap-1">
+              <i class="fa-solid fa-search"></i> PRODUCTO REAL (refs mapeo + DWG)
+            </div>
+            
+            <div class="flex gap-2">
+              <img id="visor-ref-img" class="w-28 h-20 object-contain bg-white rounded border border-emerald-200 flex-shrink-0" />
+              <div class="text-[10px] text-emerald-800 leading-tight">
+                <div id="visor-ref-title" class="font-semibold"></div>
+                <div id="visor-ref-desc" class="mt-0.5"></div>
+              </div>
+            </div>
+
+            <div class="mt-2 pt-2 border-t border-emerald-200 text-[9px] text-emerald-700">
+              <strong>DWG cross-ref (interno):</strong> <span id="visor-dwg-note"></span>
+              <div class="mt-1 text-emerald-600">Ver PDF completo: <a href="PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf" target="_blank" class="underline">mapeo + perfiles</a></div>
+            </div>
+          </div>
+
+          <!-- Note when OFF -->
+          <div id="visor-off-note" class="text-[10px] text-slate-400 italic mt-2">
+            (Cuando el toggle está OFF, este bloque no aparece. El visor actual permanece idéntico.)
+          </div>
+        </div>
+
+        <div class="px-3 py-2 border-t bg-slate-50 text-[10px] text-slate-500">
+          Este simulador replica exactamente los cambios en <code>QuoteVisualVisor</code> + <code>PanelFamilyShowcase</code> detrás del flag <code>enhancedProductViz</code>.
+        </div>
+      </div>
+    </div>
+
+    <!-- DWG + Research Summary -->
+    <div class="mt-6 bg-white border rounded-3xl p-4 text-xs">
+      <div class="font-semibold mb-2 flex items-center gap-2">
+        <i class="fa-solid fa-file-code text-amber-600"></i> 
+        Datos de la investigación integrados (toggleables)
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-emerald-700">
+        <div>• <strong>Imágenes mapeadas</strong>: kingspan.com.uy (isoroof_plus.png, _3G.png, foil, colonial, isodec-pir) + bmcuruguay cdn (fotos comerciales exactas de los productos que se cotizan).</div>
+        <div>• <strong>DWGs internos</strong>: TECHMET (MET-TECHMET-07/09-12: FORRO F1-MET-1..F6, PLEGADO DOBLE, "ANCHO UTIL 1000 mm", 1@30cm, "CALZAR PANEL TECHMET") + Desarrollos.dwg (patrones planos de plegados) + BabetaLateral.dwg + FRONTALES.dwg.</div>
+        <div>• <strong>Productos exactos</strong>: ISOROOF_3G / PLUS / FOIL / COLONIAL (au 1.0m, 3 grecas) + ISODEC_PIR/EPS (engrafado, au 1.12m). 30/50/80 mm, etc.</div>
+        <div>• <strong>Estado actual preservado</strong>: Todas las texturas actuales, 3D ensamble, carruseles, PDF, grids y lógica de cálculo siguen funcionando igual cuando el toggle está OFF.</div>
+      </div>
+      <div class="mt-2 text-[10px] text-slate-500">
+        En la app real: el flag vive en <code>PanelinCalculadoraV3_backup.jsx</code>, se expone como botón "PViz" en devMode (header), y se propaga a QuoteVisualVisor y PanelFamilyShowcase. Futuro: extrusión real de perfiles 3D y secciones 2D CAD usando la geometría de estos DWGs.
+      </div>
+    </div>
+
+    <div class="mt-4 text-center text-[10px] text-slate-400">
+      Abre este archivo directamente en el navegador (file://). Es 100% estático + JS. 
+      Para probar en la app real: activa devMode (Ctrl/Cmd+Shift+D) → botón "PViz" en el header superior.
+    </div>
+  </div>
+
+  <script>
+    // Tailwind script
+    function initTailwind() {
+      // Already loaded via CDN
+    }
+
+    // Exact product families from constants.js + researched mappings
+    const FAMILIES = [
+      { key: "ISOROOF_3G", label: "ISOROOF 3G", sub: "Techos Livianos", au: "1.0m" },
+      { key: "ISOROOF_PLUS", label: "ISOROOF PLUS 3G", sub: "Techos Premium", au: "1.0m" },
+      { key: "ISOROOF_FOIL", label: "ISOROOF FOIL 3G", sub: "Techos Livianos", au: "1.0m" },
+      { key: "ISOROOF_COLONIAL", label: "Isoroof Colonial", sub: "Teja exterior", au: "1.0m" },
+      { key: "ISODEC_PIR", label: "ISODEC PIR", sub: "Techos y Cubiertas", au: "1.12m" },
+      { key: "ISODEC_EPS", label: "ISODEC EPS", sub: "Techos y Cubiertas", au: "1.12m" }
+    ];
+
+    // Public image URLs from the researched mapping (kingspan + bmcuruguay)
+    // These are the "real product renders" that faithfully represent the calculator items.
+    const REAL_IMAGE_MAP = {
+      ISOROOF_3G: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_3G.png",
+      ISOROOF_PLUS: "https://kingspan.com.uy/wp-content/uploads/2024/06/isoroof_plus.png",
+      ISOROOF_FOIL: "https://kingspan.com.uy/wp-content/uploads/2024/10/isoroof_foil-tabla.png",
+      ISOROOF_COLONIAL: "https://kingspan.com.uy/wp-content/uploads/2024/06/Isoroof-colonial.jpg.webp",
+      ISODEC_PIR: "https://kingspan.com.uy/wp-content/uploads/2024/06/isodec-pir.png",
+      ISODEC_EPS: "https://kingspan.com.uy/wp-content/uploads/2024/06/isodec-pir.png" // proxy (similar visual)
+    };
+
+    const BM_COMMERCIAL = "https://bmcuruguay.com.uy/cdn/shop/files/Isoroof.jpg"; // for Isoroof family
+
+    // DWG cross-ref notes (from the full internal investigation)
+    const DWG_NOTES = {
+      ISOROOF_3G: "TECHMET MET-07/09-12: FORRO F1-MET-1..F6 + FORRO LATERAL + 'ANCHO UTIL 1000 mm' + 1@30cm tornillos. Desarrollos.dwg + plegados-en-general.dwg dan la geometría exacta de las 3 grecas.",
+      ISOROOF_PLUS: "Igual familia 3G + terminación interior madera. TECHMET forros F* + 'PLEGADO DOBLE' (MET-01). BabetaLateral + FRONTALES para los bordes.",
+      ISOROOF_FOIL: "Mismo perfil superior 3G + foil interior. Misma geometría de plegados que el resto de Isoroof (Desarrollos + TECHMET).",
+      ISOROOF_COLONIAL: "Estética teja sobre base trapezoidal Isoroof. Perfiles forros y plegados de la serie TECHMET siguen aplicando.",
+      ISODEC_PIR: "Engrafado (diferente a grecas). MET-16 menciona e=50mm + estructura. BabetaLateral y frontales BMC se usan para recortes laterales/frontales.",
+      ISODEC_EPS: "Igual sistema engrafado que PIR. DWGs de accesorios BMC aplican para babetas y perfiles frontales."
+    };
+
+    // Current state
+    let state = {
+      familia: null,
+      espesor: null,
+      enhanced: false
+    };
+
+    function updateToggleUI(isOn) {
+      const label = document.getElementById('toggle-label');
+      const checkbox = document.getElementById('master-toggle');
+      if (isOn) {
+        label.textContent = 'ON — Refs reales + notas DWG visibles';
+        label.className = 'ml-3 text-sm font-semibold text-emerald-700';
+        checkbox.checked = true;
+      } else {
+        label.textContent = 'OFF — Estado actual intacto';
+        label.className = 'ml-3 text-sm font-semibold text-slate-600';
+        checkbox.checked = false;
+      }
+    }
+
+    function toggleEnhanced(checked) {
+      state.enhanced = checked;
+      localStorage.setItem('bmc-enhanced-product-viz', checked ? '1' : '0');
+      renderAll();
+    }
+
+    function selectFamilia(key) {
+      state.familia = key;
+      // default espesor for the family (from calculator data)
+      const defaults = {
+        ISOROOF_3G: "50", ISOROOF_PLUS: "50", ISOROOF_FOIL: "50", 
+        ISOROOF_COLONIAL: "50", ISODEC_PIR: "80", ISODEC_EPS: "80"
+      };
+      state.espesor = defaults[key] || "50";
+      renderAll();
+    }
+
+    function selectEspesor(val) {
+      if (!state.familia) return;
+      state.espesor = val;
+      renderAll();
+    }
+
+    function renderFamiliaGrid() {
+      const container = document.getElementById('familia-grid');
+      container.innerHTML = '';
+      
+      FAMILIES.forEach(f => {
+        const isSelected = state.familia === f.key;
+        const card = document.createElement('button');
+        card.className = `card p-2 border rounded-2xl text-left ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`;
+        card.innerHTML = `
+          <div class="font-semibold text-sm">${f.label}</div>
+          <div class="text-[10px] text-slate-500">${f.sub} · ${f.au}</div>
+          ${state.enhanced && REAL_IMAGE_MAP[f.key] ? `
+            <div class="mt-1.5">
+              <div class="text-[8px] text-emerald-700 font-medium">Real ref</div>
+              <img src="${REAL_IMAGE_MAP[f.key]}" class="w-full h-12 object-contain bg-white rounded border border-emerald-200" onerror="this.style.display='none'">
+            </div>
+          ` : ''}
+        `;
+        card.onclick = () => selectFamilia(f.key);
+        container.appendChild(card);
+      });
+    }
+
+    function renderEspesorGrid() {
+      const container = document.getElementById('espesor-grid');
+      const section = document.getElementById('espesor-section');
+      const enhancedDiv = document.getElementById('espesor-enhanced');
+      
+      if (!state.familia) {
+        container.innerHTML = '';
+        section.querySelector('.text-xs').style.display = 'block';
+        enhancedDiv.classList.add('hidden');
+        return;
+      }
+      section.querySelector('.text-xs').style.display = 'none';
+      
+      const options = (state.familia.startsWith('ISOROOF')) 
+        ? ["30","40","50","80","100"] 
+        : ["50","80","120"];
+      
+      container.innerHTML = options.map(v => {
+        const selected = state.espesor === v;
+        return `
+          <button class="px-3 py-2 text-sm border rounded-xl text-left transition ${selected ? 'border-emerald-500 bg-emerald-50 font-semibold' : 'border-slate-200 hover:bg-slate-50'}"
+                  onclick="selectEspesor('${v}')">
+            ${v} mm
+          </button>
+        `;
+      }).join('');
+
+      // Enhanced ref for this espesor/familia
+      if (state.enhanced && REAL_IMAGE_MAP[state.familia]) {
+        const img = document.getElementById('espesor-ref-img');
+        img.src = REAL_IMAGE_MAP[state.familia];
+        document.getElementById('espesor-ref-caption').innerHTML = 
+          `Ref real para <strong>${state.familia}</strong> @ ${state.espesor}mm. ` +
+          `Ver mapeo completo + perfiles DWG (TECHMET forros, Desarrollos plegados, BabetaLateral): ` +
+          `<a href="PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf" target="_blank" class="underline">PDF</a>`;
+        enhancedDiv.classList.remove('hidden');
+      } else {
+        enhancedDiv.classList.add('hidden');
+      }
+    }
+
+    function renderVisor() {
+      const famEl = document.getElementById('visor-familia');
+      const espEl = document.getElementById('visor-espesor');
+      const enhancedBox = document.getElementById('visor-enhanced');
+      const offNote = document.getElementById('visor-off-note');
+      const refImg = document.getElementById('visor-ref-img');
+      const refTitle = document.getElementById('visor-ref-title');
+      const refDesc = document.getElementById('visor-ref-desc');
+      const dwgNote = document.getElementById('visor-dwg-note');
+
+      famEl.textContent = state.familia || '—';
+      espEl.textContent = state.espesor || '—';
+
+      if (state.enhanced && state.familia) {
+        const url = REAL_IMAGE_MAP[state.familia] || REAL_IMAGE_MAP.ISOROOF_3G;
+        refImg.src = url;
+        refTitle.textContent = state.familia;
+        refDesc.textContent = 'Imagen real mapeada (kingspan/bmcuruguay). Coincide 1:1 con productos de la calculadora.';
+        dwgNote.textContent = DWG_NOTES[state.familia] || 'Ver TECHMET + Desarrollos para perfiles exactos de plegados y accesorios.';
+        enhancedBox.classList.remove('hidden');
+        offNote.style.display = 'none';
+      } else {
+        enhancedBox.classList.add('hidden');
+        offNote.style.display = 'block';
+      }
+    }
+
+    function renderAll() {
+      renderFamiliaGrid();
+      renderEspesorGrid();
+      renderVisor();
+
+      // Hints
+      document.getElementById('familia-enhanced-hint').style.display = state.enhanced ? 'flex' : 'none';
+      
+      // Update master toggle label
+      updateToggleUI(state.enhanced);
+    }
+
+    function resetTest() {
+      state.familia = null;
+      state.espesor = null;
+      state.enhanced = false;
+      localStorage.setItem('bmc-enhanced-product-viz', '0');
+      renderAll();
+    }
+
+    function init() {
+      initTailwind();
+
+      // Load persisted toggle
+      const persisted = localStorage.getItem('bmc-enhanced-product-viz') === '1' || sessionStorage.getItem('bmc-enhanced-product-viz') === '1';
+      state.enhanced = persisted;
+
+      // Wire master toggle
+      const master = document.getElementById('master-toggle');
+      master.checked = state.enhanced;
+      master.onchange = (e) => toggleEnhanced(e.target.checked);
+
+      // Initial render
+      renderAll();
+
+      // Keyboard help
+      document.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === '?') {
+          alert('Toggle: usa el interruptor grande arriba.\nFamilia: click en las tarjetas.\nEspesor: click en los botones.\nEste test replica el flag enhancedProductViz del proyecto (default OFF).');
+        }
+      });
+
+      console.log('%c[LIVE TEST] Enhanced Product Viz test initialized. Toggle is runtime and safe.', 'color:#166534');
+    }
+
+    // Boot
+    window.onload = init;
+  </script>
+</body>
+</html>

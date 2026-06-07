@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-09
+**Última actualización:** 2026-06-01
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-07 (precios WOLF-2026-0002 — verificación post-merge contra Matriz en vivo + Shopify; typo Kit):** `verificado / doc`. Revisión post-merge del PR #276 contrastando [`src/data/constants.js`](../../src/data/constants.js) con la planilla *MATRIZ de COSTOS y VENTAS 2026* (acceso directo) y el catálogo Shopify. **Validados al céntimo:** los 5 goteros de cámara (`venta`/`web`/`costo` vs columnas `Venta local USD ex IVA` / `Venta web USD ex IVA` / `Costo USD ex IVA` de BROMYROS — incluido `GSDECAM30 web=36.93` que era correcto, era el ex-IVA vs el c/IVA 38.62) y los 6 anclajes en `venta`+`costo` (vs `VENTA USD EX IVA` 5.96/1.60/1.60/1.20/1.20/1.09, con `Consumidor Final` = ×1.22 confirmando ex-IVA). Descartado un falso positivo (Codex P2 / sospecha inicial de IVA): 5.96 es ex-IVA legítimo, no c/IVA. **Pendiente conocido (no bloqueante):** el `web` de los anclajes no tiene columna en la Matriz; en el canal web (Shopify) estas fijaciones se venden **por paquete de 10 unidades**, por lo que el `web` por-unidad (~×1.34 sobre venta) no es contrastable hoy — revisar contra ML/Shopify a futuro (WOLF-0003/0004). La calculadora opera con lista **LOCAL** por defecto, ya validada. **Fix cosmético:** corregido typo de label `Kin`→`Kit` en `anclaje_kit_u_platea` (constants.js). Sin cambios de lógica ni de valores de precio.
 
 **2026-06-01 (Clientes 360 — Phase A MVP en producción):** `hecho`. Panel de Clientes 360 completo y desplegado en https://calculadora-bmc.vercel.app/hub/clientes.
 
@@ -40,18 +42,36 @@ DELETE FROM clientes.customers WHERE metadata->>'source' = 'synthetic_mvp_demo';
 2. Pedir baseline Q1 cotizaciones para calibrar el umbral "≥3 rescatados/mes".
 3. Phase B (post-validación): tab "Clientes" en `/hub/admin/analytics` con funnel de quotes + métricas WA.
 
----
+**2026-06-05 (Tareas Phase D — campos ricos: hora, todo-el-día, repetición + paridad Google Tasks):** `hecho confirmado (código) / bloqueado: operador (verificación E2E)`. La creación/edición de tareas ahora soporta **hora del día, toggle todo-el-día y regla de repetición (RRULE)**, alcanzando paridad con el modal de creación de Google Tasks. Como la Tasks REST API v1 sólo persiste title/notes/due(fecha)/status, las dimensiones hora/repetición se respaldan en un **evento de Google Calendar emparejado** (BMC sigue siendo system-of-record; Calendar es el backend de storage de esas dimensiones). **Migración** [`20260605000001_tasks_phase_d_richfields.sql`](../../supabase/migrations/20260605000001_tasks_phase_d_richfields.sql) — aplicada a Supabase `htnwozvopveibwppyjhg`: `due_time TIME`, `is_all_day BOOLEAN NOT NULL DEFAULT TRUE`, `recurrence_rule TEXT` (CHECK `IS NULL OR LIKE 'RRULE:%'`), `calendar_event_id TEXT` (índice parcial único); `sync_conflicts.conflict_type` extendido con `'calendar_drift'`. **OAuth** ([`tasksOAuth.js`](../../server/routes/tasksOAuth.js)): scope ahora `tasks + calendar.events`; nuevo `GET /auth/tasks/scope-probe` (lectura de la columna `scope` persistida, sin round-trip a Google) para que la SPA detecte usuarios pre-Phase-D que necesitan reconectar. **Cliente** [`googleCalendarClient.js`](../../server/lib/googleCalendarClient.js) (nuevo) — espeja `googleTasksClient.js` (timeout + reintento-en-401, decrypt con cast `::text`, reusa `refreshAccessToken`); el 403 (scope faltante) **no** entra al refresh. **CRUD/sync** ([`tasks.js`](../../server/routes/tasks.js), [`tasksSync.js`](../../server/routes/tasksSync.js)): POST/PATCH aceptan los campos ricos y emparejan un evento Calendar cuando hay hora/repetición (fallo de Calendar es **no-fatal** — la tarea se guarda con `calendar_event_id` NULL y un flag `calendar_error`); DELETE borra el evento; el pull inbound detecta `calendar_drift` (de-dup por tarea, BMC gana, sin auto-resolver) y reporta `calendar_events_touched` en `sync_completed`. **UI** ([`TaskCreateModal.jsx`](../../src/components/hub/tasks/TaskCreateModal.jsx) nuevo + [`TasksModule.jsx`](../../src/components/hub/tasks/TasksModule.jsx) + [`useTasks.js`](../../src/components/hub/tasks/hooks/useTasks.js)): modal con título/fecha/hora/todo-el-día/repetición/descripción/lista, CTA "Reconectar" cuando falta el scope Calendar. `gate:local` verde (lint 0 errores / 10 warnings baseline, todos los tests pass). **Bloqueado: operador** — habilitar Google Calendar API en `chatbot-bmc-live` + agregar scope `calendar.events` al OAuth client; usuarios ya conectados deben re-consentir (las llamadas Calendar dan 403 hasta entonces). Ver [`OPERATOR-CHECKLIST.md`](../hub-tasks-module/OPERATOR-CHECKLIST.md) §Phase D.
 
-**2026-06-01 (Finanzas 404 — cierre de deuda):** `hecho en repo, deploy pendiente`. Causa raíz real: el workflow **Deploy Calculator API** construye con [`server/Dockerfile`](../../server/Dockerfile) (no `Dockerfile.bmc-dashboard`), y ese Dockerfile **no copiaba** `docs/bmc-dashboard-modernization/dashboard/` → prod `/finanzas` seguía en JSON 404 aunque el fix previo (`a9b4434`) hubiera tocado solo el Dockerfile full-stack. **Fix:** COPY dashboard en `server/Dockerfile`; `.dockerignore` con negaciones padre/hijo; filtro deploy incluye `.dockerignore` + ruta dashboard; `finanzas:inspect` corregido. Local `/finanzas` OK; prod 404 hasta redeploy.
+**2026-06-04 (precios — WOLF-2026-0002 realineación a Matriz):** `resuelto / PR #276`. 11 entradas de catálogo en [`src/data/constants.js`](../../src/data/constants.js) (6 anclajes en `FIJACIONES`, 5 goteros de cámara en `PERFIL_TECHO`) realineadas a la **Matriz de Costos y Ventas Dashboard** bajo decisión **D1** (campos ex-IVA; `venta` ← columna "venta local ex IVA", `web` ← columna "web ex IVA"). Corrige un corrimiento de columna/fila en la extracción que subvaluaba precios (anclajes ~−25% web / −18% venta local; goteros de cámara con fila corrida — `GSDECAM80` cargaba valores de `GFSUP30`). Golden case **GC-0002** verde (`evals/golden-cases/GC-0002.test.mjs`): anclaje gris web ×100 = 215.00; gotero superior cámara 80 mm web = 37.07. `GLDCAM-DC _all` byte-idénticos (gated D3, sin tocar). Mergeado vía PR #276 (admin override, merge commit; commits `9c1ccf0` + `e937381` + `baa90a9`). Ledger [`BUG-TRIAGE-RAMIRO.md`](../../BUG-TRIAGE-RAMIRO.md) v0.4 RESUELTO. Fuera de alcance (gateado): WOLF-0001 (ISOFRIG/D5), WOLF-0003 (accesorios borde/D2-D3), WOLF-0004 (pipeline diff).
 
-**2026-06-01 (Productos Maestro — sistema centralizado precio + stock):** `implementación inicial completa`. 
-- Biblioteca `server/lib/productosMaestro.js` (merge MATRIZ + Stock + links)
-- Script `npm run productos-maestro:reconcile` + reportes en `.runtime/`
-- API completa `/api/productos-maestro` (catálogo, reconcile, links, push con dryRun)
-- CSV MATRIZ ahora emite columna `sku` estable
-- UI `ProductosMaestroEditor.jsx` integrada en Config → "Productos (Maestro)" como hub visual de edición y escritura hacia planillas (preferencia del usuario)
-- RBAC + capabilities actualizados
-- Cumple el plan de `cursor_centralized_price_and_stock_mana.md` (Fases 1-3 principales). Ver `.runtime/productos-maestro-audit-2026.md`
+**2026-06-04 (/nxt — snapshot post-verificación centralizada de precios + mapeo + key + MCP ranking):** `hecho`. Invocación /nxt scoped al thread completo de verificación de precios (Sheets MATRIZ BROMYROS como fuente única, remapeo cols F→G / L→J / M→K / T→R / U→S, fix JWT bmc-dashboard-sheets, persistencia en Doppler + Secret Manager + Cloud Run, generación de CSV import + JSON live + helper start-api-with-doppler, gates/smoke, artifacts en .runtime/, bake parcial a constants, comparación numérica). Git clean en main; entry previa 2026-06-02 ya documentaba mapping+key como live. Ajuste de scores en reporte (Google Sheets/Data ↑ calidad por mapping correcto + key estable; Calculator pricing ↑ por acceso real + import path; Deploy por patrón rotación probado). Ranking MCPs por uso real del equipo (grok_com_github #1 para PRs/trace de este fix; GitKraken #2 git; grok_com_vercel #3 deploys; chrome-devtools/playwright #4 verif browser UI import; memory #5). Reporte estructurado con próximos pasos priorizados + "get it live" paths (import CSV inmediato, poblar col D en sheet para specials/full CSV prod, bake + gates, verif con MCP browser). Próximos accionables: 1) cargar CSV en PricingEditor, 2) hygiene sheet SKUs col D + re-sync specials. 
+
+**2026-06-04 (xlsx HIGH resuelto — migración a build CDN SheetJS):** `hecho`. Migrado `xlsx` de `0.18.5` (npm, **high** sin fix: Prototype Pollution GHSA-4r6h-8v6p-xvw6 + ReDoS GHSA-5pgg-2g8v-p4x9) al build oficial **`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`** vía `npm rm --save xlsx` + `npm i --save-dev <cdn-url>`. Es devDependency, único consumidor `scripts/training/ingestDropboxQuotes.js` (offline, no prod/bundle). Verificado: `XLSX.read` + `XLSX.utils.sheet_to_json` presentes en 0.20.3; `npm audit` ahora **2 moderate** (solo react-router); `gate:local` verde (lint 0 + tests pass). `package.json` apunta al tarball del CDN (npm registry congelado en 0.18.5).
+
+**2026-06-04 (npm audit — sync de estado real, sin cambio de código):** `doc`. Verificado `npm audit`: el ítem de Pendientes fechado 2026-05-07 (`basic-ftp`/`hono`/`ip-address`) estaba **stale** — esas vulns ya no existen. Estado real previo a la migración = **3 vulns**: `xlsx@0.18.5` high (resuelto, ver entrada de arriba) y `react-router`/`react-router-dom@6.30.3` **moderate** (open redirect GHSA-2j2x-hqr9-3h42, fix en 7.x major breaking — diferido a rama propia).
+
+**2026-06-02 (MATRIZ precios — column mapping + key rotation deployed to prod):** `hecho`. Remapeo de columnas en BROMYROS para el motor de precios (costo G, venta local J, ref c/IVA K, venta web R, web c/IVA S) en `server/routes/bmcDashboard.js` (`MATRIZ_TAB_COLUMNS`), sync scripts (fijaciones/silicona), rename-headers, mapping comments, docs y skill. Nueva key para `bmc-dashboard-sheets@...` creada vía gcloud; actualizada en Doppler (bmc-backend/prd: GOOGLE_APPLICATION_CREDENTIALS + GOOGLE_SHEETS_CREDENTIALS + PANELIN_SERVICE_ACCOUNT); nueva versión en Secret Manager `panelin-service-account`; Cloud Run `panelin-calc` actualizado (mount + IAM) + full code deploy vía `deploy-cloud-run.sh` (nueva revisión con el mapping). Re-aplicado secret script post-deploy. Endpoint `/api/actualizar-precios-calculadora` 200 en prod (sin error de credenciales). Cambios persistentes vía Secret Manager + service config. Verificación smoke + curl OK. (Key fix + mapping ahora live.)
+
+**2026-06-01 (Phase 0 GCP SA hardening — panelin-calc prod):** `hecho confirmado`. **P0-1:** migrados a Secret Manager (env refs, no literales) `API_AUTH_TOKEN`, `ML_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GROK_API_KEY`, `TOKEN_ENCRYPTION_KEY` — revisión activa `panelin-calc-00424-jmd`+; patrón `--remove-env-vars` luego `--update-secrets` (Cloud Run rechaza cambio de tipo en un paso). **P0-2:** nueva key `bmc-dashboard-sheets` (`489cffaa…`) → secret `panelin-service-account` v2; keys viejas revocadas; MATRIZ CSV + `/health` OK (`panelin-calc-00425-g75`). **P0-3:** quitado `roles/editor` de `github-deployer@…` (queda `run.admin`, `artifactregistry.writer`, `iam.serviceAccountUser`). Smoke prod OK. Mapa: [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md). Pendiente Phase 1: alinear `deploy-calc-api.yml`, `WA_JWT_SECRET`/`SMTP_PASS` placeholders, keys legacy compute/github-deployer.
+
+**2026-06-01 (Finanzas 404 — cierre de deuda):** `RESUELTO EN PROD`. Incidente reportado vía paste de terminal completo (último curl 404 + intento de commit + `gh workflow run`). Causa: server/Dockerfile no copiaba el dashboard (a diferencia del Dockerfile.bmc-dashboard full-stack). Inspect script confirmó contexto OK → problema era revisión vieja de Cloud Run. **Acciones:** `gh workflow run` disparado sobre SHA con el COPY; nueva revisión desplegada; `/finanzas/` ahora 200 + HTML real en prod. Smoke prod endurecido con chequeo explícito de `GET /finanzas/` (falla el smoke si vuelve a 404). Repro script (`./scripts/repro-finanzas-404.sh`) pendiente de Docker Desktop encendido (usuario documentó "apagado"). Ver también entrada 2026-05-29 más abajo.
+
+**2026-06-01 (Interactive In-App Tutorial System — Modo Tutorial):** `implementado + instrumentado + documentado`. 
+Sistema completo de tutoriales interactivos con spotlight + guía paso a paso sobre la UI real.
+- 4 flujos principales definidos y documentados (ver `src/components/tutorial/workflows.js` + `FLOWS.md`).
+- Instrumentación exhaustiva con `data-tutorial-id` en Admin Cotizaciones (13+ puntos) y Calculadora (5+ puntos clave).
+- Launchers contextuales en ambos módulos + botón flotante global.
+- Integración en App.jsx + overlay con Portal + persistencia en localStorage.
+- Soporte para eventos custom para lanzamiento fácil desde módulos.
+- Documentación: `README.md`, `FLOWS.md` y entrada en este archivo.
+
+Listo para uso por el equipo de ventas en la ventana de pruebas.
+
+**2026-06-01 (Productos Maestro Phase 4 UX + smoke `/finanzas/` — shipped):** `hecho en prod` ([`53a7e23`](https://github.com/matiasportugau-ui/Calculadora-BMC/commit/53a7e23)). Edición inline precio/stock, banner cambios pendientes, modal confirm-before-write en Config → Productos (Maestro); API `/api/productos-maestro` push/reconcile; `scripts/smoke-prod-api.mjs` falla si `GET /finanzas/` ≠ 200; fixes test shims identity + `getModuleGrants` no degrada superadmin. **`npm run gate:local:full` OK** (2026-06-01); **`npm run smoke:prod` OK** (MATRIZ + `/finanzas/` + suggest-response). Runbook: [`docs/OPERATOR-RUNBOOK-PRODUCTOS-MAESTRO.md`](../OPERATOR-RUNBOOK-PRODUCTOS-MAESTRO.md). **Próximo run recomendado:** GCP Phase 1 ([`GCP-SERVICE-ACCOUNTS-USAGE-MAP.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md) — alinear deploy workflow, placeholders WA/SMTP).
+
+**2026-06-01 (Productos Maestro — sistema centralizado precio + stock):** `implementación inicial` ([`86ec4c8`](https://github.com/matiasportugau-ui/Calculadora-BMC/commit/86ec4c8)). Ver entrada shipped arriba para Phase 4 UX.
 
 **2026-06-01 (Infra — mapa canónico service accounts GCP):** `hecho confirmado`. Auditoría consolidada del proyecto `chatbot-bmc-live`: arquitectura dual `panelin-runner` (runtime) + `bmc-dashboard-sheets` (ADC Sheets/GCS), inventario de 8 SAs, keys, Cloud Run, deriva vs scripts/docs, y plan P0–P3. Doc: [`docs/team/infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md`](./infrastructure/GCP-SERVICE-ACCOUNTS-USAGE-MAP.md). **Hallazgo top:** secretos sensibles aún como env vars literales en revisión Cloud Run; prod usa key Sheets más antigua (`ff8190cb…`).
 
@@ -73,7 +93,7 @@ DELETE FROM clientes.customers WHERE metadata->>'source' = 'synthetic_mvp_demo';
 - `scripts/inspect-docker-context.cjs`
 - `docs/team/HANDOFF-2026-05-29-finanzas-404.md`
 
-**Estado actual**: Cambios de código 100% aplicados y verificados localmente. El usuario aún debe correr `npm run finanzas:repro` una vez en un Terminal normal con Docker Desktop activo para capturar la evidencia limpia "antes/después" dentro del contenedor (requisito del plan). Deploy pendiente.
+**Estado actual**: Deploy a prod completado y verificado (curls reales post-deploy: 200 + HTML del dashboard). Smoke:prod ahora cubre explícitamente `/finanzas/` (falla si regresa el 404). El paso final pendiente es correr `./scripts/repro-finanzas-404.sh` con Docker Desktop activo para generar el log de inspección dentro del contenedor (como pedía el inspect script).
 
 ---
 
@@ -198,6 +218,18 @@ Este documento pasa a ser la fuente única de verdad para el esfuerzo de estabil
 **2026-05-08 (Deploy — chat chips en producción):** Cloud Run `panelin-calc` (script [`deploy-cloud-run.sh`](../../scripts/deploy-cloud-run.sh); nueva revisión sirviendo 100% tráfico; URL canónica `gcloud describe` = `https://panelin-calc-q74zutv7dq-uc.a.run.app`) + Vercel producción ([`deploy-vercel.sh --prod`](../../scripts/deploy-vercel.sh), alias `https://calculadora-bmc.vercel.app`). **`npm run smoke:prod`** OK inmediatamente después (health, capabilities, CSV MATRIZ, ML status, WhatsApp probe, `suggest-response`). Cubre API con SSE `type: "suggestions"` + SPA con chips Panelin.
 
 **2026-05-08 (Seguridad / PANELSIM — auth obligatoria en `POST /api/crm/ingest-email`):** Nuevo [`server/lib/emailIngestAuth.js`](../../server/lib/emailIngestAuth.js) y variable opcional `EMAIL_INGEST_TOKEN` en [`server/config.js`](../../server/config.js). El ingest exige Bearer / `X-Api-Key` (mismo criterio que cockpit); acepta `EMAIL_INGEST_TOKEN` o `API_AUTH_TOKEN` cuando corresponde. Script [`scripts/email-snapshot-ingest.mjs`](../../scripts/email-snapshot-ingest.mjs) envía `EMAIL_INGEST_TOKEN` con prioridad. Tests: [`tests/emailIngestAuth.test.js`](../../tests/emailIngestAuth.test.js). Documentación: [`docs/team/panelsim/EMAIL-ADMINISTRATOR.md`](./panelsim/EMAIL-ADMINISTRATOR.md), `.env.example`, [`docs/openapi-email-gpt.yaml`](../openapi-email-gpt.yaml) (path ingest), [`AGENTS.md`](../../AGENTS.md).
+
+**2026-05-05 (Ops — rotador y auditor de OPENAI_API_KEY + health endpoint):** Para destrabar el bloqueador histórico de modo voz / `suggest-response` (claves IA inválidas en Cloud Run, ver entradas 2026-04-23) se incorpora un flujo reproducible para rotar y verificar la `OPENAI_API_KEY` end-to-end.
+
+- **`bash scripts/openai-key-audit.sh`** ([`scripts/openai-key-audit.sh`](../../scripts/openai-key-audit.sh), alias `npm run keys:audit`): localiza toda `OPENAI_API_KEY` visible (`.env`, shell, Cloud Run via `gcloud`, Vercel via CLI — opcionales) y pinga `https://api.openai.com/v1/models` para etiquetar cada una **ACTIVE / INACTIVE**. Nunca imprime la clave completa: sólo prefix/suffix + longitud.
+- **`bash scripts/openai-key-rotate.sh`** ([`scripts/openai-key-rotate.sh`](../../scripts/openai-key-rotate.sh), alias `npm run keys:rotate`): pide la clave nueva en hidden-prompt (no echo, no shell history), la valida contra OpenAI antes de tocar nada, escribe `.env` atómicamente con backup `.env.bak.YYYYMMDD-HHMMSS`, y opcionalmente migra Cloud Run de env-var plana a Secret Manager (`openai-api-key:latest`, `--remove-env-vars` + `--set-secrets`). Aborta sin daños si cualquier paso falla. Override `SKIP_CLOUD_RUN=1` para actualizar sólo `.env`.
+- **`GET /api/agent/voice/health`** ([`server/routes/agentVoice.js`](../../server/routes/agentVoice.js)): pinga `/v1/models` con la clave configurada en el server, responde `{ ok, status, latencyMs, configured, keyLength, keyPrefix, keySuffix, model }`. **Admin-only** (`requireAuth`). Nunca expone la clave entera. Útil para verificar desde la UI sin abrir terminal.
+- **Botón "Verificar clave" en Agent Admin → Voz** ([`src/components/AgentAdminModule.jsx`](../../src/components/AgentAdminModule.jsx)): consume el endpoint anterior y muestra estado en verde con fingerprint + latencia, o detalle del 502/503 si la clave está muerta.
+- **Backup creado por la rotación** queda como `.env.bak.YYYYMMDD-HHMMSS` (gitignored). Conservar **al menos hasta** el siguiente smoke prod verde y luego eliminar.
+
+**Affects:** bmc-deployment (procedimiento de rotación documentado para futuras claves IA), bmc-security (claves IA dejan de vivir en env-var plana de Cloud Run y pasan a Secret Manager con versión etiquetada), bmc-fiscal (auditoría reproducible de claves activas), bmc-judge (criterios de "Voice ready" cierran cuando `keys:audit` muestra todo ACTIVE + `/api/agent/voice/health` ok + `client_secret` retornable).
+
+**Pendientes específicos**: aplicar el mismo patrón a `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GROK_API_KEY` (hoy aún en env-var plana en Cloud Run); confirmar que `npm run smoke:prod` deja de fallar `POST /api/crm/suggest-response` una vez todas las claves IA estén rotadas; tras éxito, actualizar entradas 2026-04-23 marcando el bloqueador resuelto.
 
 **2026-05-07 (Hotfix — deploy Cloud Run desbloqueado + auth fail-closed):** Cinco deploys consecutivos fallaban con `Cannot update environment variable [SMTP_PASS] to the given type because it has already been set with a different type` porque el workflow había migrado `SMTP_PASS` y `WA_JWT_SECRET` de env vars literales a `--set-secrets`, mientras que la última revisión exitosa de Cloud Run los tenía como literales (Cloud Run rechaza ese cambio de tipo en un mismo deploy). Hotfix #167 los regresa a `env_vars` con `${{ secrets.* }}`; `IDENTITY_JWT_SECRET` y `MFA_KEK_HEX` (PR #181) quedan como Secret Manager refs. En la misma corrida, [`server/routes/wolfboard.js`](../../server/routes/wolfboard.js) y [`server/routes/superAgent.js`](../../server/routes/superAgent.js) ahora devuelven `503 API_AUTH_TOKEN not configured` cuando falta el token de servicio (antes permitían acceso anónimo). Regresión cubierta en [`tests/auth-routes.test.js`](../../tests/auth-routes.test.js). **Bootstrap simultáneo:** se sembraron 6 GitHub repo secrets (`GOOGLE_OAUTH_CLIENT_ID`, `IDENTITY_COOKIE_DOMAIN=.calculadora-bmc.vercel.app`, `IDENTITY_COOKIE_NAME=bmc_sess`, `INTERNAL_SUPERADMIN_EMAILS=matias@bmc.uy`, `SHEETS_CLIENT_QUOTES_ENABLED=false`, `SHEETS_CLIENT_QUOTES_TAB`) y 2 GCP Secret Manager secrets (`IDENTITY_JWT_SECRET`, `MFA_KEK_HEX`) con IAM al runtime SA `panelin-runner@…`, dejando todo lo no-sensible para Comprador Identity listo para el primer deploy verde. Pendientes humanos: `DATABASE_URL` no está en el workflow (workflow usa `env_vars_update_strategy: merge`, persiste de set-up manual), Supabase migrations no aplicadas, tab «Base de datos cotis de clientes» no creada, OAuth client origins por verificar.
 
@@ -1301,7 +1333,7 @@ Todos los agentes deben consultar este plan al iniciar tareas. Al finalizar cada
 - [x] **kpi-report runtime:** **2026-03-27:** prod `https://panelin-calc-q74zutv7dq-uc.a.run.app/api/kpi-report` → **200** (ver [`E2E-VALIDATION-CHECKLIST.md`](./E2E-VALIDATION-CHECKLIST.md)). Local 2026-03-24: `pre-deploy` + contratos — OK en :3001. Ruta en `bmcDashboard.js` montada en `/api`; 404 en runtime = reiniciar servidor.
 - [x] **Guía vendedores:** docs/GUIA-RAPIDA-VENDEDORES.md creada 2026-03-18 (Reporter, paso 9).
 - [x] **Deploy producción:** Cloud Run panelin-calc — deploy completado. Ver service-map.md §5 Deploy flow.
-- [ ] **Dependabot npm audit (2026-05-07):** revisar GHSA/`npm audit`: `basic-ftp` high, `hono` + `ip-address` moderate — plan de bump sin `--force`; re-ejecutar gate tras lockfile cambiado.
+- [ ] **npm audit (verificado 2026-06-04):** quedan **2 vulns moderate** (`react-router`/`react-router-dom@6.30.3` — open redirect GHSA-2j2x-hqr9-3h42, fix en **7.x = major breaking** que toca routing de `src/App.jsx`; diferir a rama propia + PR). **RESUELTO `xlsx`:** migrado de `0.18.5` (high, sin fix npm) al build oficial CDN **`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`** (devDependency, solo `scripts/training/ingestDropboxQuotes.js`); API intacta, gate:local verde. No usar `--force`.
 - [ ] **E2E validation:** Smoke + curls críticos documentados **2026-03-27** en [`E2E-VALIDATION-CHECKLIST.md`](./E2E-VALIDATION-CHECKLIST.md) (health, kpi-report, cotizaciones, SPAs). Pendiente: filas D1.x **UI manual** (marcar entregado, campana, PDF Drive, Shopify) y cierre ✓ en tabla checklist cuando se ejecuten.
 
 ---
@@ -1313,3 +1345,111 @@ Todos los agentes deben consultar este plan al iniciar tareas. Al finalizar cada
 - **Sync completo:** Ejecutar "Sync project state" o full team run.
 
 **Supervisión:** El Fiscal (bmc-dgi-impositivo) fiscaliza que el equipo cumpla este protocolo según el ranking de criticidad en [fiscal/FISCAL-PROTOCOL-STATE-RANKING.md](./fiscal/FISCAL-PROTOCOL-STATE-RANKING.md). Controla que no sucedan incumplimientos; si ocurren, comunica a los involucrados para que no pase de nuevo.
+
+**2026-05-27 (PDF Generator Improvements → Production):** Shipping the PDF area stabilization work as part of Phase 0.
+
+Changes:
+- Default layout switched to lightweight `simple-carbon`
+- Heavy legacy templates deprecated in UI (optgroup + "(legacy)" labels)
+- `buildQuotationModel` now carries proper `quoteId` + `version` fields (wired from `currentBudgetCode`)
+- Client + server metrics added (`/api/pdf/metrics` endpoint live)
+- Versioning visible in PDF footers for simple templates
+- Python optimizer now documented as legacy-only
+
+Gates + pre-deploy running. Plan: Vercel prod + Cloud Run verify + smoke:prod post-deploy.
+
+
+**2026-05-27 (Production Update - PDF Generator Stabilization):** 
+- Vercel production deployed with PDF improvements (default now lightweight simple-carbon, versioning fields wired, legacy templates deprecated in UI).
+- Cloud Run deploy in progress (new `/api/pdf/metrics` endpoint + better observability for PDF generation).
+- Part of Phase 0 Production Readiness execution.
+
+
+**2026-05-27 (smoke:prod post-Vercel deploy):** Production smoke passed cleanly after frontend deploy of PDF improvements.
+- All checks green: /health, /capabilities, MATRIZ CSV, ML status, WA health, suggest-response (Claude).
+- Confirms the new default lightweight PDF templates and versioning work are live and healthy on production.
+
+
+**2026-05-27 (Backend Production Deploy in progress):** Fresh Cloud Run deploy triggered for PDF generator stabilization improvements (metrics endpoint + observability). This is part of Phase 0 Production Readiness execution. Frontend (Vercel) already live with the changes. Current prod revision before this deploy: panelin-calc-00411-fzf.
+
+
+**2026-05-28 (PDF Improvements — Production Live):** Both frontend and backend successfully updated.
+- New Cloud Run revision: panelin-calc-00412-fg4
+- New /api/pdf/metrics endpoint is live and returning data.
+- smoke:prod green.
+- All PDF generator improvements (metrics, better logging, versioning groundwork, lightweight default) are now in production.
+
+
+**2026-05-28 (Phase 0 — Disk + Branch Cleanup Wave 4 + Feature Freeze Start):** 
+- Local disk exhaustion (was ~251MiB, then 9.7Gi) resolved via aggressive safe cleanup (mac-rescue + project `mac:storage-audit` patterns): npm/brew caches, Cursor/Code history+workspace, Library/Caches, ~/.cache subs, logs, ql, tm snapshots. **+5.3Gi freed → 15Gi available** (92% usage). Git ops unblocked.
+- Safety backup tag: `backup/pre-cleanup-20260528-2249`.
+- Executed next archive wave (11 branches, data-driven via gh PRs + no open PRs): all 5 copilot/*, docs/kb-e2e-status-2026-05-08, feat/kb-multicanal-f5-admin-ui, feat/panelin-ia-policy-budget (merged), feat/tasks-module (old scaffolding), fix/csp-shopify-img (merged), worktree-env-drift-allowlist-2-vars (closed). All have `archive/` tags. Recoverable.
+- Remote branches now **27** (pre-Phase0 ~68 → 50 → 38 → **27**). Significant Phase 0 hygiene progress.
+- 10-working-day feature freeze on non-stability work now **active** (starting 2026-05-28, ~to 2026-06-11). Stability, PDF polish, branch hygiene, gates only. Documented in PRODUCTION-READINESS-PLAN, PHASE0-STATUS, housekeeping.
+- Updated: docs/team/housekeeping/cleanup-2026-05-27.md (appended Wave 4 + disk resolution), PHASE0-STATUS-2026-05-28.md, PROJECT-STATE.md.
+
+**2026-05-28 (IA / Agente — Estado real del esfuerzo de centralización y calidad de training):** 
+Análisis fresco del estado actual (código + PROJECT-STATE + git + docs):
+
+- `server/lib/aiProviderConfig.js` existe y es una buena fuente central (ALLOW lists, DEFAULT vs FAST models, resolveModel, getExtractorModel, estimateCostUSD, provider chain). Ya se usa bien en agentChat, aiCompletion y autoLearnExtractor.
+- Herramienta `recuperar_casos_similares` (RAG sobre cotizaciones históricas) existe en agentTools + está documentada en chatPrompts.
+- Logging de costo/tokens (`logAiCall` + `estimateCostUSD`) ya está en los caminos principales del agente.
+
+**Deuda real confirmada al inicio de la sesión:**
+- `server/routes/bmcDashboard.js` tenía **23 hardcodes** de modelos.
+- Observabilidad de costo incompleta en wolfboard + superAgent.
+- Prompt del tool RAG mejorable.
+- AI-INTEGRATION-CALCULADORA.md desactualizado (abril).
+
+**Progreso ejecutado (Opción A - 2026-05-28):**
+- Migración completa de `server/routes/bmcDashboard.js` a `aiProviderConfig.js`.
+- 23 hardcodes eliminados → 0.
+- Todas las rutas de IA (suggest, draft, extracción JSON) ahora usan `resolveModel(p, undefined, true)`.
+- 6+ usos de `resolveModel` en el archivo.
+- Syntax validada.
+
+**Estado post-cierre:**
+- Item "Migrar bmcDashboard" **COMPLETADO**.
+- Siguen pendientes (alta prioridad):
+  - Logging de costo en wolfboard, superAgent y bloques de extracción JSON de bmcDashboard.
+  - Enriquecer prompt + uso del tool `recuperar_casos_similares`.
+  - Actualizar docs/AI-INTEGRATION-CALCULADORA.md.
+
+Alineado con feature freeze activo.
+
+Próximos pasos recomendados:
+1. Agregar observabilidad de costo en wolfboard + superAgent.
+2. Mejorar integración del tool RAG.
+3. Registrar avances en Cambios recientes.
+
+**2026-05-27 (Phase 0 — Branch Cleanup Update):** Multiple waves of old cursor/claude/feat branches archived today as part of production hygiene. Wave 3 partially executed before local disk space exhaustion blocked further git operations. Remote branches reduced significantly. Blocker logged; production (PDF improvements) is fully live and verified.
+
+
+**2026-06 (Integración toggleable de mapeo visual + refs DWG en proyecto):** `hecho`. Añadida integración segura (nunca rompe estado actual) del material investigado (imágenes mapeadas a productos + perfiles plegados/grecas/forros/babetas de los DWGs TECHMET/BMC/Desarrollos + PDF de mapeo).
+- Toggle runtime `enhancedProductViz` (default OFF, persistido en local/sessionStorage; activable vía botón "PViz:OFF/ON" en header cuando devMode está activo — Ctrl/Cmd+Shift+D, o localStorage.setItem('bmc-enhanced-product-viz','1')).
+- En PanelFamilyShowcase (catálogo familias): cuando ON muestra "Real ref (investigación UY + DWG)" con imagen pública mapeada + nota.
+- En paso espesor del wizard: card no-intrusiva con ref real + link al PDF de mapeo.
+- En QuoteVisualVisor: bloque condicional con imágenes mapeadas por familia + notas DWG (perfiles para futura extrusión 3D/volumetría y secciones 2D).
+- Todo nuevo código/UI extra; renders existentes (texturas actuales, 3D ensamble, carruseles, PDF actual) intactos cuando OFF.
+- Archivo de mapeo visual: docs/team/visual/PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf (y .html) — 5 páginas con imágenes embebidas + tabla + cross DWG.
+- Futuro (detrás del mismo flag): mejorar RoofPanelRealisticScene con perfil real de grecas (de Desarrollos/plegados DWG) y 2D constructiva precisa en visor/PDF.
+- No se modificaron datos reales (constants, specs, assets actuales). Ver también el PDF de mapeo y reports de conocimiento para detalles de investigación.
+
+
+**2026-06-02 (Prod status check - enhanced product viz integration):** `verificado`. La integración del toggle `enhancedProductViz` (botón PViz en devMode, refs reales mapeadas de imágenes kingspan/bmcuruguay + notas de DWGs TECHMET/Desarrollos/BabetaLateral/FRONTALES en PanelFamilyShowcase, paso espesor y QuoteVisualVisor) **NO está en production**.
+- Cambios locales sin commitear: 126 inserciones en los 3 archivos de componentes + PROJECT-STATE + nuevos assets en docs/team/visual/.
+- Último commit en origin/main: a324626 (feat(tutorial)...) — anterior a este trabajo.
+- Deploy actual en Vercel (inspeccionado): dpl_5X6pb5UcnHQV6GMBdqVTx9GZH2bh, production, creado hace ~6h, desde el main de ese momento.
+- El flag es 100% runtime + default OFF + solo visible en devMode, por lo que pushear es seguro (usuarios normales no ven diferencia).
+- Comando recomendado para deploy:
+  git add src/components/PanelinCalculadoraV3_backup.jsx src/components/QuoteVisualVisor.jsx src/components/PanelFamilyShowcase.jsx docs/team/PROJECT-STATE.md docs/team/visual/
+  git commit -m "feat(viz): toggleable enhancedProductViz (real product refs + DWG plegados/forros) - default OFF, solo en devMode"
+  git push
+  # Vercel auto-deploy. Luego probar en prod activando devMode + PViz.
+
+
+**2026-06-02 (Session closeout — panel product viz research + toggleable integration):** Session wrapped with full handoff. Focus: deep "mas completa" research on real UY renders/DWGs (kingspan pages with "3 grecas", bmcuruguay photos, Bromyros PDFs, TECHMET forros/plegados + BMC frontales/babetas/desarrollos) matching exact calculator products (no data mods). Created mapping PDF/HTML + live interactive test HTML. Implemented safe `enhancedProductViz` runtime toggle (default OFF, localStorage, devMode-only "PViz" button in header; additive UI refs in PanelFamilyShowcase/espesor/QuoteVisualVisor with real images + DWG notes). Local run: http://localhost:5173/ (BMC_DISK_PRECHECK_SKIP=1 or after cache clean); standalone test HTML for quick demo. Uncommitted: the 3 component files + docs + visual/. Blockers: disk (partially cleaned), feature freeze. Handoff: docs/team/HANDOFF-2026-06-02-enhanced-product-viz.md (with literal resume prompt, git state, verification cmds). Ready to continue (e.g. 3D profile from DWGs behind flag, or commit/deploy).
+
+**2026-06-02 (Executed "recomend and run" — 2D CAD sections in visor):** Per handoff next + roadmap Fase 1/2, immediately implemented + verified: added CAD-style inline SVG "Sección 2D constructiva (inspirada TechDraw/DWG)" inside the enhancedProductViz block of QuoteVisualVisor (3-grecas trapezoid for ISOROOF families with ribs + hatch; engrafado polyline for ISODEC). Labels with AU dims + profile refs (TECHMET F*-MET, BMC Desarrollos). ESLint clean + gate:local (SKIP) passed relevant suites (0 new failures). Fully behind existing toggle. Updated handoff + recorded execution. Advances "add 2D CAD sections to visor" + prepares for 3D extrusion. Next: wire to other surfaces or start basic 3D profile.
+
+**2026-06-02 (MATRIZ prices verification complete — local full data + import CSV ready):** Local API (with key wrapper) + new mapping returns 89-line CSV with real sheet data (73 unique paths). Direct live read confirmed 73 items. 6 panels synced to constants + version bump. Reconcile: 88 rows/73 unique/11 known dups. Generated `.runtime/matriz-prices-for-import.csv` (73 items) for UI "Importar". Created `scripts/start-api-with-doppler-creds.sh` helper + saved current key to `.runtime/secrets/`. Prod deployed (latest rev + secret), smoke OK, endpoint 200. Sheet population needed in col D for full prod rows + specials. See `.runtime/MATRIZ-VERIFICATION-NEXT-STEPS.md` for prioritized actions.

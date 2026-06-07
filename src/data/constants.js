@@ -53,7 +53,7 @@ export const PANELS_TECHO = {
     label: "ISODEC EPS", sub: "Techos y Cubiertas", tipo: "techo",
     au: 1.12, lmin: 2.3, lmax: 14, sist: "varilla_tuerca", fam: "ISODEC",
     esp: {
-      100: { venta: 38.824, web: 47.264, costo: 33.76, ap: 5.5 },
+      100: { venta: 41.15, web: 50.1, costo: 35.79, ap: 5.5 },
       150: { venta: 43.677, web: 53.172, costo: 37.98, ap: 7.5 },
       200: { venta: 48.967, web: 59.612, costo: 42.58, ap: 9.1 },
       250: { venta: 53.82,  web: 65.52,  costo: 46.80, ap: 10.4 },
@@ -77,7 +77,7 @@ export const PANELS_TECHO = {
     label: "ISOROOF 3G", sub: "Techos Livianos", tipo: "techo",
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
-      30:  { venta: 41.0665, web: 49.994, costo: 35.71, ap: 2.8 },
+      30:  { venta: 43.53, web: 43.53, costo: 37.85, ap: 2.8 },
       40:  { venta: 43.148,  web: 52.528, costo: 37.52, ap: 3.0 },
       50:  { venta: 45.2295, web: 55.062, costo: 39.33, ap: 3.3 },
       80:  { venta: 53.176,  web: 64.736, costo: 46.24, ap: 4.0 },
@@ -91,7 +91,9 @@ export const PANELS_TECHO = {
     label: "ISOROOF FOIL 3G", sub: "Techos Livianos", tipo: "techo",
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
-      30: { venta: 33.2695, web: 40.502,  costo: 28.93,  ap: 2.8 },
+      30: { venta: 35.27, web: 35.27, costo: 30.67,  ap: 2.8 },
+      // 2026-05-12: ajustado web a 46.00 (= costo 32.857 × ×1.40, markup estándar de la familia ISOROOF).
+      // MATRIZ no trae venta/web para este SKU (solo costo 31.9); el commit 9ed59a5 había dejado web: 36.69, anómalo (web < venta).
       50: { venta: 37.7856, web: 46.00,   costo: 32.857, ap: 3.3 },
     },
     col: ["Gris", "Rojo"], colNotes: {}, colMax: {},
@@ -104,7 +106,7 @@ export const PANELS_TECHO = {
     label: "Isoroof Colonial", sub: "Teja exterior · interior blanco", tipo: "techo",
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF_COLONIAL",
     esp: {
-      40: { venta: 62.997, web: 76.692, costo: 54.78, ap: 3.0 },
+      40: { venta: 66.78, web: 66.78, costo: 58.07, ap: 3.0 },
     },
     col: ["Simil teja / Blanco"],
     colNotes: { _all: "Línea colonial Bromyros — no mezclar precios con FOIL 3G estándar." },
@@ -114,12 +116,14 @@ export const PANELS_TECHO = {
     label: "ISOROOF PLUS 3G", sub: "Techos Premium", tipo: "techo",
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
-      50: { venta: 51.4625, web: 62.65,  costo: 44.75, ap: 3.3 },
+      50: { venta: 54.55, web: 54.55, costo: 47.44, ap: 3.3 },
       80: { venta: 60.467,  web: 73.612, costo: 52.58, ap: 4.0 },
     },
     col: ["Blanco", "Gris", "Rojo"],
     colNotes: { _all: "PLUS: Mínimo 800 m²" },
-    colMinArea: {}, colMax: {},
+    // Restricción de proveedor: pedido mínimo 800 m² independiente del color.
+    // Si el proveedor diferencia por color en el futuro, actualizar aquí y en los tests.
+    colMinArea: { Blanco: 800, Gris: 800, Rojo: 800 }, colMax: {},
   },
 };
 
@@ -128,7 +132,7 @@ export const PANELS_PARED = {
     label: "ISOPANEL EPS", sub: "Paredes y Fachadas", tipo: "pared",
     au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOPANEL",
     esp: {
-      50:  { venta: 35.2935, web: 42.966, costo: 30.69, ap: null },
+      50:  { venta: 37.41, web: 45.54, costo: 32.53, ap: null },
       100: { venta: 38.824,  web: 47.264, costo: 33.76, ap: null },
       150: { venta: 43.677,  web: 53.172, costo: 37.98, ap: null },
       200: { venta: 48.967,  web: 59.612, costo: 42.58, ap: null },
@@ -154,17 +158,17 @@ export const PANELS_PARED = {
  * Pack/promo web = otra capa. Valores anclajes/remaches/tornillos exagonales: planillas usuario c/IVA ÷ 1,22.
  */
 export const FIJACIONES = {
-  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.945, web: 3.682, costo: 2.63, unidad: "unid" },
-  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.09, web: 0.084, costo: 0.06, unidad: "unid" },
-  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 0.705, web: 0.658, costo: 0.47, unidad: "unid" },
+  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.945, web: 4.3395, costo: 2.63, unidad: "unid" },
+  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.09, web: 0.099, costo: 0.06, unidad: "unid" },
+  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 0.705, web: 0.7755, costo: 0.47, unidad: "unid" },
   /** Lado inferior del anclaje pasante (contra el panel); metal/madera. Sincronizar precios con MATRIZ (SKU ARPLA38). */
-  arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.102, web: 0.0952, costo: 0.068, unidad: "unid" },
-  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.62, web: 1.512, costo: 1.08, unidad: "unid" },
-  arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.725, web: 1.61, costo: 1.15, unidad: "unid" },
-  taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 1.23, web: 1.148, costo: 0.82, unidad: "unid" },
-  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.51, web: 0.476, costo: 0.34, unidad: "unid" },
+  arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.102, web: 0.1122, costo: 0.068, unidad: "unid" },
+  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.62, web: 1.782, costo: 1.08, unidad: "unid" },
+  arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.725, web: 1.8975, costo: 1.15, unidad: "unid" },
+  taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 1.23, web: 1.353, costo: 0.82, unidad: "unid" },
+  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.51, web: 0.561, costo: 0.34, unidad: "unid" },
   /** Pared: kit anclaje a H° — alineado a fila “1 Anclaje de 100 mm” (planilla anclajes). */
-  anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 4.89, web: 5.96, costo: 0.90, unidad: "unid" },
+  anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 5.96, web: 8.00, costo: 1.10, unidad: "unid" },
   /** Perfilería techo y fijaciones Metálicas: T1 por tornillo (ex “×100” eliminado). */
   tornillo_t1:        { label: 'Tornillo T1 (perfilería)',  venta: 0.0492, web: 0.0574, costo: 0.0115, unidad: "unid" },
   tornillo_t2:        { label: 'Tornillo T2 (fachada)',     venta: 0.05, web: 0.05, costo: 0.035, unidad: "unid" },
@@ -187,11 +191,11 @@ export const FIJACIONES = {
   remache_pop:        { label: 'Remache POP 5/32 × 1/2',    venta: 0.0213, web: 0.0246, costo: 0.0139, unidad: "unid" },
   remache_pop_316:    { label: 'Remache POP 3/16 × 1/2',    venta: 0.3443, web: 0.4180, costo: 0.2295, unidad: "unid" },
   // ── Anclajes (catálogo planilla — principalmente Presupuesto libre; anclaje_h arriba para cálculo pared) ──
-  anclaje_isoroof_terracota: { label: 'Anclaje Isoroof TERRACOTAS (torn. punta mecha + arand. trap.)', venta: 1.31, web: 1.60, costo: 0.61, unidad: "unid" },
-  anclaje_isoroof_gris:      { label: 'Anclaje Isoroof GRISES (torn. punta mecha + arand. trap.)', venta: 1.31, web: 1.60, costo: 0.44, unidad: "unid" },
-  anclaje_chapa_bc18:        { label: 'Pac. anclaje chapas BC-18 (torn. mecha + arand. Vulca + caballete)', venta: 0.98, web: 1.20, costo: 0.37, unidad: "unid" },
-  anclaje_chapa_bc35:        { label: 'Pac. anclaje chapas BC-35 (torn. mecha + arand. Vulca + caballete)', venta: 0.98, web: 1.20, costo: 0.40, unidad: "unid" },
-  anclaje_kit_u_platea:     { label: 'Kin anclaje U-Platea (taco expans. + arand. + tuerca + varilla 1/8 6 mm)', venta: 0.89, web: 1.09, costo: 0.25, unidad: "unid" },
+  anclaje_isoroof_terracota: { label: 'Anclaje Isoroof TERRACOTAS (torn. punta mecha + arand. trap.)', venta: 1.60, web: 2.15, costo: 0.74, unidad: "unid" },
+  anclaje_isoroof_gris:      { label: 'Anclaje Isoroof GRISES (torn. punta mecha + arand. trap.)', venta: 1.60, web: 2.15, costo: 0.54, unidad: "unid" },
+  anclaje_chapa_bc18:        { label: 'Pac. anclaje chapas BC-18 (torn. mecha + arand. Vulca + caballete)', venta: 1.20, web: 1.61, costo: 0.45, unidad: "unid" },
+  anclaje_chapa_bc35:        { label: 'Pac. anclaje chapas BC-35 (torn. mecha + arand. Vulca + caballete)', venta: 1.20, web: 1.61, costo: 0.48, unidad: "unid" },
+  anclaje_kit_u_platea:     { label: 'Kit anclaje U-Platea (taco expans. + arand. + tuerca + varilla 1/8 6 mm)', venta: 1.09, web: 1.46, costo: 0.30, unidad: "unid" },
   // ── Tornillos hex./exagonales (presupuesto libre; c/IVA ÷1,22) ──
   tornillo_exagonal_12_34:     { label: 'Tornillo exagonal 12 × 3/4"', venta: 0.082, web: 0.098, costo: 0.041, unidad: "unid" },
   tornillo_exagonal_12_1_pm:    { label: 'Tornillo exagonal 12 × 1" punta mecha', venta: 0.207, web: 0.254, costo: 0.052, unidad: "unid" },
@@ -282,8 +286,8 @@ export const PERFIL_TECHO = {
   },
   gotero_lateral_camara: {
     ISOROOF: {
-      50: { sku: "GLDCAM50", venta: 22.32, web: 27.23, costo: 20.09, largo: 3.0 },
-      80: { sku: "GLDCAM80", venta: 25.11, web: 30.63, costo: 22.60, largo: 3.0 },
+      50: { sku: "GLDCAM50", venta: 23.68, web: 27.62, costo: 19.73, largo: 3.0 },
+      80: { sku: "GLDCAM80", venta: 26.64, web: 31.08, costo: 22.20, largo: 3.0 },
     },
     ISODEC:     { _all: { sku: "GLDCAM-DC", venta: 22.65, web: 27.63, costo: 20.39, largo: 3.0 } },
     ISODEC_PIR: { _all: { sku: "GLDCAM-DC", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
@@ -295,9 +299,9 @@ export const PERFIL_TECHO = {
       80: { sku: "GFSUP80", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
     },
     ISODEC_PIR: {
-      30: { sku: "GSDECAM30", venta: 31.66, web: 38.62, costo: 26.38, largo: 3.03 },
-      50: { sku: "GSDECAM50", venta: 27.32, web: 33.34, costo: 22.77, largo: 3.03 },
-      80: { sku: "GSDECAM80", venta: 29.94, web: 34.93, costo: 26.95, largo: 3.03 },
+      30: { sku: "GSDECAM30", venta: 31.66, web: 36.93, costo: 26.38, largo: 3.03 },
+      50: { sku: "GSDECAM50", venta: 28.99, web: 33.82, costo: 24.16, largo: 3.03 },
+      80: { sku: "GSDECAM80", venta: 31.78, web: 37.07, costo: 26.48, largo: 3.03 },
     },
   },
   babeta_adosar: {
@@ -351,11 +355,14 @@ export const PERFIL_PARED = {
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
       150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
       200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
+      // 250mm usa intencionalmente el mismo SKU y precio que 200mm (PU200MM).
+      // El proveedor (Bromyros) no diferencia perfil U entre 200 y 250mm en su lista de precios;
+      // ambos espesores usan el mismo perfil comercial. Verificar en MATRIZ si esto cambia.
       250: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
     },
     ISOWALL: {
       50:  { sku: "PU50MM", venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
-      80:  { sku: "PU50MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
+      80:  { sku: "PU80MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
     },
   },
@@ -384,7 +391,7 @@ export const PERFIL_PARED = {
 };
 
 export const SERVICIOS = {
-  flete: { label: "Flete con entrega en obra", venta: 240.00, web: 252.00, costo: 186.03, unidad: "servicio" },
+  flete: { label: "Flete con entrega en obra", venta: 240.00, web: 252.00, costo: 180.00, unidad: "servicio" },
 };
 
 // ── §4 UI CONFIGURATION ──────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ import {
   Col,
 } from "../lib/crmOperativoLayout.js";
 import { parseCrmRowAtoAK, extractMlQuestionId, isSi } from "../lib/crmRowParse.js";
+import { normalizeSurface, SURFACES } from "../lib/surface.js";
 import { writeCrmRowTaxonomy } from "../lib/crmTaxonomy.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
@@ -25,9 +26,33 @@ import { getCockpitTokenRequestBrowserOrigin } from "../lib/cockpitTokenOrigin.j
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
-import { addTrainingEntry } from "../lib/trainingKB.js";
+import { addTrainingEntry, findRelevantExamples, resolveTrainingAnswer, ensureGcsInit } from "../lib/trainingKB.js";
+import { mapOrigenToSurface } from "../lib/kbSurface.js";
+import { isAiGatewayEnabled, generateTextViaGateway, generateObjectViaGateway, DEFAULT_PROVIDER_ORDER } from "../lib/aiGatewayClient.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
 import { makeRequireEmailIngestAuth } from "../lib/emailIngestAuth.js";
+import {
+  estimateCostUSD,
+  resolveModel,
+  getExtractorModel,
+  FAST_DEFAULT_MODELS,
+} from "../lib/aiProviderConfig.js";
+
+/**
+ * Structured logging for AI calls (tokens + rough cost).
+ * Helps with training cost visibility and operational observability.
+ */
+function logAiCall(eventName, provider, model, usage = {}) {
+  const cost = estimateCostUSD(provider, model, usage);
+  console.log(JSON.stringify({
+    event: eventName,
+    provider,
+    model,
+    input_tokens: usage.input_tokens ?? usage.prompt_tokens ?? 0,
+    output_tokens: usage.output_tokens ?? usage.completion_tokens ?? 0,
+    estimated_cost_usd: cost,
+  }));
+}
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -50,6 +75,45 @@ const SHEETS_VENTAS_MERGE_TTL_MS = parseSheetsCacheTtlMs(
 
 /** CRM IA fallback order (suggest-response, parse-email, etc.): quality first, then cost/speed. */
 const CRM_AI_PROVIDER_RANKING = ["claude", "openai", "grok", "gemini"];
+
+/**
+ * /crm/suggest-response routing flag.
+ *
+ * When true (default), delegates to server/lib/suggestResponse.js → callAgentOnce,
+ * which gives the CRM endpoint the full Panelin brain (KB retrieval, channelRenderer
+ * overrides for goodAnswerML/goodAnswerWA, canonical pricing block).
+ *
+ * When false, falls back to the legacy inline provider chain with a 1-line system
+ * prompt. Kept as a runtime rollback knob — flip in Cloud Run env without redeploy.
+ */
+const SUGGEST_RESPONSE_USE_AGENT_CORE =
+  String(process.env.SUGGEST_RESPONSE_USE_AGENT_CORE || "true").toLowerCase() === "true";
+
+/**
+ * Zod schema for /crm/parse-email and /crm/ingest-email structured extraction.
+ * Used by the AI Gateway path via `generateObjectViaGateway`. The legacy SDK
+ * chain returns the same shape via JSON.parse; both code paths pass through
+ * the same downstream consumers (Sheets writer, etc.).
+ *
+ * All fields are strings (possibly empty) to match the legacy contract.
+ */
+async function getEmailExtractionSchema() {
+  const { z } = await import("zod");
+  return z.object({
+    cliente: z.string().default(""),
+    telefono: z.string().default(""),
+    ubicacion: z.string().default(""),
+    email_remitente: z.string().default(""),
+    resumen_pedido: z.string().default(""),
+    categoria: z.string().default(""),
+    urgencia: z.string().default(""),
+    tipo_cliente: z.string().default(""),
+    cotizacion_formal: z.string().default(""),
+    validar_stock: z.string().default(""),
+    probabilidad_cierre: z.string().default(""),
+    observaciones: z.string().default(""),
+  });
+}
 
 const sheetsReadCache = new Map();
 
@@ -695,7 +759,11 @@ async function fetchVentasRowsAllTabsBatched(sheetId, tabNames) {
         );
         merged.push(...filtered.map((r) => mapVentas2026ToCanonical(r, tabName)));
       }
-    } catch {
+    } catch (err) {
+      // Top-20 run 2026-05-11 (#F2): el batchGet falló — loguear antes del fallback por-tab.
+      // Sin esto la degradación de Sheets era silenciosa. Usamos console.error (pino-http stderr capture)
+      // porque esta función helper no es route handler y no tiene req.log a mano.
+      console.error(JSON.stringify({ level: "warn", event: "sheets_batchget_fallback", err: err?.message || String(err), chunkSize: chunk?.length }));
       merged.push(...(await fallbackPerTab(chunk)));
     }
   }
@@ -1185,11 +1253,12 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 
   const approvedTabs = Object.keys(MATRIZ_TAB_COLUMNS);
   if (approvedTabs.length === 0) {
-    return { csv: "\uFEFFpath,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab\n", count: 0 };
+    return { csv: "\uFEFFsku,path,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab\n", count: 0 };
   }
 
   const csvRows = [];
   const header = [
+    "sku",                    // ← clave estable para Productos Maestro (col D original de MATRIZ)
     "path",
     "descripcion",
     "categoria",
@@ -1269,8 +1338,9 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
         : "Otros";
       const unidad = path.includes("esp.") ? "m²" : "unid";
 
+      const skuForCsv = esc(skuRaw || "");
       csvRows.push(
-        [path, esc(descripcion), categoria, costo, venta, ventaInc, ventaWeb, ventaWebIvaInc, unidad, tabName].join(","),
+        [skuForCsv, path, esc(descripcion), categoria, costo, venta, ventaInc, ventaWeb, ventaWebIvaInc, unidad, tabName].join(","),
       );
       count++;
     }
@@ -1421,6 +1491,9 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
     skippedPaths,
   };
 }
+
+// Export the core writers so Productos Maestro (and future surfaces) can reuse them
+export { pushMatrizPricingOverrides, handleUpdateStock };
 
 // ─── Router ───────────────────────────────────────────────────────────────
 
@@ -1652,6 +1725,146 @@ export default function createBmcDashboardRouter(config) {
       sheetsUnavailable(res, e.message);
     }
   });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Productos Maestro — Catálogo unificado precio + stock
+  // Full implementation: read + links + real write-back (reuses existing MATRIZ/Stock writers)
+  // ────────────────────────────────────────────────────────────────────────────
+  (async () => {
+    const pm = await import("../lib/productosMaestro.js").then(m => m.default || m);
+
+    router.get("/productos-maestro", async (_req, res) => {
+      try {
+        const data = await pm.getProductosMaestro({ includeUnmatched: true });
+        res.json(data);
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    router.get("/productos-maestro/reconcile", async (_req, res) => {
+      try {
+        const report = await pm.reconcileProductosMaestro();
+        res.json(report);
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    router.get("/productos-maestro/links", (_req, res) => {
+      try {
+        const links = pm.loadLinks();
+        res.json({ ok: true, links, count: Object.keys(links).length });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    router.put("/productos-maestro/links", async (req, res) => {
+      try {
+        const body = req.body || {};
+        const incoming = body.links || body;
+        if (typeof incoming !== 'object') {
+          return res.status(400).json({ ok: false, error: 'links must be an object' });
+        }
+        const saved = pm.saveLinks(incoming);
+        res.json({ ok: true, ...saved });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    /**
+     * Real implementation of push from Productos Maestro UI.
+     * Converts maestro items → calls the canonical writers:
+     *   - pushMatrizPricingOverrides for price changes (via sku → path)
+     *   - handleUpdateStock for stock changes
+     */
+    router.post("/productos-maestro/push", requireCrmCockpitAuth, async (req, res) => {
+      try {
+        const { items = [], dryRun = true } = req.body || {};
+
+        const matrizId = config.bmcMatrizSheetId;
+        const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+        const stockId = config.bmcStockSheetId;
+
+        // Prepare changes in maestro format
+        const prepared = pm.preparePushPayload(items, { dryRun });
+
+        if (dryRun) {
+          return res.json({
+            ok: true,
+            dryRun: true,
+            prepared,
+            message: "Dry run — no se escribió nada. Cambia dryRun=false para aplicar cambios reales.",
+          });
+        }
+
+        // Real write path
+        if (!matrizId || !credsPath) {
+          return res.status(503).json({ ok: false, error: "MATRIZ no configurada para escritura" });
+        }
+
+        const results = {
+          prices: null,
+          stock: [],
+        };
+
+        // 1. Price changes → reuse the existing MATRIZ override engine
+        //    We convert {sku, costo, venta, web...} into path-based overrides
+        const priceOverrides = {};
+        const { MATRIZ_SKU_TO_PATH } = await import("../../src/data/matrizPreciosMapping.js");
+
+        for (const change of prepared.priceChanges || []) {
+          const path = MATRIZ_SKU_TO_PATH[change.sku] || Object.keys(MATRIZ_SKU_TO_PATH).find(k => MATRIZ_SKU_TO_PATH[k] === change.sku);
+          if (!path) continue;
+
+          if (change.costo != null) priceOverrides[`${path}.costo`] = change.costo;
+          if (change.venta != null || change.ventaLocal != null) {
+            priceOverrides[`${path}.venta`] = change.venta ?? change.ventaLocal;
+          }
+          if (change.web != null || change.ventaWeb != null) {
+            priceOverrides[`${path}.web`] = change.web ?? change.ventaWeb;
+          }
+        }
+
+        if (Object.keys(priceOverrides).length > 0) {
+          results.prices = await pushMatrizPricingOverrides(matrizId, priceOverrides, credsPath, false);
+        }
+
+        // 2. Stock changes → reuse the existing stock updater
+        for (const s of prepared.stockChanges || []) {
+          if (!s.codigo) continue;
+          try {
+            const stockBody = {};
+            if (s.actual != null) stockBody.STOCK = s.actual;
+            if (s.pedidoPendiente != null) stockBody.PEDIDO_PENDIENTE = s.pedidoPendiente;
+
+            const r = await handleUpdateStock(stockId, sheetId, s.codigo, stockBody);
+            results.stock.push({ codigo: s.codigo, ok: true, result: r });
+          } catch (err) {
+            results.stock.push({ codigo: s.codigo, ok: false, error: err.message });
+          }
+        }
+
+        // Audit note: the individual writers already call appendAuditLog for stock.
+        // For prices we can add a maestro-specific audit later if needed.
+
+        res.json({
+          ok: true,
+          dryRun: false,
+          results,
+          summary: {
+            pricesUpdated: results.prices?.updated || 0,
+            stockTouched: results.stock.filter(x => x.ok).length,
+            stockErrors: results.stock.filter(x => !x.ok).length,
+          },
+        });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+  })();
 
   router.get("/kpi-financiero", async (_req, res) => {
     if (!checkPagosAvailable(config)) return noConfig(res);
@@ -2089,13 +2302,6 @@ export default function createBmcDashboardRouter(config) {
     const { consulta, origen, cliente, producto, observaciones, provider, itemId } = req.body || {};
     if (!consulta) return res.status(400).json({ ok: false, error: "Missing consulta" });
 
-    // Ranking: 1-Claude (best instruction following + rioplatense)
-    //          2-OpenAI gpt-4o-mini (reliable, good Spanish)
-    //          3-Grok grok-3-mini  (proven working, fast)
-    //          4-Gemini 2.0-flash  (fallback)
-    const RANKING = CRM_AI_PROVIDER_RANKING;
-    const chain = provider ? [provider] : RANKING;
-
     const apiKeys = {
       claude: config.anthropicApiKey,
       openai: config.openaiApiKey,
@@ -2113,7 +2319,7 @@ export default function createBmcDashboardRouter(config) {
       });
     }
 
-    // Look up previous Q&A from the same client on the same product
+    // Look up previous Q&A from the same client on the same product.
     let historyContext = "";
     if (cliente && itemId && checkSheetsAvailable(config)) {
       try {
@@ -2140,18 +2346,105 @@ export default function createBmcDashboardRouter(config) {
       } catch (_) { /* non-fatal — continue without history */ }
     }
 
+    const observacionesCombined = [observaciones, historyContext].filter(Boolean).join("\n\n");
+
+    if (SUGGEST_RESPONSE_USE_AGENT_CORE) {
+      try {
+        const { generateAiResponse } = await import("../lib/suggestResponse.js");
+        const result = await generateAiResponse({
+          consulta,
+          origen,
+          cliente,
+          producto,
+          observaciones: observacionesCombined,
+          provider,
+          apiKeys,
+        });
+        return res.json({
+          ok: true,
+          respuesta: result.text,
+          provider: result.provider,
+          model: result.model || null,
+        });
+      } catch (err) {
+        return res.status(503).json({
+          ok: false,
+          error: "All providers failed",
+          details: err.errors || [err.message],
+        });
+      }
+    }
+
+    // Legacy path: 1-line system prompt + manual provider chain. Kept for rollback
+    // (toggle SUGGEST_RESPONSE_USE_AGENT_CORE=false in Cloud Run env). The flag exists
+    // because the canonical Panelin prompt produces longer / different-toned answers
+    // than the legacy 1-line prompt; if a regression surfaces we can revert without
+    // redeploy.
+    const RANKING = CRM_AI_PROVIDER_RANKING;
+    const chain = provider ? [provider] : RANKING;
+
     const systemPrompt = `Sos el asistente de ventas de BMC Uruguay (METALOG SAS), empresa que vende paneles de aislamiento térmico: Isodec EPS/PIR (techos), Isopanel EPS/PIR (paredes/fachadas), Isoroof 3G/Plus/Foil. Precios en USD/m² IVA incluido. Cuando no tenés el precio exacto, pedí medidas y uso para cotizar. Respondés en español rioplatense, breve y profesional. Cerrás siempre con "Saludos BMC URUGUAY!"`;
+
+    // Multi-canal KB injection (Brief §6.5):
+    // - resolve surface from CRM `origen` (ML/WA/Email/CRM) → KB_SURFACES
+    // - retrieve top-3 KB matches by overlap scoring
+    // - drop weak matches (matchScore < 2) so ML/WA replies don't pick up
+    //   noise when the user query has no real overlap with the KB.
+    // The resolved per-surface text (ML override max 350 chars, WA 700, etc.)
+    // is prefixed to userMsg as a compact policies block.
+    let kbBlock = "";
+    try {
+      await ensureGcsInit();
+      const surface = mapOrigenToSurface(origen);
+      const matches = findRelevantExamples(consulta, { limit: 3 })
+        .filter((m) => (m.matchScore ?? 0) >= 2);
+      if (matches.length > 0) {
+        const items = matches
+          .map((m, i) => {
+            const text = resolveTrainingAnswer(m, surface);
+            return text ? `[${i + 1}] ${text}` : null;
+          })
+          .filter(Boolean);
+        if (items.length > 0) {
+          kbBlock = `Políticas / FAQs relevantes (usar como guía):\n${items.join("\n")}`;
+        }
+      }
+    } catch (_) { /* non-fatal — continue without KB block */ }
 
     const userMsg = [
       `Canal: ${origen || "desconocido"}`,
       `Cliente: ${cliente || "desconocido"}`,
       producto      ? `Producto/publicación: ${producto}`  : null,
-      observaciones ? `Observaciones: ${observaciones}`    : null,
-      historyContext || null,
+      observacionesCombined ? `Observaciones: ${observacionesCombined}` : null,
+      kbBlock || null,
       `Consulta: ${consulta}`,
     ].filter(Boolean).join("\n");
 
     const errors = [];
+
+    // F3.2 — Vercel AI Gateway path. When enabled, route through the unified
+    // gateway endpoint instead of the per-SDK chain below. Provider fallback
+    // is delegated to gateway (`providerOptions.gateway.order`). Brief §5.6.
+    if (isAiGatewayEnabled()) {
+      try {
+        // If the caller forced a provider, keep that as the only option;
+        // otherwise use the default ranking that matches the legacy chain.
+        const providerOrder = provider
+          ? [providerToGatewaySlug(provider)].filter(Boolean)
+          : DEFAULT_PROVIDER_ORDER;
+        const { text, provider: usedProvider } = await generateTextViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          maxTokens: 300,
+          providerOrder: providerOrder.length ? providerOrder : DEFAULT_PROVIDER_ORDER,
+        });
+        if (text) return res.json({ ok: true, respuesta: text, provider: usedProvider });
+        errors.push("gateway: empty response");
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+      return res.status(503).json({ ok: false, error: "AI Gateway failed", details: errors });
+    }
 
     for (const p of chain) {
       const apiKey = apiKeys[p];
@@ -2160,22 +2453,26 @@ export default function createBmcDashboardRouter(config) {
       try {
         let respuesta = "";
 
+        // Usar modelos centralizados (rápidos/baratos para herramientas CRM)
+        const model = resolveModel(p, undefined, true);
+
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001",
+            model,
             max_tokens: 300,
             system: systemPrompt,
             messages: [{ role: "user", content: userMsg }],
           });
           respuesta = msg.content[0]?.text || "";
+          logAiCall("ai_suggest_response", p, model, msg.usage || {});
 
         } else if (p === "openai") {
           const { default: OpenAI } = await import("openai");
           const openai = new OpenAI({ apiKey });
           const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model,
             max_tokens: 300,
             messages: [
               { role: "system", content: systemPrompt },
@@ -2183,12 +2480,13 @@ export default function createBmcDashboardRouter(config) {
             ],
           });
           respuesta = completion.choices[0]?.message?.content || "";
+          logAiCall("ai_suggest_response", p, model, completion.usage || {});
 
         } else if (p === "grok") {
           const { default: OpenAI } = await import("openai");
           const grok = new OpenAI({ apiKey, baseURL: "https://api.x.ai/v1" });
           const completion = await grok.chat.completions.create({
-            model: "grok-3-mini",
+            model,
             max_tokens: 300,
             messages: [
               { role: "system", content: systemPrompt },
@@ -2196,13 +2494,15 @@ export default function createBmcDashboardRouter(config) {
             ],
           });
           respuesta = completion.choices[0]?.message?.content || "";
+          logAiCall("ai_suggest_response", p, model, completion.usage || {});
 
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}`);
           respuesta = result.response.text() || "";
+          logAiCall("ai_suggest_response", p, model, {});
         }
 
         if (respuesta) return res.json({ ok: true, respuesta, provider: p });
@@ -2250,16 +2550,38 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 }`;
 
     const errors = [];
+
+    // F3.2 — AI Gateway path with structured output (Zod schema).
+    if (isAiGatewayEnabled()) {
+      try {
+        const schema = await getEmailExtractionSchema();
+        const { object, provider: usedProvider } = await generateObjectViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          schema,
+          maxTokens: 500,
+        });
+        if (object) return res.json({ ok: true, data: object, provider: usedProvider });
+        errors.push("gateway: empty object");
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+      return res.status(503).json({ ok: false, error: "AI Gateway failed", details: errors });
+    }
+
     for (const p of RANKING) {
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
       try {
+        // Modelos centralizados (rápidos para extracción estructurada)
+        const model = resolveModel(p, undefined, true);
+
         let raw = "";
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001", max_tokens: 500, system: systemPrompt,
+            model, max_tokens: 500, system: systemPrompt,
             messages: [{ role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` }],
           });
           raw = msg.content[0]?.text || "";
@@ -2267,7 +2589,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           const { default: OpenAI } = await import("openai");
           const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
           const completion = await client.chat.completions.create({
-            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini", max_tokens: 500,
+            model, max_tokens: 500,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` },
@@ -2277,8 +2599,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
           raw = result.response.text() || "";
         }
         const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -2322,16 +2644,42 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     let parsed = null;
     let provider = null;
     const errors = [];
-    for (const p of RANKING) {
+
+    // F3.2 — AI Gateway path with structured output (Zod schema).
+    // On success we continue to the Sheets writer below.
+    if (isAiGatewayEnabled()) {
+      try {
+        const schema = await getEmailExtractionSchema();
+        const result = await generateObjectViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          schema,
+          maxTokens: 500,
+        });
+        if (result?.object) {
+          parsed = result.object;
+          provider = result.provider;
+        } else {
+          errors.push("gateway: empty object");
+        }
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+    }
+
+    if (!parsed) for (const p of RANKING) {
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
       try {
+        // Modelos centralizados (rápidos para extracción estructurada)
+        const model = resolveModel(p, undefined, true);
+
         let raw = "";
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001", max_tokens: 500, system: systemPrompt,
+            model, max_tokens: 500, system: systemPrompt,
             messages: [{ role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` }],
           });
           raw = msg.content[0]?.text || "";
@@ -2339,7 +2687,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           const { default: OpenAI } = await import("openai");
           const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
           const completion = await client.chat.completions.create({
-            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini", max_tokens: 500,
+            model, max_tokens: 500,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` },
@@ -2349,8 +2697,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
           raw = result.response.text() || "";
         }
         const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -2465,12 +2813,15 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
       try {
+        // Modelos centralizados (rápidos para extracción estructurada)
+        const model = resolveModel(p, undefined, true);
+
         let raw = "";
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001", max_tokens: 500, system: systemPrompt,
+            model, max_tokens: 500, system: systemPrompt,
             messages: [{ role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` }],
           });
           raw = msg.content[0]?.text || "";
@@ -2478,7 +2829,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           const { default: OpenAI } = await import("openai");
           const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
           const completion = await client.chat.completions.create({
-            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini", max_tokens: 500,
+            model, max_tokens: 500,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` },
@@ -2488,8 +2839,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
           raw = result.response.text() || "";
         }
         const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -2624,22 +2975,26 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         continue;
       }
       try {
+        // Usar modelos centralizados (rápidos para herramientas de CRM)
+        const model = resolveModel(p, undefined, true);
+
         let raw = "";
         if (p === "claude") {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001",
+            model,
             max_tokens: 600,
             system: systemPrompt,
             messages: [{ role: "user", content: userMsg }],
           });
           raw = msg.content[0]?.text || "";
+          logAiCall("ai_draft_outbound", p, model, msg.usage || {});
         } else if (p === "openai" || p === "grok") {
           const { default: OpenAI } = await import("openai");
           const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
           const completion = await client.chat.completions.create({
-            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini",
+            model,
             max_tokens: 600,
             messages: [
               { role: "system", content: systemPrompt },
@@ -2647,12 +3002,14 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
             ],
           });
           raw = completion.choices[0]?.message?.content || "";
+          logAiCall("ai_draft_outbound", p, model, completion.usage || {});
         } else if (p === "gemini") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genai = new GoogleGenerativeAI(apiKey);
-          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
-          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}`);
+          const geminiModel = genai.getGenerativeModel({ model });
+          const result = await geminiModel.generateContent(`${systemPrompt}\n\n${userMsg}`);
           raw = result.response.text() || "";
+          logAiCall("ai_draft_outbound", p, model, {});
         }
         const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
         const parsed = JSON.parse(cleaned);
@@ -3025,16 +3382,23 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     return Math.floor(row);
   }
 
-  /** Clasifica fila CRM por canal (ML, WA, Meta) para cola unificada. */
+  /**
+   * Clasifica fila CRM por canal (ML, WA, Meta) para cola unificada.
+   * Delegates to normalizeSurface but preserves the legacy string output
+   * ("mercadolibre" | "whatsapp" | ...) consumed by /unified-queue.
+   */
   function classifyCrmChannel(parsed) {
-    const origen = String(parsed?.origen || "");
-    const obs = String(parsed?.observaciones || "");
-    const qid = extractMlQuestionId(obs);
-    if (qid || /ML/i.test(origen) || /\bQ:\d+/i.test(obs)) return "mercadolibre";
-    if (/WA|WhatsApp/i.test(origen)) return "whatsapp";
-    if (/instagram|(^|\s)ig(\s|$)|IG-/i.test(origen)) return "instagram";
-    if (/facebook|messenger|\bfb\b/i.test(origen)) return "facebook";
-    return null;
+    const surface = normalizeSurface({
+      origen: parsed?.origen,
+      observaciones: parsed?.observaciones,
+    });
+    switch (surface) {
+      case SURFACES.MERCADO_LIBRE: return "mercadolibre";
+      case SURFACES.WHATSAPP:      return "whatsapp";
+      case SURFACES.INSTAGRAM:     return "instagram";
+      case SURFACES.FACEBOOK:      return "facebook";
+      default:                     return null;
+    }
   }
 
   /**

@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { useBmcAuth } from "../hooks/useBmcAuth.js";
 
 const bar = {
   display: "flex",
@@ -28,6 +29,8 @@ const btn = (active) => ({
 
 export default function BmcModuleNav() {
   const { pathname } = useLocation();
+  const auth = useBmcAuth();
+  const isAdmin = auth?.role === "admin" || auth?.role === "superadmin";
   const hubActive =
     pathname === "/hub" ||
     pathname.startsWith("/hub/ml") ||
@@ -35,8 +38,12 @@ export default function BmcModuleNav() {
     pathname.startsWith("/hub/canales") ||
     pathname.startsWith("/hub/admin") ||
     pathname.startsWith("/hub/agent-admin");
+  const marketingActive = pathname.startsWith("/hub/marketing");
   const logiActive = pathname.endsWith("/logistica");
   const calcActive = pathname === "/" || pathname.endsWith("/calculadora");
+  const traktimeActive = pathname.startsWith("/hub/traktime");
+  const tareasActive = pathname.startsWith("/hub/tareas");
+  const clientesActive = pathname.startsWith("/hub/clientes");
 
   return (
     <nav style={bar} aria-label="Módulos BMC">
@@ -52,6 +59,28 @@ export default function BmcModuleNav() {
       <Link to="/logistica" style={btn(logiActive)}>
         Logística
       </Link>
+      <Link to="/hub/traktime" style={btn(traktimeActive)}>
+        TraKtiMe
+      </Link>
+      <Link to="/hub/tareas" style={btn(tareasActive)}>
+        Tareas
+      </Link>
+      <Link to="/hub/clientes" style={btn(clientesActive)}>
+        Clientes
+      </Link>
+      <Link to="/hub/marketing" style={btn(marketingActive)}>
+        Market Intel
+      </Link>
+      {isAdmin ? (
+        <Link to="/hub/admin/users" style={btn(pathname.startsWith("/hub/admin/users"))}>
+          Usuarios
+        </Link>
+      ) : null}
+      {isAdmin ? (
+        <Link to="/hub/admin/analytics" style={btn(pathname.startsWith("/hub/admin/analytics"))}>
+          Analytics
+        </Link>
+      ) : null}
     </nav>
   );
 }

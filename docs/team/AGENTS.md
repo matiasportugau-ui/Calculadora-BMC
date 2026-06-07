@@ -272,3 +272,33 @@ Ver [../google-sheets-module/README.md](../google-sheets-module/README.md) (mapp
 - [knowledge/DocsOrganizer.md](./knowledge/DocsOrganizer.md)
 - [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) §2 y §4
 - [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md)
+
+---
+
+## Presupuestación Orchestrator (Grok 4.3 Skill)
+
+**Skill:** `~/.grok/skills/presupuestacion-orchestrator/SKILL.md`
+
+**Rol:** Conductor pesado (Heavy Reasoning) para la automatización completa del flujo de presupuestación BMC (input → pricing/BOM → PDF/WA → Sheets/ERP sync → approval). Dueño del estado del flujo end-to-end, guardrails de costo/calidad y delegación a sub-agentes especialistas. Reutiliza al máximo primitives existentes (`aiProviderConfig`, hub-tasks, motor de cálculo, etc.).
+
+**Cuándo usar:**
+- Diseñar o evolucionar flujos autónomos de presupuestación
+- Crear o refinar el orquestador 16-agent (o dinámico) para el pipeline completo
+- Generar roadmaps de implementación respetando feature freeze
+- Ejecutar corridas de planificación o scaffolding del orquestador
+
+**Principios clave:**
+- Conductor + Specialists (no equipo plano)
+- Reuso máximo (nunca reinventar aiProviderConfig, calc, PDF, etc.)
+- Handoffs explícitos basados en artefactos
+- Costo y calidad como ciudadanos de primera clase
+- Respeto estricto al feature freeze (planificación y scaffolding ahora; wiring pesado post-freeze)
+
+**Referencias:**
+- [SKILL.md](../../.grok/skills/presupuestacion-orchestrator/SKILL.md)
+- [PRESUPUESTACION-ORCHESTRATOR-ARCHITECTURE.md](./PRESUPUESTACION-ORCHESTRATOR-ARCHITECTURE.md)
+- [PRESUPUESTACION-ORCHESTRATOR-IMPLEMENTATION-ROADMAP.md](./PRESUPUESTACION-ORCHESTRATOR-IMPLEMENTATION-ROADMAP.md)
+- `goal-prompt-presupuestacion-orchestrator-100.md`
+- Base plan: `plan_cierre_automatizacion_100_quality.md`
+
+---

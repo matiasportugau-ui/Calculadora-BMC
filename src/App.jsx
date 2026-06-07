@@ -1,7 +1,7 @@
 // Versión completa: Google Drive, historial de presupuestos, responsive (v3.0 modular)
 // Canonical Calculadora component: PanelinCalculadoraV3_backup (see docs/bmc-dashboard-modernization/IA.md)
 import { Suspense, lazy, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { getRouterBasename } from "./utils/routerBasename.js";
 import LegacyAppQueryRedirect from "./components/LegacyAppQueryRedirect.jsx";
 // BmcModuleNav stays eager — it renders inside <Shell> on every non-calc route,
@@ -10,8 +10,25 @@ import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
 import { BmcAuthProvider } from "./contexts/BmcAuthProvider.jsx";
 import AuthGateModal from "./components/auth/AuthGateModal.jsx";
-import RequireGrant from "./components/auth/RequireGrant.jsx";
 import AuthHeader from "./components/auth/AuthHeader.jsx";
+import RequireGrant from "./components/auth/RequireGrant.jsx";
+import ActivityTracker from "./components/activity/ActivityTracker.jsx";
+import RouteErrorBoundary from "./components/RouteErrorBoundary.jsx";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Tutorial interactivo (nuevo sistema) — gated for safety
+const TUTORIAL_ENABLED = import.meta.env.VITE_FEATURE_TUTORIAL_MODE !== "false";
+
+import { TutorialProvider } from "./components/tutorial/TutorialProvider.jsx";
+import TutorialOverlay from "./components/tutorial/TutorialOverlay.jsx";
+import FloatingTutorialButton from "./components/tutorial/FloatingTutorialButton.jsx";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },
+    mutations: { retry: 0 },
+  },
+});
 
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
@@ -22,14 +39,22 @@ const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSand
 const BidPresentation = lazy(() => import("./components/BidPresentation.jsx"));
 const CalcLogicInspector = lazy(() => import("./components/CalcLogicInspector.jsx"));
 const FichasPreview = lazy(() => import("./components/FichasPreview.jsx"));
+const PdfPreview = lazy(() => import("./components/PdfPreview.jsx"));
 const BmcWolfboardHub = lazy(() => import("./components/BmcWolfboardHub.jsx"));
 const BmcMlOperativoModule = lazy(() => import("./components/BmcMlOperativoModule.jsx"));
 const BmcWaModuleWithTabs = lazy(() => import("./components/BmcWaModuleWithTabs.jsx"));
 const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUnificadosModule.jsx"));
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
+const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
 const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
+const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
+const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
+const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
+const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx"));
+const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
+const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
 
 const suspenseFallback = (
   <div
@@ -71,6 +96,7 @@ function Shell({ children }) {
       </div>
       {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
+      {TUTORIAL_ENABLED && <FloatingTutorialButton />}
     </div>
   );
 }
@@ -79,6 +105,49 @@ function sendVitals(metric) {
   if (navigator.sendBeacon) {
     navigator.sendBeacon("/api/vitals", JSON.stringify({ name: metric.name, value: metric.value, rating: metric.rating, id: metric.id }));
   }
+}
+
+// `?legacy=1` bypasses the redirect so operators can still reach the old
+// module while the flag is on (transitional escape hatch wired from the
+// new module's topbar / palette).
+function AdminRoute() {
+  const [params] = useSearchParams();
+  const flagOn = import.meta.env.VITE_FEATURE_ADMIN_COT_V2 === "true";
+  if (flagOn && params.get("legacy") !== "1") {
+    return <Navigate to="/hub/cotizaciones" replace />;
+  }
+  return (
+    <Shell>
+      <Suspense fallback={suspenseFallback}>
+        <BmcAdminCotizacionesModule />
+      </Suspense>
+    </Shell>
+  );
+}
+
+function CotizacionesRoute() {
+  if (import.meta.env.VITE_FEATURE_ADMIN_COT_V2 !== "true") {
+    return <Navigate to="/hub/admin" replace />;
+  }
+  return (
+    <Shell>
+      <Suspense fallback={suspenseFallback}>
+        <AdminCotizacionesModule />
+      </Suspense>
+    </Shell>
+  );
+}
+
+// Lives inside <BrowserRouter> so it can read the active pathname and feed it
+// to the boundary as a reset key: a render error in one module shows a
+// recoverable fallback, and navigating elsewhere clears it without a reload.
+function RoutedErrorBoundary({ children }) {
+  const location = useLocation();
+  return (
+    <RouteErrorBoundary resetKey={location.pathname}>
+      {children}
+    </RouteErrorBoundary>
+  );
 }
 
 export default function App() {
@@ -91,19 +160,35 @@ export default function App() {
   }, []);
 
   return (
+    <QueryClientProvider client={queryClient}>
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <BmcAuthProvider>
+      <TutorialProvider>
+      <ActivityTracker />
       <LegacyAppQueryRedirect />
       <AuthGateModal />
+      <TutorialOverlay />
+      <RoutedErrorBoundary>
       <Routes>
-        <Route path="/hub" element={<Suspense fallback={suspenseFallback}><BmcWolfboardHub /></Suspense>} />
+        <Route
+          path="/hub"
+          element={
+            <RequireGrant>
+              <Suspense fallback={suspenseFallback}>
+                <BmcWolfboardHub />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
         <Route
           path="/hub/ml"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcMlOperativoModule />
-              </Suspense>
+              <RequireGrant module="ml" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <BmcMlOperativoModule />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
@@ -123,27 +208,130 @@ export default function App() {
           path="/hub/canales"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcCanalesUnificadosModule />
-              </Suspense>
+              <RequireGrant module="canales" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <BmcCanalesUnificadosModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/tareas"
+          element={
+            <Shell>
+              <RequireGrant module="tareas" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <TasksModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/clientes"
+          element={
+            <Shell>
+              <RequireGrant module="clientes" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <ClientesMVP />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
         <Route
           path="/hub/admin"
           element={
+            <RequireGrant role="admin">
+              <AdminRoute />
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/admin/users"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <UserAdminModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/admin/analytics"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <AnalyticsModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/cotizaciones"
+          element={
+            <RequireGrant role="admin">
+              <CotizacionesRoute />
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/plan-import"
+          element={
+            <RequireGrant module="plan-import" minLevel="read">
+              <Suspense fallback={suspenseFallback}>
+                <BmcPlanImportModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/mi-espacio"
+          element={
             <Shell>
-              <RequireGrant role="admin">
+              <RequireGrant>
                 <Suspense fallback={suspenseFallback}>
-                  <BmcAdminCotizacionesModule />
+                  <MySpacePage />
                 </Suspense>
               </RequireGrant>
             </Shell>
           }
         />
-        <Route path="/hub/plan-import" element={<Suspense fallback={suspenseFallback}><BmcPlanImportModule /></Suspense>} />
-        <Route path="/mi-espacio" element={<Shell><Suspense fallback={suspenseFallback}><MySpacePage /></Suspense></Shell>} />
-        <Route path="/hub/agent-admin" element={<Suspense fallback={suspenseFallback}><AgentAdminModule /></Suspense>} />
+        <Route
+          path="/hub/traktime/*"
+          element={
+            <Shell>
+              <RequireGrant>
+                <Suspense fallback={suspenseFallback}>
+                  <TraKtiMeModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/agent-admin"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <AgentAdminModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/marketing"
+          element={
+            <Shell>
+              <RequireGrant role="admin">
+                <Suspense fallback={suspenseFallback}>
+                  <MarketingHubModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
         <Route
           path="/"
           element={
@@ -222,10 +410,21 @@ export default function App() {
             </Suspense>
           }
         />
+        <Route
+          path="/preview/pdf"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <PdfPreview />
+            </Suspense>
+          }
+        />
         <Route path="/wa" element={<Navigate to="/hub/wa" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </RoutedErrorBoundary>
+      </TutorialProvider>
       </BmcAuthProvider>
     </BrowserRouter>
+    </QueryClientProvider>
   );
 }

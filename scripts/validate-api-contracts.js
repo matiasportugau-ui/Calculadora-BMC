@@ -159,12 +159,7 @@ async function main() {
       check: checkCapabilities,
       allow503: false,
     },
-    {
-      name: "GET /api/followups",
-      path: "/api/followups",
-      check: checkFollowups,
-      allow503: false,
-    },
+    // /api/followups movido al bloque autenticado abajo (top-30 run 2026-05-12 #A10).
     {
       name: "GET /calc/gpt-entry-point",
       path: "/calc/gpt-entry-point",
@@ -261,6 +256,35 @@ async function main() {
     }
   } else {
     console.log("  ⚠️  GET /api/email/panelsim-summary — skip (set API_AUTH_TOKEN for contract check)");
+    passed++;
+  }
+
+  // Top-30 run 2026-05-12 (#A10): /api/followups GET ahora requireAuth — bloque autenticado.
+  if (apiToken) {
+    const name = "GET /api/followups (auth)";
+    try {
+      const { status, data } = await fetchJson("/api/followups", {
+        headers: { Authorization: `Bearer ${apiToken}` },
+      });
+      if (status !== 200) {
+        console.log(`  ❌ ${name} — HTTP ${status}`);
+        failed++;
+      } else {
+        const result = checkFollowups(data);
+        if (result.ok) {
+          console.log(`  ✅ ${name}`);
+          passed++;
+        } else {
+          console.log(`  ❌ ${name} — ${result.msg}`);
+          failed++;
+        }
+      }
+    } catch (err) {
+      console.log(`  ❌ ${name} — ${err.message}`);
+      failed++;
+    }
+  } else {
+    console.log("  ⚠️  GET /api/followups — skip (set API_AUTH_TOKEN for contract check)");
     passed++;
   }
 

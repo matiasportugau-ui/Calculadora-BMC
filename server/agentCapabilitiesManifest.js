@@ -3,7 +3,17 @@
  * Served at GET /capabilities; static snapshot: docs/api/AGENT-CAPABILITIES.json
  * Regenerate snapshot: npm run capabilities:snapshot
  */
+import { createRequire } from "node:module";
 import { GPT_ACTIONS } from "./gptActions.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json");
+
+const BUILD_INFO = Object.freeze({
+  gitSha: process.env.GIT_SHA || null,
+  version: pkg.version || null,
+  deployedAt: process.env.DEPLOYED_AT || null,
+});
 
 /** BMC Finanzas dashboard routes (mount /api). Keep in sync with server/routes/bmcDashboard.js */
 const DASHBOARD_ROUTES = [
@@ -21,6 +31,13 @@ const DASHBOARD_ROUTES = [
   { method: "GET", path: "/api/stock-kpi", summary: "KPI stock" },
   { method: "GET", path: "/api/kpi-financiero", summary: "KPI financiero" },
   { method: "GET", path: "/api/stock/history", summary: "Historial stock" },
+
+  // Productos Maestro (centralizado)
+  { method: "GET", path: "/api/productos-maestro", summary: "Catálogo unificado precio + stock (Productos Maestro)" },
+  { method: "GET", path: "/api/productos-maestro/reconcile", summary: "Gaps MATRIZ ↔ Stock" },
+  { method: "GET", path: "/api/productos-maestro/links", summary: "Links SKU ↔ CODIGO" },
+  { method: "PUT", path: "/api/productos-maestro/links", summary: "Actualizar links (admin)" },
+  { method: "POST", path: "/api/productos-maestro/push", summary: "Push unificado a planillas (admin, dryRun recomendado)" },
   { method: "GET", path: "/api/kpi-report", summary: "Reporte KPI operativo" },
   { method: "POST", path: "/api/pagos", summary: "Pagos" },
   { method: "POST", path: "/api/ventas", summary: "POST ventas" },
@@ -98,9 +115,11 @@ export function buildAgentCapabilitiesManifest(config) {
   return {
     ok: true,
     schema_version: "1",
+    panelin_relax_dev_auth: Boolean(config.panelinRelaxDevAuth),
     description:
       "Single index for AI agents: Calculator GPT Actions + BMC Dashboard API + UI entry points.",
     public_base_url: base,
+    build: BUILD_INFO,
     calculator,
     dashboard,
     ui,

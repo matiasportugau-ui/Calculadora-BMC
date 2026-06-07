@@ -3,7 +3,7 @@
  *
  * Provider chain: default claude → grok → gemini → openai; optional `aiProvider` + `aiModel` (see GET /api/agent/ai-options).
  *
- * Request:  { messages: [{role, content}], calcState: {...}, aiProvider?: "auto"|"claude"|"openai"|"grok"|"gemini", aiModel?: string }
+ * Request:  { messages: [{role, content}], calcState: {...}, aiProvider?: "auto"|"claude"|"openai"|"grok"|"gemini", aiModel?: string, surface?: "panelin_chat"|"mercado_libre"|"whatsapp"|"email"|"wolfboard" }
  * Response: text/event-stream, events:
  *   {"type":"text","delta":"..."}
  *   {"type":"action","action":{"type":"setTecho","payload":{...}}}
@@ -17,6 +17,7 @@ import rateLimit from "express-rate-limit";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
+import { checkDevModeAuthorization } from "../lib/devModeAuth.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import {
   calcParedCompleto,
@@ -26,7 +27,9 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
-import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit } from "../lib/trainingKB.js";
+import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit, resolveTrainingAnswer } from "../lib/trainingKB.js";
+import { normalizeSurface as kbSurfaceForTraining } from "../lib/kbSurface.js";
+import { normalizeSurface as canonicalBrandSurface, surfaceToChannel, SURFACES } from "../lib/surface.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import {
   logConversationMeta,
@@ -46,6 +49,14 @@ import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.j
 import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
 import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
 import { getIvaPct } from "../lib/policyLoader.js";
+import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
+import {
+  ALLOWED_MODELS as CENTRAL_ALLOWED_MODELS,
+  PROVIDER_LABELS as CENTRAL_PROVIDER_LABELS,
+  resolveModel as centralResolveModel,
+  buildAiOptionsResponse,
+  estimateCostUSD,
+} from "../lib/aiProviderConfig.js";
 
 const router = Router();
 
@@ -53,36 +64,9 @@ const router = Router();
 const _autolearned = new Set();
 
 const SAFE_MODEL_ID = /^[a-zA-Z0-9._\-]{1,80}$/;
-/** @type {Record<string, Set<string>>} */
-const ALLOWED_MODELS = {
-  claude: new Set([
-    "claude-opus-4-7",
-    "claude-opus-4-6",
-    "claude-sonnet-4-6",
-    "claude-haiku-4-5-20251001",
-    "claude-sonnet-4-5-20250929",
-    "claude-sonnet-4-20250514",
-    "claude-3-5-haiku-20241022",
-    "claude-3-5-sonnet-20241022",
-    "claude-3-opus-20240229",
-  ]),
-  openai: new Set(["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4", "o4-mini", "o3-mini"]),
-  grok: new Set(["grok-3-mini", "grok-3", "grok-2-latest", "grok-2-vision-1212", "grok-2-1212"]),
-  gemini: new Set([
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
-    "gemini-1.5-pro",
-  ]),
-};
-
-const PROVIDER_LABELS = {
-  claude: "Claude (Anthropic)",
-  openai: "OpenAI",
-  grok: "Grok (xAI)",
-  gemini: "Gemini (Google)",
-};
+// Models and labels now come from the central aiProviderConfig.js (single source of truth)
+const ALLOWED_MODELS = CENTRAL_ALLOWED_MODELS;
+const PROVIDER_LABELS = CENTRAL_PROVIDER_LABELS;
 
 function isSafeModelId(id) {
   return typeof id === "string" && SAFE_MODEL_ID.test(id);
@@ -92,7 +76,7 @@ function resolveModelForProvider(provider, requested, configuredDefault) {
   const def =
     configuredDefault && isSafeModelId(String(configuredDefault))
       ? String(configuredDefault)
-      : [...(ALLOWED_MODELS[provider] || [])][0] || "gpt-4o-mini";
+      : centralResolveModel(provider, undefined, false);
   if (!requested || !String(requested).trim()) return def;
   const r = String(requested).trim();
   if (!isSafeModelId(r)) return def;
@@ -113,34 +97,9 @@ function modelsForProviderUi(provider, defaultModel) {
 
 /** GET /api/agent/ai-options — which providers/models the server can use (no secrets). */
 router.get("/agent/ai-options", (_req, res) => {
-  const defs = {
-    claude: config.anthropicChatModel,
-    openai: config.openaiChatModel,
-    grok: config.grokChatModel,
-    gemini: config.geminiChatModel,
-  };
-  const keys = {
-    claude: !!config.anthropicApiKey,
-    openai: !!config.openaiApiKey,
-    grok: !!config.grokApiKey,
-    gemini: !!config.geminiApiKey,
-  };
-  const providers = [];
-  for (const id of ["claude", "openai", "grok", "gemini"]) {
-    if (!keys[id]) continue;
-    const defaultModel = resolveModelForProvider(id, undefined, defs[id]);
-    providers.push({
-      id,
-      label: PROVIDER_LABELS[id] || id,
-      defaultModel,
-      models: modelsForProviderUi(id, defaultModel),
-    });
-  }
-  res.json({
-    ok: true,
-    autoOrder: ["claude", "grok", "gemini", "openai"].filter((p) => keys[p]),
-    providers,
-  });
+  // Now powered by the central config for consistency across the entire AI stack
+  const response = buildAiOptionsResponse();
+  res.json(response);
 });
 
 /**
@@ -178,7 +137,8 @@ router.get("/agent/tools-manifest", (_req, res) => {
  * Used by the MCP server to surface every tool to external agents.
  *
  * Body: { name: string, input: object, calcState?: object }
- * Auth: write tools AND CRM-read tools require Authorization: Bearer ${API_AUTH_TOKEN}.
+ * Auth: write tools, CRM-read tools, quote registry read tools, and PDF read
+ *       tools require Authorization: Bearer ${API_AUTH_TOKEN}.
  *       Pure calculator / catalog reads are open.
  */
 export const TOOLS_REQUIRING_AUTH = new Set([
@@ -197,6 +157,7 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "listar_cotizaciones_recientes",
   "obtener_cotizacion_por_id",
   "obtener_pdf_html",
+  "recuperar_casos_similares",
   // Wolfboard hub — all routes are admin-only and the underlying router
   // already enforces requireAuth. We mirror that gate at the MCP entry
   // so external clients can't poll pendientes / export without the token.
@@ -262,7 +223,7 @@ router.post("/agent/exec-tool", execToolLimiter, async (req, res) => {
         return res.status(401).json({ ok: false, error: `Tool "${name}" requiere autorización Bearer` });
       }
     }
-    const raw = await executeTool(name, input || {}, calcState || {});
+    const raw = await executeTool(name, input || {}, calcState || {}, { logger: req.log });
     let parsed;
     try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
     res.json({ ok: true, name, result: parsed });
@@ -328,15 +289,6 @@ const devModeLimiter = rateLimit({
   keyGenerator: rateLimitClientKey,
   message: { ok: false, error: "Demasiadas consultas en modo dev. Esperá un momento." },
 });
-
-function isDevAuthorized(req) {
-  if (!config.apiAuthToken) return { ok: false, status: 503, error: "API_AUTH_TOKEN not configured" };
-  const auth = String(req.headers.authorization || "");
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
-  if (bearer === config.apiAuthToken || xKey === config.apiAuthToken) return { ok: true };
-  return { ok: false, status: 401, error: "Unauthorized developer mode" };
-}
 
 function runCalcTecho(techo = {}) {
   const is2A = techo.tipoAguas === "dos_aguas";
@@ -482,7 +434,26 @@ router.post("/agent/chat", async (req, res) => {
     aiModel: rawAiModel,
     conversationId: rawConvId,
     thinkingMode = false,
+    channel: rawChannel,
+    surface: rawSurface,
   } = req.body || {};
+  // Canonical brand surface (lib/surface.js) + KB training surface (lib/kbSurface.js).
+  // Body accepts `surface` and/or legacy `channel`; `surface` string wins when non-empty.
+  const brandHints =
+    rawSurface != null && String(rawSurface).trim() !== ""
+      ? rawSurface
+      : { channel: rawChannel, origen: req.body?.origen, observaciones: req.body?.observaciones };
+  const brandCanonical = canonicalBrandSurface(brandHints);
+  const channel = brandCanonical
+    ? surfaceToChannel(brandCanonical)
+    : (["chat", "ml", "wa"].includes(rawChannel) ? rawChannel : "chat");
+  const surface = brandCanonical
+    ? kbSurfaceForTraining(
+        brandCanonical === SURFACES.INSTAGRAM || brandCanonical === SURFACES.FACEBOOK
+          ? "whatsapp"
+          : brandCanonical,
+      )
+    : kbSurfaceForTraining(rawSurface);
   const _convLoggingEnabled = devMode || config.chatLogConversations;
   const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
     ? rawConvId
@@ -498,7 +469,7 @@ router.post("/agent/chat", async (req, res) => {
 
   // 0.1 — Rate limit: devMode users get higher quota if authorized
   if (devMode) {
-    const auth = isDevAuthorized(req);
+    const auth = checkDevModeAuthorization(req);
     if (!auth.ok) {
       return res.status(auth.status).json({ ok: false, error: auth.error });
     }
@@ -671,17 +642,57 @@ router.post("/agent/chat", async (req, res) => {
     setImmediate(() => {
       try {
         if (!aborted) res.write(`data: ${JSON.stringify({ type: "approved_actions", actions: [...approvedActions] })}\n\n`);
-      } catch { /* ignore */ }
+      } catch (err) {
+        // Top-20 run 2026-05-11 (#F6): error de SSE write — logueamos en vez de silenciar.
+        if (req.log) req.log.warn({ err: err?.message || String(err) }, "approved_actions SSE write failed");
+      }
     });
   }
 
   // Ensure GCS KB is loaded before reading (Cloud Run cold-start guard)
   await ensureGcsInit();
 
-  // Always use KB — not just devMode
-  const trainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
+  // Always use KB — not just devMode.
+  // Multi-canal (Brief §6.5): resolve the per-surface answer for each match
+  // BEFORE handing them to buildSystemPrompt, so the rendering layer (which
+  // serializes entry.goodAnswer) doesn't need to know about surfaces.
+  const rawTrainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
+  const trainingExamples = rawTrainingExamples.map((entry) => ({
+    ...entry,
+    goodAnswer: resolveTrainingAnswer(entry, surface) || entry.goodAnswer || "",
+  }));
   if (devMode) {
-    send({ type: "kb_match", count: trainingExamples.length, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
+    send({ type: "kb_match", count: trainingExamples.length, surface, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
+  }
+
+  // RAG v1 — recuperación de cotizaciones históricas similares vía pgvector.
+  // Feature flag: RAG_ENABLED (default false). Si el retriever falla (DB caída,
+  // embedding service caído), se loggea y se continúa SIN RAG — el chat no se rompe.
+  let ragContextBlock = "";
+  if (config.ragEnabled) {
+    try {
+      const ragQuotes = await retrieveSimilarQuotes(
+        lastUserMessage,
+        config.ragTopK,
+        config.ragThreshold,
+      );
+      ragContextBlock = formatRetrievedContextForPrompt(ragQuotes);
+      if (devMode && ragQuotes.length > 0) {
+        send({
+          type: "rag_match",
+          count: ragQuotes.length,
+          scores: ragQuotes.map((q) => ({ lead_id: q.lead_id, similarity: q.similarity })),
+        });
+      }
+      if (ragQuotes.length > 0) {
+        req.log?.info({ rag_count: ragQuotes.length, top_score: ragQuotes[0].similarity }, "rag: retrieved quotes");
+      } else {
+        req.log?.debug("rag: no quotes above threshold");
+      }
+    } catch (ragErr) {
+      // Fallo no-fatal: continuar sin RAG
+      req.log?.warn({ err: ragErr }, "rag: retriever falló, continuando sin contexto histórico");
+    }
   }
 
   // Extract last 3 assistant openings for anti-repetition guidance
@@ -690,7 +701,7 @@ router.post("/agent/chat", async (req, res) => {
     .slice(-3)
     .map((m) => String(m.content || "").slice(0, 120));
 
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages });
+  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages, channel, ragContext: ragContextBlock });
 
   // Use a monotonically increasing global index so user and assistant turns never collide.
   // messages includes the current user message, so all-messages-count - 1 = new user global index.
@@ -880,7 +891,7 @@ router.post("/agent/chat", async (req, res) => {
               continue;
             }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
 
@@ -977,7 +988,9 @@ router.post("/agent/chat", async (req, res) => {
         }
 
         const latencyMs = Date.now() - tStart;
-        console.log(JSON.stringify({
+        // Top-20 run 2026-05-11 (#F1): structured log via pino (req.log) en lugar de console.log
+        // para que Cloud Run capture el evento con request id correlation.
+        const turnLog = {
           event: "chat_turn",
           provider,
           model: resolvedModel,
@@ -986,7 +999,26 @@ router.post("/agent/chat", async (req, res) => {
           outputTokens,
           kbMatchCount: trainingExamples.length,
           devMode: devMode || undefined,
-        }));
+        };
+        if (req.log) req.log.info(turnLog, "chat_turn");
+        else console.log(JSON.stringify(turnLog));
+
+        // Structured cost observability for the primary AI functionality path
+        const chatCost = estimateCostUSD(provider, resolvedModel, {
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+        });
+        const costLog = {
+          event: "chat_turn_cost",
+          provider,
+          model: resolvedModel,
+          inputTokens,
+          outputTokens,
+          estimated_cost_usd: chatCost,
+          conversationId,
+        };
+        if (req.log) req.log.info(costLog, "chat_turn_cost");
+        else console.log(JSON.stringify(costLog));
 
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {
@@ -1057,7 +1089,7 @@ router.post("/agent/chat", async (req, res) => {
           }
           const fullTurns = [...allTurns, { role: "assistant", content: visibleAssistantText }];
           setImmediate(() => {
-            extractLearnablePairs(fullTurns)
+            extractLearnablePairs(fullTurns, { source: "panelin_chat", convId: conversationId })
               .then((pairs) => {
                 for (const p of pairs) {
                   addTrainingEntry({
@@ -1066,10 +1098,10 @@ router.post("/agent/chat", async (req, res) => {
                     badAnswer: p.badAnswer || "",
                     category: p.category || "conversational",
                     context: p.rationale || "",
-                    source: "autolearned",
+                    source: p.source || "autolearned",
                     status: p.confidence >= 0.92 ? "active" : "pending",
                     confidence: p.confidence,
-                    convId: conversationId,
+                    convId: p.convId || conversationId,
                   });
                 }
                 if (pairs.length > 0) {

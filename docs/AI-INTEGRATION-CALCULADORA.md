@@ -165,3 +165,20 @@ Resumen del hilo [186091c0-9cca-45e0-b61c-6e06530ea27a](file:///Users/matias/.cu
 - Panelin-Gym / chat operativo: `docs/team/panelsim/` y skill `.cursor/skills/panelin-gym/SKILL.md`.
 - Contrato API (cuando se amplíe descubrimiento): `npm run test:contracts` con API en 3001; considerar añadir `/api/agent/ai-options` al manifest si los agentes externos deben descubrirlo solo vía `GET /capabilities`.
 - Despliegue: `.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`, variables `VITE_API_URL` / `PUBLIC_BASE_URL` en documentación de Vercel y Cloud Run.
+
+---
+
+## 11. Training & Auto-learn (mejoras de calidad 2026-05)
+
+El extractor de pares para la KB (`server/lib/autoLearnExtractor.js`) ahora usa un prompt mucho más específico del dominio BMC/Panelin:
+
+- Instrucciones duras sobre precios (sin IVA), familias de paneles (ISODEC_*, ISOROOF_*), escenarios, autoportancia, flete, objeciones comunes.
+- Filtros de calidad post-LLM: longitud mínima de `goodAnswer`, priorización de pares con números/datos técnicos.
+- API mejorada: `extractLearnablePairs(turns, { source, convId, surface })` — propaga trazabilidad completa a `addTrainingEntry` (origen: panelin_chat / wa / ml / manual_autolearn, convId, etc.).
+- Dedup semántico: ahora combina solapamiento de tokens + similitud coseno vía embeddings (`hasSemanticallySimilarQuestion`). Reduce drásticamente duplicados en la KB de entrenamiento.
+
+Esto produce datos de entrenamiento de mucha más calidad para el agente a lo largo del tiempo. Los call sites (agentChat, WA en index.js, /agent/autolearn) ya usan la nueva firma.
+
+Ver también: `server/lib/trainingKB.js` (hasSimilarQuestion + addTrainingEntry con `source` y `convId`), `kbAnalytics.js`, y la pestaña "Base de conocimiento" en `/hub/agent-admin`.
+
+**Funcionalidad agregada en la misma sesión:** nuevo tool `recuperar_casos_similares` (usa `retrieveSimilarQuotes` + `formatRetrievedContextForPrompt` de RAG). El agente Panelin ahora puede activamente consultar la base histórica de cotizaciones reales cuando necesita ejemplos concretos de obras parecidas. Tool agregada a `AGENT_TOOLS`, instrucciones en `chatPrompts.js`, y protegida consistentemente en `TOOLS_REQUIRING_AUTH`.

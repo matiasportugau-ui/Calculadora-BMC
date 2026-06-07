@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { normalizeSurface, SURFACE_LIMITS } from "./kbSurface.js";
+import { embedText } from "./embeddings.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
@@ -12,7 +13,7 @@ const sessionsDir = path.join(dataDir, "training-sessions");
 const backupsDir = path.join(dataDir, "prompt-backups");
 const chatPromptsPath = path.join(repoRoot, "server/lib/chatPrompts.js");
 
-const KB_VERSION = "1.0.0";
+const KB_VERSION = "1.1.0";
 
 // ─── GCS persistence (Cloud Run) ─────────────────────────────────────────────
 // Cloud Run filesystem is ephemeral — every deploy loses local writes.
@@ -27,6 +28,8 @@ const USE_GCS = IS_CLOUD_RUN && !!GCS_BUCKET;
 
 let _kbCache = null; // { kb, loadedAt }
 const CACHE_TTL_MS = 60_000;
+
+const _embedCache = new Map(); // id -> Float32Array | number[]  (semantic dedup cache for hasSemanticallySimilarQuestion — immutable by id, cleared on process restart)
 
 function _cacheValid() {
   return _kbCache && (Date.now() - _kbCache.loadedAt < CACHE_TTL_MS);
@@ -366,6 +369,52 @@ export function hasSimilarQuestion(question, { threshold = 4 } = {}) {
     });
 }
 
+/** Simple cosine similarity for two 1536-dim vectors (assumes they are L2-normalized). */
+function cosineSim(a, b) {
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  return dot; // since normalized, dot product = cosine
+}
+
+/**
+ * Semantic dedup using embeddings (text-embedding-3-small or stub).
+ * Returns true if any active KB entry has cosine similarity >= threshold with the candidate question.
+ * Falls back gracefully (returns false) if embedding fails.
+ */
+export async function hasSemanticallySimilarQuestion(question, { threshold = 0.82 } = {}) {
+  if (!question || typeof question !== "string") return false;
+
+  const kb = loadTrainingKB();
+  const activeQuestions = kb.entries
+    .filter((e) => !e.archived && (e.status == null || e.status === "active"))
+    .map((e) => ({ id: e.id, q: String(e.question || "").trim() }))
+    .filter((x) => x.q.length > 5);
+
+  if (activeQuestions.length === 0) return false;
+
+  let qEmb;
+  try {
+    qEmb = await embedText(question);
+  } catch {
+    return false; // cannot embed → skip semantic dedup this time
+  }
+
+  for (const entry of activeQuestions) {
+    let eEmb = _embedCache.get(entry.id);
+    if (!eEmb) {
+      try {
+        eEmb = await embedText(entry.q);
+        _embedCache.set(entry.id, eEmb);
+      } catch {
+        continue; // skip on embed failure (per 100% automation plan cache fix)
+      }
+    }
+    const sim = cosineSim(qEmb, eEmb);
+    if (sim >= threshold) return true;
+  }
+  return false;
+}
+
 /**
  * Resolves the answer text for an entry on a given surface (channel).
  *
@@ -489,6 +538,7 @@ export function getHealthEntries() {
     stale: active.filter((e) => e.reviewDueAt && e.reviewDueAt < now),
     zeroRetrieval: active.filter((e) => !e.permanent && (e.retrievalCount ?? 0) === 0 && (e.createdAt || "") < thirtyDaysAgo),
     mlGap: active.filter((e) => (e.goodAnswer || "").length > 350 && !e.goodAnswerML),
+    waGap: active.filter((e) => (e.goodAnswer || "").length > 800 && !e.goodAnswerWA),
   };
 }
 
@@ -514,6 +564,7 @@ export function getTrainingStats() {
   const stale = active.filter((e) => e.reviewDueAt && e.reviewDueAt < new Date().toISOString()).length;
   const zeroRetrieval = active.filter((e) => !e.permanent && (e.retrievalCount ?? 0) === 0 && e.createdAt < thirtyDaysAgo).length;
   const mlGap = active.filter((e) => (e.goodAnswer || "").length > 350 && !e.goodAnswerML).length;
+  const waGap = active.filter((e) => (e.goodAnswer || "").length > 800 && !e.goodAnswerWA).length;
   const pending = all.filter((e) => e.status === "pending").length;
 
   return {
@@ -525,7 +576,8 @@ export function getTrainingStats() {
       stale,           // have reviewDueAt in the past
       zeroRetrieval,   // never retrieved, older than 30 days
       mlGap,           // goodAnswer too long for ML channel, no override
-      score: Math.max(0, 100 - stale * 5 - zeroRetrieval * 2 - mlGap * 3),
+      waGap,           // goodAnswer too long for WA/IG/FB channels, no override
+      score: Math.max(0, 100 - stale * 5 - zeroRetrieval * 2 - mlGap * 3 - waGap * 3),
     },
     updatedAt: new Date().toISOString(),
   };

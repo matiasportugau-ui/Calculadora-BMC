@@ -1,0 +1,17 @@
+{
+  "id": "05-multi-canal-ml",
+  "description": "surface=mercado_libre flows through to kb_match.surface; the response stays under the ML char limit.",
+  "calcState": "empty",
+  "surface": "mercado_libre",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "¿Qué color recomiendan?" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "tool_not_called", "name": "calcular_cotizacion" }
+  ],
+  "timeoutMs": 60000
+}

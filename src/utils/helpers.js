@@ -114,7 +114,13 @@ export const QUOTE_TERMS = [
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
 
-export const fmtPrice = n => Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Top-20 run 2026-05-11 (#F8): si n es undefined/null/NaN, devolvemos "0.00" en vez de "NaN" literal.
+// Locale en-US es intencional: USD se muestra con punto decimal (1,234.56), no con coma (es-UY).
+export const fmtPrice = n => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "0.00";
+  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -299,10 +305,8 @@ function buildBomTable(data) {
       const cantDisplay = typeof item.cant === "number" ? (item.cant % 1 === 0 ? item.cant : item.cant.toFixed(2)) : item.cant;
       tbody += `<tr style="background:${bg}">`;
       const largoHint = item.largoBarra ? ` <span style="color:#6E6E73;font-size:8pt">(${item.largoBarra}m c/u)</span>` : "";
-      const panelDetail = item.cantPaneles
-        ? `<div style="color:#6E6E73;font-size:8pt;margin-top:1px">${item.cantPaneles} paneles${item.largoPanel ? ` × ${item.largoPanel}m largo` : ""}</div>`
-        : "";
-      tbody += `<td style="padding:5px 8px">${esc(item.label)}${largoHint}${panelDetail}</td>`;
+      // m² paneles: cant./largo ya van en `label` via bomToGroups; no second line (plain-text copy used to glue "...m" + "4 paneles").
+      tbody += `<td style="padding:5px 8px">${esc(item.label)}${largoHint}</td>`;
       if (showSKU) tbody += `<td style="text-align:center;color:#6E6E73;padding:5px 8px;font-size:8.5pt">${esc(item.sku || "—")}</td>`;
       tbody += `<td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">${cantDisplay}</td>`;
       tbody += `<td style="text-align:center;padding:5px 8px">${esc(item.unidad)}</td>`;
@@ -823,10 +827,20 @@ export function revokePreviewUrl(url) {
 
 // ── WhatsApp ──────────────────────────────────────────────────────────────────
 
+/**
+ * Frontend run 2026-05-12 (#A6): el copy WhatsApp incluye emojis (📅 🏗 💰 ✅) que
+ * se ven bien en WhatsApp moderno (Android/iOS recientes, WhatsApp Web). Clientes legacy
+ * o copy/paste a SMS pueden mostrar códigos en lugar del emoji.
+ * REQUIRES REVIEW: si llegan reportes reales de incompatibilidad, agregar un toggle
+ * `useEmojis: false` que reemplace cada emoji por texto plano (📅 → "Fecha:", 💰 → "Subtotal:", etc.).
+ * Mientras no haya reporte concreto, mantener emojis (mejora la lectura del 99% de los clientes).
+ */
 export function buildWhatsAppText(data) {
   const { client, project, scenario, panel, totals, listaLabel } = data;
   const scenarioLabel = { solo_techo: "Solo techo", solo_fachada: "Solo fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica" }[scenario] || scenario;
-  const panelStr = panel.espesor ? `${panel.label} ${panel.espesor}mm · Color: ${panel.color}` : panel.label;
+  // Top-20 run 2026-05-11 (#F5): fallback explícito si panel.color es null/undefined ("—" en vez de "undefined").
+  const colorStr = panel.color || "—";
+  const panelStr = panel.espesor ? `${panel.label} ${panel.espesor}mm · Color: ${colorStr}` : panel.label;
   let txt = `*Cotización ${COMPANY.name}*\n📅 ${project.fecha} · Ref: ${project.refInterna || "—"}\n🏗 Cliente: ${client.nombre}${client.rut ? " · " + client.rut : ""}\n📐 Obra: ${project.descripcion || "—"} · ${client.direccion || "—"}\n💲 Lista: ${listaLabel}\n\n*Escenario:* ${scenarioLabel}\n*Panel:* ${panelStr}\n`;
   txt += `\n💰 *Subtotal s/IVA:* USD ${fmtPrice(totals.subtotalSinIVA)}\n💰 *IVA 22%:* USD ${fmtPrice(totals.iva)}\n✅ *TOTAL USD: ${fmtPrice(totals.totalFinal)}*\n\n_Entrega 10-15d · Seña 60%_\n_${COMPANY.phone} · ${COMPANY.website}_`;
   return txt;

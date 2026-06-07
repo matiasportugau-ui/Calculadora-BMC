@@ -7,6 +7,7 @@ import { Settings, RotateCcw, DollarSign, Sliders, Calculator } from "lucide-rea
 import { getConfig, setConfig, resetConfig } from "../utils/calculatorConfig.js";
 import PricingEditor from "./PricingEditor.jsx";
 import DimensioningFormulasEditor from "./DimensioningFormulasEditor.jsx";
+import ProductosMaestroEditor from "./ProductosMaestroEditor.jsx";
 import { invalidatePricingCache } from "../data/pricing.js";
 import { C, FONT, CALCULATOR_DATA_VERSION } from "../data/constants.js";
 
@@ -82,7 +83,7 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
         style={{
           position: "relative",
           width: "100%",
-          maxWidth: tab === "precios" || tab === "formulas" ? 700 : 400,
+          maxWidth: tab === "precios" || tab === "productos" || tab === "formulas" ? 820 : 400,
           background: C.bg,
           boxShadow: "-4px 0 30px rgba(0,0,0,0.2)",
           display: "flex",
@@ -138,6 +139,7 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
             {[
               { id: "general", label: "General", icon: Sliders },
               { id: "precios", label: "Listado de precios", icon: DollarSign },
+              { id: "productos", label: "Productos (Maestro)", icon: DollarSign },
               { id: "formulas", label: "Fórmulas", icon: Calculator },
             ].map(({ id, label, icon: Icon }) => {
               const isActive = tab === id;
@@ -172,6 +174,8 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
 
           {tab === "precios" ? (
             <PricingEditor onSave={handlePricingSave} />
+          ) : tab === "productos" ? (
+            <ProductosMaestroEditor />
           ) : tab === "formulas" ? (
             <DimensioningFormulasEditor onSave={handleFormulasSave} />
           ) : (

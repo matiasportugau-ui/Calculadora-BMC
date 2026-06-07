@@ -16,6 +16,7 @@ import { config } from "../config.js";
 import { getPdf } from "../routes/calc.js";
 import { postCotizar, postCotizarPdf, postPresupuestoLibre } from "./calcLoopbackClient.js";
 import { appendQuoteToCrm } from "./crmAppend.js";
+import { dualWriteQuote } from "./quoteDualWrite.js";
 import {
   getQuotation as getQuotationFromRegistry,
   listQuotations as listQuotationsFromRegistry,
@@ -33,6 +34,7 @@ import {
 } from "./followUpStore.js";
 import { recordToolCall, classifyError } from "./toolStats.js";
 import { INTENT_HINTS } from "./userIntentClassifier.js";
+import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "./rag.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -616,6 +618,25 @@ export const AGENT_TOOLS = [
   },
 
   {
+    name: "recuperar_casos_similares",
+    description:
+      "Busca cotizaciones históricas similares usando búsqueda semántica (RAG sobre quote_embeddings en Postgres). " +
+      "Devuelve casos reales de obras pasadas (cliente, familia de panel, espesor, m², precio total, similitud). " +
+      "Úsala cuando quieras fundamentar una recomendación, precio o propuesta con datos reales: " +
+      "'en obras similares de 150-200m² con ISOROOF qué cobramos', 'qué pidieron clientes industriales como este', 'casos parecidos para justificar el flete'. " +
+      "El 'query' debe ser una descripción rica y específica de la obra actual.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Descripción de la obra/requerimiento para buscar similitud semántica (ej: 'techo 180m2 ISOROOF_PLUS 100mm dos aguas cliente galpón industrial Montevideo')" },
+        k: { type: "number", description: "Máximo de casos a devolver. Default 5, máximo 10." },
+        threshold: { type: "number", description: "Similitud mínima requerida (0.4-0.95). Default 0.65" },
+      },
+      required: ["query"],
+    },
+  },
+
+  {
     name: "leer_crm_taxonomia",
     description:
       "Lee la taxonomía de clasificación de una fila de CRM_Operativo (cols AL–AN): tipo de contacto " +
@@ -976,6 +997,13 @@ export async function executeTool(name, input, calcState = {}, opts = {}) {
   } finally {
     const latencyMs = Date.now() - t0;
     recordToolCall({ tool: name, ok, latencyMs, errorClass });
+    const logger = opts.logger;
+    if (logger?.info) {
+      logger.info(
+        { event: "agent_tool_call", tool: name, ok, latency_ms: latencyMs, error_class: errorClass },
+        "agent tool call",
+      );
+    }
   }
 
   return raw;
@@ -1338,8 +1366,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const { scenario, techo, pared, camara } = input || {};
       const baseInput = { scenario, techo, pared, camara };
       const [webRaw, ventaRaw] = await Promise.all([
-        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "web" }, calcState),
-        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "venta" }, calcState),
+        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "web" }, calcState, opts),
+        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "venta" }, calcState, opts),
       ]);
       const web = JSON.parse(webRaw);
       const venta = JSON.parse(ventaRaw);
@@ -1365,12 +1393,14 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
 
     if (name === "guardar_en_crm") {
       { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
-      const result = await appendQuoteToCrm({
+      const dualResult = await dualWriteQuote({
+        cliente_nombre: input?.cliente,
         cliente: input?.cliente,
         telefono: input?.telefono,
         ubicacion: input?.ubicacion,
         scenario: input?.scenario,
         lista: input?.lista,
+        total_con_iva_usd: input?.total,
         total: input?.total,
         pdf_url: input?.pdf_url,
         drive_url: input?.drive_url,
@@ -1379,8 +1409,10 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         urgencia: input?.urgencia,
         probabilidad_cierre: input?.probabilidad_cierre,
         observaciones: input?.observaciones,
+        canal_origen: "panelin_chat",
       });
-      return JSON.stringify(result);
+      // El agente solo necesita ver el resultado del CRM canónico
+      return JSON.stringify(dualResult.crm);
     }
 
     if (name === "buscar_cliente_crm") {
@@ -1458,8 +1490,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       if (!scenario_a || !scenario_b) return JSON.stringify({ error: "scenario_a y scenario_b requeridos" });
       const baseInput = { listaPrecios, techo, pared, camara };
       const [aRaw, bRaw] = await Promise.all([
-        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_a }, calcState),
-        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_b }, calcState),
+        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_a }, calcState, opts),
+        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_b }, calcState, opts),
       ]);
       const a = JSON.parse(aRaw);
       const b = JSON.parse(bRaw);
@@ -1568,8 +1600,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const limite = Math.max(1, Math.min(50, Number(input?.limite || 10)));
 
       const [crmRaw, quotesRaw] = await Promise.all([
-        executeTool("buscar_cliente_crm", { query: cliente, limite }, calcState),
-        executeTool("listar_cotizaciones_recientes", { cliente, limite }, calcState),
+        executeTool("buscar_cliente_crm", { query: cliente, limite }, calcState, opts),
+        executeTool("listar_cotizaciones_recientes", { cliente, limite }, calcState, opts),
       ]);
       const crm = JSON.parse(crmRaw);
       const quotes = JSON.parse(quotesRaw);
@@ -1596,6 +1628,35 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
           ? "No hay datos disponibles para este cliente (CRM/registry no configurados o sin matches)."
           : null,
       });
+    }
+
+    if (name === "recuperar_casos_similares") {
+      const query = String(input?.query || "").trim();
+      if (!query || query.length < 3) {
+        return JSON.stringify({ ok: false, error: "query es requerido (descripción rica de la obra actual, mínimo 3 caracteres)" });
+      }
+      const k = Math.max(1, Math.min(10, Number(input?.k || 5)));
+      const threshold = Math.max(0.4, Math.min(0.95, Number(input?.threshold || 0.65)));
+
+      try {
+        const results = await retrieveSimilarQuotes(query, k, threshold);
+        const contexto = formatRetrievedContextForPrompt(results);
+
+        return JSON.stringify({
+          ok: true,
+          query,
+          k,
+          threshold,
+          count: results.length,
+          cases: results,
+          contexto_markdown: contexto,   // ya formateado, listo para mostrar al usuario o razonar
+          nota: results.length === 0
+            ? "No se encontraron casos con suficiente similitud (RAG puede estar desactivado o no hay datos históricos similares)."
+            : null,
+        });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: `Error consultando casos similares: ${err.message}` });
+      }
     }
 
     if (name === "wolfboard_pendientes" || name === "wolfboard_export") {

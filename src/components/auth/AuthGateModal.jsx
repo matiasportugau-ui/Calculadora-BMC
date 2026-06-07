@@ -15,15 +15,23 @@ import { useBmcAuth } from "../../hooks/useBmcAuth.js";
 export default function AuthGateModal() {
   const { user, login, isAuthenticated } = useBmcAuth();
   const [open, setOpen] = useState(false);
+  // Top-30 run 2026-05-12 (#A12): setReason no se setea hoy pero `reason` se lee en JSX (línea 132).
+  // eslint-disable-next-line no-unused-vars
   const [reason, setReason] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    function onGate(e) {
-      if (isAuthenticated) return; // already in
-      setReason(e?.detail?.reason || "wizard");
-      setOpen(true);
+    // eslint-disable-next-line no-unused-vars
+    function onGate(_e) {
+      if (isAuthenticated) {
+        // Auto-resume any wizard waiting; user is already authed.
+        window.dispatchEvent(new CustomEvent("bmc-wizard-next", { detail: { source: "auth-gate-already-auth" } }));
+      } else {
+        // Anonymous: open the modal so user can sign in.
+        // handleLogin() emits bmc-wizard-next on successful sign-in.
+        setOpen(true);
+      }
     }
     window.addEventListener("bmc-auth-gate-required", onGate);
     return () => window.removeEventListener("bmc-auth-gate-required", onGate);
@@ -139,6 +147,8 @@ export default function AuthGateModal() {
  * caller should abort their action (i.e. user is anonymous and we triggered
  * the modal); false if the user is already authenticated.
  */
+// Top-30 run 2026-05-12 (#A13/extension): `requestAuthGate` no es componente pero el helper convive con el modal por razones históricas; mover a archivo aparte rompería 4 imports. eslint-disable acotado.
+// eslint-disable-next-line react-refresh/only-export-components
 export function requestAuthGate(reason = "wizard") {
   // We cannot read context here; let the modal decide based on its own state.
   window.dispatchEvent(

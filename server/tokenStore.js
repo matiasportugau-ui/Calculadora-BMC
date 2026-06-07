@@ -1,5 +1,7 @@
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import crypto from "node:crypto";
+import path from "node:path";
 import { Storage } from "@google-cloud/storage";
 
 const ALGO = "aes-256-gcm";
@@ -77,7 +79,17 @@ export const createGcsTokenStore = ({ bucket, objectKey, encryptionKey, logger }
     }
   }
 
-  const storage = new Storage();
+  const credsPath =
+    process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() || "";
+  const resolvedCreds = credsPath
+    ? path.isAbsolute(credsPath)
+      ? credsPath
+      : path.resolve(process.cwd(), credsPath)
+    : "";
+  const storage =
+    resolvedCreds && fsSync.existsSync(resolvedCreds)
+      ? new Storage({ keyFilename: resolvedCreds })
+      : new Storage();
   const file = storage.bucket(bucket).file(objectKey);
 
   const read = async () => {
