@@ -7,6 +7,7 @@ import { Buffer } from "node:buffer";
 import { Router } from "express";
 import { google } from "googleapis";
 import { createShopifyStore } from "../shopifyStore.js";
+import { saveOauthState, consumeOauthState } from "../lib/oauthStateStore.js";
 
 const SCOPES_SHEETS = ["https://www.googleapis.com/auth/spreadsheets"];
 const COOKIE_OPTIONS = {
@@ -17,14 +18,7 @@ const COOKIE_OPTIONS = {
   path: "/",
 };
 
-const oauthStateStore = new Map();
 const STATE_TTL_MS = 10 * 60 * 1000;
-function pruneStateStore() {
-  const now = Date.now();
-  for (const [k, v] of oauthStateStore.entries()) {
-    if (now - (v.createdAt || 0) > STATE_TTL_MS) oauthStateStore.delete(k);
-  }
-}
 
 function pkceChallenge(verifier) {
   return crypto.createHash("sha256").update(verifier).digest("base64url");
@@ -168,8 +162,14 @@ export default function createShopifyRouter(config, logger) {
     const codeVerifier = crypto.randomBytes(32).toString("base64url");
     const codeChallenge = pkceChallenge(codeVerifier);
 
-    oauthStateStore.set(state, { shop, codeVerifier, nonce, createdAt: Date.now() });
-    pruneStateStore();
+    await saveOauthState({
+      databaseUrl: config.databaseUrl,
+      state,
+      provider: "shopify",
+      codeVerifier,
+      meta: { shop, nonce },
+      ttlMs: STATE_TTL_MS,
+    });
     res.cookie("shopify_oauth", state, { ...COOKIE_OPTIONS, maxAge: 600 });
 
     const shopHost = shop.startsWith("http") ? shop : `https://${shop}`;
@@ -190,11 +190,15 @@ export default function createShopifyRouter(config, logger) {
     const stateFromCookie = cookies.shopify_oauth;
     if (!stateFromCookie) return res.status(400).json({ ok: false, error: "Missing or expired state cookie" });
 
-    const stored = oauthStateStore.get(stateFromCookie);
-    oauthStateStore.delete(stateFromCookie);
+    const stored = await consumeOauthState({
+      databaseUrl: config.databaseUrl,
+      state: stateFromCookie,
+      provider: "shopify",
+    });
     if (!stored) return res.status(400).json({ ok: false, error: "Invalid or expired state" });
 
-    const { shop, codeVerifier } = stored;
+    const codeVerifier = stored.codeVerifier;
+    const shop = stored.meta?.shop;
     const q = buildQueryMap(req.url.split("?")[1] || "");
     if (q.state !== stateFromCookie) return res.status(400).json({ ok: false, error: "State mismatch" });
     if (!validShop(shop)) return res.status(400).json({ ok: false, error: "Invalid shop" });

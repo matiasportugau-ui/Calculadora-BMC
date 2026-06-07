@@ -70,6 +70,8 @@ import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
+import { shouldRejectWebhook, shouldRejectVerifyToken } from "./lib/webhookGate.js";
+import { saveOauthState, consumeOauthState } from "./lib/oauthStateStore.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -132,7 +134,6 @@ app.use(
 );
 
 const stateTtlMs = 10 * 60 * 1000;
-const oauthStates = new Map();
 const webhookEvents = [];
 const maxWebhookEvents = 250;
 
@@ -166,14 +167,6 @@ const asyncHandler =
   (fn) =>
   (req, res, next) =>
     Promise.resolve(fn(req, res, next)).catch(next);
-
-const ensureValidState = (state) => {
-  const entry = oauthStates.get(state);
-  if (!entry) return null;
-  const expired = Date.now() - entry.createdAt > stateTtlMs;
-  oauthStates.delete(state);
-  return expired ? null : entry;
-};
 
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
 app.get("/capabilities", (req, res) => {
@@ -247,7 +240,13 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
-  oauthStates.set(state, { createdAt: Date.now(), codeVerifier });
+  await saveOauthState({
+    databaseUrl: config.databaseUrl,
+    state,
+    provider: "ml",
+    codeVerifier,
+    ttlMs: stateTtlMs,
+  });
   const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {
@@ -268,8 +267,10 @@ app.get("/auth/ml/callback", asyncHandler(async (req, res) => {
   if (!code) {
     return res.status(400).json({ ok: false, error: "Missing code in callback querystring" });
   }
-  const stateEntry = ensureValidState(String(state));
-  if (!state || !stateEntry) {
+  const stateEntry = state
+    ? await consumeOauthState({ databaseUrl: config.databaseUrl, state: String(state), provider: "ml" })
+    : null;
+  if (!stateEntry) {
     return res.status(400).json({ ok: false, error: "Invalid or expired OAuth state" });
   }
 
@@ -493,23 +494,30 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
     dataId: req.query.id ?? req.body?.id,
     requestId: req.headers["x-request-id"],
   });
-  if (!mlSigVerified.skipped && !mlSigVerified.ok) {
-    req.log.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
+  // Gate 0: HMAC verification is MANDATORY (fail-closed). A missing
+  // ML_CLIENT_SECRET no longer silently passes outside the test env.
+  if (shouldRejectWebhook({ verified: mlSigVerified, appEnv: config.appEnv })) {
+    const reason =
+      mlSigVerified.reason || (mlSigVerified.skipped ? "ml_client_secret_unset" : "invalid_signature");
+    req.log.warn({ reason }, "ML webhook: HMAC verification failed — rejected");
     return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
   }
-  if (mlSigVerified.skipped && config.appEnv !== "test") {
-    req.log.warn("ML_CLIENT_SECRET unset — POST /webhooks/ml HMAC verification skipped");
-  }
 
-  // Layer 2: verify token (second layer — kept for defence in depth)
-  if (config.webhookVerifyToken) {
-    const received =
-      req.query.verify_token ||
-      req.headers["x-webhook-token"] ||
-      req.headers.authorization;
-    if (String(received) !== String(config.webhookVerifyToken)) {
-      return res.status(401).json({ ok: false, error: "Invalid webhook token" });
-    }
+  // Layer 2 (defence in depth): the verify token is REQUIRED (Gate 0). Outside
+  // the test env it must be provisioned (Secret Manager) and match.
+  const mlReceivedToken =
+    req.query.verify_token ||
+    req.headers["x-webhook-token"] ||
+    req.headers.authorization;
+  if (
+    shouldRejectVerifyToken({
+      expectedToken: config.webhookVerifyToken,
+      receivedToken: mlReceivedToken,
+      appEnv: config.appEnv,
+    })
+  ) {
+    req.log.warn("ML webhook: verify token missing/invalid — rejected");
+    return res.status(401).json({ ok: false, error: "Invalid webhook token" });
   }
 
   const event = {
@@ -770,11 +778,12 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
     rawBodyBuffer: raw,
     signatureHeader: sig,
   });
-  if (!verified.skipped && !verified.ok) {
+  // Gate 0: HMAC verification is MANDATORY (fail-closed). A missing
+  // WHATSAPP_APP_SECRET no longer silently passes outside the test env.
+  if (shouldRejectWebhook({ verified, appEnv: config.appEnv })) {
+    const reason = verified.reason || (verified.skipped ? "whatsapp_app_secret_unset" : "invalid_signature");
+    logger.warn({ reason }, "WhatsApp webhook: HMAC verification failed — rejected");
     return res.status(401).json({ ok: false, error: "invalid webhook signature" });
-  }
-  if (verified.skipped && config.appEnv !== "test") {
-    logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
   }
 
   let body = {};
