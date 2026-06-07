@@ -13,6 +13,7 @@ import AuthGateModal from "./components/auth/AuthGateModal.jsx";
 import AuthHeader from "./components/auth/AuthHeader.jsx";
 import RequireGrant from "./components/auth/RequireGrant.jsx";
 import ActivityTracker from "./components/activity/ActivityTracker.jsx";
+import RouteErrorBoundary from "./components/RouteErrorBoundary.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Tutorial interactivo (nuevo sistema) — gated for safety
@@ -137,6 +138,18 @@ function CotizacionesRoute() {
   );
 }
 
+// Lives inside <BrowserRouter> so it can read the active pathname and feed it
+// to the boundary as a reset key: a render error in one module shows a
+// recoverable fallback, and navigating elsewhere clears it without a reload.
+function RoutedErrorBoundary({ children }) {
+  const location = useLocation();
+  return (
+    <RouteErrorBoundary resetKey={location.pathname}>
+      {children}
+    </RouteErrorBoundary>
+  );
+}
+
 export default function App() {
   const basename = getRouterBasename();
 
@@ -155,6 +168,7 @@ export default function App() {
       <LegacyAppQueryRedirect />
       <AuthGateModal />
       <TutorialOverlay />
+      <RoutedErrorBoundary>
       <Routes>
         <Route
           path="/hub"
@@ -407,6 +421,7 @@ export default function App() {
         <Route path="/wa" element={<Navigate to="/hub/wa" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </RoutedErrorBoundary>
       </TutorialProvider>
       </BmcAuthProvider>
     </BrowserRouter>

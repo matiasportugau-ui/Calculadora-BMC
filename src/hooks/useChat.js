@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import { apiGet } from "../utils/apiClient.js";
 import { mapErrorMessage } from "../utils/chatErrors.js";
 
 const STORAGE_KEY = "panelin-chat-history";
@@ -135,10 +136,7 @@ export function useChat({
     let cancelled = false;
     (async () => {
       try {
-        const apiBase = getCalcApiBase();
-        const res = await fetch(`${apiBase}/api/agent/ai-options`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const { data } = await apiGet("/api/agent/ai-options");
         if (!cancelled) {
           setAiOptions(data);
           setAiOptionsError(null);
@@ -157,10 +155,7 @@ export function useChat({
     let cancelled = false;
     (async () => {
       try {
-        const apiBase = getCalcApiBase();
-        const res = await fetch(`${apiBase}/capabilities`);
-        if (!res.ok) return;
-        const data = await res.json();
+        const { data } = await apiGet("/capabilities");
         if (!cancelled && data && typeof data.panelin_relax_dev_auth === "boolean") {
           setRelaxDevAuth(Boolean(data.panelin_relax_dev_auth));
         }

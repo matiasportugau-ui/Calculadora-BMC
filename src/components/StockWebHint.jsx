@@ -5,10 +5,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react';
-import { getCalcApiBase } from '../utils/calcApiBase.js';
+import { apiGet } from '../utils/apiClient.js';
 import { C, FONT } from '../data/constants.js';
-
-const API_BASE = getCalcApiBase();
 
 export default function StockWebHint({ listaPrecios }) {
   const [data, setData] = useState(null);
@@ -25,15 +23,14 @@ export default function StockWebHint({ listaPrecios }) {
     let cancelled = false;
     setLoading(true);
 
-    fetch(`${API_BASE}/api/productos-maestro`)
-      .then(r => r.json())
-      .then(json => {
+    apiGet('/api/productos-maestro')
+      .then(({ data: json }) => {
         if (cancelled) return;
 
-        const items = json.items || [];
-        const lowStock = items.filter(it => 
-          it.stock && 
-          (it.stock.actual || 0) < 5 && 
+        const items = json?.items || [];
+        const lowStock = items.filter(it =>
+          it.stock &&
+          (it.stock.actual || 0) < 5 &&
           (it.linkStatus === 'linked' || it.sources?.stock)
         );
 
@@ -49,7 +46,7 @@ export default function StockWebHint({ listaPrecios }) {
       .finally(() => !cancelled && setLoading(false));
 
     return () => { cancelled = true; };
-  }, [isWeb]); // API_BASE is stable, no need to include
+  }, [isWeb]);
 
   if (!isWeb) return null;
 
