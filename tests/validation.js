@@ -2112,11 +2112,15 @@ const waBad = verifyWhatsAppSignature({
 });
 assert("verifyWhatsAppSignature invalid", waBad.ok === false, waBad.ok, false);
 
+const prevNodeEnv = process.env.NODE_ENV;
+process.env.NODE_ENV = "test";
 const waSkip = verifyWhatsAppSignature({
   appSecret: "",
   rawBodyBuffer: waRaw,
   signatureHeader: "ignored",
 });
+if (prevNodeEnv === undefined) delete process.env.NODE_ENV;
+else process.env.NODE_ENV = prevNodeEnv;
 assert(
   "verifyWhatsAppSignature skipped without secret",
   waSkip.skipped === true && waSkip.ok === true,

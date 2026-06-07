@@ -122,3 +122,33 @@ export async function listJsonInGcs({ bucket, prefix, limit = 100 } = {}) {
     return [];
   }
 }
+
+/**
+ * Upload a screenshot (data URL base64 or Buffer) for bug reports to GCS.
+ * Returns public URL or null. Uses 'bugs/screenshots/' prefix.
+ * Reuses the same bucket as quotes for simplicity (configurable via caller).
+ */
+export async function uploadBugScreenshotToGcs(dataUrlOrBuffer, filename, bucket) {
+  if (!bucket || !dataUrlOrBuffer || !filename) return null;
+
+  let buffer;
+  let contentType = "image/jpeg";
+  if (Buffer.isBuffer(dataUrlOrBuffer)) {
+    buffer = dataUrlOrBuffer;
+  } else if (typeof dataUrlOrBuffer === "string" && dataUrlOrBuffer.startsWith("data:")) {
+    const match = dataUrlOrBuffer.match(/^data:(image\/(png|jpeg|jpg));base64,(.+)$/);
+    if (!match) return null;
+    contentType = match[1] === "image/png" ? "image/png" : "image/jpeg";
+    buffer = Buffer.from(match[3], "base64");
+  } else {
+    return null;
+  }
+
+  const file = storage.bucket(bucket).file(`bugs/screenshots/${filename}`);
+  await file.save(buffer, {
+    contentType,
+    resumable: false,
+  });
+
+  return `https://storage.googleapis.com/${bucket}/bugs/screenshots/${encodeURIComponent(filename)}`;
+}

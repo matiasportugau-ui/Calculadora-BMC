@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
+import { openBugReport } from "../lib/bugReportBus.js";
 
 const bar = {
   display: "flex",
@@ -62,14 +63,14 @@ export default function BmcModuleNav() {
       <Link to="/hub/traktime" style={btn(traktimeActive)}>
         TraKtiMe
       </Link>
+      <Link to="/hub/marketing" style={btn(marketingActive)}>
+        Market Intel
+      </Link>
       <Link to="/hub/tareas" style={btn(tareasActive)}>
         Tareas
       </Link>
       <Link to="/hub/clientes" style={btn(clientesActive)}>
         Clientes
-      </Link>
-      <Link to="/hub/marketing" style={btn(marketingActive)}>
-        Market Intel
       </Link>
       {isAdmin ? (
         <Link to="/hub/admin/users" style={btn(pathname.startsWith("/hub/admin/users"))}>
@@ -81,6 +82,28 @@ export default function BmcModuleNav() {
           Analytics
         </Link>
       ) : null}
+
+      <button
+        type="button"
+        onClick={() => openBugReport({ via: "nav" })}
+        title="Reportar un bug o problema en la interfaz"
+        style={{
+          marginLeft: "auto",
+          padding: "4px 10px",
+          borderRadius: 999,
+          border: "1px solid #e5e5ea",
+          background: "transparent",
+          fontSize: 13,
+          cursor: "pointer",
+          color: "#c0392b",
+          fontWeight: 600,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+        }}
+      >
+        🐛 <span style={{ fontSize: 12 }}>Reportar</span>
+      </button>
     </nav>
   );
 }
