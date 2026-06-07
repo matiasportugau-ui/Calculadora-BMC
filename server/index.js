@@ -70,6 +70,7 @@ import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
+import { shouldRejectWebhook, shouldRejectVerifyToken } from "./lib/webhookGate.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -493,23 +494,30 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
     dataId: req.query.id ?? req.body?.id,
     requestId: req.headers["x-request-id"],
   });
-  if (!mlSigVerified.skipped && !mlSigVerified.ok) {
-    req.log.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
+  // Gate 0: HMAC verification is MANDATORY (fail-closed). A missing
+  // ML_CLIENT_SECRET no longer silently passes outside the test env.
+  if (shouldRejectWebhook({ verified: mlSigVerified, appEnv: config.appEnv })) {
+    const reason =
+      mlSigVerified.reason || (mlSigVerified.skipped ? "ml_client_secret_unset" : "invalid_signature");
+    req.log.warn({ reason }, "ML webhook: HMAC verification failed — rejected");
     return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
   }
-  if (mlSigVerified.skipped && config.appEnv !== "test") {
-    req.log.warn("ML_CLIENT_SECRET unset — POST /webhooks/ml HMAC verification skipped");
-  }
 
-  // Layer 2: verify token (second layer — kept for defence in depth)
-  if (config.webhookVerifyToken) {
-    const received =
-      req.query.verify_token ||
-      req.headers["x-webhook-token"] ||
-      req.headers.authorization;
-    if (String(received) !== String(config.webhookVerifyToken)) {
-      return res.status(401).json({ ok: false, error: "Invalid webhook token" });
-    }
+  // Layer 2 (defence in depth): the verify token is REQUIRED (Gate 0). Outside
+  // the test env it must be provisioned (Secret Manager) and match.
+  const mlReceivedToken =
+    req.query.verify_token ||
+    req.headers["x-webhook-token"] ||
+    req.headers.authorization;
+  if (
+    shouldRejectVerifyToken({
+      expectedToken: config.webhookVerifyToken,
+      receivedToken: mlReceivedToken,
+      appEnv: config.appEnv,
+    })
+  ) {
+    req.log.warn("ML webhook: verify token missing/invalid — rejected");
+    return res.status(401).json({ ok: false, error: "Invalid webhook token" });
   }
 
   const event = {
@@ -770,11 +778,12 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
     rawBodyBuffer: raw,
     signatureHeader: sig,
   });
-  if (!verified.skipped && !verified.ok) {
+  // Gate 0: HMAC verification is MANDATORY (fail-closed). A missing
+  // WHATSAPP_APP_SECRET no longer silently passes outside the test env.
+  if (shouldRejectWebhook({ verified, appEnv: config.appEnv })) {
+    const reason = verified.reason || (verified.skipped ? "whatsapp_app_secret_unset" : "invalid_signature");
+    logger.warn({ reason }, "WhatsApp webhook: HMAC verification failed — rejected");
     return res.status(401).json({ ok: false, error: "invalid webhook signature" });
-  }
-  if (verified.skipped && config.appEnv !== "test") {
-    logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
   }
 
   let body = {};
