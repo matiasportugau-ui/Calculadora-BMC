@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-01
+**Última actualización:** 2026-06 (today's session close)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -1425,3 +1425,12 @@ Próximos pasos recomendados:
 **2026-06-02 (Executed "recomend and run" — 2D CAD sections in visor):** Per handoff next + roadmap Fase 1/2, immediately implemented + verified: added CAD-style inline SVG "Sección 2D constructiva (inspirada TechDraw/DWG)" inside the enhancedProductViz block of QuoteVisualVisor (3-grecas trapezoid for ISOROOF families with ribs + hatch; engrafado polyline for ISODEC). Labels with AU dims + profile refs (TECHMET F*-MET, BMC Desarrollos). ESLint clean + gate:local (SKIP) passed relevant suites (0 new failures). Fully behind existing toggle. Updated handoff + recorded execution. Advances "add 2D CAD sections to visor" + prepares for 3D extrusion. Next: wire to other surfaces or start basic 3D profile.
 
 **2026-06-02 (MATRIZ prices verification complete — local full data + import CSV ready):** Local API (with key wrapper) + new mapping returns 89-line CSV with real sheet data (73 unique paths). Direct live read confirmed 73 items. 6 panels synced to constants + version bump. Reconcile: 88 rows/73 unique/11 known dups. Generated `.runtime/matriz-prices-for-import.csv` (73 items) for UI "Importar". Created `scripts/start-api-with-doppler-creds.sh` helper + saved current key to `.runtime/secrets/`. Prod deployed (latest rev + secret), smoke OK, endpoint 200. Sheet population needed in col D for full prod rows + specials. See `.runtime/MATRIZ-VERIFICATION-NEXT-STEPS.md` for prioritized actions.
+
+**2026-06 (Session: WOLF debugging review + full bug reporting implementation + deep SVG roof plan cotas read):** Session covered review of Wolfboard (WOLF ops/debug hub for cotizaciones: Admin 2.0 sheet, /api/wolfboard endpoints, quote-batch with GCS replay snapshots, agent tools, CRM sync). Delivered comprehensive in-app bug reporting to "include logs and help us fix bugs": 
+- Client: bugCapture.js (ring buffer + global error listeners), BugReportModal (description/severity + auto context/logs + screenshot capture via captureDomToPng), BugReportsList.jsx (lightweight table for Wolfboard).
+- Integration: Nav button, enhanced RouteErrorBoundary/main error UI with prefill + "Reportar", addBugLog instrumentation in calculadora + wolfboard hooks.
+- Backend: bugs.js (POST /report with soft/optional auth for tokenless reports, GET /list, screenshot upload to GCS, append to BUG_REPORTS + AUDIT_LOG).
+- Agent: list_bug_reports tool + bugsForward.
+- Planning: Detailed "Next Run" plan (WOLF Debugging Hardening + Technical Audit Remediation) incorporating all 5 user-requested items + dedicated track for ongoing roof plan SVG work.
+- Deep dive (user reminder "I was working on SVG files for this"): Full read of current state of key 2D roof plan "cotas" (dimensioning) system: RoofPlanDimensions.jsx (EstructuraGlobalExteriorOverlay, PanelChainDimensions ✂, PanelLabels T-xx, VerificationBadge, OverallEnvelope), roofPlanGeometry.js (layoutZonas, findEncounters, buildExteriorSegments, buildRoofPlanEdges, shared sides, annex logic), roofPlanCotaObstacles.js (AABBs for collision), roofPlanDrawingTheme.js (graphite dims, bump counter, ISO weights, print theme), roofPlanSvgTypography.js (scaling + fmt*), roofLateralAnnexLayout.js (extensions, root ordinals, snap). Tightly coupled to RoofPreview + calculadora. Perfect use case for the new bug tools (screenshots of planta + targeted logging in geometry/calc).
+Handoff: docs/team/HANDOFF-2026-06-SESSION-WOLF-BUG-REPORTING-SVG-ROOFPLAN.md (branch, uncommitted, literal next prompt). Git: feature/marketing-intel-v1, minimal uncommitted. Ready for resume with the SVG + bug reporting + next run execution.
