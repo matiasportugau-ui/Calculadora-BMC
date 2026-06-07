@@ -6,6 +6,8 @@
 
 import { apiGet, apiPost, ApiError } from "./apiClient.js";
 
+export const TEAM_ASSIST_CHAT_TIMEOUT_MS = 40_000;
+
 export async function fetchTeamAssistHealth() {
   // Health devuelve el body aún cuando el endpoint reporte un estado no-ok.
   try {
@@ -21,6 +23,10 @@ export async function fetchTeamAssistHealth() {
  * @param {{ agentId: string, messages: { role: string, content: string }[], context?: object }} body
  */
 export async function fetchTeamAssistChat(body) {
-  const { data } = await apiPost("/api/team-assist/chat", body);
+  // The server gives OpenAI up to 30s before returning its own 504. Keep the
+  // client timeout above that so slow-but-valid responses are not aborted early.
+  const { data } = await apiPost("/api/team-assist/chat", body, {
+    timeoutMs: TEAM_ASSIST_CHAT_TIMEOUT_MS,
+  });
   return data;
 }
