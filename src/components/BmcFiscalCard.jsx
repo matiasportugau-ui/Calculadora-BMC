@@ -8,7 +8,7 @@
  *   rojo    — error de red / 503
  */
 import { useEffect, useState } from "react";
-import { getCalcApiBase } from "../utils/calcApiBase.js";
+import { apiGet } from "../utils/apiClient.js";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -115,16 +115,8 @@ export default function BmcFiscalCard() {
   const [fetchErr, setFetchErr] = useState("");
 
   useEffect(() => {
-    const base = getCalcApiBase().replace(/\/+$/, "");
-    fetch(`${base}/api/fiscal/bps-irae`)
-      .then(async (r) => {
-        const body = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          setFetchErr(body?.error || `HTTP ${r.status}`);
-        } else {
-          setData(body);
-        }
-      })
+    apiGet("/api/fiscal/bps-irae")
+      .then(({ data }) => setData(data))
       .catch((e) => setFetchErr(e.message || "Error de red"))
       .finally(() => setLoading(false));
   }, []);

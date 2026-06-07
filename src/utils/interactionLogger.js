@@ -4,6 +4,8 @@
 // Solo activo en desarrollo (import.meta.env.DEV)
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { apiPost } from "./apiClient.js";
+
 const MAX_ENTRIES = 200;
 const entries = [];
 let sessionStart = null;
@@ -187,13 +189,8 @@ export function getExportPayload() {
  */
 export async function saveToFile() {
   try {
-    const res = await fetch("/calc/interaction-log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(getExportPayload()),
-    });
-    const data = await res.json();
-    return data.ok ? { ok: true, path: data.path } : { ok: false, error: data.error };
+    const { data } = await apiPost("/calc/interaction-log", getExportPayload());
+    return data?.ok ? { ok: true, path: data.path } : { ok: false, error: data?.error };
   } catch (err) {
     return { ok: false, error: err.message };
   }
