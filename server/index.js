@@ -88,6 +88,17 @@ if (config.panelinRelaxDevAuth) {
   );
 }
 
+// Phase 0 security hardening: fail loud in production if critical webhook secrets are missing
+const isProd = config.appEnv === "production" || process.env.NODE_ENV === "production";
+if (isProd) {
+  if (!config.whatsappAppSecret) {
+    logger.error("FATAL: WHATSAPP_APP_SECRET is not set in production — WhatsApp webhooks will be rejected");
+  }
+  if (!config.mlClientSecret) {
+    logger.error("FATAL: ML_CLIENT_SECRET is not set in production — MercadoLibre webhooks will be rejected");
+  }
+}
+
 const app = express();
 app.disable("x-powered-by"); // hide Express signature (defense in depth)
 app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel proxy
@@ -131,8 +142,9 @@ app.use(
   })
 );
 
-const stateTtlMs = 10 * 60 * 1000;
-const oauthStates = new Map();
+// Replaced in-memory Map with persistent store (Phase 0 security fix).
+// See server/lib/oauthStateStore.js
+import { oauthStateStore } from "./lib/oauthStateStore.js";
 const webhookEvents = [];
 const maxWebhookEvents = 250;
 
@@ -167,12 +179,11 @@ const asyncHandler =
   (req, res, next) =>
     Promise.resolve(fn(req, res, next)).catch(next);
 
-const ensureValidState = (state) => {
-  const entry = oauthStates.get(state);
+const ensureValidState = async (state) => {
+  const entry = await oauthStateStore.get(state);
   if (!entry) return null;
-  const expired = Date.now() - entry.createdAt > stateTtlMs;
-  oauthStates.delete(state);
-  return expired ? null : entry;
+  // The store already handles TTL/expiry + deletion
+  return entry;
 };
 
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
@@ -247,7 +258,7 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
-  oauthStates.set(state, { createdAt: Date.now(), codeVerifier });
+  await oauthStateStore.set(state, { codeVerifier });
   const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {
@@ -268,7 +279,7 @@ app.get("/auth/ml/callback", asyncHandler(async (req, res) => {
   if (!code) {
     return res.status(400).json({ ok: false, error: "Missing code in callback querystring" });
   }
-  const stateEntry = ensureValidState(String(state));
+  const stateEntry = await ensureValidState(String(state));
   if (!state || !stateEntry) {
     return res.status(400).json({ ok: false, error: "Invalid or expired OAuth state" });
   }
@@ -497,8 +508,9 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
     req.log.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
     return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
   }
-  if (mlSigVerified.skipped && config.appEnv !== "test") {
-    req.log.warn("ML_CLIENT_SECRET unset — POST /webhooks/ml HMAC verification skipped");
+  if (mlSigVerified.reason === "secret_not_configured") {
+    req.log.error("ML_CLIENT_SECRET is not configured — rejecting webhook for security");
+    return res.status(503).json({ ok: false, error: "Webhook security not configured" });
   }
 
   // Layer 2: verify token (second layer — kept for defence in depth)
@@ -773,8 +785,9 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   if (!verified.skipped && !verified.ok) {
     return res.status(401).json({ ok: false, error: "invalid webhook signature" });
   }
-  if (verified.skipped && config.appEnv !== "test") {
-    logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
+  if (verified.reason === "secret_not_configured") {
+    logger.error("WHATSAPP_APP_SECRET is not configured — rejecting webhook for security");
+    return res.status(503).json({ ok: false, error: "Webhook security not configured" });
   }
 
   let body = {};

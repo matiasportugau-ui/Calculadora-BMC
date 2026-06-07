@@ -16,7 +16,11 @@ const REPLAY_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
  * @returns {{ ok: boolean, skipped?: boolean, reason?: string }}
  */
 export function verifyMLSignature({ clientSecret, signatureHeader, dataId, requestId, nowMs }) {
-  if (!clientSecret) return { ok: true, skipped: true };
+  if (!clientSecret) {
+    const isTest = process.env.APP_ENV === "test" || process.env.NODE_ENV === "test";
+    if (isTest) return { ok: true, skipped: true };
+    return { ok: false, reason: "secret_not_configured" };
+  }
 
   if (!signatureHeader) return { ok: false, reason: "missing_signature_header" };
 
