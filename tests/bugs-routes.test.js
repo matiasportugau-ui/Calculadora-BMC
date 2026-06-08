@@ -79,7 +79,7 @@ async function testPostReportWritesSanitizedRows() {
         details: "-dangerous details",
         severity: "alta",
         url: "@bad-url",
-        userAgent: "\tBadAgent",
+        userAgent: "\t=BadAgent",
         context: {
           route: "/wolfboard",
           logs,
@@ -111,7 +111,7 @@ async function testPostReportWritesSanitizedRows() {
   assert.equal(row[3], "'-dangerous details");
   assert.equal(row[4], "alta");
   assert.equal(row[5], "'@bad-url");
-  assert.equal(row[6], "'\tBadAgent");
+  assert.equal(row[6], "'\t=BadAgent");
   assert.equal(row[9], "nuevo");
   assert.equal(row[10], "api/bugs/report");
   assert.equal(row[11], "none");
