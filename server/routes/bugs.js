@@ -49,7 +49,8 @@ function hasValidApiToken(config, req) {
 function requireAuth(config, req, res) {
   const expected = config.apiAuthToken;
   if (!expected) {
-    return envMissing503(res, "API_AUTH_TOKEN");
+    envMissing503(res, "API_AUTH_TOKEN");
+    return false;
   }
   if (!hasValidApiToken(config, req)) {
     res.status(401).json({ ok: false, error: "API key inválida o ausente" });
@@ -71,7 +72,15 @@ function makeBugId() {
 }
 
 export function createBugsRouter(config) {
+  return createBugsRouterWithDeps(config);
+}
+
+export function createBugsRouterWithDeps(config, deps = {}) {
   const router = Router();
+  const getSheetsClient = deps.getSheets || getSheets;
+  const uploadScreenshot = deps.uploadBugScreenshotToGcs || uploadBugScreenshotToGcs;
+  const makeId = deps.makeBugId || makeBugId;
+  const nowIso = deps.nowIso || (() => new Date().toISOString());
 
   // POST /api/bugs/report  (auth is intentionally soft/optional for this path)
   router.post("/report", async (req, res) => {
@@ -112,13 +121,13 @@ export function createBugsRouter(config) {
 
     let sheets;
     try {
-      sheets = await getSheets();
+      sheets = await getSheetsClient();
     } catch (e) {
       return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message });
     }
 
-    const id = makeBugId();
-    const now = new Date().toISOString();
+    const id = makeId();
+    const now = nowIso();
     const safeShort = sanitizeCellValue(String(shortDescription).slice(0, 300));
     const safeDetails = sanitizeCellValue(String(details || "").slice(0, 2000));
     const safeUrl = sanitizeCellValue(String(url || ""));
@@ -131,7 +140,7 @@ export function createBugsRouter(config) {
     if (finalContext.screenshotDataUrl && config.gcsQuotesBucket) {
       try {
         const shotFilename = `bug-${id}.jpg`;
-        const shotUrl = await uploadBugScreenshotToGcs(finalContext.screenshotDataUrl, shotFilename, config.gcsQuotesBucket);
+        const shotUrl = await uploadScreenshot(finalContext.screenshotDataUrl, shotFilename, config.gcsQuotesBucket);
         if (shotUrl) {
           finalContext.screenshotUrl = shotUrl;
           delete finalContext.screenshotDataUrl;
@@ -218,7 +227,9 @@ export function createBugsRouter(config) {
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
 
     let sheets;
-    try { sheets = await getSheets(); } catch (e) {
+    try {
+      sheets = await getSheetsClient();
+    } catch (e) {
       return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message });
     }
 
