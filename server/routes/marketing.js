@@ -4,39 +4,18 @@
 //   app.use('/api/marketing', marketingRouter);
 
 import { Router } from 'express';
-import pg from 'pg';
 import pino from 'pino';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { pool, isNotProvisioned } from '../lib/marketIntel/db.js';
 import { listPendingTasks, updateTaskStatus } from '../lib/marketIntel/mysteryShoppingQueue.js';
 import { runEtl } from '../lib/marketIntel/etl/runner.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
 
-let _pool = null;
-const pool = () => {
-  if (!_pool) {
-    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL required');
-    _pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-  }
-  return _pool;
-};
-
-// PostgreSQL SQLSTATE codes that mean "the bmc_market_intel schema/relations are
-// not provisioned yet" (migrations not applied) rather than a transient outage:
-//   42P01 undefined_table · 42703 undefined_column
-//   3F000 invalid_schema_name · 3D000 invalid_catalog_name
-const NOT_PROVISIONED_PG_CODES = new Set(['42P01', '42703', '3F000', '3D000']);
-
-// A persistent 503 turns the dashboard into a dead-end ("Reintentar" can never
-// succeed). When the cause is simply that the module isn't wired up yet — no
-// DATABASE_URL, or migrations not run — degrade to an empty 200 payload instead,
-// matching the project convention "200 + empty payload = no data". The UI then
-// renders its normal empty states. Genuine outages (ECONNREFUSED, timeouts) still
-// return 503, where retrying is meaningful.
-const isNotProvisioned = (err) =>
-  err?.message === 'DATABASE_URL required' || NOT_PROVISIONED_PG_CODES.has(err?.code);
-
+// `pool` + `isNotProvisioned` come from lib/marketIntel/db.js, shared with
+// mysteryShoppingQueue.js so the not-provisioned contract lives in one place.
+// These builders shape the empty 200 payloads the routes serve in that state.
 const emptySummary = () => ({
   last_etl_run: null,
   alert_counts: { info: 0, warning: 0, critical: 0 },

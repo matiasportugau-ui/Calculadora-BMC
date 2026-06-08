@@ -1,19 +1,10 @@
 // Module: market-intelligence | Owner: bmc-dev | Created: 2026-05-15
 
 import { randomUUID } from 'crypto';
-import pg from 'pg';
 import pino from 'pino';
+import { pool } from './db.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
-
-let _pool = null;
-const pool = () => {
-  if (!_pool) {
-    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL required');
-    _pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-  }
-  return _pool;
-};
 
 /**
  * Create a pending mystery shopping task.

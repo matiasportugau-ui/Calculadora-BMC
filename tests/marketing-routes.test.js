@@ -16,6 +16,9 @@ const TOKEN = process.env.API_AUTH_TOKEN;
 
 const { default: express } = await import("express");
 const { default: marketingRouter } = await import("../server/routes/marketing.js");
+const { isNotProvisioned, NO_DATABASE_URL } = await import(
+  "../server/lib/marketIntel/db.js"
+);
 
 let passed = 0;
 let failed = 0;
@@ -34,6 +37,33 @@ function assert(name, condition, actual, expected) {
 
 async function run() {
   console.log("\n═══ MARKETING SUITE: /api/marketing/* ═══");
+
+  // ── unit: isNotProvisioned classifies "not provisioned" vs everything else ──
+  // (the SQLSTATE branch is the real prod cause but needs no live DB to assert).
+  for (const code of [NO_DATABASE_URL, "42P01", "42703", "3F000", "3D000"]) {
+    assert(
+      `isNotProvisioned({code:'${code}'}) → true`,
+      isNotProvisioned({ code }) === true,
+      isNotProvisioned({ code }),
+      true,
+    );
+  }
+  for (const [label, sample] of [
+    ["ECONNREFUSED (connection refused)", { code: "ECONNREFUSED" }],
+    ["57P01 (admin_shutdown)", { code: "57P01" }],
+    ["42501 (insufficient_privilege)", { code: "42501" }],
+    ["untagged Error('DATABASE_URL required') — message no longer matched", new Error("DATABASE_URL required")],
+    ["empty object", {}],
+    ["null", null],
+    ["undefined", undefined],
+  ]) {
+    assert(
+      `isNotProvisioned: ${label} → false`,
+      isNotProvisioned(sample) === false,
+      isNotProvisioned(sample),
+      false,
+    );
+  }
 
   const app = express();
   app.use(express.json({ limit: "1mb" }));
