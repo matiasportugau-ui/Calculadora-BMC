@@ -1,6 +1,6 @@
 # Cloud Build config — image build only.
 # Env vars (BMC_*, IDENTITY_*, GOOGLE_OAUTH_CLIENT_ID, SHEETS_CLIENT_QUOTES_*,
-# WA_*, SMTP_*) are injected at deploy time by the
+# WA_*, SMTP_*, API_AUTH_TOKEN) are injected at deploy time by the
 # `google-github-actions/deploy-cloudrun@v3` step in
 # .github/workflows/deploy-calc-api.yml — keep this file image-only so a
 # manual `gcloud builds submit` doesn't surprise-rotate runtime config.
