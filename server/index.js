@@ -45,7 +45,6 @@ import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
 import marketingRouter from "./routes/marketing.js";
 import { createBugsRouter } from "./routes/bugs.js";
-import marketingRouter from "./routes/marketing.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
@@ -501,30 +500,7 @@ app.get("/ml/orders/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-// /webhooks/ml moved to server/routes/webhooks.js (monolith decomposition)
-    (async () => {
-      try {
-        const syncResult = await syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log });
-        if (autoMode.fullAuto && syncResult.rows?.length > 0) {
-          req.log.info({ count: syncResult.rows.length }, "ML auto-mode ON — running auto-answer pipeline");
-          const { answered } = await autoAnswerPipeline({
-            rows:      syncResult.rows,
-            ml,
-            sheetId:   config.bmcSheetId,
-            credsPath,
-            config,
-            logger:    req.log,
-          });
-          req.log.info({ answered }, "ML auto-answer pipeline complete");
-        }
-      } catch (err) {
-        req.log.error({ err }, "ML→CRM webhook pipeline failed");
-      }
-    })();
-  }
-
-  res.status(200).json({ ok: true, eventId: event.id });
-}));
+// /webhooks/ml POST → server/routes/webhooks.js (monolith decomposition)
 
 app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
   res.json({ ok: true, count: webhookEvents.length, events: webhookEvents });
@@ -951,9 +927,6 @@ app.use("/api/wolfboard", createWolfboardRouter(config));
 // Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
 app.use("/api/marketing", marketingRouter);
 app.use("/api/bugs", createBugsRouter(config));
-// Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
-// Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
-app.use("/api/marketing", marketingRouter);
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
 app.use("/api", deepResearchRouter);
@@ -1169,4 +1142,3 @@ function shutdown(signal) {
 }
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
-, () => shutdown("SIGINT"));
