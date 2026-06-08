@@ -22,6 +22,38 @@ const pool = () => {
   return _pool;
 };
 
+// PostgreSQL SQLSTATE codes that mean "the bmc_market_intel schema/relations are
+// not provisioned yet" (migrations not applied) rather than a transient outage:
+//   42P01 undefined_table · 42703 undefined_column
+//   3F000 invalid_schema_name · 3D000 invalid_catalog_name
+const NOT_PROVISIONED_PG_CODES = new Set(['42P01', '42703', '3F000', '3D000']);
+
+// A persistent 503 turns the dashboard into a dead-end ("Reintentar" can never
+// succeed). When the cause is simply that the module isn't wired up yet — no
+// DATABASE_URL, or migrations not run — degrade to an empty 200 payload instead,
+// matching the project convention "200 + empty payload = no data". The UI then
+// renders its normal empty states. Genuine outages (ECONNREFUSED, timeouts) still
+// return 503, where retrying is meaningful.
+const isNotProvisioned = (err) =>
+  err?.message === 'DATABASE_URL required' || NOT_PROVISIONED_PG_CODES.has(err?.code);
+
+const emptySummary = () => ({
+  last_etl_run: null,
+  alert_counts: { info: 0, warning: 0, critical: 0 },
+  top_competitors_by_delta: [],
+  pending_mystery_shopping_count: 0,
+  provisioned: false,
+});
+
+const emptyPage = (page, perPage) => ({
+  data: [],
+  total: 0,
+  page,
+  per_page: perPage,
+  total_pages: 0,
+  provisioned: false,
+});
+
 // ─── GET /api/marketing/dashboard/summary ─────────────────────────
 router.get('/dashboard/summary', requireAuth, async (req, res) => {
   try {
@@ -45,6 +77,10 @@ router.get('/dashboard/summary', requireAuth, async (req, res) => {
       pending_mystery_shopping_count: parseInt(msPendingResult.rows[0]?.count ?? '0', 10),
     });
   } catch (err) {
+    if (isNotProvisioned(err)) {
+      log.warn({ err, route: 'GET /dashboard/summary' }, 'market-intel not provisioned — serving empty payload');
+      return res.json(emptySummary());
+    }
     log.error({ err, route: 'GET /dashboard/summary' }, 'query failed');
     res.status(503).json({ error: 'Database unavailable' });
   }
@@ -52,9 +88,9 @@ router.get('/dashboard/summary', requireAuth, async (req, res) => {
 
 // ─── GET /api/marketing/dashboard/competitors ─────────────────────
 router.get('/dashboard/competitors', requireAuth, async (req, res) => {
+  const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
+  const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
   try {
-    const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
-    const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
     const offset  = (page - 1) * perPage;
 
     const [data, count] = await Promise.all([
@@ -76,6 +112,10 @@ router.get('/dashboard/competitors', requireAuth, async (req, res) => {
       total_pages: Math.ceil(total / perPage),
     });
   } catch (err) {
+    if (isNotProvisioned(err)) {
+      log.warn({ err, route: 'GET /dashboard/competitors' }, 'market-intel not provisioned — serving empty payload');
+      return res.json(emptyPage(page, perPage));
+    }
     log.error({ err, route: 'GET /dashboard/competitors' }, 'query failed');
     res.status(503).json({ error: 'Database unavailable' });
   }
@@ -83,9 +123,9 @@ router.get('/dashboard/competitors', requireAuth, async (req, res) => {
 
 // ─── GET /api/marketing/dashboard/alerts ──────────────────────────
 router.get('/dashboard/alerts', requireAuth, async (req, res) => {
+  const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
+  const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
   try {
-    const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
-    const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
     const offset  = (page - 1) * perPage;
     const level   = req.query.level;
 
@@ -118,6 +158,10 @@ router.get('/dashboard/alerts', requireAuth, async (req, res) => {
       total_pages: Math.ceil(total / perPage),
     });
   } catch (err) {
+    if (isNotProvisioned(err)) {
+      log.warn({ err, route: 'GET /dashboard/alerts' }, 'market-intel not provisioned — serving empty payload');
+      return res.json(emptyPage(page, perPage));
+    }
     log.error({ err, route: 'GET /dashboard/alerts' }, 'query failed');
     res.status(503).json({ error: 'Database unavailable' });
   }
@@ -125,10 +169,9 @@ router.get('/dashboard/alerts', requireAuth, async (req, res) => {
 
 // ─── GET /api/marketing/mystery-shopping ──────────────────────────
 router.get('/mystery-shopping', requireAuth, async (req, res) => {
+  const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
+  const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
   try {
-    const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
-    const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
-
     const { tasks, total } = await listPendingTasks(page, perPage);
     res.json({
       data: tasks,
@@ -138,6 +181,10 @@ router.get('/mystery-shopping', requireAuth, async (req, res) => {
       total_pages: Math.ceil(total / perPage),
     });
   } catch (err) {
+    if (isNotProvisioned(err)) {
+      log.warn({ err, route: 'GET /mystery-shopping' }, 'market-intel not provisioned — serving empty payload');
+      return res.json(emptyPage(page, perPage));
+    }
     log.error({ err, route: 'GET /mystery-shopping' }, 'query failed');
     res.status(503).json({ error: 'Database unavailable' });
   }
