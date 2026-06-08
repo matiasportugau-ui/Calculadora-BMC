@@ -49,7 +49,8 @@ function hasValidApiToken(config, req) {
 function requireAuth(config, req, res) {
   const expected = config.apiAuthToken;
   if (!expected) {
-    return envMissing503(res, "API_AUTH_TOKEN");
+    envMissing503(res, "API_AUTH_TOKEN");
+    return false;
   }
   if (!hasValidApiToken(config, req)) {
     res.status(401).json({ ok: false, error: "API key inválida o ausente" });
