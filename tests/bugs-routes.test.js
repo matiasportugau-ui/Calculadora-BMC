@@ -227,16 +227,20 @@ async function testGetBugsAuthFilteringSortingAndLimit() {
 }
 
 async function testGetBugsFailsClosedWithoutApiToken() {
-  const { sheets, calls } = makeFakeSheets({ values: [] });
-  const app = makeApp({ apiAuthToken: "" }, { getSheets: async () => sheets });
+  const app = makeApp(
+    { apiAuthToken: "" },
+    {
+      getSheets: async () => {
+        throw new Error("Sheets should not be reached when API_AUTH_TOKEN is missing");
+      },
+    },
+  );
 
   await withServer(app, async (base) => {
     const { response, body } = await jsonFetch(`${base}/api/bugs`);
     assert.equal(response.status, 503);
     assert.equal(body.envVar, "API_AUTH_TOKEN");
   });
-
-  assert.equal(calls.get.length, 0, "missing API token config should fail before Sheets read");
 }
 
 await testPostReportWritesSanitizedRows();
