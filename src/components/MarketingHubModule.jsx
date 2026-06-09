@@ -1,45 +1,27 @@
 // Module: market-intelligence | Owner: bmc-dev | Created: 2026-05-15
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getCalcApiBase } from '../utils/calcApiBase.js';
+import { useBmcAuthContext } from '../contexts/bmcAuthContext.js';
 import SummaryCards from './marketing-hub/SummaryCards.jsx';
 import TopDeltaTable from './marketing-hub/TopDeltaTable.jsx';
 import AlertsFeed from './marketing-hub/AlertsFeed.jsx';
 import MysteryShoppingWidget from './marketing-hub/MysteryShoppingWidget.jsx';
 
-const STORAGE_KEY = 'bmc_cockpit_token';
-
-function getStoredToken() {
-  try { return localStorage.getItem(STORAGE_KEY) || ''; } catch { return ''; }
-}
-
-// Every cockpit-family module shares the same `bmc_cockpit_token`, which the API
-// hands to the browser at runtime (origin-guarded) so it never has to be baked
-// into the Vite bundle. BmcWaCockpit bootstraps it this way; this module used to
-// assume it was already cached, so a direct visit to /hub/marketing sent an
-// unauthenticated request and the whole dashboard errored out.
-async function fetchCockpitToken() {
-  try {
-    const base = getCalcApiBase().replace(/\/+$/, '');
-    const res = await fetch(`${base}/api/crm/cockpit-token`, { credentials: 'include' });
-    if (!res.ok) return '';
-    const j = await res.json().catch(() => ({}));
-    return j?.ok && j?.token ? j.token : '';
-  } catch {
-    return '';
-  }
-}
-
 async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, '');
-  const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+  const headers = { ...(options.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${base}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }
 
 export default function MarketingHubModule() {
-  const tokenRef = useRef(getStoredToken());
+  // Market Intelligence authenticates with the logged-in operator's identity JWT.
+  // The SPA route is gated by <RequireGrant role="admin">, so this is always an
+  // admin session; the backend accepts this JWT (or the static service token).
+  const { accessToken } = useBmcAuthContext();
   const [summary, setSummary] = useState(null);
   const [alerts, setAlerts] = useState(null);
   const [msQueue, setMsQueue] = useState(null);
@@ -53,26 +35,16 @@ export default function MarketingHubModule() {
     setError(null);
 
     try {
-      // Bootstrap the shared cockpit token on first load if it isn't cached yet.
-      if (!tokenRef.current) {
-        const tok = await fetchCockpitToken();
-        if (tok) {
-          tokenRef.current = tok;
-          try { localStorage.setItem(STORAGE_KEY, tok); } catch { /* localStorage unavailable */ }
-        }
-      }
-      const token = tokenRef.current;
-
       const [s, a, ms] = await Promise.all([
-        apiFetch(token, '/api/marketing/dashboard/summary'),
-        apiFetch(token, `/api/marketing/dashboard/alerts?page=${alertsPage}&per_page=25`),
-        apiFetch(token, `/api/marketing/mystery-shopping?page=${msPage}&per_page=25`),
+        apiFetch(accessToken, '/api/marketing/dashboard/summary'),
+        apiFetch(accessToken, `/api/marketing/dashboard/alerts?page=${alertsPage}&per_page=25`),
+        apiFetch(accessToken, `/api/marketing/mystery-shopping?page=${msPage}&per_page=25`),
       ]);
 
       if (!s.ok) {
         throw new Error(
           s.status === 401 || s.status === 403
-            ? `Sesión no autorizada (${s.status}). Volvé a iniciar sesión en el cockpit.`
+            ? `Sesión no autorizada (${s.status}). Volvé a iniciar sesión.`
             : `No se pudo cargar el resumen (HTTP ${s.status}).`
         );
       }
@@ -85,7 +57,7 @@ export default function MarketingHubModule() {
     } finally {
       setLoading(false);
     }
-  }, [alertsPage, msPage]);
+  }, [accessToken, alertsPage, msPage]);
 
   useEffect(() => { load(); }, [load]);
 

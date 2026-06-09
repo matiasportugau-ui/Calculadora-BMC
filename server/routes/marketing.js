@@ -5,13 +5,21 @@
 
 import { Router } from 'express';
 import pino from 'pino';
-import { requireAuth } from '../middleware/requireAuth.js';
+import { requireServiceOrUser } from '../middleware/requireServiceOrUser.js';
 import { pool, isNotProvisioned } from '../lib/marketIntel/db.js';
 import { listPendingTasks, updateTaskStatus } from '../lib/marketIntel/mysteryShoppingQueue.js';
 import { runEtl } from '../lib/marketIntel/etl/runner.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
+
+// Market Intelligence is an internal, admin-only dashboard (the SPA route is
+// gated by <RequireGrant role="admin">). Accept EITHER the static service token
+// (CI/cron, when API_AUTH_TOKEN is configured) OR a logged-in admin's identity
+// JWT — so the dashboard works through the normal operator session even when the
+// static token isn't provisioned on the server. Unauthenticated callers get 401
+// (not the old, confusing 503).
+const requireAdmin = requireServiceOrUser({ role: 'admin' });
 
 // `pool` + `isNotProvisioned` come from lib/marketIntel/db.js, shared with
 // mysteryShoppingQueue.js so the not-provisioned contract lives in one place.
@@ -34,7 +42,7 @@ const emptyPage = (page, perPage) => ({
 });
 
 // ─── GET /api/marketing/dashboard/summary ─────────────────────────
-router.get('/dashboard/summary', requireAuth, async (req, res) => {
+router.get('/dashboard/summary', requireAdmin, async (req, res) => {
   try {
     const [lastRunResult, alertCountResult, deltaResult, msPendingResult] = await Promise.all([
       pool().query(`SELECT * FROM bmc_market_intel.v_last_etl_run`),
@@ -66,7 +74,7 @@ router.get('/dashboard/summary', requireAuth, async (req, res) => {
 });
 
 // ─── GET /api/marketing/dashboard/competitors ─────────────────────
-router.get('/dashboard/competitors', requireAuth, async (req, res) => {
+router.get('/dashboard/competitors', requireAdmin, async (req, res) => {
   const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
   const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
   try {
@@ -101,7 +109,7 @@ router.get('/dashboard/competitors', requireAuth, async (req, res) => {
 });
 
 // ─── GET /api/marketing/dashboard/alerts ──────────────────────────
-router.get('/dashboard/alerts', requireAuth, async (req, res) => {
+router.get('/dashboard/alerts', requireAdmin, async (req, res) => {
   const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
   const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
   try {
@@ -147,7 +155,7 @@ router.get('/dashboard/alerts', requireAuth, async (req, res) => {
 });
 
 // ─── GET /api/marketing/mystery-shopping ──────────────────────────
-router.get('/mystery-shopping', requireAuth, async (req, res) => {
+router.get('/mystery-shopping', requireAdmin, async (req, res) => {
   const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
   const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
   try {
@@ -170,7 +178,7 @@ router.get('/mystery-shopping', requireAuth, async (req, res) => {
 });
 
 // ─── PATCH /api/marketing/mystery-shopping/:id/status ─────────────
-router.patch('/mystery-shopping/:id/status', requireAuth, async (req, res) => {
+router.patch('/mystery-shopping/:id/status', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { status, approved_by } = req.body;
 
@@ -196,7 +204,7 @@ router.patch('/mystery-shopping/:id/status', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/marketing/etl/run ──────────────────────────────────
-router.post('/etl/run', requireAuth, (req, res) => {
+router.post('/etl/run', requireAdmin, (req, res) => {
   log.info({ userId: req.user?.id }, 'manual ETL trigger received');
 
   // Fire-and-forget — caller monitors via /dashboard/summary
