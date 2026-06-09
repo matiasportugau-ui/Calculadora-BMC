@@ -237,6 +237,6 @@ _Identidades reales viven en `identity.users`; aquí solo roles para evitar PII 
 | Vendedor oficina | operator | Ventas | — | `clientes.read` |
 
 Notas:
-- Identity superadmin distinto: `matias@bmc.uy` (en `INTERNAL_SUPERADMIN_EMAILS`). Si el login Google de Matias usa `bmc.com`, hay que decidir cuál de los dos es la identidad canónica.
-- Sandra Sánchez aparece en `docs/google-sheets-module/FULL-SHEETS-AUDIT-RAW.json` con su nombre completo.
+- Superadmin canónico definido en env `INTERNAL_SUPERADMIN_EMAILS` (no embeber acá). Si el login Google del CEO usa un dominio distinto al del env, decidir cuál es la identidad canónica antes del rollout.
+- Nombres completos del equipo viven en `identity.users` — no embeber en docs públicos.
 - En Phase 2, antes de dar grant a Martin/Ramiro, **entrevistar 15 min cada uno** para confirmar que el panel les sirve. No asumir.
