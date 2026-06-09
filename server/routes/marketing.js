@@ -115,6 +115,9 @@ router.get('/dashboard/alerts', requireAdmin, async (req, res) => {
   try {
     const offset  = (page - 1) * perPage;
     const level   = req.query.level;
+    if (level && !['info', 'warning', 'critical'].includes(level)) {
+      return res.status(400).json({ error: 'level must be one of: info, warning, critical' });
+    }
 
     const params  = [perPage, offset];
     const clause  = level ? 'AND a.level = $3' : '';
@@ -180,7 +183,10 @@ router.get('/mystery-shopping', requireAdmin, async (req, res) => {
 // ─── PATCH /api/marketing/mystery-shopping/:id/status ─────────────
 router.patch('/mystery-shopping/:id/status', requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const { status, approved_by } = req.body;
+  const { status } = req.body;
+  // Derive the approver from the verified session principal — never trust a
+  // caller-supplied approved_by, which would let any admin forge the audit trail.
+  const approved_by = req.user?.email ?? req.user?.id ?? null;
 
   const valid = ['approved', 'completed', 'cancelled'];
   if (!valid.includes(status)) {

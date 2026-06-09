@@ -141,6 +141,17 @@ async function run() {
       { page: 2, per_page: 10 },
     );
 
+    // ── invalid alert level rejected by the allow-list guard (before any DB) ──
+    r = await fetch(`${base}/api/marketing/dashboard/alerts?level=bogus`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    assert(
+      "GET /dashboard/alerts?level=bogus → 400",
+      r.status === 400,
+      r.status,
+      400,
+    );
+
     // ── mutations are NOT silently swallowed: still surface 503 ─────────────
     r = await fetch(`${base}/api/marketing/mystery-shopping/abc/status`, {
       method: "PATCH",
