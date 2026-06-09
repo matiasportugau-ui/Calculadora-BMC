@@ -58,7 +58,10 @@ function requireAuth(config, req, res) {
   return true;
 }
 
-async function getSheets() {
+async function getSheets(config) {
+  if (config?.bugReportsSheetsClient) {
+    return config.bugReportsSheetsClient;
+  }
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   return google.sheets({ version: "v4", auth: authClient });
 }
@@ -112,7 +115,7 @@ export function createBugsRouter(config) {
 
     let sheets;
     try {
-      sheets = await getSheets();
+      sheets = await getSheets(config);
     } catch (e) {
       return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message });
     }
@@ -218,7 +221,7 @@ export function createBugsRouter(config) {
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
 
     let sheets;
-    try { sheets = await getSheets(); } catch (e) {
+    try { sheets = await getSheets(config); } catch (e) {
       return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message });
     }
 
