@@ -9,9 +9,15 @@
 // declared in deploy-calc-api.yml, silently re-breaking prod.
 //
 // This test fails fast (offline, in CI) if a future edit drops one of those
-// boot-critical auth vars from the deploy workflow, so the outage cannot recur
+// boot-critical auth vars from the deploy step, so the outage cannot recur
 // unnoticed. Extend AUTH_CRITICAL_ENV if more "absence == whole-surface-down"
 // vars get added.
+//
+// SCOPE NOTE: this guard verifies the var is *declared for injection* (present
+// in the env_vars block or --set-secrets flag). It cannot verify the value is
+// non-empty — an unset GitHub secret (`NAME=${{ secrets.NAME }}` → "") would
+// still 503 at runtime. That value-level check belongs to the ci.yml
+// voice-health probe against prod, not to this offline unit test.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -29,23 +35,47 @@ assert.ok(fs.existsSync(DEPLOY_YAML), `deploy workflow not found: ${DEPLOY_YAML}
 const yaml = fs.readFileSync(DEPLOY_YAML, "utf8");
 
 /**
- * True when `name` is injected by the deploy step, via either:
- *   - env_vars block:  `            NAME=${{ secrets.NAME }}`
- *   - --set-secrets:   `...,NAME=secret-name:version` (or first `--set-secrets=NAME=...`)
+ * Names the deploy step actually injects into the Cloud Run service, parsed
+ * ONLY from the `env_vars:` block and the `--set-secrets` flag — never from
+ * free text, so a stray `NAME=` in a `run:`/smoke step or a comment cannot
+ * satisfy the guard (which would give false confidence that an injection line
+ * is still present after it was deleted).
  */
-function isInjected(name) {
-  const asEnvVar = new RegExp(`(^|\\n)\\s+${name}=`).test(yaml);
-  const asSecret = new RegExp(`[=,]${name}=[^,\\s]+:[^,\\s]+`).test(yaml);
-  return asEnvVar || asSecret;
+function injectedVarNames(text) {
+  const names = new Set();
+
+  // env_vars: |
+  //   NAME=...   (indented block, terminated by the sibling `flags:` key)
+  const envBlock = text.match(/\n[ \t]*env_vars:[ \t]*\|[ \t]*\n([\s\S]*?)\n[ \t]*flags:[ \t]*\|/);
+  if (envBlock) {
+    for (const line of envBlock[1].split("\n")) {
+      const m = line.trim().match(/^([A-Z][A-Z0-9_]+)=/);
+      if (m) names.add(m[1]);
+    }
+  }
+
+  // --set-secrets=KEY=ref,KEY2=ref2,...  Comma-separated; each KEY may be a
+  // path mount (/run/secrets/x=...) which we skip, and `ref` can be any
+  // syntax (`secret:version` or full `projects/P/secrets/S/versions/V`) since
+  // we only read the KEY left of the first `=`.
+  for (const m of text.matchAll(/--set-secrets=(\S+)/g)) {
+    for (const seg of m[1].split(",")) {
+      const key = seg.split("=")[0].replace(/^.*\//, "");
+      if (/^[A-Z][A-Z0-9_]+$/.test(key)) names.add(key);
+    }
+  }
+
+  return names;
 }
 
-const missing = AUTH_CRITICAL_ENV.filter((v) => !isInjected(v));
+const injected = injectedVarNames(yaml);
+const missing = AUTH_CRITICAL_ENV.filter((v) => !injected.has(v));
 assert.deepEqual(
   missing,
   [],
-  `deploy-calc-api.yml must inject these auth-critical vars (env_vars or --set-secrets), ` +
-    `but they are missing: ${missing.join(", ")}. Dropping them re-introduces the cockpit ` +
-    `503 "API_AUTH_TOKEN not configured" outage — see PR #298.`,
+  `deploy-calc-api.yml must inject these auth-critical vars in its env_vars block ` +
+    `or --set-secrets flag, but they are missing: ${missing.join(", ")}. Dropping them ` +
+    `re-introduces the cockpit 503 "API_AUTH_TOKEN not configured" outage — see PR #298.`,
 );
 
 console.log("deployWorkflowAuthGuard tests OK");
