@@ -59,7 +59,7 @@ export default function MarketingHubModule() {
     }
   }, [accessToken, alertsPage, msPage]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (accessToken) load(); }, [load, accessToken]);
 
   if (loading) {
     return (

@@ -3,7 +3,7 @@
 // Run: node tests/marketing-routes.test.js
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// Sets API_AUTH_TOKEN before importing the router so the shared requireAuth guard
+// Sets API_AUTH_TOKEN before importing the router so the requireServiceOrUser({ role: 'admin' }) guard
 // accepts the static service token. DATABASE_URL is intentionally unset: the
 // market-intel pool throws "DATABASE_URL required", which the read routes must
 // treat as "not provisioned yet" and answer with an empty 200 payload (never a

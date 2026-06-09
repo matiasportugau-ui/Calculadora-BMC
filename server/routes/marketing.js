@@ -75,8 +75,8 @@ router.get('/dashboard/summary', requireAdmin, async (req, res) => {
 
 // ─── GET /api/marketing/dashboard/competitors ─────────────────────
 router.get('/dashboard/competitors', requireAdmin, async (req, res) => {
-  const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
-  const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
+  const page    = Math.max(1, parseInt(req.query.page ?? '1', 10) || 1);
+  const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10) || 25));
   try {
     const offset  = (page - 1) * perPage;
 
@@ -110,8 +110,8 @@ router.get('/dashboard/competitors', requireAdmin, async (req, res) => {
 
 // ─── GET /api/marketing/dashboard/alerts ──────────────────────────
 router.get('/dashboard/alerts', requireAdmin, async (req, res) => {
-  const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
-  const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
+  const page    = Math.max(1, parseInt(req.query.page ?? '1', 10) || 1);
+  const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10) || 25));
   try {
     const offset  = (page - 1) * perPage;
     const level   = req.query.level;
@@ -156,8 +156,8 @@ router.get('/dashboard/alerts', requireAdmin, async (req, res) => {
 
 // ─── GET /api/marketing/mystery-shopping ──────────────────────────
 router.get('/mystery-shopping', requireAdmin, async (req, res) => {
-  const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
-  const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
+  const page    = Math.max(1, parseInt(req.query.page ?? '1', 10) || 1);
+  const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10) || 25));
   try {
     const { tasks, total } = await listPendingTasks(page, perPage);
     res.json({
