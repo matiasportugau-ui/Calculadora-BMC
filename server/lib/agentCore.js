@@ -140,7 +140,9 @@ export async function callAgentOnce(messages, opts = {}) {
   const errors = [];
 
   for (const p of chain) {
-    const apiKey = getApiKey(p);
+    const hasApiKeyOverride =
+      apiKeysOverride && Object.prototype.hasOwnProperty.call(apiKeysOverride, p);
+    const apiKey = hasApiKeyOverride ? apiKeysOverride[p] : getApiKey(p);
     if (!apiKey) { errors.push(`${p}: no key`); continue; }
 
     // Resolver modelo usando centralización (respeta overrides + allowlists + defaults)
