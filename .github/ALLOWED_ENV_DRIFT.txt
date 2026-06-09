@@ -4,7 +4,6 @@
 # Migrate these to the workflow over time, then delete the entry from this file.
 AI_KNOWLEDGE_EVENTS_LOG
 ANTHROPIC_CHAT_MODEL
-API_AUTH_TOKEN
 API_KEY
 APP_ENV
 BMC_API_BASE
