@@ -8,26 +8,22 @@ import { config } from "../config.js";
 
 const router = Router();
 
-/** Phase A (S5): public simulacro — rate limit instead of API_AUTH_TOKEN. */
+/**
+ * Phase A (S5): public simulacro — rate limit instead of API_AUTH_TOKEN.
+ *
+ * Do not key directly on the first X-Forwarded-For value: clients can prepend
+ * spoofed entries. Express already resolves req.ip using app.set("trust proxy", 1).
+ */
 export const TEAM_ASSIST_CHAT_RATE = {
   windowMs: Number(process.env.TEAM_ASSIST_RATE_WINDOW_MS || 15 * 60 * 1000),
   max: Number(process.env.TEAM_ASSIST_RATE_MAX || 20),
 };
-
-function teamAssistClientKey(req) {
-  return (
-    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    "unknown"
-  );
-}
 
 const chatLimiter = rateLimit({
   windowMs: TEAM_ASSIST_CHAT_RATE.windowMs,
   max: TEAM_ASSIST_CHAT_RATE.max,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: teamAssistClientKey,
   message: {
     ok: false,
     error: "Demasiadas solicitudes al asistente. Esperá unos minutos e intentá de nuevo.",
