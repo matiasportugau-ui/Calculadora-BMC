@@ -14,12 +14,10 @@ export const TEAM_ASSIST_CHAT_RATE = {
   max: Number(process.env.TEAM_ASSIST_RATE_MAX || 20),
 };
 
-function teamAssistClientKey(req) {
-  return (
-    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    "unknown"
-  );
+export function teamAssistClientKey(req) {
+  // Express applies `trust proxy` before setting req.ip; raw X-Forwarded-For can
+  // contain a caller-supplied first hop and must not be trusted directly.
+  return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
 const chatLimiter = rateLimit({
