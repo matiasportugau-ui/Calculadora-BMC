@@ -605,4 +605,9 @@ router.post("/google-tasks/pull", async (req, res) => {
   });
 });
 
+export const __test__ = {
+  detectCalendarDrift,
+  verifyHmacSignature,
+};
+
 export default router;
