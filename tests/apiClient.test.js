@@ -1,14 +1,7 @@
 // Offline unit tests for the central API client pure helpers.
 // Run: node tests/apiClient.test.js
 import assert from "node:assert/strict";
-import {
-  apiUrl,
-  isEmptyPayload,
-  ApiError,
-  resolveApiKeyFromEnv,
-  resolveApiKeyFromStorage,
-  COCKPIT_TOKEN_KEY,
-} from "../src/utils/apiClient.js";
+import { apiUrl, isEmptyPayload, ApiError } from "../src/utils/apiClient.js";
 
 let pass = 0;
 let fail = 0;
@@ -80,22 +73,6 @@ t("ApiError carries status and data payload", () => {
   const e = new ApiError("bad", { status: 422, data: { error: "invalid" } });
   assert.equal(e.status, 422);
   assert.deepEqual(e.data, { error: "invalid" });
-});
-
-t("resolveApiKeyFromEnv prefers VITE_API_AUTH_TOKEN then VITE_BMC_API_AUTH_TOKEN", () => {
-  assert.equal(resolveApiKeyFromEnv({}), "");
-  assert.equal(resolveApiKeyFromEnv({ VITE_BMC_API_AUTH_TOKEN: "bmc" }), "bmc");
-  assert.equal(
-    resolveApiKeyFromEnv({ VITE_API_AUTH_TOKEN: "api", VITE_BMC_API_AUTH_TOKEN: "bmc" }),
-    "api"
-  );
-});
-
-t("resolveApiKeyFromStorage reads bmc_cockpit_token", () => {
-  const bag = new Map();
-  bag.set(COCKPIT_TOKEN_KEY, "stored-token");
-  assert.equal(resolveApiKeyFromStorage((k) => bag.get(k)), "stored-token");
-  assert.equal(resolveApiKeyFromStorage(() => { throw new Error("no storage"); }), "");
 });
 
 console.log(

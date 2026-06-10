@@ -1,10 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Central API client — single entry point for frontend → backend calls.
+// Public API client — anonymous / calculator reads (no auth headers).
 //
-// Replaces the ~119 scattered `fetch()` call sites that each re-implemented
-// (inconsistently) base-URL resolution, auth headers, JSON parsing, timeouts
-// and error handling. Built on top of getCalcApiBase() so URL resolution stays
-// identical to the existing convention.
+// Operator/cockpit routes: use `operatorApiClient.js` (explicit opt-in).
 //
 // Encodes the project's error contract for Sheets-backed routes (see CLAUDE.md):
 //   - 503            → Sheets/source unavailable  → ApiError.isServiceUnavailable
@@ -15,68 +12,6 @@
 import { getCalcApiBase } from "./calcApiBase.js";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
-/** Same key as CRM cockpit / wolfboard modules (`useAdminCotizaciones`). */
-export const COCKPIT_TOKEN_KEY = "bmc_cockpit_token";
-
-let memoryKey = "";
-let cockpitTokenFetch = null;
-
-/** Pure: Vite env aliases for the server `API_AUTH_TOKEN`. */
-export function resolveApiKeyFromEnv(env = {}) {
-  return String(env.VITE_API_AUTH_TOKEN || env.VITE_BMC_API_AUTH_TOKEN || "").trim();
-}
-
-/** Pure: read persisted cockpit token (browser localStorage in production). */
-export function resolveApiKeyFromStorage(readItem = () => "") {
-  try {
-    return String(readItem(COCKPIT_TOKEN_KEY) || "").trim();
-  } catch {
-    return "";
-  }
-}
-
-function apiKeySync() {
-  if (memoryKey) return memoryKey;
-  const fromEnv =
-    typeof import.meta !== "undefined" ? resolveApiKeyFromEnv(import.meta.env || {}) : "";
-  if (fromEnv) return fromEnv;
-  if (typeof localStorage !== "undefined") {
-    return resolveApiKeyFromStorage((k) => localStorage.getItem(k));
-  }
-  return "";
-}
-
-/**
- * Ensures `x-api-key` / Bearer is available for authenticated API routes.
- * Falls back to GET /api/crm/cockpit-token (browser Origin allowlist) when env/storage are empty.
- */
-export async function ensureApiKey() {
-  const existing = apiKeySync();
-  if (existing) return existing;
-  if (typeof fetch === "undefined") return "";
-
-  if (!cockpitTokenFetch) {
-    cockpitTokenFetch = fetch(apiUrl("/api/crm/cockpit-token"), { credentials: "omit" })
-      .then(async (r) => {
-        const d = await r.json().catch(() => ({}));
-        const t = r.ok && d?.ok ? String(d?.token || "").trim() : "";
-        if (t) {
-          memoryKey = t;
-          try {
-            localStorage.setItem(COCKPIT_TOKEN_KEY, t);
-          } catch {
-            /* ignore quota / private mode */
-          }
-        }
-        return t;
-      })
-      .catch(() => "")
-      .finally(() => {
-        cockpitTokenFetch = null;
-      });
-  }
-  return cockpitTokenFetch;
-}
 
 /** Resolve a path against the canonical API base. Absolute URLs pass through. */
 export function apiUrl(path) {
@@ -119,20 +54,16 @@ export class ApiError extends Error {
   }
 }
 
-async function buildHeaders(extra, hasBody) {
+function buildHeaders(extra, hasBody) {
   const h = { ...(extra || {}) };
   if (hasBody && !h["Content-Type"] && !h["content-type"]) {
     h["Content-Type"] = "application/json";
   }
-  const key = await ensureApiKey();
-  if (key && !h["x-api-key"]) h["x-api-key"] = key;
-  if (key && !h.Authorization && !h.authorization) h.Authorization = `Bearer ${key}`;
   return h;
 }
 
 /**
- * Low-level request returning the raw Response, with timeout + base-URL
- * resolution + auth headers applied. Prefer apiGet/apiPost for JSON.
+ * Low-level public request (no auth). Prefer apiGet/apiPost for JSON.
  */
 export async function apiFetch(path, opts = {}) {
   const {
@@ -149,7 +80,6 @@ export async function apiFetch(path, opts = {}) {
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  // Honor a caller-provided signal alongside our timeout.
   if (signal) {
     if (signal.aborted) controller.abort();
     else signal.addEventListener("abort", () => controller.abort(), { once: true });
@@ -158,7 +88,7 @@ export async function apiFetch(path, opts = {}) {
   try {
     return await fetch(apiUrl(path), {
       method,
-      headers: await buildHeaders(headers, hasBody),
+      headers: buildHeaders(headers, hasBody),
       body: isJsonBody ? JSON.stringify(body) : body,
       credentials,
       signal: controller.signal,

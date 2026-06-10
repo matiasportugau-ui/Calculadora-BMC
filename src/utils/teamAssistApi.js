@@ -1,7 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Cliente para /api/team-assist — asistente equipo (OpenAI vía servidor)
-// Migrado al apiClient central: resolución de base URL, headers (x-api-key),
-// timeout y manejo de errores ahora son consistentes con el resto de la app.
+// Cliente para /api/team-assist — asistente equipo (OpenAI vía servidor).
+// Usa apiClient público (sin auth): el servidor aplica rate limit en POST /chat.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { apiGet, apiPost, ApiError } from "./apiClient.js";
