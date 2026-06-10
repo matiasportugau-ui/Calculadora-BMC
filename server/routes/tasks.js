@@ -633,4 +633,11 @@ router.delete("/lists/:id/tasks/:taskId", async (req, res) => {
   res.json({ ok: true });
 });
 
+export const __test__ = {
+  normalizeRecurrence,
+  normalizeDueTime,
+  classifyCalendarError,
+  reconcileCalendarEvent,
+};
+
 export default router;
