@@ -65,8 +65,8 @@ SERVICE_JSON="$(gcloud run services describe "$SERVICE" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --format=json)"
-TOKEN_MOUNT_KIND="$(python3 -c "
-import json, os, sys
+TOKEN_MOUNT_KIND="$(SERVICE_JSON="$SERVICE_JSON" SECRET_NAME="$SECRET_NAME" python3 -c "
+import json, os
 data = json.loads(os.environ['SERVICE_JSON'])
 env = data.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [{}])[0].get('env', [])
 name = os.environ['SECRET_NAME']
@@ -80,7 +80,7 @@ for item in env:
     break
 else:
     print('absent')
-" SERVICE_JSON="$SERVICE_JSON" SECRET_NAME="$SECRET_NAME")"
+")"
 
 echo "→ Desplegando revisión Cloud Run (mount actual: ${TOKEN_MOUNT_KIND}) ..."
 case "$TOKEN_MOUNT_KIND" in
@@ -110,7 +110,7 @@ REV="$(gcloud run services describe "$SERVICE" --project="$PROJECT_ID" --region=
   --format='value(status.latestReadyRevisionName)')"
 PUBLIC_URL="$(gcloud run services describe "$SERVICE" --project="$PROJECT_ID" --region="$REGION" \
   --format='value(status.url)')"
-PHONE_ID="$(python3 -c "
+PHONE_ID="$(SERVICE_JSON="$SERVICE_JSON" python3 -c "
 import json, os
 data = json.loads(os.environ['SERVICE_JSON'])
 env = data.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [{}])[0].get('env', [])
@@ -118,7 +118,7 @@ for item in env:
     if item.get('name') == 'WHATSAPP_PHONE_NUMBER_ID':
         print(item.get('value', '') or '')
         break
-" SERVICE_JSON="$SERVICE_JSON")"
+")"
 
 echo "✓ Listo. Revisión activa: ${REV}"
 echo "  Actualizá local .env: WHATSAPP_ACCESS_TOKEN=<mismo token> (wa:cloud-check lee .env, no GSM)"
