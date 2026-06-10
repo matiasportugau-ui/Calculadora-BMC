@@ -134,7 +134,7 @@ export default function createWaRouter(config, logger) {
 
   // ── Hybrid auth helper: acepta JWT operator (preferido) o legacy shared token.
   //    Adjunta req.operator si JWT; req.waOperatorId si shared token.
-  function requireWaAccess({ requireWrite = false } = {}) {
+  function requireWaAccess({ requireWrite = false, requireAdmin = false } = {}) {
     return async (req, res, next) => {
       const authH = String(req.headers.authorization || "").trim();
       const m = /^Bearer (.+)$/i.exec(authH);
@@ -145,10 +145,14 @@ export default function createWaRouter(config, logger) {
         if (decoded?.iss === "bmc-identity") {
           try {
             const { requireServiceOrUser } = await import("../middleware/requireServiceOrUser.js");
-            const identityMw = requireServiceOrUser({
-              module: "wa",
-              minLevel: requireWrite ? "write" : "read",
-            });
+            const identityMw = requireServiceOrUser(
+              requireAdmin
+                ? { role: "admin" }
+                : {
+                    module: "wa",
+                    minLevel: requireWrite ? "write" : "read",
+                  },
+            );
             let passed = false;
             await identityMw(req, res, () => {
               passed = true;
@@ -162,7 +166,7 @@ export default function createWaRouter(config, logger) {
           // 2) WA operator JWT (magic-link flow)
           try {
             const { requireWaOperator } = await import("../lib/waOperatorAuth.js");
-            const wrapper = requireWaOperator({ require: requireWrite ? "admin" : "member" });
+            const wrapper = requireWaOperator({ require: (requireAdmin || requireWrite) ? "admin" : "member" });
             return wrapper(req, res, next);
           } catch {
             // fallthrough to legacy
@@ -197,7 +201,7 @@ export default function createWaRouter(config, logger) {
   // GET /api/wa/config: devuelve config completa + flags + metadata del schema.
   router.get(
     "/wa/config",
-    requireWaAccess({ requireWrite: false }),
+    requireWaAccess({ requireAdmin: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const { describeAll } = await import("../lib/waConfig.js");
@@ -210,7 +214,7 @@ export default function createWaRouter(config, logger) {
   // PATCH /api/wa/settings: actualiza una key puntual (ej. 'enricher.intervalMs').
   router.patch(
     "/wa/settings",
-    requireWaAccess({ requireWrite: true }),
+    requireWaAccess({ requireAdmin: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const { setSetting } = await import("../lib/waConfig.js");
@@ -239,7 +243,7 @@ export default function createWaRouter(config, logger) {
   // PATCH /api/wa/flags/:key: toggle rápido de feature flags.
   router.patch(
     "/wa/flags/:key",
-    requireWaAccess({ requireWrite: true }),
+    requireWaAccess({ requireAdmin: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const { setFlag } = await import("../lib/waConfig.js");
@@ -260,7 +264,7 @@ export default function createWaRouter(config, logger) {
   // POST /api/wa/settings/test-ai: prueba un prompt con un mensaje sample.
   router.post(
     "/wa/settings/test-ai",
-    requireWaAccess({ requireWrite: true }),
+    requireWaAccess({ requireAdmin: true }),
     asyncHandler(async (req, res) => {
       const { callAgentOnce } = await import("../lib/agentCore.js");
       const { taskKey, message, override } = req.body;
@@ -283,7 +287,7 @@ export default function createWaRouter(config, logger) {
   // ── Operators CRUD ──────────────────────────────────────────────────────
   router.get(
     "/wa/operators",
-    requireWaAccess({ requireWrite: false }),
+    requireWaAccess({ requireAdmin: true }),
     requireDb,
     asyncHandler(async (_req, res) => {
       const { rows } = await pool.query(
@@ -299,7 +303,7 @@ export default function createWaRouter(config, logger) {
 
   router.post(
     "/wa/operators/invite",
-    requireWaAccess({ requireWrite: true }),
+    requireWaAccess({ requireAdmin: true }),
     asyncHandler(async (req, res) => {
       const { inviteOperator } = await import("../lib/waOperatorAuth.js");
       try {
@@ -319,7 +323,7 @@ export default function createWaRouter(config, logger) {
 
   router.delete(
     "/wa/operators/:id/sessions",
-    requireWaAccess({ requireWrite: true }),
+    requireWaAccess({ requireAdmin: true }),
     asyncHandler(async (req, res) => {
       const { revokeOperator } = await import("../lib/waOperatorAuth.js");
       await revokeOperator({
@@ -335,7 +339,7 @@ export default function createWaRouter(config, logger) {
   // ── Rules CRUD ──────────────────────────────────────────────────────────
   router.get(
     "/wa/rules",
-    requireWaAccess({ requireWrite: false }),
+    requireWaAccess({ requireAdmin: true }),
     requireDb,
     asyncHandler(async (_req, res) => {
       const { rows } = await pool.query("select * from wa_rules order by priority asc, created_at desc");
@@ -345,7 +349,7 @@ export default function createWaRouter(config, logger) {
 
   router.post(
     "/wa/rules/preview",
-    requireWaAccess({ requireWrite: false }),
+    requireWaAccess({ requireAdmin: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const { previewRoutingRule } = await import("../lib/waRoutingRules.js");
@@ -357,7 +361,7 @@ export default function createWaRouter(config, logger) {
   // ── Webhooks CRUD ───────────────────────────────────────────────────────
   router.get(
     "/wa/webhooks",
-    requireWaAccess({ requireWrite: false }),
+    requireWaAccess({ requireAdmin: true }),
     requireDb,
     asyncHandler(async (_req, res) => {
       const { rows } = await pool.query("select * from wa_webhooks order by created_at desc");
@@ -367,7 +371,7 @@ export default function createWaRouter(config, logger) {
 
   router.post(
     "/wa/webhooks/:id/test",
-    requireWaAccess({ requireWrite: true }),
+    requireWaAccess({ requireAdmin: true }),
     asyncHandler(async (req, res) => {
       const { testWebhook } = await import("../lib/waWebhooks.js");
       try {
@@ -382,7 +386,7 @@ export default function createWaRouter(config, logger) {
   // ── Audit Log ───────────────────────────────────────────────────────────
   router.get(
     "/wa/audit-log",
-    requireWaAccess({ requireWrite: false }),
+    requireWaAccess({ requireAdmin: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const limit = Math.min(500, Number(req.query.limit) || 100);
