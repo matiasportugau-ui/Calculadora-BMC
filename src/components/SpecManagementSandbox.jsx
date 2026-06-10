@@ -377,8 +377,8 @@ function TeamAssistPanel({ data, assistHealth }) {
     } catch (e) {
       const msg = e.message || String(e);
       setErr(
-        /x-api-key|401|API key/i.test(msg)
-          ? "API key inválida o ausente. Recargá la página (el cliente intenta obtenerla del servidor) o pegá API_AUTH_TOKEN en otro módulo del hub (Cotizaciones / Canales) y volvé a intentar."
+        /demasiadas solicitudes|rate limit|429/i.test(msg)
+          ? "Límite de uso alcanzado. Esperá unos minutos y volvé a intentar."
           : msg
       );
       setMessages((m) => m.slice(0, -1));
@@ -420,10 +420,8 @@ function TeamAssistPanel({ data, assistHealth }) {
           <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
           <span>
             {ready
-              ? `Servidor listo · modelo ${assistHealth.model || "—"}`
-              : assistHealth?.auth_required
-                ? "Servidor con auth: el cliente obtiene el token vía /api/crm/cockpit-token al enviar mensajes. Si falla, configurá OPENAI_API_KEY en el servidor."
-                : "Configurá OPENAI_API_KEY en el servidor (npm run start:api) y recargá."}
+              ? `Servidor listo · modelo ${assistHealth.model || "—"}${assistHealth.rate_limit?.max_per_window ? ` · límite ${assistHealth.rate_limit.max_per_window}/${Math.round((assistHealth.rate_limit.window_ms || 0) / 60000)} min` : ""}`
+              : "Configurá OPENAI_API_KEY en el servidor (npm run start:api) y recargá."}
           </span>
         </div>
       )}

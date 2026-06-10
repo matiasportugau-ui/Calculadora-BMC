@@ -2880,7 +2880,17 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     if (!allowedOrigin) {
       return res.status(403).json({ ok: false, error: "Forbidden" });
     }
-    res.json({ ok: true, token });
+    res.set("Deprecation", "true");
+    res.set(
+      "Warning",
+      '299 - "GET /api/crm/cockpit-token is deprecated; migrate hub modules to identity JWT (S5 Phase B)."'
+    );
+    res.json({
+      ok: true,
+      token,
+      deprecated: true,
+      sunset_hint: "Use BmcAuth JWT + requireServiceOrUser on cockpit routes; do not distribute API_AUTH_TOKEN to browsers.",
+    });
   });
 
   /** Logística: escribe fecha de entrega en columna G de Ventas (fila = cliente; pestaña por gid). Auth = CRM cockpit. */
