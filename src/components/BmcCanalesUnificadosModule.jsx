@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
-
-const STORAGE_KEY = "bmc_cockpit_token";
+import { useCockpitOperatorAuth } from "../hooks/useCockpitOperatorAuth.js";
+import { cockpitOperatorFetch } from "../utils/cockpitOperatorFetch.js";
 
 const wrap = {
   minHeight: "100vh",
@@ -128,80 +127,31 @@ const CHANNEL_LABEL = {
   facebook: "Facebook",
 };
 
-function getStoredToken() {
-  try {
-    return localStorage.getItem(STORAGE_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function setStoredToken(t) {
-  try {
-    if (t) localStorage.setItem(STORAGE_KEY, t);
-    else localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
 async function cockpitFetch(token, path, options = {}) {
-  const headers = {
-    ...(options.headers || {}),
-    Authorization: `Bearer ${token}`,
-  };
-  const res = await fetch(path, { ...options, headers });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  return cockpitOperatorFetch(token, path, options);
 }
 
 export default function BmcCanalesUnificadosModule() {
-  const [tokenInput, setTokenInput] = useState("");
-  const [token, setToken] = useState("");
+  const {
+    token,
+    tokenAutoLoaded,
+    tokenLoadError,
+    tokenInput,
+    setTokenInput,
+    saveToken,
+    clearToken,
+    isJwt,
+    login,
+    user,
+  } = useCockpitOperatorAuth({ module: "canales", minLevel: "write" });
+
   const [items, setItems] = useState([]);
   const [linkDraftByRow, setLinkDraftByRow] = useState({});
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-  const [tokenLoadError, setTokenLoadError] = useState("");
-  const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
   const [channelTab, setChannelTab] = useState("all");
-
-  useEffect(() => {
-    const stored = getStoredToken();
-    if (stored) {
-      setTokenInput(stored);
-      setToken(stored);
-      setTokenAutoLoaded(true);
-      return;
-    }
-    const base = getCalcApiBase();
-    const url = `${base.replace(/\/+$/, "")}/api/crm/cockpit-token`;
-    fetch(url, { credentials: "omit" })
-      .then(async (r) => {
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok || !data?.ok) {
-          setTokenLoadError(
-            `No se pudo cargar el token del servidor (${data?.error || `HTTP ${r.status}`}). Pegá API_AUTH_TOKEN manualmente.`,
-          );
-          return;
-        }
-        const t = String(data?.token || "").trim();
-        if (t) {
-          setStoredToken(t);
-          setTokenInput(t);
-          setToken(t);
-          setTokenAutoLoaded(true);
-          setTokenLoadError("");
-        } else {
-          setTokenLoadError("El servidor no devolvió token. Pegá API_AUTH_TOKEN manualmente.");
-        }
-      })
-      .catch(() => {
-        setTokenLoadError("Error de red al pedir el token. Pegá API_AUTH_TOKEN manualmente.");
-      });
-  }, []);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -239,14 +189,6 @@ export default function BmcCanalesUnificadosModule() {
     }
     loadQueue();
   }, [token, loadQueue]);
-
-  const saveToken = () => {
-    const t = tokenInput.trim();
-    setStoredToken(t);
-    setToken(t);
-    if (t) setTokenAutoLoaded(true);
-    showToast(t ? "Token guardado." : "Token borrado.");
-  };
 
   const runSyncAll = async () => {
     if (!token) {
@@ -406,7 +348,10 @@ export default function BmcCanalesUnificadosModule() {
             tokenInput={tokenInput}
             setTokenInput={setTokenInput}
             onSave={saveToken}
-            onClear={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
+            onClear={clearToken}
+            isJwt={isJwt}
+            userEmail={user?.email || ""}
+            onLogin={login}
             inputStyle={input}
             btnPrimaryStyle={btnPrimary}
             btnGhostStyle={btnGhost}

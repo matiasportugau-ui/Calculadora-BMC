@@ -25,7 +25,6 @@ function ModuleInner() {
   const cot = useAdminCotizaciones();
 
   const [tokenPanelOpen, setTokenPanelOpen] = useState(false);
-  const [tokenInput, setTokenInput] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [detail, setDetail] = useState(null);
 
@@ -87,9 +86,6 @@ function ModuleInner() {
   useEffect(() => {
     if (!cot.token && !cot.tokenAutoLoaded) setTokenPanelOpen(true);
   }, [cot.token, cot.tokenAutoLoaded]);
-
-  // Keep input in sync with the loaded token (so "Cambiar token" pre-fills it).
-  useEffect(() => { setTokenInput(cot.token); }, [cot.token]);
 
   // ⌘K to open palette, R for refresh (when no input focused).
   useEffect(() => {
@@ -206,10 +202,13 @@ function ModuleInner() {
             <CockpitTokenPanel
               tokenAutoLoaded={cot.tokenAutoLoaded}
               tokenLoadError={cot.tokenLoadError}
-              tokenInput={tokenInput}
-              setTokenInput={setTokenInput}
-              onSave={() => { cot.saveToken(tokenInput); setTokenPanelOpen(false); }}
-              onClear={() => { cot.clearToken(); setTokenInput(""); }}
+              tokenInput={cot.tokenInput}
+              setTokenInput={cot.setTokenInput}
+              onSave={() => { cot.saveToken(); setTokenPanelOpen(false); }}
+              onClear={cot.clearToken}
+              isJwt={cot.isJwt}
+              userEmail={cot.userEmail}
+              onLogin={cot.login}
               inputStyle={{
                 width: "100%",
                 maxWidth: 380,
@@ -274,7 +273,7 @@ function ModuleInner() {
               onRunSync={cot.runSync}
               onRunBatch={(opts) => cot.runBatch(opts)}
               onCreateRow={cot.createRow}
-              exportCsvHref={cot.exportCsvUrl()}
+              onExportCsv={cot.downloadExportCsv}
               batchOpts={cot.batchOpts}
               updateBatchOpts={cot.updateBatchOpts}
               onResetBatchOpts={cot.resetBatchOpts}
@@ -415,7 +414,7 @@ function ModuleInner() {
         onRefresh={cot.load}
         onRunBatch={() => cot.runBatch()}
         onRunSync={cot.runSync}
-        onExport={() => window.open(cot.exportCsvUrl(), "_blank", "noopener,noreferrer")}
+        onExport={() => cot.downloadExportCsv()}
         onChangeToken={() => setTokenPanelOpen(true)}
         onOpenLegacy={() => { window.location.assign("/hub/admin?legacy=1"); }}
       />

@@ -1,7 +1,4 @@
-import React from "react";
-
-const CLOUD_RUN_ENV_URL =
-  "https://console.cloud.google.com/run/detail/us-central1/panelin-calc/edit?project=chatbot-bmc-live";
+import React, { useState } from "react";
 
 const guideBox = {
   background: "#fffbeb",
@@ -13,12 +10,6 @@ const guideBox = {
   color: "#5c4d00",
 };
 
-const linkStyle = {
-  color: "#0071e3",
-  textDecoration: "none",
-  fontWeight: 600,
-};
-
 const codeStyle = {
   fontFamily: "'Courier New', monospace",
   background: "#f0f0f5",
@@ -28,19 +19,7 @@ const codeStyle = {
 };
 
 /**
- * Shared cockpit auth panel used by ML, WA, Canales, Admin modules.
- *
- * Props:
- *   tokenAutoLoaded  boolean
- *   tokenLoadError   string
- *   tokenInput       string
- *   setTokenInput    fn
- *   onSave           fn
- *   onClear          fn  — clears stored token so user can enter new one
- *   inputStyle       object (optional)
- *   btnPrimaryStyle  object (optional)
- *   btnGhostStyle    object (optional)
- *   actions          ReactNode — extra buttons shown in the "loaded" row
+ * Cockpit auth status for hub modules (S5 Phase B: identity JWT primary).
  */
 export default function CockpitTokenPanel({
   tokenAutoLoaded,
@@ -49,23 +28,39 @@ export default function CockpitTokenPanel({
   setTokenInput,
   onSave,
   onClear,
+  isJwt = false,
+  userEmail = "",
+  onLogin,
   inputStyle = {},
   btnPrimaryStyle = {},
   btnGhostStyle = {},
   actions,
 }) {
-  if (tokenAutoLoaded) {
+  const [showOverride, setShowOverride] = useState(false);
+
+  if (isJwt && tokenAutoLoaded) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ fontSize: 13, color: "#2a7a2a", fontWeight: 600 }}>
-          ✓ Token activo
+          ✓ Sesión activa{userEmail ? ` (${userEmail})` : ""}
+        </span>
+        {actions}
+      </div>
+    );
+  }
+
+  if (tokenAutoLoaded && !isJwt) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, color: "#2a7a2a", fontWeight: 600 }}>
+          ✓ Token de servicio (override dev)
         </span>
         <button
           type="button"
           style={{ ...btnGhostStyle, fontSize: 12, padding: "4px 10px" }}
           onClick={onClear}
         >
-          Cambiar token
+          Borrar override
         </button>
         {actions}
       </div>
@@ -75,7 +70,7 @@ export default function CockpitTokenPanel({
   return (
     <>
       <div style={{ marginBottom: 10, fontSize: 13, fontWeight: 600 }}>
-        Autenticación cockpit
+        Autenticación operador
       </div>
 
       {tokenLoadError && (
@@ -84,49 +79,47 @@ export default function CockpitTokenPanel({
         </div>
       )}
 
-      <div style={guideBox}>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>
-          ⚠️ Solo necesario si el token fue comprometido o el servidor no pudo entregarlo
+      {onLogin ? (
+        <div style={{ marginBottom: 12 }}>
+          <button type="button" style={btnPrimaryStyle} onClick={onLogin}>
+            Iniciar sesión con Google
+          </button>
         </div>
-        <ol style={{ margin: "0 0 0 16px", padding: 0, lineHeight: "1.9" }}>
-          <li>
-            Generá un nuevo token en tu terminal:{" "}
-            <code style={codeStyle}>openssl rand -hex 32</code>
-          </li>
-          <li>Copiá el valor generado</li>
-          <li>
-            Actualizá la variable <code style={codeStyle}>API_AUTH_TOKEN</code> en Cloud Run:{" "}
-            <a
-              href={CLOUD_RUN_ENV_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={linkStyle}
-            >
-              Abrir configuración Cloud Run ↗
-            </a>
-          </li>
-          <li>
-            Actualizá también en tu <code style={codeStyle}>.env</code> local y reiniciá el servidor
-          </li>
-          <li>Pegá el nuevo token aquí abajo y guardá</li>
-        </ol>
-      </div>
+      ) : null}
 
-      <input
-        type="password"
-        autoComplete="off"
-        placeholder="Pegá API_AUTH_TOKEN"
-        value={tokenInput}
-        onChange={(e) => setTokenInput(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && onSave()}
-        style={{ ...inputStyle, marginBottom: 10 }}
-      />
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button type="button" style={btnPrimaryStyle} onClick={onSave}>
-          Guardar token
-        </button>
-        {actions}
-      </div>
+      <button
+        type="button"
+        style={{ ...btnGhostStyle, fontSize: 12, marginBottom: showOverride ? 10 : 0 }}
+        onClick={() => setShowOverride((v) => !v)}
+      >
+        {showOverride ? "Ocultar override dev" : "Avanzado: token de servicio (dev/CI)"}
+      </button>
+
+      {showOverride ? (
+        <>
+          <div style={guideBox}>
+            Solo para scripts locales o emergencia si JWT no está disponible.
+            Pegá <code style={codeStyle}>API_AUTH_TOKEN</code> del servidor.
+          </div>
+          <input
+            type="password"
+            autoComplete="off"
+            placeholder="API_AUTH_TOKEN (override)"
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onSave()}
+            style={{ ...inputStyle, marginBottom: 10 }}
+          />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" style={btnPrimaryStyle} onClick={onSave}>
+              Guardar override
+            </button>
+            {actions}
+          </div>
+        </>
+      ) : (
+        actions
+      )}
     </>
   );
 }

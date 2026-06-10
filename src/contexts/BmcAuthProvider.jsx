@@ -19,6 +19,7 @@ import { signIn as gisSignIn, signOut as gisSignOut } from "../utils/googleDrive
 import { getPendingClientQuoteIds, clearPending } from "../utils/clientQuoteId.js";
 // Top-30 run 2026-05-12 (#A13): context + hook extraídos a bmcAuthContext.js para que Fast Refresh trate este archivo como components-only.
 import { BmcAuthContext } from "./bmcAuthContext.js";
+import { setOperatorJwtGetter } from "../utils/operatorApiClient.js";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -92,6 +93,10 @@ export function BmcAuthProvider({ children }) {
     },
     [],
   );
+
+  useEffect(() => {
+    setOperatorJwtGetter(() => accessToken || "");
+  }, [accessToken]);
 
   // Bootstrap: try /me with current accessToken; if missing or 401, try refresh.
   useEffect(() => {

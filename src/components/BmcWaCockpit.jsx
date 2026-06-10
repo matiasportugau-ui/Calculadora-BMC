@@ -8,8 +8,7 @@ import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import BmcWaSettingsPanel from "./BmcWaSettingsPanel.jsx";
-
-const STORAGE_KEY = "bmc_cockpit_token";
+import { useCockpitOperatorAuth } from "../hooks/useCockpitOperatorAuth.js";
 const VIEW_STORAGE_KEY = "bmc_cockpit_view";
 
 const STATUS_OPTIONS = [
@@ -195,59 +194,18 @@ function buildHeaders(token) {
 export default function BmcWaCockpit() {
   const apiBase = useMemo(() => getCalcApiBase(), []);
 
-  // ── token bootstrap ───────────────────────────────────────────────────
-  const [tokenInput, setTokenInput] = useState("");
-  const [token, setToken] = useState("");
-  const [, setTokenAutoLoaded] = useState(false);
-  const [tokenLoadError, setTokenLoadError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    async function bootstrap() {
-      try {
-        const cached = localStorage.getItem(STORAGE_KEY);
-        if (cached) {
-          if (cancelled) return;
-          setToken(cached);
-          setTokenAutoLoaded(true);
-          return;
-        }
-        const r = await fetch(`${apiBase}/api/crm/cockpit-token`, { credentials: "include" });
-        if (!r.ok) {
-          setTokenLoadError(`HTTP ${r.status}`);
-          return;
-        }
-        const j = await r.json();
-        if (cancelled) return;
-        if (j?.ok && j?.token) {
-          setToken(j.token);
-          setTokenAutoLoaded(true);
-          localStorage.setItem(STORAGE_KEY, j.token);
-        }
-      } catch (e) {
-        if (!cancelled) setTokenLoadError(e?.message || String(e));
-      }
-    }
-    bootstrap();
-    return () => {
-      cancelled = true;
-    };
-  }, [apiBase]);
-
-  const onSaveToken = useCallback(() => {
-    const t = (tokenInput || "").trim();
-    if (!t) return;
-    localStorage.setItem(STORAGE_KEY, t);
-    setToken(t);
-    setTokenAutoLoaded(true);
-    setTokenInput("");
-  }, [tokenInput]);
-
-  const onClearToken = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setToken("");
-    setTokenAutoLoaded(false);
-  }, []);
+  const {
+    token,
+    tokenAutoLoaded,
+    tokenLoadError,
+    tokenInput,
+    setTokenInput,
+    saveToken: onSaveToken,
+    clearToken: onClearToken,
+    isJwt,
+    login,
+    user,
+  } = useCockpitOperatorAuth({ module: "wa", minLevel: "write" });
 
   // ── conversations list ────────────────────────────────────────────────
   const [statusFilter, setStatusFilter] = useState("");
@@ -670,12 +628,15 @@ export default function BmcWaCockpit() {
           }}
         >
           <CockpitTokenPanel
-            tokenAutoLoaded={false}
+            tokenAutoLoaded={tokenAutoLoaded}
             tokenLoadError={tokenLoadError}
             tokenInput={tokenInput}
             setTokenInput={setTokenInput}
             onSave={onSaveToken}
             onClear={onClearToken}
+            isJwt={isJwt}
+            userEmail={user?.email || ""}
+            onLogin={login}
             inputStyle={inputStyle}
             btnPrimaryStyle={btnPrimary}
             btnGhostStyle={btnGhost}
