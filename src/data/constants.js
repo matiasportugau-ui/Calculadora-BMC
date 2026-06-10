@@ -151,6 +151,23 @@ export const PANELS_PARED = {
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
+  ISOFRIG_PIR: {
+    label: "ISOFRIG PIR", sub: "Cámaras Frigoríficas", tipo: "pared",
+    au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
+    esp: {
+      40:  { venta: 45.36, web: 55.3384, costo: 35.00, ap: null },
+      60:  { venta: 51.55, web: 62.8919, costo: 38.00, ap: null },
+      80:  { venta: 56.87, web: 69.3770, costo: 42.00, ap: null },
+      100: { venta: 63.07, web: 76.9454, costo: 46.00, ap: null },
+      120: { venta: 73.34, web: 89.4740, costo: 52.00, ap: null },
+      150: { venta: 76.51, web: 93.3436, costo: 56.00, ap: null },
+      180: { venta: 91.32, web: 111.4058, costo: 68.00, ap: null },
+      200: { venta: 90.99, web: 111.0032, costo: 68.00, ap: null },
+    },
+    col: ["Blanco"],
+    colNotes: { _all: "Solo Blanco sanitario (interior/exterior)." },
+    colMax: {},
+  },
 };
 
 /**
@@ -245,6 +262,7 @@ export const PERFIL_TECHO = {
       30: { sku: "GFS30", venta: 15.83, web: 18.47, costo: 14.25, largo: 3.03 },
       50: { sku: "GFS50", venta: 16.76, web: 19.56, costo: 15.08, largo: 3.03 },
       80: { sku: "GFS80", venta: 17.63, web: 20.57, costo: 15.87, largo: 3.03 },
+      100: { sku: "GFS100", venta: 17.63, web: 20.57, costo: 15.87, largo: 3.03 },
     },
     ISODEC: {
       100: { sku: "6838", venta: 15.67, web: 19.12, costo: 14.10, largo: 3.03 },
@@ -263,6 +281,7 @@ export const PERFIL_TECHO = {
       30: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
       50: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
       80: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
+      100: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
     },
   },
   gotero_lateral: {
@@ -271,6 +290,7 @@ export const PERFIL_TECHO = {
       40: { sku: "GL40", venta: 22.68, web: 27.67, costo: 18.90, largo: 3.0 },
       50: { sku: "GL50", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.0 },
       80: { sku: "GL80", venta: 25.31, web: 30.88, costo: 22.78, largo: 3.0 },
+      100: { sku: "GL100", venta: 25.31, web: 30.88, costo: 22.78, largo: 3.0 },
     },
     ISODEC: {
       100: { sku: "6842", venta: 20.77, web: 25.34, costo: 18.69, largo: 3.0 },
@@ -289,7 +309,12 @@ export const PERFIL_TECHO = {
       50: { sku: "GLDCAM50", venta: 23.68, web: 27.62, costo: 19.73, largo: 3.0 },
       80: { sku: "GLDCAM80", venta: 26.64, web: 31.08, costo: 22.20, largo: 3.0 },
     },
-    ISODEC:     { _all: { sku: "GLDCAM-DC", venta: 22.65, web: 27.63, costo: 20.39, largo: 3.0 } },
+    ISODEC: {
+      100: { sku: "GLDCAM100", venta: 22.675, web: 27.664, costo: 20.39, largo: 3.0 },
+      150: { sku: "GLDCAM150", venta: 23.697, web: 28.910, costo: 21.31, largo: 3.0 },
+      200: { sku: "GLDCAM200", venta: 35.47,  web: 43.274, costo: 31.92, largo: 3.0 },
+      250: { sku: "GLDCAM250", venta: 30.81,  web: 37.590, costo: 27.73, largo: 3.0 },
+    },
     ISODEC_PIR: { _all: { sku: "GLDCAM-DC", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
   },
   gotero_superior: {
@@ -297,11 +322,13 @@ export const PERFIL_TECHO = {
       30: { sku: "GFSUP30", venta: 28.21, web: 32.91, costo: 25.39, largo: 3.03 },
       50: { sku: "GFSUP50", venta: 29.08, web: 33.92, costo: 26.17, largo: 3.03 },
       80: { sku: "GFSUP80", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
+      100: { sku: "GFSUP100", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
     },
     ISODEC_PIR: {
       30: { sku: "GSDECAM30", venta: 31.66, web: 36.93, costo: 26.38, largo: 3.03 },
       50: { sku: "GSDECAM50", venta: 28.99, web: 33.82, costo: 24.16, largo: 3.03 },
       80: { sku: "GSDECAM80", venta: 31.78, web: 37.07, costo: 26.48, largo: 3.03 },
+      100: { sku: "GSDECAM100", venta: 39.468, web: 46.046, costo: 32.35, largo: 3.03 },
     },
   },
   babeta_adosar: {
@@ -327,6 +354,7 @@ export const PERFIL_TECHO = {
       30: { sku: "CD30", venta: 71.83, web: 83.80, costo: 64.65, largo: 3.03 },
       50: { sku: "CD50", venta: 73.19, web: 85.39, costo: 65.87, largo: 3.03 },
       80: { sku: "CD80", venta: 74.22, web: 86.59, costo: 66.80, largo: 3.03 },
+      100: { sku: "CD100", venta: 74.22, web: 86.59, costo: 66.80, largo: 3.03 },
     },
     ISODEC: {
       100: { sku: "6801", venta: 69.54, web: 81.13, costo: 62.59, largo: 3.03 },
@@ -364,6 +392,16 @@ export const PERFIL_PARED = {
       50:  { sku: "PU50MM", venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
       80:  { sku: "PU80MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+    },
+    ISOFRIG: {
+      40:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
+      60:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
+      80:  { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+      120: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
+      150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
+      180: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
+      200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
     },
   },
   perfil_g2: {
@@ -436,7 +474,7 @@ export const SCENARIOS_DEF = [
   },
   {
     id: "techo_fachada", label: "Techo + Fachada", icon: "🏗", description: "Proyecto completo",
-    familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_COLONIAL","ISOROOF_PLUS","ISOPANEL_EPS","ISOWALL_PIR"],
+    familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_COLONIAL","ISOROOF_PLUS","ISOFRIG_PIR","ISOPANEL_EPS","ISOWALL_PIR"],
     hasTecho: true, hasPared: true,
     visibility: { borders: true, largoAncho: true, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: true, canalGot: true, p5852: true },
     wizardSteps: [
@@ -461,7 +499,7 @@ export const SCENARIOS_DEF = [
   },
   {
     id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío",
-    familias: ["ISOPANEL_EPS","ISOWALL_PIR"],
+    familias: ["ISOFRIG_PIR","ISOPANEL_EPS","ISOWALL_PIR"],
     hasTecho: false, hasPared: true, isCamara: true,
     visibility: { borders: false, largoAncho: false, altoPerim: false, esquineros: true, aberturas: true, camara: true, autoportancia: false, canalGot: false, p5852: false },
     wizardSteps: [

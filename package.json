@@ -127,6 +127,7 @@
     "matriz:reconcile-calc": "node scripts/reconcile-calc-vs-matriz.mjs",
     "matriz:bake": "node scripts/bake-matriz-to-constants.mjs",
     "matriz:pull-csv": "node scripts/pull-matriz-csv.mjs",
+    "matriz:sync-auto": "node scripts/matriz-sync-automation.mjs",
     "matriz:sync-fijaciones-isodec": "node scripts/sync-fijaciones-isodec-bromyros.mjs",
     "matriz:sync-silicona-300": "node scripts/sync-silicona-300-neutra-bromyros.mjs",
     "productos-maestro:reconcile": "node scripts/reconcile-productos-maestro.mjs",
