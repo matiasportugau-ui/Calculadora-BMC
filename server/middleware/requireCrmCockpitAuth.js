@@ -2,7 +2,7 @@
 // requireCrmCockpitAuth — S5 Phase B dual-mode guard for CRM cockpit routes.
 //
 // Accepts EITHER:
-//   1) Static API_AUTH_TOKEN (legacy CI / operatorApiClient / cockpit-token)
+//   1) Static API_AUTH_TOKEN (legacy CI / operatorApiClient / scripts / MCP)
 //   2) Identity JWT with `canales` module grant (read or write per route)
 //
 // Query-string `?key=` is intentionally NOT supported (see requireServiceOrUser).

@@ -27,7 +27,7 @@
  *
  * Prereq: `VITE_FEATURE_ADMIN_COT_V2=true` in `.env.local` of the Vite
  * dev server (the v2 module ships gated). For full drawer assertions,
- * also set `API_AUTH_TOKEN` so the cockpit-token endpoint serves a
+ * also set `API_AUTH_TOKEN` (or log in with identity JWT) so cockpit routes accept
  * Bearer and the table loads with at least one row.
  */
 import { chromium } from "playwright";
