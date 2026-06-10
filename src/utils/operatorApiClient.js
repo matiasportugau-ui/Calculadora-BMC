@@ -3,7 +3,6 @@
 //
 // Phase B (S5): prefer identity JWT from BmcAuthProvider (setOperatorJwtGetter).
 // Fallback: Vite env aliases or bmc_cockpit_token override in localStorage (dev/CI).
-// GET /api/crm/cockpit-token is deprecated — do not fetch from hub UI.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import {
@@ -17,7 +16,6 @@ export const COCKPIT_TOKEN_KEY = "bmc_cockpit_token";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 
-let memoryKey = "";
 let jwtGetter = () => "";
 
 /** Register identity JWT supplier (called from BmcAuthProvider). */
@@ -42,7 +40,6 @@ export function resolveApiKeyFromStorage(readItem = () => "") {
 function apiKeySync() {
   const jwt = String(jwtGetter() || "").trim();
   if (jwt) return jwt;
-  if (memoryKey) return memoryKey;
   const fromEnv =
     typeof import.meta !== "undefined" ? resolveApiKeyFromEnv(import.meta.env || {}) : "";
   if (fromEnv) return fromEnv;
@@ -52,24 +49,16 @@ function apiKeySync() {
   return "";
 }
 
-/**
- * @deprecated cockpit-token endpoint removed in Phase B PR3. Returns "".
- */
-export async function fetchCockpitTokenOperatorCredential() {
-  return "";
-}
-
-/** @param {{ fetchCockpitToken?: boolean }} [opts] */
-export async function ensureOperatorToken(_opts = {}) {
+export async function ensureOperatorToken() {
   return apiKeySync();
 }
 
-async function buildOperatorHeaders(extra, hasBody, opts) {
+async function buildOperatorHeaders(extra, hasBody) {
   const h = { ...(extra || {}) };
   if (hasBody && !h["Content-Type"] && !h["content-type"]) {
     h["Content-Type"] = "application/json";
   }
-  const key = await ensureOperatorToken(opts);
+  const key = await ensureOperatorToken();
   if (key && !h["x-api-key"]) h["x-api-key"] = key;
   if (key && !h.Authorization && !h.authorization) h.Authorization = `Bearer ${key}`;
   return h;
@@ -86,7 +75,6 @@ export async function operatorFetch(path, opts = {}) {
     credentials,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     signal,
-    fetchCockpitToken = false,
   } = opts;
 
   const hasBody = body != null;
@@ -102,7 +90,7 @@ export async function operatorFetch(path, opts = {}) {
   try {
     return await fetch(apiUrl(path), {
       method,
-      headers: await buildOperatorHeaders(headers, hasBody, { fetchCockpitToken }),
+      headers: await buildOperatorHeaders(headers, hasBody),
       body: isJsonBody ? JSON.stringify(body) : body,
       credentials,
       signal: controller.signal,

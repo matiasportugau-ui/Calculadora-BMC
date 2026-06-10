@@ -107,7 +107,7 @@ async function main() {
     }
 
     // Noise filter: tolerate the anonymous-session 4xx/5xx surface (auth/me 401,
-    // auth/refresh 403, cockpit-token 503) and 503 on /api/wa/* when
+    // auth/refresh 403, cockpit 503) and 503 on /api/wa/* when
     // DATABASE_URL is unset on Cloud Run.
     const noisy = jsErrors.filter((e) =>
       !e.includes("ResizeObserver") &&

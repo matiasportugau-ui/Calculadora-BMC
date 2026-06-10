@@ -98,7 +98,6 @@ load_env_key SHOPIFY_QUESTIONS_SHEET_TAB
 # Postgres / CORS / cockpit / RBAC / analytics / followup / PDF
 load_env_key DATABASE_URL
 load_env_key CORS_ORIGIN
-load_env_key COCKPIT_TOKEN_ALLOWED_ORIGINS
 load_env_key PANELIN_SERVICE_DEFAULT_ROLE
 load_env_key AI_KNOWLEDGE_EVENTS_LOG
 load_env_key FOLLOWUP_STORE_PATH
@@ -247,9 +246,8 @@ add_sensitive SHOPIFY_WEBHOOK_SECRET  "$SHOPIFY_WEBHOOK_SECRET"
 # Postgres (Modo Transportista) — DATABASE_URL contains creds → sensitive
 add_sensitive DATABASE_URL "$DATABASE_URL"
 
-# CORS / cockpit origins / RBAC / analytics / followup / PDF
+# CORS / RBAC / analytics / followup / PDF
 [[ -n "$CORS_ORIGIN" ]]                  && PAIRS+=("CORS_ORIGIN=$CORS_ORIGIN")
-[[ -n "$COCKPIT_TOKEN_ALLOWED_ORIGINS" ]] && PAIRS+=("COCKPIT_TOKEN_ALLOWED_ORIGINS=$COCKPIT_TOKEN_ALLOWED_ORIGINS")
 [[ -n "$PANELIN_SERVICE_DEFAULT_ROLE" ]] && PAIRS+=("PANELIN_SERVICE_DEFAULT_ROLE=$PANELIN_SERVICE_DEFAULT_ROLE")
 [[ -n "$AI_KNOWLEDGE_EVENTS_LOG" ]]      && PAIRS+=("AI_KNOWLEDGE_EVENTS_LOG=$AI_KNOWLEDGE_EVENTS_LOG")
 [[ -n "$FOLLOWUP_STORE_PATH" ]]          && PAIRS+=("FOLLOWUP_STORE_PATH=$FOLLOWUP_STORE_PATH")
@@ -263,8 +261,7 @@ add_sensitive DATABASE_URL "$DATABASE_URL"
 [[ -n "$WA_TTL_DAYS" ]]              && PAIRS+=("WA_TTL_DAYS=$WA_TTL_DAYS")
 
 # ── Ejecutar update ──────────────────────────────────────────────────────────
-# Algunos valores contienen comas (SHOPIFY_SCOPES, CORS_ORIGIN,
-# COCKPIT_TOKEN_ALLOWED_ORIGINS), así que usamos el escape ^|^ de gcloud para
+# Algunos valores contienen comas (SHOPIFY_SCOPES, CORS_ORIGIN), así que usamos el escape ^|^ de gcloud para
 # elegir | como separador de pares KEY=VAL en --update-env-vars.
 # Ref: gcloud topic escaping → "If the first character of the value is '^',
 # the next character is taken as the delimiter."
