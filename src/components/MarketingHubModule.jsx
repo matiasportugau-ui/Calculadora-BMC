@@ -2,27 +2,26 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { getCalcApiBase } from '../utils/calcApiBase.js';
+import { useBmcAuthContext } from '../contexts/bmcAuthContext.js';
 import SummaryCards from './marketing-hub/SummaryCards.jsx';
 import TopDeltaTable from './marketing-hub/TopDeltaTable.jsx';
 import AlertsFeed from './marketing-hub/AlertsFeed.jsx';
 import MysteryShoppingWidget from './marketing-hub/MysteryShoppingWidget.jsx';
 
-const STORAGE_KEY = 'bmc_cockpit_token';
-
-function getStoredToken() {
-  try { return localStorage.getItem(STORAGE_KEY) || ''; } catch { return ''; }
-}
-
 async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, '');
-  const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+  const headers = { ...(options.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${base}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }
 
 export default function MarketingHubModule() {
-  const [token] = useState(getStoredToken);
+  // Market Intelligence authenticates with the logged-in operator's identity JWT.
+  // The SPA route is gated by <RequireGrant role="admin">, so this is always an
+  // admin session; the backend accepts this JWT (or the static service token).
+  const { accessToken } = useBmcAuthContext();
   const [summary, setSummary] = useState(null);
   const [alerts, setAlerts] = useState(null);
   const [msQueue, setMsQueue] = useState(null);
@@ -31,26 +30,36 @@ export default function MarketingHubModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    Promise.all([
-      apiFetch(token, '/api/marketing/dashboard/summary'),
-      apiFetch(token, `/api/marketing/dashboard/alerts?page=${alertsPage}&per_page=25`),
-      apiFetch(token, `/api/marketing/mystery-shopping?page=${msPage}&per_page=25`),
-    ])
-      .then(([s, a, ms]) => {
-        if (!s.ok) throw new Error(`Summary: ${s.status}`);
-        setSummary(s.data);
-        setAlerts(a.data);
-        setMsQueue(ms.data);
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [token, alertsPage, msPage]);
+    try {
+      const [s, a, ms] = await Promise.all([
+        apiFetch(accessToken, '/api/marketing/dashboard/summary'),
+        apiFetch(accessToken, `/api/marketing/dashboard/alerts?page=${alertsPage}&per_page=25`),
+        apiFetch(accessToken, `/api/marketing/mystery-shopping?page=${msPage}&per_page=25`),
+      ]);
 
-  useEffect(() => { load(); }, [load]);
+      if (!s.ok) {
+        throw new Error(
+          s.status === 401 || s.status === 403
+            ? `Sesión no autorizada (${s.status}). Volvé a iniciar sesión.`
+            : `No se pudo cargar el resumen (HTTP ${s.status}).`
+        );
+      }
+
+      setSummary(s.data);
+      setAlerts(a.data);
+      setMsQueue(ms.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, alertsPage, msPage]);
+
+  useEffect(() => { if (accessToken) load(); }, [load, accessToken]);
 
   if (loading) {
     return (
@@ -100,6 +109,13 @@ export default function MarketingHubModule() {
           </div>
         )}
       </div>
+
+      {/* Not-provisioned notice — module deployed but no data/ETL yet */}
+      {summary?.provisioned === false && (
+        <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 10, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#874d00' }}>
+          Market Intelligence todavía no tiene datos. El módulo está desplegado pero aún no se ejecutó el primer ETL (o la base no está aprovisionada). Las métricas aparecerán automáticamente cuando haya datos.
+        </div>
+      )}
 
       {/* Summary cards */}
       {summary && <SummaryCards summary={summary} />}
