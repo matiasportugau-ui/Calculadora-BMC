@@ -21,6 +21,38 @@ function tryParseOriginFromReferer(referer) {
   }
 }
 
+function envFlag(raw) {
+  const v = String(raw || "").trim();
+  if (!v) return null;
+  if (/^(1|true|yes|on)$/i.test(v)) return true;
+  if (/^(0|false|no|off)$/i.test(v)) return false;
+  return null;
+}
+
+function isRunAppUrl(raw) {
+  try {
+    return new URL(raw || "").hostname.endsWith(".run.app");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The legacy endpoint returns the static API_AUTH_TOKEN to browser JS, so it
+ * must not be available on production-like APIs by default. Local/dev stacks
+ * keep it for old cockpit modules while the UI migrates to identity JWTs.
+ */
+export function isCockpitTokenEndpointEnabled(config) {
+  const override =
+    envFlag(process.env.BMC_COCKPIT_TOKEN_ENDPOINT_ENABLED) ??
+    envFlag(process.env.COCKPIT_TOKEN_ENDPOINT_ENABLED);
+  if (override != null) return override;
+
+  const appEnv = String(config?.appEnv || process.env.APP_ENV || process.env.NODE_ENV || "development").toLowerCase();
+  const cloudRunLike = Boolean(process.env.K_SERVICE) || isRunAppUrl(config?.publicBaseUrl);
+  return appEnv !== "production" && !cloudRunLike;
+}
+
 /** Exact origins always permitted (dev + production SPA). */
 function baseAllowedOrigins(config) {
   const set = new Set([
