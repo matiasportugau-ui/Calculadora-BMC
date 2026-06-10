@@ -78,6 +78,12 @@ export async function ensureApiKey() {
   return cockpitTokenFetch;
 }
 
+async function resolveRequestApiKey({ allowRuntimeFetch = false } = {}) {
+  const existing = apiKeySync();
+  if (existing) return existing;
+  return allowRuntimeFetch ? ensureApiKey() : "";
+}
+
 /** Resolve a path against the canonical API base. Absolute URLs pass through. */
 export function apiUrl(path) {
   if (/^https?:\/\//i.test(path)) return path;
@@ -119,12 +125,12 @@ export class ApiError extends Error {
   }
 }
 
-async function buildHeaders(extra, hasBody) {
+async function buildHeaders(extra, hasBody, { allowRuntimeAuthFetch = false } = {}) {
   const h = { ...(extra || {}) };
   if (hasBody && !h["Content-Type"] && !h["content-type"]) {
     h["Content-Type"] = "application/json";
   }
-  const key = await ensureApiKey();
+  const key = await resolveRequestApiKey({ allowRuntimeFetch: allowRuntimeAuthFetch });
   if (key && !h["x-api-key"]) h["x-api-key"] = key;
   if (key && !h.Authorization && !h.authorization) h.Authorization = `Bearer ${key}`;
   return h;
@@ -133,6 +139,8 @@ async function buildHeaders(extra, hasBody) {
 /**
  * Low-level request returning the raw Response, with timeout + base-URL
  * resolution + auth headers applied. Prefer apiGet/apiPost for JSON.
+ * Set `requireApiKey: true` only for routes that need the shared API token;
+ * public routes must not trigger the runtime cockpit-token fallback.
  */
 export async function apiFetch(path, opts = {}) {
   const {
@@ -140,6 +148,7 @@ export async function apiFetch(path, opts = {}) {
     body,
     headers,
     credentials,
+    requireApiKey = false,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     signal,
   } = opts;
@@ -158,7 +167,9 @@ export async function apiFetch(path, opts = {}) {
   try {
     return await fetch(apiUrl(path), {
       method,
-      headers: await buildHeaders(headers, hasBody),
+      headers: await buildHeaders(headers, hasBody, {
+        allowRuntimeAuthFetch: Boolean(requireApiKey),
+      }),
       body: isJsonBody ? JSON.stringify(body) : body,
       credentials,
       signal: controller.signal,

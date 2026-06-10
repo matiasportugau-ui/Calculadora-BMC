@@ -21,6 +21,6 @@ export async function fetchTeamAssistHealth() {
  * @param {{ agentId: string, messages: { role: string, content: string }[], context?: object }} body
  */
 export async function fetchTeamAssistChat(body) {
-  const { data } = await apiPost("/api/team-assist/chat", body);
+  const { data } = await apiPost("/api/team-assist/chat", body, { requireApiKey: true });
   return data;
 }

@@ -2,6 +2,8 @@
 // Run: node tests/apiClient.test.js
 import assert from "node:assert/strict";
 import {
+  apiGet,
+  apiPost,
   apiUrl,
   isEmptyPayload,
   ApiError,
@@ -15,6 +17,17 @@ let fail = 0;
 function t(name, fn) {
   try {
     fn();
+    pass++;
+    console.log(`  ✅ ${name}`);
+  } catch (err) {
+    fail++;
+    console.error(`  ❌ ${name}\n     ${err.message}`);
+  }
+}
+
+async function ta(name, fn) {
+  try {
+    await fn();
     pass++;
     console.log(`  ✅ ${name}`);
   } catch (err) {
@@ -96,6 +109,72 @@ t("resolveApiKeyFromStorage reads bmc_cockpit_token", () => {
   bag.set(COCKPIT_TOKEN_KEY, "stored-token");
   assert.equal(resolveApiKeyFromStorage((k) => bag.get(k)), "stored-token");
   assert.equal(resolveApiKeyFromStorage(() => { throw new Error("no storage"); }), "");
+});
+
+function installBrowserAuthMocks({ token = "runtime-token" } = {}) {
+  const hadFetch = "fetch" in globalThis;
+  const previousFetch = globalThis.fetch;
+  const hadLocalStorage = "localStorage" in globalThis;
+  const previousLocalStorage = globalThis.localStorage;
+  const writes = [];
+  const calls = [];
+
+  globalThis.localStorage = {
+    getItem: () => "",
+    setItem: (key, value) => writes.push({ key, value }),
+  };
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    const body = String(url).includes("/api/crm/cockpit-token")
+      ? { ok: true, token }
+      : { ok: true, path: String(url), headers: init.headers || {} };
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  return {
+    calls,
+    writes,
+    restore() {
+      if (hadFetch) globalThis.fetch = previousFetch;
+      else delete globalThis.fetch;
+      if (hadLocalStorage) globalThis.localStorage = previousLocalStorage;
+      else delete globalThis.localStorage;
+    },
+  };
+}
+
+await ta("public apiGet does not fetch or store the cockpit token", async () => {
+  const mock = installBrowserAuthMocks();
+  try {
+    const { data } = await apiGet("/capabilities");
+    assert.equal(data.ok, true);
+    assert.equal(mock.calls.length, 1);
+    assert.ok(!mock.calls[0].url.includes("/api/crm/cockpit-token"), mock.calls[0].url);
+    assert.equal(mock.calls[0].init.headers?.["x-api-key"], undefined);
+    assert.equal(mock.calls[0].init.headers?.Authorization, undefined);
+    assert.deepEqual(mock.writes, []);
+  } finally {
+    mock.restore();
+  }
+});
+
+await ta("requireApiKey requests fetch, store, and attach the cockpit token", async () => {
+  const mock = installBrowserAuthMocks({ token: "runtime-token" });
+  try {
+    const { data } = await apiPost("/api/team-assist/chat", { messages: [] }, { requireApiKey: true });
+    assert.equal(data.ok, true);
+    assert.equal(mock.calls.length, 2);
+    assert.ok(mock.calls[0].url.includes("/api/crm/cockpit-token"), mock.calls[0].url);
+    assert.ok(mock.calls[1].url.endsWith("/api/team-assist/chat"), mock.calls[1].url);
+    assert.equal(mock.calls[1].init.headers["x-api-key"], "runtime-token");
+    assert.equal(mock.calls[1].init.headers.Authorization, "Bearer runtime-token");
+    assert.deepEqual(mock.writes, [{ key: COCKPIT_TOKEN_KEY, value: "runtime-token" }]);
+  } finally {
+    mock.restore();
+  }
 });
 
 console.log(
