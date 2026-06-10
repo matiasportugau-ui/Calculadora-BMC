@@ -22,7 +22,10 @@ import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
-import { getCockpitTokenRequestBrowserOrigin } from "../lib/cockpitTokenOrigin.js";
+import {
+  getCockpitTokenRequestBrowserOrigin,
+  isCockpitTokenEndpointEnabled,
+} from "../lib/cockpitTokenOrigin.js";
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
@@ -2864,6 +2867,15 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
   // Browser-only: requires a verified Origin or Referer against an explicit allowlist
   // (curl / scripts without those headers get 403). See server/lib/cockpitTokenOrigin.js.
   router.get("/crm/cockpit-token", (req, res) => {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.set("Pragma", "no-cache");
+    if (!isCockpitTokenEndpointEnabled(config)) {
+      return res.status(410).json({
+        ok: false,
+        error: "cockpit_token_endpoint_disabled",
+        message: "Use identity JWT auth for cockpit routes; static token minting is disabled in production.",
+      });
+    }
     const token = config.apiAuthToken;
     if (!token) return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
     const allowedOrigin = getCockpitTokenRequestBrowserOrigin(req, config);
