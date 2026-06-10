@@ -375,7 +375,12 @@ function TeamAssistPanel({ data, assistHealth }) {
       });
       setMessages((m) => [...m, { role: "assistant", content: res.reply }]);
     } catch (e) {
-      setErr(e.message || String(e));
+      const msg = e.message || String(e);
+      setErr(
+        /x-api-key|401|API key/i.test(msg)
+          ? "API key inválida o ausente. Recargá la página (el cliente intenta obtenerla del servidor) o pegá API_AUTH_TOKEN en otro módulo del hub (Cotizaciones / Canales) y volvé a intentar."
+          : msg
+      );
       setMessages((m) => m.slice(0, -1));
       setDraft(text);
     } finally {
@@ -416,7 +421,9 @@ function TeamAssistPanel({ data, assistHealth }) {
           <span>
             {ready
               ? `Servidor listo · modelo ${assistHealth.model || "—"}`
-              : "Configurá OPENAI_API_KEY en el servidor (npm run start:api) y recargá. Opcional: API_AUTH_TOKEN + VITE_API_AUTH_TOKEN."}
+              : assistHealth?.auth_required
+                ? "Servidor con auth: el cliente obtiene el token vía /api/crm/cockpit-token al enviar mensajes. Si falla, configurá OPENAI_API_KEY en el servidor."
+                : "Configurá OPENAI_API_KEY en el servidor (npm run start:api) y recargá."}
           </span>
         </div>
       )}
