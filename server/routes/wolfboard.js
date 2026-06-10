@@ -29,6 +29,10 @@ import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 import { appendQuoteToCrm } from "../lib/crmAppend.js";
 import { normalizePanelinRole, resolveInternalServiceActor } from "../lib/panelinInternalRbac.js";
 import { deriveOutcome } from "../lib/wolfboardOutcome.js";
+import {
+  requireWolfboardRead,
+  requireWolfboardWrite,
+} from "../middleware/requireWolfboardAuth.js";
 import crypto from "node:crypto";
 import { estimateCostUSD } from "../lib/aiProviderConfig.js";
 
@@ -268,24 +272,6 @@ function envMissing503(res, envVar, where = "Cloud Run env / .env local") {
   });
 }
 
-function requireAuth(config, req, res) {
-  const expected = config.apiAuthToken;
-  if (!expected) {
-    envMissing503(res, "API_AUTH_TOKEN");
-    return false;
-  }
-  const header =
-    req.headers["x-api-key"] ||
-    (req.headers.authorization
-      ? String(req.headers.authorization).replace(/^Bearer\s+/i, "")
-      : "");
-  if (String(header || "") !== String(expected)) {
-    res.status(401).json({ ok: false, error: "API key inválida o ausente (x-api-key)" });
-    return false;
-  }
-  return true;
-}
-
 /**
  * Soft role hint logger — Hybrid RBAC step 1 (per drafts/01-outcome-rbac-proposal.md).
  * Logs the resolved role via pino (req.log) WITHOUT enforcement. Decision to add
@@ -367,8 +353,7 @@ export function createWolfboardRouter(config) {
   const router = Router();
 
   // ── GET /pendientes ───────────────────────────────────────────────────────
-  router.get("/pendientes", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
+  router.get("/pendientes", requireWolfboardRead, async (req, res) => {
     logRoleHint(req, config);
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
@@ -406,8 +391,7 @@ export function createWolfboardRouter(config) {
   });
 
   // ── POST /sync ────────────────────────────────────────────────────────────
-  router.post("/sync", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
+  router.post("/sync", requireWolfboardWrite, async (req, res) => {
     logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const adminSheetId = config.wolfbAdminSheetId;
@@ -488,8 +472,7 @@ export function createWolfboardRouter(config) {
   });
 
   // ── POST /row ─────────────────────────────────────────────────────────────
-  router.post("/row", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
+  router.post("/row", requireWolfboardWrite, async (req, res) => {
     logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const { adminRow, respuesta, link, aprobado, replaySnapshotUrl } = req.body || {};
@@ -584,8 +567,7 @@ export function createWolfboardRouter(config) {
   // Generates a synthetic ID `MAN-<timestamp>` so the row can later be matched
   // back to CRM_Operativo via the existing ID flow in `/sync`. Estado is set
   // to "Pendiente" to enter the standard triage queue.
-  router.post("/row-create", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
+  router.post("/row-create", requireWolfboardWrite, async (req, res) => {
     const dryRun = config.wolfbDryRun;
     const body = req.body || {};
     const consulta = String(body.consulta ?? "").trim();
@@ -646,8 +628,7 @@ export function createWolfboardRouter(config) {
   });
 
   // ── POST /enviados ────────────────────────────────────────────────────────
-  router.post("/enviados", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
+  router.post("/enviados", requireWolfboardWrite, async (req, res) => {
     logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const { adminRow } = req.body || {};
@@ -731,12 +712,7 @@ export function createWolfboardRouter(config) {
   });
 
   // ── GET /export ───────────────────────────────────────────────────────────
-  router.get("/export", async (req, res) => {
-    const tokenFromQuery = String(req.query.token || "").trim();
-    if (tokenFromQuery) {
-      req.headers.authorization = `Bearer ${tokenFromQuery}`;
-    }
-    if (!requireAuth(config, req, res)) return;
+  router.get("/export", requireWolfboardRead, async (req, res) => {
     logRoleHint(req, config);
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
@@ -776,8 +752,7 @@ export function createWolfboardRouter(config) {
     return res.send(lines.join("\r\n"));
   });
 
-  router.post("/quote-batch", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
+  router.post("/quote-batch", requireWolfboardWrite, async (req, res) => {
     logRoleHint(req, config);
 
     const {

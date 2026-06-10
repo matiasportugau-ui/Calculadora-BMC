@@ -187,7 +187,7 @@ export default function App() {
           path="/hub/ml"
           element={
             <Shell>
-              <RequireGrant module="ml" minLevel="read">
+              <RequireGrant module="canales" minLevel="read">
                 <Suspense fallback={suspenseFallback}>
                   <BmcMlOperativoModule />
                 </Suspense>

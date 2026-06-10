@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import BmcFiscalCard from "./BmcFiscalCard.jsx";
-
-const STORAGE_KEY = "bmc_cockpit_token";
+import { useCockpitOperatorAuth } from "../hooks/useCockpitOperatorAuth.js";
 /** Persisted Wolfboard POST /quote-batch flags (matches server defaults when all true / force false). */
 const STORAGE_BATCH_OPTS = "bmc_admin_quote_batch_opts";
 
@@ -181,17 +180,6 @@ function canalPill(origen) {
   return <span style={pill(bg, fg)}>{origen}</span>;
 }
 
-function getStoredToken() {
-  try { return localStorage.getItem(STORAGE_KEY) || ""; } catch { return ""; }
-}
-
-function setStoredToken(t) {
-  try {
-    if (t) localStorage.setItem(STORAGE_KEY, t);
-    else localStorage.removeItem(STORAGE_KEY);
-  } catch { /* ignore */ }
-}
-
 async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, "");
   const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
@@ -201,10 +189,18 @@ async function apiFetch(token, path, options = {}) {
 }
 
 export default function BmcAdminCotizacionesModule() {
-  const [tokenInput, setTokenInput]     = useState("");
-  const [token, setToken]               = useState("");
-  const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
-  const [tokenLoadError, setTokenLoadError]   = useState("");
+  const {
+    token,
+    tokenAutoLoaded,
+    tokenLoadError,
+    tokenInput,
+    setTokenInput,
+    saveToken,
+    clearToken,
+    isJwt,
+    login,
+    user,
+  } = useCockpitOperatorAuth({ role: "admin" });
 
   const [listScope, setListScope] = useState("consulta"); // "consulta" | "admin"
   const [rows, setRows]         = useState([]);
@@ -222,27 +218,6 @@ export default function BmcAdminCotizacionesModule() {
   const [dLink, setDLink]       = useState("");
   const [dReplay, setDReplay]   = useState("");
   const [saving, setSaving]     = useState(false);
-
-  // Auto-load token
-  useEffect(() => {
-    const stored = getStoredToken();
-    if (stored) {
-      setTokenInput(stored);
-      setToken(stored);
-      setTokenAutoLoaded(true);
-      return;
-    }
-    const base = getCalcApiBase().replace(/\/+$/, "");
-    fetch(`${base}/api/crm/cockpit-token`, { credentials: "omit" })
-      .then(async (r) => {
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok || !d?.ok) { setTokenLoadError(`No se pudo cargar el token (${d?.error || `HTTP ${r.status}`}). Pegalo manualmente.`); return; }
-        const t = String(d?.token || "").trim();
-        if (t) { setStoredToken(t); setTokenInput(t); setToken(t); setTokenAutoLoaded(true); }
-        else { setTokenLoadError("El servidor no devolvió token. Pegalo manualmente."); }
-      })
-      .catch(() => setTokenLoadError("Error de red al pedir el token. Pegalo manualmente."));
-  }, []);
 
   useEffect(() => {
     saveQuoteBatchOpts(batchOpts);
@@ -281,12 +256,29 @@ export default function BmcAdminCotizacionesModule() {
     loadPendientes();
   }, [token, loadPendientes]);
 
-  const saveToken = () => {
-    const t = tokenInput.trim();
-    setStoredToken(t);
-    setToken(t);
-    if (t) setTokenAutoLoaded(true);
-    showToast(t ? "Token guardado." : "Token borrado.");
+  const downloadExportCsv = async () => {
+    if (!token) return;
+    const base = getCalcApiBase().replace(/\/+$/, "");
+    const q = `?scope=${encodeURIComponent(listScope)}`;
+    try {
+      const res = await fetch(`${base}/api/wolfboard/export${q}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        showToast(d?.error || `Export falló (HTTP ${res.status})`);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `wolfboard-pendientes-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showToast(e?.message || "Error al exportar");
+    }
   };
 
   const runSync = async () => {
@@ -419,7 +411,10 @@ export default function BmcAdminCotizacionesModule() {
             tokenInput={tokenInput}
             setTokenInput={setTokenInput}
             onSave={saveToken}
-            onClear={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
+            onClear={clearToken}
+            isJwt={isJwt}
+            userEmail={user?.email || ""}
+            onLogin={login}
             inputStyle={{ ...input, maxWidth: 360 }}
             btnPrimaryStyle={btnPrimary}
             btnGhostStyle={btnGhost}
@@ -455,13 +450,13 @@ export default function BmcAdminCotizacionesModule() {
             <button type="button" style={{ ...btnGhost, fontSize: 12 }} onClick={loadPendientes} disabled={loading}>
               {loading ? "Cargando…" : "↺ Recargar"}
             </button>
-            <a
-              href={`${getCalcApiBase().replace(/\/+$/, "")}/api/wolfboard/export?token=${encodeURIComponent(token)}&scope=${encodeURIComponent(listScope)}`}
-              style={{ ...btnGhost, fontSize: 12, textDecoration: "none", display: "inline-block" }}
-              target="_blank" rel="noopener noreferrer"
+            <button
+              type="button"
+              style={{ ...btnGhost, fontSize: 12 }}
+              onClick={downloadExportCsv}
             >
               ↓ Export CSV
-            </a>
+            </button>
             {(rows.length > 0 || sheetRowCount != null) && (
               <span style={{ fontSize: 12, color: "#6e6e73", marginLeft: "auto" }}>
                 {listScope === "consulta" ? (

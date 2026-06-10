@@ -5,6 +5,8 @@ import {
   resolveApiKeyFromEnv,
   resolveApiKeyFromStorage,
   COCKPIT_TOKEN_KEY,
+  setOperatorJwtGetter,
+  ensureOperatorToken,
 } from "../src/utils/operatorApiClient.js";
 
 let pass = 0;
@@ -36,6 +38,12 @@ t("resolveApiKeyFromStorage reads bmc_cockpit_token", () => {
   bag.set(COCKPIT_TOKEN_KEY, "stored-token");
   assert.equal(resolveApiKeyFromStorage((k) => bag.get(k)), "stored-token");
   assert.equal(resolveApiKeyFromStorage(() => { throw new Error("no storage"); }), "");
+});
+
+t("ensureOperatorToken prefers JWT getter over storage", async () => {
+  setOperatorJwtGetter(() => "jwt-from-auth");
+  assert.equal(await ensureOperatorToken(), "jwt-from-auth");
+  setOperatorJwtGetter(() => "");
 });
 
 console.log(

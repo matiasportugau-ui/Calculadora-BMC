@@ -1,17 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Operator API client — explicit auth for hub / cockpit routes only.
 //
-// Phase A (S5): never auto-attached to public reads. Callers must import this
-// module deliberately. Token sources: Vite env aliases or bmc_cockpit_token in
-// localStorage (set by hub modules). cockpit-token fetch is OPT-IN via
-// fetchCockpitTokenOperatorCredential() — not on every request.
+// Phase B (S5): prefer identity JWT from BmcAuthProvider (setOperatorJwtGetter).
+// Fallback: Vite env aliases or bmc_cockpit_token override in localStorage (dev/CI).
+// GET /api/crm/cockpit-token is deprecated — do not fetch from hub UI.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import {
   apiUrl,
   ApiError,
   isEmptyPayload,
-  apiFetch as publicApiFetch,
 } from "./apiClient.js";
 
 /** Same key as CRM cockpit / wolfboard modules (`useAdminCotizaciones`). */
@@ -20,7 +18,12 @@ export const COCKPIT_TOKEN_KEY = "bmc_cockpit_token";
 const DEFAULT_TIMEOUT_MS = 20_000;
 
 let memoryKey = "";
-let cockpitTokenFetch = null;
+let jwtGetter = () => "";
+
+/** Register identity JWT supplier (called from BmcAuthProvider). */
+export function setOperatorJwtGetter(fn) {
+  jwtGetter = typeof fn === "function" ? fn : () => "";
+}
 
 /** Pure: Vite env aliases for the server `API_AUTH_TOKEN`. */
 export function resolveApiKeyFromEnv(env = {}) {
@@ -37,6 +40,8 @@ export function resolveApiKeyFromStorage(readItem = () => "") {
 }
 
 function apiKeySync() {
+  const jwt = String(jwtGetter() || "").trim();
+  if (jwt) return jwt;
   if (memoryKey) return memoryKey;
   const fromEnv =
     typeof import.meta !== "undefined" ? resolveApiKeyFromEnv(import.meta.env || {}) : "";
@@ -48,42 +53,15 @@ function apiKeySync() {
 }
 
 /**
- * Explicit opt-in: fetch GET /api/crm/cockpit-token (deprecated; Phase B removes).
- * Hub modules should migrate to identity JWT — see operatorApiClient header.
+ * @deprecated cockpit-token endpoint removed in Phase B PR3. Returns "".
  */
 export async function fetchCockpitTokenOperatorCredential() {
-  if (typeof fetch === "undefined") return "";
-  if (!cockpitTokenFetch) {
-    cockpitTokenFetch = publicApiFetch("/api/crm/cockpit-token", { method: "GET" })
-      .then(async (r) => {
-        const d = await r.json().catch(() => ({}));
-        const t = r.ok && d?.ok ? String(d?.token || "").trim() : "";
-        if (t) {
-          memoryKey = t;
-          try {
-            localStorage.setItem(COCKPIT_TOKEN_KEY, t);
-          } catch {
-            /* ignore */
-          }
-        }
-        return t;
-      })
-      .catch(() => "")
-      .finally(() => {
-        cockpitTokenFetch = null;
-      });
-  }
-  return cockpitTokenFetch;
+  return "";
 }
 
-/**
- * @param {{ fetchCockpitToken?: boolean }} [opts]
- */
-export async function ensureOperatorToken(opts = {}) {
-  const existing = apiKeySync();
-  if (existing) return existing;
-  if (opts.fetchCockpitToken) return fetchCockpitTokenOperatorCredential();
-  return "";
+/** @param {{ fetchCockpitToken?: boolean }} [opts] */
+export async function ensureOperatorToken(_opts = {}) {
+  return apiKeySync();
 }
 
 async function buildOperatorHeaders(extra, hasBody, opts) {
