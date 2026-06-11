@@ -287,12 +287,32 @@ export function diffCatalogVsMatriz(catalogByPath, matriz, cfg = CONFIG) {
   const findings = [];
   const matchedCatalogPaths = new Set();
   const seenPathOnce = new Set();
+  const checkedCatalogBands = new Set();
 
   const add = (severity, type, o) => findings.push({ severity, type, ...o });
 
   for (const m of matriz.rows) {
     const cat = catalogByPath.get(m.path);
     const skuUpper = m.sku.toUpperCase();
+    const band = bandForPath(m.path, cfg);
+
+    // Banda de magnitud sobre el valor del catálogo → S1 (lo que controlamos).
+    // Esta validación NO depende de que la fila MATRIZ sea comparable: incluso
+    // con SKU duplicado, un error de coma decimal en constants.js debe bloquear.
+    if (cat) {
+      matchedCatalogPaths.add(m.path);
+      if (!checkedCatalogBands.has(m.path)) {
+        checkedCatalogBands.add(m.path);
+        for (const field of ["costo", "venta", "web"]) {
+          const catVal = cat[field];
+          if (catVal != null && outOfBand(catVal, band)) {
+            add("s1", "catalog-out-of-range", { sku: m.sku, path: m.path, field: FIELD_LABEL[field],
+              catalog: catVal, band: `${band.min}–${band.max}`, bandLabel: band.label,
+              detail: "Valor del catálogo fuera de banda — posible error de coma decimal." });
+          }
+        }
+      }
+    }
 
     // Anti-patrón: SKU duplicado → no comparar nada para esta fila.
     if (skuUpper && matriz.duplicateSkus.has(skuUpper)) {
@@ -313,21 +333,10 @@ export function diffCatalogVsMatriz(catalogByPath, matriz, cfg = CONFIG) {
         detail: "Fila MATRIZ sin entrada en el catálogo (gap de mapeo o producto faltante)." });
       continue;
     }
-    matchedCatalogPaths.add(m.path);
-    const band = bandForPath(m.path, cfg);
 
     for (const field of ["costo", "venta", "web"]) {
       const matCell = m[field];
       const catVal = cat[field];
-
-      // Banda de magnitud sobre el valor del catálogo → S1 (lo que controlamos).
-      // Se evalúa SIEMPRE que el catálogo tenga el valor, incluso si la MATRIZ no
-      // trae fuente: un error de coma decimal en constants.js debe bloquear igual.
-      if (catVal != null && outOfBand(catVal, band)) {
-        add("s1", "catalog-out-of-range", { sku: m.sku, path: m.path, field: FIELD_LABEL[field],
-          catalog: catVal, band: `${band.min}–${band.max}`, bandLabel: band.label,
-          detail: "Valor del catálogo fuera de banda — posible error de coma decimal." });
-      }
 
       // EMPTY en origen → nunca se compara, nunca se rellena (mecanismo WOLF-0002).
       if (matCell.status === "empty") {

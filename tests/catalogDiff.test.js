@@ -106,6 +106,20 @@ group("diff — SKU duplicado → warn, compara nada", () => {
   assert(!findings.some((f) => f.type === "divergence"), "no compara (sin divergence) pese a catálogo 999");
 });
 
+group("diff — SKU duplicado sigue bloqueando catálogo fuera de banda", () => {
+  const catalog = new Map([["PERFIL_TECHO.gotero_lateral.ISOROOF.80", { venta: 999, web: 30.88, costo: 22.78 }]]);
+  const csv = [
+    "sku,path,costo,venta_local,venta_web",
+    "GL80,PERFIL_TECHO.gotero_lateral.ISOROOF.80,22.78,25.31,30.88",
+    "GL80,PERFIL_TECHO.gotero_lateral.ISODEC.100,18.69,20.77,25.34",
+  ].join("\n");
+  const { findings, summary } = diffCatalogVsMatriz(catalog, parseMatrizCsv(csv));
+  assert(findings.some((f) => f.type === "duplicate-sku"), "mantiene warning duplicate-sku");
+  assert(findings.some((f) => f.type === "catalog-out-of-range" && f.field === "venta_local"), "precio fuera de banda se reporta pese a SKU duplicado");
+  assert(!findings.some((f) => f.type === "divergence"), "SKU duplicado aún evita divergencia vs MATRIZ");
+  assert(summary.s1 >= 1, "fuera de banda en catálogo duplicado es S1");
+});
+
 /* ── Diff: celda vacía = no-source, nunca rellena ────────────────────────── */
 group("diff — celda MATRIZ vacía → no-source (WOLF-0002)", () => {
   const catalog = new Map([["PANELS_TECHO.ISODEC_EPS.esp.100", { venta: 41.15, web: 50.1, costo: 35.79 }]]);
