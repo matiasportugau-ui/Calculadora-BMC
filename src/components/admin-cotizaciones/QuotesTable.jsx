@@ -156,6 +156,7 @@ export default function QuotesTable({
   onAssign,
   onOpenBorrador,
   onQuickAssign,
+  onCreateFollowupTask,
   loading,
   emptyMessage,
 }) {
@@ -265,6 +266,18 @@ export default function QuotesTable({
                           title="Asignar responsable rápido"
                         >
                           Asignar
+                        </button>
+                      )}
+
+                      {onCreateFollowupTask && (
+                        <button
+                          type="button"
+                          className="adminCot__btn adminCot__btn--sm"
+                          style={{ background: "#e0f2fe", color: "#0369a1" }}
+                          onClick={() => onCreateFollowupTask(row)}
+                          title="Crear tarea de seguimiento en el módulo Tareas"
+                        >
+                          + Tarea
                         </button>
                       )}
 
