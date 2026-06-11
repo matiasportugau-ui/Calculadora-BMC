@@ -15,11 +15,11 @@ import express from "express";
 
 process.env.PUBLIC_BASE_URL = "http://localhost:3001";
 // Ensure OPENAI_API_KEY is set so we can also test no-key path by mutation
-process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || "test-openai-key";
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || "sk-proj-Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St90";
 
 const { default: agentTranscribeRouter } = await import("../server/routes/agentTranscribe.js");
 const { config: testConfig } = await import("../server/config.js");
-testConfig.openaiApiKey = "test-openai-key";
+testConfig.openaiApiKey = "sk-proj-Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St90";
 
 let passed = 0;
 let failed = 0;
@@ -171,7 +171,7 @@ await group("no API key configured → 503", async () => {
   const { status, body } = await postAudio("/api/agent/transcribe", audio);
   assert(status === 503, `503 (got ${status})`);
   assert(typeof body.error === "string" && body.error.includes("OPENAI_API_KEY"), "error mentions OPENAI_API_KEY");
-  testConfig.openaiApiKey = "test-openai-key"; // restore
+  testConfig.openaiApiKey = "sk-proj-Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St90"; // restore
 });
 
 // ── Cleanup ──────────────────────────────────────────────────────────────────
