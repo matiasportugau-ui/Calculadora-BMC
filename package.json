@@ -150,6 +150,7 @@
     "transportista:migrate": "node scripts/run-transportista-migrations.mjs",
     "traktime:migrate": "node scripts/run-traktime-migrations.mjs",
     "wa:migrate": "node scripts/run-wa-migrations.mjs",
+    "panelin:migrate": "node scripts/run-panelin-migrations.mjs",
     "wa:admin": "node scripts/wa-admin.mjs",
     "wa:reconcile": "node scripts/wa-reconcile-sheet.mjs",
     "wa:purge-old": "node scripts/wa-purge-old.mjs",
