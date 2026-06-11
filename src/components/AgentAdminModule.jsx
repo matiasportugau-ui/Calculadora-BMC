@@ -2042,6 +2042,22 @@ function VoiceTab() {
           </div>
         )}
       </div>
+
+      {/* Learning integration note (voice as first-class training channel) */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.ff, marginBottom: 8 }}>
+          Integración con aprendizaje (nuevo)
+        </div>
+        <div style={{ fontSize: 12, color: C.text, fontFamily: C.ff, lineHeight: 1.5 }}>
+          Las transcripciones de voz (usuario + asistente) ahora se inyectan en el historial compartido de conversación con <code>source: &quot;panelin_voice&quot;</code> + <code>convId</code>.
+          Esto las hace elegibles para <code>extractLearnablePairs</code> (mismos criterios estrictos BMC: precios sin IVA, familias de paneles, escenarios, instalación, etc.) y para <code>addTrainingEntry</code> → trainingKB / RAG.
+          <br />
+          Las contribuciones de voz aparecen en las listas de training entries con su source y pueden consultarse vía las herramientas de autolearn / conversaciones en el admin.
+        </div>
+        <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff, marginTop: 8 }}>
+          Ver también: useChat.appendMessage, PanelinVoicePanel → handleVoiceTranscript, y el flujo en agentChat.js.
+        </div>
+      </div>
     </div>
   );
 }

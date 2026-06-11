@@ -301,6 +301,8 @@ export default function PanelinChatPanel({
   calcState,
   onChatAction,
   authHeader,
+  appendMessage, // from useChat — used to inject voice turns (source: "panelin_voice") into the shared history for autoLearnExtractor / trainingKB / RAG
+  conversationId, // from useChat — for tagging voice turns and traceability
   // New for sidebar mode (Phase 2 of Panelin character+chat plan)
   embedded = false,
   onRequestFloating,
@@ -490,7 +492,7 @@ export default function PanelinChatPanel({
       }
     }
     prevMsgCountRef.current = count;
-  }, [messages, ttsEnabled, isTtsSpeaking]);
+  }, [messages, ttsEnabled, isTtsSpeaking, ttsSpeed]);
 
   // Whisper-backed dictation (cross-browser, replaces deprecated Web Speech API).
   // The hook manages mic stream lifecycle internally; cleanup happens on unmount.
@@ -510,6 +512,31 @@ export default function PanelinChatPanel({
   });
   const isListening = dictation.status === "recording";
   const isTranscribing = dictation.status === "transcribing";
+
+  /**
+   * Bridge for voice transport: live transcripts (user speech + assistant audio_transcript deltas)
+   * are normalized and appended to the central messages array (owned by useChat) with
+   * source: "panelin_voice" + the current conversationId.
+   *
+   * Hecho confirmado (from code archaeology):
+   * - useChat.messages + convId is the structure passed to /api/agent/chat and consumed
+   *   by server/routes/agentChat.js which calls extractLearnablePairs(..., { source: "panelin_chat", convId })
+   *   then addTrainingEntry (which respects source/convId and feeds trainingKB + RAG).
+   * - This makes voice a first-class peer channel for learning without duplicating the brain or extractor.
+   * - Voice turns will be visible in history, future text sends (context), dev tools, and auto-extraction.
+   */
+  const handleVoiceTranscript = useCallback((t) => {
+    if (!appendMessage || !t) return;
+    const content = t.content || t.transcript || t.delta || "";
+    if (!content) return;
+    appendMessage({
+      role: t.role || "assistant",
+      content,
+      source: "panelin_voice",
+      // finalized can be used by consumers to know when a turn is complete
+      finalized: t.finalized !== false,
+    });
+  }, [appendMessage]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !devMode) return;
@@ -1042,6 +1069,8 @@ export default function PanelinChatPanel({
             devMode={devMode}
             authHeader={authHeader}
             voiceMode={voiceMode}
+            onVoiceTranscript={handleVoiceTranscript}
+            conversationId={conversationId}
           />
         </div>
 

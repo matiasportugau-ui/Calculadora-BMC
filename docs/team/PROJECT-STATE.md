@@ -12,6 +12,26 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-11 (Panelin Voice — first-class learning channel + auth + browser fallback):** `implementado + deployado a producción`. Ejecución completa del goal `goal-prompt-panelin-voice-agent-learning-architecture.md` vía skill dedicada + full deploy flow (gate:local:full, smoke:prod, pre-deploy, scripts/deploy-*.sh). 
+
+**Deploys:**
+- Frontend Vercel prod: https://calculadora-bmc.vercel.app (authHeader desde bmcAuth.accessToken, useChat.appendMessage con source:"panelin_voice", bridging en PanelinChatPanel/PanelinVoicePanel, improved Safari fallback + dictado promotion, VoiceTab nota de integración, etc.).
+- Backend Cloud Run (panelin-calc): https://panelin-calc-q74zutv7dq-uc.a.run.app (rev panelin-calc-00454-wmg) — incluye requireAuth en /agent/voice/action + build SUCCESS via Cloud Build 09e693ee-....
+- Smoke:prod verde post-deploy. Gates limpios (0 errores nuevos).
+
+**Listo para real testing:** Usuarios autenticados (login Google) en Chrome/Edge pueden abrir Panelin chat, activar voz, hablar cotizaciones (acciones live), ver transcripciones inyectadas al historial compartido y eventualmente extraídas a trainingKB con source panelin_voice. Safari: mensaje útil + fallback a dictado. Sin 401s ni prompt crudo de token en flujos normales.
+
+Ver `.runtime/REAL-VOICE-TESTING-IN-PRODUCTION.md` para pasos exactos. 
+- `useChat.appendMessage` + wiring en `PanelinChatPanel`/`PanelinVoicePanel`: transcripciones de voz (user + assistant `audio_transcript`) se appendean al historial compartido con `source: "panelin_voice"` + `convId`. Fluyen a `extractLearnablePairs` (agentChat.js) → trainingKB / RAG usando los mismos criterios estrictos BMC.
+- Auth: `authHeader` derivado de `bmcAuth.accessToken` (Bearer) se propaga explícitamente a todos los mounts de `PanelinChatPanel` (sidebar/floating/detached). 401s eliminados para usuarios logueados. Prompt crudo "Pegá API_AUTH_TOKEN" ahora guarded (solo anon + dev explícito).
+- `/api/agent/voice/action` ahora requiere `requireAuth` (consistencia).
+- Browser: banner mejorado en Safari (explicación clara "por qué Chrome/Edge" + promoción fuerte del dictado + TTS existente como fallback first-class).
+- Admin: VoiceTab incluye nota de integración de aprendizaje (contribuciones con source voice ahora visibles en colas de training).
+- Artefacto de verificación: `.runtime/voice-agent-learning-integration.md`.
+- Gates: lint (solo warnings pre-existentes), `npm test` verde completo. Sin regresión en chat texto, TTS, dictado o calculadora.
+- Hecho confirmado durante la corrida: el punto de integración canónico era `useChat` + post-procesado en agentChat.js (ya soportaba source/convId). Voice era transporte aislado en estado local — ahora es peer channel.
+Ver skill `.cursor/skills/panelin-voice-agent-learning-architecture/SKILL.md` y el goal prompt para detalles completos + success criteria.
+
 **2026-06-10 (precios WOLF-2026-0004 — alta familia ISOFRIG PIR + perfiles cámara):** `mergeado a main / verificar precios pre-deploy`. Nueva familia de panel pared **ISOFRIG_PIR** (cámaras frigoríficas, 40–200mm) en [`constants.js`](../../src/data/constants.js) con `venta`/`web`/`costo`, más perfiles nuevos (goteros 100mm, `GLDCAM` cámara 100–250, `GSDECAM100`) y mapeos SKU→path en [`matrizPreciosMapping.js`](../../src/data/matrizPreciosMapping.js). Wire de `ISOFRIG_PIR` en escenarios `techo_fachada` + `camara_frig`. Tooling: `matriz:sync-auto` ([`scripts/matriz-sync-automation.mjs`](../../scripts/matriz-sync-automation.mjs)) wrapper CI/cron con umbrales de seguridad. `gate:local` verde (lint + 350+ tests + test:api). **⚠️ Verificar pre-deploy:** (1) ISOFRIG `200mm` venta **90.99** < `180mm` **91.32** (posible quirk de transcripción de Matriz, mismo `costo` 68.00); (2) `GLDCAMDC` sigue mapeando a `ISODEC._all`, path ahora desglosado por espesor 100–250 en constants — correr `npm run matriz:reconcile` antes de confiar. Mergeado a `main` vía branch `feat/isofrig-pir-pricing`; **push/deploy pendiente de aprobación operador**.
 
 **2026-06-10 (live-fix — IA keys wiped by Cloud Run deploy):** `parcial / bloqueado operador (billing keys)`. Tras deploy manual PR3, `suggest-response` devolvía `IA_NOT_CONFIGURED` porque `deploy-calc-api.yml` `--set-secrets` omitía las 4 keys IA y cada deploy las borraba. **Fix código:** añadir `ANTHROPIC/OPENAI/GROK/GEMINI_API_KEY` al workflow (PR pendiente). **Fix infra:** remount GSM + sync Doppler→GSM → revisión `panelin-calc-00449-ncb`; ya no `IA_NOT_CONFIGURED` pero `All providers failed`: Anthropic crédito bajo, OpenAI 429 quota, Grok key inválida, Gemini API no habilitada en GCP. **Operador:** recargar Anthropic y/o OpenAI billing y/o rotar `GROK_API_KEY` y/o habilitar Generative Language API.

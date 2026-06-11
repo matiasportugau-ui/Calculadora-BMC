@@ -2464,6 +2464,26 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     return String(sessionStorage.getItem("panelin-dev-token") || "").trim();
   });
 
+  /**
+   * Stable authHeader for Panelin agent surfaces (chat + voice).
+   * Prefers the real accessToken from BmcAuth (set on Google login / session).
+   * Falls back to explicit dev token only when devMode is active.
+   *
+   * This fixes "Unauthorized" (401) on /api/agent/voice/* and related for
+   * properly logged-in users. The raw "Pegá API_AUTH_TOKEN" prompt is a dev
+   * convenience and should not appear in normal authenticated flows.
+   */
+  const authHeader = useMemo(() => {
+    if (bmcAuth?.accessToken) {
+      return `Bearer ${bmcAuth.accessToken}`;
+    }
+    if (devAuthToken) {
+      // Dev token can be used as Bearer or X-Api-Key; voice + chat accept Authorization: Bearer
+      return `Bearer ${devAuthToken}`;
+    }
+    return undefined;
+  }, [bmcAuth?.accessToken, devAuthToken]);
+
   // NEW TOGGLEABLE (default OFF, persisted): Enhanced product visualization using the researched real product images (kingspan.com.uy, bmcuruguay.com.uy mappings) + DWG-derived profiles (plegados/grecas/forros/babetas/frontales from TECHMET and BMC internal files).
   // When enabled (via dev tools or localStorage 'bmc-enhanced-product-viz'='1'): adds non-breaking UI refs in family/espesor steps + QuoteVisualVisor (new acordeón or section with mapped real images + technical notes).
   // Does NOT replace or alter any existing renders, textures, or data. Future phases (behind same flag): real 3D volume/profile extrusion in RoofPanelRealisticScene for single-product view, accurate 2D CAD sections in visor/PDF based on the DWG constructivos.
@@ -2679,8 +2699,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       return;
     }
     let token = String(devAuthToken || "").trim();
-    if (!token && !chat.relaxDevAuth && typeof window !== "undefined") {
-      token = String(window.prompt("Pegá API_AUTH_TOKEN del servidor API (Cloud Run), el mismo que en variables de entorno — sin comillas ni espacios:") || "").trim();
+    // Guard: only prompt for raw token in truly anonymous dev scenarios.
+    // Normal authenticated users (bmcAuth.isAuthenticated / accessToken) get a proper Bearer header
+    // from context and should never see this dev convenience dialog.
+    if (!token && !chat.relaxDevAuth && typeof window !== "undefined" && !bmcAuth?.isAuthenticated) {
+      token = String(window.prompt("Pegá API_AUTH_TOKEN del servidor API (Cloud Run) — solo para flujos dev sin login. En usuarios autenticados normales esto no debería aparecer.") || "").trim();
     }
     if (!chat.relaxDevAuth && !token) return;
     setDevAuthToken(token);
@@ -7064,6 +7087,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   onRequestFloating={() => setChatPresentation('floating')}
                   calcState={calcState}
                   onChatAction={handleChatAction}
+                  authHeader={authHeader}
                 />
               </div>
             </Panel>
@@ -7144,6 +7168,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               onOpenDetachedWindow={openDetachedChatWindow}
               calcState={calcState}
               onChatAction={handleChatAction}
+              authHeader={authHeader}
             />
           </div>
 
@@ -7206,6 +7231,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         devMode={devMode}
         onToggleDevMode={toggleDevMode}
         detachedMode={isDetachedChatWindow}
+        authHeader={authHeader}
         onOpenDetachedWindow={openDetachedChatWindow}
         devMeta={chat.devMeta}
         trainingEntries={chat.trainingEntries}
