@@ -98,7 +98,7 @@ function Shell({ children }) {
       </div>
       {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
-      {TUTORIAL_ENABLED && <FloatingTutorialButton />}
+      {TUTORIAL_ENABLED && !isCalc && <FloatingTutorialButton />}
     </div>
   );
 }

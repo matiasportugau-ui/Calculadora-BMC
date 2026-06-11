@@ -1,0 +1,14 @@
+[     425ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/me:0
+[     682ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/refresh:0
+[   11255ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/me:0
+[   11445ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/refresh:0
+[   13733ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/me:0
+[   13922ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/refresh:0
+[   14488ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/me:0
+[   14678ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/refresh:0
+[ 1347376ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/me:0
+[ 1347569ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/refresh:0
+[ 1481718ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/me:0
+[ 1482015ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/refresh:0
+[ 8413380ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/me:0
+[ 8414448ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://calculadora-bmc.vercel.app/api/auth/refresh:0

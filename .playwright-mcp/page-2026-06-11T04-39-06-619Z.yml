@@ -1,0 +1,570 @@
+- main "Calculadora BMC" [ref=e2]:
+  - generic [ref=e3]:
+    - button "Iniciar sesión" [ref=e5] [cursor=pointer]
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]: BMC Uruguay
+          - generic [ref=e11]: · Panelin v3.1.5
+          - generic [ref=e12]:
+            - button "Hub" [ref=e13] [cursor=pointer]
+            - button "Logística" [ref=e14] [cursor=pointer]
+          - generic [ref=e15]: BMC-2026-0001
+          - generic [ref=e16]: "Cotizaciones: 0044"
+        - generic [ref=e17]:
+          - button "Herramientas adicionales" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+          - button "Config" [ref=e24] [cursor=pointer]:
+            - img [ref=e25]
+            - text: Config
+          - button "Plano" [ref=e28] [cursor=pointer]:
+            - img [ref=e29]
+            - text: Plano
+          - button "Drive" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+            - text: Drive
+          - button "Borradores 1" [ref=e35] [cursor=pointer]:
+            - img [ref=e36]
+            - text: Borradores
+            - generic [ref=e39]: "1"
+          - button "Guardar" [ref=e40] [cursor=pointer]:
+            - img [ref=e41]
+            - text: Guardar
+          - button "Limpiar" [ref=e45] [cursor=pointer]:
+            - img [ref=e46]
+            - text: Limpiar
+          - button "Imprimir" [ref=e49] [cursor=pointer]:
+            - img [ref=e50]
+            - text: Imprimir
+          - generic [ref=e54]:
+            - combobox "Motor y modelo de IA (Panelin)" [ref=e56] [cursor=pointer]:
+              - option "Automático (fallback)" [selected]
+              - option "Predeterminado (claude-opus-4-7)"
+              - option "claude-3-5-haiku-20241022"
+              - option "claude-3-5-sonnet-20241022"
+              - option "claude-3-opus-20240229"
+              - option "claude-haiku-4-5-20251001"
+              - option "claude-opus-4-6"
+              - option "claude-sonnet-4-20250514"
+              - option "claude-sonnet-4-5-20250929"
+              - option "claude-sonnet-4-6"
+              - option "Predeterminado (gpt-4o-mini)"
+              - option "gpt-4"
+              - option "gpt-4-turbo"
+              - option "gpt-4o"
+              - option "o3-mini"
+              - option "o4-mini"
+              - option "Predeterminado (grok-3-mini)"
+              - option "grok-2-1212"
+              - option "grok-2-latest"
+              - option "grok-2-vision-1212"
+              - option "grok-3"
+              - option "Predeterminado (gemini-2.0-flash)"
+              - option "gemini-1.5-flash"
+              - option "gemini-1.5-flash-8b"
+              - option "gemini-1.5-pro"
+              - option "gemini-2.0-flash-lite"
+            - button "💬 Panelin" [ref=e57] [cursor=pointer]
+      - generic [ref=e58]:
+        - generic [ref=e61]:
+          - generic [ref=e95]:
+            - generic [ref=e96]:
+              - generic [ref=e97]: Escenario de obra
+              - generic [ref=e98]: 1/11
+            - button "Proyecto" [ref=e99] [cursor=pointer]:
+              - img [ref=e100]
+              - text: Proyecto
+          - generic [ref=e103]:
+            - generic [ref=e104] [cursor=pointer]:
+              - img [ref=e106]
+              - generic [ref=e109]:
+                - generic [ref=e110]: Solo Techo
+                - generic [ref=e111]: Cubierta con ISODEC o ISOROOF
+                - generic [ref=e112]: Asistente paso a paso →
+            - generic [ref=e113] [cursor=pointer]:
+              - img [ref=e115]
+              - generic [ref=e119]:
+                - generic [ref=e120]: Solo Fachada
+                - generic [ref=e121]: Paredes y cerramientos
+            - generic [ref=e122] [cursor=pointer]:
+              - img [ref=e124]
+              - generic [ref=e129]:
+                - generic [ref=e130]: Techo + Fachada
+                - generic [ref=e131]: Proyecto completo
+            - generic [ref=e132] [cursor=pointer]:
+              - img [ref=e134]
+              - generic [ref=e139]:
+                - generic [ref=e140]: Cámara Frigorífica
+                - generic [ref=e141]: Cerramientos térmicos para frío
+            - generic [ref=e142] [cursor=pointer]:
+              - img [ref=e144]
+              - generic [ref=e147]:
+                - generic [ref=e148]: Presupuesto libre
+                - generic [ref=e149]: Líneas manuales desde catálogo herrajes y anclajes
+          - button "Siguiente" [ref=e151] [cursor=pointer]
+        - separator [ref=e152]
+        - generic [ref=e154]:
+          - generic [ref=e155]:
+            - button "Visor visual · Paneles para cubierta" [ref=e156] [cursor=pointer]:
+              - generic [ref=e157]: Visor visual · Paneles para cubierta
+              - img [ref=e158]
+            - generic [ref=e160]:
+              - generic [ref=e161]:
+                - img "ISOROOF PLUS 3G" [ref=e162]
+                - button "Anterior" [ref=e163] [cursor=pointer]:
+                  - img [ref=e164]
+                - button "Siguiente" [ref=e166] [cursor=pointer]:
+                  - img [ref=e167]
+              - generic [ref=e169]:
+                - generic [ref=e170]: ISOROOF PLUS 3G
+                - generic [ref=e171]: Línea premium
+                - generic [ref=e172]: Versión premium de la línea Isoroof, orientada a proyectos que buscan mejor terminación y prestaciones superiores en techos livianos de panel aislante.
+              - generic [ref=e173]:
+                - button "Ir a imagen 1" [ref=e174] [cursor=pointer]
+                - button "Ir a imagen 2" [ref=e175] [cursor=pointer]
+                - button "Ir a imagen 3" [ref=e176] [cursor=pointer]
+                - button "Ir a imagen 4" [ref=e177] [cursor=pointer]
+                - button "Ir a imagen 5" [ref=e178] [cursor=pointer]
+                - button "Ir a imagen 6" [ref=e179] [cursor=pointer]
+              - link "Ver en tienda BMC" [ref=e180] [cursor=pointer]:
+                - /url: https://bmcuruguay.com.uy/collections/paneles-aislantes
+                - text: Ver en tienda BMC
+                - img [ref=e181]
+          - generic [ref=e185]:
+            - generic [ref=e186]: Lista de precios
+            - generic [ref=e187]:
+              - button "Precio BMC" [ref=e188] [cursor=pointer]
+              - button "Precio Web" [ref=e189] [cursor=pointer]
+          - generic [ref=e190]:
+            - generic [ref=e191]:
+              - generic [ref=e192]: Área
+              - generic [ref=e194]: 0.0m²
+            - generic [ref=e195]:
+              - generic [ref=e196]: Paneles
+              - generic [ref=e198]: "0"
+            - generic [ref=e199]:
+              - generic [ref=e200]: Apoyos
+              - generic [ref=e202]: "1"
+            - generic [ref=e203]:
+              - generic [ref=e204]: Pts fijación
+              - generic [ref=e206]: —
+          - generic [ref=e208]:
+            - img [ref=e209]
+            - generic [ref=e211]: Largo real 0m (con pendiente 0°) < mínimo 2.3m
+          - generic [ref=e213]:
+            - img [ref=e214]
+            - generic [ref=e217]: "Autoportante ✓ · Vano máx: 5.5m · 1 apoyos"
+          - generic [ref=e218]:
+            - generic [ref=e219]:
+              - generic [ref=e220] [cursor=pointer]:
+                - generic [ref=e221]:
+                  - img [ref=e222]
+                  - text: PANELES
+                - generic [ref=e224]: $0.00
+              - generic [ref=e225]:
+                - generic [ref=e226]:
+                  - generic [ref=e227]: Descripción
+                  - generic [ref=e228]: Cant.
+                  - generic [ref=e229]: Unid.
+                  - generic [ref=e230]: P.Unit.
+                  - generic [ref=e231]: Total
+                  - generic [ref=e232]: Costo
+                  - generic [ref=e233]: "% Margen"
+                  - generic [ref=e234]: Ganancia
+                  - generic [ref=e235]: Acciones
+                - generic [ref=e236]:
+                  - generic [ref=e237]: ISODEC EPS 100mm
+                  - generic [ref=e238]: "0"
+                  - generic [ref=e239]: m²
+                  - generic [ref=e240]: "41.15"
+                  - generic [ref=e241]: $0.00
+                  - generic [ref=e242]: $0.00
+                  - generic [ref=e243]:
+                    - option "Simple — Carbon ★" [ref=e244]
+                    - option "Presupuesto Simple" [ref=e245]
+                    - option "Simple — Sage" [ref=e246]
+                    - option "Simple — Slate" [ref=e247]
+                    - option "Simple — Warm" [ref=e248]
+                    - option "Simple — Ocean" [ref=e249]
+                    - group [ref=e250]:
+                      - option "BMC PDF — Blueprint Técnico" [ref=e251]
+                      - option "E — Soft Modern" [ref=e252]
+                      - option "A — Executive Dark" [ref=e253]
+                      - option "B — Blueprint" [ref=e254]
+                      - option "C — Minimalist" [ref=e255]
+                      - option "D — Construction Bold" [ref=e256]
+                  - generic [ref=e257]: $0.00
+                  - generic [ref=e258]:
+                    - button "Editar fila" [ref=e259] [cursor=pointer]:
+                      - img [ref=e260]
+                    - button "Quitar item" [ref=e262] [cursor=pointer]:
+                      - img [ref=e263]
+            - generic [ref=e266]:
+              - generic [ref=e267] [cursor=pointer]:
+                - generic [ref=e268]:
+                  - img [ref=e269]
+                  - text: FIJACIONES
+                - generic [ref=e271]: $0.00
+              - generic [ref=e272]:
+                - generic [ref=e273]:
+                  - generic [ref=e274]: Descripción
+                  - generic [ref=e275]: Cant.
+                  - generic [ref=e276]: Unid.
+                  - generic [ref=e277]: P.Unit.
+                  - generic [ref=e278]: Total
+                  - generic [ref=e279]: Costo
+                  - generic [ref=e280]: "% Margen"
+                  - generic [ref=e281]: Ganancia
+                  - generic [ref=e282]: Acciones
+                - generic [ref=e283]:
+                  - generic [ref=e284]: Varilla roscada 3/8" (1m)
+                  - generic [ref=e285]: "0"
+                  - generic [ref=e286]: unid
+                  - generic [ref=e287]: "3.94"
+                  - generic [ref=e288]: $0.00
+                  - generic [ref=e289]: $0.00
+                  - generic [ref=e290]:
+                    - option "Simple — Carbon ★" [ref=e291]
+                    - option "Presupuesto Simple" [ref=e292]
+                    - option "Simple — Sage" [ref=e293]
+                    - option "Simple — Slate" [ref=e294]
+                    - option "Simple — Warm" [ref=e295]
+                    - option "Simple — Ocean" [ref=e296]
+                    - group [ref=e297]:
+                      - option "BMC PDF — Blueprint Técnico" [ref=e298]
+                      - option "E — Soft Modern" [ref=e299]
+                      - option "A — Executive Dark" [ref=e300]
+                      - option "B — Blueprint" [ref=e301]
+                      - option "C — Minimalist" [ref=e302]
+                      - option "D — Construction Bold" [ref=e303]
+                  - generic [ref=e304]: $0.00
+                  - generic [ref=e305]:
+                    - button "Editar fila" [ref=e306] [cursor=pointer]:
+                      - img [ref=e307]
+                    - button "Quitar item" [ref=e309] [cursor=pointer]:
+                      - img [ref=e310]
+                - generic [ref=e313]:
+                  - generic [ref=e314]: Tuerca 3/8" galv.
+                  - generic [ref=e315]: "0"
+                  - generic [ref=e316]: unid
+                  - generic [ref=e317]: "0.09"
+                  - generic [ref=e318]: $0.00
+                  - generic [ref=e319]: $0.00
+                  - generic [ref=e320]:
+                    - option "Simple — Carbon ★" [ref=e321]
+                    - option "Presupuesto Simple" [ref=e322]
+                    - option "Simple — Sage" [ref=e323]
+                    - option "Simple — Slate" [ref=e324]
+                    - option "Simple — Warm" [ref=e325]
+                    - option "Simple — Ocean" [ref=e326]
+                    - group [ref=e327]:
+                      - option "BMC PDF — Blueprint Técnico" [ref=e328]
+                      - option "E — Soft Modern" [ref=e329]
+                      - option "A — Executive Dark" [ref=e330]
+                      - option "B — Blueprint" [ref=e331]
+                      - option "C — Minimalist" [ref=e332]
+                      - option "D — Construction Bold" [ref=e333]
+                  - generic [ref=e334]: $0.00
+                  - generic [ref=e335]:
+                    - button "Editar fila" [ref=e336] [cursor=pointer]:
+                      - img [ref=e337]
+                    - button "Quitar item" [ref=e339] [cursor=pointer]:
+                      - img [ref=e340]
+                - generic [ref=e343]:
+                  - generic [ref=e344]: Arandela carrocero 3/8"
+                  - generic [ref=e345]: "0"
+                  - generic [ref=e346]: unid
+                  - generic [ref=e347]: "0.70"
+                  - generic [ref=e348]: $0.00
+                  - generic [ref=e349]: $0.00
+                  - generic [ref=e350]:
+                    - option "Simple — Carbon ★" [ref=e351]
+                    - option "Presupuesto Simple" [ref=e352]
+                    - option "Simple — Sage" [ref=e353]
+                    - option "Simple — Slate" [ref=e354]
+                    - option "Simple — Warm" [ref=e355]
+                    - option "Simple — Ocean" [ref=e356]
+                    - group [ref=e357]:
+                      - option "BMC PDF — Blueprint Técnico" [ref=e358]
+                      - option "E — Soft Modern" [ref=e359]
+                      - option "A — Executive Dark" [ref=e360]
+                      - option "B — Blueprint" [ref=e361]
+                      - option "C — Minimalist" [ref=e362]
+                      - option "D — Construction Bold" [ref=e363]
+                  - generic [ref=e364]: $0.00
+                  - generic [ref=e365]:
+                    - button "Editar fila" [ref=e366] [cursor=pointer]:
+                      - img [ref=e367]
+                    - button "Quitar item" [ref=e369] [cursor=pointer]:
+                      - img [ref=e370]
+                - generic [ref=e373]:
+                  - generic [ref=e374]: Tortuga PVC (arand. PP)
+                  - generic [ref=e375]: "0"
+                  - generic [ref=e376]: unid
+                  - generic [ref=e377]: "1.62"
+                  - generic [ref=e378]: $0.00
+                  - generic [ref=e379]: $0.00
+                  - generic [ref=e380]:
+                    - option "Simple — Carbon ★" [ref=e381]
+                    - option "Presupuesto Simple" [ref=e382]
+                    - option "Simple — Sage" [ref=e383]
+                    - option "Simple — Slate" [ref=e384]
+                    - option "Simple — Warm" [ref=e385]
+                    - option "Simple — Ocean" [ref=e386]
+                    - group [ref=e387]:
+                      - option "BMC PDF — Blueprint Técnico" [ref=e388]
+                      - option "E — Soft Modern" [ref=e389]
+                      - option "A — Executive Dark" [ref=e390]
+                      - option "B — Blueprint" [ref=e391]
+                      - option "C — Minimalist" [ref=e392]
+                      - option "D — Construction Bold" [ref=e393]
+                  - generic [ref=e394]: $0.00
+                  - generic [ref=e395]:
+                    - button "Editar fila" [ref=e396] [cursor=pointer]:
+                      - img [ref=e397]
+                    - button "Quitar item" [ref=e399] [cursor=pointer]:
+                      - img [ref=e400]
+            - generic [ref=e403]:
+              - generic [ref=e404] [cursor=pointer]:
+                - generic [ref=e405]:
+                  - img [ref=e406]
+                  - text: SELLADORES
+                - generic [ref=e408]: $0.00
+              - generic [ref=e409]:
+                - generic [ref=e410]:
+                  - generic [ref=e411]: Descripción
+                  - generic [ref=e412]: Cant.
+                  - generic [ref=e413]: Unid.
+                  - generic [ref=e414]: P.Unit.
+                  - generic [ref=e415]: Total
+                  - generic [ref=e416]: Costo
+                  - generic [ref=e417]: "% Margen"
+                  - generic [ref=e418]: Ganancia
+                  - generic [ref=e419]: Acciones
+                - generic [ref=e420]:
+                  - generic [ref=e421]: Silicona Bromplast 8 x600
+                  - generic [ref=e422]: "0"
+                  - generic [ref=e423]: unid
+                  - generic [ref=e424]: "9.64"
+                  - generic [ref=e425]: $0.00
+                  - generic [ref=e426]: $0.00
+                  - generic [ref=e427]:
+                    - option "Simple — Carbon ★" [ref=e428]
+                    - option "Presupuesto Simple" [ref=e429]
+                    - option "Simple — Sage" [ref=e430]
+                    - option "Simple — Slate" [ref=e431]
+                    - option "Simple — Warm" [ref=e432]
+                    - option "Simple — Ocean" [ref=e433]
+                    - group [ref=e434]:
+                      - option "BMC PDF — Blueprint Técnico" [ref=e435]
+                      - option "E — Soft Modern" [ref=e436]
+                      - option "A — Executive Dark" [ref=e437]
+                      - option "B — Blueprint" [ref=e438]
+                      - option "C — Minimalist" [ref=e439]
+                      - option "D — Construction Bold" [ref=e440]
+                  - generic [ref=e441]: $0.00
+                  - generic [ref=e442]:
+                    - button "Editar fila" [ref=e443] [cursor=pointer]:
+                      - img [ref=e444]
+                    - button "Quitar item" [ref=e446] [cursor=pointer]:
+                      - img [ref=e447]
+                - generic [ref=e450]:
+                  - generic [ref=e451]: Cinta Butilo 2mm×15mm×22.5m
+                  - generic [ref=e452]: "0"
+                  - generic [ref=e453]: unid
+                  - generic [ref=e454]: "15.77"
+                  - generic [ref=e455]: $0.00
+                  - generic [ref=e456]: $0.00
+                  - generic [ref=e457]:
+                    - option "Simple — Carbon ★" [ref=e458]
+                    - option "Presupuesto Simple" [ref=e459]
+                    - option "Simple — Sage" [ref=e460]
+                    - option "Simple — Slate" [ref=e461]
+                    - option "Simple — Warm" [ref=e462]
+                    - option "Simple — Ocean" [ref=e463]
+                    - group [ref=e464]:
+                      - option "BMC PDF — Blueprint Técnico" [ref=e465]
+                      - option "E — Soft Modern" [ref=e466]
+                      - option "A — Executive Dark" [ref=e467]
+                      - option "B — Blueprint" [ref=e468]
+                      - option "C — Minimalist" [ref=e469]
+                      - option "D — Construction Bold" [ref=e470]
+                  - generic [ref=e471]: $0.00
+                  - generic [ref=e472]:
+                    - button "Editar fila" [ref=e473] [cursor=pointer]:
+                      - img [ref=e474]
+                    - button "Quitar item" [ref=e476] [cursor=pointer]:
+                      - img [ref=e477]
+            - generic [ref=e480]:
+              - generic [ref=e481] [cursor=pointer]:
+                - generic [ref=e482]:
+                  - img [ref=e483]
+                  - text: SERVICIOS
+                - generic [ref=e485]: $280.00
+              - generic [ref=e486]:
+                - generic [ref=e487]:
+                  - generic [ref=e488]: Descripción
+                  - generic [ref=e489]: Cant.
+                  - generic [ref=e490]: Unid.
+                  - generic [ref=e491]: P.Unit.
+                  - generic [ref=e492]: Total
+                  - generic [ref=e493]: Costo
+                  - generic [ref=e494]: "% Margen"
+                  - generic [ref=e495]: Ganancia
+                  - generic [ref=e496]: Acciones
+                - generic [ref=e497]:
+                  - generic [ref=e498]: Flete con entrega en obra
+                  - generic [ref=e499]: "1"
+                  - generic [ref=e500]: servicio
+                  - generic [ref=e501]: "280.00"
+                  - generic [ref=e502]: $280.00
+                  - generic [ref=e503]: $0.00
+                  - generic [ref=e504]:
+                    - option "Simple — Carbon ★" [ref=e505]
+                    - option "Presupuesto Simple" [ref=e506]
+                    - option "Simple — Sage" [ref=e507]
+                    - option "Simple — Slate" [ref=e508]
+                    - option "Simple — Warm" [ref=e509]
+                    - option "Simple — Ocean" [ref=e510]
+                    - group [ref=e511]:
+                      - option "BMC PDF — Blueprint Técnico" [ref=e512]
+                      - option "E — Soft Modern" [ref=e513]
+                      - option "A — Executive Dark" [ref=e514]
+                      - option "B — Blueprint" [ref=e515]
+                      - option "C — Minimalist" [ref=e516]
+                      - option "D — Construction Bold" [ref=e517]
+                  - generic [ref=e518]: $280.00
+                  - generic [ref=e519]:
+                    - button "Editar fila" [ref=e520] [cursor=pointer]:
+                      - img [ref=e521]
+                    - button "Quitar item" [ref=e523] [cursor=pointer]:
+                      - img [ref=e524]
+          - generic [ref=e527]:
+            - generic [ref=e528]: Lista de precios
+            - generic [ref=e529]:
+              - button "Precio BMC" [ref=e530] [cursor=pointer]
+              - button "Precio Web" [ref=e531] [cursor=pointer]
+          - generic [ref=e532]:
+            - generic [ref=e533]:
+              - generic [ref=e534]: Subtotal s/IVA
+              - generic [ref=e535]: USD 280.00
+            - generic [ref=e536]:
+              - generic [ref=e537]: IVA 22%
+              - generic [ref=e538]: USD 61.60
+            - generic [ref=e539]:
+              - generic [ref=e540]: TOTAL
+              - generic [ref=e541]: USD 341.60
+          - generic [ref=e542]:
+            - generic [ref=e543]: "Condiciones comerciales:"
+            - generic [ref=e544]: "Fabricación y entrega: 10 a 45 días (depende producción). Seña 60% al confirmar; saldo 40% previo a retiro de fábrica. Validez: 10 días. Precios en USD."
+            - generic [ref=e545]: "Datos bancarios:"
+            - generic [ref=e546]: "Metalog SAS · RUT: 120403430012 · BROU Cta. Dólares: 110520638-00002"
+          - generic [ref=e547]:
+            - generic [ref=e548]: "Diseño PDF:"
+            - combobox "Diseño PDF:" [ref=e549] [cursor=pointer]:
+              - option "Simple — Carbon ★" [selected]
+              - option "Presupuesto Simple"
+              - option "Simple — Sage"
+              - option "Simple — Slate"
+              - option "Simple — Warm"
+              - option "Simple — Ocean"
+              - option "BMC PDF — Blueprint Técnico"
+              - option "E — Soft Modern"
+              - option "A — Executive Dark"
+              - option "B — Blueprint"
+              - option "C — Minimalist"
+              - option "D — Construction Bold"
+          - generic [ref=e550]:
+            - button "WhatsApp" [ref=e551] [cursor=pointer]:
+              - img [ref=e552]
+              - text: WhatsApp
+            - button "PDF Cliente" [ref=e555] [cursor=pointer]:
+              - img [ref=e556]
+              - text: PDF Cliente
+            - button "Interno" [ref=e559] [cursor=pointer]:
+              - img [ref=e560]
+              - text: Interno
+            - button "Drive" [ref=e563] [cursor=pointer]:
+              - img [ref=e564]
+              - text: Drive
+            - button "Costeo" [ref=e566] [cursor=pointer]:
+              - img [ref=e567]
+              - text: Costeo
+            - button "TSV Sheets" [ref=e570] [cursor=pointer]:
+              - img [ref=e571]
+              - text: TSV Sheets
+          - generic [ref=e574] [cursor=pointer]:
+            - generic [ref=e575]:
+              - img [ref=e576]
+              - text: Transparencia — valores y reglas
+            - img [ref=e578]
+      - dialog "Panelin Asistente BMC" [ref=e580]:
+        - generic [ref=e581]:
+          - generic [ref=e583]:
+            - generic [ref=e584]: Panelin
+            - generic [ref=e585]: Asistente BMC Uruguay
+          - button "Activar Developer mode" [ref=e586] [cursor=pointer]: DEV
+          - button "Activar modo voz" [ref=e587] [cursor=pointer]:
+            - img [ref=e588]
+          - button "Activar lectura en voz alta" [ref=e594] [cursor=pointer]:
+            - img [ref=e595]
+          - button "Nueva conversación" [ref=e599] [cursor=pointer]:
+            - img [ref=e600]
+          - button "Cerrar panel" [ref=e603] [cursor=pointer]:
+            - img [ref=e604]
+        - log "Conversación" [ref=e607]:
+          - generic [ref=e608]:
+            - generic [ref=e610]: ¡Hola! Soy Panelin
+            - generic [ref=e611]: Te ayudo a cotizar paneles para tu obra. Contame qué necesitás.
+            - generic [ref=e612]:
+              - button "Quiero cotizar un techo" [ref=e613] [cursor=pointer]
+              - button "¿Qué panel me recomendás?" [ref=e614] [cursor=pointer]
+              - button "Necesito una fachada" [ref=e615] [cursor=pointer]
+          - generic [ref=e616]:
+            - button "Seleccionar skin" [ref=e617] [cursor=pointer]
+            - generic: Seleccionar skin
+        - generic [ref=e619]:
+          - button "Hablar" [ref=e620] [cursor=pointer]:
+            - img [ref=e621]
+          - textbox "Mensaje para Panelin" [ref=e624]:
+            - /placeholder: Escribí tu consulta...
+          - button "Deep Research" [disabled] [ref=e625]:
+            - img [ref=e626]
+          - button "Enviar mensaje" [disabled] [ref=e629]:
+            - img [ref=e630]
+      - dialog "Más acciones" [ref=e633]:
+        - generic [ref=e634]: Más acciones
+        - generic [ref=e635]:
+          - generic [ref=e636]:
+            - generic [ref=e637]: "Diseño PDF:"
+            - combobox "Diseño PDF:" [ref=e638]:
+              - option "Simple — Carbon" [selected]
+              - option "Presupuesto Simple"
+              - option "Simple — Sage"
+              - option "Simple — Slate"
+              - option "Simple — Warm"
+              - option "Simple — Ocean"
+              - option "BMC PDF — Blueprint Técnico"
+              - option "E — Soft Modern"
+              - option "A — Executive Dark"
+              - option "B — Blueprint"
+              - option "C — Minimalist"
+              - option "D — Construction Bold"
+          - button "PDF Cliente" [ref=e639] [cursor=pointer]:
+            - img [ref=e640]
+            - text: PDF Cliente
+          - button "Drive" [ref=e643] [cursor=pointer]:
+            - img [ref=e644]
+            - text: Drive
+          - button "Costeo" [ref=e646] [cursor=pointer]:
+            - img [ref=e647]
+            - text: Costeo
+          - button "Informe interno" [ref=e650] [cursor=pointer]:
+            - img [ref=e651]
+            - text: Informe interno
+          - button "TSV Sheets" [ref=e654] [cursor=pointer]:
+            - img [ref=e655]
+            - text: TSV Sheets
+    - button "🎓 Modo Tutorial" [ref=e658] [cursor=pointer]:
+      - generic [ref=e659]: 🎓
+      - generic [ref=e660]: Modo Tutorial

@@ -53,7 +53,9 @@ export default function FloatingTutorialButton() {
 
   // ---------- ACTIVATION ----------
   const activateTutorial = () => {
-    const event = new CustomEvent('open-tutorial-panel');
+    // Dispatch the working event listened by TutorialProvider (launches the calculator flow when on /).
+    // This fixes the previously non-functional "open-tutorial-panel" dispatch.
+    const event = new CustomEvent('start-calculator-tutorial');
     window.dispatchEvent(event);
   };
 

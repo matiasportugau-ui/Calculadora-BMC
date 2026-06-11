@@ -173,27 +173,60 @@ if (typeof document !== "undefined" && !document.getElementById("panelin-chat-kf
     .panelin-dot:nth-child(3){ animation-delay:0.4s; }
     @keyframes panelin-action-fade { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(-8px)} }
     @keyframes panelin-mic-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,0.4)} 50%{box-shadow:0 0 0 8px rgba(255,59,48,0)} }
+    @keyframes panelin-talking-ring {
+      0%,100% { transform: scale(1); opacity: 0.55; }
+      50% { transform: scale(1.08); opacity: 0.25; }
+    }
   `;
   document.head.appendChild(s);
 }
 
-function Avatar({ size = 28 }) {
+function Avatar({ size = 28, isSpeaking = false }) {
   return (
-    <video
-      src={PANELIN_AGENT_VIDEO_SRC}
-      autoPlay
-      muted
-      loop
-      playsInline
+    <div
       style={{
+        position: "relative",
         width: size,
         height: size,
         borderRadius: "50%",
-        objectFit: "cover",
+        overflow: "hidden",
         flexShrink: 0,
         background: BRAND,
+        boxShadow: isSpeaking
+          ? "0 0 0 3px rgba(0, 113, 227, 0.35), 0 0 12px rgba(0, 113, 227, 0.25)"
+          : "0 1px 3px rgba(0,0,0,0.2)",
+        transition: "box-shadow 120ms ease",
       }}
-    />
+    >
+      <video
+        src={PANELIN_AGENT_VIDEO_SRC}
+        autoPlay
+        muted
+        loop
+        playsInline
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          transform: isSpeaking ? "scale(1.04)" : "scale(1)",
+          transition: "transform 180ms ease",
+          filter: isSpeaking ? "saturate(1.1) contrast(1.05)" : "none",
+        }}
+      />
+      {/* Subtle professional "talking" ring when TTS is active */}
+      {isSpeaking && (
+        <div
+          style={{
+            position: "absolute",
+            inset: -3,
+            borderRadius: "50%",
+            border: "1.5px solid rgba(0, 113, 227, 0.45)",
+            animation: "panelin-talking-ring 1.1s infinite ease-in-out",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -268,6 +301,9 @@ export default function PanelinChatPanel({
   calcState,
   onChatAction,
   authHeader,
+  // New for sidebar mode (Phase 2 of Panelin character+chat plan)
+  embedded = false,
+  onRequestFloating,
 }) {
   const [isSkinMenuOpen, setIsSkinMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
@@ -282,6 +318,8 @@ export default function PanelinChatPanel({
   const [correctingMsgId, setCorrectingMsgId] = useState(null);
   const [correctionText, setCorrectionText] = useState("");
   const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
+  const [ttsSpeed, setTtsSpeed] = useState(1.0); // configurable 0.8 - 1.3 for professional delivery
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [devDrawerWidth, setDevDrawerWidth] = useState(() => {
@@ -394,34 +432,65 @@ export default function PanelinChatPanel({
     return () => el.removeEventListener("keydown", handler);
   }, [isOpen]);
 
-  // TTS: read new assistant messages aloud when enabled
+  // TTS: efficient, professional Text-to-Speech for assistant messages
+  // - Prefers natural high-quality Spanish voices (es-ES, es-MX, es-UY if available)
+  // - Tuned rate/pitch for professional, clear, warm delivery (not robotic)
+  // - Proper cancel + end handling for responsiveness
+  // - Exposes isTtsSpeaking so the Panelin character can animate dynamically
   useEffect(() => {
     if (!ttsEnabled || typeof window === "undefined" || !window.speechSynthesis) return;
+
+    const synth = window.speechSynthesis;
     const count = messages.length;
+
     if (count > prevMsgCountRef.current) {
       const last = messages[count - 1];
       if (last && last.role === "assistant" && last.content && !last.pending) {
         const speak = () => {
-          const utterance = new SpeechSynthesisUtterance(last.content);
-          utterance.lang = "es-UY";
-          utterance.rate = 1.0;
-          // 4.4 — getVoices() may be empty on first call; resolve after voiceschanged
-          const voices = window.speechSynthesis.getVoices();
-          const esVoice = voices.find((v) => v.lang.startsWith("es"));
-          if (esVoice) utterance.voice = esVoice;
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.speak(utterance);
+          // Cancel any previous utterance for snappy response
+          synth.cancel();
+
+          const utterance = new SpeechSynthesisUtterance(last.content.trim());
+
+          // Professional tuning for Spanish (clear, not too fast, slightly warm pitch)
+          utterance.lang = "es-ES";           // Best natural voices usually here
+          utterance.rate = ttsSpeed;          // User configurable for speed
+          utterance.pitch = 0.98;             // Subtle warmth
+          utterance.volume = 0.92;
+
+          // Best voice selection (prefer natural / high quality)
+          const voices = synth.getVoices();
+          const preferred = voices.find(v =>
+            /es-ES|es_MX|es-UY|es_AR|es|Spanish.*(Google|Natural|Premium|Enhanced)/i.test(v.name) ||
+            (v.lang && v.lang.startsWith("es") && /Google|Natural|Premium/i.test(v.name))
+          ) || voices.find(v => v.lang && v.lang.startsWith("es"));
+
+          if (preferred) utterance.voice = preferred;
+
+          // Dynamic state for character animation
+          setIsTtsSpeaking(true);
+
+          utterance.onend = () => setIsTtsSpeaking(false);
+          utterance.onerror = () => setIsTtsSpeaking(false);
+
+          synth.speak(utterance);
         };
-        const voices = window.speechSynthesis.getVoices();
+
+        // Voices may load async
+        const voices = synth.getVoices();
         if (voices.length > 0) {
           speak();
         } else {
-          window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
+          synth.addEventListener("voiceschanged", speak, { once: true });
+          // Fallback in case voiceschanged never fires
+          setTimeout(() => {
+            if (!isTtsSpeaking) speak();
+          }, 800);
         }
       }
     }
     prevMsgCountRef.current = count;
-  }, [messages, ttsEnabled]);
+  }, [messages, ttsEnabled, isTtsSpeaking]);
 
   // Whisper-backed dictation (cross-browser, replaces deprecated Web Speech API).
   // The hook manages mic stream lifecycle internally; cleanup happens on unmount.
@@ -820,7 +889,7 @@ export default function PanelinChatPanel({
             flexShrink: 0,
           }}
         >
-          <Avatar size={36} />
+          <Avatar size={36} isSpeaking={isTtsSpeaking} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>Panelin</div>
             <div style={{ fontSize: 11, opacity: 0.7 }}>
@@ -863,6 +932,32 @@ export default function PanelinChatPanel({
               Ventana
             </button>
           )}
+
+          {/* Professional "pop to floating" for the new sidebar experience - now triggers true in-page floating */}
+          {embedded && (
+            <button
+              onClick={() => {
+                if (onRequestFloating) {
+                  onRequestFloating();
+                } else {
+                  // fallback to detached if no in-page handler
+                  onOpenDetachedWindow?.();
+                }
+              }}
+              title="Convertir en ventana flotante in-page (draggable y resizable, mismo tab, con personaje visible)"
+              style={{
+                ...ghostBtn,
+                border: "1px solid rgba(255,255,255,0.35)",
+                borderRadius: 999,
+                padding: "4px 9px",
+                fontSize: 11,
+                color: "#fff",
+                background: "transparent",
+              }}
+            >
+              Flotar
+            </button>
+          )}
           <button
             onClick={() => setVoiceMode((v) => !v)}
             title={voiceMode ? "Volver a modo texto" : "Modo voz fluido (OpenAI Realtime)"}
@@ -886,6 +981,24 @@ export default function PanelinChatPanel({
           >
             {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
+          )}
+
+          {/* Configurable TTS speed for efficiency and preference (goal polish) */}
+          {ttsEnabled && !voiceMode && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#fff', opacity: 0.85 }}>
+              <span>Vel.</span>
+              <input
+                type="range"
+                min="0.75"
+                max="1.35"
+                step="0.05"
+                value={ttsSpeed}
+                onChange={(e) => setTtsSpeed(parseFloat(e.target.value))}
+                style={{ width: 70, accentColor: '#fff' }}
+                title={`Velocidad TTS: ${ttsSpeed.toFixed(2)}x`}
+              />
+              <span style={{ minWidth: 28 }}>{ttsSpeed.toFixed(2)}x</span>
+            </div>
           )}
           {isStreaming && stop && (
             <button
