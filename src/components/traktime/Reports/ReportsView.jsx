@@ -29,6 +29,113 @@ function Bar({ value, max, color }) {
   );
 }
 
+function currentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function HoursReport() {
+  const [month, setMonth] = useState(currentMonth());
+  const [loading, setLoading] = useState(false);
+  const [report, setReport] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [error, setError] = useState("");
+
+  const generate = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const r = await tkApi.monthReport({ month });
+      setReport(r.report || null);
+      setPdfUrl(r.pdf_url || "");
+    } catch (e) {
+      setError(e.message || "load_failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const t = report?.totals;
+  return (
+    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <strong style={{ fontSize: 14 }}>Reporte mensual de horas</strong>
+        <input
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          style={{
+            marginLeft: "auto",
+            padding: "6px 10px",
+            borderRadius: 8,
+            border: `1px solid ${colors.border}`,
+            background: "transparent",
+            color: colors.text,
+          }}
+        />
+        <button
+          onClick={generate}
+          disabled={loading}
+          style={{
+            padding: "6px 12px",
+            borderRadius: 8,
+            border: `1px solid ${colors.accent}`,
+            background: colors.accentSoft,
+            color: colors.text,
+            fontWeight: 600,
+            cursor: loading ? "default" : "pointer",
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
+          {loading ? "Generando…" : "Generar PDF"}
+        </button>
+      </div>
+
+      {error ? <div style={{ color: colors.danger }}>{error}</div> : null}
+
+      {t ? (
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {[
+            ["Efectivo", t.effective_seconds],
+            ["Coordinación", t.coordinacion_seconds],
+            ["Pausa", t.pausa_seconds],
+            ["Jornada", t.jornada_seconds],
+          ].map(([label, secs]) => (
+            <div
+              key={label}
+              style={{
+                flex: "1 1 120px",
+                border: `1px solid ${colors.border}`,
+                borderRadius: 10,
+                padding: "8px 12px",
+              }}
+            >
+              <div style={{ fontSize: 11, color: colors.textMuted }}>{label}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                {formatHm(Number(secs || 0))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {report && !report.days?.length ? (
+        <div style={{ color: colors.textMuted, fontSize: 13 }}>Sin registros en el mes.</div>
+      ) : null}
+
+      {pdfUrl ? (
+        <a href={pdfUrl} target="_blank" rel="noreferrer" style={{ color: colors.accent, fontSize: 13 }}>
+          Descargar PDF →
+        </a>
+      ) : report ? (
+        <div style={{ color: colors.textMuted, fontSize: 12 }}>
+          PDF no disponible (renderizador no configurado en este entorno).
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function ReportsView() {
   const [kind, setKind] = useState("week");
   const [rows, setRows] = useState([]);
@@ -121,6 +228,8 @@ export default function ReportsView() {
           ))
         )}
       </div>
+
+      <HoursReport />
     </div>
   );
 }
