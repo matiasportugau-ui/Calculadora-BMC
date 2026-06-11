@@ -54,6 +54,19 @@ HIGH_SENS_KEYS=(
   FACTURAEXPRESS_WEBHOOK_SECRET
 )
 
+# Support mode for auto-generating --set-secrets for Cloud Run deploys (see deploy-calc-api.yml)
+# Usage: ./scripts/provision-secrets.sh --print-mounts
+# This outputs only the HIGH_SENS_KEYS portion as "KEY=KEY:latest,..."
+if [[ "${1:-}" == "--print-mounts" ]]; then
+  mounts=""
+  for k in "${HIGH_SENS_KEYS[@]}"; do
+    if [[ -n "$mounts" ]]; then mounts+=","; fi
+    mounts+="${k}=${k}:latest"
+  done
+  echo "$mounts"
+  exit 0
+fi
+
 for k in "${HIGH_SENS_KEYS[@]}"; do
   load_env_key "$k"
 done

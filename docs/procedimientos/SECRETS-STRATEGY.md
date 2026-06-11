@@ -41,7 +41,7 @@ See `scripts/provision-secrets.sh: HIGH_SENS_KEYS` (authoritative list):
 
 1. Add the value in Doppler (local dev) and/or `.env` (for the script).
 2. If high-sens: run `doppler run -- ./scripts/secrets-provision-verify.sh` (or the individual provision + run_ml + sheets scripts).
-3. If the secret affects the deploy contract, ensure it is declared in `deploy-calc-api.yml`.
+3. **No manual yaml edit needed for most cases** — the `--set-secrets` list in deploys is now **auto-generated** at CI time from the `HIGH_SENS_KEYS` array in `scripts/provision-secrets.sh` (see the "Compute --set-secrets list" step in `deploy-calc-api.yml` + `provision-secrets.sh --print-mounts`).
 4. Update any consumer list (see below).
 5. Run `node scripts/check-env-drift.mjs` (must be zero).
 6. Gate: `npm run gate:local:full`.
@@ -49,6 +49,12 @@ See `scripts/provision-secrets.sh: HIGH_SENS_KEYS` (authoritative list):
 8. Document the rotation date in the strategy doc or BITACORA.
 
 Use the new `secrets-provision-verify.sh` as the default entry point. It calls the older scripts and adds drift + consumer summary in one shot.
+
+**Adding a new high-sens secret is now usually just:**
+- Add it to `HIGH_SENS_KEYS` in `scripts/provision-secrets.sh`
+- Document in `.env.example`
+- (The deploy yaml and future deploys pick it up automatically)
+- Update consumers + run gates + verify.
 
 ## Local developer experience (no hacks)
 
