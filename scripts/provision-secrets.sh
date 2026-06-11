@@ -50,6 +50,8 @@ HIGH_SENS_KEYS=(
   WHATSAPP_APP_SECRET
   SHOPIFY_CLIENT_SECRET
   SHOPIFY_WEBHOOK_SECRET
+  FACTURAEXPRESS_PASSWORD
+  FACTURAEXPRESS_WEBHOOK_SECRET
 )
 
 for k in "${HIGH_SENS_KEYS[@]}"; do
@@ -117,5 +119,7 @@ echo "════════════════════════�
 echo "Resumen: $created creados, $updated actualizados, $unchanged sin cambios, $skipped saltados"
 echo "════════════════════════════════════════════════════════════"
 echo ""
-echo "Siguiente: corré ./run_ml_cloud_run_setup.sh para que el deploy"
-echo "monte estos secrets vía --update-secrets en lugar de env vars."
+echo "Siguiente (recomendado): corré el orquestador unificado:"
+echo "  doppler run -- ./scripts/secrets-provision-verify.sh"
+echo "(o sin Doppler: ./run_ml_cloud_run_setup.sh + ./scripts/cloud-run-matriz-sheets-secret.sh)"
+echo "El nuevo script también ejecuta drift check + imprime lista de consumidores."

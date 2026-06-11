@@ -23,6 +23,7 @@
 
 import { Router } from "express";
 import { getPanelinPool } from "../lib/panelinDb.js";
+import facturaExpress from "../lib/facturaExpressClient.js";
 
 /**
  * @param {import('../config.js').config} config
@@ -486,6 +487,117 @@ export default function createPanelinRouter(config, logger = console) {
       }
       logger.error?.({ err }, "[panelin] POST /invoices failed");
       return res.status(500).json({ ok: false, error: "insert_failed", message: err.message });
+    }
+  });
+
+  // ============================================================
+  // Fase 4: Integración FacturaExpress - Sync bidireccional + triggers
+  // ============================================================
+
+  /**
+   * POST /api/panelin/sync/facturaexpress/invoices
+   * Pull facturas desde FacturaExpress → upsert en tabla invoices (usando external_id).
+   */
+  router.post("/sync/facturaexpress/invoices", async (req, res) => {
+    const pool = getPool();
+    if (!pool) return dbUnavailable(res);
+
+    try {
+      const { invoices: remoteInvoices = [] } = await facturaExpress.getInvoices({ limit: req.body?.limit || 100 });
+
+      let inserted = 0;
+      let updated = 0;
+
+      await withClient(async (c) => {
+        for (const inv of remoteInvoices) {
+          const externalId = inv.external_id || inv.id;
+          if (!externalId) continue;
+
+          const result = await c.query(
+            `INSERT INTO invoices (external_id, number, date, client_name, total_usd, status, source, raw)
+             VALUES ($1, $2, $3, $4, $5, $6, 'facturaexpress', $7)
+             ON CONFLICT (external_id) DO UPDATE SET
+               status = EXCLUDED.status,
+               raw = EXCLUDED.raw
+             RETURNING (xmax = 0) AS inserted`,
+            [
+              externalId,
+              inv.number || inv.cfe_number || null,
+              inv.date || inv.emission_date || null,
+              inv.client_name || inv.receptor || null,
+              inv.total_usd || inv.total || null,
+              inv.status || "issued",
+              inv,
+            ]
+          );
+
+          if (result.rows[0]?.inserted) inserted++;
+          else updated++;
+        }
+      });
+
+      res.json({ ok: true, pulled: remoteInvoices.length, inserted, updated });
+    } catch (err) {
+      logger.error?.({ err }, "[panelin] sync facturaexpress invoices failed");
+      const status = err.status || 500;
+      res.status(status).json({ ok: false, error: "facturaexpress_sync_failed", message: err.message });
+    }
+  });
+
+  /**
+   * POST /api/panelin/sync/facturaexpress/stock
+   * Ejemplo bidireccional: pull stock desde FE + ejemplo de push de un movimiento local.
+   * En producción esto se llamaría desde cron o después de un movimiento local.
+   */
+  router.post("/sync/facturaexpress/stock", async (req, res) => {
+    const pool = getPool();
+    if (!pool) return dbUnavailable(res);
+
+    const { sku, pushDelta } = req.body || {};
+
+    try {
+      let remoteStock = null;
+      try {
+        remoteStock = await facturaExpress.getStock(sku);
+      } catch (e) {
+        // Si el proveedor no tiene endpoint de stock aún, lo ignoramos gracefully
+        logger.warn?.({ err: e.message }, "[panelin] FacturaExpress getStock no disponible todavía");
+      }
+
+      let pushed = false;
+      if (sku && pushDelta != null) {
+        try {
+          await facturaExpress.updateStock(sku, Number(pushDelta), { reason: "panelin_sync" });
+          pushed = true;
+        } catch (e) {
+          logger.warn?.({ err: e.message }, "[panelin] FacturaExpress updateStock falló (puede no estar implementado)");
+        }
+      }
+
+      res.json({
+        ok: true,
+        remoteStock,
+        pushed,
+        message: "Sync bidireccional ejecutado (stock/prices parcial según capacidades del proveedor)",
+      });
+    } catch (err) {
+      logger.error?.({ err }, "[panelin] sync facturaexpress stock failed");
+      res.status(500).json({ ok: false, error: "facturaexpress_stock_sync_failed", message: err.message });
+    }
+  });
+
+  /**
+   * POST /api/panelin/sync/facturaexpress/prices
+   * Pull precios desde FE (si disponible) o push de nuestros precios actuales.
+   * Por ahora un stub que puede evolucionar a bidirectional real.
+   */
+  router.post("/sync/facturaexpress/prices", async (req, res) => {
+    try {
+      const remotePrices = await facturaExpress.getPrices().catch(() => null);
+      // En el futuro: también podríamos hacer push de product_prices actuales a FE
+      res.json({ ok: true, remotePrices, message: "Prices sync stub listo para expansión" });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: "prices_sync_failed", message: err.message });
     }
   });
 

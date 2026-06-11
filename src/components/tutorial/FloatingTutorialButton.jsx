@@ -21,7 +21,7 @@ const BUTTON_HEIGHT = 40;
 const EDGE_MARGIN = 12;
 const DRAG_THRESHOLD = 6; // pixels of movement before we commit to "drag" mode
 
-const STORAGE_KEY = 'bmc_floating_tutorial_position';
+const STORAGE_KEY = 'bmc_floating_tutorial_position_v2';
 
 export default function FloatingTutorialButton() {
   const { isTutorialMode, activeWorkflowId } = useTutorial();

@@ -103,7 +103,7 @@ All prices are **without IVA**; 22% IVA is applied once at the total via `calcTo
 
 - **Error semantics for Sheets-backed routes:** `503` = Sheets unavailable; `200` + empty payload = no data; **never `500`** for Sheets failures. The frontend depends on this.
 - **API routes** belong in `server/routes/*.js`, mounted under `/api` (Sheets/CRM) or `/calc`, `/auth`, `/webhooks`.
-- **Secrets:** for **local dev**, Doppler is the source of truth — run with `doppler run -- npm run dev` (projects `bmc-frontend/prd` + `bmc-backend/prd`, config name `prd`). `.env` / `.env.example` remain the **variable-name reference**. In **production**, frontend reads Vercel env vars and backend reads GCP Secret Manager. Sheet IDs, tokens, and production URLs must always come from `config.*` or `process.env.*` — never hardcoded.
+- **Secrets:** for **local dev**, Doppler (`bmc-*/prd`) is the source of truth — always `doppler run -- ...`. `.env` / `.env.example` are name+doc reference only. Prod: GSM (high-sens) + CI contract in `deploy-calc-api.yml`. See the canonical `docs/procedimientos/SECRETS-STRATEGY.md` + the unified `scripts/secrets-provision-verify.sh`. Never hardcode; run drift checks and gates after changes.
 - **Logging:** use `pino` / `pino-http` in `server/`; no `console.log` in production paths.
 - **CORS:** open in dev; restricted to known origins in prod.
 - Commit messages: concise, English, `type:` prefix (`feat`, `fix`, `refactor`, `docs`).

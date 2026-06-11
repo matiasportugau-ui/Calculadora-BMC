@@ -125,15 +125,20 @@ app.use((_req, res, next) => {
   next();
 });
 
-// WhatsApp + Shopify webhooks need raw body (HMAC / signature verification)
+// WhatsApp + Shopify + FacturaExpress webhooks need raw body (HMAC / signature verification)
 app.use("/webhooks/whatsapp", (req, res, next) => {
   if (req.method !== "POST") return next();
   return express.raw({ type: "application/json", limit: "20mb" })(req, res, next);
 });
 app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
+app.use("/webhooks/facturaexpress", (req, res, next) => {
+  if (req.method !== "POST") return next();
+  return express.raw({ type: "application/json", limit: "10mb" })(req, res, next);
+});
 app.use((req, res, next) => {
   if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
   if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
+  if (req.path === "/webhooks/facturaexpress" && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(cookieParser());
