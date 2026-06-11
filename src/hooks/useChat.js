@@ -662,6 +662,28 @@ export function useChat({
     );
   }, []);
 
+  /**
+   * Append an external turn (e.g. from voice transport) into the shared conversation history.
+   * Turns are tagged with source (default "panelin_voice") + convId so they flow to
+   * autoLearnExtractor / trainingKB / RAG exactly like text chat turns.
+   *
+   * Hecho confirmado: useChat messages + conversationId are the structure consumed by
+   * agentChat.js post-stream extraction (source: "panelin_chat") and by dev tools / conv log.
+   * Appending here makes voice a peer channel without duplicating state.
+   */
+  const appendMessage = useCallback((partial) => {
+    if (!partial || !partial.role) return;
+    const msg = {
+      id: partial.id || (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `voice-${Date.now()}-${Math.random().toString(36).slice(2)}`),
+      role: partial.role,
+      content: partial.content || partial.text || partial.delta || "",
+      source: partial.source || "panelin_voice",
+      convId: partial.convId || conversationId,
+      ...(partial.finalized !== undefined ? { finalized: !!partial.finalized } : {}),
+    };
+    setMessages((prev) => [...prev, msg]);
+  }, [conversationId]);
+
   return {
     messages,
     isStreaming,
@@ -697,5 +719,6 @@ export function useChat({
     conversationId,
     sendFeedback,
     clearSuggestionsForMessage,
+    appendMessage,
   };
 }
