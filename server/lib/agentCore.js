@@ -19,6 +19,7 @@ import {
   resolveModel,
   estimateCostUSD,
   getApiKey,
+  DEFAULT_PROVIDER_ORDER,
 } from "./aiProviderConfig.js";
 
 // ─── Channel rules ────────────────────────────────────────────────────────────
@@ -127,20 +128,29 @@ export async function callAgentOnce(messages, opts = {}) {
   //   1) opts.provider explícito (legacy) → solo ese.
   //   2) eff.provider (vía taskKey) como first-try, después getProviderChain().
   //   3) getProviderChain() completo.
+  const resolveKey = (p) =>
+    (apiKeysOverride && String(apiKeysOverride[p] || "").trim())
+    || String(getApiKey(p) || "").trim()
+    || "";
+
   let chain;
   if (provider) {
     chain = [provider];
   } else if (eff.provider) {
     const internal = SCHEMA_TO_INTERNAL[eff.provider] || eff.provider;
-    const fullChain = getCentralProviderChain();
-    chain = [internal, ...fullChain.filter((p) => p !== internal)];
+    const baseChain = apiKeysOverride
+      ? DEFAULT_PROVIDER_ORDER.filter((p) => resolveKey(p))
+      : getCentralProviderChain();
+    chain = [internal, ...baseChain.filter((p) => p !== internal)];
   } else {
-    chain = getCentralProviderChain();
+    chain = apiKeysOverride
+      ? DEFAULT_PROVIDER_ORDER.filter((p) => resolveKey(p))
+      : getCentralProviderChain();
   }
   const errors = [];
 
   for (const p of chain) {
-    const apiKey = getApiKey(p);
+    const apiKey = resolveKey(p);
     if (!apiKey) { errors.push(`${p}: no key`); continue; }
 
     // Resolver modelo usando centralización (respeta overrides + allowlists + defaults)
