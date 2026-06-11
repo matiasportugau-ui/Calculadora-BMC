@@ -209,6 +209,7 @@ export default function FloatingTutorialButton() {
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- updateDrag/endDrag are stable handlers; re-subscribe only when drag state flips
   }, [isDragging]);
 
 

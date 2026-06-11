@@ -67,6 +67,7 @@ export function useCockpitOperatorAuth(opts = {}) {
     if (auth.status === "authenticated" && !auth.accessToken) {
       auth.refreshAccess();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- depend on specific auth fields, not the whole auth object, to avoid re-running on every auth mutation
   }, [auth.status, auth.accessToken, auth.refreshAccess]);
 
   const authError = useMemo(() => {
@@ -93,6 +94,7 @@ export function useCockpitOperatorAuth(opts = {}) {
     overrideToken,
     moduleKey,
     minLevel,
+    requiredRole,
   ]);
 
   const saveToken = useCallback(() => {
