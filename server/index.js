@@ -48,6 +48,7 @@ import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import createPanelinRouter from "./routes/panelin.js";
+import webhooksRouter from "./routes/webhooks.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -141,6 +142,12 @@ app.use((req, res, next) => {
   if (req.path === "/webhooks/facturaexpress" && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
+
+// Mount extracted webhooks router (after raw parsers per webhooks.js header and review fix for Issue 1).
+// Router currently contributes ONLY /webhooks/facturaexpress (ML/WA live processing stays inline here;
+// stubs were removed from router to prevent shadowing the direct handlers during incremental extraction).
+app.use("/webhooks", webhooksRouter);
+
 app.use(cookieParser());
 app.use(
   pinoHttp({

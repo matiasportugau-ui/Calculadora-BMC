@@ -12,6 +12,16 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-11 (Wolf Debug — fully functional production triage & bug hunting module with custom wolf mascot):** `implementado`. Nuevo módulo dedicado `/hub/wolf-debug` (RequireGrant admin). 
+- Tres renders oficiales del lobo como estados visuales: hero (Image #1), review/search (Image #2), hunt/capture (Image #3).
+- Totalmente funcional: health probes reales (/health + wolfboard data), sweeps, lista compacta de bugs desde /api/bugs, apertura del BugReportModal vía bus con contexto, "Modo Caza", comandos de producción copiables (gate, smoke, etc.).
+- Fallback robusto y bonito si los PNGs aún no están en la carpeta (permite deploy inmediato).
+- Actualizado WolfboardHub con card prominente "🐺 Wolf Debug".
+- Spec limpio redactado en `docs/team/wolf-debug-system.md`.
+- Lint específico limpio, build de producción exitoso. 
+Assets: colocar los tres renders como `wolf-hero.png`, `wolf-review.png`, `wolf-hunt.png` en `public/images/wolf-debug/`.
+Pendiente operador: subir imágenes + gate:local:full + smoke:prod + deploy (Vercel + Cloud Run si aplica).
+
 **2026-06-11 (Panelin Voice — first-class learning channel + auth + browser fallback):** `implementado + deployado a producción`. Ejecución completa del goal `goal-prompt-panelin-voice-agent-learning-architecture.md` vía skill dedicada + full deploy flow (gate:local:full, smoke:prod, pre-deploy, scripts/deploy-*.sh). 
 
 **Deploys:**
