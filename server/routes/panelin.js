@@ -22,7 +22,30 @@
  */
 
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { getPanelinPool } from "../lib/panelinDb.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+
+// IP key for the write limiter. Honors x-forwarded-for because Cloud Run sits
+// behind a proxy; falls back to the socket address. Same shape as agentVoice.
+function panelinClientKey(req) {
+  return (
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    "unknown"
+  );
+}
+
+// Throttle mutating routes (price/stock/invoice writes). 60/min/IP is generous
+// for operator/sync use but caps runaway or abusive write loops.
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: panelinClientKey,
+  message: { ok: false, error: "panelin_rate_limited", message: "Demasiadas operaciones. Esperá un momento." },
+});
 
 /**
  * @param {import('../config.js').config} config
@@ -36,6 +59,15 @@ export default function createPanelinRouter(config, logger = console) {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     next();
   });
+
+  // ---------- AUTH ----------
+  // Service-token guard (Bearer API_AUTH_TOKEN / X-Api-Key) over the WHOLE
+  // router — reads expose cost_usd/margins, so GETs are guarded too. No
+  // browser/SPA caller exists (grep src/ for "api/panelin" is empty), so the
+  // static token never reaches a browser. If a frontend admin UI later
+  // consumes this router, switch to requireServiceOrUser({ module: "panelin",
+  // minLevel: "admin" }) so callers present an ephemeral user JWT instead.
+  router.use(requireAuth);
 
   function getPool() {
     const url = config.databaseUrl || process.env.DATABASE_URL || "";
@@ -57,6 +89,31 @@ export default function createPanelinRouter(config, logger = console) {
     const client = await pool.connect();
     try {
       return await handler(client);
+    } finally {
+      client.release();
+    }
+  }
+
+  // Like withClient but wraps the handler in a single transaction. Use for
+  // multi-step mutations that must be atomic (e.g. cost upsert + price recalc):
+  // either every statement commits together or none does.
+  async function withTx(handler) {
+    const pool = getPool();
+    if (!pool) return null;
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const out = await handler(client);
+      await client.query("COMMIT");
+      return out;
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        /* rollback is best-effort; the original error is rethrown below */
+      }
+      throw err;
     } finally {
       client.release();
     }
@@ -231,7 +288,7 @@ export default function createPanelinRouter(config, logger = console) {
     }
   });
 
-  router.patch("/products/:sku", async (req, res) => {
+  router.patch("/products/:sku", writeLimiter, async (req, res) => {
     const { sku } = req.params;
     const { cost_usd } = req.body || {};
 
@@ -243,45 +300,56 @@ export default function createPanelinRouter(config, logger = console) {
     if (!pool) return dbUnavailable(res);
 
     try {
-      const result = await withClient(async (c) => {
-        // 1. Upsert del costo (y otros campos si se envían en futuro)
+      // One transaction: existence check → cost upsert → price recalc → fresh
+      // read → active prices. The cost change and its recalculated prices commit
+      // together or not at all (a recalc failure no longer leaves a stale-price
+      // split state), and the price read shares the same connection (no stale
+      // read across pooled connections).
+      const result = await withTx(async (c) => {
+        // 0. Existence check FIRST. panelin_upsert_product would otherwise
+        //    INSERT a NULL-name row for an unknown SKU before the 404 fired.
+        const existing = await c.query(`SELECT name FROM products WHERE sku = $1`, [sku]);
+        if (existing.rows.length === 0) {
+          return { notFound: true };
+        }
+
+        // 1. Upsert the cost (preserving the existing name).
         await c.query(
-          `SELECT panelin_upsert_product($1, (SELECT name FROM products WHERE sku=$1), $2)`,
-          [sku, Number(cost_usd)]
+          `SELECT panelin_upsert_product($1, $2, $3)`,
+          [sku, existing.rows[0].name, Number(cost_usd)]
         );
 
-        // 2. Recalcular precios para todas las listas activas
+        // 2. Recalculate prices for every active list.
         const recalc = await c.query(`SELECT panelin_recalc_prices_for_sku($1) as affected`, [sku]);
 
-        // 3. Devolver producto fresco
+        // 3. Fresh product snapshot.
         const fresh = await c.query(
           `SELECT sku, name, cost_usd, active FROM products WHERE sku = $1`,
+          [sku]
+        );
+
+        // 4. Updated active prices (same transaction).
+        const pricesRes = await c.query(
+          `SELECT pl.code, pp.price_usd
+             FROM product_prices pp
+             JOIN price_lists pl ON pl.id = pp.price_list_id
+            WHERE pp.sku = $1 AND pl.active = true`,
           [sku]
         );
 
         return {
           affected_prices: Number(recalc.rows[0]?.affected || 0),
           product: fresh.rows[0],
+          priceRows: pricesRes.rows,
         };
       });
 
-      if (!result.product) {
+      if (!result || result.notFound || !result.product) {
         return res.status(404).json({ ok: false, error: "product_not_found", sku });
       }
 
-      // Devolver también los precios actualizados
-      const pricesRes = await withClient(async (c) =>
-        c.query(
-          `SELECT pl.code, pp.price_usd
-           FROM product_prices pp
-           JOIN price_lists pl ON pl.id = pp.price_list_id
-           WHERE pp.sku = $1 AND pl.active = true`,
-          [sku]
-        )
-      );
-
       const prices = {};
-      for (const r of pricesRes.rows) prices[r.code] = Number(r.price_usd);
+      for (const r of result.priceRows) prices[r.code] = Number(r.price_usd);
 
       res.json({
         ok: true,
@@ -335,7 +403,7 @@ export default function createPanelinRouter(config, logger = console) {
     }
   });
 
-  router.post("/stock/movements", async (req, res) => {
+  router.post("/stock/movements", writeLimiter, async (req, res) => {
     const { sku, deposito = "principal", delta, reason = "manual", ref_type, ref_id, created_by } = req.body || {};
 
     if (!sku || delta == null || isNaN(Number(delta))) {
@@ -405,7 +473,7 @@ export default function createPanelinRouter(config, logger = console) {
     }
   });
 
-  router.post("/stock/alerts/:id/ack", async (req, res) => {
+  router.post("/stock/alerts/:id/ack", writeLimiter, async (req, res) => {
     const { id } = req.params;
     const { acknowledged_by = "operator" } = req.body || {};
 
@@ -458,7 +526,7 @@ export default function createPanelinRouter(config, logger = console) {
     }
   });
 
-  router.post("/invoices", async (req, res) => {
+  router.post("/invoices", writeLimiter, async (req, res) => {
     const { external_id, number, date, client_name, total_usd, status = "issued", source = "manual", raw } = req.body || {};
 
     if (!client_name && !external_id) {

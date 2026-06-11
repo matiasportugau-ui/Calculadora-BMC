@@ -54,7 +54,11 @@ async function main() {
     // === Levantar servidor aislado ===
     const app = express();
     app.use(express.json());
-    // Montamos exactamente igual que en el server real
+    // Montamos exactamente igual que en el server real.
+    // El router ahora exige token de servicio (requireAuth); aseguramos uno
+    // configurado para que el guard tenga contra qué validar; el helper j()
+    // presenta este mismo token en cada request.
+    if (!appConfig.apiAuthToken) appConfig.apiAuthToken = "verif-panelin-fase2-local";
     app.use("/api/panelin", createPanelinRouter(appConfig, console));
 
     const server = http.createServer(app);
@@ -68,7 +72,10 @@ async function main() {
     async function j(method, path, body) {
       const res = await fetch(`${base}${path}`, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${appConfig.apiAuthToken}`,
+        },
         body: body ? JSON.stringify(body) : undefined,
       });
       const text = await res.text();
