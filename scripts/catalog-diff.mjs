@@ -404,6 +404,63 @@ function countBy(findings) {
   return { total: findings.length, byType, bySeverity, s1: bySeverity.s1 || 0 };
 }
 
+/** Clave estable de un hallazgo (para comparar baseline ↔ head). */
+export function findingKey(f) {
+  return [f.type, f.path, f.field || ""].join("|");
+}
+
+/**
+ * Gate de regresión: marca como `isRegression` los S1 del head que NO existían
+ * en el baseline, o que empeoraron (mayor delta absoluto). Devuelve el conteo.
+ * Si `baselineFindings` es null (sin baseline), todos los S1 cuentan como gate.
+ *
+ * @param {Array} findings  hallazgos del head (se anotan in-place)
+ * @param {Array|null} baselineFindings
+ * @returns {{ regressions: number, baselineMode: boolean }}
+ */
+export function markRegressions(findings, baselineFindings) {
+  if (!baselineFindings) {
+    // Sin baseline: el gate son TODOS los S1 (modo absoluto, cron).
+    let s1 = 0;
+    for (const f of findings) { if (f.severity === "s1") { f.isRegression = true; s1++; } }
+    return { regressions: s1, baselineMode: false };
+  }
+  const base = new Map();
+  for (const b of baselineFindings) {
+    if (b.severity !== "s1") continue;
+    base.set(findingKey(b), b);
+  }
+  let regressions = 0;
+  for (const f of findings) {
+    if (f.severity !== "s1") { f.isRegression = false; continue; }
+    const prev = base.get(findingKey(f));
+    let isReg = false;
+    if (!prev) isReg = true; // S1 nuevo respecto del base
+    else if (f.deltaAbs != null && prev.deltaAbs != null && f.deltaAbs > prev.deltaAbs * 1.0001) isReg = true; // empeoró
+    f.isRegression = isReg;
+    if (isReg) regressions++;
+  }
+  return { regressions, baselineMode: true };
+}
+
+/**
+ * Carga los `findings` de un baseline JSON (`--json` output).
+ * @returns {{ ok: true, findings: Array } | { ok: false }}
+ *   ok:false ⇒ baseline indeterminado (vacío/ilegible) → el gate cae a report-only.
+ */
+function loadBaselineFindings(file) {
+  try {
+    const raw = fs.readFileSync(path.resolve(process.cwd(), file), "utf8").trim();
+    if (!raw) return { ok: false };
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data.findings)) return { ok: false };
+    return { ok: true, findings: data.findings };
+  } catch (e) {
+    console.error(`[catalog-diff] baseline ilegible (${file}): ${e.message}`);
+    return { ok: false };
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
  * REPORTE MARKDOWN
  * ════════════════════════════════════════════════════════════════════════ */
@@ -420,7 +477,14 @@ export function renderMarkdown({ findings, summary }, meta) {
   L.push(`- Catálogo: \`${meta.catalogFile}\` — ${meta.catalogCount} paths con precio.`);
   L.push(`- MATRIZ: ${meta.matrizSource} — ${meta.matrizRows} filas con path.`);
   L.push(`- Umbral divergencia: ${(meta.cfg.threshold * 100).toFixed(2)} % · piso absoluto: ${meta.cfg.absFloor} USD.`);
-  L.push(`- **Hallazgos S1 (fallan el job): ${summary.s1}** · WARN: ${summary.bySeverity.warn || 0} · total: ${summary.total}.`);
+  if (meta.gate && meta.gate.mode === "regression") {
+    L.push(`- **Gate baseline-aware (PR):** ${meta.gate.regressions} regresión(es) S1 nueva(s)/peor(es) vs base → ${meta.gate.regressions > 0 ? "**FALLA**" : "verde"}. (S1 totales: ${summary.s1}; el drift pre-existente no bloquea.)`);
+  } else if (meta.gate && meta.gate.mode === "report-only") {
+    L.push(`- **Gate:** report-only (baseline indeterminado) — no bloquea. S1 totales: ${summary.s1}.`);
+  } else {
+    L.push(`- **Gate absoluto (cron):** S1 que fallan el job: **${summary.s1}**.`);
+  }
+  L.push(`- WARN: ${summary.bySeverity.warn || 0} · total hallazgos: ${summary.total}.`);
   L.push("");
   L.push("| Tipo | Severidad | Cantidad |");
   L.push("|------|-----------|----------|");
@@ -430,6 +494,30 @@ export function renderMarkdown({ findings, summary }, meta) {
   }
   L.push("");
 
+  const rowOf = (f) => {
+    const cat = f.catalog == null ? "" : (typeof f.catalog === "object" ? JSON.stringify(f.catalog) : f.catalog);
+    const mat = f.matriz == null ? "" : f.matriz;
+    const extra = f.deltaPct != null ? ` (Δ ${f.deltaPct}%)` : "";
+    const flag = meta.gate && meta.gate.mode === "regression" && f.isRegression ? "🆕 " : "";
+    return `| ${flag}${f.sku || ""} | \`${f.path}\` | ${f.field || ""} | ${cat} | ${mat}${extra} | ${f.detail} |`;
+  };
+
+  // Sección de regresiones (sólo en modo PR baseline-aware): lo que el PR introduce.
+  if (meta.gate && meta.gate.mode === "regression") {
+    const regs = findings.filter((f) => f.isRegression);
+    L.push("## 🆕 Regresiones S1 introducidas por este PR `hecho confirmado`");
+    L.push("");
+    if (regs.length === 0) {
+      L.push("_Ninguna — el PR no agrega divergencias ni valores fuera de rango vs la base._");
+      L.push("");
+    } else {
+      L.push("| SKU | path | campo | catálogo | MATRIZ | detalle |");
+      L.push("|-----|------|-------|----------|--------|---------|");
+      for (const f of regs) L.push(rowOf(f));
+      L.push("");
+    }
+  }
+
   const section = (title, types, tag) => {
     const rows = findings.filter((f) => types.includes(f.type));
     if (rows.length === 0) return;
@@ -437,12 +525,7 @@ export function renderMarkdown({ findings, summary }, meta) {
     L.push("");
     L.push("| SKU | path | campo | catálogo | MATRIZ | detalle |");
     L.push("|-----|------|-------|----------|--------|---------|");
-    for (const f of rows) {
-      const cat = f.catalog == null ? "" : (typeof f.catalog === "object" ? JSON.stringify(f.catalog) : f.catalog);
-      const mat = f.matriz == null ? "" : f.matriz;
-      const extra = f.deltaPct != null ? ` (Δ ${f.deltaPct}%)` : "";
-      L.push(`| ${f.sku || ""} | \`${f.path}\` | ${f.field || ""} | ${cat} | ${mat}${extra} | ${f.detail} |`);
-    }
+    for (const f of rows) L.push(rowOf(f));
     L.push("");
   };
 
@@ -474,6 +557,7 @@ function parseArgs(argv) {
     else if (t === "--require-matriz") a.requireMatriz = true;
     else if (t === "--matriz-csv") a.matrizCsv = argv[++i];
     else if (t === "--constants") a.constants = argv[++i];
+    else if (t === "--baseline") a.baseline = argv[++i];
     else if (t === "--out") a.out = argv[++i];
     else if (t === "--base") a.base = argv[++i];
     else if (t === "--threshold") a.threshold = Number.parseFloat(argv[++i]);
@@ -529,6 +613,23 @@ async function main() {
   const matriz = parseMatrizCsv(csv);
   const { findings, summary } = diffCatalogVsMatriz(catalogByPath, matriz, cfg);
 
+  // Gate de regresión (PR baseline-aware) vs absoluto (cron).
+  let gate; // { regressions, baselineMode, mode }
+  if (args.baseline) {
+    const base = loadBaselineFindings(args.baseline);
+    if (base.ok) {
+      gate = { ...markRegressions(findings, base.findings), mode: "regression" };
+    } else {
+      // Baseline indeterminado → report-only: no bloquea (la decisión de diseño
+      // es que el gate de PR no debe fallar por drift pre-existente).
+      for (const f of findings) f.isRegression = false;
+      console.error("[catalog-diff] baseline indeterminado → gate report-only (no falla).");
+      gate = { regressions: 0, baselineMode: true, mode: "report-only" };
+    }
+  } else {
+    gate = { ...markRegressions(findings, null), mode: "absolute" };
+  }
+
   const meta = {
     date: new Date().toISOString().slice(0, 10),
     generatedAt: new Date().toISOString(),
@@ -536,11 +637,12 @@ async function main() {
     catalogCount: catalogByPath.size,
     matrizSource: source,
     matrizRows: matriz.rows.length,
+    gate,
     cfg,
   };
 
   if (args.json) {
-    console.log(JSON.stringify({ ok: true, summary, meta: { ...meta, cfg: undefined }, findings }, null, 2));
+    console.log(JSON.stringify({ ok: true, summary, gate, meta: { ...meta, cfg: undefined, gate: undefined }, findings }, null, 2));
   } else {
     const md = renderMarkdown({ findings, summary }, meta);
     if (args.out) {
@@ -552,8 +654,11 @@ async function main() {
     console.log(md);
   }
 
-  console.error(`[catalog-diff] S1=${summary.s1} WARN=${summary.bySeverity.warn || 0} total=${summary.total}`);
-  if (summary.s1 > 0 && !soft) process.exit(1);
+  // El gate (lo que decide el exit code) son las regresiones en modo PR, o todos
+  // los S1 en modo absoluto/cron.
+  const gateCount = gate.regressions;
+  console.error(`[catalog-diff] mode=${gate.mode} gate=${gateCount} S1=${summary.s1} WARN=${summary.bySeverity.warn || 0} total=${summary.total}`);
+  if (gateCount > 0 && !soft) process.exit(1);
   process.exit(0);
 }
 

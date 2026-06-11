@@ -11,6 +11,8 @@ import {
   parseMatrizCsv,
   diffCatalogVsMatriz,
   bandForPath,
+  markRegressions,
+  findingKey,
   CONFIG,
 } from "../scripts/catalog-diff.mjs";
 
@@ -163,6 +165,47 @@ group("bandForPath — categorías", () => {
   assert(bandForPath("PANELS_TECHO.ISODEC_EPS.esp.100").max === 150, "panel banda 20–150");
   assert(bandForPath("SERVICIOS.flete").min === null, "servicios sin banda");
   assert(bandForPath("PERFIL_TECHO.gotero_lateral.ISOROOF.80").label.includes("goteros"), "gotero → banda goteros");
+});
+
+/* ── Gate baseline-aware (regresión) ─────────────────────────────────────── */
+group("markRegressions — sin baseline → todos los S1 gatean (modo absoluto)", () => {
+  const findings = [
+    { severity: "s1", type: "divergence", path: "A", field: "costo", deltaAbs: 5 },
+    { severity: "warn", type: "no-source", path: "B", field: "venta" },
+  ];
+  const g = markRegressions(findings, null);
+  assert(g.regressions === 1, "1 regresión (el único S1)");
+  assert(g.baselineMode === false, "baselineMode false");
+  assert(findings[0].isRegression === true, "S1 marcado isRegression");
+});
+
+group("markRegressions — drift pre-existente NO gatea, nuevo S1 SÍ", () => {
+  const baseline = [
+    { severity: "s1", type: "divergence", path: "PANELS_TECHO.X.esp.30", field: "costo", deltaAbs: 2.5 },
+  ];
+  const head = [
+    // mismo hallazgo pre-existente (misma clave, mismo delta) → no regresión
+    { severity: "s1", type: "divergence", path: "PANELS_TECHO.X.esp.30", field: "costo", deltaAbs: 2.5 },
+    // hallazgo nuevo introducido por el PR → regresión
+    { severity: "s1", type: "divergence", path: "PANELS_TECHO.Y.esp.50", field: "venta_local", deltaAbs: 10 },
+  ];
+  const g = markRegressions(head, baseline);
+  assert(g.regressions === 1, `1 regresión nueva, got ${g.regressions}`);
+  assert(g.baselineMode === true, "baselineMode true");
+  assert(head[0].isRegression === false, "drift pre-existente no es regresión");
+  assert(head[1].isRegression === true, "S1 nuevo es regresión");
+});
+
+group("markRegressions — empeoramiento del mismo hallazgo gatea", () => {
+  const baseline = [{ severity: "s1", type: "divergence", path: "A", field: "costo", deltaAbs: 2 }];
+  const head = [{ severity: "s1", type: "divergence", path: "A", field: "costo", deltaAbs: 8 }];
+  const g = markRegressions(head, baseline);
+  assert(g.regressions === 1, "delta que empeora 2→8 cuenta como regresión");
+});
+
+group("findingKey — estable por tipo+path+campo", () => {
+  assert(findingKey({ type: "divergence", path: "A", field: "costo" }) === "divergence|A|costo", "clave compuesta");
+  assert(findingKey({ type: "no-sku", path: "B" }) === "no-sku|B|", "campo ausente → vacío");
 });
 
 console.log(`\n${failed === 0 ? "✓" : "✗"} catalogDiff: ${passed} passed, ${failed} failed`);
