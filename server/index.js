@@ -47,6 +47,7 @@ import marketingRouter from "./routes/marketing.js";
 import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
+import createPanelinRouter from "./routes/panelin.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -949,6 +950,10 @@ app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
 app.use(createTraktimeRouter(config, logger));
+
+// Panelin BMC Platform v1 (Postgres central + stock + precios + facturación)
+// Endpoints bajo /api/panelin/*
+app.use("/api/panelin", createPanelinRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";

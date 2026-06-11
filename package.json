@@ -151,6 +151,8 @@
     "traktime:migrate": "node scripts/run-traktime-migrations.mjs",
     "wa:migrate": "node scripts/run-wa-migrations.mjs",
     "panelin:migrate": "node scripts/run-panelin-migrations.mjs",
+    "panelin:sync-precios": "node scripts/panelin-sync-precios.mjs",
+    "panelin:sync-precios:dry": "node scripts/panelin-sync-precios.mjs --dry-run",
     "wa:admin": "node scripts/wa-admin.mjs",
     "wa:reconcile": "node scripts/wa-reconcile-sheet.mjs",
     "wa:purge-old": "node scripts/wa-purge-old.mjs",

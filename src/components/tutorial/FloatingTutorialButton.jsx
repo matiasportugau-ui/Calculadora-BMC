@@ -74,8 +74,9 @@ export default function FloatingTutorialButton() {
       }
 
       if (!pos) {
+        // Default placement: bottom-LEFT corner.
         pos = {
-          left: Math.max(EDGE_MARGIN, window.innerWidth - BUTTON_WIDTH - 24),
+          left: EDGE_MARGIN,
           top: Math.max(EDGE_MARGIN, window.innerHeight - BUTTON_HEIGHT - 24),
         };
       }
