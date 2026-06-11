@@ -111,6 +111,7 @@
     "panelin:train:import": "node scripts/panelin-training-import.mjs",
     "capabilities:snapshot": "node scripts/capabilities-snapshot.mjs",
     "smoke:prod": "node scripts/smoke-prod-api.mjs",
+    "smoke:routes": "node scripts/demo-route-smoke.mjs",
     "smoke:prod:no-ia": "node scripts/smoke-prod-api.mjs --skip-suggest",
     "bug-reports:setup-sheet": "node scripts/setup-bug-reports-tab.mjs",
     "bug-reports:ship": "node scripts/bug-reports-ship-goal.mjs",
