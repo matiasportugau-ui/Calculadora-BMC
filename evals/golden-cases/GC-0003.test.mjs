@@ -54,6 +54,24 @@ checks.push({ name: "(a) GSDECAM100 present with corrected SKU", expected: "GSDE
 checks.push({ name: "(a) GSDECAM100 web → 46.046 ex IVA", expected: 46.046, actual: r4(gs100?.web) });
 checks.push({ name: "(a) GSDECAM100 venta → 39.468 ex IVA", expected: 39.468, actual: r4(gs100?.venta) });
 
+// ── PIR lateral-cámara regression guard (DECISIÓN ABIERTA) ──────────────────
+// Al reemplazar el `_all` de ISODEC_PIR por espesores EPS 100/150/200/250, los
+// paneles PIR reales (50/80/120 mm) ya NO resuelven gotero lateral de cámara:
+// `resolveSKU_techo` devuelve null → la línea se omite del BOM (sin crash).
+// Este assert FIJA ese estado para que no cambie en silencio. Si Matias decide
+// restaurar el `_all` o mapear PIR a las medidas EPS, actualizar este check.
+const pir = PERFIL_TECHO.gotero_lateral_camara.ISODEC_PIR;
+checks.push({
+  name: "(PIR) 50/80/120 mm NO resuelven lateral cámara (estado actual, decisión abierta)",
+  expected: "none",
+  actual: [50, 80, 120].filter((e) => pir?.[e] !== undefined).join(",") || "none",
+});
+checks.push({
+  name: "(PIR) `_all` ausente en ISODEC_PIR lateral cámara (colapso removido)",
+  expected: true,
+  actual: pir?._all === undefined,
+});
+
 let failed = 0;
 for (const c of checks) {
   const ok = c.actual === c.expected;
