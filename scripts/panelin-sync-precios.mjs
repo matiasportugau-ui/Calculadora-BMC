@@ -99,8 +99,11 @@ async function syncTab(sheets, matrizId, tabName, client, dryRun, limit) {
   for (const row of dataRows) {
     if (limit && processed >= limit) break;
 
-    const sku = (row[COL.sku] || "").toString().trim().toUpperCase().replace(/\s+/g, "");
-    if (!sku) continue;
+    let sku = (row[COL.sku] || "").toString().trim().toUpperCase().replace(/\s+/g, "");
+    if (!sku || sku === "PENDIENTE" || sku.length < 3) continue;
+    // Heurística adicional: si no hay al menos un valor de precio útil, saltar filas de relleno
+    const hasAnyPrice = parseNum(row[COL.costo]) != null || parseNum(row[COL.ventaLocal]) != null || parseNum(row[COL.ventaWeb]) != null;
+    if (!hasAnyPrice) continue;
 
     const name = row[COL.descripcion] || sku;
     const costo = parseNum(row[COL.costo]);
@@ -117,8 +120,9 @@ async function syncTab(sheets, matrizId, tabName, client, dryRun, limit) {
     }
 
     // 1. Upsert producto + costo (usa función robusta de Fase 1)
+    // Pasamos explícitamente p_active + p_meta para garantizar que meta nunca sea null
     await client.query(
-      `SELECT panelin_upsert_product($1, $2, $3, $4, $5)`,
+      `SELECT panelin_upsert_product($1, $2, $3, $4, $5, true, '{}'::jsonb)`,
       [sku, name, costo != null ? costo : 0, "unid", tabName]
     );
     upserts++;
@@ -180,8 +184,13 @@ async function main() {
   const dryRun = args.includes("--dry-run");
   const limitArg = args.find(a => a.startsWith("--limit="));
   const limit = limitArg ? parseInt(limitArg.split("=")[1], 10) : null;
-  const tabArg = args.find(a => a.startsWith("--tab="));
-  const onlyTab = tabArg ? tabArg.split("=")[1] : null;
+  let onlyTab = null;
+  const tabEq = args.find(a => a.startsWith("--tab="));
+  if (tabEq) onlyTab = tabEq.split("=")[1];
+  else {
+    const tabIdx = args.indexOf("--tab");
+    if (tabIdx !== -1 && args[tabIdx + 1]) onlyTab = args[tabIdx + 1];
+  }
 
   console.log("=== Panelin Sync Precios desde MATRIZ (G/J/K/R/S) ===");
   console.log(`Dry-run: ${dryRun}`);
