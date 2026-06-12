@@ -2,6 +2,7 @@ import express from "express";
 import { config } from "../config.js";
 import { getPanelinPool } from "../lib/panelinDb.js";
 import facturaExpress from "../lib/facturaExpressClient.js";
+import { emitPanelinEvent } from "../lib/panelinEvents.js";
 
 // This module supports incremental monolith decomposition (Phase 1 from the audit).
 // Raw body parsers for /webhooks/* (incl. facturaexpress) remain in server/index.js
@@ -110,7 +111,19 @@ async function processFacturaExpressWebhook({ event, data, rawPayload }) {
           `SELECT panelin_record_stock_movement($1, 'principal', $2, $3, 'facturaexpress_webhook', $4)`,
           [sku, delta, reason, refId]
         );
+
+        // Fase 6 realtime: notify listeners (SSE) after successful stock movement
+        emitPanelinEvent('stock.movement', { sku, delta, reason, source: 'facturaexpress_webhook', refId });
       }
+    }
+
+    // Fase 6 realtime: notify after invoice upsert (even if no stock items)
+    if (data.external_id || data.id) {
+      emitPanelinEvent('invoice.upserted', {
+        external_id: data.external_id || data.id,
+        source: 'facturaexpress_webhook',
+        event,
+      });
     }
 
     // 3. Otros eventos (cambio de precio desde FE, etc.) pueden disparar sync aquí en futuro.

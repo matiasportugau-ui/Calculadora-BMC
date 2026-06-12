@@ -24,6 +24,7 @@
 import { Router } from "express";
 import { getPanelinPool } from "../lib/panelinDb.js";
 import facturaExpress from "../lib/facturaExpressClient.js";
+import { emitPanelinEvent, subscribePanelinEvents } from "../lib/panelinEvents.js";
 
 /**
  * @param {import('../config.js').config} config
@@ -548,6 +549,17 @@ export default function createPanelinRouter(config, logger = console) {
       });
 
       res.json({ ok: true, pulled: remoteInvoices.length, inserted, updated, note: remoteInvoices.length === 0 ? "provider creds not configured in this env (stub mode)" : undefined });
+
+      // Fase 6 realtime: notify connected dashboards (e.g. standalone panelin-platform UI)
+      // after successful batch upsert from FacturaExpress sync.
+      if (inserted + updated > 0 || remoteInvoices.length > 0) {
+        emitPanelinEvent('invoice.upserted', {
+          source: 'sync/facturaexpress/invoices',
+          pulled: remoteInvoices.length,
+          inserted,
+          updated,
+        });
+      }
     } catch (err) {
       logger.error?.({ err }, "[panelin] sync facturaexpress invoices failed");
       const status = err.status || 500;
@@ -610,6 +622,57 @@ export default function createPanelinRouter(config, logger = console) {
     } catch (err) {
       res.status(500).json({ ok: false, error: "prices_sync_failed", message: err.message });
     }
+  });
+
+  // ============================================================
+  // Fase 6: Realtime events (SSE) — webhook + sync driven live updates
+  // Hand-off from review-5ae44e21 master plan + PLATFORM-V1-HANDOFF-TO-FASE6.md
+  // Clients (standalone panelin-platform/frontend/dashboard.html or future /hub)
+  // connect with EventSource(`${base}/api/panelin/events`) and listen for:
+  //   - invoice.upserted
+  //   - stock.movement
+  // Emits are best-effort (never block the write path). See lib/panelinEvents.js.
+  // Auth: lightweight — allow for dev localhost origins (consistent with current
+  // internal/cron protection on the /api/panelin subtree). If config.apiAuthToken
+  // is set, accept ?token=... (EventSource friendly) or Authorization: Bearer.
+  // ============================================================
+  router.get("/events", (req, res) => {
+    // Lightweight dev-friendly auth for the standalone Fase 5/6 dashboard.
+    const origin = req.headers.origin || req.headers.referer || "";
+    const isLocalDev = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(origin) || !origin;
+    const providedToken = req.query.token || (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    if (config.apiAuthToken && !isLocalDev) {
+      if (!providedToken || providedToken !== config.apiAuthToken) {
+        res.status(401).end();
+        return;
+      }
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+
+    // Initial comment (some proxies drop first event without)
+    res.write(": connected to panelin events (Fase 6)\n\n");
+
+    const heartbeat = setInterval(() => {
+      try { res.write(": ping\n\n"); } catch {}
+    }, 20000);
+
+    const unsubscribe = subscribePanelinEvents((type, payload) => {
+      try {
+        res.write(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`);
+      } catch (e) {
+        // client gone
+      }
+    });
+
+    // Support manual unsubscribe on close
+    req.on("close", () => {
+      clearInterval(heartbeat);
+      try { unsubscribe(); } catch {}
+    });
   });
 
   return router;
