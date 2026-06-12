@@ -201,17 +201,20 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
 
-          <div style={{ ...card, borderColor: "#fee2e2", background: "#fff7f7" }}>
+          <div style={{ ...card, borderColor: "#111", background: "#0f172a", color: "#e2e8f0" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 26, height: 26, borderRadius: 6, background: "#c0392b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🐛</div>
-              <h2 style={{ ...cardTitle, color: "#c0392b" }}>Bugs reportados</h2>
+              <div style={{ width: 26, height: 26, borderRadius: 6, background: "#fff", color: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800 }}>🐺</div>
+              <h2 style={{ ...cardTitle, color: "#fff" }}>Wolf Debug</h2>
             </div>
-            <p style={cardDesc}>
-              Lista ligera de reportes enviados por usuarios (con logs automáticos de sesión, severidad y capturas de pantalla si se adjuntaron). Fuente: planilla BUG_REPORTS + AUDIT_LOG.
+            <p style={{ ...cardDesc, color: "#cbd5e1" }}>
+              El sistema oficial de caza de bugs y auditoría. Usa los renders del lobo (hero / review / hunt) + herramientas reales de health, colas, reportes y sweeps. Totalmente funcional en producción.
             </p>
-            <Link to="/hub/bugs" style={{ ...cta, background: "#c0392b" }}>
-              Ver bugs recientes
+            <Link to="/hub/wolf-debug" style={{ ...cta, background: "#fff", color: "#111" }}>
+              Abrir Wolf Debug →
             </Link>
+            <div style={{ marginTop: 6 }}>
+              <Link to="/hub/bugs" style={{ fontSize: 11, color: "#94a3b8", textDecoration: "underline" }}>o ver lista simple de bugs</Link>
+            </div>
           </div>
         </div>
       </div>

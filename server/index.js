@@ -47,6 +47,8 @@ import marketingRouter from "./routes/marketing.js";
 import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
+import createPanelinRouter from "./routes/panelin.js";
+import webhooksRouter from "./routes/webhooks.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -124,17 +126,28 @@ app.use((_req, res, next) => {
   next();
 });
 
-// WhatsApp + Shopify webhooks need raw body (HMAC / signature verification)
+// WhatsApp + Shopify + FacturaExpress webhooks need raw body (HMAC / signature verification)
 app.use("/webhooks/whatsapp", (req, res, next) => {
   if (req.method !== "POST") return next();
   return express.raw({ type: "application/json", limit: "20mb" })(req, res, next);
 });
 app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
+app.use("/webhooks/facturaexpress", (req, res, next) => {
+  if (req.method !== "POST") return next();
+  return express.raw({ type: "application/json", limit: "10mb" })(req, res, next);
+});
 app.use((req, res, next) => {
   if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
   if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
+  if (req.path === "/webhooks/facturaexpress" && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
+
+// Mount extracted webhooks router (after raw parsers per webhooks.js header and review fix for Issue 1).
+// Router currently contributes ONLY /webhooks/facturaexpress (ML/WA live processing stays inline here;
+// stubs were removed from router to prevent shadowing the direct handlers during incremental extraction).
+app.use("/webhooks", webhooksRouter);
+
 app.use(cookieParser());
 app.use(
   pinoHttp({
@@ -949,6 +962,10 @@ app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
 app.use(createTraktimeRouter(config, logger));
+
+// Panelin BMC Platform v1 (Postgres central + stock + precios + facturación)
+// Endpoints bajo /api/panelin/*
+app.use("/api/panelin", createPanelinRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";

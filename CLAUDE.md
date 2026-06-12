@@ -103,7 +103,7 @@ All prices are **without IVA**; 22% IVA is applied once at the total via `calcTo
 
 - **Error semantics for Sheets-backed routes:** `503` = Sheets unavailable; `200` + empty payload = no data; **never `500`** for Sheets failures. The frontend depends on this.
 - **API routes** belong in `server/routes/*.js`, mounted under `/api` (Sheets/CRM) or `/calc`, `/auth`, `/webhooks`.
-- **Secrets** live only in `.env` (see `.env.example` for variable names). Sheet IDs, tokens, and production URLs must come from `config.*` or `process.env.*` — never hardcoded.
+- **Secrets:** for **local dev**, Doppler (`bmc-*/prd`) is the source of truth — always `doppler run -- ...`. `.env` / `.env.example` are name+doc reference only. Prod: GSM (high-sens) + CI contract in `deploy-calc-api.yml`. See the canonical `docs/procedimientos/SECRETS-STRATEGY.md` + the unified `scripts/secrets-provision-verify.sh`. Never hardcode; run drift checks and gates after changes.
 - **Logging:** use `pino` / `pino-http` in `server/`; no `console.log` in production paths.
 - **CORS:** open in dev; restricted to known origins in prod.
 - Commit messages: concise, English, `type:` prefix (`feat`, `fix`, `refactor`, `docs`).
@@ -112,9 +112,10 @@ All prices are **without IVA**; 22% IVA is applied once at the total via `calcTo
 ## What to read before non-trivial work
 
 1. `docs/team/PROJECT-STATE.md` — **canonical** live state, recent changes, pending items.
-2. `AGENTS.md` — full command catalogue and operational procedures.
-3. `docs/team/knowledge/<role>.md` if your task maps to a defined agent role.
-4. `docs/google-sheets-module/README.md` for any Sheets/CRM change (mapping canon in `MAPPER-PRECISO-PLANILLAS-CODIGO.md`).
+2. `docs/team/BITACORA-MATIAS.md` — unified work log: sessions, milestones, deployments, decisions.
+3. `AGENTS.md` — full command catalogue and operational procedures.
+4. `docs/team/knowledge/<role>.md` if your task maps to a defined agent role.
+5. `docs/google-sheets-module/README.md` for any Sheets/CRM change (mapping canon in `MAPPER-PRECISO-PLANILLAS-CODIGO.md`).
 
 When you finish a task that changes behavior, append a line under "Cambios recientes" in `docs/team/PROJECT-STATE.md`.
 

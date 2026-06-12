@@ -115,3 +115,8 @@ tools/release-traceability/scripts/__pycache__/
 # Walkthrough — screenshots pesadas (el JSON sí se commitea)
 docs/walkthrough/**/screenshots/
 .env*
+
+# Browser automation artifacts (no versionar)
+.playwright-mcp/
+# Screenshots locales de producción
+/production-calculator-*.png
