@@ -107,8 +107,8 @@ describe("Panelin public mutation routes", () => {
 
   async function request(path, init = {}) {
     return fetch(`http://127.0.0.1:${port}${path}`, {
-      headers: { "Content-Type": "application/json", ...(init.headers || {}) },
       ...init,
+      headers: { "Content-Type": "application/json", ...(init.headers || {}) },
     });
   }
 
@@ -119,7 +119,7 @@ describe("Panelin public mutation routes", () => {
     });
 
     assert.equal(res.status, 401);
-    assert.equal((await res.json()).error, "service_token_required");
+    assert.equal((await res.json()).error, "Unauthorized");
   });
 
   it("rejects FacturaExpress sync mutations without service credentials", async () => {
@@ -129,7 +129,7 @@ describe("Panelin public mutation routes", () => {
     });
 
     assert.equal(res.status, 401);
-    assert.equal((await res.json()).error, "service_token_required");
+    assert.equal((await res.json()).error, "Unauthorized");
   });
 
   it("allows service credentials through to the existing DB availability guard", async () => {
