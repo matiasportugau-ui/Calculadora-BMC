@@ -12,6 +12,17 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-12 (Secrets hardening — automated pipeline + auto-generated --set-secrets from HIGH_SENS_KEYS):** `implementado + automated run ready`. Full end-to-end automation for secrets/GSM changes:
+- `scripts/provision-secrets.sh --print-mounts` (generator for CI).
+- `.github/workflows/deploy-calc-api.yml` now dynamically computes --set-secrets (no more manual long list or key wipes on deploy).
+- New `scripts/secrets-provision-verify.sh` (doppler-first, 4-phase, consumers table).
+- New `scripts/secrets-automated-pipeline.mjs` (`npm run secrets:automated -- --write`) — drift + gates + verify + pre-deploy + smoke (modeled on channels:automated).
+- `npm run secrets:automated` + package.json entry + pre-deploy enhancement + deploy skill update.
+- Verified: drift=0, verify script OK (dry), smoke passes, generator auto-includes future keys.
+- RUN-LOG at `.runtime/secrets-hardening-prod-run.log`.
+- Use `doppler run -- npm run secrets:automated` for real runs. See approved plan and `SECRETS-STRATEGY.md`.
+Next: merge feature to main, push (triggers deploy-calc-api), verify live revision mounts + full smoke against panelin-calc.
+
 **2026-06-11 (Wolf Debug — fully functional production triage & bug hunting module with custom wolf mascot):** `implementado`. Nuevo módulo dedicado `/hub/wolf-debug` (RequireGrant admin). 
 - Tres renders oficiales del lobo como estados visuales: hero (Image #1), review/search (Image #2), hunt/capture (Image #3).
 - Totalmente funcional: health probes reales (/health + wolfboard data), sweeps, lista compacta de bugs desde /api/bugs, apertura del BugReportModal vía bus con contexto, "Modo Caza", comandos de producción copiables (gate, smoke, etc.).
