@@ -12,6 +12,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+<<<<<<< HEAD
 **2026-06-12 (WOLF-2026-0001 — carga familia ISOFRIG + KB de productos):** `en eval (PR #332, draft)`. Familia `ISOFRIG_PIR` cargada en `constants.js`: 7 espesores 40–180 (`web` ex-IVA textual Matriz BROMYROS; fila 200 clonada excluida), au **1.10** validado contra ficha oficial Kingspan (legacy traía 1.14 copiado de ISOPANEL), núcleo PIR, solo Blanco sanitario; perfil U ISOFRIG 80/100/150 (PU* compartidos; U 40/60/120/180 TODO-blocked sin precio); visible en `camara_frig` y `presupuesto_libre`. Golden case **GC-0001 verde** (`evals/golden-cases/`), GC-0002 sigue verde; `gate:local` ok (1 fallo `test:api` pre-existente en main, ambiental). TODO-blocked: `venta`/`costo` por espesor desde Matriz. Extra: base de conocimiento de productos `docs/product-catalog/` (generador + JSON + MD, 97 ítems del Shopify real, con desfasaje Shopify↔Matriz documentado). Ledger v0.7.
 
 **2026-06-12 (Secrets hardening — automated pipeline + auto-generated --set-secrets from HIGH_SENS_KEYS):** `implementado + automated run ready`. Full end-to-end automation for secrets/GSM changes:
@@ -24,6 +25,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 - RUN-LOG at `.runtime/secrets-hardening-prod-run.log`.
 - Use `doppler run -- npm run secrets:automated` for real runs. See approved plan and `SECRETS-STRATEGY.md`.
 Next: merge feature to main, push (triggers deploy-calc-api), verify live revision mounts + full smoke against panelin-calc.
+=======
+**2026-06-12 (Critical bug automation — Panelin platform auth + merge-artifact cleanup):** `fix listo en rama cursor/critical-bug-investigation-ff84`. Hallazgo crítico en PR #331: el nuevo router `server/routes/panelin.js` quedaba montado bajo `/api/panelin/*` sin auth, permitiendo a un caller anónimo con la API pública y DB configurada leer productos/stock/facturas y mutar costos, precios recalculados, movimientos de stock e invoices. Se protegió todo el router con el guard canónico `requireAuth` (Bearer / `X-Api-Key` vía `API_AUTH_TOKEN`) y se agregó `tests/panelinPlatformAuth.test.js` al gate API para probar rechazo anónimo antes de DB + caller autenticado gated por disponibilidad DB. En la misma pasada se resolvieron conflict markers en `DetailDrawer.jsx` y `inspect-docker-context.cjs`, más errores JSX de `AdminCotizacionesModule.jsx` (`showToast` fuera de scope, prop duplicada, import muerto). Validación: test nuevo OK, lint sin errores, `npm test` OK dentro de `gate:local:full`, build prod OK; `test:api` queda bloqueado por fallo preexistente en `tests/suggestResponseKb.test.js` (details array vacío en caso agentCore bogus key), no causado por este fix.
+>>>>>>> origin/cursor/critical-bug-investigation-ff84
 
 **2026-06-11 (Wolf Debug — fully functional production triage & bug hunting module with custom wolf mascot):** `implementado`. Nuevo módulo dedicado `/hub/wolf-debug` (RequireGrant admin). 
 - Tres renders oficiales del lobo como estados visuales: hero (Image #1), review/search (Image #2), hunt/capture (Image #3).

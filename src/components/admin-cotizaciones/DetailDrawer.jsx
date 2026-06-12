@@ -7,17 +7,14 @@ import Tooltip from "../help/Tooltip.jsx";
 import HelpButton from "../help/HelpButton.jsx";
 import { HELP_ANCHORS } from "../help/anchors.js";
 
-<<<<<<< Updated upstream
-export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, onRequestSuggestion, onOpenBorrador, busyOp, waToken, waApiBase }) {
-=======
-export default function DetailDrawer({ 
-  row, 
-  onClose, 
-  onSave, 
-  onApprove, 
-  onMarkEnviado, 
-  onRequestSuggestion, 
-  busyOp, 
+export default function DetailDrawer({
+  row,
+  onClose,
+  onSave,
+  onApprove,
+  onMarkEnviado,
+  onRequestSuggestion,
+  busyOp,
   waToken, 
   waApiBase,
   onAssign,
@@ -25,7 +22,6 @@ export default function DetailDrawer({
   onRegenerateBorrador,
   onCreateFollowupTask
 }) {
->>>>>>> Stashed changes
   const [respuesta, setRespuesta] = useState(row?.respuesta || "");
   const [link, setLink] = useState(row?.link || "");
   const [replay, setReplay] = useState(row?.replaySnapshotUrl || "");
