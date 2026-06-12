@@ -356,27 +356,69 @@ export function useAdminCotizaciones() {
   // TANDA 1: Ownership + Borrador Integration + Quick Actions
   // =====================================================
 
-  const assignTo = useCallback(async (row, responsable) => {
+  const patchCotizacion = useCallback(async (row, patch, busyLabel = "update") => {
     if (!token || !row) return { ok: false };
-    setBusyOp("assign");
-    const body = {
-      adminRow: row.rowNum,
-      responsable: responsable || "",
-    };
-    const { ok, status, data } = await apiFetch(token, "/api/wolfboard/row", {
-      method: "POST",
+    const cotizacionId = String(row.id || row.cotizacionId || "").trim();
+    if (!cotizacionId) {
+      showToast("No se pudo actualizar: falta ID de cotización.");
+      return { ok: false };
+    }
+    setBusyOp(busyLabel);
+    const { ok, status, data } = await apiFetch(token, `/api/cotizaciones/${encodeURIComponent(cotizacionId)}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(patch),
     });
     setBusyOp(null);
     if (!ok) {
-      showToast(data?.error || `Error al asignar (HTTP ${status})`);
+      showToast(data?.error || `Error al actualizar cotización (HTTP ${status})`);
+      return { ok: false, data };
+    }
+    return { ok: true, data };
+  }, [token, showToast]);
+
+  const assignTo = useCallback(async (row, responsable) => {
+    if (!token || !row) return { ok: false };
+    setBusyOp("assign");
+    const result = await patchCotizacion(row, { ASIGNADO_A: responsable || "" }, "assign");
+    if (!result.ok) {
+      setBusyOp(null);
       return { ok: false };
     }
+    setBusyOp(null);
     await load();
     showToast(`Asignado a ${responsable || "(sin responsable)"}`);
     return { ok: true };
-  }, [token, load]);
+  }, [token, load, patchCotizacion, showToast]);
+
+  const moveLeadToStage = useCallback(async (row, newStage) => {
+    if (!token || !row || !newStage) return { ok: false };
+
+    if (newStage === "Aprobado" && row.rowNum) {
+      return approve(row.rowNum);
+    }
+    if (newStage === "Enviado" && row.rowNum) {
+      return markEnviado(row.rowNum);
+    }
+
+    const result = await patchCotizacion(row, { ESTADO: newStage }, "stage");
+    if (!result.ok) return result;
+
+    setRows((prev) =>
+      prev.map((r) => {
+        const sameId = row.id && r.id === row.id;
+        const sameRow = row.rowNum && r.rowNum === row.rowNum;
+        return sameId || sameRow ? { ...r, estado: newStage } : r;
+      })
+    );
+    showToast(`Etapa actualizada: ${newStage}`);
+    return { ok: true };
+  }, [token, approve, markEnviado, patchCotizacion, showToast]);
+
+  const regenerateBorrador = useCallback(async () => {
+    showToast("Regeneración por fila no disponible: vaciá la respuesta y usá Generar IA en la barra superior.");
+    return { ok: false, data: { error: "per_row_regeneration_not_supported" } };
+  }, [showToast]);
 
   const getBorradorInfo = useCallback((row) => {
     if (!row) return { hasBorrador: false };
@@ -578,6 +620,8 @@ export function useAdminCotizaciones() {
 
     // Tanda 1 - New best-practice lead management actions
     assignTo,
+    moveLeadToStage,
+    regenerateBorrador,
     getBorradorInfo,
     openBorrador,
   };

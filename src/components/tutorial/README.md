@@ -72,9 +72,11 @@ Recomendado para la ventana de pruebas del equipo de ventas: dejar `true` (defau
 
 Para verificar que todo funciona:
 
-1. Activa el Modo Tutorial (botón flotante abajo a la derecha).
+1. Activa el Modo Tutorial (el botón flotante ahora es **movible**: arrástralo a cualquier posición de la pantalla).
 2. Lanza cualquiera de los flujos principales.
 3. Confirma que el spotlight resalta correctamente los elementos con `data-tutorial-id`.
+
+**Nota sobre duplicación**: El botón flotante fue convertido en draggable para resolver la superposición/duplicación con controles de tutorial en la zona superior/izquierda. La posición se guarda automáticamente en localStorage.
 
 ## Notas de Producción
 
@@ -91,5 +93,5 @@ Para verificar que todo funciona:
 
 ---
 
-**Última actualización**: Junio 2026  
+**Última actualización**: 2026-06 (botón flotante ahora draggable para resolver duplicación con controles izquierdos/superiores)  
 **Responsable**: Implementación del sistema de tutorial interactivo para preparación del equipo de ventas.

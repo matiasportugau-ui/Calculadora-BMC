@@ -114,6 +114,8 @@ import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { useChat } from "../hooks/useChat.js";
 import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
+import PanelinCharacter from "./PanelinCharacter.jsx";
+import { useTutorial } from "./tutorial/useTutorial.js";
 import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
 
 /**
@@ -536,14 +538,6 @@ function MobileBottomBar({
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
             <button type="button" onClick={onWhatsApp} data-tutorial-id="calc-wa-export" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
             <button type="button" onClick={onClientePdf} data-tutorial-id="calc-generate-pdf" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
-            <button 
-              type="button" 
-              onClick={() => window.dispatchEvent(new CustomEvent('start-calculator-tutorial'))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.4)", background: "transparent", color: "#fff", fontSize: 11, cursor: "pointer" }}
-              title="Iniciar tutorial guiado de la calculadora"
-            >
-              🎓 Tutorial
-            </button>
             <button type="button" aria-label="Más acciones" onClick={() => setSheetOpen(true)} style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.35)", background: "transparent", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <MoreHorizontal size={22} strokeWidth={2.25} />
             </button>
@@ -2403,6 +2397,64 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const params = new URLSearchParams(window.location.search);
     return params.get("chat") === "1" || params.get("panelinDetached") === "1";
   });
+
+  // Chat presentation: 'sidebar' (default resizable panel on the right) or 'floating' (draggable/resizable window).
+  // When the user clicks the standing character we default to 'sidebar'.
+  const [chatPresentation, setChatPresentation] = useState('sidebar');
+
+  const openChat = (presentation = 'sidebar') => {
+    setChatPresentation(presentation);
+    setChatOpen(true);
+  };
+
+  const closeChat = () => {
+    setChatOpen(false);
+    // When closed we always want the external standing character to be available
+  };
+
+  const toggleChatPresentation = () => {
+    setChatPresentation((prev) => (prev === 'sidebar' ? 'floating' : 'sidebar'));
+  };
+
+  // In-page floating window state (draggable + resizable, same tab)
+  const [floatingRect, setFloatingRect] = useState({ x: 140, y: 60, width: 460, height: 620 });
+  const [isDraggingFloating, setIsDraggingFloating] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isResizingFloating, setIsResizingFloating] = useState(false);
+  const floatingRef = useRef(null);
+
+  // Drag and resize handlers for in-page floating window
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isDraggingFloating) {
+        const newX = Math.max(0, Math.min(window.innerWidth - floatingRect.width - 20, e.clientX - dragOffset.x));
+        const newY = Math.max(0, Math.min(window.innerHeight - floatingRect.height - 20, e.clientY - dragOffset.y));
+        setFloatingRect(prev => ({ ...prev, x: newX, y: newY }));
+      }
+      if (isResizingFloating) {
+        const newWidth = Math.max(340, Math.min(900, e.clientX - floatingRect.x));
+        const newHeight = Math.max(420, Math.min(900, e.clientY - floatingRect.y));
+        setFloatingRect(prev => ({ ...prev, width: newWidth, height: newHeight }));
+      }
+    };
+    const handleMouseUp = () => {
+      setIsDraggingFloating(false);
+      setIsResizingFloating(false);
+    };
+    if (isDraggingFloating || isResizingFloating) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = isDraggingFloating ? 'grabbing' : 'nwse-resize';
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [isDraggingFloating, isResizingFloating, dragOffset, floatingRect.x, floatingRect.y]);
+
   const [devMode, setDevMode] = useState(() => {
     if (typeof window === "undefined") return false;
     return sessionStorage.getItem("panelin-dev-mode") === "1";
@@ -2411,6 +2463,26 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (typeof window === "undefined") return "";
     return String(sessionStorage.getItem("panelin-dev-token") || "").trim();
   });
+
+  /**
+   * Stable authHeader for Panelin agent surfaces (chat + voice).
+   * Prefers the real accessToken from BmcAuth (set on Google login / session).
+   * Falls back to explicit dev token only when devMode is active.
+   *
+   * This fixes "Unauthorized" (401) on /api/agent/voice/* and related for
+   * properly logged-in users. The raw "Pegá API_AUTH_TOKEN" prompt is a dev
+   * convenience and should not appear in normal authenticated flows.
+   */
+  const authHeader = useMemo(() => {
+    if (bmcAuth?.accessToken) {
+      return `Bearer ${bmcAuth.accessToken}`;
+    }
+    if (devAuthToken) {
+      // Dev token can be used as Bearer or X-Api-Key; voice + chat accept Authorization: Bearer
+      return `Bearer ${devAuthToken}`;
+    }
+    return undefined;
+  }, [bmcAuth?.accessToken, devAuthToken]);
 
   // NEW TOGGLEABLE (default OFF, persisted): Enhanced product visualization using the researched real product images (kingspan.com.uy, bmcuruguay.com.uy mappings) + DWG-derived profiles (plegados/grecas/forros/babetas/frontales from TECHMET and BMC internal files).
   // When enabled (via dev tools or localStorage 'bmc-enhanced-product-viz'='1'): adds non-breaking UI refs in family/espesor steps + QuoteVisualVisor (new acordeón or section with mapped real images + technical notes).
@@ -2541,6 +2613,18 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           setPendingQuote({ payload: action.payload, preview: action.preview, warnings: action.warnings || [], snapshot });
           break;
         }
+        case "openLink": {
+          const url = action.payload?.url || action.payload;
+          if (url && typeof url === 'string') {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }
+          break;
+        }
+        case "triggerPrint":
+        case "print": {
+          handlePrint();
+          break;
+        }
         default: break;
       }
     },
@@ -2615,8 +2699,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       return;
     }
     let token = String(devAuthToken || "").trim();
-    if (!token && !chat.relaxDevAuth && typeof window !== "undefined") {
-      token = String(window.prompt("Pegá API_AUTH_TOKEN del servidor API (Cloud Run), el mismo que en variables de entorno — sin comillas ni espacios:") || "").trim();
+    // Guard: only prompt for raw token in truly anonymous dev scenarios.
+    // Normal authenticated users (bmcAuth.isAuthenticated / accessToken) get a proper Bearer header
+    // from context and should never see this dev convenience dialog.
+    if (!token && !chat.relaxDevAuth && typeof window !== "undefined" && !bmcAuth?.isAuthenticated) {
+      token = String(window.prompt("Pegá API_AUTH_TOKEN del servidor API (Cloud Run) — solo para flujos dev sin login. En usuarios autenticados normales esto no debería aparecer.") || "").trim();
     }
     if (!chat.relaxDevAuth && !token) return;
     setDevAuthToken(token);
@@ -4524,6 +4611,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setCurrentBudgetCode(null);
   }, []);
 
+  // Tutorial (Modo Tutorial) — integrated into the calculator menu bar (non-floating)
+  const { toggleTutorialMode, startWorkflow } = useTutorial();
+
   return (
     <div data-tutorial-id="calc-main" style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
       {/* HEADER */}
@@ -4766,6 +4856,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               <button onClick={() => setShowConfigPanel(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                 <Settings size={14} />Config
               </button>
+              <button
+                onClick={() => { toggleTutorialMode(); startWorkflow('crear-cotizacion-completa'); }}
+                style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                title="Modo Tutorial — guía interactiva paso a paso de la calculadora"
+              >
+                🎓 Tutorial
+              </button>
             </>
           )}
           <button onClick={() => setShowPlanModal(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: TR }}>
@@ -4812,27 +4909,44 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             </>
           ) : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: isPhone ? "auto" : undefined }}>
-            <video
-              src={PANELIN_AGENT_VIDEO_SRC}
-              autoPlay
-              muted
-              loop
-              playsInline
-              aria-hidden
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "1px solid rgba(255,255,255,0.35)",
-                background: "rgba(0,0,0,0.2)",
-                flexShrink: 0,
-              }}
-            />
+            {/* Standing Panelin character — visible only when chat is closed (per spec).
+                Uses the exact same video animation as the previous small circle.
+                Click opens the chat (will become the resizable sidebar by default). */}
+            {!chatOpen && (
+              <PanelinCharacter
+                size={46}
+                onClick={() => openChat('sidebar')}
+                // isSpeaking not available at this scope (it's local inside PanelinChatPanel).
+                // When chat is closed there is no active TTS anyway.
+                isSpeaking={false}
+                isThinking={chat.isStreaming} // reacts when agent is thinking/processing
+                style={{ marginRight: 4 }}
+              />
+            )}
+            {chatOpen && (
+              /* Small video remains as a subtle indicator when chat is open (the main character lives inside the chatbox) */
+              <video
+                src={PANELIN_AGENT_VIDEO_SRC}
+                autoPlay
+                muted
+                loop
+                playsInline
+                aria-hidden
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  background: "rgba(0,0,0,0.2)",
+                  flexShrink: 0,
+                }}
+              />
+            )}
             {panelinHeaderAiSelect}
             <button
               type="button"
-              onClick={() => setChatOpen((o) => !o)}
+              onClick={() => (chatOpen ? closeChat() : openChat('sidebar'))}
               style={{ padding: "6px 12px", borderRadius: 8, border: chatOpen ? "none" : "1px solid rgba(255,255,255,0.3)", background: chatOpen ? "rgba(255,255,255,0.2)" : "transparent", color: "#fff", fontSize: 13, fontWeight: chatOpen ? 600 : 400, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
             >
               💬 Panelin
@@ -6748,7 +6862,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           />
           {/* Lista de precios — toggle siempre visible en panel derecho */}
           {modoVendedor && !scenarioDef?.isLibre && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "8px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
+            <div data-tutorial-id="calc-panel-family" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "8px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", flex: 1 }}>Lista de precios</span>
               <SegmentedControl
                 value={listaPrecios || getListaDefault()}
@@ -6758,7 +6872,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             </div>
           )}
           {/* KPI Row */}
-          {results && !results.error && !scenarioDef?.isLibre && activeWizardStepId !== "estructura" && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>
+          {results && !results.error && !scenarioDef?.isLibre && activeWizardStepId !== "estructura" && <div data-tutorial-id="calc-bom-preview" ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>
             <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
             <KPICard label="Paneles" value={kpiPaneles} borderColor={C.success} />
             <KPICard label={vis.autoportancia ? "Apoyos" : "Esquinas"} value={kpiApoyos || "—"} borderColor={C.warning} />
@@ -6851,7 +6965,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           )}
 
           {/* Totals */}
-          {groups.length > 0 && <div ref={pdfCaptureTotalsRef} style={{ background: C.dark, borderRadius: 16, padding: 24, color: "#fff", marginBottom: 16 }}>
+          {groups.length > 0 && <div data-tutorial-id="calc-totals" ref={pdfCaptureTotalsRef} style={{ background: C.dark, borderRadius: 16, padding: 24, color: "#fff", marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
               <span style={{ fontSize: 14, opacity: 0.7 }}>Subtotal s/IVA</span>
               <span style={{ fontSize: 16, fontWeight: 600, ...TN }}>USD {fmtPrice(grandTotal.subtotalSinIVA)}</span>
@@ -6947,7 +7061,137 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           </div>}
         </div>
         </Panel>
+
+        {/* Phase 2: Resizable chat sidebar (default mode).
+            Only present when chat is open in sidebar presentation.
+            Uses the exact same Panel + PanelResizeHandle pattern as the existing layout splits.
+            The calculator (left + quote area) remains fully interactive. */}
+        {chatOpen && chatPresentation === 'sidebar' && (
+          <>
+            <PanelResizeHandle
+              className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
+              style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
+              hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
+            />
+            <Panel defaultSize={32} minSize={26} style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#fff', borderLeft: '1px solid #e5e5ea', boxShadow: '-4px 0 12px rgba(0,0,0,0.06)' }}>
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <PanelinChatPanel
+                  isOpen={true}
+                  onClose={closeChat}
+                  embedded
+                  {...chat}
+                  devMode={devMode}
+                  onToggleDevMode={toggleDevMode}
+                  detachedMode={false}
+                  onOpenDetachedWindow={openDetachedChatWindow}
+                  onRequestFloating={() => setChatPresentation('floating')}
+                  calcState={calcState}
+                  onChatAction={handleChatAction}
+                  authHeader={authHeader}
+                />
+              </div>
+            </Panel>
+          </>
+        )}
       </PanelGroup>
+
+      {/* In-page floating chat window (goal item 1) - draggable + resizable, same tab, character visible, non-blocking */}
+      {chatOpen && chatPresentation === 'floating' && createPortal(
+        <div
+          ref={floatingRef}
+          style={{
+            position: 'fixed',
+            left: floatingRect.x,
+            top: floatingRect.y,
+            width: floatingRect.width,
+            height: floatingRect.height,
+            background: '#fff',
+            border: '1px solid #e5e5ea',
+            borderRadius: 12,
+            boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            zIndex: 99999,
+          }}
+        >
+          {/* Draggable header with character */}
+          <div
+            onMouseDown={(e) => {
+              if (e.target.tagName === 'BUTTON') return;
+              setIsDraggingFloating(true);
+              setDragOffset({ x: e.clientX - floatingRect.x, y: e.clientY - floatingRect.y });
+            }}
+            style={{
+              padding: '8px 12px',
+              background: '#1a3a5c',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: isDraggingFloating ? 'grabbing' : 'grab',
+              flexShrink: 0,
+              userSelect: 'none',
+            }}
+          >
+            <PanelinCharacter 
+              size={26} 
+              isThinking={chat.isStreaming}
+              style={{ marginRight: 4 }} 
+            />
+            <div style={{ fontWeight: 600, flex: 1, fontSize: 14 }}>Panelin — Ventana flotante</div>
+            <button
+              onClick={() => setChatPresentation('sidebar')}
+              onMouseDown={e => e.stopPropagation()}
+              style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.4)', color: '#fff', padding: '2px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}
+            >
+              Volver a sidebar
+            </button>
+            <button 
+              onClick={closeChat} 
+              onMouseDown={e => e.stopPropagation()}
+              style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 4 }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Chat content - full rich, character already in header */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <PanelinChatPanel
+              isOpen={true}
+              onClose={closeChat}
+              {...chat}
+              devMode={devMode}
+              onToggleDevMode={toggleDevMode}
+              detachedMode={false}
+              onOpenDetachedWindow={openDetachedChatWindow}
+              calcState={calcState}
+              onChatAction={handleChatAction}
+              authHeader={authHeader}
+            />
+          </div>
+
+          {/* Resize handle */}
+          <div
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              setIsResizingFloating(true);
+            }}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              right: 0,
+              width: 18,
+              height: 18,
+              cursor: 'nwse-resize',
+              background: 'linear-gradient(135deg, transparent 40%, #aaa 40%)',
+              borderBottomRightRadius: 12,
+            }}
+          />
+        </div>,
+        document.body
+      )}
 
       <QuotePreviewModal
         pendingQuote={pendingQuote}
@@ -6987,6 +7231,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         devMode={devMode}
         onToggleDevMode={toggleDevMode}
         detachedMode={isDetachedChatWindow}
+        authHeader={authHeader}
         onOpenDetachedWindow={openDetachedChatWindow}
         devMeta={chat.devMeta}
         trainingEntries={chat.trainingEntries}

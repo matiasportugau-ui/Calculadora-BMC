@@ -48,6 +48,7 @@ const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUni
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
 const BugReportsList = lazy(() => import("./components/BugReportsList.jsx"));
+const WolfDebugModule = lazy(() => import("./components/WolfDebugModule.jsx"));
 const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
@@ -98,7 +99,7 @@ function Shell({ children }) {
       </div>
       {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
-      {TUTORIAL_ENABLED && <FloatingTutorialButton />}
+      {TUTORIAL_ENABLED && !isCalc && <FloatingTutorialButton />}
     </div>
   );
 }
@@ -284,6 +285,14 @@ export default function App() {
           element={
             <RequireGrant role="admin">
               <BugReportsList />
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/wolf-debug"
+          element={
+            <RequireGrant role="admin">
+              <WolfDebugModule />
             </RequireGrant>
           }
         />

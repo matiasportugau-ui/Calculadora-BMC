@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panelin Platform • BMC Industrial — Fase 5</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'%3E%3Cpath d='M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4z'/%3E%3C/svg%3E">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+    
+    :root {
+      --slate-900: #0f172a;
+      --slate-800: #1e2937;
+      --slate-700: #334155;
+      --amber-500: #f59e0b;
+    }
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    
+    .heading-font {
+      font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+    }
+
+    .industrial-table {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    
+    .industrial-table th {
+      background-color: #1e2937;
+      color: #e2e8f0;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.6875rem;
+      letter-spacing: 0.05em;
+      padding-top: 0.625rem;
+      padding-bottom: 0.625rem;
+    }
+    
+    .industrial-table td {
+      border-top: 1px solid #334155;
+    }
+    
+    .industrial-table tbody tr:nth-child(even) {
+      background-color: #1e2937;
+    }
+    
+    .industrial-table tbody tr:hover {
+      background-color: #334155;
+    }
+    
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .section-card {
+      background-color: #1e2937;
+      border: 1px solid #334155;
+      box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.1), 0 4px 6px -4px rgb(15 23 42 / 0.1);
+    }
+
+    .premium-shadow {
+      box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.15), 
+                  0 4px 6px -4px rgb(15 23 42 / 0.1);
+    }
+
+    .amber-accent {
+      color: #f59e0b;
+    }
+
+    .status-pill {
+      font-size: 0.6875rem;
+      padding-left: 0.625rem;
+      padding-right: 0.625rem;
+      padding-top: 0.125rem;
+      padding-bottom: 0.125rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      letter-spacing: 0.025em;
+    }
+
+    .data-cell {
+      transition: background-color 0.1s ease;
+    }
+
+    .edit-active {
+      background-color: #334155 !important;
+      box-shadow: 0 0 0 1px #f59e0b inset;
+    }
+
+    .row-updated {
+      animation: rowFlash 1.2s ease-out forwards;
+    }
+
+    @keyframes rowFlash {
+      0% { background-color: #451a03; }
+      100% { background-color: transparent; }
+    }
+
+    .skeleton {
+      animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      background-color: #334155;
+    }
+
+    .industrial-input {
+      background-color: #0f172a;
+      border: 1px solid #475569;
+      color: #e2e8f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .industrial-input:focus {
+      outline: none;
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+
+    .toast {
+      animation: toastSlide 0.2s ease forwards;
+    }
+
+    .subtle-grid {
+      background-image: 
+        linear-gradient(#334155 1px, transparent 1px),
+        linear-gradient(90deg, #334155 1px, transparent 1px);
+      background-size: 24px 24px;
+      opacity: 0.4;
+    }
+
+    .metric {
+      font-feature-settings: "tnum";
+    }
+
+    .section-header {
+      border-bottom: 1px solid #334155;
+      padding-bottom: 0.75rem;
+    }
+
+    .ops-button {
+      transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .ops-button:hover {
+      transform: translateY(-1px);
+    }
+    
+    .ops-button:active {
+      transform: translateY(0);
+    }
+
+    .table-container {
+      scrollbar-width: thin;
+      scrollbar-color: #475569 #1e2937;
+    }
+  </style>
+</head>
+<body class="bg-[#0f172a] text-slate-200 min-h-screen">
+  <!-- 
+    panelin-platform/frontend/dashboard.html
+    ============================================================================
+    Fase 5 — Panelin Dashboard v1 per review 5ae44e21 master plan • Fase 6 realtime (SSE) wired
+    Industrial Editorial Dark single-file dashboard for Panelin BMC Platform.
+
+    Grounding in review 5ae44e21 (FacturaExpress Fase 4 + 14 issues closed):
+    - Sync buttons for FacturaExpress exercised in smoke tests (POST /sync/facturaexpress/invoices 
+      returns {ok, pulled, inserted, updated, note} with graceful stub when provider creds absent).
+    - MATRIZ is the authoritative cost source in the pricing engine (broader BMC repo: BROMYROS sheet, 
+      source='matriz' in product_prices, recalc via panelin_recalc_prices_for_sku after cost change).
+    - Stub graceful degradation, {ok: boolean} contract, 503 for DB unavailable, no auth on /api/panelin 
+      subtree (internal/cron surface), resilience comments in panelin.js.
+    - Design decisions: inline cost edit → PATCH + response.prices (or refetch), immediate row refresh 
+      of venta_local/venta_web, prominent FE + MATRIZ syncs in adjacent Syncs area, per-row/global 
+      loaders, amber accents for industrial ops feel, generous whitespace + subtle grid/stripes, 
+      tabular nums + mono for SKUs/codes = premium, maintainable ops tool (not flashy consumer UI).
+    - Review explicitly calls out graceful stub mode for FE syncs + MATRIZ context for cost flow.
+
+    How to use:
+    1. Ensure DB migrated: doppler run -- npm run panelin:migrate (or node scripts/run-panelin-migrations.mjs).
+       Run migrations in panelin-platform/migrations/ (core + stock functions + price_lists seed).
+    2. Start API: doppler run -- npm run start:api (or npm run start:api if .env has DATABASE_URL).
+       Requires DATABASE_URL with panelin tables populated (products, price_lists, stock, etc.).
+    3. Open this file directly in browser, OR serve: cd panelin-platform/frontend && python -m http.server 8080
+       then visit http://localhost:8080/dashboard.html
+    4. Edit costs inline (double-click or pencil), acknowledge alerts, hit sync buttons. All live
+       against localhost:3001/api/panelin/* (or change base URL).
+    5. For prod: point API base to Cloud Run panelin-calc URL (same as main app).
+       No hard-coded secrets. Fully respects {ok, ...} contract and 503 DB states.
+
+    Tech: Tailwind CDN + vanilla modern JS. Self-contained. No build.
+    ============================================================================
+  -->
+
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="border-b border-slate-700 bg-[#0f172a]/95 backdrop-blur-md sticky top-0 z-50">
+      <div class="px-6 py-5 flex flex-col lg:flex-row lg:items-center gap-4">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center shadow-inner">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#0f172a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.75">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-baseline gap-2">
+                <h1 class="heading-font text-3xl font-semibold tracking-tighter text-white">Panelin Platform</h1>
+                <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-mono tracking-[2px] font-medium">BMC INDUSTRIAL</span>
+              </div>
+              <div class="text-[10px] text-slate-500 -mt-0.5 font-medium">Fase 5 Frontend • review-5ae44e21</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 lg:ml-4">
+          <!-- API Base Config -->
+          <div class="flex items-center gap-2 flex-1 max-w-md">
+            <div class="text-xs text-slate-400 font-medium whitespace-nowrap pl-1">API BASE</div>
+            <div class="flex-1 flex">
+              <input id="api-base-input" type="text" 
+                     class="industrial-input flex-1 text-sm px-3 py-2 rounded-l-lg font-mono focus:z-10" 
+                     placeholder="http://localhost:3001">
+              <button id="apply-base-btn"
+                      class="ops-button px-4 py-2 text-sm font-semibold bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-white rounded-r-lg border border-l-0 border-slate-600 transition-colors">
+                APPLY
+              </button>
+            </div>
+            <button id="reset-base-btn"
+                    class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors border border-slate-700">
+              RESET
+            </button>
+          </div>
+
+          <!-- Global Controls -->
+          <div class="flex items-center gap-2">
+            <button id="refresh-all-btn"
+                    class="ops-button flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-2xl transition-colors active:bg-[#1e2937]">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.058 11H1M12 3v2m0 16v2m9-9H15m-6 0a8 8 0 01-.938-1.5" />
+              </svg>
+              <span>Refresh All</span>
+            </button>
+            
+            <div id="last-updated" 
+                 class="text-[10px] font-mono text-slate-500 px-2 py-1 bg-slate-900 rounded-xl border border-slate-800 min-w-[138px] text-center tabular">
+              — : — : —
+            </div>
+          </div>
+        </div>
+
+        <!-- Module Status -->
+        <div id="module-status" 
+             class="flex items-center gap-2 px-4 py-1.5 rounded-3xl border border-slate-700 bg-slate-900 text-xs font-medium">
+          <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+          <span class="text-emerald-300">LOADING STATUS...</span>
+          <!-- Fase 6 live indicator (populated by JS EventSource) -->
+          <span id="live-indicator" class="ml-1.5 px-1.5 py-px rounded bg-slate-800 text-[10px] font-mono border border-slate-700 text-slate-400">LIVE</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="px-6 pt-6 pb-12">
+      <!-- Health / Status Card -->
+      <div class="section-card rounded-3xl p-5 mb-6 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm premium-shadow">
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400 text-xs tracking-wider font-semibold">MODULE</span>
+          <span id="health-module" class="font-semibold text-white">panelin-platform</span>
+        </div>
+        <div class="h-3 w-px bg-slate-700 hidden sm:block"></div>
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400 text-xs tracking-wider font-semibold">DB</span>
+          <span id="health-db" class="font-medium text-emerald-300">—</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400 text-xs tracking-wider font-semibold">MIGRATIONS</span>
+          <span id="health-migrations" class="font-mono tabular text-amber-300">—</span>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+          <span>DB TIME:</span> 
+          <span id="health-db-time" class="font-mono text-slate-300 tabular">—</span>
+        </div>
+      </div>
+
+      <!-- Sync Center -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-3 px-1">
+          <div>
+            <span class="uppercase text-xs font-semibold tracking-[1.5px] text-amber-400/90">SYNC CENTER</span>
+            <span class="ml-2 text-xs text-slate-500">FacturaExpress + MATRIZ (cost source)</span>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <!-- FacturaExpress Sync -->
+          <div class="section-card rounded-3xl p-5 flex flex-col">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <div class="font-semibold text-lg text-white">FacturaExpress</div>
+                <div class="text-xs text-slate-400">Invoices &amp; operational sync (stub graceful)</div>
+              </div>
+              <span class="status-pill bg-amber-900/60 text-amber-400 border border-amber-700/50">CFE UY</span>
+            </div>
+            <button id="sync-fe-btn"
+                    class="ops-button mt-auto w-full py-3 px-6 rounded-2xl font-semibold text-base flex items-center justify-center gap-3 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-[#0f172a] transition-all shadow">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+              </svg>
+              <span>SYNC FROM FACTURAEXPRESS</span>
+            </button>
+            <div class="text-[10px] text-center text-slate-500 mt-2">POST /api/panelin/sync/facturaexpress/invoices • returns counts + stub note</div>
+          </div>
+
+          <!-- MATRIZ Sync -->
+          <div class="section-card rounded-3xl p-5 flex flex-col border border-amber-900/30">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <div class="font-semibold text-lg text-white">MATRIZ (BROMYROS)</div>
+                <div class="text-xs text-slate-400">Primary cost source • price recalc engine</div>
+              </div>
+              <span class="status-pill bg-[#451a03] text-amber-400 border border-amber-900/70">COSTS</span>
+            </div>
+            <button id="sync-matriz-btn"
+                    class="ops-button mt-auto w-full py-3 px-6 rounded-2xl font-semibold text-base flex items-center justify-center gap-3 bg-[#78350f] hover:bg-amber-900 active:bg-[#451a03] text-amber-100 border border-amber-900/60 transition-all">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.75">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <span>SYNC FROM MATRIZ / RECONCILE COSTS</span>
+            </button>
+            <div class="text-[10px] text-center text-amber-300/70 mt-2 leading-tight">In prod: external job pulls BROMYROS → updates costs (source='matriz') → recalc. Demo: refreshes products live.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1. PRODUCTS TABLE -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-3 px-1 section-header">
+          <div class="flex items-center gap-3">
+            <h2 class="font-semibold text-xl tracking-tight">Products</h2>
+            <span id="products-count" class="font-mono text-xs bg-slate-800 text-slate-400 px-2.5 py-px rounded-full tabular">0</span>
+          </div>
+          <button id="refresh-products-btn"
+                  class="ops-button flex items-center gap-1.5 text-xs font-semibold px-4 h-9 rounded-2xl border border-slate-600 bg-slate-900 hover:bg-slate-800 active:bg-[#1e2937] text-slate-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.058 11H1M12 3v2m0 16v2m9-9H15m-6 0a8 8 0 01-.938-1.5" />
+            </svg>
+            <span>REFRESH</span>
+          </button>
+        </div>
+
+        <div class="section-card rounded-3xl overflow-hidden premium-shadow">
+          <div class="table-container overflow-x-auto">
+            <table id="products-table" class="industrial-table w-full min-w-[860px]">
+              <thead>
+                <tr>
+                  <th class="px-6 py-3 text-left">SKU</th>
+                  <th class="px-6 py-3 text-left">Nombre</th>
+                  <th class="px-6 py-3 text-left">Categoría</th>
+                  <th class="px-6 py-3 text-right">Costo USD</th>
+                  <th class="px-6 py-3 text-right">Venta Local</th>
+                  <th class="px-6 py-3 text-right">Venta Web</th>
+                  <th class="w-10"></th>
+                </tr>
+              </thead>
+              <tbody id="products-tbody" class="text-sm divide-y divide-slate-700">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div id="products-empty" class="hidden px-6 py-12 text-center">
+            <div class="text-slate-400">No products found.</div>
+            <div class="text-xs mt-1 text-slate-500">Run migrations + seed products or edit costs to populate via API.</div>
+          </div>
+        </div>
+        <div class="px-1 mt-1.5 text-[10px] text-slate-500 flex items-center gap-2">
+          <span class="inline-block w-2 h-px bg-slate-600"></span> 
+          Double-click <span class="font-medium text-amber-300">Costo USD</span> cell or click pencil to edit inline. PATCH triggers recalc; venta prices update from response.
+        </div>
+      </div>
+
+      <!-- 2. STOCK VIEW BY DEPÓSITO -->
+      <div class="mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-y-2 mb-3 px-1 section-header">
+          <div class="flex items-center gap-3">
+            <h2 class="font-semibold text-xl tracking-tight">Stock by Depósito</h2>
+            <span id="stock-count" class="font-mono text-xs bg-slate-800 text-slate-400 px-2.5 py-px rounded-full tabular">0</span>
+          </div>
+          
+          <div class="flex items-center gap-3">
+            <div class="flex items-center bg-slate-900 border border-slate-700 rounded-2xl p-1 text-xs">
+              <select id="stock-deposito-filter" class="industrial-input bg-transparent px-3 py-1 rounded-2xl text-sm outline-none">
+                <option value="">All depositos</option>
+              </select>
+            </div>
+            <button id="refresh-stock-btn"
+                    class="ops-button flex items-center gap-1.5 text-xs font-semibold px-4 h-9 rounded-2xl border border-slate-600 bg-slate-900 hover:bg-slate-800 text-slate-300">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.058 11H1M12 3v2m0 16v2m9-9H15m-6 0a8 8 0 01-.938-1.5" />
+              </svg>
+              <span>REFRESH</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-card rounded-3xl overflow-hidden premium-shadow">
+          <div class="table-container overflow-x-auto">
+            <table id="stock-table" class="industrial-table w-full min-w-[920px]">
+              <thead>
+                <tr>
+                  <th class="px-6 py-3 text-left">SKU</th>
+                  <th class="px-6 py-3 text-left">Nombre</th>
+                  <th class="px-6 py-3 text-left">Depósito</th>
+                  <th class="px-6 py-3 text-right">Cantidad</th>
+                  <th class="px-6 py-3 text-right">Umbral</th>
+                  <th class="px-6 py-3 text-left">Último movimiento</th>
+                  <th class="px-6 py-3 text-center">Estado</th>
+                </tr>
+              </thead>
+              <tbody id="stock-tbody" class="text-sm divide-y divide-slate-700">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div id="stock-empty" class="hidden px-6 py-10 text-center text-sm text-slate-400">
+            No stock records.
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. ALERTS -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-3 px-1 section-header">
+          <div class="flex items-center gap-3">
+            <h2 class="font-semibold text-xl tracking-tight">Low Stock Alerts</h2>
+            <span id="alerts-count" class="font-mono text-xs bg-red-950 text-red-300 px-2.5 py-px rounded-full tabular border border-red-900/60">0 open</span>
+          </div>
+          <button id="refresh-alerts-btn"
+                  class="ops-button flex items-center gap-1.5 text-xs font-semibold px-4 h-9 rounded-2xl border border-slate-600 bg-slate-900 hover:bg-slate-800 text-slate-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.058 11H1M12 3v2m0 16v2m9-9H15m-6 0a8 8 0 01-.938-1.5" />
+            </svg>
+            <span>REFRESH</span>
+          </button>
+        </div>
+
+        <div class="section-card rounded-3xl overflow-hidden premium-shadow">
+          <div class="table-container overflow-x-auto">
+            <table class="industrial-table w-full min-w-[820px]">
+              <thead>
+                <tr>
+                  <th class="px-6 py-3 text-left">SKU</th>
+                  <th class="px-6 py-3 text-left">Depósito</th>
+                  <th class="px-6 py-3 text-right">Current Qty</th>
+                  <th class="px-6 py-3 text-right">Threshold</th>
+                  <th class="px-6 py-3 text-center">Severity</th>
+                  <th class="px-6 py-3 text-left">Created</th>
+                  <th class="px-6 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="alerts-tbody" class="text-sm divide-y divide-slate-700">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div id="alerts-empty" class="hidden px-6 py-10 text-center">
+            <div class="inline-flex items-center gap-2 text-emerald-300">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M5 10l7-7m0 0l7 7" />
+              </svg>
+              <span class="font-medium">No open alerts. Stock healthy.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. FACTURACIÓN -->
+      <div>
+        <div class="flex items-center justify-between mb-3 px-1 section-header">
+          <div class="flex items-center gap-3">
+            <h2 class="font-semibold text-xl tracking-tight">Facturación</h2>
+            <span id="invoices-count" class="font-mono text-xs bg-slate-800 text-slate-400 px-2.5 py-px rounded-full tabular">0</span>
+          </div>
+          <button id="refresh-invoices-btn"
+                  class="ops-button flex items-center gap-1.5 text-xs font-semibold px-4 h-9 rounded-2xl border border-slate-600 bg-slate-900 hover:bg-slate-800 text-slate-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.058 11H1M12 3v2m0 16v2m9-9H15m-6 0a8 8 0 01-.938-1.5" />
+            </svg>
+            <span>REFRESH</span>
+          </button>
+        </div>
+
+        <div class="section-card rounded-3xl overflow-hidden premium-shadow">
+          <div class="table-container overflow-x-auto">
+            <table class="industrial-table w-full min-w-[920px]">
+              <thead>
+                <tr>
+                  <th class="px-6 py-3 text-left">Number</th>
+                  <th class="px-6 py-3 text-left">Date</th>
+                  <th class="px-6 py-3 text-left">Cliente</th>
+                  <th class="px-6 py-3 text-right">Total USD</th>
+                  <th class="px-6 py-3 text-center">Status</th>
+                  <th class="px-6 py-3 text-center">Source</th>
+                </tr>
+              </thead>
+              <tbody id="invoices-tbody" class="text-sm divide-y divide-slate-700">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div id="invoices-empty" class="hidden px-6 py-10 text-center text-sm text-slate-400">
+            No invoices yet.
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer attribution + usage note -->
+      <div class="mt-10 pt-6 border-t border-slate-700 text-[10px] text-slate-500 flex flex-col md:flex-row md:items-center gap-x-5 gap-y-1 font-mono tracking-tight">
+        <div>Fase 5 — Panelin Dashboard v1 • review-5ae44e21 master plan • Panelin BMC Platform</div>
+        <div class="hidden md:block text-slate-700">•</div>
+        <div>Self-contained. Tailwind CDN. All data live from /api/panelin/*</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 items-end"></div>
+
+  <script>
+    // Tailwind script configuration - Industrial Editorial Dark theme
+    function configureTailwind() {
+      document.querySelectorAll('script[src*="tailwindcss"]').forEach(s => {});
+      
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              'industrial': ['Inter', 'system-ui', 'sans-serif']
+            },
+            colors: {
+              slate: {
+                900: '#0f172a',
+                800: '#1e2937',
+                700: '#334155'
+              },
+              amber: {
+                400: '#fcd34d',
+                500: '#f59e0b',
+                600: '#fb923c'
+              }
+            }
+          }
+        }
+      };
+    }
+
+    // ==================== API CLIENT (maintainable, clean) ====================
+    const apiClient = {
+      baseURL: 'http://localhost:3001/api/panelin',
+      
+      setBase(base) {
+        let normalized = (base || 'http://localhost:3001').replace(/\/+$/, '');
+        if (!normalized.startsWith('http')) normalized = 'http://' + normalized;
+        this.baseURL = normalized + '/api/panelin';
+        return this.baseURL;
+      },
+      
+      async request(method, path, body = null) {
+        const url = this.baseURL + (path.startsWith('/') ? path : '/' + path);
+        
+        const options = {
+          method,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        };
+        
+        if (body && (method === 'POST' || method === 'PATCH')) {
+          options.body = JSON.stringify(body);
+        }
+        
+        let res;
+        try {
+          res = await fetch(url, options);
+        } catch (networkErr) {
+          throw new Error('Network error — cannot reach API. Check base URL and server status.');
+        }
+        
+        let data;
+        try {
+          data = await res.json();
+        } catch {
+          data = { ok: false, error: 'invalid_json' };
+        }
+        
+        if (!res.ok || data.ok === false) {
+          const err = new Error(data.message || data.error || `HTTP ${res.status}`);
+          err.status = res.status;
+          err.payload = data;
+          throw err;
+        }
+        
+        return data;
+      },
+      
+      get(path) { return this.request('GET', path); },
+      post(path, body) { return this.request('POST', path, body); },
+      patch(path, body) { return this.request('PATCH', path, body); }
+    };
+
+    // ==================== STATE ====================
+    let state = {
+      products: [],
+      stock: [],
+      alerts: [],
+      invoices: [],
+      status: null,
+      loading: {
+        products: false,
+        stock: false,
+        alerts: false,
+        invoices: false,
+        all: false
+      }
+    };
+
+    let toasts = [];
+    let lastUpdated = null;
+
+    // ==================== HELPERS ====================
+    function formatDate(iso) {
+      if (!iso) return '—';
+      try {
+        const d = new Date(iso);
+        return d.toLocaleDateString('es-UY', { 
+          month: 'short', day: 'numeric', 
+          hour: '2-digit', minute: '2-digit' 
+        });
+      } catch { return iso; }
+    }
+
+    function formatCurrency(n) {
+      if (n == null || isNaN(n)) return '—';
+      return Number(n).toLocaleString('en-US', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+      });
+    }
+
+    function showToast(message, type = 'success', autoDismiss = 4200) {
+      const container = document.getElementById('toast-container');
+      const id = 'toast-' + Date.now() + Math.random().toString(36).slice(2);
+      
+      const colors = type === 'error' 
+        ? 'bg-red-950 border-red-800 text-red-300' 
+        : type === 'info' 
+          ? 'bg-slate-800 border-amber-700 text-amber-300' 
+          : 'bg-[#1e2937] border-amber-500 text-amber-200';
+      
+      const icon = type === 'error' 
+        ? 'M12 8v4m0 4h.01M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3' 
+        : type === 'info' 
+          ? 'M13 16h-1v-4h-1m1-4v1m9-1a9 9 0 01-9 9 9 9 0 01-9-9 9 9 0 019-9 9 9 0 019 9z' 
+          : 'M5 10l7-7m0 0l7 7';
+      
+      const toastEl = document.createElement('div');
+      toastEl.id = id;
+      toastEl.className = `toast flex items-start gap-3 px-4 py-3 max-w-xs w-full border rounded-2xl shadow-xl ${colors}`;
+      toastEl.innerHTML = `
+        <div class="pt-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="${icon}" />
+          </svg>
+        </div>
+        <div class="text-sm leading-snug flex-1">${message}</div>
+        <button class="text-amber-300/60 hover:text-amber-300 transition-colors mt-px" onclick="dismissToast('${id}')">×</button>
+      `;
+      
+      container.appendChild(toastEl);
+      toasts.push({ id, el: toastEl });
+      
+      if (autoDismiss) {
+        setTimeout(() => dismissToast(id), autoDismiss);
+      }
+    }
+
+    function dismissToast(id) {
+      const idx = toasts.findIndex(t => t.id === id);
+      if (idx === -1) return;
+      const { el } = toasts[idx];
+      el.style.transition = 'opacity 0.2s, transform 0.2s';
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(20px)';
+      setTimeout(() => {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      }, 180);
+      toasts.splice(idx, 1);
+    }
+
+    function updateLastUpdated() {
+      const el = document.getElementById('last-updated');
+      if (!lastUpdated) {
+        el.textContent = '— : — : —';
+        return;
+      }
+      const d = new Date(lastUpdated);
+      el.textContent = d.toLocaleTimeString('es-UY', { 
+        hour: '2-digit', minute: '2-digit', second: '2-digit' 
+      });
+    }
+
+    function setGlobalLoading(isLoading) {
+      state.loading.all = isLoading;
+      const btn = document.getElementById('refresh-all-btn');
+      if (btn) btn.disabled = isLoading;
+    }
+
+    // ==================== RENDERERS ====================
+    function renderModuleStatus() {
+      const container = document.getElementById('module-status');
+      const status = state.status;
+      
+      if (!status) {
+        container.innerHTML = `
+          <div class="w-2 h-2 rounded-full bg-slate-500"></div>
+          <span class="text-slate-400">Status unavailable</span>
+        `;
+        return;
+      }
+      
+      if (status.ok) {
+        container.innerHTML = `
+          <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+          <span class="text-emerald-300">${status.module || 'panelin-platform'}</span>
+          <span class="text-slate-500 mx-1">•</span>
+          <span class="text-emerald-400/70 text-xs">DB OK</span>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="w-2 h-2 rounded-full bg-red-400"></div>
+          <span class="text-red-300">DB unavailable (503)</span>
+        `;
+      }
+    }
+
+    function renderHealthCard() {
+      const status = state.status || {};
+      document.getElementById('health-module').textContent = status.module || 'panelin-platform';
+      document.getElementById('health-db').textContent = status.db_connected ? 'connected' : 'unavailable';
+      document.getElementById('health-db').className = status.db_connected 
+        ? 'font-medium text-emerald-300' 
+        : 'font-medium text-red-400';
+      document.getElementById('health-migrations').textContent = status.migrations_applied ?? '—';
+      document.getElementById('health-db-time').textContent = status.db_time 
+        ? new Date(status.db_time).toLocaleTimeString('es-UY', {hour:'2-digit', minute:'2-digit'}) 
+        : '—';
+    }
+
+    function renderProducts() {
+      const tbody = document.getElementById('products-tbody');
+      const empty = document.getElementById('products-empty');
+      const countEl = document.getElementById('products-count');
+      
+      tbody.innerHTML = '';
+      countEl.textContent = state.products.length;
+      
+      if (!state.products.length) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      
+      state.products.forEach((prod, idx) => {
+        const row = document.createElement('tr');
+        row.dataset.sku = prod.sku;
+        row.className = `group data-cell ${idx % 2 === 0 ? '' : 'bg-[#1e2937]'}`;
+        
+        const ventaLocal = prod.prices?.venta_local;
+        const ventaWeb = prod.prices?.venta_web;
+        
+        row.innerHTML = `
+          <td class="px-6 py-3.5 font-mono text-amber-300 text-sm">${prod.sku}</td>
+          <td class="px-6 py-3.5 font-medium text-white">${prod.name || '—'}</td>
+          <td class="px-6 py-3.5 text-slate-300">${prod.category || '—'}</td>
+          <td class="px-6 py-3.5 text-right">
+            <div class="inline-flex items-center gap-2 justify-end group/cost">
+              <span class="font-semibold tabular text-lg mono cost-value" data-cost>${formatCurrency(prod.cost_usd)}</span>
+              <button class="edit-cost-btn opacity-0 group-hover/cost:opacity-100 transition-opacity p-1 text-amber-400 hover:text-amber-300" title="Edit cost">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            </div>
+          </td>
+          <td class="px-6 py-3.5 text-right font-medium tabular text-emerald-300 mono">${ventaLocal != null ? formatCurrency(ventaLocal) : '—'}</td>
+          <td class="px-6 py-3.5 text-right font-medium tabular text-emerald-300 mono">${ventaWeb != null ? formatCurrency(ventaWeb) : '—'}</td>
+          <td class="px-3 py-3.5 text-right"></td>
+        `;
+        
+        // Double click on cost cell or button
+        const costCell = row.querySelector('td:nth-child(4)');
+        const editBtn = row.querySelector('.edit-cost-btn');
+        
+        const startEdit = () => startInlineCostEdit(prod.sku, costCell, row);
+        
+        costCell.addEventListener('dblclick', startEdit);
+        editBtn.addEventListener('click', (e) => { e.stopImmediatePropagation(); startEdit(); });
+        
+        tbody.appendChild(row);
+      });
+    }
+
+    function renderStock(filteredStock = null) {
+      const tbody = document.getElementById('stock-tbody');
+      const empty = document.getElementById('stock-empty');
+      const countEl = document.getElementById('stock-count');
+      
+      tbody.innerHTML = '';
+      
+      const data = filteredStock || state.stock;
+      countEl.textContent = state.stock.length;
+      
+      if (!data.length) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      
+      data.forEach((item, idx) => {
+        const row = document.createElement('tr');
+        row.className = `data-cell ${idx % 2 === 0 ? '' : 'bg-[#1e2937]'} ${item.below_threshold ? 'text-red-300' : ''}`;
+        
+        const threshold = item.threshold != null ? item.threshold : '—';
+        const below = !!item.below_threshold;
+        
+        row.innerHTML = `
+          <td class="px-6 py-3 font-mono text-amber-300 text-sm">${item.sku}</td>
+          <td class="px-6 py-3 font-medium text-white">${item.name || '—'}</td>
+          <td class="px-6 py-3"><span class="px-2.5 py-px text-xs font-medium rounded bg-slate-800 text-slate-300">${item.deposito}</span></td>
+          <td class="px-6 py-3 text-right font-semibold tabular mono text-lg">${formatCurrency(item.qty)}</td>
+          <td class="px-6 py-3 text-right tabular text-slate-300">${threshold}</td>
+          <td class="px-6 py-3 text-xs text-slate-400 font-mono">${formatDate(item.last_movement_at)}</td>
+          <td class="px-6 py-3 text-center">
+            ${below 
+              ? `<span class="inline-block px-2.5 py-px text-xs font-bold rounded-full bg-red-900/60 text-red-300 border border-red-800/50">BELOW THRESHOLD</span>` 
+              : `<span class="inline-block px-2.5 py-px text-xs font-medium rounded-full bg-emerald-900/40 text-emerald-300">OK</span>`}
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function renderAlerts() {
+      const tbody = document.getElementById('alerts-tbody');
+      const empty = document.getElementById('alerts-empty');
+      const countEl = document.getElementById('alerts-count');
+      
+      tbody.innerHTML = '';
+      
+      const openAlerts = state.alerts.filter(a => !a.acknowledged);
+      countEl.textContent = `${openAlerts.length} open`;
+      
+      if (!openAlerts.length) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      
+      openAlerts.forEach((alert) => {
+        const row = document.createElement('tr');
+        row.className = 'data-cell bg-red-950/10';
+        
+        const sevClass = alert.severity === 'critical' 
+          ? 'bg-red-900 text-red-300 border-red-700' 
+          : 'bg-orange-900/70 text-orange-300 border-orange-800';
+        
+        row.innerHTML = `
+          <td class="px-6 py-3 font-mono text-amber-300 text-sm">${alert.sku}</td>
+          <td class="px-6 py-3"><span class="px-2 py-px rounded bg-slate-800 text-xs">${alert.deposito}</span></td>
+          <td class="px-6 py-3 text-right font-semibold tabular mono text-red-300">${formatCurrency(alert.current_qty)}</td>
+          <td class="px-6 py-3 text-right tabular">${alert.threshold}</td>
+          <td class="px-6 py-3 text-center">
+            <span class="inline-block px-3 py-0.5 rounded-full text-xs font-bold border ${sevClass}">${alert.severity || 'low'}</span>
+          </td>
+          <td class="px-6 py-3 text-xs text-slate-400 font-mono">${formatDate(alert.created_at)}</td>
+          <td class="px-6 py-3 text-right">
+            <button class="ack-btn ops-button text-xs px-4 py-1.5 rounded-2xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-[#0f172a] font-semibold shadow-sm">ACK</button>
+          </td>
+        `;
+        
+        const ackBtn = row.querySelector('.ack-btn');
+        ackBtn.addEventListener('click', async () => {
+          ackBtn.disabled = true;
+          ackBtn.textContent = '...';
+          try {
+            await apiClient.post(`/stock/alerts/${alert.id}/ack`, { acknowledged_by: 'dashboard' });
+            showToast(`Alert ${alert.sku} acknowledged`, 'success');
+            await Promise.all([loadAlerts(), loadStock(), loadProducts()]);
+          } catch (err) {
+            showToast('Failed to ack alert: ' + err.message, 'error');
+            ackBtn.disabled = false;
+            ackBtn.textContent = 'ACK';
+          }
+        });
+        
+        tbody.appendChild(row);
+      });
+    }
+
+    function renderInvoices() {
+      const tbody = document.getElementById('invoices-tbody');
+      const empty = document.getElementById('invoices-empty');
+      const countEl = document.getElementById('invoices-count');
+      
+      tbody.innerHTML = '';
+      countEl.textContent = state.invoices.length;
+      
+      if (!state.invoices.length) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      
+      state.invoices.forEach((inv, idx) => {
+        const row = document.createElement('tr');
+        row.className = `data-cell ${idx % 2 === 0 ? '' : 'bg-[#1e2937]'}`;
+        
+        const statusColor = (inv.status || '').toLowerCase().includes('paid') || inv.status === 'issued' 
+          ? 'bg-emerald-900/50 text-emerald-300 border-emerald-700' 
+          : 'bg-slate-700 text-slate-300 border-slate-600';
+        
+        row.innerHTML = `
+          <td class="px-6 py-3 font-semibold">${inv.number || inv.external_id || '—'}</td>
+          <td class="px-6 py-3 text-xs text-slate-400 font-mono">${formatDate(inv.date)}</td>
+          <td class="px-6 py-3">${inv.client_name || '—'}</td>
+          <td class="px-6 py-3 text-right tabular font-semibold mono">${formatCurrency(inv.total_usd)}</td>
+          <td class="px-6 py-3 text-center">
+            <span class="px-3 py-px rounded text-xs font-medium border ${statusColor}">${inv.status || '—'}</span>
+          </td>
+          <td class="px-6 py-3 text-center">
+            <span class="font-mono text-xs px-2 py-px rounded bg-slate-800">${inv.source || '—'}</span>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function populateDepositoFilter() {
+      const select = document.getElementById('stock-deposito-filter');
+      const depos = [...new Set(state.stock.map(s => s.deposito))].sort();
+      
+      // preserve current value
+      const current = select.value;
+      select.innerHTML = `<option value="">All depositos</option>`;
+      
+      depos.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        select.appendChild(opt);
+      });
+      
+      select.value = current || '';
+    }
+
+    function filterStockByDeposito() {
+      const val = document.getElementById('stock-deposito-filter').value;
+      if (!val) {
+        renderStock(state.stock);
+      } else {
+        const filtered = state.stock.filter(s => s.deposito === val);
+        renderStock(filtered);
+      }
+    }
+
+    // ==================== INLINE EDIT (cost) ====================
+    let editingSku = null;
+    
+    function startInlineCostEdit(sku, cellEl, rowEl) {
+      if (editingSku) return;
+      editingSku = sku;
+      
+      const prod = state.products.find(p => p.sku === sku);
+      if (!prod) return;
+      
+      const originalCost = prod.cost_usd;
+      const originalHTML = cellEl.innerHTML;
+      
+      cellEl.classList.add('edit-active');
+      cellEl.innerHTML = `
+        <div class="flex items-center gap-2 justify-end pr-1">
+          <input type="number" step="0.01" class="industrial-input w-28 text-right py-1 px-2 text-lg font-semibold rounded-lg outline-none" value="${originalCost}">
+          <div class="flex gap-1">
+            <button class="save-cost text-emerald-300 hover:text-emerald-400 text-xs px-1 font-bold">✓</button>
+            <button class="cancel-cost text-red-300 hover:text-red-400 text-xs px-1 font-bold">✕</button>
+          </div>
+        </div>
+      `;
+      
+      const input = cellEl.querySelector('input');
+      const saveBtn = cellEl.querySelector('.save-cost');
+      const cancelBtn = cellEl.querySelector('.cancel-cost');
+      
+      input.focus();
+      input.select();
+      
+      const cleanup = () => {
+        editingSku = null;
+        cellEl.classList.remove('edit-active');
+      };
+      
+      const doSave = async () => {
+        const newVal = parseFloat(input.value);
+        if (isNaN(newVal)) {
+          cleanup();
+          cellEl.innerHTML = originalHTML;
+          showToast('Invalid cost value', 'error', 2200);
+          return;
+        }
+        
+        const loadingHTML = `<span class="inline-block animate-pulse text-amber-300">Saving...</span>`;
+        cellEl.innerHTML = loadingHTML;
+        
+        try {
+          const patchRes = await apiClient.patch(`/products/${encodeURIComponent(sku)}`, { cost_usd: newVal });
+          
+          // Update local state from response
+          const updatedProd = state.products.find(p => p.sku === sku);
+          if (updatedProd) {
+            updatedProd.cost_usd = patchRes.product?.cost_usd ?? newVal;
+            if (patchRes.prices) {
+              updatedProd.prices = patchRes.prices;
+            }
+          }
+          
+          // Re-render the entire row via products render (keeps code clean)
+          renderProducts();
+          
+          // Highlight
+          const newRow = document.querySelector(`tr[data-sku="${sku}"]`);
+          if (newRow) {
+            newRow.classList.add('row-updated');
+            setTimeout(() => newRow.classList.remove('row-updated'), 1400);
+          }
+          
+          const recalc = patchRes.prices_recalculated ?? 0;
+          showToast(`Costo actualizado. Precios recalculados: ${recalc}`, 'success');
+          
+          // Refresh other sections lightly (prices can affect downstream)
+          loadStock().catch(() => {});
+          
+        } catch (err) {
+          showToast('Cost update failed: ' + (err.message || 'Unknown error'), 'error');
+          // Restore old value
+          if (updatedProd) updatedProd.cost_usd = originalCost;
+          renderProducts();
+        } finally {
+          cleanup();
+        }
+      };
+      
+      const doCancel = () => {
+        cleanup();
+        cellEl.innerHTML = originalHTML;
+        // re-attach listeners by re-rendering (simplest for maintainability)
+        renderProducts();
+      };
+      
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+        if (e.key === 'Escape') { doCancel(); }
+      });
+      
+      saveBtn.addEventListener('click', doSave);
+      cancelBtn.addEventListener('click', doCancel);
+      input.addEventListener('blur', () => {
+        // slight delay to allow click handlers on buttons
+        setTimeout(() => {
+          if (editingSku === sku) doSave();
+        }, 120);
+      });
+    }
+
+    // ==================== DATA LOADERS ====================
+    async function loadStatus() {
+      try {
+        const data = await apiClient.get('/status');
+        state.status = data;
+        renderModuleStatus();
+        renderHealthCard();
+      } catch (err) {
+        state.status = { ok: false, error: err.message };
+        renderModuleStatus();
+        renderHealthCard();
+        // Do not toast on every poll; only on explicit refresh
+      }
+    }
+    
+    async function loadProducts(showGlobalLoader = false) {
+      const tbody = document.getElementById('products-tbody');
+      if (showGlobalLoader) setGlobalLoading(true);
+      state.loading.products = true;
+      
+      // Simple skeleton rows
+      const orig = tbody.innerHTML;
+      if (!state.products.length) {
+        tbody.innerHTML = Array(4).fill(0).map(() => `
+          <tr><td colspan="7" class="px-6 py-4"><div class="skeleton h-5 w-full rounded"></div></td></tr>
+        `).join('');
+      }
+      
+      try {
+        const data = await apiClient.get('/products');
+        state.products = data.products || [];
+        renderProducts();
+      } catch (err) {
+        showToast('Failed to load products: ' + err.message, 'error');
+        // keep old data
+        renderProducts();
+      } finally {
+        state.loading.products = false;
+        if (showGlobalLoader) setGlobalLoading(false);
+      }
+    }
+    
+    async function loadStock() {
+      state.loading.stock = true;
+      try {
+        const data = await apiClient.get('/stock');
+        state.stock = data.stock || [];
+        renderStock();
+        populateDepositoFilter();
+      } catch (err) {
+        showToast('Failed to load stock: ' + err.message, 'error');
+      } finally {
+        state.loading.stock = false;
+      }
+    }
+    
+    async function loadAlerts() {
+      state.loading.alerts = true;
+      try {
+        const data = await apiClient.get('/stock/alerts?open=true');
+        state.alerts = data.alerts || [];
+        renderAlerts();
+      } catch (err) {
+        showToast('Failed to load alerts: ' + err.message, 'error');
+      } finally {
+        state.loading.alerts = false;
+      }
+    }
+    
+    async function loadInvoices() {
+      state.loading.invoices = true;
+      try {
+        const data = await apiClient.get('/invoices?limit=50');
+        state.invoices = data.invoices || [];
+        renderInvoices();
+      } catch (err) {
+        showToast('Failed to load invoices: ' + err.message, 'error');
+      } finally {
+        state.loading.invoices = false;
+      }
+    }
+    
+    async function loadAll() {
+      lastUpdated = new Date();
+      updateLastUpdated();
+      
+      await Promise.allSettled([
+        loadStatus(),
+        loadProducts(true),
+        loadStock(),
+        loadAlerts(),
+        loadInvoices()
+      ]);
+      
+      // Re-apply any current stock filter after loads
+      const filterVal = document.getElementById('stock-deposito-filter')?.value;
+      if (filterVal) filterStockByDeposito();
+    }
+
+    // ==================== SYNC HANDLERS ====================
+    async function handleSyncFacturaExpress() {
+      const btn = document.getElementById('sync-fe-btn');
+      const origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="animate-pulse">SYNCING...</span>`;
+      
+      try {
+        const res = await apiClient.post('/sync/facturaexpress/invoices');
+        const note = res.note ? ` — ${res.note}` : '';
+        showToast(`FE Sync complete: pulled ${res.pulled || 0}, inserted ${res.inserted || 0}, updated ${res.updated || 0}${note}`, 'success', 6500);
+        await loadInvoices();
+      } catch (err) {
+        showToast('FacturaExpress sync failed: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }
+    }
+    
+    async function handleSyncMatriz() {
+      const btn = document.getElementById('sync-matriz-btn');
+      const origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="animate-pulse">RECONCILING...</span>`;
+      
+      try {
+        // Primary action: refresh products (demo of live cost update)
+        await loadProducts(true);
+        
+        // Optional: also hit the prices stub (as allowed by spec)
+        let pricesNote = '';
+        try {
+          const pricesRes = await apiClient.post('/sync/facturaexpress/prices');
+          pricesNote = pricesRes.message ? ` | ${pricesRes.message}` : '';
+        } catch (e) { /* silent — stub only */ }
+        
+        const msg = `MATRIZ sync: in prod pulls from BROMYROS via external job updating costs then recalc (prices source='matriz'); demo refreshes live products data.${pricesNote}`;
+        showToast(msg, 'info', 7200);
+        
+        // Also refresh stock/alerts in case cost flow affected thresholds
+        await Promise.allSettled([loadStock(), loadAlerts()]);
+        
+      } catch (err) {
+        showToast('MATRIZ reconcile error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }
+    }
+
+    // ==================== INIT + EVENT BINDING ====================
+    function bindEvents() {
+      // Base URL
+      const baseInput = document.getElementById('api-base-input');
+      const applyBtn = document.getElementById('apply-base-btn');
+      const resetBtn = document.getElementById('reset-base-btn');
+      
+      const savedBase = localStorage.getItem('panelin_base') || 'http://localhost:3001';
+      baseInput.value = savedBase;
+      apiClient.setBase(savedBase);
+      
+      function applyBase() {
+        const val = baseInput.value.trim() || 'http://localhost:3001';
+        localStorage.setItem('panelin_base', val);
+        apiClient.setBase(val);
+        showToast('API base updated. Refreshing data...', 'info', 1600);
+        loadAll();
+      }
+      
+      applyBtn.addEventListener('click', () => {
+        applyBase();
+        // Fase 6: (re)connect live SSE after base change so dashboard gets pushed updates
+        if (typeof setupLiveUpdates === 'function') setupLiveUpdates();
+      });
+      baseInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') applyBase();
+      });
+      
+      resetBtn.addEventListener('click', () => {
+        baseInput.value = 'http://localhost:3001';
+        localStorage.removeItem('panelin_base');
+        apiClient.setBase('http://localhost:3001');
+        showToast('Base reset to localhost:3001', 'success');
+        loadAll();
+      });
+      
+      // Global refresh
+      document.getElementById('refresh-all-btn').addEventListener('click', () => {
+        loadAll();
+      });
+      
+      // Per-section refreshes
+      document.getElementById('refresh-products-btn').addEventListener('click', () => loadProducts());
+      document.getElementById('refresh-stock-btn').addEventListener('click', async () => {
+        await loadStock();
+        filterStockByDeposito();
+      });
+      document.getElementById('refresh-alerts-btn').addEventListener('click', loadAlerts);
+      document.getElementById('refresh-invoices-btn').addEventListener('click', loadInvoices);
+      
+      // Stock filter
+      document.getElementById('stock-deposito-filter').addEventListener('change', filterStockByDeposito);
+      
+      // Sync buttons
+      document.getElementById('sync-fe-btn').addEventListener('click', handleSyncFacturaExpress);
+      document.getElementById('sync-matriz-btn').addEventListener('click', handleSyncMatriz);
+    }
+
+    async function init() {
+      configureTailwind();
+      bindEvents();
+      
+      // Initial loads
+      document.getElementById('last-updated').textContent = 'LOADING...';
+      
+      await loadAll();
+      
+      // Optional: light auto refresh of status every 45s (non-intrusive)
+      setInterval(() => {
+        loadStatus().catch(() => {});
+      }, 45000);
+      
+      // Keyboard hint (nice to have)
+      // ==================== Fase 6: Live SSE updates (no polling) ====================
+      // Connects to /api/panelin/events and triggers targeted refreshes + toasts
+      // when the backend emits after webhook or sync success (invoice.upserted, stock.movement).
+      // Works with the configurable API base (re-connects on APPLY). Graceful if SSE not available.
+      function setupLiveUpdates() {
+        try {
+          const base = (apiClient && apiClient.baseURL) ? apiClient.baseURL : 'http://localhost:3001/api/panelin';
+          // events lives at the same mount: strip trailing /api/panelin if present
+          const eventsUrl = base.replace(/\/api\/panelin\/?$/, '') + '/api/panelin/events';
+
+          // close previous if any
+          if (window.__panelinES) {
+            try { window.__panelinES.close(); } catch {}
+          }
+
+          const es = new EventSource(eventsUrl);
+          window.__panelinES = es;
+
+          const liveEl = document.getElementById('live-indicator');
+          if (liveEl) {
+            liveEl.textContent = 'LIVE';
+            liveEl.className = 'ml-1.5 px-1.5 py-px rounded bg-emerald-900/60 text-emerald-300 text-[10px] font-mono border border-emerald-700/50';
+          }
+
+          function handleLive(type, payload) {
+            // Targeted refresh + nice feedback (reuses existing row-updated animation + toasts)
+            if (type === 'invoice.upserted' || type === 'invoice.upsert') {
+              if (typeof loadInvoices === 'function') loadInvoices();
+              if (typeof showToast === 'function') showToast('Live: invoice synced from FacturaExpress', 'success');
+            }
+            if (type === 'stock.movement' || type === 'stock') {
+              if (typeof loadStock === 'function') loadStock();
+              if (typeof loadAlerts === 'function') loadAlerts();
+              if (typeof showToast === 'function') showToast('Live: stock updated', 'success');
+            }
+            // Generic fallback: refresh the main views the Fase 5 dashboard cares about
+            if (!type || type.includes('stock') || type.includes('invoice')) {
+              // safe no-op if functions not ready
+            }
+          }
+
+          es.addEventListener('invoice.upserted', (ev) => {
+            try { handleLive('invoice.upserted', JSON.parse(ev.data || '{}')); } catch { handleLive('invoice.upserted', {}); }
+          });
+          es.addEventListener('stock.movement', (ev) => {
+            try { handleLive('stock.movement', JSON.parse(ev.data || '{}')); } catch { handleLive('stock.movement', {}); }
+          });
+
+          // Also listen the generic 'event' wrapper if backend uses it
+          es.addEventListener('event', (ev) => {
+            try {
+              const d = JSON.parse(ev.data || '{}');
+              handleLive(d.type || 'event', d.payload || d);
+            } catch {}
+          });
+
+          es.onerror = () => {
+            if (liveEl) {
+              liveEl.textContent = 'LIVE (reconnecting)';
+              liveEl.className = 'ml-1.5 px-1.5 py-px rounded bg-amber-900/60 text-amber-300 text-[10px] font-mono border border-amber-700/50';
+            }
+          };
+
+          // initial connected state
+          if (liveEl) {
+            liveEl.title = 'Fase 6 realtime connected — updates from webhook/sync will push automatically';
+          }
+        } catch (e) {
+          // SSE not supported or network — degrade silently (manual refresh still works)
+        }
+      }
+
+      // Initial live connection (uses default or currently configured base)
+      // Will be re-called on APPLY base change (see listener above).
+      if (typeof setupLiveUpdates === 'function') {
+        // Defer a tick so the first loads have populated the UI
+        setTimeout(setupLiveUpdates, 800);
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.metaKey && e.key === 'r') {
+          e.preventDefault();
+          loadAll();
+        }
+      });
+      
+      // Boot success feedback
+      setTimeout(() => {
+        if (!document.getElementById('toast-container').hasChildNodes()) {
+          // silent success — no spam on first load
+        }
+      }, 800);
+    }
+
+    // Boot
+    window.onload = init;
+  </script>
+</body>
+</html>

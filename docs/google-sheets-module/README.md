@@ -25,6 +25,8 @@ Single entry point for all **Google Sheets–related** functionality: mapping, s
 | **Variables extraíbles + mapeo 1:1** | [VARIABLES-Y-MAPEO-UNO-A-UNO.md](VARIABLES-Y-MAPEO-UNO-A-UNO.md) | Lista por workbook/tab, campo canónico, consumidor API/UI/OmniCRM; plantilla de verificación fila a fila. |
 | **Mapeo preciso (código)** | [MAPPER-PRECISO-PLANILLAS-CODIGO.md](MAPPER-PRECISO-PLANILLAS-CODIGO.md) | Fuente única desde `server/config.js` + `bmcDashboard.js`: env, pestaña, fila de header, columnas y sinónimos `findKey`. |
 | **Sync full team (quién accede a qué)** | [SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md](SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md) | Dashboard, API, Calculadora, GPT, OmniCRM: rutas y planillas para mantener todo alineado. |
+| **Cotizar Button Workflow** | [COTIZAR-BUTTON-WORKFLOW.md](COTIZAR-BUTTON-WORKFLOW.md) | Botón "Cotizar" en la planilla 2.0 Administrador de Cotizaciones. Genera presupuesto automático + PDF + explicación para el comprador. |
+| **Cotizar Sidebar (UI spec + proposal)** | [preview-sidebar-cotizar.html](preview-sidebar-cotizar.html) + [COTIZAR-BUTTON-SIDEBAR-PRODUCTION-PROPOSAL.md](COTIZAR-BUTTON-SIDEBAR-PRODUCTION-PROPOSAL.md) | Mockup interactivo pulido (post "a y b") + propuesta completa de arquitectura, columnas, integración con orchestrator y plan de implementación real en Apps Script. |
 
 ---
 
