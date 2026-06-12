@@ -17,6 +17,7 @@
 // Exit: 0 = green, 1 = red.
 // ═══════════════════════════════════════════════════════════════════════════
 import { PERFIL_TECHO } from "../../src/data/constants.js";
+import { resolveSKU_techo } from "../../src/utils/calculations.js";
 
 // round half up to 4 decimals (Matriz convention for this family)
 const r4 = (n) => Math.round((n + Number.EPSILON) * 1e4) / 1e4;
@@ -54,23 +55,18 @@ checks.push({ name: "(a) GSDECAM100 present with corrected SKU", expected: "GSDE
 checks.push({ name: "(a) GSDECAM100 web → 46.046 ex IVA", expected: 46.046, actual: r4(gs100?.web) });
 checks.push({ name: "(a) GSDECAM100 venta → 39.468 ex IVA", expected: 39.468, actual: r4(gs100?.venta) });
 
-// ── PIR lateral-cámara regression guard (DECISIÓN ABIERTA) ──────────────────
-// Al reemplazar el `_all` de ISODEC_PIR por espesores EPS 100/150/200/250, los
-// paneles PIR reales (50/80/120 mm) ya NO resuelven gotero lateral de cámara:
-// `resolveSKU_techo` devuelve null → la línea se omite del BOM (sin crash).
-// Este assert FIJA ese estado para que no cambie en silencio. Si Matias decide
-// restaurar el `_all` o mapear PIR a las medidas EPS, actualizar este check.
+// ── PIR lateral-cámara fallback (decisión take-control 11/06) ───────────────
+// PIR no tiene fila propia de este accesorio en la Matriz; se restauró el
+// fallback `_all` con SKU corregido GLDCAMPIR para que PIR 50/80/120 sigan
+// resolviendo la línea del BOM (sin reintroducir el SKU genérico GLDCAM-DC).
 const pir = PERFIL_TECHO.gotero_lateral_camara.ISODEC_PIR;
+checks.push({ name: "(PIR) `_all` fallback con SKU corregido GLDCAMPIR", expected: "GLDCAMPIR", actual: pir?._all?.sku });
 checks.push({
-  name: "(PIR) 50/80/120 mm NO resuelven lateral cámara (estado actual, decisión abierta)",
-  expected: "none",
-  actual: [50, 80, 120].filter((e) => pir?.[e] !== undefined).join(",") || "none",
+  name: "(PIR) lateral cámara 80 mm resuelve vía `_all` (web 30.92)",
+  expected: 30.92,
+  actual: r4(resolveSKU_techo("gotero_lateral_camara", "ISODEC_PIR", 80)?.web),
 });
-checks.push({
-  name: "(PIR) `_all` ausente en ISODEC_PIR lateral cámara (colapso removido)",
-  expected: true,
-  actual: pir?._all === undefined,
-});
+checks.push({ name: "(PIR) sin reintroducir el SKU genérico GLDCAM-DC", expected: true, actual: pir?._all?.sku !== "GLDCAM-DC" });
 
 let failed = 0;
 for (const c of checks) {

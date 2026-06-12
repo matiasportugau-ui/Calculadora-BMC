@@ -301,15 +301,12 @@ export const PERFIL_TECHO = {
       200: { sku: "GLDCAM200", venta: null, web: 43.274, costo: null, largo: 3.0 },
       250: { sku: "GLDCAM250", venta: null, web: 37.59,  costo: null, largo: 3.0 },
     },
-    // ISODEC_PIR comparte el producto de cámara (Matriz: SKU único por espesor de barra 100–250).
-    // duda abierta: paneles PIR 50/80/120 ya no resuelven gotero lateral de cámara (antes `_all`);
-    // confirmar con Ramiro si mapean a estas medidas EPS o son producto aparte.
-    ISODEC_PIR: {
-      100: { sku: "GLDCAM100", venta: null, web: 27.664, costo: null, largo: 3.0 },
-      150: { sku: "GLDCAM150", venta: null, web: 28.91,  costo: null, largo: 3.0 },
-      200: { sku: "GLDCAM200", venta: null, web: 43.274, costo: null, largo: 3.0 },
-      250: { sku: "GLDCAM250", venta: null, web: 37.59,  costo: null, largo: 3.0 },
-    },
+    // ISODEC_PIR: los paneles PIR (50/80/120 mm) no tienen fila propia de "gotero lateral
+    // de cámara" en la Matriz (el producto solo existe en medidas EPS 100–250). Se mantiene un
+    // fallback `_all` con el precio genérico previo del repo (NO inventado) y SKU corregido
+    // `GLDCAMPIR`, para no perder la línea del BOM en cotizaciones PIR (decisión 11/06, Matias:
+    // restaurar fallback en lugar de dejar PIR sin accesorio). venta/costo = valores previos del repo.
+    ISODEC_PIR: { _all: { sku: "GLDCAMPIR", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
   },
   gotero_superior: {
     ISOROOF: {
