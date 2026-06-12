@@ -415,7 +415,7 @@ export function useAdminCotizaciones() {
     return { ok: true };
   }, [token, approve, markEnviado, patchCotizacion, showToast]);
 
-  const regenerateBorrador = useCallback(async (_row) => {
+  const regenerateBorrador = useCallback(async () => {
     showToast("Regeneración por fila no disponible: vaciá la respuesta y usá Generar IA en la barra superior.");
     return { ok: false, data: { error: "per_row_regeneration_not_supported" } };
   }, [showToast]);
