@@ -211,18 +211,22 @@ export const facturaExpress = {
    */
   verifyWebhookSignature(rawBody, signatureHeader) {
     const secret = config.facturaexpressWebhookSecret || process.env.FACTURAEXPRESS_WEBHOOK_SECRET;
-    if (!secret) return { skipped: true, ok: true };
+    if (!secret) {
+      if (config.appEnv === "production") {
+        return { skipped: false, ok: false, reason: "missing_secret" };
+      }
+      return { skipped: true, ok: true };
+    }
 
     try {
       // Ejemplo HMAC (muchos proveedores usan esto)
       const expectedHex = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
-      const expected = "sha256=" + expectedHex;
 
       // Normalize incoming: strip common "sha256=" prefix if present
       let incoming = (signatureHeader || "").toString().trim();
       if (incoming.toLowerCase().startsWith("sha256=")) incoming = incoming.slice(7);
 
-      const expBuf = Buffer.from(expected);
+      const expBuf = Buffer.from(expectedHex);
       const inBuf = Buffer.from(incoming);
 
       // Guard length (timingSafeEqual requires equal length or throws)

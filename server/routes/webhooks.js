@@ -36,7 +36,7 @@ router.post("/facturaexpress", async (req, res, next) => {
     // Verificación de firma (si está configurado el secreto)
     const verification = facturaExpress.verifyWebhookSignature(raw, signature);
     if (!verification.skipped && !verification.ok) {
-      req.log?.warn({ reason: "invalid_signature" }, "FacturaExpress webhook: firma inválida");
+      req.log?.warn({ reason: verification.reason || "invalid_signature" }, "FacturaExpress webhook: firma inválida");
       return res.status(401).json({ ok: false, error: "invalid_signature" });
     }
 

@@ -39,6 +39,22 @@ export default function createPanelinRouter(config, logger = console) {
     next();
   });
 
+  router.use((req, res, next) => {
+    if (!["POST", "PATCH", "PUT", "DELETE"].includes(req.method)) return next();
+
+    const token = String(config.apiAuthToken || "").trim();
+    if (!token) {
+      return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+    }
+
+    const auth = String(req.headers.authorization || "");
+    const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+    const xKey = String(req.headers["x-api-key"] || "");
+    if (bearer === token || xKey === token) return next();
+
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  });
+
   function getPool() {
     const url = config.databaseUrl || process.env.DATABASE_URL || "";
     return getPanelinPool(url);
