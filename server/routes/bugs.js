@@ -63,14 +63,18 @@ async function getSheets() {
   return google.sheets({ version: "v4", auth: authClient });
 }
 
-function makeBugId() {
-  const d = new Date();
+function makeBugId(now = new Date()) {
+  const d = now instanceof Date ? now : new Date(now);
   const stamp = d.toISOString().replace(/[-:T]/g, "").slice(0, 14);
   const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
   return `BUG-${stamp}-${rnd}`;
 }
 
-export function createBugsRouter(config) {
+export function createBugsRouter(config, deps = {}) {
+  const getSheetsImpl = deps.getSheets || getSheets;
+  const uploadBugScreenshotToGcsImpl = deps.uploadBugScreenshotToGcs || uploadBugScreenshotToGcs;
+  const makeBugIdImpl = deps.makeBugId || makeBugId;
+  const nowIso = deps.nowIso || (() => new Date().toISOString());
   const router = Router();
 
   // POST /api/bugs/report  (auth is intentionally soft/optional for this path)
@@ -112,13 +116,13 @@ export function createBugsRouter(config) {
 
     let sheets;
     try {
-      sheets = await getSheets();
+      sheets = await getSheetsImpl();
     } catch (e) {
       return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message });
     }
 
-    const id = makeBugId();
-    const now = new Date().toISOString();
+    const id = makeBugIdImpl();
+    const now = nowIso();
     const safeShort = sanitizeCellValue(String(shortDescription).slice(0, 300));
     const safeDetails = sanitizeCellValue(String(details || "").slice(0, 2000));
     const safeUrl = sanitizeCellValue(String(url || ""));
@@ -131,7 +135,7 @@ export function createBugsRouter(config) {
     if (finalContext.screenshotDataUrl && config.gcsQuotesBucket) {
       try {
         const shotFilename = `bug-${id}.jpg`;
-        const shotUrl = await uploadBugScreenshotToGcs(finalContext.screenshotDataUrl, shotFilename, config.gcsQuotesBucket);
+        const shotUrl = await uploadBugScreenshotToGcsImpl(finalContext.screenshotDataUrl, shotFilename, config.gcsQuotesBucket);
         if (shotUrl) {
           finalContext.screenshotUrl = shotUrl;
           delete finalContext.screenshotDataUrl;
@@ -218,7 +222,7 @@ export function createBugsRouter(config) {
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
 
     let sheets;
-    try { sheets = await getSheets(); } catch (e) {
+    try { sheets = await getSheetsImpl(); } catch (e) {
       return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message });
     }
 
