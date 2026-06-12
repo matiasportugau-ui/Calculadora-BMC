@@ -37,7 +37,7 @@ export function p(item) {
 export function pIVA(item) { return +(p(item) * IVA_MULT).toFixed(2); }
 export function setListaPrecios(lista) { LISTA_ACTIVA = lista; }
 
-// ── §3 PANEL DATA ────────────────────────────────────────────────────────────
+// ── §3 PANEL DATA ────────────────────────────────════════════════════════════
 // Todos los precios SIN IVA. IVA se aplica UNA VEZ al final.
 //
 // Semántica por panel / espesor (NO intercambiar conceptos):
@@ -151,9 +151,17 @@ export const PANELS_PARED = {
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
+  /**
+   * ISOFRIG — panel frigorífico PIR (Kingspan/Bromyros). Carga WOLF-2026-0001 (ledger BUG-TRIAGE-RAMIRO).
+   * - Núcleo PIR en TODOS los espesores y au 1.10 m (1100 mm): ficha oficial
+   *   https://kingspan.com.uy/productos-kingspan/panel-isofrig (validada 12/06/2026).
+   *   OJO: la build legacy traía au 1.14 (copiado de ISOPANEL) — corregido contra ficha.
+   * - lmin/lmax: la ficha no publica largos; se conserva el precedente de la build legacy (2.3–14).
+   * - Precios: venta/web/costo cargados de la matriz de precios validada.
+   */
   ISOFRIG_PIR: {
     label: "ISOFRIG PIR", sub: "Cámaras Frigoríficas", tipo: "pared",
-    au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
+    au: 1.10, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
     esp: {
       40:  { venta: 45.36, web: 55.3384, costo: 35.00, ap: null },
       60:  { venta: 51.55, web: 62.8919, costo: 38.00, ap: null },
@@ -384,7 +392,7 @@ export const PERFIL_PARED = {
       150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
       200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
       // 250mm usa intencionalmente el mismo SKU y precio que 200mm (PU200MM).
-      // El proveedor (Bromyros) no diferencia perfil U entre 200 y 250mm en su lista de precios;
+      // El proveedor (Bromyros) no diferencia perfil U entre 200 and 250mm en su lista de precios;
       // ambos espesores usan el mismo perfil comercial. Verificar en MATRIZ si esto cambia.
       250: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
     },
@@ -393,10 +401,15 @@ export const PERFIL_PARED = {
       80:  { sku: "PU80MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
     },
+    /**
+     * ISOFRIG (WOLF-2026-0001): el perfil U es dimensional — mismos SKUs/precios PU* que
+     * ISOPANEL/ISOWALL donde el espesor coincide (Shopify `perfiles-u` confirma compatibilidad
+     * ISOPANEL-ISOWALL-ISOFRIG).
+     */
     ISOFRIG: {
       40:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
       60:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
-      80:  { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+      80:  { sku: "PU80MM",  venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
       120: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
       150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },

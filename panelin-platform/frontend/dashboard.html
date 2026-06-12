@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panelin BMC Platform v1 • Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+    
+    :root {
+      --industrial-orange: #f59e0b;
+    }
+    
+    body {
+      font-family: 'Inter', system_ui, sans-serif;
+    }
+    
+    .heading-font {
+      font-family: 'Space Grotesk', 'Inter', sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+    }
+
+    .industrial-dark {
+      background-color: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .panel {
+      background-color: #1e2937;
+      border: 1px solid #334155;
+    }
+
+    .section-header {
+      font-size: 0.875rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .data-table th {
+      font-weight: 500;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-weight: 600;
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .industrial-accent {
+      color: #f59e0b;
+    }
+
+    .status-low {
+      background-color: #451a03;
+      color: #f59e0b;
+      font-size: 0.75rem;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+
+    .status-ok {
+      background-color: #052e16;
+      color: #4ade80;
+      font-size: 0.75rem;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+
+    .editable-input {
+      background: transparent;
+      border: 1px solid #475569;
+      color: #e2e8f0;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      width: 100%;
+      font-size: 0.875rem;
+    }
+
+    .editable-input:focus {
+      outline: none;
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+    }
+
+    .nav-active {
+      border-bottom: 2px solid #f59e0b;
+      color: #f59e0b;
+      font-weight: 600;
+    }
+
+    .metric-card {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .metric-card:hover {
+      transform: translateY(-1px);
+    }
+
+    .data-row:hover {
+      background-color: #334155;
+    }
+
+    .industrial-grid {
+      background-image: 
+        linear-gradient(#334155 1px, transparent 1px),
+        linear-gradient(90deg, #334155 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.06;
+    }
+  </style>
+</head>
+<body class="industrial-dark min-h-screen">
+  <!-- Top Nav -->
+  <nav class="border-b border-slate-700 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-screen-2xl mx-auto">
+      <div class="px-8 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-x-3">
+          <div class="w-9 h-9 bg-amber-500 flex items-center justify-center rounded-xl">
+            <i class="fa-solid fa-industry text-slate-900 text-2xl"></i>
+          </div>
+          <div>
+            <span class="heading-font text-2xl font-semibold tracking-tighter">PANELIN</span>
+            <span class="text-amber-400 text-sm font-mono tracking-[3px] ml-0.5">BMC</span>
+          </div>
+          <div class="ml-2 px-3 py-1 bg-slate-800 text-amber-400 text-xs font-mono rounded-full border border-slate-700 flex items-center gap-x-1.5">
+            <div class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></div>
+            <span class="font-medium">v1.0</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-x-2 text-sm">
+          <div class="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-2xl flex items-center text-xs">
+            <i class="fa-solid fa-database mr-2 text-emerald-400"></i>
+            <span class="font-mono text-emerald-300">DB CONNECTED</span>
+          </div>
+          <div onclick="refreshAllData()" 
+               class="flex items-center gap-x-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 rounded-2xl text-sm font-medium cursor-pointer active:scale-[0.985]">
+            <i class="fa-solid fa-sync fa-fw"></i>
+            <span>Refresh</span>
+          </div>
+          <div class="px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-2xl text-xs flex items-center">
+            <span class="font-mono text-slate-400">localhost:3001</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-screen-2xl mx-auto px-8 pt-8 pb-12">
+    
+    <!-- Header -->
+    <div class="flex items-end justify-between mb-8">
+      <div>
+        <div class="flex items-center gap-x-3">
+          <h1 class="heading-font text-5xl font-semibold tracking-tighter">Dashboard</h1>
+          <div class="px-4 py-1.5 bg-amber-500/10 text-amber-400 text-sm font-medium rounded-3xl border border-amber-500/30 flex items-center gap-x-2">
+            <i class="fa-solid fa-check-double"></i>
+            <span class="font-semibold">Fase 4 • Live</span>
+          </div>
+        </div>
+        <p class="text-slate-400 mt-1 text-lg">Central product knowledge base • Stock • Facturación</p>
+      </div>
+      
+      <div class="flex items-center gap-x-2">
+        <button onclick="syncAllFromFacturaExpress()" 
+                class="flex items-center gap-x-2.5 px-5 py-2.5 bg-white text-slate-900 font-semibold rounded-3xl text-sm hover:bg-amber-50 active:bg-white transition-all shadow-inner">
+          <i class="fa-solid fa-sync fa-fw"></i>
+          <span>Sync desde FacturaExpress</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Strip -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="panel rounded-3xl p-5 metric-card">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="section-header">Productos</div>
+            <div id="kpi-products" class="metric-value mt-1 text-4xl font-semibold tabular-nums">—</div>
+          </div>
+          <i class="fa-solid fa-boxes text-3xl text-slate-600"></i>
+        </div>
+        <div class="mt-2 text-xs text-emerald-400 flex items-center gap-1">
+          <i class="fa-solid fa-arrow-trend-up"></i> 
+          <span id="kpi-products-trend">Synced from MATRIZ</span>
+        </div>
+      </div>
+      
+      <div class="panel rounded-3xl p-5 metric-card">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="section-header">Stock Total</div>
+            <div id="kpi-stock" class="metric-value mt-1 text-4xl font-semibold tabular-nums">—</div>
+          </div>
+          <i class="fa-solid fa-warehouse text-3xl text-slate-600"></i>
+        </div>
+        <div class="mt-2 text-xs flex items-center gap-1">
+          <span id="kpi-alerts" class="px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-full text-[10px] font-medium">— alertas</span>
+        </div>
+      </div>
+      
+      <div class="panel rounded-3xl p-5 metric-card">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="section-header">Facturas</div>
+            <div id="kpi-invoices" class="metric-value mt-1 text-4xl font-semibold tabular-nums">—</div>
+          </div>
+          <i class="fa-solid fa-file-invoice-dollar text-3xl text-slate-600"></i>
+        </div>
+        <div class="mt-2 text-xs text-emerald-400 flex items-center gap-1">
+          <span id="kpi-invoices-source">Desde FacturaExpress + manual</span>
+        </div>
+      </div>
+      
+      <div class="panel rounded-3xl p-5 metric-card border border-amber-500/30">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="section-header">Última Sync</div>
+            <div id="kpi-last-sync" class="mt-1 text-sm font-medium text-slate-300">—</div>
+          </div>
+          <i class="fa-solid fa-clock text-3xl text-amber-400"></i>
+        </div>
+        <div onclick="refreshAllData()" class="mt-3 inline-flex items-center text-amber-400 text-xs font-medium cursor-pointer hover:text-amber-300">
+          <i class="fa-solid fa-redo mr-1.5"></i> 
+          <span>Actualizar ahora</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Productos -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between mb-3 px-1">
+        <div>
+          <span class="section-header">Productos</span>
+          <span class="ml-2 text-xs bg-slate-800 px-2 py-px rounded text-slate-400">con precios desde MATRIZ</span>
+        </div>
+        <button onclick="syncFromMatriz()" 
+                class="text-xs flex items-center gap-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 rounded-2xl text-slate-300">
+          <i class="fa-solid fa-download"></i>
+          <span class="font-medium">Sync MATRIZ</span>
+        </button>
+      </div>
+      
+      <div class="panel rounded-3xl overflow-hidden border border-slate-700">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-slate-700">
+              <th class="text-left px-6 py-4 text-xs font-medium text-slate-400">SKU</th>
+              <th class="text-left px-6 py-4 text-xs font-medium text-slate-400">Producto</th>
+              <th class="text-left px-6 py-4 text-xs font-medium text-slate-400 w-28">Costo (USD)</th>
+              <th class="text-left px-6 py-4 text-xs font-medium text-slate-400">Precio Local</th>
+              <th class="text-left px-6 py-4 text-xs font-medium text-slate-400">Precio Web</th>
+              <th class="text-left px-6 py-4 text-xs font-medium text-slate-400">Stock</th>
+              <th class="text-left px-6 py-4 text-xs font-medium text-slate-400 w-20">Estado</th>
+              <th class="w-10"></th>
+            </tr>
+          </thead>
+          <tbody id="products-tbody" class="divide-y divide-slate-700 text-sm">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+      <div class="text-[10px] text-slate-500 mt-2 px-2 flex items-center gap-x-2">
+        <div>Edita el costo y presiona Enter o pierde el foco para recalcular precios automáticamente.</div>
+      </div>
+    </div>
+
+    <!-- Stock & Alertas -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      
+      <!-- Stock -->
+      <div class="lg:col-span-3">
+        <div class="flex items-center justify-between mb-3 px-1">
+          <span class="section-header">Stock por Depósito</span>
+        </div>
+        <div class="panel rounded-3xl overflow-hidden border border-slate-700">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-slate-700">
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-400">SKU / Producto</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-400">Depósito</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-slate-400">Cantidad</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-slate-400">Últ. Movimiento</th>
+              </tr>
+            </thead>
+            <tbody id="stock-tbody" class="divide-y divide-slate-700 text-sm">
+              <!-- JS populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Alertas -->
+      <div class="lg:col-span-2">
+        <div class="flex items-center justify-between mb-3 px-1">
+          <span class="section-header">Alertas de Stock Bajo</span>
+          <span id="alerts-count-badge" class="px-2.5 py-px bg-amber-500/10 text-amber-400 text-xs rounded-full font-medium"></span>
+        </div>
+        
+        <div class="panel rounded-3xl p-1 border border-slate-700 min-h-[210px]">
+          <div id="alerts-container" class="space-y-1 text-sm p-2">
+            <!-- JS populated alerts -->
+          </div>
+        </div>
+        
+        <div class="text-right mt-2">
+          <button onclick="ackAllAlerts()" 
+                  class="text-xs px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors rounded-2xl text-amber-300 flex items-center gap-x-2 ml-auto text-[10px]">
+            <i class="fa-solid fa-check-double"></i>
+            <span>Marcar todas como leídas</span>
+          </button>
+        </div>
+      </div>
+      
+    </div>
+
+    <!-- Facturación -->
+    <div class="mt-8">
+      <div class="flex items-center justify-between mb-3 px-1">
+        <span class="section-header">Facturación</span>
+        <div class="flex items-center gap-x-2">
+          <button onclick="syncInvoicesFromFacturaExpress()" 
+                  class="text-xs flex items-center gap-x-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 rounded-2xl text-amber-300">
+            <i class="fa-solid fa-file-import"></i>
+            <span class="font-medium">Sync FacturaExpress</span>
+          </button>
+          <button onclick="loadInvoices()" 
+                  class="text-xs px-3 py-2 bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700 rounded-2xl">
+            <i class="fa-solid fa-refresh"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="panel rounded-3xl overflow-hidden border border-slate-700">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-slate-700">
+              <th class="px-6 py-3.5 text-left text-xs font-medium text-slate-400">Nº / ID Externo</th>
+              <th class="px-6 py-3.5 text-left text-xs font-medium text-slate-400">Cliente</th>
+              <th class="px-6 py-3.5 text-left text-xs font-medium text-slate-400">Fecha</th>
+              <th class="px-6 py-3.5 text-right text-xs font-medium text-slate-400">Total USD</th>
+              <th class="px-6 py-3.5 text-left text-xs font-medium text-slate-400">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="invoices-tbody" class="divide-y divide-slate-700 text-sm">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div class="mt-6 text-[10px] text-center text-slate-500 flex items-center justify-center gap-x-4">
+      <div>Conectado a <span class="font-mono">http://localhost:3001/api/panelin</span></div>
+      <div class="w-px h-3 bg-slate-700"></div>
+      <div>Panelin BMC Platform v1 • Fase 5 • HTML + Tailwind</div>
+    </div>
+  </div>
+
+  <script>
+    // Tailwind script config - Industrial Editorial Dark
+    function initTailwind() {
+      document.documentElement.style.setProperty('--accent', '#f59e0b');
+      
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              'heading': ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif']
+            }
+          }
+        }
+      };
+    }
+
+    const API_BASE = 'http://localhost:3001/api/panelin';
+
+    let productsData = [];
+    let stockData = [];
+    let alertsData = [];
+    let invoicesData = [];
+
+    async function fetchJSON(url, options = {}) {
+      try {
+        const res = await fetch(url, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(options.headers || {})
+          }
+        });
+        
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || `HTTP ${res.status}`);
+        }
+        
+        return await res.json();
+      } catch (e) {
+        console.error('Fetch error:', e);
+        // Show graceful error in UI
+        showToast(`Error de conexión: ${e.message}`, true);
+        throw e;
+      }
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.createElement('div');
+      toast.className = `fixed bottom-6 right-6 px-5 py-3 rounded-2xl shadow-xl text-sm flex items-center gap-x-3 z-[999] ${isError ? 'bg-red-900 text-red-200' : 'bg-slate-800 text-slate-200 border border-slate-700'}`;
+      toast.innerHTML = `
+        <div>${message}</div>
+        <button class="ml-2 text-xs opacity-60 hover:opacity-100">×</button>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      toast.querySelector('button').onclick = () => toast.remove();
+      
+      setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 4200);
+    }
+
+    async function loadProducts() {
+      const data = await fetchJSON(`${API_BASE}/products`);
+      productsData = data.products || [];
+      
+      const tbody = document.getElementById('products-tbody');
+      tbody.innerHTML = '';
+      
+      if (productsData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-500 text-sm">No hay productos sincronizados. Usa "Sync MATRIZ".</td></tr>`;
+        return;
+      }
+      
+      productsData.forEach(prod => {
+        const row = document.createElement('tr');
+        row.className = 'data-row transition-colors';
+        
+        const precioLocal = prod.prices?.venta_local || '—';
+        const precioWeb = prod.prices?.venta_web || '—';
+        const stock = Object.values(prod.stock || {})[0] || 0;
+        const below = prod.below_threshold;
+        
+        row.innerHTML = `
+          <td class="px-6 py-3.5 font-mono text-xs text-slate-400">${prod.sku}</td>
+          <td class="px-6 py-3.5 font-medium">${prod.name}</td>
+          <td class="px-6 py-3.5">
+            <div class="flex items-center gap-x-2">
+              <input type="number" step="0.01" value="${prod.cost_usd || 0}" 
+                     class="editable-input w-24 text-right font-mono" 
+                     data-sku="${prod.sku}" onchange="updateCost(this)">
+              <span class="text-[10px] text-slate-500">USD</span>
+            </div>
+          </td>
+          <td class="px-6 py-3.5 font-mono text-emerald-300 tabular-nums">$${precioLocal}</td>
+          <td class="px-6 py-3.5 font-mono text-emerald-300 tabular-nums">$${precioWeb}</td>
+          <td class="px-6 py-3.5">
+            <span class="font-mono">${stock}</span>
+          </td>
+          <td class="px-6 py-3.5">
+            ${below ? 
+              `<span class="status-low px-2 py-px">BAJO</span>` : 
+              `<span class="status-ok px-2 py-px">OK</span>`}
+          </td>
+          <td class="px-2 py-3.5 text-right">
+            <button onclick="refreshProduct('${prod.sku}', this)" class="text-slate-400 hover:text-white p-1">
+              <i class="fa-solid fa-sync fa-sm"></i>
+            </button>
+          </td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+      
+      // Update KPI
+      document.getElementById('kpi-products').textContent = productsData.length;
+    }
+
+    async function updateCost(input) {
+      const sku = input.dataset.sku;
+      const newCost = parseFloat(input.value);
+      
+      if (isNaN(newCost)) {
+        showToast('Costo inválido', true);
+        return;
+      }
+      
+      try {
+        const res = await fetchJSON(`${API_BASE}/products/${sku}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ cost_usd: newCost })
+        });
+        
+        if (res.ok) {
+          showToast(`Costo actualizado para ${sku}. Precios recalculados.`);
+          // Reload products to show updated prices
+          await loadProducts();
+        } else {
+          showToast(res.message || 'Error actualizando costo', true);
+        }
+      } catch (e) {
+        showToast('Error al actualizar costo', true);
+      }
+    }
+
+    async function loadStock() {
+      const data = await fetchJSON(`${API_BASE}/stock`);
+      stockData = data.stock || [];
+      
+      const tbody = document.getElementById('stock-tbody');
+      tbody.innerHTML = '';
+      
+      if (stockData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-6 text-center text-slate-500 text-sm">Sin datos de stock.</td></tr>`;
+        return;
+      }
+      
+      stockData.forEach(item => {
+        const row = document.createElement('tr');
+        row.className = 'data-row';
+        
+        const last = item.last_movement_at ? new Date(item.last_movement_at).toLocaleDateString('es-UY', {month:'short', day:'numeric'}) : '—';
+        
+        row.innerHTML = `
+          <td class="px-6 py-3 font-mono text-xs text-slate-400">${item.sku} <span class="text-slate-500">• ${item.name || ''}</span></td>
+          <td class="px-6 py-3 text-sm">${item.deposito}</td>
+          <td class="px-6 py-3 text-right font-semibold tabular-nums">${item.qty}</td>
+          <td class="px-6 py-3 text-right text-xs text-slate-400">${last}</td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+      
+      // Update KPI rough total
+      const totalStock = stockData.reduce((sum, i) => sum + (i.qty || 0), 0);
+      document.getElementById('kpi-stock').textContent = Math.round(totalStock);
+    }
+
+    async function loadAlerts() {
+      const data = await fetchJSON(`${API_BASE}/stock/alerts?open=true`);
+      alertsData = data.alerts || [];
+      
+      const container = document.getElementById('alerts-container');
+      const badge = document.getElementById('alerts-count-badge');
+      
+      container.innerHTML = '';
+      
+      if (alertsData.length === 0) {
+        container.innerHTML = `<div class="px-4 py-6 text-center text-xs text-emerald-400">Sin alertas activas. Stock saludable.</div>`;
+        badge.textContent = '0';
+        badge.className = 'px-2.5 py-px bg-emerald-500/10 text-emerald-400 text-xs rounded-full font-medium';
+        return;
+      }
+      
+      badge.textContent = alertsData.length;
+      badge.className = 'px-2.5 py-px bg-amber-500/10 text-amber-400 text-xs rounded-full font-medium';
+      
+      alertsData.forEach(alert => {
+        const div = document.createElement('div');
+        div.className = `flex items-center justify-between px-3 py-2.5 rounded-2xl border border-amber-900/40 bg-amber-950/30 text-xs`;
+        
+        div.innerHTML = `
+          <div class="flex items-center gap-x-3">
+            <div>
+              <span class="font-mono text-amber-300">${alert.sku}</span>
+              <span class="text-amber-400 ml-1">• ${alert.deposito}</span>
+            </div>
+            <div class="text-amber-200 font-semibold">${alert.current_qty} <span class="font-normal text-amber-400">/ ${alert.threshold}</span></div>
+          </div>
+          
+          <div>
+            <button onclick="acknowledgeAlert(${alert.id}, this)" 
+                    class="px-3 py-1 text-amber-300 hover:text-white hover:bg-amber-900/40 transition-colors text-[10px] rounded-2xl border border-amber-800 flex items-center gap-x-1">
+              <i class="fa-solid fa-check fa-xs"></i>
+              <span>Ack</span>
+            </button>
+          </div>
+        `;
+        
+        container.appendChild(div);
+      });
+    }
+
+    async function acknowledgeAlert(id, btn) {
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+      btn.disabled = true;
+      
+      try {
+        await fetchJSON(`${API_BASE}/stock/alerts/${id}/ack`, { method: 'POST' });
+        await loadAlerts();
+        showToast('Alerta marcada como leída');
+      } catch (e) {
+        btn.innerHTML = 'Ack';
+        btn.disabled = false;
+        showToast('Error al marcar alerta', true);
+      }
+    }
+
+    async function ackAllAlerts() {
+      if (!confirm('¿Marcar todas las alertas como leídas?')) return;
+      
+      const buttons = document.querySelectorAll('#alerts-container button');
+      buttons.forEach(b => { b.disabled = true; b.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`; });
+      
+      try {
+        // Simple: reload alerts after individual acks would be ideal, but for demo we just reload
+        const res = await fetchJSON(`${API_BASE}/stock/alerts?open=true`);
+        for (const a of (res.alerts || [])) {
+          await fetchJSON(`${API_BASE}/stock/alerts/${a.id}/ack`, { method: 'POST' });
+        }
+        await loadAlerts();
+        showToast('Alertas actualizadas');
+      } catch (e) {
+        showToast('Error al actualizar alertas', true);
+        await loadAlerts();
+      }
+    }
+
+    async function loadInvoices() {
+      const data = await fetchJSON(`${API_BASE}/invoices?limit=12`);
+      invoicesData = data.invoices || [];
+      
+      const tbody = document.getElementById('invoices-tbody');
+      tbody.innerHTML = '';
+      
+      if (invoicesData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-6 text-center text-slate-500 text-sm">Sin facturas registradas.</td></tr>`;
+        document.getElementById('kpi-invoices').textContent = '0';
+        return;
+      }
+      
+      invoicesData.forEach(inv => {
+        const row = document.createElement('tr');
+        row.className = 'data-row';
+        
+        const date = inv.date ? new Date(inv.date).toLocaleDateString('es-UY') : '—';
+        const total = inv.total_usd ? parseFloat(inv.total_usd).toFixed(2) : '—';
+        
+        row.innerHTML = `
+          <td class="px-6 py-3 font-mono text-xs">${inv.number || inv.external_id || '—'}</td>
+          <td class="px-6 py-3">${inv.client_name || '—'}</td>
+          <td class="px-6 py-3 text-xs text-slate-400">${date}</td>
+          <td class="px-6 py-3 text-right font-semibold tabular-nums">$${total}</td>
+          <td class="px-6 py-3">
+            <span class="px-2 py-px text-[10px] bg-emerald-900/30 text-emerald-400 rounded">${inv.status || 'issued'}</span>
+          </td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+      
+      document.getElementById('kpi-invoices').textContent = invoicesData.length;
+    }
+
+    async function syncInvoicesFromFacturaExpress() {
+      const btns = event.currentTarget;
+      try {
+        const res = await fetchJSON(`${API_BASE}/sync/facturaexpress/invoices`, { method: 'POST' });
+        showToast(`Sync facturas: ${res.inserted || 0} nuevas, ${res.updated || 0} actualizadas`);
+        await loadInvoices();
+      } catch (e) {
+        showToast('Error sincronizando facturas', true);
+      }
+    }
+
+    async function syncFromMatriz() {
+      try {
+        const res = await fetchJSON(`${API_BASE}/sync/matriz`, { method: 'POST' }); // if endpoint exists, or just reload
+        showToast('Sincronización MATRIZ iniciada');
+        await Promise.all([loadProducts(), loadStock()]);
+      } catch (e) {
+        // Fallback: just refresh
+        await loadProducts();
+        showToast('Datos refrescados (sync MATRIZ manual vía script si es necesario)');
+      }
+    }
+
+    async function syncAllFromFacturaExpress() {
+      try {
+        showToast('Sincronizando todo desde FacturaExpress...');
+        await Promise.all([
+          fetchJSON(`${API_BASE}/sync/facturaexpress/invoices`, { method: 'POST' }),
+          fetchJSON(`${API_BASE}/sync/facturaexpress/stock`, { method: 'POST' }),
+          fetchJSON(`${API_BASE}/sync/facturaexpress/prices`, { method: 'POST' })
+        ]);
+        await Promise.all([loadProducts(), loadStock(), loadInvoices(), loadAlerts()]);
+        showToast('Sync FacturaExpress completado');
+      } catch (e) {
+        showToast('Error en sync global', true);
+      }
+    }
+
+    async function refreshAllData() {
+      const promises = [
+        loadProducts(),
+        loadStock(),
+        loadAlerts(),
+        loadInvoices()
+      ];
+      
+      await Promise.all(promises);
+      showToast('Datos actualizados');
+    }
+
+    async function refreshProduct(sku, btn) {
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+      try {
+        await loadProducts();
+      } finally {
+        btn.innerHTML = `<i class="fa-solid fa-sync fa-sm"></i>`;
+      }
+    }
+
+    // Initial load
+    async function initDashboard() {
+      initTailwind();
+      
+      // Initial data load
+      await Promise.all([
+        loadProducts(),
+        loadStock(),
+        loadAlerts(),
+        loadInvoices()
+      ]);
+      
+      // Auto refresh every 45s (monitoring friendly)
+      setInterval(() => {
+        // Only refresh if tab is visible
+        if (!document.hidden) {
+          loadAlerts(); // cheap one
+        }
+      }, 45000);
+      
+      // Keyboard hint
+      document.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+          e.preventDefault();
+          const firstInput = document.querySelector('#products-tbody input');
+          if (firstInput) firstInput.focus();
+        }
+      });
+      
+      // Boot message
+      console.log('%c[Panelin Dashboard] Industrial Editorial Dark v1 initialized. Connected to API.', 'color:#64748b');
+    }
+
+    // Boot
+    window.onload = initDashboard;
+    
+    // Expose for console debug
+    window.PanelinDashboard = { refreshAllData, loadProducts, syncAllFromFacturaExpress };
+  </script>
+</body>
+</html>
