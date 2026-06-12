@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdminCotizaciones, ageDays } from "../hooks/useAdminCotizaciones.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
-import { getStoredPanelinRole } from "../hooks/useAdminCotizaciones.js"; // if not exported, we'll move logic inside
+import { useTaskLists, useCreateTask } from "./hub/tasks/hooks/useTasks.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import { SkinProvider, useSkin } from "./admin-cotizaciones/SkinProvider.jsx";
 import Topbar from "./admin-cotizaciones/Topbar.jsx";
 import StatStrip from "./admin-cotizaciones/StatStrip.jsx";
 import Toolbar from "./admin-cotizaciones/Toolbar.jsx";
 import QuotesTable from "./admin-cotizaciones/QuotesTable.jsx";
-import QuoteCard from "./admin-cotizaciones/QuoteCard.jsx";
 import DetailDrawer from "./admin-cotizaciones/DetailDrawer.jsx";
 import CommandPalette from "./admin-cotizaciones/CommandPalette.jsx";
 import "./admin-cotizaciones/styles.css";
@@ -19,6 +18,9 @@ import "./help/styles.css";
 // hit FALLBACK_SOURCE in prod. The walkthrough script regenerates this file
 // on each run (drafts/03-walkthrough-strategy-proposal.md § B Alt-3).
 import walkthroughSource from "../../docs/walkthrough/admin-cot/source.json";
+
+// Basic Kanban stages for best practices (aligned with hybrid model) — defined at module scope so stable for hooks
+const KANBAN_STAGES = ["Pendiente", "Borrador", "En Revisión", "Aprobado", "Enviado"];
 
 function ModuleInner() {
   const { skin } = useSkin();
@@ -61,14 +63,16 @@ function ModuleInner() {
   const [activeSavedView, setActiveSavedView] = useState("todas");
   const [viewMode, setViewMode] = useState("table"); // "table" | "kanban"
 
+  // For direct task creation (A1 aggressive improvement)
+  const taskListsQ = useTaskLists();
+  const primaryListId = taskListsQ.data?.lists?.[0]?.id; // Use first list as default
+  const createTaskMutation = useCreateTask(primaryListId);
+
   const displayedRows = (() => {
     const base = cot.filtered;
     const view = SAVED_VIEWS[activeSavedView] || SAVED_VIEWS.todas;
     return base.filter(view.filter);
   })();
-
-  // Basic Kanban stages for best practices (aligned with hybrid model)
-  const KANBAN_STAGES = ["Pendiente", "Borrador", "En Revisión", "Aprobado", "Enviado"];
 
   const getKanbanRows = (stage) => {
     return displayedRows.filter(r => {
@@ -144,6 +148,109 @@ function ModuleInner() {
       cot.assignTo(row, newResp.trim());
     }
   }, [cot]);
+
+  const onMoveStage = useCallback(async (row, newStage) => {
+    await cot.moveLeadToStage(row, newStage);
+  }, [cot]);
+
+  const onRegenerateBorrador = useCallback(async (row) => {
+    if (!confirm("¿Regenerar el borrador con IA usando el presupOrchestrator?")) return;
+    await cot.regenerateBorrador(row);
+  }, [cot]);
+
+  // Quick "Crear Tarea de Seguimiento" - A1 aggressive: try direct creation first, excellent fallback
+  const onCreateFollowupTask = useCallback(async (row) => {
+    const title = `Seguimiento - ${row.cliente || row.telefono || "Lead"}`;
+
+    const notes = [
+      `**Consulta original:**`,
+      row.consulta || "(sin consulta)",
+      ``,
+      `**Canal:** ${row.canal || row.origen || "N/D"}`,
+      `**Zona:** ${row.zona || "N/D"}`,
+      `**Responsable actual:** ${row.responsable || "Sin asignar"}`,
+      ``,
+      row.borradorPdf ? `**Borrador PDF:** ${row.borradorPdf}` : "",
+      row.borradorExplicacion ? `**Explicación del Borrador:** ${row.borradorExplicacion}` : "",
+      row.link ? `**Link presupuesto:** ${row.link}` : "",
+      ``,
+      `Fuente: Admin Cotizaciones`,
+      `ID: ${row.id || row.rowNum || "?"}`,
+    ].filter(Boolean).join("\n");
+
+    const due = null; // We can add logic later for due date based on urgency
+
+    // Try direct creation first (best UX when backend supports it)
+    if (primaryListId && createTaskMutation) {
+      try {
+        await createTaskMutation.mutateAsync({ title, notes, due });
+        cot.showToast?.("Tarea de seguimiento creada correctamente");
+        return;
+      } catch (err) {
+        // If it's the known 503 (sync not ready), fall back gracefully
+        if (err?.code === "service_unavailable" || err?.status === 503) {
+          // Fall through to excellent prefilled open
+        } else {
+          cot.showToast?.("No se pudo crear la tarea directamente. Abriendo Tareas...");
+        }
+      }
+    }
+
+    // Excellent fallback: open Tareas with very rich prefill
+    const params = new URLSearchParams({
+      title,
+      description: notes,
+      source: "cotizacion",
+      sourceId: String(row.id || row.rowNum || ""),
+      priority: (ageDays(row.fecha) || 0) >= 5 ? "high" : "medium",
+    }).toString();
+
+    window.open(`/hub/tareas?${params}`, "_blank");
+  }, [primaryListId, createTaskMutation, cot]);
+
+  // Keyboard shortcuts for aggressive power use (especially useful in Kanban + selection)
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!cot.selected.size) return;
+
+      const key = e.key.toLowerCase();
+
+      // Number keys 1-5 to bulk move selected to stages (when in any view)
+      if (['1','2','3','4','5'].includes(key)) {
+        const stageIndex = parseInt(key, 10) - 1;
+        const targetStage = KANBAN_STAGES[stageIndex];
+        if (targetStage) {
+          e.preventDefault();
+          const selectedRows = cot.filtered.filter(r => cot.selected.has(r.rowNum));
+          selectedRows.forEach(r => cot.moveLeadToStage(r, targetStage));
+          cot.clearSelection();
+        }
+      }
+
+      // "t" to create task for all selected
+      if (key === 't' && onCreateFollowupTask) {
+        e.preventDefault();
+        const selectedRows = cot.filtered.filter(r => cot.selected.has(r.rowNum));
+        selectedRows.forEach(r => onCreateFollowupTask(r));
+        cot.clearSelection();
+      }
+
+      // "r" to regenerate borrador for all selected (power move)
+      if (key === 'r' && cot.regenerateBorrador) {
+        e.preventDefault();
+        const selectedRows = cot.filtered.filter(r => cot.selected.has(r.rowNum) && r.consulta);
+        if (selectedRows.length > 0) {
+          if (confirm(`¿Regenerar borrador para ${selectedRows.length} leads?`)) {
+            selectedRows.forEach(r => cot.regenerateBorrador(r));
+            cot.clearSelection();
+          }
+        }
+      }
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [cot, onCreateFollowupTask]);
 
   const onMarkEnviadoDetail = useCallback(async (adminRow) => {
     if (!window.confirm(`¿Mover fila ${adminRow} a Enviados? Se borra del Admin.`)) return;
@@ -323,6 +430,100 @@ function ModuleInner() {
               </div>
             </div>
 
+            {/* Bulk Actions Bar - Aggressive Lead Management */}
+            {cot.selected.size > 0 && (
+              <div style={{ 
+                background: "#f0f4ff", 
+                border: "1px solid #0071e3", 
+                borderRadius: 8, 
+                padding: 10, 
+                marginBottom: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap"
+              }}>
+                <strong>{cot.selected.size} seleccionados</strong>
+
+                <button 
+                  onClick={() => {
+                    const resp = prompt("Asignar a todos los seleccionados:");
+                    if (resp) {
+                      // Bulk assign (simplified for now - can be improved)
+                      Array.from(cot.selected).forEach(rowNum => {
+                        const r = cot.filtered.find(x => x.rowNum === rowNum);
+                        if (r) cot.assignTo(r, resp.trim());
+                      });
+                      cot.clearSelection();
+                    }
+                  }}
+                  className="adminCot__btn adminCot__btn--sm"
+                >
+                  Asignar a todos
+                </button>
+
+                <select 
+                  onChange={async (e) => {
+                    const stage = e.target.value;
+                    if (!stage) return;
+                    const rowsToMove = cot.filtered.filter(r => cot.selected.has(r.rowNum));
+                    for (const r of rowsToMove) {
+                      await cot.moveLeadToStage(r, stage);
+                    }
+                    cot.clearSelection();
+                  }}
+                  className="adminCot__input"
+                  style={{ width: "auto", minWidth: 140 }}
+                  defaultValue=""
+                >
+                  <option value="">Mover a etapa...</option>
+                  {KANBAN_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+
+                <button 
+                  onClick={() => cot.clearSelection()} 
+                  className="adminCot__btn adminCot__btn--sm adminCot__btn--ghost"
+                >
+                  Limpiar selección
+                </button>
+
+                {onCreateFollowupTask && (
+                  <button 
+                    onClick={async () => {
+                      const selectedRows = cot.filtered.filter(r => cot.selected.has(r.rowNum));
+                      for (const r of selectedRows) {
+                        await onCreateFollowupTask(r); // now supports async direct creation
+                      }
+                      cot.clearSelection();
+                    }} 
+                    className="adminCot__btn adminCot__btn--sm"
+                    style={{ background: "#e0f2fe", color: "#0369a1" }}
+                    disabled={createTaskMutation?.isPending}
+                  >
+                    + Crear Tarea para los {cot.selected.size}
+                  </button>
+                )}
+
+                {/* Bulk Regenerar Borrador - aggressive power move */}
+                {cot.regenerateBorrador && (
+                  <button 
+                    onClick={() => {
+                      if (!confirm(`¿Regenerar borrador con IA para los ${cot.selected.size} leads seleccionados? Esto puede tardar.`)) return;
+                      const selectedRows = cot.filtered.filter(r => cot.selected.has(r.rowNum));
+                      selectedRows.forEach(r => {
+                        if (r.consulta) cot.regenerateBorrador(r);
+                      });
+                      cot.clearSelection();
+                    }} 
+                    className="adminCot__btn adminCot__btn--sm"
+                    style={{ background: "#fee2e2", color: "#991b1b" }}
+                  >
+                    ↻ Regenerar Borrador ({cot.selected.size})
+                  </button>
+                )}
+              </div>
+            )}
+
             {viewMode === "table" ? (
               <QuotesTable
                 rows={displayedRows}
@@ -338,11 +539,12 @@ function ModuleInner() {
                 onAssign={onAssign}
                 onOpenBorrador={onOpenBorrador}
                 onQuickAssign={onQuickAssign}
+                onCreateFollowupTask={onCreateFollowupTask}
                 loading={cot.loading}
                 emptyMessage={emptyMsg}
               />
             ) : (
-              /* Basic Kanban - Tanda 1 Aggressive */
+              /* Proper Kanban board - Tanda 1 (stage columns with urgency + quick moves) */
               <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 20 }}>
                 {KANBAN_STAGES.map((stage) => {
                   const stageRows = getKanbanRows(stage);
@@ -352,43 +554,74 @@ function ModuleInner() {
                         <span>{stage}</span>
                         <span style={{ fontSize: 12, color: "#666" }}>{stageRows.length}</span>
                       </div>
-                      {stageRows.length === 0 && <div style={{ fontSize: 12, color: "#999", padding: 8 }}>Sin leads</div>}
-                      {stageRows.map(row => (
-                        <div 
-                          key={row.rowNum || row.id} 
-                          style={{ background: "white", padding: 8, marginBottom: 6, borderRadius: 6, fontSize: 13, cursor: "pointer", border: "1px solid #eee" }}
-                          onClick={() => setDetail(row)}
-                        >
-                          <div style={{ fontWeight: 600 }}>{row.cliente || "Sin nombre"}</div>
-                          <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{(row.consulta || "").slice(0, 70)}...</div>
-                          <div style={{ marginTop: 6, fontSize: 11 }}>
-                            <span style={{ color: "#0071e3" }}>{row.responsable || "Sin asignar"}</span>
-                          </div>
+                      {stageRows.length === 0 && (
+                        <div style={{ 
+                          fontSize: 12, 
+                          color: "#999", 
+                          padding: 12, 
+                          textAlign: "center",
+                          background: "#fff",
+                          borderRadius: 6,
+                          border: "1px dashed #ddd"
+                        }}>
+                          Sin leads en esta etapa
                         </div>
-                      ))}
+                      )}
+                      {stageRows.map(row => {
+                        const age = ageDays(row.fecha);
+                        const isUrgent = age != null && age >= 7;
+                        return (
+                          <div 
+                            key={row.rowNum || row.id} 
+                            style={{ 
+                              background: "white", 
+                              padding: 8, 
+                              marginBottom: 6, 
+                              borderRadius: 6, 
+                              fontSize: 13, 
+                              cursor: "pointer", 
+                              border: isUrgent ? "2px solid #ef4444" : "1px solid #eee" 
+                            }}
+                            onClick={() => setDetail(row)}
+                          >
+                            <div style={{ fontWeight: 600, display: "flex", justifyContent: "space-between" }}>
+                              <span>{row.cliente || "Sin nombre"}</span>
+                              {isUrgent && <span style={{ color: "#ef4444", fontSize: 10 }}>⚠ {age}d</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{(row.consulta || "").slice(0, 70)}...</div>
+                            <div style={{ marginTop: 4, fontSize: 11, display: "flex", justifyContent: "space-between" }}>
+                              <span style={{ color: "#0071e3" }}>{row.responsable || "Sin asignar"}</span>
+                              {row.telefono && <span style={{ fontSize: 10 }}>{row.telefono}</span>}
+                            </div>
+
+                            {/* Quick stage moves */}
+                            <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                              {KANBAN_STAGES.filter(s => s !== stage).slice(0, 3).map(targetStage => (
+                                <button
+                                  key={targetStage}
+                                  onClick={(e) => { e.stopPropagation(); onMoveStage(row, targetStage); }}
+                                  style={{
+                                    fontSize: 10,
+                                    padding: "2px 6px",
+                                    border: "1px solid #ddd",
+                                    borderRadius: 4,
+                                    background: "#f8f8f8",
+                                    cursor: "pointer"
+                                  }}
+                                  title={`Mover a ${targetStage}`}
+                                >
+                                  → {targetStage}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
               </div>
             )}
-
-            <div className="adminCot__cards" style={{ marginTop: 12 }}>
-              {cot.filtered.length === 0 && !cot.loading && (
-                <div className="adminCot__qcard" style={{ textAlign: "center", color: "var(--ac-text-2)" }}>
-                  {emptyMsg}
-                </div>
-              )}
-              {cot.filtered.map((row) => (
-                <QuoteCard
-                  key={row.rowNum}
-                  row={row}
-                  selected={cot.selected.has(row.rowNum)}
-                  onToggleSelect={cot.toggleSelect}
-                  onEdit={(r) => setDetail(r)}
-                  onMarkEnviado={onMarkEnviadoSingle}
-                />
-              ))}
-            </div>
           </>
         )}
       </main>
@@ -405,6 +638,9 @@ function ModuleInner() {
           busyOp={cot.busyOp}
           waToken={cot.token}
           waApiBase={getCalcApiBase()}
+          onAssign={onAssign}
+          onRegenerateBorrador={onRegenerateBorrador}
+          onCreateFollowupTask={onCreateFollowupTask}
         />
       )}
 

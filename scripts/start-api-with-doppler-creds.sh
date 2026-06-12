@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Helper to start the local API with Doppler-injected GOOGLE_APPLICATION_CREDENTIALS
 # correctly written to a temp file (required by the server for Sheets/MATRIZ auth).
-# Usage: ./scripts/start-api-with-doppler-creds.sh
-# Or: doppler run -- ./scripts/start-api-with-doppler-creds.sh
+#
+# Preferred for most work: use the unified orchestrator
+#   doppler run -- ./scripts/secrets-provision-verify.sh
+# (it still calls this for the SA file path when you need the API directly).
+#
+# Usage:
+#   doppler run -- ./scripts/start-api-with-doppler-creds.sh
+#   doppler run -- npm run start:api   (if you handle the SA file yourself)
 
 set -euo pipefail
 

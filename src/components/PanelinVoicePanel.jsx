@@ -93,6 +93,8 @@ export default function PanelinVoicePanel({
   devMode = false,
   authHeader,
   voiceMode = true,
+  onVoiceTranscript, // bridge from PanelinChatPanel → useChat.appendMessage (source: "panelin_voice")
+  conversationId,
 }) {
   const PRIMARY = skinTokens?.primary || "#0071e3";
   const [transcript, setTranscript] = useState([]);
@@ -116,7 +118,18 @@ export default function PanelinVoicePanel({
       }
       return prev;
     });
-  }, []);
+
+    // Bridge to shared conversation state (useChat.appendMessage) so voice turns
+    // participate in autoLearnExtractor with source "panelin_voice".
+    // Hecho confirmado: extractor and addTrainingEntry already support source/convId.
+    if (onVoiceTranscript) {
+      if (delta !== undefined) {
+        onVoiceTranscript({ role, delta, source: "panelin_voice", convId: conversationId, finalized: false });
+      } else if (full !== undefined) {
+        onVoiceTranscript({ role, content: full, source: "panelin_voice", convId: conversationId, finalized: true });
+      }
+    }
+  }, [onVoiceTranscript, conversationId]);
 
   const handleError = useCallback((msg) => setVoiceError(msg), []);
 
@@ -167,11 +180,19 @@ export default function PanelinVoicePanel({
         }}
       >
         <MicOff size={40} color="#9ca3af" />
-        <p style={{ fontSize: 14, color: "#6e6e73", margin: 0 }}>
-          {safari
-            ? "El modo voz fluido requiere Chrome o Edge. Safari no soporta WebRTC con OpenAI Realtime."
-            : "Tu navegador no soporta el modo voz fluido."}
-        </p>
+        <div style={{ fontSize: 14, color: "#6e6e73", maxWidth: 420 }}>
+          {safari ? (
+            <>
+              El modo voz fluido (WebRTC + OpenAI Realtime) requiere <strong>Chrome o Edge</strong>.
+              Safari tiene soporte limitado para la API de voz en tiempo real de OpenAI.
+              <br /><br />
+              <strong>Alternativa recomendada:</strong> usa el botón de dictado (micrófono) en modo texto + TTS de respuestas.
+              Es cross-browser y funciona bien en Safari.
+            </>
+          ) : (
+            "Tu navegador no soporta el modo voz fluido (WebRTC)."
+          )}
+        </div>
         <button
           type="button"
           onClick={onSwitchToText}
@@ -186,8 +207,11 @@ export default function PanelinVoicePanel({
             fontFamily: FONT,
           }}
         >
-          Usar modo texto
+          Volver a texto (dictado disponible)
         </button>
+        <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 8 }}>
+          La transcripción y acciones de voz de alta calidad están disponibles en Chrome/Edge para usuarios autenticados.
+        </div>
       </div>
     );
   }

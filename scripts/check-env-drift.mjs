@@ -140,8 +140,16 @@ function main() {
       console.log("");
       console.log("Each of the following is read by server/ but not declared in");
       console.log("`.github/workflows/deploy-calc-api.yml`, `.env.example`, or");
-      console.log("`.github/ALLOWED_ENV_DRIFT.txt`. Either add it to one of those,");
-      console.log("or remove the `process.env.X` reference from the server code.");
+      console.log("`.github/ALLOWED_ENV_DRIFT.txt`.");
+      console.log("");
+      console.log("Fix path (see docs/procedimientos/SECRETS-STRATEGY.md):");
+      console.log("  1. Add to .env.example (with comment).");
+      console.log("  2. If high-sens: add to scripts/provision-secrets.sh HIGH_SENS_KEYS.");
+      console.log("  3. Add to deploy-calc-api.yml (env_vars or --set-secrets).");
+      console.log("  4. Prefer the unified ./scripts/secrets-provision-verify.sh for rotations.");
+      console.log("  5. Re-run this check until zero drift.");
+      console.log("");
+      console.log("The 4 FACTURAEXPRESS_* vars (2026-06) were the last known drift; wiring them resolved it.");
       console.log("");
       for (const v of drift) console.log(`  - ${v}`);
     }
