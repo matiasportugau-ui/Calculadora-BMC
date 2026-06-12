@@ -8,7 +8,6 @@ import Topbar from "./admin-cotizaciones/Topbar.jsx";
 import StatStrip from "./admin-cotizaciones/StatStrip.jsx";
 import Toolbar from "./admin-cotizaciones/Toolbar.jsx";
 import QuotesTable from "./admin-cotizaciones/QuotesTable.jsx";
-import QuoteCard from "./admin-cotizaciones/QuoteCard.jsx";
 import DetailDrawer from "./admin-cotizaciones/DetailDrawer.jsx";
 import CommandPalette from "./admin-cotizaciones/CommandPalette.jsx";
 import "./admin-cotizaciones/styles.css";
@@ -185,14 +184,14 @@ function ModuleInner() {
     if (primaryListId && createTaskMutation) {
       try {
         await createTaskMutation.mutateAsync({ title, notes, due });
-        showToast?.("Tarea de seguimiento creada correctamente");
+        cot.showToast?.("Tarea de seguimiento creada correctamente");
         return;
       } catch (err) {
         // If it's the known 503 (sync not ready), fall back gracefully
         if (err?.code === "service_unavailable" || err?.status === 503) {
           // Fall through to excellent prefilled open
         } else {
-          showToast?.("No se pudo crear la tarea directamente. Abriendo Tareas...");
+          cot.showToast?.("No se pudo crear la tarea directamente. Abriendo Tareas...");
         }
       }
     }
@@ -207,7 +206,7 @@ function ModuleInner() {
     }).toString();
 
     window.open(`/hub/tareas?${params}`, "_blank");
-  }, [primaryListId, createTaskMutation]);
+  }, [cot, primaryListId, createTaskMutation]);
 
   // Keyboard shortcuts for aggressive power use (especially useful in Kanban + selection)
   useEffect(() => {
@@ -640,7 +639,6 @@ function ModuleInner() {
           waToken={cot.token}
           waApiBase={getCalcApiBase()}
           onAssign={onAssign}
-          onOpenBorrador={onOpenBorrador}
           onRegenerateBorrador={onRegenerateBorrador}
           onCreateFollowupTask={onCreateFollowupTask}
         />

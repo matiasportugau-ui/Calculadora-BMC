@@ -24,6 +24,7 @@
 import { Router } from "express";
 import { getPanelinPool } from "../lib/panelinDb.js";
 import facturaExpress from "../lib/facturaExpressClient.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 /**
  * @param {import('../config.js').config} config
@@ -37,6 +38,7 @@ export default function createPanelinRouter(config, logger = console) {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     next();
   });
+  router.use(requireAuth);
 
   function getPool() {
     const url = config.databaseUrl || process.env.DATABASE_URL || "";
