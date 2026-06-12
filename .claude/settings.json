@@ -91,7 +91,8 @@
       "Bash(curl -s http://localhost:*)",
       "Bash(/usr/bin/curl -s *)",
       "Bash(curl -s https://calculadora-bmc.vercel.app*)",
-      "Bash(curl -s https://api.github.com/repos/matiasportugau-ui/Calculadora-BMC/*)"
+      "Bash(curl -s https://api.github.com/repos/matiasportugau-ui/Calculadora-BMC/*)",
+      "mcp__b39e25de-0412-4bc8-ae15-434d81b257db__search_products"
     ]
   },
   "hooks": {
