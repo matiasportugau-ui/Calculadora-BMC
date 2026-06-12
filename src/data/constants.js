@@ -151,6 +151,33 @@ export const PANELS_PARED = {
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
+  /**
+   * ISOFRIG — panel frigorífico PIR (Kingspan/Bromyros). Carga WOLF-2026-0001 (ledger BUG-TRIAGE-RAMIRO).
+   * - Núcleo PIR en TODOS los espesores y au 1.10 m (1100 mm): ficha oficial
+   *   https://kingspan.com.uy/productos-kingspan/panel-isofrig (validada 12/06/2026).
+   *   OJO: la build legacy traía au 1.14 (copiado de ISOPANEL) — corregido contra ficha.
+   * - lmin/lmax: la ficha no publica largos; se conserva el precedente de la build legacy (2.3–14).
+   * - `web` ex-IVA = Matriz tab BROMYROS (filas IF40…IF180, valores textuales del ledger).
+   *   La fila 200 mm de la Matriz es un CLON de IF150 (SKU/nombre) → excluida hasta que se corrija el origen.
+   * - TODO-blocked: `venta`/`costo` no estaban en el ledger ni en CSV en sesión — cargar desde Matriz
+   *   (columnas venta local / costo ex-IVA) cuando Matias las valide. Mientras tanto la lista venta
+   *   cae al precio web vía `p()` (fallback estándar) y el ítem no aparece en el editor de precios
+   *   (getPricingItemsFlat filtra venta == null).
+   */
+  ISOFRIG_PIR: {
+    label: "ISOFRIG PIR", sub: "Cámaras Frigoríficas", tipo: "pared",
+    au: 1.10, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
+    esp: {
+      40:  { web: 55.3384, ap: null },  // IF40
+      60:  { web: 62.8919, ap: null },  // IF60-IFSL60
+      80:  { web: 69.3770, ap: null },  // IF80-IFSL80
+      100: { web: 76.9454, ap: null },  // IF100-IFSL100 — golden case GC-0001
+      120: { web: 89.4740, ap: null },  // IF120-IFSL120
+      150: { web: 93.3436, ap: null },  // IF150-IFSL150
+      180: { web: 111.4058, ap: null }, // IF180-IFSL180
+    },
+    col: ["Blanco"], colNotes: { _all: "Solo Blanco sanitario (exterior e interior blanco)" }, colMax: {},
+  },
 };
 
 /**
@@ -365,6 +392,19 @@ export const PERFIL_PARED = {
       80:  { sku: "PU80MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
     },
+    /**
+     * ISOFRIG (WOLF-2026-0001): el perfil U es dimensional — mismos SKUs/precios PU* que
+     * ISOPANEL/ISOWALL donde el espesor coincide (Shopify `perfiles-u` confirma compatibilidad
+     * ISOPANEL-ISOWALL-ISOFRIG). TODO-blocked 40/60/120/180: la Matriz lista perfiles U
+     * ISOFRIG-específicos (U 40/60/120/180) pero sus precios no llegaron en sesión — al cargarlos,
+     * agregar las claves; mientras falten, calcPerfilesU omite el perfil para esos espesores
+     * (sin error, BOM sin perfil U — no inventar precios por analogía).
+     */
+    ISOFRIG: {
+      80:  { sku: "PU80MM",  venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+      150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
+    },
   },
   perfil_g2: {
     ISOPANEL: {
@@ -461,7 +501,7 @@ export const SCENARIOS_DEF = [
   },
   {
     id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío",
-    familias: ["ISOPANEL_EPS","ISOWALL_PIR"],
+    familias: ["ISOFRIG_PIR","ISOPANEL_EPS","ISOWALL_PIR"],
     hasTecho: false, hasPared: true, isCamara: true,
     visibility: { borders: false, largoAncho: false, altoPerim: false, esquineros: true, aberturas: true, camara: true, autoportancia: false, canalGot: false, p5852: false },
     wizardSteps: [
