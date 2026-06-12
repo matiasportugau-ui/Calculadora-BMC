@@ -2371,10 +2371,13 @@ export default function createBmcDashboardRouter(config) {
           model: result.model || null,
         });
       } catch (err) {
+        const details = Array.isArray(err.errors) && err.errors.length > 0
+          ? err.errors
+          : [err.message || "agent_core_failed"];
         return res.status(503).json({
           ok: false,
           error: "All providers failed",
-          details: err.errors || [err.message],
+          details,
         });
       }
     }
