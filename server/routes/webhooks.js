@@ -21,8 +21,10 @@ const router = express.Router();
 // ============================================================
 // FacturaExpress webhook (Fase 4)
 // Recibe notificaciones de CFE emitidos, cambios de estado, ajustes de stock, etc.
-// Almacena fallos en webhook_failures (DLQ de Fase 1) — see Issue 6 for implementation status.
-// En eventos que afectan stock → llama panelin_record_stock_movement (trigger de stock).
+// - Verifica firma (si FACTURAEXPRESS_WEBHOOK_SECRET configurado)
+// - Upsert a invoices
+// - Llama panelin_record_stock_movement (Fase 1) para actualizar stock + alertas automáticas
+// - En error: inserta en webhook_failures (DLQ) para reintentos
 // ============================================================
 router.post("/facturaexpress", async (req, res, next) => {
   const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body || {}));
@@ -111,6 +113,20 @@ async function processFacturaExpressWebhook({ event, data, rawPayload }) {
     }
 
     // 3. Otros eventos (cambio de precio desde FE, etc.) pueden disparar sync aquí en futuro.
+  } catch (err) {
+    // DLQ: almacenar fallo para reintento manual o worker futuro (tabla de Fase 1)
+    try {
+      await client.query(
+        `INSERT INTO webhook_failures (source, event_type, payload, error, attempts, last_attempt)
+         VALUES ('facturaexpress', $1, $2, $3, 1, now())
+         ON CONFLICT DO NOTHING`,
+        [event, rawPayload, err.message || String(err)]
+      );
+    } catch (dlqErr) {
+      // No re-lanzar para no romper el ack
+      console.error("[facturaexpress] DLQ insert failed:", dlqErr.message);
+    }
+    throw err; // re-lanzar para que el caller loguee
   } finally {
     client.release();
   }
