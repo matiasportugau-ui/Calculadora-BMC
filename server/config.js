@@ -197,6 +197,16 @@ export const config = {
   ),
   /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */
   identityJwtSecret: process.env.IDENTITY_JWT_SECRET || "",
+
+  // FacturaExpress (CFE Uruguay provider) — Fase 4 Panelin BMC Platform (review 5ae44e21)
+  // Centralized here (not direct process.env in client) for consistency with all other secrets,
+  // prod fatal checks, /health observability, Doppler/GSM, drift scripts.
+  // See server/lib/facturaExpressClient.js, routes/panelin.js (sync/*), routes/webhooks.js (/facturaexpress).
+  // Webhook secret used for optional signature verify on inbound; username/password for login to provider.
+  facturaexpressBaseUrl: process.env.FACTURAEXPRESS_BASE_URL || "https://api.facturaexpress.com.uy",
+  facturaexpressUsername: process.env.FACTURAEXPRESS_USERNAME || "",
+  facturaexpressPassword: process.env.FACTURAEXPRESS_PASSWORD || "",
+  facturaexpressWebhookSecret: process.env.FACTURAEXPRESS_WEBHOOK_SECRET || "",
   identityCookieDomain: process.env.IDENTITY_COOKIE_DOMAIN || "",
   identityCookieName: process.env.IDENTITY_COOKIE_NAME || "bmc_sess",
   googleOauthClientId: process.env.GOOGLE_OAUTH_CLIENT_ID || "",

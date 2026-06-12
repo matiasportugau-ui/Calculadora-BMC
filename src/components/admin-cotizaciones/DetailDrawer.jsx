@@ -7,7 +7,25 @@ import Tooltip from "../help/Tooltip.jsx";
 import HelpButton from "../help/HelpButton.jsx";
 import { HELP_ANCHORS } from "../help/anchors.js";
 
+<<<<<<< Updated upstream
 export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, onRequestSuggestion, onOpenBorrador, busyOp, waToken, waApiBase }) {
+=======
+export default function DetailDrawer({ 
+  row, 
+  onClose, 
+  onSave, 
+  onApprove, 
+  onMarkEnviado, 
+  onRequestSuggestion, 
+  busyOp, 
+  waToken, 
+  waApiBase,
+  onAssign,
+  onOpenBorrador,
+  onRegenerateBorrador,
+  onCreateFollowupTask
+}) {
+>>>>>>> Stashed changes
   const [respuesta, setRespuesta] = useState(row?.respuesta || "");
   const [link, setLink] = useState(row?.link || "");
   const [replay, setReplay] = useState(row?.replaySnapshotUrl || "");
@@ -151,20 +169,33 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
 
           <div className="adminCot__drawer-section">
             <span className="adminCot__drawer-label">Responsable — CRM_Operativo col 11</span>
-            <select
-              className="adminCot__input"
-              value={responsable}
-              onChange={(e) => setResponsable(e.target.value)}
-              disabled={busy}
-              style={{ width: "100%", maxWidth: 280 }}
-              aria-label="Asignar responsable"
-            >
-              {OPERATOR_CODES.map((code) => (
-                <option key={code} value={code}>
-                  {operatorLabel(code)} ({code})
-                </option>
-              ))}
-            </select>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <select
+                className="adminCot__input"
+                value={responsable}
+                onChange={(e) => setResponsable(e.target.value)}
+                disabled={busy}
+                style={{ flex: 1, maxWidth: 220 }}
+                aria-label="Asignar responsable"
+              >
+                {OPERATOR_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {operatorLabel(code)} ({code})
+                  </option>
+                ))}
+              </select>
+              {onAssign && (
+                <button 
+                  type="button" 
+                  className="adminCot__btn adminCot__btn--sm"
+                  onClick={() => onAssign(row, responsable)}
+                  disabled={busy}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  Guardar Asignación
+                </button>
+              )}
+            </div>
             <p className="adminCot__hint">
               Default = sugerencia automática. Se persiste en{" "}
               <code>CRM_Operativo.Responsable</code> al hacer Guardar
@@ -188,6 +219,17 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
                   Ver Borrador
                 </button>
               )}
+              {onRegenerateBorrador && (
+                <button 
+                  type="button" 
+                  className="adminCot__btn adminCot__btn--sm" 
+                  style={{ background: "#fee2e2", color: "#991b1b", marginLeft: 4 }}
+                  onClick={() => onRegenerateBorrador(row)}
+                  disabled={busy}
+                >
+                  {busyOp === "regenerate-borrador" ? "Regenerando..." : "↻ Regenerar con IA"}
+                </button>
+              )}
             </div>
             <div style={{ fontSize: 12, color: "#713f12" }}>
               {row.borradorPdf ? (
@@ -202,6 +244,31 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
               Generado vía el botón «Cotizar» de la planilla (modelo híbrido). 
               Si no existe, puedes usar el batch IA superior o el botón «Sugerir IA».
             </p>
+
+            {/* Quick actions in drawer - aggressive best practices */}
+            <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {onRegenerateBorrador && (
+                <button 
+                  type="button" 
+                  className="adminCot__btn adminCot__btn--sm" 
+                  style={{ background: "#fee2e2", color: "#991b1b" }}
+                  onClick={() => onRegenerateBorrador(row)}
+                  disabled={busy}
+                >
+                  ↻ Regenerar Borrador con IA
+                </button>
+              )}
+              {onCreateFollowupTask && (
+                <button 
+                  type="button" 
+                  className="adminCot__btn adminCot__btn--sm"
+                  style={{ background: "#e0f2fe", color: "#0369a1" }}
+                  onClick={() => onCreateFollowupTask(row)}
+                >
+                  + Crear Tarea de Seguimiento
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="adminCot__drawer-section">

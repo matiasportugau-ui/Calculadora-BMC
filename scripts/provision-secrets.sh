@@ -50,7 +50,22 @@ HIGH_SENS_KEYS=(
   WHATSAPP_APP_SECRET
   SHOPIFY_CLIENT_SECRET
   SHOPIFY_WEBHOOK_SECRET
+  FACTURAEXPRESS_PASSWORD
+  FACTURAEXPRESS_WEBHOOK_SECRET
 )
+
+# Support mode for auto-generating --set-secrets for Cloud Run deploys (see deploy-calc-api.yml)
+# Usage: ./scripts/provision-secrets.sh --print-mounts
+# This outputs only the HIGH_SENS_KEYS portion as "KEY=KEY:latest,..."
+if [[ "${1:-}" == "--print-mounts" ]]; then
+  mounts=""
+  for k in "${HIGH_SENS_KEYS[@]}"; do
+    if [[ -n "$mounts" ]]; then mounts+=","; fi
+    mounts+="${k}=${k}:latest"
+  done
+  echo "$mounts"
+  exit 0
+fi
 
 for k in "${HIGH_SENS_KEYS[@]}"; do
   load_env_key "$k"
@@ -117,5 +132,7 @@ echo "════════════════════════�
 echo "Resumen: $created creados, $updated actualizados, $unchanged sin cambios, $skipped saltados"
 echo "════════════════════════════════════════════════════════════"
 echo ""
-echo "Siguiente: corré ./run_ml_cloud_run_setup.sh para que el deploy"
-echo "monte estos secrets vía --update-secrets en lugar de env vars."
+echo "Siguiente (recomendado): corré el orquestador unificado:"
+echo "  doppler run -- ./scripts/secrets-provision-verify.sh"
+echo "(o sin Doppler: ./run_ml_cloud_run_setup.sh + ./scripts/cloud-run-matriz-sheets-secret.sh)"
+echo "El nuevo script también ejecuta drift check + imprime lista de consumidores."

@@ -135,6 +135,20 @@ jobs:
             .
           docker push "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}"
 
+      - name: Compute --set-secrets list (auto-generated from HIGH_SENS_KEYS)
+        if: steps.paths.outputs.skip != 'true'
+        id: secrets-mounts
+        run: |
+          # The HIGH_SENS_KEYS list in scripts/provision-secrets.sh is the source of truth
+          # for secrets that must be mounted from GSM. This step keeps the deploy
+          # contract in sync automatically — no more manual yaml edits when adding/rotating keys.
+          HIGH=$(./scripts/provision-secrets.sh --print-mounts)
+          # Fixed mounts that are always required (service account JSON + identity/infra secrets)
+          FIXED="/run/secrets/service-account.json=panelin-service-account:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest,MFA_KEK_HEX=MFA_KEK_HEX:latest,DATABASE_URL=DATABASE_URL:latest,GOOGLE_TASKS_CLIENT_ID=GOOGLE_TASKS_CLIENT_ID:latest,GOOGLE_TASKS_CLIENT_SECRET=GOOGLE_TASKS_CLIENT_SECRET:latest,SUPABASE_PGP_ENCRYPT_KEY=SUPABASE_PGP_ENCRYPT_KEY:latest,SYNC_HMAC_SECRET=SYNC_HMAC_SECRET:latest"
+          FULL="${FIXED},${HIGH}"
+          echo "list=${FULL}" >> $GITHUB_OUTPUT
+          echo "Generated set-secrets (first 200 chars): ${FULL:0:200}..."
+
       - name: Deploy to Cloud Run
         if: steps.paths.outputs.skip != 'true'
         uses: google-github-actions/deploy-cloudrun@v3
@@ -164,6 +178,8 @@ jobs:
             INTERNAL_SUPERADMIN_EMAILS=${{ secrets.INTERNAL_SUPERADMIN_EMAILS }}
             SHEETS_CLIENT_QUOTES_ENABLED=${{ secrets.SHEETS_CLIENT_QUOTES_ENABLED }}
             SHEETS_CLIENT_QUOTES_TAB=${{ secrets.SHEETS_CLIENT_QUOTES_TAB }}
+            # FacturaExpress (new integration 2026-06) — BASE_URL can be public-ish; creds via secrets below
+            FACTURAEXPRESS_BASE_URL=${{ secrets.FACTURAEXPRESS_BASE_URL || 'https://api.facturaexpress.com.uy' }}
           flags: |
             --service-account=${{ secrets.GCP_RUNTIME_SA_EMAIL }}
             --allow-unauthenticated
@@ -172,7 +188,7 @@ jobs:
             --memory=512Mi
             --cpu=1
             --timeout=60
-            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest,MFA_KEK_HEX=MFA_KEK_HEX:latest,DATABASE_URL=DATABASE_URL:latest,GOOGLE_TASKS_CLIENT_ID=GOOGLE_TASKS_CLIENT_ID:latest,GOOGLE_TASKS_CLIENT_SECRET=GOOGLE_TASKS_CLIENT_SECRET:latest,SUPABASE_PGP_ENCRYPT_KEY=SUPABASE_PGP_ENCRYPT_KEY:latest,SYNC_HMAC_SECRET=SYNC_HMAC_SECRET:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GROK_API_KEY=GROK_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,ML_CLIENT_SECRET=ML_CLIENT_SECRET:latest,TOKEN_ENCRYPTION_KEY=TOKEN_ENCRYPTION_KEY:latest
+            --set-secrets=${{ steps.secrets-mounts.outputs.list }}
 
       - name: Show service URL
         if: steps.paths.outputs.skip != 'true'
