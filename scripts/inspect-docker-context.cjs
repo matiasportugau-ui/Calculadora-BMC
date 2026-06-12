@@ -76,10 +76,15 @@ function matchesPattern(filePath, pattern) {
 }
 
 function shouldInclude(filePath, rules) {
-  let included = true;
+  let included = true; // default: include unless excluded
+
   for (const rule of rules) {
     if (matchesPattern(filePath, rule.pattern)) {
-      included = rule.negation;
+      if (rule.negation) {
+        included = true;   // !pattern forces include (overrides previous exclusion)
+      } else {
+        included = false;  // normal pattern excludes
+      }
     }
   }
   return included;
