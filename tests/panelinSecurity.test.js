@@ -7,6 +7,7 @@ import crypto from "node:crypto";
 import express from "express";
 
 import createPanelinRouter from "../server/routes/panelin.js";
+import webhooksRouter from "../server/routes/webhooks.js";
 import facturaExpress from "../server/lib/facturaExpressClient.js";
 
 const ORIGINAL_ENV = {
@@ -32,6 +33,20 @@ async function withPanelinServer(config, fn) {
   try {
     const { port } = server.address();
     await fn(`http://127.0.0.1:${port}/api/panelin`);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+async function withWebhookServer(fn) {
+  const app = express();
+  app.use("/webhooks", express.raw({ type: "application/json" }), webhooksRouter);
+  const server = await new Promise((resolve) => {
+    const s = app.listen(0, "127.0.0.1", () => resolve(s));
+  });
+  try {
+    const { port } = server.address();
+    await fn(`http://127.0.0.1:${port}/webhooks`);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
@@ -100,5 +115,42 @@ describe("FacturaExpress webhook signatures", () => {
 
     assert.equal(result.ok, true);
     assert.equal(result.skipped, false);
+  });
+
+  it("returns 503 at the webhook route when the production secret is missing", async () => {
+    process.env.APP_ENV = "production";
+    process.env.NODE_ENV = "production";
+    delete process.env.FACTURAEXPRESS_WEBHOOK_SECRET;
+
+    await withWebhookServer(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/facturaexpress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+
+      assert.equal(res.status, 503);
+      assert.equal((await res.json()).error, "facturaexpress_webhook_secret_not_configured");
+    });
+  });
+
+  it("returns 401 instead of 500 for malformed webhook signatures", async () => {
+    process.env.APP_ENV = "production";
+    process.env.NODE_ENV = "production";
+    process.env.FACTURAEXPRESS_WEBHOOK_SECRET = "test-secret";
+
+    await withWebhookServer(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/facturaexpress`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Signature": "bad",
+        },
+        body: "{}",
+      });
+
+      assert.equal(res.status, 401);
+      assert.equal((await res.json()).error, "invalid_signature");
+    });
   });
 });
