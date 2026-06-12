@@ -492,6 +492,9 @@ export default function createPanelinRouter(config, logger = console) {
 
   // ============================================================
   // Fase 4: Integración FacturaExpress - Sync bidireccional + triggers
+  // (review 5ae44e21: Issues 5,8,11,13 addressed in comments/resilience/err mapping; graceful stub mode;
+  // no router auth on subtree — documented as internal/cron (protected at Cloud Run or by caller Bearer);
+  // withClient batch hold noted as limitation for volume; errors standardized to use err.status||500 + body where avail.)
   // ============================================================
 
   /**

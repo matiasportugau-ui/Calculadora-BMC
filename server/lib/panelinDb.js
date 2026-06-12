@@ -4,6 +4,11 @@
  * Tablas aisladas lógicamente bajo prefijo `panelin_*` en el schema tracker + funciones.
  *
  * Patrón idéntico a waDb.js / transportistaDb.js para consistencia del repo.
+ *
+ * Review 5ae44e21 (Issue 7): webhook processor (webhooks.js) uses getPanelinPool directly (bypassing
+ * panelin router getPool helper); singleton + console.error is acceptable for now (matches other Db
+ * modules). Enhanced comment + no-throw guarantee preserved. Full logger injection / shared pool
+ * centralization recommended for Fase 5.
  */
 
 import pg from "pg";
@@ -25,7 +30,7 @@ export function getPanelinPool(databaseUrl) {
       idleTimeoutMillis: 30000,
     });
 
-    // Idle-client errors must not crash the process
+    // Idle-client errors must not crash the process (console per existing pattern; review-5ae44e21 tolerant)
     pool.on("error", (err) => {
       console.error("[panelinDb] idle client error:", err?.message);
     });

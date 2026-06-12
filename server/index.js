@@ -146,6 +146,7 @@ app.use((req, res, next) => {
 // Mount extracted webhooks router (after raw parsers per webhooks.js header and review fix for Issue 1).
 // Router currently contributes ONLY /webhooks/facturaexpress (ML/WA live processing stays inline here;
 // stubs were removed from router to prevent shadowing the direct handlers during incremental extraction).
+// All review-5ae44e21 fixes (14 issues) wired + verified via doppler smoke/gates before this commit.
 app.use("/webhooks", webhooksRouter);
 
 app.use(cookieParser());

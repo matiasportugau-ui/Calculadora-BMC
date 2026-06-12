@@ -24,7 +24,8 @@ const router = express.Router();
 // - Verifica firma (si FACTURAEXPRESS_WEBHOOK_SECRET configurado)
 // - Upsert a invoices
 // - Llama panelin_record_stock_movement (Fase 1) para actualizar stock + alertas automáticas
-// - En error: inserta en webhook_failures (DLQ) para reintentos
+// - En error: logged (DLQ table insert planned; see review-5ae44e21 Issue 6 — current: catch logs only per suggestion to avoid claim mismatch; tx not wrapped for atomicity in v1 stub)
+// Review fix traceability: Issue 1 (mount/router), 3 (sig in client), 6/7/13 (comments + error shape).
 // ============================================================
 router.post("/facturaexpress", async (req, res, next) => {
   const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body || {}));
