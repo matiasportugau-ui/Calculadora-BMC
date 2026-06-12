@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import express from "express";
-import createPanelinRouter from "../server/routes/panelin.js";
 
-function startTestServer() {
+async function startTestServer() {
+  process.env.API_AUTH_TOKEN = "panelin-test-token";
+  const { default: createPanelinRouter } = await import("../server/routes/panelin.js");
+
   const app = express();
   app.use(express.json());
   app.use("/api/panelin", createPanelinRouter({ apiAuthToken: "panelin-test-token" }, console));
