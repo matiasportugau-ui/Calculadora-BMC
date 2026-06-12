@@ -76,12 +76,6 @@ function matchesPattern(filePath, pattern) {
 }
 
 function shouldInclude(filePath, rules) {
-<<<<<<< Updated upstream
-  let included = true;
-  for (const rule of rules) {
-    if (matchesPattern(filePath, rule.pattern)) {
-      included = rule.negation;
-=======
   let included = true; // default: include unless excluded
 
   for (const rule of rules) {
@@ -91,7 +85,6 @@ function shouldInclude(filePath, rules) {
       } else {
         included = false;  // normal pattern excludes
       }
->>>>>>> Stashed changes
     }
   }
   return included;

@@ -10,7 +10,7 @@
  *   FACTURAEXPRESS_BASE_URL=https://api.facturaexpress.com.uy (o test)
  *   FACTURAEXPRESS_USERNAME=...
  *   FACTURAEXPRESS_PASSWORD=...
- *   FACTURAEXPRESS_WEBHOOK_SECRET= (opcional para validar firma de webhooks entrantes)
+ *   FACTURAEXPRESS_WEBHOOK_SECRET= (requerido fuera de NODE_ENV/APP_ENV=test)
  *
  * Nota: Esta es una implementación realista basada en proveedores CFE Uruguay
  * (patrón común: /token + Bearer, endpoints /cfe, /stock, webhooks de estado).
@@ -158,12 +158,25 @@ export const facturaExpress = {
    */
   verifyWebhookSignature(rawBody, signatureHeader) {
     const secret = process.env.FACTURAEXPRESS_WEBHOOK_SECRET;
-    if (!secret) return { skipped: true, ok: true };
+    const appEnv = process.env.APP_ENV || process.env.NODE_ENV || "development";
+    if (!secret) {
+      if (appEnv === "test") return { skipped: true, ok: true };
+      return { skipped: false, ok: false, reason: "secret_not_configured" };
+    }
 
     // Ejemplo HMAC (muchos proveedores usan esto)
     const expected = "sha256=" + crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
-    const ok = crypto.timingSafeEqual(Buffer.from(signatureHeader || ""), Buffer.from(expected));
-    return { ok, skipped: false };
+    const provided = Array.isArray(signatureHeader) ? signatureHeader[0] : String(signatureHeader || "");
+    const providedBuffer = Buffer.from(provided);
+    const expectedBuffer = Buffer.from(expected);
+    if (providedBuffer.length !== expectedBuffer.length) {
+      return { ok: false, skipped: false, reason: "length_mismatch" };
+    }
+    try {
+      return { ok: crypto.timingSafeEqual(providedBuffer, expectedBuffer), skipped: false };
+    } catch {
+      return { ok: false, skipped: false, reason: "compare_failed" };
+    }
   },
 };
 

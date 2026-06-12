@@ -51,6 +51,22 @@ export default function createPanelinRouter(config, logger = console) {
     });
   }
 
+  function requirePanelinAuth(req, res, next) {
+    const token = config.apiAuthToken;
+    if (!token) {
+      return res.status(503).json({
+        ok: false,
+        error: "API_AUTH_TOKEN not configured",
+        message: "Panelin Platform data endpoints are disabled until service auth is configured.",
+      });
+    }
+    const auth = String(req.headers.authorization || "");
+    const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+    const xKey = String(req.headers["x-api-key"] || "");
+    if (bearer === token || xKey === token) return next();
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+
   async function withClient(handler) {
     const pool = getPool();
     if (!pool) return null;
@@ -87,6 +103,10 @@ export default function createPanelinRouter(config, logger = console) {
       return res.status(503).json({ ok: false, error: "panelin_db_error", message: err.message });
     }
   });
+
+  // All data-bearing and mutating Panelin Platform endpoints require the
+  // existing service token. /status remains public for health checks.
+  router.use(requirePanelinAuth);
 
   // ---------- PRODUCTS ----------
   router.get("/products", async (req, res) => {

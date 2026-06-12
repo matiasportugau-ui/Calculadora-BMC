@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "node:crypto";
 import { config } from "../config.js";
 import { getPanelinPool } from "../lib/panelinDb.js";
 import facturaExpress from "../lib/facturaExpressClient.js";
@@ -33,6 +34,10 @@ router.post("/facturaexpress", async (req, res, next) => {
   try {
     // Verificación de firma (si está configurado el secreto)
     const verification = facturaExpress.verifyWebhookSignature(raw, signature);
+    if (verification.reason === "secret_not_configured") {
+      req.log?.error({ reason: verification.reason }, "FacturaExpress webhook: secret no configurado");
+      return res.status(503).json({ ok: false, error: "facturaexpress_webhook_secret_not_configured" });
+    }
     if (!verification.skipped && !verification.ok) {
       req.log?.warn({ reason: "invalid_signature" }, "FacturaExpress webhook: firma inválida");
       return res.status(401).json({ ok: false, error: "invalid_signature" });
@@ -50,12 +55,7 @@ router.post("/facturaexpress", async (req, res, next) => {
 
     req.log?.info({ event, hasExternalId: !!data.external_id }, "FacturaExpress webhook recibido");
 
-    // Procesar de forma asíncrona (no bloquear respuesta)
-    processFacturaExpressWebhook({ event, data, rawPayload: payload }).catch((e) => {
-      req.log?.error({ err: e, event }, "[facturaexpress] procesamiento async falló");
-    });
-
-    // Responder rápido al proveedor
+    await processFacturaExpressWebhook({ event, data, rawPayload: payload });
     res.status(200).json({ ok: true });
   } catch (err) {
     next(err);
@@ -70,6 +70,7 @@ async function processFacturaExpressWebhook({ event, data, rawPayload }) {
 
   const client = await pool.connect();
   try {
+    await client.query("BEGIN");
     // 1. Persistir la factura si viene información (sync inbound)
     if (data.external_id || data.id) {
       const externalId = data.external_id || data.id;
@@ -96,24 +97,57 @@ async function processFacturaExpressWebhook({ event, data, rawPayload }) {
     // Ejemplo de payload esperado del proveedor: { items: [{sku: "...", qty: -3}], reason: "venta" }
     const items = data.items || data.lineas || (data.sku ? [{ sku: data.sku, qty: data.qty || data.delta }] : []);
     if (items.length > 0) {
+      const refId =
+        data.external_id ||
+        data.id ||
+        data.cfe_id ||
+        rawPayload?.event_id ||
+        crypto.createHash("sha256").update(JSON.stringify(rawPayload || {})).digest("hex");
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`facturaexpress:${refId}`]);
+
+      const movementsBySku = new Map();
       for (const item of items) {
         const sku = item.sku || item.codigo || item.product_sku;
         const delta = Number(item.qty ?? item.cantidad ?? item.delta ?? 0);
         if (!sku || !delta) continue;
 
+        const deposito = item.deposito || item.warehouse || "principal";
         const reason = item.reason || (event.includes("invoice") ? "venta" : "facturaexpress_webhook");
-        const refId = data.external_id || data.id || data.cfe_id || "webhook";
+        const key = `${sku}\u0000${deposito}\u0000${reason}`;
+        const current = movementsBySku.get(key) || { sku, deposito, reason, delta: 0 };
+        current.delta += delta;
+        movementsBySku.set(key, current);
+      }
+
+      for (const movement of movementsBySku.values()) {
+        const existing = await client.query(
+          `SELECT 1
+           FROM stock_movements
+           WHERE ref_type = 'facturaexpress_webhook'
+             AND ref_id = $1
+             AND sku = $2
+             AND deposito = $3
+           LIMIT 1`,
+          [refId, movement.sku, movement.deposito]
+        );
+        if (existing.rowCount > 0) continue;
 
         // Usa la función de Fase 1 (control de negativo + alertas + movimiento)
         await client.query(
-          `SELECT panelin_record_stock_movement($1, 'principal', $2, $3, 'facturaexpress_webhook', $4)`,
-          [sku, delta, reason, refId]
+          `SELECT panelin_record_stock_movement($1, $2, $3, $4, 'facturaexpress_webhook', $5)`,
+          [movement.sku, movement.deposito, movement.delta, movement.reason, refId]
         );
       }
     }
 
     // 3. Otros eventos (cambio de precio desde FE, etc.) pueden disparar sync aquí en futuro.
+    await client.query("COMMIT");
   } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // ignore rollback failures so the original error is preserved
+    }
     // DLQ: almacenar fallo para reintento manual o worker futuro (tabla de Fase 1)
     try {
       await client.query(

@@ -51,11 +51,14 @@ async function main() {
     await client.query(`SELECT panelin_recalc_prices_for_sku($1)`, [TEST_SKU]);
     console.log("✓ Producto de prueba creado vía panelin_upsert_product + recalc");
 
+    const panelinApiToken = appConfig.apiAuthToken || "verify-panelin-local-token";
+    const routerConfig = { ...appConfig, apiAuthToken: panelinApiToken };
+
     // === Levantar servidor aislado ===
     const app = express();
     app.use(express.json());
     // Montamos exactamente igual que en el server real
-    app.use("/api/panelin", createPanelinRouter(appConfig, console));
+    app.use("/api/panelin", createPanelinRouter(routerConfig, console));
 
     const server = http.createServer(app);
     await new Promise((resolve) => server.listen(PORT, resolve));
@@ -68,7 +71,10 @@ async function main() {
     async function j(method, path, body) {
       const res = await fetch(`${base}${path}`, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Key": panelinApiToken,
+        },
         body: body ? JSON.stringify(body) : undefined,
       });
       const text = await res.text();

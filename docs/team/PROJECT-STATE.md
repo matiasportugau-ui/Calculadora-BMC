@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-12 (critical review — Panelin/FacturaExpress auth + webhook integrity):** `fix en rama cursor/critical-bug-investigation-49f9`. Se cerraron fallas críticas detectadas en PR #331: `/api/panelin/*` (productos/stock/facturas/sync) ahora exige token de servicio salvo `/status`; webhooks FacturaExpress fallan cerrado si falta `FACTURAEXPRESS_WEBHOOK_SECRET` fuera de test y no tiran 500 por firmas malformadas; procesamiento de webhooks ahora espera commit DB, usa transacción, lock por referencia e idempotencia por SKU/deposito/ref para evitar stock duplicado o parcial; resueltos conflict markers en `DetailDrawer.jsx` y `scripts/inspect-docker-context.cjs`. Tests nuevos: `tests/panelinSecurity.test.js`.
+
 **2026-06-12 (Secrets hardening — automated pipeline + auto-generated --set-secrets from HIGH_SENS_KEYS):** `implementado + automated run ready`. Full end-to-end automation for secrets/GSM changes:
 - `scripts/provision-secrets.sh --print-mounts` (generator for CI).
 - `.github/workflows/deploy-calc-api.yml` now dynamically computes --set-secrets (no more manual long list or key wipes on deploy).
