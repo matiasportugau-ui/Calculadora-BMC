@@ -49,6 +49,7 @@ import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import createPanelinRouter from "./routes/panelin.js";
 import webhooksRouter from "./routes/webhooks.js";
+import { initRealtime, broadcast } from "./lib/realtime.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -1142,6 +1143,10 @@ const server = app.listen(config.port, async () => {
     },
     "MercadoLibre connector server started"
   );
+
+  // Fase 6: WebSocket realtime (stock, prices, invoices)
+  // Clients (dashboard) connect to ws://.../realtime
+  initRealtime(server, logger);
   if (transportistaPool) {
     stopTransportista = startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
   }

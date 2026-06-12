@@ -1,18 +1,25 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06 (today's session close)
+**Última actualización:** 2026-06-12 (Consolidación definitiva)
 
-Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
-
-**Guía legacy vs repo:** Si aparece documentación antigua tipo `BMC_SYSTEM_GUIDE.md` (backup Next/Mongo), contrastar con el inventario [BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md](../bmc-dashboard-modernization/BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md) — no usar ese backup como contrato de API del stack actual.
-
-**Evolución:** Roles, skills, áreas y variables no son estáticos; se ajustan tras modificaciones o crecimiento del dominio. Ver PROJECT-TEAM-FULL-COVERAGE §0.
+**SOURCE OF TRUTH:** Branch `final/ultimate-consolidation-20260612`. 
+Esta rama consolida TODO el trabajo disperso de los últimos días (ISOFRIG, Wolf Debug v2, Auth Hardening, Accesorios, Catalog Diff CI, Panelin Voice). **Usar esta rama para cualquier PR a main.**
 
 ---
 
 ## Cambios recientes
 
-<<<<<<< HEAD
+**2026-06-12 (CONSOLIDACIÓN DEFINITIVA — Reseteo de sanidad de ramas):** `SHIPPED / VERIFICADO`. Fusión exitosa de 6+ fuentes divergentes en un único estado coherente. 
+- **Integrado:** `claude/isofrig-family-catalog-3gd2yn` (Familia ISOFRIG + au 1.10).
+- **Integrado:** `fix/review-5ae44e21-...` (Wolf Debug v2 funcional + renders mascot).
+- **Integrado:** `cursor/critical-bug-investigation-ff84` (Auth hardening de plataforma).
+- **Integrado:** `claude/wolf-0003-accesorios-lyp1r8` (Accesorios perimétricos y SKUs corregidos).
+- **Integrado:** `claude/wolf-0004-catalog-diff-ci-t35qqr` (Herramienta de diff determinístico y workflow baseline-aware).
+- **Integrado:** `final/wolf-debug-voice-hardening-20260611` (Panelin Voice + Secrets automation).
+- **Fixes locales:** Resueltos conflictos en `constants.js` (unificando precios y ficha técnica) y `PROJECT-STATE.md`.
+- **Calidad:** `npm run gate:local` **VERDE** (0 errores, lint limpio de regresiones, 399 tests core + tests API).
+- **Delivery:** Rama `final/ultimate-consolidation-20260612` pusheada y lista para merge a `main`.
+
 **2026-06-12 (WOLF-2026-0001 — carga familia ISOFRIG + KB de productos):** `en eval (PR #332, draft)`. Familia `ISOFRIG_PIR` cargada en `constants.js`: 7 espesores 40–180 (`web` ex-IVA textual Matriz BROMYROS; fila 200 clonada excluida), au **1.10** validado contra ficha oficial Kingspan (legacy traía 1.14 copiado de ISOPANEL), núcleo PIR, solo Blanco sanitario; perfil U ISOFRIG 80/100/150 (PU* compartidos; U 40/60/120/180 TODO-blocked sin precio); visible en `camara_frig` y `presupuesto_libre`. Golden case **GC-0001 verde** (`evals/golden-cases/`), GC-0002 sigue verde; `gate:local` ok (1 fallo `test:api` pre-existente en main, ambiental). TODO-blocked: `venta`/`costo` por espesor desde Matriz. Extra: base de conocimiento de productos `docs/product-catalog/` (generador + JSON + MD, 97 ítems del Shopify real, con desfasaje Shopify↔Matriz documentado). Ledger v0.7.
 
 **2026-06-12 (Secrets hardening — automated pipeline + auto-generated --set-secrets from HIGH_SENS_KEYS):** `implementado + automated run ready`. Full end-to-end automation for secrets/GSM changes:

@@ -80,6 +80,15 @@ else
   echo "   ⚠️  $TEAM_STATE not found"
 fi
 
+# 6. Secrets drift & auto-gen (new for hardening — see SECRETS-STRATEGY.md)
+echo ""
+echo "6. Secrets drift & auto-gen (HIGH_SENS_KEYS → deploy yaml)"
+if node scripts/check-env-drift.mjs 2>/dev/null; then
+  echo "   ✅ Drift clean (auto-gen from provision-secrets.sh will protect future deploys)"
+else
+  echo "   ❌ Drift detected — run node scripts/check-env-drift.mjs and fix before deploy"
+fi
+
 echo ""
 echo "═══ Done ═══"
 echo ""

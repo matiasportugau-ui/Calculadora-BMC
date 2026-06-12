@@ -25,6 +25,7 @@ import { Router } from "express";
 import { getPanelinPool } from "../lib/panelinDb.js";
 import facturaExpress from "../lib/facturaExpressClient.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { broadcast } from "../lib/realtime.js";
 
 /**
  * @param {import('../config.js').config} config
@@ -296,6 +297,12 @@ export default function createPanelinRouter(config, logger = console) {
         prices,
         prices_recalculated: result.affected_prices,
       });
+
+      // Fase 6: notify live clients
+      broadcast({ 
+        type: 'price-update', 
+        payload: { sku, cost_usd: Number(result.product.cost_usd), prices } 
+      });
     } catch (err) {
       logger.error?.({ err, sku }, "[panelin] PATCH /products/:sku failed");
       return res.status(500).json({ ok: false, error: "update_failed", message: err.message });
@@ -368,6 +375,17 @@ export default function createPanelinRouter(config, logger = console) {
           reason: movement.reason,
           created_at: movement.created_at,
         },
+      });
+
+      // Fase 6: live update
+      broadcast({ 
+        type: 'stock-update', 
+        payload: { 
+          sku: movement.sku, 
+          delta: Number(movement.delta), 
+          qty_after: Number(movement.qty_after),
+          reason: movement.reason 
+        } 
       });
     } catch (err) {
       if (err.message && err.message.includes("stock_negativo")) {
@@ -481,7 +499,11 @@ export default function createPanelinRouter(config, logger = console) {
         )
       );
 
-      res.status(201).json({ ok: true, invoice: inserted.rows[0] });
+      const newInvoice = inserted.rows[0];
+      res.status(201).json({ ok: true, invoice: newInvoice });
+
+      // Fase 6
+      broadcast({ type: 'invoice-added', payload: newInvoice });
     } catch (err) {
       if (err.code === "23505") {
         // unique violation on external_id

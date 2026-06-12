@@ -4,6 +4,7 @@ import express from "express";
 
 async function startTestServer() {
   process.env.API_AUTH_TOKEN = "panelin-test-token";
+  process.env.DATABASE_URL = ""; // Ensure DB is unavailable for auth-only testing
   const { default: createPanelinRouter } = await import("../server/routes/panelin.js");
 
   const app = express();

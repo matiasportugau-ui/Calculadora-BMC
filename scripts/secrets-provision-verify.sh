@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # secrets-provision-verify.sh
 #
-# Unified, opinionated helper to provision/rotate secrets for panelin-calc
-# and verify the full chain (local drift + prod mounts).
+# Unified, doppler-first helper to provision/rotate secrets for panelin-calc
+# and verify the full chain (local drift + prod mounts + consumers).
+#
+# This is both a manual tool and the core of the automated pipeline
+# (scripts/secrets-automated-pipeline.mjs).
 #
 # Philosophy (per SECRETS-STRATEGY.md):
 # - Local: Doppler (bmc-backend/prd) is source of truth for dev.

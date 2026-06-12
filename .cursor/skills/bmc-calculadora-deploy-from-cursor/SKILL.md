@@ -123,3 +123,4 @@ Si hubo cambios de comportamiento o deploy: una línea en [`docs/team/PROJECT-ST
 
 - Diagnóstico profundo Cloud Run: skill **cloudrun-diagnostics-reporter** (si está disponible).
 - Vercel genérico: skill **vercel-deploy** en entorno Codex (no duplicar aquí el detalle de Vercel salvo lo mínimo).
+- **Secrets hardening / auto-gen**: when touching GSM, deploy yaml, or HIGH_SENS_KEYS, also run `doppler run -- npm run secrets:automated -- --write` (or the new pipeline) and verify the live revision mounts the generated list. See `scripts/secrets-automated-pipeline.mjs` and `SECRETS-STRATEGY.md`.

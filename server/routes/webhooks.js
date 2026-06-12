@@ -2,6 +2,7 @@ import express from "express";
 import { config } from "../config.js";
 import { getPanelinPool } from "../lib/panelinDb.js";
 import facturaExpress from "../lib/facturaExpressClient.js";
+import { broadcast } from "../lib/realtime.js";
 
 // This module supports incremental monolith decomposition (Phase 1 from the audit).
 // Raw body parsers for /webhooks/* (incl. facturaexpress) remain in server/index.js
@@ -90,6 +91,9 @@ async function processFacturaExpressWebhook({ event, data, rawPayload }) {
           rawPayload,
         ]
       );
+
+      // Fase 6 realtime
+      broadcast({ type: 'invoice-added', payload: { external_id: externalId, source: 'facturaexpress' } });
     }
 
     // 2. Si el evento o payload indica movimiento de stock (venta, emisión de factura con ítems, ajuste)
@@ -109,6 +113,12 @@ async function processFacturaExpressWebhook({ event, data, rawPayload }) {
           `SELECT panelin_record_stock_movement($1, 'principal', $2, $3, 'facturaexpress_webhook', $4)`,
           [sku, delta, reason, refId]
         );
+
+        // Fase 6 realtime
+        broadcast({ 
+          type: 'stock-update', 
+          payload: { sku, delta, reason, ref_id: refId, source: 'facturaexpress_webhook' } 
+        });
       }
     }
 
