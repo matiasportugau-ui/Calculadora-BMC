@@ -6,7 +6,9 @@
  *     sku (MATRIZ col D) ↔ path (calculadora) ↔ codigo (Stock E-Commerce)
  * - Fuente de verdad: MATRIZ (precios) + Stock workbook (inventario) + links manuales persistidos
  * - La calculadora (UI) es el hub visual de edición; las planillas son persistencia.
- * - Fase 1-2: links viven en .runtime/product-links.json (sin nueva pestaña en Sheets todavía)
+ * - Links viven en Postgres (bmc_catalog.products) cuando hay DATABASE_URL;
+ *   .runtime/product-links.json queda como fallback local (era el storage
+ *   original y se perdía en cada deploy de Cloud Run — filesystem efímero).
  *
  * Uso principal:
  *   import { getProductosMaestro, reconcileProductosMaestro, getLinks, saveLinks } from '../lib/productosMaestro.js'
@@ -71,10 +73,13 @@ function ensureRuntimeDir() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Links (persistencia ligera)                                                */
+/* Links (persistencia durable en Postgres, fallback a JSON local)            */
 /* -------------------------------------------------------------------------- */
 
-export function loadLinks() {
+import { hasCatalogDb } from './catalog/db.js';
+import * as catalogStore from './catalog/store.js';
+
+function loadLinksFromFile() {
   try {
     if (fs.existsSync(LINKS_FILE)) {
       const raw = fs.readFileSync(LINKS_FILE, 'utf8');
@@ -87,7 +92,7 @@ export function loadLinks() {
   return {};
 }
 
-export function saveLinks(links) {
+function saveLinksToFile(links) {
   ensureRuntimeDir();
   const payload = {
     version: 1,
@@ -99,6 +104,24 @@ export function saveLinks(links) {
   };
   fs.writeFileSync(LINKS_FILE, JSON.stringify(payload, null, 2), 'utf8');
   return payload;
+}
+
+export async function loadLinks() {
+  if (hasCatalogDb()) {
+    try {
+      return await catalogStore.getLinks();
+    } catch (e) {
+      console.warn('[productosMaestro] Error leyendo links de bmc_catalog, fallback a JSON:', e.message);
+    }
+  }
+  return loadLinksFromFile();
+}
+
+export async function saveLinks(links) {
+  if (hasCatalogDb()) {
+    return await catalogStore.saveLinks(links, { calcPathBySku: MATRIZ_SKU_TO_PATH || {} });
+  }
+  return saveLinksToFile(links);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -239,7 +262,7 @@ export async function getProductosMaestro(opts = {}) {
     loadStockItems(),
   ]);
 
-  const links = loadLinks();
+  const links = await loadLinks();
   const stockByCodigo = new Map(stockRes.items.map((s) => [s.codigo, s]));
   const reverseLinks = new Map(); // codigo → sku
   for (const [sku, codigo] of Object.entries(links)) {

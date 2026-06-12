@@ -1755,9 +1755,9 @@ export default function createBmcDashboardRouter(config) {
       }
     });
 
-    router.get("/productos-maestro/links", (_req, res) => {
+    router.get("/productos-maestro/links", async (_req, res) => {
       try {
-        const links = pm.loadLinks();
+        const links = await pm.loadLinks();
         res.json({ ok: true, links, count: Object.keys(links).length });
       } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
@@ -1771,7 +1771,7 @@ export default function createBmcDashboardRouter(config) {
         if (typeof incoming !== 'object') {
           return res.status(400).json({ ok: false, error: 'links must be an object' });
         }
-        const saved = pm.saveLinks(incoming);
+        const saved = await pm.saveLinks(incoming);
         res.json({ ok: true, ...saved });
       } catch (e) {
         res.status(500).json({ ok: false, error: e.message });

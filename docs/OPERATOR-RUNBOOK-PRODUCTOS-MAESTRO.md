@@ -94,10 +94,33 @@ You need a valid `API_AUTH_TOKEN` with at least "ventas" role to read, and "admi
 
 ---
 
+## Link Persistence (since Fase 0 del Products Module)
+
+SKU↔CODIGO links are stored in **Postgres** (`bmc_catalog.products`) when
+`DATABASE_URL` is configured — this is the durable store; links survive
+deploys. The legacy file `.runtime/product-links.json` is only a fallback for
+local dev without DB (it lives on Cloud Run's ephemeral filesystem and was
+silently wiped on every deploy — that was the bug Fase 0 fixed).
+
+**One-time setup (per environment):**
+
+1. `npm run catalog:migrate` — applies the `bmc_catalog` schema migration.
+2. `npm run catalog:links:migrate` — seeds products from the MATRIZ SKU
+   mapping (151 SKUs) and imports any links from the legacy JSON file.
+   Use `--dry-run` to preview. Idempotent — safe to re-run.
+
+If prod still has links only in the legacy JSON (pre-migration), pull them
+first with `GET /api/productos-maestro/links` and save the response into
+`.runtime/product-links.json` before running the seed.
+
+---
+
 ## Related Commands
 
 - `npm run productos-maestro:reconcile`
 - `npm run productos-maestro:reconcile:json`
+- `npm run catalog:migrate` — apply bmc_catalog schema migrations
+- `npm run catalog:links:migrate` — seed/import links into Postgres
 
 ---
 
