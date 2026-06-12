@@ -100,6 +100,9 @@ if (isProd) {
   if (!config.mlClientSecret) {
     logger.error("FATAL: ML_CLIENT_SECRET is not set in production — MercadoLibre webhooks will be rejected");
   }
+  if (!config.facturaexpressWebhookSecret) {
+    logger.error("FATAL: FACTURAEXPRESS_WEBHOOK_SECRET is not set in production — FacturaExpress webhooks will be rejected");
+  }
 }
 
 const app = express();

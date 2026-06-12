@@ -24,6 +24,7 @@
 import { Router } from "express";
 import { getPanelinPool } from "../lib/panelinDb.js";
 import facturaExpress from "../lib/facturaExpressClient.js";
+import { requireAuth as requireServiceToken } from "../middleware/requireServiceOrUser.js";
 
 /**
  * @param {import('../config.js').config} config
@@ -232,7 +233,7 @@ export default function createPanelinRouter(config, logger = console) {
     }
   });
 
-  router.patch("/products/:sku", async (req, res) => {
+  router.patch("/products/:sku", requireServiceToken, async (req, res) => {
     const { sku } = req.params;
     const { cost_usd } = req.body || {};
 
@@ -336,7 +337,7 @@ export default function createPanelinRouter(config, logger = console) {
     }
   });
 
-  router.post("/stock/movements", async (req, res) => {
+  router.post("/stock/movements", requireServiceToken, async (req, res) => {
     const { sku, deposito = "principal", delta, reason = "manual", ref_type, ref_id, created_by } = req.body || {};
 
     if (!sku || delta == null || isNaN(Number(delta))) {
@@ -406,7 +407,7 @@ export default function createPanelinRouter(config, logger = console) {
     }
   });
 
-  router.post("/stock/alerts/:id/ack", async (req, res) => {
+  router.post("/stock/alerts/:id/ack", requireServiceToken, async (req, res) => {
     const { id } = req.params;
     const { acknowledged_by = "operator" } = req.body || {};
 
@@ -459,7 +460,7 @@ export default function createPanelinRouter(config, logger = console) {
     }
   });
 
-  router.post("/invoices", async (req, res) => {
+  router.post("/invoices", requireServiceToken, async (req, res) => {
     const { external_id, number, date, client_name, total_usd, status = "issued", source = "manual", raw } = req.body || {};
 
     if (!client_name && !external_id) {
@@ -493,7 +494,7 @@ export default function createPanelinRouter(config, logger = console) {
   // ============================================================
   // Fase 4: Integración FacturaExpress - Sync bidireccional + triggers
   // (review 5ae44e21: Issues 5,8,11,13 addressed in comments/resilience/err mapping; graceful stub mode;
-  // no router auth on subtree — documented as internal/cron (protected at Cloud Run or by caller Bearer);
+  // mutating sync endpoints require the same service token as other backoffice/cron surfaces;
   // withClient batch hold noted as limitation for volume; errors standardized to use err.status||500 + body where avail.)
   // ============================================================
 
@@ -501,7 +502,7 @@ export default function createPanelinRouter(config, logger = console) {
    * POST /api/panelin/sync/facturaexpress/invoices
    * Pull facturas desde FacturaExpress → upsert en tabla invoices (usando external_id).
    */
-  router.post("/sync/facturaexpress/invoices", async (req, res) => {
+  router.post("/sync/facturaexpress/invoices", requireServiceToken, async (req, res) => {
     const pool = getPool();
     if (!pool) return dbUnavailable(res);
 
@@ -560,7 +561,7 @@ export default function createPanelinRouter(config, logger = console) {
    * Ejemplo bidireccional: pull stock desde FE + ejemplo de push de un movimiento local.
    * En producción esto se llamaría desde cron o después de un movimiento local.
    */
-  router.post("/sync/facturaexpress/stock", async (req, res) => {
+  router.post("/sync/facturaexpress/stock", requireServiceToken, async (req, res) => {
     const pool = getPool();
     if (!pool) return dbUnavailable(res);
 
@@ -602,7 +603,7 @@ export default function createPanelinRouter(config, logger = console) {
    * Pull precios desde FE (si disponible) o push de nuestros precios actuales.
    * Por ahora un stub que puede evolucionar a bidirectional real.
    */
-  router.post("/sync/facturaexpress/prices", async (req, res) => {
+  router.post("/sync/facturaexpress/prices", requireServiceToken, async (req, res) => {
     try {
       const remotePrices = await facturaExpress.getPrices().catch(() => null);
       // En el futuro: también podríamos hacer push de product_prices actuales a FE

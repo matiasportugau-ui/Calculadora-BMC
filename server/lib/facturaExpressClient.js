@@ -10,7 +10,7 @@
  *   FACTURAEXPRESS_BASE_URL=https://api.facturaexpress.com.uy (o test)
  *   FACTURAEXPRESS_USERNAME=...
  *   FACTURAEXPRESS_PASSWORD=...
- *   FACTURAEXPRESS_WEBHOOK_SECRET= (opcional para validar firma de webhooks entrantes)
+ *   FACTURAEXPRESS_WEBHOOK_SECRET=... (requerido fuera de test para validar webhooks entrantes)
  *
  * Nota: Esta es una implementación realista basada en proveedores CFE Uruguay
  * (patrón común: /token + Bearer, endpoints /cfe, /stock, webhooks de estado).
@@ -27,7 +27,7 @@ import { config } from "../config.js";
 // - loginInFlight guard (exact pattern like mercadoLibreClient refreshInFlight + .finally cleanup) to prevent thundering-herd races on cold/expiry.
 // - 1-retry wrapper + AbortController timeout in login/apiFetch (aligns ML requestTimeoutMs).
 // - Credentials read from centralized config (not raw process.env at module eval).
-// - verifyWebhookSignature: length guard + prefix normalize + try/catch (prevents timingSafeEqual crash on short/missing sig; Issue 3).
+// - verifyWebhookSignature: fail-closed secret handling + length guard + prefix normalize + try/catch (prevents timingSafeEqual crash on short/missing sig; Issue 3).
 // - Explicit stub/adapter note + defensive logging for remote shapes (Issue 8).
 // - Robust content-type + network err mapping (Issue 12).
 
@@ -206,24 +206,29 @@ export const facturaExpress = {
 
   /**
    * Helper para validar firma de webhook entrante (si el proveedor envía X-Signature o similar).
-   * Fix per review-5ae44e21 Issue 3: length guard after normalize, prefix strip on both sides, try/catch around timingSafeEqual.
+   * Fail closed outside tests: stock-mutating webhooks must never be accepted unsigned.
+   * Fix per review-5ae44e21 Issue 3: length guard after normalize, prefix normalize on both sides, try/catch around timingSafeEqual.
    * Returns {skipped, ok, reason?}. Never throws.
    */
   verifyWebhookSignature(rawBody, signatureHeader) {
     const secret = config.facturaexpressWebhookSecret || process.env.FACTURAEXPRESS_WEBHOOK_SECRET;
-    if (!secret) return { skipped: true, ok: true };
+    if (!secret) {
+      const isTest = process.env.APP_ENV === "test" || process.env.NODE_ENV === "test";
+      if (isTest) return { skipped: true, ok: true };
+      return { skipped: false, ok: false, reason: "secret_not_configured" };
+    }
 
     try {
       // Ejemplo HMAC (muchos proveedores usan esto)
       const expectedHex = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
       const expected = "sha256=" + expectedHex;
 
-      // Normalize incoming: strip common "sha256=" prefix if present
-      let incoming = (signatureHeader || "").toString().trim();
-      if (incoming.toLowerCase().startsWith("sha256=")) incoming = incoming.slice(7);
+      // Normalize incoming: accept either common "sha256=<hex>" or raw hex header.
+      const rawIncoming = (signatureHeader || "").toString().trim().toLowerCase();
+      const incoming = rawIncoming.startsWith("sha256=") ? rawIncoming : `sha256=${rawIncoming}`;
 
-      const expBuf = Buffer.from(expected);
-      const inBuf = Buffer.from(incoming);
+      const expBuf = Buffer.from(expected, "utf8");
+      const inBuf = Buffer.from(incoming, "utf8");
 
       // Guard length (timingSafeEqual requires equal length or throws)
       if (inBuf.length !== expBuf.length) {

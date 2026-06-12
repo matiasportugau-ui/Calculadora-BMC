@@ -21,10 +21,11 @@ const router = express.Router();
 // ============================================================
 // FacturaExpress webhook (Fase 4)
 // Recibe notificaciones de CFE emitidos, cambios de estado, ajustes de stock, etc.
-// - Verifica firma (si FACTURAEXPRESS_WEBHOOK_SECRET configurado)
+// - Verifica firma (FACTURAEXPRESS_WEBHOOK_SECRET requerido fuera de test)
 // - Upsert a invoices
 // - Llama panelin_record_stock_movement (Fase 1) para actualizar stock + alertas automáticas
-// - En error: logged (DLQ table insert planned; see review-5ae44e21 Issue 6 — current: catch logs only per suggestion to avoid claim mismatch; tx not wrapped for atomicity in v1 stub)
+// - Movimientos de stock son idempotentes por ref estable + sku para tolerar retries/replays del proveedor
+// - En error: logged + DLQ; transacción protege invoice + stock para no dejar writes parciales
 // Review fix traceability: Issue 1 (mount/router), 3 (sig in client), 6/7/13 (comments + error shape).
 // ============================================================
 router.post("/facturaexpress", async (req, res, next) => {
@@ -71,6 +72,8 @@ async function processFacturaExpressWebhook({ event, data, rawPayload }) {
 
   const client = await pool.connect();
   try {
+    await client.query("BEGIN");
+
     // 1. Persistir la factura si viene información (sync inbound)
     if (data.external_id || data.id) {
       const externalId = data.external_id || data.id;
@@ -97,24 +100,60 @@ async function processFacturaExpressWebhook({ event, data, rawPayload }) {
     // Ejemplo de payload esperado del proveedor: { items: [{sku: "...", qty: -3}], reason: "venta" }
     const items = data.items || data.lineas || (data.sku ? [{ sku: data.sku, qty: data.qty || data.delta }] : []);
     if (items.length > 0) {
+      const stableRefId = data.external_id || data.id || data.cfe_id || data.event_id || rawPayload?.id;
+      if (!stableRefId) {
+        throw new Error("FacturaExpress webhook con stock sin ref estable; rechazado para evitar replays no idempotentes");
+      }
+
+      const movementBySkuReason = new Map();
       for (const item of items) {
         const sku = item.sku || item.codigo || item.product_sku;
         const delta = Number(item.qty ?? item.cantidad ?? item.delta ?? 0);
         if (!sku || !delta) continue;
 
         const reason = item.reason || (event.includes("invoice") ? "venta" : "facturaexpress_webhook");
-        const refId = data.external_id || data.id || data.cfe_id || "webhook";
+        const key = `${sku}\u0000${reason}`;
+        const prev = movementBySkuReason.get(key) || { sku, reason, delta: 0 };
+        prev.delta += delta;
+        movementBySkuReason.set(key, prev);
+      }
+
+      for (const movement of movementBySkuReason.values()) {
+        const refId = String(stableRefId);
+
+        // Serialize per webhook ref+sku so concurrent provider retries cannot double-apply stock.
+        await client.query("SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))", [
+          "facturaexpress_webhook",
+          `${refId}:${movement.sku}`,
+        ]);
+
+        const existing = await client.query(
+          `SELECT 1
+           FROM stock_movements
+           WHERE ref_type = 'facturaexpress_webhook'
+             AND ref_id = $1
+             AND sku = $2
+           LIMIT 1`,
+          [refId, movement.sku]
+        );
+        if (existing.rows.length) continue;
 
         // Usa la función de Fase 1 (control de negativo + alertas + movimiento)
         await client.query(
           `SELECT panelin_record_stock_movement($1, 'principal', $2, $3, 'facturaexpress_webhook', $4)`,
-          [sku, delta, reason, refId]
+          [movement.sku, movement.delta, movement.reason, refId]
         );
       }
     }
 
     // 3. Otros eventos (cambio de precio desde FE, etc.) pueden disparar sync aquí en futuro.
+    await client.query("COMMIT");
   } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Ignore rollback errors; preserve the original processing failure for logs/DLQ.
+    }
     // DLQ: almacenar fallo para reintento manual o worker futuro (tabla de Fase 1)
     try {
       await client.query(
