@@ -24,6 +24,7 @@ import {
   getDayReport as tkDayReport,
   getMonthReport as tkMonthReport,
   getBillableReport as tkBillable,
+  getActivityToday as tkActivityToday,
 } from "./traktimeLoopbackClient.js";
 import { appendQuoteToCrm } from "./crmAppend.js";
 import { dualWriteQuote } from "./quoteDualWrite.js";
@@ -911,6 +912,17 @@ export const AGENT_TOOLS = [
       type: "object",
       properties: {
         lookback_hours: { type: "number", description: "Ventana de entradas recientes a mirar (default 24)" },
+      },
+    },
+  },
+  {
+    name: "traktime_activity_today",
+    description:
+      "TraKtiMe + ActivityWatch (opt-in, OFF por defecto): cuando el operador habilitó ActivityWatch, devuelve un resumen de la actividad del SO de hoy (apps/títulos por tiempo) para responder '¿en qué trabajé hoy?' y proponer entradas. Si está deshabilitado, lo informa con cómo habilitarlo. Solo lectura.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tz: { type: "string", description: "IANA tz para el día (default America/Montevideo)" },
       },
     },
   },
@@ -2010,6 +2022,28 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
             duration_seconds: x.duration_seconds,
           })),
           note: "Proponé un borrador de entrada/categorización al usuario y pedí confirmación antes de escribir.",
+        });
+      }
+
+      if (name === "traktime_activity_today") {
+        const query = input?.tz ? { tz: String(input.tz) } : {};
+        const r = await tkActivityToday(query, o);
+        if (r.status === 404 && r.body?.error === "aw_disabled") {
+          return JSON.stringify({
+            ok: true,
+            enabled: false,
+            note: "ActivityWatch no está habilitado. Es opt-in: el operador debe instalar ActivityWatch local y arrancar la API con TRAKTIME_AW_ENABLED=1. Ver docs/team/traktime/ACTIVITYWATCH-OPTIN.md.",
+          });
+        }
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error || "aw_unreachable" });
+        return JSON.stringify({
+          ok: true,
+          enabled: true,
+          date: r.body?.date,
+          tz: r.body?.tz,
+          total_active_seconds: r.body?.total_active_seconds,
+          by_app: r.body?.by_app || [],
+          note: "Usá esto para proponer una o más entradas; pedí confirmación antes de escribir.",
         });
       }
     }

@@ -151,6 +151,37 @@ export const PANELS_PARED = {
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
+  /**
+   * ISOFRIG — panel frigorífico PIR (Kingspan/Bromyros). Carga WOLF-2026-0001 (ledger BUG-TRIAGE-RAMIRO).
+   * - Núcleo PIR en TODOS los espesores y au 1.10 m (1100 mm): ficha oficial
+   *   https://kingspan.com.uy/productos-kingspan/panel-isofrig (validada 12/06/2026).
+   *   OJO: la build legacy traía au 1.14 (copiado de ISOPANEL) — corregido contra ficha.
+   * - lmin/lmax: la ficha no publica largos; se conserva el precedente de la build legacy (2.3–14).
+   * - `web` ex-IVA = Matriz tab BROMYROS (filas IF40…IF180, valores textuales del ledger).
+   *   La fila 200 mm de la Matriz es un CLON de IF150 (SKU/nombre) → excluida hasta que se corrija el origen.
+   * - `costo` ex-IVA = columna costo_m2_usd_ex_iva de `.accessible-base/matriz_precios.json`
+   *   (filas IF40…IF180, dato duro digitalizado — verificado 13/06/2026).
+   * - `venta` ex-IVA (lista local BMC, **default de la app**) = `costo × 1.15` (política de markup BMC
+   *   confirmada por Matias 13/06/2026). La columna venta_local estaba VACÍA en el origen digitalizado
+   *   (13/170 filas, ninguna ISOFRIG; venta_web 0/170 — hallazgo WOLF-0004 "ventas vacías en origen"),
+   *   por lo que se deriva del costo. El factor ×1.15 reproduce al céntimo la venta histórica
+   *   (IF60/80/100/150 = 47.40/52.29/58.01/70.37). Re-sincronizar si el Sheet vivo publica venta_local oficial.
+   */
+  ISOFRIG_PIR: {
+    label: "ISOFRIG PIR", sub: "Cámaras Frigoríficas", tipo: "pared",
+    au: 1.10, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
+    esp: {
+      // venta = costo × 1.15 (markup BMC). web = Matriz BROMYROS. costo = matriz_precios.json.
+      40:  { venta: 41.72, web: 55.3384,  costo: 36.2748, ap: null },  // IF40
+      60:  { venta: 47.40, web: 62.8919,  costo: 41.2181, ap: null },  // IF60-IFSL60
+      80:  { venta: 52.29, web: 69.3770,  costo: 45.4719, ap: null },  // IF80-IFSL80
+      100: { venta: 58.01, web: 76.9454,  costo: 50.4398, ap: null },  // IF100-IFSL100 — golden case GC-0001
+      120: { venta: 69.34, web: 89.4740,  costo: 60.2924, ap: null },  // IF120-IFSL120
+      150: { venta: 70.37, web: 93.3436,  costo: 61.1881, ap: null },  // IF150-IFSL150
+      180: { venta: 86.33, web: 111.4058, costo: 75.0713, ap: null },  // IF180-IFSL180
+    },
+    col: ["Blanco"], colNotes: { _all: "Solo Blanco sanitario (exterior e interior blanco)" }, colMax: {},
+  },
 };
 
 /**
@@ -365,6 +396,19 @@ export const PERFIL_PARED = {
       80:  { sku: "PU80MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
     },
+    /**
+     * ISOFRIG (WOLF-2026-0001): el perfil U es dimensional — mismos SKUs/precios PU* que
+     * ISOPANEL/ISOWALL donde el espesor coincide (Shopify `perfiles-u` confirma compatibilidad
+     * ISOPANEL-ISOWALL-ISOFRIG). TODO-blocked 40/60/120/180: la Matriz lista perfiles U
+     * ISOFRIG-específicos (U 40/60/120/180) pero sus precios no llegaron en sesión — al cargarlos,
+     * agregar las claves; mientras falten, calcPerfilesU omite el perfil para esos espesores
+     * (sin error, BOM sin perfil U — no inventar precios por analogía).
+     */
+    ISOFRIG: {
+      80:  { sku: "PU80MM",  venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+      150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
+    },
   },
   perfil_g2: {
     ISOPANEL: {
@@ -461,7 +505,7 @@ export const SCENARIOS_DEF = [
   },
   {
     id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío",
-    familias: ["ISOPANEL_EPS","ISOWALL_PIR"],
+    familias: ["ISOFRIG_PIR","ISOPANEL_EPS","ISOWALL_PIR"],
     hasTecho: false, hasPared: true, isCamara: true,
     visibility: { borders: false, largoAncho: false, altoPerim: false, esquineros: true, aberturas: true, camara: true, autoportancia: false, canalGot: false, p5852: false },
     wizardSteps: [

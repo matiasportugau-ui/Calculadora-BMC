@@ -89,5 +89,8 @@ export const getMonthReport = (query, opts = {}) =>
   tkGet("/api/traktime/month-report", { ...opts, query });
 export const getBillableReport = (query, opts = {}) =>
   tkGet("/api/traktime/reports/billable", { ...opts, query });
+// ActivityWatch (opt-in OS observation) — lives at /api/activity/*.
+export const getActivityToday = (query, opts = {}) =>
+  tkGet("/api/activity/today", { ...opts, query });
 
 export const _internal = { loopbackBase, joinUrl };

@@ -177,6 +177,13 @@ export const config = {
     process.env.TRAKTIME_INVOICE_ISSUER_ADDRESS || "Direccion pendiente, Montevideo, Uruguay",
   traktimeInvoiceGcsBucket:
     process.env.TRAKTIME_INVOICE_GCS_BUCKET || process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
+  /**
+   * ActivityWatch (passive OS observation) — strictly OPT-IN, OFF by default.
+   * Only meaningful where the API is co-located with a local aw-server (dev /
+   * self-host on the operator's machine). In Cloud Run this stays disabled.
+   */
+  traktimeAwEnabled: bool(process.env.TRAKTIME_AW_ENABLED, false),
+  traktimeAwBaseUrl: process.env.TRAKTIME_AW_BASE_URL || "http://localhost:5600",
   /** WA Cockpit (F2 enricher) — flags */
   waEnricherEnabled: bool(process.env.WA_ENRICHER_ENABLED, false),
   waEnricherIntervalMs: Number(process.env.WA_ENRICHER_INTERVAL_MS || 8000),
