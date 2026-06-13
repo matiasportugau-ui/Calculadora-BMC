@@ -13,8 +13,9 @@ const SCOPES_SHEETS = ["https://www.googleapis.com/auth/spreadsheets"];
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
-  sameSite: "strict",
-  maxAge: 600,
+  // OAuth redirects return as cross-site top-level navigations; Strict drops the cookie.
+  sameSite: "lax",
+  maxAge: 10 * 60 * 1000,
   path: "/",
 };
 
@@ -164,7 +165,7 @@ export default function createShopifyRouter(config, logger) {
     const codeChallenge = pkceChallenge(codeVerifier);
 
     await oauthStateStore.set(state, { shop, codeVerifier, nonce });
-    res.cookie("shopify_oauth", state, { ...COOKIE_OPTIONS, maxAge: 600 });
+    res.cookie("shopify_oauth", state, COOKIE_OPTIONS);
 
     const shopHost = shop.startsWith("http") ? shop : `https://${shop}`;
     const authUrl = new URL(`${shopHost}/admin/oauth/authorize`);
