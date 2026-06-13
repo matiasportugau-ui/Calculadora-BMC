@@ -345,13 +345,15 @@ export const PERFIL_TECHO = {
       50: { sku: "GFSUP50", venta: 29.08, web: 33.92, costo: 26.17, largo: 3.03 },
       80: { sku: "GFSUP80", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
     },
+    ISODEC: {
+      // WOLF-0003 (a): Gotero Superior de Cámara 100 mm. venta/web verbatim de la Matriz (ledger v0.6);
+      // SKU corregido (la Matriz clona GSDECAM80). costo = celda Matriz #REF! → pendiente (WOLF-0004).
+      100: { sku: "GSDECAM100", venta: 39.468, web: 46.046, costo: null, largo: 3.03 },
+    },
     ISODEC_PIR: {
       30: { sku: "GSDECAM30", venta: 31.66, web: 36.93, costo: 26.38, largo: 3.03 },
       50: { sku: "GSDECAM50", venta: 28.99, web: 33.82, costo: 24.16, largo: 3.03 },
       80: { sku: "GSDECAM80", venta: 31.78, web: 37.07, costo: 26.48, largo: 3.03 },
-      // WOLF-0003 (a): Gotero Superior de Cámara 100 mm. venta/web verbatim de la Matriz (ledger v0.6);
-      // SKU corregido (la Matriz clona GSDECAM80). costo = celda Matriz #REF! → pendiente (WOLF-0004).
-      100: { sku: "GSDECAM100", venta: 39.468, web: 46.046, costo: null, largo: 3.03 },
     },
   },
   babeta_adosar: {

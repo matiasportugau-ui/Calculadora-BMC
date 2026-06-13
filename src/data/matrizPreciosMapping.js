@@ -73,6 +73,7 @@ export const MATRIZ_SKU_TO_PATH = {
   GSDECAM30: "PERFIL_TECHO.gotero_superior.ISODEC_PIR.30",
   GSDECAM50: "PERFIL_TECHO.gotero_superior.ISODEC_PIR.50",
   GSDECAM80: "PERFIL_TECHO.gotero_superior.ISODEC_PIR.80",
+  GSDECAM100: "PERFIL_TECHO.gotero_superior.ISODEC.100",
   GL30: "PERFIL_TECHO.gotero_lateral.ISOROOF.30",
   GL40: "PERFIL_TECHO.gotero_lateral.ISOROOF.40",
   GL50: "PERFIL_TECHO.gotero_lateral.ISOROOF.50",
