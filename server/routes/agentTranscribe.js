@@ -18,6 +18,7 @@ import { Router } from "express";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
+import { isUsableApiKey } from "../lib/apiKeyUtils.js";
 
 const router = Router();
 
@@ -52,8 +53,13 @@ router.post(
     limit: "10mb",
   }),
   async (req, res) => {
-    if (!config.openaiApiKey) {
-      return res.status(503).json({ ok: false, error: "OPENAI_API_KEY no configurado en el server" });
+    if (!isUsableApiKey(config.openaiApiKey)) {
+      // Empty OR a .env.example placeholder (sk-your-...): without a real key
+      // OpenAI would 401, surfacing a confusing "Whisper API 401". Be clear.
+      return res.status(503).json({
+        ok: false,
+        error: "Transcripción de voz no disponible: OPENAI_API_KEY no configurada en el server",
+      });
     }
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
       return res.status(400).json({ ok: false, error: "Audio body requerido (raw binary, audio/* MIME)" });

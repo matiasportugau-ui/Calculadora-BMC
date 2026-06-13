@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Reporte de Horas junio 2026</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #1d1d1f; font-size: 11pt; margin: 0; padding: 22mm 18mm; line-height: 1.4;
+  }
+  header { display: flex; justify-content: space-between; align-items: flex-end;
+    border-bottom: 2px solid #1d1d1f; padding-bottom: 12px; margin-bottom: 18px; }
+  .h-left h1 { font-size: 20pt; margin: 0; font-weight: 600; letter-spacing: -0.02em; }
+  .h-left .meta { color: #6e6e73; font-size: 10pt; margin-top: 4px; }
+  .h-right { text-align: right; font-size: 10pt; color: #6e6e73; }
+  .h-right .who { font-size: 12pt; color: #1d1d1f; font-weight: 600; }
+  h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: 0.04em; color: #6e6e73;
+    margin: 24px 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+  th, td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #f0f0f2; vertical-align: top; }
+  th { font-weight: 600; color: #6e6e73; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.04em; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .strong { font-weight: 700; color: #1d1d1f; }
+  .empty { text-align: center; color: #6e6e73; padding: 16px; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  tfoot td { border-top: 2px solid #1d1d1f; font-weight: 700; }
+  .cards { display: flex; gap: 12px; margin: 4px 0 8px; }
+  .kpi { flex: 1; border: 1px solid #e5e5ea; border-radius: 10px; padding: 10px 12px; }
+  .kpi .label { font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; color: #6e6e73; }
+  .kpi .value { font-size: 15pt; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  footer { margin-top: 32px; padding-top: 10px; border-top: 1px solid #e5e5ea; color: #6e6e73; font-size: 8.5pt; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="h-left">
+      <h1>Reporte de Horas</h1>
+      <div class="meta">junio 2026</div>
+    </div>
+    <div class="h-right">
+      <div class="who">Ramiro (demo)</div>
+      <div>ramiro@example.com</div>
+      <div>METALOG SAS — BMC Uruguay</div>
+    </div>
+  </header>
+
+  <div class="cards">
+    <div class="kpi"><div class="label">Efectivo</div><div class="value">14h 04m</div></div>
+    <div class="kpi"><div class="label">Coordinación</div><div class="value">0h 11m</div></div>
+    <div class="kpi"><div class="label">Pausa</div><div class="value">1h 00m</div></div>
+    <div class="kpi"><div class="label">Jornada</div><div class="value">15h 15m</div></div>
+  </div>
+
+  <h2>Detalle por día (3 días)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th class="num">Entrada</th>
+        <th class="num">Salida</th>
+        <th class="num">Efectivo</th>
+        <th class="num">Coordinación</th>
+        <th class="num">Pausa</th>
+        <th class="num">Jornada</th>
+      </tr>
+    </thead>
+    <tbody>
+            <tr>
+              <td>2026-06-11</td>
+              <td class="num">09:00</td>
+              <td class="num">12:00</td>
+              <td class="num">2h 54m</td>
+              <td class="num">0h 06m</td>
+              <td class="num">0h 00m</td>
+              <td class="num strong">3h 00m</td>
+            </tr>
+            <tr>
+              <td>2026-06-12</td>
+              <td class="num">08:30</td>
+              <td class="num">17:15</td>
+              <td class="num">7h 45m</td>
+              <td class="num">0h 00m</td>
+              <td class="num">1h 00m</td>
+              <td class="num strong">8h 45m</td>
+            </tr>
+            <tr>
+              <td>2026-06-13</td>
+              <td class="num">09:00</td>
+              <td class="num">12:30</td>
+              <td class="num">3h 25m</td>
+              <td class="num">0h 05m</td>
+              <td class="num">0h 00m</td>
+              <td class="num strong">3h 30m</td>
+            </tr></tbody>
+    <tfoot>
+      <tr>
+        <td>Total</td>
+        <td class="num"></td>
+        <td class="num"></td>
+        <td class="num">14h 04m</td>
+        <td class="num">0h 11m</td>
+        <td class="num">1h 00m</td>
+        <td class="num">15h 15m</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <h2>Por cliente / proyecto</h2>
+  <table>
+    <thead>
+      <tr><th>Proyecto</th><th>Cliente</th><th class="num">Entradas</th><th class="num">Efectivo</th></tr>
+    </thead>
+    <tbody>
+            <tr>
+              <td><span class="dot" style="background:#ff9500"></span>Obra Pocitos</td>
+              <td>Cliente Demo SA</td>
+              <td class="num">2</td>
+              <td class="num strong">7h 45m</td>
+            </tr>
+            <tr>
+              <td><span class="dot" style="background:#af52de"></span>Relevamiento</td>
+              <td>Cliente Demo SA</td>
+              <td class="num">2</td>
+              <td class="num strong">3h 25m</td>
+            </tr>
+            <tr>
+              <td><span class="dot" style="background:#0071e3"></span>Obra Carrasco</td>
+              <td>Cliente Demo SA</td>
+              <td class="num">2</td>
+              <td class="num strong">2h 12m</td>
+            </tr>
+            <tr>
+              <td><span class="dot" style="background:#34c759"></span>Coordinación general</td>
+              <td>Cliente Demo SA</td>
+              <td class="num">1</td>
+              <td class="num strong">0h 42m</td>
+            </tr></tbody>
+  </table>
+
+  <footer>
+    Reporte de horas generado automáticamente por TraKtiMe. Tiempo efectivo = suma de tareas
+    registradas. Coordinación = micro-pausas entre tareas (≤ umbral). Pausa = interrupciones
+    sobre el umbral. Jornada = desde el inicio de la primera tarea hasta el fin de la última.
+  </footer>
+</body>
+</html>

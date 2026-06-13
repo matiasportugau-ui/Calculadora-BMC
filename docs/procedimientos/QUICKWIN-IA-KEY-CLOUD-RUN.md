@@ -1,7 +1,13 @@
 # Quick-win: "Sin proveedor IA configurado" (ANTHROPIC_API_KEY / GEMINI_API_KEY en Cloud Run)
 
+> **Estado 2026-06-11 (WOLF-2026-0005):** RESUELTO en prod. `ANTHROPIC_API_KEY` está montada y con billing activo — `POST /api/crm/suggest-response` devuelve `provider: "claude"` y `POST /api/plan/interpret` responde 200. Una sola key **Anthropic (o Gemini)** resuelve **ambos** banners (CRM suggest y plan interpreter), porque ambos endpoints leen `config.anthropicApiKey`/`config.geminiApiKey`. **Ojo:** el plan interpreter **sólo** acepta `ANTHROPIC_API_KEY` o `GEMINI_API_KEY` (no OpenAI/Grok), mientras que CRM suggest tiene una cadena más amplia (Anthropic/OpenAI/Grok/Gemini). Para destrabar ambos con una única key, montá **Anthropic** (o Gemini) — una key OpenAI/Grok solo destraba CRM suggest. Este doc queda como procedimiento de rotación/recuperación.
+
 **Lane exclusiva** — Resuelve el banner rojo en la calculadora:
 > Sin proveedor IA configurado. Configurá ANTHROPIC_API_KEY o GEMINI_API_KEY.
+
+**Dos endpoints, misma key:**
+- **CRM suggest:** `POST /api/crm/suggest-response` (JSON, sin archivo) — código `IA_NOT_CONFIGURED`.
+- **Plan interpreter (wizard Dimensiones):** `POST /api/plan/interpret` (mount `/api` + ruta `/plan/interpret` en `server/index.js`) — **no** es `/api/planInterpret` (ese path da 404). Requiere **multipart con campo `file`** (JPG/PNG/WEBP/PDF/DXF); un POST sin archivo da 400 antes de llegar al chequeo de proveedor. Si faltan **ambas** `ANTHROPIC_API_KEY` y `GEMINI_API_KEY`, `interpretPlan()` lanza 503 "Sin proveedor IA configurado" (sin campo `code`; OpenAI/Grok **no** habilitan este endpoint).
 
 Este error aparece cuando `POST /api/crm/suggest-response` devuelve 503 con `code: "IA_NOT_CONFIGURED"`.
 
