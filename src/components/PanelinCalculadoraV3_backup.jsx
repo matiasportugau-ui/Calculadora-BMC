@@ -24,6 +24,10 @@ import StockWebHint from "./StockWebHint.jsx";
 import {
   C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
   setListaPrecios,
+  USE_PANELIN_PRICING,
+  setUsePanelinPricing,
+  setPanelinPricingCache,
+  getPanelinPricingCache,
   PANELS_TECHO, PANELS_PARED, SERVICIOS,
   FIJACIONES, HERRAMIENTAS, SELLADORES,
   PERFIL_TECHO, PERFIL_PARED,
@@ -2816,6 +2820,31 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   // Sync LISTA_ACTIVA (solo cuando hay valor)
   useEffect(() => { if (listaPrecios) setListaPrecios(listaPrecios); }, [listaPrecios]);
+
+  // Resilient Panelin PG pricing source (flag + fetch + fallback to constants)
+  // Per artifacts/plan.md step 4 + scout §5/75: Panelin first (if VITE_USE_PANELIN_PRICING or set), calc uses live via cache in calculations.js
+  // Fetch is best-effort + silent fallback; called once. Populates shape for getActivePricing().
+  useEffect(() => {
+    if (!USE_PANELIN_PRICING) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const base = getCalcApiBase();
+        const url = `${String(base || "").replace(/\/+$/, "")}/api/panelin/products?limit=100`;
+        const res = await fetch(url, { headers: { "Accept": "application/json" } });
+        if (!res.ok) throw new Error(`panelin ${res.status}`);
+        const payload = await res.json();
+        if (cancelled) return;
+        // Accept raw payload or pre-shaped; calc getActivePricing() will use if has PANELS_ keys, else fallback.
+        // For full live: future mapper could convert payload.products[] (with meta.venta_web_price etc) → PANELS_TECHO shape.
+        setPanelinPricingCache(payload && payload.products ? { source: "panelin-pg", raw: payload } : payload);
+      } catch {
+        // resilient: do not throw, calc will fallback to constants (no regression in p()/calcTechoCompleto)
+        if (!cancelled) setPanelinPricingCache(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []); // once on mount if flag active
 
   // Reset wizard al cambiar escenario o al activar modo vendedor
   useEffect(() => {

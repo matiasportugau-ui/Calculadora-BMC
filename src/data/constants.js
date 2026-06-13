@@ -37,6 +37,29 @@ export function p(item) {
 export function pIVA(item) { return +(p(item) * IVA_MULT).toFixed(2); }
 export function setListaPrecios(lista) { LISTA_ACTIVA = lista; }
 
+// ── Pricing source strategy (Phase 6 / PIM centralization, step 4) ───────────
+// Flag (env VITE_USE_PANELIN_PRICING=true at build or runtime via setter) to prefer
+// live prices from Panelin PG (via /api/panelin/*) vs baked constants + overrides.
+// Resilient: Panelin first (if cache populated by UI fetch), fallback to constants path
+// on any failure/empty/missing (no regression for calcTechoCompleto etc).
+// See scout §5/75, plan.md step 4, GOAL:15, INTELLIGENT-RUN-PLAN Phase 6.
+// Cache holds compatible shape: { PANELS_TECHO, PANELS_PARED, FIJACIONES, SELLADORES, PERFIL_TECHO, PERFIL_PARED, ... }
+export let USE_PANELIN_PRICING = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_USE_PANELIN_PRICING === "true") || false;
+let _panelinPricingCache = null;
+
+export function setUsePanelinPricing(flag) {
+  USE_PANELIN_PRICING = !!flag;
+}
+export function setPanelinPricingCache(data) {
+  _panelinPricingCache = (data && typeof data === "object") ? data : null;
+}
+export function getPanelinPricingCache() {
+  return _panelinPricingCache;
+}
+export function clearPanelinPricingCache() {
+  _panelinPricingCache = null;
+}
+
 // ── §3 PANEL DATA ────────────────────────────────────────────────────────────
 // Todos los precios SIN IVA. IVA se aplica UNA VEZ al final.
 //

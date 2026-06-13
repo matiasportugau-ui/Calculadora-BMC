@@ -2,12 +2,28 @@
 // src/utils/calculations.js — Pure calculation functions for BMC calculator
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { p, BORDER_OPTIONS } from "../data/constants.js";
+import { p, BORDER_OPTIONS, USE_PANELIN_PRICING, getPanelinPricingCache } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { getIVA } from "./calculatorConfig.js";
 import { getDimensioningParam } from "./dimensioningFormulas.js";
 import { buildEdgeBOM, countExposedVerticalPerimeterFixingInteriorPointsForZona } from "./roofPlanGeometry.js";
 import { countPanels } from "./roofPanelStripsPlanta.js";
+
+// ── Resilient pricing source (Panelin PG first + constants fallback) ────────
+// Per plan step 4 / scout §5/75: if USE_PANELIN_PRICING && cache (populated by V3 fetch to /api/panelin/products or equiv),
+// use live structures (must be shape-compatible with constants: PANELS_*.esp.* {venta,web,costo}, FIJACIONES etc).
+// Always falls back silently to getPricing() (constants + overrides) on missing flag / empty cache / error.
+// Guarantees no regression for calc* paths and tests (offline safe; p() works on live leaves too).
+function getActivePricing() {
+  if (USE_PANELIN_PRICING) {
+    const live = getPanelinPricingCache();
+    if (live && typeof live === "object" && (live.PANELS_TECHO || live.PANELS_PARED || live.FIJACIONES)) {
+      return live;
+    }
+    // resilient fallback (no throw, no regression)
+  }
+  return getPricing();
+}
 
 // ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
 
@@ -42,7 +58,7 @@ export function normalizarMedida(modo, valor, panel) {
 }
 
 export function resolveSKU_techo(tipo, familiaP, espesor) {
-  const { PERFIL_TECHO } = getPricing();
+  const { PERFIL_TECHO } = getActivePricing();
   const byTipo = PERFIL_TECHO[tipo];
   if (!byTipo) return null;
   /** Isoroof Colonial: misma perfilería ISOROOF 3G excepto cumbrera (2,2 m colonial bajo cumbrera.ISOROOF_COLONIAL). */
@@ -145,7 +161,7 @@ export function countVarillasRoscadasDesdeBarras1m(nCuts, cutLengthM, rodLengthM
  * @param {number} [opts.perimetroVerticalInteriorPuntos] refuerzo lateral perímetro (planta); si falta, `2×max(0,ceil(largo/s)-1)` con `s=espaciado_perimetro`.
  */
 export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, ptsMetal, ptsMadera, opts = {}) {
-  const { FIJACIONES } = getPricing();
+  const { FIJACIONES } = getActivePricing();
   let puntosFijacion, pMetal, pH, pMadera;
   const overridePts = opts.overridePuntosFijacion;
   let puntosFijacionGrilla = 0;
@@ -260,7 +276,7 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
  * @param {number} [espesorMm=30] - panel thickness in mm (30→4" screws; 50/80→6" screws)
  */
 export function calcFijacionesCaballete(cantP, largo, tipoEst = "metal", espesorMm = 30, overridePuntos = null) {
-  const { FIJACIONES } = getPricing();
+  const { FIJACIONES } = getActivePricing();
   const factorLargo = getDimensioningParam("FIJACIONES_CABALETE.factor_largo", 2.9);
   const factorAncho = getDimensioningParam("FIJACIONES_CABALETE.factor_ancho", 0.3);
   const caballetes = overridePuntos != null && overridePuntos > 0
@@ -538,7 +554,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
   }
 
   if (totalML > 0) {
-    const { FIJACIONES } = getPricing();
+    const { FIJACIONES } = getActivePricing();
     const espFijMl = getDimensioningParam("PERFILERIA.espaciado_fijacion_ml", 0.30);
     const fijPerf = Math.ceil(totalML / espFijMl);
     const puT1 = p(FIJACIONES.tornillo_t1);
@@ -558,7 +574,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
  * - Canalones: 2 cordones entre empalmes (~60 cm por extensión)
  */
 export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0, largoReal = 0, familiaP, espesor, edgeML } = {}) {
-  const { SELLADORES } = getPricing();
+  const { SELLADORES } = getActivePricing();
   const ML_POR_UNID_SILICONA = getDimensioningParam("SELLADORES_TECHO.silicona_ml_por_unid", SELLADORES.silicona?.ml_por_unid ?? 10.27);
   const items = [];
 
@@ -641,7 +657,7 @@ export function calcPerfileriaTechoComercial(familiaP, espesor) {
   const gf = resolveSKU_techo("gotero_frontal", familiaP, espesor);
   const bb = resolveSKU_techo("babeta_empotrar", familiaP, espesor);
   if (!gf || !bb) return { items: [], total: 0, totalML: 0 };
-  const { FIJACIONES } = getPricing();
+  const { FIJACIONES } = getActivePricing();
   const cantG = 2;
   const cantB = 6;
   const puG = p(gf);
@@ -693,7 +709,7 @@ export function calcPerfileriaTechoComercial(familiaP, espesor) {
  * Kit selladores comercial: silicona + membrana + espuma PU (cantidades por dimensionamiento).
  */
 export function calcSelladoresTechoComercial() {
-  const { SELLADORES } = getPricing();
+  const { SELLADORES } = getActivePricing();
   const c = (x) => (x?.costo ?? 0);
   const nSil = getDimensioningParam("SELLADORES_TECHO.comercial_siliconas", 4);
   const nMem = getDimensioningParam("SELLADORES_TECHO.comercial_membranas", 2);
@@ -760,7 +776,7 @@ export function calcTotalesSinIVA(allItems) {
 }
 
 export function calcTechoCompleto(inputs) {
-  const { PANELS_TECHO } = getPricing();
+  const { PANELS_TECHO } = getActivePricing();
   const { familia, espesor, largo, ancho, tipoEst, ptsHorm, ptsMetal, ptsMadera, borders, opciones, color, pendiente = 0, pendienteModo = "incluye_pendiente", alturaDif = 0 } = inputs;
   const panel = PANELS_TECHO[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
@@ -1089,7 +1105,7 @@ export function mergeZonaResults(zonaResults) {
 // ── §2 ENGINE PARED ──────────────────────────────────────────────────────────
 
 export function resolvePerfilPared(tipo, familia, espesor) {
-  const { PERFIL_PARED } = getPricing();
+  const { PERFIL_PARED } = getActivePricing();
   const byTipo = PERFIL_PARED[tipo];
   if (!byTipo) return null;
   const byFam = byTipo[familia];
@@ -1154,7 +1170,7 @@ export function calcEsquineros(alto, numExt, numInt) {
 
 // §B REESCRITO: Fijaciones de pared — NO usa varilla/tuerca/arandela/tortuga
 export function calcFijacionesPared(panel, espesor, cantP, alto, perimetro, tipoEst) {
-  const { FIJACIONES } = getPricing();
+  const { FIJACIONES } = getActivePricing();
   const items = [];
   const anchoTotal = cantP * panel.au;
   const c = (x) => (x?.costo ?? 0);
@@ -1182,7 +1198,7 @@ export function calcFijacionesPared(panel, espesor, cantP, alto, perimetro, tipo
 
 // §C NUEVOS PERFILES: K2, G2, 5852
 export function calcPerfilesParedExtra(panel, espesor, cantP, alto, opts) {
-  const { PERFIL_PARED } = getPricing();
+  const { PERFIL_PARED } = getActivePricing();
   const items = [];
   // Perfil K2 — junta interior entre paneles
   const k2Data = PERFIL_PARED.perfil_k2._all;
@@ -1210,7 +1226,7 @@ export function calcPerfilesParedExtra(panel, espesor, cantP, alto, opts) {
 
 // §D SELLADORES PARED: silicona 600 ml + silicona 300 ml (ratio × unid. 600) + (opc.) cinta butilo + membrana + espuma PU
 export function calcSelladorPared(perimetro, cantPaneles, alto, opts = {}) {
-  const { SELLADORES } = getPricing();
+  const { SELLADORES } = getActivePricing();
   const items = [];
   const inclCintaButilo = opts.inclCintaButilo === true;
   const juntasV = cantPaneles - 1;
@@ -1257,7 +1273,7 @@ export function calcSelladorPared(perimetro, cantPaneles, alto, opts = {}) {
 }
 
 export function calcParedCompleto(inputs) {
-  const { PANELS_PARED } = getPricing();
+  const { PANELS_PARED } = getActivePricing();
   const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color, inclCintaButilo = false } = inputs;
   const panel = PANELS_PARED[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
@@ -1288,7 +1304,7 @@ export function calcParedCompleto(inputs) {
  * `lineas`: [{ bucket?: "FIJACIONES"|"HERRAMIENTAS", id: string, cant: number }]
  */
 export function calcPresupuestoLibre(lineas = []) {
-  const pricing = getPricing();
+  const pricing = getActivePricing();
   const c = (x) => (x?.costo ?? 0);
   const items = [];
   for (const row of lineas) {

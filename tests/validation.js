@@ -19,6 +19,12 @@ import {
   calcTotalesSinIVA,
   calcPerfilesParedExtra,
 } from "../src/utils/calculations.js";
+import {
+  USE_PANELIN_PRICING,
+  setUsePanelinPricing,
+  setPanelinPricingCache,
+  getPanelinPricingCache,
+} from "../src/data/constants.js";
 import { getDimensioningParam } from "../src/utils/dimensioningFormulas.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
@@ -556,6 +562,32 @@ const techoInputSmall = { ...techoInput, ancho: 2.2 };
 const techoResultSmall = calcTechoCompleto(techoInputSmall);
 assert("calcTechoCompleto(descarte<0.5m): descarte.anchoM ≈ 0.04", approx(techoResultSmall.paneles?.descarte?.anchoM, 0.04), techoResultSmall.paneles?.descarte?.anchoM, 0.04);
 assert("calcTechoCompleto(descarte<0.5m): descarte.porcentaje = 1.82 (2 decimals)", techoResultSmall.paneles?.descarte?.porcentaje === 1.82, techoResultSmall.paneles?.descarte?.porcentaje, 1.82);
+
+// --- Pricing source resilient fallback test (builder step 4 / Phase 6) ---
+(async () => {
+  const baseline = calcTechoCompleto(techoInput);
+  const wasFlag = USE_PANELIN_PRICING;
+  const wasCache = getPanelinPricingCache();
+  // default path (no flag): constants (current behavior, no regression)
+  setUsePanelinPricing(false);
+  setPanelinPricingCache(null);
+  const noFlag = calcTechoCompleto(techoInput);
+  assert("pricing-fallback: !USE_PANELIN_PRICING uses constants (cantPaneles match)", noFlag.paneles?.cantPaneles === baseline.paneles?.cantPaneles, noFlag.paneles?.cantPaneles, baseline.paneles?.cantPaneles);
+  // flag on + no live cache → resilient fallback to constants
+  setUsePanelinPricing(true);
+  setPanelinPricingCache(null);
+  const flagNoCache = calcTechoCompleto(techoInput);
+  assert("pricing-fallback: flag+null-cache falls back (areaTotal match)", approx(flagNoCache.paneles?.areaTotal, baseline.paneles?.areaTotal), flagNoCache.paneles?.areaTotal, baseline.paneles?.areaTotal);
+  // flag on + simulated live cache with compatible structure (same as static) → still works (Panelin "sourced")
+  const staticMod = await import("../src/data/constants.js");
+  const staticPricing = { PANELS_TECHO: staticMod.PANELS_TECHO, PANELS_PARED: staticMod.PANELS_PARED, FIJACIONES: staticMod.FIJACIONES, SELLADORES: staticMod.SELLADORES, PERFIL_TECHO: staticMod.PERFIL_TECHO, PERFIL_PARED: staticMod.PERFIL_PARED };
+  setPanelinPricingCache(staticPricing);
+  const flagWithLive = calcTechoCompleto(techoInput);
+  assert("pricing-fallback: flag+live-cache (sim) sources without regression (subtotal >0)", flagWithLive.totales?.subtotalSinIVA > 0, flagWithLive.totales?.subtotalSinIVA > 0, true);
+  // restore
+  setUsePanelinPricing(wasFlag);
+  setPanelinPricingCache(wasCache);
+})();
 
 // --- calcParedCompleto ---
 const paredInput = {

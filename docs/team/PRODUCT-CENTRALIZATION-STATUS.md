@@ -174,6 +174,9 @@
 ## 7. Immediate Recommended Next Steps (prioritized)
 
 
+**Collection baseline shipped** — 2026-06-13 via propagation automate (see report-2026-06-13T12-07-09).
+
+
 **Collection baseline shipped** — 2026-06-12 via propagation automate (see report-2026-06-12T16-35-27).
 
 
