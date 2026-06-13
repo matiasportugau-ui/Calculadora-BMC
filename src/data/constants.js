@@ -159,22 +159,26 @@ export const PANELS_PARED = {
    * - lmin/lmax: la ficha no publica largos; se conserva el precedente de la build legacy (2.3–14).
    * - `web` ex-IVA = Matriz tab BROMYROS (filas IF40…IF180, valores textuales del ledger).
    *   La fila 200 mm de la Matriz es un CLON de IF150 (SKU/nombre) → excluida hasta que se corrija el origen.
-   * - TODO-blocked: `venta`/`costo` no estaban en el ledger ni en CSV en sesión — cargar desde Matriz
-   *   (columnas venta local / costo ex-IVA) cuando Matias las valide. Mientras tanto la lista venta
-   *   cae al precio web vía `p()` (fallback estándar) y el ítem no aparece en el editor de precios
-   *   (getPricingItemsFlat filtra venta == null).
+   * - `costo` ex-IVA = columna costo_m2_usd_ex_iva de `.accessible-base/matriz_precios.json`
+   *   (filas IF40…IF180, dato duro digitalizado — verificado 13/06/2026).
+   * - TODO-blocked: `venta` (lista local BMC). La columna venta_local está VACÍA en el origen
+   *   digitalizado (solo 13/170 filas la tienen, ninguna ISOFRIG; venta_web 0/170) — es el hallazgo
+   *   WOLF-0004 "ventas vacías en el origen". Hay que cargarla desde el Sheet vivo o aplicar la
+   *   política de markup BMC (histórico ISOFRIG: venta = costo × 1.15) una vez que Matias la confirme.
+   *   Mientras venta == null: la lista venta cae al precio web vía `p()` (fallback) — NÚMERO PROVISIONAL,
+   *   no es el venta real; y el ítem no aparece en el editor de precios (getPricingItemsFlat filtra venta == null).
    */
   ISOFRIG_PIR: {
     label: "ISOFRIG PIR", sub: "Cámaras Frigoríficas", tipo: "pared",
     au: 1.10, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
     esp: {
-      40:  { web: 55.3384, ap: null },  // IF40
-      60:  { web: 62.8919, ap: null },  // IF60-IFSL60
-      80:  { web: 69.3770, ap: null },  // IF80-IFSL80
-      100: { web: 76.9454, ap: null },  // IF100-IFSL100 — golden case GC-0001
-      120: { web: 89.4740, ap: null },  // IF120-IFSL120
-      150: { web: 93.3436, ap: null },  // IF150-IFSL150
-      180: { web: 111.4058, ap: null }, // IF180-IFSL180
+      40:  { web: 55.3384,  costo: 36.2748, ap: null },  // IF40
+      60:  { web: 62.8919,  costo: 41.2181, ap: null },  // IF60-IFSL60
+      80:  { web: 69.3770,  costo: 45.4719, ap: null },  // IF80-IFSL80
+      100: { web: 76.9454,  costo: 50.4398, ap: null },  // IF100-IFSL100 — golden case GC-0001
+      120: { web: 89.4740,  costo: 60.2924, ap: null },  // IF120-IFSL120
+      150: { web: 93.3436,  costo: 61.1881, ap: null },  // IF150-IFSL150
+      180: { web: 111.4058, costo: 75.0713, ap: null },  // IF180-IFSL180
     },
     col: ["Blanco"], colNotes: { _all: "Solo Blanco sanitario (exterior e interior blanco)" }, colMax: {},
   },
