@@ -48,6 +48,7 @@ import marketingRouter from "./routes/marketing.js";
 import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
+import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -990,6 +991,12 @@ import presupOrchestratorRouter from "./routes/internal/presupOrchestrator.js";
 // Panelin interno — RBAC discovery + tool catalog (Bearer API_AUTH_TOKEN)
 app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 app.use("/api/internal/presup", presupOrchestratorRouter);
+
+// Public Panelin surfaces (operator dashboard realtime + PIM publish worker) — ROOT AUTH FIX
+// Enforce requireServiceOrUser (static API_AUTH_TOKEN for service/cron/dashboard calls, or opted user JWT).
+// This is the structural root fix for the recurring "no auth on /api/panelin" security findings.
+// All endpoints in createPanelinRouter (events, products, stock, invoices, sync, debug) now inherit the guard.
+app.use("/api/panelin", requireServiceOrUser(), createPanelinRouter(config));
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
 // Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
