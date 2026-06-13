@@ -108,6 +108,16 @@ jobs:
             echo "::notice::No relevant paths changed since $BASE; skipping deploy."
           fi
 
+      - name: Setup Node.js (for deploy gates)
+        if: steps.paths.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Gate Cloud Run secrets drift
+        if: steps.paths.outputs.skip != 'true'
+        run: npm run gate:secrets
+
       - name: Authenticate to Google Cloud
         if: steps.paths.outputs.skip != 'true'
         uses: google-github-actions/auth@v3

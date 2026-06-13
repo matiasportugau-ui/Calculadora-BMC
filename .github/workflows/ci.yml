@@ -79,6 +79,23 @@ jobs:
       - name: Check env-var drift
         run: node scripts/check-env-drift.mjs
 
+  secrets-drift:
+    name: Cloud Run secrets drift
+    runs-on: ubuntu-latest
+    needs: [validate, lint]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check Cloud Run secrets drift
+        run: npm run gate:secrets
+
   smoke:
     name: Smoke — prod API health (main only)
     runs-on: ubuntu-latest
