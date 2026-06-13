@@ -3,8 +3,10 @@
  *
  * Surfaces a local `aw-server` to the agent/UI so it can answer
  * "¿en qué trabajé hoy?" and propose TraKtiMe entries. Gated by
- * `config.traktimeAwEnabled`: when disabled every route returns 404
- * (`aw_disabled`) so nothing leaks and Cloud Run stays inert.
+ * `config.traktimeAwEnabled`: when disabled the data routes (`today`,
+ * `buckets`) return 404 (`aw_disabled`) so nothing leaks and Cloud Run stays
+ * inert. `status` is exempt — it always answers so the UI can show an enable
+ * hint.
  *
  * Auth: requireUser() — only logged-in operators may query. The data is
  * machine-scoped (whatever runs on the co-located aw-server), not per-user.

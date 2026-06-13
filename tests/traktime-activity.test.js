@@ -10,7 +10,7 @@
 import http from "node:http";
 import express from "express";
 import { config } from "../server/config.js";
-import { awEnabled, getTodaySummary } from "../server/lib/activityWatchClient.js";
+import { awEnabled, getTodaySummary, startOfLocalDayIso } from "../server/lib/activityWatchClient.js";
 import createActivityRouter from "../server/routes/activity.js";
 import { executeTool } from "../server/lib/agentTools.js";
 
@@ -38,6 +38,17 @@ async function main() {
     awBaseUrl: config.traktimeAwBaseUrl,
     port: config.port,
   };
+
+  // ── 0. startOfLocalDayIso handles DST-transition days ─────────────────────
+  // NY spring-forward 2026-03-08: at 16:00Z (EDT, -4h) the offset differs from
+  // local midnight (EST, -5h). Day start must be 05:00Z, not 04:00Z.
+  {
+    const s = startOfLocalDayIso("America/New_York", new Date("2026-03-08T16:00:00Z"));
+    assert("DST day start = 05:00Z (offset at midnight, not now)", s === "2026-03-08T05:00:00.000Z", s);
+    // Montevideo (no DST today) sanity: a fixed UTC instant maps to -03:00 midnight.
+    const uy = startOfLocalDayIso("America/Montevideo", new Date("2026-06-13T12:00:00Z"));
+    assert("UY day start = 03:00Z", uy === "2026-06-13T03:00:00.000Z", uy);
+  }
 
   // ── Stub aw-server ────────────────────────────────────────────────────────
   const aw = express();

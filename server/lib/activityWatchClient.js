@@ -50,20 +50,33 @@ export async function getEvents(bucketId, { start, end, limit = 1000, signal } =
   return awGet(`/api/0/buckets/${encodeURIComponent(bucketId)}/events${qs ? `?${qs}` : ""}`, { signal });
 }
 
+/** How far `tz`'s wall-clock is ahead of UTC at the given instant (ms). */
+function tzOffsetMs(instant, tz) {
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz, hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(instant).reduce((a, x) => ((a[x.type] = x.value), a), {});
+  const hour = p.hour === "24" ? 0 : +p.hour; // some engines emit "24" at midnight
+  const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, hour, +p.minute, +p.second);
+  return asUTC - instant.getTime();
+}
+
 /** UTC instant (ISO) of local-midnight-today in the given IANA timezone. */
 export function startOfLocalDayIso(tz, now = new Date()) {
   const ymd = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
   }).format(now);
   const [y, m, d] = ymd.split("-").map(Number);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz, hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  }).formatToParts(now).reduce((a, p) => ((a[p.type] = p.value), a), {});
-  const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
-  const offsetMs = asUTC - now.getTime();
-  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - offsetMs).toISOString();
+  const utcMidnight = Date.UTC(y, m - 1, d, 0, 0, 0);
+  // Evaluate the offset AT local midnight (not at `now`): on a DST-transition
+  // day the offset can differ between midnight and now, which otherwise shifts
+  // the day boundary by ±1h. One re-check lands on the correct side.
+  const off = tzOffsetMs(new Date(utcMidnight), tz);
+  let startMs = utcMidnight - off;
+  const off2 = tzOffsetMs(new Date(startMs), tz);
+  if (off2 !== off) startMs = utcMidnight - off2;
+  return new Date(startMs).toISOString();
 }
 
 /** Pick the window-watcher bucket id (e.g. aw-watcher-window_HOST). */
