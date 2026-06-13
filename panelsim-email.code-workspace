@@ -7,6 +7,27 @@
     {
       "name": "conexion-cuentas-email-agentes-bmc",
       "path": "../conexion-cuentas-email-agentes-bmc"
+    },
+    {
+      "path": ".."
+    },
+    {
+      "path": "../../mcp-servers"
+    },
+    {
+      "path": "../../~"
+    },
+    {
+      "path": "../../bmc-mounts"
+    },
+    {
+      "path": "../../bmc-intel"
+    },
+    {
+      "path": "../../Documents/Claude/Artifacts/bmc-price-monitor"
+    },
+    {
+      "path": "../../hookup-hotshot-videos"
     }
   ],
   "settings": {
