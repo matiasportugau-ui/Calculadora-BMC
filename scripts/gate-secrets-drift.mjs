@@ -163,7 +163,7 @@ function main() {
 }
 
 // Only run when invoked directly, so tests can import the pure helpers.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     main();
   } catch (err) {

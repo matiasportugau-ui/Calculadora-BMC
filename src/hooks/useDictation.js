@@ -160,8 +160,11 @@ export function useDictation({
       cleanup();
     };
     rec.onend = () => {
-      // Safety net: if it ended with no result and we're still "recording", reset.
-      if (!gotResult) setStatus((s) => (s === "recording" ? "idle" : s));
+      // Safety net: if it ended with no result and we're stuck in recording/transcribing, reset.
+      if (!gotResult) {
+        setStatus((s) => (s === "recording" || s === "transcribing" ? "idle" : s));
+        cleanup();
+      }
     };
 
     try {
