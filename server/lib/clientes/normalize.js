@@ -17,10 +17,14 @@ const UY_COUNTRY_CODE = "598";
  * Uruguay-specific rules:
  *   - Strip all non-digits.
  *   - If empty after stripping, return null.
- *   - If already starts with country code 598 and length 11-12 → keep.
- *   - If 8-9 digits → prepend 598 (typical UY local format).
- *   - If has leading '00598...' (international dial prefix) → drop the '00'.
- *   - Otherwise, keep plausible foreign E.164 lengths (8-15 digits), else null.
+ *   - Drop international dial prefix '00' (e.g. '0059899...').
+ *   - Country code present + trunk zero (12 digits = 598 + '0' + 8) → strip trunk zero
+ *     so '+598 099 123 456' canonicalizes to the same key as '099123456'.
+ *   - Already E.164 with country code 598 (11 digits) → keep.
+ *   - 9 digits starting with '0' (UY trunk prefix) → strip 0, prepend 598.
+ *   - 8 digits (UY subscriber without trunk) → prepend 598.
+ *   - 8-15 digits otherwise → keep as foreign E.164.
+ *   - Anything outside 8-15 digits → null (rejects garbage like '1', '123', overlong strings).
  *
  * @param {string|null|undefined} input
  * @returns {string|null} E.164 digits without '+', or null if invalid.
@@ -31,8 +35,8 @@ export function normalizePhoneE164UY(input) {
   if (!digits) return null;
   // Drop international dial prefix '00' (e.g. '0059899...')
   if (digits.startsWith("00")) digits = digits.slice(2);
-  // Country code present + trunk zero present (12 digits, '598' + '0' + 8) →
-  // drop the trunk zero so '+598 099 123 456' canonicalizes the same as '099123456'.
+  // Country code present + trunk zero (12 digits, '598' + '0' + 8) →
+  // strip the trunk zero so '+598 099 123 456' canonicalizes the same as '099123456'.
   if (
     digits.startsWith(UY_COUNTRY_CODE) &&
     digits.length === 12 &&
@@ -52,7 +56,8 @@ export function normalizePhoneE164UY(input) {
   if (digits.length === 8) {
     return UY_COUNTRY_CODE + digits;
   }
-  // Keep plausible foreign numbers; reject clearly invalid short/long values.
+  // Plausible foreign E.164 → keep; anything outside 8-15 digits → reject as garbage
+  // (prevents '1', '123', or overlong strings from becoming strong-match keys).
   if (digits.length >= 8 && digits.length <= 15) return digits;
   return null;
 }

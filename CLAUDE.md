@@ -101,6 +101,10 @@ All prices are **without IVA**; 22% IVA is applied once at the total via `calcTo
 
 ## Conventions (project-specific)
 
+- **Before diagnosing a regression**, run `git status` + `git diff` first. Distinguish uncommitted working-tree edits from committed/merged changes — local edits often look like upstream regressions until you check.
+- **PR is done when** the full test suite (`npm test`, currently includes 75 clientes-resolver tests among others) runs green. Don't claim "fix complete" before that.
+- **Branch protection on `main` requires manual user approval.** Claude can prepare PRs and push fixes; the final merge click stays with the user.
+
 - **Error semantics for Sheets-backed routes:** `503` = Sheets unavailable; `200` + empty payload = no data; **never `500`** for Sheets failures. The frontend depends on this.
 - **API routes** belong in `server/routes/*.js`, mounted under `/api` (Sheets/CRM) or `/calc`, `/auth`, `/webhooks`.
 - **Secrets** live only in `.env` (see `.env.example` for variable names). Sheet IDs, tokens, and production URLs must come from `config.*` or `process.env.*` — never hardcoded.
