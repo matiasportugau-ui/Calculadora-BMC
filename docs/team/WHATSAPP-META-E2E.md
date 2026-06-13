@@ -57,7 +57,7 @@ Documentación oficial Meta (inglés): [Webhooks — Getting Started](https://de
 | `WHATSAPP_VERIFY_TOKEN` | Mismo string que pegás en Meta como **Verify Token** (GET webhook). |
 | `WHATSAPP_ACCESS_TOKEN` | Token de la app de WhatsApp (Graph API). |
 | `WHATSAPP_PHONE_NUMBER_ID` | ID del número de la API (no el número en sí). |
-| `WHATSAPP_APP_SECRET` | (Recomendado prod) App Secret de Meta — HMAC `x-hub-signature-256` en `POST /webhooks/whatsapp`. Sin esto el servidor acepta POST sin firma y loguea warning. |
+| `WHATSAPP_APP_SECRET` | Obligatorio para `POST /webhooks/whatsapp`: App Secret de Meta usado para validar HMAC `x-hub-signature-256`. Sin esto el servidor responde 401 a POST inbound. |
 | `PUBLIC_BASE_URL` | Base pública del API; define la URL exacta del callback `{PUBLIC_BASE_URL}/webhooks/whatsapp`. |
 | `PORT` | Lo asigna Cloud Run (no hace falta tocarlo). |
 | `BMC_SHEET_ID` + `GOOGLE_APPLICATION_CREDENTIALS` | Obligatorio para escribir en Sheets. |

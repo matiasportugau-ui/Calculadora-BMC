@@ -29,6 +29,7 @@
 import "dotenv/config";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { getWaPool } from "../server/lib/waDb.js";
 import {
   primeWaConfig,
@@ -40,15 +41,22 @@ import {
   _resetWaConfigForTests,
 } from "../server/lib/waConfig.js";
 
-const databaseUrl = process.env.DATABASE_URL || process.env.WA_DATABASE_URL;
-if (!databaseUrl) {
-  console.error("Error: DATABASE_URL not set in environment. Configure it in .env first.");
-  process.exit(1);
+let pool = null;
+
+export function resolveWaAdminDatabaseUrl(env = process.env) {
+  return env.DATABASE_URL || env.WA_DATABASE_URL || null;
 }
-const pool = getWaPool(databaseUrl);
-if (!pool) {
-  console.error("Error: failed to initialize Postgres pool from DATABASE_URL.");
-  process.exit(1);
+
+export function createWaAdminPool({ env = process.env, getPool = getWaPool } = {}) {
+  const databaseUrl = resolveWaAdminDatabaseUrl(env);
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL not set in environment. Configure it in .env first.");
+  }
+  const initializedPool = getPool(databaseUrl);
+  if (!initializedPool) {
+    throw new Error("failed to initialize Postgres pool from DATABASE_URL.");
+  }
+  return initializedPool;
 }
 
 function parseArgs(argv) {
@@ -105,6 +113,7 @@ SLA:
 }
 
 async function main() {
+  pool = createWaAdminPool();
   const { _, flags } = parseArgs(process.argv.slice(2));
   const [category, cmd, ...rest] = _;
 
@@ -431,4 +440,9 @@ async function handleSla(cmd, _rest, flags) {
   }
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => {
+    console.error(`Error: ${e.message}`);
+    process.exit(1);
+  });
+}

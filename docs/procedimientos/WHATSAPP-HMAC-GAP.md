@@ -3,7 +3,7 @@
 **Detected:** 2026-04-24
 **Updated:** 2026-04-30 (security-hardening-202604)
 **Severity:** Medium (unauthenticated webhook injection possible)
-**Status:** Partially resolved — secret EXISTS in GSM, needs Cloud Run mount
+**Status:** Runtime fails closed; secret EXISTS in GSM, needs Cloud Run mount
 **Flagged by:** bmc-security agent (flagged), bmc-deployment agent (confirmed 2026-04-24)
 
 ---
@@ -23,42 +23,39 @@ in the next deploy (included in the gcloud batch command in `SECURITY-HARDENING-
 
 ## Summary
 
-When `WHATSAPP_APP_SECRET` is absent from the Cloud Run runtime environment,
-`POST /webhooks/whatsapp` accepts all inbound requests without verifying the
-`x-hub-signature-256` HMAC header sent by Meta. The server logs a warning but
-continues processing the payload.
+`WHATSAPP_APP_SECRET` is **not set** in Cloud Run.
+When this variable is absent, `POST /webhooks/whatsapp` now returns `401` instead of accepting unsigned payloads. Real Meta POST delivery still requires provisioning the secret so valid signatures can be checked.
 
 ---
 
 ## Evidence
 
-### 1. Code path (server/index.js — POST /webhooks/whatsapp)
+### 1. Code path (`server/index.js`)
 
 ```js
-const verified = verifyWhatsAppSignature({
-  appSecret: config.whatsappAppSecret,   // empty string when WHATSAPP_APP_SECRET not set
-  rawBodyBuffer: raw,
-  signatureHeader: sig,
-});
-if (!verified.skipped && !verified.ok) {
-  return res.status(401).json({ ok: false, error: "invalid webhook signature" });
-}
-if (verified.skipped && config.appEnv !== "test") {
-  logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
-}
+app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
+  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  const sig = req.headers["x-hub-signature-256"];
+  const verified = verifyWhatsAppSignature({
+    appSecret: config.whatsappAppSecret,   // empty string when unset
+    rawBodyBuffer: raw,
+    signatureHeader: sig,
+  });
+  if (!verified.ok) {
+    return res.status(401).json({ ok: false, error: "invalid webhook signature" });
+  }
+  // ... continues only after HMAC validation succeeds
 ```
 
-`server/lib/whatsappSignature.js` returns `{ ok: true, skipped: true }` when `appSecret` is
-falsy — the webhook handler proceeds unconditionally.
+`server/lib/whatsappSignature.js` returns `{ ok: false, reason: "missing_app_secret" }` when `appSecret` is falsy, so the webhook handler fails closed.
 
 ---
 
 ## Risk
 
-Any actor who knows the Cloud Run URL can send arbitrary POST payloads to `/webhooks/whatsapp`
-and have them processed as if they were genuine Meta events. This could trigger:
+Before the fail-closed runtime fix, any actor who knew the Cloud Run URL could send arbitrary POST payloads to `/webhooks/whatsapp` and have them processed as if they were genuine Meta events. This could trigger:
 
-- Fake WhatsApp message ingestion into the CRM
+- Fake WhatsApp message ingestion into the CRM / `wa_*` tables
 - Injection of malicious text into AI conversation pipelines
 - Auto-trigger of the 5-minute inactivity response logic with attacker-controlled content
 

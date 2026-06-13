@@ -519,6 +519,8 @@ export default function BmcWaCockpit() {
   const [savingCrm, setSavingCrm] = useState(false);
   const [crmStatus, setCrmStatus] = useState("");
 
+
+
   useEffect(() => {
     if (!activeChat) return;
     setCrmRow(activeChat.lead_sheet_row != null ? String(activeChat.lead_sheet_row) : "");
