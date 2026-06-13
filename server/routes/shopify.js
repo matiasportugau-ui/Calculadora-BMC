@@ -13,8 +13,9 @@ const SCOPES_SHEETS = ["https://www.googleapis.com/auth/spreadsheets"];
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
-  sameSite: "strict",
-  maxAge: 600,
+  // OAuth redirects return as cross-site top-level navigations; Strict drops the cookie.
+  sameSite: "lax",
+  maxAge: 10 * 60 * 1000,
   path: "/",
 };
 
