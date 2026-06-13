@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "generatedAt": "2026-06-13T11:51:34.777Z",
+  "mode": "dry-run",
+  "summary": {
+    "candidates": 0,
+    "priceUpdates": 0,
+    "inventoryUpdates": 0,
+    "errors": 0
+  },
+  "actions": [],
+  "errors": []
+}

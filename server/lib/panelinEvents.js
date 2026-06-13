@@ -10,12 +10,17 @@
  * Events (examples):
  *   - 'invoice.upserted'  { external_id, number?, source: 'webhook' | 'sync' }
  *   - 'stock.movement'    { sku, delta, reason, source: 'facturaexpress_webhook' | ... }
+ *   - 'product.price.updated' { sku, price, source?: 'panelin' | 'collector' | 'publish' }
+ *   - 'product.stock.updated' { sku, delta, reason, source? }
+ *   - 'product.published'   { sku, channel: 'shopify' | 'ml', kind: 'price'|'inventory'|'full', reportPath? }
  *
  * Frontend (standalone dashboard.html or future hub) connects via:
  *   new EventSource(`${base}/api/panelin/events`)
  *
  * Review 5ae44e21 robustness: callers must never assume delivery; keep graceful
  * (emit is best-effort, errors swallowed).
+ *
+ * Used by outbound publish worker (NEXT #1 / PIM Phase 5) for central → channel push on changes.
  */
 
 import { EventEmitter } from 'node:events';
