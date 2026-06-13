@@ -39,7 +39,7 @@ async function main() {
   app.get("/api/traktime/entries", (req, res) => { record(req); res.json({ ok: true, entries: [{ entry_id: "e1", project_name: "Proj", duration_seconds: 60 }] }); });
   app.post("/api/traktime/entries", (req, res) => { record(req); res.status(201).json({ ok: true, entry: { entry_id: "e3" } }); });
   app.get("/api/traktime/day-report", (req, res) => { record(req); res.json({ ok: true, date: req.query.date, tz: "America/Montevideo", day: { effective_seconds: 100 } }); });
-  app.get("/api/traktime/month-report", (req, res) => { record(req); res.json({ ok: true, month: req.query.month, tz: "America/Montevideo", report: { totals: { effective_seconds: 1 }, projects: [] }, pdf_url: "https://gcs/x.pdf" }); });
+  app.get("/api/traktime/month-report", (req, res) => { record(req); res.json({ ok: true, month: req.query.month, tz: "America/Montevideo", report: { totals: { effective_seconds: 1 }, projects: [] }, pdf_url: null, pdf_download_url: "/api/traktime/month-report.pdf?month=2026-06" }); });
   app.get("/api/traktime/reports/billable", (req, res) => { record(req); res.json({ ok: true, groups: [], subtotal_usd: 0 }); });
 
   const server = await new Promise((r) => { const s = app.listen(0, "127.0.0.1", () => r(s)); });
@@ -116,7 +116,7 @@ async function main() {
       assert("day_report returns day", day.ok === true && day.day?.effective_seconds === 100, JSON.stringify(day));
 
       const month = JSON.parse(await executeTool("traktime_month_report", { month: "2026-06" }, {}, { callerAuthToken: TOKEN }));
-      assert("month_report GET /month-report + pdf_url", calls.at(-1)?.path === "/api/traktime/month-report" && month.pdf_url === "https://gcs/x.pdf", JSON.stringify(month));
+      assert("month_report GET /month-report + authenticated pdf path", calls.at(-1)?.path === "/api/traktime/month-report" && month.pdf_url === null && month.pdf_download_url === "/api/traktime/month-report.pdf?month=2026-06", JSON.stringify(month));
 
       await executeTool("traktime_billable_report", { client_id: "c1" }, {}, { callerAuthToken: TOKEN });
       assert("billable GET /reports/billable", calls.at(-1)?.path === "/api/traktime/reports/billable" && calls.at(-1)?.query?.client_id === "c1", JSON.stringify(calls.at(-1)?.query));
