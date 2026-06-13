@@ -1,32 +1,53 @@
 /**
- * useDictation — one-shot mic-to-text via /api/agent/transcribe (Whisper).
+ * useDictation — one-shot mic-to-text for the chat input.
  *
- * Different from useVoiceSession (which is a fluent two-way realtime voice
- * agent over WebRTC). This hook is the lighter dictation path: user clicks
- * mic, speaks, clicks again to stop, transcript comes back as text — the
- * caller decides what to do with the text (typically: insert into the
- * chat input box and let the user review/edit before sending).
+ * Two backends, transparent to the caller:
+ *   1. Browser-native SpeechRecognition (Web Speech API) — PRIMARY when the
+ *      browser supports it (Chrome/Edge, and Safari via webkit). Free, no API
+ *      key, no server round-trip. This is what makes voice work even when the
+ *      server-side Whisper key is missing or out of quota.
+ *   2. MediaRecorder → POST /api/agent/transcribe (OpenAI Whisper) — FALLBACK
+ *      for browsers without SpeechRecognition (e.g. Firefox).
  *
- * Lifecycle:
- *   idle → recording → transcribing → idle (with transcript callback fired)
- *                                    ↘ error
+ * Same external contract regardless of backend:
+ *   idle → recording → (transcribing) → idle  (onTranscript fired)
+ *                                      ↘ error
  *
- * Browser support: MediaRecorder is in all modern browsers including Safari
- * 14+. Falls back gracefully if mic permission is denied.
+ * The caller inserts the returned text into the chat input for review/edit.
  */
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 
 const API_BASE = getCalcApiBase();
 
+/** Resolve the browser SpeechRecognition constructor, if any. */
+export function getSpeechRecognition() {
+  if (typeof window === "undefined") return null;
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+/** Map an ISO-639-1 hint to a BCP-47 tag the browser engine accepts. */
+export function toBrowserLang(language) {
+  const l = String(language || "es").toLowerCase();
+  if (l === "es" || l.startsWith("es-")) return l === "es" ? "es-419" : language;
+  return language;
+}
+
 /**
  * @param {object} opts
  * @param {(text: string) => void} opts.onTranscript     fired once with the final transcript
- * @param {(err: string) => void}   [opts.onError]       fired on mic / network / Whisper error
- * @param {string}                  [opts.language="es"] ISO-639-1 hint passed to Whisper
+ * @param {(err: string) => void}   [opts.onError]       fired on mic / network / transcribe error
+ * @param {string}                  [opts.language="es"] ISO-639-1 hint
  * @param {number}                  [opts.maxSeconds=60] hard stop after this many seconds (cost guard)
+ * @param {boolean}                 [opts.preferBrowserSpeech=true] use Web Speech API when available
  */
-export function useDictation({ onTranscript, onError, language = "es", maxSeconds = 60 } = {}) {
+export function useDictation({
+  onTranscript,
+  onError,
+  language = "es",
+  maxSeconds = 60,
+  preferBrowserSpeech = true,
+} = {}) {
   const [status, setStatus] = useState("idle"); // idle | recording | transcribing | error
   const [error, setError] = useState(null);
   const [vuLevel, setVuLevel] = useState(0); // 0–1 visual feedback
@@ -39,15 +60,20 @@ export function useDictation({ onTranscript, onError, language = "es", maxSecond
   const analyserRef = useRef(null);
   const vuRafRef = useRef(null);
   const mimeRef = useRef("audio/webm");
-  // Forward-ref to stop() so start()'s maxSeconds timeout can call it without
-  // a use-before-declaration cycle (start is declared first because callers
-  // read it more often).
   const stopRef = useRef(null);
+  // Backend in use for the current session: "browser" | "whisper" | null.
+  const modeRef = useRef(null);
+  const srRef = useRef(null);
+  const pulseTimerRef = useRef(null);
 
   const cleanup = useCallback(() => {
     if (vuRafRef.current) {
       cancelAnimationFrame(vuRafRef.current);
       vuRafRef.current = null;
+    }
+    if (pulseTimerRef.current) {
+      clearInterval(pulseTimerRef.current);
+      pulseTimerRef.current = null;
     }
     setVuLevel(0);
     try { audioCtxRef.current?.close(); } catch { /* ignore */ }
@@ -61,8 +87,13 @@ export function useDictation({ onTranscript, onError, language = "es", maxSecond
       try { streamRef.current.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ }
       streamRef.current = null;
     }
+    if (srRef.current) {
+      try { srRef.current.abort(); } catch { /* ignore */ }
+      srRef.current = null;
+    }
     recorderRef.current = null;
     chunksRef.current = [];
+    modeRef.current = null;
   }, []);
 
   // Auto-cleanup on unmount
@@ -88,10 +119,76 @@ export function useDictation({ onTranscript, onError, language = "es", maxSecond
     } catch { /* VU is decorative — ignore */ }
   }, []);
 
-  const start = useCallback(async () => {
-    if (status !== "idle") return;
-    setError(null);
+  // ── Backend 1: browser-native SpeechRecognition ────────────────────────────
+  const startBrowserSpeech = useCallback((SR) => {
+    let rec;
+    try {
+      rec = new SR();
+    } catch {
+      return false; // construction failed → caller falls back to Whisper
+    }
+    rec.lang = toBrowserLang(language);
+    rec.interimResults = false;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
 
+    let gotResult = false;
+    rec.onresult = (e) => {
+      gotResult = true;
+      const text = Array.from(e.results)
+        .map((r) => r[0]?.transcript || "")
+        .join(" ")
+        .trim();
+      onTranscript?.(text);
+      setStatus("idle");
+      cleanup();
+    };
+    rec.onerror = (e) => {
+      // no-speech / aborted are benign — return to idle without a scary error.
+      if (e?.error === "no-speech" || e?.error === "aborted") {
+        setStatus("idle");
+        cleanup();
+        return;
+      }
+      const msg =
+        e?.error === "not-allowed" || e?.error === "service-not-allowed"
+          ? "Permiso de micrófono denegado. Habilitá el micrófono en tu navegador."
+          : `Dictado por voz falló: ${e?.error || "desconocido"}`;
+      setError(msg);
+      onError?.(msg);
+      setStatus("error");
+      cleanup();
+    };
+    rec.onend = () => {
+      // Safety net: if it ended with no result and we're still "recording", reset.
+      if (!gotResult) setStatus((s) => (s === "recording" ? "idle" : s));
+    };
+
+    try {
+      rec.start();
+    } catch {
+      return false;
+    }
+    srRef.current = rec;
+    modeRef.current = "browser";
+    setStatus("recording");
+
+    // Soft VU pulse so the UI shows activity (no mic-level access in this mode).
+    let t = 0;
+    pulseTimerRef.current = setInterval(() => {
+      t += 0.25;
+      setVuLevel(0.35 + 0.25 * Math.abs(Math.sin(t)));
+    }, 120);
+
+    // Cost / runaway guard.
+    stopTimerRef.current = setTimeout(() => {
+      stopRef.current?.();
+    }, Math.max(1, maxSeconds) * 1000);
+    return true;
+  }, [language, maxSeconds, onTranscript, onError, cleanup]);
+
+  // ── Backend 2: MediaRecorder → Whisper ─────────────────────────────────────
+  const startWhisper = useCallback(async () => {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
       const msg = "Tu navegador no soporta dictado por voz. Probá con Chrome o Edge.";
       setError(msg);
@@ -115,8 +212,8 @@ export function useDictation({ onTranscript, onError, language = "es", maxSecond
 
     streamRef.current = stream;
     chunksRef.current = [];
+    modeRef.current = "whisper";
 
-    // Pick the best supported MIME type (Safari prefers mp4; Chrome/Firefox webm/opus).
     const candidates = [
       "audio/webm;codecs=opus",
       "audio/webm",
@@ -149,7 +246,6 @@ export function useDictation({ onTranscript, onError, language = "es", maxSecond
     recorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
     };
-
     recorder.onerror = (e) => {
       const msg = `Error del grabador: ${e?.error?.message || "unknown"}`;
       setError(msg);
@@ -163,16 +259,41 @@ export function useDictation({ onTranscript, onError, language = "es", maxSecond
     startVu(stream);
     setStatus("recording");
 
-    // Hard stop after maxSeconds — cost / runaway guard. Indirect via stopRef
-    // so we don't take a circular dep on stop()'s declaration order.
     stopTimerRef.current = setTimeout(() => {
       if (recorderRef.current?.state === "recording") {
         stopRef.current?.();
       }
     }, Math.max(1, maxSeconds) * 1000);
-  }, [status, onError, maxSeconds, startVu, cleanup]);
+  }, [onError, maxSeconds, startVu, cleanup]);
+
+  const start = useCallback(async () => {
+    if (status !== "idle") return;
+    setError(null);
+
+    // Prefer the free, key-less browser engine when available.
+    if (preferBrowserSpeech) {
+      const SR = getSpeechRecognition();
+      if (SR && startBrowserSpeech(SR)) return;
+    }
+    await startWhisper();
+  }, [status, preferBrowserSpeech, startBrowserSpeech, startWhisper]);
 
   const stop = useCallback(async () => {
+    // Browser engine: stop() lets it flush a final onresult, then onend.
+    if (modeRef.current === "browser") {
+      if (stopTimerRef.current) {
+        clearTimeout(stopTimerRef.current);
+        stopTimerRef.current = null;
+      }
+      if (pulseTimerRef.current) {
+        clearInterval(pulseTimerRef.current);
+        pulseTimerRef.current = null;
+      }
+      setStatus("transcribing");
+      try { srRef.current?.stop(); } catch { /* ignore */ }
+      return;
+    }
+
     const rec = recorderRef.current;
     if (!rec || rec.state !== "recording") return;
 
@@ -183,7 +304,6 @@ export function useDictation({ onTranscript, onError, language = "es", maxSecond
     }
     setVuLevel(0);
 
-    // Wait for recorder to flush final chunk
     await new Promise((resolve) => {
       const onStop = () => {
         rec.removeEventListener("stop", onStop);
@@ -193,8 +313,6 @@ export function useDictation({ onTranscript, onError, language = "es", maxSecond
       rec.stop();
     });
 
-    // Release mic before the network call so users see the "transcribing" state
-    // without the indicator showing the page still has mic access.
     if (streamRef.current) {
       try { streamRef.current.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ }
       streamRef.current = null;
@@ -244,8 +362,7 @@ export function useDictation({ onTranscript, onError, language = "es", maxSecond
     }
   }, [language, onTranscript, onError, cleanup]);
 
-  // Keep stopRef in sync so the maxSeconds setTimeout in start() can call stop()
-  // without a use-before-declared cycle.
+  // Keep stopRef in sync so the maxSeconds timeout can call the latest stop().
   useEffect(() => {
     stopRef.current = stop;
   }, [stop]);
