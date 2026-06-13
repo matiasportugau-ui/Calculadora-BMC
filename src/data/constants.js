@@ -320,8 +320,24 @@ export const PERFIL_TECHO = {
       50: { sku: "GLDCAM50", venta: 23.68, web: 27.62, costo: 19.73, largo: 3.0 },
       80: { sku: "GLDCAM80", venta: 26.64, web: 31.08, costo: 22.20, largo: 3.0 },
     },
-    ISODEC:     { _all: { sku: "GLDCAM-DC", venta: 22.65, web: 27.63, costo: 20.39, largo: 3.0 } },
-    ISODEC_PIR: { _all: { sku: "GLDCAM-DC", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
+    // WOLF-0003 (b): familia per-espesor reemplaza el colapso `_all` genérico previo.
+    // `web` verbatim de la Matriz (BROMYROS, "Perfil Ch. Gotero Lateral Cámara N mm"; ledger v0.6).
+    // `venta`/`costo`: columnas NO provistas en el ledger → null (pendiente Matriz/WOLF-0004; `p()` cae a `web`).
+    // SKU corregido GLDCAMxxx (la Matriz colapsaba el espesor a un único SKU genérico).
+    ISODEC: {
+      100: { sku: "GLDCAM100", venta: null, web: 27.664, costo: null, largo: 3.0 },
+      150: { sku: "GLDCAM150", venta: null, web: 28.91,  costo: null, largo: 3.0 },
+      // D3 (duda abierta): 200 mm (43.274) > 250 mm (37.59) en la Matriz; filas 150/200/250 marcadas
+      // "REVISAR - inabilitado en ML". Valores cargados verbatim; anomalía sin resolver.
+      200: { sku: "GLDCAM200", venta: null, web: 43.274, costo: null, largo: 3.0 },
+      250: { sku: "GLDCAM250", venta: null, web: 37.59,  costo: null, largo: 3.0 },
+    },
+    // ISODEC_PIR: los paneles PIR (50/80/120 mm) no tienen fila propia de "gotero lateral
+    // de cámara" en la Matriz (el producto solo existe en medidas EPS 100–250). Se mantiene un
+    // fallback `_all` con el precio genérico previo del repo (NO inventado) y SKU corregido
+    // `GLDCAMPIR`, para no perder la línea del BOM en cotizaciones PIR (decisión 11/06, Matias:
+    // restaurar fallback en lugar de dejar PIR sin accesorio). venta/costo = valores previos del repo.
+    ISODEC_PIR: { _all: { sku: "GLDCAMPIR", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
   },
   gotero_superior: {
     ISOROOF: {
@@ -333,6 +349,9 @@ export const PERFIL_TECHO = {
       30: { sku: "GSDECAM30", venta: 31.66, web: 36.93, costo: 26.38, largo: 3.03 },
       50: { sku: "GSDECAM50", venta: 28.99, web: 33.82, costo: 24.16, largo: 3.03 },
       80: { sku: "GSDECAM80", venta: 31.78, web: 37.07, costo: 26.48, largo: 3.03 },
+      // WOLF-0003 (a): Gotero Superior de Cámara 100 mm. venta/web verbatim de la Matriz (ledger v0.6);
+      // SKU corregido (la Matriz clona GSDECAM80). costo = celda Matriz #REF! → pendiente (WOLF-0004).
+      100: { sku: "GSDECAM100", venta: 39.468, web: 46.046, costo: null, largo: 3.03 },
     },
   },
   babeta_adosar: {
