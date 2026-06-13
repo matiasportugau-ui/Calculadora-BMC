@@ -74,8 +74,11 @@ por defecto para quien quiera conciencia temporal del SO.
   - `server/routes/activity.js` (`/api/activity/status|today|buckets`, gateado por
     el flag → 404 `aw_disabled` cuando OFF; `requireUser`), montado en `index.js`.
   - Tool `traktime_activity_today` (degrada con mensaje de cómo habilitar si OFF).
-  - Doc: `docs/team/traktime/ACTIVITYWATCH-OPTIN.md`. Test `tests/traktime-activity.test.js` (11 asserts).
-- **Fase 4 — Tauri (escritorio):** ⏳ futuro (always-on-top nativo + tray + hotkey global).
+  - Doc: `docs/team/traktime/ACTIVITYWATCH-OPTIN.md`. Test `tests/traktime-activity.test.js` (13 asserts).
+- **Fase 4 — Tauri (escritorio):** ✅ scaffold (sin compilar acá). Wrapper Tauri v2
+  en `src-tauri/` (ventana always-on-top sobre `?tkDetached=1` + system tray +
+  hotkey global `Cmd/Ctrl+Shift+T`). Scripts `npm run tauri:dev|build|icon` (vía
+  npx, sin nuevas deps). Doc: `docs/team/traktime/TAURI-DESKTOP-SPIKE.md`.
 
 ## Cómo se controla por AI (resumen)
 
