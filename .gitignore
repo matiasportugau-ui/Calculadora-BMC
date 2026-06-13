@@ -50,6 +50,15 @@ yarn-error.log*
 # Runtime exports (MATRIZ CSV pull, logs locales)
 .runtime/
 
+# Agent run artifacts (scout/builder/critic/plans from goal/orchestrator — always transient)
+artifacts/
+
+# One-off / experimental from analysis runs (custom smoke/deploy shims, telegram bot scaffold, guard test)
+scripts/deploy-calc-bmc.sh
+scripts/smoke-calc-bmc.sh
+telegram-bot/
+tests/calc-clean-start-guard.test.mjs
+
 # Cache
 .eslintcache
 .parcel-cache
