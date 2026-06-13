@@ -31,8 +31,6 @@ class PoolShim {
   async query(sql, params = []) {
     const q = String(sql).replace(/\s+/g, " ").trim().toLowerCase();
 
-    if (q.startsWith("select 1")) return { rows: [{ "?column?": 1 }], rowCount: 1 };
-
     if (q.includes("from identity.users where user_id = $1")) {
       const user = USERS[params[0]];
       return { rows: user ? [user] : [], rowCount: user ? 1 : 0 };
@@ -49,6 +47,7 @@ class PoolShim {
       const ok = this.memberships.has(`${params[0]}:${params[1]}`);
       return { rows: ok ? [{ "?column?": 1 }] : [], rowCount: ok ? 1 : 0 };
     }
+    if (q.startsWith("select 1")) return { rows: [{ "?column?": 1 }], rowCount: 1 };
 
     if (q.startsWith("insert into tk_entries")) {
       this.inserts.push(params);
