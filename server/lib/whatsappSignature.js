@@ -6,12 +6,7 @@ import crypto from "node:crypto";
  * @returns {{ ok: boolean, skipped?: boolean, reason?: string }}
  */
 export function verifyWhatsAppSignature({ appSecret, rawBodyBuffer, signatureHeader }) {
-  if (!appSecret) {
-    // Only allow skipping in explicit test mode. In production/staging this is a hard failure.
-    const isTest = process.env.APP_ENV === "test" || process.env.NODE_ENV === "test";
-    if (isTest) return { ok: true, skipped: true };
-    return { ok: false, reason: "secret_not_configured" };
-  }
+  if (!appSecret) return { ok: false, reason: "missing_app_secret" };
   if (!signatureHeader || !rawBodyBuffer) return { ok: false, reason: "missing_header_or_body" };
   const sig = String(signatureHeader).trim();
   const expected =

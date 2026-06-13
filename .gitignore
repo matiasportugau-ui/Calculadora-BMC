@@ -17,6 +17,9 @@ build/
 *.swo
 *~
 
+# Claude/Cursor local worktrees are separate git repositories; never commit as gitlinks.
+.claude/worktrees/
+
 # OS
 .DS_Store
 Thumbs.db

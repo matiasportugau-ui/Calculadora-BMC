@@ -41,12 +41,13 @@ async function main() {
   console.log("WHATSAPP_VERIFY_TOKEN   ", maskSecret(verify));
   console.log("WHATSAPP_ACCESS_TOKEN   ", maskSecret(access));
   console.log("WHATSAPP_PHONE_NUMBER_ID", phoneId ? `${phoneId} (${String(phoneId).length} dígitos/caracteres)` : "(vacío)");
-  console.log("WHATSAPP_APP_SECRET     ", appSecret ? maskSecret(appSecret) : "(vacío — HMAC POST deshabilitado, ver warning en logs)");
+  console.log("WHATSAPP_APP_SECRET     ", appSecret ? maskSecret(appSecret) : "(vacío — POST webhook rechazará payloads sin firma)");
 
   const missing = [];
   if (!verify) missing.push("WHATSAPP_VERIFY_TOKEN");
   if (!access) missing.push("WHATSAPP_ACCESS_TOKEN");
   if (!phoneId) missing.push("WHATSAPP_PHONE_NUMBER_ID");
+  if (!appSecret) missing.push("WHATSAPP_APP_SECRET");
   if (missing.length) {
     console.log("\nFaltan variables:", missing.join(", "));
     console.log("Plantilla: .env.example — checklist: docs/team/WHATSAPP-META-E2E.md");
