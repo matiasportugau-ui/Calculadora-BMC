@@ -182,9 +182,10 @@ const asyncHandler =
     Promise.resolve(fn(req, res, next)).catch(next);
 
 const ensureValidState = async (state) => {
-  const entry = await oauthStateStore.get(state);
+  // Atomic single-use consume: returns the payload exactly once; a reused,
+  // expired, or unknown state yields null and aborts the flow.
+  const entry = await oauthStateStore.consume(state);
   if (!entry) return null;
-  // The store already handles TTL/expiry + deletion
   return entry;
 };
 

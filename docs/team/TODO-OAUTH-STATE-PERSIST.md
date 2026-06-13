@@ -1,5 +1,17 @@
 # TODO — Persist OAuth State (definitive fix for Gap #4)
 
+> **DONE (2026-06-13, PR-2 / Gate 0 item 6).** State is in Postgres
+> (`public.oauth_states`) and now **single-use**: `server/lib/oauthStateStore.js`
+> gained an atomic `consume()` (`UPDATE … SET consumed_at WHERE consumed_at IS NULL
+> AND expires_at > now() RETURNING payload`). The `public.oauth_states` table already
+> existed (`supabase/migrations/20260607_add_oauth_states.sql`); this PR only added the
+> `consumed_at` column (`20260613000001_oauth_states_single_use.sql`). ML
+> (`server/index.js`) and Shopify (`server/routes/shopify.js`) both consume atomically;
+> Shopify's in-memory `Map` was removed. Google Tasks already used its own
+> `tasks.oauth_state` table with atomic delete (unchanged); Google login is the GIS
+> popup flow with no `state` param. The store uses the direct `DATABASE_URL` pg pool
+> (no PostgREST service role), so no RLS was added.
+
 **Created:** 2026-04-30 (security-hardening-202604)
 **Priority:** Medium — current patch (session affinity) is safe for single-region single-AZ deploys
 **Roadmap target:** v1.4+ (after Supabase Auth ships in Fase 1)
