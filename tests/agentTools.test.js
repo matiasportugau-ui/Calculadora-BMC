@@ -133,6 +133,16 @@ group("AGENT_TOOLS surface", () => {
     "wolfboard_marcar_enviado",
     "wolfboard_quote_batch",
     "list_bug_reports",
+    "traktime_timer_current",
+    "traktime_timer_start",
+    "traktime_timer_stop",
+    "traktime_list_entries",
+    "traktime_create_entry",
+    "traktime_day_report",
+    "traktime_month_report",
+    "traktime_billable_report",
+    "traktime_suggest_entry",
+    "traktime_activity_today",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);

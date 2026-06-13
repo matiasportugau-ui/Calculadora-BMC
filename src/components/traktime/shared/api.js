@@ -72,6 +72,14 @@ export const tkApi = {
     const q = new URLSearchParams(params).toString();
     return request("GET", `/api/traktime/reports/billable${q ? `?${q}` : ""}`);
   },
+  dayReport: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request("GET", `/api/traktime/day-report${q ? `?${q}` : ""}`);
+  },
+  monthReport: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request("GET", `/api/traktime/month-report${q ? `?${q}` : ""}`);
+  },
   listInvoices: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return request("GET", `/api/traktime/invoices${q ? `?${q}` : ""}`);

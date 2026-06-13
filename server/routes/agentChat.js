@@ -167,7 +167,25 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_actualizar_fila",
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
+  // TraKtiMe — read/write a user's time data; the agent acts as the user
+  // (forwarded JWT). Gated here so unauthenticated chat / MCP can't poll them.
+  "traktime_timer_current",
+  "traktime_timer_start",
+  "traktime_timer_stop",
+  "traktime_list_entries",
+  "traktime_create_entry",
+  "traktime_day_report",
+  "traktime_month_report",
+  "traktime_billable_report",
+  "traktime_suggest_entry",
+  "traktime_activity_today",
 ]);
+
+/** Extract a Bearer token from a request's Authorization header, or "". */
+export function bearerFromRequest(req) {
+  const auth = String(req?.headers?.authorization || "");
+  return auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+}
 
 /**
  * Returns true if the chat tool loop should refuse to execute `toolName`
@@ -223,7 +241,13 @@ router.post("/agent/exec-tool", execToolLimiter, async (req, res) => {
         return res.status(401).json({ ok: false, error: `Tool "${name}" requiere autorización Bearer` });
       }
     }
-    const raw = await executeTool(name, input || {}, calcState || {}, { logger: req.log });
+    // For TraKtiMe (per-user) tools, the agent acts as a user: the MCP caller
+    // may pass input.user_jwt; the tool falls back to it. Service bearer here
+    // is API_AUTH_TOKEN (gate only), not a user identity.
+    const raw = await executeTool(name, input || {}, calcState || {}, {
+      logger: req.log,
+      callerAuthToken: (input && input.user_jwt) || null,
+    });
     let parsed;
     try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
     res.json({ ok: true, name, result: parsed });
@@ -891,7 +915,7 @@ router.post("/agent/chat", async (req, res) => {
               continue;
             }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log });
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
 

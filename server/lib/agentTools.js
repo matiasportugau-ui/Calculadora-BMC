@@ -15,6 +15,17 @@ import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src
 import { config } from "../config.js";
 import { getPdf } from "../routes/calc.js";
 import { postCotizar, postCotizarPdf, postPresupuestoLibre } from "./calcLoopbackClient.js";
+import {
+  getTimerCurrent as tkTimerCurrent,
+  startTimer as tkStartTimer,
+  stopTimer as tkStopTimer,
+  listEntries as tkListEntries,
+  createEntry as tkCreateEntry,
+  getDayReport as tkDayReport,
+  getMonthReport as tkMonthReport,
+  getBillableReport as tkBillable,
+  getActivityToday as tkActivityToday,
+} from "./traktimeLoopbackClient.js";
 import { appendQuoteToCrm } from "./crmAppend.js";
 import { dualWriteQuote } from "./quoteDualWrite.js";
 import {
@@ -788,6 +799,130 @@ export const AGENT_TOOLS = [
         limit: { type: "number", description: "Máx. resultados (default 20, máx 100)" },
         severity: { type: "string", description: "Filtrar por severidad exacta: baja|media|alta|critica" },
         routeContains: { type: "string", description: "Filtrar reportes cuya URL contenga este texto (ej. 'wolfboard' o '/hub/cotizaciones')" },
+      },
+    },
+  },
+
+  // ─── TraKtiMe (time tracking) — driven on behalf of the logged-in user ──────
+  // These act *as* the user: they require a user JWT (forwarded from the chat
+  // session or passed as user_jwt). Reads are protected (return a user's own
+  // time data); start/stop/create are writes and need explicit confirmation.
+  {
+    name: "traktime_timer_current",
+    description:
+      "TraKtiMe: devuelve el timer en curso del usuario (si hay uno corriendo), con proyecto, inicio y segundos transcurridos. Úsalo antes de iniciar/detener para no duplicar.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "traktime_timer_start",
+    description:
+      "TraKtiMe: inicia un timer para un proyecto (y tarea opcional). ACCIÓN DE ESCRITURA: requiere confirmación explícita del usuario. Falla con 409 si ya hay un timer corriendo.",
+    input_schema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string", description: "UUID del proyecto TraKtiMe" },
+        task_id: { type: "string", description: "UUID de la tarea (opcional)" },
+        description: { type: "string", description: "Descripción libre (opcional)" },
+        tags: { type: "array", items: { type: "string" }, description: "Tags (opcional)" },
+      },
+      required: ["project_id"],
+    },
+  },
+  {
+    name: "traktime_timer_stop",
+    description:
+      "TraKtiMe: detiene el timer activo del usuario y cierra la entrada. ACCIÓN DE ESCRITURA: requiere confirmación explícita.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "traktime_list_entries",
+    description:
+      "TraKtiMe: lista las entradas de tiempo del usuario, filtrables por proyecto y rango de fechas. Lectura protegida.",
+    input_schema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string", description: "Filtrar por proyecto (opcional)" },
+        from: { type: "string", description: "Desde (ISO 8601, opcional)" },
+        to: { type: "string", description: "Hasta (ISO 8601, opcional)" },
+        limit: { type: "number", description: "Máx entradas (default 50, máx 1000)" },
+      },
+    },
+  },
+  {
+    name: "traktime_create_entry",
+    description:
+      "TraKtiMe: crea una entrada de tiempo cerrada (con inicio y fin explícitos), p. ej. para registrar trabajo pasado. ACCIÓN DE ESCRITURA: requiere confirmación explícita.",
+    input_schema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string", description: "UUID del proyecto" },
+        started_at: { type: "string", description: "Inicio (ISO 8601)" },
+        stopped_at: { type: "string", description: "Fin (ISO 8601)" },
+        task_id: { type: "string", description: "UUID de la tarea (opcional)" },
+        description: { type: "string", description: "Descripción libre (opcional)" },
+        billable: { type: "boolean", description: "¿Facturable? (default true)" },
+      },
+      required: ["project_id", "started_at", "stopped_at"],
+    },
+  },
+  {
+    name: "traktime_day_report",
+    description:
+      "TraKtiMe: reporte de jornada de un día (UY-local) — entradas ordenadas, gaps de coordinación/pausa, tiempo efectivo, span de jornada e idle. Lectura protegida.",
+    input_schema: {
+      type: "object",
+      properties: {
+        date: { type: "string", description: "Fecha YYYY-MM-DD (UY-local)" },
+        user: { type: "string", description: "user_id (solo admin; default: el propio usuario)" },
+      },
+      required: ["date"],
+    },
+  },
+  {
+    name: "traktime_month_report",
+    description:
+      "TraKtiMe: reporte mensual de horas (para administración). Devuelve totales por día + rollup por cliente/proyecto y la URL del PDF en GCS. Lectura protegida.",
+    input_schema: {
+      type: "object",
+      properties: {
+        month: { type: "string", description: "Mes YYYY-MM" },
+        user: { type: "string", description: "user_id (solo admin; default: el propio usuario)" },
+      },
+      required: ["month"],
+    },
+  },
+  {
+    name: "traktime_billable_report",
+    description:
+      "TraKtiMe: horas no facturadas agrupadas por proyecto+cliente con redondeo y monto USD (preview de facturación). Solo admin. Lectura protegida.",
+    input_schema: {
+      type: "object",
+      properties: {
+        client_id: { type: "string", description: "Filtrar por cliente (opcional)" },
+        from: { type: "string", description: "Desde (ISO 8601, opcional)" },
+        to: { type: "string", description: "Hasta (ISO 8601, opcional)" },
+      },
+    },
+  },
+  {
+    name: "traktime_suggest_entry",
+    description:
+      "TraKtiMe ('casi-automático'): reúne el contexto del usuario (timer en curso + entradas recientes + hora actual) para que propongas un borrador de entrada/categorización que el usuario confirme con una palabra. NO escribe nada; solo lee contexto.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lookback_hours: { type: "number", description: "Ventana de entradas recientes a mirar (default 24)" },
+      },
+    },
+  },
+  {
+    name: "traktime_activity_today",
+    description:
+      "TraKtiMe + ActivityWatch (opt-in, OFF por defecto): cuando el operador habilitó ActivityWatch, devuelve un resumen de la actividad del SO de hoy (apps/títulos por tiempo) para responder '¿en qué trabajé hoy?' y proponer entradas. Si está deshabilitado, lo informa con cómo habilitarlo. Solo lectura.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tz: { type: "string", description: "IANA tz para el día (default America/Montevideo)" },
       },
     },
   },
@@ -1728,6 +1863,189 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const qs = params.toString() ? `?${params.toString()}` : "";
       // Reuse the same forward pattern (server-side token) but hit the bugs surface
       return await bugsForward(`/api/bugs${qs}`, { method: "GET" }, name);
+    }
+
+    // ─── TraKtiMe tools ────────────────────────────────────────────────────
+    if (name.startsWith("traktime_")) {
+      // The agent acts as the user: forward their JWT (from the chat session
+      // via opts.callerAuthToken, or an explicit input.user_jwt). No token →
+      // honest auth error rather than a silent 401.
+      const authToken = opts?.callerAuthToken || input?.user_jwt || null;
+      if (!authToken) {
+        return JSON.stringify({
+          ok: false,
+          error: "traktime_requires_user_identity",
+          hint: "Esta acción opera sobre el tiempo de un usuario; necesita su sesión (JWT). Iniciá sesión o pasá user_jwt.",
+        });
+      }
+      const o = { authToken };
+
+      if (name === "traktime_timer_current") {
+        const r = await tkTimerCurrent(o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        const e = r.body?.running;
+        return JSON.stringify({
+          ok: true,
+          running: !!e,
+          entry_id: e?.entry_id || null,
+          project_id: e?.project_id || null,
+          project_name: e?.project_name || null,
+          started_at: e?.started_at || null,
+          elapsed_seconds: e ? Math.max(0, Math.round((Date.now() - new Date(e.started_at)) / 1000)) : 0,
+        });
+      }
+
+      if (name === "traktime_timer_start") {
+        { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+        if (!input?.project_id) return JSON.stringify({ ok: false, error: "project_id requerido" });
+        const body = { project_id: input.project_id };
+        if (input.task_id) body.task_id = input.task_id;
+        if (input.description) body.description = String(input.description);
+        if (Array.isArray(input.tags)) body.tags = input.tags.map(String);
+        const r = await tkStartTimer(body, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({ ok: true, entry: r.body?.entry || null });
+      }
+
+      if (name === "traktime_timer_stop") {
+        { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+        const r = await tkStopTimer(o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        const e = r.body?.entry;
+        return JSON.stringify({
+          ok: true,
+          entry_id: e?.entry_id || null,
+          duration_seconds: e?.duration_seconds ?? null,
+          started_at: e?.started_at || null,
+          stopped_at: e?.stopped_at || null,
+        });
+      }
+
+      if (name === "traktime_list_entries") {
+        const query = {};
+        if (input?.project_id) query.project_id = input.project_id;
+        if (input?.from) query.from = input.from;
+        if (input?.to) query.to = input.to;
+        if (input?.limit) query.limit = Math.max(1, Math.min(1000, Number(input.limit) || 50));
+        const r = await tkListEntries(query, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({
+          ok: true,
+          entries: (r.body?.entries || []).map((e) => ({
+            entry_id: e.entry_id,
+            project_id: e.project_id,
+            project_name: e.project_name,
+            client_name: e.client_name,
+            description: e.description,
+            started_at: e.started_at,
+            stopped_at: e.stopped_at,
+            duration_seconds: e.duration_seconds,
+            billable: e.billable,
+            tags: e.tags,
+          })),
+        });
+      }
+
+      if (name === "traktime_create_entry") {
+        { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+        const { project_id, started_at, stopped_at } = input || {};
+        if (!project_id || !started_at || !stopped_at) {
+          return JSON.stringify({ ok: false, error: "project_id, started_at y stopped_at requeridos" });
+        }
+        const body = { project_id, started_at, stopped_at };
+        if (input.task_id) body.task_id = input.task_id;
+        if (input.description) body.description = String(input.description);
+        if (input.billable != null) body.billable = !!input.billable;
+        const r = await tkCreateEntry(body, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({ ok: true, entry: r.body?.entry || null });
+      }
+
+      if (name === "traktime_day_report") {
+        if (!input?.date) return JSON.stringify({ ok: false, error: "date (YYYY-MM-DD) requerido" });
+        const query = { date: input.date };
+        if (input.user) query.user = input.user;
+        const r = await tkDayReport(query, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({ ok: true, date: r.body?.date, tz: r.body?.tz, day: r.body?.day });
+      }
+
+      if (name === "traktime_month_report") {
+        if (!input?.month) return JSON.stringify({ ok: false, error: "month (YYYY-MM) requerido" });
+        const query = { month: input.month };
+        if (input.user) query.user = input.user;
+        const r = await tkMonthReport(query, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({
+          ok: true,
+          month: r.body?.month,
+          tz: r.body?.tz,
+          totals: r.body?.report?.totals || null,
+          projects: r.body?.report?.projects || [],
+          pdf_url: r.body?.pdf_url || null,
+        });
+      }
+
+      if (name === "traktime_billable_report") {
+        const query = {};
+        if (input?.client_id) query.client_id = input.client_id;
+        if (input?.from) query.from = input.from;
+        if (input?.to) query.to = input.to;
+        const r = await tkBillable(query, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({ ok: true, groups: r.body?.groups || [], subtotal_usd: r.body?.subtotal_usd });
+      }
+
+      if (name === "traktime_suggest_entry") {
+        // Read-only context gather for an AI-proposed draft (no write).
+        const lookbackHours = Math.max(1, Math.min(168, Number(input?.lookback_hours) || 24));
+        const fromIso = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
+        const [cur, recent] = await Promise.all([
+          tkTimerCurrent(o),
+          tkListEntries({ from: fromIso, limit: 20 }, o),
+        ]);
+        if (!cur.ok && cur.status === 401) {
+          return JSON.stringify({ ok: false, error: cur.error || "no autorizado" });
+        }
+        const e = cur.body?.running;
+        return JSON.stringify({
+          ok: true,
+          now: new Date().toISOString(),
+          running_timer: e
+            ? { project_id: e.project_id, project_name: e.project_name, started_at: e.started_at }
+            : null,
+          recent_entries: (recent.body?.entries || []).slice(0, 20).map((x) => ({
+            project_name: x.project_name,
+            description: x.description,
+            started_at: x.started_at,
+            stopped_at: x.stopped_at,
+            duration_seconds: x.duration_seconds,
+          })),
+          note: "Proponé un borrador de entrada/categorización al usuario y pedí confirmación antes de escribir.",
+        });
+      }
+
+      if (name === "traktime_activity_today") {
+        const query = input?.tz ? { tz: String(input.tz) } : {};
+        const r = await tkActivityToday(query, o);
+        if (r.status === 404 && r.body?.error === "aw_disabled") {
+          return JSON.stringify({
+            ok: true,
+            enabled: false,
+            note: "ActivityWatch no está habilitado. Es opt-in: el operador debe instalar ActivityWatch local y arrancar la API con TRAKTIME_AW_ENABLED=1. Ver docs/team/traktime/ACTIVITYWATCH-OPTIN.md.",
+          });
+        }
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error || "aw_unreachable" });
+        return JSON.stringify({
+          ok: true,
+          enabled: true,
+          date: r.body?.date,
+          tz: r.body?.tz,
+          total_active_seconds: r.body?.total_active_seconds,
+          by_app: r.body?.by_app || [],
+          note: "Usá esto para proponer una o más entradas; pedí confirmación antes de escribir.",
+        });
+      }
     }
 
     return JSON.stringify({ error: `Tool "${name}" no implementada` });
