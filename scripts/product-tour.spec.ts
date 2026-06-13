@@ -556,8 +556,12 @@ test("Calculadora — vista mobile", async ({ browser }) => {
 async function discoverPanelin(page: Page) {
   const mod = "04-panelin";
   setActiveModule(mod);
+  // El hub expone "Hablar con Panelín" como card/enlace (no <button>): aceptar
+  // role button Y link, y el texto explícito.
   const trigger = page
-    .getByRole("button", { name: /panel[ií]n|asistente|chat/i })
+    .getByRole("link", { name: /hablar con panel[ií]n|panel[ií]n/i })
+    .or(page.getByRole("button", { name: /hablar con panel[ií]n|panel[ií]n|asistente/i }))
+    .or(page.getByText(/hablar con panel[ií]n/i))
     .or(page.locator("[data-tutorial-id*='panelin'], [aria-label*='Panelín' i]"))
     .first();
   if (await trigger.isVisible({ timeout: 4_000 }).catch(() => false)) {
