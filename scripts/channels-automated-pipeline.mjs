@@ -9,7 +9,7 @@
  *   npm run channels:automated
  *   npm run channels:automated -- --write   # escribe .channels/last-pipeline.json
  *
- * Exit 1 si el smoke falla (misma lógica que smoke-prod-api.mjs --json), incl. GET MATRIZ CSV.
+ * Exit 1 si smoke.ok !== true según los checks bloqueantes del perfil activo (SMOKE_PROFILE, pasado vía process.env; por defecto "full").
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -24,18 +24,58 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 
 const CHANNEL_TASK_IDS = ["cm-0", "cm-1", "cm-2"];
+/** Keep CI stderr/stdout snippets readable while preserving enough debug context from failed smoke runs. */
+const MAX_ERROR_OUTPUT_LENGTH = 1200;
+const trimForError = (text) =>
+  text.length > MAX_ERROR_OUTPUT_LENGTH
+    ? `${text.slice(0, MAX_ERROR_OUTPUT_LENGTH)}… (truncated)`
+    : text;
 
 async function runSmokeJson() {
   const t0 = Date.now();
   const script = path.join(ROOT, "scripts/smoke-prod-api.mjs");
-  const { stdout } = await execFileP(process.execPath, [script, "--json"], {
-    cwd: ROOT,
-    maxBuffer: 4 * 1024 * 1024,
-    env: process.env,
-  });
-  const ms = Date.now() - t0;
-  const data = JSON.parse(stdout.trim());
-  return { ms, data };
+  try {
+    const { stdout } = await execFileP(process.execPath, [script, "--json"], {
+      cwd: ROOT,
+      maxBuffer: 4 * 1024 * 1024,
+      env: process.env,
+    });
+    const ms = Date.now() - t0;
+    const data = JSON.parse(stdout.trim());
+    return { ms, data };
+  } catch (error) {
+    const ms = Date.now() - t0;
+    const stdout =
+      error && typeof error === "object" && typeof error.stdout === "string" ? error.stdout.trim() : "";
+    const stderr =
+      error && typeof error === "object" && typeof error.stderr === "string" ? error.stderr.trim() : "";
+    if (stdout) {
+      try {
+        const data = JSON.parse(stdout);
+        return { ms, data };
+      } catch (parseError) {
+        throw new Error(
+          [
+            "smoke-prod-api.mjs falló y devolvió stdout no-JSON.",
+            parseError instanceof Error ? `parseError: ${parseError.message}` : `parseError: ${String(parseError)}`,
+            `stdout: ${trimForError(stdout)}`,
+            stderr ? `stderr: ${trimForError(stderr)}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n")
+        );
+      }
+    }
+    throw new Error(
+      [
+        "smoke-prod-api.mjs falló sin JSON en stdout.",
+        error instanceof Error ? `error: ${error.message}` : `error: ${String(error)}`,
+        stderr ? `stderr: ${trimForError(stderr)}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+  }
 }
 
 function runFollowupsJson() {

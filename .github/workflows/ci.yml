@@ -133,6 +133,8 @@ jobs:
         run: npm ci --include=dev
 
       - name: channels:automated (JSON)
+        env:
+          SMOKE_PROFILE: channels
         run: node scripts/channels-automated-pipeline.mjs
 
   voice_health:
