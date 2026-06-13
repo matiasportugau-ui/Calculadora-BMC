@@ -80,6 +80,20 @@ else
   echo "   ⚠️  $TEAM_STATE not found"
 fi
 
+# 6. Cloud Run secrets drift (fails the gate if a required secret would be stripped)
+echo ""
+echo "6. Cloud Run secrets drift (--set-secrets vs manifest)"
+if command -v node >/dev/null 2>&1; then
+  if node scripts/gate-secrets-drift.mjs; then
+    echo "   ✅ No secrets drift"
+  else
+    echo "   ❌ Secrets drift — fix before deploy (see gate output above)"
+    exit 1
+  fi
+else
+  echo "   ⚠️  Node not found, skip secrets drift gate"
+fi
+
 echo ""
 echo "═══ Done ═══"
 echo ""

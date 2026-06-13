@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { tkApi } from "../shared/api.js";
 import { button, card, colors, dot, formatHms, input } from "../shared/styles.js";
+import { onTimerChanged, postTimerChanged } from "../shared/timerChannel.js";
+import { openFloatingTimer } from "./detach.js";
+import FloatingTimer from "./FloatingTimer.jsx";
 
 export default function Timer({ projects, onChange }) {
   const [running, setRunning] = useState(null);
@@ -9,6 +13,7 @@ export default function Timer({ projects, onChange }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [pipWindow, setPipWindow] = useState(null);
   const pollRef = useRef(null);
 
   async function refresh() {
@@ -24,8 +29,22 @@ export default function Timer({ projects, onChange }) {
   useEffect(() => {
     refresh();
     pollRef.current = setInterval(refresh, 30000);
-    return () => clearInterval(pollRef.current);
+    const off = onTimerChanged(refresh);
+    return () => {
+      clearInterval(pollRef.current);
+      off();
+    };
   }, []);
+
+  // Open the detachable mini-timer: Document Picture-in-Picture if supported
+  // (true always-on-top in Chromium), else a popup window via ?tkDetached=1.
+  async function detach() {
+    const pip = await openFloatingTimer();
+    if (pip?.documentPiP) {
+      pip.window.addEventListener("pagehide", () => setPipWindow(null), { once: true });
+      setPipWindow(pip.window);
+    }
+  }
 
   useEffect(() => {
     if (!running) {
@@ -57,6 +76,7 @@ export default function Timer({ projects, onChange }) {
       const r = await tkApi.timerStart({ project_id: projectId, description });
       setRunning({ ...r.entry, project_name: liveProject?.name, color_hex: liveProject?.color_hex });
       setDescription("");
+      postTimerChanged();
       onChange?.();
     } catch (e) {
       setError(e.message || "start_failed");
@@ -71,6 +91,7 @@ export default function Timer({ projects, onChange }) {
     try {
       await tkApi.timerStop();
       setRunning(null);
+      postTimerChanged();
       onChange?.();
     } catch (e) {
       setError(e.message || "stop_failed");
@@ -81,6 +102,9 @@ export default function Timer({ projects, onChange }) {
 
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Mini-timer desprendido en una ventana PiP (always-on-top) */}
+      {pipWindow ? createPortal(<FloatingTimer embedded />, pipWindow.document.body) : null}
+
       <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
         <div style={{ fontSize: 48, fontWeight: 300, fontVariantNumeric: "tabular-nums" }}>
           {formatHms(elapsed)}
@@ -94,6 +118,13 @@ export default function Timer({ projects, onChange }) {
         ) : (
           <div style={{ color: colors.textMuted, fontSize: 14 }}>Sin temporizador activo</div>
         )}
+        <button
+          onClick={detach}
+          title="Desprender el temporizador en una ventana flotante"
+          style={{ ...button("ghost"), marginLeft: "auto", padding: "6px 12px" }}
+        >
+          ⤢ Desprender
+        </button>
       </div>
 
       {!running ? (

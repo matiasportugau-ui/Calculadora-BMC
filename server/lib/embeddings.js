@@ -22,6 +22,7 @@
 
 import crypto from "node:crypto";
 import { config } from "../config.js";
+import { isUsableApiKey } from "./apiKeyUtils.js";
 
 const EMBEDDING_DIM = 1536;
 
@@ -94,13 +95,9 @@ export function activeProvider() {
  * @returns {boolean}
  */
 function _hasUsableOpenAIKey() {
-  const k = (config.openaiApiKey || "").trim();
-  if (!k) return false;
-  if (/^(sk-)?\.{1,3}$/i.test(k)) return false;
-  if (/^(your[-_]?key|replace[-_]?me|placeholder|todo|xxx+)/i.test(k)) return false;
-  // OpenAI keys son largas (~50+ chars). Cualquier valor < 20 chars es claramente placeholder.
-  if (k.length < 20) return false;
-  return true;
+  // Shared placeholder-aware check (also catches "sk-your-...", which the old
+  // inline regex missed). See server/lib/apiKeyUtils.js.
+  return isUsableApiKey(config.openaiApiKey);
 }
 
 /**

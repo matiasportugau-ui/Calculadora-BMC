@@ -17,6 +17,11 @@ import { requireUser } from "../lib/identityAuth.js";
 import { tkAudit } from "../lib/traktimeAudit.js";
 import { runTraktimeMirror } from "../lib/traktimeMirrorWorker.js";
 import { renderAndUploadInvoice } from "../lib/traktimeInvoicePdf.js";
+import {
+  buildJornadaReport,
+  DEFAULT_PAUSA_THRESHOLD_SECONDS,
+} from "../lib/traktimeJornada.js";
+import { renderAndUploadHoursReport } from "../lib/traktimeHoursPdf.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -1228,6 +1233,168 @@ export default function createTraktimeRouter(config, logger) {
         params,
       );
       res.json({ ok: true, group_by: groupBy, rows });
+    }),
+  );
+
+  // ─── Reports: jornada / coordinación (items 14–16) ────────────────────
+  // Derived at read time from tk_entries — no schema change. Gaps between
+  // consecutive same-day entries are auto-labeled coordinación/pausa; jornada
+  // is the span from first start to last end. Days bucketed in UY-local time.
+  const reportTz = config.traktimeMirrorTz || "America/Montevideo";
+
+  function resolvePausaThresholdSeconds(req) {
+    const q = Number(req.query.pausa_min);
+    if (Number.isFinite(q) && q >= 0) return Math.round(q * 60);
+    const env = Number(process.env.TRAKTIME_PAUSA_THRESHOLD_MIN);
+    if (Number.isFinite(env) && env >= 0) return Math.round(env * 60);
+    return DEFAULT_PAUSA_THRESHOLD_SECONDS;
+  }
+
+  // Resolve which user the report targets. Members only ever see themselves;
+  // admins may pass ?user=<user_id>. Returns { id } or null on a forbidden ask.
+  function resolveTargetUserId(req) {
+    const isAdmin = req.user.role === "admin" || req.user.role === "superadmin";
+    const asked = trimOrNull(req.query.user);
+    if (!asked || asked === req.user.id) return req.user.id;
+    if (!isAdmin) return null; // forbidden — non-admin asking for someone else
+    return asked;
+  }
+
+  // Look up display info (name/email) for the PDF header.
+  async function loadUserDisplay(userId, req) {
+    if (userId === req.user.id) {
+      return { id: req.user.id, email: req.user.email, name: req.user.name };
+    }
+    try {
+      const { rows } = await pool.query(
+        `select user_id as id, email, name from identity.users where user_id = $1`,
+        [userId],
+      );
+      if (rows.length) return rows[0];
+    } catch {
+      /* identity schema may be unavailable in some deployments */
+    }
+    return { id: userId, email: null, name: null };
+  }
+
+  const REPORT_ENTRY_SQL = `
+    select e.entry_id, e.user_id, e.project_id, e.started_at, e.stopped_at,
+           e.duration_seconds, e.description,
+           p.name as project_name, p.color_hex, c.name as client_name
+      from tk_entries e
+      join tk_projects p on p.project_id = e.project_id
+      join tk_clients  c on c.client_id  = p.client_id`;
+
+  router.get(
+    "/api/traktime/day-report",
+    requireUser(),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const date = trimOrNull(req.query.date);
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ ok: false, error: "date_required_yyyy_mm_dd" });
+      }
+      const userId = resolveTargetUserId(req);
+      if (!userId) return res.status(403).json({ ok: false, error: "forbidden" });
+      const pausaThresholdSeconds = resolvePausaThresholdSeconds(req);
+
+      const { rows } = await pool.query(
+        `${REPORT_ENTRY_SQL}
+          where e.user_id = $1 and e.stopped_at is not null
+            and (e.started_at at time zone $2)::date = $3::date
+          order by e.started_at`,
+        [userId, reportTz, date],
+      );
+      const report = buildJornadaReport(rows, { tz: reportTz, pausaThresholdSeconds });
+      const day = report.days[0] || {
+        date,
+        entries: [],
+        gaps: [],
+        entry_count: 0,
+        first_in: null,
+        last_out: null,
+        first_in_local: null,
+        last_out_local: null,
+        effective_seconds: 0,
+        coordinacion_seconds: 0,
+        pausa_seconds: 0,
+        jornada_seconds: 0,
+        idle_seconds: 0,
+      };
+      res.json({
+        ok: true,
+        user_id: userId,
+        date,
+        tz: reportTz,
+        pausa_threshold_seconds: pausaThresholdSeconds,
+        day,
+      });
+    }),
+  );
+
+  router.get(
+    "/api/traktime/month-report",
+    requireUser(),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const month = trimOrNull(req.query.month);
+      if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ ok: false, error: "month_required_yyyy_mm" });
+      }
+      const userId = resolveTargetUserId(req);
+      if (!userId) return res.status(403).json({ ok: false, error: "forbidden" });
+      const pausaThresholdSeconds = resolvePausaThresholdSeconds(req);
+
+      // Local-time month boundaries [first of month, first of next month).
+      const [yy, mm] = month.split("-").map(Number);
+      const startLocal = `${month}-01 00:00:00`;
+      const nextYear = mm === 12 ? yy + 1 : yy;
+      const nextMonth = mm === 12 ? 1 : mm + 1;
+      const endLocal = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01 00:00:00`;
+
+      const { rows } = await pool.query(
+        `${REPORT_ENTRY_SQL}
+          where e.user_id = $1 and e.stopped_at is not null
+            and (e.started_at at time zone $2) >= $3::timestamp
+            and (e.started_at at time zone $2) <  $4::timestamp
+          order by e.started_at`,
+        [userId, reportTz, startLocal, endLocal],
+      );
+      const report = buildJornadaReport(rows, { tz: reportTz, pausaThresholdSeconds });
+      const user = await loadUserDisplay(userId, req);
+
+      let pdf_url = null;
+      let pdf_rendered = false;
+      try {
+        const out = await renderAndUploadHoursReport({
+          report,
+          user,
+          month,
+          issuer: { name: config.traktimeInvoiceIssuerName },
+          bucket: config.traktimeInvoiceGcsBucket,
+        });
+        pdf_url = out.url;
+        pdf_rendered = !!out.pdfBuffer;
+      } catch (e) {
+        log.warn?.({ err: e }, "[traktime] hours-report pdf render failed");
+      }
+
+      await tkAudit(pool, {
+        action: "report.month_hours",
+        user_email: req.user.email,
+        meta: { target_user: userId, month, pdf_rendered, day_count: report.totals.day_count },
+      }, log);
+
+      res.json({
+        ok: true,
+        user_id: userId,
+        month,
+        tz: reportTz,
+        pausa_threshold_seconds: pausaThresholdSeconds,
+        report,
+        pdf_url,
+        pdf_rendered,
+      });
     }),
   );
 
