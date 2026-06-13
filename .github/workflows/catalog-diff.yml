@@ -1,0 +1,146 @@
+# Catalog ↔ MATRIZ price diff (WOLF-2026-0004 etapa 2).
+# Control determinístico (no-LLM) que pidió Ramiro: atrapa divergencias de precio
+# y valores fuera de rango entre `src/data/constants.js` y la MATRIZ viva.
+#
+# Reutiliza el service-account YA montado en la API de prod (sirve el CSV MATRIZ
+# en GET /api/actualizar-precios-calculadora). NO crea credenciales nuevas.
+# Si la MATRIZ no está disponible, el script hace skip elegante (exit 0) salvo
+# que se pase --require-matriz.
+#
+# Seguridad (boundary de permisos): el job `catalog-diff` ejecuta código del PR
+# (`scripts/catalog-diff.mjs`) y por eso corre con `contents: read` SIN token de
+# escritura y con `persist-credentials: false` (el token no queda en el git config).
+# El comentario en el PR (que necesita `pull-requests: write`) vive en un job
+# separado (`comment`) que NO ejecuta código del PR: sólo consume el artifact.
+name: Catalog ↔ MATRIZ diff
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # diario 09:00 UTC
+  pull_request:
+    paths:
+      - "src/data/constants.js"
+      - "scripts/catalog-diff.mjs"
+  workflow_dispatch:
+    inputs:
+      api_base:
+        description: "Override BMC_API_BASE (default: prod Cloud Run)"
+        required: false
+        default: ""
+      soft:
+        description: "Set to 1 para reporte sin fallar (no exit≠0 en S1)"
+        required: false
+        default: "0"
+
+# Default mínimo a nivel workflow; cada job eleva sólo lo que necesita.
+permissions:
+  contents: read
+
+jobs:
+  catalog-diff:
+    name: catalog-diff.mjs
+    runs-on: ubuntu-latest
+    # Ejecuta código del PR → SIN token de escritura.
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # necesitamos el `constants.js` de la base para el gate de regresión
+          persist-credentials: false # no dejar el token en el git config (lo lee el código del PR)
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # PR: baseline-aware. Calcula el diff de la BASE (mismo script de HEAD, misma
+      # MATRIZ viva → la única variable es constants.js) para que el gate falle SÓLO
+      # ante regresiones nuevas, no ante el drift pre-existente (decisión de diseño).
+      - name: Compute baseline (PR only)
+        if: github.event_name == 'pull_request'
+        env:
+          BMC_API_BASE: ${{ vars.BMC_SMOKE_API_BASE || '' }}
+        run: |
+          set +e
+          git show "${{ github.event.pull_request.base.sha }}:src/data/constants.js" > base-constants.js 2>/dev/null
+          if [ -s base-constants.js ]; then
+            node scripts/catalog-diff.mjs --constants base-constants.js --json --soft > baseline.json
+          else
+            echo "[catalog-diff] base no tiene src/data/constants.js — sin baseline (gate report-only)."
+          fi
+
+      # Sin npm install: el script sólo usa fetch nativo + imports ESM locales.
+      - name: Run catalog diff
+        id: diff
+        env:
+          BMC_API_BASE: ${{ github.event.inputs.api_base || vars.BMC_SMOKE_API_BASE || '' }}
+          BMC_CATALOG_DIFF_SOFT: ${{ github.event.inputs.soft == '1' && '1' || '' }}
+        run: |
+          set +e
+          BASELINE_ARG=""
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ -s baseline.json ]; then
+            BASELINE_ARG="--baseline baseline.json"
+          fi
+          node scripts/catalog-diff.mjs --out catalog-diff-report.md $BASELINE_ARG
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-diff-report
+          path: catalog-diff-report.md
+          if-no-files-found: ignore
+
+      # PR: falla sólo ante regresiones nuevas vs base. Cron/dispatch: ante cualquier S1.
+      - name: Fail on regression / S1
+        if: steps.diff.outputs.exit_code != '0'
+        run: |
+          echo "::error::catalog-diff: el PR introduce regresiones S1 (o, en cron, hay S1 absolutos). Ver el reporte/artifact."
+          exit 1
+
+  comment:
+    name: PR comment
+    needs: catalog-diff
+    # Corre siempre (incluso si el diff falló) para postear el reporte, sólo en PRs.
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # Este job NO ejecuta código del PR: sólo baja el artifact y postea el comentario.
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download report artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true # puede no existir si la MATRIZ no estaba disponible
+        with:
+          name: catalog-diff-report
+
+      - name: Upsert PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- catalog-diff-report -->';
+            let body;
+            if (fs.existsSync('catalog-diff-report.md')) {
+              const md = fs.readFileSync('catalog-diff-report.md', 'utf8');
+              // GitHub comment cap ~65k chars; truncar con aviso si hace falta.
+              const capped = md.length > 60000
+                ? md.slice(0, 60000) + '\n\n_… reporte truncado; ver el artifact `catalog-diff-report`._'
+                : md;
+              body = `${marker}\n${capped}`;
+            } else {
+              body = `${marker}\n## Catalog ↔ MATRIZ diff\n\nMATRIZ no disponible en CI — skip elegante (sin reporte). Ver logs del job.`;
+            }
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.rest.issues.listComments({ owner, repo, issue_number, per_page: 100 });
+            const existing = comments.data.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
