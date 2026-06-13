@@ -1,0 +1,16 @@
+Prioridad,Área,Acción,Razón,Esfuerzo
+P0,Seguridad/PII,Purgar .accessible-base/ del repo + git history; .gitignore,C1: 297 leads + telefonos commiteados. Posible obligación Ley 18.331.,M
+P0,Seguridad,Quitar default WA_JWT_SECRET + hard-fail (C2); sacar API token del bundle Vite (C3),Tokens forjables / leak de bearer de server.,S-M
+P0,Seguridad,"Auth en writes Sheets públicos (POST/PATCH /api/cotizaciones,/pagos,/ventas,/marcar-entregado, PUT productos-maestro/links) + /api/crm/cockpit-token + /admin/* (H2) + /webhooks/ml/events (H3) + /api/internal/presup/*",Mutación de datos de producción sin auth.,M
+P1,Infra,Decidir P1 y borrar los 2 modelos de deploy muertos + arreglar path-filter deploy-calc-api.yml,Drift de deploy: imagen activa depende de quién desplegó último.,S
+P1,Datos/Precios,"Limpiar MATRIZ #2: dedupe SKUs (GFS80,PU50MM,IF150,CAN.ISDC120), arreglar #REF!/#VALUE!, normalizar IVA%",Es la fuente de precios de la calc (P2). Datos sucios -> cotizaciones erróneas.,M
+P1,Datos,Arreglar 106 #REF! en Stock E-Commerce #5 (links rotos a MATRIZ),Inventario/pricing e-commerce roto.,M
+P1,Config,Setear ML_CLIENT_SECRET en prod (/health missingConfig) o documentar que ML OAuth está intencionalmente off,ML OAuth no funcional en prod.,S
+P2,Datos,Consolidar #3 crm_automatizado ~ #4 CALENDARIO (payables duplicados) en un libro; renombrar #3 (no es CRM),Dos copias del mismo dataset de vencimientos.,S
+P2,Datos,Unificar lifecycle lead->venta: decidir si #8 'Ventas 2026 BETA' reemplaza a #1+#6; poblar tab export vacío de #7,3 sheets con columnas solapadas para el mismo flujo.,M-L
+P2,Repo,"Limpieza de clutter: borrar docs 2/, docs.zip, reporte.md, Obsidian/, Untitled, GEMINI.md; mover reportes raíz a docs/",136K líneas md; duplicados divergentes.,S
+P2,Repo,"Consolidar 45 PRs abiertas; cerrar ramas stale; resolver código muerto (*_legacy_inline.jsx, template PDF duplicado)",Deuda de integración alta.,M
+P3,Repo,Alinear shop-chat-agent a Node 24 o aislarlo como repo propio,Stack inconsistente (Node 18 vs 24).,S
+P3,Org,"Archivar repos hermanos experimentales (GPT-*, chatbot-*, aistudioPanelin, etc.)",Reduce superficie de credenciales/CI muertos (P4).,S
+P3,Apps Script,Adoptar clasp (repo = verdad) o documentar bound script como master (P5),Sin forma de saber qué .gs corre.,M
+P3,Seguridad,"Aplicar W1-W8 (fallbacks vacíos para sheet/ML IDs, allowlist extension CORS, warnings HMAC)",Endurecimiento defensivo.,S

@@ -1,0 +1,1753 @@
+{
+  "generated_at": "2026-06-07",
+  "overview": {
+    "title": "BMC Uruguay — Auditoría Técnica MAESTRO",
+    "org": "BMC Uruguay / METALOG SAS (RUT 120403430012)",
+    "system": "Calculadora-BMC (quote engine + CRM + dashboards), v3.1.5",
+    "repo": "matiasportugau-ui/calculadora-bmc",
+    "audit_date": "2026-06-07",
+    "builds_on": "Auditoría previa 2026-04-23 en .relevamiento/matriz/ (sin acceso a gh/gcloud/Drive). Esta corre CON esos accesos.",
+    "live_prod": {
+      "cloud_run_url": "https://panelin-calc-q74zutv7dq-uc.a.run.app",
+      "health": "HTTP 200 — appEnv=production, hasSheets=true, hasTokens=true, mlTokenStoreOk=true",
+      "deployed_git_sha": "3153b111eea1979cbc3766346b51c7eac003420e",
+      "matches_local_main": true,
+      "missing_config": [
+        "ML_CLIENT_SECRET"
+      ],
+      "version": "3.1.5"
+    },
+    "headline_numbers": {
+      "tracked_files": 2413,
+      "remote_branches": 53,
+      "open_prs": 45,
+      "api_endpoints": 226,
+      "public_endpoints": 70,
+      "google_sheets_audited": 8,
+      "sibling_repos_in_org": 24,
+      "security_findings": 15,
+      "critical_findings": 3
+    },
+    "deltas_vs_prior": [
+      "Ramas: 84 -> 53 (limpieza ocurrida).",
+      "PRs abiertas: ~20 -> 45 (creció; muchas son fix de deploy/CI y test-coverage de bots).",
+      "Sheets: antes 'duda abierta' -> ahora 8/8 leídas en vivo via Drive MCP.",
+      "Repos hermanos: antes no enumerables -> ahora 24 listados (solo 2 activos).",
+      "Prod Cloud Run: antes no verificable -> ahora confirmado vivo y = main.",
+      "P3 (schema CRM): antes incógnita -> CRM_Operativo confirmado en vivo via /health.",
+      "PII: prior dijo 'sin exposición' -> ESTA encuentra CRM con 297 leads commiteado (.accessible-base/)."
+    ]
+  },
+  "infrastructure": [
+    {
+      "Capa": "Frontend",
+      "Componente": "Vercel SPA (Vite)",
+      "URL / ID": "https://calculadora-bmc.vercel.app",
+      "Auth / Acceso": "Pública + Google OAuth",
+      "Estado (vivo)": "ACTIVO",
+      "Notas": "Build vite -> dist/. Rewrites /api,/calc,/auth,/sync -> Cloud Run."
+    },
+    {
+      "Capa": "API",
+      "Componente": "Cloud Run 'panelin-calc' (us-central1)",
+      "URL / ID": "https://panelin-calc-q74zutv7dq-uc.a.run.app",
+      "Auth / Acceso": "JWT / API_AUTH_TOKEN / HMAC",
+      "Estado (vivo)": "ACTIVO (HTTP 200)",
+      "Notas": "gitSha en vivo 3153b11 == main. Express 5, Node 24, server/Dockerfile."
+    },
+    {
+      "Capa": "API (URL alt)",
+      "Componente": "Mismo servicio, URL por nº de proyecto",
+      "URL / ID": "https://panelin-calc-642127786762.us-central1.run.app",
+      "Auth / Acceso": "idem",
+      "Estado (vivo)": "ACTIVO (alias)",
+      "Notas": "Misma service; 642127786762 = nº proyecto. Canónica = q74 (public_base_url + vercel.json)."
+    },
+    {
+      "Capa": "GCP Project",
+      "Componente": "chatbot-bmc-live / us-central1",
+      "URL / ID": "Artifact Registry: cloud-run-repo/",
+      "Auth / Acceso": "WIF + deploy SA",
+      "Estado (vivo)": "ACTIVO",
+      "Notas": "Phase 0 SA hardening 2026-06-01: secrets en Secret Manager."
+    },
+    {
+      "Capa": "Imagen API (canónica)",
+      "Componente": "server/Dockerfile (node:24-alpine, :8080)",
+      "URL / ID": "deploy-calc-api.yml + cloudbuild-api.yaml",
+      "Auth / Acceso": "-",
+      "Estado (vivo)": "CANÓNICA",
+      "Notas": "API-only + Chromium para PDF. ES la imagen de prod."
+    },
+    {
+      "Capa": "Imagen full-stack (alt)",
+      "Componente": "Dockerfile.bmc-dashboard",
+      "URL / ID": "cloudbuild.yaml + scripts/deploy-cloud-run.sh",
+      "Auth / Acceso": "-",
+      "Estado (vivo)": "ALTERNATIVA/MANUAL",
+      "Notas": "SPA+API+Debian Chromium. NO es el path CI activo."
+    },
+    {
+      "Capa": "Imagen frontend (alt)",
+      "Componente": "Dockerfile (root -> nginx)",
+      "URL / ID": "cloudbuild-frontend.yaml -> panelin-calc-web",
+      "Auth / Acceso": "-",
+      "Estado (vivo)": "ALTERNATIVA",
+      "Notas": "nginx static. Servicio panelin-calc-web (legacy/fallback)."
+    },
+    {
+      "Capa": "Datos: Sheets",
+      "Componente": "Google Sheets (8 libros) via service account",
+      "URL / ID": "bmc-dashboard-sheets@chatbot-bmc-live.iam",
+      "Auth / Acceso": "Service account JSON (Secret Manager)",
+      "Estado (vivo)": "ACTIVO",
+      "Notas": "Fuente CRM/Finanzas/Precios. Ver tab Sheets Analysis."
+    },
+    {
+      "Capa": "Datos: Postgres",
+      "Componente": "Supabase (htnwozvopveibwppyjhg, us-east-1)",
+      "URL / ID": "DATABASE_URL (Secret Manager)",
+      "Auth / Acceso": "Connection string",
+      "Estado (vivo)": "ACTIVO",
+      "Notas": "WA Cockpit, Transportista, TraKtiMe, Identity, Tasks, RAG pgvector."
+    },
+    {
+      "Capa": "Datos: GCS",
+      "Componente": "Bucket bmc-cotizaciones",
+      "URL / ID": "allUsers:objectViewer (PDFs)",
+      "Auth / Acceso": "Service account",
+      "Estado (vivo)": "ACTIVO",
+      "Notas": "PDFs de cotización, evidencias transportista, facturas traktime."
+    },
+    {
+      "Capa": "Apps Script",
+      "Componente": "5 .gs en docs/bmc-dashboard-modernization/",
+      "URL / ID": "Container-bound a workbooks",
+      "Auth / Acceso": "Manual",
+      "Estado (vivo)": "SIN PIPELINE",
+      "Notas": "Code.gs, CalendarioRecordatorio, PagosPendientes, StockAlertas, VentasConsolidar. Sin deploy automatizado (P5)."
+    },
+    {
+      "Capa": "Integración: MercadoLibre",
+      "Componente": "OAuth + API (MLU)",
+      "URL / ID": "ML_CLIENT_ID 742811153438318",
+      "Auth / Acceso": "OAuth",
+      "Estado (vivo)": "PARCIAL",
+      "Notas": "ML_CLIENT_SECRET FALTA en prod (/health missingConfig)."
+    },
+    {
+      "Capa": "Integración: WhatsApp",
+      "Componente": "WhatsApp Cloud API + webhook HMAC",
+      "URL / ID": "/webhooks/whatsapp",
+      "Auth / Acceso": "App secret (HMAC)",
+      "Estado (vivo)": "CONFIG",
+      "Notas": "WA Cockpit en Postgres."
+    },
+    {
+      "Capa": "Integración: Shopify",
+      "Componente": "OAuth + webhooks + shop-chat-agent/",
+      "URL / ID": "/webhooks/shopify",
+      "Auth / Acceso": "HMAC",
+      "Estado (vivo)": "SUB-APP",
+      "Notas": "shop-chat-agent tiene Dockerfile propio (Node 18) — posible servicio separado."
+    },
+    {
+      "Capa": "Integración: LLM",
+      "Componente": "Anthropic (claude-opus-4-7) + OpenAI fallback + Vercel AI Gateway",
+      "URL / ID": "-",
+      "Auth / Acceso": "API keys (Secret Manager)",
+      "Estado (vivo)": "ACTIVO",
+      "Notas": "agentCore chain; RAG pgvector."
+    },
+    {
+      "Capa": "CI/CD",
+      "Componente": "GitHub Actions (9 workflows)",
+      "URL / ID": ".github/workflows/",
+      "Auth / Acceso": "-",
+      "Estado (vivo)": "ACTIVO",
+      "Notas": "ci.yml, deploy-calc-api.yml, deploy-vercel.yml, smoke-prod-scheduled, knowledge-antenna."
+    },
+    {
+      "Capa": "Secret mgmt",
+      "Componente": "Doppler (bmc-backend/prd) + GCP Secret Manager",
+      "URL / ID": "-",
+      "Auth / Acceso": "-",
+      "Estado (vivo)": "ACTIVO",
+      "Notas": "Phase 0: API_AUTH_TOKEN, ML_CLIENT_SECRET, ANTHROPIC/GEMINI/GROK keys, TOKEN_ENCRYPTION_KEY."
+    }
+  ],
+  "sheets_analysis": [
+    {
+      "#": "1",
+      "Sheet (label)": "2.0 - Ventas Dashboard",
+      "Spreadsheet ID": "1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA",
+      "Propósito real": "Tracker de pedidos/ventas activo (MONTO/COSTO/GANANCIAS/SALDOS)",
+      "Tabs / estructura": "Tab instrucciones (Apps Script copy) + pipeline principal ~30 filas (26 cols) + bloques NO_HEADER scratch",
+      "Problemas de calidad": "Header doble/merged (ID.Pedido x2); notas de pago libres mezcladas en columnas estructuradas",
+      "Estado": "AMARILLO"
+    },
+    {
+      "#": "2",
+      "Sheet (label)": "MATRIZ de COSTOS",
+      "Spreadsheet ID": "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
+      "Propósito real": "MASTER de precios/costos (fuente de /api/actualizar-precios-calculadora; crítico smoke:prod)",
+      "Tabs / estructura": "Bloques por familia (ISOROOF/FOIL/PLUS, accesorios, ISOFRIG/EPS/PIR/ISOWALL) + matriz m lineal + recaps",
+      "Problemas de calidad": "SKUs duplicados (GFS80, PU50MM, IF150, CAN.ISDC120); celdas #VALUE!/#REF!; filas duplicadas; typo '0mm'; IVA% inconsistente",
+      "Estado": "AMARILLO/ROJO"
+    },
+    {
+      "#": "3",
+      "Sheet (label)": "BMC crm_automatizado",
+      "Spreadsheet ID": "1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg",
+      "Propósito real": "WORKBOOK CRM principal (BMC_SHEET_ID en prod). /health en vivo: tabs CRM_Operativo, Base de datos cotis de clientes, Parametros, Dashboard, Automatismos, DB, Manual, Form responses 1",
+      "Tabs / estructura": "Drive MCP solo expuso un tab tipo payables (CONCEPTO|REFERENCIA|VENCIMIENTO|IMPORTE...); /health es autoritativo sobre tabs reales",
+      "Problemas de calidad": "CAVEAT: Drive MCP no enumera todos los tabs de libros grandes. Nombre 'crm_automatizado' confunde. Bank account en celda REFERENCIA (sensible)",
+      "Estado": "AMARILLO"
+    },
+    {
+      "#": "4",
+      "Sheet (label)": "CALENDARIO vencimientos",
+      "Spreadsheet ID": "1bvnbYq7MTJRpa6xEHE5m-5JcGNI9oCFke3lsJj99tdk",
+      "Propósito real": "Calendario de pagos/vencimientos de obligaciones fijas",
+      "Tabs / estructura": "Header idéntico al tab payables de #3 (CONCEPTO|REFERENCIA|VENCIMIENTO|IMPORTE $/U$S|ESTADO|FECHA PAGO|alertas), 28 filas + SURA/DFSK",
+      "Problemas de calidad": "CASI-DUPLICADO del tab payables de #3 (mismas filas PROSEGUR, mismo bank account). Consolidar",
+      "Estado": "AMARILLO"
+    },
+    {
+      "#": "5",
+      "Sheet (label)": "Stock E-Commerce",
+      "Spreadsheet ID": "1egtKJAGaATLmmsJkaa2LlCv3Ah4lmNoGMNm4l0rXJQw",
+      "Propósito real": "Inventario + pricing e-commerce (debería derivar de MATRIZ #2)",
+      "Tabs / estructura": "Tab stock principal (Shopify/Codigo/Producto/Costo/Margen/Venta/Stock) + detalle inventario + Linea Industrial",
+      "Problemas de calidad": "SEVERO: 106 celdas #REF! (links rotos a MATRIZ) + 66 NO_HEADER + #VALUE!; columnas 'Pedido <fecha>' ad-hoc acumuladas; solapa catálogo con #2",
+      "Estado": "ROJO"
+    },
+    {
+      "#": "6",
+      "Sheet (label)": "Administrador de Cotizaciones",
+      "Spreadsheet ID": "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
+      "Propósito real": "Intake de solicitudes de cotización (con Respuesta AI + Link Presupuesto). WOLFB_ADMIN_SHEET_ID",
+      "Tabs / estructura": "Tab quotes (Asig|Estado|Fecha|Cliente|Origen|Tel|Dir|Consulta|Respuesta AI|Link) + variante con Comentarios|Monto + bloque Borrador PDF + tab leftover Column 1/2/3",
+      "Problemas de calidad": "Dos schemas de header para la misma lista; columna Borrador PDF duplicada; typo 'ink to folder'; tab scratch sin template",
+      "Estado": "AMARILLO"
+    },
+    {
+      "#": "7",
+      "Sheet (label)": "Pagos pendientes",
+      "Spreadsheet ID": "1AzHhalsZKGis_oJ6J06zQeOb6uMQCsliR82VrSKUUsI",
+      "Propósito real": "Cuentas por pagar/cobrar a proveedores (ACOPIO/STOCK + DIRECTA) — RO estricto",
+      "Tabs / estructura": "Tab ACOPIO (~35) + DIRECTA (~11) + tab export VACÍO (COTIZACION_ID...FECHA_INGRESO) + ledger histórico 2020-21 (~150) + deuda acumulada",
+      "Problemas de calidad": "Monedas/decimales mezclados ($63955 vs USD 585,62 vs 17.281,00); ESTADO free-text; histórico mezclado con actual; tab export bridge sin poblar",
+      "Estado": "AMARILLO"
+    },
+    {
+      "#": "8",
+      "Sheet (label)": "Ventas 2026 BETA",
+      "Spreadsheet ID": "1niLUAb9Uo1Ez4uxQTa9wxGntcUVDxXaXDL_uAQHxZXQ",
+      "Propósito real": "Workflow end-to-end lead->cotización->pedido->entrega (sucesor unificado previsto)",
+      "Tabs / estructura": "1 tab muy ancho (38 cols) que rastrea toda la venta. Solo filas de prueba/placeholder",
+      "Problemas de calidad": "Template no poblado (BETA); TELEFONO mismo nº en todas las filas (placeholder); muchas columnas checklist vacías",
+      "Estado": "BETA"
+    }
+  ],
+  "repo_analysis": [
+    {
+      "Categoría": "Escala",
+      "Métrica / Item": "Archivos trackeados",
+      "Valor": "2413",
+      "Notas / Deuda técnica": ""
+    },
+    {
+      "Categoría": "Escala",
+      "Métrica / Item": "Ramas remotas",
+      "Valor": "53",
+      "Notas / Deuda técnica": "Brief decía 84; hubo limpieza. Solo main protegida."
+    },
+    {
+      "Categoría": "Escala",
+      "Métrica / Item": "PRs abiertas",
+      "Valor": "45",
+      "Notas / Deuda técnica": "Mayoría draft. Cluster copilot/* fix-deploy (churn de pipeline) + cursor[bot] test-coverage + dependabot."
+    },
+    {
+      "Categoría": "Código",
+      "Métrica / Item": "Líneas .js",
+      "Valor": "92804",
+      "Notas / Deuda técnica": "374 archivos"
+    },
+    {
+      "Categoría": "Código",
+      "Métrica / Item": ".jsx",
+      "Valor": "48281",
+      "Notas / Deuda técnica": "112 archivos"
+    },
+    {
+      "Categoría": "Código",
+      "Métrica / Item": ".mjs",
+      "Valor": "15539",
+      "Notas / Deuda técnica": "86 archivos"
+    },
+    {
+      "Categoría": "Código",
+      "Métrica / Item": "TypeScript",
+      "Valor": "52 (.ts) + 376 (.tsx)",
+      "Notas / Deuda técnica": "Adopción ~nula a pesar de presencia."
+    },
+    {
+      "Categoría": "Docs",
+      "Métrica / Item": "Markdown",
+      "Valor": "136325 líneas / 1310 archivos",
+      "Notas / Deuda técnica": "Docs > todo el código de la app. SPRAWL = deuda dominante."
+    },
+    {
+      "Categoría": "Archivo grande",
+      "Métrica / Item": "src/components/PanelinCalculadoraV3_backup.jsx",
+      "Valor": "7235 líneas",
+      "Notas / Deuda técnica": "Componente canónico monolítico (calculadora)."
+    },
+    {
+      "Categoría": "Archivo grande",
+      "Métrica / Item": "src/components/RoofPreview.jsx",
+      "Valor": "4238 líneas",
+      "Notas / Deuda técnica": ""
+    },
+    {
+      "Categoría": "Archivo grande",
+      "Métrica / Item": "server/routes/bmcDashboard.js",
+      "Valor": "3603 líneas",
+      "Notas / Deuda técnica": "Ruta Sheets-backed mega."
+    },
+    {
+      "Categoría": "Código muerto",
+      "Métrica / Item": "src/components/PanelinCalculadoraV3_legacy_inline.jsx",
+      "Valor": "2354 líneas",
+      "Notas / Deuda técnica": "Legacy en src/."
+    },
+    {
+      "Categoría": "Código muerto",
+      "Métrica / Item": "src/hooks/handoff/install-package/.../bmc-pdf-template.html.js",
+      "Valor": "1247 líneas",
+      "Notas / Deuda técnica": "Copia byte-idéntica del template PDF."
+    },
+    {
+      "Categoría": "Deuda inline",
+      "Métrica / Item": "TODO/FIXME/HACK/console.log/eslint-disable",
+      "Valor": "62 total",
+      "Notas / Deuda técnica": "Baja densidad (32 src + 30 server). FIXME=0."
+    },
+    {
+      "Categoría": "Dockerfiles",
+      "Métrica / Item": "Total",
+      "Valor": "4 + .dockerignore",
+      "Notas / Deuda técnica": "server/Dockerfile = CANÓNICA. 3 cloudbuild .yaml compiten -> drift."
+    },
+    {
+      "Categoría": "Dockerfiles",
+      "Métrica / Item": "Inconsistencia",
+      "Valor": "deploy-calc-api.yml",
+      "Notas / Deuda técnica": "path-filter observa Dockerfile.bmc-dashboard pero buildea server/Dockerfile."
+    },
+    {
+      "Categoría": "Sub-app",
+      "Métrica / Item": "shop-chat-agent",
+      "Valor": "Node 18",
+      "Notas / Deuda técnica": "Repo requiere Node 24 -> stack inconsistente. Dockerfile propio."
+    },
+    {
+      "Categoría": "Clutter raíz",
+      "Métrica / Item": "docs 2/",
+      "Valor": "Duplicado verbatim de docs/",
+      "Notas / Deuda técnica": "Riesgo de edición divergente."
+    },
+    {
+      "Categoría": "Clutter raíz",
+      "Métrica / Item": "docs.zip",
+      "Valor": "133 KB",
+      "Notas / Deuda técnica": "Snapshot zip commiteado."
+    },
+    {
+      "Categoría": "Clutter raíz",
+      "Métrica / Item": "reporte.md",
+      "Valor": "739 KB",
+      "Notas / Deuda técnica": "Mayor doc; reporte ad-hoc en raíz."
+    },
+    {
+      "Categoría": "Clutter raíz",
+      "Métrica / Item": "Obsidian /, Untitled, GEMINI.md (0b), 'El sistema de cotas...ini'",
+      "Valor": "varios",
+      "Notas / Deuda técnica": "Vault Obsidian + archivos huérfanos trackeados."
+    },
+    {
+      "Categoría": "Sub-packages",
+      "Métrica / Item": "transportista / wa / traktime / supabase",
+      "Valor": "migraciones SQL",
+      "Notas / Deuda técnica": "Aplicadas via npm run *:migrate."
+    },
+    {
+      "Categoría": "CI",
+      "Métrica / Item": "Workflows",
+      "Valor": "9",
+      "Notas / Deuda técnica": "ci, deploy-calc-api, deploy-vercel, smoke-prod-scheduled, knowledge-antenna(x2), drive-oauth-verify(x2), email-ingest."
+    },
+    {
+      "Categoría": "Tests",
+      "Métrica / Item": "Scripts en tests/",
+      "Valor": "~68",
+      "Notas / Deuda técnica": "Standalone node scripts (sin runner). Cubren identity, WA, agent, calc, pdf, ML, market-intel."
+    },
+    {
+      "Categoría": "Org",
+      "Métrica / Item": "Repos hermanos en matiasportugau-ui",
+      "Valor": "24",
+      "Notas / Deuda técnica": "Solo Calculadora-BMC (2026-06-04) y bmc-development-team (2026-06-03) activos. Resto stale/experimental, 0 archivados."
+    }
+  ],
+  "endpoints": [
+    {
+      "METHOD": "GET",
+      "PATH": "/capabilities",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "compute (manifest; expone panelin_relax_dev_auth - H1)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/health",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets probe + ML token store"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/vitals",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "none"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/auth/ml/start",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ML OAuth"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/auth/ml/callback",
+      "Router": "index.js",
+      "Auth": "PUBLIC (state)",
+      "Dependencia de datos": "ML OAuth"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/auth/ml/status",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ML token store"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/ml/users/me",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/ml/users/:id",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/ml/listings",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/ml/items/:id",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre"
+    },
+    {
+      "METHOD": "PATCH",
+      "PATH": "/ml/items/:id",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre (WRITE proxy - riesgo)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/ml/items/:id/description",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre (WRITE proxy - riesgo)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/ml/questions",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/ml/questions/:id",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/ml/questions/:id/answer",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre (WRITE proxy - riesgo)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/ml/orders",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/ml/orders/:id",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: MercadoLibre"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/webhooks/ml",
+      "Router": "index.js",
+      "Auth": "HMAC ML",
+      "Dependencia de datos": "ext ML + Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/webhooks/ml/events",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "in-memory buffer (H3 - expone payloads)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/ml/auto-mode",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "file flag"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/ml/auto-mode",
+      "Router": "index.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "file flag"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/webhooks/whatsapp",
+      "Router": "index.js",
+      "Auth": "PUBLIC (verify)",
+      "Dependencia de datos": "none (Meta verify)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/webhooks/whatsapp",
+      "Router": "index.js",
+      "Auth": "HMAC WA",
+      "Dependencia de datos": "Postgres + Sheets + agentCore"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/",
+      "Router": "index.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "redirect /finanzas"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/openapi",
+      "Router": "calc.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "compute"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/gpt-entry-point",
+      "Router": "calc.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "compute"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/calc/interaction-log",
+      "Router": "calc.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "log file"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/interaction-log/list",
+      "Router": "calc.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "log files"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/interaction-log/file/:name",
+      "Router": "calc.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "log file"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/calc/cotizar/presupuesto-libre",
+      "Router": "calc.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "compute (calc)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/calc/cotizar",
+      "Router": "calc.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "compute (calc)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/calc/cotizar/pdf",
+      "Router": "calc.js",
+      "Auth": "JWT opt",
+      "Dependencia de datos": "PDF + GCS + Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/pdf/:id",
+      "Router": "calc.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "pdfStore"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/cotizaciones",
+      "Router": "calc.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "quote registry"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/cotizaciones/:id",
+      "Router": "calc.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "quote registry"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/calc/cotizaciones/:id/cancelar",
+      "Router": "calc.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "quote registry"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/catalogo",
+      "Router": "calc.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "constants"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/escenarios",
+      "Router": "calc.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "constants"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/calc/informe",
+      "Router": "calc.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "compute"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/ready",
+      "Router": "legacyQuote.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "none"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/find_products",
+      "Router": "legacyQuote.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "compute"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/resolve_product",
+      "Router": "legacyQuote.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "compute"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/product_price",
+      "Router": "legacyQuote.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "compute"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/check_availability",
+      "Router": "legacyQuote.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "compute"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/calculate_quote",
+      "Router": "legacyQuote.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "compute (calc)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/calculate_quote_v2",
+      "Router": "legacyQuote.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "compute (calc)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/research/deep",
+      "Router": "deepResearch.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext: web search + LLM"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/research/deep/:id",
+      "Router": "deepResearch.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "job store"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/research/deep/:id/cancel",
+      "Router": "deepResearch.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "job store"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/agent/ai-options",
+      "Router": "agentChat.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "config"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/agent/tool-stats",
+      "Router": "agentChat.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "stats"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/agent/tools-manifest",
+      "Router": "agentChat.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "compute"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/agent/exec-tool",
+      "Router": "agentChat.js",
+      "Auth": "API_TOKEN (per-tool)",
+      "Dependencia de datos": "loopback calc + ext"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/agent/chat",
+      "Router": "agentChat.js",
+      "Auth": "PUBLIC (rate-limited)",
+      "Dependencia de datos": "LLM + RAG + loopback calc"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/agent/train* (27 rutas)",
+      "Router": "agentTraining.js",
+      "Auth": "DEVMODE",
+      "Dependencia de datos": "training KB (pgvector) + LLM"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/agent/conversations* + /stats (6 rutas)",
+      "Router": "agentConversations.js",
+      "Auth": "DEVMODE",
+      "Dependencia de datos": "conv logs + LLM"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/agent/voice/session",
+      "Router": "agentVoice.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "ext: OpenAI Realtime"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/agent/voice/action",
+      "Router": "agentVoice.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "loopback calc"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/agent/voice/errors",
+      "Router": "agentVoice.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "in-memory"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/agent/voice/errors/clear",
+      "Router": "agentVoice.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "in-memory"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/agent/voice/health",
+      "Router": "agentVoice.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "config"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/agent/transcribe",
+      "Router": "agentTranscribe.js",
+      "Auth": "PUBLIC (rate-limited)",
+      "Dependencia de datos": "ext: OpenAI Whisper"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/agent/feedback",
+      "Router": "agentFeedback.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "store"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/agent/feedback",
+      "Router": "agentFeedback.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "store"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/agent/feedback/stats",
+      "Router": "agentFeedback.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "store"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/ai-analytics/trends",
+      "Router": "aiAnalytics.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "analytics store"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/cotizaciones",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/cotizaciones",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets WRITE (sin auth - riesgo)"
+    },
+    {
+      "METHOD": "PATCH",
+      "PATH": "/api/cotizaciones/:id",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets WRITE (sin auth - riesgo)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/proximas-entregas",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/coordinacion-logistica",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/audit",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/pagos-pendientes",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets (pagos)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/pagos",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets WRITE (sin auth - riesgo)"
+    },
+    {
+      "METHOD": "PATCH",
+      "PATH": "/api/pagos/:id",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets WRITE (sin auth - riesgo)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/metas-ventas",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/calendario-vencimientos",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets (calendario)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/ventas",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/ventas",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets WRITE (sin auth - riesgo)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/ventas/tabs",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/marcar-entregado",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets WRITE (sin auth - riesgo)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/stock-ecommerce",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/stock-kpi",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "PATCH",
+      "PATH": "/api/stock/:codigo",
+      "Router": "bmcDashboard.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "Sheets WRITE"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/stock/history",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/productos-maestro",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/productos-maestro/reconcile",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/productos-maestro/links",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets/local"
+    },
+    {
+      "METHOD": "PUT",
+      "PATH": "/api/productos-maestro/links",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets WRITE (sin auth - riesgo)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/productos-maestro/push",
+      "Router": "bmcDashboard.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "Sheets WRITE"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/kpi-financiero",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/kpi-report",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/fiscal/bps-irae",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/actualizar-precios-calculadora",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Sheets (MATRIZ CSV)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/matriz/push-pricing-overrides",
+      "Router": "bmcDashboard.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "Sheets WRITE"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/crm/suggest-response",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "LLM + Sheets"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/crm/parse-email",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "LLM"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/crm/ingest-email",
+      "Router": "bmcDashboard.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "LLM + Sheets"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/crm/parse-conversation",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "LLM"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/crm/cockpit-token",
+      "Router": "bmcDashboard.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "config (DEVUELVE el token - riesgo)"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/crm/cockpit/* (13 rutas)",
+      "Router": "bmcDashboard.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "Sheets + ML/WA"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/consultations",
+      "Router": "bmcDashboard.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/email/panelsim-summary",
+      "Router": "bmcDashboard.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "local/Sheets"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/email/draft-outbound",
+      "Router": "bmcDashboard.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "LLM + Sheets"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/followups* (7 rutas)",
+      "Router": "followups.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "store local"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/transportista/health",
+      "Router": "transportista.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Postgres ping"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/trips* (7 rutas)",
+      "Router": "transportista.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "Postgres"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/driver/* (6 rutas)",
+      "Router": "transportista.js",
+      "Auth": "driver token",
+      "Dependencia de datos": "Postgres + GCS"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/wa/* config/settings/operators/rules/webhooks (12)",
+      "Router": "wa.js",
+      "Auth": "WA-access",
+      "Dependencia de datos": "Postgres + LLM"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/wa/auth/* (magic-link, 6)",
+      "Router": "wa.js",
+      "Auth": "PUBLIC (token)",
+      "Dependencia de datos": "Postgres + email"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/wa/health",
+      "Router": "wa.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Postgres ping"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/wa/config/extension",
+      "Router": "wa.js",
+      "Auth": "PUBLIC (intencional)",
+      "Dependencia de datos": "config"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/wa/ingest|conversations|messages|suggestions|quotes|outbound|... (18)",
+      "Router": "wa.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "Postgres + WA/LLM"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/traktime/health",
+      "Router": "traktime.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Postgres ping"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/traktime/* user (timer/entries/reports/clients/projects) (13)",
+      "Router": "traktime.js",
+      "Auth": "JWT-user",
+      "Dependencia de datos": "Postgres"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/traktime/* admin (invoices/clients/projects/mirror) (18)",
+      "Router": "traktime.js",
+      "Auth": "JWT-admin",
+      "Dependencia de datos": "Postgres + GCS + Sheets"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/quotes/counter",
+      "Router": "quotes.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "counter atómico"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/quotes/counter/next",
+      "Router": "quotes.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "counter WRITE"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/agent/quote-lead",
+      "Router": "superAgent.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "LLM + loopback calc"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/internal/panelin/* (4)",
+      "Router": "panelinInternal.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "dispatch tools"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/internal/presup/run",
+      "Router": "internal/presupOrchestrator.js",
+      "Auth": "PUBLIC (auth = TODO!)",
+      "Dependencia de datos": "orchestrator + LLM (riesgo)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/internal/presup/status",
+      "Router": "internal/presupOrchestrator.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "in-memory"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/internal/presup/run/example",
+      "Router": "internal/presupOrchestrator.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "compute"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/wolfboard/* (7)",
+      "Router": "wolfboard.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "Sheets + loopback calc"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/marketing/* (6)",
+      "Router": "marketing.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "marketIntel ETL (Postgres)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/pdf/generate",
+      "Router": "pdf.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Playwright/Chromium"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/pdf/metrics",
+      "Router": "pdf.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "in-memory"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/api/plan/interpret",
+      "Router": "planInterpret.js",
+      "Auth": "PUBLIC (rate-limited)",
+      "Dependencia de datos": "LLM vision"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/ml/search",
+      "Router": "mlSearch.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "ext MercadoLibre (cached)"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/ml/etl-run* (3)",
+      "Router": "mlEtlRun.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "marketIntel ETL (Postgres)"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/team-assist/* (3)",
+      "Router": "teamAssist.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext OpenAI"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/auth/shopify",
+      "Router": "shopify.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "Shopify OAuth"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/auth/shopify/callback",
+      "Router": "shopify.js",
+      "Auth": "HMAC",
+      "Dependencia de datos": "Shopify OAuth"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/webhooks/shopify",
+      "Router": "shopify.js",
+      "Auth": "HMAC",
+      "Dependencia de datos": "ext Shopify"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/shopify/products",
+      "Router": "shopify.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "ext Shopify"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/api/shopify/catalog/full",
+      "Router": "shopify.js",
+      "Auth": "API_TOKEN",
+      "Dependencia de datos": "ext Shopify"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/admin/questions",
+      "Router": "shopify.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext Shopify (H2 - sin auth)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/admin/answer",
+      "Router": "shopify.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "ext Shopify WRITE (H2 - sin auth)"
+    },
+    {
+      "METHOD": "GET",
+      "PATH": "/admin/auto-config",
+      "Router": "shopify.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "config (H2)"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/admin/auto-config",
+      "Router": "shopify.js",
+      "Auth": "PUBLIC",
+      "Dependencia de datos": "config WRITE (H2)"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/auth/google|refresh|logout|me|me/grants (5)",
+      "Router": "authGoogle.js",
+      "Auth": "PUBLIC/JWT",
+      "Dependencia de datos": "Google OAuth + Postgres"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/auth/mfa/* (4)",
+      "Router": "authMfa.js",
+      "Auth": "JWT/PUBLIC(challenge)",
+      "Dependencia de datos": "Postgres TOTP"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/me/* + access-requests + threads (25)",
+      "Router": "identityMe.js",
+      "Auth": "JWT-user (admin subset)",
+      "Dependencia de datos": "Postgres (+Sheets admin)"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/admin/users* role-grants/suspend (8)",
+      "Router": "identityAdmin.js",
+      "Auth": "JWT-admin",
+      "Dependencia de datos": "Postgres identity"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/admin/analytics/* (5)",
+      "Router": "identityAnalytics.js",
+      "Auth": "JWT-admin",
+      "Dependencia de datos": "Postgres activity"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/clientes/customers|followups (4)",
+      "Router": "clientes/*.js",
+      "Auth": "JWT + grant",
+      "Dependencia de datos": "Sheets clientes"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/admin/export + /api/me/quotes/:id/export.* (5)",
+      "Router": "quoteExport.js",
+      "Auth": "JWT",
+      "Dependencia de datos": "Postgres + PDF"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/api/tasks/* lists+tasks (9)",
+      "Router": "tasks.js",
+      "Auth": "JWT-user",
+      "Dependencia de datos": "ext Google Tasks"
+    },
+    {
+      "METHOD": "*",
+      "PATH": "/auth/tasks/* (4)",
+      "Router": "tasksOAuth.js",
+      "Auth": "JWT/PUBLIC(callback)",
+      "Dependencia de datos": "Google OAuth + Postgres"
+    },
+    {
+      "METHOD": "POST",
+      "PATH": "/sync/google-tasks/pull",
+      "Router": "tasksSync.js",
+      "Auth": "HMAC (x-sync-signature)",
+      "Dependencia de datos": "ext Google Tasks + Postgres"
+    }
+  ],
+  "security_findings": [
+    {
+      "ID": "C1",
+      "Severidad": "CRITICAL",
+      "Categoría": "PII en archivos trackeados",
+      "Ubicación (file:line)": ".accessible-base/crm_operativo.json",
+      "Descripción (redactada)": "Snapshot CRM commiteado: 297 filas de leads (telefonos reales) + spreadsheet_id en _meta. NO está en .gitignore. Confirmado: tracked, 151KB, rows=297.",
+      "Recomendación": "Quitar de git history (git filter-repo), agregar /.accessible-base/ a .gitignore. Evaluar reporte bajo Ley 18.331 (datos personales UY)."
+    },
+    {
+      "ID": "C2",
+      "Severidad": "CRITICAL",
+      "Categoría": "Secreto default hardcodeado",
+      "Ubicación (file:line)": ".env.example:312",
+      "Descripción (redactada)": "WA_JWT_SECRET = literal 'change-me-...' commiteado. Quien copie .env.example sin cambiarlo firma JWT con secreto público (tokens forjables).",
+      "Recomendación": "Placeholder vacío + hard-fail en waOperatorAuth.getJwtSecret() si detecta 'change-me'."
+    },
+    {
+      "ID": "C3",
+      "Severidad": "CRITICAL",
+      "Categoría": "API token en bundle Vite",
+      "Ubicación (file:line)": "src/utils/teamAssistApi.js:5; AgentAdminModule:28; PricingEditor:57; BmcLogisticaApp:1468",
+      "Descripción (redactada)": "VITE_API_AUTH_TOKEN / VITE_BMC_API_AUTH_TOKEN leídos de import.meta.env -> si están seteados en el build, el bearer del server viaja en el JS público.",
+      "Recomendación": "Usar cookie de sesión / credencial frontend corta. CI check que falle si esas vars están en el build Vercel."
+    },
+    {
+      "ID": "H1",
+      "Severidad": "HIGH",
+      "Categoría": "Flag de bypass expuesto",
+      "Ubicación (file:line)": "server/agentCapabilitiesManifest.js:118 + index.js:179",
+      "Descripción (redactada)": "GET /capabilities (público) devuelve panelin_relax_dev_auth. Si true en prod, revela que devMode saltea auth.",
+      "Recomendación": "Quitar el flag de la respuesta pública."
+    },
+    {
+      "ID": "H2",
+      "Severidad": "HIGH",
+      "Categoría": "Rutas Shopify admin sin auth",
+      "Ubicación (file:line)": "server/routes/shopify.js:511,534,566,581",
+      "Descripción (redactada)": "/admin/questions, /admin/answer, /admin/auto-config (GET+POST) sin middleware de auth. Cualquiera lee/escribe.",
+      "Recomendación": "Aplicar requireApiAuth a las 4 rutas /admin/*."
+    },
+    {
+      "ID": "H3",
+      "Severidad": "HIGH",
+      "Categoría": "Log de webhook ML sin auth",
+      "Ubicación (file:line)": "server/index.js:559-562",
+      "Descripción (redactada)": "GET /webhooks/ml/events devuelve el ring buffer de 250 payloads ML (incl x-signature, seller data) sin auth.",
+      "Recomendación": "Bearer apiAuthToken antes de devolver eventos."
+    },
+    {
+      "ID": "H4",
+      "Severidad": "HIGH",
+      "Categoría": "WA JWT secret cae a API_AUTH_TOKEN",
+      "Ubicación (file:line)": "server/lib/waOperatorAuth.js:42",
+      "Descripción (redactada)": "getJwtSecret() usa WA_JWT_SECRET || API_AUTH_TOKEN. Si WA_JWT_SECRET falta, firma con el mismo secreto de writes CRM.",
+      "Recomendación": "Quitar fallback a API_AUTH_TOKEN; exigir WA_JWT_SECRET independiente."
+    },
+    {
+      "ID": "H5",
+      "Severidad": "HIGH",
+      "Categoría": "Google OAuth Client ID commiteado",
+      "Ubicación (file:line)": ".env.example:364",
+      "Descripción (redactada)": "GOOGLE_OAUTH_CLIENT_ID real (...apps.googleusercontent.com) en el example. Facilita phishing + revela nº proyecto.",
+      "Recomendación": "Reemplazar por placeholder."
+    },
+    {
+      "ID": "W1",
+      "Severidad": "MEDIUM",
+      "Categoría": "Sheet IDs hardcodeados como fallback",
+      "Ubicación (file:line)": "server/config.js:68,84",
+      "Descripción (redactada)": "wolfbAdminSheetId (1Ie0KCpg...) y bmcMatrizSheetId (1oDMkBgWx...) hardcodeados. Deploy mal configurado escribe en sheets prod en silencio.",
+      "Recomendación": "Fallback '' y fallar 503 si falta env var."
+    },
+    {
+      "ID": "W2",
+      "Severidad": "MEDIUM",
+      "Categoría": "ML Client ID hardcodeado",
+      "Ubicación (file:line)": "server/config.js:24",
+      "Descripción (redactada)": "mlClientId fallback '742811153438318'. ID público pero mismo mal patrón.",
+      "Recomendación": "Fallback ''."
+    },
+    {
+      "ID": "W3",
+      "Severidad": "MEDIUM",
+      "Categoría": "Wildcard chrome-extension en CORS",
+      "Ubicación (file:line)": "server/index.js:99-100",
+      "Descripción (redactada)": "Cualquier chrome-extension:// permitido. Extensión maliciosa local podría hacer requests credenciadas.",
+      "Recomendación": "Allowlist de IDs de extensión específicos."
+    },
+    {
+      "ID": "W4",
+      "Severidad": "MEDIUM",
+      "Categoría": "Shopify webhook HMAC sin warning si falta secret",
+      "Ubicación (file:line)": "server/routes/shopify.js:54-56",
+      "Descripción (redactada)": "Bloquea correctamente si secret vacío, pero sin log (a diferencia de WhatsApp). Difícil detectar misconfig.",
+      "Recomendación": "Agregar warning log cuando shopifyWebhookSecret vacío."
+    },
+    {
+      "ID": "W5",
+      "Severidad": "MEDIUM",
+      "Categoría": "GOOGLE_APPLICATION_CREDENTIALS apunta dentro del repo",
+      "Ubicación (file:line)": ".env.example:52",
+      "Descripción (redactada)": "Default = docs/.../service-account.json (dentro del árbol). Frágil: riesgo de commit accidental (gitignore lo cubre).",
+      "Recomendación": "Default vacío + comentario apuntando a path absoluto fuera del repo."
+    },
+    {
+      "ID": "W6",
+      "Severidad": "MEDIUM",
+      "Categoría": "Más archivos de datos trackeados",
+      "Ubicación (file:line)": ".accessible-base/admin_cotizaciones.json, matriz_precios.json, manifest.json",
+      "Descripción (redactada)": "Enumeran spreadsheet_id en vivo y estructura de negocio.",
+      "Recomendación": "Excluir todo .accessible-base/ de git."
+    },
+    {
+      "ID": "W7",
+      "Severidad": "MEDIUM",
+      "Categoría": "Service account email hardcodeado",
+      "Ubicación (file:line)": "scripts/ensure-panelsim-sheets-env.sh:9",
+      "Descripción (redactada)": "bmc-dashboard-sheets@chatbot-bmc-live.iam... como default. Enumera proyecto + SA.",
+      "Recomendación": "Mover a env var sin fallback."
+    },
+    {
+      "ID": "W8",
+      "Severidad": "LOW",
+      "Categoría": "URL Cloud Run prod en comentarios",
+      "Ubicación (file:line)": ".env.example:81,108,251",
+      "Descripción (redactada)": "URL panelin-calc-642127786762... x3 en comentarios. Pública pero + nº proyecto facilita recon.",
+      "Recomendación": "Reemplazar por $PUBLIC_BASE_URL en el example."
+    }
+  ],
+  "security_passed_checks": [
+    "Sin secretos reales en código (no sk-/AIza/AKIA/PEM fuera de placeholders).",
+    ".env NO trackeado; nunca commiteado (git log -- *.env vacío).",
+    "service-account.json no trackeado; cubierto por .gitignore.",
+    "Webhooks WhatsApp/ML/Shopify/Tasks con HMAC + timingSafeEqual; raw body preservado.",
+    "IDENTITY_JWT_SECRET con hard-fail (>=32 chars, != WA_JWT_SECRET).",
+    "tokenStore AES-256-GCM con IV random + auth tag; key validada.",
+    "CORS restringido a allowlist en prod (sin '*'); credentials con origin allowlist.",
+    "Rate limiting en chat/exec-tool/transcribe; chat no autenticado no llama tools auth-gated.",
+    "TOTP KEK (MFA_KEK_HEX) separado del JWT secret.",
+    "Headers de seguridad (X-Frame-Options, nosniff, HSTS, CSP) en vercel.json + server."
+  ],
+  "critical_questions": [
+    {
+      "ID": "P1",
+      "Pregunta de decisión": "Modelo de deploy canónico de API + frontend",
+      "Opciones": "(a) 2 servicios GH Actions; (b) full-stack Cloud Build GCR legacy; (c) Vercel frontend + Cloud Run panelin-calc API; (d) otro",
+      "Estado prior (2026-04-23)": "ABIERTA — 3 modelos coexisten",
+      "Evidencia NUEVA en vivo (2026-06-07)": "vercel.json -> Cloud Run q74 API; /capabilities public_base_url = q74; CI activo = deploy-calc-api.yml con server/Dockerfile. La realidad operativa = (c).",
+      "Respuesta recomendada": "(c). Borrar/archivar cloudbuild.yaml, cloudbuild-frontend.yaml, Dockerfile.bmc-dashboard, Dockerfile(root) o documentarlos como NO-CI. Arreglar path-filter de deploy-calc-api.yml.",
+      "Bloquea": "Roadmap deploy/rollback"
+    },
+    {
+      "ID": "P2",
+      "Pregunta de decisión": "Master de precios activo",
+      "Opciones": "(a) Sheet MATRIZ via /api/actualizar-precios; (b) constants.js hardcoded; (c) ambos con drift",
+      "Estado prior (2026-04-23)": "AMARILLA — 2 caminos paralelos",
+      "Evidencia NUEVA en vivo (2026-06-07)": "PROJECT-STATE 2026-06-02/04: MATRIZ mapping desplegado a prod, /api/actualizar-precios 200; constants.js parcialmente bakeado. MATRIZ tiene SKUs dup + #REF!.",
+      "Respuesta recomendada": "(a) como fuente, constants.js solo fallback. PERO primero limpiar MATRIZ (dedupe SKUs, arreglar #REF!) antes de tratarla como single source of truth.",
+      "Bloquea": "Correctitud de cotizaciones"
+    },
+    {
+      "ID": "P3",
+      "Pregunta de decisión": "Schema CRM activo en prod (BMC_SHEET_SCHEMA)",
+      "Opciones": "(a) CRM_Operativo; (b) Master_Cotizaciones; (c) ambos; (d) verificar",
+      "Estado prior (2026-04-23)": "ABIERTA — requería gcloud",
+      "Evidencia NUEVA en vivo (2026-06-07)": "RESUELTA: /health en vivo lista tab CRM_Operativo (missing=[]). Schema activo = CRM_Operativo.",
+      "Respuesta recomendada": "(a) CRM_Operativo (confirmado en vivo). Retirar/archivar el path Master_Cotizaciones si no se usa.",
+      "Bloquea": "Integración CRM"
+    },
+    {
+      "ID": "P4",
+      "Pregunta de decisión": "Estado de repos hermanos",
+      "Opciones": "(a) solo 3; (b) todos vivos; (c) mayoría experimentales, operación solo en calculadora-bmc; (d) listar",
+      "Estado prior (2026-04-23)": "ABIERTA — requería gh",
+      "Evidencia NUEVA en vivo (2026-06-07)": "RESUELTA: 24 repos en matiasportugau-ui. Solo Calculadora-BMC (2026-06-04) y bmc-development-team (2026-06-03) activos. omnicrm-sync existe. Resto stale (Jan-Mar) / 0 archivados.",
+      "Respuesta recomendada": "(c). Archivar formalmente los repos GPT/chatbot experimentales para reducir superficie (forks viejos = riesgo de credenciales/CI).",
+      "Bloquea": "Higiene / seguridad org"
+    },
+    {
+      "ID": "P5",
+      "Pregunta de decisión": "Master Apps Script (.gs): repo == lo que corre?",
+      "Opciones": "(a) sí, sync manual clasp; (b) no, verdad en Apps Script bound; (c) divergencia conocida; (d) otro",
+      "Estado prior (2026-04-23)": "ABIERTA — sin clasp/Apps Script access",
+      "Evidencia NUEVA en vivo (2026-06-07)": "SIGUE ABIERTA. .gs usan getActiveSpreadsheet() (container-bound). Sin pipeline. CalendarioRecordatorio usa WORKBOOK1_ID de ScriptProperties (no en repo).",
+      "Respuesta recomendada": "(c) probable. Adoptar clasp + repo como verdad, o documentar explícitamente que el bound script es el master y los .gs son snapshots.",
+      "Bloquea": "Confiabilidad dashboards/automatizaciones"
+    }
+  ],
+  "recommendations": [
+    {
+      "Prioridad": "P0",
+      "Área": "Seguridad/PII",
+      "Acción": "Purgar .accessible-base/ del repo + git history; .gitignore",
+      "Razón": "C1: 297 leads + telefonos commiteados. Posible obligación Ley 18.331.",
+      "Esfuerzo": "M"
+    },
+    {
+      "Prioridad": "P0",
+      "Área": "Seguridad",
+      "Acción": "Quitar default WA_JWT_SECRET + hard-fail (C2); sacar API token del bundle Vite (C3)",
+      "Razón": "Tokens forjables / leak de bearer de server.",
+      "Esfuerzo": "S-M"
+    },
+    {
+      "Prioridad": "P0",
+      "Área": "Seguridad",
+      "Acción": "Auth en writes Sheets públicos (POST/PATCH /api/cotizaciones,/pagos,/ventas,/marcar-entregado, PUT productos-maestro/links) + /api/crm/cockpit-token + /admin/* (H2) + /webhooks/ml/events (H3) + /api/internal/presup/*",
+      "Razón": "Mutación de datos de producción sin auth.",
+      "Esfuerzo": "M"
+    },
+    {
+      "Prioridad": "P1",
+      "Área": "Infra",
+      "Acción": "Decidir P1 y borrar los 2 modelos de deploy muertos + arreglar path-filter deploy-calc-api.yml",
+      "Razón": "Drift de deploy: imagen activa depende de quién desplegó último.",
+      "Esfuerzo": "S"
+    },
+    {
+      "Prioridad": "P1",
+      "Área": "Datos/Precios",
+      "Acción": "Limpiar MATRIZ #2: dedupe SKUs (GFS80,PU50MM,IF150,CAN.ISDC120), arreglar #REF!/#VALUE!, normalizar IVA%",
+      "Razón": "Es la fuente de precios de la calc (P2). Datos sucios -> cotizaciones erróneas.",
+      "Esfuerzo": "M"
+    },
+    {
+      "Prioridad": "P1",
+      "Área": "Datos",
+      "Acción": "Arreglar 106 #REF! en Stock E-Commerce #5 (links rotos a MATRIZ)",
+      "Razón": "Inventario/pricing e-commerce roto.",
+      "Esfuerzo": "M"
+    },
+    {
+      "Prioridad": "P1",
+      "Área": "Config",
+      "Acción": "Setear ML_CLIENT_SECRET en prod (/health missingConfig) o documentar que ML OAuth está intencionalmente off",
+      "Razón": "ML OAuth no funcional en prod.",
+      "Esfuerzo": "S"
+    },
+    {
+      "Prioridad": "P2",
+      "Área": "Datos",
+      "Acción": "Consolidar #3 crm_automatizado ~ #4 CALENDARIO (payables duplicados) en un libro; renombrar #3 (no es CRM)",
+      "Razón": "Dos copias del mismo dataset de vencimientos.",
+      "Esfuerzo": "S"
+    },
+    {
+      "Prioridad": "P2",
+      "Área": "Datos",
+      "Acción": "Unificar lifecycle lead->venta: decidir si #8 'Ventas 2026 BETA' reemplaza a #1+#6; poblar tab export vacío de #7",
+      "Razón": "3 sheets con columnas solapadas para el mismo flujo.",
+      "Esfuerzo": "M-L"
+    },
+    {
+      "Prioridad": "P2",
+      "Área": "Repo",
+      "Acción": "Limpieza de clutter: borrar docs 2/, docs.zip, reporte.md, Obsidian/, Untitled, GEMINI.md; mover reportes raíz a docs/",
+      "Razón": "136K líneas md; duplicados divergentes.",
+      "Esfuerzo": "S"
+    },
+    {
+      "Prioridad": "P2",
+      "Área": "Repo",
+      "Acción": "Consolidar 45 PRs abiertas; cerrar ramas stale; resolver código muerto (*_legacy_inline.jsx, template PDF duplicado)",
+      "Razón": "Deuda de integración alta.",
+      "Esfuerzo": "M"
+    },
+    {
+      "Prioridad": "P3",
+      "Área": "Repo",
+      "Acción": "Alinear shop-chat-agent a Node 24 o aislarlo como repo propio",
+      "Razón": "Stack inconsistente (Node 18 vs 24).",
+      "Esfuerzo": "S"
+    },
+    {
+      "Prioridad": "P3",
+      "Área": "Org",
+      "Acción": "Archivar repos hermanos experimentales (GPT-*, chatbot-*, aistudioPanelin, etc.)",
+      "Razón": "Reduce superficie de credenciales/CI muertos (P4).",
+      "Esfuerzo": "S"
+    },
+    {
+      "Prioridad": "P3",
+      "Área": "Apps Script",
+      "Acción": "Adoptar clasp (repo = verdad) o documentar bound script como master (P5)",
+      "Razón": "Sin forma de saber qué .gs corre.",
+      "Esfuerzo": "M"
+    },
+    {
+      "Prioridad": "P3",
+      "Área": "Seguridad",
+      "Acción": "Aplicar W1-W8 (fallbacks vacíos para sheet/ML IDs, allowlist extension CORS, warnings HMAC)",
+      "Razón": "Endurecimiento defensivo.",
+      "Esfuerzo": "S"
+    }
+  ]
+}
