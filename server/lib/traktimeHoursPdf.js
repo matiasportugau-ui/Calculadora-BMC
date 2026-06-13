@@ -249,12 +249,23 @@ async function uploadPdfToGcs(bucket, filename, buffer) {
 }
 
 /**
+ * Render the monthly hours report to a PDF buffer without uploading it.
+ * This is used by authenticated routes so employee hours are not persisted
+ * in the public quote-PDF bucket.
+ * @returns {Promise<Buffer|null>}
+ */
+export async function renderHoursReportPdfBuffer({ report, user, month, issuer }) {
+  const html = renderHoursReportHtml({ report, user, month, issuer });
+  return renderHtmlToPdfBuffer(html).catch(() => null);
+}
+
+/**
  * Render + upload the monthly hours report.
  * @returns {Promise<{ pdfBuffer: Buffer|null, url: string|null, html: string }>}
  */
 export async function renderAndUploadHoursReport({ report, user, month, issuer, bucket }) {
   const html = renderHoursReportHtml({ report, user, month, issuer });
-  const pdfBuffer = await renderHtmlToPdfBuffer(html).catch(() => null);
+  const pdfBuffer = await renderHoursReportPdfBuffer({ report, user, month, issuer });
   if (!pdfBuffer) return { pdfBuffer: null, url: null, html };
   const safeUser = String(user?.id || user?.email || "user").replace(/[^a-zA-Z0-9._-]/g, "_");
   const filename = `horas-${month}-${safeUser}.pdf`;

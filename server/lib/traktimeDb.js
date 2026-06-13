@@ -22,7 +22,12 @@ export function getTraktimePool(databaseUrl) {
 /** Solo tests / reinicio manual */
 export async function resetTraktimePoolForTests() {
   if (pool) {
-    await pool.end().catch(() => {});
+    if (typeof pool.end === "function") await pool.end().catch(() => {});
     pool = null;
   }
+}
+
+/** Solo tests: permite montar el router con un pool shim sin abrir Postgres. */
+export function setTraktimePoolForTests(testPool) {
+  pool = testPool || null;
 }

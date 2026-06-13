@@ -21,7 +21,7 @@ import {
   buildJornadaReport,
   DEFAULT_PAUSA_THRESHOLD_SECONDS,
 } from "../lib/traktimeJornada.js";
-import { renderAndUploadHoursReport } from "../lib/traktimeHoursPdf.js";
+import { renderHoursReportPdfBuffer } from "../lib/traktimeHoursPdf.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -52,6 +52,21 @@ export default function createTraktimeRouter(config, logger) {
       return res.status(503).json({ ok: false, error: "DATABASE_URL not configured" });
     }
     return next();
+  }
+
+  function isAdminUser(user) {
+    return user?.role === "admin" || user?.role === "superadmin";
+  }
+
+  async function requireProjectMembership(req, res, projectId) {
+    if (isAdminUser(req.user)) return true;
+    const { rows } = await pool.query(
+      `select 1 from tk_project_members where project_id = $1 and user_id = $2`,
+      [projectId, req.user.id],
+    );
+    if (rows.length) return true;
+    res.status(403).json({ ok: false, error: "not_a_member" });
+    return false;
   }
 
   // ─── Health (no auth) ─────────────────────────────────────────────────
@@ -935,14 +950,7 @@ export default function createTraktimeRouter(config, logger) {
       const tags = Array.isArray(req.body?.tags) ? req.body.tags.map(String) : [];
 
       // Admins can start on any project; members only on projects they belong to.
-      const isAdmin = req.user.role === "admin" || req.user.role === "superadmin";
-      if (!isAdmin) {
-        const { rows: m } = await pool.query(
-          `select 1 from tk_project_members where project_id = $1 and user_id = $2`,
-          [project_id, req.user.id],
-        );
-        if (!m.length) return res.status(403).json({ ok: false, error: "not_a_member" });
-      }
+      if (!(await requireProjectMembership(req, res, project_id))) return;
       try {
         const { rows } = await pool.query(
           `insert into tk_entries (user_id, project_id, task_id, description, started_at, tags)
@@ -1055,6 +1063,7 @@ export default function createTraktimeRouter(config, logger) {
       const task_id = trimOrNull(req.body?.task_id);
       const tags = Array.isArray(req.body?.tags) ? req.body.tags.map(String) : [];
       const billable = req.body?.billable !== false;
+      if (!(await requireProjectMembership(req, res, project_id))) return;
       try {
         const { rows } = await pool.query(
           `insert into tk_entries
@@ -1131,6 +1140,13 @@ export default function createTraktimeRouter(config, logger) {
         params.push(Array.isArray(req.body.tags) ? req.body.tags.map(String) : []);
       }
       if (!fields.length) return res.status(400).json({ ok: false, error: "no_fields" });
+      if ("project_id" in (req.body || {})) {
+        const nextProjectId = trimOrNull(req.body.project_id);
+        if (!nextProjectId) {
+          return res.status(400).json({ ok: false, error: "project_id_required" });
+        }
+        if (!(await requireProjectMembership(req, res, nextProjectId))) return;
+      }
       fields.push("updated_at = now()");
       params.push(id);
       try {
@@ -1285,6 +1301,32 @@ export default function createTraktimeRouter(config, logger) {
       join tk_projects p on p.project_id = e.project_id
       join tk_clients  c on c.client_id  = p.client_id`;
 
+  async function buildMonthHoursReport(req, month, userId, pausaThresholdSeconds) {
+    const [yy, mm] = month.split("-").map(Number);
+    const startLocal = `${month}-01 00:00:00`;
+    const nextYear = mm === 12 ? yy + 1 : yy;
+    const nextMonth = mm === 12 ? 1 : mm + 1;
+    const endLocal = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01 00:00:00`;
+
+    const { rows } = await pool.query(
+      `${REPORT_ENTRY_SQL}
+        where e.user_id = $1 and e.stopped_at is not null
+          and (e.started_at at time zone $2) >= $3::timestamp
+          and (e.started_at at time zone $2) <  $4::timestamp
+        order by e.started_at`,
+      [userId, reportTz, startLocal, endLocal],
+    );
+    const report = buildJornadaReport(rows, { tz: reportTz, pausaThresholdSeconds });
+    const user = await loadUserDisplay(userId, req);
+    return { report, user };
+  }
+
+  function monthReportPdfPath(month, userId, req) {
+    const params = new URLSearchParams({ month });
+    if (userId && userId !== req.user.id) params.set("user", userId);
+    return `/api/traktime/month-report.pdf?${params.toString()}`;
+  }
+
   router.get(
     "/api/traktime/day-report",
     requireUser(),
@@ -1345,44 +1387,12 @@ export default function createTraktimeRouter(config, logger) {
       if (!userId) return res.status(403).json({ ok: false, error: "forbidden" });
       const pausaThresholdSeconds = resolvePausaThresholdSeconds(req);
 
-      // Local-time month boundaries [first of month, first of next month).
-      const [yy, mm] = month.split("-").map(Number);
-      const startLocal = `${month}-01 00:00:00`;
-      const nextYear = mm === 12 ? yy + 1 : yy;
-      const nextMonth = mm === 12 ? 1 : mm + 1;
-      const endLocal = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01 00:00:00`;
-
-      const { rows } = await pool.query(
-        `${REPORT_ENTRY_SQL}
-          where e.user_id = $1 and e.stopped_at is not null
-            and (e.started_at at time zone $2) >= $3::timestamp
-            and (e.started_at at time zone $2) <  $4::timestamp
-          order by e.started_at`,
-        [userId, reportTz, startLocal, endLocal],
-      );
-      const report = buildJornadaReport(rows, { tz: reportTz, pausaThresholdSeconds });
-      const user = await loadUserDisplay(userId, req);
-
-      let pdf_url = null;
-      let pdf_rendered = false;
-      try {
-        const out = await renderAndUploadHoursReport({
-          report,
-          user,
-          month,
-          issuer: { name: config.traktimeInvoiceIssuerName },
-          bucket: config.traktimeInvoiceGcsBucket,
-        });
-        pdf_url = out.url;
-        pdf_rendered = !!out.pdfBuffer;
-      } catch (e) {
-        log.warn?.({ err: e }, "[traktime] hours-report pdf render failed");
-      }
+      const { report } = await buildMonthHoursReport(req, month, userId, pausaThresholdSeconds);
 
       await tkAudit(pool, {
         action: "report.month_hours",
         user_email: req.user.email,
-        meta: { target_user: userId, month, pdf_rendered, day_count: report.totals.day_count },
+        meta: { target_user: userId, month, pdf_rendered: false, day_count: report.totals.day_count },
       }, log);
 
       res.json({
@@ -1392,9 +1402,50 @@ export default function createTraktimeRouter(config, logger) {
         tz: reportTz,
         pausa_threshold_seconds: pausaThresholdSeconds,
         report,
-        pdf_url,
-        pdf_rendered,
+        pdf_url: null,
+        pdf_download_url: monthReportPdfPath(month, userId, req),
+        pdf_rendered: false,
       });
+    }),
+  );
+
+  router.get(
+    "/api/traktime/month-report.pdf",
+    requireUser(),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const month = trimOrNull(req.query.month);
+      if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ ok: false, error: "month_required_yyyy_mm" });
+      }
+      const userId = resolveTargetUserId(req);
+      if (!userId) return res.status(403).json({ ok: false, error: "forbidden" });
+      const pausaThresholdSeconds = resolvePausaThresholdSeconds(req);
+      const { report, user } = await buildMonthHoursReport(req, month, userId, pausaThresholdSeconds);
+      const pdfBuffer = await renderHoursReportPdfBuffer({
+        report,
+        user,
+        month,
+        issuer: { name: config.traktimeInvoiceIssuerName },
+      });
+      if (!pdfBuffer) {
+        return res.status(503).json({ ok: false, error: "pdf_renderer_unavailable" });
+      }
+
+      await tkAudit(pool, {
+        action: "report.month_hours_pdf",
+        user_email: req.user.email,
+        meta: { target_user: userId, month, day_count: report.totals.day_count },
+      }, log);
+
+      const safeUser = String(user?.id || user?.email || "user").replace(/[^a-zA-Z0-9._-]/g, "_");
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="horas-${month}-${safeUser}.pdf"`,
+      );
+      res.setHeader("Cache-Control", "private, no-store");
+      res.send(pdfBuffer);
     }),
   );
 

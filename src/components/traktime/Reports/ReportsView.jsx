@@ -37,8 +37,9 @@ function currentMonth() {
 function HoursReport() {
   const [month, setMonth] = useState(currentMonth());
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [report, setReport] = useState(null);
-  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfReady, setPdfReady] = useState(false);
   const [error, setError] = useState("");
 
   const generate = async () => {
@@ -47,11 +48,26 @@ function HoursReport() {
     try {
       const r = await tkApi.monthReport({ month });
       setReport(r.report || null);
-      setPdfUrl(r.pdf_url || "");
+      setPdfReady(!!r.pdf_download_url);
     } catch (e) {
       setError(e.message || "load_failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openPdf = async () => {
+    setPdfLoading(true);
+    setError("");
+    try {
+      const blob = await tkApi.monthReportPdf({ month });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      setError(e.message || "pdf_failed");
+    } finally {
+      setPdfLoading(false);
     }
   };
 
@@ -87,7 +103,7 @@ function HoursReport() {
             opacity: loading ? 0.6 : 1,
           }}
         >
-          {loading ? "Generando…" : "Generar PDF"}
+          {loading ? "Generando…" : "Generar reporte"}
         </button>
       </div>
 
@@ -123,10 +139,23 @@ function HoursReport() {
         <div style={{ color: colors.textMuted, fontSize: 13 }}>Sin registros en el mes.</div>
       ) : null}
 
-      {pdfUrl ? (
-        <a href={pdfUrl} target="_blank" rel="noreferrer" style={{ color: colors.accent, fontSize: 13 }}>
-          Descargar PDF →
-        </a>
+      {pdfReady ? (
+        <button
+          onClick={openPdf}
+          disabled={pdfLoading}
+          style={{
+            alignSelf: "flex-start",
+            border: "none",
+            background: "transparent",
+            color: colors.accent,
+            fontSize: 13,
+            padding: 0,
+            cursor: pdfLoading ? "default" : "pointer",
+            opacity: pdfLoading ? 0.65 : 1,
+          }}
+        >
+          {pdfLoading ? "Abriendo PDF…" : "Descargar PDF →"}
+        </button>
       ) : report ? (
         <div style={{ color: colors.textMuted, fontSize: 12 }}>
           PDF no disponible (renderizador no configurado en este entorno).
