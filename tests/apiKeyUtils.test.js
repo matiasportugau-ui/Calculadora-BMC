@@ -32,7 +32,7 @@ assert(!isUsableApiKey("sk-123"), "too short → not usable");
 // ── real-looking keys → usable ──────────────────────────────────────────────
 assert(isUsableApiKey("long-secret-key-" + "a1B2c3D4e5".repeat(5)), "long-secret-key-<50 random> → usable");
 assert(isUsableApiKey("api-key-" + "Xy9".repeat(16)), "api-key-<48 random> → usable");
-assert(isUsableApiKey("secret-prefix-" + "B".repeat(33)), "secret-prefix- key → usable");
+assert(isUsableApiKey("secret-prefix-" + "B".repeat(33)), "secret-prefix-key → usable");
 
 console.log(`\n${failed === 0 ? "✅" : "❌"} apiKeyUtils: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
