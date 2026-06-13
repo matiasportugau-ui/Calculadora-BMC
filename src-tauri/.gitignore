@@ -1,0 +1,11 @@
+# Rust build output
+/target
+
+# Tauri-generated schemas / artifacts
+/gen/schemas
+
+# Generated app icons (run `npm run tauri:icon <path-to-1024px.png>`)
+/icons/*.png
+/icons/*.ico
+/icons/*.icns
+!/icons/README.md

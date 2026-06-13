@@ -69,7 +69,10 @@ por defecto para quien quiera conciencia temporal del SO.
     `shared/timerChannel.js` (BroadcastChannel); `TraKtiMeModule.jsx` detecta el flag.
 - **Fase 3 — ActivityWatch opt-in (observación SO):** ⏳ pendiente (doc + spike;
   flag `TRAKTIME_AW_ENABLED`, OFF por defecto; conectar ActivityWatch MCP al agente).
-- **Fase 4 — Tauri (escritorio):** ⏳ futuro (always-on-top nativo + tray + hotkey global).
+- **Fase 4 — Tauri (escritorio):** ✅ scaffold (sin compilar acá). Wrapper Tauri v2
+  en `src-tauri/` (ventana always-on-top sobre `?tkDetached=1` + system tray +
+  hotkey global `Cmd/Ctrl+Shift+T`). Scripts `npm run tauri:dev|build|icon` (vía
+  npx, sin nuevas deps). Doc: `docs/team/traktime/TAURI-DESKTOP-SPIKE.md`.
 
 ## Cómo se controla por AI (resumen)
 
