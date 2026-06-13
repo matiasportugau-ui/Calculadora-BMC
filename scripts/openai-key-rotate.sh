@@ -161,12 +161,15 @@ else
           || ylw "Could not bind IAM (may already be bound or you lack permission)."
       fi
 
-      # 4d. Switch the service from inline env → Secret Manager
+      # 4d. Switch the service to read OPENAI_API_KEY from Secret Manager.
+      # NOTE: --update-secrets MERGES (keeps the other mounted secrets). Using
+      # --set-secrets here would REPLACE the whole list and strip DATABASE_URL,
+      # IDENTITY_JWT_SECRET, service-account.json, etc. (the #313/#315/#317 bug).
       dim "Updating Cloud Run service to use $GCP_SECRET_NAME:latest…"
       gcloud run services update "$CLOUD_RUN_SERVICE" \
         --region="$CLOUD_RUN_REGION" \
         --remove-env-vars=OPENAI_API_KEY \
-        --set-secrets=OPENAI_API_KEY="${GCP_SECRET_NAME}:latest" \
+        --update-secrets=OPENAI_API_KEY="${GCP_SECRET_NAME}:latest" \
         || die "gcloud run services update failed."
       grn "Cloud Run rotated."
     fi
