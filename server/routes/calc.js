@@ -191,12 +191,15 @@ async function registerQuotation(input) {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function resolveTechoForCamara(paredFamilia, paredEspesor) {
-  const familia = paredFamilia in PANELS_TECHO ? paredFamilia : "ISODEC_EPS";
+  const familyMatch = paredFamilia in PANELS_TECHO;
+  const familia = familyMatch ? paredFamilia : "ISODEC_EPS";
   const panel = PANELS_TECHO[familia];
-  if (panel.esp[paredEspesor]) return { familia, espesor: paredEspesor, mapped: false };
+  if (panel.esp[paredEspesor]) {
+    return { familia, espesor: paredEspesor, mapped: false, familyFallback: !familyMatch };
+  }
   const available = Object.keys(panel.esp).map(Number).sort((a, b) => a - b);
   const espesor = available.find(e => e >= paredEspesor) || available[available.length - 1];
-  return { familia, espesor, mapped: true, original: paredEspesor };
+  return { familia, espesor, mapped: true, original: paredEspesor, familyFallback: !familyMatch };
 }
 
 const SCENARIO_LABELS = {
@@ -389,6 +392,9 @@ function runCalculation({ escenario, lista, techo, pared, camara }) {
     const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
     const techoMap = resolveTechoForCamara(pared.familia, pared.espesor);
     const extraWarnings = [];
+    if (techoMap.familyFallback) {
+      extraWarnings.push(`Techo cámara: ${pared.familia} no disponible como panel de techo; se cotiza techo como ${techoMap.familia}.`);
+    }
     if (techoMap.mapped) extraWarnings.push(`Techo cámara: espesor ${techoMap.original}mm no disponible en ${techoMap.familia}, se usó ${techoMap.espesor}mm.`);
     const rT = calcTechoCompleto({
       familia: techoMap.familia, espesor: techoMap.espesor,

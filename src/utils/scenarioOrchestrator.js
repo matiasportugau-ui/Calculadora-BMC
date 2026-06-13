@@ -228,9 +228,12 @@ export function executeScenario(scenarioId, { techo, pared, camara }) {
     if (!pared.familia || !pared.espesor) return null;
     const perim = 2 * (camara.largo_int + camara.ancho_int);
     const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
-    const techoFam = pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS";
-    const techoPanel = PANELS_TECHO[techoFam];
     const extraW = [];
+    const techoFam = pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS";
+    if (!(pared.familia in PANELS_TECHO)) {
+      extraW.push(`Techo cámara: ${pared.familia} no disponible como panel de techo; se cotiza techo como ${techoFam}.`);
+    }
+    const techoPanel = PANELS_TECHO[techoFam];
     let techoEsp = pared.espesor;
     if (!techoPanel.esp[techoEsp]) {
       const available = Object.keys(techoPanel.esp).map(Number).sort((a, b) => a - b);

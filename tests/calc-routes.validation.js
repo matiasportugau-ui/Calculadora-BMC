@@ -133,6 +133,32 @@ async function run() {
     assert("Camera mapping warning is emitted", warnings.some((w) => String(w).includes("espesor 80mm")), warnings.join(" | "), "includes mapped espesor warning");
     assert("Camera summary returns positive total", Number(camara.json?.resumen?.total_usd || 0) > 0, camara.json?.resumen?.total_usd, ">0");
 
+    const camaraIsofrig = await postJson("/calc/cotizar", {
+      lista: "web",
+      escenario: "camara_frig",
+      pared: {
+        familia: "ISOFRIG_PIR",
+        espesor: 100,
+        color: "Blanco",
+        tipoEst: "metal",
+        inclSell: true,
+      },
+      camara: {
+        largo_int: 6,
+        ancho_int: 4,
+        alto_int: 3,
+      },
+    });
+
+    assert("POST /calc/cotizar ISOFRIG camera response ok", camaraIsofrig.status === 200 && camaraIsofrig.json?.ok === true, camaraIsofrig.status, 200);
+    const isofrigWarnings = camaraIsofrig.json?.advertencias || [];
+    assert(
+      "ISOFRIG camera warns when roof family falls back",
+      isofrigWarnings.some((w) => String(w).includes("ISOFRIG_PIR") && String(w).includes("ISODEC_EPS")),
+      isofrigWarnings.join(" | "),
+      "mentions ISOFRIG_PIR and ISODEC_EPS"
+    );
+
     // ── Test 4: PDF endpoint stores document and registry metadata ─────────
     const pdfResp = await postJson("/calc/cotizar/pdf", {
       ...baseCotizacionBody,

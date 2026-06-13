@@ -2280,6 +2280,34 @@ console.log("\n═══ SUITE 33: scenarioOrchestrator ═══");
 }
 
 {
+  const r = executeScenario("camara_frig", {
+    techo: {},
+    pared: {
+      familia: "ISOFRIG_PIR",
+      espesor: 100,
+      tipoEst: "metal",
+      inclSell: true,
+      incl5852: false,
+      color: "Blanco",
+      aberturas: [],
+    },
+    camara: {
+      largo_int: 6,
+      ancho_int: 4,
+      alto_int: 3,
+    },
+  });
+  const warningText = (r?.warnings || []).join(" | ");
+  assert("executeScenario camara_frig ISOFRIG returns result", !!r, !!r, true);
+  assert(
+    "executeScenario camara_frig ISOFRIG warns on roof family fallback",
+    warningText.includes("ISOFRIG_PIR") && warningText.includes("ISODEC_EPS"),
+    warningText,
+    "mentions ISOFRIG_PIR and ISODEC_EPS"
+  );
+}
+
+{
   const r = executeScenario("solo_techo", {
     techo: {
       familia: "ISODEC_EPS",
