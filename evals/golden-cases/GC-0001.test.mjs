@@ -49,6 +49,23 @@ checks.push({
   actual: lineaPanel ? r2(lineaPanel.total) : undefined,
 });
 
+// (b-venta) lista VENTA (default BMC): 100 mm = costo×1.15 = 58.01 ex-IVA
+checks.push({
+  name: "(b3) ISOFRIG_PIR 100 mm venta → 58.01 (costo×1.15)",
+  expected: 58.01,
+  actual: fam?.esp?.[100]?.venta,
+});
+const libreVenta = computePresupuestoLibreCatalogo({
+  listaPrecios: "venta",
+  librePanelLines: [{ familia: "ISOFRIG_PIR", espesor: 100, m2: 10 }],
+});
+const lineaVenta = libreVenta?.libreGroups?.find((g) => g.title === "PANELES")?.items?.[0];
+checks.push({
+  name: "(b4) presupuesto_libre VENTA total 10 m² → 580.10 ex-IVA",
+  expected: 580.1,
+  actual: lineaVenta ? r2(lineaVenta.total) : undefined,
+});
+
 // (c) espesores: 7 reales, sin la fila 200 clonada de IF150
 const espesores = fam ? Object.keys(fam.esp).map(Number).sort((x, y) => x - y) : [];
 checks.push({
