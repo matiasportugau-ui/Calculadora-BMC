@@ -22,8 +22,9 @@ export default defineConfig({
     baseURL: (process.env.PLAYWRIGHT_BASE_URL || "https://calculadora-bmc.vercel.app").replace(/\/+$/, ""),
     headless: true,
     // El proxy del sandbox usa una CA propia que Chromium no confía; los certs
-    // de prod son válidos. Sin esto, page.goto falla con ERR_CERT_AUTHORITY_INVALID.
-    ignoreHTTPSErrors: true,
+    // de prod son válidos. Gateado tras PLAYWRIGHT_IGNORE_HTTPS_ERRORS=1 (default
+    // off): así el cookie de sesión no viaja sobre TLS sin validar salvo opt-in.
+    ignoreHTTPSErrors: process.env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS === "1",
     actionTimeout: 20_000,
     navigationTimeout: 60_000,
     launchOptions: {

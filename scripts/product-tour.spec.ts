@@ -33,6 +33,9 @@ const META_PATH = join(REPO_ROOT, "docs/product/tour-metadata.json");
 const BASE = (process.env.PLAYWRIGHT_BASE_URL || "https://calculadora-bmc.vercel.app").replace(/\/+$/, "");
 const COOKIE = process.env.TOUR_SESSION_COOKIE || "";
 const COOKIE_DOMAIN = new URL(BASE).hostname;
+// TLS: por defecto validamos el certificado (el cookie de sesión viaja sólo sobre
+// TLS confiable). El proxy del sandbox usa una CA propia → opt-in explícito.
+const IGNORE_HTTPS = process.env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS === "1";
 
 const DESKTOP = { width: 1440, height: 900 };
 const MOBILE = { width: 390, height: 844 };
@@ -214,7 +217,13 @@ async function snap(
 }
 
 async function newCtx(browser: Browser, viewport: { width: number; height: number }, authed: boolean) {
-  const ctx = await browser.newContext({ viewport, ignoreHTTPSErrors: true });
+  if (authed && IGNORE_HTTPS && COOKIE) {
+    console.warn(
+      "[product-tour] AVISO: PLAYWRIGHT_IGNORE_HTTPS_ERRORS=1 junto con cookie de sesión — " +
+        "el cookie bmc_sess viajaría sobre TLS sin validar. Usar sólo contra un proxy de confianza.",
+    );
+  }
+  const ctx = await browser.newContext({ viewport, ignoreHTTPSErrors: IGNORE_HTTPS });
   if (authed) await addAuthCookie(ctx);
   return ctx;
 }
@@ -515,8 +524,11 @@ async function tourModule(page: Page, mod: ModuleDef) {
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(() => {
-  // Limpia capturas previas para una regeneración determinista.
-  for (const d of [ASSETS_DIR, PRIVATE_DIR]) {
+  // Limpia las capturas commiteables (regenerables desde git) para una regeneración
+  // determinista. docs-private/ (capturas con PII, irreemplazables) sólo se borra con
+  // TOUR_CLEAN_PRIVATE=1 — así un `npx playwright test` casual no destruye esos assets.
+  const toClean = process.env.TOUR_CLEAN_PRIVATE === "1" ? [ASSETS_DIR, PRIVATE_DIR] : [ASSETS_DIR];
+  for (const d of toClean) {
     try {
       rmSync(d, { recursive: true, force: true });
     } catch {
