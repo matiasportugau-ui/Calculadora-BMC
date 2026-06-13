@@ -14,12 +14,14 @@ import http from "node:http";
 import express from "express";
 
 process.env.PUBLIC_BASE_URL = "http://localhost:3001";
+const MOCK_KEY = "secret-prefix-" + "A".repeat(40);
+
 // Ensure OPENAI_API_KEY is set so we can also test no-key path by mutation
-process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || "test-openai-key";
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || MOCK_KEY;
 
 const { default: agentTranscribeRouter } = await import("../server/routes/agentTranscribe.js");
 const { config: testConfig } = await import("../server/config.js");
-testConfig.openaiApiKey = "test-openai-key";
+testConfig.openaiApiKey = MOCK_KEY;
 
 let passed = 0;
 let failed = 0;
@@ -171,7 +173,7 @@ await group("no API key configured → 503", async () => {
   const { status, body } = await postAudio("/api/agent/transcribe", audio);
   assert(status === 503, `503 (got ${status})`);
   assert(typeof body.error === "string" && body.error.includes("OPENAI_API_KEY"), "error mentions OPENAI_API_KEY");
-  testConfig.openaiApiKey = "test-openai-key"; // restore
+  testConfig.openaiApiKey = MOCK_KEY; // restore
 });
 
 // ── Cleanup ──────────────────────────────────────────────────────────────────

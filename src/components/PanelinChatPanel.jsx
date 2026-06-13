@@ -423,8 +423,9 @@ export default function PanelinChatPanel({
     prevMsgCountRef.current = count;
   }, [messages, ttsEnabled]);
 
-  // Whisper-backed dictation (cross-browser, replaces deprecated Web Speech API).
-  // The hook manages mic stream lifecycle internally; cleanup happens on unmount.
+  // Voice dictation: browser-native SpeechRecognition (free, no key) when
+  // available, falling back to server Whisper. The hook manages the mic stream
+  // lifecycle internally; cleanup happens on unmount.
   const dictation = useDictation({
     onTranscript: (text) => {
       const trimmed = String(text || "").trim();
@@ -438,6 +439,7 @@ export default function PanelinChatPanel({
       console.warn("[dictation]", msg);
     },
     language: "es",
+    preferBrowserSpeech: true,
   });
   const isListening = dictation.status === "recording";
   const isTranscribing = dictation.status === "transcribing";
@@ -504,8 +506,8 @@ export default function PanelinChatPanel({
   }, []);
 
   // Mic button toggles dictation: idle → record, record → stop+transcribe.
-  // Uses Whisper via /api/agent/transcribe — works in all modern browsers
-  // including Safari/Firefox (Web Speech API was Chrome/Edge only).
+  // Browser SpeechRecognition (Chrome/Edge/Safari) when available — free and
+  // key-less; falls back to server Whisper for browsers without it (Firefox).
   const toggleListening = useCallback(() => {
     if (dictation.status === "recording") {
       dictation.stop();
