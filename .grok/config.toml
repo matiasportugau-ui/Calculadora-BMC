@@ -1,0 +1,52 @@
+[ui]
+max_thoughts_width = 120
+
+[mcp_servers.playwright]
+command = "npx"
+args = [
+    "-y",
+    "@playwright/mcp@latest",
+]
+enabled = true
+startup_timeout_sec = 45
+tool_timeout_sec = 180
+
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = [
+    "-y",
+    "chrome-devtools-mcp@latest",
+    "--isolated",
+    "--no-usage-statistics",
+    "--no-performance-crux",
+]
+enabled = true
+
+[mcp_servers.bmc]
+command = "node"
+args = ["/Users/matias/bmc-control/mcp/bmc-mcp-server.mjs"]
+enabled = true
+
+[mcp_servers.task-master-ai]
+command = "npx"
+args = [
+    "-y",
+    "task-master-ai",
+]
+enabled = true
+startup_timeout_sec = 60
+
+[mcp_servers.memory]
+command = "npx"
+args = [
+    "-y",
+    "@modelcontextprotocol/server-memory",
+]
+enabled = true
+
+[marketplace]
+official_marketplace_auto_installed = true
+
+[[marketplace.sources]]
+name = "xAI Official"
+git = "https://github.com/xai-org/plugin-marketplace.git"
