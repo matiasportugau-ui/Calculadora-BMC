@@ -165,7 +165,7 @@ export default function createShopifyRouter(config, logger) {
     const codeChallenge = pkceChallenge(codeVerifier);
 
     await oauthStateStore.set(state, { shop, codeVerifier, nonce });
-    res.cookie("shopify_oauth", state, { ...COOKIE_OPTIONS, maxAge: 600 });
+    res.cookie("shopify_oauth", state, COOKIE_OPTIONS);
 
     const shopHost = shop.startsWith("http") ? shop : `https://${shop}`;
     const authUrl = new URL(`${shopHost}/admin/oauth/authorize`);
