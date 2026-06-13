@@ -57,6 +57,17 @@ type Shot = {
 };
 const shots: Shot[] = [];
 const moduleEndpoints: Record<string, Set<string>> = {};
+// En el recorrido autenticado todos los módulos comparten UN solo contexto/página
+// (la rotación obligatoria del refresh-token exige no reinyectar el cookie original
+// en un segundo contexto — eso dispara reuse-detection y mata la sesión). Por eso el
+// recorder de red apunta al módulo "activo" en vez de un listener por módulo.
+let activeModule = "";
+
+/** Marca el módulo activo cuyos endpoints registrará el recorder compartido. */
+function setActiveModule(id: string) {
+  activeModule = id;
+  if (!moduleEndpoints[id]) moduleEndpoints[id] = new Set();
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function ensureDir(p: string) {
@@ -112,6 +123,32 @@ function recordNetwork(page: Page, moduleId: string) {
       /* ignore */
     }
   });
+}
+
+/** Recorder único para la página autenticada compartida: atribuye cada request al
+ *  módulo activo (setActiveModule). Evita la contaminación cruzada de adjuntar un
+ *  listener por módulo sobre la misma página. */
+function attachSharedRecorder(page: Page) {
+  page.on("request", (req) => {
+    if (!activeModule) return;
+    try {
+      const u = new URL(req.url());
+      if (/^\/(api|calc|auth|webhooks)\b/.test(u.pathname)) {
+        moduleEndpoints[activeModule].add(`${req.method()} ${sanitizePath(u.pathname)}`);
+      }
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+/** Navegación client-side (SPA) sin recarga: preserva el access-token en memoria y
+ *  evita un nuevo /auth/refresh (clave con rotación + reuse-detection). */
+async function clientNavigate(page: Page, route: string) {
+  await page.evaluate((r) => {
+    window.history.pushState({}, "", r);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, route);
 }
 
 /** networkidle + settle delay antes de capturar (evita capturar mid-load). */
@@ -438,11 +475,12 @@ const AUTH_MODULES: ModuleDef[] = [
 ];
 
 async function tourModule(page: Page, mod: ModuleDef) {
-  recordNetwork(page, mod.id);
+  setActiveModule(mod.id);
   let status: "ok" | "error" | "not-observed" = "ok";
   let note: string | undefined;
   try {
-    await page.goto(BASE + mod.route, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    // Navegación client-side (sin recarga) para no gatillar otro /auth/refresh.
+    await clientNavigate(page, mod.route);
     await settle(page, 900);
     if (mod.webgl) await waitForCanvasPaint(page);
 
@@ -514,35 +552,10 @@ test("Calculadora — vista mobile", async ({ browser }) => {
   await ctx.close();
 });
 
-test("Wolfboard — hub (desktop + mobile)", async ({ browser }) => {
-  // Desktop
-  const ctxD = await newCtx(browser, DESKTOP, true);
-  const pageD = await ctxD.newPage();
-  await tourModule(pageD, AUTH_MODULES[0]);
-  // Panelín (avatar): best-effort, suele abrirse desde el hub/calculadora.
-  await discoverPanelin(pageD);
-  await ctxD.close();
-
-  // Mobile
-  const ctxM = await newCtx(browser, MOBILE, true);
-  const pageM = await ctxM.newPage();
-  recordNetwork(pageM, "01-wolfboard");
-  await pageM.goto(BASE + "/hub", { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await settle(pageM, 900);
-  await snap(pageM, {
-    module: "01-wolfboard",
-    screen: "mobile",
-    n: 20,
-    pii: false,
-    viewport: `${MOBILE.width}x${MOBILE.height}`,
-  });
-  await ctxM.close();
-});
-
 /** Panelín — avatar IA 3D. No tiene ruta propia en App.jsx; se descubre vivo. */
 async function discoverPanelin(page: Page) {
   const mod = "04-panelin";
-  recordNetwork(page, mod);
+  setActiveModule(mod);
   const trigger = page
     .getByRole("button", { name: /panel[ií]n|asistente|chat/i })
     .or(page.locator("[data-tutorial-id*='panelin'], [aria-label*='Panelín' i]"))
@@ -567,12 +580,56 @@ async function discoverPanelin(page: Page) {
   }
 }
 
-test("Módulos autenticados — recorrido", async ({ browser }) => {
+test("Recorrido autenticado — Wolfboard + módulos", async ({ browser }) => {
+  // UN SOLO contexto/página para todo el recorrido autenticado. El refresh-token
+  // rota en cada /auth/refresh y reusar uno viejo dispara reuse-detection (mata la
+  // sesión). Por eso: inyectamos el cookie una vez, hacemos UNA recarga real (/hub,
+  // que gatilla el único refresh del SPA) y luego navegamos client-side.
   const ctx = await newCtx(browser, DESKTOP, true);
   const page = await ctx.newPage();
+  attachSharedRecorder(page);
+
+  setActiveModule("01-wolfboard");
+  await page.goto(BASE + "/hub", { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await settle(page, 1500);
+
+  // ¿Autenticó? Si el SPA sigue mostrando el muro de login, el cookie es inválido o
+  // ya fue consumido (rotación) → marcamos todos los módulos not-observed y salimos.
+  const bodyText = (await page.evaluate(() => document.body.innerText)).slice(0, 4000);
+  const gated = /iniciar sesión|inicia sesión|inicia con google|acceso restringido/i.test(bodyText);
+  if (gated) {
+    const note = COOKIE
+      ? "[NOT OBSERVED — sesión inválida/expirada/rotada] el SPA muestra el muro de login pese al cookie"
+      : "[NOT OBSERVED — requiere auth] sin TOUR_SESSION_COOKIE";
+    for (const mod of [{ id: "01-wolfboard", pii: false }, { id: "04-panelin", pii: true }, ...AUTH_MODULES.slice(1)]) {
+      shots.push({
+        module: mod.id, screen: "principal", file: "(no capturado)",
+        committed: false, pii: mod.pii, status: "not-observed", note,
+        viewport: `${DESKTOP.width}x${DESKTOP.height}`,
+      });
+    }
+    await ctx.close();
+    return;
+  }
+
+  // Wolfboard (hub) — desktop.
+  await snap(page, { module: "01-wolfboard", screen: "principal", n: 1, pii: false });
+
+  // Wolfboard — mobile (misma página/sesión, sólo cambia el viewport; sin recarga).
+  await page.setViewportSize(MOBILE);
+  await settle(page, 700);
+  await snap(page, { module: "01-wolfboard", screen: "mobile", n: 20, pii: false, viewport: `${MOBILE.width}x${MOBILE.height}` });
+  await page.setViewportSize(DESKTOP);
+  await settle(page, 400);
+
+  // Panelín (avatar) — best-effort desde el hub.
+  await discoverPanelin(page);
+
+  // Resto de módulos vía navegación client-side (sin recargas → sin más refreshes).
   for (const mod of AUTH_MODULES.slice(1)) {
     await tourModule(page, mod);
   }
+
   await ctx.close();
 });
 
