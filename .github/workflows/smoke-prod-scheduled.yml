@@ -2,6 +2,9 @@
 # No npm install — uses Node built-in fetch only.
 name: Smoke — prod API (scheduled)
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 on:
   schedule:
     - cron: "0 8,20 * * *"

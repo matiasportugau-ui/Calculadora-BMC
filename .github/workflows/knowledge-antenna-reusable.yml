@@ -2,6 +2,9 @@
 # Keeps schedule/dispatch from triggering validate, lint, or channels_pipeline.
 name: Knowledge Antenna reusable
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 on:
   workflow_call:
 
