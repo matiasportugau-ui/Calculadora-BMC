@@ -567,9 +567,9 @@ async function discoverPanelin(page: Page) {
   if (await trigger.isVisible({ timeout: 4_000 }).catch(() => false)) {
     await trigger.click({ force: true }).catch(() => {});
     await waitForCanvasPaint(page, 2500);
-    // Se abre desde el hub autenticado y puede mostrar nombre del operador o
-    // fragmentos de conversación → tratar como PII (docs-private, no commitear).
-    await snap(page, { module: mod, screen: "avatar", n: 1, pii: true, note: "Avatar Panelín abierto desde el hub" });
+    // Se abre como saludo del asistente sobre la calculadora (sin historial de
+    // conversación ni datos de cliente) → PII-free, commiteable.
+    await snap(page, { module: mod, screen: "avatar", n: 1, pii: false, note: "Avatar Panelín (saludo) abierto desde el hub" });
   } else {
     shots.push({
       module: mod,

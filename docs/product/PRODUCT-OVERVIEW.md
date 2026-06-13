@@ -35,7 +35,7 @@ commiteada]`**; donde la vista estaba vacía se marca **`[estado vacío — imag
 | 1 | Wolfboard | `/hub` | 2 (desktop+mobile) | ✅ hub autenticado, sin PII |
 | 2 | Calculadora | `/` | 13 | ✅ 11 pasos + presupuesto + PDF |
 | 3 | LogistikBMC | `/logistica` | 1 | ✅ vista isométrica, estado vacío |
-| 4 | Panelín (avatar IA) | hub → "Hablar con Panelín" | 0 | ⚠️ `[NOT OBSERVED]` (ver §4) |
+| 4 | Panelín (avatar IA) | hub → "Hablar con Panelín" | 1 | ✅ saludo del asistente, sin PII |
 | 5 | Cockpit ML & WhatsApp | `/hub/ml`, `/hub/wa` | 2 (local) | ML con datos reales `[PII]`; WA vacío |
 | 6 | Canales | `/hub/canales` | 1 (local) | datos reales `[PII]` |
 | 7 | Administrador de Cotizaciones | `/hub/cotizaciones` | 1 (local) | Kanban vacío (0 filas) |
@@ -188,19 +188,25 @@ carga. Botón WhatsApp para coordinación. `[hecho confirmado]`
 - **Mejoras:** la vista 3D es SVG isométrico (no WebGL real); el estado vacío no guía sobre el
   primer paso; el precio de viaje está en UYU mientras el resto del producto opera en USD.
 
-## 4. Panelín (avatar IA)  `[NOT OBSERVED]`
+## 4. Panelín (avatar IA)
 
 **Acceso:** hub → tarjeta **"Panelín · Asistente IA" → "Hablar con Panelín"** (no tiene ruta
-propia en `src/App.jsx`). `[hecho confirmado: la tarjeta existe en el hub]`
+propia en `src/App.jsx`; abre como panel de chat sobre la calculadora). `[hecho confirmado]`
 
-La **pantalla del avatar no se capturó en esta corrida**: el localizador del tour buscaba sólo
-`role=button` y la entrada del hub es un enlace/tarjeta. El localizador ya fue corregido
-(`scripts/product-tour.spec.ts`, `discoverPanelin`) para aceptar enlaces y el texto "Hablar con
-Panelín"; queda pendiente una corrida adicional para capturar el avatar y sus gestos.
-`[NOT OBSERVED — pantalla del avatar; alcanzable vía hub]`
+Panelín se abre como **panel de chat lateral** con el avatar (mascota) y el saludo *"¡Hola! Soy
+Panelín — Te ayudo a cotizar paneles para tu obra. Contame qué necesitás."*, más botones de
+sugerencia (*Quiero cotizar un techo*, *¿Qué panel me recomendás?*, *Necesito una fachada*), un
+campo "Escribí tu consulta…" y "Modo Tutorial". El saludo no muestra historial ni datos de
+cliente → sin PII. `[hecho confirmado]`
 
-- **Mejoras (preliminares, desde el hub):** dos accesos a Panelín (Asistente IA vs Admin IA) sin
-  diferenciación clara; conviene un único punto de entrada con submodos.
+![Panelín — avatar / saludo](assets/04-panelin/01-avatar.png)
+
+- **Inventario:** avatar visual, saludo, chips de intención, input de chat, Modo Tutorial.
+- **Estado observado:** abre correctamente sobre la calculadora; la interactividad conversacional
+  (respuestas del LLM, voz/mic) **no se ejercitó** en el recorrido. `[NOT OBSERVED: conversación en vivo]`
+- **Mejoras:** dos accesos a Panelín en el hub (Asistente IA vs Admin IA) sin diferenciación clara
+  (conviene un único punto de entrada con submodos); el panel se superpone a la calculadora sin
+  un estado dedicado de "pantalla completa" del asistente.
 
 ## 5. Cockpit Mercado Libre & WhatsApp
 
