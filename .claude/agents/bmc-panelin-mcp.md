@@ -5,7 +5,7 @@ description: External agent surface for the Panelin BMC calculator. Exposes 22 t
 
 # bmc-panelin-mcp
 
-External MCP-based access to the BMC Panelin calculator + Wolfboard hub. Wraps every `AGENT_TOOLS` entry from `server/lib/agentTools.js` (41 tools) so a subagent or external client can natively quote, recall, save to CRM, send WhatsApp, manage admin pendientes, run batch AI quoting, and inspect telemetry without touching the in-app chat.
+External MCP-based access to the BMC Panelin calculator + Wolfboard hub. Wraps every `AGENT_TOOLS` entry from `server/lib/agentTools.js` (42 tools) so a subagent or external client can natively quote, recall, save to CRM, send WhatsApp, manage admin pendientes, run batch AI quoting, and inspect telemetry without touching the in-app chat.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ server/routes/agentChat.js
    server/lib/agentTools.js  executeTool(name, input, calcState)
 ```
 
-## Tool surface (41)
+## Tool surface (42)
 
 Same set as `bmc-panelin-chat`, surfaced unchanged. Loose Zod input (`z.record(z.unknown())`); the actual JSON Schema is included in each tool's MCP description so downstream models can render the contract.
 
@@ -51,7 +51,7 @@ Wolfboard hub (admin):
 - `wolfboard_quote_batch` — Claude Haiku batch quoting
 
 TraKtiMe (time tracking — acts *as a user*):
-- `traktime_timer_current`, `traktime_list_entries`, `traktime_day_report`, `traktime_month_report`, `traktime_billable_report`, `traktime_suggest_entry` — reads (protected)
+- `traktime_timer_current`, `traktime_list_entries`, `traktime_day_report`, `traktime_month_report`, `traktime_billable_report`, `traktime_suggest_entry`, `traktime_activity_today` — reads (protected). `traktime_activity_today` surfaces ActivityWatch (opt-in, OFF by default → returns an enable hint when disabled)
 - `traktime_timer_start`, `traktime_timer_stop`, `traktime_create_entry` — writes (require `user_confirmed: true`)
 
 The four customer-write tools, the four Wolfboard write tools, and the three TraKtiMe write tools enforce a **`user_confirmed: true`** flag in the input on top of the Bearer gate — server returns `requiere confirmación explícita del usuario` if missing, regardless of auth status. Two-layer gate. Wolfboard reads (`pendientes`, `export`) are auth-gated only (no `user_confirmed` needed; pure read).
