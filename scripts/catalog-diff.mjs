@@ -131,13 +131,19 @@ export function normalizeDecimal(raw) {
   s = s.replace(/["']/g, "").replace(/\s/g, "").replace(/\$/g, "").replace(/USD/gi, "");
   if (s === "") return { value: null, status: "empty", raw: rawStr };
 
-  // Coma decimal explícita:
-  //   "1.025,50" → miles con punto, decimal con coma → 1025.50
-  //   "32,84"    → decimal con coma                  → 32.84
+  // Separadores decimales. Cuando aparecen AMBOS (',' y '.'), el separador
+  // decimal es el que está más a la derecha; el otro son miles. Esto cubre tanto
+  //   "1.025,50" (europeo/UY: punto miles, coma decimal) → 1025.50
+  //   "1,025.50" (US/EN: coma miles, punto decimal)       → 1025.50
   if (s.includes(",") && s.includes(".")) {
-    s = s.replace(/\./g, "").replace(",", ".");
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      s = s.replace(/\./g, "").replace(/,/g, ".");
+    } else {
+      s = s.replace(/,/g, "");
+    }
   } else if (s.includes(",")) {
-    s = s.replace(",", ".");
+    // Sólo coma → decimal (convención de la MATRIZ UY: "32,84" → 32.84).
+    s = s.replace(/,/g, ".");
   }
 
   // En este punto sólo deben quedar dígitos, un punto decimal y signo.
@@ -583,8 +589,18 @@ async function fetchMatrizCsv(base) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const cfg = { ...CONFIG };
-  if (Number.isFinite(args.threshold)) cfg.threshold = args.threshold;
-  else if (process.env.BMC_CATALOG_DIFF_THRESHOLD) cfg.threshold = Number.parseFloat(process.env.BMC_CATALOG_DIFF_THRESHOLD);
+  if (Number.isFinite(args.threshold)) {
+    cfg.threshold = args.threshold;
+  } else if (process.env.BMC_CATALOG_DIFF_THRESHOLD) {
+    const t = Number.parseFloat(process.env.BMC_CATALOG_DIFF_THRESHOLD);
+    if (Number.isFinite(t) && t >= 0) {
+      cfg.threshold = t;
+    } else {
+      // Un umbral NaN desarmaría el gate (relDelta > NaN nunca es true) y ocultaría
+      // divergencias en silencio. Mantenemos el default y avisamos fuerte.
+      console.error(`[catalog-diff] BMC_CATALOG_DIFF_THRESHOLD inválido ("${process.env.BMC_CATALOG_DIFF_THRESHOLD}") — uso default ${cfg.threshold}.`);
+    }
+  }
   const soft = args.soft || process.env.BMC_CATALOG_DIFF_SOFT === "1";
 
   // Catálogo (siempre disponible).

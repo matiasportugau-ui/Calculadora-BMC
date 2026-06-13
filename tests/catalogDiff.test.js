@@ -30,6 +30,9 @@ group("normalizeDecimal — coma decimal", () => {
   assert(normalizeDecimal("32,84").status === "ok", '"32,84" status ok');
   assert(normalizeDecimal("10,27").value === 10.27, '"10,27" → 10.27');
   assert(normalizeDecimal("1.025,50").value === 1025.5, '"1.025,50" → 1025.50 (miles europeo)');
+  assert(normalizeDecimal("1,025.50").value === 1025.5, '"1,025.50" → 1025.50 (US: coma miles, punto decimal)');
+  assert(normalizeDecimal("1.025.000,50").value === 1025000.5, '"1.025.000,50" → 1025000.50 (europeo multi-miles)');
+  assert(normalizeDecimal("1,025,000.50").value === 1025000.5, '"1,025,000.50" → 1025000.50 (US multi-miles)');
   assert(normalizeDecimal("1025.50").value === 1025.5, '"1025.50" → 1025.50 (punto decimal)');
   assert(normalizeDecimal("45.52").value === 45.52, '"45.52" → 45.52');
 });

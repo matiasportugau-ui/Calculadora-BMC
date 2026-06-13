@@ -6,6 +6,12 @@
 # en GET /api/actualizar-precios-calculadora). NO crea credenciales nuevas.
 # Si la MATRIZ no está disponible, el script hace skip elegante (exit 0) salvo
 # que se pase --require-matriz.
+#
+# Seguridad (boundary de permisos): el job `catalog-diff` ejecuta código del PR
+# (`scripts/catalog-diff.mjs`) y por eso corre con `contents: read` SIN token de
+# escritura y con `persist-credentials: false` (el token no queda en el git config).
+# El comentario en el PR (que necesita `pull-requests: write`) vive en un job
+# separado (`comment`) que NO ejecuta código del PR: sólo consume el artifact.
 name: Catalog ↔ MATRIZ diff
 
 on:
@@ -26,19 +32,23 @@ on:
         required: false
         default: "0"
 
+# Default mínimo a nivel workflow; cada job eleva sólo lo que necesita.
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   catalog-diff:
     name: catalog-diff.mjs
     runs-on: ubuntu-latest
+    # Ejecuta código del PR → SIN token de escritura.
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # necesitamos el `constants.js` de la base para el gate de regresión
+          persist-credentials: false # no dejar el token en el git config (lo lee el código del PR)
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -84,8 +94,31 @@ jobs:
           path: catalog-diff-report.md
           if-no-files-found: ignore
 
+      # PR: falla sólo ante regresiones nuevas vs base. Cron/dispatch: ante cualquier S1.
+      - name: Fail on regression / S1
+        if: steps.diff.outputs.exit_code != '0'
+        run: |
+          echo "::error::catalog-diff: el PR introduce regresiones S1 (o, en cron, hay S1 absolutos). Ver el reporte/artifact."
+          exit 1
+
+  comment:
+    name: PR comment
+    needs: catalog-diff
+    # Corre siempre (incluso si el diff falló) para postear el reporte, sólo en PRs.
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # Este job NO ejecuta código del PR: sólo baja el artifact y postea el comentario.
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download report artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true # puede no existir si la MATRIZ no estaba disponible
+        with:
+          name: catalog-diff-report
+
       - name: Upsert PR comment
-        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -111,10 +144,3 @@ jobs:
             } else {
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
-
-      # PR: falla sólo ante regresiones nuevas vs base. Cron/dispatch: ante cualquier S1.
-      - name: Fail on regression / S1
-        if: steps.diff.outputs.exit_code != '0'
-        run: |
-          echo "::error::catalog-diff: el PR introduce regresiones S1 (o, en cron, hay S1 absolutos). Ver el reporte/artifact."
-          exit 1
