@@ -142,6 +142,7 @@ group("AGENT_TOOLS surface", () => {
     "traktime_month_report",
     "traktime_billable_report",
     "traktime_suggest_entry",
+    "traktime_activity_today",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);

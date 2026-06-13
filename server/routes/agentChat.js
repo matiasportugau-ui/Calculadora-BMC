@@ -178,6 +178,7 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "traktime_month_report",
   "traktime_billable_report",
   "traktime_suggest_entry",
+  "traktime_activity_today",
 ]);
 
 /** Extract a Bearer token from a request's Authorization header, or "". */

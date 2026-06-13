@@ -32,6 +32,7 @@ import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import createWaRouter from "./routes/wa.js";
 import createTraktimeRouter from "./routes/traktime.js";
+import createActivityRouter from "./routes/activity.js";
 import { createQuotesRouter } from "./routes/quotes.js";
 import * as waConfigModule from "./lib/waConfig.js";
 const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
@@ -949,6 +950,7 @@ app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
 app.use(createTraktimeRouter(config, logger));
+app.use(createActivityRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";
