@@ -80,6 +80,25 @@ async function addAuthCookie(context: BrowserContext) {
   return true;
 }
 
+/**
+ * Sustituye segmentos de path que parezcan identificadores reales (teléfonos,
+ * ids largos, emails) por `:id`. Defensa anti-PII para los endpoints REST que
+ * incrustan datos del cliente en la ruta (p. ej. /api/wa/conversations/598…).
+ */
+function sanitizePath(pathname: string): string {
+  return pathname
+    .split("/")
+    .map((seg) =>
+      seg.includes("@") ||
+      /^\+?\d{4,}$/.test(seg) || // teléfonos / ids numéricos
+      /^[0-9a-f]{16,}$/i.test(seg) || // hashes / tokens hex
+      /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(seg) // UUID
+        ? ":id"
+        : seg,
+    )
+    .join("/");
+}
+
 /** Registra los endpoints (api/calc/auth/webhooks) que llama un módulo. */
 function recordNetwork(page: Page, moduleId: string) {
   if (!moduleEndpoints[moduleId]) moduleEndpoints[moduleId] = new Set();
@@ -87,7 +106,7 @@ function recordNetwork(page: Page, moduleId: string) {
     try {
       const u = new URL(req.url());
       if (/^\/(api|calc|auth|webhooks)\b/.test(u.pathname)) {
-        moduleEndpoints[moduleId].add(`${req.method()} ${u.pathname}`);
+        moduleEndpoints[moduleId].add(`${req.method()} ${sanitizePath(u.pathname)}`);
       }
     } catch {
       /* ignore */
@@ -432,9 +451,13 @@ async function tourModule(page: Page, mod: ModuleDef) {
     const looksGated =
       !COOKIE ||
       /iniciar sesión|inicia sesión|acceso restringido|no autorizado|403|inicia con google/i.test(bodyText);
-    if (looksGated && !COOKIE) {
+    if (looksGated) {
+      // Marcar not-observed también si el cookie está presente pero inválido/expirado
+      // (si no, se commitearía una captura del muro de login como si fuera contenido real).
       status = "not-observed";
-      note = "[NOT OBSERVED — requiere auth] sin TOUR_SESSION_COOKIE";
+      note = COOKIE
+        ? "[NOT OBSERVED — sesión inválida/expirada] el SPA muestra el muro de login pese al cookie"
+        : "[NOT OBSERVED — requiere auth] sin TOUR_SESSION_COOKIE";
     }
   } catch (err) {
     status = "error";
@@ -519,6 +542,7 @@ test("Wolfboard — hub (desktop + mobile)", async ({ browser }) => {
 /** Panelín — avatar IA 3D. No tiene ruta propia en App.jsx; se descubre vivo. */
 async function discoverPanelin(page: Page) {
   const mod = "04-panelin";
+  recordNetwork(page, mod);
   const trigger = page
     .getByRole("button", { name: /panel[ií]n|asistente|chat/i })
     .or(page.locator("[data-tutorial-id*='panelin'], [aria-label*='Panelín' i]"))
@@ -526,14 +550,16 @@ async function discoverPanelin(page: Page) {
   if (await trigger.isVisible({ timeout: 4_000 }).catch(() => false)) {
     await trigger.click({ force: true }).catch(() => {});
     await waitForCanvasPaint(page, 2500);
-    await snap(page, { module: mod, screen: "avatar", n: 1, pii: false, note: "Avatar Panelín abierto desde el hub" });
+    // Se abre desde el hub autenticado y puede mostrar nombre del operador o
+    // fragmentos de conversación → tratar como PII (docs-private, no commitear).
+    await snap(page, { module: mod, screen: "avatar", n: 1, pii: true, note: "Avatar Panelín abierto desde el hub" });
   } else {
     shots.push({
       module: mod,
       screen: "avatar",
       file: "(no capturado)",
       committed: false,
-      pii: false,
+      pii: true,
       status: "not-observed",
       note: "[NOT OBSERVED] No se encontró trigger de Panelín en /hub; sin ruta propia en App.jsx",
       viewport: `${DESKTOP.width}x${DESKTOP.height}`,

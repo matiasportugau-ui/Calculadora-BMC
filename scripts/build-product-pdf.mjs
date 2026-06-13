@@ -30,7 +30,8 @@ const imgRe = /!\[[^\]]*\]\(([^)]+)\)/g;
 const broken = [];
 let m;
 while ((m = imgRe.exec(mdRaw))) {
-  const ref = m[1].trim();
+  // Quitar título opcional: ![alt](ruta "título") / ![alt](ruta 'título').
+  const ref = m[1].replace(/\s+["'].*["']\s*$/, "").trim();
   if (/^https?:/i.test(ref)) continue;
   const abs = resolve(DOC_DIR, ref);
   if (!existsSync(abs)) broken.push(ref);
