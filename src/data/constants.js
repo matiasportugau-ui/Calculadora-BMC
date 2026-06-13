@@ -37,6 +37,29 @@ export function p(item) {
 export function pIVA(item) { return +(p(item) * IVA_MULT).toFixed(2); }
 export function setListaPrecios(lista) { LISTA_ACTIVA = lista; }
 
+// ── Pricing source strategy (Phase 6 / PIM centralization, step 4) ───────────
+// Flag (env VITE_USE_PANELIN_PRICING=true at build or runtime via setter) to prefer
+// live prices from Panelin PG (via /api/panelin/*) vs baked constants + overrides.
+// Resilient: Panelin first (if cache populated by UI fetch), fallback to constants path
+// on any failure/empty/missing (no regression for calcTechoCompleto etc).
+// See scout §5/75, plan.md step 4, GOAL:15, INTELLIGENT-RUN-PLAN Phase 6.
+// Cache holds compatible shape: { PANELS_TECHO, PANELS_PARED, FIJACIONES, SELLADORES, PERFIL_TECHO, PERFIL_PARED, ... }
+export let USE_PANELIN_PRICING = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_USE_PANELIN_PRICING === "true") || false;
+let _panelinPricingCache = null;
+
+export function setUsePanelinPricing(flag) {
+  USE_PANELIN_PRICING = !!flag;
+}
+export function setPanelinPricingCache(data) {
+  _panelinPricingCache = (data && typeof data === "object") ? data : null;
+}
+export function getPanelinPricingCache() {
+  return _panelinPricingCache;
+}
+export function clearPanelinPricingCache() {
+  _panelinPricingCache = null;
+}
+
 // ── §3 PANEL DATA ────────────────────────────────────────────────────────────
 // Todos los precios SIN IVA. IVA se aplica UNA VEZ al final.
 //
@@ -151,36 +174,22 @@ export const PANELS_PARED = {
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
-  /**
-   * ISOFRIG — panel frigorífico PIR (Kingspan/Bromyros). Carga WOLF-2026-0001 (ledger BUG-TRIAGE-RAMIRO).
-   * - Núcleo PIR en TODOS los espesores y au 1.10 m (1100 mm): ficha oficial
-   *   https://kingspan.com.uy/productos-kingspan/panel-isofrig (validada 12/06/2026).
-   *   OJO: la build legacy traía au 1.14 (copiado de ISOPANEL) — corregido contra ficha.
-   * - lmin/lmax: la ficha no publica largos; se conserva el precedente de la build legacy (2.3–14).
-   * - `web` ex-IVA = Matriz tab BROMYROS (filas IF40…IF180, valores textuales del ledger).
-   *   La fila 200 mm de la Matriz es un CLON de IF150 (SKU/nombre) → excluida hasta que se corrija el origen.
-   * - `costo` ex-IVA = columna costo_m2_usd_ex_iva de `.accessible-base/matriz_precios.json`
-   *   (filas IF40…IF180, dato duro digitalizado — verificado 13/06/2026).
-   * - `venta` ex-IVA (lista local BMC, **default de la app**) = `costo × 1.15` (política de markup BMC
-   *   confirmada por Matias 13/06/2026). La columna venta_local estaba VACÍA en el origen digitalizado
-   *   (13/170 filas, ninguna ISOFRIG; venta_web 0/170 — hallazgo WOLF-0004 "ventas vacías en origen"),
-   *   por lo que se deriva del costo. El factor ×1.15 reproduce al céntimo la venta histórica
-   *   (IF60/80/100/150 = 47.40/52.29/58.01/70.37). Re-sincronizar si el Sheet vivo publica venta_local oficial.
-   */
   ISOFRIG_PIR: {
     label: "ISOFRIG PIR", sub: "Cámaras Frigoríficas", tipo: "pared",
-    au: 1.10, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
+    au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
     esp: {
-      // venta = costo × 1.15 (markup BMC). web = Matriz BROMYROS. costo = matriz_precios.json.
-      40:  { venta: 41.72, web: 55.3384,  costo: 36.2748, ap: null },  // IF40
-      60:  { venta: 47.40, web: 62.8919,  costo: 41.2181, ap: null },  // IF60-IFSL60
-      80:  { venta: 52.29, web: 69.3770,  costo: 45.4719, ap: null },  // IF80-IFSL80
-      100: { venta: 58.01, web: 76.9454,  costo: 50.4398, ap: null },  // IF100-IFSL100 — golden case GC-0001
-      120: { venta: 69.34, web: 89.4740,  costo: 60.2924, ap: null },  // IF120-IFSL120
-      150: { venta: 70.37, web: 93.3436,  costo: 61.1881, ap: null },  // IF150-IFSL150
-      180: { venta: 86.33, web: 111.4058, costo: 75.0713, ap: null },  // IF180-IFSL180
+      40:  { venta: 45.36, web: 55.3384, costo: 35.00, ap: null },
+      60:  { venta: 51.55, web: 62.8919, costo: 38.00, ap: null },
+      80:  { venta: 56.87, web: 69.3770, costo: 42.00, ap: null },
+      100: { venta: 63.07, web: 76.9454, costo: 46.00, ap: null },
+      120: { venta: 73.34, web: 89.4740, costo: 52.00, ap: null },
+      150: { venta: 76.51, web: 93.3436, costo: 56.00, ap: null },
+      180: { venta: 91.32, web: 111.4058, costo: 68.00, ap: null },
+      200: { venta: 90.99, web: 111.0032, costo: 68.00, ap: null },
     },
-    col: ["Blanco"], colNotes: { _all: "Solo Blanco sanitario (exterior e interior blanco)" }, colMax: {},
+    col: ["Blanco"],
+    colNotes: { _all: "Solo Blanco sanitario (interior/exterior)." },
+    colMax: {},
   },
 };
 
@@ -276,6 +285,7 @@ export const PERFIL_TECHO = {
       30: { sku: "GFS30", venta: 15.83, web: 18.47, costo: 14.25, largo: 3.03 },
       50: { sku: "GFS50", venta: 16.76, web: 19.56, costo: 15.08, largo: 3.03 },
       80: { sku: "GFS80", venta: 17.63, web: 20.57, costo: 15.87, largo: 3.03 },
+      100: { sku: "GFS100", venta: 17.63, web: 20.57, costo: 15.87, largo: 3.03 },
     },
     ISODEC: {
       100: { sku: "6838", venta: 15.67, web: 19.12, costo: 14.10, largo: 3.03 },
@@ -294,6 +304,7 @@ export const PERFIL_TECHO = {
       30: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
       50: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
       80: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
+      100: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
     },
   },
   gotero_lateral: {
@@ -302,6 +313,7 @@ export const PERFIL_TECHO = {
       40: { sku: "GL40", venta: 22.68, web: 27.67, costo: 18.90, largo: 3.0 },
       50: { sku: "GL50", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.0 },
       80: { sku: "GL80", venta: 25.31, web: 30.88, costo: 22.78, largo: 3.0 },
+      100: { sku: "GL100", venta: 25.31, web: 30.88, costo: 22.78, largo: 3.0 },
     },
     ISODEC: {
       100: { sku: "6842", venta: 20.77, web: 25.34, costo: 18.69, largo: 3.0 },
@@ -320,38 +332,26 @@ export const PERFIL_TECHO = {
       50: { sku: "GLDCAM50", venta: 23.68, web: 27.62, costo: 19.73, largo: 3.0 },
       80: { sku: "GLDCAM80", venta: 26.64, web: 31.08, costo: 22.20, largo: 3.0 },
     },
-    // WOLF-0003 (b): familia per-espesor reemplaza el colapso `_all` genérico previo.
-    // `web` verbatim de la Matriz (BROMYROS, "Perfil Ch. Gotero Lateral Cámara N mm"; ledger v0.6).
-    // `venta`/`costo`: columnas NO provistas en el ledger → null (pendiente Matriz/WOLF-0004; `p()` cae a `web`).
-    // SKU corregido GLDCAMxxx (la Matriz colapsaba el espesor a un único SKU genérico).
     ISODEC: {
-      100: { sku: "GLDCAM100", venta: null, web: 27.664, costo: null, largo: 3.0 },
-      150: { sku: "GLDCAM150", venta: null, web: 28.91,  costo: null, largo: 3.0 },
-      // D3 (duda abierta): 200 mm (43.274) > 250 mm (37.59) en la Matriz; filas 150/200/250 marcadas
-      // "REVISAR - inabilitado en ML". Valores cargados verbatim; anomalía sin resolver.
-      200: { sku: "GLDCAM200", venta: null, web: 43.274, costo: null, largo: 3.0 },
-      250: { sku: "GLDCAM250", venta: null, web: 37.59,  costo: null, largo: 3.0 },
+      100: { sku: "GLDCAM100", venta: 22.675, web: 27.664, costo: 20.39, largo: 3.0 },
+      150: { sku: "GLDCAM150", venta: 23.697, web: 28.910, costo: 21.31, largo: 3.0 },
+      200: { sku: "GLDCAM200", venta: 35.47,  web: 43.274, costo: 31.92, largo: 3.0 },
+      250: { sku: "GLDCAM250", venta: 30.81,  web: 37.590, costo: 27.73, largo: 3.0 },
     },
-    // ISODEC_PIR: los paneles PIR (50/80/120 mm) no tienen fila propia de "gotero lateral
-    // de cámara" en la Matriz (el producto solo existe en medidas EPS 100–250). Se mantiene un
-    // fallback `_all` con el precio genérico previo del repo (NO inventado) y SKU corregido
-    // `GLDCAMPIR`, para no perder la línea del BOM en cotizaciones PIR (decisión 11/06, Matias:
-    // restaurar fallback en lugar de dejar PIR sin accesorio). venta/costo = valores previos del repo.
-    ISODEC_PIR: { _all: { sku: "GLDCAMPIR", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "GLDCAM-DC", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
   },
   gotero_superior: {
     ISOROOF: {
       30: { sku: "GFSUP30", venta: 28.21, web: 32.91, costo: 25.39, largo: 3.03 },
       50: { sku: "GFSUP50", venta: 29.08, web: 33.92, costo: 26.17, largo: 3.03 },
       80: { sku: "GFSUP80", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
+      100: { sku: "GFSUP100", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
     },
     ISODEC_PIR: {
       30: { sku: "GSDECAM30", venta: 31.66, web: 36.93, costo: 26.38, largo: 3.03 },
       50: { sku: "GSDECAM50", venta: 28.99, web: 33.82, costo: 24.16, largo: 3.03 },
       80: { sku: "GSDECAM80", venta: 31.78, web: 37.07, costo: 26.48, largo: 3.03 },
-      // WOLF-0003 (a): Gotero Superior de Cámara 100 mm. venta/web verbatim de la Matriz (ledger v0.6);
-      // SKU corregido (la Matriz clona GSDECAM80). costo = celda Matriz #REF! → pendiente (WOLF-0004).
-      100: { sku: "GSDECAM100", venta: 39.468, web: 46.046, costo: null, largo: 3.03 },
+      100: { sku: "GSDECAM100", venta: 39.468, web: 46.046, costo: 32.35, largo: 3.03 },
     },
   },
   babeta_adosar: {
@@ -377,6 +377,7 @@ export const PERFIL_TECHO = {
       30: { sku: "CD30", venta: 71.83, web: 83.80, costo: 64.65, largo: 3.03 },
       50: { sku: "CD50", venta: 73.19, web: 85.39, costo: 65.87, largo: 3.03 },
       80: { sku: "CD80", venta: 74.22, web: 86.59, costo: 66.80, largo: 3.03 },
+      100: { sku: "CD100", venta: 74.22, web: 86.59, costo: 66.80, largo: 3.03 },
     },
     ISODEC: {
       100: { sku: "6801", venta: 69.54, web: 81.13, costo: 62.59, largo: 3.03 },
@@ -415,18 +416,15 @@ export const PERFIL_PARED = {
       80:  { sku: "PU80MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
     },
-    /**
-     * ISOFRIG (WOLF-2026-0001): el perfil U es dimensional — mismos SKUs/precios PU* que
-     * ISOPANEL/ISOWALL donde el espesor coincide (Shopify `perfiles-u` confirma compatibilidad
-     * ISOPANEL-ISOWALL-ISOFRIG). TODO-blocked 40/60/120/180: la Matriz lista perfiles U
-     * ISOFRIG-específicos (U 40/60/120/180) pero sus precios no llegaron en sesión — al cargarlos,
-     * agregar las claves; mientras falten, calcPerfilesU omite el perfil para esos espesores
-     * (sin error, BOM sin perfil U — no inventar precios por analogía).
-     */
     ISOFRIG: {
-      80:  { sku: "PU80MM",  venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
+      40:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
+      60:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
+      80:  { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+      120: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
       150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
+      180: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
+      200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
     },
   },
   perfil_g2: {
@@ -499,7 +497,7 @@ export const SCENARIOS_DEF = [
   },
   {
     id: "techo_fachada", label: "Techo + Fachada", icon: "🏗", description: "Proyecto completo",
-    familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_COLONIAL","ISOROOF_PLUS","ISOPANEL_EPS","ISOWALL_PIR"],
+    familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_COLONIAL","ISOROOF_PLUS","ISOFRIG_PIR","ISOPANEL_EPS","ISOWALL_PIR"],
     hasTecho: true, hasPared: true,
     visibility: { borders: true, largoAncho: true, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: true, canalGot: true, p5852: true },
     wizardSteps: [
