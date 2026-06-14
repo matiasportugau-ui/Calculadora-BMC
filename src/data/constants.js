@@ -174,21 +174,36 @@ export const PANELS_PARED = {
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
+  /**
+   * ISOFRIG — panel frigorífico PIR (Kingspan/Bromyros). Carga WOLF-2026-0001 (ledger BUG-TRIAGE-RAMIRO).
+   * - Núcleo PIR en TODOS los espesores y au 1.10 m (1100 mm): ficha oficial
+   *   https://kingspan.com.uy/productos-kingspan/panel-isofrig (validada 12/06/2026).
+   *   OJO: la build legacy traía au 1.14 (copiado de ISOPANEL) — corregido contra ficha.
+   * - lmin/lmax: la ficha no publica largos; se conserva el precedente de la build legacy (2.3–14).
+   * - `web` ex-IVA = Matriz tab BROMYROS (filas IF40…IF180, valores textuales del ledger).
+   *   La fila 200 mm de la Matriz es un CLON de IF150 (SKU/nombre) → excluida hasta que se corrija el origen.
+   * - `costo` ex-IVA = columna costo_m2_usd_ex_iva de `.accessible-base/matriz_precios.json`
+   *   (filas IF40…IF180, dato duro digitalizado — verificado 13/06/2026).
+   * - `venta` ex-IVA (lista local BMC, default de la app) = `costo × 1.15` (política de markup BMC
+   *   confirmada por Matias 13/06/2026). La columna venta_local estaba VACÍA en el origen digitalizado
+   *   (13/170 filas, ninguna ISOFRIG; venta_web 0/170 — hallazgo WOLF-0004 "ventas vacías en origen"),
+   *   por lo que se deriva del costo. Re-sincronizar si el Sheet vivo publica venta_local oficial.
+   */
   ISOFRIG_PIR: {
     label: "ISOFRIG PIR", sub: "Cámaras Frigoríficas", tipo: "pared",
-    au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
+    au: 1.10, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
     esp: {
-      40:  { venta: 45.36, web: 55.3384, costo: 35.00, ap: null },
-      60:  { venta: 51.55, web: 62.8919, costo: 38.00, ap: null },
-      80:  { venta: 56.87, web: 69.3770, costo: 42.00, ap: null },
-      100: { venta: 63.07, web: 76.9454, costo: 46.00, ap: null },
-      120: { venta: 73.34, web: 89.4740, costo: 52.00, ap: null },
-      150: { venta: 76.51, web: 93.3436, costo: 56.00, ap: null },
-      180: { venta: 91.32, web: 111.4058, costo: 68.00, ap: null },
-      200: { venta: 90.99, web: 111.0032, costo: 68.00, ap: null },
+      // venta = costo × 1.15 (markup BMC). web = Matriz BROMYROS. costo = matriz_precios.json.
+      40:  { venta: 41.72, web: 55.3384,  costo: 36.2748, ap: null },
+      60:  { venta: 47.40, web: 62.8919,  costo: 41.2181, ap: null },
+      80:  { venta: 52.29, web: 69.3770,  costo: 45.4719, ap: null },
+      100: { venta: 58.01, web: 76.9454,  costo: 50.4398, ap: null },
+      120: { venta: 69.34, web: 89.4740,  costo: 60.2924, ap: null },
+      150: { venta: 70.37, web: 93.3436,  costo: 61.1881, ap: null },
+      180: { venta: 86.33, web: 111.4058, costo: 75.0713, ap: null },
     },
     col: ["Blanco"],
-    colNotes: { _all: "Solo Blanco sanitario (interior/exterior)." },
+    colNotes: { _all: "Solo Blanco sanitario (exterior e interior blanco)" },
     colMax: {},
   },
 };
@@ -338,7 +353,7 @@ export const PERFIL_TECHO = {
       200: { sku: "GLDCAM200", venta: 35.47,  web: 43.274, costo: 31.92, largo: 3.0 },
       250: { sku: "GLDCAM250", venta: 30.81,  web: 37.590, costo: 27.73, largo: 3.0 },
     },
-    ISODEC_PIR: { _all: { sku: "GLDCAM-DC", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "GLDCAMPIR", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
   },
   gotero_superior: {
     ISOROOF: {
@@ -416,15 +431,15 @@ export const PERFIL_PARED = {
       80:  { sku: "PU80MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
     },
+    /**
+     * ISOFRIG (WOLF-2026-0001): el perfil U es dimensional — mismos SKUs/precios PU*
+     * que ISOPANEL/ISOWALL donde el espesor coincide. 40/60/120/180 quedan omitidos
+     * hasta que la Matriz publique precios propios; no inventar precios por analogía.
+     */
     ISOFRIG: {
-      40:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
-      60:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
-      80:  { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+      80:  { sku: "PU80MM",  venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
-      120: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
       150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
-      180: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
-      200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
     },
   },
   perfil_g2: {
