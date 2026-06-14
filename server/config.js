@@ -184,6 +184,8 @@ export const config = {
    */
   traktimeAwEnabled: bool(process.env.TRAKTIME_AW_ENABLED, false),
   traktimeAwBaseUrl: process.env.TRAKTIME_AW_BASE_URL || "http://localhost:5600",
+  todoistApiToken: process.env.TODOIST_API_TOKEN || "",
+  todoistBmcProjectId: process.env.TODOIST_BMC_PROJECT_ID || "6grV9QhFpvPJ79hx",
   /** WA Cockpit (F2 enricher) — flags */
   waEnricherEnabled: bool(process.env.WA_ENRICHER_ENABLED, false),
   waEnricherIntervalMs: Number(process.env.WA_ENRICHER_INTERVAL_MS || 8000),
