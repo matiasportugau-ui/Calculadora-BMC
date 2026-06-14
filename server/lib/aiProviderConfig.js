@@ -91,6 +91,50 @@ export const GATEWAY_MODEL_SLUGS = {
 // Preferred fallback order (best Spanish + tool use first)
 export const DEFAULT_PROVIDER_ORDER = ["claude", "grok", "gemini", "openai"];
 
+// ─── Reasoner vs Executor specialization (inspired by Gemini Robotics ER/VLA split) ──
+// The "reasoner" (high-level planner, spatial/long-horizon decomposition, success estimation,
+// tool selection decisions) can benefit from different model characteristics than the
+// "executor" (reliable direct action via AGENT_TOOLS: calc, PDF, CRM writes, etc.).
+// Current recommendation (see GEMINI.md Architecture Analysis): prefer Gemini (or future
+// gemini-robotics-er-* previews when generally available) for reasoner steps where spatial
+// or cost characteristics help; keep strong Claude for interactive executor/tool loops
+// where Spanish domain reliability and tool-following matter most.
+//
+// These helpers are intentionally lightweight. They do not change the main interactive
+// agentChat tool loop (still Claude-primary for stability). They mainly help presupOrchestrator,
+// planInterpreter, and future dedicated reasoner paths.
+
+export const REASONER_PREFERRED_PROVIDERS = ["gemini", "claude", "grok", "openai"];
+export const EXECUTOR_PREFERRED_PROVIDERS = ["claude", "grok", "gemini", "openai"];
+
+/**
+ * Returns a provider chain suitable for high-level reasoning / planning steps
+ * (ER-like: decomposition, spatial critique, success estimation, tool selection).
+ * Does not guarantee the provider supports the full rich tool loop.
+ */
+export function getReasonerProviderChain(preferFast = false) {
+  const available = getAvailableProviders();
+  const base = [...REASONER_PREFERRED_PROVIDERS];
+  return base.filter((p) => available.includes(p));
+}
+
+/**
+ * Returns a provider chain suitable for reliable direct execution / action steps
+ * (VLA-like: calling AGENT_TOOLS, calc, PDF, CRM writes with high fidelity).
+ */
+export function getExecutorProviderChain(preferFast = false) {
+  const available = getAvailableProviders();
+  const base = [...EXECUTOR_PREFERRED_PROVIDERS];
+  return base.filter((p) => available.includes(p));
+}
+
+// Note on specialized models (Gemini Robotics-ER previews):
+// As of mid-2026, models such as "gemini-robotics-er-1.6-preview" are exposed via the
+// standard Gemini API surface for developers building high-level reasoning layers.
+// They can be added to the gemini ALLOWED_MODELS set (and used via resolveModel) once
+// access and behavior are validated for our use cases (primarily as reasoner/planner).
+// Do not add them unconditionally without testing — treat as opt-in for planning flows.
+
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
 /**

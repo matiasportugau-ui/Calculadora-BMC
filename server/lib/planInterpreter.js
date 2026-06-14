@@ -26,6 +26,11 @@ REGLAS:
 - Si no podés determinar una dimensión con seguridad, dejá null
 - Respondé SOLO con el JSON válido, sin texto adicional antes ni después
 
+ESTILO DE RAZONAMIENTO ESPACIAL (inspirado en técnicas agentic de modelos ER):
+- Procedé paso a paso cuando la imagen/DXF sea ambiguo: describe lo que ves, haz "zoom mental" en cotas críticas, estima proporciones si es necesario, valida consistencia entre vistas o elementos.
+- Reportá confianza explícita (alta/media/baja) y cualquier warning o gap (ej: "cota de cumbrera no visible — se asume X").
+- Nunca inventes dimensiones; mejor marcar gap que alucinar un número.
+
 ESQUEMA JSON esperado:
 ${VISION_SCHEMA}`;
 
