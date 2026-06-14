@@ -9,6 +9,17 @@
 
 import express from "express";
 
+// Keep this contract suite offline/deterministic even when local .env has live AI keys.
+for (const key of [
+  "ANTHROPIC_API_KEY",
+  "OPENAI_API_KEY",
+  "GROK_API_KEY",
+  "GEMINI_API_KEY",
+  "AI_GATEWAY_API_KEY",
+]) {
+  process.env[key] = "";
+}
+
 let passed = 0;
 let failed = 0;
 
@@ -103,8 +114,9 @@ async function run() {
     }
   }
 
-  // ── Case 3: agentCore path + bogus key → 503 with details array ────────
-  // Verifies the lib delegation path catches and surfaces err.errors as details.
+  // ── Case 3: agentCore path + unsupported provider → 503 with details ──
+  // Verifies the lib delegation path catches and surfaces err.errors as details
+  // without making a live provider SDK call.
   {
     const original = process.env.SUGGEST_RESPONSE_USE_AGENT_CORE;
     process.env.SUGGEST_RESPONSE_USE_AGENT_CORE = "true";
@@ -128,9 +140,10 @@ async function run() {
           consulta: "Plazo entrega?",
           origen: "MLU123",
           cliente: "TestCli",
+          provider: "__test_missing_provider__",
         });
         assert(
-          "agentCore path with bogus key → 503 + details array",
+          "agentCore path with unsupported provider → 503 + details array",
           status === 503 &&
             json?.ok === false &&
             Array.isArray(json?.details) &&
@@ -169,6 +182,7 @@ async function run() {
           consulta: "Plazo?",
           origen: "MLU123",
           cliente: "TestCli",
+          provider: "__test_missing_provider__",
         });
         assert(
           "legacy path (flag=false) → 503 + details array, no model field",
