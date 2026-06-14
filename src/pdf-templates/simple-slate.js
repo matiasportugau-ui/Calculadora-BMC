@@ -17,7 +17,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 .hdr::after{content:'';position:absolute;bottom:-40px;left:40%;width:160px;height:160px;border-radius:50%;background:rgba(14,165,233,.05)}
 .hdr-row{display:flex;justify-content:space-between;align-items:center;z-index:1;position:relative}
 .hdr-left{display:flex;align-items:center;gap:10px}
-.hdr-mark{width:32px;height:32px;background:linear-gradient(135deg,#0EA5E9,#0284C7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16pt;font-weight:900;color:#fff;box-shadow:0 2px 8px rgba(14,165,233,.4)}
+.hdr-logo{height:28px;width:auto;filter:brightness(0) invert(1);opacity:0.92;flex-shrink:0}
 .hdr-name{font-size:12pt;font-weight:800;color:#fff;letter-spacing:.02em}
 .hdr-sub{font-size:6pt;color:rgba(255,255,255,.45);letter-spacing:.15em;text-transform:uppercase;margin-top:1px}
 .hdr-right{text-align:right;z-index:1}
@@ -101,7 +101,7 @@ export function render(q) {
   <div class="hdr">
     <div class="hdr-row">
       <div class="hdr-left">
-        <div class="hdr-mark">B</div>
+        <img src="/bmc-pdf/assets/bmc-logo.png" alt="BMC Uruguay" class="hdr-logo" />
         <div><div class="hdr-name">BMC Uruguay</div><div class="hdr-sub">Metalog SAS</div></div>
       </div>
       <div class="hdr-right">

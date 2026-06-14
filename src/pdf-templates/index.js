@@ -3,15 +3,17 @@
 // Each template receives a QuotationModel and returns a complete HTML string.
 
 export const LAYOUT_OPTIONS = [
-  // Modern lightweight family — strongly recommended for production quotes
-  { id: 'simple-carbon',     label: 'Simple — Carbon', recommended: true },
-  { id: 'simple',            label: 'Presupuesto Simple' },
+  // Modern lightweight family — strongly recommended for production quotes to clients.
+  // All "Simple *" use the official BMC brand identity (navy #003366 from COMPANY.brandColor + website).
+  // "Presupuesto Simple" (plain) is the most faithful to bmcuruguay.com.uy visual language.
+  { id: 'simple',            label: 'Presupuesto Simple', recommended: true },
+  { id: 'simple-carbon',     label: 'Simple — Carbon (premium dark)' },
   { id: 'simple-sage',       label: 'Simple — Sage' },
   { id: 'simple-slate',      label: 'Simple — Slate' },
   { id: 'simple-warm',       label: 'Simple — Warm' },
   { id: 'simple-ocean',      label: 'Simple — Ocean' },
 
-  // Legacy / heavy technical styles (kept for compatibility but not recommended)
+  // Legacy / heavy technical styles (kept for compatibility). The "BMC PDF — Blueprint Técnico" is close to brand navy + technical detail.
   { id: 'bmc-pdf',           label: 'BMC PDF — Blueprint Técnico', legacy: true },
   { id: 'soft-modern',       label: 'E — Soft Modern', legacy: true },
   { id: 'executive-dark',    label: 'A — Executive Dark', legacy: true },
