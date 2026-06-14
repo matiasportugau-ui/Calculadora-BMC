@@ -8,7 +8,7 @@
   3. Cómo funciona el *tool calling* (agentic) en el contexto de robótica / ER.
 - **Analizar la arquitectura ideal para nuestro proyecto** (Panelin agent, presup flows, spatial reasoning en planos de techo, multi-canal, evals y gates humanos) y justificar si la dirección más obvia (paridad completa de tool calling en todos los providers) es la correcta, o si debemos preferir otro diseño.
 
-Fecha de investigación principal: junio 2026. Todas las afirmaciones factuales de modelos se respaldan con búsquedas web en fuentes oficiales (DeepMind, Google AI for Developers, arXiv, análisis técnicos) y se citan inline.
+Fecha de investigación principal: junio 2026. Todas las afirmaciones factuales de modelos se respaldan con búsquedas web en fuentes oficiales (DeepMind, Google AI for Developers, arXiv, análisis técnicos) y se citan inline (ver sección Referencias al final del documento).
 
 ---
 
@@ -18,7 +18,7 @@ Google DeepMind ha construido una familia de modelos especializados que pueden t
 
 - **Gemini Robotics 1.5 (VLA — Vision-Language-Action)**: El modelo central de acción. Recibe información visual (lo que "ve" el robot) + comandos en lenguaje natural y los traduce directamente a comandos de motor/acción. Soporta "pensar antes de actuar" (interleaved natural language reasoning traces) para tareas multi-paso complejas. Aprendizaje cross-embodiment: lo que aprende en un tipo de robot (brazos estáticos, humanoides como Apollo, plataformas bi-brazo) ayuda en otros.
 - **Gemini Robotics-ER 1.6 (Embodied Reasoning)**: Un VLM de alto nivel enfocado en razonamiento espacial, lógica y planificación de largo horizonte ("limpiar la cocina"). No controla motores directamente. Actúa como el "cerebro" planificador. Puede descomponer tareas, entender relaciones 3D entre múltiples cámaras, estimar éxito/fallo de acciones, y —críticamente— **llamar herramientas de forma agentic** de forma nativa.
-- **Gemini Robotics On-Device**: Versión optimizada para correr localmente en hardware robótico. Baja latencia, offline. Primera del familia explícitamente abierta a fine-tuning por desarrolladores con tan solo 50-100 demostraciones humanas.
+- **Gemini Robotics On-Device**: Versión optimizada para correr localmente en hardware robótico. Baja latencia, offline. Primera del familia explícitamente abierta a fine-tuning por desarrolladores con tan solo 50-100 demostraciones humanas [3][4].
 
 La filosofía central: sistemas jerárquicos (ER como planner/reasoner de alto nivel que usa herramientas + VLA como executor preciso) en lugar de un modelo monolítico, con fuerte énfasis en generalización y composabilidad para desarrolladores.
 
@@ -30,7 +30,7 @@ La filosofía central: sistemas jerárquicos (ER como planner/reasoner de alto n
 
 Gemini Robotics On-Device es un VLA optimizado para ejecución local en el robot. Su gran diferenciador es que es el primero de la familia que Google pone a disposición de desarrolladores para fine-tuning/adaptación rápida.
 
-- Se puede especializar en tareas nuevas o entornos con tan solo **50-100 demostraciones humanas**.
+- Se puede especializar en tareas nuevas o entornos con tan solo **50-100 demostraciones humanas** [3][4].
 - Incluye SDK (con soporte para simulador MuJoCo) para iterar de forma segura antes de llevar al hardware real.
 - Beneficios: latencia cero de red, operación offline, privacidad, y adaptación rápida a "novedades" (nuevos objetos, nuevas geometrías, nuevos robots) sin re-entrenar todo el modelo base desde cero.
 - Estado (2026): Private preview / trusted tester program.
@@ -50,7 +50,7 @@ Esta es la separación conceptual más importante de la familia y la que más va
 - **ER / VLM de alto nivel (1.6)**: El "cerebro" planificador y razonador embodied.
   - Especializado en: comprensión espacial avanzada (2D/3D coordinates, relaciones entre múltiples vistas, oclusión), descomposición de tareas de largo horizonte, estimación de progreso y éxito/fallo, razonamiento físico.
   - **No genera acciones de bajo nivel directamente**. Produce planes estructurados, coordenadas, criterios de éxito y **decide cuándo y cómo invocar herramientas** (o delegar a un VLA).
-  - Nueva capacidad destacada en 1.6: **instrument reading** (lectura precisa de gauges analógicos, niveles de fluidos, sight glasses) mediante un loop agentic de visión (zoom/crop + pointing + ejecución de código para estimar proporciones) + conocimiento del mundo físico. Desarrollado en colaboración con Boston Dynamics para inspección industrial en Spot y Atlas.
+  - Nueva capacidad destacada en 1.6: **instrument reading** (lectura precisa de gauges analógicos, niveles de fluidos, sight glasses) mediante un loop agentic de visión (zoom/crop + pointing + ejecución de código para estimar proporciones) + conocimiento del mundo físico. Desarrollado en colaboración con Boston Dynamics para inspección industrial en Spot y Atlas [2][5].
 
 **Por qué separar las capas (lección clave para nosotros):**
 - Permite usar el mejor modelo para cada trabajo (planificación de alto nivel + verificación vs ejecución precisa y confiable).
@@ -63,11 +63,11 @@ En Panelin ya tenemos una separación embrionaria muy similar (ver sección de A
 
 El aspecto más directamente accionable de la investigación para nuestro stack agentic actual:
 
-- ER 1.6 es **explícitamente agentic** en el sentido de que el modelo mismo decide invocar herramientas externas cuando necesita información, verificación o capacidades que no tiene internamente.
+- ER 1.6 es **explícitamente agentic** en el sentido de que el modelo mismo decide invocar herramientas externas cuando necesita información, verificación o capacidades que no tiene internamente [2][6].
 - Herramientas que puede llamar de forma nativa: Google Search (para datos faltantes), ejecución de código (para cálculos, estimaciones de proporciones, proporciones en gauges), funciones definidas por el usuario, y hand-off explícito a otros modelos (incluyendo VLAs).
 - El output del ER suele ser estructurado (planes paso a paso, coordenadas 2D/3D, estimaciones de éxito, warnings) para que un ejecutor (VLA, API de robot, o en nuestro caso el motor de cálculo + presup + CRM) lo consuma de forma confiable.
 - Ejemplo concreto de instrument reading (nueva en 1.6): el modelo no "adivina" la lectura de un gauge. Ejecuta un loop: detecta → hace zoom/agentic crop → pointing a marcas de escala → llama a code execution para estimar el valor + aplica conocimiento físico para interpretarlo → decide si es normal o requiere acción.
-- En la superficie de desarrolladores: mandás imágenes/video + prompt en lenguaje natural al Gemini API y recibís JSON espacial o planes. Vos proveés el "cuerpo" (tu controlador existente o nuestro loop de tools + calcLoopbackClient).
+- En la superficie de desarrolladores: mandás imágenes/video + prompt en lenguaje natural al Gemini API y recibís JSON espacial o planes (modelo ejemplo `gemini-robotics-er-1.6-preview`). Vos proveés el "cuerpo" (tu controlador existente o nuestro loop de tools + calcLoopbackClient) [7].
 
 **Paralelo directo con nuestro agente actual:**
 Nuestros `AGENT_TOOLS` + `executeTool` + loopback a `/calc/*` + presupOrchestrator ya son un "VLA domain-specific" muy maduro (el modelo no debe inventar precios ni BOMs: debe llamar la tool). La investigación valida que poner capacidad agentic fuerte en la capa de *planeación y razonamiento* (no solo en el ejecutor) es una de las formas más poderosas de escalar agentes complejos de largo horizonte.
@@ -196,3 +196,34 @@ Este plan ampliado entrega la profundidad de investigación que el usuario pidi�
 Fuentes principales consultadas (además de la investigación inicial del usuario): DeepMind models pages, Google AI for Developers (robotics overview y function calling), blogs oficiales de ER 1.6, arXiv tech reports, análisis técnicos independientes (Encord y otros). Citas inline en las secciones relevantes.
 
 Este documento debe mantenerse vivo y referenciado en team knowledge y full-team runs cuando se discuta la evolución del agente Panelin.
+
+---
+
+## Referencias (fuentes de la investigación)
+
+Las afirmaciones específicas sobre los modelos Gemini Robotics derivan de las siguientes fuentes oficiales y reportes técnicos consultadas en junio 2026 (vía búsquedas web en DeepMind, Google AI for Developers y arXiv). Se agregaron marcadores inline `[n]` en las secciones relevantes del documento.
+
+1. Google DeepMind — Gemini Robotics (model family page). https://deepmind.google/models/gemini-robotics/  
+   Incluye descripciones de Gemini Robotics 1.5 (VLA), ER 1.6 y On-Device.
+
+2. Google DeepMind Blog — "Gemini Robotics-ER 1.6: Enhanced Embodied Reasoning" (Abril 2026). https://deepmind.google/blog/gemini-robotics-er-1-6/  
+   Detalles sobre mejoras en spatial reasoning, instrument reading (colaboración Boston Dynamics), agentic tool calling, y benchmarks vs ER 1.5 / Gemini 3.0 Flash.
+
+3. Google DeepMind — Gemini Robotics On-Device (model page). https://deepmind.google/models/gemini-robotics/gemini-robotics-on-device/  
+   Descripción del VLA local, fine-tuning con 50-100 demostraciones y SDK.
+
+4. Google DeepMind Blog — "Gemini Robotics On-Device brings AI to local robotic devices" (Junio 2025). https://deepmind.google/blog/gemini-robotics-on-device-brings-ai-to-local-robotic-devices/  
+   Detalles de fine-tuning, MuJoCo sim y adaptación rápida.
+
+5. Google AI for Developers — "Gemini Robotics-ER 1.6 | Gemini API" docs. https://ai.google.dev/gemini-api/docs/robotics-overview  
+   Cómo acceder vía Gemini API (`gemini-robotics-er-1.6-preview`), outputs estructurados (coordenadas, planes) y uso para capas de razonamiento de alto nivel sobre controladores existentes.
+
+6. Google AI for Developers — Function calling with the Gemini API. https://ai.google.dev/gemini-api/docs/function-calling  
+   Documentación de function calling (equivalente a tool use) en Gemini, incluyendo streaming de argumentos de llamadas a funciones.
+
+7. arXiv — "Gemini Robotics 1.5: Pushing the Frontier of Generalist Robots with Advanced Embodied Reasoning, Thinking, and Motion Transfer" (2025). https://arxiv.org/abs/2510.03342  
+   Reporte técnico detallado de la familia, VLA con interleaved reasoning, cross-embodiment y Motion Transfer.
+
+Otras referencias secundarias utilizadas durante la investigación incluyen análisis en Encord, LinkedIn posts de DeepMind researchers y reportes de Google Blog sobre agentic vision. Para actualizaciones, consultar directamente los sitios de DeepMind y Google AI for Developers.
+
+**Nota para mantenedores:** Este documento es la fuente canónica de conocimiento sobre Gemini Robotics dentro del proyecto Panelin/BMC. Cuando se actualice (por ejemplo, al agregar wiring completo de reasoner en planInterpreter o al exponer previews en ai-options), sincronizar también la sección de arquitectura y las referencias.

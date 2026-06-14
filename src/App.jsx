@@ -1,5 +1,5 @@
 // Versión completa: Google Drive, historial de presupuestos, responsive (v3.0 modular)
-// Canonical Calculadora component: PanelinCalculadoraV3_backup (see docs/bmc-dashboard-modernization/IA.md)
+// Canonical Calculadora component: PanelinCalculadoraV3_backup (unified; see docs/team/CALCULADORA-V3-VS-BACKUP-MERGE-PLAN.md 2026-06 update + recs run artifacts). Commercial layer (cliente/costeo/enriched PDF) already ported.
 import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { getRouterBasename } from "./utils/routerBasename.js";

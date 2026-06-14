@@ -23,6 +23,11 @@ npm run gate:local     # lint + tests + api tests — debe quedar verde
 
 **Objetivo:** meter los anclajes al export validado y que la deriva precio↔Matriz falle el build.
 
+**2026-06-13 Calc recs implementation run (Track B):** Code change + CI guard + golden verification completed non-stop (see .runtime/calc-recs-implementation-run-20240613/). 
+Human gate for SKU population in sheet still required for full Matriz CSV flow (WOLF-0004 hygiene).
+All GCs green, tab definition added to bmcDashboard.js, golden loop wired in ci.yml.
+"Listo cuando" for full: Sheet SKUs populated (ANC* in col B "Código RyC" for anclajes rows), then `npm run matriz:pull-csv && node scripts/bake... --dry-run` reports 0 net edits on the 6 anclajes, and new paths appear in /api/actualizar-precios-calculadora.
+
 ### 2a. Mapear la pestaña — `server/routes/bmcDashboard.js`, const `MATRIZ_TAB_COLUMNS` (~L1230)
 
 **Letras confirmadas (CSV R y C Tornillos, 07/06):**
