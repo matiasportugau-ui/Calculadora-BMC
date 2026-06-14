@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getSections, getActiveTasks } from "../lib/todoistClient.js";
 import { config } from "../config.js";
+import { requireUser } from "../lib/identityAuth.js";
 
 const router = Router();
 
@@ -11,10 +12,12 @@ function priorityLabel(p) {
 
 function durationMinutes(d) {
   if (!d) return null;
-  return d.unit === "minute" ? d.amount : d.amount * 60;
+  if (d.unit === "minute") return d.amount;
+  if (d.unit === "day") return d.amount * 1440;
+  return d.amount * 60; // "hour" fallback
 }
 
-router.get("/proyecto/status", async (req, res) => {
+router.get("/proyecto/status", requireUser(), async (req, res) => {
   const projectId = config.todoistBmcProjectId;
   try {
     const [sections, tasks] = await Promise.all([
