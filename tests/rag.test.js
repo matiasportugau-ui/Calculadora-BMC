@@ -14,9 +14,14 @@
  */
 
 import { strict as assert } from "node:assert";
-import { hashText, embedText, activeProvider } from "../server/lib/embeddings.js";
-import { formatRetrievedContextForPrompt, retrieveSimilarQuotes } from "../server/lib/rag.js";
-import { buildSystemPrompt } from "../server/lib/chatPrompts.js";
+
+// This suite is explicitly offline/stubbed. config.js loads .env at import time,
+// so force no OpenAI key before importing embeddings/rag modules.
+process.env.OPENAI_API_KEY = "";
+
+const { hashText, embedText, activeProvider } = await import("../server/lib/embeddings.js");
+const { formatRetrievedContextForPrompt, retrieveSimilarQuotes } = await import("../server/lib/rag.js");
+const { buildSystemPrompt } = await import("../server/lib/chatPrompts.js");
 
 let passed = 0;
 let failed = 0;

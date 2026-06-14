@@ -16,7 +16,7 @@
 // Run:  node evals/golden-cases/GC-0001.test.mjs
 // Exit: 0 = green, 1 = red.
 // ═══════════════════════════════════════════════════════════════════════════
-import { PANELS_PARED, SCENARIOS_DEF } from "../../src/data/constants.js";
+import { PANELS_PARED, PERFIL_PARED, SCENARIOS_DEF } from "../../src/data/constants.js";
 import { computePresupuestoLibreCatalogo } from "../../src/utils/presupuestoLibreCatalogo.js";
 
 // round half up to 2 decimals (Matriz convention)
@@ -97,6 +97,20 @@ checks.push({
   name: "(e2) col → solo Blanco (sanitario)",
   expected: "Blanco",
   actual: fam?.col?.join(","),
+});
+
+// (f) perfiles U ISOFRIG: solo espesores con precio confirmado; no inventar analogías.
+const perfilUIsofrig = PERFIL_PARED.perfil_u.ISOFRIG || {};
+const perfilUEspesores = Object.keys(perfilUIsofrig).map(Number).sort((x, y) => x - y);
+checks.push({
+  name: "(f1) perfil U ISOFRIG → solo 80,100,150 con precio confirmado",
+  expected: "80,100,150",
+  actual: perfilUEspesores.join(","),
+});
+checks.push({
+  name: "(f2) perfil U ISOFRIG 200 mm omitido (sin precio propio confirmado)",
+  expected: undefined,
+  actual: perfilUIsofrig[200],
 });
 
 let failed = 0;
