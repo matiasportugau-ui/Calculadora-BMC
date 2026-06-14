@@ -63,6 +63,7 @@ import quoteExportRouter from "./routes/quoteExport.js";
 import tasksRouter from "./routes/tasks.js";
 import tasksOAuthRouter from "./routes/tasksOAuth.js";
 import tasksSyncRouter from "./routes/tasksSync.js";
+import proyectoRouter from "./routes/proyecto.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import "./lib/marketIntel/scheduler.js"; // registers daily ETL cron at 03:00 UTC
@@ -1013,6 +1014,7 @@ app.use(createShopifyRouter(config, logger));
 // Tareas (Google Tasks bidirectional mirror) — Phase 0 stubs return 501
 // CRUD under /api/tasks/* (Bearer JWT via requireUser inside router)
 app.use("/api/tasks", tasksRouter);
+app.use("/api", proyectoRouter);
 // OAuth PKCE flow for Google Tasks scope — /auth/tasks/{init,callback,revoke}
 app.use("/auth/tasks", tasksOAuthRouter);
 // Cloud Scheduler sync target (HMAC-verified) — /sync/google-tasks/pull
