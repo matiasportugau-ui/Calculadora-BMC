@@ -1,0 +1,99 @@
+name: Product Docs (auto-update)
+
+# Regenera la documentación del producto de forma FIEL al sistema:
+#  - SYSTEM-REFERENCE.md  ← derivado del código (rutas, integraciones, datos, CI…)
+#  - PRODUCT-OVERVIEW.md + capturas ← tour Playwright contra producción
+#  - PDF
+# Abre/actualiza un PR borrador con los cambios. Las capturas con PII real quedan
+# en docs-private/ (gitignored) y NO se commitean.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # diario 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: product-docs
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BASE_URL: https://calculadora-bmc.vercel.app
+      BMC_API_BASE: https://calculadora-bmc.vercel.app
+      BMC_DISK_PRECHECK_SKIP: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: System deps (ALSA headers para easymidi)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # 1) Doc técnico derivado del código (no requiere red ni auth).
+      - name: Generate system reference
+        run: node scripts/generate-system-reference.mjs
+
+      # 2) Login no interactivo (opcional). Sin secrets → tour público (calculadora).
+      - name: Mint authenticated session (optional)
+        id: sess
+        continue-on-error: true
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.TOUR_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.TOUR_GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.TOUR_GOOGLE_REFRESH_TOKEN }}
+        run: |
+          if [ -n "${GOOGLE_REFRESH_TOKEN}" ]; then
+            COOKIE="$(node scripts/mint-tour-session.mjs)"
+            if [ -n "$COOKIE" ]; then
+              echo "::add-mask::$COOKIE"
+              echo "cookie=$COOKIE" >> "$GITHUB_OUTPUT"
+              echo "Sesión autenticada lista."
+            fi
+          else
+            echo "Sin TOUR_GOOGLE_* secrets → tour público (solo calculadora)."
+          fi
+
+      # 3) Tour Playwright (autenticado si hay cookie; público si no).
+      - name: Run product tour
+        env:
+          TOUR_SESSION_COOKIE: ${{ steps.sess.outputs.cookie }}
+        run: npx playwright test scripts/product-tour.spec.ts
+
+      # 4) PDF embebiendo solo imágenes commiteables (PII-free).
+      - name: Build PDF
+        run: node scripts/build-product-pdf.mjs
+
+      # 5) PR borrador con la doc regenerada (docs-private queda gitignored).
+      - name: Create / update draft PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: automation/product-docs
+          base: main
+          draft: true
+          title: "docs: auto-update product docs (system reference + tour)"
+          commit-message: "docs: auto-regenerate product docs"
+          body: |
+            Auto-generado por el workflow **product-docs**.
+
+            - `docs/product/SYSTEM-REFERENCE.md` — derivado del código (fiel al wiring real).
+            - `docs/product/PRODUCT-OVERVIEW.md` + capturas — tour Playwright.
+            - `docs/product/PRODUCT-OVERVIEW.pdf`.
+
+            Las capturas con datos reales de clientes quedan en `docs-private/`
+            (gitignored) y **no** se commitean.
+          add-paths: |
+            docs/product/**

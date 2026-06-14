@@ -15,6 +15,12 @@
 | **Cuenta** | Operador con acceso admin (sesión real vía cookie `bmc_sess`) |
 | **Datos** | Calculadora: demo `[DEMO-TOUR]`. Módulos operativos: datos reales de producción (no se commitea ninguna captura con PII). |
 
+> **Documento complementario:** [`SYSTEM-REFERENCE.md`](SYSTEM-REFERENCE.md) — la
+> referencia técnica *cableada* (rutas de API, rutas del SPA, integraciones,
+> persistencia, auth, CI), **auto-generada desde el código** y actualizada a diario
+> por el workflow `product-docs`. Este documento (PRODUCT-OVERVIEW) es el recorrido
+> **visual**; aquél es el **cómo está construido**.
+
 ### Convención de tags
 
 - **`[hecho confirmado]`** — observado directamente en la app durante el recorrido.
