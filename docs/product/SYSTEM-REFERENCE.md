@@ -7,9 +7,9 @@
 
 | | |
 |---|---|
-| **Generado** | 2026-06-14T04:10:01.891Z |
+| **Generado** | 2026-06-15T21:47:49.584Z |
 | **Versión** | `calculadora-bmc` v3.1.5 |
-| **Commit** | `7053c13` (`claude/product-tour-doc-setup-jptsox`) |
+| **Commit** | `ce28fb0` (`claude/product-tour-doc-setup-jptsox`) |
 
 ## Arquitectura (resumen)
 
