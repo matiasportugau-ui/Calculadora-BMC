@@ -187,7 +187,7 @@ export const MATRIZ_SKU_TO_PATH = {
 
   // ── Goteros ISODEC PIR (retrocompat + SKU disjuntos recomendados — ver MATRIZ-SKU-GAP-Y-PLAN.md)
   /** Solo actualiza frontal 50; lateral 50/80 comparten precio en constants — usar GLLPIR50/GLLPIR80 en col D para import completo */
-  GF80DC: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50",
+  GF80DC: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.80",
   /** En constants también en frontal 80; usar GFFPIR80 para frontal 80 sin colisión */
   GF120DC: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.120",
   GFFPIR50: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50",
@@ -219,6 +219,54 @@ export const MATRIZ_SKU_TO_PATH = {
   ESQEXT: "PERFIL_PARED.esquinero_ext._all",
   ESQINT: "PERFIL_PARED.esquinero_int._all",
   PLECHU98: "PERFIL_PARED.perfil_5852._all",
+
+  // === Incorporación 2026-06-15 (SKUs cargados en MATRIZ por el usuario) ===
+  // Fijaciones (antes catalog-only)
+  VRBSW38: "FIJACIONES.varilla_38",
+  TBSW38: "FIJACIONES.tuerca_38",
+  AC38G: "FIJACIONES.arandela_carrocero",
+  APHG38: "FIJACIONES.arandela_plana",
+  ABPPB: "FIJACIONES.arandela_pp",
+  ABPPG: "FIJACIONES.arandela_pp_gris",
+  TES38: "FIJACIONES.taco_expansivo",
+  // Selladores / herramientas
+  SN300B: "SELLADORES.silicona_300_neutra",
+  // PSIL ("Pistola de Silicona") NO mapeada: precio muy distinto al de
+  // pistola_apl_dx03 del catálogo (22.3 vs 37.62) — posible producto diferente.
+  // Perfiles pared
+  PCBK2: "PERFIL_PARED.perfil_k2._all",
+  PCBG2100: "PERFIL_PARED.perfil_g2.ISOPANEL.100",
+  PCBG2150: "PERFIL_PARED.perfil_g2.ISOPANEL.150",
+  PCBG2200: "PERFIL_PARED.perfil_g2.ISOPANEL.200",
+  PCBG2250: "PERFIL_PARED.perfil_g2.ISOPANEL.250",
+  PU40MM: "PERFIL_PARED.perfil_u.ISOFRIG.40",
+  PU60MM: "PERFIL_PARED.perfil_u.ISOFRIG.60",
+  PU120MM: "PERFIL_PARED.perfil_u.ISOFRIG.120",
+  PU180MM: "PERFIL_PARED.perfil_u.ISOFRIG.180",
+  // Goteros / canalón techo (ISOROOF "Prep" e ISODEC PIR)
+  GFS100: "PERFIL_TECHO.gotero_frontal.ISOROOF.100",
+  GFSUP100: "PERFIL_TECHO.gotero_superior.ISOROOF.100",
+  GL100: "PERFIL_TECHO.gotero_lateral.ISOROOF.100",
+  GSDECAM100: "PERFIL_TECHO.gotero_superior.ISODEC_PIR.100",
+  GF50DC: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50",
+  GL50DC: "PERFIL_TECHO.gotero_lateral.ISODEC_PIR.50",
+  "CAN.ISDC50": "PERFIL_TECHO.canalon.ISODEC_PIR.50",
+  "CAN.ISDC80": "PERFIL_TECHO.canalon.ISODEC_PIR.80",
+  PGLC100: "PERFIL_TECHO.gotero_lateral_camara.ISODEC.100",
+  PGLC150: "PERFIL_TECHO.gotero_lateral_camara.ISODEC.150",
+  PGLC200: "PERFIL_TECHO.gotero_lateral_camara.ISODEC.200",
+  PGLC250: "PERFIL_TECHO.gotero_lateral_camara.ISODEC.250",
+  // Paneles ISODEC PIR (evitar 50mm) e IsoFrig completa
+  ISD80PIR: "PANELS_TECHO.ISODEC_PIR.esp.80",
+  ISD120PIR: "PANELS_TECHO.ISODEC_PIR.esp.120",
+  IF40: "PANELS_PARED.ISOFRIG_PIR.esp.40",
+  IF60: "PANELS_PARED.ISOFRIG_PIR.esp.60",
+  IF80: "PANELS_PARED.ISOFRIG_PIR.esp.80",
+  IF100: "PANELS_PARED.ISOFRIG_PIR.esp.100",
+  IF120: "PANELS_PARED.ISOFRIG_PIR.esp.120",
+  IF150: "PANELS_PARED.ISOFRIG_PIR.esp.150",
+  IF180: "PANELS_PARED.ISOFRIG_PIR.esp.180",
+  IF200: "PANELS_PARED.ISOFRIG_PIR.esp.200",
 };
 
 /** Obtener path para un SKU de la MATRIZ (normalizado) */
