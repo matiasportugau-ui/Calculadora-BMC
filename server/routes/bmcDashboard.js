@@ -1329,9 +1329,13 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
       const costo = costoRaw != null ? +costoRaw.toFixed(2) : "";
       const venta = ventaLocalRaw != null ? +ventaLocalRaw.toFixed(2) : "";
       const ventaInc = ventaIvaIncRaw != null ? +ventaIvaIncRaw.toFixed(2) : "";
-      const ventaWeb = webRaw != null ? +webRaw.toFixed(2) : "";
-      const ventaWebIvaInc =
-        webIvaIncRaw != null ? +webIvaIncRaw.toFixed(2) : "";
+      // Regla de negocio: los PANELES llevan el mismo precio en ambas listas
+      // (web = venta local). Perfiles/accesorios mantienen el web de la MATRIZ (R).
+      const esPanel = path.startsWith("PANELS_");
+      const ventaWeb = esPanel ? venta : (webRaw != null ? +webRaw.toFixed(2) : "");
+      const ventaWebIvaInc = esPanel
+        ? ventaInc
+        : (webIvaIncRaw != null ? +webIvaIncRaw.toFixed(2) : "");
 
       const categoria = path.startsWith("PANELS_TECHO") ? "Paneles Techo"
         : path.startsWith("PANELS_PARED") ? "Paneles Pared"
