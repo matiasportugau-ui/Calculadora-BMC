@@ -9,13 +9,17 @@
  * Uso:  node scripts/build-product-pdf.mjs
  */
 import { readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname, resolve, relative, isAbsolute } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import MarkdownIt from "markdown-it";
 import { chromium } from "@playwright/test";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DOC_DIR = resolve(__dirname, "../docs/product");
+// Allowlist: las imágenes locales SOLO pueden vivir bajo docs/product/assets/.
+// Bloquea que un ![](../../docs-private/…) o <img src> con traversal incruste PII
+// (capturas autenticadas) en un PDF commiteado.
+const ASSETS_DIR = join(DOC_DIR, "assets");
 
 const DOCS = [
   { md: "PRODUCT-OVERVIEW.md", pdf: "PRODUCT-OVERVIEW.pdf" },
@@ -39,20 +43,37 @@ const STYLE = `
   a { color: #2b59ff; text-decoration: none; }
 `;
 
-/** Falla si un ![alt](ruta) local no existe (evita PDFs con imágenes rotas). */
+/**
+ * Valida las imágenes locales: deben existir Y resolver DENTRO de docs/product/assets/.
+ * Rechaza rutas absolutas, `..` y cualquier cosa fuera del allowlist (anti-PII). Las
+ * URLs http(s) se permiten (no tocan el filesystem local). Devuelve los refs inválidos.
+ */
 function checkImages(mdRaw) {
-  const imgRe = /!\[[^\]]*\]\(([^)]+)\)/g;
-  const broken = [];
-  let m;
-  while ((m = imgRe.exec(mdRaw))) {
-    const ref = m[1].replace(/\s+["'].*["']\s*$/, "").trim(); // quita título opcional
+  const refs = [];
+  for (const m of mdRaw.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)) refs.push(m[1].replace(/\s+["'].*["']\s*$/, "").trim());
+  // Defensivo: aunque html:false neutraliza el raw HTML, validamos <img src> igual.
+  for (const m of mdRaw.matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["']/gi)) refs.push(m[1].trim());
+  const bad = [];
+  for (const ref of refs) {
     if (/^https?:/i.test(ref)) continue;
-    if (!existsSync(resolve(DOC_DIR, ref))) broken.push(ref);
+    if (isAbsolute(ref) || ref.includes("..")) {
+      bad.push(`${ref} (ruta absoluta/traversal no permitida)`);
+      continue;
+    }
+    const resolved = resolve(DOC_DIR, ref);
+    const rel = relative(ASSETS_DIR, resolved);
+    if (rel.startsWith("..") || isAbsolute(rel)) {
+      bad.push(`${ref} (fuera de docs/product/assets/)`);
+      continue;
+    }
+    if (!existsSync(resolved)) bad.push(`${ref} (no existe)`);
   }
-  return broken;
+  return bad;
 }
 
-const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
+// html:false → el raw HTML del Markdown (p. ej. <img src="../../docs-private/…">,
+// <script>) NO se renderiza; evita inyección al render file:// en Chromium.
+const md = new MarkdownIt({ html: false, linkify: true, typographer: true });
 const browser = await chromium.launch({ headless: true });
 try {
   for (const { md: mdName, pdf: pdfName } of DOCS) {

@@ -28,9 +28,10 @@ jobs:
       BMC_API_BASE: https://calculadora-bmc.vercel.app
       BMC_DISK_PRECHECK_SKIP: "1"
     steps:
-      - uses: actions/checkout@v4
+      # uses: pineados a SHA (no tags móviles) — supply-chain.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.2.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.1.0
         with:
           node-version: "24"
 
@@ -47,10 +48,10 @@ jobs:
       - name: Generate system reference
         run: node scripts/generate-system-reference.mjs
 
-      # 2) Login no interactivo (opcional). Sin secrets → tour público (calculadora).
-      - name: Mint authenticated session (optional)
-        id: sess
-        continue-on-error: true
+      # 2) Tour Playwright. El login se mintea y se consume EN EL MISMO step: el
+      #    cookie nunca se persiste como output del job (no lo ven otros steps).
+      #    Sin secrets → tour público (solo calculadora).
+      - name: Run product tour
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.TOUR_GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.TOUR_GOOGLE_CLIENT_SECRET }}
@@ -58,28 +59,20 @@ jobs:
         run: |
           if [ -n "${GOOGLE_REFRESH_TOKEN}" ]; then
             COOKIE="$(node scripts/mint-tour-session.mjs)"
-            if [ -n "$COOKIE" ]; then
-              echo "::add-mask::$COOKIE"
-              echo "cookie=$COOKIE" >> "$GITHUB_OUTPUT"
-              echo "Sesión autenticada lista."
-            fi
+            echo "::add-mask::$COOKIE"
+            TOUR_SESSION_COOKIE="$COOKIE" npx playwright test scripts/product-tour.spec.ts
           else
             echo "Sin TOUR_GOOGLE_* secrets → tour público (solo calculadora)."
+            npx playwright test scripts/product-tour.spec.ts
           fi
 
-      # 3) Tour Playwright (autenticado si hay cookie; público si no).
-      - name: Run product tour
-        env:
-          TOUR_SESSION_COOKIE: ${{ steps.sess.outputs.cookie }}
-        run: npx playwright test scripts/product-tour.spec.ts
-
-      # 4) PDF embebiendo solo imágenes commiteables (PII-free).
+      # 3) PDF embebiendo solo imágenes commiteables (PII-free).
       - name: Build PDF
         run: node scripts/build-product-pdf.mjs
 
-      # 5) PR borrador con la doc regenerada (docs-private queda gitignored).
+      # 4) PR borrador con la doc regenerada (docs-private queda gitignored).
       - name: Create / update draft PR
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6.1.0
         with:
           branch: automation/product-docs
           base: main

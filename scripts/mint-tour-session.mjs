@@ -61,5 +61,6 @@ const setCookies = authRes.headers.getSetCookie ? authRes.headers.getSetCookie()
 const sess = setCookies.map((c) => (c.match(/(?:^|;\s*)bmc_sess=([^;]+)/) || [])[1]).find(Boolean);
 if (!sess) die("la respuesta no incluyó cookie bmc_sess");
 
-process.stderr.write(`[mint-tour-session] sesión OK para ${authJson?.user?.email || "(usuario)"}\n`);
+// No logueamos el email (PII en logs de CI retenidos) — solo confirmación.
+process.stderr.write("[mint-tour-session] sesión OK\n");
 process.stdout.write(sess);
