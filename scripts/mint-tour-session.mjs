@@ -41,7 +41,9 @@ const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
 });
 const tokenJson = await tokenRes.json().catch(() => ({}));
 if (!tokenRes.ok || !tokenJson.access_token) {
-  die(`Google token endpoint ${tokenRes.status}: ${JSON.stringify(tokenJson).slice(0, 200)}`);
+  // Loguear sólo campos conocidos-seguros (no volcar el JSON crudo) — defense-in-depth.
+  const detail = [tokenJson.error, tokenJson.error_description].filter(Boolean).join(" — ") || "(sin detalle)";
+  die(`Google token endpoint ${tokenRes.status}: ${detail}`);
 }
 
 // 2) access-token de Google → sesión BMC (cookie bmc_sess)
