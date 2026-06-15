@@ -29,7 +29,10 @@ fn toggle_window<R: Runtime>(app: &AppHandle<R>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Cmd+Shift+T (macOS) / Ctrl+Shift+T (Windows/Linux).
+    // Cmd+Shift+T (macOS) / Ctrl+Shift+T (Windows/Linux). Exactly one shortcut
+    // is registered, so the handler can toggle on any Pressed event without
+    // re-comparing it (avoids moving `toggle` into both the registration and
+    // the closure).
     let toggle = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyT);
 
     tauri::Builder::default()
@@ -37,8 +40,8 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_shortcut(toggle)
                 .expect("failed to register global shortcut")
-                .with_handler(move |app, shortcut, event| {
-                    if event.state == ShortcutState::Pressed && shortcut == &toggle {
+                .with_handler(|app, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
                         toggle_window(app);
                     }
                 })
