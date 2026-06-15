@@ -12,6 +12,8 @@ import {
   PERFIL_PARED as PEP,
   SERVICIOS as SRV,
   HERRAMIENTAS as H,
+  USE_PANELIN_PRICING,
+  getPanelinPricingCache,
 } from "./constants.js";
 import { getPricingOverrides, applyOverridesToObject } from "../utils/pricingOverrides.js";
 import { getDimensioningOverrides } from "../utils/dimensioningFormulasOverrides.js";
@@ -28,20 +30,47 @@ const BASE = {
 };
 
 let _cache = null;
+let _cacheBase = null;
+let _cacheUsePanelin = null;
+
+const REQUIRED_PRICING_ROOTS = Object.keys(BASE);
+
+function isCompletePanelinPricingCache(data) {
+  return !!data
+    && typeof data === "object"
+    && REQUIRED_PRICING_ROOTS.every((root) => (
+      data[root]
+      && typeof data[root] === "object"
+      && Object.keys(data[root]).length > 0
+    ));
+}
+
+function resolvePricingBase() {
+  const panelinCache = getPanelinPricingCache();
+  if (USE_PANELIN_PRICING && isCompletePanelinPricingCache(panelinCache)) {
+    return panelinCache;
+  }
+  return BASE;
+}
 
 /** Obtener pricing con overrides aplicados. Cache se invalida al guardar overrides. */
 export function getPricing() {
-  if (_cache) return _cache;
+  const base = resolvePricingBase();
+  if (_cache && _cacheBase === base && _cacheUsePanelin === USE_PANELIN_PRICING) return _cache;
   const pricingOverrides = getPricingOverrides();
   const dimensioningOverrides = getDimensioningOverrides();
   const allOverrides = { ...pricingOverrides, ...dimensioningOverrides };
-  _cache = applyOverridesToObject(BASE, allOverrides);
+  _cache = applyOverridesToObject(base, allOverrides);
+  _cacheBase = base;
+  _cacheUsePanelin = USE_PANELIN_PRICING;
   return _cache;
 }
 
 /** Invalidar cache (llamar tras guardar overrides) */
 export function invalidatePricingCache() {
   _cache = null;
+  _cacheBase = null;
+  _cacheUsePanelin = null;
 }
 
 /** Lista plana de ítems editables para la UI */
