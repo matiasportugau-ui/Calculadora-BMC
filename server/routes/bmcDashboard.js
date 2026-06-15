@@ -1237,14 +1237,14 @@ const MATRIZ_TAB_COLUMNS = {
     descripcion: COL("E"),
     // F — Costo m² USD ex IVA: **tal cual** celda.
     costo: COL("F"),
-    // L — venta local: **tal cual** celda.
-    ventaLocal: COL("L"),
-    // M — ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
-    ventaIvaInc: COL("M"),
-    // T — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
-    web: COL("T"),
-    // U — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
-    webIvaInc: COL("U"),
+    // J — Venta local USD ex IVA: **tal cual** celda.
+    ventaLocal: COL("J"),
+    // K — Ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
+    ventaIvaInc: COL("K"),
+    // R — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
+    web: COL("R"),
+    // S — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
+    webIvaInc: COL("S"),
   },
   // Add more tabs here after mapping approval:
   // "R y C Tornillos": { sku: COL("D"), ... },
