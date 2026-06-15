@@ -392,6 +392,23 @@ export function getPerfileriaMermaSugerencias(result) {
   return [...new Set(out)];
 }
 
+/** Perfiles que se fijan de ambos lados → llevan el doble de T1. */
+const T1_TIPOS_DOBLE_FIJACION = new Set(["cumbrera", "perfil_u"]);
+
+/**
+ * Tornillos T1 de fijación de perfilería: regla por PIEZA (no por metro lineal).
+ * Cada perfil accesorio lleva `PERFILERIA.t1_por_pieza` (default 20). Los perfiles
+ * fijados de ambos lados (cumbrera, perfil U) llevan el doble. Recibe los ítems de
+ * perfilería ya armados (sin la propia línea de T1).
+ */
+function calcTornillosT1Perfileria(items) {
+  const porPieza = getDimensioningParam("PERFILERIA.t1_por_pieza", 20);
+  return items.reduce(
+    (n, it) => n + (Number(it?.cant) || 0) * porPieza * (T1_TIPOS_DOBLE_FIJACION.has(it?.tipo) ? 2 : 1),
+    0,
+  );
+}
+
 export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP, espesor, opciones) {
   const items = [];
   let totalML = 0;
@@ -537,10 +554,9 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     addPerfil(j.label || `Encuentro: ${tipo}`, tipo, len);
   }
 
-  if (totalML > 0) {
+  if (items.length) {
     const { FIJACIONES } = getPricing();
-    const espFijMl = getDimensioningParam("PERFILERIA.espaciado_fijacion_ml", 0.30);
-    const fijPerf = Math.ceil(totalML / espFijMl);
+    const fijPerf = calcTornillosT1Perfileria(items);
     const puT1 = p(FIJACIONES.tornillo_t1);
     const coT1 = FIJACIONES.tornillo_t1?.costo ?? 0;
     items.push({ label: FIJACIONES.tornillo_t1.label, sku: "tornillo_t1", tipo: "fijacion_perfileria", cant: fijPerf, unidad: "unid", pu: puT1, costo: coT1, total: +(fijPerf * puT1).toFixed(2) });
@@ -671,8 +687,7 @@ export function calcPerfileriaTechoComercial(familiaP, espesor) {
     largoBarra: bb.largo,
   });
   const totalML = cantG * gf.largo + cantB * bb.largo;
-  const espFijMl = getDimensioningParam("PERFILERIA.espaciado_fijacion_ml", 0.30);
-  const fijPerf = Math.ceil(totalML / espFijMl);
+  const fijPerf = calcTornillosT1Perfileria(items);
   const puT1 = p(FIJACIONES.tornillo_t1);
   const coT1 = FIJACIONES.tornillo_t1?.costo ?? 0;
   items.push({
