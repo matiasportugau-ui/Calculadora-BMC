@@ -206,7 +206,7 @@ export const FIJACIONES = {
   arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.62, web: 1.782, costo: 1.08, unidad: "unid" },
   arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.725, web: 1.8975, costo: 1.15, unidad: "unid" },
   taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 1.23, web: 1.353, costo: 0.82, unidad: "unid" },
-  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.51, web: 0.561, costo: 0.34, unidad: "unid" },
+  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.51, web: 0.48, costo: 0.34, unidad: "unid" },
   /** Pared: kit anclaje a H° — alineado a fila “1 Anclaje de 100 mm” (planilla anclajes). */
   anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 5.96, web: 8.00, costo: 1.10, unidad: "unid" },
   /** Perfilería techo y fijaciones Metálicas: T1 por tornillo (ex “×100” eliminado). */
@@ -274,7 +274,7 @@ export const SELLADORES = {
   silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.64, web: 11.24, costo: 8.03, unidad: "unid", ml_por_unid: 10.27 },
   /** 300 ml neutra (MATRIZ BROMYROS ~fila 168; col D SIL300N para CSV): junto a 600 ml; cantidad = ratio × unid. 600 (`SELLADORES_TECHO.silicona_300_por_unid_600`, default 2). */
   silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.0, web: 8.4, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
-  cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 15.7665, web: 19.194, costo: 13.71, unidad: "unid" },
+  cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 15.77, web: 19.19, costo: 13.71, unidad: "unid" },
   membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo" },
   espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid" },
 };

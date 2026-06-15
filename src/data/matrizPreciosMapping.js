@@ -135,6 +135,7 @@ export const MATRIZ_SKU_TO_PATH = {
 
   // Selladores
   CBUT: "SELLADORES.cinta_butilo",
+  "C.BUT.": "SELLADORES.cinta_butilo", // SKU real de MATRIZ ("C.But." → normaliza con puntos)
   BROMPLAST: "SELLADORES.silicona",
   SIL300N: "SELLADORES.silicona_300_neutra",
   MEMB3010: "SELLADORES.membrana",
@@ -142,6 +143,7 @@ export const MATRIZ_SKU_TO_PATH = {
 
   // Fijaciones
   CABROJ: "FIJACIONES.caballete",
+  "CAB.ROJ": "FIJACIONES.caballete", // SKU real de MATRIZ ("Cab. Roj" → "CAB.ROJ")
   /** Kit varilla/tuerca Isodec — col D BROMYROS ~161–166 (scripts sync si col D vacía) */
   VAR381ML: "FIJACIONES.varilla_38",
   TUE38BSW: "FIJACIONES.tuerca_38",
