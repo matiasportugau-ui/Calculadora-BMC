@@ -29,11 +29,18 @@ fn toggle_window<R: Runtime>(app: &AppHandle<R>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Cmd+Shift+T (macOS) / Ctrl+Shift+T (Windows/Linux). Exactly one shortcut
-    // is registered, so the handler can toggle on any Pressed event without
-    // re-comparing it (avoids moving `toggle` into both the registration and
-    // the closure).
-    let toggle = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyT);
+    // Cmd+Shift+T (macOS) / Ctrl+Shift+T (Windows/Linux). The primary modifier
+    // differs per OS: SUPER is Cmd on macOS but the Windows/Super key elsewhere,
+    // so use CONTROL off-macOS to match the documented Ctrl+Shift+T.
+    // Exactly one shortcut is registered, so the handler can toggle on any
+    // Pressed event without re-comparing it (avoids moving `toggle` into both
+    // the registration and the closure).
+    let primary = if cfg!(target_os = "macos") {
+        Modifiers::SUPER
+    } else {
+        Modifiers::CONTROL
+    };
+    let toggle = Shortcut::new(Some(primary | Modifiers::SHIFT), Code::KeyT);
 
     tauri::Builder::default()
         .plugin(
