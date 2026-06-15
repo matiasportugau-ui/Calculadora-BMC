@@ -175,20 +175,20 @@ group("Resolver mappings — ISOFRIG U profiles and ISOROOF 100mm accessories", 
     );
   }
 
-  const expectedRoof100 = new Map([
-    ["gotero_frontal", "GFS100"],
-    ["gotero_lateral", "GL100"],
-    ["gotero_superior", "GFSUP100"],
-    ["gotero_lateral_camara", "GSDECAM100"],
-    ["canalon", "CD100"],
-  ]);
+  const expectedRoof100 = [
+    { tipo: "gotero_frontal", familia: "ISOROOF", expectedSku: "GFS100" },
+    { tipo: "gotero_lateral", familia: "ISOROOF", expectedSku: "GL100" },
+    { tipo: "gotero_superior", familia: "ISOROOF", expectedSku: "GFSUP100" },
+    { tipo: "canalon", familia: "ISOROOF", expectedSku: "CD100" },
+    { tipo: "gotero_superior", familia: "ISODEC_PIR", expectedSku: "GSDECAM100" },
+  ];
 
-  for (const [tipo, expectedSku] of expectedRoof100) {
-    const resolved = resolveSKU_techo(tipo, "ISOROOF", 100);
-    assertEqual(resolved?.sku, expectedSku, `ISOROOF 100mm ${tipo} SKU`);
+  for (const { tipo, familia, expectedSku } of expectedRoof100) {
+    const resolved = resolveSKU_techo(tipo, familia, 100);
+    assertEqual(resolved?.sku, expectedSku, `${familia} 100mm ${tipo} SKU`);
     assert(
       Number.isFinite(resolved?.web) && resolved.web > 0 && Number.isFinite(resolved?.costo) && resolved.costo > 0,
-      `ISOROOF 100mm ${tipo} has usable web/costo`,
+      `${familia} 100mm ${tipo} has usable web/costo`,
       resolved,
       "positive web/costo",
     );
