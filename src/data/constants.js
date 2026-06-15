@@ -168,8 +168,8 @@ export const PANELS_PARED = {
     label: "ISOWALL PIR", sub: "Fachadas", tipo: "pared",
     au: 1.1, lmin: 3.5, lmax: 14, sist: "anclaje_tornillo", fam: "ISOWALL",
     esp: {
-      50:  { venta: 46.745,  web: 54.5358, costo: 38.9541, ap: null },
-      80:  { venta: 55.7411, web: 65.0313, costo: 46.4509, ap: null },
+      50:  { venta: 48.81, web: 48.81, costo: 42.44, ap: null },
+      80:  { venta: 58.21, web: 58.21, costo: 50.62, ap: null },
       100: { venta: 64.18, web: 64.18,   costo: 55.81,   ap: null },
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
@@ -294,7 +294,7 @@ export const PERFIL_TECHO = {
       250: { sku: "6841", venta: 24.16, web: 28.18, costo: 20.13, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GFFPIR50",  venta: 20.14, web: 23.49, costo: 16.78, largo: 3.03 },
+      50:  { sku: "GFFPIR50",  venta: 21.04, web: 24.55, costo: 17.54, largo: 3.03 },
       80:  { sku: "GFFPIR80", venta: 20.87, web: 24.34, costo: 18.78, largo: 3.03 },
       120: { sku: "GFFPIR120", venta: 24.9, web: 29.05, costo: 20.75, largo: 3.03 },
     },
@@ -413,7 +413,7 @@ export const PERFIL_PARED = {
     },
     ISOWALL: {
       50:  { sku: "PU50MM", venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
-      80:  { sku: "PU80MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
+      80:  { sku: "PU80MM", venta: 13.92, web: 16.24, costo: 11.6, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
     },
     ISOFRIG: {

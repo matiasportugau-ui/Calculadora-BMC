@@ -1039,6 +1039,29 @@ assert("splitCsvRowSafe handles comma in quoted cell", splitQuoted[1] === "B, C"
 assert("splitCsvRowSafe handles escaped quotes", splitQuoted[2] === 'D "Q"', splitQuoted[2], 'D "Q"');
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SUITE 23c: Spot checks de precios MATRIZ bakeados en constants
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 23c: MATRIZ price bake spot checks ═══");
+
+const matrizPriceSpotChecks = [
+  ["PANELS_PARED.ISOWALL_PIR.esp.50.costo", PANELS_PARED.ISOWALL_PIR.esp[50].costo, 42.44],
+  ["PANELS_PARED.ISOWALL_PIR.esp.50.venta", PANELS_PARED.ISOWALL_PIR.esp[50].venta, 48.81],
+  ["PANELS_PARED.ISOWALL_PIR.esp.50.web", PANELS_PARED.ISOWALL_PIR.esp[50].web, 48.81],
+  ["PANELS_PARED.ISOWALL_PIR.esp.80.costo", PANELS_PARED.ISOWALL_PIR.esp[80].costo, 50.62],
+  ["PANELS_PARED.ISOWALL_PIR.esp.80.venta", PANELS_PARED.ISOWALL_PIR.esp[80].venta, 58.21],
+  ["PANELS_PARED.ISOWALL_PIR.esp.80.web", PANELS_PARED.ISOWALL_PIR.esp[80].web, 58.21],
+  ["PERFIL_PARED.perfil_u.ISOWALL.80.costo", PERFIL_PARED.perfil_u.ISOWALL[80].costo, 11.6],
+  ["PERFIL_PARED.perfil_u.ISOWALL.80.venta", PERFIL_PARED.perfil_u.ISOWALL[80].venta, 13.92],
+  ["PERFIL_PARED.perfil_u.ISOWALL.80.web", PERFIL_PARED.perfil_u.ISOWALL[80].web, 16.24],
+  ["PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50.costo", PERFIL_TECHO.gotero_frontal.ISODEC_PIR[50].costo, 17.54],
+  ["PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50.venta", PERFIL_TECHO.gotero_frontal.ISODEC_PIR[50].venta, 21.04],
+  ["PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50.web", PERFIL_TECHO.gotero_frontal.ISODEC_PIR[50].web, 24.55],
+];
+for (const [label, actual, expected] of matrizPriceSpotChecks) {
+  assert(`${label} matches MATRIZ CSV`, actual === expected, actual, expected);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SUITE 24: Nuevos productos — ISOROOF_COLONIAL, ISODEC_EPS_PARED, perfilería
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE 24: ISOROOF_COLONIAL / ISODEC_EPS_PARED / perfilería / overridePts ═══");
