@@ -1235,8 +1235,8 @@ const MATRIZ_TAB_COLUMNS = {
   BROMYROS: {
     sku: COL("D"),
     descripcion: COL("E"),
-    // F — Costo m² USD ex IVA: **tal cual** celda.
-    costo: COL("F"),
+    // G — Costo m² USD ex IVA (Actualizado): base real de la venta (venta J = G × (1+margen)).
+    costo: COL("G"),
     // J — Venta local USD ex IVA: **tal cual** celda.
     ventaLocal: COL("J"),
     // K — Ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.

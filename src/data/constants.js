@@ -76,10 +76,10 @@ export const PANELS_TECHO = {
     label: "ISODEC EPS", sub: "Techos y Cubiertas", tipo: "techo",
     au: 1.12, lmin: 2.3, lmax: 14, sist: "varilla_tuerca", fam: "ISODEC",
     esp: {
-      100: { venta: 41.15, web: 50.1, costo: 35.79, ap: 5.5 },
-      150: { venta: 43.677, web: 53.172, costo: 37.98, ap: 7.5 },
-      200: { venta: 48.967, web: 59.612, costo: 42.58, ap: 9.1 },
-      250: { venta: 53.82,  web: 65.52,  costo: 46.80, ap: 10.4 },
+      100: { venta: 41.15, web: 41.15, costo: 35.79, ap: 5.5 },
+      150: { venta: 46.3, web: 46.3, costo: 40.26, ap: 7.5 },
+      200: { venta: 51.91, web: 51.91, costo: 45.13, ap: 9.1 },
+      250: { venta: 57.05,  web: 57.05,  costo: 49.61, ap: 10.4 },
     },
     col: ["Blanco", "Gris", "Rojo"],
     colNotes: { Gris: "Solo 100-150mm · +20 días", Rojo: "Solo 100-150mm · +20 días" },
@@ -101,10 +101,10 @@ export const PANELS_TECHO = {
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
       30:  { venta: 43.53, web: 43.53, costo: 37.85, ap: 2.8 },
-      40:  { venta: 43.148,  web: 52.528, costo: 37.52, ap: 3.0 },
-      50:  { venta: 45.2295, web: 55.062, costo: 39.33, ap: 3.3 },
-      80:  { venta: 53.176,  web: 64.736, costo: 46.24, ap: 4.0 },
-      100: { venta: 58.3855, web: 71.078, costo: 50.77, ap: 4.5 },
+      40:  { venta: 45.74,  web: 45.74, costo: 39.77, ap: 3.0 },
+      50:  { venta: 47.94, web: 47.94, costo: 41.69, ap: 3.3 },
+      80:  { venta: 56.37,  web: 56.37, costo: 49.01, ap: 4.0 },
+      100: { venta: 61.89, web: 61.89, costo: 53.82, ap: 4.5 },
     },
     col: ["Gris", "Rojo", "Blanco"],
     colNotes: { Blanco: "Mínimo 500 m²" },
@@ -117,7 +117,7 @@ export const PANELS_TECHO = {
       30: { venta: 35.27, web: 35.27, costo: 30.67,  ap: 2.8 },
       // 2026-05-12: ajustado web a 46.00 (= costo 32.857 × ×1.40, markup estándar de la familia ISOROOF).
       // MATRIZ no trae venta/web para este SKU (solo costo 31.9); el commit 9ed59a5 había dejado web: 36.69, anómalo (web < venta).
-      50: { venta: 37.7856, web: 46.00,   costo: 32.857, ap: 3.3 },
+      50: { venta: 40.05, web: 40.05,   costo: 34.83, ap: 3.3 },
     },
     col: ["Gris", "Rojo"], colNotes: {}, colMax: {},
   },
@@ -140,7 +140,7 @@ export const PANELS_TECHO = {
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
       50: { venta: 54.55, web: 54.55, costo: 47.44, ap: 3.3 },
-      80: { venta: 60.467,  web: 73.612, costo: 52.58, ap: 4.0 },
+      80: { venta: 64.09,  web: 64.09, costo: 55.73, ap: 4.0 },
     },
     col: ["Blanco", "Gris", "Rojo"],
     colNotes: { _all: "PLUS: Mínimo 800 m²" },
@@ -155,11 +155,11 @@ export const PANELS_PARED = {
     label: "ISOPANEL EPS", sub: "Paredes y Fachadas", tipo: "pared",
     au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOPANEL",
     esp: {
-      50:  { venta: 37.41, web: 45.54, costo: 32.53, ap: null },
-      100: { venta: 38.824,  web: 47.264, costo: 33.76, ap: null },
-      150: { venta: 43.677,  web: 53.172, costo: 37.98, ap: null },
-      200: { venta: 48.967,  web: 59.612, costo: 42.58, ap: null },
-      250: { venta: 53.82,   web: 65.52,  costo: 46.80, ap: null },
+      50:  { venta: 37.41, web: 37.41, costo: 32.53, ap: null },
+      100: { venta: 41.15,  web: 41.15, costo: 35.79, ap: null },
+      150: { venta: 46.3,  web: 46.3, costo: 40.26, ap: null },
+      200: { venta: 51.91,  web: 51.91, costo: 45.13, ap: null },
+      250: { venta: 57.05,   web: 57.05,  costo: 49.61, ap: null },
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
     nota50: "50mm SOLO subdivisiones interiores. Fachada exterior mínimo 100mm.",
@@ -170,7 +170,7 @@ export const PANELS_PARED = {
     esp: {
       50:  { venta: 46.745,  web: 54.5358, costo: 38.9541, ap: null },
       80:  { venta: 55.7411, web: 65.0313, costo: 46.4509, ap: null },
-      100: { venta: 60.5475, web: 73.71,   costo: 52.65,   ap: null },
+      100: { venta: 64.18, web: 64.18,   costo: 55.81,   ap: null },
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
@@ -271,7 +271,7 @@ export const PRESUPUESTO_LIBRE_IDS = [
 ];
 
 export const SELLADORES = {
-  silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.636, web: 11.242, costo: 8.03, unidad: "unid", ml_por_unid: 10.27 },
+  silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.64, web: 11.24, costo: 8.03, unidad: "unid", ml_por_unid: 10.27 },
   /** 300 ml neutra (MATRIZ BROMYROS ~fila 168; col D SIL300N para CSV): junto a 600 ml; cantidad = ratio × unid. 600 (`SELLADORES_TECHO.silicona_300_por_unid_600`, default 2). */
   silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.0, web: 8.4, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
   cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 15.7665, web: 19.194, costo: 13.71, unidad: "unid" },
@@ -282,26 +282,26 @@ export const SELLADORES = {
 export const PERFIL_TECHO = {
   gotero_frontal: {
     ISOROOF: {
-      30: { sku: "GFS30", venta: 15.83, web: 18.47, costo: 14.25, largo: 3.03 },
-      50: { sku: "GFS50", venta: 16.76, web: 19.56, costo: 15.08, largo: 3.03 },
-      80: { sku: "GFS80", venta: 17.63, web: 20.57, costo: 15.87, largo: 3.03 },
+      30: { sku: "GFS30", venta: 16.8, web: 19.6, costo: 14, largo: 3.03 },
+      50: { sku: "GFS50", venta: 17.78, web: 20.75, costo: 14.82, largo: 3.03 },
+      80: { sku: "GFS80", venta: 18.71, web: 21.83, costo: 15.59, largo: 3.03 },
       100: { sku: "GFS100", venta: 17.63, web: 20.57, costo: 15.87, largo: 3.03 },
     },
     ISODEC: {
-      100: { sku: "6838", venta: 15.67, web: 19.12, costo: 14.10, largo: 3.03 },
-      150: { sku: "6839", venta: 22.65, web: 27.63, costo: 20.39, largo: 3.03 },
-      200: { sku: "6840", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.03 },
-      250: { sku: "6841", venta: 23.80, web: 29.03, costo: 21.42, largo: 3.03 },
+      100: { sku: "6838", venta: 15.91, web: 18.56, costo: 13.26, largo: 3.03 },
+      150: { sku: "6839", venta: 22.98, web: 26.81, costo: 19.15, largo: 3.03 },
+      200: { sku: "6840", venta: 23.92, web: 27.9, costo: 19.93, largo: 3.03 },
+      250: { sku: "6841", venta: 24.16, web: 28.18, costo: 20.13, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GFFPIR50",  venta: 19.97, web: 23.30, costo: 17.97, largo: 3.03 },
+      50:  { sku: "GFFPIR50",  venta: 20.14, web: 23.49, costo: 16.78, largo: 3.03 },
       80:  { sku: "GFFPIR80", venta: 20.87, web: 24.34, costo: 18.78, largo: 3.03 },
-      120: { sku: "GFFPIR120", venta: 24.69, web: 28.81, costo: 22.22, largo: 3.03 },
+      120: { sku: "GFFPIR120", venta: 24.9, web: 29.05, costo: 20.75, largo: 3.03 },
     },
   },
   gotero_frontal_greca: {
     ISOROOF: {
-      30: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
+      30: { sku: "GFCGR30", venta: 17.62, web: 20.55, costo: 14.68, largo: 3.03 },
       50: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
       80: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
       100: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
@@ -309,22 +309,22 @@ export const PERFIL_TECHO = {
   },
   gotero_lateral: {
     ISOROOF: {
-      30: { sku: "GL30", venta: 21.83, web: 26.63, costo: 19.65, largo: 3.0 },
-      40: { sku: "GL40", venta: 22.68, web: 27.67, costo: 18.90, largo: 3.0 },
-      50: { sku: "GL50", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.0 },
-      80: { sku: "GL80", venta: 25.31, web: 30.88, costo: 22.78, largo: 3.0 },
+      30: { sku: "GL30", venta: 23.16, web: 27.02, costo: 19.3, largo: 3.0 },
+      40: { sku: "GL40", venta: 24.06, web: 28.07, costo: 20.05, largo: 3.0 },
+      50: { sku: "GL50", venta: 25.01, web: 29.18, costo: 20.84, largo: 3.0 },
+      80: { sku: "GL80", venta: 26.86, web: 31.33, costo: 22.38, largo: 3.0 },
       100: { sku: "GL100", venta: 25.31, web: 30.88, costo: 22.78, largo: 3.0 },
     },
     ISODEC: {
-      100: { sku: "6842", venta: 20.77, web: 25.34, costo: 18.69, largo: 3.0 },
-      150: { sku: "6843", venta: 29.07, web: 35.46, costo: 26.16, largo: 3.0 },
-      200: { sku: "6844", venta: 31.75, web: 38.74, costo: 28.58, largo: 3.0 },
-      250: { sku: "6845", venta: 31.75, web: 38.74, costo: 28.58, largo: 3.0 },
+      100: { sku: "6842", venta: 21.08, web: 24.6, costo: 17.57, largo: 3.0 },
+      150: { sku: "6843", venta: 29.5, web: 34.41, costo: 24.58, largo: 3.0 },
+      200: { sku: "6844", venta: 32.22, web: 37.59, costo: 26.85, largo: 3.0 },
+      250: { sku: "6845", venta: 32.42, web: 37.83, costo: 27.02, largo: 3.0 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GLLPIR50",  venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 },
+      50:  { sku: "GLLPIR50",  venta: 26.73, web: 31.18, costo: 22.27, largo: 3.0 },
       80:  { sku: "GLLPIR80",  venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 },
-      120: { sku: "GLLPIR120", venta: 31.08, web: 36.26, costo: 27.97, largo: 3.0 },
+      120: { sku: "GLLPIR120", venta: 31.34, web: 36.57, costo: 26.12, largo: 3.0 },
     },
   },
   gotero_lateral_camara: {
@@ -342,9 +342,9 @@ export const PERFIL_TECHO = {
   },
   gotero_superior: {
     ISOROOF: {
-      30: { sku: "GFSUP30", venta: 28.21, web: 32.91, costo: 25.39, largo: 3.03 },
-      50: { sku: "GFSUP50", venta: 29.08, web: 33.92, costo: 26.17, largo: 3.03 },
-      80: { sku: "GFSUP80", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
+      30: { sku: "GFSUP30", venta: 29.94, web: 34.93, costo: 24.95, largo: 3.03 },
+      50: { sku: "GFSUP50", venta: 30.85, web: 35.99, costo: 25.71, largo: 3.03 },
+      80: { sku: "GFSUP80", venta: 32.72, web: 38.18, costo: 27.27, largo: 3.03 },
       100: { sku: "GFSUP100", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
     },
     ISODEC_PIR: {
@@ -355,36 +355,36 @@ export const PERFIL_TECHO = {
     },
   },
   babeta_adosar: {
-    ISODEC:     { _all: { sku: "6828", venta: 12.19, web: 14.22, costo: 10.97, largo: 3.0 } },
+    ISODEC:     { _all: { sku: "6828", venta: 15.28, web: 17.82, costo: 12.73, largo: 3.0 } },
     ISODEC_PIR: { _all: { sku: "6828", venta: 12.19, web: 14.22, costo: 10.97, largo: 3.0 } },
-    ISOROOF:    { _all: { sku: "BBAS3G", venta: 23.74, web: 28.96, costo: 21.37, largo: 3.03 } },
+    ISOROOF:    { _all: { sku: "BBAS3G", venta: 25.19, web: 29.39, costo: 20.99, largo: 3.03 } },
   },
   babeta_empotrar: {
-    ISODEC:     { _all: { sku: "6865", venta: 12.19, web: 14.22, costo: 10.97, largo: 3.0 } },
+    ISODEC:     { _all: { sku: "6865", venta: 13.43, web: 15.67, costo: 11.19, largo: 3.0 } },
     ISODEC_PIR: { _all: { sku: "6865", venta: 12.19, web: 14.22, costo: 10.97, largo: 3.0 } },
-    ISOROOF:    { _all: { sku: "BBESUP", venta: 22.87, web: 27.90, costo: 20.58, largo: 3.03 } },
+    ISOROOF:    { _all: { sku: "BBESUP", venta: 24.26, web: 28.31, costo: 20.22, largo: 3.03 } },
   },
   cumbrera: {
-    ISODEC:     { _all: { sku: "6847", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.03 } },
+    ISODEC:     { _all: { sku: "6847", venta: 23.92, web: 27.9, costo: 19.93, largo: 3.03 } },
     ISODEC_PIR: { _all: { sku: "6847", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.03 } },
     /** Cumbrera Roof 3G estándar 3 m — MATRIZ SKU CUMROOF3M */
-    ISOROOF:    { _all: { sku: "CUMROOF3M", venta: 35.22, web: 42.97, costo: 29.35, largo: 3.03 } },
+    ISOROOF:    { _all: { sku: "CUMROOF3M", venta: 37.37, web: 43.6, costo: 31.14, largo: 3.03 } },
     /** Misma familia comercial que panel Isoroof Colonial — 2,2 m (2 piezas). MATRIZ: CUMROOFCOL / CUMCOL22 */
-    ISOROOF_COLONIAL: { _all: { sku: "CUMROOFCOL", venta: 97.86, web: 119.39, costo: 88.07, largo: 2.20 } },
+    ISOROOF_COLONIAL: { _all: { sku: "CUMROOFCOL", venta: 98.68, web: 115.13, costo: 82.24, largo: 2.20 } },
   },
   canalon: {
     ISOROOF: {
-      30: { sku: "CD30", venta: 71.83, web: 83.80, costo: 64.65, largo: 3.03 },
-      50: { sku: "CD50", venta: 73.19, web: 85.39, costo: 65.87, largo: 3.03 },
-      80: { sku: "CD80", venta: 74.22, web: 86.59, costo: 66.80, largo: 3.03 },
+      30: { sku: "CD30", venta: 76.22, web: 88.93, costo: 63.52, largo: 3.03 },
+      50: { sku: "CD50", venta: 77.66, web: 90.61, costo: 64.72, largo: 3.03 },
+      80: { sku: "CD80", venta: 78.76, web: 91.88, costo: 65.63, largo: 3.03 },
       100: { sku: "CD100", venta: 74.22, web: 86.59, costo: 66.80, largo: 3.03 },
     },
     ISODEC: {
-      100: { sku: "6801", venta: 69.54, web: 81.13, costo: 62.59, largo: 3.03 },
-      120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, costo: 83.93, largo: 3.03 },
-      150: { sku: "6802", venta: 80.05, web: 93.39, costo: 72.05, largo: 3.03 },
-      200: { sku: "6803", venta: 79.73, web: 93.02, costo: 71.76, largo: 3.03 },
-      250: { sku: "6804", venta: 104.30, web: 121.69, costo: 93.87, largo: 3.03 },
+      100: { sku: "6801", venta: 70.58, web: 82.35, costo: 58.82, largo: 3.03 },
+      120: { sku: "CAN.ISDC120", venta: 71.59, web: 83.52, costo: 59.66, largo: 3.03 },
+      150: { sku: "6802", venta: 81.25, web: 94.79, costo: 67.71, largo: 3.03 },
+      200: { sku: "6803", venta: 80.93, web: 94.42, costo: 67.44, largo: 3.03 },
+      250: { sku: "6804", venta: 105.88, web: 123.52, costo: 88.23, largo: 3.03 },
     },
     ISODEC_PIR: {
       50:  { sku: "6801", venta: 69.54, web: 81.13, costo: 62.59, largo: 3.03 },
@@ -393,8 +393,8 @@ export const PERFIL_TECHO = {
     },
   },
   soporte_canalon: {
-    ISOROOF: { _all: { sku: "SOPCAN3M", venta: 13.12, web: 15.30, costo: 11.81, largo: 3.0 } },
-    ISODEC:  { _all: { sku: "6805",     venta: 15.94, web: 18.59, costo: 14.35, largo: 3.0 } },
+    ISOROOF: { _all: { sku: "SOPCAN3M", venta: 13.92, web: 16.24, costo: 11.6, largo: 3.0 } },
+    ISODEC:  { _all: { sku: "6805",     venta: 16.18, web: 18.87, costo: 13.48, largo: 3.0 } },
     ISODEC_PIR: { _all: { sku: "6805",  venta: 15.94, web: 18.59, costo: 14.35, largo: 3.0 } },
   },
 };
@@ -402,14 +402,14 @@ export const PERFIL_TECHO = {
 export const PERFIL_PARED = {
   perfil_u: {
     ISOPANEL: {
-      50:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
-      100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
-      150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
-      200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
+      50:  { sku: "PU50MM",  venta: 10.14, web: 11.83, costo: 8.45, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.61, web: 14.71, costo: 10.51, largo: 3.0 },
+      150: { sku: "PU150MM", venta: 14.17, web: 16.53, costo: 11.81, largo: 3.0 },
+      200: { sku: "PU200MM", venta: 17.68, web: 20.62, costo: 14.73, largo: 3.0 },
       // 250mm usa intencionalmente el mismo SKU y precio que 200mm (PU200MM).
       // El proveedor (Bromyros) no diferencia perfil U entre 200 y 250mm en su lista de precios;
       // ambos espesores usan el mismo perfil comercial. Verificar en MATRIZ si esto cambia.
-      250: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
+      250: { sku: "PU200MM", venta: 21.25, web: 24.79, costo: 17.71, largo: 3.0 },
     },
     ISOWALL: {
       50:  { sku: "PU50MM", venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
@@ -446,7 +446,7 @@ export const PERFIL_PARED = {
     _all: { sku: "ESQ-INT", venta: 8.59, web: 10.48, costo: 7.73, largo: 3.0, label: "Esquinero interior" },
   },
   perfil_5852: {
-    _all: { sku: "PLECHU98", venta: 51.84, web: 63.24, costo: 45.00, largo: 6.8,
+    _all: { sku: "PLECHU98", venta: 22.14, web: 25.83, costo: 18.45, largo: 6.8,
             label: "Ángulo aluminio 5852 anodizado (6.8m)" },
   },
 };
