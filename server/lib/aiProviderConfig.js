@@ -76,6 +76,9 @@ export const ALLOWED_MODELS = {
     "gemini-1.5-flash",
     "gemini-1.5-flash-8b",
     "gemini-1.5-pro",
+    // Robotics-ER previews (for high-level reasoning / planner use cases).
+    // Only add here after validation. See comment below and GEMINI.md.
+    // "gemini-robotics-er-1.6-preview",
   ]),
 };
 
@@ -227,6 +230,14 @@ export function buildAiOptionsResponse() {
     ok: true,
     autoOrder: getProviderChain().filter((p) => keys[p]),
     providers,
+    // Reasoner (ER-style high-level planner / spatial) surface.
+    // Use these when you want a model good at decomposition, spatial reasoning,
+    // success estimation, and long-horizon planning (see GEMINI.md Architecture Analysis).
+    // The interactive rich tool loop (AGENT_TOOLS) remains Claude-primary for reliability.
+    reasoner: {
+      preferredOrder: getReasonerProviderChain().filter((p) => keys[p]),
+      note: "Prefer Gemini (or future gemini-robotics-er-* previews) for planner/reasoner steps when spatial or cost characteristics are beneficial.",
+    },
   };
 }
 

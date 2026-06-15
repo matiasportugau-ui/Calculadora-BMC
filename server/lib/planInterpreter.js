@@ -34,7 +34,17 @@ ESTILO DE RAZONAMIENTO ESPACIAL (inspirado en técnicas agentic de modelos ER):
 ESQUEMA JSON esperado:
 ${VISION_SCHEMA}`;
 
-export async function interpretPlan(fileBuffer, mimeType, filename) {
+/**
+ * interpretPlan
+ *
+ * @param {Buffer} fileBuffer
+ * @param {string} mimeType
+ * @param {string} filename
+ * @param {object} [opts]
+ * @param {string} [opts.reasonerProvider]  // "claude" | "gemini" — explicit ER/planner model preference
+ * @param {string} [opts.reasonerModel]     // specific model override (e.g. a robotics-er preview)
+ */
+export async function interpretPlan(fileBuffer, mimeType, filename, opts = {}) {
   const isImage = mimeType.startsWith("image/");
   const isPdf = mimeType === "application/pdf";
   const isDxf = (filename || "").toLowerCase().endsWith(".dxf") || mimeType === "text/plain";
@@ -46,11 +56,22 @@ export async function interpretPlan(fileBuffer, mimeType, filename) {
     );
   }
 
+  const reasonerProv = opts.reasonerProvider || null;
+  const reasonerModel = opts.reasonerModel || null;
+
   let extracted;
-  if (config.anthropicApiKey) {
+
+  // Support for explicit reasoner (ER-style) provider selection, mirroring presupOrchestrator pattern.
+  // This closes the asymmetry noted in the GEMINI.md review (Issue 2).
+  if (reasonerProv === "gemini" && config.geminiApiKey) {
+    extracted = await callGemini(fileBuffer, mimeType, isImage, isPdf, isDxf, reasonerModel);
+  } else if (reasonerProv === "claude" && config.anthropicApiKey) {
+    extracted = await callClaude(fileBuffer, mimeType, isImage, isPdf, isDxf);
+  } else if (config.anthropicApiKey) {
+    // Default behavior (preserve backward compat): prefer Anthropic for vision when available
     extracted = await callClaude(fileBuffer, mimeType, isImage, isPdf, isDxf);
   } else {
-    extracted = await callGemini(fileBuffer, mimeType, isImage, isPdf, isDxf);
+    extracted = await callGemini(fileBuffer, mimeType, isImage, isPdf, isDxf, reasonerModel);
   }
 
   return mapToBmc(extracted);
@@ -99,9 +120,10 @@ async function callClaude(buffer, mimeType, isImage, isPdf, isDxf) {
   return parseAiJson(resp.content[0]?.text || "");
 }
 
-async function callGemini(buffer, mimeType, isImage, isPdf, isDxf) {
+async function callGemini(buffer, mimeType, isImage, isPdf, isDxf, overrideModel = null) {
   const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-  const model = genAI.getGenerativeModel({ model: config.geminiChatModel || "gemini-2.0-flash" });
+  const modelName = overrideModel || config.geminiChatModel || "gemini-2.0-flash";
+  const model = genAI.getGenerativeModel({ model: modelName });
 
   const parts = [];
   if (isImage) {

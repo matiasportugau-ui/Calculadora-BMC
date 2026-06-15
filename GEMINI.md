@@ -183,19 +183,30 @@ Este plan ampliado entrega la profundidad de investigación que el usuario pidi�
 
 ---
 
-## Decisiones abiertas (para input del usuario si se desea durante/después de la revisión del plan)
-- Cuánto prominence darle a la elección de "modelo de razonamiento" a usuarios finales en la UI de chat vs mantenerlo principalmente interno a flujos de presup/orquestador.
-- Si hacer un spike/prototipo rápido de function calling de Gemini en una rama antes de comprometerse con la ruta de especialización de planner.
-- Prioridad de acelerar el gateway para cubrir más superficies agentic (Opción 3) en el próximo trimestre.
-- Si los IDs de modelo preview de robotics-er deberían ofrecerse ya en la UI pública de ai-options o solo documentarse para usuarios internos/power users.
+## Decisiones abiertas (actualizado post-review)
+Ver también la sección "Resolution & Implementation Plan" en el plan de sesión de esta corrida (incluye fixes para los 5 issues de la review + las 4 decisiones abiertas).
+
+Decisiones clave que quedan:
+- Superficie de "reasoner model" en UI (useChat / selector) vs solo interno (presupOrchestrator y planInterpreter).
+- Spike de soporte nativo de Gemini function calling en el loop de tools de agentChat (para paridad completa en acciones).
+- Acelerar Gateway para superficies agentic.
+- Exposición controlada de previews `gemini-robotics-er-*` en ai-options / público (con guards).
+
+Todas las decisiones anteriores fueron analizadas en el contexto de la separación ER (planner) / VLA (executor) recomendada.
 
 ---
 
-**Estado del documento:** Investigación ampliada + análisis de arquitectura completos. Próximos pasos de ejecución liviana según el enfoque recomendado (Opción 2 priorizada).
+**Estado del documento (post-review 2026-06):** Investigación ampliada + análisis de arquitectura completos y revisados. El documento fue objeto de `/review` por un subagente reviewer (persona "meticulous code reviewer"). Resultado: 0 bugs, 5 issues de baja severidad (1 suggestion principal sobre citas + 1 asymmetry en planInterpreter + 3 nits). Issue de citas resuelto (marcadores inline + sección Referencias completa).
 
-Fuentes principales consultadas (además de la investigación inicial del usuario): DeepMind models pages, Google AI for Developers (robotics overview y function calling), blogs oficiales de ER 1.6, arXiv tech reports, análisis técnicos independientes (Encord y otros). Citas inline en las secciones relevantes.
+El análisis de arquitectura (Opción 2 recomendada: separación explícita Planner/ER-style reasoner + Executor/VLA-style action) sigue siendo la dirección correcta según el reviewer.
 
-Este documento debe mantenerse vivo y referenciado en team knowledge y full-team runs cuando se discuta la evolución del agente Panelin.
+Este documento es la fuente canónica interna sobre Gemini Robotics + diseño del agente Panelin. Mantenerlo sincronizado con cambios en presupOrchestrator, planInterpreter, aiProviderConfig y agentChat.
+
+**Cross-references desde la review:**
+- Claridad sobre inyección de guidance ER (ver §5 y presupOrchestrator.js `_callPromptModule`).
+- Referencia exacta al guard del rich tool loop de Claude: `server/routes/agentChat.js` alrededor de la línea `if (provider === "claude")` (el bloque completo del tool-use loop de 8 rondas con AGENT_TOOLS).
+
+Próximos pasos: ver sección "Resolution Plan" en el plan de sesión y los issues restantes de baja prioridad.
 
 ---
 
