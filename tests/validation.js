@@ -24,6 +24,7 @@ import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
 import { PERFIL_TECHO, PERFIL_PARED, PANELS_TECHO, PANELS_PARED } from "../src/data/constants.js";
+import { getPathForMatrizSku } from "../src/data/matrizPreciosMapping.js";
 import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpStore.js";
 import { normalizeMlAnswerCurrencyText } from "../server/lib/mlAnswerText.js";
 import {
@@ -2858,6 +2859,55 @@ console.log("\n═══ SUITE 36: ISOROOF PLUS — mínimo 800 m² ═══");
     !tieneWarnMin,
     tieneWarnMin ? r.warnings.find(w => String(w).includes("800")) : "sin warning",
     "sin warning",
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 37: MATRIZ bake guards — aliases and SKU/price invariants
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 37: MATRIZ bake guards — aliases y SKUs críticos ═══");
+{
+  const canIsodec120 = PERFIL_TECHO.canalon.ISODEC[120];
+  const canPir120 = PERFIL_TECHO.canalon.ISODEC_PIR[120];
+  assert(
+    "CAN.ISDC120 MATRIZ row maps to ISODEC_PIR 120, not ISODEC EPS 120",
+    getPathForMatrizSku("CAN.ISDC120") === "PERFIL_TECHO.canalon.ISODEC_PIR.120",
+    getPathForMatrizSku("CAN.ISDC120"),
+    "PERFIL_TECHO.canalon.ISODEC_PIR.120",
+  );
+  assert(
+    "ISODEC EPS canalon 120 keeps legacy manual price",
+    canIsodec120.venta === 93.26 && canIsodec120.web === 108.80 && canIsodec120.costo === 83.93,
+    JSON.stringify(canIsodec120),
+    "venta=93.26 web=108.80 costo=83.93",
+  );
+  assert(
+    "ISODEC PIR canalon 120 uses MATRIZ CAN.ISDC120 row",
+    canPir120.venta === 71.59 && canPir120.web === 83.52 && canPir120.costo === 59.66,
+    JSON.stringify(canPir120),
+    "venta=71.59 web=83.52 costo=59.66",
+  );
+}
+{
+  const perfilU200 = PERFIL_PARED.perfil_u.ISOPANEL[200];
+  const perfilU250 = PERFIL_PARED.perfil_u.ISOPANEL[250];
+  assert(
+    "PU250MM maps to ISOPANEL 250",
+    getPathForMatrizSku("PU250MM") === "PERFIL_PARED.perfil_u.ISOPANEL.250",
+    getPathForMatrizSku("PU250MM"),
+    "PERFIL_PARED.perfil_u.ISOPANEL.250",
+  );
+  assert(
+    "ISOPANEL 250 perfil U emits PU250MM when using PU250MM price",
+    perfilU250.sku === "PU250MM",
+    perfilU250.sku,
+    "PU250MM",
+  );
+  assert(
+    "ISOPANEL 250 perfil U remains priced above 200mm source row",
+    perfilU250.venta > perfilU200.venta && perfilU250.costo > perfilU200.costo,
+    JSON.stringify({ perfilU200, perfilU250 }),
+    "250mm price > 200mm price",
   );
 }
 

@@ -381,7 +381,7 @@ export const PERFIL_TECHO = {
     },
     ISODEC: {
       100: { sku: "6801", venta: 70.58, web: 82.35, costo: 58.82, largo: 3.03 },
-      120: { sku: "CAN.ISDC120", venta: 71.59, web: 83.52, costo: 59.66, largo: 3.03 },
+      120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, costo: 83.93, largo: 3.03 },
       150: { sku: "6802", venta: 81.25, web: 94.79, costo: 67.71, largo: 3.03 },
       200: { sku: "6803", venta: 80.93, web: 94.42, costo: 67.44, largo: 3.03 },
       250: { sku: "6804", venta: 105.88, web: 123.52, costo: 88.23, largo: 3.03 },
@@ -389,7 +389,7 @@ export const PERFIL_TECHO = {
     ISODEC_PIR: {
       50:  { sku: "6801", venta: 69.54, web: 81.13, costo: 62.59, largo: 3.03 },
       80:  { sku: "6801", venta: 69.54, web: 81.13, costo: 62.59, largo: 3.03 },
-      120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, costo: 83.93, largo: 3.03 },
+      120: { sku: "CAN.ISDC120", venta: 71.59, web: 83.52, costo: 59.66, largo: 3.03 },
     },
   },
   soporte_canalon: {
@@ -406,10 +406,8 @@ export const PERFIL_PARED = {
       100: { sku: "PU100MM", venta: 12.61, web: 14.71, costo: 10.51, largo: 3.0 },
       150: { sku: "PU150MM", venta: 14.17, web: 16.53, costo: 11.81, largo: 3.0 },
       200: { sku: "PU200MM", venta: 17.68, web: 20.62, costo: 14.73, largo: 3.0 },
-      // 250mm usa intencionalmente el mismo SKU y precio que 200mm (PU200MM).
-      // El proveedor (Bromyros) no diferencia perfil U entre 200 y 250mm en su lista de precios;
-      // ambos espesores usan el mismo perfil comercial. Verificar en MATRIZ si esto cambia.
-      250: { sku: "PU200MM", venta: 21.25, web: 24.79, costo: 17.71, largo: 3.0 },
+      // MATRIZ BROMYROS diferencia el perfil U 250mm como PU250MM; el BOM debe emitir ese SKU.
+      250: { sku: "PU250MM", venta: 21.25, web: 24.79, costo: 17.71, largo: 3.0 },
     },
     ISOWALL: {
       50:  { sku: "PU50MM", venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },

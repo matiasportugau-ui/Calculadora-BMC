@@ -1359,7 +1359,8 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 /**
  * Aplica overrides de la calculadora (keys `path.costo|venta|web|webIvaInc`) a filas MATRIZ
  * cuyo SKU (col D) mapea a `path` en `matrizPreciosMapping.js`.
- * Overrides `.costo` / `.venta` / `.web` / `.webIvaInc` → celdas **F**, **L**, **T**, **U** **tal cual** (sin ×/÷ IVA). No escribe **M**.
+ * Overrides `.costo` / `.venta` / `.ventaIvaInc` / `.web` / `.webIvaInc`
+ * → celdas **G**, **J**, **K**, **R**, **S** **tal cual** (sin ×/÷ IVA).
  * Requiere scope escritura Sheets y rol Editor en el workbook MATRIZ.
  */
 async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, dryRun) {

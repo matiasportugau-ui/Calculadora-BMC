@@ -117,10 +117,10 @@ export const MATRIZ_SKU_TO_PATH = {
   6828: "PERFIL_TECHO.babeta_adosar.ISODEC._all",
   6865: "PERFIL_TECHO.babeta_empotrar.ISODEC._all",
   6847: "PERFIL_TECHO.cumbrera.ISODEC._all",
-  /** Canalón 120 mm — alias sin punto: CANISDC120 */
-  CANISDC120: "PERFIL_TECHO.canalon.ISODEC.120",
+  /** Canalón 120 mm ISODEC PIR — la fila viva con punto en col D describe explícitamente ISODEC PIR. */
+  CANISDC120: "PERFIL_TECHO.canalon.ISODEC_PIR.120",
   /** Misma ruta; col D con punto en planilla */
-  "CAN.ISDC120": "PERFIL_TECHO.canalon.ISODEC.120",
+  "CAN.ISDC120": "PERFIL_TECHO.canalon.ISODEC_PIR.120",
   /** Recomendado si PIR 50/80 debe importar aparte de 6801 (Isodec 100) */
   CANPIR50: "PERFIL_TECHO.canalon.ISODEC_PIR.50",
   CANPIR80: "PERFIL_TECHO.canalon.ISODEC_PIR.80",
@@ -203,7 +203,7 @@ export const MATRIZ_SKU_TO_PATH = {
   PU100MM: "PERFIL_PARED.perfil_u.ISOPANEL.100",
   PU150MM: "PERFIL_PARED.perfil_u.ISOPANEL.150",
   PU200MM: "PERFIL_PARED.perfil_u.ISOPANEL.200",
-  /** ISOPANEL 250 usa perfil/precio de 200 (PU200MM) en constants; SKU disjunto para fila propia */
+  /** ISOPANEL 250 tiene fila y SKU propio en MATRIZ; constants debe emitir PU250MM en el BOM. */
   PU250MM: "PERFIL_PARED.perfil_u.ISOPANEL.250",
   /** Perfil U ISOWALL: 80 tiene SKU propio (PU80MM); 50/100 comparten con ISOPANEL → SKU disjunto PUW* */
   PU80MM: "PERFIL_PARED.perfil_u.ISOWALL.80",
