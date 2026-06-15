@@ -99,9 +99,13 @@ await group("executeTool — telemetry wrapper records error call with class", a
 });
 
 group("AGENT_TOOLS not regressed by wrapper", () => {
-  // 41 = 32 base + 9 traktime_* tools añadidos en PR #328 (la aserción había quedado en 32).
-  // Conteo canónico lo valida tests/agentTools.test.js contra la lista esperada.
-  assert(AGENT_TOOLS.length === 41, `41 tools exported (got ${AGENT_TOOLS.length})`);
+  // The exact canonical surface lives in tests/agentTools.test.js. This suite only
+  // guards that telemetry wrapping does not hide tools or introduce duplicate names.
+  const names = AGENT_TOOLS.map((tool) => tool.name);
+  assert(AGENT_TOOLS.length >= 40, `expected mature tool surface (got ${AGENT_TOOLS.length})`);
+  assert(new Set(names).size === names.length, "tool names are unique");
+  assert(names.includes("get_calc_state"), "get_calc_state still exported");
+  assert(names.includes("calcular_cotizacion"), "calcular_cotizacion still exported");
 });
 
 await group("executeTool emits structured agent_tool_call log", async () => {
