@@ -22,6 +22,7 @@ import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
+import { selectMatrizRowForPath } from "../lib/matrizRowSelection.js";
 
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
@@ -1309,11 +1310,22 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
     }
     if (allRows.length < 2) continue;
 
+    const rowsByPath = new Map();
     const dataRows = allRows.slice(1);
-    for (const row of dataRows) {
+    for (let rowIndex = 0; rowIndex < dataRows.length; rowIndex++) {
+      const row = dataRows[rowIndex];
       const skuRaw = row[cols.sku];
-      const path = getPathForMatrizSku(skuRaw);
-      if (!path) continue;
+      const rowPath = getPathForMatrizSku(skuRaw);
+      if (!rowPath) continue;
+      if (!rowsByPath.has(rowPath)) rowsByPath.set(rowPath, []);
+      rowsByPath.get(rowPath).push({ row, rowIndex });
+    }
+
+    for (const [path, group] of rowsByPath) {
+      const selected = selectMatrizRowForPath(group, path, cols.descripcion);
+      if (!selected) continue;
+      const row = selected.row;
+      const skuRaw = row[cols.sku];
 
       const descripcion = row[cols.descripcion] || "";
       const costoRaw = parseNum(row[cols.costo]);
@@ -1417,16 +1429,25 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
       continue;
     }
     if (allRows.length < 2) continue;
+    const rowsByPath = new Map();
     const dataRows = allRows.slice(1);
-
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
       const skuRaw = row[colSpec.sku];
       const calcPath = getPathForMatrizSku(skuRaw);
       if (!calcPath || !byPath.has(calcPath)) continue;
+      if (!rowsByPath.has(calcPath)) rowsByPath.set(calcPath, []);
+      rowsByPath.get(calcPath).push({ row, rowIndex: i });
+    }
+
+    for (const [calcPath, group] of rowsByPath) {
+      const selected = selectMatrizRowForPath(group, calcPath, colSpec.descripcion);
+      if (!selected) continue;
+      const row = selected.row;
+      const skuRaw = row[colSpec.sku];
       matchedPaths.add(calcPath);
       const changes = byPath.get(calcPath);
-      const sheetRowNum = i + 2;
+      const sheetRowNum = selected.rowIndex + 2;
       const cells = {};
       if (changes.costo != null) {
         cells[colIndexToLetter(colSpec.costo)] = +(+changes.costo).toFixed(2);

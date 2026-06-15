@@ -17,6 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getPathForMatrizSku } from "../src/data/matrizPreciosMapping.js";
+import { selectMatrizRowForPath } from "../server/lib/matrizRowSelection.js";
 
 const SHEET_ID = "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo";
 const OUT = process.argv.includes("--out")
@@ -75,10 +76,10 @@ for (const [p, group] of byPath) {
   let row = group[0];
   if (group.length > 1) {
     const esp = espOfPath(p);
-    const match = esp ? group.find((g) => new RegExp(`\\b${esp}\\s?mm`, "i").test(String(g[C.prod]))) : null;
-    row = match || group[0];
+    row = selectMatrizRowForPath(group, p, C.prod)?.row || group[0];
     conflicts.push({ path: p, esp, elegido: String(row[C.prod]).slice(0, 36), total: group.length,
-      resuelto: !!match, otros: group.filter((g) => g !== row).map((g) => String(g[C.prod]).slice(0, 30)) });
+      resuelto: row !== group[0] || (esp ? new RegExp(`\\b${esp}\\s?mm\\b`, "i").test(String(row[C.prod])) : false),
+      otros: group.filter((g) => g !== row).map((g) => String(g[C.prod]).slice(0, 30)) });
   }
   const unidad = p.includes("esp.") ? "m²" : "unid";
   // Regla de negocio: los PANELES llevan el mismo precio en ambas listas (web = venta local).
