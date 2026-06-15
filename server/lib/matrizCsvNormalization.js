@@ -47,20 +47,30 @@ export function splitCsvRowSafe(row) {
 export function normalizeIsodecEpsVentaLocalCsvRows(csvRows) {
   if (!Array.isArray(csvRows) || csvRows.length <= 1) return csvRows;
 
+  const headers = splitCsvRowSafe(csvRows[0]).map((h) => String(h || "").trim().toLowerCase().replace(/^﻿/, ""));
+  const findCol = (name, fallback) => {
+    const idx = headers.indexOf(name);
+    return idx >= 0 ? idx : fallback;
+  };
+  const pathIdx = findCol("path", 0);
+  const ventaIdx = findCol("venta_local", 4);
+  const ventaIvaIdx = findCol("venta_local_iva_inc", 5);
+
   const rowByPath = new Map();
   for (let i = 1; i < csvRows.length; i++) {
     const parts = splitCsvRowSafe(csvRows[i]);
-    rowByPath.set(parts[0], { idx: i, parts });
+    const rowPath = parts[pathIdx];
+    if (rowPath) rowByPath.set(rowPath, { idx: i, parts });
   }
 
   for (const esp of EPS_TO_NORMALIZE) {
     const paredEntry = rowByPath.get(`PANELS_PARED.ISOPANEL_EPS.esp.${esp}`);
     const techoEntry = rowByPath.get(`PANELS_TECHO.ISODEC_EPS.esp.${esp}`);
     if (!paredEntry || !techoEntry) continue;
-    if (paredEntry.parts[4] === techoEntry.parts[4]) continue;
+    if (paredEntry.parts[ventaIdx] === techoEntry.parts[ventaIdx]) continue;
 
-    techoEntry.parts[4] = paredEntry.parts[4];
-    techoEntry.parts[5] = paredEntry.parts[5];
+    techoEntry.parts[ventaIdx] = paredEntry.parts[ventaIdx];
+    techoEntry.parts[ventaIvaIdx] = paredEntry.parts[ventaIvaIdx];
     csvRows[techoEntry.idx] = techoEntry.parts.map(serializeCsvCell).join(",");
   }
 

@@ -1038,6 +1038,18 @@ const splitQuoted = splitCsvRowSafe('A,"B, C","D ""Q"""');
 assert("splitCsvRowSafe handles comma in quoted cell", splitQuoted[1] === "B, C", splitQuoted[1], "B, C");
 assert("splitCsvRowSafe handles escaped quotes", splitQuoted[2] === 'D "Q"', splitQuoted[2], 'D "Q"');
 
+const csvRowsNormLiveSchema = [
+  "sku,path,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab",
+  "ISP100EPSF,PANELS_PARED.ISOPANEL_EPS.esp.100,Pared,Paneles Pared,30,37.41,45.64,37.41,45.64,m²,BROMYROS",
+  "ISD100EPS,PANELS_TECHO.ISODEC_EPS.esp.100,Techo,Paneles Techo,31,41.15,50.20,41.15,50.20,m²,BROMYROS",
+];
+normalizeIsodecEpsVentaLocalCsvRows(csvRowsNormLiveSchema);
+const liveTecho100 = splitCsvRowSafe(csvRowsNormLiveSchema[2]);
+assert("normalize live schema copies venta_local by header", liveTecho100[5] === "37.41", liveTecho100[5], "37.41");
+assert("normalize live schema copies venta_local_iva_inc by header", liveTecho100[6] === "45.64", liveTecho100[6], "45.64");
+assert("normalize live schema keeps costo untouched", liveTecho100[4] === "31", liveTecho100[4], "31");
+assert("normalize live schema keeps venta_web untouched", liveTecho100[7] === "41.15", liveTecho100[7], "41.15");
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE 24: Nuevos productos — ISOROOF_COLONIAL, ISODEC_EPS_PARED, perfilería
 // ═══════════════════════════════════════════════════════════════════════════
