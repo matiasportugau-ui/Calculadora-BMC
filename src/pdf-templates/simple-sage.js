@@ -17,7 +17,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 .hdr::before{content:'';position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.06)}
 .hdr::after{content:'';position:absolute;bottom:-30px;right:60px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.04)}
 .hdr-left{display:flex;align-items:center;gap:9px;z-index:1}
-.hdr-mark{width:30px;height:30px;background:rgba(255,255,255,.15);border:1.5pt solid rgba(255,255,255,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15pt;font-weight:900;color:#fff}
+.hdr-logo{height:28px;width:auto;opacity:0.95;flex-shrink:0}
 .hdr-name{font-size:11pt;font-weight:800;color:#fff;letter-spacing:.03em}
 .hdr-sub{font-size:6pt;color:rgba(255,255,255,.6);letter-spacing:.12em;text-transform:uppercase;margin-top:1px}
 .hdr-badge{background:rgba(255,255,255,.18);border:1pt solid rgba(255,255,255,.3);color:#fff;font-size:7pt;font-weight:700;padding:3px 10px;border-radius:12px;letter-spacing:.08em;text-transform:uppercase;z-index:1}
@@ -101,7 +101,7 @@ export function render(q) {
 <div class="page">
   <div class="hdr">
     <div class="hdr-left">
-      <div class="hdr-mark">B</div>
+      <img src="/bmc-pdf/assets/bmc-logo.png" alt="BMC Uruguay" class="hdr-logo" />
       <div><div class="hdr-name">BMC Uruguay</div><div class="hdr-sub">Metalog SAS</div></div>
     </div>
     <div class="hdr-badge">Presupuesto</div>
