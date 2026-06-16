@@ -29,8 +29,20 @@ fn toggle_window<R: Runtime>(app: &AppHandle<R>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Cmd+Shift+T (macOS) / Ctrl+Shift+T (Windows/Linux).
-    let toggle = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyT);
+    // Cmd+Shift+T (macOS) / Ctrl+Shift+T (Windows/Linux). The primary modifier
+    // differs per OS: SUPER is Cmd on macOS but the Windows/Super key elsewhere,
+    // so use CONTROL off-macOS to match the documented Ctrl+Shift+T.
+    // Two equal Shortcut values: `toggle` is moved into the plugin registration
+    // and `expected` into the handler. The explicit `shortcut == &expected`
+    // match means only THIS hotkey toggles the window — defense in depth, even
+    // though the webview is not granted any global-shortcut:* capability.
+    let primary = if cfg!(target_os = "macos") {
+        Modifiers::SUPER
+    } else {
+        Modifiers::CONTROL
+    };
+    let toggle = Shortcut::new(Some(primary | Modifiers::SHIFT), Code::KeyT);
+    let expected = Shortcut::new(Some(primary | Modifiers::SHIFT), Code::KeyT);
 
     tauri::Builder::default()
         .plugin(
@@ -38,7 +50,7 @@ pub fn run() {
                 .with_shortcut(toggle)
                 .expect("failed to register global shortcut")
                 .with_handler(move |app, shortcut, event| {
-                    if event.state == ShortcutState::Pressed && shortcut == &toggle {
+                    if event.state == ShortcutState::Pressed && shortcut == &expected {
                         toggle_window(app);
                     }
                 })
