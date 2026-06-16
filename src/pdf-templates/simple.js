@@ -1,5 +1,12 @@
 // src/pdf-templates/simple.js
 // Layout G — Presupuesto Simple (single A4 page, full terms)
+// *** R3-C IS NOW THE PRODUCTION THEME (primary BMC-theme) ***
+// - Brand header: logo (32px) + "BMC URUGUAY" + "METALOG SAS" on left, PRESUPUESTO badge + ref/date on right
+// - Logo size: 32px (bumped per iteration), header gap: 6px
+// - Full original 12 QUOTE_TERMS (with .bl / .hl classes)
+// - Refined styling: .cat navy rows, light th, strong .trow.total, scoped, A4 print-ready
+// This file is the real production renderer. Visual BASE is generated from it + real model for iteration.
+// Changes here = changes in production PDFs (PDF Cliente, WA, Drive, etc.).
 
 import { QUOTE_TERMS, COMPANY } from '../utils/helpers.js';
 
@@ -9,53 +16,54 @@ const BRAND = COMPANY?.brandColor || '#003366'; // Official BMC navy from websit
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-@page{size:A4;margin:8mm 10mm}
-body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;font-size:8.5pt;color:#1D1D1F;background:#fff}
+/* REFINED SIMPLE — adopted as preferred after parallel visual comparison */
+@page{size:A4;margin:7mm 8mm}
+.presupuesto-container,.page{font-size:9pt;line-height:1.25;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.presupuesto-container ul,.presupuesto-container li,.presupuesto-container .cat-row,
+.page ul,.page li,.page .cat-row{list-style:none!important;margin:0;padding:0}
+.presupuesto-container .cat-row::before,.presupuesto-container [class*="header"]::before,
+.page .cat-row::before,.page [class*="header"]::before{content:none!important;display:none!important}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;margin:0;font-size:9pt;color:#1D1D1F;background:#fff}
 .page{width:210mm;min-height:277mm;position:relative;background:#fff}
-@media screen{body{background:#c5bdb5;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 8px 40px rgba(0,0,0,.18);border-radius:3px;max-width:794px;padding:8mm 10mm}}
+@media screen{body{background:#e5e2dd;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 0 0 1px #ddd;max-width:794px;padding:7mm 8mm}}
 @media print{.page{padding:0}}
-.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2pt solid ${BRAND};padding-bottom:4mm;margin-bottom:3mm}
-.hdr-left{display:flex;align-items:center;gap:8px}
-.hdr-logo{height:26px;width:auto;opacity:0.95;flex-shrink:0}
-.hdr-name{font-size:11pt;font-weight:800;color:${BRAND};letter-spacing:.03em}
-.hdr-sub{font-size:6pt;color:#667085;letter-spacing:.1em;text-transform:uppercase}
-.hdr-badge{background:${BRAND};color:#fff;font-size:7pt;font-weight:700;padding:3px 10px;border-radius:12px;letter-spacing:.08em;text-transform:uppercase}
-.meta{display:grid;grid-template-columns:1fr 1fr;gap:1.5mm 10mm;font-size:8pt;margin-bottom:2.5mm}
+.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2pt solid ${BRAND};padding-bottom:3mm;margin-bottom:3mm}
+.logo{height:32px}
+.badge{background:${BRAND};color:#fff;font-size:7pt;font-weight:700;padding:3px 10px;border-radius:9999px;letter-spacing:.08em;text-transform:uppercase}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:2mm;font-size:8pt;margin-bottom:2mm}
 .meta b{color:${BRAND}}
-.prod{background:#F0F4F8;padding:4px 8px;border-radius:4px;margin-bottom:2.5mm;font-size:8pt}
-.prod b{color:${BRAND}}
-.kpi-line{font-size:7pt;color:#667085;margin-bottom:2.5mm;padding:2px 0;border-bottom:.4pt solid #E2E8F0}
+.scope{background:#f1f5f9;padding:3px 6px;border-radius:3px;margin-bottom:2mm;font-size:8pt}
+.kpi{font-size:7pt;color:#64748b;margin-bottom:2mm;border-bottom:0.5pt solid #e2e8f0;padding-bottom:1mm}
 .bom{width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:2mm}
-.bom th{background:#EDEDED;padding:2.5px 5px;font-weight:700;font-size:7pt;text-transform:uppercase;letter-spacing:.03em;text-align:right;border:.3pt solid #D0D0D0}
+.bom th{background:#f1f5f9;padding:3px 4px;font-weight:600;text-transform:uppercase;letter-spacing:.02em;text-align:right;border-bottom:0.5pt solid #cbd5e1}
 .bom th:first-child{text-align:left}
-.bom td{padding:2px 5px;border:.3pt solid #D0D0D0;text-align:right;font-variant-numeric:tabular-nums}
+.bom td{padding:2.5px 4px;border-bottom:0.4pt solid #e2e8f0;text-align:right;font-variant-numeric:tabular-nums}
 .bom td:first-child{text-align:left}
-.bom .bg td{background:#EAF0F8;color:${BRAND};font-weight:700;border-left:2.5pt solid ${BRAND};padding:3px 5px}
-.bom tr:nth-child(even) td{background:rgba(0,51,102,.02)}
-.tots{display:flex;justify-content:flex-end;margin-bottom:2mm}
-.ti{min-width:200px;font-size:8.5pt}
-.tr{display:flex;justify-content:space-between;padding:1.5px 0;font-variant-numeric:tabular-nums;color:#667085}
-.trt{border-top:1.5pt solid ${BRAND};margin-top:2px;padding-top:2px;font-size:12pt;font-weight:800;color:${BRAND}}
-.terms{margin-bottom:2mm;padding:4px 8px;background:#F8F9FA;border-radius:4px;border-left:2.5pt solid ${BRAND}}
-.terms-title{font-size:7pt;font-weight:700;color:${BRAND};text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
-.terms ol{margin:0;padding-left:12px;font-size:7pt;line-height:1.45;color:#444}
-.terms li{margin-bottom:.5px}
-.terms li.hl{color:#CC0000;font-weight:600}
-.terms li.bl{font-weight:600}
-.bank{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;padding:4px 8px;background:${BRAND};color:rgba(255,255,255,.7);border-radius:4px;font-size:7.5pt;margin-bottom:2mm}
-.bank strong{color:#fff}
-.bankt{grid-column:1/-1;font-size:6pt;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:1px}
-.ftr{border-top:.5pt solid #D0D0D0;padding-top:2mm;display:flex;justify-content:space-between;font-size:6.5pt;color:#667085}
+.num{text-align:right}
+.cen{text-align:center}
+.cat{background:${BRAND};color:#fff;font-weight:700}
+.totals{display:flex;justify-content:flex-end;margin:2mm 0}
+.tbox{min-width:210px;font-size:8.5pt}
+.trow{display:flex;justify-content:space-between;padding:1.5px 0;color:#475569}
+.trow.total{font-size:11pt;font-weight:800;color:#fff;background:${BRAND};padding:4px 6px;border-radius:3px;margin-top:2px}
+.terms{background:#f8fafc;border-left:2.5pt solid ${BRAND};padding:3px 6px;margin-bottom:2mm;font-size:7pt}
+.terms-title{font-weight:700;color:${BRAND};text-transform:uppercase;letter-spacing:.06em;margin-bottom:1px;font-size:6.5pt}
+.terms li{margin:1px 0 1px 12px}
+.terms .hl{color:#b91c1c;font-weight:600}
+.terms .bl{font-weight:600}
+.bank{background:${BRAND};color:#fff;padding:3px 6px;border-radius:3px;font-size:7pt;margin-bottom:2mm}
+.bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px 6px}
+.ftr{font-size:6.5pt;color:#64748b;border-top:0.5pt solid #cbd5e1;padding-top:2mm;margin-top:2mm;display:flex;justify-content:space-between}
 `;
 
 function renderBomDetailRows(bomDetailGroups) {
   return bomDetailGroups.map(g => {
-    const groupRow = `<tr class="bg"><td colspan="4">&#9656; ${esc(g.groupName)}</td><td style="text-align:right">${fmt(g.groupTotal)}</td></tr>`;
+    const groupRow = `<tr class="cat"><td colspan="4">${esc(g.groupName)}</td><td class="num">${fmt(g.groupTotal)}</td></tr>`;
     const itemRows = g.items.map(i => {
       const qty = typeof i.qty === 'number'
         ? (i.qty % 1 === 0 ? i.qty : i.qty.toFixed(2))
         : (i.qty ?? '');
-      return `<tr><td>${esc(i.desc)}</td><td style="text-align:right">${qty}</td><td style="text-align:center">${esc(i.unit)}</td><td style="text-align:right">${fmt(i.pu)}</td><td>${fmt(i.total)}</td></tr>`;
+      return `<tr><td>${esc(i.desc)}</td><td class="num">${qty}</td><td class="cen">${esc(i.unit)}</td><td class="num">${fmt(i.pu)}</td><td class="num">${fmt(i.total)}</td></tr>`;
     }).join('');
     return groupRow + itemRows;
   }).join('');
@@ -74,14 +82,6 @@ function renderTerms() {
 
 export function render(q) {
   const cl = q.bmcExtra?.client ?? {};
-  const clientRows = [
-    cl.nombre ? `<div><b>Cliente:</b> ${esc(cl.nombre)}</div>` : '<div></div>',
-    `<div><b>Fecha:</b> ${esc(q.fecha)}</div>`,
-    cl.direccion ? `<div><b>Dir:</b> ${esc(cl.direccion)}</div>` : '<div></div>',
-    `<div><b>Ref:</b> ${esc(q.ref)}</div>`,
-    cl.telefono ? `<div><b>Tel:</b> ${esc(cl.telefono)}</div>` : '<div></div>',
-    cl.rut ? `<div><b>RUT:</b> ${esc(cl.rut)}</div>` : '<div></div>',
-  ].join('');
 
   const kpiParts = [
     q.areaTotalM2 > 0 ? `${Number(q.areaTotalM2).toFixed(1)} m²` : null,
@@ -92,35 +92,60 @@ export function render(q) {
 
   return `<!DOCTYPE html><html lang="es"><head>
 <meta charset="UTF-8"><title>Presupuesto BMC Uruguay</title>
+<!-- REFINED SIMPLE — production template -->
 <style>${CSS}</style>
 </head><body>
-<div class="page">
+<div class="page presupuesto-container" id="presupuesto">
   <div class="hdr">
-    <div class="hdr-left">
-      <img src="/bmc-pdf/assets/bmc-logo.png" alt="BMC Uruguay" class="hdr-logo" />
-      <div><div class="hdr-name">BMC Uruguay</div><div class="hdr-sub">Metalog SAS</div></div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <img src="/bmc-pdf/assets/bmc-logo.png" class="logo" alt="BMC">
+      <div>
+        <div style="font-weight:700;color:${BRAND}">BMC URUGUAY</div>
+        <div style="font-size:6pt;color:#64748b">METALOG SAS</div>
+      </div>
     </div>
-    <div class="hdr-badge">Presupuesto</div>
+    <div style="text-align:right">
+      <div class="badge">PRESUPUESTO</div>
+      <div style="font-size:6.5pt;color:#64748b">${esc(q.ref)} — ${esc(q.fecha)}</div>
+    </div>
   </div>
-  <div class="meta">${clientRows}</div>
-  <div class="prod"><b>Producto / alcance:</b> ${esc(q.panelDescLine)}</div>
-  ${kpiParts ? `<div class="kpi-line">${esc(kpiParts)}</div>` : ''}
+
+  <div class="meta">
+    <div><b>Cliente:</b> ${esc(cl.nombre || '')}</div>
+    <div><b>Fecha:</b> ${esc(q.fecha)}</div>
+    <div><b>Dirección:</b> ${esc(cl.direccion || '')}</div>
+    <div><b>Tel:</b> ${esc(cl.telefono || '')}</div>
+    <div><b>Ref:</b> ${esc(q.ref)}</div>
+    <div><b>Validez:</b> 10 días</div>
+  </div>
+
+  <div class="scope"><b>Alcance:</b> ${esc(q.panelDescLine)}</div>
+  ${kpiParts ? `<div class="kpi">${esc(kpiParts)}</div>` : ''}
+
   <table class="bom"><thead><tr>
-    <th style="text-align:left;width:42%">Descripción</th>
-    <th style="width:11%">Cant.</th><th style="width:9%;text-align:center">Unid.</th>
-    <th style="width:17%">P.U. USD</th><th style="width:21%">Total USD</th>
+    <th style="text-align:left">Descripción</th>
+    <th>Cant.</th><th>Unid.</th>
+    <th>P.U. USD</th><th>Total USD</th>
   </tr></thead><tbody>${renderBomDetailRows(q.bomDetailGroups)}</tbody></table>
-  <div class="tots"><div class="ti">
-    <div class="tr"><span>Subtotal sin IVA</span><span>USD ${fmt(q.subtotalSinIva)}</span></div>
-    <div class="tr"><span>IVA 22%</span><span>USD ${fmt(q.ivaAmount)}</span></div>
-    <div class="tr trt"><span>Total USD</span><span>${fmt(q.totalConIva)}</span></div>
+
+  <div class="totals"><div class="tbox">
+    <div class="trow"><span>Subtotal sin IVA</span><span>USD ${fmt(q.subtotalSinIva)}</span></div>
+    <div class="trow"><span>IVA 22%</span><span>USD ${fmt(q.ivaAmount)}</span></div>
+    <div class="trow total"><span>Total USD</span><span>${fmt(q.totalConIva)}</span></div>
   </div></div>
+
   ${renderTerms()}
+
   <div class="bank">
-    <div class="bankt">Datos para depósito bancario</div>
-    <div>Titular: <strong>Metalog SAS</strong></div><div>RUT: <strong>120403430012</strong></div>
-    <div>BROU · Cta. Dólares: <strong>110520638-00002</strong></div><div>Consultas: <strong>092 663 245</strong></div>
+    <div style="font-size:6pt;opacity:0.7;margin-bottom:1px;text-transform:uppercase;letter-spacing:.05em">Datos para depósito bancario</div>
+    <div class="bank-grid">
+      <div>Titular: <strong>Metalog SAS</strong></div>
+      <div>RUT: <strong>120403430012</strong></div>
+      <div>BROU Cta. Dólares: <strong>110520638-00002</strong></div>
+      <div>Consultas: <strong>092 663 245</strong></div>
+    </div>
   </div>
+
   <div class="ftr">
     <span>bmcuruguay.com.uy · 092 663 245 · Metalog SAS</span>
     <span style="color:${BRAND};font-weight:700">
