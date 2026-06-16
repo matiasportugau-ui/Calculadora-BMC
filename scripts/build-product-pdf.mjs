@@ -1,5 +1,6 @@
 /**
- * Construye docs/product/PRODUCT-OVERVIEW.pdf a partir de PRODUCT-OVERVIEW.md.
+ * Construye los PDF de docs/product (PRODUCT-OVERVIEW + SYSTEM-REFERENCE) a partir
+ * de sus .md.
  *
  * Render: markdown-it → HTML → page.pdf() con el Chromium ya instalado por
  * Playwright (evita pandoc/latex). Las imágenes se embeben vía file:// relativo
@@ -8,44 +9,24 @@
  * Uso:  node scripts/build-product-pdf.mjs
  */
 import { readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname, resolve, relative, isAbsolute } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import MarkdownIt from "markdown-it";
 import { chromium } from "@playwright/test";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DOC_DIR = resolve(__dirname, "../docs/product");
-const MD_PATH = join(DOC_DIR, "PRODUCT-OVERVIEW.md");
-const PDF_PATH = join(DOC_DIR, "PRODUCT-OVERVIEW.pdf");
+// Allowlist: las imágenes locales SOLO pueden vivir bajo docs/product/assets/.
+// Bloquea que un ![](../../docs-private/…) o <img src> con traversal incruste PII
+// (capturas autenticadas) en un PDF commiteado.
+const ASSETS_DIR = join(DOC_DIR, "assets");
 
-if (!existsSync(MD_PATH)) {
-  console.error(`No existe ${MD_PATH}`);
-  process.exit(1);
-}
+const DOCS = [
+  { md: "PRODUCT-OVERVIEW.md", pdf: "PRODUCT-OVERVIEW.pdf" },
+  { md: "SYSTEM-REFERENCE.md", pdf: "SYSTEM-REFERENCE.pdf" },
+];
 
-const mdRaw = readFileSync(MD_PATH, "utf8");
-
-// Verificar enlaces de imagen (markdown ![..](ruta)) antes de renderizar.
-const imgRe = /!\[[^\]]*\]\(([^)]+)\)/g;
-const broken = [];
-let m;
-while ((m = imgRe.exec(mdRaw))) {
-  // Quitar título opcional: ![alt](ruta "título") / ![alt](ruta 'título').
-  const ref = m[1].replace(/\s+["'].*["']\s*$/, "").trim();
-  if (/^https?:/i.test(ref)) continue;
-  const abs = resolve(DOC_DIR, ref);
-  if (!existsSync(abs)) broken.push(ref);
-}
-if (broken.length) {
-  console.error(`Imágenes rotas (${broken.length}):\n  ` + broken.join("\n  "));
-  process.exit(1);
-}
-
-const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
-const body = md.render(mdRaw);
-
-const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
-<style>
+const STYLE = `
   @page { margin: 18mm 16mm; }
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
          font-size: 11pt; line-height: 1.5; color: #1a1a1a; max-width: 100%; }
@@ -53,32 +34,81 @@ const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
   h2 { font-size: 16pt; margin-top: 28px; border-bottom: 1px solid #ddd; padding-bottom: 4px; page-break-after: avoid; }
   h3 { font-size: 13pt; margin-top: 18px; page-break-after: avoid; }
   img { max-width: 100%; height: auto; border: 1px solid #e3e3e3; border-radius: 6px; margin: 8px 0; page-break-inside: avoid; }
-  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
-  th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; vertical-align: top; }
+  table { border-collapse: collapse; width: 100%; font-size: 9pt; }
+  th, td { border: 1px solid #ccc; padding: 4px 7px; text-align: left; vertical-align: top; word-break: break-word; }
   th { background: #f3f5ff; }
-  code { background: #f3f3f3; padding: 1px 4px; border-radius: 3px; font-size: 9.5pt; }
+  code { background: #f3f3f3; padding: 1px 4px; border-radius: 3px; font-size: 9pt; }
   pre { background: #f7f7f7; padding: 10px; border-radius: 6px; overflow-x: auto; }
   blockquote { border-left: 4px solid #2b59ff; margin-left: 0; padding-left: 12px; color: #444; }
   a { color: #2b59ff; text-decoration: none; }
-</style></head><body>${body}</body></html>`;
+`;
 
-// Render a un archivo temporal dentro de docs/product para que las rutas
-// relativas de <img> (assets/...) resuelvan vía file://.
-const TMP_HTML = join(DOC_DIR, "_render.html");
-writeFileSync(TMP_HTML, html);
+/**
+ * Valida las imágenes locales: deben existir Y resolver DENTRO de docs/product/assets/.
+ * Rechaza rutas absolutas, `..` y cualquier cosa fuera del allowlist (anti-PII). Las
+ * URLs http(s) se permiten (no tocan el filesystem local). Devuelve los refs inválidos.
+ */
+function checkImages(mdRaw) {
+  const refs = [];
+  for (const m of mdRaw.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)) refs.push(m[1].replace(/\s+["'].*["']\s*$/, "").trim());
+  // Defensivo: aunque html:false neutraliza el raw HTML, validamos <img src> igual.
+  for (const m of mdRaw.matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["']/gi)) refs.push(m[1].trim());
+  const bad = [];
+  for (const ref of refs) {
+    if (/^https?:/i.test(ref)) continue;
+    if (isAbsolute(ref) || ref.includes("..")) {
+      bad.push(`${ref} (ruta absoluta/traversal no permitida)`);
+      continue;
+    }
+    const resolved = resolve(DOC_DIR, ref);
+    const rel = relative(ASSETS_DIR, resolved);
+    if (rel.startsWith("..") || isAbsolute(rel)) {
+      bad.push(`${ref} (fuera de docs/product/assets/)`);
+      continue;
+    }
+    if (!existsSync(resolved)) bad.push(`${ref} (no existe)`);
+  }
+  return bad;
+}
 
+// html:false → el raw HTML del Markdown (p. ej. <img src="../../docs-private/…">,
+// <script>) NO se renderiza; evita inyección al render file:// en Chromium.
+const md = new MarkdownIt({ html: false, linkify: true, typographer: true });
 const browser = await chromium.launch({ headless: true });
 try {
-  const page = await browser.newPage();
-  await page.goto(pathToFileURL(TMP_HTML).href, { waitUntil: "networkidle" });
-  await page.pdf({
-    path: PDF_PATH,
-    format: "A4",
-    printBackground: true,
-    margin: { top: "0", bottom: "0", left: "0", right: "0" },
-  });
+  for (const { md: mdName, pdf: pdfName } of DOCS) {
+    const mdPath = join(DOC_DIR, mdName);
+    if (!existsSync(mdPath)) {
+      console.warn(`(omitido) no existe ${mdName}`);
+      continue;
+    }
+    const mdRaw = readFileSync(mdPath, "utf8");
+    const broken = checkImages(mdRaw);
+    if (broken.length) {
+      console.error(`Imágenes rotas en ${mdName} (${broken.length}):\n  ` + broken.join("\n  "));
+      process.exitCode = 1;
+      continue;
+    }
+    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><style>${STYLE}</style></head><body>${md.render(mdRaw)}</body></html>`;
+    // Archivo temporal dentro de docs/product para que las rutas relativas de
+    // <img> (assets/...) resuelvan vía file://.
+    const tmp = join(DOC_DIR, `_render-${pdfName}.html`);
+    writeFileSync(tmp, html);
+    try {
+      const page = await browser.newPage();
+      await page.goto(pathToFileURL(tmp).href, { waitUntil: "networkidle" });
+      await page.pdf({
+        path: join(DOC_DIR, pdfName),
+        format: "A4",
+        printBackground: true,
+        margin: { top: "0", bottom: "0", left: "0", right: "0" },
+      });
+      await page.close();
+      console.log(`PDF generado: docs/product/${pdfName}`);
+    } finally {
+      rmSync(tmp, { force: true });
+    }
+  }
 } finally {
   await browser.close();
-  rmSync(TMP_HTML, { force: true });
 }
-console.log(`PDF generado: ${PDF_PATH}`);
