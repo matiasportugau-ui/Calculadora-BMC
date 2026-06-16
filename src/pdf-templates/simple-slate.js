@@ -1,4 +1,5 @@
 // src/pdf-templates/simple-slate.js
+// Production PDF Template v2 - Refactored 2026-06-16 (scoped, cat-row dark headers, no bullets, clean header)
 // Layout: Simple Slate — Modern dark header, sky-blue accent, clean body. Single A4 page.
 
 import { QUOTE_TERMS } from '../utils/helpers.js';
@@ -36,7 +37,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 .bom th:first-child{text-align:left}
 .bom td{padding:2px 5px;border-bottom:.3pt solid #F1F5F9;text-align:right;font-variant-numeric:tabular-nums;color:#334155}
 .bom td:first-child{text-align:left}
-.bom .bg td{background:#0EA5E9!important;color:#fff!important;font-weight:700!important;font-size:7.5pt;padding:3px 5px!important;border:none!important}
+/* v2 cat-row dark + blue accent, no bullets */
+.presupuesto-container ul,.presupuesto-container li,.presupuesto-container .cat-row,
+.page ul,.page li,.page .cat-row{list-style:none!important;margin:0;padding:0}
+.presupuesto-container .cat-row::before,.page .cat-row::before{content:none!important;display:none!important}
+.bom .cat-row td,.bom tr.cat-row td{background:#1e2937!important;color:#fff!important;font-weight:700!important;border-left:3.5pt solid #2563eb!important;padding:4px 6px!important}
 .tots{display:flex;justify-content:flex-end;margin-bottom:2.5mm}
 .ti{min-width:210px;border-right:3pt solid #1E293B;padding:5px 10px;background:#F8FAFC}
 .tr{display:flex;justify-content:space-between;padding:1.5px 0;font-size:8pt;font-variant-numeric:tabular-nums;color:#64748B}
@@ -56,7 +61,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 
 function renderBomDetailRows(bomDetailGroups) {
   return bomDetailGroups.map(g => {
-    const groupRow = `<tr class="bg"><td colspan="4">&#9656; ${esc(g.groupName)}</td><td style="text-align:right">$${fmt(g.groupTotal)}</td></tr>`;
+    const groupRow = `<tr class="cat-row"><td colspan="4">${esc(g.groupName)}</td><td style="text-align:right">$${fmt(g.groupTotal)}</td></tr>`;
     const itemRows = g.items.map(i => {
       const qty = typeof i.qty === 'number' ? (i.qty % 1 === 0 ? i.qty : i.qty.toFixed(2)) : (i.qty ?? '');
       return `<tr><td>${esc(i.desc)}</td><td style="text-align:right">${qty}</td><td style="text-align:center">${esc(i.unit)}</td><td style="text-align:right">${fmt(i.pu)}</td><td>${fmt(i.total)}</td></tr>`;
@@ -95,9 +100,10 @@ export function render(q) {
 
   return `<!DOCTYPE html><html lang="es"><head>
 <meta charset="UTF-8"><title>Presupuesto BMC Uruguay</title>
+<!-- Production PDF Template v2 - Refactored 2026-06-16 -->
 <style>${CSS}</style>
 </head><body>
-<div class="page">
+<div class="page presupuesto-container" id="presupuesto">
   <div class="hdr">
     <div class="hdr-row">
       <div class="hdr-left">

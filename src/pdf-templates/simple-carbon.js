@@ -1,6 +1,7 @@
 // src/pdf-templates/simple-carbon.js
 // Layout: Simple Carbon — Premium dark/carbon header, amber accents, warm gray body. Single A4 page.
 // Customer-facing default. Uses real BMC logo from /bmc-pdf/assets/ + CSS color tokens (see :root) for easy branding tweaks.
+// Production PDF Template v2 - Refactored 2026-06-16 (scoped, cat-row dark headers, no bullets, clean header)
 
 import { QUOTE_TERMS, COMPANY } from '../utils/helpers.js';
 
@@ -23,7 +24,12 @@ const CSS = `
   --bmc-totals-bg: #F59E0B;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-@page{size:A4;margin:0}
+/* Production PDF Template v2 - Refactored 2026-06-16 */
+@page{size:A4;margin:7mm 8mm}
+.presupuesto-container,.page{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:9pt;line-height:1.25}
+.presupuesto-container ul,.presupuesto-container li,.presupuesto-container .cat-row,
+.page ul,.page li,.page .cat-row{list-style:none!important;margin:0;padding:0}
+.presupuesto-container .cat-row::before,.page .cat-row::before{content:none!important;display:none!important}
 body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;font-size:8.5pt;color:#1F2937;background:#F9FAFB}
 .page{width:210mm;min-height:297mm;display:flex;flex-direction:column;overflow:hidden;background:#F9FAFB}
 @media screen{body{background:#606060;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 10px 50px rgba(0,0,0,.35);border-radius:3px;max-width:794px}}
@@ -51,7 +57,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 .bom th:first-child{text-align:left}
 .bom td{padding:2px 5px;border-bottom:.3pt solid #F3F4F6;text-align:right;font-variant-numeric:tabular-nums;color:#374151}
 .bom td:first-child{text-align:left}
-.bom .bg td{background:var(--bmc-accent)!important;color:#111827!important;font-weight:700!important;padding:3px 5px!important;border:none!important}
+.bom .cat-row td,.bom tr.cat-row td{background:#1e2937!important;color:#fff!important;font-weight:700!important;border-left:3.5pt solid #2563eb!important;padding:4px 6px!important}
 .bom tr:nth-child(even) td{background:rgba(249,250,251,1)}
 .tots{display:flex;justify-content:flex-end;margin-bottom:2mm}
 .ti{min-width:200px;background:var(--bmc-totals-bg);border-radius:6px;padding:6px 10px}
@@ -77,7 +83,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 
 function renderBomDetailRows(bomDetailGroups) {
   return bomDetailGroups.map(g => {
-    const groupRow = `<tr class="bg"><td colspan="4">&#9656; ${esc(g.groupName)}</td><td style="text-align:right">${fmt(g.groupTotal)}</td></tr>`;
+    const groupRow = `<tr class="cat-row"><td colspan="4">${esc(g.groupName)}</td><td style="text-align:right">${fmt(g.groupTotal)}</td></tr>`;
     const itemRows = g.items.map(i => {
       const qty = typeof i.qty === 'number' ? (i.qty % 1 === 0 ? i.qty : i.qty.toFixed(2)) : (i.qty ?? '');
       return `<tr><td>${esc(i.desc)}</td><td style="text-align:right">${qty}</td><td style="text-align:center">${esc(i.unit)}</td><td style="text-align:right">${fmt(i.pu)}</td><td>${fmt(i.total)}</td></tr>`;
@@ -115,14 +121,14 @@ export function render(q) {
 
   return `<!DOCTYPE html><html lang="es"><head>
 <meta charset="UTF-8"><title>Presupuesto BMC Uruguay</title>
+<!-- Production PDF Template v2 - Refactored 2026-06-16 -->
 <style>${CSS}</style>
 </head><body>
-<div class="page">
+<div class="page presupuesto-container" id="presupuesto">
   <div class="hdr">
     <div class="hdr-row">
       <div class="hdr-left">
-        <img src="/bmc-pdf/assets/bmc-logo.png" alt="BMC Uruguay" class="hdr-logo" />
-        <div><div class="hdr-name">BMC Uruguay</div><div class="hdr-sub">Metalog SAS</div></div>
+        <img src="/bmc-pdf/assets/bmc-logo.png" alt="BMC" class="hdr-logo" />
       </div>
       <div class="hdr-right">
         <div class="hdr-badge">Presupuesto</div>

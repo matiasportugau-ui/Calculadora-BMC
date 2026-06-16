@@ -1,6 +1,7 @@
 // src/pdf-templates/index.js
 // Dispatcher + shared helpers for PDF layout templates.
 // Each template receives a QuotationModel and returns a complete HTML string.
+// v2 templates (simple family + others) refactored 2026-06-16 for clean cat rows, no ►, scoped CSS, prominent styling.
 
 export const LAYOUT_OPTIONS = [
   // Modern lightweight family — strongly recommended for production quotes to clients.
