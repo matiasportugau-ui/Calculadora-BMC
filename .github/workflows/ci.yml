@@ -145,8 +145,9 @@ jobs:
       - name: Probe /api/agent/voice/health on prod Cloud Run
         env:
           API_AUTH_TOKEN: ${{ secrets.API_AUTH_TOKEN }}
-          API_BASE: ${{ vars.PROD_API_BASE || 'https://panelin-calc-q74zutv7dq-uc.a.run.app' }}
         run: |
+          # Same default as scripts/smoke-prod-api.mjs (override locally with BMC_API_BASE if needed).
+          API_BASE="https://panelin-calc-q74zutv7dq-uc.a.run.app"
           if [ -z "$API_AUTH_TOKEN" ]; then
             echo "::warning::API_AUTH_TOKEN secret not set — skipping voice health probe"
             exit 0
