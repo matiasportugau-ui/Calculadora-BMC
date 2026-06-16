@@ -63,6 +63,8 @@ const byPath = new Map();
 for (const r of rows) {
   const sku = String(r[C.sku] ?? "").trim();
   if (!sku) continue;
+  // Estado en columna C: "DISC." → descontinuado, se excluye del mapeo/bake.
+  if (/DISC/i.test(String(r[2] ?? ""))) continue;
   const p = getPathForMatrizSku(sku);
   if (!p) continue;
   (byPath.get(p) || byPath.set(p, []).get(p)).push(r);
