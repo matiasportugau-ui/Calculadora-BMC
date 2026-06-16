@@ -69,7 +69,7 @@ export async function interpretPlan(fileBuffer, mimeType, filename, opts = {}) {
     extracted = await callClaude(fileBuffer, mimeType, isImage, isPdf, isDxf, reasonerModel);
   } else if (config.anthropicApiKey) {
     // Default behavior (preserve backward compat): prefer Anthropic for vision when available
-    extracted = await callClaude(fileBuffer, mimeType, isImage, isPdf, isDxf);
+    extracted = await callClaude(fileBuffer, mimeType, isImage, isPdf, isDxf, reasonerModel);
   } else {
     extracted = await callGemini(fileBuffer, mimeType, isImage, isPdf, isDxf, reasonerModel);
   }

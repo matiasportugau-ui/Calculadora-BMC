@@ -1,4 +1,4 @@
-import { resolveModel } from "./aiProviderConfig.js";
+import { isAllowedModel } from "./aiProviderConfig.js";
 
 const PUBLIC_REASONER_PROVIDERS = new Set(["claude", "gemini"]);
 
@@ -31,8 +31,7 @@ export function resolvePublicReasonerOptions(input = {}) {
     return { reasonerProvider, reasonerModel: null };
   }
 
-  const resolvedModel = resolveModel(reasonerProvider, reasonerModel, false);
-  if (resolvedModel !== reasonerModel) {
+  if (!isAllowedModel(reasonerProvider, reasonerModel)) {
     throw badRequest("Modelo de razonamiento no soportado para el proveedor indicado.");
   }
 
