@@ -115,7 +115,7 @@ export const EXECUTOR_PREFERRED_PROVIDERS = ["claude", "grok", "gemini", "openai
  * (ER-like: decomposition, spatial critique, success estimation, tool selection).
  * Does not guarantee the provider supports the full rich tool loop.
  */
-export function getReasonerProviderChain(preferFast = false) {
+export function getReasonerProviderChain(_preferFast = false) {
   const available = getAvailableProviders();
   const base = [...REASONER_PREFERRED_PROVIDERS];
   return base.filter((p) => available.includes(p));
@@ -125,7 +125,7 @@ export function getReasonerProviderChain(preferFast = false) {
  * Returns a provider chain suitable for reliable direct execution / action steps
  * (VLA-like: calling AGENT_TOOLS, calc, PDF, CRM writes with high fidelity).
  */
-export function getExecutorProviderChain(preferFast = false) {
+export function getExecutorProviderChain(_preferFast = false) {
   const available = getAvailableProviders();
   const base = [...EXECUTOR_PREFERRED_PROVIDERS];
   return base.filter((p) => available.includes(p));

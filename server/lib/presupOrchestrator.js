@@ -23,16 +23,13 @@
  * safe internal scaffolding that can be exercised via /api/internal/presup/run.
  */
 
-import {
-  estimateCostUSD,
-  getReasonerProviderChain,
-} from "./aiProviderConfig.js";
 import { callAgentOnce } from "./agentCore.js";
 import { findRelevantExamples } from "./trainingKB.js";
 import fs from "node:fs";
 import path from "node:path";
 import pino from "pino";
 import { createApprovalTask } from "./approvalRouter.js";
+import { buildReasonerCallOptions } from "./reasonerOverrides.js";
 
 // Default structured logger for the orchestrator (can be overridden by caller)
 const defaultLogger = pino({ name: "presup-orchestrator" });
@@ -284,14 +281,6 @@ async function _callPromptModule(moduleName, input, state) {
 
   const promptInstructions = getPromptInstructions(moduleName);
 
-  // callAgentOnce builds its own system prompt; Anthropic rejects role:system in messages[].
-  const messages = [
-    {
-      role: "user",
-      content: `## Sub-agent: ${moduleName}\n${promptInstructions}\n\n## Input\n${JSON.stringify(input, null, 2)}`,
-    },
-  ];
-
   // ER-style / high-level reasoner guidance (see GEMINI.md Architecture Analysis).
   // Prepended so the sub-agent (planner) thinks in steps, estimates confidence (spatial + commercial),
   // critiques, and decides when to use tools vs escalate to human gate.
@@ -307,19 +296,11 @@ async function _callPromptModule(moduleName, input, state) {
   const finalUserContent = `## Sub-agent: ${moduleName}\n${promptInstructions}\n\n${REASONER_STYLE_GUIDANCE}\n\n## Input\n${JSON.stringify(input, null, 2)}`;
   const finalMessages = [{ role: "user", content: finalUserContent }];
 
-  const callOpts = {
-    channel: "chat",
+  const callOpts = buildReasonerCallOptions({
+    reasonerProvider: state.reasonerProvider,
+    reasonerModel: state.reasonerModel,
     calcState: state.artifacts?.context || {},
-  };
-
-  // Thread explicit reasoner provider/model when provided at flow start.
-  // This is the main hook for "use Gemini (or future robotics-er preview) as the planner brain".
-  if (state.reasonerProvider) {
-    callOpts.provider = state.reasonerProvider;
-  }
-  if (state.reasonerModel) {
-    callOpts.override = { ...(callOpts.override || {}), model: state.reasonerModel };
-  }
+  });
 
   const response = await callAgentOnce(finalMessages, callOpts);
 

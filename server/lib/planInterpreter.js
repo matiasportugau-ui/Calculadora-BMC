@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
+import { resolvePublicReasonerOptions } from "./reasonerOverrides.js";
 
 const VISION_SCHEMA = `{
   "techoZonas": [{"largoM": number, "anchoM": number}],
@@ -56,8 +57,7 @@ export async function interpretPlan(fileBuffer, mimeType, filename, opts = {}) {
     );
   }
 
-  const reasonerProv = opts.reasonerProvider || null;
-  const reasonerModel = opts.reasonerModel || null;
+  const { reasonerProvider: reasonerProv, reasonerModel } = resolvePublicReasonerOptions(opts);
 
   let extracted;
 
@@ -66,7 +66,7 @@ export async function interpretPlan(fileBuffer, mimeType, filename, opts = {}) {
   if (reasonerProv === "gemini" && config.geminiApiKey) {
     extracted = await callGemini(fileBuffer, mimeType, isImage, isPdf, isDxf, reasonerModel);
   } else if (reasonerProv === "claude" && config.anthropicApiKey) {
-    extracted = await callClaude(fileBuffer, mimeType, isImage, isPdf, isDxf);
+    extracted = await callClaude(fileBuffer, mimeType, isImage, isPdf, isDxf, reasonerModel);
   } else if (config.anthropicApiKey) {
     // Default behavior (preserve backward compat): prefer Anthropic for vision when available
     extracted = await callClaude(fileBuffer, mimeType, isImage, isPdf, isDxf);
@@ -77,7 +77,7 @@ export async function interpretPlan(fileBuffer, mimeType, filename, opts = {}) {
   return mapToBmc(extracted);
 }
 
-async function callClaude(buffer, mimeType, isImage, isPdf, isDxf) {
+async function callClaude(buffer, mimeType, isImage, isPdf, isDxf, overrideModel = null) {
   const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
   const content = [];
 
@@ -104,7 +104,7 @@ async function callClaude(buffer, mimeType, isImage, isPdf, isDxf) {
   });
 
   const resp = await anthropic.messages.create({
-    model: config.anthropicPlanModel || config.anthropicChatModel || "claude-sonnet-4-6",
+    model: overrideModel || config.anthropicPlanModel || config.anthropicChatModel || "claude-sonnet-4-6",
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content }],
