@@ -1,6 +1,0 @@
-- main "Calculadora BMC" [ref=e2]:
-  - generic [ref=e3]:
-    - generic [ref=e7]: Cargando…
-    - button "Modo Tutorial — arrastrable. Clic o Enter para abrir." [ref=e8]:
-      - generic [ref=e9]: 🎓
-      - button "Modo Tutorial" [ref=e10] [cursor=pointer]
