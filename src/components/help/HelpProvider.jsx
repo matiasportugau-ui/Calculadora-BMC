@@ -156,6 +156,7 @@ export function HelpProvider({ children, source = FALLBACK_SOURCE }) {
   return <HelpContext.Provider value={value}>{children}</HelpContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- useHelpContext hook colocated with its provider by design
 export function useHelpContext() {
   return useContext(HelpContext);
 }

@@ -15,6 +15,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 const STORAGE_KEY = "bmc_admin_cot_skin";
 const DEFAULT_SKIN = "macos";
 
+// eslint-disable-next-line react-refresh/only-export-components -- SKINS registry colocated with provider by design
 export const SKINS = [
   { id: "macos", label: "macOS Sequoia" },
   { id: "bmc", label: "BMC Default" },
@@ -51,6 +52,7 @@ export function SkinProvider({ children }) {
   return <SkinContext.Provider value={value}>{children}</SkinContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- useSkin hook colocated with its provider by design
 export function useSkin() {
   return useContext(SkinContext);
 }
