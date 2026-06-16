@@ -61,7 +61,17 @@ router.post("/plan/interpret", limiter, upload.single("file"), async (req, res) 
 
   try {
     const mimeType = isDxf ? "text/plain" : file.mimetype;
-    const result = await interpretPlan(file.buffer, mimeType, file.originalname);
+
+    // Support explicit reasoner (ER/planner) selection for this vision/spatial path.
+    // Mirrors the pattern in presupOrchestrator (opts.reasonerProvider / reasonerModel).
+    // Can be passed as form fields when calling /plan/interpret (future UI or internal calls).
+    const reasonerProvider = req.body.reasonerProvider || null;
+    const reasonerModel = req.body.reasonerModel || null;
+
+    const result = await interpretPlan(file.buffer, mimeType, file.originalname, {
+      reasonerProvider,
+      reasonerModel,
+    });
 
     if (hints.familia && result.bmcPayload?.techo) {
       result.bmcPayload.techo.familia = hints.familia;

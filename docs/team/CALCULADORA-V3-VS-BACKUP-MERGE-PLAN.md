@@ -151,6 +151,13 @@ Orden sugerido (cada uno: `npm test` + prueba manual corta):
 - **Opción A (recomendada):** empezar por **Costeo** en backup (utils + botón + estado `fleteCosto`).
 - **Opción B:** empezar por **Cliente + PDF** si la prioridad es comunicación al cliente antes que margen interno.
 
+**2026-06-13 Update (Calc recs implementation run):** 
+Commercial output layer (generateClientVisualHTML, generateCosteoHTML, buildCostingReport + fleteCosto + margin avisos, capturePdfSnapshotTargets + buildPdfAppendixPayload for enriched PDF) **already fully ported and active** in the canonical `PanelinCalculadoraV3_backup.jsx` (imports + state + handlers + refs in desktop/mobile bars + Drive/PDF flows).
+Unification decision on this axis: **complete**. No dual-motor risk. 
+Legacy remnant `PanelinCalculadoraV3_legacy_inline.jsx` archived to `docs/legacy/`.
+See .runtime/calc-recs-implementation-run-20240613/ + PROJECT-STATE entry for the run.
+Canonical remains the _backup (App.jsx mount). Further splitting or naming cleanup (e.g. drop "_backup" suffix) is optional hygiene.
+
 ---
 
 ## Referencias en repo

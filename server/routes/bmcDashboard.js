@@ -1246,8 +1246,17 @@ const MATRIZ_TAB_COLUMNS = {
     // U — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
     webIvaInc: COL("U"),
   },
-  // Add more tabs here after mapping approval:
-  // "R y C Tornillos": { sku: COL("D"), ... },
+  // WOLF-0004 / RUNBOOK-WOLF-NEXT-STEPS.md Punto 2: "R y C Tornillos" (anclajes/fijaciones)
+  // Columns per live sheet export 2026-06 (B="Código RyC", note sku col is B not D)
+  "R y C Tornillos": {
+    sku:         COL("B"),   // "Código RyC" — required for getPathForMatrizSku (ANC* etc.)
+    descripcion: COL("F"),   // "Producto"
+    costo:       COL("G"),   // "Costo USD EX IVA"
+    ventaLocal:  COL("J"),   // "VENTA USD EX IVA"
+    ventaIvaInc: COL("K"),   // "Consumidor Final" (c/IVA)
+    web:         COL("M"),   // "Shopify" (web ex-IVA)
+    webIvaInc:   COL("N"),   // "Shopify IVA inc." (web c/IVA)
+  },
 };
 
 async function buildPlanillaDesdeMatriz(matrizSheetId) {

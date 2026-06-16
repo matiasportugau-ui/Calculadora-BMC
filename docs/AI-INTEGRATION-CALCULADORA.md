@@ -48,6 +48,8 @@ flowchart LR
 Archivos clave:
 
 - `server/routes/agentChat.js` — rutas `/api/agent/chat`, `/api/agent/ai-options`, allowlist de modelos, cadena de proveedores.
+
+**Nota de arquitectura (junio 2026):** La investigación sobre Gemini Robotics (VLA vs ER/Embodied Reasoning + tool calling agentic) llevó a un análisis explícito de la arquitectura ideal del agente Panelin. Ver `GEMINI.md` (raíz) §4 — se recomienda una separación deliberada Planner (razonador de alto nivel estilo ER, a menudo Gemini-inclinado para spatial/long-horizon) + Executor (acciones confiables vía tools centralizados, Claude-primary para el loop interactivo rico). Cambios livianos: helpers en `aiProviderConfig.js`, soporte explícito de `reasonerProvider` en `presupOrchestrator.js`, guidance ER-style y polish espacial en `planInterpreter.js`. El loop de tools rico en agentChat sigue siendo Claude-primary por estabilidad y calidad en español. Ver también presupOrchestrator y planInterpreter como las encarnaciones concretas del "planner" y "spatial reasoner".
 - `server/config.js` — lectura de API keys y modelos por defecto.
 - `src/hooks/useChat.js` — fetch de opciones, persistencia de selección, envío SSE.
 - `src/components/PanelinCalculadoraV3_backup.jsx` — UI `panelinHeaderAiSelect` (video + `<select>` + botón chat).

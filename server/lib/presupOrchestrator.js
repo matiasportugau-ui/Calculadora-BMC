@@ -23,7 +23,10 @@
  * safe internal scaffolding that can be exercised via /api/internal/presup/run.
  */
 
-import { estimateCostUSD } from "./aiProviderConfig.js";
+import {
+  estimateCostUSD,
+  getReasonerProviderChain,
+} from "./aiProviderConfig.js";
 import { callAgentOnce } from "./agentCore.js";
 import { findRelevantExamples } from "./trainingKB.js";
 import fs from "node:fs";
@@ -44,6 +47,10 @@ const defaultLogger = pino({ name: "presup-orchestrator" });
  * @param {object} [input.calcState]
  * @param {object} [opts]
  * @param {"ligero" | "profundo"} [opts.mode]
+ * @param {string} [opts.reasonerProvider] - explicit provider for high-level reasoning/planning steps
+ *                                           (ER-style: Intake, Context, Pricing review, spatial critique).
+ *                                           See aiProviderConfig getReasonerProviderChain + GEMINI.md.
+ * @param {string} [opts.reasonerModel]    - optional specific model override for the reasoner.
  * @returns {Promise<object>} final flow state
  */
 export async function runPresupFlow(input, opts = {}) {
@@ -54,6 +61,8 @@ export async function runPresupFlow(input, opts = {}) {
     startedAt: new Date().toISOString(),
     input,
     mode: opts.mode || "ligero",
+    reasonerProvider: opts.reasonerProvider || null,
+    reasonerModel: opts.reasonerModel || null,
     trace: [],
     gates: {},
     artifacts: {},
@@ -283,10 +292,36 @@ async function _callPromptModule(moduleName, input, state) {
     },
   ];
 
-  const response = await callAgentOnce(messages, {
+  // ER-style / high-level reasoner guidance (see GEMINI.md Architecture Analysis).
+  // Prepended so the sub-agent (planner) thinks in steps, estimates confidence (spatial + commercial),
+  // critiques, and decides when to use tools vs escalate to human gate.
+  const REASONER_STYLE_GUIDANCE = `
+## Estilo de razonamiento (ER / high-level planner)
+- Descompone en pasos explícitos.
+- Estima confianza (alta/media/baja) y riesgos espaciales/comerciales cuando aplique.
+- Sé crítico: si algo no cierra (dimensiones, precios, consistencia), marca gap o gate humano.
+- Prefiere llamar tools (o delegar a executor) antes de inventar números.
+- Devuelve veredicto + razonamiento + artefactos estructurados cuando el módulo lo pida.
+`;
+
+  const finalUserContent = `## Sub-agent: ${moduleName}\n${promptInstructions}\n\n${REASONER_STYLE_GUIDANCE}\n\n## Input\n${JSON.stringify(input, null, 2)}`;
+  const finalMessages = [{ role: "user", content: finalUserContent }];
+
+  const callOpts = {
     channel: "chat",
     calcState: state.artifacts?.context || {},
-  });
+  };
+
+  // Thread explicit reasoner provider/model when provided at flow start.
+  // This is the main hook for "use Gemini (or future robotics-er preview) as the planner brain".
+  if (state.reasonerProvider) {
+    callOpts.provider = state.reasonerProvider;
+  }
+  if (state.reasonerModel) {
+    callOpts.override = { ...(callOpts.override || {}), model: state.reasonerModel };
+  }
+
+  const response = await callAgentOnce(finalMessages, callOpts);
 
   // Best-effort JSON parsing for structured sub-agents
   let parsed;
