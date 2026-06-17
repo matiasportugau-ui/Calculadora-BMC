@@ -8,6 +8,7 @@ import pino from "pino";
 import pinoHttp from "pino-http";
 import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
+import { buildVersionInfo } from "./lib/versionInfo.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
 import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
@@ -194,6 +195,15 @@ const ensureValidState = async (state) => {
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
 app.get("/capabilities", (req, res) => {
   res.json(buildAgentCapabilitiesManifest(config));
+});
+
+/**
+ * Consolidated version/build info: commit SHA + CALCULATOR_DATA_VERSION + build/deploy
+ * timestamps. Foundation for prod-vs-git-vs-local drift detection (scripts/reconcile-version.mjs).
+ * Read-only, secret-free.
+ */
+app.get("/version", (_req, res) => {
+  res.json(buildVersionInfo());
 });
 
 app.get("/health", asyncHandler(async (req, res) => {
