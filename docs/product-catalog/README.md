@@ -18,7 +18,7 @@ Precio = *desde* (variante mas barata). Link lleva a la ficha en la tienda (prod
 | [ISOROOF PLUS 3G / 80 mm](https://bmcuruguay.com.uy/products/iroof80-pls) | techo | PIR | 1.00 m | 80 | 71.76 | ACTIVE |
 | [ISOPANEL EPS (Paredes y Fachadas) / 50 - 100 - 150 - 200 - 250 mm](https://bmcuruguay.com.uy/products/isopanel-eps-paredes-y-fachadas) | pared | EPS | 1.14 m | 50, 100, 150, 200, 250 | 41.88 | ACTIVE |
 | [ISOWALL PIR - Fachadas / 50 - 80 mm](https://bmcuruguay.com.uy/products/isowall-®-pir) | pared | PIR | 1.10 m | 50, 80 | 54.65 | ACTIVE |
-| [ISOFRIG Panel Frigorifico / 40 - 60 - 80 - 100 - 120 - 150 - 180 mm](https://bmcuruguay.com.uy/products/isofrig-®) | pared/camara_frig | PIR | 1.14 m | 40, 60, 80, 100, 120, 150, 180 | 53.11 | DRAFT |
+| [ISOFRIG Panel Frigorifico / 40 - 60 - 80 - 100 - 150 - 200 mm](https://bmcuruguay.com.uy/products/isofrig-®) | pared/camara_frig | PIR | 1.14 m | 40, 60, 80, 100, 150, 200 | 53.11 | DRAFT |
 | [PU20mm Gris sin Cielorraso (PVC)](https://bmcuruguay.com.uy/products/pu20mm-gris-sin-cielorraso-pvc) | pared | PU/PVC | - | 20 | 36.00 | DRAFT |
 
 ### ISOFRIG - precio canonico de cotizacion (ex-IVA, lista web)
@@ -31,9 +31,7 @@ Fuente: Matriz tab BROMYROS + ledger BUG-TRIAGE-RAMIRO WOLF-2026-0001. La fila 2
 | 60 | 62.8919 |
 | 80 | 69.3770 |
 | 100 | 76.9454 |
-| 120 | 89.4740 |
 | 150 | 93.3436 |
-| 180 | 111.4058 |
 
 > Shopify tiene ISOFRIG en **DRAFT** con precios legacy desactualizados (40mm=53.11); no usar esos para cotizar.
 
