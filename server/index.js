@@ -70,6 +70,7 @@ import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.
 import "./lib/marketIntel/scheduler.js"; // registers daily ETL cron at 03:00 UTC
 import { getTraktimePool } from "./lib/traktimeDb.js";
 import { startTraktimeMirrorWorker } from "./lib/traktimeMirrorWorker.js";
+import { startClockifySyncWorker } from "./lib/clockifySyncWorker.js";
 import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
@@ -1122,6 +1123,7 @@ const transportistaPool = getTransportistaPool(config.databaseUrl);
 // el shutdown handler sea seguro aunque la señal llegue antes del listen.
 let stopTransportista = () => {};
 let stopTraktimeMirror = () => {};
+let stopClockifySync = () => {};
 let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
@@ -1145,6 +1147,8 @@ const server = app.listen(config.port, async () => {
     const traktimePool = getTraktimePool(config.databaseUrl);
     if (traktimePool) {
       stopTraktimeMirror = startTraktimeMirrorWorker({ config, logger, pool: traktimePool });
+      // Clockify read-only mirror (no-op unless CLOCKIFY_SYNC_ENABLED + key/workspace set).
+      stopClockifySync = startClockifySyncWorker({ config, logger, pool: traktimePool });
     }
   }
   // WA Cockpit — F-A4: prime config (settings + flags + LISTEN/NOTIFY) y auth.
@@ -1203,6 +1207,7 @@ function shutdown(signal) {
 
   try { stopTransportista(); } catch (e) { logger.warn({ err: e?.message }, "stopTransportista failed"); }
   try { stopTraktimeMirror(); } catch (e) { logger.warn({ err: e?.message }, "stopTraktimeMirror failed"); }
+  try { stopClockifySync(); } catch (e) { logger.warn({ err: e?.message }, "stopClockifySync failed"); }
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }

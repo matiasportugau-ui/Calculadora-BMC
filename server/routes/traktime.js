@@ -16,6 +16,7 @@ import { getTraktimePool } from "../lib/traktimeDb.js";
 import { requireUser } from "../lib/identityAuth.js";
 import { tkAudit } from "../lib/traktimeAudit.js";
 import { runTraktimeMirror } from "../lib/traktimeMirrorWorker.js";
+import { runClockifySync } from "../lib/clockifySyncWorker.js";
 import { renderAndUploadInvoice } from "../lib/traktimeInvoicePdf.js";
 import {
   buildJornadaReport,
@@ -902,6 +903,95 @@ export default function createTraktimeRouter(config, logger) {
       } catch (e) {
         const status = e.status || 503;
         res.status(status).json({ ok: false, error: e.message || "mirror_failed" });
+      }
+    }),
+  );
+
+  // ─── Clockify mirror (Fase 1, read-only) ──────────────────────────────
+  // Operator hours aggregated from the clockify_entries mirror. Reads from
+  // Postgres (not Clockify live) → respects 200+[] / 503 conventions.
+  router.get(
+    "/api/traktime/operators",
+    requireUser(),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const now = new Date();
+      const defFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const from = trimOrNull(req.query.from) || defFrom;
+      const to = trimOrNull(req.query.to) || now.toISOString();
+      const { rows } = await pool.query(
+        `select cu.clockify_user_id,
+                coalesce(cu.name, cu.email, cu.clockify_user_id) as name,
+                cu.email, cu.bmc_user_id,
+                coalesce(sum(e.duration_seconds), 0)::bigint as total_seconds,
+                count(e.clockify_entry_id)::int as entries_count,
+                max(e.started_at) as last_entry_at
+           from clockify_users cu
+           left join clockify_entries e
+             on e.clockify_user_id = cu.clockify_user_id
+            and e.started_at >= $1 and e.started_at < $2
+          group by cu.clockify_user_id, cu.name, cu.email, cu.bmc_user_id
+          order by total_seconds desc, name asc`,
+        [from, to],
+      );
+      const operators = rows.map((r) => ({
+        clockify_user_id: r.clockify_user_id,
+        name: r.name,
+        email: r.email,
+        bmc_user_id: r.bmc_user_id,
+        total_seconds: Number(r.total_seconds),
+        total_hours: Math.round((Number(r.total_seconds) / 3600) * 100) / 100,
+        entries_count: r.entries_count,
+        last_entry_at: r.last_entry_at,
+      }));
+      res.json({ ok: true, from, to, operators });
+    }),
+  );
+
+  // Time entries of one operator within a range (drill-down).
+  router.get(
+    "/api/traktime/operators/:clockifyUserId/entries",
+    requireUser(),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const now = new Date();
+      const defFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const from = trimOrNull(req.query.from) || defFrom;
+      const to = trimOrNull(req.query.to) || now.toISOString();
+      const limit = Math.min(Number(req.query.limit) || 500, 2000);
+      const { rows } = await pool.query(
+        `select e.clockify_entry_id, e.description, e.started_at, e.stopped_at,
+                e.duration_seconds, e.billable, e.tags,
+                p.name as project_name, p.client_name
+           from clockify_entries e
+           left join clockify_projects p on p.clockify_project_id = e.clockify_project_id
+          where e.clockify_user_id = $1
+            and e.started_at >= $2 and e.started_at < $3
+          order by e.started_at desc
+          limit $4`,
+        [req.params.clockifyUserId, from, to, limit],
+      );
+      res.json({ ok: true, from, to, entries: rows });
+    }),
+  );
+
+  // Admin: trigger a Clockify sync now (no waiting for the poll interval).
+  router.post(
+    "/api/traktime/admin/clockify-sync-now",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      try {
+        const counts = await runClockifySync({ config, logger: log, pool });
+        await tkAudit(pool, {
+          action: "clockify.sync.manual",
+          meta: counts,
+          user_email: req.user.email,
+        }, log);
+        res.json({ ok: true, counts });
+      } catch (e) {
+        const status = e.status || 503;
+        res.status(status).json({ ok: false, error: e.message || "clockify_sync_failed" });
       }
     }),
   );

@@ -90,6 +90,18 @@ export const tkApi = {
     request("POST", `/api/traktime/invoices/${id}/mark-paid`, { paid }),
   voidInvoice: (id) => request("POST", `/api/traktime/invoices/${id}/void`),
   mirrorNow: () => request("POST", "/api/traktime/admin/mirror-now"),
+  operators: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request("GET", `/api/traktime/operators${q ? `?${q}` : ""}`);
+  },
+  operatorEntries: (clockifyUserId, params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(
+      "GET",
+      `/api/traktime/operators/${clockifyUserId}/entries${q ? `?${q}` : ""}`,
+    );
+  },
+  clockifySyncNow: () => request("POST", "/api/traktime/admin/clockify-sync-now"),
 };
 
 export { setApiToken };
