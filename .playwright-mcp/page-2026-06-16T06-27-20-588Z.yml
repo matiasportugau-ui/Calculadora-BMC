@@ -1,6 +1,0 @@
-- main "Calculadora BMC" [ref=e2]:
-  - generic [ref=e3]:
-    - generic [ref=e7]: Cargando…
-    - button "🎓 Modo Tutorial" [ref=e9] [cursor=pointer]:
-      - generic [ref=e10]: 🎓
-      - generic [ref=e11]: Modo Tutorial
