@@ -7,12 +7,14 @@ import ReportsView from "./Reports/ReportsView.jsx";
 import ClientsPanel from "./Clients/ClientsPanel.jsx";
 import ProjectsPanel from "./Projects/ProjectsPanel.jsx";
 import InvoicesPanel from "./Invoices/InvoicesPanel.jsx";
+import OperariosPanel from "./Operarios/OperariosPanel.jsx";
 import { tkApi, setApiToken } from "./shared/api.js";
 import { useBmcAuth } from "../../hooks/useBmcAuth.js";
 import { colors, fonts, page, tabBar, tabButton } from "./shared/styles.js";
 
 const TABS = [
   { id: "timer", label: "Temporizador" },
+  { id: "operarios", label: "Operarios" },
   { id: "reports", label: "Reportes" },
   { id: "projects", label: "Proyectos" },
   { id: "clients", label: "Clientes" },
@@ -93,6 +95,7 @@ export default function TraKtiMeModule() {
           </div>
         )}
 
+        {tab === "operarios" && <OperariosPanel canSync={me?.role === "admin"} />}
         {tab === "reports" && <ReportsView />}
         {tab === "projects" && (
           <ProjectsPanel canEdit={me?.role === "admin"} onChange={reload} />
