@@ -12,16 +12,33 @@
  * elige la fila cuyo producto coincide con el espesor del path (evita el
  * "gana la última fila" del importador). Reporta los conflictos.
  *
- * Uso: node scripts/build-matriz-csv-from-raw.mjs [--out .runtime/matriz-precios-latest.csv]
+ * Uso: node scripts/build-matriz-csv-from-raw.mjs [--out .runtime/matriz-precios-latest.csv] [--sheet-id <id>]
  */
 import fs from "node:fs";
 import path from "node:path";
 import { getPathForMatrizSku } from "../src/data/matrizPreciosMapping.js";
 
-const SHEET_ID = "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo";
-const OUT = process.argv.includes("--out")
-  ? process.argv[process.argv.indexOf("--out") + 1]
-  : ".runtime/matriz-precios-latest.csv";
+let SHEET_ID = process.env.BMC_MATRIZ_SHEET_ID || process.env.VITE_MATRIZ_SHEET_ID;
+
+// Parse CLI args
+let OUT = ".runtime/matriz-precios-latest.csv";
+for (let i = 0; i < process.argv.length; i++) {
+  if (process.argv[i] === "--out" && i + 1 < process.argv.length) {
+    OUT = process.argv[i + 1];
+  } else if (process.argv[i] === "--sheet-id" && i + 1 < process.argv.length) {
+    SHEET_ID = process.argv[i + 1];
+  }
+}
+
+if (!SHEET_ID) {
+  console.error(
+    "ERROR: SHEET_ID no especificado.\n" +
+    "Proporciona uno de: env BMC_MATRIZ_SHEET_ID, env VITE_MATRIZ_SHEET_ID, o flag --sheet-id <id>\n" +
+    "Uso: node scripts/build-matriz-csv-from-raw.mjs --sheet-id 1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
+  );
+  process.exit(1);
+}
+
 
 // Índices de columna (0-based) del tab BROMYROS — costo desde G.
 const C = { sku: 3, prod: 4, costo: 6 /* G */, ventaLocal: 9, ventaIvaInc: 10, web: 17, webIvaInc: 18 };

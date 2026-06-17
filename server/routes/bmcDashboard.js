@@ -1323,9 +1323,11 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
       const webIvaIncRaw =
         cols.webIvaInc != null ? parseNum(row[cols.webIvaInc]) : null;
 
-      // F, L, M, T, U: copiar número de planilla sin transformar.
-      // Regla confirmada: T = venta web ex IVA.
-      // La UI calcula Web c/IVA desde `venta_web`; si U existe, se expone como referencia.
+      // G — Costo m² USD ex IVA (Actualizado): base real de la venta.
+      // J — Venta local USD ex IVA: **tal cual** celda.
+      // K — Ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
+      // R — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
+      // S — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
       const costo = costoRaw != null ? +costoRaw.toFixed(2) : "";
       const venta = ventaLocalRaw != null ? +ventaLocalRaw.toFixed(2) : "";
       const ventaInc = ventaIvaIncRaw != null ? +ventaIvaIncRaw.toFixed(2) : "";

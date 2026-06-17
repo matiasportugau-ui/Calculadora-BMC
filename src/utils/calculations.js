@@ -402,9 +402,9 @@ const T1_TIPOS_DOBLE_FIJACION = new Set(["cumbrera", "perfil_u"]);
  * perfilería ya armados (sin la propia línea de T1).
  */
 function calcTornillosT1Perfileria(items) {
-  const porPieza = getDimensioningParam("PERFILERIA.t1_por_pieza", 20);
+  const porPieza = Math.max(0, Math.ceil(getDimensioningParam("PERFILERIA.t1_por_pieza", 20)));
   return items.reduce(
-    (n, it) => n + (Number(it?.cant) || 0) * porPieza * (T1_TIPOS_DOBLE_FIJACION.has(it?.tipo) ? 2 : 1),
+    (n, it) => n + Math.ceil((Number(it?.cant) || 0)) * porPieza * (T1_TIPOS_DOBLE_FIJACION.has(it?.tipo) ? 2 : 1),
     0,
   );
 }
