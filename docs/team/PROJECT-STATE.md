@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06 (today's session close)
+**Última actualización:** 2026-06-17
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,15 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-17 (PR #355 — IVA fix + MATRIZ sync workflow + /hub/proyecto dashboard + security hardening):** `mergeado (squash SHA 6643646d)`. Cierra cuatro áreas en una sesión:
+
+1. **IVA double-application fix (precios web en constants.js):** 24 precios `web` de ISOROOF_FOIL y familia revisados; columna de referencia confirmada como G (costo) / J (venta local) / R (venta web) — todas ex-IVA. Comentario stale en `bmcDashboard.js` (`F, L, M, T` → `G, J, R`) corregido. Comment de ISOROOF_FOIL 50mm deshardcoded (no tenía markup extra). La UI de `precioWeb` estaba aplicando IVA sobre valores que ya venían ex-IVA — corregido.
+2. **matriz-sync.yml (GitHub Actions workflow):** nuevo workflow `.github/workflows/matriz-sync.yml` que extrae precios del CSV de MATRIZ (vía API prod), los bake a `src/data/constants.js`, y abre PR automático. Fail-fast si `BMC_API_BASE` está vacío (evita fallback silencioso a localhost). Maneja reruns del mismo día con `git push --force-with-lease` a la misma rama `chore/matriz-sync-YYYY-MM-DD`. **Pendiente operador:** configurar `vars.BMC_SMOKE_API_BASE` en repo settings y ejecutar el workflow manualmente en GitHub Actions para sincronizar precios actuales.
+3. **`/hub/proyecto` — Todoist dashboard:** `server/routes/proyecto.js` (nuevo, gateado con `requireGrant.read("proyecto")`), `src/components/hub/proyecto/ProyectoStatusModule.jsx` (nuevo, JWT header via `useBmcAuth()`), ruta en `App.jsx` (`<RequireGrant module="proyecto" minLevel="read">`). Muestra tareas activas del proyecto BMC en Todoist con conteo por prioridad y sección. Fix: `durationMinutes()` devuelve `null` (no `amount×60`) para unidades desconocidas.
+4. **Security review (Codex + Copilot P2):** `requireGrant.read("proyecto")` en vez de `requireUser()` (scope correcto); JWT `Authorization: Bearer` en el fetch de ProyectoStatusModule; `RequireGrant` guard en App.jsx; `useCallback` deps array incluye `accessToken`; `durationMinutes` null-safe; matriz-sync fail-fast cuando `BMC_API_BASE` vacío.
+
+**2026-06-17 (Chrome extension scaffold — `/home/user/claude-ext/`):** `commit local a64d5d8, sin remote`. Scaffolding completo de extensión Chrome MV3 para uso personal como asistente IA en el navegador. Stack: React 18 + Vite 7, side panel (`chrome.sidePanel`), service worker ESM como proxy SSE a la API de Anthropic, options page para gestión de API key. Archivos clave: `manifest.json` (MV3), `src/background/service-worker.js` (streaming `claude-opus-4-8`), `src/sidepanel/App.jsx` (chat UI con "Read this page"), `src/options/Options.jsx` (save/test API key), `src/utils/messages.js` + `storage.js`. Build verde (`npm run build`), 24 files, 964 inserts. **Pendiente:** agregar remote GitHub y pushear.
 
 **2026-06-14 (customer PDF layouts — official BMC brand identity for client quotes):** `frontend shipped to prod for evaluation`. All recommended modern "Simple *" PDF layouts (the active customer-facing ones: PDF Cliente, WA export, Drive) now strictly follow the official bmcuruguay.com.uy + COMPANY identity.
 - Real logo asset (`/bmc-pdf/assets/bmc-logo.png` — bold navy block "BMC" with tagline) now used in every Simple variant header (previously synthetic "B" circle).
