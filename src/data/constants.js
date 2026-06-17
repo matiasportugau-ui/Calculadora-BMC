@@ -391,6 +391,12 @@ export const PERFIL_TECHO = {
     ISODEC:  { _all: { sku: "6805",     venta: 16.18, web: 18.87, costo: 13.48, largo: 3.0 } },
     ISODEC_PIR: { _all: { sku: "6805",  venta: 15.94, web: 18.59, costo: 14.35, largo: 3.0 } },
   },
+  /** Embudo / Conexión de Bajada PVC — accesorio del kit de canalón (cualquier canalón).
+   *  Por UNIDAD (no barra → sin `largo`). Proveedor BECAM, SKU CONBPVC. No entra al BOM
+   *  automático techo; seleccionable en Presupuesto libre. Precios USD sin IVA. */
+  embudo: {
+    _all: { _all: { sku: "CONBPVC", label: "Embudo / Conexión de Bajada PVC", venta: 12.09, web: 15.35, costo: 10.97 } },
+  },
 };
 
 export const PERFIL_PARED = {
