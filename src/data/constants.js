@@ -397,6 +397,11 @@ export const PERFIL_TECHO = {
   embudo: {
     _all: { _all: { sku: "CONBPVC", label: "Embudo / Conexión de Bajada PVC", venta: 12.09, web: 15.35, costo: 10.97 } },
   },
+  /** Vaina ISODEC Sist 2000 — accesorio ISODEC, por UNIDAD (no barra → sin `largo`).
+   *  SKU 6825. No entra al BOM automático; seleccionable en Presupuesto libre. USD sin IVA. */
+  vaina: {
+    ISODEC: { _all: { sku: "6825", label: "Vaina ISODEC Sist 2000", venta: 9.20, web: 10.74, costo: 7.67 } },
+  },
 };
 
 export const PERFIL_PARED = {
