@@ -2391,7 +2391,7 @@ export default function PanelinCalculadoraV3() {
   // Default changed 2026-05-27 during PDF generator improvement session.
 // Old default 'bmc-pdf' was the heavy 50k+ template that required the Python optimizer post-process.
 // New default uses the modern lightweight "simple" family (much smaller, cleaner 1-2 page output).
-const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'simple-carbon');
+const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'simple');
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);

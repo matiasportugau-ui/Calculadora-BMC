@@ -14,7 +14,6 @@ import AuthHeader from "./components/auth/AuthHeader.jsx";
 import RequireGrant from "./components/auth/RequireGrant.jsx";
 import ActivityTracker from "./components/activity/ActivityTracker.jsx";
 import RouteErrorBoundary from "./components/RouteErrorBoundary.jsx";
-import BugReportModal from "./components/BugReportModal.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Tutorial interactivo (nuevo sistema) — gated for safety
@@ -171,7 +170,6 @@ export default function App() {
       <LegacyAppQueryRedirect />
       <AuthGateModal />
       <TutorialOverlay />
-      <BugReportModal />
       <RoutedErrorBoundary>
       <Routes>
         <Route

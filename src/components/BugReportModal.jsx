@@ -18,9 +18,9 @@ function getCalcApiBase() {
   try {
     const envBase = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) || "";
     if (envBase) return envBase;
-  } catch (e) { /* ignore env read */ }
+  } catch { /* ignore env read */ }
   if (typeof window !== "undefined") {
-    const { protocol, hostname } = window.location;
+    const { hostname } = window.location;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "http://localhost:3001";
     }
@@ -336,7 +336,7 @@ export default function BugReportModal() {
                     <div style={{ marginTop: 6 }}>
                       <div style={smallMuted}>Últimos eventos capturados:</div>
                       <pre style={{ margin: "4px 0 0", fontSize: 10, whiteSpace: "pre-wrap" }}>
-                        {recentSample.map((l, i) => (
+                        {recentSample.map((l) => (
                           `${new Date(l.t).toLocaleTimeString()} [${l.level}] ${l.message}\n`
                         )).join("")}
                       </pre>
@@ -395,4 +395,5 @@ export default function BugReportModal() {
 }
 
 // Also re-export openBugReport for convenience in other files
+// eslint-disable-next-line react-refresh/only-export-components -- helper colocated with modal by design; moving it would fragment the API
 export { openBugReport };
