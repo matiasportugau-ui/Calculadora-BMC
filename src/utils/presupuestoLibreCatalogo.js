@@ -25,9 +25,10 @@ export function flattenPerfilesLibre(perfilTecho, perfilPared) {
   const addRow = (id, labelBase, row) => {
     if (!row || !row.sku) return;
     const lab = row.label ? row.label : labelBase;
+    const medida = row.largo ? `barra ${row.largo}m` : "unid";
     out.push({
       id,
-      label: `${lab} · barra ${row.largo}m · ${row.sku}`,
+      label: `${lab} · ${medida} · ${row.sku}`,
       sku: row.sku,
       venta: row.venta,
       web: row.web,

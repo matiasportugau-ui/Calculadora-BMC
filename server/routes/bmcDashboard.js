@@ -1214,7 +1214,7 @@ async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
 }
 
 // ─── MATRIZ precios → planilla calculadora ──────────────────────────────────
-// MATRIZ: G, J, R = **tal cual** la celda (sin ÷ ni × IVA). G=costo, J=venta local, R=venta web — todos ex IVA (confirmado 2026-06-17).
+// MATRIZ: F, L, M, T = **tal cual** la celda (sin ÷ ni × IVA). F/L/T ex IVA en lista; M referencia c/IVA tal cual.
 // Columnas buscadas por nombre: costo/costos, venta/venta_bmc, venta_web/web. Fallback índices fijos.
 
 function findColIndex(headers, ...patterns) {
@@ -1234,17 +1234,17 @@ const COL = (letter) => colLetterToIndex(letter);
 const MATRIZ_TAB_COLUMNS = {
   BROMYROS: {
     sku: COL("D"),
-    // E — Descripción del producto.
     descripcion: COL("E"),
-    // G — Costo actualizado ex IVA: **tal cual** celda. (confirmado 2026-06-17)
+    // G — Costo m² USD ex IVA (Actualizado): base real de la venta (venta J = G × (1+margen)).
     costo: COL("G"),
-    // J — Precio venta local ex IVA: **tal cual** celda. (confirmado 2026-06-17)
+    // J — Venta local USD ex IVA: **tal cual** celda.
     ventaLocal: COL("J"),
-    // R — Precio venta web ex IVA: **tal cual** celda. (confirmado 2026-06-17)
+    // K — Ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
+    ventaIvaInc: COL("K"),
+    // R — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
     web: COL("R"),
-    // ventaIvaInc / webIvaInc: columnas de referencia no confirmadas — omitidas.
-    ventaIvaInc: null,
-    webIvaInc: null,
+    // S — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
+    webIvaInc: COL("S"),
   },
   // Add more tabs here after mapping approval:
   // "R y C Tornillos": { sku: COL("D"), ... },
@@ -1323,15 +1323,21 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
       const webIvaIncRaw =
         cols.webIvaInc != null ? parseNum(row[cols.webIvaInc]) : null;
 
-      // G, J, R: copiar número de planilla sin transformar (columnas confirmadas 2026-06-17).
-      // Regla confirmada: R = venta web ex IVA, J = venta local ex IVA, G = costo ex IVA.
-      // La UI calcula Web c/IVA desde `venta_web` si lo necesita para referencia.
+      // G — Costo m² USD ex IVA (Actualizado): base real de la venta.
+      // J — Venta local USD ex IVA: **tal cual** celda.
+      // K — Ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
+      // R — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
+      // S — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
       const costo = costoRaw != null ? +costoRaw.toFixed(2) : "";
       const venta = ventaLocalRaw != null ? +ventaLocalRaw.toFixed(2) : "";
       const ventaInc = ventaIvaIncRaw != null ? +ventaIvaIncRaw.toFixed(2) : "";
-      const ventaWeb = webRaw != null ? +webRaw.toFixed(2) : "";
-      const ventaWebIvaInc =
-        webIvaIncRaw != null ? +webIvaIncRaw.toFixed(2) : "";
+      // Regla de negocio: los PANELES llevan el mismo precio en ambas listas
+      // (web = venta local). Perfiles/accesorios mantienen el web de la MATRIZ (R).
+      const esPanel = path.startsWith("PANELS_");
+      const ventaWeb = esPanel ? venta : (webRaw != null ? +webRaw.toFixed(2) : "");
+      const ventaWebIvaInc = esPanel
+        ? ventaInc
+        : (webIvaIncRaw != null ? +webIvaIncRaw.toFixed(2) : "");
 
       const categoria = path.startsWith("PANELS_TECHO") ? "Paneles Techo"
         : path.startsWith("PANELS_PARED") ? "Paneles Pared"
@@ -1359,7 +1365,7 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 /**
  * Aplica overrides de la calculadora (keys `path.costo|venta|web|webIvaInc`) a filas MATRIZ
  * cuyo SKU (col D) mapea a `path` en `matrizPreciosMapping.js`.
- * Overrides `.costo` / `.venta` / `.web` → celdas **G**, **J**, **R** **tal cual** (sin ×/÷ IVA). Columnas confirmadas 2026-06-17.
+ * Overrides `.costo` / `.venta` / `.web` / `.webIvaInc` → celdas **F**, **L**, **T**, **U** **tal cual** (sin ×/÷ IVA). No escribe **M**.
  * Requiere scope escritura Sheets y rol Editor en el workbook MATRIZ.
  */
 async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, dryRun) {

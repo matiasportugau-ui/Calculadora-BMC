@@ -71,7 +71,7 @@ const CATALOG = `## CATÁLOGO DE PRODUCTOS BMC URUGUAY
 **ISODEC EPS (pared)** — ISODEC en fachada, SKU/precios distintos a ISOPANEL (no confundir). Espesores: 100, 150, 200, 250 mm.
   Colores: Blanco, Gris, Rojo. Sin espesor 50 mm (usar ISOPANEL 50 si se necesita).
 
-**ISOWALL PIR** — Fachada PIR. Espesores: 50, 80, 100 mm.
+**ISOWALL PIR** — Fachada PIR. Espesores: 50, 80 mm.
   Colores: Blanco, Gris, Rojo.
 
 ### ACCESORIOS Y SERVICIOS

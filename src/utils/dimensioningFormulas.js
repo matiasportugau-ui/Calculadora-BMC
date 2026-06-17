@@ -25,7 +25,7 @@ const FORMULA_FACTORS = [
   { path: "FIJACIONES_VARILLA.varillas_por_punto", label: "Varillas por punto (fallback sin espesor_mm)", default: 4, formula: "solo si opts.espesorMm ausente: varillas = ceil(puntos/valor)", unidad: "unid", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_CABALETE.factor_largo", label: "Factor largo caballete (m)", default: 2.9, formula: "caballetes por tramo = largo/valor + 1", unidad: "m", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_CABALETE.factor_ancho", label: "Espaciado perimetral lateral caballete (m)", default: 0.3, formula: "caballetes perim = (largo*2)/valor", unidad: "m", categoria: "Fijaciones Techo" },
-  { path: "PERFILERIA.espaciado_fijacion_ml", label: "Espaciado fijación perfilería (m/ml)", default: 0.30, formula: "fijPerf = ceil(totalML/valor)", unidad: "m", categoria: "Perfilería" },
+  { path: "PERFILERIA.t1_por_pieza", label: "Tornillos T1 por pieza de perfil", default: 20, formula: "T1 = Σ(cant × valor); ×2 para perfiles fijados de ambos lados (cumbrera, perfil U)", unidad: "unid", categoria: "Perfilería" },
   { path: "PERFILERIA.soporte_canalon_ml_por_apoyo", label: "ML soporte canalón por apoyo", default: 0.30, formula: "mlSoportes = (cantP+1)*valor", unidad: "m", categoria: "Perfilería" },
   { path: "PERFILERIA.canalon_empalme_silicona_ml", label: "Silicona empalme canalón (m)", default: 0.6, formula: "ml por empalme × 2 cordones", unidad: "m", categoria: "Perfilería" },
   { path: "SELLADORES_TECHO.silicona_ml_por_unid", label: "Silicona techo: ml por unidad", default: 10.27, formula: "siliconas = ceil(mlSilicona/valor)", unidad: "ml", categoria: "Selladores Techo" },
