@@ -54,6 +54,7 @@ const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.j
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
 const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
 const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx"));
+const ProyectoStatusModule = lazy(() => import("./components/hub/proyecto/ProyectoStatusModule.jsx"));
 const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
 
@@ -236,6 +237,18 @@ export default function App() {
               <RequireGrant module="clientes" minLevel="read">
                 <Suspense fallback={suspenseFallback}>
                   <ClientesMVP />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/proyecto"
+          element={
+            <Shell>
+              <RequireGrant module="proyecto" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <ProyectoStatusModule />
                 </Suspense>
               </RequireGrant>
             </Shell>
