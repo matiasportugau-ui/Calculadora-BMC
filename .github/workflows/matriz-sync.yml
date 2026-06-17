@@ -1,0 +1,173 @@
+# Sincroniza precios desde la MATRIZ Bromyros a `src/data/constants.js`.
+#
+# Flujo:
+#   1. Llama a GET /api/actualizar-precios-calculadora en prod (lee la MATRIZ viva)
+#   2. Corre `bake-matriz-to-constants.mjs` sobre el CSV resultante
+#   3. Si constants.js cambió → commit en rama `chore/matriz-sync-YYYY-MM-DD` + PR
+#   4. Si no cambió → avisa y termina sin commit
+#
+# Triggers:
+#   - `workflow_dispatch` (manual, desde GitHub UI — "Run workflow")
+#   - schedule: diario 02:00 UTC (antes de la jornada laboral UY)
+#
+# Inputs (solo workflow_dispatch):
+#   - dry_run: "true" → muestra diff pero NO crea commit ni PR
+#   - api_base:  override de la URL de la API (útil para testing contra staging)
+#
+# Requisitos:
+#   - `vars.BMC_SMOKE_API_BASE` → URL de la API Cloud Run de producción
+#     (mismo var que usa catalog-diff.yml). Ej: https://panelin-calc-xxxx.run.app
+#   - `secrets.GITHUB_TOKEN` con permisos `contents: write` + `pull-requests: write`
+#     (ya concedidos por los defaults del repo — no necesita PAT extra)
+#
+name: Sync MATRIZ → constants.js
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC = antes de la jornada UY (UTC-3)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run — mostrar diff sin commitear"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      api_base:
+        description: "Override BMC_API_BASE (vacío = prod Cloud Run)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    name: "MATRIZ → constants.js"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # token default (GITHUB_TOKEN) es suficiente para push + PR en el repo
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # ── 1. Descargar CSV fresco de la MATRIZ ───────────────────────────────
+      - name: Pull CSV from MATRIZ (via API)
+        env:
+          BMC_API_BASE: ${{ github.event.inputs.api_base || vars.BMC_SMOKE_API_BASE || '' }}
+        run: |
+          echo "API base: ${BMC_API_BASE:-http://localhost:3001}"
+          node scripts/pull-matriz-csv.mjs
+
+      # ── 2. Bake CSV → constants.js ─────────────────────────────────────────
+      - name: Bake CSV into constants.js
+        run: node scripts/bake-matriz-to-constants.mjs .runtime/matriz-precios-latest.csv
+
+      # ── 3. Detectar cambios ────────────────────────────────────────────────
+      - name: Detect changes
+        id: diff
+        run: |
+          if git diff --quiet src/data/constants.js; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️  Sin cambios — constants.js ya está al día con la MATRIZ."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "📊 Cambios detectados en constants.js:"
+            git diff --stat src/data/constants.js
+          fi
+
+      # ── 4a. Dry-run: mostrar diff completo y salir ─────────────────────────
+      - name: Show full diff (dry-run)
+        if: steps.diff.outputs.changed == 'true' && github.event.inputs.dry_run == 'true'
+        run: |
+          echo "=== DRY RUN — no se commitea nada ==="
+          git diff src/data/constants.js
+
+      # ── 4b. Commit + PR (si hay cambios y NO es dry-run) ──────────────────
+      - name: Commit to sync branch
+        if: steps.diff.outputs.changed == 'true' && github.event.inputs.dry_run != 'true'
+        id: commit
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          BRANCH="chore/matriz-sync-${DATE}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add src/data/constants.js
+          git commit -m "chore: sync prices from MATRIZ Bromyros ${DATE} [auto]"
+          git push -u origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR
+        if: steps.diff.outputs.changed == 'true' && github.event.inputs.dry_run != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = "${{ steps.commit.outputs.branch }}";
+            const date   = new Date().toISOString().slice(0, 10);
+
+            // Evitar duplicados: cerrar PR viejo del mismo día si existe
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              state: "open",
+              head:  `${context.repo.owner}:${branch}`,
+            });
+            if (prs.data.length > 0) {
+              console.log("PR ya existe:", prs.data[0].html_url);
+              core.setOutput("pr_url", prs.data[0].html_url);
+              return;
+            }
+
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: `chore: sync precios MATRIZ Bromyros — ${date}`,
+              head:  branch,
+              base:  "main",
+              body: [
+                "## Sync automático de precios — MATRIZ Bromyros",
+                "",
+                `Generado el ${date} por \`matrix-sync.yml\`.`,
+                "",
+                "### Qué hace este PR",
+                "- Descargó el CSV fresco de la MATRIZ (prod API: \`/api/actualizar-precios-calculadora\`)",
+                "- Corrió \`bake-matriz-to-constants.mjs\` sobre el CSV",
+                "- Solo toca los campos `.venta`, `.web`, `.costo` en `src/data/constants.js`",
+                "",
+                "### Para que tome efecto",
+                "1. Revisá el diff abajo (deberían ser solo cambios numéricos en precios)",
+                "2. Mergear → Vercel auto-deploya → precios actualizados en ≈ 3 min",
+                "",
+                "> Para sync inmediato: mergear este PR apenas pase CI.",
+              ].join("\n"),
+            });
+            console.log("PR creado:", pr.data.html_url);
+            core.setOutput("pr_url", pr.data.html_url);
+
+      # ── 5. Summary ─────────────────────────────────────────────────────────
+      - name: Job summary
+        if: always()
+        run: |
+          if [ "${{ steps.diff.outputs.changed }}" != "true" ]; then
+            echo "### ✅ Sin cambios" >> "$GITHUB_STEP_SUMMARY"
+            echo "constants.js ya está al día con la MATRIZ." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "### 🔍 Dry-run completado" >> "$GITHUB_STEP_SUMMARY"
+            echo "Se detectaron cambios pero no se commiteó nada (dry-run)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### 🚀 Precios actualizados" >> "$GITHUB_STEP_SUMMARY"
+            echo "PR creado con los precios frescos de la MATRIZ." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Mergear el PR → Vercel despliega automáticamente." >> "$GITHUB_STEP_SUMMARY"
+          fi
