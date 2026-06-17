@@ -83,6 +83,9 @@ jobs:
     name: Smoke — prod API health (main only)
     runs-on: ubuntu-latest
     needs: [validate, lint]
+    # Señal de prod-health, NO gate de deploy (ver nota en channels_pipeline);
+    # el release lo valida el smoke post-deploy de deploy-calc-api.
+    continue-on-error: true
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -104,15 +107,18 @@ jobs:
       - name: Smoke prod
         run: npm run smoke:prod
 
-  # Prod smoke + programa + humanGate (sin secretos; URL pública por defecto en smoke-prod-api).
-  # Falla si Cloud Run no responde o IA/suggest-response cae; revisar antes de release.
-  # En PRs no bloquea (corre contra prod sin secretos del PR, señal informativa);
-  # en push (main/develop) sigue siendo gate duro.
+  # Señal de prod-runtime-health (prod smoke + IA/suggest-response; sin secretos).
+  # Sondea la revisión YA DESPLEGADA, así que NO debe gatear el deploy de código
+  # nuevo: acoplarla al gate de deploy deadlockeaba releases (un prod en rojo
+  # bloqueaba el propio deploy que lo arregla — deploy-calc-api exige que CI
+  # concluya 'success'). Queda como señal visible vía continue-on-error; la
+  # seguridad de release viene del smoke post-deploy de deploy-calc-api contra
+  # la revisión recién desplegada.
   channels_pipeline:
     name: Channels — automated pipeline (prod)
     runs-on: ubuntu-latest
     needs: [validate, lint]
-    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -139,6 +145,8 @@ jobs:
     name: Voice — OpenAI key health (main only)
     runs-on: ubuntu-latest
     needs: [validate, lint]
+    # Señal de prod-health, NO gate de deploy (ver nota en channels_pipeline).
+    continue-on-error: true
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
