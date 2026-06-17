@@ -184,6 +184,18 @@ export const config = {
    */
   traktimeAwEnabled: bool(process.env.TRAKTIME_AW_ENABLED, false),
   traktimeAwBaseUrl: process.env.TRAKTIME_AW_BASE_URL || "http://localhost:5600",
+  /**
+   * Clockify integration (Fase 1) — read-only mirror of operator time entries.
+   * Clockify captures; BMC pulls via REST + Reports API into clockify_* tables.
+   * The API key must be an admin/owner key to see all workspace users.
+   */
+  clockifyApiKey: process.env.CLOCKIFY_API_KEY || "",
+  clockifyWorkspaceId: process.env.CLOCKIFY_WORKSPACE_ID || "",
+  clockifyApiBase: process.env.CLOCKIFY_API_BASE || "https://api.clockify.me/api/v1",
+  clockifyReportsBase: process.env.CLOCKIFY_REPORTS_BASE || "https://reports.api.clockify.me/v1",
+  clockifySyncEnabled: bool(process.env.CLOCKIFY_SYNC_ENABLED, false),
+  clockifySyncIntervalMin: Number(process.env.CLOCKIFY_SYNC_INTERVAL_MIN || 5),
+  clockifySyncOverlapHours: Number(process.env.CLOCKIFY_SYNC_OVERLAP_HOURS || 48),
   todoistApiToken: process.env.TODOIST_API_TOKEN || "",
   todoistBmcProjectId: process.env.TODOIST_BMC_PROJECT_ID || "6grV9QhFpvPJ79hx",
   /** WA Cockpit (F2 enricher) — flags */
