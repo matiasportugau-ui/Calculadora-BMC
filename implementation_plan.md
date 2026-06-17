@@ -1,18 +1,29 @@
-# Implementation Plan - Reconcile Git Branches
+# Implementation Plan - Update Antigravity CLI
 
-The local branch `main` and remote `origin/main` have diverged. Local `main` has 1 unique commit (`d0154e8`) and is behind `origin/main` by 19 commits.
+The goal is to update the Antigravity CLI from version 1.0.8 to 1.0.9 using the `install.sh` script provided in Downloads.
 
-## Proposed Strategy
-I will use a **merge** strategy to reconcile the branches. This is generally safer for significant divergences and preserves the context of the local changes while integrating the remote updates.
+## Proposed Changes
 
-## Steps
-1. **Fetch Latest**: Ensure local metadata for `origin/main` is up to date.
-2. **Pre-merge Check**: Use `git merge --no-commit --no-ff origin/main` to identify potential conflicts without finalizing the merge.
-3. **Resolve Conflicts**: If any conflicts arise, resolve them carefully, prioritizing remote updates for system files and local updates for task-specific files (like `task.md` or `implementation_plan.md` if they conflict).
-4. **Finalize Merge**: Complete the merge with a descriptive commit message.
-5. **Tags**: Ensure tags are pulled as originally requested.
+### 1. Backup Existing Binary
+- Move `~/.local/bin/agy` to `~/.local/bin/agy.bak`.
+- This ensures we can roll back if the installation fails.
 
-## Verification
-- Run `git status` to ensure a clean working tree.
-- Run `git log` to verify the merge commit and history.
-- Verify that `task.md` and `implementation_plan.md` are correct.
+### 2. Run Installation Script
+- Execute `bash /Users/matias/Downloads/install.sh`.
+- The script will download and install the latest version (1.0.9).
+
+### 3. Verification
+- Run `agy --version` to confirm the update.
+- Verify basic functionality (e.g., `agy help`).
+
+### 4. Cleanup
+- Remove the backup `~/.local/bin/agy.bak` once verified.
+
+## Verification Plan
+
+### Automated Tests
+- `which agy` should return the correct path.
+- `agy --version` should output `1.0.9`.
+
+### Manual Verification
+- Check output of the install script for any errors.
