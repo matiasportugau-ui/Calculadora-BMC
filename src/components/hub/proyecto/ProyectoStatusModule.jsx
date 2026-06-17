@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
 
 const SECTION_COLORS = {
   "TraKtiMe": { bg: "#eef4ff", accent: "#3b82f6", badge: "#dbeafe" },
@@ -243,12 +244,15 @@ export default function ProyectoStatusModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [syncedAt, setSyncedAt] = useState(null);
+  const { accessToken } = useBmcAuth();
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/proyecto/status");
+      const res = await fetch("/api/proyecto/status", {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      });
       const json = await res.json();
       if (!res.ok) {
         setError(json);
@@ -261,7 +265,7 @@ export default function ProyectoStatusModule() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accessToken]);
 
   useEffect(() => { load(); }, [load]);
 

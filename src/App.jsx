@@ -246,9 +246,11 @@ export default function App() {
           path="/hub/proyecto"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <ProyectoStatusModule />
-              </Suspense>
+              <RequireGrant module="proyecto" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <ProyectoStatusModule />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />

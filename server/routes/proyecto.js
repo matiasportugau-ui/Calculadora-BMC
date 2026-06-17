@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getSections, getActiveTasks } from "../lib/todoistClient.js";
 import { config } from "../config.js";
-import { requireUser } from "../lib/identityAuth.js";
+import { requireGrant } from "../middleware/requireGrant.js";
 
 const router = Router();
 
@@ -14,10 +14,10 @@ function durationMinutes(d) {
   if (!d) return null;
   if (d.unit === "minute") return d.amount;
   if (d.unit === "day") return d.amount * 1440;
-  return d.amount * 60; // "hour" fallback
+  return null; // unknown unit — don't guess
 }
 
-router.get("/proyecto/status", requireUser(), async (req, res) => {
+router.get("/proyecto/status", requireGrant.read("proyecto"), async (req, res) => {
   const projectId = config.todoistBmcProjectId;
   try {
     const [sections, tasks] = await Promise.all([

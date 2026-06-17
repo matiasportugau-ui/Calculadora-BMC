@@ -1214,7 +1214,7 @@ async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
 }
 
 // ─── MATRIZ precios → planilla calculadora ──────────────────────────────────
-// MATRIZ: F, L, M, T = **tal cual** la celda (sin ÷ ni × IVA). F/L/T ex IVA en lista; M referencia c/IVA tal cual.
+// MATRIZ: G, J, R = **tal cual** la celda (sin ÷ ni × IVA). G=costo, J=venta local, R=venta web — todos ex IVA (confirmado 2026-06-17).
 // Columnas buscadas por nombre: costo/costos, venta/venta_bmc, venta_web/web. Fallback índices fijos.
 
 function findColIndex(headers, ...patterns) {

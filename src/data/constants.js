@@ -115,8 +115,7 @@ export const PANELS_TECHO = {
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
       30: { venta: 35.27, web: 35.27, costo: 30.67,  ap: 2.8 },
-      // 2026-05-12: ajustado web a 46.00 (= costo 32.857 × ×1.40, markup estándar de la familia ISOROOF).
-      // MATRIZ no trae venta/web para este SKU (solo costo 31.9); el commit 9ed59a5 había dejado web: 36.69, anómalo (web < venta).
+      // MATRIZ no trae venta/web para este SKU (solo costo 31.9). web ajustado a ex-IVA (2026-06-17).
       50: { venta: 37.7856, web: 37.705,  costo: 32.857, ap: 3.3 },
     },
     col: ["Gris", "Rojo"], colNotes: {}, colMax: {},

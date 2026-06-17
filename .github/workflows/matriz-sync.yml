@@ -66,7 +66,11 @@ jobs:
         env:
           BMC_API_BASE: ${{ github.event.inputs.api_base || vars.BMC_SMOKE_API_BASE || '' }}
         run: |
-          echo "API base: ${BMC_API_BASE:-http://localhost:3001}"
+          if [ -z "${BMC_API_BASE}" ]; then
+            echo "::error::BMC_API_BASE is empty. Set vars.BMC_SMOKE_API_BASE in repository variables or pass api_base via workflow_dispatch."
+            exit 1
+          fi
+          echo "API base: ${BMC_API_BASE}"
           node scripts/pull-matriz-csv.mjs
 
       # ── 2. Bake CSV → constants.js ─────────────────────────────────────────
@@ -102,10 +106,10 @@ jobs:
           BRANCH="chore/matriz-sync-${DATE}"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
+          git checkout -B "$BRANCH"
           git add src/data/constants.js
           git commit -m "chore: sync prices from MATRIZ Bromyros ${DATE} [auto]"
-          git push -u origin "$BRANCH"
+          git push -u origin "$BRANCH" --force-with-lease
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Open PR
