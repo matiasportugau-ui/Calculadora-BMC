@@ -12,6 +12,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-17 (TraKtiMe ← Clockify · Fase 1 — espejo de lectura + vista de operarios):** `en PR (draft)`. Integración de Clockify como motor de captura: BMC consume su API REST + Reports API (todos los operarios) y espeja en Postgres, sin tocar el flujo de captura. Decidido con Matías: tablas `clockify_*` separadas (desacopladas de `tk_*`); operarios linkeados a identidad BMC por email (`bmc_user_id`, nullable). Solo poll (webhooks = Fase 2).
+- **Migración** `traktime-package/migrations/011_clockify.sql`: `clockify_users` / `clockify_projects` / `clockify_entries` / `clockify_sync_state`.
+- **Backend:** `server/lib/clockifyClient.js` (fetch + X-Api-Key + retry/backoff, espejo de `mercadoLibreClient`), `server/lib/clockifySyncWorker.js` (poll cada `CLOCKIFY_SYNC_INTERVAL_MIN`, upsert idempotente, watermark), 3 endpoints en `traktime.js` (`GET /operators`, `GET /operators/:id/entries`, `POST /admin/clockify-sync-now`), worker registrado en `index.js` (no-op salvo `CLOCKIFY_SYNC_ENABLED`).
+- **Frontend:** tab **Operarios** en `TraKtiMeModule` con `Operarios/OperariosPanel.jsx` (horas/mes por operario, drill-down, "Sincronizar ahora" para admin).
+- **Config/secretos:** `CLOCKIFY_*` en `config.js` + `.env.example`. Diseño: `docs/team/traktime/CLOCKIFY-INTEGRATION-DESIGN.md` (PR #374). Test `tests/clockifyClient.test.js` (10/10). `lint` + `build` OK; gate con 2 rojos **pre-existentes** en main (`toolStats` 41vs42, `identity-auth`), ajenos a este cambio.
+
 **2026-06-14 (customer PDF layouts — official BMC brand identity for client quotes):** `frontend shipped to prod for evaluation`. All recommended modern "Simple *" PDF layouts (the active customer-facing ones: PDF Cliente, WA export, Drive) now strictly follow the official bmcuruguay.com.uy + COMPANY identity.
 - Real logo asset (`/bmc-pdf/assets/bmc-logo.png` — bold navy block "BMC" with tagline) now used in every Simple variant header (previously synthetic "B" circle).
 - `BRAND = COMPANY.brandColor` (#003366 navy) made single source of truth: imported in templates, inlined in CSS for headers, names, badges, group rows, totals, bank blocks, accents.
