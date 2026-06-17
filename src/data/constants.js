@@ -169,7 +169,9 @@ export const PANELS_PARED = {
     au: 1.1, lmin: 3.5, lmax: 14, sist: "anclaje_tornillo", fam: "ISOWALL",
     esp: {
       50:  { venta: 48.81,  web: 48.81, costo: 42.44, ap: null },
-      80:  { venta: 58.21, web: 58.21, costo: 50.62, ap: null },    },
+      80:  { venta: 58.21, web: 58.21, costo: 50.62, ap: null },
+      100: { venta: 58.90, web: 58.90, costo: 51.22, ap: null },
+    },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
   ISOFRIG_PIR: {
@@ -179,7 +181,11 @@ export const PANELS_PARED = {
       40:  { venta: 45.46, web: 45.46, costo: 39.53, ap: null },
       60:  { venta: 51.66, web: 51.66, costo: 44.92, ap: null },
       80:  { venta: 56.99, web: 56.99, costo: 49.55, ap: null },
-      100: { venta: 63.21, web: 63.21, costo: 54.96, ap: null },      150: { venta: 76.68, web: 76.68, costo: 66.67, ap: null },      200: { venta: 91.18, web: 91.18, costo: 79.29, ap: null },
+      100: { venta: 63.21, web: 63.21, costo: 54.96, ap: null },
+      120: { venta: 69.34, web: 69.34, costo: 60.29, ap: null },
+      150: { venta: 76.68, web: 76.68, costo: 66.67, ap: null },
+      180: { venta: 86.33, web: 86.33, costo: 75.07, ap: null },
+      200: { venta: 91.18, web: 91.18, costo: 79.29, ap: null },
     },
     col: ["Blanco"],
     colNotes: { _all: "Solo Blanco sanitario (interior/exterior)." },
@@ -414,7 +420,7 @@ export const PERFIL_PARED = {
       // 250mm usa intencionalmente el mismo SKU y precio que 200mm (PU200MM).
       // El proveedor (Bromyros) no diferencia perfil U entre 200 y 250mm en su lista de precios;
       // ambos espesores usan el mismo perfil comercial. Verificar en MATRIZ si esto cambia.
-      250: { sku: "PU200MM", venta: 21.25, web: 24.79, costo: 17.71, largo: 3.0 },
+      250: { sku: "PU200MM", venta: 17.68, web: 20.62, costo: 14.73, largo: 3.0 },
     },
     ISOWALL: {
       50:  { sku: "PU50MM", venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
@@ -425,7 +431,9 @@ export const PERFIL_PARED = {
       40:  { sku: "PU50MM",  venta: 12.04, web: 14.04, costo: 10.03, largo: 3.0 },
       60:  { sku: "PU50MM",  venta: 12.94, web: 15.09, costo: 10.78, largo: 3.0 },
       80:  { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
-      100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },      150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },      200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+      150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
+      200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
     },
   },
   perfil_g2: {

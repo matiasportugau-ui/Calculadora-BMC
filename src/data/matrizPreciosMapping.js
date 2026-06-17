@@ -185,7 +185,7 @@ export const MATRIZ_SKU_TO_PATH = {
 
   // ── Goteros ISODEC PIR (retrocompat + SKU disjuntos recomendados — ver MATRIZ-SKU-GAP-Y-PLAN.md)
   /** Solo actualiza frontal 50; lateral 50/80 comparten precio en constants — usar GLLPIR50/GLLPIR80 en col D para import completo */
-  GF80DC: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.80",
+  GF80DC: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50",
   /** En constants también en frontal 80; usar GFFPIR80 para frontal 80 sin colisión */
   GF120DC: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.120",
   GFFPIR50: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50",
@@ -255,10 +255,15 @@ export const MATRIZ_SKU_TO_PATH = {
   // Paneles ISODEC PIR (evitar 50mm) e IsoFrig completa
   ISD80PIR: "PANELS_TECHO.ISODEC_PIR.esp.80",
   ISD120PIR: "PANELS_TECHO.ISODEC_PIR.esp.120",
+  IW100: "PANELS_PARED.ISOWALL_PIR.esp.100",
   IF40: "PANELS_PARED.ISOFRIG_PIR.esp.40",
   IF60: "PANELS_PARED.ISOFRIG_PIR.esp.60",
   IF80: "PANELS_PARED.ISOFRIG_PIR.esp.80",
-  IF100: "PANELS_PARED.ISOFRIG_PIR.esp.100",  IF150: "PANELS_PARED.ISOFRIG_PIR.esp.150",  IF200: "PANELS_PARED.ISOFRIG_PIR.esp.200",
+  IF100: "PANELS_PARED.ISOFRIG_PIR.esp.100",
+  IF120: "PANELS_PARED.ISOFRIG_PIR.esp.120",
+  IF150: "PANELS_PARED.ISOFRIG_PIR.esp.150",
+  IF180: "PANELS_PARED.ISOFRIG_PIR.esp.180",
+  IF200: "PANELS_PARED.ISOFRIG_PIR.esp.200",
 };
 
 /** Obtener path para un SKU de la MATRIZ (normalizado) */

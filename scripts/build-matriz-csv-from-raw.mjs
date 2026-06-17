@@ -12,16 +12,29 @@
  * elige la fila cuyo producto coincide con el espesor del path (evita el
  * "gana la última fila" del importador). Reporta los conflictos.
  *
- * Uso: node scripts/build-matriz-csv-from-raw.mjs [--out .runtime/matriz-precios-latest.csv]
+ * Uso:
+ *   BMC_MATRIZ_SHEET_ID=<sheet-id> node scripts/build-matriz-csv-from-raw.mjs [--out .runtime/matriz-precios-latest.csv]
+ *   node scripts/build-matriz-csv-from-raw.mjs --sheet-id <sheet-id> [--out .runtime/matriz-precios-latest.csv]
  */
 import fs from "node:fs";
 import path from "node:path";
 import { getPathForMatrizSku } from "../src/data/matrizPreciosMapping.js";
 
-const SHEET_ID = "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo";
+const getArgValue = (name) => {
+  const idx = process.argv.indexOf(name);
+  if (idx === -1) return null;
+  return process.argv[idx + 1] ?? null;
+};
+
+const SHEET_ID = getArgValue("--sheet-id") || process.env.BMC_MATRIZ_SHEET_ID || null;
 const OUT = process.argv.includes("--out")
   ? process.argv[process.argv.indexOf("--out") + 1]
   : ".runtime/matriz-precios-latest.csv";
+
+if (!SHEET_ID) {
+  console.error("Falta Sheet ID. Usá --sheet-id <id> o BMC_MATRIZ_SHEET_ID en el entorno.");
+  process.exit(2);
+}
 
 // Índices de columna (0-based) del tab BROMYROS — costo desde G.
 const C = { sku: 3, prod: 4, costo: 6 /* G */, ventaLocal: 9, ventaIvaInc: 10, web: 17, webIvaInc: 18 };
