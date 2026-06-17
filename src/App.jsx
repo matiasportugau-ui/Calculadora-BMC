@@ -14,7 +14,6 @@ import AuthHeader from "./components/auth/AuthHeader.jsx";
 import RequireGrant from "./components/auth/RequireGrant.jsx";
 import ActivityTracker from "./components/activity/ActivityTracker.jsx";
 import RouteErrorBoundary from "./components/RouteErrorBoundary.jsx";
-import BugReportModal from "./components/BugReportModal.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Tutorial interactivo (nuevo sistema) — gated for safety
@@ -55,6 +54,7 @@ const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.j
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
 const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
 const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx"));
+const ProyectoStatusModule = lazy(() => import("./components/hub/proyecto/ProyectoStatusModule.jsx"));
 const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
 
@@ -170,7 +170,6 @@ export default function App() {
       <LegacyAppQueryRedirect />
       <AuthGateModal />
       <TutorialOverlay />
-      <BugReportModal />
       <RoutedErrorBoundary>
       <Routes>
         <Route
@@ -238,6 +237,18 @@ export default function App() {
               <RequireGrant module="clientes" minLevel="read">
                 <Suspense fallback={suspenseFallback}>
                   <ClientesMVP />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/proyecto"
+          element={
+            <Shell>
+              <RequireGrant module="proyecto" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <ProyectoStatusModule />
                 </Suspense>
               </RequireGrant>
             </Shell>

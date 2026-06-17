@@ -8,6 +8,7 @@ import pino from "pino";
 import pinoHttp from "pino-http";
 import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
+import { buildVersionInfo } from "./lib/versionInfo.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
 import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
@@ -48,6 +49,7 @@ import marketingRouter from "./routes/marketing.js";
 import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
+import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -63,6 +65,7 @@ import quoteExportRouter from "./routes/quoteExport.js";
 import tasksRouter from "./routes/tasks.js";
 import tasksOAuthRouter from "./routes/tasksOAuth.js";
 import tasksSyncRouter from "./routes/tasksSync.js";
+import proyectoRouter from "./routes/proyecto.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import "./lib/marketIntel/scheduler.js"; // registers daily ETL cron at 03:00 UTC
@@ -192,6 +195,15 @@ const ensureValidState = async (state) => {
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
 app.get("/capabilities", (req, res) => {
   res.json(buildAgentCapabilitiesManifest(config));
+});
+
+/**
+ * Consolidated version/build info: commit SHA + CALCULATOR_DATA_VERSION + build/deploy
+ * timestamps. Foundation for prod-vs-git-vs-local drift detection (scripts/reconcile-version.mjs).
+ * Read-only, secret-free.
+ */
+app.get("/version", (_req, res) => {
+  res.json(buildVersionInfo());
 });
 
 app.get("/health", asyncHandler(async (req, res) => {
@@ -990,6 +1002,12 @@ import presupOrchestratorRouter from "./routes/internal/presupOrchestrator.js";
 // Panelin interno — RBAC discovery + tool catalog (Bearer API_AUTH_TOKEN)
 app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 app.use("/api/internal/presup", presupOrchestratorRouter);
+
+// Public Panelin surfaces (operator dashboard realtime + PIM publish worker) — ROOT AUTH FIX
+// Enforce requireServiceOrUser (static API_AUTH_TOKEN for service/cron/dashboard calls, or opted user JWT).
+// This is the structural root fix for the recurring "no auth on /api/panelin" security findings.
+// All endpoints in createPanelinRouter (events, products, stock, invoices, sync, debug) now inherit the guard.
+app.use("/api/panelin", requireServiceOrUser(), createPanelinRouter(config));
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
 // Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
@@ -1013,6 +1031,7 @@ app.use(createShopifyRouter(config, logger));
 // Tareas (Google Tasks bidirectional mirror) — Phase 0 stubs return 501
 // CRUD under /api/tasks/* (Bearer JWT via requireUser inside router)
 app.use("/api/tasks", tasksRouter);
+app.use("/api", proyectoRouter);
 // OAuth PKCE flow for Google Tasks scope — /auth/tasks/{init,callback,revoke}
 app.use("/auth/tasks", tasksOAuthRouter);
 // Cloud Scheduler sync target (HMAC-verified) — /sync/google-tasks/pull

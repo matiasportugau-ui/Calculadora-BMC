@@ -175,6 +175,7 @@ export function TutorialProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- useTutorial hook colocated with its provider by design
 export function useTutorial() {
   const context = useContext(TutorialContext);
   if (!context) {

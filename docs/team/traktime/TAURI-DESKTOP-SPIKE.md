@@ -64,10 +64,19 @@ Los scripts usan `npx @tauri-apps/cli@^2` → **no agregan dependencias** al
   con el SPA-fallback de rutas path-based (BrowserRouter) en el protocolo
   `tauri://`.
 
+> **Decisión (15/06): modo remoto (prod).** La ventana siempre apunta a la app
+> de prod. **Caveat dev:** `tauri.conf.json` es JSON estricto (sin comentarios),
+> así que `beforeDevCommand: "npm run dev"` + `devUrl: http://localhost:5173`
+> siguen presentes — `tauri dev` levanta Vite pero **la ventana igual carga
+> prod** (ignora el Vite local). Para iterar contra cambios locales hay que
+> cambiar `app.windows[0].url` a `http://localhost:5173/hub/traktime?tkDetached=1`
+> temporalmente. Para el spike (always-on-top sobre el sitio en vivo) el modo
+> remoto alcanza.
+
 ## Pendiente / próximos pasos
 
 - Compilar y probar en cada OS (no hecho acá).
-- Decidir modo remoto vs bundleado.
+- (Resuelto 15/06: modo **remoto/prod**.)
 - (Opcional, Fase 3) embeber un watcher de actividad nativo en el binario, en
   vez de depender del daemon ActivityWatch separado.
 - Persistir posición/tamaño de la ventana entre sesiones.
