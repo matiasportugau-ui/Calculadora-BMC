@@ -37,7 +37,12 @@ function parseArgs(argv) {
     else if (argv[i] === "--json") json = true;
     else if (argv[i] === "--strict") strict = true;
   }
-  return { base: base.replace(/\/+$/, ""), json, strict };
+  const normalizedBase = base.replace(/\/+$/, "");
+  if (!/^https?:\/\/.+/.test(normalizedBase)) {
+    console.error(`reconcile-version: invalid base URL "${base}" — must be a non-empty http(s):// URL.`);
+    process.exit(2);
+  }
+  return { base: normalizedBase, json, strict };
 }
 
 function localGitHead() {

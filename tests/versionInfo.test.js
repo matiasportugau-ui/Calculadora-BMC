@@ -5,7 +5,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { createRequire } from "node:module";
 import { buildVersionInfo } from "../server/lib/versionInfo.js";
-import { CALCULATOR_DATA_VERSION } from "../src/data/calculatorDataVersion.js";
+import {
+  CALCULATOR_DATA_VERSION,
+  CALCULATOR_DATA_VERSION_DATE,
+} from "../src/data/calculatorDataVersion.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json");
@@ -47,6 +50,12 @@ assert(
   v.calculatorDataVersion === CALCULATOR_DATA_VERSION,
   v.calculatorDataVersion,
   CALCULATOR_DATA_VERSION,
+);
+assert(
+  "calculatorDataVersionDate matches generated constant",
+  v.calculatorDataVersionDate === CALCULATOR_DATA_VERSION_DATE,
+  v.calculatorDataVersionDate,
+  CALCULATOR_DATA_VERSION_DATE,
 );
 assert("node === process.version", v.node === process.version, v.node, process.version);
 assert(
