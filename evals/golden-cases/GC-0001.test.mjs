@@ -26,9 +26,11 @@ const checks = [];
 const fam = PANELS_PARED.ISOFRIG_PIR;
 
 // (a) dato crudo: web 100 mm ex-IVA
+// Updated 2026-06-16 (WOLF-2026-0004): web was IVA-embedded (76.9454 = 63.07×1.22).
+// Fixed to 63.07 (= venta, ex-IVA). See GC-0004 for full IVA regression guard.
 checks.push({
-  name: "(a) ISOFRIG_PIR 100 mm web → 76.9454 ex-IVA",
-  expected: 76.9454,
+  name: "(a) ISOFRIG_PIR 100 mm web → 63.07 ex-IVA",
+  expected: 63.07,
   actual: fam?.esp?.[100]?.web,
 });
 
@@ -39,20 +41,20 @@ const libre = computePresupuestoLibreCatalogo({
 });
 const lineaPanel = libre?.libreGroups?.find((g) => g.title === "PANELES")?.items?.[0];
 checks.push({
-  name: "(b1) presupuesto_libre pu unitario → 76.9454",
-  expected: 76.9454,
+  name: "(b1) presupuesto_libre pu unitario → 63.07",
+  expected: 63.07,
   actual: lineaPanel?.pu,
 });
 checks.push({
-  name: "(b2) presupuesto_libre total línea 10 m² → 769.45 ex-IVA",
-  expected: 769.45,
+  name: "(b2) presupuesto_libre total línea 10 m² → 630.70 ex-IVA",
+  expected: 630.7,
   actual: lineaPanel ? r2(lineaPanel.total) : undefined,
 });
 
-// (b-venta) lista VENTA (default BMC): 100 mm = costo×1.15 = 58.01 ex-IVA
+// (b-venta) lista VENTA (default BMC): ISOFRIG_PIR 100 mm
 checks.push({
-  name: "(b3) ISOFRIG_PIR 100 mm venta → 58.01 (costo×1.15)",
-  expected: 58.01,
+  name: "(b3) ISOFRIG_PIR 100 mm venta → 63.07",
+  expected: 63.07,
   actual: fam?.esp?.[100]?.venta,
 });
 const libreVenta = computePresupuestoLibreCatalogo({
@@ -61,8 +63,8 @@ const libreVenta = computePresupuestoLibreCatalogo({
 });
 const lineaVenta = libreVenta?.libreGroups?.find((g) => g.title === "PANELES")?.items?.[0];
 checks.push({
-  name: "(b4) presupuesto_libre VENTA total 10 m² → 580.10 ex-IVA",
-  expected: 580.1,
+  name: "(b4) presupuesto_libre VENTA total 10 m² → 630.70 ex-IVA",
+  expected: 630.7,
   actual: lineaVenta ? r2(lineaVenta.total) : undefined,
 });
 
