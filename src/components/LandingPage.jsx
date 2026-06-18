@@ -81,13 +81,13 @@ export default function LandingPage() {
           textAlign: "center",
         }}
       >
-        <h1 style={{ margin: "0 0 12px", fontSize: 28, fontWeight: 600, color: "#0f172a" }}>
+        <h1 style={{ margin: "0 0 12px", fontSize: 28, fontWeight: 600, color: "#ffffff" }}>
           Calculadora BMC
         </h1>
-        <p style={{ margin: "0 0 8px", color: "#475569", fontSize: 15, lineHeight: 1.6 }}>
+        <p style={{ margin: "0 0 8px", color: "#f1f5f9", fontSize: 15, lineHeight: 1.6 }}>
           Sistema de presupuestación para paneles de aislación
         </p>
-        <p style={{ margin: "0 0 28px", color: "#64748b", fontSize: 13 }}>
+        <p style={{ margin: "0 0 28px", color: "#e2e8f0", fontSize: 13 }}>
           Obtené cotizaciones precisas en segundos
         </p>
 
@@ -121,7 +121,7 @@ export default function LandingPage() {
           </div>
         ) : null}
 
-        <p style={{ margin: "16px 0 0", color: "#94a3b8", fontSize: 12 }}>
+        <p style={{ margin: "16px 0 0", color: "#cbd5e1", fontSize: 12 }}>
           Plataforma de BMC Uruguay
         </p>
       </div>
