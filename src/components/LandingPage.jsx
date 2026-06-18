@@ -73,7 +73,7 @@ export default function LandingPage() {
         style={{
           position: "relative",
           zIndex: 2,
-          background: "rgba(255, 255, 255, 0.25)",
+          background: "rgba(255, 255, 255, 0.20)",
           maxWidth: 500,
           width: "100%",
           borderRadius: 16,
@@ -86,13 +86,13 @@ export default function LandingPage() {
         }}
       >
         <h1 style={{ margin: "0 0 12px", fontSize: 28, fontWeight: 600, color: "#ffffff" }}>
-          Calculadora BMC
+          Plataforma BMC
         </h1>
         <p style={{ margin: "0 0 8px", color: "#f1f5f9", fontSize: 15, lineHeight: 1.6 }}>
-          Sistema de presupuestación para paneles de aislación
+          Sistema de Gestión y Presupuestación
         </p>
         <p style={{ margin: "0 0 28px", color: "#e2e8f0", fontSize: 13 }}>
-          Obtené cotizaciones precisas en segundos
+          Cotizaciones en segundos, automatismos y Panelin  =)
         </p>
 
         <button
@@ -126,7 +126,7 @@ export default function LandingPage() {
         ) : null}
 
         <p style={{ margin: "16px 0 0", color: "#cbd5e1", fontSize: 12 }}>
-          Plataforma de BMC Uruguay
+          Diseñada por y para BMC URUGUAY
         </p>
       </div>
 
