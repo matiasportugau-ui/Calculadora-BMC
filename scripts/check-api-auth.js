@@ -328,10 +328,16 @@ async function checkPanelinAuth() {
         "Agregar API_AUTH_TOKEN en .env y reiniciar el servidor"
       );
     } else if (status === 200) {
-      warn(
-        "POST /api/agent/chat (devMode sin token)",
-        "200 sin token — PANELIN_RELAX_DEV_AUTH está activo (bypass de seguridad en dev)"
-      );
+      const relaxed = process.env.PANELIN_RELAX_DEV_AUTH === "1" || process.env.PANELIN_RELAX_DEV_AUTH === "true";
+      if (relaxed) {
+        warn("POST /api/agent/chat (devMode sin token)", "200 — PANELIN_RELAX_DEV_AUTH activo (bypass de seguridad en dev)");
+      } else {
+        fail(
+          "POST /api/agent/chat (devMode sin token)",
+          "200 sin token y PANELIN_RELAX_DEV_AUTH no activo — devMode abierto sin auth (regression de seguridad)",
+          "Verificar server/lib/devModeAuth.js — el guard de devMode no está funcionando"
+        );
+      }
     } else {
       warn("POST /api/agent/chat (devMode sin token)", `HTTP ${status}: ${JSON.stringify(data)?.slice(0, 120)}`);
     }
@@ -667,7 +673,6 @@ async function checkMlEndpoints() {
 // SUMMARY
 // ──────────────────────────────────────────────────────────────────────────────
 function printSummary() {
-  const total = totalPass + totalFail + totalWarn;
   console.log("\n╔══════════════════════════════════════════════════════╗");
   console.log("║               RESUMEN FINAL                         ║");
   console.log("╠══════════════════════════════════════════════════════╣");
