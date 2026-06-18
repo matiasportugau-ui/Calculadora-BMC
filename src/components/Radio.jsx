@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 
 export default function Radio() {
-  const [isOn, setIsOn] = useState(false);
+  const [isOn, setIsOn] = useState(true);
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -87,27 +87,23 @@ export default function Radio() {
             <source src={`${import.meta.env.BASE_URL}videos/radio-on.mp4`} type="video/mp4" />
           </video>
         ) : (
-          // Radio OFF - show static image/placeholder
-          <div
+          // Radio OFF - show static image
+          <img
+            src={`${import.meta.env.BASE_URL}images/radio-off.jpg`}
+            alt="Radio off"
             style={{
               width: 120,
               height: 120,
               borderRadius: 12,
-              background: "rgba(15, 23, 42, 0.8)",
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#cbd5e1",
-              fontSize: 14,
-              fontWeight: 500,
-              textAlign: "center",
-              padding: 8,
-              backdropFilter: "blur(10px)",
+              objectFit: "cover",
+              background: "rgba(15, 23, 42, 0.8)",
             }}
-          >
-            📻
-          </div>
+            onError={(e) => {
+              e.target.style.display = "none";
+              e.target.parentElement.innerHTML = '<div style="width: 120px; height: 120px; borderRadius: 12px; background: rgba(15, 23, 42, 0.8); boxShadow: 0 8px 32px rgba(0, 0, 0, 0.3); display: flex; alignItems: center; justifyContent: center; color: #cbd5e1; fontSize: 14px; fontWeight: 500; textAlign: center; padding: 8px; backdropFilter: blur(10px);">📻</div>';
+            }}
+          />
         )}
       </div>
     </>
