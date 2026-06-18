@@ -80,7 +80,7 @@ export default function RequireGrant({ module, role, minLevel = "read", children
             zIndex: 0,
           }}
         >
-          <source src="/videos/login.mp4" type="video/mp4" />
+          <source src={`${import.meta.env.BASE_URL}videos/login.mp4`} type="video/mp4" />
         </video>
         {/* Dark overlay */}
         <div style={{ position: "absolute", inset: 0, background: "rgba(0, 0, 0, 0.5)", zIndex: 1 }} />

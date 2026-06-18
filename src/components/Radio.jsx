@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 
 export default function Radio() {
-  const [isOn, setIsOn] = useState(true);
+  const [isOn, setIsOn] = useState(false);
   const audioRef = useRef(null);
 
   useEffect(() => {
     if (audioRef.current) {
       if (isOn) {
         audioRef.current.play().catch(() => {
-          // Autoplay might be blocked by browser; user can enable audio by clicking
+          setIsOn(false);
         });
       } else {
         audioRef.current.pause();
@@ -21,19 +21,30 @@ export default function Radio() {
     setIsOn(!isOn);
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleRadio();
+    }
+  };
+
   return (
     <>
       {/* Audio element for soundtrack */}
       <audio
         ref={audioRef}
-        src="/audio/panelin.mp3"
+        src={`${import.meta.env.BASE_URL}audio/panelin.mp3`}
         loop
-        playsInline
       />
 
       {/* Radio container - bottom left corner */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={isOn ? "Radio is on" : "Radio is off"}
+        aria-pressed={isOn}
         onClick={toggleRadio}
+        onKeyDown={handleKeyDown}
         style={{
           position: "fixed",
           bottom: 24,
@@ -42,11 +53,18 @@ export default function Radio() {
           cursor: "pointer",
           transition: "transform 0.2s ease",
           transform: "scale(1)",
+          outline: "none",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = "scale(1.05)";
         }}
         onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "scale(1)";
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.transform = "scale(1.05)";
+        }}
+        onBlur={(e) => {
           e.currentTarget.style.transform = "scale(1)";
         }}
       >
@@ -66,7 +84,7 @@ export default function Radio() {
               objectFit: "cover",
             }}
           >
-            <source src="/videos/radio-on.mp4" type="video/mp4" />
+            <source src={`${import.meta.env.BASE_URL}videos/radio-on.mp4`} type="video/mp4" />
           </video>
         ) : (
           // Radio OFF - show static image/placeholder

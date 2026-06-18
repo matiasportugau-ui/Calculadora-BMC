@@ -86,7 +86,7 @@ export default function AuthGateModal() {
           zIndex: 0,
         }}
       >
-        <source src="/videos/login.mp4" type="video/mp4" />
+        <source src={`${import.meta.env.BASE_URL}videos/login.mp4`} type="video/mp4" />
       </video>
 
       {/* Dark overlay for readability */}
