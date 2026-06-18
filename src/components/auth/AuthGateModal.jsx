@@ -62,21 +62,55 @@ export default function AuthGateModal() {
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: "rgba(15, 23, 42, 0.55)",
+        background: "#000",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: 16,
+        overflow: "hidden",
       }}
     >
+      {/* Video background - full screen */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          zIndex: 0,
+        }}
+      >
+        <source src={`${import.meta.env.BASE_URL}videos/login.mp4`} type="video/mp4" />
+      </video>
+
+      {/* Dark overlay for readability */}
       <div
         style={{
-          background: "#fff",
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0, 0, 0, 0.4)",
+          zIndex: 1,
+        }}
+      />
+
+      {/* Login card - centered on top of video */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          background: "rgba(255, 255, 255, 0.95)",
           maxWidth: 440,
           width: "100%",
           borderRadius: 16,
           padding: 24,
           boxShadow: "0 20px 50px rgba(0,0,0,.25)",
+          backdropFilter: "blur(10px)",
         }}
       >
         <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 600, color: "#0f172a" }}>

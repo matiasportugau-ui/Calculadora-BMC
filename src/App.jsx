@@ -33,6 +33,7 @@ const queryClient = new QueryClient({
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
+const LandingPage = lazy(() => import("./components/LandingPage.jsx"));
 const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
 const DriverTransportistaApp = lazy(() => import("./components/DriverTransportistaApp.jsx"));
 const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSandbox.jsx"));
@@ -357,11 +358,16 @@ export default function App() {
         <Route
           path="/"
           element={
-            <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <PanelinCalculadora />
+            <>
+              <Suspense fallback={null}>
+                <LandingPage />
               </Suspense>
-            </Shell>
+              <Shell>
+                <Suspense fallback={suspenseFallback}>
+                  <PanelinCalculadora />
+                </Suspense>
+              </Shell>
+            </>
           }
         />
         <Route
