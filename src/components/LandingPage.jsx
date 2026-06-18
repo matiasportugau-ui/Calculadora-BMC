@@ -24,10 +24,12 @@ export default function LandingPage() {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 1,
+        zIndex: 10000,
         background: "#000",
         display: "flex",
         alignItems: "center",
@@ -70,23 +72,25 @@ export default function LandingPage() {
         style={{
           position: "relative",
           zIndex: 2,
-          background: "rgba(255, 255, 255, 0.95)",
+          background: "rgba(255, 255, 255, 0.25)",
           maxWidth: 500,
           width: "100%",
           borderRadius: 16,
           padding: 40,
-          boxShadow: "0 20px 50px rgba(0,0,0,.25)",
-          backdropFilter: "blur(10px)",
+          boxShadow: "0 20px 50px rgba(0,0,0,.15)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          border: "1px solid rgba(255, 255, 255, 0.3)",
           textAlign: "center",
         }}
       >
-        <h1 style={{ margin: "0 0 12px", fontSize: 28, fontWeight: 600, color: "#0f172a" }}>
+        <h1 style={{ margin: "0 0 12px", fontSize: 28, fontWeight: 600, color: "#ffffff" }}>
           Calculadora BMC
         </h1>
-        <p style={{ margin: "0 0 8px", color: "#475569", fontSize: 15, lineHeight: 1.6 }}>
+        <p style={{ margin: "0 0 8px", color: "#f1f5f9", fontSize: 15, lineHeight: 1.6 }}>
           Sistema de presupuestación para paneles de aislación
         </p>
-        <p style={{ margin: "0 0 28px", color: "#64748b", fontSize: 13 }}>
+        <p style={{ margin: "0 0 28px", color: "#e2e8f0", fontSize: 13 }}>
           Obtené cotizaciones precisas en segundos
         </p>
 
@@ -120,7 +124,7 @@ export default function LandingPage() {
           </div>
         ) : null}
 
-        <p style={{ margin: "16px 0 0", color: "#94a3b8", fontSize: 12 }}>
+        <p style={{ margin: "16px 0 0", color: "#cbd5e1", fontSize: 12 }}>
           Plataforma de BMC Uruguay
         </p>
       </div>
