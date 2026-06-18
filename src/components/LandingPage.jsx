@@ -27,7 +27,7 @@ export default function LandingPage() {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 1,
+        zIndex: 9998,
         background: "#000",
         display: "flex",
         alignItems: "center",
@@ -70,13 +70,14 @@ export default function LandingPage() {
         style={{
           position: "relative",
           zIndex: 2,
-          background: "rgba(255, 255, 255, 0.95)",
+          background: "rgba(255, 255, 255, 0.25)",
           maxWidth: 500,
           width: "100%",
           borderRadius: 16,
           padding: 40,
-          boxShadow: "0 20px 50px rgba(0,0,0,.25)",
-          backdropFilter: "blur(10px)",
+          boxShadow: "0 20px 50px rgba(0,0,0,.15)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255, 255, 255, 0.3)",
           textAlign: "center",
         }}
       >
