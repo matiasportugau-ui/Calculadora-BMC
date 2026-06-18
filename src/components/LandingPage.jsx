@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
+import Radio from "./Radio.jsx";
 
 export default function LandingPage() {
   const { isAuthenticated, login } = useBmcAuth();
@@ -128,6 +129,9 @@ export default function LandingPage() {
           Plataforma de BMC Uruguay
         </p>
       </div>
+
+      {/* Radio component */}
+      <Radio />
     </div>
   );
 }
