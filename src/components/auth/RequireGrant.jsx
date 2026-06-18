@@ -63,11 +63,36 @@ export default function RequireGrant({ module, role, minLevel = "read", children
 
   if (!auth.isAuthenticated) {
     return (
-      <Forbidden
-        title="Iniciá sesión"
-        body="Para acceder a este módulo necesitás iniciar sesión con tu cuenta."
-        cta={{ label: "Iniciar sesión", onClick: () => requestAuthGate("require-grant") }}
-      />
+      <div style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+        {/* Video background */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            zIndex: 0,
+          }}
+        >
+          <source src="/videos/login.mp4" type="video/mp4" />
+        </video>
+        {/* Dark overlay */}
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0, 0, 0, 0.5)", zIndex: 1 }} />
+        {/* Content on top */}
+        <div style={{ position: "relative", zIndex: 2 }}>
+          <Forbidden
+            title="Iniciá sesión"
+            body="Para acceder a este módulo necesitás iniciar sesión con tu cuenta."
+            cta={{ label: "Iniciar sesión", onClick: () => requestAuthGate("require-grant") }}
+          />
+        </div>
+      </div>
     );
   }
 
