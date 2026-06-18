@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
+import Radio from "./Radio.jsx";
 
 export default function LandingPage() {
   const { isAuthenticated, login } = useBmcAuth();
@@ -54,7 +55,7 @@ export default function LandingPage() {
           zIndex: 0,
         }}
       >
-        <source src="/videos/login.mp4" type="video/mp4" />
+        <source src={`${import.meta.env.BASE_URL}videos/login.mp4`} type="video/mp4" />
       </video>
 
       {/* Dark overlay for readability */}
@@ -128,6 +129,9 @@ export default function LandingPage() {
           Plataforma de BMC Uruguay
         </p>
       </div>
+
+      {/* Radio component */}
+      <Radio />
     </div>
   );
 }
