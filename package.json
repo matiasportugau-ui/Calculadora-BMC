@@ -97,6 +97,8 @@
     "gate:local": "npm run lint && npm test && npm run test:api",
     "dev:check:all": "bash scripts/bmc-dev-check-all.sh",
     "gate:local:full": "npm run lint && npm test && npm run test:api && npm run build",
+    "check:auth": "node scripts/check-api-auth.js",
+    "check:auth:live": "node scripts/check-api-auth.js --live",
     "check:env-drift": "node scripts/check-env-drift.mjs",
     "gate:secrets": "node scripts/gate-secrets-drift.mjs",
     "check": "npm run gate:local",

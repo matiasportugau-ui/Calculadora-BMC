@@ -538,6 +538,78 @@ async function runChatContractTests({ passed: pass, failed: fail }) {
   } catch (err) {
     fail("POST /api/agent/chat (cotización request)", err.message);
   }
+
+  // 3.4e — devMode sin Bearer token → debe rechazar con 401 o 503 (nunca 200)
+  // Verifica que el guard de devMode funcione correctamente
+  try {
+    const res = await fetch(CHAT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [{ role: "user", content: "test devmode auth" }],
+        devMode: true,
+      }),
+    });
+    if (res.status === 401 || res.status === 503) {
+      pass(`POST /api/agent/chat (devMode sin token) → ${res.status} (auth guard activo)`);
+    } else if (res.status === 200) {
+      // 200 sin token solo es aceptable si PANELIN_RELAX_DEV_AUTH está explícitamente activo
+      const relaxed = process.env.PANELIN_RELAX_DEV_AUTH === "1" || process.env.PANELIN_RELAX_DEV_AUTH === "true";
+      if (relaxed) {
+        pass("POST /api/agent/chat (devMode sin token) → 200 (PANELIN_RELAX_DEV_AUTH activo — esperado en dev)");
+      } else {
+        fail(
+          "POST /api/agent/chat (devMode sin token)",
+          "200 sin token y PANELIN_RELAX_DEV_AUTH no activo — devMode abierto sin auth (regression de seguridad)",
+        );
+      }
+    } else {
+      fail(
+        "POST /api/agent/chat (devMode sin token)",
+        `HTTP ${res.status} inesperado (esperado 401, 503, o 200 con PANELIN_RELAX_DEV_AUTH)`,
+      );
+    }
+  } catch (err) {
+    fail("POST /api/agent/chat (devMode sin token)", err.message);
+  }
+
+  // 3.4f — devMode con Bearer token válido → 200 + SSE (solo si API_AUTH_TOKEN o API_KEY están seteados)
+  const apiToken = process.env.API_AUTH_TOKEN || process.env.API_KEY || "";
+  if (apiToken) {
+    try {
+      const res = await fetch(CHAT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiToken}`,
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "test devmode con auth válida" }],
+          devMode: true,
+        }),
+      });
+      if (res.status === 200 && res.headers.get("content-type")?.includes("text/event-stream")) {
+        pass("POST /api/agent/chat (devMode + Bearer válido) → 200 + SSE");
+      } else if (res.status === 401) {
+        fail(
+          "POST /api/agent/chat (devMode + Bearer válido)",
+          "401 — token no coincide con API_AUTH_TOKEN del servidor (mismatch entre .env y servidor)",
+        );
+      } else if (res.status === 503) {
+        fail(
+          "POST /api/agent/chat (devMode + Bearer válido)",
+          "503 — API_AUTH_TOKEN no configurado en el servidor",
+        );
+      } else {
+        fail(
+          "POST /api/agent/chat (devMode + Bearer válido)",
+          `HTTP ${res.status} inesperado`,
+        );
+      }
+    } catch (err) {
+      fail("POST /api/agent/chat (devMode + Bearer válido)", err.message);
+    }
+  }
 }
 
 main();
