@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
-import { requestAuthGate } from "./auth/AuthGateModal.jsx";
 
 export default function LandingPage() {
   const { isAuthenticated, login } = useBmcAuth();
