@@ -24,10 +24,12 @@ export default function LandingPage() {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 9998,
+        zIndex: 10000,
         background: "#000",
         display: "flex",
         alignItems: "center",
@@ -77,6 +79,7 @@ export default function LandingPage() {
           padding: 40,
           boxShadow: "0 20px 50px rgba(0,0,0,.15)",
           backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
           border: "1px solid rgba(255, 255, 255, 0.3)",
           textAlign: "center",
         }}
