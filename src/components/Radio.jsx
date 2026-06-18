@@ -31,13 +31,13 @@ export default function Radio() {
         playsInline
       />
 
-      {/* Radio container - bottom right corner */}
+      {/* Radio container - bottom left corner */}
       <div
         onClick={toggleRadio}
         style={{
           position: "fixed",
           bottom: 24,
-          right: 24,
+          left: 24,
           zIndex: 9999,
           cursor: "pointer",
           transition: "transform 0.2s ease",
