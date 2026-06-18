@@ -126,7 +126,7 @@ export default function LandingPage() {
         ) : null}
 
         <p style={{ margin: "16px 0 0", color: "#cbd5e1", fontSize: 12 }}>
-          Diseñada por y para BMC URUGUAY
+          Diseñada por y para BMC Uruguay
         </p>
       </div>
 
