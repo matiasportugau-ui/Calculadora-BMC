@@ -553,8 +553,16 @@ async function runChatContractTests({ passed: pass, failed: fail }) {
     if (res.status === 401 || res.status === 503) {
       pass(`POST /api/agent/chat (devMode sin token) → ${res.status} (auth guard activo)`);
     } else if (res.status === 200) {
-      // PANELIN_RELAX_DEV_AUTH puede estar activo en dev — no es error pero vale la pena avisar
-      pass("POST /api/agent/chat (devMode sin token) → 200 (PANELIN_RELAX_DEV_AUTH activo en dev)");
+      // 200 sin token solo es aceptable si PANELIN_RELAX_DEV_AUTH está explícitamente activo
+      const relaxed = process.env.PANELIN_RELAX_DEV_AUTH === "1" || process.env.PANELIN_RELAX_DEV_AUTH === "true";
+      if (relaxed) {
+        pass("POST /api/agent/chat (devMode sin token) → 200 (PANELIN_RELAX_DEV_AUTH activo — esperado en dev)");
+      } else {
+        fail(
+          "POST /api/agent/chat (devMode sin token)",
+          "200 sin token y PANELIN_RELAX_DEV_AUTH no activo — devMode abierto sin auth (regression de seguridad)",
+        );
+      }
     } else {
       fail(
         "POST /api/agent/chat (devMode sin token)",
@@ -565,8 +573,8 @@ async function runChatContractTests({ passed: pass, failed: fail }) {
     fail("POST /api/agent/chat (devMode sin token)", err.message);
   }
 
-  // 3.4f — devMode con Bearer token válido → 200 + SSE (solo si API_AUTH_TOKEN está seteado)
-  const apiToken = process.env.API_AUTH_TOKEN || "";
+  // 3.4f — devMode con Bearer token válido → 200 + SSE (solo si API_AUTH_TOKEN o API_KEY están seteados)
+  const apiToken = process.env.API_AUTH_TOKEN || process.env.API_KEY || "";
   if (apiToken) {
     try {
       const res = await fetch(CHAT, {

@@ -13,13 +13,13 @@
  * Salida: 0 = todo OK, 1 = fallos críticos
  */
 
+import "dotenv/config";
 import { readFileSync, existsSync } from "fs";
-import { createRequire } from "module";
 
 const args = process.argv.slice(2);
 const LIVE = args.includes("--live") || Boolean(process.env.BMC_API_BASE);
 const BASE = process.env.BMC_API_BASE || "http://localhost:3001";
-const API_TOKEN = process.env.API_AUTH_TOKEN || "";
+const API_TOKEN = process.env.API_AUTH_TOKEN || process.env.API_KEY || "";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Counters
@@ -389,9 +389,10 @@ async function checkPanelinAuth() {
     if (status === 200) {
       pass("GET /api/panelin/health → 200" + (API_TOKEN ? " (con token)" : ""));
     } else if (status === 404) {
-      // /api/panelin/health puede no existir, pero el guard debería hablar antes
-      info("GET /api/panelin/health → 404 (ruta no existe, pero auth guard funcionó)");
-      totalPass++;
+      warn(
+        "GET /api/panelin/health → 404",
+        "La ruta existe en server/routes/panelin.js pero devuelve 404 — posible problema de montaje o API desactualizada"
+      );
     } else if (status === 401 || status === 503) {
       if (!API_TOKEN) {
         warn(
@@ -567,7 +568,7 @@ async function checkCrmEndpoints() {
     const { status, data } = await req("/api/crm/suggest-response", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "Necesito un presupuesto para techo" }),
+      body: JSON.stringify({ consulta: "Necesito un presupuesto para techo" }),
     });
     if (status === 200 && data?.ok) {
       pass(`POST /api/crm/suggest-response → ok:true (provider: ${data.provider || "?"})`);
