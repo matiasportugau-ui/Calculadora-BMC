@@ -17,6 +17,7 @@
 
 import express from "express";
 import rateLimit from "express-rate-limit";
+import jwt from "jsonwebtoken";
 import { config } from "../config.js";
 import {
   verifyGoogleAndUpsert,
@@ -232,49 +233,41 @@ router.get("/auth/me/grants", requireUser(), async (req, res) => {
   }
 });
 
-// Dev-only login for testing (bypass Google OAuth)
-if (isProd() === false) {
-  router.post("/auth/dev-login", async (req, res) => {
-    try {
-      const { createSessionForUser } = await import("../lib/identityAuth.js");
+// Dev-only login for testing (bypass Google OAuth for development)
+router.post("/auth/dev-login", (req, res) => {
+  if (isProd()) {
+    return res.status(403).json({ ok: false, error: "dev_login_not_available_in_production" });
+  }
 
-      // Create or fetch test user
-      const email = "test@bmc.local";
-      const name = "Test User";
+  try {
+    const devUserId = "dev-user-" + Date.now();
+    const devUser = {
+      id: devUserId,
+      email: "dev@bmc.local",
+      name: "Development User",
+    };
 
-      const userResult = await _pool.query(
-        `INSERT INTO identity.users (email, name, picture_url, plan_tier, role)
-         VALUES ($1, $2, NULL, $3, $4)
-         ON CONFLICT(email) DO UPDATE SET name = $2
-         RETURNING id`,
-        [email, name, "base", "comprador"]
-      );
+    const secret = process.env.IDENTITY_JWT_SECRET || "dev-secret-change-me-in-production";
+    const accessToken = jwt.sign(
+      { sub: devUserId, email: devUser.email },
+      secret,
+      { expiresIn: "15m" }
+    );
 
-      const userId = userResult.rows[0].id;
-
-      const r = await createSessionForUser({
-        userId,
-        ip: req.ip,
-        userAgent: req.get("user-agent") || undefined,
-        source: "dev_login",
-      });
-
-      setRefreshCookie(res, r.refreshToken);
-      const grants = await getModuleGrants(userId);
-
-      return res.json({
-        ok: true,
-        user: r.user,
-        role: r.role,
-        plan_tier: r.plan_tier,
-        modules: grants,
-        accessToken: r.accessToken,
-        accessTokenExpiresIn: r.accessTokenExpiresIn,
-      });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: _safeErr(e) || "dev_login_failed" });
-    }
-  });
-}
+    return res.json({
+      ok: true,
+      user: devUser,
+      role: "comprador",
+      plan_tier: "base",
+      modules: { calc: "write", admin: "none" },
+      accessToken,
+      accessTokenExpiresIn: 900,
+      _devMode: true,
+    });
+  } catch (err) {
+    console.error("[dev-login] Error:", err.message);
+    return res.status(500).json({ ok: false, error: "dev_login_error" });
+  }
+});
 
 export default router;
