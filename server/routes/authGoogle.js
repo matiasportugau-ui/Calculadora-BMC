@@ -17,6 +17,7 @@
 
 import express from "express";
 import rateLimit from "express-rate-limit";
+import jwt from "jsonwebtoken";
 import { config } from "../config.js";
 import {
   verifyGoogleAndUpsert,
@@ -229,6 +230,43 @@ router.get("/auth/me/grants", requireUser(), async (req, res) => {
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: _safeErr(e) || "grants_failed" });
+  }
+});
+
+// Dev-only login for testing (bypass Google OAuth for development)
+router.post("/auth/dev-login", (req, res) => {
+  if (isProd()) {
+    return res.status(403).json({ ok: false, error: "dev_login_not_available_in_production" });
+  }
+
+  try {
+    const devUserId = "dev-user-" + Date.now();
+    const devUser = {
+      id: devUserId,
+      email: "dev@bmc.local",
+      name: "Development User",
+    };
+
+    const secret = process.env.IDENTITY_JWT_SECRET || "dev-secret-change-me-in-production";
+    const accessToken = jwt.sign(
+      { sub: devUserId, email: devUser.email },
+      secret,
+      { expiresIn: "15m" }
+    );
+
+    return res.json({
+      ok: true,
+      user: devUser,
+      role: "comprador",
+      plan_tier: "base",
+      modules: { calc: "write", admin: "none" },
+      accessToken,
+      accessTokenExpiresIn: 900,
+      _devMode: true,
+    });
+  } catch (err) {
+    console.error("[dev-login] Error:", err.message);
+    return res.status(500).json({ ok: false, error: "dev_login_error" });
   }
 });
 
