@@ -6,6 +6,14 @@ export default function LandingPage() {
   const { isAuthenticated, login } = useBmcAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [devMode, setDevMode] = useState(() => {
+    if (typeof localStorage === "undefined") return false;
+    try {
+      return localStorage.getItem("bmc.devmode.bypass") === "1";
+    } catch {
+      return false;
+    }
+  });
 
   const handleLogin = useCallback(async () => {
     setLoading(true);
@@ -19,7 +27,22 @@ export default function LandingPage() {
     }
   }, [login]);
 
-  if (isAuthenticated) {
+  const toggleDevMode = useCallback(() => {
+    if (typeof localStorage === "undefined") return;
+    try {
+      const newMode = !devMode;
+      if (newMode) {
+        localStorage.setItem("bmc.devmode.bypass", "1");
+      } else {
+        localStorage.removeItem("bmc.devmode.bypass");
+      }
+      setDevMode(newMode);
+    } catch {
+      /* ignore */
+    }
+  }, [devMode]);
+
+  if (isAuthenticated || devMode) {
     return null;
   }
 
@@ -124,6 +147,25 @@ export default function LandingPage() {
             Error: {error}
           </div>
         ) : null}
+
+        <button
+          type="button"
+          onClick={toggleDevMode}
+          title={devMode ? "Dev mode: ON (click to disable)" : "Dev mode: OFF (click to enable for testing without Google OAuth)"}
+          style={{
+            marginTop: 12,
+            padding: "4px 8px",
+            fontSize: 11,
+            background: devMode ? "rgba(34, 197, 94, 0.3)" : "rgba(100, 116, 139, 0.2)",
+            color: devMode ? "#86efac" : "#cbd5e1",
+            border: `1px solid ${devMode ? "rgba(34, 197, 94, 0.5)" : "rgba(100, 116, 139, 0.3)"}`,
+            borderRadius: 4,
+            cursor: "pointer",
+            fontFamily: "monospace",
+          }}
+        >
+          {devMode ? "🔧 Dev Mode: ON" : "Dev Mode: OFF"}
+        </button>
 
         <p style={{ margin: "16px 0 0", color: "#cbd5e1", fontSize: 12 }}>
           Diseñada por y para BMC Uruguay
