@@ -9,11 +9,9 @@ export default function LandingPage() {
   const [devMode, setDevMode] = useState(() => {
     if (typeof localStorage === "undefined") return false;
     try {
-      // Auto-enable dev mode on localhost for immediate testing
-      if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-        return true;
-      }
-      return localStorage.getItem("bmc.devmode.bypass") === "1";
+      // TEMPORARY: Auto-enable dev mode everywhere to allow immediate access
+      // while Google OAuth is being configured
+      return true;
     } catch {
       return false;
     }
