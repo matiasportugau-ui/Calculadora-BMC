@@ -67,6 +67,9 @@ export default function LandingPage() {
     return null;
   }
 
+  // Temporary: Auto-bypass login for immediate access to calculator
+  return null;
+
   return (
     <div
       role="dialog"
