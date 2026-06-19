@@ -27,6 +27,25 @@ export default function LandingPage() {
     }
   }, [login]);
 
+  const handleDevLogin = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/dev-login", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "dev_login_failed");
+      }
+      window.location.reload();
+    } catch (e) {
+      setError(e?.message || "dev_login_failed");
+      setLoading(false);
+    }
+  }, []);
+
   const toggleDevMode = useCallback(() => {
     if (typeof localStorage === "undefined") return;
     try {
@@ -140,6 +159,30 @@ export default function LandingPage() {
           }}
         >
           {loading ? "Conectando…" : "Iniciar con Google"}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDevLogin}
+          disabled={loading}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            width: "100%",
+            padding: "12px 16px",
+            borderRadius: 10,
+            background: loading ? "#94a3b8" : "rgba(100, 116, 139, 0.3)",
+            color: "#cbd5e1",
+            border: "1px solid rgba(100, 116, 139, 0.3)",
+            cursor: loading ? "wait" : "pointer",
+            fontSize: 14,
+            fontWeight: 500,
+            marginBottom: 12,
+          }}
+        >
+          {loading ? "Conectando…" : "🔧 Dev Login (Testing)"}
         </button>
 
         {error ? (

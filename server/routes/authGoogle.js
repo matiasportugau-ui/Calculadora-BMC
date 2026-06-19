@@ -232,4 +232,49 @@ router.get("/auth/me/grants", requireUser(), async (req, res) => {
   }
 });
 
+// Dev-only login for testing (bypass Google OAuth)
+if (isProd() === false) {
+  router.post("/auth/dev-login", async (req, res) => {
+    try {
+      const { createSessionForUser } = await import("../lib/identityAuth.js");
+
+      // Create or fetch test user
+      const email = "test@bmc.local";
+      const name = "Test User";
+
+      const userResult = await _pool.query(
+        `INSERT INTO identity.users (email, name, picture_url, plan_tier, role)
+         VALUES ($1, $2, NULL, $3, $4)
+         ON CONFLICT(email) DO UPDATE SET name = $2
+         RETURNING id`,
+        [email, name, "base", "comprador"]
+      );
+
+      const userId = userResult.rows[0].id;
+
+      const r = await createSessionForUser({
+        userId,
+        ip: req.ip,
+        userAgent: req.get("user-agent") || undefined,
+        source: "dev_login",
+      });
+
+      setRefreshCookie(res, r.refreshToken);
+      const grants = await getModuleGrants(userId);
+
+      return res.json({
+        ok: true,
+        user: r.user,
+        role: r.role,
+        plan_tier: r.plan_tier,
+        modules: grants,
+        accessToken: r.accessToken,
+        accessTokenExpiresIn: r.accessTokenExpiresIn,
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: _safeErr(e) || "dev_login_failed" });
+    }
+  });
+}
+
 export default router;
