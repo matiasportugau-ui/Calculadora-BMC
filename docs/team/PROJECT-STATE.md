@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06 (today's session close)
+**Última actualización:** 2026-06-20
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-20 (auth prod fixes — API_AUTH_TOKEN Cloud Run + VITE_GOOGLE_CLIENT_ID Vercel):** `shipped (PRs #389 + #391)`. Dos fixes de producción ortogonales: (1) **Panelin 503 `API_AUTH_TOKEN not configured`**: `API_AUTH_TOKEN` nunca estaba en `--set-secrets` del deploy (`deploy-calc-api.yml`) y era silenciosamente borrado en cada redeploy; añadido a `--set-secrets` (PR #389) + paso de migración one-time para remover el plain env var antes de montarlo como secret (PR #391, fija el error de type-conflict `Cannot update environment variable to the given type`). Smoke test post-deploy confirmó OK. (2) **Google login 401 `tokeninfo_aud_mismatch`**: `VITE_GOOGLE_CLIENT_ID` en Vercel tenía el placeholder del `.env.example`; actualizado al valor real (`642127786762-...`) vía `drive:vercel-env` + rebuild de producción. Archivos modificados: `.github/workflows/deploy-calc-api.yml` (pre-step remove-env-vars + API_AUTH_TOKEN en --set-secrets), `.github/required-cloud-run-secrets.txt` (añadida línea `API_AUTH_TOKEN`), `.claude/hooks/session-start.sh` (idempotente: guard npm install + guard BMC_DISK_PRECHECK_SKIP). Nuevo: `scripts/check-api-auth.js` (diagnóstico de auth con 8 secciones) + scripts `check:auth`/`check:auth:live`.
 
 **2026-06-17 (capa de orquestación dev/ops — recon READ-ONLY + /version + limpieza de cola de PRs):** `shipped (PR #373)`. Recon de la "capa viva de orquestación de desarrollo" → [`RECON-ORQUESTACION.md`](../../RECON-ORQUESTACION.md): la Fase A **no es de cero** (el SHA-embed ya ships end-to-end vía `Dockerfile`+`deploy-calc-api.yml`+`/capabilities`); el único gap real era un endpoint `/version` dedicado + un reconciler de versión. **Construido el gap:** `GET /version` que consolida `gitSha`+`CALCULATOR_DATA_VERSION`+`built_at` ([`server/lib/versionInfo.js`](../../server/lib/versionInfo.js) + mount en `server/index.js`), reconciler [`scripts/reconcile-version.mjs`](../../scripts/reconcile-version.mjs) (compara prod `/version` vs git HEAD vs local) y test `tests/versionInfo.test.js`; `BUILT_AT` allowlisted en `.github/ALLOWED_ENV_DRIFT.txt` para limpiar el gate env-drift. **Triage del backlog (104 PRs):** cerrados en bloque **79** drafts de agente stale/superseded (reversible — ramas/commits preservados, reabribles/cherry-pickeables); excluidos #203 (rescate Tier B de #240), #298 (toca deploy/secret `API_AUTH_TOKEN` → revisar vs #290) y #346 (rescate incompleto). Cola **104 → ~22 PRs reales** (7 decisión-dueño + 10 mergeable-candidato + 5 duda). Audit del cierre en #240.
 
