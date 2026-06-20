@@ -101,8 +101,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npm run env:ensure && node -e \"console.log(''); console.log('=== Calculadora BMC ==='); console.log(''); console.log('  npm run dev:full    API :3001 + Vite :5173'); console.log('  npm run dev         Vite only'); console.log('  npm run gate:local  lint + test (before commit)'); console.log('');\"",
-            "timeout": 30
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh",
+            "timeout": 300
           }
         ]
       }
