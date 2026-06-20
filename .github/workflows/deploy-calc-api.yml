@@ -135,6 +135,14 @@ jobs:
             .
           docker push "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}"
 
+      - name: Remove API_AUTH_TOKEN plain env var (one-time migration to secret)
+        if: steps.paths.outputs.skip != 'true'
+        run: |
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --remove-env-vars=API_AUTH_TOKEN \
+            --region=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} || true
+
       - name: Deploy to Cloud Run
         if: steps.paths.outputs.skip != 'true'
         uses: google-github-actions/deploy-cloudrun@v3
