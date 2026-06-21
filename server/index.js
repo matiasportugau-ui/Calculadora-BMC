@@ -298,7 +298,12 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const state = crypto.randomBytes(16).toString("hex");
   await oauthStateStore.set(state, { codeVerifier });
 
-  const authUrl = ml.buildAuthUrl(state, codeChallenge);
+  // Detect request hostname to use correct redirect_uri (supports ngrok, localhost, prod)
+  const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("x-forwarded-host") || req.get("host") || req.hostname;
+  const dynamicRedirectUri = `${protocol}://${host}/auth/ml/callback`;
+
+  const authUrl = ml.buildAuthUrl(state, codeChallenge, dynamicRedirectUri);
 
   if (req.query.mode === "json") {
     return res.json({ authUrl, state });
