@@ -136,8 +136,6 @@ app.use(
       cb(Object.assign(new Error(`CORS: origin not allowed — ${origin}`), { status: 403 }));
     },
     credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
   })
 );
 
