@@ -108,6 +108,23 @@ if (isProd) {
 const app = express();
 app.disable("x-powered-by"); // hide Express signature (defense in depth)
 app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel proxy
+
+// Handle CORS preflight (OPTIONS) requests with raw handler — bypass cors package for robustness
+app.options("*", (req, res) => {
+  const origin = req.headers.origin;
+  const allowed = !origin ||
+    origin.startsWith("chrome-extension://") ||
+    config.corsOrigins.includes(origin);
+  if (!allowed) return res.status(403).end();
+  res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Cookie,X-Requested-With");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Vary", "Origin");
+  res.status(204).end();
+});
+
+// CORS headers for non-OPTIONS requests
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -119,13 +136,8 @@ app.use(
       cb(Object.assign(new Error(`CORS: origin not allowed — ${origin}`), { status: 403 }));
     },
     credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
   })
 );
-
-// Handle CORS preflight requests for all routes
-app.options("*", cors());
 
 // Security headers (OAuth 2.1–aligned)
 app.use((_req, res, next) => {
