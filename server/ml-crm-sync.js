@@ -6,10 +6,12 @@
  *   - server/index.js webhook handler  (live 24/7)
  */
 
+import { setTimeout as delay } from "node:timers/promises";
 import { google } from "googleapis";
 import { setListaPrecios, PANELS_TECHO, PANELS_PARED, p } from "../src/data/constants.js";
 import { defaultTailAGAK_ML } from "./lib/crmOperativoLayout.js";
 import { analyzeQuotationGaps, formatGapsForOperator } from "./ml-quotation-gaps.js";
+import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
 
 const SHEET_TAB  = "CRM_Operativo";
 const HEADER_ROW = 3;
@@ -147,14 +149,53 @@ export function generateResponse(q, item, nickname, hasPriceMismatch) {
   return `Hola ${firstName}! Con gusto te ayudamos. ¿Podés darnos más detalles sobre lo que necesitás (medidas, cantidad, uso)? ${CLOSE}`;
 }
 
+// ── Transient error detection ─────────────────────────────────────────────
+
+const TRANSIENT_RE = /premature close|ECONNRESET|ETIMEDOUT|socket hang up|network|EAI_AGAIN/i;
+
+function isTransientError(err) {
+  if (!err) return false;
+  const msg = err.message || "";
+  if (TRANSIENT_RE.test(msg)) return true;
+  const code = err.code || "";
+  if (["ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "EPIPE", "UND_ERR_SOCKET"].includes(code)) return true;
+  return false;
+}
+
+async function withRetry(fn, { retries = 3, baseMs = 1000, logger } = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries && isTransientError(err)) {
+        const waitMs = Math.min(baseMs * 2 ** (attempt - 1), 8000);
+        logger?.warn?.({ err: err.message, attempt, waitMs }, "Transient error, retrying…");
+        await delay(waitMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+}
+
 // ── Sheets client ─────────────────────────────────────────────────────────
 
-async function createSheetsClient(credsPath) {
-  const auth = new google.auth.GoogleAuth({
-    ...(credsPath ? { keyFile: credsPath } : {}),
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
-  return google.sheets({ version: "v4", auth: await auth.getClient() });
+async function createSheetsClient(credsPath, logger) {
+  return withRetry(async () => {
+    if (credsPath) {
+      const auth = new google.auth.GoogleAuth({
+        keyFile: credsPath,
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      });
+      return google.sheets({ version: "v4", auth: await auth.getClient() });
+    }
+    // Use cached auth client (handles ADC / Cloud Run SA automatically)
+    const authClient = await getGoogleAuthClient("https://www.googleapis.com/auth/spreadsheets");
+    return google.sheets({ version: "v4", auth: authClient });
+  }, { retries: 3, baseMs: 1000, logger });
 }
 
 // ── syncUnansweredQuestions ───────────────────────────────────────────────
@@ -203,11 +244,14 @@ export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger =
   }
 
   // 5. Sheets
-  const sheets = await createSheetsClient(credsPath);
-  const dataRes = await sheets.spreadsheets.values.get({
-    spreadsheetId: sheetId,
-    range: `'${SHEET_TAB}'!A${HEADER_ROW}:AF2000`,
-  });
+  const sheets = await createSheetsClient(credsPath, logger);
+  const dataRes = await withRetry(
+    () => sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `'${SHEET_TAB}'!A${HEADER_ROW}:AF2000`,
+    }),
+    { retries: 3, baseMs: 1000, logger },
+  );
   const allRows  = dataRes.data.values || [];
   const headers  = allRows[0] || [];
   const dataRows = allRows.slice(1);
@@ -263,14 +307,17 @@ export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger =
       "ML", obs, formatDate(q.date_created), "", "", "", "Sí", "", "", "SI",
       respuestaSugerida,
     ];
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: sheetId,
-      range: `'${SHEET_TAB}'!B${rowNum}:AK${rowNum}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [[...rowCore, ...defaultTailAGAK_ML()]],
-      },
-    });
+    await withRetry(
+      () => sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `'${SHEET_TAB}'!B${rowNum}:AK${rowNum}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[...rowCore, ...defaultTailAGAK_ML()]],
+        },
+      }),
+      { retries: 3, baseMs: 1000, logger },
+    );
 
     newRows.push({ questionId: String(q.id), rowNum, questionText: q.text || "", itemTitle, nickname });
     logger.info?.(`  ✓ F${rowNum} — Q:${q.id} | ${nickname} | "${q.text?.slice(0, 45)}"${hasPriceMismatch ? " 🔴 revisión precio" : ""}`);

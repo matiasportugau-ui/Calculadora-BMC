@@ -3344,7 +3344,9 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
       return res.json({ ok: true, synced: result.synced });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      const transientRe = /premature close|ECONNRESET|ETIMEDOUT|socket hang up|EAI_AGAIN/i;
+      const status = transientRe.test(e.message) ? 503 : (e.status || 500);
+      return res.status(status).json({ ok: false, error: e.message });
     }
   });
 

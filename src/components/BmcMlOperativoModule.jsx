@@ -374,14 +374,22 @@ export default function BmcMlOperativoModule() {
   const runPullMl = useCallback(async () => {
     if (!token || firingRef.current) return;
     setFiring(true); setCycleLog(["▶ PULL ML — sincronizando preguntas nuevas..."]); setError("");
-    const { ok, status, data } = await cockpitFetch(token, "/api/crm/cockpit/sync-ml", {
+    let res = await cockpitFetch(token, "/api/crm/cockpit/sync-ml", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
     });
-    if (!ok) {
-      setCycleLog([`✗ PULL ML FAILED: ${data?.error || `HTTP ${status}`}`]);
+    // Auto-retry once on transient 503 (e.g. Google token fetch premature close)
+    if (!res.ok && res.status === 503) {
+      setCycleLog(["⟳ PULL ML — reintentando (error transitorio)..."]);
+      await new Promise((r) => setTimeout(r, 2000));
+      res = await cockpitFetch(token, "/api/crm/cockpit/sync-ml", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+      });
+    }
+    if (!res.ok) {
+      setCycleLog([`✗ PULL ML FAILED: ${res.data?.error || `HTTP ${res.status}`}`]);
       setFiring(false); return;
     }
-    const n = data.synced ?? 0;
+    const n = res.data.synced ?? 0;
     setLastSync(new Date()); setLastSyncCount(n);
     setCycleLog([`✓ PULL ML OK — ${n} pregunta(s) nueva(s) agregada(s) al CRM`]);
     await loadQueue();
