@@ -151,6 +151,7 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc:${{ steps.sha.outputs.sha }}
           env_vars: |
+            PORT=8080
             BMC_SHEET_ID=${{ secrets.BMC_SHEET_ID }}
             BMC_SHEET_SCHEMA=${{ secrets.BMC_SHEET_SCHEMA }}
             BMC_PAGOS_SHEET_ID=${{ secrets.BMC_PAGOS_SHEET_ID }}
