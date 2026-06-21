@@ -15,11 +15,15 @@ if command -v apt-get &>/dev/null && ! dpkg -s libasound2-dev &>/dev/null 2>&1; 
   $SUDO apt-get install -y libasound2-dev >/dev/null 2>&1 || true
 fi
 
-# Install all npm dependencies (container state is cached after first run)
-npm install
+# Install npm dependencies only when node_modules is missing (container state is cached)
+if [[ ! -d node_modules ]]; then
+  npm install
+fi
 
-# Skip disk precheck in cloud environments (avoids false-fail on unusual filesystems)
-echo 'export BMC_DISK_PRECHECK_SKIP=1' >> "$CLAUDE_ENV_FILE"
+# Skip disk precheck in cloud environments (idempotent — only appends if not already set)
+if ! grep -qF 'BMC_DISK_PRECHECK_SKIP' "$CLAUDE_ENV_FILE" 2>/dev/null; then
+  echo 'export BMC_DISK_PRECHECK_SKIP=1' >> "$CLAUDE_ENV_FILE"
+fi
 
 # Create .env from .env.example if it doesn't exist yet
 npm run env:ensure
