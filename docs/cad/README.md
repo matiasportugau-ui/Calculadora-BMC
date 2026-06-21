@@ -71,6 +71,20 @@ LibreCAD) y como **SVG** (→ PDF con el pipeline existente). Pensado para **ope
 - **`@resvg/resvg-js`** (dev) — rasteriza SVG→PNG para previsualización del demo.
 - Pipeline PDF y geometría: **reutiliza** lo existente (`server/routes/pdf.js`, `roofPlanGeometry.js`).
 
+## IA de interpretación (multi-proveedor)
+
+`server/lib/visionExtract.js` interpreta imagen/PDF/DXF usando **todos los proveedores
+configurados con fallback en cadena**: **Claude · Gemini · OpenAI (gpt-4o) · Grok
+(grok-2-vision-1212)**. Reusa `aiProviderConfig.js` (keys, modelos permitidos, orden).
+
+- `interpretPlan(buf, mime, name, { provider, model })` — proveedor/modelo opcional; sino usa el
+  **recomendado para visión** (`VISION_PROVIDER_PREFERENCE = claude → gemini → openai → grok`) y
+  cae al siguiente si falla. Soporte por tipo: imagen = los 4; PDF = Claude/Gemini; DXF/texto = los 4.
+- `GET /api/plan/ai-options` → `{ providers, autoOrder, recommended:{provider,model,reason} }`.
+- El módulo **Crear plano** trae un **selector de modelo** (Automático/recomendado o
+  proveedor+modelo) y muestra con qué IA se interpretó.
+- Sin API key real, el endpoint responde un 502 con el detalle por proveedor (fallback correcto).
+
 ## Decisiones clave (del research log del plan)
 
 1. **Cotas explotadas (LINE+TEXT), no entidades `DIMENSION`.** AutoCAD no renderiza `DIMENSION`

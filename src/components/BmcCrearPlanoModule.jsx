@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { Upload, Loader, AlertTriangle, Check, Download, FileDown } from "lucide-react";
 import BmcModuleNav from "./BmcModuleNav.jsx";
 
@@ -56,6 +56,17 @@ export default function BmcCrearPlanoModule() {
   const [iaFootprint, setIaFootprint] = useState(null);
   const [iaWarnings, setIaWarnings] = useState([]);
 
+  // Selector de IA: proveedores disponibles + recomendado para visión
+  const [aiOptions, setAiOptions] = useState(null);
+  const [aiProvider, setAiProvider] = useState("auto");
+  const [aiModel, setAiModel] = useState("");
+  useEffect(() => {
+    fetch("/api/plan/ai-options").then((r) => r.json()).then(setAiOptions).catch(() => {});
+  }, []);
+  const recommended = aiOptions?.recommended || null;
+  const providers = aiOptions?.providers || [];
+  const provObj = providers.find((p) => p.id === aiProvider);
+
   const [genPhase, setGenPhase] = useState("idle");      // idle | loading | done | error
   const [genMsg, setGenMsg] = useState("");
   const [result, setResult] = useState(null);            // { svg, dxf, areaM2 }
@@ -77,14 +88,19 @@ export default function BmcCrearPlanoModule() {
     try {
       const form = new FormData();
       form.append("file", file);
+      if (aiProvider !== "auto") {
+        form.append("provider", aiProvider);
+        if (aiModel) form.append("model", aiModel);
+      }
       const resp = await fetch("/api/plan/interpret", { method: "POST", body: form });
       const data = await resp.json();
       if (!resp.ok) { setUploadMsg(data.error || "Error al interpretar el croquis."); setUploadPhase("error"); return; }
       const fp = data.bmcPayload?.footprint;
+      const usedAi = data.ai?.providerLabel ? ` · ${data.ai.providerLabel}${data.ai.model ? ` (${data.ai.model})` : ""}` : "";
       setIaWarnings(data.warnings || []);
       if (Array.isArray(fp) && fp.length >= 3) {
         setIaFootprint(fp);
-        setUploadMsg("Croquis interpretado — perímetro detectado por IA."); setUploadPhase("done");
+        setUploadMsg(`Croquis interpretado — perímetro detectado por IA${usedAi}.`); setUploadPhase("done");
       } else {
         setUploadMsg("La IA no pudo armar el perímetro automáticamente. Definí las medidas a mano abajo.");
         setUploadPhase("error"); setMode("manual");
@@ -92,7 +108,7 @@ export default function BmcCrearPlanoModule() {
     } catch {
       setUploadMsg("Error de red al interpretar el croquis."); setUploadPhase("error");
     }
-  }, []);
+  }, [aiProvider, aiModel]);
 
   const generar = useCallback(async () => {
     setGenPhase("loading"); setGenMsg(""); setResult(null);
@@ -129,6 +145,31 @@ export default function BmcCrearPlanoModule() {
 
           {mode === "croquis" && (
             <>
+              {aiOptions && providers.length === 0 && (
+                <div style={{ display: "flex", gap: 8, padding: "10px 14px", borderRadius: 10, background: "#FFFBEB", border: "1px solid #FDE68A", marginBottom: 12 }}>
+                  <AlertTriangle size={14} color="#D97706" />
+                  <span style={{ fontSize: 13, color: "#92400E" }}>No hay servicio de IA conectado. Configurá una API key o usá «Ingresar medidas».</span>
+                </div>
+              )}
+              {providers.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <span style={label}>Modelo de IA {recommended && <span style={{ color: "#16A34A", fontWeight: 600 }}>· recomendado: {recommended.providerLabel} {recommended.model}</span>}</span>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <select value={aiProvider} onChange={(e) => { setAiProvider(e.target.value); setAiModel(""); }} style={inp}>
+                      <option value="auto">Automático (recomendado{recommended ? `: ${recommended.providerLabel}` : ""})</option>
+                      {providers.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                    </select>
+                    {aiProvider !== "auto" && provObj && (
+                      <select value={aiModel} onChange={(e) => setAiModel(e.target.value)} style={inp}>
+                        <option value="">Predeterminado ({provObj.defaultModel})</option>
+                        {provObj.models.map((m) => (
+                          <option key={m.id} value={m.id}>{m.id}{recommended && recommended.provider === aiProvider && recommended.model === m.id ? " ★" : ""}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              )}
               {uploadPhase !== "loading" && (
                 <div
                   onClick={() => fileInputRef.current?.click()}
