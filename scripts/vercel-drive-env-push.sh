@@ -53,7 +53,6 @@ push_preview_all() {
   echo "=== Vercel env: VITE_GOOGLE_CLIENT_ID → preview (all branches) ==="
   vercel env add VITE_GOOGLE_CLIENT_ID preview \
     --value "$CLIENT" \
-    -y \
     --force \
     --non-interactive \
     --cwd "$REPO" || {
