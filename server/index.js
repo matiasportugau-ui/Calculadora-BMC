@@ -119,11 +119,10 @@ app.use(
       cb(Object.assign(new Error(`CORS: origin not allowed — ${origin}`), { status: 403 }));
     },
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   })
 );
-
-// Handle CORS preflight requests for all routes
-app.options("*", cors());
 
 // Security headers (OAuth 2.1–aligned)
 app.use((_req, res, next) => {
