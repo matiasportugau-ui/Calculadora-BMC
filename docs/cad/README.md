@@ -6,15 +6,24 @@ LibreCAD) y como **SVG** (→ PDF con el pipeline existente). Pensado para **ope
 
 > Estado: desarrollado y verificado en local (no desplegado). Frontend pendiente de cableado.
 
-## Pipeline
+## Dos flujos separados (UI)
+
+- **Subir plano → Presupuesto** — `/hub/plan-import` (`BmcPlanImportModule.jsx`, ya existía):
+  plano existente → interpretar → elegir panel → abrir en la calculadora → **cotización**.
+- **Crear plano (CAD)** — `/hub/crear-plano` (`BmcCrearPlanoModule.jsx`, NUEVO): croquis o medidas
+  → **plano profesional** (preview SVG + descarga DXF). Dos orígenes de forma:
+  - *Subir croquis (IA):* `POST /api/plan/interpret` → `footprint` → preview/descarga.
+  - *Ingresar medidas:* presets Rectángulo / L / T (sin IA — funciona sin API key).
+
+## Pipeline (Crear plano)
 
 ```
-[Subir croquis/PDF/foto]                      [Operador corrige medidas]
-  POST /api/plan/interpret  ── geometría ──▶  footprint [[x,y],…]  ──▶  POST /api/plan/cad
-  (YA EXISTÍA: Claude/Gemini      (JSON)            (m, Y-up)              (NUEVO)
-   visión → dimensiones)                                                   │
-                                                                            ├─▶ DXF (editable)
-                                                                            └─▶ SVG → PDF (Playwright)
+[Croquis/PDF/foto]                            [Medidas a mano: presets]
+  POST /api/plan/interpret  ── footprint ──┐  Rectángulo / L / T ──┐
+  (Claude/Gemini visión)      (m, Y-up)     ├──▶ footprint [[x,y],…] ─▶ POST /api/plan/cad
+                                            ┘                          │
+                                                                       ├─▶ DXF (editable)
+                                                                       └─▶ SVG (→ PDF Playwright)
 ```
 
 - La **mitad de entrada ya existía**: `server/lib/planInterpreter.js` + `POST /api/plan/interpret`
@@ -85,8 +94,9 @@ las 5 capas AIA; SVG/PNG con cotas de perímetro completas (14 · 6 · 5,50 · 9
 
 ## Pendiente (futuro)
 
-- **Frontend:** botón "Generar plano profesional" + tabla de cotas editable + canvas (reusar
-  `RoofPreview`) + calibración de escala (una medida conocida / puerta ≈ 0,90 m).
+- **Frontend (mejoras):** canvas de corrección arrastrable (reusar `RoofPreview`) + calibración
+  de escala (una medida conocida / puerta ≈ 0,90 m) + export PDF desde el módulo. (El módulo
+  base `BmcCrearPlanoModule` ya está: subir croquis IA / presets + preview SVG + descarga DXF/SVG.)
 - **Seguridad:** validar magic-bytes (`file-type`) y re-encodear imágenes antes de visión.
 - **PDF vectorial directo** (`pdfjs-dist`) cuando el PDF subido ya es CAD.
 - **DWG** (LibreDWG / ODA) e **IFC** (web-ifc) on-demand.
