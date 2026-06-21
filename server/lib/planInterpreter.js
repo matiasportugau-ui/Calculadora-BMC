@@ -4,6 +4,7 @@ import { config } from "../config.js";
 
 const VISION_SCHEMA = `{
   "techoZonas": [{"largoM": number, "anchoM": number}],
+  "footprintPoligono": [[x, y]] | null,
   "tipoAguas": "una_agua" | "dos_aguas" | null,
   "pendienteGrados": number | null,
   "paredAltoM": number | null,
@@ -19,6 +20,7 @@ Tu tarea es extraer dimensiones de superficies (techos y paredes) del plano y de
 
 REGLAS:
 - Extraé todas las zonas de techo que identifiques como rectángulos independientes (con sus largos y anchos en metros)
+- Si el contorno del edificio es una sola figura conectada (rectángulo, L, T, U…), devolvé además "footprintPoligono": la lista ordenada de vértices [x, y] del PERÍMETRO en metros, en sentido antihorario, con origen abajo-izquierda (eje Y hacia arriba). Si no podés determinar el perímetro con seguridad, dejá footprintPoligono en null.
 - Si hay cotas en el plano, respetá esas medidas exactas
 - Si el plano es un DXF, interpretá las entidades DIMENSION y TEXT que contienen medidas
 - El tipo de panel (familia, espesor) NO aparece en planos arquitectónicos — no lo inventes
@@ -131,13 +133,42 @@ function parseAiJson(text) {
   }
 }
 
-function mapToBmc(extracted) {
+/**
+ * Resuelve el footprint (polígono de huella, m, Y-up) para alimentar la
+ * exportación CAD (`server/lib/cad/*`). Prioriza el polígono de la visión;
+ * si no, arma un rectángulo cuando hay exactamente una zona.
+ * @returns {{ footprint: number[][]|null, source: string|null }}
+ */
+export function resolveFootprint(extracted, zonas) {
+  const poly = extracted?.footprintPoligono;
+  if (Array.isArray(poly) && poly.length >= 3) {
+    const pts = poly.map(p => [Number(p?.[0]), Number(p?.[1])]);
+    // Estricto: si cualquier vértice es inválido, se descarta el polígono entero
+    // (descartar vértices sueltos distorsionaría la huella).
+    const allValid = pts.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+    if (allValid) return { footprint: pts, source: "vision_polygon" };
+  }
+  if (Array.isArray(zonas) && zonas.length === 1) {
+    const { largo, ancho } = zonas[0];
+    if (largo > 0 && ancho > 0) {
+      return { footprint: [[0, 0], [largo, 0], [largo, ancho], [0, ancho]], source: "single_rect" };
+    }
+  }
+  return { footprint: null, source: null };
+}
+
+export function mapToBmc(extracted) {
   const warnings = [];
   const gaps = ["familia", "espesor"];
 
   const zonas = (extracted.techoZonas || [])
     .filter(z => z.largoM > 0 && z.anchoM > 0)
     .map(z => ({ largo: +Number(z.largoM).toFixed(2), ancho: +Number(z.anchoM).toFixed(2) }));
+
+  const { footprint, source: footprintSource } = resolveFootprint(extracted, zonas);
+  if (!footprint && zonas.length > 1) {
+    warnings.push("Múltiples zonas sin polígono de huella — el operador debe definir el perímetro para el plano CAD.");
+  }
 
   if (!extracted.tipoAguas) {
     warnings.push("Tipo de aguas no detectado — se asumió 1 agua");
@@ -191,7 +222,7 @@ function mapToBmc(extracted) {
 
   return {
     ok: gaps.length === 0,
-    bmcPayload: { scenario, techo, pared },
+    bmcPayload: { scenario, techo, pared, footprint, footprintSource },
     gaps,
     warnings,
     extractedRaw: extracted,
