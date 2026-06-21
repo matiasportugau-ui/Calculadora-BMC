@@ -109,8 +109,9 @@ const app = express();
 app.disable("x-powered-by"); // hide Express signature (defense in depth)
 app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel proxy
 
-// Handle CORS preflight (OPTIONS) requests with raw handler — bypass cors package for robustness
-app.options("*", (req, res) => {
+// Handle CORS preflight (OPTIONS) — middleware avoids Express 5 path-to-regexp "*" crash
+app.use((req, res, next) => {
+  if (req.method !== "OPTIONS") return next();
   const origin = req.headers.origin;
   const allowed = !origin ||
     origin.startsWith("chrome-extension://") ||
