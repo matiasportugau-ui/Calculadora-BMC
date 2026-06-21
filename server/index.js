@@ -50,7 +50,6 @@ import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinRouter from "./routes/panelin.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
-import createPanelinRouter from "./routes/panelin.js";
 import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
@@ -276,7 +275,13 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
   await oauthStateStore.set(state, { codeVerifier });
-  const authUrl = ml.buildAuthUrl(state, codeChallenge);
+
+  // Detect request hostname to use correct redirect_uri (supports ngrok, localhost, prod)
+  const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("x-forwarded-host") || req.get("host") || req.hostname;
+  const dynamicRedirectUri = `${protocol}://${host}/auth/ml/callback`;
+
+  const authUrl = ml.buildAuthUrl(state, codeChallenge, dynamicRedirectUri);
 
   if (req.query.mode === "json") {
     return res.json({ authUrl, state });
