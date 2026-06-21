@@ -10,6 +10,9 @@
 # Usage:
 #   bash scripts/bmc-dev-session.sh          # start / attach
 #   bash scripts/bmc-dev-session.sh kill     # kill session
+#
+# NOTE: Uses the default tmux socket. bmc-claude-workspace.sh uses SESSION="bmc"
+# on /tmp/bmc-tmux.sock — no tmux-level conflict, but the names are the same.
 
 SESSION="bmc"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

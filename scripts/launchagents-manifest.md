@@ -7,7 +7,10 @@
 | `com.adobe.GC.Invoker-1.0` | Según Adobe | Invocador Adobe Creative Cloud | vendor |
 | `com.bittorrent.uTorrent` | Al login / intervalo | Cliente uTorrent — descargas P2P | vendor |
 | `com.bmc.drive-cleanup` | Cada hora (min 0) si espacio < THRESHOLD_GB | Limpieza caches (Atlas, Google, pip, etc.) → Papelera. Repo: `scripts/install-drive-cleanup-hourly.sh` | custom |
+| `com.bmc.calculadora-localstack` | RunAtLoad + KeepAlive (non-zero exit) | Auto-inicia dev stack (API :3001 + Vite :5173) al login; es health-aware (sale con status 0 si ambos servicios están up). Repo: `scripts/install-local-stack-launchagent.sh` | custom |
 | `com.bmc.host-audit` | Cada hora (min 0) | Disco (GB libres) + LaunchAgents (audit completo). Reportes: `~/.cache/bmc-audit-host/latest.md`. Repo: `scripts/install-host-audit-hourly.sh` | custom |
+| `com.bmc.knowledge-antenna` | Cada hora (min 0) | Knowledge antenna scheduled job | custom |
+| `com.bmc.session-archive-schedule` | Cada hora (min 0) + RunAtLoad | Session archive scheduled job | custom |
 | `com.dropbox.dropboxmacupdate.agent` | Según Dropbox | Updater agent (a menudo vacío `<dict/>`) | vendor |
 | `com.dropbox.dropboxmacupdate.xpcservice` | Según Dropbox | XPC service update (a menudo vacío) | vendor |
 | `com.dropbox.DropboxUpdater.wake` | Wake / intervalo | Despertar updater Dropbox | vendor |

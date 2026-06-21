@@ -48,8 +48,8 @@ import { createWolfboardRouter } from "./routes/wolfboard.js";
 import marketingRouter from "./routes/marketing.js";
 import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
-import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import createPanelinRouter from "./routes/panelin.js";
+import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
@@ -121,6 +121,9 @@ app.use(
     credentials: true,
   })
 );
+
+// Handle CORS preflight requests for all routes
+app.options("*", cors());
 
 // Security headers (OAuth 2.1–aligned)
 app.use((_req, res, next) => {
@@ -275,6 +278,7 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
   await oauthStateStore.set(state, { codeVerifier });
+
   const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {

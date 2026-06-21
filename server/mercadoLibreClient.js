@@ -28,12 +28,12 @@ export const createMercadoLibreClient = ({ config, tokenStore, logger }) => {
     }
   };
 
-  const buildAuthUrl = (state, codeChallenge) => {
+  const buildAuthUrl = (state, codeChallenge, overrideRedirectUri) => {
     assertOAuthConfig();
     const url = new URL("/authorization", config.mlAuthBase);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", config.mlClientId);
-    url.searchParams.set("redirect_uri", redirectUri());
+    url.searchParams.set("redirect_uri", overrideRedirectUri || redirectUri());
     url.searchParams.set("state", state);
     if (codeChallenge) {
       url.searchParams.set("code_challenge", codeChallenge);
