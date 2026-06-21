@@ -48,8 +48,8 @@ import { createWolfboardRouter } from "./routes/wolfboard.js";
 import marketingRouter from "./routes/marketing.js";
 import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
-import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import createPanelinRouter from "./routes/panelin.js";
+import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
@@ -108,6 +108,23 @@ if (isProd) {
 const app = express();
 app.disable("x-powered-by"); // hide Express signature (defense in depth)
 app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel proxy
+
+// Handle CORS preflight (OPTIONS) requests with raw handler — bypass cors package for robustness
+app.options("*", (req, res) => {
+  const origin = req.headers.origin;
+  const allowed = !origin ||
+    origin.startsWith("chrome-extension://") ||
+    config.corsOrigins.includes(origin);
+  if (!allowed) return res.status(403).end();
+  res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Cookie,X-Requested-With");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Vary", "Origin");
+  res.status(204).end();
+});
+
+// CORS headers for non-OPTIONS requests
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -275,6 +292,7 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
   await oauthStateStore.set(state, { codeVerifier });
+
   const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {

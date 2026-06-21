@@ -124,3 +124,6 @@ docs/product/tour-metadata.json
 # Playwright — artefactos de corrida (no versionar)
 test-results/
 playwright-report/
+
+.gemini/
+gha-creds-*.json

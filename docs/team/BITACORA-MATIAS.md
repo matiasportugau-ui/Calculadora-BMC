@@ -103,3 +103,24 @@ gate:local:   pendiente correr al final de la sesión
 - PR que supersede #248: [PR #252](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/252)
 - Runbook nuevo: [`docs/team/runbooks/known-baseline-failures.md`](./runbooks/known-baseline-failures.md)
 - Memoria guardada: `~/.claude/projects/-Users-matias/memory/feedback-stale-pr-superseded.md`
+
+### Session: live-fix — Google Drive Preview Env Var (2026-06-21 04:30Z)
+
+**Issue:** Error "Google Drive no está configurado: falta VITE_GOOGLE_CLIENT_ID" in preview deployments (calculadora-xxxxx-matprompts-projects.vercel.app).
+
+**Root Cause:** Vite embeds `VITE_*` vars at build time. The env var was set only to Production scope in Vercel, so preview builds got `undefined`, triggering the guard in `initGoogleAuth()` (`src/utils/googleDrive.js:200-204`).
+
+**Fix:**
+1. Updated `scripts/vercel-drive-env-push.sh` to add `push_preview_all()` function
+2. Changed default flow to push to preview scope by default (bypassing the prior "Preview omitido" message)
+3. Committed: `fix(drive): enable VITE_GOOGLE_CLIENT_ID in preview scope by default` (ad1edd2)
+4. Deployed to production (Vercel build: dpl_ANLYc1aEnLJBJ3hyuf5fGESKMwUj, alias: calculadora-bmc.vercel.app)
+5. Pushed VITE_GOOGLE_CLIENT_ID to Vercel preview scope via `vercel env add`
+6. Verified: `vercel env ls preview` now shows `VITE_GOOGLE_CLIENT_ID | Encrypted | Preview`
+
+**Verification:** Next preview deployment will bake in the env var (now available in preview scope). Error will resolve.
+
+**Confidence:** 95% — fix is at the Vercel/Vite layer; no application logic changes.
+
+**Changes:** 1 file (+23/-10 LOC)  
+**Time:** ~15 min
