@@ -6,23 +6,25 @@ Cerramientos en chapa / panel sándwich (~160 m² de techos en total).
 
 ## Archivos
 
-- `plano-vivienda.svg` / `plano-vivienda.png` — **Lám. 01 · Planta general** (Esc. 1:100).
-  Interpretación profesional del croquis a mano del cliente. **Borrador para revisión.**
+- `plano-vivienda.svg` / `plano-vivienda.png` — **Lám. 01 · Planta de perímetro y cubierta** (Esc. 1:100).
+  **Interior vacío** (sin subdivisiones): solo el perímetro de la vivienda para computar la cubierta.
+  **Borrador para revisión.**
 - Generador: `scripts/plano-vivienda-reconstruccion.mjs` (`node scripts/plano-vivienda-reconstruccion.mjs`
   regenera el SVG; ver comentario al pie para rasterizar a PNG con `@resvg/resvg-js`).
 
-## Interpretación del croquis
+## Geometría (perímetro)
 
-- **Cuerpo principal 14,00 × 6,00 m (84 m²):** Dormitorio 2 + Baño 2 + Placard · Cocina-Comedor-Living ·
-  núcleo Baño 1 + Vestidor (WIC) · Dorm. 1 · Dorm. Principal (suite).
-- **Extensión en T 6,00 × 3,00 m (18 m²):** Escalera de acceso (vivienda elevada) · Hall ·
-  Dorm. 3 / Estudio · acceso principal por la pata de la T.
+- **Cuerpo principal:** 14,00 × 6,00 m = **84,0 m²**.
+- **Extensión en T (centrada, retiro 2,50 m por lado):** 9,00 × 3,00 m = **27,0 m²**.
+- **Total superficie de cubierta de la vivienda: 111,0 m².**
 
-## Pendiente de confirmar (afecta plano y presupuesto)
+Por decisión del cliente, el interior se deja sin subdividir: lo que importa es el perímetro y la
+superficie de techo. Vivienda elevada sobre platea + pilotes.
 
-1. Pata en T: croquis **6×3 = 18 m²** vs. audio previo **9×3 = 27 m²**.
-2. Lado derecho: marcas "2 / 1 / 4" del croquis sin descifrar (¿anchos de dormitorios o galería/alero?).
-3. Programa y nombres de ambientes (validar usos y ubicación).
+## Pendiente de confirmar
+
+1. Medidas exactas del perímetro a verificar en obra (planos acotados).
+2. Tipo/pendiente de cubierta y sentido de escurrimiento por módulo.
 
 ## Presupuesto preliminar asociado (suministro, lista venta BMC, USD sin IVA + IVA 22%)
 
