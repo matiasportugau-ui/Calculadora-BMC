@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-21
+**Última actualización:** 2026-06-22
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-22 (Omni WAVE 1+2 — runtime Omni Core + 4 squads paralelos):** Implementado `server/lib/omni/` (A1 DDL `npm run omni:migrate`, A2 identity, A3 `normalizeAndPersist` + Zod types), `GET /api/omni/health`, inbox API D1–D3 (`/api/omni/conversations`, messages, read, reply). Shadow adapters: WA webhook + extension (B1–B2), ML sync + send-approved mirror (C1/C3), email ingest (E1). Backfills: `omni:backfill-wa`, `omni:backfill-ml-crm`, `omni:backfill-email-crm`. Flags en `config.js` (`OMNI_*_SHADOW_WRITE`, default OFF). Tests: `omniTypes`, `omniIdentity`, `omniDb`, `test:omni:parity`. Doc: [`docs/transformation/21-wave-execution.md`](../transformation/21-wave-execution.md).
+
+**2026-06-22 (OmniCRM Transformation Program V2 — paquete de diseño completo):** Publicado el paquete canónico de transformación a AI-Native OmniCRM en [`docs/transformation/`](../transformation/README.md): 20 documentos (executive summary, target state, domain/event/identity models, AI governance, automation, deals, security, observability, testing, migration, PR roadmap tracks A–H, risks, metrics, ownership, debt, evolution, build-vs-buy, ops readiness) + 10 ADRs (`adrs/ADR-001` … `ADR-010`) + [`SELF-CRITIQUE.md`](../transformation/SELF-CRITIQUE.md). Basado en discovery audit SHA `d04a7f4` ([`docs/discovery/`](../discovery/README.md)). **Solo diseño — sin código runtime.** Decisiones clave: evolucionar `/hub/canales` (ADR-010), shadow→flip migration (ADR-009), reuse agentCore (ADR-004), Sheets-first money 90d (ADR-006). Próximo paso implementación: Track A1 (`omni:migrate`).
+
+**2026-06-22 (auto-archivo presupuestos → Drive BMC compartido):** Cada exportación de presupuesto (PDF cliente, PDF enriquecido, **Exportar presupuesto** con contador) archiva automáticamente **PDF + `.bmc.json`** en la carpeta compartida `DRIVE_QUOTE_FOLDER_ID` vía service account (`POST /api/quotes/drive-archive`). Estructura: `cliente → código cotización → archivos`. El botón manual **Guardar en Drive** usa la misma carpeta empresa (ya no el Drive personal OAuth del vendedor). Best-effort: la descarga local no se bloquea si Drive falla. Archivos: [`server/lib/driveUpload.js`](../../server/lib/driveUpload.js), [`server/routes/quoteDriveArchive.js`](../../server/routes/quoteDriveArchive.js), [`src/utils/companyDriveArchive.js`](../../src/utils/companyDriveArchive.js), [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx).
 
 **2026-06-21 (Google login prod — guardrails tokeninfo_aud_mismatch):** Verificado alineamiento prod: bundle Vercel `App-*.js` + Cloud Run `GOOGLE_OAUTH_CLIENT_ID` = client web `642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3`. **Endurecimiento:** smoke post-deploy en [`.github/workflows/deploy-vercel.yml`](../../.github/workflows/deploy-vercel.yml) falla si el Client ID no está incrustado en el bundle (detecta `VITE_GOOGLE_CLIENT_ID` vacío en build). [`.env.example`](../../.env.example): `VITE_GOOGLE_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_ID` unificados al mismo client sj3 con nota de paridad obligatoria.
 

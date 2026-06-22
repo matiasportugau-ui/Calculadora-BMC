@@ -225,6 +225,15 @@ async function main() {
       },
       allow503: true,
     },
+    {
+      name: "GET /api/omni/health",
+      path: "/api/omni/health",
+      check: (data) => {
+        if (!hasKeys(data, ["ok", "schema_version"])) return { ok: false, msg: "missing ok/schema_version" };
+        return { ok: true };
+      },
+      allow503: true,
+    },
   ];
 
   const apiToken = process.env.API_AUTH_TOKEN || process.env.API_KEY;
