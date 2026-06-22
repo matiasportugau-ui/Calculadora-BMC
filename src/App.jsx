@@ -58,6 +58,7 @@ const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx
 const ProyectoStatusModule = lazy(() => import("./components/hub/proyecto/ProyectoStatusModule.jsx"));
 const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
+const MlManagerModule = lazy(() => import("./components/hub/ml/MlManagerModule.jsx"));
 
 const suspenseFallback = (
   <div
@@ -190,6 +191,18 @@ export default function App() {
               <RequireGrant module="canales" minLevel="read">
                 <Suspense fallback={suspenseFallback}>
                   <BmcMlOperativoModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/ml-manager"
+          element={
+            <Shell>
+              <RequireGrant module="canales" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <MlManagerModule />
                 </Suspense>
               </RequireGrant>
             </Shell>

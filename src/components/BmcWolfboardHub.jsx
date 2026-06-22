@@ -111,6 +111,15 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
+            <h2 style={cardTitle}>Mercado Libre · Manager</h2>
+            <p style={cardDesc}>
+              Administrá tu cuenta ML: publicaciones, mensajes, campañas publicitarias, envíos, análitica y resumen IA diario.
+            </p>
+            <Link to="/hub/ml-manager" style={{ ...cta, background: "#ffd700" }}>
+              Abrir ML Manager
+            </Link>
+          </div>
+          <div style={card}>
             <h2 style={cardTitle}>WhatsApp · Operativo</h2>
             <p style={cardDesc}>
               Cola CRM con origen WA, aprobar y enviar respuestas vía WhatsApp Cloud API.
