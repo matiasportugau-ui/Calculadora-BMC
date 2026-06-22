@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-20
+**Última actualización:** 2026-06-21
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-21 (Google login prod — guardrails tokeninfo_aud_mismatch):** Verificado alineamiento prod: bundle Vercel `App-*.js` + Cloud Run `GOOGLE_OAUTH_CLIENT_ID` = client web `642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3`. **Endurecimiento:** smoke post-deploy en [`.github/workflows/deploy-vercel.yml`](../../.github/workflows/deploy-vercel.yml) falla si el Client ID no está incrustado en el bundle (detecta `VITE_GOOGLE_CLIENT_ID` vacío en build). [`.env.example`](../../.env.example): `VITE_GOOGLE_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_ID` unificados al mismo client sj3 con nota de paridad obligatoria.
 
 **2026-06-20 (auth prod fixes — API_AUTH_TOKEN Cloud Run + VITE_GOOGLE_CLIENT_ID Vercel):** `shipped (PRs #389 + #391)`. Dos fixes de producción ortogonales: (1) **Panelin 503 `API_AUTH_TOKEN not configured`**: `API_AUTH_TOKEN` nunca estaba en `--set-secrets` del deploy (`deploy-calc-api.yml`) y era silenciosamente borrado en cada redeploy; añadido a `--set-secrets` (PR #389) + paso de migración one-time para remover el plain env var antes de montarlo como secret (PR #391, fija el error de type-conflict `Cannot update environment variable to the given type`). Smoke test post-deploy confirmó OK. (2) **Google login 401 `tokeninfo_aud_mismatch`**: `VITE_GOOGLE_CLIENT_ID` en Vercel tenía el placeholder del `.env.example`; actualizado al valor real (`642127786762-...`) vía `drive:vercel-env` + rebuild de producción. Archivos modificados: `.github/workflows/deploy-calc-api.yml` (pre-step remove-env-vars + API_AUTH_TOKEN en --set-secrets), `.github/required-cloud-run-secrets.txt` (añadida línea `API_AUTH_TOKEN`), `.claude/hooks/session-start.sh` (idempotente: guard npm install + guard BMC_DISK_PRECHECK_SKIP). Nuevo: `scripts/check-api-auth.js` (diagnóstico de auth con 8 secciones) + scripts `check:auth`/`check:auth:live`.
 
