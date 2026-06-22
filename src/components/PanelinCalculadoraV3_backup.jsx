@@ -51,7 +51,10 @@ import {
   saveBudget, getAllLogs, deleteBudget, clearAllLogs,
   exportLogsAsJSON, exportSingleBudget,
 } from "../utils/budgetLog.js";
-import { serializeProject, deserializeProject, pdfFileName } from "../utils/projectFile.js";
+import {
+  serializeProject, deserializeProject, pdfFileName,
+  isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes,
+} from "../utils/projectFile.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
 import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
 import QuotePreviewModal from "./QuotePreviewModal.jsx";
@@ -93,7 +96,7 @@ import * as THREE from "three";
 import {
   initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
-  saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
+  listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
 import { LAYOUT_OPTIONS } from "../pdf-templates/index.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
@@ -292,7 +295,28 @@ function SegmentedControl({ value, onChange, options = [], disabledIds = [], onO
     <div style={{ display: "flex", flexWrap: "wrap", background: C.border, borderRadius: 12, padding: 4, gap: 4, fontFamily: FONT, width: "100%" }}>
       {options.map(opt => {
         const isD = disabledIds.includes(opt.id), isA = value === opt.id;
-        return <button key={opt.id} onClick={() => !isD && onChange(opt.id)} onDoubleClick={() => !isD && onOptionDoubleClick?.(opt.id)} style={{ flex: "1 1 140px", minWidth: 0, padding: "10px 16px", borderRadius: 10, border: "none", cursor: isD ? "not-allowed" : "pointer", background: isA ? C.surface : "transparent", boxShadow: isA ? "0 2px 6px rgba(0,0,0,0.1)" : "none", fontSize: 14, fontWeight: isA ? 600 : 500, color: isA ? C.tp : C.ts, opacity: isD ? 0.5 : 1, transition: TR, fontFamily: FONT, whiteSpace: "normal" }}>{opt.label}</button>;
+        const confirm = () => onOptionDoubleClick?.(opt.id);
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            title={onOptionDoubleClick ? "Doble clic para confirmar y continuar" : undefined}
+            onClick={() => {
+              if (isD) return;
+              if (isA && onOptionDoubleClick) confirm();
+              else onChange(opt.id);
+            }}
+            onDoubleClick={(e) => {
+              if (isD) return;
+              e.preventDefault();
+              if (!isA) onChange(opt.id);
+              confirm();
+            }}
+            style={{ flex: "1 1 140px", minWidth: 0, padding: "10px 16px", borderRadius: 10, border: "none", cursor: isD ? "not-allowed" : "pointer", background: isA ? C.surface : "transparent", boxShadow: isA ? "0 2px 6px rgba(0,0,0,0.1)" : "none", fontSize: 14, fontWeight: isA ? 600 : 500, color: isA ? C.tp : C.ts, opacity: isD ? 0.5 : 1, transition: TR, fontFamily: FONT, whiteSpace: "normal", userSelect: onOptionDoubleClick ? "none" : undefined }}
+          >
+            {opt.label}
+          </button>
+        );
       })}
     </div>
   );
@@ -453,19 +477,10 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 600, color: C.tp, ...TN }}>${typeof item.total === "number" ? item.total.toFixed(2) : item.total}</div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>${((item.cant ?? 0) * (item.costo ?? 0)).toFixed(2)}</div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>{(() => {
-  const modern = LAYOUT_OPTIONS.filter(o => !o.legacy);
-  const legacy = LAYOUT_OPTIONS.filter(o => o.legacy);
-  return (
-    <>
-      {modern.map(o => <option key={o.id} value={o.id}>{o.label}{o.recommended ? ' ★' : ''}</option>)}
-      {legacy.length > 0 && (
-        <optgroup label="Legacy (heavy templates)">
-          {legacy.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-        </optgroup>
-      )}
-    </>
-  );
-})()}</div>
+              const t = item.total || 0;
+              const ct = (item.cant ?? 0) * (item.costo ?? 0);
+              return t > 0 ? `${((t - ct) / t * 100).toFixed(1)}%` : "—";
+            })()}</div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 500, color: C.success, ...TN }}>${((item.total || 0) - (item.cant ?? 0) * (item.costo ?? 0)).toFixed(2)}</div>
             <div style={{ padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
               {onOverride && <button title="Editar" aria-label="Editar fila" onClick={() => isEditing ? setEditingCell(null) : startEdit(item.lineId, "cant", item.cant)} style={{ background: "none", border: "none", cursor: "pointer", color: isEditing ? C.primary : C.tt, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><Edit3 size={13} /></button>}
@@ -489,6 +504,8 @@ function MobileBottomBar({
   onCopyTSV,
   pdfLayout,
   onPdfLayoutChange,
+  pdfReady = true,
+  pdfBlockedTitle,
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   useEffect(() => {
@@ -535,7 +552,7 @@ function MobileBottomBar({
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
             <button type="button" onClick={onWhatsApp} data-tutorial-id="calc-wa-export" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
-            <button type="button" onClick={onClientePdf} data-tutorial-id="calc-generate-pdf" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
+            <button type="button" onClick={onClientePdf} disabled={!pdfReady} title={pdfReady ? undefined : pdfBlockedTitle} data-tutorial-id="calc-generate-pdf" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: pdfReady ? "pointer" : "not-allowed", opacity: pdfReady ? 1 : 0.45 }}>PDF</button>
             <button 
               type="button" 
               onClick={() => window.dispatchEvent(new CustomEvent('start-calculator-tutorial'))}
@@ -570,7 +587,7 @@ function MobileBottomBar({
               ))}
             </select>
           </label>
-          <button type="button" onClick={() => run(onClientePdf)} style={{ ...sheetBtn, background: C.primary, color: "#fff" }}><Download size={18} />PDF Cliente</button>
+          <button type="button" onClick={() => pdfReady && run(onClientePdf)} disabled={!pdfReady} title={pdfReady ? undefined : pdfBlockedTitle} style={{ ...sheetBtn, background: C.primary, color: "#fff", opacity: pdfReady ? 1 : 0.45, cursor: pdfReady ? "pointer" : "not-allowed" }}><Download size={18} />PDF Cliente</button>
           <button type="button" onClick={() => run(onOpenDrive)} style={{ ...sheetBtn, background: "#4285F4", color: "#fff" }}><Cloud size={18} />Drive</button>
           <button type="button" onClick={() => run(onCosteo)} style={{ ...sheetBtn, background: "#7c3aed", color: "#fff" }}><CircleDollarSign size={18} />Costeo</button>
           <button type="button" onClick={() => run(onInternalReport)} style={{ ...sheetBtn, background: C.surface, color: C.brand, border: `1.5px solid ${C.brand}` }}><ClipboardList size={18} />Informe interno</button>
@@ -2779,19 +2796,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         }
         return true;
       }
-      case "bordes": {
-        if (techo.inclAccesorios === false) return true;
-        const sides = ["frente", "fondo", "latIzq", "latDer"];
-        const disabled = derivedTipoAguas === "dos_aguas" ? ["fondo"] : [];
-        return sides.every(s => disabled.includes(s) || !!(techo.borders?.[s]));
-      }
+      case "bordes":
+        // Accesorios perimetrales son opcionales en el wizard — se puede avanzar sin completar la planta 2D.
+        return true;
       case "selladores": return true;
       case "flete": return typeof flete === "number";
       case "proyecto":
-        if (proyecto.tipoCliente === "empresa") {
-          return !!(proyecto.razonSocial?.trim() && proyecto.rut?.trim() && proyecto.telefono?.trim());
-        }
-        return !!(proyecto.nombre?.trim() && proyecto.telefono?.trim());
+        return isProyectoDatosObligatoriosCompletos(proyecto);
       default: return false;
     }
   }, [scenario, listaPrecios, techo, flete, proyecto]);
@@ -3503,7 +3514,36 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [isCombined, scenarioDef, techoPanelData, paredPanelData, techo, pared]);
 
   // ── Helpers ──
-  const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); }, []);
+  const showToast = useCallback((msg, durationMs = 2000) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), durationMs);
+  }, []);
+
+  const proyectoPdfReady = useMemo(
+    () => isProyectoDatosObligatoriosCompletos(proyecto),
+    [proyecto],
+  );
+
+  const requireProyectoParaPdf = useCallback(() => {
+    if (proyectoPdfReady) return true;
+    showToast(
+      getProyectoPdfBlockReason(proyecto) || "Completá los datos del proyecto antes de exportar el presupuesto.",
+      5200,
+    );
+    if (modoVendedor && scenario === "solo_techo") {
+      const idx = SOLO_TECHO_STEPS.findIndex((s) => s.id === "proyecto");
+      if (idx >= 0) {
+        setWizardStep(idx);
+        setMaxReachedStep((mr) => Math.max(mr, idx));
+      }
+    }
+    return false;
+  }, [proyectoPdfReady, proyecto, showToast, modoVendedor, scenario]);
+
+  const handleOpenQuoteConfirm = useCallback(() => {
+    if (!requireProyectoParaPdf()) return;
+    setShowQuoteConfirm(true);
+  }, [requireProyectoParaPdf]);
 
   // Budget code state (declared early — referenced by PDF/print useCallback deps below
   // before the budget-log block; keeping the original declaration at ~L4075 caused a
@@ -3564,8 +3604,42 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     navigator.clipboard.writeText(tsv).then(() => showToast("TSV copiado — pegá en Google Sheets"));
   }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast]);
 
+  const buildSerializedProject = useCallback((quotationCodeOverride) => serializeProject({
+    scenario, listaPrecios, proyecto, techo, pared, camara, flete,
+    overrides, excludedItems, categoriasActivas, techoAnchoModo,
+    quotationCode: quotationCodeOverride ?? currentBudgetCode,
+    libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter,
+  }), [scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, currentBudgetCode, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter]);
+
+  /** Archivo en carpeta compartida BMC (service account) — best-effort, no bloquea export. */
+  const persistExportToCompanyDrive = useCallback(async ({
+    pdfBlob, pdfFileName, quotationCode, source = "calc_export",
+  }) => {
+    try {
+      const code = quotationCode ||
+        currentBudgetCode ||
+        (proyecto.refInterna || "").trim() ||
+        `BMC-${new Date().getFullYear()}-TEMP`;
+      const { archiveQuotationToCompanyDrive } = await import("../utils/companyDriveArchive.js");
+      const result = await archiveQuotationToCompanyDrive({
+        pdfBlob,
+        projectData: buildSerializedProject(code),
+        quotationCode: code,
+        proyecto,
+        pdfFileName,
+        exportedBy: bmcAuth.user?.email || getCachedUser()?.email || null,
+        source,
+      });
+      return result?.ok ? result : null;
+    } catch (err) {
+      console.warn("[drive-archive]", err?.message || err);
+      return null;
+    }
+  }, [buildSerializedProject, proyecto, currentBudgetCode, bmcAuth.user?.email]);
+
   const handlePdfEnriquecido = useCallback(async () => {
     if (!groups.length) return;
+    if (!requireProyectoParaPdf()) return;
     showToast("Generando PDF…");
     try {
       const snapshotImages = await capturePdfSnapshotTargets({
@@ -3604,15 +3678,19 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         `BMC-${new Date().getFullYear()}-TEMP`;
       const fname = pdfFileName(resolvedCode, proyecto);
       downloadPdfBlob(pdfBlob, fname);
-      showToast("PDF descargado");
+      const archived = await persistExportToCompanyDrive({
+        pdfBlob, pdfFileName: fname, quotationCode: resolvedCode, source: "calc_pdf_enriquecido",
+      });
+      showToast(archived ? "PDF descargado · copia en Drive BMC" : "PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
       addErrorToBugLog(err, { module: "calculadora", action: "pdf_generation" });
     }
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast, pdfPlantaResumenPage, currentBudgetCode]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast, pdfPlantaResumenPage, currentBudgetCode, requireProyectoParaPdf, persistExportToCompanyDrive]);
 
   const handlePdfEnriquecidoPrint = useCallback(async () => {
     if (!groups.length) return;
+    if (!requireProyectoParaPdf()) return;
     showToast("Preparando vista para imprimir…");
     try {
       // Serialize the 2D floor plan SVG directly — vectorial, all cotas and labels
@@ -3644,7 +3722,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     } catch (err) {
       showToast("Error: " + (err?.message || err));
     }
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfPlantaResumenPage]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfPlantaResumenPage, requireProyectoParaPdf]);
 
   /** HTML for cliente PDF and Google Drive — same pipeline as “PDF Cliente” (plantilla + vista técnica). */
   const buildClientePdfHtml = useCallback(async () => {
@@ -3687,6 +3765,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const handleClientePdf = useCallback(async () => {
     if (!groups.length) return;
+    if (!requireProyectoParaPdf()) return;
     showToast("Generando PDF…");
     try {
       const html = await buildClientePdfHtml();
@@ -3698,14 +3777,18 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         `BMC-${new Date().getFullYear()}-TEMP`;
       const fname = pdfFileName(resolvedCode, proyecto);
       downloadPdfBlob(pdfBlob, fname);
-      showToast("PDF descargado");
+      const archived = await persistExportToCompanyDrive({
+        pdfBlob, pdfFileName: fname, quotationCode: resolvedCode, source: "calc_pdf_cliente",
+      });
+      showToast(archived ? "PDF descargado · copia en Drive BMC" : "PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
       addErrorToBugLog(err, { module: "calculadora", action: "pdf_generation" });
     }
-  }, [groups.length, buildClientePdfHtml, showToast, currentBudgetCode, proyecto]);
+  }, [groups.length, buildClientePdfHtml, showToast, currentBudgetCode, proyecto, requireProyectoParaPdf, persistExportToCompanyDrive]);
 
   const handleConfirmQuote = useCallback(async () => {
+    if (!requireProyectoParaPdf()) return;
     showToast("Obteniendo número de cotización…");
     try {
       const res = await fetch("/api/quotes/counter/next", { method: "POST" });
@@ -3720,11 +3803,14 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       const blob = await htmlToPdfBlob(html, fname);
       downloadPdfBlob(blob, fname);
       setShowQuoteConfirm(false);
-      showToast(`PDF descargado: ${fname}`);
+      const archived = await persistExportToCompanyDrive({
+        pdfBlob: blob, pdfFileName: fname, quotationCode: code, source: "calc_export_presupuesto",
+      });
+      showToast(archived ? `PDF descargado · copia en Drive BMC` : `PDF descargado: ${fname}`);
     } catch (err) {
       showToast("Error: " + (err?.message || err));
     }
-  }, [proyecto, buildClientePdfHtml, showToast]);
+  }, [proyecto, buildClientePdfHtml, showToast, requireProyectoParaPdf, persistExportToCompanyDrive]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -4307,6 +4393,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const handleDriveSave = useCallback(async () => {
     if (!groups.length) return;
+    if (!requireProyectoParaPdf()) return;
     setDriveSaving(true);
     setDriveError(null);
     setDriveLastSave(null);
@@ -4314,28 +4401,30 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       const html = await buildClientePdfHtml();
       const { htmlToPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
-      const projectData = serializeProject({
-        scenario, listaPrecios, proyecto, techo, pared, camara, flete,
-        overrides, excludedItems, categoriasActivas, techoAnchoModo,
-        quotationCode: currentBudgetCode,
-        libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter,
-      });
       const code = currentBudgetCode || `BMC-${new Date().getFullYear()}-TEMP`;
-      const result = await saveQuotation({
-        quotationCode: code,
-        proyecto,
+      const fname = pdfFileName(code, proyecto);
+      const result = await persistExportToCompanyDrive({
         pdfBlob,
-        projectData,
+        pdfFileName: fname,
+        quotationCode: code,
+        source: "calc_drive_manual",
       });
-      setDriveLastSave(result);
-      showToast("Guardado en Google Drive");
-      handleDriveRefresh();
+      if (!result) {
+        throw new Error("No se pudo archivar en Drive BMC (revisá DRIVE_QUOTE_FOLDER_ID en el servidor)");
+      }
+      setDriveLastSave({
+        folderId: result.folderId,
+        folderUrl: result.folderUrl,
+        pdfFileId: result.pdfFileId,
+        jsonFileId: result.jsonFileId,
+      });
+      showToast("Guardado en Drive BMC");
     } catch (err) {
       setDriveError(err.message || "Error al guardar en Drive");
     } finally {
       setDriveSaving(false);
     }
-  }, [groups, proyecto, currentBudgetCode, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter, showToast, handleDriveRefresh, buildClientePdfHtml]);
+  }, [groups, proyecto, currentBudgetCode, showToast, buildClientePdfHtml, requireProyectoParaPdf, persistExportToCompanyDrive]);
 
   const handleDriveLoad = useCallback(async (folderId) => {
     setDriveLoading(true);
@@ -4915,7 +5004,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               const proyectoStepIdx = SOLO_TECHO_STEPS.findIndex(s => s.id === "proyecto");
               return (
                 <>
-                <div style={sectionS}>
+                <div className="bmc-wizard-shell">
+                  <button
+                    type="button"
+                    className={`bmc-wizard-edge-nav bmc-wizard-edge-nav--prev${canPrev ? " bmc-wizard-edge-nav--ready" : ""}`}
+                    aria-label="Paso anterior"
+                    title={canPrev ? "Anterior" : "Primer paso"}
+                    onClick={() => {
+                      if (canPrev) goPrevWizardSoloTecho();
+                    }}
+                    disabled={!canPrev}
+                  >
+                    <ChevronLeft size={28} strokeWidth={2.25} aria-hidden />
+                  </button>
+                <div className="bmc-wizard-step-body" style={sectionS}>
                   {/* Step indicators — connected track */}
                   <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 10, flexWrap: "nowrap" }}>
                     {SOLO_TECHO_STEPS.map((s, i) => {
@@ -5510,12 +5612,33 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Modo de cálculo del largo</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {PENDIENTE_MODOS.map(m => (
-                            <button key={m.id} onClick={() => uT("pendienteModo", m.id)} style={{ padding: 12, borderRadius: 12, border: `2px solid ${(techo.pendienteModo || "incluye_pendiente") === m.id ? C.primary : C.border}`, background: (techo.pendienteModo || "incluye_pendiente") === m.id ? C.primarySoft : C.surface, textAlign: "left", cursor: "pointer", transition: TR }}>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: (techo.pendienteModo || "incluye_pendiente") === m.id ? C.primary : C.tp }}>{m.label}</div>
+                          {PENDIENTE_MODOS.map(m => {
+                            const activeModo = techo.pendienteModo || "incluye_pendiente";
+                            const isActive = activeModo === m.id;
+                            const confirmModo = () => {
+                              uT("pendienteModo", m.id);
+                              if (m.id === "incluye_pendiente") advanceWizardStep();
+                            };
+                            return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              title={m.id === "incluye_pendiente" ? "Doble clic para confirmar y continuar" : "Seleccionar modo de cálculo"}
+                              onClick={() => {
+                                if (isActive) confirmModo();
+                                else uT("pendienteModo", m.id);
+                              }}
+                              onDoubleClick={(e) => {
+                                e.preventDefault();
+                                confirmModo();
+                              }}
+                              style={{ padding: 12, borderRadius: 12, border: `2px solid ${isActive ? C.primary : C.border}`, background: isActive ? C.primarySoft : C.surface, textAlign: "left", cursor: "pointer", transition: TR, userSelect: "none" }}
+                            >
+                              <div style={{ fontSize: 13, fontWeight: 600, color: isActive ? C.primary : C.tp }}>{m.label}</div>
                               <div style={{ fontSize: 11, color: C.ts, marginTop: 2 }}>{m.desc}</div>
                             </button>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                       {techo.pendienteModo === "calcular_pendiente" && (
@@ -5535,7 +5658,14 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   )}
                   {stepId === "estructura" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                      <SegmentedControl value={techo.tipoEst} onChange={v => uT("tipoEst", v)} options={ESTRUCTURA_OPTIONS} />
+                      <SegmentedControl
+                        value={techo.tipoEst}
+                        onChange={v => uT("tipoEst", v)}
+                        options={ESTRUCTURA_OPTIONS}
+                        onOptionDoubleClick={(id) => {
+                          if (id !== "combinada") advanceWizardStep();
+                        }}
+                      />
                       {techo.tipoEst === "combinada" && (
                         <div style={{ padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
                           <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Material por apoyo</div>
@@ -5822,14 +5952,14 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                           <div><div style={labelS}>Razón Social</div><input style={inputS} value={proyecto.razonSocial || ""} onChange={e => uPr("razonSocial", e.target.value)} placeholder="Obligatorio" /></div>
                           <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} placeholder="Obligatorio" /></div>
                           <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} placeholder="Obligatorio" /></div>
-                          <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                          <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} placeholder="Obligatorio" /></div>
                           <div><div style={labelS}>Nombre del cliente de referencia <span style={{ fontWeight: 400, color: C.tt }}>(opcional)</span></div><input style={inputS} value={proyecto.nombreRefCliente || ""} onChange={e => uPr("nombreRefCliente", e.target.value)} placeholder="Persona de contacto" /></div>
                         </>
                       ) : (
                         <>
                           <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} placeholder="Obligatorio" /></div>
                           <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} placeholder="Obligatorio" /></div>
-                          <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                          <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} placeholder="Obligatorio" /></div>
                         </>
                       )}
                     </div>
@@ -5858,72 +5988,58 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                       </div>
                     </div>
                   ) : null}
-                  <div style={{ display: "flex", gap: 12, marginTop: 28, paddingTop: 20, borderTop: `1.5px solid ${C.border}`, alignItems: "center", justifyContent: isPhone ? "center" : "flex-start", flexWrap: "wrap", paddingLeft: isPhone ? 30 : undefined, paddingRight: isPhone ? 30 : undefined }}>
-                    {isPhone ? (
-                      <>
-                        {!canNext && (
-                          <button type="button" onClick={() => setShowQuoteConfirm(true)}
-                            style={{ fontSize: 14, color: "#fff", fontWeight: 700, background: C.success, border: "none", borderRadius: 10, padding: "10px 20px", cursor: "pointer" }}>
-                            ✓ Cotización lista
-                          </button>
-                        )}
-                        {canNext && !isValid && (
-                          <span style={{ fontSize: 12, color: C.warning, textAlign: "center", lineHeight: 1.35 }}>Completá este paso para avanzar</span>
-                        )}
-                        {canNext && isValid && (
-                          <span style={{ fontSize: 11, color: C.ts, textAlign: "center", lineHeight: 1.35 }}>Navegación: flechas a los costados</span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {canPrev && (
-                          <button type="button" onClick={() => goPrevWizardSoloTecho()} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
-                            Anterior
-                          </button>
-                        )}
-                        <div style={{ flex: 1 }} />
-                        {canNext ? (
-                          <button type="button" onClick={() => isValid && advanceWizardStep()} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
-                            Siguiente
-                          </button>
-                        ) : (
-                          <button type="button" onClick={() => setShowQuoteConfirm(true)}
-                            style={{ fontSize: 14, color: "#fff", fontWeight: 700, background: C.success, border: "none", borderRadius: 10, padding: "12px 24px", cursor: "pointer" }}>
-                            ✓ Cotización lista
-                          </button>
-                        )}
-                      </>
+                  <div style={{ display: "flex", gap: 12, marginTop: 28, paddingTop: 20, borderTop: `1.5px solid ${C.border}`, alignItems: "center", justifyContent: "center", flexWrap: "wrap", flexDirection: "column" }}>
+                    {!canNext && !proyectoPdfReady && (
+                      <div style={{ fontSize: 12, color: C.warning, textAlign: "center", lineHeight: 1.45, maxWidth: 420 }}>
+                        Para exportar completá: <strong>{getProyectoCamposObligatoriosFaltantes(proyecto).join(" · ")}</strong>
+                      </div>
+                    )}
+                    {!canNext && (
+                      <button
+                        type="button"
+                        onClick={handleOpenQuoteConfirm}
+                        title={proyectoPdfReady ? "Generar PDF del presupuesto" : (getProyectoPdfBlockReason(proyecto) || undefined)}
+                        style={{
+                          fontSize: 14,
+                          color: "#fff",
+                          fontWeight: 700,
+                          background: proyectoPdfReady ? C.success : "#9CA3AF",
+                          border: "none",
+                          borderRadius: 10,
+                          padding: "10px 20px",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Download size={16} aria-hidden />
+                        Exportar presupuesto
+                      </button>
+                    )}
+                    {canNext && !isValid && (
+                      <span style={{ fontSize: 12, color: C.warning, textAlign: "center", lineHeight: 1.35 }}>Completá este paso para avanzar</span>
+                    )}
+                    {canNext && isValid && (
+                      <span style={{ fontSize: 11, color: C.ts, textAlign: "center", lineHeight: 1.35 }}>
+                        Flechas laterales · Enter → · ← atrás
+                      </span>
                     )}
                   </div>
                 </div>
-                {isPhone ? (
-                  <>
-                    <button
-                      type="button"
-                      className="bmc-wizard-edge-nav bmc-wizard-edge-nav--prev"
-                      aria-label="Paso anterior"
-                      title={canPrev ? "Anterior" : "Primer paso"}
-                      onClick={() => {
-                        if (canPrev) goPrevWizardSoloTecho();
-                      }}
-                      disabled={!canPrev}
-                    >
-                      <ChevronLeft size={26} strokeWidth={2} aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="bmc-wizard-edge-nav bmc-wizard-edge-nav--next"
-                      aria-label={canNext ? "Paso siguiente" : "Último paso"}
-                      title={canNext ? (isValid ? "Siguiente" : "Completá el paso") : "Cotización lista"}
-                      onClick={() => {
-                        if (canNext && isValid) advanceWizardStep();
-                      }}
-                      disabled={!canNext || !isValid}
-                    >
-                      <ChevronRight size={26} strokeWidth={2} aria-hidden />
-                    </button>
-                  </>
-                ) : null}
+                  <button
+                    type="button"
+                    className={`bmc-wizard-edge-nav bmc-wizard-edge-nav--next${canNext && isValid ? " bmc-wizard-edge-nav--ready" : ""}`}
+                    aria-label={canNext ? "Paso siguiente" : "Último paso"}
+                    title={canNext ? (isValid ? "Siguiente" : "Completá el paso") : "Último paso — exportar presupuesto abajo"}
+                    onClick={() => {
+                      if (canNext && isValid) advanceWizardStep();
+                    }}
+                    disabled={!canNext || !isValid}
+                  >
+                    <ChevronRight size={28} strokeWidth={2.25} aria-hidden />
+                  </button>
+                </div>
                 {stepId === "espesor" && (
                   <div
                     className="bmc-espesor-advisor-wrap"
@@ -5999,14 +6115,14 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                     <div><div style={labelS}>Razón Social</div><input style={inputS} value={proyecto.razonSocial || ""} onChange={e => uPr("razonSocial", e.target.value)} /></div>
                     <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>
                     <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
-                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} placeholder="Obligatorio" /></div>
                     <div><div style={labelS}>Nombre del cliente de referencia <span style={{ fontWeight: 400, color: C.tt }}>(opcional)</span></div><input style={inputS} value={proyecto.nombreRefCliente || ""} onChange={e => uPr("nombreRefCliente", e.target.value)} placeholder="Persona de contacto" /></div>
                   </>
                 ) : (
                   <>
                     <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
                     <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
-                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} placeholder="Obligatorio" /></div>
                   </>
                 )}
                 <div style={{ gridColumn: "1/-1" }}>
@@ -6909,7 +7025,12 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           {/* Action buttons — desktop only */}
           {groups.length > 0 && <div className="bmc-desktop-actions" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
             <button onClick={handleCopyWA} style={{ flex: 1, minWidth: 120, padding: "12px 16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Copy size={16} />WhatsApp</button>
-            <button onClick={handleClientePdf} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Download size={16} />PDF Cliente</button>
+            <button
+              onClick={handleClientePdf}
+              disabled={!proyectoPdfReady}
+              title={proyectoPdfReady ? undefined : (getProyectoPdfBlockReason(proyecto) || "Completá datos del proyecto")}
+              style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: proyectoPdfReady ? "pointer" : "not-allowed", opacity: proyectoPdfReady ? 1 : 0.45, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            ><Download size={16} />PDF Cliente</button>
             <button onClick={handleInternalReport} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.brand}`, background: C.surface, color: C.brand, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><ClipboardList size={16} />Interno</button>
             <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: "#4285F4", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Cloud size={16} />Drive</button>
             <button onClick={handleCosteo} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: "#7c3aed", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><CircleDollarSign size={16} />Costeo</button>
@@ -7041,6 +7162,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           onCopyTSV={handleCopyTSV}
           pdfLayout={pdfLayout}
           onPdfLayoutChange={v => { setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
+          pdfReady={proyectoPdfReady}
+          pdfBlockedTitle={getProyectoPdfBlockReason(proyecto) || undefined}
         />
       )}
 
@@ -7202,7 +7325,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           <div style={{ background: C.surface, borderRadius: 16, padding: 32,
             maxWidth: 480, width: "90%", boxShadow: "0 8px 40px rgba(0,0,0,0.25)", fontFamily: FONT }}>
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: C.tp }}>
-              Confirmar cotización
+              Exportar presupuesto
             </div>
             {/* Customer details */}
             <div style={{ fontSize: 13, color: C.tp, marginBottom: 16, lineHeight: 1.7 }}>
@@ -7233,7 +7356,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   border: "none", background: C.success,
                   color: "#fff", fontSize: 14, fontWeight: 700,
                   cursor: "pointer", fontFamily: FONT }}>
-                Confirmar y descargar PDF
+                Confirmar y descargar
               </button>
             </div>
           </div>

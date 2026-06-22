@@ -101,7 +101,7 @@ await group("executeTool — telemetry wrapper records error call with class", a
 group("AGENT_TOOLS not regressed by wrapper", () => {
   // 41 = 32 base + 9 traktime_* tools añadidos en PR #328 (la aserción había quedado en 32).
   // Conteo canónico lo valida tests/agentTools.test.js contra la lista esperada.
-  assert(AGENT_TOOLS.length === 41, `41 tools exported (got ${AGENT_TOOLS.length})`);
+  assert(AGENT_TOOLS.length === 42, `42 tools exported (got ${AGENT_TOOLS.length})`);
 });
 
 await group("executeTool emits structured agent_tool_call log", async () => {
