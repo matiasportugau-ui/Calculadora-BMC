@@ -89,52 +89,107 @@
   }
 }
 
+/* ── Wizard edge navigation (phone, tablet, desktop) ───────────────────── */
+.bmc-wizard-shell {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: clamp(6px, 1.2vw, 10px);
+  align-items: start;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.bmc-wizard-step-body {
+  min-width: 0;
+  grid-column: 2;
+}
+
+button.bmc-wizard-edge-nav {
+  position: sticky;
+  top: clamp(120px, 42vh, 280px);
+  align-self: center;
+  z-index: 4;
+  width: clamp(36px, 4.2vw, 44px);
+  height: clamp(72px, 14vh, 92px);
+  margin: 0;
+  border: 1px solid rgba(26, 26, 46, 0.1);
+  box-shadow:
+    0 1px 2px rgba(26, 26, 46, 0.04),
+    0 6px 18px rgba(26, 26, 46, 0.07);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(26, 26, 46, 0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+button.bmc-wizard-edge-nav--prev {
+  grid-column: 1;
+  border-radius: 14px;
+}
+
+button.bmc-wizard-edge-nav--next {
+  grid-column: 3;
+  border-radius: 14px;
+}
+
+button.bmc-wizard-edge-nav--ready:not(:disabled) {
+  color: var(--bmc-accent);
+  border-color: rgba(0, 113, 227, 0.22);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 1px 2px rgba(0, 113, 227, 0.06),
+    0 8px 22px rgba(0, 113, 227, 0.1);
+}
+
+button.bmc-wizard-edge-nav:active:not(:disabled) {
+  transform: scale(0.96);
+  background: rgba(0, 113, 227, 0.08);
+  color: var(--bmc-accent);
+}
+
+button.bmc-wizard-edge-nav:disabled {
+  opacity: 0.28;
+  cursor: default;
+  box-shadow: none;
+  border-color: rgba(26, 26, 46, 0.06);
+}
+
+@media (hover: hover) {
+  button.bmc-wizard-edge-nav:hover:not(:disabled) {
+    background: #fff;
+    color: var(--bmc-accent);
+    border-color: rgba(0, 113, 227, 0.28);
+    box-shadow:
+      0 2px 4px rgba(0, 113, 227, 0.08),
+      0 10px 24px rgba(0, 113, 227, 0.12);
+  }
+}
+
+@media (min-width: 1024px) {
+  button.bmc-wizard-edge-nav {
+    width: 42px;
+    height: 88px;
+    top: clamp(140px, 38vh, 320px);
+  }
+}
+
 /* ── Phone-only: hide desktop actions (< 640px) ──────────────────────── */
 @media (max-width: 639px) {
   .bmc-desktop-actions { display: none !important; }
-
-  /**
-   * Wizard solo_techo — navegación lateral (Anterior / Siguiente).
-   * Flecha liviana, vidrio suave; se oscurece al tocar (:active).
-   */
-  button.bmc-wizard-edge-nav {
-    position: fixed;
-    z-index: 38;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 30px;
-    height: 76px;
-    margin: 0;
-    border: none;
-    box-shadow: none;
-    background: rgba(255, 255, 255, 0.34);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    color: rgba(26, 26, 46, 0.42);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    cursor: pointer;
-    transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-  button.bmc-wizard-edge-nav--prev {
-    left: max(2px, env(safe-area-inset-left, 0px));
-    border-radius: 0 11px 11px 0;
-  }
-  button.bmc-wizard-edge-nav--next {
-    right: max(2px, env(safe-area-inset-right, 0px));
-    border-radius: 11px 0 0 11px;
-  }
-  button.bmc-wizard-edge-nav:active:not(:disabled) {
-    background: rgba(26, 26, 46, 0.14);
-    color: rgba(26, 26, 46, 0.95);
-  }
-  button.bmc-wizard-edge-nav:disabled {
-    opacity: 0.22;
-    cursor: default;
-  }
 }
 
 /* ── Tablet: wrap action buttons for narrower widths (640–1023px) ─────── */

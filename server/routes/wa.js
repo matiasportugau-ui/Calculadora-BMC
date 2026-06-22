@@ -11,6 +11,7 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { getWaPool } from "../lib/waDb.js";
 import { validateIngestBatch, validateIngestMessage } from "../lib/waValidate.js";
+import { shadowWriteWaExtensionBatch } from "../lib/omni/adapters/waExtension.js";
 import { classifyIntent, generateSuggestions } from "../lib/waEnricher.js";
 import { runWaQuote } from "../lib/waQuoteRunner.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
@@ -641,6 +642,12 @@ export default function createWaRouter(config, logger) {
           ts: m.ts,
         });
       }
+
+      void shadowWriteWaExtensionBatch({
+        config,
+        logger: log,
+        messages: valid,
+      }).catch((e) => log.warn?.({ err: e?.message }, "omni wa extension shadow failed"));
 
       return res.json({
         ok: true,

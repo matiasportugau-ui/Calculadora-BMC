@@ -115,6 +115,34 @@ jobs:
           fi
           echo "Vercel prod HTML 200 OK."
 
+      - name: Smoke production Google Client ID in bundle
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: |
+          set -e
+          # Must match Cloud Run GOOGLE_OAUTH_CLIENT_ID — empty VITE_* at build → tokeninfo_aud_mismatch.
+          EXPECTED="${VITE_GOOGLE_CLIENT_ID:-642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3.apps.googleusercontent.com}"
+          BASE="https://calculadora-bmc.vercel.app"
+          HTML=$(curl -sfL --max-time 15 "$BASE/")
+          APP=$(echo "$HTML" | tr '"' '\n' | grep -E '^assets/App-[^.]+\.js$' | head -1)
+          if [[ -z "$APP" ]]; then
+            INDEX=$(echo "$HTML" | grep -oE 'assets/index-[^"]+\.js' | head -1)
+            if [[ -n "$INDEX" ]]; then
+              APP=$(curl -sfL --max-time 15 "$BASE/$INDEX" | tr '"' '\n' | grep -E '^(\./)?assets/App-[^.]+\.js$' | head -1 | sed 's|^\./||')
+            fi
+          fi
+          if [[ -z "$APP" ]]; then
+            echo "::error::Could not locate App-*.js chunk in production bundle"
+            exit 1
+          fi
+          BODY=$(curl -sfL --max-time 30 "$BASE/$APP")
+          if ! echo "$BODY" | grep -qF "$EXPECTED"; then
+            echo "::error::VITE_GOOGLE_CLIENT_ID not embedded in $APP (expected …${EXPECTED: -35})"
+            exit 1
+          fi
+          echo "Google Client ID present in prod bundle ($APP)."
+
   preview:
     name: Deploy preview
     runs-on: ubuntu-latest

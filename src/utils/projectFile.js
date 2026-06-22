@@ -185,6 +185,38 @@ export async function parseProjectFile(fileOrString) {
   return deserializeProject(raw);
 }
 
+/** Datos mínimos de cliente/proyecto requeridos antes de emitir PDF al cliente. */
+export function isProyectoDatosObligatoriosCompletos(proyecto) {
+  return getProyectoCamposObligatoriosFaltantes(proyecto).length === 0;
+}
+
+/** Etiquetas de campos obligatorios aún vacíos (cliente/proyecto). */
+export function getProyectoCamposObligatoriosFaltantes(proyecto) {
+  if (!proyecto || typeof proyecto !== "object") {
+    return ["Datos del proyecto"];
+  }
+  const missing = [];
+  if (proyecto.tipoCliente === "empresa") {
+    if (!String(proyecto.razonSocial ?? "").trim()) missing.push("Razón social");
+    if (!String(proyecto.rut ?? "").trim()) missing.push("RUT");
+  } else {
+    if (!String(proyecto.nombre ?? "").trim()) missing.push("Nombre");
+  }
+  if (!String(proyecto.telefono ?? "").trim()) missing.push("Teléfono");
+  if (!String(proyecto.direccion ?? "").trim()) missing.push("Dirección");
+  return missing;
+}
+
+/** Mensaje para toast/UI cuando falta completar el paso Proyecto antes de exportar PDF. */
+export function getProyectoPdfBlockReason(proyecto) {
+  const missing = getProyectoCamposObligatoriosFaltantes(proyecto);
+  if (!missing.length) return null;
+  if (missing.length === 1 && missing[0] === "Datos del proyecto") {
+    return "Completá los datos obligatorios del proyecto antes de exportar el presupuesto.";
+  }
+  return `Para exportar el presupuesto completá: ${missing.join(" · ")}.`;
+}
+
 /**
  * Build the filename for a .bmc.json project file (descarga local).
  * Formato: {código}_{fecha UY}_{slug cliente}.bmc.json
