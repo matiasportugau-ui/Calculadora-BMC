@@ -95,7 +95,12 @@ jobs:
 
       - name: Build project artifacts
         if: steps.guard.outputs.skip != 'true'
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: |
+          # Vite bakes VITE_* at build time — must be present here, not only in post-deploy smoke.
+          export VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3.apps.googleusercontent.com}"
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy to Vercel (production)
         if: steps.guard.outputs.skip != 'true'
