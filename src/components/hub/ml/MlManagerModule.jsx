@@ -1,6 +1,6 @@
 import React, { Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
-import '../admin-cotizaciones/styles.css';
+import '../../admin-cotizaciones/styles.css';
 import { useConnectorStatus } from './hooks/useMlConnector.js';
 import OverviewTab from './tabs/OverviewTab.jsx';
 import ListingsTab from './tabs/ListingsTab.jsx';

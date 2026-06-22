@@ -16,7 +16,9 @@ export async function mlFetch(path, init = {}) {
     err.status = res.status;
     try {
       err.payload = await res.json();
-    } catch {}
+    } catch {
+      /* ignore non-JSON error body */
+    }
     throw err;
   }
 

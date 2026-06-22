@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useListings } from '../hooks/useMlConnector.js';
 
 export default function ListingsTab() {
-  const [offset, setOffset] = useState(0);
+  const [offset] = useState(0);
   const listings = useListings({ limit: 50, offset });
 
   if (!listings.data) {

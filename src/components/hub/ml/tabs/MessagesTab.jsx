@@ -1,9 +1,6 @@
 import React from 'react';
-import { useUnreadMessages } from '../hooks/useMlConnector.js';
 
 export default function MessagesTab() {
-  const unread = useUnreadMessages();
-
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '16px', height: '440px' }}>
       <div style={{ border: '1px solid #e5e5ea', borderRadius: '12px', overflow: 'y-auto', background: '#fff' }}>

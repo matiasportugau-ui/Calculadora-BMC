@@ -1,9 +1,8 @@
 import React from 'react';
-import { useCampaigns, useAdReports } from '../hooks/useMlConnector.js';
+import { useCampaigns } from '../hooks/useMlConnector.js';
 
 export default function AdsTab() {
   const campaigns = useCampaigns();
-  const reports = useAdReports();
 
   return (
     <div>
