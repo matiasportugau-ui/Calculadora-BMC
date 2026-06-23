@@ -1,7 +1,7 @@
 /**
  * Wire omni event bus subscribers (WAVE 3).
  */
-import { config } from "../../config.js";
+import { config } from "../../../config.js";
 import { subscribe } from "../eventBus.js";
 import { getOmniPool } from "../omniDb.js";
 import { enqueueIngestAiJobs } from "./aiWorker.js";
