@@ -1,14 +1,23 @@
 /**
- * /api/omni/* — unified inbox API (Track D)
+ * /api/omni/* — unified inbox API (Track D + WAVE 3)
  */
 import { Router } from "express";
+import { z } from "zod";
 import { config } from "../config.js";
 import { getOmniPool, omniHealthCheck } from "../lib/omni/omniDb.js";
 import { normalizeAndPersist } from "../lib/omni/normalizer.js";
 import { parseOmniInboundEvent } from "../lib/omni/types.js";
 import { requireGrant } from "../middleware/requireGrant.js";
+import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import { sendWaReply } from "../lib/omni/outbound/waReply.js";
 import { sendMlReply } from "../lib/omni/outbound/mlReply.js";
+import { collectOmniMetrics, formatPrometheusMetrics } from "../lib/omni/omniMetrics.js";
+import {
+  runAutomationForEvent,
+  simulateAutomationRule,
+} from "../lib/omni/orchestrator/automationEngine.js";
+import { runAdHocAiJob, runAiJobById } from "../lib/omni/orchestrator/aiWorker.js";
+import { listModelRegistry, listPromptRegistry } from "../lib/omni/orchestrator/aiRegistry.js";
 
 function requireOmniDb(req, res, next) {
   const pool = getOmniPool(config.databaseUrl);
@@ -180,7 +189,10 @@ router.post(
       channel: conv.channel,
       idempotency_key: `${conv.channel}:reply:${conversationId}:${Date.now()}`,
       occurred_at: new Date().toISOString(),
-      contact_hint: {},
+      contact_hint: {
+        wa_phone: conv.wa_phone || undefined,
+        ml_user_id: conv.ml_user_id ?? undefined,
+      },
       conversation_hint: { channel_conversation_id: conv.channel_conversation_id },
       message: {
         sender: "agent",
@@ -223,6 +235,176 @@ router.post(
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
+  },
+);
+
+router.get(
+  "/omni/metrics",
+  requireServiceOrUser({ module: "canales", minLevel: "read" }),
+  requireOmniDb,
+  async (req, res) => {
+    try {
+      const data = await collectOmniMetrics(req.omniPool);
+      if (!data.ok) {
+        return res.status(503).json(data);
+      }
+      if (req.query.format === "prometheus") {
+        res.setHeader("Content-Type", "text/plain; version=0.0.4");
+        return res.send(formatPrometheusMetrics(data));
+      }
+      res.json(data);
+    } catch (e) {
+      res.status(503).json({ ok: false, error: e.message });
+    }
+  },
+);
+
+const automationRuleSchema = z.object({
+  name: z.string().min(1).max(200),
+  trigger_event: z.string().min(1).max(50),
+  conditions: z.record(z.unknown()).default({}),
+  actions: z.array(z.record(z.unknown())).default([]),
+  priority: z.number().int().optional(),
+  enabled: z.boolean().optional(),
+  requires_approval: z.boolean().optional(),
+});
+
+router.get(
+  "/omni/automation/rules",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const { rows } = await req.omniPool.query(
+      `SELECT id, name, version, enabled, priority, trigger_event, conditions, actions,
+              requires_approval, created_at, updated_at
+       FROM omni_automation_rules ORDER BY priority ASC, created_at DESC`,
+    );
+    res.json({ ok: true, rules: rows });
+  },
+);
+
+router.post(
+  "/omni/automation/rules",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    if (!config.omniAutomationEnabled) {
+      return res.status(503).json({ ok: false, error: "omni_automation_disabled" });
+    }
+    const parsed = automationRuleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: "validation_failed", details: parsed.error.flatten() });
+    }
+    const b = parsed.data;
+    const { rows } = await req.omniPool.query(
+      `INSERT INTO omni_automation_rules
+         (name, trigger_event, conditions, actions, priority, enabled, requires_approval, created_by)
+       VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6, $7, $8)
+       RETURNING *`,
+      [
+        b.name,
+        b.trigger_event,
+        JSON.stringify(b.conditions),
+        JSON.stringify(b.actions),
+        b.priority ?? 100,
+        b.enabled ?? true,
+        b.requires_approval ?? false,
+        req.user?.email || req.user?.id || "api",
+      ],
+    );
+    res.status(201).json({ ok: true, rule: rows[0] });
+  },
+);
+
+router.patch(
+  "/omni/automation/rules/:id",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const { enabled, priority } = req.body || {};
+    const { rows } = await req.omniPool.query(
+      `UPDATE omni_automation_rules SET
+         enabled = COALESCE($2, enabled),
+         priority = COALESCE($3, priority),
+         updated_at = now()
+       WHERE id = $1 RETURNING *`,
+      [req.params.id, enabled, priority],
+    );
+    if (!rows[0]) return res.status(404).json({ ok: false, error: "rule_not_found" });
+    res.json({ ok: true, rule: rows[0] });
+  },
+);
+
+router.post(
+  "/omni/automation/simulate",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const ruleId = req.body?.rule_id;
+    const sampleEvent = req.body?.sample_event;
+    if (!ruleId || !sampleEvent) {
+      return res.status(400).json({ ok: false, error: "missing_rule_id_or_sample_event" });
+    }
+    const result = await simulateAutomationRule(req.omniPool, ruleId, sampleEvent);
+    res.json(result);
+  },
+);
+
+router.get(
+  "/omni/ai/registry/prompts",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const rows = await listPromptRegistry(req.omniPool);
+    res.json({ ok: true, prompts: rows });
+  },
+);
+
+router.get(
+  "/omni/ai/registry/models",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const rows = await listModelRegistry(req.omniPool);
+    res.json({ ok: true, models: rows });
+  },
+);
+
+/** Internal AI connector (E4) — service token or admin */
+router.post(
+  "/internal/omni/ai/run",
+  requireServiceOrUser({ module: "canales", minLevel: "write" }),
+  requireOmniDb,
+  async (req, res) => {
+    if (!config.omniAiOrchestratorEnabled) {
+      return res.status(503).json({ ok: false, error: "omni_ai_orchestrator_disabled" });
+    }
+    const jobType = String(req.body?.job_type || "classify");
+    const messageId = req.body?.message_id;
+    const conversationId = req.body?.conversation_id;
+    const channel = req.body?.channel;
+
+    if (req.body?.job_id) {
+      const result = await runAiJobById(req.omniPool, req.body.job_id, { logger: req.log });
+      return res.status(result.ok ? 200 : 400).json(result);
+    }
+
+    if (!messageId || !conversationId) {
+      return res.status(400).json({ ok: false, error: "missing_message_or_conversation_id" });
+    }
+
+    const result = await runAdHocAiJob(
+      req.omniPool,
+      {
+        job_type: jobType,
+        message_id: messageId,
+        conversation_id: conversationId,
+        channel,
+        input_json: req.body?.context || {},
+      },
+      req.log,
+    );
+    res.status(result.ok ? 200 : 400).json(result);
   },
 );
 

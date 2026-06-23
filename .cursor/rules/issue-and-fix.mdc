@@ -1,0 +1,29 @@
+---
+description: "Orchestrates Issue and Fix pipeline: Bugbot → fix → optional security → gate:local. Apply for /issue-and-fix, issue and fix, revisar y arreglar, or Agent Review insufficient funds."
+alwaysApply: false
+---
+
+# Issue and Fix (orchestrator)
+
+When the user says **/issue-and-fix**, **issue and fix**, **revisar y arreglar**, **agent review local**, or Agent Review failed with **insufficient funds**:
+
+## Load orchestrator skill
+
+Read and follow: `.cursor/skills/issue-and-fix/SKILL.md`
+
+## Default pipeline (`full`)
+
+1. **Bugbot** (readonly subagent) — findings table
+2. **bmc-issue-fix-reviewer** — apply fixes (parent executes skill, not readonly)
+3. **Security** (readonly) — only if auth/secrets/server config touched
+4. **expert-debug-autonomous** — only if lint/test still failing
+5. **`npm run gate:local`**
+
+## Modes
+
+- `full` (default), `fix-only`, `review-only`, `security`
+
+## Related
+
+- Fix skill: `.cursor/skills/bmc-issue-fix-reviewer/SKILL.md`
+- Agent: `.cursor/agents/bmc-issue-fix-reviewer.md`

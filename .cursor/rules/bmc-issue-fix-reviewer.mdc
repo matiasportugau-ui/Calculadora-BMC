@@ -1,0 +1,28 @@
+---
+description: "Fix-only pass for local Issue and Fix (no Bugbot). Apply for fix-only, solo arreglar, or bmc issue fix reviewer — not for /issue-and-fix full pipeline."
+alwaysApply: false
+---
+
+# BMC Issue & Fix Reviewer (fix-only)
+
+When the user wants **fix-only** correction without Bugbot first, or says **solo arreglar**, **bmc issue fix**, or invokes agent **`bmc-issue-fix-reviewer`** directly:
+
+## Load skill
+
+Read and follow: `.cursor/skills/bmc-issue-fix-reviewer/SKILL.md`
+
+## Protocol
+
+1. Gather diff (`branch` default, or `uncommitted` / explicit files).
+2. Review against `AGENTS.md` + `.cursor/rules/`.
+3. **Fix** actionable findings (not readonly).
+4. Run `npm run gate:local` (or lint + test) after edits in `src/` / `server/`.
+5. Report table: Severity | Location | Finding | Status (fixed/remaining).
+
+## Full pipeline (Bugbot + fix + gates)
+
+Use **`.cursor/skills/issue-and-fix/SKILL.md`** or **`/issue-and-fix`** — not this rule.
+
+## Agent definition
+
+`.cursor/agents/bmc-issue-fix-reviewer.md`

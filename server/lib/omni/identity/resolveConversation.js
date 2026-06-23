@@ -22,6 +22,30 @@ export async function resolveConversation(client, {
     ? String(conversation_hint.subject).slice(0, 512)
     : null;
 
+  // Agent replies / mirrors may omit contact_hint — reuse existing thread by channel id.
+  const { rows: globalRows } = await client.query(
+    `SELECT id, contact_id FROM omni_conversations
+     WHERE channel = $1 AND channel_conversation_id = $2
+     ORDER BY updated_at DESC
+     LIMIT 1`,
+    [channel, channelConversationId],
+  );
+
+  if (globalRows[0]) {
+    if (subject) {
+      await client.query(
+        `UPDATE omni_conversations SET subject = COALESCE(subject, $2), updated_at = now()
+         WHERE id = $1`,
+        [globalRows[0].id, subject],
+      );
+    }
+    return {
+      conversation_id: globalRows[0].id,
+      created: false,
+      contact_id: globalRows[0].contact_id,
+    };
+  }
+
   const { rows } = await client.query(
     `SELECT id FROM omni_conversations
      WHERE contact_id = $1 AND channel = $2 AND channel_conversation_id = $3

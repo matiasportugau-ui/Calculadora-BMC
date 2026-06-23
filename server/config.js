@@ -4,8 +4,11 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const bool = (value, fallback = false) => {
-  if (value == null) return fallback;
-  return String(value).toLowerCase() === "true";
+  if (value == null || value === "") return fallback;
+  const s = String(value).toLowerCase();
+  if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+  if (s === "false" || s === "0" || s === "no" || s === "off") return false;
+  return fallback;
 };
 
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3001";
@@ -253,6 +256,13 @@ export const config = {
   omniMlShadowWrite: bool(process.env.OMNI_ML_SHADOW_WRITE, false),
   omniEmailShadowWrite: bool(process.env.OMNI_EMAIL_SHADOW_WRITE, false),
   omniEventBusEnabled: bool(process.env.OMNI_EVENT_BUS_ENABLED, false),
+  omniAiOrchestratorEnabled: bool(process.env.OMNI_AI_ORCHESTRATOR_ENABLED, false),
+  omniAutomationEnabled: bool(process.env.OMNI_AUTOMATION_ENABLED, false),
+  omniAiDailyBudgetUsd: Math.max(0, Number(process.env.OMNI_AI_DAILY_BUDGET_USD || 50)),
+  omniDealsSheetsAuthority: bool(process.env.OMNI_DEALS_SHEETS_AUTHORITY, true),
+  otelEnabled: bool(process.env.OTEL_ENABLED, false),
+  omniAiWorkerIntervalMs: Math.max(2000, Number(process.env.OMNI_AI_WORKER_INTERVAL_MS || 5000)),
+  omniAiWorkerBatchSize: Math.max(1, Math.min(20, Number(process.env.OMNI_AI_WORKER_BATCH_SIZE || 5))),
 };
 
 export const redirectUri = () => {

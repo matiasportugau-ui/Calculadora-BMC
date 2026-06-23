@@ -3,15 +3,24 @@
  */
 import crypto from "node:crypto";
 import { createHash } from "node:crypto";
-import { buildIdempotencyKey } from "../types.js";
+import { buildIdempotencyKey, normalizeEmail } from "../types.js";
 
 /**
  * @param {string} messageId
  */
 export function emailMessageIdHash(messageId) {
   const raw = String(messageId || "").trim().toLowerCase();
-  if (!raw) return createHash("sha256").update(`anon:${Date.now()}`).digest("hex").slice(0, 32);
+  if (!raw) return null;
   return createHash("sha256").update(raw).digest("hex").slice(0, 32);
+}
+
+/**
+ * Stable dedup hash when Message-ID header is absent.
+ */
+export function emailContentHash({ remitente, asunto, cuerpo }) {
+  const em = normalizeEmail(remitente || "") || "unknown";
+  const payload = `${em}|${String(asunto || "").trim()}|${String(cuerpo || "").trim()}`;
+  return createHash("sha256").update(payload).digest("hex").slice(0, 32);
 }
 
 /**
@@ -29,7 +38,9 @@ export function emailIngestToOmniEvent(args) {
   if (!body) return null;
 
   const email = args.parsed?.email_remitente || args.remitente || "";
-  const hash = emailMessageIdHash(args.messageId || args.asunto || body.slice(0, 120));
+  const hash =
+    emailMessageIdHash(args.messageId) ||
+    emailContentHash({ remitente: email || args.remitente, asunto: args.asunto, cuerpo: body });
   const convId = `email:${hash}`;
 
   return {
@@ -53,6 +64,7 @@ export function emailIngestToOmniEvent(args) {
       metadata: {
         asunto: args.asunto || null,
         message_id_hash: hash,
+        had_message_id: Boolean(args.messageId?.trim()),
       },
     },
     side_effects: args.crmRow ? { crm_sheet_row: args.crmRow } : undefined,

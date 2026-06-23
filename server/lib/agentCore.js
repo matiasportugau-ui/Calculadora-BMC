@@ -91,7 +91,7 @@ const SCHEMA_TO_INTERNAL = {
  *                                     Si se pasa, lee config.ai[taskKey] y override
  *                                     provider+model+temperature+maxTokens.
  * @param {object} [opts.override]   — { provider, model, temperature, maxTokens } directo.
- * @returns {Promise<{text:string, provider:string, model?:string, latencyMs?:number}>}
+ * @returns {Promise<{text:string, provider:string, model?:string, latencyMs?:number, estimatedCostUsd?:number}>}
  */
 export async function callAgentOnce(messages, opts = {}) {
   const {
@@ -227,6 +227,7 @@ export async function callAgentOnce(messages, opts = {}) {
           provider: p,
           model: modelUsed,
           latencyMs: Date.now() - t0,
+          estimatedCostUsd: cost,
         };
       }
       errors.push(`${p}: empty`);

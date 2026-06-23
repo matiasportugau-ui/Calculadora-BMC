@@ -40,6 +40,7 @@ Canonical transformation documentation to evolve the current production platform
 | 19 | [19-build-vs-buy.md](19-build-vs-buy.md) | Chatwoot, Zendesk, HubSpot, Intercom |
 | 20 | [20-operational-readiness.md](20-operational-readiness.md) | Runbooks, gates, deploy checklist |
 | 21 | [21-wave-execution.md](21-wave-execution.md) | WAVE 0–N execution model, parallel squads |
+| — | [wave-3/README.md](wave-3/README.md) | WAVE 3 Intelligence + Platform squads |
 
 **Quality gate:** [SELF-CRITIQUE.md](SELF-CRITIQUE.md)
 
