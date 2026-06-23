@@ -5,6 +5,8 @@ import { getOmniPool } from "./omniDb.js";
 import { parseOmniInboundEvent } from "./types.js";
 import { resolveContact } from "./identity/resolveContact.js";
 import { resolveConversation } from "./identity/resolveConversation.js";
+import { emit } from "./eventBus.js";
+import { config as appConfig } from "../../config.js";
 
 /**
  * @param {import("pg").PoolClient} client
@@ -135,7 +137,7 @@ export async function normalizeAndPersist(rawEvent, opts = {}) {
 
     await client.query("COMMIT");
 
-    return {
+    const result = {
       duplicate: false,
       contact_id: conversation.contact_id || contact.contact_id,
       conversation_id: conversation.conversation_id,
@@ -143,7 +145,20 @@ export async function normalizeAndPersist(rawEvent, opts = {}) {
       contact_created: contact.created,
       conversation_created: conversation.created,
       trace_id: event.trace_id ?? null,
+      channel: event.channel,
+      source: event.source,
+      message: event.message,
     };
+
+    if (appConfig.omniEventBusEnabled) {
+      await emit("message.ingested", {
+        ...result,
+        body: event.message.body,
+        logger: opts.logger,
+      });
+    }
+
+    return result;
   } catch (e) {
     await client.query("ROLLBACK").catch(() => {});
     throw e;

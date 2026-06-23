@@ -130,7 +130,8 @@ export async function processAiJob(pool, jobRow, logger) {
         [{ role: "user", content: msg.body }],
         {
           channel,
-          taskKey: "suggestions",
+          taskKey: prompt?.system_prompt ? null : "suggestions",
+          systemPrompt: prompt?.system_prompt || undefined,
           override: model
             ? {
                 provider: model.provider,

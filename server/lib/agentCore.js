@@ -118,7 +118,8 @@ export async function callAgentOnce(messages, opts = {}) {
   const kbBlock = renderExamplesBlock(kbExamples, channel);
   const basePrompt = buildSystemPrompt(calcState, { trainingExamples: kbExamples });
   const channelSection = buildChannelSection(channel);
-  const systemPrompt = [basePrompt, channelSection, kbBlock].filter(Boolean).join("\n\n");
+  const promptCore = opts.systemPrompt || basePrompt;
+  const systemPrompt = [promptCore, channelSection, kbBlock].filter(Boolean).join("\n\n");
 
   const channelDefault = channel === "ml" ? 120 : channel === "wa" ? 400 : 1200;
   const maxTokens = Number(eff.maxTokens) || channelDefault;

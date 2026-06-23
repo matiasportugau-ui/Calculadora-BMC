@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-22 (Omni issue-and-fix — PR #406 Bugbot):** `/issue-and-fix` sobre `feat/omni-wave3`: emit `message.ingested` post-commit (`OMNI_EVENT_BUS_ENABLED`); lookup conversación solo por `(contact_id, channel, channel_conversation_id)`; reply API pasa `contact_id` en hint; reglas automation con `{}` no matchean; registry `system_prompt` aplicado en jobs `suggest` vía `agentCore.systemPrompt`. WAVE 4 WIP quedó en stash local (no incluido). Staging soak + flags: [`OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md).
+
 **2026-06-22 (Omni WAVE 3 ship procedure — PR #406):** Rama `feat/omni-wave3` pusheada; PR [#406](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/406) abierta (4 commits: issue-and-fix + WAVE 3 + PDF docs + bootstrap config import fix). Gates locales: `gate:local` OK, `wave3:exit-gate` OK (`ready_for_wave4`), `test:omni:parity` OK, `omni:migrate` OK (001–003), `smoke:prod` OK. Staging/prod rollout doc: [`orientation/OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md). **Pendiente operador:** merge PR → WAVE 2 soak 24h/canal en staging → WAVE 3 flags → prod deploy con `OMNI_*` OFF.
 
 **2026-06-22 (Procedimiento pre-PR local):** Checklist canónico [`PROCEDIMIENTO-PRE-PR-LOCAL.md`](./PROCEDIMIENTO-PRE-PR-LOCAL.md) — Issue-and-Fix (`/issue-and-fix`) + `gate:local` + split commits + pre-deploy opcional; enlazado en `SESSION-WORKSPACE-CRM` §1.4, `EXPERT-DEV-TRACEABILITY` paso 3.5, `docs/team/AGENTS.md` y `docs/AGENTS.md`.

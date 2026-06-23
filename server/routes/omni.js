@@ -154,7 +154,7 @@ router.post(
     }
 
     const { rows } = await req.omniPool.query(
-      `SELECT c.channel, c.channel_conversation_id, co.wa_phone, co.ml_user_id
+      `SELECT c.channel, c.contact_id, c.channel_conversation_id, co.wa_phone, co.ml_user_id
        FROM omni_conversations c
        JOIN omni_contacts co ON co.id = c.contact_id
        WHERE c.id = $1`,
@@ -190,6 +190,7 @@ router.post(
       idempotency_key: `${conv.channel}:reply:${conversationId}:${Date.now()}`,
       occurred_at: new Date().toISOString(),
       contact_hint: {
+        contact_id: conv.contact_id,
         wa_phone: conv.wa_phone || undefined,
         ml_user_id: conv.ml_user_id ?? undefined,
       },

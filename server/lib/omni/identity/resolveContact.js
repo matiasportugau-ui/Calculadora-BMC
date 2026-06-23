@@ -23,6 +23,17 @@ async function findContact(client, sql, params) {
  * @param {{ contact_hint: object; channel: string; source?: string }} args
  */
 export async function resolveContact(client, { contact_hint: hint, channel, source }) {
+  if (hint.contact_id) {
+    const row = await findContact(
+      client,
+      `SELECT id, integration_uuid FROM omni_contacts WHERE id = $1 LIMIT 1`,
+      [hint.contact_id],
+    );
+    if (row) {
+      return { contact_id: row.id, created: false, integration_uuid: row.integration_uuid };
+    }
+  }
+
   const waPhone = normalizeWaPhone(hint.wa_phone || hint.phone);
   const mlUserId = normalizeMlUserId(hint.ml_user_id);
   const email = normalizeEmail(hint.email);

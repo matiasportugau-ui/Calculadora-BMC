@@ -38,7 +38,7 @@ assert(
   "none spam",
   evaluateConditions({ none: [{ field: "body_ai_category", op: "eq", value: "spam" }] }, ctx),
 );
-assert("no clauses matches", evaluateConditions({}, ctx));
+assert("empty conditions do not match", !evaluateConditions({}, ctx));
 
 console.log(`\nomniAutomationConditions: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

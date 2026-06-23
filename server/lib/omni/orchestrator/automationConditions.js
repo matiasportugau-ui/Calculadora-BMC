@@ -12,7 +12,7 @@ export function evaluateConditions(conditions, ctx) {
   const any = Array.isArray(conditions.any) ? conditions.any : [];
   const none = Array.isArray(conditions.none) ? conditions.none : [];
 
-  if (all.length === 0 && any.length === 0 && none.length === 0) return true;
+  if (all.length === 0 && any.length === 0 && none.length === 0) return false;
 
   if (all.length && !all.every((c) => evalClause(c, ctx))) return false;
   if (any.length && !any.some((c) => evalClause(c, ctx))) return false;
