@@ -12,6 +12,16 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-23 (hotfix — GCS token store usa metadata-server, no la SA key de Sheets):** Todas las rutas `/ml/*`
+devolvían **500** (y `/auth/ml/status` 503): `server/tokenStore.js` hacía `new Storage()`, pero google-auth resuelve
+`GOOGLE_APPLICATION_CREDENTIALS` primero — y esa env apunta a la SA key de Sheets/Drive (montada para el feature de
+Drive del 2026-06-22), cuyo intercambio JWT en `googleapis.com/oauth2/v4/token` falla con *"Premature close"*. Fix:
+`new Storage({ authClient: new GoogleAuth({ authClient: new Compute() }) })` — fija la identidad del runtime de Cloud
+Run (`panelin-runner`, con `objectAdmin` en `gs://bmc-ml-tokens`) vía metadata server SOLO para el cliente GCS,
+sin tocar la auth de Sheets/Drive. Verificado el API contra storage@5 + google-auth@9 (cachedCredential = Compute).
+El comentario previo en el código documentaba la intención pero `new Storage()` nunca la lograba. Sin esto, ML Manager
+muestra "Verificá la conexión con Mercado Libre".
+
 **2026-06-23 (ML Manager re-cableado al backend live `panelin-calc`):** El esqueleto de `/hub/ml-manager`
 (shipped en PR #403) apuntaba a un *connector* separado inexistente (`VITE_ML_CONNECTOR_URL`) y a 13 endpoints
 fantasma (ads, analytics, message-packs, visits, ai/daily-brief). Re-cableado a la realidad: `mlFetch.js` ahora
