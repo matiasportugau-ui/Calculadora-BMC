@@ -4,6 +4,7 @@
 import { config } from "../../../config.js";
 import { evaluateConditions, buildAutomationContext } from "./automationConditions.js";
 import { enqueueAiJob } from "./aiWorker.js";
+import { createDeal } from "../deals/dealService.js";
 import { startOmniSpan } from "../otel.js";
 
 /**
@@ -114,6 +115,25 @@ async function executeAction(pool, action, payload, ctx) {
         input_json: { source: "automation" },
       });
       return { type, job_id: jobId };
+    }
+    case "create_deal": {
+      const { rows: convRows } = await pool.query(
+        `SELECT contact_id, channel FROM omni_conversations WHERE id = $1`,
+        [payload.conversation_id],
+      );
+      const conv = convRows[0];
+      if (!conv) return { type, skipped: true, reason: "conversation_not_found" };
+      const titleTemplate = params.title_template || "Oportunidad — {channel}";
+      const title = titleTemplate.replace("{channel}", conv.channel || "omni");
+      const deal = await createDeal(pool, {
+        contact_id: conv.contact_id,
+        title,
+        stage: params.stage || "lead",
+        source_channel: conv.channel,
+        source_conversation_id: payload.conversation_id,
+        properties: { created_by: "automation" },
+      });
+      return { type, deal_id: deal.id };
     }
     default:
       return { type, skipped: true, reason: "unknown_action" };

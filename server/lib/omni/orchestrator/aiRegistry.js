@@ -56,3 +56,25 @@ export async function listModelRegistry(pool) {
   );
   return rows;
 }
+
+/**
+ * Public contract for Agents squad (H1 → I2).
+ * @param {import('pg').Pool} pool
+ * @param {string} taskKey
+ * @param {string|null} [channel]
+ */
+export async function getActivePromptContract(pool, taskKey, channel = null) {
+  const prompt = await getEnabledPrompt(pool, taskKey, channel);
+  const model = await getEnabledModel(pool, taskKey);
+  return {
+    task_key: taskKey,
+    channel,
+    prompt_version: prompt?.version ?? null,
+    model_version: model?.version ?? null,
+    enabled: Boolean(prompt && model),
+    system_prompt: prompt?.system_prompt ?? null,
+    model: model
+      ? { provider: model.provider, model_id: model.model_id, max_tokens: model.max_tokens }
+      : null,
+  };
+}

@@ -6,6 +6,9 @@ import { callAgentOnce } from "../../agentCore.js";
 import { classifyIntent } from "../../waEnricher.js";
 import { startOmniSpan } from "../otel.js";
 import { getEnabledPrompt, getEnabledModel } from "./aiRegistry.js";
+import { processExtractDealJob } from "../deals/dealExtractor.js";
+import { runEmbedJob } from "../knowledge/embedPipeline.js";
+import { buildOmniRetrievalContext, formatOmniContextBlock } from "../knowledge/kbBridge.js";
 
 const CATEGORY_MAP = {
   cotizacion: "cotizacion",
@@ -110,6 +113,14 @@ export async function processAiJob(pool, jobRow, logger) {
         latency_ms: Date.now() - t0,
         cost_usd: 0,
       });
+      if (category === "cotizacion" || intent === "cotizacion") {
+        await enqueueAiJob(pool, {
+          job_type: "extract_deal",
+          message_id: jobRow.message_id,
+          conversation_id: jobRow.conversation_id,
+          channel: jobRow.channel,
+        });
+      }
     } else if (jobRow.job_type === "suggest") {
       const channel = msg.channel === "ml" ? "ml" : msg.channel === "wa" ? "wa" : "chat";
       const prompt = await getEnabledPrompt(pool, "suggest", channel);
@@ -126,8 +137,14 @@ export async function processAiJob(pool, jobRow, logger) {
         return;
       }
 
+      const retrieval = await buildOmniRetrievalContext(pool, jobRow.conversation_id, msg.body);
+      const contextBlock = formatOmniContextBlock(retrieval);
+      const userContent = contextBlock
+        ? `${contextBlock}\n\n---\nCustomer message:\n${msg.body}`
+        : msg.body;
+
       const result = await callAgentOnce(
-        [{ role: "user", content: msg.body }],
+        [{ role: "user", content: userContent }],
         {
           channel,
           taskKey: prompt?.system_prompt ? null : "suggestions",
@@ -169,6 +186,20 @@ export async function processAiJob(pool, jobRow, logger) {
         latency_ms: result.latencyMs ?? Date.now() - t0,
         cost_usd: result.estimatedCostUsd ?? 0,
         prompt_version: prompt?.version ?? null,
+      });
+    } else if (jobRow.job_type === "extract_deal") {
+      const extracted = await processExtractDealJob(pool, jobRow);
+      await markJobCompleted(pool, jobRow.id, {
+        ...extracted,
+        latency_ms: Date.now() - t0,
+        cost_usd: 0,
+      });
+    } else if (jobRow.job_type === "embed") {
+      const embedded = await runEmbedJob(pool, jobRow.message_id);
+      await markJobCompleted(pool, jobRow.id, {
+        ...embedded,
+        latency_ms: Date.now() - t0,
+        cost_usd: 0,
       });
     } else {
       await markJobFailed(pool, jobRow.id, "unsupported_job_type");
