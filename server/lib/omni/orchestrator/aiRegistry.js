@@ -25,8 +25,13 @@ export async function getEnabledPrompt(db, taskKey, channel = null) {
  */
 export async function getEnabledModel(db, taskKey) {
   const { rows } = await db.query(
-    `SELECT version, provider, model_id, max_tokens, temperature,
-            cost_per_1k_input_usd, cost_per_1k_output_usd
+    // pg returns NUMERIC as JS strings; cast to float8 so temperature/costs are
+    // numbers. A string temperature ("0.30") is rejected by the AI providers
+    // (claude 400, grok 422 "temperature: invalid") when forwarded in the request.
+    `SELECT version, provider, model_id, max_tokens,
+            temperature::double precision AS temperature,
+            cost_per_1k_input_usd::double precision AS cost_per_1k_input_usd,
+            cost_per_1k_output_usd::double precision AS cost_per_1k_output_usd
      FROM omni_model_registry
      WHERE task_key = $1 AND enabled = true
      ORDER BY version DESC LIMIT 1`,
