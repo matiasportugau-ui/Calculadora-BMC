@@ -12,6 +12,17 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-23 (Omni WAVE 3+4 — FULLY OPERATIONAL en prod):** Activado el omnicanal end-to-end en producción y
+**probado** (ingest → classify → suggest Claude → HITL accept → H4 eval). Cloud Run `panelin-calc` rev ≥`00532`
+con **todos** los flags `OMNI_*`=1 (WA/ML/EMAIL shadow, event bus, AI orchestrator, automation; budget USD 50/día),
+gobernados por **GitHub repo Variables** (sobreviven a deploys vía `deploy-calc-api.yml`). UI: `VITE_OMNI_INBOX`+`VITE_OMNI_DEALS`=1
+→ pestañas Omni Inbox + Pipeline Deals en `/hub/canales`. Migración `005` siembra el AI registry (model+prompt enabled, claude-sonnet-4-6).
+Un E2E controlado en prod descubrió y arregló **3 bugs** (PR #413 + migraciones 006/007): (1) `omni_conversations.properties`
+faltaba en prod (001 viejo) → todo ingest/shadow-write fallaba en silencio; (2) CHECK `body_ai_category_valid` rechazaba
+`cotizacion` → classify moría; (3) pg devuelve NUMERIC como string → `temperature`="0.30" → proveedores 400/422, sin
+sugerencias (fix: cast a float8 en `aiRegistry.getEnabledModel`). Las 3 compuertas WAVE 4 pasan (HITL/F3/H4). PRs: #406, #407, #411, #413.
+Pendiente menor: confirmar modelo/pricing + cuota OpenAI (ajustable sin código); backfills históricos ML/EMAIL difer (falta BMC_SHEET_ID en Doppler).
+
 **2026-06-23 (hotfix — GCS token store usa metadata-server, no la SA key de Sheets):** Todas las rutas `/ml/*`
 devolvían **500** (y `/auth/ml/status` 503): `server/tokenStore.js` hacía `new Storage()`, pero google-auth resuelve
 `GOOGLE_APPLICATION_CREDENTIALS` primero — y esa env apunta a la SA key de Sheets/Drive (montada para el feature de
