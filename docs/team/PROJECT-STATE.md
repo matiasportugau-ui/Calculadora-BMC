@@ -12,6 +12,18 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-23 (Omni WAVE 4 local E2E gate — PR #407):** Agregado `npm run omni:local-e2e` — un gate E2E
+autoprovisionado (`scripts/omni-local-e2e.sh` + `scripts/omni-local-e2e.mjs`) que levanta su propio
+Postgres descartable, aplica migraciones omni y verifica los 3 *code paths* de las compuertas WAVE 4
+(HITL accept/reject, H4 eval stats, F3 reconcile drift<10) con 14 asserts, luego destruye el cluster.
+Triple-guardado (`OMNI_E2E_DATABASE_URL` dedicado, host local, nombre con `e2e`, distinto de `DATABASE_URL`)
+para que **nunca** toque una DB real. Opt-in en `wave4-exit-gate` vía `OMNI_E2E=1` (CI no lo corre).
+Validado además el camino real HTTP+auth+route (7/7) contra schema identity + JWT local. Runbook de las 3
+compuertas de staging documentado en [`orientation/OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md).
+Las compuertas siguen pendientes de **datos reales de staging**, no de código.
+
+**2026-06-23 (Omni WAVE 3 hardening fold-in — PR #407):** Plegados a `feat/omni-wave4` los fixes de hardening diferidos del review de PR #406, todos sobre archivos que WAVE 4 ya tocaba: (1) **bug** doble-incremento de `attempts` en `aiWorker.js` (ahora se incrementa una sola vez por claim, consistente entre worker batch y ad-hoc); (2) allowlist de `job_type` a nivel app (`ALLOWED_AI_JOB_TYPES`, 400 antes de enqueue); (3) `system_prompt` retirado del contrato HTTP `getActivePromptContract`; (4) `trigger_event` validado por `z.enum`; (5) whitelist de `status` de conversación en `set_conversation_status`; (6) guard ReDoS (cap de longitud) en operador `matches` de automation; (7) `/omni/health` deja de exponer flags de existencia de tablas. Nuevo test offline `tests/omniHardening.test.js` (10 asserts) + ReDoS assert en `omniAutomationConditions`; registrado en `test:core` y `wave4-exit-gate`. `gate:local` 0 lint / tests OK, `wave4:exit-gate` `ready_for_wave5: true`. Todo flag-gated OFF + operator-auth — sin impacto en prod. Pendiente humano: 3 checks de staging + quitar `do-not-merge`.
+
 **2026-06-22 (Omni issue-and-fix — PR #406 Bugbot):** `/issue-and-fix` sobre `feat/omni-wave3`: emit `message.ingested` post-commit (`OMNI_EVENT_BUS_ENABLED`); lookup conversación solo por `(contact_id, channel, channel_conversation_id)`; reply API pasa `contact_id` en hint; reglas automation con `{}` no matchean; registry `system_prompt` aplicado en jobs `suggest` vía `agentCore.systemPrompt`. WAVE 4 WIP quedó en stash local (no incluido). Staging soak + flags: [`OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md).
 
 **2026-06-22 (Omni WAVE 3 ship procedure — PR #406):** Rama `feat/omni-wave3` pusheada; PR [#406](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/406) abierta (4 commits: issue-and-fix + WAVE 3 + PDF docs + bootstrap config import fix). Gates locales: `gate:local` OK, `wave3:exit-gate` OK (`ready_for_wave4`), `test:omni:parity` OK, `omni:migrate` OK (001–003), `smoke:prod` OK. Staging/prod rollout doc: [`orientation/OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md). **Pendiente operador:** merge PR → WAVE 2 soak 24h/canal en staging → WAVE 3 flags → prod deploy con `OMNI_*` OFF.

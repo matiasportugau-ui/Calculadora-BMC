@@ -27,6 +27,7 @@ Los archivos **no** sustituyen a `git tag` para releases compartidos: sirven com
 1. **Arranque:** `npm run workspace:start`
 2. **Desarrollo:** `npm run dev:full` — API `http://localhost:3001/health`, Vite `http://localhost:5173`
 3. **Antes de un cambio grande:** `npm run expert:checkpoint -- --message="antes de refactor X"`
+3.5. **Pre-PR (revisión + fix local):** `/issue-and-fix` según [`PROCEDIMIENTO-PRE-PR-LOCAL.md`](../PROCEDIMIENTO-PRE-PR-LOCAL.md) — reemplaza Cursor Agent Review si `insufficient funds`
 4. **Calidad:** `npm run gate:local` o `npm run gate:local:full`
 5. **Pre-deploy (API local o `BMC_API_BASE`):** `npm run pre-deploy`
 6. **Producción:** deploy según [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](../../../.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md); verificación `npm run smoke:prod`

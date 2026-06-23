@@ -16,8 +16,13 @@ import {
   runAutomationForEvent,
   simulateAutomationRule,
 } from "../lib/omni/orchestrator/automationEngine.js";
-import { runAdHocAiJob, runAiJobById } from "../lib/omni/orchestrator/aiWorker.js";
-import { listModelRegistry, listPromptRegistry } from "../lib/omni/orchestrator/aiRegistry.js";
+import { runAdHocAiJob, runAiJobById, ALLOWED_AI_JOB_TYPES } from "../lib/omni/orchestrator/aiWorker.js";
+import { listModelRegistry, listPromptRegistry, getActivePromptContract } from "../lib/omni/orchestrator/aiRegistry.js";
+import { createDeal, listDeals, updateDeal } from "../lib/omni/deals/dealService.js";
+import { syncDealToCrm } from "../lib/omni/deals/syncCrm.js";
+import { listSuggestions, resolveSuggestion } from "../lib/omni/orchestrator/suggestions.js";
+import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/evalFeedback.js";
+import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 
 function requireOmniDb(req, res, next) {
   const pool = getOmniPool(config.databaseUrl);
@@ -33,7 +38,9 @@ const router = Router();
 router.get("/omni/health", requireOmniDb, async (req, res) => {
   try {
     const health = await omniHealthCheck(req.omniPool);
-    res.status(health.ok ? 200 : 503).json({ ok: health.ok, ...health });
+    // Public probe: expose only liveness + version. Table-existence flags
+    // (has_contacts/has_dedup) are schema reconnaissance — keep them out.
+    res.status(health.ok ? 200 : 503).json({ ok: health.ok, schema_version: health.schema_version });
   } catch (e) {
     res.status(503).json({ ok: false, error: e.message });
   }
@@ -260,9 +267,14 @@ router.get(
   },
 );
 
+// Single source of truth for automation trigger events. The engine only
+// evaluates "message.ingested" today (automationEngine.js); reject anything
+// else at creation time so malformed rules can't persist.
+const ALLOWED_TRIGGER_EVENTS = ["message.ingested"];
+
 const automationRuleSchema = z.object({
   name: z.string().min(1).max(200),
-  trigger_event: z.string().min(1).max(50),
+  trigger_event: z.enum(ALLOWED_TRIGGER_EVENTS),
   conditions: z.record(z.unknown()).default({}),
   actions: z.array(z.record(z.unknown())).default([]),
   priority: z.number().int().optional(),
@@ -385,6 +397,10 @@ router.post(
     const conversationId = req.body?.conversation_id;
     const channel = req.body?.channel;
 
+    if (!ALLOWED_AI_JOB_TYPES.includes(jobType)) {
+      return res.status(400).json({ ok: false, error: "invalid_job_type" });
+    }
+
     if (req.body?.job_id) {
       const result = await runAiJobById(req.omniPool, req.body.job_id, { logger: req.log });
       return res.status(result.ok ? 200 : 400).json(result);
@@ -406,6 +422,145 @@ router.post(
       req.log,
     );
     res.status(result.ok ? 200 : 400).json(result);
+  },
+);
+
+router.get(
+  "/internal/omni/prompts/:taskKey/active",
+  requireServiceOrUser({ module: "canales", minLevel: "read" }),
+  requireOmniDb,
+  async (req, res) => {
+    const channel = req.query.channel ? String(req.query.channel) : null;
+    const contract = await getActivePromptContract(req.omniPool, req.params.taskKey, channel);
+    res.json({ ok: true, ...contract });
+  },
+);
+
+router.get(
+  "/omni/deals",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const deals = await listDeals(req.omniPool, req.query);
+    res.json({ ok: true, deals });
+  },
+);
+
+router.post(
+  "/omni/deals",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const { contact_id, title, value_usd, stage, source_channel, source_conversation_id } = req.body || {};
+    if (!contact_id || !title) {
+      return res.status(400).json({ ok: false, error: "missing_contact_id_or_title" });
+    }
+    const normalized = normalizeStage(stage);
+    if (stage != null && !normalized) {
+      return res.status(400).json({ ok: false, error: "invalid_stage" });
+    }
+    const deal = await createDeal(req.omniPool, {
+      contact_id,
+      title,
+      value_usd,
+      stage: normalized,
+      source_channel,
+      source_conversation_id,
+      owner_agent_id: req.user?.email || req.user?.id || null,
+      properties: req.body?.properties || {},
+    });
+    res.status(201).json({ ok: true, deal });
+  },
+);
+
+router.patch(
+  "/omni/deals/:id",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const result = await updateDeal(req.omniPool, req.params.id, req.body || {});
+    if (!result.ok) {
+      return res.status(result.error === "deal_not_found" ? 404 : 400).json(result);
+    }
+    let sync = null;
+    if (config.omniDealsSheetsAuthority === false || req.body?.sync_crm) {
+      sync = await syncDealToCrm(result.deal);
+    }
+    res.json({ ok: true, deal: result.deal, sync });
+  },
+);
+
+router.get(
+  "/omni/suggestions",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const suggestions = await listSuggestions(req.omniPool, req.query);
+    res.json({ ok: true, suggestions });
+  },
+);
+
+router.post(
+  "/omni/suggestions/:id/accept",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const result = await resolveSuggestion(req.omniPool, req.params.id, "accept", {
+      actor: req.user?.email || req.user?.id,
+    });
+    if (!result.ok) return res.status(404).json(result);
+
+    const meta = result.suggestion.metadata || {};
+    await recordOmniPromptEval(req.omniPool, {
+      task_key: "suggest",
+      prompt_version: meta.prompt_version ?? 1,
+      suggestion_id: result.suggestion.id,
+      rating: "accepted",
+      channel: result.suggestion.channel,
+      question: req.body?.question,
+      generated_text: result.suggestion.body,
+      conversation_id: result.suggestion.conversation_id,
+      metadata: { actor: result.actor },
+    }).catch(() => {});
+
+    res.json(result);
+  },
+);
+
+router.post(
+  "/omni/suggestions/:id/reject",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const result = await resolveSuggestion(req.omniPool, req.params.id, "reject", {
+      actor: req.user?.email || req.user?.id,
+    });
+    if (!result.ok) return res.status(404).json(result);
+
+    const meta = result.suggestion.metadata || {};
+    await recordOmniPromptEval(req.omniPool, {
+      task_key: "suggest",
+      prompt_version: meta.prompt_version ?? 1,
+      suggestion_id: result.suggestion.id,
+      rating: "rejected",
+      channel: result.suggestion.channel,
+      question: req.body?.question,
+      generated_text: result.suggestion.body,
+      conversation_id: result.suggestion.conversation_id,
+      metadata: { actor: result.actor },
+    }).catch(() => {});
+
+    res.json(result);
+  },
+);
+
+router.get(
+  "/omni/ai/eval",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const stats = await getPromptEvalStats(req.omniPool, req.query.task_key || "suggest");
+    res.json({ ok: true, stats });
   },
 );
 
