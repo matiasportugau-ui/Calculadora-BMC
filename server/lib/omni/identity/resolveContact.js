@@ -10,48 +10,79 @@ import {
 
 /**
  * @param {import("pg").PoolClient} client
+ * @param {string} sql
+ * @param {unknown[]} params
+ */
+async function findContact(client, sql, params) {
+  const { rows } = await client.query(sql, params);
+  return rows[0] || null;
+}
+
+/**
+ * @param {import("pg").PoolClient} client
  * @param {{ contact_hint: object; channel: string; source?: string }} args
  */
 export async function resolveContact(client, { contact_hint: hint, channel, source }) {
+  if (hint.contact_id) {
+    const row = await findContact(
+      client,
+      `SELECT id, integration_uuid FROM omni_contacts WHERE id = $1 LIMIT 1`,
+      [hint.contact_id],
+    );
+    if (row) {
+      return { contact_id: row.id, created: false, integration_uuid: row.integration_uuid };
+    }
+  }
+
   const waPhone = normalizeWaPhone(hint.wa_phone || hint.phone);
   const mlUserId = normalizeMlUserId(hint.ml_user_id);
   const email = normalizeEmail(hint.email);
   const integrationUuid = buildIntegrationUuid(hint, channel);
 
-  const lookups = [];
-  const params = [];
-  let i = 1;
+  // Priority order — avoid OR picking the wrong contact when identifiers diverge.
+  const byUuid = await findContact(
+    client,
+    `SELECT id, integration_uuid FROM omni_contacts WHERE integration_uuid = $1 LIMIT 1`,
+    [integrationUuid],
+  );
+  if (byUuid) {
+    return { contact_id: byUuid.id, created: false, integration_uuid: byUuid.integration_uuid };
+  }
 
-  if (waPhone) {
-    lookups.push(`wa_phone = $${i++}`);
-    params.push(waPhone);
-  }
-  if (mlUserId != null) {
-    lookups.push(`ml_user_id = $${i++}`);
-    params.push(mlUserId);
-  }
-  if (email) {
-    lookups.push(`lower(email) = $${i++}`);
-    params.push(email);
-  }
-  if (hint.chrome_ext_contact_id) {
-    lookups.push(`chrome_ext_contact_id = $${i++}`);
-    params.push(hint.chrome_ext_contact_id);
-  }
-  lookups.push(`integration_uuid = $${i++}`);
-  params.push(integrationUuid);
-
-  if (lookups.length) {
-    const { rows } = await client.query(
-      `SELECT id, integration_uuid FROM omni_contacts
-       WHERE ${lookups.join(" OR ")}
-       ORDER BY updated_at DESC
-       LIMIT 1`,
-      params,
+  if (channel === "wa" && waPhone) {
+    const row = await findContact(
+      client,
+      `SELECT id, integration_uuid FROM omni_contacts WHERE wa_phone = $1 LIMIT 1`,
+      [waPhone],
     );
-    if (rows[0]) {
-      return { contact_id: rows[0].id, created: false, integration_uuid: rows[0].integration_uuid };
-    }
+    if (row) return { contact_id: row.id, created: false, integration_uuid: row.integration_uuid };
+  }
+
+  if (channel === "ml" && mlUserId != null) {
+    const row = await findContact(
+      client,
+      `SELECT id, integration_uuid FROM omni_contacts WHERE ml_user_id = $1 LIMIT 1`,
+      [mlUserId],
+    );
+    if (row) return { contact_id: row.id, created: false, integration_uuid: row.integration_uuid };
+  }
+
+  if (channel === "email" && email) {
+    const row = await findContact(
+      client,
+      `SELECT id, integration_uuid FROM omni_contacts WHERE lower(email) = $1 LIMIT 1`,
+      [email],
+    );
+    if (row) return { contact_id: row.id, created: false, integration_uuid: row.integration_uuid };
+  }
+
+  if (hint.chrome_ext_contact_id) {
+    const row = await findContact(
+      client,
+      `SELECT id, integration_uuid FROM omni_contacts WHERE chrome_ext_contact_id = $1 LIMIT 1`,
+      [hint.chrome_ext_contact_id],
+    );
+    if (row) return { contact_id: row.id, created: false, integration_uuid: row.integration_uuid };
   }
 
   const name = hint.name ? String(hint.name).slice(0, 255) : null;

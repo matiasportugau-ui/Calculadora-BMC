@@ -37,7 +37,7 @@ export async function resolveConversation(client, {
         [rows[0].id, subject],
       );
     }
-    return { conversation_id: rows[0].id, created: false };
+    return { conversation_id: rows[0].id, created: false, contact_id };
   }
 
   const properties = source ? { last_ingest_source: source } : {};

@@ -79,6 +79,9 @@ import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
 import omniRouter from "./routes/omni.js";
 import { shadowWriteWaWebhook } from "./lib/omni/adapters/waWebhook.js";
+import { getOmniPool } from "./lib/omni/omniDb.js";
+import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
+import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -1172,6 +1175,7 @@ let stopTraktimeMirror = () => {};
 let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
+let stopOmniAiWorker = () => {};
 
 const server = app.listen(config.port, async () => {
   logger.info(
@@ -1235,6 +1239,14 @@ const server = app.listen(config.port, async () => {
     stopWaFollowups = startWaFollowupsWorker({ logger, pool: waPool });
     logger.info("WA sla + followups workers started");
   }
+
+  // Omni WAVE 3 — event bus subscribers + AI worker (flags default OFF)
+  wireOmniOrchestration({ config, logger });
+  const omniPool = getOmniPool(config.databaseUrl);
+  if (omniPool && config.omniAiOrchestratorEnabled) {
+    stopOmniAiWorker = startOmniAiWorker({ config, logger, pool: omniPool });
+    logger.info("Omni AI worker started");
+  }
 });
 
 // ── Graceful shutdown ──
@@ -1253,6 +1265,7 @@ function shutdown(signal) {
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
+  try { stopOmniAiWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniAiWorker failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");

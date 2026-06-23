@@ -1,5 +1,5 @@
 // Email parity helpers (offline) — node tests/omniEmailParity.test.js
-import { emailIngestToOmniEvent, emailMessageIdHash } from "../server/lib/omni/adapters/emailIngest.js";
+import { emailIngestToOmniEvent, emailMessageIdHash, emailContentHash } from "../server/lib/omni/adapters/emailIngest.js";
 
 let passed = 0;
 let failed = 0;
@@ -20,6 +20,8 @@ const h3 = emailMessageIdHash("msg-xyz");
 
 assert("hash stable", h1 === h2);
 assert("hash differs", h1 !== h3);
+assert("empty messageId returns null", emailMessageIdHash("") === null);
+assert("content hash differs by body", emailContentHash({ remitente: "a@b.com", asunto: "Hi", cuerpo: "A" }) !== emailContentHash({ remitente: "a@b.com", asunto: "Hi", cuerpo: "B" }));
 
 const ev = emailIngestToOmniEvent({
   cuerpo: "Consulta paneles",

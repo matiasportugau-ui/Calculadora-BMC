@@ -5,6 +5,39 @@ import { getOmniPool } from "./omniDb.js";
 import { parseOmniInboundEvent } from "./types.js";
 import { resolveContact } from "./identity/resolveContact.js";
 import { resolveConversation } from "./identity/resolveConversation.js";
+import { emit } from "./eventBus.js";
+import { config as appConfig } from "../../config.js";
+
+/**
+ * @param {import("pg").PoolClient} client
+ * @param {string} idempotencyKey
+ */
+async function loadDuplicateResult(client, idempotencyKey) {
+  const { rows: dedupRows } = await client.query(
+    `SELECT message_id FROM omni_ingest_dedup WHERE idempotency_key = $1`,
+    [idempotencyKey],
+  );
+  const messageId = dedupRows[0]?.message_id;
+  if (!messageId) return null;
+
+  const msgRow = await client.query(
+    `SELECT id, conversation_id FROM omni_messages WHERE id = $1`,
+    [messageId],
+  );
+  const convRow = msgRow.rows[0]
+    ? await client.query(
+        `SELECT contact_id FROM omni_conversations WHERE id = $1`,
+        [msgRow.rows[0].conversation_id],
+      )
+    : { rows: [] };
+
+  return {
+    duplicate: true,
+    message_id: messageId,
+    conversation_id: msgRow.rows[0]?.conversation_id ?? null,
+    contact_id: convRow.rows[0]?.contact_id ?? null,
+  };
+}
 
 /**
  * @param {import("./types.js").OmniInboundEvent | object} rawEvent
@@ -30,31 +63,6 @@ export async function normalizeAndPersist(rawEvent, opts = {}) {
   try {
     await client.query("BEGIN");
 
-    const dedupExisting = await client.query(
-      `SELECT message_id FROM omni_ingest_dedup WHERE idempotency_key = $1`,
-      [event.idempotency_key],
-    );
-    if (dedupExisting.rows[0]?.message_id) {
-      const msgRow = await client.query(
-        `SELECT id, conversation_id FROM omni_messages WHERE id = $1`,
-        [dedupExisting.rows[0].message_id],
-      );
-      const convRow = msgRow.rows[0]
-        ? await client.query(
-            `SELECT contact_id FROM omni_conversations WHERE id = $1`,
-            [msgRow.rows[0].conversation_id],
-          )
-        : { rows: [] };
-      await client.query("COMMIT");
-      return {
-        duplicate: true,
-        message_id: dedupExisting.rows[0].message_id,
-        conversation_id: msgRow.rows[0]?.conversation_id ?? null,
-        contact_id: convRow.rows[0]?.contact_id ?? null,
-        trace_id: event.trace_id ?? null,
-      };
-    }
-
     await client.query(
       `INSERT INTO omni_ingest_dedup (idempotency_key, channel, source)
        VALUES ($1, $2, $3)
@@ -62,19 +70,19 @@ export async function normalizeAndPersist(rawEvent, opts = {}) {
       [event.idempotency_key, event.channel, event.source],
     );
 
-    const dedupRace = await client.query(
-      `SELECT message_id FROM omni_ingest_dedup WHERE idempotency_key = $1`,
+    const { rows: lockedDedup } = await client.query(
+      `SELECT message_id FROM omni_ingest_dedup WHERE idempotency_key = $1 FOR UPDATE`,
       [event.idempotency_key],
     );
-    if (dedupRace.rows[0]?.message_id) {
+
+    if (!lockedDedup[0]) {
+      throw new Error("omni_dedup_row_missing");
+    }
+
+    if (lockedDedup[0].message_id) {
+      const dup = await loadDuplicateResult(client, event.idempotency_key);
       await client.query("COMMIT");
-      return {
-        duplicate: true,
-        message_id: dedupRace.rows[0].message_id,
-        conversation_id: null,
-        contact_id: null,
-        trace_id: event.trace_id ?? null,
-      };
+      return { ...dup, trace_id: event.trace_id ?? null };
     }
 
     const contact = await resolveContact(client, {
@@ -129,15 +137,28 @@ export async function normalizeAndPersist(rawEvent, opts = {}) {
 
     await client.query("COMMIT");
 
-    return {
+    const result = {
       duplicate: false,
-      contact_id: contact.contact_id,
+      contact_id: conversation.contact_id || contact.contact_id,
       conversation_id: conversation.conversation_id,
       message_id: messageId,
       contact_created: contact.created,
       conversation_created: conversation.created,
       trace_id: event.trace_id ?? null,
+      channel: event.channel,
+      source: event.source,
+      message: event.message,
     };
+
+    if (appConfig.omniEventBusEnabled) {
+      await emit("message.ingested", {
+        ...result,
+        body: event.message.body,
+        logger: opts.logger,
+      });
+    }
+
+    return result;
   } catch (e) {
     await client.query("ROLLBACK").catch(() => {});
     throw e;
