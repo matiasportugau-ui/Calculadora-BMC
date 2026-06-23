@@ -32,6 +32,12 @@ if (process.env.DATABASE_URL && process.env.SKIP_RECONCILE_DEALS !== "1") {
   run("reconcile_deals_dry", "node", ["scripts/omni-reconcile-deals.mjs", "--dry-run"]);
 }
 
+// Opt-in self-provisioning E2E (HITL/H4/F3) — off by default so CI/normal runs are
+// untouched and the destructive throwaway-DB path only runs when explicitly requested.
+if (process.env.OMNI_E2E === "1") {
+  run("omni_local_e2e", "bash", ["scripts/omni-local-e2e.sh"]);
+}
+
 const report = {
   wave: 4,
   at: new Date().toISOString(),
