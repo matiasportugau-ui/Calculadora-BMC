@@ -8,6 +8,12 @@ import { createDeal } from "../deals/dealService.js";
 import { startOmniSpan } from "../otel.js";
 
 /**
+ * Allowed conversation statuses for the set_conversation_status action.
+ * Seed default is 'open' (001_core.sql); standard inbox lifecycle states.
+ */
+export const ALLOWED_CONVERSATION_STATUSES = ["open", "pending", "snoozed", "closed"];
+
+/**
  * @param {import('pg').Pool} pool
  * @param {object} payload — message.ingested
  * @param {{ simulate?: boolean }} opts
@@ -100,6 +106,9 @@ async function executeAction(pool, action, payload, ctx) {
       return { type, priority: params.priority };
     }
     case "set_conversation_status": {
+      if (!ALLOWED_CONVERSATION_STATUSES.includes(params.status)) {
+        return { type, skipped: true, reason: "invalid_status", status: params.status };
+      }
       await pool.query(
         `UPDATE omni_conversations SET status = $2, updated_at = now() WHERE id = $1`,
         [payload.conversation_id, params.status],

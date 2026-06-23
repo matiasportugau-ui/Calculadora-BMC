@@ -16,7 +16,7 @@ import {
   runAutomationForEvent,
   simulateAutomationRule,
 } from "../lib/omni/orchestrator/automationEngine.js";
-import { runAdHocAiJob, runAiJobById } from "../lib/omni/orchestrator/aiWorker.js";
+import { runAdHocAiJob, runAiJobById, ALLOWED_AI_JOB_TYPES } from "../lib/omni/orchestrator/aiWorker.js";
 import { listModelRegistry, listPromptRegistry, getActivePromptContract } from "../lib/omni/orchestrator/aiRegistry.js";
 import { createDeal, listDeals, updateDeal } from "../lib/omni/deals/dealService.js";
 import { syncDealToCrm } from "../lib/omni/deals/syncCrm.js";
@@ -38,7 +38,9 @@ const router = Router();
 router.get("/omni/health", requireOmniDb, async (req, res) => {
   try {
     const health = await omniHealthCheck(req.omniPool);
-    res.status(health.ok ? 200 : 503).json({ ok: health.ok, ...health });
+    // Public probe: expose only liveness + version. Table-existence flags
+    // (has_contacts/has_dedup) are schema reconnaissance — keep them out.
+    res.status(health.ok ? 200 : 503).json({ ok: health.ok, schema_version: health.schema_version });
   } catch (e) {
     res.status(503).json({ ok: false, error: e.message });
   }
@@ -265,9 +267,14 @@ router.get(
   },
 );
 
+// Single source of truth for automation trigger events. The engine only
+// evaluates "message.ingested" today (automationEngine.js); reject anything
+// else at creation time so malformed rules can't persist.
+const ALLOWED_TRIGGER_EVENTS = ["message.ingested"];
+
 const automationRuleSchema = z.object({
   name: z.string().min(1).max(200),
-  trigger_event: z.string().min(1).max(50),
+  trigger_event: z.enum(ALLOWED_TRIGGER_EVENTS),
   conditions: z.record(z.unknown()).default({}),
   actions: z.array(z.record(z.unknown())).default([]),
   priority: z.number().int().optional(),
@@ -389,6 +396,10 @@ router.post(
     const messageId = req.body?.message_id;
     const conversationId = req.body?.conversation_id;
     const channel = req.body?.channel;
+
+    if (!ALLOWED_AI_JOB_TYPES.includes(jobType)) {
+      return res.status(400).json({ ok: false, error: "invalid_job_type" });
+    }
 
     if (req.body?.job_id) {
       const result = await runAiJobById(req.omniPool, req.body.job_id, { logger: req.log });

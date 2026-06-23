@@ -40,12 +40,19 @@ function evalClause(clause, ctx) {
       return Number(actual) <= Number(expected);
     case "contains":
       return String(actual || "").toLowerCase().includes(String(expected || "").toLowerCase());
-    case "matches":
+    case "matches": {
+      // ReDoS guard: the pattern is operator-supplied (automation rule). Cap
+      // pattern and input length so a catastrophic-backtracking regex (e.g.
+      // "(a+)+b") can't lock the event loop.
+      const pattern = String(expected);
+      const input = String(actual || "");
+      if (pattern.length > 200 || input.length > 10000) return false;
       try {
-        return new RegExp(String(expected), "i").test(String(actual || ""));
+        return new RegExp(pattern, "i").test(input);
       } catch {
         return false;
       }
+    }
     case "exists":
       return actual != null && actual !== "";
     default:

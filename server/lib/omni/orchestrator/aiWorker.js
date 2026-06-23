@@ -20,11 +20,21 @@ const CATEGORY_MAP = {
 };
 
 /**
+ * Allowlist of AI job types. Mirrors the DB CHECK constraint in
+ * server/migrations/omni/002_ai_automation.sql (omni_ai_jobs_type_valid).
+ * Single source of truth so routes/actions validate before hitting the DB.
+ */
+export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "embed"];
+
+/**
  * @param {import('pg').Pool} pool
  * @param {object} job
  */
 export async function enqueueAiJob(pool, job) {
   if (!pool) return null;
+  if (!ALLOWED_AI_JOB_TYPES.includes(job.job_type)) {
+    throw new Error("invalid_job_type");
+  }
   const { rows } = await pool.query(
     `INSERT INTO omni_ai_jobs (job_type, message_id, conversation_id, channel, input_json, status)
      VALUES ($1, $2, $3, $4, $5::jsonb, 'pending')
@@ -236,7 +246,6 @@ async function markJobFailed(pool, jobId, error) {
     `UPDATE omni_ai_jobs SET
        status = CASE WHEN attempts >= 2 THEN 'dead' ELSE 'failed' END,
        error = $2,
-       attempts = attempts + 1,
        completed_at = now()
      WHERE id = $1`,
     [jobId, error],
@@ -258,7 +267,7 @@ export async function runAiJobById(pool, jobId, opts = {}) {
   }
 
   await pool.query(
-    `UPDATE omni_ai_jobs SET status = 'running', started_at = now() WHERE id = $1`,
+    `UPDATE omni_ai_jobs SET status = 'running', started_at = now(), attempts = attempts + 1 WHERE id = $1`,
     [jobId],
   );
   await processAiJob(pool, { ...job, id: jobId }, opts.logger);

@@ -72,7 +72,8 @@ export async function getActivePromptContract(pool, taskKey, channel = null) {
     prompt_version: prompt?.version ?? null,
     model_version: model?.version ?? null,
     enabled: Boolean(prompt && model),
-    system_prompt: prompt?.system_prompt ?? null,
+    // system_prompt intentionally omitted — it contains internal business
+    // logic and this contract is returned over HTTP (/internal/omni/prompts/...).
     model: model
       ? { provider: model.provider, model_id: model.model_id, max_tokens: model.max_tokens }
       : null,

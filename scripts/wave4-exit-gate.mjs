@@ -21,6 +21,7 @@ run("gate_local", "npm", ["run", "gate:local"]);
 run("omni_deals_stage", "node", ["tests/omniDealsStage.test.js"]);
 run("omni_automation_conditions", "node", ["tests/omniAutomationConditions.test.js"]);
 run("omni_ai_worker_offline", "node", ["tests/omniAiWorker.test.js"]);
+run("omni_hardening", "node", ["tests/omniHardening.test.js"]);
 run("test_omni_parity", "npm", ["run", "test:omni:parity"]);
 
 if (process.env.SKIP_SMOKE_OMNI !== "1") {
