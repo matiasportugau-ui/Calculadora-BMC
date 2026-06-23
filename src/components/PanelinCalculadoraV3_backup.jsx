@@ -4461,6 +4461,18 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     }
   }, [showToast]);
 
+  // Deep-link: `?openDrive=<folderId>` opens a saved Drive quote on page load (one-click edit from the
+  // leads sheet). Inert unless the param is present; reuses the existing Drive-load flow. Runs once.
+  const openDriveDoneRef = useRef(false);
+  useEffect(() => {
+    if (openDriveDoneRef.current) return;
+    const folderId = new URLSearchParams(window.location.search).get("openDrive");
+    if (!folderId) return;
+    openDriveDoneRef.current = true;
+    setShowDrivePanel(true);      // surfaces the Drive panel so sign-in is available if not yet authed
+    handleDriveLoad(folderId);    // on success this loads the .bmc.json and closes the panel
+  }, [handleDriveLoad]);
+
   const handleDriveDelete = useCallback(async (folderId) => {
     if (!confirm("¿Eliminar esta cotización de Google Drive?")) return;
     try {
