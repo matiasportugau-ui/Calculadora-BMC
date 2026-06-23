@@ -1,159 +1,131 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { mlFetch } from '../utils/mlFetch.js';
 
+// All hooks target the LIVE panelin-calc backend ML routes (server/index.js).
+// Endpoints that the roadmap imagined but the backend does NOT expose
+// (ads, analytics, message-packs, listing visits, ai/daily-brief) are
+// intentionally absent — adding them here would only produce 404s.
+
 const BASE_KEY = ['ml'];
 const STALE_TIME = 30_000;
 const GC_TIME = 5 * 60_000;
 
+const qs = (params = {}) => {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') sp.set(k, v);
+  });
+  const s = sp.toString();
+  return s ? `?${s}` : '';
+};
+
+/** OAuth connection status — GET /auth/ml/status → { ok, userId, scope, updatedAt, expiresAt } */
 export function useConnectorStatus() {
   return useQuery({
     queryKey: [...BASE_KEY, 'status'],
-    queryFn: () => mlFetch('/auth/ml/status'),
+    queryFn: () =>
+      mlFetch('/auth/ml/status').catch((err) => {
+        if (err.status === 404) return { ok: false };
+        throw err;
+      }),
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
+    retry: 0,
   });
 }
 
+/** Seller profile — GET /ml/users/me */
+export function useUserMe() {
+  return useQuery({
+    queryKey: [...BASE_KEY, 'users', 'me'],
+    queryFn: () => mlFetch('/ml/users/me'),
+    staleTime: 5 * 60_000,
+    gcTime: GC_TIME,
+    retry: 0,
+  });
+}
+
+/** Listings — GET /ml/listings?status=&limit=&offset= → { results, paging } */
 export function useListings(params = {}) {
   return useQuery({
     queryKey: [...BASE_KEY, 'listings', params],
-    queryFn: () => mlFetch(`/ml/listings?limit=${params.limit || 50}&offset=${params.offset || 0}`),
+    queryFn: () =>
+      mlFetch(`/ml/listings${qs({ status: params.status, limit: params.limit || 50, offset: params.offset || 0 })}`),
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
   });
 }
 
-export function useListingVisits(id) {
+/** Single item detail — GET /ml/items/:id */
+export function useItem(id) {
   return useQuery({
-    queryKey: [...BASE_KEY, 'listing', id, 'visits'],
-    queryFn: () => mlFetch(`/ml/listings/${id}/visits?last=7d`),
+    queryKey: [...BASE_KEY, 'item', id],
+    queryFn: () => mlFetch(`/ml/items/${id}`),
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
     enabled: !!id,
   });
 }
 
-export function useUnreadMessages() {
-  return useQuery({
-    queryKey: [...BASE_KEY, 'messages', 'unread'],
-    queryFn: () => mlFetch('/ml/messages/unread'),
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-  });
-}
-
-export function useMessagePack(packId) {
-  return useQuery({
-    queryKey: [...BASE_KEY, 'message-pack', packId],
-    queryFn: () => mlFetch(`/ml/messages/packs/${packId}`),
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-    enabled: !!packId,
-  });
-}
-
-export function useCampaigns() {
-  return useQuery({
-    queryKey: [...BASE_KEY, 'campaigns'],
-    queryFn: () => mlFetch('/ml/ads/campaigns'),
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-  });
-}
-
-export function useCampaignAds(campaignId) {
-  return useQuery({
-    queryKey: [...BASE_KEY, 'campaign', campaignId, 'ads'],
-    queryFn: () => mlFetch(`/ml/ads/campaigns/${campaignId}/ads`),
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-    enabled: !!campaignId,
-  });
-}
-
-export function useAdReports() {
-  return useQuery({
-    queryKey: [...BASE_KEY, 'ads', 'reports'],
-    queryFn: () => mlFetch('/ml/ads/reports/summary'),
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-  });
-}
-
-export function useReputation() {
-  return useQuery({
-    queryKey: [...BASE_KEY, 'analytics', 'reputation'],
-    queryFn: () => mlFetch('/ml/analytics/reputation'),
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-  });
-}
-
-export function useSales(params = {}) {
-  return useQuery({
-    queryKey: [...BASE_KEY, 'analytics', 'sales', params],
-    queryFn: () => mlFetch(`/ml/analytics/sales?limit=${params.limit || 50}&offset=${params.offset || 0}`),
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-  });
-}
-
-export function useItemQuality() {
-  return useQuery({
-    queryKey: [...BASE_KEY, 'analytics', 'items', 'quality'],
-    queryFn: () => mlFetch('/ml/analytics/items/quality'),
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-  });
-}
-
-export function useDailyBrief() {
-  return useQuery({
-    queryKey: [...BASE_KEY, 'ai', 'daily-brief'],
-    queryFn: () => mlFetch('/ai/daily-brief'),
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-  });
-}
-
-export function useUpdateListingStatus() {
+/**
+ * Update an item — PATCH /ml/items/:id (backend maps to ML PUT /items/:id).
+ * `updates` may include: price, available_quantity, status ('active'|'paused'|'closed'),
+ * attributes, and pictures: [{ source: 'https://…' }] to replace photos.
+ */
+export function useUpdateItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }) =>
-      mlFetch(`/ml/listings/${id}/status`, {
-        method: 'PATCH',
-        body: { status },
-      }),
-    onSuccess: () => {
+    mutationFn: ({ id, updates }) =>
+      mlFetch(`/ml/items/${id}`, { method: 'PATCH', body: updates }),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: [...BASE_KEY, 'item', id] });
       qc.invalidateQueries({ queryKey: [...BASE_KEY, 'listings'] });
     },
   });
 }
 
-export function useReplyToMessage() {
+/** Update an item description — POST /ml/items/:id/description { text } */
+export function useUpdateDescription() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ packId, text }) =>
-      mlFetch(`/ml/messages/packs/${packId}/reply`, {
-        method: 'POST',
-        body: { text },
-      }),
-    onSuccess: (_, { packId }) => {
-      qc.invalidateQueries({ queryKey: [...BASE_KEY, 'message-pack', packId] });
+    mutationFn: ({ id, text }) =>
+      mlFetch(`/ml/items/${id}/description`, { method: 'POST', body: { text } }),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: [...BASE_KEY, 'item', id] });
     },
   });
 }
 
-export function useUpdateCampaign() {
+/** Unanswered questions — GET /ml/questions?status=&limit=&offset= → { results, paging } */
+export function useQuestions(params = {}) {
+  return useQuery({
+    queryKey: [...BASE_KEY, 'questions', params],
+    queryFn: () =>
+      mlFetch(`/ml/questions${qs({ status: params.status || 'UNANSWERED', limit: params.limit || 50, offset: params.offset || 0 })}`),
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
+  });
+}
+
+/** Answer a question — POST /ml/questions/:id/answer { text } */
+export function useAnswerQuestion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...updates }) =>
-      mlFetch(`/ml/ads/campaigns/${id}`, {
-        method: 'PUT',
-        body: updates,
-      }),
+    mutationFn: ({ id, text }) =>
+      mlFetch(`/ml/questions/${id}/answer`, { method: 'POST', body: { text } }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [...BASE_KEY, 'campaigns'] });
+      qc.invalidateQueries({ queryKey: [...BASE_KEY, 'questions'] });
     },
+  });
+}
+
+/** Orders — GET /ml/orders?limit=&offset= → { results, paging } */
+export function useOrders(params = {}) {
+  return useQuery({
+    queryKey: [...BASE_KEY, 'orders', params],
+    queryFn: () =>
+      mlFetch(`/ml/orders${qs({ 'order.status': params.status, limit: params.limit || 50, offset: params.offset || 0 })}`),
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
   });
 }
