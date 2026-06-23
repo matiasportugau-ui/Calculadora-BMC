@@ -12,6 +12,20 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-23 (ML Manager re-cableado al backend live `panelin-calc`):** El esqueleto de `/hub/ml-manager`
+(shipped en PR #403) apuntaba a un *connector* separado inexistente (`VITE_ML_CONNECTOR_URL`) y a 13 endpoints
+fantasma (ads, analytics, message-packs, visits, ai/daily-brief). Re-cableado a la realidad: `mlFetch.js` ahora
+usa `getCalcApiBase()` (mismo backend que la calculadora, sin API key — auth OAuth server-side); `useMlConnector.js`
+reescrito a los 9 endpoints reales (`/auth/ml/status`, `/ml/users/me`, `/ml/listings`, `/ml/items/:id`,
+**PATCH `/ml/items/:id`**, **POST `/ml/items/:id/description`**, `/ml/questions`, POST answer, `/ml/orders`).
+Tabs reducidas a las respaldadas por backend: **Resumen / Publicaciones / Preguntas / Pedidos** (borradas Ads/Analítica/
+Mensajes/Envíos). La tab **Publicaciones** edita precio, stock, estado, **fotos** (vía `pictures:[{source:url}]` — ML
+descarga la URL) y descripción, con confirmación de dos pasos antes de escribir en vivo a MercadoLibre. Badge de
+conexión corregido a `status.ok`. La conexión OAuth ya existe y es persistente: token cifrado en
+`gs://bmc-ml-tokens` (GCS, sobrevive cold starts de Cloud Run), scope incluye `write`/`publish-sync`, último refresh
+2026-05-29 (recuperable). Verificado: ESLint limpio + `vite build` OK. Pendiente: si el refresh del token dormido
+falla, re-autorizar una vez vía `/auth/ml/start`. Clips de video NO disponibles por API para cuenta MLU doméstica.
+
 **2026-06-23 (Omni WAVE 4 local E2E gate — PR #407):** Agregado `npm run omni:local-e2e` — un gate E2E
 autoprovisionado (`scripts/omni-local-e2e.sh` + `scripts/omni-local-e2e.mjs`) que levanta su propio
 Postgres descartable, aplica migraciones omni y verifica los 3 *code paths* de las compuertas WAVE 4

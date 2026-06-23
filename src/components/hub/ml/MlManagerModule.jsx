@@ -4,25 +4,21 @@ import '../../admin-cotizaciones/styles.css';
 import { useConnectorStatus } from './hooks/useMlConnector.js';
 import OverviewTab from './tabs/OverviewTab.jsx';
 import ListingsTab from './tabs/ListingsTab.jsx';
-import MessagesTab from './tabs/MessagesTab.jsx';
-import AdsTab from './tabs/AdsTab.jsx';
-import ShipmentsTab from './tabs/ShipmentsTab.jsx';
-import AnalyticsTab from './tabs/AnalyticsTab.jsx';
+import QuestionsTab from './tabs/QuestionsTab.jsx';
+import OrdersTab from './tabs/OrdersTab.jsx';
 
 const tabDefs = [
   { key: 'overview', label: 'Resumen', component: OverviewTab },
   { key: 'listings', label: 'Publicaciones', component: ListingsTab },
-  { key: 'messages', label: 'Mensajes', component: MessagesTab },
-  { key: 'ads', label: 'Publicidad', component: AdsTab },
-  { key: 'shipments', label: 'Envíos', component: ShipmentsTab },
-  { key: 'analytics', label: 'Analítica', component: AnalyticsTab },
+  { key: 'questions', label: 'Preguntas', component: QuestionsTab },
+  { key: 'orders', label: 'Pedidos', component: OrdersTab },
 ];
 
 export default function MlManagerModule() {
   const [activeTab, setActiveTab] = useState('overview');
   const status = useConnectorStatus();
 
-  const hasToken = status.data?.access_token;
+  const connected = status.data?.ok === true;
 
   return (
     <div className="adminCot" data-skin="macos" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--ac-bg)' }}>
@@ -42,7 +38,7 @@ export default function MlManagerModule() {
           padding: '5px 12px',
           borderRadius: '20px',
           border: '1px solid',
-          ...(hasToken ? {
+          ...(connected ? {
             color: '#15803d',
             background: '#f0fdf4',
             borderColor: '#bbf7d0',
@@ -56,60 +52,39 @@ export default function MlManagerModule() {
             width: '7px',
             height: '7px',
             borderRadius: '50%',
-            background: hasToken ? 'var(--ac-success)' : 'var(--ac-error)',
+            background: connected ? 'var(--ac-success)' : 'var(--ac-error)',
           }} />
-          <span>{hasToken ? 'Cuenta conectada' : 'Sin cuenta'}</span>
+          <span>{connected ? 'Cuenta conectada' : 'Sin cuenta'}</span>
         </div>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '2px', borderBottom: '1.5px solid var(--ac-border)', paddingLeft: '24px', marginBottom: '20px' }}>
-        {tabDefs.map((tab) => {
-          const isUnread = tab.key === 'messages' && status.data?.unread_count > 0;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                padding: '9px 16px',
-                fontSize: '13px',
-                fontWeight: activeTab === tab.key ? '600' : '500',
-                cursor: 'pointer',
-                border: 'none',
-                background: 'none',
-                color: activeTab === tab.key ? 'var(--ac-accent)' : 'var(--ac-text-2)',
-                borderBottom: activeTab === tab.key ? '2.5px solid var(--ac-accent)' : '2.5px solid transparent',
-                marginBottom: '-1.5px',
-                position: 'relative',
-              }}
-            >
-              {tab.label}
-              {isUnread && (
-                <span style={{
-                  position: 'absolute',
-                  top: '6px',
-                  right: '6px',
-                  minWidth: '16px',
-                  height: '16px',
-                  background: 'var(--ac-error)',
-                  color: '#fff',
-                  borderRadius: '8px',
-                  fontSize: '9px',
-                  fontWeight: '700',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 4px',
-                }}>3</span>
-              )}
-            </button>
-          );
-        })}
+        {tabDefs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '9px 16px',
+              fontSize: '13px',
+              fontWeight: activeTab === tab.key ? '600' : '500',
+              cursor: 'pointer',
+              border: 'none',
+              background: 'none',
+              color: activeTab === tab.key ? 'var(--ac-accent)' : 'var(--ac-text-2)',
+              borderBottom: activeTab === tab.key ? '2.5px solid var(--ac-accent)' : '2.5px solid transparent',
+              marginBottom: '-1.5px',
+              position: 'relative',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
       <div style={{ flex: 1, paddingLeft: '24px', paddingRight: '24px', paddingBottom: '40px' }}>
-        <Suspense fallback={<div style={{ padding: '20px', color: 'var(--ac-text-2)' }}>Cargando...</div>}>
+        <Suspense fallback={<div style={{ padding: '20px', color: 'var(--ac-text-2)' }}>Cargando…</div>}>
           {tabDefs.map((tab) => {
             if (activeTab !== tab.key) return null;
             const Component = tab.component;
