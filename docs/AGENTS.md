@@ -195,3 +195,17 @@ Documentación de agentes especializados disponibles en el repositorio.
 - [SKILL.md](../.cursor/skills/bmc-docs-and-repos-organizer/SKILL.md)
 - [DocsOrganizer.md](./team/knowledge/DocsOrganizer.md)
 - [team/AGENTS.md](./team/AGENTS.md) — índice ampliado de agentes
+
+---
+
+## Issue and Fix / Pre-PR local
+
+**Skill:** `.cursor/skills/issue-and-fix/` + `.cursor/skills/bmc-issue-fix-reviewer/`
+
+**Rol:** Pipeline local pre-PR: Bugbot → fix → gates. Reemplaza Cursor Agent Review cuando falla por `insufficient funds`.
+
+**Procedimiento:** [team/PROCEDIMIENTO-PRE-PR-LOCAL.md](./team/PROCEDIMIENTO-PRE-PR-LOCAL.md)
+
+**Cuándo usar:** `/issue-and-fix`, pre-PR, `revisar y arreglar`, insufficient funds en Agent Review.
+
+**Referencias:** [team/AGENTS.md](./team/AGENTS.md) § Issue and Fix; `.claude/commands/issue-and-fix.md`
