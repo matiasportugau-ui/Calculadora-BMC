@@ -49,6 +49,7 @@ const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotiz
 const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
 const BugReportsList = lazy(() => import("./components/BugReportsList.jsx"));
 const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
+const BmcCrearPlanoModule = lazy(() => import("./components/BmcCrearPlanoModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
@@ -318,6 +319,16 @@ export default function App() {
             <RequireGrant module="plan-import" minLevel="read">
               <Suspense fallback={suspenseFallback}>
                 <BmcPlanImportModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/crear-plano"
+          element={
+            <RequireGrant module="plan-import" minLevel="read">
+              <Suspense fallback={suspenseFallback}>
+                <BmcCrearPlanoModule />
               </Suspense>
             </RequireGrant>
           }
