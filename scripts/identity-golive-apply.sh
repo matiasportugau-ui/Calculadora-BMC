@@ -21,6 +21,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIG_INIT="${REPO_ROOT}/supabase/migrations/20260601000001_identity_init.sql"
 MIG_SEED="${REPO_ROOT}/supabase/migrations/20260601000002_identity_seed_superadmins.sql"
+MIG_DRIVE_CONFIG="${REPO_ROOT}/supabase/migrations/20260624000001_user_drive_config.sql"
 
 color() { printf "\033[1;%sm%s\033[0m\n" "$1" "$2"; }
 say()   { color 36 "▶ $1"; }
@@ -46,6 +47,14 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$MIG_INIT" >/tmp/identity-init.out 2
   exit 3
 }
 ok "identity schema applied"
+
+say "Applying ${MIG_DRIVE_CONFIG}"
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$MIG_DRIVE_CONFIG" >/tmp/identity-drive-config.out 2>&1 || {
+  err "user_drive_config migration failed — see /tmp/identity-drive-config.out"
+  tail -40 /tmp/identity-drive-config.out
+  exit 3
+}
+ok "identity.user_drive_config applied"
 
 say "Verifying schema"
 TABLE_COUNT=$(psql "$DATABASE_URL" -t -A -c "select count(*) from pg_tables where schemaname='identity'")

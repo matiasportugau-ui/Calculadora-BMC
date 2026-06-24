@@ -12,6 +12,18 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-24 (Configurador de Carpeta Drive por usuario — tab "Drive"):** Cada usuario interno configura, una sola vez,
+la carpeta de Google Drive donde se guardan sus cotizaciones (resuelve "Sandra/Ramiro/Martín no pueden guardar"). El
+"Guardar" del panel Drive ahora usa el flujo **client-side por usuario** (`saveQuotation` con su propio token `drive.file`)
+hacia la carpeta configurada, en vez del service account a la carpeta única `DRIVE_QUOTE_FOLDER_ID`. Selección vía **Google
+Picker** (compatible con scope mínimo `drive.file`; degrada con "Picker no configurado" si falta `VITE_GOOGLE_API_KEY`),
+validación de permiso de escritura client-side, y persistencia en **Postgres** `identity.user_drive_config` (no Firestore).
+Sin carpeta configurada → se bloquea el guardado con aviso. **Nuevos:** migración `supabase/migrations/20260624000001_user_drive_config.sql`
+(aplicar con `scripts/identity-golive-apply.sh`), ruta `server/routes/driveConfig.js` (`GET`/`POST /api/drive/config`),
+`src/utils/driveConfigApi.js`, `src/components/DriveFolderConfig.jsx`, test `tests/drive-config-routes.test.js`. **Setup pendiente:**
+habilitar Google Picker API en GCP (proyecto 642127786762) + `VITE_GOOGLE_API_KEY` en `.env`/Vercel. Fase 2 (vista consolidada
+"todo de todos") fuera de alcance.
+
 **2026-06-23 (Omni WAVE 3+4 — FULLY OPERATIONAL en prod):** Activado el omnicanal end-to-end en producción y
 **probado** (ingest → classify → suggest Claude → HITL accept → H4 eval). Cloud Run `panelin-calc` rev ≥`00532`
 con **todos** los flags `OMNI_*`=1 (WA/ML/EMAIL shadow, event bus, AI orchestrator, automation; budget USD 50/día),

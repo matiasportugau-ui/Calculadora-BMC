@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { LAYOUT_OPTIONS } from "../pdf-templates/index.js";
+import DriveFolderConfig from "./DriveFolderConfig.jsx";
 
 const C = {
   bg: "#F5F5F7", surface: "#FFFFFF", surfaceAlt: "#FAFAFA",
@@ -60,6 +61,10 @@ export default function GoogleDrivePanel({
   provisionalQuotationCode,
   pdfLayout,
   onPdfLayoutChange,
+  driveFolderConfig,
+  driveAccessToken,
+  pickerConfigured = true,
+  onFolderConfigured,
 }) {
   const listRef = useRef(null);
 
@@ -169,6 +174,16 @@ export default function GoogleDrivePanel({
             </button>
           )}
         </div>
+
+        {/* Per-user Drive folder configurator (SPEC §6) */}
+        {isAuthenticated && (
+          <DriveFolderConfig
+            config={driveFolderConfig}
+            accessToken={driveAccessToken}
+            pickerConfigured={pickerConfigured}
+            onConfigured={onFolderConfigured}
+          />
+        )}
 
         {provisionalQuotationCode && (
           <div style={{

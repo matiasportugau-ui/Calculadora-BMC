@@ -2,7 +2,7 @@
 // src/utils/googleDrive.js — Client-side Google Drive API v3 wrapper +
 // Google Identity Services (GIS) auth, including OIDC userinfo for login.
 // ═══════════════════════════════════════════════════════════════════════════
-/* global google */
+/* global google, gapi */
 
 import {
   buildDriveClientFolderName,
@@ -21,6 +21,7 @@ const BMC_MIME = "application/json";
 const PDF_MIME = "application/pdf";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const GIS_SCRIPT_SELECTOR = 'script[data-gis-client="1"]';
+const GAPI_SCRIPT_SELECTOR = 'script[data-gapi-client="1"]';
 
 // XSS exposure trade-off: storing the access token in localStorage means any
 // script with JS access to this origin can read it. Acceptable for the
@@ -43,6 +44,7 @@ let _gsiLoadPromise = null;
 let _hasConsented = false;
 let _pendingErrorHandler = null;
 let _signInPromise = null;
+let _pickerLoadPromise = null;
 
 // ── localStorage persistence ─────────────────────────────────────────────────
 
@@ -136,6 +138,62 @@ export function loadGsiScript() {
   return _gsiLoadPromise;
 }
 
+/**
+ * Load the GAPI loader script + the `picker` module on demand. Mirrors
+ * loadGsiScript(): a failed load must not poison the cached promise.
+ */
+function loadPickerApi() {
+  if (typeof google !== "undefined" && google.picker) return Promise.resolve();
+  if (_pickerLoadPromise) return _pickerLoadPromise;
+  _pickerLoadPromise = new Promise((resolve, reject) => {
+    const onGapiReady = () => {
+      if (typeof gapi === "undefined" || !gapi.load) {
+        _pickerLoadPromise = null;
+        reject(new Error("No se pudo cargar el cargador de Google API (gapi)."));
+        return;
+      }
+      gapi.load("picker", {
+        callback: () => resolve(),
+        onerror: () => {
+          _pickerLoadPromise = null;
+          reject(new Error("No se pudo cargar Google Picker. Verificá tu conexión."));
+        },
+      });
+    };
+
+    if (typeof gapi !== "undefined" && gapi.load) {
+      onGapiReady();
+      return;
+    }
+
+    let existing = document.querySelector(GAPI_SCRIPT_SELECTOR);
+    if (existing?.dataset.gapiLoadState === "error") {
+      existing.remove();
+      existing = null;
+    }
+    const s = existing || document.createElement("script");
+    if (!existing) {
+      s.src = "https://apis.google.com/js/api.js";
+      s.async = true;
+      s.defer = true;
+      s.dataset.gapiClient = "1";
+      s.dataset.gapiLoadState = "loading";
+    }
+    s.addEventListener("load", () => {
+      s.dataset.gapiLoadState = "loaded";
+      onGapiReady();
+    }, { once: true });
+    s.addEventListener("error", () => {
+      s.dataset.gapiLoadState = "error";
+      _pickerLoadPromise = null;
+      s.remove();
+      reject(new Error("No se pudo cargar Google API. Verificá tu conexión o un bloqueador de scripts."));
+    }, { once: true });
+    if (!existing) document.head.appendChild(s);
+  });
+  return _pickerLoadPromise;
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 function getClientId() {
@@ -144,6 +202,32 @@ function getClientId() {
     window.__BMC_GOOGLE_CLIENT_ID ||
     ""
   )).trim();
+}
+
+// Google Picker needs a browser API key in addition to the OAuth token.
+function getApiKey() {
+  return ((
+    (typeof import.meta !== "undefined" && import.meta.env?.VITE_GOOGLE_API_KEY) ||
+    window.__BMC_GOOGLE_API_KEY ||
+    ""
+  )).trim();
+}
+
+/**
+ * Picker app/project id = the numeric prefix of the OAuth Client ID
+ * (e.g. "642127786762" from "642127786762-xxxx.apps.googleusercontent.com").
+ */
+function getPickerAppId() {
+  return getClientId().split("-")[0] || "";
+}
+
+/**
+ * True when the Google Picker can run: a Drive OAuth Client ID *and* a browser
+ * API key are both present. Mirrors isDriveConfigured() so the UI can show a
+ * clear "Picker no configurado" state instead of failing silently.
+ */
+export function isPickerConfigured() {
+  return !!getClientId() && !!getApiKey();
 }
 
 function isGisLoaded() {
@@ -156,6 +240,14 @@ export function isAuthenticated() {
 
 export function getCachedUser() {
   return _user;
+}
+
+/**
+ * Current Google OAuth access token (or null if expired/absent). Needed by the
+ * Google Picker (setOAuthToken) which runs outside the authFetch helper.
+ */
+export function getAccessToken() {
+  return isAuthenticated() ? _accessToken : null;
 }
 
 export function setAuthChangeCallback(cb) {
@@ -424,10 +516,14 @@ async function findOrCreateFolder(name, parentId = null) {
 }
 
 /**
- * Raíz BMC → carpeta cliente (RUT+nombre / nombre) → carpeta código de cotización.
+ * Raíz → carpeta cliente (RUT+nombre / nombre) → carpeta código de cotización.
+ *
+ * When `rootFolderId` is provided (the user's configured Drive folder), it is
+ * used as the root; otherwise the legacy auto-created "Panelin BMC Cotizaciones"
+ * folder under the user's Drive root is used.
  */
-async function ensureQuotationFolderPath(quotationCode, proyecto) {
-  const rootId = await findOrCreateFolder(APP_FOLDER_NAME);
+async function ensureQuotationFolderPath(quotationCode, proyecto, rootFolderId = null) {
+  const rootId = rootFolderId || await findOrCreateFolder(APP_FOLDER_NAME);
   const clientSegment = proyecto && typeof proyecto === "object"
     ? buildDriveClientFolderName(proyecto)
     : buildDriveClientFolderName({ nombre: proyecto || "", razonSocial: "", rut: "" });
@@ -476,6 +572,91 @@ async function findFileInFolder(folderId, fileName) {
   return files.length > 0 ? files[0] : null;
 }
 
+// ── Folder configurator (Picker + validation) ────────────────────────────────
+
+/**
+ * Open the Google Picker filtered to folders and let the user select one.
+ * Picker grants the app drive.file access to the chosen folder, so saving into
+ * it works under the minimal scope without browsing the whole Drive.
+ *
+ * @returns {Promise<{ folderId: string, folderName: string } | null>}
+ *          the selection, or null if the user cancelled.
+ */
+export async function pickFolder() {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error(
+      "Google Picker no está configurado: falta VITE_GOOGLE_API_KEY. Pedile al admin que habilite la Google Picker API y sincronice la variable.",
+    );
+  }
+  if (!isAuthenticated()) await signIn();
+  await loadPickerApi();
+
+  return new Promise((resolve, reject) => {
+    try {
+      const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true)
+        .setMimeTypes(FOLDER_MIME);
+
+      const picker = new google.picker.PickerBuilder()
+        .setOAuthToken(_accessToken)
+        .setDeveloperKey(apiKey)
+        .setAppId(getPickerAppId())
+        .addView(view)
+        .setTitle("Elegí la carpeta donde guardar tus cotizaciones")
+        .setCallback((data) => {
+          const action = data?.[google.picker.Response.ACTION];
+          if (action === google.picker.Action.PICKED) {
+            const doc = data[google.picker.Response.DOCUMENTS]?.[0];
+            if (doc) {
+              resolve({
+                folderId: doc[google.picker.Document.ID],
+                folderName: doc[google.picker.Document.NAME] || "",
+              });
+            } else {
+              resolve(null);
+            }
+          } else if (action === google.picker.Action.CANCEL) {
+            resolve(null); // "Picker cancelado → volver al estado anterior" (SPEC §12)
+          }
+        })
+        .build();
+      picker.setVisible(true);
+    } catch (err) {
+      reject(err instanceof Error ? err : new Error(String(err)));
+    }
+  });
+}
+
+/**
+ * Validate that a folder exists and the user can write to it.
+ * Uses the user's own token via authFetch, so it works for any folder the
+ * Picker granted access to.
+ *
+ * @returns {Promise<{ valid: boolean, name: string|null, reason?: string }>}
+ */
+export async function validateFolderWritable(folderId) {
+  if (!folderId) return { valid: false, name: null, reason: "missing_folder" };
+  try {
+    const resp = await authFetch(
+      `${DRIVE_API}/files/${folderId}?fields=id,name,trashed,mimeType,capabilities/canAddChildren&supportsAllDrives=true`,
+    );
+    const file = await resp.json();
+    if (file.trashed) return { valid: false, name: file.name || null, reason: "trashed" };
+    if (file.mimeType !== FOLDER_MIME) return { valid: false, name: file.name || null, reason: "not_a_folder" };
+    if (!file.capabilities?.canAddChildren) {
+      return { valid: false, name: file.name || null, reason: "no_write_permission" };
+    }
+    return { valid: true, name: file.name || null };
+  } catch (err) {
+    const msg = String(err?.message || err);
+    // 404 under drive.file = folder not accessible (deleted or never granted).
+    const reason = /404/.test(msg) ? "not_found" : "error";
+    return { valid: false, name: null, reason };
+  }
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -490,6 +671,7 @@ async function findFileInFolder(folderId, fileName) {
  * @param {Object}  params.projectData   — the serialized project state
  * @param {string}  [params.pdfFileName] — override PDF file name
  * @param {string}  [params.jsonFileName] — override JSON file name
+ * @param {string}  [params.rootFolderId] — user's configured Drive folder (per-user save target)
  * @returns {Promise<{ folderId, pdfFileId, jsonFileId, folderUrl }>}
  */
 export async function saveQuotation({
@@ -500,12 +682,14 @@ export async function saveQuotation({
   projectData,
   pdfFileName: pdfName,
   jsonFileName: jsonName,
+  rootFolderId = null,
 }) {
   const { subId } = await ensureQuotationFolderPath(
     quotationCode,
     proyecto && typeof proyecto === "object"
       ? proyecto
       : { nombre: clientName || "", razonSocial: "", rut: "" },
+    rootFolderId,
   );
 
   const slug = proyecto && typeof proyecto === "object"
@@ -543,9 +727,12 @@ export async function saveQuotation({
 
 /**
  * Lista carpetas de cotización: formato nuevo (root → cliente → código) + legajo plano bajo raíz.
+ *
+ * @param {string} [rootFolderId] — the user's configured Drive folder; falls
+ *        back to the legacy auto-created "Panelin BMC Cotizaciones" root.
  */
-export async function listQuotations() {
-  const rootId = await findOrCreateFolder(APP_FOLDER_NAME);
+export async function listQuotations(rootFolderId = null) {
+  const rootId = rootFolderId || await findOrCreateFolder(APP_FOLDER_NAME);
   const rootQ = [`'${rootId}' in parents`, `mimeType='${FOLDER_MIME}'`, "trashed=false"];
   const rootResp = await authFetch(
     `${DRIVE_API}/files?q=${encodeURIComponent(rootQ.join(" and "))}&fields=files(id,name,modifiedTime)&pageSize=100&spaces=drive`,
