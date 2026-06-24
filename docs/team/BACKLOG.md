@@ -9,7 +9,8 @@ revisar el backlog sin abrir la UI. Reglas del tablero: [`AGILE.md`](./AGILE.md)
 - Prioridad y labels: ver [`AGILE.md`](./AGILE.md) §4–§5. Mapeo con `/nxt`: 🔴 P0 · 🟠 P1 · 🟡 P2 · 🔵 P3.
 
 > **Mantener en sync:** al crear/cerrar un issue de desarrollo, agregar/actualizar su fila acá.
-> No hace falta reflejar cada cambio de columna — alcanza con `Backlog` / `En curso` / `Done`.
+> No hace falta reflejar cada cambio de columna del board — basta un estado grueso:
+> **`Backlog`** = Backlog · **`En curso`** = Ready / In Progress / In Review · **`Done`** = Done.
 
 ## Backlog activo
 

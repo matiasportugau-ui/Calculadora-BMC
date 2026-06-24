@@ -55,9 +55,11 @@ Hereda de `FULL-TEAM-RUN-DEFINITION.md` §6 y de la secuencia "get it live" de `
 | Grupo | Valores | Uso |
 |-------|---------|-----|
 | **type** | `type:feat` · `type:fix` · `type:refactor` · `type:docs` · `type:chore` | Naturaleza del trabajo. |
-| **priority** | `priority:P0` · `P1` · `P2` · `P3` | Mapea 1:1 con `/nxt` (ver §5). |
-| **area** | `area:calc` · `api` · `sheets` · `auth` · `pdf` · `chat` · `deploy` · `infra` | Subsistema; sirve de swimlane y mapea a los agentes. |
-| **status** | `status:ready` · `in-progress` · `in-review` · `blocked` | Opcional si la columna del tablero ya lo refleja; `blocked` sí conviene siempre. |
+| **priority** | `priority:P0` · `priority:P1` · `priority:P2` · `priority:P3` | Mapea 1:1 con `/nxt` (ver §5). |
+| **area** | `area:calc` · `area:api` · `area:sheets` · `area:auth` · `area:pdf` · `area:chat` · `area:deploy` · `area:infra` | Subsistema; sirve de swimlane y mapea a los agentes. |
+| **status** | `status:ready` · `status:in-progress` · `status:in-review` · `status:blocked` | Opcional si la columna del tablero ya lo refleja; `status:blocked` sí conviene siempre. |
+
+> **Auto-labeling:** las plantillas de Issue auto-aplican sólo `type:*` (campo `labels:` del form). El `area:*` y `priority:P*` elegidos en el dropdown quedan en el **cuerpo** del issue y se aplican como label **a mano** (o con la Action opcional de §7e). Los valores del dropdown coinciden 1:1 con el nombre del label.
 
 ### Mapa `area:*` → agente dueño (`.claude/agents/`)
 
@@ -94,8 +96,8 @@ Hereda de `FULL-TEAM-RUN-DEFINITION.md` §6 y de la secuencia "get it live" de `
 > Hacer esto **una vez** en la UI del repo `matiasportugau-ui/Calculadora-BMC`:
 
 **a) Labels** (Settings → Labels → New label) — crear los de §4. Colores sugeridos:
-`type:*` gris `#6E7681` · `priority:P0` `#D73A4A` · `P1` `#D93F0B` · `P2` `#FBCA04` ·
-`P3` `#1D76DB` · `area:*` violeta `#5319E7` · `status:blocked` `#0B0B0B`.
+`type:*` gris `#6E7681` · `priority:P0` `#D73A4A` · `priority:P1` `#D93F0B` · `priority:P2` `#FBCA04` ·
+`priority:P3` `#1D76DB` · `area:*` violeta `#5319E7` · `status:blocked` `#0B0B0B`.
 
 **b) Project board** (repo → Projects → New project → **Board**): nombre **"BMC Dev"**,
 columnas exactas `Backlog` · `Ready` · `In Progress` · `In Review` · `Done`. Setear el
@@ -106,6 +108,10 @@ límite WIP por columna (8 / 3 / 4) en el menú de cada columna.
 
 **d) Auto-add** (Project → ⋯ → Workflows → "Auto-add to project"): filtro
 `is:issue is:open` para que cada issue nuevo aterrice en *Backlog* sin trabajo manual.
+
+**e) (Opcional) Auto-label:** una GitHub Action sobre `issues: opened/edited` puede parsear
+los dropdowns `Área`/`Prioridad` del cuerpo y aplicar `area:*` / `priority:P*` sola. **No
+incluida en este PR** para mantener el setup mínimo — pedirla si se quiere automatizar.
 
 ## 8. Cadencia (opcional — scrumban-lite)
 

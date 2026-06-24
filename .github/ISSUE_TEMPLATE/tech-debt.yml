@@ -30,25 +30,27 @@ body:
     id: area
     attributes:
       label: "Área"
+      description: "Subsistema. Aplicá el label `area:*` elegido — el form auto-aplica sólo `type:*`."
       options:
-        - calc
-        - api
-        - sheets
-        - auth
-        - pdf
-        - chat
-        - deploy
-        - infra
+        - "area:calc"
+        - "area:api"
+        - "area:sheets"
+        - "area:auth"
+        - "area:pdf"
+        - "area:chat"
+        - "area:deploy"
+        - "area:infra"
     validations:
       required: true
   - type: dropdown
     id: priority
     attributes:
       label: "Prioridad"
+      description: "Mapea con /nxt (§5). Aplicá el label `priority:P*` elegido — el form auto-aplica sólo `type:*`."
       options:
-        - "P0 — 🔴 Crítico"
-        - "P1 — 🟠 Alto"
-        - "P2 — 🟡 Medio"
-        - "P3 — 🔵 Bajo"
+        - "priority:P0 — 🔴 Crítico"
+        - "priority:P1 — 🟠 Alto"
+        - "priority:P2 — 🟡 Medio"
+        - "priority:P3 — 🔵 Bajo"
     validations:
       required: true
