@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-23 (fix — Wolfboard `/hub/cotizaciones` `missing_credentials`):** El módulo Admin Cotizaciones mostraba `missing_credentials` con sesión Google activa. **Causa:** `useCockpitOperatorAuth` caía al fallback `VITE_API_AUTH_TOKEN` / `bmc_cockpit_token` mientras el JWT identity aún no estaba listo (o estaba expirado), y `useAdminCotizaciones` disparaba `load()` antes del refresh. **Fix:** `resolveCockpitToken()` — sesión autenticada con grant admin usa solo JWT; `tokenReady` gatea el fetch; retry silencioso vía `refreshAccess()` en 401; bootstrap `BmcAuthProvider` intenta `POST /auth/refresh` primero (cookie → JWT); `mapCockpitAuthError()` reemplaza el string crudo en UI. Archivos: [`operatorApiClient.js`](../../src/utils/operatorApiClient.js), [`useCockpitOperatorAuth.js`](../../src/hooks/useCockpitOperatorAuth.js), [`useAdminCotizaciones.js`](../../src/hooks/useAdminCotizaciones.js), [`BmcAuthProvider.jsx`](../../src/contexts/BmcAuthProvider.jsx), tests [`operatorApiClient.test.js`](../../tests/operatorApiClient.test.js).
+
 **2026-06-23 (Omni WAVE 3+4 — FULLY OPERATIONAL en prod):** Activado el omnicanal end-to-end en producción y
 **probado** (ingest → classify → suggest Claude → HITL accept → H4 eval). Cloud Run `panelin-calc` rev ≥`00532`
 con **todos** los flags `OMNI_*`=1 (WA/ML/EMAIL shadow, event bus, AI orchestrator, automation; budget USD 50/día),

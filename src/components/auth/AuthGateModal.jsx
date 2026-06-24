@@ -12,24 +12,35 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useBmcAuth } from "../../hooks/useBmcAuth.js";
 
+const GATE_COPY = {
+  "require-grant": {
+    title: "Iniciá sesión",
+    body: "Para acceder a este módulo necesitás iniciar sesión con tu cuenta.",
+  },
+  wizard: {
+    title: "Iniciá sesión para continuar",
+    body: "A partir de este paso necesitamos identificarte para guardar tu cotización en tu cuenta y poder retomarla luego.",
+  },
+};
+
+function copyForReason(reason) {
+  return GATE_COPY[reason] || GATE_COPY.wizard;
+}
+
 export default function AuthGateModal() {
   const { user, login, isAuthenticated } = useBmcAuth();
   const [open, setOpen] = useState(false);
-  // Top-30 run 2026-05-12 (#A12): setReason no se setea hoy pero `reason` se lee en JSX (línea 132).
-  // eslint-disable-next-line no-unused-vars
-  const [reason, setReason] = useState(null);
+  const [reason, setReason] = useState("wizard");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // eslint-disable-next-line no-unused-vars
-    function onGate(_e) {
+    function onGate(e) {
       if (isAuthenticated) {
         // Auto-resume any wizard waiting; user is already authed.
         window.dispatchEvent(new CustomEvent("bmc-wizard-next", { detail: { source: "auth-gate-already-auth" } }));
       } else {
-        // Anonymous: open the modal so user can sign in.
-        // handleLogin() emits bmc-wizard-next on successful sign-in.
+        setReason(e?.detail?.reason || "wizard");
         setOpen(true);
       }
     }
@@ -53,6 +64,8 @@ export default function AuthGateModal() {
   }, [login]);
 
   if (!open || isAuthenticated) return null;
+
+  const { title, body } = copyForReason(reason);
 
   return (
     <div
@@ -114,11 +127,10 @@ export default function AuthGateModal() {
         }}
       >
         <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 600, color: "#0f172a" }}>
-          Iniciá sesión para continuar
+          {title}
         </h2>
         <p style={{ margin: "0 0 16px", color: "#475569", fontSize: 14, lineHeight: 1.5 }}>
-          A partir de este paso necesitamos identificarte para guardar tu cotización en
-          tu cuenta y poder retomarla luego.
+          {body}
         </p>
         <button
           type="button"
@@ -168,9 +180,6 @@ export default function AuthGateModal() {
             (sesión existente: {user.email})
           </div>
         ) : null}
-        <div style={{ marginTop: 8, fontSize: 11, color: "#cbd5e1", textAlign: "right" }}>
-          {reason ? `motivo: ${reason}` : ""}
-        </div>
       </div>
     </div>
   );

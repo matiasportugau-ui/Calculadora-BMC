@@ -98,27 +98,24 @@ export function BmcAuthProvider({ children }) {
     setOperatorJwtGetter(() => accessToken || "");
   }, [accessToken]);
 
-  // Bootstrap: try /me with current accessToken; if missing or 401, try refresh.
+  // Bootstrap: cookie session → JWT via refresh first (/auth/me always needs Bearer).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const me = await fetchMeAndGrants(accessToken);
-        if (cancelled) return;
-        if (me) {
-          if (!accessToken) {
-            // Fetch token before applying auth so status="authenticated" and
-            // accessToken are set atomically, preventing a race in consumers.
-            const refreshed = await refreshAccess();
-            if (cancelled) return;
-            if (refreshed) return;
-          }
-          applyAuth({ ...me });
-          return;
-        }
         const refreshed = await refreshAccess();
         if (cancelled) return;
-        if (!refreshed) setStatus("anonymous");
+        if (refreshed) return;
+
+        if (accessToken) {
+          const me = await fetchMeAndGrants(accessToken);
+          if (cancelled) return;
+          if (me) {
+            applyAuth({ ...me, accessToken });
+            return;
+          }
+        }
+        setStatus("anonymous");
       } catch {
         if (!cancelled) setStatus("anonymous");
       }

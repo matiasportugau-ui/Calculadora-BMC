@@ -96,12 +96,27 @@ export function useUpdateDescription() {
   });
 }
 
-/** Unanswered questions — GET /ml/questions?status=&limit=&offset= → { results, paging } */
+/**
+ * Unanswered questions — GET /ml/questions?status=&limit=&offset=
+ * ML's /questions/search returns { total, questions: [...] } (count at top level,
+ * array under `questions`, no `paging`), unlike items/orders which use
+ * { results, paging }. Normalize here so the tabs can read `.results` and
+ * `.paging.total` uniformly.
+ */
 export function useQuestions(params = {}) {
   return useQuery({
     queryKey: [...BASE_KEY, 'questions', params],
     queryFn: () =>
-      mlFetch(`/ml/questions${qs({ status: params.status || 'UNANSWERED', limit: params.limit || 50, offset: params.offset || 0 })}`),
+      mlFetch(
+        `/ml/questions${qs({ status: params.status || 'UNANSWERED', limit: params.limit || 50, offset: params.offset || 0 })}`
+      ).then((d) => ({
+        results: d?.questions ?? d?.results ?? [],
+        paging: {
+          total: d?.total ?? d?.paging?.total ?? 0,
+          limit: d?.limit ?? d?.paging?.limit,
+          offset: d?.offset ?? d?.paging?.offset,
+        },
+      })),
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
   });

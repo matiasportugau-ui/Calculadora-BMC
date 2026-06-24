@@ -402,6 +402,30 @@ export const PERFIL_TECHO = {
   vaina: {
     ISODEC: { _all: { sku: "6825", label: "Vaina ISODEC Sist 2000", venta: 9.20, web: 10.74, costo: 7.67 } },
   },
+  /** Limahoya 3 m (BECAM) — encuentro valle / limahoya. Claves AL/PP = acabado chapa (Aluzinc / Prepintado).
+   *  Precios MATRIZ pestaña BECAM (LIHO3MAL / LIHO3MPP). Barra 3 m. BOM techo: pendiente módulo encuentros. */
+  limahoya: {
+    AL: {
+      _all: {
+        sku: "LIHO3MAL",
+        label: "Limahoya 3 m — Aluzinc",
+        venta: 15.82,
+        web: 20.09,
+        costo: 14.35,
+        largo: 3.0,
+      },
+    },
+    PP: {
+      _all: {
+        sku: "LIHO3MPP",
+        label: "Limahoya 3 m — Prepintado",
+        venta: 20.51,
+        web: 26.04,
+        costo: 18.60,
+        largo: 3.0,
+      },
+    },
+  },
 };
 
 export const PERFIL_PARED = {

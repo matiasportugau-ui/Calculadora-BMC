@@ -10,8 +10,8 @@
 // - Pared “ISODEC EPS” lista Bromyros → ISDEC100P … ISDEC250P (ISOPANEL queda ISDxxxEPS).
 // - Isowall 80 mm → SKU IW80 en col D (tres filas con mismo path = error de planilla).
 //
-// MATRIZ_TAB_COLUMNS.BROMYROS (ver MATRIZ-PRECIOS-CALCULADORA.md):
-//   F, L, T = tal cual; M = consumidor c/IVA tal cual; **U** = venta web c/IVA tal cual (solo CSV `venta_web_iva_inc`, sin push).
+// MATRIZ_TAB_COLUMNS.BROMYROS: G/J/K/R/S (costo, venta local ex IVA, ref c/IVA, web ex IVA, web c/IVA).
+// MATRIZ_TAB_COLUMNS.BECAM: F/I/J/K/L (misma semántica ex IVA en F/I/K; J/L ref c/IVA).
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Normaliza SKU para match (uppercase, sin espacios, guiones opcionales) */
@@ -252,6 +252,9 @@ export const MATRIZ_SKU_TO_PATH = {
   PGLC150: "PERFIL_TECHO.gotero_lateral_camara.ISODEC.150",
   PGLC200: "PERFIL_TECHO.gotero_lateral_camara.ISODEC.200",
   PGLC250: "PERFIL_TECHO.gotero_lateral_camara.ISODEC.250",
+  /** Limahoya 3 m — pestaña BECAM (acabado AL / PP) */
+  LIHO3MAL: "PERFIL_TECHO.limahoya.AL._all",
+  LIHO3MPP: "PERFIL_TECHO.limahoya.PP._all",
   // Paneles ISODEC PIR (evitar 50mm) e IsoFrig completa
   ISD80PIR: "PANELS_TECHO.ISODEC_PIR.esp.80",
   ISD120PIR: "PANELS_TECHO.ISODEC_PIR.esp.120",

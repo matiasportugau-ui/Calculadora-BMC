@@ -5,6 +5,7 @@ import { useBmcAuth, useModuleGrants } from "./useBmcAuth.js";
 import {
   COCKPIT_TOKEN_KEY,
   resolveApiKeyFromEnv,
+  resolveCockpitToken,
 } from "../utils/operatorApiClient.js";
 
 function readOverride() {
@@ -54,12 +55,20 @@ export function useCockpitOperatorAuth(opts = {}) {
 
   const jwtToken = auth.accessToken || "";
 
-  const token = useMemo(() => {
-    if (jwtToken && hasGrant) return jwtToken;
-    if (envToken) return envToken;
-    if (overrideToken) return overrideToken;
-    return "";
-  }, [jwtToken, hasGrant, envToken, overrideToken]);
+  const token = useMemo(
+    () =>
+      resolveCockpitToken({
+        isAuthenticated: auth.isAuthenticated,
+        hasGrant,
+        jwtToken,
+        envToken,
+        overrideToken,
+      }),
+    [auth.isAuthenticated, hasGrant, jwtToken, envToken, overrideToken],
+  );
+
+  const awaitingJwt = auth.isAuthenticated && hasGrant && !jwtToken;
+  const tokenReady = auth.status !== "loading" && !awaitingJwt;
 
   const isJwt = !!token && token === jwtToken;
 
@@ -113,6 +122,9 @@ export function useCockpitOperatorAuth(opts = {}) {
     token,
     isJwt,
     authReady: auth.status !== "loading",
+    tokenReady,
+    awaitingJwt,
+    refreshAccess: auth.refreshAccess,
     authError,
     tokenAutoLoaded: isJwt || !!token,
     tokenLoadError: authError,

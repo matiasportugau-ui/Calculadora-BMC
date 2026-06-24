@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { addBugLog, addErrorToBugLog } from "../utils/bugCapture.js";
+import { mapCockpitAuthError } from "../utils/operatorApiClient.js";
 import { useCockpitOperatorAuth } from "./useCockpitOperatorAuth.js";
 
 // TODO refactor split (no behavior change, ~407 LOC today): three slice hooks
@@ -88,6 +89,9 @@ export function useAdminCotizaciones() {
     isJwt,
     login,
     user,
+    authReady,
+    tokenReady,
+    refreshAccess,
   } = useCockpitOperatorAuth({ role: "admin" });
 
   const [scope, setScopeState] = useState("consulta"); // "consulta" | "admin"
@@ -173,7 +177,7 @@ export function useAdminCotizaciones() {
     };
   }
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ retryAfterRefresh = false } = {}) => {
     if (!token) { setError("Falta el token (cockpit)."); return; }
     setLoading(true);
     setError("");
@@ -189,7 +193,16 @@ export function useAdminCotizaciones() {
     setLoading(false);
 
     if (!adminRes.ok) {
-      setError(adminRes.data?.error || `HTTP ${adminRes.status}`);
+      if (
+        adminRes.status === 401 &&
+        isJwt &&
+        !retryAfterRefresh &&
+        typeof refreshAccess === "function"
+      ) {
+        const refreshed = await refreshAccess();
+        if (refreshed) return;
+      }
+      setError(mapCockpitAuthError(adminRes.data?.error, adminRes.status));
       setRows([]);
       setSheetRowCount(null);
       return;
@@ -217,13 +230,14 @@ export function useAdminCotizaciones() {
     setRows([...enrichedAdminRows, ...mlRows]);
     setSheetRowCount(typeof adminRes.data.sheetRowCount === "number" ? adminRes.data.sheetRowCount : null);
     setSelected(new Set());
-  }, [token, scope]);
+  }, [token, scope, isJwt, refreshAccess]);
 
-  // Refetch on token/scope change.
+  // Refetch on token/scope change — wait until identity JWT refresh completes.
   useEffect(() => {
+    if (!authReady || !tokenReady) return;
     if (!token) { setRows([]); setSheetRowCount(null); return; }
     load();
-  }, [token, scope, load]);
+  }, [token, scope, load, authReady, tokenReady]);
 
   const saveRow = useCallback(async (adminRow, patch) => {
     if (!token) return { ok: false };

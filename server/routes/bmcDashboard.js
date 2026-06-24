@@ -1248,8 +1248,16 @@ const MATRIZ_TAB_COLUMNS = {
     // S — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
     webIvaInc: COL("S"),
   },
-  // Add more tabs here after mapping approval:
-  // "R y C Tornillos": { sku: COL("D"), ... },
+  /** Proveedor BECAM — limahoya, limatesa, babetas lisa, etc. (col D = Codigo) */
+  BECAM: {
+    sku: COL("D"),
+    descripcion: COL("E"),
+    costo: COL("F"),
+    ventaLocal: COL("I"),
+    ventaIvaInc: COL("J"),
+    web: COL("K"),
+    webIvaInc: COL("L"),
+  },
 };
 
 async function buildPlanillaDesdeMatriz(matrizSheetId) {

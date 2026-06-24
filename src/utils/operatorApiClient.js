@@ -28,6 +28,46 @@ export function resolveApiKeyFromEnv(env = {}) {
   return String(env.VITE_API_AUTH_TOKEN || env.VITE_BMC_API_AUTH_TOKEN || "").trim();
 }
 
+/**
+ * Pure: resolve Bearer token for hub cockpit modules (wolfboard, canales, etc.).
+ * Authenticated sessions must use identity JWT only — env/override fallbacks are
+ * for anonymous dev/CI and must not shadow a live Google session.
+ */
+export function resolveCockpitToken({
+  isAuthenticated = false,
+  hasGrant = false,
+  jwtToken = "",
+  envToken = "",
+  overrideToken = "",
+} = {}) {
+  const jwt = String(jwtToken || "").trim();
+  const env = String(envToken || "").trim();
+  const override = String(overrideToken || "").trim();
+  if (isAuthenticated && hasGrant) return jwt;
+  if (jwt && hasGrant) return jwt;
+  if (env) return env;
+  if (override) return override;
+  return "";
+}
+
+/** Operator-facing Spanish message for common auth API errors. */
+export function mapCockpitAuthError(error, status = 0) {
+  const code = String(error || "").trim();
+  if (code === "missing_credentials" || (status === 401 && !code)) {
+    return "Sesión expirada o token inválido — recargá la página o volvé a iniciar sesión.";
+  }
+  if (code === "missing_refresh_cookie") {
+    return "Tu sesión caducó — iniciá sesión con Google de nuevo.";
+  }
+  if (code === "token_revoked") {
+    return "Tu sesión fue revocada — iniciá sesión de nuevo.";
+  }
+  if (code === "forbidden") {
+    return "No tenés permiso para esta acción.";
+  }
+  return code || (status ? `HTTP ${status}` : "Error de autenticación");
+}
+
 /** Pure: read persisted cockpit token (browser localStorage in production). */
 export function resolveApiKeyFromStorage(readItem = () => "") {
   try {

@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import {
   resolveApiKeyFromEnv,
   resolveApiKeyFromStorage,
+  resolveCockpitToken,
+  mapCockpitAuthError,
   COCKPIT_TOKEN_KEY,
   setOperatorJwtGetter,
   ensureOperatorToken,
@@ -44,6 +46,41 @@ t("ensureOperatorToken prefers JWT getter over storage", async () => {
   setOperatorJwtGetter(() => "jwt-from-auth");
   assert.equal(await ensureOperatorToken(), "jwt-from-auth");
   setOperatorJwtGetter(() => "");
+});
+
+t("resolveCockpitToken prefers identity JWT when authenticated with grant", () => {
+  assert.equal(
+    resolveCockpitToken({
+      isAuthenticated: true,
+      hasGrant: true,
+      jwtToken: "jwt-live",
+      envToken: "stale-env",
+      overrideToken: "stale-override",
+    }),
+    "jwt-live",
+  );
+  assert.equal(
+    resolveCockpitToken({
+      isAuthenticated: true,
+      hasGrant: true,
+      jwtToken: "",
+      envToken: "stale-env",
+    }),
+    "",
+  );
+});
+
+t("resolveCockpitToken falls back to env when anonymous", () => {
+  assert.equal(
+    resolveCockpitToken({ isAuthenticated: false, envToken: "dev-key" }),
+    "dev-key",
+  );
+});
+
+t("mapCockpitAuthError maps missing_credentials to Spanish guidance", () => {
+  const msg = mapCockpitAuthError("missing_credentials", 401);
+  assert.match(msg, /Sesión expirada/i);
+  assert.doesNotMatch(msg, /missing_credentials/);
 });
 
 console.log(
