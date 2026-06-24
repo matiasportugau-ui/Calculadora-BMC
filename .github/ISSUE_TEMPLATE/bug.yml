@@ -1,0 +1,64 @@
+name: "🐛 Bug"
+description: "Algo no funciona como debería"
+title: "[fix] "
+labels: ["type:fix"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Resumen"
+      description: "Qué está roto, en una o dos frases."
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: "Pasos para reproducir"
+      value: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: "Esperado vs. actual"
+      value: |
+        **Esperado:**
+        **Actual:**
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: "Entorno"
+      description: "prod / local / Cloud Run / Vercel, rama, rev, navegador…"
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: "Área"
+      options:
+        - calc
+        - api
+        - sheets
+        - auth
+        - pdf
+        - chat
+        - deploy
+        - infra
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Prioridad"
+      options:
+        - "P0 — 🔴 Crítico"
+        - "P1 — 🟠 Alto"
+        - "P2 — 🟡 Medio"
+        - "P3 — 🔵 Bajo"
+    validations:
+      required: true

@@ -1,8 +1,10 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-22
+**Última actualización:** 2026-06-24
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
+
+**Tablero de tareas:** el backlog/kanban de **desarrollo** vive en GitHub (Issues + Project «BMC Dev»); este archivo sigue siendo el **relato narrativo** del estado. Reglas en [`AGILE.md`](./AGILE.md), espejo versionado en [`BACKLOG.md`](./BACKLOG.md).
 
 **Guía legacy vs repo:** Si aparece documentación antigua tipo `BMC_SYSTEM_GUIDE.md` (backup Next/Mongo), contrastar con el inventario [BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md](../bmc-dashboard-modernization/BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md) — no usar ese backup como contrato de API del stack actual.
 
@@ -11,6 +13,16 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-24 (Tablero ágil / Kanban para organizar el desarrollo):** Marco de organización del trabajo de
+**desarrollo de software** sobre GitHub (flujo continuo Kanban, sin sprints ni story points). Agregados:
+[`AGILE.md`](./AGILE.md) (reglas: columnas `Backlog → Ready → In Progress → In Review → Done` con límites WIP,
+labels `type`/`priority`/`area`, DoD = `gate:local` verde + merge a `main`, mapeo `/nxt`→prioridades y `area:*`→agente),
+[`BACKLOG.md`](./BACKLOG.md) (espejo versionado), y plantillas `.github/ISSUE_TEMPLATE/` (feature/bug/tech-debt) +
+`PULL_REQUEST_TEMPLATE.md`. Backlog inicial sembrado como issues **#416–#420** (npm audit, go-live, E2E D1.x,
+ML re-auth, Omni pricing) — mapean a los ítems abiertos de «Pendientes de sincronización». Setup único pendiente en
+la UI de GitHub (labels + Project board «BMC Dev»), documentado en `AGILE.md` §7: el tooling MCP crea issues pero no
+labels ni Projects v2. `/nxt` ahora referencia el backlog del tablero.
 
 **2026-06-23 (Omni WAVE 3+4 — FULLY OPERATIONAL en prod):** Activado el omnicanal end-to-end en producción y
 **probado** (ingest → classify → suggest Claude → HITL accept → H4 eval). Cloud Run `panelin-calc` rev ≥`00532`

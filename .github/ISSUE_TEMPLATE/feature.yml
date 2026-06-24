@@ -1,0 +1,57 @@
+name: "✨ Feature / mejora"
+description: "Nueva funcionalidad o mejora de desarrollo"
+title: "[feat] "
+labels: ["type:feat"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problema / motivación"
+      description: "¿Qué necesidad resuelve? ¿Qué lo originó?"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Propuesta"
+      description: "Qué construir, a alto nivel."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "Criterios de aceptación (Definition of Done)"
+      description: "Lista verificable de qué es «hecho». Ver docs/team/AGILE.md §3."
+      value: |
+        - [ ] ...
+        - [ ] `npm run gate:local` verde
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: "Área"
+      description: "Subsistema (label area:*)."
+      options:
+        - calc
+        - api
+        - sheets
+        - auth
+        - pdf
+        - chat
+        - deploy
+        - infra
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Prioridad"
+      description: "Mapea con /nxt. Ver docs/team/AGILE.md §5."
+      options:
+        - "P0 — 🔴 Crítico"
+        - "P1 — 🟠 Alto"
+        - "P2 — 🟡 Medio"
+        - "P3 — 🔵 Bajo"
+    validations:
+      required: true

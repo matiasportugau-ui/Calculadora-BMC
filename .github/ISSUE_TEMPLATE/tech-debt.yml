@@ -1,0 +1,54 @@
+name: "🧹 Deuda técnica / refactor"
+description: "Limpieza, refactor, mejora de calidad o de infraestructura"
+title: "[refactor] "
+labels: ["type:refactor"]
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: "Estado actual"
+      description: "Qué existe hoy y por qué es deuda (riesgo, fricción, costo)."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Limpieza propuesta"
+      description: "Qué dejar mejor y por qué vale la pena ahora."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "Criterios de aceptación"
+      value: |
+        - [ ] ...
+        - [ ] Sin regresiones: `npm run gate:local` verde
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: "Área"
+      options:
+        - calc
+        - api
+        - sheets
+        - auth
+        - pdf
+        - chat
+        - deploy
+        - infra
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Prioridad"
+      options:
+        - "P0 — 🔴 Crítico"
+        - "P1 — 🟠 Alto"
+        - "P2 — 🟡 Medio"
+        - "P3 — 🔵 Bajo"
+    validations:
+      required: true
