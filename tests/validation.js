@@ -20,7 +20,7 @@ import {
   calcPerfilesParedExtra,
 } from "../src/utils/calculations.js";
 import { getDimensioningParam } from "../src/utils/dimensioningFormulas.js";
-import { deserializeProject } from "../src/utils/projectFile.js";
+import { deserializeProject, isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
 import { PERFIL_TECHO, PERFIL_PARED, PANELS_TECHO, PANELS_PARED } from "../src/data/constants.js";
@@ -800,6 +800,15 @@ assert("mergeZonaResults(3 zones): cantPaneles correct", merged3.paneles.cantPan
 // TEST SUITE 19: projectFile — techo.zonas.preview (vista previa)
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE 19: projectFile — techo.zonas.preview ═══");
+
+assert("proyecto PDF gate: empresa incompleta", !isProyectoDatosObligatoriosCompletos({ tipoCliente: "empresa", razonSocial: "ACME", rut: "", telefono: "099" }), true, false);
+assert("proyecto PDF gate: empresa completa", isProyectoDatosObligatoriosCompletos({ tipoCliente: "empresa", razonSocial: "ACME", rut: "123", telefono: "099", direccion: "Montevideo" }), true, true);
+assert("proyecto PDF gate: empresa sin direccion", !isProyectoDatosObligatoriosCompletos({ tipoCliente: "empresa", razonSocial: "ACME", rut: "123", telefono: "099", direccion: "" }), true, false);
+assert("proyecto PDF gate: persona incompleta", !isProyectoDatosObligatoriosCompletos({ tipoCliente: "persona", nombre: "Juan", telefono: "" }), true, false);
+assert("proyecto PDF gate: persona completa", isProyectoDatosObligatoriosCompletos({ tipoCliente: "persona", nombre: "Juan", telefono: "099", direccion: "Pando" }), true, true);
+assert("getProyectoPdfBlockReason null when ok", getProyectoPdfBlockReason({ tipoCliente: "persona", nombre: "Juan", telefono: "099", direccion: "Pando" }) === null, true, true);
+assert("getProyectoPdfBlockReason lists missing", String(getProyectoPdfBlockReason({ tipoCliente: "persona", nombre: "", telefono: "" })).includes("Nombre"), true, true);
+assert("getProyectoCamposObligatoriosFaltantes empresa", getProyectoCamposObligatoriosFaltantes({ tipoCliente: "empresa", razonSocial: "ACME", rut: "", telefono: "099" }).join(","), "RUT", "RUT");
 
 const rawProjPreview = {
   scenario: "solo_techo",
@@ -2859,6 +2868,25 @@ console.log("\n═══ SUITE 36: ISOROOF PLUS — mínimo 800 m² ═══");
     tieneWarnMin ? r.warnings.find(w => String(w).includes("800")) : "sin warning",
     "sin warning",
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 37. Drive archive API — validateDriveArchiveBody
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const { validateDriveArchiveBody } = await import("../server/routes/quoteDriveArchive.js");
+  const tinyPdf = Buffer.from("%PDF-1.4 test").toString("base64");
+  const ok = validateDriveArchiveBody({
+    pdfBase64: tinyPdf,
+    projectData: { _meta: { quotationCode: "BMC-2026-0001" }, scenario: "solo_techo" },
+    quotationCode: "BMC-2026-0001",
+    proyecto: { nombre: "Cliente Test", rut: "123" },
+  });
+  assert("validateDriveArchiveBody acepta payload mínimo válido", ok.ok === true, ok, "ok:true");
+  const bad = validateDriveArchiveBody({ projectData: {} });
+  assert("validateDriveArchiveBody rechaza sin PDF", bad.ok === false && bad.error === "missing_pdf", bad.error, "missing_pdf");
+  const noCode = validateDriveArchiveBody({ pdfBase64: tinyPdf, projectData: { scenario: "solo_techo" } });
+  assert("validateDriveArchiveBody rechaza sin código", noCode.ok === false && noCode.error === "missing_quotation_code", noCode.error, "missing_quotation_code");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

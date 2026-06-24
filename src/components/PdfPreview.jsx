@@ -43,6 +43,7 @@ export default function PdfPreview() {
 
   useEffect(() => {
     generatePdf();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- generatePdf is recreated each render; depend only on the sample selection to avoid a regenerate loop
   }, [selectedSample]);
 
   return (

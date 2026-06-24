@@ -207,6 +207,7 @@ export default function Toolbar({
   onRunBatch,
   onCreateRow,
   exportCsvHref,
+  onExportCsv,
   batchOpts,
   updateBatchOpts,
   onResetBatchOpts,
@@ -295,14 +296,24 @@ export default function Toolbar({
               ↕ Sync CRM
             </button>
           </Tooltip>
-          <a
-            href={exportCsvHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="adminCot__btn adminCot__btn--ghost"
-          >
-            ↓ Export CSV
-          </a>
+          {onExportCsv ? (
+            <button
+              type="button"
+              className="adminCot__btn adminCot__btn--ghost"
+              onClick={onExportCsv}
+            >
+              ↓ Export CSV
+            </button>
+          ) : exportCsvHref ? (
+            <a
+              href={exportCsvHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="adminCot__btn adminCot__btn--ghost"
+            >
+              ↓ Export CSV
+            </a>
+          ) : null}
           <button
             type="button"
             className="adminCot__btn adminCot__btn--ghost"

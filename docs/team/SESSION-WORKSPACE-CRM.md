@@ -23,7 +23,7 @@
 Orden canónico alineado al repo (ver [`EXPERT-DEV-TRACEABILITY.md`](./orientation/EXPERT-DEV-TRACEABILITY.md)):
 
 1. Arranque / stack: `npm run env:ensure` → `npm run dev:full` (API `http://localhost:3001/health`, Vite `http://localhost:5173`). Antes de trabajo riesgoso: opcional `npm run expert:checkpoint -- --message="…"`.
-2. Calidad pre-merge: `npm run gate:local` habituales; **`npm run gate:local:full`** si cambios fuertes en `src/` / bundle.
+2. Calidad pre-merge: **`/issue-and-fix`** (o `issue and fix`) según [`PROCEDIMIENTO-PRE-PR-LOCAL.md`](./PROCEDIMIENTO-PRE-PR-LOCAL.md); luego `npm run gate:local` habituales; **`npm run gate:local:full`** si cambios fuertes en `src/` / bundle.
 3. Contrato API (si tocaste rutas públicas): API en `:3001` + `npm run test:contracts`, o proceso aparte **`PORT=<puerto-libre>`** + `sleep 12` + `BMC_API_BASE=http://localhost:<puerto>` (el primer boot puede tardar por Postgres/WA primeros contactos).
 4. Pre-deploy + prod: `npm run pre-deploy`; deploy según [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](../../.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md); verificación **`npm run smoke:prod`**.
 5. Opcional navegador / WA: `npm run smoke:browser*` / `wa:ext:load` + hub [`docs/wa-cockpit/README.md`](../wa-cockpit/README.md).
@@ -33,6 +33,17 @@ Si cambiás `server/**/*.js` y el proceso en `:3001` **no** usa `node --watch`, 
 ### 1.2 Human gates (OAuth / Meta / WhatsApp / ML / correo)
 
 No declarar canal “listo” sin evidencia. Pasos cerrados + enlaces: **[`HUMAN-GATES-ONE-BY-ONE.md`](./HUMAN-GATES-ONE-BY-ONE.md)** (cm-0 / cm-1 / cm-2). Tras cualquier cambio en tokens o webhooks, repetir smoke/canales según **[`PROCEDIMIENTO-CANALES-WA-ML-CORREO.md`](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md)** cuando aplique.
+
+### 1.4 Pre-PR local — checklist rápido
+
+Procedimiento canónico: [`PROCEDIMIENTO-PRE-PR-LOCAL.md`](./PROCEDIMIENTO-PRE-PR-LOCAL.md).
+
+| ✓ | Ítem |
+| --- | --- |
+| ☐ | `/issue-and-fix` (o `fix-only` si ya revisaste) — 0 critical/high remaining |
+| ☐ | `npm run gate:local` (o `gate:local:full` si UI/build) |
+| ☐ | Commits separados: tooling `.cursor/` vs producto `src/`/`server/` |
+| ☐ | (Opcional) `npm run pre-deploy` + `smoke:prod` en merges grandes |
 
 ### 1.3 Full Team Run — checklist rápido (antes de “Invoque full team”)
 
@@ -136,6 +147,7 @@ Rules:
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | **Visual hub** (links + copy prompts / commands) | [WORKSPACE-CRM-HUB.html](./WORKSPACE-CRM-HUB.html)                                                               |
 | **Cronograma + rutina + seguimiento unificado**  | [PROJECT-SCHEDULE.md](./PROJECT-SCHEDULE.md) — `npm run project:compass` (alias `npm run schedule`)              |
+| **Pre-PR local (Issue-and-Fix + gates)**         | [PROCEDIMIENTO-PRE-PR-LOCAL.md](./PROCEDIMIENTO-PRE-PR-LOCAL.md) — `/issue-and-fix` + `gate:local` |
 | **WhatsApp → ML → Correo (checklist)**           | [PROCEDIMIENTO-CANALES-WA-ML-CORREO.md](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md) — `npm run channels:onboarding` |
 | **Programa maestro (JSON)**                      | [orientation/README.md](./orientation/README.md) — `npm run program:status`                                      |
 | **E2E local → gates → prod (trazabilidad)**      | [orientation/EXPERT-DEV-TRACEABILITY.md](./orientation/EXPERT-DEV-TRACEABILITY.md) — `expert:checkpoint`, `expert:workflow` |

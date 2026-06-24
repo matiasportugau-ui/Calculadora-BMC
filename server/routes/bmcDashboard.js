@@ -22,7 +22,7 @@ import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
-import { getCockpitTokenRequestBrowserOrigin } from "../lib/cockpitTokenOrigin.js";
+
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
@@ -31,6 +31,12 @@ import { mapOrigenToSurface } from "../lib/kbSurface.js";
 import { isAiGatewayEnabled, generateTextViaGateway, generateObjectViaGateway, DEFAULT_PROVIDER_ORDER } from "../lib/aiGatewayClient.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
 import { makeRequireEmailIngestAuth } from "../lib/emailIngestAuth.js";
+import { shadowWriteEmailIngest } from "../lib/omni/adapters/emailIngest.js";
+import { mirrorMlSendApprovedToOmni } from "../lib/omni/adapters/mlOutboundMirror.js";
+import {
+  requireCrmCockpitRead,
+  requireCrmCockpitWrite,
+} from "../middleware/requireCrmCockpitAuth.js";
 import {
   estimateCostUSD,
   resolveModel,
@@ -1231,16 +1237,16 @@ const MATRIZ_TAB_COLUMNS = {
   BROMYROS: {
     sku: COL("D"),
     descripcion: COL("E"),
-    // F — Costo m² USD ex IVA: **tal cual** celda.
-    costo: COL("F"),
-    // L — venta local: **tal cual** celda.
-    ventaLocal: COL("L"),
-    // M — ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
-    ventaIvaInc: COL("M"),
-    // T — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
-    web: COL("T"),
-    // U — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
-    webIvaInc: COL("U"),
+    // G — Costo m² USD ex IVA (Actualizado): base real de la venta (venta J = G × (1+margen)).
+    costo: COL("G"),
+    // J — Venta local USD ex IVA: **tal cual** celda.
+    ventaLocal: COL("J"),
+    // K — Ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
+    ventaIvaInc: COL("K"),
+    // R — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
+    web: COL("R"),
+    // S — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
+    webIvaInc: COL("S"),
   },
   // Add more tabs here after mapping approval:
   // "R y C Tornillos": { sku: COL("D"), ... },
@@ -1319,15 +1325,21 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
       const webIvaIncRaw =
         cols.webIvaInc != null ? parseNum(row[cols.webIvaInc]) : null;
 
-      // F, L, M, T, U: copiar número de planilla sin transformar.
-      // Regla confirmada: T = venta web ex IVA.
-      // La UI calcula Web c/IVA desde `venta_web`; si U existe, se expone como referencia.
+      // G — Costo m² USD ex IVA (Actualizado): base real de la venta.
+      // J — Venta local USD ex IVA: **tal cual** celda.
+      // K — Ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
+      // R — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
+      // S — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
       const costo = costoRaw != null ? +costoRaw.toFixed(2) : "";
       const venta = ventaLocalRaw != null ? +ventaLocalRaw.toFixed(2) : "";
       const ventaInc = ventaIvaIncRaw != null ? +ventaIvaIncRaw.toFixed(2) : "";
-      const ventaWeb = webRaw != null ? +webRaw.toFixed(2) : "";
-      const ventaWebIvaInc =
-        webIvaIncRaw != null ? +webIvaIncRaw.toFixed(2) : "";
+      // Regla de negocio: los PANELES llevan el mismo precio en ambas listas
+      // (web = venta local). Perfiles/accesorios mantienen el web de la MATRIZ (R).
+      const esPanel = path.startsWith("PANELS_");
+      const ventaWeb = esPanel ? venta : (webRaw != null ? +webRaw.toFixed(2) : "");
+      const ventaWebIvaInc = esPanel
+        ? ventaInc
+        : (webIvaIncRaw != null ? +webIvaIncRaw.toFixed(2) : "");
 
       const categoria = path.startsWith("PANELS_TECHO") ? "Paneles Techo"
         : path.startsWith("PANELS_PARED") ? "Paneles Pared"
@@ -1780,7 +1792,7 @@ export default function createBmcDashboardRouter(config) {
      *   - pushMatrizPricingOverrides for price changes (via sku → path)
      *   - handleUpdateStock for stock changes
      */
-    router.post("/productos-maestro/push", requireCrmCockpitAuth, async (req, res) => {
+    router.post("/productos-maestro/push", requireCrmCockpitWrite, async (req, res) => {
       try {
         const { items = [], dryRun = true } = req.body || {};
 
@@ -2248,7 +2260,7 @@ export default function createBmcDashboardRouter(config) {
     }
   });
 
-  router.patch("/stock/:codigo", requireCrmCockpitAuth, async (req, res) => {
+  router.patch("/stock/:codigo", requireCrmCockpitWrite, async (req, res) => {
     if (!checkStockAvailable(config)) return noConfig(res);
     try {
       const result = await handleUpdateStock(config.bmcStockSheetId, sheetId, req.params.codigo, req.body || {});
@@ -2767,6 +2779,11 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           requestBody: { values: [defaultTailAGAK_Email()] },
         });
         console.log(`[Email] ✓ Ingested → CRM row ${crmRow}, provider: ${provider}, messageId: ${messageId || "?"}`);
+        void shadowWriteEmailIngest({
+          config,
+          logger: console,
+          payload: { asunto, cuerpo, remitente, messageId, parsed: d, crmRow },
+        }).catch((e) => console.warn("[Email] omni shadow failed:", e?.message));
       } catch (e) {
         console.error(`[Email] ✗ Sheets write failed:`, e.message);
       }
@@ -2853,38 +2870,10 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     res.status(503).json({ ok: false, error: "All providers failed", details: errors });
   });
 
-  // ── CRM cockpit (columnas AG–AK) — requiere API_AUTH_TOKEN ─────────────────
-  function requireCrmCockpitAuth(req, res, next) {
-    const token = config.apiAuthToken;
-    if (!token) {
-      return res.status(503).json({
-        ok: false,
-        error: "API_AUTH_TOKEN not configured — cockpit mutations disabled",
-      });
-    }
-    const auth = String(req.headers.authorization || "");
-    const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-    const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
-    if (bearer === token || xKey === token) return next();
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
-  }
-
-  // Delivers the cockpit token to the browser at runtime so it never needs to
-  // be baked into the Vite bundle via VITE_BMC_API_AUTH_TOKEN.
-  // Browser-only: requires a verified Origin or Referer against an explicit allowlist
-  // (curl / scripts without those headers get 403). See server/lib/cockpitTokenOrigin.js.
-  router.get("/crm/cockpit-token", (req, res) => {
-    const token = config.apiAuthToken;
-    if (!token) return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
-    const allowedOrigin = getCockpitTokenRequestBrowserOrigin(req, config);
-    if (!allowedOrigin) {
-      return res.status(403).json({ ok: false, error: "Forbidden" });
-    }
-    res.json({ ok: true, token });
-  });
+  // ── CRM cockpit (columnas AG–AK) — dual auth: API_AUTH_TOKEN | JWT canales ──
 
   /** Logística: escribe fecha de entrega en columna G de Ventas (fila = cliente; pestaña por gid). Auth = CRM cockpit. */
-  router.post("/ventas/logistica-fecha-entrega", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/ventas/logistica-fecha-entrega", requireCrmCockpitWrite, async (req, res) => {
     if (!checkVentasAvailable(config)) return noConfig(res);
     try {
       const result = await handleVentasLogisticaFechaEntrega(config.bmcVentasSheetId, req.body || {});
@@ -2895,7 +2884,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
   });
 
   /** Overrides calculadora → celdas MATRIZ (BROMYROS u otras pestañas aprobadas). Mismo auth que CRM cockpit. */
-  router.post("/matriz/push-pricing-overrides", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/matriz/push-pricing-overrides", requireCrmCockpitWrite, async (req, res) => {
     const matrizId = config.bmcMatrizSheetId;
     const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
     if (!matrizId || !credsPath) {
@@ -2921,7 +2910,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
   });
 
   /** PANELSIM / Thunderbird — lee STATUS + reporte MD del repo IMAP (auth = CRM cockpit). */
-  router.get("/email/panelsim-summary", requireCrmCockpitAuth, (req, res) => {
+  router.get("/email/panelsim-summary", requireCrmCockpitRead, (req, res) => {
     try {
       const rawMax = req.query.reportMaxChars;
       const n = rawMax != null ? Number(rawMax) : NaN;
@@ -2941,7 +2930,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
    * Borrador saliente (proveedor/cliente) para probar en chat y pegar en Thunderbird.
    * No envía correo. Auth = CRM cockpit.
    */
-  router.post("/email/draft-outbound", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/email/draft-outbound", requireCrmCockpitWrite, async (req, res) => {
     const { role, hechos, tono, asunto_contexto } = req.body || {};
     if (!hechos || String(hechos).trim().length < 3) {
       return res.status(400).json({ ok: false, error: "Missing hechos (context for the email)" });
@@ -3036,7 +3025,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     return google.sheets({ version: "v4", auth: await auth.getClient() });
   }
 
-  router.get("/crm/cockpit/row/:rowNum", requireCrmCockpitAuth, async (req, res) => {
+  router.get("/crm/cockpit/row/:rowNum", requireCrmCockpitRead, async (req, res) => {
     const rowNum = Number(req.params.rowNum);
     if (!rowNum || rowNum < FIRST_DATA_ROW) {
       return res.status(400).json({ ok: false, error: `row must be >= ${FIRST_DATA_ROW}` });
@@ -3055,7 +3044,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   });
 
-  router.post("/crm/cockpit/quote-link", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/crm/cockpit/quote-link", requireCrmCockpitWrite, async (req, res) => {
     const row = Number(req.body?.row);
     const url = String(req.body?.url || "").trim();
     if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row (>= ${FIRST_DATA_ROW})` });
@@ -3075,7 +3064,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   });
 
-  router.post("/crm/cockpit/approval", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/crm/cockpit/approval", requireCrmCockpitWrite, async (req, res) => {
     const row = Number(req.body?.row);
     const approved = req.body?.approved;
     if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row` });
@@ -3096,7 +3085,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   });
 
-  router.post("/crm/cockpit/mark-sent", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/crm/cockpit/mark-sent", requireCrmCockpitWrite, async (req, res) => {
     const row = Number(req.body?.row);
     const sentAt = String(req.body?.sentAt || "").trim() || new Date().toISOString();
     if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row` });
@@ -3119,7 +3108,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
    * Escribe taxonomía (cols AL–AN): tipo de contacto, tags, notas.
    * Body: { row, tipoContacto?, tags?, notas? } — solo actualiza campos presentes.
    */
-  router.post("/crm/cockpit/taxonomy-row", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/crm/cockpit/taxonomy-row", requireCrmCockpitWrite, async (req, res) => {
     const row = Number(req.body?.row);
     if (!row || row < FIRST_DATA_ROW) {
       return res.status(400).json({ ok: false, error: `Invalid row (>= ${FIRST_DATA_ROW})` });
@@ -3142,7 +3131,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
   });
 
   /** Save an AI-generated response to column AF (respuestaSugerida) for a CRM row. */
-  router.post("/crm/cockpit/save-response", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/crm/cockpit/save-response", requireCrmCockpitWrite, async (req, res) => {
     const row = Number(req.body?.row);
     const text = String(req.body?.text || "").trim();
     const original = String(req.body?.original || "").trim();
@@ -3243,6 +3232,14 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           });
         }
 
+        void mirrorMlSendApprovedToOmni({
+          config,
+          logger: req.log,
+          questionId: qid,
+          text,
+          agentId: req.user?.email || "send-approved",
+        }).catch((e) => req.log?.warn?.({ err: e?.message }, "omni ML outbound mirror failed"));
+
         return res.json({ ok: true, channel: "ml", questionId: qid, sentAt, ml: data });
       }
 
@@ -3279,9 +3276,9 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   }
 
-  router.post("/crm/cockpit/send-approved", requireCrmCockpitAuth, handleCrmCockpitSendApproved);
+  router.post("/crm/cockpit/send-approved", requireCrmCockpitWrite, handleCrmCockpitSendApproved);
 
-  router.get("/crm/cockpit/ml-queue", requireCrmCockpitAuth, async (req, res) => {
+  router.get("/crm/cockpit/ml-queue", requireCrmCockpitRead, async (req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     const estadoFilter = String(req.query.estado || "").trim().toLowerCase();
     try {
@@ -3310,7 +3307,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   });
 
-  router.get("/crm/cockpit/wa-queue", requireCrmCockpitAuth, async (req, res) => {
+  router.get("/crm/cockpit/wa-queue", requireCrmCockpitRead, async (req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     const estadoFilter = String(req.query.estado || "").trim().toLowerCase();
     try {
@@ -3336,7 +3333,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   });
 
-  router.post("/crm/cockpit/sync-ml", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/crm/cockpit/sync-ml", requireCrmCockpitWrite, async (req, res) => {
     const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
     if (!sheetId) return noConfig(res);
     const logger = req.log ?? console;
@@ -3405,7 +3402,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
    * Cola unificada: una lectura de CRM_Operativo con canal por fila (ML, WA, IG, FB).
    * Query: `channel` = all | mercadolibre | whatsapp | instagram | facebook
    */
-  router.get("/crm/cockpit/unified-queue", requireCrmCockpitAuth, async (req, res) => {
+  router.get("/crm/cockpit/unified-queue", requireCrmCockpitRead, async (req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     const raw = String(req.query.channel || "all").trim().toLowerCase();
     const channelFilter =
@@ -3442,7 +3439,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
    * Same filters as /crm/cockpit/unified-queue; adds stable `id` + UI-oriented flags.
    * Auth: CRM cockpit token (Bearer / x-api-key).
    */
-  router.get("/consultations", requireCrmCockpitAuth, async (req, res) => {
+  router.get("/consultations", requireCrmCockpitRead, async (req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     const raw = String(req.query.channel || "all").trim().toLowerCase();
     const channelFilter =
@@ -3517,7 +3514,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
    * Alias of POST /crm/cockpit/send-approved with stable resource id `crm:ROW`.
    * Body optional (merged); `row` is set from the path. Same auth + validation.
    */
-  router.post("/consultations/:consultationId/reply", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/consultations/:consultationId/reply", requireCrmCockpitWrite, async (req, res) => {
     const row = parseConsultationIdToCrmRow(req.params.consultationId);
     if (!row) {
       return res.status(400).json({
@@ -3534,7 +3531,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
    * Sincroniza canales con API pull hacia CRM. ML = mismas reglas que sync-ml.
    * WhatsApp ya ingresa vía webhook; Facebook/Instagram requieren Graph API (no implementado).
    */
-  router.post("/crm/cockpit/sync-all", requireCrmCockpitAuth, async (req, res) => {
+  router.post("/crm/cockpit/sync-all", requireCrmCockpitWrite, async (req, res) => {
     if (!sheetId) return noConfig(res);
     const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
     const body = req.body && typeof req.body === "object" ? req.body : {};

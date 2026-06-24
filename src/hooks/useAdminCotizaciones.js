@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { addBugLog, addErrorToBugLog } from "../utils/bugCapture.js";
+import { useCockpitOperatorAuth } from "./useCockpitOperatorAuth.js";
 
 // TODO refactor split (no behavior change, ~407 LOC today): three slice hooks
-//   useToken          — load/save bmc_cockpit_token, autoLoad from /api/cockpit
+//   useToken          — identity JWT via useCockpitOperatorAuth (S5 Phase B)
 //   useBatchOpts      — persist batch flags in localStorage[bmc_admin_quote_batch_opts]
 //   useRowActions     — load/sync/save/approve/markEnviado bulk + per-row mutations
 // Keep this hook as composer until slices land in a follow-up PR.
 
-const TOKEN_KEY = "bmc_cockpit_token";
 const BATCH_OPTS_KEY = "bmc_admin_quote_batch_opts";
 // Hybrid RBAC soft hint — backend logs the role via resolveInternalServiceActor.
 // Valid values: "ventas" | "logistica" | "admin" | "director". Absent = no hint
@@ -38,17 +38,6 @@ function loadBatchOpts() {
 
 function saveBatchOpts(opts) {
   try { localStorage.setItem(BATCH_OPTS_KEY, JSON.stringify(opts)); } catch { /* ignore */ }
-}
-
-function getStoredToken() {
-  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
-}
-
-function setStoredToken(t) {
-  try {
-    if (t) localStorage.setItem(TOKEN_KEY, t);
-    else localStorage.removeItem(TOKEN_KEY);
-  } catch { /* ignore */ }
 }
 
 function getStoredPanelinRole() {
@@ -88,9 +77,18 @@ async function apiFetch(token, path, options = {}) {
  * State + actions over /api/wolfboard/*. No backend changes.
  */
 export function useAdminCotizaciones() {
-  const [token, setToken] = useState(() => getStoredToken());
-  const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
-  const [tokenLoadError, setTokenLoadError] = useState("");
+  const {
+    token,
+    tokenAutoLoaded,
+    tokenLoadError,
+    tokenInput,
+    setTokenInput,
+    saveToken,
+    clearToken,
+    isJwt,
+    login,
+    user,
+  } = useCockpitOperatorAuth({ role: "admin" });
 
   const [scope, setScopeState] = useState("consulta"); // "consulta" | "admin"
   const [statusFilter, setStatusFilterState] = useState("todas");
@@ -133,49 +131,6 @@ export function useAdminCotizaciones() {
     setBatchOptsState({ ...DEFAULT_BATCH_OPTS });
     saveBatchOpts(DEFAULT_BATCH_OPTS);
   }, []);
-
-  // Auto-load token on mount (browser-Origin-gated endpoint).
-  useEffect(() => {
-    const stored = getStoredToken();
-    if (stored) {
-      setToken(stored);
-      setTokenAutoLoaded(true);
-      return;
-    }
-    const base = getCalcApiBase().replace(/\/+$/, "");
-    fetch(`${base}/api/crm/cockpit-token`, { credentials: "omit" })
-      .then(async (r) => {
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok || !d?.ok) {
-          setTokenLoadError(`No se pudo cargar el token (${d?.error || `HTTP ${r.status}`}). Pegalo manualmente.`);
-          return;
-        }
-        const t = String(d?.token || "").trim();
-        if (t) {
-          setStoredToken(t);
-          setToken(t);
-          setTokenAutoLoaded(true);
-        } else {
-          setTokenLoadError("El servidor no devolvió token. Pegalo manualmente.");
-        }
-      })
-      .catch(() => setTokenLoadError("Error de red al pedir el token. Pegalo manualmente."));
-  }, []);
-
-  const saveToken = useCallback((t) => {
-    const v = String(t || "").trim();
-    setStoredToken(v);
-    setToken(v);
-    if (v) setTokenAutoLoaded(true);
-    showToast(v ? "Token guardado." : "Token borrado.");
-  }, [showToast]);
-
-  const clearToken = useCallback(() => {
-    setStoredToken("");
-    setToken("");
-    setTokenAutoLoaded(false);
-    showToast("Token borrado.");
-  }, [showToast]);
 
   /**
    * Map a CRM_Operativo row (from `/api/crm/cockpit/ml-queue`) into the same
@@ -421,7 +376,7 @@ export function useAdminCotizaciones() {
     await load();
     showToast(`Asignado a ${responsable || "(sin responsable)"}`);
     return { ok: true };
-  }, [token, load]);
+  }, [token, load, showToast]);
 
   const getBorradorInfo = useCallback((row) => {
     if (!row) return { hasBorrador: false };
@@ -525,10 +480,33 @@ export function useAdminCotizaciones() {
     return { ok: true, data };
   }, [token, load, showToast]);
 
-  const exportCsvUrl = useCallback(() => {
+  const downloadExportCsv = useCallback(async () => {
+    if (!token) {
+      showToast("Iniciá sesión para exportar.");
+      return;
+    }
     const base = getCalcApiBase().replace(/\/+$/, "");
-    return `${base}/api/wolfboard/export?token=${encodeURIComponent(token)}&scope=${encodeURIComponent(scope)}`;
-  }, [token, scope]);
+    const q = `?scope=${encodeURIComponent(scope)}`;
+    try {
+      const res = await fetch(`${base}/api/wolfboard/export${q}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        showToast(d?.error || `Export falló (HTTP ${res.status})`);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `wolfboard-pendientes-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showToast(e?.message || "Error al exportar CSV");
+    }
+  }, [token, scope, showToast]);
 
   const filtered = useMemo(() => filterRows(rows, { statusFilter, search }), [rows, statusFilter, search]);
   const stats = useMemo(() => computeStats(rows), [rows]);
@@ -538,8 +516,13 @@ export function useAdminCotizaciones() {
     token,
     tokenAutoLoaded,
     tokenLoadError,
+    tokenInput,
+    setTokenInput,
     saveToken,
     clearToken,
+    isJwt,
+    login,
+    userEmail: user?.email || "",
 
     // data
     rows,
@@ -591,7 +574,7 @@ export function useAdminCotizaciones() {
     runBatch,
     requestSuggestion,
     createRow,
-    exportCsvUrl,
+    downloadExportCsv,
 
     // Tanda 1 - New best-practice lead management actions
     assignTo,

@@ -1,8 +1,7 @@
 import fs from "node:fs/promises";
-import fsSync from "node:fs";
 import crypto from "node:crypto";
-import path from "node:path";
 import { Storage } from "@google-cloud/storage";
+import { Compute, GoogleAuth } from "google-auth-library";
 
 const ALGO = "aes-256-gcm";
 
@@ -79,17 +78,18 @@ export const createGcsTokenStore = ({ bucket, objectKey, encryptionKey, logger }
     }
   }
 
-  const credsPath =
-    process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() || "";
-  const resolvedCreds = credsPath
-    ? path.isAbsolute(credsPath)
-      ? credsPath
-      : path.resolve(process.cwd(), credsPath)
-    : "";
-  const storage =
-    resolvedCreds && fsSync.existsSync(resolvedCreds)
-      ? new Storage({ keyFilename: resolvedCreds })
-      : new Storage();
+  // Use the Cloud Run runtime identity (panelin-runner, which has
+  // roles/storage.objectAdmin on gs://bmc-ml-tokens) via the metadata server.
+  //
+  // IMPORTANT: a bare `new Storage()` does NOT achieve this. google-auth resolves
+  // GOOGLE_APPLICATION_CREDENTIALS *first*, and that env points to the Sheets/Drive
+  // SA key, whose JWT exchange on googleapis.com/oauth2/v4/token fails ("Premature
+  // close"), 500-ing every /ml/* route. Wrapping a Compute client in GoogleAuth
+  // pins the metadata-server identity for THIS client only and bypasses GAC,
+  // leaving Sheets/Drive auth (which legitimately uses the key) untouched.
+  const storage = new Storage({
+    authClient: new GoogleAuth({ authClient: new Compute() }),
+  });
   const file = storage.bucket(bucket).file(objectKey);
 
   const read = async () => {

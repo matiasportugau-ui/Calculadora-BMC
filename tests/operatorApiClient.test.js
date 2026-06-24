@@ -1,0 +1,52 @@
+// Offline unit tests for operator API client helpers.
+// Run: node tests/operatorApiClient.test.js
+import assert from "node:assert/strict";
+import {
+  resolveApiKeyFromEnv,
+  resolveApiKeyFromStorage,
+  COCKPIT_TOKEN_KEY,
+  setOperatorJwtGetter,
+  ensureOperatorToken,
+} from "../src/utils/operatorApiClient.js";
+
+let pass = 0;
+let fail = 0;
+function t(name, fn) {
+  try {
+    fn();
+    pass++;
+    console.log(`  ✅ ${name}`);
+  } catch (err) {
+    fail++;
+    console.error(`  ❌ ${name}\n     ${err.message}`);
+  }
+}
+
+console.log("operatorApiClient — pure helpers");
+
+t("resolveApiKeyFromEnv prefers VITE_API_AUTH_TOKEN then VITE_BMC_API_AUTH_TOKEN", () => {
+  assert.equal(resolveApiKeyFromEnv({}), "");
+  assert.equal(resolveApiKeyFromEnv({ VITE_BMC_API_AUTH_TOKEN: "bmc" }), "bmc");
+  assert.equal(
+    resolveApiKeyFromEnv({ VITE_API_AUTH_TOKEN: "api", VITE_BMC_API_AUTH_TOKEN: "bmc" }),
+    "api"
+  );
+});
+
+t("resolveApiKeyFromStorage reads bmc_cockpit_token", () => {
+  const bag = new Map();
+  bag.set(COCKPIT_TOKEN_KEY, "stored-token");
+  assert.equal(resolveApiKeyFromStorage((k) => bag.get(k)), "stored-token");
+  assert.equal(resolveApiKeyFromStorage(() => { throw new Error("no storage"); }), "");
+});
+
+t("ensureOperatorToken prefers JWT getter over storage", async () => {
+  setOperatorJwtGetter(() => "jwt-from-auth");
+  assert.equal(await ensureOperatorToken(), "jwt-from-auth");
+  setOperatorJwtGetter(() => "");
+});
+
+console.log(
+  `\n════════════════════════════════════════\nRESULTADOS: ${pass} passed, ${fail} failed, ${pass + fail} total\n════════════════════════════════════════`
+);
+process.exit(fail === 0 ? 0 : 1);

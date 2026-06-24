@@ -21,6 +21,10 @@
 #   bmc-broadcast <mensaje>         → envía el mismo mensaje a todos los agentes
 # ══════════════════════════════════════════════════════════════════════════════
 
+# NOTE: Uses custom socket /tmp/bmc-tmux.sock (not the default tmux socket).
+# bmc-dev-session.sh uses the same SESSION name "bmc" on the DEFAULT socket —
+# they won't conflict at the tmux level but has-session checks are socket-scoped.
+
 SESSION="bmc"
 SOCKET="/tmp/bmc-tmux.sock"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -203,16 +207,20 @@ _create_agent_window() {
 
   # Esperar a que claude inicie (título cambia cuando está listo)
   local waited=0
-  while [[ $waited -lt 15 ]]; do
-    sleep 1
+  while [[ $waited -lt 30 ]]; do
+    sleep 0.5
     waited=$((waited + 1))
     local pane_title
     pane_title=$(tmux -S "$SOCKET" display -p -t "${SESSION}:${name}" "#{pane_title}" 2>/dev/null || true)
     # Claude Code muestra "Claude" en el título cuando está listo
-    if [[ "$pane_title" == *"Claude"* ]] || [[ $waited -ge 8 ]]; then
+    if [[ "$pane_title" == *"Claude"* ]]; then
       break
     fi
   done
+
+  if [[ $waited -ge 30 ]]; then
+    echo "  ⚠️  $emoji ${name}: Claude not detected after 15s — role prompt sent anyway"
+  fi
 
   # Enviar rol como primer mensaje
   local role="${!role_var}"

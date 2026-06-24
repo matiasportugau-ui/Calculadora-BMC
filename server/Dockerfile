@@ -35,6 +35,10 @@ COPY --from=deps /app/package.json ./package.json
 COPY server/ ./server/
 COPY src/utils/ ./src/utils/
 COPY src/data/ ./src/data/
+# server/routes/panelin.js statically imports publishForSku from this script (PIM
+# publish worker); it only depends on server/ + node builtins, so it must ship in
+# the API image or the server crashes at boot with ERR_MODULE_NOT_FOUND.
+COPY scripts/publish-panelin-to-shopify.mjs ./scripts/publish-panelin-to-shopify.mjs
 # Legacy operator dashboard served at GET /finanzas (see server/index.js)
 COPY docs/bmc-dashboard-modernization/dashboard ./docs/bmc-dashboard-modernization/dashboard
 
@@ -46,7 +50,7 @@ USER panelin
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
     CMD wget -qO- http://localhost:8080/health || exit 1
 
 ENV NODE_ENV=production \

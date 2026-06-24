@@ -168,6 +168,16 @@ async function main() {
       );
       assert("invoices/:id/pdf → 401 without bearer", r.status === 401, `status=${r.status}`);
     }
+
+    // ── Jornada / hours-report endpoints (items 14–16)
+    {
+      const r = await requestJson(port, "GET", "/api/traktime/day-report?date=2026-06-11");
+      assert("day-report → 401 without bearer", r.status === 401, `status=${r.status}`);
+    }
+    {
+      const r = await requestJson(port, "GET", "/api/traktime/month-report?month=2026-06");
+      assert("month-report → 401 without bearer", r.status === 401, `status=${r.status}`);
+    }
   } finally {
     await new Promise((r) => server.close(r));
   }

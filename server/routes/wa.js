@@ -11,12 +11,14 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { getWaPool } from "../lib/waDb.js";
 import { validateIngestBatch, validateIngestMessage } from "../lib/waValidate.js";
+import { shadowWriteWaExtensionBatch } from "../lib/omni/adapters/waExtension.js";
 import { classifyIntent, generateSuggestions } from "../lib/waEnricher.js";
 import { runWaQuote } from "../lib/waQuoteRunner.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { getConfig as getWaCfg, getFlag as getWaFlag } from "../lib/waConfig.js";
 import { emitWaWebhook } from "../lib/waWebhooks.js";
 import { applyRoutingRules } from "../lib/waRoutingRules.js";
+import jwt from "jsonwebtoken";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -84,8 +86,6 @@ export default function createWaRouter(config, logger) {
   const router = Router();
   const pool = getWaPool(config.databaseUrl);
   const log = logger || console;
-  const auth = requireWaAuth(config);
-
   function requireDb(_req, res, next) {
     if (!pool) {
       return res.status(503).json({ ok: false, error: "DATABASE_URL not configured" });
@@ -140,14 +140,34 @@ export default function createWaRouter(config, logger) {
       const authH = String(req.headers.authorization || "").trim();
       const m = /^Bearer (.+)$/i.exec(authH);
       const tokenStr = m ? m[1] : "";
-      // 1) Probar como JWT operador
-      if (tokenStr && tokenStr.length > 32 && tokenStr.split(".").length === 3) {
-        try {
-          const { requireWaOperator } = await import("../lib/waOperatorAuth.js");
-          const wrapper = requireWaOperator({ require: requireWrite ? "admin" : "member" });
-          return wrapper(req, res, next);
-        } catch {
-          // fallthrough to legacy
+      // 1) Identity JWT (BmcAuth / Google login)
+      if (tokenStr && tokenStr.split(".").length === 3) {
+        const decoded = jwt.decode(tokenStr);
+        if (decoded?.iss === "bmc-identity") {
+          try {
+            const { requireServiceOrUser } = await import("../middleware/requireServiceOrUser.js");
+            const identityMw = requireServiceOrUser({
+              module: "wa",
+              minLevel: requireWrite ? "write" : "read",
+            });
+            let passed = false;
+            await identityMw(req, res, () => {
+              passed = true;
+            });
+            if (passed) return next();
+            if (res.headersSent) return;
+          } catch {
+            /* fallthrough */
+          }
+        } else if (tokenStr.length > 32) {
+          // 2) WA operator JWT (magic-link flow)
+          try {
+            const { requireWaOperator } = await import("../lib/waOperatorAuth.js");
+            const wrapper = requireWaOperator({ require: requireWrite ? "admin" : "member" });
+            return wrapper(req, res, next);
+          } catch {
+            // fallthrough to legacy
+          }
         }
       }
       // 2) Probar como token compartido (legacy)
@@ -514,7 +534,7 @@ export default function createWaRouter(config, logger) {
   // ── Ingest (batch idempotente) ──────────────────────────────────────────
   router.post(
     "/wa/ingest",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const v = validateIngestBatch(req.body);
@@ -623,6 +643,12 @@ export default function createWaRouter(config, logger) {
         });
       }
 
+      void shadowWriteWaExtensionBatch({
+        config,
+        logger: log,
+        messages: valid,
+      }).catch((e) => log.warn?.({ err: e?.message }, "omni wa extension shadow failed"));
+
       return res.json({
         ok: true,
         inserted: insertedMessages,
@@ -640,7 +666,7 @@ export default function createWaRouter(config, logger) {
   // ── List conversations ──────────────────────────────────────────────────
   router.get(
     "/wa/conversations",
-    auth,
+    requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (req, res) => {
       const status = req.query.status ? String(req.query.status).slice(0, 32) : "";
@@ -692,7 +718,7 @@ export default function createWaRouter(config, logger) {
   // ── Get messages for a chat ─────────────────────────────────────────────
   router.get(
     "/wa/messages",
-    auth,
+    requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.query.chat_id || "").trim();
@@ -737,7 +763,7 @@ export default function createWaRouter(config, logger) {
   // ── F2 — Suggestions: list per chat ─────────────────────────────────────
   router.get(
     "/wa/suggestions",
-    auth,
+    requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.query.chat_id || "").trim();
@@ -766,7 +792,7 @@ export default function createWaRouter(config, logger) {
   // ── F2 — Suggestion: mark chosen (operator picked an option) ────────────
   router.post(
     "/wa/suggestions/:id/chosen",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const id = String(req.params.id || "").trim();
@@ -816,7 +842,7 @@ export default function createWaRouter(config, logger) {
   // ── F3 — Quotes: list per chat ──────────────────────────────────────────
   router.get(
     "/wa/quotes",
-    auth,
+    requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.query.chat_id || "").trim();
@@ -838,7 +864,7 @@ export default function createWaRouter(config, logger) {
   // ── F3 — Quotes: run on-demand (operator override params) ───────────────
   router.post(
     "/wa/quotes/run",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.body?.chat_id || "").trim();
@@ -868,7 +894,7 @@ export default function createWaRouter(config, logger) {
   // ── F3 — Conversations: upsert lead → CRM_Operativo ────────────────────
   router.post(
     "/wa/conversations/:chat_id/upsert-lead",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.params.chat_id || "").trim();
@@ -921,7 +947,7 @@ export default function createWaRouter(config, logger) {
   // ── F4 — Follow-ups: list, create, mark done ────────────────────────────
   router.get(
     "/wa/followups",
-    auth,
+    requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = req.query.chat_id ? String(req.query.chat_id).trim() : "";
@@ -951,7 +977,7 @@ export default function createWaRouter(config, logger) {
 
   router.post(
     "/wa/followups",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.body?.chat_id || "").trim();
@@ -974,7 +1000,7 @@ export default function createWaRouter(config, logger) {
 
   router.patch(
     "/wa/followups/:id",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const id = String(req.params.id || "").trim();
@@ -999,7 +1025,7 @@ export default function createWaRouter(config, logger) {
   // ── F4 — Consent (Cloud API outbound opt-in) ────────────────────────────
   router.post(
     "/wa/conversations/:chat_id/consent",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.params.chat_id || "").trim();
@@ -1025,7 +1051,7 @@ export default function createWaRouter(config, logger) {
   // F-B3: enforce daily cap por chat antes de proceder; audit + webhook al final.
   router.post(
     "/wa/outbound",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     outboundLimiter,
     outboundOperatorLimiter,
@@ -1149,7 +1175,7 @@ export default function createWaRouter(config, logger) {
 
   router.post(
     "/wa/outbound/:msg_id/confirm",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const msgId = String(req.params.msg_id || "").trim();
@@ -1172,7 +1198,7 @@ export default function createWaRouter(config, logger) {
   // ── F2 — Suggestion: trigger on-demand (UI puede pedir generar ahora) ──
   router.post(
     "/wa/suggestions/run",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.body?.chat_id || "").trim();
@@ -1223,7 +1249,7 @@ export default function createWaRouter(config, logger) {
   // ── F5 — Heartbeat (extensión registra que está viva) ───────────────────
   router.post(
     "/wa/heartbeat",
-    auth,
+    requireWaAccess({ requireWrite: true }),
     requireDb,
     asyncHandler(async (req, res) => {
       const operatorId = String(req.body?.operator_id || req.waOperatorId || "").slice(0, 64).trim();
@@ -1248,7 +1274,7 @@ export default function createWaRouter(config, logger) {
 
   router.get(
     "/wa/operators",
-    auth,
+    requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (_req, res) => {
       const { rows } = await pool.query(
@@ -1264,7 +1290,7 @@ export default function createWaRouter(config, logger) {
   // ── F5 — Metrics: TFR, AI adoption, conversion, volumen por canal ───────
   router.get(
     "/wa/metrics",
-    auth,
+    requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (req, res) => {
       const days = Math.min(Math.max(Number(req.query.days || 7), 1), 90);

@@ -214,7 +214,7 @@ async function main() {
           helpType: "callout",
           helpText: {
             short: "Pegá el token del cockpit para empezar",
-            long: "El token autoriza las llamadas al backend /api/wolfboard/*. El sistema intentó autoloadearlo desde /api/crm/cockpit-token; si falló, pegalo a mano y guardalo (queda en localStorage).",
+            long: "El token autoriza las llamadas al backend /api/wolfboard/*. En prod usa JWT de identidad (login); en dev podés pegar API_AUTH_TOKEN a mano y guardarlo (localStorage).",
           },
           optional: true,
         },

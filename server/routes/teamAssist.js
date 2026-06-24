@@ -3,9 +3,36 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
 
 const router = Router();
+
+/** Phase A (S5): public simulacro — rate limit instead of API_AUTH_TOKEN. */
+export const TEAM_ASSIST_CHAT_RATE = {
+  windowMs: Number(process.env.TEAM_ASSIST_RATE_WINDOW_MS || 15 * 60 * 1000),
+  max: Number(process.env.TEAM_ASSIST_RATE_MAX || 20),
+};
+
+function teamAssistClientKey(req) {
+  return (
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    "unknown"
+  );
+}
+
+const chatLimiter = rateLimit({
+  windowMs: TEAM_ASSIST_CHAT_RATE.windowMs,
+  max: TEAM_ASSIST_CHAT_RATE.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: teamAssistClientKey,
+  message: {
+    ok: false,
+    error: "Demasiadas solicitudes al asistente. Esperá unos minutos e intentá de nuevo.",
+  },
+});
 
 /** Roles alineados conceptualmente a PROJECT-TEAM-FULL-COVERAGE (§2) — prompts cortos */
 export const TEAM_ASSIST_AGENTS = [
@@ -42,22 +69,13 @@ const AGENT_INSTRUCTIONS = {
   sheets: `Rol: Planillas y Google Sheets del proyecto. Explicá en términos de tabs, columnas y flujos según la documentación típica del repo (sin inventar sheet IDs). Si el usuario pide “cargar planilla”, describí qué campos conviene completar y en qué orden; recordá que credenciales y edición estructural la define el operador.`,
 };
 
-function requireOpenAI(req, res, next) {
+function requireOpenAIConfigured(req, res, next) {
   if (!config.openaiApiKey) {
     return res.status(503).json({
       ok: false,
       error: "OPENAI_API_KEY no configurada en el servidor",
       hint: "Agregá OPENAI_API_KEY al .env y reiniciá npm run start:api",
     });
-  }
-  const expected = config.apiAuthToken;
-  if (expected) {
-    const header =
-      req.headers["x-api-key"] ||
-      (req.headers.authorization && String(req.headers.authorization).replace(/^Bearer\s+/i, ""));
-    if (String(header || "") !== String(expected)) {
-      return res.status(401).json({ ok: false, error: "API key inválida o ausente (x-api-key)" });
-    }
   }
   next();
 }
@@ -108,7 +126,11 @@ router.get("/health", (req, res) => {
     ok: true,
     openai_configured: Boolean(config.openaiApiKey),
     model: config.openaiChatModel,
-    auth_required: Boolean(config.apiAuthToken),
+    auth_required: false,
+    rate_limit: {
+      window_ms: TEAM_ASSIST_CHAT_RATE.windowMs,
+      max_per_window: TEAM_ASSIST_CHAT_RATE.max,
+    },
   });
 });
 
@@ -116,7 +138,7 @@ router.get("/agents", (req, res) => {
   res.json({ ok: true, agents: TEAM_ASSIST_AGENTS });
 });
 
-router.post("/chat", requireOpenAI, async (req, res) => {
+router.post("/chat", chatLimiter, requireOpenAIConfigured, async (req, res) => {
   const agentId = String(req.body?.agentId || "orchestrator");
   const messages = clampMessages(req.body?.messages);
   const context = req.body?.context;

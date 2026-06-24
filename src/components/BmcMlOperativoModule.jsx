@@ -2,23 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
+import { useCockpitOperatorAuth } from "../hooks/useCockpitOperatorAuth.js";
+import { cockpitOperatorFetch } from "../utils/cockpitOperatorFetch.js";
 
-const STORAGE_KEY = "bmc_cockpit_token";
 const FF = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
 const MONO = "'Courier New', Courier, monospace";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-function getStoredToken() {
-  try { return localStorage.getItem(STORAGE_KEY) || ""; } catch { return ""; }
-}
-function setStoredToken(t) {
-  try { if (t) localStorage.setItem(STORAGE_KEY, t); else localStorage.removeItem(STORAGE_KEY); } catch { /* */ }
-}
 async function cockpitFetch(token, path, options = {}) {
-  const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
-  const res = await fetch(path, { ...options, headers });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  return cockpitOperatorFetch(token, path, options);
 }
 function isSi(v) { const s = String(v || "").trim().toLowerCase(); return s === "si" || s === "sí"; }
 function parseMlObs(obs) {
@@ -285,14 +277,23 @@ const DEFAULT_AUTO = { mlPull: false, crmPull: false, sync: false, generate: fal
 
 // ══════════════════════════════════════════════════════════════════════════════
 export default function BmcMlOperativoModule() {
-  const [tokenInput, setTokenInput]           = useState("");
-  const [token, setToken]                     = useState("");
+  const {
+    token,
+    tokenAutoLoaded,
+    tokenLoadError,
+    tokenInput,
+    setTokenInput,
+    saveToken,
+    clearToken,
+    isJwt,
+    login,
+    user,
+  } = useCockpitOperatorAuth({ module: "canales", minLevel: "write" });
+
   const [items, setItems]                     = useState([]);
   const [loading, setLoading]                 = useState(false);
   const [error, setError]                     = useState("");
   const [toast, setToast]                     = useState("");
-  const [tokenLoadError, setTokenLoadError]   = useState("");
-  const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
   const [cycleLog, setCycleLog]               = useState([]);
   const [firing, setFiring]                   = useState(false);
   const [generating, setGenerating]           = useState(false);
@@ -332,22 +333,6 @@ export default function BmcMlOperativoModule() {
     return { total: items.length, fromMl, withResp, approved, sent, noResp };
   }, [items]);
 
-  // ── token bootstrap ────────────────────────────────────────────────────────
-  useEffect(() => {
-    const stored = getStoredToken();
-    if (stored) { setTokenInput(stored); setToken(stored); setTokenAutoLoaded(true); return; }
-    const base = getCalcApiBase();
-    fetch(`${base.replace(/\/+$/, "")}/api/crm/cockpit-token`, { credentials: "omit" })
-      .then(async r => {
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok || !data?.ok) { setTokenLoadError("No se pudo cargar el token del servidor. Pegá API_AUTH_TOKEN manualmente."); return; }
-        const t = String(data?.token || "").trim();
-        if (t) { setStoredToken(t); setTokenInput(t); setToken(t); setTokenAutoLoaded(true); }
-        else setTokenLoadError("El servidor no devolvió token. Pegá API_AUTH_TOKEN manualmente.");
-      })
-      .catch(() => setTokenLoadError("Error de red al pedir el token."));
-  }, []);
-
   // ── persist automation config ──────────────────────────────────────────────
   useEffect(() => {
     localStorage.setItem("bmc-auto-cfg", JSON.stringify(auto));
@@ -384,12 +369,6 @@ export default function BmcMlOperativoModule() {
   }, [token]);
 
   useEffect(() => { if (token) loadQueue(); else setItems([]); }, [token, loadQueue]);
-
-  const saveToken = () => {
-    const t = tokenInput.trim(); setStoredToken(t); setToken(t);
-    if (t) setTokenAutoLoaded(true);
-    showToast(t ? "Token guardado." : "Token borrado.");
-  };
 
   // ── PULL ML ────────────────────────────────────────────────────────────────
   const runPullMl = useCallback(async () => {
@@ -768,7 +747,10 @@ export default function BmcMlOperativoModule() {
             tokenInput={tokenInput}
             setTokenInput={setTokenInput}
             onSave={saveToken}
-            onClear={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
+            onClear={clearToken}
+            isJwt={isJwt}
+            userEmail={user?.email || ""}
+            onLogin={login}
             inputStyle={{ width: "100%", maxWidth: 420, padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e5ea", fontSize: 13, fontFamily: MONO, boxSizing: "border-box" }}
             btnPrimaryStyle={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "#0071e3", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: FF }}
             btnGhostStyle={{ padding: "8px 14px", borderRadius: 10, border: "1.5px solid #e5e5ea", background: "#fff", color: "#1d1d1f", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: FF }}

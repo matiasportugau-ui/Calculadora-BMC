@@ -55,7 +55,7 @@ async function main() {
     assert("admin v2 module rendered (.adminCot[data-skin])", true);
 
     // Token: either auto-loaded → table appears, or panel offered.
-    // We give the cockpit-token endpoint ~5s and then check what's on screen.
+    // We give auth/bootstrap ~5s and then check what's on screen.
     await page.waitForTimeout(5_000);
     const haveTable = await page.locator(".adminCot__table").isVisible().catch(() => false);
     const haveTokenPanel = await page.getByText(/Token cockpit|Pegá el token|No se pudo cargar el token/i).first().isVisible().catch(() => false);
@@ -100,7 +100,7 @@ async function main() {
     // Filter out noise + acceptable failures for the anonymous local-dev case:
     //   401 → /api/auth/me (anon user, expected)
     //   403 → /api/auth/refresh (anon user, expected)
-    //   503 → /api/crm/cockpit-token (no API_AUTH_TOKEN configured)
+    //   503 → cockpit routes when API_AUTH_TOKEN missing on server
     const noisy = jsErrors.filter((e) =>
       !e.includes("ResizeObserver") &&
       !e.includes("favicon") &&

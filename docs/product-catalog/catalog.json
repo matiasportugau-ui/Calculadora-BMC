@@ -1,0 +1,2326 @@
+{
+  "meta": {
+    "store": "BMC URUGUAY",
+    "domain": "bmcuruguay.com.uy",
+    "snapshot_date": "2026-06-12",
+    "source": "Shopify Admin API (paginas 1+2, hasNextPage=false)",
+    "currency": "USD",
+    "total_in_shopify": 97,
+    "total_documented": 97,
+    "active": 73,
+    "draft": 24,
+    "price_field": "price_from_usd = minVariantPrice (precio 'desde'). Precios con IVA segun config de tienda; para cotizacion usar listas ex-IVA del motor.",
+    "categories": {
+      "paneles": "Paneles aislantes (sandwich)",
+      "perfiles_panel": "Perfiles y angulos de panel (U / G2 / K2 / G4)",
+      "accesorios_isoroof": "Accesorios ISOROOF (cumbreras, goteros, babetas, canalon)",
+      "accesorios_isodec": "Accesorios ISODEC (cumbreras, goteros, babetas, canalon)",
+      "accesorios_hiansa": "Accesorios Hiansa-Panel",
+      "accesorios_panel": "Accesorios comunes de panel",
+      "chapas": "Chapas y autoportantes",
+      "fijaciones": "Fijaciones y ferreteria",
+      "quimicos": "Quimicos / selladores / espumas",
+      "impermeabilizacion": "Impermeabilizacion (membranas)",
+      "impermeabilizacion_hm": "Linea HM-rubber (caucho liquido / impermeabilizantes)",
+      "perfiles_estructural": "Perfiles estructurales (aluminio)",
+      "galpones": "Galpones de jardin prefabricados"
+    }
+  },
+  "panels_detail": {
+    "hiansa-panel-trapezoidal-5g-becam": {
+      "tipo": "techo",
+      "nucleo": "PUR",
+      "ancho_util_m": 1.0,
+      "espesores_mm": [
+        30
+      ],
+      "vendor": "BECAM"
+    },
+    "isodec®-pir": {
+      "tipo": "techo",
+      "nucleo": "PIR",
+      "ancho_util_m": 1.12,
+      "espesores_mm": [
+        50,
+        80,
+        120
+      ]
+    },
+    "isopanel-isodec-eps-cubiertas-bmc-reloaded": {
+      "tipo": "techo",
+      "nucleo": "EPS",
+      "ancho_util_m": 1.12,
+      "espesores_mm": [
+        100,
+        150,
+        200,
+        250
+      ]
+    },
+    "isoroof-3g-gris-rojo-blanco-bromyros": {
+      "tipo": "techo",
+      "nucleo": "PIR/Foil",
+      "ancho_util_m": 1.0,
+      "espesores_mm": [
+        30,
+        50,
+        80
+      ],
+      "vendor": "Bromyros by KINGSPAN"
+    },
+    "iagro30": {
+      "tipo": "techo",
+      "nucleo": "PIR/Foil",
+      "ancho_util_m": 1.0,
+      "espesores_mm": [
+        30,
+        50
+      ],
+      "vendor": "KINGSPAN"
+    },
+    "iroof80-pls": {
+      "tipo": "techo",
+      "nucleo": "PIR",
+      "ancho_util_m": 1.0,
+      "espesores_mm": [
+        80
+      ],
+      "vendor": "KINGSPAN"
+    },
+    "isopanel-eps-paredes-y-fachadas": {
+      "tipo": "pared",
+      "nucleo": "EPS",
+      "ancho_util_m": 1.14,
+      "espesores_mm": [
+        50,
+        100,
+        150,
+        200,
+        250
+      ]
+    },
+    "isowall-®-pir": {
+      "tipo": "pared",
+      "nucleo": "PIR",
+      "ancho_util_m": 1.1,
+      "espesores_mm": [
+        50,
+        80
+      ]
+    },
+    "isofrig-®": {
+      "tipo": "pared/camara_frig",
+      "nucleo": "PIR",
+      "ancho_util_m": 1.14,
+      "espesores_mm": [
+        40,
+        60,
+        80,
+        100,
+        120,
+        150,
+        180
+      ],
+      "price_note": "Shopify=DRAFT con precios legacy desactualizados; canonico de cotizacion = isofrig_canonical (Matriz/ledger WOLF-2026-0001)."
+    },
+    "pu20mm-gris-sin-cielorraso-pvc": {
+      "tipo": "pared",
+      "nucleo": "PU/PVC",
+      "ancho_util_m": null,
+      "espesores_mm": [
+        20
+      ]
+    }
+  },
+  "isofrig_canonical": {
+    "source": "Matriz tab BROMYROS + ledger BUG-TRIAGE-RAMIRO WOLF-2026-0001",
+    "lista": "web",
+    "moneda": "USD",
+    "iva": "ex-IVA",
+    "precios_web_por_espesor": {
+      "40": 55.3384,
+      "60": 62.8919,
+      "80": 69.377,
+      "100": 76.9454,
+      "120": 89.474,
+      "150": 93.3436,
+      "180": 111.4058
+    },
+    "excluido_200mm": {
+      "valor_clonado": 111.0032,
+      "motivo": "SKU/nombre clonados de IF150 en Matriz; cargar solo si Matias corrige la fuente."
+    },
+    "shopify_draft_precios": {
+      "40": 53.11,
+      "60": 57.83,
+      "80": 63.8,
+      "100": 70.77,
+      "120": 84.59,
+      "nota": "= precios build legacy; 150 y 180 no capturados en snapshot; NO usar para cotizar."
+    }
+  },
+  "products_by_category": {
+    "paneles": [
+      {
+        "handle": "hiansa-panel-trapezoidal-5g-becam",
+        "title": "Hiansa-Panel (Trapezoidal 5G) - BECAM",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 46.73,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/HIANZA-PUR-5G-BECAM-GRIS.webp?v=1748592601",
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/hiansa-panel-trapezoidal-5g-becam"
+      },
+      {
+        "handle": "isodec®-pir",
+        "title": "ISODEC PIR (Techos y Cubiertas) / 50 - 80 - 120 mm",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 51.02,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/isodec®-pir"
+      },
+      {
+        "handle": "isopanel-isodec-eps-cubiertas-bmc-reloaded",
+        "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 46.07,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded"
+      },
+      {
+        "handle": "isoroof-3g-gris-rojo-blanco-bromyros",
+        "title": "ISOROOF 3G / 30 - 50 - 80 mm",
+        "status": "ACTIVE",
+        "vendor": "Bromyros by KINGSPAN",
+        "product_type": "Panel Aislante",
+        "price_from_usd": 48.74,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros"
+      },
+      {
+        "handle": "iagro30",
+        "title": "ISOROOF FOIL 3G / 30 - 50 mm",
+        "status": "ACTIVE",
+        "vendor": "KINGSPAN",
+        "product_type": "Panel Aislante",
+        "price_from_usd": 39.54,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/iagro30"
+      },
+      {
+        "handle": "iroof80-pls",
+        "title": "ISOROOF PLUS 3G / 80 mm",
+        "status": "ACTIVE",
+        "vendor": "KINGSPAN",
+        "product_type": "Panel",
+        "price_from_usd": 71.76,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/iroof80-pls"
+      },
+      {
+        "handle": "isopanel-eps-paredes-y-fachadas",
+        "title": "ISOPANEL EPS (Paredes y Fachadas) / 50 - 100 - 150 - 200 - 250 mm",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 41.88,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/1e03a1_6071dc1dcd5743968a0bbe3e23fce220_mv2.png?v=1752607327",
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/isopanel-eps-paredes-y-fachadas"
+      },
+      {
+        "handle": "isowall-®-pir",
+        "title": "ISOWALL PIR - Fachadas / 50 - 80 mm",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 54.65,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isowall_jpg.webp?v=1756840865",
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/isowall-®-pir"
+      },
+      {
+        "handle": "isofrig-®",
+        "title": "ISOFRIG Panel Frigorifico / 40 - 60 - 80 - 100 - 120 - 150 - 180 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 53.11,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISOWALL_PIR.png?v=1755385123",
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/isofrig-®"
+      },
+      {
+        "handle": "pu20mm-gris-sin-cielorraso-pvc",
+        "title": "PU20mm Gris sin Cielorraso (PVC)",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 36.0,
+        "image": null,
+        "category": "paneles",
+        "url": "https://bmcuruguay.com.uy/products/pu20mm-gris-sin-cielorraso-pvc"
+      }
+    ],
+    "perfiles_panel": [
+      {
+        "handle": "perfiles-u",
+        "title": "PERFIL U (ISOPANEL - ISOWALL - ISOFRIG) / 40 a 180 mm",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.23,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/PERFILU100.jpg?v=1755271238",
+        "category": "perfiles_panel",
+        "url": "https://bmcuruguay.com.uy/products/perfiles-u"
+      },
+      {
+        "handle": "angulo-plegado-g2-l-exterior",
+        "title": "ANGULO EXTERIOR (Perfil G2) / 50 a 250 mm",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": "Accesorio",
+        "price_from_usd": 19.17,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroSupdeCamara.jpg?v=1755215533",
+        "category": "perfiles_panel",
+        "url": "https://bmcuruguay.com.uy/products/angulo-plegado-g2-l-exterior"
+      },
+      {
+        "handle": "angulo-interior-perfil-k2",
+        "title": "ANGULO INTERIOR (Perfil K2)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.92,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/AnguloInterior_PerfilK2_2.jpg?v=1755031842",
+        "category": "perfiles_panel",
+        "url": "https://bmcuruguay.com.uy/products/angulo-interior-perfil-k2"
+      },
+      {
+        "handle": "angulo-plegado-g4-40x40",
+        "title": "Angulo G4 - (40x40)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 18.85,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-AnguloG4exterior--Renderizado-WEB02.png?v=1748580715",
+        "category": "perfiles_panel",
+        "url": "https://bmcuruguay.com.uy/products/angulo-plegado-g4-40x40"
+      }
+    ],
+    "accesorios_isoroof": [
+      {
+        "handle": "cumbrera-isoroof-3g",
+        "title": "CUMBRERA - ISOROOF 3G",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 58.23,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-CumbreraIsoroof3G-Rojo-WEB01.png?v=1759860971",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/cumbrera-isoroof-3g"
+      },
+      {
+        "handle": "canalon-doble-isoroof-bandeja-tapas-agujero-bajada",
+        "title": "Canalon Doble - ISOROOF (Kit)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 118.76,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/CANALONISODEC_EPS_PIR_Gris_2.jpg?v=1755206403",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/canalon-doble-isoroof-bandeja-tapas-agujero-bajada"
+      },
+      {
+        "handle": "soporte-para-canalon-isoroof",
+        "title": "Soporte para Canalon - Isoroof",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 18.66,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/SoportedeCanalonIsoroof.jpg?v=1755206907",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/soporte-para-canalon-isoroof"
+      },
+      {
+        "handle": "arandela-trapezoidal-caballete-roof",
+        "title": "Caballete - Arandela trapezoidal - ISOROOF (x10)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 9.2,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/20250709_155024.jpg?v=1755369402",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/arandela-trapezoidal-caballete-roof"
+      },
+      {
+        "handle": "babeta-de-atornillar-lateral-isoroof",
+        "title": "Babeta de Atornillar Lateral - ISOROOF",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 37.81,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAtornillarIsodec.jpg?v=1755206215",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/babeta-de-atornillar-lateral-isoroof"
+      },
+      {
+        "handle": "babeta-de-atornillar-superior-3g-isoroof",
+        "title": "Babeta de Atornillar Superior 3G - ISOROOF",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 39.24,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAtornillarSuperior3G-ISOROOF_1.jpg?v=1755204832",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/babeta-de-atornillar-superior-3g-isoroof"
+      },
+      {
+        "handle": "babeta-de-empotrar-lateral-isoroof",
+        "title": "Babeta de Empotrar Lateral - ISOROOF",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 37.81,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAdosar-ISODEC_4.jpg?v=1755372738",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/babeta-de-empotrar-lateral-isoroof"
+      },
+      {
+        "handle": "babeta-de-empotrar-superior-3g-isoroof-bmc-reloaded",
+        "title": "Babeta de Empotrar Superior 3G - ISOROOF",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 20.92,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeEmpotrarSuperior3G-Terracota.png?v=1755372214",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/babeta-de-empotrar-superior-3g-isoroof-bmc-reloaded"
+      },
+      {
+        "handle": "gotero-lateral-de-camara-isoroof",
+        "title": "Gotero Lateral de Camara - Isoroof",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 36.89,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Modelo3dG.LateralCamara-Gris-WEB01.png?v=1752240908",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/gotero-lateral-de-camara-isoroof"
+      },
+      {
+        "handle": "gotero-lateral-isoroof",
+        "title": "Gotero Lateral - ISOROOF",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 36.08,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroLateralIsoroof.jpg?v=1755204383",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/gotero-lateral-isoroof"
+      },
+      {
+        "handle": "gotero-superior-de-camara-isoroof",
+        "title": "Gotero Superior de Camara - ISOROOF",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 37.86,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-GoteroSuperiordeCamaraIsoroof3G-Gris-WEB01.png?v=1752254989",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/gotero-superior-de-camara-isoroof"
+      },
+      {
+        "handle": "gotero-superior-3g-isoroof",
+        "title": "GOTERO SUPERIOR 3G - ISOROOF",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 46.65,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3399-Edit.jpg?v=1755365558",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/gotero-superior-3g-isoroof"
+      },
+      {
+        "handle": "gotero-frontal-con-greca-isoroof",
+        "title": "Gotero Frontal con Greca - ISOROOF",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 27.45,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalconGreca-ISOROOF.png?v=1755369232",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/gotero-frontal-con-greca-isoroof"
+      },
+      {
+        "handle": "gotero-frontal-simple-isoroof",
+        "title": "Gotero Frontal Simple - ISOROOF",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 26.18,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3364-Edit_996789a1-58c1-4911-b775-eada26867d06.jpg?v=1755202546",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/gotero-frontal-simple-isoroof"
+      },
+      {
+        "handle": "embudo-conector-de-bajada-pvc-para-canaleta-100mm",
+        "title": "Embudo Conector de Bajada PVC para Canaleta (100mm)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 18.73,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Gemini_Generated_Image_yk2nc5yk2nc5yk2n.png?v=1761766537",
+        "category": "accesorios_isoroof",
+        "url": "https://bmcuruguay.com.uy/products/embudo-conector-de-bajada-pvc-para-canaleta-100mm"
+      }
+    ],
+    "accesorios_isodec": [
+      {
+        "handle": "soporte-de-canalon-isodec",
+        "title": "SOPORTE de CANALON - ISODEC (EPS & PIR)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 22.68,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3329_f9af623c-7cb2-4a8b-822f-77fbb4daff15.jpg?v=1755201993",
+        "category": "accesorios_isodec",
+        "url": "https://bmcuruguay.com.uy/products/soporte-de-canalon-isodec"
+      },
+      {
+        "handle": "canalon-isodec-kit-completo",
+        "title": "CANALON ISODEC (EPS & PIR) - KIT COMPLETO",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 98.98,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3324-Edit.jpg?v=1755201703",
+        "category": "accesorios_isodec",
+        "url": "https://bmcuruguay.com.uy/products/canalon-isodec-kit-completo"
+      },
+      {
+        "handle": "cumbrera-isodec",
+        "title": "CUMBRERA para ISODEC",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 33.54,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-PerfilCumbreraISODEC-Blanco-Renderizado-WEB01.png?v=1748581588",
+        "category": "accesorios_isodec",
+        "url": "https://bmcuruguay.com.uy/products/cumbrera-isodec"
+      },
+      {
+        "handle": "babeta-de-empotrar-isodec",
+        "title": "BABETA ISODEC - Empotrar",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 17.35,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_Empotrar_Blanca.jpg?v=1755375091",
+        "category": "accesorios_isodec",
+        "url": "https://bmcuruguay.com.uy/products/babeta-de-empotrar-isodec"
+      },
+      {
+        "handle": "babeta-isodec-adosar",
+        "title": "BABETA ISODEC - Adosar",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 17.35,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_adosar_blanca.jpg?v=1755374853",
+        "category": "accesorios_isodec",
+        "url": "https://bmcuruguay.com.uy/products/babeta-isodec-adosar"
+      },
+      {
+        "handle": "gotero-lateral-de-camara-isodec",
+        "title": "GOTERO LATERAL de CAMARA - ISODEC (EPS & PIR)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 33.26,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-GoteroLateraldeCamaraISODEC-Blanco-Renderizado-WEB01.png?v=1748581487",
+        "category": "accesorios_isodec",
+        "url": "https://bmcuruguay.com.uy/products/gotero-lateral-de-camara-isodec"
+      },
+      {
+        "handle": "gotero-frontal-isodec",
+        "title": "Gotero Frontal para ISODEC (EPS & PIR)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": "Accesorio",
+        "price_from_usd": 22.31,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalparaISODEC2.jpg?v=1755373732",
+        "category": "accesorios_isodec",
+        "url": "https://bmcuruguay.com.uy/products/gotero-frontal-isodec"
+      },
+      {
+        "handle": "gotero-lateral-para-isodec-copia",
+        "title": "Gotero Lateral y Superior para ISODEC (EPS & PIR)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": "Accesorio",
+        "price_from_usd": 29.57,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroLateralIsodecEPS_PIR4.jpg?v=1755373177",
+        "category": "accesorios_isodec",
+        "url": "https://bmcuruguay.com.uy/products/gotero-lateral-para-isodec-copia"
+      }
+    ],
+    "accesorios_hiansa": [
+      {
+        "handle": "cumbrera-hiansa-panel-5g-becam",
+        "title": "Cumbrera Hiansa-panel 5G (BECAM)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 22.85,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/CumbreraLisaconCrestaHianza-Panel5G-GRIS.png?v=1748593998",
+        "category": "accesorios_hiansa",
+        "url": "https://bmcuruguay.com.uy/products/cumbrera-hiansa-panel-5g-becam"
+      },
+      {
+        "handle": "perfil-lateral-hiansa-panel-becam",
+        "title": "Perfil Lateral Derecho Hiansa-Panel",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 31.12,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/PerfilLateralDerechoHainza-Gris-01.png?v=1748594991",
+        "category": "accesorios_hiansa",
+        "url": "https://bmcuruguay.com.uy/products/perfil-lateral-hiansa-panel-becam"
+      },
+      {
+        "handle": "perfil-lateral-hiansa-panel-becam-bmc-reloaded",
+        "title": "Perfil Lateral Izquierdo Hiansa-Panel",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 31.12,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file_b430e1c6-0b07-4496-9501-1274c1d58909.jpg?v=1747885616",
+        "category": "accesorios_hiansa",
+        "url": "https://bmcuruguay.com.uy/products/perfil-lateral-hiansa-panel-becam-bmc-reloaded"
+      },
+      {
+        "handle": "frontalin-hiansa-panel",
+        "title": "Frontalin Hiansa-Panel",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 21.47,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Frontalin_Hiansa-Panel_Gris.jpg?v=1755367061",
+        "category": "accesorios_hiansa",
+        "url": "https://bmcuruguay.com.uy/products/frontalin-hiansa-panel"
+      }
+    ],
+    "accesorios_panel": [
+      {
+        "handle": "cinta-butilo",
+        "title": "Cinta Butilo 2mm x 15mm x 22.5m - ISOROOF/ISODEC/ISOPANEL",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 22.48,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Cinta_Butilo_01.jpg?v=1755215262",
+        "category": "accesorios_panel",
+        "url": "https://bmcuruguay.com.uy/products/cinta-butilo"
+      }
+    ],
+    "chapas": [
+      {
+        "handle": "chapa-trapezoidal-bc-35-prepintada",
+        "title": "CHAPA TRAPEZOIDAL (BC-35) PREPINTADA",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.92,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-trapezoidal-bc-35-prepintada"
+      },
+      {
+        "handle": "chapa-trapezoidal-bc-35-aluzinc",
+        "title": "CHAPA TRAPEZOIDAL (BC-35) - ALUZINC",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 5.59,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-trapezoidal-bc-35-aluzinc"
+      },
+      {
+        "handle": "chapa-sinuzoidal-bc-18-aluzinc",
+        "title": "CHAPA SINUZOIDAL (BC-18) - ALUZINC",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 5.59,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-sinuzoidal-bc-18-aluzinc"
+      },
+      {
+        "handle": "chapa-sinuzoidal-bc-18-prepintada",
+        "title": "CHAPA Sinuzoidal (BC-18) PREPINTADA",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.92,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-sinuzoidal-bc-18-prepintada"
+      },
+      {
+        "handle": "chapa-sinuzoidal-bc-18-aluzinc-con-variables",
+        "title": "CHAPA SINUZOIDAL (BC-18) - ALUZINC (variantes)",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 11.53,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-sinuzoidal-bc-18-aluzinc-con-variables"
+      },
+      {
+        "handle": "chapa-sinuzoidal-bc-18-prepintada-con-variantes",
+        "title": "CHAPA Sinuzoidal (BC-18) PREPINTADA (variantes)",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.92,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-sinuzoidal-bc-18-prepintada-con-variantes"
+      },
+      {
+        "handle": "chapa-trapezoidal-bc-35-aluzinc-con-variantes",
+        "title": "CHAPA TRAPEZOIDAL (BC-35) - ALUZINC (variantes)",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 11.53,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-trapezoidal-bc-35-aluzinc-con-variantes"
+      },
+      {
+        "handle": "chapa-trapezoidal-bc-35-prepintada-con-variantes",
+        "title": "CHAPA TRAPEZOIDAL (BC-35) PREPINTADA (variantes)",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.92,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-trapezoidal-bc-35-prepintada-con-variantes"
+      },
+      {
+        "handle": "chapa-lisa-galvanizada",
+        "title": "Chapa Lisa Galvanizada",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 27.65,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-lisa-galvanizada"
+      },
+      {
+        "handle": "chapa-lisa-aluzinc",
+        "title": "Chapa Lisa Aluzinc",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 5.59,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-lisa-aluzinc"
+      },
+      {
+        "handle": "autoportante-prepintada-cal-24-esp-0-50-mm",
+        "title": "Autoportante Prepintada Cal. 24 / 0.50 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 19.42,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/autoportante-prepintada-cal-24-esp-0-50-mm"
+      },
+      {
+        "handle": "autoportante-prepintada-cal-26-esp-0-41-mm",
+        "title": "Autoportante Prepintada Cal. 26 / 0.41 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.92,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/autoportante-prepintada-cal-26-esp-0-41-mm"
+      },
+      {
+        "handle": "autoportante-galvanizado-bc-120-cal-19-esp-1-11-mm",
+        "title": "Autoportante Galvanizado BC-120 Cal. 19 / 1.11 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 33.83,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/autoportante-galvanizado-bc-120-cal-19-esp-1-11-mm"
+      },
+      {
+        "handle": "autoportante-galvanizado-bc-120-cal-20-esp-0-89-mm",
+        "title": "Autoportante Galvanizado BC-120 Cal. 20 / 0.89 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 27.65,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/autoportante-galvanizado-bc-120-cal-20-esp-0-89-mm"
+      },
+      {
+        "handle": "autoportante-aluzinc-bc-120-cal-22-esp-0-70-mm",
+        "title": "Autoportante Aluzinc BC-120 Cal. 22 / 0.70 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 22.66,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/autoportante-aluzinc-bc-120-cal-22-esp-0-70-mm"
+      },
+      {
+        "handle": "autoportante-aluzinc-bc-120-cal-24-esp-0-50-mm",
+        "title": "Autoportante Aluzinc BC-120 Cal. 24 / 0.50 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.13,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/autoportante-aluzinc-bc-120-cal-24-esp-0-50-mm"
+      },
+      {
+        "handle": "autoportante-aluzinc-bc-120-cal-26-esp-0-41-mm",
+        "title": "Autoportante Aluzinc BC-120 Cal. 26 / 0.41 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 11.53,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/autoportante-aluzinc-bc-120-cal-26-esp-0-41-mm"
+      },
+      {
+        "handle": "chapateja-prepintada-cal-24-esp-0-50-mm",
+        "title": "Chapateja Prepintada Cal. 24 / 0.50 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 19.42,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapateja-prepintada-cal-24-esp-0-50-mm"
+      },
+      {
+        "handle": "chapateja-prepintada-cal-27-esp-0-41-mm",
+        "title": "Chapateja Prepintada Cal. 27 / 0.41 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 15.04,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapateja-prepintada-cal-27-esp-0-41-mm"
+      },
+      {
+        "handle": "chapateja-prepintada-cal-26-esp-0-41-mm",
+        "title": "Chapateja Prepintada Cal. 26 / 0.41 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.92,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapateja-prepintada-cal-26-esp-0-41-mm"
+      },
+      {
+        "handle": "chapa-prepintada-cal-24-bc18-bc30-bc35-esp-0-50-mm",
+        "title": "Chapa Prepintada Cal. 24 - BC18/BC30/BC35 / 0.50 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 19.42,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-prepintada-cal-24-bc18-bc30-bc35-esp-0-50-mm"
+      },
+      {
+        "handle": "chapa-prepintada-cal-26-bc18-bc30-bc35-esp-0-41-mm",
+        "title": "Chapa Prepintada Cal. 26 - BC18/BC30/BC35 / 0.41 mm",
+        "status": "DRAFT",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 14.92,
+        "image": null,
+        "category": "chapas",
+        "url": "https://bmcuruguay.com.uy/products/chapa-prepintada-cal-26-bc18-bc30-bc35-esp-0-41-mm"
+      }
+    ],
+    "fijaciones": [
+      {
+        "handle": "caja-remaches-pop-blancos-para-isopanel-1000-u",
+        "title": "Remache POP Blanco (Caja 1000 un.) - Isopanel",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 122.79,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/RemachePOP5_32x1_2ZincBlanco.jpg?v=1753467339",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/caja-remaches-pop-blancos-para-isopanel-1000-u"
+      },
+      {
+        "handle": "remache-pop-5-32-x-1-2-zinc-blanco",
+        "title": "Remache POP 5/32 x 1/2 Zinc Blanco (x50)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 5.0,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/RemachePOP5_32x1_2ZincBlanco.jpg?v=1753467339",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/remache-pop-5-32-x-1-2-zinc-blanco"
+      },
+      {
+        "handle": "arandela-polipropileno-tortuga",
+        "title": "ARANDELA DE POLIPROPILENO - \"Tortuga\" (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 26.2,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaPolipropilenoGris_5aa4f3d4-2310-41ae-9896-8c080a8d6c14.jpg?v=1753477945",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/arandela-polipropileno-tortuga"
+      },
+      {
+        "handle": "arandela-carrocero-3-8-galvanizada",
+        "title": "ARANDELA CARROCERO 3/8\" - Galvanizada (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 32.7,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaCarroceroGalv.01.jpg?v=1753478029",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/arandela-carrocero-3-8-galvanizada"
+      },
+      {
+        "handle": "arandela-plana-galv-3-8",
+        "title": "Arandela Plana Galvanizada 3/8\" (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 4.0,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaplanaGalv.3_801.jpg?v=1753466704",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/arandela-plana-galv-3-8"
+      },
+      {
+        "handle": "arandela-plana-galvanizada-5-16",
+        "title": "Arandela Plana Galvanizada 5/16 (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 2.9,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaplanaGalv.5_16.jpg?v=1753466766",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/arandela-plana-galvanizada-5-16"
+      },
+      {
+        "handle": "tuerca-bsw-3-8-galvanizada",
+        "title": "TUERCA HEXAGONAL BSW 3/8\" (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 2.0,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Tuerca_Gal._BSW_3_8_01.jpg?v=1753462996",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/tuerca-bsw-3-8-galvanizada"
+      },
+      {
+        "handle": "tuerca-hexagonal-bsw-5-16",
+        "title": "TUERCA HEXAGONAL BSW 5/16\" (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 2.0,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Tuerca_Gal._BSW_3_8_01.jpg?v=1753462996",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/tuerca-hexagonal-bsw-5-16"
+      },
+      {
+        "handle": "varilla-roscada-bsw-3_8",
+        "title": "VARILLA ROSCADA BSW 3/8\" (x5, 1m)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 19.9,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/VarillaRoscadaBSW3_8.jpg?v=1753468133",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/varilla-roscada-bsw-3_8"
+      },
+      {
+        "handle": "varilla-roscada-bsw-5_16",
+        "title": "VARILLA ROSCADA BSW 5/16\" (x5, 1m)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 16.2,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/VarillaRoscadaBSW5_16_0680ce07-3220-405e-8e29-4d732c16f8d9.jpg?v=1753478261",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/varilla-roscada-bsw-5_16"
+      },
+      {
+        "handle": "taco-expansivo-3-8-para-hormigon",
+        "title": "Taco Expansivo 3/8\" - Hormigon - Drop In (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 8.7,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Taco_Expansivo_3_8_H_01.jpg?v=1753463085",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/taco-expansivo-3-8-para-hormigon"
+      },
+      {
+        "handle": "taco-expansivo-5-16-para-hormigon-drop-in",
+        "title": "Taco Expansivo 5/16\" - Hormigon - Drop In (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 6.7,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TacoExpansivo5_16_H01.jpg?v=1753468000",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/taco-expansivo-5-16-para-hormigon-drop-in"
+      },
+      {
+        "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+        "title": "Kit Anclaje a Hormigon - Tornillo N.10 + arandela + taco (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 11.8,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/kit-anclaje-a-h-tornillo-n-º-10-arandela-taco"
+      },
+      {
+        "handle": "tornillo-t1-p-mecha-01",
+        "title": "Tornillo T1 P. Mecha (x50)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 5.0,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/T1P.Mecha01.jpg?v=1753467423",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/tornillo-t1-p-mecha-01"
+      },
+      {
+        "handle": "tornillos-punta-aguja-5-pulgadas",
+        "title": "Tornillos Punta Aguja 5\" (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 17.0,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/tornillos-punta-aguja-5-pulgadas"
+      },
+      {
+        "handle": "tornillos-punta-mecha-4-pulgadas",
+        "title": "Tornillos Punta Mecha 4\" 14x4 (x10)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 14.4,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
+        "category": "fijaciones",
+        "url": "https://bmcuruguay.com.uy/products/tornillos-punta-mecha-4-pulgadas"
+      }
+    ],
+    "quimicos": [
+      {
+        "handle": "bromplast-8-silicona-neutra",
+        "title": "Bromplast 8 - Silicona Neutra (refil 600g)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 13.07,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BromplastSiliconaNeutra_Salchicha.jpg?v=1753466136",
+        "category": "quimicos",
+        "url": "https://bmcuruguay.com.uy/products/bromplast-8-silicona-neutra"
+      },
+      {
+        "handle": "silicona-neutra-pomo-premium",
+        "title": "Silicona Neutra (Pomo) PREMIUM - 280 ml",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 11.89,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/SiliconaNeutra_Pomo_PREMIUM.jpg?v=1753467388",
+        "category": "quimicos",
+        "url": "https://bmcuruguay.com.uy/products/silicona-neutra-pomo-premium"
+      },
+      {
+        "handle": "espuma-poliuretano-expansiva",
+        "title": "Espuma Poliuretano Expansiva URUPEGA 750 ml",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 17.11,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/EspumaPoliuretanoExpansiva.jpg?v=1753467197",
+        "category": "quimicos",
+        "url": "https://bmcuruguay.com.uy/products/espuma-poliuretano-expansiva"
+      },
+      {
+        "handle": "pistola-para-silicona-bromplast",
+        "title": "Aplicador para Silicona Bromplast",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 40.26,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/PistolaparaSiliconaBromplast_80a6938c-a669-4553-aeb8-18ecf783771b.jpg?v=1753478217",
+        "category": "quimicos",
+        "url": "https://bmcuruguay.com.uy/products/pistola-para-silicona-bromplast"
+      }
+    ],
+    "impermeabilizacion": [
+      {
+        "handle": "membrana-auto-adhesiva",
+        "title": "Membrana Auto-adhesiva Denverfita 10m x 30cm",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 40.26,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/MembranaAuto-adhesiva.jpg?v=1753467277",
+        "category": "impermeabilizacion",
+        "url": "https://bmcuruguay.com.uy/products/membrana-auto-adhesiva"
+      }
+    ],
+    "impermeabilizacion_hm": [
+      {
+        "handle": "hm-rubber-aerosol-caucho-liquido-7-en-1-goma-liquida",
+        "title": "HM-rubber Caucho Liquido 7en1 - Aerosol (240g/400ml)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 15.45,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/HMR_EmbalagemSpray7em1-Mockup.png?v=1756231789",
+        "category": "impermeabilizacion_hm",
+        "url": "https://bmcuruguay.com.uy/products/hm-rubber-aerosol-caucho-liquido-7-en-1-goma-liquida"
+      },
+      {
+        "handle": "hm-rubber-caucho-liquido-7-en-1-lata-900-ml",
+        "title": "HM-rubber Caucho Liquido 7en1 - Lata (900 ml)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 29.92,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/7EM1LATA900ML.png?v=1756312047",
+        "category": "impermeabilizacion_hm",
+        "url": "https://bmcuruguay.com.uy/products/hm-rubber-caucho-liquido-7-en-1-lata-900-ml"
+      },
+      {
+        "handle": "hm-rubber-caucho-liquido-7-en-1-lata-3-6-kg",
+        "title": "HM-rubber Caucho Liquido 7en1 - Lata (3,6 kg)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 123.17,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/7EM1Galon3_6kg.png?v=1756312675",
+        "category": "impermeabilizacion_hm",
+        "url": "https://bmcuruguay.com.uy/products/hm-rubber-caucho-liquido-7-en-1-lata-3-6-kg"
+      },
+      {
+        "handle": "hm-rubber-sellador-flex-pro-lata-900-ml",
+        "title": "HM-rubber Caucho Liquido Base - Balde (18 kg) Industrial",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 403.61,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/balde-maior.png?v=1756399639",
+        "category": "impermeabilizacion_hm",
+        "url": "https://bmcuruguay.com.uy/products/hm-rubber-sellador-flex-pro-lata-900-ml"
+      },
+      {
+        "handle": "hm-rubber-impertech-3-en-1-balde-14-kg",
+        "title": "HM-rubber Impertech 3en1 - Balde (14 kg)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 205.05,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMPERTECH3EM1-MOCKUP14L.png?v=1756322236",
+        "category": "impermeabilizacion_hm",
+        "url": "https://bmcuruguay.com.uy/products/hm-rubber-impertech-3-en-1-balde-14-kg"
+      },
+      {
+        "handle": "hm-rubber-malla-estructurante",
+        "title": "HM-rubber Malla Estructurante (10 cm x 50 m)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 59.18,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/HMTelaEstruturante-LinhaCompleta.png?v=1756231790",
+        "category": "impermeabilizacion_hm",
+        "url": "https://bmcuruguay.com.uy/products/hm-rubber-malla-estructurante"
+      },
+      {
+        "handle": "hm-doble-funcion-balde-18-kg-linea-industrial",
+        "title": "HM-rubber Doble Funcion Premium - Balde (18 kg) Industrial",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 438.73,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/2-Balde-Industria-WEB.png?v=1756399639",
+        "category": "impermeabilizacion_hm",
+        "url": "https://bmcuruguay.com.uy/products/hm-doble-funcion-balde-18-kg-linea-industrial"
+      },
+      {
+        "handle": "hm-sellador-de-grafeno-balde-18-kg-linea-industrial",
+        "title": "HM-rubber Sellador de Grafeno - Balde (18 kg) Industrial",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 417.0,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/2-Balde-Industria-WEB.png?v=1756399639",
+        "category": "impermeabilizacion_hm",
+        "url": "https://bmcuruguay.com.uy/products/hm-sellador-de-grafeno-balde-18-kg-linea-industrial"
+      },
+      {
+        "handle": "hm-rubber-hm-solv-solvencte-para-caucho-liquido",
+        "title": "HM-rubber HM Solv (Solvente para caucho liquido)",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": "Accesorio",
+        "price_from_usd": 12.88,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/MOCKUPSOLVENTE500ML-1.png?v=1756480060",
+        "category": "impermeabilizacion_hm",
+        "url": "https://bmcuruguay.com.uy/products/hm-rubber-hm-solv-solvencte-para-caucho-liquido"
+      }
+    ],
+    "perfiles_estructural": [
+      {
+        "handle": "perfil-aluminizado-5852-anodizado-estructural-de-6-8-mts",
+        "title": "ANGULO ALUMINIO ANODIZADO 5852 - Estructural 6,8m (2x2\")",
+        "status": "ACTIVE",
+        "vendor": "BMC URUGUAY",
+        "product_type": null,
+        "price_from_usd": 90.01,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Anguloestructural-PerfilAluminioTipoK6_8m.jpg?v=1755192296",
+        "category": "perfiles_estructural",
+        "url": "https://bmcuruguay.com.uy/products/perfil-aluminizado-5852-anodizado-estructural-de-6-8-mts"
+      }
+    ],
+    "galpones": [
+      {
+        "handle": "galpon-de-jardin-modelo-cardelino",
+        "title": "Galpon de Jardin Modelo Cardelino (2,60x1,80x1,90 m)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 670.0,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/MedidasCardelinoIMG.png?v=1750791490",
+        "category": "galpones",
+        "url": "https://bmcuruguay.com.uy/products/galpon-de-jardin-modelo-cardelino"
+      },
+      {
+        "handle": "galpon-de-jardin-modelo-zorzal",
+        "title": "Galpon de Jardin Modelo Zorzal (3,65x2,69x2,05 m)",
+        "status": "ACTIVE",
+        "vendor": "My Store",
+        "product_type": null,
+        "price_from_usd": 880.0,
+        "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/MedidasZorzalIMG.png?v=1750791068",
+        "category": "galpones",
+        "url": "https://bmcuruguay.com.uy/products/galpon-de-jardin-modelo-zorzal"
+      }
+    ]
+  },
+  "products": [
+    {
+      "handle": "hiansa-panel-trapezoidal-5g-becam",
+      "title": "Hiansa-Panel (Trapezoidal 5G) - BECAM",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 46.73,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/HIANZA-PUR-5G-BECAM-GRIS.webp?v=1748592601",
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/hiansa-panel-trapezoidal-5g-becam"
+    },
+    {
+      "handle": "isodec®-pir",
+      "title": "ISODEC PIR (Techos y Cubiertas) / 50 - 80 - 120 mm",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 51.02,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/isodec®-pir"
+    },
+    {
+      "handle": "isopanel-isodec-eps-cubiertas-bmc-reloaded",
+      "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 46.07,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded"
+    },
+    {
+      "handle": "isoroof-3g-gris-rojo-blanco-bromyros",
+      "title": "ISOROOF 3G / 30 - 50 - 80 mm",
+      "status": "ACTIVE",
+      "vendor": "Bromyros by KINGSPAN",
+      "product_type": "Panel Aislante",
+      "price_from_usd": 48.74,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros"
+    },
+    {
+      "handle": "iagro30",
+      "title": "ISOROOF FOIL 3G / 30 - 50 mm",
+      "status": "ACTIVE",
+      "vendor": "KINGSPAN",
+      "product_type": "Panel Aislante",
+      "price_from_usd": 39.54,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/iagro30"
+    },
+    {
+      "handle": "iroof80-pls",
+      "title": "ISOROOF PLUS 3G / 80 mm",
+      "status": "ACTIVE",
+      "vendor": "KINGSPAN",
+      "product_type": "Panel",
+      "price_from_usd": 71.76,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/iroof80-pls"
+    },
+    {
+      "handle": "isopanel-eps-paredes-y-fachadas",
+      "title": "ISOPANEL EPS (Paredes y Fachadas) / 50 - 100 - 150 - 200 - 250 mm",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 41.88,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/1e03a1_6071dc1dcd5743968a0bbe3e23fce220_mv2.png?v=1752607327",
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/isopanel-eps-paredes-y-fachadas"
+    },
+    {
+      "handle": "isowall-®-pir",
+      "title": "ISOWALL PIR - Fachadas / 50 - 80 mm",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 54.65,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isowall_jpg.webp?v=1756840865",
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/isowall-®-pir"
+    },
+    {
+      "handle": "isofrig-®",
+      "title": "ISOFRIG Panel Frigorifico / 40 - 60 - 80 - 100 - 120 - 150 - 180 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 53.11,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISOWALL_PIR.png?v=1755385123",
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/isofrig-®"
+    },
+    {
+      "handle": "pu20mm-gris-sin-cielorraso-pvc",
+      "title": "PU20mm Gris sin Cielorraso (PVC)",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 36.0,
+      "image": null,
+      "category": "paneles",
+      "url": "https://bmcuruguay.com.uy/products/pu20mm-gris-sin-cielorraso-pvc"
+    },
+    {
+      "handle": "perfiles-u",
+      "title": "PERFIL U (ISOPANEL - ISOWALL - ISOFRIG) / 40 a 180 mm",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.23,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/PERFILU100.jpg?v=1755271238",
+      "category": "perfiles_panel",
+      "url": "https://bmcuruguay.com.uy/products/perfiles-u"
+    },
+    {
+      "handle": "angulo-plegado-g2-l-exterior",
+      "title": "ANGULO EXTERIOR (Perfil G2) / 50 a 250 mm",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": "Accesorio",
+      "price_from_usd": 19.17,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroSupdeCamara.jpg?v=1755215533",
+      "category": "perfiles_panel",
+      "url": "https://bmcuruguay.com.uy/products/angulo-plegado-g2-l-exterior"
+    },
+    {
+      "handle": "angulo-interior-perfil-k2",
+      "title": "ANGULO INTERIOR (Perfil K2)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.92,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/AnguloInterior_PerfilK2_2.jpg?v=1755031842",
+      "category": "perfiles_panel",
+      "url": "https://bmcuruguay.com.uy/products/angulo-interior-perfil-k2"
+    },
+    {
+      "handle": "angulo-plegado-g4-40x40",
+      "title": "Angulo G4 - (40x40)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 18.85,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-AnguloG4exterior--Renderizado-WEB02.png?v=1748580715",
+      "category": "perfiles_panel",
+      "url": "https://bmcuruguay.com.uy/products/angulo-plegado-g4-40x40"
+    },
+    {
+      "handle": "cumbrera-isoroof-3g",
+      "title": "CUMBRERA - ISOROOF 3G",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 58.23,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-CumbreraIsoroof3G-Rojo-WEB01.png?v=1759860971",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/cumbrera-isoroof-3g"
+    },
+    {
+      "handle": "canalon-doble-isoroof-bandeja-tapas-agujero-bajada",
+      "title": "Canalon Doble - ISOROOF (Kit)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 118.76,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/CANALONISODEC_EPS_PIR_Gris_2.jpg?v=1755206403",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/canalon-doble-isoroof-bandeja-tapas-agujero-bajada"
+    },
+    {
+      "handle": "soporte-para-canalon-isoroof",
+      "title": "Soporte para Canalon - Isoroof",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 18.66,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/SoportedeCanalonIsoroof.jpg?v=1755206907",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/soporte-para-canalon-isoroof"
+    },
+    {
+      "handle": "arandela-trapezoidal-caballete-roof",
+      "title": "Caballete - Arandela trapezoidal - ISOROOF (x10)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 9.2,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/20250709_155024.jpg?v=1755369402",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/arandela-trapezoidal-caballete-roof"
+    },
+    {
+      "handle": "babeta-de-atornillar-lateral-isoroof",
+      "title": "Babeta de Atornillar Lateral - ISOROOF",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 37.81,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAtornillarIsodec.jpg?v=1755206215",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/babeta-de-atornillar-lateral-isoroof"
+    },
+    {
+      "handle": "babeta-de-atornillar-superior-3g-isoroof",
+      "title": "Babeta de Atornillar Superior 3G - ISOROOF",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 39.24,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAtornillarSuperior3G-ISOROOF_1.jpg?v=1755204832",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/babeta-de-atornillar-superior-3g-isoroof"
+    },
+    {
+      "handle": "babeta-de-empotrar-lateral-isoroof",
+      "title": "Babeta de Empotrar Lateral - ISOROOF",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 37.81,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAdosar-ISODEC_4.jpg?v=1755372738",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/babeta-de-empotrar-lateral-isoroof"
+    },
+    {
+      "handle": "babeta-de-empotrar-superior-3g-isoroof-bmc-reloaded",
+      "title": "Babeta de Empotrar Superior 3G - ISOROOF",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 20.92,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeEmpotrarSuperior3G-Terracota.png?v=1755372214",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/babeta-de-empotrar-superior-3g-isoroof-bmc-reloaded"
+    },
+    {
+      "handle": "gotero-lateral-de-camara-isoroof",
+      "title": "Gotero Lateral de Camara - Isoroof",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 36.89,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Modelo3dG.LateralCamara-Gris-WEB01.png?v=1752240908",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/gotero-lateral-de-camara-isoroof"
+    },
+    {
+      "handle": "gotero-lateral-isoroof",
+      "title": "Gotero Lateral - ISOROOF",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 36.08,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroLateralIsoroof.jpg?v=1755204383",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/gotero-lateral-isoroof"
+    },
+    {
+      "handle": "gotero-superior-de-camara-isoroof",
+      "title": "Gotero Superior de Camara - ISOROOF",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 37.86,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-GoteroSuperiordeCamaraIsoroof3G-Gris-WEB01.png?v=1752254989",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/gotero-superior-de-camara-isoroof"
+    },
+    {
+      "handle": "gotero-superior-3g-isoroof",
+      "title": "GOTERO SUPERIOR 3G - ISOROOF",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 46.65,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3399-Edit.jpg?v=1755365558",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/gotero-superior-3g-isoroof"
+    },
+    {
+      "handle": "gotero-frontal-con-greca-isoroof",
+      "title": "Gotero Frontal con Greca - ISOROOF",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 27.45,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalconGreca-ISOROOF.png?v=1755369232",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/gotero-frontal-con-greca-isoroof"
+    },
+    {
+      "handle": "gotero-frontal-simple-isoroof",
+      "title": "Gotero Frontal Simple - ISOROOF",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 26.18,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3364-Edit_996789a1-58c1-4911-b775-eada26867d06.jpg?v=1755202546",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/gotero-frontal-simple-isoroof"
+    },
+    {
+      "handle": "embudo-conector-de-bajada-pvc-para-canaleta-100mm",
+      "title": "Embudo Conector de Bajada PVC para Canaleta (100mm)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 18.73,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Gemini_Generated_Image_yk2nc5yk2nc5yk2n.png?v=1761766537",
+      "category": "accesorios_isoroof",
+      "url": "https://bmcuruguay.com.uy/products/embudo-conector-de-bajada-pvc-para-canaleta-100mm"
+    },
+    {
+      "handle": "soporte-de-canalon-isodec",
+      "title": "SOPORTE de CANALON - ISODEC (EPS & PIR)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 22.68,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3329_f9af623c-7cb2-4a8b-822f-77fbb4daff15.jpg?v=1755201993",
+      "category": "accesorios_isodec",
+      "url": "https://bmcuruguay.com.uy/products/soporte-de-canalon-isodec"
+    },
+    {
+      "handle": "canalon-isodec-kit-completo",
+      "title": "CANALON ISODEC (EPS & PIR) - KIT COMPLETO",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 98.98,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3324-Edit.jpg?v=1755201703",
+      "category": "accesorios_isodec",
+      "url": "https://bmcuruguay.com.uy/products/canalon-isodec-kit-completo"
+    },
+    {
+      "handle": "cumbrera-isodec",
+      "title": "CUMBRERA para ISODEC",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 33.54,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-PerfilCumbreraISODEC-Blanco-Renderizado-WEB01.png?v=1748581588",
+      "category": "accesorios_isodec",
+      "url": "https://bmcuruguay.com.uy/products/cumbrera-isodec"
+    },
+    {
+      "handle": "babeta-de-empotrar-isodec",
+      "title": "BABETA ISODEC - Empotrar",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 17.35,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_Empotrar_Blanca.jpg?v=1755375091",
+      "category": "accesorios_isodec",
+      "url": "https://bmcuruguay.com.uy/products/babeta-de-empotrar-isodec"
+    },
+    {
+      "handle": "babeta-isodec-adosar",
+      "title": "BABETA ISODEC - Adosar",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 17.35,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_adosar_blanca.jpg?v=1755374853",
+      "category": "accesorios_isodec",
+      "url": "https://bmcuruguay.com.uy/products/babeta-isodec-adosar"
+    },
+    {
+      "handle": "gotero-lateral-de-camara-isodec",
+      "title": "GOTERO LATERAL de CAMARA - ISODEC (EPS & PIR)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 33.26,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-GoteroLateraldeCamaraISODEC-Blanco-Renderizado-WEB01.png?v=1748581487",
+      "category": "accesorios_isodec",
+      "url": "https://bmcuruguay.com.uy/products/gotero-lateral-de-camara-isodec"
+    },
+    {
+      "handle": "gotero-frontal-isodec",
+      "title": "Gotero Frontal para ISODEC (EPS & PIR)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": "Accesorio",
+      "price_from_usd": 22.31,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalparaISODEC2.jpg?v=1755373732",
+      "category": "accesorios_isodec",
+      "url": "https://bmcuruguay.com.uy/products/gotero-frontal-isodec"
+    },
+    {
+      "handle": "gotero-lateral-para-isodec-copia",
+      "title": "Gotero Lateral y Superior para ISODEC (EPS & PIR)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": "Accesorio",
+      "price_from_usd": 29.57,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroLateralIsodecEPS_PIR4.jpg?v=1755373177",
+      "category": "accesorios_isodec",
+      "url": "https://bmcuruguay.com.uy/products/gotero-lateral-para-isodec-copia"
+    },
+    {
+      "handle": "cumbrera-hiansa-panel-5g-becam",
+      "title": "Cumbrera Hiansa-panel 5G (BECAM)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 22.85,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/CumbreraLisaconCrestaHianza-Panel5G-GRIS.png?v=1748593998",
+      "category": "accesorios_hiansa",
+      "url": "https://bmcuruguay.com.uy/products/cumbrera-hiansa-panel-5g-becam"
+    },
+    {
+      "handle": "perfil-lateral-hiansa-panel-becam",
+      "title": "Perfil Lateral Derecho Hiansa-Panel",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 31.12,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/PerfilLateralDerechoHainza-Gris-01.png?v=1748594991",
+      "category": "accesorios_hiansa",
+      "url": "https://bmcuruguay.com.uy/products/perfil-lateral-hiansa-panel-becam"
+    },
+    {
+      "handle": "perfil-lateral-hiansa-panel-becam-bmc-reloaded",
+      "title": "Perfil Lateral Izquierdo Hiansa-Panel",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 31.12,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file_b430e1c6-0b07-4496-9501-1274c1d58909.jpg?v=1747885616",
+      "category": "accesorios_hiansa",
+      "url": "https://bmcuruguay.com.uy/products/perfil-lateral-hiansa-panel-becam-bmc-reloaded"
+    },
+    {
+      "handle": "frontalin-hiansa-panel",
+      "title": "Frontalin Hiansa-Panel",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 21.47,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Frontalin_Hiansa-Panel_Gris.jpg?v=1755367061",
+      "category": "accesorios_hiansa",
+      "url": "https://bmcuruguay.com.uy/products/frontalin-hiansa-panel"
+    },
+    {
+      "handle": "cinta-butilo",
+      "title": "Cinta Butilo 2mm x 15mm x 22.5m - ISOROOF/ISODEC/ISOPANEL",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 22.48,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Cinta_Butilo_01.jpg?v=1755215262",
+      "category": "accesorios_panel",
+      "url": "https://bmcuruguay.com.uy/products/cinta-butilo"
+    },
+    {
+      "handle": "chapa-trapezoidal-bc-35-prepintada",
+      "title": "CHAPA TRAPEZOIDAL (BC-35) PREPINTADA",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.92,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-trapezoidal-bc-35-prepintada"
+    },
+    {
+      "handle": "chapa-trapezoidal-bc-35-aluzinc",
+      "title": "CHAPA TRAPEZOIDAL (BC-35) - ALUZINC",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 5.59,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-trapezoidal-bc-35-aluzinc"
+    },
+    {
+      "handle": "chapa-sinuzoidal-bc-18-aluzinc",
+      "title": "CHAPA SINUZOIDAL (BC-18) - ALUZINC",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 5.59,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-sinuzoidal-bc-18-aluzinc"
+    },
+    {
+      "handle": "chapa-sinuzoidal-bc-18-prepintada",
+      "title": "CHAPA Sinuzoidal (BC-18) PREPINTADA",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.92,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-sinuzoidal-bc-18-prepintada"
+    },
+    {
+      "handle": "chapa-sinuzoidal-bc-18-aluzinc-con-variables",
+      "title": "CHAPA SINUZOIDAL (BC-18) - ALUZINC (variantes)",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 11.53,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-sinuzoidal-bc-18-aluzinc-con-variables"
+    },
+    {
+      "handle": "chapa-sinuzoidal-bc-18-prepintada-con-variantes",
+      "title": "CHAPA Sinuzoidal (BC-18) PREPINTADA (variantes)",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.92,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-sinuzoidal-bc-18-prepintada-con-variantes"
+    },
+    {
+      "handle": "chapa-trapezoidal-bc-35-aluzinc-con-variantes",
+      "title": "CHAPA TRAPEZOIDAL (BC-35) - ALUZINC (variantes)",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 11.53,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-trapezoidal-bc-35-aluzinc-con-variantes"
+    },
+    {
+      "handle": "chapa-trapezoidal-bc-35-prepintada-con-variantes",
+      "title": "CHAPA TRAPEZOIDAL (BC-35) PREPINTADA (variantes)",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.92,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-trapezoidal-bc-35-prepintada-con-variantes"
+    },
+    {
+      "handle": "chapa-lisa-galvanizada",
+      "title": "Chapa Lisa Galvanizada",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 27.65,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-lisa-galvanizada"
+    },
+    {
+      "handle": "chapa-lisa-aluzinc",
+      "title": "Chapa Lisa Aluzinc",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 5.59,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-lisa-aluzinc"
+    },
+    {
+      "handle": "autoportante-prepintada-cal-24-esp-0-50-mm",
+      "title": "Autoportante Prepintada Cal. 24 / 0.50 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 19.42,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/autoportante-prepintada-cal-24-esp-0-50-mm"
+    },
+    {
+      "handle": "autoportante-prepintada-cal-26-esp-0-41-mm",
+      "title": "Autoportante Prepintada Cal. 26 / 0.41 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.92,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/autoportante-prepintada-cal-26-esp-0-41-mm"
+    },
+    {
+      "handle": "autoportante-galvanizado-bc-120-cal-19-esp-1-11-mm",
+      "title": "Autoportante Galvanizado BC-120 Cal. 19 / 1.11 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 33.83,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/autoportante-galvanizado-bc-120-cal-19-esp-1-11-mm"
+    },
+    {
+      "handle": "autoportante-galvanizado-bc-120-cal-20-esp-0-89-mm",
+      "title": "Autoportante Galvanizado BC-120 Cal. 20 / 0.89 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 27.65,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/autoportante-galvanizado-bc-120-cal-20-esp-0-89-mm"
+    },
+    {
+      "handle": "autoportante-aluzinc-bc-120-cal-22-esp-0-70-mm",
+      "title": "Autoportante Aluzinc BC-120 Cal. 22 / 0.70 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 22.66,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/autoportante-aluzinc-bc-120-cal-22-esp-0-70-mm"
+    },
+    {
+      "handle": "autoportante-aluzinc-bc-120-cal-24-esp-0-50-mm",
+      "title": "Autoportante Aluzinc BC-120 Cal. 24 / 0.50 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.13,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/autoportante-aluzinc-bc-120-cal-24-esp-0-50-mm"
+    },
+    {
+      "handle": "autoportante-aluzinc-bc-120-cal-26-esp-0-41-mm",
+      "title": "Autoportante Aluzinc BC-120 Cal. 26 / 0.41 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 11.53,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/autoportante-aluzinc-bc-120-cal-26-esp-0-41-mm"
+    },
+    {
+      "handle": "chapateja-prepintada-cal-24-esp-0-50-mm",
+      "title": "Chapateja Prepintada Cal. 24 / 0.50 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 19.42,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapateja-prepintada-cal-24-esp-0-50-mm"
+    },
+    {
+      "handle": "chapateja-prepintada-cal-27-esp-0-41-mm",
+      "title": "Chapateja Prepintada Cal. 27 / 0.41 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 15.04,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapateja-prepintada-cal-27-esp-0-41-mm"
+    },
+    {
+      "handle": "chapateja-prepintada-cal-26-esp-0-41-mm",
+      "title": "Chapateja Prepintada Cal. 26 / 0.41 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.92,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapateja-prepintada-cal-26-esp-0-41-mm"
+    },
+    {
+      "handle": "chapa-prepintada-cal-24-bc18-bc30-bc35-esp-0-50-mm",
+      "title": "Chapa Prepintada Cal. 24 - BC18/BC30/BC35 / 0.50 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 19.42,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-prepintada-cal-24-bc18-bc30-bc35-esp-0-50-mm"
+    },
+    {
+      "handle": "chapa-prepintada-cal-26-bc18-bc30-bc35-esp-0-41-mm",
+      "title": "Chapa Prepintada Cal. 26 - BC18/BC30/BC35 / 0.41 mm",
+      "status": "DRAFT",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 14.92,
+      "image": null,
+      "category": "chapas",
+      "url": "https://bmcuruguay.com.uy/products/chapa-prepintada-cal-26-bc18-bc30-bc35-esp-0-41-mm"
+    },
+    {
+      "handle": "caja-remaches-pop-blancos-para-isopanel-1000-u",
+      "title": "Remache POP Blanco (Caja 1000 un.) - Isopanel",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 122.79,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/RemachePOP5_32x1_2ZincBlanco.jpg?v=1753467339",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/caja-remaches-pop-blancos-para-isopanel-1000-u"
+    },
+    {
+      "handle": "remache-pop-5-32-x-1-2-zinc-blanco",
+      "title": "Remache POP 5/32 x 1/2 Zinc Blanco (x50)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 5.0,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/RemachePOP5_32x1_2ZincBlanco.jpg?v=1753467339",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/remache-pop-5-32-x-1-2-zinc-blanco"
+    },
+    {
+      "handle": "arandela-polipropileno-tortuga",
+      "title": "ARANDELA DE POLIPROPILENO - \"Tortuga\" (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 26.2,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaPolipropilenoGris_5aa4f3d4-2310-41ae-9896-8c080a8d6c14.jpg?v=1753477945",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/arandela-polipropileno-tortuga"
+    },
+    {
+      "handle": "arandela-carrocero-3-8-galvanizada",
+      "title": "ARANDELA CARROCERO 3/8\" - Galvanizada (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 32.7,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaCarroceroGalv.01.jpg?v=1753478029",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/arandela-carrocero-3-8-galvanizada"
+    },
+    {
+      "handle": "arandela-plana-galv-3-8",
+      "title": "Arandela Plana Galvanizada 3/8\" (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 4.0,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaplanaGalv.3_801.jpg?v=1753466704",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/arandela-plana-galv-3-8"
+    },
+    {
+      "handle": "arandela-plana-galvanizada-5-16",
+      "title": "Arandela Plana Galvanizada 5/16 (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 2.9,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaplanaGalv.5_16.jpg?v=1753466766",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/arandela-plana-galvanizada-5-16"
+    },
+    {
+      "handle": "tuerca-bsw-3-8-galvanizada",
+      "title": "TUERCA HEXAGONAL BSW 3/8\" (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 2.0,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Tuerca_Gal._BSW_3_8_01.jpg?v=1753462996",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/tuerca-bsw-3-8-galvanizada"
+    },
+    {
+      "handle": "tuerca-hexagonal-bsw-5-16",
+      "title": "TUERCA HEXAGONAL BSW 5/16\" (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 2.0,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Tuerca_Gal._BSW_3_8_01.jpg?v=1753462996",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/tuerca-hexagonal-bsw-5-16"
+    },
+    {
+      "handle": "varilla-roscada-bsw-3_8",
+      "title": "VARILLA ROSCADA BSW 3/8\" (x5, 1m)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 19.9,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/VarillaRoscadaBSW3_8.jpg?v=1753468133",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/varilla-roscada-bsw-3_8"
+    },
+    {
+      "handle": "varilla-roscada-bsw-5_16",
+      "title": "VARILLA ROSCADA BSW 5/16\" (x5, 1m)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 16.2,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/VarillaRoscadaBSW5_16_0680ce07-3220-405e-8e29-4d732c16f8d9.jpg?v=1753478261",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/varilla-roscada-bsw-5_16"
+    },
+    {
+      "handle": "taco-expansivo-3-8-para-hormigon",
+      "title": "Taco Expansivo 3/8\" - Hormigon - Drop In (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 8.7,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Taco_Expansivo_3_8_H_01.jpg?v=1753463085",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/taco-expansivo-3-8-para-hormigon"
+    },
+    {
+      "handle": "taco-expansivo-5-16-para-hormigon-drop-in",
+      "title": "Taco Expansivo 5/16\" - Hormigon - Drop In (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 6.7,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TacoExpansivo5_16_H01.jpg?v=1753468000",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/taco-expansivo-5-16-para-hormigon-drop-in"
+    },
+    {
+      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+      "title": "Kit Anclaje a Hormigon - Tornillo N.10 + arandela + taco (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 11.8,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/kit-anclaje-a-h-tornillo-n-º-10-arandela-taco"
+    },
+    {
+      "handle": "tornillo-t1-p-mecha-01",
+      "title": "Tornillo T1 P. Mecha (x50)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 5.0,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/T1P.Mecha01.jpg?v=1753467423",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/tornillo-t1-p-mecha-01"
+    },
+    {
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "title": "Tornillos Punta Aguja 5\" (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 17.0,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/tornillos-punta-aguja-5-pulgadas"
+    },
+    {
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "title": "Tornillos Punta Mecha 4\" 14x4 (x10)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 14.4,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
+      "category": "fijaciones",
+      "url": "https://bmcuruguay.com.uy/products/tornillos-punta-mecha-4-pulgadas"
+    },
+    {
+      "handle": "bromplast-8-silicona-neutra",
+      "title": "Bromplast 8 - Silicona Neutra (refil 600g)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 13.07,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BromplastSiliconaNeutra_Salchicha.jpg?v=1753466136",
+      "category": "quimicos",
+      "url": "https://bmcuruguay.com.uy/products/bromplast-8-silicona-neutra"
+    },
+    {
+      "handle": "silicona-neutra-pomo-premium",
+      "title": "Silicona Neutra (Pomo) PREMIUM - 280 ml",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 11.89,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/SiliconaNeutra_Pomo_PREMIUM.jpg?v=1753467388",
+      "category": "quimicos",
+      "url": "https://bmcuruguay.com.uy/products/silicona-neutra-pomo-premium"
+    },
+    {
+      "handle": "espuma-poliuretano-expansiva",
+      "title": "Espuma Poliuretano Expansiva URUPEGA 750 ml",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 17.11,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/EspumaPoliuretanoExpansiva.jpg?v=1753467197",
+      "category": "quimicos",
+      "url": "https://bmcuruguay.com.uy/products/espuma-poliuretano-expansiva"
+    },
+    {
+      "handle": "pistola-para-silicona-bromplast",
+      "title": "Aplicador para Silicona Bromplast",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 40.26,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/PistolaparaSiliconaBromplast_80a6938c-a669-4553-aeb8-18ecf783771b.jpg?v=1753478217",
+      "category": "quimicos",
+      "url": "https://bmcuruguay.com.uy/products/pistola-para-silicona-bromplast"
+    },
+    {
+      "handle": "membrana-auto-adhesiva",
+      "title": "Membrana Auto-adhesiva Denverfita 10m x 30cm",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 40.26,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/MembranaAuto-adhesiva.jpg?v=1753467277",
+      "category": "impermeabilizacion",
+      "url": "https://bmcuruguay.com.uy/products/membrana-auto-adhesiva"
+    },
+    {
+      "handle": "hm-rubber-aerosol-caucho-liquido-7-en-1-goma-liquida",
+      "title": "HM-rubber Caucho Liquido 7en1 - Aerosol (240g/400ml)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 15.45,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/HMR_EmbalagemSpray7em1-Mockup.png?v=1756231789",
+      "category": "impermeabilizacion_hm",
+      "url": "https://bmcuruguay.com.uy/products/hm-rubber-aerosol-caucho-liquido-7-en-1-goma-liquida"
+    },
+    {
+      "handle": "hm-rubber-caucho-liquido-7-en-1-lata-900-ml",
+      "title": "HM-rubber Caucho Liquido 7en1 - Lata (900 ml)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 29.92,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/7EM1LATA900ML.png?v=1756312047",
+      "category": "impermeabilizacion_hm",
+      "url": "https://bmcuruguay.com.uy/products/hm-rubber-caucho-liquido-7-en-1-lata-900-ml"
+    },
+    {
+      "handle": "hm-rubber-caucho-liquido-7-en-1-lata-3-6-kg",
+      "title": "HM-rubber Caucho Liquido 7en1 - Lata (3,6 kg)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 123.17,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/7EM1Galon3_6kg.png?v=1756312675",
+      "category": "impermeabilizacion_hm",
+      "url": "https://bmcuruguay.com.uy/products/hm-rubber-caucho-liquido-7-en-1-lata-3-6-kg"
+    },
+    {
+      "handle": "hm-rubber-sellador-flex-pro-lata-900-ml",
+      "title": "HM-rubber Caucho Liquido Base - Balde (18 kg) Industrial",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 403.61,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/balde-maior.png?v=1756399639",
+      "category": "impermeabilizacion_hm",
+      "url": "https://bmcuruguay.com.uy/products/hm-rubber-sellador-flex-pro-lata-900-ml"
+    },
+    {
+      "handle": "hm-rubber-impertech-3-en-1-balde-14-kg",
+      "title": "HM-rubber Impertech 3en1 - Balde (14 kg)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 205.05,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMPERTECH3EM1-MOCKUP14L.png?v=1756322236",
+      "category": "impermeabilizacion_hm",
+      "url": "https://bmcuruguay.com.uy/products/hm-rubber-impertech-3-en-1-balde-14-kg"
+    },
+    {
+      "handle": "hm-rubber-malla-estructurante",
+      "title": "HM-rubber Malla Estructurante (10 cm x 50 m)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 59.18,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/HMTelaEstruturante-LinhaCompleta.png?v=1756231790",
+      "category": "impermeabilizacion_hm",
+      "url": "https://bmcuruguay.com.uy/products/hm-rubber-malla-estructurante"
+    },
+    {
+      "handle": "hm-doble-funcion-balde-18-kg-linea-industrial",
+      "title": "HM-rubber Doble Funcion Premium - Balde (18 kg) Industrial",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 438.73,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/2-Balde-Industria-WEB.png?v=1756399639",
+      "category": "impermeabilizacion_hm",
+      "url": "https://bmcuruguay.com.uy/products/hm-doble-funcion-balde-18-kg-linea-industrial"
+    },
+    {
+      "handle": "hm-sellador-de-grafeno-balde-18-kg-linea-industrial",
+      "title": "HM-rubber Sellador de Grafeno - Balde (18 kg) Industrial",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 417.0,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/2-Balde-Industria-WEB.png?v=1756399639",
+      "category": "impermeabilizacion_hm",
+      "url": "https://bmcuruguay.com.uy/products/hm-sellador-de-grafeno-balde-18-kg-linea-industrial"
+    },
+    {
+      "handle": "hm-rubber-hm-solv-solvencte-para-caucho-liquido",
+      "title": "HM-rubber HM Solv (Solvente para caucho liquido)",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": "Accesorio",
+      "price_from_usd": 12.88,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/MOCKUPSOLVENTE500ML-1.png?v=1756480060",
+      "category": "impermeabilizacion_hm",
+      "url": "https://bmcuruguay.com.uy/products/hm-rubber-hm-solv-solvencte-para-caucho-liquido"
+    },
+    {
+      "handle": "perfil-aluminizado-5852-anodizado-estructural-de-6-8-mts",
+      "title": "ANGULO ALUMINIO ANODIZADO 5852 - Estructural 6,8m (2x2\")",
+      "status": "ACTIVE",
+      "vendor": "BMC URUGUAY",
+      "product_type": null,
+      "price_from_usd": 90.01,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Anguloestructural-PerfilAluminioTipoK6_8m.jpg?v=1755192296",
+      "category": "perfiles_estructural",
+      "url": "https://bmcuruguay.com.uy/products/perfil-aluminizado-5852-anodizado-estructural-de-6-8-mts"
+    },
+    {
+      "handle": "galpon-de-jardin-modelo-cardelino",
+      "title": "Galpon de Jardin Modelo Cardelino (2,60x1,80x1,90 m)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 670.0,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/MedidasCardelinoIMG.png?v=1750791490",
+      "category": "galpones",
+      "url": "https://bmcuruguay.com.uy/products/galpon-de-jardin-modelo-cardelino"
+    },
+    {
+      "handle": "galpon-de-jardin-modelo-zorzal",
+      "title": "Galpon de Jardin Modelo Zorzal (3,65x2,69x2,05 m)",
+      "status": "ACTIVE",
+      "vendor": "My Store",
+      "product_type": null,
+      "price_from_usd": 880.0,
+      "image": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/MedidasZorzalIMG.png?v=1750791068",
+      "category": "galpones",
+      "url": "https://bmcuruguay.com.uy/products/galpon-de-jardin-modelo-zorzal"
+    }
+  ]
+}

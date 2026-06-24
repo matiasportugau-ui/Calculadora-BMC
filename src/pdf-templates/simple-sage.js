@@ -1,4 +1,5 @@
 // src/pdf-templates/simple-sage.js
+// Production PDF Template v2 - Refactored 2026-06-16 (scoped, cat-row dark headers, no bullets, clean header)
 // Layout: Simple Sage — Warm sage/olive tones, single A4 page
 
 import { QUOTE_TERMS } from '../utils/helpers.js';
@@ -8,7 +9,7 @@ const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').re
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-@page{size:A4;margin:8mm 10mm}
+@page{size:A4;margin:7mm 8mm}
 body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;font-size:8.5pt;color:#2D3A2E;background:#FAF7F0}
 .page{width:210mm;min-height:277mm;position:relative;background:#FAF7F0}
 @media screen{body{background:#bfb9ae;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 8px 40px rgba(90,122,96,.22);border-radius:3px;max-width:794px;padding:8mm 10mm}}
@@ -17,7 +18,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 .hdr::before{content:'';position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.06)}
 .hdr::after{content:'';position:absolute;bottom:-30px;right:60px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.04)}
 .hdr-left{display:flex;align-items:center;gap:9px;z-index:1}
-.hdr-mark{width:30px;height:30px;background:rgba(255,255,255,.15);border:1.5pt solid rgba(255,255,255,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15pt;font-weight:900;color:#fff}
+.hdr-logo{height:28px;width:auto;opacity:0.95;flex-shrink:0}
 .hdr-name{font-size:11pt;font-weight:800;color:#fff;letter-spacing:.03em}
 .hdr-sub{font-size:6pt;color:rgba(255,255,255,.6);letter-spacing:.12em;text-transform:uppercase;margin-top:1px}
 .hdr-badge{background:rgba(255,255,255,.18);border:1pt solid rgba(255,255,255,.3);color:#fff;font-size:7pt;font-weight:700;padding:3px 10px;border-radius:12px;letter-spacing:.08em;text-transform:uppercase;z-index:1}
@@ -32,7 +33,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 .bom th:first-child{text-align:left}
 .bom td{padding:2px 5px;border:.3pt solid rgba(90,122,96,.15);text-align:right;font-variant-numeric:tabular-nums}
 .bom td:first-child{text-align:left}
-.bom .bg td{background:rgba(90,122,96,.1);color:#4A6850;font-weight:700;border-left:2.5pt solid #5A7A60;padding:3px 5px}
+/* v2 scoped + cat-row dark + blue accent + no bullets */
+.presupuesto-container,.page{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.presupuesto-container ul,.presupuesto-container li,.presupuesto-container .cat-row,
+.page ul,.page li,.page .cat-row{list-style:none!important;margin:0;padding:0}
+.presupuesto-container .cat-row::before,.page .cat-row::before{content:none!important;display:none!important}
+.bom .cat-row td,.bom tr.cat-row td{background:#1e2937!important;color:#fff!important;font-weight:700!important;border-left:3.5pt solid #2563eb!important;padding:4px 6px!important}
 .bom tr:nth-child(even) td{background:rgba(90,122,96,.04)}
 .tots{display:flex;justify-content:flex-end;margin-bottom:2mm}
 .ti{min-width:200px;background:#fff;border:1pt solid rgba(90,122,96,.2);border-radius:6px;padding:6px 10px;box-shadow:0 1px 4px rgba(90,122,96,.08)}
@@ -55,7 +61,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 
 function renderBomDetailRows(bomDetailGroups) {
   return bomDetailGroups.map(g => {
-    const groupRow = `<tr class="bg"><td colspan="4">&#9656; ${esc(g.groupName)}</td><td style="text-align:right">${fmt(g.groupTotal)}</td></tr>`;
+    const groupRow = `<tr class="cat-row"><td colspan="4">${esc(g.groupName)}</td><td style="text-align:right">${fmt(g.groupTotal)}</td></tr>`;
     const itemRows = g.items.map(i => {
       const qty = typeof i.qty === 'number' ? (i.qty % 1 === 0 ? i.qty : i.qty.toFixed(2)) : (i.qty ?? '');
       return `<tr><td>${esc(i.desc)}</td><td style="text-align:right">${qty}</td><td style="text-align:center">${esc(i.unit)}</td><td style="text-align:right">${fmt(i.pu)}</td><td>${fmt(i.total)}</td></tr>`;
@@ -96,13 +102,13 @@ export function render(q) {
 
   return `<!DOCTYPE html><html lang="es"><head>
 <meta charset="UTF-8"><title>Presupuesto BMC Uruguay</title>
+<!-- Production PDF Template v2 - Refactored 2026-06-16 -->
 <style>${CSS}</style>
 </head><body>
-<div class="page">
+<div class="page presupuesto-container" id="presupuesto">
   <div class="hdr">
     <div class="hdr-left">
-      <div class="hdr-mark">B</div>
-      <div><div class="hdr-name">BMC Uruguay</div><div class="hdr-sub">Metalog SAS</div></div>
+      <img src="/bmc-pdf/assets/bmc-logo.png" alt="BMC" class="hdr-logo" />
     </div>
     <div class="hdr-badge">Presupuesto</div>
   </div>

@@ -4,8 +4,11 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const bool = (value, fallback = false) => {
-  if (value == null) return fallback;
-  return String(value).toLowerCase() === "true";
+  if (value == null || value === "") return fallback;
+  const s = String(value).toLowerCase();
+  if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+  if (s === "false" || s === "0" || s === "no" || s === "off") return false;
+  return fallback;
 };
 
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3001";
@@ -177,6 +180,15 @@ export const config = {
     process.env.TRAKTIME_INVOICE_ISSUER_ADDRESS || "Direccion pendiente, Montevideo, Uruguay",
   traktimeInvoiceGcsBucket:
     process.env.TRAKTIME_INVOICE_GCS_BUCKET || process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
+  /**
+   * ActivityWatch (passive OS observation) — strictly OPT-IN, OFF by default.
+   * Only meaningful where the API is co-located with a local aw-server (dev /
+   * self-host on the operator's machine). In Cloud Run this stays disabled.
+   */
+  traktimeAwEnabled: bool(process.env.TRAKTIME_AW_ENABLED, false),
+  traktimeAwBaseUrl: process.env.TRAKTIME_AW_BASE_URL || "http://localhost:5600",
+  todoistApiToken: process.env.TODOIST_API_TOKEN || "",
+  todoistBmcProjectId: process.env.TODOIST_BMC_PROJECT_ID || "6grV9QhFpvPJ79hx",
   /** WA Cockpit (F2 enricher) — flags */
   waEnricherEnabled: bool(process.env.WA_ENRICHER_ENABLED, false),
   waEnricherIntervalMs: Number(process.env.WA_ENRICHER_INTERVAL_MS || 8000),
@@ -239,6 +251,18 @@ export const config = {
   ragTopK: Math.max(1, Math.min(10, Number(process.env.RAG_TOP_K || 5))),
   /** Similitud mínima coseno para incluir un caso (0-1, default 0.70). */
   ragThreshold: Math.max(0, Math.min(1, Number(process.env.RAG_THRESHOLD || 0.70))),
+  /** Omni Core — cross-channel inbox shadow writes (default OFF in prod) */
+  omniWaShadowWrite: bool(process.env.OMNI_WA_SHADOW_WRITE, false),
+  omniMlShadowWrite: bool(process.env.OMNI_ML_SHADOW_WRITE, false),
+  omniEmailShadowWrite: bool(process.env.OMNI_EMAIL_SHADOW_WRITE, false),
+  omniEventBusEnabled: bool(process.env.OMNI_EVENT_BUS_ENABLED, false),
+  omniAiOrchestratorEnabled: bool(process.env.OMNI_AI_ORCHESTRATOR_ENABLED, false),
+  omniAutomationEnabled: bool(process.env.OMNI_AUTOMATION_ENABLED, false),
+  omniAiDailyBudgetUsd: Math.max(0, Number(process.env.OMNI_AI_DAILY_BUDGET_USD || 50)),
+  omniDealsSheetsAuthority: bool(process.env.OMNI_DEALS_SHEETS_AUTHORITY, true),
+  otelEnabled: bool(process.env.OTEL_ENABLED, false),
+  omniAiWorkerIntervalMs: Math.max(2000, Number(process.env.OMNI_AI_WORKER_INTERVAL_MS || 5000)),
+  omniAiWorkerBatchSize: Math.max(1, Math.min(20, Number(process.env.OMNI_AI_WORKER_BATCH_SIZE || 5))),
 };
 
 export const redirectUri = () => {

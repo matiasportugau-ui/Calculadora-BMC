@@ -14,7 +14,6 @@ import AuthHeader from "./components/auth/AuthHeader.jsx";
 import RequireGrant from "./components/auth/RequireGrant.jsx";
 import ActivityTracker from "./components/activity/ActivityTracker.jsx";
 import RouteErrorBoundary from "./components/RouteErrorBoundary.jsx";
-import BugReportModal from "./components/BugReportModal.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Tutorial interactivo (nuevo sistema) — gated for safety
@@ -34,6 +33,7 @@ const queryClient = new QueryClient({
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
+const LandingPage = lazy(() => import("./components/LandingPage.jsx"));
 const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
 const DriverTransportistaApp = lazy(() => import("./components/DriverTransportistaApp.jsx"));
 const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSandbox.jsx"));
@@ -56,8 +56,10 @@ const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.j
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
 const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
 const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx"));
+const ProyectoStatusModule = lazy(() => import("./components/hub/proyecto/ProyectoStatusModule.jsx"));
 const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
+const MlManagerModule = lazy(() => import("./components/hub/ml/MlManagerModule.jsx"));
 
 const suspenseFallback = (
   <div
@@ -171,7 +173,6 @@ export default function App() {
       <LegacyAppQueryRedirect />
       <AuthGateModal />
       <TutorialOverlay />
-      <BugReportModal />
       <RoutedErrorBoundary>
       <Routes>
         <Route
@@ -188,9 +189,21 @@ export default function App() {
           path="/hub/ml"
           element={
             <Shell>
-              <RequireGrant module="ml" minLevel="read">
+              <RequireGrant module="canales" minLevel="read">
                 <Suspense fallback={suspenseFallback}>
                   <BmcMlOperativoModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/ml-manager"
+          element={
+            <Shell>
+              <RequireGrant module="canales" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <MlManagerModule />
                 </Suspense>
               </RequireGrant>
             </Shell>
@@ -239,6 +252,18 @@ export default function App() {
               <RequireGrant module="clientes" minLevel="read">
                 <Suspense fallback={suspenseFallback}>
                   <ClientesMVP />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/proyecto"
+          element={
+            <Shell>
+              <RequireGrant module="proyecto" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <ProyectoStatusModule />
                 </Suspense>
               </RequireGrant>
             </Shell>
@@ -357,11 +382,16 @@ export default function App() {
         <Route
           path="/"
           element={
-            <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <PanelinCalculadora />
+            <>
+              <Suspense fallback={null}>
+                <LandingPage />
               </Suspense>
-            </Shell>
+              <Shell>
+                <Suspense fallback={suspenseFallback}>
+                  <PanelinCalculadora />
+                </Suspense>
+              </Shell>
+            </>
           }
         />
         <Route

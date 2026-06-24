@@ -10,10 +10,9 @@
       "Bash(node scripts/*)",
       "Bash(node tests/*)",
       "Bash(node server/*)",
-      "Bash(node -e \":*)",
-      "Bash(find '/Users/matias/Panelin calc loca/Calculadora-BMC' -type f -name *email*)",
-      "Bash(grep -r \"BMC_EMAIL_INBOX_REPO\\\\|panelsim.*email\\\\|email.*inbox\" '/Users/matias/Panelin calc loca/Calculadora-BMC' --include=*.md --include=*.js --include=*.sh)",
-      "Bash(grep -r \"IMAP\\\\|email\\\\|inbox\" '/Users/matias/Panelin calc loca/Calculadora-BMC/docs/team/panelsim' --include=*.md)",
+      "Bash(find '/Users/matias/calculadora-bmc' -type f -name *email*)",
+      "Bash(grep -r \"BMC_EMAIL_INBOX_REPO\\\\|panelsim.*email\\\\|email.*inbox\" '/Users/matias/calculadora-bmc' --include=*.md --include=*.js --include=*.sh)",
+      "Bash(grep -r \"IMAP\\\\|email\\\\|inbox\" '/Users/matias/calculadora-bmc/docs/team/panelsim' --include=*.md)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
@@ -91,7 +90,8 @@
       "Bash(curl -s http://localhost:*)",
       "Bash(/usr/bin/curl -s *)",
       "Bash(curl -s https://calculadora-bmc.vercel.app*)",
-      "Bash(curl -s https://api.github.com/repos/matiasportugau-ui/Calculadora-BMC/*)"
+      "Bash(curl -s https://api.github.com/repos/matiasportugau-ui/Calculadora-BMC/*)",
+      "mcp__b39e25de-0412-4bc8-ae15-434d81b257db__search_products"
     ]
   },
   "hooks": {
@@ -100,8 +100,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npm run env:ensure && node -e \"console.log(''); console.log('=== Calculadora BMC ==='); console.log(''); console.log('  npm run dev:full    API :3001 + Vite :5173'); console.log('  npm run dev         Vite only'); console.log('  npm run gate:local  lint + test (before commit)'); console.log('');\"",
-            "timeout": 30
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh",
+            "timeout": 300
           }
         ]
       }

@@ -115,3 +115,15 @@ tools/release-traceability/scripts/__pycache__/
 # Walkthrough — screenshots pesadas (el JSON sí se commitea)
 docs/walkthrough/**/screenshots/
 .env*
+
+# Product tour — capturas con PII real de clientes (repo público, nunca commitear)
+docs-private/
+# Product tour — metadata generada (endpoints pueden contener ids de clientes)
+docs/product/tour-metadata.json
+
+# Playwright — artefactos de corrida (no versionar)
+test-results/
+playwright-report/
+
+.gemini/
+gha-creds-*.json

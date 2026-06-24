@@ -47,14 +47,16 @@
 
 ---
 
-## 4. API HTTP (cockpit) — `API_AUTH_TOKEN`
+## 4. API HTTP (cockpit) — auth dual (S5 Phase B)
 
-Todas las rutas bajo **`/api/crm/cockpit/*`** requieren **`API_AUTH_TOKEN`** (o `API_KEY`) en el entorno del servidor. Enviar:
+Rutas bajo **`/api/crm/cockpit/*`** aceptan **una** de:
 
-- Header **`Authorization: Bearer <token>`**, o  
-- Header **`X-API-Key: <token>`**
+1. **JWT de identidad** con grant `canales:read` (GET) o `canales:write` (POST) — flujo hub tras login.
+2. **`API_AUTH_TOKEN`** / **`API_KEY`** estático — CI, scripts, MCP, Custom GPT.
 
-Si el token no está configurado, las mutaciones devuelven **503**.
+Enviar **`Authorization: Bearer <jwt-o-token>`** o **`X-API-Key: <token>`**. Sin credencial válida → **401**; sin `API_AUTH_TOKEN` en servidor y sin JWT → mutaciones pueden devolver **503**.
+
+`GET /api/crm/cockpit-token` fue **eliminado** (PR3); el hub no debe fetchear el token desde el browser.
 
 | Método | Ruta | Body (JSON) | Efecto |
 |--------|------|-------------|--------|
@@ -69,7 +71,7 @@ Si el token no está configurado, las mutaciones devuelven **503**.
 
 **send-approved — reglas:** Texto enviado = **AF** (o **G** si AF vacío). **ML:** `Q:<id>` en observaciones (W) y OAuth ML válido en el servidor. **WhatsApp:** **F** debe sugerir WA y **D** = teléfono; requiere `WHATSAPP_ACCESS_TOKEN` y `WHATSAPP_PHONE_NUMBER_ID`. Llamada ML interna usa `PUBLIC_BASE_URL` o `http://127.0.0.1:PORT` en local.
 
-**UI (Calculadora Vite):** ruta **`/hub/ml`** (Wolfboard) — cola, copiar AF, aprobar y enviar usando el mismo token cockpit en sesión (`sessionStorage`).
+**UI (Calculadora Vite):** ruta **`/hub/ml`** (Wolfboard) — cola, copiar AF, aprobar y enviar con JWT de identidad (`BmcAuthProvider`); override dev: `bmc_cockpit_token` en `localStorage`.
 
 ---
 

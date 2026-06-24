@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Timer from "./Timer/Timer.jsx";
+import FloatingTimer from "./Timer/FloatingTimer.jsx";
+import { isDetachedTimerWindow } from "./Timer/detach.js";
 import EntryList from "./Timer/EntryList.jsx";
 import ReportsView from "./Reports/ReportsView.jsx";
 import ClientsPanel from "./Clients/ClientsPanel.jsx";
@@ -44,6 +46,15 @@ export default function TraKtiMeModule() {
   }, [auth.accessToken, reload]);
 
   const bumpEntries = () => setRefreshKey((k) => k + 1);
+
+  // Detached popup fallback (?tkDetached=1): render only the floating timer.
+  if (isDetachedTimerWindow()) {
+    return (
+      <div style={{ padding: 12, fontFamily: fonts.body }}>
+        <FloatingTimer embedded />
+      </div>
+    );
+  }
 
   return (
     <div style={page}>

@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
-
-const STORAGE_KEY = "bmc_cockpit_token";
+import { useCockpitOperatorAuth } from "../hooks/useCockpitOperatorAuth.js";
+import { cockpitOperatorFetch } from "../utils/cockpitOperatorFetch.js";
 
 const wrap = {
   minHeight: "100vh",
@@ -110,83 +109,28 @@ const td = {
   wordBreak: "break-word",
 };
 
-function getStoredToken() {
-  try {
-    return localStorage.getItem(STORAGE_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function setStoredToken(t) {
-  try {
-    if (t) localStorage.setItem(STORAGE_KEY, t);
-    else localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
 async function cockpitFetch(token, path, options = {}) {
-  const headers = {
-    ...(options.headers || {}),
-    Authorization: `Bearer ${token}`,
-  };
-  const res = await fetch(path, { ...options, headers });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  return cockpitOperatorFetch(token, path, options);
 }
 
 export default function BmcWaOperativoModule() {
-  const [tokenInput, setTokenInput] = useState("");
-  const [token, setToken] = useState("");
-  const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
+  const {
+    token,
+    tokenAutoLoaded,
+    tokenLoadError,
+    tokenInput,
+    setTokenInput,
+    saveToken,
+    clearToken,
+    isJwt,
+    login,
+    user,
+  } = useCockpitOperatorAuth({ module: "canales", minLevel: "write" });
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-  const [tokenLoadError, setTokenLoadError] = useState("");
-
-  useEffect(() => {
-    const stored = getStoredToken();
-    if (stored) {
-      setTokenInput(stored);
-      setToken(stored);
-      setTokenAutoLoaded(true);
-      return;
-    }
-    const base = getCalcApiBase();
-    const url = `${base.replace(/\/+$/, "")}/api/crm/cockpit-token`;
-    fetch(url, { credentials: "omit" })
-      .then(async (r) => {
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok || !data?.ok) {
-          const msg = data?.error || `HTTP ${r.status}`;
-          setTokenLoadError(
-            `No se pudo cargar el token del servidor (${msg}). Pegá API_AUTH_TOKEN manualmente.`,
-          );
-          console.error("cockpit-token fetch failed", { status: r.status, data });
-          return;
-        }
-        const t = String(data?.token || "").trim();
-        if (t) {
-          setStoredToken(t);
-          setTokenInput(t);
-          setToken(t);
-          setTokenAutoLoaded(true);
-          setTokenLoadError("");
-        } else {
-          setTokenLoadError("El servidor no devolvió token. Pegá API_AUTH_TOKEN manualmente.");
-          console.error("cockpit-token: empty token in ok response", data);
-        }
-      })
-      .catch((err) => {
-        setTokenLoadError(
-          "Error de red al pedir el token del servidor. Pegá API_AUTH_TOKEN manualmente.",
-        );
-        console.error("Failed to fetch cockpit token from /api/crm/cockpit-token", err);
-      });
-  }, []);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -206,7 +150,7 @@ export default function BmcWaOperativoModule() {
       // Top-20 run 2026-05-11 (#L4): mensajes accionables para 401/403/503.
       let msg;
       if (status === 401) {
-        msg = "Token inválido o expirado. Revisalo abajo o pedí uno nuevo en /hub/admin → Cockpit token.";
+        msg = "Sesión inválida o expirada. Iniciá sesión de nuevo con Google.";
       } else if (status === 403) {
         msg = "El token no tiene permisos para esta cola. Avisá a Matías para revisar el alcance.";
       } else if (status === 503 && data?.code === "ENV_MISSING") {
@@ -228,14 +172,6 @@ export default function BmcWaOperativoModule() {
     }
     loadQueue();
   }, [token, loadQueue]);
-
-  const saveToken = () => {
-    const t = tokenInput.trim();
-    setStoredToken(t);
-    setToken(t);
-    if (t) setTokenAutoLoaded(true);
-    showToast(t ? "Token guardado." : "Token borrado.");
-  };
 
   const approveRow = async (row) => {
     if (!token) return;
@@ -311,7 +247,10 @@ export default function BmcWaOperativoModule() {
             tokenInput={tokenInput}
             setTokenInput={setTokenInput}
             onSave={saveToken}
-            onClear={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
+            onClear={clearToken}
+            isJwt={isJwt}
+            userEmail={user?.email || ""}
+            onLogin={login}
             inputStyle={input}
             btnPrimaryStyle={{ ...btnGhost, border: "1.5px solid #25d366" }}
             btnGhostStyle={btnGhost}

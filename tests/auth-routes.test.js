@@ -121,10 +121,10 @@ async function run() {
       r = await fetch(`${base}/api/wolfboard/pendientes`);
       body = await r.json().catch(() => ({}));
       assert(
-        "GET /api/wolfboard/pendientes with missing API_AUTH_TOKEN → 503",
-        r.status === 503 && body.error === "API_AUTH_TOKEN not configured",
+        "GET /api/wolfboard/pendientes with missing API_AUTH_TOKEN → 401 (JWT or token required)",
+        r.status === 401 && body.error === "missing_credentials",
         { status: r.status, error: body.error },
-        { status: 503, error: "API_AUTH_TOKEN not configured" }
+        { status: 401, error: "missing_credentials" }
       );
 
       r = await fetch(`${base}/api/agent/quote-lead`, {

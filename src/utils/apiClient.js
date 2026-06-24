@@ -1,10 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Central API client — single entry point for frontend → backend calls.
+// Public API client — anonymous / calculator reads (no auth headers).
 //
-// Replaces the ~119 scattered `fetch()` call sites that each re-implemented
-// (inconsistently) base-URL resolution, auth headers, JSON parsing, timeouts
-// and error handling. Built on top of getCalcApiBase() so URL resolution stays
-// identical to the existing convention.
+// Operator/cockpit routes: use `operatorApiClient.js` (explicit opt-in).
 //
 // Encodes the project's error contract for Sheets-backed routes (see CLAUDE.md):
 //   - 503            → Sheets/source unavailable  → ApiError.isServiceUnavailable
@@ -15,12 +12,6 @@
 import { getCalcApiBase } from "./calcApiBase.js";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
-
-function apiKey() {
-  return typeof import.meta !== "undefined"
-    ? import.meta.env?.VITE_API_AUTH_TOKEN || ""
-    : "";
-}
 
 /** Resolve a path against the canonical API base. Absolute URLs pass through. */
 export function apiUrl(path) {
@@ -68,14 +59,11 @@ function buildHeaders(extra, hasBody) {
   if (hasBody && !h["Content-Type"] && !h["content-type"]) {
     h["Content-Type"] = "application/json";
   }
-  const key = apiKey();
-  if (key && !h["x-api-key"]) h["x-api-key"] = key;
   return h;
 }
 
 /**
- * Low-level request returning the raw Response, with timeout + base-URL
- * resolution + auth headers applied. Prefer apiGet/apiPost for JSON.
+ * Low-level public request (no auth). Prefer apiGet/apiPost for JSON.
  */
 export async function apiFetch(path, opts = {}) {
   const {
@@ -92,7 +80,6 @@ export async function apiFetch(path, opts = {}) {
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  // Honor a caller-provided signal alongside our timeout.
   if (signal) {
     if (signal.aborted) controller.abort();
     else signal.addEventListener("abort", () => controller.abort(), { once: true });

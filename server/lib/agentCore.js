@@ -91,7 +91,7 @@ const SCHEMA_TO_INTERNAL = {
  *                                     Si se pasa, lee config.ai[taskKey] y override
  *                                     provider+model+temperature+maxTokens.
  * @param {object} [opts.override]   — { provider, model, temperature, maxTokens } directo.
- * @returns {Promise<{text:string, provider:string, model?:string, latencyMs?:number}>}
+ * @returns {Promise<{text:string, provider:string, model?:string, latencyMs?:number, estimatedCostUsd?:number}>}
  */
 export async function callAgentOnce(messages, opts = {}) {
   const {
@@ -118,7 +118,8 @@ export async function callAgentOnce(messages, opts = {}) {
   const kbBlock = renderExamplesBlock(kbExamples, channel);
   const basePrompt = buildSystemPrompt(calcState, { trainingExamples: kbExamples });
   const channelSection = buildChannelSection(channel);
-  const systemPrompt = [basePrompt, channelSection, kbBlock].filter(Boolean).join("\n\n");
+  const promptCore = opts.systemPrompt || basePrompt;
+  const systemPrompt = [promptCore, channelSection, kbBlock].filter(Boolean).join("\n\n");
 
   const channelDefault = channel === "ml" ? 120 : channel === "wa" ? 400 : 1200;
   const maxTokens = Number(eff.maxTokens) || channelDefault;
@@ -227,6 +228,7 @@ export async function callAgentOnce(messages, opts = {}) {
           provider: p,
           model: modelUsed,
           latencyMs: Date.now() - t0,
+          estimatedCostUsd: cost,
         };
       }
       errors.push(`${p}: empty`);

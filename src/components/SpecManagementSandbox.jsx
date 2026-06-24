@@ -375,7 +375,12 @@ function TeamAssistPanel({ data, assistHealth }) {
       });
       setMessages((m) => [...m, { role: "assistant", content: res.reply }]);
     } catch (e) {
-      setErr(e.message || String(e));
+      const msg = e.message || String(e);
+      setErr(
+        /demasiadas solicitudes|rate limit|429/i.test(msg)
+          ? "Límite de uso alcanzado. Esperá unos minutos y volvé a intentar."
+          : msg
+      );
       setMessages((m) => m.slice(0, -1));
       setDraft(text);
     } finally {
@@ -415,8 +420,8 @@ function TeamAssistPanel({ data, assistHealth }) {
           <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
           <span>
             {ready
-              ? `Servidor listo · modelo ${assistHealth.model || "—"}`
-              : "Configurá OPENAI_API_KEY en el servidor (npm run start:api) y recargá. Opcional: API_AUTH_TOKEN + VITE_API_AUTH_TOKEN."}
+              ? `Servidor listo · modelo ${assistHealth.model || "—"}${assistHealth.rate_limit?.max_per_window ? ` · límite ${assistHealth.rate_limit.max_per_window}/${Math.round((assistHealth.rate_limit.window_ms || 0) / 60000)} min` : ""}`
+              : "Configurá OPENAI_API_KEY en el servidor (npm run start:api) y recargá."}
           </span>
         </div>
       )}

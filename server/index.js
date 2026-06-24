@@ -8,6 +8,7 @@ import pino from "pino";
 import pinoHttp from "pino-http";
 import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
+import { buildVersionInfo } from "./lib/versionInfo.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
 import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
@@ -32,7 +33,9 @@ import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import createWaRouter from "./routes/wa.js";
 import createTraktimeRouter from "./routes/traktime.js";
+import createActivityRouter from "./routes/activity.js";
 import { createQuotesRouter } from "./routes/quotes.js";
+import { createQuoteDriveArchiveRouter } from "./routes/quoteDriveArchive.js";
 import * as waConfigModule from "./lib/waConfig.js";
 const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
 import { initWaOperatorAuth } from "./lib/waOperatorAuth.js";
@@ -46,7 +49,9 @@ import { createWolfboardRouter } from "./routes/wolfboard.js";
 import marketingRouter from "./routes/marketing.js";
 import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
+import createPanelinRouter from "./routes/panelin.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
+import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -63,6 +68,7 @@ import quoteExportRouter from "./routes/quoteExport.js";
 import tasksRouter from "./routes/tasks.js";
 import tasksOAuthRouter from "./routes/tasksOAuth.js";
 import tasksSyncRouter from "./routes/tasksSync.js";
+import proyectoRouter from "./routes/proyecto.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import "./lib/marketIntel/scheduler.js"; // registers daily ETL cron at 03:00 UTC
@@ -72,6 +78,11 @@ import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
+import omniRouter from "./routes/omni.js";
+import { shadowWriteWaWebhook } from "./lib/omni/adapters/waWebhook.js";
+import { getOmniPool } from "./lib/omni/omniDb.js";
+import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
+import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -104,6 +115,24 @@ if (isProd) {
 const app = express();
 app.disable("x-powered-by"); // hide Express signature (defense in depth)
 app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel proxy
+
+// Handle CORS preflight (OPTIONS) — middleware avoids Express 5 path-to-regexp "*" crash
+app.use((req, res, next) => {
+  if (req.method !== "OPTIONS") return next();
+  const origin = req.headers.origin;
+  const allowed = !origin ||
+    origin.startsWith("chrome-extension://") ||
+    config.corsOrigins.includes(origin);
+  if (!allowed) return res.status(403).end();
+  res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Cookie,X-Requested-With");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Vary", "Origin");
+  res.status(204).end();
+});
+
+// CORS headers for non-OPTIONS requests
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -182,15 +211,25 @@ const asyncHandler =
     Promise.resolve(fn(req, res, next)).catch(next);
 
 const ensureValidState = async (state) => {
-  const entry = await oauthStateStore.get(state);
+  // Atomic single-use consume: returns the payload exactly once; a reused,
+  // expired, or unknown state yields null and aborts the flow.
+  const entry = await oauthStateStore.consume(state);
   if (!entry) return null;
-  // The store already handles TTL/expiry + deletion
   return entry;
 };
 
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
 app.get("/capabilities", (req, res) => {
   res.json(buildAgentCapabilitiesManifest(config));
+});
+
+/**
+ * Consolidated version/build info: commit SHA + CALCULATOR_DATA_VERSION + build/deploy
+ * timestamps. Foundation for prod-vs-git-vs-local drift detection (scripts/reconcile-version.mjs).
+ * Read-only, secret-free.
+ */
+app.get("/version", (_req, res) => {
+  res.json(buildVersionInfo());
 });
 
 app.get("/health", asyncHandler(async (req, res) => {
@@ -261,6 +300,7 @@ app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
   await oauthStateStore.set(state, { codeVerifier });
+
   const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {
@@ -548,6 +588,9 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
     (async () => {
       try {
         const syncResult = await syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log });
+        if (config.omniMlShadowWrite && syncResult.omniShadow) {
+          req.log.info({ omni: syncResult.omniShadow }, "ML omni shadow write");
+        }
         if (autoMode.fullAuto && syncResult.rows?.length > 0) {
           req.log.info({ count: syncResult.rows.length }, "ML auto-mode ON — running auto-answer pipeline");
           const { answered } = await autoAnswerPipeline({
@@ -919,6 +962,14 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       logger.warn({ err: e?.message, chat_id: chatId }, "WA webhook → wa_messages mirror failed");
     }
 
+    void shadowWriteWaWebhook({
+      config,
+      logger,
+      msg,
+      chatId,
+      contactName,
+    });
+
     // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
     if (text.includes("🚀")) {
       logger.info(`[WA] 🚀 manual trigger for ${chatId}`);
@@ -947,9 +998,11 @@ app.use("/api", agentTranscribeRouter);
 app.use("/api", aiAnalyticsRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
+app.use("/api", omniRouter);
 app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
 app.use(createTraktimeRouter(config, logger));
+app.use(createActivityRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";
@@ -988,6 +1041,12 @@ import presupOrchestratorRouter from "./routes/internal/presupOrchestrator.js";
 // Panelin interno — RBAC discovery + tool catalog (Bearer API_AUTH_TOKEN)
 app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 app.use("/api/internal/presup", presupOrchestratorRouter);
+
+// Public Panelin surfaces (operator dashboard realtime + PIM publish worker) — ROOT AUTH FIX
+// Enforce requireServiceOrUser (static API_AUTH_TOKEN for service/cron/dashboard calls, or opted user JWT).
+// This is the structural root fix for the recurring "no auth on /api/panelin" security findings.
+// All endpoints in createPanelinRouter (events, products, stock, invoices, sync, debug) now inherit the guard.
+app.use("/api/panelin", requireServiceOrUser(), createPanelinRouter(config));
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
 // Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
@@ -1006,6 +1065,8 @@ app.use(createMlSearchRouter({ ml, config, logger }));
 app.use(createMlEtlRunRouter({ config, logger }));
 // Quote counter (atomic global counter, annual reset)
 app.use("/api", createQuotesRouter(config));
+// Calculator export archive → shared Drive folder (DRIVE_QUOTE_FOLDER_ID)
+app.use("/api", createQuoteDriveArchiveRouter(config));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
@@ -1013,6 +1074,7 @@ app.use(createShopifyRouter(config, logger));
 // Tareas (Google Tasks bidirectional mirror) — Phase 0 stubs return 501
 // CRUD under /api/tasks/* (Bearer JWT via requireUser inside router)
 app.use("/api/tasks", tasksRouter);
+app.use("/api", proyectoRouter);
 // OAuth PKCE flow for Google Tasks scope — /auth/tasks/{init,callback,revoke}
 app.use("/auth/tasks", tasksOAuthRouter);
 // Cloud Scheduler sync target (HMAC-verified) — /sync/google-tasks/pull
@@ -1116,6 +1178,7 @@ let stopTraktimeMirror = () => {};
 let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
+let stopOmniAiWorker = () => {};
 
 const server = app.listen(config.port, async () => {
   logger.info(
@@ -1179,6 +1242,14 @@ const server = app.listen(config.port, async () => {
     stopWaFollowups = startWaFollowupsWorker({ logger, pool: waPool });
     logger.info("WA sla + followups workers started");
   }
+
+  // Omni WAVE 3 — event bus subscribers + AI worker (flags default OFF)
+  wireOmniOrchestration({ config, logger });
+  const omniPool = getOmniPool(config.databaseUrl);
+  if (omniPool && config.omniAiOrchestratorEnabled) {
+    stopOmniAiWorker = startOmniAiWorker({ config, logger, pool: omniPool });
+    logger.info("Omni AI worker started");
+  }
 });
 
 // ── Graceful shutdown ──
@@ -1197,6 +1268,7 @@ function shutdown(signal) {
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
+  try { stopOmniAiWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniAiWorker failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");
