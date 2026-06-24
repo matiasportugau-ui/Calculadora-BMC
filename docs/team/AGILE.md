@@ -91,7 +91,7 @@ Hereda de `FULL-TEAM-RUN-DEFINITION.md` §6 y de la secuencia "get it live" de `
 ## 7. Setup único en GitHub (manual)
 
 > El tooling disponible crea **Issues** pero **no** labels, milestones ni Projects v2.
-> Hacer esto **una vez** en la UI del repo `matiasportugau-ui/calculadora-bmc`:
+> Hacer esto **una vez** en la UI del repo `matiasportugau-ui/Calculadora-BMC`:
 
 **a) Labels** (Settings → Labels → New label) — crear los de §4. Colores sugeridos:
 `type:*` gris `#6E7681` · `priority:P0` `#D73A4A` · `P1` `#D93F0B` · `P2` `#FBCA04` ·
