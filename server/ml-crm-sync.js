@@ -277,5 +277,22 @@ export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger =
     written++;
   }
 
-  return { synced: written, rows: newRows };
+  let omniShadow = null;
+  try {
+    const { config } = await import("./config.js");
+    if (config.omniMlShadowWrite) {
+      const { shadowWriteMlQuestions } = await import("./lib/omni/adapters/mlCrmRow.js");
+      omniShadow = await shadowWriteMlQuestions({
+        config,
+        logger,
+        questions: newQuestions,
+        nicknames,
+        items,
+      });
+    }
+  } catch (e) {
+    logger.warn?.({ err: e?.message }, "ML omni shadow write failed");
+  }
+
+  return { synced: written, rows: newRows, omniShadow };
 }

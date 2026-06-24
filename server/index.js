@@ -35,6 +35,7 @@ import createWaRouter from "./routes/wa.js";
 import createTraktimeRouter from "./routes/traktime.js";
 import createActivityRouter from "./routes/activity.js";
 import { createQuotesRouter } from "./routes/quotes.js";
+import { createQuoteDriveArchiveRouter } from "./routes/quoteDriveArchive.js";
 import * as waConfigModule from "./lib/waConfig.js";
 const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
 import { initWaOperatorAuth } from "./lib/waOperatorAuth.js";
@@ -54,6 +55,7 @@ import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
+import planCadRouter from "./routes/planCad.js";
 import authGoogleRouter from "./routes/authGoogle.js";
 import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
 import { startOrphanCloseScheduler } from "./jobs/closeOrphanSessions.js";
@@ -76,6 +78,11 @@ import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
+import omniRouter from "./routes/omni.js";
+import { shadowWriteWaWebhook } from "./lib/omni/adapters/waWebhook.js";
+import { getOmniPool } from "./lib/omni/omniDb.js";
+import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
+import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -109,8 +116,9 @@ const app = express();
 app.disable("x-powered-by"); // hide Express signature (defense in depth)
 app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel proxy
 
-// Handle CORS preflight (OPTIONS) requests with raw handler — bypass cors package for robustness
-app.options("*", (req, res) => {
+// Handle CORS preflight (OPTIONS) — middleware avoids Express 5 path-to-regexp "*" crash
+app.use((req, res, next) => {
+  if (req.method !== "OPTIONS") return next();
   const origin = req.headers.origin;
   const allowed = !origin ||
     origin.startsWith("chrome-extension://") ||
@@ -580,6 +588,9 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
     (async () => {
       try {
         const syncResult = await syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log });
+        if (config.omniMlShadowWrite && syncResult.omniShadow) {
+          req.log.info({ omni: syncResult.omniShadow }, "ML omni shadow write");
+        }
         if (autoMode.fullAuto && syncResult.rows?.length > 0) {
           req.log.info({ count: syncResult.rows.length }, "ML auto-mode ON — running auto-answer pipeline");
           const { answered } = await autoAnswerPipeline({
@@ -951,6 +962,14 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       logger.warn({ err: e?.message, chat_id: chatId }, "WA webhook → wa_messages mirror failed");
     }
 
+    void shadowWriteWaWebhook({
+      config,
+      logger,
+      msg,
+      chatId,
+      contactName,
+    });
+
     // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
     if (text.includes("🚀")) {
       logger.info(`[WA] 🚀 manual trigger for ${chatId}`);
@@ -979,6 +998,7 @@ app.use("/api", agentTranscribeRouter);
 app.use("/api", aiAnalyticsRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
+app.use("/api", omniRouter);
 app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
 app.use(createTraktimeRouter(config, logger));
@@ -1037,12 +1057,16 @@ app.use("/api/bugs", createBugsRouter(config));
 app.use("/api/pdf", createPdfRouter());
 app.use("/api", deepResearchRouter);
 app.use("/api", planInterpretRouter);
+// Plan → CAD (DXF + SVG profesional) desde footprint corregido por el operador
+app.use("/api", planCadRouter);
 // ML search (competitors lookup) — Bearer API_AUTH_TOKEN, 30-min TTL cache, 60 req/min
 app.use(createMlSearchRouter({ ml, config, logger }));
 // Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
 app.use(createMlEtlRunRouter({ config, logger }));
 // Quote counter (atomic global counter, annual reset)
 app.use("/api", createQuotesRouter(config));
+// Calculator export archive → shared Drive folder (DRIVE_QUOTE_FOLDER_ID)
+app.use("/api", createQuoteDriveArchiveRouter(config));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
@@ -1154,6 +1178,7 @@ let stopTraktimeMirror = () => {};
 let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
+let stopOmniAiWorker = () => {};
 
 const server = app.listen(config.port, async () => {
   logger.info(
@@ -1217,6 +1242,14 @@ const server = app.listen(config.port, async () => {
     stopWaFollowups = startWaFollowupsWorker({ logger, pool: waPool });
     logger.info("WA sla + followups workers started");
   }
+
+  // Omni WAVE 3 — event bus subscribers + AI worker (flags default OFF)
+  wireOmniOrchestration({ config, logger });
+  const omniPool = getOmniPool(config.databaseUrl);
+  if (omniPool && config.omniAiOrchestratorEnabled) {
+    stopOmniAiWorker = startOmniAiWorker({ config, logger, pool: omniPool });
+    logger.info("Omni AI worker started");
+  }
 });
 
 // ── Graceful shutdown ──
@@ -1235,6 +1268,7 @@ function shutdown(signal) {
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
+  try { stopOmniAiWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniAiWorker failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");

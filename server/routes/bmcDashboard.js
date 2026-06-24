@@ -31,6 +31,8 @@ import { mapOrigenToSurface } from "../lib/kbSurface.js";
 import { isAiGatewayEnabled, generateTextViaGateway, generateObjectViaGateway, DEFAULT_PROVIDER_ORDER } from "../lib/aiGatewayClient.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
 import { makeRequireEmailIngestAuth } from "../lib/emailIngestAuth.js";
+import { shadowWriteEmailIngest } from "../lib/omni/adapters/emailIngest.js";
+import { mirrorMlSendApprovedToOmni } from "../lib/omni/adapters/mlOutboundMirror.js";
 import {
   requireCrmCockpitRead,
   requireCrmCockpitWrite,
@@ -2777,6 +2779,11 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           requestBody: { values: [defaultTailAGAK_Email()] },
         });
         console.log(`[Email] ✓ Ingested → CRM row ${crmRow}, provider: ${provider}, messageId: ${messageId || "?"}`);
+        void shadowWriteEmailIngest({
+          config,
+          logger: console,
+          payload: { asunto, cuerpo, remitente, messageId, parsed: d, crmRow },
+        }).catch((e) => console.warn("[Email] omni shadow failed:", e?.message));
       } catch (e) {
         console.error(`[Email] ✗ Sheets write failed:`, e.message);
       }
@@ -3224,6 +3231,14 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
             } catch { /* non-critical */ }
           });
         }
+
+        void mirrorMlSendApprovedToOmni({
+          config,
+          logger: req.log,
+          questionId: qid,
+          text,
+          agentId: req.user?.email || "send-approved",
+        }).catch((e) => req.log?.warn?.({ err: e?.message }, "omni ML outbound mirror failed"));
 
         return res.json({ ok: true, channel: "ml", questionId: qid, sentAt, ml: data });
       }

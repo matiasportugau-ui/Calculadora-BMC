@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-20
+**Última actualización:** 2026-06-22
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,71 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-23 (Omni WAVE 3+4 — FULLY OPERATIONAL en prod):** Activado el omnicanal end-to-end en producción y
+**probado** (ingest → classify → suggest Claude → HITL accept → H4 eval). Cloud Run `panelin-calc` rev ≥`00532`
+con **todos** los flags `OMNI_*`=1 (WA/ML/EMAIL shadow, event bus, AI orchestrator, automation; budget USD 50/día),
+gobernados por **GitHub repo Variables** (sobreviven a deploys vía `deploy-calc-api.yml`). UI: `VITE_OMNI_INBOX`+`VITE_OMNI_DEALS`=1
+→ pestañas Omni Inbox + Pipeline Deals en `/hub/canales`. Migración `005` siembra el AI registry (model+prompt enabled, claude-sonnet-4-6).
+Un E2E controlado en prod descubrió y arregló **3 bugs** (PR #413 + migraciones 006/007): (1) `omni_conversations.properties`
+faltaba en prod (001 viejo) → todo ingest/shadow-write fallaba en silencio; (2) CHECK `body_ai_category_valid` rechazaba
+`cotizacion` → classify moría; (3) pg devuelve NUMERIC como string → `temperature`="0.30" → proveedores 400/422, sin
+sugerencias (fix: cast a float8 en `aiRegistry.getEnabledModel`). Las 3 compuertas WAVE 4 pasan (HITL/F3/H4). PRs: #406, #407, #411, #413.
+Pendiente menor: confirmar modelo/pricing + cuota OpenAI (ajustable sin código); backfills históricos ML/EMAIL difer (falta BMC_SHEET_ID en Doppler).
+
+**2026-06-23 (hotfix — GCS token store usa metadata-server, no la SA key de Sheets):** Todas las rutas `/ml/*`
+devolvían **500** (y `/auth/ml/status` 503): `server/tokenStore.js` hacía `new Storage()`, pero google-auth resuelve
+`GOOGLE_APPLICATION_CREDENTIALS` primero — y esa env apunta a la SA key de Sheets/Drive (montada para el feature de
+Drive del 2026-06-22), cuyo intercambio JWT en `googleapis.com/oauth2/v4/token` falla con *"Premature close"*. Fix:
+`new Storage({ authClient: new GoogleAuth({ authClient: new Compute() }) })` — fija la identidad del runtime de Cloud
+Run (`panelin-runner`, con `objectAdmin` en `gs://bmc-ml-tokens`) vía metadata server SOLO para el cliente GCS,
+sin tocar la auth de Sheets/Drive. Verificado el API contra storage@5 + google-auth@9 (cachedCredential = Compute).
+El comentario previo en el código documentaba la intención pero `new Storage()` nunca la lograba. Sin esto, ML Manager
+muestra "Verificá la conexión con Mercado Libre".
+
+**2026-06-23 (ML Manager re-cableado al backend live `panelin-calc`):** El esqueleto de `/hub/ml-manager`
+(shipped en PR #403) apuntaba a un *connector* separado inexistente (`VITE_ML_CONNECTOR_URL`) y a 13 endpoints
+fantasma (ads, analytics, message-packs, visits, ai/daily-brief). Re-cableado a la realidad: `mlFetch.js` ahora
+usa `getCalcApiBase()` (mismo backend que la calculadora, sin API key — auth OAuth server-side); `useMlConnector.js`
+reescrito a los 9 endpoints reales (`/auth/ml/status`, `/ml/users/me`, `/ml/listings`, `/ml/items/:id`,
+**PATCH `/ml/items/:id`**, **POST `/ml/items/:id/description`**, `/ml/questions`, POST answer, `/ml/orders`).
+Tabs reducidas a las respaldadas por backend: **Resumen / Publicaciones / Preguntas / Pedidos** (borradas Ads/Analítica/
+Mensajes/Envíos). La tab **Publicaciones** edita precio, stock, estado, **fotos** (vía `pictures:[{source:url}]` — ML
+descarga la URL) y descripción, con confirmación de dos pasos antes de escribir en vivo a MercadoLibre. Badge de
+conexión corregido a `status.ok`. La conexión OAuth ya existe y es persistente: token cifrado en
+`gs://bmc-ml-tokens` (GCS, sobrevive cold starts de Cloud Run), scope incluye `write`/`publish-sync`, último refresh
+2026-05-29 (recuperable). Verificado: ESLint limpio + `vite build` OK. Pendiente: si el refresh del token dormido
+falla, re-autorizar una vez vía `/auth/ml/start`. Clips de video NO disponibles por API para cuenta MLU doméstica.
+
+**2026-06-23 (Omni WAVE 4 local E2E gate — PR #407):** Agregado `npm run omni:local-e2e` — un gate E2E
+autoprovisionado (`scripts/omni-local-e2e.sh` + `scripts/omni-local-e2e.mjs`) que levanta su propio
+Postgres descartable, aplica migraciones omni y verifica los 3 *code paths* de las compuertas WAVE 4
+(HITL accept/reject, H4 eval stats, F3 reconcile drift<10) con 14 asserts, luego destruye el cluster.
+Triple-guardado (`OMNI_E2E_DATABASE_URL` dedicado, host local, nombre con `e2e`, distinto de `DATABASE_URL`)
+para que **nunca** toque una DB real. Opt-in en `wave4-exit-gate` vía `OMNI_E2E=1` (CI no lo corre).
+Validado además el camino real HTTP+auth+route (7/7) contra schema identity + JWT local. Runbook de las 3
+compuertas de staging documentado en [`orientation/OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md).
+Las compuertas siguen pendientes de **datos reales de staging**, no de código.
+
+**2026-06-23 (Omni WAVE 3 hardening fold-in — PR #407):** Plegados a `feat/omni-wave4` los fixes de hardening diferidos del review de PR #406, todos sobre archivos que WAVE 4 ya tocaba: (1) **bug** doble-incremento de `attempts` en `aiWorker.js` (ahora se incrementa una sola vez por claim, consistente entre worker batch y ad-hoc); (2) allowlist de `job_type` a nivel app (`ALLOWED_AI_JOB_TYPES`, 400 antes de enqueue); (3) `system_prompt` retirado del contrato HTTP `getActivePromptContract`; (4) `trigger_event` validado por `z.enum`; (5) whitelist de `status` de conversación en `set_conversation_status`; (6) guard ReDoS (cap de longitud) en operador `matches` de automation; (7) `/omni/health` deja de exponer flags de existencia de tablas. Nuevo test offline `tests/omniHardening.test.js` (10 asserts) + ReDoS assert en `omniAutomationConditions`; registrado en `test:core` y `wave4-exit-gate`. `gate:local` 0 lint / tests OK, `wave4:exit-gate` `ready_for_wave5: true`. Todo flag-gated OFF + operator-auth — sin impacto en prod. Pendiente humano: 3 checks de staging + quitar `do-not-merge`.
+
+**2026-06-22 (Omni issue-and-fix — PR #406 Bugbot):** `/issue-and-fix` sobre `feat/omni-wave3`: emit `message.ingested` post-commit (`OMNI_EVENT_BUS_ENABLED`); lookup conversación solo por `(contact_id, channel, channel_conversation_id)`; reply API pasa `contact_id` en hint; reglas automation con `{}` no matchean; registry `system_prompt` aplicado en jobs `suggest` vía `agentCore.systemPrompt`. WAVE 4 WIP quedó en stash local (no incluido). Staging soak + flags: [`OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md).
+
+**2026-06-22 (Omni WAVE 3 ship procedure — PR #406):** Rama `feat/omni-wave3` pusheada; PR [#406](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/406) abierta (4 commits: issue-and-fix + WAVE 3 + PDF docs + bootstrap config import fix). Gates locales: `gate:local` OK, `wave3:exit-gate` OK (`ready_for_wave4`), `test:omni:parity` OK, `omni:migrate` OK (001–003), `smoke:prod` OK. Staging/prod rollout doc: [`orientation/OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md). **Pendiente operador:** merge PR → WAVE 2 soak 24h/canal en staging → WAVE 3 flags → prod deploy con `OMNI_*` OFF.
+
+**2026-06-22 (Procedimiento pre-PR local):** Checklist canónico [`PROCEDIMIENTO-PRE-PR-LOCAL.md`](./PROCEDIMIENTO-PRE-PR-LOCAL.md) — Issue-and-Fix (`/issue-and-fix`) + `gate:local` + split commits + pre-deploy opcional; enlazado en `SESSION-WORKSPACE-CRM` §1.4, `EXPERT-DEV-TRACEABILITY` paso 3.5, `docs/team/AGENTS.md` y `docs/AGENTS.md`.
+
+**2026-06-22 (Omni WAVE 3 — Intelligence + Platform, 4 squads paralelos):** Migration `002_ai_automation.sql` (`omni_ai_jobs`, `omni_suggestions`, registries, `omni_automation_*`). **Squad AI E1–E4:** `aiWorker.js` + `startOmniAiWorker`, classify/suggest on `message.ingested`, `POST /api/internal/omni/ai/run`. **Automation F1–F4:** CRUD + simulate routes, `automationEngine.js`, `omni:migrate-wa-rules`. **Observability K1–K4:** `trace_id` en normalizer, `GET /api/omni/metrics`, `smoke:omni`, OTel hooks (`OTEL_ENABLED`). **Reliability M2–M4:** `omni:reconcile-channels`, `test:omni:ml-parity`, `wave3:exit-gate`. Flags: `OMNI_AI_ORCHESTRATOR_ENABLED`, `OMNI_AUTOMATION_ENABLED` (default OFF). Doc: [`docs/transformation/wave-3/`](../transformation/wave-3/README.md).
+
+**2026-06-22 (Production ship — calculator UX + ML Manager + Drive + Omni):** `merged PR #403 → main`. Bundle consolidado en rama `feat/ml-manager-integrated` (7 commits squash-merged). **Calculator:** wizard edge nav sticky prev/next en todos los breakpoints; paso `bordes` ya no bloquea avance; PDF/WA requiere datos proyecto (teléfono, dirección, etc.); gate identidad sigue OFF. **Hub:** ML Manager en `/hub/ml` y `/hub/ml-manager`. **Drive:** auto-archivo PDF + `.bmc.json` vía `POST /api/quotes/drive-archive` (best-effort, `DRIVE_QUOTE_FOLDER_ID`). **Omni Core WAVE 1+2:** `/api/omni/*` + shadow adapters — flags `OMNI_*_SHADOW_WRITE` default OFF. **Gates:** `gate:local:full` OK local; `smoke:prod` OK pre-merge (MATRIZ CSV, suggest-response). **Deploy:** CI Vercel preview + merge trigger; verificar prod post-deploy en calculadora-bmc.vercel.app y Cloud Run `panelin-calc`.
+
+**2026-06-22 (Omni WAVE 1+2 — runtime Omni Core + 4 squads paralelos):** Implementado `server/lib/omni/` (A1 DDL `npm run omni:migrate`, A2 identity, A3 `normalizeAndPersist` + Zod types), `GET /api/omni/health`, inbox API D1–D3 (`/api/omni/conversations`, messages, read, reply). Shadow adapters: WA webhook + extension (B1–B2), ML sync + send-approved mirror (C1/C3), email ingest (E1). Backfills: `omni:backfill-wa`, `omni:backfill-ml-crm`, `omni:backfill-email-crm`. Flags en `config.js` (`OMNI_*_SHADOW_WRITE`, default OFF). Tests: `omniTypes`, `omniIdentity`, `omniDb`, `test:omni:parity`. Doc: [`docs/transformation/21-wave-execution.md`](../transformation/21-wave-execution.md).
+
+**2026-06-22 (OmniCRM Transformation Program V2 — paquete de diseño completo):** Publicado el paquete canónico de transformación a AI-Native OmniCRM en [`docs/transformation/`](../transformation/README.md): 20 documentos (executive summary, target state, domain/event/identity models, AI governance, automation, deals, security, observability, testing, migration, PR roadmap tracks A–H, risks, metrics, ownership, debt, evolution, build-vs-buy, ops readiness) + 10 ADRs (`adrs/ADR-001` … `ADR-010`) + [`SELF-CRITIQUE.md`](../transformation/SELF-CRITIQUE.md). Basado en discovery audit SHA `d04a7f4` ([`docs/discovery/`](../discovery/README.md)). **Solo diseño — sin código runtime.** Decisiones clave: evolucionar `/hub/canales` (ADR-010), shadow→flip migration (ADR-009), reuse agentCore (ADR-004), Sheets-first money 90d (ADR-006). Próximo paso implementación: Track A1 (`omni:migrate`).
+
+**2026-06-22 (auto-archivo presupuestos → Drive BMC compartido):** Cada exportación de presupuesto (PDF cliente, PDF enriquecido, **Exportar presupuesto** con contador) archiva automáticamente **PDF + `.bmc.json`** en la carpeta compartida `DRIVE_QUOTE_FOLDER_ID` vía service account (`POST /api/quotes/drive-archive`). Estructura: `cliente → código cotización → archivos`. El botón manual **Guardar en Drive** usa la misma carpeta empresa (ya no el Drive personal OAuth del vendedor). Best-effort: la descarga local no se bloquea si Drive falla. Archivos: [`server/lib/driveUpload.js`](../../server/lib/driveUpload.js), [`server/routes/quoteDriveArchive.js`](../../server/routes/quoteDriveArchive.js), [`src/utils/companyDriveArchive.js`](../../src/utils/companyDriveArchive.js), [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx).
+
+**2026-06-21 (Google login prod — guardrails tokeninfo_aud_mismatch):** Verificado alineamiento prod: bundle Vercel `App-*.js` + Cloud Run `GOOGLE_OAUTH_CLIENT_ID` = client web `642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3`. **Endurecimiento:** smoke post-deploy en [`.github/workflows/deploy-vercel.yml`](../../.github/workflows/deploy-vercel.yml) falla si el Client ID no está incrustado en el bundle (detecta `VITE_GOOGLE_CLIENT_ID` vacío en build). [`.env.example`](../../.env.example): `VITE_GOOGLE_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_ID` unificados al mismo client sj3 con nota de paridad obligatoria.
 
 **2026-06-20 (auth prod fixes — API_AUTH_TOKEN Cloud Run + VITE_GOOGLE_CLIENT_ID Vercel):** `shipped (PRs #389 + #391)`. Dos fixes de producción ortogonales: (1) **Panelin 503 `API_AUTH_TOKEN not configured`**: `API_AUTH_TOKEN` nunca estaba en `--set-secrets` del deploy (`deploy-calc-api.yml`) y era silenciosamente borrado en cada redeploy; añadido a `--set-secrets` (PR #389) + paso de migración one-time para remover el plain env var antes de montarlo como secret (PR #391, fija el error de type-conflict `Cannot update environment variable to the given type`). Smoke test post-deploy confirmó OK. (2) **Google login 401 `tokeninfo_aud_mismatch`**: `VITE_GOOGLE_CLIENT_ID` en Vercel tenía el placeholder del `.env.example`; actualizado al valor real (`642127786762-...`) vía `drive:vercel-env` + rebuild de producción. Archivos modificados: `.github/workflows/deploy-calc-api.yml` (pre-step remove-env-vars + API_AUTH_TOKEN en --set-secrets), `.github/required-cloud-run-secrets.txt` (añadida línea `API_AUTH_TOKEN`), `.claude/hooks/session-start.sh` (idempotente: guard npm install + guard BMC_DISK_PRECHECK_SKIP). Nuevo: `scripts/check-api-auth.js` (diagnóstico de auth con 8 secciones) + scripts `check:auth`/`check:auth:live`.
 
