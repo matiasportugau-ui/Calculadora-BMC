@@ -96,7 +96,7 @@ import * as THREE from "three";
 import {
   initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
-  isPickerConfigured, saveQuotation as gdriveSaveQuotation,
+  saveQuotation as gdriveSaveQuotation,
   listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
 import { getDriveConfig } from "../utils/driveConfigApi.js";
@@ -4442,12 +4442,21 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       });
       showToast("Guardado en tu carpeta de Drive");
       handleDriveRefresh();
+      // Best-effort: también archivar en la carpeta BMC compartida (service
+      // account) para el dataset consolidado de Fase 2. No bloquea el guardado
+      // por usuario si falla / no está configurado DRIVE_QUOTE_FOLDER_ID.
+      persistExportToCompanyDrive({
+        pdfBlob,
+        pdfFileName: fname,
+        quotationCode: code,
+        source: "calc_drive_manual",
+      });
     } catch (err) {
       setDriveError(err.message || "Error al guardar en Drive");
     } finally {
       setDriveSaving(false);
     }
-  }, [groups, proyecto, currentBudgetCode, showToast, buildClientePdfHtml, requireProyectoParaPdf, driveFolderConfig, buildSerializedProject, handleDriveRefresh]);
+  }, [groups, proyecto, currentBudgetCode, showToast, buildClientePdfHtml, requireProyectoParaPdf, driveFolderConfig, buildSerializedProject, handleDriveRefresh, persistExportToCompanyDrive]);
 
   const handleDriveLoad = useCallback(async (folderId) => {
     setDriveLoading(true);
@@ -7254,7 +7263,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         }
         driveFolderConfig={driveFolderConfig}
         driveAccessToken={bmcAuth.accessToken}
-        pickerConfigured={isPickerConfigured()}
         onFolderConfigured={(cfg) => { setDriveFolderConfig(cfg); handleDriveRefresh(); }}
       />
 

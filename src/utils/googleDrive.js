@@ -2,7 +2,7 @@
 // src/utils/googleDrive.js — Client-side Google Drive API v3 wrapper +
 // Google Identity Services (GIS) auth, including OIDC userinfo for login.
 // ═══════════════════════════════════════════════════════════════════════════
-/* global google, gapi */
+/* global google */
 
 import {
   buildDriveClientFolderName,
@@ -21,7 +21,6 @@ const BMC_MIME = "application/json";
 const PDF_MIME = "application/pdf";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const GIS_SCRIPT_SELECTOR = 'script[data-gis-client="1"]';
-const GAPI_SCRIPT_SELECTOR = 'script[data-gapi-client="1"]';
 
 // XSS exposure trade-off: storing the access token in localStorage means any
 // script with JS access to this origin can read it. Acceptable for the
@@ -44,7 +43,6 @@ let _gsiLoadPromise = null;
 let _hasConsented = false;
 let _pendingErrorHandler = null;
 let _signInPromise = null;
-let _pickerLoadPromise = null;
 
 // ── localStorage persistence ─────────────────────────────────────────────────
 
@@ -138,62 +136,6 @@ export function loadGsiScript() {
   return _gsiLoadPromise;
 }
 
-/**
- * Load the GAPI loader script + the `picker` module on demand. Mirrors
- * loadGsiScript(): a failed load must not poison the cached promise.
- */
-function loadPickerApi() {
-  if (typeof google !== "undefined" && google.picker) return Promise.resolve();
-  if (_pickerLoadPromise) return _pickerLoadPromise;
-  _pickerLoadPromise = new Promise((resolve, reject) => {
-    const onGapiReady = () => {
-      if (typeof gapi === "undefined" || !gapi.load) {
-        _pickerLoadPromise = null;
-        reject(new Error("No se pudo cargar el cargador de Google API (gapi)."));
-        return;
-      }
-      gapi.load("picker", {
-        callback: () => resolve(),
-        onerror: () => {
-          _pickerLoadPromise = null;
-          reject(new Error("No se pudo cargar Google Picker. Verificá tu conexión."));
-        },
-      });
-    };
-
-    if (typeof gapi !== "undefined" && gapi.load) {
-      onGapiReady();
-      return;
-    }
-
-    let existing = document.querySelector(GAPI_SCRIPT_SELECTOR);
-    if (existing?.dataset.gapiLoadState === "error") {
-      existing.remove();
-      existing = null;
-    }
-    const s = existing || document.createElement("script");
-    if (!existing) {
-      s.src = "https://apis.google.com/js/api.js";
-      s.async = true;
-      s.defer = true;
-      s.dataset.gapiClient = "1";
-      s.dataset.gapiLoadState = "loading";
-    }
-    s.addEventListener("load", () => {
-      s.dataset.gapiLoadState = "loaded";
-      onGapiReady();
-    }, { once: true });
-    s.addEventListener("error", () => {
-      s.dataset.gapiLoadState = "error";
-      _pickerLoadPromise = null;
-      s.remove();
-      reject(new Error("No se pudo cargar Google API. Verificá tu conexión o un bloqueador de scripts."));
-    }, { once: true });
-    if (!existing) document.head.appendChild(s);
-  });
-  return _pickerLoadPromise;
-}
-
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 function getClientId() {
@@ -204,31 +146,6 @@ function getClientId() {
   )).trim();
 }
 
-// Google Picker needs a browser API key in addition to the OAuth token.
-function getApiKey() {
-  return ((
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_GOOGLE_API_KEY) ||
-    window.__BMC_GOOGLE_API_KEY ||
-    ""
-  )).trim();
-}
-
-/**
- * Picker app/project id = the numeric prefix of the OAuth Client ID
- * (e.g. "642127786762" from "642127786762-xxxx.apps.googleusercontent.com").
- */
-function getPickerAppId() {
-  return getClientId().split("-")[0] || "";
-}
-
-/**
- * True when the Google Picker can run: a Drive OAuth Client ID *and* a browser
- * API key are both present. Mirrors isDriveConfigured() so the UI can show a
- * clear "Picker no configurado" state instead of failing silently.
- */
-export function isPickerConfigured() {
-  return !!getClientId() && !!getApiKey();
-}
 
 function isGisLoaded() {
   return typeof google !== "undefined" && google.accounts?.oauth2;
@@ -240,14 +157,6 @@ export function isAuthenticated() {
 
 export function getCachedUser() {
   return _user;
-}
-
-/**
- * Current Google OAuth access token (or null if expired/absent). Needed by the
- * Google Picker (setOAuthToken) which runs outside the authFetch helper.
- */
-export function getAccessToken() {
-  return isAuthenticated() ? _accessToken : null;
 }
 
 export function setAuthChangeCallback(cb) {
@@ -572,61 +481,40 @@ async function findFileInFolder(folderId, fileName) {
   return files.length > 0 ? files[0] : null;
 }
 
-// ── Folder configurator (Picker + validation) ────────────────────────────────
+// ── Folder configurator (in-app browser + validation) ────────────────────────
 
 /**
- * Open the Google Picker filtered to folders and let the user select one.
- * Picker grants the app drive.file access to the chosen folder, so saving into
- * it works under the minimal scope without browsing the whole Drive.
+ * List top-level folders this app can see in the user's Drive. Under the
+ * minimal drive.file scope these are folders the app created (e.g. the default
+ * "Panelin BMC Cotizaciones" root) — arbitrary pre-existing folders are not
+ * visible without the broad `drive` scope or Google Picker.
  *
- * @returns {Promise<{ folderId: string, folderName: string } | null>}
- *          the selection, or null if the user cancelled.
+ * @returns {Promise<{ id: string, name: string, modifiedTime?: string }[]>}
  */
-export async function pickFolder() {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error(
-      "Google Picker no está configurado: falta VITE_GOOGLE_API_KEY. Pedile al admin que habilite la Google Picker API y sincronice la variable.",
-    );
-  }
-  if (!isAuthenticated()) await signIn();
-  await loadPickerApi();
+export async function listSelectableFolders() {
+  const q = [
+    `mimeType='${FOLDER_MIME}'`,
+    "trashed=false",
+    "'root' in parents",
+  ];
+  const resp = await authFetch(
+    `${DRIVE_API}/files?q=${encodeURIComponent(q.join(" and "))}&fields=files(id,name,modifiedTime)&orderBy=name&pageSize=100&spaces=drive`,
+  );
+  const { files } = await resp.json();
+  return (files || []).map((f) => ({ id: f.id, name: f.name, modifiedTime: f.modifiedTime }));
+}
 
-  return new Promise((resolve, reject) => {
-    try {
-      const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-        .setIncludeFolders(true)
-        .setSelectFolderEnabled(true)
-        .setMimeTypes(FOLDER_MIME);
-
-      const picker = new google.picker.PickerBuilder()
-        .setOAuthToken(_accessToken)
-        .setDeveloperKey(apiKey)
-        .setAppId(getPickerAppId())
-        .addView(view)
-        .setTitle("Elegí la carpeta donde guardar tus cotizaciones")
-        .setCallback((data) => {
-          const action = data?.[google.picker.Response.ACTION];
-          if (action === google.picker.Action.PICKED) {
-            const doc = data[google.picker.Response.DOCUMENTS]?.[0];
-            if (doc) {
-              resolve({
-                folderId: doc[google.picker.Document.ID],
-                folderName: doc[google.picker.Document.NAME] || "",
-              });
-            } else {
-              resolve(null);
-            }
-          } else if (action === google.picker.Action.CANCEL) {
-            resolve(null); // "Picker cancelado → volver al estado anterior" (SPEC §12)
-          }
-        })
-        .build();
-      picker.setVisible(true);
-    } catch (err) {
-      reject(err instanceof Error ? err : new Error(String(err)));
-    }
-  });
+/**
+ * Create (or reuse) a top-level folder by name in the user's Drive root and
+ * return its id. App-created, so it stays writable under the drive.file scope.
+ *
+ * @returns {Promise<{ id: string, name: string }>}
+ */
+export async function createSelectableFolder(name) {
+  const clean = String(name || "").trim();
+  if (!clean) throw new Error("El nombre de la carpeta no puede estar vacío.");
+  const id = await findOrCreateFolder(clean);
+  return { id, name: clean };
 }
 
 /**

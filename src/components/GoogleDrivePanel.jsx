@@ -63,7 +63,6 @@ export default function GoogleDrivePanel({
   onPdfLayoutChange,
   driveFolderConfig,
   driveAccessToken,
-  pickerConfigured = true,
   onFolderConfigured,
 }) {
   const listRef = useRef(null);
@@ -180,7 +179,6 @@ export default function GoogleDrivePanel({
           <DriveFolderConfig
             config={driveFolderConfig}
             accessToken={driveAccessToken}
-            pickerConfigured={pickerConfigured}
             onConfigured={onFolderConfigured}
           />
         )}
