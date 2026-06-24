@@ -14,10 +14,23 @@ const footprint = [
 const geom = buildPlanGeometry({
   footprint,
   wallThickness: 0.2,
+  rooms: [
+    { name: "COCINA · COMEDOR · LIVING", x: 0.2, y: 9.2, w: 7.3, h: 5.6 },
+    { name: "DORMITORIO", x: 7.5, y: 9.2, w: 6.3, h: 5.6 },
+    { name: "ACCESO · ESCALERA", x: 5.7, y: 0.2, w: 2.6, h: 8.6 },
+  ],
+  openings: [
+    { type: "door", x1: 6.4, y1: 0, x2: 7.4, y2: 0, swing: 1 },
+    { type: "window", x1: 3, y1: 15, x2: 5, y2: 15 },
+    { type: "window", x1: 14, y1: 11, x2: 14, y2: 13 },
+  ],
   title: {
     titulo: "VIVIENDA UNIFAMILIAR — RECONSTRUCCIÓN",
-    subtitulo: "Planta de perímetro y cubierta · Esc. 1:100",
-    pie: "BMC · METALOG SAS — Dolores, Uruguay · PROPUESTA (borrador para revisión)",
+    proyecto: "Vivienda unifamiliar — Reconstrucción",
+    cliente: "Dolores, Uruguay",
+    escala: "1:100",
+    fecha: "2026-06-24",
+    dibujo: "BMC · METALOG SAS",
     lamina: "Lám. 01",
   },
 });

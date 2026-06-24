@@ -49,7 +49,12 @@ export default function BmcCrearPlanoModule() {
   const [preset, setPreset] = useState("T");
   const [dims, setDims] = useState({ L: 10, A: 6, cuerpoL: 14, cuerpoA: 6, brazoA: 3, brazoL: 9 });
   const [titulo, setTitulo] = useState("VIVIENDA UNIFAMILIAR");
+  const [cliente, setCliente] = useState("");
   const [lamina, setLamina] = useState("Lám. 01");
+  const [iaRooms, setIaRooms] = useState([]);
+  const [iaOpenings, setIaOpenings] = useState([]);
+  const [calibPlano, setCalibPlano] = useState("");
+  const [calibReal, setCalibReal] = useState("");
 
   const [uploadPhase, setUploadPhase] = useState("idle"); // idle | loading | done | error
   const [uploadMsg, setUploadMsg] = useState("");
@@ -100,6 +105,8 @@ export default function BmcCrearPlanoModule() {
       setIaWarnings(data.warnings || []);
       if (Array.isArray(fp) && fp.length >= 3) {
         setIaFootprint(fp);
+        setIaRooms(data.bmcPayload?.rooms || []);
+        setIaOpenings(data.bmcPayload?.openings || []);
         setUploadMsg(`Croquis interpretado — perímetro detectado por IA${usedAi}.`); setUploadPhase("done");
       } else {
         setUploadMsg("La IA no pudo armar el perímetro automáticamente. Definí las medidas a mano abajo.");
@@ -110,12 +117,19 @@ export default function BmcCrearPlanoModule() {
     }
   }, [aiProvider, aiModel]);
 
+  const scale = useMemo(() => {
+    const p = +calibPlano, r = +calibReal;
+    return p > 0 && r > 0 ? r / p : 1;
+  }, [calibPlano, calibReal]);
+
   const generar = useCallback(async () => {
     setGenPhase("loading"); setGenMsg(""); setResult(null);
     try {
+      const rooms = mode === "croquis" ? iaRooms : [];
+      const openings = mode === "croquis" ? iaOpenings : [];
       const resp = await fetch("/api/plan/cad", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ footprint, title: { titulo, lamina } }),
+        body: JSON.stringify({ footprint, rooms, openings, scale, title: { titulo, proyecto: titulo, cliente, lamina, escala: "1:100" } }),
       });
       const data = await resp.json();
       if (!resp.ok || !data.ok) { setGenMsg(data.error || "Error generando el plano."); setGenPhase("error"); return; }
@@ -124,7 +138,7 @@ export default function BmcCrearPlanoModule() {
     } catch {
       setGenMsg("Error de red al generar el plano."); setGenPhase("error");
     }
-  }, [footprint, titulo, lamina]);
+  }, [footprint, titulo, cliente, lamina, scale, mode, iaRooms, iaOpenings]);
 
   const fileBase = (titulo || "plano").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "plano";
 
@@ -239,9 +253,19 @@ export default function BmcCrearPlanoModule() {
         {/* Paso 2: rótulo + generar */}
         <div style={card}>
           <div style={stepTag}>2 · Generar plano</div>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10, marginBottom: 14 }}>
-            <Field label="Título" value={titulo} onChange={setTitulo} type="text" />
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
+            <Field label="Título / Proyecto" value={titulo} onChange={setTitulo} type="text" />
+            <Field label="Cliente" value={cliente} onChange={setCliente} type="text" />
             <Field label="Lámina" value={lamina} onChange={setLamina} type="text" />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <span style={label}>Calibración de escala (opcional · si el croquis no trae medidas)</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="number" value={calibPlano} placeholder="medida en el dibujo (m)" onChange={(e) => setCalibPlano(e.target.value)} style={inp} />
+              <span style={{ color: "#aab" }}>→</span>
+              <input type="number" value={calibReal} placeholder="medida real (m)" onChange={(e) => setCalibReal(e.target.value)} style={inp} />
+              <span style={{ fontSize: 12, color: scale !== 1 ? "#0071e3" : "#aab", whiteSpace: "nowrap", fontWeight: 600 }}>×{scale.toFixed(3)}</span>
+            </div>
           </div>
           <button type="button" onClick={generar} disabled={genPhase === "loading"} style={{ ...btnPrimary, opacity: genPhase === "loading" ? 0.6 : 1 }}>
             {genPhase === "loading" ? <Loader size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Check size={16} />}

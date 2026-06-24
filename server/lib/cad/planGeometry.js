@@ -141,14 +141,18 @@ export function fmtM(m) {
  * @param {object} input
  * @param {number[][]} input.footprint  vértices [x,y] en metros (Y-up)
  * @param {number} [input.wallThickness=0.20]
- * @param {object} [input.title]  { titulo, subtitulo, pie, lamina }
+ * @param {Array}  [input.rooms]     ambientes [{name, x, y, w, h}] (m, Y-up)
+ * @param {Array}  [input.openings]  aberturas [{type:'door'|'window', x1,y1,x2,y2, swing?}]
+ * @param {object} [input.title]     { titulo, subtitulo, proyecto, cliente, lamina, escala, fecha, dibujo, pie }
+ * @param {number} [input.scale=1]   factor de calibración aplicado a footprint/rooms/openings
  */
 export function buildPlanGeometry(input = {}) {
   const raw = input.footprint;
   if (!Array.isArray(raw) || raw.length < 3) {
     throw Object.assign(new Error("footprint inválido: se requieren ≥3 vértices [x,y]"), { status: 400 });
   }
-  const footprint = ensureCCW(raw.map((p) => [Number(p[0]), Number(p[1])]));
+  const k = input.scale > 0 ? input.scale : 1;
+  const footprint = ensureCCW(raw.map((p) => [Number(p[0]) * k, Number(p[1]) * k]));
   const wallThickness = input.wallThickness > 0 ? input.wallThickness : 0.20;
   const innerWall = offsetInward(footprint, wallThickness);
   const edges = buildEdges(footprint);
@@ -156,6 +160,33 @@ export function buildPlanGeometry(input = {}) {
   const dims = buildDims(edges, bbox);
   const areaM2 = +Math.abs(signedArea(footprint)).toFixed(2);
 
+  // Ambientes (rectángulos con nombre): partición + etiqueta + área.
+  const rooms = (Array.isArray(input.rooms) ? input.rooms : [])
+    .map((r) => {
+      const x = Number(r.x) * k, y = Number(r.y) * k, w = Number(r.w) * k, h = Number(r.h) * k;
+      if (!(w > 0) || !(h > 0)) return null;
+      return { name: String(r.name || "AMBIENTE"), x, y, w, h, areaM2: +(w * h).toFixed(2), cx: x + w / 2, cy: y + h / 2 };
+    })
+    .filter(Boolean);
+
+  // Aberturas: segmentos sobre muro con tipo (puerta con barrido / ventana).
+  const openings = (Array.isArray(input.openings) ? input.openings : [])
+    .map((o) => {
+      const x1 = Number(o.x1) * k, y1 = Number(o.y1) * k, x2 = Number(o.x2) * k, y2 = Number(o.y2) * k;
+      if (![x1, y1, x2, y2].every(Number.isFinite)) return null;
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      if (len < 0.05) return null;
+      return {
+        type: o.type === "window" ? "window" : "door",
+        x1, y1, x2, y2, len: +len.toFixed(3),
+        mid: [(x1 + x2) / 2, (y1 + y2) / 2],
+        dir: [(x2 - x1) / len, (y2 - y1) / len],
+        swing: o.swing === -1 ? -1 : 1,
+      };
+    })
+    .filter(Boolean);
+
+  const t = input.title || {};
   return {
     units: "m",
     convention: "Y-up",
@@ -166,11 +197,18 @@ export function buildPlanGeometry(input = {}) {
     dims,
     bbox,
     areaM2,
+    rooms,
+    openings,
     title: {
-      titulo: input.title?.titulo || "PLANTA ARQUITECTÓNICA",
-      subtitulo: input.title?.subtitulo || "Planta de perímetro · Esc. 1:100",
-      pie: input.title?.pie || "BMC · METALOG SAS — PROPUESTA (borrador para revisión)",
-      lamina: input.title?.lamina || "Lám. 01",
+      titulo: t.titulo || "PLANTA ARQUITECTÓNICA",
+      subtitulo: t.subtitulo || "Planta de perímetro · Esc. 1:100",
+      proyecto: t.proyecto || t.titulo || "—",
+      cliente: t.cliente || "—",
+      lamina: t.lamina || "Lám. 01",
+      escala: t.escala || "1:100",
+      fecha: t.fecha || "",
+      dibujo: t.dibujo || "BMC · METALOG SAS",
+      pie: t.pie || "BMC · METALOG SAS — PROPUESTA (borrador para revisión)",
     },
   };
 }

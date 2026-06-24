@@ -34,8 +34,8 @@ function slug(s) {
 
 router.post("/plan/cad", limiter, async (req, res) => {
   try {
-    const { footprint, wallThickness, title, format = "json" } = req.body || {};
-    const geom = buildPlanGeometry({ footprint, wallThickness, title });
+    const { footprint, wallThickness, rooms, openings, scale, title, format = "json" } = req.body || {};
+    const geom = buildPlanGeometry({ footprint, wallThickness, rooms, openings, scale, title });
     const name = slug(title?.titulo);
 
     if (format === "dxf") {

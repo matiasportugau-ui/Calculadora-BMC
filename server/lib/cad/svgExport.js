@@ -3,35 +3,55 @@
 // Modelo canónico de geometría (Y-up) → SVG profesional acotado (Y-down).
 //
 // Única fuente de verdad geométrica = planGeometry (metros, Y-up). Acá se
-// INVIERTE Y (SVG es Y-down) en un solo lugar para evitar doble-flip.
-// Estilo: contorno de muros, cotas rojas ISO, norte, escala gráfica, cajetín.
+// INVIERTE Y en un solo lugar. Dibuja: muros (doble línea), ambientes,
+// aberturas (puertas con barrido / ventanas), cotas ISO, norte, escala y
+// cajetín ISO con campos.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const FONT = "Helvetica,Arial,sans-serif";
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export function geometryToSvg(geom, opts = {}) {
-  const S = opts.pxPerM || 52;                 // px por metro
-  const padL = 2.4, padR = 1.0, padT = 1.0, padB = 4.6; // márgenes (m) p/cotas + cajetín
+  const S = opts.pxPerM || 52;
+  const padL = 2.4, padR = 1.0, padT = 1.0, padB = 5.0;
   const b = geom.bbox;
   const modelW = (b.maxX - b.minX) + padL + padR;
   const modelH = (b.maxY - b.minY) + padT + padB;
-
-  const ox = padL - b.minX;                    // traslación modelo→lienzo (m)
-  const oyTop = b.maxY + padT;                 // tope (para flip)
+  const ox = padL - b.minX;
+  const oyTop = b.maxY + padT;
   const X = (x) => +(((x + ox) * S)).toFixed(2);
-  const Y = (y) => +(((oyTop - y) * S)).toFixed(2); // FLIP Y aquí
-  const sidePanel = 300;                       // panel derecho (px)
+  const Y = (y) => +(((oyTop - y) * S)).toFixed(2); // FLIP Y
+  const sidePanel = 300;
   const CW = Math.round(modelW * S + sidePanel);
   const CH = Math.round(modelH * S);
 
   const out = [];
   const add = (s) => out.push(s);
+  const path = (pts) => "M " + pts.map((p) => `${X(p[0])} ${Y(p[1])}`).join(" L ") + " Z";
 
   // ── muros (doble línea) ─────────────────────────────────────────────────
-  const path = (pts) => "M " + pts.map((p) => `${X(p[0])} ${Y(p[1])}`).join(" L ") + " Z";
   add(`<path d="${path(geom.footprint)}" fill="#fbfaf7" stroke="#1f2937" stroke-width="${0.2 * S}" stroke-linejoin="miter"/>`);
-  if (Array.isArray(geom.innerWall)) {
-    add(`<path d="${path(geom.innerWall)}" fill="#ffffff" stroke="#1f2937" stroke-width="1" stroke-linejoin="miter"/>`);
+  if (Array.isArray(geom.innerWall)) add(`<path d="${path(geom.innerWall)}" fill="#ffffff" stroke="#1f2937" stroke-width="1" stroke-linejoin="miter"/>`);
+
+  // ── ambientes ───────────────────────────────────────────────────────────
+  for (const r of geom.rooms || []) {
+    add(`<rect x="${X(r.x)}" y="${Y(r.y + r.h)}" width="${(r.w * S).toFixed(2)}" height="${(r.h * S).toFixed(2)}" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3"/>`);
+    add(`<text x="${X(r.cx)}" y="${Y(r.cy)}" text-anchor="middle" font-family="${FONT}" font-size="12" font-weight="700" fill="#334155">${esc(r.name)}</text>`);
+    add(`<text x="${X(r.cx)}" y="${Y(r.cy) + 14}" text-anchor="middle" font-family="${FONT}" font-size="10" fill="#64748b">${r.areaM2} m²</text>`);
+  }
+
+  // ── aberturas ───────────────────────────────────────────────────────────
+  for (const o of geom.openings || []) {
+    if (o.type === "window") {
+      const px = -o.dir[1] * 0.04, py = o.dir[0] * 0.04;
+      add(`<line x1="${X(o.x1 + px)}" y1="${Y(o.y1 + py)}" x2="${X(o.x2 + px)}" y2="${Y(o.y2 + py)}" stroke="#2563eb" stroke-width="2"/>`);
+      add(`<line x1="${X(o.x1 - px)}" y1="${Y(o.y1 - py)}" x2="${X(o.x2 - px)}" y2="${Y(o.y2 - py)}" stroke="#2563eb" stroke-width="2"/>`);
+    } else {
+      const perp = [-o.dir[1] * o.swing, o.dir[0] * o.swing];
+      const tip = [o.x1 + perp[0] * o.len, o.y1 + perp[1] * o.len];
+      add(`<line x1="${X(o.x1)}" y1="${Y(o.y1)}" x2="${X(tip[0])}" y2="${Y(tip[1])}" stroke="#b45309" stroke-width="1.4"/>`);
+      add(`<path d="M ${X(tip[0])} ${Y(tip[1])} A ${(o.len * S).toFixed(2)} ${(o.len * S).toFixed(2)} 0 0 ${o.swing === 1 ? 1 : 0} ${X(o.x2)} ${Y(o.y2)}" fill="none" stroke="#d97706" stroke-width="1"/>`);
+    }
   }
 
   // ── cotas ───────────────────────────────────────────────────────────────
@@ -40,19 +60,18 @@ export function geometryToSvg(geom, opts = {}) {
     add(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#b91c1c" stroke-width="1"/>`);
     const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
     const px = (-dy / len) * 4, py = (dx / len) * 4;
-    for (const [x, y] of [[x1, y1], [x2, y2]]) {
-      add(`<line x1="${x - px}" y1="${y - py}" x2="${x + px}" y2="${y + py}" stroke="#b91c1c" stroke-width="1"/>`);
-    }
+    for (const [x, y] of [[x1, y1], [x2, y2]]) add(`<line x1="${x - px}" y1="${y - py}" x2="${x + px}" y2="${y + py}" stroke="#b91c1c" stroke-width="1"/>`);
     const tx = X(d.tx), ty = Y(d.ty);
     const rot = d.orient === "V" ? ` transform="rotate(-90 ${tx} ${ty})"` : "";
-    const weight = d.kind === "overall" ? 700 : 600;
-    add(`<text x="${tx}" y="${ty}" text-anchor="middle" font-family="${FONT}" font-size="${d.kind === "overall" ? 13 : 11}" font-weight="${weight}" fill="#b91c1c"${rot}>${d.label}</text>`);
+    add(`<text x="${tx}" y="${ty}" text-anchor="middle" font-family="${FONT}" font-size="${d.kind === "overall" ? 13 : 11}" font-weight="${d.kind === "overall" ? 700 : 600}" fill="#b91c1c"${rot}>${d.label}</text>`);
   }
 
-  // ── superficie (centro) ──────────────────────────────────────────────────
-  const cx = X((b.minX + b.maxX) / 2), cy = Y((b.minY + b.maxY) / 2);
-  add(`<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-family="${FONT}" font-size="18" font-weight="700" fill="#374151" letter-spacing="1">${esc(geom.title.titulo)}</text>`);
-  add(`<text x="${cx}" y="${cy + 14}" text-anchor="middle" font-family="${FONT}" font-size="13" fill="#6b7280">Superficie ${geom.areaM2} m²</text>`);
+  // ── superficie total (si no hay ambientes, al centro) ────────────────────
+  if (!(geom.rooms || []).length) {
+    const cx = X((b.minX + b.maxX) / 2), cy = Y((b.minY + b.maxY) / 2);
+    add(`<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-family="${FONT}" font-size="18" font-weight="700" fill="#374151" letter-spacing="1">${esc(geom.title.titulo)}</text>`);
+    add(`<text x="${cx}" y="${cy + 14}" text-anchor="middle" font-family="${FONT}" font-size="13" fill="#6b7280">Superficie ${geom.areaM2} m²</text>`);
+  }
 
   // ── norte ────────────────────────────────────────────────────────────────
   const nx = modelW * S + 70, ny = 50;
@@ -67,20 +86,25 @@ export function geometryToSvg(geom, opts = {}) {
   for (let i = 0; i <= 5; i++) add(`<text x="${sb + i * S}" y="${sby + 18}" text-anchor="middle" font-family="${FONT}" font-size="9" fill="#6b7280">${i}</text>`);
   add(`<text x="${sb + 5 * S + 10}" y="${sby + 6}" font-family="${FONT}" font-size="9" fill="#6b7280">m</text>`);
 
-  // ── cajetín ──────────────────────────────────────────────────────────────
-  const tyB = CH - 64, tw = modelW * S;
-  add(`<rect x="0" y="${tyB}" width="${tw}" height="64" fill="#1A3A5C"/>`);
-  add(`<text x="18" y="${tyB + 26}" font-family="${FONT}" font-size="15" font-weight="700" fill="#fff">${esc(geom.title.titulo)}</text>`);
-  add(`<text x="18" y="${tyB + 44}" font-family="${FONT}" font-size="11" fill="#cdd9e6">${esc(geom.title.subtitulo)}</text>`);
-  add(`<text x="18" y="${tyB + 58}" font-family="${FONT}" font-size="9" fill="#9bb3cc">${esc(geom.title.pie)}</text>`);
-  add(`<text x="${tw - 18}" y="${tyB + 34}" text-anchor="end" font-family="${FONT}" font-size="11" fill="#cdd9e6">${esc(geom.title.lamina)}</text>`);
+  // ── cajetín ISO (campos) ─────────────────────────────────────────────────
+  const T = geom.title;
+  const bw = modelW * S, bh = 78, by = CH - bh;
+  add(`<rect x="0" y="${by}" width="${bw}" height="${bh}" fill="#1A3A5C"/>`);
+  const colX = bw * 0.62;
+  add(`<line x1="${colX}" y1="${by}" x2="${colX}" y2="${CH}" stroke="#3c5a78"/>`);
+  add(`<line x1="0" y1="${by + bh / 2}" x2="${bw}" y2="${by + bh / 2}" stroke="#3c5a78"/>`);
+  const fld = (x, y, k, v, big) => {
+    add(`<text x="${x + 12}" y="${y + 15}" font-family="${FONT}" font-size="8.5" fill="#9bb3cc" letter-spacing="1">${esc(k)}</text>`);
+    add(`<text x="${x + 12}" y="${y + 31}" font-family="${FONT}" font-size="${big ? 14 : 11}" font-weight="${big ? 700 : 500}" fill="#fff">${esc(v || "—")}</text>`);
+  };
+  fld(0, by, "PROYECTO", T.proyecto, true);
+  fld(0, by + bh / 2, "CLIENTE", T.cliente);
+  fld(colX, by, "LÁMINA", T.lamina, true);
+  fld(colX, by + bh / 2, "ESCALA / FECHA", `${T.escala}${T.fecha ? "  ·  " + T.fecha : ""}`);
+  add(`<text x="${bw - 12}" y="${by + bh - 8}" text-anchor="end" font-family="${FONT}" font-size="9" fill="#9bb3cc">${esc(T.dibujo)}</text>`);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${CW}" height="${CH}" viewBox="0 0 ${CW} ${CH}" font-family="${FONT}">
 <rect width="${CW}" height="${CH}" fill="#ffffff"/>
 ${out.join("\n")}
 </svg>`;
-}
-
-function esc(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

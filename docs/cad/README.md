@@ -85,6 +85,19 @@ configurados con fallback en cadena**: **Claude · Gemini · OpenAI (gpt-4o) · 
   proveedor+modelo) y muestra con qué IA se interpretó.
 - Sin API key real, el endpoint responde un 502 con el detalle por proveedor (fallback correcto).
 
+## Fidelidad del plano (Opción 1)
+
+El plano se acerca a uno arquitectónico real: además del perímetro acotado incluye
+- **Ambientes** (`rooms:[{name,x,y,w,h}]`) — partición + nombre + área por local.
+- **Aberturas** (`openings:[{type:'door'|'window',x1,y1,x2,y2,swing}]`) — puertas con **arco de
+  barrido** (capa `A-DOOR`), ventanas en **doble línea** (`A-GLAZ`).
+- **Cajetín ISO** con campos PROYECTO / CLIENTE / LÁMINA / ESCALA / FECHA (`A-ANNO-TTLB`).
+- **Calibración de escala** (`scale` o, en la UI, "medida en el dibujo → medida real").
+
+Ambientes y aberturas se autocompletan desde la visión (`ambientes`, `aberturasPlano` en el
+esquema) y/o se pasan por API. Capas AIA: `A-WALL · A-DOOR · A-GLAZ · A-ANNO-DIMS · A-ANNO-TEXT ·
+A-AREA-IDEN · A-ANNO-TTLB · A-GRID`.
+
 ## Decisiones clave (del research log del plan)
 
 1. **Cotas explotadas (LINE+TEXT), no entidades `DIMENSION`.** AutoCAD no renderiza `DIMENSION`

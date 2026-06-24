@@ -3,6 +3,8 @@ import { extractVisionJSON } from "./visionExtract.js";
 const VISION_SCHEMA = `{
   "techoZonas": [{"largoM": number, "anchoM": number}],
   "footprintPoligono": [[x, y]] | null,
+  "ambientes": [{"nombre": string, "x": number, "y": number, "w": number, "h": number}],
+  "aberturasPlano": [{"tipo": "door"|"window", "x1": number, "y1": number, "x2": number, "y2": number}],
   "tipoAguas": "una_agua" | "dos_aguas" | null,
   "pendienteGrados": number | null,
   "paredAltoM": number | null,
@@ -19,6 +21,7 @@ Tu tarea es extraer dimensiones de superficies (techos y paredes) del plano y de
 REGLAS:
 - Extraé todas las zonas de techo que identifiques como rectángulos independientes (con sus largos y anchos en metros)
 - Si el contorno del edificio es una sola figura conectada (rectángulo, L, T, U…), devolvé además "footprintPoligono": la lista ordenada de vértices [x, y] del PERÍMETRO en metros, en sentido antihorario, con origen abajo-izquierda (eje Y hacia arriba). Si no podés determinar el perímetro con seguridad, dejá footprintPoligono en null.
+- Si identificás ambientes/locales, devolvé "ambientes" como rectángulos {nombre, x, y, w, h} en metros (mismo origen Y-up). Si identificás puertas/ventanas, devolvé "aberturasPlano" como segmentos {tipo, x1, y1, x2, y2}. Si no estás seguro, devolvé listas vacías.
 - Si hay cotas en el plano, respetá esas medidas exactas
 - Si el plano es un DXF, interpretá las entidades DIMENSION y TEXT que contienen medidas
 - El tipo de panel (familia, espesor) NO aparece en planos arquitectónicos — no lo inventes
@@ -140,9 +143,16 @@ export function mapToBmc(extracted) {
     color: "Blanco",
   } : null;
 
+  const rooms = (Array.isArray(extracted.ambientes) ? extracted.ambientes : [])
+    .filter((r) => Number(r.w) > 0 && Number(r.h) > 0)
+    .map((r) => ({ name: String(r.nombre || "AMBIENTE"), x: +r.x, y: +r.y, w: +r.w, h: +r.h }));
+  const openings = (Array.isArray(extracted.aberturasPlano) ? extracted.aberturasPlano : [])
+    .filter((o) => [o.x1, o.y1, o.x2, o.y2].every((v) => Number.isFinite(Number(v))))
+    .map((o) => ({ type: o.tipo === "window" ? "window" : "door", x1: +o.x1, y1: +o.y1, x2: +o.x2, y2: +o.y2 }));
+
   return {
     ok: gaps.length === 0,
-    bmcPayload: { scenario, techo, pared, footprint, footprintSource },
+    bmcPayload: { scenario, techo, pared, footprint, footprintSource, rooms, openings },
     gaps,
     warnings,
     extractedRaw: extracted,

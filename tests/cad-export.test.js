@@ -11,10 +11,18 @@ const ok = (cond, msg) => { assert.ok(cond, msg); console.log("  ✓", msg); pas
 const footprint = [
   [5.5, 0], [8.5, 0], [8.5, 9], [14, 9], [14, 15], [0, 15], [0, 9], [5.5, 9],
 ];
-const geom = buildPlanGeometry({ footprint, wallThickness: 0.2 });
+const geom = buildPlanGeometry({
+  footprint, wallThickness: 0.2,
+  rooms: [{ name: "ESTAR", x: 0.2, y: 9.2, w: 7, h: 5.6 }],
+  openings: [{ type: "door", x1: 6.4, y1: 0, x2: 7.4, y2: 0, swing: 1 }, { type: "window", x1: 3, y1: 15, x2: 5, y2: 15 }],
+  title: { proyecto: "Casa T", cliente: "BMC", escala: "1:100" },
+});
 
 console.log("Geometría:");
 ok(geom.areaM2 === 111, `área = 111 m² (got ${geom.areaM2})`);
+ok(geom.rooms.length === 1 && geom.rooms[0].areaM2 === 39.2, `ambiente con área 39,2 m² (got ${geom.rooms[0]?.areaM2})`);
+ok(geom.openings.length === 2 && geom.openings[0].type === "door", "2 aberturas, primera puerta");
+ok(geom.title.proyecto === "Casa T" && geom.title.escala === "1:100", "cajetín con proyecto/escala");
 ok(geom.footprint.length === 8, "footprint con 8 vértices");
 ok(signedArea(geom.footprint) > 0, "footprint normalizado a CCW (área con signo > 0)");
 ok(geom.innerWall.length === 8, "muro interior (offset) con 8 vértices");
@@ -27,7 +35,13 @@ console.log("DXF:");
 const dxf = geometryToDxf(geom);
 ok(typeof dxf === "string" && dxf.includes("SECTION"), "DXF es string con SECTION");
 for (const layer of Object.values(LAYERS)) ok(dxf.includes(layer), `DXF contiene capa ${layer}`);
+ok(dxf.includes("A-DOOR") && dxf.includes("A-GLAZ"), "DXF con capas A-DOOR y A-GLAZ");
+ok(dxf.includes("Casa T") && dxf.includes("ESTAR"), "DXF con cajetín (proyecto) y ambiente");
 ok(dxf.includes("ENDSEC") && dxf.trim().endsWith("EOF"), "DXF bien terminado (ENDSEC/EOF)");
+
+console.log("Calibración de escala:");
+const g2 = buildPlanGeometry({ footprint: [[0, 0], [10, 0], [10, 6], [0, 6]], scale: 1.5 });
+ok(g2.areaM2 === 135, `escala 1.5 sobre 10×6=60 → 135 m² (got ${g2.areaM2})`);
 
 console.log("DXF round-trip (reader 'dxf'):");
 try {
@@ -39,7 +53,8 @@ try {
 console.log("SVG:");
 const svg = geometryToSvg(geom);
 ok(svg.startsWith("<svg") && svg.trim().endsWith("</svg>"), "SVG bien formado");
-ok(svg.includes("111 m²"), "SVG muestra superficie 111 m²");
+ok(svg.includes("ESTAR") && svg.includes("Casa T"), "SVG muestra ambiente y cajetín");
+ok(geometryToSvg(buildPlanGeometry({ footprint })).includes("111 m²"), "SVG sin ambientes muestra superficie total");
 
 console.log("Edge cases:");
 assert.throws(() => buildPlanGeometry({ footprint: [[0, 0], [1, 1]] }), /footprint inválido/);
