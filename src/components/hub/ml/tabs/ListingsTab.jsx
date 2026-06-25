@@ -36,166 +36,216 @@ const fieldLabel = {
   marginBottom: '5px',
 };
 
+// Attributes ML treats as read-only / system — never send these back.
+const READONLY_ATTRS = new Set([
+  'ITEM_CONDITION', 'GTIN', // handled via dedicated fields below
+]);
+const saleTermValue = (d, id) => (d?.sale_terms || []).find((t) => t.id === id)?.value_name || '';
+
 function EditDrawer({ id, onClose }) {
   const item = useItem(id);
   const updateItem = useUpdateItem();
   const updateDescription = useUpdateDescription();
 
+  const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
   const [status, setStatus] = useState('active');
+  const [sku, setSku] = useState('');
+  const [condition, setCondition] = useState('new');
+  const [warranty, setWarranty] = useState('');
+  const [attrs, setAttrs] = useState({});        // { [attrId]: value_name }
   const [imagesText, setImagesText] = useState('');
   const [descriptionText, setDescriptionText] = useState('');
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
-    if (item.data) {
-      setPrice(item.data.price ?? '');
-      setQuantity(item.data.available_quantity ?? '');
-      setStatus(item.data.status === 'paused' ? 'paused' : 'active');
+    const d = item.data;
+    if (!d) return;
+    setTitle(d.title ?? '');
+    setPrice(d.price ?? '');
+    setQuantity(d.available_quantity ?? '');
+    setStatus(d.status === 'paused' ? 'paused' : 'active');
+    setSku(d.seller_custom_field || (d.attributes || []).find((a) => a.id === 'SELLER_SKU')?.value_name || '');
+    setCondition((d.attributes || []).find((a) => a.id === 'ITEM_CONDITION')?.value_id === '2230581' ? 'used' : (d.condition || 'new'));
+    setWarranty(saleTermValue(d, 'WARRANTY_TIME'));
+    const seed = {};
+    for (const a of d.attributes || []) {
+      if (a.id && a.value_name != null && !READONLY_ATTRS.has(a.id)) seed[a.id] = a.value_name;
     }
+    setAttrs(seed);
   }, [item.data]);
 
+  const d = item.data;
+  const editableAttrs = (d?.attributes || []).filter((a) => a.id && !READONLY_ATTRS.has(a.id) && a.name);
   const saving = updateItem.isPending || updateDescription.isPending;
   const saveError = updateItem.error || updateDescription.error;
   const saveOk = updateItem.isSuccess && (!descriptionText.trim() || updateDescription.isSuccess);
+  const heroPic = d?.pictures?.[0]?.secure_url || d?.pictures?.[0]?.url;
+  const penalty = !!d?.tags?.includes?.('moderation_penalty');
 
   const handleSave = () => {
-    if (!confirming) {
-      setConfirming(true);
-      return;
-    }
+    if (!confirming) { setConfirming(true); return; }
     const updates = {};
-    if (price !== '' && Number(price) !== item.data?.price) {
-      updates.price = Number(price);
+    if (title.trim() && title.trim() !== d?.title) updates.title = title.trim();
+    if (price !== '' && Number(price) !== d?.price) updates.price = Number(price);
+    if (quantity !== '' && Number(quantity) !== d?.available_quantity) updates.available_quantity = Number(quantity);
+    if (status && status !== d?.status) updates.status = status;
+    if (sku.trim() && sku.trim() !== (d?.seller_custom_field || '')) updates.seller_custom_field = sku.trim();
+
+    // Changed attributes → ML expects [{id, value_name}]
+    const changedAttrs = [];
+    for (const a of editableAttrs) {
+      const next = attrs[a.id];
+      if (next != null && next !== a.value_name) changedAttrs.push({ id: a.id, value_name: next });
     }
-    if (quantity !== '' && Number(quantity) !== item.data?.available_quantity) {
-      updates.available_quantity = Number(quantity);
-    }
-    if (status && status !== item.data?.status) {
-      updates.status = status;
-    }
-    const urls = imagesText
-      .split('\n')
-      .map((u) => u.trim())
-      .filter(Boolean);
-    if (urls.length) {
-      updates.pictures = urls.map((url) => ({ source: url }));
+    if (changedAttrs.length) updates.attributes = changedAttrs;
+
+    // Warranty via sale_terms
+    if (warranty.trim() && warranty.trim() !== saleTermValue(d, 'WARRANTY_TIME')) {
+      updates.sale_terms = [
+        { id: 'WARRANTY_TYPE', value_name: saleTermValue(d, 'WARRANTY_TYPE') || 'Garantía del vendedor' },
+        { id: 'WARRANTY_TIME', value_name: warranty.trim() },
+      ];
     }
 
-    if (Object.keys(updates).length) {
-      updateItem.mutate({ id, updates });
-    }
-    if (descriptionText.trim()) {
-      updateDescription.mutate({ id, text: descriptionText });
-    }
+    const urls = imagesText.split('\n').map((u) => u.trim()).filter(Boolean);
+    if (urls.length) updates.pictures = urls.map((url) => ({ source: url }));
+
+    if (Object.keys(updates).length) updateItem.mutate({ id, updates });
+    if (descriptionText.trim()) updateDescription.mutate({ id, text: descriptionText });
     setConfirming(false);
   };
 
   return (
     <div
       style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: '420px',
-        maxWidth: '100vw',
-        background: 'var(--ac-surface)',
-        borderLeft: '1px solid var(--ac-border)',
-        boxShadow: '-4px 0 24px rgba(0,0,0,.12)',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
+        position: 'fixed', top: 0, right: 0, bottom: 0,
+        width: '460px', maxWidth: '100vw',
+        background: 'var(--ac-surface)', borderLeft: '1px solid var(--ac-border)',
+        boxShadow: '-4px 0 24px rgba(0,0,0,.12)', zIndex: 1000,
+        display: 'flex', flexDirection: 'column',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--ac-border)' }}>
         <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--ac-text)' }}>Editar publicación</span>
-        <button
-          onClick={onClose}
-          style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--ac-text-2)', lineHeight: 1 }}
-        >
-          ✕
-        </button>
+        <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--ac-text-2)', lineHeight: 1 }}>✕</button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {item.isLoading && <div style={{ color: 'var(--ac-text-2)', fontSize: '13px' }}>Cargando…</div>}
         {item.error && <div style={{ color: 'var(--ac-error)', fontSize: '13px' }}>Error al cargar la publicación.</div>}
 
-        {item.data && (
+        {d && (
           <>
-            <div>
-              <span style={fieldLabel}>Título</span>
-              <div style={{ fontSize: '13px', color: 'var(--ac-text)', lineHeight: 1.4 }}>{item.data.title}</div>
-              <div style={{ fontSize: '11px', color: 'var(--ac-text-2)', marginTop: '2px' }}>{item.data.id}</div>
-            </div>
+            {/* ── Visualización tipo Mercado Libre ── */}
+            <a href={d.permalink} target="_blank" rel="noreferrer"
+               style={{ display: 'flex', gap: '12px', textDecoration: 'none', color: 'inherit', padding: '12px', borderRadius: '12px', background: 'var(--ac-bg)', border: '1px solid var(--ac-border)' }}>
+              {heroPic
+                ? <img src={heroPic} alt="" style={{ width: '76px', height: '76px', objectFit: 'cover', borderRadius: '10px', flexShrink: 0, border: '1px solid var(--ac-border)' }} />
+                : <div style={{ width: '76px', height: '76px', borderRadius: '10px', background: 'var(--ac-border)', flexShrink: 0 }} />}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.3, color: 'var(--ac-text)' }}>{d.title}</div>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ac-text)', margin: '4px 0' }}>{d.currency_id} {d.price}</div>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <StatusBadge status={d.status} penalty={penalty} />
+                  <span style={{ fontSize: '11px', color: 'var(--ac-text-2)' }}>{d.sold_quantity} vendidas · salud {typeof d.health === 'number' ? d.health.toFixed(2) : '—'}</span>
+                </div>
+                <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--ac-accent)', marginTop: '3px' }}>{d.id} ↗</div>
+              </div>
+            </a>
 
             <div>
-              <label style={fieldLabel} htmlFor="ml-price">Precio</label>
-              <input id="ml-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} style={inputStyle} />
+              <label style={fieldLabel} htmlFor="ml-title">Título</label>
+              <textarea id="ml-title" value={title} onChange={(e) => setTitle(e.target.value)} rows={2} maxLength={60} style={{ ...inputStyle, resize: 'vertical' }} />
+              <div style={{ fontSize: '10px', color: 'var(--ac-text-2)', textAlign: 'right' }}>{title.length}/60</div>
             </div>
 
-            <div>
-              <label style={fieldLabel} htmlFor="ml-qty">Stock disponible</label>
-              <input id="ml-qty" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} style={inputStyle} />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel} htmlFor="ml-price">Precio ({d.currency_id})</label>
+                <input id="ml-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} style={inputStyle} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel} htmlFor="ml-qty">Stock disponible</label>
+                <input id="ml-qty" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} style={inputStyle} />
+              </div>
             </div>
 
-            <div>
-              <label style={fieldLabel} htmlFor="ml-status">Estado</label>
-              <select id="ml-status" value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
-                <option value="active">Activa</option>
-                <option value="paused">Pausada</option>
-              </select>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel} htmlFor="ml-status">Estado</label>
+                <select id="ml-status" value={status} onChange={(e) => setStatus(e.target.value)}
+                        disabled={penalty && status === 'paused'} style={inputStyle}>
+                  <option value="active">Activa</option>
+                  <option value="paused">Pausada</option>
+                </select>
+                {penalty && <div style={{ fontSize: '10px', color: 'var(--ac-error)', marginTop: '3px' }}>Penalizada por moderación — corregí la calidad antes de activar.</div>}
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel} htmlFor="ml-cond">Condición</label>
+                <select id="ml-cond" value={condition} onChange={(e) => setCondition(e.target.value)} style={inputStyle}>
+                  <option value="new">Nuevo</option>
+                  <option value="used">Usado</option>
+                </select>
+              </div>
             </div>
 
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel} htmlFor="ml-sku">SKU (código interno)</label>
+                <input id="ml-sku" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="—" style={inputStyle} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel} htmlFor="ml-warr">Garantía</label>
+                <input id="ml-warr" value={warranty} onChange={(e) => setWarranty(e.target.value)} placeholder="ej: 12 meses" style={inputStyle} />
+              </div>
+            </div>
+
+            {/* ── Características (atributos) ── */}
+            {editableAttrs.length > 0 && (
+              <div>
+                <span style={fieldLabel}>Características</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                  {editableAttrs.map((a) => (
+                    <div key={a.id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--ac-text-2)', width: '38%', flexShrink: 0 }} title={a.name}>{a.name}</span>
+                      <input
+                        value={attrs[a.id] ?? ''}
+                        onChange={(e) => setAttrs((p) => ({ ...p, [a.id]: e.target.value }))}
+                        style={{ ...inputStyle, fontSize: '12px', padding: '5px 8px' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
-              <span style={fieldLabel}>Fotos actuales</span>
+              <span style={fieldLabel}>Fotos actuales ({d.pictures?.length || 0})</span>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                {item.data.pictures?.length ? (
-                  item.data.pictures.map((p) => (
-                    <img
-                      key={p.id || p.secure_url}
-                      src={p.secure_url || p.url}
-                      alt=""
-                      style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--ac-border)' }}
-                    />
+                {d.pictures?.length ? (
+                  d.pictures.map((p) => (
+                    <img key={p.id || p.secure_url} src={p.secure_url || p.url} alt=""
+                         style={{ width: '52px', height: '52px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--ac-border)' }} />
                   ))
                 ) : (
                   <span style={{ fontSize: '12px', color: 'var(--ac-text-2)' }}>Sin fotos</span>
                 )}
               </div>
               <label style={fieldLabel} htmlFor="ml-images">Reemplazar fotos (una URL por línea)</label>
-              <textarea
-                id="ml-images"
-                value={imagesText}
-                onChange={(e) => setImagesText(e.target.value)}
-                rows={4}
-                placeholder="https://…&#10;https://…"
-                style={{ ...inputStyle, resize: 'vertical' }}
-              />
+              <textarea id="ml-images" value={imagesText} onChange={(e) => setImagesText(e.target.value)} rows={3}
+                        placeholder="https://…&#10;https://…" style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
 
             <div>
               <label style={fieldLabel} htmlFor="ml-desc">Nueva descripción (opcional)</label>
-              <textarea
-                id="ml-desc"
-                value={descriptionText}
-                onChange={(e) => setDescriptionText(e.target.value)}
-                rows={5}
-                placeholder="Escribí la nueva descripción…"
-                style={{ ...inputStyle, resize: 'vertical' }}
-              />
+              <textarea id="ml-desc" value={descriptionText} onChange={(e) => setDescriptionText(e.target.value)} rows={5}
+                        placeholder="Escribí la nueva descripción…" style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
 
-            {saveError && (
-              <div style={{ fontSize: '12px', color: 'var(--ac-error)' }}>
-                Error al guardar: {saveError.message || 'intentá de nuevo.'}
-              </div>
-            )}
-            {saveOk && !saving && (
-              <div style={{ fontSize: '12px', color: 'var(--ac-success)' }}>Cambios guardados correctamente.</div>
-            )}
+            {saveError && <div style={{ fontSize: '12px', color: 'var(--ac-error)' }}>Error al guardar: {saveError.message || 'intentá de nuevo.'}</div>}
+            {saveOk && !saving && <div style={{ fontSize: '12px', color: 'var(--ac-success)' }}>Cambios guardados correctamente.</div>}
           </>
         )}
       </div>
