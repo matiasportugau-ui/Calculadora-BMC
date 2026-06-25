@@ -48,8 +48,7 @@ const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUni
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
 const BugReportsList = lazy(() => import("./components/BugReportsList.jsx"));
-const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
-const BmcCrearPlanoModule = lazy(() => import("./components/BmcCrearPlanoModule.jsx"));
+const BmcPlanosModule = lazy(() => import("./components/BmcPlanosModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
@@ -314,25 +313,18 @@ export default function App() {
           }
         />
         <Route
-          path="/hub/plan-import"
+          path="/hub/planos"
           element={
             <RequireGrant module="plan-import" minLevel="read">
               <Suspense fallback={suspenseFallback}>
-                <BmcPlanImportModule />
+                <BmcPlanosModule />
               </Suspense>
             </RequireGrant>
           }
         />
-        <Route
-          path="/hub/crear-plano"
-          element={
-            <RequireGrant module="plan-import" minLevel="read">
-              <Suspense fallback={suspenseFallback}>
-                <BmcCrearPlanoModule />
-              </Suspense>
-            </RequireGrant>
-          }
-        />
+        {/* Rutas antiguas → módulo unificado «Planos» */}
+        <Route path="/hub/plan-import" element={<Navigate to="/hub/planos" replace />} />
+        <Route path="/hub/crear-plano" element={<Navigate to="/hub/planos" replace />} />
         <Route
           path="/mi-espacio"
           element={
