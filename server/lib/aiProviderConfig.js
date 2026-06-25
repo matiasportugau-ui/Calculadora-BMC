@@ -51,7 +51,7 @@ export const FAST_DEFAULT_MODELS = {
   claude: "claude-haiku-4-5-20251001",
   openai: "gpt-4o-mini",
   grok: "grok-3-mini",
-  gemini: "gemini-2.5-flash-lite",
+  gemini: "gemini-2.5-flash",
 };
 
 // ─── Allowed models per provider (strict allowlist for safety) ────────────────
