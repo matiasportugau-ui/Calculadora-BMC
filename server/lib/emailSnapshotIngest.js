@@ -71,7 +71,9 @@ export function selectMessagesForIngest(snapshot, opts = {}) {
 
 /**
  * @param {object} msg — snapshot message
- * @returns {{ asunto: string, cuerpo: string, remitente: string, messageId: string }}
+ * @returns {{ asunto: string, cuerpo: string, remitente: string, messageId: string, account: string }}
+ *   account = receiving casilla id when available (lets the cockpit reply from the
+ *   right address); falls back to "" → the API uses EMAIL_REPLY_DEFAULT_CASILLA.
  */
 export function messageToIngestBody(msg) {
   const key = stableMessageKey(msg);
@@ -80,5 +82,6 @@ export function messageToIngestBody(msg) {
     cuerpo: cuerpoFromMessage(msg),
     remitente: remitenteFromFrom(msg?.from),
     messageId: key,
+    account: String(msg?.account ?? msg?.accountId ?? ""),
   };
 }

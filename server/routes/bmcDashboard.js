@@ -33,6 +33,8 @@ import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
 import { makeRequireEmailIngestAuth } from "../lib/emailIngestAuth.js";
 import { shadowWriteEmailIngest } from "../lib/omni/adapters/emailIngest.js";
 import { mirrorMlSendApprovedToOmni } from "../lib/omni/adapters/mlOutboundMirror.js";
+import { getEmailIngestPool, wasIngested, markIngested, getIngestByRow } from "../lib/emailIngestDb.js";
+import { sendEmailReply, extractEmailAddress } from "../lib/emailReply.js";
 import {
   requireCrmCockpitRead,
   requireCrmCockpitWrite,
@@ -2627,8 +2629,16 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 
   // ── ingest-email: parsea email + escribe en CRM_Operativo — auth obligatoria (API_AUTH_TOKEN o EMAIL_INGEST_TOKEN)
   router.post("/crm/ingest-email", requireEmailIngestAuth, async (req, res) => {
-    const { asunto, cuerpo, remitente, messageId } = req.body || {};
+    const { asunto, cuerpo, remitente, messageId, account } = req.body || {};
     if (!cuerpo) return res.status(400).json({ ok: false, error: "Missing cuerpo" });
+
+    // Idempotency: the unattended ingester (Cloud Run Job) re-sends the same
+    // messages each run; skip if already processed so we don't write dup leads.
+    // Defensive: no DATABASE_URL → pool is null → wasIngested() returns false.
+    const ingestPool = getEmailIngestPool(config.databaseUrl);
+    if (messageId && (await wasIngested(ingestPool, messageId))) {
+      return res.json({ ok: true, deduped: true, messageId });
+    }
 
     const RANKING = CRM_AI_PROVIDER_RANKING;
     const apiKeys = { claude: config.anthropicApiKey, openai: config.openaiApiKey, grok: config.grokApiKey, gemini: config.geminiApiKey };
@@ -2784,6 +2794,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           logger: console,
           payload: { asunto, cuerpo, remitente, messageId, parsed: d, crmRow },
         }).catch((e) => console.warn("[Email] omni shadow failed:", e?.message));
+        // Record idempotency + reply metadata only after a successful write.
+        await markIngested(ingestPool, { messageKey: messageId, account, messageId, remitente, crmRow });
       } catch (e) {
         console.error(`[Email] ✗ Sheets write failed:`, e.message);
       }
@@ -3265,9 +3277,44 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         return res.json({ ok: true, channel: "whatsapp", questionId: null, sentAt, wa });
       }
 
+      if (/Email/i.test(origen)) {
+        // Recipient + receiving casilla: prefer the ingest log (keyed by CRM row),
+        // fall back to parsing an address out of the row (col D / observaciones).
+        const ingestPool = getEmailIngestPool(config.databaseUrl);
+        const meta = await getIngestByRow(ingestPool, row);
+        const recipient =
+          extractEmailAddress(meta?.remitente) ||
+          extractEmailAddress(parsed.telefono) ||
+          extractEmailAddress(parsed.observaciones);
+        if (!recipient) {
+          return res.status(400).json({ ok: false, error: "No recipient email found for this row" });
+        }
+        const casilla = meta?.account || config.emailReplyDefaultCasilla || "";
+        try {
+          await sendEmailReply({
+            account: casilla,
+            to: recipient,
+            subject: "Re: Tu consulta — BMC Uruguay",
+            text,
+            inReplyTo: meta?.message_id || undefined,
+          });
+        } catch (e) {
+          const code = e?.code === "not_configured" ? 503 : 502;
+          return res.status(code).json({ ok: false, error: "Email send failed", detail: e.message });
+        }
+        const sentAt = new Date().toISOString();
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[sentAt]] },
+        });
+        return res.json({ ok: true, channel: "email", to: recipient, casilla, sentAt });
+      }
+
       return res.status(400).json({
         ok: false,
-        error: "Unsupported origen for send-approved (need ML + Q:id in W, or WA in F)",
+        error: "Unsupported origen for send-approved (need ML + Q:id in W, WA in F, or Email)",
         origen,
       });
     } catch (e) {
