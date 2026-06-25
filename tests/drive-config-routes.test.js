@@ -164,3 +164,41 @@ describe("POST /api/drive/config", () => {
     assert.equal(pool._tables.user_drive_config[0].folder_id, "b");
   });
 });
+
+// Deploy-before-migrate safety net: when identity.user_drive_config is absent
+// (Postgres 42P01) GET degrades to null config, POST returns a clear 503.
+describe("migration not yet applied (42P01)", () => {
+  beforeEach(() => {
+    const base = makeShim();
+    const undefinedTable = () => Object.assign(new Error('relation "identity.user_drive_config" does not exist'), { code: "42P01" });
+    const wrapped = {
+      _tables: base._tables,
+      async query(sql, params) {
+        const norm = sql.replace(/\s+/g, " ").trim().toLowerCase();
+        if (norm.startsWith("select folder_id, folder_name, valid, configured_at, last_validated_at")) throw undefinedTable();
+        if (norm.startsWith("insert into identity.user_drive_config")) throw undefinedTable();
+        return base.query(sql, params);
+      },
+    };
+    driveConfigTest.setPool(wrapped);
+  });
+
+  it("GET degrades to 200 + null config", async () => {
+    const r = await fetch(url("/api/drive/config"), { headers: { Authorization: bearerFor("u-comprador") } });
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.equal(j.ok, true);
+    assert.equal(j.config, null);
+  });
+
+  it("POST returns 503 drive_config_unavailable", async () => {
+    const r = await fetch(url("/api/drive/config"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ folderId: "x", folderName: "X" }),
+    });
+    assert.equal(r.status, 503);
+    const j = await r.json();
+    assert.equal(j.error, "drive_config_unavailable");
+  });
+});

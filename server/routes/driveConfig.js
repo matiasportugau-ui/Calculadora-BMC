@@ -4,10 +4,10 @@
 //   GET  /api/drive/config   read the authed user's configured Drive folder
 //   POST /api/drive/config   upsert { folderId, folderName, valid }
 //
-// Folder selection + write-permission validation happen client-side (Google
-// Picker + the user's own drive.file OAuth token); the server only persists the
-// resulting reference. The server holds no per-user Google token, so it never
-// touches Drive here. See SPEC §8 + docs/team/PROJECT-STATE.md.
+// Folder selection + write-permission validation happen client-side (in-app
+// Drive-API folder browser + the user's own drive.file OAuth token); the server
+// only persists the resulting reference. The server holds no per-user Google
+// token, so it never touches Drive here. See SPEC §8 + docs/team/PROJECT-STATE.md.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
@@ -56,6 +56,9 @@ router.get("/api/drive/config", requireUser(), async (req, res) => {
     );
     res.json({ ok: true, config: toConfig(rows[0]) });
   } catch (e) {
+    // Migration not yet applied (relation absent): degrade to "no config" so the
+    // Drive tab still opens. Safety net for the deploy-before-migrate window.
+    if (e?.code === "42P01") return res.json({ ok: true, config: null });
     res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
@@ -86,6 +89,9 @@ router.post("/api/drive/config", requireUser(), async (req, res) => {
     );
     res.json({ ok: true, config: toConfig(rows[0]) });
   } catch (e) {
+    if (e?.code === "42P01") {
+      return res.status(503).json({ ok: false, error: "drive_config_unavailable" });
+    }
     res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
