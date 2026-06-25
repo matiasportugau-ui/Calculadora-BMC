@@ -124,3 +124,24 @@ gate:local:   pendiente correr al final de la sesión
 
 **Changes:** 1 file (+23/-10 LOC)  
 **Time:** ~15 min
+
+---
+
+## 2026-06-25 AM — ML catálogo + /hub/ml-manager (auditoría, reactivaciones, fix dashboard, IA)
+
+**Contexto:** auditar y mejorar el catálogo MercadoLibre y el dashboard `/hub/ml-manager`, que estaba roto en prod (no cargaba publicaciones/preguntas) y sin generación IA.
+
+**Acciones:**
+- Auditoría completa: 46 activas + 197 pausadas; **132 bulk-paused el 2026-04-11**; 85 con `moderation_penalty`. Reconciliación Bromyros↔ML (29 paneles). Artefactos en `product-clips/out/`.
+- **Reactivadas** ISP150 (`MLU445010304`) + IF40 (`MLU444372549`, 194 vend.) → activas 46→48. ISP50/200/250 retenidas (penalizadas).
+- **Causa raíz dashboard roto:** `vercel.json` no proxeaba `/ml` → catch-all SPA devolvía HTML 200 → `JSON.parse` rompía todo. Fix: rewrite `/ml/:path*`→Cloud Run + CORS (PR #431).
+- Preguntas: pull `.questions` (no `.results`), botón "Generar con IA", **preview de producto** (thumb+nombre+precio+permalink) (#431, #435).
+- **IA desbloqueada** sin billing: cadena caía a Gemini pero estaba en modelo retirado `gemini-2.0-flash` → cambiado a `gemini-2.5-flash` (#433).
+- **Editar publicación** estilo ML: header de visualización + variables completas (título, precio, stock, estado, condición, SKU, garantía, atributos) (#436).
+- CSP `img-src` += `*.mlstatic.com` para que carguen fotos ML.
+
+**Verificación:** prod `/ml/users/me`→JSON, `/ml/questions`→2, `/api/crm/suggest-response`→`{ok:true,provider:gemini,model:gemini-2.5-flash}`, CSP con mlstatic. gate:local + 3 required checks verdes en cada PR.
+
+**Próximo paso:** (a) listar IsoFrig 60–200mm (falta `POST /ml/items` + fotos); (b) fix calidad ISP50/200/250; (c) recargar clave IA premium (opcional).
+
+**Refs:** PRs #431/#433/#434/#435/#436. Docs: `HANDOFF-2026-06-25-ml-manager.md`, `ML-CREDENTIALS-PLAYBOOK.md`, `ML-AI-KEYS-REMEDIATION.md`, `ML-ISOFRIG-LISTING-CHECKLIST.md`. PROJECT-STATE entrada 2026-06-25.
