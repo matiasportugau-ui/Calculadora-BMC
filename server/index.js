@@ -347,8 +347,15 @@ app.get("/auth/ml/status", asyncHandler(async (req, res) => {
   if (!tokens?.access_token) {
     return res.status(404).json({ ok: false, message: "No token stored yet" });
   }
+  // A dormant token may be present but expired with a refresh_token that no
+  // longer works. Surface `expired` so the ML Manager can offer a re-auth CTA
+  // (GET /auth/ml/start) instead of leaving the user on "Verificá la conexión".
+  const expiresAt = Number(tokens.expires_at || 0);
+  const expired = !expiresAt || Date.now() >= expiresAt;
   return res.json({
     ok: true,
+    expired,
+    canRefresh: Boolean(tokens.refresh_token),
     userId: tokens.user_id,
     scope: tokens.scope,
     updatedAt: tokens.updated_at,

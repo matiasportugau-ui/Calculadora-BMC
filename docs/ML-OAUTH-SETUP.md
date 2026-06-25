@@ -146,6 +146,25 @@ Por defecto los tokens se guardan en un archivo local que se pierde en cada depl
 
 ---
 
+## 7b. Fallback de re-autorización (token dormido)
+
+El token OAuth vive cifrado en GCS y sobrevive cold starts; normalmente se **refresca solo** (`refresh_token`) antes de vencer. Pero un token **dormido** mucho tiempo puede quedar con un `refresh_token` que MercadoLibre ya invalidó. Cuando eso pasa, el refresh automático falla y el ML Manager queda en **"Verificá la conexión"** / **"Token vencido"**.
+
+**Cómo se detecta:**
+
+- `GET /auth/ml/status` devuelve `ok: true` pero `expired: true` (token presente pero vencido). Si además `canRefresh: false`, falta el `refresh_token` y la re-auth es obligatoria.
+- El ML Manager (`/hub/ml`) muestra el badge **"Token vencido"** y un botón **"Reconectar con Mercado Libre"**.
+
+**Fallback (una sola vez, manual):**
+
+1. En el ML Manager, clic en **"Reconectar con Mercado Libre"** (abre `/auth/ml/start` en una pestaña nueva), o abrí directamente `<API_BASE>/auth/ml/start` en el navegador.
+2. Autorizá con la cuenta de vendedor (misma identidad que en §1; ver §0 sobre cuenta test vs producción).
+3. Al volver del callback, `GET /auth/ml/status` debe responder `expired: false` y el badge vuelve a **"Cuenta conectada"**.
+
+> El botón usa la misma ruta verificada `GET /auth/ml/start`; no requiere credenciales de cliente en el navegador (el backend guarda el token server-side).
+
+---
+
 ## 8. Preservar variables en deploy (Cloud Run)
 
 Si usás GitHub Actions u otro CI para deployar a Cloud Run, las variables de entorno pueden sobrescribirse.
@@ -179,6 +198,7 @@ Si usás GitHub Actions u otro CI para deployar a Cloud Run, las variables de en
 | MercadoLibre exige https | Usá ngrok: `npx ngrok config add-authtoken TU_TOKEN` y `npx ngrok http 3001`. En la app de ML y en `.env` poné `ML_REDIRECT_URI_DEV=https://xxx.ngrok-free.app/auth/ml/callback`. |
 | Pantalla ML “la aplicación no puede conectarse a tu cuenta” (tras WhatsApp/QR) | Misma identidad ML/Mercado Pago; probar ventana privada; revisar redirect URI y modo test vs cuenta real (§0). |
 | 403 en `/ml/questions` u otras rutas ML | Revisar **permisos** de la app en Developers para ese recurso (§0 paso 4). |
+| ML Manager en "Verificá la conexión" / "Token vencido" | Token dormido cuyo refresh falló. Clic en **"Reconectar con Mercado Libre"** (o abrí `<API_BASE>/auth/ml/start`) y re-autorizá. Ver §7b. |
 
 ---
 
@@ -188,7 +208,7 @@ Si usás GitHub Actions u otro CI para deployar a Cloud Run, las variables de en
 |----------|-------------|
 | `GET /auth/ml/start` | Inicia OAuth (redirect a ML). `?mode=json` devuelve `{ authUrl }` sin redirect. |
 | `GET /auth/ml/callback` | Callback de MercadoLibre (no llamar manualmente). |
-| `GET /auth/ml/status` | Estado del token almacenado. |
+| `GET /auth/ml/status` | Estado del token almacenado. `expired: true` indica token vencido (ofrecer re-auth). |
 | `GET /ml/questions` | Preguntas de MercadoLibre (requiere OAuth). |
 | `GET /ml/orders` | Órdenes de MercadoLibre (requiere OAuth). |
 | `GET /ml/users/me` | Datos del usuario conectado. |

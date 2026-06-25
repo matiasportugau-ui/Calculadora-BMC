@@ -19,7 +19,7 @@ const qs = (params = {}) => {
   return s ? `?${s}` : '';
 };
 
-/** OAuth connection status — GET /auth/ml/status → { ok, userId, scope, updatedAt, expiresAt } */
+/** OAuth connection status — GET /auth/ml/status → { ok, expired, canRefresh, userId, scope, updatedAt, expiresAt } */
 export function useConnectorStatus() {
   return useQuery({
     queryKey: [...BASE_KEY, 'status'],

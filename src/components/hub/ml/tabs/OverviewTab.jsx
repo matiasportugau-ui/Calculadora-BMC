@@ -1,5 +1,6 @@
 import React from 'react';
 import { useUserMe, useListings, useQuestions, useOrders } from '../hooks/useMlConnector.js';
+import { getMlReauthUrl } from '../utils/mlFetch.js';
 
 const card = {
   background: 'var(--ac-surface)',
@@ -34,7 +35,25 @@ export default function OverviewTab() {
   if (anyError) {
     return (
       <div style={{ padding: '40px', color: 'var(--ac-error)', textAlign: 'center' }}>
-        Error al cargar el resumen. Verificá la conexión con Mercado Libre.
+        <div>Error al cargar el resumen. Verificá la conexión con Mercado Libre.</div>
+        <a
+          href={getMlReauthUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-block',
+            marginTop: '14px',
+            fontSize: '13px',
+            fontWeight: '600',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            color: '#fff',
+            background: 'var(--ac-accent)',
+          }}
+        >
+          Reconectar con Mercado Libre
+        </a>
       </div>
     );
   }

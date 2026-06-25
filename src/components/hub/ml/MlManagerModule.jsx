@@ -2,6 +2,7 @@ import React, { Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../../admin-cotizaciones/styles.css';
 import { useConnectorStatus } from './hooks/useMlConnector.js';
+import { getMlReauthUrl } from './utils/mlFetch.js';
 import OverviewTab from './tabs/OverviewTab.jsx';
 import ListingsTab from './tabs/ListingsTab.jsx';
 import QuestionsTab from './tabs/QuestionsTab.jsx';
@@ -18,7 +19,12 @@ export default function MlManagerModule() {
   const [activeTab, setActiveTab] = useState('overview');
   const status = useConnectorStatus();
 
-  const connected = status.data?.ok === true;
+  const connected = status.data?.ok === true && status.data?.expired !== true;
+  // A dormant token may still be "stored" (ok:true) but expired and no longer
+  // refreshable. In that case the badge offers a re-auth fallback so the user
+  // is not stranded on "Verificá la conexión" without guidance. See
+  // docs/ML-OAUTH-SETUP.md → "Fallback de re-autorización (token dormido)".
+  const reauthUrl = getMlReauthUrl();
 
   return (
     <div className="adminCot" data-skin="macos" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--ac-bg)' }}>
@@ -29,32 +35,53 @@ export default function MlManagerModule() {
           <span style={{ color: 'var(--ac-text-2)' }}>›</span>
           <span style={{ color: 'var(--ac-text)', fontWeight: '600' }}>ML Manager</span>
         </div>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          fontSize: '12px',
-          fontWeight: '500',
-          padding: '5px 12px',
-          borderRadius: '20px',
-          border: '1px solid',
-          ...(connected ? {
-            color: '#15803d',
-            background: '#f0fdf4',
-            borderColor: '#bbf7d0',
-          } : {
-            color: '#b91c1c',
-            background: '#fff1f0',
-            borderColor: '#fecaca',
-          }),
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            width: '7px',
-            height: '7px',
-            borderRadius: '50%',
-            background: connected ? 'var(--ac-success)' : 'var(--ac-error)',
-          }} />
-          <span>{connected ? 'Cuenta conectada' : 'Sin cuenta'}</span>
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '12px',
+            fontWeight: '500',
+            padding: '5px 12px',
+            borderRadius: '20px',
+            border: '1px solid',
+            ...(connected ? {
+              color: '#15803d',
+              background: '#f0fdf4',
+              borderColor: '#bbf7d0',
+            } : {
+              color: '#b91c1c',
+              background: '#fff1f0',
+              borderColor: '#fecaca',
+            }),
+          }}>
+            <div style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              background: connected ? 'var(--ac-success)' : 'var(--ac-error)',
+            }} />
+            <span>{connected ? 'Cuenta conectada' : (status.data?.expired ? 'Token vencido' : 'Sin cuenta')}</span>
+          </div>
+          {!connected && (
+            <a
+              href={reauthUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: '12px',
+                fontWeight: '600',
+                padding: '5px 12px',
+                borderRadius: '20px',
+                textDecoration: 'none',
+                color: '#fff',
+                background: 'var(--ac-accent)',
+                border: '1px solid var(--ac-accent)',
+              }}
+            >
+              Reconectar con Mercado Libre
+            </a>
+          )}
         </div>
       </div>
 

@@ -44,3 +44,13 @@ export async function mlFetch(path, init = {}) {
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
+
+/**
+ * Absolute URL that re-starts the MercadoLibre OAuth flow (`GET /auth/ml/start`,
+ * which 302-redirects to ML). Used as the re-authorization fallback when a
+ * dormant token can no longer be refreshed and the ML Manager shows it as
+ * disconnected. Open it in a new tab so the operator can re-grant access.
+ */
+export function getMlReauthUrl() {
+  return `${getCalcApiBase()}/auth/ml/start`;
+}
