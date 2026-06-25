@@ -164,6 +164,12 @@ export const config = {
   ),
   /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
+  /**
+   * Email reply (CRM cockpit, origen=Email) — fallback casilla id used when the
+   * receiving casilla is unknown for a row. Per-casilla SMTP is resolved from the
+   * sibling repo's config/accounts.json (`smtp` block, reusing EMAIL_<CASILLA>_PASS).
+   */
+  emailReplyDefaultCasilla: process.env.EMAIL_REPLY_DEFAULT_CASILLA || "bmc-ventas",
   /** Bucket GCS para evidencias firmadas (opcional) */
   transportistaGcsBucket: process.env.TRANSPORTISTA_GCS_BUCKET || "",
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
