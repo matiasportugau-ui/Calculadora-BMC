@@ -350,8 +350,9 @@ app.get("/auth/ml/status", asyncHandler(async (req, res) => {
   // A dormant token may be present but expired with a refresh_token that no
   // longer works. Surface `expired` so the ML Manager can offer a re-auth CTA
   // (GET /auth/ml/start) instead of leaving the user on "Verificá la conexión".
+  // Use the same 60s safety margin as ensureValidToken() in mercadoLibreClient.
   const expiresAt = Number(tokens.expires_at || 0);
-  const expired = !expiresAt || Date.now() >= expiresAt;
+  const expired = !expiresAt || Date.now() >= expiresAt - 60_000;
   return res.json({
     ok: true,
     expired,

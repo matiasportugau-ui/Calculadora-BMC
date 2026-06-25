@@ -25,6 +25,9 @@ export default function MlManagerModule() {
   // is not stranded on "Verificá la conexión" without guidance. See
   // docs/ML-OAUTH-SETUP.md → "Fallback de re-autorización (token dormido)".
   const reauthUrl = getMlReauthUrl();
+  const statusLabel = connected
+    ? 'Cuenta conectada'
+    : (status.data?.expired ? 'Token vencido' : 'Sin cuenta');
 
   return (
     <div className="adminCot" data-skin="macos" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--ac-bg)' }}>
@@ -61,7 +64,7 @@ export default function MlManagerModule() {
               borderRadius: '50%',
               background: connected ? 'var(--ac-success)' : 'var(--ac-error)',
             }} />
-            <span>{connected ? 'Cuenta conectada' : (status.data?.expired ? 'Token vencido' : 'Sin cuenta')}</span>
+            <span>{statusLabel}</span>
           </div>
           {!connected && (
             <a
