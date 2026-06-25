@@ -111,7 +111,7 @@ export const config = {
   budgetTurnsPer24h: process.env.BUDGET_TURNS_PER_24H ? Number(process.env.BUDGET_TURNS_PER_24H) : null,
   budgetTokensPer24h: process.env.BUDGET_TOKENS_PER_24H ? Number(process.env.BUDGET_TOKENS_PER_24H) : null,
   geminiApiKey: process.env.GEMINI_API_KEY || "",
-  geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash",
+  geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 (404 "no longer available"); 2.5-flash is the live model. Used by the SSE chat streaming path (agentChat.js) + visionExtract.
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
   // Vercel AI Gateway (unified multi-provider).
