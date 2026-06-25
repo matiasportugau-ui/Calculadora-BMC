@@ -114,6 +114,7 @@ function pathnameToModule(pathname) {
   if (pathname.startsWith("/hub/ml")) return "ml";
   if (pathname.startsWith("/hub/canales")) return "canales";
   if (pathname.startsWith("/hub/admin")) return "admin";
+  if (pathname.startsWith("/hub/planos")) return "plan-import";
   if (pathname.startsWith("/hub/plan-import")) return "plan-import";
   if (pathname.startsWith("/hub/crear-plano")) return "plan-import";
   if (pathname.startsWith("/hub/agent-admin")) return "agent-admin";
