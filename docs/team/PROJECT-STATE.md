@@ -1,8 +1,10 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-22
+**Última actualización:** 2026-06-25
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
+
+**Tablero de tareas:** el backlog/kanban de **desarrollo** vive en GitHub (Issues + Project «BMC Dev»); este archivo sigue siendo el **relato narrativo** del estado. Reglas en [`AGILE.md`](./AGILE.md), espejo versionado en [`BACKLOG.md`](./BACKLOG.md).
 
 **Guía legacy vs repo:** Si aparece documentación antigua tipo `BMC_SYSTEM_GUIDE.md` (backup Next/Mongo), contrastar con el inventario [BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md](../bmc-dashboard-modernization/BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md) — no usar ese backup como contrato de API del stack actual.
 
@@ -12,7 +14,46 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-06-25 (ML catálogo + /hub/ml-manager fixes):** Auditoría de catálogo ML (46 act + 197 paus; 132 bulk-paused 2026-04-11; 85 con `moderation_penalty`) → `product-clips/out/ml-audit-179969104.{md,json}` + reconciliación Bromyros↔ML `product-clips/out/bromyros-ml-gap.csv` (29 paneles: 13 act/5 paus/11 missing). **Reactivadas** ISP150 (`MLU445010304`) + IF40 (`MLU444372549`, 194 vend.) → activas **46→48**; ISP50/200/250 **retenidas** (penalizadas — requieren fix de calidad antes de reactivar). **Bug raíz /hub/ml-manager:** `vercel.json` no proxeaba `/ml` (catch-all SPA devolvía HTML 200 → `JSON.parse` rompía todo); agregado rewrite `/ml/:path*`→Cloud Run + CORS. **QuestionsTab:** corregido pull (`.questions` no `.results`) + agregado botón "Generar con IA" (reusa `/api/crm/suggest-response`/agentCore). **OverviewTab:** contador preguntas (`.total` no `.paging.total`). **ListingsTab:** filas con título/estado/precio/stock/salud + pausar/activar inline (guardrail anti-penalizadas). Pendiente: listar IsoFrig 60–200mm (checklist en `docs/team/ML-ISOFRIG-LISTING-CHECKLIST.md`; bloqueado por falta de endpoint create + fotos). gate:local OK (lint+test+test:api+build). **BLOCKER credenciales:** la generación IA (`/api/crm/suggest-response`, agentCore) devuelve `"All providers failed"` en prod — **las 4 claves IA en Cloud Run están inválidas/sin saldo** (claude 400 cred, grok 400 key, gemini fetch err, openai 429 quota). El wiring del botón "Generar con IA" es correcto pero no generará hasta recargar claves válidas (ANTHROPIC/OPENAI/GROK/GEMINI_API_KEY en Secret Manager). **Deploy pendiente:** fixes en branch `worktree-ml-product-clips` (`ad8472c`), sin pushear/mergear a prod (decisión del usuario).
+**2026-06-25 (ML catálogo + /hub/ml-manager fixes):** Auditoría de catálogo ML (46 act + 197 paus; 132 bulk-paused 2026-04-11; 85 con `moderation_penalty`) → `product-clips/out/ml-audit-179969104.{md,json}` + reconciliación Bromyros↔ML `product-clips/out/bromyros-ml-gap.csv` (29 paneles: 13 act/5 paus/11 missing). **Reactivadas** ISP150 (`MLU445010304`) + IF40 (`MLU444372549`, 194 vend.) → activas **46→48**; ISP50/200/250 **retenidas** (penalizadas — requieren fix de calidad antes de reactivar). **Bug raíz /hub/ml-manager:** `vercel.json` no proxeaba `/ml` (catch-all SPA devolvía HTML 200 → `JSON.parse` rompía todo); agregado rewrite `/ml/:path*`→Cloud Run + CORS. **QuestionsTab:** corregido pull (`.questions` no `.results`) + agregado botón "Generar con IA" (reusa `/api/crm/suggest-response`/agentCore). **OverviewTab:** contador preguntas (`.total` no `.paging.total`). **ListingsTab:** filas con título/estado/precio/stock/salud + pausar/activar inline (guardrail anti-penalizadas). Pendiente: listar IsoFrig 60–200mm (checklist en `docs/team/ML-ISOFRIG-LISTING-CHECKLIST.md`; bloqueado por falta de endpoint create + fotos). gate:local OK (lint+test+test:api+build). **BLOCKER credenciales:** la generación IA (`/api/crm/suggest-response`, agentCore) devuelve `"All providers failed"` en prod — **las 4 claves IA en Cloud Run están inválidas/sin saldo** (claude 400 cred, grok 400 key, gemini fetch err, openai 429 quota). El wiring del botón "Generar con IA" es correcto pero no generará hasta recargar claves válidas (ANTHROPIC/OPENAI/GROK/GEMINI_API_KEY en Secret Manager). **Deploy:** PR #431 → merge a `main` (Vercel prod).
+
+**2026-06-25 (CI — channels_pipeline solo en push a `main`):** El job `Channels — automated pipeline (prod)` de [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) quedó acotado a `push` sobre `main`, igual que otros probes de salud de producción (`smoke`, `voice_health`). **Motivo:** en PRs estaba ejecutando `scripts/channels-automated-pipeline.mjs` contra la revisión ya desplegada en Cloud Run y podía quedar rojo por un incidente de prod ajeno al branch, marcando la corrida como `action_required`. El cambio mantiene la señal de salud en `main` sin contaminar la validación de pull requests.
+
+**2026-06-25 (feat — Omni Inbox UX estilo Chatwoot · Fases 1+2):** Rediseño del Omni Inbox (`/hub/canales` → Omni) tomando patrones UX de Chatwoot sin adoptar la plataforma, detrás del flag existente `VITE_OMNI_INBOX=1`. **Fase 1 (frontend):** tabs de estado (Todas/Abiertas/Pendientes/Pospuestas/Resueltas vía el filtro `?status=` que ya existía), filas ricas (avatar, chip de canal, timestamp relativo, contador, dot de no-leídos), búsqueda client-side, composer con Enter-envía/Shift+Enter-salto y respuestas rápidas `/` (seed + localStorage), timestamps por mensaje, sidebar de contacto en acordeón. Restyle con tokens `--ac-*`. **Fase 2 (backend fino, sin migración):** nuevo `PATCH /api/omni/conversations/:id` (`{status?,tags?,priority?}`) que reutiliza columnas + validación (`ALLOWED_CONVERSATION_STATUSES`) ya existentes; `GET /api/omni/conversations` ahora devuelve `tags` + `unread_count`. Botones **Resolver/Posponer/Reabrir** (header del thread) y **etiquetas add/remove** (sidebar) cableados vía `updateConversation()` en `useOmniConversations`. Validación extraída a `server/lib/omni/conversationPatch.js` (+ `conversationStatus.js` como fuente única dependency-free). Archivos: `server/routes/omni.js`, `src/components/hub/canales/panels/{OmniInboxPanel,OmniThreadPanel,OmniContactSidebar}.jsx` + nuevos `omniFormat.js`, `cannedReplies.js`, `omniInbox.css`; tests `tests/omniInbox.test.js` (14) + `tests/omniConversationPatch.test.js` (8), wired a `test:api`. **Pendiente (full-desk tier, requiere migración):** asignación, notas internas, delivery ticks, real-time SSE. _Deploy: backend (Cloud Run `panelin-calc`) antes que frontend (Vercel) para que los botones no peguen a un 404. Gate ESLint/vitest/build corre en CI (fresh npm ci); en el worktree solo se validaron los helpers con `node`._
+
+**2026-06-25 (docs — Arquitectura de Canales & Cotizaciones):** Estudio arquitectónico y de specs de los 5 módulos operativos `/hub/{canales,wa,ml-manager,ml,cotizaciones}` (componentes de entrada, rutas backend, modelos de datos, RBAC, estado, cross-links), validado contra el código vivo. Nuevo doc de referencia [`ARCHITECTURE-CHANNELS-COTIZACIONES.md`](./ARCHITECTURE-CHANNELS-COTIZACIONES.md). Sin cambios de comportamiento en prod.
+
+**2026-06-24 (Configurador de Carpeta Drive por usuario — tab "Drive"):** Cada usuario interno configura, una sola vez,
+la carpeta de Google Drive donde se guardan sus cotizaciones (resuelve "Sandra/Ramiro/Martín no pueden guardar"). El
+"Guardar" del panel Drive ahora hace **doble guardado**: (1) primario **client-side por usuario** (`saveQuotation` con su
+propio token `drive.file`) hacia la carpeta configurada, y (2) best-effort en la carpeta BMC compartida vía service account
+(`DRIVE_QUOTE_FOLDER_ID`) para el dataset consolidado de Fase 2. Selección de carpeta vía **navegador in-app con la Drive API**
+(sin API key extra): lista/crea carpetas que la app administra en el Drive del usuario (limitación del scope `drive.file`: no
+enumera carpetas pre-existentes arbitrarias — para eso haría falta Google Picker + API key). Validación de permiso de escritura
+client-side y persistencia en **Postgres** `identity.user_drive_config` (no Firestore). Sin carpeta configurada → se bloquea el
+guardado por usuario con aviso. **Nuevos:** migración `supabase/migrations/20260624000001_user_drive_config.sql` (aplicar con
+`scripts/identity-golive-apply.sh`), ruta `server/routes/driveConfig.js` (`GET`/`POST /api/drive/config`),
+`src/utils/driveConfigApi.js`, `src/components/DriveFolderConfig.jsx`, test `tests/drive-config-routes.test.js`. **Setup pendiente:**
+aplicar la migración contra `DATABASE_URL`. Fase 2 (vista consolidada "todo de todos") fuera de alcance.
+
+**2026-06-25 (CI/Deploy — consolidación de PRs por variable reservada `PORT` en Cloud Run):** Cloud Run
+**reserva** e inyecta `PORT`; setearla explícitamente en el step de deploy hacía fallar el despliegue. El bug
+(introducido en `40f3a65`, `PORT=8080`) ya estaba **corregido en `main` por `0937d10`** («remove PORT=8080 from
+Cloud Run env vars»). Los PRs **#399** y su duplicado **#401** re-proponían el mismo arreglo: se consolidó
+**cerrando #401** y **mergeando #399**, cuyo squash (`8049bc7`) quedó **vacío** (no-op) porque el fix ya estaba
+aplicado. Verificado en `main`: el bloque `env_vars` del step de deploy **no** incluye la reservada `PORT`
+(sólo `SMTP_PORT`, que no es reservada). **Primer caso de uso real del tablero ágil** (`AGILE.md`): la disciplina
+WIP/dedupe atrapó dos PRs redundantes para un fix que ya vivía en `main` — la tarjeta se cierra como
+consolidación verificada, no como cambio de código.
+
+**2026-06-24 (Tablero ágil / Kanban para organizar el desarrollo):** Marco de organización del trabajo de
+**desarrollo de software** sobre GitHub (flujo continuo Kanban, sin sprints ni story points). Agregados:
+[`AGILE.md`](./AGILE.md) (reglas: columnas `Backlog → Ready → In Progress → In Review → Done` con límites WIP,
+labels `type`/`priority`/`area`, DoD = `gate:local` verde + merge a `main`, mapeo `/nxt`→prioridades y `area:*`→agente),
+[`BACKLOG.md`](./BACKLOG.md) (espejo versionado), y plantillas `.github/ISSUE_TEMPLATE/` (feature/bug/tech-debt) +
+`PULL_REQUEST_TEMPLATE.md`. Backlog inicial sembrado como issues **#416–#420** (npm audit, go-live, E2E D1.x,
+ML re-auth, Omni pricing) — mapean a los ítems abiertos de «Pendientes de sincronización». Setup único pendiente en
+la UI de GitHub (labels + Project board «BMC Dev»), documentado en `AGILE.md` §7: el tooling MCP crea issues pero no
+labels ni Projects v2. `/nxt` ahora referencia el backlog del tablero.
 
 **2026-06-23 (Omni WAVE 3+4 — FULLY OPERATIONAL en prod):** Activado el omnicanal end-to-end en producción y
 **probado** (ingest → classify → suggest Claude → HITL accept → H4 eval). Cloud Run `panelin-calc` rev ≥`00532`

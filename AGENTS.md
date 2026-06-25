@@ -7,6 +7,8 @@ Lee este archivo antes de cualquier tarea.
 
 **Deploy / verificación desde Cursor:** skill del repo [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md) — adjuntarla en el chat (“usá la skill bmc-calculadora-deploy-from-cursor”) o añadir una regla de proyecto que la cite cuando pidas redeploy Cloud Run / Vercel / smoke MATRIZ.
 
+**Organización del desarrollo (tablero ágil / Kanban):** el backlog de desarrollo vive en GitHub (Issues + Project «BMC Dev»); reglas en [`docs/team/AGILE.md`](docs/team/AGILE.md), espejo versionado en [`docs/team/BACKLOG.md`](docs/team/BACKLOG.md). DoD = `gate:local` verde + merge a `main`.
+
 ---
 
 ## Comandos disponibles

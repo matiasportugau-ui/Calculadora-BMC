@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1253" height="1090" viewBox="0 0 1253 1090" font-family="Helvetica,Arial">
+<defs>
+<pattern id="hatch" width="14" height="14" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+  <rect width="14" height="14" fill="#fbfaf7"/>
+  <line x1="0" y1="0" x2="0" y2="14" stroke="#e9e4d8" stroke-width="1"/>
+</pattern>
+</defs>
+<rect width="1253" height="1090" fill="#ffffff"/>
+<path d="M 150 150 H 878 V 462 H 592 V 930 H 436 V 462 H 150 Z" fill="url(#hatch)"/>
+<path d="M 150 150 H 878 V 462 H 592 V 930 H 436 V 462 H 150 Z" fill="none" stroke="#1f2937" stroke-width="10.4" stroke-linejoin="miter"/>
+<text x="514" y="298" text-anchor="middle" font-family="Helvetica,Arial" font-size="20" font-weight="700" fill="#374151" letter-spacing="1">PERÍMETRO DE VIVIENDA</text>
+<text x="514" y="322" text-anchor="middle" font-family="Helvetica,Arial" font-size="13" fill="#6b7280">Interior sin subdividir · superficie de cubierta</text>
+<text x="514" y="696" text-anchor="middle" font-family="Helvetica,Arial" font-size="13" font-weight="700" fill="#6b7280" letter-spacing="3" transform="rotate(-90 514 696)">EXTENSIÓN EN T</text>
+<line x1="150" y1="110" x2="878" y2="110" stroke="#b91c1c" stroke-width="1"/>
+<line x1="150" y1="106" x2="150" y2="114" stroke="#b91c1c" stroke-width="1"/>
+<line x1="878" y1="106" x2="878" y2="114" stroke="#b91c1c" stroke-width="1"/>
+<text x="514" y="105" text-anchor="middle" font-family="Helvetica,Arial" font-size="13" font-weight="700" fill="#b91c1c">14,00</text>
+<line x1="110" y1="150" x2="110" y2="462" stroke="#b91c1c" stroke-width="1"/>
+<line x1="106" y1="150" x2="114" y2="150" stroke="#b91c1c" stroke-width="1"/>
+<line x1="106" y1="462" x2="114" y2="462" stroke="#b91c1c" stroke-width="1"/>
+<text x="104" y="306" text-anchor="middle" font-family="Helvetica,Arial" font-size="13" font-weight="700" fill="#b91c1c" transform="rotate(-90 104 306)">6,00</text>
+<line x1="150" y1="508" x2="436" y2="508" stroke="#b91c1c" stroke-width="1"/>
+<line x1="150" y1="504" x2="150" y2="512" stroke="#b91c1c" stroke-width="1"/>
+<line x1="436" y1="504" x2="436" y2="512" stroke="#b91c1c" stroke-width="1"/>
+<text x="293" y="503" text-anchor="middle" font-family="Helvetica,Arial" font-size="13" font-weight="700" fill="#b91c1c">5,50</text>
+<line x1="592" y1="508" x2="878" y2="508" stroke="#b91c1c" stroke-width="1"/>
+<line x1="592" y1="504" x2="592" y2="512" stroke="#b91c1c" stroke-width="1"/>
+<line x1="878" y1="504" x2="878" y2="512" stroke="#b91c1c" stroke-width="1"/>
+<text x="735" y="503" text-anchor="middle" font-family="Helvetica,Arial" font-size="13" font-weight="700" fill="#b91c1c">5,50</text>
+<line x1="436" y1="960" x2="592" y2="960" stroke="#b91c1c" stroke-width="1"/>
+<line x1="436" y1="956" x2="436" y2="964" stroke="#b91c1c" stroke-width="1"/>
+<line x1="592" y1="956" x2="592" y2="964" stroke="#b91c1c" stroke-width="1"/>
+<text x="514" y="955" text-anchor="middle" font-family="Helvetica,Arial" font-size="13" font-weight="700" fill="#b91c1c">3,00</text>
+<line x1="626" y1="462" x2="626" y2="930" stroke="#b91c1c" stroke-width="1"/>
+<line x1="622" y1="462" x2="630" y2="462" stroke="#b91c1c" stroke-width="1"/>
+<line x1="622" y1="930" x2="630" y2="930" stroke="#b91c1c" stroke-width="1"/>
+<text x="620" y="696" text-anchor="middle" font-family="Helvetica,Arial" font-size="13" font-weight="700" fill="#b91c1c" transform="rotate(-90 620 696)">9,00</text>
+<circle cx="953" cy="180" r="22" fill="none" stroke="#374151" stroke-width="1.2"/>
+<path d="M 953 160 L 946 186 L 953 180 L 960 186 Z" fill="#374151"/>
+<text x="953" y="154" text-anchor="middle" font-family="Helvetica,Arial" font-size="12" font-weight="700" fill="#374151">N</text>
+<text x="923" y="442" font-family="Helvetica,Arial" font-size="10" fill="#6b7280">ESCALA GRÁFICA</text>
+<rect x="923" y="450" width="52" height="6" fill="#374151" stroke="#374151" stroke-width="0.8"/>
+<rect x="975" y="450" width="52" height="6" fill="#fff" stroke="#374151" stroke-width="0.8"/>
+<rect x="1027" y="450" width="52" height="6" fill="#374151" stroke="#374151" stroke-width="0.8"/>
+<rect x="1079" y="450" width="52" height="6" fill="#fff" stroke="#374151" stroke-width="0.8"/>
+<rect x="1131" y="450" width="52" height="6" fill="#374151" stroke="#374151" stroke-width="0.8"/>
+<text x="923" y="468" text-anchor="middle" font-family="Helvetica,Arial" font-size="9" fill="#6b7280">0</text>
+<text x="975" y="468" text-anchor="middle" font-family="Helvetica,Arial" font-size="9" fill="#6b7280">1</text>
+<text x="1027" y="468" text-anchor="middle" font-family="Helvetica,Arial" font-size="9" fill="#6b7280">2</text>
+<text x="1079" y="468" text-anchor="middle" font-family="Helvetica,Arial" font-size="9" fill="#6b7280">3</text>
+<text x="1131" y="468" text-anchor="middle" font-family="Helvetica,Arial" font-size="9" fill="#6b7280">4</text>
+<text x="1183" y="468" text-anchor="middle" font-family="Helvetica,Arial" font-size="9" fill="#6b7280">5</text>
+<text x="1193" y="456" font-family="Helvetica,Arial" font-size="9" fill="#6b7280">m</text>
+<rect x="923" y="240" width="290" height="150" rx="6" fill="#ffffff" stroke="#e5e7eb"/>
+<text x="937" y="266" font-family="Helvetica,Arial" font-size="13" font-weight="700" fill="#111827">SUPERFICIE DE CUBIERTA</text>
+<text x="937" y="292" font-family="Helvetica,Arial" font-size="12" fill="#374151" font-weight="400">Cuerpo principal  14,00 × 6,00</text>
+<text x="1199" y="292" text-anchor="end" font-family="Helvetica,Arial" font-size="12" fill="#374151" font-weight="400">84,0 m²</text>
+<text x="937" y="318" font-family="Helvetica,Arial" font-size="12" fill="#374151" font-weight="400">Extensión en T   3,00 × 9,00</text>
+<text x="1199" y="318" text-anchor="end" font-family="Helvetica,Arial" font-size="12" fill="#374151" font-weight="400">27,0 m²</text>
+<text x="937" y="344" font-family="Helvetica,Arial" font-size="12" fill="#111827" font-weight="700">TOTAL VIVIENDA</text>
+<text x="1199" y="344" text-anchor="end" font-family="Helvetica,Arial" font-size="12" fill="#111827" font-weight="700">111,0 m²</text>
+<line x1="937" y1="326" x2="1199" y2="326" stroke="#e5e7eb"/>
+<text x="937" y="378" font-family="Helvetica,Arial" font-size="9.5" fill="#9ca3af">Vivienda elevada s/platea + pilotes. Cotas en metros.</text>
+<rect x="80" y="990" width="798" height="70" fill="#1A3A5C"/>
+<text x="98" y="1018" font-family="Helvetica,Arial" font-size="16" font-weight="700" fill="#fff" letter-spacing=".5">VIVIENDA UNIFAMILIAR — RECONSTRUCCIÓN</text>
+<text x="98" y="1038" font-family="Helvetica,Arial" font-size="11" fill="#cdd9e6">Planta de perímetro y cubierta · Nivel acceso (elevado) · Esc. 1:100</text>
+<text x="98" y="1052" font-family="Helvetica,Arial" font-size="9" fill="#9bb3cc">BMC · METALOG SAS — Dolores, Uruguay · PROPUESTA s/croquis (interior sin subdividir)</text>
+<text x="860" y="1030" text-anchor="end" font-family="Helvetica,Arial" font-size="11" fill="#cdd9e6">Lám. 01 · Perímetro/cubierta</text>
+</svg>

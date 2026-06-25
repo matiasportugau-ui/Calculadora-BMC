@@ -13,6 +13,7 @@ Run these steps, then generate the report below:
 5. Identify: what is uncommitted, what is committed but not deployed, what is live.
 6. Adjust scores from KB baseline based on evidence in the current git state.
 7. Output the structured report using the format below.
+8. Cross-reference the dev backlog — open GitHub Issues / Project **BMC Dev** (offline mirror: `docs/team/BACKLOG.md`); surface the top open `priority:P0` / `priority:P1` cards as next steps. Board rules: `docs/team/AGILE.md`.
 
 ## Report format
 
