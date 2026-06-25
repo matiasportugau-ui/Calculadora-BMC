@@ -17,6 +17,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
   const messagesCountRef = useRef(messages.length);
   const bargeInRecRef = useRef(null);
   const thinkingTimeoutRef = useRef(null);
+  const startWakeWordDetectionRef = useRef(null);
 
   useEffect(() => {
     const getSR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -100,6 +101,56 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     });
   }, []);
 
+  const startQueryListening = useCallback(() => {
+    if (!SR.current) return;
+
+    SR.current.continuous = false;
+    SR.current.interimResults = true;
+
+    let finalTranscript = "";
+
+    SR.current.onresult = (event) => {
+      updateVU();
+      let interimTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + " ";
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      setTranscript([{ role: "user", text: (finalTranscript || interimTranscript).trim() }]);
+    };
+
+    SR.current.onend = () => {
+      if (currentPhaseRef.current === "listening" && finalTranscript.trim()) {
+        setPhase("Pensando…");
+        currentPhaseRef.current = "thinking";
+        messagesCountRef.current = messages.length;
+        send(finalTranscript.trim());
+
+        thinkingTimeoutRef.current = setTimeout(() => {
+          if (currentPhaseRef.current === "thinking") {
+            speakText("Lo siento, hubo un error. Decí 'Panelin' para comenzar.")
+              .then(() => startWakeWordDetectionRef.current?.());
+          }
+        }, 30000);
+      }
+    };
+
+    SR.current.onerror = (event) => {
+      if (event.error === "not-allowed") {
+        onError?.("Permiso de micrófono denegado");
+        setStatus("error");
+      }
+    };
+
+    SR.current.start();
+  }, [updateVU, send, messages.length, speakText, onError]);
+
   const startWakeWordDetection = useCallback(() => {
     if (!SR.current) {
       onError?.("SpeechRecognition no disponible en este navegador");
@@ -169,57 +220,9 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     setStatus("active");
     currentPhaseRef.current = "waking";
     setPhase("Esperando 'Panelin'…");
-  }, [onError, startVU, updateVU, playBeep]);
+  }, [onError, startVU, updateVU, playBeep, startQueryListening]);
 
-  const startQueryListening = useCallback(() => {
-    if (!SR.current) return;
-
-    SR.current.continuous = false;
-    SR.current.interimResults = true;
-
-    let finalTranscript = "";
-
-    SR.current.onresult = (event) => {
-      updateVU();
-      let interimTranscript = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript + " ";
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      setTranscript([{ role: "user", text: (finalTranscript || interimTranscript).trim() }]);
-    };
-
-    SR.current.onend = () => {
-      if (currentPhaseRef.current === "listening" && finalTranscript.trim()) {
-        setPhase("Pensando…");
-        currentPhaseRef.current = "thinking";
-        messagesCountRef.current = messages.length;
-        send(finalTranscript.trim());
-
-        thinkingTimeoutRef.current = setTimeout(() => {
-          if (currentPhaseRef.current === "thinking") {
-            speakText("Lo siento, hubo un error. Decí 'Panelin' para comenzar.")
-              .then(() => startWakeWordDetection());
-          }
-        }, 30000);
-      }
-    };
-
-    SR.current.onerror = (event) => {
-      if (event.error === "not-allowed") {
-        onError?.("Permiso de micrófono denegado");
-        setStatus("error");
-      }
-    };
-
-    SR.current.start();
-  }, [updateVU, send, messages.length, speakText, startWakeWordDetection, onError]);
+  startWakeWordDetectionRef.current = startWakeWordDetection;
 
   useEffect(() => {
     if (currentPhaseRef.current === "thinking" && messages.length > messagesCountRef.current) {
@@ -298,6 +301,8 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     const interval = setInterval(updateVU, 100);
     return () => clearInterval(interval);
   }, [updateVU]);
+
+  const isListening = phase === "Escuchando…";
 
   return {
     status,
