@@ -42,7 +42,7 @@ export const DEFAULT_MODELS = {
   claude: "claude-opus-4-7",
   openai: "gpt-4o-mini",
   grok: "grok-3-mini",
-  gemini: "gemini-2.0-flash",
+  gemini: "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 ("no longer available")
 };
 
 // Cheaper / faster defaults (used by auto-learn, some CRM paths, fallbacks)
@@ -51,7 +51,7 @@ export const FAST_DEFAULT_MODELS = {
   claude: "claude-haiku-4-5-20251001",
   openai: "gpt-4o-mini",
   grok: "grok-3-mini",
-  gemini: "gemini-2.0-flash-lite",
+  gemini: "gemini-2.5-flash-lite",
 };
 
 // ─── Allowed models per provider (strict allowlist for safety) ────────────────
@@ -71,6 +71,8 @@ export const ALLOWED_MODELS = {
   openai: new Set(["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4", "o4-mini", "o3-mini"]),
   grok: new Set(["grok-3-mini", "grok-3", "grok-2-latest", "grok-2-vision-1212", "grok-2-1212"]),
   gemini: new Set([
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
     "gemini-1.5-flash",
@@ -85,7 +87,7 @@ export const GATEWAY_MODEL_SLUGS = {
   claude: "anthropic/claude-haiku-4.5", // default cheap path via gateway
   openai: "openai/gpt-4o-mini",
   grok: "xai/grok-3-mini",
-  gemini: "google/gemini-2.0-flash",
+  gemini: "google/gemini-2.5-flash",
 };
 
 // Preferred fallback order (best Spanish + tool use first)
@@ -209,6 +211,8 @@ const COST_PER_MILLION = {
   "grok-3": { input: 3.0, output: 15.0 },
   "grok-3-mini": { input: 0.6, output: 3.0 },
   // Gemini
+  "gemini-2.5-flash": { input: 0.30, output: 2.50 },
+  "gemini-2.5-flash-lite": { input: 0.10, output: 0.40 },
   "gemini-2.0-flash": { input: 0.10, output: 0.40 },
   "gemini-2.0-flash-lite": { input: 0.05, output: 0.20 },
 };

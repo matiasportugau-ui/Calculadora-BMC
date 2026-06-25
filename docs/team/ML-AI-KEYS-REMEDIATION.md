@@ -15,11 +15,16 @@ has no AI keys. So there is no fresher/valid key anywhere to push to Cloud Run.
 | **Anthropic (claude)** — *primary, ranked first* | `400` "credit balance is too low" | Account out of credits | Add credits at console.anthropic.com → Plans & Billing |
 | **OpenAI** | `429` `insufficient_quota` | Account out of quota/billing | Add billing at platform.openai.com → Billing |
 | **Grok (x.ai)** | `400` "Incorrect API key provided" | Key invalid/revoked | Mint a new key at console.x.ai → update `GROK_API_KEY` (+`XAI_API_KEY`) |
-| **Gemini (Google)** | key OK for ListModels (`200`) but **every** `generateContent` → `404` ("model no longer available" / not served) | Generative Language API not enabled-for-generation / key restricted on the Google project; backend also references retired model `gemini-2.0-flash` | In Google Cloud console for the key's project: enable **Generative Language API**, remove key API-restrictions, ensure billing; then code can target `gemini-2.5-flash` |
+| **Gemini (Google)** | ✅ **WORKS** — key valid; `gemini-2.5-flash:generateContent` returns real completions | Backend was pinned to **retired** model `gemini-2.0-flash` → "fetch error". **Fixed in code** (`aiProviderConfig.js` → `gemini-2.5-flash`). No user action needed. | — (resolved; this is now the working fallback) |
 
-## Fastest path to working AI
-**Fund Anthropic** (it's first in `AI_PROVIDER_RANKING`, `server/lib/suggestResponse.js:8`). One funded
-provider makes the whole chain succeed — the button already falls through the chain correctly.
+## Status after 2026-06-25 fix
+**AI generation now works via Gemini** (model pinned to `gemini-2.5-flash`). The chain
+`claude→openai→grok→gemini` fails-fast through the 3 dead providers (immediate 400/429) and succeeds
+on Gemini. **No billing action is required to unblock the dashboard button.**
+
+Funding Anthropic/OpenAI or fixing the Grok key remains an *optional quality upgrade* (claude is
+preferred when funded — it's first in the ranking) and removes the ~2–3s wasted on the 3 fail-fast
+attempts before Gemini. Per-provider steps below if/when you want that.
 
 ## After you fix a provider — how the key reaches prod
 1. Update the key in Doppler: `doppler secrets set <NAME> --project=bmc-backend --config=prd`
