@@ -101,6 +101,10 @@ export default function BmcPlanosModule() {
     return presetFootprint(preset, dims);
   }, [isUpload, iaFootprint, preset, dims]);
 
+  // Generar plano CAD necesita perímetro; cotizar sólo necesita zonas.
+  const canPlan = isUpload ? (Array.isArray(iaFootprint) && iaFootprint.length >= 3) : true;
+  const canQuote = isUpload ? !!iaPayload?.techo?.zonas?.length : true;
+
   const handleFile = useCallback(async (file) => {
     if (!file) return;
     const ext = getExt(file.name);
@@ -126,9 +130,14 @@ export default function BmcPlanosModule() {
         setIaFootprint(fp);
         setIaRooms(data.bmcPayload?.rooms || []);
         setIaOpenings(data.bmcPayload?.openings || []);
-        setUploadMsg(`Croquis interpretado — perímetro detectado por IA${usedAi}.`); setUploadPhase("done");
+        setUploadMsg(`Interpretado — perímetro detectado por IA${usedAi}.`); setUploadPhase("done");
+      } else if (data.bmcPayload?.techo?.zonas?.length) {
+        // Sin perímetro para el plano CAD, pero hay dimensiones → se puede COTIZAR.
+        setIaFootprint(null); setIaRooms([]); setIaOpenings([]);
+        setUploadMsg(`Dimensiones extraídas${usedAi} — no se detectó el perímetro para el plano CAD, pero podés cotizarlo. Para generar el plano, ingresá las medidas.`);
+        setUploadPhase("done");
       } else {
-        setUploadMsg("La IA no pudo armar el perímetro automáticamente. Definí las medidas a mano abajo.");
+        setUploadMsg("La IA no pudo extraer dimensiones. Definí las medidas a mano abajo.");
         setUploadPhase("error"); setMode("manual");
       }
     } catch {
@@ -313,10 +322,22 @@ export default function BmcPlanosModule() {
               <span style={{ fontSize: 12, color: scale !== 1 ? "#0071e3" : "#aab", whiteSpace: "nowrap", fontWeight: 600 }}>×{scale.toFixed(3)}</span>
             </div>
           </div>
-          <button type="button" onClick={generar} disabled={genPhase === "loading"} style={{ ...btnPrimary, opacity: genPhase === "loading" ? 0.6 : 1 }}>
-            {genPhase === "loading" ? <Loader size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Check size={16} />}
-            Generar plano profesional
-          </button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button type="button" onClick={generar} disabled={genPhase === "loading" || !canPlan}
+              style={{ ...btnPrimary, opacity: (genPhase === "loading" || !canPlan) ? 0.5 : 1, cursor: !canPlan ? "not-allowed" : "pointer" }}
+              title={!canPlan ? "Falta el perímetro: ingresá medidas o subí un croquis con contorno claro" : undefined}>
+              {genPhase === "loading" ? <Loader size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Check size={16} />}
+              Generar plano profesional
+            </button>
+            <button type="button" onClick={cotizar} disabled={!canQuote}
+              style={{ ...btnPrimary, background: "#1a3a5c", opacity: !canQuote ? 0.5 : 1, cursor: !canQuote ? "not-allowed" : "pointer" }}
+              title={!canQuote ? "Subí un croquis/plano o ingresá medidas para cotizar" : undefined}>
+              <Calculator size={16} /> Cotizar este plano →
+            </button>
+          </div>
+          {isUpload && canQuote && !canPlan && (
+            <div style={{ fontSize: 12, color: "#92400E", marginTop: 8 }}>Se extrajeron dimensiones pero no el perímetro: podés <b>Cotizar</b> ahora, o ingresar medidas para generar el plano CAD.</div>
+          )}
           {genPhase === "error" && (
             <div style={{ display: "flex", gap: 8, padding: "10px 14px", borderRadius: 10, background: "#FEF2F2", border: "1px solid #FCA5A5", marginTop: 12 }}>
               <AlertTriangle size={14} color="#DC2626" /><span style={{ fontSize: 13, color: "#DC2626" }}>{genMsg}</span>

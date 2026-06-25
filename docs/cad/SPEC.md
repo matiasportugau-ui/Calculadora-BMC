@@ -257,8 +257,13 @@ hay exactamente una zona; sino `null` + warning (operador define el perímetro).
   `localStorage` → `PanelinCalculadoraV3_backup.jsx` lo aplica con `applyQuoteSnapshot` →
   cotización editable. Las zonas vienen de la IA (`techo.zonas`) o de `presetZonas` (descomposición
   exacta de los presets); se les aplica la calibración de escala.
-- `BmcPlanImportModule.jsx` queda como legado (ruta redirigida); su funcionalidad la absorbe el
-  módulo unificado.
+- Los módulos previos `BmcCrearPlanoModule.jsx` y `BmcPlanImportModule.jsx` fueron **removidos y
+  fusionados** en `BmcPlanosModule.jsx`. Lo único "legado" son las **rutas** `/hub/crear-plano` y
+  `/hub/plan-import`, que **redirigen** a `/hub/planos`.
+- **Caso plano del cliente (zonas sin perímetro):** si la IA devuelve `techo.zonas` pero no
+  `footprint`, el módulo **igual permite Cotizar** (no fuerza modo manual ni descarta las zonas);
+  «Generar plano CAD» queda deshabilitado hasta tener perímetro (subir contorno claro o ingresar
+  medidas).
 
 ### 7.3 Routing / grants
 - `src/App.jsx`: ruta `/hub/planos` con `RequireGrant module="plan-import"`. `/hub/crear-plano` y
@@ -280,8 +285,7 @@ hay exactamente una zona; sino `null` + warning (operador define el perímetro).
 | `server/routes/planCad.js` | `POST /api/plan/cad`. |
 | `server/routes/planInterpret.js` | `POST /api/plan/interpret` + `GET /api/plan/ai-options`. |
 | `server/lib/aiProviderConfig.js` | Config central de proveedores/modelos (reusado). |
-| `src/components/BmcCrearPlanoModule.jsx` | UI Crear plano. |
-| `src/components/BmcPlanImportModule.jsx` | UI Subir plano → presupuesto. |
+| `src/components/BmcPlanosModule.jsx` | UI unificada «Planos»: 3 orígenes, export DXF/SVG + cotizar. |
 | `tests/cad-export.test.js` | 29 asserts (geometría, capas, aberturas, escala, round-trip). |
 | `tests/cad-pipeline-e2e.test.js` | 10 asserts (interpret→footprint→CAD, robustez). |
 | `scripts/cad-demo.mjs` | Demo + render `docs/cad/demo-plano.{dxf,svg,png}`. |
