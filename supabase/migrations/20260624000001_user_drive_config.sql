@@ -4,9 +4,10 @@
 -- Project: Calculadora-BMC (htnwozvopveibwppyjhg)
 -- Purpose: each internal user (Matias, Sandra, Ramiro, Martín) configures, once,
 -- the Google Drive folder where their quotations auto-save. Selection is done
--- client-side via Google Picker (drive.file scope) and validated for write
--- permission with the user's own OAuth token; only the resulting
--- { folderId, folderName } is persisted here. See SPEC §8.
+-- client-side via an in-app Drive-API folder browser (drive.file scope; no
+-- Google Picker / extra API key) and validated for write permission with the
+-- user's own OAuth token; only the resulting { folderId, folderName } is
+-- persisted here. See SPEC §8 + docs/team/PROJECT-STATE.md.
 --
 -- Companion: docs/team/PROJECT-STATE.md (Cambios recientes)
 --

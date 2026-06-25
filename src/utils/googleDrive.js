@@ -487,7 +487,8 @@ async function findFileInFolder(folderId, fileName) {
  * List top-level folders this app can see in the user's Drive. Under the
  * minimal drive.file scope these are folders the app created (e.g. the default
  * "Panelin BMC Cotizaciones" root) — arbitrary pre-existing folders are not
- * visible without the broad `drive` scope or Google Picker.
+ * visible under this scope (that would need the broad `drive` scope, which this
+ * app intentionally avoids).
  *
  * @returns {Promise<{ id: string, name: string, modifiedTime?: string }[]>}
  */
@@ -519,8 +520,8 @@ export async function createSelectableFolder(name) {
 
 /**
  * Validate that a folder exists and the user can write to it.
- * Uses the user's own token via authFetch, so it works for any folder the
- * Picker granted access to.
+ * Uses the user's own token via authFetch, so it works for any folder this app
+ * created (or that the user has otherwise granted this app access to).
  *
  * @returns {Promise<{ valid: boolean, name: string|null, reason?: string }>}
  */

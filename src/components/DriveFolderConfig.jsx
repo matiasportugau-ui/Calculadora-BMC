@@ -104,8 +104,32 @@ export default function DriveFolderConfig({ config, accessToken, onConfigured })
     }
   }, [newName, commitFolder]);
 
+  // The folder config is persisted via /api/drive/config, which requires the
+  // BMC identity JWT (accessToken) — distinct from the Google Drive token.
+  // Without it the POST/GET would 401, so prompt for BMC login instead of
+  // rendering controls that can't succeed. (Codex P2.)
+  if (!accessToken) {
+    return (
+      <div style={{ padding: "12px 20px", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.brand, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          Carpeta de guardado
+        </div>
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 7,
+          padding: "10px 12px", borderRadius: 10,
+          background: C.surfaceAlt, border: `1px solid ${C.border}`,
+          fontSize: 12, color: C.ts, lineHeight: 1.4,
+        }}>
+          <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1, color: "#FF9F0A" }} />
+          Iniciá sesión en BMC para configurar tu carpeta de guardado.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: "12px 20px", borderBottom: `1px solid ${C.border}` }}>
+      <style>{"@keyframes spin { to { transform: rotate(360deg); } }"}</style>
       <div style={{ fontSize: 12, fontWeight: 600, color: C.brand, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
         Carpeta de guardado
       </div>

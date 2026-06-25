@@ -4445,12 +4445,16 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       // Best-effort: también archivar en la carpeta BMC compartida (service
       // account) para el dataset consolidado de Fase 2. No bloquea el guardado
       // por usuario si falla / no está configurado DRIVE_QUOTE_FOLDER_ID.
-      persistExportToCompanyDrive({
-        pdfBlob,
-        pdfFileName: fname,
-        quotationCode: code,
-        source: "calc_drive_manual",
-      });
+      // Best-effort: swallow any rejection so it never surfaces as an unhandled
+      // promise rejection (the per-user save above is the source of truth).
+      Promise.resolve(
+        persistExportToCompanyDrive({
+          pdfBlob,
+          pdfFileName: fname,
+          quotationCode: code,
+          source: "calc_drive_manual",
+        }),
+      ).catch(() => {});
     } catch (err) {
       setDriveError(err.message || "Error al guardar en Drive");
     } finally {
