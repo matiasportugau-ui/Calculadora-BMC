@@ -122,7 +122,6 @@ export default function PanelinVoicePanel({
   const handleMicButton = useCallback(() => {
     if (status === "idle" || status === "error") {
       setVoiceError(null);
-      setTranscript([]);
       start(calcState);
     } else {
       stop();

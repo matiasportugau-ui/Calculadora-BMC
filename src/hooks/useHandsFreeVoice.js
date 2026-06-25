@@ -17,6 +17,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
   const messagesCountRef = useRef(messages.length);
   const bargeInRecRef = useRef(null);
   const thinkingTimeoutRef = useRef(null);
+  const startQueryListeningRef = useRef(null);
 
   useEffect(() => {
     const getSR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -141,7 +142,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
         playBeep();
         setPhase("Escuchando…");
         currentPhaseRef.current = "listening";
-        startQueryListening();
+        startQueryListeningRef.current?.();
       }
     };
 
@@ -221,6 +222,10 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     SR.current.start();
   }, [updateVU, send, messages.length, speakText, startWakeWordDetection, onError]);
 
+  // Keep the ref in sync so startWakeWordDetection (defined above) can call the
+  // latest startQueryListening without a forward-reference lint error.
+  startQueryListeningRef.current = startQueryListening;
+
   useEffect(() => {
     if (currentPhaseRef.current === "thinking" && messages.length > messagesCountRef.current) {
       const newMessages = messages.slice(messagesCountRef.current);
@@ -252,7 +257,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
                     playBeep();
                     setPhase("Escuchando…");
                     currentPhaseRef.current = "listening";
-                    startQueryListening();
+                    startQueryListeningRef.current?.();
                     return;
                   }
                 }
@@ -266,7 +271,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
           });
       }
     }
-  }, [messages, speakText, startWakeWordDetection, startQueryListening, playBeep]);
+  }, [messages, speakText, startWakeWordDetection, playBeep]);
 
   const start = useCallback(() => {
     if (!SR.current) {
@@ -298,6 +303,8 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     const interval = setInterval(updateVU, 100);
     return () => clearInterval(interval);
   }, [updateVU]);
+
+  const isListening = phase === "Escuchando…";
 
   return {
     status,
