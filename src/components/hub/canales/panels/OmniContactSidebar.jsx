@@ -48,6 +48,9 @@ export default function OmniContactSidebar({ conversation, token, onUpdateConver
     setSavingTag(true);
     try {
       await onUpdateConversation(conversation.id, { tags: next });
+    } catch {
+      // Best-effort: swallow errors so addLabel()/removeLabel() callers can't
+      // produce an unhandled promise rejection.
     } finally {
       setSavingTag(false);
     }

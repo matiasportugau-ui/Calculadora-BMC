@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useOmniMessages, useOmniSuggestions } from "../../../../hooks/useOmniConversations.js";
 import { channelMeta, clockTime, conversationTitle, messageDate, statusMeta } from "./omniFormat.js";
-import { applyReply, matchSlashQuery } from "./cannedReplies.js";
+import { applyReply, getCannedReplies, matchSlashQuery } from "./cannedReplies.js";
 import "./omniInbox.css";
 
 const EMPTY_SLASH = { active: false, matches: [], tokenStart: 0 };
@@ -25,6 +25,10 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
   const taRef = useRef(null);
   const endRef = useRef(null);
 
+  // Cache canned replies once per mount so each keystroke avoids a localStorage
+  // read + JSON.parse inside matchSlashQuery().
+  const cannedReplies = useMemo(() => getCannedReplies(), []);
+
   useEffect(() => {
     if (conversationId) markRead().catch(() => {});
   }, [conversationId, markRead]);
@@ -41,7 +45,7 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
   }, [messages.length]);
 
   const recompute = (value, caret) => {
-    const res = matchSlashQuery(value, caret);
+    const res = matchSlashQuery(value, caret, cannedReplies);
     setSlash(
       res.active && res.matches.length
         ? { active: true, matches: res.matches, tokenStart: res.tokenStart }
@@ -71,6 +75,9 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
       await sendReply(text);
       setDraft("");
       onSent?.();
+    } catch {
+      // Keep the draft intact so the operator can retry; avoid an unhandled
+      // rejection bubbling out of this fire-and-forget handler.
     } finally {
       setSending(false);
     }
@@ -82,6 +89,9 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
     try {
       await onUpdateConversation(conversationId, { status });
       await reloadThread(); // refresh this thread's own status badge
+    } catch {
+      // Best-effort: swallow errors so the onClick handler can't produce an
+      // unhandled promise rejection.
     } finally {
       setUpdating(false);
     }
@@ -212,10 +222,18 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
             <button type="button" className="omniInbox__btn" onClick={() => setDraft(suggestion.body)}>
               Usar
             </button>
-            <button type="button" className="omniInbox__btn" onClick={() => accept(suggestion.id)}>
+            <button
+              type="button"
+              className="omniInbox__btn"
+              onClick={() => accept(suggestion.id).catch(() => {})}
+            >
               Aceptar
             </button>
-            <button type="button" className="omniInbox__btn" onClick={() => reject(suggestion.id)}>
+            <button
+              type="button"
+              className="omniInbox__btn"
+              onClick={() => reject(suggestion.id).catch(() => {})}
+            >
               Rechazar
             </button>
           </div>
