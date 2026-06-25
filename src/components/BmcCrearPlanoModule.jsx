@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { Upload, Loader, AlertTriangle, Check, Download, FileDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Upload, Loader, AlertTriangle, Check, Download, FileDown, Calculator } from "lucide-react";
 import BmcModuleNav from "./BmcModuleNav.jsx";
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -33,6 +34,19 @@ function presetFootprint(preset, d) {
   // L: rectángulo cL×cA con recorte (rX×rY) en esquina superior derecha
   const cL = n(d.cuerpoL, 12), cA = n(d.cuerpoA, 8), rX = n(d.brazoA, 5), rY = n(d.brazoL, 4);
   return [[0, 0], [cL, 0], [cL, cA - rY], [cL - rX, cA - rY], [cL - rX, cA], [0, cA]];
+}
+
+/** Descomposición rectangular para cotizar (zonas largo×ancho, área exacta). */
+function presetZonas(preset, d) {
+  const n = (v, f = 0) => (Number.isFinite(+v) && +v > 0 ? +v : f);
+  if (preset === "rect") return [{ largo: n(d.L, 10), ancho: n(d.A, 6) }];
+  if (preset === "T") return [
+    { largo: n(d.cuerpoL, 14), ancho: n(d.cuerpoA, 6) },
+    { largo: n(d.brazoL, 9), ancho: n(d.brazoA, 3) },
+  ];
+  // L = rectángulo completo menos el recorte → dos rectángulos
+  const cL = n(d.cuerpoL, 12), cA = n(d.cuerpoA, 8), rX = n(d.brazoA, 5), rY = n(d.brazoL, 4);
+  return [{ largo: cL, ancho: cA - rY }, { largo: cL - rX, ancho: rY }];
 }
 
 function downloadText(filename, text, mime) {
@@ -75,6 +89,8 @@ export default function BmcCrearPlanoModule() {
   const [genPhase, setGenPhase] = useState("idle");      // idle | loading | done | error
   const [genMsg, setGenMsg] = useState("");
   const [result, setResult] = useState(null);            // { svg, dxf, areaM2 }
+  const [iaPayload, setIaPayload] = useState(null);      // bmcPayload completo (para cotizar)
+  const navigate = useNavigate();
 
   const setDim = (k, v) => setDims((p) => ({ ...p, [k]: v }));
 
@@ -103,6 +119,7 @@ export default function BmcCrearPlanoModule() {
       const fp = data.bmcPayload?.footprint;
       const usedAi = data.ai?.providerLabel ? ` · ${data.ai.providerLabel}${data.ai.model ? ` (${data.ai.model})` : ""}` : "";
       setIaWarnings(data.warnings || []);
+      setIaPayload(data.bmcPayload || null);
       if (Array.isArray(fp) && fp.length >= 3) {
         setIaFootprint(fp);
         setIaRooms(data.bmcPayload?.rooms || []);
@@ -139,6 +156,32 @@ export default function BmcCrearPlanoModule() {
       setGenMsg("Error de red al generar el plano."); setGenPhase("error");
     }
   }, [footprint, titulo, cliente, lamina, scale, mode, iaRooms, iaOpenings]);
+
+  // Vínculo con la calculadora: cotizar el plano creado (mismo puente que «Subir plano»).
+  const cotizar = useCallback(() => {
+    let zonas;
+    if (mode === "croquis" && iaPayload?.techo?.zonas?.length) {
+      zonas = iaPayload.techo.zonas.map((z) => ({ largo: z.largo * scale, ancho: z.ancho * scale }));
+    } else {
+      zonas = presetZonas(preset, dims).map((z) => ({ largo: z.largo * scale, ancho: z.ancho * scale }));
+    }
+    zonas = zonas.filter((z) => z.largo > 0 && z.ancho > 0);
+    const payload = {
+      scenario: iaPayload?.scenario || "solo_techo",
+      techo: {
+        zonas,
+        tipoAguas: iaPayload?.techo?.tipoAguas || "una_agua",
+        pendiente: iaPayload?.techo?.pendiente || 0,
+        familia: "", espesor: "", color: "Blanco", tipoEst: "metal",
+        borders: iaPayload?.techo?.borders || { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" },
+        opciones: iaPayload?.techo?.opciones || { inclCanalon: false, inclGotSup: false, inclSell: true },
+      },
+      pared: iaPayload?.pared || null,
+      proyecto: { titulo, cliente },
+    };
+    localStorage.setItem("bmc_pending_plan_import", JSON.stringify(payload));
+    navigate("/");
+  }, [mode, iaPayload, preset, dims, scale, titulo, cliente, navigate]);
 
   const fileBase = (titulo || "plano").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "plano";
 
@@ -291,8 +334,11 @@ export default function BmcCrearPlanoModule() {
               <button type="button" style={btnGhost} onClick={() => downloadText(`${fileBase}.svg`, result.svg, "image/svg+xml")}>
                 <FileDown size={16} /> Descargar SVG
               </button>
+              <button type="button" style={{ ...btnPrimary, background: "#1a3a5c" }} onClick={cotizar}>
+                <Calculator size={16} /> Cotizar este plano →
+              </button>
             </div>
-            <div style={{ fontSize: 11, color: "#aab", marginTop: 10 }}>DXF editable en AutoCAD/QCAD/FreeCAD/LibreCAD (capas AIA, cotas, metros).</div>
+            <div style={{ fontSize: 11, color: "#aab", marginTop: 10 }}>DXF editable en AutoCAD/QCAD/FreeCAD/LibreCAD (capas AIA, cotas, metros). «Cotizar» abre el plano en la calculadora para presupuestarlo.</div>
           </div>
         )}
       </div>

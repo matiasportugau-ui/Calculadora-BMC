@@ -240,7 +240,14 @@ hay exactamente una zona; sino `null` + warning (operador define el perímetro).
   - *Medidas:* presets **Rectángulo / L / T** (`presetFootprint`) — funciona **sin API key**.
 - **Paso 2 — Generar:** Título/Proyecto, Cliente, Lámina + **calibración de escala**
   (medida en el dibujo → medida real ⇒ factor) → `POST /api/plan/cad`.
-- **Paso 3 — Resultado:** preview SVG embebido + **Descargar DXF** / **Descargar SVG** + área.
+- **Paso 3 — Resultado:** preview SVG embebido + **Descargar DXF** / **Descargar SVG** + área +
+  **«Cotizar este plano»** → bridge `bmc_pending_plan_import` → calculadora (presupuesto).
+
+> **Interconexión (clave):** un mismo input (croquis/medidas) produce **ambas** salidas desde el
+> mismo motor: el **plano** (export DXF/SVG/PDF) y el **presupuesto** (cotizar). `interpret`
+> devuelve a la vez `footprint` (para CAD) y `techo.zonas` (para cotizar); el preset rústico se
+> descompone en zonas exactas (`presetZonas`). Así el dibujo a mano se vuelve plano **y** cotización
+> sin re-cargar nada — misma arquitectura compartida que «Subir plano».
 
 ### 7.2 `BmcPlanImportModule` (`/hub/plan-import`)
 - Subir plano → `interpret` → editar zonas/pendiente → elegir panel → estimado rápido →
