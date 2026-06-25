@@ -118,8 +118,11 @@ export function useHandsFreeVoice({ onError, send, messages = [], isStreaming = 
         micStreamRef.current = stream;
         startVU();
       })
-      .catch(() => {
-        // Mic access will also be requested via SpeechRecognition; ignore here.
+      .catch((err) => {
+        // SpeechRecognition.start() will also prompt for mic access, so a
+        // failure here is non-fatal; log it to aid debugging (the SR onerror
+        // handler reports an actionable message if permission is denied).
+        console.warn("[voice] getUserMedia failed:", err?.name || err);
       });
 
     SR.current.continuous = true;
