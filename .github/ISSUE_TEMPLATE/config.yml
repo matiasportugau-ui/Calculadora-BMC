@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: "📋 Proceso del tablero (AGILE.md)"
+    url: "https://github.com/matiasportugau-ui/Calculadora-BMC/blob/main/docs/team/AGILE.md"
+    about: "Cómo funciona el tablero Kanban: columnas, WIP, labels, Definition of Done."
+  - name: "🗂️ Backlog versionado (BACKLOG.md)"
+    url: "https://github.com/matiasportugau-ui/Calculadora-BMC/blob/main/docs/team/BACKLOG.md"
+    about: "Índice diff-able del backlog, espejo del tablero en GitHub."
