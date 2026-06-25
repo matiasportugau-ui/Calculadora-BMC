@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-24
+**Última actualización:** 2026-06-25
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,16 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-25 (CI/Deploy — consolidación de PRs por variable reservada `PORT` en Cloud Run):** Cloud Run
+**reserva** e inyecta `PORT`; setearla explícitamente en el step de deploy hacía fallar el despliegue. El bug
+(introducido en `40f3a65`, `PORT=8080`) ya estaba **corregido en `main` por `0937d10`** («remove PORT=8080 from
+Cloud Run env vars»). Los PRs **#399** y su duplicado **#401** re-proponían el mismo arreglo: se consolidó
+**cerrando #401** y **mergeando #399**, cuyo squash (`8049bc7`) quedó **vacío** (no-op) porque el fix ya estaba
+aplicado. Verificado en `main`: el bloque `env_vars` del step de deploy **no** incluye la reservada `PORT`
+(sólo `SMTP_PORT`, que no es reservada). **Primer caso de uso real del tablero ágil** (`AGILE.md`): la disciplina
+WIP/dedupe atrapó dos PRs redundantes para un fix que ya vivía en `main` — la tarjeta se cierra como
+consolidación verificada, no como cambio de código.
 
 **2026-06-24 (Tablero ágil / Kanban para organizar el desarrollo):** Marco de organización del trabajo de
 **desarrollo de software** sobre GitHub (flujo continuo Kanban, sin sprints ni story points). Agregados:
