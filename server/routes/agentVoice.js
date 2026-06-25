@@ -12,6 +12,7 @@ import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import { findRelevantExamples } from "../lib/trainingKB.js";
 import { recordVoiceError, listVoiceErrors, clearVoiceErrors } from "../lib/voiceErrorLog.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 
 const router = Router();
 
@@ -56,9 +57,14 @@ const actionLimiter = rateLimit({
  * Body: { calcState?: object, devMode?: boolean }
  * Returns: { session_id, client_secret, model, expires_at }
  *
- * Requires OPENAI_API_KEY. devMode requires dev auth header.
+ * Requires OPENAI_API_KEY. Auth: the static API_AUTH_TOKEN (operators/dev/CI) OR a
+ * logged-in user's identity JWT with calc:write (every comprador has this by default).
  */
-router.post("/agent/voice/session", sessionLimiter, requireAuth, async (req, res) => {
+router.post(
+  "/agent/voice/session",
+  sessionLimiter,
+  requireServiceOrUser({ module: "calc", minLevel: "write" }),
+  async (req, res) => {
   if (!config.openaiApiKey) {
     return res.status(503).json({ ok: false, error: "OpenAI API key not configured" });
   }

@@ -7175,6 +7175,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         onLoadConversationAnalysis={chat.loadConversationAnalysis}
         calcState={calcState}
         onChatAction={handleChatAction}
+        authHeader={
+          devMode && devAuthToken
+            ? `Bearer ${devAuthToken}`
+            : bmcAuth?.accessToken
+              ? `Bearer ${bmcAuth.accessToken}`
+              : undefined
+        }
       />
 
       <Toast message={toast} visible={!!toast} />
