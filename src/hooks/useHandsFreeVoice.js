@@ -2,18 +2,16 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 const WAKE_WORD = "panelin";
 
-export function useHandsFreeVoice({ onAction, onError, send, messages = [] }) {
+export function useHandsFreeVoice({ onError, send, messages = [] }) {
   const [status, setStatus] = useState("idle");
-  const [phase, setPhase] = useState("Esperando 'Panelin'…");
+  const [phase, setPhase] = useState("Esperando &quot;Panelin&quot;…");
   const [transcript, setTranscript] = useState([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isListening, setIsListening] = useState(false);
   const [vuLevel, setVuLevel] = useState(0);
 
   const SR = useRef(null);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
-  const streamRef = useRef(null);
   const micStreamRef = useRef(null);
   const currentPhaseRef = useRef("idle");
   const messagesCountRef = useRef(messages.length);
