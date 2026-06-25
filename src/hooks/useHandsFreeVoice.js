@@ -52,7 +52,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
         analyserRef.current.fftSize = 256;
         source.connect(analyserRef.current);
       }
-    } catch (e) {
+    } catch {
       // Silently continue if VU unavailable
     }
   }, []);
