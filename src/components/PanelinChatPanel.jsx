@@ -931,6 +931,8 @@ export default function PanelinChatPanel({
             devMode={devMode}
             authHeader={authHeader}
             voiceMode={voiceMode}
+            send={send}
+            messages={messages}
           />
         </div>
 
