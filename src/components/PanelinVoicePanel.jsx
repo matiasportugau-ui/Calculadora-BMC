@@ -290,7 +290,7 @@ export default function PanelinVoicePanel({
         {/* Wake word hint */}
         {status === "active" && !isSpeaking && !isListening && (
           <p style={{ fontSize: 11, color: "#9ca3af", margin: 0, textAlign: "center" }}>
-            Decí "Panelin" para comenzar
+            Decí &quot;Panelin&quot; para comenzar
           </p>
         )}
 
