@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
-import { useQuestions, useAnswerQuestion } from '../hooks/useMlConnector.js';
+import { useQuestions, useAnswerQuestion, useSuggestAnswer } from '../hooks/useMlConnector.js';
 
 function QuestionCard({ question }) {
   const answer = useAnswerQuestion();
+  const suggest = useSuggestAnswer();
   const [text, setText] = useState('');
 
   const handleAnswer = () => {
     if (!text.trim()) return;
     answer.mutate({ id: question.id, text });
+  };
+
+  const handleGenerate = () => {
+    suggest.mutate(
+      { text: question.text, itemId: question.item_id },
+      { onSuccess: (data) => { if (data?.respuesta) setText(data.respuesta); } },
+    );
   };
 
   return (
@@ -49,7 +57,24 @@ function QuestionCard({ question }) {
           marginBottom: '8px',
         }}
       />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <button
+          onClick={handleGenerate}
+          disabled={suggest.isPending}
+          style={{
+            padding: '7px 14px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: '600',
+            background: 'transparent',
+            color: 'var(--ac-accent)',
+            border: '1.5px solid var(--ac-accent)',
+            cursor: suggest.isPending ? 'default' : 'pointer',
+            opacity: suggest.isPending ? 0.6 : 1,
+          }}
+        >
+          {suggest.isPending ? 'Generando…' : '✨ Generar con IA'}
+        </button>
         <button
           onClick={handleAnswer}
           disabled={answer.isPending || !text.trim()}
@@ -69,6 +94,7 @@ function QuestionCard({ question }) {
         </button>
         {answer.isSuccess && <span style={{ fontSize: '12px', color: 'var(--ac-success)' }}>Respuesta enviada.</span>}
         {answer.error && <span style={{ fontSize: '12px', color: 'var(--ac-error)' }}>Error al enviar.</span>}
+        {suggest.error && <span style={{ fontSize: '12px', color: 'var(--ac-error)' }}>IA no disponible.</span>}
       </div>
     </div>
   );
@@ -84,7 +110,8 @@ export default function QuestionsTab() {
     return <div style={{ padding: '40px', color: 'var(--ac-error)', textAlign: 'center' }}>Error al cargar las preguntas.</div>;
   }
 
-  const results = questions.data?.results || [];
+  // ML /questions/search returns { questions: [...] } — NOT { results }.
+  const results = questions.data?.questions || [];
   if (!results.length) {
     return <div style={{ padding: '40px', color: 'var(--ac-text-2)', textAlign: 'center' }}>No hay preguntas sin responder.</div>;
   }

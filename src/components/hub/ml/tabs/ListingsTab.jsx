@@ -240,6 +240,72 @@ function EditDrawer({ id, onClose }) {
   );
 }
 
+function StatusBadge({ status, penalty }) {
+  const map = {
+    active: { bg: '#e6f4ea', fg: '#137333', label: 'Activa' },
+    paused: { bg: '#fef7e0', fg: '#9a6700', label: 'Pausada' },
+    closed: { bg: '#fce8e6', fg: '#c5221f', label: 'Cerrada' },
+  };
+  const s = map[status] || { bg: 'var(--ac-bg)', fg: 'var(--ac-text-2)', label: status || '—' };
+  return (
+    <span style={{ display: 'inline-flex', gap: '5px', alignItems: 'center' }}>
+      <span style={{ background: s.bg, color: s.fg, fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px' }}>{s.label}</span>
+      {penalty && <span title="Penalizada por moderación" style={{ background: '#fce8e6', color: '#c5221f', fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px' }}>⚠ penalizada</span>}
+    </span>
+  );
+}
+
+/** One listing row: fetches its own detail (only IDs come from /ml/listings) so the
+ *  table is scannable, and offers a one-click pause/activate that respects the same
+ *  guardrail as the backend (never reactivate a penalized or zero-stock listing). */
+function ListingRow({ id, onEdit }) {
+  const item = useItem(id);
+  const updateItem = useUpdateItem();
+  const d = item.data;
+  const penalty = !!d?.tags?.includes?.('moderation_penalty');
+  const isActive = d?.status === 'active';
+  const canActivate = !isActive && !penalty && (d?.available_quantity || 0) > 0;
+
+  const cell = { padding: '11px 12px', borderBottom: '1px solid var(--ac-border)', color: 'var(--ac-text)' };
+
+  if (item.isLoading || !d) {
+    return <tr><td colSpan="5" style={{ ...cell, color: 'var(--ac-text-2)', fontFamily: 'monospace', fontSize: '12px' }}>{id}…</td></tr>;
+  }
+
+  const toggle = () => {
+    if (isActive) updateItem.mutate({ id, updates: { status: 'paused' } });
+    else if (canActivate) updateItem.mutate({ id, updates: { status: 'active' } });
+  };
+
+  return (
+    <tr>
+      <td style={cell}>
+        <div style={{ fontSize: '13px', lineHeight: 1.3 }}>{d.title}</div>
+        <div style={{ fontSize: '11px', color: 'var(--ac-text-2)', fontFamily: 'monospace' }}>{d.id} · salud {typeof d.health === 'number' ? d.health.toFixed(2) : '—'}</div>
+      </td>
+      <td style={cell}><StatusBadge status={d.status} penalty={penalty} /></td>
+      <td style={{ ...cell, textAlign: 'right', whiteSpace: 'nowrap' }}>{d.price} {d.currency_id || ''}</td>
+      <td style={{ ...cell, textAlign: 'right' }}>{d.available_quantity} <span style={{ color: 'var(--ac-text-2)', fontSize: '11px' }}>({d.sold_quantity} vend.)</span></td>
+      <td style={{ ...cell, textAlign: 'right', whiteSpace: 'nowrap' }}>
+        <button
+          onClick={toggle}
+          disabled={updateItem.isPending || (!isActive && !canActivate)}
+          title={!isActive && !canActivate ? (penalty ? 'No reactivar: penalizada por moderación' : 'Sin stock') : ''}
+          style={{ padding: '5px 10px', fontSize: '11px', borderRadius: '6px', marginRight: '6px', fontWeight: 600, cursor: updateItem.isPending || (!isActive && !canActivate) ? 'default' : 'pointer', opacity: !isActive && !canActivate ? 0.45 : 1, border: '1.5px solid var(--ac-border)', background: 'transparent', color: isActive ? 'var(--ac-warn)' : 'var(--ac-success, #137333)' }}
+        >
+          {updateItem.isPending ? '…' : isActive ? 'Pausar' : 'Activar'}
+        </button>
+        <button
+          onClick={() => onEdit(id)}
+          style={{ padding: '5px 12px', fontSize: '11px', borderRadius: '6px', background: 'transparent', color: 'var(--ac-accent)', border: '1.5px solid var(--ac-border)', cursor: 'pointer', fontWeight: 600 }}
+        >
+          Editar
+        </button>
+      </td>
+    </tr>
+  );
+}
+
 export default function ListingsTab() {
   const [statusFilter, setStatusFilter] = useState('');
   const [offset, setOffset] = useState(0);
@@ -281,29 +347,20 @@ export default function ListingsTab() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
               <tr style={{ background: 'var(--ac-bg)' }}>
-                <th style={{ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--ac-text-2)', padding: '10px 12px', textAlign: 'left', borderBottom: '1.5px solid var(--ac-border)' }}>ID</th>
-                <th style={{ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--ac-text-2)', padding: '10px 12px', textAlign: 'right', borderBottom: '1.5px solid var(--ac-border)' }}>Acciones</th>
+                {['Publicación', 'Estado', 'Precio', 'Stock', 'Acciones'].map((h, i) => (
+                  <th key={h} style={{ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--ac-text-2)', padding: '10px 12px', textAlign: i >= 2 ? 'right' : 'left', borderBottom: '1.5px solid var(--ac-border)' }}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {listings.isLoading ? (
-                <tr><td colSpan="2" style={{ padding: '40px 12px', textAlign: 'center', color: 'var(--ac-text-2)' }}>Cargando…</td></tr>
+                <tr><td colSpan="5" style={{ padding: '40px 12px', textAlign: 'center', color: 'var(--ac-text-2)' }}>Cargando…</td></tr>
               ) : results.length ? (
                 results.map((id) => (
-                  <tr key={id} style={{ borderBottom: '1px solid var(--ac-border)' }}>
-                    <td style={{ padding: '11px 12px', fontFamily: 'monospace', color: 'var(--ac-text)' }}>{id}</td>
-                    <td style={{ padding: '11px 12px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => setEditingId(id)}
-                        style={{ padding: '5px 12px', fontSize: '11px', borderRadius: '6px', background: 'transparent', color: 'var(--ac-accent)', border: '1.5px solid var(--ac-border)', cursor: 'pointer', fontWeight: '600' }}
-                      >
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
+                  <ListingRow key={id} id={id} onEdit={setEditingId} />
                 ))
               ) : (
-                <tr><td colSpan="2" style={{ padding: '40px 12px', textAlign: 'center', color: 'var(--ac-text-2)' }}>Sin publicaciones</td></tr>
+                <tr><td colSpan="5" style={{ padding: '40px 12px', textAlign: 'center', color: 'var(--ac-text-2)' }}>Sin publicaciones</td></tr>
               )}
             </tbody>
           </table>
