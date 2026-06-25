@@ -57,9 +57,9 @@ function downloadText(filename, text, mime) {
   a.remove(); URL.revokeObjectURL(url);
 }
 
-export default function BmcCrearPlanoModule() {
+export default function BmcPlanosModule() {
   const fileInputRef = useRef(null);
-  const [mode, setMode] = useState("croquis");        // croquis | manual
+  const [mode, setMode] = useState("croquis");        // croquis | plano | manual
   const [preset, setPreset] = useState("T");
   const [dims, setDims] = useState({ L: 10, A: 6, cuerpoL: 14, cuerpoA: 6, brazoA: 3, brazoL: 9 });
   const [titulo, setTitulo] = useState("VIVIENDA UNIFAMILIAR");
@@ -94,10 +94,12 @@ export default function BmcCrearPlanoModule() {
 
   const setDim = (k, v) => setDims((p) => ({ ...p, [k]: v }));
 
+  const isUpload = mode !== "manual";   // croquis y plano del cliente comparten subir + interpretar
+
   const footprint = useMemo(() => {
-    if (mode === "croquis" && Array.isArray(iaFootprint) && iaFootprint.length >= 3) return iaFootprint;
+    if (isUpload && Array.isArray(iaFootprint) && iaFootprint.length >= 3) return iaFootprint;
     return presetFootprint(preset, dims);
-  }, [mode, iaFootprint, preset, dims]);
+  }, [isUpload, iaFootprint, preset, dims]);
 
   const handleFile = useCallback(async (file) => {
     if (!file) return;
@@ -142,8 +144,8 @@ export default function BmcCrearPlanoModule() {
   const generar = useCallback(async () => {
     setGenPhase("loading"); setGenMsg(""); setResult(null);
     try {
-      const rooms = mode === "croquis" ? iaRooms : [];
-      const openings = mode === "croquis" ? iaOpenings : [];
+      const rooms = isUpload ? iaRooms : [];
+      const openings = isUpload ? iaOpenings : [];
       const resp = await fetch("/api/plan/cad", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ footprint, rooms, openings, scale, title: { titulo, proyecto: titulo, cliente, lamina, escala: "1:100" } }),
@@ -155,12 +157,12 @@ export default function BmcCrearPlanoModule() {
     } catch {
       setGenMsg("Error de red al generar el plano."); setGenPhase("error");
     }
-  }, [footprint, titulo, cliente, lamina, scale, mode, iaRooms, iaOpenings]);
+  }, [footprint, titulo, cliente, lamina, scale, isUpload, iaRooms, iaOpenings]);
 
   // Vínculo con la calculadora: cotizar el plano creado (mismo puente que «Subir plano»).
   const cotizar = useCallback(() => {
     let zonas;
-    if (mode === "croquis" && iaPayload?.techo?.zonas?.length) {
+    if (isUpload && iaPayload?.techo?.zonas?.length) {
       zonas = iaPayload.techo.zonas.map((z) => ({ largo: z.largo * scale, ancho: z.ancho * scale }));
     } else {
       zonas = presetZonas(preset, dims).map((z) => ({ largo: z.largo * scale, ancho: z.ancho * scale }));
@@ -181,7 +183,7 @@ export default function BmcCrearPlanoModule() {
     };
     localStorage.setItem("bmc_pending_plan_import", JSON.stringify(payload));
     navigate("/");
-  }, [mode, iaPayload, preset, dims, scale, titulo, cliente, navigate]);
+  }, [isUpload, iaPayload, preset, dims, scale, titulo, cliente, navigate]);
 
   const fileBase = (titulo || "plano").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "plano";
 
@@ -189,18 +191,19 @@ export default function BmcCrearPlanoModule() {
     <div style={wrap}>
       <BmcModuleNav />
       <div style={main}>
-        <h1 style={h1}>Crear plano</h1>
-        <p style={sub}>Generá un plano profesional acotado (DXF editable + SVG) desde un croquis o desde medidas. Para presupuestar un plano existente usá «Subir plano».</p>
+        <h1 style={h1}>Planos</h1>
+        <p style={sub}>Un croquis a mano, un plano del cliente o unas medidas → plano profesional (DXF/SVG) <b>y</b> presupuesto. Mismo motor: lo que cargás se puede <b>exportar</b> y <b>cotizar</b>.</p>
 
-        {/* Paso 1: origen de la forma */}
+        {/* Paso 1: origen */}
         <div style={card}>
-          <div style={stepTag}>1 · Definir la planta</div>
+          <div style={stepTag}>1 · Origen de la planta</div>
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            <div style={tab(mode === "croquis")} onClick={() => setMode("croquis")}>Subir croquis (IA)</div>
-            <div style={tab(mode === "manual")} onClick={() => setMode("manual")}>Ingresar medidas</div>
+            <div style={tab(mode === "croquis")} onClick={() => setMode("croquis")}>Croquis a mano (IA)</div>
+            <div style={tab(mode === "plano")} onClick={() => setMode("plano")}>Plano del cliente (IA)</div>
+            <div style={tab(mode === "manual")} onClick={() => setMode("manual")}>Medidas</div>
           </div>
 
-          {mode === "croquis" && (
+          {isUpload && (
             <>
               {aiOptions && providers.length === 0 && (
                 <div style={{ display: "flex", gap: 8, padding: "10px 14px", borderRadius: 10, background: "#FFFBEB", border: "1px solid #FDE68A", marginBottom: 12 }}>
@@ -235,8 +238,8 @@ export default function BmcCrearPlanoModule() {
                   style={{ border: "2px dashed #d1d9e6", borderRadius: 12, padding: "28px 20px", textAlign: "center", cursor: "pointer", background: "#fafafa" }}
                 >
                   <Upload size={28} color="#aab" style={{ margin: "0 auto 8px" }} />
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1d1d1f" }}>Arrastrá el croquis o hacé click</div>
-                  <div style={{ fontSize: 12, color: "#6e6e73" }}>JPG · PNG · PDF · DXF — máx 10 MB</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1d1d1f" }}>{mode === "plano" ? "Arrastrá el plano del cliente o hacé click" : "Arrastrá el croquis o hacé click"}</div>
+                  <div style={{ fontSize: 12, color: "#6e6e73" }}>JPG · PNG · PDF · DXF — máx 10 MB · {mode === "plano" ? "se interpreta para cotizar" : "se interpreta para crear el plano"}</div>
                   <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.dxf" style={{ display: "none" }} onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])} />
                 </div>
               )}

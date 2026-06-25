@@ -7,17 +7,19 @@
 
 ## 1. Resumen y objetivos
 
-El sistema agrega a Calculadora BMC dos capacidades de planos, **separadas e inversas**, más una
-capa de IA multi-proveedor compartida:
+El sistema agrega a Calculadora BMC **un único módulo «Planos»** (`/hub/planos`,
+`BmcPlanosModule`) que, desde un mismo motor, produce **ambas** salidas a partir de cualquier
+origen. Las rutas antiguas `/hub/crear-plano` y `/hub/plan-import` redirigen a `/hub/planos`.
 
-| # | Flujo | Entrada | Salida | Ruta |
-|---|-------|---------|--------|------|
-| **1** | **Crear plano (CAD)** | Croquis a mano / PDF, o medidas | **Plano arquitectónico** editable (DXF + SVG) | `/hub/crear-plano` |
-| **2** | **Subir plano → Presupuesto** | Plano definido (JPG/PNG/PDF/DXF) | **Pre-cotización** editable en la calculadora | `/hub/plan-import` |
+| Origen | Entrada | Salidas disponibles |
+|--------|---------|---------------------|
+| **Croquis a mano (IA)** | foto/PDF de un dibujo rústico | Exportar plano (DXF/SVG) · Cotizar |
+| **Plano del cliente (IA)** | plano definido (JPG/PNG/PDF/DXF) | Cotizar · Exportar plano |
+| **Medidas** | presets Rectángulo / L / T | Exportar plano (DXF/SVG) · Cotizar |
 
-**Principio rector:** la Opción 1 produce *un plano* (lo más parecido a uno profesional, formato
-editable por software de arquitectura); la Opción 2 produce *un presupuesto* (transporta el plano a
-la planilla de cotizaciones para seguir editando).
+**Principio rector:** un mismo input se **interpreta una vez** y habilita las dos salidas
+co-iguales — el **plano** (editable por software de arquitectura) y el **presupuesto** (carga en la
+calculadora para seguir editando). Arquitectura compartida, no dos flujos paralelos.
 
 ### Objetivos no funcionales
 - **Interoperabilidad CAD:** salida DXF abierta, nomenclatura **AIA/NCS**, unidades métricas.
@@ -233,8 +235,9 @@ hay exactamente una zona; sino `null` + warning (operador define el perímetro).
 
 ## 7. Frontend
 
-### 7.1 `BmcCrearPlanoModule` (`/hub/crear-plano`)
-- **Paso 1 — Definir planta:** pestañas *Subir croquis (IA)* | *Ingresar medidas*.
+### 7.1 `BmcPlanosModule` (`/hub/planos`) — módulo unificado
+- **Paso 1 — Origen:** pestañas *Croquis a mano (IA)* | *Plano del cliente (IA)* | *Medidas*.
+  Las dos primeras comparten subir+interpretar (`isUpload`); la tercera usa presets.
   - *Croquis:* **selector de IA** (proveedor + modelo, "Automático = recomendado", ★ sugerido) →
     `POST /api/plan/interpret` → `footprint` + `rooms` + `openings`. Muestra con qué IA se interpretó.
   - *Medidas:* presets **Rectángulo / L / T** (`presetFootprint`) — funciona **sin API key**.
@@ -249,15 +252,19 @@ hay exactamente una zona; sino `null` + warning (operador define el perímetro).
 > descompone en zonas exactas (`presetZonas`). Así el dibujo a mano se vuelve plano **y** cotización
 > sin re-cargar nada — misma arquitectura compartida que «Subir plano».
 
-### 7.2 `BmcPlanImportModule` (`/hub/plan-import`)
-- Subir plano → `interpret` → editar zonas/pendiente → elegir panel → estimado rápido →
-  **"Abrir en calculadora"** guarda `bmc_pending_plan_import` en `localStorage` →
-  `PanelinCalculadoraV3_backup.jsx` lo aplica con `applyQuoteSnapshot` → cotización editable.
+### 7.2 Bridge a la calculadora
+- **«Cotizar este plano»** y **«Abrir en calculadora»** guardan `bmc_pending_plan_import` en
+  `localStorage` → `PanelinCalculadoraV3_backup.jsx` lo aplica con `applyQuoteSnapshot` →
+  cotización editable. Las zonas vienen de la IA (`techo.zonas`) o de `presetZonas` (descomposición
+  exacta de los presets); se les aplica la calibración de escala.
+- `BmcPlanImportModule.jsx` queda como legado (ruta redirigida); su funcionalidad la absorbe el
+  módulo unificado.
 
 ### 7.3 Routing / grants
-- `src/App.jsx`: rutas `/hub/crear-plano` y `/hub/plan-import` con `RequireGrant module="plan-import"`.
-- `BmcWolfboardHub.jsx`: tarjetas "Subir plano → Presupuesto" y "Crear plano (CAD)".
-- `ActivityTracker.jsx`: ambas mapean a `plan-import`.
+- `src/App.jsx`: ruta `/hub/planos` con `RequireGrant module="plan-import"`. `/hub/crear-plano` y
+  `/hub/plan-import` → `<Navigate to="/hub/planos" />`.
+- `BmcWolfboardHub.jsx`: una sola tarjeta "Planos".
+- `ActivityTracker.jsx`: `/hub/planos` (+ legados) mapean a `plan-import`.
 
 ---
 

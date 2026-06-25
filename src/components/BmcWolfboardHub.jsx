@@ -148,21 +148,12 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
-            <h2 style={cardTitle}>Subir plano → Presupuesto</h2>
+            <h2 style={cardTitle}>Planos</h2>
             <p style={cardDesc}>
-              Subí un plano (JPG, PNG, PDF o DXF) y la IA extrae las dimensiones automáticamente. Elegí el panel y abrí directo en la calculadora.
+              Croquis a mano, plano del cliente o medidas → plano profesional acotado (DXF/SVG editable) y presupuesto. Mismo motor: exportá y cotizá lo que cargues.
             </p>
-            <Link to="/hub/plan-import" style={{ ...cta, background: "#0071e3" }}>
-              Subir plano
-            </Link>
-          </div>
-          <div style={card}>
-            <h2 style={cardTitle}>Crear plano (CAD)</h2>
-            <p style={cardDesc}>
-              Generá un plano profesional acotado desde un croquis o medidas. Descargá DXF editable (AutoCAD/QCAD/FreeCAD) y SVG.
-            </p>
-            <Link to="/hub/crear-plano" style={{ ...cta, background: "#1a3a5c" }}>
-              Crear plano
+            <Link to="/hub/planos" style={{ ...cta, background: "#0071e3" }}>
+              Abrir Planos
             </Link>
           </div>
           <div style={card}>
