@@ -127,3 +127,6 @@ playwright-report/
 
 .gemini/
 gha-creds-*.json
+
+# Playwright MCP run artifacts (screenshots, console logs, downloaded crx)
+.playwright-mcp/

@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import { useCockpitOperatorAuth } from "../hooks/useCockpitOperatorAuth.js";
 import { cockpitOperatorFetch } from "../utils/cockpitOperatorFetch.js";
+import { SkinProvider, useSkin } from "./admin-cotizaciones/SkinProvider.jsx";
+import "./admin-cotizaciones/styles.css";
+
+// Omni Inbox (Chatwoot-style) — surfaced as a second view inside this module.
+const OmniInboxPanel = lazy(() => import("./hub/canales/panels/OmniInboxPanel.jsx"));
+const OMNI_INBOX_ENABLED = import.meta.env.VITE_OMNI_INBOX === "1";
 
 const wrap = {
   minHeight: "100vh",
@@ -131,6 +137,24 @@ async function cockpitFetch(token, path, options = {}) {
   return cockpitOperatorFetch(token, path, options);
 }
 
+// Omni Inbox view — scoped SkinProvider/.adminCot so OmniInboxPanel's --ac-* tokens
+// resolve, without touching the inline-styled CRM queue. Used only when the Omni
+// view is active (see render).
+function OmniInboxView({ token }) {
+  const { skin } = useSkin();
+  return (
+    <div className="adminCot" data-skin={skin}>
+      <Suspense
+        fallback={
+          <div style={{ padding: 16, fontFamily: h1.fontFamily, color: "#6e6e73" }}>Cargando Omni Inbox…</div>
+        }
+      >
+        <OmniInboxPanel token={token} />
+      </Suspense>
+    </div>
+  );
+}
+
 export default function BmcCanalesUnificadosModule() {
   const {
     token,
@@ -152,6 +176,7 @@ export default function BmcCanalesUnificadosModule() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [channelTab, setChannelTab] = useState("all");
+  const [viewMode, setViewMode] = useState("queue"); // "queue" (CRM cola) | "omni" (Chatwoot inbox)
 
   const showToast = (msg) => {
     setToast(msg);
@@ -324,6 +349,38 @@ export default function BmcCanalesUnificadosModule() {
           copiar; <strong>AH</strong> = link de cotización / PDF.
         </p>
 
+        {OMNI_INBOX_ENABLED ? (
+          <div style={{ ...card, padding: "10px 12px" }}>
+            <div style={{ ...rowActions, gap: 6 }}>
+              {[
+                { id: "queue", label: "Cola unificada" },
+                { id: "omni", label: "Omni Inbox" },
+              ].map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setViewMode(v.id)}
+                  style={{
+                    ...btnGhost,
+                    fontSize: 12,
+                    padding: "6px 12px",
+                    background: viewMode === v.id ? "#e8f2ff" : "#fff",
+                    borderColor: viewMode === v.id ? "#0071e3" : "#e5e5ea",
+                  }}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {OMNI_INBOX_ENABLED && viewMode === "omni" ? (
+          <SkinProvider>
+            <OmniInboxView token={token} />
+          </SkinProvider>
+        ) : (
+          <>
         <div style={card}>
           <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Sincronizar canales → CRM</div>
           <p style={{ margin: "0 0 12px", fontSize: 12, color: "#6e6e73", lineHeight: 1.5 }}>
@@ -526,6 +583,8 @@ export default function BmcCanalesUnificadosModule() {
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );
