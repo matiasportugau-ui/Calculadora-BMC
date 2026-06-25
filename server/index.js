@@ -55,6 +55,7 @@ import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
+import planCadRouter from "./routes/planCad.js";
 import authGoogleRouter from "./routes/authGoogle.js";
 import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
 import { startOrphanCloseScheduler } from "./jobs/closeOrphanSessions.js";
@@ -1056,6 +1057,8 @@ app.use("/api/bugs", createBugsRouter(config));
 app.use("/api/pdf", createPdfRouter());
 app.use("/api", deepResearchRouter);
 app.use("/api", planInterpretRouter);
+// Plan → CAD (DXF + SVG profesional) desde footprint corregido por el operador
+app.use("/api", planCadRouter);
 // ML search (competitors lookup) — Bearer API_AUTH_TOKEN, 30-min TTL cache, 60 req/min
 app.use(createMlSearchRouter({ ml, config, logger }));
 // Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
