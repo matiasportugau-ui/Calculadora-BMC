@@ -9,9 +9,10 @@ import { startOmniSpan } from "../otel.js";
 
 /**
  * Allowed conversation statuses for the set_conversation_status action.
- * Seed default is 'open' (001_core.sql); standard inbox lifecycle states.
+ * Single source of truth lives in ../conversationStatus.js (dependency-free);
+ * re-exported here so existing importers keep working.
  */
-export const ALLOWED_CONVERSATION_STATUSES = ["open", "pending", "snoozed", "closed"];
+export { ALLOWED_CONVERSATION_STATUSES } from "../conversationStatus.js";
 
 /**
  * @param {import('pg').Pool} pool
