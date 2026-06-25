@@ -36,7 +36,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.2);
-    } catch (e) {
+    } catch {
       // Silently fail if AudioContext unavailable
     }
   }, []);
