@@ -2338,7 +2338,7 @@ export default function createBmcDashboardRouter(config) {
         const sheets = await getCrmSheetsWrite();
         const r = await sheets.spreadsheets.values.get({
           spreadsheetId: sheetId,
-          range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+          range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK`,
         });
         const history = [];
         for (const rawRow of (r.data.values || [])) {
@@ -3285,7 +3285,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const sheets = await getCrmSheetsWrite();
       const r = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK`,
       });
       const rawRows = r.data.values || [];
       const items = [];
@@ -3314,7 +3314,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const sheets = await getCrmSheetsWrite();
       const r = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK`,
       });
       const rawRows = r.data.values || [];
       const items = [];
@@ -3414,7 +3414,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const sheets = await getCrmSheetsWrite();
       const r = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK`,
       });
       const rawRows = r.data.values || [];
       const items = [];
@@ -3453,7 +3453,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const sheets = await getCrmSheetsWrite();
       const r = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK`,
       });
       const rawRows = r.data.values || [];
       const consultations = [];
