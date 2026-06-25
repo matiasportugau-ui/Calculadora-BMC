@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BMC Chat</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 13px; color: #202124; background: #fff; }
+    #app { display: flex; flex-direction: column; height: 100vh; }
+    #header { background: #1a73e8; color: #fff; padding: 10px 14px; font-weight: 600; font-size: 15px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+    #header .badge { background: rgba(255,255,255,0.2); font-size: 11px; font-weight: 400; padding: 2px 8px; border-radius: 10px; }
+    #inquiry-panel { flex-shrink: 0; max-height: 28vh; overflow-y: auto; border-bottom: 1px solid #dadce0; background: #f8f9fa; }
+    #inquiry-panel .title { padding: 8px 14px 4px; font-size: 11px; font-weight: 600; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; }
+    .inq-item { padding: 8px 14px; cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; font-size: 12px; line-height: 1.4; display: flex; gap: 8px; align-items: flex-start; }
+    .inq-item:hover { background: #e8f0fe; }
+    .inq-item.active { background: #e8f0fe; border-left-color: #1a73e8; font-weight: 500; }
+    .inq-item .row-num { color: #5f6368; font-size: 10px; font-weight: 600; min-width: 22px; background: #e8eaed; border-radius: 3px; text-align: center; padding: 1px 0; margin-top: 1px; }
+    .inq-item .inq-text { flex: 1; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: #3c4043; }
+    #chat-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    #empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #80868b; padding: 20px; text-align: center; font-size: 13px; }
+    #empty-state .icon { font-size: 36px; margin-bottom: 10px; opacity: 0.5; }
+    #messages { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: 92%; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; word-wrap: break-word; }
+    .msg.ai { align-self: flex-start; background: #e8f0fe; color: #1a1a1a; border-bottom-left-radius: 4px; }
+    .msg.user { align-self: flex-end; background: #1a73e8; color: #fff; border-bottom-right-radius: 4px; }
+    .msg .label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; opacity: 0.7; }
+    .msg.user .label { opacity: 0.8; }
+    .msg .interp-block { margin: 6px 0; padding: 8px 10px; background: rgba(0,0,0,0.04); border-radius: 8px; font-size: 12px; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; white-space: pre-wrap; word-break: break-word; }
+    .msg .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+    .tag.ready { background: #e6f4ea; color: #137333; }
+    .tag.not-ready { background: #fce8e6; color: #c5221f; }
+    .tag.quote { background: #e8f0fe; color: #1a73e8; }
+    .tag.completo { background: #fef7e0; color: #ea8600; }
+    .tag.flete { background: #f3e8fd; color: #7b1fa2; }
+    .msg .question { margin-top: 6px; font-style: italic; }
+    #input-area { flex-shrink: 0; padding: 10px 14px; border-top: 1px solid #dadce0; background: #fff; display: flex; flex-direction: column; gap: 6px; }
+    #input-row { display: flex; gap: 6px; align-items: flex-end; }
+    #message-input { flex: 1; border: 1px solid #dadce0; border-radius: 20px; padding: 8px 14px; font-size: 13px; font-family: inherit; outline: none; resize: none; min-height: 36px; max-height: 80px; line-height: 1.4; }
+    #message-input:focus { border-color: #1a73e8; }
+    #send-btn { background: #1a73e8; color: #fff; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    #send-btn:hover { background: #1557b0; }
+    #send-btn:disabled { background: #ccc; cursor: not-allowed; }
+    #write-btn { background: #188038; color: #fff; border: none; border-radius: 20px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    #write-btn:hover { background: #137333; }
+    #write-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(26,115,232,0.2); border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; }
+    .spinner.white { border-color: rgba(255,255,255,0.3); border-top-color: #fff; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%; }
+    #toast.show { opacity: 1; }
+    #toast.error { background: #d93025; color: #fff; }
+    #toast.success { background: #188038; color: #fff; }
+    #toast.info { background: #1a73e8; color: #fff; }
+    .empty-list { padding: 20px 14px; text-align: center; color: #80868b; font-size: 12px; }
+    .msg-loading { align-self: flex-start; display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: #5f6368; font-size: 12px; }
+    .scroll-anchor { height: 1px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      BMC Chat
+      <span class="badge" id="row-badge"></span>
+    </div>
+    <div id="inquiry-panel">
+      <div class="title">Consultas pendientes</div>
+      <div id="inquiry-list"><div class="empty-list">Cargando…</div></div>
+    </div>
+    <div id="chat-panel">
+      <div id="empty-state">
+        <div class="icon">🗂️</div>
+        <div>Seleccioná una consulta de la lista para empezar a conversar.</div>
+      </div>
+      <div id="messages" style="display:none"></div>
+      <div id="input-area">
+        <button id="write-btn" style="display:none">
+          <span style="font-size:16px">✓</span> Escribir en la planilla
+        </button>
+        <div id="input-row">
+          <textarea id="message-input" placeholder="Escribí tu respuesta…" rows="1" disabled></textarea>
+          <button id="send-btn" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+  <script>
+    (function() {
+      'use strict';
+
+      var state = { inquiries: [], activeRow: null, conversation: null, interpretation: null, isLoading: false };
+      var $ = function(id) { return document.getElementById(id); };
+      var inquiryList = $('inquiry-list'), messagesEl = $('messages'), emptyState = $('empty-state');
+      var messageInput = $('message-input'), sendBtn = $('send-btn'), writeBtn = $('write-btn');
+      var toast = $('toast'), rowBadge = $('row-badge');
+
+      var toastTimer = null;
+      function showToast(msg, type) {
+        toast.textContent = msg; toast.className = type || 'info';
+        toast.classList.add('show'); clearTimeout(toastTimer);
+        toastTimer = setTimeout(function() { toast.classList.remove('show'); }, 4000);
+      }
+
+      function setLoading(on) {
+        state.isLoading = on;
+        sendBtn.disabled = on || !state.activeRow;
+        messageInput.disabled = on || !state.activeRow;
+        sendBtn.innerHTML = on
+          ? '<div class="spinner white"></div>'
+          : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+      }
+
+      var authToken = '';
+
+      window.addEventListener('message', function(e) {
+        var allowed = [window.location.origin];
+        if (allowed.indexOf(e.origin) === -1) return;
+        if (e.data && e.data.type === 'bmc-chat-auth' && e.data.token) {
+          authToken = e.data.token;
+          loadInquiries();
+        }
+      });
+
+      function api(method, path, body) {
+        var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+        if (authToken) opts.headers.Authorization = 'Bearer ' + authToken;
+        if (body) opts.body = JSON.stringify(body);
+        return fetch(path, opts).then(function(r) { return r.json(); });
+      }
+
+      function loadInquiries() {
+        if (!authToken) return;
+        api('GET', 'api/inquiries').then(renderInquiries).catch(function(err) {
+          inquiryList.innerHTML = '<div class="empty-list">Error: ' + err.message + '</div>';
+          showToast('Error al cargar consultas', 'error');
+        });
+      }
+
+      function renderInquiries(data) {
+        if (!data || data.error) {
+          inquiryList.innerHTML = '<div class="empty-list">' + ((data && data.error) ? escapeHtml(data.error) : 'Sin datos') + '</div>';
+          return;
+        }
+        if (!Array.isArray(data) || data.length === 0) {
+          inquiryList.innerHTML = '<div class="empty-list">✓ No hay consultas pendientes sin presupuestar.</div>';
+          return;
+        }
+        state.inquiries = data;
+        var html = '';
+        for (var i = 0; i < data.length; i++) {
+          var item = data[i], active = state.activeRow === item.row ? ' active' : '';
+          html += '<div class="inq-item' + active + '" data-row="' + item.row + '">' +
+            '<span class="row-num">' + item.row + '</span>' +
+            '<span class="inq-text">' + escapeHtml(item.consulta) + '</span></div>';
+        }
+        inquiryList.innerHTML = html;
+        var items = inquiryList.querySelectorAll('.inq-item');
+        for (var j = 0; j < items.length; j++) {
+          items[j].addEventListener('click', function() {
+            selectInquiry(parseInt(this.getAttribute('data-row')));
+          });
+        }
+        if (!state.activeRow && data.length > 0) selectInquiry(data[0].row);
+      }
+
+      function selectInquiry(row) {
+        if (state.isLoading || state.activeRow === row) return;
+        state.activeRow = row;
+        rowBadge.textContent = 'Fila ' + row;
+        hideWriteButton();
+        var items = inquiryList.querySelectorAll('.inq-item');
+        for (var i = 0; i < items.length; i++) {
+          items[i].classList.toggle('active', parseInt(items[i].getAttribute('data-row')) === row);
+        }
+        emptyState.style.display = 'none';
+        messagesEl.style.display = 'flex';
+        messagesEl.innerHTML = '<div class="msg-loading"><div class="spinner"></div>Cargando conversación…</div>';
+        disableInput();
+
+        api('GET', 'api/conversation/' + row).then(function(convo) {
+          if (state.activeRow !== row) return;
+          if (convo && convo.consulta) {
+            state.conversation = convo;
+            state.interpretation = null;
+            var turns = convo.turns || [];
+            for (var i = turns.length - 1; i >= 0; i--) {
+              if (turns[i].role === 'ai') { state.interpretation = turns[i].interpretation; break; }
+            }
+            renderMessages();
+            if (!hasReachedReady()) enableInput();
+          } else {
+            startNewConversation(row);
+          }
+        }).catch(function(err) {
+          messagesEl.innerHTML = '<div class="empty-list">Error: ' + err.message + '</div>';
+          showToast('Error al cargar: ' + err.message, 'error');
+        });
+      }
+
+      function startNewConversation(row) {
+        var consulta = '';
+        for (var i = 0; i < state.inquiries.length; i++) {
+          if (state.inquiries[i].row === row) { consulta = state.inquiries[i].consulta; break; }
+        }
+        if (!consulta) {
+          messagesEl.innerHTML = '<div class="empty-list">No se encontró la consulta.</div>';
+          showToast('No se encontró la consulta para la fila ' + row, 'error'); return;
+        }
+        state.conversation = { consulta: consulta, turns: [] };
+        state.interpretation = null;
+        messagesEl.innerHTML = '<div class="msg-loading"><div class="spinner"></div>Interpretando consulta…</div>';
+        setLoading(true);
+        api('POST', 'api/interpret/' + row, { consulta: consulta, conversation: null, newUserMessage: '' }).then(function(interp) {
+          if (state.activeRow !== row) return;
+          if (interp.error) {
+            showToast('Error: ' + interp.error, 'error');
+            messagesEl.innerHTML = '<div class="empty-list">Error: ' + escapeHtml(interp.error) + '</div>';
+            setLoading(false); return;
+          }
+          state.interpretation = interp;
+          state.conversation.turns.push({ role: 'ai', interpretation: interp });
+          saveConv();
+          setLoading(false);
+          renderMessages();
+          if (!hasReachedReady()) enableInput();
+        }).catch(function(err) {
+          if (state.activeRow !== row) return;
+          setLoading(false);
+          showToast('Error: ' + err.message, 'error');
+          messagesEl.innerHTML = '<div class="empty-list">Error de conexión: ' + escapeHtml(err.message) + '</div>';
+        });
+      }
+
+      function sendMessage() {
+        var text = messageInput.value.trim();
+        if (!text || state.isLoading || !state.conversation || hasReachedReady()) return;
+        var row = state.activeRow;
+        state.conversation.turns.push({ role: 'user', text: text });
+        messageInput.value = ''; autoResizeInput();
+        renderMessages();
+        setLoading(true);
+        api('POST', 'api/interpret/' + row, {
+          consulta: state.conversation.consulta,
+          conversation: { consulta: state.conversation.consulta, turns: state.conversation.turns },
+          newUserMessage: text,
+        }).then(function(interp) {
+          if (state.activeRow !== row) return;
+          if (interp.error) { showToast('Error: ' + interp.error, 'error'); setLoading(false); return; }
+          state.interpretation = interp;
+          state.conversation.turns.push({ role: 'ai', interpretation: interp });
+          saveConv();
+          setLoading(false);
+          renderMessages();
+          if (!hasReachedReady()) enableInput();
+        }).catch(function(err) {
+          if (state.activeRow !== row) return;
+          setLoading(false);
+          showToast('Error: ' + err.message, 'error');
+        });
+      }
+
+      function handleWriteToSheet() {
+        if (!state.interpretation || state.isLoading) return;
+        var row = state.activeRow;
+        setLoading(true);
+        showToast('Escribiendo en la planilla…', 'info');
+        api('POST', 'api/write/' + row, { interpretation: state.interpretation }).then(function(result) {
+          if (state.activeRow !== row) return;
+          setLoading(false);
+          if (result.success) {
+            showToast('✓ Datos escritos en J/K/L', 'success');
+            hideWriteButton(); disableInput();
+            setTimeout(loadInquiries, 600);
+          } else {
+            showToast('Error: ' + (result.error || 'desconocido'), 'error');
+          }
+        }).catch(function(err) {
+          if (state.activeRow !== row) return;
+          setLoading(false);
+          showToast('Error al escribir: ' + err.message, 'error');
+        });
+      }
+
+      function renderMessages() {
+        if (!state.conversation || !state.conversation.turns || state.conversation.turns.length === 0) {
+          emptyState.style.display = 'flex'; messagesEl.style.display = 'none'; return;
+        }
+        emptyState.style.display = 'none'; messagesEl.style.display = 'flex';
+        var html = '';
+        for (var i = 0; i < state.conversation.turns.length; i++) {
+          var turn = state.conversation.turns[i];
+          if (turn.role === 'ai') html += renderAiBubble(turn.interpretation);
+          else if (turn.role === 'user') html += '<div class="msg user"><div class="label">Tu respuesta</div>' + escapeHtml(turn.text) + '</div>';
+        }
+        html += '<div class="scroll-anchor"></div>';
+        messagesEl.innerHTML = html;
+        updateWriteButton();
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function renderAiBubble(interp) {
+        if (!interp) return '';
+        var html = '<div class="msg ai"><div class="label">Interpretación AI</div>';
+        if (interp.interpretation_J) html += '<div class="interp-block">' + escapeHtml(interp.interpretation_J) + '</div>';
+        html += '<div class="tags">';
+        if (interp.quotable) html += '<span class="tag quote">Cotizable</span>';
+        else html += '<span class="tag not-ready">No cotizable</span>';
+        if (interp.ready_to_quote) html += '<span class="tag ready">✓ Listo para cotizar</span>';
+        else html += '<span class="tag not-ready">Faltan datos</span>';
+        if (interp.completo) html += '<span class="tag completo">Completo</span>';
+        if (interp.flete && interp.flete !== 'no_mencionado') html += '<span class="tag flete">Flete: ' + escapeHtml(interp.flete) + '</span>';
+        if (interp.accessory_only) html += '<span class="tag not-ready">Solo accesorios</span>';
+        html += '</div>';
+        if (interp.missing_L) html += '<div style="margin-top:6px;font-size:12px;color:#c5221f;">Falta: ' + escapeHtml(interp.missing_L) + '</div>';
+        if (interp.question_K) html += '<div class="question">❓ ' + escapeHtml(interp.question_K) + '</div>';
+        html += '</div>';
+        return html;
+      }
+
+      function hasReachedReady() { return state.interpretation && state.interpretation.ready_to_quote && state.interpretation.quotable; }
+
+      function updateWriteButton() { writeBtn.style.display = hasReachedReady() ? 'flex' : 'none'; }
+      function hideWriteButton() { writeBtn.style.display = 'none'; }
+
+      function enableInput() {
+        if (hasReachedReady()) return;
+        messageInput.disabled = false; sendBtn.disabled = false; messageInput.focus();
+      }
+      function disableInput() { messageInput.disabled = true; sendBtn.disabled = true; }
+
+      function autoResizeInput() {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 80) + 'px';
+      }
+
+      var saveTimer = null;
+      function saveConv() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function() {
+          if (state.activeRow && state.conversation) {
+            api('POST', 'api/conversation/' + state.activeRow, state.conversation).catch(function() {});
+          }
+        }, 200);
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      sendBtn.addEventListener('click', sendMessage);
+      messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+      });
+      messageInput.addEventListener('input', autoResizeInput);
+      writeBtn.addEventListener('click', handleWriteToSheet);
+    })();
+  </script>
+</body>
+</html>

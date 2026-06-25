@@ -22,6 +22,7 @@ const TUTORIAL_ENABLED = import.meta.env.VITE_FEATURE_TUTORIAL_MODE !== "false";
 import { TutorialProvider } from "./components/tutorial/TutorialProvider.jsx";
 import TutorialOverlay from "./components/tutorial/TutorialOverlay.jsx";
 import FloatingTutorialButton from "./components/tutorial/FloatingTutorialButton.jsx";
+import BmcChatPanel from "./components/BmcChatPanel.jsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -101,6 +102,7 @@ function Shell({ children }) {
       {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
       {TUTORIAL_ENABLED && <FloatingTutorialButton />}
+      <BmcChatPanel />
     </div>
   );
 }
