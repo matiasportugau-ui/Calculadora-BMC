@@ -3,6 +3,8 @@
 # delete-other-labels is OFF in that workflow, so this NEVER removes labels
 # created elsewhere (e.g. GitHub defaults or repo-specific ones).
 # Edit this list + merge to main → labels are created/updated on push.
+#
+# NOTE: GitHub rejects 4-byte Unicode (emoji) in label descriptions — keep them emoji-free.
 
 # --- type:* — naturaleza del trabajo (gris #6E7681) ---
 - name: "type:feat"
@@ -24,16 +26,16 @@
 # --- priority:* — mapea 1:1 con /nxt (AGILE.md §5) ---
 - name: "priority:P0"
   color: "D73A4A"
-  description: "🔴 Crítico — roto en prod o bloquea otro trabajo"
+  description: "Crítico — roto en prod o bloquea otro trabajo"
 - name: "priority:P1"
   color: "D93F0B"
-  description: "🟠 Alto — user-facing, alto valor de negocio"
+  description: "Alto — user-facing, alto valor de negocio"
 - name: "priority:P2"
   color: "FBCA04"
-  description: "🟡 Medio — calidad, completitud o deuda técnica"
+  description: "Medio — calidad, completitud o deuda técnica"
 - name: "priority:P3"
   color: "1D76DB"
-  description: "🔵 Bajo — nice to have, baja urgencia"
+  description: "Bajo — nice to have, baja urgencia"
 
 # --- area:* — subsistema / swimlane → agente dueño (violeta #5319E7) ---
 - name: "area:calc"
