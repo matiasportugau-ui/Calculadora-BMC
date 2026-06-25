@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 const WAKE_WORD = "panelin";
+const PHASE_LISTENING = "Escuchando…";
 
 export function useHandsFreeVoice({ onError, send, messages = [] }) {
   const [status, setStatus] = useState("idle");
@@ -190,7 +191,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
       if (hasWakeWord && currentPhaseRef.current === "waking") {
         SR.current.abort();
         playBeep();
-        setPhase("Escuchando…");
+        setPhase(PHASE_LISTENING);
         currentPhaseRef.current = "listening";
         startQueryListening();
       }
@@ -222,7 +223,9 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     setPhase("Esperando 'Panelin'…");
   }, [onError, startVU, updateVU, playBeep, startQueryListening]);
 
-  startWakeWordDetectionRef.current = startWakeWordDetection;
+  useEffect(() => {
+    startWakeWordDetectionRef.current = startWakeWordDetection;
+  }, [startWakeWordDetection]);
 
   useEffect(() => {
     if (currentPhaseRef.current === "thinking" && messages.length > messagesCountRef.current) {
@@ -253,7 +256,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
                     window.speechSynthesis.cancel();
                     SR.current.abort();
                     playBeep();
-                    setPhase("Escuchando…");
+                    setPhase(PHASE_LISTENING);
                     currentPhaseRef.current = "listening";
                     startQueryListening();
                     return;
@@ -302,7 +305,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     return () => clearInterval(interval);
   }, [updateVU]);
 
-  const isListening = phase === "Escuchando…";
+  const isListening = phase === PHASE_LISTENING;
 
   return {
     status,
