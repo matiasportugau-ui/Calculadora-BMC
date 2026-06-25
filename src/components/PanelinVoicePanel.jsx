@@ -14,7 +14,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
-import { useVoiceSession } from "../hooks/useVoiceSession.js";
+import { useHandsFreeVoice } from "../hooks/useHandsFreeVoice.js";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -93,39 +93,20 @@ export default function PanelinVoicePanel({
   devMode = false,
   authHeader,
   voiceMode = true,
+  send,
+  messages = [],
 }) {
   const PRIMARY = skinTokens?.primary || "#0071e3";
-  const [transcript, setTranscript] = useState([]);
   const [voiceError, setVoiceError] = useState(null);
   const transcriptEndRef = useRef(null);
 
-  const handleTranscriptDelta = useCallback(({ role, delta, transcript: full }) => {
-    setTranscript((prev) => {
-      const last = prev[prev.length - 1];
-      if (delta !== undefined) {
-        if (last?.role === role) {
-          return [...prev.slice(0, -1), { role, text: last.text + delta }];
-        }
-        return [...prev, { role, text: delta }];
-      }
-      if (full !== undefined) {
-        if (last?.role === role && !last.finalized) {
-          return [...prev.slice(0, -1), { role, text: full, finalized: true }];
-        }
-        return [...prev, { role, text: full, finalized: true }];
-      }
-      return prev;
-    });
-  }, []);
-
   const handleError = useCallback((msg) => setVoiceError(msg), []);
 
-  const { status, isSpeaking, isListening, vuLevel, start, stop, interrupt } = useVoiceSession({
+  const { status, phase, transcript, isSpeaking, isListening, vuLevel, start, stop } = useHandsFreeVoice({
     onAction,
-    onTranscriptDelta: handleTranscriptDelta,
     onError: handleError,
-    devMode,
-    authHeader,
+    send,
+    messages,
   });
 
   // Auto-scroll transcript
@@ -194,7 +175,7 @@ export default function PanelinVoicePanel({
 
   const MIC_SIZE = 80;
   const isActive = status === "active";
-  const isConnecting = status === "connecting";
+  const isConnecting = false; // Hands-free doesn't have a connecting state
 
   const micBg = isActive
     ? isSpeaking
@@ -204,17 +185,7 @@ export default function PanelinVoicePanel({
         : "#6b7280"
     : PRIMARY;
 
-  const statusLabel = isConnecting
-    ? "Conectando..."
-    : isActive
-      ? isSpeaking
-        ? "Panelin está hablando…"
-        : isListening
-          ? "Escuchando…"
-          : "Listo — hablá"
-      : status === "error"
-        ? "Error de voz"
-        : "Toca para empezar";
+  const statusLabel = phase || (status === "error" ? "Error de voz" : "Toca para empezar");
 
   return (
     <div
@@ -316,24 +287,11 @@ export default function PanelinVoicePanel({
           </button>
         </div>
 
-        {/* Barge-in hint */}
-        {isSpeaking && (
-          <button
-            type="button"
-            onClick={interrupt}
-            style={{
-              border: "1px solid #d1d5db",
-              borderRadius: 8,
-              background: "#fff",
-              color: "#374151",
-              fontSize: 12,
-              padding: "5px 12px",
-              cursor: "pointer",
-              fontFamily: FONT,
-            }}
-          >
-            Interrumpir
-          </button>
+        {/* Wake word hint */}
+        {status === "active" && !isSpeaking && !isListening && (
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: 0, textAlign: "center" }}>
+            Decí "Panelin" para comenzar
+          </p>
         )}
 
         <button
