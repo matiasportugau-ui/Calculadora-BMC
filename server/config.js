@@ -263,6 +263,18 @@ export const config = {
   otelEnabled: bool(process.env.OTEL_ENABLED, false),
   omniAiWorkerIntervalMs: Math.max(2000, Number(process.env.OMNI_AI_WORKER_INTERVAL_MS || 5000)),
   omniAiWorkerBatchSize: Math.max(1, Math.min(20, Number(process.env.OMNI_AI_WORKER_BATCH_SIZE || 5))),
+  /**
+   * Centralized AI brain (self-evolving, human-verified lessons) injected into the agent system prompt.
+   * Default OFF: ships dormant. Flipping ON is customer-facing — do it deliberately after dev validation.
+   * Source of truth = gs://bmc-ml-tokens/bmc-brain/lessons.json (shared with the sheet-quote pipeline).
+   * BRAIN_LOCAL_PATH overrides with a local lessons.json for dev validation (no GCS needed).
+   */
+  brainEnabled: bool(process.env.VITE_FEATURE_BRAIN, false),
+  brainGcsBucket: process.env.BRAIN_GCS_BUCKET || "bmc-ml-tokens",
+  brainGcsObject: process.env.BRAIN_GCS_OBJECT || "bmc-brain/lessons.json",
+  brainLocalPath: process.env.BRAIN_LOCAL_PATH || "",
+  /** Max lessons injected per prompt (policies, not retrieval — top-N by confidence×overlap). */
+  brainInjectCap: Math.max(1, Math.min(20, Number(process.env.BRAIN_INJECT_CAP || 10))),
 };
 
 export const redirectUri = () => {

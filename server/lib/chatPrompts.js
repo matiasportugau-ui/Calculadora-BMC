@@ -6,6 +6,8 @@
 import { PANELS_PARED, PANELS_TECHO, IVA, IVA_MULT } from "../../src/data/constants.js";
 import { loadKnowledgeDocs } from "./knowledgeLoader.js";
 import { renderExamplesBlock } from "./channelRenderer.js";
+import { config } from "../config.js";
+import { brainBlock } from "./brainKB.js";
 
 const IDENTITY = `Tu nombre es Panelin. Sos el asistente experto de ventas de BMC Uruguay (METALOG SAS).
 BMC Uruguay fabrica y vende paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
@@ -432,6 +434,7 @@ export function buildSystemPrompt(calcState = {}, options = {}) {
     preferences = null,
     channel = "chat",
     ragContext = "",
+    userText = "",
   } = options;
   const {
     scenario = "sin seleccionar",
@@ -495,6 +498,10 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
   const knowledgeBlock = knowledgeDocs
     ? `## DOCUMENTACIÓN TÉCNICA ADICIONAL\n${knowledgeDocs}`
     : "";
+
+  // Centralized AI brain (self-evolving lessons). Off by default → "" → filtered out below, so the
+  // prompt is byte-identical to today when the flag is OFF. brainBlock() is sync + fail-soft.
+  const brainBlockStr = config.brainEnabled ? brainBlock(userText) : "";
 
   const antiRepBlock = ANTI_REPETITION_RULES;
   const variationBlock = buildAntiRepetitionBlock(recentAssistantMessages);
@@ -608,7 +615,7 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
 - ❌ Llamar \`guardar_en_crm\` sin confirmación explícita del usuario.
 - ❌ Re-preguntar la familia si \`calcState.techo.familia\` ya está seteado.`;
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules]
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, brainBlockStr, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }
