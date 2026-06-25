@@ -1,8 +1,10 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-22
+**Última actualización:** 2026-06-25
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
+
+**Tablero de tareas:** el backlog/kanban de **desarrollo** vive en GitHub (Issues + Project «BMC Dev»); este archivo sigue siendo el **relato narrativo** del estado. Reglas en [`AGILE.md`](./AGILE.md), espejo versionado en [`BACKLOG.md`](./BACKLOG.md).
 
 **Guía legacy vs repo:** Si aparece documentación antigua tipo `BMC_SYSTEM_GUIDE.md` (backup Next/Mongo), contrastar con el inventario [BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md](../bmc-dashboard-modernization/BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md) — no usar ese backup como contrato de API del stack actual.
 
@@ -11,6 +13,86 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-24 (Configurador de Carpeta Drive por usuario — tab "Drive"):** Cada usuario interno configura, una sola vez,
+la carpeta de Google Drive donde se guardan sus cotizaciones (resuelve "Sandra/Ramiro/Martín no pueden guardar"). El
+"Guardar" del panel Drive ahora hace **doble guardado**: (1) primario **client-side por usuario** (`saveQuotation` con su
+propio token `drive.file`) hacia la carpeta configurada, y (2) best-effort en la carpeta BMC compartida vía service account
+(`DRIVE_QUOTE_FOLDER_ID`) para el dataset consolidado de Fase 2. Selección de carpeta vía **navegador in-app con la Drive API**
+(sin API key extra): lista/crea carpetas que la app administra en el Drive del usuario (limitación del scope `drive.file`: no
+enumera carpetas pre-existentes arbitrarias — para eso haría falta Google Picker + API key). Validación de permiso de escritura
+client-side y persistencia en **Postgres** `identity.user_drive_config` (no Firestore). Sin carpeta configurada → se bloquea el
+guardado por usuario con aviso. **Nuevos:** migración `supabase/migrations/20260624000001_user_drive_config.sql` (aplicar con
+`scripts/identity-golive-apply.sh`), ruta `server/routes/driveConfig.js` (`GET`/`POST /api/drive/config`),
+`src/utils/driveConfigApi.js`, `src/components/DriveFolderConfig.jsx`, test `tests/drive-config-routes.test.js`. **Setup pendiente:**
+aplicar la migración contra `DATABASE_URL`. Fase 2 (vista consolidada "todo de todos") fuera de alcance.
+
+**2026-06-25 (CI/Deploy — consolidación de PRs por variable reservada `PORT` en Cloud Run):** Cloud Run
+**reserva** e inyecta `PORT`; setearla explícitamente en el step de deploy hacía fallar el despliegue. El bug
+(introducido en `40f3a65`, `PORT=8080`) ya estaba **corregido en `main` por `0937d10`** («remove PORT=8080 from
+Cloud Run env vars»). Los PRs **#399** y su duplicado **#401** re-proponían el mismo arreglo: se consolidó
+**cerrando #401** y **mergeando #399**, cuyo squash (`8049bc7`) quedó **vacío** (no-op) porque el fix ya estaba
+aplicado. Verificado en `main`: el bloque `env_vars` del step de deploy **no** incluye la reservada `PORT`
+(sólo `SMTP_PORT`, que no es reservada). **Primer caso de uso real del tablero ágil** (`AGILE.md`): la disciplina
+WIP/dedupe atrapó dos PRs redundantes para un fix que ya vivía en `main` — la tarjeta se cierra como
+consolidación verificada, no como cambio de código.
+
+**2026-06-24 (Tablero ágil / Kanban para organizar el desarrollo):** Marco de organización del trabajo de
+**desarrollo de software** sobre GitHub (flujo continuo Kanban, sin sprints ni story points). Agregados:
+[`AGILE.md`](./AGILE.md) (reglas: columnas `Backlog → Ready → In Progress → In Review → Done` con límites WIP,
+labels `type`/`priority`/`area`, DoD = `gate:local` verde + merge a `main`, mapeo `/nxt`→prioridades y `area:*`→agente),
+[`BACKLOG.md`](./BACKLOG.md) (espejo versionado), y plantillas `.github/ISSUE_TEMPLATE/` (feature/bug/tech-debt) +
+`PULL_REQUEST_TEMPLATE.md`. Backlog inicial sembrado como issues **#416–#420** (npm audit, go-live, E2E D1.x,
+ML re-auth, Omni pricing) — mapean a los ítems abiertos de «Pendientes de sincronización». Setup único pendiente en
+la UI de GitHub (labels + Project board «BMC Dev»), documentado en `AGILE.md` §7: el tooling MCP crea issues pero no
+labels ni Projects v2. `/nxt` ahora referencia el backlog del tablero.
+
+**2026-06-23 (Omni WAVE 3+4 — FULLY OPERATIONAL en prod):** Activado el omnicanal end-to-end en producción y
+**probado** (ingest → classify → suggest Claude → HITL accept → H4 eval). Cloud Run `panelin-calc` rev ≥`00532`
+con **todos** los flags `OMNI_*`=1 (WA/ML/EMAIL shadow, event bus, AI orchestrator, automation; budget USD 50/día),
+gobernados por **GitHub repo Variables** (sobreviven a deploys vía `deploy-calc-api.yml`). UI: `VITE_OMNI_INBOX`+`VITE_OMNI_DEALS`=1
+→ pestañas Omni Inbox + Pipeline Deals en `/hub/canales`. Migración `005` siembra el AI registry (model+prompt enabled, claude-sonnet-4-6).
+Un E2E controlado en prod descubrió y arregló **3 bugs** (PR #413 + migraciones 006/007): (1) `omni_conversations.properties`
+faltaba en prod (001 viejo) → todo ingest/shadow-write fallaba en silencio; (2) CHECK `body_ai_category_valid` rechazaba
+`cotizacion` → classify moría; (3) pg devuelve NUMERIC como string → `temperature`="0.30" → proveedores 400/422, sin
+sugerencias (fix: cast a float8 en `aiRegistry.getEnabledModel`). Las 3 compuertas WAVE 4 pasan (HITL/F3/H4). PRs: #406, #407, #411, #413.
+Pendiente menor: confirmar modelo/pricing + cuota OpenAI (ajustable sin código); backfills históricos ML/EMAIL difer (falta BMC_SHEET_ID en Doppler).
+
+**2026-06-23 (hotfix — GCS token store usa metadata-server, no la SA key de Sheets):** Todas las rutas `/ml/*`
+devolvían **500** (y `/auth/ml/status` 503): `server/tokenStore.js` hacía `new Storage()`, pero google-auth resuelve
+`GOOGLE_APPLICATION_CREDENTIALS` primero — y esa env apunta a la SA key de Sheets/Drive (montada para el feature de
+Drive del 2026-06-22), cuyo intercambio JWT en `googleapis.com/oauth2/v4/token` falla con *"Premature close"*. Fix:
+`new Storage({ authClient: new GoogleAuth({ authClient: new Compute() }) })` — fija la identidad del runtime de Cloud
+Run (`panelin-runner`, con `objectAdmin` en `gs://bmc-ml-tokens`) vía metadata server SOLO para el cliente GCS,
+sin tocar la auth de Sheets/Drive. Verificado el API contra storage@5 + google-auth@9 (cachedCredential = Compute).
+El comentario previo en el código documentaba la intención pero `new Storage()` nunca la lograba. Sin esto, ML Manager
+muestra "Verificá la conexión con Mercado Libre".
+
+**2026-06-23 (ML Manager re-cableado al backend live `panelin-calc`):** El esqueleto de `/hub/ml-manager`
+(shipped en PR #403) apuntaba a un *connector* separado inexistente (`VITE_ML_CONNECTOR_URL`) y a 13 endpoints
+fantasma (ads, analytics, message-packs, visits, ai/daily-brief). Re-cableado a la realidad: `mlFetch.js` ahora
+usa `getCalcApiBase()` (mismo backend que la calculadora, sin API key — auth OAuth server-side); `useMlConnector.js`
+reescrito a los 9 endpoints reales (`/auth/ml/status`, `/ml/users/me`, `/ml/listings`, `/ml/items/:id`,
+**PATCH `/ml/items/:id`**, **POST `/ml/items/:id/description`**, `/ml/questions`, POST answer, `/ml/orders`).
+Tabs reducidas a las respaldadas por backend: **Resumen / Publicaciones / Preguntas / Pedidos** (borradas Ads/Analítica/
+Mensajes/Envíos). La tab **Publicaciones** edita precio, stock, estado, **fotos** (vía `pictures:[{source:url}]` — ML
+descarga la URL) y descripción, con confirmación de dos pasos antes de escribir en vivo a MercadoLibre. Badge de
+conexión corregido a `status.ok`. La conexión OAuth ya existe y es persistente: token cifrado en
+`gs://bmc-ml-tokens` (GCS, sobrevive cold starts de Cloud Run), scope incluye `write`/`publish-sync`, último refresh
+2026-05-29 (recuperable). Verificado: ESLint limpio + `vite build` OK. Pendiente: si el refresh del token dormido
+falla, re-autorizar una vez vía `/auth/ml/start`. Clips de video NO disponibles por API para cuenta MLU doméstica.
+
+**2026-06-23 (Omni WAVE 4 local E2E gate — PR #407):** Agregado `npm run omni:local-e2e` — un gate E2E
+autoprovisionado (`scripts/omni-local-e2e.sh` + `scripts/omni-local-e2e.mjs`) que levanta su propio
+Postgres descartable, aplica migraciones omni y verifica los 3 *code paths* de las compuertas WAVE 4
+(HITL accept/reject, H4 eval stats, F3 reconcile drift<10) con 14 asserts, luego destruye el cluster.
+Triple-guardado (`OMNI_E2E_DATABASE_URL` dedicado, host local, nombre con `e2e`, distinto de `DATABASE_URL`)
+para que **nunca** toque una DB real. Opt-in en `wave4-exit-gate` vía `OMNI_E2E=1` (CI no lo corre).
+Validado además el camino real HTTP+auth+route (7/7) contra schema identity + JWT local. Runbook de las 3
+compuertas de staging documentado en [`orientation/OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md).
+Las compuertas siguen pendientes de **datos reales de staging**, no de código.
+
+**2026-06-23 (Omni WAVE 3 hardening fold-in — PR #407):** Plegados a `feat/omni-wave4` los fixes de hardening diferidos del review de PR #406, todos sobre archivos que WAVE 4 ya tocaba: (1) **bug** doble-incremento de `attempts` en `aiWorker.js` (ahora se incrementa una sola vez por claim, consistente entre worker batch y ad-hoc); (2) allowlist de `job_type` a nivel app (`ALLOWED_AI_JOB_TYPES`, 400 antes de enqueue); (3) `system_prompt` retirado del contrato HTTP `getActivePromptContract`; (4) `trigger_event` validado por `z.enum`; (5) whitelist de `status` de conversación en `set_conversation_status`; (6) guard ReDoS (cap de longitud) en operador `matches` de automation; (7) `/omni/health` deja de exponer flags de existencia de tablas. Nuevo test offline `tests/omniHardening.test.js` (10 asserts) + ReDoS assert en `omniAutomationConditions`; registrado en `test:core` y `wave4-exit-gate`. `gate:local` 0 lint / tests OK, `wave4:exit-gate` `ready_for_wave5: true`. Todo flag-gated OFF + operator-auth — sin impacto en prod. Pendiente humano: 3 checks de staging + quitar `do-not-merge`.
 
 **2026-06-22 (Omni issue-and-fix — PR #406 Bugbot):** `/issue-and-fix` sobre `feat/omni-wave3`: emit `message.ingested` post-commit (`OMNI_EVENT_BUS_ENABLED`); lookup conversación solo por `(contact_id, channel, channel_conversation_id)`; reply API pasa `contact_id` en hint; reglas automation con `{}` no matchean; registry `system_prompt` aplicado en jobs `suggest` vía `agentCore.systemPrompt`. WAVE 4 WIP quedó en stash local (no incluido). Staging soak + flags: [`OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md).
 

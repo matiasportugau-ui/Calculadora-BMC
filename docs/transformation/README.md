@@ -41,6 +41,7 @@ Canonical transformation documentation to evolve the current production platform
 | 20 | [20-operational-readiness.md](20-operational-readiness.md) | Runbooks, gates, deploy checklist |
 | 21 | [21-wave-execution.md](21-wave-execution.md) | WAVE 0–N execution model, parallel squads |
 | — | [wave-3/README.md](wave-3/README.md) | WAVE 3 Intelligence + Platform squads |
+| — | [wave-4/README.md](wave-4/README.md) | WAVE 4 Deals + Knowledge + Agents |
 
 **Quality gate:** [SELF-CRITIQUE.md](SELF-CRITIQUE.md)
 
