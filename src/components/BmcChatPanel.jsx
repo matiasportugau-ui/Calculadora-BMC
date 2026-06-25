@@ -1,14 +1,22 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useBmcAuthContext } from "../contexts/bmcAuthContext.js";
+import { getCalcApiBase } from "../utils/calcApiBase.js";
 
 const STORAGE_KEY = "bmc_chat_panel_open";
 
+function resolveChatBase() {
+  const api = getCalcApiBase().replace(/\/+$/, "");
+  return api ? `${api}/chat` : "/chat";
+}
+
+function chatIframeOrigin(chatBase) {
+  if (chatBase.startsWith("http")) return new URL(chatBase).origin;
+  return window.location.origin;
+}
+
 export default function BmcChatPanel() {
   const { accessToken, isAuthenticated } = useBmcAuthContext();
-  const chatBase = useMemo(
-    () => "https://bmc-chat-642127786762.us-central1.run.app",
-    [],
-  );
+  const chatBase = useMemo(() => resolveChatBase(), []);
 
   const [open, setOpen] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY) === "true"; } catch { return false; }
@@ -22,7 +30,7 @@ export default function BmcChatPanel() {
 
   const postAuthToIframe = useCallback(() => {
     if (!accessToken || !iframeRef.current?.contentWindow) return;
-    const origin = new URL(chatBase, window.location.origin).origin;
+    const origin = chatIframeOrigin(chatBase);
     iframeRef.current.contentWindow.postMessage(
       { type: "bmc-chat-auth", token: accessToken },
       origin,

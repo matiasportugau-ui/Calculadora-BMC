@@ -115,10 +115,10 @@
       }
 
       var authToken = '';
+      var parentOrigins = __BMC_CHAT_PARENT_ORIGINS__;
 
       window.addEventListener('message', function(e) {
-        var allowed = [window.location.origin];
-        if (allowed.indexOf(e.origin) === -1) return;
+        if (parentOrigins.indexOf(e.origin) === -1) return;
         if (e.data && e.data.type === 'bmc-chat-auth' && e.data.token) {
           authToken = e.data.token;
           loadInquiries();
