@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-25 (ML catálogo + /hub/ml-manager fixes):** Auditoría de catálogo ML (46 act + 197 paus; 132 bulk-paused 2026-04-11; 85 con `moderation_penalty`) → `product-clips/out/ml-audit-179969104.{md,json}` + reconciliación Bromyros↔ML `product-clips/out/bromyros-ml-gap.csv` (29 paneles: 13 act/5 paus/11 missing). **Reactivadas** ISP150 (`MLU445010304`) + IF40 (`MLU444372549`, 194 vend.) → activas **46→48**; ISP50/200/250 **retenidas** (penalizadas — requieren fix de calidad antes de reactivar). **Bug raíz /hub/ml-manager:** `vercel.json` no proxeaba `/ml` (catch-all SPA devolvía HTML 200 → `JSON.parse` rompía todo); agregado rewrite `/ml/:path*`→Cloud Run + CORS. **QuestionsTab:** corregido pull (`.questions` no `.results`) + agregado botón "Generar con IA" (reusa `/api/crm/suggest-response`/agentCore). **OverviewTab:** contador preguntas (`.total` no `.paging.total`). **ListingsTab:** filas con título/estado/precio/stock/salud + pausar/activar inline (guardrail anti-penalizadas). Pendiente: listar IsoFrig 60–200mm (checklist en `docs/team/ML-ISOFRIG-LISTING-CHECKLIST.md`; bloqueado por falta de endpoint create + fotos). gate:local OK (lint+test+test:api+build).
+
 **2026-06-23 (Omni WAVE 3+4 — FULLY OPERATIONAL en prod):** Activado el omnicanal end-to-end en producción y
 **probado** (ingest → classify → suggest Claude → HITL accept → H4 eval). Cloud Run `panelin-calc` rev ≥`00532`
 con **todos** los flags `OMNI_*`=1 (WA/ML/EMAIL shadow, event bus, AI orchestrator, automation; budget USD 50/día),

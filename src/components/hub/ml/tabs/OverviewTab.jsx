@@ -61,7 +61,7 @@ export default function OverviewTab() {
         <div style={card}>
           <div style={cardLabel}>Preguntas</div>
           <div style={cardValue('var(--ac-warn)')}>
-            {questions.isLoading ? '…' : (questions.data?.paging?.total ?? 0)}
+            {questions.isLoading ? '…' : (questions.data?.total ?? 0)}
           </div>
           <div style={cardSub}>sin responder</div>
         </div>
