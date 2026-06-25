@@ -119,6 +119,21 @@ export function useAnswerQuestion() {
   });
 }
 
+/**
+ * AI draft answer for an ML question — POST /api/crm/suggest-response (agentCore).
+ * Returns { ok, respuesta, provider, model }. Reuses the same unified suggest engine
+ * the CRM/WA channels use, so ML answers inherit the trained KB + history context.
+ */
+export function useSuggestAnswer() {
+  return useMutation({
+    mutationFn: ({ text, itemId, producto }) =>
+      mlFetch('/api/crm/suggest-response', {
+        method: 'POST',
+        body: { consulta: text, origen: 'mercadolibre', itemId, producto },
+      }),
+  });
+}
+
 /** Orders — GET /ml/orders?limit=&offset= → { results, paging } */
 export function useOrders(params = {}) {
   return useQuery({

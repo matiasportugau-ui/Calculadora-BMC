@@ -21,6 +21,10 @@
       "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/sync/:path*"
     },
     {
+      "source": "/ml/:path*",
+      "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/ml/:path*"
+    },
+    {
       "source": "/logistica",
       "destination": "/index.html"
     },
@@ -31,7 +35,7 @@
   ],
   "headers": [
     {
-      "source": "/(api|auth|calc|sync)/(.*)",
+      "source": "/(api|auth|calc|sync|ml)/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "https://calculadora-bmc.vercel.app" },
         { "key": "Access-Control-Allow-Methods", "value": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS" },
