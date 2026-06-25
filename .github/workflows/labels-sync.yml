@@ -1,0 +1,34 @@
+name: Sync labels
+
+# Labels-as-code for the "BMC Dev" kanban board (docs/team/AGILE.md §4 / §7a).
+# Creates/updates the type:* / priority:* / area:* / status:* labels from
+# .github/labels.yml. Runs on merge to main when the label list (or this
+# workflow) changes, or on demand via the Actions tab ("Run workflow").
+#
+# delete-other-labels is false → it only adds/updates, never deletes labels
+# created elsewhere. This automates §7a; the Project board "BMC Dev" (§7b) and
+# the optional issue auto-labeler (§7e) still need the one-time GitHub UI setup.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/labels.yml
+      - .github/workflows/labels-sync.yml
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  sync:
+    name: Sync labels from .github/labels.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EndBug/label-sync@v2
+        with:
+          config-file: .github/labels.yml
+          delete-other-labels: false
+          token: ${{ secrets.GITHUB_TOKEN }}

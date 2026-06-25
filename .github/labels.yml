@@ -1,0 +1,67 @@
+# Labels-as-code for the "BMC Dev" kanban board — see docs/team/AGILE.md §4.
+# Synced automatically by .github/workflows/labels-sync.yml (EndBug/label-sync).
+# delete-other-labels is OFF in that workflow, so this NEVER removes labels
+# created elsewhere (e.g. GitHub defaults or repo-specific ones).
+# Edit this list + merge to main → labels are created/updated on push.
+
+# --- type:* — naturaleza del trabajo (gris #6E7681) ---
+- name: "type:feat"
+  color: "6E7681"
+  description: "Nueva funcionalidad"
+- name: "type:fix"
+  color: "6E7681"
+  description: "Corrección de bug"
+- name: "type:refactor"
+  color: "6E7681"
+  description: "Refactor sin cambio de comportamiento"
+- name: "type:docs"
+  color: "6E7681"
+  description: "Documentación"
+- name: "type:chore"
+  color: "6E7681"
+  description: "Mantenimiento / tooling"
+
+# --- priority:* — mapea 1:1 con /nxt (AGILE.md §5) ---
+- name: "priority:P0"
+  color: "D73A4A"
+  description: "🔴 Crítico — roto en prod o bloquea otro trabajo"
+- name: "priority:P1"
+  color: "D93F0B"
+  description: "🟠 Alto — user-facing, alto valor de negocio"
+- name: "priority:P2"
+  color: "FBCA04"
+  description: "🟡 Medio — calidad, completitud o deuda técnica"
+- name: "priority:P3"
+  color: "1D76DB"
+  description: "🔵 Bajo — nice to have, baja urgencia"
+
+# --- area:* — subsistema / swimlane → agente dueño (violeta #5319E7) ---
+- name: "area:calc"
+  color: "5319E7"
+  description: "Calculadora / pricing / BOM"
+- name: "area:api"
+  color: "5319E7"
+  description: "Express API / contratos"
+- name: "area:sheets"
+  color: "5319E7"
+  description: "Google Sheets / CRM"
+- name: "area:auth"
+  color: "5319E7"
+  description: "Auth / OAuth / RBAC"
+- name: "area:pdf"
+  color: "5319E7"
+  description: "Generación de PDF / templates"
+- name: "area:chat"
+  color: "5319E7"
+  description: "Panelin chat / agente / KB"
+- name: "area:deploy"
+  color: "5319E7"
+  description: "Vercel / Cloud Run / CI"
+- name: "area:infra"
+  color: "5319E7"
+  description: "Infra / dependencias / tooling"
+
+# --- status — opcional; status:blocked conviene siempre (negro #0B0B0B) ---
+- name: "status:blocked"
+  color: "0B0B0B"
+  description: "Bloqueado por una dependencia (describir el bloqueo)"
