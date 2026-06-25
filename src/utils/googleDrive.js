@@ -146,6 +146,7 @@ function getClientId() {
   )).trim();
 }
 
+
 function isGisLoaded() {
   return typeof google !== "undefined" && google.accounts?.oauth2;
 }
@@ -424,10 +425,14 @@ async function findOrCreateFolder(name, parentId = null) {
 }
 
 /**
- * Raíz BMC → carpeta cliente (RUT+nombre / nombre) → carpeta código de cotización.
+ * Raíz → carpeta cliente (RUT+nombre / nombre) → carpeta código de cotización.
+ *
+ * When `rootFolderId` is provided (the user's configured Drive folder), it is
+ * used as the root; otherwise the legacy auto-created "Panelin BMC Cotizaciones"
+ * folder under the user's Drive root is used.
  */
-async function ensureQuotationFolderPath(quotationCode, proyecto) {
-  const rootId = await findOrCreateFolder(APP_FOLDER_NAME);
+async function ensureQuotationFolderPath(quotationCode, proyecto, rootFolderId = null) {
+  const rootId = rootFolderId || await findOrCreateFolder(APP_FOLDER_NAME);
   const clientSegment = proyecto && typeof proyecto === "object"
     ? buildDriveClientFolderName(proyecto)
     : buildDriveClientFolderName({ nombre: proyecto || "", razonSocial: "", rut: "" });
@@ -476,6 +481,71 @@ async function findFileInFolder(folderId, fileName) {
   return files.length > 0 ? files[0] : null;
 }
 
+// ── Folder configurator (in-app browser + validation) ────────────────────────
+
+/**
+ * List top-level folders this app can see in the user's Drive. Under the
+ * minimal drive.file scope these are folders the app created (e.g. the default
+ * "Panelin BMC Cotizaciones" root) — arbitrary pre-existing folders are not
+ * visible under this scope (that would need the broad `drive` scope, which this
+ * app intentionally avoids).
+ *
+ * @returns {Promise<{ id: string, name: string, modifiedTime?: string }[]>}
+ */
+export async function listSelectableFolders() {
+  const q = [
+    `mimeType='${FOLDER_MIME}'`,
+    "trashed=false",
+    "'root' in parents",
+  ];
+  const resp = await authFetch(
+    `${DRIVE_API}/files?q=${encodeURIComponent(q.join(" and "))}&fields=files(id,name,modifiedTime)&orderBy=name&pageSize=100&spaces=drive`,
+  );
+  const { files } = await resp.json();
+  return (files || []).map((f) => ({ id: f.id, name: f.name, modifiedTime: f.modifiedTime }));
+}
+
+/**
+ * Create (or reuse) a top-level folder by name in the user's Drive root and
+ * return its id. App-created, so it stays writable under the drive.file scope.
+ *
+ * @returns {Promise<{ id: string, name: string }>}
+ */
+export async function createSelectableFolder(name) {
+  const clean = String(name || "").trim();
+  if (!clean) throw new Error("El nombre de la carpeta no puede estar vacío.");
+  const id = await findOrCreateFolder(clean);
+  return { id, name: clean };
+}
+
+/**
+ * Validate that a folder exists and the user can write to it.
+ * Uses the user's own token via authFetch, so it works for any folder this app
+ * created (or that the user has otherwise granted this app access to).
+ *
+ * @returns {Promise<{ valid: boolean, name: string|null, reason?: string }>}
+ */
+export async function validateFolderWritable(folderId) {
+  if (!folderId) return { valid: false, name: null, reason: "missing_folder" };
+  try {
+    const resp = await authFetch(
+      `${DRIVE_API}/files/${folderId}?fields=id,name,trashed,mimeType,capabilities/canAddChildren&supportsAllDrives=true`,
+    );
+    const file = await resp.json();
+    if (file.trashed) return { valid: false, name: file.name || null, reason: "trashed" };
+    if (file.mimeType !== FOLDER_MIME) return { valid: false, name: file.name || null, reason: "not_a_folder" };
+    if (!file.capabilities?.canAddChildren) {
+      return { valid: false, name: file.name || null, reason: "no_write_permission" };
+    }
+    return { valid: true, name: file.name || null };
+  } catch (err) {
+    const msg = String(err?.message || err);
+    // 404 under drive.file = folder not accessible (deleted or never granted).
+    const reason = /404/.test(msg) ? "not_found" : "error";
+    return { valid: false, name: null, reason };
+  }
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -490,6 +560,7 @@ async function findFileInFolder(folderId, fileName) {
  * @param {Object}  params.projectData   — the serialized project state
  * @param {string}  [params.pdfFileName] — override PDF file name
  * @param {string}  [params.jsonFileName] — override JSON file name
+ * @param {string}  [params.rootFolderId] — user's configured Drive folder (per-user save target)
  * @returns {Promise<{ folderId, pdfFileId, jsonFileId, folderUrl }>}
  */
 export async function saveQuotation({
@@ -500,12 +571,14 @@ export async function saveQuotation({
   projectData,
   pdfFileName: pdfName,
   jsonFileName: jsonName,
+  rootFolderId = null,
 }) {
   const { subId } = await ensureQuotationFolderPath(
     quotationCode,
     proyecto && typeof proyecto === "object"
       ? proyecto
       : { nombre: clientName || "", razonSocial: "", rut: "" },
+    rootFolderId,
   );
 
   const slug = proyecto && typeof proyecto === "object"
@@ -543,9 +616,12 @@ export async function saveQuotation({
 
 /**
  * Lista carpetas de cotización: formato nuevo (root → cliente → código) + legajo plano bajo raíz.
+ *
+ * @param {string} [rootFolderId] — the user's configured Drive folder; falls
+ *        back to the legacy auto-created "Panelin BMC Cotizaciones" root.
  */
-export async function listQuotations() {
-  const rootId = await findOrCreateFolder(APP_FOLDER_NAME);
+export async function listQuotations(rootFolderId = null) {
+  const rootId = rootFolderId || await findOrCreateFolder(APP_FOLDER_NAME);
   const rootQ = [`'${rootId}' in parents`, `mimeType='${FOLDER_MIME}'`, "trashed=false"];
   const rootResp = await authFetch(
     `${DRIVE_API}/files?q=${encodeURIComponent(rootQ.join(" and "))}&fields=files(id,name,modifiedTime)&pageSize=100&spaces=drive`,

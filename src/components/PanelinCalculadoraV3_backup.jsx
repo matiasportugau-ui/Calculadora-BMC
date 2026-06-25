@@ -96,8 +96,10 @@ import * as THREE from "three";
 import {
   initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
+  saveQuotation as gdriveSaveQuotation,
   listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
+import { getDriveConfig } from "../utils/driveConfigApi.js";
 import { LAYOUT_OPTIONS } from "../pdf-templates/index.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
 import PlanUploadModal from "./PlanUploadModal.jsx";
@@ -4312,6 +4314,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const [driveSaving, setDriveSaving] = useState(false);
   const [driveError, setDriveError] = useState(null);
   const [driveLastSave, setDriveLastSave] = useState(null);
+  const [driveFolderConfig, setDriveFolderConfig] = useState(null);
 
   const ensureDriveGsi = useCallback(async () => {
     if (!isDriveConfigured()) {
@@ -4334,6 +4337,17 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       setDriveError(err?.message || "No se pudo inicializar Google Drive");
     });
   }, [showDrivePanel, ensureDriveGsi]);
+
+  // Load the user's configured Drive folder (per-user save target) when the
+  // panel opens and the user is BMC-authenticated. SPEC RF6.
+  useEffect(() => {
+    if (!showDrivePanel || !bmcAuth.accessToken) return;
+    let cancelled = false;
+    getDriveConfig(bmcAuth.accessToken)
+      .then((cfg) => { if (!cancelled) setDriveFolderConfig(cfg); })
+      .catch((err) => { console.warn("[drive-config] load:", err?.message || err); });
+    return () => { cancelled = true; };
+  }, [showDrivePanel, bmcAuth.accessToken]);
 
   useEffect(() => {
     if (!showToolsMenu) return;
@@ -4361,14 +4375,16 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setDriveLoading(true);
     setDriveError(null);
     try {
-      const folders = await listQuotations();
+      // List from the user's configured folder (per-user save target) so the
+      // list stays consistent with where saves land; falls back to legacy root.
+      const folders = await listQuotations(driveFolderConfig?.folderId || null);
       setDriveQuotations(folders);
     } catch (err) {
       setDriveError(err.message || "Error al cargar cotizaciones");
     } finally {
       setDriveLoading(false);
     }
-  }, []);
+  }, [driveFolderConfig?.folderId]);
 
   const handleDriveSignIn = useCallback(async () => {
     setDriveError(null);
@@ -4394,6 +4410,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const handleDriveSave = useCallback(async () => {
     if (!groups.length) return;
     if (!requireProyectoParaPdf()) return;
+    // Per-user save into the user's own Drive folder (SPEC §11): require a
+    // configured + validated folder, otherwise block and point to the config.
+    if (!driveFolderConfig?.folderId || !driveFolderConfig?.valid) {
+      setDriveError("Configurá tu carpeta de Drive arriba antes de guardar.");
+      showToast("Configurá tu carpeta de Drive en el tab Drive");
+      return;
+    }
     setDriveSaving(true);
     setDriveError(null);
     setDriveLastSave(null);
@@ -4403,28 +4426,41 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       const pdfBlob = await htmlToPdfBlob(html);
       const code = currentBudgetCode || `BMC-${new Date().getFullYear()}-TEMP`;
       const fname = pdfFileName(code, proyecto);
-      const result = await persistExportToCompanyDrive({
-        pdfBlob,
-        pdfFileName: fname,
+      const result = await gdriveSaveQuotation({
         quotationCode: code,
-        source: "calc_drive_manual",
+        proyecto,
+        pdfBlob,
+        projectData: buildSerializedProject(code),
+        pdfFileName: fname,
+        rootFolderId: driveFolderConfig.folderId,
       });
-      if (!result) {
-        throw new Error("No se pudo archivar en Drive BMC (revisá DRIVE_QUOTE_FOLDER_ID en el servidor)");
-      }
       setDriveLastSave({
         folderId: result.folderId,
         folderUrl: result.folderUrl,
         pdfFileId: result.pdfFileId,
         jsonFileId: result.jsonFileId,
       });
-      showToast("Guardado en Drive BMC");
+      showToast("Guardado en tu carpeta de Drive");
+      handleDriveRefresh();
+      // Best-effort: también archivar en la carpeta BMC compartida (service
+      // account) para el dataset consolidado de Fase 2. No bloquea el guardado
+      // por usuario si falla / no está configurado DRIVE_QUOTE_FOLDER_ID.
+      // Best-effort: swallow any rejection so it never surfaces as an unhandled
+      // promise rejection (the per-user save above is the source of truth).
+      Promise.resolve(
+        persistExportToCompanyDrive({
+          pdfBlob,
+          pdfFileName: fname,
+          quotationCode: code,
+          source: "calc_drive_manual",
+        }),
+      ).catch(() => {});
     } catch (err) {
       setDriveError(err.message || "Error al guardar en Drive");
     } finally {
       setDriveSaving(false);
     }
-  }, [groups, proyecto, currentBudgetCode, showToast, buildClientePdfHtml, requireProyectoParaPdf, persistExportToCompanyDrive]);
+  }, [groups, proyecto, currentBudgetCode, showToast, buildClientePdfHtml, requireProyectoParaPdf, driveFolderConfig, buildSerializedProject, handleDriveRefresh, persistExportToCompanyDrive]);
 
   const handleDriveLoad = useCallback(async (folderId) => {
     setDriveLoading(true);
@@ -7229,6 +7265,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           !currentBudgetCode ||
           String(currentBudgetCode || "").includes("-TEMP")
         }
+        driveFolderConfig={driveFolderConfig}
+        driveAccessToken={bmcAuth.accessToken}
+        onFolderConfigured={(cfg) => { setDriveFolderConfig(cfg); handleDriveRefresh(); }}
       />
 
       {/* ── Budget Log Panel (slide-over drawer) ── */}

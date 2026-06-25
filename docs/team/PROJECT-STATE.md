@@ -14,6 +14,19 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-06-24 (Configurador de Carpeta Drive por usuario — tab "Drive"):** Cada usuario interno configura, una sola vez,
+la carpeta de Google Drive donde se guardan sus cotizaciones (resuelve "Sandra/Ramiro/Martín no pueden guardar"). El
+"Guardar" del panel Drive ahora hace **doble guardado**: (1) primario **client-side por usuario** (`saveQuotation` con su
+propio token `drive.file`) hacia la carpeta configurada, y (2) best-effort en la carpeta BMC compartida vía service account
+(`DRIVE_QUOTE_FOLDER_ID`) para el dataset consolidado de Fase 2. Selección de carpeta vía **navegador in-app con la Drive API**
+(sin API key extra): lista/crea carpetas que la app administra en el Drive del usuario (limitación del scope `drive.file`: no
+enumera carpetas pre-existentes arbitrarias — para eso haría falta Google Picker + API key). Validación de permiso de escritura
+client-side y persistencia en **Postgres** `identity.user_drive_config` (no Firestore). Sin carpeta configurada → se bloquea el
+guardado por usuario con aviso. **Nuevos:** migración `supabase/migrations/20260624000001_user_drive_config.sql` (aplicar con
+`scripts/identity-golive-apply.sh`), ruta `server/routes/driveConfig.js` (`GET`/`POST /api/drive/config`),
+`src/utils/driveConfigApi.js`, `src/components/DriveFolderConfig.jsx`, test `tests/drive-config-routes.test.js`. **Setup pendiente:**
+aplicar la migración contra `DATABASE_URL`. Fase 2 (vista consolidada "todo de todos") fuera de alcance.
+
 **2026-06-25 (CI/Deploy — consolidación de PRs por variable reservada `PORT` en Cloud Run):** Cloud Run
 **reserva** e inyecta `PORT`; setearla explícitamente en el step de deploy hacía fallar el despliegue. El bug
 (introducido en `40f3a65`, `PORT=8080`) ya estaba **corregido en `main` por `0937d10`** («remove PORT=8080 from
