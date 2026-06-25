@@ -45,7 +45,20 @@ export function useOmniConversations(token, { channel, status, limit = 50 } = {}
     reload();
   }, [reload]);
 
-  return { conversations, loading, error, reload };
+  // Phase 2: operator-facing conversation update (status / tags / priority).
+  const updateConversation = useCallback(
+    async (id, patch) => {
+      const data = await omniFetch(token, `/api/omni/conversations/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      await reload();
+      return data;
+    },
+    [token, reload],
+  );
+
+  return { conversations, loading, error, reload, updateConversation };
 }
 
 export function useOmniMessages(token, conversationId) {

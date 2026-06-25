@@ -1,66 +1,154 @@
-import React from "react";
+import React, { useState } from "react";
+import { useOmniDeals } from "../../../../hooks/useOmniConversations.js";
+import { channelMeta, conversationTitle } from "./omniFormat.js";
+import "./omniInbox.css";
 
-export default function OmniContactSidebar({ conversation }) {
+function Section({ title, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="omniSection">
+      <button
+        type="button"
+        className="omniSection__head"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span>{title}</span>
+        <span className="omniSection__chev" data-open={open}>
+          ▸
+        </span>
+      </button>
+      {open && <div className="omniSection__body">{children}</div>}
+    </div>
+  );
+}
+
+export default function OmniContactSidebar({ conversation, token, onUpdateConversation }) {
+  // Deals are filtered client-side by source_conversation_id (Phase 1: no new endpoint).
+  const { deals } = useOmniDeals(token);
+  const [newLabel, setNewLabel] = useState("");
+  const [savingTag, setSavingTag] = useState(false);
+
   if (!conversation) {
     return (
-      <aside style={styles.sidebar}>
-        <p style={styles.muted}>Seleccioná una conversación</p>
+      <aside className="omniSide">
+        <p className="omniSide__empty">Seleccioná una conversación</p>
       </aside>
     );
   }
 
-  const crmLink = conversation.properties?.crm_row_id
-    ? `/hub/cotizaciones?row=${conversation.properties.crm_row_id}`
-    : null;
+  const ch = channelMeta(conversation.channel);
+  const crmRow = conversation.properties?.crm_row_id;
+  const crmLink = crmRow ? `/hub/cotizaciones?row=${crmRow}` : null;
+  const tags = Array.isArray(conversation.tags) ? conversation.tags : [];
+  const linkedDeals = (deals || []).filter((d) => d.source_conversation_id === conversation.id);
+
+  const setTags = async (next) => {
+    if (!onUpdateConversation || savingTag) return;
+    setSavingTag(true);
+    try {
+      await onUpdateConversation(conversation.id, { tags: next });
+    } finally {
+      setSavingTag(false);
+    }
+  };
+  const addLabel = () => {
+    const t = newLabel.trim();
+    setNewLabel("");
+    if (!t || tags.includes(t)) return;
+    setTags([...tags, t]);
+  };
+  const removeLabel = (t) => setTags(tags.filter((x) => x !== t));
 
   return (
-    <aside style={styles.sidebar}>
-      <h3 style={styles.heading}>Contacto</h3>
-      <dl style={styles.dl}>
-        <dt>Nombre</dt>
-        <dd>{conversation.contact_name || "—"}</dd>
-        <dt>Canal</dt>
-        <dd>{conversation.channel?.toUpperCase() || "—"}</dd>
-        <dt>Email</dt>
-        <dd>{conversation.email || "—"}</dd>
-        <dt>WhatsApp</dt>
-        <dd>{conversation.wa_phone || "—"}</dd>
-        <dt>Estado</dt>
-        <dd>{conversation.status || "open"}</dd>
-      </dl>
-      <div style={styles.links}>
-        {conversation.channel === "wa" && (
-          <a href="/hub/wa" style={styles.link}>
-            Abrir WA Cockpit
-          </a>
+    <aside className="omniSide" aria-label={`Contacto: ${conversationTitle(conversation)}`}>
+      <Section title="Contacto">
+        <dl className="omniSide__dl">
+          <dt>Nombre</dt>
+          <dd>{conversation.contact_name || "—"}</dd>
+          <dt>Canal</dt>
+          <dd>{ch.label}</dd>
+          <dt>Email</dt>
+          <dd>{conversation.email || "—"}</dd>
+          <dt>WhatsApp</dt>
+          <dd>{conversation.wa_phone || "—"}</dd>
+          <dt>Estado</dt>
+          <dd>{conversation.status || "open"}</dd>
+        </dl>
+      </Section>
+
+      <Section title="Etiquetas">
+        <div className="omniSide__chips">
+          {tags.length === 0 && <span className="omniSide__dealStage">Sin etiquetas</span>}
+          {tags.map((t) => (
+            <span key={t} className="omniPill omniPill--accent">
+              {t}
+              {onUpdateConversation && (
+                <button
+                  type="button"
+                  className="omniChip__x"
+                  aria-label={`Quitar etiqueta ${t}`}
+                  disabled={savingTag}
+                  onClick={() => removeLabel(t)}
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+        {onUpdateConversation && (
+          <form
+            className="omniSide__addTag"
+            onSubmit={(e) => {
+              e.preventDefault();
+              addLabel();
+            }}
+          >
+            <input
+              className="omniInbox__search"
+              placeholder="Agregar etiqueta…"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              disabled={savingTag}
+            />
+          </form>
         )}
-        {conversation.channel === "ml" && (
-          <a href="/hub/ml" style={styles.link}>
-            Abrir ML Manager
-          </a>
-        )}
-        {crmLink && (
-          <a href={crmLink} style={styles.link}>
-            Fila CRM
-          </a>
-        )}
-      </div>
+      </Section>
+
+      {linkedDeals.length > 0 && (
+        <Section title="Negocios">
+          {linkedDeals.map((d) => (
+            <div key={d.id} className="omniSide__deal">
+              <span>{d.title}</span>
+              <span className="omniSide__dealStage">
+                {d.stage}
+                {d.value_usd ? ` · USD ${d.value_usd}` : ""}
+              </span>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      <Section title="Enlaces" defaultOpen={false}>
+        <div className="omniSide__links">
+          {conversation.channel === "wa" && (
+            <a className="omniSide__link" href="/hub/wa">
+              Abrir WA Cockpit
+            </a>
+          )}
+          {conversation.channel === "ml" && (
+            <a className="omniSide__link" href="/hub/ml">
+              Abrir ML Manager
+            </a>
+          )}
+          {crmLink && (
+            <a className="omniSide__link" href={crmLink}>
+              Fila CRM
+            </a>
+          )}
+        </div>
+      </Section>
     </aside>
   );
 }
-
-const styles = {
-  sidebar: {
-    width: 240,
-    flexShrink: 0,
-    borderLeft: "1px solid #e5e7eb",
-    padding: "1rem",
-    background: "#fafafa",
-    fontSize: "0.875rem",
-  },
-  heading: { margin: "0 0 1rem", fontSize: "0.9375rem", fontWeight: 600 },
-  muted: { color: "#6b7280", margin: 0 },
-  dl: { margin: 0 },
-  links: { marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" },
-  link: { color: "#2563eb", textDecoration: "none", fontSize: "0.8125rem" },
-};
