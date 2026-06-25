@@ -1,10 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 const WAKE_WORD = "panelin";
+const WAITING_PHASE = "Esperando \"Panelin\"…";
+const LISTENING_PHASE = "Escuchando…";
+const THINKING_PHASE = "Pensando…";
+const SPEAKING_PHASE = "Hablando…";
 
-export function useHandsFreeVoice({ onError, send, messages = [] }) {
+export function useHandsFreeVoice({ onError, send, messages = [], isStreaming = false }) {
   const [status, setStatus] = useState("idle");
-  const [phase, setPhase] = useState("Esperando &quot;Panelin&quot;…");
+  const [phase, setPhase] = useState(WAITING_PHASE);
   const [transcript, setTranscript] = useState([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [vuLevel, setVuLevel] = useState(0);
@@ -15,9 +19,9 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
   const micStreamRef = useRef(null);
   const currentPhaseRef = useRef("idle");
   const messagesCountRef = useRef(messages.length);
-  const bargeInRecRef = useRef(null);
   const thinkingTimeoutRef = useRef(null);
   const startQueryListeningRef = useRef(null);
+  const startWakeWordDetectionRef = useRef(null);
 
   useEffect(() => {
     const getSR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -108,14 +112,15 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
       return;
     }
 
-    try {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+    navigator.mediaDevices
+      ?.getUserMedia({ audio: true })
+      .then((stream) => {
         micStreamRef.current = stream;
         startVU();
+      })
+      .catch(() => {
+        // Mic access will also be requested via SpeechRecognition; ignore here.
       });
-    } catch (e) {
-      // Mic access will be requested via SR anyway
-    }
 
     SR.current.continuous = true;
     SR.current.interimResults = true;
@@ -123,24 +128,19 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
 
     SR.current.onresult = (event) => {
       updateVU();
-      let interimTranscript = "";
       let hasWakeWord = false;
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          if (transcript.toLowerCase().includes(WAKE_WORD)) {
-            hasWakeWord = true;
-          }
-        } else {
-          interimTranscript += transcript + " ";
+        const result = event.results[i][0].transcript;
+        if (event.results[i].isFinal && result.toLowerCase().includes(WAKE_WORD)) {
+          hasWakeWord = true;
         }
       }
 
       if (hasWakeWord && currentPhaseRef.current === "waking") {
         SR.current.abort();
         playBeep();
-        setPhase("Escuchando…");
+        setPhase(LISTENING_PHASE);
         currentPhaseRef.current = "listening";
         startQueryListeningRef.current?.();
       }
@@ -169,7 +169,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     SR.current.start();
     setStatus("active");
     currentPhaseRef.current = "waking";
-    setPhase("Esperando 'Panelin'…");
+    setPhase(WAITING_PHASE);
   }, [onError, startVU, updateVU, playBeep]);
 
   const startQueryListening = useCallback(() => {
@@ -185,11 +185,11 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
       let interimTranscript = "";
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
+        const result = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript + " ";
+          finalTranscript += result + " ";
         } else {
-          interimTranscript += transcript;
+          interimTranscript += result;
         }
       }
 
@@ -198,7 +198,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
 
     SR.current.onend = () => {
       if (currentPhaseRef.current === "listening" && finalTranscript.trim()) {
-        setPhase("Pensando…");
+        setPhase(THINKING_PHASE);
         currentPhaseRef.current = "thinking";
         messagesCountRef.current = messages.length;
         send(finalTranscript.trim());
@@ -206,7 +206,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
         thinkingTimeoutRef.current = setTimeout(() => {
           if (currentPhaseRef.current === "thinking") {
             speakText("Lo siento, hubo un error. Decí 'Panelin' para comenzar.")
-              .then(() => startWakeWordDetection());
+              .then(() => startWakeWordDetectionRef.current?.());
           }
         }, 30000);
       }
@@ -220,58 +220,92 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     };
 
     SR.current.start();
-  }, [updateVU, send, messages.length, speakText, startWakeWordDetection, onError]);
+  }, [updateVU, send, messages.length, speakText, onError]);
 
-  // Keep the ref in sync so startWakeWordDetection (defined above) can call the
-  // latest startQueryListening without a forward-reference lint error.
-  startQueryListeningRef.current = startQueryListening;
+  // Keep refs in sync outside of render so the wake-word and barge-in
+  // recognizers can call the latest callbacks without forward references.
+  useEffect(() => {
+    startWakeWordDetectionRef.current = startWakeWordDetection;
+    startQueryListeningRef.current = startQueryListening;
+  }, [startWakeWordDetection, startQueryListening]);
+
+  // Listen for the wake word *while* the assistant is speaking so the user can
+  // barge in. Runs concurrently with TTS (not after it finishes).
+  const startBargeInListening = useCallback(() => {
+    if (!SR.current) return;
+    SR.current.continuous = true;
+    SR.current.interimResults = true;
+    SR.current.lang = "es-ES";
+
+    SR.current.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const trans = event.results[i][0].transcript;
+        if (trans.toLowerCase().includes(WAKE_WORD)) {
+          window.speechSynthesis?.cancel();
+          setIsSpeaking(false);
+          SR.current.abort();
+          playBeep();
+          setPhase(LISTENING_PHASE);
+          currentPhaseRef.current = "listening";
+          startQueryListeningRef.current?.();
+          return;
+        }
+      }
+    };
+
+    SR.current.onerror = () => {
+      // Ignore barge-in recognition errors (e.g. no-speech); TTS keeps playing.
+    };
+
+    SR.current.onend = () => {
+      // Restart while the assistant is still speaking so barge-in stays live.
+      if (currentPhaseRef.current === "speaking" && SR.current) {
+        try {
+          SR.current.start();
+        } catch {
+          // Already started or unavailable; ignore.
+        }
+      }
+    };
+
+    try {
+      SR.current.start();
+    } catch {
+      // Already started; ignore.
+    }
+  }, [playBeep]);
 
   useEffect(() => {
-    if (currentPhaseRef.current === "thinking" && messages.length > messagesCountRef.current) {
-      const newMessages = messages.slice(messagesCountRef.current);
-      const assistantMsg = newMessages.find((m) => m.role === "assistant");
+    if (currentPhaseRef.current !== "thinking") return;
+    // Wait until the streamed reply has fully finished before speaking it,
+    // otherwise only the first chunk would be read aloud.
+    if (isStreaming) return;
+    if (messages.length <= messagesCountRef.current) return;
 
-      if (assistantMsg && assistantMsg.content) {
-        clearTimeout(thinkingTimeoutRef.current);
-        setPhase("Hablando…");
-        currentPhaseRef.current = "speaking";
-        setTranscript((prev) => [
-          ...prev,
-          { role: "assistant", text: assistantMsg.content },
-        ]);
+    const newMessages = messages.slice(messagesCountRef.current);
+    const assistantMsg = [...newMessages]
+      .reverse()
+      .find((m) => m.role === "assistant" && m.content);
 
-        speakText(assistantMsg.content)
-          .then(() => {
-            // Start barge-in detection
-            if (SR.current) {
-              SR.current.continuous = true;
-              SR.current.interimResults = true;
-              SR.current.lang = "es-ES";
+    if (!assistantMsg) return;
 
-              SR.current.onresult = (event) => {
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                  const trans = event.results[i][0].transcript;
-                  if (trans.toLowerCase().includes(WAKE_WORD)) {
-                    window.speechSynthesis.cancel();
-                    SR.current.abort();
-                    playBeep();
-                    setPhase("Escuchando…");
-                    currentPhaseRef.current = "listening";
-                    startQueryListeningRef.current?.();
-                    return;
-                  }
-                }
-              };
+    clearTimeout(thinkingTimeoutRef.current);
+    setPhase(SPEAKING_PHASE);
+    currentPhaseRef.current = "speaking";
+    setTranscript((prev) => [...prev, { role: "assistant", text: assistantMsg.content }]);
 
-              SR.current.start();
-            }
-          })
-          .catch(() => {
-            startWakeWordDetection();
-          });
+    // Start barge-in detection concurrently with speech.
+    startBargeInListening();
+
+    const resumeWake = () => {
+      if (currentPhaseRef.current === "speaking") {
+        SR.current?.abort();
+        startWakeWordDetectionRef.current?.();
       }
-    }
-  }, [messages, speakText, startWakeWordDetection, playBeep]);
+    };
+
+    speakText(assistantMsg.content).then(resumeWake).catch(resumeWake);
+  }, [messages, isStreaming, speakText, startBargeInListening]);
 
   const start = useCallback(() => {
     if (!SR.current) {
@@ -286,7 +320,6 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
 
   const stop = useCallback(() => {
     if (SR.current) SR.current.abort();
-    if (bargeInRecRef.current) bargeInRecRef.current.abort();
     window.speechSynthesis?.cancel();
     clearTimeout(thinkingTimeoutRef.current);
     if (micStreamRef.current) {
@@ -295,8 +328,10 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     }
     setStatus("idle");
     currentPhaseRef.current = "idle";
-    setPhase("Esperando 'Panelin'…");
+    setPhase(WAITING_PHASE);
     setTranscript([]);
+    setIsSpeaking(false);
+    setVuLevel(0);
   }, []);
 
   useEffect(() => {
@@ -304,7 +339,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     return () => clearInterval(interval);
   }, [updateVU]);
 
-  const isListening = phase === "Escuchando…";
+  const isListening = phase === LISTENING_PHASE;
 
   return {
     status,

@@ -229,9 +229,6 @@ function Avatar({ size = 28 }) {
  *   onLoadConversationAnalysis?: (convId: string) => Promise<object>,
  *   detachedMode?: boolean,
  *   onOpenDetachedWindow?: () => void,
- *   calcState?: object,
- *   onChatAction?: (action: object) => void,
- *   authHeader?: string,
  * }} props
  */
 export default function PanelinChatPanel({
@@ -265,9 +262,6 @@ export default function PanelinChatPanel({
   onLoadConversationAnalysis,
   detachedMode = false,
   onOpenDetachedWindow,
-  calcState,
-  onChatAction,
-  authHeader,
 }) {
   const [isSkinMenuOpen, setIsSkinMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
@@ -921,18 +915,15 @@ export default function PanelinChatPanel({
           </button>
         </div>
 
-        {/* ── Voice Mode — panel stays mounted; the WebRTC session is torn down when voiceMode flips off ── */}
+        {/* ── Voice Mode — panel stays mounted; the hands-free speech session is torn down when voiceMode flips off ── */}
         <div style={{ display: voiceMode ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
           <PanelinVoicePanel
-            calcState={calcState}
-            onAction={onChatAction}
             onSwitchToText={() => setVoiceMode(false)}
             skinTokens={activeTokens}
-            devMode={devMode}
-            authHeader={authHeader}
             voiceMode={voiceMode}
             send={send}
             messages={messages}
+            isStreaming={isStreaming}
           />
         </div>
 

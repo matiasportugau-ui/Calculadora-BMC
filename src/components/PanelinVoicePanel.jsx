@@ -2,15 +2,15 @@
  * PanelinVoicePanel — fluent voice conversation UI.
  *
  * Renders when voice mode is active inside PanelinChatPanel.
- * Uses useVoiceSession for WebRTC + OpenAI Realtime.
+ * Uses useHandsFreeVoice (free Browser Speech APIs) for hands-free conversation.
  *
  * UX:
  *  - Big pulsing mic button (idle → tap to start, active → tap to stop)
  *  - VU meter ring around mic button
  *  - Live transcript of user + assistant turns
- *  - "Interrumpir" button while assistant is speaking (barge-in)
+ *  - Wake word ("Panelin") starts a turn; say it again to barge in while speaking
  *  - "Pasar a texto" link exits voice mode
- *  - Safari / unsupported browser fallback banner
+ *  - Unsupported browser fallback banner
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
@@ -21,11 +21,9 @@ const FONT =
 
 function isBrowserSupported() {
   if (typeof window === "undefined") return false;
-  return !!(
-    window.RTCPeerConnection &&
-    navigator.mediaDevices?.getUserMedia &&
-    (window.SpeechRecognition || window.webkitSpeechRecognition || true) // RTCPeerConnection is the real gate
-  );
+  // Hands-free voice needs SpeechRecognition (input) + speechSynthesis (output).
+  const hasSpeechRecognition = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  return !!(hasSpeechRecognition && window.speechSynthesis && navigator.mediaDevices?.getUserMedia);
 }
 
 function isSafari() {
@@ -86,15 +84,12 @@ function TranscriptLine({ role, text, primary }) {
 }
 
 export default function PanelinVoicePanel({
-  calcState,
-  onAction,
   onSwitchToText,
   skinTokens,
-  devMode = false,
-  authHeader,
   voiceMode = true,
   send,
   messages = [],
+  isStreaming = false,
 }) {
   const PRIMARY = skinTokens?.primary || "#0071e3";
   const [voiceError, setVoiceError] = useState(null);
@@ -103,10 +98,10 @@ export default function PanelinVoicePanel({
   const handleError = useCallback((msg) => setVoiceError(msg), []);
 
   const { status, phase, transcript, isSpeaking, isListening, vuLevel, start, stop } = useHandsFreeVoice({
-    onAction,
     onError: handleError,
     send,
     messages,
+    isStreaming,
   });
 
   // Auto-scroll transcript
@@ -114,7 +109,7 @@ export default function PanelinVoicePanel({
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
-  // Release mic + WebRTC when the user toggles voice mode off (panel stays mounted but hidden)
+  // Release mic + speech when the user toggles voice mode off (panel stays mounted but hidden)
   useEffect(() => {
     if (!voiceMode && status !== "idle") stop();
   }, [voiceMode, status, stop]);
@@ -122,11 +117,11 @@ export default function PanelinVoicePanel({
   const handleMicButton = useCallback(() => {
     if (status === "idle" || status === "error") {
       setVoiceError(null);
-      start(calcState);
+      start();
     } else {
       stop();
     }
-  }, [status, start, stop, calcState]);
+  }, [status, start, stop]);
 
   const notSupported = !isBrowserSupported();
   const safari = isSafari();
