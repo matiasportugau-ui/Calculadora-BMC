@@ -2,7 +2,7 @@
  * Search the BMC CRM_Operativo sheet for existing client rows.
  *
  * Used by `buscar_cliente_crm` to prevent duplicate rows when the agent
- * is about to call `guardar_en_crm`. Reads B4:AH500 once and matches the
+ * is about to call `guardar_en_crm`. Reads B4:AN (all data rows) once and matches the
  * query against cliente (col C), telefono (col D, digit-only), and
  * observaciones (col W), tipo/tags taxonomía (cols AL–AM relativas al rango).
  *
@@ -55,7 +55,7 @@ export async function searchCrmClients({ query, limite = 10 } = {}) {
     // AL–AM = taxonomía (índices 36–37 desde col B).
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: "'CRM_Operativo'!B4:AN500",
+      range: "'CRM_Operativo'!B4:AN",
     });
     const rows = resp.data.values || [];
     const cap = Math.max(1, Math.min(50, Number(limite || 10)));
