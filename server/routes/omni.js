@@ -15,6 +15,7 @@ import { collectOmniMetrics, formatPrometheusMetrics } from "../lib/omni/omniMet
 import {
   runAutomationForEvent,
   simulateAutomationRule,
+  ALLOWED_CONVERSATION_STATUSES,
 } from "../lib/omni/orchestrator/automationEngine.js";
 import { runAdHocAiJob, runAiJobById, ALLOWED_AI_JOB_TYPES } from "../lib/omni/orchestrator/aiWorker.js";
 import { listModelRegistry, listPromptRegistry, getActivePromptContract } from "../lib/omni/orchestrator/aiRegistry.js";
@@ -23,6 +24,7 @@ import { syncDealToCrm } from "../lib/omni/deals/syncCrm.js";
 import { listSuggestions, resolveSuggestion } from "../lib/omni/orchestrator/suggestions.js";
 import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/evalFeedback.js";
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
+import { buildConversationPatch } from "../lib/omni/conversationPatch.js";
 
 function requireOmniDb(req, res, next) {
   const pool = getOmniPool(config.databaseUrl);
@@ -77,11 +79,14 @@ router.get(
          c.subject,
          c.status,
          c.priority,
+         c.tags,
          c.updated_at,
          co.name AS contact_name,
          co.email AS contact_email,
          co.wa_phone,
          (SELECT COUNT(*)::int FROM omni_messages m WHERE m.conversation_id = c.id) AS message_count,
+         (SELECT COUNT(*)::int FROM omni_messages mu
+            WHERE mu.conversation_id = c.id AND mu.sender = 'customer' AND mu.read_at IS NULL) AS unread_count,
          (SELECT MAX(m2.created_at) FROM omni_messages m2 WHERE m2.conversation_id = c.id) AS last_message_at
        FROM omni_conversations c
        JOIN omni_contacts co ON co.id = c.contact_id
@@ -146,6 +151,42 @@ router.patch(
       [conversationId],
     );
     res.json({ ok: true, marked: rowCount });
+  },
+);
+
+// Operator-facing conversation update (Chatwoot-style Resolve/Snooze + labels).
+// Reuses the same columns/validation the automation engine writes to, but as an
+// explicit REST action. `tags` is a full replace (not a merge) so the UI can add
+// AND remove labels; `status` is validated against the engine's allow-list.
+router.patch(
+  "/omni/conversations/:id",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const conversationId = req.params.id;
+    const patch = buildConversationPatch(req.body);
+    if (patch.error) {
+      const extra = patch.error === "invalid_status" ? { allowed: ALLOWED_CONVERSATION_STATUSES } : {};
+      return res.status(400).json({ ok: false, error: patch.error, ...extra });
+    }
+
+    const params = [conversationId];
+    const sets = patch.fields.map((f) => {
+      params.push(f.value);
+      return `${f.col} = $${params.length}${f.cast ? `::${f.cast}` : ""}`;
+    });
+
+    const { rows } = await req.omniPool.query(
+      `UPDATE omni_conversations
+         SET ${sets.join(", ")}, updated_at = now()
+       WHERE id = $1
+       RETURNING id, channel, channel_conversation_id, subject, status, priority, tags, updated_at`,
+      params,
+    );
+    if (!rows[0]) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
+    res.json({ ok: true, conversation: rows[0] });
   },
 );
 

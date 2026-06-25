@@ -1,84 +1,153 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useOmniConversations } from "../../../../hooks/useOmniConversations.js";
 import OmniThreadPanel from "./OmniThreadPanel.jsx";
 import OmniContactSidebar from "./OmniContactSidebar.jsx";
+import {
+  channelMeta,
+  conversationTitle,
+  conversationDate,
+  initials,
+  avatarColor,
+  timeAgo,
+  statusMeta,
+} from "./omniFormat.js";
+import "./omniInbox.css";
+
+// Chatwoot-style status tabs. Empty key = no filter ("Todas"). The backend
+// GET /api/omni/conversations already accepts ?status=, so these are free.
+const TABS = [
+  { key: "", label: "Todas" },
+  { key: "open", label: "Abiertas" },
+  { key: "pending", label: "Pendientes" },
+  { key: "snoozed", label: "Pospuestas" },
+  { key: "closed", label: "Resueltas" },
+];
 
 export default function OmniInboxPanel({ token }) {
   const [selectedId, setSelectedId] = useState(null);
   const [channelFilter, setChannelFilter] = useState("");
-  const { conversations, loading, error, reload } = useOmniConversations(token, {
+  const [statusFilter, setStatusFilter] = useState("");
+  const [search, setSearch] = useState("");
+
+  const { conversations, loading, error, reload, updateConversation } = useOmniConversations(token, {
     channel: channelFilter || undefined,
+    status: statusFilter || undefined,
   });
+
+  // Client-side search over the loaded page (server-side search is a deferred feature).
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter((c) =>
+      `${conversationTitle(c)} ${c.email || ""} ${c.wa_phone || ""} ${c.channel || ""}`
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [conversations, search]);
 
   const selected = conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div>
-      <div style={styles.toolbar}>
-        <h2 style={{ margin: 0, fontSize: "1.125rem" }}>Omni Inbox</h2>
+    <div className="omniInbox">
+      <div className="omniInbox__toolbar">
+        <div className="omniInbox__tabs" role="tablist" aria-label="Estado de conversación">
+          {TABS.map((t) => (
+            <button
+              key={t.key || "all"}
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === t.key}
+              className="omniInbox__tab"
+              onClick={() => setStatusFilter(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="omniInbox__spacer" />
+        <input
+          className="omniInbox__search"
+          placeholder="Buscar…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <select
+          className="omniInbox__select"
           value={channelFilter}
           onChange={(e) => setChannelFilter(e.target.value)}
-          style={styles.select}
         >
           <option value="">Todos los canales</option>
           <option value="wa">WhatsApp</option>
           <option value="ml">MercadoLibre</option>
           <option value="email">Email</option>
         </select>
-        <button type="button" onClick={reload}>
+        <button type="button" className="omniInbox__btn" onClick={reload}>
           Actualizar
         </button>
       </div>
 
-      {error && <p style={{ color: "#b91c1c" }}>{error}</p>}
+      {error && <p className="omniInbox__error">{error}</p>}
 
-      <div style={styles.layout}>
-        <div style={styles.list}>
-          {loading && <p style={styles.muted}>Cargando…</p>}
-          {!loading && conversations.length === 0 && (
-            <p style={styles.muted}>Sin conversaciones omni</p>
+      <div className="omniInbox__layout">
+        <div className="omniInbox__list">
+          {loading && <p className="omniInbox__muted">Cargando…</p>}
+          {!loading && filtered.length === 0 && (
+            <p className="omniInbox__muted">Sin conversaciones</p>
           )}
-          {conversations.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setSelectedId(c.id)}
-              style={{
-                ...styles.listItem,
-                background: selectedId === c.id ? "#eff6ff" : "#fff",
-              }}
-            >
-              <div style={styles.listTitle}>{c.contact_name || c.subject || c.channel_conversation_id}</div>
-              <div style={styles.listMeta}>
-                {c.channel} · {c.message_count ?? 0} msgs
-              </div>
-            </button>
-          ))}
+          {filtered.map((c) => {
+            const ch = channelMeta(c.channel);
+            const title = conversationTitle(c);
+            const st = statusMeta(c.status);
+            const unread = Number(c.unread_count || 0); // populated in Phase 2
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className="omniRow"
+                aria-current={selectedId === c.id}
+                onClick={() => setSelectedId(c.id)}
+              >
+                <span className="omniRow__avatar" style={{ background: avatarColor(title) }}>
+                  {initials(title)}
+                </span>
+                <span className="omniRow__main">
+                  <span className="omniRow__top">
+                    <span className="omniRow__name">{title}</span>
+                    <span className="omniRow__time">{timeAgo(conversationDate(c))}</span>
+                  </span>
+                  <span className="omniRow__sub">
+                    <span
+                      className="omniRow__chip"
+                      style={{ background: ch.color, color: ch.fg || "#fff" }}
+                    >
+                      {ch.short}
+                    </span>
+                    {c.status && c.status !== "open" && (
+                      <span className={`omniPill omniPill--${st.tone}`}>{st.label}</span>
+                    )}
+                    <span className="omniRow__count">{c.message_count ?? 0} msgs</span>
+                  </span>
+                </span>
+                <span className="omniRow__right">
+                  {unread > 0 && <span className="omniRow__unread">{unread}</span>}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <OmniThreadPanel token={token} conversationId={selectedId} onSent={reload} />
-        <OmniContactSidebar conversation={selected} />
+        <OmniThreadPanel
+          token={token}
+          conversationId={selectedId}
+          onSent={reload}
+          onUpdateConversation={updateConversation}
+        />
+        <OmniContactSidebar
+          conversation={selected}
+          token={token}
+          onUpdateConversation={updateConversation}
+        />
       </div>
     </div>
   );
 }
-
-const styles = {
-  toolbar: { display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" },
-  select: { padding: "0.375rem 0.5rem", borderRadius: 6, border: "1px solid #d1d5db" },
-  layout: { display: "flex", height: 560, border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" },
-  list: { width: 280, borderRight: "1px solid #e5e7eb", overflowY: "auto", background: "#fff" },
-  listItem: {
-    display: "block",
-    width: "100%",
-    textAlign: "left",
-    padding: "0.75rem",
-    border: "none",
-    borderBottom: "1px solid #f3f4f6",
-    cursor: "pointer",
-  },
-  listTitle: { fontWeight: 600, fontSize: "0.875rem", marginBottom: 4 },
-  listMeta: { fontSize: "0.75rem", color: "#6b7280" },
-  muted: { padding: "1rem", color: "#6b7280", fontSize: "0.875rem" },
-};
