@@ -145,3 +145,22 @@ gate:local:   pendiente correr al final de la sesión
 **Próximo paso:** (a) listar IsoFrig 60–200mm (falta `POST /ml/items` + fotos); (b) fix calidad ISP50/200/250; (c) recargar clave IA premium (opcional).
 
 **Refs:** PRs #431/#433/#434/#435/#436. Docs: `HANDOFF-2026-06-25-ml-manager.md`, `ML-CREDENTIALS-PLAYBOOK.md`, `ML-AI-KEYS-REMEDIATION.md`, `ML-ISOFRIG-LISTING-CHECKLIST.md`. PROJECT-STATE entrada 2026-06-25.
+
+---
+
+## 2026-06-25 AM — BMC Chat server deployed to Cloud Run
+
+**Context:** El chat web (Gemini Sheets Chat de bmc-sheet-quote-pipeline) necesitaba estar online 24/7 sin depender del Mac local.
+
+**Acciones:**
+1. Deployed `web/server.mjs` (zero-dep HTTP server) a Cloud Run `bmc-chat` en `chatbot-bmc-live`, región `us-central1`, con min-instances=1.
+2. Secretos (GEMINI_API_KEY, GOOGLE_SHEETS_CREDENTIALS) montados desde Secret Manager — sin Doppler.
+3. `BmcChatPanel.jsx` actualizado para apuntar el iframe a la URL de Cloud Run (en vez de localhost:3000 o Express :3001/chat).
+4. Server de puerto 3000 (launchd `com.bmc.chat-web`) detenido.
+5. Creado skill `~/.claude/skills/bmc-chat-web` para gestión del servicio.
+
+**Verificación:** `curl https://bmc-chat-642127786762.us-central1.run.app/` → HTML (200); `/api/inquiries` → 11 consultas.
+
+**Próximo paso:** Merge `feat/centralized-brain` → main + deploy panelin-calc `/chat` + Vercel (botón 💬).
+
+**Refs:** Handoff: `docs/team/HANDOFF-2026-06-25-0744.md`

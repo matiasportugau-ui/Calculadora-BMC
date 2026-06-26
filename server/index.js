@@ -58,6 +58,7 @@ import planInterpretRouter from "./routes/planInterpret.js";
 import planCadRouter from "./routes/planCad.js";
 import authGoogleRouter from "./routes/authGoogle.js";
 import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
+import createBmcChatRouter from "./routes/bmcChat.js";
 import { startOrphanCloseScheduler } from "./jobs/closeOrphanSessions.js";
 import identityMeRouter from "./routes/identityMe.js";
 import driveConfigRouter from "./routes/driveConfig.js";
@@ -149,8 +150,13 @@ app.use(
 );
 
 // Security headers (OAuth 2.1–aligned)
-app.use((_req, res, next) => {
-  res.setHeader("X-Frame-Options", "DENY");
+app.use((req, res, next) => {
+  if (req.path.startsWith("/chat")) {
+    const ancestors = ["'self'", ...config.corsOrigins].join(" ");
+    res.setHeader("Content-Security-Policy", `frame-ancestors ${ancestors}`);
+  } else {
+    res.setHeader("X-Frame-Options", "DENY");
+  }
   res.setHeader("X-Content-Type-Options", "nosniff");
   next();
 });
@@ -1081,6 +1087,8 @@ app.use("/api", proyectoRouter);
 app.use("/auth/tasks", tasksOAuthRouter);
 // Cloud Scheduler sync target (HMAC-verified) — /sync/google-tasks/pull
 app.use("/sync", tasksSyncRouter);
+// BMC Chat — port 3000 merge (served as /chat on the same Express server)
+app.use("/chat", createBmcChatRouter(config, logger));
 
 const dashboardDir = path.join(__dirname, "../docs/bmc-dashboard-modernization/dashboard");
 const hasFinanzasDashboard = fs.existsSync(path.join(dashboardDir, "index.html"));
