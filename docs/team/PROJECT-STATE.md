@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-25
+**Última actualización:** 2026-06-26
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -14,7 +14,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-06-26 (BMC Chat Gemini Sheets — merge a main + deploy):** Rama `feat/centralized-brain` rebased sobre `origin/main`; incluye Express `/chat` (`bmcChat.js`, Gemini+Sheets), `BmcChatPanel.jsx` (iframe default → Cloud Run `bmc-chat-642127786762.us-central1.run.app`; Express opt-in `VITE_BMC_CHAT_LOCAL=1`), Panelin empty-state cleanup. `gate:local` OK. **Deploy:** merge → CI `deploy-calc-api` (panelin-calc `/chat`) + `deploy-vercel` (botón 💬). Handoff: [`HANDOFF-2026-06-25-0744.md`](./HANDOFF-2026-06-25-0744.md).
+**2026-06-26 (Hotfix — `drive_config_unavailable` 503 en tab Drive):** Causa: tabla Postgres `identity.user_drive_config` **no existía en prod** (código desplegado 2026-06-24 pero migración pendiente). Aplicada idempotentemente `supabase/migrations/20260624000001_user_drive_config.sql` contra prod `DATABASE_URL` (verificado: tabla presente). **Nuevos:** `npm run identity:golive:apply`, `npm run identity:drive-config:check`, `scripts/check-drive-config-table.mjs` (paso 7 en `pre-deploy-check.sh`), mensaje operador en español vía `formatDriveConfigError()` en `driveConfigApi.js` / `DriveFolderConfig.jsx`. UAT: usuario autenticado debe poder elegir carpeta sin 503.
+
+**2026-06-26 (BMC Chat Gemini Sheets — DONE · PR #447):** Merge squash a `main` (`a35f4bf`). Express `/chat` en `panelin-calc` (`bmcChat.js`, Gemini+Sheets, UI estática); `BmcChatPanel.jsx` (iframe default → Cloud Run `bmc-chat-642127786762.us-central1.run.app`; Express opt-in `VITE_BMC_CHAT_LOCAL=1`); Panelin empty-state cleanup. **Verificado prod:** `GET panelin-calc/chat` → 200 HTML; `bmc-chat` → 200; Vercel → 200; `npm run smoke:prod` 9/9 OK; CI `deploy-calc-api` + `deploy-vercel` success. **UAT pendiente [H]:** login → botón 💬 flotante → iframe carga consultas Admin. Handoff: [`HANDOFF-2026-06-25-0744.md`](./HANDOFF-2026-06-25-0744.md).
 
 **2026-06-25 (operator email — thin slice: unattended ingest + reply-from-cockpit):** `branch feat/email-thin-slice → PR #442`. Reuses the ~80%-built email path instead of building a custom inbox UI. (a) **Reply**: `handleCrmCockpitSendApproved` now handles `origen=Email` — resolves recipient + receiving casilla from new `public.email_ingest_log`, sends via `server/lib/emailReply.js` (per-casilla SMTP from `accounts.json`, reusing existing `EMAIL_<CASILLA>_PASS`), threads with In-Reply-To, stamps `Enviado el`. (b) **Idempotent ingest**: `POST /api/crm/ingest-email` dedupes by `messageId` (migration `20260625000001_email_ingest_log.sql`) so an unattended runner won't write dup leads. Coexists with the new omni shadow-write. Tests: `tests/emailReply.test.js` (16) wired into `test:core`; `validation.js` 399/0; `test:api` 0 fail. **Pending [H]:** apply migration (Supabase MCP), verify `s111.nty.uy:465` SMTP, create `EMAIL_INGEST_TOKEN`, deploy Cloud Run Job + Scheduler — see [`runbooks/email-cloud-run-poller.md`](./runbooks/email-cloud-run-poller.md). Custom `/hub/bandeja` UI deferred (master prompt at `~/goal-prompt-email-admin-operators.md`).
 
@@ -38,8 +40,7 @@ enumera carpetas pre-existentes arbitrarias — para eso haría falta Google Pic
 client-side y persistencia en **Postgres** `identity.user_drive_config` (no Firestore). Sin carpeta configurada → se bloquea el
 guardado por usuario con aviso. **Nuevos:** migración `supabase/migrations/20260624000001_user_drive_config.sql` (aplicar con
 `scripts/identity-golive-apply.sh`), ruta `server/routes/driveConfig.js` (`GET`/`POST /api/drive/config`),
-`src/utils/driveConfigApi.js`, `src/components/DriveFolderConfig.jsx`, test `tests/drive-config-routes.test.js`. **Setup pendiente:**
-aplicar la migración contra `DATABASE_URL`. Fase 2 (vista consolidada "todo de todos") fuera de alcance.
+`src/utils/driveConfigApi.js`, `src/components/DriveFolderConfig.jsx`, test `tests/drive-config-routes.test.js`. ~~**Setup pendiente:** aplicar la migración contra `DATABASE_URL`.~~ **Migración prod aplicada 2026-06-26** (ver entrada hotfix arriba). Fase 2 (vista consolidada "todo de todos") fuera de alcance.
 
 **2026-06-25 (CI/Deploy — consolidación de PRs por variable reservada `PORT` en Cloud Run):** Cloud Run
 **reserva** e inyecta `PORT`; setearla explícitamente en el step de deploy hacía fallar el despliegue. El bug

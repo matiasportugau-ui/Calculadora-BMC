@@ -1,0 +1,188 @@
+/* BMC Glass Premium — ported from bmc-glass-design-system.tsx (no Tailwind) */
+:root,
+[data-appearance="day"] {
+  --g-blur: 14px;
+  --g-frost: 0.42;
+  --g-sat: 165%;
+  --g-radius: 20px;
+  --g-spec: 0.5;
+  --g-tint: 255, 255, 255;
+  --g-edge: 0.2;
+  --g-displace: 24;
+  --g-bg-page: #f5f5f7;
+  --g-text: #1d1d1f;
+  --g-text-2: #6e6e73;
+  --g-accent: 0, 113, 227;
+  --g-brand: 26, 58, 92;
+  --g-solid-bg: #ffffff;
+  --g-solid-table: #fafafa;
+  --g-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+  --g-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+[data-appearance="night"] {
+  --g-bg-page: #0a0f1e;
+  --g-text: #e2e8f0;
+  --g-text-2: #94a3b8;
+  --g-accent: 57, 183, 214;
+  --g-brand: 226, 232, 240;
+  --g-solid-bg: #0c1322;
+  --g-solid-table: #0e1626;
+  --g-tint: 255, 255, 255;
+}
+
+[data-appearance="night"] .app-bg-layer {
+  display: block;
+}
+
+[data-appearance="day"] .app-bg-layer {
+  display: none;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--g-font);
+  color: var(--g-text);
+  background: var(--g-bg-page);
+  line-height: 1.45;
+}
+
+.app-bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 55% at 12% 18%, rgba(45, 212, 223, 0.3), transparent 60%),
+    radial-gradient(55% 50% at 88% 12%, rgba(124, 124, 240, 0.28), transparent 60%),
+    radial-gradient(60% 60% at 78% 88%, rgba(52, 211, 153, 0.2), transparent 62%),
+    #0a0f1e;
+}
+
+.glass {
+  position: relative;
+  background: rgba(var(--g-tint), var(--g-frost));
+  -webkit-backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur));
+  backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur));
+  border: 1px solid rgba(255, 255, 255, var(--g-edge));
+  border-radius: var(--g-radius);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, calc(var(--g-spec) * 0.85)),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.18),
+    0 14px 38px -12px rgba(0, 0, 0, 0.15);
+}
+
+[data-appearance="night"] .glass {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, calc(var(--g-spec) * 0.85)),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.18),
+    0 14px 38px -12px rgba(0, 0, 0, 0.55);
+}
+
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, calc(var(--g-spec) * 0.55)) 0%, rgba(255, 255, 255, 0) 42%);
+}
+
+.glass-refract {
+  -webkit-backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur)) url(#bmcGlass);
+  backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur)) url(#bmcGlass);
+}
+
+.glass-minimal {
+  --g-blur: 8px;
+  --g-frost: 0.92;
+}
+
+.glass-none { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--g-solid-bg); }
+
+.glass-content-solid {
+  background: var(--g-solid-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.glass-table-solid { background: var(--g-solid-table); }
+
+.glass-table-bad {
+  background: rgba(var(--g-tint), calc(var(--g-frost) * 0.3));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.tnum { font-variant-numeric: tabular-nums; font-family: var(--g-font-mono); }
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.badge-rec { background: rgba(52, 211, 153, 0.2); color: #059669; }
+.badge-alt { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+.badge-uso { background: rgba(148, 163, 184, 0.2); color: #64748b; }
+[data-appearance="night"] .badge-rec { color: #6ee7b7; }
+[data-appearance="night"] .badge-alt { color: #93c5fd; }
+
+.preview-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--g-solid-bg);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.preview-frame { margin: 16px auto; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 16px; overflow: hidden; position: relative; z-index: 1; }
+.preview-frame--mobile { width: 390px; max-width: 100%; }
+.preview-frame--tablet { width: 834px; max-width: 100%; }
+.preview-frame--desktop { width: 1280px; max-width: 100%; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-refract {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--g-solid-bg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition-duration: 0.01ms !important; }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .glass-refract { background: rgba(20, 26, 46, 0.92); }
+}
+
+/* Studio overrides */
+[data-studio="operativo"] { --g-blur: 8px; --g-frost: 0.95; --g-radius: 8px; }
+[data-studio="warm"] {
+  --g-frost: 0.98;
+  --g-radius: 14px;
+  --g-accent: 201, 100, 66;
+  --g-bg-page: #faf9f6;
+  --g-solid-bg: #ffffff;
+  --g-solid-table: #faf6f1;
+}
+[data-studio="warm"] .glass { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--g-solid-bg); border: 1px solid #e8e4dd; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+[data-studio="warm"] .glass-nav-only .glass { backdrop-filter: saturate(var(--g-sat)) blur(12px); -webkit-backdrop-filter: saturate(var(--g-sat)) blur(12px); background: rgba(255,255,255,0.85); }
+[data-studio="industrial"] { --g-blur: 0px; --g-radius: 4px; --g-accent: 216, 67, 21; }
+[data-studio="industrial"] .glass { backdrop-filter: none; background: #263238; color: #fff; border: none; }
+[data-studio="industrial"] .glass-content-solid { background: #fff; color: #212121; }
+[data-studio="responsive"] .glass-mobile-solid { backdrop-filter: none !important; background: var(--g-solid-bg) !important; }
+@media (min-width: 834px) {
+  [data-studio="responsive"] .glass-mobile-solid { backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur)); background: rgba(var(--g-tint), var(--g-frost)); }
+}

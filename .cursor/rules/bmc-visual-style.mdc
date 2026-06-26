@@ -1,0 +1,32 @@
+---
+description: BMC Liquid Glass visual standard — day/night, chrome-only glass, design tokens. Apply when editing hub UI, calculator shell, nav, modals, or design docs.
+alwaysApply: false
+---
+
+# BMC Visual Style (Liquid Glass)
+
+## Canonical docs (read before UI changes)
+
+1. `docs/bmc-dashboard-modernization/DESIGN-SYSTEM.md` — colors, spacing, components
+2. `docs/bmc-dashboard-modernization/LIQUID-GLASS-WEB-GUIDE.md` — blur matrix, day/night, a11y
+3. `docs/team/design-competition/JURY-RECOMMENDATION.md` — hybrid direction (Tahoe chrome + Operativo density)
+
+## Rules
+
+- **Glass on chrome only:** nav (`BmcModuleNav`), topbars (`.adminCot__topbar`), modals, command palette. Never on BOM rows, CRM cells, wizard form bodies.
+- **Tokens:** Use `--g-*` from `src/styles/bmc-glass.css`; bridge hub via `--ac-*` — do not invent new blur recipes.
+- **Day/night:** `BmcAppearanceProvider` sets `data-appearance` on `<html>`. Day accent `#0071E3`; night accent ice cyan. Default mode `system`.
+- **No Tailwind/shadcn** in production bundle.
+- **A11y:** Honor `prefers-reduced-transparency` and `prefers-reduced-motion`; provide `@supports not backdrop-filter` solid fallback.
+- **Calculator:** Keep `C.*` from `constants.js` opaque; mobile edge nav may use `--g-blur-chip` only.
+
+## Implementation files
+
+- CSS: `src/styles/bmc-glass.css`
+- Provider: `src/contexts/BmcAppearanceProvider.jsx`
+- Components: `src/components/glass/Glass.jsx`, `GlassFilterSvg.jsx`, `AppearanceToggle.jsx`
+- Showcase: `/hub/design-system/glass` (admin)
+
+## Verification
+
+After `src/` UI edits: `npm run gate:local:full` and `rg backdrop-filter src/` — confirm no new blur on data surfaces.

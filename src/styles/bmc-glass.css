@@ -1,0 +1,215 @@
+/**
+ * BMC Liquid Glass design tokens + primitives (production).
+ * Ported from bmc-glass-design-system.tsx / premium-previews/_shared/bmc-glass-premium.css
+ * Glass on chrome only; content uses .glass-content-solid
+ */
+
+:root,
+[data-appearance="day"] {
+  --g-blur: 14px;
+  --g-blur-nav: 20px;
+  --g-blur-chip: 12px;
+  --g-frost: 0.42;
+  --g-sat: 165%;
+  --g-radius: 20px;
+  --g-radius-sm: 12px;
+  --g-spec: 0.5;
+  --g-tint: 255, 255, 255;
+  --g-edge: 0.2;
+  --g-displace: 24;
+  --g-bg-page: #f5f5f7;
+  --g-text: #1d1d1f;
+  --g-text-2: #6e6e73;
+  --g-accent: 0, 113, 227;
+  --g-brand: 26, 58, 92;
+  --g-solid-bg: #ffffff;
+  --g-solid-table: #fafafa;
+  --lg-glass: rgba(var(--g-tint), var(--g-frost));
+  --lg-glass-strong: rgba(var(--g-tint), 0.86);
+  --lg-blur: var(--g-blur-nav);
+}
+
+[data-appearance="night"] {
+  --g-bg-page: #0a0f1e;
+  --g-text: #e2e8f0;
+  --g-text-2: #94a3b8;
+  --g-accent: 57, 183, 214;
+  --g-brand: 226, 232, 240;
+  --g-solid-bg: #0c1322;
+  --g-solid-table: #0e1626;
+  --lg-glass: rgba(var(--g-tint), var(--g-frost));
+}
+
+[data-appearance="day"] .adminCot {
+  --ac-glass: var(--lg-glass);
+  --ac-blur: var(--g-blur-nav);
+  --ac-glass-strong: var(--lg-glass-strong);
+}
+
+[data-appearance="night"] .adminCot {
+  --ac-glass: var(--lg-glass);
+  --ac-blur: var(--g-blur-nav);
+  --ac-glass-strong: var(--lg-glass-strong);
+}
+
+.bmc-module-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid rgba(255, 255, 255, var(--g-edge));
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.bmc-module-nav__brand {
+  font-weight: 700;
+  font-size: 13px;
+  color: rgb(var(--g-brand));
+  margin-right: 8px;
+}
+
+.bmc-module-nav__actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bmc-module-nav__bug {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+  color: #c0392b;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bmc-module-nav__bug span {
+  font-size: 12px;
+}
+
+[data-appearance="night"] .bmc-module-nav__bug {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.glass,
+.chrome-glass {
+  position: relative;
+  background: rgba(var(--g-tint), var(--g-frost));
+  -webkit-backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur));
+  backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur));
+  border: 1px solid rgba(255, 255, 255, var(--g-edge));
+  border-radius: var(--g-radius-sm);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, calc(var(--g-spec) * 0.85)),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.08),
+    0 4px 16px -4px rgba(0, 0, 0, 0.12);
+}
+
+[data-appearance="night"] .glass,
+[data-appearance="night"] .chrome-glass {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, calc(var(--g-spec) * 0.85)),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.18),
+    0 14px 38px -12px rgba(0, 0, 0, 0.45);
+}
+
+.glass::before,
+.chrome-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, calc(var(--g-spec) * 0.55)) 0%, transparent 42%);
+}
+
+.glass-refract,
+.chrome-glass.glass-refract {
+  -webkit-backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur)) url(#bmcGlass);
+  backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur)) url(#bmcGlass);
+}
+
+.glass-content-solid {
+  background: var(--g-solid-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.glass-minimal {
+  --g-blur: var(--g-blur-chip);
+  --g-frost: 0.92;
+}
+
+@media (max-width: 833px) {
+  .chrome-glass-responsive-solid {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--g-solid-bg);
+  }
+}
+
+@media (min-width: 834px) {
+  .chrome-glass-responsive-solid.chrome-glass {
+    backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur));
+    -webkit-backdrop-filter: saturate(var(--g-sat)) blur(var(--g-blur));
+    background: rgba(var(--g-tint), var(--g-frost));
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .chrome-glass,
+  .glass-refract,
+  .adminCot__topbar {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--g-solid-bg) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-interactive {
+    transition: none !important;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .chrome-glass {
+    background: var(--g-solid-bg);
+  }
+}
+
+.glass-interactive {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+}
+
+.glass-interactive:hover {
+  transform: translateY(-1px);
+}
+
+.glass-interactive:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.glass-interactive:focus-visible {
+  outline: 2px solid rgb(var(--g-accent));
+  outline-offset: 3px;
+}
+
+.bmc-shell-bg {
+  background: var(--g-bg-page);
+  color: var(--g-text);
+  min-height: 100vh;
+}
