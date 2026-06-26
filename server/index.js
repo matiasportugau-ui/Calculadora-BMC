@@ -25,6 +25,8 @@ import agentTranscribeRouter from "./routes/agentTranscribe.js";
 import agentFeedbackRouter from "./routes/agentFeedback.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
+import createChatwootRouter from "./routes/chatwoot.js";
+import createEmailAgentRouter from "./routes/emailAgentChat.js";
 import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
 import createMlSearchRouter from "./routes/mlSearch.js";
@@ -1075,6 +1077,10 @@ app.use(createMlEtlRunRouter({ config, logger }));
 app.use("/api", createQuotesRouter(config));
 // Calculator export archive → shared Drive folder (DRIVE_QUOTE_FOLDER_ID)
 app.use("/api", createQuoteDriveArchiveRouter(config));
+// Chatwoot shared inbox webhook + in-app Email Agent — mount BEFORE the
+// bmcDashboard catch-all so /api/chatwoot/* and /api/email-agent/* resolve.
+app.use("/api", createChatwootRouter(config));
+app.use("/api", createEmailAgentRouter(config, logger));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)

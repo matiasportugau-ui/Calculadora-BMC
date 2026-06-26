@@ -119,6 +119,7 @@ import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { useChat } from "../hooks/useChat.js";
 import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
+import EmailAgentPanel from "./EmailAgentPanel.jsx";
 import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
 
 /**
@@ -7183,6 +7184,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               : undefined
         }
       />
+
+      {/* Asistente de Correos BMC — second agent (gated by VITE_FEATURE_EMAIL_AGENT) */}
+      <EmailAgentPanel />
 
       <Toast message={toast} visible={!!toast} />
       {devMode && (
