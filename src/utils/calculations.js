@@ -45,7 +45,6 @@ export function resolveSKU_techo(tipo, familiaP, espesor) {
   const { PERFIL_TECHO } = getPricing();
   const byTipo = PERFIL_TECHO[tipo];
   if (!byTipo) return null;
-  /** Isoroof Colonial: misma perfilería ISOROOF 3G excepto cumbrera (2,2 m colonial bajo cumbrera.ISOROOF_COLONIAL). */
   let fam = familiaP;
   if (fam === "ISOROOF_COLONIAL" && tipo !== "cumbrera") {
     fam = "ISOROOF";
@@ -55,6 +54,30 @@ export function resolveSKU_techo(tipo, familiaP, espesor) {
   if (byFam[espesor]) return { ...byFam[espesor] };
   if (byFam._all) return { ...byFam._all };
   return null;
+}
+
+export function resolveSKU_techoByRange(tipo, familiaP, espesor) {
+  const exact = resolveSKU_techo(tipo, familiaP, espesor);
+  if (exact) return exact;
+  const { PERFIL_TECHO } = getPricing();
+  const byTipo = PERFIL_TECHO[tipo];
+  if (!byTipo) return null;
+  let fam = familiaP;
+  if (fam === "ISOROOF_COLONIAL" && tipo !== "cumbrera") {
+    fam = "ISOROOF";
+  }
+  const byFam = byTipo[fam];
+  if (!byFam) return null;
+  const espesoresDisponibles = Object.keys(byFam)
+    .filter(k => k !== "_all" && !isNaN(Number(k)))
+    .map(Number)
+    .sort((a, b) => a - b);
+  if (espesoresDisponibles.length === 0) return byFam._all ? { ...byFam._all } : null;
+  const closest = espesoresDisponibles.reverse().find(e => e <= espesor);
+  if (closest && byFam[closest]) return { ...byFam[closest] };
+  const maxDisp = espesoresDisponibles[espesoresDisponibles.length - 1];
+  if (maxDisp && byFam[maxDisp]) return { ...byFam[maxDisp] };
+  return byFam._all ? { ...byFam._all } : null;
 }
 
 export function calcPanelesTecho(panel, espesor, largo, ancho) {
@@ -414,7 +437,8 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
   let totalML = 0;
   const addPerfil = (label, tipo, dim, famOverride) => {
     const fam = famOverride || familiaP;
-    const resolved = resolveSKU_techo(tipo, fam, espesor);
+    const useRangeMode = opciones?.skuRangeMode === true;
+    const resolved = useRangeMode ? resolveSKU_techoByRange(tipo, fam, espesor) : resolveSKU_techo(tipo, fam, espesor);
     if (!resolved) return;
     const precio = p(resolved);
     const costoUn = resolved.costo ?? 0;
