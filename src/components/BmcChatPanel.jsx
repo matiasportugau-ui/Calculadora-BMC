@@ -3,10 +3,20 @@ import { useBmcAuthContext } from "../contexts/bmcAuthContext.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 
 const STORAGE_KEY = "bmc_chat_panel_open";
+/** 24/7 chat on Cloud Run — see docs/team/HANDOFF-2026-06-25-0744.md */
+const DEFAULT_CLOUD_CHAT = "https://bmc-chat-642127786762.us-central1.run.app";
 
 function resolveChatBase() {
-  const api = getCalcApiBase().replace(/\/+$/, "");
-  return api ? `${api}/chat` : "/chat";
+  const override = import.meta.env?.VITE_BMC_CHAT_URL?.trim();
+  if (override) return override.replace(/\/+$/, "");
+  const useLocal =
+    import.meta.env?.VITE_BMC_CHAT_LOCAL === "1"
+    || String(import.meta.env?.VITE_BMC_CHAT_LOCAL || "").toLowerCase() === "true";
+  if (useLocal) {
+    const api = getCalcApiBase().replace(/\/+$/, "");
+    return api ? `${api}/chat` : "/chat";
+  }
+  return DEFAULT_CLOUD_CHAT;
 }
 
 function chatIframeOrigin(chatBase) {
