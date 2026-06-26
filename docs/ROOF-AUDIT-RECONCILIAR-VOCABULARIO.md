@@ -200,9 +200,9 @@ Kit fijo: **silicona + silicona_300 + membrana + espuma_pu**, pero con **cantida
 
 - **¿Rasante, babeta, vuelo?**
   - **Rasante:** NO como ítem separado en BOM. Forma parte de los `gotero_frontal` / `gotero_lateral` en PERFIL_TECHO
-  - **Babeta:** Existe como perfil (`babeta_adosar`, `babeta_empotrar` en constants.js), pero NO derivada de aristas exteriores.
+  - **Babeta:** Existe como perfil (`babeta_adosar`, `babeta_empotrar` en constants.js); **SÍ derivada de aristas exteriores** via `buildEdgeBOM()` → `calcPerfileriaTecho()`.
     - Líneas 821 en `calcTechoCompleto()`: comentario dice "BOM comercial ISODEC PIR: 2 goteros + 6 babetas + kit selladores"
-    - Babetas están **hardcodeadas en SKUs comerciales**, no calculadas dinámicamente
+    - Babetas se calculan por ML exterior; kits comerciales preset en constants son sobrescribibles
   - **Vuelo:** NO encontrado en el código; no es un ítem BOM ni parámetro de zona
 
 - **Estado actual:** Línea 821 comenta: **"Ignora bordes perimetrales para accesorios"** — la geometría se calcula pero los accesorios usan presets, no fórmulas por ML
@@ -253,7 +253,7 @@ Kit fijo: **silicona + silicona_300 + membrana + espuma_pu**, pero con **cantida
 
 ### Interpretación
 
-- **Términos limpios (3):** cumbrera, continuo → mapean directo a modos existentes. ✓
+- **Términos limpios (2):** cumbrera, continuo → mapean directo a modos existentes. ✓
 - **Términos perimetrales (2):** muro-panel/babeta, rasante → NO son modos; son **perfiles/accesorios** en constants.js; parte de cálculo de perfilería/bordes, NO encuentro.
 - **Términos inciertos (2):** desnivel-asimétrico, lima-olla → requieren spec clarificación.
 
@@ -334,12 +334,12 @@ PanelinCalculadoraV3.jsx → calcTechoCompleto() → [calcSelladoresTecho + encu
        .map(Number)
        .sort((a, b) => a - b);
      
-     // Regla: usa el espesor disponible más cercano (menor o igual)
-     const closest = espesoresDisponibles.find(e => e <= espesor);
+     // Regla: usa el espesor disponible más cercano (mayor ≤ espesor)
+     const closest = espesoresDisponibles.reverse().find(e => e <= espesor);
      if (closest && byFam[closest]) return { ...byFam[closest] };
      
-     // Si no hay menor, usa el mínimo disponible
-     if (espesoresDisponibles.length > 0) return { ...byFam[espesoresDisponibles[0]] };
+     // Si no hay menor, usa el máximo disponible
+     if (espesoresDisponibles.length > 0) return { ...byFam[espesoresDisponibles[espesoresDisponibles.length - 1]] };
      
      return byFam._all ? { ...byFam._all } : null;
    }
