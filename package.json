@@ -165,6 +165,8 @@
     "traktime:migrate": "node scripts/run-traktime-migrations.mjs",
     "wa:migrate": "node scripts/run-wa-migrations.mjs",
     "omni:migrate": "node scripts/omni-migrate.mjs",
+    "identity:golive:apply": "bash scripts/identity-golive-apply.sh",
+    "identity:drive-config:check": "node scripts/check-drive-config-table.mjs",
     "omni:backfill-wa": "node scripts/omni-backfill-wa.mjs",
     "omni:backfill-ml-crm": "node scripts/omni-backfill-ml-crm.mjs",
     "omni:backfill-email-crm": "node scripts/omni-backfill-email-crm.mjs",

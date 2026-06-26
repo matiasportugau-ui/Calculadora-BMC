@@ -21,7 +21,7 @@ import {
 import {
   listSelectableFolders, createSelectableFolder, validateFolderWritable,
 } from "../utils/googleDrive.js";
-import { saveDriveConfig } from "../utils/driveConfigApi.js";
+import { formatDriveConfigError, saveDriveConfig } from "../utils/driveConfigApi.js";
 
 const C = {
   surface: "#FFFFFF", surfaceAlt: "#FAFAFA",
@@ -85,7 +85,7 @@ export default function DriveFolderConfig({ config, accessToken, onConfigured })
       setNewName("");
       setStatus("idle");
     } catch (err) {
-      setError(err?.message || "No se pudo configurar la carpeta.");
+      setError(formatDriveConfigError(err));
       setStatus("error");
     }
   }, [accessToken, onConfigured]);
@@ -99,7 +99,7 @@ export default function DriveFolderConfig({ config, accessToken, onConfigured })
       const created = await createSelectableFolder(name);
       await commitFolder(created.id, created.name);
     } catch (err) {
-      setError(err?.message || "No se pudo crear la carpeta.");
+      setError(formatDriveConfigError(err));
       setStatus("error");
     }
   }, [newName, commitFolder]);

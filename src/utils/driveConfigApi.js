@@ -19,6 +19,18 @@ function authHeaders(accessToken, extra = {}) {
   };
 }
 
+/** Map API errors to operator-friendly Spanish copy. */
+export function formatDriveConfigError(err) {
+  const msg = String(err?.message || err || "");
+  if (msg.includes("drive_config_unavailable")) {
+    return "El servidor no puede guardar la carpeta todavía (falta migración de base de datos). Avisale al admin: npm run identity:golive:apply";
+  }
+  if (msg.startsWith("drive config 503")) {
+    return "Configuración de Drive no disponible en el servidor. Reintentá en unos minutos o avisale al admin.";
+  }
+  return msg || "No se pudo configurar la carpeta.";
+}
+
 /**
  * Fetch the authed user's configured Drive folder.
  * @returns {Promise<{ folderId, folderName, valid, configuredAt, lastValidatedAt } | null>}

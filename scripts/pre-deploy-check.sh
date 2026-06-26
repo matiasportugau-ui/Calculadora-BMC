@@ -94,6 +94,25 @@ else
   echo "   ⚠️  Node not found, skip secrets drift gate"
 fi
 
+# 7. Drive folder config table (when DATABASE_URL is set)
+echo ""
+echo "7. identity.user_drive_config (Drive tab per-user folder)"
+if [ -n "${DATABASE_URL:-}" ] && command -v node >/dev/null 2>&1; then
+  node scripts/check-drive-config-table.mjs
+  rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "   ✅ Drive config table OK"
+  elif [ "$rc" -eq 1 ]; then
+    echo "   ❌ Missing table — run: npm run identity:golive:apply"
+    exit 1
+  else
+    echo "   ❌ Drive config table check failed (DB connectivity or query error — see output above)"
+    exit 1
+  fi
+else
+  echo "   ℹ️  DATABASE_URL unset — skip (apply migration before enabling Drive folder save in prod)"
+fi
+
 echo ""
 echo "═══ Done ═══"
 echo ""
