@@ -61,6 +61,20 @@ export const config = {
   emailIngestToken: process.env.EMAIL_INGEST_TOKEN || "",
   /** Repo hermano IMAP / PANELSIM (opcional; default = carpeta hermana) */
   bmcEmailInboxRepo: process.env.BMC_EMAIL_INBOX_REPO || "",
+  /**
+   * Chatwoot CE — shared operator inbox + in-app Email Agent (off-stack via REST/webhooks).
+   * All optional: with these unset the Chatwoot webhook + Email Agent routes degrade to 503
+   * and the app still boots. See docs/team/runbooks/chatwoot-email-agent-setup.md.
+   */
+  chatwootApiBase: process.env.CHATWOOT_API_BASE || "",
+  chatwootApiToken: process.env.CHATWOOT_API_TOKEN || "",
+  chatwootAccountId: process.env.CHATWOOT_ACCOUNT_ID || "",
+  chatwootInboxId: process.env.CHATWOOT_INBOX_ID || "",
+  chatwootWebhookSecret: process.env.CHATWOOT_WEBHOOK_SECRET || "",
+  chatwootPostNote: /^(1|true|yes|on)$/i.test(String(process.env.CHATWOOT_POST_NOTE ?? "true").trim()),
+  chatwootPostDraft: /^(1|true|yes|on)$/i.test(String(process.env.CHATWOOT_POST_DRAFT ?? "false").trim()),
+  /** Self base URL for server-to-server loopback (defaults to 127.0.0.1:PORT). */
+  selfBaseUrl: process.env.SELF_BASE_URL || "",
   // BMC Finanzas dashboard (Google Sheets)
   bmcSheetId: process.env.BMC_SHEET_ID || "",
   bmcPagosSheetId: process.env.BMC_PAGOS_SHEET_ID || "",
