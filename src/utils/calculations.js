@@ -647,6 +647,66 @@ export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0
   return { items, total: +total.toFixed(2) };
 }
 
+export function calcSelladoresTechodByEncuentro(encuentrosData = []) {
+  if (!Array.isArray(encuentrosData) || encuentrosData.length === 0) return { items: [], total: 0 };
+  const { SELLADORES } = getPricing();
+  const items = [];
+  const c = (x) => (x?.costo ?? 0);
+  const modes = ['continuo', 'pretil', 'cumbrera', 'desnivel'];
+  const modoMlMap = {};
+  modes.forEach(m => (modoMlMap[m] = 0));
+  encuentrosData.forEach(enc => {
+    const modo = enc.modo || 'continuo';
+    if (modoMlMap.hasOwnProperty(modo)) {
+      modoMlMap[modo] += enc.length || 0;
+    }
+  });
+  const membrana = SELLADORES.membrana;
+  if (membrana && membrana.ml_por_unid && membrana.rendimiento_por_encuentro_modo) {
+    let mlMembrana = 0;
+    modes.forEach(modo => {
+      const factor = membrana.rendimiento_por_encuentro_modo[modo] ?? 0;
+      mlMembrana += modoMlMap[modo] * factor;
+    });
+    if (mlMembrana > 0) {
+      const cantMembrana = Math.ceil(mlMembrana / membrana.ml_por_unid);
+      const puMem = p(membrana);
+      items.push({
+        label: membrana.label,
+        sku: "membrana",
+        cant: cantMembrana,
+        unidad: "rollo",
+        pu: puMem,
+        costo: c(membrana),
+        total: +(cantMembrana * puMem).toFixed(2),
+      });
+    }
+  }
+  const espumaPu = SELLADORES.espuma_pu;
+  if (espumaPu && espumaPu.ml_por_unid && espumaPu.rendimiento_por_encuentro_modo) {
+    let mlEspuma = 0;
+    modes.forEach(modo => {
+      const factor = espumaPu.rendimiento_por_encuentro_modo[modo] ?? 0;
+      mlEspuma += modoMlMap[modo] * factor;
+    });
+    if (mlEspuma > 0) {
+      const cantEspuma = Math.ceil(mlEspuma / espumaPu.ml_por_unid);
+      const puEsp = p(espumaPu);
+      items.push({
+        label: espumaPu.label,
+        sku: "espuma_pu",
+        cant: cantEspuma,
+        unidad: "unid",
+        pu: puEsp,
+        costo: c(espumaPu),
+        total: +(cantEspuma * puEsp).toFixed(2),
+      });
+    }
+  }
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2) };
+}
+
 /**
  * BOM comercial ISODEC PIR (alineado a presupuestos manuales típicos):
  * 2 goteros frontales + 6 babetas empotrar 3 m + T1 según ML de perfilería.
@@ -776,7 +836,7 @@ export function calcTotalesSinIVA(allItems) {
 
 export function calcTechoCompleto(inputs) {
   const { PANELS_TECHO } = getPricing();
-  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, ptsMetal, ptsMadera, borders, opciones, color, pendiente = 0, pendienteModo = "incluye_pendiente", alturaDif = 0 } = inputs;
+  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, ptsMetal, ptsMadera, borders, opciones, color, pendiente = 0, pendienteModo = "incluye_pendiente", alturaDif = 0, encuentrosData = [] } = inputs;
   const panel = PANELS_TECHO[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
@@ -871,6 +931,9 @@ export function calcTechoCompleto(inputs) {
           espesor,
           edgeML: opciones?.edgeML,
         });
+    const selladoresEncuentro = calcSelladoresTechodByEncuentro(encuentrosData);
+    selladores.items.push(...selladoresEncuentro.items);
+    selladores.total += selladoresEncuentro.total;
   }
   const costoM2 = espData.costo ?? 0;
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaTotal, unidad: "m²", pu: paneles.precioM2, costo: costoM2, total: paneles.costoPaneles, cantPaneles: paneles.cantPaneles, largoPanel: largoReal };
