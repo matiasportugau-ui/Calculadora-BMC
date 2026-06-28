@@ -184,6 +184,19 @@ export const config = {
    * sibling repo's config/accounts.json (`smtp` block, reusing EMAIL_<CASILLA>_PASS).
    */
   emailReplyDefaultCasilla: process.env.EMAIL_REPLY_DEFAULT_CASILLA || "bmc-ventas",
+  /**
+   * Gmail-API send (user-OAuth) — preferred reply transport now that the Netuy
+   * SMTP boxes are dead (domain moved to Cloudflare→Gmail). Token is minted by
+   * the sibling pipeline's `gmail-auth` (scope gmail.send), reusing the Drive
+   * OAuth client. Optional GMAIL_SEND_FROM must be a verified "Send mail as"
+   * alias on the authenticated account, else Gmail stamps the account address.
+   */
+  gmailSendConfigured: Boolean(
+    process.env.GMAIL_INGEST_REFRESH_TOKEN &&
+      process.env.GOOGLE_DRIVE_CLIENT_ID &&
+      process.env.GOOGLE_DRIVE_CLIENT_SECRET,
+  ),
+  gmailSendFrom: process.env.GMAIL_SEND_FROM || "",
   /** Bucket GCS para evidencias firmadas (opcional) */
   transportistaGcsBucket: process.env.TRANSPORTISTA_GCS_BUCKET || "",
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
