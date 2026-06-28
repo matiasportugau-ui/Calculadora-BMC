@@ -29,6 +29,8 @@ export function emailContentHash({ remitente, asunto, cuerpo }) {
  *   cuerpo: string;
  *   remitente?: string;
  *   messageId?: string;
+ *   threadId?: string;
+ *   account?: string;
  *   parsed?: object;
  *   crmRow?: number;
  * }} args
@@ -41,7 +43,12 @@ export function emailIngestToOmniEvent(args) {
   const hash =
     emailMessageIdHash(args.messageId) ||
     emailContentHash({ remitente: email || args.remitente, asunto: args.asunto, cuerpo: body });
-  const convId = `email:${hash}`;
+  // Group a back-and-forth into ONE conversation: prefer the provider thread id
+  // (Gmail threadId) so replies land in the same thread; fall back to the
+  // per-message hash when no thread id is available.
+  const threadKey = String(args.threadId || "").trim() || hash;
+  const convId = `email:${threadKey}`;
+  const rfcMessageId = String(args.messageId || "").trim();
 
   return {
     source: "email_ingest",
@@ -64,7 +71,12 @@ export function emailIngestToOmniEvent(args) {
       metadata: {
         asunto: args.asunto || null,
         message_id_hash: hash,
-        had_message_id: Boolean(args.messageId?.trim()),
+        had_message_id: Boolean(rfcMessageId),
+        // Reply needs the raw Message-ID (In-Reply-To) + the box that received
+        // the mail (From identity) — see omni.js email reply branch.
+        rfc_message_id: rfcMessageId || null,
+        account: args.account || null,
+        email_remitente: email || null,
       },
     },
     side_effects: args.crmRow ? { crm_sheet_row: args.crmRow } : undefined,

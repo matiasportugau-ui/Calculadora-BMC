@@ -11,6 +11,7 @@ import { requireGrant } from "../middleware/requireGrant.js";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import { sendWaReply } from "../lib/omni/outbound/waReply.js";
 import { sendMlReply } from "../lib/omni/outbound/mlReply.js";
+import { sendOmniEmailReply } from "../lib/omni/outbound/emailReply.js";
 import { collectOmniMetrics, formatPrometheusMetrics } from "../lib/omni/omniMetrics.js";
 import {
   runAutomationForEvent,
@@ -202,7 +203,7 @@ router.post(
     }
 
     const { rows } = await req.omniPool.query(
-      `SELECT c.channel, c.contact_id, c.channel_conversation_id, co.wa_phone, co.ml_user_id
+      `SELECT c.channel, c.contact_id, c.channel_conversation_id, c.subject, co.wa_phone, co.ml_user_id, co.email
        FROM omni_conversations c
        JOIN omni_contacts co ON co.id = c.contact_id
        WHERE c.id = $1`,
@@ -222,6 +223,29 @@ router.post(
         config,
         questionId: conv.channel_conversation_id,
         text,
+      });
+    } else if (conv.channel === "email") {
+      // Original Message-ID (for In-Reply-To threading) + receiving box (for the
+      // From identity) were stamped on the latest inbound message at ingest.
+      const { rows: lastIn } = await req.omniPool.query(
+        `SELECT metadata FROM omni_messages
+         WHERE conversation_id = $1 AND sender = 'customer'
+         ORDER BY created_at DESC LIMIT 1`,
+        [conversationId],
+      );
+      const meta = lastIn[0]?.metadata || {};
+      const recipient = conv.email || meta.email_remitente;
+      if (!recipient) {
+        return res.status(400).json({ ok: false, error: "email_no_recipient" });
+      }
+      const baseSubject = String(conv.subject || meta.asunto || "").replace(/^\s*re:\s*/i, "").trim();
+      outbound = await sendOmniEmailReply({
+        config,
+        to: recipient,
+        subject: baseSubject ? `Re: ${baseSubject}` : "Re:",
+        text,
+        inReplyTo: meta.rfc_message_id || undefined,
+        account: meta.account || undefined,
       });
     } else {
       return res.status(400).json({ ok: false, error: "reply_not_supported_for_channel" });
