@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es" data-appearance="day" data-studio="tahoe">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=834, initial-scale=1"/>
+<title>Studio Tahoe · Premium · Tablet</title>
+<link rel="stylesheet" href="../_shared/bmc-glass-premium.css"/>
+<style>
+  .pattern-grid { display: grid; gap: 12px; padding: 12px; grid-template-columns: 1fr 1fr; }
+  .pattern-card { padding: 12px; border-radius: 12px; background: var(--g-solid-bg); border: 1px solid rgba(0,0,0,0.06); font-size: 12px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px; }
+  .kpi { padding: 10px; border-radius: 10px; background: var(--g-solid-bg); border: 1px solid rgba(0,0,0,0.06); }
+  .btn-toggle { padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.15); background: var(--g-solid-bg); cursor: pointer; font-size: 12px; font-weight: 600; }
+  .btn-toggle.active { background: rgb(var(--g-accent)); color: #fff; border-color: transparent; }
+</style>
+</head>
+<body>
+<div class="app-bg-layer" aria-hidden="true"></div>
+<div class="preview-toolbar">
+  <a href="../index.html" style="font-size:12px;color:rgb(var(--g-accent))">← Hub</a>
+  <strong style="font-size:13px">Studio Tahoe</strong>
+  <span style="font-size:11px;color:var(--g-text-2)">Tablet 834px</span>
+  <button type="button" class="btn-toggle active" id="btnDay" onclick="setAppearance('day')">Día</button>
+  <button type="button" class="btn-toggle" id="btnNight" onclick="setAppearance('night')">Noche</button>
+</div>
+
+<div class="preview-frame preview-frame--tablet">
+  <nav class="glass glass-refract glass-refract" style="--g-radius:14px;margin:12px;display:flex;align-items:center;gap:8px;padding:10px 14px">
+    <strong style="color:rgb(var(--g-brand))">BMC Uruguay</strong>
+    <span style="font-size:12px;color:var(--g-text-2);margin-left:12px">Hub · Cotizaciones</span>
+    <span style="margin-left:auto;font-size:11px" class="badge badge-rec">recomendado</span>
+  </nav>
+
+  <div class="pattern-grid">
+    <div class="pattern-card">
+      <span class="badge badge-rec">recomendado</span>
+      <p style="margin:8px 0 0"><strong>Liquid Glass Regular — nav blur 14–20px, saturate 165%</strong></p>
+    </div>
+    <div class="pattern-card">
+      <span class="badge badge-uso">más usado</span>
+      <p style="margin:8px 0 0">Patrón industria alineado a Studio Tahoe</p>
+    </div>
+    <div class="pattern-card">
+      <span class="badge badge-alt">alternativa A</span>
+      <p style="margin:8px 0 0">Materialize transition on modal</p>
+    </div>
+    <div class="pattern-card"><span class="badge badge-alt">alternativa B</span><p style="margin:8px 0 0">WWDC25 Regular only (no Clear on forms)</p></div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi glass-content-solid"><div style="font-size:10px;color:var(--g-text-2)">Abiertas</div><div class="tnum" style="font-size:18px;font-weight:700">12</div></div><div class="kpi glass-content-solid"><div style="font-size:10px;color:var(--g-text-2)">Semana</div><div class="tnum" style="font-size:18px;font-weight:700">4</div></div><div class="kpi glass-content-solid"><div style="font-size:10px;color:var(--g-text-2)">Sin</div><div class="tnum" style="font-size:18px;font-weight:700">enviar</div></div><div class="kpi glass-content-solid"><div style="font-size:10px;color:var(--g-text-2)">Ganadas</div><div class="tnum" style="font-size:18px;font-weight:700">8</div></div>
+  </div>
+
+  
+    <section style="padding:12px">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button type="button" onclick="setBad(false)" id="btnOk" style="padding:6px 12px;border-radius:8px;border:none;font-weight:600;cursor:pointer">Correcto</button>
+        <button type="button" onclick="setBad(true)" id="btnBad" style="padding:6px 12px;border-radius:8px;border:none;font-weight:600;cursor:pointer">Incorrecto</button>
+      </div>
+      <div class="glass" style="--g-radius:16px;padding:0;overflow:hidden" id="calcWrap">
+        <div class="glass glass-minimal" style="--g-radius:0;display:flex;align-items:center;gap:8px;padding:10px 14px;border:none;border-bottom:1px solid rgba(255,255,255,0.1)">
+          <strong style="font-size:13px">Cotizador · Obra Maldonado</strong>
+          <span class="tnum" style="margin-left:auto;font-size:12px;color:rgb(var(--g-accent))">USD 18.940</span>
+        </div>
+        <div class="glass-table-solid" id="calcTable" style="max-height:200px;overflow:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="color:var(--g-text-2);text-transform:uppercase;font-size:10px">
+              <th style="padding:8px 12px;text-align:left">Producto</th>
+              <th style="padding:8px 12px;text-align:right">m²</th>
+              <th style="padding:8px 12px;text-align:right">USD</th>
+            </tr></thead>
+            <tbody class="tnum">
+              <tr><td style="padding:8px 12px">ISODEC EPS 100</td><td style="padding:8px 12px;text-align:right">420</td><td style="padding:8px 12px;text-align:right">6.300</td></tr>
+              <tr><td style="padding:8px 12px">ISOROOF 5 grecas</td><td style="padding:8px 12px;text-align:right">318</td><td style="padding:8px 12px;text-align:right">5.412</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="glass glass-minimal" style="--g-radius:0;display:flex;gap:8px;padding:10px 14px;border:none;border-top:1px solid rgba(255,255,255,0.1)">
+          <button style="padding:8px 14px;border-radius:10px;border:none;background:rgb(var(--g-accent));color:#fff;font-weight:600;font-size:12px">Calcular</button>
+          <button style="padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:inherit;font-size:12px">Exportar PDF</button>
+        </div>
+      </div>
+      <p id="calcMsg" style="font-size:12px;margin-top:8px;color:#6ee7b7">Vidrio solo en chrome; tabla sólida — Correcto</p>
+    </section>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="bmcGlass" x="-25%" y="-25%" width="150%" height="150%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.011 0.013" numOctaves="2" seed="42" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="1.5" result="sn"/>
+    <feDisplacementMap in="SourceGraphic" in2="sn" scale="24" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<script>
+function setAppearance(mode) {
+  document.documentElement.dataset.appearance = mode;
+  document.getElementById('btnDay').classList.toggle('active', mode === 'day');
+  document.getElementById('btnNight').classList.toggle('active', mode === 'night');
+}
+function setBad(bad) {
+  const t = document.getElementById('calcTable');
+  const m = document.getElementById('calcMsg');
+  t.className = bad ? 'glass-table-bad' : 'glass-table-solid';
+  m.textContent = bad ? 'Vidrio sobre datos: contraste < 4.5:1 — Incorrecto' : 'Vidrio solo en chrome; tabla sólida — Correcto';
+  m.style.color = bad ? '#fca5a5' : '#6ee7b7';
+  document.getElementById('btnOk').style.background = bad ? '' : 'rgb(var(--g-accent))';
+  document.getElementById('btnOk').style.color = bad ? '' : '#fff';
+  document.getElementById('btnBad').style.background = bad ? '#dc2626' : '';
+  document.getElementById('btnBad').style.color = bad ? '#fff' : '';
+}
+</script>
+</body>
+</html>

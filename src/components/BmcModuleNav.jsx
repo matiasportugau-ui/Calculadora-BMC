@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import { openBugReport } from "../lib/bugReportBus.js";
+import { isDesignPreviewEnabled } from "../lib/designPreviewMode.js";
 
-const bar = {
+const barClassic = {
   display: "flex",
   alignItems: "center",
   gap: 8,
@@ -11,10 +12,18 @@ const bar = {
   background: "#ffffff",
   borderBottom: "1px solid #e5e5ea",
   boxShadow: "0 1px 3px rgba(0,0,0,.04)",
-  position: "relative",
-  zIndex: 2,
+  position: "sticky",
+  top: 0,
+  zIndex: 20,
   fontFamily:
     "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif",
+};
+
+const barPreview = {
+  ...barClassic,
+  background: undefined,
+  borderBottom: undefined,
+  boxShadow: undefined,
 };
 
 const btn = (active) => ({
@@ -30,6 +39,7 @@ const btn = (active) => ({
 
 export default function BmcModuleNav() {
   const { pathname } = useLocation();
+  const previewNav = isDesignPreviewEnabled();
   const auth = useBmcAuth();
   const isAdmin = auth?.role === "admin" || auth?.role === "superadmin";
   const hubActive =
@@ -47,8 +57,15 @@ export default function BmcModuleNav() {
   const clientesActive = pathname.startsWith("/hub/clientes");
 
   return (
-    <nav style={bar} aria-label="Módulos BMC">
-      <span style={{ fontWeight: 700, fontSize: 13, color: "#1a3a5c", marginRight: 8 }}>
+    <nav
+      className={previewNav ? "bmc-module-nav chrome-glass glass" : undefined}
+      style={previewNav ? barPreview : barClassic}
+      aria-label="Módulos BMC"
+    >
+      <span
+        className={previewNav ? "bmc-module-nav__brand" : undefined}
+        style={previewNav ? undefined : { fontWeight: 700, fontSize: 13, color: "#1a3a5c", marginRight: 8 }}
+      >
         BMC
       </span>
       <Link to="/hub" style={btn(hubActive)}>
