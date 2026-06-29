@@ -47,68 +47,6 @@ Debes responder ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional
       "detalle": "por qué y cómo"
     }
   ],
-  "categorias": [
-    {
-      "id": "id de categoría",
-      "nombre": "nombre legible",
-      "evaluacion": "fuerte|neutral|debíl|sin_datos",
-      "productos_monitoreados": 0,
-      "competidores_activos": 0,
-      "observacion": "una línea de análisis"
-    }
-  ],
-  "analisis_precios": {
-    "resumen": "Análisis general de posicionamiento de precios de BMC frente a competidores.",
-    "brechas": [
-      {
-        "producto": "nombre del producto BMC",
-        "precio_bmc_usd_m2": 0.00,
-        "precio_referencia_mercado_usd_m2": 0.00,
-        "diferencia_usd_m2": 0.00,
-        "diferencia_porcentaje": 0.0,
-        "interpretacion": "BMC está X% por encima/debajo del mercado. Implicancia estratégica."
-      }
-    ],
-    "recomendacion_precios": "Recomendación general sobre estrategia de precios."
-  },
-  "analisis_ads": {
-    "resumen": "Análisis de la estrategia actual de Meta Ads de BMC.",
-    "big_4_campanas": [
-      {
-        "nombre": "nombre de campaña",
-        "inversion_mensual_usd": 0,
-        "objetivo": "lead_generation|traffic|conversions",
-        "rendimiento": "alto|medio|bajo",
-        "notas": "observación"
-      }
-    ],
-    "total_campanas": 0,
-    "campanas_zombie": 0,
-    "diagnostico": "diagnóstico general de la cuenta de ads",
-    "recomendacion_ads": "Recomendación concreta sobre la estrategia de ads."
-  },
-  "analisis_ml": {
-    "resumen": "Análisis de la presencia de BMC en MercadoLibre Uruguay.",
-    "preguntas_sin_respuesta": 0,
-    "listings_con_imagenes_faltantes": 0,
-    "listings_con_datos_incompletos": 0,
-    "problemas": [
-      {
-        "area": "calidad_datos|preguntas_sin_respuesta|titulos|otros",
-        "descripcion": "descripción del problema",
-        "severidad": "alta|media|baja",
-        "accion_sugerida": "qué hacer"
-      }
-    ],
-    "tendencias": [
-      {
-        "indicador": "nombre del indicador",
-        "tendencia": "estable|alta|baja|presión_alta",
-        "nota": "interpretación"
-      }
-    ],
-    "recomendacion_ml": "Recomendación concreta para mejorar presencia en ML."
-  },
   "resumen_ejecutivo": "Un párrafo de 2-3 oraciones con el panorama general que integre precios, ads y ML."
 }
 
@@ -117,19 +55,12 @@ Debes responder ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional
 - NO uses markdown, NO uses bloques de código, NO uses texto introductorio ni conclusivo.
 - resumen_ejecutivo debe ser una cadena de texto de 2-3 oraciones cortas. NO pongas JSON dentro de este campo.
 - Cada array (oportunidades, senalas, recomendaciones) debe tener AL MENOS 2 elementos.
-- analisis_precios, analisis_ads y analisis_ml son TODOS obligatorios.
-- Cada campo del JSON raíz debe contener el tipo de dato correcto (string, array, object). No conviertas objetos/arrays a string.
 
 ## PRINCIPIOS DE ANÁLISIS
 1. Identifica productos con brecha de precio favorable (oportunidad de margen).
 2. Señala categorías donde BMC tiene poca o ninguna competencia (liderazgo).
 3. Cruza los perfiles de competidores (tipo, tier, threat_score, opportunity_score) con las categorías de producto para identificar patrones.
-4. Aunque los datos de precios históricos sean limitados, debes generar análisis útil usando: perfiles de competidores, su posicionamiento (tier), su nivel de amenaza/oportunidad (threat_score/opportunity_score), y las categorías de BMC.
-5. Genera al menos 2-3 ítems en oportunidades, señales y recomendaciones usando los datos disponibles. Si hay poca data, sé creativo pero fundado.
-6. Para evaluacion por categoría, usa "sin_datos" solo si no hay competidores en esa categoría; caso contrario asigna "fuerte", "neutral" o "debíl" según el threat_score promedio de los competidores que operan ahí.
-7. En analisis_precios, compara los precios públicos de BMC contra los rangos estimados de competidores según tier (T1=precio premium, T2/T3=precio medio, T5=precio agresivo bajo). Calcula brechas aunque sean estimadas.
-8. En analisis_ads, usa los datos de campañas Big 4, el diagnóstico Ghost Town, y la recomendación ASC para generar análisis.
-9. En analisis_ml, usa los datos de preguntas sin respuesta, listings incompletos, y tendencias estacionales para generar recomendaciones accionables.`;
+4. Genera al menos 2-3 ítems en oportunidades, señales y recomendaciones usando los datos disponibles. Si hay poca data, sé creativo pero fundado.`;
 
 function formatCompetitorData(competitors) {
   if (!competitors || competitors.length === 0) return 'No hay datos de competidores.';
@@ -241,7 +172,7 @@ ${formatAdsIntel(adsIntel)}
 ## Pulso MercadoLibre Uruguay
 ${formatMlPulse(mlPulse)}
 
-Genera el brief estratégico en formato JSON. Las secciones analisis_precios, analisis_ads y analisis_ml son obligatorias. Usa los datos proporcionados para generar análisis concretos y accionables.`;
+Genera el brief estratégico en formato JSON con las secciones oportunidades, senalas, recomendaciones y resumen_ejecutivo. Usa los datos proporcionados para generar análisis concretos y accionables.`;
 
   try {
     const result = await callAgentOnce(
@@ -280,45 +211,20 @@ Genera el brief estratégico en formato JSON. Las secciones analisis_precios, an
       }
     }
 
-    if (brief.resumen_ejecutivo && typeof brief.resumen_ejecutivo === 'string') {
-      const trimmed = brief.resumen_ejecutivo.trim();
-      if (trimmed.startsWith('{')) {
-        let nested = null;
-        try {
-          nested = JSON.parse(trimmed);
-        } catch {
-          for (const closer of ['}', '\n}', '\n  }', '\n    }']) {
-            try {
-              nested = JSON.parse(trimmed + closer);
-              if (nested) break;
-            } catch {}
-          }
-        }
-        if (nested && typeof nested === 'object') {
-          for (const [k, v] of Object.entries(nested)) {
-            if (k === 'resumen_ejecutivo') {
-              if (typeof v === 'string' && !v.trim().startsWith('{')) {
-                brief.resumen_ejecutivo = v;
-              }
-            } else if (v != null) {
-              const existing = brief[k];
-              if (existing == null || (Array.isArray(existing) && existing.length === 0) || (typeof existing === 'object' && !Array.isArray(existing) && Object.keys(existing).length === 0)) {
-                brief[k] = v;
-              }
-            }
-          }
-          if (typeof brief.resumen_ejecutivo === 'string' && brief.resumen_ejecutivo.trim().startsWith('{')) {
-            const parts = [];
-            if (Array.isArray(brief.oportunidades) && brief.oportunidades.length) parts.push(`${brief.oportunidades.length} oportunidades`);
-            if (Array.isArray(brief.recomendaciones) && brief.recomendaciones.length) parts.push(`${brief.recomendaciones.length} recomendaciones`);
-            if (Array.isArray(brief.senalas) && brief.senalas.length) parts.push(`${brief.senalas.length} señales`);
-            if (brief.analisis_precios?.brechas?.length) parts.push(`${brief.analisis_precios.brechas.length} brechas de precio`);
-            brief.resumen_ejecutivo = parts.length
-              ? `Análisis generado: ${parts.join(', ')}. Ver secciones detalladas abajo.`
-              : 'Brief estratégico generado con análisis de mercado.';
-          }
-        }
-      }
+    extractNestedJson(brief);
+    brief.analisis_precios = buildAnalisisPrecios(baselinePrices, competitorMap);
+    brief.analisis_ads = buildAnalisisAds(adsIntel);
+    brief.analisis_ml = buildAnalisisMl(mlPulse);
+    brief.categorias = buildCategorias(summary.competitors);
+    if (typeof brief.resumen_ejecutivo !== 'string' || !brief.resumen_ejecutivo.trim()) {
+      const parts = [];
+      if (Array.isArray(brief.oportunidades) && brief.oportunidades.length) parts.push(`${brief.oportunidades.length} oportunidades`);
+      if (Array.isArray(brief.recomendaciones) && brief.recomendaciones.length) parts.push(`${brief.recomendaciones.length} recomendaciones`);
+      if (Array.isArray(brief.senalas) && brief.senalas.length) parts.push(`${brief.senalas.length} señales`);
+      if (brief.analisis_precios?.brechas?.length) parts.push(`${brief.analisis_precios.brechas.length} brechas de precio`);
+      brief.resumen_ejecutivo = parts.length
+        ? `Análisis generado: ${parts.join(', ')}. Ver secciones detalladas abajo.`
+        : 'Brief estratégico generado con análisis de mercado.';
     }
 
     return {
@@ -343,5 +249,186 @@ Genera el brief estratégico en formato JSON. Las secciones analisis_precios, an
         competitors_count: summary.competitors?.length || 0,
       },
     };
+  }
+}
+
+function repairTruncatedJson(str) {
+  let r = str.trim();
+  const hasColonAfterLastQuote = /:\s*"[^"]*$/.test(r);
+  if (hasColonAfterLastQuote) r += '"';
+  r = r.replace(/,(\s*[}\]])/g, '$1');
+  const chars = r.split('');
+  const stack = [];
+  let inStr = false;
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    if (c === '"' && (i === 0 || chars[i - 1] !== '\\')) inStr = !inStr;
+    if (!inStr) {
+      if (c === '{' || c === '[') stack.push(c);
+      if (c === '}' && stack.length && stack[stack.length - 1] === '{') stack.pop();
+      if (c === ']' && stack.length && stack[stack.length - 1] === '[') stack.pop();
+    }
+  }
+  while (stack.length) {
+    const open = stack.pop();
+    r += open === '{' ? '}' : ']';
+  }
+  try { return JSON.parse(r); } catch { return null; }
+}
+
+const TIER_MULTIPLIERS = { 1: 1.3, 2: 1.05, 3: 0.95, 4: 0.85, 5: 0.7 };
+
+function buildAnalisisPrecios(prices, compMap) {
+  const families = compMap?.product_family_mapping || [];
+  const brechas = [];
+  for (const p of prices || []) {
+    const bmcPrice = p.precio_publico_usd_m2;
+    if (bmcPrice == null) continue;
+    const familiaKey = p.familia;
+    const relevantComp = families.filter(f =>
+      f.familia_principal?.includes(familiaKey) || f.familia_secundaria?.includes(familiaKey)
+    );
+    const tiers = relevantComp.map(c => c.tier).filter(Boolean);
+    const mults = tiers.map(t => TIER_MULTIPLIERS[t] || 1);
+    const avgMult = mults.length ? mults.reduce((a, b) => a + b, 0) / mults.length : 1;
+    const refPrice = +(bmcPrice * avgMult).toFixed(2);
+    const diff = +(bmcPrice - refPrice).toFixed(2);
+    const diffPct = +((diff / refPrice) * 100).toFixed(1);
+    let interp = '';
+    if (diff > 0) {
+      interp = `BMC está ${diffPct}% por encima del precio de referencia. Riesgo de pérdida de volumen frente a alternativas más económicas de competidores de perfil similar.`;
+    } else if (diff < 0) {
+      interp = `BMC está ${Math.abs(diffPct)}% por debajo del precio de referencia. Oportunidad de incrementar margen sin perder competitividad.`;
+    } else {
+      interp = 'BMC está alineado con el precio de referencia. Competir por servicio y calidad, no por precio.';
+    }
+    brechas.push({
+      producto: p.producto,
+      precio_bmc_usd_m2: bmcPrice,
+      precio_referencia_mercado_usd_m2: refPrice,
+      diferencia_usd_m2: diff,
+      diferencia_porcentaje: diffPct,
+      interpretacion: interp,
+    });
+  }
+  return {
+    resumen: brechas.length
+      ? `Se analizaron ${brechas.length} productos de BMC. ${brechas.filter(b => b.diferencia_usd_m2 < 0).length} oportunidades de margen, ${brechas.filter(b => b.diferencia_usd_m2 > 0).length} con riesgo de volumen.`
+      : 'No hay suficientes datos de precios para generar análisis.',
+    brechas,
+    recomendacion_precios: brechas.length
+      ? 'Revisar productos con brecha positiva (BMC por encima del mercado) para evitar pérdida de volumen. Aprovechar brechas negativas para ajustar márgenes gradualmente.'
+      : 'Sin recomendación disponible por falta de datos.',
+  };
+}
+
+function buildAnalisisAds(ads) {
+  if (!ads) return null;
+  return {
+    resumen: `BMC tiene ${ads.total_campanas || 0} campañas en Meta Ads (${ads.campanas_activas || 0} activas, ${ads.campanas_zombie || 0} zombies). Inversión mensual total: $${ads.inversion_total_mensual_usd || 0}.`,
+    big_4_campanas: (ads.big_4_campanas || []).map(c => ({
+      nombre: c.nombre,
+      inversion_mensual_usd: c.inversion_mensual_usd,
+      objetivo: c.objetivo,
+      rendimiento: c.rendimiento,
+      notas: c.notas || '',
+    })),
+    total_campanas: ads.total_campanas || 0,
+    campanas_activas: ads.campanas_activas || 0,
+    campanas_zombie: ads.campanas_zombie || 0,
+    diagnostico: ads.diagnostico || 'Sin diagnóstico disponible.',
+    recomendacion_ads: ads.recomendacion_asc
+      ? `Presupuesto recomendado ASC: $${ads.presupuesto_recomendado_asc_usd}/mes. ${ads.recomendacion_asc}`
+      : 'Sin recomendación ASC disponible.',
+  };
+}
+
+function buildAnalisisMl(ml) {
+  if (!ml) return null;
+  const m = ml.metricas || {};
+  return {
+    resumen: `BMC en MercadoLibre Uruguay: ${m.preguntas_sin_respuesta || 0} preguntas sin respuesta, ${m.listings_con_imagenes_faltantes || 0} listings sin imágenes, ${m.listings_con_datos_incompletos || 0} listings con datos incompletos.`,
+    preguntas_sin_respuesta: m.preguntas_sin_respuesta || 0,
+    listings_con_imagenes_faltantes: m.listings_con_imagenes_faltantes || 0,
+    listings_con_datos_incompletos: m.listings_con_datos_incompletos || 0,
+    problemas: (ml.problemas_identificados || []).map(p => ({
+      area: p.area,
+      descripcion: p.descripcion,
+      severidad: p.severidad,
+      accion_sugerida: p.accion_sugerida,
+    })),
+    tendencias: (ml.tendencias_mercado || []).map(t => ({
+      indicador: t.indicador,
+      tendencia: t.tendencia,
+      nota: t.nota,
+    })),
+    recomendacion_ml: 'Revisar preguntas sin respuesta diariamente y completar listings con datos faltantes para mejorar conversión en ML.',
+  };
+}
+
+function buildCategorias(competitors) {
+  const comps = competitors || [];
+  const catMap = {};
+  for (const c of comps) {
+    const meta = c.metadata || {};
+    const productosStr = meta.productos || [];
+    const prods = Array.isArray(productosStr) ? productosStr : [productosStr];
+    for (const prod of prods) {
+      if (!prod) continue;
+      const catId = prod.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      if (!catMap[catId]) {
+        catMap[catId] = { threats: [], opportunities: [], names: new Set() };
+      }
+      catMap[catId].threats.push(c.threat_score || 0);
+      catMap[catId].opportunities.push(c.opportunity_score || 0);
+      catMap[catId].names.add(c.name);
+    }
+  }
+  return PRODUCT_CATEGORIES.map(cat => {
+    const catId = cat.id;
+    const catKey = Object.keys(catMap).find(k => k.includes(catId) || catId.includes(k));
+    const data = catKey ? catMap[catKey] : null;
+    const compCount = data ? data.names.size : 0;
+    const avgThreat = data && data.threats.length ? data.threats.reduce((a, b) => a + b, 0) / data.threats.length : 0;
+    let evaluacion = 'sin_datos';
+    let observacion = 'Sin competidores registrados en esta categoría.';
+    if (compCount > 0) {
+      if (avgThreat >= 3.5) {
+        evaluacion = 'debíl';
+        observacion = `${compCount} competidores con nivel de amenaza alto (${avgThreat.toFixed(1)}/5). Se requiere monitoreo constante.`;
+      } else if (avgThreat >= 2) {
+        evaluacion = 'neutral';
+        observacion = `${compCount} competidores, amenaza moderada (${avgThreat.toFixed(1)}/5). BMC compite en igualdad de condiciones.`;
+      } else {
+        evaluacion = 'fuerte';
+        observacion = `${compCount} competidores con amenaza baja (${avgThreat.toFixed(1)}/5). BMC tiene ventaja competitiva.`;
+      }
+    }
+    return {
+      id: cat.id,
+      nombre: cat.label,
+      evaluacion,
+      productos_monitoreados: 0,
+      competidores_activos: compCount,
+      observacion,
+    };
+  });
+}
+
+function extractNestedJson(brief) {
+  const re = brief.resumen_ejecutivo;
+  if (!re || typeof re !== 'string') return;
+  const trimmed = re.trim();
+  if (!trimmed.startsWith('{')) return;
+  let nested = null;
+  try { nested = JSON.parse(trimmed); } catch { nested = repairTruncatedJson(trimmed); }
+  if (!nested || typeof nested !== 'object') return;
+  for (const [k, v] of Object.entries(nested)) {
+    if (k === 'resumen_ejecutivo') {
+      if (typeof v === 'string' && !v.trim().startsWith('{')) brief.resumen_ejecutivo = v;
+    } else if (v != null) {
+      const existing = brief[k];
+      if (existing == null || (Array.isArray(existing) && existing.length === 0)) brief[k] = v;
+    }
   }
 }
