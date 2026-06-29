@@ -197,6 +197,12 @@ export const config = {
       process.env.GOOGLE_DRIVE_CLIENT_SECRET,
   ),
   gmailSendFrom: process.env.GMAIL_SEND_FROM || "",
+  /**
+   * Gmail ingest poller (POST /api/email/poll-gmail, GitHub Actions cron) —
+   * exact recipient allowlist of the BMC business boxes. Gmail's `to:` search
+   * is fuzzy, so server-side header matching is the real gate. Comma-separated.
+   */
+  gmailIngestAddresses: process.env.GMAIL_INGEST_ADDRESSES || "",
   /** Bucket GCS para evidencias firmadas (opcional) */
   transportistaGcsBucket: process.env.TRANSPORTISTA_GCS_BUCKET || "",
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),

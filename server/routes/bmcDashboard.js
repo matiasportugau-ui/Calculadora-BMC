@@ -2804,6 +2804,26 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     res.json({ ok: true, data: d, provider, crmRow, messageId: messageId || null });
   });
 
+  // ── email/poll-gmail: server-side Gmail poll → loopback ingest. Triggered by
+  // the scheduled GitHub Actions cron (email-ingest-scheduled.yml). Same auth as
+  // ingest (API_AUTH_TOKEN | EMAIL_INGEST_TOKEN). Reuses the mounted Gmail OAuth
+  // secrets — no separate Cloud Run Job needed.
+  router.post("/email/poll-gmail", requireEmailIngestAuth, async (req, res) => {
+    try {
+      const { pollGmailOnce, isGmailPollConfigured } = await import("../lib/gmailPoll.js");
+      if (!isGmailPollConfigured()) {
+        return res.status(503).json({ ok: false, error: "gmail_poll_not_configured" });
+      }
+      const dryRun = req.body?.dry === true || req.query?.dry === "1";
+      const limit = Number(req.body?.limit || req.query?.limit || 50);
+      const summary = await pollGmailOnce({ dryRun, limit, logger: req.log || console });
+      return res.json(summary);
+    } catch (e) {
+      req.log?.error?.({ err: e }, "email/poll-gmail failed");
+      return res.status(500).json({ ok: false, error: e?.message || "poll_failed" });
+    }
+  });
+
   router.post("/crm/parse-conversation", async (req, res) => {
     const { dialogo } = req.body || {};
     if (!dialogo) return res.status(400).json({ ok: false, error: "Missing dialogo" });
