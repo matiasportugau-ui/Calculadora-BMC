@@ -113,6 +113,42 @@ export function useOmniAssignees(token) {
   return assignees;
 }
 
+// Internal operator notes for a conversation (collaboration; never sent to the
+// customer). Degrades to [] so the thread panel never breaks pre-migration.
+export function useOmniNotes(token, conversationId) {
+  const [notes, setNotes] = useState([]);
+
+  const reload = useCallback(async () => {
+    if (!token || !conversationId) return;
+    try {
+      const data = await omniFetch(token, `/api/omni/conversations/${conversationId}/notes`);
+      setNotes(data.notes || []);
+    } catch {
+      setNotes([]);
+    }
+  }, [token, conversationId]);
+
+  useEffect(() => {
+    setNotes([]);
+    reload();
+  }, [reload]);
+
+  const addNote = useCallback(
+    async (body) => {
+      const text = String(body || "").trim();
+      if (!token || !conversationId || !text) return;
+      await omniFetch(token, `/api/omni/conversations/${conversationId}/notes`, {
+        method: "POST",
+        body: JSON.stringify({ body: text }),
+      });
+      await reload();
+    },
+    [token, conversationId, reload],
+  );
+
+  return { notes, addNote, reload };
+}
+
 export function useOmniMessages(token, conversationId) {
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
