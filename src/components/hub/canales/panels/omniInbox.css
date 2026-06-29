@@ -129,6 +129,20 @@
 .omniNotes__add { display: flex; gap: 6px; }
 .omniNotes__input { flex: 1; padding: 4px 8px; font-size: 0.82rem; border: 1px solid #d0d5dd; border-radius: 6px; }
 
+/* AI copilot (inline thread assistant) */
+.omniCopilot { padding: 0.5rem 0.75rem; border-top: 1px solid var(--oi-border); background: #f5f7ff; display: flex; flex-direction: column; gap: 6px; }
+.omniCopilot__head { font-size: 0.72rem; font-weight: 700; color: #4a4af0; }
+.omniCopilot__chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.omniCopilot__chip { font-size: 0.76rem; padding: 3px 9px; border: 1px solid #c7ccf5; border-radius: 999px; background: #fff; color: #3838c0; cursor: pointer; }
+.omniCopilot__chip:hover:not(:disabled) { background: #eef0ff; }
+.omniCopilot__chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.omniCopilot__ask { padding: 5px 9px; font-size: 0.82rem; border: 1px solid #c7ccf5; border-radius: 8px; background: #fff; }
+.omniCopilot__status { font-size: 0.76rem; color: #6b6b8a; }
+.omniCopilot__status--err { color: #c0392b; }
+.omniCopilot__result { background: #fff; border: 1px solid #c7ccf5; border-radius: 8px; padding: 6px 8px; }
+.omniCopilot__text { margin: 0 0 6px; font: inherit; font-size: 0.82rem; color: #344054; white-space: pre-wrap; max-height: 180px; overflow-y: auto; }
+.omniCopilot__actions { display: flex; gap: 6px; }
+
 /* Composer */
 .omniComposer { position: relative; padding: 0.75rem; border-top: 1px solid var(--oi-border); display: flex; flex-direction: column; gap: 6px; }
 .omniComposer__textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 56px; font: inherit; font-size: 0.875rem; color: var(--oi-text); background: var(--oi-surface); border: 1px solid var(--oi-border); border-radius: var(--oi-radius-sm); padding: 0.5rem 0.6rem; }
