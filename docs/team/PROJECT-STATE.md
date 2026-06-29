@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-26
+**Última actualización:** 2026-06-29
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-29 (Market Intelligence — auth fix + DB migrations aplicadas):**
+`/hub/marketing` devolvía 401 a usuarios autenticados por usar `requireAuth` (solo token de servicio) + leer `bmc_cockpit_token` de localStorage. **Backend:** `requireAuth` → `requireServiceOrUser({ role: 'admin' })` en todas las rutas de `server/routes/marketing.js`. **Frontend:** `MarketingHubModule.jsx` usa `useBmcAuth().accessToken` en vez de localStorage (mismo patrón que el resto del hub). **DB:** 8 migraciones `bmc_market_intel` aplicadas a prod vía `npm run migrate:market-intel`. El módulo ahora funciona para usuarios con rol admin/superadmin.
 
 **2026-06-26 (Hotfix — `drive_config_unavailable` 503 en tab Drive):** Causa: tabla Postgres `identity.user_drive_config` **no existía en prod** (código desplegado 2026-06-24 pero migración pendiente). Aplicada idempotentemente `supabase/migrations/20260624000001_user_drive_config.sql` contra prod `DATABASE_URL` (verificado: tabla presente). **Nuevos:** `npm run identity:golive:apply`, `npm run identity:drive-config:check`, `scripts/check-drive-config-table.mjs` (paso 7 en `pre-deploy-check.sh`), mensaje operador en español vía `formatDriveConfigError()` en `driveConfigApi.js` / `DriveFolderConfig.jsx`. UAT: usuario autenticado debe poder elegir carpeta sin 503.
 

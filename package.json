@@ -14,6 +14,7 @@
     "quotation-preview:render": "node scripts/render-quotation-preview-html.mjs",
     "smoke:bmc-pdf": "node scripts/bmc-pdf-export-smoke.mjs",
     "preview:watch": "node scripts/preview-dev.mjs",
+    "design-preview:sync-static": "node scripts/sync-design-preview-static.mjs",
     "readme:generate": "node scripts/generate-readme-presentation.mjs",
     "readme:sync": "npm run version:data && node scripts/generate-readme-presentation.mjs",
     "readme:check": "node scripts/generate-readme-presentation.mjs --check",
