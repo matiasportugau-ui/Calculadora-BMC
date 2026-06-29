@@ -1,120 +1,61 @@
-# Email ingest — periodic invocation of /api/crm/ingest-email
+# Email ingest — scheduled (Gmail poller)
 #
-# Wraps `scripts/email-snapshot-ingest.mjs` so that the IMAP snapshot
-# maintained by the sibling repo `conexion-cuentas-email-agentes-bmc`
-# is dripped into CRM_Operativo throughout the business day.
+# Drives the BMC email module's unattended ingestion. Fires an authenticated
+# POST to the backend's /api/email/poll-gmail, which reads the Gmail inbox that
+# Cloudflare forwards the 8 BMC business boxes to, filters to the allowlist, and
+# ingests each new message into CRM_Operativo + the Omni inbox (AI-extracted).
 #
-# Why GitHub Actions cron and NOT Vercel Cron Jobs:
-#   - BMC's API runs on Cloud Run (service `panelin-calc`), not Vercel.
-#     Vercel Cron only fires GETs to Vercel functions — would require
-#     adding a Vercel API route just to relay the call, plus the snapshot
-#     (30 MB) can't sit comfortably inside a Vercel function payload.
-#   - The repo already has two scheduled GHA workflows that follow the
-#     same pattern: `smoke-prod-scheduled.yml` and
-#     `knowledge-antenna-scheduled.yml`. Staying inside Actions keeps
-#     ops simple and reuses the existing secrets surface.
-#   - The script is a Node CLI (`scripts/email-snapshot-ingest.mjs`) with
-#     dedupe state on disk — runs cleanly on an ubuntu-latest runner.
+# Why a thin curl (not a Node CLI): the Gmail user-OAuth secrets are already
+# mounted on the Cloud Run service, so the poll runs server-side. The runner
+# only needs API_AUTH_TOKEN (already a repo secret) to trigger it — no GCP
+# secret access, no separate Cloud Run Job, no Cloud Scheduler.
 #
-# Current status (Step 7 of the Admin Cot F1 plan):
-#   - workflow_dispatch (manual) is wired and ready to use against prod.
-#   - The recurring schedule is **commented out** until the snapshot
-#     source is reachable from GitHub Actions runners. See the runbook:
-#     docs/team/runbooks/email-ingest-cron.md
-#
-# The script reads `BMC_EMAIL_SNAPSHOT_PATH` (or a sibling-repo default).
-# In CI the snapshot can be supplied via either:
-#   (a) BMC_EMAIL_SNAPSHOT_URL secret → download into the workspace
-#   (b) the sibling repo cloned with a PAT — needs the repo on GitHub.
-#
-# Once one of those is wired, uncomment the `schedule:` block below to
-# turn on the cron (default cadence: every 30 min, business hours UY).
+# Replaces the old IMAP-snapshot approach (bmcuruguay migrated to Cloudflare→
+# Gmail; there is no IMAP box to snapshot). See PR introducing /api/email/poll-gmail.
 
 name: Email ingest — scheduled
 
 on:
   workflow_dispatch:
     inputs:
-      api_base:
-        description: "Override BMC_API_BASE (defaults to repo var or prod URL)"
-        required: false
-        default: ""
       limit:
         description: "Max messages to ingest in this run"
         required: false
-        default: "25"
+        default: "50"
       dry_run:
-        description: "Set to 1 to run the script in --dry-run mode"
+        description: "Set to 1 to run in dry mode (no writes, no labels)"
         required: false
         default: "0"
-  # schedule:
-  #   # Every 30 min during business hours UY (12-22 UTC, Mon-Fri).
-  #   # ~100 runs/week — enough to keep the inbox flowing without flooding the API.
-  #   - cron: "*/30 12-22 * * 1-5"
+  schedule:
+    # Every 30 min during UY business hours. Cron is UTC; UY is UTC-3, so
+    # 12-23 UTC ≈ 09:00-20:00 local, Mon-Fri.
+    - cron: "*/30 12-23 * * 1-5"
 
 jobs:
-  email-ingest:
-    name: ingest-snapshot
+  poll-gmail:
+    name: poll-gmail
     runs-on: ubuntu-latest
-    # Avoid stacking runs if the previous one is still going.
     concurrency:
       group: email-ingest-${{ github.ref }}
       cancel-in-progress: false
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "npm"
-
-      - name: Install dependencies (minimal)
-        run: npm ci --omit=optional --no-audit --no-fund
-
-      - name: Resolve snapshot
-        id: snapshot
+      - name: Trigger Gmail poll
         env:
-          BMC_EMAIL_SNAPSHOT_URL: ${{ secrets.BMC_EMAIL_SNAPSHOT_URL }}
-        run: |
-          set -e
-          mkdir -p .runtime
-          out=".runtime/snapshot-latest.json"
-          if [ -n "${BMC_EMAIL_SNAPSHOT_URL:-}" ]; then
-            echo "Downloading snapshot from secret URL…"
-            curl -fsSL "$BMC_EMAIL_SNAPSHOT_URL" -o "$out"
-            echo "snapshot-path=$out" >> "$GITHUB_OUTPUT"
-            echo "have-snapshot=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "BMC_EMAIL_SNAPSHOT_URL not set — skipping (workflow stays green)."
-            echo "have-snapshot=0" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Run ingest
-        if: steps.snapshot.outputs.have-snapshot == '1'
-        env:
-          BMC_API_BASE: ${{ github.event.inputs.api_base || vars.BMC_API_BASE_PROD || '' }}
-          BMC_EMAIL_SNAPSHOT_PATH: ${{ steps.snapshot.outputs.snapshot-path }}
-          EMAIL_INGEST_TOKEN: ${{ secrets.EMAIL_INGEST_TOKEN }}
+          BMC_API_BASE: ${{ vars.BMC_API_BASE_PROD || 'https://panelin-calc-642127786762.us-central1.run.app' }}
           API_AUTH_TOKEN: ${{ secrets.API_AUTH_TOKEN }}
+          LIMIT: ${{ github.event.inputs.limit || '50' }}
+          DRY: ${{ github.event.inputs.dry_run || '0' }}
         run: |
-          set -e
-          B="${BMC_API_BASE:-https://panelin-calc-q74zutv7dq-uc.a.run.app}"
-          export BMC_API_BASE="$B"
-          ARGS="--limit ${{ github.event.inputs.limit || '25' }}"
-          if [ "${{ github.event.inputs.dry_run }}" = "1" ]; then
-            ARGS="$ARGS --dry-run"
+          set -euo pipefail
+          if [ -z "${API_AUTH_TOKEN:-}" ]; then
+            echo "::error::API_AUTH_TOKEN secret not set"; exit 1
           fi
-          echo "Running: npm run email:ingest-snapshot -- $ARGS"
-          npm run email:ingest-snapshot -- $ARGS
-
-      - name: Summary
-        if: always()
-        run: |
-          if [ "${{ steps.snapshot.outputs.have-snapshot }}" = "1" ]; then
-            echo "::notice::Email ingest completed (snapshot was available)."
-          else
-            echo "::warning::Skipped — set BMC_EMAIL_SNAPSHOT_URL secret to enable. See docs/team/runbooks/email-ingest-cron.md"
-          fi
+          B="${BMC_API_BASE%/}"
+          DRY_BOOL=false; [ "$DRY" = "1" ] && DRY_BOOL=true
+          echo "POST $B/api/email/poll-gmail (limit=$LIMIT dry=$DRY_BOOL)"
+          RESP=$(curl -fsS --max-time 180 -X POST "$B/api/email/poll-gmail" \
+            -H "Authorization: Bearer $API_AUTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"limit\": $LIMIT, \"dry\": $DRY_BOOL}")
+          echo "Response: $RESP"
+          echo "::notice::Gmail poll → $RESP"
