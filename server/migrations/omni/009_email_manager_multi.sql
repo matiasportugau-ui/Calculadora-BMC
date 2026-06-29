@@ -71,11 +71,14 @@ CREATE INDEX IF NOT EXISTS omni_conversations_team_id ON omni_conversations(team
 CREATE INDEX IF NOT EXISTS omni_conversations_receiving_account_id ON omni_conversations(receiving_account_id) WHERE receiving_account_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS omni_conversations_snoozed_until ON omni_conversations(snoozed_until) WHERE snoozed_until IS NOT NULL;
 
--- 4) Account-aware dedup observability -----------------------------------------
--- The idempotency_key (built in adapters/emailIngest.js) now folds in the receiving
--- account so the same customer mail to two BMC boxes yields two conversations.
--- Record the account on the dedup row for traceability (nullable; non-email rows stay null).
-ALTER TABLE omni_ingest_dedup ADD COLUMN IF NOT EXISTS receiving_account VARCHAR(255);
+-- 4) Receiving account on conversations ----------------------------------------
+-- Threads are already separated by the Gmail threadId in
+-- adapters/emailIngest.js (channel_conversation_id = email:<threadId>), so dedup
+-- needs no account awareness today. Instead, normalizer.js stamps
+-- omni_conversations.receiving_account_id (added in step 3) best-effort after
+-- commit, matching message metadata.account → omni_email_accounts.email. If
+-- truly separate Gmail accounts are added later (threadIds could then collide
+-- across accounts), fold the account into the idempotency key at that point.
 
 -- 5) Seed the existing BMC mailboxes (idempotent) ------------------------------
 -- The 8 Cloudflare-forwarded business boxes already ingesting into Omni.

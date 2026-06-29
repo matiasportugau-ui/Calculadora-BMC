@@ -1,7 +1,7 @@
 // tests/omniConversationPatch.test.js — standalone (no DB/server) unit test for
 // PATCH /api/omni/conversations/:id validation. Run: `node tests/omniConversationPatch.test.js`.
 import assert from "node:assert/strict";
-import { buildConversationPatch } from "../server/lib/omni/conversationPatch.js";
+import { buildConversationPatch, isUuid } from "../server/lib/omni/conversationPatch.js";
 
 let passed = 0;
 function check(name, fn) {
@@ -101,6 +101,14 @@ check("snoozed_until: ISO ok, null un-snoozes, garbage rejected", () => {
     { col: "snoozed_until", value: null, cast: "timestamptz" },
   ]);
   assert.equal(buildConversationPatch({ snoozed_until: "not-a-date" }).error, "invalid_snooze");
+});
+
+check("isUuid: accepts canonical uuid, rejects junk/non-strings", () => {
+  assert.equal(isUuid(UUID), true);
+  assert.equal(isUuid("not-a-uuid"), false);
+  assert.equal(isUuid(""), false);
+  assert.equal(isUuid(42), false);
+  assert.equal(isUuid(null), false);
 });
 
 console.log(`\nomni conversationPatch: ${passed} checks passed`);

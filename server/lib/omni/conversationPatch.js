@@ -2,7 +2,8 @@
 // Kept separate from the route so it is unit-testable without a DB/HTTP server.
 import { ALLOWED_CONVERSATION_STATUSES } from "./conversationStatus.js";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (v) => typeof v === "string" && UUID_RE.test(v);
 
 /**
  * Validate an operator conversation patch.

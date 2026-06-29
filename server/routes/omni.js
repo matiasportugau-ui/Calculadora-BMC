@@ -25,7 +25,7 @@ import { syncDealToCrm } from "../lib/omni/deals/syncCrm.js";
 import { listSuggestions, resolveSuggestion } from "../lib/omni/orchestrator/suggestions.js";
 import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/evalFeedback.js";
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
-import { buildConversationPatch } from "../lib/omni/conversationPatch.js";
+import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
 
 function requireOmniDb(req, res, next) {
   const pool = getOmniPool(config.databaseUrl);
@@ -84,16 +84,30 @@ router.get(
     // assigned_to: a user UUID, or the sentinels 'me' / 'unassigned'.
     const assignedTo = req.query.assigned_to ? String(req.query.assigned_to) : null;
 
-    const params = [limit, offset];
-    const filters = [];
+    // Validate UUID-typed filters up front — otherwise the `::uuid` casts below
+    // throw at the DB layer and surface as a 500 on plain bad input.
+    if (teamId && !isUuid(teamId)) return res.status(400).json({ ok: false, error: "invalid_team_id" });
+    if (accountId && !isUuid(accountId)) return res.status(400).json({ ok: false, error: "invalid_account_id" });
+    if (assignedTo && assignedTo !== "me" && assignedTo !== "unassigned" && !isUuid(assignedTo)) {
+      return res.status(400).json({ ok: false, error: "invalid_assigned_to" });
+    }
+
+    // Legacy filters (channel/status) reference only pre-009 columns, so they are
+    // reused verbatim by the fallback query below.
+    const legacyParams = [limit, offset];
+    const legacyFilters = [];
     if (channel) {
-      params.push(channel);
-      filters.push(`c.channel = $${params.length}`);
+      legacyParams.push(channel);
+      legacyFilters.push(`c.channel = $${legacyParams.length}`);
     }
     if (status) {
-      params.push(status);
-      filters.push(`c.status = $${params.length}`);
+      legacyParams.push(status);
+      legacyFilters.push(`c.status = $${legacyParams.length}`);
     }
+
+    // Full filters add the email-manager (009) account/owner/team predicates.
+    const params = [...legacyParams];
+    const filters = [...legacyFilters];
     if (teamId) {
       params.push(teamId);
       filters.push(`c.team_id = $${params.length}::uuid`);
@@ -123,41 +137,47 @@ router.get(
       );
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    const legacyWhere = legacyFilters.length ? `WHERE ${legacyFilters.join(" AND ")}` : "";
 
-    const { rows } = await req.omniPool.query(
-      `SELECT
-         c.id,
-         c.contact_id,
-         c.channel,
-         c.channel_conversation_id,
-         c.subject,
-         c.status,
-         c.priority,
-         c.tags,
-         c.updated_at,
-         c.receiving_account_id,
-         c.assigned_to_user_id,
-         c.assigned_at,
-         c.team_id,
-         c.snoozed_until,
-         c.first_agent_reply_at,
-         co.name AS contact_name,
-         co.email AS contact_email,
-         co.wa_phone,
-         acc.email AS account_email,
-         acc.label AS account_label,
-         (SELECT COUNT(*)::int FROM omni_messages m WHERE m.conversation_id = c.id) AS message_count,
+    const baseCols = `c.id, c.contact_id, c.channel, c.channel_conversation_id, c.subject,
+         c.status, c.priority, c.tags, c.updated_at,
+         co.name AS contact_name, co.email AS contact_email, co.wa_phone`;
+    const aggCols = `(SELECT COUNT(*)::int FROM omni_messages m WHERE m.conversation_id = c.id) AS message_count,
          (SELECT COUNT(*)::int FROM omni_messages mu
             WHERE mu.conversation_id = c.id AND mu.sender = 'customer' AND mu.read_at IS NULL) AS unread_count,
-         (SELECT MAX(m2.created_at) FROM omni_messages m2 WHERE m2.conversation_id = c.id) AS last_message_at
+         (SELECT MAX(m2.created_at) FROM omni_messages m2 WHERE m2.conversation_id = c.id) AS last_message_at`;
+
+    let rows;
+    try {
+      ({ rows } = await req.omniPool.query(
+        `SELECT
+         ${baseCols},
+         c.receiving_account_id, c.assigned_to_user_id, c.assigned_at, c.team_id,
+         c.snoozed_until, c.first_agent_reply_at,
+         acc.email AS account_email, acc.label AS account_label,
+         ${aggCols}
        FROM omni_conversations c
        JOIN omni_contacts co ON co.id = c.contact_id
        LEFT JOIN omni_email_accounts acc ON acc.id = c.receiving_account_id
        ${where}
        ORDER BY c.updated_at DESC
        LIMIT $1 OFFSET $2`,
-      params,
-    );
+        params,
+      ));
+    } catch (e) {
+      // Pre-009 schema (column/table not migrated yet): fall back to the legacy
+      // projection so the inbox keeps working until migration 009 is applied.
+      if (e?.code !== "42703" && e?.code !== "42P01") throw e;
+      ({ rows } = await req.omniPool.query(
+        `SELECT ${baseCols}, ${aggCols}
+       FROM omni_conversations c
+       JOIN omni_contacts co ON co.id = c.contact_id
+       ${legacyWhere}
+       ORDER BY c.updated_at DESC
+       LIMIT $1 OFFSET $2`,
+        legacyParams,
+      ));
+    }
 
     res.json({
       ok: true,
