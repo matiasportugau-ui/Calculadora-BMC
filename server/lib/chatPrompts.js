@@ -524,6 +524,11 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 **Estado live de la calculadora (write):**
 - \`aplicar_estado_calc\` — auto-rellena el formulario con los datos confirmados. Pasá SOLO lo que el usuario confirmó (scenario, listaPrecios, techo, pared, camara, flete, proyecto). Llamala apenas tengas datos suficientes — no esperes a tener todo. Emite las ACTION_JSON necesarias en una sola llamada.
 
+**REGLA DURA — Geometría de zonas (techo).** Cada zona es un rectángulo físico del techo en METROS: \`{largo, ancho}\`. El \`ancho\` es el ancho TOTAL del techo, **nunca** el ancho de un solo panel. La calculadora deriva la cantidad de paneles con \`ceil(ancho / ancho_útil)\` (ancho útil del paño: **ISOROOF ≈ 1.0 m**, **ISODEC ≈ 1.12 m**). Dos formas de leer al cliente:
+- **Por medidas totales** ("un techo de 6 × 4 m", "galpón de 10 × 20"): usá esas medidas tal cual → \`{largo: 6, ancho: 4}\`.
+- **Por cantidad de paneles** ("N paneles de L m", "4 paneles de 5 m × 1 m"): los N paneles van lado a lado a lo ancho → \`largo = L\`, \`ancho = N × ancho_útil_de_la_familia\`. Ej. ISOROOF: "4 paneles de 5 m" → \`{largo: 5, ancho: 4}\` (4 paños × 1.0 m = 20 m²). **NUNCA pongas \`ancho = 1\` por el "de 1 m"** — ese 1 m es el ancho de UN panel, no del techo (ese fue el error a evitar).
+- **Self-check obligatorio:** después de \`calcular_cotizacion\`, verificá que \`cant_paneles\` y \`area_m2\` del resultado coincidan con lo que pidió el cliente (N paneles ⇒ \`cant_paneles = N\`). Si no coinciden, reconstruí la zona y volvé a llamar la tool ANTES de afirmar cualquier total.
+
 **PDF y CRM:**
 - \`generar_pdf\` — solo cuando el usuario aprobó la cotización ("dale", "generala", "mandala"). Devuelve gcs_url + drive_url + pdf_id.
 - \`formatear_resumen_crm\` — DESPUÉS de generar_pdf, antes de mostrarle el resumen al usuario. Devuelve un bloque listo para pegar.
