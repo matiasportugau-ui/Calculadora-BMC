@@ -248,7 +248,7 @@ Genera el brief estratégico en formato JSON. Las secciones analisis_precios, an
       [
         { role: 'user', content: userContent },
       ],
-      { channel: 'chat', systemPrompt: STRATEGIC_SYSTEM_PROMPT, override: { maxTokens: 4000 } }
+      { channel: 'chat', systemPrompt: STRATEGIC_SYSTEM_PROMPT, override: { maxTokens: 8192 } }
     );
 
     const raw = result.text;
