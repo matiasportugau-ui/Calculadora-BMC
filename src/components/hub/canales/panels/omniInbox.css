@@ -69,6 +69,11 @@
 .omniRow__sub { display: flex; align-items: center; gap: 0.4rem; margin-top: 2px; }
 .omniRow__chip { font-size: 0.625rem; font-weight: 700; padding: 1px 6px; border-radius: 99px; color: #fff; letter-spacing: 0.02em; }
 .omniRow__count { font-size: 0.6875rem; color: var(--oi-text-2); }
+.omniRow__account {
+  font-size: 0.625rem; font-weight: 600; padding: 1px 6px; border-radius: 99px;
+  background: var(--oi-surface-2, #eef1f5); color: var(--oi-text-2);
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .omniRow__right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .omniRow__unread { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--oi-accent); color: var(--oi-accent-fg); font-size: 0.625rem; font-weight: 700; display: grid; place-items: center; }
 

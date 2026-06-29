@@ -137,6 +137,27 @@ export async function normalizeAndPersist(rawEvent, opts = {}) {
 
     await client.query("COMMIT");
 
+    // Email manager (009): stamp the receiving mailbox on the conversation so the
+    // inbox can filter by account and replies leave from the right identity. Done
+    // AFTER COMMIT and best-effort: if omni_email_accounts / receiving_account_id
+    // aren't migrated yet, this must never undo the already-persisted message.
+    if (event.channel === "email") {
+      const acct = event.message?.metadata?.account;
+      if (acct) {
+        try {
+          await client.query(
+            `UPDATE omni_conversations c
+                SET receiving_account_id = COALESCE(c.receiving_account_id, a.id)
+               FROM omni_email_accounts a
+              WHERE c.id = $1 AND lower(a.email) = lower($2)`,
+            [conversation.conversation_id, String(acct).slice(0, 255)],
+          );
+        } catch (e) {
+          opts.logger?.warn?.({ err: e?.message }, "omni receiving_account stamp skipped");
+        }
+      }
+    }
+
     const result = {
       duplicate: false,
       contact_id: conversation.contact_id || contact.contact_id,
