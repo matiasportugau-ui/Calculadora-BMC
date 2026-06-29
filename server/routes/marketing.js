@@ -11,6 +11,7 @@ import { requireServiceOrUser } from '../middleware/requireServiceOrUser.js';
 const requireMarketing = requireServiceOrUser({ role: 'admin' });
 import { listPendingTasks, updateTaskStatus } from '../lib/marketIntel/mysteryShoppingQueue.js';
 import { runEtl } from '../lib/marketIntel/etl/runner.js';
+import { generateStrategicBrief } from '../lib/marketIntel/strategicBrief.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
@@ -182,6 +183,37 @@ router.post('/etl/run', requireMarketing, (req, res) => {
     message: 'ETL run started',
     hint: 'Monitor status at GET /api/marketing/dashboard/summary',
   });
+});
+
+// ─── POST /api/marketing/ai/brief ────────────────────────────────────
+router.post('/ai/brief', requireMarketing, async (req, res) => {
+  try {
+    const brief = await generateStrategicBrief();
+    if (brief.error) {
+      return res.status(502).json({ error: brief.error, generated_at: brief.generated_at });
+    }
+    res.json(brief);
+  } catch (err) {
+    log.error({ err, route: 'POST /ai/brief' }, 'strategic brief failed');
+    res.status(503).json({ error: 'Brief generation failed' });
+  }
+});
+
+// ─── GET /api/marketing/product-intelligence ─────────────────────────
+router.get('/product-intelligence', requireMarketing, async (req, res) => {
+  try {
+    const { getEtlSummary, getPriceHistory, getRecentAlerts, PRODUCT_CATEGORIES } =
+      await import('../lib/marketIntel/productIntelligence.js');
+    const [summary, recentAlerts, priceHistory] = await Promise.all([
+      getEtlSummary(),
+      getRecentAlerts(),
+      getPriceHistory(7),
+    ]);
+    res.json({ categories: PRODUCT_CATEGORIES, summary, recent_alerts: recentAlerts, price_history: priceHistory });
+  } catch (err) {
+    log.error({ err, route: 'GET /product-intelligence' }, 'product intel failed');
+    res.status(503).json({ error: 'Product intelligence unavailable' });
+  }
 });
 
 export default router;
