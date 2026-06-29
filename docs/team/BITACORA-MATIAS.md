@@ -164,3 +164,21 @@ gate:local:   pendiente correr al final de la sesión
 **Próximo paso:** Merge `feat/centralized-brain` → main + deploy panelin-calc `/chat` + Vercel (botón 💬).
 
 **Refs:** Handoff: `docs/team/HANDOFF-2026-06-25-0744.md`
+
+---
+
+## 2026-06-29 N — Gemini ejecuta la calculadora + interpretación de zonas + hardening
+
+**Contexto:** con Claude sin saldo, el agente Panelin cae al fallback Gemini, que **no ejecutaba la calculadora** (narraba `<tool_code>` como texto → precios inventados). Pedido: que el fallback cotice con números reales, en prod.
+
+**Acciones:** 3 PRs encadenados, todos mergeados y deployados.
+- **#472** — Gemini native function-calling: `server/lib/geminiTools.js` (adapta `AGENT_TOOLS`→`functionDeclarations`) + loop de 8 rondas en el branch gemini de `agentChat.js` (reusa `executeTool` + auth-gates + emits de Claude). **Gotcha:** `gemini-2.5-flash` "piensa" por defecto → narra en vez de ejecutar; fix `thinkingConfig.thinkingBudget:0`. ANY mode inservible (42 tools → 400); va AUTO. Test `tests/geminiTools.test.js` (137 asserts).
+- **#475** — interpretación cantidad→zonas: "N paneles de L m" → `{largo:L, ancho:N×ancho_útil}` (ISOROOF 1.0m, ISODEC 1.12m); "techo de 6×4m" tal cual. Nueva "REGLA DURA — Geometría de zonas" en `buildSystemPrompt()` (`chatPrompts.js`).
+- **#478** — hardening post-review adversarial: abort-checks en el loop gemini, log de observabilidad ronda-0, scope SOLO-TECHO (pared usa `perimetro`), ejemplo ISODEC, self-check apretado.
+- Invariante registrado en memoria: toda superficie IA cotiza solo vía la calculadora nativa, nunca de cabeza.
+
+**Verificación (live prod, Cloud Run rev `00630-zct`, forzando gemini):** "4 paneles de 5m" → 4 paneles / 20 m² / USD 1702.68 ✓; frase ambigua "5m×1m" ahora confirma la interpretación antes de cotizar ✓; brain `VITE_FEATURE_BRAIN=true` + modelo `gemini-2.5-flash` confirmados en la rev viva. `gate:local` verde en cada PR.
+
+**Próximo paso:** decidir si en la frase ambigua "5m×1m" el agente debe auto-asumir 20 m² o seguir confirmando (ablande de 1 línea en `chatPrompts.js`). Opcional: Fase 2 del brain (bidireccional). Path no-streaming `agentCore.js` se deja text-only por decisión del usuario.
+
+**Refs:** PRs #472 / #475 / #478. Handoff: `docs/team/HANDOFF-2026-06-29-gemini-tools-quote-interp.md`.
