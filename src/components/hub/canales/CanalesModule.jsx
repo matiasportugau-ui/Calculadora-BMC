@@ -17,6 +17,7 @@ const UnifiedContactsPanel = React.lazy(() =>
   import("./panels/UnifiedContactsPanel.jsx")
 );
 const OmniInboxPanel = React.lazy(() => import("./panels/OmniInboxPanel.jsx"));
+const OmniAdminCockpit = React.lazy(() => import("./panels/OmniAdminCockpit.jsx"));
 const OmniDealsKanban = React.lazy(() => import("./panels/OmniDealsKanban.jsx"));
 
 const OMNI_INBOX_ENABLED = import.meta.env.VITE_OMNI_INBOX === "1";
@@ -29,6 +30,7 @@ const OMNI_DEALS_ENABLED = import.meta.env.VITE_OMNI_DEALS === "1";
 function TabBar({ activeTab, onTabChange }) {
   const tabs = [
     ...(OMNI_INBOX_ENABLED ? [{ id: "omni", label: "Omni Inbox" }] : []),
+    ...(OMNI_INBOX_ENABLED ? [{ id: "cockpit", label: "Cockpit" }] : []),
     ...(OMNI_DEALS_ENABLED ? [{ id: "deals", label: "Pipeline Deals" }] : []),
     { id: "ml", label: "ML Manager" },
     { id: "wa", label: "WA Inbox" },
@@ -146,6 +148,9 @@ function CanalesModuleInner() {
         <Suspense fallback={<LoadingFallback />}>
           {activeTab === "omni" && OMNI_INBOX_ENABLED && (
             <OmniInboxPanel token={accessToken} />
+          )}
+          {activeTab === "cockpit" && OMNI_INBOX_ENABLED && (
+            <OmniAdminCockpit token={accessToken} />
           )}
           {activeTab === "deals" && OMNI_DEALS_ENABLED && (
             <OmniDealsKanban deals={deals} loading={dealsLoading} onMoveDeal={moveDeal} />
