@@ -19,7 +19,10 @@ async function omniFetch(token, path, options = {}) {
   return data;
 }
 
-export function useOmniConversations(token, { channel, status, limit = 50 } = {}) {
+export function useOmniConversations(
+  token,
+  { channel, status, accountId, assignedTo, teamId, limit = 50 } = {},
+) {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -32,6 +35,9 @@ export function useOmniConversations(token, { channel, status, limit = 50 } = {}
       const params = new URLSearchParams({ limit: String(limit) });
       if (channel) params.set("channel", channel);
       if (status) params.set("status", status);
+      if (accountId) params.set("account_id", accountId);
+      if (assignedTo) params.set("assigned_to", assignedTo);
+      if (teamId) params.set("team_id", teamId);
       const data = await omniFetch(token, `/api/omni/conversations?${params}`);
       setConversations(data.conversations || []);
     } catch (e) {
@@ -39,7 +45,7 @@ export function useOmniConversations(token, { channel, status, limit = 50 } = {}
     } finally {
       setLoading(false);
     }
-  }, [token, channel, status, limit]);
+  }, [token, channel, status, accountId, assignedTo, teamId, limit]);
 
   useEffect(() => {
     reload();
@@ -59,6 +65,29 @@ export function useOmniConversations(token, { channel, status, limit = 50 } = {}
   );
 
   return { conversations, loading, error, reload, updateConversation };
+}
+
+// Email-manager (009): list of receiving mailboxes, for the inbox account filter.
+// Degrades to [] if the endpoint/table isn't migrated yet (never blocks the panel).
+export function useOmniAccounts(token) {
+  const [accounts, setAccounts] = useState([]);
+
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    omniFetch(token, "/api/omni/accounts")
+      .then((data) => {
+        if (alive) setAccounts(data.accounts || []);
+      })
+      .catch(() => {
+        if (alive) setAccounts([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [token]);
+
+  return accounts;
 }
 
 export function useOmniMessages(token, conversationId) {

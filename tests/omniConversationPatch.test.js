@@ -58,4 +58,49 @@ check("multiple fields combine in order", () => {
   );
 });
 
+// ── Email-manager fields (009): assignment / team / snooze ──────────────────
+const UUID = "11111111-2222-3333-4444-555555555555";
+
+check("assign: valid uuid sets owner + stamps assigned_at", () => {
+  const r = buildConversationPatch({ assigned_to_user_id: UUID });
+  assert.equal(r.fields[0].col, "assigned_to_user_id");
+  assert.equal(r.fields[0].value, UUID);
+  assert.equal(r.fields[0].cast, "uuid");
+  assert.equal(r.fields[1].col, "assigned_at");
+  assert.ok(r.fields[1].value instanceof Date);
+});
+
+check("assign: null clears owner + assigned_at", () => {
+  const r = buildConversationPatch({ assigned_to_user_id: null });
+  assert.deepEqual(
+    r.fields.map((f) => [f.col, f.value]),
+    [["assigned_to_user_id", null], ["assigned_at", null]],
+  );
+});
+
+check("assign: non-uuid rejected", () => {
+  assert.equal(buildConversationPatch({ assigned_to_user_id: "bob" }).error, "invalid_assignee");
+  assert.equal(buildConversationPatch({ assigned_to_user_id: 42 }).error, "invalid_assignee");
+});
+
+check("team_id: valid uuid / null clear / invalid", () => {
+  assert.deepEqual(buildConversationPatch({ team_id: UUID }).fields, [
+    { col: "team_id", value: UUID, cast: "uuid" },
+  ]);
+  assert.deepEqual(buildConversationPatch({ team_id: null }).fields, [
+    { col: "team_id", value: null, cast: "uuid" },
+  ]);
+  assert.equal(buildConversationPatch({ team_id: "nope" }).error, "invalid_team");
+});
+
+check("snoozed_until: ISO ok, null un-snoozes, garbage rejected", () => {
+  const r = buildConversationPatch({ snoozed_until: "2030-01-01T12:00:00.000Z" });
+  assert.equal(r.fields[0].col, "snoozed_until");
+  assert.ok(r.fields[0].value instanceof Date);
+  assert.deepEqual(buildConversationPatch({ snoozed_until: null }).fields, [
+    { col: "snoozed_until", value: null, cast: "timestamptz" },
+  ]);
+  assert.equal(buildConversationPatch({ snoozed_until: "not-a-date" }).error, "invalid_snooze");
+});
+
 console.log(`\nomni conversationPatch: ${passed} checks passed`);

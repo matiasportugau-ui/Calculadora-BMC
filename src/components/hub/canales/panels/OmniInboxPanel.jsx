@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useOmniConversations } from "../../../../hooks/useOmniConversations.js";
+import { useOmniConversations, useOmniAccounts } from "../../../../hooks/useOmniConversations.js";
 import OmniThreadPanel from "./OmniThreadPanel.jsx";
 import OmniContactSidebar from "./OmniContactSidebar.jsx";
 import {
@@ -27,11 +27,17 @@ export default function OmniInboxPanel({ token }) {
   const [selectedId, setSelectedId] = useState(null);
   const [channelFilter, setChannelFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [accountFilter, setAccountFilter] = useState("");
+  const [assignedFilter, setAssignedFilter] = useState(""); // "" | "me" | "unassigned"
   const [search, setSearch] = useState("");
+
+  const accounts = useOmniAccounts(token);
 
   const { conversations, loading, error, reload, updateConversation } = useOmniConversations(token, {
     channel: channelFilter || undefined,
     status: statusFilter || undefined,
+    accountId: accountFilter || undefined,
+    assignedTo: assignedFilter || undefined,
   });
 
   // Client-side search over the loaded page (server-side search is a deferred feature).
@@ -81,6 +87,31 @@ export default function OmniInboxPanel({ token }) {
           <option value="ml">MercadoLibre</option>
           <option value="email">Email</option>
         </select>
+        {accounts.length > 0 && (
+          <select
+            className="omniInbox__select"
+            value={accountFilter}
+            onChange={(e) => setAccountFilter(e.target.value)}
+            aria-label="Casilla"
+          >
+            <option value="">Todas las casillas</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label || a.email}
+              </option>
+            ))}
+          </select>
+        )}
+        <select
+          className="omniInbox__select"
+          value={assignedFilter}
+          onChange={(e) => setAssignedFilter(e.target.value)}
+          aria-label="Asignación"
+        >
+          <option value="">Todas</option>
+          <option value="me">Mías</option>
+          <option value="unassigned">Sin asignar</option>
+        </select>
         <button type="button" className="omniInbox__btn" onClick={reload}>
           Actualizar
         </button>
@@ -122,6 +153,11 @@ export default function OmniInboxPanel({ token }) {
                     >
                       {ch.short}
                     </span>
+                    {(c.account_label || c.account_email) && (
+                      <span className="omniRow__account" title={c.account_email || ""}>
+                        {c.account_label || c.account_email}
+                      </span>
+                    )}
                     {c.status && c.status !== "open" && (
                       <span className={`omniPill omniPill--${st.tone}`}>{st.label}</span>
                     )}

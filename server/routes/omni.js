@@ -49,6 +49,27 @@ router.get("/omni/health", requireOmniDb, async (req, res) => {
   }
 });
 
+// Email-manager account registry (009) — powers the inbox account filter and the
+// "received at" badge. Read-only list; account management is admin-only (later phase).
+router.get(
+  "/omni/accounts",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    try {
+      const { rows } = await req.omniPool.query(
+        `SELECT id, email, label, team_id, enabled, health
+           FROM omni_email_accounts
+          ORDER BY label NULLS LAST, email`,
+      );
+      res.json({ ok: true, accounts: rows });
+    } catch (e) {
+      // Pre-migration safety: degrade to empty rather than 500 the panel.
+      res.json({ ok: true, accounts: [], degraded: e.code || "accounts_unavailable" });
+    }
+  },
+);
+
 router.get(
   "/omni/conversations",
   requireGrant.read("canales"),
@@ -58,6 +79,10 @@ router.get(
     const offset = Math.max(Number(req.query.offset) || 0, 0);
     const channel = req.query.channel ? String(req.query.channel) : null;
     const status = req.query.status ? String(req.query.status) : null;
+    const teamId = req.query.team_id ? String(req.query.team_id) : null;
+    const accountId = req.query.account_id ? String(req.query.account_id) : null;
+    // assigned_to: a user UUID, or the sentinels 'me' / 'unassigned'.
+    const assignedTo = req.query.assigned_to ? String(req.query.assigned_to) : null;
 
     const params = [limit, offset];
     const filters = [];
@@ -68,6 +93,34 @@ router.get(
     if (status) {
       params.push(status);
       filters.push(`c.status = $${params.length}`);
+    }
+    if (teamId) {
+      params.push(teamId);
+      filters.push(`c.team_id = $${params.length}::uuid`);
+    }
+    if (accountId) {
+      params.push(accountId);
+      filters.push(`c.receiving_account_id = $${params.length}::uuid`);
+    }
+    if (assignedTo === "unassigned") {
+      filters.push(`c.assigned_to_user_id IS NULL`);
+    } else if (assignedTo === "me") {
+      params.push(req.user.id);
+      filters.push(`c.assigned_to_user_id = $${params.length}::uuid`);
+    } else if (assignedTo) {
+      params.push(assignedTo);
+      filters.push(`c.assigned_to_user_id = $${params.length}::uuid`);
+    }
+
+    // Team isolation (multi-user): non-admin operators see conversations with no
+    // team plus those in teams they belong to. Admin/superadmin see everything.
+    // (Safe before any teams exist — all conversations start with team_id NULL.)
+    const role = req.user?.role;
+    if (role !== "admin" && role !== "superadmin") {
+      params.push(req.user.id);
+      filters.push(
+        `(c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`,
+      );
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
 
@@ -82,15 +135,24 @@ router.get(
          c.priority,
          c.tags,
          c.updated_at,
+         c.receiving_account_id,
+         c.assigned_to_user_id,
+         c.assigned_at,
+         c.team_id,
+         c.snoozed_until,
+         c.first_agent_reply_at,
          co.name AS contact_name,
          co.email AS contact_email,
          co.wa_phone,
+         acc.email AS account_email,
+         acc.label AS account_label,
          (SELECT COUNT(*)::int FROM omni_messages m WHERE m.conversation_id = c.id) AS message_count,
          (SELECT COUNT(*)::int FROM omni_messages mu
             WHERE mu.conversation_id = c.id AND mu.sender = 'customer' AND mu.read_at IS NULL) AS unread_count,
          (SELECT MAX(m2.created_at) FROM omni_messages m2 WHERE m2.conversation_id = c.id) AS last_message_at
        FROM omni_conversations c
        JOIN omni_contacts co ON co.id = c.contact_id
+       LEFT JOIN omni_email_accounts acc ON acc.id = c.receiving_account_id
        ${where}
        ORDER BY c.updated_at DESC
        LIMIT $1 OFFSET $2`,
@@ -181,7 +243,8 @@ router.patch(
       `UPDATE omni_conversations
          SET ${sets.join(", ")}, updated_at = now()
        WHERE id = $1
-       RETURNING id, channel, channel_conversation_id, subject, status, priority, tags, updated_at`,
+       RETURNING id, channel, channel_conversation_id, subject, status, priority, tags,
+                 assigned_to_user_id, assigned_at, team_id, snoozed_until, receiving_account_id, updated_at`,
       params,
     );
     if (!rows[0]) {
