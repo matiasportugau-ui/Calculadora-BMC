@@ -102,6 +102,23 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
     }
   };
 
+  // Snooze: set status + a concrete reopen timestamp. The in-process snooze
+  // worker (server/lib/omni/snoozeWorker.js) flips it back to 'open' once the
+  // window passes. Without snoozed_until the conversation would be hidden forever.
+  const handleSnooze = async (hours) => {
+    if (!onUpdateConversation || updating || !hours) return;
+    setUpdating(true);
+    try {
+      const until = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+      await onUpdateConversation(conversationId, { status: "snoozed", snoozed_until: until });
+      await reloadThread();
+    } catch {
+      // Best-effort: swallow so the onChange handler can't reject unhandled.
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleAssign = async (userId) => {
     if (!onUpdateConversation || updating) return;
     setUpdating(true);
@@ -212,14 +229,23 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
             </button>
           ) : (
             <>
-              <button
-                type="button"
-                className="omniInbox__btn"
-                disabled={updating || conversation?.status === "snoozed"}
-                onClick={() => handleStatus("snoozed")}
+              <select
+                className="omniInbox__btn omniThread__snooze"
+                value=""
+                disabled={updating}
+                onChange={(e) => {
+                  if (e.target.value) handleSnooze(Number(e.target.value));
+                  e.target.value = "";
+                }}
+                aria-label="Posponer conversación"
+                title="Posponer (reabre sola al vencer)"
               >
-                Posponer
-              </button>
+                <option value="">Posponer…</option>
+                <option value="1">1 hora</option>
+                <option value="4">4 horas</option>
+                <option value="24">1 día</option>
+                <option value="72">3 días</option>
+              </select>
               <button
                 type="button"
                 className="omniInbox__btn"
