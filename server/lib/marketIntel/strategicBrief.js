@@ -115,10 +115,10 @@ Debes responder ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional
 ## REGLAS ESTRICTAS
 - NO incluyas texto fuera del JSON. La respuesta debe comenzar exactamente con '{' y terminar exactamente con '}'.
 - NO uses markdown, NO uses bloques de código, NO uses texto introductorio ni conclusivo.
-- resumen_ejecutivo debe ser EXACTAMENTE 2-3 oraciones cortas, NO un análisis completo. NO incluyas JSON anidado dentro de resumen_ejecutivo.
+- resumen_ejecutivo debe ser una cadena de texto de 2-3 oraciones cortas. NO pongas JSON dentro de este campo.
 - Cada array (oportunidades, senalas, recomendaciones) debe tener AL MENOS 2 elementos.
 - analisis_precios, analisis_ads y analisis_ml son TODOS obligatorios.
-- SIEMPORE incluye brechas de precio en analisis_precios.brechas aunque sean estimadas.
+- Cada campo del JSON raíz debe contener el tipo de dato correcto (string, array, object). No conviertas objetos/arrays a string.
 
 ## PRINCIPIOS DE ANÁLISIS
 1. Identifica productos con brecha de precio favorable (oportunidad de margen).
@@ -252,7 +252,7 @@ Genera el brief estratégico en formato JSON. Las secciones analisis_precios, an
     );
 
     const raw = result.text;
-    log.info({ raw_preview: raw.slice(0, 300), provider: result.provider }, 'AI raw response');
+    log.info({ raw_preview: raw.slice(0, 2000), provider: result.provider }, 'AI raw response');
 
     let brief;
     const parseJson = (text) => {
@@ -277,6 +277,39 @@ Genera el brief estratégico en formato JSON. Las secciones analisis_precios, an
       } catch (secondErr) {
         log.error({ err: secondErr.message, raw: raw.slice(0, 1000) }, 'all JSON parse strategies failed');
         brief = { resumen_ejecutivo: raw, oportunidades: [], senalas: [], recomendaciones: [], categorias: [] };
+      }
+    }
+
+    if (brief.resumen_ejecutivo && typeof brief.resumen_ejecutivo === 'string') {
+      const trimmed = brief.resumen_ejecutivo.trim();
+      if (trimmed.startsWith('{')) {
+        try {
+          const nested = JSON.parse(trimmed);
+          for (const [k, v] of Object.entries(nested)) {
+            if (k === 'resumen_ejecutivo') {
+              if (typeof v === 'string' && !v.trim().startsWith('{')) {
+                brief.resumen_ejecutivo = v;
+              }
+            } else if (v != null) {
+              const existing = brief[k];
+              if (existing == null || (Array.isArray(existing) && existing.length === 0) || (typeof existing === 'object' && !Array.isArray(existing) && Object.keys(existing).length === 0)) {
+                brief[k] = v;
+              }
+            }
+          }
+          if (typeof brief.resumen_ejecutivo === 'string' && brief.resumen_ejecutivo.trim().startsWith('{')) {
+            const parts = [];
+            if (Array.isArray(brief.oportunidades) && brief.oportunidades.length) parts.push(`${brief.oportunidades.length} oportunidades`);
+            if (Array.isArray(brief.recomendaciones) && brief.recomendaciones.length) parts.push(`${brief.recomendaciones.length} recomendaciones`);
+            if (Array.isArray(brief.senalas) && brief.senalas.length) parts.push(`${brief.senalas.length} señales`);
+            if (brief.analisis_precios?.brechas?.length) parts.push(`${brief.analisis_precios.brechas.length} brechas de precio`);
+            brief.resumen_ejecutivo = parts.length
+              ? `Análisis generado: ${parts.join(', ')}. Ver secciones detalladas abajo.`
+              : 'Brief estratégico generado con análisis de mercado.';
+          }
+        } catch {
+          // left as-is
+        }
       }
     }
 
