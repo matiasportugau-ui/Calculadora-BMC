@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveEmailInboxRepoRoot } from "./emailInboxRepoResolve.js";
+import { isGmailSendConfigured, sendGmailReply } from "./gmailSend.js";
 
 let _accountsCache = null;
 
@@ -69,6 +70,14 @@ export async function sendEmailReply(args) {
   const { account, to, subject, text, inReplyTo } = args || {};
   const recipient = extractEmailAddress(to);
   if (!recipient) throw new Error("email_reply_no_recipient");
+
+  // Prefer the Gmail API when configured: the per-casilla Netuy SMTP boxes are
+  // dead (bmcuruguay.com.uy moved to Cloudflare→Gmail). SMTP stays as a fallback
+  // for any casilla still on a live host. Set `preferSmtp:true` to force SMTP.
+  const env = args.env || process.env;
+  if (args.preferSmtp !== true && typeof args.sendMail !== "function" && isGmailSendConfigured(env)) {
+    return sendGmailReply({ to: recipient, subject, text, inReplyTo, from: args.from, env, sendRaw: args.sendRaw });
+  }
 
   const smtp = resolveCasillaSmtp(account, args);
   if (!smtp) {

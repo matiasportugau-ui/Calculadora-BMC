@@ -2629,7 +2629,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 
   // ── ingest-email: parsea email + escribe en CRM_Operativo — auth obligatoria (API_AUTH_TOKEN o EMAIL_INGEST_TOKEN)
   router.post("/crm/ingest-email", requireEmailIngestAuth, async (req, res) => {
-    const { asunto, cuerpo, remitente, messageId, account } = req.body || {};
+    const { asunto, cuerpo, remitente, messageId, threadId, account } = req.body || {};
     if (!cuerpo) return res.status(400).json({ ok: false, error: "Missing cuerpo" });
 
     // Idempotency: the unattended ingester (Cloud Run Job) re-sends the same
@@ -2792,7 +2792,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
         void shadowWriteEmailIngest({
           config,
           logger: console,
-          payload: { asunto, cuerpo, remitente, messageId, parsed: d, crmRow },
+          payload: { asunto, cuerpo, remitente, messageId, threadId, account, parsed: d, crmRow },
         }).catch((e) => console.warn("[Email] omni shadow failed:", e?.message));
         // Record idempotency + reply metadata only after a successful write.
         await markIngested(ingestPool, { messageKey: messageId, account, messageId, remitente, crmRow });
