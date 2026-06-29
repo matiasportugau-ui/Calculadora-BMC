@@ -187,14 +187,15 @@ export const config = {
   /**
    * Gmail-API send (user-OAuth) — preferred reply transport now that the Netuy
    * SMTP boxes are dead (domain moved to Cloudflare→Gmail). Token is minted by
-   * the sibling pipeline's `gmail-auth` (scope gmail.send), reusing the Drive
-   * OAuth client. Optional GMAIL_SEND_FROM must be a verified "Send mail as"
-   * alias on the authenticated account, else Gmail stamps the account address.
+   * the sibling pipeline's `gmail-auth` (scope gmail.send) on the dedicated
+   * GMAIL_OAUTH_CLIENT_ID/SECRET client (separate from Drive to avoid mutual
+   * refresh-token revocation). Optional GMAIL_SEND_FROM must be a verified
+   * "Send mail as" alias on the authenticated account, else Gmail stamps it.
    */
   gmailSendConfigured: Boolean(
     process.env.GMAIL_INGEST_REFRESH_TOKEN &&
-      process.env.GOOGLE_DRIVE_CLIENT_ID &&
-      process.env.GOOGLE_DRIVE_CLIENT_SECRET,
+      process.env.GMAIL_OAUTH_CLIENT_ID &&
+      process.env.GMAIL_OAUTH_CLIENT_SECRET,
   ),
   gmailSendFrom: process.env.GMAIL_SEND_FROM || "",
   /**

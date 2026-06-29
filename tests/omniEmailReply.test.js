@@ -33,7 +33,7 @@ group("adapter: thread grouping + reply metadata", () => {
 });
 
 const GMAIL_ENV = {
-  GMAIL_INGEST_REFRESH_TOKEN: "1//r", GOOGLE_DRIVE_CLIENT_ID: "cid", GOOGLE_DRIVE_CLIENT_SECRET: "csec",
+  GMAIL_INGEST_REFRESH_TOKEN: "1//r", GMAIL_OAUTH_CLIENT_ID: "cid", GMAIL_OAUTH_CLIENT_SECRET: "csec",
 };
 
 await group("sendOmniEmailReply", async () => {

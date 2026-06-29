@@ -5,7 +5,7 @@
 // per-casilla Netuy SMTP boxes are dead. Inbound mail now funnels into one Gmail
 // inbox; replies go back out through that same account via the Gmail API, using
 // the user-OAuth refresh token minted by the sibling pipeline's `gmail-auth`
-// (scope `gmail.send`, reusing GOOGLE_DRIVE_CLIENT_ID/SECRET).
+// (scope `gmail.send`, on the dedicated GMAIL_OAUTH_CLIENT_ID/SECRET client).
 //
 // buildRawMessage() is a pure RFC822 builder, exported for offline unit tests;
 // sendGmailReply() accepts an injectable `sendRaw` transport for the same reason.
@@ -19,7 +19,7 @@
 /** True when the Gmail-API send path is fully configured in this environment. */
 export function isGmailSendConfigured(env = process.env) {
   return Boolean(
-    env.GMAIL_INGEST_REFRESH_TOKEN && env.GOOGLE_DRIVE_CLIENT_ID && env.GOOGLE_DRIVE_CLIENT_SECRET,
+    env.GMAIL_INGEST_REFRESH_TOKEN && env.GMAIL_OAUTH_CLIENT_ID && env.GMAIL_OAUTH_CLIENT_SECRET,
   );
 }
 
@@ -87,7 +87,7 @@ export async function sendGmailReply(args = {}) {
   }
 
   const { google } = await import("googleapis");
-  const oauth2 = new google.auth.OAuth2(env.GOOGLE_DRIVE_CLIENT_ID, env.GOOGLE_DRIVE_CLIENT_SECRET);
+  const oauth2 = new google.auth.OAuth2(env.GMAIL_OAUTH_CLIENT_ID, env.GMAIL_OAUTH_CLIENT_SECRET);
   oauth2.setCredentials({ refresh_token: env.GMAIL_INGEST_REFRESH_TOKEN });
   const gmail = google.gmail({ version: "v1", auth: oauth2 });
   const resp = await gmail.users.messages.send({ userId: "me", requestBody: { raw } });

@@ -21,8 +21,8 @@ function decodeRaw(raw) {
 
 const GMAIL_ENV = {
   GMAIL_INGEST_REFRESH_TOKEN: "1//refresh",
-  GOOGLE_DRIVE_CLIENT_ID: "cid.apps.googleusercontent.com",
-  GOOGLE_DRIVE_CLIENT_SECRET: "csecret",
+  GMAIL_OAUTH_CLIENT_ID: "cid.apps.googleusercontent.com",
+  GMAIL_OAUTH_CLIENT_SECRET: "csecret",
 };
 
 group("isGmailSendConfigured", () => {
