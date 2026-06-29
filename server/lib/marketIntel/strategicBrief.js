@@ -283,8 +283,18 @@ Genera el brief estratégico en formato JSON. Las secciones analisis_precios, an
     if (brief.resumen_ejecutivo && typeof brief.resumen_ejecutivo === 'string') {
       const trimmed = brief.resumen_ejecutivo.trim();
       if (trimmed.startsWith('{')) {
+        let nested = null;
         try {
-          const nested = JSON.parse(trimmed);
+          nested = JSON.parse(trimmed);
+        } catch {
+          for (const closer of ['}', '\n}', '\n  }', '\n    }']) {
+            try {
+              nested = JSON.parse(trimmed + closer);
+              if (nested) break;
+            } catch {}
+          }
+        }
+        if (nested && typeof nested === 'object') {
           for (const [k, v] of Object.entries(nested)) {
             if (k === 'resumen_ejecutivo') {
               if (typeof v === 'string' && !v.trim().startsWith('{')) {
@@ -307,8 +317,6 @@ Genera el brief estratégico en formato JSON. Las secciones analisis_precios, an
               ? `Análisis generado: ${parts.join(', ')}. Ver secciones detalladas abajo.`
               : 'Brief estratégico generado con análisis de mercado.';
           }
-        } catch {
-          // left as-is
         }
       }
     }
