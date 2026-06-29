@@ -1,0 +1,153 @@
+// Module: strategic-brief | Owner: bmc-dev | Created: 2026-06-29
+// Generates AI-powered strategic analysis of product intelligence data.
+
+import pino from 'pino';
+import { callAgentOnce } from '../agentCore.js';
+import { getEtlSummary, PRODUCT_CATEGORIES } from './productIntelligence.js';
+
+const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
+
+const STRATEGIC_SYSTEM_PROMPT = `Eres el estratega de producto de BMC Uruguay, una empresa de paneles aislantes para construcción (techos y paredes). Tu rol es analizar datos de inteligencia de mercado y generar un brief estratégico ejecutivo.
+
+## FORMATO DE RESPUESTA
+Debes responder ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional. Usa esta estructura exacta:
+
+{
+  "oportunidades": [
+    {
+      "producto": "nombre del producto",
+      "categoria": "categoría",
+      "tipo": "oportunidad",
+      "descripcion": "explicación breve",
+      "impacto": "alto|medio|bajo",
+      "accion_sugerida": "qué hacer"
+    }
+  ],
+  "senalas": [
+    {
+      "titulo": "título de la señal",
+      "tipo": "positiva|negativa|neutra",
+      "descripcion": "explicación",
+      "producto_relacionado": "producto o null",
+      "competidor_relacionado": "competidor o null"
+    }
+  ],
+  "recomendaciones": [
+    {
+      "area": "pricing|producto|competencia|estrategia",
+      "accion": "qué hacer",
+      "prioridad": "alta|media|baja",
+      "detalle": "por qué y cómo"
+    }
+  ],
+  "categorias": [
+    {
+      "id": "id de categoría",
+      "nombre": "nombre legible",
+      "evaluacion": "fuerte|neutral|debíl|sin_datos",
+      "productos_monitoreados": 0,
+      "competidores_activos": 0,
+      "observacion": "una línea de análisis"
+    }
+  ],
+  "resumen_ejecutivo": "Un párrafo de 2-3 oraciones con el panorama general"
+}
+
+## PRINCIPIOS DE ANÁLISIS
+1. Identifica productos con brecha de precio favorable (oportunidad de margen).
+2. Detecta competidores que bajaron precios en múltiples productos (posible promoción).
+3. Señala categorías donde BMC tiene poca o ninguna competencia (liderazgo).
+4. Recomienda acciones concretas basadas en los datos disponibles.
+5. Si faltan datos, sé honesto ("sin datos suficientes") en vez de inventar.`;
+
+function formatCompetitorData(competitors) {
+  if (!competitors || competitors.length === 0) return 'No hay datos de competidores.';
+  return competitors.map(c => {
+    const meta = c.metadata || {};
+    const productos = Array.isArray(meta.productos) ? meta.productos.join(', ') : '';
+    return `- ${c.name} (${c.domain}) | tipo: ${c.type} | tier: ${c.tier} | threat: ${c.threat_score}/5 | opp: ${c.opportunity_score}/5${productos ? ` | productos: ${productos}` : ''}${c.notes ? ` | notas: ${c.notes}` : ''}`;
+  }).join('\n');
+}
+
+function formatEtlData(summary) {
+  const parts = [];
+  if (summary.last_etl_run) {
+    const e = summary.last_etl_run;
+    parts.push(`Último ETL: ${e.status} (${e.competitors_succeeded}/${e.competitors_attempted} competidores, ${e.finished_at})`);
+  }
+  if (summary.alert_counts) {
+    const a = summary.alert_counts;
+    parts.push(`Alertas: ${a.critical} críticas, ${a.warning} warnings, ${a.info} info`);
+  }
+  return parts.join('\n') || 'Sin datos ETL';
+}
+
+export async function generateStrategicBrief() {
+  const summary = await getEtlSummary();
+
+  const categoriesInfo = PRODUCT_CATEGORIES.map(c =>
+    `- ${c.label} (id: ${c.id})`
+  ).join('\n');
+
+  const competitorBlock = formatCompetitorData(summary.competitors);
+  const etlBlock = formatEtlData(summary);
+
+  const userContent = `## Datos de competidores
+${competitorBlock}
+
+## Estado ETL
+${etlBlock}
+
+## Categorías de producto
+${categoriesInfo}
+
+## Productos de BMC
+BMC Uruguay vende paneles aislantes para techos (ISODEC EPS/PIR, ISOROOF 3G/FOIL/COLONIAL/PLUS) y paredes (ISOPANEL EPS, ISOWALL PIR, ISOFRIG PIR), además de perfiles, fijaciones y selladores.
+
+Genera el brief estratégico en formato JSON.`;
+
+  try {
+    const result = await callAgentOnce(
+      [
+        { role: 'system', content: STRATEGIC_SYSTEM_PROMPT },
+        { role: 'user', content: userContent },
+      ],
+      { channel: 'chat' }
+    );
+
+    let brief;
+    try {
+      brief = JSON.parse(result.text);
+    } catch {
+      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        brief = JSON.parse(jsonMatch[0]);
+      } else {
+        brief = { resumen_ejecutivo: result.text, oportunidades: [], senalas: [], recomendaciones: [], categorias: [] };
+      }
+    }
+
+    return {
+      brief,
+      provider: result.provider,
+      model: result.model || null,
+      latencyMs: result.latencyMs || null,
+      generated_at: new Date().toISOString(),
+      data_freshness: {
+        etl: summary.last_etl_run?.finished_at || null,
+        competitors_count: summary.competitors?.length || 0,
+      },
+    };
+  } catch (err) {
+    log.error({ err }, 'generateStrategicBrief failed');
+    return {
+      brief: null,
+      error: err.message,
+      generated_at: new Date().toISOString(),
+      data_freshness: {
+        etl: summary.last_etl_run?.finished_at || null,
+        competitors_count: summary.competitors?.length || 0,
+      },
+    };
+  }
+}
