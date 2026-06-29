@@ -115,15 +115,32 @@ Genera el brief estratégico en formato JSON.`;
       { channel: 'chat' }
     );
 
+    const raw = result.text;
+    log.info({ raw_preview: raw.slice(0, 300), provider: result.provider }, 'AI raw response');
+
     let brief;
+    const parseJson = (text) => {
+      const trimmed = text.trim();
+      const codeBlock = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const jsonStr = codeBlock ? codeBlock[1].trim() : trimmed;
+      const objMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (objMatch) return JSON.parse(objMatch[0]);
+      throw new Error('No JSON object found');
+    };
     try {
-      brief = JSON.parse(result.text);
-    } catch {
-      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        brief = JSON.parse(jsonMatch[0]);
-      } else {
-        brief = { resumen_ejecutivo: result.text, oportunidades: [], senalas: [], recomendaciones: [], categorias: [] };
+      brief = parseJson(raw);
+    } catch (firstErr) {
+      log.warn({ err: firstErr.message, raw: raw.slice(0, 500) }, 'first JSON parse failed, trying fallback');
+      try {
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          brief = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('Fallback also failed');
+        }
+      } catch (secondErr) {
+        log.error({ err: secondErr.message, raw: raw.slice(0, 1000) }, 'all JSON parse strategies failed');
+        brief = { resumen_ejecutivo: raw, oportunidades: [], senalas: [], recomendaciones: [], categorias: [] };
       }
     }
 
