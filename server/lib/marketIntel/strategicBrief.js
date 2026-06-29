@@ -113,7 +113,7 @@ Debes responder ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional
 }
 
 ## REGLAS ESTRICTAS
-- NO incluyas texto fuera del JSON. La respuesta debe comenzar exactamente con `{` y terminar exactamente con `}`.
+- NO incluyas texto fuera del JSON. La respuesta debe comenzar exactamente con \`{\` y terminar exactamente con \`}\`.
 - NO uses markdown, NO uses bloques de código, NO uses texto introductorio ni conclusivo.
 - resumen_ejecutivo debe ser EXACTAMENTE 2-3 oraciones cortas, NO un análisis completo. NO incluyas JSON anidado dentro de resumen_ejecutivo.
 - Cada array (oportunidades, senalas, recomendaciones) debe tener AL MENOS 2 elementos.
