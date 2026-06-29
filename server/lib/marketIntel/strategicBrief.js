@@ -246,10 +246,9 @@ Genera el brief estratégico en formato JSON. Las secciones analisis_precios, an
   try {
     const result = await callAgentOnce(
       [
-        { role: 'system', content: STRATEGIC_SYSTEM_PROMPT },
         { role: 'user', content: userContent },
       ],
-      { channel: 'chat' }
+      { channel: 'chat', systemPrompt: STRATEGIC_SYSTEM_PROMPT }
     );
 
     const raw = result.text;
