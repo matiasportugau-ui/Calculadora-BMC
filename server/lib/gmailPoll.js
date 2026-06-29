@@ -52,12 +52,14 @@ export function matchedRecipient(payload, allowlist) {
 }
 
 export function isGmailPollConfigured(env = process.env) {
-  return Boolean(env.GMAIL_INGEST_REFRESH_TOKEN && env.GOOGLE_DRIVE_CLIENT_ID && env.GOOGLE_DRIVE_CLIENT_SECRET);
+  return Boolean(env.GMAIL_INGEST_REFRESH_TOKEN && env.GMAIL_OAUTH_CLIENT_ID && env.GMAIL_OAUTH_CLIENT_SECRET);
 }
 
 async function defaultGmailClient(env = process.env) {
+  // Dedicated Gmail OAuth client (NOT the Drive client). The refresh token is bound to
+  // this exact client; sharing the Drive client caused mutual token revocation.
   const { google } = await import("googleapis");
-  const oauth = new google.auth.OAuth2(env.GOOGLE_DRIVE_CLIENT_ID, env.GOOGLE_DRIVE_CLIENT_SECRET);
+  const oauth = new google.auth.OAuth2(env.GMAIL_OAUTH_CLIENT_ID, env.GMAIL_OAUTH_CLIENT_SECRET);
   oauth.setCredentials({ refresh_token: env.GMAIL_INGEST_REFRESH_TOKEN });
   return google.gmail({ version: "v1", auth: oauth });
 }
