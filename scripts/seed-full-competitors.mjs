@@ -268,55 +268,36 @@ async function seed() {
   }
   console.log('✅ Tier distribution matches handoff document\n');
 
-  // Ensure schema exists
-  await pool.query(`CREATE SCHEMA IF NOT EXISTS bmc_market_intel`);
-
-  // Ensure table exists
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS bmc_market_intel.competitors (
-      id SERIAL PRIMARY KEY,
-      name TEXT UNIQUE NOT NULL,
-      tier INTEGER NOT NULL,
-      type TEXT,
-      website TEXT,
-      ig_handle TEXT,
-      location TEXT,
-      founded_year INTEGER,
-      notes TEXT,
-      threat_score INTEGER DEFAULT 1,
-      opportunity_score INTEGER DEFAULT 1,
-      is_active BOOLEAN DEFAULT TRUE,
-      metadata JSONB DEFAULT '{}',
-      domain TEXT GENERATED ALWAYS AS (COALESCE(NULLIF(website, ''), 'N/A')) STORED,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
   let inserted = 0;
   let updated = 0;
   let errors = [];
+  const domainCounts = {};
 
   for (const comp of COMPETITORS) {
-    const { name, tier, type, website, ig_handle, location, founded_year, notes, threat_score, opportunity_score } = comp;
+    const { name, tier, type, website, ig_handle, notes, threat_score, opportunity_score } = comp;
     const metadata = { productos: [], origen: 'seed-full-competitors.mjs' };
+    const websiteUrl = website || '';
+    const rawDomain = website ? new URL(website).hostname : name.replace(/[^a-z0-9]/gi, '_');
+    domainCounts[rawDomain] = (domainCounts[rawDomain] || 0) + 1;
+    const domain = domainCounts[rawDomain] > 1 ? rawDomain + domainCounts[rawDomain] : rawDomain;
 
-    const { error } = await pool.query(`
-      INSERT INTO bmc_market_intel.competitors (name, tier, type, website, ig_handle, location, founded_year, notes, threat_score, opportunity_score, metadata)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      ON CONFLICT (name) DO UPDATE SET
-        tier = EXCLUDED.tier,
-        type = EXCLUDED.type,
-        website = EXCLUDED.website,
-        ig_handle = EXCLUDED.ig_handle,
-        location = EXCLUDED.location,
-        founded_year = EXCLUDED.founded_year,
-        notes = EXCLUDED.notes,
-        threat_score = EXCLUDED.threat_score,
-        opportunity_score = EXCLUDED.opportunity_score,
-        metadata = bmc_market_intel.competitors.metadata || EXCLUDED.metadata,
-        updated_at = NOW()
-    `, [name, tier, type, website, ig_handle, location, founded_year, notes, threat_score, opportunity_score, JSON.stringify(metadata)]);
+    const { rows: existing } = await pool.query('SELECT id FROM bmc_market_intel.competitors WHERE name = $1', [name]);
+
+    let error;
+    if (existing.length > 0) {
+      const result = await pool.query(`
+        UPDATE bmc_market_intel.competitors SET
+          tier = $1, type = $2, website_url = $3, ig_handle = $4,
+          notes = $5, threat_score = $6, opportunity_score = $7,
+          domain = $8, metadata = metadata || $9, updated_at = NOW()
+        WHERE id = $10
+      `, [tier, type, websiteUrl, ig_handle, notes, threat_score, opportunity_score, domain, JSON.stringify(metadata), existing[0].id]);
+    } else {
+      const result = await pool.query(`
+        INSERT INTO bmc_market_intel.competitors (name, tier, type, website_url, ig_handle, notes, threat_score, opportunity_score, domain, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `, [name, tier, type, websiteUrl, ig_handle, notes, threat_score, opportunity_score, domain, JSON.stringify(metadata)]);
+    }
 
     if (error) {
       console.error(`  ✗ ${name}: ${error.message}`);
