@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useOmniMessages, useOmniSuggestions } from "../../../../hooks/useOmniConversations.js";
+import {
+  useOmniMessages,
+  useOmniSuggestions,
+  useOmniAssignees,
+} from "../../../../hooks/useOmniConversations.js";
 import { channelMeta, clockTime, conversationTitle, messageDate, statusMeta } from "./omniFormat.js";
 import { applyReply, getCannedReplies, matchSlashQuery } from "./cannedReplies.js";
 import "./omniInbox.css";
@@ -17,6 +21,7 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
     reload: reloadThread,
   } = useOmniMessages(token, conversationId);
   const { suggestions, accept, reject } = useOmniSuggestions(token, conversationId);
+  const assignees = useOmniAssignees(token);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -97,6 +102,19 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
     }
   };
 
+  const handleAssign = async (userId) => {
+    if (!onUpdateConversation || updating) return;
+    setUpdating(true);
+    try {
+      await onUpdateConversation(conversationId, { assigned_to_user_id: userId || null });
+      await reloadThread(); // refresh this thread's assignment
+    } catch {
+      // Best-effort: swallow so the onChange handler can't reject unhandled.
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const onKeyDown = (e) => {
     if (slash.active && slash.matches.length) {
       if (e.key === "ArrowDown") {
@@ -165,6 +183,23 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
           </span>
         )}
         <span className="omniThread__headerSpacer" />
+        {assignees.length > 0 && (
+          <select
+            className="omniThread__assign"
+            value={conversation?.assigned_to_user_id || ""}
+            disabled={updating}
+            onChange={(e) => handleAssign(e.target.value)}
+            aria-label="Asignar conversación"
+            title="Asignar a un operador"
+          >
+            <option value="">Sin asignar</option>
+            {assignees.map((u) => (
+              <option key={u.user_id} value={u.user_id}>
+                {u.name || u.email}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="omniThread__actions">
           {conversation?.status === "closed" ? (
             <button

@@ -90,6 +90,29 @@ export function useOmniAccounts(token) {
   return accounts;
 }
 
+// Assignable operators (users with a `canales` grant), for the assign picker.
+// Degrades to [] so the picker never blocks the panel.
+export function useOmniAssignees(token) {
+  const [assignees, setAssignees] = useState([]);
+
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    omniFetch(token, "/api/omni/assignees")
+      .then((data) => {
+        if (alive) setAssignees(data.assignees || []);
+      })
+      .catch(() => {
+        if (alive) setAssignees([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [token]);
+
+  return assignees;
+}
+
 export function useOmniMessages(token, conversationId) {
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
