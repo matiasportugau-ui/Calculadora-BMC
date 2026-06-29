@@ -149,6 +149,48 @@ export function useOmniNotes(token, conversationId) {
   return { notes, addNote, reload };
 }
 
+// Inline AI copilot for a thread — on-demand draft/summarize/extract/translate/
+// rewrite. Non-mutating: returns text the operator chooses to use. Clears when
+// switching conversations.
+export function useOmniAssist(token, conversationId) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null); // { action, text }
+  const [error, setError] = useState(null);
+
+  const reset = useCallback(() => {
+    setResult(null);
+    setError(null);
+  }, []);
+
+  useEffect(() => {
+    setResult(null);
+    setError(null);
+  }, [conversationId]);
+
+  const assist = useCallback(
+    async (action, { instruction, draft } = {}) => {
+      if (!token || !conversationId || loading) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await omniFetch(
+          token,
+          `/api/omni/conversations/${conversationId}/assist`,
+          { method: "POST", body: JSON.stringify({ action, instruction, draft }) },
+        );
+        setResult({ action, text: data.result || "" });
+      } catch (e) {
+        setError(e.data?.error || e.message || "assist_failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [token, conversationId, loading],
+  );
+
+  return { assist, loading, result, error, reset };
+}
+
 export function useOmniMessages(token, conversationId) {
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);

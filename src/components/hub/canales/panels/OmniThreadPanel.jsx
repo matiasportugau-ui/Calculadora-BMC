@@ -4,6 +4,7 @@ import {
   useOmniSuggestions,
   useOmniAssignees,
   useOmniNotes,
+  useOmniAssist,
 } from "../../../../hooks/useOmniConversations.js";
 import { channelMeta, clockTime, conversationTitle, messageDate, statusMeta } from "./omniFormat.js";
 import { applyReply, getCannedReplies, matchSlashQuery } from "./cannedReplies.js";
@@ -24,7 +25,10 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
   const { suggestions, accept, reject } = useOmniSuggestions(token, conversationId);
   const assignees = useOmniAssignees(token);
   const { notes, addNote } = useOmniNotes(token, conversationId);
+  const { assist, loading: assistLoading, result: assistResult, error: assistError, reset: resetAssist } =
+    useOmniAssist(token, conversationId);
   const [draft, setDraft] = useState("");
+  const [copilotInput, setCopilotInput] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [sending, setSending] = useState(false);
@@ -46,6 +50,7 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
   useEffect(() => {
     setDraft("");
     setNoteDraft("");
+    setCopilotInput("");
     setSlash(EMPTY_SLASH);
   }, [conversationId]);
 
@@ -91,6 +96,24 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
     } finally {
       setSending(false);
     }
+  };
+
+  // AI copilot. Thread actions (draft/summarize/extract) use the optional prompt
+  // input; rewrite actions (translate/formal/shorter) operate on the current
+  // composer draft. Results are inserted into the composer on demand — never sent.
+  const runAssist = (action, { useDraft = false, prompt = "" } = {}) => {
+    if (assistLoading) return;
+    assist(action, {
+      instruction: prompt || undefined,
+      draft: useDraft ? draft.trim() : undefined,
+    });
+  };
+  const hasDraft = draft.trim().length > 0;
+  const applyResult = (focus = false) => {
+    if (!assistResult) return;
+    setDraft(assistResult.text);
+    resetAssist();
+    if (focus) requestAnimationFrame(() => taRef.current?.focus());
   };
 
   const handleAddNote = async () => {
@@ -357,6 +380,45 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
             {savingNote ? "…" : "Agregar"}
           </button>
         </div>
+      </div>
+
+      <div className="omniCopilot">
+        <div className="omniCopilot__head">🤖 Copilot</div>
+        <div className="omniCopilot__chips">
+          <button type="button" className="omniCopilot__chip" disabled={assistLoading} onClick={() => runAssist("draft")}>✍ Redactar</button>
+          <button type="button" className="omniCopilot__chip" disabled={assistLoading} onClick={() => runAssist("summarize")}>📋 Resumir</button>
+          <button type="button" className="omniCopilot__chip" disabled={assistLoading} onClick={() => runAssist("extract")}>🔍 Extraer</button>
+          <button type="button" className="omniCopilot__chip" disabled={assistLoading || !hasDraft} title={hasDraft ? "" : "Escribí o generá un borrador primero"} onClick={() => runAssist("translate", { useDraft: true })}>🌐 Traducir</button>
+          <button type="button" className="omniCopilot__chip" disabled={assistLoading || !hasDraft} title={hasDraft ? "" : "Escribí o generá un borrador primero"} onClick={() => runAssist("formal", { useDraft: true })}>Más formal</button>
+          <button type="button" className="omniCopilot__chip" disabled={assistLoading || !hasDraft} title={hasDraft ? "" : "Escribí o generá un borrador primero"} onClick={() => runAssist("shorter", { useDraft: true })}>Más corto</button>
+        </div>
+        <input
+          className="omniCopilot__ask"
+          type="text"
+          value={copilotInput}
+          disabled={assistLoading}
+          onChange={(e) => setCopilotInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && copilotInput.trim()) {
+              e.preventDefault();
+              runAssist("draft", { prompt: copilotInput.trim() });
+              setCopilotInput("");
+            }
+          }}
+          placeholder="Pedile algo sobre este hilo…  (Enter)"
+        />
+        {assistLoading && <div className="omniCopilot__status">Pensando…</div>}
+        {assistError && <div className="omniCopilot__status omniCopilot__status--err">No se pudo generar ({assistError})</div>}
+        {assistResult && !assistLoading && (
+          <div className="omniCopilot__result">
+            <pre className="omniCopilot__text">{assistResult.text}</pre>
+            <div className="omniCopilot__actions">
+              <button type="button" className="omniInbox__btn" onClick={() => applyResult(false)}>Usar</button>
+              <button type="button" className="omniInbox__btn" onClick={() => applyResult(true)}>Editar</button>
+              <button type="button" className="omniInbox__btn" onClick={resetAssist}>Descartar</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="omniComposer">
