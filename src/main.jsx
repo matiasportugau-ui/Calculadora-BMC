@@ -43,6 +43,24 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Auto-recover from stale chunk hashes after a deploy. When the frontend is
+// redeployed, asset filenames get new content hashes; a client still running
+// the previous build requests an old chunk name that no longer exists, and Vite
+// raises `vite:preloadError` — seen on lazy routes (e.g. /hub/canales) as
+// "Unable to preload CSS". Reload to pull the fresh index.html + current assets.
+// The timestamp guard reloads at most once per 10s, so a genuinely-missing chunk
+// falls through to the normal error UI instead of looping.
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', (event) => {
+    const KEY = 'bmc.preloadReloadAt';
+    const last = Number(sessionStorage.getItem(KEY) || 0);
+    if (Date.now() - last < 10000) return; // already retried very recently
+    sessionStorage.setItem(KEY, String(Date.now()));
+    event.preventDefault?.(); // suppress the default unhandled rejection
+    window.location.reload();
+  });
+}
+
 import('./App.jsx')
   .then(({ default: App }) => {
     ReactDOM.createRoot(document.getElementById('root')).render(
