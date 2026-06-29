@@ -1,0 +1,76 @@
+[
+  {
+    "sku": "ISOPANEL_EPS_50",
+    "producto": "ISOPANEL EPS Pared",
+    "nucleo": "EPS Cat.II 15-20 kg/m³",
+    "espesor_mm": 50,
+    "familia": "panel_pared_eps",
+    "precio_publico_usd_m2": 41.88
+  },
+  {
+    "sku": "ISOPANEL_EPS_100",
+    "producto": "ISOPANEL EPS Pared",
+    "nucleo": "EPS Cat.II 15-20 kg/m³",
+    "espesor_mm": 100,
+    "familia": "panel_pared_eps",
+    "precio_publico_usd_m2": null,
+    "nota": "cotizacion"
+  },
+  {
+    "sku": "ISODEC_EPS_100",
+    "producto": "ISODEC EPS Techo",
+    "nucleo": "EPS",
+    "espesor_mm": 100,
+    "familia": "panel_techo_eps",
+    "precio_publico_usd_m2": 46.07
+  },
+  {
+    "sku": "ISODEC_PIR_50",
+    "producto": "ISODEC PIR Techo",
+    "nucleo": "PIR",
+    "espesor_mm": 50,
+    "familia": "panel_techo_pir",
+    "precio_publico_usd_m2": 51.02
+  },
+  {
+    "sku": "ISOROOF_3G_30",
+    "producto": "ISOROOF 3G",
+    "nucleo": "PIR",
+    "espesor_mm": 30,
+    "familia": "panel_techo_pir",
+    "precio_publico_usd_m2": 48.74
+  },
+  {
+    "sku": "ISOROOF_PLUS_3G_80",
+    "producto": "ISOROOF PLUS 3G",
+    "nucleo": "PIR",
+    "espesor_mm": 80,
+    "familia": "panel_techo_pir",
+    "precio_publico_usd_m2": 71.76
+  },
+  {
+    "sku": "ISOROOF_FOIL_3G_50",
+    "producto": "ISOROOF FOIL 3G",
+    "nucleo": "PIR",
+    "espesor_mm": 50,
+    "familia": "panel_techo_pir",
+    "precio_publico_usd_m2": 39.54
+  },
+  {
+    "sku": "ISOWALL_PIR_50",
+    "producto": "ISOWALL PIR",
+    "nucleo": "PIR",
+    "espesor_mm": 50,
+    "familia": "panel_fachada_premium",
+    "precio_publico_usd_m2": 98.50,
+    "nota": "estimado"
+  },
+  {
+    "sku": "HIANSA_5G_30",
+    "producto": "Hiansa Trapezoidal 5G",
+    "nucleo": "PUR",
+    "espesor_mm": 30,
+    "familia": "panel_techo_pir",
+    "precio_publico_usd_m2": 46.73
+  }
+]
