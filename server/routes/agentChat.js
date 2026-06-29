@@ -981,6 +981,10 @@ router.post("/agent/chat", async (req, res) => {
         // Function-calling loop, mirroring the Claude tool-use loop above:
         // stream text → collect functionCalls → execute → feed back → repeat.
         for (let toolRound = 0; toolRound < 8; toolRound++) {
+          // Client disconnected mid-loop: stop before spending another API
+          // round and (critically) before executing more tools — some have
+          // side effects, and nobody is listening to the SSE stream anymore.
+          if (aborted) break;
           const result = await geminiModel.generateContentStream({ contents });
           for await (const chunk of result.stream) {
             let text = "";
@@ -992,6 +996,7 @@ router.post("/agent/chat", async (req, res) => {
           }
 
           const aggregated = await result.response;
+          if (aborted) break;
           const um = aggregated?.usageMetadata;
           if (um) {
             inputTokens += um.promptTokenCount ?? 0;
@@ -1000,6 +1005,13 @@ router.post("/agent/chat", async (req, res) => {
 
           const calls =
             (typeof aggregated?.functionCalls === "function" ? aggregated.functionCalls() : null) || [];
+          // Observability: if the very first round produces no function calls,
+          // Gemini may have reverted to narrating tool calls in text (the
+          // thinking-budget regression this path is built to prevent). Log it
+          // so a model/SDK change that breaks tool-calling is visible.
+          if (!calls.length && toolRound === 0) {
+            req.log?.warn({ model: resolvedModel }, "gemini: no function calls in round 0 (possible tool-calling regression)");
+          }
           if (!calls.length) break;
 
           // Record the model's function-call turn so the next request has context.
