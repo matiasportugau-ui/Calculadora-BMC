@@ -245,6 +245,61 @@ router.get(
   },
 );
 
+// Internal notes — operator-only collaboration on a conversation. NEVER sent to
+// the customer (distinct from omni_messages). Reads degrade to [] pre-migration
+// so the thread panel never breaks; writes 503 if the table isn't there yet.
+router.get(
+  "/omni/conversations/:id/notes",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    try {
+      const { rows } = await req.omniPool.query(
+        `SELECT id, author_user_id, author_label, body, created_at
+           FROM omni_notes
+          WHERE conversation_id = $1
+          ORDER BY created_at ASC`,
+        [req.params.id],
+      );
+      res.json({ ok: true, notes: rows });
+    } catch (e) {
+      res.json({ ok: true, notes: [], degraded: e.code || "notes_unavailable" });
+    }
+  },
+);
+
+router.post(
+  "/omni/conversations/:id/notes",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const body = String(req.body?.body || "").trim();
+    if (!body) return res.status(400).json({ ok: false, error: "missing_body" });
+    try {
+      const { rows } = await req.omniPool.query(
+        `INSERT INTO omni_notes (conversation_id, author_user_id, author_label, body)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, author_user_id, author_label, body, created_at`,
+        [
+          req.params.id,
+          isUuid(req.user?.id) ? req.user.id : null,
+          req.user?.email || req.user?.name || null,
+          body,
+        ],
+      );
+      res.status(201).json({ ok: true, note: rows[0] });
+    } catch (e) {
+      if (e.code === "42P01") {
+        return res.status(503).json({ ok: false, error: "notes_unavailable" });
+      }
+      if (e.code === "23503") {
+        return res.status(404).json({ ok: false, error: "conversation_not_found" });
+      }
+      throw e;
+    }
+  },
+);
+
 router.patch(
   "/omni/conversations/:id/read",
   requireGrant.write("canales"),

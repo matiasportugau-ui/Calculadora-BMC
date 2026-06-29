@@ -3,6 +3,7 @@ import {
   useOmniMessages,
   useOmniSuggestions,
   useOmniAssignees,
+  useOmniNotes,
 } from "../../../../hooks/useOmniConversations.js";
 import { channelMeta, clockTime, conversationTitle, messageDate, statusMeta } from "./omniFormat.js";
 import { applyReply, getCannedReplies, matchSlashQuery } from "./cannedReplies.js";
@@ -22,7 +23,10 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
   } = useOmniMessages(token, conversationId);
   const { suggestions, accept, reject } = useOmniSuggestions(token, conversationId);
   const assignees = useOmniAssignees(token);
+  const { notes, addNote } = useOmniNotes(token, conversationId);
   const [draft, setDraft] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
   const [sending, setSending] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [slash, setSlash] = useState(EMPTY_SLASH);
@@ -41,6 +45,7 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
   // Reset composer when switching conversations.
   useEffect(() => {
     setDraft("");
+    setNoteDraft("");
     setSlash(EMPTY_SLASH);
   }, [conversationId]);
 
@@ -85,6 +90,20 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
       // rejection bubbling out of this fire-and-forget handler.
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    const text = noteDraft.trim();
+    if (!text || savingNote) return;
+    setSavingNote(true);
+    try {
+      await addNote(text);
+      setNoteDraft("");
+    } catch {
+      // Keep the draft so the operator can retry.
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -300,6 +319,45 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
           </div>
         </div>
       )}
+
+      <div className="omniNotes">
+        <div className="omniNotes__label">Notas internas (no se envían al cliente)</div>
+        {notes.length > 0 && (
+          <ul className="omniNotes__list">
+            {notes.map((n) => (
+              <li key={n.id} className="omniNotes__item">
+                <span className="omniNotes__body">{n.body}</span>
+                <span className="omniNotes__meta">
+                  {(n.author_label || "—")} · {clockTime(messageDate({ created_at: n.created_at }))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="omniNotes__add">
+          <input
+            className="omniNotes__input"
+            type="text"
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddNote();
+              }
+            }}
+            placeholder="Agregar nota interna…"
+          />
+          <button
+            type="button"
+            className="omniInbox__btn"
+            disabled={savingNote || !noteDraft.trim()}
+            onClick={handleAddNote}
+          >
+            {savingNote ? "…" : "Agregar"}
+          </button>
+        </div>
+      </div>
 
       <div className="omniComposer">
         {slash.active && slash.matches.length > 0 && (

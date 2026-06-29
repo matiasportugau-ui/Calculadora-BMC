@@ -119,6 +119,16 @@
 .omniSuggest__body { margin: 0 0 6px; font-size: 0.8125rem; }
 .omniSuggest__actions { display: flex; gap: 6px; }
 
+/* Internal notes */
+.omniNotes { padding: 0.5rem 0.75rem; border-top: 1px dashed var(--oi-border); background: #fffdf3; }
+.omniNotes__label { font-size: 0.72rem; font-weight: 600; color: #8a6d3b; margin-bottom: 4px; }
+.omniNotes__list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; }
+.omniNotes__item { display: flex; flex-direction: column; background: #fff8e1; border: 1px solid #f0e2b6; border-radius: 6px; padding: 4px 8px; }
+.omniNotes__body { font-size: 0.82rem; color: #344054; white-space: pre-wrap; }
+.omniNotes__meta { font-size: 0.68rem; color: #98865f; margin-top: 2px; }
+.omniNotes__add { display: flex; gap: 6px; }
+.omniNotes__input { flex: 1; padding: 4px 8px; font-size: 0.82rem; border: 1px solid #d0d5dd; border-radius: 6px; }
+
 /* Composer */
 .omniComposer { position: relative; padding: 0.75rem; border-top: 1px solid var(--oi-border); display: flex; flex-direction: column; gap: 6px; }
 .omniComposer__textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 56px; font: inherit; font-size: 0.875rem; color: var(--oi-text); background: var(--oi-surface); border: 1px solid var(--oi-border); border-radius: var(--oi-radius-sm); padding: 0.5rem 0.6rem; }
