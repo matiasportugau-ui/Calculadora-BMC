@@ -55,10 +55,11 @@ Debes responder ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional
 
 ## PRINCIPIOS DE ANÁLISIS
 1. Identifica productos con brecha de precio favorable (oportunidad de margen).
-2. Detecta competidores que bajaron precios en múltiples productos (posible promoción).
-3. Señala categorías donde BMC tiene poca o ninguna competencia (liderazgo).
-4. Recomienda acciones concretas basadas en los datos disponibles.
-5. Si faltan datos, sé honesto ("sin datos suficientes") en vez de inventar.`;
+2. Señala categorías donde BMC tiene poca o ninguna competencia (liderazgo).
+3. Cruza los perfiles de competidores (tipo, tier, threat_score, opportunity_score) con las categorías de producto para identificar patrones.
+4. Aunque los datos de precios históricos sean limitados, debes generar análisis útil usando: perfiles de competidores, su posicionamiento (tier), su nivel de amenaza/oportunidad (threat_score/opportunity_score), y las categorías de BMC.
+5. Genera al menos 2-3 ítems en oportunidades, señales y recomendaciones usando los datos disponibles. Si hay poca data, sé creativo pero fundado.
+6. Para evaluacion por categoría, usa "sin_datos" solo si no hay competidores en esa categoría; caso contrario asigna "fuerte", "neutral" o "debíl" según el threat_score promedio de los competidores que operan ahí.`;
 
 function formatCompetitorData(competitors) {
   if (!competitors || competitors.length === 0) return 'No hay datos de competidores.';
