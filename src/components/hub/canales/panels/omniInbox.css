@@ -90,6 +90,17 @@
 .omniThread__header { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--oi-border); }
 .omniThread__title { margin: 0; font-size: 0.9375rem; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .omniThread__headerSpacer { flex: 1; }
+.omniThread__assign {
+  margin-right: 6px;
+  padding: 3px 6px;
+  font-size: 0.78rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #344054;
+  max-width: 160px;
+}
+.omniThread__assign:disabled { opacity: 0.6; }
 .omniThread__actions { display: inline-flex; gap: 4px; }
 .omniThread__messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
 

@@ -70,6 +70,29 @@ router.get(
   },
 );
 
+// Assignable operators — users holding a `canales` grant. Powers the inbox
+// assign-to-operator picker. Read-only; degrades to empty so the picker never
+// breaks the panel. (identity schema lives in the same DB as the omni pool.)
+router.get(
+  "/omni/assignees",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    try {
+      const { rows } = await req.omniPool.query(
+        `SELECT u.user_id, u.email, u.name
+           FROM identity.module_grants g
+           JOIN identity.users u ON u.user_id = g.user_id
+          WHERE g.module = 'canales' AND g.level <> 'none'
+          ORDER BY u.name NULLS LAST, u.email`,
+      );
+      res.json({ ok: true, assignees: rows });
+    } catch (e) {
+      res.json({ ok: true, assignees: [], degraded: e.code || "assignees_unavailable" });
+    }
+  },
+);
+
 router.get(
   "/omni/conversations",
   requireGrant.read("canales"),
@@ -365,6 +388,19 @@ router.post(
       });
     } catch (e) {
       req.log?.warn?.({ err: e.message }, "omni reply persist failed after outbound ok");
+    }
+
+    // SLA: stamp the first agent reply time (FRT). Idempotent — COALESCE keeps the
+    // first value. Best-effort: a pre-009 schema must not fail an otherwise-sent reply.
+    try {
+      await req.omniPool.query(
+        `UPDATE omni_conversations
+            SET first_agent_reply_at = COALESCE(first_agent_reply_at, now())
+          WHERE id = $1`,
+        [conversationId],
+      );
+    } catch (e) {
+      req.log?.warn?.({ err: e.message }, "omni first_agent_reply_at stamp skipped");
     }
 
     res.json({
