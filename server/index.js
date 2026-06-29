@@ -87,6 +87,7 @@ import { shadowWriteWaWebhook } from "./lib/omni/adapters/waWebhook.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
 import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
+import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -1195,6 +1196,7 @@ let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
 let stopOmniAiWorker = () => {};
+let stopOmniSnoozeWorker = () => {};
 
 const server = app.listen(config.port, async () => {
   logger.info(
@@ -1266,6 +1268,12 @@ const server = app.listen(config.port, async () => {
     stopOmniAiWorker = startOmniAiWorker({ config, logger, pool: omniPool });
     logger.info("Omni AI worker started");
   }
+  // Snooze auto-reopen runs independently of the AI orchestrator flag — it's the
+  // counterpart to the "Posponer" action and must work even with AI disabled.
+  if (omniPool) {
+    stopOmniSnoozeWorker = startOmniSnoozeWorker({ logger, pool: omniPool });
+    logger.info("Omni snooze worker started");
+  }
 });
 
 // ── Graceful shutdown ──
@@ -1285,6 +1293,7 @@ function shutdown(signal) {
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
   try { stopOmniAiWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniAiWorker failed"); }
+  try { stopOmniSnoozeWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSnoozeWorker failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");

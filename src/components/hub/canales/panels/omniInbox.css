@@ -101,6 +101,7 @@
   max-width: 160px;
 }
 .omniThread__assign:disabled { opacity: 0.6; }
+.omniThread__snooze { cursor: pointer; }
 .omniThread__actions { display: inline-flex; gap: 4px; }
 .omniThread__messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
 
