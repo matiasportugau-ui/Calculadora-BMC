@@ -1,0 +1,55 @@
+{
+  "fecha_captura": "2026-06-29",
+  "fuente": "ML Q&A histórico y auditoría de listings",
+  "metricas": {
+    "preguntas_sin_respuesta": 47,
+    "preguntas_con_respuesta": 312,
+    "tasa_respuesta": "87%",
+    "listings_con_imagenes_faltantes": 12,
+    "listings_con_datos_incompletos": 8,
+    "total_listings_activos": 143
+  },
+  "problemas_identificados": [
+    {
+      "area": "calidad_datos",
+      "descripcion": "Faltan imágenes en 12 listings, lo que reduce conversión en resultados de búsqueda.",
+      "severidad": "alta",
+      "accion_sugerida": "Completar galería de imágenes en listings faltantes. Priorizar productos más vistos."
+    },
+    {
+      "area": "preguntas_sin_respuesta",
+      "descripcion": "47 preguntas de clientes sin respuesta en ML, algunas con más de 7 días de antigüedad.",
+      "severidad": "alta",
+      "accion_sugerida": "Revisar cola de preguntas sin respuesta. Activar alertas automáticas cuando una pregunta supere 24h sin respuesta."
+    },
+    {
+      "area": "datos_incompletos",
+      "descripcion": "8 listings tienen especificaciones técnicas incompletas (peso, medidas exactas, material).",
+      "severidad": "media",
+      "accion_sugerida": "Completar ficha técnica en listings con datos faltantes. Estandarizar plantilla de producto."
+    },
+    {
+      "area": "titulos_mejorables",
+      "descripcion": "Varios listings usan títulos genéricos sin palabras clave de alto tráfico (ej: 'Panel' vs 'Panel sándwich aislante EPS 50mm').",
+      "severidad": "media",
+      "accion_sugerida": "Optimizar títulos con formato: [Producto] [Núcleo] [Espesor] — [Aplicación]. Ej: 'ISOPANEL EPS 50mm — Panel Aislante para Pared'."
+    }
+  ],
+  "tendencias_mercado": [
+    {
+      "indicador": "volumen_busquedas_isopanel",
+      "tendencia": "estable",
+      "nota": "El volumen de búsqueda de 'isopanel' y 'panel sándwich' se mantiene constante en MLU."
+    },
+    {
+      "indicador": "estacionalidad_techos",
+      "tendencia": "alta",
+      "nota": "Aumento estacional de búsquedas de paneles para techo en meses de invierno (junio-agosto)."
+    },
+    {
+      "indicador": "competencia_precios",
+      "tendencia": "presión_alta",
+      "nota": "Resellers MLU (Tier 5) compiten agresivamente en precio, especialmente en EPS 50mm para pared."
+    }
+  ]
+}

@@ -2,8 +2,36 @@
 // Collects and aggregates product data from MATRIZ, ETL, CRM, and ML
 // for the AI-powered Product Intelligence Dashboard.
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import pino from 'pino';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DATA_DIR = join(__dirname, 'data');
+
+function loadJson(filename) {
+  try {
+    return JSON.parse(readFileSync(join(DATA_DIR, filename), 'utf-8'));
+  } catch (err) {
+    log.warn({ err, filename }, 'Failed to load static data file');
+    return null;
+  }
+}
+
+let _data = null;
+function getData() {
+  if (!_data) {
+    _data = {
+      baselinePrices: loadJson('bmcBaselinePrices.json'),
+      competitorMap: loadJson('competitorMap.json'),
+      adsIntelligence: loadJson('adsIntelligence.json'),
+      mlPulse: loadJson('mlPulse.json'),
+    };
+  }
+  return _data;
+}
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 
@@ -76,6 +104,22 @@ export async function getPriceHistory(limitDays = 7) {
     log.error({ err }, 'getPriceHistory failed');
     return [];
   }
+}
+
+export function getBaselinePrices() {
+  return getData().baselinePrices;
+}
+
+export function getCompetitorMap() {
+  return getData().competitorMap;
+}
+
+export function getAdsIntelligence() {
+  return getData().adsIntelligence;
+}
+
+export function getMlPulse() {
+  return getData().mlPulse;
 }
 
 export async function getRecentAlerts(limit = 20) {
