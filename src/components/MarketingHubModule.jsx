@@ -2,16 +2,11 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { getCalcApiBase } from '../utils/calcApiBase.js';
+import { useBmcAuth } from '../hooks/useBmcAuth.js';
 import SummaryCards from './marketing-hub/SummaryCards.jsx';
 import TopDeltaTable from './marketing-hub/TopDeltaTable.jsx';
 import AlertsFeed from './marketing-hub/AlertsFeed.jsx';
 import MysteryShoppingWidget from './marketing-hub/MysteryShoppingWidget.jsx';
-
-const STORAGE_KEY = 'bmc_cockpit_token';
-
-function getStoredToken() {
-  try { return localStorage.getItem(STORAGE_KEY) || ''; } catch { return ''; }
-}
 
 async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, '');
@@ -22,7 +17,7 @@ async function apiFetch(token, path, options = {}) {
 }
 
 export default function MarketingHubModule() {
-  const [token] = useState(getStoredToken);
+  const { accessToken } = useBmcAuth();
   const [summary, setSummary] = useState(null);
   const [alerts, setAlerts] = useState(null);
   const [msQueue, setMsQueue] = useState(null);
@@ -32,13 +27,14 @@ export default function MarketingHubModule() {
   const [error, setError] = useState(null);
 
   const load = useCallback(() => {
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
 
     Promise.all([
-      apiFetch(token, '/api/marketing/dashboard/summary'),
-      apiFetch(token, `/api/marketing/dashboard/alerts?page=${alertsPage}&per_page=25`),
-      apiFetch(token, `/api/marketing/mystery-shopping?page=${msPage}&per_page=25`),
+      apiFetch(accessToken, '/api/marketing/dashboard/summary'),
+      apiFetch(accessToken, `/api/marketing/dashboard/alerts?page=${alertsPage}&per_page=25`),
+      apiFetch(accessToken, `/api/marketing/mystery-shopping?page=${msPage}&per_page=25`),
     ])
       .then(([s, a, ms]) => {
         if (!s.ok) throw new Error(`Summary: ${s.status}`);
@@ -48,7 +44,7 @@ export default function MarketingHubModule() {
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, [token, alertsPage, msPage]);
+  }, [accessToken, alertsPage, msPage]);
 
   useEffect(() => { load(); }, [load]);
 
