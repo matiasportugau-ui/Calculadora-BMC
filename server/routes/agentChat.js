@@ -42,6 +42,7 @@ import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
+import { toGeminiTools, toGeminiResponse } from "../lib/geminiTools.js";
 import { getToolStats } from "../lib/toolStats.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
 import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
@@ -957,21 +958,101 @@ router.post("/agent/chat", async (req, res) => {
         const genAI = new GoogleGenerativeAI(config.geminiApiKey);
         const model = resolveModelForProvider("gemini", requestedId, modelDefaults.gemini);
         resolvedModel = model;
-        const geminiModel = genAI.getGenerativeModel({ model });
-        const geminiMessages = msgs.map((m) => ({
+        // Pass the same AGENT_TOOLS Claude uses so Gemini can actually EXECUTE
+        // the calculator/CRM instead of emitting <tool_code> text. The tool
+        // dispatch (executeTool) is provider-agnostic; geminiTools.js only
+        // adapts the schema + packages results into Gemini's shape.
+        const geminiModel = genAI.getGenerativeModel({
+          model,
+          systemInstruction: effectiveSystemPrompt,
+          tools: toGeminiTools(AGENT_TOOLS),
+          // gemini-2.5-flash enables "thinking" by default, and empirically that
+          // makes it role-play tool calls in TEXT (the exact bug we're fixing)
+          // instead of emitting real functionCall parts. Disabling the thinking
+          // budget is what flips it from narrating <tool_code> to actually
+          // calling the calculator. (toolConfig ANY mode is NOT usable here —
+          // the 42-tool schema exceeds Gemini's forced-call constraint budget.)
+          generationConfig: { thinkingConfig: { thinkingBudget: 0 } },
+        });
+        const contents = msgs.map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
           parts: [{ text: m.content }],
         }));
-        const result = await geminiModel.generateContentStream({
-          contents: geminiMessages,
-          systemInstruction: { parts: [{ text: effectiveSystemPrompt }] },
-        });
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) {
-            buf += text;
-            buf = flushLines(buf);
+        // Function-calling loop, mirroring the Claude tool-use loop above:
+        // stream text → collect functionCalls → execute → feed back → repeat.
+        for (let toolRound = 0; toolRound < 8; toolRound++) {
+          const result = await geminiModel.generateContentStream({ contents });
+          for await (const chunk of result.stream) {
+            let text = "";
+            try { text = chunk.text(); } catch { /* function-call-only chunk */ }
+            if (text) {
+              buf += text;
+              buf = flushLines(buf);
+            }
           }
+
+          const aggregated = await result.response;
+          const um = aggregated?.usageMetadata;
+          if (um) {
+            inputTokens += um.promptTokenCount ?? 0;
+            outputTokens += um.candidatesTokenCount ?? 0;
+          }
+
+          const calls =
+            (typeof aggregated?.functionCalls === "function" ? aggregated.functionCalls() : null) || [];
+          if (!calls.length) break;
+
+          // Record the model's function-call turn so the next request has context.
+          contents.push({
+            role: "model",
+            parts: calls.map((c) => ({ functionCall: { name: c.name, args: c.args || {} } })),
+          });
+
+          const responseParts = [];
+          for (const c of calls) {
+            const toolInput = c.args || {};
+            // Same auth gate as the Claude loop: public chat must not execute
+            // auth-required tools regardless of what the model decides to call.
+            if (shouldBlockToolForUnauthenticatedChat(c.name, devMode)) {
+              const blockedResult = JSON.stringify({
+                ok: false,
+                error: `Esta tool (${c.name}) requiere autenticación. El operador debe conectarse en modo desarrollador (Ctrl+Shift+D + token API) antes de ejecutar lecturas de CRM / registry / PDF o escrituras.`,
+              });
+              send({ type: "tool_call", tool: c.name, input: toolInput, blocked: "auth_required" });
+              req.log?.warn({ tool: c.name }, "chat tool blocked: requires auth (gemini)");
+              responseParts.push({ functionResponse: { name: c.name, response: toGeminiResponse(blockedResult) } });
+              continue;
+            }
+            send({ type: "tool_call", tool: c.name, input: toolInput });
+            const result2 = await executeTool(c.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null });
+            req.log?.info({ tool: c.name, input: toolInput }, "agent tool executed (gemini)");
+            responseParts.push({ functionResponse: { name: c.name, response: toGeminiResponse(result2) } });
+
+            // Trust UI: emit verified_quote when an eligible calc tool succeeded
+            // (identical to the Claude path).
+            if (!aborted) {
+              try {
+                const parsedTool = JSON.parse(result2);
+                const verified = buildVerifiedQuotePayload(c.name, parsedTool, { ivaPct: getIvaPct() });
+                if (verified) send({ type: "verified_quote", payload: verified });
+              } catch {
+                /* tool result not JSON — skip trust emit */
+              }
+            }
+
+            // Wolfboard: deterministic quick replies (devMode only — auth-gated).
+            if (devMode && !aborted) {
+              try {
+                const parsedTool = JSON.parse(result2);
+                const sug = wolfboardSuggestionsAfterTool(c.name, parsedTool);
+                if (sug) send({ type: "suggestions", suggestions: sug });
+              } catch {
+                /* ignore malformed tool JSON */
+              }
+            }
+          }
+
+          contents.push({ role: "user", parts: responseParts });
         }
       } else {
         const { default: OpenAI } = await import("openai");
