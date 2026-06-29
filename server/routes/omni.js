@@ -26,6 +26,46 @@ import { listSuggestions, resolveSuggestion } from "../lib/omni/orchestrator/sug
 import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/evalFeedback.js";
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
+import { callAgentOnce } from "../lib/agentCore.js";
+
+// AI copilot actions for the inline thread assistant. Each builds a one-shot
+// agentCore prompt (provider chain + budget caps apply). Thread-based actions
+// read the conversation; rewrite actions operate on the operator's current draft.
+const ASSIST_ACTIONS = {
+  draft: {
+    needsThread: true,
+    system:
+      "Redactás respuestas de email para BMC Uruguay (paneles de aislamiento). Español rioplatense, tono BMC, claro y concreto. Devolvé SOLO el cuerpo del email, sin asunto ni firma.",
+    task: (instruction) =>
+      `Redactá una respuesta al último mensaje del cliente.${instruction ? ` Instrucción del operador: ${instruction}` : " Avanzá hacia la cotización/coordinación de forma útil."}`,
+  },
+  summarize: {
+    needsThread: true,
+    system: "Resumís hilos de email para un operador. Español, conciso.",
+    task: () => "Resumí este hilo en 3-5 viñetas: qué pide el cliente, estado, y la próxima acción sugerida.",
+  },
+  extract: {
+    needsThread: true,
+    system: "Extraés datos estructurados de hilos de email. Devolvé SOLO JSON válido, sin texto extra.",
+    task: () =>
+      'Extraé los datos clave como JSON con claves: intencion, productos, cantidades, montos, fechas, nro_pedido_o_PO, contacto. Usá null si falta un dato.',
+  },
+  translate: {
+    needsDraft: true,
+    system: "Traducís texto de email con precisión, preservando el tono. Devolvé SOLO la traducción.",
+    task: (instruction) => `Traducí el siguiente texto${instruction ? ` (${instruction})` : " al inglés si está en español, o al español si está en inglés"}:`,
+  },
+  formal: {
+    needsDraft: true,
+    system: "Reescribís borradores de email. Devolvé SOLO el texto reescrito, sin comentarios.",
+    task: () => "Reescribí el siguiente borrador en un tono más formal y profesional, manteniendo el contenido:",
+  },
+  shorter: {
+    needsDraft: true,
+    system: "Reescribís borradores de email. Devolvé SOLO el texto reescrito, sin comentarios.",
+    task: () => "Reescribí el siguiente borrador más corto y directo, manteniendo lo esencial:",
+  },
+};
 
 function requireOmniDb(req, res, next) {
   const pool = getOmniPool(config.databaseUrl);
@@ -242,6 +282,69 @@ router.get(
       conversation: convRows[0],
       messages,
     });
+  },
+);
+
+// Inline AI copilot for a thread — draft / summarize / extract / translate /
+// formal / shorter. Non-mutating (returns text the operator chooses to use);
+// uses the agentCore provider chain (Claude-pinned) so budget caps + fallback
+// apply. Sending still goes through the confirm-gated reply route.
+router.post(
+  "/omni/conversations/:id/assist",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    if (!isUuid(req.params.id)) {
+      return res.status(400).json({ ok: false, error: "invalid_conversation_id" });
+    }
+    const action = String(req.body?.action || "").trim();
+    const spec = ASSIST_ACTIONS[action];
+    if (!spec) {
+      return res.status(400).json({ ok: false, error: "invalid_action" });
+    }
+    const instruction = String(req.body?.instruction || "").trim();
+    const draft = String(req.body?.draft || "").trim();
+    if (spec.needsDraft && !draft) {
+      return res.status(400).json({ ok: false, error: "missing_draft" });
+    }
+
+    let threadText = "";
+    if (spec.needsThread) {
+      const { rows } = await req.omniPool.query(
+        `SELECT sender, body FROM omni_messages
+          WHERE conversation_id = $1
+          ORDER BY created_at ASC
+          LIMIT 30`,
+        [req.params.id],
+      );
+      if (!rows.length) {
+        return res.status(404).json({ ok: false, error: "conversation_not_found" });
+      }
+      threadText = rows
+        .map((m) => `${m.sender === "customer" ? "Cliente" : "Operador"}: ${m.body || ""}`)
+        .join("\n");
+    }
+
+    const userContent = [
+      spec.task(instruction),
+      spec.needsThread ? `\n\nHilo:\n${threadText}` : "",
+      spec.needsDraft ? `\n\nBorrador:\n${draft}` : "",
+    ].join("");
+
+    try {
+      const out = await callAgentOnce(
+        [{ role: "user", content: userContent }],
+        { channel: "email", provider: "claude", override: { provider: "claude", maxTokens: 700 } },
+      );
+      const result = (typeof out === "string" ? out : out?.text || out?.content || "").trim();
+      if (!result) {
+        return res.status(502).json({ ok: false, error: "empty_result" });
+      }
+      res.json({ ok: true, action, result });
+    } catch (e) {
+      req.log?.warn?.({ err: e.message, action }, "omni assist failed");
+      res.status(502).json({ ok: false, error: "assist_failed" });
+    }
   },
 );
 
