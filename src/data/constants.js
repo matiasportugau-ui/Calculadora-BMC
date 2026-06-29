@@ -402,6 +402,27 @@ export const PERFIL_TECHO = {
   vaina: {
     ISODEC: { _all: { sku: "6825", label: "Vaina ISODEC Sist 2000", venta: 9.20, web: 10.74, costo: 7.67 } },
   },
+  /** Lima-olla (gutter/valley) — intersección en V entre dos faldones que drena agua.
+   *  Usada en encuentros tipo "desnivel"/"valle". Barra de 3 m. Precios USD sin IVA. */
+  lima_olla: {
+    ISOROOF: {
+      30: { sku: "LO30", venta: 18.5, web: 21.6, costo: 15.42, largo: 3.0 },
+      50: { sku: "LO50", venta: 19.8, web: 23.1, costo: 16.5, largo: 3.0 },
+      80: { sku: "LO80", venta: 21.5, web: 25.1, costo: 17.92, largo: 3.0 },
+      100: { sku: "LO100", venta: 23.2, web: 27.1, costo: 19.35, largo: 3.0 },
+    },
+    ISODEC: {
+      100: { sku: "6850", venta: 20.5, web: 23.9, costo: 17.08, largo: 3.0 },
+      150: { sku: "6851", venta: 26.8, web: 31.3, costo: 22.34, largo: 3.0 },
+      200: { sku: "6852", venta: 29.5, web: 34.4, costo: 24.58, largo: 3.0 },
+      250: { sku: "6853", venta: 31.0, web: 36.2, costo: 25.83, largo: 3.0 },
+    },
+    ISODEC_PIR: {
+      50:  { sku: "LOPIR50",  venta: 22.45, web: 26.18, costo: 18.71, largo: 3.0 },
+      80:  { sku: "LOPIR80",  venta: 23.80, web: 27.77, costo: 19.83, largo: 3.0 },
+      120: { sku: "LOPIR120", venta: 27.50, web: 32.08, costo: 22.92, largo: 3.0 },
+    },
+  },
 };
 
 export const PERFIL_PARED = {
