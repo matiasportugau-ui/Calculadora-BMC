@@ -26,6 +26,7 @@ import { listSuggestions, resolveSuggestion } from "../lib/omni/orchestrator/sug
 import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/evalFeedback.js";
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
+import { rankUrgentConversations } from "../lib/omni/urgency.js";
 import { callAgentOnce } from "../lib/agentCore.js";
 
 // AI copilot actions for the inline thread assistant. Each builds a one-shot
@@ -253,6 +254,70 @@ router.get(
         assignees: [],
         sla: {},
       });
+    }
+  },
+);
+
+// "Reply-zero" action queue — the ranked, per-conversation "act on THIS now" list
+// the admin cockpit's COUNTS don't give you. Read-only aggregation across all
+// channels, team-isolated, scored by the pure policy in server/lib/omni/urgency.js.
+// Degrades to an empty queue pre-009 so the cockpit never hard-fails.
+router.get(
+  "/omni/actions/urgent",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+    const channel = req.query.channel ? String(req.query.channel) : null;
+
+    const params = [];
+    const filters = [
+      `c.status = 'open'`,
+      `(c.snoozed_until IS NULL OR c.snoozed_until <= now())`,
+    ];
+    if (channel) {
+      params.push(channel);
+      filters.push(`c.channel = $${params.length}`);
+    }
+    // Team isolation (mirrors GET /omni/conversations): non-admins see team_id NULL
+    // plus their own teams; admin/superadmin see everything.
+    const role = req.user?.role;
+    if (role !== "admin" && role !== "superadmin") {
+      params.push(req.user.id);
+      filters.push(
+        `(c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`,
+      );
+    }
+    const where = `WHERE ${filters.join(" AND ")}`;
+
+    try {
+      // Bound the candidate set (freshest-aging first) so JS scoring stays cheap.
+      const { rows } = await req.omniPool.query(
+        `SELECT c.id, c.channel, c.subject, c.status, c.priority, c.created_at,
+                c.first_agent_reply_at, c.assigned_to_user_id, c.snoozed_until,
+                co.name AS contact_name, co.email AS contact_email, co.wa_phone,
+                (SELECT COUNT(*)::int FROM omni_messages mu
+                   WHERE mu.conversation_id = c.id AND mu.sender = 'customer' AND mu.read_at IS NULL) AS unread_count,
+                (SELECT MAX(m2.created_at) FROM omni_messages m2 WHERE m2.conversation_id = c.id) AS last_message_at
+         FROM omni_conversations c
+         JOIN omni_contacts co ON co.id = c.contact_id
+         ${where}
+         ORDER BY c.created_at ASC
+         LIMIT 500`,
+        params,
+      );
+      const ranked = rankUrgentConversations(rows, { limit });
+      res.json({
+        ok: true,
+        generated_at: new Date().toISOString(),
+        count: ranked.length,
+        candidates_scanned: rows.length,
+        actions: ranked,
+      });
+    } catch (e) {
+      if (e?.code !== "42703" && e?.code !== "42P01") throw e;
+      req.log?.warn?.({ err: e.message, code: e.code }, "omni urgent actions degraded");
+      res.json({ ok: true, degraded: e.code, actions: [], count: 0, candidates_scanned: 0 });
     }
   },
 );
