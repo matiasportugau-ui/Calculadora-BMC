@@ -2922,6 +2922,25 @@ console.log("\n═══ SUITE 36: ISOROOF PLUS — mínimo 800 m² ═══");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 39. resolveSKU_techoByRange — resolución por rango de espesor
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const { resolveSKU_techoByRange, resolveSKU_techo } = await import("../src/utils/calculations.js");
+  // gotero_frontal ISOROOF tiene 30/50/80/100. Pedir 60 → mayor ≤ 60 = 50.
+  const r60 = resolveSKU_techoByRange("gotero_frontal", "ISOROOF", 60);
+  assert("resolveSKU_techoByRange: 60mm → SKU del 50mm (GFS50)", r60?.sku === "GFS50", r60?.sku, "GFS50");
+  // Pedir 100 (exacto) → match exacto.
+  const r100 = resolveSKU_techoByRange("gotero_frontal", "ISOROOF", 100);
+  assert("resolveSKU_techoByRange: 100mm exacto → GFS100", r100?.sku === "GFS100", r100?.sku, "GFS100");
+  // Pedir 20 (menor a todos) → mínimo disponible = 30 (GFS30).
+  const r20 = resolveSKU_techoByRange("gotero_frontal", "ISOROOF", 20);
+  assert("resolveSKU_techoByRange: 20mm (bajo rango) → mínimo GFS30", r20?.sku === "GFS30", r20?.sku, "GFS30");
+  // Sin range mode, 60mm no existe exacto → null (sin _all en gotero_frontal).
+  const exact60 = resolveSKU_techo("gotero_frontal", "ISOROOF", 60);
+  assert("resolveSKU_techo: 60mm sin rango → null", exact60 === null, exact60, "null");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
 // ═══════════════════════════════════════════════════════════════════════════
 console.log(`\n${"═".repeat(60)}`);
