@@ -347,7 +347,10 @@ router.post('/ai/chat', requireMarketing, async (req, res) => {
     if (closed) return;
     try { res.write(': ping\n\n'); } catch { /* ignore */ }
   }, 15000);
-  req.on('close', () => { closed = true; clearInterval(heartbeat); });
+  // Listen on the RESPONSE close, not req: on a POST the request 'close' can fire
+  // once the body is fully read (before the LLM call finishes), which would
+  // suppress every write. res 'close' only fires on real client disconnect / end.
+  res.on('close', () => { closed = true; clearInterval(heartbeat); });
 
   try {
     const context = await buildMarketChatContext();

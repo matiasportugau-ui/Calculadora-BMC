@@ -69,6 +69,12 @@ export default function MarketIntelChat({ token }) {
               setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + evt.delta, pending: false } : m)));
             } else if (evt.type === 'error') {
               setError(evt.message || 'Error del analista AI');
+              // Server emits error→done→end (the catch never runs), so clear the
+              // pending bubble here: keep partial text, drop an empty one.
+              setMessages((prev) => prev.flatMap((m) => {
+                if (m.id !== assistantId) return [m];
+                return m.content ? [{ ...m, pending: false }] : [];
+              }));
             }
           } catch { /* skip malformed event */ }
         }
