@@ -179,6 +179,14 @@ const TEMPLATE_MAP = {
 
 export async function renderPdfLayout(layout, q) {
   const loader = TEMPLATE_MAP[layout] ?? TEMPLATE_MAP['soft-modern'];
-  const mod = await loader();
+  let mod;
+  try {
+    mod = await loader();
+  } catch (err) {
+    throw new Error(`PDF template "${layout}" failed to load: ${err?.message || err}`);
+  }
+  if (typeof mod?.render !== 'function') {
+    throw new Error(`PDF template "${layout}" is missing a render() export`);
+  }
   return mod.render(q);
 }

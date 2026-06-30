@@ -34,7 +34,6 @@ export function p(item) {
   if (LISTA_ACTIVA === "venta") return item.venta || item.web || 0;
   return item.web || item.venta || 0;
 }
-export function pIVA(item) { return +(p(item) * IVA_MULT).toFixed(2); }
 export function setListaPrecios(lista) { LISTA_ACTIVA = lista; }
 
 // ── Pricing source strategy (Phase 6 / PIM centralization, step 4) ───────────
@@ -267,7 +266,9 @@ export const PRESUPUESTO_LIBRE_IDS = [
 export const SELLADORES = {
   silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.64, web: 11.24, costo: 8.03, unidad: "unid", ml_por_unid: 10.27 },
   /** 300 ml neutra (MATRIZ BROMYROS ~fila 168; col D SIL300N para CSV): junto a 600 ml; cantidad = ratio × unid. 600 (`SELLADORES_TECHO.silicona_300_por_unid_600`, default 2). */
-  silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.11, web: 4.2, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
+  // web alineado a venta (7.11): el 4.2 previo quedaba por debajo de venta, único caso
+  // en SELLADORES; interim hasta confirmar contra MATRIZ (bug report 2026-06-29, C1).
+  silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.11, web: 7.11, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
   cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 15.77, web: 19.19, costo: 13.71, unidad: "unid" },
   membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo" },
   espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid" },
