@@ -116,6 +116,8 @@ jobs:
   cockpit_e2e_readonly:
     name: Cockpit E2E — read-only (main only)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [validate, lint]
     continue-on-error: true
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'

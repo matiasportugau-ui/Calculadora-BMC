@@ -26,6 +26,8 @@ jobs:
   cockpit_e2e_writes:
     name: Cockpit E2E writes (level ${{ inputs.level }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     # Environment protegido: configurar required reviewers en Settings → Environments.
     environment: cockpit-e2e-writes
 
