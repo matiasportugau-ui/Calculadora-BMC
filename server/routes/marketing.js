@@ -40,6 +40,10 @@ import { callAgentOnce } from '../lib/agentCore.js';
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
 
+// Keep SSE connections alive across proxies/load balancers that time out idle
+// connections (commonly 30s); emit a comment-line heartbeat every 15s.
+const SSE_HEARTBEAT_INTERVAL_MS = 15_000;
+
 let _pool = null;
 const pool = () => {
   if (!_pool) {
@@ -354,7 +358,7 @@ router.post('/ai/chat', aiChatLimiter, requireMarketing, async (req, res) => {
   let aborted = false;
   req.on('close', () => { aborted = true; });
 
-  const heartbeat = setInterval(() => { if (!aborted) res.write(':\n\n'); }, 15000);
+  const heartbeat = setInterval(() => { if (!aborted) res.write(':\n\n'); }, SSE_HEARTBEAT_INTERVAL_MS);
 
   const send = (obj) => {
     try { if (!aborted) res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* client disconnected */ }

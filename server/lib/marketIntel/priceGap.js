@@ -11,6 +11,8 @@
 //   - strategicBrief.js   → buildAnalisisPrecios() (AI brief "análisis de precios")
 //   - routes/marketing.js → GET /api/marketing/product-matrix
 
+// Tier multipliers: how each competitor tier prices relative to BMC
+// (1 = premium fabricantes/importadores → 5 = discount MLU resellers).
 export const TIER_MULTIPLIERS = { 1: 1.3, 2: 1.05, 3: 0.95, 4: 0.85, 5: 0.7 };
 
 /**
