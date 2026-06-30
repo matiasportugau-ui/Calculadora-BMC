@@ -1,5 +1,10 @@
 # Fails a PR that introduces a dependency with a high/critical advisory.
 # Part of the security-CI baseline (issue #492).
+#
+# fail-on-scopes covers runtime + development (+ unknown): the action defaults
+# to runtime-only, which would let a vulnerable build/test devDependency slip
+# through — and this repo's last criticals were dev-only (shell-quote via
+# concurrently). Gate all scopes so the check matches its stated intent.
 name: Dependency Review
 on:
   pull_request:
@@ -15,4 +20,5 @@ jobs:
       - uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+          fail-on-scopes: runtime,development,unknown
           comment-summary-in-pr: on-failure
