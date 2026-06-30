@@ -180,6 +180,7 @@ jobs:
             OMNI_AUTOMATION_ENABLED=${{ vars.OMNI_AUTOMATION_ENABLED }}
             OMNI_WA_CANONICAL=${{ vars.OMNI_WA_CANONICAL }}
             OMNI_WA_CRM_SYNC_DELAY_MS=${{ vars.OMNI_WA_CRM_SYNC_DELAY_MS }}
+            OMNI_WA_READS=${{ vars.OMNI_WA_READS }}
             OMNI_AI_DAILY_BUDGET_USD=${{ vars.OMNI_AI_DAILY_BUDGET_USD }}
             GMAIL_INGEST_ADDRESSES=${{ vars.GMAIL_INGEST_ADDRESSES }}
           flags: |

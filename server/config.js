@@ -315,6 +315,13 @@ export const config = {
    * Default 60s; clamp [0, 600000]. Only affects wa_crm_sync (other jobs run_after=NULL).
    */
   omniWaCrmSyncDelayMs: Math.max(0, Math.min(600000, Number(process.env.OMNI_WA_CRM_SYNC_DELAY_MS || 60000))),
+  /**
+   * Phase 2b — read-model convergence. When ON, the /hub/wa cockpit read endpoints
+   * (/api/wa/conversations|messages|suggestions) read from the omni_* tables instead
+   * of wa_*, mapped to the cockpit's existing shape. Default OFF: reads stay on wa_*.
+   * Some fields are lossy (status enum, owner_op) — validate on staging before ON.
+   */
+  omniWaReads: bool(process.env.OMNI_WA_READS, false),
   omniAiDailyBudgetUsd: Math.max(0, Number(process.env.OMNI_AI_DAILY_BUDGET_USD || 50)),
   omniDealsSheetsAuthority: bool(process.env.OMNI_DEALS_SHEETS_AUTHORITY, true),
   otelEnabled: bool(process.env.OTEL_ENABLED, false),

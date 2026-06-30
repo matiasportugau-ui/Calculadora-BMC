@@ -18,6 +18,10 @@ import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { getConfig as getWaCfg, getFlag as getWaFlag } from "../lib/waConfig.js";
 import { emitWaWebhook } from "../lib/waWebhooks.js";
 import { applyRoutingRules } from "../lib/waRoutingRules.js";
+import {
+  buildOmniConversationsSql, buildOmniMessagesSql, buildOmniSuggestionsSql,
+  mapOmniConversation, mapOmniMessage, mapOmniSuggestion,
+} from "../lib/wa/omniReadAdapter.js";
 import jwt from "jsonwebtoken";
 
 function asyncHandler(fn) {
@@ -674,6 +678,18 @@ export default function createWaRouter(config, logger) {
       const limit = Math.min(Math.max(Number(req.query.limit || 100), 1), 500);
       const cursor = req.query.cursor ? String(req.query.cursor) : "";
 
+      // Phase 2b: read from omni_* (mapped to this shape) when the flag is ON.
+      if (config.omniWaReads) {
+        const { text, params } = buildOmniConversationsSql({ status, q, cursor, limit });
+        const { rows } = await pool.query(text, params);
+        const hasMore = rows.length > limit;
+        const slice = hasMore ? rows.slice(0, limit) : rows;
+        const nextCursor = hasMore && slice[slice.length - 1]?.updated_at
+          ? new Date(slice[slice.length - 1].updated_at).toISOString()
+          : null;
+        return res.json({ ok: true, count: slice.length, next_cursor: nextCursor, items: slice.map(mapOmniConversation) });
+      }
+
       const where = [];
       const params = [];
       let idx = 1;
@@ -728,6 +744,21 @@ export default function createWaRouter(config, logger) {
       const before = req.query.before ? String(req.query.before) : null;
       const limit = Math.min(Math.max(Number(req.query.limit || 100), 1), 500);
 
+      // Phase 2b: read the thread from omni_messages when the flag is ON.
+      if (config.omniWaReads) {
+        const { text, params } = buildOmniMessagesSql({ chatId, before, limit });
+        const { rows } = await pool.query(text, params);
+        const hasMore = rows.length > limit;
+        const slice = hasMore ? rows.slice(0, limit) : rows;
+        const nextBefore = hasMore && slice[slice.length - 1]?.created_at
+          ? new Date(slice[slice.length - 1].created_at).toISOString()
+          : null;
+        return res.json({
+          ok: true, chat_id: chatId, count: slice.length, next_before: nextBefore,
+          items: slice.map(mapOmniMessage).reverse(),
+        });
+      }
+
       const params = [chatId];
       let idx = 2;
       let where = "chat_id = $1";
@@ -770,6 +801,13 @@ export default function createWaRouter(config, logger) {
       if (!chatId) return res.status(400).json({ ok: false, error: "chat_id required" });
       const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 100);
       const onlyPending = req.query.pending === "1" || req.query.pending === "true";
+
+      // Phase 2b/2c: surface omni_suggestions (mapped to the options[] shape) when ON.
+      if (config.omniWaReads) {
+        const { text, params } = buildOmniSuggestionsSql({ chatId, onlyPending, limit });
+        const { rows } = await pool.query(text, params);
+        return res.json({ ok: true, count: rows.length, items: rows.map(mapOmniSuggestion) });
+      }
 
       const where = ["chat_id = $1"];
       const params = [chatId];
