@@ -22,7 +22,7 @@ import {
 } from "../src/utils/calculations.js";
 import { getDimensioningParam } from "../src/utils/dimensioningFormulas.js";
 import { deserializeProject, isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes } from "../src/utils/projectFile.js";
-import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
+import { bomToGroups, applyOverrides, createLineId, mergeLibreGroups } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
 import { PERFIL_TECHO, PERFIL_PARED, PANELS_TECHO, PANELS_PARED } from "../src/data/constants.js";
 import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpStore.js";
@@ -735,6 +735,79 @@ assert("computePresupuestoLibreCatalogo: presupuestoLibre flag", catLibre.presup
 assert("computePresupuestoLibreCatalogo: incluye m²", catLibre.allItems.some(i => i.unidad === "m²"), catLibre.allItems.filter(i => i.unidad === "m²").length, ">0");
 assert("computePresupuestoLibreCatalogo: totalFinal > 0", catLibre.totales.totalFinal > 0, catLibre.totales.totalFinal, ">0");
 assert("computePresupuestoLibreCatalogo: libreGroups", Array.isArray(catLibre.libreGroups) && catLibre.libreGroups.length > 0, catLibre.libreGroups?.length, ">0");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 16c: presupuesto libre ADITIVO sobre cualquier escenario (mergeLibreGroups)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 16c: presupuesto libre aditivo (mergeLibreGroups + flete:0) ═══");
+
+// flete:0 → el motor NO emite línea SERVICIOS/FLETE (la maneja el escenario).
+const libreSinFlete = computePresupuestoLibreCatalogo({
+  listaPrecios: "web",
+  librePanelLines: [{ familia: "ISODEC_EPS", espesor: 100, color: "Blanco", m2: 8 }],
+  librePerfilQty: {},
+  perfilCatalogById: perfMap,
+  libreFijQty: { tornillo_t2: 30 },
+  libreSellQty: {},
+  flete: 0,
+  libreExtra: { texto: "Mano de obra montaje", precio: "250", unidades: "global", cantidad: "1" },
+});
+assert("aditivo: flete:0 no genera grupo SERVICIOS",
+  libreSinFlete.libreGroups.every(g => g.title !== "SERVICIOS"),
+  JSON.stringify(libreSinFlete.libreGroups.map(g => g.title)), "sin SERVICIOS");
+assert("aditivo: flete:0 no genera ítem FLETE",
+  libreSinFlete.allItems.every(i => i.sku !== "FLETE"),
+  libreSinFlete.allItems.filter(i => i.sku === "FLETE").length, 0);
+assert("aditivo: incluye TORNILLERÍA + EXTRAORDINARIOS",
+  libreSinFlete.libreGroups.some(g => g.title === "TORNILLERÍA") && libreSinFlete.libreGroups.some(g => g.title === "EXTRAORDINARIOS"),
+  JSON.stringify(libreSinFlete.libreGroups.map(g => g.title)), "TORNILLERÍA + EXTRAORDINARIOS");
+
+// Escenario base simulado (techo) con un panel y una fijación.
+const baseScenarioGroups = [
+  { title: "PANELES", items: [{ label: "ISODEC techo", sku: "ISODEC_EPS-100", cant: 30, unidad: "m²", pu: 20, total: 600 }] },
+  { title: "FIJACIONES", items: [{ label: "Tornillo techo", sku: "torn", cant: 100, unidad: "unid", pu: 0.5, total: 50 }] },
+];
+const merged = mergeLibreGroups(baseScenarioGroups, libreSinFlete.libreGroups);
+
+// PANELES crece (panel libre anexado tras el panel del escenario).
+const mergedPaneles = merged.find(g => g.title === "PANELES");
+assert("merge: PANELES crece con panel libre", mergedPaneles.items.length === 2, mergedPaneles.items.length, 2);
+assert("merge: panel del escenario queda primero", mergedPaneles.items[0].sku === "ISODEC_EPS-100", mergedPaneles.items[0].sku, "ISODEC_EPS-100");
+// TORNILLERÍA (libre) coexiste como grupo separado de FIJACIONES (escenario).
+assert("merge: FIJACIONES y TORNILLERÍA coexisten",
+  !!merged.find(g => g.title === "FIJACIONES") && !!merged.find(g => g.title === "TORNILLERÍA"),
+  JSON.stringify(merged.map(g => g.title)), "ambos presentes");
+assert("merge: EXTRAORDINARIOS agregado", !!merged.find(g => g.title === "EXTRAORDINARIOS"), true, true);
+
+// lineId estable: el primer panel del escenario sigue siendo PANELES-0 tras la fusión.
+const mergedOvr = applyOverrides(merged, {});
+const mergedPanelesOvr = mergedOvr.find(g => g.title === "PANELES");
+assert("merge: lineId del panel escenario estable (PANELES-0)",
+  mergedPanelesOvr.items[0].lineId === createLineId("PANELES", 0) && mergedPanelesOvr.items[0].sku === "ISODEC_EPS-100",
+  mergedPanelesOvr.items[0].lineId, "PANELES-0");
+
+// Aditividad del total: total fusionado = total escenario + total líneas libres.
+const baseTotal = calcTotalesSinIVA(baseScenarioGroups.flatMap(g => g.items)).totalFinal;
+const libreTotal = calcTotalesSinIVA(libreSinFlete.allItems).totalFinal;
+const mergedTotal = calcTotalesSinIVA(merged.flatMap(g => g.items)).totalFinal;
+assert("merge: total aditivo = escenario + libre", approx(mergedTotal, baseTotal + libreTotal), mergedTotal, baseTotal + libreTotal);
+
+// Inputs vacíos (defaults de la UI) → sin grupos libres → no-op aditivo.
+const libreVacio = computePresupuestoLibreCatalogo({
+  listaPrecios: "web",
+  librePanelLines: [{ familia: "", espesor: "", color: "Blanco", m2: 0 }],
+  librePerfilQty: {},
+  perfilCatalogById: perfMap,
+  libreFijQty: {},
+  libreSellQty: {},
+  flete: 0,
+  libreExtra: { texto: "", precio: "", unidades: "", cantidad: "" },
+});
+assert("aditivo: inputs vacíos → libreGroups vacío", libreVacio.libreGroups.length === 0, libreVacio.libreGroups.length, 0);
+const mergedVacio = mergeLibreGroups(baseScenarioGroups, libreVacio.libreGroups);
+assert("aditivo: merge con vacío no altera escenario",
+  mergedVacio.length === baseScenarioGroups.length && mergedVacio.find(g => g.title === "PANELES").items.length === 1,
+  JSON.stringify(mergedVacio.map(g => ({ t: g.title, n: g.items.length }))), "escenario intacto");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 17: applyOverrides
