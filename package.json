@@ -171,6 +171,7 @@
     "wa:migrate": "node scripts/run-wa-migrations.mjs",
     "omni:migrate": "node scripts/omni-migrate.mjs",
     "omni:rag-precheck": "node scripts/omni-rag-precheck.mjs",
+    "omni:ground-truth": "node scripts/verify-prod-ground-truth.mjs",
     "identity:golive:apply": "bash scripts/identity-golive-apply.sh",
     "identity:drive-config:check": "node scripts/check-drive-config-table.mjs",
     "omni:backfill-wa": "node scripts/omni-backfill-wa.mjs",
