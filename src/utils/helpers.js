@@ -118,7 +118,14 @@ export const QUOTE_TERMS = [
 // Locale en-US es intencional: USD se muestra con punto decimal (1,234.56), no con coma (es-UY).
 export const fmtPrice = n => {
   const num = Number(n);
-  if (!Number.isFinite(num)) return "0.00";
+  if (!Number.isFinite(num)) {
+    // Keep "0.00" in prod, but surface the bad value in dev so an upstream
+    // calc error doesn't silently render as $0.00 (bug report 2026-06-29, C5).
+    if (import.meta.env?.DEV && n != null && n !== "") {
+      console.warn("[fmtPrice] non-finite value coerced to 0.00:", n);
+    }
+    return "0.00";
+  }
   return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
