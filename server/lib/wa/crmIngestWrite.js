@@ -26,8 +26,9 @@ async function buildSheetsClient(credsPath) {
 }
 
 /**
- * Write the WA conversation's parsed data into Form responses 1 + CRM_Operativo.
- * Does NOT write the AF–AG AI-suggestion cells (that stays in the legacy OFF path).
+ * Create a WA lead row from parsed data into Form responses 1 + CRM_Operativo
+ * (append only — never overwrites an existing row). Does NOT write the AF–AG
+ * AI-suggestion cells (that stays in the legacy OFF path).
  *
  * @param {object} args
  * @param {object} args.parsedData      result of /api/crm/parse-conversation (`d`)
@@ -36,7 +37,6 @@ async function buildSheetsClient(credsPath) {
  * @param {object} args.config          server config (bmcSheetId, creds)
  * @param {object} [args.logger]
  * @param {object} [args.sheets]        optional pre-built Sheets client (tests/reuse)
- * @param {"append"|"upsertByPhone"} [args.findRow="append"]
  * @returns {Promise<{skipped?:boolean, reason?:string, crmRow?:number, formRow?:number, sheets?:object, sheetId?:string}>}
  */
 export async function writeWaCrmIngest({
@@ -46,7 +46,6 @@ export async function writeWaCrmIngest({
   config,
   logger,
   sheets: injectedSheets,
-  findRow = "append",
 }) {
   const credsPath =
     config.googleApplicationCredentials ||
@@ -59,7 +58,6 @@ export async function writeWaCrmIngest({
   const sheets = injectedSheets || (await buildSheetsClient(credsPath));
   const sheetId = config.bmcSheetId;
   const now = new Date().toISOString();
-  const phone = d.telefono || chatId;
 
   // Form responses 1 — append: primera fila con col C (Cliente) vacía
   const formClientes = await sheets.spreadsheets.values.get({
@@ -92,36 +90,20 @@ export async function writeWaCrmIngest({
     },
   });
 
-  // CRM_Operativo — resolve target row (C=cliente, D=telefono) from row 4.
+  // CRM_Operativo — append: first row with empty col C (Cliente) from row 4.
+  // This function only ever CREATES a lead row. Canonical mode gates on
+  // findCrmRowByPhone() first and skips entirely when a row already exists, so an
+  // operator-edited row is never overwritten (no clobber of Estado/Observaciones/AK).
   const crmClientes = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: "'CRM_Operativo'!C4:D500",
+    range: "'CRM_Operativo'!C4:C500",
   });
   const crmVals = crmClientes.data.values || [];
   let crmRow = crmVals.length + 4;
-  if (findRow === "upsertByPhone") {
-    const target = String(phone).replace(/\D/g, "");
-    let foundIdx = -1;
-    let firstEmptyIdx = -1;
-    for (let i = 0; i < crmVals.length; i++) {
-      const cliente = crmVals[i][0];
-      const rowPhone = String(crmVals[i][1] || "").replace(/\D/g, "");
-      if (target && rowPhone && rowPhone === target) {
-        foundIdx = i;
-        break;
-      }
-      if (firstEmptyIdx < 0 && (!cliente || !cliente.toString().trim())) {
-        firstEmptyIdx = i;
-      }
-    }
-    crmRow =
-      foundIdx >= 0 ? foundIdx + 4 : firstEmptyIdx >= 0 ? firstEmptyIdx + 4 : crmVals.length + 4;
-  } else {
-    for (let i = 0; i < crmVals.length; i++) {
-      if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) {
-        crmRow = i + 4;
-        break;
-      }
+  for (let i = 0; i < crmVals.length; i++) {
+    if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) {
+      crmRow = i + 4;
+      break;
     }
   }
 
@@ -160,8 +142,41 @@ export async function writeWaCrmIngest({
     requestBody: { values: [defaultTailAHAK()] },
   });
 
-  logger?.info?.(`[WA] CRM ingest → CRM row ${crmRow}, Form row ${formRow} (${findRow})`);
+  logger?.info?.(`[WA] CRM ingest → CRM row ${crmRow}, Form row ${formRow} (create)`);
   return { crmRow, formRow, sheets, sheetId };
+}
+
+/**
+ * Find an existing CRM_Operativo lead row by phone (digit-normalized match on
+ * col D), so canonical mode can insert-once and never overwrite an operator row.
+ * @param {object} args
+ * @param {object} args.config           server config (bmcSheetId, creds)
+ * @param {string} args.phone            phone / chatId to match (stable key)
+ * @param {object} [args.sheets]         optional pre-built Sheets client (reuse/tests)
+ * @returns {Promise<{row: number|null, sheets?: object, skipped?: boolean, reason?: string}>}
+ *   row = 1-based CRM_Operativo row if a lead for this phone exists, else null.
+ */
+export async function findCrmRowByPhone({ config, phone, sheets: injectedSheets }) {
+  const credsPath =
+    config.googleApplicationCredentials ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    "";
+  if (!config.bmcSheetId || !credsPath) {
+    return { row: null, skipped: true, reason: "sheets_not_configured" };
+  }
+  const sheets = injectedSheets || (await buildSheetsClient(credsPath));
+  const target = String(phone || "").replace(/\D/g, "");
+  if (!target) return { row: null, sheets };
+  const { data } = await sheets.spreadsheets.values.get({
+    spreadsheetId: config.bmcSheetId,
+    range: "'CRM_Operativo'!C4:D500",
+  });
+  const rows = data.values || [];
+  for (let i = 0; i < rows.length; i++) {
+    const rowPhone = String((rows[i] && rows[i][1]) || "").replace(/\D/g, "");
+    if (rowPhone && rowPhone === target) return { row: i + 4, sheets };
+  }
+  return { row: null, sheets };
 }
 
 /**

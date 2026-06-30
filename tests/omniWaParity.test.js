@@ -33,6 +33,7 @@ assert("dedup key format", buildIdempotencyKey("wa", "x").startsWith("wa:msg:"))
 
 // Contract the canonical-mode wa_crm_sync flow relies on.
 assert("webhook event channel is wa", webhook.channel === "wa");
+assert("webhook message.sender is customer (pins enqueueIngestAiJobs gate)", webhook.message?.sender === "customer");
 assert("webhook carries side_effects.wa_chat_id", webhook.side_effects?.wa_chat_id === "chat1");
 assert("webhook conversation_hint matches chatId", webhook.conversation_hint?.channel_conversation_id === "chat1");
 

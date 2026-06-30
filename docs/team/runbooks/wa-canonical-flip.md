@@ -78,7 +78,22 @@ Postgres is absent.)
 ## Notes
 
 - A transient `/api/crm/parse-conversation` 503 (LLM providers momentarily down)
-  now makes the `wa_crm_sync` job **retry** (up to attempts→`dead`), so a brief
-  outage doesn't silently drop a conversation's CRM sync.
-- The CRM-parse LLM spend is not counted against `OMNI_AI_DAILY_BUDGET_USD`
-  (same as the legacy path); budget governs only omni-tracked `suggest`/`classify`.
+  makes the `wa_crm_sync` job **retry** (up to attempts→`dead`), so a brief outage
+  doesn't silently drop a conversation's CRM sync. A `dead` job logs
+  `"wa_crm_sync DEAD — CRM lead may be lost"` and is exposed as
+  `omni_ai_jobs_24h{job_type="wa_crm_sync",status="dead"}` — alert on it.
+- **Insert-once semantics:** `wa_crm_sync` creates ONE CRM_Operativo row per phone
+  on first contact and **never overwrites** it afterward (no clobber of operator
+  Estado/Observaciones or the "Bloquear auto" lock). Repeat messages from a known
+  phone skip parse + Sheets entirely (so per-message LLM cost is bounded). The row
+  is created from the first message; the full transcript always lives in
+  `omni_messages`. Trade-off accepted: `resumen_pedido` reflects early conversation,
+  and a returning lead's row is not auto-refreshed (the operator owns it).
+- **Budget decoupling:** the AI daily-budget gate scopes to `suggest` only —
+  `wa_crm_sync` keeps draining even when `OMNI_AI_DAILY_BUDGET_USD` is exhausted, so
+  WhatsApp lead capture never stalls on LLM spend. The CRM-parse LLM spend is itself
+  **outside** the budget (same as legacy).
+- **Migration lock:** applying migration 011 briefly write-locks `omni_ai_jobs`
+  (non-CONCURRENT unique index). Apply in a low-traffic window, or build
+  `omni_ai_jobs_wa_crm_sync_active_dedup` with `CREATE UNIQUE INDEX CONCURRENTLY`
+  out-of-band.

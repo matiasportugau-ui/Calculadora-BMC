@@ -1,6 +1,7 @@
-// writeWaCrmIngest — offline, fake Sheets client. Regression guard for the refactor
-// (same ranges as legacy) + find-by-phone upsert.
-import { writeWaCrmIngest } from "../server/lib/wa/crmIngestWrite.js";
+// writeWaCrmIngest (create-only append) + findCrmRowByPhone — offline, fake Sheets.
+// Regression guard for the canonical CRM write: correct ranges AND cell values, and
+// the phone-normalized existence lookup that drives insert-once.
+import { writeWaCrmIngest, findCrmRowByPhone } from "../server/lib/wa/crmIngestWrite.js";
 
 let passed = 0;
 let failed = 0;
@@ -9,8 +10,8 @@ function assert(name, condition) {
   else { console.log(`  ❌ ${name}`); failed += 1; }
 }
 
-// Fake Sheets: CRM_Operativo has Ana@598111 in row 4 (idx0) and an empty row 5 (idx1).
-function fakeSheets() {
+// Fake Sheets: Form has 2 filled rows; CRM_Operativo has Ana in row 4, empty row 5.
+function fakeSheets(crmCD = [["Ana", "59891234567"], ["", ""]]) {
   const updates = [];
   return {
     updates,
@@ -18,54 +19,57 @@ function fakeSheets() {
       values: {
         get: async ({ range }) => {
           if (range.includes("Form responses")) return { data: { values: [["x"], ["y"]] } };
-          if (range.includes("C4:D500")) return { data: { values: [["Ana", "598111"], ["", ""]] } };
+          if (range.includes("C4:D500")) return { data: { values: crmCD } };
+          if (range.includes("C4:C500")) return { data: { values: crmCD.map((r) => [r[0]]) } };
           return { data: { values: [] } };
         },
-        update: async (req) => { updates.push(req.range); return {}; },
+        update: async (req) => { updates.push({ range: req.range, values: req.requestBody?.values?.[0] }); return {}; },
       },
     },
   };
 }
 
 const config = { bmcSheetId: "sheet1", googleApplicationCredentials: "/fake/creds.json" };
-const parsed = { cliente: "Ana", telefono: "598111", resumen_pedido: "techo" };
+const parsed = {
+  cliente: "Ana", telefono: "59891234567", resumen_pedido: "techo", ubicacion: "MVD",
+  urgencia: "alta", validar_stock: "No", probabilidad_cierre: "80", tipo_cliente: "obra",
+  observaciones: "obs", vendedor: "MA", categoria: "cotizacion",
+};
 
-// append mode → first empty CRM row (row 5)
+// ── writeWaCrmIngest: append to first empty CRM row (row 5), correct ranges+values ──
 const s1 = fakeSheets();
-const r1 = await writeWaCrmIngest({
-  parsedData: parsed, chatId: "598111", dialogo: "d", config, logger: null,
-  sheets: s1, findRow: "append",
-});
-assert("append → crmRow 5 (first empty)", r1.crmRow === 5);
-assert("append writes CRM B5:K5", s1.updates.some((r) => r.includes("B5:K5")));
-assert("writes Form responses A:P", s1.updates.some((r) => r.includes("Form responses 1") && /A\d+:P\d+/.test(r)));
-assert("writes CRM R:T", s1.updates.some((r) => /R5:T5/.test(r)));
-assert("writes CRM V:W", s1.updates.some((r) => /V5:W5/.test(r)));
-assert("writes AH:AK tail", s1.updates.some((r) => /AH5:AK5/.test(r)));
+const r1 = await writeWaCrmIngest({ parsedData: parsed, chatId: "59891234567", dialogo: "d", config, sheets: s1, logger: null });
+assert("create → crmRow 5 (first empty)", r1.crmRow === 5);
+const by = (frag) => s1.updates.find((u) => u.range.includes(frag));
+assert("writes CRM B5:K5", !!by("B5:K5"));
+assert("writes Form A4:P4", !!by("A4:P4"));
+assert("writes CRM R5:T5", !!by("R5:T5"));
+assert("writes CRM V5:W5", !!by("V5:W5"));
+assert("writes AH5:AK5 tail", !!by("AH5:AK5"));
+// VALUES (the actual byte-identity guard, not just ranges):
+const bk = by("B5:K5").values;
+assert("CRM B:K origen col === 'WA-Auto'", bk[4] === "WA-Auto");
+assert("CRM B:K estado col === 'Pendiente'", bk[8] === "Pendiente");
+assert("CRM B:K telefono col === parsed phone", bk[2] === "59891234567");
+const rt = by("R5:T5").values;
+assert("CRM R:T === [prob, urgencia, validar_stock]", rt[0] === "80" && rt[1] === "alta" && rt[2] === "No");
+const form = by("A4:P4").values;
+assert("Form A:P origen === 'WA-Auto'", form[5] === "WA-Auto");
+assert("Form A:P last col === dialogo", form[15] === "d");
 
-// upsertByPhone mode → reuse Ana's existing row 4
-const s2 = fakeSheets();
-const r2 = await writeWaCrmIngest({
-  parsedData: parsed, chatId: "598111", dialogo: "d", config, logger: null,
-  sheets: s2, findRow: "upsertByPhone",
-});
-assert("upsertByPhone → reuses row 4", r2.crmRow === 4);
-assert("upsert writes CRM B4:K4", s2.updates.some((r) => r.includes("B4:K4")));
-
-// upsertByPhone for an unknown phone → first empty row (row 5)
-const s3 = fakeSheets();
-const r3 = await writeWaCrmIngest({
-  parsedData: { cliente: "Beto", telefono: "598999" }, chatId: "598999", dialogo: "d",
-  config, logger: null, sheets: s3, findRow: "upsertByPhone",
-});
-assert("upsertByPhone unknown phone → first empty row 5", r3.crmRow === 5);
-
-// no sheet config → skipped, no writes
-const s4 = fakeSheets();
-const r4 = await writeWaCrmIngest({
-  parsedData: parsed, chatId: "x", dialogo: "d", config: { bmcSheetId: "" }, sheets: s4,
-});
-assert("no sheet id → skipped", r4.skipped === true && s4.updates.length === 0);
+// ── findCrmRowByPhone: digit-normalized match (the insert-once key) ──
+// format mismatch still matches (the whole point):
+const f1 = await findCrmRowByPhone({ config, phone: "59891234567", sheets: fakeSheets([["Ana", "+598 91 234 567"]]) });
+assert("findCrmRowByPhone: format-mismatch still hits → row 4", f1.row === 4);
+// genuinely different phone does NOT collide:
+const f2 = await findCrmRowByPhone({ config, phone: "59899999999", sheets: fakeSheets([["Ana", "59891234567"]]) });
+assert("findCrmRowByPhone: different phone → no collision (null)", f2.row === null);
+// unknown phone in a populated sheet → null:
+const f3 = await findCrmRowByPhone({ config, phone: "59890000000", sheets: fakeSheets([["Ana", "59891234567"], ["Beto", "59891111111"]]) });
+assert("findCrmRowByPhone: unknown phone → null", f3.row === null);
+// no sheet config → skipped:
+const f4 = await findCrmRowByPhone({ config: { bmcSheetId: "" }, phone: "x" });
+assert("findCrmRowByPhone: no sheet id → skipped", f4.skipped === true && f4.row === null);
 
 console.log(`\nwaCrmIngestExtract: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

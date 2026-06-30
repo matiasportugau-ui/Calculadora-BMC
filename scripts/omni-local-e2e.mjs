@@ -202,9 +202,9 @@ async function main() {
   assert("ALLOWED_AI_JOB_TYPES includes wa_crm_sync", ALLOWED_AI_JOB_TYPES.includes("wa_crm_sync"));
 
   const { rows: idxRows } = await pool.query(
-    `SELECT 1 FROM pg_indexes WHERE indexname = 'omni_ai_jobs_wa_crm_sync_pending_dedup'`,
+    `SELECT 1 FROM pg_indexes WHERE indexname = 'omni_ai_jobs_wa_crm_sync_active_dedup'`,
   );
-  assert("migration 011: partial coalescing index exists", idxRows.length === 1);
+  assert("migration 011: active (pending+failed) coalescing index exists", idxRows.length === 1);
 
   // CHECK constraint widened to accept wa_crm_sync, still rejects bogus types.
   let acceptOk = false;
@@ -252,6 +252,23 @@ async function main() {
     [conv.id],
   );
   assert("exactly one pending wa_crm_sync per conversation", pendCnt[0].n === 1, `got ${pendCnt[0].n}`);
+
+  // Coalescing covers the 'failed' state too: a failed job awaiting retry + a new
+  // message must NOT spawn a second concurrent wa_crm_sync.
+  await pool.query(`UPDATE omni_ai_jobs SET status='failed' WHERE id=$1`, [wa1]);
+  const wa3 = await enqueueAiJob(
+    pool,
+    { job_type: "wa_crm_sync", message_id: msg.id, conversation_id: conv.id, channel: "wa" },
+    { onConflictDoNothing: true },
+  );
+  assert("wa_crm_sync coalesces against a FAILED job (null id)", wa3 === null);
+  const { rows: activeCnt } = await pool.query(
+    `SELECT count(*)::int AS n FROM omni_ai_jobs
+      WHERE conversation_id=$1 AND job_type='wa_crm_sync' AND status IN ('pending','failed')`,
+    [conv.id],
+  );
+  assert("exactly one non-terminal wa_crm_sync per conversation", activeCnt[0].n === 1, `got ${activeCnt[0].n}`);
+  await pool.query(`UPDATE omni_ai_jobs SET status='completed' WHERE id=$1`, [wa1]); // restore for later
 
   // The index is scoped to wa_crm_sync: classify/suggest are NOT coalesced.
   const c1 = await enqueueAiJob(pool, { job_type: "classify", message_id: msg.id, conversation_id: conv.id, channel: "wa" });

@@ -128,7 +128,7 @@ export async function processAiJob(pool, jobRow, logger) {
   );
   const msg = msgRows[0];
   if (!msg) {
-    await markJobFailed(pool, jobRow.id, "message_not_found");
+    await markJobFailed(pool, jobRow, "message_not_found", logger);
     span.end();
     return;
   }
@@ -244,11 +244,11 @@ export async function processAiJob(pool, jobRow, logger) {
         cost_usd: 0,
       });
     } else {
-      await markJobFailed(pool, jobRow.id, "unsupported_job_type");
+      await markJobFailed(pool, jobRow, "unsupported_job_type", logger);
     }
   } catch (e) {
     logger?.warn?.({ err: e.message, job_id: jobRow.id }, "omni ai job failed");
-    await markJobFailed(pool, jobRow.id, e.message);
+    await markJobFailed(pool, jobRow, e.message, logger);
   }
   span.end();
 }
@@ -273,15 +273,27 @@ async function markJobCompleted(pool, jobId, output) {
   );
 }
 
-async function markJobFailed(pool, jobId, error) {
-  await pool.query(
+async function markJobFailed(pool, jobRow, error, logger) {
+  const jobId = jobRow.id;
+  const { rows } = await pool.query(
     `UPDATE omni_ai_jobs SET
        status = CASE WHEN attempts >= 2 THEN 'dead' ELSE 'failed' END,
        error = $2,
        completed_at = now()
-     WHERE id = $1`,
+     WHERE id = $1
+     RETURNING status`,
     [jobId, error],
   );
+  // Dead-letter alert: a 'dead' job exhausted its retries. For wa_crm_sync this
+  // means a CRM lead was NOT written — make it loud/alertable, not silent.
+  if (rows[0]?.status === "dead") {
+    const meta = { job_id: jobId, job_type: jobRow.job_type, conversation_id: jobRow.conversation_id, error };
+    if (jobRow.job_type === "wa_crm_sync") {
+      logger?.warn?.(meta, "wa_crm_sync DEAD — CRM lead may be lost");
+    } else {
+      logger?.warn?.(meta, "omni ai job DEAD (max attempts exhausted)");
+    }
+  }
 }
 
 /**
@@ -293,8 +305,10 @@ export async function runAiJobById(pool, jobId, opts = {}) {
   if (!job) return { ok: false, error: "job_not_found" };
   if (job.status === "completed") return { ok: true, already_completed: true, job };
 
+  // Budget gates ONLY the LLM-spending 'suggest' job; zero-cost bookkeeping jobs
+  // (wa_crm_sync / classify / extract_deal / embed) must never be blocked by spend.
   const dailyCost = await getDailyAiCost(pool);
-  if (dailyCost >= config.omniAiDailyBudgetUsd) {
+  if (job.job_type === "suggest" && dailyCost >= config.omniAiDailyBudgetUsd) {
     return { ok: false, error: "ai_daily_budget_exceeded" };
   }
 
@@ -334,10 +348,13 @@ export function startOmniAiWorker({ config: cfg, logger, pool }) {
     if (running) return;
     running = true;
     try {
+      // Over budget skips ONLY the LLM-spending 'suggest' jobs — bookkeeping jobs
+      // (wa_crm_sync / classify / extract_deal / embed) keep draining so WhatsApp
+      // CRM lead capture is never halted by AI spend.
       const dailyCost = await getDailyAiCost(pool);
-      if (dailyCost >= cfg.omniAiDailyBudgetUsd) {
-        log.warn({ dailyCost }, "[omniAiWorker] daily budget exceeded, skipping batch");
-        return;
+      const overBudget = dailyCost >= cfg.omniAiDailyBudgetUsd;
+      if (overBudget) {
+        log.warn({ dailyCost }, "[omniAiWorker] daily budget exceeded — skipping 'suggest' jobs only");
       }
 
       await pool.query(
@@ -356,10 +373,11 @@ export function startOmniAiWorker({ config: cfg, logger, pool }) {
         const { rows } = await client.query(
           `SELECT * FROM omni_ai_jobs
            WHERE status IN ('pending', 'failed')
+             AND ($2 = false OR job_type <> 'suggest')
            ORDER BY created_at ASC
            LIMIT $1
            FOR UPDATE SKIP LOCKED`,
-          [cfg.omniAiWorkerBatchSize],
+          [cfg.omniAiWorkerBatchSize, overBudget],
         );
         for (const job of rows) {
           await client.query(
