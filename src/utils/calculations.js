@@ -60,6 +60,9 @@ export function resolveSKU_techo(tipo, familiaP, espesor) {
 export function calcPanelesTecho(panel, espesor, largo, ancho) {
   const espData = panel.esp[espesor];
   if (!espData) return null;
+  // Guard non-positive dimensions: callers already handle a null return, and
+  // this avoids silent empty/zero results from bad input (bug report C2).
+  if (!(largo > 0) || !(ancho > 0)) return null;
   const cantPaneles = countPanels(ancho, panel.au);
   const anchoTotal = cantPaneles * panel.au;
   const areaTotal = +(cantPaneles * largo * panel.au).toFixed(2);
@@ -1012,9 +1015,14 @@ export function mergeZonaResults(zonaResults) {
       if (combined.paneles.descarte && r.paneles.descarte) {
         combined.paneles.descarte.areaM2 = +(combined.paneles.descarte.areaM2 + r.paneles.descarte.areaM2).toFixed(2);
         combined.paneles.descarte.anchoM = +(combined.paneles.descarte.anchoM + r.paneles.descarte.anchoM).toFixed(2);
-        const anchoSolicitadoTotal = +(combined.paneles.anchoTotal - combined.paneles.descarte.anchoM).toFixed(2);
-        combined.paneles.descarte.porcentaje = anchoSolicitadoTotal > 0
-          ? +((combined.paneles.descarte.anchoM / anchoSolicitadoTotal) * 100).toFixed(1)
+        // C3: derive % from the unrounded zona sums (not the per-step rounded
+        // accumulators) to avoid rounding drift across many zones.
+        // C6: same precision rule as calcPanelesTecho (<0.5 m → 2 dec, else 1).
+        const rawAnchoTotal = zonaResults.reduce((s, z) => s + (z.paneles?.anchoTotal || 0), 0);
+        const rawDescarteAncho = zonaResults.reduce((s, z) => s + (z.paneles?.descarte?.anchoM || 0), 0);
+        const rawSolicitado = rawAnchoTotal - rawDescarteAncho;
+        combined.paneles.descarte.porcentaje = rawSolicitado > 0
+          ? +((rawDescarteAncho / rawSolicitado) * 100).toFixed(rawDescarteAncho < 0.5 ? 2 : 1)
           : 0;
       }
     }
