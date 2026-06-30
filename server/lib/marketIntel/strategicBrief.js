@@ -11,6 +11,7 @@ import {
   getMlPulse,
   PRODUCT_CATEGORIES,
 } from './productIntelligence.js';
+import { buildAnalisisPrecios } from './priceGap.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 
@@ -274,52 +275,6 @@ function repairTruncatedJson(str) {
     r += open === '{' ? '}' : ']';
   }
   try { return JSON.parse(r); } catch { return null; }
-}
-
-const TIER_MULTIPLIERS = { 1: 1.3, 2: 1.05, 3: 0.95, 4: 0.85, 5: 0.7 };
-
-function buildAnalisisPrecios(prices, compMap) {
-  const families = compMap?.product_family_mapping || [];
-  const brechas = [];
-  for (const p of prices || []) {
-    const bmcPrice = p.precio_publico_usd_m2;
-    if (bmcPrice == null) continue;
-    const familiaKey = p.familia;
-    const relevantComp = families.filter(f =>
-      f.familia_principal?.includes(familiaKey) || f.familia_secundaria?.includes(familiaKey)
-    );
-    const tiers = relevantComp.map(c => c.tier).filter(Boolean);
-    const mults = tiers.map(t => TIER_MULTIPLIERS[t] || 1);
-    const avgMult = mults.length ? mults.reduce((a, b) => a + b, 0) / mults.length : 1;
-    const refPrice = +(bmcPrice * avgMult).toFixed(2);
-    const diff = +(bmcPrice - refPrice).toFixed(2);
-    const diffPct = +((diff / refPrice) * 100).toFixed(1);
-    let interp = '';
-    if (diff > 0) {
-      interp = `BMC está ${diffPct}% por encima del precio de referencia. Riesgo de pérdida de volumen frente a alternativas más económicas de competidores de perfil similar.`;
-    } else if (diff < 0) {
-      interp = `BMC está ${Math.abs(diffPct)}% por debajo del precio de referencia. Oportunidad de incrementar margen sin perder competitividad.`;
-    } else {
-      interp = 'BMC está alineado con el precio de referencia. Competir por servicio y calidad, no por precio.';
-    }
-    brechas.push({
-      producto: p.producto,
-      precio_bmc_usd_m2: bmcPrice,
-      precio_referencia_mercado_usd_m2: refPrice,
-      diferencia_usd_m2: diff,
-      diferencia_porcentaje: diffPct,
-      interpretacion: interp,
-    });
-  }
-  return {
-    resumen: brechas.length
-      ? `Se analizaron ${brechas.length} productos de BMC. ${brechas.filter(b => b.diferencia_usd_m2 < 0).length} oportunidades de margen, ${brechas.filter(b => b.diferencia_usd_m2 > 0).length} con riesgo de volumen.`
-      : 'No hay suficientes datos de precios para generar análisis.',
-    brechas,
-    recomendacion_precios: brechas.length
-      ? 'Revisar productos con brecha positiva (BMC por encima del mercado) para evitar pérdida de volumen. Aprovechar brechas negativas para ajustar márgenes gradualmente.'
-      : 'Sin recomendación disponible por falta de datos.',
-  };
 }
 
 function buildAnalisisAds(ads) {
