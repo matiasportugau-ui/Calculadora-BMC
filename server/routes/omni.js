@@ -167,6 +167,96 @@ router.get(
   },
 );
 
+// Admin cockpit — a management rollup ON TOP of the inbox: per-mailbox health +
+// volume, per-operator load, the unassigned/overdue queues, and SLA/FRT. All
+// read-only aggregation; degrades to an empty snapshot pre-migration so the
+// panel never hard-fails.
+router.get(
+  "/omni/admin/overview",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const OVERDUE_HOURS = Number(req.query.overdue_hours) || 24;
+    try {
+      const [totals, accounts, assignees, sla] = await Promise.all([
+        // Email-channel queue totals.
+        req.omniPool.query(
+          `SELECT
+             COUNT(*) FILTER (WHERE status = 'open')::int AS open_total,
+             COUNT(*) FILTER (WHERE status = 'open' AND assigned_to_user_id IS NULL)::int AS unassigned_open,
+             COUNT(*) FILTER (WHERE status = 'open' AND receiving_account_id IS NULL)::int AS unattributed_open,
+             COUNT(*) FILTER (WHERE status = 'snoozed')::int AS snoozed_total,
+             COUNT(*) FILTER (WHERE status = 'open' AND first_agent_reply_at IS NULL
+                              AND created_at < now() - ($1 || ' hours')::interval)::int AS overdue_unanswered,
+             COUNT(*) FILTER (WHERE status = 'closed' AND updated_at >= date_trunc('day', now()))::int AS closed_today
+           FROM omni_conversations
+           WHERE channel = 'email'`,
+          [OVERDUE_HOURS],
+        ),
+        // Per-mailbox health + volume.
+        req.omniPool.query(
+          `SELECT a.id, a.email, a.label, a.enabled, a.health, a.health_checked_at,
+                  COUNT(c.id) FILTER (WHERE c.status = 'open')::int AS open_count,
+                  COUNT(c.id) FILTER (WHERE c.status = 'open' AND c.assigned_to_user_id IS NULL)::int AS unassigned_open,
+                  COUNT(c.id) FILTER (WHERE c.status = 'open' AND c.first_agent_reply_at IS NULL)::int AS awaiting_reply,
+                  COUNT(c.id) FILTER (WHERE c.status = 'snoozed')::int AS snoozed_count,
+                  ROUND(AVG(EXTRACT(EPOCH FROM (c.first_agent_reply_at - c.created_at)) / 60.0)
+                        FILTER (WHERE c.first_agent_reply_at IS NOT NULL))::int AS avg_frt_min,
+                  MAX(c.updated_at) AS last_activity_at
+           FROM omni_email_accounts a
+           LEFT JOIN omni_conversations c ON c.receiving_account_id = a.id
+           GROUP BY a.id
+           ORDER BY a.enabled DESC, open_count DESC, a.email`,
+        ),
+        // Per-operator load (only currently-assigned, open/snoozed).
+        req.omniPool.query(
+          `SELECT c.assigned_to_user_id AS user_id, u.email, u.name,
+                  COUNT(*) FILTER (WHERE c.status = 'open')::int AS open_count,
+                  COUNT(*) FILTER (WHERE c.status = 'snoozed')::int AS snoozed_count,
+                  MIN(c.assigned_at) AS oldest_assigned_at
+           FROM omni_conversations c
+           LEFT JOIN identity.users u ON u.user_id = c.assigned_to_user_id
+           WHERE c.assigned_to_user_id IS NOT NULL AND c.status IN ('open', 'snoozed')
+           GROUP BY c.assigned_to_user_id, u.email, u.name
+           ORDER BY open_count DESC`,
+        ),
+        // SLA / first-response time across the last 30 days of email.
+        req.omniPool.query(
+          `SELECT
+             ROUND(AVG(EXTRACT(EPOCH FROM (first_agent_reply_at - created_at)) / 60.0))::int AS avg_frt_min,
+             ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (
+               ORDER BY EXTRACT(EPOCH FROM (first_agent_reply_at - created_at)) / 60.0))::int AS median_frt_min,
+             COUNT(*)::int AS replied_count
+           FROM omni_conversations
+           WHERE channel = 'email' AND first_agent_reply_at IS NOT NULL
+             AND created_at >= now() - interval '30 days'`,
+        ),
+      ]);
+
+      res.json({
+        ok: true,
+        generated_at: new Date().toISOString(),
+        overdue_hours: OVERDUE_HOURS,
+        totals: totals.rows[0] || {},
+        accounts: accounts.rows,
+        assignees: assignees.rows,
+        sla: sla.rows[0] || {},
+      });
+    } catch (e) {
+      // Pre-migration / missing columns → degrade to an empty snapshot.
+      req.log?.warn?.({ err: e.message, code: e.code }, "omni admin overview degraded");
+      res.json({
+        ok: true,
+        degraded: e.code || "overview_unavailable",
+        totals: {},
+        accounts: [],
+        assignees: [],
+        sla: {},
+      });
+    }
+  },
+);
+
 router.get(
   "/omni/conversations",
   requireGrant.read("canales"),
