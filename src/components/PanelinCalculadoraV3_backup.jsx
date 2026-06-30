@@ -42,7 +42,7 @@ import {
   getPerfileriaMermaSugerencias,
 } from "../utils/calculations.js";
 import {
-  applyOverrides, bomToGroups,
+  applyOverrides, bomToGroups, mergeLibreGroups,
   fmtPrice, generatePrintHTML, generateInternalHTML, buildWhatsAppText,
   createPreviewUrl, revokePreviewUrl,
 } from "../utils/helpers.js";
@@ -3398,6 +3398,26 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     } catch (e) { return { error: e.message }; }
   }, [scenario, techo, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
+  // ── Grupos "presupuesto libre" aditivos (líneas manuales sobre cualquier escenario) ──
+  // En el escenario dedicado `presupuesto_libre` se devuelve [] porque sus líneas ya
+  // entran por `results`. En los demás escenarios se calculan con flete:0 para no
+  // duplicar el flete (el escenario ya agrega su propia línea SERVICIOS abajo).
+  const additiveLibreGroups = useMemo(() => {
+    if (scenarioDef?.isLibre) return [];
+    const r = computePresupuestoLibreCatalogo({
+      listaPrecios: listaPrecios || "web",
+      librePanelLines,
+      librePerfilQty,
+      perfilCatalogById: librePerfilById,
+      libreFijQty,
+      libreSellQty,
+      flete: 0,
+      libreExtra,
+      catalog: libreCatalog || undefined,
+    });
+    return r.libreGroups || [];
+  }, [scenarioDef, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, libreExtra, libreCatalog]);
+
   // ── Build BOM groups ──
   const groups = useMemo(() => {
     if (!results || results.error) return [];
@@ -3413,6 +3433,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           : SERVICIOS.flete.label;
         g.push({ title: "SERVICIOS", items: [{ label: fleteLabel, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete }] });
       }
+      // Merge líneas manuales (presupuesto libre) — anexadas al final por título
+      // para no desplazar los lineId de los ítems del escenario.
+      g = mergeLibreGroups(g, additiveLibreGroups);
     }
     const withOverrides = applyOverrides(g, overrides);
 
@@ -3430,7 +3453,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       ...group,
       items: group.items.filter(item => !excludedItems[item.lineId])
     })).filter(group => group.items.length > 0);
-  }, [results, overrides, flete, excludedItems, categoriasActivas, proyecto.direccion]);
+  }, [results, overrides, flete, excludedItems, categoriasActivas, proyecto.direccion, additiveLibreGroups]);
 
   const perfileriaMermaSugerencias = useMemo(
     () => (categoriasActivas.PERFILERIA !== false ? getPerfileriaMermaSugerencias(results) : []),
@@ -6187,10 +6210,14 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             </div>
           </details>
 
-          {scenarioDef?.isLibre && (
-          <div style={sectionS}>
-            <div style={labelS}>PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA</div>
-            <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en <b>Extraordinarios</b> son opcionales.</div>
+          {/* Productos manuales (presupuesto libre) — disponible en cualquier escenario.
+              Abierto por defecto en el escenario dedicado; colapsado como aditivo. */}
+          <details style={{ ...sectionS, padding: 0 }} open={scenarioDef?.isLibre}>
+            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none" }}>
+              {scenarioDef?.isLibre ? "PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA" : "AGREGAR PRODUCTOS MANUALES (PRESUPUESTO LIBRE)"}
+            </summary>
+            <div style={{ padding: "0 20px 20px" }}>
+            <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>{scenarioDef?.isLibre ? "Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en " : "Líneas manuales que se suman al presupuesto de este escenario. Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en "}<b>Extraordinarios</b> son opcionales.</div>
 
             <LibreAccordionBar title="Paneles" open={libreAcc.paneles} onToggle={() => toggleLibreAcc("paneles")}>
               {librePanelLines.map((line, idx) => {
@@ -6275,6 +6302,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               </div>
             </LibreAccordionBar>
 
+            {/* Servicios/Flete: solo en el escenario dedicado. En modo aditivo el flete
+                ya lo controla el paso "Flete" del wizard (mismo estado global). */}
+            {scenarioDef?.isLibre && (
             <LibreAccordionBar title="Servicios" open={libreAcc.servicios} onToggle={() => toggleLibreAcc("servicios")}>
               <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
               <div style={{ fontSize: 12, color: C.ts, marginTop: 8 }}>Se suma al presupuesto como servicio con el importe indicado.</div>
@@ -6283,6 +6313,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 <input style={inputS} value={fleteCosto} onChange={e => setFleteCosto(e.target.value)} placeholder="—" inputMode="decimal" />
               </div>
             </LibreAccordionBar>
+            )}
 
             <LibreAccordionBar title="Extraordinarios" open={libreAcc.extraordinarios} onToggle={() => toggleLibreAcc("extraordinarios")}>
               <div style={{ marginBottom: 10 }}><div style={labelS}>Descripción / texto libre</div>
@@ -6294,8 +6325,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 <div><div style={labelS}>Cantidad (opcional)</div><input style={inputS} value={libreExtra.cantidad} onChange={(e) => setLibreExtra((x) => ({ ...x, cantidad: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
               </div>
             </LibreAccordionBar>
-          </div>
-          )}
+            </div>
+          </details>
 
           {/* Panel selector — TECHO */}
           {scenarioDef?.hasTecho && <div ref={panelRef} style={sectionS}>
