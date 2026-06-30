@@ -183,6 +183,15 @@ export function buildCrmRow(headers, lead = {}, opts = {}) {
  *   ingest path, which must refuse to write rather than risk a shifted row).
  *   When false, fixed-letter fallback is acceptable (used by the quote append
  *   path, whose pre-existing behaviour never read headers at all).
+ * @param {{from: string, to: string}} [opts.window] - the contiguous A1 column
+ *   window the caller will actually write (e.g. {from:"B", to:"W"}). Because
+ *   values are placed at ABSOLUTE header-resolved indices but emitted through a
+ *   fixed slice (sliceCrmRange), a field whose header drifts OUTSIDE this window
+ *   would be silently dropped from the write. When `window` is given, any
+ *   resolved field outside [from,to] is reported as `field_outside_write_range`
+ *   so the caller degrades/aborts instead of writing a row missing that field.
+ *   This check is intentionally ungated by `requireHeaders` — a dropped field is
+ *   unsafe on every path.
  * @returns {{ ok: boolean, errors: string[] }}
  */
 export function validateCrmRow(built, headers, opts = {}) {
@@ -210,6 +219,19 @@ export function validateCrmRow(built, headers, opts = {}) {
   // otherwise the write would append phantom columns / shift the layout.
   if (requireHeaders && headerLen > 0 && built.maxIndex >= headerLen) {
     errors.push("row_exceeds_headers");
+  }
+
+  // Every resolved field must fall inside the caller's actual write window —
+  // a field whose header drifted past the window edge would be dropped from the
+  // contiguous slice while the rest still writes, which is silent corruption.
+  if (opts.window && opts.window.from && opts.window.to) {
+    const fromIdx = colLetterToIndex(opts.window.from);
+    const toIdx = colLetterToIndex(opts.window.to);
+    for (const [key, idx] of Object.entries(built.resolved)) {
+      if (idx < fromIdx || idx > toIdx) {
+        errors.push(`field_outside_write_range:${key}`);
+      }
+    }
   }
 
   return { ok: errors.length === 0, errors };

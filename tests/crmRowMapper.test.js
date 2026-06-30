@@ -146,6 +146,59 @@ group("validateCrmRow — empty headers", () => {
   assert(lenient.ok === true, "lenient (quote append path) tolerates fixed-letter fallback");
 });
 
+group("validateCrmRow window — canonical layout fits B:W", () => {
+  const built = buildCrmRow(canonicalHeaders(), emailLead);
+  const r = validateCrmRow(built, canonicalHeaders(), {
+    requireHeaders: true,
+    window: { from: "B", to: "W" },
+  });
+  assert(r.ok === true, `ok (errors: ${r.errors.join(",")})`);
+});
+
+group("validateCrmRow window — field pushed past W is rejected (not silently dropped)", () => {
+  // Insert a column before Observaciones so it resolves to X (index 23),
+  // outside the B:W write window.
+  const headers = canonicalHeaders();
+  headers[22] = "NUEVA_COLUMNA"; // was Observaciones
+  headers[23] = "Observaciones"; // pushed to X
+  const built = buildCrmRow(headers, emailLead);
+  assert(built.resolved.observaciones === 23, "observaciones resolves to X(23)");
+  const r = validateCrmRow(built, headers, {
+    requireHeaders: true,
+    window: { from: "B", to: "W" },
+  });
+  assert(r.ok === false, "rejected (would degrade instead of dropping the field)");
+  assert(r.errors.includes("field_outside_write_range:observaciones"), "names the dropped field");
+});
+
+group("validateCrmRow window — quote gate field pushed past AK is rejected", () => {
+  // Insert a column before the AG–AK gate block so bloquearAuto lands past AK.
+  const headers = canonicalHeaders();
+  headers.splice(32, 0, "NUEVA_COLUMNA"); // shift AG..AK right by one
+  const quoteLead = {
+    fecha: "2026", cliente: "ACME", origen: "Calculadora-Panelin",
+    consulta: "x", categoria: "Cotización", estado: "Pendiente",
+    providerIa: "", linkPresupuesto: "https://example.com/q.pdf",
+    aprobadoEnviar: "No", enviadoEl: "", bloquearAuto: "No",
+  };
+  const built = buildCrmRow(headers, quoteLead);
+  const r = validateCrmRow(built, headers, {
+    requireHeaders: false,
+    window: { from: "B", to: "AK" },
+  });
+  assert(r.ok === false, "rejected");
+  assert(r.errors.some((e) => e === "field_outside_write_range:bloquearAuto"), "names bloquearAuto");
+});
+
+group("validateCrmRow window — omitting window preserves prior behaviour", () => {
+  const headers = canonicalHeaders();
+  headers[22] = "NUEVA_COLUMNA";
+  headers[23] = "Observaciones"; // out of B:W, but no window passed
+  const built = buildCrmRow(headers, emailLead);
+  const r = validateCrmRow(built, headers, { requireHeaders: true });
+  assert(r.ok === true, "no window arg → no window check (back-compat)");
+});
+
 group("sliceCrmRange — email B:W window is 22 cells, Teléfono at slice idx 2", () => {
   const { row } = buildCrmRow(canonicalHeaders(), { ...emailLead, telefono: "099111222" });
   const window = sliceCrmRange(row, "B", "W");

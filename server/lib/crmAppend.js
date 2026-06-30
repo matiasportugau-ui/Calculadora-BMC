@@ -9,9 +9,12 @@
  * environment isn't configured (no BMC_SHEET_ID / no Google credentials).
  */
 import { google } from "googleapis";
+import pino from "pino";
 import { config } from "../config.js";
 import { sanitizeCellValue } from "./sheetsCsvGuard.js";
 import { buildCrmRow, validateCrmRow, sliceCrmRange } from "./crmRowMapper.js";
+
+const log = pino({ level: process.env.LOG_LEVEL ?? "info" });
 
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -122,12 +125,26 @@ export async function appendQuoteToCrm(input = {}) {
 
     const built = buildCrmRow(headers, lead, { sanitize: sanitizeCellValue });
     // requireHeaders:false — this path historically never read headers, so a
-    // failed header read must still write via documented column letters.
-    const check = validateCrmRow(built, headers, { requireHeaders: false });
-    if (!check.ok || built.fallbacks.length) {
-      console.warn(
-        `[crmAppend] CRM_Operativo header drift — errors=${check.errors.join(",") || "none"} fallbacks=${built.fallbacks.join(",") || "none"}`
+    // failed header read must still write via documented column letters. But
+    // `window: B:AK` still catches a header that drifted OUTSIDE the slice we
+    // append (e.g. a column inserted before the AG–AK gate block would push
+    // linkPresupuesto/flags past AK and silently drop them).
+    const check = validateCrmRow(built, headers, {
+      requireHeaders: false,
+      window: { from: "B", to: "AK" },
+    });
+    if (built.fallbacks.length) {
+      log.warn(
+        { fallbacks: built.fallbacks },
+        "CRM_Operativo header fallback — wrote via documented column letters"
       );
+    }
+    if (!check.ok) {
+      // A resolved field falls outside B:AK — refuse to write a row that would
+      // silently drop it (e.g. the quote link). The caller saves the quote via
+      // its other dual-write paths and handles { ok:false } gracefully.
+      log.warn({ errors: check.errors }, "CRM_Operativo structure invalid — append skipped");
+      return { ok: false, error: `CRM structure invalid: ${check.errors.join(",")}` };
     }
 
     // Escribir toda la fila B:AK en una sola operación append para evitar

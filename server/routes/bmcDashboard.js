@@ -2787,17 +2787,29 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           observaciones: d.observaciones || "",
         };
         const built = buildCrmRow(headers, lead, { sanitize: sanitizeCellValue });
-        const check = validateCrmRow(built, headers, { requireHeaders: true });
+        // `window: B:W` makes validation reject the case where a header drifted
+        // OUTSIDE the slice we actually write — otherwise that field would be
+        // silently dropped while the rest of the row writes "successfully".
+        const check = validateCrmRow(built, headers, {
+          requireHeaders: true,
+          window: { from: "B", to: "W" },
+        });
 
         if (!check.ok) {
           // Graceful degradation: the sheet structure can't be trusted, so we
-          // REFUSE to write a possibly-shifted row. The lead stays in
-          // "Pendientes" for manual review; not marking idempotency means the
-          // next scheduled run retries once the structure is fixed.
+          // REFUSE to write a possibly-shifted row. We still capture the parsed
+          // lead in the omni shadow store (Pendientes surface for manual review)
+          // and mark idempotency so the LLM parse is NOT re-run on every poll.
           degraded = true;
           degradeReason = check.errors.join(",");
           crmRow = null;
           console.warn(`[Email] ⚠ CRM structure invalid (${degradeReason}) — lead routed to Pendientes, NOT written. messageId: ${messageId || "?"}`);
+          void shadowWriteEmailIngest({
+            config,
+            logger: console,
+            payload: { asunto, cuerpo, remitente, messageId, threadId, account, parsed: d, crmRow: null, degraded: true, degradeReason },
+          }).catch((e) => console.warn("[Email] omni shadow failed:", e?.message));
+          await markIngested(ingestPool, { messageKey: messageId, account, messageId, remitente, crmRow: null });
         } else {
           if (built.fallbacks.length) {
             console.warn(`[Email] CRM_Operativo header fallback for: ${built.fallbacks.join(",")} (wrote via documented column letters)`);
