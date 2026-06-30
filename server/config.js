@@ -298,6 +298,16 @@ export const config = {
   omniEventBusEnabled: bool(process.env.OMNI_EVENT_BUS_ENABLED, false),
   omniAiOrchestratorEnabled: bool(process.env.OMNI_AI_ORCHESTRATOR_ENABLED, false),
   omniAutomationEnabled: bool(process.env.OMNI_AUTOMATION_ENABLED, false),
+  /**
+   * WA "flip" (ADR-009 shadow→canonical). When ON, the Omni event bus is the
+   * single WhatsApp processing path: the legacy in-memory map + 5-min timer +
+   * duplicate callAgentOnce are gated off, and the legacy CRM-Sheets ingest +
+   * auto-learn run as a durable `wa_crm_sync` job on the omni_ai_jobs queue.
+   * Default OFF: ships dormant (webhook behavior byte-identical to today).
+   * Instant rollback = flip back to OFF. Requires omniEventBusEnabled +
+   * omniAiOrchestratorEnabled to be ON for the job pipeline to fire.
+   */
+  omniWaCanonical: bool(process.env.OMNI_WA_CANONICAL, false),
   omniAiDailyBudgetUsd: Math.max(0, Number(process.env.OMNI_AI_DAILY_BUDGET_USD || 50)),
   omniDealsSheetsAuthority: bool(process.env.OMNI_DEALS_SHEETS_AUTHORITY, true),
   otelEnabled: bool(process.env.OTEL_ENABLED, false),
