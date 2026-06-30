@@ -336,8 +336,13 @@ router.post('/ai/chat', requireMarketing, async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
+  let aborted = false;
+  req.on('close', () => { aborted = true; });
+
+  const heartbeat = setInterval(() => { if (!aborted) res.write(':\n\n'); }, 15000);
+
   const send = (obj) => {
-    try { res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* client disconnected */ }
+    try { if (!aborted) res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* client disconnected */ }
   };
 
   try {
@@ -358,6 +363,8 @@ router.post('/ai/chat', requireMarketing, async (req, res) => {
     send({ type: 'error', message: 'No se pudo contactar al analista AI. Reintentá en unos segundos.' });
     send({ type: 'done' });
     res.end();
+  } finally {
+    clearInterval(heartbeat);
   }
 });
 
