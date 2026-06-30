@@ -12,7 +12,6 @@ import { buildVersionInfo } from "./lib/versionInfo.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
 import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
-import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
@@ -90,8 +89,7 @@ import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
-import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
-import { addTrainingEntry } from "./lib/trainingKB.js";
+import { writeWaCrmIngest, runWaAutoLearn } from "./lib/wa/crmIngestWrite.js";
 import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -691,72 +689,13 @@ async function processWaConversation(chatId, conv) {
 
     if (parsed.ok && parsed.data) {
       const d = parsed.data;
-      const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
-      if (config.bmcSheetId && credsPath) {
-        const { google } = await import("googleapis");
-        const auth = new google.auth.GoogleAuth({
-          keyFile: credsPath,
-          scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-        });
-        const sheets = google.sheets({ version: "v4", auth: await auth.getClient() });
-        const sheetId = config.bmcSheetId;
-        const now = new Date().toISOString();
-
-        // Form responses 1 — primera fila con col C (Cliente) vacía
-        const formClientes = await sheets.spreadsheets.values.get({
-          spreadsheetId: sheetId, range: "'Form responses 1'!C2:C200",
-        });
-        const formRows = formClientes.data.values || [];
-        let formRow = formRows.length + 2;
-        for (let i = 0; i < formRows.length; i++) {
-          if (!formRows[i][0] || !formRows[i][0].toString().trim()) { formRow = i + 2; break; }
-        }
-
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'Form responses 1'!A${formRow}:P${formRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
-            now, now, d.cliente || "", d.telefono || chatId,
-            d.ubicacion || "", "WA-Auto", d.resumen_pedido || "", d.categoria || "",
-            d.urgencia || "", d.cotizacion_formal || "", d.tipo_cliente || "",
-            d.vendedor || "", d.observaciones || "", d.validar_stock || "No",
-            d.probabilidad_cierre || "", dialogo,
-          ]] },
-        });
-
-        // CRM_Operativo — primera fila con col C (Cliente) vacía a partir de fila 4
-        const crmClientes = await sheets.spreadsheets.values.get({
-          spreadsheetId: sheetId, range: "'CRM_Operativo'!C4:C500",
-        });
-        const crmVals = crmClientes.data.values || [];
-        let crmRow = crmVals.length + 4;
-        for (let i = 0; i < crmVals.length; i++) {
-          if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) { crmRow = i + 4; break; }
-        }
-
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
-            now, d.cliente || "", d.telefono || chatId,
-            d.ubicacion || "", "WA-Auto", d.resumen_pedido || "",
-            d.categoria || "", "", "Pendiente", d.vendedor || "",
-          ]] },
-        });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
-        });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
-        });
+      // Sheets ingest (Form responses 1 + CRM_Operativo) — shared with the
+      // canonical-mode wa_crm_sync omni job. Legacy uses append (one row per burst).
+      const ingest = await writeWaCrmIngest({
+        parsedData: d, chatId, dialogo, config, logger, findRow: "append",
+      });
+      if (!ingest.skipped) {
+        const { crmRow, formRow, sheets, sheetId } = ingest;
 
         // Generar respuesta IA para col AF — usa agente unificado (canal: wa + KB)
         let ai = { ok: false };
@@ -783,27 +722,7 @@ async function processWaConversation(chatId, conv) {
         setImmediate(() => {
           const waTurns = conv.messages.map((m) => ({ role: "user", content: m.text }));
           if (ai.ok && ai.respuesta) waTurns.push({ role: "assistant", content: ai.respuesta });
-          extractLearnablePairs(waTurns, { source: "wa", convId: chatId })
-            .then((pairs) => {
-              for (const p of pairs) {
-                addTrainingEntry({
-                  question: p.question, goodAnswer: p.goodAnswer,
-                  badAnswer: p.badAnswer || "", category: p.category || "conversational",
-                  context: `[WA] ${p.rationale || ""}`, source: p.source || "autolearned",
-                  status: p.confidence >= 0.92 ? "active" : "pending",
-                  confidence: p.confidence, convId: p.convId || chatId,
-                });
-              }
-              if (pairs.length > 0) logger.info(`[WA] autolearn: ${pairs.length} KB candidates from ${chatId}`);
-            })
-            .catch(() => {});
-        });
-
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: rangeAHAK(crmRow),
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [defaultTailAHAK()] },
+          runWaAutoLearn({ turns: waTurns, chatId, logger });
         });
 
         logger.info(`[WA] ✓ Conversation processed → CRM row ${crmRow}, Form row ${formRow}, provider: ${ai.provider || "none"}`);
