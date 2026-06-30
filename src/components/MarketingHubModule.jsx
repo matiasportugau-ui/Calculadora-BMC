@@ -128,9 +128,9 @@ function MarketingHubInner() {
     setSyncing(true);
     try {
       await apiFetch(accessToken, '/api/marketing/etl/run', { method: 'POST' });
-      setTimeout(() => { load(); }, 2500);
-    } finally {
-      setTimeout(() => { setSyncing(false); }, 2500);
+      setTimeout(() => { load(); setSyncing(false); }, 2500);
+    } catch {
+      setSyncing(false);
     }
   }, [accessToken, syncing, load]);
 
