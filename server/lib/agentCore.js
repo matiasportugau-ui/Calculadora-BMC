@@ -19,6 +19,7 @@ import {
   resolveModel,
   estimateCostUSD,
   getApiKey,
+  DEFAULT_PROVIDER_ORDER,
 } from "./aiProviderConfig.js";
 
 // ─── Channel rules ────────────────────────────────────────────────────────────
@@ -56,12 +57,10 @@ function buildChannelSection(channel) {
 
 // Centralized provider chain (replaces previous hardcoded list)
 const getCentralProviderChain = (apiKeysOverride = null) => {
-  const providers = ["claude", "openai", "grok", "gemini"];
-  const available = providers.filter((p) => {
+  return DEFAULT_PROVIDER_ORDER.filter((p) => {
     const key = (apiKeysOverride && apiKeysOverride[p]) || getApiKey(p);
     return !!key;
   });
-  return ["claude", "grok", "gemini", "openai"].filter((p) => available.includes(p));
 };
 
 // El módulo waConfig.js es runtime-side; agentCore se usa también offline en
