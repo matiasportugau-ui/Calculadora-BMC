@@ -16,6 +16,7 @@ import { google } from "googleapis";
 import { defaultTailAHAK, rangeAHAK } from "../crmOperativoLayout.js";
 import { extractLearnablePairs } from "../autoLearnExtractor.js";
 import { addTrainingEntry } from "../trainingKB.js";
+import { logSafe } from "./logSafe.js";
 
 async function buildSheetsClient(credsPath) {
   const auth = new google.auth.GoogleAuth({
@@ -203,7 +204,7 @@ export async function runWaAutoLearn({ turns, chatId, logger }) {
       });
     }
     if (pairs.length > 0) {
-      logger?.info?.(`[WA] autolearn: ${pairs.length} KB candidates from ${chatId}`);
+      logger?.info?.(`[WA] autolearn: ${pairs.length} KB candidates from ${logSafe(chatId)}`);
     }
     return pairs.length;
   } catch {

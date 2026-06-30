@@ -12,6 +12,7 @@
  * unique index in migration 011, so per-message events collapse onto one create.
  */
 import { writeWaCrmIngest, runWaAutoLearn, findCrmRowByPhone } from "./crmIngestWrite.js";
+import { logSafe } from "./logSafe.js";
 
 // Single global key so all wa_crm_sync creates serialize their first-empty-row
 // append (two new leads must never grab the same CRM_Operativo row).
@@ -72,7 +73,7 @@ export async function runWaCrmSyncJob({ pool, jobRow, config, logger, fetchImpl,
   const existing = await findCrmRowByPhone({ config, phone: chatId, sheets });
   if (existing.skipped) return { skipped: true, reason: existing.reason };
   if (existing.row) {
-    logger?.info?.(`[WA] wa_crm_sync skip — CRM row ${existing.row} exists for ${chatId}`);
+    logger?.info?.(`[WA] wa_crm_sync skip — CRM row ${existing.row} exists for ${logSafe(chatId)}`);
     return { skipped: true, reason: "crm_row_exists", crm_row: existing.row };
   }
   const sheetsClient = existing.sheets || sheets; // reuse the resolved client

@@ -137,6 +137,17 @@ export default function createWaRouter(config, logger) {
     message: () => ({ ok: false, error: "rate_limited_operator", limit_per_min: readOperatorLimit() }),
   });
 
+  // Rate-limit for the operator read endpoints (CodeQL js/missing-rate-limiting).
+  // Generous cap for a polling cockpit; keyed by operator/IP.
+  const readLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `waread|${req.waOperatorId || req.ip || "anon"}`,
+    message: { ok: false, error: "rate_limited" },
+  });
+
   // ── Hybrid auth helper: acepta JWT operator (preferido) o legacy shared token.
   //    Adjunta req.operator si JWT; req.waOperatorId si shared token.
   function requireWaAccess({ requireWrite = false } = {}) {
@@ -670,6 +681,7 @@ export default function createWaRouter(config, logger) {
   // ── List conversations ──────────────────────────────────────────────────
   router.get(
     "/wa/conversations",
+    readLimiter,
     requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (req, res) => {
@@ -734,6 +746,7 @@ export default function createWaRouter(config, logger) {
   // ── Get messages for a chat ─────────────────────────────────────────────
   router.get(
     "/wa/messages",
+    readLimiter,
     requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (req, res) => {
@@ -794,6 +807,7 @@ export default function createWaRouter(config, logger) {
   // ── F2 — Suggestions: list per chat ─────────────────────────────────────
   router.get(
     "/wa/suggestions",
+    readLimiter,
     requireWaAccess({ requireWrite: false }),
     requireDb,
     asyncHandler(async (req, res) => {

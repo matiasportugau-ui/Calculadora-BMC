@@ -92,6 +92,7 @@ import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { writeWaCrmIngest, runWaAutoLearn } from "./lib/wa/crmIngestWrite.js";
+import { logSafe } from "./lib/wa/logSafe.js";
 import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -853,7 +854,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       conv = waConversations.get(chatId);
       conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
       conv.lastUpdate = Date.now();
-      logger.info(`[WA] Message from ${contactName} (${chatId}), total: ${conv.messages.length}`);
+      logger.info(`[WA] Message from ${logSafe(contactName)} (${logSafe(chatId)}), total: ${conv.messages.length}`);
     }
 
     // F4 — espejar inbound Cloud API en Postgres wa_messages para que el cockpit
@@ -919,7 +920,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 
       // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
       if (text.includes("🚀")) {
-        logger.info(`[WA] 🚀 manual trigger for ${chatId}`);
+        logger.info(`[WA] 🚀 manual trigger for ${logSafe(chatId)}`);
         processWaConversation(chatId, conv);
       }
     }
