@@ -27,6 +27,7 @@ import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
 import { rankUrgentConversations } from "../lib/omni/urgency.js";
+import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
 import { callAgentOnce } from "../lib/agentCore.js";
 
 // AI copilot actions for the inline thread assistant. Each builds a one-shot
@@ -254,6 +255,46 @@ router.get(
         assignees: [],
         sla: {},
       });
+    }
+  },
+);
+
+// Contact dedup — DETECTION ONLY (Wave 6). resolveContact() already dedupes new
+// inbound contacts via DB unique constraints, so this only finds PRE-EXISTING
+// duplicates that arrived as separate rows on different channels and now share
+// a non-unique field (email/phone). Read-only; no merge action exists yet — see
+// server/lib/omni/identity/duplicateContacts.js for why merging contact
+// identity (repointing conversation/deal history) is a deliberately separate,
+// higher-stakes step that isn't auto-shipped here.
+router.get(
+  "/omni/contacts/duplicates",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const SCAN_LIMIT = 5000;
+    try {
+      const { rows } = await req.omniPool.query(
+        `SELECT co.id, co.name, co.email, co.phone, co.wa_phone, co.ml_user_id, co.created_at,
+                (SELECT COUNT(*)::int FROM omni_conversations c WHERE c.contact_id = co.id) AS conversation_count
+           FROM omni_contacts co
+          WHERE co.email IS NOT NULL OR co.phone IS NOT NULL OR co.wa_phone IS NOT NULL
+          ORDER BY co.updated_at DESC
+          LIMIT $1`,
+        [SCAN_LIMIT],
+      );
+      const clusters = findDuplicateClusters(rows);
+      res.json({
+        ok: true,
+        generated_at: new Date().toISOString(),
+        scanned: rows.length,
+        scan_bounded: rows.length === SCAN_LIMIT,
+        cluster_count: clusters.length,
+        clusters,
+      });
+    } catch (e) {
+      if (e?.code !== "42703" && e?.code !== "42P01") throw e;
+      req.log?.warn?.({ err: e.message, code: e.code }, "omni duplicate contacts degraded");
+      res.json({ ok: true, degraded: e.code, scanned: 0, scan_bounded: false, cluster_count: 0, clusters: [] });
     }
   },
 );
