@@ -85,6 +85,43 @@ export function resolveSKU_techoByRange(tipo, familiaP, espesor) {
   return byFam._all ? { ...byFam._all } : null;
 }
 
+/**
+ * Lima-olla (valley/gutter): perfil en V que drena el agua en la intersección
+ * de dos faldones. Devuelve un ítem de perfilería por barras enteras.
+ * @param {string} familiaP familia de panel (ISOROOF/ISODEC/ISODEC_PIR)
+ * @param {number} espesor espesor en mm
+ * @param {number} length longitud lineal del valle (m)
+ * @param {object} [opciones] { skuRangeMode } para resolución por rango
+ * @returns {{ items: Array, total: number, totalML: number }}
+ */
+export function calcLimaOlla(familiaP, espesor, length, opciones = {}) {
+  const len = Number(length);
+  if (!Number.isFinite(len) || len <= 0) return { items: [], total: 0, totalML: 0 };
+  const resolved = opciones?.skuRangeMode === true
+    ? resolveSKU_techoByRange("lima_olla", familiaP, espesor)
+    : resolveSKU_techo("lima_olla", familiaP, espesor);
+  if (!resolved) return { items: [], total: 0, totalML: 0 };
+  const L = resolved.largo || 3.0;
+  const pzas = Math.ceil(len / L);
+  const ml = +(pzas * L).toFixed(2);
+  const precio = p(resolved);
+  const item = {
+    label: resolved.label || "Lima-olla (valle)",
+    sku: resolved.sku,
+    tipo: "lima_olla",
+    cant: pzas,
+    unidad: "unid",
+    pu: precio,
+    costo: resolved.costo ?? 0,
+    total: +(pzas * precio).toFixed(2),
+    ml,
+    mlNecesario: +len.toFixed(4),
+    mermaMl: +(ml - len).toFixed(4),
+    largoBarra: L,
+  };
+  return { items: [item], total: item.total, totalML: ml };
+}
+
 export function calcPanelesTecho(panel, espesor, largo, ancho) {
   const espData = panel.esp[espesor];
   if (!espData) return null;

@@ -2941,6 +2941,25 @@ console.log("\n═══ SUITE 36: ISOROOF PLUS — mínimo 800 m² ═══");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 40. calcLimaOlla — perfil de valle (lima-olla)
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const { calcLimaOlla } = await import("../src/utils/calculations.js");
+  // ISOROOF 50mm, valle de 7m → barras de 3m → ceil(7/3)=3 piezas (LO50)
+  const r = calcLimaOlla("ISOROOF", 50, 7);
+  const it = r.items[0];
+  assert("calcLimaOlla: 7m valle → 3 barras", it?.cant === 3, it?.cant, 3);
+  assert("calcLimaOlla: SKU LO50", it?.sku === "LO50", it?.sku, "LO50");
+  assert("calcLimaOlla: total > 0", r.total > 0, r.total, ">0");
+  // length inválido → sin items
+  const vacio = calcLimaOlla("ISOROOF", 50, 0);
+  assert("calcLimaOlla: length 0 → sin items", vacio.items.length === 0 && vacio.total === 0, vacio, "0");
+  // espesor sin SKU exacto + range mode → resuelve por rango (60→50)
+  const rr = calcLimaOlla("ISOROOF", 60, 7, { skuRangeMode: true });
+  assert("calcLimaOlla: 60mm con rango → LO50", rr.items[0]?.sku === "LO50", rr.items[0]?.sku, "LO50");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
 // ═══════════════════════════════════════════════════════════════════════════
 console.log(`\n${"═".repeat(60)}`);
