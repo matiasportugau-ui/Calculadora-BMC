@@ -6,7 +6,7 @@ import {
   useOmniNotes,
   useOmniAssist,
 } from "../../../../hooks/useOmniConversations.js";
-import { channelMeta, clockTime, conversationTitle, messageDate, statusMeta } from "./omniFormat.js";
+import { channelMeta, clockTime, conversationTitle, groundingLabel, messageDate, statusMeta } from "./omniFormat.js";
 import { applyReply, getCannedReplies, matchSlashQuery } from "./cannedReplies.js";
 import "./omniInbox.css";
 
@@ -321,6 +321,11 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
         <div className="omniSuggest">
           <div className="omniSuggest__label">Sugerencia IA</div>
           <p className="omniSuggest__body">{suggestion.body}</p>
+          {groundingLabel(suggestion.metadata) && (
+            <div className="omniSuggest__grounding" title="Cotizaciones históricas que la IA usó como contexto (RAG)">
+              📎 {groundingLabel(suggestion.metadata)}
+            </div>
+          )}
           <div className="omniSuggest__actions">
             <button type="button" className="omniInbox__btn" onClick={() => setDraft(suggestion.body)}>
               Usar

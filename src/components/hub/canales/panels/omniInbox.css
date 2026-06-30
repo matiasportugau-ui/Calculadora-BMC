@@ -117,6 +117,7 @@
 .omniSuggest { margin: 0 1rem; padding: 0.6rem 0.7rem; border-radius: var(--oi-radius-sm); border: 1px solid color-mix(in srgb, var(--oi-warn) 35%, transparent); background: color-mix(in srgb, var(--oi-warn) 10%, var(--oi-surface)); }
 .omniSuggest__label { font-size: 0.6875rem; font-weight: 700; color: var(--oi-warn); margin-bottom: 3px; }
 .omniSuggest__body { margin: 0 0 6px; font-size: 0.8125rem; }
+.omniSuggest__grounding { margin: 0 0 6px; font-size: 0.6875rem; color: var(--oi-text-muted, #6b7280); }
 .omniSuggest__actions { display: flex; gap: 6px; }
 
 /* Internal notes */

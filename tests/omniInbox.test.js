@@ -11,6 +11,7 @@ import {
   clockTime,
   statusMeta,
   messageDate,
+  groundingLabel,
 } from "../src/components/hub/canales/panels/omniFormat.js";
 import {
   getCannedReplies,
@@ -118,6 +119,22 @@ check("applyReply replaces the /token with the body", () => {
   const m = matchSlashQuery(text, text.length);
   const out = applyReply(text, text.length, m.tokenStart, "MEDIDAS_BODY");
   assert.equal(out, "hola MEDIDAS_BODY");
+});
+
+check("groundingLabel shows count only when grounded", () => {
+  assert.equal(
+    groundingLabel({ grounding: { grounded: true, rag_count: 2 } }),
+    "Basado en 2 cotizaciones similares",
+  );
+  assert.equal(
+    groundingLabel({ grounding: { grounded: true, rag_count: 1 } }),
+    "Basado en 1 cotización similar",
+  );
+  // not grounded / RAG off / missing → no badge
+  assert.equal(groundingLabel({ grounding: { grounded: false, rag_count: 0 } }), null);
+  assert.equal(groundingLabel({ grounding: { grounded: true, rag_count: 0 } }), null);
+  assert.equal(groundingLabel({}), null);
+  assert.equal(groundingLabel(undefined), null);
 });
 
 console.log(`\nomniInbox helpers: ${passed} checks passed`);

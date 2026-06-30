@@ -90,3 +90,17 @@ export const STATUS_META = {
 export function statusMeta(status) {
   return STATUS_META[String(status || "open").toLowerCase()] || STATUS_META.open;
 }
+
+/**
+ * Short es-UY label for the RAG grounding of an AI suggestion, read from
+ * `omni_suggestions.metadata.grounding` (Phase 1). Returns null when there is
+ * nothing useful to show (RAG off / no cases) so the caller renders the badge
+ * only when the suggestion is actually grounded in past quotes.
+ */
+export function groundingLabel(metadata) {
+  const g = metadata?.grounding;
+  const n = Number(g?.rag_count) || 0;
+  if (!g?.grounded || n <= 0) return null;
+  const noun = n === 1 ? "cotización similar" : "cotizaciones similares";
+  return `Basado en ${n} ${noun}`;
+}
