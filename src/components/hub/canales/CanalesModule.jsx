@@ -18,6 +18,7 @@ const UnifiedContactsPanel = React.lazy(() =>
 );
 const OmniInboxPanel = React.lazy(() => import("./panels/OmniInboxPanel.jsx"));
 const OmniAdminCockpit = React.lazy(() => import("./panels/OmniAdminCockpit.jsx"));
+const OmniDuplicateContactsPanel = React.lazy(() => import("./panels/OmniDuplicateContactsPanel.jsx"));
 const OmniDealsKanban = React.lazy(() => import("./panels/OmniDealsKanban.jsx"));
 
 const OMNI_INBOX_ENABLED = import.meta.env.VITE_OMNI_INBOX === "1";
@@ -31,6 +32,7 @@ function TabBar({ activeTab, onTabChange }) {
   const tabs = [
     ...(OMNI_INBOX_ENABLED ? [{ id: "omni", label: "Omni Inbox" }] : []),
     ...(OMNI_INBOX_ENABLED ? [{ id: "cockpit", label: "Cockpit" }] : []),
+    ...(OMNI_INBOX_ENABLED ? [{ id: "duplicates", label: "Duplicados" }] : []),
     ...(OMNI_DEALS_ENABLED ? [{ id: "deals", label: "Pipeline Deals" }] : []),
     { id: "ml", label: "ML Manager" },
     { id: "wa", label: "WA Inbox" },
@@ -164,6 +166,9 @@ function CanalesModuleInner() {
           )}
           {activeTab === "cockpit" && OMNI_INBOX_ENABLED && (
             <OmniAdminCockpit token={accessToken} onSelectConversation={jumpToConversation} />
+          )}
+          {activeTab === "duplicates" && OMNI_INBOX_ENABLED && (
+            <OmniDuplicateContactsPanel token={accessToken} />
           )}
           {activeTab === "deals" && OMNI_DEALS_ENABLED && (
             <OmniDealsKanban deals={deals} loading={dealsLoading} onMoveDeal={moveDeal} />

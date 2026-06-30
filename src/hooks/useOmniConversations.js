@@ -172,6 +172,44 @@ export function useOmniUrgentActions(token, { limit = 12 } = {}) {
   return { actions, loading, error, reload };
 }
 
+// Duplicate-contact clusters from GET /api/omni/contacts/duplicates (read-only
+// detection, Wave 6a). Degrades to [] so the panel never breaks pre-migration.
+export function useOmniDuplicateContacts(token) {
+  const [clusters, setClusters] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const reload = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await omniFetch(token, "/api/omni/contacts/duplicates");
+      setClusters(Array.isArray(data?.clusters) ? data.clusters : []);
+    } catch (e) {
+      setError(e.message);
+      setClusters([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { clusters, loading, error, reload };
+}
+
+// Merge two duplicate contacts (Wave 6b, admin-only on the backend). Not a
+// hook — a one-shot action the caller awaits, then reloads its own list.
+export async function mergeOmniContacts(token, fromId, intoId) {
+  return omniFetch(token, "/api/omni/contacts/merge", {
+    method: "POST",
+    body: JSON.stringify({ from_id: fromId, into_id: intoId }),
+  });
+}
+
 // Internal operator notes for a conversation (collaboration; never sent to the
 // customer). Degrades to [] so the thread panel never breaks pre-migration.
 export function useOmniNotes(token, conversationId) {
