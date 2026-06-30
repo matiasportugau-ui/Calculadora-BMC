@@ -1,0 +1,26 @@
+[
+  {
+    "id": "kit-todo-en-uno-eps",
+    "titulo": "Kit Todo en Uno EPS",
+    "claim": "$48.90/m² all-in",
+    "detalle": "Bundle ISOPANEL EPS + fijaciones + selladores + perfilería a un precio cerrado. Reduce la fricción de cotización y compite de frente con los resellers MLU que venden suelto.",
+    "fundamento": "Base ISOPANEL_EPS_50 $41.88/m² + kits de anclaje del catálogo Shopify; presión de precio Tier 5 sobre EPS 50mm pared (MercadoLibre pulse).",
+    "kpi": "Precio cerrado"
+  },
+  {
+    "id": "galpon-sin-columnas",
+    "titulo": "Galpón Sin Columnas",
+    "claim": "150mm · 9m de luz",
+    "detalle": "Posicionar paneles de techo de mayor espesor por su autoportancia para galpones de gran luz sin estructura intermedia: ahorro en acero y en tiempo de obra.",
+    "fundamento": "Autoportancia de fichas técnicas (≈7.5m @150mm ISODEC EPS, 7.6m @120mm PIR); ángulo de copy 'Construcción rápida' (Meta Ads).",
+    "kpi": "9m span"
+  },
+  {
+    "id": "pir-upgrade",
+    "titulo": "PIR Upgrade",
+    "claim": "+$9/m² con 18% de descuento",
+    "detalle": "Upsell de EPS a PIR destacando λ=0.022 (superior a EPS) y desempeño térmico/ignífugo. Descuento puente para cerrar el diferencial de precio.",
+    "fundamento": "ISODEC_PIR_50 $51.02 vs ISODEC EPS ~$46 (base); ventaja técnica PIR de fichas; ángulo 'Durabilidad premium'.",
+    "kpi": "Margen mix"
+  }
+]
