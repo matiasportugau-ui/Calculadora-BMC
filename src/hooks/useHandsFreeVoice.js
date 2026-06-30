@@ -1,7 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-const WAKE_WORD = "panelin";
 const PHASE_LISTENING = "Escuchando…";
+
+// Brand wake word + the variants Spanish ASR commonly returns for the coined
+// word "Panelín" — it tends to add the accent ("panelín") or split it ("panel in").
+const WAKE_WORDS = ["panelin", "panel in", "panelina", "panecillo"];
+// Accent stripping reuses the repo idiom (BmcLogisticaApp.jsx, BmcPlanosModule.jsx).
+const normWake = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+// Tolerant wake-word test: accent-insensitive, and collapses spaces so the
+// split transcription "panel in" still matches the contiguous "panelin".
+export const hasWake = (text) => {
+  if (!text) return false;
+  const n = normWake(text);
+  return n.replace(/[^a-z0-9]/g, "").includes("panelin") || WAKE_WORDS.some((w) => n.includes(w));
+};
 
 export function useHandsFreeVoice({ onError, send, messages = [] }) {
   const [status, setStatus] = useState("idle");
@@ -170,21 +182,17 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
 
     SR.current.continuous = true;
     SR.current.interimResults = true;
-    SR.current.lang = "es-ES";
+    SR.current.lang = "es-419"; // Latin-American Spanish (Rioplatense) — better on the coined brand word
 
     SR.current.onresult = (event) => {
       updateVU();
-      let interimTranscript = "";
       let hasWakeWord = false;
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          if (transcript.toLowerCase().includes(WAKE_WORD)) {
-            hasWakeWord = true;
-          }
-        } else {
-          interimTranscript += transcript + " ";
+        // Check interim results too: with continuous=true the wake word can sit
+        // un-finalized for a long time, so waiting for isFinal adds latency/misses.
+        if (hasWake(event.results[i][0].transcript)) {
+          hasWakeWord = true;
         }
       }
 
@@ -201,6 +209,11 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
       if (event.error === "not-allowed") {
         onError?.("Permiso de micrófono denegado");
         setStatus("error");
+      } else if (event.error === "network" || event.error === "audio-capture") {
+        // Don't let a dead recognition loop masquerade as a healthy "waiting"
+        // state — show a transient hint; onend below restarts and resets the phase.
+        console.warn("[voice] wake word error:", event.error);
+        if (currentPhaseRef.current === "waking") setPhase("Reconectando voz…");
       } else if (event.error !== "no-speech") {
         console.warn("[voice] wake word error:", event.error);
       }
@@ -211,7 +224,12 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
         // Restart if still in wake phase
         setTimeout(() => {
           if (currentPhaseRef.current === "waking" && SR.current) {
-            SR.current.start();
+            try {
+              SR.current.start();
+              setPhase("Esperando 'Panelin'…"); // clear any "Reconectando voz…" hint
+            } catch {
+              // start() throws if recognition is already running — safe to ignore
+            }
           }
         }, 100);
       }
@@ -247,12 +265,12 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
             if (SR.current) {
               SR.current.continuous = true;
               SR.current.interimResults = true;
-              SR.current.lang = "es-ES";
+              SR.current.lang = "es-419"; // Latin-American Spanish (Rioplatense) — better on the coined brand word
 
               SR.current.onresult = (event) => {
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                   const trans = event.results[i][0].transcript;
-                  if (trans.toLowerCase().includes(WAKE_WORD)) {
+                  if (hasWake(trans)) {
                     window.speechSynthesis.cancel();
                     SR.current.abort();
                     playBeep();
