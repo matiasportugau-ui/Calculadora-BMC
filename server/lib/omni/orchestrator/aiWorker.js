@@ -24,7 +24,10 @@ const CATEGORY_MAP = {
  * server/migrations/omni/002_ai_automation.sql (omni_ai_jobs_type_valid).
  * Single source of truth so routes/actions validate before hitting the DB.
  */
-export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "embed"];
+// Mirrors the DB CHECK constraint omni_ai_jobs_type_valid (migrations 002 + 011).
+// 'assist' rows are written `completed` directly by the /omni/.../assist route for
+// budget accounting and are never enqueued/processed by the worker loop below.
+export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "embed", "assist"];
 
 /**
  * Build the metadata payload stored on an omni_suggestions row. Pure (no I/O)
