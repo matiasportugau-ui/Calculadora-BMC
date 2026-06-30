@@ -9,6 +9,7 @@ import { getEnabledPrompt, getEnabledModel } from "./aiRegistry.js";
 import { processExtractDealJob } from "../deals/dealExtractor.js";
 import { runEmbedJob } from "../knowledge/embedPipeline.js";
 import { buildOmniRetrievalContext, formatOmniContextBlock } from "../knowledge/kbBridge.js";
+import { runWaCrmSyncJob } from "../../wa/waCrmSyncJob.js";
 
 const CATEGORY_MAP = {
   cotizacion: "cotizacion",
@@ -24,20 +25,26 @@ const CATEGORY_MAP = {
  * server/migrations/omni/002_ai_automation.sql (omni_ai_jobs_type_valid).
  * Single source of truth so routes/actions validate before hitting the DB.
  */
-export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "embed"];
+export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "embed", "wa_crm_sync"];
 
 /**
  * @param {import('pg').Pool} pool
  * @param {object} job
+ * @param {{ onConflictDoNothing?: boolean }} [opts]
+ *   onConflictDoNothing: coalesce against the pending-job unique index (migration
+ *   011). On conflict no row is inserted and this returns null (intentionally — the
+ *   already-pending job will pick up the new messages when it runs).
  */
-export async function enqueueAiJob(pool, job) {
+export async function enqueueAiJob(pool, job, opts = {}) {
   if (!pool) return null;
   if (!ALLOWED_AI_JOB_TYPES.includes(job.job_type)) {
     throw new Error("invalid_job_type");
   }
+  const conflictClause = opts.onConflictDoNothing ? "ON CONFLICT DO NOTHING" : "";
   const { rows } = await pool.query(
     `INSERT INTO omni_ai_jobs (job_type, message_id, conversation_id, channel, input_json, status)
      VALUES ($1, $2, $3, $4, $5::jsonb, 'pending')
+     ${conflictClause}
      RETURNING id`,
     [
       job.job_type,
@@ -75,6 +82,24 @@ export async function enqueueIngestAiJobs(pool, payload) {
       channel: payload.channel,
     }),
   );
+
+  // WA flip (OMNI_WA_CANONICAL): the legacy CRM-Sheets ingest + auto-learn run as a
+  // durable, per-conversation-coalesced job instead of the in-memory processWaConversation.
+  if (config.omniWaCanonical && payload.channel === "wa") {
+    ids.push(
+      await enqueueAiJob(
+        pool,
+        {
+          job_type: "wa_crm_sync",
+          message_id: payload.message_id,
+          conversation_id: payload.conversation_id,
+          channel: payload.channel,
+        },
+        { onConflictDoNothing: true },
+      ),
+    );
+  }
+
   return ids.filter(Boolean);
 }
 
@@ -208,6 +233,13 @@ export async function processAiJob(pool, jobRow, logger) {
       const embedded = await runEmbedJob(pool, jobRow.message_id);
       await markJobCompleted(pool, jobRow.id, {
         ...embedded,
+        latency_ms: Date.now() - t0,
+        cost_usd: 0,
+      });
+    } else if (jobRow.job_type === "wa_crm_sync") {
+      const synced = await runWaCrmSyncJob({ pool, jobRow, config, logger });
+      await markJobCompleted(pool, jobRow.id, {
+        ...synced,
         latency_ms: Date.now() - t0,
         cost_usd: 0,
       });
