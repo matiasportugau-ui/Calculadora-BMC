@@ -14,6 +14,7 @@
  */
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
+import pino from "pino";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
@@ -60,6 +61,9 @@ import {
 } from "../lib/aiProviderConfig.js";
 
 const router = Router();
+
+// Module logger for code paths without a request-scoped pino (req.log).
+const logger = pino({ name: "agent-chat", level: process.env.LOG_LEVEL ?? "info" });
 
 // Track which conversations have already run autolearn — prevents multi-call per session.
 const _autolearned = new Set();
@@ -666,7 +670,7 @@ router.post("/agent/chat", async (req, res) => {
     // Surface to dev panel for transparency
     setImmediate(() => {
       try {
-        if (!aborted) res.write(`data: ${JSON.stringify({ type: "approved_actions", actions: [...approvedActions] })}\n\n`);
+        if (!aborted && !res.writableEnded) res.write(`data: ${JSON.stringify({ type: "approved_actions", actions: [...approvedActions] })}\n\n`);
       } catch (err) {
         // Top-20 run 2026-05-11 (#F6): error de SSE write — logueamos en vez de silenciar.
         if (req.log) req.log.warn({ err: err?.message || String(err) }, "approved_actions SSE write failed");
@@ -1118,7 +1122,7 @@ router.post("/agent/chat", async (req, res) => {
           devMode: devMode || undefined,
         };
         if (req.log) req.log.info(turnLog, "chat_turn");
-        else console.log(JSON.stringify(turnLog));
+        else logger.info(turnLog, "chat_turn");
 
         // Structured cost observability for the primary AI functionality path
         const chatCost = estimateCostUSD(provider, resolvedModel, {
@@ -1135,7 +1139,7 @@ router.post("/agent/chat", async (req, res) => {
           conversationId,
         };
         if (req.log) req.log.info(costLog, "chat_turn_cost");
-        else console.log(JSON.stringify(costLog));
+        else logger.info(costLog, "chat_turn_cost");
 
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {
@@ -1206,6 +1210,9 @@ router.post("/agent/chat", async (req, res) => {
           }
           const fullTurns = [...allTurns, { role: "assistant", content: visibleAssistantText }];
           setImmediate(() => {
+            // Guard the whole body: a synchronous throw inside a setImmediate
+            // callback escapes as an uncaught exception (no .catch can see it).
+            try {
             extractLearnablePairs(fullTurns, { source: "panelin_chat", convId: conversationId })
               .then((pairs) => {
                 for (const p of pairs) {
@@ -1228,6 +1235,9 @@ router.post("/agent/chat", async (req, res) => {
               .catch((err) => {
                 req.log?.warn({ err: err.message }, "autolearn extraction failed (non-blocking)");
               });
+            } catch (err) {
+              req.log?.warn({ err: err?.message || String(err) }, "autolearn scheduling failed (non-blocking)");
+            }
           });
         }
       }

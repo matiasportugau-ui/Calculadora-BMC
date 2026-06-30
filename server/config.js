@@ -82,7 +82,7 @@ export const config = {
   bmcVentasSheetId: process.env.BMC_VENTAS_SHEET_ID || "",
   bmcStockSheetId: process.env.BMC_STOCK_SHEET_ID || "",
   // Wolfboard — Admin 2.0 ↔ CRM sync (dashboard :3849)
-  wolfbAdminSheetId: process.env.WOLFB_ADMIN_SHEET_ID || "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
+  wolfbAdminSheetId: process.env.WOLFB_ADMIN_SHEET_ID || "",
   wolfbAdminTab: process.env.WOLFB_ADMIN_TAB || "Admin.",
   wolfbCrmMainTab: process.env.WOLFB_CRM_MAIN_TAB || "CRM_Operativo",
   /** Libro CRM (crm_automatizado). Vacío = mismo que bmcSheetId. */
@@ -228,7 +228,7 @@ export const config = {
   traktimeAwEnabled: bool(process.env.TRAKTIME_AW_ENABLED, false),
   traktimeAwBaseUrl: process.env.TRAKTIME_AW_BASE_URL || "http://localhost:5600",
   todoistApiToken: process.env.TODOIST_API_TOKEN || "",
-  todoistBmcProjectId: process.env.TODOIST_BMC_PROJECT_ID || "6grV9QhFpvPJ79hx",
+  todoistBmcProjectId: process.env.TODOIST_BMC_PROJECT_ID || "",
   /** WA Cockpit (F2 enricher) — flags */
   waEnricherEnabled: bool(process.env.WA_ENRICHER_ENABLED, false),
   waEnricherIntervalMs: Number(process.env.WA_ENRICHER_INTERVAL_MS || 8000),
