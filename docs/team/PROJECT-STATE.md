@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-29
+**Última actualización:** 2026-06-30
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-30 (Respondamos Rapido — chat panel + tutorial UX):** `BmcChatPanel.jsx` renombrado a **Respondamos Rapido**: pestaña fija abajo a la derecha (estilo launcher), health dot, panel con header/cerrar, iframe a `localhost:3000` en dev y Cloud Run en prod. Ya no exige login para mostrar el launcher (auth se postea al iframe si hay token). **Tutorial:** cierre con `dismissTutorial` descarta overlay + botón flotante por sesión (`sessionStorage`); fix `z-index` del cartel centrado; default del botón tutorial desplazado para no tapar la pestaña del chat.
 
 **2026-06-30 (fix — respuestas IA de Gemini truncadas a media frase en `/api/crm/suggest-response`):** Bug en vivo en `/hub/cotizaciones`: filas "Generadas por gemini" quedaban con la respuesta cortada (p. ej. "Buenas noches. Con gusto" y nada más) ante consultas que requerían una cotización completa. Causa raíz: `server/lib/agentCore.js` (`callAgentOnce`, el path compartido detrás de `suggest-response`/CRM/WA) abre la rama Gemini sin `thinkingConfig:{thinkingBudget:0}` — `gemini-2.5-flash` "piensa" por defecto y ese razonamiento oculto consume el presupuesto de `maxOutputTokens` (120 para canal `ml`, 400 para `wa`) antes de emitir texto visible, cortando la respuesta a mitad de frase. El mismo gotcha ya estaba documentado y resuelto en `server/routes/agentChat.js:969-975` (PR #472, Gemini function-calling) pero nunca se propagó a `agentCore.js`. **Fix:** un `generationConfig.thinkingConfig:{thinkingBudget:0}` en la rama Gemini de `callAgentOnce` (este path no usa tools, así que el thinking no aporta nada — solo arriesga truncar). Diff de 8 líneas, sin tests nuevos (no hay infra de mock del SDK Gemini en este módulo, ver `tests/suggestResponseKb.test.js`); verificado con `npm run gate:local` (lint + test + test:api) verde.
 
