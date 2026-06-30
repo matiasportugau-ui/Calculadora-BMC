@@ -14,6 +14,7 @@
 
 import pg from "pg";
 import { embedText } from "./embeddings.js";
+import { sanitizeQuoteMetadata } from "./quoteMetadata.js";
 import { config } from "../config.js";
 
 /** Pool compartido para el módulo. Lazy-init para no conectar si RAG está OFF. */
@@ -107,7 +108,10 @@ export async function retrieveSimilarQuotes(query, k = 5, threshold = 0.70) {
 export function formatRetrievedContextForPrompt(quotes) {
   if (!Array.isArray(quotes) || quotes.length === 0) return "";
 
-  const lines = quotes.map(({ similarity, metadata: m }) => {
+  const lines = quotes.map(({ similarity, metadata: rawMeta }) => {
+    // Whitelist quote facts and drop PII (incl. client name) before this context
+    // reaches an external LLM — parity with omni/knowledge/kbBridge.js.
+    const m = sanitizeQuoteMetadata(rawMeta);
     const parts = [];
 
     // Fecha

@@ -91,9 +91,10 @@ export async function resolveContact(client, { contact_hint: hint, channel, sour
   const name = hint.name ? String(hint.name).slice(0, 255) : null;
   const properties = source ? { last_ingest_source: source } : {};
 
-  // ON CONFLICT DO NOTHING (any unique key: integration_uuid / ml_user_id /
-  // wa_phone / email) so a concurrent insert of the same contact never aborts the
-  // transaction and drops the inbound message — we re-resolve below instead.
+  // ON CONFLICT DO NOTHING on any UNIQUE key (integration_uuid / ml_user_id /
+  // wa_phone / chrome_ext_contact_id — email is NOT unique; it dedups via the
+  // email-derived integration_uuid) so a concurrent insert of the same contact
+  // never aborts the transaction and drops the inbound message — we re-resolve below.
   const ins = await client.query(
     `INSERT INTO omni_contacts
        (integration_uuid, ml_user_id, wa_phone, email, phone, name, properties)
