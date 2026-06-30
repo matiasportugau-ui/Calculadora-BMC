@@ -4,6 +4,7 @@
 //   app.use('/api/marketing', marketingRouter);
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import pg from 'pg';
 import pino from 'pino';
 import { requireServiceOrUser } from '../middleware/requireServiceOrUser.js';
@@ -225,11 +226,19 @@ router.get('/product-intelligence', requireMarketing, async (req, res) => {
   }
 });
 
+// Per-IP rate limiter for the new intel surfaces (matches mlSearch.js convention).
+const intelLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // ─── GET /api/marketing/intel ────────────────────────────────────────
 // Surfaces the offline market investigation (competitor map, Meta Ads audit,
 // MercadoLibre pulse) captured under server/lib/marketIntel/data/. Static data
 // so this is cheap; still degrade to 503 if a loader throws.
-router.get('/intel', requireMarketing, (req, res) => {
+router.get('/intel', intelLimiter, requireMarketing, (req, res) => {
   try {
     res.json({
       competitors: getCompetitorMap(),
@@ -245,7 +254,7 @@ router.get('/intel', requireMarketing, (req, res) => {
 // ─── GET /api/marketing/product-matrix ───────────────────────────────
 // BMC baseline SKUs vs a tier-weighted competitor market reference + Δ% +
 // positioning. The reference is an estimate (see priceGap.js), not a live quote.
-router.get('/product-matrix', requireMarketing, (req, res) => {
+router.get('/product-matrix', intelLimiter, requireMarketing, (req, res) => {
   try {
     const rows = buildProductMatrix(getBaselinePrices(), getCompetitorMap());
     res.json({
@@ -317,7 +326,7 @@ ${ml?.metricas?.total_listings_activos ?? '?'} listings, ${ml?.metricas?.pregunt
 ${liveLine}`;
 }
 
-router.post('/ai/chat', requireMarketing, async (req, res) => {
+router.post('/ai/chat', intelLimiter, requireMarketing, async (req, res) => {
   const incoming = Array.isArray(req.body?.messages) ? req.body.messages : null;
   if (!incoming || incoming.length === 0) {
     return res.status(400).json({ error: 'messages[] required' });
