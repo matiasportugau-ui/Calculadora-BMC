@@ -12,6 +12,7 @@ import {
   calcPresupuestoLibre,
   calcPerfileriaTechoComercial,
   calcSelladoresTecho,
+  calcSelladoresTechoByEncuentro,
   calcFijacionesVarilla,
   countPuntosFijacionVarillaGrilla,
   countVarillasRoscadasDesdeBarras1m,
@@ -2887,6 +2888,37 @@ console.log("\n═══ SUITE 36: ISOROOF PLUS — mínimo 800 m² ═══");
   assert("validateDriveArchiveBody rechaza sin PDF", bad.ok === false && bad.error === "missing_pdf", bad.error, "missing_pdf");
   const noCode = validateDriveArchiveBody({ pdfBase64: tinyPdf, projectData: { scenario: "solo_techo" } });
   assert("validateDriveArchiveBody rechaza sin código", noCode.ok === false && noCode.error === "missing_quotation_code", noCode.error, "missing_quotation_code");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 38. Selladores por encuentro (membrana / espuma PU)
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  // (1) Múltiples modos acumulando: 25m cumbrera (factor 1.0) → membrana ceil(25/10)=3
+  const multi = calcSelladoresTechoByEncuentro([
+    { modo: "cumbrera", length: 25 },
+    { modo: "pretil", length: 10 },
+  ]);
+  const mem = multi.items.find(i => i.sku === "membrana");
+  const esp = multi.items.find(i => i.sku === "espuma_pu");
+  // membrana ml = 25*1.0 + 10*0.5 = 30 → ceil(30/10)=3
+  assert("Selladores encuentro: membrana acumula modos (3 rollos)", mem?.cant === 3, mem?.cant, 3);
+  // espuma ml = 25*0.6 + 10*0.3 = 18 → ceil(18/10)=2
+  assert("Selladores encuentro: espuma PU acumula modos (2 unid)", esp?.cant === 2, esp?.cant, 2);
+  assert("Selladores encuentro: total > 0", multi.total > 0, multi.total, ">0");
+
+  // (2) Array vacío → 0
+  const vacio = calcSelladoresTechoByEncuentro([]);
+  assert("Selladores encuentro: array vacío → sin items", vacio.items.length === 0 && vacio.total === 0, vacio, "0");
+
+  // (3) Datos inválidos (length string/negativo/NaN) ignorados; modo desconocido ignorado
+  const invalido = calcSelladoresTechoByEncuentro([
+    { modo: "cumbrera", length: "abc" },
+    { modo: "cumbrera", length: -5 },
+    { modo: "desconocido", length: 100 },
+    { modo: "continuo", length: 50 }, // continuo factor 0 → no aporta
+  ]);
+  assert("Selladores encuentro: datos inválidos/continuo → sin items", invalido.items.length === 0 && invalido.total === 0, invalido, "0");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
