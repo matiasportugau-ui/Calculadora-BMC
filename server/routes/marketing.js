@@ -336,6 +336,11 @@ router.post('/ai/chat', requireMarketing, async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
+  let closed = false;
+  req.on('close', () => { closed = true; });
+
+  const heartbeat = setInterval(() => { if (!closed) res.write(':\n\n'); }, 15000);
+
   const send = (obj) => {
     try { res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* client disconnected */ }
   };
@@ -348,15 +353,20 @@ router.post('/ai/chat', requireMarketing, async (req, res) => {
       systemPrompt,
       override: { maxTokens: 1500, temperature: 0.4 },
     });
-    const text = (result?.text || '').trim() || 'No pude generar una respuesta con los datos disponibles.';
-    send({ type: 'text', delta: text });
-    send({ type: 'meta', provider: result?.provider || null, model: result?.model || null });
-    send({ type: 'done' });
-    res.end();
+    if (!closed) {
+      const text = (result?.text || '').trim() || 'No pude generar una respuesta con los datos disponibles.';
+      send({ type: 'text', delta: text });
+      send({ type: 'meta', provider: result?.provider || null, model: result?.model || null });
+      send({ type: 'done' });
+    }
   } catch (err) {
     log.error({ err, route: 'POST /ai/chat' }, 'market chat failed');
-    send({ type: 'error', message: 'No se pudo contactar al analista AI. Reintentá en unos segundos.' });
-    send({ type: 'done' });
+    if (!closed) {
+      send({ type: 'error', message: 'No se pudo contactar al analista AI. Reintentá en unos segundos.' });
+      send({ type: 'done' });
+    }
+  } finally {
+    clearInterval(heartbeat);
     res.end();
   }
 });
