@@ -143,6 +143,35 @@ export function useOmniAdminOverview(token) {
   return { overview, loading, error, reload };
 }
 
+// "Reply-zero" action queue: the ranked, per-conversation "act on THIS now" list
+// from GET /api/omni/actions/urgent. Degrades to [] so the cockpit never breaks.
+export function useOmniUrgentActions(token, { limit = 12 } = {}) {
+  const [actions, setActions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const reload = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await omniFetch(token, `/api/omni/actions/urgent?limit=${encodeURIComponent(limit)}`);
+      setActions(Array.isArray(data?.actions) ? data.actions : []);
+    } catch (e) {
+      setError(e.message);
+      setActions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, limit]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { actions, loading, error, reload };
+}
+
 // Internal operator notes for a conversation (collaboration; never sent to the
 // customer). Degrades to [] so the thread panel never breaks pre-migration.
 export function useOmniNotes(token, conversationId) {
