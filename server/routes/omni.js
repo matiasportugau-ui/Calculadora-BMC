@@ -27,6 +27,7 @@ import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
 import { rankUrgentConversations } from "../lib/omni/urgency.js";
+import { appendTeamIsolationFilter } from "../lib/omni/teamIsolation.js";
 import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
 import { mergeContacts, ContactMergeError } from "../lib/omni/identity/contactMerge.js";
 import { callAgentOnce } from "../lib/agentCore.js";
@@ -335,10 +336,14 @@ router.post(
         return res.status(status).json({ ok: false, error: e.code });
       }
       if (e?.code === "42P01") {
+        // The transaction touches omni_contacts/omni_conversations/omni_deals/
+        // omni_contact_merge_log — any of the four can be the missing relation
+        // on a partial/older schema, so surface Postgres's own message (it
+        // names the table) rather than guessing it's always migration 013.
         return res.status(503).json({
           ok: false,
-          error: "omni_contact_merge_log_missing",
-          detail: "Apply migration 013 (npm run omni:migrate) before merging contacts.",
+          error: "omni_schema_incomplete",
+          detail: `${e.message} — run npm run omni:migrate to apply pending migrations before merging contacts.`,
         });
       }
       throw e;
@@ -367,15 +372,7 @@ router.get(
       params.push(channel);
       filters.push(`c.channel = $${params.length}`);
     }
-    // Team isolation (mirrors GET /omni/conversations): non-admins see team_id NULL
-    // plus their own teams; admin/superadmin see everything.
-    const role = req.user?.role;
-    if (role !== "admin" && role !== "superadmin") {
-      params.push(req.user.id);
-      filters.push(
-        `(c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`,
-      );
-    }
+    appendTeamIsolationFilter(req.user, filters, params);
     const where = `WHERE ${filters.join(" AND ")}`;
 
     try {
@@ -466,16 +463,7 @@ router.get(
       filters.push(`c.assigned_to_user_id = $${params.length}::uuid`);
     }
 
-    // Team isolation (multi-user): non-admin operators see conversations with no
-    // team plus those in teams they belong to. Admin/superadmin see everything.
-    // (Safe before any teams exist — all conversations start with team_id NULL.)
-    const role = req.user?.role;
-    if (role !== "admin" && role !== "superadmin") {
-      params.push(req.user.id);
-      filters.push(
-        `(c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`,
-      );
-    }
+    appendTeamIsolationFilter(req.user, filters, params);
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
     const legacyWhere = legacyFilters.length ? `WHERE ${legacyFilters.join(" AND ")}` : "";
 

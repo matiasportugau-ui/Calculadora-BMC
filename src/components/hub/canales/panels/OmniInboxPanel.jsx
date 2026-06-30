@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useOmniConversations, useOmniAccounts } from "../../../../hooks/useOmniConversations.js";
+import { useOmniConversations, useOmniAccounts, useOmniMessages } from "../../../../hooks/useOmniConversations.js";
 import OmniThreadPanel from "./OmniThreadPanel.jsx";
 import OmniContactSidebar from "./OmniContactSidebar.jsx";
 import {
@@ -62,7 +62,18 @@ export default function OmniInboxPanel({ token, initialConversationId, onInitial
     );
   }, [conversations, search]);
 
-  const selected = conversations.find((c) => c.id === selectedId) || null;
+  const selectedFromList = conversations.find((c) => c.id === selectedId) || null;
+  // Deep-linking (e.g. from the cockpit's urgent-actions queue) can target a
+  // conversation outside the current filter/page — OmniThreadPanel still opens
+  // it fine (it fetches by id directly), but the sidebar otherwise has nothing
+  // to show. Fall back to fetching it directly; passing null when already
+  // found in the list keeps this a no-op (the hook early-returns) in the
+  // common case.
+  const { conversation: selectedFallback } = useOmniMessages(
+    token,
+    selectedFromList ? null : selectedId,
+  );
+  const selected = selectedFromList || selectedFallback;
 
   return (
     <div className="omniInbox">

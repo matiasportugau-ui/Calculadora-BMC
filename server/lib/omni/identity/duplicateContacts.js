@@ -39,9 +39,14 @@ export function findDuplicateClusters(contacts = []) {
     }
     // omni_contacts.phone is free-form; normalizeWaPhone canonicalizes UY
     // numbers regardless of source format so "099123456" and "+59899123456"
-    // cluster together the same way wa_phone already does at ingest.
-    const phone = normalizeWaPhone(c?.phone || c?.wa_phone);
-    if (phone) {
+    // cluster together the same way wa_phone already does at ingest. Check
+    // both fields independently (not phone-falls-back-to-wa_phone) — a contact
+    // edited manually could carry a different phone than its wa_phone, and
+    // either one matching another contact's number is a real duplicate signal.
+    const phoneKeys = new Set(
+      [normalizeWaPhone(c?.phone), normalizeWaPhone(c?.wa_phone)].filter(Boolean),
+    );
+    for (const phone of phoneKeys) {
       if (!byPhone.has(phone)) byPhone.set(phone, []);
       byPhone.get(phone).push(c);
     }

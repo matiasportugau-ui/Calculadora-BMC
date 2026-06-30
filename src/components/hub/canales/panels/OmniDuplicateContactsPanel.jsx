@@ -74,14 +74,21 @@ function ContactCard({ contact, isWinner, onPick, selectable }) {
 
 function ClusterCard({ cluster, canMerge, onMerge, merging }) {
   const [winnerId, setWinnerId] = useState(() => suggestWinner(cluster.contacts));
+  // A reload (e.g. after a concurrent merge in another tab/session, or this
+  // cluster shrinking after a pairwise merge) can return a fresh `cluster`
+  // whose contacts no longer include the previously-picked winner — re-derive
+  // rather than letting downstream lookups silently miss.
+  const validWinnerId = cluster.contacts.some((c) => c.id === winnerId)
+    ? winnerId
+    : suggestWinner(cluster.contacts);
 
   const handleMerge = () => {
-    const losers = cluster.contacts.filter((c) => c.id !== winnerId);
+    const losers = cluster.contacts.filter((c) => c.id !== validWinnerId);
     if (losers.length !== 1) {
       // Clusters of 3+ are merged one pair at a time — keep the operator in control.
       return;
     }
-    const winner = cluster.contacts.find((c) => c.id === winnerId);
+    const winner = cluster.contacts.find((c) => c.id === validWinnerId);
     const loser = losers[0];
     const ok = window.confirm(
       `Fusionar "${contactLabel(loser)}" dentro de "${contactLabel(winner)}"?\n\n` +
@@ -109,7 +116,7 @@ function ClusterCard({ cluster, canMerge, onMerge, merging }) {
           <ContactCard
             key={c.id}
             contact={c}
-            isWinner={c.id === winnerId}
+            isWinner={c.id === validWinnerId}
             onPick={setWinnerId}
             selectable={canMerge}
           />
@@ -140,7 +147,7 @@ function ClusterCard({ cluster, canMerge, onMerge, merging }) {
 }
 
 export default function OmniDuplicateContactsPanel({ token }) {
-  const { clusters, loading, error, reload } = useOmniDuplicateContacts(token);
+  const { clusters, scanBounded, loading, error, reload } = useOmniDuplicateContacts(token);
   const { has } = useModuleGrants();
   const canMerge = has("canales", "admin");
   const [mergingKey, setMergingKey] = useState(null);
@@ -192,6 +199,11 @@ export default function OmniDuplicateContactsPanel({ token }) {
       {mergeError && (
         <div style={{ padding: "0.75rem 1rem", borderRadius: 8, background: "#fef2f2", color: "#991b1b", fontSize: "0.875rem", marginBottom: "1rem" }}>
           No se pudo fusionar: {mergeError}
+        </div>
+      )}
+      {scanBounded && (
+        <div style={{ padding: "0.75rem 1rem", borderRadius: 8, background: "#fffbeb", color: "#92400e", fontSize: "0.875rem", marginBottom: "1rem" }}>
+          Escaneo acotado a los 5000 contactos más recientes — puede haber duplicados entre contactos más antiguos sin actualizar que no aparecen acá.
         </div>
       )}
 

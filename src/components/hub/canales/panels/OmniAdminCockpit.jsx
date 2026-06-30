@@ -103,7 +103,7 @@ function SectionTitle({ children, right }) {
 
 export default function OmniAdminCockpit({ token, onSelectConversation }) {
   const { overview, loading, error, reload } = useOmniAdminOverview(token);
-  const { actions: urgent, loading: urgentLoading } = useOmniUrgentActions(token, { limit: 12 });
+  const { actions: urgent, loading: urgentLoading, error: urgentError } = useOmniUrgentActions(token, { limit: 12 });
 
   const t = overview?.totals || {};
   const sla = overview?.sla || {};
@@ -165,8 +165,19 @@ export default function OmniAdminCockpit({ token, onSelectConversation }) {
       </SectionTitle>
       <div style={{ border: "1px solid var(--ac-border-primary, #e5e7eb)", borderRadius: 12, overflow: "hidden" }}>
         {urgent.length === 0 ? (
-          <div style={{ padding: "0.75rem 1rem", fontSize: "0.875rem", color: "var(--ac-text-secondary, #6b7280)" }}>
-            {urgentLoading ? "Cargando…" : "Nada urgente — bandeja al día. 🎉"}
+          <div
+            style={{
+              padding: "0.75rem 1rem",
+              fontSize: "0.875rem",
+              color: urgentError ? "#991b1b" : "var(--ac-text-secondary, #6b7280)",
+              background: urgentError ? "#fef2f2" : "transparent",
+            }}
+          >
+            {urgentLoading
+              ? "Cargando…"
+              : urgentError
+                ? `No se pudo cargar la cola: ${urgentError}`
+                : "Nada urgente — bandeja al día. 🎉"}
           </div>
         ) : (
           urgent.map((a) => {

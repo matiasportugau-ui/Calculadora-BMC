@@ -176,6 +176,7 @@ export function useOmniUrgentActions(token, { limit = 12 } = {}) {
 // detection, Wave 6a). Degrades to [] so the panel never breaks pre-migration.
 export function useOmniDuplicateContacts(token) {
   const [clusters, setClusters] = useState([]);
+  const [scanBounded, setScanBounded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -186,9 +187,11 @@ export function useOmniDuplicateContacts(token) {
     try {
       const data = await omniFetch(token, "/api/omni/contacts/duplicates");
       setClusters(Array.isArray(data?.clusters) ? data.clusters : []);
+      setScanBounded(!!data?.scan_bounded);
     } catch (e) {
       setError(e.message);
       setClusters([]);
+      setScanBounded(false);
     } finally {
       setLoading(false);
     }
@@ -198,7 +201,7 @@ export function useOmniDuplicateContacts(token) {
     reload();
   }, [reload]);
 
-  return { clusters, loading, error, reload };
+  return { clusters, scanBounded, loading, error, reload };
 }
 
 // Merge two duplicate contacts (Wave 6b, admin-only on the backend). Not a

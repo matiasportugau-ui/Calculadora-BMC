@@ -84,7 +84,7 @@ check("unread customer messages add weight + reason", () => {
   assert.ok(some.reasons.some((r) => r.includes("3 sin leer")));
 });
 
-check("high priority adds weight", () => {
+check("high priority adds weight (priority is the real INTEGER column type, not a string enum)", () => {
   const base = {
     channel: "email",
     status: "open",
@@ -92,10 +92,10 @@ check("high priority adds weight", () => {
     first_agent_reply_at: hoursAgo(8),
     assigned_to_user_id: "u1",
   };
-  const normal = scoreConversationUrgency({ ...base, priority: "normal" }, { now: NOW });
-  const high = scoreConversationUrgency({ ...base, priority: "high" }, { now: NOW });
+  const normal = scoreConversationUrgency({ ...base, priority: 0 }, { now: NOW });
+  const high = scoreConversationUrgency({ ...base, priority: 10 }, { now: NOW });
   assert.ok(high.score > normal.score);
-  assert.ok(high.reasons.some((r) => r.includes("prioridad high")));
+  assert.ok(high.reasons.some((r) => r.includes("prioridad 10")));
 });
 
 check("WA breaches faster than email (channel SLA)", () => {

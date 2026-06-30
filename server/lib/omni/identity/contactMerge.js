@@ -19,6 +19,20 @@
  *    loser still holds its value at update time, so blindly copying it over
  *    risks a unique-constraint conflict for marginal benefit — an operator can
  *    edit the winner's profile by hand afterward if a field is worth keeping.
+ *
+ * MAINTENANCE NOTE — repoint list: the repoint step below currently knows
+ * about exactly two FKs into omni_contacts (omni_conversations.contact_id,
+ * omni_deals.contact_id — the only two as of migration 013). If a future
+ * migration adds another `... REFERENCES omni_contacts(id)` table, that
+ * migration MUST also add a repoint UPDATE here, or rows in the new table
+ * would silently keep pointing at the archived loser contact after a merge.
+ *
+ * MAINTENANCE NOTE — this is mechanism only, not policy: mergeContacts()
+ * itself does not check the caller's role/permissions — POST /omni/contacts/
+ * merge (server/routes/omni.js) is what gates this behind requireGrant.admin
+ * ("canales"). Any new caller (e.g. a future automation/worker) is
+ * responsible for re-deriving that same admin gate; this function will not
+ * enforce it for you.
  */
 
 export class ContactMergeError extends Error {

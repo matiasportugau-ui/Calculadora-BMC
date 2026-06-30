@@ -32,6 +32,20 @@ check("two contacts sharing a phone (different formats) cluster together", () =>
   assert.deepEqual(clusters[0].contacts.map((c) => c.id).sort(), ["a", "b"]);
 });
 
+check("a contact with DIFFERENT phone and wa_phone still matches on either field independently", () => {
+  // e.g. a manually-edited `phone` diverged from the WA-ingest `wa_phone` —
+  // both are real signals and must each be checked, not phone||wa_phone.
+  const clusters = findDuplicateClusters([
+    { id: "a", phone: "099111111", wa_phone: "+59899222222" },
+    { id: "b", phone: "099111111" }, // matches a's `phone`
+    { id: "c", wa_phone: "+59899222222" }, // matches a's `wa_phone`, NOT its `phone`
+  ]);
+  assert.equal(clusters.length, 2);
+  const byContacts = clusters.map((cl) => cl.contacts.map((c) => c.id).sort());
+  assert.ok(byContacts.some((ids) => ids.join(",") === "a,b"), "clustered via phone");
+  assert.ok(byContacts.some((ids) => ids.join(",") === "a,c"), "clustered via wa_phone");
+});
+
 check("a contact matching on both email and phone produces two clusters", () => {
   const clusters = findDuplicateClusters([
     { id: "a", email: "x@example.com", phone: "099111111" },

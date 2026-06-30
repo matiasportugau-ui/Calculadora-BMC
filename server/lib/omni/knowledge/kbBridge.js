@@ -15,8 +15,11 @@ let _warnedStubEmbeddings = false;
  * @param {import('pg').Pool} pool
  * @param {string} conversationId
  * @param {string} [latestBody]
+ * @param {object} [logger] - pino logger; falls back to console only if the
+ *   caller doesn't pass one (CLAUDE.md: pino in server/, no console in
+ *   production paths — the one real caller, aiWorker.js, always has a logger).
  */
-export async function buildOmniRetrievalContext(pool, conversationId, latestBody = "") {
+export async function buildOmniRetrievalContext(pool, conversationId, latestBody = "", logger = console) {
   const { rows } = await pool.query(
     `SELECT body FROM omni_messages
      WHERE conversation_id = $1
@@ -36,15 +39,12 @@ export async function buildOmniRetrievalContext(pool, conversationId, latestBody
       // grounding. Skip RAG (keep recent_snippets) and warn once.
       if (!_warnedStubEmbeddings) {
         _warnedStubEmbeddings = true;
-        console.warn(
-          JSON.stringify({
-            event: "omni_rag_skipped_stub_embeddings",
-            msg:
-              "RAG_ENABLED is on but no usable embedding provider key is configured; " +
-              "skipping RAG grounding to avoid non-semantic stub vectors. Set a real " +
-              "embedding key, run scripts/training/embedQuotes.js, and verify with " +
-              "`npm run omni:rag-precheck`.",
-          }),
+        logger?.warn?.(
+          { event: "omni_rag_skipped_stub_embeddings" },
+          "RAG_ENABLED is on but no usable embedding provider key is configured; " +
+            "skipping RAG grounding to avoid non-semantic stub vectors. Set a real " +
+            "embedding key, run scripts/training/embedQuotes.js, and verify with " +
+            "`npm run omni:rag-precheck`.",
         );
       }
     } else {

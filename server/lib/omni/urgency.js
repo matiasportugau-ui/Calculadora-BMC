@@ -88,9 +88,13 @@ export function scoreConversationUrgency(conv = {}, opts = {}) {
     reasons.push("sin asignar");
   }
 
-  if (conv.priority === "high" || conv.priority === "urgent") {
+  // omni_conversations.priority is an INTEGER (default 0; raised only via the
+  // automation engine's set_priority action — there's no "high"/"urgent" string
+  // enum anywhere in the schema), so this compares against the actual stored type.
+  const priority = Number(conv.priority) || 0;
+  if (priority > 0) {
     score += 30;
-    reasons.push(`prioridad ${conv.priority}`);
+    reasons.push(`prioridad ${priority}`);
   }
 
   return {

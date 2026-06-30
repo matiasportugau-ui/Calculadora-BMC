@@ -181,7 +181,7 @@ export async function processAiJob(pool, jobRow, logger) {
         return;
       }
 
-      const retrieval = await buildOmniRetrievalContext(pool, jobRow.conversation_id, msg.body);
+      const retrieval = await buildOmniRetrievalContext(pool, jobRow.conversation_id, msg.body, logger);
       const contextBlock = formatOmniContextBlock(retrieval);
       const userContent = contextBlock
         ? `${contextBlock}\n\n---\nCustomer message:\n${msg.body}`
