@@ -56,8 +56,15 @@ export async function runWaCrmSyncJob({ pool, jobRow, config, logger, fetchImpl 
       body: JSON.stringify({ dialogo }),
     },
   );
+  // Transient failure (e.g. 503 — all LLM providers momentarily down): throw so the
+  // worker marks the job failed and RETRIES it (up to attempts→dead), instead of
+  // silently finalizing with no CRM row. A genuine 200-but-unparseable response won't
+  // improve on retry, so that path skips cleanly below.
+  if (!parseResp.ok) {
+    throw new Error(`parse_conversation_http_${parseResp.status}`);
+  }
   const parsed = await parseResp.json().catch(() => ({}));
-  if (!parsed.ok || !parsed.data) return { skipped: true, reason: "parse_failed" };
+  if (!parsed.ok || !parsed.data) return { skipped: true, reason: "parse_unparseable" };
 
   const ingest = await writeWaCrmIngest({
     parsedData: parsed.data,
