@@ -1,0 +1,71 @@
+name: Cockpit E2E — writes (manual, gated)
+
+# Niveles 1-2 del Cockpit E2E (MUTAN datos reales en la planilla compartida y, en
+# nivel 2, ENVÍAN un mensaje real al destino controlado). NUNCA en push/PR: sólo
+# manual, y detrás de un environment protegido que exige aprobación humana.
+#
+# Secretos (los TOUR_GOOGLE_*, GCP_SA_JSON y BMC_SHEET_ID YA existen a nivel repo —
+# los usa product-docs.yml / deploy-calc-api.yml. Sólo COCKPIT_E2E_TEST_ROW y
+# COCKPIT_E2E_TEST_TARGET son nuevos y deben cargarse en el environment protegido):
+#   TOUR_GOOGLE_CLIENT_ID / TOUR_GOOGLE_CLIENT_SECRET / TOUR_GOOGLE_REFRESH_TOKEN  → minteo bmc_sess
+#   BMC_SHEET_ID                          → planilla CRM
+#   COCKPIT_E2E_TEST_ROW                  → fila centinela reservada ([E2E-SENTINEL])  [NUEVO]
+#   COCKPIT_E2E_TEST_TARGET               → destino controlado (sólo nivel 2)          [NUEVO]
+#   GCP_SA_JSON                           → service-account JSON (snapshot/restore)
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: "Aggressiveness level (1 = sentinel writes, 2 = + guarded send)"
+        required: true
+        default: "1"
+        type: choice
+        options: ["1", "2"]
+
+jobs:
+  cockpit_e2e_writes:
+    name: Cockpit E2E writes (level ${{ inputs.level }})
+    runs-on: ubuntu-latest
+    # Environment protegido: configurar required reviewers en Settings → Environments.
+    environment: cockpit-e2e-writes
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install ALSA headers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Write service-account JSON
+        env:
+          GCP_SA_JSON: ${{ secrets.GCP_SA_JSON }}
+        run: |
+          printf '%s' "$GCP_SA_JSON" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+
+      # Mint + run en el mismo step (cookie enmascarado, nunca persistido).
+      - name: Cockpit E2E level ${{ inputs.level }}
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.TOUR_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.TOUR_GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.TOUR_GOOGLE_REFRESH_TOKEN }}
+          COCKPIT_E2E_LEVEL: ${{ inputs.level }}
+          COCKPIT_E2E_TEST_ROW: ${{ secrets.COCKPIT_E2E_TEST_ROW }}
+          COCKPIT_E2E_TEST_TARGET: ${{ secrets.COCKPIT_E2E_TEST_TARGET }}
+          BMC_SHEET_ID: ${{ secrets.BMC_SHEET_ID }}
+        run: |
+          COOKIE="$(node scripts/mint-tour-session.mjs)"
+          echo "::add-mask::$COOKIE"
+          TOUR_SESSION_COOKIE="$COOKIE" npm run test:e2e:cockpit
