@@ -269,8 +269,10 @@ export const SELLADORES = {
   /** 300 ml neutra (MATRIZ BROMYROS ~fila 168; col D SIL300N para CSV): junto a 600 ml; cantidad = ratio × unid. 600 (`SELLADORES_TECHO.silicona_300_por_unid_600`, default 2). */
   silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.11, web: 4.2, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
   cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 15.77, web: 19.19, costo: 13.71, unidad: "unid" },
-  membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo", ml_por_unid: 1000, rendimiento_por_encuentro_modo: { continuo: 0, pretil: 0.5, cumbrera: 1.0, desnivel: 0.8 } },
-  espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid", ml_por_unid: 500, rendimiento_por_encuentro_modo: { continuo: 0, pretil: 0.3, cumbrera: 0.6, desnivel: 0.5 } },
+  // ml_por_unid = metros lineales cubiertos por unidad (misma convención que silicona).
+  // membrana: rollo de 10 m. espuma PU: ~10 m de cordón por unidad (estimado).
+  membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo", ml_por_unid: 10, rendimiento_por_encuentro_modo: { continuo: 0, pretil: 0.5, cumbrera: 1.0, desnivel: 0.8 } },
+  espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid", ml_por_unid: 10, rendimiento_por_encuentro_modo: { continuo: 0, pretil: 0.3, cumbrera: 0.6, desnivel: 0.5 } },
 };
 
 export const PERFIL_TECHO = {

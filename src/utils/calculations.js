@@ -71,12 +71,17 @@ export function resolveSKU_techoByRange(tipo, familiaP, espesor) {
   const espesoresDisponibles = Object.keys(byFam)
     .filter(k => k !== "_all" && !isNaN(Number(k)))
     .map(Number)
-    .sort((a, b) => a - b);
+    .sort((a, b) => a - b); // ascendente
   if (espesoresDisponibles.length === 0) return byFam._all ? { ...byFam._all } : null;
-  const closest = espesoresDisponibles.reverse().find(e => e <= espesor);
-  if (closest && byFam[closest]) return { ...byFam[closest] };
-  const maxDisp = espesoresDisponibles[espesoresDisponibles.length - 1];
-  if (maxDisp && byFam[maxDisp]) return { ...byFam[maxDisp] };
+  // Mayor espesor disponible que sea ≤ solicitado (sin mutar el array).
+  let closest = null;
+  for (const e of espesoresDisponibles) {
+    if (e <= espesor) closest = e;
+  }
+  if (closest != null && byFam[closest]) return { ...byFam[closest] };
+  // Si todos los disponibles son mayores al solicitado, usar el mínimo disponible.
+  const minDisp = espesoresDisponibles[0];
+  if (byFam[minDisp]) return { ...byFam[minDisp] };
   return byFam._all ? { ...byFam._all } : null;
 }
 
@@ -435,10 +440,15 @@ function calcTornillosT1Perfileria(items) {
 export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP, espesor, opciones) {
   const items = [];
   let totalML = 0;
+  // Resolver SKU según modo: rango (mayor espesor ≤ solicitado) o exacto. Se usa en
+  // todas las ramas de perfilería para que skuRangeMode aplique de forma consistente.
+  const resolveSKU = (tipo, fam, esp) =>
+    opciones?.skuRangeMode === true
+      ? resolveSKU_techoByRange(tipo, fam, esp)
+      : resolveSKU_techo(tipo, fam, esp);
   const addPerfil = (label, tipo, dim, famOverride) => {
     const fam = famOverride || familiaP;
-    const useRangeMode = opciones?.skuRangeMode === true;
-    const resolved = useRangeMode ? resolveSKU_techoByRange(tipo, fam, espesor) : resolveSKU_techo(tipo, fam, espesor);
+    const resolved = resolveSKU(tipo, fam, espesor);
     if (!resolved) return;
     const precio = p(resolved);
     const costoUn = resolved.costo ?? 0;
@@ -480,7 +490,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
 
   // Canalón en frente: agregar canalón + soporte automáticamente
   if (borders.frente === "canalon") {
-    const canData = resolveSKU_techo("canalon", familiaP, espesor);
+    const canData = resolveSKU("canalon", familiaP, espesor);
     if (canData) {
       const precioCan = p(canData);
       const Lc = canData.largo;
@@ -504,7 +514,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
         largoBarra: Lc,
       });
     }
-    const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
+    const sopData = resolveSKU("soporte_canalon", familiaP, espesor);
     if (sopData) {
       const mlPorApoyo = getDimensioningParam("PERFILERIA.soporte_canalon_ml_por_apoyo", 0.30);
       const mlSoportes = (cantP + 1) * mlPorApoyo;
@@ -544,7 +554,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
   }
 
   if (opciones && opciones.inclGotSup) {
-    const gs = resolveSKU_techo("gotero_superior", familiaP, espesor);
+    const gs = resolveSKU("gotero_superior", familiaP, espesor);
     if (gs) {
       const precio = p(gs);
       const Lg = gs.largo;
@@ -671,7 +681,7 @@ export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0
   return { items, total: +total.toFixed(2) };
 }
 
-export function calcSelladoresTechodByEncuentro(encuentrosData = []) {
+export function calcSelladoresTechoByEncuentro(encuentrosData = []) {
   if (!Array.isArray(encuentrosData) || encuentrosData.length === 0) return { items: [], total: 0 };
   const { SELLADORES } = getPricing();
   const items = [];
@@ -680,10 +690,11 @@ export function calcSelladoresTechodByEncuentro(encuentrosData = []) {
   const modoMlMap = {};
   modes.forEach(m => (modoMlMap[m] = 0));
   encuentrosData.forEach(enc => {
+    if (!enc || typeof enc !== "object") return;
     const modo = enc.modo || 'continuo';
-    if (modoMlMap.hasOwnProperty(modo)) {
-      modoMlMap[modo] += enc.length || 0;
-    }
+    if (!Object.prototype.hasOwnProperty.call(modoMlMap, modo)) return;
+    const len = Number(enc.length);
+    if (Number.isFinite(len) && len > 0) modoMlMap[modo] += len;
   });
   const membrana = SELLADORES.membrana;
   if (membrana && membrana.ml_por_unid && membrana.rendimiento_por_encuentro_modo) {
@@ -955,9 +966,9 @@ export function calcTechoCompleto(inputs) {
           espesor,
           edgeML: opciones?.edgeML,
         });
-    const selladoresEncuentro = calcSelladoresTechodByEncuentro(encuentrosData);
+    const selladoresEncuentro = calcSelladoresTechoByEncuentro(encuentrosData);
     selladores.items.push(...selladoresEncuentro.items);
-    selladores.total += selladoresEncuentro.total;
+    selladores.total = +(selladores.total + selladoresEncuentro.total).toFixed(2);
   }
   const costoM2 = espData.costo ?? 0;
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaTotal, unidad: "m²", pu: paneles.precioM2, costo: costoM2, total: paneles.costoPaneles, cantPaneles: paneles.cantPaneles, largoPanel: largoReal };
