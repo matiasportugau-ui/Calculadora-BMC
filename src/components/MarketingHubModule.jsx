@@ -106,23 +106,32 @@ function MarketingHubInner() {
     if (!accessToken) return;
     setBriefLoading(true);
     setBriefError(null);
-    const res = await apiFetch(accessToken, '/api/marketing/ai/brief', { method: 'POST' });
-    if (!res.ok) {
-      setBriefError(res.data?.error || `Error ${res.status}`);
-    } else {
-      // Endpoint returns { brief: {...}, provider, generated_at, ... }; flatten the
-      // inner brief so AiStrategicBrief + StrategyCards read fields directly.
-      const inner = res.data?.brief;
-      setBrief(inner ? { ...inner, provider: res.data.provider, generated_at: res.data.generated_at } : res.data);
+    try {
+      const res = await apiFetch(accessToken, '/api/marketing/ai/brief', { method: 'POST' });
+      if (!res.ok) {
+        setBriefError(res.data?.error || `Error ${res.status}`);
+      } else {
+        // Endpoint returns { brief: {...}, provider, generated_at, ... }; flatten the
+        // inner brief so AiStrategicBrief + StrategyCards read fields directly.
+        const inner = res.data?.brief;
+        setBrief(inner ? { ...inner, provider: res.data.provider, generated_at: res.data.generated_at } : res.data);
+      }
+    } catch (err) {
+      setBriefError(err?.message || 'Error al generar el brief');
+    } finally {
+      setBriefLoading(false);
     }
-    setBriefLoading(false);
   }, [accessToken]);
 
   const syncNow = useCallback(async () => {
     if (!accessToken || syncing) return;
     setSyncing(true);
-    await apiFetch(accessToken, '/api/marketing/etl/run', { method: 'POST' });
-    setTimeout(() => { load(); setSyncing(false); }, 2500);
+    try {
+      await apiFetch(accessToken, '/api/marketing/etl/run', { method: 'POST' });
+      setTimeout(() => { load(); }, 2500);
+    } finally {
+      setTimeout(() => { setSyncing(false); }, 2500);
+    }
   }, [accessToken, syncing, load]);
 
   const hasEnoughDeltaData = (summary?.top_competitors_by_delta?.length ?? 0) >= 3;
@@ -148,9 +157,11 @@ function MarketingHubInner() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ac-text)', fontFamily: 'var(--ac-font-display)' }}>Market Intelligence</h1>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, color: 'var(--ac-success)', background: 'color-mix(in srgb, var(--ac-success) 14%, transparent)', border: '1px solid color-mix(in srgb, var(--ac-success) 30%, transparent)' }}>
-                <span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--ac-success)' }} />LIVE
-              </span>
+              {summary?.last_etl_run && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, color: 'var(--ac-success)', background: 'color-mix(in srgb, var(--ac-success) 14%, transparent)', border: '1px solid color-mix(in srgb, var(--ac-success) 30%, transparent)' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--ac-success)' }} />LIVE
+                </span>
+              )}
             </div>
             <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--ac-text-2)' }}>Inteligencia de precios y competencia — BMC Uruguay</p>
           </div>
