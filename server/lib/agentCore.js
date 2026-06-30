@@ -19,6 +19,7 @@ import {
   resolveModel,
   estimateCostUSD,
   getApiKey,
+  DEFAULT_PROVIDER_ORDER,
 } from "./aiProviderConfig.js";
 
 // ─── Channel rules ────────────────────────────────────────────────────────────
@@ -128,20 +129,29 @@ export async function callAgentOnce(messages, opts = {}) {
   //   1) opts.provider explícito (legacy) → solo ese.
   //   2) eff.provider (vía taskKey) como first-try, después getProviderChain().
   //   3) getProviderChain() completo.
+  // Chain filtering uses only override keys when overrides are present (no global fallback),
+  // so the caller's explicit key set is respected. Key resolution when calling providers
+  // still falls back to global config as a convenience for callers that pass a full key map.
+  const overrideKey = (p) => (apiKeysOverride ? String(apiKeysOverride[p] || "").trim() : "");
+  const resolveKey = (p) => overrideKey(p) || String(getApiKey(p) || "").trim() || "";
+
+  const baseChain = apiKeysOverride
+    ? DEFAULT_PROVIDER_ORDER.filter((p) => overrideKey(p))
+    : getCentralProviderChain();
+
   let chain;
   if (provider) {
     chain = [provider];
   } else if (eff.provider) {
     const internal = SCHEMA_TO_INTERNAL[eff.provider] || eff.provider;
-    const fullChain = getCentralProviderChain();
-    chain = [internal, ...fullChain.filter((p) => p !== internal)];
+    chain = [internal, ...baseChain.filter((p) => p !== internal)];
   } else {
-    chain = getCentralProviderChain();
+    chain = baseChain;
   }
   const errors = [];
 
   for (const p of chain) {
-    const apiKey = getApiKey(p);
+    const apiKey = resolveKey(p);
     if (!apiKey) { errors.push(`${p}: no key`); continue; }
 
     // Resolver modelo usando centralización (respeta overrides + allowlists + defaults)
