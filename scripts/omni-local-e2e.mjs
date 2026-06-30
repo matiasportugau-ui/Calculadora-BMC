@@ -18,6 +18,8 @@ import { spawnSync } from "node:child_process";
 import pg from "pg";
 import { listSuggestions, resolveSuggestion } from "../server/lib/omni/orchestrator/suggestions.js";
 import { recordOmniPromptEval, getPromptEvalStats } from "../server/lib/omni/knowledge/evalFeedback.js";
+import { enqueueAiJob, enqueueIngestAiJobs, ALLOWED_AI_JOB_TYPES } from "../server/lib/omni/orchestrator/aiWorker.js";
+import { config } from "../server/config.js";
 
 // This harness TRUNCATEs omni tables, so it must ONLY ever touch a throwaway DB.
 // Three guards make it impossible to point at a real database:
@@ -189,6 +191,103 @@ async function main() {
     assert("F3 drift_count = 1 (crm_row_missing, no Sheets)", reconReport.drift_count === 1);
     assert("F3 ok gate true (drift < 10)", reconReport.ok === true);
     assert("F3 exit code 0 matches ok", recon.status === 0, `exit=${recon.status}`);
+  }
+
+  // ── WA-CANONICAL (migration 011 + wa_crm_sync coalescing) ───────────────────
+  // The DB-backed half of the OMNI_WA_CANONICAL flip: the partial unique index +
+  // ON CONFLICT coalescing + widened CHECK can only be verified against real
+  // Postgres (offline fake-pool tests can't). Reuses the seeded contact/conv/msg.
+  console.log("\n[WA-CANONICAL] migration 011 + wa_crm_sync coalescing");
+
+  assert("ALLOWED_AI_JOB_TYPES includes wa_crm_sync", ALLOWED_AI_JOB_TYPES.includes("wa_crm_sync"));
+
+  const { rows: idxRows } = await pool.query(
+    `SELECT 1 FROM pg_indexes WHERE indexname = 'omni_ai_jobs_wa_crm_sync_pending_dedup'`,
+  );
+  assert("migration 011: partial coalescing index exists", idxRows.length === 1);
+
+  // CHECK constraint widened to accept wa_crm_sync, still rejects bogus types.
+  let acceptOk = false;
+  try {
+    await pool.query(
+      `INSERT INTO omni_ai_jobs (job_type, message_id, conversation_id, channel, status)
+       VALUES ('wa_crm_sync',$1,$2,'wa','completed')`,
+      [msg.id, conv.id],
+    );
+    acceptOk = true;
+  } catch (e) {
+    acceptOk = false;
+    console.log(`    (wa_crm_sync insert failed: ${e.message})`);
+  }
+  assert("CHECK accepts wa_crm_sync (completed row)", acceptOk);
+
+  let bogusRejected = false;
+  try {
+    await pool.query(
+      `INSERT INTO omni_ai_jobs (job_type, message_id, conversation_id, channel, status)
+       VALUES ('totally_bogus',$1,$2,'wa','pending')`,
+      [msg.id, conv.id],
+    );
+  } catch {
+    bogusRejected = true;
+  }
+  assert("CHECK rejects unknown job_type", bogusRejected);
+
+  // Coalescing: two pending wa_crm_sync for the SAME conversation collapse to one.
+  const wa1 = await enqueueAiJob(
+    pool,
+    { job_type: "wa_crm_sync", message_id: msg.id, conversation_id: conv.id, channel: "wa" },
+    { onConflictDoNothing: true },
+  );
+  const wa2 = await enqueueAiJob(
+    pool,
+    { job_type: "wa_crm_sync", message_id: msg.id, conversation_id: conv.id, channel: "wa" },
+    { onConflictDoNothing: true },
+  );
+  assert("1st wa_crm_sync enqueues (non-null id)", !!wa1);
+  assert("2nd wa_crm_sync coalesces (null id)", wa2 === null);
+  const { rows: pendCnt } = await pool.query(
+    `SELECT count(*)::int AS n FROM omni_ai_jobs
+      WHERE conversation_id=$1 AND job_type='wa_crm_sync' AND status='pending'`,
+    [conv.id],
+  );
+  assert("exactly one pending wa_crm_sync per conversation", pendCnt[0].n === 1, `got ${pendCnt[0].n}`);
+
+  // The index is scoped to wa_crm_sync: classify/suggest are NOT coalesced.
+  const c1 = await enqueueAiJob(pool, { job_type: "classify", message_id: msg.id, conversation_id: conv.id, channel: "wa" });
+  const c2 = await enqueueAiJob(pool, { job_type: "classify", message_id: msg.id, conversation_id: conv.id, channel: "wa" });
+  assert("classify NOT coalesced (two distinct ids)", !!c1 && !!c2 && c1 !== c2);
+
+  // Integration: enqueueIngestAiJobs enqueues a wa_crm_sync when the flag is ON.
+  // (Deterministic only if the harness env set the flags — see omni-local-e2e.sh.)
+  if (config.omniWaCanonical && config.omniAiOrchestratorEnabled) {
+    const { rows: [conv2] } = await pool.query(
+      `INSERT INTO omni_conversations (contact_id, channel, channel_conversation_id, status)
+       VALUES ($1,'wa','wa-conv-2','open') RETURNING id`,
+      [contact.id],
+    );
+    const { rows: [msg2] } = await pool.query(
+      `INSERT INTO omni_messages (conversation_id, sender, body)
+       VALUES ($1,'customer','Otra consulta') RETURNING id`,
+      [conv2.id],
+    );
+    await enqueueIngestAiJobs(pool, {
+      duplicate: false,
+      message: { sender: "customer" },
+      channel: "wa",
+      message_id: msg2.id,
+      conversation_id: conv2.id,
+    });
+    const { rows: ing } = await pool.query(
+      `SELECT job_type FROM omni_ai_jobs WHERE conversation_id=$1`,
+      [conv2.id],
+    );
+    const types = ing.map((r) => r.job_type);
+    assert("enqueueIngestAiJobs(wa,ON) → classify+suggest+wa_crm_sync",
+      types.includes("classify") && types.includes("suggest") && types.includes("wa_crm_sync"),
+      JSON.stringify(types));
+  } else {
+    console.log("  ⏭ enqueueIngestAiJobs integration skipped (OMNI_WA_CANONICAL/ORCHESTRATOR not set in harness env)");
   }
 
   // ── Evidence artifact ────────────────────────────────────────────────────────
