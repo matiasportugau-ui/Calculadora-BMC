@@ -304,6 +304,17 @@ export const config = {
   omniAiWorkerIntervalMs: Math.max(2000, Number(process.env.OMNI_AI_WORKER_INTERVAL_MS || 5000)),
   omniAiWorkerBatchSize: Math.max(1, Math.min(20, Number(process.env.OMNI_AI_WORKER_BATCH_SIZE || 5))),
   /**
+   * FRT (first-response-time) breach tracker — periodic worker that records when an
+   * open conversation crosses its per-channel SLA (server/lib/omni/urgency.js
+   * DEFAULT_SLA_HOURS) without a first agent reply, and closes the breach out once
+   * replied. Default OFF: the live "act now" signal already ships via
+   * GET /omni/actions/urgent; this worker only adds a persisted historical/audit
+   * trail (server/migrations/omni/012_frt_breaches.sql), useful for reporting once
+   * enabled. Read-only signal, never sends anything.
+   */
+  omniFrtWorkerEnabled: bool(process.env.OMNI_FRT_WORKER_ENABLED, false),
+  omniFrtWorkerIntervalMs: Math.max(30_000, Number(process.env.OMNI_FRT_WORKER_INTERVAL_MS || 300_000)),
+  /**
    * Centralized AI brain (self-evolving, human-verified lessons) injected into the agent system prompt.
    * Default OFF: ships dormant. Flipping ON is customer-facing — do it deliberately after dev validation.
    * Source of truth = gs://bmc-ml-tokens/bmc-brain/lessons.json (shared with the sheet-quote pipeline).
