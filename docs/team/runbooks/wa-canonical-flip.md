@@ -76,6 +76,25 @@ Postgres is absent.)
    is unaffected. `omni_ingest_dedup` makes any messages ingested during the ON
    window idempotent — no double-processing on the way back.
 
+## Read-model convergence — `OMNI_WA_READS` (separate, later stage)
+
+Independent flag (default OFF). When ON, the `/hub/wa` cockpit read endpoints
+(`/api/wa/conversations|messages|suggestions`) read from `omni_*` instead of `wa_*`,
+mapped to the cockpit's existing shape (no frontend change). Lets the `wa_messages`
+dual-write be retired once validated. **Validate on staging before prod ON:**
+
+- [ ] With `OMNI_WA_READS=1` on staging, open `/hub/wa` and confirm the conversation
+      list, thread, and AI-suggestions tab render correctly from `omni_*`.
+- [ ] Confirm the lossy mappings are acceptable: `status` (omni open/pending/snoozed/
+      resolved → wa new/pending/quoted/closed — "quoted" can't round-trip),
+      `owner_op` / `lead_sheet_row` / `intent_last` (read best-effort from
+      `omni_conversations.properties`). Decide whether to enrich `properties` on
+      ingest if these matter operationally.
+- [ ] Only after the canonical flip (`OMNI_WA_CANONICAL=1`) is healthy, since omni
+      is then the source of truth for WA messages.
+
+Rollback: `OMNI_WA_READS=0` → cockpit reads `wa_*` again (the mirror still runs).
+
 ## Notes
 
 - A transient `/api/crm/parse-conversation` 503 (LLM providers momentarily down)
