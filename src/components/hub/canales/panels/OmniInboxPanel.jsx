@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useOmniConversations, useOmniAccounts } from "../../../../hooks/useOmniConversations.js";
 import OmniThreadPanel from "./OmniThreadPanel.jsx";
 import OmniContactSidebar from "./OmniContactSidebar.jsx";
@@ -23,13 +23,24 @@ const TABS = [
   { key: "closed", label: "Resueltas" },
 ];
 
-export default function OmniInboxPanel({ token }) {
+export default function OmniInboxPanel({ token, initialConversationId, onInitialConversationConsumed }) {
   const [selectedId, setSelectedId] = useState(null);
   const [channelFilter, setChannelFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [accountFilter, setAccountFilter] = useState("");
   const [assignedFilter, setAssignedFilter] = useState(""); // "" | "me" | "unassigned"
   const [search, setSearch] = useState("");
+
+  // Deep-link from another panel (e.g. the cockpit's urgent-actions queue): open
+  // a specific thread on mount, then consume it so a later plain tab switch into
+  // "omni" doesn't reopen the same conversation. Independent of the current
+  // filters/pagination — the thread is fetched by id, not found in the list.
+  useEffect(() => {
+    if (!initialConversationId) return;
+    setSelectedId(initialConversationId);
+    onInitialConversationConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialConversationId]);
 
   const accounts = useOmniAccounts(token);
 

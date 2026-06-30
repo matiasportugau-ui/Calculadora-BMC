@@ -101,7 +101,7 @@ function SectionTitle({ children, right }) {
 
 // ── main ────────────────────────────────────────────────────────────────────
 
-export default function OmniAdminCockpit({ token }) {
+export default function OmniAdminCockpit({ token, onSelectConversation }) {
   const { overview, loading, error, reload } = useOmniAdminOverview(token);
   const { actions: urgent, loading: urgentLoading } = useOmniUrgentActions(token, { limit: 12 });
 
@@ -174,15 +174,24 @@ export default function OmniAdminCockpit({ token }) {
             const breached = a.urgency?.sla_breached;
             const who = a.contact_name || a.contact_email || a.wa_phone || "—";
             return (
-              <div
+              <button
                 key={a.id}
+                type="button"
+                onClick={() => onSelectConversation?.(a.id)}
                 style={{
                   display: "flex",
+                  width: "100%",
                   alignItems: "center",
                   gap: "0.75rem",
                   padding: "0.625rem 1rem",
+                  borderTop: "none",
+                  borderRight: "none",
                   borderBottom: "1px solid var(--ac-border-secondary, #f3f4f6)",
                   borderLeft: `3px solid ${breached ? "#ef4444" : "transparent"}`,
+                  background: "transparent",
+                  font: "inherit",
+                  textAlign: "left",
+                  cursor: onSelectConversation ? "pointer" : "default",
                 }}
               >
                 <span
@@ -216,7 +225,7 @@ export default function OmniAdminCockpit({ token }) {
                 <span style={{ flex: "0 0 auto", fontSize: "0.75rem", color: "var(--ac-text-secondary, #9ca3af)" }}>
                   {fmtAgo(a.created_at)}
                 </span>
-              </div>
+              </button>
             );
           })
         )}
