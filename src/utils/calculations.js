@@ -94,30 +94,37 @@ export function resolveSKU_techoByRange(tipo, familiaP, espesor) {
  * @param {object} [opciones] { skuRangeMode } para resolución por rango
  * @returns {{ items: Array, total: number, totalML: number }}
  */
-export function calcLimaOlla(familiaP, espesor, length, opciones = {}) {
+/**
+ * Lima-olla (limahoya / valle) — producto GENÉRICO Limatesa, barra de 3 m.
+ * No depende de familia ni espesor del panel: se elige por terminación.
+ * @param {number} length  largo del valle en metros lineales
+ * @param {{terminacion?: "aluzinc"|"prepintado"}} opciones  default aluzinc (LIHO3MAL)
+ */
+export function calcLimaOlla(length, opciones = {}) {
   const len = Number(length);
   if (!Number.isFinite(len) || len <= 0) return { items: [], total: 0, totalML: 0 };
-  const resolved = opciones?.skuRangeMode === true
-    ? resolveSKU_techoByRange("lima_olla", familiaP, espesor)
-    : resolveSKU_techo("lima_olla", familiaP, espesor);
-  if (!resolved) return { items: [], total: 0, totalML: 0 };
-  const L = resolved.largo || 3.0;
+  const { LIMA_OLLA } = getPricing();
+  const terminacion = opciones?.terminacion === "prepintado" ? "prepintado" : "aluzinc";
+  const prod = LIMA_OLLA?.[terminacion];
+  if (!prod) return { items: [], total: 0, totalML: 0 };
+  const L = prod.largo || 3.0;
   const pzas = Math.ceil(len / L);
   const ml = +(pzas * L).toFixed(2);
-  const precio = p(resolved);
+  const precio = p(prod);
   const item = {
-    label: resolved.label || "Lima-olla (valle)",
-    sku: resolved.sku,
+    label: prod.label || "Lima-olla (valle)",
+    sku: prod.sku,
     tipo: "lima_olla",
     cant: pzas,
     unidad: "unid",
     pu: precio,
-    costo: resolved.costo ?? 0,
+    costo: prod.costo ?? 0,
     total: +(pzas * precio).toFixed(2),
     ml,
     mlNecesario: +len.toFixed(4),
     mermaMl: +(ml - len).toFixed(4),
     largoBarra: L,
+    terminacion,
   };
   return { items: [item], total: item.total, totalML: ml };
 }
