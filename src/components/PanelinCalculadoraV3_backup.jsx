@@ -47,6 +47,7 @@ import {
   createPreviewUrl, revokePreviewUrl,
 } from "../utils/helpers.js";
 import { buildGlobalPdfFileName } from "../utils/quotationNaming.js";
+import { lsGet, lsSet } from "../utils/safeStorage.js";
 import {
   saveBudget, getAllLogs, deleteBudget, clearAllLogs,
   exportLogsAsJSON, exportSingleBudget,
@@ -650,7 +651,7 @@ function PDFPreviewModal({ html, title, onClose }) {
         shareData.text = title || "Cotización BMC";
       }
       await navigator.share(shareData);
-    } catch { /* user cancelled */ }
+    } catch (e) { if (import.meta.env?.DEV) console.debug("ignored (user cancelled / no-op):", e?.message); }
   };
 
   return (
@@ -1721,7 +1722,7 @@ function RoofBorderSelector({
     if (!multiZona) return new Map();
     try {
       return getSharedSidesPerZona(validZonas, tipoAguas);
-    } catch { return new Map(); }
+    } catch (e) { if (import.meta.env?.DEV) console.debug("map parse failed, using empty:", e?.message); return new Map(); }
   }, [validZonas, tipoAguas, multiZona]);
 
   /** Misma planta que RoofBorderCanvas / RoofPreview para resolver vecino en encuentros. */
@@ -2411,7 +2412,7 @@ export default function PanelinCalculadoraV3() {
   // Default changed 2026-05-27 during PDF generator improvement session.
 // Old default 'bmc-pdf' was the heavy 50k+ template that required the Python optimizer post-process.
 // New default uses the modern lightweight "simple" family (much smaller, cleaner 1-2 page output).
-const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'simple');
+const [pdfLayout, setPdfLayout] = useState(() => lsGet('bmc.pdfLayout', 'simple'));
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
@@ -2593,7 +2594,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     try {
       const payload = JSON.parse(raw);
       applyQuoteSnapshot(payload, { setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto });
-    } catch { /* malformed payload — ignore */ }
+    } catch (e) { if (import.meta.env?.DEV) console.debug("ignored malformed payload:", e?.message); }
   }, [setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto]);
 
   const chatSendRef = useRef(null);
@@ -2616,7 +2617,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       if (state.pared) setPared(state.pared);
       if (state.camara) setCamara(state.camara);
       if (state.flete != null) setFlete(state.flete);
-    } catch { /* ignore corrupt snapshot */ }
+    } catch (e) { if (import.meta.env?.DEV) console.debug("ignored corrupt snapshot:", e?.message); }
   }, [setScenario, setLP, setProyecto, setTecho, setPared, setCamara, setFlete]);
 
   const chat = useChat({
@@ -6853,10 +6854,10 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             {pared.aberturas.map((ab, i) => (
               <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8, padding: 8, borderRadius: 8, background: C.surfaceAlt }}>
                 <SegmentedControl value={ab.tipo} onChange={v => { const next = [...pared.aberturas]; next[i] = { ...next[i], tipo: v }; uP("aberturas", next); }} options={[{ id: "puerta", label: "Puerta" }, { id: "ventana", label: "Ventana" }]} />
-                <input type="number" placeholder="Ancho" value={ab.ancho} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], ancho: parseFloat(e.target.value) || 0 }; uP("aberturas", next); }} style={{ ...inputS, width: isPhone ? "100%" : 70, padding: "6px 8px" }} />
+                <input type="number" placeholder="Ancho" value={ab.ancho} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], ancho: Math.max(0, parseFloat(e.target.value) || 0) }; uP("aberturas", next); }} style={{ ...inputS, width: isPhone ? "100%" : 70, padding: "6px 8px" }} />
                 <span style={{ color: C.ts, fontSize: 13 }}>×</span>
-                <input type="number" placeholder="Alto" value={ab.alto} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], alto: parseFloat(e.target.value) || 0 }; uP("aberturas", next); }} style={{ ...inputS, width: isPhone ? "100%" : 70, padding: "6px 8px" }} />
-                <input type="number" placeholder="Cant" value={ab.cant} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], cant: parseInt(e.target.value) || 1 }; uP("aberturas", next); }} style={{ ...inputS, width: isPhone ? "100%" : 50, padding: "6px 8px" }} />
+                <input type="number" placeholder="Alto" value={ab.alto} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], alto: Math.max(0, parseFloat(e.target.value) || 0) }; uP("aberturas", next); }} style={{ ...inputS, width: isPhone ? "100%" : 70, padding: "6px 8px" }} />
+                <input type="number" placeholder="Cant" value={ab.cant} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], cant: Math.max(1, parseInt(e.target.value) || 1) }; uP("aberturas", next); }} style={{ ...inputS, width: isPhone ? "100%" : 50, padding: "6px 8px" }} />
                 <button onClick={() => { const next = pared.aberturas.filter((_, j) => j !== i); uP("aberturas", next); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger }}><Trash2 size={14} /></button>
               </div>
             ))}
@@ -7046,7 +7047,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               <select
                 id="bmc-pdf-layout"
                 value={pdfLayout}
-                onChange={e => { const v = e.target.value; setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
+                onChange={e => { const v = e.target.value; setPdfLayout(v); lsSet("bmc.pdfLayout", v); }}
                 style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13, cursor: "pointer", flex: 1, maxWidth: 320 }}
               >
                 {(() => {
@@ -7220,7 +7221,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           onCosteo={handleCosteo}
           onCopyTSV={handleCopyTSV}
           pdfLayout={pdfLayout}
-          onPdfLayoutChange={v => { setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
+          onPdfLayoutChange={v => { setPdfLayout(v); lsSet("bmc.pdfLayout", v); }}
           pdfReady={proyectoPdfReady}
           pdfBlockedTitle={getProyectoPdfBlockReason(proyecto) || undefined}
         />
@@ -7271,7 +7272,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         currentQuotationCode={currentBudgetCode}
         lastSaveResult={driveLastSave}
         pdfLayout={pdfLayout}
-        onPdfLayoutChange={(v) => { setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
+        onPdfLayoutChange={(v) => { setPdfLayout(v); lsSet("bmc.pdfLayout", v); }}
         provisionalQuotationCode={
           !currentBudgetCode ||
           String(currentBudgetCode || "").includes("-TEMP")

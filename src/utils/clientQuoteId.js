@@ -16,20 +16,10 @@
 //       clearPending();
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { safeStorage } from "./safeStorage.js";
+
 const KEY_LIST = "bmc.client_quote_ids";       // array of all client_quote_ids ever generated
 const KEY_CURRENT = "bmc.client_quote_id";     // currently active id (most recent)
-
-function safeStorage() {
-  if (typeof window === "undefined" || !window.localStorage) return null;
-  try {
-    const probe = "__bmc_probe__";
-    window.localStorage.setItem(probe, "1");
-    window.localStorage.removeItem(probe);
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
 
 function generateId() {
   // Preferred: crypto.randomUUID — 122 bits of entropy.

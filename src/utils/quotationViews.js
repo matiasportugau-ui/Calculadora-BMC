@@ -104,7 +104,10 @@ export function buildPdfAppendixPayload({
   if (vis.canalGot && techo.opciones?.inclGotSup) borderExtras.push("Gotero superior");
 
   // Gap A — derive tipoAguas from per-zone dosAguas flags (same logic as derivedTipoAguas
-  // in the component; techo.tipoAguas field is @deprecated and stored as "" in saved state).
+  // in the component). @deprecated: techo.tipoAguas is NOT read here — it is always
+  // re-derived from zona flags. The persisted field is "" in new state (TECHO_INITIAL),
+  // though the reset path may still seed "una_agua"; either way it is ignored. Removing
+  // the field from saved state is deferred to a dedicated migration (bug report F5).
   const validZonasArr = Array.isArray(techo.zonas) ? techo.zonas : [];
   const tipoAguasDerived = validZonasArr
     .filter(z => !Number.isFinite(Number(z?.preview?.attachParentGi)) || Number(z?.preview?.attachParentGi) < 0)
