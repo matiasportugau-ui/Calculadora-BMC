@@ -27,6 +27,34 @@ const CATEGORY_MAP = {
 export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "embed"];
 
 /**
+ * Build the metadata payload stored on an omni_suggestions row. Pure (no I/O)
+ * so it is unit-testable. Records RAG grounding provenance (citations) so the
+ * operator UI can show "based on N past quotes" and so grounding is auditable.
+ * Additive: with RAG disabled, retrieval.rag_cases is [] and grounding reports
+ * rag_count:0 / grounded:false (suggestion text is unchanged).
+ *
+ * @param {{provider?:string, model?:string}} result — callAgentOnce() result
+ * @param {{version?:number}|null} prompt — registry prompt row (may be null)
+ * @param {{rag_cases?:Array, recent_snippets?:Array}} [retrieval] — kbBridge context
+ * @returns {object}
+ */
+export function buildSuggestionMetadata(result, prompt, retrieval = {}) {
+  const ragCases = Array.isArray(retrieval?.rag_cases) ? retrieval.rag_cases : [];
+  const snippets = Array.isArray(retrieval?.recent_snippets) ? retrieval.recent_snippets : [];
+  return {
+    provider: result?.provider ?? null,
+    model: result?.model ?? null,
+    prompt_version: prompt?.version ?? null,
+    grounding: {
+      rag_case_ids: ragCases.map((c) => c?.lead_id).filter(Boolean),
+      rag_count: ragCases.length,
+      snippet_count: snippets.length,
+      grounded: ragCases.length > 0,
+    },
+  };
+}
+
+/**
  * @param {import('pg').Pool} pool
  * @param {object} job
  */
@@ -181,11 +209,7 @@ export async function processAiJob(pool, jobRow, logger) {
             jobRow.id,
             channel,
             body,
-            JSON.stringify({
-              provider: result.provider,
-              model: result.model,
-              prompt_version: prompt?.version ?? null,
-            }),
+            JSON.stringify(buildSuggestionMetadata(result, prompt, retrieval)),
           ],
         );
       }
