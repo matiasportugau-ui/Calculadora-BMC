@@ -2937,7 +2937,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       const result = await pushMatrizPricingOverrides(matrizId, overrides, credsPath, dryRun);
       res.json(result);
     } catch (e) {
-      return sheetsUnavailable(res, e.message);
+      return sheetsUnavailable(res, e.message || String(e));
     }
   });
 
@@ -3339,7 +3339,11 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
     } catch (e) {
       req.log?.error({ err: e }, "crm/cockpit/send-approved failed");
-      return sheetsUnavailable(res, e.message);
+      // Mixed route: outer catch wraps the CRM Sheets read/stamp AND the outbound
+      // send (WA/ML can throw before the Sheets update). Keep 500 here so an
+      // outbound-channel failure is not masked as "Sheets unavailable" (503).
+      // Proper per-branch 502 (send) vs 503 (Sheets) mapping is a follow-up.
+      return res.status(500).json({ ok: false, error: e.message });
     }
   }
 
