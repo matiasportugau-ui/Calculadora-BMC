@@ -269,8 +269,10 @@ export const SELLADORES = {
   /** 300 ml neutra (MATRIZ BROMYROS ~fila 168; col D SIL300N para CSV): junto a 600 ml; cantidad = ratio × unid. 600 (`SELLADORES_TECHO.silicona_300_por_unid_600`, default 2). */
   silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.11, web: 4.2, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
   cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 15.77, web: 19.19, costo: 13.71, unidad: "unid" },
-  membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo" },
-  espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid" },
+  // ml_por_unid = metros lineales cubiertos por unidad (misma convención que silicona).
+  // membrana: rollo de 10 m. espuma PU: ~10 m de cordón por unidad (estimado).
+  membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo", ml_por_unid: 10, rendimiento_por_encuentro_modo: { continuo: 0, pretil: 0.5, cumbrera: 1.0, desnivel: 0.8 } },
+  espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid", ml_por_unid: 10, rendimiento_por_encuentro_modo: { continuo: 0, pretil: 0.3, cumbrera: 0.6, desnivel: 0.5 } },
 };
 
 export const PERFIL_TECHO = {
@@ -402,6 +404,15 @@ export const PERFIL_TECHO = {
   vaina: {
     ISODEC: { _all: { sku: "6825", label: "Vaina ISODEC Sist 2000", venta: 9.20, web: 10.74, costo: 7.67 } },
   },
+};
+
+/** Lima-olla (limahoya / valle) — intersección en V entre dos faldones que drena agua.
+ *  Producto GENÉRICO del proveedor Limatesa, barra de 3 m. NO depende de la familia
+ *  ni del espesor del panel: se elige por terminación (aluzinc / prepintado).
+ *  Precios USD sin IVA (MATRIZ 2026): `venta` = venta local, `web` = venta web. */
+export const LIMA_OLLA = {
+  aluzinc:    { sku: "LIHO3MAL", label: "Limahoya 3m BC-18/30/35 Teja — Aluzinc",    venta: 15.82, web: 20.09, costo: 14.35, largo: 3.0 },
+  prepintado: { sku: "LIHO3MPP", label: "Limahoya 3m BC-18/30/35 Teja — Prepintado", venta: 20.51, web: 26.04, costo: 18.60, largo: 3.0 },
 };
 
 export const PERFIL_PARED = {

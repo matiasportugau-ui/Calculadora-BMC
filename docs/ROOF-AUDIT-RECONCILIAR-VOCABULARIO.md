@@ -200,9 +200,9 @@ Kit fijo: **silicona + silicona_300 + membrana + espuma_pu**, pero con **cantida
 
 - **¿Rasante, babeta, vuelo?**
   - **Rasante:** NO como ítem separado en BOM. Forma parte de los `gotero_frontal` / `gotero_lateral` en PERFIL_TECHO
-  - **Babeta:** Existe como perfil (`babeta_adosar`, `babeta_empotrar` en constants.js), pero NO derivada de aristas exteriores.
+  - **Babeta:** Existe como perfil (`babeta_adosar`, `babeta_empotrar` en constants.js); **SÍ derivada de aristas exteriores** via `buildEdgeBOM()` → `calcPerfileriaTecho()`.
     - Líneas 821 en `calcTechoCompleto()`: comentario dice "BOM comercial ISODEC PIR: 2 goteros + 6 babetas + kit selladores"
-    - Babetas están **hardcodeadas en SKUs comerciales**, no calculadas dinámicamente
+    - Babetas se calculan por ML exterior; kits comerciales preset en constants son sobrescribibles
   - **Vuelo:** NO encontrado en el código; no es un ítem BOM ni parámetro de zona
 
 - **Estado actual:** Línea 821 comenta: **"Ignora bordes perimetrales para accesorios"** — la geometría se calcula pero los accesorios usan presets, no fórmulas por ML
@@ -249,13 +249,13 @@ Kit fijo: **silicona + silicona_300 + membrana + espuma_pu**, pero con **cantida
 | **desnivel-asimétrico** | Structural (step/misalignment) | 🟡 PARCIAL | `desnivel` | MAYBE | `desnivel` existe, pero ¿"asimétrico" requiere lógica diferente? Requiere clarificación. |
 | **muro-panel / babeta** | Perimeter (wall-panel junction) | ❌ NO | — | N/A | NO es modo de encuentro. `babeta_adosar`, `babeta_empotrar` son perfiles (constants.js). Accesorio, no encuentro. |
 | **rasante** | Perimeter (roof edge trim) | ❌ NO | — | N/A | NO modo de encuentro. Parte de `gotero_frontal` / `gotero_lateral` en PERFIL_TECHO. Está en la geometría, no en encuentro semántico. |
-| **lima-olla** | Structural (valley/gutter) | ❌ TBD | — | ¿MAYBE? | **NO encontrado en código**. Estructura TBD: ¿profile type? ¿unit item? ¿parte de exterior perimeter? Decisión necesaria. |
+| **lima-olla** | Accesorio genérico (valley/gutter) | ❌ NO | — | N/A | **Producto genérico Limatesa** (`LIMA_OLLA`, SKUs LIHO3MAL/LIHO3MPP). NO es modo de encuentro ni depende de familia/espesor: se elige por terminación. Ver §3.3. |
 
 ### Interpretación
 
-- **Términos limpios (3):** cumbrera, continuo → mapean directo a modos existentes. ✓
+- **Términos limpios (2):** cumbrera, continuo → mapean directo a modos existentes. ✓
 - **Términos perimetrales (2):** muro-panel/babeta, rasante → NO son modos; son **perfiles/accesorios** en constants.js; parte de cálculo de perfilería/bordes, NO encuentro.
-- **Términos inciertos (2):** desnivel-asimétrico, lima-olla → requieren spec clarificación.
+- **Término incierto (1):** desnivel-asimétrico → requiere spec clarificación. (lima-olla ya resuelto como accesorio genérico, ver §3.3.)
 
 ---
 
@@ -334,12 +334,14 @@ PanelinCalculadoraV3.jsx → calcTechoCompleto() → [calcSelladoresTecho + encu
        .map(Number)
        .sort((a, b) => a - b);
      
-     // Regla: usa el espesor disponible más cercano (menor o igual)
-     const closest = espesoresDisponibles.find(e => e <= espesor);
-     if (closest && byFam[closest]) return { ...byFam[closest] };
+     // Regla: mayor espesor disponible que sea ≤ solicitado (sin mutar el array)
+     let closest = null;
+     for (const e of espesoresDisponibles) { if (e <= espesor) closest = e; }
+     if (closest != null && byFam[closest]) return { ...byFam[closest] };
      
-     // Si no hay menor, usa el mínimo disponible
-     if (espesoresDisponibles.length > 0) return { ...byFam[espesoresDisponibles[0]] };
+     // Si todos son mayores al solicitado, usa el mínimo disponible
+     const minDisp = espesoresDisponibles[0];
+     if (byFam[minDisp]) return { ...byFam[minDisp] };
      
      return byFam._all ? { ...byFam._all } : null;
    }
@@ -358,36 +360,34 @@ calcTechoCompleto() → calcPerfileriaTecho() → resolveSKU_techoByRange() → 
 
 ---
 
-### 3.3 Lima-Olla SKU (Estructura TBD)
+### 3.3 Lima-Olla SKU (RESUELTO — producto genérico)
 
-**Gap:** Lima-olla NO existe en código. Rol estructural incierto.
+**Decisión (confirmada por Matías, MATRIZ 2026):** lima-olla (limahoya / valle) es un
+**producto GENÉRICO del proveedor Limatesa**, vendido en **barras de 3 m**. **NO depende
+de la familia ni del espesor del panel.** Se elige únicamente por **terminación**:
 
-**Preguntas a resolver:**
+| Terminación | SKU | costo | venta local | venta web | barra |
+|---|---|---|---|---|---|
+| Aluzinc (default) | `LIHO3MAL` | 14.35 | 15.82 | 20.09 | 3 m |
+| Prepintado | `LIHO3MPP` | 18.60 | 20.51 | 26.04 | 3 m |
 
-1. **¿Tipo de SKU?**
-   - Profile type (como `gotero_frontal`, `cumbrera`)? → Iría en `PERFIL_TECHO` en `constants.js`
-   - Unit accessory (como `embudo`, `vaina`)? → Iría en `PERFIL_TECHO` como single-unit item o separate structure
-   - Perimeter component (rasante-like)? → Iría en `buildExteriorSegments()` breakdown
+Precios USD sin IVA. El precio es **por barra (unidad)**, no por metro lineal.
 
-2. **¿Dónde se calcula?**
-   - Si es profile: `calcPerfileriaTecho()` línea 412
-   - Si es unit: `calcTechoCompleto()` como fixed add-on per zona o per encuentro
-   - Si es perimeter: `buildEdgeBOM()` línea 460, luego en `calcPerfileriaTecho()`
+**Implementación actual:**
+- `constants.js` → `export const LIMA_OLLA = { aluzinc, prepintado }` (plano, fuera de
+  `PERFIL_TECHO`; no pasa por el resolver familia×espesor).
+- `pricing.js` → registrado en `BASE.LIMA_OLLA` y en `getPricingItemsFlat()` (categoría
+  "Lima-olla"), de modo que los precios son editables/overridables como el resto.
+- `calculations.js` → `calcLimaOlla(length, { terminacion })`: default `aluzinc`; calcula
+  `ceil(length / 3)` barras, total = barras × precio, con merma. Devuelve `{ items, total,
+  totalML }`. **No** usa `resolveSKU_techo` ni `skuRangeMode`.
 
-3. **¿Mapeo de encuentros?**
-   - ¿Lima-olla mapea a un modo (ej. desnivel)? O ¿es un componente separado que sale de la geometría?
-
-4. **¿Rendimiento / cantidad?**
-   - Por unidad (fijo)? O por metro lineal (L de encuentro)?
-
-**Recomendación:** 
-- Coordinar con Matías (diseño) para confirmar:
-  - Si lima-olla es roof valley (cumbrera invertida), perimeter valley trim, o soporte de canaleta
-  - Si es un nuevo profile type o accesorio unitario
-  - Fórmula de cálculo (fijo, por zona, por M lineal de encuentro)
-- Una vez decidido, insertar en:
-  - `constants.js`: PERFIL_TECHO[tipo]["lima_olla"] o equivalent
-  - `roofEncounterModel.js`: possibly new helper si mapea a encuentro
+**Pendiente (fuera de este cambio):**
+- **Wiring en orquestador:** `calcLimaOlla` aún no tiene llamador en `scenarioOrchestrator.js`.
+  *Cuándo* aplica geométricamente un valle (qué encuentros drenan hacia adentro en V) es una
+  decisión de geometría/producto, no de modelo de datos. Queda como follow-up.
+- **Toggle de terminación en UI:** el helper acepta `opciones.terminacion`; el dropdown en
+  `PanelinCalculadoraV3` se agrega cuando aterrice el wiring.
   - `calcPerfileriaTecho()` o `calcTechoCompleto()`: según tipo
 
 ---
@@ -443,20 +443,20 @@ export function mergeZonaResults(zonaResults) {
 | **Vocabulario mapping (6 términos)** | 3 limpios, 2 perimetrales (NO modos), 1 TBD | Ver tabla sección 2; rasante/babeta/muro-panel son accesorios, no encuentros |
 | **Per-encuentro selladores** | Gap identificado; inserción clara | Extender `calcSelladoresTecho()` para recibir encuentros + rendimientos de membrana/espuma en constants |
 | **Rasante + rangos SKU** | Gap identificado; inserción clara | Nueva función `resolveSKU_techoByRange()` en calculations.js; refactor llamadas en `calcPerfileriaTecho()` |
-| **Lima-olla** | NO en código; estructura TBD | Decision needed: es profile type, unit item, o perimeter component? Coordinar con diseño. |
+| **Lima-olla** | RESUELTO: producto genérico Limatesa | `LIMA_OLLA` (LIHO3MAL/LIHO3MPP), barra 3 m, por terminación. `calcLimaOlla()` listo. Pendiente: wiring orquestador + toggle UI. Ver §3.3. |
 | **Largo collapse merge** | Intencionado (by design) | Preservado en PDF pre-merge; no es bug; documentar para devs futuros |
 
 ### Siguiente Pasos (Roadmap)
 
 1. **Corto plazo (clarificación):**
-   - Matías: confirmar lima-olla tipo + fórmula cálculo
+   - ✅ Lima-olla confirmado: producto genérico Limatesa por terminación (ver §3.3)
    - Matías: confirmar si desnivel-asimétrico requiere lógica nueva o mapea a `desnivel` existente
    - Dev: actualizar `docs/CALC-TECHO.md` con verdad del wizard (11 pasos, no 13)
 
 2. **Mediano plazo (features nuevas):**
    - PR 1: Extender `calcSelladoresTecho()` para per-encuentro membrana/espuma (bloquea: constants rendimientos)
    - PR 2: `resolveSKU_techoByRange()` para goteros de cámara + rasante por rango (bloquea: constants metadata)
-   - PR 3: Lima-olla SKU + inserción (bloquea: decisión estructura)
+   - PR 3: ✅ Lima-olla SKU (`LIMA_OLLA` + `calcLimaOlla`) hecho; falta wiring orquestador + toggle UI
 
 3. **Documentación:**
    - Actualizar `docs/CALC-TECHO.md` con:
@@ -480,7 +480,7 @@ export function mergeZonaResults(zonaResults) {
 | **Largo (`L`)** | Longitud del encuentro (1D overlap) | `findEncounters()` línea 122 / 156 |
 | **Rasante** | Accesorio de borde delantero/trasero | `PERFIL_TECHO.gotero_frontal` |
 | **Babeta** | Accesorio de junta muro-panel | `PERFIL_TECHO.babeta_adosar / babeta_empotrar` |
-| **Lima-olla** | ??? | — (NO EXISTE) |
+| **Lima-olla** | Limahoya / valle: producto genérico Limatesa, barra 3 m, por terminación | `LIMA_OLLA` (constants.js) / `calcLimaOlla()` |
 | **Perímetro Exterior** | Aristas libres del techo (menos encuentros) | `buildExteriorSegments()` línea 226 |
 
 ---

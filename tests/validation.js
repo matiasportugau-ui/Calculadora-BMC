@@ -12,6 +12,7 @@ import {
   calcPresupuestoLibre,
   calcPerfileriaTechoComercial,
   calcSelladoresTecho,
+  calcSelladoresTechoByEncuentro,
   calcFijacionesVarilla,
   countPuntosFijacionVarillaGrilla,
   countVarillasRoscadasDesdeBarras1m,
@@ -21,7 +22,7 @@ import {
 } from "../src/utils/calculations.js";
 import { getDimensioningParam } from "../src/utils/dimensioningFormulas.js";
 import { deserializeProject, isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes } from "../src/utils/projectFile.js";
-import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
+import { bomToGroups, applyOverrides, createLineId, mergeLibreGroups } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
 import { PERFIL_TECHO, PERFIL_PARED, PANELS_TECHO, PANELS_PARED } from "../src/data/constants.js";
 import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpStore.js";
@@ -734,6 +735,79 @@ assert("computePresupuestoLibreCatalogo: presupuestoLibre flag", catLibre.presup
 assert("computePresupuestoLibreCatalogo: incluye m²", catLibre.allItems.some(i => i.unidad === "m²"), catLibre.allItems.filter(i => i.unidad === "m²").length, ">0");
 assert("computePresupuestoLibreCatalogo: totalFinal > 0", catLibre.totales.totalFinal > 0, catLibre.totales.totalFinal, ">0");
 assert("computePresupuestoLibreCatalogo: libreGroups", Array.isArray(catLibre.libreGroups) && catLibre.libreGroups.length > 0, catLibre.libreGroups?.length, ">0");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 16c: presupuesto libre ADITIVO sobre cualquier escenario (mergeLibreGroups)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 16c: presupuesto libre aditivo (mergeLibreGroups + flete:0) ═══");
+
+// flete:0 → el motor NO emite línea SERVICIOS/FLETE (la maneja el escenario).
+const libreSinFlete = computePresupuestoLibreCatalogo({
+  listaPrecios: "web",
+  librePanelLines: [{ familia: "ISODEC_EPS", espesor: 100, color: "Blanco", m2: 8 }],
+  librePerfilQty: {},
+  perfilCatalogById: perfMap,
+  libreFijQty: { tornillo_t2: 30 },
+  libreSellQty: {},
+  flete: 0,
+  libreExtra: { texto: "Mano de obra montaje", precio: "250", unidades: "global", cantidad: "1" },
+});
+assert("aditivo: flete:0 no genera grupo SERVICIOS",
+  libreSinFlete.libreGroups.every(g => g.title !== "SERVICIOS"),
+  JSON.stringify(libreSinFlete.libreGroups.map(g => g.title)), "sin SERVICIOS");
+assert("aditivo: flete:0 no genera ítem FLETE",
+  libreSinFlete.allItems.every(i => i.sku !== "FLETE"),
+  libreSinFlete.allItems.filter(i => i.sku === "FLETE").length, 0);
+assert("aditivo: incluye TORNILLERÍA + EXTRAORDINARIOS",
+  libreSinFlete.libreGroups.some(g => g.title === "TORNILLERÍA") && libreSinFlete.libreGroups.some(g => g.title === "EXTRAORDINARIOS"),
+  JSON.stringify(libreSinFlete.libreGroups.map(g => g.title)), "TORNILLERÍA + EXTRAORDINARIOS");
+
+// Escenario base simulado (techo) con un panel y una fijación.
+const baseScenarioGroups = [
+  { title: "PANELES", items: [{ label: "ISODEC techo", sku: "ISODEC_EPS-100", cant: 30, unidad: "m²", pu: 20, total: 600 }] },
+  { title: "FIJACIONES", items: [{ label: "Tornillo techo", sku: "torn", cant: 100, unidad: "unid", pu: 0.5, total: 50 }] },
+];
+const merged = mergeLibreGroups(baseScenarioGroups, libreSinFlete.libreGroups);
+
+// PANELES crece (panel libre anexado tras el panel del escenario).
+const mergedPaneles = merged.find(g => g.title === "PANELES");
+assert("merge: PANELES crece con panel libre", mergedPaneles.items.length === 2, mergedPaneles.items.length, 2);
+assert("merge: panel del escenario queda primero", mergedPaneles.items[0].sku === "ISODEC_EPS-100", mergedPaneles.items[0].sku, "ISODEC_EPS-100");
+// TORNILLERÍA (libre) coexiste como grupo separado de FIJACIONES (escenario).
+assert("merge: FIJACIONES y TORNILLERÍA coexisten",
+  !!merged.find(g => g.title === "FIJACIONES") && !!merged.find(g => g.title === "TORNILLERÍA"),
+  JSON.stringify(merged.map(g => g.title)), "ambos presentes");
+assert("merge: EXTRAORDINARIOS agregado", !!merged.find(g => g.title === "EXTRAORDINARIOS"), true, true);
+
+// lineId estable: el primer panel del escenario sigue siendo PANELES-0 tras la fusión.
+const mergedOvr = applyOverrides(merged, {});
+const mergedPanelesOvr = mergedOvr.find(g => g.title === "PANELES");
+assert("merge: lineId del panel escenario estable (PANELES-0)",
+  mergedPanelesOvr.items[0].lineId === createLineId("PANELES", 0) && mergedPanelesOvr.items[0].sku === "ISODEC_EPS-100",
+  mergedPanelesOvr.items[0].lineId, "PANELES-0");
+
+// Aditividad del total: total fusionado = total escenario + total líneas libres.
+const baseTotal = calcTotalesSinIVA(baseScenarioGroups.flatMap(g => g.items)).totalFinal;
+const libreTotal = calcTotalesSinIVA(libreSinFlete.allItems).totalFinal;
+const mergedTotal = calcTotalesSinIVA(merged.flatMap(g => g.items)).totalFinal;
+assert("merge: total aditivo = escenario + libre", approx(mergedTotal, baseTotal + libreTotal), mergedTotal, baseTotal + libreTotal);
+
+// Inputs vacíos (defaults de la UI) → sin grupos libres → no-op aditivo.
+const libreVacio = computePresupuestoLibreCatalogo({
+  listaPrecios: "web",
+  librePanelLines: [{ familia: "", espesor: "", color: "Blanco", m2: 0 }],
+  librePerfilQty: {},
+  perfilCatalogById: perfMap,
+  libreFijQty: {},
+  libreSellQty: {},
+  flete: 0,
+  libreExtra: { texto: "", precio: "", unidades: "", cantidad: "" },
+});
+assert("aditivo: inputs vacíos → libreGroups vacío", libreVacio.libreGroups.length === 0, libreVacio.libreGroups.length, 0);
+const mergedVacio = mergeLibreGroups(baseScenarioGroups, libreVacio.libreGroups);
+assert("aditivo: merge con vacío no altera escenario",
+  mergedVacio.length === baseScenarioGroups.length && mergedVacio.find(g => g.title === "PANELES").items.length === 1,
+  JSON.stringify(mergedVacio.map(g => ({ t: g.title, n: g.items.length }))), "escenario intacto");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 17: applyOverrides
@@ -2887,6 +2961,75 @@ console.log("\n═══ SUITE 36: ISOROOF PLUS — mínimo 800 m² ═══");
   assert("validateDriveArchiveBody rechaza sin PDF", bad.ok === false && bad.error === "missing_pdf", bad.error, "missing_pdf");
   const noCode = validateDriveArchiveBody({ pdfBase64: tinyPdf, projectData: { scenario: "solo_techo" } });
   assert("validateDriveArchiveBody rechaza sin código", noCode.ok === false && noCode.error === "missing_quotation_code", noCode.error, "missing_quotation_code");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 38. Selladores por encuentro (membrana / espuma PU)
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  // (1) Múltiples modos acumulando: 25m cumbrera (factor 1.0) → membrana ceil(25/10)=3
+  const multi = calcSelladoresTechoByEncuentro([
+    { modo: "cumbrera", length: 25 },
+    { modo: "pretil", length: 10 },
+  ]);
+  const mem = multi.items.find(i => i.sku === "membrana");
+  const esp = multi.items.find(i => i.sku === "espuma_pu");
+  // membrana ml = 25*1.0 + 10*0.5 = 30 → ceil(30/10)=3
+  assert("Selladores encuentro: membrana acumula modos (3 rollos)", mem?.cant === 3, mem?.cant, 3);
+  // espuma ml = 25*0.6 + 10*0.3 = 18 → ceil(18/10)=2
+  assert("Selladores encuentro: espuma PU acumula modos (2 unid)", esp?.cant === 2, esp?.cant, 2);
+  assert("Selladores encuentro: total > 0", multi.total > 0, multi.total, ">0");
+
+  // (2) Array vacío → 0
+  const vacio = calcSelladoresTechoByEncuentro([]);
+  assert("Selladores encuentro: array vacío → sin items", vacio.items.length === 0 && vacio.total === 0, vacio, "0");
+
+  // (3) Datos inválidos (length string/negativo/NaN) ignorados; modo desconocido ignorado
+  const invalido = calcSelladoresTechoByEncuentro([
+    { modo: "cumbrera", length: "abc" },
+    { modo: "cumbrera", length: -5 },
+    { modo: "desconocido", length: 100 },
+    { modo: "continuo", length: 50 }, // continuo factor 0 → no aporta
+  ]);
+  assert("Selladores encuentro: datos inválidos/continuo → sin items", invalido.items.length === 0 && invalido.total === 0, invalido, "0");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 39. resolveSKU_techoByRange — resolución por rango de espesor
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const { resolveSKU_techoByRange, resolveSKU_techo } = await import("../src/utils/calculations.js");
+  // gotero_frontal ISOROOF tiene 30/50/80/100. Pedir 60 → mayor ≤ 60 = 50.
+  const r60 = resolveSKU_techoByRange("gotero_frontal", "ISOROOF", 60);
+  assert("resolveSKU_techoByRange: 60mm → SKU del 50mm (GFS50)", r60?.sku === "GFS50", r60?.sku, "GFS50");
+  // Pedir 100 (exacto) → match exacto.
+  const r100 = resolveSKU_techoByRange("gotero_frontal", "ISOROOF", 100);
+  assert("resolveSKU_techoByRange: 100mm exacto → GFS100", r100?.sku === "GFS100", r100?.sku, "GFS100");
+  // Pedir 20 (menor a todos) → mínimo disponible = 30 (GFS30).
+  const r20 = resolveSKU_techoByRange("gotero_frontal", "ISOROOF", 20);
+  assert("resolveSKU_techoByRange: 20mm (bajo rango) → mínimo GFS30", r20?.sku === "GFS30", r20?.sku, "GFS30");
+  // Sin range mode, 60mm no existe exacto → null (sin _all en gotero_frontal).
+  const exact60 = resolveSKU_techo("gotero_frontal", "ISOROOF", 60);
+  assert("resolveSKU_techo: 60mm sin rango → null", exact60 === null, exact60, "null");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 40. calcLimaOlla — perfil de valle (lima-olla)
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const { calcLimaOlla } = await import("../src/utils/calculations.js");
+  // Producto genérico: valle de 7m → barras de 3m → ceil(7/3)=3 piezas. Default aluzinc (LIHO3MAL).
+  const r = calcLimaOlla(7);
+  const it = r.items[0];
+  assert("calcLimaOlla: 7m valle → 3 barras", it?.cant === 3, it?.cant, 3);
+  assert("calcLimaOlla: SKU aluzinc LIHO3MAL", it?.sku === "LIHO3MAL", it?.sku, "LIHO3MAL");
+  assert("calcLimaOlla: total > 0", r.total > 0, r.total, ">0");
+  // terminación prepintado → LIHO3MPP
+  const rp = calcLimaOlla(7, { terminacion: "prepintado" });
+  assert("calcLimaOlla: SKU prepintado LIHO3MPP", rp.items[0]?.sku === "LIHO3MPP", rp.items[0]?.sku, "LIHO3MPP");
+  // length inválido → sin items
+  const vacio = calcLimaOlla(0);
+  assert("calcLimaOlla: length 0 → sin items", vacio.items.length === 0 && vacio.total === 0, vacio, "0");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

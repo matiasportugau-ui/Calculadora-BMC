@@ -113,6 +113,36 @@ export function useOmniAssignees(token) {
   return assignees;
 }
 
+// Admin cockpit — management rollup over the email inbox (mailbox health,
+// per-operator load, queues, SLA). Degrades to an empty snapshot so the panel
+// never blocks. Manual refresh via reload().
+export function useOmniAdminOverview(token) {
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const reload = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await omniFetch(token, "/api/omni/admin/overview");
+      setOverview(data);
+    } catch (e) {
+      setError(e.message);
+      setOverview(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { overview, loading, error, reload };
+}
+
 // Internal operator notes for a conversation (collaboration; never sent to the
 // customer). Degrades to [] so the thread panel never breaks pre-migration.
 export function useOmniNotes(token, conversationId) {

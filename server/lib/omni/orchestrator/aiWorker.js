@@ -78,7 +78,7 @@ export async function enqueueIngestAiJobs(pool, payload) {
   return ids.filter(Boolean);
 }
 
-async function getDailyAiCost(pool) {
+export async function getDailyAiCost(pool) {
   const { rows } = await pool.query(
     `SELECT COALESCE(SUM(cost_usd), 0)::float AS total
      FROM omni_ai_jobs

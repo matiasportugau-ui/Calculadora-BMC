@@ -18,7 +18,7 @@ import {
   simulateAutomationRule,
   ALLOWED_CONVERSATION_STATUSES,
 } from "../lib/omni/orchestrator/automationEngine.js";
-import { runAdHocAiJob, runAiJobById, ALLOWED_AI_JOB_TYPES } from "../lib/omni/orchestrator/aiWorker.js";
+import { runAdHocAiJob, runAiJobById, ALLOWED_AI_JOB_TYPES, getDailyAiCost } from "../lib/omni/orchestrator/aiWorker.js";
 import { listModelRegistry, listPromptRegistry, getActivePromptContract } from "../lib/omni/orchestrator/aiRegistry.js";
 import { createDeal, listDeals, updateDeal } from "../lib/omni/deals/dealService.js";
 import { syncDealToCrm } from "../lib/omni/deals/syncCrm.js";
@@ -76,6 +76,40 @@ function requireOmniDb(req, res, next) {
   next();
 }
 
+// Team isolation for per-conversation access. The list endpoint already scopes
+// non-admins to team_id NULL OR their teams; this applies the SAME rule to
+// per-conversation reads (messages/notes/assist) so a guessed UUID can't expose
+// another team's thread. Returns true if the conversation is visible to req.user.
+async function conversationVisibleTo(pool, conversationId, user) {
+  const role = user?.role;
+  if (role === "admin" || role === "superadmin") {
+    const { rowCount } = await pool.query(
+      `SELECT 1 FROM omni_conversations WHERE id = $1`,
+      [conversationId],
+    );
+    return rowCount > 0;
+  }
+  const { rowCount } = await pool.query(
+    `SELECT 1 FROM omni_conversations c
+      WHERE c.id = $1
+        AND (c.team_id IS NULL
+             OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $2::uuid))`,
+    [conversationId, user?.id],
+  );
+  return rowCount > 0;
+}
+
+// Resolve the set of assignable operators (users holding a `canales` grant).
+// Shared by GET /omni/assignees and the assignment-validation in PATCH.
+async function listAssignableUserIds(pool) {
+  const { rows } = await pool.query(
+    `SELECT u.user_id FROM identity.module_grants g
+       JOIN identity.users u ON u.user_id = g.user_id
+      WHERE g.module = 'canales' AND g.level <> 'none'`,
+  );
+  return new Set(rows.map((r) => r.user_id));
+}
+
 const router = Router();
 
 router.get("/omni/health", requireOmniDb, async (req, res) => {
@@ -129,6 +163,96 @@ router.get(
       res.json({ ok: true, assignees: rows });
     } catch (e) {
       res.json({ ok: true, assignees: [], degraded: e.code || "assignees_unavailable" });
+    }
+  },
+);
+
+// Admin cockpit — a management rollup ON TOP of the inbox: per-mailbox health +
+// volume, per-operator load, the unassigned/overdue queues, and SLA/FRT. All
+// read-only aggregation; degrades to an empty snapshot pre-migration so the
+// panel never hard-fails.
+router.get(
+  "/omni/admin/overview",
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const OVERDUE_HOURS = Number(req.query.overdue_hours) || 24;
+    try {
+      const [totals, accounts, assignees, sla] = await Promise.all([
+        // Email-channel queue totals.
+        req.omniPool.query(
+          `SELECT
+             COUNT(*) FILTER (WHERE status = 'open')::int AS open_total,
+             COUNT(*) FILTER (WHERE status = 'open' AND assigned_to_user_id IS NULL)::int AS unassigned_open,
+             COUNT(*) FILTER (WHERE status = 'open' AND receiving_account_id IS NULL)::int AS unattributed_open,
+             COUNT(*) FILTER (WHERE status = 'snoozed')::int AS snoozed_total,
+             COUNT(*) FILTER (WHERE status = 'open' AND first_agent_reply_at IS NULL
+                              AND created_at < now() - ($1 || ' hours')::interval)::int AS overdue_unanswered,
+             COUNT(*) FILTER (WHERE status = 'closed' AND updated_at >= date_trunc('day', now()))::int AS closed_today
+           FROM omni_conversations
+           WHERE channel = 'email'`,
+          [OVERDUE_HOURS],
+        ),
+        // Per-mailbox health + volume.
+        req.omniPool.query(
+          `SELECT a.id, a.email, a.label, a.enabled, a.health, a.health_checked_at,
+                  COUNT(c.id) FILTER (WHERE c.status = 'open')::int AS open_count,
+                  COUNT(c.id) FILTER (WHERE c.status = 'open' AND c.assigned_to_user_id IS NULL)::int AS unassigned_open,
+                  COUNT(c.id) FILTER (WHERE c.status = 'open' AND c.first_agent_reply_at IS NULL)::int AS awaiting_reply,
+                  COUNT(c.id) FILTER (WHERE c.status = 'snoozed')::int AS snoozed_count,
+                  ROUND(AVG(EXTRACT(EPOCH FROM (c.first_agent_reply_at - c.created_at)) / 60.0)
+                        FILTER (WHERE c.first_agent_reply_at IS NOT NULL))::int AS avg_frt_min,
+                  MAX(c.updated_at) AS last_activity_at
+           FROM omni_email_accounts a
+           LEFT JOIN omni_conversations c ON c.receiving_account_id = a.id
+           GROUP BY a.id
+           ORDER BY a.enabled DESC, open_count DESC, a.email`,
+        ),
+        // Per-operator load (only currently-assigned, open/snoozed).
+        req.omniPool.query(
+          `SELECT c.assigned_to_user_id AS user_id, u.email, u.name,
+                  COUNT(*) FILTER (WHERE c.status = 'open')::int AS open_count,
+                  COUNT(*) FILTER (WHERE c.status = 'snoozed')::int AS snoozed_count,
+                  MIN(c.assigned_at) AS oldest_assigned_at
+           FROM omni_conversations c
+           LEFT JOIN identity.users u ON u.user_id = c.assigned_to_user_id
+           WHERE c.assigned_to_user_id IS NOT NULL AND c.status IN ('open', 'snoozed')
+           GROUP BY c.assigned_to_user_id, u.email, u.name
+           ORDER BY open_count DESC`,
+        ),
+        // SLA / first-response time across the last 30 days of email.
+        req.omniPool.query(
+          `SELECT
+             ROUND(AVG(EXTRACT(EPOCH FROM (first_agent_reply_at - created_at)) / 60.0))::int AS avg_frt_min,
+             ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (
+               ORDER BY EXTRACT(EPOCH FROM (first_agent_reply_at - created_at)) / 60.0))::int AS median_frt_min,
+             COUNT(*)::int AS replied_count
+           FROM omni_conversations
+           WHERE channel = 'email' AND first_agent_reply_at IS NOT NULL
+             AND created_at >= now() - interval '30 days'`,
+        ),
+      ]);
+
+      res.json({
+        ok: true,
+        generated_at: new Date().toISOString(),
+        overdue_hours: OVERDUE_HOURS,
+        totals: totals.rows[0] || {},
+        accounts: accounts.rows,
+        assignees: assignees.rows,
+        sla: sla.rows[0] || {},
+      });
+    } catch (e) {
+      // Pre-migration / missing columns → degrade to an empty snapshot.
+      req.log?.warn?.({ err: e.message, code: e.code }, "omni admin overview degraded");
+      res.json({
+        ok: true,
+        degraded: e.code || "overview_unavailable",
+        totals: {},
+        accounts: [],
+        assignees: [],
+        sla: {},
+      });
     }
   },
 );
@@ -257,6 +381,9 @@ router.get(
   async (req, res) => {
     const conversationId = req.params.id;
     const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
+    if (!(await conversationVisibleTo(req.omniPool, conversationId, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
     const { rows: convRows } = await req.omniPool.query(
       `SELECT c.*, co.name AS contact_name, co.email, co.wa_phone, co.ml_user_id
        FROM omni_conversations c
@@ -286,12 +413,14 @@ router.get(
 );
 
 // Inline AI copilot for a thread — draft / summarize / extract / translate /
-// formal / shorter. Non-mutating (returns text the operator chooses to use);
-// uses the agentCore provider chain (Claude-pinned) so budget caps + fallback
-// apply. Sending still goes through the confirm-gated reply route.
+// formal / shorter. Non-mutating (returns text the operator chooses to use).
+// Each call is a real LLM spend, so it is gated `write`, enforces the shared
+// daily budget (OMNI_AI_DAILY_BUDGET_USD), records its own cost, and is team-
+// isolated. Sending still goes through the confirm-gated reply route.
+const ASSIST_MAX_INPUT = 4000; // clamp per field to bound prompt size / cost
 router.post(
   "/omni/conversations/:id/assist",
-  requireGrant.read("canales"),
+  requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
     if (!isUuid(req.params.id)) {
@@ -302,10 +431,26 @@ router.post(
     if (!spec) {
       return res.status(400).json({ ok: false, error: "invalid_action" });
     }
-    const instruction = String(req.body?.instruction || "").trim();
-    const draft = String(req.body?.draft || "").trim();
+    const instruction = String(req.body?.instruction || "").trim().slice(0, ASSIST_MAX_INPUT);
+    const draft = String(req.body?.draft || "").trim().slice(0, ASSIST_MAX_INPUT);
     if (spec.needsDraft && !draft) {
       return res.status(400).json({ ok: false, error: "missing_draft" });
+    }
+
+    // Team isolation: a non-team operator can't summarize/extract another team's thread.
+    if (!(await conversationVisibleTo(req.omniPool, req.params.id, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
+
+    // Shared daily-budget gate — the same ceiling the AI worker enforces, which
+    // a direct callAgentOnce would otherwise bypass.
+    try {
+      const dailyCost = await getDailyAiCost(req.omniPool);
+      if (dailyCost >= config.omniAiDailyBudgetUsd) {
+        return res.status(503).json({ ok: false, error: "assist_budget_exceeded" });
+      }
+    } catch (e) {
+      req.log?.warn?.({ err: e.message }, "omni assist budget check failed (allowing)");
     }
 
     let threadText = "";
@@ -322,7 +467,8 @@ router.post(
       }
       threadText = rows
         .map((m) => `${m.sender === "customer" ? "Cliente" : "Operador"}: ${m.body || ""}`)
-        .join("\n");
+        .join("\n")
+        .slice(0, ASSIST_MAX_INPUT * 3);
     }
 
     const userContent = [
@@ -340,6 +486,16 @@ router.post(
       if (!result) {
         return res.status(502).json({ ok: false, error: "empty_result" });
       }
+      // Record the spend so it counts toward the daily budget (best-effort —
+      // accounting must never fail an otherwise-successful response).
+      const costUsd = typeof out === "object" ? out?.estimatedCostUsd ?? 0 : 0;
+      req.omniPool
+        .query(
+          `INSERT INTO omni_ai_jobs (job_type, conversation_id, channel, status, cost_usd, completed_at)
+           VALUES ('assist', $1, 'email', 'completed', $2, now())`,
+          [req.params.id, costUsd],
+        )
+        .catch((e) => req.log?.warn?.({ err: e.message }, "omni assist cost record failed"));
       res.json({ ok: true, action, result });
     } catch (e) {
       req.log?.warn?.({ err: e.message, action }, "omni assist failed");
@@ -356,6 +512,9 @@ router.get(
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
+    if (!(await conversationVisibleTo(req.omniPool, req.params.id, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
     try {
       const { rows } = await req.omniPool.query(
         `SELECT id, author_user_id, author_label, body, created_at
@@ -432,6 +591,20 @@ router.patch(
     if (patch.error) {
       const extra = patch.error === "invalid_status" ? { allowed: ALLOWED_CONVERSATION_STATUSES } : {};
       return res.status(400).json({ ok: false, error: patch.error, ...extra });
+    }
+
+    // Validate the assignee: only allow assigning to a real user holding a
+    // `canales` grant — never an arbitrary/non-existent UUID. (Unassign = null is fine.)
+    const assignField = patch.fields.find((f) => f.col === "assigned_to_user_id" && f.value);
+    if (assignField) {
+      try {
+        const assignable = await listAssignableUserIds(req.omniPool);
+        if (!assignable.has(assignField.value)) {
+          return res.status(400).json({ ok: false, error: "invalid_assignee" });
+        }
+      } catch (e) {
+        req.log?.warn?.({ err: e.message }, "omni assignee validation failed");
+      }
     }
 
     const params = [conversationId];
