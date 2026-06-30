@@ -1752,7 +1752,7 @@ export default function createBmcDashboardRouter(config) {
         const data = await pm.getProductosMaestro({ includeUnmatched: true });
         res.json(data);
       } catch (e) {
-        res.status(500).json({ ok: false, error: e.message });
+        return sheetsUnavailable(res, e.message);
       }
     });
 
@@ -1761,7 +1761,7 @@ export default function createBmcDashboardRouter(config) {
         const report = await pm.reconcileProductosMaestro();
         res.json(report);
       } catch (e) {
-        res.status(500).json({ ok: false, error: e.message });
+        return sheetsUnavailable(res, e.message);
       }
     });
 
@@ -1875,7 +1875,7 @@ export default function createBmcDashboardRouter(config) {
           },
         });
       } catch (e) {
-        res.status(500).json({ ok: false, error: e.message });
+        return sheetsUnavailable(res, e.message);
       }
     });
   })();
@@ -2308,7 +2308,7 @@ export default function createBmcDashboardRouter(config) {
       res.setHeader("Pragma", "no-cache");
       res.send(csv);
     } catch (e) {
-      res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -2937,7 +2937,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       const result = await pushMatrizPricingOverrides(matrizId, overrides, credsPath, dryRun);
       res.json(result);
     } catch (e) {
-      res.status(500).json({ ok: false, error: e.message || String(e) });
+      return sheetsUnavailable(res, e.message || String(e));
     }
   });
 
@@ -3072,7 +3072,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const parsed = parseCrmRowAtoAK(r.data.values || []);
       return res.json({ ok: true, row: rowNum, parsed });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -3092,7 +3092,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
       return res.json({ ok: true, row, column: Col.LINK_PRESUPUESTO });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -3113,7 +3113,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
       return res.json({ ok: true, row, aprobadoEnviar: val });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -3132,7 +3132,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
       return res.json({ ok: true, row, enviadoEl: sentAt });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -3158,7 +3158,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       if (!result.ok) return res.status(400).json(result);
       return res.json(result);
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -3195,7 +3195,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       }
       return res.json({ ok: true, row, respuestaSugerida: text, trainingEntry: trainingEntry?.id ?? null });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -3339,6 +3339,10 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
     } catch (e) {
       req.log?.error({ err: e }, "crm/cockpit/send-approved failed");
+      // Mixed route: outer catch wraps the CRM Sheets read/stamp AND the outbound
+      // send (WA/ML can throw before the Sheets update). Keep 500 here so an
+      // outbound-channel failure is not masked as "Sheets unavailable" (503).
+      // Proper per-branch 502 (send) vs 503 (Sheets) mapping is a follow-up.
       return res.status(500).json({ ok: false, error: e.message });
     }
   }
@@ -3370,7 +3374,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       return res.json({ ok: true, items });
     } catch (e) {
       req.log?.error({ err: e }, "crm/cockpit/ml-queue failed");
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -3396,7 +3400,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       return res.json({ ok: true, items });
     } catch (e) {
       req.log?.error({ err: e }, "crm/cockpit/wa-queue failed");
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -3497,7 +3501,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       }
       return res.json({ ok: true, items, channelFilter });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 
@@ -3573,7 +3577,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         consultations: limited,
       });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      return sheetsUnavailable(res, e.message);
     }
   });
 

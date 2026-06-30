@@ -137,6 +137,29 @@
   --ac-font: "Inter", "SF Pro Text", system-ui, sans-serif;
 }
 
+/* ── Skin: intel-dark (Market Intel dark zinc/teal) ───────────────────── */
+.adminCot[data-skin="intel-dark"] {
+  --ac-bg: #09090b;
+  --ac-surface: #18181b;
+  --ac-surface-2: #27272a;
+  --ac-text: #fafafa;
+  --ac-text-2: #a1a1aa;
+  --ac-text-3: #71717a;
+  --ac-border: #27272a;
+  --ac-border-2: #1f1f23;
+  --ac-accent: #14b8a6;
+  --ac-accent-fg: #042f2a;
+  --ac-success: #34d399;
+  --ac-warn: #fbbf24;
+  --ac-error: #f87171;
+  --ac-yellow: #fbbf24;
+  --ac-glass: rgba(24, 24, 27, 0.72);
+  --ac-glass-strong: rgba(24, 24, 27, 0.92);
+  --ac-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --ac-shadow-2: 0 8px 32px rgba(0, 0, 0, 0.55);
+  --ac-font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+}
+
 /* ── Glass / vibrancy fallback ────────────────────────────────────────── */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .adminCot {

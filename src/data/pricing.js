@@ -10,6 +10,7 @@ import {
   SELLADORES as S,
   PERFIL_TECHO as PET,
   PERFIL_PARED as PEP,
+  LIMA_OLLA as LO,
   SERVICIOS as SRV,
   HERRAMIENTAS as H,
 } from "./constants.js";
@@ -23,6 +24,7 @@ const BASE = {
   SELLADORES: S,
   PERFIL_TECHO: PET,
   PERFIL_PARED: PEP,
+  LIMA_OLLA: LO,
   SERVICIOS: SRV,
   HERRAMIENTAS: H,
 };
@@ -105,6 +107,11 @@ export function getPricingItemsFlat() {
         }
       }
     }
+  }
+
+  // Lima-olla (limahoya / valle) — producto genérico por terminación
+  for (const [id, data] of Object.entries(pricing.LIMA_OLLA || {})) {
+    if (data.venta != null) items.push({ path: `LIMA_OLLA.${id}`, label: data.label, venta: data.venta, ventaIvaInc: data.ventaIvaInc, web: data.web, webIvaInc: data.webIvaInc, costo: data.costo, sku: data.sku, unidad: "unid", categoria: "Lima-olla" });
   }
 
   // Servicios

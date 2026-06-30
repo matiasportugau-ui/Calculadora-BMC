@@ -80,6 +80,27 @@ export function bomToGroups(result) {
   return groups;
 }
 
+/**
+ * Fusiona grupos de "presupuesto libre" (líneas manuales) sobre los grupos del
+ * escenario, agrupando por título. Los ítems libres se **anexan al final** de
+ * cada grupo para no desplazar los índices (y por ende los lineId) de los ítems
+ * del escenario, preservando `overrides`/`excludedItems` existentes.
+ *
+ * @param {Array<{title: string, items: object[]}>} baseGroups - grupos del escenario.
+ * @param {Array<{title: string, items: object[]}>} libreGroups - grupos libres aditivos.
+ * @returns {Array<{title: string, items: object[]}>}
+ */
+export function mergeLibreGroups(baseGroups, libreGroups) {
+  const g = (baseGroups || []).map(x => ({ ...x, items: [...x.items] }));
+  for (const lg of libreGroups || []) {
+    if (!lg?.items?.length) continue;
+    const existing = g.find(x => x.title === lg.title);
+    if (existing) existing.items = [...existing.items, ...lg.items];
+    else g.push({ title: lg.title, items: [...lg.items] });
+  }
+  return g;
+}
+
 // ── Company configuration ─────────────────────────────────────────────────────
 
 export const COMPANY = {

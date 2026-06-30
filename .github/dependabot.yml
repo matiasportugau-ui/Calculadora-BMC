@@ -1,0 +1,40 @@
+# Dependabot config — groups updates + holds the majors the project pins.
+# Rationale: CLAUDE.md / PROJECT-STATE.md. Without this, Dependabot opens one
+# ungrouped PR per advisory (the cause of the lone, stale #278).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "type:chore"
+      - "area:infra"
+      - "dependencies"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      development-dependencies:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-router"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-router-dom"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "type:chore"
+      - "area:infra"
+      - "dependencies"
