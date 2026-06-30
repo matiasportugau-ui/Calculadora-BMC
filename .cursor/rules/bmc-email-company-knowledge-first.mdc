@@ -1,0 +1,36 @@
+---
+description: "Email / Omni inbox / PANELSIM / GPT-Email-Agent work in Calculadora-BMC. Company-knowledge-first: read the source map + blueprint before designing or coding. Apply when the task mentions email, correo, inbox/bandeja, Omni, PANELSIM, Gmail, IMAP, SMTP, ingest-email, draft-outbound, panelsim-summary, CRM_Operativo email rows, or the unified channels inbox."
+alwaysApply: false
+---
+
+# BMC Email / Omni Inbox — Company-Knowledge-First
+
+When the task touches the **Email channel, the Omni unified inbox (`/hub/canales`), PANELSIM, the
+GPT Email Agent, or `CRM_Operativo` email rows**, ground yourself in the real repo **before**
+proposing specs or code. Read, in order:
+
+1. `docs/team/EMAIL-SOURCE-MAP.md` — verified index of every email/Omni file, endpoint, script, doc, env var, table (with status).
+2. `docs/team/INBOX-AI-FIRST-BLUEPRINT.md` — target architecture + phased roadmap + the committed source-of-truth decision.
+3. `docs/prompts/BMC_EMAIL_PANELSIM_COMPANY_KNOWLEDGE_FIRST_AGENT_PROMPT_V5.md` — the master prompt (paste it for full Email-channel tasks).
+
+## Non-negotiable invariants
+
+- **Source of truth (committed):** Postgres `omni_*` is the **operational** SoT; Sheets `CRM_Operativo`
+  is a **business-editable mirror**. One canonical writer per destination — never dual-write opaquely.
+- **Human gate on every outbound.** No autonomous send. If send fails, do not stamp "sent."
+- **Ingest auth:** `EMAIL_INGEST_TOKEN` (fallback `API_AUTH_TOKEN`) → **503** unconfigured, **401** bad token.
+- **Idempotency:** dedupe inbound by `messageId` (`public.email_ingest_log` / `omni_ingest_dedup`).
+- **CRM_Operativo:** headers row 3, data row 4, AG–AK gate (AG provider · AH link · AI approve · AJ sent · AK block-auto); init via `defaultTailAGAK_Email()`.
+- **GPT "BMC Solo Correo":** never cotiza, never uses calculadora/ML/WA/Shopify/Finanzas, never claims it sent mail; drafts only.
+- **Never** log tokens, IMAP/SMTP passwords, refresh tokens, or long PII bodies.
+- **Don't invent** files/routes/columns/deploy state. Unverified → mark `#ZonaDesconocida` and say how to validate.
+- No big-bang rewrite; minimal diff; tests + smoke + rollback for any code.
+
+## Do not assert without checking (`#ZonaDesconocida`)
+
+Prod secret state (`EMAIL_INGEST_TOKEN`, Gmail OAuth), live flag state (`VITE_OMNI_INBOX`, `OMNI_*`),
+sibling-repo `conexion-cuentas-email-agentes-bmc` provisioning, and whether Chatwoot or native Omni
+email is the long-term shared inbox.
+
+Complements (does not replace): `.cursor/rules/human-gates-bmc.mdc`,
+`.cursor/skills/panelsim-email-inbox/SKILL.md`, `.cursor/skills/networks-development-agent/SKILL.md`.
