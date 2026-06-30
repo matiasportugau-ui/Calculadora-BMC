@@ -61,6 +61,9 @@ check("rag_case_ids drops cases without a lead_id (defensive)", () => {
     recent_snippets: [],
   });
   assert.deepEqual(meta.grounding.rag_case_ids, ["x1"]);
+  // count/grounded stay consistent with the cited ids (not the raw case count)
+  assert.equal(meta.grounding.rag_count, 1);
+  assert.equal(meta.grounding.grounded, true);
 });
 
 check("formatOmniContextBlock renders snippets + sanitized cases (no PII)", () => {

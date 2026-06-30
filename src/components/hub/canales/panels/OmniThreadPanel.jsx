@@ -228,6 +228,7 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
 
   const ch = channelMeta(conversation?.channel);
   const suggestion = suggestions[0];
+  const groundingText = suggestion ? groundingLabel(suggestion.metadata) : null;
 
   return (
     <div className="omniThread">
@@ -321,9 +322,9 @@ export default function OmniThreadPanel({ token, conversationId, onSent, onUpdat
         <div className="omniSuggest">
           <div className="omniSuggest__label">Sugerencia IA</div>
           <p className="omniSuggest__body">{suggestion.body}</p>
-          {groundingLabel(suggestion.metadata) && (
+          {groundingText && (
             <div className="omniSuggest__grounding" title="Cotizaciones históricas que la IA usó como contexto (RAG)">
-              📎 {groundingLabel(suggestion.metadata)}
+              📎 {groundingText}
             </div>
           )}
           <div className="omniSuggest__actions">

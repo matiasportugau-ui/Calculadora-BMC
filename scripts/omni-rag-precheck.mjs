@@ -40,7 +40,7 @@ async function main() {
   } else {
     fail(
       "no usable embedding provider key — embedText() would use NON-SEMANTIC stub " +
-        "vectors. Set OPENAI_API_KEY (or another embedding provider) before enabling RAG.",
+        "vectors. Set OPENAI_API_KEY (the embedding provider embedText uses today) before enabling RAG.",
     );
     failures++;
   }

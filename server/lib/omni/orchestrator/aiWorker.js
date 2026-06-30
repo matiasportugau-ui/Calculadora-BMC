@@ -44,15 +44,18 @@ export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "emb
 export function buildSuggestionMetadata(result, prompt, retrieval = {}) {
   const ragCases = Array.isArray(retrieval?.rag_cases) ? retrieval.rag_cases : [];
   const snippets = Array.isArray(retrieval?.recent_snippets) ? retrieval.recent_snippets : [];
+  // Base count/grounded on the cited ids (cases with a lead_id) so the stored
+  // citations and the UI badge count never disagree.
+  const ragCaseIds = ragCases.map((c) => c?.lead_id).filter(Boolean);
   return {
     provider: result?.provider ?? null,
     model: result?.model ?? null,
     prompt_version: prompt?.version ?? null,
     grounding: {
-      rag_case_ids: ragCases.map((c) => c?.lead_id).filter(Boolean),
-      rag_count: ragCases.length,
+      rag_case_ids: ragCaseIds,
+      rag_count: ragCaseIds.length,
       snippet_count: snippets.length,
-      grounded: ragCases.length > 0,
+      grounded: ragCaseIds.length > 0,
     },
   };
 }
