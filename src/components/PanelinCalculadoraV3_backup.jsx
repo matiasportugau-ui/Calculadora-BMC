@@ -2840,6 +2840,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const vis = SCENARIOS_DEF.find(s => s.id === scenario)?.visibility ?? SCENARIOS_DEF[0].visibility;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
+  // Apertura de la sección "Productos manuales" (<details> controlado): abierta por
+  // defecto en el escenario dedicado, colapsada pero expandible (sticky) en los demás.
+  // Estado explícito + onToggle para no re-cerrarla en cada render (no derivarla del render).
+  const [manualLibreOpen, setManualLibreOpen] = useState(false);
+  useEffect(() => {
+    if (scenarioDef?.isLibre) setManualLibreOpen(true);
+  }, [scenarioDef?.isLibre]);
   const activeWizardStepId =
     modoVendedor && scenario === "solo_techo"
       ? SOLO_TECHO_STEPS[wizardStep]?.id ?? null
@@ -6212,7 +6219,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
           {/* Productos manuales (presupuesto libre) — disponible en cualquier escenario.
               Abierto por defecto en el escenario dedicado; colapsado como aditivo. */}
-          <details style={{ ...sectionS, padding: 0 }} open={scenarioDef?.isLibre}>
+          <details style={{ ...sectionS, padding: 0 }} open={manualLibreOpen} onToggle={(e) => setManualLibreOpen(e.currentTarget.open)}>
             <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none" }}>
               {scenarioDef?.isLibre ? "PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA" : "AGREGAR PRODUCTOS MANUALES (PRESUPUESTO LIBRE)"}
             </summary>
