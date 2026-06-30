@@ -321,6 +321,8 @@ function buildCoordinacionLogisticaText(rows) {
   return header + blocks.join("\n");
 }
 
+// Header text (fila 3) → BMC canonical key, para el CRUD de cotizaciones.
+// Mapa de columnas canónico (todas las fuentes): docs/team/CRM-OPERATIVO-COLUMN-MAP.md
 const CRM_TO_BMC = {
   ID: "COTIZACION_ID",
   Fecha: "FECHA_CREACION",

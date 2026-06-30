@@ -2,6 +2,9 @@
  * CRM_Operativo — layout del “cockpit” operador (columnas AG–AK) y defaults al crear filas.
  * Cabeceras en fila 3; datos desde fila 4. Fuente de verdad narrativa:
  * docs/team/panelsim/CRM-OPERATIVO-COCKPIT.md
+ *
+ * Mapa de columnas canónico (todas las fuentes): docs/team/CRM-OPERATIVO-COLUMN-MAP.md
+ * @see docs/team/CRM-OPERATIVO-COLUMN-MAP.md
  */
 
 export const CRM_TAB = "CRM_Operativo";

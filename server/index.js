@@ -13,6 +13,8 @@ import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
 import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
 import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
+import { buildCrmRow, validateCrmRow, sliceCrmRange } from "./lib/crmRowMapper.js";
+import { sanitizeCellValue } from "./lib/sheetsCsvGuard.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
@@ -725,38 +727,61 @@ async function processWaConversation(chatId, conv) {
           ]] },
         });
 
-        // CRM_Operativo — primera fila con col C (Cliente) vacía a partir de fila 4
-        const crmClientes = await sheets.spreadsheets.values.get({
-          spreadsheetId: sheetId, range: "'CRM_Operativo'!C4:C500",
+        // CRM_Operativo — read row-3 headers + the Cliente column in one round-trip.
+        // Headers anchor the write by column NAME; the C column locates the first
+        // empty data row (≥ 4).
+        const crmReads = await sheets.spreadsheets.values.batchGet({
+          spreadsheetId: sheetId,
+          ranges: ["'CRM_Operativo'!A3:ZZ3", "'CRM_Operativo'!C4:C500"],
         });
-        const crmVals = crmClientes.data.values || [];
+        const crmHeaders = crmReads.data.valueRanges?.[0]?.values?.[0] || [];
+        const crmVals = crmReads.data.valueRanges?.[1]?.values || [];
         let crmRow = crmVals.length + 4;
         for (let i = 0; i < crmVals.length; i++) {
           if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) { crmRow = i + 4; break; }
         }
 
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
-            now, d.cliente || "", d.telefono || chatId,
-            d.ubicacion || "", "WA-Auto", d.resumen_pedido || "",
-            d.categoria || "", "", "Pendiente", d.vendedor || "",
-          ]] },
+        // KEY-BASED row: each column addressed by logical key, never by blind
+        // array index, and every cell sanitized (CSV/formula guard).
+        const waLead = {
+          fecha: now,
+          cliente: d.cliente || "",
+          telefono: d.telefono || chatId,
+          ubicacion: d.ubicacion || "",
+          origen: "WA-Auto",
+          consulta: d.resumen_pedido || "",
+          categoria: d.categoria || "",
+          estado: "Pendiente",
+          responsable: d.vendedor || "",
+          probabilidad: d.probabilidad_cierre || "",
+          urgencia: d.urgencia || "",
+          validarStock: d.validar_stock || "No",
+          tipoCliente: d.tipo_cliente || "",
+          observaciones: d.observaciones || "",
+        };
+        const waBuilt = buildCrmRow(crmHeaders, waLead, { sanitize: sanitizeCellValue });
+        const waCheck = validateCrmRow(waBuilt, crmHeaders, {
+          requireHeaders: true,
+          window: { from: "B", to: "W" },
         });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
-        });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
-        });
+        // When the structure can't be trusted we skip ALL CRM writes for this
+        // conversation rather than risk a shifted row; the next 🚀 / auto-trigger retries.
+        const crmWritable = waCheck.ok;
+        if (!crmWritable) {
+          logger.warn(`[WA] ⚠ CRM structure invalid (${waCheck.errors.join(",")}) — skipping CRM write for ${chatId}`);
+        } else {
+          if (waBuilt.fallbacks.length) {
+            logger.warn(`[WA] CRM_Operativo header fallback for: ${waBuilt.fallbacks.join(",")}`);
+          }
+          // One header-anchored write for the data block (B:W) instead of three
+          // positional range writes.
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `'CRM_Operativo'!B${crmRow}:W${crmRow}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [sliceCrmRange(waBuilt.row, "B", "W")] },
+          });
+        }
 
         // Generar respuesta IA para col AF — usa agente unificado (canal: wa + KB)
         let ai = { ok: false };
@@ -770,12 +795,12 @@ async function processWaConversation(chatId, conv) {
         } catch (aiErr) {
           logger.warn(`[WA] agentCore failed for ${chatId}: ${aiErr.message}`);
         }
-        if (ai.ok && ai.respuesta) {
+        if (crmWritable && ai.ok && ai.respuesta) {
           await sheets.spreadsheets.values.update({
             spreadsheetId: sheetId,
             range: `'CRM_Operativo'!AF${crmRow}:AG${crmRow}`,
             valueInputOption: "USER_ENTERED",
-            requestBody: { values: [[ai.respuesta, ai.provider || ""]] },
+            requestBody: { values: [[sanitizeCellValue(ai.respuesta), ai.provider || ""]] },
           });
         }
 
@@ -799,14 +824,16 @@ async function processWaConversation(chatId, conv) {
             .catch(() => {});
         });
 
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: rangeAHAK(crmRow),
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [defaultTailAHAK()] },
-        });
+        if (crmWritable) {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: rangeAHAK(crmRow),
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [defaultTailAHAK()] },
+          });
+        }
 
-        logger.info(`[WA] ✓ Conversation processed → CRM row ${crmRow}, Form row ${formRow}, provider: ${ai.provider || "none"}`);
+        logger.info(`[WA] ✓ Conversation processed → CRM row ${crmWritable ? crmRow : "skipped"}, Form row ${formRow}, provider: ${ai.provider || "none"}`);
       }
     }
   } catch (err) {

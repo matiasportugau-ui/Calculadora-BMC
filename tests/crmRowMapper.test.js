@@ -232,6 +232,26 @@ group("sliceCrmRange — quote B:AK window is 36 cells with gate tail", () => {
   assert(window[35] === "No", "AK = No");
 });
 
+group("respuestaSugerida (AF) — used by WA/ML pipelines", () => {
+  const headers = canonicalHeaders();
+  headers[31] = "Respuesta sugerida"; // AF
+  const idx = buildHeaderIndex(headers);
+  assert(resolveCrmColumnIndex(idx, "respuestaSugerida").index === 31, "respuestaSugerida → AF(31) via header");
+  // Falls back to documented letter AF when the header is absent.
+  const fb = resolveCrmColumnIndex(buildHeaderIndex([]), "respuestaSugerida");
+  assert(fb.index === 31 && fb.source === "fallback", "fallback to AF(31)");
+  // Inside a B:AK (quote) window, outside a B:W (email) window. Include the
+  // required anchors so only the window membership of AF is under test.
+  const built = buildCrmRow(headers, {
+    fecha: "2026", cliente: "Juan", estado: "Pendiente",
+    respuestaSugerida: "Hola, gracias por tu consulta",
+  });
+  const inQuote = validateCrmRow(built, headers, { requireHeaders: false, window: { from: "B", to: "AK" } });
+  assert(inQuote.ok === true, `AF is inside B:AK (errors: ${inQuote.errors.join(",")})`);
+  const inEmail = validateCrmRow(built, headers, { requireHeaders: true, window: { from: "B", to: "W" } });
+  assert(inEmail.ok === false && inEmail.errors.includes("field_outside_write_range:respuestaSugerida"), "AF is outside B:W");
+});
+
 group("resolveCrmColumnIndex / buildHeaderIndex basics", () => {
   const idx = buildHeaderIndex(canonicalHeaders());
   assert(resolveCrmColumnIndex(idx, "estado").index === 9, "estado → J(9) via header");

@@ -41,6 +41,9 @@ import { colLetterToIndex } from "./sheetColumnLetters.js";
  *
  * Order mirrors physical column order for readability; it does NOT drive
  * placement (placement is always by resolved index).
+ *
+ * Canonical column map (all sources): docs/team/CRM-OPERATIVO-COLUMN-MAP.md
+ * @see docs/team/CRM-OPERATIVO-COLUMN-MAP.md
  */
 export const CRM_WRITE_CONTRACT = Object.freeze([
   { key: "fecha", col: "B", headers: ["Fecha"] },
@@ -57,6 +60,8 @@ export const CRM_WRITE_CONTRACT = Object.freeze([
   { key: "validarStock", col: "T", headers: ["Validar stock", "Validar Stock"] },
   { key: "tipoCliente", col: "V", headers: ["Tipo de cliente", "Tipo cliente"] },
   { key: "observaciones", col: "W", headers: ["Observaciones"] },
+  // Suggested AI reply (WA + ML pipelines). Header text from CRM-OPERATIVO-COCKPIT.md.
+  { key: "respuestaSugerida", col: "AF", headers: ["Respuesta sugerida", "Suggested answer"] },
   // AG–AK gate block (crmOperativoLayout.js). Header text from CRM-OPERATIVO-COCKPIT.md.
   { key: "providerIa", col: "AG", headers: ["Provider IA"] },
   { key: "linkPresupuesto", col: "AH", headers: ["Link presupuesto"] },
