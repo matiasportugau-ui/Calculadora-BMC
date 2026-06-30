@@ -6,15 +6,43 @@
 import { Router } from 'express';
 import pg from 'pg';
 import pino from 'pino';
+import rateLimit from 'express-rate-limit';
 import { requireServiceOrUser } from '../middleware/requireServiceOrUser.js';
 
 const requireMarketing = requireServiceOrUser({ role: 'admin' });
+
+const readLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const aiChatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 import { listPendingTasks, updateTaskStatus } from '../lib/marketIntel/mysteryShoppingQueue.js';
 import { runEtl } from '../lib/marketIntel/etl/runner.js';
 import { generateStrategicBrief } from '../lib/marketIntel/strategicBrief.js';
+import {
+  getBaselinePrices,
+  getCompetitorMap,
+  getAdsIntelligence,
+  getMlPulse,
+  getEtlSummary,
+} from '../lib/marketIntel/productIntelligence.js';
+import { buildProductMatrix } from '../lib/marketIntel/priceGap.js';
+import { callAgentOnce } from '../lib/agentCore.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
+
+// Keep SSE connections alive across proxies/load balancers that time out idle
+// connections (commonly 30s); emit a comment-line heartbeat every 15s.
+const SSE_HEARTBEAT_INTERVAL_MS = 15_000;
 
 let _pool = null;
 const pool = () => {
@@ -213,6 +241,149 @@ router.get('/product-intelligence', requireMarketing, async (req, res) => {
   } catch (err) {
     log.error({ err, route: 'GET /product-intelligence' }, 'product intel failed');
     res.status(503).json({ error: 'Product intelligence unavailable' });
+  }
+});
+
+// ─── GET /api/marketing/intel ────────────────────────────────────────
+// Surfaces the offline market investigation (competitor map, Meta Ads audit,
+// MercadoLibre pulse) captured under server/lib/marketIntel/data/. Static data
+// so this is cheap; still degrade to 503 if a loader throws.
+router.get('/intel', readLimiter, requireMarketing, (req, res) => {
+  try {
+    res.json({
+      competitors: getCompetitorMap(),
+      ads: getAdsIntelligence(),
+      ml: getMlPulse(),
+    });
+  } catch (err) {
+    log.error({ err, route: 'GET /intel' }, 'intel load failed');
+    res.status(503).json({ error: 'Market intel data unavailable' });
+  }
+});
+
+// ─── GET /api/marketing/product-matrix ───────────────────────────────
+// BMC baseline SKUs vs a tier-weighted competitor market reference + Δ% +
+// positioning. The reference is an estimate (see priceGap.js), not a live quote.
+router.get('/product-matrix', readLimiter, requireMarketing, (req, res) => {
+  try {
+    const rows = buildProductMatrix(getBaselinePrices(), getCompetitorMap());
+    res.json({
+      data: rows,
+      reference_basis: 'tier_weighted_estimate',
+      generated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    log.error({ err, route: 'GET /product-matrix' }, 'product matrix failed');
+    res.status(503).json({ error: 'Product matrix unavailable' });
+  }
+});
+
+// ─── POST /api/marketing/ai/chat (SSE) ───────────────────────────────
+// Market-scoped chat. Injects the full offline + live intel as context and
+// streams the answer in the same `data: {type,...}` shape the frontend SSE
+// reader already understands (see useChat.js).
+const MARKET_CHAT_SYSTEM_PROMPT = `Eres "Market Intel AI", el analista de inteligencia de mercado de BMC Uruguay (paneles aislantes para techo y pared). Respondés preguntas sobre competencia, precios, posicionamiento, campañas (Meta Ads) y MercadoLibre, SIEMPRE basándote en los datos de contexto entregados abajo. Sé concreto y accionable; máximo ~6 oraciones o una lista corta. Si la pregunta excede los datos disponibles, decilo y sugerí qué dato haría falta. Respondé en español rioplatense, sin markdown excesivo. Los precios están en USD por m² sin IVA.`;
+
+async function buildMarketChatContext() {
+  const compMap = getCompetitorMap();
+  const ads = getAdsIntelligence();
+  const ml = getMlPulse();
+  const prices = getBaselinePrices();
+
+  const tier1 = (compMap?.product_family_mapping || [])
+    .filter((c) => c.tier === 1)
+    .map((c) => `${c.competidor} (${c.type}, ${c.familia_principal})`)
+    .join('; ');
+  const tierCounts = Object.entries(compMap?.tiers || {})
+    .map(([t, v]) => `T${t} ${v.label}: ${v.count}`)
+    .join(' · ');
+
+  const priceLines = (prices || [])
+    .map((p) => `- ${p.producto} ${p.espesor_mm}mm (${p.nucleo}): USD ${p.precio_publico_usd_m2 ?? 'cotización'}/m²`)
+    .join('\n');
+
+  const angles = (ads?.ad_copy_angles || []).map((a) => `${a.nombre} ("${a.headline}")`).join('; ');
+  const tendencias = (ml?.tendencias_mercado || []).map((t) => `${t.indicador}: ${t.tendencia}`).join('; ');
+
+  let liveLine = 'Sin datos ETL en vivo.';
+  try {
+    const summary = await getEtlSummary();
+    const e = summary?.last_etl_run;
+    const a = summary?.alert_counts;
+    const parts = [];
+    if (e) parts.push(`Último ETL ${e.status} (${e.competitors_succeeded}/${e.competitors_attempted})`);
+    if (a) parts.push(`alertas 24h: ${a.critical} críticas/${a.warning} warn/${a.info} info`);
+    if (parts.length) liveLine = parts.join(', ') + '.';
+  } catch {
+    /* DB unavailable — keep static intel only */
+  }
+
+  return `### Competidores (${compMap?.total_competidores ?? '?'} conocidos)
+Tiers: ${tierCounts || 'n/d'}
+Tier 1 (críticos): ${tier1 || 'n/d'}
+Insight: el ecosistema Kingspan (Bromyros + MontFrío) domina EPS/PIR; los resellers MLU (Tier 5) presionan precio en EPS 50mm pared.
+
+### Precios base BMC (catálogo público, USD/m² sin IVA)
+${priceLines}
+
+### Meta Ads
+${ads?.total_campanas ?? '?'} campañas, ${ads?.campanas_activas ?? '?'} activas / ${ads?.campanas_zombie ?? '?'} zombies. Inversión: USD ${ads?.inversion_total_mensual_usd ?? '?'}/mes. Diagnóstico: ${ads?.diagnostico ?? 'n/d'}. Ángulos de copy: ${angles || 'n/d'}.
+
+### MercadoLibre Uruguay
+${ml?.metricas?.total_listings_activos ?? '?'} listings, ${ml?.metricas?.preguntas_sin_respuesta ?? '?'} preguntas sin responder (tasa ${ml?.metricas?.tasa_respuesta ?? 'n/d'}). Tendencias: ${tendencias || 'n/d'}.
+
+### Estado en vivo
+${liveLine}`;
+}
+
+router.post('/ai/chat', aiChatLimiter, requireMarketing, async (req, res) => {
+  const incoming = Array.isArray(req.body?.messages) ? req.body.messages : null;
+  if (!incoming || incoming.length === 0) {
+    return res.status(400).json({ error: 'messages[] required' });
+  }
+  const messages = incoming
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }))
+    .slice(-12);
+  if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
+    return res.status(400).json({ error: 'last message must be from user' });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  let aborted = false;
+  req.on('close', () => { aborted = true; });
+
+  const heartbeat = setInterval(() => { if (!aborted) res.write(':\n\n'); }, SSE_HEARTBEAT_INTERVAL_MS);
+
+  const send = (obj) => {
+    try { if (!aborted) res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* client disconnected */ }
+  };
+
+  try {
+    const context = await buildMarketChatContext();
+    const systemPrompt = `${MARKET_CHAT_SYSTEM_PROMPT}\n\n## CONTEXTO DE MERCADO (datos vigentes)\n${context}`;
+    const result = await callAgentOnce(messages, {
+      channel: 'chat',
+      systemPrompt,
+      override: { maxTokens: 1500, temperature: 0.4 },
+    });
+    const text = (result?.text || '').trim() || 'No pude generar una respuesta con los datos disponibles.';
+    send({ type: 'text', delta: text });
+    send({ type: 'meta', provider: result?.provider || null, model: result?.model || null });
+    send({ type: 'done' });
+    res.end();
+  } catch (err) {
+    log.error({ err, route: 'POST /ai/chat' }, 'market chat failed');
+    send({ type: 'error', message: 'No se pudo contactar al analista AI. Reintentá en unos segundos.' });
+    send({ type: 'done' });
+    res.end();
+  } finally {
+    clearInterval(heartbeat);
   }
 });
 
