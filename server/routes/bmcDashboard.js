@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
+import pino from "pino";
 import { google } from "googleapis";
 import {
   defaultTailAGAK_Email,
@@ -21,6 +22,7 @@ import { writeCrmRowTaxonomy } from "../lib/crmTaxonomy.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
+import { isSheetsUnavailable } from "../lib/backendErrorDetector.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
 
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
@@ -50,16 +52,18 @@ import {
  * Structured logging for AI calls (tokens + rough cost).
  * Helps with training cost visibility and operational observability.
  */
+const logger = pino({ name: "bmc-dashboard", level: process.env.LOG_LEVEL ?? "info" });
+
 function logAiCall(eventName, provider, model, usage = {}) {
   const cost = estimateCostUSD(provider, model, usage);
-  console.log(JSON.stringify({
+  logger.info({
     event: eventName,
     provider,
     model,
     input_tokens: usage.input_tokens ?? usage.prompt_tokens ?? 0,
     output_tokens: usage.output_tokens ?? usage.completion_tokens ?? 0,
     estimated_cost_usd: cost,
-  }));
+  }, eventName);
 }
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
@@ -1875,6 +1879,7 @@ export default function createBmcDashboardRouter(config) {
           },
         });
       } catch (e) {
+        if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
         res.status(500).json({ ok: false, error: e.message });
       }
     });
@@ -2308,6 +2313,7 @@ export default function createBmcDashboardRouter(config) {
       res.setHeader("Pragma", "no-cache");
       res.send(csv);
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -2788,7 +2794,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           valueInputOption: "USER_ENTERED",
           requestBody: { values: [defaultTailAGAK_Email()] },
         });
-        console.log(`[Email] ✓ Ingested → CRM row ${crmRow}, provider: ${provider}, messageId: ${messageId || "?"}`);
+        (req.log ?? logger).info({ crmRow, provider, messageId: messageId || null }, "email ingested → CRM");
         void shadowWriteEmailIngest({
           config,
           logger: console,
@@ -2820,6 +2826,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       return res.json(summary);
     } catch (e) {
       req.log?.error?.({ err: e }, "email/poll-gmail failed");
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e?.message || "gmail_unavailable");
       return res.status(500).json({ ok: false, error: e?.message || "poll_failed" });
     }
   });
@@ -2937,6 +2944,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       const result = await pushMatrizPricingOverrides(matrizId, overrides, credsPath, dryRun);
       res.json(result);
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message || String(e));
       res.status(500).json({ ok: false, error: e.message || String(e) });
     }
   });
@@ -3072,6 +3080,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const parsed = parseCrmRowAtoAK(r.data.values || []);
       return res.json({ ok: true, row: rowNum, parsed });
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3092,6 +3101,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
       return res.json({ ok: true, row, column: Col.LINK_PRESUPUESTO });
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3113,6 +3123,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
       return res.json({ ok: true, row, aprobadoEnviar: val });
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3132,6 +3143,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
       return res.json({ ok: true, row, enviadoEl: sentAt });
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3158,6 +3170,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       if (!result.ok) return res.status(400).json(result);
       return res.json(result);
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3195,6 +3208,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       }
       return res.json({ ok: true, row, respuestaSugerida: text, trainingEntry: trainingEntry?.id ?? null });
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3339,6 +3353,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
     } catch (e) {
       req.log?.error({ err: e }, "crm/cockpit/send-approved failed");
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   }
@@ -3370,6 +3385,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       return res.json({ ok: true, items });
     } catch (e) {
       req.log?.error({ err: e }, "crm/cockpit/ml-queue failed");
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3396,6 +3412,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       return res.json({ ok: true, items });
     } catch (e) {
       req.log?.error({ err: e }, "crm/cockpit/wa-queue failed");
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3426,6 +3443,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
       return res.json({ ok: true, synced: result.synced });
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3497,6 +3515,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       }
       return res.json({ ok: true, items, channelFilter });
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -3573,6 +3592,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         consultations: limited,
       });
     } catch (e) {
+      if (isSheetsUnavailable(e)) return sheetsUnavailable(res, e.message);
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
