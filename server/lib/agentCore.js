@@ -198,7 +198,15 @@ export async function callAgentOnce(messages, opts = {}) {
       } else if (p === "gemini") {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genai = new GoogleGenerativeAI(apiKey);
-        const generationConfig = {};
+        const generationConfig = {
+          // gemini-2.5-flash enables "thinking" by default, which burns part of
+          // maxOutputTokens on hidden reasoning before any visible text — with
+          // the tight per-channel budgets here (120 for ml, 400 for wa) that
+          // starves the actual answer, truncating it mid-sentence. No tools are
+          // used on this path, so thinking has no upside here. Same fix as
+          // agentChat.js's Gemini branch.
+          thinkingConfig: { thinkingBudget: 0 },
+        };
         if (eff.temperature != null) generationConfig.temperature = eff.temperature;
         if (maxTokens) generationConfig.maxOutputTokens = maxTokens;
         const model = genai.getGenerativeModel({ model: modelUsed, generationConfig });
