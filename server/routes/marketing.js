@@ -336,9 +336,18 @@ router.post('/ai/chat', requireMarketing, async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   if (typeof res.flushHeaders === 'function') res.flushHeaders();
 
+  // Heartbeat + client-close handling so the connection survives proxy idle
+  // timeouts during the LLM call and nothing keeps writing after disconnect.
+  let closed = false;
   const send = (obj) => {
+    if (closed) return;
     try { res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* client disconnected */ }
   };
+  const heartbeat = setInterval(() => {
+    if (closed) return;
+    try { res.write(': ping\n\n'); } catch { /* ignore */ }
+  }, 15000);
+  req.on('close', () => { closed = true; clearInterval(heartbeat); });
 
   try {
     const context = await buildMarketChatContext();
@@ -352,12 +361,14 @@ router.post('/ai/chat', requireMarketing, async (req, res) => {
     send({ type: 'text', delta: text });
     send({ type: 'meta', provider: result?.provider || null, model: result?.model || null });
     send({ type: 'done' });
-    res.end();
+    if (!closed) res.end();
   } catch (err) {
     log.error({ err, route: 'POST /ai/chat' }, 'market chat failed');
     send({ type: 'error', message: 'No se pudo contactar al analista AI. Reintentá en unos segundos.' });
     send({ type: 'done' });
-    res.end();
+    if (!closed) res.end();
+  } finally {
+    clearInterval(heartbeat);
   }
 });
 
