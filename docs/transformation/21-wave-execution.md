@@ -130,6 +130,44 @@ scripts/omni-reconcile-channels.mjs
 
 ---
 
+## WAVE 4 — Deals + Knowledge + Agents (implemented)
+
+**Entry:** WAVE 3 exit gate + E1 live in staging.
+
+| Squad | Scope | Doc |
+|-------|-------|-----|
+| Deals | F1–F3 + G1–G4 | [wave-4/squad-deals.md](wave-4/squad-deals.md) |
+| Knowledge | H1–H4 | [wave-4/squad-knowledge.md](wave-4/squad-knowledge.md) |
+| Agents | I1–I4 | [wave-4/squad-agents.md](wave-4/squad-agents.md) |
+
+### Key paths
+
+```
+server/migrations/omni/003_deals_knowledge.sql
+server/lib/omni/deals/
+server/lib/omni/knowledge/
+src/components/hub/canales/panels/Omni*.jsx
+scripts/omni-reconcile-deals.mjs
+scripts/wave4-exit-gate.mjs
+```
+
+### Commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm run omni:migrate` | Apply 001–003 DDL |
+| `npm run omni:reconcile-deals` | F3 drift report |
+| `npm run wave4:exit-gate` | Exit checklist → WAVE 5 |
+
+### WAVE 4 exit checklist
+
+- [ ] `npm run wave4:exit-gate` green
+- [ ] HITL accept/reject E2E staging
+- [ ] Reconcile deals drift &lt; 10 rows
+- [ ] `VITE_OMNI_INBOX=1` UAT admin cohort
+
+---
+
 ## References
 
 - [13-pr-roadmap.md](13-pr-roadmap.md)

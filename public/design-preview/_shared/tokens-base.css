@@ -1,0 +1,115 @@
+/* BMC design competition — base tokens (from src/data/constants.js + admin-cot) */
+:root {
+  --bmc-brand: #1a3a5c;
+  --bmc-primary: #0071e3;
+  --bmc-bg: #f5f5f7;
+  --bmc-surface: #ffffff;
+  --bmc-surface-alt: #fafafa;
+  --bmc-text: #1d1d1f;
+  --bmc-text-2: #6e6e73;
+  --bmc-text-3: #aeaeb2;
+  --bmc-border: #e5e5ea;
+  --bmc-success: #34c759;
+  --bmc-warning: #ff9f0a;
+  --bmc-danger: #ff3b30;
+  --bmc-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+  --bmc-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --bmc-radius: 12px;
+  --bmc-radius-sm: 8px;
+  --bmc-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --bmc-blur: 20px;
+  --bmc-glass: rgba(255, 255, 255, 0.72);
+  --bmc-glass-strong: rgba(255, 255, 255, 0.86);
+  --preview-mobile: 390px;
+  --preview-tablet: 834px;
+  --preview-desktop: 1280px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--bmc-font);
+  color: var(--bmc-text);
+  background: var(--bmc-bg);
+  line-height: 1.45;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bmc-surface-alt);
+  color: var(--bmc-text-2);
+}
+
+.card {
+  background: var(--bmc-surface);
+  border: 1px solid var(--bmc-border);
+  border-radius: var(--bmc-radius);
+  box-shadow: var(--bmc-shadow);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--bmc-radius-sm);
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--bmc-primary);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--bmc-border);
+  color: var(--bmc-text);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--bmc-border);
+}
+
+th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bmc-text-2);
+}
+
+.mono {
+  font-family: var(--bmc-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-meta {
+  font-size: 12px;
+  color: var(--bmc-text-2);
+  margin-bottom: 12px;
+}

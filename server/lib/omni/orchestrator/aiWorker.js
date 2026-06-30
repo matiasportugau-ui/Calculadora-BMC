@@ -6,6 +6,9 @@ import { callAgentOnce } from "../../agentCore.js";
 import { classifyIntent } from "../../waEnricher.js";
 import { startOmniSpan } from "../otel.js";
 import { getEnabledPrompt, getEnabledModel } from "./aiRegistry.js";
+import { processExtractDealJob } from "../deals/dealExtractor.js";
+import { runEmbedJob } from "../knowledge/embedPipeline.js";
+import { buildOmniRetrievalContext, formatOmniContextBlock } from "../knowledge/kbBridge.js";
 
 const CATEGORY_MAP = {
   cotizacion: "cotizacion",
@@ -17,11 +20,21 @@ const CATEGORY_MAP = {
 };
 
 /**
+ * Allowlist of AI job types. Mirrors the DB CHECK constraint in
+ * server/migrations/omni/002_ai_automation.sql (omni_ai_jobs_type_valid).
+ * Single source of truth so routes/actions validate before hitting the DB.
+ */
+export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "embed"];
+
+/**
  * @param {import('pg').Pool} pool
  * @param {object} job
  */
 export async function enqueueAiJob(pool, job) {
   if (!pool) return null;
+  if (!ALLOWED_AI_JOB_TYPES.includes(job.job_type)) {
+    throw new Error("invalid_job_type");
+  }
   const { rows } = await pool.query(
     `INSERT INTO omni_ai_jobs (job_type, message_id, conversation_id, channel, input_json, status)
      VALUES ($1, $2, $3, $4, $5::jsonb, 'pending')
@@ -65,7 +78,7 @@ export async function enqueueIngestAiJobs(pool, payload) {
   return ids.filter(Boolean);
 }
 
-async function getDailyAiCost(pool) {
+export async function getDailyAiCost(pool) {
   const { rows } = await pool.query(
     `SELECT COALESCE(SUM(cost_usd), 0)::float AS total
      FROM omni_ai_jobs
@@ -110,6 +123,14 @@ export async function processAiJob(pool, jobRow, logger) {
         latency_ms: Date.now() - t0,
         cost_usd: 0,
       });
+      if (category === "cotizacion" || intent === "cotizacion") {
+        await enqueueAiJob(pool, {
+          job_type: "extract_deal",
+          message_id: jobRow.message_id,
+          conversation_id: jobRow.conversation_id,
+          channel: jobRow.channel,
+        });
+      }
     } else if (jobRow.job_type === "suggest") {
       const channel = msg.channel === "ml" ? "ml" : msg.channel === "wa" ? "wa" : "chat";
       const prompt = await getEnabledPrompt(pool, "suggest", channel);
@@ -126,8 +147,14 @@ export async function processAiJob(pool, jobRow, logger) {
         return;
       }
 
+      const retrieval = await buildOmniRetrievalContext(pool, jobRow.conversation_id, msg.body);
+      const contextBlock = formatOmniContextBlock(retrieval);
+      const userContent = contextBlock
+        ? `${contextBlock}\n\n---\nCustomer message:\n${msg.body}`
+        : msg.body;
+
       const result = await callAgentOnce(
-        [{ role: "user", content: msg.body }],
+        [{ role: "user", content: userContent }],
         {
           channel,
           taskKey: prompt?.system_prompt ? null : "suggestions",
@@ -170,6 +197,20 @@ export async function processAiJob(pool, jobRow, logger) {
         cost_usd: result.estimatedCostUsd ?? 0,
         prompt_version: prompt?.version ?? null,
       });
+    } else if (jobRow.job_type === "extract_deal") {
+      const extracted = await processExtractDealJob(pool, jobRow);
+      await markJobCompleted(pool, jobRow.id, {
+        ...extracted,
+        latency_ms: Date.now() - t0,
+        cost_usd: 0,
+      });
+    } else if (jobRow.job_type === "embed") {
+      const embedded = await runEmbedJob(pool, jobRow.message_id);
+      await markJobCompleted(pool, jobRow.id, {
+        ...embedded,
+        latency_ms: Date.now() - t0,
+        cost_usd: 0,
+      });
     } else {
       await markJobFailed(pool, jobRow.id, "unsupported_job_type");
     }
@@ -205,7 +246,6 @@ async function markJobFailed(pool, jobId, error) {
     `UPDATE omni_ai_jobs SET
        status = CASE WHEN attempts >= 2 THEN 'dead' ELSE 'failed' END,
        error = $2,
-       attempts = attempts + 1,
        completed_at = now()
      WHERE id = $1`,
     [jobId, error],
@@ -227,7 +267,7 @@ export async function runAiJobById(pool, jobId, opts = {}) {
   }
 
   await pool.query(
-    `UPDATE omni_ai_jobs SET status = 'running', started_at = now() WHERE id = $1`,
+    `UPDATE omni_ai_jobs SET status = 'running', started_at = now(), attempts = attempts + 1 WHERE id = $1`,
     [jobId],
   );
   await processAiJob(pool, { ...job, id: jobId }, opts.logger);

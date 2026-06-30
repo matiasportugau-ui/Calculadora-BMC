@@ -25,6 +25,8 @@ import agentTranscribeRouter from "./routes/agentTranscribe.js";
 import agentFeedbackRouter from "./routes/agentFeedback.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
+import createChatwootRouter from "./routes/chatwoot.js";
+import createEmailAgentRouter from "./routes/emailAgentChat.js";
 import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
 import createMlSearchRouter from "./routes/mlSearch.js";
@@ -55,10 +57,13 @@ import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
+import planCadRouter from "./routes/planCad.js";
 import authGoogleRouter from "./routes/authGoogle.js";
 import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
+import createBmcChatRouter from "./routes/bmcChat.js";
 import { startOrphanCloseScheduler } from "./jobs/closeOrphanSessions.js";
 import identityMeRouter from "./routes/identityMe.js";
+import driveConfigRouter from "./routes/driveConfig.js";
 import identityAdminRouter from "./routes/identityAdmin.js";
 import identityAnalyticsRouter from "./routes/identityAnalytics.js";
 import clientesCustomersRouter from "./routes/clientes/customers.js";
@@ -82,6 +87,7 @@ import { shadowWriteWaWebhook } from "./lib/omni/adapters/waWebhook.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
 import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
+import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -147,8 +153,13 @@ app.use(
 );
 
 // Security headers (OAuth 2.1–aligned)
-app.use((_req, res, next) => {
-  res.setHeader("X-Frame-Options", "DENY");
+app.use((req, res, next) => {
+  if (req.path.startsWith("/chat")) {
+    const ancestors = ["'self'", ...config.corsOrigins].join(" ");
+    res.setHeader("Content-Security-Policy", `frame-ancestors ${ancestors}`);
+  } else {
+    res.setHeader("X-Frame-Options", "DENY");
+  }
   res.setHeader("X-Content-Type-Options", "nosniff");
   next();
 });
@@ -983,6 +994,7 @@ app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", authGoogleRouter);
 app.use("/api", authMfaRouter);
 app.use(identityMeRouter);
+app.use(driveConfigRouter);
 app.use(identityAdminRouter);
 app.use(identityAnalyticsRouter);
 app.use(clientesCustomersRouter);
@@ -1056,6 +1068,8 @@ app.use("/api/bugs", createBugsRouter(config));
 app.use("/api/pdf", createPdfRouter());
 app.use("/api", deepResearchRouter);
 app.use("/api", planInterpretRouter);
+// Plan → CAD (DXF + SVG profesional) desde footprint corregido por el operador
+app.use("/api", planCadRouter);
 // ML search (competitors lookup) — Bearer API_AUTH_TOKEN, 30-min TTL cache, 60 req/min
 app.use(createMlSearchRouter({ ml, config, logger }));
 // Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
@@ -1064,6 +1078,10 @@ app.use(createMlEtlRunRouter({ config, logger }));
 app.use("/api", createQuotesRouter(config));
 // Calculator export archive → shared Drive folder (DRIVE_QUOTE_FOLDER_ID)
 app.use("/api", createQuoteDriveArchiveRouter(config));
+// Chatwoot shared inbox webhook + in-app Email Agent — mount BEFORE the
+// bmcDashboard catch-all so /api/chatwoot/* and /api/email-agent/* resolve.
+app.use("/api", createChatwootRouter(config));
+app.use("/api", createEmailAgentRouter(config, logger));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
@@ -1076,6 +1094,8 @@ app.use("/api", proyectoRouter);
 app.use("/auth/tasks", tasksOAuthRouter);
 // Cloud Scheduler sync target (HMAC-verified) — /sync/google-tasks/pull
 app.use("/sync", tasksSyncRouter);
+// BMC Chat — port 3000 merge (served as /chat on the same Express server)
+app.use("/chat", createBmcChatRouter(config, logger));
 
 const dashboardDir = path.join(__dirname, "../docs/bmc-dashboard-modernization/dashboard");
 const hasFinanzasDashboard = fs.existsSync(path.join(dashboardDir, "index.html"));
@@ -1176,6 +1196,7 @@ let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
 let stopOmniAiWorker = () => {};
+let stopOmniSnoozeWorker = () => {};
 
 const server = app.listen(config.port, async () => {
   logger.info(
@@ -1247,6 +1268,12 @@ const server = app.listen(config.port, async () => {
     stopOmniAiWorker = startOmniAiWorker({ config, logger, pool: omniPool });
     logger.info("Omni AI worker started");
   }
+  // Snooze auto-reopen runs independently of the AI orchestrator flag — it's the
+  // counterpart to the "Posponer" action and must work even with AI disabled.
+  if (omniPool) {
+    stopOmniSnoozeWorker = startOmniSnoozeWorker({ logger, pool: omniPool });
+    logger.info("Omni snooze worker started");
+  }
 });
 
 // ── Graceful shutdown ──
@@ -1266,6 +1293,7 @@ function shutdown(signal) {
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
   try { stopOmniAiWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniAiWorker failed"); }
+  try { stopOmniSnoozeWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSnoozeWorker failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");

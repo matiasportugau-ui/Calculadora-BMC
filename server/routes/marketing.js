@@ -6,9 +6,12 @@
 import { Router } from 'express';
 import pg from 'pg';
 import pino from 'pino';
-import { requireAuth } from '../middleware/requireAuth.js';
+import { requireServiceOrUser } from '../middleware/requireServiceOrUser.js';
+
+const requireMarketing = requireServiceOrUser({ role: 'admin' });
 import { listPendingTasks, updateTaskStatus } from '../lib/marketIntel/mysteryShoppingQueue.js';
 import { runEtl } from '../lib/marketIntel/etl/runner.js';
+import { generateStrategicBrief } from '../lib/marketIntel/strategicBrief.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
@@ -23,7 +26,7 @@ const pool = () => {
 };
 
 // ─── GET /api/marketing/dashboard/summary ─────────────────────────
-router.get('/dashboard/summary', requireAuth, async (req, res) => {
+router.get('/dashboard/summary', requireMarketing, async (req, res) => {
   try {
     const [lastRunResult, alertCountResult, deltaResult, msPendingResult] = await Promise.all([
       pool().query(`SELECT * FROM bmc_market_intel.v_last_etl_run`),
@@ -51,7 +54,7 @@ router.get('/dashboard/summary', requireAuth, async (req, res) => {
 });
 
 // ─── GET /api/marketing/dashboard/competitors ─────────────────────
-router.get('/dashboard/competitors', requireAuth, async (req, res) => {
+router.get('/dashboard/competitors', requireMarketing, async (req, res) => {
   try {
     const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
     const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
@@ -82,7 +85,7 @@ router.get('/dashboard/competitors', requireAuth, async (req, res) => {
 });
 
 // ─── GET /api/marketing/dashboard/alerts ──────────────────────────
-router.get('/dashboard/alerts', requireAuth, async (req, res) => {
+router.get('/dashboard/alerts', requireMarketing, async (req, res) => {
   try {
     const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
     const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
@@ -124,7 +127,7 @@ router.get('/dashboard/alerts', requireAuth, async (req, res) => {
 });
 
 // ─── GET /api/marketing/mystery-shopping ──────────────────────────
-router.get('/mystery-shopping', requireAuth, async (req, res) => {
+router.get('/mystery-shopping', requireMarketing, async (req, res) => {
   try {
     const page    = Math.max(1, parseInt(req.query.page ?? '1', 10));
     const perPage = Math.min(100, Math.max(1, parseInt(req.query.per_page ?? '25', 10)));
@@ -144,7 +147,7 @@ router.get('/mystery-shopping', requireAuth, async (req, res) => {
 });
 
 // ─── PATCH /api/marketing/mystery-shopping/:id/status ─────────────
-router.patch('/mystery-shopping/:id/status', requireAuth, async (req, res) => {
+router.patch('/mystery-shopping/:id/status', requireMarketing, async (req, res) => {
   const { id } = req.params;
   const { status, approved_by } = req.body;
 
@@ -170,7 +173,7 @@ router.patch('/mystery-shopping/:id/status', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/marketing/etl/run ──────────────────────────────────
-router.post('/etl/run', requireAuth, (req, res) => {
+router.post('/etl/run', requireMarketing, (req, res) => {
   log.info({ userId: req.user?.id }, 'manual ETL trigger received');
 
   // Fire-and-forget — caller monitors via /dashboard/summary
@@ -180,6 +183,37 @@ router.post('/etl/run', requireAuth, (req, res) => {
     message: 'ETL run started',
     hint: 'Monitor status at GET /api/marketing/dashboard/summary',
   });
+});
+
+// ─── POST /api/marketing/ai/brief ────────────────────────────────────
+router.post('/ai/brief', requireMarketing, async (req, res) => {
+  try {
+    const brief = await generateStrategicBrief();
+    if (brief.error) {
+      return res.status(502).json({ error: brief.error, generated_at: brief.generated_at });
+    }
+    res.json(brief);
+  } catch (err) {
+    log.error({ err, route: 'POST /ai/brief' }, 'strategic brief failed');
+    res.status(503).json({ error: 'Brief generation failed' });
+  }
+});
+
+// ─── GET /api/marketing/product-intelligence ─────────────────────────
+router.get('/product-intelligence', requireMarketing, async (req, res) => {
+  try {
+    const { getEtlSummary, getPriceHistory, getRecentAlerts, PRODUCT_CATEGORIES } =
+      await import('../lib/marketIntel/productIntelligence.js');
+    const [summary, recentAlerts, priceHistory] = await Promise.all([
+      getEtlSummary(),
+      getRecentAlerts(),
+      getPriceHistory(7),
+    ]);
+    res.json({ categories: PRODUCT_CATEGORIES, summary, recent_alerts: recentAlerts, price_history: priceHistory });
+  } catch (err) {
+    log.error({ err, route: 'GET /product-intelligence' }, 'product intel failed');
+    res.status(503).json({ error: 'Product intelligence unavailable' });
+  }
 });
 
 export default router;

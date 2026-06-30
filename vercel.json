@@ -21,6 +21,10 @@
       "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/sync/:path*"
     },
     {
+      "source": "/ml/:path*",
+      "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/ml/:path*"
+    },
+    {
       "source": "/logistica",
       "destination": "/index.html"
     },
@@ -31,7 +35,7 @@
   ],
   "headers": [
     {
-      "source": "/(api|auth|calc|sync)/(.*)",
+      "source": "/(api|auth|calc|sync|ml)/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "https://calculadora-bmc.vercel.app" },
         { "key": "Access-Control-Allow-Methods", "value": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS" },
@@ -54,7 +58,7 @@
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com https://storage.googleapis.com https://drive.google.com https://cdn.shopify.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://content.googleapis.com https://*.run.app https://cdn.shopify.com; frame-src https://accounts.google.com https://content.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com https://storage.googleapis.com https://drive.google.com https://cdn.shopify.com https://*.mlstatic.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://content.googleapis.com https://*.run.app https://cdn.shopify.com; frame-src https://accounts.google.com https://content.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'self'"
         }
       ]
     },

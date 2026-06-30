@@ -1,0 +1,422 @@
+[
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L0-shell-mobile.html",
+    "layer": "L0",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L0-shell-tablet.html",
+    "layer": "L0",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L0-shell-desktop.html",
+    "layer": "L0",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L1-wizard-mobile.html",
+    "layer": "L1",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L1-wizard-tablet.html",
+    "layer": "L1",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L1-wizard-desktop.html",
+    "layer": "L1",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L2-visor-mobile.html",
+    "layer": "L2",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L2-visor-tablet.html",
+    "layer": "L2",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L2-visor-desktop.html",
+    "layer": "L2",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L3-hub-mobile.html",
+    "layer": "L3",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L3-hub-tablet.html",
+    "layer": "L3",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "L3-hub-desktop.html",
+    "layer": "L3",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L0-shell-mobile.html",
+    "layer": "L0",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L0-shell-tablet.html",
+    "layer": "L0",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L0-shell-desktop.html",
+    "layer": "L0",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L1-wizard-mobile.html",
+    "layer": "L1",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L1-wizard-tablet.html",
+    "layer": "L1",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L1-wizard-desktop.html",
+    "layer": "L1",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L2-visor-mobile.html",
+    "layer": "L2",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L2-visor-tablet.html",
+    "layer": "L2",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L2-visor-desktop.html",
+    "layer": "L2",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L3-hub-mobile.html",
+    "layer": "L3",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L3-hub-tablet.html",
+    "layer": "L3",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "L3-hub-desktop.html",
+    "layer": "L3",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L0-shell-mobile.html",
+    "layer": "L0",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L0-shell-tablet.html",
+    "layer": "L0",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L0-shell-desktop.html",
+    "layer": "L0",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L1-wizard-mobile.html",
+    "layer": "L1",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L1-wizard-tablet.html",
+    "layer": "L1",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L1-wizard-desktop.html",
+    "layer": "L1",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L2-visor-mobile.html",
+    "layer": "L2",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L2-visor-tablet.html",
+    "layer": "L2",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L2-visor-desktop.html",
+    "layer": "L2",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L3-hub-mobile.html",
+    "layer": "L3",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L3-hub-tablet.html",
+    "layer": "L3",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "L3-hub-desktop.html",
+    "layer": "L3",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L0-shell-mobile.html",
+    "layer": "L0",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L0-shell-tablet.html",
+    "layer": "L0",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L0-shell-desktop.html",
+    "layer": "L0",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L1-wizard-mobile.html",
+    "layer": "L1",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L1-wizard-tablet.html",
+    "layer": "L1",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L1-wizard-desktop.html",
+    "layer": "L1",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L2-visor-mobile.html",
+    "layer": "L2",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L2-visor-tablet.html",
+    "layer": "L2",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L2-visor-desktop.html",
+    "layer": "L2",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L3-hub-mobile.html",
+    "layer": "L3",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L3-hub-tablet.html",
+    "layer": "L3",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "L3-hub-desktop.html",
+    "layer": "L3",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L0-shell-mobile.html",
+    "layer": "L0",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L0-shell-tablet.html",
+    "layer": "L0",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L0-shell-desktop.html",
+    "layer": "L0",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L1-wizard-mobile.html",
+    "layer": "L1",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L1-wizard-tablet.html",
+    "layer": "L1",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L1-wizard-desktop.html",
+    "layer": "L1",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L2-visor-mobile.html",
+    "layer": "L2",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L2-visor-tablet.html",
+    "layer": "L2",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L2-visor-desktop.html",
+    "layer": "L2",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L3-hub-mobile.html",
+    "layer": "L3",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L3-hub-tablet.html",
+    "layer": "L3",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "L3-hub-desktop.html",
+    "layer": "L3",
+    "bp": "Desktop"
+  }
+]

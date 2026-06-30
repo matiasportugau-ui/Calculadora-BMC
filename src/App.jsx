@@ -22,6 +22,10 @@ const TUTORIAL_ENABLED = import.meta.env.VITE_FEATURE_TUTORIAL_MODE !== "false";
 import { TutorialProvider } from "./components/tutorial/TutorialProvider.jsx";
 import TutorialOverlay from "./components/tutorial/TutorialOverlay.jsx";
 import FloatingTutorialButton from "./components/tutorial/FloatingTutorialButton.jsx";
+import BmcChatPanel from "./components/BmcChatPanel.jsx";
+import DesignPreviewGate from "./components/preview/DesignPreviewGate.jsx";
+
+const DesignMockupsPage = lazy(() => import("./components/preview/DesignMockupsPage.jsx"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,7 +52,7 @@ const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUni
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
 const BugReportsList = lazy(() => import("./components/BugReportsList.jsx"));
-const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
+const BmcPlanosModule = lazy(() => import("./components/BmcPlanosModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
@@ -78,11 +82,12 @@ function Shell({ children }) {
   const isCalc = pathname === "/" || pathname === "/calculadora";
   return (
     <div
+      className="bmc-app-shell"
       style={{
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
-        background: "#F5F5F7",
+        background: "var(--g-bg-page, var(--bmc-bg, #F5F5F7))",
       }}
     >
       <div
@@ -101,6 +106,7 @@ function Shell({ children }) {
       {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
       {TUTORIAL_ENABLED && <FloatingTutorialButton />}
+      <BmcChatPanel />
     </div>
   );
 }
@@ -166,6 +172,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <DesignPreviewGate>
       <BmcAuthProvider>
       <TutorialProvider>
       <ActivityTracker />
@@ -313,15 +320,18 @@ export default function App() {
           }
         />
         <Route
-          path="/hub/plan-import"
+          path="/hub/planos"
           element={
             <RequireGrant module="plan-import" minLevel="read">
               <Suspense fallback={suspenseFallback}>
-                <BmcPlanImportModule />
+                <BmcPlanosModule />
               </Suspense>
             </RequireGrant>
           }
         />
+        {/* Rutas antiguas → módulo unificado «Planos» */}
+        <Route path="/hub/plan-import" element={<Navigate to="/hub/planos" replace />} />
+        <Route path="/hub/crear-plano" element={<Navigate to="/hub/planos" replace />} />
         <Route
           path="/mi-espacio"
           element={
@@ -459,12 +469,23 @@ export default function App() {
             </Suspense>
           }
         />
+        <Route
+          path="/preview/design-mockups"
+          element={
+            <Shell>
+              <Suspense fallback={suspenseFallback}>
+                <DesignMockupsPage />
+              </Suspense>
+            </Shell>
+          }
+        />
         <Route path="/wa" element={<Navigate to="/hub/wa" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </RoutedErrorBoundary>
       </TutorialProvider>
       </BmcAuthProvider>
+      </DesignPreviewGate>
     </BrowserRouter>
     </QueryClientProvider>
   );

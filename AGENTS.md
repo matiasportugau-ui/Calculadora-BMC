@@ -1,181 +1,40 @@
 # AGENTS.md — Calculadora BMC / Panelin Dashboard
 
-Instrucciones para agentes de IA (Codex, Claude Code, Cursor) que trabajen en este repositorio.
-Lee este archivo antes de cualquier tarea.
+Single Vite SPA (React 18) + Express 5 API + Postgres. Architecture at `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md`. State at `docs/team/PROJECT-STATE.md`.
 
-**Intervención humana (un paso por vez):** cuando un bloqueo sea **cm-0 / cm-1 / cm-2** (Meta, OAuth ML, ingest correo), seguí [`docs/team/HUMAN-GATES-ONE-BY-ONE.md`](docs/team/HUMAN-GATES-ONE-BY-ONE.md) — enlaces concretos, opciones de menú y “listo cuando”. Regla Cursor opcional: [`.cursor/rules/human-gates-bmc.mdc`](.cursor/rules/human-gates-bmc.mdc).
+## Quick Start
 
-**Deploy / verificación desde Cursor:** skill del repo [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md) — adjuntarla en el chat (“usá la skill bmc-calculadora-deploy-from-cursor”) o añadir una regla de proyecto que la cite cuando pidas redeploy Cloud Run / Vercel / smoke MATRIZ.
+| Command | Purpose |
+|---------|---------|
+| `npm run dev:full` | API (:3001) + Vite (:5173) via concurrently |
+| `doppler run -- npm run dev:full` | Same with secrets (project dir: `~/calculadora-bmc`) |
+| `npm run start:api` | API only |
+| `npm run gate:local:full` | **Pre-commit gate:** lint → test → build |
+| `npm run test:contracts` | API contract tests (needs server on :3001) |
 
----
+## Rules
 
-## Comandos disponibles
+- ES modules everywhere (`import`/`export`, no `require()`)
+- Node 24.x (`engines.node`). ALSA headers needed on Linux (`sudo apt-get install -y libasound2-dev`)
+- Disk precheck runs before `dev`/`build`; skip with `BMC_DISK_PRECHECK_SKIP=1`
+- Log with `pino`/`pino-http`, never `console.log` in prod
+- `503` = Sheets unavailable; never `500` for Sheets errors
+- Sheet IDs, tokens, URLs: never hardcoded, always from `.env` or `config.*`
+- Run `npm run lint` before any commit touching `src/`
+- After completing work, update `docs/team/PROJECT-STATE.md` (add entry in "Cambios recientes")
 
-| Comando | Cuándo usarlo |
-|---------|---------------|
-| `npm run lint` | Después de editar cualquier archivo en `src/` |
-| `npm test` | Después de cambios en lógica de negocio o helpers |
-| `npm run gate:local` | Una pasada local: `lint` → `test` (antes de PR) |
-| `npm run gate:local:full` | `lint` → `test` → `build` (antes de commit con cambios en `src/`) |
-| `npm run check` | Igual que `npm run gate:local` |
-| `npm run test:contracts` | Requiere servidor corriendo (`npm run start:api`); valida contrato API (`/api/*`, `/calc/*`, `GET /capabilities`) |
-| `npm run mcp:panelin` | Servidor MCP (stdio) proxy HTTP — requiere API corriendo; `BMC_API_BASE` opcional |
-| `npm run build` | Antes de hacer commit de cambios en `src/` |
-| `npm run start:api` | Para iniciar la API en puerto 3001 |
-| `npm run transportista:migrate` | Modo Transportista: aplica migraciones Postgres (`DATABASE_URL`) desde `transportista-cursor-package/migrations/` |
-| `npm run wa:migrate` | **WA Cockpit:** aplica migraciones SQL desde `wa-package/migrations/` (`wa_conversations`, `wa_messages`, `wa_suggestions`, `wa_quotes`, `wa_followups`, `wa_consent`, `wa_operator`, `wa_heartbeats`). Mismo `DATABASE_URL` que Transportista. Hub: [`docs/wa-cockpit/README.md`](docs/wa-cockpit/README.md). |
-| `npm run wa:reconcile` | **WA Cockpit:** reconciliador nocturno `wa_quotes.link` vs col AH `CRM_Operativo`; reporte `.runtime/wa-reconcile-<date>.json`. Requiere `DATABASE_URL` + `BMC_SHEET_ID` + `GOOGLE_APPLICATION_CREDENTIALS`. |
-| `npm run wa:purge-old` | **WA Cockpit (F5 TTL):** borra `wa_messages.text` y `raw` con `ts < now() - WA_TTL_DAYS` (default 180); mantiene metadata. `--dry-run` para preview. |
-| `npm run wa:ext:load` | **WA Cockpit:** abre Chrome con perfil dedicado (`.runtime/chrome-wa-profile/`) + extensión `calculadora-bmc-wa-extension/.output/chrome-mv3/` cargada + pestañas a `web.whatsapp.com` y `/hub/wa`. Sesión persistente entre runs. Variantes: `wa:ext:rebuild` (rebuild forzado), `wa:ext:watch` (HMR `wxt dev` en bg). |
-| `npm run wa:admin -- <args>` | **WA Module Pro Settings — Admin CLI** ([`scripts/wa-admin.mjs`](scripts/wa-admin.mjs)). Bootstrap del primer Owner sin magic link: `operator add --email <e> --name <n> --role owner`. Otros: `operator list/revoke --id`, `config get/set/dump --out file/import file [--dry-run]` (zod-validated), `flags list/get/toggle`, `webhook list/test --id`, `sla check [--verbose]`. Usa `DATABASE_URL`. Útil para emergencias y scripting CI. |
-| `npm run test:wa-pro` | **WA Module Pro Settings — integration tests** (requiere `DATABASE_URL` con migraciones aplicadas): corre en serie `wa-config`, `wa-operator-auth`, `wa-rules`, `wa-webhooks`, `wa-sla`. Cada test skipea limpio si la DB no está alcanzable. |
-| `npm run followup` | Follow-ups / recordatorios (CLI `scripts/followup.mjs`; almacén local `.followup/` o `FOLLOWUP_STORE_PATH`); API `GET/POST /api/followups` |
-| `npm run program:status` | Programa maestro multi-área: fase actual, progreso ~%, próximos pasos (`docs/team/orientation/programs/bmc-panelin-master.json`) |
-| `npm run project:compass` | **Seguimiento unificado:** `program:status` + follow-ups vencidos (`followup due`). Índice: `docs/team/PROJECT-SCHEDULE.md`. Alias: `npm run schedule` |
-| `npm run channels:onboarding` | **Arranque canales (orden WA → ML → Correo):** ejecuta `smoke:prod` + `project:compass` e indica el doc [`docs/team/PROCEDIMIENTO-CANALES-WA-ML-CORREO.md`](docs/team/PROCEDIMIENTO-CANALES-WA-ML-CORREO.md). `-- --skip-smoke` / `--skip-compass` |
-| `npm run channels:automated` | **Solo máquina, máximo paralelo:** smoke prod + follow-ups + snapshot programa + `humanGate` (cm-0/1/2). JSON en stdout; `-- --write` → `.channels/last-pipeline.json`. Ver [`docs/team/orientation/ASYNC-RUNBOOK-UNATTENDED.md`](docs/team/orientation/ASYNC-RUNBOOK-UNATTENDED.md). **CI:** job `channels_pipeline` en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (push/PR `main`). |
-| `npm run smoke:prod` | Smoke contra API pública (URL canónica en script): `GET /health`, `/capabilities`, chequeo `public_base_url`, **`GET /api/actualizar-precios-calculadora` (CSV MATRIZ, crítico)**, `GET /auth/ml/status`, `POST /api/crm/suggest-response` (IA). `BMC_API_BASE` / `SMOKE_BASE_URL`; `-- --json`; omitir solo MATRIZ: `SMOKE_SKIP_MATRIZ=1` o `-- --skip-matriz` |
-| `npm run productos-maestro:reconcile` | **Nuevo (Productos Maestro)**: Genera reporte de gaps entre MATRIZ de precios y Stock E-Commerce. Incluye JSON + Markdown legible en `.runtime/productos-maestro-reconcile-*.{json,md}`. Recomendado después de cambios en mapeos o datos de inventario. |
-| `npm run smoke:bmc-pdf` | Cotización de prueba (`solo_techo`, techo 2 zonas) + HTML en `.runtime/bmc-pdf-smoke.html`; si la API corre (`npm run start:api`), intenta `POST /api/pdf/generate` → `.runtime/bmc-pdf-smoke.pdf`. Var.: `BMC_PDF_SMOKE_API`, `--no-pdf`. Si el renderer devuelve `503` (Chromium), abrir el HTML e imprimir a PDF. |
-| `npm run capabilities:snapshot` | Regenera `docs/api/AGENT-CAPABILITIES.json` desde `server/agentCapabilitiesManifest.js` (base: `CAPABILITIES_SNAPSHOT_BASE` → `PUBLIC_BASE_URL` → host canónico Cloud Run). |
-| `npm run email:ingest-snapshot` | Bridge correo: lee `snapshot-latest.json` (repo IMAP hermano) y POST `/api/crm/ingest-email` (Bearer: `EMAIL_INGEST_TOKEN` si existe, si no `API_AUTH_TOKEN`). `--dry-run`, `--limit`, `--file`, `BMC_EMAIL_SNAPSHOT_PATH`. Dedupe `.email-ingest/`. Ver `docs/team/panelsim/EMAIL-ADMINISTRATOR.md` |
-| `GET /api/email/panelsim-summary` | Con API arriba y **`API_AUTH_TOKEN`**: lee `PANELSIM-STATUS.json` + `PANELSIM-ULTIMO-REPORTE.md` del repo IMAP (`BMC_EMAIL_INBOX_REPO`). Query opcional `reportMaxChars`. Ver [`docs/team/panelsim/EMAIL-GPT-THUNDERBIRD-WORKFLOW.md`](docs/team/panelsim/EMAIL-GPT-THUNDERBIRD-WORKFLOW.md) |
-| `POST /api/email/draft-outbound` | Borrador saliente proveedor/cliente (JSON `role`, `hechos`, opcional `tono`, `asunto_contexto`). **No envía** mail — copiar a Thunderbird. Misma auth Bearer que cockpit |
-| Custom GPT **solo correo** | OpenAPI mínimo [`docs/openapi-email-gpt.yaml`](docs/openapi-email-gpt.yaml); guía Builder [`docs/team/panelsim/GPT-EMAIL-AGENT-BUILDER.md`](docs/team/panelsim/GPT-EMAIL-AGENT-BUILDER.md) — 2 Actions, sin `/calc` ni ML |
-| `npm run panelsim:session` | **PANELSIM sesión completa:** `env:ensure` + `panelsim:env` + `panelsim:email-ready` + API en background (opc.) + `ml:verify` + `project:compass` + `channels:automated` (smoke prod + humanGate) + `panelsim-ml-crm-sync` + informe `docs/team/panelsim/reports/PANELSIM-SESSION-STATUS-*.md`. **Default = todo lo anterior.** `-- --quick` = sin compass/canales/env-ensure ni `ml:verify`. `-- --days N`, `--no-start-api`, `--skip-email`, `--skip-sheets`, `--skip-channels`, `--skip-compass`, `--skip-ml-verify`, `--skip-env-ensure`. Ver `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` §5.1 |
-| `npm run panelsim:env` | Chequeo credenciales Google + IDs de planillas (MATRIZ); `scripts/ensure-panelsim-sheets-env.sh` |
-| `npm run panelsim:email-ready` | Sync IMAP + reporte en repo hermano; `scripts/panelsim-email-ready.sh` |
-| `npm run env:ensure` | Crea `.env` desde `.env.example` si falta (`scripts/ensure-env.sh`) |
-| **Google Drive (GIS)** | Skill [`.cursor/skills/bmc-google-drive-oauth/SKILL.md`](.cursor/skills/bmc-google-drive-oauth/SKILL.md); agente [`.cursor/agents/bmc-google-drive-oauth.md`](.cursor/agents/bmc-google-drive-oauth.md). **Todo en uno:** `npm run drive:one-shot -- '<client-id>.apps.googleusercontent.com'` (`scripts/drive-oauth-one-shot.sh`). Resto: `npm run drive:bootstrap`, `npm run drive:configure`, `npm run drive:vercel-env`, `npm run verify:google-drive-oauth`, `npm run verify:google-drive-dist`. Workflows: `drive-oauth-verify.yml`, `drive-oauth-dist-verify.yml`. Plan: [`docs/GOOGLE-DRIVE-OAUTH-AUTOMATION-PLAN.md`](docs/GOOGLE-DRIVE-OAUTH-AUTOMATION-PLAN.md). |
-| `npm run open:email-env` | Abre `.env` del repo de correo en el editor |
-| `npm run ml:verify` | Con API arriba: comprueba `/health` y OAuth ML (`/auth/ml/start?mode=json`); ver `docs/ML-OAUTH-SETUP.md` |
-| `npm run ml:sim-batch` | Exporta una tanda de preguntas ML para simulación en ciego o con respuestas humanas (`--mode blind\|gold`, `--offset`, `--size`); ver `docs/team/panelsim/reports/ML-SIM-ITERATIVE-BLIND-IMPROVEMENT.md` |
-| `npm run ml:ai-audit` | Descarga **todas** las preguntas y órdenes ML vía API local, agrega estadísticas y genera informe Markdown con IA (misma cadena de modelos que `suggest-response`). `--dry-run` = solo JSON agregado. Requiere API + keys en `.env` |
-| `npm run ml:corpus-export` | Exporta **todo** el historial de preguntas/respuestas ML a JSON (`docs/team/panelsim/reports/ml-corpus/exports/`; gitignored). `--minimal` trunca textos. Ver `docs/team/panelsim/knowledge/ML-TRAINING-SYSTEM.md` |
-| `npm run ml:pending-workup` | Preguntas ML **UNANSWERED**: checklist de puntos faltantes, precio ML vs Matriz, borrador sugerido (no publica en ML). `--json` |
-| `npm run ml:cloud-run` | Sincroniza vars a Cloud Run desde `.env`: ML OAuth, `PUBLIC_BASE_URL`, GCS tokens, y si están definidas: `WEBHOOK_VERIFY_TOKEN`, `BMC_SHEET_ID`, `API_AUTH_TOKEN` / `API_KEY`. Ver [`docs/ML-OAUTH-SETUP.md`](docs/ML-OAUTH-SETUP.md) §6–8 |
-| `./scripts/cloud-run-matriz-sheets-secret.sh` | Cloud Run **`panelin-calc`**: monta el JSON de Sheets desde Secret Manager (default secret `GOOGLE_APPLICATION_CREDENTIALS` → `/secrets/sa-key.json`) y setea `BMC_MATRIZ_SHEET_ID`; otorga `secretAccessor` al runtime SA. `SECRET_NAME=…` / `BMC_MATRIZ_SHEET_ID=…` opcionales. Checklist: [`docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md`](docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md) (Fase 2b). |
-| `npm run mac:storage-audit` | macOS (solo lectura): snapshot de disco/memoria y tamaños de carpetas habituales; plan en [`.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md`](.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md). |
-| `npm run disk:precheck` | Comprueba espacio libre en el volumen del repo (default mín. **1024 MiB**). Se ejecuta **antes** de `npm run dev` (`predev`) y `npm run build` (`prebuild`). Si falla: mensaje con instrucciones; en Cursor usar regla/skill **disk-space-recovery** (propuesta agrupada → **tu aprobación** → limpiar → reanudar). `BMC_DISK_PRECHECK_SKIP=1`, `BMC_DISK_MIN_FREE_MIB`, `BMC_DISK_PRECHECK_MODE=warn` — ver [`docs/team/orientation/DISK-SPACE-RECOVERY-AGENT.md`](docs/team/orientation/DISK-SPACE-RECOVERY-AGENT.md). |
-| `npm run session:video-deps` | Video-User-interactive-dev: comprueba **ffmpeg** y **node** en PATH. |
-| `npm run session:video-deps:ensure` | Igual; si falta **ffmpeg** en **macOS** con Homebrew, ejecuta **`brew install ffmpeg`**. Linux: solo mensaje (sin `sudo`). |
-| `npm run session:video-extract -- <video.mp4> [out_dir]` | Video-User-interactive-dev: **audio.wav** (16 kHz mono, pista completa) + **frames/** (default **1 JPG cada 5 s**, máx. **640 px**, JPEG comprimido). Env: `BMC_SESSION_VIDEO_FRAME_INTERVAL_SEC`, `BMC_SESSION_VIDEO_FRAME_MAX_WIDTH`, `BMC_SESSION_VIDEO_JPEG_Q`. Skill [`.cursor/skills/user-session-video-to-backlog/SKILL.md`](.cursor/skills/user-session-video-to-backlog/SKILL.md). |
-| `npm run session:video-ingest -- <ruta-video-iphone> [base_url]` | Copia el vídeo a `docs/team/ux-feedback/sessions/…`, corre **extract**, genera **metadata.json** y **CURSOR-CHAT-PROMPT.txt** para pegar en Cursor. Flujo “solo compartir vídeo” desde iPhone → Mac. **Método en chat:** decir **Video-User-interactive-dev** + path → informe `VIDEO-USER-INTERACTIVE-DEV-REPORT-*.md` + JSON — ver [`docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md`](docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md). |
-| **Live DevTools narrative** (MCP) | Con MCP **chrome-devtools** en Cursor (`.cursor/mcp.json`): decir **Live DevTools narrative** o **Narrativa en vivo DevTools**; el agente navega (default **`https://calculadora-bmc.vercel.app`**), extrae consola/red/snapshots y cruza con narrativa o transcripción pegada → `LIVE-DEVTOOLS-NARRATIVE-REPORT-*.md`. Skill [`.cursor/skills/live-devtools-narrative-mcp/SKILL.md`](.cursor/skills/live-devtools-narrative-mcp/SKILL.md), plantilla [`TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md`](docs/team/ux-feedback/TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md). |
-| `npm run pre-deploy` | Checklist pre-deploy: health, contratos (API en 3001 o `BMC_API_BASE`), **paso 2** carga `.env` para comprobar `BMC_SHEET_ID` / `GOOGLE_APPLICATION_CREDENTIALS`, **paso 4** cuenta ítems abiertos `- [ ]` en `docs/team/PROJECT-STATE.md` (canónico; `docs/PROJECT-STATE.md` es solo redirección) |
-| `npm run expert:workflow` | Flujo experto local → prod (URLs, gates, smoke). Doc [`docs/team/orientation/EXPERT-DEV-TRACEABILITY.md`](docs/team/orientation/EXPERT-DEV-TRACEABILITY.md). |
-| `npm run expert:checkpoint` | Snapshot local: versión `package.json`, git sha/rama/dirty, hints de restore → `.cursor/dev-checkpoints/` (gitignored). `-- --message="…"` |
-| `npm run expert:checkpoints` | Lista checkpoints (más reciente primero). |
-| `npm run expert:restore-hint -- <id>` | Pasos manuales para volver al commit guardado (`git checkout`, gates). |
-| `npm run magazine:daily` | Digest local: `PROJECT-STATE` + git → `.runtime/magazine-daily/*.html` / `.txt` |
-| `npm run magazine:daily:send` | Igual + correo SMTP si `SMTP_USER` / `SMTP_PASS` en `.env` (default TO: `matias.portugau@gmail.com`). Doc: [`docs/team/orientation/MAGAZINE-DAILY-EMAIL.md`](docs/team/orientation/MAGAZINE-DAILY-EMAIL.md) |
-| `npm run magazine:daily:dry` | Muestra asunto y tamaño; no escribe ni envía |
-| `npm run magazine:schedule:install` | macOS: LaunchAgent diario (~08:00 Montevideo) para `magazine:daily:send` |
-| `npm run local:stack:launchd:install` | macOS: LaunchAgent `com.bmc.calculadora-localstack` — al login levanta API `:3001` + Vite `:5173` si no están arriba; logs `.runtime/local-stack-launchd*.log` |
-| `npm run local:stack:launchd:uninstall` | Quita el LaunchAgent del stack local (`unload` + borra plist en `~/Library/LaunchAgents/`) |
-| `npm run wa:admin` | CLI de administración del módulo WhatsApp Pro (operadores, config, flags, webhooks, SLA). |
-| `npm run wa:gen-docs` | Regenera la documentación técnica de configuración desde el schema Zod. |
+## Architecture
 
-**Loops de validación:**
+- `server/index.js` — mounts all routes on `/api`
+- `server/routes/bmcDashboard.js` — main `/api/*` routes. Calc routes in `routes/calc.js`
+- AI/agent coordination: `docs/team/` — roles, skills, project state, human gates
+- Before working: read `docs/team/PROJECT-STATE.md`
+- Human-gated steps (cm-0/1/2: Meta OAuth, ML OAuth, email ingest): follow `docs/team/HUMAN-GATES-ONE-BY-ONE.md`
 
-1. Orden recomendado antes de commit en `src/`: **`lint` → `test` → `build`** (`npm run gate:local:full`).
-2. Editar código → `npm run lint` → corregir errores → `npm test` → commit (o `npm run gate:local`).
-3. Cambiar rutas API → `npm run start:api` en background → `npm run test:contracts`
+## Do Not
 
-**CRM cockpit (HTTP):** `GET/POST /api/crm/cockpit/*` — lectura de fila, `quote-link` (col AH), `approval` (AI), `mark-sent` (AJ), `send-approved` (ML o WhatsApp). Requiere **`API_AUTH_TOKEN`** en `.env` y header `Authorization: Bearer <token>` (o `X-Api-Key`). Doc: [`docs/team/panelsim/CRM-OPERATIVO-COCKPIT.md`](docs/team/panelsim/CRM-OPERATIVO-COCKPIT.md) §4.
-
----
-
-## Estructura del proyecto
-
-```
-server/
-  index.js                  # Entry point — monta rutas en /api, sirve /finanzas; GET /capabilities
-  gptActions.js             # GPT_ACTIONS (compartido con /calc/gpt-entry-point y /capabilities)
-  routes/
-    bmcDashboard.js         # Todas las rutas del dashboard BMC (/api/*)
-    calc.js                 # Rutas de la calculadora
-    shopify.js              # Integración Shopify
-scripts/
-  validate-api-contracts.js # Validador de contrato API (requiere servidor)
-  run_audit.sh              # Audit completo del sistema
-tests/
-  validation.js             # Tests unitarios — corren sin servidor (CI)
-src/                        # Frontend React (Vite)
-docs/
-  team/                     # Equipo de agentes — PROJECT-STATE, knowledge, judge, panelsim/
-  google-sheets-module/     # Hub: README.md — MAPPER-PRECISO, SYNC equipo, VARIABLES 1:1, inventory, planilla-map
-  bmc-dashboard-modernization/ # DASHBOARD-INTERFACE-MAP, implementation plans
-.cursor/
-  agents/                   # Definiciones de agentes del equipo
-  skills/                   # Skills por rol
-```
-
----
-
-## Convenciones de código
-
-- **Módulos:** ES modules (`import`/`export`). No usar `require()`.
-- **Rutas API:** Siempre en `server/routes/bmcDashboard.js`, montadas en `/api`.
-- **Error semantics:** `503` = Sheets no disponible. `200 + data vacía` = sin datos. Nunca `500` para errores de Sheets.
-- **Sheet IDs:** Nunca hardcoded. Siempre desde `config.*` o `process.env.*`.
-- **Credenciales:** Nunca en código. Solo en `.env` (no commitear).
-- **CORS:** En desarrollo puede ser abierto. En producción debe restringirse a dominios conocidos.
-- **Logging:** Usar `pino` / `pino-http`. No usar `console.log` en producción.
-
----
-
-## Contexto del equipo de agentes
-
-Este proyecto usa un equipo de **agentes IA coordinados** cuyo listado canónico es **`docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2** (N roles) más **§2.2** (skills transversales consideradas en full team). Antes de trabajar:
-
-1. Leer `docs/team/PROJECT-STATE.md` — estado actual, pendientes, cambios recientes.
-2. Si el usuario trabaja por sesiones o pide orientación de “qué sigue”: leer `docs/team/SESSION-WORKSPACE-CRM.md` (foco del día, próximos pasos, checklist auto-start).
-3. Leer `docs/team/knowledge/<TuRol>.md` si existe. **SIM / PANELSIM:** `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` e índice `docs/team/panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md` (hub `docs/team/panelsim/README.md`). **Correo / bandeja (repo aparte):** skill `.cursor/skills/panelsim-email-inbox/` — variable opcional `BMC_EMAIL_INBOX_REPO` en `.env` (ver `.env.example`).
-4. Consultar `docs/google-sheets-module/README.md` (hub) y `planilla-inventory.md` para Sheets; mapeo canónico en `MAPPER-PRECISO-PLANILLAS-CODIGO.md` y sync de accesos en `SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md`.
-5. Consultar `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md` para estructura del dashboard.
-6. **Pedidos vagos o “quién hace esto”:** agente `.cursor/agents/bmc-team-liaison.md` y skill `.cursor/skills/bmc-team-liaison/SKILL.md` — brief + sugerencia de siguiente rol/skill y gates; modo refinamiento de input: `.cursor/skills/contribut-input-mode/SKILL.md`.
-7. **Panelin interno / orquestador en app (Claude u otro agente en terminal):** [`docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md`](docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md) — fases RBAC → tools → cola de aprobación; prompts listos para pegar en `claude "…"`.
-8. **AE-Agent × Calculadora — contrato de cotización:** [`docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md`](docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md) — todas las tools de cotización (`calcular_cotizacion` / `presupuesto_libre` / `generar_pdf`) atraviesan `127.0.0.1:${config.port}/calc/*` vía [`server/lib/calcLoopbackClient.js`](server/lib/calcLoopbackClient.js); provenance `source: "ae_agent"` y archivado en `quoteRegistry`.
-
-En **full team run** («Invoque full team» / «Equipo completo»): tras el paso 0 del Orquestador, el rol **MATPROMT** (`matprompt`) ejecuta el **paso 0a** y publica prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` (o `docs/team/matprompt/MATPROMT-RUN-*.md`). Cada agente debe leer **su** subsección del bundle antes de su paso.
-
-Al terminar una tarea:
-
-- Actualizar `docs/team/PROJECT-STATE.md` (sección "Cambios recientes" y "Pendientes").
-- Si el cambio afecta a otros agentes, consultar tabla de propagación en `docs/team/PROJECT-TEAM-FULL-COVERAGE.md §4`.
-
----
-
-## Lo que NO hacer
-
-- No hardcodear sheet IDs, tokens, ni URLs de producción.
-- No commitear `.env` ni archivos con credenciales.
-- No usar `npm audit fix --force` sin aprobación de Matias (puede romper vite).
-- No modificar `docs/team/PROJECT-STATE.md` sin agregar entrada en "Cambios recientes".
-- No saltear `npm run lint` antes de commit en `src/`.
-
----
-
-## Cursor Cloud specific instructions
-
-### Services overview
-
-| Service | Port | Start command |
-|---------|------|---------------|
-| Express API | 3001 | `npm run start:api` |
-| Vite dev server (React SPA) | 5173 | `npm run dev` |
-| Both together | 3001 + 5173 | `npm run dev:full` |
-
-### Key commands
-
-Standard lint/test/build commands are documented in the table at the top of this file and in `README.md`. Use `npm run gate:local:full` to run the full local gate (lint + test + build).
-
-### Non-obvious caveats
-
-- **`easymidi` native dependency:** `npm install` requires `libasound2-dev` (ALSA headers) on Linux. Without it, the `midi` native addon (pulled by `easymidi`) fails to compile. Install via `sudo apt-get install -y libasound2-dev` before `npm install`.
-- **Node.js:** `package.json` `engines.node` is **24.x** (alinea Vercel con `@sparticuz/chromium`, que exige `>=22.17.0`). Local: `nvm install 24 && nvm use 24` (o equivalente).
-- **Disk precheck:** `npm run dev` and `npm run build` both run `disk:precheck` as a pre-hook. In cloud/CI environments with ample disk, set `BMC_DISK_PRECHECK_SKIP=1` to skip it, or it may fail on unusual filesystem layouts.
-- **`.env` file:** `npm run env:ensure` creates `.env` from `.env.example` (non-destructive). Most features work without credentials, but Google Sheets integration, MercadoLibre OAuth, and AI-powered CRM features require secrets in `.env`.
-- **API health check:** `curl http://localhost:3001/health` — returns `{"ok":true,...}`. The `hasSheets` and `hasTokens` fields will be `false` without Google/ML credentials configured.
-- **Tests run without a server:** `npm test` runs offline unit tests (288 assertions). `npm run test:contracts` requires the API server running on port 3001.
+- Hardcode sheet IDs, tokens, prod URLs
+- Commit `.env` or credentials
+- Use `npm audit fix --force` (can break Vite)
+- Skip `npm run lint` before committing `src/` changes
+- Modify `PROJECT-STATE.md` without a "Cambios recientes" entry

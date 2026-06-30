@@ -40,5 +40,20 @@ assert(
 );
 assert("empty conditions do not match", !evaluateConditions({}, ctx));
 
+// matches operator — normal use
+assert(
+  "matches regex on body",
+  evaluateConditions({ all: [{ field: "body", op: "matches", value: "cotiz.*techo" }] }, ctx),
+);
+// ReDoS guard: an over-long operator-supplied pattern is rejected (returns false),
+// not compiled/run — so a catastrophic-backtracking pattern can't lock the loop.
+assert(
+  "matches rejects over-long pattern (ReDoS guard)",
+  !evaluateConditions(
+    { all: [{ field: "body", op: "matches", value: "a".repeat(201) }] },
+    ctx,
+  ),
+);
+
 console.log(`\nomniAutomationConditions: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

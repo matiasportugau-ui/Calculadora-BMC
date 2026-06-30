@@ -1,9 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { config } from "../config.js";
+import { extractVisionJSON } from "./visionExtract.js";
 
 const VISION_SCHEMA = `{
   "techoZonas": [{"largoM": number, "anchoM": number}],
+  "footprintPoligono": [[x, y]] | null,
+  "ambientes": [{"nombre": string, "x": number, "y": number, "w": number, "h": number}],
+  "aberturasPlano": [{"tipo": "door"|"window", "x1": number, "y1": number, "x2": number, "y2": number}],
   "tipoAguas": "una_agua" | "dos_aguas" | null,
   "pendienteGrados": number | null,
   "paredAltoM": number | null,
@@ -19,6 +20,8 @@ Tu tarea es extraer dimensiones de superficies (techos y paredes) del plano y de
 
 REGLAS:
 - Extraé todas las zonas de techo que identifiques como rectángulos independientes (con sus largos y anchos en metros)
+- Si el contorno del edificio es una sola figura conectada (rectángulo, L, T, U…), devolvé además "footprintPoligono": la lista ordenada de vértices [x, y] del PERÍMETRO en metros, en sentido antihorario, con origen abajo-izquierda (eje Y hacia arriba). Si no podés determinar el perímetro con seguridad, dejá footprintPoligono en null.
+- Si identificás ambientes/locales, devolvé "ambientes" como rectángulos {nombre, x, y, w, h} en metros (mismo origen Y-up). Si identificás puertas/ventanas, devolvé "aberturasPlano" como segmentos {tipo, x1, y1, x2, y2}. Si no estás seguro, devolvé listas vacías.
 - Si hay cotas en el plano, respetá esas medidas exactas
 - Si el plano es un DXF, interpretá las entidades DIMENSION y TEXT que contienen medidas
 - El tipo de panel (familia, espesor) NO aparece en planos arquitectónicos — no lo inventes
@@ -29,115 +32,66 @@ REGLAS:
 ESQUEMA JSON esperado:
 ${VISION_SCHEMA}`;
 
-export async function interpretPlan(fileBuffer, mimeType, filename) {
-  const isImage = mimeType.startsWith("image/");
-  const isPdf = mimeType === "application/pdf";
-  const isDxf = (filename || "").toLowerCase().endsWith(".dxf") || mimeType === "text/plain";
-
-  if (!config.anthropicApiKey && !config.geminiApiKey) {
-    throw Object.assign(
-      new Error("Sin proveedor IA configurado. Configurá ANTHROPIC_API_KEY o GEMINI_API_KEY."),
-      { status: 503 }
-    );
-  }
-
-  let extracted;
-  if (config.anthropicApiKey) {
-    extracted = await callClaude(fileBuffer, mimeType, isImage, isPdf, isDxf);
-  } else {
-    extracted = await callGemini(fileBuffer, mimeType, isImage, isPdf, isDxf);
-  }
-
-  return mapToBmc(extracted);
-}
-
-async function callClaude(buffer, mimeType, isImage, isPdf, isDxf) {
-  const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
-  const content = [];
-
-  if (isImage) {
-    content.push({
-      type: "image",
-      source: { type: "base64", media_type: mimeType, data: buffer.toString("base64") },
-    });
-  } else if (isPdf) {
-    content.push({
-      type: "document",
-      source: { type: "base64", media_type: "application/pdf", data: buffer.toString("base64") },
-    });
-  } else if (isDxf) {
-    const dxfText = buffer.toString("utf-8").slice(0, 40_000);
-    content.push({ type: "text", text: `Archivo DXF de plano:\n\n${dxfText}` });
-  } else {
-    throw Object.assign(new Error("Tipo de archivo no procesable"), { status: 400 });
-  }
-
-  content.push({
-    type: "text",
-    text: "Analizá este plano y devolvé el JSON con las dimensiones según el esquema indicado.",
-  });
-
-  const resp = await anthropic.messages.create({
-    model: config.anthropicPlanModel || config.anthropicChatModel || "claude-sonnet-4-6",
-    max_tokens: 1024,
+/**
+ * Interpreta un plano (imagen/PDF/DXF) usando TODOS los proveedores de IA
+ * configurados, con fallback en cadena. Permite elegir proveedor/modelo.
+ * @param {Buffer} fileBuffer
+ * @param {string} mimeType
+ * @param {string} filename
+ * @param {object} [opts]
+ * @param {string} [opts.provider]  proveedor preferido (claude|gemini|openai|grok)
+ * @param {string} [opts.model]     modelo específico para ese proveedor
+ */
+export async function interpretPlan(fileBuffer, mimeType, filename, opts = {}) {
+  const { json, provider, providerLabel, model } = await extractVisionJSON({
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content }],
+    instruction: "Analizá este plano y devolvé SOLO el JSON con las dimensiones según el esquema indicado.",
+    buffer: fileBuffer,
+    mimeType,
+    filename,
+    preferProvider: opts.provider,
+    model: opts.model,
   });
-
-  if (resp.stop_reason === "max_tokens") {
-    throw Object.assign(
-      new Error("Respuesta IA truncada — plano demasiado complejo. Intentá con una sección más simple."),
-      { status: 422 }
-    );
-  }
-
-  return parseAiJson(resp.content[0]?.text || "");
+  const mapped = mapToBmc(json);
+  return { ...mapped, ai: { provider, providerLabel, model } };
 }
 
-async function callGemini(buffer, mimeType, isImage, isPdf, isDxf) {
-  const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-  const model = genAI.getGenerativeModel({ model: config.geminiChatModel || "gemini-2.0-flash" });
-
-  const parts = [];
-  if (isImage) {
-    parts.push({ inlineData: { data: buffer.toString("base64"), mimeType } });
-  } else if (isPdf) {
-    parts.push({ inlineData: { data: buffer.toString("base64"), mimeType: "application/pdf" } });
-  } else if (isDxf) {
-    const dxfText = buffer.toString("utf-8").slice(0, 40_000);
-    parts.push({ text: `Archivo DXF de plano:\n\n${dxfText}` });
-  } else {
-    throw Object.assign(new Error("Tipo de archivo no procesable"), { status: 400 });
+/**
+ * Resuelve el footprint (polígono de huella, m, Y-up) para alimentar la
+ * exportación CAD (`server/lib/cad/*`). Prioriza el polígono de la visión;
+ * si no, arma un rectángulo cuando hay exactamente una zona.
+ * @returns {{ footprint: number[][]|null, source: string|null }}
+ */
+export function resolveFootprint(extracted, zonas) {
+  const poly = extracted?.footprintPoligono;
+  if (Array.isArray(poly) && poly.length >= 3) {
+    const pts = poly.map(p => [Number(p?.[0]), Number(p?.[1])]);
+    // Estricto: si cualquier vértice es inválido, se descarta el polígono entero
+    // (descartar vértices sueltos distorsionaría la huella).
+    const allValid = pts.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+    if (allValid) return { footprint: pts, source: "vision_polygon" };
   }
-
-  parts.push({ text: SYSTEM_PROMPT + "\n\nAnalizá y devolvé SOLO el JSON." });
-
-  const result = await model.generateContent({ contents: [{ role: "user", parts }] });
-  return parseAiJson(result.response.text());
+  if (Array.isArray(zonas) && zonas.length === 1) {
+    const { largo, ancho } = zonas[0];
+    if (largo > 0 && ancho > 0) {
+      return { footprint: [[0, 0], [largo, 0], [largo, ancho], [0, ancho]], source: "single_rect" };
+    }
+  }
+  return { footprint: null, source: null };
 }
 
-function parseAiJson(text) {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) {
-    throw Object.assign(
-      new Error("No se pudo extraer información dimensional del plano. Intentá con una imagen más clara o un DXF con cotas visibles."),
-      { status: 422 }
-    );
-  }
-  try {
-    return JSON.parse(match[0]);
-  } catch {
-    throw Object.assign(new Error("Respuesta IA con formato inválido"), { status: 422 });
-  }
-}
-
-function mapToBmc(extracted) {
+export function mapToBmc(extracted) {
   const warnings = [];
   const gaps = ["familia", "espesor"];
 
   const zonas = (extracted.techoZonas || [])
     .filter(z => z.largoM > 0 && z.anchoM > 0)
     .map(z => ({ largo: +Number(z.largoM).toFixed(2), ancho: +Number(z.anchoM).toFixed(2) }));
+
+  const { footprint, source: footprintSource } = resolveFootprint(extracted, zonas);
+  if (!footprint && zonas.length > 1) {
+    warnings.push("Múltiples zonas sin polígono de huella — el operador debe definir el perímetro para el plano CAD.");
+  }
 
   if (!extracted.tipoAguas) {
     warnings.push("Tipo de aguas no detectado — se asumió 1 agua");
@@ -189,9 +143,16 @@ function mapToBmc(extracted) {
     color: "Blanco",
   } : null;
 
+  const rooms = (Array.isArray(extracted.ambientes) ? extracted.ambientes : [])
+    .filter((r) => Number(r.w) > 0 && Number(r.h) > 0)
+    .map((r) => ({ name: String(r.nombre || "AMBIENTE"), x: +r.x, y: +r.y, w: +r.w, h: +r.h }));
+  const openings = (Array.isArray(extracted.aberturasPlano) ? extracted.aberturasPlano : [])
+    .filter((o) => [o.x1, o.y1, o.x2, o.y2].every((v) => Number.isFinite(Number(v))))
+    .map((o) => ({ type: o.tipo === "window" ? "window" : "door", x1: +o.x1, y1: +o.y1, x2: +o.x2, y2: +o.y2 }));
+
   return {
     ok: gaps.length === 0,
-    bmcPayload: { scenario, techo, pared },
+    bmcPayload: { scenario, techo, pared, footprint, footprintSource, rooms, openings },
     gaps,
     warnings,
     extractedRaw: extracted,

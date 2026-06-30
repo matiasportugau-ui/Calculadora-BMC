@@ -87,6 +87,32 @@ Run **after PR #406 merge** on staging Cloud Run (`panelin-calc` preview or stag
 
 ---
 
+## WAVE 4 gates (deals + HITL + eval)
+
+PR [#407](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/407) is gated by 3 checks. Each gate's
+**code path** is verified offline by the self-provisioning E2E; the gates themselves still need real
+staging data (real suggestions to review, real deals vs the CRM Sheet).
+
+**Local pre-check (sandbox-only, run anywhere):**
+```bash
+npm run omni:local-e2e
+```
+Stands up a throwaway Postgres, applies omni migrations, exercises HITL accept/reject + H4 eval stats +
+F3 reconcile drift, then tears down. Triple-guarded (dedicated `OMNI_E2E_DATABASE_URL`, local host, db
+name must contain `e2e`, must differ from `DATABASE_URL`) so it can never touch a real DB. Also runnable
+as part of the exit gate with `OMNI_E2E=1 npm run wave4:exit-gate` (off by default).
+
+**The 3 staging gates (run against staging Cloud Run with `OMNI_AI_ORCHESTRATOR_ENABLED=1`):**
+- **HITL accept/reject E2E** — `GET /api/omni/suggestions` → `POST /api/omni/suggestions/:id/accept` and
+  `/reject` with a `canales:write` Bearer. NOTE: accept/reject only flip `approval_state` + record eval;
+  they do **not** send a channel reply (that's the separate `POST /api/omni/conversations/:id/reply`).
+- **F3 dual-write reconcile drift < 10** — `DATABASE_URL=<staging> BMC_SHEET_ID=<id> npm run omni:reconcile-deals`
+  → JSON `{ drift_count, ok: drift_count < 10 }`.
+- **H4 eval report** — `GET /api/omni/ai/eval?task_key=suggest` → `{accepted, rejected, ...}` per prompt_version.
+
+Tier B (full HTTP+auth+route) was validated locally against the identity schema with a minted JWT; that
+path is not automated because it requires reconstructing Supabase roles/RLS (environment-specific).
+
 ## References
 
 - [`docs/transformation/wave-3/README.md`](../../transformation/wave-3/README.md)

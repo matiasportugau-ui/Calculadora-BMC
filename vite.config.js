@@ -81,6 +81,7 @@ export default defineConfig({
     proxy: {
       '/calc': { target: 'http://localhost:3001', changeOrigin: true },
       '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      '/chat': { target: 'http://localhost:3001', changeOrigin: true },
     },
   },
   build: {

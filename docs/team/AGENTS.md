@@ -275,6 +275,28 @@ Ver [../google-sheets-module/README.md](../google-sheets-module/README.md) (mapp
 
 ---
 
+## Issue and Fix / Pre-PR local
+
+**Skill:** `.cursor/skills/issue-and-fix/` (orquestador) + `.cursor/skills/bmc-issue-fix-reviewer/` (fix body)
+
+**Rol:** Reemplazo local de **Cursor Agent Review → Issue and Fix** (Bugbot readonly → corrección de código → security opcional → `gate:local`). Procedimiento humano checklist en [`PROCEDIMIENTO-PRE-PR-LOCAL.md`](./PROCEDIMIENTO-PRE-PR-LOCAL.md).
+
+**Cuándo usar:**
+- `/issue-and-fix`, `issue and fix`, `revisar y arreglar`
+- `Failed to run review: insufficient funds` en Agent Review de Cursor
+- Antes de abrir PR (con `gate:local` / split commits)
+
+**Referencias:**
+- [PROCEDIMIENTO-PRE-PR-LOCAL.md](./PROCEDIMIENTO-PRE-PR-LOCAL.md)
+- [SKILL.md](../../.cursor/skills/issue-and-fix/SKILL.md)
+- [bmc-issue-fix-reviewer SKILL](../../.cursor/skills/bmc-issue-fix-reviewer/SKILL.md)
+- Agente: `.cursor/agents/bmc-issue-fix-reviewer.md`
+- Command: `.claude/commands/issue-and-fix.md`
+
+**Cursor Rules:** `.cursor/rules/issue-and-fix.mdc`, `.cursor/rules/bmc-issue-fix-reviewer.mdc`
+
+---
+
 ## Presupuestación Orchestrator (Grok 4.3 Skill)
 
 **Skill:** `~/.grok/skills/presupuestacion-orchestrator/SKILL.md`

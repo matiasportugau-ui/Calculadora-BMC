@@ -1,0 +1,117 @@
+/* Per-studio theme overrides — data-studio on <html> or wrapper */
+
+/* Studio 1 — Tahoe / Liquid Glass Regular */
+[data-studio="tahoe"] {
+  --bmc-primary: #0071e3;
+  --bmc-brand: #1a3a5c;
+  --bmc-bg: #f2f1ee;
+  --bmc-glass: rgba(255, 255, 255, 0.65);
+  --bmc-glass-strong: rgba(255, 255, 255, 0.82);
+  --bmc-blur: 20px;
+  --bmc-radius: 14px;
+}
+
+[data-studio="tahoe"] .chrome-glass {
+  background: var(--bmc-glass);
+  -webkit-backdrop-filter: saturate(180%) blur(var(--bmc-blur));
+  backdrop-filter: saturate(180%) blur(var(--bmc-blur));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+/* Studio 2 — Operativo Dense */
+[data-studio="operativo"] {
+  --bmc-primary: #0071e3;
+  --bmc-bg: #eef1f5;
+  --bmc-surface: #ffffff;
+  --bmc-radius: 8px;
+  --bmc-glass: rgba(255, 255, 255, 0.95);
+  --bmc-blur: 8px;
+}
+
+[data-studio="operativo"] .kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+[data-studio="operativo"] .kpi {
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+/* Studio 3 — Warm Commerce */
+[data-studio="warm"] {
+  --bmc-bg: #faf9f6;
+  --bmc-surface: #ffffff;
+  --bmc-border: #e8e4dd;
+  --bmc-primary: #c96442;
+  --bmc-brand: #2c2825;
+  --bmc-text: #1f1b16;
+  --bmc-text-2: #6b645b;
+  --bmc-radius: 14px;
+  --bmc-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --bmc-font-display: "Charter", "Source Serif 4", Georgia, serif;
+}
+
+[data-studio="warm"] h1,
+[data-studio="warm"] .display {
+  font-family: var(--bmc-font-display);
+  font-weight: 500;
+}
+
+[data-studio="warm"] .card {
+  box-shadow: none;
+}
+
+/* Studio 4 — Field Industrial */
+[data-studio="industrial"] {
+  --bmc-bg: #eceff1;
+  --bmc-surface: #ffffff;
+  --bmc-primary: #d84315;
+  --bmc-brand: #263238;
+  --bmc-text: #212121;
+  --bmc-border: #cfd8dc;
+  --bmc-radius: 4px;
+  --bmc-radius-sm: 4px;
+  --bmc-success: #2e7d32;
+  --bmc-glass: #ffffff;
+  --bmc-blur: 0px;
+}
+
+[data-studio="industrial"] .btn-primary {
+  background: var(--bmc-brand);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 13px;
+}
+
+[data-studio="industrial"] .highlight-bar {
+  background: #ffeb3b;
+  color: #212121;
+  font-weight: 700;
+}
+
+/* Studio 5 — Responsive Systems Lab */
+[data-studio="responsive"] {
+  --bmc-primary: #5e6ad2;
+  --bmc-bg: #f8f9fc;
+  --bmc-glass: rgba(255, 255, 255, 0.72);
+  --bmc-blur: 16px;
+}
+
+[data-studio="responsive"] .chrome-glass {
+  background: var(--bmc-surface);
+}
+
+@media (min-width: 1024px) {
+  [data-studio="responsive"] .chrome-glass {
+    background: var(--bmc-glass);
+    -webkit-backdrop-filter: blur(var(--bmc-blur));
+    backdrop-filter: blur(var(--bmc-blur));
+  }
+}
+
+[data-studio="responsive"] .touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}

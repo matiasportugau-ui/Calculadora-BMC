@@ -6,6 +6,8 @@
 import { PANELS_PARED, PANELS_TECHO, IVA, IVA_MULT } from "../../src/data/constants.js";
 import { loadKnowledgeDocs } from "./knowledgeLoader.js";
 import { renderExamplesBlock } from "./channelRenderer.js";
+import { config } from "../config.js";
+import { brainBlock } from "./brainKB.js";
 
 const IDENTITY = `Tu nombre es Panelin. Sos el asistente experto de ventas de BMC Uruguay (METALOG SAS).
 BMC Uruguay fabrica y vende paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
@@ -432,6 +434,7 @@ export function buildSystemPrompt(calcState = {}, options = {}) {
     preferences = null,
     channel = "chat",
     ragContext = "",
+    userText = "",
   } = options;
   const {
     scenario = "sin seleccionar",
@@ -496,6 +499,10 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
     ? `## DOCUMENTACIÓN TÉCNICA ADICIONAL\n${knowledgeDocs}`
     : "";
 
+  // Centralized AI brain (self-evolving lessons). Off by default → "" → filtered out below, so the
+  // prompt is byte-identical to today when the flag is OFF. brainBlock() is sync + fail-soft.
+  const brainBlockStr = config.brainEnabled ? brainBlock(userText) : "";
+
   const antiRepBlock = ANTI_REPETITION_RULES;
   const variationBlock = buildAntiRepetitionBlock(recentAssistantMessages);
   const prefsBlock = buildPreferencesBlock(preferences);
@@ -516,6 +523,12 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 
 **Estado live de la calculadora (write):**
 - \`aplicar_estado_calc\` — auto-rellena el formulario con los datos confirmados. Pasá SOLO lo que el usuario confirmó (scenario, listaPrecios, techo, pared, camara, flete, proyecto). Llamala apenas tengas datos suficientes — no esperes a tener todo. Emite las ACTION_JSON necesarias en una sola llamada.
+
+**REGLA DURA — Geometría de zonas (SOLO TECHO).** Aplica únicamente a techos (campo \`techo.zonas\`). **NO aplica a paredes** (\`pared\` usa \`alto\` + \`perimetro\`, no \`zonas\`: nunca multipliques una cantidad de paneles de pared por el ancho útil). Cada zona de techo es un rectángulo físico en METROS: \`{largo, ancho}\`. El \`ancho\` es el ancho TOTAL del techo, **nunca** el ancho de un solo panel. La calculadora deriva la cantidad de paneles con \`ceil(ancho / ancho_útil)\` (ancho útil del paño: **ISOROOF ≈ 1.0 m**, **ISODEC ≈ 1.12 m**). Dos formas de leer al cliente:
+- **Por medidas totales** ("un techo de 6 × 4 m", "galpón de 10 × 20"): usá esas medidas tal cual → \`{largo: 6, ancho: 4}\`. NO las multipliques por el ancho útil.
+- **Por cantidad de paneles** ("N paneles de L m"): los N paneles van lado a lado a lo ancho → \`largo = L\`, \`ancho = N × ancho_útil_de_la_familia\`. Ej. ISOROOF (au 1.0): "4 paneles de 5 m" → \`{largo: 5, ancho: 4}\` (= 20 m²). Ej. ISODEC (au 1.12): "4 paneles de 5 m" → \`{largo: 5, ancho: 4.48}\` (= 22.4 m²). **NUNCA pongas \`ancho = 1\` por un "de 1 m"** — ese 1 m es el ancho de UN panel, no del techo (ese fue el error a evitar).
+- **Si faltan datos** (solo "N paneles" sin largo, o solo el área en m² sin dimensiones, o solo una dimensión): NO inventes la otra ni el ancho — preguntá largo y ancho (o familia) antes de calcular.
+- **Self-check obligatorio:** después de \`calcular_cotizacion\`, si el cliente pidió "N paneles" verificá que \`cant_paneles\` del resultado **sea exactamente N** (no compares contra un área que el cliente no dio). Si el cliente dio medidas totales, verificá que \`area_m2\` ≈ largo×ancho (±0.5 m² por redondeo); ahí \`cant_paneles\` es derivado y no tiene que ser un número redondo. Solo si la verificación que corresponde falla, corregí la zona (revisá cantidad/familia) y volvé a llamar la tool **una vez** antes de afirmar el total — no re-llames si ya coincide.
 
 **PDF y CRM:**
 - \`generar_pdf\` — solo cuando el usuario aprobó la cotización ("dale", "generala", "mandala"). Devuelve gcs_url + drive_url + pdf_id.
@@ -608,7 +621,7 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
 - ❌ Llamar \`guardar_en_crm\` sin confirmación explícita del usuario.
 - ❌ Re-preguntar la familia si \`calcState.techo.familia\` ya está seteado.`;
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules]
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, brainBlockStr, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }

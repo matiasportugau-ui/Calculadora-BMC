@@ -2,8 +2,16 @@ import { Router } from "express";
 import multer from "multer";
 import rateLimit from "express-rate-limit";
 import { interpretPlan } from "../lib/planInterpreter.js";
+import { recommendedVision } from "../lib/visionExtract.js";
+import { buildAiOptionsResponse } from "../lib/aiProviderConfig.js";
 
 const router = Router();
+
+// Modelos de IA disponibles + recomendación para la tarea de visión (interpretar planos).
+router.get("/plan/ai-options", (_req, res) => {
+  const base = buildAiOptionsResponse();   // { ok, autoOrder, providers:[{id,label,defaultModel,models}] }
+  return res.json({ ...base, task: "vision_plan", recommended: recommendedVision() });
+});
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -59,9 +67,13 @@ router.post("/plan/interpret", limiter, upload.single("file"), async (req, res) 
     }
   }
 
+  // Selección opcional de proveedor/modelo de IA (sino se usa el recomendado + fallback en cadena).
+  const aiProvider = typeof req.body.provider === "string" ? req.body.provider : undefined;
+  const aiModel = typeof req.body.model === "string" ? req.body.model : undefined;
+
   try {
     const mimeType = isDxf ? "text/plain" : file.mimetype;
-    const result = await interpretPlan(file.buffer, mimeType, file.originalname);
+    const result = await interpretPlan(file.buffer, mimeType, file.originalname, { provider: aiProvider, model: aiModel });
 
     if (hints.familia && result.bmcPayload?.techo) {
       result.bmcPayload.techo.familia = hints.familia;

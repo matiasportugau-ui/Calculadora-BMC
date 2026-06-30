@@ -61,6 +61,20 @@ export const config = {
   emailIngestToken: process.env.EMAIL_INGEST_TOKEN || "",
   /** Repo hermano IMAP / PANELSIM (opcional; default = carpeta hermana) */
   bmcEmailInboxRepo: process.env.BMC_EMAIL_INBOX_REPO || "",
+  /**
+   * Chatwoot CE — shared operator inbox + in-app Email Agent (off-stack via REST/webhooks).
+   * All optional: with these unset the Chatwoot webhook + Email Agent routes degrade to 503
+   * and the app still boots. See docs/team/runbooks/chatwoot-email-agent-setup.md.
+   */
+  chatwootApiBase: process.env.CHATWOOT_API_BASE || "",
+  chatwootApiToken: process.env.CHATWOOT_API_TOKEN || "",
+  chatwootAccountId: process.env.CHATWOOT_ACCOUNT_ID || "",
+  chatwootInboxId: process.env.CHATWOOT_INBOX_ID || "",
+  chatwootWebhookSecret: process.env.CHATWOOT_WEBHOOK_SECRET || "",
+  chatwootPostNote: /^(1|true|yes|on)$/i.test(String(process.env.CHATWOOT_POST_NOTE ?? "true").trim()),
+  chatwootPostDraft: /^(1|true|yes|on)$/i.test(String(process.env.CHATWOOT_POST_DRAFT ?? "false").trim()),
+  /** Self base URL for server-to-server loopback (defaults to 127.0.0.1:PORT). */
+  selfBaseUrl: process.env.SELF_BASE_URL || "",
   // BMC Finanzas dashboard (Google Sheets)
   bmcSheetId: process.env.BMC_SHEET_ID || "",
   bmcPagosSheetId: process.env.BMC_PAGOS_SHEET_ID || "",
@@ -111,7 +125,7 @@ export const config = {
   budgetTurnsPer24h: process.env.BUDGET_TURNS_PER_24H ? Number(process.env.BUDGET_TURNS_PER_24H) : null,
   budgetTokensPer24h: process.env.BUDGET_TOKENS_PER_24H ? Number(process.env.BUDGET_TOKENS_PER_24H) : null,
   geminiApiKey: process.env.GEMINI_API_KEY || "",
-  geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash",
+  geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 (404 "no longer available"); 2.5-flash is the live model. Used by the SSE chat streaming path (agentChat.js) + visionExtract.
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
   // Vercel AI Gateway (unified multi-provider).
@@ -164,6 +178,32 @@ export const config = {
   ),
   /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
+  /**
+   * Email reply (CRM cockpit, origen=Email) — fallback casilla id used when the
+   * receiving casilla is unknown for a row. Per-casilla SMTP is resolved from the
+   * sibling repo's config/accounts.json (`smtp` block, reusing EMAIL_<CASILLA>_PASS).
+   */
+  emailReplyDefaultCasilla: process.env.EMAIL_REPLY_DEFAULT_CASILLA || "bmc-ventas",
+  /**
+   * Gmail-API send (user-OAuth) — preferred reply transport now that the Netuy
+   * SMTP boxes are dead (domain moved to Cloudflare→Gmail). Token is minted by
+   * the sibling pipeline's `gmail-auth` (scope gmail.send) on the dedicated
+   * GMAIL_OAUTH_CLIENT_ID/SECRET client (separate from Drive to avoid mutual
+   * refresh-token revocation). Optional GMAIL_SEND_FROM must be a verified
+   * "Send mail as" alias on the authenticated account, else Gmail stamps it.
+   */
+  gmailSendConfigured: Boolean(
+    process.env.GMAIL_INGEST_REFRESH_TOKEN &&
+      process.env.GMAIL_OAUTH_CLIENT_ID &&
+      process.env.GMAIL_OAUTH_CLIENT_SECRET,
+  ),
+  gmailSendFrom: process.env.GMAIL_SEND_FROM || "",
+  /**
+   * Gmail ingest poller (POST /api/email/poll-gmail, GitHub Actions cron) —
+   * exact recipient allowlist of the BMC business boxes. Gmail's `to:` search
+   * is fuzzy, so server-side header matching is the real gate. Comma-separated.
+   */
+  gmailIngestAddresses: process.env.GMAIL_INGEST_ADDRESSES || "",
   /** Bucket GCS para evidencias firmadas (opcional) */
   transportistaGcsBucket: process.env.TRANSPORTISTA_GCS_BUCKET || "",
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
@@ -263,6 +303,18 @@ export const config = {
   otelEnabled: bool(process.env.OTEL_ENABLED, false),
   omniAiWorkerIntervalMs: Math.max(2000, Number(process.env.OMNI_AI_WORKER_INTERVAL_MS || 5000)),
   omniAiWorkerBatchSize: Math.max(1, Math.min(20, Number(process.env.OMNI_AI_WORKER_BATCH_SIZE || 5))),
+  /**
+   * Centralized AI brain (self-evolving, human-verified lessons) injected into the agent system prompt.
+   * Default OFF: ships dormant. Flipping ON is customer-facing — do it deliberately after dev validation.
+   * Source of truth = gs://bmc-ml-tokens/bmc-brain/lessons.json (shared with the sheet-quote pipeline).
+   * BRAIN_LOCAL_PATH overrides with a local lessons.json for dev validation (no GCS needed).
+   */
+  brainEnabled: bool(process.env.VITE_FEATURE_BRAIN, false),
+  brainGcsBucket: process.env.BRAIN_GCS_BUCKET || "bmc-ml-tokens",
+  brainGcsObject: process.env.BRAIN_GCS_OBJECT || "bmc-brain/lessons.json",
+  brainLocalPath: process.env.BRAIN_LOCAL_PATH || "",
+  /** Max lessons injected per prompt (policies, not retrieval — top-N by confidence×overlap). */
+  brainInjectCap: Math.max(1, Math.min(20, Number(process.env.BRAIN_INJECT_CAP || 10))),
 };
 
 export const redirectUri = () => {

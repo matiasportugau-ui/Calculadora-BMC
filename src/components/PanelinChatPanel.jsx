@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square, Radio, Search } from "lucide-react";
+import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square, Radio, Search, Palette } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
 import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
 import TrustBlock from "./panelin/TrustBlock.jsx";
@@ -178,6 +178,29 @@ if (typeof document !== "undefined" && !document.getElementById("panelin-chat-kf
 }
 
 function Avatar({ size = 28 }) {
+  const [videoFailed, setVideoFailed] = useState(false);
+  if (videoFailed) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          flexShrink: 0,
+          background: BRAND,
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: Math.max(10, Math.round(size * 0.38)),
+          fontWeight: 700,
+        }}
+      >
+        P
+      </div>
+    );
+  }
   return (
     <video
       src={PANELIN_AGENT_VIDEO_SRC}
@@ -185,6 +208,7 @@ function Avatar({ size = 28 }) {
       muted
       loop
       playsInline
+      onError={() => setVideoFailed(true)}
       style={{
         width: size,
         height: size,
@@ -797,16 +821,24 @@ export default function PanelinChatPanel({
             title="Arrastrar para redimensionar panel"
             style={{
               position: "absolute",
-              left: -6,
+              left: -4,
               top: 0,
-              width: 12,
+              width: 8,
               height: "100%",
-              borderLeft: "2px solid rgba(0,113,227,0.35)",
-              background:
-                "linear-gradient(to right, rgba(0,113,227,0.16), rgba(0,113,227,0.06), transparent)",
+              borderLeft: "2px solid transparent",
+              background: "transparent",
               cursor: "ew-resize",
               touchAction: "none",
               zIndex: 5,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderLeftColor = "rgba(0,113,227,0.45)";
+              e.currentTarget.style.background =
+                "linear-gradient(to right, rgba(0,113,227,0.12), transparent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderLeftColor = "transparent";
+              e.currentTarget.style.background = "transparent";
             }}
           />
         )}
@@ -931,6 +963,8 @@ export default function PanelinChatPanel({
             devMode={devMode}
             authHeader={authHeader}
             voiceMode={voiceMode}
+            send={send}
+            messages={messages}
           />
         </div>
 
@@ -954,15 +988,13 @@ export default function PanelinChatPanel({
           {isEmpty && (
             <div
               style={{
-                flex: 1,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "center",
                 gap: 12,
                 color: SUBTEXT,
                 textAlign: "center",
-                padding: "40px 20px",
+                padding: "8px 20px 24px",
               }}
             >
               <Avatar size={56} />
@@ -1273,7 +1305,8 @@ export default function PanelinChatPanel({
             </button>
           )}
 
-          {/* Signature + skin selector: end of scroll area only (no fixed overlap with dev tools / page chrome) */}
+          {/* Skin selector — oculto en empty state (evita bloque signature.png roto) */}
+          {!isEmpty && (
           <div
             style={{
               position: "relative",
@@ -1307,40 +1340,20 @@ export default function PanelinChatPanel({
               title="Seleccionar skin"
               aria-label="Seleccionar skin"
               style={{
-                width: 88,
-                height: 176,
+                width: 36,
+                height: 36,
                 borderRadius: 8,
-                border: "none",
-                background: "transparent",
+                border: `1px solid ${BORDER_COLOR}`,
+                background: SURFACE_COLOR,
                 padding: 0,
                 cursor: "pointer",
-                opacity: 0.85,
-                transition: "opacity 150ms ease, transform 150ms ease",
                 display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "flex-start",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "1";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "0.85";
-                e.currentTarget.style.transform = "translateY(0)";
+                alignItems: "center",
+                justifyContent: "center",
+                color: SUBTEXT_COLOR,
               }}
             >
-              <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  backgroundImage: `url(${typeof import.meta !== "undefined" ? import.meta.env?.BASE_URL ?? "/" : "/"}signature.png)`,
-                  backgroundSize: "contain",
-                  backgroundPosition: "center bottom",
-                  backgroundRepeat: "no-repeat",
-                  mixBlendMode: "multiply",
-                  filter: "contrast(1.2) drop-shadow(0 1px 1px rgba(0,0,0,0.05))",
-                }}
-              />
+              <Palette size={16} />
             </button>
             <span
               data-skin-hover-label
@@ -1453,6 +1466,7 @@ export default function PanelinChatPanel({
               </div>
             )}
           </div>
+          )}
 
           <div ref={messagesEndRef} />
         </div>}

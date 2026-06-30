@@ -190,4 +190,6 @@ No commit/push salvo petición explícita. No actualizar `PROJECT-STATE.md` salv
 
 /issue-and-fix, issue and fix, revisar y arreglar, review and fix, agent review local, insufficient funds, orchestrate issue fix.
 
+**Procedimiento humano (checklist pre-PR):** [`docs/team/PROCEDIMIENTO-PRE-PR-LOCAL.md`](../../docs/team/PROCEDIMIENTO-PRE-PR-LOCAL.md)
+
 Detalle de pipeline: [reference.md](reference.md).

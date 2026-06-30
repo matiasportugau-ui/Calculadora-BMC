@@ -97,9 +97,12 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_OMNI_INBOX: ${{ vars.VITE_OMNI_INBOX }}
         run: |
           # Vite bakes VITE_* at build time — must be present here, not only in post-deploy smoke.
           export VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3.apps.googleusercontent.com}"
+          # Omni Inbox is on by default in prod; set repo Variable VITE_OMNI_INBOX=0 as a kill switch.
+          export VITE_OMNI_INBOX="${VITE_OMNI_INBOX:-1}"
           vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy to Vercel (production)
@@ -196,7 +199,12 @@ jobs:
 
       - name: Build project artifacts
         if: steps.guard.outputs.skip != 'true'
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VITE_OMNI_INBOX: ${{ vars.VITE_OMNI_INBOX }}
+        run: |
+          # Surface the Omni Inbox on Preview deployments too (defaults on; repo Variable can disable).
+          export VITE_OMNI_INBOX="${VITE_OMNI_INBOX:-1}"
+          vercel build --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy preview
         if: steps.guard.outputs.skip != 'true'

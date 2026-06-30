@@ -1,0 +1,59 @@
+{
+  "fecha_audit": "2026-06-29",
+  "fuente": "Meta Ads audit (handoff 2026-05)",
+  "nota": "Datos de campañas Meta Ads al corte de la auditoría. Las campañas pueden haber cambiado.",
+  "total_campanas": 72,
+  "campanas_activas": 4,
+  "campanas_zombie": 68,
+  "diagnostico": "Ghost Town — el 94% de las campañas están inactivas sin tráfico ni presupuesto.",
+  "big_4_campanas": [
+    {
+      "nombre": "Lead Gen Pilar 1 — Rendimiento",
+      "inversion_mensual_usd": 4500,
+      "objetivo": "lead_generation",
+      "rendimiento": "alto",
+      "notas": "Campaña principal de generación de leads. Mayor volumen de conversiones."
+    },
+    {
+      "nombre": "Lead Gen Pilar 2 — Instalación",
+      "inversion_mensual_usd": 3000,
+      "objetivo": "lead_generation",
+      "rendimiento": "alto",
+      "notas": "Segunda campaña de leads con enfoque en servicios de instalación."
+    },
+    {
+      "nombre": "Tráfico Web",
+      "inversion_mensual_usd": 2000,
+      "objetivo": "traffic",
+      "rendimiento": "medio",
+      "notas": "Campaña de tráfico al sitio web. Volumen constante pero menor conversión."
+    },
+    {
+      "nombre": "Remarketing",
+      "inversion_mensual_usd": 1500,
+      "objetivo": "conversions",
+      "rendimiento": "medio",
+      "notas": "Remarketing a visitantes del sitio. Recuperación parcial de leads."
+    }
+  ],
+  "inversion_total_mensual_usd": 11000,
+  "presupuesto_recomendado_asc_usd": "500-1000",
+  "recomendacion_asc": "Consolidar las 4 campañas activas en 1-2 campañas ASC (Advantage+ Shopping Campaigns) para simplificar gestión y optimizar automáticamente la entrega. Eliminar o pausar las 68 campañas zombies.",
+  "ad_copy_angles": [
+    {
+      "nombre": "Ahorro garantizado",
+      "headline": "Aislá tu techo y ahorrá hasta 40% en calefacción/refrigeración",
+      "descripcion": "Enfoque en eficiencia energética y retorno de inversión. Target: propietarios de viviendas unifamiliares."
+    },
+    {
+      "nombre": "Construcción rápida",
+      "headline": "Construí en la mitad del tiempo sin resignar calidad",
+      "descripcion": "Enfoque en velocidad de obra con paneles aislantes. Target: arquitectos e inversores."
+    },
+    {
+      "nombre": "Durabilidad premium",
+      "headline": "Paneles con garantía Kingspan — 50 años de respaldo",
+      "descripcion": "Enfoque en calidad y garantía del fabricante. Target: clientes industriales y grandes obras."
+    }
+  ]
+}

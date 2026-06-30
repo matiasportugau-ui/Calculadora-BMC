@@ -124,3 +124,61 @@ gate:local:   pendiente correr al final de la sesión
 
 **Changes:** 1 file (+23/-10 LOC)  
 **Time:** ~15 min
+
+---
+
+## 2026-06-25 AM — ML catálogo + /hub/ml-manager (auditoría, reactivaciones, fix dashboard, IA)
+
+**Contexto:** auditar y mejorar el catálogo MercadoLibre y el dashboard `/hub/ml-manager`, que estaba roto en prod (no cargaba publicaciones/preguntas) y sin generación IA.
+
+**Acciones:**
+- Auditoría completa: 46 activas + 197 pausadas; **132 bulk-paused el 2026-04-11**; 85 con `moderation_penalty`. Reconciliación Bromyros↔ML (29 paneles). Artefactos en `product-clips/out/`.
+- **Reactivadas** ISP150 (`MLU445010304`) + IF40 (`MLU444372549`, 194 vend.) → activas 46→48. ISP50/200/250 retenidas (penalizadas).
+- **Causa raíz dashboard roto:** `vercel.json` no proxeaba `/ml` → catch-all SPA devolvía HTML 200 → `JSON.parse` rompía todo. Fix: rewrite `/ml/:path*`→Cloud Run + CORS (PR #431).
+- Preguntas: pull `.questions` (no `.results`), botón "Generar con IA", **preview de producto** (thumb+nombre+precio+permalink) (#431, #435).
+- **IA desbloqueada** sin billing: cadena caía a Gemini pero estaba en modelo retirado `gemini-2.0-flash` → cambiado a `gemini-2.5-flash` (#433).
+- **Editar publicación** estilo ML: header de visualización + variables completas (título, precio, stock, estado, condición, SKU, garantía, atributos) (#436).
+- CSP `img-src` += `*.mlstatic.com` para que carguen fotos ML.
+
+**Verificación:** prod `/ml/users/me`→JSON, `/ml/questions`→2, `/api/crm/suggest-response`→`{ok:true,provider:gemini,model:gemini-2.5-flash}`, CSP con mlstatic. gate:local + 3 required checks verdes en cada PR.
+
+**Próximo paso:** (a) listar IsoFrig 60–200mm (falta `POST /ml/items` + fotos); (b) fix calidad ISP50/200/250; (c) recargar clave IA premium (opcional).
+
+**Refs:** PRs #431/#433/#434/#435/#436. Docs: `HANDOFF-2026-06-25-ml-manager.md`, `ML-CREDENTIALS-PLAYBOOK.md`, `ML-AI-KEYS-REMEDIATION.md`, `ML-ISOFRIG-LISTING-CHECKLIST.md`. PROJECT-STATE entrada 2026-06-25.
+
+---
+
+## 2026-06-25 AM — BMC Chat server deployed to Cloud Run
+
+**Context:** El chat web (Gemini Sheets Chat de bmc-sheet-quote-pipeline) necesitaba estar online 24/7 sin depender del Mac local.
+
+**Acciones:**
+1. Deployed `web/server.mjs` (zero-dep HTTP server) a Cloud Run `bmc-chat` en `chatbot-bmc-live`, región `us-central1`, con min-instances=1.
+2. Secretos (GEMINI_API_KEY, GOOGLE_SHEETS_CREDENTIALS) montados desde Secret Manager — sin Doppler.
+3. `BmcChatPanel.jsx` actualizado para apuntar el iframe a la URL de Cloud Run (en vez de localhost:3000 o Express :3001/chat).
+4. Server de puerto 3000 (launchd `com.bmc.chat-web`) detenido.
+5. Creado skill `~/.claude/skills/bmc-chat-web` para gestión del servicio.
+
+**Verificación:** `curl https://bmc-chat-642127786762.us-central1.run.app/` → HTML (200); `/api/inquiries` → 11 consultas.
+
+**Próximo paso:** Merge `feat/centralized-brain` → main + deploy panelin-calc `/chat` + Vercel (botón 💬).
+
+**Refs:** Handoff: `docs/team/HANDOFF-2026-06-25-0744.md`
+
+---
+
+## 2026-06-29 N — Gemini ejecuta la calculadora + interpretación de zonas + hardening
+
+**Contexto:** con Claude sin saldo, el agente Panelin cae al fallback Gemini, que **no ejecutaba la calculadora** (narraba `<tool_code>` como texto → precios inventados). Pedido: que el fallback cotice con números reales, en prod.
+
+**Acciones:** 3 PRs encadenados, todos mergeados y deployados.
+- **#472** — Gemini native function-calling: `server/lib/geminiTools.js` (adapta `AGENT_TOOLS`→`functionDeclarations`) + loop de 8 rondas en el branch gemini de `agentChat.js` (reusa `executeTool` + auth-gates + emits de Claude). **Gotcha:** `gemini-2.5-flash` "piensa" por defecto → narra en vez de ejecutar; fix `thinkingConfig.thinkingBudget:0`. ANY mode inservible (42 tools → 400); va AUTO. Test `tests/geminiTools.test.js` (137 asserts).
+- **#475** — interpretación cantidad→zonas: "N paneles de L m" → `{largo:L, ancho:N×ancho_útil}` (ISOROOF 1.0m, ISODEC 1.12m); "techo de 6×4m" tal cual. Nueva "REGLA DURA — Geometría de zonas" en `buildSystemPrompt()` (`chatPrompts.js`).
+- **#478** — hardening post-review adversarial: abort-checks en el loop gemini, log de observabilidad ronda-0, scope SOLO-TECHO (pared usa `perimetro`), ejemplo ISODEC, self-check apretado.
+- Invariante registrado en memoria: toda superficie IA cotiza solo vía la calculadora nativa, nunca de cabeza.
+
+**Verificación (live prod, Cloud Run rev `00630-zct`, forzando gemini):** "4 paneles de 5m" → 4 paneles / 20 m² / USD 1702.68 ✓; frase ambigua "5m×1m" ahora confirma la interpretación antes de cotizar ✓; brain `VITE_FEATURE_BRAIN=true` + modelo `gemini-2.5-flash` confirmados en la rev viva. `gate:local` verde en cada PR.
+
+**Próximo paso:** decidir si en la frase ambigua "5m×1m" el agente debe auto-asumir 20 m² o seguir confirmando (ablande de 1 línea en `chatPrompts.js`). Opcional: Fase 2 del brain (bidireccional). Path no-streaming `agentCore.js` se deja text-only por decisión del usuario.
+
+**Refs:** PRs #472 / #475 / #478. Handoff: `docs/team/HANDOFF-2026-06-29-gemini-tools-quote-interp.md`.

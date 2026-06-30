@@ -1,8 +1,10 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-06-22
+**Última actualización:** 2026-06-29
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
+
+**Tablero de tareas:** el backlog/kanban de **desarrollo** vive en GitHub (Issues + Project «BMC Dev»); este archivo sigue siendo el **relato narrativo** del estado. Reglas en [`AGILE.md`](./AGILE.md), espejo versionado en [`BACKLOG.md`](./BACKLOG.md).
 
 **Guía legacy vs repo:** Si aparece documentación antigua tipo `BMC_SYSTEM_GUIDE.md` (backup Next/Mongo), contrastar con el inventario [BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md](../bmc-dashboard-modernization/BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md) — no usar ese backup como contrato de API del stack actual.
 
@@ -11,6 +13,108 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-06-29 (Agente IA — Gemini ejecuta la calculadora + interpretación de zonas + hardening):** Tres PRs encadenados, **todos live en prod** (Cloud Run `panelin-calc`, última rev `00630-zct`). **(1) PR #472 — Gemini function-calling:** con Claude sin saldo el fallback de Gemini solo *narraba* `<tool_code>` (precios inventados); ahora ejecuta las tools reales. Nuevo `server/lib/geminiTools.js` (adapta `AGENT_TOOLS` → `functionDeclarations`: dropea `default`/`format`/`pattern`, colapsa `type:["string","number"]`→escalar+`nullable`, omite `parameters` en tools sin args) + loop de 8 rondas en el branch gemini de `agentChat.js` (reusa `executeTool`, mismas auth-gates y emits que Claude). **Gotcha clave:** `gemini-2.5-flash` "piensa" por defecto y eso lo hace narrar en vez de ejecutar → se pasa `thinkingConfig.thinkingBudget:0`. Test `tests/geminiTools.test.js` (137 asserts) en `test:agent`. **(2) PR #475 — interpretación cantidad→zonas:** "N paneles de L m" se leía como 1 zona (misquote). Nueva "REGLA DURA — Geometría de zonas" en `buildSystemPrompt()` (`chatPrompts.js`): zona `ancho` = ancho TOTAL del techo; "N paneles" → `ancho = N×ancho_útil` (ISOROOF 1.0m, ISODEC 1.12m); "techo de 6×4m" se usa tal cual. **(3) PR #478 — hardening post-review:** abort-checks en el loop gemini (no quema rondas ni ejecuta tools con side-effects si el cliente se desconecta), log de observabilidad si ronda-0 no trae functionCalls, scope **SOLO TECHO** (pared usa `perimetro` no `zonas`), ejemplo ISODEC, self-check apretado. **Verificado live:** "4 paneles de 5m" → 4 paneles/20 m²/USD 1702.68; frase ambigua "5m×1m" ahora **confirma la interpretación** antes de cotizar (decisión tunable: confirmar=seguro vs auto-asumir=rápido, quedó en confirmar). Invariante registrado: **toda superficie IA cotiza solo vía la calculadora nativa, nunca de cabeza** (ya enforced en el toolsBlock). Handoff: [`HANDOFF-2026-06-29-gemini-tools-quote-interp.md`](./HANDOFF-2026-06-29-gemini-tools-quote-interp.md).
+
+**2026-06-29 (Market Intelligence — auth fix + DB migrations aplicadas):**
+`/hub/marketing` devolvía 401 a usuarios autenticados por usar `requireAuth` (solo token de servicio) + leer `bmc_cockpit_token` de localStorage. **Backend:** `requireAuth` → `requireServiceOrUser({ role: 'admin' })` en todas las rutas de `server/routes/marketing.js`. **Frontend:** `MarketingHubModule.jsx` usa `useBmcAuth().accessToken` en vez de localStorage (mismo patrón que el resto del hub). **DB:** 8 migraciones `bmc_market_intel` aplicadas a prod vía `npm run migrate:market-intel`. El módulo ahora funciona para usuarios con rol admin/superadmin.
+
+**2026-06-26 (Hotfix — `drive_config_unavailable` 503 en tab Drive):** Causa: tabla Postgres `identity.user_drive_config` **no existía en prod** (código desplegado 2026-06-24 pero migración pendiente). Aplicada idempotentemente `supabase/migrations/20260624000001_user_drive_config.sql` contra prod `DATABASE_URL` (verificado: tabla presente). **Nuevos:** `npm run identity:golive:apply`, `npm run identity:drive-config:check`, `scripts/check-drive-config-table.mjs` (paso 7 en `pre-deploy-check.sh`), mensaje operador en español vía `formatDriveConfigError()` en `driveConfigApi.js` / `DriveFolderConfig.jsx`. UAT: usuario autenticado debe poder elegir carpeta sin 503.
+
+**2026-06-26 (Chatwoot shared inbox + AI lead extraction + in-app Email Agent — code shipped dormant):** `branch feat/chatwoot-email-agent` (PR #450). Buzón compartido para todos los operadores logueados vía **Chatwoot CE** (off-stack, MIT) + extracción AI de leads + nuevo **Asistente de Correos BMC** (segundo agente en el panel derecho de la calculadora: redacta, edita, responde, reporta, reusa plantillas, tría y organiza correos). **Nuevo backend:** `server/lib/chatwootClient.js` (REST), `server/lib/emailLeadIngest.js` (extracción Zod+AI Gateway, reusa el prompt de `/api/crm/ingest-email`), `server/routes/chatwoot.js` (`POST /api/chatwoot/webhook` secret-verificado, async, dedupe por message.id), `server/lib/emailAgentTools.js` (11 tools `email_*`; send/assign con `user_confirmed`), `server/routes/emailAgentChat.js` (`POST /api/email-agent/chat` SSE, auth `canales:write`). **Frontend:** `src/components/EmailAgentPanel.jsx` (panel derecho, flag `VITE_FEATURE_EMAIL_AGENT`, default OFF). Config `chatwoot*` en `config.js`; placeholders en `.env.example`. **Boot-safe:** con `CHATWOOT_*` sin setear las rutas devuelven 503 y la app arranca normal → merge ships dormant. `gate:local` verde. **Pending [H] infra (runbook [`runbooks/chatwoot-email-agent-setup.md`](./runbooks/chatwoot-email-agent-setup.md)):** levantar Chatwoot CE (VM+docker), verificar SMTP `s111.nty.uy:465`/Gmail app-pass, IMAP del buzón ventas, generar `CHATWOOT_API_TOKEN`/ids/`CHATWOOT_WEBHOOK_SECRET` (admin UI) → Doppler `bmc-backend/prd` + GCP Secret Manager, wire webhook, `VITE_FEATURE_EMAIL_AGENT=true` en Vercel. Investigación OSS (Inbox Zero AGPL+comercial, Zero/Mail0 MIT pero personal, FreeScout AGPL, Helper repo ya privado) → Chatwoot elegido como único shared-inbox real OSS.
+
+**2026-06-26 (BMC Chat Gemini Sheets — DONE · PR #447):** Merge squash a `main` (`a35f4bf`). Express `/chat` en `panelin-calc` (`bmcChat.js`, Gemini+Sheets, UI estática); `BmcChatPanel.jsx` (iframe default → Cloud Run `bmc-chat-642127786762.us-central1.run.app`; Express opt-in `VITE_BMC_CHAT_LOCAL=1`); Panelin empty-state cleanup. **Verificado prod:** `GET panelin-calc/chat` → 200 HTML; `bmc-chat` → 200; Vercel → 200; `npm run smoke:prod` 9/9 OK; CI `deploy-calc-api` + `deploy-vercel` success. **UAT pendiente [H]:** login → botón 💬 flotante → iframe carga consultas Admin. Handoff: [`HANDOFF-2026-06-25-0744.md`](./HANDOFF-2026-06-25-0744.md).
+
+**2026-06-25 (operator email — thin slice: unattended ingest + reply-from-cockpit):** `branch feat/email-thin-slice → PR #442`. Reuses the ~80%-built email path instead of building a custom inbox UI. (a) **Reply**: `handleCrmCockpitSendApproved` now handles `origen=Email` — resolves recipient + receiving casilla from new `public.email_ingest_log`, sends via `server/lib/emailReply.js` (per-casilla SMTP from `accounts.json`, reusing existing `EMAIL_<CASILLA>_PASS`), threads with In-Reply-To, stamps `Enviado el`. (b) **Idempotent ingest**: `POST /api/crm/ingest-email` dedupes by `messageId` (migration `20260625000001_email_ingest_log.sql`) so an unattended runner won't write dup leads. Coexists with the new omni shadow-write. Tests: `tests/emailReply.test.js` (16) wired into `test:core`; `validation.js` 399/0; `test:api` 0 fail. **Pending [H]:** apply migration (Supabase MCP), verify `s111.nty.uy:465` SMTP, create `EMAIL_INGEST_TOKEN`, deploy Cloud Run Job + Scheduler — see [`runbooks/email-cloud-run-poller.md`](./runbooks/email-cloud-run-poller.md). Custom `/hub/bandeja` UI deferred (master prompt at `~/goal-prompt-email-admin-operators.md`).
+
+**2026-06-25 (cerebro IA centralizado — lessons brain → system prompt de Panelin, GOING LIVE):** `PR #439`. Wire del cerebro auto-evolutivo (lessons humanas verificadas, `gs://bmc-ml-tokens/bmc-brain/lessons.json`, mismo store que la sheet-quote pipeline) al system prompt del agente: una sola costura `buildSystemPrompt()` → los 5 canales (chat, voz, WhatsApp, MercadoLibre, CRM-suggest) inyectan el mismo bloque `CONOCIMIENTO ACUMULADO`. Unifica 3 fuentes de conocimiento antes desconectadas (pipeline, KB calc-bmc, panel chat-web). **Nuevo** [`server/lib/brainKB.js`](../../server/lib/brainKB.js): cache GCS (ADC, espejo de `trainingKB.js`) o `BRAIN_LOCAL_PATH` (dev), `brainBlock(query)` **sync read-only** (ranking confidence·0.6+overlap·0.4), fail-soft a `""`. Flag `brainEnabled` (`VITE_FEATURE_BRAIN`) en `config.js`, default OFF. **Con flag OFF la salida de `buildSystemPrompt()` es byte-idéntica** (verificado por diff vs HEAD) → merge ships dormant. **Go-live (decisión del dueño):** merge #439 + `VITE_FEATURE_BRAIN=true` en Cloud Run `panelin-calc` (SA `panelin-runner` ya tiene read en `bmc-ml-tokens`). `gate:local` verde. ⚠️ Revertir = togglear el flag a OFF (sin redeploy).
+
+**2026-06-25 (ML catálogo + /hub/ml-manager fixes):** Auditoría de catálogo ML (46 act + 197 paus; 132 bulk-paused 2026-04-11; 85 con `moderation_penalty`) → `product-clips/out/ml-audit-179969104.{md,json}` + reconciliación Bromyros↔ML `product-clips/out/bromyros-ml-gap.csv` (29 paneles: 13 act/5 paus/11 missing). **Reactivadas** ISP150 (`MLU445010304`) + IF40 (`MLU444372549`, 194 vend.) → activas **46→48**; ISP50/200/250 **retenidas** (penalizadas — requieren fix de calidad antes de reactivar). **Bug raíz /hub/ml-manager:** `vercel.json` no proxeaba `/ml` (catch-all SPA devolvía HTML 200 → `JSON.parse` rompía todo); agregado rewrite `/ml/:path*`→Cloud Run + CORS. **QuestionsTab:** corregido pull (`.questions` no `.results`) + agregado botón "Generar con IA" (reusa `/api/crm/suggest-response`/agentCore). **OverviewTab:** contador preguntas (`.total` no `.paging.total`). **ListingsTab:** filas con título/estado/precio/stock/salud + pausar/activar inline (guardrail anti-penalizadas). Pendiente: listar IsoFrig 60–200mm (checklist en `docs/team/ML-ISOFRIG-LISTING-CHECKLIST.md`; bloqueado por falta de endpoint create + fotos). gate:local OK (lint+test+test:api+build). **IA generación — RESUELTO (PR #433):** el endpoint devolvía `"All providers failed"` porque la cadena `claude→openai→grok→gemini` caía hasta gemini pero estaba fijada al modelo **retirado `gemini-2.0-flash`** ("no longer available"). Fix: `aiProviderConfig.js` → **`gemini-2.5-flash`** (verificado vivo con la key actual). **Verificado en prod:** `POST /api/crm/suggest-response` → `{ok:true, provider:"gemini", model:"gemini-2.5-flash"}` — el botón "Generar con IA" ahora genera. claude(crédito)/openai(quota)/grok(key) siguen muertos pero la cadena los saltea (fail-fast); recargarlos es upgrade opcional de calidad (claude es preferido si tiene saldo). Runbook: `docs/team/ML-AI-KEYS-REMEDIATION.md`. **Deploy:** PR #431 (dashboard, Vercel) + PR #433 (IA fix, Cloud Run) merged a `main`.
+
+**2026-06-25 (CI — channels_pipeline solo en push a `main`):** El job `Channels — automated pipeline (prod)` de [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) quedó acotado a `push` sobre `main`, igual que otros probes de salud de producción (`smoke`, `voice_health`). **Motivo:** en PRs estaba ejecutando `scripts/channels-automated-pipeline.mjs` contra la revisión ya desplegada en Cloud Run y podía quedar rojo por un incidente de prod ajeno al branch, marcando la corrida como `action_required`. El cambio mantiene la señal de salud en `main` sin contaminar la validación de pull requests.
+
+**2026-06-25 (feat — Omni Inbox UX estilo Chatwoot · Fases 1+2):** Rediseño del Omni Inbox (`/hub/canales` → Omni) tomando patrones UX de Chatwoot sin adoptar la plataforma, detrás del flag existente `VITE_OMNI_INBOX=1`. **Fase 1 (frontend):** tabs de estado (Todas/Abiertas/Pendientes/Pospuestas/Resueltas vía el filtro `?status=` que ya existía), filas ricas (avatar, chip de canal, timestamp relativo, contador, dot de no-leídos), búsqueda client-side, composer con Enter-envía/Shift+Enter-salto y respuestas rápidas `/` (seed + localStorage), timestamps por mensaje, sidebar de contacto en acordeón. Restyle con tokens `--ac-*`. **Fase 2 (backend fino, sin migración):** nuevo `PATCH /api/omni/conversations/:id` (`{status?,tags?,priority?}`) que reutiliza columnas + validación (`ALLOWED_CONVERSATION_STATUSES`) ya existentes; `GET /api/omni/conversations` ahora devuelve `tags` + `unread_count`. Botones **Resolver/Posponer/Reabrir** (header del thread) y **etiquetas add/remove** (sidebar) cableados vía `updateConversation()` en `useOmniConversations`. Validación extraída a `server/lib/omni/conversationPatch.js` (+ `conversationStatus.js` como fuente única dependency-free). Archivos: `server/routes/omni.js`, `src/components/hub/canales/panels/{OmniInboxPanel,OmniThreadPanel,OmniContactSidebar}.jsx` + nuevos `omniFormat.js`, `cannedReplies.js`, `omniInbox.css`; tests `tests/omniInbox.test.js` (14) + `tests/omniConversationPatch.test.js` (8), wired a `test:api`. **Pendiente (full-desk tier, requiere migración):** asignación, notas internas, delivery ticks, real-time SSE. _Deploy: backend (Cloud Run `panelin-calc`) antes que frontend (Vercel) para que los botones no peguen a un 404. Gate ESLint/vitest/build corre en CI (fresh npm ci); en el worktree solo se validaron los helpers con `node`._
+
+**2026-06-25 (docs — Arquitectura de Canales & Cotizaciones):** Estudio arquitectónico y de specs de los 5 módulos operativos `/hub/{canales,wa,ml-manager,ml,cotizaciones}` (componentes de entrada, rutas backend, modelos de datos, RBAC, estado, cross-links), validado contra el código vivo. Nuevo doc de referencia [`ARCHITECTURE-CHANNELS-COTIZACIONES.md`](./ARCHITECTURE-CHANNELS-COTIZACIONES.md). Sin cambios de comportamiento en prod.
+
+**2026-06-24 (Configurador de Carpeta Drive por usuario — tab "Drive"):** Cada usuario interno configura, una sola vez,
+la carpeta de Google Drive donde se guardan sus cotizaciones (resuelve "Sandra/Ramiro/Martín no pueden guardar"). El
+"Guardar" del panel Drive ahora hace **doble guardado**: (1) primario **client-side por usuario** (`saveQuotation` con su
+propio token `drive.file`) hacia la carpeta configurada, y (2) best-effort en la carpeta BMC compartida vía service account
+(`DRIVE_QUOTE_FOLDER_ID`) para el dataset consolidado de Fase 2. Selección de carpeta vía **navegador in-app con la Drive API**
+(sin API key extra): lista/crea carpetas que la app administra en el Drive del usuario (limitación del scope `drive.file`: no
+enumera carpetas pre-existentes arbitrarias — para eso haría falta Google Picker + API key). Validación de permiso de escritura
+client-side y persistencia en **Postgres** `identity.user_drive_config` (no Firestore). Sin carpeta configurada → se bloquea el
+guardado por usuario con aviso. **Nuevos:** migración `supabase/migrations/20260624000001_user_drive_config.sql` (aplicar con
+`scripts/identity-golive-apply.sh`), ruta `server/routes/driveConfig.js` (`GET`/`POST /api/drive/config`),
+`src/utils/driveConfigApi.js`, `src/components/DriveFolderConfig.jsx`, test `tests/drive-config-routes.test.js`. ~~**Setup pendiente:** aplicar la migración contra `DATABASE_URL`.~~ **Migración prod aplicada 2026-06-26** (ver entrada hotfix arriba). Fase 2 (vista consolidada "todo de todos") fuera de alcance.
+
+**2026-06-25 (CI/Deploy — consolidación de PRs por variable reservada `PORT` en Cloud Run):** Cloud Run
+**reserva** e inyecta `PORT`; setearla explícitamente en el step de deploy hacía fallar el despliegue. El bug
+(introducido en `40f3a65`, `PORT=8080`) ya estaba **corregido en `main` por `0937d10`** («remove PORT=8080 from
+Cloud Run env vars»). Los PRs **#399** y su duplicado **#401** re-proponían el mismo arreglo: se consolidó
+**cerrando #401** y **mergeando #399**, cuyo squash (`8049bc7`) quedó **vacío** (no-op) porque el fix ya estaba
+aplicado. Verificado en `main`: el bloque `env_vars` del step de deploy **no** incluye la reservada `PORT`
+(sólo `SMTP_PORT`, que no es reservada). **Primer caso de uso real del tablero ágil** (`AGILE.md`): la disciplina
+WIP/dedupe atrapó dos PRs redundantes para un fix que ya vivía en `main` — la tarjeta se cierra como
+consolidación verificada, no como cambio de código.
+
+**2026-06-24 (Tablero ágil / Kanban para organizar el desarrollo):** Marco de organización del trabajo de
+**desarrollo de software** sobre GitHub (flujo continuo Kanban, sin sprints ni story points). Agregados:
+[`AGILE.md`](./AGILE.md) (reglas: columnas `Backlog → Ready → In Progress → In Review → Done` con límites WIP,
+labels `type`/`priority`/`area`, DoD = `gate:local` verde + merge a `main`, mapeo `/nxt`→prioridades y `area:*`→agente),
+[`BACKLOG.md`](./BACKLOG.md) (espejo versionado), y plantillas `.github/ISSUE_TEMPLATE/` (feature/bug/tech-debt) +
+`PULL_REQUEST_TEMPLATE.md`. Backlog inicial sembrado como issues **#416–#420** (npm audit, go-live, E2E D1.x,
+ML re-auth, Omni pricing) — mapean a los ítems abiertos de «Pendientes de sincronización». Setup único pendiente en
+la UI de GitHub (labels + Project board «BMC Dev»), documentado en `AGILE.md` §7: el tooling MCP crea issues pero no
+labels ni Projects v2. `/nxt` ahora referencia el backlog del tablero.
+
+**2026-06-23 (Omni WAVE 3+4 — FULLY OPERATIONAL en prod):** Activado el omnicanal end-to-end en producción y
+**probado** (ingest → classify → suggest Claude → HITL accept → H4 eval). Cloud Run `panelin-calc` rev ≥`00532`
+con **todos** los flags `OMNI_*`=1 (WA/ML/EMAIL shadow, event bus, AI orchestrator, automation; budget USD 50/día),
+gobernados por **GitHub repo Variables** (sobreviven a deploys vía `deploy-calc-api.yml`). UI: `VITE_OMNI_INBOX`+`VITE_OMNI_DEALS`=1
+→ pestañas Omni Inbox + Pipeline Deals en `/hub/canales`. Migración `005` siembra el AI registry (model+prompt enabled, claude-sonnet-4-6).
+Un E2E controlado en prod descubrió y arregló **3 bugs** (PR #413 + migraciones 006/007): (1) `omni_conversations.properties`
+faltaba en prod (001 viejo) → todo ingest/shadow-write fallaba en silencio; (2) CHECK `body_ai_category_valid` rechazaba
+`cotizacion` → classify moría; (3) pg devuelve NUMERIC como string → `temperature`="0.30" → proveedores 400/422, sin
+sugerencias (fix: cast a float8 en `aiRegistry.getEnabledModel`). Las 3 compuertas WAVE 4 pasan (HITL/F3/H4). PRs: #406, #407, #411, #413.
+Pendiente menor: confirmar modelo/pricing + cuota OpenAI (ajustable sin código); backfills históricos ML/EMAIL difer (falta BMC_SHEET_ID en Doppler).
+
+**2026-06-23 (hotfix — GCS token store usa metadata-server, no la SA key de Sheets):** Todas las rutas `/ml/*`
+devolvían **500** (y `/auth/ml/status` 503): `server/tokenStore.js` hacía `new Storage()`, pero google-auth resuelve
+`GOOGLE_APPLICATION_CREDENTIALS` primero — y esa env apunta a la SA key de Sheets/Drive (montada para el feature de
+Drive del 2026-06-22), cuyo intercambio JWT en `googleapis.com/oauth2/v4/token` falla con *"Premature close"*. Fix:
+`new Storage({ authClient: new GoogleAuth({ authClient: new Compute() }) })` — fija la identidad del runtime de Cloud
+Run (`panelin-runner`, con `objectAdmin` en `gs://bmc-ml-tokens`) vía metadata server SOLO para el cliente GCS,
+sin tocar la auth de Sheets/Drive. Verificado el API contra storage@5 + google-auth@9 (cachedCredential = Compute).
+El comentario previo en el código documentaba la intención pero `new Storage()` nunca la lograba. Sin esto, ML Manager
+muestra "Verificá la conexión con Mercado Libre".
+
+**2026-06-23 (ML Manager re-cableado al backend live `panelin-calc`):** El esqueleto de `/hub/ml-manager`
+(shipped en PR #403) apuntaba a un *connector* separado inexistente (`VITE_ML_CONNECTOR_URL`) y a 13 endpoints
+fantasma (ads, analytics, message-packs, visits, ai/daily-brief). Re-cableado a la realidad: `mlFetch.js` ahora
+usa `getCalcApiBase()` (mismo backend que la calculadora, sin API key — auth OAuth server-side); `useMlConnector.js`
+reescrito a los 9 endpoints reales (`/auth/ml/status`, `/ml/users/me`, `/ml/listings`, `/ml/items/:id`,
+**PATCH `/ml/items/:id`**, **POST `/ml/items/:id/description`**, `/ml/questions`, POST answer, `/ml/orders`).
+Tabs reducidas a las respaldadas por backend: **Resumen / Publicaciones / Preguntas / Pedidos** (borradas Ads/Analítica/
+Mensajes/Envíos). La tab **Publicaciones** edita precio, stock, estado, **fotos** (vía `pictures:[{source:url}]` — ML
+descarga la URL) y descripción, con confirmación de dos pasos antes de escribir en vivo a MercadoLibre. Badge de
+conexión corregido a `status.ok`. La conexión OAuth ya existe y es persistente: token cifrado en
+`gs://bmc-ml-tokens` (GCS, sobrevive cold starts de Cloud Run), scope incluye `write`/`publish-sync`, último refresh
+2026-05-29 (recuperable). Verificado: ESLint limpio + `vite build` OK. Pendiente: si el refresh del token dormido
+falla, re-autorizar una vez vía `/auth/ml/start`. Clips de video NO disponibles por API para cuenta MLU doméstica.
+
+**2026-06-23 (Omni WAVE 4 local E2E gate — PR #407):** Agregado `npm run omni:local-e2e` — un gate E2E
+autoprovisionado (`scripts/omni-local-e2e.sh` + `scripts/omni-local-e2e.mjs`) que levanta su propio
+Postgres descartable, aplica migraciones omni y verifica los 3 *code paths* de las compuertas WAVE 4
+(HITL accept/reject, H4 eval stats, F3 reconcile drift<10) con 14 asserts, luego destruye el cluster.
+Triple-guardado (`OMNI_E2E_DATABASE_URL` dedicado, host local, nombre con `e2e`, distinto de `DATABASE_URL`)
+para que **nunca** toque una DB real. Opt-in en `wave4-exit-gate` vía `OMNI_E2E=1` (CI no lo corre).
+Validado además el camino real HTTP+auth+route (7/7) contra schema identity + JWT local. Runbook de las 3
+compuertas de staging documentado en [`orientation/OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md).
+Las compuertas siguen pendientes de **datos reales de staging**, no de código.
+
+**2026-06-23 (Omni WAVE 3 hardening fold-in — PR #407):** Plegados a `feat/omni-wave4` los fixes de hardening diferidos del review de PR #406, todos sobre archivos que WAVE 4 ya tocaba: (1) **bug** doble-incremento de `attempts` en `aiWorker.js` (ahora se incrementa una sola vez por claim, consistente entre worker batch y ad-hoc); (2) allowlist de `job_type` a nivel app (`ALLOWED_AI_JOB_TYPES`, 400 antes de enqueue); (3) `system_prompt` retirado del contrato HTTP `getActivePromptContract`; (4) `trigger_event` validado por `z.enum`; (5) whitelist de `status` de conversación en `set_conversation_status`; (6) guard ReDoS (cap de longitud) en operador `matches` de automation; (7) `/omni/health` deja de exponer flags de existencia de tablas. Nuevo test offline `tests/omniHardening.test.js` (10 asserts) + ReDoS assert en `omniAutomationConditions`; registrado en `test:core` y `wave4-exit-gate`. `gate:local` 0 lint / tests OK, `wave4:exit-gate` `ready_for_wave5: true`. Todo flag-gated OFF + operator-auth — sin impacto en prod. Pendiente humano: 3 checks de staging + quitar `do-not-merge`.
 
 **2026-06-22 (Omni issue-and-fix — PR #406 Bugbot):** `/issue-and-fix` sobre `feat/omni-wave3`: emit `message.ingested` post-commit (`OMNI_EVENT_BUS_ENABLED`); lookup conversación solo por `(contact_id, channel, channel_conversation_id)`; reply API pasa `contact_id` en hint; reglas automation con `{}` no matchean; registry `system_prompt` aplicado en jobs `suggest` vía `agentCore.systemPrompt`. WAVE 4 WIP quedó en stash local (no incluido). Staging soak + flags: [`OMNI-STAGING-ROLLOUT.md`](./orientation/OMNI-STAGING-ROLLOUT.md).
 

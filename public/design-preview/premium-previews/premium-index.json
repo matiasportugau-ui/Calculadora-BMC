@@ -1,0 +1,110 @@
+[
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "premium-mobile.html",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "premium-tablet.html",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Studio Tahoe",
+    "folder": "studio-1-tahoe",
+    "file": "premium-desktop.html",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "premium-mobile.html",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "premium-tablet.html",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Operativo Dense",
+    "folder": "studio-2-operativo",
+    "file": "premium-desktop.html",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "premium-mobile.html",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "premium-tablet.html",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Warm Commerce",
+    "folder": "studio-3-warm",
+    "file": "premium-desktop.html",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "premium-mobile.html",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "premium-tablet.html",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Field Industrial",
+    "folder": "studio-4-industrial",
+    "file": "premium-desktop.html",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "premium-mobile.html",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "premium-tablet.html",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "Responsive Systems Lab",
+    "folder": "studio-5-responsive",
+    "file": "premium-desktop.html",
+    "bp": "Desktop"
+  },
+  {
+    "studio": "BMC Glass Premium",
+    "folder": "studio-6-bmc-glass",
+    "file": "premium-mobile.html",
+    "bp": "Mobile"
+  },
+  {
+    "studio": "BMC Glass Premium",
+    "folder": "studio-6-bmc-glass",
+    "file": "premium-tablet.html",
+    "bp": "Tablet"
+  },
+  {
+    "studio": "BMC Glass Premium",
+    "folder": "studio-6-bmc-glass",
+    "file": "premium-desktop.html",
+    "bp": "Desktop"
+  }
+]

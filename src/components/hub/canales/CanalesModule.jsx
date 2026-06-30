@@ -7,6 +7,7 @@
 
 import React, { Suspense, useState } from "react";
 import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
+import { useOmniDeals } from "../../../hooks/useOmniConversations.js";
 import { SkinProvider, useSkin } from "../../admin-cotizaciones/SkinProvider.jsx";
 import "../../admin-cotizaciones/styles.css";
 
@@ -15,6 +16,12 @@ const WaInboxPanel = React.lazy(() => import("./panels/WaInboxPanel.jsx"));
 const UnifiedContactsPanel = React.lazy(() =>
   import("./panels/UnifiedContactsPanel.jsx")
 );
+const OmniInboxPanel = React.lazy(() => import("./panels/OmniInboxPanel.jsx"));
+const OmniAdminCockpit = React.lazy(() => import("./panels/OmniAdminCockpit.jsx"));
+const OmniDealsKanban = React.lazy(() => import("./panels/OmniDealsKanban.jsx"));
+
+const OMNI_INBOX_ENABLED = import.meta.env.VITE_OMNI_INBOX === "1";
+const OMNI_DEALS_ENABLED = import.meta.env.VITE_OMNI_DEALS === "1";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab bar and loading skeleton
@@ -22,6 +29,9 @@ const UnifiedContactsPanel = React.lazy(() =>
 
 function TabBar({ activeTab, onTabChange }) {
   const tabs = [
+    ...(OMNI_INBOX_ENABLED ? [{ id: "omni", label: "Omni Inbox" }] : []),
+    ...(OMNI_INBOX_ENABLED ? [{ id: "cockpit", label: "Cockpit" }] : []),
+    ...(OMNI_DEALS_ENABLED ? [{ id: "deals", label: "Pipeline Deals" }] : []),
     { id: "ml", label: "ML Manager" },
     { id: "wa", label: "WA Inbox" },
     { id: "contacts", label: "Contactos Unificados" },
@@ -86,7 +96,10 @@ function LoadingFallback() {
 function CanalesModuleInner() {
   const { skin } = useSkin();
   const { accessToken } = useBmcAuth();
-  const [activeTab, setActiveTab] = useState("ml");
+  const [activeTab, setActiveTab] = useState(OMNI_INBOX_ENABLED ? "omni" : "ml");
+  const { deals, loading: dealsLoading, moveDeal } = useOmniDeals(
+    OMNI_DEALS_ENABLED ? accessToken : null,
+  );
 
   return (
     <div className="adminCot" data-skin={skin}>
@@ -124,7 +137,7 @@ function CanalesModuleInner() {
               letterSpacing: "0.05em",
             }}
           >
-            ML | WA | Contactos
+            ML | WA | Contactos{OMNI_INBOX_ENABLED ? " | Omni" : ""}
           </span>
         </div>
 
@@ -133,6 +146,15 @@ function CanalesModuleInner() {
 
         {/* Tab content with Suspense */}
         <Suspense fallback={<LoadingFallback />}>
+          {activeTab === "omni" && OMNI_INBOX_ENABLED && (
+            <OmniInboxPanel token={accessToken} />
+          )}
+          {activeTab === "cockpit" && OMNI_INBOX_ENABLED && (
+            <OmniAdminCockpit token={accessToken} />
+          )}
+          {activeTab === "deals" && OMNI_DEALS_ENABLED && (
+            <OmniDealsKanban deals={deals} loading={dealsLoading} onMoveDeal={moveDeal} />
+          )}
           {activeTab === "ml" && <MlManagerPanel token={accessToken} />}
           {activeTab === "wa" && <WaInboxPanel token={accessToken} />}
           {activeTab === "contacts" && (

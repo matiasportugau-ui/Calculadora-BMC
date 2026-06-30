@@ -111,6 +111,15 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
+            <h2 style={cardTitle}>Mercado Libre · Manager</h2>
+            <p style={cardDesc}>
+              Editar publicaciones (precio, stock, fotos, descripción), responder preguntas y ver pedidos.
+            </p>
+            <Link to="/hub/ml-manager" style={{ ...cta, background: "#1a3a5c" }}>
+              Abrir ML Manager
+            </Link>
+          </div>
+          <div style={card}>
             <h2 style={cardTitle}>WhatsApp · Operativo</h2>
             <p style={cardDesc}>
               Cola CRM con origen WA, aprobar y enviar respuestas vía WhatsApp Cloud API.
@@ -139,12 +148,12 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
-            <h2 style={cardTitle}>Importar plano</h2>
+            <h2 style={cardTitle}>Planos</h2>
             <p style={cardDesc}>
-              Subí un plano (JPG, PNG, PDF o DXF) y la IA extrae las dimensiones automáticamente. Elegí el panel y abrí directo en la calculadora.
+              Croquis a mano, plano del cliente o medidas → plano profesional acotado (DXF/SVG editable) y presupuesto. Mismo motor: exportá y cotizá lo que cargues.
             </p>
-            <Link to="/hub/plan-import" style={{ ...cta, background: "#0071e3" }}>
-              Importar plano
+            <Link to="/hub/planos" style={{ ...cta, background: "#0071e3" }}>
+              Abrir Planos
             </Link>
           </div>
           <div style={card}>
