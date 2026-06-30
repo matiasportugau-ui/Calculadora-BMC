@@ -3,6 +3,7 @@
  */
 import { retrieveSimilarQuotes } from "../../rag.js";
 import { isSemanticEmbeddingAvailable } from "../../embeddings.js";
+import { sanitizeQuoteMetadata } from "../../quoteMetadata.js";
 import { config } from "../../../config.js";
 
 // One-time loud warning so a misconfigured enablement (RAG_ENABLED on, no usable
@@ -74,7 +75,7 @@ export function formatOmniContextBlock(ctx) {
   if (ctx.rag_cases?.length) {
     const cases = ctx.rag_cases
       .slice(0, 3)
-      .map((c, i) => `${i + 1}. sim=${c.similarity?.toFixed?.(2) ?? "?"} ${JSON.stringify(c.metadata || {}).slice(0, 200)}`);
+      .map((c, i) => `${i + 1}. sim=${c.similarity?.toFixed?.(2) ?? "?"} ${JSON.stringify(sanitizeQuoteMetadata(c.metadata)).slice(0, 200)}`);
     parts.push("Similar past quotes:\n" + cases.join("\n"));
   }
   return parts.join("\n\n").slice(0, 4000);

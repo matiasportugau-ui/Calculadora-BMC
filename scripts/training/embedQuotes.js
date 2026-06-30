@@ -32,6 +32,7 @@ import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import pg from "pg";
+import { sanitizeQuoteMetadata } from "../../server/lib/quoteMetadata.js";
 
 dotenv.config();
 
@@ -252,7 +253,9 @@ async function main() {
             contentHash,
             embeddingLiteral,
             textForEmbedding,
-            JSON.stringify(lead),
+            // Store only non-PII quote facts — this metadata is later injected
+            // into LLM prompts via RAG retrieval. See server/lib/quoteMetadata.js.
+            JSON.stringify(sanitizeQuoteMetadata(lead)),
           ],
         );
         stats.upserted++;

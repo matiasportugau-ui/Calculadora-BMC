@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { buildSuggestionMetadata } from "../server/lib/omni/orchestrator/aiWorker.js";
 import { formatOmniContextBlock } from "../server/lib/omni/knowledge/kbBridge.js";
 import { isSemanticEmbeddingAvailable } from "../server/lib/embeddings.js";
+import { sanitizeQuoteMetadata } from "../server/lib/quoteMetadata.js";
 
 let passed = 0;
 function check(name, fn) {
@@ -62,14 +63,26 @@ check("rag_case_ids drops cases without a lead_id (defensive)", () => {
   assert.deepEqual(meta.grounding.rag_case_ids, ["x1"]);
 });
 
-check("formatOmniContextBlock renders snippets + cases", () => {
+check("formatOmniContextBlock renders snippets + sanitized cases (no PII)", () => {
   const block = formatOmniContextBlock({
     recent_snippets: ["mensaje uno", "mensaje dos"],
-    rag_cases: [{ similarity: 0.9, metadata: { cliente: "Juan", total: 12400 } }],
+    rag_cases: [
+      {
+        similarity: 0.9,
+        metadata: {
+          cliente_nombre: "Juan García",
+          telefono: "+59899123456",
+          panel_familia: "ISODEC_EPS",
+          total_con_iva_usd: 12400,
+        },
+      },
+    ],
   });
   assert.ok(block.includes("Recent thread:"));
   assert.ok(block.includes("Similar past quotes:"));
-  assert.ok(block.includes("Juan"));
+  assert.ok(block.includes("ISODEC_EPS")); // whitelisted quote fact kept
+  assert.ok(!block.includes("Juan")); // customer name stripped
+  assert.ok(!block.includes("59899")); // phone stripped
 });
 
 check("formatOmniContextBlock empty when no context", () => {
@@ -80,6 +93,34 @@ check("isSemanticEmbeddingAvailable returns a boolean (RAG stub guard)", () => {
   // The kbBridge guard skips RAG retrieval when this is false, so RAG never
   // grounds on non-semantic stub vectors. Value depends on env key presence.
   assert.equal(typeof isSemanticEmbeddingAvailable(), "boolean");
+});
+
+check("sanitizeQuoteMetadata drops PII, keeps quote facts", () => {
+  const lead = {
+    fecha: "2026-03-15",
+    cliente_nombre: "Juan García",
+    telefono: "+59899123456",
+    email: "juan@example.com",
+    ubicacion: "Maldonado",
+    vendedor: "María",
+    panel_familia: "ISODEC_EPS",
+    panel_espesor: 100,
+    area_m2: 320,
+    total_con_iva_usd: 12400,
+  };
+  const clean = sanitizeQuoteMetadata(lead);
+  // PII removed
+  for (const k of ["cliente_nombre", "telefono", "email", "ubicacion", "vendedor"]) {
+    assert.equal(k in clean, false, `${k} must be stripped`);
+  }
+  // facts kept
+  assert.equal(clean.fecha, "2026-03-15");
+  assert.equal(clean.panel_familia, "ISODEC_EPS");
+  assert.equal(clean.area_m2, 320);
+  assert.equal(clean.total_con_iva_usd, 12400);
+  // defensive
+  assert.deepEqual(sanitizeQuoteMetadata(null), {});
+  assert.deepEqual(sanitizeQuoteMetadata(undefined), {});
 });
 
 console.log(`\nomniRagGrounding: ${passed} passed`);
