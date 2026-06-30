@@ -240,13 +240,14 @@ async function main() {
       try {
         await pool.query(
           `INSERT INTO quote_embeddings
-             (lead_id, content_hash, embedding, text_for_embedding, metadata, updated_at)
-           VALUES ($1, $2, $3::vector, $4, $5::jsonb, NOW())
+             (lead_id, content_hash, embedding, text_for_embedding, metadata, provider, updated_at)
+           VALUES ($1, $2, $3::vector, $4, $5::jsonb, $6, NOW())
            ON CONFLICT (lead_id) DO UPDATE SET
              content_hash       = EXCLUDED.content_hash,
              embedding          = EXCLUDED.embedding,
              text_for_embedding = EXCLUDED.text_for_embedding,
              metadata           = EXCLUDED.metadata,
+             provider           = EXCLUDED.provider,
              updated_at         = NOW()`,
           [
             lead.lead_id,
@@ -256,6 +257,8 @@ async function main() {
             // Store only non-PII quote facts — this metadata is later injected
             // into LLM prompts via RAG retrieval. See server/lib/quoteMetadata.js.
             JSON.stringify(sanitizeQuoteMetadata(lead)),
+            // Tag the provider so the RAG pre-check can refuse stub vectors (0002).
+            activeProvider(),
           ],
         );
         stats.upserted++;

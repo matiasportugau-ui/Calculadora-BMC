@@ -31,10 +31,11 @@ repo-root `migrations/` dir, so apply it directly:
 
 ```bash
 psql "$DATABASE_URL" -f migrations/0001_add_pgvector_and_quote_embeddings.sql
+psql "$DATABASE_URL" -f migrations/0002_quote_embeddings_provider.sql
 ```
 
-Creates the `vector` extension, `quote_embeddings (… embedding vector(1536) …)`, and the ivfflat index.
-Idempotent.
+`0001` creates the `vector` extension, `quote_embeddings (… embedding vector(1536) …)`, and the ivfflat
+index. `0002` adds the `provider` column so the pre-check can refuse non-semantic stub vectors. Both idempotent.
 
 ### 2. Backfill embeddings
 
@@ -54,7 +55,8 @@ Reads `data/training/normalized-quotes.jsonl`, upserts into `quote_embeddings` (
 npm run omni:rag-precheck
 ```
 
-Verifies: (a) semantic embedding provider configured, (b) `quote_embeddings` has embedded rows,
+Verifies: (a) semantic embedding provider configured, (b) `quote_embeddings` has embedded rows that were
+**created with a semantic provider** (fails if any were backfilled with the stub, or are untagged pre-0002),
 (c) a sample query returns hits. **Do not proceed if it fails.**
 
 ### 4. Flip flags — shadow mode (Cloud Run `panelin-calc`)

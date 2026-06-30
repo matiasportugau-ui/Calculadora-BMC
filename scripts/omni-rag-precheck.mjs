@@ -45,28 +45,45 @@ async function main() {
     failures++;
   }
 
-  // Check 2 — quote_embeddings populated.
+  // Check 2 — quote_embeddings populated AND created with a semantic provider
+  // (not the deterministic stub, which would ground RAG on noise).
   const pool = new pg.Pool({ connectionString: databaseUrl });
   try {
     const r = await pool.query(
-      "SELECT COUNT(*)::int AS total, COUNT(embedding)::int AS embedded FROM quote_embeddings",
+      `SELECT COUNT(*)::int AS total,
+              COUNT(embedding)::int AS embedded,
+              COUNT(*) FILTER (WHERE embedding IS NOT NULL AND provider = 'stub')::int AS stub,
+              COUNT(*) FILTER (WHERE embedding IS NOT NULL AND provider IS NULL)::int AS untagged
+         FROM quote_embeddings`,
     );
-    const total = r.rows[0]?.total ?? 0;
-    const embedded = r.rows[0]?.embedded ?? 0;
-    if (embedded > 0) {
-      ok(`quote_embeddings populated: ${embedded}/${total} rows have embeddings`);
-    } else {
+    const { total = 0, embedded = 0, stub = 0, untagged = 0 } = r.rows[0] || {};
+    if (embedded <= 0) {
+      fail(`quote_embeddings has no embedded rows (total=${total}). Run: node scripts/training/embedQuotes.js`);
+      failures++;
+    } else if (stub > 0) {
       fail(
-        `quote_embeddings has no embedded rows (total=${total}, embedded=${embedded}). ` +
-          "Run: node scripts/training/embedQuotes.js",
+        `${stub}/${embedded} embedded rows use NON-SEMANTIC stub vectors — re-embed with a ` +
+          "real key: node scripts/training/embedQuotes.js --reembed-all",
       );
       failures++;
+    } else if (untagged > 0) {
+      fail(
+        `${untagged}/${embedded} embedded rows have no provider tag (pre-migration 0002) — ` +
+          "re-embed to confirm semantic: node scripts/training/embedQuotes.js --reembed-all",
+      );
+      failures++;
+    } else {
+      ok(`quote_embeddings populated: ${embedded}/${total} rows, all semantic`);
     }
   } catch (e) {
-    fail(
-      `quote_embeddings missing/unreadable: ${e.message}. ` +
-        "Apply migrations/0001_add_pgvector_and_quote_embeddings.sql first.",
-    );
+    if (e.code === "42703") {
+      fail("quote_embeddings.provider column missing — apply migrations/0002_quote_embeddings_provider.sql");
+    } else {
+      fail(
+        `quote_embeddings missing/unreadable: ${e.message}. ` +
+          "Apply migrations/0001_add_pgvector_and_quote_embeddings.sql first.",
+      );
+    }
     failures++;
   } finally {
     await pool.end().catch(() => {});
