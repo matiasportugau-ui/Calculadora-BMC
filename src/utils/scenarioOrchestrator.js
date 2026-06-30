@@ -18,6 +18,7 @@ import {
   encounterBorderPerfil,
   resolveNeighborSharedSide,
   listEncounterPairSegmentRuns,
+  normalizeEncounter,
 } from "./roofEncounterModel.js";
 import { getPricing } from "../data/pricing.js";
 
@@ -68,8 +69,10 @@ function junctionListForZonaGi(gi, encounters, zonas) {
       const frac = Math.max(0, Math.min(1, run.t1) - Math.max(0, Math.min(1, run.t0)));
       const len = +(e.length * frac).toFixed(4);
       if (!(len > 0)) continue;
+      const modo = normalizeEncounter(run.effectiveRaw).modo;
       out.push({
         perfil,
+        modo,
         lengthM: len,
         label: `Encuentro (${pk})[${run.id}]: ${perfil}`,
       });
@@ -132,6 +135,8 @@ function computeTechoZonas(techo, useEncounterBorders) {
     const encounterJunctions = edgePack?.encounters?.length
       ? junctionListForZonaGi(gi, edgePack.encounters, techo.zonas)
       : [];
+    // Datos por encuentro para selladores (membrana/espuma PU) por modo. Ver calcSelladoresTechoByEncuentro.
+    const encuentrosData = encounterJunctions.map((j) => ({ modo: j.modo, length: j.lengthM }));
     const baseOpciones = inputs.opciones && typeof inputs.opciones === "object" ? inputs.opciones : {};
     const opcionesMerged = {
       ...baseOpciones,
@@ -159,6 +164,8 @@ function computeTechoZonas(techo, useEncounterBorders) {
           ancho: halfAncho,
           borders: { ...effectiveBorders, fondo: "cumbrera" },
           opciones: opcionesHalf0,
+          // selladores por encuentro se cargan una sola vez (en el faldón 0) para no duplicar
+          ...(encuentrosData.length ? { encuentrosData } : {}),
         }),
         calcTechoCompleto({
           ...inputs,
@@ -178,6 +185,7 @@ function computeTechoZonas(techo, useEncounterBorders) {
         ...inputs,
         borders: effectiveBorders,
         opciones: opcionesMerged,
+        ...(encuentrosData.length ? { encuentrosData } : {}),
         ...(perimVertPts != null ? { perimetroVerticalInteriorPuntos: perimVertPts } : {}),
       }),
     ];

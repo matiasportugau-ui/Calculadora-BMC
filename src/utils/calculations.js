@@ -45,7 +45,6 @@ export function resolveSKU_techo(tipo, familiaP, espesor) {
   const { PERFIL_TECHO } = getPricing();
   const byTipo = PERFIL_TECHO[tipo];
   if (!byTipo) return null;
-  /** Isoroof Colonial: misma perfilería ISOROOF 3G excepto cumbrera (2,2 m colonial bajo cumbrera.ISOROOF_COLONIAL). */
   let fam = familiaP;
   if (fam === "ISOROOF_COLONIAL" && tipo !== "cumbrera") {
     fam = "ISOROOF";
@@ -55,6 +54,79 @@ export function resolveSKU_techo(tipo, familiaP, espesor) {
   if (byFam[espesor]) return { ...byFam[espesor] };
   if (byFam._all) return { ...byFam._all };
   return null;
+}
+
+export function resolveSKU_techoByRange(tipo, familiaP, espesor) {
+  const exact = resolveSKU_techo(tipo, familiaP, espesor);
+  if (exact) return exact;
+  const { PERFIL_TECHO } = getPricing();
+  const byTipo = PERFIL_TECHO[tipo];
+  if (!byTipo) return null;
+  let fam = familiaP;
+  if (fam === "ISOROOF_COLONIAL" && tipo !== "cumbrera") {
+    fam = "ISOROOF";
+  }
+  const byFam = byTipo[fam];
+  if (!byFam) return null;
+  const espesoresDisponibles = Object.keys(byFam)
+    .filter(k => k !== "_all" && !isNaN(Number(k)))
+    .map(Number)
+    .sort((a, b) => a - b); // ascendente
+  if (espesoresDisponibles.length === 0) return byFam._all ? { ...byFam._all } : null;
+  // Mayor espesor disponible que sea ≤ solicitado (sin mutar el array).
+  let closest = null;
+  for (const e of espesoresDisponibles) {
+    if (e <= espesor) closest = e;
+  }
+  if (closest != null && byFam[closest]) return { ...byFam[closest] };
+  // Si todos los disponibles son mayores al solicitado, usar el mínimo disponible.
+  const minDisp = espesoresDisponibles[0];
+  if (byFam[minDisp]) return { ...byFam[minDisp] };
+  return byFam._all ? { ...byFam._all } : null;
+}
+
+/**
+ * Lima-olla (valley/gutter): perfil en V que drena el agua en la intersección
+ * de dos faldones. Devuelve un ítem de perfilería por barras enteras.
+ * @param {string} familiaP familia de panel (ISOROOF/ISODEC/ISODEC_PIR)
+ * @param {number} espesor espesor en mm
+ * @param {number} length longitud lineal del valle (m)
+ * @param {object} [opciones] { skuRangeMode } para resolución por rango
+ * @returns {{ items: Array, total: number, totalML: number }}
+ */
+/**
+ * Lima-olla (limahoya / valle) — producto GENÉRICO Limatesa, barra de 3 m.
+ * No depende de familia ni espesor del panel: se elige por terminación.
+ * @param {number} length  largo del valle en metros lineales
+ * @param {{terminacion?: "aluzinc"|"prepintado"}} opciones  default aluzinc (LIHO3MAL)
+ */
+export function calcLimaOlla(length, opciones = {}) {
+  const len = Number(length);
+  if (!Number.isFinite(len) || len <= 0) return { items: [], total: 0, totalML: 0 };
+  const { LIMA_OLLA } = getPricing();
+  const terminacion = opciones?.terminacion === "prepintado" ? "prepintado" : "aluzinc";
+  const prod = LIMA_OLLA?.[terminacion];
+  if (!prod) return { items: [], total: 0, totalML: 0 };
+  const L = prod.largo || 3.0;
+  const pzas = Math.ceil(len / L);
+  const ml = +(pzas * L).toFixed(2);
+  const precio = p(prod);
+  const item = {
+    label: prod.label || "Lima-olla (valle)",
+    sku: prod.sku,
+    tipo: "lima_olla",
+    cant: pzas,
+    unidad: "unid",
+    pu: precio,
+    costo: prod.costo ?? 0,
+    total: +(pzas * precio).toFixed(2),
+    ml,
+    mlNecesario: +len.toFixed(4),
+    mermaMl: +(ml - len).toFixed(4),
+    largoBarra: L,
+    terminacion,
+  };
+  return { items: [item], total: item.total, totalML: ml };
 }
 
 export function calcPanelesTecho(panel, espesor, largo, ancho) {
@@ -412,9 +484,15 @@ function calcTornillosT1Perfileria(items) {
 export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP, espesor, opciones) {
   const items = [];
   let totalML = 0;
+  // Resolver SKU según modo: rango (mayor espesor ≤ solicitado) o exacto. Se usa en
+  // todas las ramas de perfilería para que skuRangeMode aplique de forma consistente.
+  const resolveSKU = (tipo, fam, esp) =>
+    opciones?.skuRangeMode === true
+      ? resolveSKU_techoByRange(tipo, fam, esp)
+      : resolveSKU_techo(tipo, fam, esp);
   const addPerfil = (label, tipo, dim, famOverride) => {
     const fam = famOverride || familiaP;
-    const resolved = resolveSKU_techo(tipo, fam, espesor);
+    const resolved = resolveSKU(tipo, fam, espesor);
     if (!resolved) return;
     const precio = p(resolved);
     const costoUn = resolved.costo ?? 0;
@@ -456,7 +534,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
 
   // Canalón en frente: agregar canalón + soporte automáticamente
   if (borders.frente === "canalon") {
-    const canData = resolveSKU_techo("canalon", familiaP, espesor);
+    const canData = resolveSKU("canalon", familiaP, espesor);
     if (canData) {
       const precioCan = p(canData);
       const Lc = canData.largo;
@@ -480,7 +558,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
         largoBarra: Lc,
       });
     }
-    const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
+    const sopData = resolveSKU("soporte_canalon", familiaP, espesor);
     if (sopData) {
       const mlPorApoyo = getDimensioningParam("PERFILERIA.soporte_canalon_ml_por_apoyo", 0.30);
       const mlSoportes = (cantP + 1) * mlPorApoyo;
@@ -520,7 +598,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
   }
 
   if (opciones && opciones.inclGotSup) {
-    const gs = resolveSKU_techo("gotero_superior", familiaP, espesor);
+    const gs = resolveSKU("gotero_superior", familiaP, espesor);
     if (gs) {
       const precio = p(gs);
       const Lg = gs.largo;
@@ -643,6 +721,67 @@ export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0
   const puCinta = p(SELLADORES.cinta_butilo);
   items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, costo: c(SELLADORES.cinta_butilo), total: +(cintas * puCinta).toFixed(2) });
 
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2) };
+}
+
+export function calcSelladoresTechoByEncuentro(encuentrosData = []) {
+  if (!Array.isArray(encuentrosData) || encuentrosData.length === 0) return { items: [], total: 0 };
+  const { SELLADORES } = getPricing();
+  const items = [];
+  const c = (x) => (x?.costo ?? 0);
+  const modes = ['continuo', 'pretil', 'cumbrera', 'desnivel'];
+  const modoMlMap = {};
+  modes.forEach(m => (modoMlMap[m] = 0));
+  encuentrosData.forEach(enc => {
+    if (!enc || typeof enc !== "object") return;
+    const modo = enc.modo || 'continuo';
+    if (!Object.prototype.hasOwnProperty.call(modoMlMap, modo)) return;
+    const len = Number(enc.length);
+    if (Number.isFinite(len) && len > 0) modoMlMap[modo] += len;
+  });
+  const membrana = SELLADORES.membrana;
+  if (membrana && membrana.ml_por_unid && membrana.rendimiento_por_encuentro_modo) {
+    let mlMembrana = 0;
+    modes.forEach(modo => {
+      const factor = membrana.rendimiento_por_encuentro_modo[modo] ?? 0;
+      mlMembrana += modoMlMap[modo] * factor;
+    });
+    if (mlMembrana > 0) {
+      const cantMembrana = Math.ceil(mlMembrana / membrana.ml_por_unid);
+      const puMem = p(membrana);
+      items.push({
+        label: membrana.label,
+        sku: "membrana",
+        cant: cantMembrana,
+        unidad: "rollo",
+        pu: puMem,
+        costo: c(membrana),
+        total: +(cantMembrana * puMem).toFixed(2),
+      });
+    }
+  }
+  const espumaPu = SELLADORES.espuma_pu;
+  if (espumaPu && espumaPu.ml_por_unid && espumaPu.rendimiento_por_encuentro_modo) {
+    let mlEspuma = 0;
+    modes.forEach(modo => {
+      const factor = espumaPu.rendimiento_por_encuentro_modo[modo] ?? 0;
+      mlEspuma += modoMlMap[modo] * factor;
+    });
+    if (mlEspuma > 0) {
+      const cantEspuma = Math.ceil(mlEspuma / espumaPu.ml_por_unid);
+      const puEsp = p(espumaPu);
+      items.push({
+        label: espumaPu.label,
+        sku: "espuma_pu",
+        cant: cantEspuma,
+        unidad: "unid",
+        pu: puEsp,
+        costo: c(espumaPu),
+        total: +(cantEspuma * puEsp).toFixed(2),
+      });
+    }
+  }
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2) };
 }
@@ -776,7 +915,7 @@ export function calcTotalesSinIVA(allItems) {
 
 export function calcTechoCompleto(inputs) {
   const { PANELS_TECHO } = getPricing();
-  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, ptsMetal, ptsMadera, borders, opciones, color, pendiente = 0, pendienteModo = "incluye_pendiente", alturaDif = 0 } = inputs;
+  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, ptsMetal, ptsMadera, borders, opciones, color, pendiente = 0, pendienteModo = "incluye_pendiente", alturaDif = 0, encuentrosData = [] } = inputs;
   const panel = PANELS_TECHO[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
@@ -871,6 +1010,9 @@ export function calcTechoCompleto(inputs) {
           espesor,
           edgeML: opciones?.edgeML,
         });
+    const selladoresEncuentro = calcSelladoresTechoByEncuentro(encuentrosData);
+    selladores.items.push(...selladoresEncuentro.items);
+    selladores.total = +(selladores.total + selladoresEncuentro.total).toFixed(2);
   }
   const costoM2 = espData.costo ?? 0;
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaTotal, unidad: "m²", pu: paneles.precioM2, costo: costoM2, total: paneles.costoPaneles, cantPaneles: paneles.cantPaneles, largoPanel: largoReal };
