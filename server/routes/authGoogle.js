@@ -240,14 +240,25 @@ router.post("/auth/dev-login", (req, res) => {
   }
 
   try {
-    const devUserId = "dev-user-" + Date.now();
+    // Stable id (no Date.now()) so repeated dev logins share one identity.
+    // NOTE: this is a signature-only dev bypass — it does NOT create a row in
+    // identity.users, so grant/profile endpoints that read the DB (e.g.
+    // /auth/me/grants) won't resolve for this token. The self-contained payload
+    // below is what the dev UI consumes.
+    const devUserId = "dev-user-local";
     const devUser = {
       id: devUserId,
       email: "dev@bmc.local",
       name: "Development User",
     };
 
-    const secret = process.env.IDENTITY_JWT_SECRET || "dev-secret-change-me-in-production";
+    // Fail closed: never sign with a hardcoded fallback. Require a properly
+    // configured IDENTITY_JWT_SECRET (≥32 chars), same contract as the real
+    // signer in identityAuth.getJwtSecret().
+    const secret = config.identityJwtSecret;
+    if (!secret || secret.length < 32) {
+      return res.status(500).json({ ok: false, error: "jwt_secret_unconfigured" });
+    }
     const accessToken = jwt.sign(
       { sub: devUserId, email: devUser.email },
       secret,
@@ -265,7 +276,7 @@ router.post("/auth/dev-login", (req, res) => {
       _devMode: true,
     });
   } catch (err) {
-    console.error("[dev-login] Error:", err.message);
+    req.log?.error?.({ err }, "dev-login failed");
     return res.status(500).json({ ok: false, error: "dev_login_error" });
   }
 });
