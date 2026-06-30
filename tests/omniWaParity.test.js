@@ -31,5 +31,10 @@ const ext = waExtensionMessageToOmniEvent({
 assert("same idempotency webhook vs extension", webhook.idempotency_key === ext.idempotency_key);
 assert("dedup key format", buildIdempotencyKey("wa", "x").startsWith("wa:msg:"));
 
+// Contract the canonical-mode wa_crm_sync flow relies on.
+assert("webhook event channel is wa", webhook.channel === "wa");
+assert("webhook carries side_effects.wa_chat_id", webhook.side_effects?.wa_chat_id === "chat1");
+assert("webhook conversation_hint matches chatId", webhook.conversation_hint?.channel_conversation_id === "chat1");
+
 console.log(`\nomniWaParity: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
