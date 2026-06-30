@@ -28,6 +28,7 @@ import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
 import { rankUrgentConversations } from "../lib/omni/urgency.js";
 import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
+import { mergeContacts, ContactMergeError } from "../lib/omni/identity/contactMerge.js";
 import { callAgentOnce } from "../lib/agentCore.js";
 
 // AI copilot actions for the inline thread assistant. Each builds a one-shot
@@ -295,6 +296,50 @@ router.get(
       if (e?.code !== "42703" && e?.code !== "42P01") throw e;
       req.log?.warn?.({ err: e.message, code: e.code }, "omni duplicate contacts degraded");
       res.json({ ok: true, degraded: e.code, scanned: 0, scan_bounded: false, cluster_count: 0, clusters: [] });
+    }
+  },
+);
+
+// Contact merge — EXECUTION (Wave 6b). Repoints conversations/deals from
+// merged_from_id onto merged_into_id inside a single transaction; never
+// hard-deletes the loser contact (see contactMerge.js for why); every merge is
+// logged to omni_contact_merge_log for audit. Admin-only — this changes which
+// customer a conversation/deal history belongs to, a manual, deliberate,
+// owner-approved action (never automatic, never triggered by AI).
+router.post(
+  "/omni/contacts/merge",
+  requireGrant.admin("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const fromId = String(req.body?.from_id || "");
+    const intoId = String(req.body?.into_id || "");
+    if (!isUuid(fromId) || !isUuid(intoId)) {
+      return res.status(400).json({ ok: false, error: "invalid_contact_id" });
+    }
+    try {
+      const result = await mergeContacts(req.omniPool, {
+        fromId,
+        intoId,
+        performedByUserId: req.user?.id || null,
+      });
+      req.log?.info?.(
+        { from: fromId, into: intoId, ...result, by: req.user?.id },
+        "omni contact merge completed",
+      );
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e instanceof ContactMergeError) {
+        const status = e.code === "contact_not_found" ? 404 : 400;
+        return res.status(status).json({ ok: false, error: e.code });
+      }
+      if (e?.code === "42P01") {
+        return res.status(503).json({
+          ok: false,
+          error: "omni_contact_merge_log_missing",
+          detail: "Apply migration 013 (npm run omni:migrate) before merging contacts.",
+        });
+      }
+      throw e;
     }
   },
 );
