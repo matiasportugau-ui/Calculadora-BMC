@@ -338,9 +338,10 @@ router.post('/ai/chat', requireMarketing, async (req, res) => {
 
   let closed = false;
   req.on('close', () => { closed = true; });
-  const heartbeat = setInterval(() => { if (!closed) res.write(':\n\n'); }, 15000);
+  const heartbeat = setInterval(() => { if (!closed) { try { res.write(':\n\n'); } catch { /* client gone */ } } }, 15000);
 
   const send = (obj) => {
+    if (closed) return;
     try { res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* client disconnected */ }
   };
 

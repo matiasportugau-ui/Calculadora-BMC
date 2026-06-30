@@ -126,11 +126,18 @@ function MarketingHubInner() {
   const syncNow = useCallback(async () => {
     if (!accessToken || syncing) return;
     setSyncing(true);
+    let success = false;
     try {
       await apiFetch(accessToken, '/api/marketing/etl/run', { method: 'POST' });
-      setTimeout(() => { load(); setSyncing(false); }, 2500);
+      success = true;
     } catch {
-      setSyncing(false);
+      // fall through
+    } finally {
+      if (success) {
+        setTimeout(() => { load(); setSyncing(false); }, 2500);
+      } else {
+        setSyncing(false);
+      }
     }
   }, [accessToken, syncing, load]);
 
