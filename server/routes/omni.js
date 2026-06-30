@@ -537,6 +537,9 @@ router.post(
   async (req, res) => {
     const body = String(req.body?.body || "").trim();
     if (!body) return res.status(400).json({ ok: false, error: "missing_body" });
+    if (!(await conversationVisibleTo(req.omniPool, req.params.id, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
     try {
       const { rows } = await req.omniPool.query(
         `INSERT INTO omni_notes (conversation_id, author_user_id, author_label, body)
@@ -568,6 +571,9 @@ router.patch(
   requireOmniDb,
   async (req, res) => {
     const conversationId = req.params.id;
+    if (!(await conversationVisibleTo(req.omniPool, conversationId, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
     const { rowCount } = await req.omniPool.query(
       `UPDATE omni_messages SET read_at = COALESCE(read_at, now())
        WHERE conversation_id = $1 AND sender = 'customer' AND read_at IS NULL`,
@@ -587,6 +593,9 @@ router.patch(
   requireOmniDb,
   async (req, res) => {
     const conversationId = req.params.id;
+    if (!(await conversationVisibleTo(req.omniPool, conversationId, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
     const patch = buildConversationPatch(req.body);
     if (patch.error) {
       const extra = patch.error === "invalid_status" ? { allowed: ALLOWED_CONVERSATION_STATUSES } : {};
@@ -637,6 +646,12 @@ router.post(
     const text = String(req.body?.text || "").trim();
     if (!text) {
       return res.status(400).json({ ok: false, error: "missing_text" });
+    }
+
+    // Team isolation: never let an operator send a reply into another team's
+    // conversation (this dispatches to the customer). Mirrors /assist, /messages.
+    if (!(await conversationVisibleTo(req.omniPool, conversationId, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
     }
 
     const { rows } = await req.omniPool.query(
