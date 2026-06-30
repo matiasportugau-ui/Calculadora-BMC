@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { subscribePanelinEventType, emitPanelinEvent } from "../lib/panelinEvents.js";
+import { subscribePanelinEvents, subscribePanelinEventType, emitPanelinEvent } from "../lib/panelinEvents.js";
 import { publishForSku } from "../../scripts/publish-panelin-to-shopify.mjs";
 
 /**
@@ -40,6 +40,7 @@ export default function createPanelinRouter(config) {
     res.setHeader("Access-Control-Allow-Origin", "*");
 
     const send = (event, data) => {
+      if (res.writableEnded) return;
       res.write(`event: ${event}\n`);
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
@@ -48,6 +49,7 @@ export default function createPanelinRouter(config) {
     send("open", { ts: Date.now() });
 
     const heartbeat = setInterval(() => {
+      if (res.writableEnded) return;
       res.write(": hb\n\n");
     }, 20000);
 
@@ -71,11 +73,19 @@ export default function createPanelinRouter(config) {
       subscribePanelinEventType("product.published", (p) => send("product.published", p)),
     ];
 
-    req.on("close", () => {
+    // Single idempotent teardown attached to BOTH close and error, so a stream
+    // error can't leave the heartbeat interval running (resource leak).
+    let cleanedUp = false;
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
       clearInterval(heartbeat);
       unsubAll();
       unsubTyped.forEach((u) => u && u());
-    });
+    };
+
+    req.on("close", cleanup);
+    res.on("error", cleanup);
   });
 
   // Outbound publish worker (direct call, not exec).
