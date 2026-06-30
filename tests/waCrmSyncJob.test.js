@@ -19,7 +19,7 @@ function fakePool() {
   return {
     inserts,
     query: async (sql, params) => {
-      inserts.push({ sql, jobType: params?.[0] });
+      inserts.push({ sql, jobType: params?.[0], params });
       return { rows: [{ id: `id-${inserts.length}` }] };
     },
   };
@@ -43,8 +43,9 @@ assert("enqueues classify", waTypes.includes("classify"));
 assert("enqueues suggest", waTypes.includes("suggest"));
 assert("enqueues wa_crm_sync", waTypes.includes("wa_crm_sync"));
 const crmInsert = poolWa.inserts.find((i) => i.jobType === "wa_crm_sync");
-assert("wa_crm_sync uses ON CONFLICT DO NOTHING (coalesce)", /ON CONFLICT DO NOTHING/.test(crmInsert.sql));
-assert("classify NOT coalesced", !/ON CONFLICT DO NOTHING/.test(poolWa.inserts.find((i) => i.jobType === "classify").sql));
+assert("wa_crm_sync coalesces + re-stamps run_after (DO UPDATE)", /ON CONFLICT[\s\S]*DO UPDATE SET run_after/.test(crmInsert.sql));
+assert("wa_crm_sync sets a run_after delay", /run_after[\s\S]*interval '1 millisecond'/.test(crmInsert.sql) && crmInsert.params.length === 6);
+assert("classify NOT coalesced / no run_after", !/ON CONFLICT/.test(poolWa.inserts.find((i) => i.jobType === "classify").sql));
 
 // Non-WA channel → no wa_crm_sync even with flag ON
 const poolMl = fakePool();

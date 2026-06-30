@@ -10,6 +10,7 @@ function assert(name, condition) {
 }
 
 assert("flag defaults OFF (ships dormant)", config.omniWaCanonical === false);
+assert("wa_crm_sync debounce default 60000ms", config.omniWaCrmSyncDelayMs === 60000);
 assert("mode legacy when OFF", chooseWaIngestMode({ omniWaCanonical: false }) === "legacy");
 assert("mode canonical when ON", chooseWaIngestMode({ omniWaCanonical: true }) === "canonical");
 assert("undefined config → legacy", chooseWaIngestMode(undefined) === "legacy");

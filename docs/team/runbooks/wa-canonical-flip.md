@@ -22,9 +22,10 @@ and roll it back. Companion to [`OMNI-STAGING-ROLLOUT.md`](../orientation/OMNI-S
 - [ ] Prod repo Variables already ON: `OMNI_EVENT_BUS_ENABLED=1`,
       `OMNI_AI_ORCHESTRATOR_ENABLED=1` (they are — PROJECT-STATE 2026-06-23). The
       `wa_crm_sync` job only fires when the bus + orchestrator are live.
-- [ ] Migration `011_wa_crm_sync_job.sql` applied to prod:
-      `DATABASE_URL=<prod> npm run omni:migrate` (idempotent — widens a CHECK +
-      adds a partial index; the omni tables already exist).
+- [ ] Migrations `011_wa_crm_sync_job.sql` + `012_omni_ai_jobs_run_after.sql`
+      applied to prod: `DATABASE_URL=<prod> npm run omni:migrate` (idempotent — 011
+      widens a CHECK + adds a partial index; 012 is a cheap `ADD COLUMN run_after`;
+      the omni tables already exist).
 - [ ] `OMNI_WA_CANONICAL` is wired into `deploy-calc-api.yml` (done) so the repo
       Variable actually reaches Cloud Run.
 - [ ] Owner decisions confirmed:
@@ -85,10 +86,16 @@ Postgres is absent.)
 - **Insert-once semantics:** `wa_crm_sync` creates ONE CRM_Operativo row per phone
   on first contact and **never overwrites** it afterward (no clobber of operator
   Estado/Observaciones or the "Bloquear auto" lock). Repeat messages from a known
-  phone skip parse + Sheets entirely (so per-message LLM cost is bounded). The row
-  is created from the first message; the full transcript always lives in
-  `omni_messages`. Trade-off accepted: `resumen_pedido` reflects early conversation,
-  and a returning lead's row is not auto-refreshed (the operator owns it).
+  phone skip parse + Sheets entirely (so per-message LLM cost is bounded). A
+  returning lead's row is not auto-refreshed (the operator owns it); the full
+  transcript always lives in `omni_messages`.
+- **Burst debounce (`OMNI_WA_CRM_SYNC_DELAY_MS`, default 60000):** a `wa_crm_sync`
+  job is held until the conversation has been quiet for the window; each new inbound
+  message re-stamps it. So the row is created once the burst quiesces and parses the
+  **full** transcript (rich `resumen_pedido`), reproducing the legacy 5-min
+  inactivity behavior. A continuous conversation (no gap ≥ window) delays the row
+  until a pause — same as legacy; lower the window to fire sooner. Needs
+  migration 012 (`omni_ai_jobs.run_after`).
 - **Budget decoupling:** the AI daily-budget gate scopes to `suggest` only —
   `wa_crm_sync` keeps draining even when `OMNI_AI_DAILY_BUDGET_USD` is exhausted, so
   WhatsApp lead capture never stalls on LLM spend. The CRM-parse LLM spend is itself

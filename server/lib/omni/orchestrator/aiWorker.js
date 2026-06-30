@@ -30,29 +30,48 @@ export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "emb
 /**
  * @param {import('pg').Pool} pool
  * @param {object} job
- * @param {{ onConflictDoNothing?: boolean }} [opts]
- *   onConflictDoNothing: coalesce against the pending-job unique index (migration
- *   011). On conflict no row is inserted and this returns null (intentionally — the
- *   already-pending job will pick up the new messages when it runs).
+ * @param {{ onConflictDoNothing?: boolean, runAfterMs?: number, reStampRunAfter?: boolean }} [opts]
+ *   onConflictDoNothing: coalesce against the active-dedup unique index (migration
+ *     011). On conflict no row is inserted and this returns null.
+ *   runAfterMs: hold the job for this many ms (sets run_after = now()+ms) — used for
+ *     the wa_crm_sync burst debounce; other jobs leave run_after NULL (run immediately).
+ *   reStampRunAfter: coalesce against the wa_crm_sync active-dedup index but DO UPDATE
+ *     run_after on conflict, so each new burst message pushes the window out (true
+ *     inactivity debounce). Returns the existing row's id on conflict.
  */
 export async function enqueueAiJob(pool, job, opts = {}) {
   if (!pool) return null;
   if (!ALLOWED_AI_JOB_TYPES.includes(job.job_type)) {
     throw new Error("invalid_job_type");
   }
-  const conflictClause = opts.onConflictDoNothing ? "ON CONFLICT DO NOTHING" : "";
+
+  const hasDelay = Number.isFinite(opts.runAfterMs) && opts.runAfterMs > 0;
+  const runAfterExpr = hasDelay ? "now() + ($6::bigint * interval '1 millisecond')" : "NULL";
+
+  let conflictClause = "";
+  if (opts.reStampRunAfter) {
+    conflictClause = `ON CONFLICT (conversation_id)
+         WHERE status IN ('pending', 'failed') AND job_type = 'wa_crm_sync'
+       DO UPDATE SET run_after = EXCLUDED.run_after`;
+  } else if (opts.onConflictDoNothing) {
+    conflictClause = "ON CONFLICT DO NOTHING";
+  }
+
+  const params = [
+    job.job_type,
+    job.message_id,
+    job.conversation_id,
+    job.channel || null,
+    JSON.stringify(job.input_json || {}),
+  ];
+  if (hasDelay) params.push(String(opts.runAfterMs));
+
   const { rows } = await pool.query(
-    `INSERT INTO omni_ai_jobs (job_type, message_id, conversation_id, channel, input_json, status)
-     VALUES ($1, $2, $3, $4, $5::jsonb, 'pending')
+    `INSERT INTO omni_ai_jobs (job_type, message_id, conversation_id, channel, input_json, status, run_after)
+     VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', ${runAfterExpr})
      ${conflictClause}
      RETURNING id`,
-    [
-      job.job_type,
-      job.message_id,
-      job.conversation_id,
-      job.channel || null,
-      JSON.stringify(job.input_json || {}),
-    ],
+    params,
   );
   return rows[0]?.id ?? null;
 }
@@ -95,7 +114,9 @@ export async function enqueueIngestAiJobs(pool, payload) {
           conversation_id: payload.conversation_id,
           channel: payload.channel,
         },
-        { onConflictDoNothing: true },
+        // Burst debounce: hold the job, and re-stamp the window on each new message
+        // so it runs once the conversation quiesces and parses the full transcript.
+        { runAfterMs: config.omniWaCrmSyncDelayMs, reStampRunAfter: true },
       ),
     );
   }
@@ -374,6 +395,7 @@ export function startOmniAiWorker({ config: cfg, logger, pool }) {
           `SELECT * FROM omni_ai_jobs
            WHERE status IN ('pending', 'failed')
              AND ($2 = false OR job_type <> 'suggest')
+             AND (run_after IS NULL OR run_after <= now())
            ORDER BY created_at ASC
            LIMIT $1
            FOR UPDATE SKIP LOCKED`,

@@ -303,6 +303,41 @@ async function main() {
     assert("enqueueIngestAiJobs(wa,ON) → classify+suggest+wa_crm_sync",
       types.includes("classify") && types.includes("suggest") && types.includes("wa_crm_sync"),
       JSON.stringify(types));
+
+    // run_after burst debounce: the wa_crm_sync job is held in the future and is not
+    // claimable until its window passes; a 2nd message re-stamps it later (still 1 row).
+    const claimableSql = `SELECT id FROM omni_ai_jobs
+       WHERE status IN ('pending','failed')
+         AND (run_after IS NULL OR run_after <= now())
+         AND conversation_id=$1 AND job_type='wa_crm_sync'`;
+    const { rows: ra1 } = await pool.query(
+      `SELECT run_after, run_after > now() AS future FROM omni_ai_jobs
+        WHERE conversation_id=$1 AND job_type='wa_crm_sync'`,
+      [conv2.id],
+    );
+    assert("wa_crm_sync run_after is in the future (debounced)", ra1[0]?.future === true, JSON.stringify(ra1[0]));
+    const { rows: notYet } = await pool.query(claimableSql, [conv2.id]);
+    assert("future-dated wa_crm_sync NOT claimable yet", notYet.length === 0);
+
+    const before = ra1[0].run_after;
+    await enqueueIngestAiJobs(pool, {
+      duplicate: false, message: { sender: "customer" }, channel: "wa",
+      message_id: msg2.id, conversation_id: conv2.id,
+    });
+    const { rows: ra2 } = await pool.query(
+      `SELECT run_after FROM omni_ai_jobs WHERE conversation_id=$1 AND job_type='wa_crm_sync'`,
+      [conv2.id],
+    );
+    assert("re-stamp keeps exactly one wa_crm_sync row", ra2.length === 1, `got ${ra2.length}`);
+    assert("re-stamp pushes run_after later (debounce)", new Date(ra2[0].run_after) >= new Date(before));
+
+    await pool.query(
+      `UPDATE omni_ai_jobs SET run_after = now() - interval '1 second'
+        WHERE conversation_id=$1 AND job_type='wa_crm_sync'`,
+      [conv2.id],
+    );
+    const { rows: nowClaim } = await pool.query(claimableSql, [conv2.id]);
+    assert("past-dated wa_crm_sync IS claimable", nowClaim.length === 1);
   } else {
     console.log("  ⏭ enqueueIngestAiJobs integration skipped (OMNI_WA_CANONICAL/ORCHESTRATOR not set in harness env)");
   }
