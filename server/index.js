@@ -82,7 +82,9 @@ import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
 import omniRouter from "./routes/omni.js";
-import { shadowWriteWaWebhook } from "./lib/omni/adapters/waWebhook.js";
+import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
+import { normalizeAndPersist } from "./lib/omni/normalizer.js";
+import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
 import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
@@ -738,6 +740,8 @@ async function processWaConversation(chatId, conv) {
 // ── Auto-trigger: procesar conversaciones inactivas (5 min sin mensajes) ──
 const WA_INACTIVITY_MS = 5 * 60 * 1000; // 5 minutos
 setInterval(() => {
+  // Canonical mode: the wa_crm_sync omni job handles ingest — no in-memory timer.
+  if (config.omniWaCanonical) return;
   const now = Date.now();
   for (const [chatId, conv] of waConversations.entries()) {
     if (now - conv.lastUpdate >= WA_INACTIVITY_MS && conv.messages.length > 0) {
@@ -832,20 +836,25 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 
   if (!value?.messages) return;
 
+  const waMode = chooseWaIngestMode(config);
+
   for (const msg of value.messages) {
     const chatId = msg.from; // número del cliente
     const contactName = value.contacts?.[0]?.profile?.name || msg.from;
     const text = msg.text?.body || msg.caption || "";
     if (!text) continue;
 
-    if (!waConversations.has(chatId)) {
-      waConversations.set(chatId, { messages: [], contactName, lastUpdate: Date.now() });
+    // Legacy in-memory accumulation (drives the 5-min timer + 🚀 trigger) — OFF only.
+    let conv = null;
+    if (waMode === "legacy") {
+      if (!waConversations.has(chatId)) {
+        waConversations.set(chatId, { messages: [], contactName, lastUpdate: Date.now() });
+      }
+      conv = waConversations.get(chatId);
+      conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
+      conv.lastUpdate = Date.now();
+      logger.info(`[WA] Message from ${contactName} (${chatId}), total: ${conv.messages.length}`);
     }
-    const conv = waConversations.get(chatId);
-    conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
-    conv.lastUpdate = Date.now();
-
-    logger.info(`[WA] Message from ${contactName} (${chatId}), total: ${conv.messages.length}`);
 
     // F4 — espejar inbound Cloud API en Postgres wa_messages para que el cockpit
     // SPA tenga vista unificada con los mensajes scrapeados via extensión.
@@ -891,18 +900,28 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       logger.warn({ err: e?.message, chat_id: chatId }, "WA webhook → wa_messages mirror failed");
     }
 
-    void shadowWriteWaWebhook({
-      config,
-      logger,
-      msg,
-      chatId,
-      contactName,
-    });
+    if (waMode === "canonical") {
+      // Omni is the single source of truth: real (awaited) ingest → message.ingested
+      // → classify/suggest + the per-conversation-coalesced wa_crm_sync job.
+      try {
+        await normalizeAndPersist(
+          waWebhookToOmniEvent({ msg, chatId, contactName }),
+          { databaseUrl: config.databaseUrl, logger },
+        );
+      } catch (e) {
+        // 200 was already sent to Meta (line above); a failure here only loses this
+        // message's enrichment, never the webhook ack.
+        logger.warn({ err: e?.message, chat_id: chatId }, "WA canonical ingest failed");
+      }
+    } else {
+      // Legacy: Omni shadow dual-write + in-memory 5-min/🚀 processing.
+      void shadowWriteWaWebhook({ config, logger, msg, chatId, contactName });
 
-    // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
-    if (text.includes("🚀")) {
-      logger.info(`[WA] 🚀 manual trigger for ${chatId}`);
-      processWaConversation(chatId, conv);
+      // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
+      if (text.includes("🚀")) {
+        logger.info(`[WA] 🚀 manual trigger for ${chatId}`);
+        processWaConversation(chatId, conv);
+      }
     }
   }
 }));
