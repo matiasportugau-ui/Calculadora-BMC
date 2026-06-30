@@ -128,14 +128,46 @@ paths:
                   type: string
                 messageId:
                   type: string
+                threadId:
+                  type: string
+                account:
+                  type: string
       responses:
         "200":
-          description: ok, datos parseados y opcionalmente crmRow
+          description: |
+            Resultado del parseo + escritura. `data` es el lead estructurado
+            (esquema `CrmLead`). `crmRow` es el nº de fila escrito en
+            `CRM_Operativo`, o `null` cuando no se escribió. `degraded` es
+            `true` si la estructura de la planilla no pudo validarse y el lead
+            quedó en estado **Pendiente** para revisión manual (no se escribió
+            fila para evitar corromper columnas).
           content:
             application/json:
               schema:
                 type: object
-                additionalProperties: true
+                required:
+                  - ok
+                  - data
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/CrmLead"
+                  provider:
+                    type: string
+                    nullable: true
+                  crmRow:
+                    type: integer
+                    nullable: true
+                  degraded:
+                    type: boolean
+                    description: true si el lead se enrutó a Pendientes sin escribir por anomalía estructural.
+                  degradeReason:
+                    type: string
+                    nullable: true
+                  messageId:
+                    type: string
+                    nullable: true
         "400":
           description: Falta cuerpo
         "401":
@@ -150,3 +182,74 @@ components:
       scheme: bearer
       description: API_AUTH_TOKEN del servidor; en ingest también válido EMAIL_INGEST_TOKEN si está configurado.
       bearerFormat: API_AUTH_TOKEN
+  schemas:
+    CrmLead:
+      type: object
+      description: |
+        Lead estructurado que el parser produce y escribe en `CRM_Operativo`.
+        **Contrato key-based:** TODAS las claves deben estar presentes. Si un
+        dato no está disponible (ej. `telefono`), enviá `""` — NUNCA omitas la
+        clave. El escritor mapea cada clave a su columna por NOMBRE de cabecera
+        (fila 3), nunca por posición de array, de modo que un campo vacío jamás
+        desplaza las columnas siguientes (bug de column-shift). Ver
+        `server/lib/crmRowMapper.js`.
+      required:
+        - cliente
+        - telefono
+        - ubicacion
+        - email_remitente
+        - resumen_pedido
+        - categoria
+        - urgencia
+        - tipo_cliente
+        - cotizacion_formal
+        - validar_stock
+        - probabilidad_cierre
+        - observaciones
+      additionalProperties: false
+      properties:
+        cliente:
+          type: string
+          default: ""
+          description: Nombre del cliente. "" si no se pudo extraer.
+        telefono:
+          type: string
+          default: ""
+          description: Teléfono explícito; "" si no aparece (no se infiere).
+        ubicacion:
+          type: string
+          default: ""
+          description: Ciudad / departamento / zona / dirección de obra.
+        email_remitente:
+          type: string
+          default: ""
+        resumen_pedido:
+          type: string
+          default: ""
+        categoria:
+          type: string
+          default: ""
+          description: Accesorios | Paneles techo | Paneles pared | Proyecto completo | Ferretería | Repuestos | Servicio/instalación | Otro
+        urgencia:
+          type: string
+          default: ""
+          description: Hoy | 24h | Esta semana | Este mes | Sin urgencia
+        tipo_cliente:
+          type: string
+          default: ""
+          description: Particular | Empresa | Arquitecto | Constructor | Distribuidor | Instalador | Cliente existente | Sin clasificar
+        cotizacion_formal:
+          type: string
+          default: ""
+          description: Si | No
+        validar_stock:
+          type: string
+          default: ""
+          description: Si | No
+        probabilidad_cierre:
+          type: string
+          default: ""
+          description: Alta | Media | Baja
+        observaciones:
+          type: string
+          default: ""

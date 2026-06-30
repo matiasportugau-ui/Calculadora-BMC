@@ -33,10 +33,28 @@
 | **Security** | `.env`, CORS, tokens — sin secretos en chat SIM. |
 | **Reporter** | Si hay plan de implementación, mencionar impacto en checklist SIM. |
 | **SIM** (implícito) | No es paso separado: es el consumidor del Handoff en Cursor. |
-| **SIM-REV** | Ejecutar revisión §4 de AGENT-SIMULATOR-SIM.md → reporte en `docs/team/panelsim/reports/`. |
+| **SIM-REV** | Ejecutar revisión §4 de AGENT-SIMULATOR-SIM.md → reporte en `docs/team/panelsim/reports/`. **Validar contrato CRM key-based antes de cualquier escritura** (ver abajo). |
 | **Judge** | Puede incorporar calidad del Handoff a SIM como criterio opcional del run. |
 
 ---
+
+## Validación de contrato CRM (key-based) — gate del Reviewer
+
+Antes de que cualquier flujo escriba en `CRM_Operativo` (ingest de email, leads,
+cotizaciones), el **Reviewer/Supervisor** valida la **estructura del payload JSON**:
+
+- El payload es un **objeto con claves** (esquema `CrmLead` en
+  `docs/openapi-email-gpt.yaml`), no un array posicional. Toda clave presente;
+  campo sin dato = `""` (jamás se omite la clave ni se saltea un índice).
+- La escritura se construye con `server/lib/crmRowMapper.js`
+  (`buildCrmRow` → `validateCrmRow`), que ancla cada valor por **nombre de
+  cabecera** (fila 3 de la planilla), no por posición. Esto neutraliza el bug de
+  *column-shift* (un `telefono` faltante ya no empuja Ubicación, Origen, etc.).
+- Si `validateCrmRow` devuelve `ok:false` (faltan claves requeridas, fila más
+  ancha que las cabeceras, o cabeceras ausentes), el supervisor **rechaza** la
+  escritura y enruta el lead a **"Pendiente"** para revisión manual. No se marca
+  idempotencia, de modo que el próximo run reintenta cuando la estructura se
+  corrija. **Nunca** se escribe una fila potencialmente desplazada.
 
 ## Handoff a SIM (plantilla — completar al cierre del bundle)
 

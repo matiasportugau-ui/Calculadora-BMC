@@ -16,6 +16,8 @@ import {
   Col,
 } from "../lib/crmOperativoLayout.js";
 import { parseCrmRowAtoAK, extractMlQuestionId, isSi } from "../lib/crmRowParse.js";
+import { buildCrmRow, validateCrmRow, sliceCrmRange } from "../lib/crmRowMapper.js";
+import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 import { normalizeSurface, SURFACES } from "../lib/surface.js";
 import { writeCrmRowTaxonomy } from "../lib/crmTaxonomy.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
@@ -2738,6 +2740,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 
     const d = parsed;
     let crmRow = null;
+    let degraded = false;
+    let degradeReason = null;
     const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
     if (config.bmcSheetId && credsPath) {
       try {
@@ -2750,58 +2754,83 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
         const sheetId = config.bmcSheetId;
         const now = new Date().toISOString();
 
-        // CRM_Operativo — primera fila con col C vacía a partir de fila 4
-        const crmClientes = await sheets.spreadsheets.values.get({
-          spreadsheetId: sheetId, range: "'CRM_Operativo'!C4:C500",
+        // Read row-3 headers + the Cliente column in one round-trip. Headers
+        // anchor the write by column NAME; the C column locates the first empty
+        // data row (≥ 4).
+        const reads = await sheets.spreadsheets.values.batchGet({
+          spreadsheetId: sheetId,
+          ranges: ["'CRM_Operativo'!A3:ZZ3", "'CRM_Operativo'!C4:C500"],
         });
-        const crmVals = crmClientes.data.values || [];
+        const headers = reads.data.valueRanges?.[0]?.values?.[0] || [];
+        const crmVals = reads.data.valueRanges?.[1]?.values || [];
         crmRow = crmVals.length + 4;
         for (let i = 0; i < crmVals.length; i++) {
           if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) { crmRow = i + 4; break; }
         }
 
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
-            now, d.cliente || "", d.telefono || d.email_remitente || remitente || "",
-            d.ubicacion || "", "Email-Auto", d.resumen_pedido || "",
-            d.categoria || "", "", "Pendiente", "",
-          ]] },
-        });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
-        });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
-        });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: rangeAGAK(crmRow),
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [defaultTailAGAK_Email()] },
-        });
-        console.log(`[Email] ✓ Ingested → CRM row ${crmRow}, provider: ${provider}, messageId: ${messageId || "?"}`);
-        void shadowWriteEmailIngest({
-          config,
-          logger: console,
-          payload: { asunto, cuerpo, remitente, messageId, threadId, account, parsed: d, crmRow },
-        }).catch((e) => console.warn("[Email] omni shadow failed:", e?.message));
-        // Record idempotency + reply metadata only after a successful write.
-        await markIngested(ingestPool, { messageKey: messageId, account, messageId, remitente, crmRow });
+        // KEY-BASED row: each column addressed by logical key, never by blind
+        // array index. A missing field (e.g. telefono) stays "" — it can never
+        // shift the columns after it to the left.
+        const lead = {
+          fecha: now,
+          cliente: d.cliente || "",
+          telefono: d.telefono || d.email_remitente || remitente || "",
+          ubicacion: d.ubicacion || "",
+          origen: "Email-Auto",
+          consulta: d.resumen_pedido || "",
+          categoria: d.categoria || "",
+          estado: "Pendiente",
+          probabilidad: d.probabilidad_cierre || "",
+          urgencia: d.urgencia || "",
+          validarStock: d.validar_stock || "No",
+          tipoCliente: d.tipo_cliente || "",
+          observaciones: d.observaciones || "",
+        };
+        const built = buildCrmRow(headers, lead, { sanitize: sanitizeCellValue });
+        const check = validateCrmRow(built, headers, { requireHeaders: true });
+
+        if (!check.ok) {
+          // Graceful degradation: the sheet structure can't be trusted, so we
+          // REFUSE to write a possibly-shifted row. The lead stays in
+          // "Pendientes" for manual review; not marking idempotency means the
+          // next scheduled run retries once the structure is fixed.
+          degraded = true;
+          degradeReason = check.errors.join(",");
+          crmRow = null;
+          console.warn(`[Email] ⚠ CRM structure invalid (${degradeReason}) — lead routed to Pendientes, NOT written. messageId: ${messageId || "?"}`);
+        } else {
+          if (built.fallbacks.length) {
+            console.warn(`[Email] CRM_Operativo header fallback for: ${built.fallbacks.join(",")} (wrote via documented column letters)`);
+          }
+          // One header-anchored write for the data block (B:W) instead of three
+          // positional range writes.
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `'CRM_Operativo'!B${crmRow}:W${crmRow}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [sliceCrmRange(built.row, "B", "W")] },
+          });
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: rangeAGAK(crmRow),
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [defaultTailAGAK_Email()] },
+          });
+          console.log(`[Email] ✓ Ingested → CRM row ${crmRow}, provider: ${provider}, messageId: ${messageId || "?"}`);
+          void shadowWriteEmailIngest({
+            config,
+            logger: console,
+            payload: { asunto, cuerpo, remitente, messageId, threadId, account, parsed: d, crmRow },
+          }).catch((e) => console.warn("[Email] omni shadow failed:", e?.message));
+          // Record idempotency + reply metadata only after a successful write.
+          await markIngested(ingestPool, { messageKey: messageId, account, messageId, remitente, crmRow });
+        }
       } catch (e) {
         console.error(`[Email] ✗ Sheets write failed:`, e.message);
       }
     }
 
-    res.json({ ok: true, data: d, provider, crmRow, messageId: messageId || null });
+    res.json({ ok: true, data: d, provider, crmRow, degraded, degradeReason, messageId: messageId || null });
   });
 
   // ── email/poll-gmail: server-side Gmail poll → loopback ingest. Triggered by
