@@ -80,6 +80,13 @@ export function formatPrometheusMetrics(data) {
   lines.push("# HELP omni_ai_cost_usd_today AI cost USD today");
   lines.push("# TYPE omni_ai_cost_usd_today counter");
   lines.push(`omni_ai_cost_usd_today ${data.omni_ai_cost_usd_today ?? 0}`);
+  // Per-type/status job counts (24h) so dead-lettering — e.g.
+  // omni_ai_jobs_24h{job_type="wa_crm_sync",status="dead"} — is alertable.
+  lines.push("# HELP omni_ai_jobs_24h AI jobs in last 24h by type and status");
+  lines.push("# TYPE omni_ai_jobs_24h gauge");
+  for (const row of data.omni_ai_jobs_completed_24h || []) {
+    lines.push(`omni_ai_jobs_24h{job_type="${row.job_type}",status="${row.status}"} ${row.total}`);
+  }
   for (const row of data.omni_conversations_by_channel || []) {
     lines.push(`omni_conversations{channel="${row.channel}"} ${row.total}`);
   }

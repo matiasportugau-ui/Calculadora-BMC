@@ -46,7 +46,11 @@ echo "[omni-local-e2e] running E2E harness"
 # Unset DATABASE_URL so the harness guard (must differ from DATABASE_URL) is satisfied
 # and nothing else can resolve a real DB.
 set +e
-env -u DATABASE_URL OMNI_E2E_DATABASE_URL="${E2E_URL}" node scripts/omni-local-e2e.mjs
+# Flags ON so the WA-CANONICAL gate exercises the real enqueueIngestAiJobs path
+# (config reads these at module load, so they must be set before node starts).
+env -u DATABASE_URL OMNI_E2E_DATABASE_URL="${E2E_URL}" \
+  OMNI_WA_CANONICAL=1 OMNI_AI_ORCHESTRATOR_ENABLED=1 OMNI_EVENT_BUS_ENABLED=1 \
+  node scripts/omni-local-e2e.mjs
 code=$?
 set -e
 
