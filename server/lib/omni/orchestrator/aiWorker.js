@@ -5,7 +5,8 @@ import { config } from "../../../config.js";
 import { callAgentOnce } from "../../agentCore.js";
 import { classifyIntent } from "../../waEnricher.js";
 import { startOmniSpan } from "../otel.js";
-import { getEnabledPrompt, getEnabledModel } from "./aiRegistry.js";
+import { getEnabledPrompt } from "./aiRegistry.js";
+import { resolveSuggestModel } from "./modelTiering.js";
 import { processExtractDealJob } from "../deals/dealExtractor.js";
 import { runEmbedJob } from "../knowledge/embedPipeline.js";
 import { buildOmniRetrievalContext, formatOmniContextBlock } from "../knowledge/kbBridge.js";
@@ -129,7 +130,7 @@ export async function processAiJob(pool, jobRow, logger) {
   const t0 = Date.now();
 
   const { rows: msgRows } = await pool.query(
-    `SELECT m.body, m.sender, c.channel
+    `SELECT m.body, m.sender, m.body_ai_category, c.channel
      FROM omni_messages m
      JOIN omni_conversations c ON c.id = m.conversation_id
      WHERE m.id = $1`,
@@ -168,7 +169,13 @@ export async function processAiJob(pool, jobRow, logger) {
     } else if (jobRow.job_type === "suggest") {
       const channel = msg.channel === "ml" ? "ml" : msg.channel === "wa" ? "wa" : "chat";
       const prompt = await getEnabledPrompt(pool, "suggest", channel);
-      const model = await getEnabledModel(pool, "suggest");
+      // Tries a category-specific tier (e.g. "suggest:complaint") before the
+      // base "suggest" key — a no-op today since no tier rows are seeded; see
+      // docs/team/runbooks/omni-ai-tiered-routing-enable.md for how the owner
+      // enables one. msg.body_ai_category can be null (the sibling `classify`
+      // job for this message may not have run yet — ordering isn't guaranteed),
+      // which resolveSuggestModel() handles by trying only the base key.
+      const { model, taskKey: modelTaskKey } = await resolveSuggestModel(pool, msg.body_ai_category);
 
       if (!model) {
         await markJobCompleted(pool, jobRow.id, {
@@ -226,6 +233,7 @@ export async function processAiJob(pool, jobRow, logger) {
         latency_ms: result.latencyMs ?? Date.now() - t0,
         cost_usd: result.estimatedCostUsd ?? 0,
         prompt_version: prompt?.version ?? null,
+        model_task_key: modelTaskKey,
       });
     } else if (jobRow.job_type === "extract_deal") {
       const extracted = await processExtractDealJob(pool, jobRow);
