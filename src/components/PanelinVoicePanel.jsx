@@ -15,7 +15,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { useHandsFreeVoice } from "../hooks/useHandsFreeVoice.js";
-import { isBrowserSupported, isSafari } from "../utils/voiceSupport.js";
+import { isBrowserSupported, isSafari } from "../hooks/voiceSupport.js";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
