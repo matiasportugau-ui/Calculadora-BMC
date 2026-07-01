@@ -43,7 +43,16 @@
 |--------|----------------|-------|
 | **ML sync** (`syncUnansweredQuestions`) | `B:AK` | Incluye `defaultTailAGAK_ML()` (AG–AK) |
 | **WhatsApp** (`processWaConversation`) | `B:K`, `R:T`, `V:W`, `AF:AG` (si IA OK), siempre **`AH:AK`** | |
-| **Email** (`ingest-email`) | `B:K`, `R:T`, `V:W`, **`AG:AK`** | AF no lo rellena este endpoint aún |
+| **Email** (`ingest-email`) | `B:W` (un solo write) + **`AG:AK`** | AF no lo rellena este endpoint aún |
+| **Cotización** (`appendQuoteToCrm`) | append `B:AK` | Fila nueva; col A (correlation_id) en update aparte |
+
+> **Contrato key-based (anti column-shift).** Los writers de leads anclan cada
+> valor por **nombre de cabecera** (fila 3) vía `server/lib/crmRowMapper.js`
+> (`buildCrmRow`/`validateCrmRow`), nunca por posición de array. Un campo vacío
+> (ej. `telefono`) queda `""` en su columna y **no desplaza** las columnas
+> siguientes. Si la estructura no valida (faltan cabeceras, fila más ancha que la
+> hoja), el ingest de email **no escribe** y enruta el lead a "Pendiente" para
+> revisión manual.
 
 ---
 
