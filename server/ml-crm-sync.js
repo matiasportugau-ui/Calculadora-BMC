@@ -9,6 +9,7 @@
 import { google } from "googleapis";
 import { setListaPrecios, PANELS_TECHO, PANELS_PARED, p } from "../src/data/constants.js";
 import { defaultTailAGAK_ML } from "./lib/crmOperativoLayout.js";
+import { sanitizeCellValue } from "./lib/sheetsCsvGuard.js";
 import { analyzeQuotationGaps, formatGapsForOperator } from "./ml-quotation-gaps.js";
 
 const SHEET_TAB  = "CRM_Operativo";
@@ -263,12 +264,17 @@ export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger =
       "ML", obs, formatDate(q.date_created), "", "", "", "Sí", "", "", "SI",
       respuestaSugerida,
     ];
+    // CSV/formula guard on every cell — nickname, q.text and obs are
+    // buyer-controlled and could start with `=`/`+`/`-`/`@`. Same guard the
+    // email/quote writers use (sheetsCsvGuard.js). rowCore (31) + tail (5) = the
+    // fixed 36 columns of B:AK.
+    const rowValues = [...rowCore, ...defaultTailAGAK_ML()].map(sanitizeCellValue);
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
       range: `'${SHEET_TAB}'!B${rowNum}:AK${rowNum}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[...rowCore, ...defaultTailAGAK_ML()]],
+        values: [rowValues],
       },
     });
 

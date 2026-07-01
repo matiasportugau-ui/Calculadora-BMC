@@ -186,8 +186,8 @@ const DB_PROBES = [
     id: "email_ingest_log",
     label: "Email→CRM dedupe ledger (prueba el pipeline de correo)",
     sql: `SELECT COUNT(*)::int AS total,
-                 COUNT(*) FILTER (WHERE created_at >= now() - interval '24 hours')::int AS last_24h,
-                 MAX(created_at) AS newest
+                 COUNT(*) FILTER (WHERE ingested_at >= now() - interval '24 hours')::int AS last_24h,
+                 MAX(ingested_at) AS newest
           FROM public.email_ingest_log`,
     flowKey: "last_24h",
   },

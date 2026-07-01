@@ -60,7 +60,10 @@ async function main() {
       await client.query("BEGIN");
       try {
         await client.query(sql);
-        await client.query("INSERT INTO omni_schema_migrations (name) VALUES ($1)", [file]);
+        await client.query(
+          "INSERT INTO omni_schema_migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING",
+          [file],
+        );
         await client.query("COMMIT");
         console.log(`ok  ${file}`);
       } catch (e) {
