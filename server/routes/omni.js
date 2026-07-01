@@ -131,6 +131,13 @@ async function listAssignableUserIds(pool) {
 
 const router = Router();
 
+// Floor rate limit for the whole /omni/* surface — guarantees every route
+// (including any added later, or any DB-access path CodeQL can trace that a
+// per-route omniReadLimiter/omniWriteLimiter might miss) has at least basic
+// abuse protection. Write routes still layer the stricter omniWriteLimiter
+// on top; both run, the stricter one is the effective ceiling.
+router.use(omniReadLimiter);
+
 router.get("/omni/health", requireOmniDb, async (req, res) => {
   try {
     const health = await omniHealthCheck(req.omniPool);
