@@ -2,6 +2,7 @@
  * /api/omni/* — unified inbox API (Track D + WAVE 3)
  */
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { config } from "../config.js";
 import { getOmniPool, omniHealthCheck } from "../lib/omni/omniDb.js";
@@ -31,6 +32,20 @@ import { appendTeamIsolationFilter } from "../lib/omni/teamIsolation.js";
 import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
 import { mergeContacts, ContactMergeError } from "../lib/omni/identity/contactMerge.js";
 import { callAgentOnce } from "../lib/agentCore.js";
+
+const omniReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const omniWriteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // AI copilot actions for the inline thread assistant. Each builds a one-shot
 // agentCore prompt (provider chain + budget caps apply). Thread-based actions
@@ -177,6 +192,7 @@ router.get(
 // panel never hard-fails.
 router.get(
   "/omni/admin/overview",
+  omniReadLimiter,
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -268,6 +284,7 @@ router.get(
 // deliberately separate, admin-gated step — see contactMerge.js.
 router.get(
   "/omni/contacts/duplicates",
+  omniReadLimiter,
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -311,6 +328,7 @@ router.get(
 // owner-approved action (never automatic, never triggered by AI).
 router.post(
   "/omni/contacts/merge",
+  omniWriteLimiter,
   requireGrant.admin("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -357,6 +375,7 @@ router.post(
 // Degrades to an empty queue pre-009 so the cockpit never hard-fails.
 router.get(
   "/omni/actions/urgent",
+  omniReadLimiter,
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
