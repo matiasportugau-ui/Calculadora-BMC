@@ -72,7 +72,7 @@ export async function runWaCrmSyncJob({ pool, jobRow, config, logger, fetchImpl,
   const existing = await findCrmRowByPhone({ config, phone: chatId, sheets });
   if (existing.skipped) return { skipped: true, reason: existing.reason };
   if (existing.row) {
-    logger?.info?.(`[WA] wa_crm_sync skip — CRM row ${existing.row} exists for ${String(chatId).replace(/[\r\n]/g, " ").slice(0, 256)}`);
+    logger?.info?.({ crm_row: existing.row, chat_id: chatId }, "[WA] wa_crm_sync skip — CRM row exists for phone");
     return { skipped: true, reason: "crm_row_exists", crm_row: existing.row };
   }
   const sheetsClient = existing.sheets || sheets; // reuse the resolved client
