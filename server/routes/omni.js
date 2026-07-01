@@ -580,6 +580,7 @@ router.get(
 const ASSIST_MAX_INPUT = 4000; // clamp per field to bound prompt size / cost
 router.post(
   "/omni/conversations/:id/assist",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
