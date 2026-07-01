@@ -45,7 +45,11 @@ assert("enqueues wa_crm_sync", waTypes.includes("wa_crm_sync"));
 const crmInsert = poolWa.inserts.find((i) => i.jobType === "wa_crm_sync");
 assert("wa_crm_sync coalesces + re-stamps run_after (DO UPDATE)", /ON CONFLICT[\s\S]*DO UPDATE SET run_after/.test(crmInsert.sql));
 assert("wa_crm_sync sets a run_after delay", /run_after[\s\S]*interval '1 millisecond'/.test(crmInsert.sql) && crmInsert.params.length === 6);
-assert("classify NOT coalesced / no run_after", !/ON CONFLICT/.test(poolWa.inserts.find((i) => i.jobType === "classify").sql));
+const classifyInsert = poolWa.inserts.find((i) => i.jobType === "classify");
+assert("classify NOT coalesced", !/ON CONFLICT/.test(classifyInsert.sql));
+// Dormancy: the no-delay path must NOT name run_after, so enqueue works against a
+// pre-migration-012 schema (classify/suggest run whenever the orchestrator is on).
+assert("classify INSERT omits run_after column (dormant vs pre-012 schema)", !/run_after/.test(classifyInsert.sql) && classifyInsert.params.length === 5);
 
 // Non-WA channel → no wa_crm_sync even with flag ON
 const poolMl = fakePool();

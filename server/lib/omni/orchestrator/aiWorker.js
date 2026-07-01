@@ -46,7 +46,6 @@ export async function enqueueAiJob(pool, job, opts = {}) {
   }
 
   const hasDelay = Number.isFinite(opts.runAfterMs) && opts.runAfterMs > 0;
-  const runAfterExpr = hasDelay ? "now() + ($6::bigint * interval '1 millisecond')" : "NULL";
 
   let conflictClause = "";
   if (opts.reStampRunAfter) {
@@ -64,11 +63,22 @@ export async function enqueueAiJob(pool, job, opts = {}) {
     job.channel || null,
     JSON.stringify(job.input_json || {}),
   ];
-  if (hasDelay) params.push(String(opts.runAfterMs));
+
+  // Only reference the `run_after` column when a delay is actually requested (the
+  // wa_crm_sync burst debounce). The classify/suggest path omits it entirely, so
+  // enqueue stays compatible with a schema where migration 012 hasn't been applied
+  // yet — the deploy is truly dormant at the DB level with the WA flags OFF.
+  let cols = "job_type, message_id, conversation_id, channel, input_json, status";
+  let vals = "$1, $2, $3, $4, $5::jsonb, 'pending'";
+  if (hasDelay) {
+    params.push(String(opts.runAfterMs));
+    cols += ", run_after";
+    vals += ", now() + ($6::bigint * interval '1 millisecond')";
+  }
 
   const { rows } = await pool.query(
-    `INSERT INTO omni_ai_jobs (job_type, message_id, conversation_id, channel, input_json, status, run_after)
-     VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', ${runAfterExpr})
+    `INSERT INTO omni_ai_jobs (${cols})
+     VALUES (${vals})
      ${conflictClause}
      RETURNING id`,
     params,
@@ -391,11 +401,18 @@ export function startOmniAiWorker({ config: cfg, logger, pool }) {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
+        // The run_after predicate is only meaningful in canonical WA mode (the only
+        // producer of future-dated jobs) and only exists post-migration-012. Gate it
+        // on omniWaCanonical so the worker runs clean against a pre-012 schema when
+        // the WA flags are OFF (dormancy).
+        const runAfterClause = cfg.omniWaCanonical
+          ? "AND (run_after IS NULL OR run_after <= now())"
+          : "";
         const { rows } = await client.query(
           `SELECT * FROM omni_ai_jobs
            WHERE status IN ('pending', 'failed')
              AND ($2 = false OR job_type <> 'suggest')
-             AND (run_after IS NULL OR run_after <= now())
+             ${runAfterClause}
            ORDER BY created_at ASC
            LIMIT $1
            FOR UPDATE SKIP LOCKED`,
