@@ -8,15 +8,15 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
-import { buildSystemPrompt } from "../lib/chatPrompts.js";
-import { findRelevantExamples } from "../lib/trainingKB.js";
+import { buildVoiceSystemPrompt } from "../lib/chatPrompts.js";
+
 import { recordVoiceError, listVoiceErrors, clearVoiceErrors } from "../lib/voiceErrorLog.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 
 const router = Router();
 
-const REALTIME_SESSIONS_URL = "https://api.openai.com/v1/realtime/sessions";
+const REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
 
 const VALID_ACTION_TYPES = new Set([
   "setScenario", "setLP", "setTecho", "setPared", "setCamara",
@@ -34,7 +34,7 @@ function voiceSessionKey(req) {
 
 const sessionLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 3,
+  max: config.appEnv === "development" ? 30 : 3,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: voiceSessionKey,
@@ -71,14 +71,7 @@ router.post(
 
   const { calcState = {}, devMode = false } = req.body || {};
 
-  let trainingExamples = [];
-  try {
-    trainingExamples = await findRelevantExamples("", 3);
-  } catch {
-    // Non-fatal
-  }
-
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode });
+  const systemPrompt = buildVoiceSystemPrompt(calcState, { devMode });
 
   // Tool definitions mirroring the text-mode action set
   const tools = [
@@ -155,26 +148,32 @@ router.post(
 
   let sessionData;
   try {
-    const response = await fetch(REALTIME_SESSIONS_URL, {
+    const response = await fetch(REALTIME_CLIENT_SECRETS_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${config.openaiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: config.openaiRealtimeModel,
-        voice: "shimmer",
-        instructions: systemPrompt,
-        input_audio_transcription: { model: "whisper-1" },
-        turn_detection: {
-          type: "server_vad",
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 800,
+        session: {
+          type: "realtime",
+          model: config.openaiRealtimeModel,
+          instructions: systemPrompt,
+          audio: {
+            input: {
+              transcription: { model: "whisper-1" },
+              turn_detection: {
+                type: "server_vad",
+                threshold: 0.5,
+                prefix_padding_ms: 300,
+                silence_duration_ms: 800,
+              },
+            },
+            output: { voice: "shimmer" },
+          },
+          tools,
+          tool_choice: "auto",
         },
-        tools,
-        tool_choice: "auto",
-        modalities: ["text", "audio"],
       }),
       signal: AbortSignal.timeout(15000),
     });
@@ -201,7 +200,15 @@ router.post(
       });
     }
 
-    sessionData = await response.json();
+    const mintData = await response.json();
+    sessionData = {
+      id: mintData.session?.id,
+      model: mintData.session?.model || config.openaiRealtimeModel,
+      client_secret: {
+        value: mintData.value,
+        expires_at: mintData.expires_at,
+      },
+    };
   } catch (err) {
     req.log?.error({ err }, "Voice session fetch error");
     recordVoiceError({

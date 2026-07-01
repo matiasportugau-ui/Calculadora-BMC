@@ -8,6 +8,7 @@ import {
   initials,
   avatarColor,
   timeAgo,
+  timeAgoOrDash,
   clockTime,
   statusMeta,
   messageDate,
@@ -69,6 +70,11 @@ check("timeAgo buckets", () => {
   const old = timeAgo(new Date("2026-05-01T12:00:00Z"), now);
   assert.ok(old && !/^(ahora|\d+[mhd])$/.test(old));
   assert.equal(timeAgo(null, now), "");
+});
+check("timeAgoOrDash uses em dash for missing timestamps", () => {
+  const now = new Date("2026-06-25T12:00:00Z");
+  assert.equal(timeAgoOrDash(null, now), "—");
+  assert.equal(timeAgoOrDash(new Date("2026-06-25T11:55:00Z"), now), "5m");
 });
 check("clockTime same-day vs other-day", () => {
   const now = new Date("2026-06-25T12:00:00Z");

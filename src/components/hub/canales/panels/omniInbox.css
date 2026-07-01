@@ -183,3 +183,25 @@
 .omniChip__x { appearance: none; border: none; background: transparent; cursor: pointer; color: inherit; font: inherit; font-size: 0.75rem; line-height: 1; padding: 0 0 0 4px; margin-left: 2px; opacity: 0.7; }
 .omniChip__x:hover { opacity: 1; }
 .omniChip__x:disabled { cursor: default; opacity: 0.4; }
+
+/* ── Admin cockpit: urgent queue rows (click → Bandeja) ───────────────── */
+.omniUrgentRow {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-bottom: 1px solid var(--oi-border-2, #f3f4f6);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+}
+.omniUrgentRow--clickable { cursor: pointer; }
+.omniUrgentRow--clickable:hover { background: var(--oi-surface-2, #f9fafb); }
+.omniUrgentRow--clickable:focus-visible {
+  outline: 2px solid var(--oi-accent, #2563eb);
+  outline-offset: -2px;
+}
+.omniUrgentRow--breached { border-left: 3px solid #ef4444; }

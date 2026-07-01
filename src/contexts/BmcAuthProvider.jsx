@@ -20,6 +20,7 @@ import { getPendingClientQuoteIds, clearPending } from "../utils/clientQuoteId.j
 // Top-30 run 2026-05-12 (#A13): context + hook extraídos a bmcAuthContext.js para que Fast Refresh trate este archivo como components-only.
 import { BmcAuthContext } from "./bmcAuthContext.js";
 import { setOperatorJwtGetter } from "../utils/operatorApiClient.js";
+import { devBrowserLogin, isLocalDevApp } from "../utils/localDevAuth.js";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -118,7 +119,16 @@ export function BmcAuthProvider({ children }) {
         }
         const refreshed = await refreshAccess();
         if (cancelled) return;
-        if (!refreshed) setStatus("anonymous");
+        if (refreshed) return;
+        if (isLocalDevApp()) {
+          const devData = await devBrowserLogin(ApiBase);
+          if (cancelled) return;
+          if (devData) {
+            applyAuth(devData);
+            return;
+          }
+        }
+        setStatus("anonymous");
       } catch {
         if (!cancelled) setStatus("anonymous");
       }
@@ -130,6 +140,12 @@ export function BmcAuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async () => {
+    if (isLocalDevApp()) {
+      const devData = await devBrowserLogin(ApiBase);
+      if (!devData) throw new Error("dev_browser_login_failed");
+      applyAuth(devData);
+      return devData;
+    }
     const gis = await gisSignIn();
     if (!gis?.accessToken) throw new Error("google_signin_failed");
     const res = await fetch(`${ApiBase}/api/auth/google`, {

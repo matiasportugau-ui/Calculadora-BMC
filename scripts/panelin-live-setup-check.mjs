@@ -53,13 +53,17 @@ const checks = [
   },
   {
     id: "google_refresh",
-    label: "GOOGLE_REFRESH_TOKEN (mint-tour-session / browser E2E)",
+    label: "GOOGLE_REFRESH_TOKEN + GOOGLE_CLIENT_SECRET (mint-tour-session)",
     ok: Boolean(
       envFromDotenv("GOOGLE_REFRESH_TOKEN")
-        && envFromDotenv("GOOGLE_CLIENT_ID")
-        && envFromDotenv("GOOGLE_CLIENT_SECRET"),
+        && envFromDotenv("GOOGLE_CLIENT_SECRET")
+        && (
+          envFromDotenv("GOOGLE_CLIENT_ID")
+          || envFromDotenv("GOOGLE_OAUTH_CLIENT_ID")
+          || envFromDotenv("VITE_GOOGLE_CLIENT_ID")
+        ),
     ),
-    fix: "doppler run -- node scripts/mint-tour-session.mjs  OR export TOUR_SESSION_COOKIE manually",
+    fix: "docs/product/README.md → OAuth Playground; agregar GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN al .env",
   },
   {
     id: "playwright",

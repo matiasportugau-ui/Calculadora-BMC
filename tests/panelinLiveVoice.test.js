@@ -35,15 +35,17 @@ const BASE = `http://127.0.0.1:${port}`;
 
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init) => {
-  if (String(url).includes("api.openai.com/v1/realtime/sessions")) {
+  if (String(url).includes("api.openai.com/v1/realtime/client_secrets")) {
     return {
       ok: true,
       status: 200,
       json: async () => ({
-        id: "sess_test_123",
-        client_secret: { value: "ek_test_secret" },
-        model: config.openaiRealtimeModel,
+        value: "ek_test_secret",
         expires_at: Math.floor(Date.now() / 1000) + 60,
+        session: {
+          id: "sess_test_123",
+          model: config.openaiRealtimeModel,
+        },
       }),
     };
   }

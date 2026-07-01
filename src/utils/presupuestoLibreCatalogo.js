@@ -6,6 +6,10 @@
 
 import { calcTotalesSinIVA } from "./calculations.js";
 import {
+  computeLibrePanelLineMetrics,
+  formatLibrePanelBomLabel,
+} from "./librePanelDimensions.js";
+import {
   PANELS_TECHO as DEF_PANELS_TECHO,
   PANELS_PARED as DEF_PANELS_PARED,
   FIJACIONES as DEF_FIJ,
@@ -119,8 +123,7 @@ export function computePresupuestoLibreCatalogo(input) {
   const warnings = [];
 
   for (const line of librePanelLines || []) {
-    const m2 = Number(line.m2);
-    if (!line.familia || line.espesor === "" || line.espesor === null || line.espesor === undefined || !m2 || m2 <= 0) continue;
+    if (!line.familia || line.espesor === "" || line.espesor === null || line.espesor === undefined) continue;
     const panel = allPanels[line.familia];
     if (!panel) {
       warnings.push(`Familia desconocida: ${line.familia}`);
@@ -132,19 +135,27 @@ export function computePresupuestoLibreCatalogo(input) {
       warnings.push(`Espesor no disponible para ${panel.label}`);
       continue;
     }
+    const metrics = computeLibrePanelLineMetrics(line, catalog);
+    const m2 = metrics.m2;
+    if (!m2 || m2 <= 0) continue;
     const pu = priceOf(espData);
     let col = line.color;
     if (col && panel.col && !panel.col.includes(col)) col = panel.col[0] || "";
     if (!col && panel.col && panel.col.length) col = panel.col[0];
-    const label = `${panel.label} ${espNum}mm${col ? ` · ${col}` : ""}`;
-    grouped.PANELES.push({
+    const baseLabel = `${panel.label} ${espNum}mm${col ? ` · ${col}` : ""}`;
+    const label = formatLibrePanelBomLabel(line, metrics, baseLabel);
+    const item = {
       label,
       sku: `${line.familia}-${espNum}`,
       cant: m2,
       unidad: "m²",
       pu,
       total: +(m2 * pu).toFixed(2),
-    });
+    };
+    if (metrics.totalPaneles) item.cantPaneles = metrics.totalPaneles;
+    if (metrics.tramosDetail?.length === 1) item.largoPanel = metrics.tramosDetail[0].largo;
+    if (metrics.tramosDetail?.length > 1) item.tramosDetail = metrics.tramosDetail;
+    grouped.PANELES.push(item);
   }
 
   const idMap = perfilCatalogById instanceof Map ? perfilCatalogById : new Map();

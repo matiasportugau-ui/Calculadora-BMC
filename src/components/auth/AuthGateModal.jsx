@@ -11,6 +11,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useBmcAuth } from "../../hooks/useBmcAuth.js";
+import { isLocalDevApp } from "../../utils/localDevAuth.js";
 
 export default function AuthGateModal() {
   const { user, login, isAuthenticated } = useBmcAuth();
@@ -21,29 +22,12 @@ export default function AuthGateModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    // eslint-disable-next-line no-unused-vars
-    function onGate(_e) {
-      if (isAuthenticated) {
-        // Auto-resume any wizard waiting; user is already authed.
-        window.dispatchEvent(new CustomEvent("bmc-wizard-next", { detail: { source: "auth-gate-already-auth" } }));
-      } else {
-        // Anonymous: open the modal so user can sign in.
-        // handleLogin() emits bmc-wizard-next on successful sign-in.
-        setOpen(true);
-      }
-    }
-    window.addEventListener("bmc-auth-gate-required", onGate);
-    return () => window.removeEventListener("bmc-auth-gate-required", onGate);
-  }, [isAuthenticated]);
-
   const handleLogin = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       await login();
       setOpen(false);
-      // Re-emit the wizard advance event so the caller resumes.
       window.dispatchEvent(new CustomEvent("bmc-wizard-next", { detail: { source: "auth-gate" } }));
     } catch (e) {
       setError(e?.message || "auth_failed");
@@ -52,7 +36,29 @@ export default function AuthGateModal() {
     }
   }, [login]);
 
-  if (!open || isAuthenticated) return null;
+  useEffect(() => {
+    // eslint-disable-next-line no-unused-vars
+    function onGate(_e) {
+      if (isAuthenticated) {
+        window.dispatchEvent(new CustomEvent("bmc-wizard-next", { detail: { source: "auth-gate-already-auth" } }));
+      } else if (isLocalDevApp()) {
+        handleLogin();
+      } else {
+        setOpen(true);
+      }
+    }
+    window.addEventListener("bmc-auth-gate-required", onGate);
+    return () => window.removeEventListener("bmc-auth-gate-required", onGate);
+  }, [isAuthenticated, handleLogin]);
+
+  // Local dev: never show the Google login modal (BmcAuthProvider + handleLogin mint session).
+  useEffect(() => {
+    if (isLocalDevApp() && !isAuthenticated && !loading) {
+      handleLogin();
+    }
+  }, [isAuthenticated, loading, handleLogin]);
+
+  if (isLocalDevApp() || !open || isAuthenticated) return null;
 
   return (
     <div
@@ -140,7 +146,7 @@ export default function AuthGateModal() {
             fontWeight: 500,
           }}
         >
-          {loading ? "Conectando…" : "Continuar con Google"}
+          {loading ? "Conectando…" : isLocalDevApp() ? "Continuar (dev local)" : "Continuar con Google"}
         </button>
         {error ? (
           <div style={{ marginTop: 12, color: "#b91c1c", fontSize: 13 }}>

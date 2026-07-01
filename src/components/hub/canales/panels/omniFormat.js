@@ -69,6 +69,12 @@ export function timeAgo(date, now = new Date()) {
   return d.toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit" });
 }
 
+/** Like `timeAgo`, but tables/cockpits use an em dash when the timestamp is missing. */
+export function timeAgoOrDash(date, now = new Date()) {
+  const label = timeAgo(date, now);
+  return label || "—";
+}
+
 /** Clock time for a message bubble ("14:05", or "23/06 14:05" if not today). */
 export function clockTime(date, now = new Date()) {
   if (!date) return "";

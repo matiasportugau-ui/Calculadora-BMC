@@ -10,6 +10,7 @@
  *   BMC_API_BASE   default http://127.0.0.1:3001 (use http://127.0.0.1:5173 if Vite proxy only)
  *   API_AUTH_TOKEN or API_KEY
  *   TOUR_SESSION_COOKIE  optional — also tests user-JWT path via /auth/refresh + session
+ *                        (rotates bmc_sess; do not reuse the same value in Playwright E2E)
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -27,6 +28,7 @@ function envKey(key) {
 
 const SERVICE_TOKEN = envKey("API_AUTH_TOKEN") || envKey("API_KEY") || "";
 const TOUR_COOKIE = process.env.TOUR_SESSION_COOKIE || "";
+const SKIP_SESSION_MINT = process.env.PROBE_SKIP_SESSION_MINT === "1";
 
 let fail = 0;
 
@@ -85,16 +87,20 @@ if (!SERVICE_TOKEN) {
     bad("GET /api/agent/voice/health", `HTTP ${vh.status} ${vh.body?.error || ""}`.trim());
   }
 
-  const sess = await jsonFetch("/api/agent/voice/session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ calcState: {}, devMode: false }),
-  });
-  const secret = sess.body?.client_secret?.value || sess.body?.client_secret;
-  if (sess.ok && secret) {
-    ok("POST /api/agent/voice/session (service)", `session_id=${String(sess.body.session_id || "").slice(0, 8)}…`);
+  if (SKIP_SESSION_MINT) {
+    warn("PROBE_SKIP_SESSION_MINT=1 — skipping POST /session (E2E covers mint path)");
   } else {
-    bad("POST /api/agent/voice/session (service)", `HTTP ${sess.status} ${sess.body?.error || JSON.stringify(sess.body || {}).slice(0, 120)}`);
+    const sess = await jsonFetch("/api/agent/voice/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ calcState: {}, devMode: false }),
+    });
+    const secret = sess.body?.client_secret?.value || sess.body?.client_secret;
+    if (sess.ok && secret) {
+      ok("POST /api/agent/voice/session (service)", `session_id=${String(sess.body.session_id || "").slice(0, 8)}…`);
+    } else {
+      bad("POST /api/agent/voice/session (service)", `HTTP ${sess.status} ${sess.body?.error || JSON.stringify(sess.body || {}).slice(0, 120)}`);
+    }
   }
 }
 

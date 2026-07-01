@@ -736,6 +736,29 @@ assert("computePresupuestoLibreCatalogo: incluye m²", catLibre.allItems.some(i 
 assert("computePresupuestoLibreCatalogo: totalFinal > 0", catLibre.totales.totalFinal > 0, catLibre.totales.totalFinal, ">0");
 assert("computePresupuestoLibreCatalogo: libreGroups", Array.isArray(catLibre.libreGroups) && catLibre.libreGroups.length > 0, catLibre.libreGroups?.length, ">0");
 
+const catLibreDims = computePresupuestoLibreCatalogo({
+  listaPrecios: "web",
+  librePanelLines: [{
+    familia: "ISOROOF_3G",
+    espesor: 30,
+    color: "Gris",
+    inputModo: "dimensiones",
+    anchoModo: "paneles",
+    panelesAncho: 9,
+    tramos: [{ largo: 6 }, { largo: 4.5 }],
+  }],
+  librePerfilQty: {},
+  perfilCatalogById: perfMap,
+  libreFijQty: {},
+  libreSellQty: {},
+  flete: 0,
+  libreExtra: {},
+});
+const panelDimsItem = catLibreDims.allItems.find((i) => i.unidad === "m²");
+assert("libre dimensiones: m² = 9×6 + 9×4.5 (au 1.0)", approx(panelDimsItem?.cant, 94.5), panelDimsItem?.cant, 94.5);
+assert("libre dimensiones: label desglosado", panelDimsItem?.label?.includes("9×6.00 m") && panelDimsItem?.label?.includes("9×4.50 m"), panelDimsItem?.label, "desglose");
+assert("libre dimensiones: cantPaneles total", panelDimsItem?.cantPaneles === 18, panelDimsItem?.cantPaneles, 18);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE 16c: presupuesto libre ADITIVO sobre cualquier escenario (mergeLibreGroups)
 // ═══════════════════════════════════════════════════════════════════════════

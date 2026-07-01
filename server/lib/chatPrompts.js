@@ -421,21 +421,7 @@ Reglas de salida ESTRICTAS (override de cualquier otra instrucción de formato):
    intent="chatter" y options=[] vacío. El frontend lo respeta.`;
 }
 
-/**
- * @param {object} calcState
- * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object, channel?: "chat"|"ml"|"wa", ragContext?: string }} options
- * @returns {string}
- */
-export function buildSystemPrompt(calcState = {}, options = {}) {
-  const {
-    trainingExamples = [],
-    devMode = false,
-    recentAssistantMessages = [],
-    preferences = null,
-    channel = "chat",
-    ragContext = "",
-    userText = "",
-  } = options;
+function buildCalcStateBlock(calcState = {}) {
   const {
     scenario = "sin seleccionar",
     listaPrecios = "sin seleccionar",
@@ -456,7 +442,7 @@ export function buildSystemPrompt(calcState = {}, options = {}) {
       ? `Para hablar de precios unitarios, usá la columna **${listaPrecios}** del bloque PRECIOS CANÓNICOS.`
       : "Lista de precios aún no definida: preguntá si es venta a cliente final (web) o red comercial (venta).";
 
-  const currentState = `## ESTADO ACTUAL DE LA CALCULADORA
+  return `## ESTADO ACTUAL DE LA CALCULADORA
 Escenario: ${scenario}
 Lista de precios: ${listaPrecios} — ${listaHint}
 Paso del wizard: ${wizardStep}
@@ -480,6 +466,43 @@ Flete: USD ${flete}
 <user_data>
 Proyecto: nombre="${sanitizeForPrompt(proyecto.nombre)}" | cliente="${sanitizeForPrompt(proyecto.tipoCliente)}" | tel="${sanitizeForPrompt(proyecto.telefono)}" | dir="${sanitizeForPrompt(proyecto.direccion)}" | desc="${sanitizeForPrompt(proyecto.descripcion, 300)}" | ref="${sanitizeForPrompt(proyecto.refInterna)}"
 </user_data>`;
+}
+
+const VOICE_REALTIME_RULES = `## MODO VOZ (OpenAI Realtime)
+Respuestas breves (1–3 oraciones). Una pregunta por turno. Usá las function tools provistas para actualizar la calculadora cuando el usuario confirme un dato — no narrés ACTION_JSON en texto. No inventés precios ni totales; el total lo muestra la app.`;
+
+/**
+ * Compact system prompt for /panelin/live voice (Realtime API 16k token cap).
+ * @param {object} calcState
+ * @param {{ devMode?: boolean }} options
+ */
+export function buildVoiceSystemPrompt(calcState = {}, options = {}) {
+  const { devMode = false } = options;
+  const devModeRules = devMode
+    ? "## MODO DESARROLLADOR\nPriorizá precisión; si falta un dato, preguntá antes de afirmar números."
+    : "";
+  return [IDENTITY, VOICE_REALTIME_RULES, buildCalcStateBlock(calcState), devModeRules]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/**
+ * @param {object} calcState
+ * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object, channel?: "chat"|"ml"|"wa", ragContext?: string }} options
+ * @returns {string}
+ */
+export function buildSystemPrompt(calcState = {}, options = {}) {
+  const {
+    trainingExamples = [],
+    devMode = false,
+    recentAssistantMessages = [],
+    preferences = null,
+    channel = "chat",
+    ragContext = "",
+    userText = "",
+  } = options;
+
+  const currentState = buildCalcStateBlock(calcState);
 
   // Examples block — delegate to channelRenderer so goodAnswerML / goodAnswerWA
   // overrides are respected and per-channel length caps apply.

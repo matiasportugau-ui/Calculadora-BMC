@@ -8,7 +8,8 @@
 
 import React from "react";
 import { useOmniAdminOverview, useOmniUrgentActions } from "../../../../hooks/useOmniConversations.js";
-import { channelMeta } from "./omniFormat.js";
+import { channelMeta, timeAgoOrDash } from "./omniFormat.js";
+import "./omniInbox.css";
 
 // ── format helpers ──────────────────────────────────────────────────────────
 
@@ -18,16 +19,6 @@ function fmtMins(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return m ? `${h}h ${m}m` : `${h}h`;
-}
-
-function fmtAgo(ts) {
-  if (!ts) return "—";
-  const d = new Date(ts);
-  const diff = (Date.now() - d.getTime()) / 1000;
-  if (diff < 60) return "ahora";
-  if (diff < 3600) return `hace ${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `hace ${Math.floor(diff / 3600)}h`;
-  return `hace ${Math.floor(diff / 86400)}d`;
 }
 
 function healthBadge(health, enabled) {
@@ -188,22 +179,8 @@ export default function OmniAdminCockpit({ token, onSelectConversation }) {
               <button
                 key={a.id}
                 type="button"
+                className={`omniUrgentRow${onSelectConversation ? " omniUrgentRow--clickable" : ""}${breached ? " omniUrgentRow--breached" : ""}`}
                 onClick={() => onSelectConversation?.(a.id)}
-                style={{
-                  display: "flex",
-                  width: "100%",
-                  alignItems: "center",
-                  gap: "0.75rem",
-                  padding: "0.625rem 1rem",
-                  borderTop: "none",
-                  borderRight: "none",
-                  borderBottom: "1px solid var(--ac-border-secondary, #f3f4f6)",
-                  borderLeft: `3px solid ${breached ? "#ef4444" : "transparent"}`,
-                  background: "transparent",
-                  font: "inherit",
-                  textAlign: "left",
-                  cursor: onSelectConversation ? "pointer" : "default",
-                }}
               >
                 <span
                   title={cm.label}
@@ -234,7 +211,7 @@ export default function OmniAdminCockpit({ token, onSelectConversation }) {
                   </div>
                 </div>
                 <span style={{ flex: "0 0 auto", fontSize: "0.75rem", color: "var(--ac-text-secondary, #9ca3af)" }}>
-                  {fmtAgo(a.created_at)}
+                  {timeAgoOrDash(a.created_at)}
                 </span>
               </button>
             );
@@ -278,7 +255,7 @@ export default function OmniAdminCockpit({ token, onSelectConversation }) {
                   <td style={td}>{a.awaiting_reply}</td>
                   <td style={td}>{a.snoozed_count}</td>
                   <td style={td}>{fmtMins(a.avg_frt_min)}</td>
-                  <td style={{ ...td, color: "var(--ac-text-secondary, #6b7280)" }}>{fmtAgo(a.last_activity_at)}</td>
+                  <td style={{ ...td, color: "var(--ac-text-secondary, #6b7280)" }}>{timeAgoOrDash(a.last_activity_at)}</td>
                 </tr>
               );
             })}
@@ -307,7 +284,7 @@ export default function OmniAdminCockpit({ token, onSelectConversation }) {
                 <td style={td}>{u.name || u.email || u.user_id?.slice(0, 8)}</td>
                 <td style={{ ...td, fontWeight: 600 }}>{u.open_count}</td>
                 <td style={td}>{u.snoozed_count}</td>
-                <td style={{ ...td, color: "var(--ac-text-secondary, #6b7280)" }}>{fmtAgo(u.oldest_assigned_at)}</td>
+                <td style={{ ...td, color: "var(--ac-text-secondary, #6b7280)" }}>{timeAgoOrDash(u.oldest_assigned_at)}</td>
               </tr>
             ))}
           </tbody>
@@ -316,7 +293,7 @@ export default function OmniAdminCockpit({ token, onSelectConversation }) {
 
       {overview?.generated_at && (
         <p style={{ marginTop: "1rem", fontSize: "0.75rem", color: "var(--ac-text-secondary, #9ca3af)" }}>
-          Generado {fmtAgo(overview.generated_at)} · SLA sobre últimos 30 días · réplicas: {sla.replied_count ?? 0}
+          Generado {timeAgoOrDash(overview.generated_at)} · SLA sobre últimos 30 días · réplicas: {sla.replied_count ?? 0}
         </p>
       )}
     </div>

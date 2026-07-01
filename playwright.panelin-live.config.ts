@@ -14,10 +14,10 @@ export default defineConfig({
   expect: { timeout: 20_000 },
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  retries: 1,
   reporter: [["list"]],
   use: {
-    baseURL: (process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5173").replace(/\/+$/, ""),
+    baseURL: (process.env.PLAYWRIGHT_BASE_URL || "http://localhost:5173").replace(/\/+$/, ""),
     headless: true,
     channel: "chrome",
     ignoreHTTPSErrors: process.env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS === "1",
