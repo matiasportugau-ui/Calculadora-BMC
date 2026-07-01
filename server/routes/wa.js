@@ -681,8 +681,10 @@ export default function createWaRouter(config, logger) {
   // ── List conversations ──────────────────────────────────────────────────
   router.get(
     "/wa/conversations",
-    readLimiter,
+    // requireWaAccess first so req.waOperatorId is set when readLimiter's keyGenerator
+    // runs — otherwise the limit degrades to IP-only instead of per-operator.
     requireWaAccess({ requireWrite: false }),
+    readLimiter,
     requireDb,
     asyncHandler(async (req, res) => {
       const status = req.query.status ? String(req.query.status).slice(0, 32) : "";
@@ -746,8 +748,10 @@ export default function createWaRouter(config, logger) {
   // ── Get messages for a chat ─────────────────────────────────────────────
   router.get(
     "/wa/messages",
-    readLimiter,
+    // requireWaAccess first so req.waOperatorId is set when readLimiter's keyGenerator
+    // runs — otherwise the limit degrades to IP-only instead of per-operator.
     requireWaAccess({ requireWrite: false }),
+    readLimiter,
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.query.chat_id || "").trim();
@@ -807,8 +811,10 @@ export default function createWaRouter(config, logger) {
   // ── F2 — Suggestions: list per chat ─────────────────────────────────────
   router.get(
     "/wa/suggestions",
-    readLimiter,
+    // requireWaAccess first so req.waOperatorId is set when readLimiter's keyGenerator
+    // runs — otherwise the limit degrades to IP-only instead of per-operator.
     requireWaAccess({ requireWrite: false }),
+    readLimiter,
     requireDb,
     asyncHandler(async (req, res) => {
       const chatId = String(req.query.chat_id || "").trim();
