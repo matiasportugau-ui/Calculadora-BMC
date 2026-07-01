@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { config } from "../server/config.js";
-import { isAssistantEnabled, dispatchAssistant, ASSISTANTS, getAssistant } from "../server/lib/assistantRegistry.js";
+import { isAssistantEnabled, dispatchAssistant, buildFallbackLine, ASSISTANTS, getAssistant } from "../server/lib/assistantRegistry.js";
 import { checkAssistant, _clearAssistantHealthCache } from "../server/lib/assistantHealth.js";
 
 let passed = 0;
@@ -48,6 +48,28 @@ await (async () => {
   assert(isAssistantEnabled("seam"), "seam stays enabled even with empty allowlist");
   assert(!isAssistantEnabled("canales"), "canales disabled when allowlist empty");
 
+  // ── buildFallbackLine: enabled-only ordered line, always ends at seam ────────
+  const keysOf = (line) => line.map((n) => n.key);
+  config.assistantsActive = ["canales"];
+  assert(
+    JSON.stringify(keysOf(buildFallbackLine("canales"))) === JSON.stringify(["canales", "seam"]),
+    "canales-only line = [canales, seam]",
+  );
+  config.assistantsActive = ["canales", "panelin"];
+  assert(
+    JSON.stringify(keysOf(buildFallbackLine("canales"))) === JSON.stringify(["canales", "panelin", "seam"]),
+    "line adds the other enabled assistant in priority order",
+  );
+  assert(
+    JSON.stringify(keysOf(buildFallbackLine("panelin"))) === JSON.stringify(["panelin", "canales", "seam"]),
+    "primary goes first, remaining enabled follow priority order",
+  );
+  config.assistantsActive = ["panelin"]; // canales disabled
+  assert(
+    JSON.stringify(keysOf(buildFallbackLine("panelin"))) === JSON.stringify(["panelin", "seam"]),
+    "disabled assistants are excluded from the line (honors master switch)",
+  );
+
   // ── dispatchAssistant: disabled short-circuit ───────────────────────────────
   config.assistantsActive = ["canales"];
   const disabled = await dispatchAssistant("panelin", [{ role: "user", content: "hola" }], {
@@ -56,26 +78,31 @@ await (async () => {
   assert(disabled.ok === false && disabled.reason === "assistant_disabled", "disabled assistant short-circuits");
 
   // ── dispatchAssistant: happy path served by primary handler ─────────────────
+  // Availability requires a provider key present, so set one before dispatch.
   config.assistantsActive = ["panelin"];
+  setProviders({ claude: "sk-test-claude-key" });
   const ok = await dispatchAssistant("panelin", [{ role: "user", content: "hola" }], {
     handler: async () => ({ text: "primary ok" }),
   });
   assert(ok.ok === true && ok.servedBy === "panelin", "primary handler serves when healthy");
   assert(ok.failovers.length === 0, "no failovers on happy path");
 
-  // ── dispatchAssistant: handler throws → walks fallback to seam ───────────────
-  // With no provider keys, the terminal seam (callAgentOnce) also fails, so the
-  // dispatch surfaces ASSISTANT_DISPATCH_FAILED — proving the chain was walked.
+  // ── dispatchAssistant: no providers → no available agent (deterministic) ─────
+  // With zero provider keys every node (incl. seam) is unavailable, so dispatch
+  // skips the whole line WITHOUT running the handler and fails cleanly. Proves the
+  // availability guard fires before any LLM call.
   setProviders({});
+  let handlerRan = false;
   let threw = null;
   try {
     await dispatchAssistant("panelin", [{ role: "user", content: "hola" }], {
-      handler: async () => { throw new Error("primary down"); },
+      handler: async () => { handlerRan = true; return { text: "x" }; },
     });
   } catch (e) {
     threw = e;
   }
-  assert(threw?.code === "ASSISTANT_DISPATCH_FAILED", "handler failure walks chain to seam then fails cleanly");
+  assert(threw?.code === "ASSISTANT_DISPATCH_FAILED", "no available agent → ASSISTANT_DISPATCH_FAILED");
+  assert(handlerRan === false, "unavailable primary is skipped without spending a call");
 
   // ── Health classification ───────────────────────────────────────────────────
   _clearAssistantHealthCache();

@@ -18,6 +18,7 @@
  */
 import { config } from "../config.js";
 import { callAgentOnce } from "./agentCore.js";
+import { getAvailableProviders } from "./aiProviderConfig.js";
 import { getOmniPool, omniHealthCheck } from "./omni/omniDb.js";
 
 /** @typedef {"canales"|"panelin"|"email"|"wa"|"ml"|"wolfboard"|"seam"} AssistantKey */
@@ -125,17 +126,68 @@ export function isAssistantEnabled(key) {
 }
 
 /**
- * Assistant-level dispatch with fallback. Runs the assistant's `handler`; if the
- * assistant is disabled it short-circuits, and if the handler throws it walks the
- * `fallbackTo` chain until it reaches an enabled assistant (ultimately `seam`,
- * which calls agentCore directly). Every hop is logged as `assistant_failover`
- * (mirrors the `agent_core_call` telemetry in agentCore.js).
+ * Priority order for the assistant fallback LINE. When the requested assistant is
+ * unavailable or fails, dispatch advances to the next ENABLED assistant in this
+ * order (disabled ones are skipped — honors ASSISTANTS_ACTIVE), and finally the
+ * always-on shared `seam` (provider chain). So there is always an available agent
+ * as long as at least one LLM provider key is set.
+ */
+export const ASSISTANT_PRIORITY = ["canales", "panelin", "email", "wa", "ml", "wolfboard"];
+
+/**
+ * Cheap, side-effect-light availability probe for a fallback node. The seam is
+ * available iff any provider key exists; a normal assistant is available iff it is
+ * enabled AND its dependency probe passes. Never makes an LLM call.
+ * @param {object} node
+ */
+async function isNodeAvailable(node) {
+  if (!node) return false;
+  if (node.terminal) return getAvailableProviders().length > 0; // seam
+  if (!isAssistantEnabled(node.key)) return false;
+  if (getAvailableProviders().length === 0) return false;
+  if (typeof node.deps === "function") {
+    try {
+      return Boolean((await node.deps()).ok);
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Build the ordered fallback line for a primary assistant: the primary first,
+ * then every OTHER **enabled** assistant in ASSISTANT_PRIORITY order (disabled
+ * ones excluded), terminating at the always-on `seam`.
+ * @param {string} primaryKey
+ */
+export function buildFallbackLine(primaryKey) {
+  const line = [];
+  const primary = getAssistant(primaryKey);
+  if (primary) line.push(primary);
+  for (const k of ASSISTANT_PRIORITY) {
+    if (k === primaryKey) continue;
+    if (isAssistantEnabled(k)) line.push(getAssistant(k));
+  }
+  line.push(getAssistant("seam"));
+  return line.filter(Boolean);
+}
+
+/**
+ * Assistant-level dispatch with a guaranteed-available fallback LINE.
+ *
+ * Tries the requested assistant's `handler` first; if that assistant is
+ * unavailable (skipped proactively) or throws, it advances to the next ENABLED
+ * assistant in ASSISTANT_PRIORITY, and finally the shared `seam` (which calls
+ * agentCore directly and is available as long as any provider key exists). Every
+ * skip/error/failover is logged. Disabled assistants are never promoted — the
+ * line honors ASSISTANTS_ACTIVE, so canales-only stays canales-only.
  *
  * @param {string} key                     assistant to try first
  * @param {Array} messages                 chat messages for the seam terminal
  * @param {object} [opts]
  * @param {(a:object)=>Promise<any>} [opts.handler]  primary handler; defaults to the seam call
- * @param {object} [opts.callOpts]         opts forwarded to callAgentOnce at the seam
+ * @param {object} [opts.callOpts]         opts forwarded to callAgentOnce at seam/promoted nodes
  * @returns {Promise<{ ok:true, result:any, servedBy:string, failovers:string[] }
  *                   | { ok:false, reason:string, assistant:string }>}
  */
@@ -145,45 +197,38 @@ export async function dispatchAssistant(key, messages, opts = {}) {
     return { ok: false, reason: "assistant_disabled", assistant: key };
   }
 
+  const line = buildFallbackLine(key);
   const failovers = [];
-  let current = getAssistant(key);
   let activeHandler = handler;
   let lastErr = null;
 
-  while (current) {
+  for (const node of line) {
+    // Proactively skip an unavailable node before spending an LLM call.
+    if (!(await isNodeAvailable(node))) {
+      failovers.push(node.key);
+      activeHandler = null; // the primary's surface-specific handler can't serve a later node
+      console.log(JSON.stringify({ event: "assistant_skip", assistant: node.key, reason: "unavailable" }));
+      continue;
+    }
     try {
-      let result;
-      if (current.terminal || !activeHandler) {
-        result = await callAgentOnce(messages, {
-          channel: current.channel,
-          ...callOpts,
-        });
-      } else {
-        result = await activeHandler(current);
+      const result =
+        node.terminal || !activeHandler
+          ? await callAgentOnce(messages, { channel: node.channel, ...callOpts })
+          : await activeHandler(node);
+      if (failovers.length) {
+        console.log(JSON.stringify({ event: "assistant_failover", servedBy: node.key, passedOver: failovers }));
       }
-      return { ok: true, result, servedBy: current.key, failovers };
+      return { ok: true, result, servedBy: node.key, failovers };
     } catch (err) {
       lastErr = err;
-      const next = current.fallbackTo ? getAssistant(current.fallbackTo) : null;
-      console.log(
-        JSON.stringify({
-          event: "assistant_failover",
-          from: current.key,
-          to: next?.key || null,
-          reason: String(err?.message).slice(0, 100),
-        }),
-      );
-      if (!next) break;
-      failovers.push(next.key);
-      current = next;
-      // Only the seam handler runs past the first hop; downstream handlers are
-      // surface-specific and can't serve another assistant's request.
-      activeHandler = null;
+      failovers.push(node.key);
+      activeHandler = null; // downstream nodes are surface-specific — only the seam can serve them
+      console.log(JSON.stringify({ event: "assistant_error", assistant: node.key, reason: String(err?.message).slice(0, 100) }));
     }
   }
 
   const e = new Error(
-    `dispatchAssistant(${key}) exhausted fallback chain: ${lastErr?.message || "unknown"}`,
+    `dispatchAssistant(${key}) exhausted fallback line: ${lastErr?.message || "no available agent"}`,
   );
   e.code = "ASSISTANT_DISPATCH_FAILED";
   e.cause = lastErr;
