@@ -428,6 +428,7 @@ router.get(
 
 router.get(
   "/omni/conversations",
+  omniReadLimiter,
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -536,6 +537,7 @@ router.get(
 
 router.get(
   "/omni/conversations/:id/messages",
+  omniReadLimiter,
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
