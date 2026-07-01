@@ -82,6 +82,8 @@ import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
 import omniRouter from "./routes/omni.js";
+import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
+import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
 import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
@@ -91,8 +93,7 @@ import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
-import { writeWaCrmIngest, runWaAutoLearn } from "./lib/wa/crmIngestWrite.js";
-import { logSafe } from "./lib/wa/logSafe.js";
+import { writeWaCrmIngest, writeWaCrmAiTail, runWaAutoLearn } from "./lib/wa/crmIngestWrite.js";
 import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -693,12 +694,13 @@ async function processWaConversation(chatId, conv) {
     if (parsed.ok && parsed.data) {
       const d = parsed.data;
       // Sheets ingest (Form responses 1 + CRM_Operativo) — shared with the
-      // canonical-mode wa_crm_sync omni job. Legacy uses append (one row per burst).
+      // canonical-mode wa_crm_sync omni job. Header-anchored + CSV-sanitized write
+      // (crmRowMapper). Legacy appends one row per conversation burst.
       const ingest = await writeWaCrmIngest({
-        parsedData: d, chatId, dialogo, config, logger, findRow: "append",
+        parsedData: d, chatId, dialogo, config, logger,
       });
       if (!ingest.skipped) {
-        const { crmRow, formRow, sheets, sheetId } = ingest;
+        const { crmRow, formRow, sheets, sheetId, crmHeaders } = ingest;
 
         // Generar respuesta IA para col AF — usa agente unificado (canal: wa + KB)
         let ai = { ok: false };
@@ -712,14 +714,17 @@ async function processWaConversation(chatId, conv) {
         } catch (aiErr) {
           logger.warn(`[WA] agentCore failed for ${chatId}: ${aiErr.message}`);
         }
-        if (ai.ok && ai.respuesta) {
-          await sheets.spreadsheets.values.update({
-            spreadsheetId: sheetId,
-            range: `'CRM_Operativo'!AF${crmRow}:AG${crmRow}`,
-            valueInputOption: "USER_ENTERED",
-            requestBody: { values: [[ai.respuesta, ai.provider || ""]] },
-          });
-        }
+        // AF:AG AI suggestion (suggested reply + provider) — header-anchored write
+        // via the shared helper. Legacy OFF path only; canonical leaves the
+        // suggestion to the Omni `suggest` job. When AI failed, AF/AG are ""
+        // (same effect as not writing them). Gate defaults (AH:AK) were already
+        // written on create by writeWaCrmIngest.
+        await writeWaCrmAiTail({
+          sheets, sheetId, crmRow, crmHeaders,
+          respuesta: ai.ok ? ai.respuesta : "",
+          provider: ai.ok ? ai.provider : "",
+          logger,
+        });
 
         // Autolearn: extraer pares Q→A del intercambio WA para el KB unificado
         setImmediate(() => {
@@ -854,7 +859,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       conv = waConversations.get(chatId);
       conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
       conv.lastUpdate = Date.now();
-      logger.info(`[WA] Message from ${logSafe(contactName)} (${logSafe(chatId)}), total: ${conv.messages.length}`);
+      logger.info(`[WA] Message from ${String(contactName).replace(/[\r\n]+/g, " ").slice(0, 256)} (${String(chatId).replace(/[\r\n]+/g, " ").slice(0, 256)}), total: ${conv.messages.length}`);
     }
 
     // F4 — espejar inbound Cloud API en Postgres wa_messages para que el cockpit
@@ -920,7 +925,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 
       // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
       if (text.includes("🚀")) {
-        logger.info(`[WA] 🚀 manual trigger for ${logSafe(chatId)}`);
+        logger.info(`[WA] 🚀 manual trigger for ${String(chatId).replace(/[\r\n]+/g, " ").slice(0, 256)}`);
         processWaConversation(chatId, conv);
       }
     }
@@ -939,6 +944,20 @@ app.use(identityAnalyticsRouter);
 app.use(clientesCustomersRouter);
 app.use(clientesFollowupsRouter);
 app.use(quoteExportRouter);
+// ── AI Assistant control plane ──────────────────────────────────────────────
+// Status/health aggregate (admin-gated). Never gated by the master switch.
+app.use("/api", createAssistantsStatusRouter());
+// Master-switch gates. Registered BEFORE their channel routers so they run first,
+// and mounted ONLY on the AI-GENERATION paths — inbound ingest/webhooks stay open
+// so a disabled assistant keeps receiving (no lost messages), just stops answering.
+// `canales` (omniRouter, below) is intentionally NOT gated: it is the one kept on.
+app.use("/api/agent/chat", requireAssistantEnabled("panelin"));
+app.use("/api/email-agent/chat", requireAssistantEnabled("email"));
+app.use("/api/wa/suggestions/run", requireAssistantEnabled("wa"));
+app.use("/api/wa/quotes/run", requireAssistantEnabled("wa"));
+app.use("/api/crm/suggest-response", requireAssistantEnabled("ml"));
+app.use("/api/wolfboard/quote-batch", requireAssistantEnabled("wolfboard"));
+// ─────────────────────────────────────────────────────────────────────────────
 app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);
@@ -1091,6 +1110,15 @@ if (fs.existsSync(calcDistDir)) {
 
 // Avoid 404s when ngrok/browsers hit the API root or favicon (traffic audit: EXPORT_SEAL)
 app.get("/favicon.ico", (_req, res) => {
+  res.status(204).end();
+});
+// Phantom VAD model requests (e.g. /vad/silero_vad_legacy.onnx, ort-wasm-*) come from
+// stale service workers / cached builds on old clients. This app never shipped
+// @ricky0123/vad-web nor any local ONNX VAD — voice uses OpenAI Realtime (server-side
+// VAD) + the Web Speech API. Answer 204 instead of a noisy error-level 404, and tell the
+// stale client there is nothing here. See docs/VAD-PHANTOM-404.md. RegExp route (not a
+// "*" string) to avoid the Express 5 path-to-regexp crash noted above.
+app.get(/^\/vad\//, (_req, res) => {
   res.status(204).end();
 });
 app.get("/", (req, res) => {

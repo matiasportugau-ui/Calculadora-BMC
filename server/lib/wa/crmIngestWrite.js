@@ -1,22 +1,26 @@
 /**
  * WhatsApp → CRM_Operativo / Form-responses Sheets ingest + auto-learn.
  *
- * Extracted verbatim from the legacy `processWaConversation` (server/index.js) so
- * BOTH the legacy path (OMNI_WA_CANONICAL OFF) and the durable `wa_crm_sync` omni
- * job (OMNI_WA_CANONICAL ON) run the SAME write code.
+ * Shared by BOTH ingest paths so they run the SAME write code:
+ *   - legacy `processWaConversation` (server/index.js, OMNI_WA_CANONICAL OFF)
+ *   - durable `wa_crm_sync` omni job (waCrmSyncJob.js, OMNI_WA_CANONICAL ON)
  *
- * The only behavioural knob is `findRow`:
- *   - "append"        → legacy behaviour: write to the first empty CRM_Operativo
- *                       row (one row per conversation burst). Keeps OFF byte-identical.
- *   - "upsertByPhone" → canonical behaviour: reuse the existing CRM_Operativo row
- *                       for this phone if present, else append. Lets per-message
- *                       omni events coalesce onto one row instead of exploding rows.
+ * The CRM_Operativo write is HEADER-ANCHORED and KEY-BASED (crmRowMapper.js):
+ * every value is placed at the column whose row-3 header matches its logical key
+ * (accent/case-insensitive), falling back to the documented column letter only
+ * when the header can't be found — so inserting/renaming a column never silently
+ * shifts the row. Every cell is CSV/formula sanitized. See crmRowMapper.js and
+ * docs/team/CRM-OPERATIVO-COLUMN-MAP.md.
+ *
+ * This module only ever CREATES a lead row (append to the first empty row).
+ * Canonical mode gates on findCrmRowByPhone() first and skips entirely when a row
+ * already exists, so an operator-edited row is never overwritten.
  */
 import { google } from "googleapis";
-import { defaultTailAHAK, rangeAHAK } from "../crmOperativoLayout.js";
+import { buildCrmRow, validateCrmRow, sliceCrmRange } from "../crmRowMapper.js";
+import { sanitizeCellValue } from "../sheetsCsvGuard.js";
 import { extractLearnablePairs } from "../autoLearnExtractor.js";
 import { addTrainingEntry } from "../trainingKB.js";
-import { logSafe } from "./logSafe.js";
 
 async function buildSheetsClient(credsPath) {
   const auth = new google.auth.GoogleAuth({
@@ -28,8 +32,10 @@ async function buildSheetsClient(credsPath) {
 
 /**
  * Create a WA lead row from parsed data into Form responses 1 + CRM_Operativo
- * (append only — never overwrites an existing row). Does NOT write the AF–AG
- * AI-suggestion cells (that stays in the legacy OFF path).
+ * (append only — never overwrites an existing row). Writes the B:W data block and
+ * the AH:AK gate defaults (both header-anchored). Does NOT write the AF–AG AI
+ * suggestion cells — the legacy OFF path adds those via writeWaCrmAiTail() after
+ * generating the reply; canonical mode leaves them for the Omni `suggest` job.
  *
  * @param {object} args
  * @param {object} args.parsedData      result of /api/crm/parse-conversation (`d`)
@@ -38,7 +44,7 @@ async function buildSheetsClient(credsPath) {
  * @param {object} args.config          server config (bmcSheetId, creds)
  * @param {object} [args.logger]
  * @param {object} [args.sheets]        optional pre-built Sheets client (tests/reuse)
- * @returns {Promise<{skipped?:boolean, reason?:string, crmRow?:number, formRow?:number, sheets?:object, sheetId?:string}>}
+ * @returns {Promise<{skipped?:boolean, reason?:string, crmRow?:number, formRow?:number, sheets?:object, sheetId?:string, crmHeaders?:string[]}>}
  */
 export async function writeWaCrmIngest({
   parsedData: d,
@@ -91,15 +97,15 @@ export async function writeWaCrmIngest({
     },
   });
 
-  // CRM_Operativo — append: first row with empty col C (Cliente) from row 4.
-  // This function only ever CREATES a lead row. Canonical mode gates on
-  // findCrmRowByPhone() first and skips entirely when a row already exists, so an
-  // operator-edited row is never overwritten (no clobber of Estado/Observaciones/AK).
-  const crmClientes = await sheets.spreadsheets.values.get({
+  // CRM_Operativo — read row-3 headers + the Cliente column in one round-trip.
+  // Headers anchor the write by column NAME; the C column locates the first empty
+  // data row (≥ 4).
+  const crmReads = await sheets.spreadsheets.values.batchGet({
     spreadsheetId: sheetId,
-    range: "'CRM_Operativo'!C4:C500",
+    ranges: ["'CRM_Operativo'!A3:ZZ3", "'CRM_Operativo'!C4:C500"],
   });
-  const crmVals = crmClientes.data.values || [];
+  const crmHeaders = crmReads.data.valueRanges?.[0]?.values?.[0] || [];
+  const crmVals = crmReads.data.valueRanges?.[1]?.values || [];
   let crmRow = crmVals.length + 4;
   for (let i = 0; i < crmVals.length; i++) {
     if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) {
@@ -108,43 +114,121 @@ export async function writeWaCrmIngest({
     }
   }
 
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: sheetId,
-    range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [
-        [
-          now, d.cliente || "", d.telefono || chatId,
-          d.ubicacion || "", "WA-Auto", d.resumen_pedido || "",
-          d.categoria || "", "", "Pendiente", d.vendedor || "",
-        ],
-      ],
-    },
+  // KEY-BASED data row (B:W): each column addressed by logical key, never by blind
+  // array index, and every cell sanitized (CSV/formula guard).
+  const waLead = {
+    fecha: now,
+    cliente: d.cliente || "",
+    telefono: d.telefono || chatId,
+    ubicacion: d.ubicacion || "",
+    origen: "WA-Auto",
+    consulta: d.resumen_pedido || "",
+    categoria: d.categoria || "",
+    estado: "Pendiente",
+    responsable: d.vendedor || "",
+    probabilidad: d.probabilidad_cierre || "",
+    urgencia: d.urgencia || "",
+    validarStock: d.validar_stock || "No",
+    tipoCliente: d.tipo_cliente || "",
+    observaciones: d.observaciones || "",
+  };
+  const waBuilt = buildCrmRow(crmHeaders, waLead, { sanitize: sanitizeCellValue });
+  // requireHeaders:false — this create is fire-and-forget (legacy deletes its
+  // conversation buffer right after; canonical is retried at the job level, not
+  // here), so we always write best-effort: header-anchored when possible,
+  // documented-column-letter fallback when the header read is empty/absent.
+  // Validation is warn-only; losing the whole lead would be worse than a rare
+  // out-of-window field drop on a structural change.
+  const waCheck = validateCrmRow(waBuilt, crmHeaders, {
+    requireHeaders: false,
+    window: { from: "B", to: "W" },
   });
+  if (!waCheck.ok || waBuilt.fallbacks.length) {
+    logger?.warn?.(
+      `[WA] CRM_Operativo header drift — errors=${waCheck.errors.join(",") || "none"} fallbacks=${waBuilt.fallbacks.join(",") || "none"} (best-effort write)`,
+    );
+  }
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
-    range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
+    range: `'CRM_Operativo'!B${crmRow}:W${crmRow}`,
     valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]],
-    },
+    requestBody: { values: [sliceCrmRange(waBuilt.row, "B", "W")] },
   });
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: sheetId,
-    range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
+
+  // AH:AK gate defaults (header-anchored). Written on create so the lead has sane
+  // gate state on BOTH paths — canonical never runs the AI tail below, and legacy
+  // only overwrites AF:AG afterwards.
+  const waGate = buildCrmRow(
+    crmHeaders,
+    { linkPresupuesto: "", aprobadoEnviar: "No", enviadoEl: "", bloquearAuto: "No" },
+    { sanitize: sanitizeCellValue },
+  );
+  const waGateCheck = validateCrmRow(waGate, crmHeaders, {
+    requireHeaders: false,
+    window: { from: "AH", to: "AK" },
+    required: [],
   });
+  if (!waGateCheck.ok || waGate.fallbacks.length) {
+    logger?.warn?.(
+      `[WA] CRM AH:AK drift — errors=${waGateCheck.errors.join(",") || "none"} fallbacks=${waGate.fallbacks.join(",") || "none"} (best-effort write)`,
+    );
+  }
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
-    range: rangeAHAK(crmRow),
+    range: `'CRM_Operativo'!AH${crmRow}:AK${crmRow}`,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [defaultTailAHAK()] },
+    requestBody: { values: [sliceCrmRange(waGate.row, "AH", "AK")] },
   });
 
   logger?.info?.(`[WA] CRM ingest → CRM row ${crmRow}, Form row ${formRow} (create)`);
-  return { crmRow, formRow, sheets, sheetId };
+  return { crmRow, formRow, sheets, sheetId, crmHeaders };
+}
+
+/**
+ * Write the AF:AG AI-suggestion cells (suggested reply + provider) for a lead row,
+ * header-anchored + sanitized. Legacy OFF path only — canonical mode leaves the
+ * suggestion to the Omni `suggest` job. When the AI call failed, pass respuesta=""
+ * / provider="" (writes blanks, same effect as not writing them).
+ *
+ * @param {object} args
+ * @param {object} args.sheets      Sheets client (reuse the one from writeWaCrmIngest)
+ * @param {string} args.sheetId
+ * @param {number} args.crmRow      1-based CRM_Operativo row
+ * @param {string[]} args.crmHeaders row-3 headers (from writeWaCrmIngest)
+ * @param {string} [args.respuesta] suggested reply text (AF)
+ * @param {string} [args.provider]  IA provider label (AG)
+ * @param {object} [args.logger]
+ */
+export async function writeWaCrmAiTail({
+  sheets,
+  sheetId,
+  crmRow,
+  crmHeaders,
+  respuesta = "",
+  provider = "",
+  logger,
+}) {
+  const waTail = buildCrmRow(
+    crmHeaders,
+    { respuestaSugerida: respuesta || "", providerIa: provider || "" },
+    { sanitize: sanitizeCellValue },
+  );
+  const waTailCheck = validateCrmRow(waTail, crmHeaders, {
+    requireHeaders: false,
+    window: { from: "AF", to: "AG" },
+    required: [],
+  });
+  if (!waTailCheck.ok || waTail.fallbacks.length) {
+    logger?.warn?.(
+      `[WA] CRM AF:AG drift — errors=${waTailCheck.errors.join(",") || "none"} fallbacks=${waTail.fallbacks.join(",") || "none"} (best-effort write)`,
+    );
+  }
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetId,
+    range: `'CRM_Operativo'!AF${crmRow}:AG${crmRow}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [sliceCrmRange(waTail.row, "AF", "AG")] },
+  });
 }
 
 /**
@@ -204,7 +288,7 @@ export async function runWaAutoLearn({ turns, chatId, logger }) {
       });
     }
     if (pairs.length > 0) {
-      logger?.info?.(`[WA] autolearn: ${pairs.length} KB candidates from ${logSafe(chatId)}`);
+      logger?.info?.(`[WA] autolearn: ${pairs.length} KB candidates from ${String(chatId).replace(/[\r\n]+/g, " ").slice(0, 256)}`);
     }
     return pairs.length;
   } catch {

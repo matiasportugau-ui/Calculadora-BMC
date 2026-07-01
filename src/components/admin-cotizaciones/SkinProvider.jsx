@@ -22,6 +22,7 @@ export const SKINS = [
   { id: "gnome", label: "Linux GNOME" },
   { id: "anthropic", label: "Anthropic Warm" },
   { id: "linear", label: "Linear" },
+  { id: "intel-dark", label: "Intel Dark" },
 ];
 
 const VALID = new Set(SKINS.map((s) => s.id));

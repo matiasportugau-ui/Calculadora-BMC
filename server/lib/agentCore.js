@@ -113,12 +113,18 @@ export async function callAgentOnce(messages, opts = {}) {
   };
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-  const kbExamples = findRelevantExamples(lastUser, { limit: 4 });
 
-  const kbBlock = renderExamplesBlock(kbExamples, channel);
-  const basePrompt = buildSystemPrompt(calcState, { trainingExamples: kbExamples });
-  const channelSection = buildChannelSection(channel);
-  const promptCore = opts.systemPrompt || basePrompt;
+  // Bare mode: callers that need a specialized, self-contained system prompt (and
+  // just want the provider-fallback loop) pass opts.bareSystemPrompt. We then skip
+  // the Panelin base prompt + channel rules + KB examples entirely. Used by the
+  // Email drafter and Wolfboard batch so they gain provider fallback WITHOUT
+  // inheriting Panelin's persona. Existing callers don't pass it → unchanged.
+  const bare = opts.bareSystemPrompt || null;
+  const kbExamples = bare ? [] : findRelevantExamples(lastUser, { limit: 4 });
+  const kbBlock = bare ? "" : renderExamplesBlock(kbExamples, channel);
+  const basePrompt = bare ? "" : buildSystemPrompt(calcState, { trainingExamples: kbExamples });
+  const channelSection = bare ? "" : buildChannelSection(channel);
+  const promptCore = bare || opts.systemPrompt || basePrompt;
   const systemPrompt = [promptCore, channelSection, kbBlock].filter(Boolean).join("\n\n");
 
   const channelDefault = channel === "ml" ? 120 : channel === "wa" ? 400 : 1200;
@@ -198,7 +204,15 @@ export async function callAgentOnce(messages, opts = {}) {
       } else if (p === "gemini") {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genai = new GoogleGenerativeAI(apiKey);
-        const generationConfig = {};
+        const generationConfig = {
+          // gemini-2.5-flash enables "thinking" by default, which burns part of
+          // maxOutputTokens on hidden reasoning before any visible text — with
+          // the tight per-channel budgets here (120 for ml, 400 for wa) that
+          // starves the actual answer, truncating it mid-sentence. No tools are
+          // used on this path, so thinking has no upside here. Same fix as
+          // agentChat.js's Gemini branch.
+          thinkingConfig: { thinkingBudget: 0 },
+        };
         if (eff.temperature != null) generationConfig.temperature = eff.temperature;
         if (maxTokens) generationConfig.maxOutputTokens = maxTokens;
         const model = genai.getGenerativeModel({ model: modelUsed, generationConfig });

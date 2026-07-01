@@ -3,6 +3,10 @@ import { getWorkflow } from './workflows.js';
 
 const STORAGE_KEY = 'bmc_tutorial_mode';
 const PROGRESS_KEY = 'bmc_tutorial_progress';
+// Session-scoped dismissal: once the user closes the tutorial, suppress it
+// (overlay + floating launcher) for the rest of the browser session. Lives in
+// sessionStorage so it survives reloads but resets in a new tab/session.
+const SESSION_DISMISS_KEY = 'bmc_tutorial_session_dismissed';
 
 const TutorialContext = createContext(null);
 
@@ -14,6 +18,10 @@ export function TutorialProvider({ children }) {
 
   const [activeWorkflowId, setActiveWorkflowId] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [sessionDismissed, setSessionDismissed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem(SESSION_DISMISS_KEY) === 'true';
+  });
   const [completedWorkflows, setCompletedWorkflows] = useState(() => {
     if (typeof window === 'undefined') return new Set();
     try {
@@ -50,23 +58,44 @@ export function TutorialProvider({ children }) {
   const totalSteps = activeWorkflow?.steps?.length || 0;
   const progress = totalSteps > 0 ? Math.round(((currentStepIndex + 1) / totalSteps) * 100) : 0;
 
+  // Limpia la marca de "cerrado en esta sesión". Todo arranque explícito de un
+  // flujo es intención del usuario, así que des-descarta el tutorial.
+  const clearSessionDismiss = useCallback(() => {
+    if (typeof window !== 'undefined') sessionStorage.removeItem(SESSION_DISMISS_KEY);
+    setSessionDismissed(false);
+  }, []);
+
   const startWorkflow = useCallback((workflowId) => {
     const wf = getWorkflow(workflowId);
     if (!wf) {
       console.warn(`[Tutorial] Workflow no encontrado: ${workflowId}`);
       return;
     }
+    clearSessionDismiss();
     setActiveWorkflowId(workflowId);
     setCurrentStepIndex(0);
     // Auto-activar modo tutorial al iniciar un flujo
     if (!isTutorialMode) setIsTutorialMode(true);
-  }, [isTutorialMode]);
+  }, [isTutorialMode, clearSessionDismiss]);
 
+  // Salida "suave": cierra el flujo actual pero mantiene el modo tutorial
+  // encendido para que el usuario pueda saltar entre flujos (usado por TutorialToggle).
   const exitTutorial = useCallback(() => {
     setActiveWorkflowId(null);
     setCurrentStepIndex(0);
     // Opcional: mantener modo tutorial activado o apagarlo
     // setIsTutorialMode(false); // Comentado para que el usuario pueda saltar entre flujos
+  }, []);
+
+  // Cierre "duro": apaga el modo tutorial y descarta el tutorial (overlay +
+  // botón flotante) por el resto de la sesión. Usado por los botones de cierre
+  // del cartel (× y "Salir del tutorial").
+  const dismissTutorial = useCallback(() => {
+    setActiveWorkflowId(null);
+    setCurrentStepIndex(0);
+    setIsTutorialMode(false);
+    setSessionDismissed(true);
+    if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_DISMISS_KEY, 'true');
   }, []);
 
   const completeCurrentWorkflow = useCallback(() => {
@@ -100,11 +129,14 @@ export function TutorialProvider({ children }) {
   const toggleTutorialMode = useCallback(() => {
     const newMode = !isTutorialMode;
     setIsTutorialMode(newMode);
-    if (!newMode) {
+    if (newMode) {
+      // Encender el modo es intención explícita: limpiar el descarte de sesión.
+      clearSessionDismiss();
+    } else {
       // Si apagan el modo, salir del flujo actual
       exitTutorial();
     }
-  }, [isTutorialMode, exitTutorial]);
+  }, [isTutorialMode, exitTutorial, clearSessionDismiss]);
 
   const resetAllTutorials = useCallback(() => {
     setCompletedWorkflows(new Set());
@@ -141,6 +173,7 @@ export function TutorialProvider({ children }) {
     totalSteps,
     progress,
     completedWorkflows,
+    sessionDismissed,
 
     // Acciones
     toggleTutorialMode,
@@ -148,6 +181,7 @@ export function TutorialProvider({ children }) {
     nextStep,
     prevStep,
     exitTutorial,
+    dismissTutorial,
     completeCurrentWorkflow,
     resetAllTutorials,
   }), [
@@ -159,11 +193,13 @@ export function TutorialProvider({ children }) {
     totalSteps,
     progress,
     completedWorkflows,
+    sessionDismissed,
     toggleTutorialMode,
     startWorkflow,
     nextStep,
     prevStep,
     exitTutorial,
+    dismissTutorial,
     completeCurrentWorkflow,
     resetAllTutorials,
   ]);

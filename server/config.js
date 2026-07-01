@@ -325,6 +325,18 @@ export const config = {
   omniAiDailyBudgetUsd: Math.max(0, Number(process.env.OMNI_AI_DAILY_BUDGET_USD || 50)),
   omniDealsSheetsAuthority: bool(process.env.OMNI_DEALS_SHEETS_AUTHORITY, true),
   otelEnabled: bool(process.env.OTEL_ENABLED, false),
+  /**
+   * AI Assistant control plane — master switch. Comma-separated allowlist of assistant keys
+   * allowed to GENERATE AI responses. Anything not listed returns 503 assistant_disabled on its
+   * AI-generation route (inbound ingest/webhooks stay ungated — no messages are lost).
+   * Default `canales` ships the Omni copilot only; widen deliberately per phase.
+   * Keys: canales, panelin, email, wa, ml, wolfboard. `seam` (shared agentCore) is always enabled.
+   * See server/lib/assistantRegistry.js for the registry.
+   */
+  assistantsActive: String(process.env.ASSISTANTS_ACTIVE || "canales")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
   omniAiWorkerIntervalMs: Math.max(2000, Number(process.env.OMNI_AI_WORKER_INTERVAL_MS || 5000)),
   omniAiWorkerBatchSize: Math.max(1, Math.min(20, Number(process.env.OMNI_AI_WORKER_BATCH_SIZE || 5))),
   /**

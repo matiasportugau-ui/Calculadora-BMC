@@ -19,12 +19,14 @@ import { useTutorial } from './useTutorial.js';
 const BUTTON_WIDTH = 168;
 const BUTTON_HEIGHT = 40;
 const EDGE_MARGIN = 12;
+/** Espacio sobre la pestaña fija "Respondamos Rapido" (BmcChatPanel). */
+const RESPONDAMOS_TAB_CLEARANCE = 52;
 const DRAG_THRESHOLD = 6; // pixels of movement before we commit to "drag" mode
 
 const STORAGE_KEY = 'bmc_floating_tutorial_position';
 
 export default function FloatingTutorialButton() {
-  const { isTutorialMode, activeWorkflowId } = useTutorial();
+  const { isTutorialMode, activeWorkflowId, sessionDismissed } = useTutorial();
 
   const [basePosition, setBasePosition] = useState({ left: 0, top: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -76,7 +78,10 @@ export default function FloatingTutorialButton() {
       if (!pos) {
         pos = {
           left: Math.max(EDGE_MARGIN, window.innerWidth - BUTTON_WIDTH - 24),
-          top: Math.max(EDGE_MARGIN, window.innerHeight - BUTTON_HEIGHT - 24),
+          top: Math.max(
+            EDGE_MARGIN,
+            window.innerHeight - BUTTON_HEIGHT - 24 - RESPONDAMOS_TAB_CLEARANCE,
+          ),
         };
       }
 
@@ -234,6 +239,9 @@ export default function FloatingTutorialButton() {
     setBasePosition(clamped);
     savePosition(clamped);
   };
+
+  // Ocultar todo el launcher si el usuario cerró el tutorial en esta sesión
+  if (sessionDismissed) return null;
 
   // Hide when a flow is already running
   if (isTutorialMode && activeWorkflowId) return null;

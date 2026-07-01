@@ -32,6 +32,16 @@ function fakeSheets(crmCD) {
           if (range.includes("C4:C500")) return { data: { values: crmCD.map((r) => [r[0]]) } };
           return { data: { values: [] } };
         },
+        // CRM_Operativo create reads row-3 headers + Cliente column together.
+        batchGet: async ({ ranges }) => ({
+          data: {
+            valueRanges: ranges.map((rg) =>
+              rg.includes("C4:C500")
+                ? { values: crmCD.map((r) => [r[0]]) }
+                : { values: [] }, // no headers → column-letter fallback
+            ),
+          },
+        }),
         update: async (req) => { updates.push(req.range); return {}; },
       },
     },
