@@ -2635,6 +2635,9 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
   router.post("/crm/ingest-email", requireEmailIngestAuth, async (req, res) => {
     const { asunto, cuerpo, remitente, messageId, threadId, account } = req.body || {};
     if (!cuerpo) return res.status(400).json({ ok: false, error: "Missing cuerpo" });
+    // messageId is client-supplied; strip CR/LF/TAB before it reaches any log line
+    // so it can't forge log entries (CodeQL js/log-injection).
+    const safeMessageId = String(messageId ?? "?").replace(/[\n\r\t]/g, " ");
 
     // Idempotency: the unattended ingester (Cloud Run Job) re-sends the same
     // messages each run; skip if already processed so we don't write dup leads.
@@ -2805,7 +2808,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           degraded = true;
           degradeReason = check.errors.join(",");
           crmRow = null;
-          console.warn(`[Email] ⚠ CRM structure invalid (${degradeReason}) — lead routed to Pendientes, NOT written. messageId: ${messageId || "?"}`);
+          console.warn(`[Email] ⚠ CRM structure invalid (${degradeReason}) — lead routed to Pendientes, NOT written. messageId: ${safeMessageId}`);
           void shadowWriteEmailIngest({
             config,
             logger: console,
@@ -2830,7 +2833,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
             valueInputOption: "USER_ENTERED",
             requestBody: { values: [defaultTailAGAK_Email()] },
           });
-          console.log(`[Email] ✓ Ingested → CRM row ${crmRow}, provider: ${provider}, messageId: ${messageId || "?"}`);
+          console.log(`[Email] ✓ Ingested → CRM row ${crmRow}, provider: ${provider}, messageId: ${safeMessageId}`);
           void shadowWriteEmailIngest({
             config,
             logger: console,
