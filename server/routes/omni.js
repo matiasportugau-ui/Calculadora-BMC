@@ -927,6 +927,7 @@ router.post(
 /** Internal ingest for tests / manual replay */
 router.post(
   "/omni/ingest",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
