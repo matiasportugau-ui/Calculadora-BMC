@@ -692,6 +692,7 @@ router.get(
 
 router.post(
   "/omni/conversations/:id/notes",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -727,6 +728,7 @@ router.post(
 
 router.patch(
   "/omni/conversations/:id/read",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -749,6 +751,7 @@ router.patch(
 // AND remove labels; `status` is validated against the engine's allow-list.
 router.patch(
   "/omni/conversations/:id",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -799,6 +802,7 @@ router.patch(
 
 router.post(
   "/omni/conversations/:id/reply",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
