@@ -135,24 +135,19 @@ export function isAssistantEnabled(key) {
 export const ASSISTANT_PRIORITY = ["canales", "panelin", "email", "wa", "ml", "wolfboard"];
 
 /**
- * Cheap, side-effect-light availability probe for a fallback node. The seam is
- * available iff any provider key exists; a normal assistant is available iff it is
- * enabled AND its dependency probe passes. Never makes an LLM call.
+ * O(1) availability probe for a fallback node — no I/O, no LLM call, no DB. A node
+ * is available iff a provider key exists AND (it's the seam OR it's enabled). We
+ * deliberately do NOT run the assistant's `deps` probe here: it can hit the DB
+ * (canales → omniHealthCheck), and the copilot's LLM call doesn't need the inbox
+ * schema anyway, so a slow/missing schema must not skip a copilot that can answer.
+ * `deps` is still used for the health panel (assistantHealth), which is cached.
  * @param {object} node
  */
-async function isNodeAvailable(node) {
+function isNodeAvailable(node) {
   if (!node) return false;
-  if (node.terminal) return getAvailableProviders().length > 0; // seam
-  if (!isAssistantEnabled(node.key)) return false;
-  if (getAvailableProviders().length === 0) return false;
-  if (typeof node.deps === "function") {
-    try {
-      return Boolean((await node.deps()).ok);
-    } catch {
-      return false;
-    }
-  }
-  return true;
+  if (getAvailableProviders().length === 0) return false; // no LLM at all → nothing can serve
+  if (node.terminal) return true; // seam: a provider exists
+  return isAssistantEnabled(node.key);
 }
 
 /**
@@ -190,6 +185,9 @@ export function buildFallbackLine(primaryKey) {
  * @param {object} [opts.callOpts]         opts forwarded to callAgentOnce at seam/promoted nodes
  * @returns {Promise<{ ok:true, result:any, servedBy:string, failovers:string[] }
  *                   | { ok:false, reason:string, assistant:string }>}
+ * @throws {Error} code `ASSISTANT_DISPATCH_FAILED` when the whole line is
+ *   exhausted (no available agent — e.g. no provider keys). Callers should catch
+ *   this; the canales copilot lets it fall to its 502 handler.
  */
 export async function dispatchAssistant(key, messages, opts = {}) {
   const { handler = null, callOpts = {} } = opts;
@@ -204,7 +202,7 @@ export async function dispatchAssistant(key, messages, opts = {}) {
 
   for (const node of line) {
     // Proactively skip an unavailable node before spending an LLM call.
-    if (!(await isNodeAvailable(node))) {
+    if (!isNodeAvailable(node)) {
       failovers.push(node.key);
       activeHandler = null; // the primary's surface-specific handler can't serve a later node
       console.log(JSON.stringify({ event: "assistant_skip", assistant: node.key, reason: "unavailable" }));
