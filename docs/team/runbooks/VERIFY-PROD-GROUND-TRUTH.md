@@ -13,7 +13,7 @@ easy to claim and hard to confirm. This runbook + its script
 | Tier | Needs | What it proves |
 |------|-------|----------------|
 | **1 — public** | nothing (no secrets) | API is live; Sheets + tokens wired; deployed build SHA; WA volume (`/api/wa/health` exposes `count_chats` / `count_msgs_24h` with no auth) |
-| **2 — DB** | `DATABASE_URL` (the `omni_*` Postgres) | data is actually **flowing** into the unified inbox: conversations / messages / ai_jobs / suggestions / email_ingest_log / quote_embeddings (per-channel counts + recency in last 24h) |
+| **2 — DB** | `DATABASE_URL` (the `omni_*` Postgres) | data is actually **flowing** into the unified inbox: conversations / messages / ai_jobs / suggestions / email_ingest_log / quote_embeddings (per-channel counts + recency in last 24h), plus that migrations `012`/`013` landed (`omni_frt_breaches` / `omni_contact_merge_log` exist and are queryable — **0 rows is expected and NOT flagged as a gap** for these two, since they only populate once `OMNI_FRT_WORKER_ENABLED=1` is on / an admin performs a merge, not continuously) |
 
 ```bash
 # Tier 1 only (anywhere, no creds):
@@ -34,12 +34,13 @@ This script **complements** `npm run smoke:prod` (which checks liveness of
 health/capabilities/MATRIZ-CSV/WA-webhook/finanzas/suggest). Ground-truth focuses on the
 **Omni data-flow** specifically.
 
-## Last observed snapshot (Tier 1, captured 2026-06-30)
+## Last observed snapshot (Tier 1, captured 2026-07-01)
 
 ```
 API /health        ✓ appEnv=production hasTokens=true hasSheets=true mlTokenStore=true CRM_Operativo=true
-API /capabilities  ✓ gitSha=65df704c version=3.1.5
-WA data-flow       ⚠ chats=0 msgs_24h=0   ← GAP: WA cockpit DB reachable (HTTP 200, not 503) but no WA traffic in 24h
+API /capabilities  ✓ gitSha=492d19f7 version=3.1.5   (was 65df704c on 2026-06-30 — main has deployed since)
+WA data-flow       ⚠ chats=0 msgs_24h=0   ← GAP: WA cockpit DB reachable (HTTP 200, not 503) but no WA traffic in 24h,
+                     still unresolved as of this snapshot — worth checking during the Tier 2 run below.
 ```
 
 Interpretation: the API is healthy and fully configured; the WA channel shows **no recent

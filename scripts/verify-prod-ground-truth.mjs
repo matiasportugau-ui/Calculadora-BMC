@@ -200,6 +200,33 @@ const DB_PROBES = [
           FROM quote_embeddings GROUP BY provider ORDER BY total DESC`,
     flowKey: null,
   },
+  {
+    // migration 012 (Wave 5). Opt-in worker (OMNI_FRT_WORKER_ENABLED, default
+    // OFF) — 0 rows is the EXPECTED steady state until it's enabled, not a
+    // gap. flowKey:null + no GROUP BY means this probe only checks the table
+    // exists/is queryable (a COUNT(*) with no GROUP BY always returns exactly
+    // one row, so it never flags empty as a warning) — that's the point: it
+    // confirms migration 012 landed, without nagging about a feature nobody
+    // turned on yet.
+    id: "omni_frt_breaches",
+    label: "Historial de breaches FRT (confirma migración 012)",
+    sql: `SELECT COUNT(*)::int AS total,
+                 COUNT(*) FILTER (WHERE resolved_at IS NULL)::int AS open_now,
+                 MAX(breach_at) AS newest
+          FROM omni_frt_breaches`,
+    flowKey: null,
+  },
+  {
+    // migration 013 (Wave 6b). Only populated when an admin performs a
+    // contact merge — an occasional, deliberate action, not a continuous
+    // pipeline — so 0 rows is normal indefinitely. Same "existence only" check
+    // as omni_frt_breaches above.
+    id: "omni_contact_merge_log",
+    label: "Auditoría de merges de contactos (confirma migración 013)",
+    sql: `SELECT COUNT(*)::int AS total, MAX(created_at) AS newest
+          FROM omni_contact_merge_log`,
+    flowKey: null,
+  },
 ];
 
 async function tier2Db(databaseUrl) {
