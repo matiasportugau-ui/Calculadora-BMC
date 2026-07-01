@@ -12,8 +12,6 @@ import { buildVersionInfo } from "./lib/versionInfo.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
 import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
-import { buildCrmRow, validateCrmRow, sliceCrmRange } from "./lib/crmRowMapper.js";
-import { sanitizeCellValue } from "./lib/sheetsCsvGuard.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
@@ -86,7 +84,9 @@ import { verifyMLSignature } from "./lib/mlSignature.js";
 import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
-import { shadowWriteWaWebhook } from "./lib/omni/adapters/waWebhook.js";
+import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
+import { normalizeAndPersist } from "./lib/omni/normalizer.js";
+import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
 import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
@@ -94,8 +94,7 @@ import { startOmniFrtBreachWorker } from "./lib/omni/orchestrator/frtBreachWorke
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
-import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
-import { addTrainingEntry } from "./lib/trainingKB.js";
+import { writeWaCrmIngest, writeWaCrmAiTail, runWaAutoLearn } from "./lib/wa/crmIngestWrite.js";
 import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -695,94 +694,14 @@ async function processWaConversation(chatId, conv) {
 
     if (parsed.ok && parsed.data) {
       const d = parsed.data;
-      const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
-      if (config.bmcSheetId && credsPath) {
-        const { google } = await import("googleapis");
-        const auth = new google.auth.GoogleAuth({
-          keyFile: credsPath,
-          scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-        });
-        const sheets = google.sheets({ version: "v4", auth: await auth.getClient() });
-        const sheetId = config.bmcSheetId;
-        const now = new Date().toISOString();
-
-        // Form responses 1 — primera fila con col C (Cliente) vacía
-        const formClientes = await sheets.spreadsheets.values.get({
-          spreadsheetId: sheetId, range: "'Form responses 1'!C2:C200",
-        });
-        const formRows = formClientes.data.values || [];
-        let formRow = formRows.length + 2;
-        for (let i = 0; i < formRows.length; i++) {
-          if (!formRows[i][0] || !formRows[i][0].toString().trim()) { formRow = i + 2; break; }
-        }
-
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'Form responses 1'!A${formRow}:P${formRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
-            now, now, d.cliente || "", d.telefono || chatId,
-            d.ubicacion || "", "WA-Auto", d.resumen_pedido || "", d.categoria || "",
-            d.urgencia || "", d.cotizacion_formal || "", d.tipo_cliente || "",
-            d.vendedor || "", d.observaciones || "", d.validar_stock || "No",
-            d.probabilidad_cierre || "", dialogo,
-          ]] },
-        });
-
-        // CRM_Operativo — read row-3 headers + the Cliente column in one round-trip.
-        // Headers anchor the write by column NAME; the C column locates the first
-        // empty data row (≥ 4).
-        const crmReads = await sheets.spreadsheets.values.batchGet({
-          spreadsheetId: sheetId,
-          ranges: ["'CRM_Operativo'!A3:ZZ3", "'CRM_Operativo'!C4:C500"],
-        });
-        const crmHeaders = crmReads.data.valueRanges?.[0]?.values?.[0] || [];
-        const crmVals = crmReads.data.valueRanges?.[1]?.values || [];
-        let crmRow = crmVals.length + 4;
-        for (let i = 0; i < crmVals.length; i++) {
-          if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) { crmRow = i + 4; break; }
-        }
-
-        // KEY-BASED row: each column addressed by logical key, never by blind
-        // array index, and every cell sanitized (CSV/formula guard).
-        const waLead = {
-          fecha: now,
-          cliente: d.cliente || "",
-          telefono: d.telefono || chatId,
-          ubicacion: d.ubicacion || "",
-          origen: "WA-Auto",
-          consulta: d.resumen_pedido || "",
-          categoria: d.categoria || "",
-          estado: "Pendiente",
-          responsable: d.vendedor || "",
-          probabilidad: d.probabilidad_cierre || "",
-          urgencia: d.urgencia || "",
-          validarStock: d.validar_stock || "No",
-          tipoCliente: d.tipo_cliente || "",
-          observaciones: d.observaciones || "",
-        };
-        const waBuilt = buildCrmRow(crmHeaders, waLead, { sanitize: sanitizeCellValue });
-        // requireHeaders:false — this path is fire-and-forget and deletes its
-        // conversation buffer at the end (waConversations.delete below), so it
-        // has NO retry. We therefore always write best-effort: header-anchored
-        // when possible, documented-column-letter fallback when the header read
-        // is empty/absent. Validation is warn-only; losing the whole lead would
-        // be worse than a rare out-of-window field drop on a structural change.
-        const waCheck = validateCrmRow(waBuilt, crmHeaders, {
-          requireHeaders: false,
-          window: { from: "B", to: "W" },
-        });
-        if (!waCheck.ok || waBuilt.fallbacks.length) {
-          logger.warn(`[WA] CRM_Operativo header drift — errors=${waCheck.errors.join(",") || "none"} fallbacks=${waBuilt.fallbacks.join(",") || "none"} (best-effort write)`);
-        }
-        // One header-anchored write for the data block (B:W) instead of three
-        // positional range writes.
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!B${crmRow}:W${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [sliceCrmRange(waBuilt.row, "B", "W")] },
-        });
+      // Sheets ingest (Form responses 1 + CRM_Operativo) — shared with the
+      // canonical-mode wa_crm_sync omni job. Header-anchored + CSV-sanitized write
+      // (crmRowMapper). Legacy appends one row per conversation burst.
+      const ingest = await writeWaCrmIngest({
+        parsedData: d, chatId, dialogo, config, logger,
+      });
+      if (!ingest.skipped) {
+        const { crmRow, formRow, sheets, sheetId, crmHeaders } = ingest;
 
         // Generar respuesta IA para col AF — usa agente unificado (canal: wa + KB)
         let ai = { ok: false };
@@ -796,54 +715,23 @@ async function processWaConversation(chatId, conv) {
         } catch (aiErr) {
           logger.warn(`[WA] agentCore failed for ${chatId}: ${aiErr.message}`);
         }
-        // AF:AK in one header-anchored write: suggested reply + provider (AF/AG)
-        // + gate defaults (AH:AK). Replaces the old positional AF:AG + defaultTailAHAK
-        // writes; when AI failed, AF/AG are "" (same effect as not writing them).
-        const waTail = buildCrmRow(crmHeaders, {
-          respuestaSugerida: ai.ok && ai.respuesta ? ai.respuesta : "",
-          providerIa: ai.ok ? (ai.provider || "") : "",
-          linkPresupuesto: "",
-          aprobadoEnviar: "No",
-          enviadoEl: "",
-          bloquearAuto: "No",
-        }, { sanitize: sanitizeCellValue });
-        // Warn-only window check (best-effort, like the B:W write): if a header
-        // drifted so a tail field resolves outside AF:AK it would be dropped from
-        // the slice — surface it rather than fail silently. required:[] because
-        // this partial lead carries none of the fecha/cliente/estado anchors.
-        const waTailCheck = validateCrmRow(waTail, crmHeaders, {
-          requireHeaders: false,
-          window: { from: "AF", to: "AK" },
-          required: [],
-        });
-        if (!waTailCheck.ok || waTail.fallbacks.length) {
-          logger.warn(`[WA] CRM AF:AK drift — errors=${waTailCheck.errors.join(",") || "none"} fallbacks=${waTail.fallbacks.join(",") || "none"} (best-effort write)`);
-        }
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!AF${crmRow}:AK${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [sliceCrmRange(waTail.row, "AF", "AK")] },
+        // AF:AG AI suggestion (suggested reply + provider) — header-anchored write
+        // via the shared helper. Legacy OFF path only; canonical leaves the
+        // suggestion to the Omni `suggest` job. When AI failed, AF/AG are ""
+        // (same effect as not writing them). Gate defaults (AH:AK) were already
+        // written on create by writeWaCrmIngest.
+        await writeWaCrmAiTail({
+          sheets, sheetId, crmRow, crmHeaders,
+          respuesta: ai.ok ? ai.respuesta : "",
+          provider: ai.ok ? ai.provider : "",
+          logger,
         });
 
         // Autolearn: extraer pares Q→A del intercambio WA para el KB unificado
         setImmediate(() => {
           const waTurns = conv.messages.map((m) => ({ role: "user", content: m.text }));
           if (ai.ok && ai.respuesta) waTurns.push({ role: "assistant", content: ai.respuesta });
-          extractLearnablePairs(waTurns, { source: "wa", convId: chatId })
-            .then((pairs) => {
-              for (const p of pairs) {
-                addTrainingEntry({
-                  question: p.question, goodAnswer: p.goodAnswer,
-                  badAnswer: p.badAnswer || "", category: p.category || "conversational",
-                  context: `[WA] ${p.rationale || ""}`, source: p.source || "autolearned",
-                  status: p.confidence >= 0.92 ? "active" : "pending",
-                  confidence: p.confidence, convId: p.convId || chatId,
-                });
-              }
-              if (pairs.length > 0) logger.info(`[WA] autolearn: ${pairs.length} KB candidates from ${chatId}`);
-            })
-            .catch(() => {});
+          runWaAutoLearn({ turns: waTurns, chatId, logger });
         });
 
         logger.info(`[WA] ✓ Conversation processed → CRM row ${crmRow}, Form row ${formRow}, provider: ${ai.provider || "none"}`);
@@ -859,6 +747,8 @@ async function processWaConversation(chatId, conv) {
 // ── Auto-trigger: procesar conversaciones inactivas (5 min sin mensajes) ──
 const WA_INACTIVITY_MS = 5 * 60 * 1000; // 5 minutos
 setInterval(() => {
+  // Canonical mode: the wa_crm_sync omni job handles ingest — no in-memory timer.
+  if (config.omniWaCanonical) return;
   const now = Date.now();
   for (const [chatId, conv] of waConversations.entries()) {
     if (now - conv.lastUpdate >= WA_INACTIVITY_MS && conv.messages.length > 0) {
@@ -953,20 +843,25 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 
   if (!value?.messages) return;
 
+  const waMode = chooseWaIngestMode(config);
+
   for (const msg of value.messages) {
     const chatId = msg.from; // número del cliente
     const contactName = value.contacts?.[0]?.profile?.name || msg.from;
     const text = msg.text?.body || msg.caption || "";
     if (!text) continue;
 
-    if (!waConversations.has(chatId)) {
-      waConversations.set(chatId, { messages: [], contactName, lastUpdate: Date.now() });
+    // Legacy in-memory accumulation (drives the 5-min timer + 🚀 trigger) — OFF only.
+    let conv = null;
+    if (waMode === "legacy") {
+      if (!waConversations.has(chatId)) {
+        waConversations.set(chatId, { messages: [], contactName, lastUpdate: Date.now() });
+      }
+      conv = waConversations.get(chatId);
+      conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
+      conv.lastUpdate = Date.now();
+      logger.info({ contact: contactName, chat_id: chatId, total: conv.messages.length }, "[WA] Message from contact");
     }
-    const conv = waConversations.get(chatId);
-    conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
-    conv.lastUpdate = Date.now();
-
-    logger.info(`[WA] Message from ${contactName} (${chatId}), total: ${conv.messages.length}`);
 
     // F4 — espejar inbound Cloud API en Postgres wa_messages para que el cockpit
     // SPA tenga vista unificada con los mensajes scrapeados via extensión.
@@ -1012,18 +907,28 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       logger.warn({ err: e?.message, chat_id: chatId }, "WA webhook → wa_messages mirror failed");
     }
 
-    void shadowWriteWaWebhook({
-      config,
-      logger,
-      msg,
-      chatId,
-      contactName,
-    });
+    if (waMode === "canonical") {
+      // Omni is the single source of truth: real (awaited) ingest → message.ingested
+      // → classify/suggest + the per-conversation-coalesced wa_crm_sync job.
+      try {
+        await normalizeAndPersist(
+          waWebhookToOmniEvent({ msg, chatId, contactName }),
+          { databaseUrl: config.databaseUrl, logger },
+        );
+      } catch (e) {
+        // 200 was already sent to Meta (line above); a failure here only loses this
+        // message's enrichment, never the webhook ack.
+        logger.warn({ err: e?.message, chat_id: chatId }, "WA canonical ingest failed");
+      }
+    } else {
+      // Legacy: Omni shadow dual-write + in-memory 5-min/🚀 processing.
+      void shadowWriteWaWebhook({ config, logger, msg, chatId, contactName });
 
-    // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
-    if (text.includes("🚀")) {
-      logger.info(`[WA] 🚀 manual trigger for ${chatId}`);
-      processWaConversation(chatId, conv);
+      // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
+      if (text.includes("🚀")) {
+        logger.info({ chat_id: chatId }, "[WA] 🚀 manual trigger");
+        processWaConversation(chatId, conv);
+      }
     }
   }
 }));

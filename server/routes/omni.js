@@ -32,6 +32,7 @@ import { appendTeamIsolationFilter } from "../lib/omni/teamIsolation.js";
 import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
 import { mergeContacts, ContactMergeError } from "../lib/omni/identity/contactMerge.js";
 import { callAgentOnce } from "../lib/agentCore.js";
+import { dispatchAssistant } from "../lib/assistantRegistry.js";
 
 const omniReadLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -648,10 +649,20 @@ router.post(
     ].join("");
 
     try {
-      const out = await callAgentOnce(
-        [{ role: "user", content: userContent }],
-        { channel: "email", provider: "claude", override: { provider: "claude", maxTokens: 700 } },
-      );
+      // Route through the assistant fallback line so the copilot always has an
+      // available agent: canales handler first (Claude-preferred but with the FULL
+      // provider chain — note NO top-level `provider` pin, which previously locked
+      // it to Claude-only), then the enabled-only line → the always-on seam.
+      const messages = [{ role: "user", content: userContent }];
+      const callOpts = { channel: "email", override: { provider: "claude", maxTokens: 700 } };
+      const dispatch = await dispatchAssistant("canales", messages, {
+        handler: () => callAgentOnce(messages, callOpts),
+        callOpts,
+      });
+      if (!dispatch.ok) {
+        return res.status(503).json({ ok: false, error: dispatch.reason });
+      }
+      const out = dispatch.result;
       const result = (typeof out === "string" ? out : out?.text || out?.content || "").trim();
       if (!result) {
         return res.status(502).json({ ok: false, error: "empty_result" });

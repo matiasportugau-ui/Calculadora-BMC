@@ -44,8 +44,7 @@ const aiJobsWrites = (pool) =>
 assert(
   "ALLOWED_AI_JOB_TYPES matches DB constraint set",
   JSON.stringify([...ALLOWED_AI_JOB_TYPES].sort()) ===
-    // 'assist' added in migration 011 (assist-route cost accounting).
-    JSON.stringify(["assist", "classify", "embed", "extract_deal", "suggest"]),
+    JSON.stringify(["assist", "classify", "embed", "extract_deal", "suggest", "wa_crm_sync"]),
 );
 
 await (async () => {

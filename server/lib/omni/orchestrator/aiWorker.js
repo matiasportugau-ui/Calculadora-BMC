@@ -10,6 +10,7 @@ import { resolveSuggestModel } from "./modelTiering.js";
 import { processExtractDealJob } from "../deals/dealExtractor.js";
 import { runEmbedJob } from "../knowledge/embedPipeline.js";
 import { buildOmniRetrievalContext, formatOmniContextBlock } from "../knowledge/kbBridge.js";
+import { runWaCrmSyncJob } from "../../wa/waCrmSyncJob.js";
 
 const CATEGORY_MAP = {
   cotizacion: "cotizacion",
@@ -28,7 +29,7 @@ const CATEGORY_MAP = {
 // Mirrors the DB CHECK constraint omni_ai_jobs_type_valid (migrations 002 + 011).
 // 'assist' rows are written `completed` directly by the /omni/.../assist route for
 // budget accounting and are never enqueued/processed by the worker loop below.
-export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "embed", "assist"];
+export const ALLOWED_AI_JOB_TYPES = ["classify", "suggest", "extract_deal", "embed", "assist", "wa_crm_sync"];
 
 /**
  * Build the metadata payload stored on an omni_suggestions row. Pure (no I/O)
@@ -64,23 +65,58 @@ export function buildSuggestionMetadata(result, prompt, retrieval = {}) {
 /**
  * @param {import('pg').Pool} pool
  * @param {object} job
+ * @param {{ onConflictDoNothing?: boolean, runAfterMs?: number, reStampRunAfter?: boolean }} [opts]
+ *   onConflictDoNothing: coalesce against the active-dedup unique index (migration
+ *     011). On conflict no row is inserted and this returns null.
+ *   runAfterMs: hold the job for this many ms (sets run_after = now()+ms) — used for
+ *     the wa_crm_sync burst debounce; other jobs leave run_after NULL (run immediately).
+ *   reStampRunAfter: coalesce against the wa_crm_sync active-dedup index but DO UPDATE
+ *     run_after on conflict, so each new burst message pushes the window out (true
+ *     inactivity debounce). Returns the existing row's id on conflict.
  */
-export async function enqueueAiJob(pool, job) {
+export async function enqueueAiJob(pool, job, opts = {}) {
   if (!pool) return null;
   if (!ALLOWED_AI_JOB_TYPES.includes(job.job_type)) {
     throw new Error("invalid_job_type");
   }
+
+  const hasDelay = Number.isFinite(opts.runAfterMs) && opts.runAfterMs > 0;
+
+  let conflictClause = "";
+  if (opts.reStampRunAfter) {
+    conflictClause = `ON CONFLICT (conversation_id)
+         WHERE status IN ('pending', 'failed') AND job_type = 'wa_crm_sync'
+       DO UPDATE SET run_after = EXCLUDED.run_after`;
+  } else if (opts.onConflictDoNothing) {
+    conflictClause = "ON CONFLICT DO NOTHING";
+  }
+
+  const params = [
+    job.job_type,
+    job.message_id,
+    job.conversation_id,
+    job.channel || null,
+    JSON.stringify(job.input_json || {}),
+  ];
+
+  // Only reference the `run_after` column when a delay is actually requested (the
+  // wa_crm_sync burst debounce). The classify/suggest path omits it entirely, so
+  // enqueue stays compatible with a schema where migration 012 hasn't been applied
+  // yet — the deploy is truly dormant at the DB level with the WA flags OFF.
+  let cols = "job_type, message_id, conversation_id, channel, input_json, status";
+  let vals = "$1, $2, $3, $4, $5::jsonb, 'pending'";
+  if (hasDelay) {
+    params.push(String(opts.runAfterMs));
+    cols += ", run_after";
+    vals += ", now() + ($6::bigint * interval '1 millisecond')";
+  }
+
   const { rows } = await pool.query(
-    `INSERT INTO omni_ai_jobs (job_type, message_id, conversation_id, channel, input_json, status)
-     VALUES ($1, $2, $3, $4, $5::jsonb, 'pending')
+    `INSERT INTO omni_ai_jobs (${cols})
+     VALUES (${vals})
+     ${conflictClause}
      RETURNING id`,
-    [
-      job.job_type,
-      job.message_id,
-      job.conversation_id,
-      job.channel || null,
-      JSON.stringify(job.input_json || {}),
-    ],
+    params,
   );
   return rows[0]?.id ?? null;
 }
@@ -110,6 +146,26 @@ export async function enqueueIngestAiJobs(pool, payload) {
       channel: payload.channel,
     }),
   );
+
+  // WA flip (OMNI_WA_CANONICAL): the legacy CRM-Sheets ingest + auto-learn run as a
+  // durable, per-conversation-coalesced job instead of the in-memory processWaConversation.
+  if (config.omniWaCanonical && payload.channel === "wa") {
+    ids.push(
+      await enqueueAiJob(
+        pool,
+        {
+          job_type: "wa_crm_sync",
+          message_id: payload.message_id,
+          conversation_id: payload.conversation_id,
+          channel: payload.channel,
+        },
+        // Burst debounce: hold the job, and re-stamp the window on each new message
+        // so it runs once the conversation quiesces and parses the full transcript.
+        { runAfterMs: config.omniWaCrmSyncDelayMs, reStampRunAfter: true },
+      ),
+    );
+  }
+
   return ids.filter(Boolean);
 }
 
@@ -138,7 +194,7 @@ export async function processAiJob(pool, jobRow, logger) {
   );
   const msg = msgRows[0];
   if (!msg) {
-    await markJobFailed(pool, jobRow.id, "message_not_found");
+    await markJobFailed(pool, jobRow, "message_not_found", logger);
     span.end();
     return;
   }
@@ -249,12 +305,19 @@ export async function processAiJob(pool, jobRow, logger) {
         latency_ms: Date.now() - t0,
         cost_usd: 0,
       });
+    } else if (jobRow.job_type === "wa_crm_sync") {
+      const synced = await runWaCrmSyncJob({ pool, jobRow, config, logger });
+      await markJobCompleted(pool, jobRow.id, {
+        ...synced,
+        latency_ms: Date.now() - t0,
+        cost_usd: 0,
+      });
     } else {
-      await markJobFailed(pool, jobRow.id, "unsupported_job_type");
+      await markJobFailed(pool, jobRow, "unsupported_job_type", logger);
     }
   } catch (e) {
     logger?.warn?.({ err: e.message, job_id: jobRow.id }, "omni ai job failed");
-    await markJobFailed(pool, jobRow.id, e.message);
+    await markJobFailed(pool, jobRow, e.message, logger);
   }
   span.end();
 }
@@ -279,15 +342,27 @@ async function markJobCompleted(pool, jobId, output) {
   );
 }
 
-async function markJobFailed(pool, jobId, error) {
-  await pool.query(
+async function markJobFailed(pool, jobRow, error, logger) {
+  const jobId = jobRow.id;
+  const { rows } = await pool.query(
     `UPDATE omni_ai_jobs SET
        status = CASE WHEN attempts >= 2 THEN 'dead' ELSE 'failed' END,
        error = $2,
        completed_at = now()
-     WHERE id = $1`,
+     WHERE id = $1
+     RETURNING status`,
     [jobId, error],
   );
+  // Dead-letter alert: a 'dead' job exhausted its retries. For wa_crm_sync this
+  // means a CRM lead was NOT written — make it loud/alertable, not silent.
+  if (rows[0]?.status === "dead") {
+    const meta = { job_id: jobId, job_type: jobRow.job_type, conversation_id: jobRow.conversation_id, error };
+    if (jobRow.job_type === "wa_crm_sync") {
+      logger?.warn?.(meta, "wa_crm_sync DEAD — CRM lead may be lost");
+    } else {
+      logger?.warn?.(meta, "omni ai job DEAD (max attempts exhausted)");
+    }
+  }
 }
 
 /**
@@ -299,8 +374,10 @@ export async function runAiJobById(pool, jobId, opts = {}) {
   if (!job) return { ok: false, error: "job_not_found" };
   if (job.status === "completed") return { ok: true, already_completed: true, job };
 
+  // Budget gates ONLY the LLM-spending 'suggest' job; zero-cost bookkeeping jobs
+  // (wa_crm_sync / classify / extract_deal / embed) must never be blocked by spend.
   const dailyCost = await getDailyAiCost(pool);
-  if (dailyCost >= config.omniAiDailyBudgetUsd) {
+  if (job.job_type === "suggest" && dailyCost >= config.omniAiDailyBudgetUsd) {
     return { ok: false, error: "ai_daily_budget_exceeded" };
   }
 
@@ -340,10 +417,13 @@ export function startOmniAiWorker({ config: cfg, logger, pool }) {
     if (running) return;
     running = true;
     try {
+      // Over budget skips ONLY the LLM-spending 'suggest' jobs — bookkeeping jobs
+      // (wa_crm_sync / classify / extract_deal / embed) keep draining so WhatsApp
+      // CRM lead capture is never halted by AI spend.
       const dailyCost = await getDailyAiCost(pool);
-      if (dailyCost >= cfg.omniAiDailyBudgetUsd) {
-        log.warn({ dailyCost }, "[omniAiWorker] daily budget exceeded, skipping batch");
-        return;
+      const overBudget = dailyCost >= cfg.omniAiDailyBudgetUsd;
+      if (overBudget) {
+        log.warn({ dailyCost }, "[omniAiWorker] daily budget exceeded — skipping 'suggest' jobs only");
       }
 
       await pool.query(
@@ -359,13 +439,22 @@ export function startOmniAiWorker({ config: cfg, logger, pool }) {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
+        // The run_after predicate is only meaningful in canonical WA mode (the only
+        // producer of future-dated jobs) and only exists post-migration-012. Gate it
+        // on omniWaCanonical so the worker runs clean against a pre-012 schema when
+        // the WA flags are OFF (dormancy).
+        const runAfterClause = cfg.omniWaCanonical
+          ? "AND (run_after IS NULL OR run_after <= now())"
+          : "";
         const { rows } = await client.query(
           `SELECT * FROM omni_ai_jobs
            WHERE status IN ('pending', 'failed')
+             AND ($2 = false OR job_type <> 'suggest')
+             ${runAfterClause}
            ORDER BY created_at ASC
            LIMIT $1
            FOR UPDATE SKIP LOCKED`,
-          [cfg.omniAiWorkerBatchSize],
+          [cfg.omniAiWorkerBatchSize, overBudget],
         );
         for (const job of rows) {
           await client.query(

@@ -298,6 +298,30 @@ export const config = {
   omniEventBusEnabled: bool(process.env.OMNI_EVENT_BUS_ENABLED, false),
   omniAiOrchestratorEnabled: bool(process.env.OMNI_AI_ORCHESTRATOR_ENABLED, false),
   omniAutomationEnabled: bool(process.env.OMNI_AUTOMATION_ENABLED, false),
+  /**
+   * WA "flip" (ADR-009 shadow→canonical). When ON, the Omni event bus is the
+   * single WhatsApp processing path: the legacy in-memory map + 5-min timer +
+   * duplicate callAgentOnce are gated off, and the legacy CRM-Sheets ingest +
+   * auto-learn run as a durable `wa_crm_sync` job on the omni_ai_jobs queue.
+   * Default OFF: ships dormant (webhook behavior byte-identical to today).
+   * Instant rollback = flip back to OFF. Requires omniEventBusEnabled +
+   * omniAiOrchestratorEnabled to be ON for the job pipeline to fire.
+   */
+  omniWaCanonical: bool(process.env.OMNI_WA_CANONICAL, false),
+  /**
+   * Inactivity window (ms) before a `wa_crm_sync` job runs — each new inbound WA
+   * message re-stamps it, so the CRM row is created once the conversation burst
+   * quiesces (full transcript), reproducing the legacy 5-min debounce on the queue.
+   * Default 60s; clamp [0, 600000]. Only affects wa_crm_sync (other jobs run_after=NULL).
+   */
+  omniWaCrmSyncDelayMs: Math.max(0, Math.min(600000, Number(process.env.OMNI_WA_CRM_SYNC_DELAY_MS || 60000))),
+  /**
+   * Phase 2b — read-model convergence. When ON, the /hub/wa cockpit read endpoints
+   * (/api/wa/conversations|messages|suggestions) read from the omni_* tables instead
+   * of wa_*, mapped to the cockpit's existing shape. Default OFF: reads stay on wa_*.
+   * Some fields are lossy (status enum, owner_op) — validate on staging before ON.
+   */
+  omniWaReads: bool(process.env.OMNI_WA_READS, false),
   omniAiDailyBudgetUsd: Math.max(0, Number(process.env.OMNI_AI_DAILY_BUDGET_USD || 50)),
   omniDealsSheetsAuthority: bool(process.env.OMNI_DEALS_SHEETS_AUTHORITY, true),
   otelEnabled: bool(process.env.OTEL_ENABLED, false),
