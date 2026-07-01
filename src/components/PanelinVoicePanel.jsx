@@ -15,23 +15,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { useHandsFreeVoice } from "../hooks/useHandsFreeVoice.js";
+import { isBrowserSupported, isSafari } from "../utils/voiceSupport.js";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
 
-function isBrowserSupported() {
-  if (typeof window === "undefined") return false;
-  return !!(
-    window.RTCPeerConnection &&
-    navigator.mediaDevices?.getUserMedia &&
-    (window.SpeechRecognition || window.webkitSpeechRecognition || true) // RTCPeerConnection is the real gate
-  );
-}
-
-function isSafari() {
-  if (typeof navigator === "undefined") return false;
-  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-}
 
 function VuRing({ level, isSpeaking, isListening, primary, size = 80 }) {
   const r = size / 2 - 4;
