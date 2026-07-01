@@ -5,7 +5,7 @@
 // Pattern: reuses admin-cotizaciones structure (SkinProvider, topbar, tab strip).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useCallback, useState } from "react";
 import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
 import { useOmniDeals } from "../../../hooks/useOmniConversations.js";
 import { SkinProvider, useSkin } from "../../admin-cotizaciones/SkinProvider.jsx";
@@ -18,6 +18,7 @@ const UnifiedContactsPanel = React.lazy(() =>
 );
 const OmniInboxPanel = React.lazy(() => import("./panels/OmniInboxPanel.jsx"));
 const OmniAdminCockpit = React.lazy(() => import("./panels/OmniAdminCockpit.jsx"));
+const OmniDuplicateContactsPanel = React.lazy(() => import("./panels/OmniDuplicateContactsPanel.jsx"));
 const OmniDealsKanban = React.lazy(() => import("./panels/OmniDealsKanban.jsx"));
 
 const OMNI_INBOX_ENABLED = import.meta.env.VITE_OMNI_INBOX === "1";
@@ -31,6 +32,7 @@ function TabBar({ activeTab, onTabChange }) {
   const tabs = [
     ...(OMNI_INBOX_ENABLED ? [{ id: "omni", label: "Omni Inbox" }] : []),
     ...(OMNI_INBOX_ENABLED ? [{ id: "cockpit", label: "Cockpit" }] : []),
+    ...(OMNI_INBOX_ENABLED ? [{ id: "duplicates", label: "Duplicados" }] : []),
     ...(OMNI_DEALS_ENABLED ? [{ id: "deals", label: "Pipeline Deals" }] : []),
     { id: "ml", label: "ML Manager" },
     { id: "wa", label: "WA Inbox" },
@@ -101,6 +103,15 @@ function CanalesModuleInner() {
     OMNI_DEALS_ENABLED ? accessToken : null,
   );
 
+  // Cross-tab deep-link: the cockpit's "Para responder ahora" queue jumps here
+  // by id; OmniInboxPanel consumes it once and we clear it so a later plain tab
+  // click doesn't reopen the same thread.
+  const [pendingConversationId, setPendingConversationId] = useState(null);
+  const jumpToConversation = useCallback((id) => {
+    setPendingConversationId(id);
+    setActiveTab("omni");
+  }, []);
+
   return (
     <div className="adminCot" data-skin={skin}>
       <div
@@ -147,10 +158,17 @@ function CanalesModuleInner() {
         {/* Tab content with Suspense */}
         <Suspense fallback={<LoadingFallback />}>
           {activeTab === "omni" && OMNI_INBOX_ENABLED && (
-            <OmniInboxPanel token={accessToken} />
+            <OmniInboxPanel
+              token={accessToken}
+              initialConversationId={pendingConversationId}
+              onInitialConversationConsumed={() => setPendingConversationId(null)}
+            />
           )}
           {activeTab === "cockpit" && OMNI_INBOX_ENABLED && (
-            <OmniAdminCockpit token={accessToken} />
+            <OmniAdminCockpit token={accessToken} onSelectConversation={jumpToConversation} />
+          )}
+          {activeTab === "duplicates" && OMNI_INBOX_ENABLED && (
+            <OmniDuplicateContactsPanel token={accessToken} />
           )}
           {activeTab === "deals" && OMNI_DEALS_ENABLED && (
             <OmniDealsKanban deals={deals} loading={dealsLoading} onMoveDeal={moveDeal} />

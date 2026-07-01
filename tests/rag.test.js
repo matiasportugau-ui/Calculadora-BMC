@@ -150,7 +150,7 @@ console.log("\n[3] formatRetrievedContextForPrompt");
   const result = formatRetrievedContextForPrompt(quotes);
   ok(result.includes("Casos similares de la base histórica"), "incluye encabezado correcto");
   ok(result.includes("2025-03-15"), "incluye fecha");
-  ok(result.includes("Bromyros SA"), "incluye cliente");
+  ok(!result.includes("Bromyros"), "NO incluye nombre de cliente (PII saneada antes del LLM)");
   ok(result.includes("ISODEC"), "incluye familia de panel");
   ok(result.includes("100mm"), "incluye espesor");
   ok(result.includes("320 m²"), "incluye área");
@@ -175,7 +175,8 @@ console.log("\n[3] formatRetrievedContextForPrompt");
   ];
   const result = formatRetrievedContextForPrompt(quotes);
   ok(!result.includes("null"), "no incluye la palabra 'null' para campos vacíos");
-  ok(result.includes("Juan García"), "incluye cliente aunque otros campos sean null");
+  ok(!result.includes("Juan García"), "NO incluye nombre de cliente (PII saneada)");
+  ok(result.includes("2025-06-01"), "incluye fecha aunque otros campos sean null");
 }
 
 {

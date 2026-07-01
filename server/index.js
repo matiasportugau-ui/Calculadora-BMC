@@ -90,6 +90,7 @@ import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
 import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
+import { startOmniFrtBreachWorker } from "./lib/omni/orchestrator/frtBreachWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
@@ -1163,6 +1164,7 @@ let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
 let stopOmniAiWorker = () => {};
+let stopOmniFrtBreachWorker = () => {};
 let stopOmniSnoozeWorker = () => {};
 
 const server = app.listen(config.port, async () => {
@@ -1241,6 +1243,16 @@ const server = app.listen(config.port, async () => {
     stopOmniSnoozeWorker = startOmniSnoozeWorker({ logger, pool: omniPool });
     logger.info("Omni snooze worker started");
   }
+  // FRT breach historian — purely additive audit trail on top of the live
+  // GET /omni/actions/urgent signal; default OFF, needs migration 012 applied.
+  if (omniPool && config.omniFrtWorkerEnabled) {
+    stopOmniFrtBreachWorker = startOmniFrtBreachWorker({
+      logger,
+      pool: omniPool,
+      intervalMs: config.omniFrtWorkerIntervalMs,
+    });
+    logger.info("Omni FRT breach worker started");
+  }
 });
 
 // ── Graceful shutdown ──
@@ -1261,6 +1273,7 @@ function shutdown(signal) {
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
   try { stopOmniAiWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniAiWorker failed"); }
   try { stopOmniSnoozeWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSnoozeWorker failed"); }
+  try { stopOmniFrtBreachWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniFrtBreachWorker failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");

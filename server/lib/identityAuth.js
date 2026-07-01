@@ -448,6 +448,27 @@ export async function createSessionForUser({ userId, ip, userAgent, source = "mf
   };
 }
 
+/** Dev/local only — mint session for an active user by email (no Google OAuth). */
+export async function createSessionForActiveEmail({
+  email,
+  ip,
+  userAgent,
+  source = "dev_browser_login",
+} = {}) {
+  if (!_pool) throw _serverError("identityAuth not initialized");
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized) throw _badReq("email required");
+
+  const userRes = await _pool.query(
+    `select user_id from identity.users where lower(email) = $1 and status = 'active' limit 1`,
+    [normalized],
+  );
+  const userId = userRes.rows[0]?.user_id;
+  if (!userId) throw _unauthorized("user_not_found");
+
+  return createSessionForUser({ userId, ip, userAgent, source });
+}
+
 /** Rotates a refresh token, returning a fresh access JWT + new refresh. */
 export async function refreshTokens({ refreshToken, ip, userAgent } = {}) {
   if (!_pool) throw _serverError("identityAuth not initialized");

@@ -8,9 +8,11 @@ import {
   initials,
   avatarColor,
   timeAgo,
+  timeAgoOrDash,
   clockTime,
   statusMeta,
   messageDate,
+  groundingLabel,
 } from "../src/components/hub/canales/panels/omniFormat.js";
 import {
   getCannedReplies,
@@ -69,6 +71,11 @@ check("timeAgo buckets", () => {
   assert.ok(old && !/^(ahora|\d+[mhd])$/.test(old));
   assert.equal(timeAgo(null, now), "");
 });
+check("timeAgoOrDash uses em dash for missing timestamps", () => {
+  const now = new Date("2026-06-25T12:00:00Z");
+  assert.equal(timeAgoOrDash(null, now), "—");
+  assert.equal(timeAgoOrDash(new Date("2026-06-25T11:55:00Z"), now), "5m");
+});
 check("clockTime same-day vs other-day", () => {
   const now = new Date("2026-06-25T12:00:00Z");
   // Output uses the operator's local timezone + es-UY locale (day/month may be 1–2 digits).
@@ -118,6 +125,22 @@ check("applyReply replaces the /token with the body", () => {
   const m = matchSlashQuery(text, text.length);
   const out = applyReply(text, text.length, m.tokenStart, "MEDIDAS_BODY");
   assert.equal(out, "hola MEDIDAS_BODY");
+});
+
+check("groundingLabel shows count only when grounded", () => {
+  assert.equal(
+    groundingLabel({ grounding: { grounded: true, rag_count: 2 } }),
+    "Basado en 2 cotizaciones similares",
+  );
+  assert.equal(
+    groundingLabel({ grounding: { grounded: true, rag_count: 1 } }),
+    "Basado en 1 cotización similar",
+  );
+  // not grounded / RAG off / missing → no badge
+  assert.equal(groundingLabel({ grounding: { grounded: false, rag_count: 0 } }), null);
+  assert.equal(groundingLabel({ grounding: { grounded: true, rag_count: 0 } }), null);
+  assert.equal(groundingLabel({}), null);
+  assert.equal(groundingLabel(undefined), null);
 });
 
 console.log(`\nomniInbox helpers: ${passed} checks passed`);

@@ -10,13 +10,25 @@
  * sí se puede guardar como secret y reutilizar.
  *
  * Env requeridos:
- *   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
+ *   GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
+ *   GOOGLE_CLIENT_ID (o alias GOOGLE_OAUTH_CLIENT_ID / VITE_GOOGLE_CLIENT_ID del .env)
  * Opcional:
- *   BMC_API_BASE (default https://calculadora-bmc.vercel.app)
+ *   BMC_API_BASE (default https://calculadora-bmc.vercel.app; local: http://127.0.0.1:5173)
+ *
+ * Cómo obtener GOOGLE_REFRESH_TOKEN: docs/product/README.md § "Credenciales para el tour"
  *
  * Uso:  COOKIE=$(node scripts/mint-tour-session.mjs)
  */
-const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
+import dotenv from "dotenv";
+dotenv.config({ quiet: true });
+
+const GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_CLIENT_ID
+  || process.env.GOOGLE_OAUTH_CLIENT_ID
+  || process.env.VITE_GOOGLE_CLIENT_ID
+  || "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
+const GOOGLE_REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN || "";
 const API = (process.env.BMC_API_BASE || "https://calculadora-bmc.vercel.app").replace(/\/+$/, "");
 
 function die(msg) {
@@ -25,7 +37,12 @@ function die(msg) {
 }
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
-  die("faltan GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN");
+  const missing = [
+    !GOOGLE_CLIENT_ID && "GOOGLE_CLIENT_ID (o GOOGLE_OAUTH_CLIENT_ID / VITE_GOOGLE_CLIENT_ID)",
+    !GOOGLE_CLIENT_SECRET && "GOOGLE_CLIENT_SECRET",
+    !GOOGLE_REFRESH_TOKEN && "GOOGLE_REFRESH_TOKEN — ver docs/product/README.md (OAuth Playground)",
+  ].filter(Boolean);
+  die(`faltan: ${missing.join("; ")}`);
 }
 
 // 1) refresh-token de Google → access-token de Google
