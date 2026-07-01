@@ -17,7 +17,7 @@ export default function TutorialOverlay() {
     progress,
     nextStep,
     prevStep,
-    exitTutorial,
+    dismissTutorial,
   } = useTutorial();
 
   const [targetRect, setTargetRect] = useState(null);
@@ -77,6 +77,9 @@ export default function TutorialOverlay() {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         maxWidth: '420px',
+        // Sin z-index, el cartel centrado quedaba DEBAJO del overlay oscuro
+        // (z-index 99990) y se volvía ilegible. Debe pintarse por encima.
+        zIndex: 99999,
       };
     }
 
@@ -168,7 +171,7 @@ export default function TutorialOverlay() {
             </div>
           </div>
           <button
-            onClick={exitTutorial}
+            onClick={dismissTutorial}
             style={{
               background: 'none',
               border: 'none',
@@ -259,7 +262,7 @@ export default function TutorialOverlay() {
 
         <div style={{ textAlign: 'center', marginTop: 10 }}>
           <button
-            onClick={exitTutorial}
+            onClick={dismissTutorial}
             style={{
               fontSize: 12,
               color: '#9ca3af',
