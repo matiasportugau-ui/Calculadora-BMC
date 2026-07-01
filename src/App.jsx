@@ -63,6 +63,7 @@ const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx
 const ProyectoStatusModule = lazy(() => import("./components/hub/proyecto/ProyectoStatusModule.jsx"));
 const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
+const AssistantsStatusPanel = lazy(() => import("./components/hub/admin/AssistantsStatusPanel.jsx"));
 const MlManagerModule = lazy(() => import("./components/hub/ml/MlManagerModule.jsx"));
 
 const suspenseFallback = (
@@ -300,6 +301,16 @@ export default function App() {
             <RequireGrant role="admin">
               <Suspense fallback={suspenseFallback}>
                 <AnalyticsModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/admin/assistants"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <AssistantsStatusPanel />
               </Suspense>
             </RequireGrant>
           }
