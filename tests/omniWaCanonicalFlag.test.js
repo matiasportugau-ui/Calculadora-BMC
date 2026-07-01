@@ -11,8 +11,14 @@ function assert(name, condition) {
 
 assert("flag defaults OFF (ships dormant)", config.omniWaCanonical === false);
 assert("wa_crm_sync debounce default 60000ms", config.omniWaCrmSyncDelayMs === 60000);
-assert("mode legacy when OFF", chooseWaIngestMode({ omniWaCanonical: false }) === "legacy");
-assert("mode canonical when ON", chooseWaIngestMode({ omniWaCanonical: true }) === "canonical");
+// Canonical requires the full Omni job pipeline (event bus + orchestrator) so a lead
+// is never dropped: canonical alone, with the pipeline off, would silence the legacy
+// path while nothing enqueues/drains wa_crm_sync.
+const prereqs = { omniEventBusEnabled: true, omniAiOrchestratorEnabled: true };
+assert("mode legacy when OFF", chooseWaIngestMode({ omniWaCanonical: false, ...prereqs }) === "legacy");
+assert("mode canonical when ON + prereqs", chooseWaIngestMode({ omniWaCanonical: true, ...prereqs }) === "canonical");
+assert("canonical WITHOUT event bus → legacy fallback", chooseWaIngestMode({ omniWaCanonical: true, omniEventBusEnabled: false, omniAiOrchestratorEnabled: true }) === "legacy");
+assert("canonical WITHOUT orchestrator → legacy fallback", chooseWaIngestMode({ omniWaCanonical: true, omniEventBusEnabled: true, omniAiOrchestratorEnabled: false }) === "legacy");
 assert("undefined config → legacy", chooseWaIngestMode(undefined) === "legacy");
 
 console.log(`\nomniWaCanonicalFlag: ${passed} passed, ${failed} failed`);
