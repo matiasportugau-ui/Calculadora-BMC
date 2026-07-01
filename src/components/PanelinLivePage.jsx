@@ -28,9 +28,21 @@ const EMOTION_LABEL = {
   happy: "¡Cotización lista!",
 };
 
+const BG_KEYFRAMES = `
+@keyframes panelin-bg-drift {
+  0%, 100% { background-position: 50% 30%, 20% 80%; }
+  50% { background-position: 55% 35%, 25% 75%; }
+}
+@keyframes panelin-cta-pulse {
+  0%, 100% { transform: translateY(0); opacity: 0.85; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+`;
+
 function StatusPill({ status, emotion }) {
   const color = status === "active" ? "#5eead4" : status === "error" ? "#f87171" : "#9ca3af";
   const label = EMOTION_LABEL[emotion] || STATUS_LABEL[status] || status;
+  const live = status === "active" && emotion !== "neutral";
   return (
     <div
       style={{
@@ -49,7 +61,16 @@ function StatusPill({ status, emotion }) {
         backdropFilter: "blur(8px)",
       }}
     >
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: color,
+          boxShadow: live ? `0 0 8px ${color}` : "none",
+          animation: live ? "panelin-cta-pulse 1.4s ease-in-out infinite" : "none",
+        }}
+      />
       {label}
     </div>
   );
@@ -99,11 +120,18 @@ export default function PanelinLivePage() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "radial-gradient(circle at 50% 30%, #2a2a4a 0%, #1a1a2e 70%)",
+        background: `
+          radial-gradient(circle at 50% 30%, #2a2a4a 0%, transparent 55%),
+          radial-gradient(circle at 20% 80%, rgba(94,234,212,0.12) 0%, transparent 45%),
+          linear-gradient(160deg, #1a1a2e 0%, #12121f 100%)
+        `,
+        backgroundSize: "120% 120%, 140% 140%, 100% 100%",
+        animation: "panelin-bg-drift 14s ease-in-out infinite",
         overflow: "hidden",
         cursor: started ? "default" : "pointer",
       }}
     >
+      <style>{BG_KEYFRAMES}</style>
       <Link
         to="/"
         onClick={(e) => e.stopPropagation()}
@@ -140,12 +168,12 @@ export default function PanelinLivePage() {
                 position: "fixed",
                 bottom: 100,
                 color: "#fff",
-                opacity: 0.85,
                 fontSize: 15,
                 fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 background: "rgba(0,0,0,0.5)",
                 padding: "10px 20px",
                 borderRadius: 999,
+                animation: "panelin-cta-pulse 2.2s ease-in-out infinite",
               }}
             >
               Tocá en cualquier lugar para empezar
