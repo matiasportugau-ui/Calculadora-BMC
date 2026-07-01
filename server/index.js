@@ -1207,6 +1207,15 @@ if (fs.existsSync(calcDistDir)) {
 app.get("/favicon.ico", (_req, res) => {
   res.status(204).end();
 });
+// Phantom VAD model requests (e.g. /vad/silero_vad_legacy.onnx, ort-wasm-*) come from
+// stale service workers / cached builds on old clients. This app never shipped
+// @ricky0123/vad-web nor any local ONNX VAD — voice uses OpenAI Realtime (server-side
+// VAD) + the Web Speech API. Answer 204 instead of a noisy error-level 404, and tell the
+// stale client there is nothing here. See docs/VAD-PHANTOM-404.md. RegExp route (not a
+// "*" string) to avoid the Express 5 path-to-regexp crash noted above.
+app.get(/^\/vad\//, (_req, res) => {
+  res.status(204).end();
+});
 app.get("/", (req, res) => {
   if (req.accepts("html")) {
     res.redirect(302, "/finanzas");
