@@ -891,7 +891,10 @@ export function createWolfboardRouter(config) {
           // Claude+Haiku preferred; falls back to grok → gemini → openai defaults.
           const extractRes = await callAgentOnce(
             [{ role: "user", content: row.consulta }],
-            { bareSystemPrompt: PARAM_EXTRACT_PROMPT, channel: "chat", override: { model: HAIKU_MODEL, maxTokens: 400 } },
+            // provider:"claude" is required for the model override to apply — callAgentOnce
+            // only honors override.model on the provider that matches override.provider.
+            // Keeps cheap Haiku on the claude attempt; grok/gemini/openai use their defaults on fallback.
+            { bareSystemPrompt: PARAM_EXTRACT_PROMPT, channel: "chat", override: { provider: "claude", model: HAIKU_MODEL, maxTokens: 400 } },
           );
           let rawJson = (extractRes.text || "").trim();
           rawJson = rawJson.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
@@ -929,7 +932,7 @@ export function createWolfboardRouter(config) {
           try {
             const quoteRes = await callAgentOnce(
               [{ role: "user", content: row.consulta }],
-              { bareSystemPrompt: QUOTE_SYSTEM_PROMPT, channel: "chat", override: { model: HAIKU_MODEL, maxTokens: 512 } },
+              { bareSystemPrompt: QUOTE_SYSTEM_PROMPT, channel: "chat", override: { provider: "claude", model: HAIKU_MODEL, maxTokens: 512 } },
             );
             response = (quoteRes.text || "").trim();
             method = "text";
