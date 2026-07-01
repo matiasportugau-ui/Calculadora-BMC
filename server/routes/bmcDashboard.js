@@ -2809,12 +2809,26 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           degradeReason = check.errors.join(",");
           crmRow = null;
           console.warn(`[Email] ⚠ CRM structure invalid (${degradeReason}) — lead routed to Pendientes, NOT written. messageId: ${safeMessageId}`);
-          void shadowWriteEmailIngest({
-            config,
-            logger: console,
-            payload: { asunto, cuerpo, remitente, messageId, threadId, account, parsed: d, crmRow: null, degraded: true, degradeReason },
-          }).catch((e) => console.warn("[Email] omni shadow failed:", e?.message));
-          await markIngested(ingestPool, { messageKey: messageId, account, messageId, remitente, crmRow: null });
+          // Best-effort capture for manual review. Mark idempotency (which blocks
+          // future retries) ONLY if the lead was actually captured in the omni
+          // shadow store — otherwise leave it retryable so a corrected sheet
+          // re-ingests it. shadowWriteEmailIngest returns null when
+          // OMNI_EMAIL_SHADOW_WRITE is off (default) or the write fails, so we
+          // never dedupe an uncaptured lead (that would lose it silently).
+          let captured = false;
+          try {
+            const shadow = await shadowWriteEmailIngest({
+              config,
+              logger: console,
+              payload: { asunto, cuerpo, remitente, messageId, threadId, account, parsed: d, crmRow: null, degraded: true, degradeReason },
+            });
+            captured = Boolean(shadow);
+          } catch (e) {
+            console.warn("[Email] omni shadow failed:", e?.message);
+          }
+          if (captured) {
+            await markIngested(ingestPool, { messageKey: messageId, account, messageId, remitente, crmRow: null });
+          }
         } else {
           if (built.fallbacks.length) {
             console.warn(`[Email] CRM_Operativo header fallback for: ${built.fallbacks.join(",")} (wrote via documented column letters)`);

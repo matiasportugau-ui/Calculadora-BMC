@@ -239,6 +239,19 @@ export function validateCrmRow(built, headers, opts = {}) {
     }
   }
 
+  // Two keys resolving to the SAME column silently overwrite one another (e.g.
+  // the `Teléfono` header is deleted, so `telefono` falls back to letter D while
+  // `Ubicación` shifts into D and resolves there by name — the phone is lost).
+  // Treat a collision as structural corruption so the caller degrades.
+  const seenIndex = new Map();
+  for (const [key, idx] of Object.entries(built.resolved)) {
+    if (seenIndex.has(idx)) {
+      errors.push(`duplicate_column:${seenIndex.get(idx)}+${key}@${idx}`);
+    } else {
+      seenIndex.set(idx, key);
+    }
+  }
+
   return { ok: errors.length === 0, errors };
 }
 

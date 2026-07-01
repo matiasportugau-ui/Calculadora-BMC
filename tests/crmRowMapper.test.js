@@ -190,6 +190,20 @@ group("validateCrmRow window — quote gate field pushed past AK is rejected", (
   assert(r.errors.some((e) => e === "field_outside_write_range:bloquearAuto"), "names bloquearAuto");
 });
 
+group("validateCrmRow — two keys resolving to the same column is rejected", () => {
+  // Teléfono column deleted; "Ubicación / Dirección" now sits in D (index 3).
+  const headers = canonicalHeaders();
+  headers[3] = "Ubicación / Dirección";
+  const built = buildCrmRow(headers, {
+    fecha: "x", cliente: "c", estado: "Pendiente", telefono: "099", ubicacion: "Canelones",
+  });
+  assert(built.resolved.ubicacion === 3, "ubicacion resolves to D(3) by header");
+  assert(built.resolved.telefono === 3, "telefono falls back to letter D(3) → collision");
+  const r = validateCrmRow(built, headers, { requireHeaders: false });
+  assert(r.ok === false, "collision rejected");
+  assert(r.errors.some((e) => e.startsWith("duplicate_column")), "duplicate_column error reported");
+});
+
 group("validateCrmRow window — omitting window preserves prior behaviour", () => {
   const headers = canonicalHeaders();
   headers[22] = "NUEVA_COLUMNA";

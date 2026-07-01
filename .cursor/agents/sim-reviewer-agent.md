@@ -30,8 +30,9 @@ debe validarse **estructuralmente** antes de tocar la planilla:
 2. **Rechazo + degradación elegante.** Si faltan claves requeridas, la fila no
    alcanza el ancho de cabeceras, o `validateCrmRow` devuelve `ok:false`, el
    supervisor **rechaza** la escritura y enruta el lead al estado **"Pendiente"**
-   para revisión humana (no se marca idempotencia → reintenta cuando la estructura
-   se corrija). Nunca escribir datos potencialmente desplazados.
+   para revisión humana. La idempotencia solo se marca si el lead se **capturó**
+   (omni shadow store); si no pudo capturarse, queda **reintentable** para no
+   perderlo. Nunca escribir datos potencialmente desplazados.
 3. **Drift de cabeceras.** Si el mapper cae a columnas por letra (fallback),
    reportarlo como riesgo de contrato en el informe (la cabecera de la hoja cambió).
 

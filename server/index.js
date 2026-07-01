@@ -804,6 +804,18 @@ async function processWaConversation(chatId, conv) {
           enviadoEl: "",
           bloquearAuto: "No",
         }, { sanitize: sanitizeCellValue });
+        // Warn-only window check (best-effort, like the B:W write): if a header
+        // drifted so a tail field resolves outside AF:AK it would be dropped from
+        // the slice — surface it rather than fail silently. required:[] because
+        // this partial lead carries none of the fecha/cliente/estado anchors.
+        const waTailCheck = validateCrmRow(waTail, crmHeaders, {
+          requireHeaders: false,
+          window: { from: "AF", to: "AK" },
+          required: [],
+        });
+        if (!waTailCheck.ok || waTail.fallbacks.length) {
+          logger.warn(`[WA] CRM AF:AK drift — errors=${waTailCheck.errors.join(",") || "none"} fallbacks=${waTail.fallbacks.join(",") || "none"} (best-effort write)`);
+        }
         await sheets.spreadsheets.values.update({
           spreadsheetId: sheetId,
           range: `'CRM_Operativo'!AF${crmRow}:AK${crmRow}`,

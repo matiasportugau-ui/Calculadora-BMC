@@ -52,9 +52,10 @@ cotizaciones), el **Reviewer/Supervisor** valida la **estructura del payload JSO
   *column-shift* (un `telefono` faltante ya no empuja Ubicación, Origen, etc.).
 - Si `validateCrmRow` devuelve `ok:false` (faltan claves requeridas, fila más
   ancha que las cabeceras, o cabeceras ausentes), el supervisor **rechaza** la
-  escritura y enruta el lead a **"Pendiente"** para revisión manual. No se marca
-  idempotencia, de modo que el próximo run reintenta cuando la estructura se
-  corrija. **Nunca** se escribe una fila potencialmente desplazada.
+  escritura y enruta el lead a **"Pendiente"** para revisión manual. La
+  idempotencia solo se marca si el lead se **capturó** (omni shadow store); si no,
+  queda reintentable para el próximo run (no se pierde). **Nunca** se escribe una
+  fila potencialmente desplazada.
 
 ## Handoff a SIM (plantilla — completar al cierre del bundle)
 
