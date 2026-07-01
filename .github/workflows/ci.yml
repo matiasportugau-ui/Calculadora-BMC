@@ -107,6 +107,57 @@ jobs:
       - name: Smoke prod
         run: npm run smoke:prod
 
+  # Cockpit E2E nivel 0 (read-only) contra prod. Señal de prod-health, NO gate de
+  # deploy (igual que smoke/channels_pipeline → continue-on-error). Sólo recibe los
+  # secretos de minteo de sesión; SIN COCKPIT_E2E_TEST_ROW/_TARGET ni SA JSON, así
+  # que aunque se manipule el nivel, los guards fail-closed de L1/L2 abortan. Si
+  # faltan los secretos de minteo, el cookie queda vacío → el spec hace skip-all
+  # (no-op verde), nunca escribe nada.
+  cockpit_e2e_readonly:
+    name: Cockpit E2E — read-only (main only)
+    runs-on: ubuntu-latest
+    needs: [validate, lint]
+    continue-on-error: true
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install ALSA headers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Mint y consumo del cookie EN EL MISMO step (mismo idioma que product-docs.yml):
+      # el cookie se enmascara y nunca se persiste como env del job. Sin TOUR_GOOGLE_*
+      # → cookie vacío → el spec hace skip-all (no-op verde), nunca escribe nada.
+      - name: Cockpit E2E level 0 (read-only)
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.TOUR_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.TOUR_GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.TOUR_GOOGLE_REFRESH_TOKEN }}
+          COCKPIT_E2E_LEVEL: "0"
+        run: |
+          if [ -n "${GOOGLE_REFRESH_TOKEN}" ]; then
+            COOKIE="$(node scripts/mint-tour-session.mjs)"
+            echo "::add-mask::$COOKIE"
+            TOUR_SESSION_COOKIE="$COOKIE" npm run test:e2e:cockpit
+          else
+            echo "Sin TOUR_GOOGLE_* secrets → skip-all (no-op)."
+            npm run test:e2e:cockpit
+          fi
+
   # Señal de prod-runtime-health (prod smoke + IA/suggest-response; sin secretos).
   # Sondea la revisión YA DESPLEGADA, así que NO debe gatear el deploy de código
   # nuevo: acoplarla al gate de deploy deadlockeaba releases (un prod en rojo
