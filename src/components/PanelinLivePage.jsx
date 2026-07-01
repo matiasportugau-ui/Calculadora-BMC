@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import { Mic, MicOff } from "lucide-react";
 import { useBmcAuthContext } from "../contexts/bmcAuthContext.js";
 import { usePanelinCharacterVoice } from "../hooks/usePanelinCharacterVoice.js";
-import { isBrowserSupported, isSafari } from "../utils/voiceSupport.js";
+import { isBrowserSupported, isSafari } from "../hooks/voiceSupport.js";
 import PanelinLiveCharacter from "./PanelinLiveCharacter.jsx";
 
 const STATUS_LABEL = {
