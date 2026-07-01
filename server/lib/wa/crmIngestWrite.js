@@ -288,7 +288,7 @@ export async function runWaAutoLearn({ turns, chatId, logger }) {
       });
     }
     if (pairs.length > 0) {
-      logger?.info?.(`[WA] autolearn: ${pairs.length} KB candidates from ${String(chatId).replace(/[\r\n]+/g, " ").slice(0, 256)}`);
+      logger?.info?.(`[WA] autolearn: ${pairs.length} KB candidates from ${String(chatId).replace(/[\r\n]/g, " ").slice(0, 256)}`);
     }
     return pairs.length;
   } catch {

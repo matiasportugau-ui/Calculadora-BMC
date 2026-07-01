@@ -859,7 +859,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       conv = waConversations.get(chatId);
       conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
       conv.lastUpdate = Date.now();
-      logger.info(`[WA] Message from ${String(contactName).replace(/[\r\n]+/g, " ").slice(0, 256)} (${String(chatId).replace(/[\r\n]+/g, " ").slice(0, 256)}), total: ${conv.messages.length}`);
+      logger.info(`[WA] Message from ${String(contactName).replace(/[\r\n]/g, " ").slice(0, 256)} (${String(chatId).replace(/[\r\n]/g, " ").slice(0, 256)}), total: ${conv.messages.length}`);
     }
 
     // F4 — espejar inbound Cloud API en Postgres wa_messages para que el cockpit
@@ -925,7 +925,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 
       // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
       if (text.includes("🚀")) {
-        logger.info(`[WA] 🚀 manual trigger for ${String(chatId).replace(/[\r\n]+/g, " ").slice(0, 256)}`);
+        logger.info(`[WA] 🚀 manual trigger for ${String(chatId).replace(/[\r\n]/g, " ").slice(0, 256)}`);
         processWaConversation(chatId, conv);
       }
     }
