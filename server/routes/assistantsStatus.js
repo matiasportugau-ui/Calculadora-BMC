@@ -16,14 +16,24 @@
  * Mounted in server/index.js: app.use("/api", createAssistantsStatusRouter())
  */
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import { checkAllAssistants, checkAssistant } from "../lib/assistantHealth.js";
+
+// Read-only status probes touch the DB (omni health check) — rate-limit to keep a
+// misbehaving poller from hammering the pool. Mirrors identityAdmin readLimiter.
+const readLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 export default function createAssistantsStatusRouter() {
   const router = Router();
   const guard = requireServiceOrUser({ role: "admin" });
 
-  router.get("/assistants/status", guard, async (req, res) => {
+  router.get("/assistants/status", readLimiter, guard, async (req, res) => {
     try {
       const force = /^(1|true|yes)$/i.test(String(req.query.deep || ""));
       const payload = await checkAllAssistants({ force });
@@ -33,7 +43,7 @@ export default function createAssistantsStatusRouter() {
     }
   });
 
-  router.get("/assistants/status/:key", guard, async (req, res) => {
+  router.get("/assistants/status/:key", readLimiter, guard, async (req, res) => {
     try {
       const force = /^(1|true|yes)$/i.test(String(req.query.deep || ""));
       const one = await checkAssistant(req.params.key, { force });
