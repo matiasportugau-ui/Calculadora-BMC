@@ -1,6 +1,9 @@
 /**
  * Parsea una fila de CRM_Operativo leída como rango A:AK (una sola fila de valores).
  * Índices 0-based desde columna A.
+ *
+ * Mapa de columnas canónico (READ side): docs/team/CRM-OPERATIVO-COLUMN-MAP.md
+ * @see docs/team/CRM-OPERATIVO-COLUMN-MAP.md
  */
 
 /**

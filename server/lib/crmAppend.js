@@ -9,9 +9,12 @@
  * environment isn't configured (no BMC_SHEET_ID / no Google credentials).
  */
 import { google } from "googleapis";
+import pino from "pino";
 import { config } from "../config.js";
-import { defaultTailAHAK, rangeAHAK } from "./crmOperativoLayout.js";
 import { sanitizeCellValue } from "./sheetsCsvGuard.js";
+import { buildCrmRow, validateCrmRow, sliceCrmRange } from "./crmRowMapper.js";
+
+const log = pino({ level: process.env.LOG_LEVEL ?? "info" });
 
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -57,23 +60,14 @@ export async function appendQuoteToCrm(input = {}) {
   }
 
   try {
-    // CSV injection guard centralized in sheetsCsvGuard.js — same rules apply
-    // to crmAppend, wolfboard /row, and any future USER_ENTERED writer.
-    const sanitize = sanitizeCellValue;
     const now = new Date().toISOString();
-    const cliente = sanitize(String(input.cliente || "").trim() || "—");
-    const telefono = sanitize(String(input.telefono || "").trim());
-    const ubicacion = sanitize(String(input.ubicacion || "").trim());
     const scenario = String(input.scenario || "").trim();
     const lista = String(input.lista || "").trim();
     const total = Number(input.total || 0);
-    const pdfUrl = sanitize(String(input.pdf_url || "").trim());
-    const driveUrl = sanitize(String(input.drive_url || "").trim());
-    const vendedor = sanitize(String(input.vendedor || "").trim());
-    const tipoCliente = sanitize(String(input.tipo_cliente || "").trim());
-    const urgencia = sanitize(String(input.urgencia || "").trim());
-    const probabilidad = sanitize(String(input.probabilidad_cierre || "").trim());
-    const correlationId = sanitize(String(input.correlation_id || "").trim());
+    const pdfUrl = String(input.pdf_url || "").trim();
+    const driveUrl = String(input.drive_url || "").trim();
+    // correlationId is written separately to column A, so guard it here.
+    const correlationId = sanitizeCellValue(String(input.correlation_id || "").trim());
 
     const resumenPedido = [
       scenario ? `[${scenario}]` : "",
@@ -86,72 +80,76 @@ export async function appendQuoteToCrm(input = {}) {
       pdfUrl ? `PDF: ${pdfUrl}` : "",
       driveUrl ? `Drive: ${driveUrl}` : "",
     ].filter(Boolean).join(" | ");
-    // Apostrophe-prefix the composite observaciones too — `obsBase` is
-    // operator-controlled and could start with `=`/`+`/`-`/`@` even though
-    // the prefixed component strings don't.
-    const observaciones = sanitize([obsBase, obsLinks].filter(Boolean).join(" — "));
+    const observaciones = [obsBase, obsLinks].filter(Boolean).join(" — ");
 
-    // Find first empty row in C4:C500 (Cliente column)
-    const existing = await sheets.spreadsheets.values.get({
+    // Read row-3 headers + the Cliente column in one round-trip. Headers anchor
+    // the write by column NAME (not blind position); the C column locates the
+    // first empty data row for the fallback row number.
+    const reads = await sheets.spreadsheets.values.batchGet({
       spreadsheetId: sheetId,
-      range: "'CRM_Operativo'!C4:C500",
+      ranges: ["'CRM_Operativo'!A3:ZZ3", "'CRM_Operativo'!C4:C500"],
     });
-    const rows = existing.data.values || [];
-    let row = rows.length + 4;
-    for (let i = 0; i < rows.length; i++) {
-      if (!rows[i][0] || !String(rows[i][0]).trim()) {
+    const headers = reads.data.valueRanges?.[0]?.values?.[0] || [];
+    const clienteRows = reads.data.valueRanges?.[1]?.values || [];
+    let row = clienteRows.length + 4;
+    for (let i = 0; i < clienteRows.length; i++) {
+      if (!clienteRows[i][0] || !String(clienteRows[i][0]).trim()) {
         row = i + 4;
         break;
       }
     }
 
+    // KEY-BASED row: every column addressed by logical key, never by array index.
+    // Missing fields stay "" — no omitted key can shift later columns left.
+    const lead = {
+      fecha: now,
+      cliente: String(input.cliente || "").trim() || "—",
+      telefono: String(input.telefono || "").trim(),
+      ubicacion: String(input.ubicacion || "").trim(),
+      origen: "Calculadora-Panelin",
+      consulta: resumenPedido,
+      categoria: "Cotización",
+      estado: "Pendiente",
+      responsable: String(input.vendedor || "").trim(),
+      probabilidad: String(input.probabilidad_cierre || "").trim(),
+      urgencia: String(input.urgencia || "").trim(),
+      validarStock: "No",
+      tipoCliente: String(input.tipo_cliente || "").trim(),
+      observaciones,
+      providerIa: "",
+      linkPresupuesto: pdfUrl || driveUrl || "", // AH = LINK_PRESUPUESTO
+      aprobadoEnviar: "No",
+      enviadoEl: "",
+      bloquearAuto: "No",
+    };
+
+    const built = buildCrmRow(headers, lead, { sanitize: sanitizeCellValue });
+    // requireHeaders:false — this path historically never read headers, so a
+    // failed header read must still write via documented column letters. But
+    // `window: B:AK` still catches a header that drifted OUTSIDE the slice we
+    // append (e.g. a column inserted before the AG–AK gate block would push
+    // linkPresupuesto/flags past AK and silently drop them).
+    const check = validateCrmRow(built, headers, {
+      requireHeaders: false,
+      window: { from: "B", to: "AK" },
+    });
+    if (built.fallbacks.length) {
+      log.warn(
+        { fallbacks: built.fallbacks },
+        "CRM_Operativo header fallback — wrote via documented column letters"
+      );
+    }
+    if (!check.ok) {
+      // A resolved field falls outside B:AK — refuse to write a row that would
+      // silently drop it (e.g. the quote link). The caller saves the quote via
+      // its other dual-write paths and handles { ok:false } gracefully.
+      log.warn({ errors: check.errors }, "CRM_Operativo structure invalid — append skipped");
+      return { ok: false, error: `CRM structure invalid: ${check.errors.join(",")}` };
+    }
+
     // Escribir toda la fila B:AK en una sola operación append para evitar
     // carreras entre lecturas/escrituras separadas al guardar concurrentemente.
-    const tail = defaultTailAHAK();
-    tail[0] = pdfUrl || driveUrl || ""; // AH = LINK_PRESUPUESTO
-
-    const rowValues = [
-      // B–K
-      now,
-      cliente,
-      telefono,
-      ubicacion,
-      "Calculadora-Panelin",
-      resumenPedido,
-      "Cotización",
-      "",
-      "Pendiente",
-      vendedor,
-      // L–Q
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      // R–T
-      probabilidad,
-      urgencia,
-      "No",
-      // U
-      "",
-      // V–W
-      tipoCliente,
-      observaciones,
-      // X–AG
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      // AH–AK
-      ...tail,
-    ];
+    const rowValues = sliceCrmRange(built.row, "B", "AK");
 
     const appendRes = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
