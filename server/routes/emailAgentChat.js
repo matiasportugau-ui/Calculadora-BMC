@@ -21,6 +21,10 @@ import { requireCrmCockpitWrite } from "../middleware/requireCrmCockpitAuth.js";
 import { isChatwootConfigured } from "../lib/chatwootClient.js";
 import { EMAIL_AGENT_TOOLS, executeEmailTool } from "../lib/emailAgentTools.js";
 import { resolveModel, getApiKey } from "../lib/aiProviderConfig.js";
+import { callAgentOnce } from "../lib/agentCore.js";
+
+const DRAFTER_SYSTEM =
+  "Redactás respuestas de ventas para BMC Uruguay (paneles de aislamiento). Español, tono BMC, claro y concreto. Devolvé SOLO el cuerpo del email, sin asunto ni firma duplicada.";
 
 const MAX_ROUNDS = 6;
 
@@ -37,27 +41,26 @@ Reglas duras:
 - Sé conciso. Mostrá ids de conversación cuando listes.
 - Si una acción falla por "chatwoot_not_configured", avisá que el buzón aún no está conectado.`;
 
-/** Build the drafter used by email_redactar_respuesta (one provider-chain call). */
-function makeDrafter(config) {
+/**
+ * Build the drafter used by email_redactar_respuesta.
+ * Routed through callAgentOnce (bare mode) so it inherits the full provider
+ * fallback chain (claude → grok → gemini → openai) instead of failing when
+ * Anthropic alone is down. bareSystemPrompt keeps the drafter's own persona
+ * (no Panelin base prompt / channel rules).
+ */
+function makeDrafter(_config) {
   return async ({ instruccion, thread }) => {
-    const apiKey = config.anthropicApiKey || getApiKey("claude");
-    if (!apiKey) return "(sin proveedor de IA configurado para redactar)";
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const anthropic = new Anthropic({ apiKey });
-    const model = resolveModel("claude", undefined, true);
-    const msg = await anthropic.messages.create({
-      model,
-      max_tokens: 600,
-      system:
-        "Redactás respuestas de ventas para BMC Uruguay (paneles de aislamiento). Español, tono BMC, claro y concreto. Devolvé SOLO el cuerpo del email, sin asunto ni firma duplicada.",
-      messages: [
-        {
-          role: "user",
-          content: `Email del cliente:\nDe: ${thread?.remitente || "—"}\nAsunto: ${thread?.asunto || "—"}\n\n${thread?.cuerpo || ""}\n\nInstrucción del operador: ${instruccion || "Responder de forma útil avanzando hacia la cotización."}`,
-        },
-      ],
-    });
-    return msg.content?.[0]?.text || "(borrador vacío)";
+    const userMsg = `Email del cliente:\nDe: ${thread?.remitente || "—"}\nAsunto: ${thread?.asunto || "—"}\n\n${thread?.cuerpo || ""}\n\nInstrucción del operador: ${instruccion || "Responder de forma útil avanzando hacia la cotización."}`;
+    try {
+      const r = await callAgentOnce([{ role: "user", content: userMsg }], {
+        bareSystemPrompt: DRAFTER_SYSTEM,
+        channel: "chat",
+        override: { maxTokens: 600 },
+      });
+      return r.text || "(borrador vacío)";
+    } catch {
+      return "(sin proveedor de IA configurado para redactar)";
+    }
   };
 }
 
@@ -144,6 +147,26 @@ export default function createEmailAgentRouter(config = {}, logger = null) {
       end();
     } catch (e) {
       logger?.error?.({ err: String(e?.message || e) }, "email-agent: loop error");
+      // Assistant-level degrade: the Anthropic tool loop is unavailable, but the
+      // operator can still get a plain draft via the shared seam's provider chain.
+      // Tools (send/assign/report) are lost in this mode — the reply is draft-only.
+      try {
+        const lastUser = [...(messages || [])].reverse().find((m) => m?.role === "user")?.content;
+        if (lastUser) {
+          const r = await callAgentOnce([{ role: "user", content: String(lastUser) }], {
+            bareSystemPrompt: DRAFTER_SYSTEM,
+            channel: "chat",
+            override: { maxTokens: 600 },
+          });
+          if (r?.text) {
+            send({ type: "warning", warning: "degraded_no_tools", message: "Asistente en modo degradado (sin herramientas): borrador generado vía proveedor alternativo." });
+            send({ type: "text", text: r.text });
+            return end();
+          }
+        }
+      } catch {
+        /* fall through to hard error */
+      }
       send({ type: "error", error: String(e?.message || e).slice(0, 200) });
       end();
     }

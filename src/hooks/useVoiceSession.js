@@ -21,7 +21,8 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
   const [status, setStatus] = useState("idle"); // idle | connecting | active | error
   const [isSpeaking, setIsSpeaking] = useState(false); // assistant is speaking
   const [isListening, setIsListening] = useState(false); // VAD detected user speech
-  const [vuLevel, setVuLevel] = useState(0); // 0-1 for VU meter
+  const [vuLevel, setVuLevel] = useState(0); // 0-1 for VU meter (mic/local input)
+  const [remoteVuLevel, setRemoteVuLevel] = useState(0); // 0-1, assistant's own audio output — drives viseme lip-sync
 
   const pcRef = useRef(null);
   const dcRef = useRef(null);
@@ -29,6 +30,9 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
   const audioCtxRef = useRef(null);
   const analyserRef = useRef(null);
   const vuRafRef = useRef(null);
+  const remoteAudioCtxRef = useRef(null);
+  const remoteAnalyserRef = useRef(null);
+  const remoteVuRafRef = useRef(null);
   const sessionIdRef = useRef(null);
   const modelRef = useRef(null);
 
@@ -57,6 +61,41 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         vuRafRef.current = requestAnimationFrame(tick);
       };
       vuRafRef.current = requestAnimationFrame(tick);
+    } catch {
+      // AudioContext not available (e.g. test env)
+    }
+  }, []);
+
+  const stopRemoteVu = useCallback(() => {
+    if (remoteVuRafRef.current) {
+      cancelAnimationFrame(remoteVuRafRef.current);
+      remoteVuRafRef.current = null;
+    }
+    setRemoteVuLevel(0);
+  }, []);
+
+  // Same amplitude-analysis pattern as startVu, but on the assistant's own
+  // remote audio track (only available inside pc.ontrack). Drives the
+  // character's mouth-openness (viseme) while it speaks — this is amplitude
+  // -based, not phoneme-accurate, but is the standard "good enough" approach
+  // without a phoneme-timing API.
+  const startRemoteVu = useCallback((remoteStream) => {
+    try {
+      const ctx = new AudioContext();
+      remoteAudioCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(remoteStream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      src.connect(analyser);
+      remoteAnalyserRef.current = analyser;
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((s, v) => s + v, 0) / buf.length;
+        setRemoteVuLevel(Math.min(1, avg / 80));
+        remoteVuRafRef.current = requestAnimationFrame(tick);
+      };
+      remoteVuRafRef.current = requestAnimationFrame(tick);
     } catch {
       // AudioContext not available (e.g. test env)
     }
@@ -200,6 +239,7 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         audioElRef.current = audioEl;
         pc.ontrack = (e) => {
           audioEl.srcObject = e.streams[0];
+          startRemoteVu(e.streams[0]);
         };
 
         // 5. Add mic track
@@ -215,6 +255,7 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
           setIsSpeaking(false);
           setIsListening(false);
           stopVu();
+          stopRemoteVu();
         };
 
         // 7. SDP negotiation
@@ -242,14 +283,16 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         setIsSpeaking(false);
         setIsListening(false);
         stopVu();
+        stopRemoteVu();
         onError?.(err.message || "Error de voz");
       }
     },
-    [status, devMode, authHeader, startVu, stopVu, handleDataChannelMessage, onError]
+    [status, devMode, authHeader, startVu, stopVu, startRemoteVu, stopRemoteVu, handleDataChannelMessage, onError]
   );
 
   const stop = useCallback(() => {
     stopVu();
+    stopRemoteVu();
     if (dcRef.current) {
       try { dcRef.current.close(); } catch { /* ignore */ }
       dcRef.current = null;
@@ -268,11 +311,15 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
       audioCtxRef.current.close().catch(() => {});
       audioCtxRef.current = null;
     }
+    if (remoteAudioCtxRef.current) {
+      remoteAudioCtxRef.current.close().catch(() => {});
+      remoteAudioCtxRef.current = null;
+    }
     sessionIdRef.current = null;
     setStatus("idle");
     setIsSpeaking(false);
     setIsListening(false);
-  }, [stopVu]);
+  }, [stopVu, stopRemoteVu]);
 
   // Barge-in: user talks while assistant is speaking — just let audio flow;
   // OpenAI VAD handles it server-side. We can also send a cancel event:
@@ -286,5 +333,5 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
   // Stop and release all resources when the consuming component unmounts
   useEffect(() => () => stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { status, isSpeaking, isListening, vuLevel, start, stop, interrupt };
+  return { status, isSpeaking, isListening, vuLevel, remoteVuLevel, start, stop, interrupt };
 }

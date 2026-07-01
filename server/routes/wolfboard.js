@@ -18,7 +18,7 @@
  */
 import { Router } from "express";
 import { google } from "googleapis";
-import Anthropic from "@anthropic-ai/sdk";
+import { callAgentOnce } from "../lib/agentCore.js";
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
 import { setListaPrecios } from "../../src/data/constants.js";
 import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
@@ -34,7 +34,7 @@ import {
   requireWolfboardWrite,
 } from "../middleware/requireWolfboardAuth.js";
 import crypto from "node:crypto";
-import { estimateCostUSD } from "../lib/aiProviderConfig.js";
+import { getAvailableProviders } from "../lib/aiProviderConfig.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -769,8 +769,10 @@ export function createWolfboardRouter(config) {
     if (!adminSheetId) {
       return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
     }
-    if (!config.anthropicApiKey) {
-      return envMissing503(res, "ANTHROPIC_API_KEY", "Cloud Run secret / .env local");
+    // Batch AI now routes through the shared seam's provider chain, so any single
+    // provider key suffices (claude preferred, then grok → gemini → openai).
+    if (getAvailableProviders().length === 0) {
+      return envMissing503(res, "ANTHROPIC_API_KEY (o cualquier proveedor IA)", "Cloud Run secret / .env local");
     }
     if (!config.googleApplicationCredentials && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       return res.status(503).json({ ok: false, error: "GOOGLE_APPLICATION_CREDENTIALS no configurado" });
@@ -853,7 +855,6 @@ export function createWolfboardRouter(config) {
       }
     }
 
-    const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
     const results = [];
     const valueUpdates = [];
     const formatRequests = [];
@@ -886,23 +887,21 @@ export function createWolfboardRouter(config) {
       } else {
         // Step 1: Extract structured params from the consultation text
         try {
-          const extractMsg = await anthropic.messages.create({
-            model: HAIKU_MODEL,
-            max_tokens: 400,
-            system: PARAM_EXTRACT_PROMPT,
-            messages: [{ role: "user", content: row.consulta }],
-          });
-          let rawJson = (extractMsg.content?.[0]?.text || "").trim();
+          // Provider-fallback via the shared seam (bare mode = no Panelin prompt).
+          // Claude+Haiku preferred; falls back to grok → gemini → openai defaults.
+          const extractRes = await callAgentOnce(
+            [{ role: "user", content: row.consulta }],
+            { bareSystemPrompt: PARAM_EXTRACT_PROMPT, channel: "chat", override: { model: HAIKU_MODEL, maxTokens: 400 } },
+          );
+          let rawJson = (extractRes.text || "").trim();
           rawJson = rawJson.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
 
-          // Cost observability for wolfboard extraction step
-          // TODO: thread pino logger here once cost-telemetry module exists
-          const extractCost = estimateCostUSD("claude", HAIKU_MODEL, extractMsg.usage || {});
+          // Cost observability for wolfboard extraction step (provider/model as served)
           console.log(JSON.stringify({
             event: "wolfboard_ai_call",
-            provider: "claude",
-            model: HAIKU_MODEL,
-            estimated_cost_usd: extractCost,
+            provider: extractRes.provider,
+            model: extractRes.model,
+            estimated_cost_usd: extractRes.estimatedCostUsd,
             row: row.rowNum,
             step: "extract",
           }));
@@ -928,23 +927,19 @@ export function createWolfboardRouter(config) {
         // Step 3: Fallback to text-only generation (original behavior)
         if (!calcQuoted) {
           try {
-            const msg = await anthropic.messages.create({
-              model: HAIKU_MODEL,
-              max_tokens: 512,
-              system: QUOTE_SYSTEM_PROMPT,
-              messages: [{ role: "user", content: row.consulta }],
-            });
-            response = msg.content?.[0]?.text?.trim() || "";
+            const quoteRes = await callAgentOnce(
+              [{ role: "user", content: row.consulta }],
+              { bareSystemPrompt: QUOTE_SYSTEM_PROMPT, channel: "chat", override: { model: HAIKU_MODEL, maxTokens: 512 } },
+            );
+            response = (quoteRes.text || "").trim();
             method = "text";
 
-            // Cost observability for wolfboard batch (Phase A priority)
-            // TODO: thread pino logger here once cost-telemetry module exists
-            const cost = estimateCostUSD("claude", HAIKU_MODEL, msg.usage || {});
+            // Cost observability for wolfboard batch (provider/model as served)
             console.log(JSON.stringify({
               event: "wolfboard_ai_call",
-              provider: "claude",
-              model: HAIKU_MODEL,
-              estimated_cost_usd: cost,
+              provider: quoteRes.provider,
+              model: quoteRes.model,
+              estimated_cost_usd: quoteRes.estimatedCostUsd,
               row: row.rowNum,
             }));
             if (!response) {

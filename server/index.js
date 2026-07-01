@@ -84,6 +84,8 @@ import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
 import omniRouter from "./routes/omni.js";
+import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
+import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook } from "./lib/omni/adapters/waWebhook.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
@@ -1037,6 +1039,20 @@ app.use(identityAnalyticsRouter);
 app.use(clientesCustomersRouter);
 app.use(clientesFollowupsRouter);
 app.use(quoteExportRouter);
+// ── AI Assistant control plane ──────────────────────────────────────────────
+// Status/health aggregate (admin-gated). Never gated by the master switch.
+app.use("/api", createAssistantsStatusRouter());
+// Master-switch gates. Registered BEFORE their channel routers so they run first,
+// and mounted ONLY on the AI-GENERATION paths — inbound ingest/webhooks stay open
+// so a disabled assistant keeps receiving (no lost messages), just stops answering.
+// `canales` (omniRouter, below) is intentionally NOT gated: it is the one kept on.
+app.use("/api/agent/chat", requireAssistantEnabled("panelin"));
+app.use("/api/email-agent/chat", requireAssistantEnabled("email"));
+app.use("/api/wa/suggestions/run", requireAssistantEnabled("wa"));
+app.use("/api/wa/quotes/run", requireAssistantEnabled("wa"));
+app.use("/api/crm/suggest-response", requireAssistantEnabled("ml"));
+app.use("/api/wolfboard/quote-batch", requireAssistantEnabled("wolfboard"));
+// ─────────────────────────────────────────────────────────────────────────────
 app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);

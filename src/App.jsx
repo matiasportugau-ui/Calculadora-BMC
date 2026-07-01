@@ -37,6 +37,7 @@ const queryClient = new QueryClient({
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
+const PanelinLivePage = lazy(() => import("./components/PanelinLivePage.jsx"));
 const LandingPage = lazy(() => import("./components/LandingPage.jsx"));
 const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
 const DriverTransportistaApp = lazy(() => import("./components/DriverTransportistaApp.jsx"));
@@ -62,6 +63,7 @@ const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx
 const ProyectoStatusModule = lazy(() => import("./components/hub/proyecto/ProyectoStatusModule.jsx"));
 const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
+const AssistantsStatusPanel = lazy(() => import("./components/hub/admin/AssistantsStatusPanel.jsx"));
 const MlManagerModule = lazy(() => import("./components/hub/ml/MlManagerModule.jsx"));
 
 const suspenseFallback = (
@@ -304,6 +306,16 @@ export default function App() {
           }
         />
         <Route
+          path="/hub/admin/assistants"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <AssistantsStatusPanel />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
           path="/hub/cotizaciones"
           element={
             <RequireGrant role="admin">
@@ -467,6 +479,16 @@ export default function App() {
             <Suspense fallback={suspenseFallback}>
               <PdfPreview />
             </Suspense>
+          }
+        />
+        <Route
+          path="/panelin/live"
+          element={
+            <RequireGrant module="calc" minLevel="write">
+              <Suspense fallback={suspenseFallback}>
+                <PanelinLivePage />
+              </Suspense>
+            </RequireGrant>
           }
         />
         <Route
