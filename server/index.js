@@ -12,7 +12,6 @@ import { buildVersionInfo } from "./lib/versionInfo.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
 import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
-import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { buildCrmRow, validateCrmRow, sliceCrmRange } from "./lib/crmRowMapper.js";
 import { sanitizeCellValue } from "./lib/sheetsCsvGuard.js";
 import { createTokenStore } from "./tokenStore.js";
@@ -760,28 +759,27 @@ async function processWaConversation(chatId, conv) {
           observaciones: d.observaciones || "",
         };
         const waBuilt = buildCrmRow(crmHeaders, waLead, { sanitize: sanitizeCellValue });
+        // requireHeaders:false — this path is fire-and-forget and deletes its
+        // conversation buffer at the end (waConversations.delete below), so it
+        // has NO retry. We therefore always write best-effort: header-anchored
+        // when possible, documented-column-letter fallback when the header read
+        // is empty/absent. Validation is warn-only; losing the whole lead would
+        // be worse than a rare out-of-window field drop on a structural change.
         const waCheck = validateCrmRow(waBuilt, crmHeaders, {
-          requireHeaders: true,
+          requireHeaders: false,
           window: { from: "B", to: "W" },
         });
-        // When the structure can't be trusted we skip ALL CRM writes for this
-        // conversation rather than risk a shifted row; the next 🚀 / auto-trigger retries.
-        const crmWritable = waCheck.ok;
-        if (!crmWritable) {
-          logger.warn(`[WA] ⚠ CRM structure invalid (${waCheck.errors.join(",")}) — skipping CRM write for ${chatId}`);
-        } else {
-          if (waBuilt.fallbacks.length) {
-            logger.warn(`[WA] CRM_Operativo header fallback for: ${waBuilt.fallbacks.join(",")}`);
-          }
-          // One header-anchored write for the data block (B:W) instead of three
-          // positional range writes.
-          await sheets.spreadsheets.values.update({
-            spreadsheetId: sheetId,
-            range: `'CRM_Operativo'!B${crmRow}:W${crmRow}`,
-            valueInputOption: "USER_ENTERED",
-            requestBody: { values: [sliceCrmRange(waBuilt.row, "B", "W")] },
-          });
+        if (!waCheck.ok || waBuilt.fallbacks.length) {
+          logger.warn(`[WA] CRM_Operativo header drift — errors=${waCheck.errors.join(",") || "none"} fallbacks=${waBuilt.fallbacks.join(",") || "none"} (best-effort write)`);
         }
+        // One header-anchored write for the data block (B:W) instead of three
+        // positional range writes.
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'CRM_Operativo'!B${crmRow}:W${crmRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [sliceCrmRange(waBuilt.row, "B", "W")] },
+        });
 
         // Generar respuesta IA para col AF — usa agente unificado (canal: wa + KB)
         let ai = { ok: false };
@@ -795,14 +793,23 @@ async function processWaConversation(chatId, conv) {
         } catch (aiErr) {
           logger.warn(`[WA] agentCore failed for ${chatId}: ${aiErr.message}`);
         }
-        if (crmWritable && ai.ok && ai.respuesta) {
-          await sheets.spreadsheets.values.update({
-            spreadsheetId: sheetId,
-            range: `'CRM_Operativo'!AF${crmRow}:AG${crmRow}`,
-            valueInputOption: "USER_ENTERED",
-            requestBody: { values: [[sanitizeCellValue(ai.respuesta), ai.provider || ""]] },
-          });
-        }
+        // AF:AK in one header-anchored write: suggested reply + provider (AF/AG)
+        // + gate defaults (AH:AK). Replaces the old positional AF:AG + defaultTailAHAK
+        // writes; when AI failed, AF/AG are "" (same effect as not writing them).
+        const waTail = buildCrmRow(crmHeaders, {
+          respuestaSugerida: ai.ok && ai.respuesta ? ai.respuesta : "",
+          providerIa: ai.ok ? (ai.provider || "") : "",
+          linkPresupuesto: "",
+          aprobadoEnviar: "No",
+          enviadoEl: "",
+          bloquearAuto: "No",
+        }, { sanitize: sanitizeCellValue });
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'CRM_Operativo'!AF${crmRow}:AK${crmRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [sliceCrmRange(waTail.row, "AF", "AK")] },
+        });
 
         // Autolearn: extraer pares Q→A del intercambio WA para el KB unificado
         setImmediate(() => {
@@ -824,16 +831,7 @@ async function processWaConversation(chatId, conv) {
             .catch(() => {});
         });
 
-        if (crmWritable) {
-          await sheets.spreadsheets.values.update({
-            spreadsheetId: sheetId,
-            range: rangeAHAK(crmRow),
-            valueInputOption: "USER_ENTERED",
-            requestBody: { values: [defaultTailAHAK()] },
-          });
-        }
-
-        logger.info(`[WA] ✓ Conversation processed → CRM row ${crmWritable ? crmRow : "skipped"}, Form row ${formRow}, provider: ${ai.provider || "none"}`);
+        logger.info(`[WA] ✓ Conversation processed → CRM row ${crmRow}, Form row ${formRow}, provider: ${ai.provider || "none"}`);
       }
     }
   } catch (err) {

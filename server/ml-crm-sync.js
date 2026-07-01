@@ -266,14 +266,9 @@ export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger =
     ];
     // CSV/formula guard on every cell — nickname, q.text and obs are
     // buyer-controlled and could start with `=`/`+`/`-`/`@`. Same guard the
-    // email/quote writers use (sheetsCsvGuard.js).
+    // email/quote writers use (sheetsCsvGuard.js). rowCore (31) + tail (5) = the
+    // fixed 36 columns of B:AK.
     const rowValues = [...rowCore, ...defaultTailAGAK_ML()].map(sanitizeCellValue);
-    // B:AK is exactly 36 columns; refuse to write a misaligned row rather than
-    // shift the dense ML layout.
-    if (rowValues.length !== 36) {
-      logger.error?.(`  ✗ F${rowNum} — Q:${q.id}: fila ML mal formada (${rowValues.length}≠36), se omite`);
-      continue;
-    }
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
       range: `'${SHEET_TAB}'!B${rowNum}:AK${rowNum}`,
