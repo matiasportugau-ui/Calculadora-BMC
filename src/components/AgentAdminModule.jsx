@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AgentClassificationViewerTab from "./AgentClassificationViewerTab.jsx";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import { isLocalDevApp } from "../utils/localDevAuth.js";
 import BmcModuleNav from "./BmcModuleNav.jsx";
 
 // ── tokens ─────────────────────────────────────────────────────────────────
@@ -2072,6 +2073,23 @@ export default function AgentAdminModule() {
   const hasToken = typeof import.meta !== "undefined"
     ? !!(import.meta.env?.VITE_API_AUTH_TOKEN || "")
     : false;
+  const [relaxDevAuth, setRelaxDevAuth] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase()}/capabilities`);
+        const data = await res.json();
+        if (!cancelled && data?.panelin_relax_dev_auth) setRelaxDevAuth(true);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const adminApisOk = hasToken || relaxDevAuth || isLocalDevApp();
 
   useEffect(() => {
     const t = searchParams.get("tab");
@@ -2137,7 +2155,7 @@ export default function AgentAdminModule() {
         {/* Main content */}
         <main style={{ flex: 1, padding: 24, overflowY: "auto", minWidth: 0 }}>
           {/* Auth warning */}
-          {!hasToken && (
+          {!adminApisOk && (
             <div style={{ marginBottom: 16, padding: "10px 14px", background: `${C.warn}18`, border: `1px solid ${C.warn}`, borderRadius: 8, fontSize: 12, color: C.warn, fontFamily: C.ff }}>
               <b>VITE_API_AUTH_TOKEN no configurado.</b> Las llamadas a la API pueden fallar con 401. Agregá esta variable en tu <code>.env</code> para habilitar el acceso.
             </div>

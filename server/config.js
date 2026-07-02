@@ -19,8 +19,13 @@ const isCloudRun = process.env.K_SERVICE || /\.run\.app$/i.test(publicBaseUrl);
 const frontendBaseUrl =
   process.env.FRONTEND_BASE_URL || "https://calculadora-bmc.vercel.app";
 
+const appEnv = process.env.APP_ENV || process.env.NODE_ENV || "development";
+const panelinRelaxDevAuthExplicit = /^(1|true|yes)$/i.test(
+  String(process.env.PANELIN_RELAX_DEV_AUTH || "").trim(),
+);
+
 export const config = {
-  appEnv: process.env.APP_ENV || process.env.NODE_ENV || "development",
+  appEnv,
   port: Number(process.env.PORT || 3001),
   publicBaseUrl,
   frontendBaseUrl,
@@ -50,10 +55,10 @@ export const config = {
   apiAuthToken: process.env.API_AUTH_TOKEN || process.env.API_KEY || "",
   /**
    * Development-only: skip API_AUTH_TOKEN checks on Panelin developer routes (chat devMode,
-   * training KB, prompt editor, conversation stats). Set `PANELIN_RELAX_DEV_AUTH=1` on trusted
-   * local/staging APIs only — never on a publicly reachable production Cloud Run service.
+   * training KB, prompt editor, conversation stats). Auto-on when appEnv=development (local API);
+   * override with PANELIN_RELAX_DEV_AUTH=1 on trusted staging only — never on public production.
    */
-  panelinRelaxDevAuth: /^(1|true|yes)$/i.test(String(process.env.PANELIN_RELAX_DEV_AUTH || "").trim()),
+  panelinRelaxDevAuth: appEnv === "development" || panelinRelaxDevAuthExplicit,
   /**
    * Opcional — POST /api/crm/ingest-email: si está definido, el bridge IMAP puede usar solo este secreto
    * (además de API_AUTH_TOKEN). Ver docs/team/panelsim/EMAIL-ADMINISTRATOR.md
@@ -329,11 +334,15 @@ export const config = {
    * AI Assistant control plane — master switch. Comma-separated allowlist of assistant keys
    * allowed to GENERATE AI responses. Anything not listed returns 503 assistant_disabled on its
    * AI-generation route (inbound ingest/webhooks stay ungated — no messages are lost).
-   * Default `canales` ships the Omni copilot only; widen deliberately per phase.
+   * Default `canales` in production; local API (appEnv=development) enables all assistants.
    * Keys: canales, panelin, email, wa, ml, wolfboard. `seam` (shared agentCore) is always enabled.
    * See server/lib/assistantRegistry.js for the registry.
    */
-  assistantsActive: String(process.env.ASSISTANTS_ACTIVE || "canales")
+  assistantsActive: (process.env.ASSISTANTS_ACTIVE
+    ? String(process.env.ASSISTANTS_ACTIVE)
+    : appEnv === "development"
+      ? "canales,panelin,email,wa,ml,wolfboard"
+      : "canales")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),

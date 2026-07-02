@@ -35,6 +35,7 @@ import {
 } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { flattenPerfilesLibre, computePresupuestoLibreCatalogo } from "../utils/presupuestoLibreCatalogo.js";
+import { buildProductCatalogIndex } from "../utils/productCatalogIndex.js";
 import {
   computeLibrePanelLineMetrics,
   defaultLibrePanelLine,
@@ -112,6 +113,7 @@ import PlanUploadModal from "./PlanUploadModal.jsx";
 import PlanInlineDropZone from "./PlanInlineDropZone.jsx";
 import InteractionLogPanel from "./InteractionLogPanel.jsx";
 import ConfigPanel from "./ConfigPanel.jsx";
+import ProductQuickAddDrawer from "./ProductQuickAddDrawer.jsx";
 import FloorPlanEditor from "./FloorPlanEditor.jsx";
 import RoofPreview, { RoofPreviewMetricsSidebar } from "./RoofPreview.jsx";
 
@@ -3260,6 +3262,31 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [libreCatalog]);
 
   const libreSelladorKeys = useMemo(() => Object.keys(libreCatalog?.SELLADORES || SELLADORES), [libreCatalog]);
+
+  // ── Índice unificado del catálogo para el drawer "Agregar producto" ──
+  // Escribe en el mismo estado libre (librePerfilQty/libreFijQty/libreSellQty/
+  // librePanelLines) que ya se fusiona al BOM de cualquier escenario.
+  const quickAddCatalogIndex = useMemo(
+    () => buildProductCatalogIndex({ catalog: libreCatalog || undefined }),
+    [libreCatalog],
+  );
+  const quickAddPerfil = useCallback(
+    (key, n) => setLibrePerfilQty((q) => ({ ...q, [key]: (Number(q[key]) || 0) + (Number(n) || 1) })),
+    [],
+  );
+  const quickAddFijacion = useCallback(
+    (key, n) => setLibreFijQty((q) => ({ ...q, [key]: (Number(q[key]) || 0) + (Number(n) || 1) })),
+    [],
+  );
+  const quickAddSellador = useCallback(
+    (key, n) => setLibreSellQty((q) => ({ ...q, [key]: (Number(q[key]) || 0) + (Number(n) || 1) })),
+    [],
+  );
+  const quickAddPanel = useCallback(
+    ({ familia, espesor, color, m2 }) =>
+      setLibrePanelLines((l) => [...l, { familia, espesor, color: color || "Blanco", m2: Number(m2) > 0 ? Number(m2) : 1 }]),
+    [],
+  );
 
   const toggleLibreAcc = (k) => setLibreAcc((a) => ({ ...a, [k]: !a[k] }));
   const updateLibrePanelLine = (idx, patch) => {
@@ -7745,6 +7772,17 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         driveFolderConfig={driveFolderConfig}
         driveAccessToken={bmcAuth.accessToken}
         onFolderConfigured={(cfg) => { setDriveFolderConfig(cfg); handleDriveRefresh(); }}
+      />
+
+      {/* ── Agregar producto (drawer siempre disponible, cualquier escenario) ── */}
+      <ProductQuickAddDrawer
+        catalogIndex={quickAddCatalogIndex}
+        currentQty={{ perfilQty: librePerfilQty, fijQty: libreFijQty, sellQty: libreSellQty }}
+        onAddPerfil={quickAddPerfil}
+        onAddFijacion={quickAddFijacion}
+        onAddSellador={quickAddSellador}
+        onAddPanel={quickAddPanel}
+        listaPrecios={listaPrecios}
       />
 
       {/* ── Budget Log Panel (slide-over drawer) ── */}

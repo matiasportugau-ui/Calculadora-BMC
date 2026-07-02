@@ -38,6 +38,7 @@ const sessionLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: voiceSessionKey,
+  skip: () => config.appEnv === "development",
   message: { ok: false, error: "Demasiadas sesiones de voz. Esperá un momento." },
 });
 
@@ -69,9 +70,21 @@ router.post(
     return res.status(503).json({ ok: false, error: "OpenAI API key not configured" });
   }
 
-  const { calcState = {}, devMode = false } = req.body || {};
+  const { calcState = {}, devMode = false, leadContext = null } = req.body || {};
 
-  const systemPrompt = buildVoiceSystemPrompt(calcState, { devMode });
+  // Whitelist the lead-context fields we accept from the client (launched from
+  // the CRM sheet hyperlink). sanitizeForPrompt inside buildVoiceSystemPrompt
+  // handles length-capping + injection neutralization of the values themselves.
+  const safeLeadContext =
+    leadContext && typeof leadContext === "object"
+      ? {
+          quoteId: leadContext.quoteId,
+          cliente: leadContext.cliente,
+          consulta: leadContext.consulta,
+        }
+      : null;
+
+  const systemPrompt = buildVoiceSystemPrompt(calcState, { devMode, leadContext: safeLeadContext });
 
   // Tool definitions mirroring the text-mode action set
   const tools = [
