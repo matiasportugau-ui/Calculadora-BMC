@@ -125,6 +125,37 @@ await (async () => {
   config.assistantsActive = [];
   const off = await checkAssistant("panelin", { force: true });
   assert(off.status === "disabled", "not in allowlist → disabled");
+
+  // ── email deps probe mirrors isChatwootConfigured (base+token+accountId) ─────
+  // Regression: probing the token alone reported a false "live" when base or
+  // accountId were missing, while every Chatwoot tool still threw. The probe now
+  // uses the same gate the route/tools use. isChatwootConfigured() reads
+  // process.env directly, so we drive it via env here.
+  const envSnapshot = {
+    base: process.env.CHATWOOT_API_BASE,
+    token: process.env.CHATWOOT_API_TOKEN,
+    account: process.env.CHATWOOT_ACCOUNT_ID,
+  };
+  const setChatwootEnv = ({ base = "", token = "", account = "" }) => {
+    if (base) process.env.CHATWOOT_API_BASE = base; else delete process.env.CHATWOOT_API_BASE;
+    if (token) process.env.CHATWOOT_API_TOKEN = token; else delete process.env.CHATWOOT_API_TOKEN;
+    if (account) process.env.CHATWOOT_ACCOUNT_ID = account; else delete process.env.CHATWOOT_ACCOUNT_ID;
+  };
+
+  config.assistantsActive = ["email"];
+  setProviders({ claude: "sk-test-claude-key" }); // isolate: deps, not providers, drive status
+
+  setChatwootEnv({ token: "cw-token-only" }); // token but no base/accountId → NOT configured
+  const emailPartial = await checkAssistant("email", { force: true });
+  assert(emailPartial.status === "down", "email with only CHATWOOT_API_TOKEN → down (no false-green)");
+  assert(/chatwoot not configured/i.test(emailPartial.detail), "email down detail explains chatwoot deps");
+
+  setChatwootEnv({ base: "https://cw.example.com", token: "cw-token", account: "7" }); // fully configured
+  const emailLive = await checkAssistant("email", { force: true });
+  assert(emailLive.status === "live", "email fully configured (base+token+accountId) → live");
+
+  // restore env so later suites see the original process.env
+  setChatwootEnv({ base: envSnapshot.base, token: envSnapshot.token, account: envSnapshot.account });
 })();
 
 console.log(`\n${failed === 0 ? "✅" : "❌"} assistantControlPlane: ${passed} passed, ${failed} failed`);
