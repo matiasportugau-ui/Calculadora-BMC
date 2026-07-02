@@ -206,7 +206,7 @@ Leídas centralmente en `server/config.js` y documentadas en `.env.example`:
 |-------------|-----------------------|--------|----------------------------|----------|
 | `canales`   | Canales (Omni copilot)| chat   | Omni DB (`DATABASE_URL`)   | `seam`   |
 | `panelin`   | Panelin Chat          | chat   | — (sólo provider)          | `seam`   |
-| `email`     | Email Agent           | chat   | `CHATWOOT_API_TOKEN`       | `seam`   |
+| `email`     | Email Agent           | chat   | Chatwoot (`isChatwootConfigured`) | `seam`   |
 | `wa`        | WhatsApp Cockpit      | wa     | `DATABASE_URL`             | `seam`   |
 | `ml`        | MercadoLibre          | ml     | `ML_CLIENT_SECRET`         | `seam`   |
 | `wolfboard` | Wolfboard Batch       | chat   | — (sólo provider)          | `seam`   |
@@ -262,16 +262,22 @@ Leídas centralmente en `server/config.js` y documentadas en `.env.example`:
 |-------------|-------|--------------------|:----------------:|:------------------------------:|----------------|----------|
 | `canales`   | chat  | Omni DB            | ✅               | ✅ (activo)                    | claude→…→openai| seam     |
 | `panelin`   | chat  | —                  | n/a              | ❌ (503) *verificar*           | claude→…→openai| seam     |
-| `email`     | chat  | `CHATWOOT_API_TOKEN`| ❌ (degradado)  | ❌ (503) *verificar*           | claude→…→openai| seam     |
+| `email`     | chat  | Chatwoot (base+token+account)| ❌ (no config.)  | ❌ (503) *verificar*           | claude→…→openai| seam     |
 | `wa`        | wa    | `DATABASE_URL`     | ✅               | ❌ (503) *verificar*           | claude→…→openai| seam     |
 | `ml`        | ml    | `ML_CLIENT_SECRET` | ✅               | ❌ (503) *verificar*           | claude→…→openai| seam     |
 | `wolfboard` | chat  | —                  | n/a              | ❌ (503) *verificar*           | claude→…→openai| seam     |
 | `seam`      | chat  | — (terminal)       | n/a              | ✅ siempre                     | claude→…→openai| —        |
 
-> Nota sobre `email`: su probe de salud depende de `CHATWOOT_API_TOKEN` (integración Chatwoot,
-> dormida). El Email Operations Manager en prod opera vía Gmail OAuth evolucionando Omni/`canales`,
-> no vía este probe — por eso `email` puede figurar degradado aunque el flujo de email esté vivo por
-> otro camino. Revisar si el probe sigue siendo el indicador correcto.
+> Nota sobre `email`: este asistente es el chat in-app "Asistente de Correos" (`emailAgentChat.js`),
+> que opera **sobre Chatwoot** vía las email-tools — su dependencia en Chatwoot es correcta y hoy está
+> dormida (Chatwoot no configurado en prod). Es distinto del Email Operations Manager vivo, que corre
+> por Gmail OAuth bajo el asistente `canales` (Omni). Por eso `email` figura `down` sin que el flujo de
+> email real esté caído.
+>
+> **Fix aplicado (2026-07-02):** el probe ahora usa `isChatwootConfigured()` (`chatwootClient.js` —
+> exige `CHATWOOT_API_BASE` + `CHATWOOT_API_TOKEN` + `CHATWOOT_ACCOUNT_ID`), la **misma** compuerta que
+> usan la ruta y las tools. Antes chequeaba sólo el token, lo que reportaba un **falso `live`** si
+> faltaban `base`/`accountId` mientras cada tool tiraba `chatwoot_not_configured`.
 
 ### Verificación autoritativa en vivo
 
