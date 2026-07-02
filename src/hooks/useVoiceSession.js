@@ -17,7 +17,7 @@ const API_BASE = getCalcApiBase();
 
 const OPENAI_REALTIME_BASE = "https://api.openai.com/v1/realtime";
 
-export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode = false, authHeader }) {
+export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode = false, authHeader, leadContext = null }) {
   const [status, setStatus] = useState("idle"); // idle | connecting | active | error
   const [isSpeaking, setIsSpeaking] = useState(false); // assistant is speaking
   const [isListening, setIsListening] = useState(false); // VAD detected user speech
@@ -209,7 +209,7 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         const sessRes = await fetch(`${API_BASE}/api/agent/voice/session`, {
           method: "POST",
           headers,
-          body: JSON.stringify({ calcState, devMode }),
+          body: JSON.stringify({ calcState, devMode, leadContext }),
         });
         if (!sessRes.ok) {
           const err = await sessRes.json().catch(() => ({ error: "Error al iniciar sesión de voz" }));
@@ -287,7 +287,7 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         onError?.(err.message || "Error de voz");
       }
     },
-    [status, devMode, authHeader, startVu, stopVu, startRemoteVu, stopRemoteVu, handleDataChannelMessage, onError]
+    [status, devMode, authHeader, leadContext, startVu, stopVu, startRemoteVu, stopRemoteVu, handleDataChannelMessage, onError]
   );
 
   const stop = useCallback(() => {

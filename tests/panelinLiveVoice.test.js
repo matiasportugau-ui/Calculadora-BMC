@@ -10,6 +10,7 @@ process.env.OPENAI_API_KEY = "sk-test-" + "x".repeat(40);
 
 const { default: agentVoiceRouter } = await import("../server/routes/agentVoice.js");
 const { config } = await import("../server/config.js");
+const { buildVoiceSystemPrompt } = await import("../server/lib/chatPrompts.js");
 
 let passed = 0;
 let failed = 0;
@@ -33,9 +34,15 @@ const server = await new Promise((resolve, reject) => {
 const port = server.address().port;
 const BASE = `http://127.0.0.1:${port}`;
 
+let lastMintInstructions = null;
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init) => {
   if (String(url).includes("api.openai.com/v1/realtime/client_secrets")) {
+    try {
+      lastMintInstructions = JSON.parse(init?.body || "{}")?.session?.instructions ?? null;
+    } catch {
+      lastMintInstructions = null;
+    }
     return {
       ok: true,
       status: 200,
@@ -103,6 +110,45 @@ const unauth = await fetch(`${BASE}/api/agent/voice/session`, {
   body: "{}",
 });
 assert(unauth.status === 401, "POST voice/session without token → 401");
+
+// leadContext (CRM sheet hyperlink) is threaded into the minted instructions.
+const leadSess = await req("/api/agent/voice/session", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    calcState: { scenario: "techo" },
+    leadContext: { quoteId: "BMC-2026-0007", cliente: "Ferretería Sur", consulta: "Necesito techo 10x20 con aislación" },
+  }),
+});
+assert(leadSess.status === 200, "POST voice/session with leadContext → 200");
+assert(
+  typeof lastMintInstructions === "string" && lastMintInstructions.includes("CONTEXTO DEL LEAD"),
+  "leadContext → instructions include 'CONTEXTO DEL LEAD'",
+);
+assert(
+  lastMintInstructions.includes("Ferretería Sur") && lastMintInstructions.includes("techo 10x20"),
+  "leadContext → instructions include cliente + consulta text",
+);
+
+// Unit: buildVoiceSystemPrompt lead block present + 800-char cap.
+const cappedPrompt = buildVoiceSystemPrompt(
+  {},
+  { leadContext: { cliente: "X", consulta: "A".repeat(1200) } },
+);
+assert(cappedPrompt.includes("CONTEXTO DEL LEAD"), "buildVoiceSystemPrompt → lead block present");
+assert(!cappedPrompt.includes("A".repeat(801)), "buildVoiceSystemPrompt → consulta capped ≤ 800 chars");
+
+// Unit: injection neutralization (short consulta so it survives the cap).
+const injPrompt = buildVoiceSystemPrompt(
+  {},
+  { leadContext: { cliente: "X", consulta: "hola ${process.env.SECRET} texto" } },
+);
+assert(!injPrompt.includes("${process.env.SECRET}"), "buildVoiceSystemPrompt → template-injection neutralized");
+
+assert(
+  buildVoiceSystemPrompt({}, {}).indexOf("CONTEXTO DEL LEAD") === -1,
+  "buildVoiceSystemPrompt → no lead block when leadContext absent",
+);
 
 server.close();
 globalThis.fetch = realFetch;

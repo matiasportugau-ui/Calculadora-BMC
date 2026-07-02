@@ -12,7 +12,7 @@ import { useVoiceSession } from "./useVoiceSession.js";
 
 const HAPPY_DURATION_MS = 2500;
 
-export function usePanelinCharacterVoice({ calcState, authHeader, devMode, onAction, onTranscriptDelta, onError } = {}) {
+export function usePanelinCharacterVoice({ calcState, authHeader, devMode, leadContext, onAction, onTranscriptDelta, onError } = {}) {
   const [isHappy, setIsHappy] = useState(false);
   const happyTimeoutRef = useRef(null);
 
@@ -36,6 +36,7 @@ export function usePanelinCharacterVoice({ calcState, authHeader, devMode, onAct
     onError,
     authHeader,
     devMode,
+    leadContext,
   });
 
   let emotion = "neutral";
