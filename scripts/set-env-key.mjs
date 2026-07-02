@@ -6,7 +6,7 @@
  *   node scripts/set-env-key.mjs GOOGLE_CLIENT_SECRET 'GOCSPX-...'
  *   printf '%s' 'GOCSPX-...' | node scripts/set-env-key.mjs GOOGLE_CLIENT_SECRET
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const key = process.argv[2];
@@ -31,8 +31,18 @@ if (!value) {
 }
 
 const ENV_PATH = resolve(import.meta.dirname, "..", ".env");
-let text = existsSync(ENV_PATH) ? readFileSync(ENV_PATH, "utf8") : "";
-const re = new RegExp(`^${key}=.*$`, "m");
+// Read directly (no existsSync-then-read TOCTOU window) — a missing file just
+// means "no existing content yet", same as the prior existsSync guard.
+let text = "";
+try {
+  text = readFileSync(ENV_PATH, "utf8");
+} catch (e) {
+  if (e.code !== "ENOENT") throw e;
+}
+// key is already validated against /^[A-Z][A-Z0-9_]*$/ above, so it can't carry
+// regex metacharacters — escaped anyway as defense-in-depth against that
+// validation ever loosening.
+const re = new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=.*$`, "m");
 const line = `${key}=${value}`;
 if (re.test(text)) text = text.replace(re, line);
 else {

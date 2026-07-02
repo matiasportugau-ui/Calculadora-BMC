@@ -13,7 +13,7 @@
 import dotenv from "dotenv";
 import http from "node:http";
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 dotenv.config();
@@ -44,7 +44,14 @@ if (!CLIENT_SECRET || CLIENT_SECRET.length < 8) {
 }
 
 function upsertRefreshToken(token) {
-  let text = existsSync(ENV_PATH) ? readFileSync(ENV_PATH, "utf8") : "";
+  // Read directly (no existsSync-then-read TOCTOU window) — a missing file just
+  // means "no existing content yet", same as the prior existsSync guard.
+  let text = "";
+  try {
+    text = readFileSync(ENV_PATH, "utf8");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+  }
   const re = /^GOOGLE_REFRESH_TOKEN=.*$/m;
   const line = `GOOGLE_REFRESH_TOKEN=${token}`;
   if (re.test(text)) text = text.replace(re, line);

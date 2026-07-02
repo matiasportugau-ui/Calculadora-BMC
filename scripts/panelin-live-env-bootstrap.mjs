@@ -11,7 +11,7 @@
  *   doppler run -- node scripts/panelin-live-env-bootstrap.mjs
  */
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -44,10 +44,16 @@ const MIN_LEN = {
 };
 
 function readEnvFile(key) {
-  if (!existsSync(ENV_PATH)) return "";
-  const line = readFileSync(ENV_PATH, "utf8")
-    .split("\n")
-    .find((l) => l.startsWith(`${key}=`));
+  // Read directly (no existsSync-then-read TOCTOU window) — a missing file
+  // just means "no existing content yet", same as the prior existsSync guard.
+  let text;
+  try {
+    text = readFileSync(ENV_PATH, "utf8");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+    return "";
+  }
+  const line = text.split("\n").find((l) => l.startsWith(`${key}=`));
   return line ? line.slice(key.length + 1).trim() : "";
 }
 
@@ -69,8 +75,17 @@ function resolveValue(key) {
 
 function upsertEnv(key, value) {
   if (!value) return false;
-  let text = existsSync(ENV_PATH) ? readFileSync(ENV_PATH, "utf8") : "";
-  const re = new RegExp(`^${key}=.*$`, "m");
+  // Read directly (no existsSync-then-read TOCTOU window) — a missing file
+  // just means "no existing content yet", same as the prior existsSync guard.
+  let text = "";
+  try {
+    text = readFileSync(ENV_PATH, "utf8");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+  }
+  // key always comes from the hardcoded KEYS list above, never external input —
+  // escaped anyway so this matches the same safe pattern used elsewhere.
+  const re = new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=.*$`, "m");
   const line = `${key}=${value}`;
   if (re.test(text)) {
     text = text.replace(re, line);
