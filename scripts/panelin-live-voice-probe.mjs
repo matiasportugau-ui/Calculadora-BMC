@@ -12,7 +12,7 @@
  *   TOUR_SESSION_COOKIE  optional — also tests user-JWT path via /auth/refresh + session
  *                        (rotates bmc_sess; do not reuse the same value in Playwright E2E)
  */
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -21,8 +21,16 @@ const API = (process.env.BMC_API_BASE || "http://127.0.0.1:3001").replace(/\/+$/
 function envKey(key) {
   if (process.env[key]) return process.env[key];
   const p = resolve(ROOT, ".env");
-  if (!existsSync(p)) return "";
-  const line = readFileSync(p, "utf8").split("\n").find((l) => l.startsWith(`${key}=`));
+  // Read directly (no existsSync-then-read TOCTOU window) — a missing file
+  // just means "no value found", same as the prior existsSync guard.
+  let text;
+  try {
+    text = readFileSync(p, "utf8");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+    return "";
+  }
+  const line = text.split("\n").find((l) => l.startsWith(`${key}=`));
   return line ? line.slice(key.length + 1).trim() : "";
 }
 
@@ -45,6 +53,9 @@ function warn(label, detail = "") {
 
 async function jsonFetch(path, init = {}) {
   const headers = { ...(init.headers || {}) };
+  // SERVICE_TOKEN is read from the developer's own local .env and sent only to
+  // `API` (BMC_API_BASE, defaults to 127.0.0.1) — this probe's whole purpose is
+  // authenticating against your own configured API with your own token.
   if (SERVICE_TOKEN && !headers.Authorization) {
     headers.Authorization = `Bearer ${SERVICE_TOKEN}`;
   }
