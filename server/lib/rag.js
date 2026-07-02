@@ -14,6 +14,7 @@
 
 import pg from "pg";
 import { embedText } from "./embeddings.js";
+import { sanitizeQuoteMetadata } from "./quoteMetadata.js";
 import { config } from "../config.js";
 
 /** Pool compartido para el módulo. Lazy-init para no conectar si RAG está OFF. */
@@ -93,12 +94,12 @@ export async function retrieveSimilarQuotes(query, k = 5, threshold = 0.70) {
  * Serializa los leads recuperados en un bloque markdown compacto
  * listo para inyectar al system prompt de Panelin.
  *
- * Formato por lead (1 línea):
- *   - 2024-03-15 | Juan García | ISODEC_EPS 100mm | 320 m² | USD 12.400 | score: 0.87
+ * Formato por lead (1 línea, sin PII — ver sanitizeQuoteMetadata):
+ *   - 2024-03-15 | ISODEC_EPS 100mm | 320 m² | USD 12.400 | score: 0.87
  *
  * Criterios de diseño:
  *  - Compact: ~100-150 chars/lead, para que 5 leads sean ~750 tokens máximo.
- *  - Legible para el modelo: fecha + cliente + producto + área + precio + score.
+ *  - Legible para el modelo: fecha + producto + área + precio + score (nunca el nombre del cliente).
  *  - Omite campos null sin ruido adicional.
  *
  * @param {Array<{lead_id: string, similarity: number, metadata: object}>} quotes
@@ -107,16 +108,15 @@ export async function retrieveSimilarQuotes(query, k = 5, threshold = 0.70) {
 export function formatRetrievedContextForPrompt(quotes) {
   if (!Array.isArray(quotes) || quotes.length === 0) return "";
 
-  const lines = quotes.map(({ similarity, metadata: m }) => {
+  const lines = quotes.map(({ similarity, metadata: rawMeta }) => {
+    // Whitelist quote facts and drop PII (incl. client name) before this context
+    // reaches an external LLM — parity with omni/knowledge/kbBridge.js.
+    const m = sanitizeQuoteMetadata(rawMeta);
     const parts = [];
 
     // Fecha
     const fecha = m.fecha ? m.fecha.slice(0, 10) : null;
     if (fecha) parts.push(fecha);
-
-    // Cliente (truncado a 25 chars para no inflar el prompt)
-    const cliente = m.cliente_nombre ? String(m.cliente_nombre).slice(0, 25) : null;
-    if (cliente) parts.push(cliente);
 
     // Panel
     const panelParts = [];

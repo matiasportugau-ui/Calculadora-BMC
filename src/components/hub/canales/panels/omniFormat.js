@@ -69,6 +69,12 @@ export function timeAgo(date, now = new Date()) {
   return d.toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit" });
 }
 
+/** Like `timeAgo`, but tables/cockpits use an em dash when the timestamp is missing. */
+export function timeAgoOrDash(date, now = new Date()) {
+  const label = timeAgo(date, now);
+  return label || "—";
+}
+
 /** Clock time for a message bubble ("14:05", or "23/06 14:05" if not today). */
 export function clockTime(date, now = new Date()) {
   if (!date) return "";
@@ -89,4 +95,18 @@ export const STATUS_META = {
 
 export function statusMeta(status) {
   return STATUS_META[String(status || "open").toLowerCase()] || STATUS_META.open;
+}
+
+/**
+ * Short es-UY label for the RAG grounding of an AI suggestion, read from
+ * `omni_suggestions.metadata.grounding` (Phase 1). Returns null when there is
+ * nothing useful to show (RAG off / no cases) so the caller renders the badge
+ * only when the suggestion is actually grounded in past quotes.
+ */
+export function groundingLabel(metadata) {
+  const g = metadata?.grounding;
+  const n = Number(g?.rag_count) || 0;
+  if (!g?.grounded || n <= 0) return null;
+  const noun = n === 1 ? "cotización similar" : "cotizaciones similares";
+  return `Basado en ${n} ${noun}`;
 }

@@ -2,6 +2,7 @@
  * /api/omni/* — unified inbox API (Track D + WAVE 3)
  */
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { config } from "../config.js";
 import { getOmniPool, omniHealthCheck } from "../lib/omni/omniDb.js";
@@ -26,8 +27,26 @@ import { listSuggestions, resolveSuggestion } from "../lib/omni/orchestrator/sug
 import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/evalFeedback.js";
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
+import { rankUrgentConversations } from "../lib/omni/urgency.js";
+import { appendTeamIsolationFilter } from "../lib/omni/teamIsolation.js";
+import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
+import { mergeContacts, ContactMergeError } from "../lib/omni/identity/contactMerge.js";
 import { callAgentOnce } from "../lib/agentCore.js";
 import { dispatchAssistant } from "../lib/assistantRegistry.js";
+
+const omniReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const omniWriteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // AI copilot actions for the inline thread assistant. Each builds a one-shot
 // agentCore prompt (provider chain + budget caps apply). Thread-based actions
@@ -113,6 +132,13 @@ async function listAssignableUserIds(pool) {
 
 const router = Router();
 
+// Floor rate limit for the whole /omni/* surface — guarantees every route
+// (including any added later, or any DB-access path CodeQL can trace that a
+// per-route omniReadLimiter/omniWriteLimiter might miss) has at least basic
+// abuse protection. Write routes still layer the stricter omniWriteLimiter
+// on top; both run, the stricter one is the effective ceiling.
+router.use(omniReadLimiter);
+
 router.get("/omni/health", requireOmniDb, async (req, res) => {
   try {
     const health = await omniHealthCheck(req.omniPool);
@@ -174,6 +200,7 @@ router.get(
 // panel never hard-fails.
 router.get(
   "/omni/admin/overview",
+  omniReadLimiter,
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -258,8 +285,158 @@ router.get(
   },
 );
 
+// Contact dedup — DETECTION ONLY (Wave 6). resolveContact() already dedupes new
+// inbound contacts via DB unique constraints, so this only finds PRE-EXISTING
+// duplicates that arrived as separate rows on different channels and now share
+// a non-unique field (email/phone). Read-only; the merge action (Wave 6b) is a
+// deliberately separate, admin-gated step — see contactMerge.js.
+router.get(
+  "/omni/contacts/duplicates",
+  omniReadLimiter,
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const SCAN_LIMIT = 5000;
+    try {
+      const { rows } = await req.omniPool.query(
+        `SELECT co.id, co.name, co.email, co.phone, co.wa_phone, co.ml_user_id, co.created_at,
+                (SELECT COUNT(*)::int FROM omni_conversations c WHERE c.contact_id = co.id) AS conversation_count
+           FROM omni_contacts co
+          WHERE (co.email IS NOT NULL OR co.phone IS NOT NULL OR co.wa_phone IS NOT NULL)
+            -- Already-merged ("loser") contacts keep their original email/phone
+            -- forever (mergeContacts() never touches them) — without this guard
+            -- a resolved cluster would resurface on every scan after its merge.
+            AND co.properties->>'merged_into' IS NULL
+          ORDER BY co.updated_at DESC
+          LIMIT $1`,
+        [SCAN_LIMIT],
+      );
+      const clusters = findDuplicateClusters(rows);
+      res.json({
+        ok: true,
+        generated_at: new Date().toISOString(),
+        scanned: rows.length,
+        scan_bounded: rows.length === SCAN_LIMIT,
+        cluster_count: clusters.length,
+        clusters,
+      });
+    } catch (e) {
+      if (e?.code !== "42703" && e?.code !== "42P01") throw e;
+      req.log?.warn?.({ err: e.message, code: e.code }, "omni duplicate contacts degraded");
+      res.json({ ok: true, degraded: e.code, scanned: 0, scan_bounded: false, cluster_count: 0, clusters: [] });
+    }
+  },
+);
+
+// Contact merge — EXECUTION (Wave 6b). Repoints conversations/deals from
+// merged_from_id onto merged_into_id inside a single transaction; never
+// hard-deletes the loser contact (see contactMerge.js for why); every merge is
+// logged to omni_contact_merge_log for audit. Admin-only — this changes which
+// customer a conversation/deal history belongs to, a manual, deliberate,
+// owner-approved action (never automatic, never triggered by AI).
+router.post(
+  "/omni/contacts/merge",
+  omniWriteLimiter,
+  requireGrant.admin("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const fromId = String(req.body?.from_id || "");
+    const intoId = String(req.body?.into_id || "");
+    if (!isUuid(fromId) || !isUuid(intoId)) {
+      return res.status(400).json({ ok: false, error: "invalid_contact_id" });
+    }
+    try {
+      const result = await mergeContacts(req.omniPool, {
+        fromId,
+        intoId,
+        performedByUserId: req.user?.id || null,
+      });
+      req.log?.info?.(
+        { from: fromId, into: intoId, ...result, by: req.user?.id },
+        "omni contact merge completed",
+      );
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e instanceof ContactMergeError) {
+        const status = e.code === "contact_not_found" ? 404 : 400;
+        return res.status(status).json({ ok: false, error: e.code });
+      }
+      if (e?.code === "42P01") {
+        // The transaction touches omni_contacts/omni_conversations/omni_deals/
+        // omni_contact_merge_log — any of the four can be the missing relation
+        // on a partial/older schema, so surface Postgres's own message (it
+        // names the table) rather than guessing it's always migration 013.
+        return res.status(503).json({
+          ok: false,
+          error: "omni_schema_incomplete",
+          detail: `${e.message} — run npm run omni:migrate to apply pending migrations before merging contacts.`,
+        });
+      }
+      throw e;
+    }
+  },
+);
+
+// "Reply-zero" action queue — the ranked, per-conversation "act on THIS now" list
+// the admin cockpit's COUNTS don't give you. Read-only aggregation across all
+// channels, team-isolated, scored by the pure policy in server/lib/omni/urgency.js.
+// Degrades to an empty queue pre-009 so the cockpit never hard-fails.
+router.get(
+  "/omni/actions/urgent",
+  omniReadLimiter,
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+    const channel = req.query.channel ? String(req.query.channel) : null;
+
+    const params = [];
+    const filters = [
+      `c.status = 'open'`,
+      `(c.snoozed_until IS NULL OR c.snoozed_until <= now())`,
+    ];
+    if (channel) {
+      params.push(channel);
+      filters.push(`c.channel = $${params.length}`);
+    }
+    appendTeamIsolationFilter(req.user, filters, params);
+    const where = `WHERE ${filters.join(" AND ")}`;
+
+    try {
+      // Bound the candidate set (freshest-aging first) so JS scoring stays cheap.
+      const { rows } = await req.omniPool.query(
+        `SELECT c.id, c.channel, c.subject, c.status, c.priority, c.created_at,
+                c.first_agent_reply_at, c.assigned_to_user_id, c.snoozed_until,
+                co.name AS contact_name, co.email AS contact_email, co.wa_phone,
+                (SELECT COUNT(*)::int FROM omni_messages mu
+                   WHERE mu.conversation_id = c.id AND mu.sender = 'customer' AND mu.read_at IS NULL) AS unread_count,
+                (SELECT MAX(m2.created_at) FROM omni_messages m2 WHERE m2.conversation_id = c.id) AS last_message_at
+         FROM omni_conversations c
+         JOIN omni_contacts co ON co.id = c.contact_id
+         ${where}
+         ORDER BY c.created_at ASC
+         LIMIT 500`,
+        params,
+      );
+      const ranked = rankUrgentConversations(rows, { limit });
+      res.json({
+        ok: true,
+        generated_at: new Date().toISOString(),
+        count: ranked.length,
+        candidates_scanned: rows.length,
+        actions: ranked,
+      });
+    } catch (e) {
+      if (e?.code !== "42703" && e?.code !== "42P01") throw e;
+      req.log?.warn?.({ err: e.message, code: e.code }, "omni urgent actions degraded");
+      res.json({ ok: true, degraded: e.code, actions: [], count: 0, candidates_scanned: 0 });
+    }
+  },
+);
+
 router.get(
   "/omni/conversations",
+  omniReadLimiter,
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -314,16 +491,7 @@ router.get(
       filters.push(`c.assigned_to_user_id = $${params.length}::uuid`);
     }
 
-    // Team isolation (multi-user): non-admin operators see conversations with no
-    // team plus those in teams they belong to. Admin/superadmin see everything.
-    // (Safe before any teams exist — all conversations start with team_id NULL.)
-    const role = req.user?.role;
-    if (role !== "admin" && role !== "superadmin") {
-      params.push(req.user.id);
-      filters.push(
-        `(c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`,
-      );
-    }
+    appendTeamIsolationFilter(req.user, filters, params);
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
     const legacyWhere = legacyFilters.length ? `WHERE ${legacyFilters.join(" AND ")}` : "";
 
@@ -377,6 +545,7 @@ router.get(
 
 router.get(
   "/omni/conversations/:id/messages",
+  omniReadLimiter,
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -421,6 +590,7 @@ router.get(
 const ASSIST_MAX_INPUT = 4000; // clamp per field to bound prompt size / cost
 router.post(
   "/omni/conversations/:id/assist",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -543,11 +713,15 @@ router.get(
 
 router.post(
   "/omni/conversations/:id/notes",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
     const body = String(req.body?.body || "").trim();
     if (!body) return res.status(400).json({ ok: false, error: "missing_body" });
+    if (!(await conversationVisibleTo(req.omniPool, req.params.id, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
     try {
       const { rows } = await req.omniPool.query(
         `INSERT INTO omni_notes (conversation_id, author_user_id, author_label, body)
@@ -575,10 +749,14 @@ router.post(
 
 router.patch(
   "/omni/conversations/:id/read",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
     const conversationId = req.params.id;
+    if (!(await conversationVisibleTo(req.omniPool, conversationId, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
     const { rowCount } = await req.omniPool.query(
       `UPDATE omni_messages SET read_at = COALESCE(read_at, now())
        WHERE conversation_id = $1 AND sender = 'customer' AND read_at IS NULL`,
@@ -594,10 +772,14 @@ router.patch(
 // AND remove labels; `status` is validated against the engine's allow-list.
 router.patch(
   "/omni/conversations/:id",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
     const conversationId = req.params.id;
+    if (!(await conversationVisibleTo(req.omniPool, conversationId, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
+    }
     const patch = buildConversationPatch(req.body);
     if (patch.error) {
       const extra = patch.error === "invalid_status" ? { allowed: ALLOWED_CONVERSATION_STATUSES } : {};
@@ -641,6 +823,7 @@ router.patch(
 
 router.post(
   "/omni/conversations/:id/reply",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
@@ -648,6 +831,12 @@ router.post(
     const text = String(req.body?.text || "").trim();
     if (!text) {
       return res.status(400).json({ ok: false, error: "missing_text" });
+    }
+
+    // Team isolation: never let an operator send a reply into another team's
+    // conversation (this dispatches to the customer). Mirrors /assist, /messages.
+    if (!(await conversationVisibleTo(req.omniPool, conversationId, req.user))) {
+      return res.status(404).json({ ok: false, error: "conversation_not_found" });
     }
 
     const { rows } = await req.omniPool.query(
@@ -756,6 +945,7 @@ router.post(
 /** Internal ingest for tests / manual replay */
 router.post(
   "/omni/ingest",
+  omniWriteLimiter,
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {

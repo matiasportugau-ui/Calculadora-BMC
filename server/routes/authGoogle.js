@@ -27,6 +27,7 @@ import {
   requireUser,
   getModuleGrants,
   getRole,
+  createSessionForActiveEmail,
 } from "../lib/identityAuth.js";
 import { safeErr as _safeErr } from "../lib/safeErr.js";
 
@@ -230,6 +231,96 @@ router.get("/auth/me/grants", requireUser(), async (req, res) => {
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: _safeErr(e) || "grants_failed" });
+  }
+});
+
+function safeNextPath(raw) {
+  const p = String(raw || "/").trim();
+  if (!p.startsWith("/") || p.startsWith("//")) return "/";
+  return p;
+}
+
+/**
+ * GET /auth/dev-browser-login — dev-only session cookie without Google GIS.
+ * Sets bmc_sess and redirects into the SPA (use via Vite proxy on :5173).
+ *
+ *   http://localhost:5173/api/auth/dev-browser-login?next=/panelin/live
+ */
+router.get("/auth/dev-browser-login", async (req, res) => {
+  if (isProd()) {
+    return res.status(403).json({ ok: false, error: "dev_browser_login_not_available_in_production" });
+  }
+  if (!process.env.DATABASE_URL) {
+    return res.status(503).json({
+      ok: false,
+      error: "database_required",
+      hint: "doppler run -- npm run dev:full",
+    });
+  }
+
+  const email = String(req.query.email || process.env.DEV_LOGIN_EMAIL || process.env.TOUR_USER_EMAIL || "matias.portugau@gmail.com").trim();
+  const next = safeNextPath(req.query.next);
+
+  try {
+    const r = await createSessionForActiveEmail({
+      email,
+      ip: req.ip,
+      userAgent: req.get("user-agent") || undefined,
+    });
+    setRefreshCookie(res, r.refreshToken);
+    const frontend = (process.env.FRONTEND_BASE_URL || "http://localhost:5173").replace(/\/+$/, "");
+    return res.redirect(302, `${frontend}${next}`);
+  } catch (e) {
+    const status = e.status || 401;
+    return res.status(status).json({
+      ok: false,
+      error: e.message || "dev_browser_login_failed",
+      email,
+    });
+  }
+});
+
+/** POST variant — silent SPA login (Set-Cookie + JSON, no redirect). */
+router.post("/auth/dev-browser-login", async (req, res) => {
+  if (isProd()) {
+    return res.status(403).json({ ok: false, error: "dev_browser_login_not_available_in_production" });
+  }
+  if (!process.env.DATABASE_URL) {
+    return res.status(503).json({
+      ok: false,
+      error: "database_required",
+      hint: "doppler run -- npm run dev:full",
+    });
+  }
+
+  const email = String(
+    req.body?.email || process.env.DEV_LOGIN_EMAIL || process.env.TOUR_USER_EMAIL || "matias.portugau@gmail.com",
+  ).trim();
+
+  try {
+    const r = await createSessionForActiveEmail({
+      email,
+      ip: req.ip,
+      userAgent: req.get("user-agent") || undefined,
+    });
+    setRefreshCookie(res, r.refreshToken);
+    const grants = await getModuleGrants(r.user.id);
+    return res.json({
+      ok: true,
+      user: r.user,
+      role: r.role,
+      plan_tier: r.plan_tier,
+      modules: grants,
+      accessToken: r.accessToken,
+      accessTokenExpiresIn: r.accessTokenExpiresIn,
+      _devMode: true,
+    });
+  } catch (e) {
+    return res.status(e.status || 401).json({
+      ok: false,
+      error: e.message || "dev_browser_login_failed",
+      email,
+    });
   }
 });
 

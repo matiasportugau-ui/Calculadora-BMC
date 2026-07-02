@@ -11,6 +11,7 @@
 
 import React, { useCallback, useState } from "react";
 import { useBmcAuth, useModuleGrants } from "../../hooks/useBmcAuth.js";
+import { isLocalDevApp } from "../../utils/localDevAuth.js";
 import { requestAuthGate } from "./AuthGateModal.jsx";
 
 const ApiBase = (() => {
@@ -26,6 +27,7 @@ export default function RequireGrant({ module, role, minLevel = "read", children
   const [requesting, setRequesting] = useState(false);
   const [requested, setRequested] = useState(false);
   const [error, setError] = useState(null);
+  const localDev = isLocalDevApp();
 
   const submitRequest = useCallback(async () => {
     if (!auth.isAuthenticated) {
@@ -52,6 +54,9 @@ export default function RequireGrant({ module, role, minLevel = "read", children
       setRequesting(false);
     }
   }, [auth.isAuthenticated, auth.accessToken, module]);
+
+  // Local Vite dev: skip Google OAuth gates (session minted silently via API).
+  if (localDev) return children;
 
   if (auth.status === "loading") {
     return (

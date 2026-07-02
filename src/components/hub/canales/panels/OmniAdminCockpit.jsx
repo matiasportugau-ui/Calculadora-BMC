@@ -7,7 +7,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import React from "react";
-import { useOmniAdminOverview } from "../../../../hooks/useOmniConversations.js";
+import { useOmniAdminOverview, useOmniUrgentActions } from "../../../../hooks/useOmniConversations.js";
+import { channelMeta, timeAgoOrDash } from "./omniFormat.js";
+import "./omniInbox.css";
 
 // ── format helpers ──────────────────────────────────────────────────────────
 
@@ -17,16 +19,6 @@ function fmtMins(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return m ? `${h}h ${m}m` : `${h}h`;
-}
-
-function fmtAgo(ts) {
-  if (!ts) return "—";
-  const d = new Date(ts);
-  const diff = (Date.now() - d.getTime()) / 1000;
-  if (diff < 60) return "ahora";
-  if (diff < 3600) return `hace ${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `hace ${Math.floor(diff / 3600)}h`;
-  return `hace ${Math.floor(diff / 86400)}d`;
 }
 
 function healthBadge(health, enabled) {
@@ -100,8 +92,9 @@ function SectionTitle({ children, right }) {
 
 // ── main ────────────────────────────────────────────────────────────────────
 
-export default function OmniAdminCockpit({ token }) {
+export default function OmniAdminCockpit({ token, onSelectConversation }) {
   const { overview, loading, error, reload } = useOmniAdminOverview(token);
+  const { actions: urgent, loading: urgentLoading, error: urgentError } = useOmniUrgentActions(token, { limit: 12 });
 
   const t = overview?.totals || {};
   const sla = overview?.sla || {};
@@ -157,6 +150,75 @@ export default function OmniAdminCockpit({ token }) {
         <KpiCard label="FRT prom (30d)" value={fmtMins(sla.avg_frt_min)} tone="neutral" />
       </div>
 
+      {/* Reply-zero: ranked "act on THIS now" queue across all channels */}
+      <SectionTitle right={urgent.length > 0 ? <span style={{ fontSize: "0.75rem", color: "var(--ac-text-secondary, #6b7280)" }}>{urgent.length} en cola · abrir en Bandeja</span> : null}>
+        🔥 Para responder ahora
+      </SectionTitle>
+      <div style={{ border: "1px solid var(--ac-border-primary, #e5e7eb)", borderRadius: 12, overflow: "hidden" }}>
+        {urgent.length === 0 ? (
+          <div
+            style={{
+              padding: "0.75rem 1rem",
+              fontSize: "0.875rem",
+              color: urgentError ? "#991b1b" : "var(--ac-text-secondary, #6b7280)",
+              background: urgentError ? "#fef2f2" : "transparent",
+            }}
+          >
+            {urgentLoading
+              ? "Cargando…"
+              : urgentError
+                ? `No se pudo cargar la cola: ${urgentError}`
+                : "Nada urgente — bandeja al día. 🎉"}
+          </div>
+        ) : (
+          urgent.map((a) => {
+            const cm = channelMeta(a.channel);
+            const breached = a.urgency?.sla_breached;
+            const who = a.contact_name || a.contact_email || a.wa_phone || "—";
+            return (
+              <button
+                key={a.id}
+                type="button"
+                className={`omniUrgentRow${onSelectConversation ? " omniUrgentRow--clickable" : ""}${breached ? " omniUrgentRow--breached" : ""}`}
+                onClick={() => onSelectConversation?.(a.id)}
+              >
+                <span
+                  title={cm.label}
+                  style={{ flex: "0 0 auto", padding: "0.15rem 0.45rem", borderRadius: 6, fontSize: "0.7rem", fontWeight: 700, color: "#fff", background: cm.color }}
+                >
+                  {cm.short}
+                </span>
+                <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.875rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {who}
+                    {a.subject && <span style={{ fontWeight: 400, color: "var(--ac-text-secondary, #6b7280)" }}> — {a.subject}</span>}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem", marginTop: 3 }}>
+                    {(a.urgency?.reasons || []).map((r, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          fontSize: "0.68rem",
+                          padding: "0.05rem 0.4rem",
+                          borderRadius: 99,
+                          color: r.includes("SLA") ? "#991b1b" : "var(--ac-text-secondary, #6b7280)",
+                          background: r.includes("SLA") ? "#fee2e2" : "var(--ac-surface-2, #f3f4f6)",
+                        }}
+                      >
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <span style={{ flex: "0 0 auto", fontSize: "0.75rem", color: "var(--ac-text-secondary, #9ca3af)" }}>
+                  {timeAgoOrDash(a.created_at)}
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
+
       {/* Per-mailbox */}
       <SectionTitle>Casillas ({accounts.length})</SectionTitle>
       <div style={{ overflowX: "auto", border: "1px solid var(--ac-border-primary, #e5e7eb)", borderRadius: 12 }}>
@@ -193,7 +255,7 @@ export default function OmniAdminCockpit({ token }) {
                   <td style={td}>{a.awaiting_reply}</td>
                   <td style={td}>{a.snoozed_count}</td>
                   <td style={td}>{fmtMins(a.avg_frt_min)}</td>
-                  <td style={{ ...td, color: "var(--ac-text-secondary, #6b7280)" }}>{fmtAgo(a.last_activity_at)}</td>
+                  <td style={{ ...td, color: "var(--ac-text-secondary, #6b7280)" }}>{timeAgoOrDash(a.last_activity_at)}</td>
                 </tr>
               );
             })}
@@ -222,7 +284,7 @@ export default function OmniAdminCockpit({ token }) {
                 <td style={td}>{u.name || u.email || u.user_id?.slice(0, 8)}</td>
                 <td style={{ ...td, fontWeight: 600 }}>{u.open_count}</td>
                 <td style={td}>{u.snoozed_count}</td>
-                <td style={{ ...td, color: "var(--ac-text-secondary, #6b7280)" }}>{fmtAgo(u.oldest_assigned_at)}</td>
+                <td style={{ ...td, color: "var(--ac-text-secondary, #6b7280)" }}>{timeAgoOrDash(u.oldest_assigned_at)}</td>
               </tr>
             ))}
           </tbody>
@@ -231,7 +293,7 @@ export default function OmniAdminCockpit({ token }) {
 
       {overview?.generated_at && (
         <p style={{ marginTop: "1rem", fontSize: "0.75rem", color: "var(--ac-text-secondary, #9ca3af)" }}>
-          Generado {fmtAgo(overview.generated_at)} · SLA sobre últimos 30 días · réplicas: {sla.replied_count ?? 0}
+          Generado {timeAgoOrDash(overview.generated_at)} · SLA sobre últimos 30 días · réplicas: {sla.replied_count ?? 0}
         </p>
       )}
     </div>

@@ -84,6 +84,19 @@ export function activeProvider() {
   return _hasUsableOpenAIKey() ? "openai" : "stub";
 }
 
+/**
+ * True only when a real embedding provider is configured (semantic vectors).
+ * When false, embedText() falls back to deterministic STUB vectors that are
+ * NOT semantically meaningful. Callers that depend on real similarity — e.g.
+ * RAG grounding in omni/knowledge/kbBridge.js — must gate on this so they never
+ * retrieve/ground on garbage vectors when RAG_ENABLED is flipped without a key.
+ *
+ * @returns {boolean}
+ */
+export function isSemanticEmbeddingAvailable() {
+  return _hasUsableOpenAIKey();
+}
+
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
 /**

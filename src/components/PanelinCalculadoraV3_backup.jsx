@@ -36,6 +36,12 @@ import {
 import { getPricing } from "../data/pricing.js";
 import { flattenPerfilesLibre, computePresupuestoLibreCatalogo } from "../utils/presupuestoLibreCatalogo.js";
 import {
+  computeLibrePanelLineMetrics,
+  defaultLibrePanelLine,
+  defaultLibrePanelTramo,
+  normalizeLibrePanelLine,
+} from "../utils/librePanelDimensions.js";
+import {
   calcTotalesSinIVA,
   calcFactorPendiente, calcLargoRealFromModo, normalizarMedida,
   computeRoofEstructuraHintsByGi,
@@ -210,6 +216,8 @@ function StepperInput({
   unit = "",
   decimals = 2,
   chainFocus = false,
+  /** "large" — números más grandes (p. ej. paso Dimensiones del asistente). */
+  size = "default",
   /** Ref al `<input>` interno (p. ej. autofocus al entrar a un paso del asistente). */
   inputRef = null,
 }) {
@@ -243,11 +251,26 @@ function StepperInput({
     const idx = inputs.indexOf(el);
     if (idx < 0 || idx >= inputs.length - 1) return;
     requestAnimationFrame(() => {
-      inputs[idx + 1]?.focus?.();
+      const next = inputs[idx + 1];
+      if (!next) return;
+      try {
+        next.focus({ preventScroll: false });
+      } catch {
+        next.focus?.();
+      }
+      if (typeof next.select === "function") {
+        try {
+          next.select();
+        } catch {
+          /* ignore */
+        }
+      }
     });
   };
 
-  const btnS = (dis) => ({ width: 36, height: 36, borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.surface, cursor: dis ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: dis ? 0.5 : 1, transition: TR, flexShrink: 0 });
+  const isLarge = size === "large";
+  const btnDim = isLarge ? 44 : 36;
+  const btnS = (dis) => ({ width: btnDim, height: btnDim, borderRadius: isLarge ? 12 : 10, border: `1.5px solid ${C.border}`, background: C.surface, cursor: dis ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: dis ? 0.5 : 1, transition: TR, flexShrink: 0 });
   const show = draft !== null ? draft : formatNumDisplay(num, decimals);
   const effective = Number.isFinite(num) ? num : min;
 
@@ -255,7 +278,7 @@ function StepperInput({
     <div style={{ fontFamily: FONT }}>
       {label && <div style={{ fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>}
       <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", flexWrap: "nowrap" }}>
-        <button type="button" style={btnS(effective <= min)} onClick={() => bump(-1)}><Minus size={16} color={C.tp} /></button>
+        <button type="button" style={btnS(effective <= min)} onClick={() => bump(-1)}><Minus size={isLarge ? 18 : 16} color={C.tp} /></button>
         <input
           ref={inputRef}
           type="text"
@@ -263,10 +286,26 @@ function StepperInput({
           autoComplete="off"
           data-stepper-chain={chainFocus ? "1" : undefined}
           value={show}
-          onFocus={() => setDraft(formatNumDisplay(num, decimals))}
+          onFocus={(e) => {
+            setDraft(formatNumDisplay(num, decimals));
+            requestAnimationFrame(() => {
+              try {
+                e.target.select();
+              } catch {
+                /* ignore */
+              }
+            });
+          }}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
+            const chainTab = e.key === "Tab" && chainFocus && !e.shiftKey;
+            if (e.key !== "Enter" && !chainTab) return;
+            if (chainTab) {
+              const group = e.currentTarget.closest("[data-stepper-group]");
+              const inputs = group ? [...group.querySelectorAll("input[data-stepper-chain='1']")] : [];
+              const idx = inputs.indexOf(e.currentTarget);
+              if (idx < 0 || idx >= inputs.length - 1) return;
+            }
             e.preventDefault();
             const raw = draft !== null ? draft : formatNumDisplay(num, decimals);
             skipNextBlurCommitRef.current = true;
@@ -284,10 +323,90 @@ function StepperInput({
             setDraft(null);
             commit(d);
           }}
-          style={{ width: "100%", minWidth: 0, flex: 1, textAlign: "center", borderRadius: 10, border: `1.5px solid ${C.border}`, padding: "8px 10px", fontSize: 15, fontWeight: 600, background: C.surface, color: C.tp, outline: "none", boxShadow: SHI, transition: TR, fontFamily: FONT, ...TN }}
+          style={{ width: "100%", minWidth: 0, flex: isLarge ? "1 1 120px" : 1, textAlign: "center", borderRadius: isLarge ? 12 : 10, border: `1.5px solid ${C.border}`, padding: isLarge ? "14px 12px" : "8px 10px", fontSize: isLarge ? 26 : 15, fontWeight: 700, background: C.surface, color: C.tp, outline: "none", boxShadow: SHI, transition: TR, fontFamily: FONT, ...TN }}
         />
-        <button type="button" style={btnS(effective >= max)} onClick={() => bump(1)}><Plus size={16} color={C.tp} /></button>
-        {unit && <span style={{ fontSize: 14, fontWeight: 600, color: C.tp, marginLeft: 4, minWidth: 24 }}>{unit}</span>}
+        <button type="button" style={btnS(effective >= max)} onClick={() => bump(1)}><Plus size={isLarge ? 18 : 16} color={C.tp} /></button>
+        {unit && <span style={{ fontSize: isLarge ? 16 : 14, fontWeight: 600, color: C.tp, marginLeft: 4, minWidth: isLarge ? 28 : 24 }}>{unit}</span>}
+      </div>
+    </div>
+  );
+}
+
+const ZONA_TAB_GRAY = "#EEF1F6";
+const ZONA_TAB_GRAY_HOVER = "#E4E9F0";
+
+const DIMENSIONES_EXTENSION_TABS = [
+  { id: "incluye_pendiente", label: "Largo real" },
+  { id: "calcular_pendiente", label: "× pendiente" },
+  { id: "calcular_altura", label: "√ altura" },
+  { id: "vista", label: "Vista previa" },
+  { id: "opciones", label: "Opciones" },
+];
+
+const PENDIENTE_STEP_TABS = DIMENSIONES_EXTENSION_TABS.filter((t) => t.id !== "opciones");
+
+/** Pestañas gris claro / texto azul que emergen debajo de la tarjeta de zona (efecto separador al hover). */
+function ZonaExtensionTabs({ tabs, activeId, onSelect, children }) {
+  const [hoveredId, setHoveredId] = useState(null);
+  return (
+    <div style={{ marginTop: 2, marginBottom: 16 }}>
+      <div role="tablist" style={{ display: "flex", alignItems: "flex-end", gap: 0, paddingLeft: 6, paddingRight: 6, position: "relative", zIndex: 1 }}>
+        {tabs.map((tab, i) => {
+          const isActive = activeId === tab.id;
+          const isHovered = hoveredId === tab.id;
+          const extend = isActive || isHovered;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              title={tab.title || tab.label}
+              onMouseEnter={() => setHoveredId(tab.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              onClick={() => onSelect(tab.id)}
+              style={{
+                flex: extend ? "1.22 1 0" : "1 1 0",
+                minWidth: 0,
+                padding: extend ? "12px 22px 10px" : "8px 14px 7px",
+                marginLeft: i > 0 ? -3 : 0,
+                background: isActive ? C.surface : isHovered ? ZONA_TAB_GRAY_HOVER : ZONA_TAB_GRAY,
+                color: C.primary,
+                fontSize: 11,
+                fontWeight: isActive ? 700 : 600,
+                border: `1px solid ${isActive ? C.border : "rgba(0,113,227,0.12)"}`,
+                borderBottom: isActive ? `1px solid ${C.surface}` : `1px solid ${C.border}`,
+                borderRadius: "10px 10px 0 0",
+                cursor: "pointer",
+                transition: "flex 220ms cubic-bezier(0.4,0,0.2,1), padding 220ms cubic-bezier(0.4,0,0.2,1), background 150ms ease, box-shadow 150ms ease",
+                fontFamily: FONT,
+                letterSpacing: "0.03em",
+                zIndex: isActive ? 3 : isHovered ? 2 : 1,
+                position: "relative",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                boxShadow: isActive ? "0 -2px 10px rgba(0,113,227,0.1)" : isHovered ? "0 -1px 8px rgba(0,0,0,0.05)" : "none",
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        role="tabpanel"
+        style={{
+          padding: 16,
+          background: C.surface,
+          border: `1.5px solid ${C.border}`,
+          borderRadius: "0 12px 12px 12px",
+          marginTop: -1,
+          position: "relative",
+          zIndex: 0,
+        }}
+      >
+        {children}
       </div>
     </div>
   );
@@ -2477,7 +2596,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const [libreAcc, setLibreAcc] = useState({
     paneles: true, perfileria: false, tornilleria: false, selladores: false, servicios: false, extraordinarios: false,
   });
-  const [librePanelLines, setLibrePanelLines] = useState([{ familia: "", espesor: "", color: "Blanco", m2: 0 }]);
+  const [librePanelLines, setLibrePanelLines] = useState([defaultLibrePanelLine()]);
   const [librePerfilQty, setLibrePerfilQty] = useState({});
   const [libreFijQty, setLibreFijQty] = useState({});
   const [libreSellQty, setLibreSellQty] = useState({});
@@ -2686,6 +2805,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const dimensionesRef = useRef(null);
   /** Primer campo Largo (m) del paso dimensiones — autofocus paso 7/13 Solo techo. */
   const dimensionesLargoInputRef = useRef(null);
+  /** Pestaña activa bajo la tarjeta de zona (Dimensiones / Pendiente). */
+  const [dimensionesExtensionTab, setDimensionesExtensionTab] = useState("vista");
   const bordesRef = useRef(null);
   const opcionesRef = useRef(null);
   /** Ref al host DOM de la **Visualización 3D** en `QuoteVisualVisor` (`[data-bmc-view="visualizacion-3d"]`) para portal de `RoofBorderCanvas`. */
@@ -2844,9 +2965,31 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   // defecto en el escenario dedicado, colapsada pero expandible (sticky) en los demás.
   // Estado explícito + onToggle para no re-cerrarla en cada render (no derivarla del render).
   const [manualLibreOpen, setManualLibreOpen] = useState(false);
+  const [proyectoQuickOpen, setProyectoQuickOpen] = useState(false);
+  const proyectoQuickRef = useRef(null);
+  const manualLibreRef = useRef(null);
   useEffect(() => {
     if (scenarioDef?.isLibre) setManualLibreOpen(true);
   }, [scenarioDef?.isLibre]);
+
+  const scrollToProyectoSection = useCallback(() => {
+    const idx = SOLO_TECHO_STEPS.findIndex((s) => s.id === "proyecto");
+    if (modoVendedor && scenario === "solo_techo" && idx >= 0) {
+      setWizardStep(idx);
+      setMaxReachedStep((mr) => Math.max(mr, idx));
+    }
+    setProyectoQuickOpen(true);
+    requestAnimationFrame(() => {
+      proyectoQuickRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [modoVendedor, scenario]);
+
+  const scrollToManualLibreSection = useCallback(() => {
+    setManualLibreOpen(true);
+    requestAnimationFrame(() => {
+      manualLibreRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
   const activeWizardStepId =
     modoVendedor && scenario === "solo_techo"
       ? SOLO_TECHO_STEPS[wizardStep]?.id ?? null
@@ -2881,6 +3024,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       clearTimeout(t);
     };
   }, [activeWizardStepId, wizardStep]);
+
+  useEffect(() => {
+    if (activeWizardStepId !== "dimensiones" && activeWizardStepId !== "pendiente") return;
+    if (activeWizardStepId === "pendiente" && dimensionesExtensionTab === "opciones") {
+      setDimensionesExtensionTab(techo.pendienteModo || "incluye_pendiente");
+    }
+  }, [activeWizardStepId, dimensionesExtensionTab, techo.pendienteModo]);
 
   const quoteVisorDimensionSummary = useMemo(() => {
     if (activeWizardStepId !== "dimensiones" || !scenarioDef?.hasTecho) return null;
@@ -3115,8 +3265,35 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const updateLibrePanelLine = (idx, patch) => {
     setLibrePanelLines((lines) => lines.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
   };
-  const addLibrePanelLine = () => setLibrePanelLines((l) => [...l, { familia: "", espesor: "", color: "Blanco", m2: 0 }]);
+  const addLibrePanelLine = () => setLibrePanelLines((l) => [...l, defaultLibrePanelLine()]);
   const removeLibrePanelLine = (idx) => setLibrePanelLines((l) => (l.length <= 1 ? l : l.filter((_, i) => i !== idx)));
+  const addLibrePanelTramo = (lineIdx) => {
+    setLibrePanelLines((lines) => lines.map((row, i) => {
+      if (i !== lineIdx) return row;
+      const tramos = [...(row.tramos || [{ largo: 6 }]), defaultLibrePanelTramo()];
+      return { ...row, tramos };
+    }));
+  };
+  const updateLibrePanelTramo = (lineIdx, tramoIdx, patch) => {
+    setLibrePanelLines((lines) => lines.map((row, i) => {
+      if (i !== lineIdx) return row;
+      const tramos = (row.tramos || [{ largo: 6 }]).map((t, j) => (j === tramoIdx ? { ...t, ...patch } : t));
+      return { ...row, tramos };
+    }));
+  };
+  const removeLibrePanelTramo = (lineIdx, tramoIdx) => {
+    setLibrePanelLines((lines) => lines.map((row, i) => {
+      if (i !== lineIdx) return row;
+      const tramos = row.tramos || [{ largo: 6 }];
+      if (tramos.length <= 1) return row;
+      return { ...row, tramos: tramos.filter((_, j) => j !== tramoIdx) };
+    }));
+  };
+  const librePanelDefaultAnchoFor = useCallback((panelData) => {
+    if (!panelData?.au) return { panelesAncho: 9, anchoM: 5 };
+    const { cantPaneles, ancho } = normalizarMedida("metros", 5, panelData);
+    return { panelesAncho: cantPaneles, anchoM: ancho };
+  }, []);
 
   // ── Helpers: Ancho techo en metros ↔ paneles ──
   const normalizeTechoAnchoToPaneles = useCallback((anchoM, panelData, tipoAguas) => {
@@ -3987,6 +4164,12 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     }
     return { ...t, [k]: v };
   });
+  const handleDimensionesExtensionTab = useCallback((tabId) => {
+    setDimensionesExtensionTab(tabId);
+    if (PENDIENTE_MODOS.some((m) => m.id === tabId)) {
+      uT("pendienteModo", tabId);
+    }
+  }, [uT]);
   const patchTechoCombinadaPts = useCallback(
     (k, v) => {
       if (k !== "ptsHorm" && k !== "ptsMetal" && k !== "ptsMadera") return;
@@ -4177,6 +4360,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         onApoyoMaterialDirect={handleApoyoMaterialDirect}
         bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
         bordesPanelFamiliaKey={techo.familia || ""}
+        bordesPanelEspesorMm={techo.espesor ?? null}
         bordesExtendido={techo.bordesExtendido ?? false}
         bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
         techoBorders={techo.borders}
@@ -4511,7 +4695,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       setExcludedItems(state.excludedItems);
       if (state.categoriasActivas && Object.keys(state.categoriasActivas).length) setCategoriasActivas(state.categoriasActivas);
       if (state.libreAcc) setLibreAcc(state.libreAcc);
-      if (state.librePanelLines) setLibrePanelLines(state.librePanelLines);
+      if (state.librePanelLines) setLibrePanelLines(state.librePanelLines.map(normalizeLibrePanelLine));
       if (state.librePerfilQty) setLibrePerfilQty(state.librePerfilQty);
       if (state.libreFijQty) setLibreFijQty(state.libreFijQty);
       if (state.libreSellQty) setLibreSellQty(state.libreSellQty);
@@ -4668,7 +4852,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setExcludedItems(s.excludedItems || {});
     if (s.categoriasActivas) setCategoriasActivas(s.categoriasActivas);
     if (s.libreAcc) setLibreAcc(s.libreAcc);
-    if (s.librePanelLines) setLibrePanelLines(s.librePanelLines);
+    if (s.librePanelLines) setLibrePanelLines(s.librePanelLines.map(normalizeLibrePanelLine));
     if (s.librePerfilQty) setLibrePerfilQty(s.librePerfilQty);
     if (s.libreFijQty) setLibreFijQty(s.libreFijQty);
     if (s.libreSellQty) setLibreSellQty(s.libreSellQty);
@@ -5173,16 +5357,24 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                       <div style={{ fontSize: 18, fontWeight: 700, color: C.tp }}>{step?.label}</div>
                       <div style={{ fontSize: 11, fontWeight: 500, color: C.tt, flexShrink: 0 }}>{wizardStep + 1}/{SOLO_TECHO_STEPS.length}</div>
                     </div>
-                    {proyectoStepIdx >= 0 && wizardStep !== proyectoStepIdx && (
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
                       <button
                         type="button"
-                        onClick={() => { setWizardStep(proyectoStepIdx); setMaxReachedStep(mr => Math.max(mr, proyectoStepIdx)); }}
-                        title="Datos del proyecto — siempre accesible"
-                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.warning}`, background: "transparent", color: C.warning, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
+                        onClick={scrollToProyectoSection}
+                        title="Datos del proyecto — cliente, dirección, cargar desde Drive"
+                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.warning}`, background: proyectoQuickOpen || wizardStep === proyectoStepIdx ? C.warningSoft || "#fffbeb" : "transparent", color: C.warning, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
                       >
-                        <FileText size={11} />Proyecto
+                        <FileText size={11} />Datos proyecto
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={scrollToManualLibreSection}
+                        title="Agregar líneas manuales / presupuesto libre sobre este escenario"
+                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.primary}`, background: manualLibreOpen ? C.primarySoft : "transparent", color: C.primary, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        <Plus size={11} />Líneas manuales
+                      </button>
+                    </div>
                   </div>
                   {stepId === "escenario" && (
                     <div
@@ -5405,27 +5597,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                         <div style={{ fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unidad de medida</div>
                         <SegmentedControl value={techoAnchoModo || "metros"} onChange={v => setTechoAnchoModo(v)} options={[{ id: "metros", label: "Metros (largo × ancho)" }, { id: "paneles", label: "Paneles (cantidad)" }]} />
                       </div>
-                      {techoAnchoModo === "paneles" && techoPanelData && (
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: C.ts,
-                            lineHeight: 1.5,
-                            padding: "12px 14px",
-                            background: C.surface,
-                            borderRadius: 10,
-                            border: `1px solid ${C.border}`,
-                          }}
-                        >
-                          <span style={{ fontWeight: 700, color: C.tp }}>Paneles (ancho):</span>{" "}
-                          el ancho en planta se calcula como{" "}
-                          <strong style={{ color: C.primary }}>cantidad × {Number(techoPanelData.au ?? 1.12).toFixed(2)} m</strong>{" "}
-                          (ancho útil del panel según familia/espesor).
-                          {derivedTipoAguas === "dos_aguas" ? (
-                            <> En <strong>dos aguas</strong>, el ancho total de zona reparte el techo en dos faldones en la vista previa.</>
-                          ) : null}
-                        </div>
-                      )}
                       <PlanInlineDropZone
                         onZonasLoaded={(zonas, tipoAguas, pendiente) =>
                           setTecho(t => ({ ...t, zonas, tipoAguas, pendiente }))
@@ -5445,8 +5616,78 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                           />
                         );
                       })()}
-                      {(techo.zonas?.length ? techo.zonas : [{ largo: 0, ancho: 0 }]).map((zona, idx) => (
-                        <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, background: C.surfaceAlt, borderRadius: 12, border: `1.5px solid ${C.border}` }}>
+                      {(() => {
+                        const zonasList = techo.zonas?.length ? techo.zonas : [{ largo: 0, ancho: 0 }];
+                        const lastZonaIdx = zonasList.length - 1;
+                        const activePendienteModo = PENDIENTE_MODOS.find((m) => m.id === dimensionesExtensionTab)
+                          || PENDIENTE_MODOS.find((m) => m.id === (techo.pendienteModo || "incluye_pendiente"));
+                        const extensionTabs = DIMENSIONES_EXTENSION_TABS.map((t) => ({
+                          ...t,
+                          title: PENDIENTE_MODOS.find((m) => m.id === t.id)?.desc || t.label,
+                        }));
+                        const roofPreviewNode = (
+                          <RoofPreview
+                            zonas={techo.zonas || []}
+                            tipoAguas={derivedTipoAguas}
+                            pendiente={techo.pendiente}
+                            panelAu={techoPanelData?.au ?? 1.12}
+                            panelObj={techoPanelData ?? null}
+                            showPlantaExteriorCotas
+                            onZonaPreviewChange={updateZonaPreview}
+                            onResetLayout={resetRoofPreviewLayout}
+                            onAnnexRankSwap={swapAnnexRank}
+                            onAddZona={addZona}
+                            onRemoveZona={removeZona}
+                            onEncounterPairChange={onRoofEncounterPairChange}
+                            onZonaDimensionPatch={onRoofZonaDimensionPatch}
+                            pendienteModo={techo.pendienteModo || "incluye_pendiente"}
+                            globalAlturaDif={techo.alturaDif ?? 0}
+                            estructuraHintsByGi={roofEstructuraHintsByGi}
+                            combinadaFijacionAssign={combinadaRoof2dAssignActive}
+                            combinadaFijByGi={combinadaFijByGi}
+                            onCombinadaFijacionSync={handleCombinadaFijacionSync}
+                            combinadaPtsH={techo.ptsHorm ?? 0}
+                            combinadaPtsMetal={techo.ptsMetal ?? 0}
+                            combinadaPtsMadera={techo.ptsMadera ?? 0}
+                            fijDotOverridesByGi={fijDotOverridesByGi}
+                            onFijDotOverridesSync={handleFijDotOverridesSync}
+                            tipoEst={techo.tipoEst || "metal"}
+                            apoyoMateriales={apoyoMateriales}
+                            onApoyoMaterialCycle={handleApoyoMaterialCycle}
+                            onApoyoMaterialDirect={handleApoyoMaterialDirect}
+                            bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
+                            bordesPanelFamiliaKey={techo.familia || ""}
+                            bordesPanelEspesorMm={techo.espesor ?? null}
+                            bordesExtendido={techo.bordesExtendido ?? false}
+                            bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
+                            techoBorders={techo.borders}
+                            onTechoBorderChange={(side, val) =>
+                              setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
+                            }
+                            onZonaBorderChange={(gi, side, val) =>
+                              updateZonaPreview(gi, {
+                                borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
+                              })
+                            }
+                          />
+                        );
+                        return (
+                          <>
+                      {zonasList.map((zona, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 14,
+                            padding: 16,
+                            background: C.surfaceAlt,
+                            borderRadius: idx === lastZonaIdx ? "12px 12px 0 0" : 12,
+                            border: `1.5px solid ${C.border}`,
+                            borderBottom: idx === lastZonaIdx ? "none" : `1.5px solid ${C.border}`,
+                            marginBottom: idx === lastZonaIdx ? 0 : 14,
+                          }}
+                        >
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{formatZonaDisplayTitle(techo.zonas || [], idx)}</span>
@@ -5468,112 +5709,192 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                                 </span>
                               )}
                               {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && !isLateralAnnexZona(zona) && (
-                                <span style={{ fontSize: 11, fontWeight: 500, color: C.ts }}>Otro cuerpo de techo · Podés marcarla como principal abajo</span>
+                                <span style={{ fontSize: 11, fontWeight: 500, color: C.ts }}>Otro cuerpo de techo · Opciones en pestaña inferior</span>
                               )}
                             </div>
                             {(techo.zonas?.length || 1) > 1 && (
                               <button onClick={() => removeZona(idx)} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.dangerSoft, color: C.danger, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><X size={14} />Quitar</button>
                             )}
                           </div>
-                          <div data-stepper-group style={{ display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
-                            <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus inputRef={idx === 0 ? dimensionesLargoInputRef : undefined} />
-                            {techoAnchoModo === "paneles" && techoPanelData ? (
-                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, derivedTipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, derivedTipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
-                            ) : (
-                              <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
-                            )}
+                          <div data-stepper-group style={{ display: "flex", gap: 24, alignItems: "flex-end", flexWrap: "wrap" }}>
+                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                              <StepperInput size="large" label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus inputRef={idx === 0 ? dimensionesLargoInputRef : undefined} />
+                            </div>
+                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                              {techoAnchoModo === "paneles" && techoPanelData ? (
+                                <StepperInput size="large" label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, derivedTipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, derivedTipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
+                              ) : (
+                                <StepperInput size="large" label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
+                              )}
+                            </div>
                           </div>
-                          {(techo.zonas?.length || 0) > 1 && (() => {
-                            const zPendienteModo = zona.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente";
-                            const zPendiente = zona.pendiente ?? techo.pendiente ?? 0;
-                            const zAlturaDif = zona.alturaDif ?? techo.alturaDif ?? 0;
-                            const largoReal = calcLargoRealFromModo(zona.largo ?? 0, zPendienteModo, zPendiente, zAlturaDif);
-                            const largoChanged = Math.abs(largoReal - (zona.largo ?? 0)) > 0.001;
-                            return (
-                              <div style={{ padding: 12, background: C.surface, borderRadius: 10, border: `1px solid ${C.border}` }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Pendiente — {formatZonaDisplayTitle(techo.zonas || [], idx)}</div>
-                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                                  {PENDIENTE_MODOS.map(m => (
-                                    <button key={m.id} onClick={() => updateZona(idx, "pendienteModo", m.id)} style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${zPendienteModo === m.id ? C.primary : C.border}`, background: zPendienteModo === m.id ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: zPendienteModo === m.id ? C.primary : C.tp, fontWeight: zPendienteModo === m.id ? 700 : 400 }}>{m.label}</button>
-                                  ))}
-                                </div>
-                                {zPendienteModo === "calcular_pendiente" && (
-                                  <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
-                                    <StepperInput label="Pendiente" value={zPendiente} onChange={v => updateZona(idx, "pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
-                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", paddingBottom: 4 }}>
-                                      {PENDIENTES_PRESET.map(pr => (
-                                        <button key={pr.valor} onClick={() => updateZona(idx, "pendiente", pr.valor)} style={{ padding: "4px 8px", borderRadius: 16, border: `1.5px solid ${zPendiente === pr.valor ? C.primary : C.border}`, background: zPendiente === pr.valor ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr.label}</button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                {zPendienteModo === "calcular_altura" && (
-                                  <StepperInput label="Diferencia de altura" value={zAlturaDif} onChange={v => updateZona(idx, "alturaDif", v)} min={0} max={10} step={0.1} unit="m" />
-                                )}
-                                {largoChanged && (
-                                  <div style={{ marginTop: 8, fontSize: 12, color: C.primary, fontWeight: 600 }}>
-                                    Largo real del panel: {largoReal.toFixed(3)} m <span style={{ fontWeight: 400, color: C.ts }}>(proyectado: {(zona.largo ?? 0).toFixed(2)} m)</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                          {!isLateralAnnexZona(zona) && (
-                            <Toggle
-                              label="2 Aguas (cumbrera central)"
-                              value={!!zona.dosAguas}
-                              onChange={v => {
-                                updateZona(idx, "dosAguas", v);
-                                const otrasZonas2A = (techo.zonas || []).filter((_, i) => i !== idx && !isLateralAnnexZona(techo.zonas[i])).some(z => z.dosAguas);
-                                if (v && techo.borders?.fondo === "gotero_lateral") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "cumbrera" } }));
-                                if (!v && !otrasZonas2A && techo.borders?.fondo === "cumbrera") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "gotero_lateral" } }));
-                              }}
-                            />
-                          )}
-                          {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && (
-                            <button
-                              type="button"
-                              onClick={() => uT("zonaPrincipalGi", idx)}
-                              style={{
-                                alignSelf: "flex-start",
-                                padding: "6px 10px",
-                                borderRadius: 8,
-                                border: `1px solid ${C.border}`,
-                                background: C.surfaceAlt,
-                                fontSize: 11,
-                                fontWeight: 500,
-                                cursor: "pointer",
-                                color: C.ts,
-                              }}
-                            >
-                              Usar esta zona como techo principal
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => addLateralAnnexForParent(idx)}
-                            style={{
-                              alignSelf: "stretch",
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              border: `1.5px solid rgba(99,102,241,0.45)`,
-                              background: "rgba(99,102,241,0.08)",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              color: "#4f46e5",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 6,
-                            }}
-                            title="Otro tramo con distinto largo o ancho de panel, pegado al costado de esta zona (mismo cuerpo de techo)"
-                          >
-                            <Plus size={16} />
-                            Otra medida (mismo cuerpo)
-                          </button>
                         </div>
                       ))}
+                      <ZonaExtensionTabs
+                        tabs={extensionTabs}
+                        activeId={dimensionesExtensionTab}
+                        onSelect={handleDimensionesExtensionTab}
+                      >
+                        {dimensionesExtensionTab === "vista" ? (
+                          <>
+                            {showRoof2dInQuoteVisor ? (
+                              <div style={{ fontSize: 12, color: C.ts, marginBottom: 12, lineHeight: 1.5 }}>
+                                También podés ver la planta ampliada en el <strong style={{ color: C.primary }}>panel derecho</strong>.
+                              </div>
+                            ) : null}
+                            {roofPreviewNode}
+                            {ENABLE_ROOF_3D_VISOR ? (
+                              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginTop: 14 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setRoofRealistic3dOn((v) => !v)}
+                                  style={{
+                                    padding: "8px 14px",
+                                    borderRadius: 10,
+                                    border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
+                                    background: roofRealistic3dOn ? C.primarySoft : C.surface,
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    color: roofRealistic3dOn ? C.primary : C.tp,
+                                  }}
+                                >
+                                  {roofRealistic3dOn ? "Ocultar render 3D" : "Ver render 3D"}
+                                </button>
+                              </div>
+                            ) : null}
+                            {ENABLE_ROOF_3D_VISOR && roofRealistic3dOn && techoPanelData ? (
+                              <div data-bmc-capture="roof-3d" style={{ marginTop: 14 }}>
+                                <Suspense
+                                  fallback={
+                                    <div style={{ padding: 40, textAlign: "center", color: C.ts, fontSize: 13, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                                      Cargando vista 3D…
+                                    </div>
+                                  }
+                                >
+                                  <RoofPanelRealisticScene
+                                    validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
+                                    tipoAguas={derivedTipoAguas}
+                                    pendiente={techo.pendiente}
+                                    familiaKey={techo.familia}
+                                    espesorMm={techo.espesor}
+                                    panelAu={techoPanelData?.au ?? 1.12}
+                                    techoColor={techo.color || ""}
+                                  />
+                                </Suspense>
+                              </div>
+                            ) : null}
+                          </>
+                        ) : dimensionesExtensionTab === "opciones" ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                            {zonasList.map((zona, idx) => (
+                              <div key={idx} style={{ padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: C.primary }}>{formatZonaDisplayTitle(techo.zonas || [], idx)}</div>
+                                {!isLateralAnnexZona(zona) && (
+                                  <Toggle
+                                    label="2 Aguas (cumbrera central)"
+                                    value={!!zona.dosAguas}
+                                    onChange={v => {
+                                      updateZona(idx, "dosAguas", v);
+                                      const otrasZonas2A = (techo.zonas || []).filter((_, i) => i !== idx && !isLateralAnnexZona(techo.zonas[i])).some(z => z.dosAguas);
+                                      if (v && techo.borders?.fondo === "gotero_lateral") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "cumbrera" } }));
+                                      if (!v && !otrasZonas2A && techo.borders?.fondo === "cumbrera") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "gotero_lateral" } }));
+                                    }}
+                                  />
+                                )}
+                                {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && !isLateralAnnexZona(zona) && (
+                                  <button type="button" onClick={() => uT("zonaPrincipalGi", idx)} style={{ alignSelf: "flex-start", padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, fontSize: 11, fontWeight: 600, cursor: "pointer", color: C.primary }}>
+                                    Usar como techo principal
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => addLateralAnnexForParent(idx)}
+                                  style={{ alignSelf: "stretch", padding: "8px 12px", borderRadius: 10, border: `1.5px solid rgba(99,102,241,0.45)`, background: "rgba(99,102,241,0.08)", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                                >
+                                  <Plus size={16} />
+                                  Otra medida (mismo cuerpo)
+                                </button>
+                                {(techo.zonas?.length || 0) > 1 && (() => {
+                                  const zPendienteModo = zona.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente";
+                                  const zPendiente = zona.pendiente ?? techo.pendiente ?? 0;
+                                  const zAlturaDif = zona.alturaDif ?? techo.alturaDif ?? 0;
+                                  const largoReal = calcLargoRealFromModo(zona.largo ?? 0, zPendienteModo, zPendiente, zAlturaDif);
+                                  const largoChanged = Math.abs(largoReal - (zona.largo ?? 0)) > 0.001;
+                                  return (
+                                    <div style={{ paddingTop: 8, borderTop: `1px dashed ${C.border}` }}>
+                                      <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Pendiente por zona</div>
+                                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                                        {PENDIENTE_MODOS.map(m => (
+                                          <button key={m.id} type="button" onClick={() => updateZona(idx, "pendienteModo", m.id)} style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${zPendienteModo === m.id ? C.primary : C.border}`, background: zPendienteModo === m.id ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: zPendienteModo === m.id ? C.primary : C.tp, fontWeight: zPendienteModo === m.id ? 700 : 400 }}>{m.label}</button>
+                                        ))}
+                                      </div>
+                                      {zPendienteModo === "calcular_pendiente" && (
+                                        <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+                                          <StepperInput label="Pendiente" value={zPendiente} onChange={v => updateZona(idx, "pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
+                                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", paddingBottom: 4 }}>
+                                            {PENDIENTES_PRESET.map(pr => (
+                                              <button key={pr.valor} type="button" onClick={() => updateZona(idx, "pendiente", pr.valor)} style={{ padding: "4px 8px", borderRadius: 16, border: `1.5px solid ${zPendiente === pr.valor ? C.primary : C.border}`, background: zPendiente === pr.valor ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr.label}</button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {zPendienteModo === "calcular_altura" && (
+                                        <StepperInput label="Diferencia de altura" value={zAlturaDif} onChange={v => updateZona(idx, "alturaDif", v)} min={0} max={10} step={0.1} unit="m" />
+                                      )}
+                                      {largoChanged && (
+                                        <div style={{ marginTop: 8, fontSize: 12, color: C.primary, fontWeight: 600 }}>
+                                          Largo real: {largoReal.toFixed(3)} m <span style={{ fontWeight: 400, color: C.ts }}>(proy. {(zona.largo ?? 0).toFixed(2)} m)</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ))}
+                          </div>
+                        ) : activePendienteModo ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: C.primary, marginBottom: 4 }}>{activePendienteModo.label}</div>
+                              <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5 }}>{activePendienteModo.desc}</div>
+                            </div>
+                            {activePendienteModo.id === "calcular_pendiente" && (
+                              <>
+                                <StepperInput label="Pendiente" value={techo.pendiente} onChange={v => uT("pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
+                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                  {PENDIENTES_PRESET.map(pr => (
+                                    <button key={pr.valor} type="button" onClick={() => uT("pendiente", pr.valor)} style={{ padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${techo.pendiente === pr.valor ? C.primary : C.border}`, background: techo.pendiente === pr.valor ? C.primarySoft : C.surface, fontSize: 12, cursor: "pointer", color: C.tp }}>{pr.label}</button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                            {activePendienteModo.id === "calcular_altura" && (
+                              <StepperInput label="Diferencia de altura (apoyo sup. − inf.)" value={techo.alturaDif ?? 0} onChange={v => uT("alturaDif", v)} min={0} max={10} step={0.1} unit="m" />
+                            )}
+                            {activePendienteModo.id === "incluye_pendiente" && (
+                              <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: "10px 12px", background: C.surfaceAlt, borderRadius: 8 }}>
+                                El largo ingresado arriba ya considera la pendiente — no se aplica factor adicional.
+                              </div>
+                            )}
+                            {(() => {
+                              const z0 = zonasList[0];
+                              if (!z0) return null;
+                              const largoReal = calcLargoRealFromModo(z0.largo ?? 0, activePendienteModo.id, techo.pendiente ?? 0, techo.alturaDif ?? 0);
+                              const largoChanged = activePendienteModo.id !== "incluye_pendiente" && Math.abs(largoReal - (z0.largo ?? 0)) > 0.001;
+                              if (!largoChanged) return null;
+                              return (
+                                <div style={{ fontSize: 12, color: C.primary, fontWeight: 600 }}>
+                                  Largo real del panel: {largoReal.toFixed(3)} m <span style={{ fontWeight: 400, color: C.ts }}>(proyectado: {(z0.largo ?? 0).toFixed(2)} m)</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        ) : null}
+                      </ZonaExtensionTabs>
+                          </>
+                        );
+                      })()}
                       <button
                         type="button"
                         onClick={addZona}
@@ -5583,158 +5904,128 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                         <Plus size={18} />
                         Otro cuerpo de techo
                       </button>
-                      {!showRoof2dInQuoteVisor ? (
-                        <RoofPreview
-                          zonas={techo.zonas || []}
-                          tipoAguas={derivedTipoAguas}
-                          pendiente={techo.pendiente}
-                          panelAu={techoPanelData?.au ?? 1.12}
-                          panelObj={techoPanelData ?? null}
-                          showPlantaExteriorCotas
-                          onZonaPreviewChange={updateZonaPreview}
-                          onResetLayout={resetRoofPreviewLayout}
-                          onAnnexRankSwap={swapAnnexRank}
-                          onAddZona={addZona}
-                          onRemoveZona={removeZona}
-                          onEncounterPairChange={onRoofEncounterPairChange}
-                          onZonaDimensionPatch={onRoofZonaDimensionPatch}
-                          pendienteModo={techo.pendienteModo || "incluye_pendiente"}
-                          globalAlturaDif={techo.alturaDif ?? 0}
-                          estructuraHintsByGi={roofEstructuraHintsByGi}
-                          combinadaFijacionAssign={combinadaRoof2dAssignActive}
-                          combinadaFijByGi={combinadaFijByGi}
-                          onCombinadaFijacionSync={handleCombinadaFijacionSync}
-                          combinadaPtsH={techo.ptsHorm ?? 0}
-                          combinadaPtsMetal={techo.ptsMetal ?? 0}
-                          combinadaPtsMadera={techo.ptsMadera ?? 0}
-                          fijDotOverridesByGi={fijDotOverridesByGi}
-                          onFijDotOverridesSync={handleFijDotOverridesSync}
-                          tipoEst={techo.tipoEst || "metal"}
-                          apoyoMateriales={apoyoMateriales}
-                          onApoyoMaterialCycle={handleApoyoMaterialCycle}
-                          onApoyoMaterialDirect={handleApoyoMaterialDirect}
-                          bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
-                          bordesPanelFamiliaKey={techo.familia || ""}
-                          bordesExtendido={techo.bordesExtendido ?? false}
-                          bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
-                          techoBorders={techo.borders}
-                          onTechoBorderChange={(side, val) =>
-                            setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
-                          }
-                          onZonaBorderChange={(gi, side, val) =>
-                            updateZonaPreview(gi, {
-                              borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
-                            })
-                          }
-                        />
-                      ) : null}
-                      {ENABLE_ROOF_3D_VISOR ? (
-                        <>
-                          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-                            <button
-                              type="button"
-                              onClick={() => setRoofRealistic3dOn((v) => !v)}
-                              style={{
-                                padding: "8px 14px",
-                                borderRadius: 10,
-                                border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
-                                background: roofRealistic3dOn ? C.primarySoft : C.surface,
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                                color: roofRealistic3dOn ? C.primary : C.tp,
-                              }}
-                            >
-                              {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
-                            </button>
-                            <CollapsibleHint title="Vista 3D" style={{ flex: 1, minWidth: 200 }}>
-                              Opcional: misma planta que la vista 2D, con imagen del panel elegido. Solo referencia visual.
-                            </CollapsibleHint>
-                          </div>
-                          {roofRealistic3dOn && techoPanelData ? (
-                            <div data-bmc-capture="roof-3d" style={{ marginBottom: 14 }}>
-                              <Suspense
-                                fallback={
-                                  <div
-                                    style={{
-                                      padding: 40,
-                                      textAlign: "center",
-                                      color: C.ts,
-                                      fontSize: 13,
-                                      background: C.surfaceAlt,
-                                      borderRadius: 10,
-                                      border: `1px solid ${C.border}`,
-                                    }}
-                                  >
-                                    Cargando vista 3D…
-                                  </div>
-                                }
-                              >
-                                <RoofPanelRealisticScene
-                                  validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
-                                  tipoAguas={derivedTipoAguas}
-                                  pendiente={techo.pendiente}
-                                  familiaKey={techo.familia}
-                                  espesorMm={techo.espesor}
-                                  panelAu={techoPanelData?.au ?? 1.12}
-                                  techoColor={techo.color || ""}
-                                />
-                              </Suspense>
-                            </div>
+                      {techoAnchoModo === "paneles" && techoPanelData ? (
+                        <CollapsibleHint title="Ayuda · paneles (ancho)" defaultOpen={false}>
+                          <span style={{ fontWeight: 700, color: C.tp }}>Paneles (ancho):</span>{" "}
+                          el ancho en planta se calcula como{" "}
+                          <strong style={{ color: C.primary }}>cantidad × {Number(techoPanelData.au ?? 1.12).toFixed(2)} m</strong>{" "}
+                          (ancho útil del panel según familia/espesor).
+                          {derivedTipoAguas === "dos_aguas" ? (
+                            <> En <strong>dos aguas</strong>, el ancho total de zona reparte el techo en dos faldones en la vista previa.</>
                           ) : null}
-                        </>
+                        </CollapsibleHint>
                       ) : null}
                     </div>
                   )}
-                  {stepId === "pendiente" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Modo de cálculo del largo</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {PENDIENTE_MODOS.map(m => {
-                            const activeModo = techo.pendienteModo || "incluye_pendiente";
-                            const isActive = activeModo === m.id;
-                            const confirmModo = () => {
-                              uT("pendienteModo", m.id);
-                              if (m.id === "incluye_pendiente") advanceWizardStep();
-                            };
-                            return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              title={m.id === "incluye_pendiente" ? "Doble clic para confirmar y continuar" : "Seleccionar modo de cálculo"}
-                              onClick={() => {
-                                if (isActive) confirmModo();
-                                else uT("pendienteModo", m.id);
-                              }}
-                              onDoubleClick={(e) => {
-                                e.preventDefault();
-                                confirmModo();
-                              }}
-                              style={{ padding: 12, borderRadius: 12, border: `2px solid ${isActive ? C.primary : C.border}`, background: isActive ? C.primarySoft : C.surface, textAlign: "left", cursor: "pointer", transition: TR, userSelect: "none" }}
-                            >
-                              <div style={{ fontSize: 13, fontWeight: 600, color: isActive ? C.primary : C.tp }}>{m.label}</div>
-                              <div style={{ fontSize: 11, color: C.ts, marginTop: 2 }}>{m.desc}</div>
-                            </button>
-                            );
-                          })}
+                  {stepId === "pendiente" && (() => {
+                    const zonasPend = techo.zonas?.length ? techo.zonas : [{ largo: 0, ancho: 0 }];
+                    const z0p = zonasPend[0];
+                    const pendienteTabId = PENDIENTE_MODOS.some((m) => m.id === dimensionesExtensionTab)
+                      ? dimensionesExtensionTab
+                      : (techo.pendienteModo || "incluye_pendiente");
+                    const activePendienteModoPaso = PENDIENTE_MODOS.find((m) => m.id === pendienteTabId) || PENDIENTE_MODOS[0];
+                    const pendienteTabs = PENDIENTE_STEP_TABS.map((t) => ({
+                      ...t,
+                      title: PENDIENTE_MODOS.find((m) => m.id === t.id)?.desc || t.label,
+                    }));
+                    const onPendienteTab = (tabId) => {
+                      if (tabId === "incluye_pendiente" && pendienteTabId === "incluye_pendiente") {
+                        uT("pendienteModo", tabId);
+                        advanceWizardStep();
+                        return;
+                      }
+                      handleDimensionesExtensionTab(tabId);
+                    };
+                    return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                      <div style={{ padding: "14px 16px", background: C.surfaceAlt, borderRadius: "12px 12px 0 0", border: `1.5px solid ${C.border}`, borderBottom: "none" }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Medidas de zona</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: C.primary, ...TN }}>
+                          {(Number(z0p?.largo) || 0).toFixed(2)} m × {(Number(z0p?.ancho) || 0).toFixed(2)} m
                         </div>
                       </div>
-                      {techo.pendienteModo === "calcular_pendiente" && (
-                        <>
-                          <StepperInput label="Pendiente" value={techo.pendiente} onChange={v => uT("pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
-                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                            {PENDIENTES_PRESET.map(pr => (
-                              <button key={pr.valor} onClick={() => uT("pendiente", pr.valor)} style={{ padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${techo.pendiente === pr.valor ? C.primary : C.border}`, background: techo.pendiente === pr.valor ? C.primarySoft : C.surface, fontSize: 12, cursor: "pointer", color: C.tp }}>{pr.label}</button>
-                            ))}
+                      <ZonaExtensionTabs tabs={pendienteTabs} activeId={pendienteTabId} onSelect={onPendienteTab}>
+                        {pendienteTabId === "vista" ? (
+                          showRoof2dInQuoteVisor ? (
+                            <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5 }}>
+                              La planta 2D está en el <strong style={{ color: C.primary }}>panel derecho</strong>. Volvé al paso Dimensiones para editarla aquí.
+                            </div>
+                          ) : (
+                            <RoofPreview
+                              zonas={techo.zonas || []}
+                              tipoAguas={derivedTipoAguas}
+                              pendiente={techo.pendiente}
+                              panelAu={techoPanelData?.au ?? 1.12}
+                              panelObj={techoPanelData ?? null}
+                              showPlantaExteriorCotas
+                              onZonaPreviewChange={updateZonaPreview}
+                              onResetLayout={resetRoofPreviewLayout}
+                              onAnnexRankSwap={swapAnnexRank}
+                              onAddZona={addZona}
+                              onRemoveZona={removeZona}
+                              onEncounterPairChange={onRoofEncounterPairChange}
+                              onZonaDimensionPatch={onRoofZonaDimensionPatch}
+                              pendienteModo={techo.pendienteModo || "incluye_pendiente"}
+                              globalAlturaDif={techo.alturaDif ?? 0}
+                              estructuraHintsByGi={roofEstructuraHintsByGi}
+                              combinadaFijacionAssign={combinadaRoof2dAssignActive}
+                              combinadaFijByGi={combinadaFijByGi}
+                              onCombinadaFijacionSync={handleCombinadaFijacionSync}
+                              combinadaPtsH={techo.ptsHorm ?? 0}
+                              combinadaPtsMetal={techo.ptsMetal ?? 0}
+                              combinadaPtsMadera={techo.ptsMadera ?? 0}
+                              fijDotOverridesByGi={fijDotOverridesByGi}
+                              onFijDotOverridesSync={handleFijDotOverridesSync}
+                              tipoEst={techo.tipoEst || "metal"}
+                              apoyoMateriales={apoyoMateriales}
+                              onApoyoMaterialCycle={handleApoyoMaterialCycle}
+                              onApoyoMaterialDirect={handleApoyoMaterialDirect}
+                              bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
+                              bordesPanelFamiliaKey={techo.familia || ""}
+                              bordesPanelEspesorMm={techo.espesor ?? null}
+                              bordesExtendido={techo.bordesExtendido ?? false}
+                              bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
+                              techoBorders={techo.borders}
+                              onTechoBorderChange={(side, val) =>
+                                setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
+                              }
+                              onZonaBorderChange={(gi, side, val) =>
+                                updateZonaPreview(gi, {
+                                  borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
+                                })
+                              }
+                            />
+                          )
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: C.primary, marginBottom: 4 }}>{activePendienteModoPaso.label}</div>
+                              <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5 }}>{activePendienteModoPaso.desc}</div>
+                            </div>
+                            {activePendienteModoPaso.id === "calcular_pendiente" && (
+                              <>
+                                <StepperInput label="Pendiente" value={techo.pendiente} onChange={v => uT("pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
+                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                  {PENDIENTES_PRESET.map(pr => (
+                                    <button key={pr.valor} type="button" onClick={() => uT("pendiente", pr.valor)} style={{ padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${techo.pendiente === pr.valor ? C.primary : C.border}`, background: techo.pendiente === pr.valor ? C.primarySoft : C.surface, fontSize: 12, cursor: "pointer", color: C.tp }}>{pr.label}</button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                            {activePendienteModoPaso.id === "calcular_altura" && (
+                              <StepperInput label="Diferencia de altura (apoyo sup. − inf.)" value={techo.alturaDif ?? 0} onChange={v => uT("alturaDif", v)} min={0} max={10} step={0.1} unit="m" />
+                            )}
+                            {activePendienteModoPaso.id === "incluye_pendiente" && (
+                              <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: "10px 12px", background: C.surfaceAlt, borderRadius: 8 }}>
+                                El largo ingresado ya es el real del panel. Doble clic en esta pestaña o Enter para continuar.
+                              </div>
+                            )}
                           </div>
-                        </>
-                      )}
-                      {techo.pendienteModo === "calcular_altura" && (
-                        <StepperInput label="Diferencia de altura (apoyo sup. − inf.)" value={techo.alturaDif ?? 0} onChange={v => uT("alturaDif", v)} min={0} max={10} step={0.1} unit="m" />
-                      )}
+                        )}
+                      </ZonaExtensionTabs>
                     </div>
-                  )}
+                    );
+                  })()}
                   {stepId === "estructura" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                       <SegmentedControl
@@ -6178,162 +6469,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               </div>
             </div>
           </div>
-
-          {/* Datos proyecto (colapsable) */}
-          <details style={{ ...sectionS, padding: 0 }}>
-            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              DATOS DEL PROYECTO {proyecto.nombre && <span style={{ fontSize: 11, fontWeight: 400, color: C.tp }}>· {proyecto.nombre}</span>}
-            </summary>
-            <div style={{ padding: "0 20px 20px" }}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: 10 }}>
-                {proyecto.tipoCliente === "empresa" ? (
-                  <>
-                    <div><div style={labelS}>Razón Social</div><input style={inputS} value={proyecto.razonSocial || ""} onChange={e => uPr("razonSocial", e.target.value)} /></div>
-                    <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>
-                    <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
-                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} placeholder="Obligatorio" /></div>
-                    <div><div style={labelS}>Nombre del cliente de referencia <span style={{ fontWeight: 400, color: C.tt }}>(opcional)</span></div><input style={inputS} value={proyecto.nombreRefCliente || ""} onChange={e => uPr("nombreRefCliente", e.target.value)} placeholder="Persona de contacto" /></div>
-                  </>
-                ) : (
-                  <>
-                    <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
-                    <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
-                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} placeholder="Obligatorio" /></div>
-                  </>
-                )}
-                <div style={{ gridColumn: "1/-1" }}>
-                  <div style={labelS}>Descripción obra</div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                    {OBRA_PRESETS.slice(0, 6).map(pr => <button key={pr} onClick={() => uPr("descripcion", pr)} style={{ padding: "3px 10px", borderRadius: 20, border: `1px solid ${proyecto.descripcion === pr ? C.primary : C.border}`, background: proyecto.descripcion === pr ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr}</button>)}
-                  </div>
-                  <input style={inputS} value={proyecto.descripcion} onChange={e => uPr("descripcion", e.target.value)} placeholder="Descripción libre..." />
-                </div>
-                <div><div style={labelS}>Ref. interna</div><input style={inputS} value={proyecto.refInterna} onChange={e => uPr("refInterna", e.target.value)} /></div>
-                <div><div style={labelS}>Fecha</div><input style={inputS} value={proyecto.fecha} onChange={e => uPr("fecha", e.target.value)} /></div>
-              </div>
-            </div>
-          </details>
-
-          {/* Productos manuales (presupuesto libre) — disponible en cualquier escenario.
-              Abierto por defecto en el escenario dedicado; colapsado como aditivo. */}
-          <details style={{ ...sectionS, padding: 0 }} open={manualLibreOpen} onToggle={(e) => setManualLibreOpen(e.currentTarget.open)}>
-            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none" }}>
-              {scenarioDef?.isLibre ? "PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA" : "AGREGAR PRODUCTOS MANUALES (PRESUPUESTO LIBRE)"}
-            </summary>
-            <div style={{ padding: "0 20px 20px" }}>
-            <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>{scenarioDef?.isLibre ? "Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en " : "Líneas manuales que se suman al presupuesto de este escenario. Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en "}<b>Extraordinarios</b> son opcionales.</div>
-
-            <LibreAccordionBar title="Paneles" open={libreAcc.paneles} onToggle={() => toggleLibreAcc("paneles")}>
-              {librePanelLines.map((line, idx) => {
-                const pt = libreCatalog?.PANELS_TECHO || PANELS_TECHO;
-                const pp = libreCatalog?.PANELS_PARED || PANELS_PARED;
-                const all = { ...pt, ...pp };
-                const pd = line.familia ? all[line.familia] : null;
-                const espOpts = pd ? Object.keys(pd.esp).map((e) => ({ value: Number(e), label: `${e} mm`, badge: pd.esp[e].ap ? `AP ${pd.esp[e].ap}m` : undefined })) : [];
-                return (
-                  <div key={idx} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: idx < librePanelLines.length - 1 ? `1px solid ${C.border}` : "none" }}>
-                    <CustomSelect label="Familia" value={line.familia} options={libreFamiliaOpts} onChange={(v) => {
-                      const pan = all[v];
-                      const fe = pan ? Number(Object.keys(pan.esp)[0]) : "";
-                      const col0 = pan?.col?.[0] || "Blanco";
-                      updateLibrePanelLine(idx, { familia: v, espesor: fe, color: col0 });
-                    }} />
-                    {pd && <>
-                      <div style={{ marginTop: 12 }}>
-                        <CustomSelect label="Espesor" value={line.espesor} options={espOpts} onChange={(ev) => updateLibrePanelLine(idx, { espesor: ev })} showBadge />
-                      </div>
-                      <div style={{ marginTop: 12 }}>
-                        <div style={labelS}>Color</div>
-                        <ColorChips colors={pd.col} value={line.color} onChange={(c) => updateLibrePanelLine(idx, { color: c })} onHover={line.tipo === "techo" ? setHoverTechoColor : setHoverParedColor} notes={pd.colNotes || {}} familia={line.familia} />
-                      </div>
-                    </>}
-                    <div style={{ marginTop: 12 }}>
-                      <StepperInput label="M² a cotizar" value={line.m2} onChange={(v) => updateLibrePanelLine(idx, { m2: v })} min={0} max={999999} step={1} unit="m²" />
-                    </div>
-                    {librePanelLines.length > 1 && (
-                      <button type="button" onClick={() => removeLibrePanelLine(idx)} style={{ marginTop: 10, padding: "6px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 12, cursor: "pointer", color: C.danger }}>Quitar línea</button>
-                    )}
-                  </div>
-                );
-              })}
-              <button type="button" onClick={addLibrePanelLine} style={{ marginTop: 4, padding: "8px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 13, cursor: "pointer", color: C.primary, fontWeight: 500 }}>+ Agregar panel</button>
-            </LibreAccordionBar>
-
-            <LibreAccordionBar title="Perfilería" open={libreAcc.perfileria} onToggle={() => toggleLibreAcc("perfileria")}>
-              <input style={{ ...inputS, marginBottom: 12 }} value={librePerfilFilter} onChange={(e) => setLibrePerfilFilter(e.target.value)} placeholder="Filtrar por nombre o SKU…" />
-              <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-                {librePerfilFiltered.map((row) => (
-                  <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
-                    <span style={{ flex: "1 1 200px", fontSize: 12, color: C.tp }}>{row.label}</span>
-                    <StepperInput label="Cant. barras" value={librePerfilQty[row.id] || 0} onChange={(v) => setLibrePerfilQty((q) => ({ ...q, [row.id]: v }))} min={0} max={9999} step={1} decimals={0} />
-                  </div>
-                ))}
-              </div>
-            </LibreAccordionBar>
-
-            <LibreAccordionBar title="Tornillería y herrajes" open={libreAcc.tornilleria} onToggle={() => toggleLibreAcc("tornilleria")}>
-              <div style={{ maxHeight: 280, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-                {libreTornilleriaKeys.map((key) => {
-                  const F = libreCatalog?.FIJACIONES || FIJACIONES;
-                  const H = libreCatalog?.HERRAMIENTAS || HERRAMIENTAS;
-                  const row = F[key] || H[key];
-                  if (!row) return null;
-                  return (
-                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
-                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{row.label}</span>
-                      <span style={{ fontSize: 11, color: C.tt }}>{row.unidad || "unid"}</span>
-                      <StepperInput label="Cant." value={libreFijQty[key] || 0} onChange={(v) => setLibreFijQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
-                    </div>
-                  );
-                })}
-              </div>
-            </LibreAccordionBar>
-
-            <LibreAccordionBar title="Selladores" open={libreAcc.selladores} onToggle={() => toggleLibreAcc("selladores")}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {libreSelladorKeys.map((key) => {
-                  const S = libreCatalog?.SELLADORES || SELLADORES;
-                  const s = S[key];
-                  if (!s) return null;
-                  return (
-                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
-                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{s.label}</span>
-                      <span style={{ fontSize: 11, color: C.tt }}>{s.unidad || "unid"}</span>
-                      <StepperInput label="Cant." value={libreSellQty[key] || 0} onChange={(v) => setLibreSellQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
-                    </div>
-                  );
-                })}
-              </div>
-            </LibreAccordionBar>
-
-            {/* Servicios/Flete: solo en el escenario dedicado. En modo aditivo el flete
-                ya lo controla el paso "Flete" del wizard (mismo estado global). */}
-            {scenarioDef?.isLibre && (
-            <LibreAccordionBar title="Servicios" open={libreAcc.servicios} onToggle={() => toggleLibreAcc("servicios")}>
-              <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
-              <div style={{ fontSize: 12, color: C.ts, marginTop: 8 }}>Se suma al presupuesto como servicio con el importe indicado.</div>
-              <div style={{ marginTop: 8 }}>
-                <div style={labelS}>Costo interno flete (USD s/IVA, opcional)</div>
-                <input style={inputS} value={fleteCosto} onChange={e => setFleteCosto(e.target.value)} placeholder="—" inputMode="decimal" />
-              </div>
-            </LibreAccordionBar>
-            )}
-
-            <LibreAccordionBar title="Extraordinarios" open={libreAcc.extraordinarios} onToggle={() => toggleLibreAcc("extraordinarios")}>
-              <div style={{ marginBottom: 10 }}><div style={labelS}>Descripción / texto libre</div>
-                <textarea value={libreExtra.texto} onChange={(e) => setLibreExtra((x) => ({ ...x, texto: e.target.value }))} rows={4} placeholder="Escribí la partida…" style={{ ...inputS, resize: "vertical", minHeight: 88 }} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: threeCol, gap: 10 }}>
-                <div><div style={labelS}>Precio (USD s/IVA, opcional)</div><input style={inputS} value={libreExtra.precio} onChange={(e) => setLibreExtra((x) => ({ ...x, precio: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
-                <div><div style={labelS}>Unidades (opcional)</div><input style={inputS} value={libreExtra.unidades} onChange={(e) => setLibreExtra((x) => ({ ...x, unidades: e.target.value }))} placeholder="ej. unid, m²" /></div>
-                <div><div style={labelS}>Cantidad (opcional)</div><input style={inputS} value={libreExtra.cantidad} onChange={(e) => setLibreExtra((x) => ({ ...x, cantidad: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
-              </div>
-            </LibreAccordionBar>
-            </div>
-          </details>
 
           {/* Panel selector — TECHO */}
           {scenarioDef?.hasTecho && <div ref={panelRef} style={sectionS}>
@@ -6902,6 +7037,291 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           </div>}
             </>
           )}
+
+          {/* Datos del proyecto + presupuesto libre — siempre en el panel izquierdo (también en wizard Solo techo) */}
+          <details
+            ref={proyectoQuickRef}
+            data-tutorial-id="calc-proyecto-datos"
+            style={{ ...sectionS, padding: 0 }}
+            open={proyectoQuickOpen}
+            onToggle={(e) => setProyectoQuickOpen(e.currentTarget.open)}
+          >
+            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span>DATOS DEL PROYECTO {proyecto.nombre && <span style={{ fontSize: 11, fontWeight: 400, color: C.tp }}>· {proyecto.nombre}</span>}</span>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowDrivePanel(true); }}
+                style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 11, fontWeight: 600, color: C.primary, cursor: "pointer" }}
+              >
+                Cargar desde Drive
+              </button>
+            </summary>
+            <div style={{ padding: "0 20px 20px" }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: 10 }}>
+                {proyecto.tipoCliente === "empresa" ? (
+                  <>
+                    <div><div style={labelS}>Razón Social</div><input style={inputS} value={proyecto.razonSocial || ""} onChange={e => uPr("razonSocial", e.target.value)} /></div>
+                    <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>
+                    <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
+                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} placeholder="Obligatorio" /></div>
+                    <div><div style={labelS}>Nombre del cliente de referencia <span style={{ fontWeight: 400, color: C.tt }}>(opcional)</span></div><input style={inputS} value={proyecto.nombreRefCliente || ""} onChange={e => uPr("nombreRefCliente", e.target.value)} placeholder="Persona de contacto" /></div>
+                  </>
+                ) : (
+                  <>
+                    <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
+                    <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
+                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} placeholder="Obligatorio" /></div>
+                  </>
+                )}
+                <div style={{ gridColumn: "1/-1" }}>
+                  <div style={labelS}>Descripción obra</div>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
+                    {OBRA_PRESETS.slice(0, 6).map(pr => <button key={pr} type="button" onClick={() => uPr("descripcion", pr)} style={{ padding: "3px 10px", borderRadius: 20, border: `1px solid ${proyecto.descripcion === pr ? C.primary : C.border}`, background: proyecto.descripcion === pr ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr}</button>)}
+                  </div>
+                  <input style={inputS} value={proyecto.descripcion} onChange={e => uPr("descripcion", e.target.value)} placeholder="Descripción libre..." />
+                </div>
+                <div><div style={labelS}>Ref. interna</div><input style={inputS} value={proyecto.refInterna} onChange={e => uPr("refInterna", e.target.value)} /></div>
+                <div><div style={labelS}>Fecha</div><input style={inputS} value={proyecto.fecha} onChange={e => uPr("fecha", e.target.value)} /></div>
+              </div>
+            </div>
+          </details>
+
+          <details
+            ref={manualLibreRef}
+            data-tutorial-id="calc-presupuesto-libre"
+            style={{ ...sectionS, padding: 0 }}
+            open={manualLibreOpen}
+            onToggle={(e) => setManualLibreOpen(e.currentTarget.open)}
+          >
+            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none" }}>
+              {scenarioDef?.isLibre ? "PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA" : "AGREGAR PRODUCTOS MANUALES (PRESUPUESTO LIBRE)"}
+            </summary>
+            <div style={{ padding: "0 20px 20px" }}>
+            <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>{scenarioDef?.isLibre ? "Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en " : "Líneas manuales que se suman al presupuesto de este escenario. Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en "}<b>Extraordinarios</b> son opcionales.</div>
+
+            <LibreAccordionBar title="Paneles" open={libreAcc.paneles} onToggle={() => toggleLibreAcc("paneles")}>
+              {librePanelLines.map((line, idx) => {
+                const pt = libreCatalog?.PANELS_TECHO || PANELS_TECHO;
+                const pp = libreCatalog?.PANELS_PARED || PANELS_PARED;
+                const all = { ...pt, ...pp };
+                const pd = line.familia ? all[line.familia] : null;
+                const espOpts = pd ? Object.keys(pd.esp).map((e) => ({ value: Number(e), label: `${e} mm`, badge: pd.esp[e].ap ? `AP ${pd.esp[e].ap}m` : undefined })) : [];
+                const inputModo = line.inputModo === "m2" ? "m2" : "dimensiones";
+                const anchoModo = line.anchoModo === "metros" ? "metros" : "paneles";
+                const tramos = line.tramos?.length ? line.tramos : [{ largo: 6 }];
+                const metrics = computeLibrePanelLineMetrics(line, libreCatalog || {});
+                return (
+                  <div key={idx} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: idx < librePanelLines.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                    <CustomSelect label="Familia" value={line.familia} options={libreFamiliaOpts} onChange={(v) => {
+                      const pan = all[v];
+                      const fe = pan ? Number(Object.keys(pan.esp)[0]) : "";
+                      const col0 = pan?.col?.[0] || "Blanco";
+                      const anchoDef = librePanelDefaultAnchoFor(pan);
+                      updateLibrePanelLine(idx, {
+                        familia: v,
+                        espesor: fe,
+                        color: col0,
+                        panelesAncho: anchoDef.panelesAncho,
+                        anchoM: anchoDef.anchoM,
+                        tramos: line.tramos?.length ? line.tramos : [defaultLibrePanelTramo()],
+                      });
+                    }} />
+                    {pd && <>
+                      <div style={{ marginTop: 12 }}>
+                        <CustomSelect label="Espesor" value={line.espesor} options={espOpts} onChange={(ev) => updateLibrePanelLine(idx, { espesor: ev })} showBadge />
+                      </div>
+                      <div style={{ marginTop: 12 }}>
+                        <div style={labelS}>Color</div>
+                        <ColorChips colors={pd.col} value={line.color} onChange={(c) => updateLibrePanelLine(idx, { color: c })} onHover={line.tipo === "techo" ? setHoverTechoColor : setHoverParedColor} notes={pd.colNotes || {}} familia={line.familia} />
+                      </div>
+                    </>}
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Forma de carga</div>
+                      <SegmentedControl
+                        value={inputModo}
+                        onChange={(v) => updateLibrePanelLine(idx, { inputModo: v })}
+                        options={[{ id: "dimensiones", label: "Por medidas (Solo techo)" }, { id: "m2", label: "M² directo" }]}
+                      />
+                    </div>
+                    {inputModo === "dimensiones" && pd ? (
+                      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ancho del techo</div>
+                          <SegmentedControl
+                            value={anchoModo}
+                            onChange={(v) => updateLibrePanelLine(idx, { anchoModo: v })}
+                            options={[{ id: "paneles", label: "Paneles (cantidad)" }, { id: "metros", label: "Metros" }]}
+                          />
+                        </div>
+                        <div data-stepper-group style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+                          {anchoModo === "paneles" ? (
+                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                              <StepperInput
+                                size="large"
+                                label="Paneles (ancho)"
+                                value={line.panelesAncho ?? 9}
+                                onChange={(v) => updateLibrePanelLine(idx, { panelesAncho: v })}
+                                min={1}
+                                max={500}
+                                step={1}
+                                unit="pan."
+                                decimals={0}
+                                chainFocus
+                              />
+                            </div>
+                          ) : (
+                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                              <StepperInput
+                                size="large"
+                                label="Ancho (m)"
+                                value={line.anchoM ?? 0}
+                                onChange={(v) => updateLibrePanelLine(idx, { anchoM: v })}
+                                min={0}
+                                max={200}
+                                step={0.01}
+                                unit="m"
+                                decimals={2}
+                                chainFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Largos en esta zona / techo</div>
+                          {tramos.map((tramo, tIdx) => (
+                            <div key={tIdx} style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                              <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                                <StepperInput
+                                  size="large"
+                                  label={tramos.length > 1 ? `Largo tramo ${tIdx + 1} (m)` : "Largo (m)"}
+                                  value={tramo.largo ?? 0}
+                                  onChange={(v) => updateLibrePanelTramo(idx, tIdx, { largo: v })}
+                                  min={0}
+                                  max={30}
+                                  step={0.01}
+                                  unit="m"
+                                  decimals={2}
+                                  chainFocus={tIdx < tramos.length - 1}
+                                />
+                              </div>
+                              {tramos.length > 1 && (
+                                <button type="button" onClick={() => removeLibrePanelTramo(idx, tIdx)} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 12, cursor: "pointer", color: C.danger, marginBottom: 2 }}>
+                                  Quitar tramo
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => addLibrePanelTramo(idx)} style={{ padding: "8px 14px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 12, cursor: "pointer", color: C.primary, fontWeight: 600 }}>
+                            + Otro largo (misma zona)
+                          </button>
+                        </div>
+                        {metrics.tramosDetail?.length > 0 && (
+                          <div style={{ padding: "12px 14px", background: C.primarySoft, borderRadius: 10, border: `1px solid rgba(0,113,227,0.2)` }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.primary, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Detalle de paneles</div>
+                            {metrics.tramosDetail.map((t) => (
+                              <div key={t.idx} style={{ fontSize: 12, color: C.tp, lineHeight: 1.6, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                                <span>
+                                  <strong style={{ color: C.primary }}>{t.cantPaneles} paneles</strong>
+                                  {" "}× <strong>{t.largo.toFixed(2)} m</strong>
+                                  <span style={{ color: C.ts }}> (ancho útil {t.au.toFixed(2)} m)</span>
+                                </span>
+                                <span style={{ fontWeight: 600, ...TN }}>{t.areaM2.toFixed(2)} m²</span>
+                              </div>
+                            ))}
+                            <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid rgba(0,113,227,0.15)`, display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: C.primary }}>
+                              <span>{metrics.totalPaneles} paneles en total</span>
+                              <span style={{ ...TN }}>{metrics.m2.toFixed(2)} m²</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 12 }}>
+                        <StepperInput label="M² a cotizar" value={line.m2} onChange={(v) => updateLibrePanelLine(idx, { m2: v })} min={0} max={999999} step={1} unit="m²" />
+                      </div>
+                    )}
+                    {librePanelLines.length > 1 && (
+                      <button type="button" onClick={() => removeLibrePanelLine(idx)} style={{ marginTop: 10, padding: "6px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 12, cursor: "pointer", color: C.danger }}>Quitar línea</button>
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" onClick={addLibrePanelLine} style={{ marginTop: 4, padding: "8px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 13, cursor: "pointer", color: C.primary, fontWeight: 500 }}>+ Agregar panel</button>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Perfilería" open={libreAcc.perfileria} onToggle={() => toggleLibreAcc("perfileria")}>
+              <input style={{ ...inputS, marginBottom: 12 }} value={librePerfilFilter} onChange={(e) => setLibrePerfilFilter(e.target.value)} placeholder="Filtrar por nombre o SKU…" />
+              <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                {librePerfilFiltered.map((row) => (
+                  <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
+                    <span style={{ flex: "1 1 200px", fontSize: 12, color: C.tp }}>{row.label}</span>
+                    <StepperInput label="Cant. barras" value={librePerfilQty[row.id] || 0} onChange={(v) => setLibrePerfilQty((q) => ({ ...q, [row.id]: v }))} min={0} max={9999} step={1} decimals={0} />
+                  </div>
+                ))}
+              </div>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Tornillería y herrajes" open={libreAcc.tornilleria} onToggle={() => toggleLibreAcc("tornilleria")}>
+              <div style={{ maxHeight: 280, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                {libreTornilleriaKeys.map((key) => {
+                  const F = libreCatalog?.FIJACIONES || FIJACIONES;
+                  const H = libreCatalog?.HERRAMIENTAS || HERRAMIENTAS;
+                  const row = F[key] || H[key];
+                  if (!row) return null;
+                  return (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
+                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{row.label}</span>
+                      <span style={{ fontSize: 11, color: C.tt }}>{row.unidad || "unid"}</span>
+                      <StepperInput label="Cant." value={libreFijQty[key] || 0} onChange={(v) => setLibreFijQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
+                    </div>
+                  );
+                })}
+              </div>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Selladores" open={libreAcc.selladores} onToggle={() => toggleLibreAcc("selladores")}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {libreSelladorKeys.map((key) => {
+                  const S = libreCatalog?.SELLADORES || SELLADORES;
+                  const s = S[key];
+                  if (!s) return null;
+                  return (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
+                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{s.label}</span>
+                      <span style={{ fontSize: 11, color: C.tt }}>{s.unidad || "unid"}</span>
+                      <StepperInput label="Cant." value={libreSellQty[key] || 0} onChange={(v) => setLibreSellQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
+                    </div>
+                  );
+                })}
+              </div>
+            </LibreAccordionBar>
+
+            {scenarioDef?.isLibre && (
+            <LibreAccordionBar title="Servicios" open={libreAcc.servicios} onToggle={() => toggleLibreAcc("servicios")}>
+              <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
+              <div style={{ fontSize: 12, color: C.ts, marginTop: 8 }}>Se suma al presupuesto como servicio con el importe indicado.</div>
+              <div style={{ marginTop: 8 }}>
+                <div style={labelS}>Costo interno flete (USD s/IVA, opcional)</div>
+                <input style={inputS} value={fleteCosto} onChange={e => setFleteCosto(e.target.value)} placeholder="—" inputMode="decimal" />
+              </div>
+            </LibreAccordionBar>
+            )}
+
+            <LibreAccordionBar title="Extraordinarios" open={libreAcc.extraordinarios} onToggle={() => toggleLibreAcc("extraordinarios")}>
+              <div style={{ marginBottom: 10 }}><div style={labelS}>Descripción / texto libre</div>
+                <textarea value={libreExtra.texto} onChange={(e) => setLibreExtra((x) => ({ ...x, texto: e.target.value }))} rows={4} placeholder="Escribí la partida…" style={{ ...inputS, resize: "vertical", minHeight: 88 }} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: threeCol, gap: 10 }}>
+                <div><div style={labelS}>Precio (USD s/IVA, opcional)</div><input style={inputS} value={libreExtra.precio} onChange={(e) => setLibreExtra((x) => ({ ...x, precio: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
+                <div><div style={labelS}>Unidades (opcional)</div><input style={inputS} value={libreExtra.unidades} onChange={(e) => setLibreExtra((x) => ({ ...x, unidades: e.target.value }))} placeholder="ej. unid, m²" /></div>
+                <div><div style={labelS}>Cantidad (opcional)</div><input style={inputS} value={libreExtra.cantidad} onChange={(e) => setLibreExtra((x) => ({ ...x, cantidad: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
+              </div>
+            </LibreAccordionBar>
+            </div>
+          </details>
         </div>
         </Panel>
         <PanelResizeHandle
@@ -6997,6 +7417,28 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
           {results?.error && <AlertBanner type="danger" message={results.error} />}
 
+          {/* Sticky total — visible al scrollear el BOM en desktop */}
+          {groups.length > 0 && !isCompactLayout && (
+            <div style={{
+              position: "sticky",
+              top: 0,
+              zIndex: 12,
+              marginBottom: 12,
+              padding: "10px 14px",
+              borderRadius: 12,
+              background: C.dark,
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.75, letterSpacing: "0.04em" }}>TOTAL c/IVA</span>
+              <span style={{ fontSize: 22, fontWeight: 800, ...TN }}>USD {fmtPrice(grandTotal.totalFinal)}</span>
+            </div>
+          )}
+
           {/* BOM Table */}
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
             {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} onExclude={handleExclude} />)}
@@ -7036,20 +7478,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Lista de precios toggle — visible en wizard cuando hay cotización */}
-          {modoVendedor && scenario === "solo_techo" && groups.length > 0 && (
-            <div style={{ marginBottom: 12, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12, border: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-                Lista de precios
-              </div>
-              <SegmentedControl
-                value={listaPrecios || "web"}
-                onChange={v => setLP(v)}
-                options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]}
-              />
             </div>
           )}
 

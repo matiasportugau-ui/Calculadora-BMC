@@ -44,7 +44,7 @@ const aiJobsWrites = (pool) =>
 assert(
   "ALLOWED_AI_JOB_TYPES matches DB constraint set",
   JSON.stringify([...ALLOWED_AI_JOB_TYPES].sort()) ===
-    JSON.stringify(["classify", "embed", "extract_deal", "suggest", "wa_crm_sync"]),
+    JSON.stringify(["assist", "classify", "embed", "extract_deal", "suggest", "wa_crm_sync"]),
 );
 
 await (async () => {

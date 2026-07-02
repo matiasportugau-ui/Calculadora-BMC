@@ -8,10 +8,11 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, HelpCircle, Trash2 } from "lucide-react";
+import { HelpCircle, Trash2 } from "lucide-react";
 import { isCompactMainLayoutWidth, isPhoneViewportWidth } from "../constants/viewportBreakpoints.js";
 import { BORDER_OPTIONS, C, FONT, PANELS_TECHO, PERFIL_TECHO, TR } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
+import PlantaBorderGlassPicker from "./PlantaBorderGlassPicker.jsx";
 import { calcFactorPendiente, calcLargoRealFromModo } from "../utils/calculations.js";
 import { useRoofPreviewPlanLayout } from "../hooks/useRoofPreviewPlanLayout.js";
 import { encounterPairKey, findEncounters, getSharedSidesPerZona } from "../utils/roofPlanGeometry.js";
@@ -1273,6 +1274,8 @@ function PlantaBordesEdgeStrips({
   openGi,
   openSide,
   onStripPointerDown,
+  onStripPointerEnter,
+  onStripPointerLeave,
   bordesPanelFamiliaKey = "",
   plantRects,
   exteriorIntervals = null,
@@ -1429,8 +1432,16 @@ function PlantaBordesEdgeStrips({
                 cursor: dis ? "not-allowed" : "pointer",
                 transition: "fill 120ms ease, stroke 120ms ease",
               }}
-              onMouseEnter={() => { if (!dis) setHoveredSide(side); }}
-              onMouseLeave={() => setHoveredSide(null)}
+              onMouseEnter={(ev) => {
+                if (!dis) {
+                  setHoveredSide(side);
+                  onStripPointerEnter?.(ev, gi, side);
+                }
+              }}
+              onMouseLeave={() => {
+                setHoveredSide(null);
+                onStripPointerLeave?.();
+              }}
               onPointerDown={(ev) => {
                 if (dis) return;
                 ev.stopPropagation();
@@ -1807,6 +1818,7 @@ export function RoofPreviewMetricsSidebar({
  * @param {number} [props.combinadaPtsMadera]
  * @param {boolean} [props.bordesPlantaAssign] - paso Accesorios perimetrales: bandas en planta + popover (como 3D)
  * @param {string} [props.bordesPanelFamiliaKey] - clave `PANELS_TECHO` (p. ej. techo.familia) para filtrar BORDER_OPTIONS
+ * @param {number|null} [props.bordesPanelEspesorMm] - espesor del panel (p. ej. techo.espesor) para SKU en tarjeta de producto
  * @param {Record<string, string>|null} [props.techoBorders] - bordes globales (`techo.borders`)
  * @param {(side: string, val: string) => void} [props.onTechoBorderChange] - una sola zona efectiva en planta
  * @param {(gi: number, side: string, val: string) => void} [props.onZonaBorderChange] - multizona
@@ -1846,6 +1858,7 @@ export default function RoofPreview({
   onFijDotOverridesSync = null,
   bordesPlantaAssign = false,
   bordesPanelFamiliaKey = "",
+  bordesPanelEspesorMm = null,
   bordesExtendido = false,
   bordesCualquierFamilia = false,
   techoBorders = null,
@@ -1865,6 +1878,9 @@ export default function RoofPreview({
   const plantaPanelPickBeforeLiteRef = useRef(null);
   const [plantaBorderPick, setPlantaBorderPick] = useState(null);
   const [plantaBorderPopoverStyle, setPlantaBorderPopoverStyle] = useState(null);
+  const [plantaBorderHoverOptId, setPlantaBorderHoverOptId] = useState(null);
+  const plantaBorderCloseTimerRef = useRef(null);
+  const plantaBorderInPopoverRef = useRef(false);
   const [dragOverlay, setDragOverlay] = useState(null);
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [plantaHelpOpen, setPlantaHelpOpen] = useState(false);
@@ -1984,20 +2000,16 @@ export default function RoofPreview({
     const popRect = popEl.getBoundingClientRect();
     if (popRect.width === 0 || popRect.height === 0) return;
     const vpPad = 10;
-    const gap = 10;
+    const gap = 14;
     const vw = typeof window !== "undefined" ? window.innerWidth : 800;
     const vh = typeof window !== "undefined" ? window.innerHeight : 600;
-    const { ax, ay, side } = plantaBorderPick;
-    const canBottom = ay + gap + popRect.height + vpPad <= vh;
-    const canTop = ay - gap - popRect.height - vpPad >= 0;
-    let top =
-      side === "fondo"
-        ? (canTop || !canBottom ? ay - gap - popRect.height : ay + gap)
-        : side === "frente"
-          ? (canBottom || !canTop ? ay + gap : ay - gap - popRect.height)
-          : ay - popRect.height / 2;
-    let left = ax - popRect.width / 2;
+    const { ax, ay } = plantaBorderPick;
+    let left = ax + gap;
+    if (left + popRect.width + vpPad > vw) {
+      left = ax - gap - popRect.width;
+    }
     left = Math.min(Math.max(vpPad, left), vw - popRect.width - vpPad);
+    let top = ay - popRect.height / 2;
     top = Math.min(Math.max(vpPad, top), vh - popRect.height - vpPad);
     setPlantaBorderPopoverStyle({ top, left, opacity: 1 });
   }, [plantaBorderPick]);
@@ -2009,6 +2021,21 @@ export default function RoofPreview({
 
   useEffect(() => {
     if (!plantaBorderPick) return;
+    const { gi, side } = plantaBorderPick;
+    const curVal = resolvePlantaBorderEffectiveValue(
+      gi,
+      side,
+      multiZonaBordes,
+      bordersGlobalForPlanta,
+      zonas,
+      bordesSharedSidesMap,
+      layout.entries,
+    );
+    setPlantaBorderHoverOptId(curVal || "none");
+  }, [plantaBorderPick?.gi, plantaBorderPick?.side, multiZonaBordes, bordersGlobalForPlanta, zonas, bordesSharedSidesMap, layout.entries]);
+
+  useEffect(() => {
+    if (!plantaBorderPick) return;
     window.addEventListener("resize", positionPlantaBorderPopover);
     window.addEventListener("scroll", positionPlantaBorderPopover, true);
     return () => {
@@ -2017,12 +2044,42 @@ export default function RoofPreview({
     };
   }, [plantaBorderPick, positionPlantaBorderPopover]);
 
+  const clearPlantaBorderCloseTimer = useCallback(() => {
+    if (plantaBorderCloseTimerRef.current) {
+      clearTimeout(plantaBorderCloseTimerRef.current);
+      plantaBorderCloseTimerRef.current = null;
+    }
+  }, []);
+
+  const schedulePlantaBorderClose = useCallback(() => {
+    clearPlantaBorderCloseTimer();
+    plantaBorderCloseTimerRef.current = setTimeout(() => {
+      if (plantaBorderInPopoverRef.current) return;
+      setPlantaBorderPick(null);
+      setPlantaBorderPopoverStyle(null);
+      setPlantaBorderHoverOptId(null);
+    }, 340);
+  }, [clearPlantaBorderCloseTimer]);
+
+  const handlePlantaBordeStripEnter = useCallback((ev, gi, side) => {
+    clearPlantaBorderCloseTimer();
+    setPlantaBorderPick((prev) => {
+      if (prev?.gi === gi && prev?.side === side) return prev;
+      return { gi, side, ax: ev.clientX, ay: ev.clientY };
+    });
+  }, [clearPlantaBorderCloseTimer]);
+
+  const handlePlantaBordeStripLeave = useCallback(() => {
+    schedulePlantaBorderClose();
+  }, [schedulePlantaBorderClose]);
+
   const handlePlantaBordeStripDown = useCallback((ev, gi, side) => {
+    clearPlantaBorderCloseTimer();
     setPlantaBorderPick((prev) => {
       if (prev?.gi === gi && prev?.side === side) return null;
       return { gi, side, ax: ev.clientX, ay: ev.clientY };
     });
-  }, []);
+  }, [clearPlantaBorderCloseTimer]);
 
   const applyPlantaBorderOption = useCallback(
     (optId) => {
@@ -3842,6 +3899,8 @@ export default function RoofPreview({
                         openGi={plantaBorderPick?.gi ?? null}
                         openSide={plantaBorderPick?.side ?? null}
                         onStripPointerDown={handlePlantaBordeStripDown}
+                        onStripPointerEnter={handlePlantaBordeStripEnter}
+                        onStripPointerLeave={handlePlantaBordeStripLeave}
                         bordesPanelFamiliaKey={bordesPanelFamiliaKey}
                         plantRects={layout.entries}
                         exteriorIntervals={zoneBorderExteriorIntervals[r.gi] ?? null}
@@ -4045,87 +4104,32 @@ export default function RoofPreview({
                 layout.entries,
               );
               const opts = plantaBorderOptsForSideFiltered(side, bordesPanelFamiliaKey, bordesExtendido, bordesCualquierFamilia, curVal);
-              const curLabel =
-                !curVal || curVal === "none"
-                  ? "Sin perfil"
-                  : opts.find((o) => o.id === curVal)?.label ?? curVal;
+              const hoverId = plantaBorderHoverOptId ?? curVal ?? opts[0]?.id ?? "none";
               return (
-                <div
-                  ref={plantaBorderPopRef}
-                  role="dialog"
-                  aria-label={PLANTA_BORDER_SIDE_LABELS[side] || side}
+                <PlantaBorderGlassPicker
+                  popRef={plantaBorderPopRef}
+                  sideLabel={PLANTA_BORDER_SIDE_LABELS[side] || side}
+                  curVal={curVal}
+                  options={opts}
+                  panelFamiliaKey={bordesPanelFamiliaKey}
+                  panelEspesorMm={bordesPanelEspesorMm}
+                  hoverOptId={hoverId}
+                  onHoverOpt={setPlantaBorderHoverOptId}
+                  onSelect={applyPlantaBorderOption}
                   style={{
-                    position: "fixed",
-                    zIndex: 10070,
                     top: plantaBorderPopoverStyle?.top ?? -9999,
                     left: plantaBorderPopoverStyle?.left ?? -9999,
                     opacity: plantaBorderPopoverStyle?.opacity ?? 0,
-                    transition: "opacity 80ms ease",
-                    fontFamily: FONT,
-                    background: C.surface,
-                    borderRadius: 10,
-                    boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
-                    minWidth: 220,
-                    maxWidth: 320,
-                    maxHeight: 320,
-                    display: "flex",
-                    flexDirection: "column",
                   }}
-                >
-                  <div
-                    style={{
-                      padding: "12px 14px",
-                      background: C.primarySoft,
-                      borderBottom: `1px solid ${C.border}`,
-                      borderRadius: "10px 10px 0 0",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#1e40af", lineHeight: 1.35 }}>{curLabel}</div>
-                  </div>
-                  <div style={{ overflowY: "auto", borderRadius: "0 0 10px 10px" }}>
-                    {opts.map((opt, oi) => {
-                      const isSel = curVal === opt.id;
-                      return (
-                        <div
-                          key={`${side}-${opt.id}-${oi}`}
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            applyPlantaBorderOption(opt.id);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              applyPlantaBorderOption(opt.id);
-                            }
-                          }}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            padding: "8px 12px",
-                            cursor: "pointer",
-                            fontSize: 13,
-                            background: isSel ? C.primarySoft : "transparent",
-                            fontWeight: isSel ? 500 : 400,
-                            color: C.tp,
-                            transition: TR,
-                          }}
-                        >
-                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                            <span>{opt.label}</span>
-                            {opt.descripcion ? (
-                              <span style={{ fontSize: 10, color: C.ts, fontWeight: 400, lineHeight: 1.3 }}>{opt.descripcion}</span>
-                            ) : null}
-                          </div>
-                          {isSel ? <Check size={14} color={C.primary} style={{ flexShrink: 0 }} /> : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                  onPointerEnterPopover={() => {
+                    plantaBorderInPopoverRef.current = true;
+                    clearPlantaBorderCloseTimer();
+                  }}
+                  onPointerLeavePopover={() => {
+                    plantaBorderInPopoverRef.current = false;
+                    schedulePlantaBorderClose();
+                  }}
+                />
               );
             })(),
             document.body,
