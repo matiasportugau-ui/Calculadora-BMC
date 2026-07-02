@@ -15,13 +15,22 @@
 -- transaction). See docs/team/runbooks/wa-canonical-flip.md.
 --
 -- Idempotent (drop-if-exists, then add) so it is safe to re-run.
+--
+-- ⚠️ CROSS-BRANCH NOTE: this repo independently grew a SECOND "011" migration on
+-- another branch — 011_ai_job_type_assist.sql, which widens this same CHECK to
+-- admit 'assist' (the /omni/.../assist route's cost-accounting job type). Migration
+-- filenames sort alphabetically ("011_ai_job_type_assist.sql" < "011_wa_crm_sync_job.sql"),
+-- so that one applies first and THIS ONE'S DROP+ADD would otherwise silently drop
+-- 'assist' again. The CHECK below is therefore the union of both, not just this
+-- migration's own concern — keep it that way if either side adds another job type.
 
--- 1) Widen the job-type CHECK to admit 'wa_crm_sync'. The constraint is the single
---    source of truth mirrored by ALLOWED_AI_JOB_TYPES in aiWorker.js.
+-- 1) Widen the job-type CHECK to admit 'wa_crm_sync' (+ 'assist', see note above).
+--    The constraint is the single source of truth mirrored by ALLOWED_AI_JOB_TYPES
+--    in aiWorker.js.
 ALTER TABLE omni_ai_jobs DROP CONSTRAINT IF EXISTS omni_ai_jobs_type_valid;
 ALTER TABLE omni_ai_jobs
   ADD CONSTRAINT omni_ai_jobs_type_valid
-  CHECK (job_type IN ('classify', 'suggest', 'extract_deal', 'embed', 'wa_crm_sync'));
+  CHECK (job_type IN ('classify', 'suggest', 'extract_deal', 'embed', 'assist', 'wa_crm_sync'));
 
 -- 2) Per-conversation coalescing for wa_crm_sync ONLY: at most one NON-TERMINAL
 --    (pending OR failed) wa_crm_sync job per conversation. New inbound messages that
