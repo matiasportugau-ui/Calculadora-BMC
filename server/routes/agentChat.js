@@ -492,16 +492,19 @@ router.post("/agent/chat", async (req, res) => {
     return res.status(403).json({ ok: false, error: "Origin not allowed" });
   }
 
-  // 0.1 — Rate limit: devMode users get higher quota if authorized
+  // 0.1 — Rate limit: devMode users get higher quota if authorized (skipped on local API)
+  const skipAgentChatQuota = config.appEnv === "development";
   if (devMode) {
     const auth = checkDevModeAuthorization(req);
     if (!auth.ok) {
       return res.status(auth.status).json({ ok: false, error: auth.error });
     }
-    await new Promise((resolve, reject) => {
-      devModeLimiter(req, res, (err) => (err ? reject(err) : resolve()));
-    });
-  } else {
+    if (!skipAgentChatQuota) {
+      await new Promise((resolve, reject) => {
+        devModeLimiter(req, res, (err) => (err ? reject(err) : resolve()));
+      });
+    }
+  } else if (!skipAgentChatQuota) {
     await new Promise((resolve, reject) => {
       publicLimiter(req, res, (err) => (err ? reject(err) : resolve()));
     });

@@ -69,17 +69,21 @@ async function audit({ actorId, action, resourceId, ip, userAgent, payload, req 
   }
 }
 
+const skipAdminQuota = () => config.appEnv === "development";
+
 const writeLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipAdminQuota,
 });
 const readLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipAdminQuota,
 });
 
 // ─── GET /api/admin/users ──────────────────────────────────────────────────
