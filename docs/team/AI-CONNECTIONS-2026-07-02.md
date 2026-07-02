@@ -134,7 +134,8 @@ delega en `callAgentOnce`.
   modelo declare **debe** provenir de una tool nativa (`calcular_cotizacion`, `obtener_precio_panel`,
   `presupuesto_libre`, `comparar_listas`), nunca inventado por el LLM.
 - **Definición + dispatch de tools:** `server/lib/agentTools.js` — `AGENT_TOOLS[]` (schema
-  Anthropic tool_use, ~30 tools) y `executeTool(name, input, calcState, opts)` como dispatcher
+  Anthropic tool_use, 42 tools — incl. familias `calcular_*`/`obtener_precio_*`, `wolfboard_*`
+  y `traktime_*`) y `executeTool(name, input, calcState, opts)` como dispatcher
   provider-agnóstico.
 - **Motor de cálculo nativo:** las tools llaman la superficie in-process `/calc/*` vía
   `server/lib/calcLoopbackClient.js` (`postCotizar`, `postCotizarPdf`, `postPresupuestoLibre` sobre
