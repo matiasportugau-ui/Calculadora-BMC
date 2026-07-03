@@ -288,7 +288,7 @@
     "puppeteer-core": "^24.42.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-resizable-panels": "^2.1.9",
+    "react-resizable-panels": "^4.12.1",
     "react-router-dom": "^6.30.3",
     "robots-parser": "^3.0.1",
     "three": "^0.169.0",
