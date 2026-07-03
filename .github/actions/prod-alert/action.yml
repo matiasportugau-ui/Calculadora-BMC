@@ -1,0 +1,60 @@
+# prod-alert — señal activa para los smokes de prod que corren con continue-on-error (gh#495).
+# Fallo → abre un issue de tracking (o comenta el abierto: dedupe por título exacto).
+# Éxito → cierra el issue abierto si existe (sin alarmas stale).
+# Nunca rompe el job que lo invoca: todos los comandos gh degradan a warning.
+name: prod-alert
+description: Open/comment a tracking issue when a prod smoke job fails; close it on recovery (gh#495)
+
+inputs:
+  job-name:
+    description: Canonical job name used in the tracking-issue title (e.g. smoke, channels_pipeline)
+    required: true
+  status:
+    description: "job.status of the calling job: success | failure | cancelled"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Open, update or close tracking issue
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        JOB_NAME: ${{ inputs.job-name }}
+        JOB_STATUS: ${{ inputs.status }}
+        REPO: ${{ github.repository }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -u
+        TITLE="🚨 Prod smoke failing: ${JOB_NAME}"
+        NOW="$(date -u +%Y-%m-%dT%H:%MZ)"
+
+        existing="$(gh issue list --repo "$REPO" --state open \
+          --search "\"$TITLE\" in:title" --json number,title \
+          --jq ".[] | select(.title == \"$TITLE\") | .number" 2>/dev/null | head -1 || true)"
+
+        if [ "$JOB_STATUS" = "failure" ]; then
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$REPO" \
+              --body "Sigue fallando — ${NOW} · [run](${RUN_URL})" \
+              || echo "::warning::prod-alert: no pude comentar el issue #$existing"
+            echo "::warning::prod-alert: '${JOB_NAME}' sigue fallando — tracking en issue #$existing"
+          else
+            BODY="$(printf '%s\n' \
+              "El job \`${JOB_NAME}\` (smoke de prod, no-gating) falló." \
+              "" \
+              "- Run: ${RUN_URL}" \
+              "- Detectado: ${NOW}" \
+              "- Reproducir local: \`npm run smoke:prod\`" \
+              "" \
+              "Este issue lo abre/cierra automáticamente \`.github/actions/prod-alert\` (gh#495). Se cierra solo cuando el job vuelve a verde.")"
+            gh issue create --repo "$REPO" --title "$TITLE" --label "area:deploy" --body "$BODY" \
+              || gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY" \
+              || echo "::warning::prod-alert: no pude crear el issue de tracking"
+            echo "::warning::prod-alert: '${JOB_NAME}' falló — issue de tracking creado/intentado"
+          fi
+        elif [ "$JOB_STATUS" = "success" ] && [ -n "$existing" ]; then
+          gh issue close "$existing" --repo "$REPO" \
+            --comment "Recuperado ✅ — ${NOW} · [run](${RUN_URL})" \
+            || echo "::warning::prod-alert: no pude cerrar el issue #$existing"
+        fi
