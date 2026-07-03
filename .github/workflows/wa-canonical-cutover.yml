@@ -36,6 +36,8 @@ permissions:
 
 env:
   PROJECT_ID: chatbot-bmc-live
+  REGION: us-central1
+  SERVICE_NAME: panelin-calc
 
 jobs:
   migrate:
@@ -44,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -56,6 +60,8 @@ jobs:
           service_account: ${{ secrets.GCP_DEPLOY_SA_EMAIL }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Fetch DATABASE_URL from Secret Manager (masked)
         run: |
           DB_URL="$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")"
@@ -89,13 +95,103 @@ jobs:
             echo "::error::Prerequisites not met — event bus/orchestrator must be ON (see runbook). Refusing to flip: canonical would fall back to legacy anyway (chooseWaIngestMode guard), so flipping now is a no-op that only adds confusion."
             exit 1
           fi
+      - name: Authenticate to Google Cloud
+        if: inputs.action == 'flip_on'
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA_EMAIL }}
+      - name: Set up Cloud SDK
+        if: inputs.action == 'flip_on'
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Install PostgreSQL client
+        if: inputs.action == 'flip_on'
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Fetch DATABASE_URL from Secret Manager (masked)
+        if: inputs.action == 'flip_on'
+        run: |
+          DB_URL="$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")"
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+      - name: Verify prod Omni migrations (flip_on only)
+        if: inputs.action == 'flip_on'
+        run: |
+          set -euo pipefail
+          for migration in 011_wa_crm_sync_job.sql 012_omni_ai_jobs_run_after.sql 014_ai_job_type_union.sql; do
+            applied="$(psql "$DATABASE_URL" -AtX -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM omni_schema_migrations WHERE name = '$migration';")"
+            if [ "$applied" != "1" ]; then
+              echo "::error::Required Omni migration $migration is not recorded in prod. Run action=migrate before flip_on."
+              exit 1
+            fi
+          done
+          check_def="$(psql "$DATABASE_URL" -AtX -v ON_ERROR_STOP=1 -c "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'omni_ai_jobs_type_valid';")"
+          for job_type in classify suggest extract_deal embed assist wa_crm_sync; do
+            if [[ "$check_def" != *"$job_type"* ]]; then
+              echo "::error::omni_ai_jobs_type_valid does not accept '$job_type': $check_def"
+              exit 1
+            fi
+          done
+          run_after="$(psql "$DATABASE_URL" -AtX -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'omni_ai_jobs' AND column_name = 'run_after';")"
+          if [ "$run_after" != "1" ]; then
+            echo "::error::omni_ai_jobs.run_after is missing. Run action=migrate before flip_on."
+            exit 1
+          fi
+          dedup_index="$(psql "$DATABASE_URL" -AtX -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'omni_ai_jobs_wa_crm_sync_active_dedup';")"
+          if [ "$dedup_index" != "1" ]; then
+            echo "::error::omni_ai_jobs_wa_crm_sync_active_dedup is missing. Run action=migrate before flip_on."
+            exit 1
+          fi
+          echo "Prod Omni migrations and WA canonical schema are ready."
       - name: Set OMNI_WA_CANONICAL
         run: |
           val=$([ "${{ inputs.action }}" = "flip_on" ] && echo 1 || echo 0)
+          echo "expected=$val" >> "$GITHUB_ENV"
           gh variable set OMNI_WA_CANONICAL --repo "$GITHUB_REPOSITORY" --body "$val"
           echo "OMNI_WA_CANONICAL set to $val"
       - name: Dispatch API deploy (renders the new env on Cloud Run)
-        run: gh workflow run deploy-calc-api.yml --repo "$GITHUB_REPOSITORY" --ref main
+        id: deploy
+        run: |
+          set -euo pipefail
+          before_id="$(gh run list --workflow deploy-calc-api.yml --branch main --limit 1 --json databaseId --jq '.[0].databaseId // 0' 2>/dev/null || echo 0)"
+          gh workflow run deploy-calc-api.yml --repo "$GITHUB_REPOSITORY" --ref main
+          run_id=""
+          for _ in {1..30}; do
+            run_id="$(gh run list --workflow deploy-calc-api.yml --branch main --event workflow_dispatch --limit 20 --json databaseId --jq "map(select(.databaseId > ${before_id:-0})) | sort_by(.databaseId) | last | .databaseId // empty")"
+            if [ -n "$run_id" ]; then
+              break
+            fi
+            sleep 10
+          done
+          if [ -z "$run_id" ]; then
+            echo "::error::deploy-calc-api workflow_dispatch run was not found after dispatch."
+            exit 1
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30
+      - name: Authenticate to Google Cloud for post-deploy verification
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA_EMAIL }}
+      - name: Set up Cloud SDK for post-deploy verification
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Verify Cloud Run OMNI_WA_CANONICAL
+        run: |
+          set -euo pipefail
+          actual="$(
+            gcloud run services describe "$SERVICE_NAME" \
+              --region="$REGION" \
+              --project="$PROJECT_ID" \
+              --format=json |
+              python3 -c 'import json,sys; data=json.load(sys.stdin); env=data["spec"]["template"]["spec"]["containers"][0].get("env", []); print(next((item.get("value", "") for item in env if item.get("name") == "OMNI_WA_CANONICAL"), ""))'
+          )"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Cloud Run still has OMNI_WA_CANONICAL=$actual, expected $expected. Rollout/rollback is not complete."
+            exit 1
+          fi
+          echo "Cloud Run OMNI_WA_CANONICAL verified as $actual."
 
   soak:
     if: inputs.action == 'soak'
@@ -103,6 +199,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
@@ -111,6 +209,8 @@ jobs:
           service_account: ${{ secrets.GCP_DEPLOY_SA_EMAIL }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Fetch DATABASE_URL from Secret Manager (masked)
         run: |
           DB_URL="$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")"
