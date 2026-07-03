@@ -24,6 +24,9 @@ jobs:
   smoke-prod:
     name: smoke-prod-api.mjs
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write # prod-alert (gh#495)
     steps:
       - name: Checkout (script only)
         uses: actions/checkout@v4
@@ -49,3 +52,12 @@ jobs:
           code=$(curl -sS -o /tmp/ai-options.json -w "%{http_code}" "$B/api/agent/ai-options")
           test "$code" = "200"
           node -e "const j=require('fs').readFileSync('/tmp/ai-options.json','utf8'); const o=JSON.parse(j); if(!o.ok) process.exit(1); if(!Array.isArray(o.autoOrder)) process.exit(1);"
+
+      # Convierte el fallo silencioso del cron en issue de tracking (gh#495);
+      # se cierra solo cuando el smoke vuelve a verde.
+      - name: Alert on prod-smoke failure (gh#495)
+        if: always()
+        uses: ./.github/actions/prod-alert
+        with:
+          job-name: smoke-scheduled
+          status: ${{ job.status }}
