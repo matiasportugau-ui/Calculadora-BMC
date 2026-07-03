@@ -12,6 +12,8 @@ export function PresupuestoLibreProvider({ children }) {
   const [librePerfilQty, setLibrePerfilQty] = useState({});
   const [libreFijQty, setLibreFijQty] = useState({});
   const [libreSellQty, setLibreSellQty] = useState({});
+  const [libreServiciosQty, setLibreServiciosQty] = useState({});
+  const [libreHerramientasQty, setLibreHerramientasQty] = useState({});
   const [libreExtra, setLibreExtra] = useState({ texto: '', precio: '', unidades: '', cantidad: '' });
   const [flete, setFlete] = useState(0);
 
@@ -25,6 +27,8 @@ export function PresupuestoLibreProvider({ children }) {
         setLibrePerfilQty(state.librePerfilQty || {});
         setLibreFijQty(state.libreFijQty || {});
         setLibreSellQty(state.libreSellQty || {});
+        setLibreServiciosQty(state.libreServiciosQty || {});
+        setLibreHerramientasQty(state.libreHerramientasQty || {});
         setLibreExtra(state.libreExtra || { texto: '', precio: '', unidades: '', cantidad: '' });
         setFlete(state.flete || 0);
       } catch (e) {
@@ -46,28 +50,38 @@ export function PresupuestoLibreProvider({ children }) {
 
   // Save to localStorage whenever state changes
   useEffect(() => {
-    const state = {
-      librePanelLines,
-      librePerfilQty,
-      libreFijQty,
-      libreSellQty,
-      libreExtra,
-      flete,
-    };
-    localStorage.setItem('bmc_presupuesto_libre_state', JSON.stringify(state));
-  }, [librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, flete]);
+    try {
+      const state = {
+        librePanelLines,
+        librePerfilQty,
+        libreFijQty,
+        libreSellQty,
+        libreServiciosQty,
+        libreHerramientasQty,
+        libreExtra,
+        flete,
+      };
+      localStorage.setItem('bmc_presupuesto_libre_state', JSON.stringify(state));
+    } catch (e) {
+      console.warn('Failed to save presupuesto libre state to localStorage', e);
+    }
+  }, [librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreServiciosQty, libreHerramientasQty, libreExtra, flete]);
 
   // Save UI state
   useEffect(() => {
-    const ui = { isOpen, activeTab };
-    localStorage.setItem('bmc_presupuesto_libre_ui', JSON.stringify(ui));
+    try {
+      const ui = { isOpen, activeTab };
+      localStorage.setItem('bmc_presupuesto_libre_ui', JSON.stringify(ui));
+    } catch (e) {
+      console.warn('Failed to save presupuesto libre UI state to localStorage', e);
+    }
   }, [isOpen, activeTab]);
 
   // Panel management
-  const addPanelLine = (familia, espesor, color) => {
+  const addPanelLine = (familia, espesor, color, m2 = 0) => {
     setLibrePanelLines([
       ...librePanelLines,
-      { familia, espesor, color, m2: 0, id: Date.now() },
+      { familia, espesor, color, m2, id: Date.now() },
     ]);
   };
 
@@ -156,12 +170,64 @@ export function PresupuestoLibreProvider({ children }) {
     }
   };
 
+  // Servicios management
+  const addServicio = (servicioKey, qty) => {
+    setLibreServiciosQty({
+      ...libreServiciosQty,
+      [servicioKey]: (libreServiciosQty[servicioKey] || 0) + (qty || 1),
+    });
+  };
+
+  const removeServicio = (servicioKey) => {
+    const newQty = { ...libreServiciosQty };
+    delete newQty[servicioKey];
+    setLibreServiciosQty(newQty);
+  };
+
+  const updateServicioQty = (servicioKey, qty) => {
+    if (qty <= 0) {
+      removeServicio(servicioKey);
+    } else {
+      setLibreServiciosQty({
+        ...libreServiciosQty,
+        [servicioKey]: qty,
+      });
+    }
+  };
+
+  // Herramientas management
+  const addHerramienta = (herramientaKey, qty) => {
+    setLibreHerramientasQty({
+      ...libreHerramientasQty,
+      [herramientaKey]: (libreHerramientasQty[herramientaKey] || 0) + (qty || 1),
+    });
+  };
+
+  const removeHerramienta = (herramientaKey) => {
+    const newQty = { ...libreHerramientasQty };
+    delete newQty[herramientaKey];
+    setLibreHerramientasQty(newQty);
+  };
+
+  const updateHerramientaQty = (herramientaKey, qty) => {
+    if (qty <= 0) {
+      removeHerramienta(herramientaKey);
+    } else {
+      setLibreHerramientasQty({
+        ...libreHerramientasQty,
+        [herramientaKey]: qty,
+      });
+    }
+  };
+
   // Clear all
   const clearAll = () => {
     setLibrePanelLines([]);
     setLibrePerfilQty({});
     setLibreFijQty({});
     setLibreSellQty({});
+    setLibreServiciosQty({});
+    setLibreHerramientasQty({});
     setLibreExtra({ texto: '', precio: '', unidades: '', cantidad: '' });
     setFlete(0);
   };
@@ -178,6 +244,8 @@ export function PresupuestoLibreProvider({ children }) {
     librePerfilQty,
     libreFijQty,
     libreSellQty,
+    libreServiciosQty,
+    libreHerramientasQty,
     libreExtra,
     setLibreExtra,
     flete,
@@ -202,6 +270,16 @@ export function PresupuestoLibreProvider({ children }) {
     addSellador,
     removeSellador,
     updateSelladorQty,
+
+    // Servicios actions
+    addServicio,
+    removeServicio,
+    updateServicioQty,
+
+    // Herramientas actions
+    addHerramienta,
+    removeHerramienta,
+    updateHerramientaQty,
 
     // Utilities
     clearAll,

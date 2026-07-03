@@ -5,7 +5,7 @@ import { PresupuestoLibreCard } from './PresupuestoLibreCard';
 import './PresupuestoLibrePanelContent.css';
 
 export function PresupuestoLibrePanelContent() {
-  const { activeTab, setActiveTab, addPanelLine, addPerfil, addFijacion, addSellador } = usePresupuestoLibre();
+  const { activeTab, setActiveTab, addPanelLine, addPerfil, addFijacion, addSellador, addServicio, addHerramienta } = usePresupuestoLibre();
 
   const tabs = [
     { id: 'paneles', label: 'Paneles' },
@@ -17,8 +17,8 @@ export function PresupuestoLibrePanelContent() {
   ];
 
   const handleAddPanel = (productData) => {
-    const { familia, espesor, color } = productData;
-    addPanelLine(familia, espesor, color);
+    const { familia, espesor, color, cantidad } = productData;
+    addPanelLine(familia, espesor, color, cantidad);
   };
 
   const handleAddPerfil = (productData) => {
@@ -34,6 +34,16 @@ export function PresupuestoLibrePanelContent() {
   const handleAddSellador = (productData) => {
     const { familia } = productData;
     addSellador(familia, productData.cantidad || 1);
+  };
+
+  const handleAddServicio = (productData) => {
+    const { familia } = productData;
+    addServicio(familia, productData.cantidad || 1);
+  };
+
+  const handleAddHerramienta = (productData) => {
+    const { familia } = productData;
+    addHerramienta(familia, productData.cantidad || 1);
   };
 
   const renderPaneles = () => {
@@ -185,7 +195,7 @@ export function PresupuestoLibrePanelContent() {
           colores={[]}
           unidad={data.unidad || 'servicio'}
           imagenFamilia="SERVICIOS"
-          onAdd={handleAddFijacion}
+          onAdd={handleAddServicio}
           especData={{ std: data }}
         />
       );
@@ -208,7 +218,7 @@ export function PresupuestoLibrePanelContent() {
             colores={[]}
             unidad={data.unidad || 'unid'}
             imagenFamilia="HERRAMIENTAS"
-            onAdd={handleAddFijacion}
+            onAdd={handleAddHerramienta}
             especData={{ std: data }}
           />
         );
