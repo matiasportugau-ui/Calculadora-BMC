@@ -36,12 +36,27 @@ export async function listSuggestions(pool, query = {}) {
  */
 export async function resolveSuggestion(pool, suggestionId, action, opts = {}) {
   const nextState = action === "accept" ? "accepted" : "rejected";
-  const { rows } = await pool.query(
-    `UPDATE omni_suggestions SET approval_state = $2
-     WHERE id = $1 AND approval_state = 'pending'
-     RETURNING *`,
-    [suggestionId, nextState],
-  );
+  // Stamp resolved_at (migration 015) so the resolution time is queryable and the
+  // WA read-model adapter can map chosen_at. Environments that haven't applied 015
+  // yet fall back to the legacy UPDATE (undefined_column 42703) — deploying this
+  // code before the migration must not break approve/reject.
+  let rows;
+  try {
+    ({ rows } = await pool.query(
+      `UPDATE omni_suggestions SET approval_state = $2, resolved_at = now()
+       WHERE id = $1 AND approval_state = 'pending'
+       RETURNING *`,
+      [suggestionId, nextState],
+    ));
+  } catch (e) {
+    if (e?.code !== "42703") throw e;
+    ({ rows } = await pool.query(
+      `UPDATE omni_suggestions SET approval_state = $2
+       WHERE id = $1 AND approval_state = 'pending'
+       RETURNING *`,
+      [suggestionId, nextState],
+    ));
+  }
   const suggestion = rows[0];
   if (!suggestion) return { ok: false, error: "suggestion_not_found_or_resolved" };
 

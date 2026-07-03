@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-01
+**Última actualización:** 2026-07-03
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-03 (feat — `omni_suggestions.resolved_at`: timestamp de resolución HITL, cierra diferido de Fase 2):** Migración **`015_omni_suggestions_resolved_at.sql`** (`ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ`, barata e idempotente). `resolveSuggestion()` (`server/lib/omni/orchestrator/suggestions.js`) ahora estampa `resolved_at = now()` al accept/reject, con **fallback dormancy-safe**: si la columna no existe todavía (error `42703`, entorno pre-015) reintenta el UPDATE legacy — deployar el código antes de la migración **no** rompe los endpoints de approve (mismo patrón que el fix de `run_after` de PR #482). El read-adapter del cockpit WA (`omniReadAdapter.js`) vuelve a mapear `chosen_at` desde `resolved_at` (antes quedaba `null` fijo tras el hallazgo Codex P2). **Prerequisito nuevo para `OMNI_WA_READS=1`:** aplicar la 015 antes del flip (el SELECT del adapter la referencia sin guard). Tests: nuevo `omniSuggestionResolve.test.js` (8 asserts: estampado accept/reject, fallback 42703, errores no-42703 propagan, guard de pending) + `omniReadAdapter.test.js` actualizado (chosen_at desde resolved_at, pre-015 → null); ambos en `test:core`. `gate:local` verde.
 
 **2026-07-03 (chore(ci) — gh#495: los smokes de prod ya no fallan en silencio):** Nuevo composite action [`.github/actions/prod-alert`](../../.github/actions/prod-alert/action.yml): ante fallo de un smoke no-gating abre un issue de tracking `🚨 Prod smoke failing: <job>` (dedupe por título exacto — si ya hay uno abierto, comenta en vez de duplicar); al recuperar, lo **auto-cierra** (sin alarmas stale); todo `gh` degrada a warning (la alerta nunca rompe el job). Wireado como step final `if: always()` en `smoke` / `channels_pipeline` / `voice_health` de `ci.yml` + el cron `smoke-prod-scheduled.yml`, con `permissions: issues: write` por job (patrón `catalog-diff.yml`); `voice_health` gana checkout (requisito del action local). **`continue-on-error` intacto** — los deploys siguen sin gatearse (la motivación de diseño de esos jobs no cambia). **E2E verificado con el ciclo completo** vía `workflow_dispatch --ref` del branch: fallo forzado (`api_base` inválido) → creó #539; segundo fallo → comentó #539 sin duplicar; run verde (`skip_suggest=1` para esquivar el 503 pre-existente de suggest-response) → auto-cerró #539. PR #538; cierra gh#495. Recordatorio operativo: mientras el 503 de `suggest-response` siga (keys IA en Cloud Run/GSM), el próximo cron (8/20 UTC) va a abrir el tracking issue correspondiente — eso es el sistema funcionando, no un bug.
 
