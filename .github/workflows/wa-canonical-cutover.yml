@@ -1,0 +1,150 @@
+# WA canonical cutover — operator actions for the OMNI_WA_CANONICAL flip (ADR-009)
+# as dispatchable steps, so the cutover can be driven without local prod access.
+# Companion to docs/team/runbooks/wa-canonical-flip.md.
+#
+# Actions (workflow_dispatch input):
+#   migrate  — fetch DATABASE_URL from GCP Secret Manager (same WIF auth as the
+#              deploy workflow) and run `npm run omni:migrate` (applies everything
+#              pending: 011..015; idempotent).
+#   flip_on  — verify prerequisites (OMNI_EVENT_BUS_ENABLED=1 and
+#              OMNI_AI_ORCHESTRATOR_ENABLED=1 repo Variables), set
+#              OMNI_WA_CANONICAL=1, then dispatch deploy-calc-api.yml.
+#   flip_off — instant rollback: set OMNI_WA_CANONICAL=0 and dispatch the deploy.
+#   soak     — run the key monitoring queries from
+#              docs/team/runbooks/wa-canonical-soak-queries.sql against prod and
+#              print the results in the job log.
+#
+# The DATABASE_URL value is add-mask'ed and only ever used as an env var — never
+# echoed. If the deploy service account lacks secretmanager access, `migrate` and
+# `soak` fail loudly at the fetch step (no partial effects).
+
+name: WA canonical cutover
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Cutover step to run"
+        required: true
+        type: choice
+        options: [migrate, flip_on, flip_off, soak]
+
+permissions:
+  contents: read
+  id-token: write   # GCP Workload Identity Federation (same as deploy-calc-api)
+  actions: write    # gh variable set + gh workflow run
+
+env:
+  PROJECT_ID: chatbot-bmc-live
+
+jobs:
+  migrate:
+    if: inputs.action == 'migrate'
+    name: Apply omni migrations to prod
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA_EMAIL }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Fetch DATABASE_URL from Secret Manager (masked)
+        run: |
+          DB_URL="$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")"
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+      - name: Install dependencies
+        run: npm ci --include=dev
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Run omni migrations (011..015, idempotent)
+        run: npm run omni:migrate
+      - name: Show applied migrations
+        run: |
+          psql "$DATABASE_URL" -c "SELECT name, applied_at FROM omni_schema_migrations ORDER BY name;"
+          psql "$DATABASE_URL" -c "SELECT pg_get_constraintdef(oid) AS omni_ai_jobs_type_valid FROM pg_constraint WHERE conname = 'omni_ai_jobs_type_valid';"
+
+  flip:
+    if: inputs.action == 'flip_on' || inputs.action == 'flip_off'
+    name: Set OMNI_WA_CANONICAL and redeploy
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify prerequisites (flip_on only)
+        if: inputs.action == 'flip_on'
+        run: |
+          bus="$(gh variable get OMNI_EVENT_BUS_ENABLED --repo "$GITHUB_REPOSITORY" 2>/dev/null || echo MISSING)"
+          orch="$(gh variable get OMNI_AI_ORCHESTRATOR_ENABLED --repo "$GITHUB_REPOSITORY" 2>/dev/null || echo MISSING)"
+          echo "OMNI_EVENT_BUS_ENABLED=$bus  OMNI_AI_ORCHESTRATOR_ENABLED=$orch"
+          if [ "$bus" != "1" ] || [ "$orch" != "1" ]; then
+            echo "::error::Prerequisites not met — event bus/orchestrator must be ON (see runbook). Refusing to flip: canonical would fall back to legacy anyway (chooseWaIngestMode guard), so flipping now is a no-op that only adds confusion."
+            exit 1
+          fi
+      - name: Set OMNI_WA_CANONICAL
+        run: |
+          val=$([ "${{ inputs.action }}" = "flip_on" ] && echo 1 || echo 0)
+          gh variable set OMNI_WA_CANONICAL --repo "$GITHUB_REPOSITORY" --body "$val"
+          echo "OMNI_WA_CANONICAL set to $val"
+      - name: Dispatch API deploy (renders the new env on Cloud Run)
+        run: gh workflow run deploy-calc-api.yml --repo "$GITHUB_REPOSITORY" --ref main
+
+  soak:
+    if: inputs.action == 'soak'
+    name: Soak monitoring snapshot (prod)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA_EMAIL }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Fetch DATABASE_URL from Secret Manager (masked)
+        run: |
+          DB_URL="$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")"
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+      - name: Soak snapshot (health / backlog / dead / coalescing / budget / mirror)
+        run: |
+          psql "$DATABASE_URL" <<'SQL'
+          \echo '── salud wa_crm_sync 24h ──'
+          SELECT status, COUNT(*) AS jobs, MAX(created_at) AS mas_nuevo
+            FROM omni_ai_jobs
+           WHERE job_type='wa_crm_sync' AND created_at >= now() - interval '24 hours'
+           GROUP BY status ORDER BY status;
+          \echo '── backlog vencido (esperado: 0 filas o edad < 2 min) ──'
+          SELECT id, attempts, now() - GREATEST(created_at, COALESCE(run_after, created_at)) AS atraso
+            FROM omni_ai_jobs
+           WHERE job_type='wa_crm_sync' AND status IN ('pending','failed')
+             AND (run_after IS NULL OR run_after <= now())
+           ORDER BY created_at LIMIT 10;
+          \echo '── dead-letter (requieren acción) ──'
+          SELECT id, error, attempts, completed_at
+            FROM omni_ai_jobs WHERE job_type='wa_crm_sync' AND status='dead'
+           ORDER BY completed_at DESC LIMIT 10;
+          \echo '── invariante coalescing (esperado: 0 filas) ──'
+          SELECT conversation_id, COUNT(*) FROM omni_ai_jobs
+           WHERE job_type='wa_crm_sync' AND status IN ('pending','failed')
+           GROUP BY conversation_id HAVING COUNT(*) > 1;
+          \echo '── presupuesto IA hoy ──'
+          SELECT job_type, COUNT(*), ROUND(COALESCE(SUM(cost_usd),0),4) AS usd
+            FROM omni_ai_jobs WHERE created_at >= date_trunc('day', now())
+           GROUP BY job_type ORDER BY usd DESC;
+          \echo '── espejo cockpit (mensajes WA última 6h) ──'
+          SELECT date_trunc('hour', m.created_at) AS hora, COUNT(*)
+            FROM omni_messages m JOIN omni_conversations c ON c.id=m.conversation_id
+           WHERE c.channel='wa' AND m.created_at >= now() - interval '6 hours'
+           GROUP BY 1 ORDER BY 1 DESC;
+          SQL
