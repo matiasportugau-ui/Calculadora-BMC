@@ -20,6 +20,7 @@ import { config } from "../config.js";
 import { callAgentOnce } from "./agentCore.js";
 import { getAvailableProviders } from "./aiProviderConfig.js";
 import { getOmniPool, omniHealthCheck } from "./omni/omniDb.js";
+import { isChatwootConfigured } from "./chatwootClient.js";
 
 /** @typedef {"canales"|"panelin"|"email"|"wa"|"ml"|"wolfboard"|"seam"} AssistantKey */
 
@@ -64,9 +65,16 @@ export const ASSISTANTS = [
     label: "Email Agent",
     channel: "chat",
     fallbackTo: "seam",
+    // Health mirrors the SAME gate the route + tools use: isChatwootConfigured()
+    // requires base + token + accountId (chatwootClient.js). Checking the token
+    // alone reported a false "live" when base/accountId were missing while every
+    // Chatwoot tool still threw chatwoot_not_configured. (Live email via Gmail/Omni
+    // runs under the `canales` assistant, not here.)
     deps: async () => ({
-      ok: !!config.chatwootApiToken,
-      detail: config.chatwootApiToken ? "" : "no CHATWOOT_API_TOKEN",
+      ok: isChatwootConfigured(),
+      detail: isChatwootConfigured()
+        ? ""
+        : "chatwoot not configured (need CHATWOOT_API_BASE + CHATWOOT_API_TOKEN + CHATWOOT_ACCOUNT_ID)",
     }),
   },
   {
