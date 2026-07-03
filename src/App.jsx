@@ -24,6 +24,8 @@ import TutorialOverlay from "./components/tutorial/TutorialOverlay.jsx";
 import FloatingTutorialButton from "./components/tutorial/FloatingTutorialButton.jsx";
 import BmcChatPanel from "./components/BmcChatPanel.jsx";
 import DesignPreviewGate from "./components/preview/DesignPreviewGate.jsx";
+import { PresupuestoLibreProvider } from "./contexts/PresupuestoLibreContext.jsx";
+import { PresupuestoLibrePanel } from "./components/PresupuestoLibrePanel.jsx";
 
 const DesignMockupsPage = lazy(() => import("./components/preview/DesignMockupsPage.jsx"));
 
@@ -109,6 +111,7 @@ function Shell({ children }) {
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
       {TUTORIAL_ENABLED && <FloatingTutorialButton />}
       <BmcChatPanel />
+      <PresupuestoLibrePanel />
     </div>
   );
 }
@@ -176,6 +179,7 @@ export default function App() {
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <DesignPreviewGate>
       <BmcAuthProvider>
+      <PresupuestoLibreProvider>
       <TutorialProvider>
       <ActivityTracker />
       <LegacyAppQueryRedirect />
@@ -506,6 +510,7 @@ export default function App() {
       </Routes>
       </RoutedErrorBoundary>
       </TutorialProvider>
+      </PresupuestoLibreProvider>
       </BmcAuthProvider>
       </DesignPreviewGate>
     </BrowserRouter>

@@ -1,0 +1,103 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Presupuesto Libre Panel Content — Tab Navigation & Grid Layout
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pl-panel-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  z-index: 0;
+}
+
+/* Tab Navigation */
+.pl-panel-content__tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
+}
+
+.pl-panel-content__tab {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--pl-text-light);
+  cursor: pointer;
+  transition: all 0.2s var(--lg-easing);
+  white-space: nowrap;
+}
+
+.pl-panel-content__tab:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--pl-text-dark);
+}
+
+.pl-panel-content__tab.is-active {
+  background: rgba(201, 100, 66, 0.12);
+  color: var(--pl-accent);
+  font-weight: 600;
+}
+
+/* Card Grid */
+.pl-panel-content__grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  position: relative;
+  z-index: 0;
+}
+
+/* Scrollbar styling */
+.pl-panel-content__grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pl-panel-content__grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pl-panel-content__grid::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.pl-panel-content__grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .pl-panel-content__tabs {
+    padding: 6px;
+    gap: 1px;
+  }
+
+  .pl-panel-content__tab {
+    padding: 6px 10px;
+    font-size: 0.8em;
+  }
+
+  .pl-panel-content__grid {
+    padding: 8px;
+    gap: 8px;
+  }
+}
+
+/* Accessibility: Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .pl-panel-content__tab {
+    transition: none;
+  }
+}
