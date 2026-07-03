@@ -35,6 +35,10 @@ export async function listSuggestions(pool, query = {}) {
  * @param {object} opts
  */
 export async function resolveSuggestion(pool, suggestionId, action, opts = {}) {
+  // Explicit allowlist — a typo or new caller must fail loudly, not silently reject.
+  if (action !== "accept" && action !== "reject") {
+    return { ok: false, error: "invalid_action" };
+  }
   const nextState = action === "accept" ? "accepted" : "rejected";
   // Stamp resolved_at (migration 015) so the resolution time is queryable and the
   // WA read-model adapter can map chosen_at. Environments that haven't applied 015

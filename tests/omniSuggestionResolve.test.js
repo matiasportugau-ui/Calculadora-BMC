@@ -62,5 +62,10 @@ const p4 = fakePool({ found: false });
 const r4 = await resolveSuggestion(p4, "sX", "accept", {});
 assert("missing/resolved → ok:false", r4.ok === false && r4.error === "suggestion_not_found_or_resolved");
 
+// ── invalid action → loud failure, no query fired ──
+const p5 = fakePool();
+const r5 = await resolveSuggestion(p5, "s1", "acept", {}); // typo on purpose
+assert("invalid action → ok:false invalid_action, no DB call", r5.ok === false && r5.error === "invalid_action" && p5.queries.length === 0);
+
 console.log(`\nomniSuggestionResolve: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
