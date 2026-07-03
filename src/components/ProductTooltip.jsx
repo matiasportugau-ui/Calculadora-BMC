@@ -7,15 +7,13 @@ export default function ProductTooltip({
 }) {
   const sanitizedContent = useMemo(() => {
     if (!product?.descriptionHtml) return "";
-    // Strip HTML tags, preserve line breaks
-    let text = product.descriptionHtml;
-    text = text.replace(/<[^>]*>/g, ""); // Remove all HTML tags
-    text = text.replace(/&nbsp;/g, " "); // Convert HTML entities
-    text = text.replace(/&lt;/g, "<");
-    text = text.replace(/&gt;/g, ">");
-    text = text.replace(/&amp;/g, "&");
-    text = text.trim();
-    return text;
+    // DOMParser extracts text without executing markup — no regex sanitization gaps
+    try {
+      const doc = new DOMParser().parseFromString(product.descriptionHtml, "text/html");
+      return (doc.body.textContent || "").replace(/\u00a0/g, " ").trim();
+    } catch {
+      return "";
+    }
   }, [product?.descriptionHtml]);
 
   if (!visible || !sanitizedContent) return null;
