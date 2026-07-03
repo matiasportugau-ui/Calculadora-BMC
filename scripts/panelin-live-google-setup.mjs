@@ -9,15 +9,25 @@
  *   node scripts/panelin-live-google-setup.mjs --mint-only
  */
 import { execSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 const ROOT = resolve(import.meta.dirname, "..");
 const ENV_PATH = resolve(ROOT, ".env");
 const mintOnly = process.argv.includes("--mint-only");
 
+// Read directly (no existsSync-then-read TOCTOU window) — a missing file just
+// means "no existing content yet", same as the prior existsSync guard.
+function readEnvText() {
+  try {
+    return readFileSync(ENV_PATH, "utf8");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+    return "";
+  }
+}
+
 function envLen(key) {
-  if (!existsSync(ENV_PATH)) return 0;
-  const line = readFileSync(ENV_PATH, "utf8").split("\n").find((l) => l.startsWith(`${key}=`));
+  const line = readEnvText().split("\n").find((l) => l.startsWith(`${key}=`));
   return line ? line.slice(key.length + 1).trim().length : 0;
 }
 
@@ -71,9 +81,9 @@ async function waitForDevStack(viteBase, apiBase, { attempts = 20, delayMs = 150
 }
 
 function clientId() {
-  if (!existsSync(ENV_PATH)) return "";
+  const text = readEnvText();
   for (const key of ["VITE_GOOGLE_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_CLIENT_ID"]) {
-    const line = readFileSync(ENV_PATH, "utf8").split("\n").find((l) => l.startsWith(`${key}=`));
+    const line = text.split("\n").find((l) => l.startsWith(`${key}=`));
     if (line) return line.slice(key.length + 1).trim();
   }
   return "";

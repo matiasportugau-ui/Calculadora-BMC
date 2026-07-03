@@ -54,7 +54,9 @@ function upsertRefreshToken(token) {
   }
   const re = /^GOOGLE_REFRESH_TOKEN=.*$/m;
   const line = `GOOGLE_REFRESH_TOKEN=${token}`;
-  if (re.test(text)) text = text.replace(re, line);
+  // Replacer function, not a replacement string — `token` may contain `$&`/`$$`/etc.,
+  // which String.replace() would otherwise interpret as special replacement patterns.
+  if (re.test(text)) text = text.replace(re, () => line);
   else {
     if (text.length && !text.endsWith("\n")) text += "\n";
     text += `\n# oauth-tour-refresh-bootstrap\n${line}\n`;
@@ -117,7 +119,15 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  upsertRefreshToken(tokenJson.refresh_token);
+  try {
+    upsertRefreshToken(tokenJson.refresh_token);
+  } catch (e) {
+    res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
+    res.end(`Could not write .env: ${e.message}`);
+    server.close();
+    die(`could not write .env — ${e.message}`);
+    return;
+  }
   res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   res.end("<h1>OK</h1><p>GOOGLE_REFRESH_TOKEN guardado en .env. Podés cerrar esta pestaña.</p>");
   server.close();

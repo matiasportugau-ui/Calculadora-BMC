@@ -87,8 +87,10 @@ function upsertEnv(key, value) {
   // escaped anyway so this matches the same safe pattern used elsewhere.
   const re = new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=.*$`, "m");
   const line = `${key}=${value}`;
+  // Replacer function, not a replacement string — `value` may contain `$&`/`$$`/etc.,
+  // which String.replace() would otherwise interpret as special replacement patterns.
   if (re.test(text)) {
-    text = text.replace(re, line);
+    text = text.replace(re, () => line);
   } else {
     if (text.length && !text.endsWith("\n")) text += "\n";
     text += `\n# panelin-live-env-bootstrap\n${line}\n`;
@@ -118,11 +120,10 @@ for (const { key, len, wrote } of results) {
   console.log(`  ${mark}  ${key}: ${len} chars (${action})`);
 }
 
-const googleOk =
-  resolveValue("GOOGLE_CLIENT_SECRET").length > 8
-  && resolveValue("GOOGLE_REFRESH_TOKEN").length > 8;
-const apiOk = resolveValue("API_AUTH_TOKEN").length > 8;
-const openaiOk = resolveValue("OPENAI_API_KEY").length > 8;
+const lenOf = (key) => results.find((r) => r.key === key)?.len ?? 0;
+const googleOk = lenOf("GOOGLE_CLIENT_SECRET") > 8 && lenOf("GOOGLE_REFRESH_TOKEN") > 8;
+const apiOk = lenOf("API_AUTH_TOKEN") > 8;
+const openaiOk = lenOf("OPENAI_API_KEY") > 8;
 
 if (localClient && localClient !== CANONICAL_CLIENT_ID) {
   console.log("\n⚠  VITE_GOOGLE_CLIENT_ID local ≠ prod (hbkkona…sj3).");

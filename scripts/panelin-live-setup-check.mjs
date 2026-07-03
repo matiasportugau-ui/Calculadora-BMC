@@ -12,8 +12,16 @@ const ROOT = resolve(import.meta.dirname, "..");
 function envFromDotenv(key) {
   if (process.env[key]) return process.env[key];
   const p = resolve(ROOT, ".env");
-  if (!existsSync(p)) return "";
-  const line = readFileSync(p, "utf8").split("\n").find((l) => l.startsWith(`${key}=`));
+  // Read directly (no existsSync-then-read TOCTOU window) — a missing file
+  // just means "no value found", same as the prior existsSync guard.
+  let text;
+  try {
+    text = readFileSync(p, "utf8");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+    return "";
+  }
+  const line = text.split("\n").find((l) => l.startsWith(`${key}=`));
   return line ? line.slice(key.length + 1).trim() : "";
 }
 

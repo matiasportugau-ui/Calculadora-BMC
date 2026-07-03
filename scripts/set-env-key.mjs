@@ -44,7 +44,9 @@ try {
 // validation ever loosening.
 const re = new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=.*$`, "m");
 const line = `${key}=${value}`;
-if (re.test(text)) text = text.replace(re, line);
+// Replacer function, not a replacement string — `value` may contain `$&`/`$$`/etc.,
+// which String.replace() would otherwise interpret as special replacement patterns.
+if (re.test(text)) text = text.replace(re, () => line);
 else {
   if (text.length && !text.endsWith("\n")) text += "\n";
   text += `\n# set-env-key\n${line}\n`;
