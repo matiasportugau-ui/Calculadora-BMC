@@ -13,7 +13,13 @@ import {
   FIJACIONES,
   HERRAMIENTAS,
   SELLADORES,
+  PERFIL_TECHO,
+  PERFIL_PARED,
 } from "../src/data/constants.js";
+import {
+  computePresupuestoLibreCatalogo,
+  flattenPerfilesLibre,
+} from "../src/utils/presupuestoLibreCatalogo.js";
 
 let passed = 0;
 let failed = 0;
@@ -25,6 +31,7 @@ function group(name, fn) { console.log(`\n— ${name}`); fn(); }
 
 const index = buildProductCatalogIndex();
 const byKind = (k) => index.filter((r) => r.kind === k);
+const perfilCatalogById = new Map(flattenPerfilesLibre(PERFIL_TECHO, PERFIL_PARED).map((r) => [r.id, r]));
 
 /* ── Cobertura: los 4 tipos están presentes ──────────────────────────────── */
 group("cobertura de catálogos", () => {
@@ -71,9 +78,40 @@ group("keys apuntan a slugs/ids existentes", () => {
   assert(byKind("sellador").every((r) => sellSlugs.has(r.key)), "keys de sellador ∈ SELLADORES");
   // Perfil ids usan el esquema estable pt:/pp:.
   assert(byKind("perfil").every((r) => /^p[tp]:/.test(r.key)), "keys de perfil con prefijo pt:/pp:");
+  assert(byKind("perfil").every((r) => perfilCatalogById.has(r.key)), "keys de perfil resuelven en flattenPerfilesLibre");
   // Familia de panel ∈ PANELS_TECHO∪PANELS_PARED.
   const famSet = new Set([...Object.keys(PANELS_TECHO), ...Object.keys(PANELS_PARED)]);
   assert(byKind("panel").every((r) => famSet.has(r.familia)), "familia de panel ∈ PANELS_*");
+});
+
+/* ── Puente drawer → motor de presupuesto libre ──────────────────────────── */
+group("filas del drawer cotizan como presupuesto libre", () => {
+  const panel = byKind("panel").find((r) => r.familia && r.espesor);
+  const perfil = byKind("perfil").find((r) => perfilCatalogById.has(r.key));
+  const fijacion = byKind("fijacion")[0];
+  const sellador = byKind("sellador")[0];
+  const result = computePresupuestoLibreCatalogo({
+    listaPrecios: "venta",
+    librePanelLines: [{ familia: panel.familia, espesor: panel.espesor, color: panel.colorDefault, m2: 5 }],
+    librePerfilQty: { [perfil.key]: 2 },
+    perfilCatalogById,
+    libreFijQty: { [fijacion.key]: 3 },
+    libreSellQty: { [sellador.key]: 1 },
+    flete: 0,
+  });
+  const groupByTitle = new Map(result.libreGroups.map((g) => [g.title, g]));
+  const panelItem = groupByTitle.get("PANELES")?.items?.[0];
+  const perfilItem = groupByTitle.get("PERFILERÍA")?.items?.[0];
+  const fijItem = groupByTitle.get("TORNILLERÍA")?.items?.[0];
+  const sellItem = groupByTitle.get("SELLADORES")?.items?.[0];
+
+  assert(result.warnings.length === 0, "drawer rows no generan warnings");
+  assert(panelItem?.sku === panel.sku && panelItem.unidad === "m²", "panel row → línea PANELES en m²");
+  assert(panelItem?.cant === 5 && panelItem.total === +(5 * panel.venta).toFixed(2), "panel row → total autoritativo por m²");
+  assert(perfilItem?.sku === perfil.sku && perfilItem.cant === 2 && perfilItem.total > 0, "perfil row → línea PERFILERÍA");
+  assert(fijItem?.sku === fijacion.key && fijItem.cant === 3 && fijItem.total > 0, "fijación row → línea TORNILLERÍA");
+  assert(sellItem?.sku === sellador.key && sellItem.cant === 1 && sellItem.total > 0, "sellador row → línea SELLADORES");
+  assert(!groupByTitle.has("SERVICIOS"), "drawer aditivo no agrega SERVICIOS/flete");
 });
 
 /* ── Búsqueda por nombre y SKU ────────────────────────────────────────────── */

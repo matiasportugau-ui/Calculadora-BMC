@@ -15,6 +15,7 @@ const TOKEN = process.env.API_AUTH_TOKEN;
 const { default: express } = await import("express");
 const { default: calcRouter } = await import("../server/routes/calc.js");
 const { default: agentVoiceRouter } = await import("../server/routes/agentVoice.js");
+const { default: authGoogleRouter } = await import("../server/routes/authGoogle.js");
 const { config } = await import("../server/config.js");
 const { createSuperAgentRouter } = await import("../server/routes/superAgent.js");
 const { createWolfboardRouter } = await import("../server/routes/wolfboard.js");
@@ -39,6 +40,7 @@ async function run() {
   app.use(express.json({ limit: "1mb" }));
   app.use("/calc", calcRouter);
   app.use("/api", agentVoiceRouter);
+  app.use("/api", authGoogleRouter);
   app.use("/api/agent", createSuperAgentRouter(config));
   app.use("/api/wolfboard", createWolfboardRouter(config));
 
@@ -113,6 +115,35 @@ async function run() {
       r.status,
       401
     );
+
+    // ── Dev browser login must stay impossible in production ────────────────
+    const previousAppEnv = config.appEnv;
+    config.appEnv = "production";
+    try {
+      r = await fetch(`${base}/api/auth/dev-browser-login?next=/panelin/live`);
+      body = await r.json().catch(() => ({}));
+      assert(
+        "GET /api/auth/dev-browser-login in production → 403",
+        r.status === 403 && body.error === "dev_browser_login_not_available_in_production",
+        { status: r.status, error: body.error },
+        { status: 403, error: "dev_browser_login_not_available_in_production" }
+      );
+
+      r = await fetch(`${base}/api/auth/dev-browser-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "operator@example.com" }),
+      });
+      body = await r.json().catch(() => ({}));
+      assert(
+        "POST /api/auth/dev-browser-login in production → 403",
+        r.status === 403 && body.error === "dev_browser_login_not_available_in_production",
+        { status: r.status, error: body.error },
+        { status: 403, error: "dev_browser_login_not_available_in_production" }
+      );
+    } finally {
+      config.appEnv = previousAppEnv;
+    }
 
     // ── Legacy routers must fail closed if service token is not configured ──
     const previousToken = config.apiAuthToken;
