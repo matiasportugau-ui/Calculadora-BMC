@@ -1,0 +1,219 @@
+{
+  "run_id": "2026-W27",
+  "run_date": "2026-07-03",
+  "stage": "2-cataloger",
+  "scoring_rubric": "1-5 each: feasibility (can it stand alone), market (LatAm opportunity), effort (INVERSE packaging effort - higher = less work), reuse (reuse potential). composite = mean.",
+  "candidates": [
+    {
+      "slug": "calc-whitelabel-saas",
+      "name": "White-label quotation calculator SaaS (construction distributors)",
+      "source": "Calculadora-BMC core",
+      "packaging": "SaaS",
+      "scores": {"feasibility": 4, "market": 5, "effort": 2, "reuse": 5},
+      "composite": 4.0,
+      "evidence": {
+        "feasibility": "src/utils/calculations.js is a pure engine; src/data/constants.js is a data-driven 422-SKU catalogue with dual price lists (venta/web); tests/validation.js locks behavior — hecho confirmado. Docked 1: UI (PanelinCalculadoraV3) and Sheets/CRM wiring are BMC-specific.",
+        "market": "Live production system with real distributor workflows (PDF, WhatsApp export, BOM); three commercialization directions pre-explored 2026-05-16 — hecho confirmado. LatAm construction-distributor niche has no dominant regional CPQ (inferencia, see brief).",
+        "effort": "Multi-tenancy, per-tenant catalog ingestion (Matriz-equivalent), billing, and de-BMC branding are all net-new — inferencia from single-tenant config in server/config.js.",
+        "reuse": "Engine + PDF templates + BOM logic are catalog-agnostic by design (constants-driven; p(item) price resolver; buildQuotationModel abstraction) — hecho confirmado."
+      }
+    },
+    {
+      "slug": "market-intel-etl",
+      "name": "MercadoLibre competitor price-monitoring SaaS",
+      "source": "server/lib/marketIntel/",
+      "packaging": "SaaS",
+      "scores": {"feasibility": 4, "market": 4, "effort": 3, "reuse": 4},
+      "composite": 3.75,
+      "evidence": {
+        "feasibility": "Self-contained pipeline: scraper, deduplication, delta, alerts (email), scheduler under server/lib/marketIntel/, triggered via server/routes/mlEtlRun.js; competitor seeds in scripts/seed-full-competitors.mjs — hecho confirmado.",
+        "market": "Every MercadoLibre seller needs competitor pricing; regional incumbents exist (Nubimetrics, Real Trends) proving willingness to pay — hecho confirmado via Stage-3 research.",
+        "effort": "Needs tenant-facing UI, self-serve competitor selection, and isolation from BMC Postgres — inferencia; core ETL already runs on a schedule.",
+        "reuse": "Scraper/dedup/delta/alert pattern generalizes to any ML category — inferencia from category-agnostic pipeline structure."
+      }
+    },
+    {
+      "slug": "kb-rag-api",
+      "name": "BMC_KB B2B API (vertical RAG retrieval)",
+      "source": "server/lib/rag.js + embeddings.js + kb-package",
+      "packaging": "API",
+      "scores": {"feasibility": 4, "market": 3, "effort": 3, "reuse": 5},
+      "composite": 3.75,
+      "evidence": {
+        "feasibility": "rag.js + embeddings.js are provider-agnostic (pgvector cosine); KB has its own migrations (kb-package/), surface (kbSurface.js) and analytics (kbAnalytics.js) — hecho confirmado.",
+        "market": "Pre-explored direction (2026-05-16); niche B2B buyers (construction e-commerce, distributors) — but horizontal RAG-as-a-service is crowded (duda abierta: paying demand for a construction-specific KB API is unproven).",
+        "effort": "API productization = API keys, rate limits, billing, docs; auth primitives already exist (identityAuth.js JWT) — inferencia.",
+        "reuse": "The RAG stack is fully content-agnostic; swap the KB corpus and it serves any vertical — hecho confirmado from provider-agnostic embeddings design."
+      }
+    },
+    {
+      "slug": "panelin-chat-template",
+      "name": "Configurable AI sales-chatbot template for construction e-commerce",
+      "source": "server/lib/agentCore.js + agentTools.js + agentChat.js",
+      "packaging": "GPT-agent-template",
+      "scores": {"feasibility": 4, "market": 4, "effort": 2, "reuse": 4},
+      "composite": 3.5,
+      "evidence": {
+        "feasibility": "agentCore.js is the shared brain across chat/ML/WA channels with Anthropic+OpenAI provider chain; live calc access via loopback HTTP (calcLoopbackClient.js, provenance source:ae_agent); auto-learn (autoLearnExtractor.js) — hecho confirmado.",
+        "market": "Pre-explored direction; WhatsApp-first LatAm commerce favors quoting bots over generic chat — inferencia supported by Stage-3 comparables bundling AI agents.",
+        "effort": "De-BMC-ification is substantial: prompts (chatPrompts), training KB, and tools assume the BMC catalog; per-customer config surface is net-new — inferencia.",
+        "reuse": "Provider chain, SSE route, tool registry, and training-correction loop (agentTraining.js, per-message Good/Correct) reuse as-is — hecho confirmado."
+      }
+    },
+    {
+      "slug": "pdf-quote-engine",
+      "name": "Quotation PDF template engine (7 layouts + QuotationModel)",
+      "source": "src/pdf-templates/ + src/utils/pdfGenerator.js + server/routes/pdf.js",
+      "packaging": "module/library",
+      "scores": {"feasibility": 4, "market": 2, "effort": 3, "reuse": 5},
+      "composite": 3.5,
+      "evidence": {
+        "feasibility": "Each template receives a QuotationModel and returns self-contained HTML; dispatcher with LAYOUT_OPTIONS; dual pipeline (server Chromium vectorial + html2pdf.js raster fallback) — hecho confirmado.",
+        "market": "Document/proposal generation is dominated by horizontal players (PandaDoc, Qwilr); a standalone quote-PDF engine is hard to sell alone — inferencia.",
+        "effort": "Already model-driven; needs npm packaging + docs — inferencia.",
+        "reuse": "buildQuotationModel() decouples data from layout; templates are brandable — hecho confirmado."
+      },
+      "note": "Folded into calc-whitelabel-saas brief as an add-on revenue path rather than a standalone brief (same quote pipeline; market score 2)."
+    },
+    {
+      "slug": "wa-cockpit",
+      "name": "WhatsApp Cloud API sales cockpit (team inbox + AI quoting)",
+      "source": "wa-package + server/routes/wa.js",
+      "packaging": "SaaS",
+      "scores": {"feasibility": 3, "market": 4, "effort": 2, "reuse": 4},
+      "composite": 3.25,
+      "evidence": {
+        "feasibility": "Own Postgres migrations (wa-package/, npm run wa:migrate, wa_schema_migrations ledger per issue #359) and route surface — hecho confirmado. Docked: entangled with Sheets CRM flows (issue #517 shows mixed WA/Sheets route) — hecho confirmado.",
+        "market": "WhatsApp-first sales is THE LatAm channel; incumbents (Callbell, Wati, Leadsales) validate pricing — hecho confirmado via Stage-3 research. Crowded, so differentiation = integrated AI quoting.",
+        "effort": "Meta app review, multi-tenant WABA onboarding, and unbundling from BMC CRM are heavy — inferencia.",
+        "reuse": "Cockpit + operator auth (waOperatorAuth.js) + soak-tested queue (migration 014, WA soak runbook in latest commit 7b0d3a2) reusable — hecho confirmado."
+      }
+    },
+    {
+      "slug": "panelin-mcp-surface",
+      "name": "Panelin MCP server (22-tool external agent surface)",
+      "source": ".claude/agents/bmc-panelin-mcp + server routes",
+      "packaging": "API/add-on",
+      "scores": {"feasibility": 3, "market": 3, "effort": 3, "reuse": 4},
+      "composite": 3.25,
+      "evidence": {
+        "feasibility": "22 tools defined (calc, catalog, state, PDF, CRM, WhatsApp, telemetry) for MCP clients (Claude, GPT Builder, Cursor) — hecho confirmado from agent definition. Docked: depends on the live BMC API.",
+        "market": "MCP ecosystem is growing fast, but monetization of MCP servers is unproven — duda abierta.",
+        "effort": "Surface exists; needs auth/metering for external tenants — inferencia.",
+        "reuse": "The pattern (expose a domain calculator as MCP tools) is a repeatable template across verticals — inferencia."
+      }
+    },
+    {
+      "slug": "roofplan-svg",
+      "name": "2D roof-plan SVG dimensioning library (ISO 129)",
+      "source": "calculo-especialist domain (roofPlanGeometry, PanelChainDimensions, RoofPlanDimensions.jsx)",
+      "packaging": "module/library",
+      "scores": {"feasibility": 4, "market": 2, "effort": 3, "reuse": 4},
+      "composite": 3.25,
+      "evidence": {
+        "feasibility": "Dedicated geometry/theme/typography modules with meter-based SVG coordinate system, cut-panel indicators, plano-BOM verification badge — hecho confirmado from agent-definition inventory.",
+        "market": "Very niche (panel-layout dimensioning); buyers are other panel software vendors — inferencia.",
+        "effort": "Extract as React lib; already componentized — inferencia.",
+        "reuse": "ISO 129 dimensioning + chain-dimension layout applies to any rectangular-panel domain (solar, drywall) — inferencia."
+      }
+    },
+    {
+      "slug": "traktime",
+      "name": "TraKtiMe — time tracking + always-on-top desktop timer",
+      "source": "traktime-package + server/routes/traktime.js + src-tauri",
+      "packaging": "SaaS",
+      "scores": {"feasibility": 4, "market": 2, "effort": 3, "reuse": 3},
+      "composite": 3.0,
+      "evidence": {
+        "feasibility": "Own migrations, own routes, /hub/traktime/* UI, and a dedicated Tauri 2 desktop app (src-tauri/Cargo.toml: 'bmc-traktime … always-on-top mini window', tray + global shortcut) — hecho confirmado.",
+        "market": "Time tracking is hyper-saturated with strong free tiers (Toggl, Clockify) — hecho confirmado (well-known market).",
+        "effort": "Small surface; desktop shell exists — inferencia.",
+        "reuse": "Tauri always-on-top mini-window pattern reusable for other micro-tools — inferencia."
+      }
+    },
+    {
+      "slug": "omni-orchestration",
+      "name": "Omni — omnichannel AI job queue + automation rules",
+      "source": "server/routes/omni.js + aiWorker",
+      "packaging": "internal-only (for now)",
+      "scores": {"feasibility": 3, "market": 3, "effort": 2, "reuse": 4},
+      "composite": 3.0,
+      "evidence": {
+        "feasibility": "AI registry with per-day budget (USD 50/día, issue #420), job queue with attempts/claims (aiWorker.js), automation rules with regex guards, omni_deals — hecho confirmado from issues #409/#420. Docked: flag-gated, hardening items still open.",
+        "market": "AI-orchestration middleware is hot but competitive; differentiator unclear yet — duda abierta.",
+        "effort": "WAVE 3/4 hardening incomplete (issue #409 deferred items) — hecho confirmado.",
+        "reuse": "Budgeted-AI-job-queue pattern reusable across products — inferencia."
+      }
+    },
+    {
+      "slug": "transportista",
+      "name": "Transportista — logistics driver/inspector module",
+      "source": "transportista-cursor-package + /logistica /conductor /inspector",
+      "packaging": "module/add-on",
+      "scores": {"feasibility": 3, "market": 3, "effort": 2, "reuse": 3},
+      "composite": 2.75,
+      "evidence": {
+        "feasibility": "Own package (AGENTS.md, migrations, prompts, src) and routes — hecho confirmado. Docked: driver flows assume BMC delivery ops.",
+        "market": "Last-mile/delivery tooling for LatAm SMB distributors exists but fragmented — inferencia.",
+        "effort": "Needs standalone auth, tenant model, mobile polish — inferencia.",
+        "reuse": "Driver/inspector role flows reusable for any distributor — inferencia."
+      }
+    },
+    {
+      "slug": "telegram-bot",
+      "name": "Telegram bot (graph-based)",
+      "source": "telegram-bot/",
+      "packaging": "module/add-on",
+      "scores": {"feasibility": 3, "market": 2, "effort": 3, "reuse": 3},
+      "composite": 2.75,
+      "evidence": {
+        "feasibility": "Structured package (graph/, lib/, tests/) — hecho confirmado. Depth unverified this run (duda abierta: LOC small relative to other modules).",
+        "market": "Telegram is secondary to WhatsApp in LatAm commerce — inferencia.",
+        "effort": "Channel adapter, modest scope — inferencia.",
+        "reuse": "Graph-based conversation structure reusable — inferencia."
+      }
+    },
+    {
+      "slug": "shop-chat-agent",
+      "name": "Shopify storefront MCP chat agent (customized template)",
+      "source": "shop-chat-agent/",
+      "packaging": "internal-only",
+      "scores": {"feasibility": 3, "market": 2, "effort": 2, "reuse": 3},
+      "composite": 2.5,
+      "evidence": {
+        "feasibility": "Complete app (React Router 7 + Prisma + theme extension, own Dockerfile) — hecho confirmado.",
+        "market": "Base template is Shopify's own free/open template (README links shopify.dev storefront-mcp docs) — hecho confirmado; hard to charge for what Shopify gives away.",
+        "effort": "Would need meaningful differentiation beyond the free base — inferencia.",
+        "reuse": "MCP-client wiring (app/mcp-client.js) instructive for other storefront agents — hecho confirmado."
+      }
+    },
+    {
+      "slug": "identity-rbac",
+      "name": "Identity/RBAC mini-stack (JWT + Google OAuth + TOTP + grants)",
+      "source": "server/lib/identityAuth.js + middleware/requireGrant.js + authMfa.js",
+      "packaging": "internal-only",
+      "scores": {"feasibility": 3, "market": 1, "effort": 3, "reuse": 3},
+      "composite": 2.5,
+      "evidence": {
+        "feasibility": "Complete: JWT issue/validate, Google OAuth, TOTP 2FA, module-scoped grants — hecho confirmado.",
+        "market": "Auth is a commodity dominated by Auth0/Clerk/Supabase Auth free tiers — hecho confirmado (well-known market).",
+        "effort": "Extractable but selling auth requires security posture (audits) far beyond packaging — inferencia.",
+        "reuse": "High internal reuse for every spin-off product above — hecho confirmado."
+      }
+    },
+    {
+      "slug": "evals-harness",
+      "name": "Promptfoo evals harness + golden cases",
+      "source": "evals/golden-cases + evals/promptfoo",
+      "packaging": "internal-only",
+      "scores": {"feasibility": 3, "market": 1, "effort": 3, "reuse": 3},
+      "composite": 2.5,
+      "evidence": {
+        "feasibility": "Working harness with golden cases (GC-0003 referenced in issue #358) — hecho confirmado.",
+        "market": "Promptfoo itself is open-source; the harness is methodology, not product — hecho confirmado.",
+        "effort": "N/A as product; near-zero as internal reuse — inferencia.",
+        "reuse": "Golden-case pattern transfers to every AI spin-off — inferencia."
+      }
+    }
+  ]
+}
