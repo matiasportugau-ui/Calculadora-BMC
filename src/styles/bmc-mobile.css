@@ -48,6 +48,7 @@
   transition: background 150ms ease, height 150ms ease;
 }
 .bmc-sash[data-resize-handle-active]::before,
+.bmc-sash[data-separator="active"]::before,
 .bmc-sash:hover::before {
   background: #0071e3; height: 40px;
 }
@@ -71,7 +72,8 @@
     height: auto !important;
     overflow: visible !important;
   }
-  .bmc-main-grid > [data-resize-handle] { display: none !important; }
+  .bmc-main-grid > [data-resize-handle],
+  .bmc-main-grid > [data-separator] { display: none !important; }
   .bmc-left-panel, .bmc-right-panel { overflow: visible !important; padding: 0 16px !important; }
   .bmc-mobile-bar { display: flex !important; }
 
