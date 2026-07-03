@@ -9,6 +9,9 @@
 // techo_fachada | camara_frig.
 // ═══════════════════════════════════════════════════════════════════════════
 import "../../styles/lg-quoter.css";
+import { ensureLgFonts } from "./lgFonts.js";
+
+ensureLgFonts();
 
 const SCENARIOS = [
   {

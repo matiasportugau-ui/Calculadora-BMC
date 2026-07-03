@@ -16,6 +16,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState } from "react";
 import "../../styles/lg-quoter.css";
+import { ensureLgFonts } from "./lgFonts.js";
+
+ensureLgFonts();
 
 const fmt = (n) =>
   Number.isFinite(n)

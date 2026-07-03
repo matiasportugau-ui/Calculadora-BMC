@@ -4,11 +4,10 @@
  * Extiende bmc-glass.css: usa sus primitivas --g-* y agrega la capa game-like.
  * Rama: claude/liquid-glass-quoter
  *
- * Fuentes: este @import solo se resuelve cuando ESTE archivo se importa,
- * y este archivo solo lo importan los módulos lazy de la capa game-like,
- * que solo se cargan si isDesignPreviewEnabled() === true. Producción: 0 requests.
+ * Fuentes: las inyecta ensureLgFonts() (lgFonts.js) como <link> no bloqueante
+ * desde los módulos lazy — un @import acá bloquea el preload CSS de Vite y
+ * congela el chunk si fonts.googleapis.com no responde. Producción: 0 requests.
  */
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap");
 
 [data-lg-quoter] {
   --lgq-steel-deep: #141a22;
