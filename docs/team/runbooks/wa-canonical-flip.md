@@ -22,10 +22,16 @@ and roll it back. Companion to [`OMNI-STAGING-ROLLOUT.md`](../orientation/OMNI-S
 - [ ] Prod repo Variables already ON: `OMNI_EVENT_BUS_ENABLED=1`,
       `OMNI_AI_ORCHESTRATOR_ENABLED=1` (they are — PROJECT-STATE 2026-06-23). The
       `wa_crm_sync` job only fires when the bus + orchestrator are live.
-- [ ] Migrations `011_wa_crm_sync_job.sql` + `012_omni_ai_jobs_run_after.sql`
-      applied to prod: `DATABASE_URL=<prod> npm run omni:migrate` (idempotent — 011
-      widens a CHECK + adds a partial index; 012 is a cheap `ADD COLUMN run_after`;
-      the omni tables already exist).
+- [ ] Omni migrations applied to prod: `DATABASE_URL=<prod> npm run omni:migrate`
+      (idempotent; applies everything pending in filename order). For this flip the
+      relevant ones are `011_wa_crm_sync_job.sql` (widens a CHECK + partial dedup
+      index), `012_omni_ai_jobs_run_after.sql` (cheap `ADD COLUMN run_after`) and —
+      **critically** — `014_ai_job_type_union.sql`: two branches shipped different
+      "011" files that each DROP+ADD the same `omni_ai_jobs_type_valid` CHECK
+      (PR #531), so 014 is the convergence point that guarantees the CHECK accepts
+      all six job types regardless of which 011 an environment ran first. Verify
+      with the pre-check query in
+      [`wa-canonical-soak-queries.sql`](./wa-canonical-soak-queries.sql) (block 0).
 - [ ] `OMNI_WA_CANONICAL` is wired into `deploy-calc-api.yml` (done) so the repo
       Variable actually reaches Cloud Run.
 - [ ] Owner decisions confirmed:
@@ -67,6 +73,11 @@ Postgres is absent.)
    rendered Cloud Run env contains `OMNI_WA_CANONICAL=1`.
 4. Watch the first hour: `wa_crm_sync` job throughput, CRM row count, error logs
    (`WA canonical ingest failed` should be absent — it indicates a DB problem).
+5. Monitoring kit: [`wa-canonical-soak-queries.sql`](./wa-canonical-soak-queries.sql)
+   — 10 ready-to-run blocks (`psql "$DATABASE_URL" -f wa-canonical-soak-queries.sql`)
+   covering pre-check, 24h health, backlog age, dead-letter, hourly throughput,
+   coalescing invariant, run_after debounce, per-phone spot-check, daily AI budget,
+   cockpit mirror, and post-rollback verification.
 
 ## Rollback (instant, no data migration)
 
