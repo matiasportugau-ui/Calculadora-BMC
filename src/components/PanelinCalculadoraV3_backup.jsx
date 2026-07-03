@@ -136,6 +136,23 @@ import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
  */
 const ENABLE_ROOF_3D_VISOR = false;
 
+const MAIN_SPLIT_GROUP_ID = "bmc-panelin-main-split";
+const MAIN_SPLIT_PANEL_IDS = ["bmc-main-left", "bmc-main-right"];
+const MAIN_SPLIT_RESET_LAYOUT = { "bmc-main-left": 28, "bmc-main-right": 72 };
+const NOOP_LAYOUT_STORAGE = {
+  getItem: () => null,
+  setItem: () => {},
+};
+
+function getMainSplitLayoutStorage() {
+  if (typeof window === "undefined") return NOOP_LAYOUT_STORAGE;
+  try {
+    return window.localStorage;
+  } catch {
+    return NOOP_LAYOUT_STORAGE;
+  }
+}
+
 // CSS extracted to src/styles/bmc-mobile.css (imported in main.jsx)
 
 /**
@@ -2500,9 +2517,10 @@ export default function PanelinCalculadoraV3() {
   const navigate = useNavigate();
   const bmcAuth = useBmcAuth();
   const mainSplitLayoutPersistence = useDefaultLayout({
-    id: "bmc-panelin-main-split",
-    panelIds: ["bmc-main-left", "bmc-main-right"],
+    id: MAIN_SPLIT_GROUP_ID,
+    panelIds: MAIN_SPLIT_PANEL_IDS,
     onlySaveAfterUserInteractions: true,
+    storage: getMainSplitLayoutStorage(),
   });
   const isDetachedChatWindow = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -3526,7 +3544,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const resetMainSplitLayout = useCallback(() => {
     try {
-      mainPanelGroupRef.current?.setLayout?.({ "bmc-main-left": 28, "bmc-main-right": 72 });
+      mainPanelGroupRef.current?.setLayout?.(MAIN_SPLIT_RESET_LAYOUT);
     } catch {
       /* optional API */
     }
@@ -5266,6 +5284,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
 
       <Group
+        id={MAIN_SPLIT_GROUP_ID}
         groupRef={mainPanelGroupRef}
         orientation={isCompactLayout ? "vertical" : "horizontal"}
         defaultLayout={isCompactLayout ? undefined : mainSplitLayoutPersistence.defaultLayout}
