@@ -22,3 +22,7 @@ export function chooseWaIngestMode(config) {
     !!config?.omniAiOrchestratorEnabled;
   return canonical ? "canonical" : "legacy";
 }
+
+export function shouldRunLegacyWaTimer(config) {
+  return chooseWaIngestMode(config) === "legacy";
+}

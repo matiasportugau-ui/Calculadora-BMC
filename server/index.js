@@ -86,7 +86,7 @@ import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
 import { normalizeAndPersist } from "./lib/omni/normalizer.js";
-import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
+import { chooseWaIngestMode, shouldRunLegacyWaTimer } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
 import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
@@ -748,7 +748,9 @@ async function processWaConversation(chatId, conv) {
 const WA_INACTIVITY_MS = 5 * 60 * 1000; // 5 minutos
 setInterval(() => {
   // Canonical mode: the wa_crm_sync omni job handles ingest — no in-memory timer.
-  if (config.omniWaCanonical) return;
+  // If the flip's dependent flags are missing, chooseWaIngestMode falls back to
+  // legacy; keep the timer alive so buffered WA leads are still written to CRM.
+  if (!shouldRunLegacyWaTimer(config)) return;
   const now = Date.now();
   for (const [chatId, conv] of waConversations.entries()) {
     if (now - conv.lastUpdate >= WA_INACTIVITY_MS && conv.messages.length > 0) {
@@ -851,7 +853,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
     const text = msg.text?.body || msg.caption || "";
     if (!text) continue;
 
-    // Legacy in-memory accumulation (drives the 5-min timer + 🚀 trigger) — OFF only.
+    // Legacy in-memory accumulation (drives the 5-min timer + 🚀 trigger).
     let conv = null;
     if (waMode === "legacy") {
       if (!waConversations.has(chatId)) {

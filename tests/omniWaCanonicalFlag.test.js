@@ -1,6 +1,6 @@
 // omniWaCanonical flag + ingest-mode selector — offline (no DB, no env set)
 import { config } from "../server/config.js";
-import { chooseWaIngestMode } from "../server/lib/wa/ingestMode.js";
+import { chooseWaIngestMode, shouldRunLegacyWaTimer } from "../server/lib/wa/ingestMode.js";
 
 let passed = 0;
 let failed = 0;
@@ -20,6 +20,8 @@ assert("mode canonical when ON + prereqs", chooseWaIngestMode({ omniWaCanonical:
 assert("canonical WITHOUT event bus → legacy fallback", chooseWaIngestMode({ omniWaCanonical: true, omniEventBusEnabled: false, omniAiOrchestratorEnabled: true }) === "legacy");
 assert("canonical WITHOUT orchestrator → legacy fallback", chooseWaIngestMode({ omniWaCanonical: true, omniEventBusEnabled: true, omniAiOrchestratorEnabled: false }) === "legacy");
 assert("undefined config → legacy", chooseWaIngestMode(undefined) === "legacy");
+assert("legacy timer runs when partial canonical flip falls back", shouldRunLegacyWaTimer({ omniWaCanonical: true, omniEventBusEnabled: false, omniAiOrchestratorEnabled: true }) === true);
+assert("legacy timer stops only when canonical pipeline is complete", shouldRunLegacyWaTimer({ omniWaCanonical: true, ...prereqs }) === false);
 
 console.log(`\nomniWaCanonicalFlag: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
