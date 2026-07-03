@@ -152,6 +152,46 @@
   margin: 0 0 8px 0;
 }
 
+/* Selector Group */
+.pl-card__selector-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.pl-card__selector-label {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--pl-text-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pl-card__selector {
+  padding: 6px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--pl-text-dark);
+  cursor: pointer;
+  transition: all 0.2s var(--lg-easing);
+}
+
+.pl-card__selector:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(201, 100, 66, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.pl-card__selector:focus {
+  outline: none;
+  border-color: var(--pl-accent);
+  box-shadow: 0 0 0 2px rgba(201, 100, 66, 0.1);
+}
+
 /* Price */
 .pl-card__price-wrapper {
   display: flex;

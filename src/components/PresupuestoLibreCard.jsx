@@ -1,23 +1,37 @@
 import React, { useState } from 'react';
+import { p } from '../data/constants';
 import { getProductImage } from '../utils/presupuestoLibreImageMapper';
 import './PresupuestoLibreCard.css';
 
 export function PresupuestoLibreCard({
   familia,
   label,
-  espesor,
-  color,
-  precio,
-  unidad = 'm²',
+  espesores,
+  colores,
   imagenFamilia,
   onAdd,
+  unidad = 'm²',
+  especData,
 }) {
+  const [selectedEspesor, setSelectedEspesor] = useState(espesores?.[0] || null);
+  const [selectedColor, setSelectedColor] = useState(colores?.[0] || null);
   const [cantidad, setCantidad] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
 
+  const currentPrice = selectedEspesor && especData?.[selectedEspesor]
+    ? p(especData[selectedEspesor])
+    : 0;
+
   const handleAdd = () => {
-    if (cantidad > 0) {
-      onAdd({ familia, espesor, color, cantidad, precio, unidad });
+    if (cantidad > 0 && currentPrice > 0) {
+      onAdd({
+        familia,
+        espesor: selectedEspesor,
+        color: selectedColor,
+        cantidad,
+        precio: currentPrice,
+        unidad,
+      });
       setCantidad(0);
     }
   };
@@ -26,7 +40,7 @@ export function PresupuestoLibreCard({
   const handleDecrement = () => setCantidad(c => (c > 0 ? c - 1 : 0));
 
   const imageSrc = getProductImage(imagenFamilia || familia);
-  const subtotal = (cantidad * precio).toFixed(2);
+  const subtotal = (cantidad * currentPrice).toFixed(2);
 
   return (
     <div
@@ -54,22 +68,51 @@ export function PresupuestoLibreCard({
 
       {/* Content */}
       <div className="pl-card__content">
-        <div className="pl-card__header">
-          <h3 className="pl-card__title">{label}</h3>
-          {espesor && (
-            <span className="pl-card__espesor">{espesor}mm</span>
-          )}
-        </div>
+        <h3 className="pl-card__title">{label}</h3>
 
-        {color && (
-          <p className="pl-card__color">{color}</p>
+        {/* Espesor Selector */}
+        {espesores && espesores.length > 0 && (
+          <div className="pl-card__selector-group">
+            <label className="pl-card__selector-label">Espesor</label>
+            <select
+              className="pl-card__selector"
+              value={selectedEspesor || ''}
+              onChange={(e) => setSelectedEspesor(e.target.value)}
+            >
+              {espesores.map((esp) => (
+                <option key={esp} value={esp}>
+                  {esp}mm
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Color Selector */}
+        {colores && colores.length > 0 && (
+          <div className="pl-card__selector-group">
+            <label className="pl-card__selector-label">Color</label>
+            <select
+              className="pl-card__selector"
+              value={selectedColor || ''}
+              onChange={(e) => setSelectedColor(e.target.value)}
+            >
+              {colores.map((col) => (
+                <option key={col} value={col}>
+                  {col}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
 
         {/* Price */}
-        <div className="pl-card__price-wrapper">
-          <span className="pl-card__price">${precio.toFixed(2)}</span>
-          <span className="pl-card__unit">/{unidad}</span>
-        </div>
+        {currentPrice > 0 && (
+          <div className="pl-card__price-wrapper">
+            <span className="pl-card__price">${currentPrice.toFixed(2)}</span>
+            <span className="pl-card__unit">/{unidad}</span>
+          </div>
+        )}
 
         {/* Quantity Control */}
         <div className="pl-card__qty-control">

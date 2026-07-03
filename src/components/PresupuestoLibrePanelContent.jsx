@@ -21,16 +21,19 @@ export function PresupuestoLibrePanelContent() {
     addPanelLine(familia, espesor, color);
   };
 
-  const handleAddPerfil = (perfilKey, productData) => {
-    addPerfil(perfilKey, productData.cantidad || 1);
+  const handleAddPerfil = (productData) => {
+    const { familia } = productData;
+    addPerfil(familia, productData.cantidad || 1);
   };
 
-  const handleAddFijacion = (fijacionKey, productData) => {
-    addFijacion(fijacionKey, productData.cantidad || 1);
+  const handleAddFijacion = (productData) => {
+    const { familia } = productData;
+    addFijacion(familia, productData.cantidad || 1);
   };
 
-  const handleAddSellador = (selladorKey, productData) => {
-    addSellador(selladorKey, productData.cantidad || 1);
+  const handleAddSellador = (productData) => {
+    const { familia } = productData;
+    addSellador(familia, productData.cantidad || 1);
   };
 
   const renderPaneles = () => {
@@ -38,50 +41,42 @@ export function PresupuestoLibrePanelContent() {
 
     // Techo panels
     Object.entries(PANELS_TECHO).forEach(([familiaKey, familiaData]) => {
-      Object.entries(familiaData.esp || {}).forEach(([espesor, especData]) => {
-        (familiaData.col || []).forEach((color) => {
-          const precio = p(especData);
-          if (precio > 0) {
-            panelCards.push(
-              <PresupuestoLibreCard
-                key={`techo-${familiaKey}-${espesor}-${color}`}
-                familia={familiaKey}
-                label={`${familiaData.label} ${espesor}mm - ${color}`}
-                espesor={espesor}
-                color={color}
-                precio={precio}
-                unidad="m²"
-                imagenFamilia={familiaData.fam || familiaKey}
-                onAdd={handleAddPanel}
-              />
-            );
-          }
-        });
-      });
+      const espesores = Object.keys(familiaData.esp || {});
+      if (espesores.length > 0) {
+        panelCards.push(
+          <PresupuestoLibreCard
+            key={`techo-${familiaKey}`}
+            familia={familiaKey}
+            label={familiaData.label}
+            espesores={espesores}
+            colores={familiaData.col || []}
+            especData={familiaData.esp}
+            unidad="m²"
+            imagenFamilia={familiaData.fam || familiaKey}
+            onAdd={handleAddPanel}
+          />
+        );
+      }
     });
 
     // Pared panels
     Object.entries(PANELS_PARED).forEach(([familiaKey, familiaData]) => {
-      Object.entries(familiaData.esp || {}).forEach(([espesor, especData]) => {
-        (familiaData.col || []).forEach((color) => {
-          const precio = p(especData);
-          if (precio > 0) {
-            panelCards.push(
-              <PresupuestoLibreCard
-                key={`pared-${familiaKey}-${espesor}-${color}`}
-                familia={familiaKey}
-                label={`${familiaData.label} ${espesor}mm - ${color}`}
-                espesor={espesor}
-                color={color}
-                precio={precio}
-                unidad="m²"
-                imagenFamilia={familiaData.fam || familiaKey}
-                onAdd={handleAddPanel}
-              />
-            );
-          }
-        });
-      });
+      const espesores = Object.keys(familiaData.esp || {});
+      if (espesores.length > 0) {
+        panelCards.push(
+          <PresupuestoLibreCard
+            key={`pared-${familiaKey}`}
+            familia={familiaKey}
+            label={familiaData.label}
+            espesores={espesores}
+            colores={familiaData.col || []}
+            especData={familiaData.esp}
+            unidad="m²"
+            imagenFamilia={familiaData.fam || familiaKey}
+            onAdd={handleAddPanel}
+          />
+        );
+      }
     });
 
     return panelCards;
@@ -94,45 +89,35 @@ export function PresupuestoLibrePanelContent() {
       Object.entries(tipoData).forEach(([familiaKey, familiaData]) => {
         if (familiaKey === 'label' || familiaKey === 'venta' || familiaKey === 'web' || familiaKey === 'costo' || familiaKey === 'largo') return;
 
-        Object.entries(familiaData).forEach(([especKey, especData]) => {
-          if (especKey === '_all' || especData._all) {
-            const data = especData._all || especData;
-            const precio = p(data);
-            if (precio > 0) {
-              const label = data.label || `${familyName} - ${especKey}`;
-              perfilCards.push(
-                <PresupuestoLibreCard
-                  key={`perfil-${tipoKey}-${familiaKey}-${especKey}`}
-                  familia={familiaKey}
-                  label={label}
-                  espesor={especKey !== '_all' ? especKey : null}
-                  color={null}
-                  precio={precio}
-                  unidad="m"
-                  imagenFamilia={familyName}
-                  onAdd={handleAddPerfil}
-                />
-              );
-            }
-          } else if (typeof especData === 'object' && especData.venta) {
-            const precio = p(especData);
-            if (precio > 0) {
-              perfilCards.push(
-                <PresupuestoLibreCard
-                  key={`perfil-${tipoKey}-${familiaKey}-${especKey}`}
-                  familia={familiaKey}
-                  label={`${familyName} - ${especKey}mm`}
-                  espesor={especKey}
-                  color={null}
-                  precio={precio}
-                  unidad="m"
-                  imagenFamilia={familyName}
-                  onAdd={handleAddPerfil}
-                />
-              );
-            }
+        const espesores = [];
+        const especData = {};
+
+        Object.entries(familiaData).forEach(([especKey, especVal]) => {
+          if (especKey === '_all') {
+            especData['std'] = especVal._all ? especVal._all : especVal;
+            espesores.push('std');
+          } else if (typeof especVal === 'object' && (especVal.venta !== undefined || especVal._all)) {
+            espesores.push(especKey);
+            especData[especKey] = especVal._all || especVal;
           }
         });
+
+        if (espesores.length > 0) {
+          const label = familiaData._all?.label || familiaData[espesores[0]]?.label || `${familyName} - ${familiaKey}`;
+          perfilCards.push(
+            <PresupuestoLibreCard
+              key={`perfil-${tipoKey}-${familiaKey}`}
+              familia={familiaKey}
+              label={label}
+              espesores={espesores}
+              colores={[]}
+              especData={especData}
+              unidad="m"
+              imagenFamilia={familyName}
+              onAdd={handleAddPerfil}
+            />
+          );
+        }
       });
     };
 
@@ -156,12 +141,12 @@ export function PresupuestoLibrePanelContent() {
           key={`fijacion-${key}`}
           familia={key}
           label={data.label}
-          espesor={null}
-          color={null}
-          precio={precio}
+          espesores={[]}
+          colores={[]}
           unidad={data.unidad || 'unid'}
           imagenFamilia="FIJACIONES"
           onAdd={handleAddFijacion}
+          especData={{ std: data }}
         />
       );
     }).filter(Boolean);
@@ -176,12 +161,12 @@ export function PresupuestoLibrePanelContent() {
           key={`sellador-${key}`}
           familia={key}
           label={data.label}
-          espesor={null}
-          color={null}
-          precio={precio}
+          espesores={[]}
+          colores={[]}
           unidad={data.unidad || 'unid'}
           imagenFamilia="SELLADORES"
           onAdd={handleAddSellador}
+          especData={{ std: data }}
         />
       );
     }).filter(Boolean);
@@ -196,12 +181,12 @@ export function PresupuestoLibrePanelContent() {
           key={`servicio-${key}`}
           familia={key}
           label={data.label}
-          espesor={null}
-          color={null}
-          precio={precio}
+          espesores={[]}
+          colores={[]}
           unidad={data.unidad || 'servicio'}
           imagenFamilia="SERVICIOS"
           onAdd={handleAddFijacion}
+          especData={{ std: data }}
         />
       );
     }).filter(Boolean);
@@ -219,12 +204,12 @@ export function PresupuestoLibrePanelContent() {
             key={`herramienta-${key}`}
             familia={key}
             label={data.label}
-            espesor={null}
-            color={null}
-            precio={precio}
+            espesores={[]}
+            colores={[]}
             unidad={data.unidad || 'unid'}
             imagenFamilia="HERRAMIENTAS"
             onAdd={handleAddFijacion}
+            especData={{ std: data }}
           />
         );
       }
@@ -241,12 +226,12 @@ export function PresupuestoLibrePanelContent() {
               key={`extra-fijacion-${key}`}
               familia={key}
               label={data.label}
-              espesor={null}
-              color={null}
-              precio={precio}
+              espesores={[]}
+              colores={[]}
               unidad={data.unidad || 'unid'}
               imagenFamilia="FIJACIONES"
               onAdd={handleAddFijacion}
+              especData={{ std: data }}
             />
           );
         }
