@@ -436,9 +436,9 @@ export async function runKeywordRefresh({ ids = null, priority = null } = {}) {
 }
 
 export async function addTrackedKeyword({ keyword, cluster, family, intent, priority, on_site_gap }) {
+  const normalizedKeyword = normalizeKeywordInput(keyword);
   const state = getKeywordMonitorState();
   const id = `kw-${Date.now()}`;
-  const normalizedKeyword = normalizeKeywordInput(keyword);
   const entry = {
     id,
     keyword: normalizedKeyword,
