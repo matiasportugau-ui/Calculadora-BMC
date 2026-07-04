@@ -1,11 +1,10 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { usePresupuestoLibre } from '../contexts/PresupuestoLibreContext';
 import { PresupuestoLibrePanelContent } from './PresupuestoLibrePanelContent';
 import './PresupuestoLibrePanel.css';
 
 export function PresupuestoLibrePanel() {
   const { isOpen, setIsOpen } = usePresupuestoLibre();
-  const panelRef = useRef(null);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -39,7 +38,6 @@ export function PresupuestoLibrePanel() {
     <div className="pl-panel__overlay" onClick={() => setIsOpen(false)}>
       <div
         className="pl-panel"
-        ref={panelRef}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

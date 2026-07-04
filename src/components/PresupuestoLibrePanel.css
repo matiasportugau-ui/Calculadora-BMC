@@ -2,7 +2,11 @@
    Presupuesto Libre Panel — Liquid Glass (Fixed Floating)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-:root {
+/* Tokens scoped to the panel tree — :root would collide with the --lg-*
+   variables that src/styles/bmc-glass.css defines globally. */
+.pl-panel,
+.pl-panel__fab,
+.pl-panel__overlay {
   --lg-blur: 50px;
   --lg-saturate: 180%;
   --lg-bg: rgba(245, 245, 250, 0.74);
@@ -19,10 +23,12 @@
   --pl-text-light: #666;
 }
 
-/* FAB Button (collapsed state) */
+/* FAB Button (collapsed state) — bottom offset clears the BmcChatPanel
+   launcher tab (bottom 0–40px) and the Modo Tutorial pill (~78–110px)
+   that share the bottom-right corner. */
 .pl-panel__fab {
   position: fixed;
-  bottom: 30px;
+  bottom: 124px;
   right: 30px;
   width: 56px;
   height: 56px;
@@ -202,7 +208,7 @@
   }
 
   .pl-panel__fab {
-    bottom: 20px;
+    bottom: 116px;
     right: 20px;
   }
 }

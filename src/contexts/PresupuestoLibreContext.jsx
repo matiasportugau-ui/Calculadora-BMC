@@ -1,52 +1,75 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 
 const PresupuestoLibreContext = createContext();
 
+const STATE_KEY = 'bmc_presupuesto_libre_state';
+const UI_KEY = 'bmc_presupuesto_libre_ui';
+
+const EMPTY_EXTRA = { texto: '', precio: '', unidades: '', cantidad: '' };
+
+function loadSaved(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    console.warn(`Failed to load ${key} from localStorage`, e);
+    return null;
+  }
+}
+
+function newLineId() {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+// add/remove/updateQty triplet over a {key: qty} map, using functional
+// updates so rapid consecutive adds never work from a stale snapshot.
+function makeQtyActions(setQty) {
+  const remove = (key) => {
+    setQty((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+  return {
+    add: (key, qty) => {
+      setQty((prev) => ({ ...prev, [key]: (prev[key] || 0) + (qty || 1) }));
+    },
+    remove,
+    updateQty: (key, qty) => {
+      if (qty <= 0) {
+        remove(key);
+      } else {
+        setQty((prev) => ({ ...prev, [key]: qty }));
+      }
+    },
+  };
+}
+
 export function PresupuestoLibreProvider({ children }) {
-  // UI State
+  // Hydrate lazily from localStorage so the save effect never sees (and
+  // persists) the empty initial state before hydration lands.
+  const [saved] = useState(() => loadSaved(STATE_KEY));
+  const [savedUI] = useState(() => loadSaved(UI_KEY));
+
+  // UI State — isOpen is intentionally NOT restored: the panel mounts on all
+  // routes, and restoring it would auto-open a full-screen overlay on reload.
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('paneles');
+  const [activeTab, setActiveTab] = useState(savedUI?.activeTab || 'paneles');
 
   // Presupuesto State (persisted to localStorage)
-  const [librePanelLines, setLibrePanelLines] = useState([]);
-  const [librePerfilQty, setLibrePerfilQty] = useState({});
-  const [libreFijQty, setLibreFijQty] = useState({});
-  const [libreSellQty, setLibreSellQty] = useState({});
-  const [libreServiciosQty, setLibreServiciosQty] = useState({});
-  const [libreHerramientasQty, setLibreHerramientasQty] = useState({});
-  const [libreExtra, setLibreExtra] = useState({ texto: '', precio: '', unidades: '', cantidad: '' });
-  const [flete, setFlete] = useState(0);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('bmc_presupuesto_libre_state');
-    if (saved) {
-      try {
-        const state = JSON.parse(saved);
-        setLibrePanelLines(state.librePanelLines || []);
-        setLibrePerfilQty(state.librePerfilQty || {});
-        setLibreFijQty(state.libreFijQty || {});
-        setLibreSellQty(state.libreSellQty || {});
-        setLibreServiciosQty(state.libreServiciosQty || {});
-        setLibreHerramientasQty(state.libreHerramientasQty || {});
-        setLibreExtra(state.libreExtra || { texto: '', precio: '', unidades: '', cantidad: '' });
-        setFlete(state.flete || 0);
-      } catch (e) {
-        console.warn('Failed to load presupuesto libre state from localStorage', e);
-      }
-    }
-
-    const savedUI = localStorage.getItem('bmc_presupuesto_libre_ui');
-    if (savedUI) {
-      try {
-        const ui = JSON.parse(savedUI);
-        setIsOpen(ui.isOpen ?? false);
-        setActiveTab(ui.activeTab || 'paneles');
-      } catch (e) {
-        console.warn('Failed to load presupuesto libre UI state', e);
-      }
-    }
-  }, []);
+  const [librePanelLines, setLibrePanelLines] = useState(saved?.librePanelLines || []);
+  const [librePerfilQty, setLibrePerfilQty] = useState(saved?.librePerfilQty || {});
+  // libreFijQty holds fijaciones AND herramientas: the quote engine
+  // (computePresupuestoLibreCatalogo) resolves its keys against both
+  // FIJACIONES and HERRAMIENTAS.
+  const [libreFijQty, setLibreFijQty] = useState(saved?.libreFijQty || {});
+  const [libreSellQty, setLibreSellQty] = useState(saved?.libreSellQty || {});
+  const [libreServiciosQty, setLibreServiciosQty] = useState(saved?.libreServiciosQty || {});
+  const [libreExtra, setLibreExtra] = useState(saved?.libreExtra || EMPTY_EXTRA);
+  const [flete, setFlete] = useState(saved?.flete || 0);
 
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -57,182 +80,87 @@ export function PresupuestoLibreProvider({ children }) {
         libreFijQty,
         libreSellQty,
         libreServiciosQty,
-        libreHerramientasQty,
         libreExtra,
         flete,
       };
-      localStorage.setItem('bmc_presupuesto_libre_state', JSON.stringify(state));
+      localStorage.setItem(STATE_KEY, JSON.stringify(state));
     } catch (e) {
       console.warn('Failed to save presupuesto libre state to localStorage', e);
     }
-  }, [librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreServiciosQty, libreHerramientasQty, libreExtra, flete]);
+  }, [librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreServiciosQty, libreExtra, flete]);
 
-  // Save UI state
+  // Save UI state (activeTab only — see isOpen note above)
   useEffect(() => {
     try {
-      const ui = { isOpen, activeTab };
-      localStorage.setItem('bmc_presupuesto_libre_ui', JSON.stringify(ui));
+      localStorage.setItem(UI_KEY, JSON.stringify({ activeTab }));
     } catch (e) {
       console.warn('Failed to save presupuesto libre UI state to localStorage', e);
     }
-  }, [isOpen, activeTab]);
+  }, [activeTab]);
 
-  // Panel management
-  const addPanelLine = (familia, espesor, color, m2 = 0) => {
-    setLibrePanelLines([
-      ...librePanelLines,
-      { familia, espesor, color, m2, id: Date.now() },
-    ]);
-  };
+  const actions = useMemo(() => {
+    const perfil = makeQtyActions(setLibrePerfilQty);
+    const fijacion = makeQtyActions(setLibreFijQty);
+    const sellador = makeQtyActions(setLibreSellQty);
+    const servicio = makeQtyActions(setLibreServiciosQty);
 
-  const removePanelLine = (id) => {
-    setLibrePanelLines(librePanelLines.filter(line => line.id !== id));
-  };
+    return {
+      // Panel actions
+      addPanelLine: (familia, espesor, color, m2 = 0) => {
+        setLibrePanelLines((prev) => [
+          ...prev,
+          { familia, espesor, color, m2, id: newLineId() },
+        ]);
+      },
+      removePanelLine: (id) => {
+        setLibrePanelLines((prev) => prev.filter((line) => line.id !== id));
+      },
+      updatePanelLine: (id, patch) => {
+        setLibrePanelLines((prev) => prev.map((line) =>
+          line.id === id ? { ...line, ...patch } : line
+        ));
+      },
 
-  const updatePanelLine = (id, patch) => {
-    setLibrePanelLines(librePanelLines.map(line =>
-      line.id === id ? { ...line, ...patch } : line
-    ));
-  };
+      // Perfil actions
+      addPerfil: perfil.add,
+      removePerfil: perfil.remove,
+      updatePerfilQty: perfil.updateQty,
 
-  // Perfil management
-  const addPerfil = (perfilId, qty) => {
-    setLibrePerfilQty({
-      ...librePerfilQty,
-      [perfilId]: (librePerfilQty[perfilId] || 0) + (qty || 1),
-    });
-  };
+      // Fijación actions
+      addFijacion: fijacion.add,
+      removeFijacion: fijacion.remove,
+      updateFijacionQty: fijacion.updateQty,
 
-  const removePerfil = (perfilId) => {
-    const newQty = { ...librePerfilQty };
-    delete newQty[perfilId];
-    setLibrePerfilQty(newQty);
-  };
+      // Sellador actions
+      addSellador: sellador.add,
+      removeSellador: sellador.remove,
+      updateSelladorQty: sellador.updateQty,
 
-  const updatePerfilQty = (perfilId, qty) => {
-    if (qty <= 0) {
-      removePerfil(perfilId);
-    } else {
-      setLibrePerfilQty({
-        ...librePerfilQty,
-        [perfilId]: qty,
-      });
-    }
-  };
+      // Servicios actions
+      addServicio: servicio.add,
+      removeServicio: servicio.remove,
+      updateServicioQty: servicio.updateQty,
 
-  // Fijación management
-  const addFijacion = (fijacionKey, qty) => {
-    setLibreFijQty({
-      ...libreFijQty,
-      [fijacionKey]: (libreFijQty[fijacionKey] || 0) + (qty || 1),
-    });
-  };
+      // Herramientas share the fijaciones map (engine contract — see note
+      // on libreFijQty above)
+      addHerramienta: fijacion.add,
+      removeHerramienta: fijacion.remove,
+      updateHerramientaQty: fijacion.updateQty,
 
-  const removeFijacion = (fijacionKey) => {
-    const newQty = { ...libreFijQty };
-    delete newQty[fijacionKey];
-    setLibreFijQty(newQty);
-  };
+      // Utilities
+      clearAll: () => {
+        setLibrePanelLines([]);
+        setLibrePerfilQty({});
+        setLibreFijQty({});
+        setLibreSellQty({});
+        setLibreServiciosQty({});
+        setLibreExtra(EMPTY_EXTRA);
+        setFlete(0);
+      },
+    };
+  }, []);
 
-  const updateFijacionQty = (fijacionKey, qty) => {
-    if (qty <= 0) {
-      removeFijacion(fijacionKey);
-    } else {
-      setLibreFijQty({
-        ...libreFijQty,
-        [fijacionKey]: qty,
-      });
-    }
-  };
-
-  // Sellador management
-  const addSellador = (selladorKey, qty) => {
-    setLibreSellQty({
-      ...libreSellQty,
-      [selladorKey]: (libreSellQty[selladorKey] || 0) + (qty || 1),
-    });
-  };
-
-  const removeSellador = (selladorKey) => {
-    const newQty = { ...libreSellQty };
-    delete newQty[selladorKey];
-    setLibreSellQty(newQty);
-  };
-
-  const updateSelladorQty = (selladorKey, qty) => {
-    if (qty <= 0) {
-      removeSellador(selladorKey);
-    } else {
-      setLibreSellQty({
-        ...libreSellQty,
-        [selladorKey]: qty,
-      });
-    }
-  };
-
-  // Servicios management
-  const addServicio = (servicioKey, qty) => {
-    setLibreServiciosQty({
-      ...libreServiciosQty,
-      [servicioKey]: (libreServiciosQty[servicioKey] || 0) + (qty || 1),
-    });
-  };
-
-  const removeServicio = (servicioKey) => {
-    const newQty = { ...libreServiciosQty };
-    delete newQty[servicioKey];
-    setLibreServiciosQty(newQty);
-  };
-
-  const updateServicioQty = (servicioKey, qty) => {
-    if (qty <= 0) {
-      removeServicio(servicioKey);
-    } else {
-      setLibreServiciosQty({
-        ...libreServiciosQty,
-        [servicioKey]: qty,
-      });
-    }
-  };
-
-  // Herramientas management
-  const addHerramienta = (herramientaKey, qty) => {
-    setLibreHerramientasQty({
-      ...libreHerramientasQty,
-      [herramientaKey]: (libreHerramientasQty[herramientaKey] || 0) + (qty || 1),
-    });
-  };
-
-  const removeHerramienta = (herramientaKey) => {
-    const newQty = { ...libreHerramientasQty };
-    delete newQty[herramientaKey];
-    setLibreHerramientasQty(newQty);
-  };
-
-  const updateHerramientaQty = (herramientaKey, qty) => {
-    if (qty <= 0) {
-      removeHerramienta(herramientaKey);
-    } else {
-      setLibreHerramientasQty({
-        ...libreHerramientasQty,
-        [herramientaKey]: qty,
-      });
-    }
-  };
-
-  // Clear all
-  const clearAll = () => {
-    setLibrePanelLines([]);
-    setLibrePerfilQty({});
-    setLibreFijQty({});
-    setLibreSellQty({});
-    setLibreServiciosQty({});
-    setLibreHerramientasQty({});
-    setLibreExtra({ texto: '', precio: '', unidades: '', cantidad: '' });
-    setFlete(0);
-  };
-
-  const value = {
+  const value = useMemo(() => ({
     // UI
     isOpen,
     setIsOpen,
@@ -245,45 +173,13 @@ export function PresupuestoLibreProvider({ children }) {
     libreFijQty,
     libreSellQty,
     libreServiciosQty,
-    libreHerramientasQty,
     libreExtra,
     setLibreExtra,
     flete,
     setFlete,
 
-    // Panel actions
-    addPanelLine,
-    removePanelLine,
-    updatePanelLine,
-
-    // Perfil actions
-    addPerfil,
-    removePerfil,
-    updatePerfilQty,
-
-    // Fijación actions
-    addFijacion,
-    removeFijacion,
-    updateFijacionQty,
-
-    // Sellador actions
-    addSellador,
-    removeSellador,
-    updateSelladorQty,
-
-    // Servicios actions
-    addServicio,
-    removeServicio,
-    updateServicioQty,
-
-    // Herramientas actions
-    addHerramienta,
-    removeHerramienta,
-    updateHerramientaQty,
-
-    // Utilities
-    clearAll,
-  };
+    ...actions,
+  }), [isOpen, activeTab, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreServiciosQty, libreExtra, flete, actions]);
 
   return (
     <PresupuestoLibreContext.Provider value={value}>

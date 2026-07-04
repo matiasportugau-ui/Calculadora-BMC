@@ -21,8 +21,8 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 
-const BASE = "https://bmcuruguay.com.uy/collections/all/products.json";
-const STORE = "https://bmcuruguay.com.uy";
+const STORE = process.env.BMC_SHOPIFY_STORE_URL || "https://bmcuruguay.com.uy";
+const BASE = `${STORE}/collections/all/products.json`;
 
 function argStr(name, def) {
   const a = process.argv.find((x) => x.startsWith(`--${name}=`));
@@ -141,6 +141,33 @@ const KEY_TO_HANDLE = {
   pistola_apl_dx03: "pistola-para-silicona-bromplast",
 };
 
+// Claves cuya foto viene de un producto PARECIDO (no el ítem exacto): se
+// emiten con `alias: true` para que los consumidores puedan suprimir el href
+// (linkea a otro SKU) o marcar la imagen como referencial.
+const ALIAS_KEYS = new Set([
+  "ISOFRIG_PIR",
+  "vaina:ISODEC",
+  "esquinero_ext:_all",
+  "esquinero_int:_all",
+  "tornillo_t2",
+  "tornillo_hex_galv_4_mecha",
+  "tornillo_hex_galv_6_mecha",
+  "tornillo_hex_galv_4_aguja",
+  "tornillo_hex_galv_6_aguja",
+  "remache_pop_316",
+  "anclaje_isoroof_terracota",
+  "anclaje_isoroof_gris",
+  "anclaje_chapa_bc18",
+  "anclaje_chapa_bc35",
+  "tornillo_exagonal_12_34",
+  "tornillo_exagonal_12_1_pm",
+  "tornillo_exagonal_12_212_pm",
+  "tornillo_punta_aguja_12x2",
+  "tornillo_punta_aguja_12x3",
+  "tornillo_hex_pu_20mm_4in",
+  "pistola_apl_dx03",
+]);
+
 // Claves sin producto Shopify pero con asset local (Vite public dir).
 const LOCAL_OVERRIDES = {
   ISOROOF_COLONIAL: { src: "/images/isoroof-colonial-texas-panel.png", href: null, handle: null, local: true },
@@ -227,6 +254,7 @@ async function main() {
       href: `${STORE}/products/${encodeURI(handle)}`,
       handle,
     };
+    if (ALIAS_KEYS.has(key)) entry.alias = true;
     if (PANEL_KEYS.has(key)) {
       const byColor = pickColorImages(product);
       if (byColor) entry.byColor = byColor;

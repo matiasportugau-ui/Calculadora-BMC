@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-04T01:05:31.552Z",
+  "generatedAt": "2026-07-04T04:44:25.532Z",
   "source": "https://bmcuruguay.com.uy/collections/all/products.json",
   "byKey": {
     "ISODEC_EPS": {
@@ -45,7 +45,8 @@
     "ISOFRIG_PIR": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isowall_jpg.webp?v=1756840865",
       "href": "https://bmcuruguay.com.uy/products/isowall-%C2%AE-pir",
-      "handle": "isowall-®-pir"
+      "handle": "isowall-®-pir",
+      "alias": true
     },
     "gotero_frontal:ISOROOF": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3364-Edit_996789a1-58c1-4911-b775-eada26867d06.jpg?v=1755202546",
@@ -190,7 +191,8 @@
     "vaina:ISODEC": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalparaISODEC2.jpg?v=1755373732",
       "href": "https://bmcuruguay.com.uy/products/gotero-frontal-isodec",
-      "handle": "gotero-frontal-isodec"
+      "handle": "gotero-frontal-isodec",
+      "alias": true
     },
     "perfil_u:ISOPANEL": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/PERFILU100.jpg?v=1755271238",
@@ -220,12 +222,14 @@
     "esquinero_ext:_all": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroSupdeCamara.jpg?v=1755215533",
       "href": "https://bmcuruguay.com.uy/products/angulo-plegado-g2-l-exterior",
-      "handle": "angulo-plegado-g2-l-exterior"
+      "handle": "angulo-plegado-g2-l-exterior",
+      "alias": true
     },
     "esquinero_int:_all": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/AnguloInterior_PerfilK2_2.jpg?v=1755031842",
       "href": "https://bmcuruguay.com.uy/products/angulo-interior-perfil-k2",
-      "handle": "angulo-interior-perfil-k2"
+      "handle": "angulo-interior-perfil-k2",
+      "alias": true
     },
     "perfil_5852:_all": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Anguloestructural-PerfilAluminioTipoK6_8m.jpg?v=1755192296",
@@ -285,7 +289,8 @@
     "tornillo_t2": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/T1P.Mecha01.jpg?v=1753467423",
       "href": "https://bmcuruguay.com.uy/products/tornillo-t1-p-mecha-01",
-      "handle": "tornillo-t1-p-mecha-01"
+      "handle": "tornillo-t1-p-mecha-01",
+      "alias": true
     },
     "tornillo_aguja": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
@@ -295,22 +300,26 @@
     "tornillo_hex_galv_4_mecha": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
       "href": "https://bmcuruguay.com.uy/products/tornillos-punta-mecha-4-pulgadas",
-      "handle": "tornillos-punta-mecha-4-pulgadas"
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "alias": true
     },
     "tornillo_hex_galv_6_mecha": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
       "href": "https://bmcuruguay.com.uy/products/tornillos-punta-mecha-4-pulgadas",
-      "handle": "tornillos-punta-mecha-4-pulgadas"
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "alias": true
     },
     "tornillo_hex_galv_4_aguja": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
       "href": "https://bmcuruguay.com.uy/products/tornillos-punta-aguja-5-pulgadas",
-      "handle": "tornillos-punta-aguja-5-pulgadas"
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "alias": true
     },
     "tornillo_hex_galv_6_aguja": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
       "href": "https://bmcuruguay.com.uy/products/tornillos-punta-aguja-5-pulgadas",
-      "handle": "tornillos-punta-aguja-5-pulgadas"
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "alias": true
     },
     "varilla_roscada_8mm": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/VarillaRoscadaBSW5_16_0680ce07-3220-405e-8e29-4d732c16f8d9.jpg?v=1753478261",
@@ -330,27 +339,32 @@
     "remache_pop_316": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/RemachePOP5_32x1_2ZincBlanco.jpg?v=1753467339",
       "href": "https://bmcuruguay.com.uy/products/remache-pop-5-32-x-1-2-zinc-blanco",
-      "handle": "remache-pop-5-32-x-1-2-zinc-blanco"
+      "handle": "remache-pop-5-32-x-1-2-zinc-blanco",
+      "alias": true
     },
     "anclaje_isoroof_terracota": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/20250709_155024.jpg?v=1755369402",
       "href": "https://bmcuruguay.com.uy/products/arandela-trapezoidal-caballete-roof",
-      "handle": "arandela-trapezoidal-caballete-roof"
+      "handle": "arandela-trapezoidal-caballete-roof",
+      "alias": true
     },
     "anclaje_isoroof_gris": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/20250709_155024.jpg?v=1755369402",
       "href": "https://bmcuruguay.com.uy/products/arandela-trapezoidal-caballete-roof",
-      "handle": "arandela-trapezoidal-caballete-roof"
+      "handle": "arandela-trapezoidal-caballete-roof",
+      "alias": true
     },
     "anclaje_chapa_bc18": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
       "href": "https://bmcuruguay.com.uy/products/kit-anclaje-a-h-tornillo-n-%C2%BA-10-arandela-taco",
-      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco"
+      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+      "alias": true
     },
     "anclaje_chapa_bc35": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
       "href": "https://bmcuruguay.com.uy/products/kit-anclaje-a-h-tornillo-n-%C2%BA-10-arandela-taco",
-      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco"
+      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+      "alias": true
     },
     "anclaje_kit_u_platea": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
@@ -360,32 +374,38 @@
     "tornillo_exagonal_12_34": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/T1P.Mecha01.jpg?v=1753467423",
       "href": "https://bmcuruguay.com.uy/products/tornillo-t1-p-mecha-01",
-      "handle": "tornillo-t1-p-mecha-01"
+      "handle": "tornillo-t1-p-mecha-01",
+      "alias": true
     },
     "tornillo_exagonal_12_1_pm": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
       "href": "https://bmcuruguay.com.uy/products/tornillos-punta-mecha-4-pulgadas",
-      "handle": "tornillos-punta-mecha-4-pulgadas"
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "alias": true
     },
     "tornillo_exagonal_12_212_pm": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
       "href": "https://bmcuruguay.com.uy/products/tornillos-punta-mecha-4-pulgadas",
-      "handle": "tornillos-punta-mecha-4-pulgadas"
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "alias": true
     },
     "tornillo_punta_aguja_12x2": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
       "href": "https://bmcuruguay.com.uy/products/tornillos-punta-aguja-5-pulgadas",
-      "handle": "tornillos-punta-aguja-5-pulgadas"
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "alias": true
     },
     "tornillo_punta_aguja_12x3": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
       "href": "https://bmcuruguay.com.uy/products/tornillos-punta-aguja-5-pulgadas",
-      "handle": "tornillos-punta-aguja-5-pulgadas"
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "alias": true
     },
     "tornillo_hex_pu_20mm_4in": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
       "href": "https://bmcuruguay.com.uy/products/tornillos-punta-mecha-4-pulgadas",
-      "handle": "tornillos-punta-mecha-4-pulgadas"
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "alias": true
     },
     "silicona": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BromplastSiliconaNeutra_Salchicha.jpg?v=1753466136",
@@ -415,7 +435,8 @@
     "pistola_apl_dx03": {
       "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/PistolaparaSiliconaBromplast_80a6938c-a669-4553-aeb8-18ecf783771b.jpg?v=1753478217",
       "href": "https://bmcuruguay.com.uy/products/pistola-para-silicona-bromplast",
-      "handle": "pistola-para-silicona-bromplast"
+      "handle": "pistola-para-silicona-bromplast",
+      "alias": true
     },
     "ISOROOF_COLONIAL": {
       "src": "/images/isoroof-colonial-texas-panel.png",

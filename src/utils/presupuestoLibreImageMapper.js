@@ -60,13 +60,14 @@ export function getProductImageByColor(familyKey, color) {
 }
 
 /**
- * Get product URL for a key
+ * Get product URL for a key. Returns null for aliased entries — their href
+ * points at a merely similar product, not the item itself.
  * @param {string} familyKey - Catalog key
  * @returns {string|null} Product URL or null
  */
 export function getProductUrl(familyKey) {
   const mapped = PL_IMAGES?.byKey?.[familyKey];
-  if (mapped?.href) {
+  if (mapped?.href && !mapped.alias) {
     return mapped.href;
   }
 
@@ -77,25 +78,4 @@ export function getProductUrl(familyKey) {
   }
 
   return null;
-}
-
-/**
- * Check if key has images available
- * @param {string} familyKey - Catalog key
- * @returns {boolean}
- */
-export function hasFamilyImages(familyKey) {
-  return !!PL_IMAGES?.byKey?.[familyKey]?.src
-    || !!SHOPIFY_FAMILIES?.byFamily?.[familyKey]?.gallery?.length;
-}
-
-/**
- * Get all available keys with images
- * @returns {string[]} Array of catalog keys
- */
-export function getAvailableFamilies() {
-  return [...new Set([
-    ...Object.keys(PL_IMAGES?.byKey || {}),
-    ...Object.keys(SHOPIFY_FAMILIES?.byFamily || {}),
-  ])];
 }

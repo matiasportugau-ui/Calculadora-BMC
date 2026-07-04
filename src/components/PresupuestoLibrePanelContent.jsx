@@ -4,252 +4,170 @@ import { p, PANELS_TECHO, PANELS_PARED, PERFIL_TECHO, PERFIL_PARED, FIJACIONES, 
 import { PresupuestoLibreCard } from './PresupuestoLibreCard';
 import './PresupuestoLibrePanelContent.css';
 
+const TABS = [
+  { id: 'paneles', label: 'Paneles' },
+  { id: 'perfileria', label: 'Perfilería' },
+  { id: 'fijaciones', label: 'Fijaciones' },
+  { id: 'selladores', label: 'Selladores' },
+  { id: 'servicios', label: 'Servicios' },
+  { id: 'extraordinarios', label: 'Extraordinarios' },
+];
+
+// Display names per perfil tipo — constants.js price rows for most tipos
+// carry no label of their own.
+const PERFIL_TIPO_LABELS = {
+  gotero_frontal: 'Gotero Frontal',
+  gotero_frontal_greca: 'Gotero Frontal con Greca',
+  gotero_lateral: 'Gotero Lateral',
+  gotero_lateral_camara: 'Gotero Lateral de Cámara',
+  gotero_superior: 'Gotero Superior',
+  babeta_adosar: 'Babeta de Adosar',
+  babeta_empotrar: 'Babeta de Empotrar',
+  cumbrera: 'Cumbrera',
+  canalon: 'Canalón',
+  soporte_canalon: 'Soporte de Canalón',
+  embudo: 'Embudo / Bajada PVC',
+  vaina: 'Vaina',
+  perfil_u: 'Perfil U',
+  perfil_g2: 'Perfil G2 (ángulo exterior)',
+  perfil_k2: 'Perfil K2 (ángulo interior)',
+  esquinero_ext: 'Esquinero exterior',
+  esquinero_int: 'Esquinero interior',
+  perfil_5852: 'Ángulo aluminio 5852',
+};
+
+const PERFIL_RESERVED_KEYS = ['label', 'venta', 'web', 'costo', 'largo'];
+
+const isPriceRow = (v) => v && typeof v === 'object' && (v.venta !== undefined || v.web !== undefined);
+
 export function PresupuestoLibrePanelContent() {
   const { activeTab, setActiveTab, addPanelLine, addPerfil, addFijacion, addSellador, addServicio, addHerramienta } = usePresupuestoLibre();
-
-  const tabs = [
-    { id: 'paneles', label: 'Paneles' },
-    { id: 'perfileria', label: 'Perfilería' },
-    { id: 'fijaciones', label: 'Fijaciones' },
-    { id: 'selladores', label: 'Selladores' },
-    { id: 'servicios', label: 'Servicios' },
-    { id: 'extraordinarios', label: 'Extraordinarios' },
-  ];
 
   const handleAddPanel = (productData) => {
     const { familia, espesor, color, cantidad } = productData;
     addPanelLine(familia, espesor, color, cantidad);
   };
 
+  // familia arrives as `pt:<tipo>:<familia>` / `pp:<tipo>:<familia>`; append
+  // the espesor to form the stable catalog id used by
+  // computePresupuestoLibreCatalogo (pt:<tipo>:<fam>:<esp>).
   const handleAddPerfil = (productData) => {
-    const { familia } = productData;
-    addPerfil(familia, productData.cantidad || 1);
+    const { familia, espesor, cantidad } = productData;
+    addPerfil(`${familia}:${espesor ?? '_all'}`, cantidad || 1);
   };
 
-  const handleAddFijacion = (productData) => {
-    const { familia } = productData;
-    addFijacion(familia, productData.cantidad || 1);
-  };
+  const handleAddFijacion = (pd) => addFijacion(pd.familia, pd.cantidad || 1);
+  const handleAddSellador = (pd) => addSellador(pd.familia, pd.cantidad || 1);
+  const handleAddServicio = (pd) => addServicio(pd.familia, pd.cantidad || 1);
+  const handleAddHerramienta = (pd) => addHerramienta(pd.familia, pd.cantidad || 1);
 
-  const handleAddSellador = (productData) => {
-    const { familia } = productData;
-    addSellador(familia, productData.cantidad || 1);
-  };
-
-  const handleAddServicio = (productData) => {
-    const { familia } = productData;
-    addServicio(familia, productData.cantidad || 1);
-  };
-
-  const handleAddHerramienta = (productData) => {
-    const { familia } = productData;
-    addHerramienta(familia, productData.cantidad || 1);
-  };
-
-  const renderPaneles = () => {
-    const panelCards = [];
-
-    // Techo panels
-    Object.entries(PANELS_TECHO).forEach(([familiaKey, familiaData]) => {
+  const renderPanelCards = (panels, prefix) =>
+    Object.entries(panels).map(([familiaKey, familiaData]) => {
       const espesores = Object.keys(familiaData.esp || {});
-      if (espesores.length > 0) {
-        panelCards.push(
-          <PresupuestoLibreCard
-            key={`techo-${familiaKey}`}
-            familia={familiaKey}
-            label={familiaData.label}
-            espesores={espesores}
-            colores={familiaData.col || []}
-            especData={familiaData.esp}
-            unidad="m²"
-            imagenFamilia={familiaKey}
-            onAdd={handleAddPanel}
-          />
-        );
-      }
-    });
+      if (espesores.length === 0) return null;
+      return (
+        <PresupuestoLibreCard
+          key={`${prefix}-${familiaKey}`}
+          familia={familiaKey}
+          label={familiaData.label}
+          espesores={espesores}
+          colores={familiaData.col || []}
+          especData={familiaData.esp}
+          unidad="m²"
+          imagenFamilia={familiaKey}
+          onAdd={handleAddPanel}
+        />
+      );
+    }).filter(Boolean);
 
-    // Pared panels
-    Object.entries(PANELS_PARED).forEach(([familiaKey, familiaData]) => {
-      const espesores = Object.keys(familiaData.esp || {});
-      if (espesores.length > 0) {
-        panelCards.push(
-          <PresupuestoLibreCard
-            key={`pared-${familiaKey}`}
-            familia={familiaKey}
-            label={familiaData.label}
-            espesores={espesores}
-            colores={familiaData.col || []}
-            especData={familiaData.esp}
-            unidad="m²"
-            imagenFamilia={familiaKey}
-            onAdd={handleAddPanel}
-          />
-        );
-      }
-    });
-
-    return panelCards;
-  };
+  const renderPaneles = () => [
+    ...renderPanelCards(PANELS_TECHO, 'techo'),
+    ...renderPanelCards(PANELS_PARED, 'pared'),
+  ];
 
   const renderPerfileria = () => {
     const perfilCards = [];
 
-    const processPerfil = (tipoKey, tipoData, familyName) => {
+    const processPerfil = (tipoKey, tipoData, prefix) => {
       Object.entries(tipoData).forEach(([familiaKey, familiaData]) => {
-        if (familiaKey === 'label' || familiaKey === 'venta' || familiaKey === 'web' || familiaKey === 'costo' || familiaKey === 'largo') return;
+        if (PERFIL_RESERVED_KEYS.includes(familiaKey)) return;
 
-        const espesores = [];
+        // Normalize the three shapes in constants.js into espesor -> price row:
+        //   flat row at familia level        (perfil_k2: { _all: {venta,...} })
+        //   nested one level                 (gotero_frontal: { ISOROOF: { 30: {venta,...} } })
+        //   nested with '_all' espesor       (embudo: { _all: { _all: {venta,...} } })
         const especData = {};
-
-        Object.entries(familiaData).forEach(([especKey, especVal]) => {
-          if (especKey === '_all') {
-            especData['std'] = especVal._all ? especVal._all : especVal;
-            espesores.push('std');
-          } else if (typeof especVal === 'object' && (especVal.venta !== undefined || especVal._all)) {
-            espesores.push(especKey);
-            especData[especKey] = especVal._all || especVal;
-          }
-        });
-
-        if (espesores.length > 0) {
-          const label = familiaData._all?.label || familiaData[espesores[0]]?.label || `${familyName} - ${familiaKey}`;
-          perfilCards.push(
-            <PresupuestoLibreCard
-              key={`perfil-${tipoKey}-${familiaKey}`}
-              familia={familiaKey}
-              label={label}
-              espesores={espesores}
-              colores={[]}
-              especData={especData}
-              unidad="m"
-              imagenFamilia={`${tipoKey}:${familiaKey}`}
-              onAdd={handleAddPerfil}
-            />
-          );
+        if (isPriceRow(familiaData)) {
+          especData._all = familiaData;
+        } else if (familiaData && typeof familiaData === 'object') {
+          Object.entries(familiaData).forEach(([espKey, espVal]) => {
+            if (isPriceRow(espVal)) especData[espKey] = espVal;
+          });
         }
+
+        const espesores = Object.keys(especData);
+        if (espesores.length === 0) return;
+
+        const tipoLabel = PERFIL_TIPO_LABELS[tipoKey] || tipoKey.replace(/_/g, ' ');
+        const rowLabel = especData[espesores[0]]?.label;
+        const label = rowLabel
+          || (familiaKey === '_all' ? tipoLabel : `${tipoLabel} — ${familiaKey.replace(/_/g, ' ')}`);
+
+        perfilCards.push(
+          <PresupuestoLibreCard
+            key={`perfil-${prefix}-${tipoKey}-${familiaKey}`}
+            familia={`${prefix}:${tipoKey}:${familiaKey}`}
+            label={label}
+            espesores={espesores}
+            colores={[]}
+            especData={especData}
+            unidad="m"
+            imagenFamilia={`${tipoKey}:${familiaKey}`}
+            onAdd={handleAddPerfil}
+          />
+        );
       });
     };
 
     Object.entries(PERFIL_TECHO).forEach(([tipoKey, tipoData]) => {
-      processPerfil(tipoKey, tipoData, 'PERFIL_TECHO');
+      processPerfil(tipoKey, tipoData, 'pt');
     });
 
     Object.entries(PERFIL_PARED).forEach(([tipoKey, tipoData]) => {
-      processPerfil(tipoKey, tipoData, 'PERFIL_PARED');
+      processPerfil(tipoKey, tipoData, 'pp');
     });
 
     return perfilCards;
   };
 
-  const renderFijaciones = () => {
-    return Object.entries(FIJACIONES).map(([key, data]) => {
+  const renderItemCards = (entries, { keyPrefix, unidadDefault, onAdd }) =>
+    entries.map(([key, data]) => {
       const precio = p(data);
       if (precio <= 0) return null;
       return (
         <PresupuestoLibreCard
-          key={`fijacion-${key}`}
+          key={`${keyPrefix}-${key}`}
           familia={key}
           label={data.label}
           espesores={[]}
           colores={[]}
-          unidad={data.unidad || 'unid'}
+          unidad={data.unidad || unidadDefault}
           imagenFamilia={key}
-          onAdd={handleAddFijacion}
+          onAdd={onAdd}
           especData={{ std: data }}
         />
       );
     }).filter(Boolean);
-  };
 
-  const renderSelladores = () => {
-    return Object.entries(SELLADORES).map(([key, data]) => {
-      const precio = p(data);
-      if (precio <= 0) return null;
-      return (
-        <PresupuestoLibreCard
-          key={`sellador-${key}`}
-          familia={key}
-          label={data.label}
-          espesores={[]}
-          colores={[]}
-          unidad={data.unidad || 'unid'}
-          imagenFamilia={key}
-          onAdd={handleAddSellador}
-          especData={{ std: data }}
-        />
-      );
-    }).filter(Boolean);
-  };
-
-  const renderServicios = () => {
-    return Object.entries(SERVICIOS).map(([key, data]) => {
-      const precio = p(data);
-      if (precio <= 0) return null;
-      return (
-        <PresupuestoLibreCard
-          key={`servicio-${key}`}
-          familia={key}
-          label={data.label}
-          espesores={[]}
-          colores={[]}
-          unidad={data.unidad || 'servicio'}
-          imagenFamilia={key}
-          onAdd={handleAddServicio}
-          especData={{ std: data }}
-        />
-      );
-    }).filter(Boolean);
-  };
-
-  const renderExtraordinarios = () => {
-    const extraordinarios = [];
-
-    // Herramientas
-    Object.entries(HERRAMIENTAS).forEach(([key, data]) => {
-      const precio = p(data);
-      if (precio > 0) {
-        extraordinarios.push(
-          <PresupuestoLibreCard
-            key={`herramienta-${key}`}
-            familia={key}
-            label={data.label}
-            espesores={[]}
-            colores={[]}
-            unidad={data.unidad || 'unid'}
-            imagenFamilia={key}
-            onAdd={handleAddHerramienta}
-            especData={{ std: data }}
-          />
-        );
-      }
-    });
-
-    // Extra fijaciones from PRESUPUESTO_LIBRE_IDS
-    PRESUPUESTO_LIBRE_IDS.forEach((key) => {
-      if (FIJACIONES[key]) {
-        const data = FIJACIONES[key];
-        const precio = p(data);
-        if (precio > 0) {
-          extraordinarios.push(
-            <PresupuestoLibreCard
-              key={`extra-fijacion-${key}`}
-              familia={key}
-              label={data.label}
-              espesores={[]}
-              colores={[]}
-              unidad={data.unidad || 'unid'}
-              imagenFamilia={key}
-              onAdd={handleAddFijacion}
-              especData={{ std: data }}
-            />
-          );
-        }
-      }
-    });
-
-    return extraordinarios;
-  };
+  const renderExtraordinarios = () => [
+    ...renderItemCards(Object.entries(HERRAMIENTAS), {
+      keyPrefix: 'herramienta', unidadDefault: 'unid', onAdd: handleAddHerramienta,
+    }),
+    ...renderItemCards(
+      PRESUPUESTO_LIBRE_IDS.filter((key) => FIJACIONES[key]).map((key) => [key, FIJACIONES[key]]),
+      { keyPrefix: 'extra-fijacion', unidadDefault: 'unid', onAdd: handleAddFijacion },
+    ),
+  ];
 
   const getTabContent = () => {
     switch (activeTab) {
@@ -258,11 +176,17 @@ export function PresupuestoLibrePanelContent() {
       case 'perfileria':
         return renderPerfileria();
       case 'fijaciones':
-        return renderFijaciones();
+        return renderItemCards(Object.entries(FIJACIONES), {
+          keyPrefix: 'fijacion', unidadDefault: 'unid', onAdd: handleAddFijacion,
+        });
       case 'selladores':
-        return renderSelladores();
+        return renderItemCards(Object.entries(SELLADORES), {
+          keyPrefix: 'sellador', unidadDefault: 'unid', onAdd: handleAddSellador,
+        });
       case 'servicios':
-        return renderServicios();
+        return renderItemCards(Object.entries(SERVICIOS), {
+          keyPrefix: 'servicio', unidadDefault: 'servicio', onAdd: handleAddServicio,
+        });
       case 'extraordinarios':
         return renderExtraordinarios();
       default:
@@ -274,7 +198,7 @@ export function PresupuestoLibrePanelContent() {
     <div className="pl-panel-content">
       {/* Tab Navigation */}
       <div className="pl-panel-content__tabs">
-        {tabs.map((tab) => (
+        {TABS.map((tab) => (
           <button
             key={tab.id}
             className={`pl-panel-content__tab ${activeTab === tab.id ? 'is-active' : ''}`}
