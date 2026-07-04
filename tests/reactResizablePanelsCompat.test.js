@@ -21,7 +21,7 @@ assert.match(
   "calculator imports the v4 component names"
 );
 assert.doesNotMatch(source, /PanelGroup|PanelResizeHandle|autoSaveId|direction=\{/, "calculator does not use v3-only props or exports");
-assert.match(source, /groupRef=\{mainPanelGroupRef\}/, "imperative reset uses v4 groupRef");
+assert.match(source, /groupRef=\{mainSplitGroupRef\}/, "imperative reset uses v4 groupRef");
 assert.match(source, /orientation=\{isCompactLayout \? "vertical" : "horizontal"\}/, "group orientation uses v4 prop");
 assert.match(source, /id=\{mainSplitPanelIds\[0\]\}/, "left panel has a stable persisted id");
 assert.match(source, /id=\{mainSplitPanelIds\[1\]\}/, "right panel has a stable persisted id");
