@@ -37,7 +37,7 @@ export default function PriceHUD({ totals, groups, currency = "USD", onWhatsApp 
   const rows = Array.isArray(groups)
     ? groups
         .map((g) => ({
-          label: g?.label || g?.nombre || g?.id || "",
+          label: g?.title || g?.label || g?.nombre || g?.id || "",
           total: Array.isArray(g?.items)
             ? +g.items.reduce((s, i) => s + (i?.total || 0), 0).toFixed(2)
             : null,

@@ -8,38 +8,31 @@
 // Los IDs son los del scenarioOrchestrator: solo_techo | solo_fachada |
 // techo_fachada | camara_frig.
 // ═══════════════════════════════════════════════════════════════════════════
+import { useEffect } from "react";
 import "../../styles/lg-quoter.css";
 import { ensureLgFonts } from "./lgFonts.js";
+import { SCENARIOS_DEF } from "../../data/constants.js";
 
 ensureLgFonts();
 
-const SCENARIOS = [
-  {
-    id: "solo_techo",
-    name: "Solo Techo",
-    desc: "ISODEC · ISOROOF sobre estructura existente",
-    tag: "MÁS USADO",
-    hot: true,
-  },
-  {
-    id: "solo_fachada",
-    name: "Solo Fachada",
-    desc: "Cerramiento vertical, junta oculta o vista",
-    tag: "FACHADA",
-  },
-  {
-    id: "techo_fachada",
-    name: "Techo + Fachada",
-    desc: "Obra completa: envolvente térmica total",
-    tag: "COMPLETO",
-  },
-  {
-    id: "camara_frig",
-    name: "Cámara Frigorífica",
-    desc: "Paneles frigoríficos + puertas + accesorios",
-    tag: "−18°C",
-  },
-];
+// Copy visual de la capa game por escenario. Los IDs y el orden vienen del
+// canon (SCENARIOS_DEF): un escenario nuevo aparece como carta automáticamente
+// (sin arte, con label/description del canon) en vez de quedar fuera por drift.
+const CARD_COPY = {
+  solo_techo: { name: "Solo Techo", desc: "ISODEC · ISOROOF sobre estructura existente", tag: "MÁS USADO", hot: true },
+  solo_fachada: { name: "Solo Fachada", desc: "Cerramiento vertical, junta oculta o vista", tag: "FACHADA" },
+  techo_fachada: { name: "Techo + Fachada", desc: "Obra completa: envolvente térmica total", tag: "COMPLETO" },
+  camara_frig: { name: "Cámara Frigorífica", desc: "Paneles frigoríficos + puertas + accesorios", tag: "−18°C" },
+  presupuesto_libre: { name: "Presupuesto Libre", desc: "Líneas manuales desde catálogo — herrajes y anclajes", tag: "MANUAL" },
+};
+
+const SCENARIOS = SCENARIOS_DEF.map((s) => ({
+  id: s.id,
+  name: CARD_COPY[s.id]?.name || s.label,
+  desc: CARD_COPY[s.id]?.desc || s.description || "",
+  tag: CARD_COPY[s.id]?.tag || (s.icon ? `${s.icon}` : "OBRA"),
+  hot: Boolean(CARD_COPY[s.id]?.hot),
+}));
 
 /** Mini-arte isométrico por escenario (SVG inline, cero assets externos). */
 function ScenarioArt({ id }) {
@@ -89,21 +82,34 @@ function ScenarioArt({ id }) {
       </svg>
     );
   }
-  return (
-    <svg {...common}>
-      <rect x="28" y="30" width="54" height="54" rx="5" fill="url(#lgqFrig)" stroke="rgba(0,0,0,.15)" />
-      <rect x="49" y="52" width="10" height="26" rx="2" fill="#141A22" />
-      <text x="82" y="24" textAnchor="end" fontFamily="ui-monospace,monospace" fontSize="10" fill="#4A90D9">−18°C</text>
-      <defs>
-        <linearGradient id="lgqFrig" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#E8F0F5" /><stop offset="1" stopColor="#B7C9D6" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
+  if (id === "camara_frig") {
+    return (
+      <svg {...common}>
+        <rect x="28" y="30" width="54" height="54" rx="5" fill="url(#lgqFrig)" stroke="rgba(0,0,0,.15)" />
+        <rect x="49" y="52" width="10" height="26" rx="2" fill="#141A22" />
+        <text x="82" y="24" textAnchor="end" fontFamily="ui-monospace,monospace" fontSize="10" fill="#4A90D9">−18°C</text>
+        <defs>
+          <linearGradient id="lgqFrig" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#E8F0F5" /><stop offset="1" stopColor="#B7C9D6" />
+          </linearGradient>
+        </defs>
+      </svg>
+    );
+  }
+  // Escenario nuevo del canon sin arte todavía: carta sin SVG.
+  return null;
 }
 
-export default function ScenarioCards({ scenario, onSelect }) {
+export default function ScenarioCards({ scenario, onSelect, onSkip }) {
+  // Escape = salir al cotizador sin elegir (mismo camino que el botón skip).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onSkip?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onSkip]);
+
   return (
     <div className="lgq-scenarios" data-lg-quoter data-testid="lgq-scenarios">
       <div className="lgq-scenarios__brand">
@@ -115,7 +121,7 @@ export default function ScenarioCards({ scenario, onSelect }) {
       </h1>
       <p className="lgq-scenarios__sub">Elegí el tipo de obra. El precio se arma solo.</p>
       <div className="lgq-scenarios__grid" role="group" aria-label="Tipo de obra">
-        {SCENARIOS.map((s) => (
+        {SCENARIOS.map((s, i) => (
           <button
             key={s.id}
             type="button"
@@ -123,6 +129,7 @@ export default function ScenarioCards({ scenario, onSelect }) {
             aria-pressed={scenario === s.id}
             onClick={() => onSelect?.(s.id)}
             data-testid={`lgq-card-${s.id}`}
+            autoFocus={i === 0}
           >
             <span className="lgq-card__tag">{s.tag}</span>
             <span className="lgq-card__art"><ScenarioArt id={s.id} /></span>
@@ -131,6 +138,14 @@ export default function ScenarioCards({ scenario, onSelect }) {
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        className="lgq-scenarios__skip"
+        onClick={() => onSkip?.()}
+        data-testid="lgq-skip"
+      >
+        Ir al cotizador sin elegir →
+      </button>
     </div>
   );
 }

@@ -2513,8 +2513,17 @@ export default function PanelinCalculadoraV3() {
   // ── State ──
   const [modoVendedor, setModoVendedor] = useState(true);
   const [wizardStep, setWizardStep] = useState(0);
-  // Capa game-like (preview only): overlay inicial de selección de escenario
-  const [lgShowScenarios, setLgShowScenarios] = useState(LG_QUOTER_ON);
+  // Capa game-like (preview only): overlay inicial de selección de escenario.
+  // sessionStorage (no localStorage): el overlay no reaparece en cada remount
+  // (ida a /hub y vuelta) pero sí en una sesión nueva de navegador.
+  const [lgShowScenarios, setLgShowScenarios] = useState(() => {
+    if (!LG_QUOTER_ON) return false;
+    try { return sessionStorage.getItem("bmc.lgq.seen") !== "1"; } catch { return true; }
+  });
+  const lgDismissScenarios = useCallback(() => {
+    try { sessionStorage.setItem("bmc.lgq.seen", "1"); } catch { /* storage lleno/bloqueado: overlay volverá al remontar */ }
+    setLgShowScenarios(false);
+  }, []);
   /** Máximo paso alcanzado — controla cuáles pasos están desbloqueados para navegación directa. */
   const [maxReachedStep, setMaxReachedStep] = useState(0);
   /** Zona seleccionada en planta 2D: sincroniza SVG (visor) y métricas en columna izquierda (paso Estructura). */
@@ -4920,9 +4929,10 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           scenario={scenario}
           onSelect={(id) => {
             setScenario(id);
-            setLgShowScenarios(false);
+            lgDismissScenarios();
             if (id === "solo_techo") advanceWizardStep();
           }}
+          onSkip={lgDismissScenarios}
         />
       </Suspense>
     );

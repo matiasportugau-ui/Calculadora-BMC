@@ -200,6 +200,24 @@
 @media (prefers-reduced-motion: reduce) {
   .lgq-card, .lgq-card:hover { transition: none; transform: none; }
 }
+.lgq-scenarios__skip {
+  margin-top: 28px;
+  z-index: 1;
+  background: none;
+  border: 1px solid var(--lgq-border);
+  border-radius: 10px;
+  padding: 9px 18px;
+  color: var(--lgq-txt-mid);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.lgq-scenarios__skip:hover,
+.lgq-scenarios__skip:focus-visible {
+  color: var(--lgq-txt);
+  border-color: var(--lgq-border-hi);
+  outline: none;
+}
 
 /* ══ PriceHUD ══ */
 .lgq-hud {
@@ -216,9 +234,13 @@
 @media (max-width: 720px) {
   .lgq-hud {
     top: auto;
-    bottom: 12px;
+    /* 88px libra la DesignPreviewBar (72px, fija abajo): la capa LG solo
+       existe en modo preview, así que la barra siempre está presente. */
+    bottom: 88px;
     left: 12px;
-    right: 12px;
+    /* Gutter derecho: los FABs de chat (z 9998) y tutorial (z 9999) viven
+       abajo a la derecha y deben quedar por encima sin tapar el CTA. */
+    right: 76px;
     width: auto;
   }
 }
