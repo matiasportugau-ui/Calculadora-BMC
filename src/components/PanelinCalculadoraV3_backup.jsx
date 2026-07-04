@@ -3059,6 +3059,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     panelIds: mainSplitPanelIds,
     onlySaveAfterUserInteractions: true,
   });
+  const [mainSplitDragging, setMainSplitDragging] = useState(false);
   const twoCol = isPhone ? "1fr" : "1fr 1fr";
   const threeCol = isPhone ? "1fr" : isTablet ? "1fr 1fr" : "1fr 1fr 1fr";
   const fourCol = isPhone ? "1fr" : "1fr 1fr";
@@ -3538,6 +3539,19 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       /* optional API */
     }
   }, []);
+
+  useEffect(() => {
+    if (!mainSplitDragging) return undefined;
+    const clearDragging = () => setMainSplitDragging(false);
+    window.addEventListener("pointerup", clearDragging, { once: true });
+    window.addEventListener("mouseup", clearDragging, { once: true });
+    window.addEventListener("blur", clearDragging, { once: true });
+    return () => {
+      window.removeEventListener("pointerup", clearDragging);
+      window.removeEventListener("mouseup", clearDragging);
+      window.removeEventListener("blur", clearDragging);
+    };
+  }, [mainSplitDragging]);
 
   const resetRoofPreviewLayout = useCallback(() => {
     setTecho(t => ({
@@ -7377,6 +7391,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           id={isCompactLayout ? "bmc-main-sash-compact" : "bmc-main-sash"}
           className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
           style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
+          onPointerDownCapture={() => setMainSplitDragging(true)}
           onDoubleClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -7642,6 +7657,23 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         </div>
         </Panel>
       </Group>
+
+      {mainSplitDragging && (
+        <div
+          aria-hidden
+          data-bmc-main-split-drag-shield
+          onPointerUp={() => setMainSplitDragging(false)}
+          onMouseUp={() => setMainSplitDragging(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            cursor: isCompactLayout ? "row-resize" : "col-resize",
+            background: "transparent",
+            userSelect: "none",
+          }}
+        />
+      )}
 
       <QuotePreviewModal
         pendingQuote={pendingQuote}
