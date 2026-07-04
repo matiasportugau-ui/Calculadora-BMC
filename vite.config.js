@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  define: {
+    // Vite only exposes VITE_* vars by default. VERCEL_ENV is non-secret and
+    // needed client-side so preview-only UI cannot be enabled by URL in prod.
+    "globalThis.__BMC_VERCEL_ENV__": JSON.stringify(process.env.VERCEL_ENV || ""),
+  },
   plugins: [
     react(),
     VitePWA({
