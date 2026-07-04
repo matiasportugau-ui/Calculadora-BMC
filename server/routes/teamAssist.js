@@ -5,6 +5,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
+import { clientIpKey } from "../lib/rateLimitKeys.js";
 
 const router = Router();
 
@@ -14,20 +15,12 @@ export const TEAM_ASSIST_CHAT_RATE = {
   max: Number(process.env.TEAM_ASSIST_RATE_MAX || 20),
 };
 
-function teamAssistClientKey(req) {
-  return (
-    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    "unknown"
-  );
-}
-
 const chatLimiter = rateLimit({
   windowMs: TEAM_ASSIST_CHAT_RATE.windowMs,
   max: TEAM_ASSIST_CHAT_RATE.max,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: teamAssistClientKey,
+  keyGenerator: clientIpKey,
   message: {
     ok: false,
     error: "Demasiadas solicitudes al asistente. Esperá unos minutos e intentá de nuevo.",

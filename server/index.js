@@ -54,6 +54,7 @@ import createPanelinRouter from "./routes/panelin.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import rateLimit from "express-rate-limit";
+import { clientIpKey } from "./lib/rateLimitKeys.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -971,17 +972,13 @@ app.use("/api", createAssistantsStatusRouter());
 //
 // Per-IP limiter for the authenticated AI-generation route below: bounds paid-LLM
 // spend even from a compromised/over-eager operator session (auth already rejects
-// anonymous). Keyed by client IP (same X-Forwarded-For logic as agentChat).
+// anonymous). Keyed by Express' trusted-proxy client IP, not raw X-Forwarded-For.
 const aiGenLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    const xf = req.headers["x-forwarded-for"];
-    if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
-    return req.ip || req.socket?.remoteAddress || "unknown";
-  },
+  keyGenerator: clientIpKey,
   message: { ok: false, error: "rate_limited", detail: "Demasiadas consultas de IA. Esperá un momento." },
 });
 app.use("/api/agent/chat", requireAssistantEnabled("panelin"));

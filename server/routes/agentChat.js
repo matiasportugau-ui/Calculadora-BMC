@@ -58,6 +58,7 @@ import {
   buildAiOptionsResponse,
   estimateCostUSD,
 } from "../lib/aiProviderConfig.js";
+import { clientIpKey } from "../lib/rateLimitKeys.js";
 
 const router = Router();
 
@@ -265,13 +266,7 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:3000",
 ]);
 
-function rateLimitClientKey(req) {
-  const xf = req.headers["x-forwarded-for"];
-  if (typeof xf === "string" && xf.trim()) {
-    return xf.split(",")[0].trim();
-  }
-  return req.ip || req.socket?.remoteAddress || "unknown";
-}
+const rateLimitClientKey = clientIpKey;
 
 /** Allows Vercel previews (*.vercel.app) and localhost dev; exact list for canonical URLs. */
 function isChatOriginAllowed(origin) {

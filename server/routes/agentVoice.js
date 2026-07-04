@@ -9,6 +9,7 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
 import { buildVoiceSystemPrompt } from "../lib/chatPrompts.js";
+import { clientIpKey } from "../lib/rateLimitKeys.js";
 
 import { recordVoiceError, listVoiceErrors, clearVoiceErrors } from "../lib/voiceErrorLog.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -23,21 +24,12 @@ const VALID_ACTION_TYPES = new Set([
   "setFlete", "setProyecto", "setWizardStep", "setTechoZonas", "advanceWizard", "buildQuote",
 ]);
 
-// 3 session mints per minute per IP (ephemeral tokens cost ~1 API call each)
-function voiceSessionKey(req) {
-  return (
-    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    "unknown"
-  );
-}
-
 const sessionLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: config.appEnv === "development" ? 30 : 3,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: voiceSessionKey,
+  keyGenerator: clientIpKey,
   skip: () => config.appEnv === "development",
   message: { ok: false, error: "Demasiadas sesiones de voz. Esperá un momento." },
 });
@@ -48,7 +40,7 @@ const actionLimiter = rateLimit({
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: voiceSessionKey,
+  keyGenerator: clientIpKey,
   message: { ok: false, error: "Demasiadas acciones de voz. Esperá un momento." },
 });
 
