@@ -296,7 +296,7 @@ const errorClearLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: voiceSessionKey,
+  keyGenerator: clientIpKey,
   message: { ok: false, error: "Demasiados clears. Esperá un momento." },
 });
 
