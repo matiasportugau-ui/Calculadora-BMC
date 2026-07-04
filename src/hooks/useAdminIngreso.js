@@ -3,6 +3,15 @@ import { useSearchParams } from "react-router-dom";
 import { useCockpitOperatorAuth } from "./useCockpitOperatorAuth.js";
 import { adminIngresoFetch } from "../utils/adminIngresoApi.js";
 
+export function isCurrentAdminIngresoRequest(activeRequest, request) {
+  return Boolean(
+    activeRequest &&
+      request &&
+      activeRequest.id === request.id &&
+      activeRequest.row === request.row,
+  );
+}
+
 function hasReachedReady(interp) {
   return Boolean(interp?.ready_to_quote && interp?.quotable !== false);
 }
@@ -21,6 +30,8 @@ export function useAdminIngreso() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
   const initialRowHandled = useRef(false);
+  const activeRequestRef = useRef({ id: 0, row: null });
+  const busyRef = useRef(null);
 
   const rowFromUrl = useMemo(() => {
     const n = Number(searchParams.get("row"));
@@ -31,6 +42,22 @@ export function useAdminIngreso() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   }, []);
+
+  const setBusyState = useCallback((nextBusy) => {
+    busyRef.current = nextBusy;
+    setBusy(nextBusy);
+  }, []);
+
+  const beginRowRequest = useCallback((row) => {
+    const request = { id: activeRequestRef.current.id + 1, row };
+    activeRequestRef.current = request;
+    return request;
+  }, []);
+
+  const isRequestCurrent = useCallback(
+    (request) => isCurrentAdminIngresoRequest(activeRequestRef.current, request),
+    [],
+  );
 
   const loadInquiries = useCallback(async () => {
     if (!token) {
@@ -92,17 +119,19 @@ export function useAdminIngreso() {
 
   const selectRow = useCallback(
     async (row, inquiryList = inquiries) => {
-      if (!token || busy) return;
+      if (!token || busyRef.current === "write") return;
+      const request = beginRowRequest(row);
       setSelectedRow(row);
       syncRowParam(row);
       setConversation(null);
       setInterpretation(null);
-      setBusy("load");
+      setBusyState("load");
       setError("");
 
       const { ok, data } = await adminIngresoFetch(token, `/api/conversation/${row}`);
+      if (!isRequestCurrent(request)) return;
       if (!ok) {
-        setBusy(null);
+        setBusyState(null);
         setError(data?.error || "Error al cargar conversación");
         return;
       }
@@ -117,18 +146,19 @@ export function useAdminIngreso() {
         setConversation(convo);
         const lastAi = [...data.turns].reverse().find((t) => t.role === "ai");
         setInterpretation(lastAi?.interpretation || null);
-        setBusy(null);
+        setBusyState(null);
         return;
       }
 
       if (!consulta) {
-        setBusy(null);
+        setBusyState(null);
         setError("No se encontró la consulta para esta fila");
         return;
       }
 
       try {
         const interp = await interpretRow(row, consulta, null, "");
+        if (!isRequestCurrent(request)) return;
         const convo = {
           consulta,
           turns: [{ role: "ai", interpretation: interp }],
@@ -137,12 +167,25 @@ export function useAdminIngreso() {
         setInterpretation(interp);
         await saveConversation(row, convo);
       } catch (e) {
-        setError(e.message);
+        if (isRequestCurrent(request)) {
+          setError(e.message);
+        }
       } finally {
-        setBusy(null);
+        if (isRequestCurrent(request)) {
+          setBusyState(null);
+        }
       }
     },
-    [token, busy, inquiries, interpretRow, saveConversation, syncRowParam],
+    [
+      token,
+      beginRowRequest,
+      inquiries,
+      interpretRow,
+      isRequestCurrent,
+      saveConversation,
+      setBusyState,
+      syncRowParam,
+    ],
   );
 
   useEffect(() => {
@@ -157,17 +200,19 @@ export function useAdminIngreso() {
   const sendMessage = useCallback(
     async (text) => {
       const msg = String(text || "").trim();
-      if (!msg || !selectedRow || !conversation || busy) return;
+      if (!msg || !selectedRow || !conversation || busyRef.current) return;
       if (hasReachedReady(interpretation)) return;
 
       const row = selectedRow;
+      const request = activeRequestRef.current;
       const nextTurns = [...conversation.turns, { role: "user", text: msg }];
       const convoDraft = { consulta: conversation.consulta, turns: nextTurns };
       setConversation(convoDraft);
-      setBusy("interpret");
+      setBusyState("interpret");
 
       try {
         const interp = await interpretRow(row, conversation.consulta, convoDraft, msg);
+        if (!isRequestCurrent(request)) return;
         const convoFinal = {
           consulta: conversation.consulta,
           turns: [...nextTurns, { role: "ai", interpretation: interp }],
@@ -176,30 +221,45 @@ export function useAdminIngreso() {
         setInterpretation(interp);
         await saveConversation(row, convoFinal);
       } catch (e) {
-        setError(e.message);
-        showToast(e.message, "error");
+        if (isRequestCurrent(request)) {
+          setError(e.message);
+          showToast(e.message, "error");
+        }
       } finally {
-        setBusy(null);
+        if (isRequestCurrent(request)) {
+          setBusyState(null);
+        }
       }
     },
-    [selectedRow, conversation, interpretation, busy, interpretRow, saveConversation, showToast],
+    [
+      selectedRow,
+      conversation,
+      interpretation,
+      interpretRow,
+      isRequestCurrent,
+      saveConversation,
+      setBusyState,
+      showToast,
+    ],
   );
 
   const writeToSheet = useCallback(async () => {
-    if (!selectedRow || !interpretation || busy) return;
-    setBusy("write");
-    const { ok, data } = await adminIngresoFetch(token, `/api/write/${selectedRow}`, {
+    if (!selectedRow || !interpretation || busyRef.current) return;
+    const row = selectedRow;
+    const interp = interpretation;
+    setBusyState("write");
+    const { ok, data } = await adminIngresoFetch(token, `/api/write/${row}`, {
       method: "POST",
-      body: JSON.stringify({ interpretation }),
+      body: JSON.stringify({ interpretation: interp }),
     });
-    setBusy(null);
+    setBusyState(null);
     if (!ok || data?.success === false) {
       showToast(data?.error || "Error al escribir en la planilla", "error");
       return;
     }
     showToast("Datos escritos en columnas J, K y L", "success");
     await loadInquiries();
-  }, [selectedRow, interpretation, busy, token, loadInquiries, showToast]);
+  }, [selectedRow, interpretation, token, loadInquiries, setBusyState, showToast]);
 
   const selectNext = useCallback(() => {
     if (!selectedRow || !inquiries.length) return;
