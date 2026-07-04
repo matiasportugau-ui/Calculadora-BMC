@@ -1692,6 +1692,8 @@ export default function PanelinChatPanel({
 }
 
 const ghostBtn = {
+  position: "relative",
+  zIndex: 2,
   background: "none",
   border: "none",
   color: "rgba(255,255,255,0.8)",
