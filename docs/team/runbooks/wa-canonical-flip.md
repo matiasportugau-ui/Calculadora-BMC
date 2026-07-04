@@ -46,8 +46,13 @@ and roll it back. Companion to [`OMNI-STAGING-ROLLOUT.md`](../orientation/OMNI-S
     seguir existiendo **el mismo affordance UI** (mismo botón / affordance visible
     para el operador), aunque su implementación interna cambie para disparar el flujo
     canónico en vez del path legacy.
-- [ ] Staging soak passed (below), including a spot-check that sending `🚀`
-      expedites the canonical `wa_crm_sync` path without falling back to legacy.
+- [x] ~~Staging soak passed (below), including~~ **🚀 spot-check DONE in prod
+      (2026-07-04):** a signed webhook with a `🚀` message went end-to-end on
+      the canonical path — ingest → classify/suggest completed → `wa_crm_sync`
+      **expedited** (`run_after` ≈ now instead of the 60s debounce) → completed
+      in 1 attempt → CRM row written (test data cleaned afterwards). Note: the
+      flip happened before any staging soak (see Production flip status); soak
+      monitoring continues in prod via the cutover workflow's `soak` action.
 
 ## Validation gate (local / staging, needs Postgres)
 
