@@ -1,6 +1,6 @@
 # UX Spec — Ingreso y actualización Admin
 
-**Versión:** 1.0  
+**Versión:** 1.1  
 **Fecha:** 2026-07-04  
 **Basado en:** [`INGRESO-ACTUALIZACION-ADMIN-DESIGN-BRIEF.md`](./INGRESO-ACTUALIZACION-ADMIN-DESIGN-BRIEF.md)  
 **Audiencia:** Implementadores frontend + revisión operador BMC
@@ -12,13 +12,13 @@
 | # | Decisión | Elección | Motivo |
 |---|----------|----------|--------|
 | 1 | Layout módulo | **Split-pane** 320px lista + panel principal | Paridad con chat actual; operador ve cola y contexto |
-| 2 | Chat UI | **React nativo** (no iframe en módulo hub) | CTAs calculadora/Drive sin cross-origin; reutiliza API bmc-chat |
+| 2 | Chat UI | **React nativo** (no iframe en módulo hub) | CTAs calculadora/Drive sin cross-origin; reutiliza API bmc-chat. **Implementado P0** — al ganar el nativo, la auth postMessage del iframe queda legacy: no diseñar grants para ella |
 | 3 | Respondamos Rapido | **Launcher compacto** → deep-link al hub | iframe solo fase 1; v2 abre `/hub/admin-ingreso?row=N` |
 | 4 | Ruta | **`/hub/admin-ingreso`** | Convención hub plana (`/hub/cotizaciones`, `/hub/canales`) |
 | 5 | Preview cotización | **Modal** con resumen BOM antes de Drive | Evita sorpresas en M |
 | 6 | Multi espesor | **Tabs** por variante (`100mm`, `150mm`) | Clara separación de cotizaciones |
 | 7 | localStorage | **`bmc_pending_admin_import`** | Metadata `{ adminRow, consulta, savedAt }` |
-| 8 | Grant RBAC | **`cotizaciones:write`** (lectura `read`) | Mismo módulo operativo; sin grant nuevo en v1 |
+| 8 | Grant RBAC | **`role:"admin"`** | Como quedó implementado en P0 (`RequireGrant role="admin"` + `useCockpitOperatorAuth({ role: "admin" })`) y como exige el backend `requireWolfboard*`. Granularidad por módulo = evolución opcional, no requisito |
 | 9 | Tokens visuales | **Reutilizar `--ac-*`** de Admin Cotizaciones | Coherencia hub |
 
 ---
@@ -131,6 +131,8 @@ flowchart TB
 
 **Regla:** `Guardar en Admin` deshabilitado hasta que exista preview (post-interpretar).
 
+**Decisión de producto pendiente (no de diseño):** el destino **"Nueva fila"** (append en Admin.) vs **"Fila existente"** debe resolverse a nivel producto antes de P2. La UI soporta ambos destinos tal como está wireframeada; el default y el flujo de IDs (columna A) se definen con esa decisión.
+
 ---
 
 ## 5. Wireframe — Respondamos Rapido v2 (launcher)
@@ -179,6 +181,8 @@ flowchart TB
 └─────────────────────────────────────────────────────────┘
 ```
 
+**Regla (escritura confirmada):** el click **«Generar y guardar link»** es **LA confirmación explícita** que escribe columna M — ninguna otra acción escribe M y nunca ocurre en automático. Es el mismo acto que el "Generar PDF" del Journey 1 del brief.
+
 ---
 
 ## 7. Estados por fila (máquina de estados)
@@ -196,7 +200,11 @@ stateDiagram-v2
   Listo --> Calculadora: abrir precargado
   Calculadora --> Guardado: vuelve y guarda M manual
   Pendiente --> NoCotizable: quotable false
+  Conversando --> NoCotizable: dato faltante sin respuesta o fuera de catalogo
   NoCotizable --> Guardado: guardar J explicativo
+  NoCotizable --> Pendiente: CTA Saltar pasa a la siguiente fila
+  NoCotizable --> Estacionada: CTA Estacionar flag parked
+  Estacionada --> Conversando: retomar desde filtro Estacionadas
 ```
 
 ### Badges en lista lateral
@@ -208,6 +216,9 @@ stateDiagram-v2
 | Listo | `--ac-success` | `ready_to_quote` |
 | No cotizable | `--ac-warn` | `quotable=false` |
 | Cotizado | `--ac-text-2` + ✓ | M llena (no aparece en cola) |
+| Estacionada | `--ac-yellow` | flag `parked` en la conversación (`_BMC_ChatState`) — fuera de la cola activa, visible en filtro "Estacionadas" |
+
+**Persistencia de Estacionada:** flag `parked: true` dentro del JSON de conversación (`POST /api/conversation/:row` guarda el body verbatim) — cero cambio de backend. **Regla de cola:** Saltar/Estacionar están siempre disponibles en filas problemáticas; la cola nunca queda bloqueada por una fila no cotizable.
 
 ---
 
@@ -271,6 +282,8 @@ type Interpretation = {
 | Abrir calculadora | `toCalcPayload` válido | `write` |
 | Cotizar (Drive) | `ready_to_quote && quotable` | `write` |
 | Siguiente | Modo B + hay más en cola | `read` |
+| Saltar | `quotable=false` o dato faltante sin respuesta | `read` — avanza sin escribir nada |
+| Estacionar | `quotable=false` o dato faltante sin respuesta | `write` — persiste `parked` en `_BMC_ChatState` |
 | Abrir en Cotizaciones | Siempre | `read` → `/hub/cotizaciones?row=N` |
 
 ### 8.4 API — estrategia v1
@@ -342,6 +355,9 @@ sequenceDiagram
 | Sheets down | No pudimos conectar con la planilla. Reintentá en unos segundos. |
 | IA down | El interpretador no respondió. Podés editar J manualmente o reintentar. |
 | No cotizable | Esta consulta no es de paneles — guardá la interpretación y derivá a Manager. |
+| CTA saltar | Saltar → siguiente |
+| CTA estacionar | Estacionar consulta |
+| Toast estacionada | Consulta estacionada — la encontrás en el filtro Estacionadas. |
 | Empty cola | No hay consultas pendientes. Usá Ingreso rápido para cargar una nueva. |
 
 ---
@@ -376,6 +392,8 @@ sequenceDiagram
 | **P3** | Respondamos v2 (lista nativa + deep link) | S |
 | **P4** | Integrar brain/few-shot del pipeline en interpret | M |
 
+**Prerequisito para `espesor_variants` (P1+):** sincronizar los guards `repairFamilyEspesor` y la tabla `TECHO_FAMILIAS`/`PARED_FAMILIAS` de `server/lib/bmcChatGemini.js` con `src/data/constants.js` **antes** de exponer los tabs de variantes en UI (discrepancia vigente: ISOWALL_PIR `[50,80,100]` en Gemini vs `[50,80]` en catálogo).
+
 ---
 
 ## 14. Criterios de aceptación UX (refinados)
@@ -387,6 +405,8 @@ sequenceDiagram
 - [ ] `?row=8` en URL preselecciona fila al abrir desde Respondamos
 - [ ] Error Sheets no bloquea lectura de conversación cacheada (solo escritura)
 - [ ] Buscar en sidebar filtra por texto de consulta client-side
+- [ ] Fila no cotizable se puede Saltar/Estacionar sin escribir en la planilla; la cola avanza a la siguiente
+- [ ] Columna M solo se escribe con el click "Generar y guardar link" — no hay escritura automática de M
 
 ---
 
@@ -399,4 +419,4 @@ sequenceDiagram
 
 ---
 
-*Fin del UX spec v1.0*
+*Fin del UX spec v1.1 — review "aprobable con ajustes" aplicado (2026-07-04)*

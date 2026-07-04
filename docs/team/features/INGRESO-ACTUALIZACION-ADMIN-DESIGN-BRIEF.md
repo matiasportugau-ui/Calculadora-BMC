@@ -384,8 +384,8 @@ Mantener pestaña fija; agregar:
 3. **Modo A:** pega consulta en textarea
 4. IA interpreta → operador ve que falta espesor → responde en chat "100mm"
 5. `ready_to_quote=true` → **Abrir en calculadora**
-6. Ajusta zonas en `/` → genera PDF desde calculadora
-7. Link manual o automático a columna M
+6. Ajusta zonas en `/` → click **Generar PDF**
+7. **El click "Generar PDF" ES la confirmación explícita que escribe el link en columna M.** No existe escritura automática ni diferida de M sin ese acto — coherente con la restricción §8.2 (escritura confirmada)
 8. Marca enviado desde Admin Cotizaciones
 
 **Estados vacíos:** sin consulta → deshabilitar Interpretar  
@@ -396,10 +396,11 @@ Mantener pestaña fija; agregar:
 
 1. Operador abre **Modo B** — ve 11 consultas
 2. Toma la primera → chat hasta completar datos
-3. **Guardar en planilla** → pasa a la siguiente
-4. En fila con `espesor_variants` [100, 150] → UI ofrece **dos cotizaciones** o elegir una
-5. **Solicitar cotización** en la variante elegida → M se llena
-6. Fin del turno: KPI "X interpretadas, Y cotizadas"
+3. Si la fila resulta **no cotizable** (dato faltante sin respuesta del cliente, o producto fuera de catálogo) → CTA **Saltar** (avanza a la siguiente sin escribir) o **Estacionar** (la fila sale de la vista activa con flag `parked`) — la cola **nunca se traba** en la primera fila mala
+4. **Guardar en planilla** → pasa a la siguiente
+5. En fila con `espesor_variants` [100, 150] → UI ofrece **dos cotizaciones** o elegir una
+6. **Solicitar cotización** en la variante elegida → M se llena
+7. Fin del turno: KPI "X interpretadas, Y cotizadas, Z estacionadas"
 
 ### Journey 3 — Corregir interpretación errónea
 
@@ -428,9 +429,9 @@ Mantener pestaña fija; agregar:
 | 3 | Sin puente UI → calculadora | Copy-paste manual de dimensiones | **Crítica** |
 | 4 | Respondamos y Admin Cotizaciones desconectados | Context switching | Alta — híbrido |
 | 5 | iframe cross-origin limita CTAs nativos | No puede navegar SPA fácilmente | Media — panel React |
-| 6 | `espesor_variants` sin UI multi-cotización | Casos multi-espesor confusos | Media |
+| 6 | `espesor_variants` sin UI multi-cotización | Casos multi-espesor confusos | Media — **prerequisito:** sync guards ↔ `constants.js` (ver §9 #5) |
 | 7 | UAT humano pendiente en Vercel | Confianza operativa | Baja para diseño |
-| 8 | Auth iframe `postMessage` sin validación server | Seguridad menor | Baja — documentar grants |
+| 8 | Auth iframe `postMessage` sin validación server | Seguridad menor | Resuelta por la decisión de superficie (§9 #3): el módulo hub es chat nativo React + JWT; la auth postMessage queda solo en el iframe legacy deprecable — **no diseñar grants para el iframe** |
 
 ---
 
@@ -440,7 +441,7 @@ Mantener pestaña fija; agregar:
 2. **Escritura confirmada** — nunca auto-write J/K/L sin click explícito (patrón "Escribir en la planilla")
 3. **Semántica HTTP:** `503` = Sheets no disponible; no confundir con fallo de IA
 4. **Copy operador en español**; montos en **USD sin IVA** (IVA 22% una vez al total en calculadora)
-5. **RBAC:** reutilizar grants (`cotizaciones:read/write`) o definir `admin-ingreso:write`
+5. **RBAC:** acceso gated por `role:"admin"` — mismo requisito que el backend (`requireWolfboardRead/Write`) y que lo implementado en P0 (`RequireGrant role="admin"`). La eventual granularidad por módulo (`admin-ingreso:write`) es una decisión abierta de evolución (ver §9), no una restricción
 6. **Prod:** chat debe funcionar sin Mac local (Cloud Run `bmc-chat`)
 7. **Accesibilidad:** drawer/modal con Escape, focus trap, labels en español
 8. **Mobile:** pestaña Respondamos ya es fixed bottom-right — validar en viewport estrecho
@@ -452,10 +453,10 @@ Mantener pestaña fija; agregar:
 | # | Pregunta | Opciones | Recomendación técnica |
 |---|----------|----------|----------------------|
 | 1 | Layout del módulo | Split-pane (lista+chat) vs wizard paso a paso | Split-pane (paridad con chat actual) |
-| 2 | Modo A — fila nueva | ¿Crear fila en Admin o solo llenar I en vacía? | Alinear con flujo intake actual (ver columna A ID) |
-| 3 | Chat UI | ¿Mantener iframe Cloud Run o React nativo? | **React nativo** para CTAs calc/Drive y menos cross-origin |
+| 2 | Modo A — fila nueva | ¿Crear fila en Admin o solo llenar I en vacía? | **DECISIÓN DE PRODUCTO, no de diseño** — resolver antes de P2; mientras tanto la UI soporta ambos destinos (UX spec §4) |
+| 3 | Chat UI | ¿Mantener iframe Cloud Run o React nativo? | **RESUELTA: React nativo** (P0 live 2026-07-04, `AdminIngresoModule.jsx`). El iframe queda legacy en deprecación — esta decisión se resuelve SIEMPRE antes de diseñar grants/auth del iframe (gap #8) |
 | 4 | Preview BOM | ¿Modal completo o resumen una línea? | Modal con área, paneles, total USD antes de Drive |
-| 5 | Multi `espesor_variants` | Tabs / dropdown / cotizaciones separadas | Tabs por espesor con label "100mm" / "150mm" |
+| 5 | Multi `espesor_variants` | Tabs / dropdown / cotizaciones separadas | Tabs por espesor con label "100mm" / "150mm". **Prerequisito bloqueante:** sincronizar guards `repairFamilyEspesor`/tabla de familias de `server/lib/bmcChatGemini.js` con `src/data/constants.js` antes de exponer variants en UI (hoy ISOWALL_PIR: `[50,80,100]` vs `[50,80]`) |
 | 6 | Relación con batch IA | ¿Complementa o reemplaza quote-batch? | **Complementa** — batch para volumen; este módulo para precisión |
 | 7 | Nombre de ruta | `/hub/admin-ingreso` vs `/hub/admin/ingreso` | Definir con convención hub existente |
 | 8 | localStorage key | `bmc_pending_admin_import` vs reutilizar plan import | Key dedicada con metadata `{ adminRow, consulta }` |
@@ -672,6 +673,7 @@ Verificación automatizada (curl, sin browser UAT):
 | 2026-07-04 | v1.0 — Brief inicial exportado desde plan de diseño; verificación prod bmc-chat |
 | 2026-07-04 | v1.1 — Sección observación prod y cierre |
 | 2026-07-04 | v1.2 — Link a UX spec producido |
+| 2026-07-04 | v1.3 — Review "aprobable con ajustes": superficie resuelta antes que grants (gap 8), Journey 2 con estado no cotizable + Saltar/Estacionar, Journey 1 explicita "Generar PDF" = confirmación que escribe M, prerequisito sync guards para `espesor_variants`, Modo A fila nueva marcada decisión de producto, RBAC sin "o" en restricciones |
 
 ---
 
