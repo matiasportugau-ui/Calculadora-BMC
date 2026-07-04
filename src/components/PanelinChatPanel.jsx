@@ -296,7 +296,7 @@ export default function PanelinChatPanel({
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const openerRef = useRef(null);
-  const prevMsgCountRef = useRef(0);
+  const lastAutoSpokenMsgIdRef = useRef(null);
   const drawerResizeActiveRef = useRef(false);
   const inputLiftDragActiveRef = useRef(false);
   const dragStartXRef = useRef(0);
@@ -417,17 +417,19 @@ export default function PanelinChatPanel({
     return () => el.removeEventListener("keydown", handler);
   }, [isOpen, embeddedMode]);
 
-  // TTS: read new assistant messages aloud when enabled
+  // TTS: read assistant messages once they finish streaming.
   useEffect(() => {
-    if (!ttsEnabled) return;
-    const count = messages.length;
-    if (count > prevMsgCountRef.current) {
-      const last = messages[count - 1];
-      if (last && last.role === "assistant" && last.content && !last.pending) {
-        speakWithReaction(last.content);
+    const last = messages[messages.length - 1];
+    if (!ttsEnabled) {
+      if (last?.role === "assistant" && last.content && !last.pending) {
+        lastAutoSpokenMsgIdRef.current = last.id;
       }
+      return;
     }
-    prevMsgCountRef.current = count;
+    if (!last || last.role !== "assistant" || !last.content || last.pending) return;
+    if (lastAutoSpokenMsgIdRef.current === last.id) return;
+    lastAutoSpokenMsgIdRef.current = last.id;
+    speakWithReaction(last.content);
   }, [messages, ttsEnabled, speakWithReaction]);
 
   // Voice dictation: browser-native SpeechRecognition (free, no key) when
@@ -1108,6 +1110,7 @@ export default function PanelinChatPanel({
                     size={24}
                     isSpeaking={isTtsSpeaking && msgIdx === messages.length - 1}
                     isThinking={isStreaming && msg.pending && msgIdx === messages.length - 1}
+                    staticAvatar
                   />
                 )}
                 <div style={{ maxWidth: "80%", display: "flex", flexDirection: "column", gap: 4 }}>

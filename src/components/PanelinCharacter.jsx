@@ -46,6 +46,7 @@ function ensureKeyframes() {
  *   isSpeaking?: boolean,
  *   isThinking?: boolean,
  *   showGreet?: boolean,
+ *   staticAvatar?: boolean,
  *   title?: string,
  *   className?: string,
  *   "aria-label"?: string,
@@ -57,6 +58,7 @@ export default function PanelinCharacter({
   isSpeaking = false,
   isThinking = false,
   showGreet = false,
+  staticAvatar = false,
   title,
   className,
   "aria-label": ariaLabel = "Abrir asistente Panelin",
@@ -131,7 +133,7 @@ export default function PanelinCharacter({
   const interactive = typeof onClick === "function";
   const Wrapper = interactive ? "button" : "div";
 
-  const avatar = videoFailed ? (
+  const avatar = staticAvatar || videoFailed ? (
     <div
       aria-hidden
       style={{
@@ -146,6 +148,8 @@ export default function PanelinCharacter({
         justifyContent: "center",
         fontSize: Math.max(11, Math.round(size * 0.36)),
         fontWeight: 700,
+        border: "2px solid rgba(255,255,255,0.35)",
+        animation: `${breatheAnimation}${ringAnimation !== "none" ? `, ${ringAnimation}` : ""}`,
       }}
     >
       P
