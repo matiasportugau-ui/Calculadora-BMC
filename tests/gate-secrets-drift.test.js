@@ -33,6 +33,17 @@ function group(name, fn) {
   return fn();
 }
 const eqSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
+function extractWorkflowStep(workflow, name) {
+  const marker = `      - name: ${name}`;
+  const start = workflow.indexOf(marker);
+  if (start === -1) return "";
+  const next = workflow.indexOf("\n      - name:", start + marker.length);
+  return workflow.slice(start, next === -1 ? workflow.length : next);
+}
+function hasActiveYamlAssignment(block, key, valuePattern) {
+  const re = new RegExp(`^\\s*${key}:\\s*${valuePattern}\\s*$`);
+  return block.split(/\r?\n/).some((line) => re.test(line));
+}
 
 // ── normalizeMountKey ───────────────────────────────────────────────────────
 
@@ -110,15 +121,37 @@ group("live repo manifest matches deploy workflow", () => {
   const required = parseManifest(
     fs.readFileSync(path.join(REPO_ROOT, ".github/required-cloud-run-secrets.txt"), "utf8"),
   );
-  const deployed = parseSetSecrets(
-    fs.readFileSync(path.join(REPO_ROOT, ".github/workflows/deploy-calc-api.yml"), "utf8"),
+  const deployWorkflow = fs.readFileSync(
+    path.join(REPO_ROOT, ".github/workflows/deploy-calc-api.yml"),
+    "utf8",
   );
+  const deployed = parseSetSecrets(deployWorkflow);
   const provisioned = parseProvisionedKeys(
     fs.readFileSync(path.join(REPO_ROOT, "scripts/provision-secrets.sh"), "utf8"),
   );
   const { missing, undeclared } = computeDrift({ required, deployed, provisioned });
   assert(missing.length === 0, `no MISSING in live repo (got: ${missing.join(", ")})`);
   assert(undeclared.length === 0, `no UNDECLARED in live repo (got: ${undeclared.join(", ")})`);
+});
+
+group("deploy smoke auth contract", () => {
+  const deployWorkflow = fs.readFileSync(
+    path.join(REPO_ROOT, ".github/workflows/deploy-calc-api.yml"),
+    "utf8",
+  );
+  const smokeStep = extractWorkflowStep(deployWorkflow, "Smoke against just-deployed revision");
+  assert(smokeStep.includes("npm run smoke:prod"), "post-deploy step runs prod smoke");
+
+  const skipSuggest = hasActiveYamlAssignment(smokeStep, "SMOKE_SKIP_SUGGEST", "['\"]?1['\"]?");
+  const passesStaticToken = hasActiveYamlAssignment(
+    smokeStep,
+    "API_AUTH_TOKEN",
+    "\\$\\{\\{\\s*secrets\\.API_AUTH_TOKEN\\s*\\}\\}",
+  );
+  assert(
+    skipSuggest || passesStaticToken,
+    "hard suggest-response smoke passes API_AUTH_TOKEN (or explicitly skips suggest)",
+  );
 });
 
 // ── summary ─────────────────────────────────────────────────────────────────

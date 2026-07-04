@@ -223,6 +223,7 @@ jobs:
         if: steps.paths.outputs.skip != 'true'
         env:
           BMC_API_BASE: ${{ steps.service_url.outputs.url }}
+          API_AUTH_TOKEN: ${{ secrets.API_AUTH_TOKEN }}
           # suggest-response is now a hard deploy gate (this env block used to set
           # SMOKE_SKIP_SUGGEST: '1'). Rationale (2026-07-04): the endpoint is a
           # go-live requirement, its provider chain has 4-deep fallback (low flake
