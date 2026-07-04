@@ -35,7 +35,7 @@ group("v4 exports", () => {
 });
 
 group("layout persistence and percentages", () => {
-  assert(component.includes("groupRef={mainPanelGroupRef}"), "uses groupRef for the imperative v4 group API");
+  assert(component.includes("groupRef={mainSplitGroupRef}"), "uses groupRef for the imperative v4 group API");
   assert(component.includes("useDefaultLayout({"), "uses v4 useDefaultLayout persistence");
   assert(component.includes("setLayout?.(MAIN_SPLIT_RESET_LAYOUT)"), "resets with an id-keyed layout object");
   assert(component.includes('id="bmc-main-left"'), "left panel has a stable persisted id");
