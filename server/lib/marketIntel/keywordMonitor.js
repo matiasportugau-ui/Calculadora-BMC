@@ -393,6 +393,16 @@ export async function runKeywordRefresh({ ids = null, priority = null } = {}) {
 
   const results = [];
   let errors = 0;
+  if (targets.length === 0) {
+    const finalState = mergeKeywordRefreshResults(getKeywordMonitorState(), results, {
+      lastRefreshAt: new Date().toISOString(),
+      status: 'success',
+    });
+    saveState(finalState);
+    log.info({ total: 0, errors: 0, status: finalState.last_refresh_status }, 'keyword refresh complete');
+    return finalState;
+  }
+
   let session = null;
   try {
     if (SERP_ENGINE !== 'ddg') {

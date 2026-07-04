@@ -32,6 +32,7 @@ import { callAgentOnce } from '../lib/agentCore.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
+const KEYWORD_PRIORITIES = new Set(['P1', 'P2', 'P3', 'P4']);
 
 let _pool = null;
 const pool = () => {
@@ -309,6 +310,9 @@ router.post('/keywords', intelLimiter, requireMarketing, async (req, res) => {
   if (keyword.trim().length > 120) {
     return res.status(400).json({ error: 'keyword too long' });
   }
+  if (priority && !KEYWORD_PRIORITIES.has(priority)) {
+    return res.status(400).json({ error: 'priority must be one of P1, P2, P3, P4' });
+  }
   try {
     const entry = await addTrackedKeyword({ keyword, cluster, family, intent, priority, on_site_gap });
     res.status(201).json(entry);
@@ -322,6 +326,9 @@ router.post('/keywords', intelLimiter, requireMarketing, async (req, res) => {
 // Fire-and-forget (Playwright SERP can take several minutes). Poll GET /keywords.
 router.post('/keywords/refresh', intelLimiter, requireMarketing, (req, res) => {
   const { ids, priority } = req.body || {};
+  if (priority && !KEYWORD_PRIORITIES.has(priority)) {
+    return res.status(400).json({ error: 'priority must be one of P1, P2, P3, P4' });
+  }
   log.info({ userId: req.user?.id, ids, priority }, 'keyword refresh triggered');
 
   const job = startKeywordRefresh({
