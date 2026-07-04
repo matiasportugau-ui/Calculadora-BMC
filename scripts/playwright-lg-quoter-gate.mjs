@@ -18,7 +18,19 @@ import { chromium } from "playwright";
 const BASE = (process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:4173").replace(/\/+$/, "");
 const BLOCK_FONTS = process.env.LGQ_BLOCK_FONTS === "1";
 const LG_CHUNK_RE = /ScenarioCards|PriceHUD|lg-quoter|lgFonts/i;
-const LG_FONT_RE = /fonts\.(googleapis|gstatic)\.com.*(Archivo|JetBrains)/i;
+
+// Hostname exacto (no regex sin anclar sobre la URL completa): evita falsos
+// positivos tipo fonts.googleapis.com.otrohost.com (CodeQL js/regex-missing-anchor).
+function isFontsHost(url) {
+  try {
+    return /^fonts\.(googleapis|gstatic)\.com$/.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+function isLgFontRequest(url) {
+  return isFontsHost(url) && /Archivo|JetBrains/i.test(url);
+}
 
 let failures = 0;
 function check(label, ok, detail = "") {
@@ -31,10 +43,10 @@ async function newPage(browser, counters) {
   page.on("request", (r) => {
     const url = r.url();
     if (LG_CHUNK_RE.test(url) && url.includes("/assets/")) counters.chunks.push(url);
-    if (LG_FONT_RE.test(url)) counters.fonts.push(url);
+    if (isLgFontRequest(url)) counters.fonts.push(url);
   });
   if (BLOCK_FONTS) {
-    await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.abort("connectionreset"));
+    await page.route((url) => isFontsHost(url.href), (route) => route.abort("connectionreset"));
   }
   return page;
 }
