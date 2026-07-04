@@ -81,11 +81,15 @@ jobs:
     steps:
       - name: Verify prerequisites (flip_on only)
         if: inputs.action == 'flip_on'
+        # Read via the `vars` context (rendered by Actions itself): `gh variable get`
+        # with github.token cannot read repo Variables (silent MISSING → false negative,
+        # hit on 2026-07-04).
+        env:
+          BUS: ${{ vars.OMNI_EVENT_BUS_ENABLED || 'MISSING' }}
+          ORCH: ${{ vars.OMNI_AI_ORCHESTRATOR_ENABLED || 'MISSING' }}
         run: |
-          bus="$(gh variable get OMNI_EVENT_BUS_ENABLED --repo "$GITHUB_REPOSITORY" 2>/dev/null || echo MISSING)"
-          orch="$(gh variable get OMNI_AI_ORCHESTRATOR_ENABLED --repo "$GITHUB_REPOSITORY" 2>/dev/null || echo MISSING)"
-          echo "OMNI_EVENT_BUS_ENABLED=$bus  OMNI_AI_ORCHESTRATOR_ENABLED=$orch"
-          if [ "$bus" != "1" ] || [ "$orch" != "1" ]; then
+          echo "OMNI_EVENT_BUS_ENABLED=$BUS  OMNI_AI_ORCHESTRATOR_ENABLED=$ORCH"
+          if [ "$BUS" != "1" ] || [ "$ORCH" != "1" ]; then
             echo "::error::Prerequisites not met — event bus/orchestrator must be ON (see runbook). Refusing to flip: canonical would fall back to legacy anyway (chooseWaIngestMode guard), so flipping now is a no-op that only adds confusion."
             exit 1
           fi
