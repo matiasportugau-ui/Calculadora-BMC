@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useBmcAuthContext } from "../contexts/bmcAuthContext.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 
@@ -197,14 +198,33 @@ export default function BmcChatPanel() {
                 </div>
               )}
               {serverUp === true && (
-                <div style={{ flex: "1 1 auto", minHeight: 0, position: "relative" }}>
-                  <iframe
-                    ref={iframeRef}
-                    src={chatBase}
-                    onLoad={postAuthToIframe}
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-                    title={PANEL_TITLE}
-                  />
+                <div style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column" }}>
+                  <div style={{ flex: "1 1 auto", minHeight: 0, position: "relative" }}>
+                    <iframe
+                      ref={iframeRef}
+                      src={chatBase}
+                      onLoad={postAuthToIframe}
+                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+                      title={PANEL_TITLE}
+                    />
+                  </div>
+                  <Link
+                    to="/hub/admin-ingreso"
+                    style={{
+                      flexShrink: 0,
+                      display: "block",
+                      textAlign: "center",
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#1a73e8",
+                      textDecoration: "none",
+                      borderTop: "1px solid #e8eaed",
+                      background: "#f8f9fa",
+                    }}
+                  >
+                    Abrir módulo completo ↗
+                  </Link>
                 </div>
               )}
             </div>
