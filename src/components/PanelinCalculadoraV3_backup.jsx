@@ -125,8 +125,12 @@ import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { useChat } from "../hooks/useChat.js";
-import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
+import PanelinCharacter from "./PanelinCharacter.jsx";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
+import PanelinFloatingChatShell, {
+  createFloatingDragHandler,
+  readDefaultFloatingRect,
+} from "./PanelinFloatingChatShell.jsx";
 import EmailAgentPanel from "./EmailAgentPanel.jsx";
 import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
 
@@ -2544,6 +2548,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const params = new URLSearchParams(window.location.search);
     return params.get("chat") === "1" || params.get("panelinDetached") === "1";
   });
+  const [chatPresentation, setChatPresentation] = useState(() => {
+    if (typeof window === "undefined") return "sidebar";
+    return sessionStorage.getItem("panelin-chat-presentation") === "floating" ? "floating" : "sidebar";
+  });
+  const [floatingRect, setFloatingRect] = useState(() => readDefaultFloatingRect());
+  const floatingShellRef = useRef(null);
+  const floatingRectRef = useRef(floatingRect);
   const [devMode, setDevMode] = useState(() => {
     if (typeof window === "undefined") return false;
     return sessionStorage.getItem("panelin-dev-mode") === "1";
@@ -2790,6 +2801,47 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (isDetachedChatWindow) setChatOpen(true);
   }, [isDetachedChatWindow]);
 
+  useEffect(() => {
+    floatingRectRef.current = floatingRect;
+  }, [floatingRect]);
+
+  const useSidebarChat = chatOpen && !isDetachedChatWindow && chatPresentation === "sidebar";
+  const useFloatingChat = chatOpen && !isDetachedChatWindow && chatPresentation === "floating";
+
+  const persistChatPresentation = useCallback((mode) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("panelin-chat-presentation", mode);
+    }
+  }, []);
+
+  const openChat = useCallback(() => {
+    setChatOpen(true);
+  }, []);
+
+  const closeChat = useCallback(() => {
+    setChatOpen(false);
+  }, []);
+
+  const requestFloatingChat = useCallback(() => {
+    setChatPresentation("floating");
+    persistChatPresentation("floating");
+    setChatOpen(true);
+  }, [persistChatPresentation]);
+
+  const returnChatToSidebar = useCallback(() => {
+    setChatPresentation("sidebar");
+    persistChatPresentation("sidebar");
+    setChatOpen(true);
+  }, [persistChatPresentation]);
+
+  const panelinChatAuthHeader = useMemo(() => (
+    devMode && devAuthToken
+      ? `Bearer ${devAuthToken}`
+      : bmcAuth?.accessToken
+        ? `Bearer ${bmcAuth.accessToken}`
+        : undefined
+  ), [devMode, devAuthToken, bmcAuth?.accessToken]);
+
   const openDetachedChatWindow = useCallback(() => {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
@@ -2801,6 +2853,79 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       "popup=yes,width=1280,height=900,resizable=yes,scrollbars=yes"
     );
   }, []);
+
+  const onFloatingHeaderDrag = useMemo(
+    () => createFloatingDragHandler({
+      rectRef: floatingRectRef,
+      shellRef: floatingShellRef,
+      onRectChange: setFloatingRect,
+    }),
+    [],
+  );
+
+  const panelinChatPanelProps = useMemo(() => ({
+    messages: chat.messages,
+    isStreaming: chat.isStreaming,
+    send: chat.send,
+    clearSuggestionsForMessage: chat.clearSuggestionsForMessage,
+    stop: chat.stop,
+    retry: chat.retry,
+    clear: chat.clear,
+    error: chat.error,
+    devMode,
+    onToggleDevMode: toggleDevMode,
+    devMeta: chat.devMeta,
+    trainingEntries: chat.trainingEntries,
+    trainingStats: chat.trainingStats,
+    promptPreview: chat.promptPreview,
+    promptSections: chat.promptSections,
+    onSaveCorrection: chat.saveCorrection,
+    onSendFeedback: chat.sendFeedback,
+    onReloadTrainingKB: chat.reloadTrainingKB,
+    onReloadPromptPreview: chat.reloadPromptPreview,
+    onReloadPromptSections: chat.reloadPromptSections,
+    onSavePromptSection: chat.savePromptSection,
+    onVerifyCalculation: chat.verifyCalculation,
+    onBulkDeleteKB: chat.bulkDeleteKB,
+    onBulkArchiveKB: chat.bulkArchiveKB,
+    onLoadConversations: chat.loadConversationList,
+    onLoadConversationAnalysis: chat.loadConversationAnalysis,
+    calcState,
+    onChatAction: handleChatAction,
+    authHeader: panelinChatAuthHeader,
+    onOpenDetachedWindow: openDetachedChatWindow,
+  }), [
+    chat.messages,
+    chat.isStreaming,
+    chat.send,
+    chat.clearSuggestionsForMessage,
+    chat.stop,
+    chat.retry,
+    chat.clear,
+    chat.error,
+    chat.devMeta,
+    chat.trainingEntries,
+    chat.trainingStats,
+    chat.promptPreview,
+    chat.promptSections,
+    chat.saveCorrection,
+    chat.sendFeedback,
+    chat.reloadTrainingKB,
+    chat.reloadPromptPreview,
+    chat.reloadPromptSections,
+    chat.savePromptSection,
+    chat.verifyCalculation,
+    chat.bulkDeleteKB,
+    chat.bulkArchiveKB,
+    chat.loadConversationList,
+    chat.loadConversationAnalysis,
+    devMode,
+    toggleDevMode,
+    calcState,
+    handleChatAction,
+    panelinChatAuthHeader,
+    openDetachedChatWindow,
+  ]);
 
   // Section refs for auto-scroll
   const panelRef = useRef(null);
@@ -3521,7 +3646,19 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const resetMainSplitLayout = useCallback(() => {
     try {
-      mainPanelGroupRef.current?.setLayout?.([28, 72]);
+      if (useSidebarChat) {
+        mainPanelGroupRef.current?.setLayout?.([24, 52, 24]);
+      } else {
+        mainPanelGroupRef.current?.setLayout?.([28, 72]);
+      }
+    } catch {
+      /* optional API */
+    }
+  }, [useSidebarChat]);
+
+  const resetChatSplitLayout = useCallback(() => {
+    try {
+      mainPanelGroupRef.current?.setLayout?.([24, 52, 24]);
     } catch {
       /* optional API */
     }
@@ -5191,31 +5328,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             </>
           ) : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: isPhone ? "auto" : undefined }}>
-            <video
-              src={PANELIN_AGENT_VIDEO_SRC}
-              autoPlay
-              muted
-              loop
-              playsInline
-              aria-hidden
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "1px solid rgba(255,255,255,0.35)",
-                background: "rgba(0,0,0,0.2)",
-                flexShrink: 0,
-              }}
-            />
-            {panelinHeaderAiSelect}
-            <button
-              type="button"
-              onClick={() => setChatOpen((o) => !o)}
-              style={{ padding: "6px 12px", borderRadius: 8, border: chatOpen ? "none" : "1px solid rgba(255,255,255,0.3)", background: chatOpen ? "rgba(255,255,255,0.2)" : "transparent", color: "#fff", fontSize: 13, fontWeight: chatOpen ? 600 : 400, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
-            >
-              💬 Panelin
-            </button>
+            {!chatOpen && !isDetachedChatWindow ? (
+              <>
+                <PanelinCharacter
+                  size={40}
+                  onClick={openChat}
+                  showGreet
+                  title="Abrir Panelin"
+                  aria-label="Abrir asistente Panelin"
+                />
+                {panelinHeaderAiSelect}
+              </>
+            ) : (
+              panelinHeaderAiSelect
+            )}
           </div>
           {!isPhone && devMode ? (
             <button
@@ -5263,7 +5389,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       <PanelGroup
         ref={mainPanelGroupRef}
         direction={isCompactLayout ? "vertical" : "horizontal"}
-        autoSaveId={isCompactLayout ? undefined : "bmc-panelin-main-split"}
+        autoSaveId={
+          isCompactLayout
+            ? undefined
+            : (useSidebarChat ? "bmc-panelin-main-split-with-chat" : "bmc-panelin-main-split")
+        }
         className="bmc-main-grid"
         style={{
           display: "flex",
@@ -7610,7 +7740,49 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           </div>}
         </div>
         </Panel>
+        {useSidebarChat && (
+          <>
+            <PanelResizeHandle
+              className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
+              style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
+              hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
+              onDoubleClick={(e) => { e.preventDefault(); if (!isCompactLayout) resetChatSplitLayout(); }}
+            />
+            <Panel
+              defaultSize={isCompactLayout ? 28 : 22}
+              minSize={isCompactLayout ? 18 : 18}
+              maxSize={isCompactLayout ? 45 : 40}
+              style={{ minWidth: 0, minHeight: 0, display: "flex" }}
+            >
+              <PanelinChatPanel
+                isOpen
+                embeddedMode
+                onClose={closeChat}
+                onRequestFloating={requestFloatingChat}
+                {...panelinChatPanelProps}
+              />
+            </Panel>
+          </>
+        )}
       </PanelGroup>
+
+      {useFloatingChat && typeof document !== "undefined" && createPortal(
+        <PanelinFloatingChatShell
+          rect={floatingRect}
+          onRectChange={setFloatingRect}
+          shellRef={floatingShellRef}
+        >
+          <PanelinChatPanel
+            isOpen
+            floatingMode
+            onClose={closeChat}
+            onReturnToSidebar={returnChatToSidebar}
+            onHeaderPointerDown={onFloatingHeaderDrag}
+            {...panelinChatPanelProps}
+          />
+        </PanelinFloatingChatShell>,
+        document.body,
+      )}
 
       <QuotePreviewModal
         pendingQuote={pendingQuote}
@@ -7637,46 +7809,16 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         </button>
       )}
 
-      <PanelinChatPanel
-        isOpen={chatOpen}
-        onClose={() => {
-          if (isDetachedChatWindow && typeof window !== "undefined") {
-            window.close();
-            return;
-          }
-          setChatOpen(false);
-        }}
-        {...chat}
-        devMode={devMode}
-        onToggleDevMode={toggleDevMode}
-        detachedMode={isDetachedChatWindow}
-        onOpenDetachedWindow={openDetachedChatWindow}
-        devMeta={chat.devMeta}
-        trainingEntries={chat.trainingEntries}
-        trainingStats={chat.trainingStats}
-        promptPreview={chat.promptPreview}
-        promptSections={chat.promptSections}
-        onSaveCorrection={chat.saveCorrection}
-        onSendFeedback={chat.sendFeedback}
-        onReloadTrainingKB={chat.reloadTrainingKB}
-        onReloadPromptPreview={chat.reloadPromptPreview}
-        onReloadPromptSections={chat.reloadPromptSections}
-        onSavePromptSection={chat.savePromptSection}
-        onVerifyCalculation={chat.verifyCalculation}
-        onBulkDeleteKB={chat.bulkDeleteKB}
-        onBulkArchiveKB={chat.bulkArchiveKB}
-        onLoadConversations={chat.loadConversationList}
-        onLoadConversationAnalysis={chat.loadConversationAnalysis}
-        calcState={calcState}
-        onChatAction={handleChatAction}
-        authHeader={
-          devMode && devAuthToken
-            ? `Bearer ${devAuthToken}`
-            : bmcAuth?.accessToken
-              ? `Bearer ${bmcAuth.accessToken}`
-              : undefined
-        }
-      />
+      {isDetachedChatWindow && (
+        <PanelinChatPanel
+          isOpen={chatOpen}
+          detachedMode
+          onClose={() => {
+            if (typeof window !== "undefined") window.close();
+          }}
+          {...panelinChatPanelProps}
+        />
+      )}
 
       {/* Asistente de Correos BMC — second agent (gated by VITE_FEATURE_EMAIL_AGENT) */}
       <EmailAgentPanel />

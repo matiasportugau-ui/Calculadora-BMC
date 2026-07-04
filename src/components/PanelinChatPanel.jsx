@@ -4,11 +4,10 @@ import PanelinDevPanel from "./PanelinDevPanel.jsx";
 import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
 import TrustBlock from "./panelin/TrustBlock.jsx";
 import { useDictation } from "../hooks/useDictation.js";
-import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
+import PanelinCharacter from "./PanelinCharacter.jsx";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
-const BRAND = "#1a3a5c";
 const PRIMARY = "#0071e3";
 const SURFACE = "#f5f5f7";
 const BORDER = "#e5e5ea";
@@ -87,6 +86,10 @@ const BUILTIN_SKINS = [
   },
 ];
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const TTS_SPEED_KEY = "panelin-tts-speed";
+const TTS_SPEED_MIN = 0.75;
+const TTS_SPEED_MAX = 1.35;
+const TTS_SPEED_DEFAULT = 1.0;
 
 function buildSkinMap() {
   return new Map(BUILTIN_SKINS.map((skin) => [skin.id, skin]));
@@ -177,51 +180,6 @@ if (typeof document !== "undefined" && !document.getElementById("panelin-chat-kf
   document.head.appendChild(s);
 }
 
-function Avatar({ size = 28 }) {
-  const [videoFailed, setVideoFailed] = useState(false);
-  if (videoFailed) {
-    return (
-      <div
-        aria-hidden
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          flexShrink: 0,
-          background: BRAND,
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: Math.max(10, Math.round(size * 0.38)),
-          fontWeight: 700,
-        }}
-      >
-        P
-      </div>
-    );
-  }
-  return (
-    <video
-      src={PANELIN_AGENT_VIDEO_SRC}
-      autoPlay
-      muted
-      loop
-      playsInline
-      onError={() => setVideoFailed(true)}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        objectFit: "cover",
-        flexShrink: 0,
-        background: BRAND,
-      }}
-    />
-  );
-}
-
-
 /**
  * Panelin AI chat drawer.
  *
@@ -252,6 +210,11 @@ function Avatar({ size = 28 }) {
  *   onLoadConversations?: (opts?: object) => Promise<object>,
  *   onLoadConversationAnalysis?: (convId: string) => Promise<object>,
  *   detachedMode?: boolean,
+ *   embeddedMode?: boolean,
+ *   floatingMode?: boolean,
+ *   onRequestFloating?: () => void,
+ *   onReturnToSidebar?: () => void,
+ *   onHeaderPointerDown?: (e: import('react').PointerEvent) => void,
  *   onOpenDetachedWindow?: () => void,
  *   calcState?: object,
  *   onChatAction?: (action: object) => void,
@@ -288,6 +251,11 @@ export default function PanelinChatPanel({
   onLoadConversations,
   onLoadConversationAnalysis,
   detachedMode = false,
+  embeddedMode = false,
+  floatingMode = false,
+  onRequestFloating,
+  onReturnToSidebar,
+  onHeaderPointerDown,
   onOpenDetachedWindow,
   calcState,
   onChatAction,
@@ -306,6 +274,12 @@ export default function PanelinChatPanel({
   const [correctingMsgId, setCorrectingMsgId] = useState(null);
   const [correctionText, setCorrectionText] = useState("");
   const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [ttsSpeed, setTtsSpeed] = useState(() => {
+    if (typeof window === "undefined") return TTS_SPEED_DEFAULT;
+    const raw = Number(sessionStorage.getItem(TTS_SPEED_KEY));
+    return Number.isFinite(raw) ? clamp(raw, TTS_SPEED_MIN, TTS_SPEED_MAX) : TTS_SPEED_DEFAULT;
+  });
+  const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [devDrawerWidth, setDevDrawerWidth] = useState(() => {
@@ -394,10 +368,35 @@ export default function PanelinChatPanel({
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen, onClose]);
 
-  // 2.2 — Focus trap: keep Tab/Shift+Tab inside drawer
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    sessionStorage.setItem(TTS_SPEED_KEY, String(ttsSpeed));
+  }, [ttsSpeed]);
+
+  const speakWithReaction = useCallback((text) => {
+    if (typeof window === "undefined" || !window.speechSynthesis || !text) return;
+    const speak = () => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "es-UY";
+      utterance.rate = ttsSpeed;
+      const voices = window.speechSynthesis.getVoices();
+      const esVoice = voices.find((v) => v.lang.startsWith("es"));
+      if (esVoice) utterance.voice = esVoice;
+      utterance.onstart = () => setIsTtsSpeaking(true);
+      utterance.onend = () => setIsTtsSpeaking(false);
+      utterance.onerror = () => setIsTtsSpeaking(false);
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    };
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) speak();
+    else window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
+  }, [ttsSpeed]);
+
+  // 2.2 — Focus trap: keep Tab/Shift+Tab inside drawer (skip in embedded sidebar)
   const drawerRef = useRef(null);
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || embeddedMode) return;
     const el = drawerRef.current;
     if (!el) return;
     const handler = (e) => {
@@ -416,36 +415,20 @@ export default function PanelinChatPanel({
     };
     el.addEventListener("keydown", handler);
     return () => el.removeEventListener("keydown", handler);
-  }, [isOpen]);
+  }, [isOpen, embeddedMode]);
 
   // TTS: read new assistant messages aloud when enabled
   useEffect(() => {
-    if (!ttsEnabled || typeof window === "undefined" || !window.speechSynthesis) return;
+    if (!ttsEnabled) return;
     const count = messages.length;
     if (count > prevMsgCountRef.current) {
       const last = messages[count - 1];
       if (last && last.role === "assistant" && last.content && !last.pending) {
-        const speak = () => {
-          const utterance = new SpeechSynthesisUtterance(last.content);
-          utterance.lang = "es-UY";
-          utterance.rate = 1.0;
-          // 4.4 — getVoices() may be empty on first call; resolve after voiceschanged
-          const voices = window.speechSynthesis.getVoices();
-          const esVoice = voices.find((v) => v.lang.startsWith("es"));
-          if (esVoice) utterance.voice = esVoice;
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.speak(utterance);
-        };
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-          speak();
-        } else {
-          window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
-        }
+        speakWithReaction(last.content);
       }
     }
     prevMsgCountRef.current = count;
-  }, [messages, ttsEnabled]);
+  }, [messages, ttsEnabled, speakWithReaction]);
 
   // Voice dictation: browser-native SpeechRecognition (free, no key) when
   // available, falling back to server Whisper. The hook manages the mic stream
@@ -513,21 +496,8 @@ export default function PanelinChatPanel({
   }, []);
 
   const speakMessage = useCallback((text) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-    const speak = () => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "es-UY";
-      utterance.rate = 1.0;
-      const voices = window.speechSynthesis.getVoices();
-      const esVoice = voices.find((v) => v.lang.startsWith("es"));
-      if (esVoice) utterance.voice = esVoice;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    };
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) speak();
-    else window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
-  }, []);
+    speakWithReaction(text);
+  }, [speakWithReaction]);
 
   // Mic button toggles dictation: idle → record, record → stop+transcribe.
   // Browser SpeechRecognition (Chrome/Edge/Safari) when available — free and
@@ -752,6 +722,7 @@ export default function PanelinChatPanel({
   };
 
   const isEmpty = messages.length === 0;
+  const isInPageLayout = embeddedMode || floatingMode;
   const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280;
   const devDrawerMax = Math.min(860, Math.floor(viewportWidth * 0.95));
   const drawerMaxWidth = devMode ? clamp(devDrawerWidth, 320, devDrawerMax) : 380;
@@ -776,43 +747,49 @@ export default function PanelinChatPanel({
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 299,
-          background: detachedMode ? "transparent" : BACKDROP_COLOR,
-          opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen && !detachedMode ? "auto" : "none",
-          transition: "opacity 200ms ease",
-        }}
-      />
+      {/* Backdrop — overlay drawer only (not embedded/floating/detached) */}
+      {!isInPageLayout && (
+        <div
+          onClick={onClose}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 299,
+            background: detachedMode ? "transparent" : BACKDROP_COLOR,
+            opacity: isOpen ? 1 : 0,
+            pointerEvents: isOpen && !detachedMode ? "auto" : "none",
+            transition: "opacity 200ms ease",
+          }}
+        />
+      )}
 
-      {/* Drawer */}
+      {/* Drawer / embedded / floating host */}
       <div
         ref={drawerRef}
-        role="dialog"
+        role={embeddedMode ? "complementary" : "dialog"}
         aria-label="Panelin Asistente BMC"
-        aria-modal="true"
+        aria-modal={embeddedMode ? undefined : "true"}
         style={{
-          position: "fixed",
-          top: 0,
-          right: detachedMode ? "auto" : 0,
-          left: detachedMode ? 0 : "auto",
-          height: "100dvh",
-          zIndex: 300,
+          position: isInPageLayout ? "relative" : "fixed",
+          top: isInPageLayout ? undefined : 0,
+          right: isInPageLayout ? undefined : (detachedMode ? "auto" : 0),
+          left: isInPageLayout ? undefined : (detachedMode ? 0 : "auto"),
+          height: isInPageLayout ? "100%" : "100dvh",
+          zIndex: isInPageLayout ? undefined : 300,
           width: "100%",
-          maxWidth: detachedMode ? "100%" : drawerMaxWidth,
+          maxWidth: isInPageLayout ? "100%" : (detachedMode ? "100%" : drawerMaxWidth),
           background: DRAWER_BG_COLOR,
-          boxShadow: detachedMode ? "none" : "-4px 0 32px rgba(0,0,0,0.18)",
-          display: "flex",
+          boxShadow: isInPageLayout || detachedMode ? "none" : "-4px 0 32px rgba(0,0,0,0.18)",
+          display: isInPageLayout ? (isOpen ? "flex" : "none") : "flex",
           flexDirection: "column",
-          transform: detachedMode ? "translateX(0)" : (isOpen ? "translateX(0)" : "translateX(100%)"),
-          transition: detachedMode ? "none" : "transform 280ms cubic-bezier(0.4,0,0.2,1)",
+          transform: isInPageLayout
+            ? "none"
+            : (detachedMode ? "translateX(0)" : (isOpen ? "translateX(0)" : "translateX(100%)")),
+          transition: isInPageLayout || detachedMode ? "none" : "transform 280ms cubic-bezier(0.4,0,0.2,1)",
           fontFamily: FONT,
-          willChange: "transform",
+          willChange: isInPageLayout ? undefined : "transform",
+          minHeight: 0,
+          minWidth: 0,
         }}
       >
         {devMode && !detachedMode && (
@@ -844,6 +821,7 @@ export default function PanelinChatPanel({
         )}
         {/* ── Header ── */}
         <div
+          onPointerDown={floatingMode ? onHeaderPointerDown : undefined}
           style={{
             background: BRAND_COLOR,
             color: HEADER_TEXT_COLOR,
@@ -852,17 +830,62 @@ export default function PanelinChatPanel({
             alignItems: "center",
             gap: 10,
             flexShrink: 0,
+            cursor: floatingMode ? "grab" : undefined,
+            touchAction: floatingMode ? "none" : undefined,
           }}
         >
-          <Avatar size={36} />
+          <PanelinCharacter
+            size={36}
+            isSpeaking={isTtsSpeaking}
+            isThinking={isStreaming && !isTtsSpeaking}
+          />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>Panelin</div>
             <div style={{ fontSize: 11, opacity: 0.7 }}>
               Asistente BMC Uruguay{devMode ? " · Developer Mode" : ""}
             </div>
           </div>
+          {embeddedMode && !floatingMode && onRequestFloating && (
+            <button
+              type="button"
+              data-no-drag
+              onClick={onRequestFloating}
+              title="Flotar chat"
+              style={{
+                ...ghostBtn,
+                border: "1px solid rgba(255,255,255,0.35)",
+                borderRadius: 999,
+                padding: "4px 8px",
+                fontSize: 11,
+                color: "#fff",
+              }}
+              aria-label="Flotar chat"
+            >
+              Flotar
+            </button>
+          )}
+          {floatingMode && onReturnToSidebar && (
+            <button
+              type="button"
+              data-no-drag
+              onClick={onReturnToSidebar}
+              title="Volver al panel lateral"
+              style={{
+                ...ghostBtn,
+                border: "1px solid rgba(255,255,255,0.35)",
+                borderRadius: 999,
+                padding: "4px 8px",
+                fontSize: 11,
+                color: "#fff",
+              }}
+              aria-label="Volver a sidebar"
+            >
+              Volver a sidebar
+            </button>
+          )}
           {onToggleDevMode && (
             <button
+              data-no-drag
               onClick={onToggleDevMode}
               title={devMode ? "Developer mode activo (Ctrl/Cmd + Shift + D)" : "Activar Developer mode (Ctrl/Cmd + Shift + D)"}
               style={{
@@ -881,6 +904,7 @@ export default function PanelinChatPanel({
           )}
           {devMode && onOpenDetachedWindow && (
             <button
+              data-no-drag
               onClick={onOpenDetachedWindow}
               title="Abrir en ventana separada"
               style={{
@@ -898,6 +922,7 @@ export default function PanelinChatPanel({
             </button>
           )}
           <button
+            data-no-drag
             onClick={() => setVoiceMode((v) => !v)}
             title={voiceMode ? "Volver a modo texto" : "Modo voz fluido (OpenAI Realtime)"}
             style={{
@@ -910,6 +935,7 @@ export default function PanelinChatPanel({
           </button>
           {!voiceMode && (
           <button
+            data-no-drag
             onClick={() => setTtsEnabled((v) => !v)}
             title={ttsEnabled ? "Desactivar lectura en voz alta" : "Activar lectura en voz alta"}
             style={{
@@ -921,9 +947,29 @@ export default function PanelinChatPanel({
             {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
           )}
+          {ttsEnabled && !voiceMode && (
+            <div
+              data-no-drag
+              style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
+              title={`Velocidad TTS: ${ttsSpeed.toFixed(2)}×`}
+            >
+              <span style={{ fontSize: 10, opacity: 0.75, whiteSpace: "nowrap" }}>Vel.</span>
+              <input
+                type="range"
+                min={TTS_SPEED_MIN}
+                max={TTS_SPEED_MAX}
+                step={0.05}
+                value={ttsSpeed}
+                onChange={(e) => setTtsSpeed(clamp(Number(e.target.value), TTS_SPEED_MIN, TTS_SPEED_MAX))}
+                aria-label="Velocidad de lectura en voz alta"
+                style={{ width: 68, accentColor: "#fff" }}
+              />
+            </div>
+          )}
           {isStreaming && stop && (
             <button
               type="button"
+              data-no-drag
               onClick={() => stop()}
               title="Detener respuesta"
               style={{
@@ -936,6 +982,7 @@ export default function PanelinChatPanel({
             </button>
           )}
           <button
+            data-no-drag
             onClick={clear}
             title="Nueva conversación"
             style={ghostBtn}
@@ -944,6 +991,7 @@ export default function PanelinChatPanel({
             <RotateCcw size={15} />
           </button>
           <button
+            data-no-drag
             onClick={onClose}
             title="Cerrar"
             style={ghostBtn}
@@ -997,7 +1045,7 @@ export default function PanelinChatPanel({
                 padding: "8px 20px 24px",
               }}
             >
-              <Avatar size={56} />
+              <PanelinCharacter size={56} isThinking={isStreaming} />
               <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>
                 ¡Hola! Soy Panelin
               </div>
@@ -1055,7 +1103,13 @@ export default function PanelinChatPanel({
                   gap: 8,
                 }}
               >
-                {!isUser && <Avatar size={24} />}
+                {!isUser && (
+                  <PanelinCharacter
+                    size={24}
+                    isSpeaking={isTtsSpeaking && msgIdx === messages.length - 1}
+                    isThinking={isStreaming && msg.pending && msgIdx === messages.length - 1}
+                  />
+                )}
                 <div style={{ maxWidth: "80%", display: "flex", flexDirection: "column", gap: 4 }}>
                   <div
                     style={{
