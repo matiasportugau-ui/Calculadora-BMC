@@ -209,6 +209,8 @@ export function shouldBlockToolForUnauthenticatedChat(toolName, isDevModeAuthent
   return TOOLS_REQUIRING_AUTH.has(toolName);
 }
 
+const rateLimitClientKey = clientIpKey;
+
 // Bound the MCP / external write surface. The chat endpoint already has
 // 10/min public + 30/min dev rate limits; exec-tool inherits nothing
 // without this. 60/min is generous for legitimate MCP clients while
@@ -265,8 +267,6 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:5173",
   "http://localhost:3000",
 ]);
-
-const rateLimitClientKey = clientIpKey;
 
 /** Allows Vercel previews (*.vercel.app) and localhost dev; exact list for canonical URLs. */
 function isChatOriginAllowed(origin) {
