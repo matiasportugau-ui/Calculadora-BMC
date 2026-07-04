@@ -91,6 +91,13 @@ async function fetchJson(method, path, base, bodyObj) {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
     };
+    // suggest-response now requires auth (any operator session OR static token).
+    // The smoke is a service caller, so present API_AUTH_TOKEN when available;
+    // harmless on the open endpoints (they ignore it). Without it, suggest-response
+    // returns 401 — set SMOKE_SKIP_SUGGEST=1 in that case.
+    if (process.env.API_AUTH_TOKEN) {
+      opts.headers["x-api-key"] = process.env.API_AUTH_TOKEN;
+    }
     if (bodyObj != null) {
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(bodyObj);

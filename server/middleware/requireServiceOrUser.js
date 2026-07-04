@@ -62,11 +62,21 @@ function _hasStaticToken(req) {
  * identity JWTs from users meeting those constraints. Pass no opts to behave
  * as a strict service-token guard (equivalent to the legacy requireAuth).
  *
- * @param {{role?: string, module?: string, minLevel?: string, optional?: boolean}} opts
+ * `authOnly: true` accepts ANY valid, active identity JWT (no role/module
+ * filter) in addition to the static token, and rejects anonymous callers. Use
+ * it to close public exposure on routes whose legitimate caller cohorts span
+ * different grant types — e.g. `/crm/suggest-response` is reached by ML-cockpit
+ * operators (module `canales:read`) AND admin-role cotizaciones users; a single
+ * module- or role-scoped guard would 403 one cohort. Tighten to explicit RBAC
+ * later once the cohorts' grants are unified. `authOnly` ignores role/module.
+ *
+ * @param {{role?: string, module?: string, minLevel?: string, optional?: boolean, authOnly?: boolean}} opts
  */
 export function requireServiceOrUser(opts = {}) {
-  const acceptsUserJwt = !!(opts.role || opts.module || opts.optional);
-  const userMw = acceptsUserJwt ? requireUser(opts) : null;
+  const acceptsUserJwt = !!(opts.role || opts.module || opts.optional || opts.authOnly);
+  const userMw = acceptsUserJwt
+    ? requireUser(opts.authOnly ? { optional: false } : opts)
+    : null;
 
   return async (req, res, next) => {
     // 1) Static token short-circuit — always honored.
