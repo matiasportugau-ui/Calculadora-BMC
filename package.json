@@ -253,6 +253,7 @@
     "test:playwright:admin-cot-wa-timeline": "node scripts/playwright-admin-cot-wa-timeline.mjs",
     "test:playwright:admin-cot-f1-completion": "node scripts/playwright-admin-cot-f1-completion.mjs",
     "test:market-intel": "node --test tests/market-intel/*.test.js",
+    "playwright:install": "playwright install chromium",
     "migrate:market-intel": "node server/migrations/market-intel/run-migrations.js",
     "etl:run": "node -e \"require(\"./server/lib/marketIntel/scheduler\")\""
   },

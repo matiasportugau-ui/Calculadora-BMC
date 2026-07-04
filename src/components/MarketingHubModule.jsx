@@ -227,7 +227,7 @@ function MarketingHubInner() {
         {tab === 'inteligencia' && (
           loading && !intel
             ? <p style={{ color: 'var(--ac-text-3)', fontSize: 13 }}>Cargando inteligencia de mercado…</p>
-            : <IntelPanel intel={intel} />
+            : <IntelPanel intel={intel} token={accessToken} />
         )}
 
         {/* ── Detalle (salvaged widgets) ── */}

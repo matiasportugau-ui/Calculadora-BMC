@@ -21,6 +21,14 @@ import {
   getEtlSummary,
 } from '../lib/marketIntel/productIntelligence.js';
 import { buildProductMatrix } from '../lib/marketIntel/priceGap.js';
+import {
+  getKeywordMonitorState,
+  formatKeywordRow,
+  markKeywordRefreshRunning,
+  runKeywordRefresh,
+  addTrackedKeyword,
+  getKeywordRefreshMeta,
+} from '../lib/marketIntel/keywordMonitor.js';
 import { callAgentOnce } from '../lib/agentCore.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
@@ -266,6 +274,63 @@ router.get('/product-matrix', intelLimiter, requireMarketing, (req, res) => {
     log.error({ err, route: 'GET /product-matrix' }, 'product matrix failed');
     res.status(503).json({ error: 'Product matrix unavailable' });
   }
+});
+
+// ─── GET /api/marketing/keywords ─────────────────────────────────────
+router.get('/keywords', intelLimiter, requireMarketing, async (req, res) => {
+  try {
+    const state = getKeywordMonitorState();
+    const meta = await getKeywordRefreshMeta();
+    const priority = req.query.priority;
+    let keywords = state.keywords.filter((k) => k.active !== false);
+    if (priority) keywords = keywords.filter((k) => k.priority === priority);
+    res.json({
+      market: state.market,
+      bmc_domain: state.bmc_domain,
+      serp_engine: process.env.KEYWORD_MONITOR_SERP_ENGINE || 'playwright',
+      last_refresh_at: state.last_refresh_at || meta?.last_refresh_at,
+      last_refresh_status: state.last_refresh_status,
+      keywords: keywords.map(formatKeywordRow),
+      total: keywords.length,
+    });
+  } catch (err) {
+    log.error({ err, route: 'GET /keywords' }, 'keyword monitor load failed');
+    res.status(503).json({ error: 'Keyword monitor unavailable' });
+  }
+});
+
+// ─── POST /api/marketing/keywords ────────────────────────────────────
+router.post('/keywords', intelLimiter, requireMarketing, async (req, res) => {
+  const { keyword, cluster, family, intent, priority, on_site_gap } = req.body || {};
+  if (!keyword || typeof keyword !== 'string' || !keyword.trim()) {
+    return res.status(400).json({ error: 'keyword required' });
+  }
+  try {
+    const entry = await addTrackedKeyword({ keyword, cluster, family, intent, priority, on_site_gap });
+    res.status(201).json(entry);
+  } catch (err) {
+    log.error({ err, route: 'POST /keywords' }, 'add keyword failed');
+    res.status(503).json({ error: 'Could not add keyword' });
+  }
+});
+
+// ─── POST /api/marketing/keywords/refresh ────────────────────────────
+// Fire-and-forget (Playwright SERP can take several minutes). Poll GET /keywords.
+router.post('/keywords/refresh', intelLimiter, requireMarketing, (req, res) => {
+  const { ids, priority } = req.body || {};
+  log.info({ userId: req.user?.id, ids, priority }, 'keyword refresh triggered');
+
+  markKeywordRefreshRunning();
+
+  runKeywordRefresh({
+    ids: Array.isArray(ids) ? ids : null,
+    priority: priority || null,
+  }).catch((err) => log.error({ err }, 'keyword refresh background run failed'));
+
+  res.status(202).json({
+    message: 'Keyword refresh started',
+    hint: 'Poll GET /api/marketing/keywords until last_refresh_at updates',
+  });
 });
 
 // ─── POST /api/marketing/ai/chat (SSE) ───────────────────────────────

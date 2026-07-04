@@ -4,6 +4,7 @@
 // Data comes from GET /api/marketing/intel ({ competitors, ads, ml }).
 
 import React from 'react';
+import KeywordMonitor from './KeywordMonitor.jsx';
 
 const TIER_COLOR = {
   1: 'var(--ac-error)',
@@ -183,12 +184,13 @@ function MlPulse({ data }) {
   );
 }
 
-export default function IntelPanel({ intel }) {
+export default function IntelPanel({ intel, token }) {
   if (!intel) {
     return <p style={{ color: 'var(--ac-text-3)', fontSize: 13 }}>Inteligencia de mercado no disponible.</p>;
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {token && <KeywordMonitor token={token} />}
       <Competitors data={intel.competitors} />
       <Ads data={intel.ads} />
       <MlPulse data={intel.ml} />
