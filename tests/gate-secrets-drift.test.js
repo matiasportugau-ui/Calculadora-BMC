@@ -121,6 +121,20 @@ group("live repo manifest matches deploy workflow", () => {
   assert(undeclared.length === 0, `no UNDECLARED in live repo (got: ${undeclared.join(", ")})`);
 });
 
+group("live WhatsApp Cloud API secrets are declared and deployed", () => {
+  const required = parseManifest(
+    fs.readFileSync(path.join(REPO_ROOT, ".github/required-cloud-run-secrets.txt"), "utf8"),
+  );
+  const deployed = parseSetSecrets(
+    fs.readFileSync(path.join(REPO_ROOT, ".github/workflows/deploy-calc-api.yml"), "utf8"),
+  );
+  const waSecrets = ["WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_ACCESS_TOKEN"];
+  for (const key of waSecrets) {
+    assert(required.has(key), `${key} is declared in required-cloud-run-secrets`);
+    assert(deployed.has(key), `${key} is mounted by deploy-calc-api`);
+  }
+});
+
 // ── summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${failed === 0 ? "✅" : "❌"} gate-secrets-drift: ${passed} passed, ${failed} failed`);
