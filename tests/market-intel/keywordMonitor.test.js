@@ -10,7 +10,11 @@ import {
   difficultyFromSerp,
   formatKeywordRow,
 } from '../../server/lib/marketIntel/keywordMonitor.js';
-import { extractDomainsFromUrls, decodeBingRedirectUrl } from '../../server/lib/marketIntel/keywordSerpPlaywright.js';
+import {
+  extractDomainsFromUrls,
+  decodeBingRedirectUrl,
+  buildChromiumLaunchOptions,
+} from '../../server/lib/marketIntel/keywordSerpPlaywright.js';
 
 describe('keywordMonitor helpers', () => {
   it('parseDdgSerpDomains extracts unique hosts', () => {
@@ -51,6 +55,20 @@ describe('keywordMonitor helpers', () => {
       'https://bmcuruguay.com.uy/again',
     ]);
     assert.deepEqual(domains, ['bmcuruguay.com.uy', 'kingspan.com.uy', 'example.com']);
+  });
+
+  it('buildChromiumLaunchOptions uses Cloud Run system Chromium when configured', () => {
+    const original = process.env.CHROMIUM_EXECUTABLE_PATH;
+    process.env.CHROMIUM_EXECUTABLE_PATH = '/usr/bin/chromium-browser';
+    try {
+      const opts = buildChromiumLaunchOptions(1234);
+      assert.equal(opts.executablePath, '/usr/bin/chromium-browser');
+      assert.equal(opts.timeout, 1234);
+      assert.equal(opts.headless, true);
+    } finally {
+      if (original === undefined) delete process.env.CHROMIUM_EXECUTABLE_PATH;
+      else process.env.CHROMIUM_EXECUTABLE_PATH = original;
+    }
   });
 
   it('difficultyFromSerp counts competitor density', () => {
