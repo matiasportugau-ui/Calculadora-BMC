@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-03
+**Última actualización:** 2026-07-04
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-04 (docs(skills) — nuevo skill `/github-expert`):** Nuevo skill de proyecto [`.claude/skills/github-expert/SKILL.md`](../../.claude/skills/github-expert/SKILL.md): guía operativa GitHub para este repo — convenciones de branch/commit (`type:` prefix), workflow de PR con DoD (`gate:local`, template, regla >500 LOC → DRAFT), mapa de CI (jobs de `ci.yml` + workflows de deploy/seguridad/bots Gemini), playbook de CI rojo (logs por job, ALSA, disk precheck), labels/board (**BMC Dev**, `priority:P0/P1`) y guardrails (`npm audit fix --force` prohibido, secrets solo en `.env`). Invocable como `/github-expert`; en sesiones remotas usa tools MCP de GitHub (no hay `gh` CLI). Sin cambios de código de app.
 
 **2026-07-03 (feat — `omni_suggestions.resolved_at`: timestamp de resolución HITL, cierra diferido de Fase 2):** Migración **`015_omni_suggestions_resolved_at.sql`** (`ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ`, barata e idempotente). `resolveSuggestion()` (`server/lib/omni/orchestrator/suggestions.js`) ahora estampa `resolved_at = now()` al accept/reject, con **fallback dormancy-safe**: si la columna no existe todavía (error `42703`, entorno pre-015) reintenta el UPDATE legacy — deployar el código antes de la migración **no** rompe los endpoints de approve (mismo patrón que el fix de `run_after` de PR #482). El read-adapter del cockpit WA (`omniReadAdapter.js`) vuelve a mapear `chosen_at` desde `resolved_at` (antes quedaba `null` fijo tras el hallazgo Codex P2). **Prerequisito nuevo para `OMNI_WA_READS=1`:** aplicar la 015 antes del flip (el SELECT del adapter la referencia sin guard). Tests: nuevo `omniSuggestionResolve.test.js` (8 asserts: estampado accept/reject, fallback 42703, errores no-42703 propagan, guard de pending) + `omniReadAdapter.test.js` actualizado (chosen_at desde resolved_at, pre-015 → null); ambos en `test:core`. `gate:local` verde.
 
