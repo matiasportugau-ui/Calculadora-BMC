@@ -331,9 +331,12 @@ export const config = {
   omniDealsSheetsAuthority: bool(process.env.OMNI_DEALS_SHEETS_AUTHORITY, true),
   otelEnabled: bool(process.env.OTEL_ENABLED, false),
   /**
-   * AI Assistant control plane — master switch. Comma-separated allowlist of assistant keys
-   * allowed to GENERATE AI responses. Anything not listed returns 503 assistant_disabled on its
-   * AI-generation route (inbound ingest/webhooks stay ungated — no messages are lost).
+   * AI Assistant control plane — master switch. Comma- or semicolon-separated allowlist of
+   * assistant keys allowed to GENERATE AI responses. Anything not listed returns 503
+   * assistant_disabled on its AI-generation route (inbound ingest/webhooks stay ungated — no
+   * messages are lost). Semicolons are accepted because the deploy-cloudrun action's env_vars
+   * block splits on commas — a repo Variable like `canales,ml` gets truncated to `canales`
+   * in transit, while `canales;ml` survives (found the hard way, 2026-07-04).
    * Default `canales` in production; local API (appEnv=development) enables all assistants.
    * Keys: canales, panelin, email, wa, ml, wolfboard. `seam` (shared agentCore) is always enabled.
    * See server/lib/assistantRegistry.js for the registry.
@@ -343,7 +346,7 @@ export const config = {
     : appEnv === "development"
       ? "canales,panelin,email,wa,ml,wolfboard"
       : "canales")
-    .split(",")
+    .split(/[,;]/)
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
   omniAiWorkerIntervalMs: Math.max(2000, Number(process.env.OMNI_AI_WORKER_INTERVAL_MS || 5000)),
