@@ -2,7 +2,7 @@
 // Live keyword monitor: Google Autocomplete signals + Playwright SERP for BMC vs competitors.
 // Persists to keywordMonitorState.json (always) and Postgres snapshots (when migrated).
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, renameSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
@@ -25,6 +25,10 @@ const SUGGEST_URL = 'https://suggestqueries.google.com/complete/search';
 const REFRESH_DELAY_MS = Number(process.env.KEYWORD_MONITOR_DELAY_MS ?? 400);
 const SERP_BATCH_DELAY_MS = Number(process.env.KEYWORD_MONITOR_SERP_DELAY_MS ?? 2800);
 const SERP_ENGINE = process.env.KEYWORD_MONITOR_SERP_ENGINE || 'playwright';
+const KEYWORD_MAX_LENGTH = 120;
+const KEYWORD_ALLOWED_RE = /^[\p{L}\p{N}\s.,'"()/%+\-]+$/u;
+
+let refreshInFlight = false;
 
 let _pool = null;
 const pool = () => {
@@ -40,7 +44,9 @@ function loadJson(path) {
 }
 
 function saveState(state) {
-  writeFileSync(STATE_PATH, JSON.stringify(state, null, 2));
+  const tmpPath = `${STATE_PATH}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(tmpPath, JSON.stringify(state, null, 2));
+  renameSync(tmpPath, STATE_PATH);
 }
 
 function sleep(ms) {
@@ -49,6 +55,23 @@ function sleep(ms) {
 
 function normalizeDomain(host) {
   return String(host || '').toLowerCase().replace(/^www\./, '');
+}
+
+export function normalizeKeywordInput(value) {
+  if (typeof value !== 'string') {
+    throw new TypeError('keyword must be a string');
+  }
+  const keyword = value.trim().replace(/\s+/g, ' ');
+  if (!keyword) {
+    throw new TypeError('keyword required');
+  }
+  if (keyword.length > KEYWORD_MAX_LENGTH) {
+    throw new TypeError(`keyword must be ${KEYWORD_MAX_LENGTH} characters or fewer`);
+  }
+  if (!KEYWORD_ALLOWED_RE.test(keyword)) {
+    throw new TypeError('keyword contains unsupported characters');
+  }
+  return keyword;
 }
 
 function buildDomainIndex() {
@@ -89,7 +112,7 @@ export function difficultyFromSerp(serpDomains, competitorDomains) {
 
 export function findDomainPosition(domains, target) {
   const t = normalizeDomain(target);
-  const idx = domains.findIndex((d) => normalizeDomain(d) === t || normalizeDomain(d).includes(t));
+  const idx = domains.findIndex((d) => normalizeDomain(d) === t);
   return idx >= 0 ? idx + 1 : null;
 }
 
@@ -114,9 +137,10 @@ export function parseDdgSerpDomains(html, limit = 10) {
 }
 
 export async function fetchAutocompleteCount(query, { hl = 'es', gl = 'uy' } = {}) {
+  const safeQuery = normalizeKeywordInput(query);
   const url = new URL(SUGGEST_URL);
   url.searchParams.set('client', 'firefox');
-  url.searchParams.set('q', query);
+  url.searchParams.set('q', safeQuery);
   url.searchParams.set('hl', hl);
   url.searchParams.set('gl', gl);
   const res = await fetch(url, { headers: { 'User-Agent': 'bmc-keyword-monitor/1.0' } });
@@ -129,8 +153,9 @@ export async function fetchAutocompleteCount(query, { hl = 'es', gl = 'uy' } = {
 
 /** @deprecated DDG blocks bots — kept for tests only */
 export async function fetchSerpDomainsDdg(query, { hl = 'es', gl = 'uy' } = {}) {
+  const safeQuery = normalizeKeywordInput(query);
   const DDG_HTML = 'https://html.duckduckgo.com/html/';
-  const body = new URLSearchParams({ q: query, kl: `${gl}-${hl}` });
+  const body = new URLSearchParams({ q: safeQuery, kl: `${gl}-${hl}` });
   const res = await fetch(DDG_HTML, {
     method: 'POST',
     headers: {
@@ -145,11 +170,12 @@ export async function fetchSerpDomainsDdg(query, { hl = 'es', gl = 'uy' } = {}) 
 }
 
 export async function fetchSerpDomains(query, opts = {}) {
+  const safeQuery = normalizeKeywordInput(query);
   if (SERP_ENGINE === 'ddg') {
-    const domains = await fetchSerpDomainsDdg(query, opts);
+    const domains = await fetchSerpDomainsDdg(safeQuery, opts);
     return { domains, engine: 'ddg' };
   }
-  return fetchSerpDomainsPlaywright(query, opts);
+  return fetchSerpDomainsPlaywright(safeQuery, opts);
 }
 
 function initStateFromSeeds() {
@@ -232,6 +258,10 @@ export function markKeywordRefreshRunning() {
   state.last_refresh_status = 'running';
   saveState(state);
   return state;
+}
+
+export function isKeywordRefreshRunning() {
+  return refreshInFlight;
 }
 
 async function persistSnapshotToDb(kw, snapshot) {
@@ -353,52 +383,65 @@ export async function refreshKeyword(kw, ctx) {
 }
 
 export async function runKeywordRefresh({ ids = null, priority = null } = {}) {
-  const state = getKeywordMonitorState();
-  const domainIndex = buildDomainIndex();
-  const competitorDomains = new Set(domainIndex.keys());
-  const bmcDomain = state.bmc_domain || BMC_DOMAIN;
-  const ctx = { domainIndex, competitorDomains, bmcDomain };
-
-  let targets = state.keywords.filter((k) => k.active !== false);
-  if (ids?.length) targets = targets.filter((k) => ids.includes(k.id));
-  if (priority) targets = targets.filter((k) => k.priority === priority);
-
-  const results = [];
-  let errors = 0;
-  let session = null;
-  try {
-    if (SERP_ENGINE !== 'ddg') {
-      session = new KeywordSerpSession();
-      await session.init();
-      ctx.serpSession = session;
-    }
-    for (const kw of targets) {
-      const updated = await refreshKeyword(kw, ctx);
-      results.push(updated);
-      if (updated.error && !updated.serp_domains?.length) errors++;
-      await sleep(SERP_ENGINE !== 'ddg' ? SERP_BATCH_DELAY_MS : REFRESH_DELAY_MS);
-    }
-  } finally {
-    if (session) await session.close();
-    else await closeSharedSerpSession();
+  if (refreshInFlight) {
+    const err = new Error('keyword refresh already running');
+    err.code = 'KEYWORD_REFRESH_IN_PROGRESS';
+    throw err;
   }
+  refreshInFlight = true;
 
-  const byId = new Map(results.map((r) => [r.id, r]));
-  state.keywords = state.keywords.map((k) => byId.get(k.id) || k);
-  state.last_refresh_at = new Date().toISOString();
-  state.last_refresh_status = errors === 0 ? 'success' : errors < targets.length ? 'partial' : 'failed';
-  saveState(state);
+  try {
+    const state = getKeywordMonitorState();
+    const domainIndex = buildDomainIndex();
+    const competitorDomains = new Set(domainIndex.keys());
+    const bmcDomain = state.bmc_domain || BMC_DOMAIN;
+    const ctx = { domainIndex, competitorDomains, bmcDomain };
 
-  log.info({ total: targets.length, errors, status: state.last_refresh_status }, 'keyword refresh complete');
-  return state;
+    let targets = state.keywords.filter((k) => k.active !== false);
+    if (ids?.length) targets = targets.filter((k) => ids.includes(k.id));
+    if (priority) targets = targets.filter((k) => k.priority === priority);
+
+    const results = [];
+    let errors = 0;
+    let session = null;
+    try {
+      if (SERP_ENGINE !== 'ddg') {
+        session = new KeywordSerpSession();
+        await session.init();
+        ctx.serpSession = session;
+      }
+      for (const kw of targets) {
+        const updated = await refreshKeyword(kw, ctx);
+        results.push(updated);
+        if (updated.error && !updated.serp_domains?.length) errors++;
+        await sleep(SERP_ENGINE !== 'ddg' ? SERP_BATCH_DELAY_MS : REFRESH_DELAY_MS);
+      }
+    } finally {
+      if (session) await session.close();
+      else await closeSharedSerpSession();
+    }
+
+    const freshState = getKeywordMonitorState();
+    const byId = new Map(results.map((r) => [r.id, r]));
+    freshState.keywords = freshState.keywords.map((k) => byId.get(k.id) || k);
+    freshState.last_refresh_at = new Date().toISOString();
+    freshState.last_refresh_status = errors === 0 ? 'success' : errors < targets.length ? 'partial' : 'failed';
+    saveState(freshState);
+
+    log.info({ total: targets.length, errors, status: freshState.last_refresh_status }, 'keyword refresh complete');
+    return freshState;
+  } finally {
+    refreshInFlight = false;
+  }
 }
 
 export async function addTrackedKeyword({ keyword, cluster, family, intent, priority, on_site_gap }) {
   const state = getKeywordMonitorState();
   const id = `kw-${Date.now()}`;
+  const normalizedKeyword = normalizeKeywordInput(keyword);
   const entry = {
     id,
-    keyword: keyword.trim(),
+    keyword: normalizedKeyword,
     cluster: cluster || 'Custom',
     family: family || 'panel_otro',
     intent: intent || 'commercial',

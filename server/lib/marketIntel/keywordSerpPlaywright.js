@@ -9,6 +9,25 @@ const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const SKIP_HOST_RE = /(^|\.)google\.|gstatic\.|googleusercontent\.|youtube\.com$|webcache\.|accounts\.google|(^|\.)bing\.com$|(^|\.)microsoft\.com$|(^|\.)duckduckgo\.com$/;
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+const QUERY_MAX_LENGTH = 120;
+const QUERY_ALLOWED_RE = /^[\p{L}\p{N}\s.,'"()/%+\-]+$/u;
+
+function buildSearchUrl(base, params) {
+  const url = new URL(base);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, String(value));
+  }
+  return url.toString();
+}
+
+function normalizeSearchQuery(value) {
+  if (typeof value !== 'string') throw new TypeError('query must be a string');
+  const query = value.trim().replace(/\s+/g, ' ');
+  if (!query) throw new TypeError('query required');
+  if (query.length > QUERY_MAX_LENGTH) throw new TypeError(`query must be ${QUERY_MAX_LENGTH} characters or fewer`);
+  if (!QUERY_ALLOWED_RE.test(query)) throw new TypeError('query contains unsupported characters');
+  return query;
+}
 
 export function normalizeDomain(host) {
   return String(host || '').toLowerCase().replace(/^www\./, '');
@@ -118,7 +137,7 @@ export class KeywordSerpSession {
 
   async _fetchGoogle(query, { hl, gl }) {
     const page = this.page;
-    const gUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${hl}&gl=${gl}&num=15&pws=0`;
+    const gUrl = buildSearchUrl('https://www.google.com/search', { q: query, hl, gl, num: 15, pws: 0 });
     await page.goto(gUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await dismissConsent(page);
     await page.waitForSelector('#rso, #search', { timeout: 12000 }).catch(() => null);
@@ -135,7 +154,7 @@ export class KeywordSerpSession {
 
   async _fetchBing(query, { hl, gl }) {
     const page = this.page;
-    const bUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&cc=${gl}&setlang=${hl}&count=15`;
+    const bUrl = buildSearchUrl('https://www.bing.com/search', { q: query, cc: gl, setlang: hl, count: 15 });
     await page.goto(bUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForSelector('#b_results, ol#b_results', { timeout: 12000 }).catch(() => null);
     await page.waitForTimeout(1200);
@@ -208,7 +227,8 @@ export async function closeSharedSerpSession() {
 }
 
 export async function fetchSerpDomainsPlaywright(query, opts = {}) {
+  const safeQuery = normalizeSearchQuery(query);
   const session = opts.session || (await getSharedSerpSession());
-  const { domains, engine } = await session.fetchDomains(query, opts);
+  const { domains, engine } = await session.fetchDomains(safeQuery, opts);
   return { domains, engine };
 }

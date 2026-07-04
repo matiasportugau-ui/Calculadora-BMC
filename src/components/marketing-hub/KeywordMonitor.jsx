@@ -184,7 +184,7 @@ export default function KeywordMonitor({ token }) {
       const res = await apiFetch('/api/marketing/keywords', {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ term, priority: 'P2', intent: 'commercial' }),
+        body: JSON.stringify({ keyword: term, priority: 'P2', intent: 'commercial' }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setNewKeyword('');

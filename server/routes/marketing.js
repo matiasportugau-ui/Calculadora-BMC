@@ -25,6 +25,7 @@ import {
   getKeywordMonitorState,
   formatKeywordRow,
   markKeywordRefreshRunning,
+  isKeywordRefreshRunning,
   runKeywordRefresh,
   addTrackedKeyword,
   getKeywordRefreshMeta,
@@ -301,7 +302,8 @@ router.get('/keywords', intelLimiter, requireMarketing, async (req, res) => {
 
 // ─── POST /api/marketing/keywords ────────────────────────────────────
 router.post('/keywords', intelLimiter, requireMarketing, async (req, res) => {
-  const { keyword, cluster, family, intent, priority, on_site_gap } = req.body || {};
+  const { cluster, family, intent, priority, on_site_gap } = req.body || {};
+  const keyword = req.body?.keyword ?? req.body?.term;
   if (!keyword || typeof keyword !== 'string' || !keyword.trim()) {
     return res.status(400).json({ error: 'keyword required' });
   }
@@ -309,6 +311,9 @@ router.post('/keywords', intelLimiter, requireMarketing, async (req, res) => {
     const entry = await addTrackedKeyword({ keyword, cluster, family, intent, priority, on_site_gap });
     res.status(201).json(entry);
   } catch (err) {
+    if (err instanceof TypeError) {
+      return res.status(400).json({ error: err.message });
+    }
     log.error({ err, route: 'POST /keywords' }, 'add keyword failed');
     res.status(503).json({ error: 'Could not add keyword' });
   }
@@ -319,6 +324,13 @@ router.post('/keywords', intelLimiter, requireMarketing, async (req, res) => {
 router.post('/keywords/refresh', intelLimiter, requireMarketing, (req, res) => {
   const { ids, priority } = req.body || {};
   log.info({ userId: req.user?.id, ids, priority }, 'keyword refresh triggered');
+
+  if (isKeywordRefreshRunning()) {
+    return res.status(409).json({
+      error: 'keyword_refresh_running',
+      message: 'A keyword refresh is already running. Poll GET /api/marketing/keywords.',
+    });
+  }
 
   markKeywordRefreshRunning();
 

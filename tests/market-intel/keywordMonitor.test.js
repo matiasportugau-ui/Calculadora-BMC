@@ -6,11 +6,16 @@ import assert from 'node:assert/strict';
 import {
   parseDdgSerpDomains,
   findDomainPosition,
+  normalizeKeywordInput,
   volumeProxyFromCount,
   difficultyFromSerp,
   formatKeywordRow,
 } from '../../server/lib/marketIntel/keywordMonitor.js';
-import { extractDomainsFromUrls, decodeBingRedirectUrl } from '../../server/lib/marketIntel/keywordSerpPlaywright.js';
+import {
+  extractDomainsFromUrls,
+  decodeBingRedirectUrl,
+  fetchSerpDomainsPlaywright,
+} from '../../server/lib/marketIntel/keywordSerpPlaywright.js';
 
 describe('keywordMonitor helpers', () => {
   it('parseDdgSerpDomains extracts unique hosts', () => {
@@ -28,6 +33,24 @@ describe('keywordMonitor helpers', () => {
   it('findDomainPosition locates BMC', () => {
     const pos = findDomainPosition(['kingspan.com.uy', 'bmcuruguay.com.uy', 'ml.com'], 'bmcuruguay.com.uy');
     assert.equal(pos, 2);
+  });
+
+  it('findDomainPosition does not accept substring domain spoofing', () => {
+    const pos = findDomainPosition(['fake-bmcuruguay.com.uy.evil', 'bmcuruguay.com.uy'], 'bmcuruguay.com.uy');
+    assert.equal(pos, 2);
+  });
+
+  it('normalizeKeywordInput accepts SEO phrases and rejects URL-like payloads', () => {
+    assert.equal(normalizeKeywordInput('  panel PIR 50mm Uruguay  '), 'panel PIR 50mm Uruguay');
+    assert.throws(() => normalizeKeywordInput('http://169.254.169.254/latest/meta-data'), /unsupported characters/);
+    assert.throws(() => normalizeKeywordInput('panel\nSet-Cookie: x=y'), /unsupported characters/);
+  });
+
+  it('fetchSerpDomainsPlaywright rejects unsafe queries before launching a browser', async () => {
+    await assert.rejects(
+      () => fetchSerpDomainsPlaywright('https://169.254.169.254/latest/meta-data'),
+      /unsupported characters/
+    );
   });
 
   it('volumeProxyFromCount tiers', () => {
