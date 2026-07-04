@@ -135,8 +135,12 @@ async function run() {
             json?.ok === false &&
             Array.isArray(json?.details) &&
             json.details.length > 0,
-          { status, hasDetails: Array.isArray(json?.details) },
-          { status: 503, hasDetails: true },
+          {
+            status,
+            hasDetails: Array.isArray(json?.details),
+            detailsLength: Array.isArray(json?.details) ? json.details.length : null,
+          },
+          { status: 503, hasDetails: true, detailsLength: "> 0" },
         );
       } finally {
         server.close();
