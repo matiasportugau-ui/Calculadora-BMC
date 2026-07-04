@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { mlFetch } from '../utils/mlFetch.js';
+import { operatorPost } from '../../../../utils/operatorApiClient.js';
 
 // All hooks target the LIVE panelin-calc backend ML routes (server/index.js).
 // Endpoints that the roadmap imagined but the backend does NOT expose
@@ -127,10 +128,12 @@ export function useAnswerQuestion() {
 export function useSuggestAnswer() {
   return useMutation({
     mutationFn: ({ text, itemId, producto }) =>
-      mlFetch('/api/crm/suggest-response', {
-        method: 'POST',
-        body: { consulta: text, origen: 'mercadolibre', itemId, producto },
-      }),
+      operatorPost('/api/crm/suggest-response', {
+        consulta: text,
+        origen: 'mercadolibre',
+        itemId,
+        producto,
+      }).then(({ data }) => data),
   });
 }
 
