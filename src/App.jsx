@@ -52,6 +52,7 @@ const BmcWaModuleWithTabs = lazy(() => import("./components/BmcWaModuleWithTabs.
 const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUnificadosModule.jsx"));
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
+const AdminIngresoModule = lazy(() => import("./components/AdminIngresoModule.jsx"));
 const BugReportsList = lazy(() => import("./components/BugReportsList.jsx"));
 const BmcPlanosModule = lazy(() => import("./components/BmcPlanosModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
@@ -320,6 +321,18 @@ export default function App() {
           element={
             <RequireGrant role="admin">
               <CotizacionesRoute />
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/admin-ingreso"
+          element={
+            <RequireGrant role="admin">
+              <Shell>
+                <Suspense fallback={suspenseFallback}>
+                  <AdminIngresoModule />
+                </Suspense>
+              </Shell>
             </RequireGrant>
           }
         />

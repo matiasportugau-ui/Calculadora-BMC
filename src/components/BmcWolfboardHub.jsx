@@ -148,6 +148,15 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
+            <h2 style={cardTitle}>Ingreso y actualización Admin</h2>
+            <p style={cardDesc}>
+              Interpretá consultas con IA, conversá fila por fila y guardá J/K/L en la planilla antes de cotizar.
+            </p>
+            <Link to="/hub/admin-ingreso" style={{ ...cta, background: "#188038" }}>
+              Abrir interpretación
+            </Link>
+          </div>
+          <div style={card}>
             <h2 style={cardTitle}>Planos</h2>
             <p style={cardDesc}>
               Croquis a mano, plano del cliente o medidas → plano profesional acotado (DXF/SVG editable) y presupuesto. Mismo motor: exportá y cotizá lo que cargues.
