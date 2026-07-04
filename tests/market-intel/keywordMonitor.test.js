@@ -1,5 +1,5 @@
 // Module: market-intelligence | Owner: bmc-dev | Created: 2026-07-04
-// Run: node --test tests/market-intel/keywordMonitor.test.js
+// Run: npm run test:market-intel
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
