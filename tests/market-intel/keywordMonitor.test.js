@@ -3,6 +3,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   parseDdgSerpDomains,
   findDomainPosition,
@@ -93,5 +96,108 @@ describe('keywordMonitor helpers', () => {
     assert.equal(row.serp.stale, true);
     assert.equal(row.serp.error, null);
     assert.equal(row.serp.position, 1);
+  });
+
+  it('serializes refreshes and preserves keywords added during a running refresh', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'keyword-monitor-'));
+    const statePath = join(dir, 'state.json');
+    const seedsPath = join(dir, 'seeds.json');
+    const originalEnv = {
+      state: process.env.KEYWORD_MONITOR_STATE_PATH,
+      seeds: process.env.KEYWORD_MONITOR_SEEDS_PATH,
+      engine: process.env.KEYWORD_MONITOR_SERP_ENGINE,
+      delay: process.env.KEYWORD_MONITOR_DELAY_MS,
+      batchDelay: process.env.KEYWORD_MONITOR_SERP_DELAY_MS,
+      databaseUrl: process.env.DATABASE_URL,
+    };
+    const originalFetch = globalThis.fetch;
+    let releaseAutocomplete;
+    let autocompleteStartedResolve;
+    const autocompleteStarted = new Promise((resolve) => {
+      autocompleteStartedResolve = resolve;
+    });
+    const autocompleteRelease = new Promise((resolve) => {
+      releaseAutocomplete = resolve;
+    });
+
+    writeFileSync(
+      seedsPath,
+      JSON.stringify({
+        market: 'uy',
+        language: 'es',
+        bmc_domain: 'bmcuruguay.com.uy',
+        keywords: [
+          {
+            id: 'kw-001',
+            keyword: 'isopanel precio uruguay',
+            cluster: 'EPS pared',
+            family: 'panel_pared_eps',
+            intent: 'transactional',
+            priority: 'P1',
+            on_site_gap: false,
+          },
+        ],
+      }),
+    );
+
+    process.env.KEYWORD_MONITOR_STATE_PATH = statePath;
+    process.env.KEYWORD_MONITOR_SEEDS_PATH = seedsPath;
+    process.env.KEYWORD_MONITOR_SERP_ENGINE = 'ddg';
+    process.env.KEYWORD_MONITOR_DELAY_MS = '0';
+    process.env.KEYWORD_MONITOR_SERP_DELAY_MS = '0';
+    delete process.env.DATABASE_URL;
+
+    globalThis.fetch = async (url) => {
+      const href = String(url);
+      if (href.includes('suggestqueries.google.com')) {
+        autocompleteStartedResolve();
+        await autocompleteRelease;
+        return new Response(JSON.stringify(['isopanel precio uruguay', ['isopanel precio uruguay']]), {
+          status: 200,
+        });
+      }
+      return new Response(
+        '<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.bmcuruguay.com.uy%2Fproductos"></a>',
+        { status: 200 },
+      );
+    };
+
+    try {
+      const mod = await import(`../../server/lib/marketIntel/keywordMonitor.js?state-merge=${Date.now()}`);
+      const firstRefresh = mod.startKeywordRefresh({ priority: 'P1' });
+      assert.equal(firstRefresh.started, true);
+      assert.equal(mod.isKeywordRefreshRunning(), true);
+
+      await autocompleteStarted;
+      const secondRefresh = mod.startKeywordRefresh({ priority: 'P1' });
+      assert.equal(secondRefresh.started, false);
+      assert.equal(secondRefresh.promise, firstRefresh.promise);
+
+      await mod.addTrackedKeyword({ keyword: 'panel sandwich agregado', priority: 'P2' });
+      releaseAutocomplete();
+      const finalState = await firstRefresh.promise;
+      const savedState = JSON.parse(readFileSync(statePath, 'utf-8'));
+
+      assert.equal(finalState.last_refresh_status, 'success');
+      assert.equal(mod.isKeywordRefreshRunning(), false);
+      assert.equal(savedState.keywords.length, 2);
+      assert.ok(savedState.keywords.some((k) => k.keyword === 'panel sandwich agregado'));
+      assert.ok(savedState.keywords.some((k) => k.id === 'kw-001' && k.bmc_serp_position === 1));
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalEnv.state == null) delete process.env.KEYWORD_MONITOR_STATE_PATH;
+      else process.env.KEYWORD_MONITOR_STATE_PATH = originalEnv.state;
+      if (originalEnv.seeds == null) delete process.env.KEYWORD_MONITOR_SEEDS_PATH;
+      else process.env.KEYWORD_MONITOR_SEEDS_PATH = originalEnv.seeds;
+      if (originalEnv.engine == null) delete process.env.KEYWORD_MONITOR_SERP_ENGINE;
+      else process.env.KEYWORD_MONITOR_SERP_ENGINE = originalEnv.engine;
+      if (originalEnv.delay == null) delete process.env.KEYWORD_MONITOR_DELAY_MS;
+      else process.env.KEYWORD_MONITOR_DELAY_MS = originalEnv.delay;
+      if (originalEnv.batchDelay == null) delete process.env.KEYWORD_MONITOR_SERP_DELAY_MS;
+      else process.env.KEYWORD_MONITOR_SERP_DELAY_MS = originalEnv.batchDelay;
+      if (originalEnv.databaseUrl == null) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = originalEnv.databaseUrl;
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

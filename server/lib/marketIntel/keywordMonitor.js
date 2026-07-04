@@ -17,8 +17,8 @@ import {
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, 'data');
-const STATE_PATH = join(DATA_DIR, 'keywordMonitorState.json');
-const SEEDS_PATH = join(DATA_DIR, 'keywordSeeds.json');
+const STATE_PATH = process.env.KEYWORD_MONITOR_STATE_PATH || join(DATA_DIR, 'keywordMonitorState.json');
+const SEEDS_PATH = process.env.KEYWORD_MONITOR_SEEDS_PATH || join(DATA_DIR, 'keywordSeeds.json');
 
 const BMC_DOMAIN = 'bmcuruguay.com.uy';
 const SUGGEST_URL = 'https://suggestqueries.google.com/complete/search';
@@ -27,6 +27,7 @@ const SERP_BATCH_DELAY_MS = Number(process.env.KEYWORD_MONITOR_SERP_DELAY_MS ?? 
 const SERP_ENGINE = process.env.KEYWORD_MONITOR_SERP_ENGINE || 'playwright';
 
 let _pool = null;
+let refreshInFlight = null;
 const pool = () => {
   if (!_pool) {
     if (!process.env.DATABASE_URL) return null;
@@ -230,8 +231,43 @@ export function formatKeywordRow(kw) {
 export function markKeywordRefreshRunning() {
   const state = getKeywordMonitorState();
   state.last_refresh_status = 'running';
+  state.last_refresh_error = null;
   saveState(state);
   return state;
+}
+
+export function markKeywordRefreshFailed(message) {
+  const state = getKeywordMonitorState();
+  state.last_refresh_at = new Date().toISOString();
+  state.last_refresh_status = 'failed';
+  state.last_refresh_error = message || 'refresh failed';
+  saveState(state);
+  return state;
+}
+
+export function isKeywordRefreshRunning() {
+  return !!refreshInFlight;
+}
+
+export function startKeywordRefresh(options = {}) {
+  if (refreshInFlight) {
+    return { started: false, promise: refreshInFlight };
+  }
+
+  markKeywordRefreshRunning();
+  refreshInFlight = runKeywordRefresh(options)
+    .catch((err) => {
+      try {
+        markKeywordRefreshFailed(err?.message);
+      } catch (markErr) {
+        log.error({ err: markErr }, 'failed to mark keyword refresh as failed');
+      }
+      throw err;
+    })
+    .finally(() => {
+      refreshInFlight = null;
+    });
+  return { started: true, promise: refreshInFlight };
 }
 
 async function persistSnapshotToDb(kw, snapshot) {
@@ -384,13 +420,15 @@ export async function runKeywordRefresh({ ids = null, priority = null } = {}) {
   }
 
   const byId = new Map(results.map((r) => [r.id, r]));
-  state.keywords = state.keywords.map((k) => byId.get(k.id) || k);
-  state.last_refresh_at = new Date().toISOString();
-  state.last_refresh_status = errors === 0 ? 'success' : errors < targets.length ? 'partial' : 'failed';
-  saveState(state);
+  const latestState = getKeywordMonitorState();
+  latestState.keywords = latestState.keywords.map((k) => byId.get(k.id) || k);
+  latestState.last_refresh_at = new Date().toISOString();
+  latestState.last_refresh_status = errors === 0 ? 'success' : errors < targets.length ? 'partial' : 'failed';
+  latestState.last_refresh_error = errors ? `${errors} keyword(s) failed` : null;
+  saveState(latestState);
 
-  log.info({ total: targets.length, errors, status: state.last_refresh_status }, 'keyword refresh complete');
-  return state;
+  log.info({ total: targets.length, errors, status: latestState.last_refresh_status }, 'keyword refresh complete');
+  return latestState;
 }
 
 export async function addTrackedKeyword({ keyword, cluster, family, intent, priority, on_site_gap }) {
