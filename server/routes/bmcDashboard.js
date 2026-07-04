@@ -224,8 +224,14 @@ function parseDate(val) {
   // either fails or silently swaps to M/D — parse the numeric form explicitly.
   const m = String(val).trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (m) {
-    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-    return isNaN(d.getTime()) ? null : d;
+    const day = Number(m[1]);
+    const month = Number(m[2]);
+    const year = Number(m[3]);
+    const d = new Date(year, month - 1, day);
+    // new Date() normalizes overflow (31/2 → 3/3): reject unless components round-trip.
+    return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
+      ? d
+      : null;
   }
   const d = new Date(val);
   return isNaN(d.getTime()) ? null : d;

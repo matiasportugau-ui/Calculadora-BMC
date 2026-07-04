@@ -48,6 +48,10 @@ assert('"12/11/2022" → Nov 12 2022', d3 && d3.getMonth() === 10 && d3.getDate(
 const d4 = parseDate("01-02-2026");
 assert('"01-02-2026" (dashes) → Feb 1 2026', d4 && d4.getMonth() === 1 && d4.getDate() === 1);
 assert('ISO "2026-07-04" still parses', parseDate("2026-07-04") instanceof Date);
+assert('impossible "31/2/2025" → null (no overflow normalize)', parseDate("31/2/2025") === null);
+assert('impossible "14/13/2025" → null (month 13)', parseDate("14/13/2025") === null);
+assert('leap "29/2/2024" → Feb 29 2024', (() => { const d = parseDate("29/2/2024"); return d && d.getMonth() === 1 && d.getDate() === 29; })());
+assert('non-leap "29/2/2025" → null', parseDate("29/2/2025") === null);
 assert("Date instance passthrough", parseDate(d1) === d1);
 assert("garbage → null", parseDate("ACOPIO - STOCK") === null);
 assert("empty → null", parseDate("") === null);
