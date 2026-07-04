@@ -340,7 +340,7 @@ export function useChat({
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantId
-                      ? { ...m, content: m.content + evt.delta, pending: false }
+                      ? { ...m, content: m.content + evt.delta, pending: true }
                       : m
                   )
                 );
@@ -402,6 +402,11 @@ export function useChat({
             }
           }
         }
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, pending: false } : m
+          )
+        );
       } catch (err) {
         const msg = mapErrorMessage(err);
         if (msg) {
