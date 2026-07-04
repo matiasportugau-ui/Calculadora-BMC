@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useCockpitOperatorAuth } from "./useCockpitOperatorAuth.js";
 import { adminIngresoFetch } from "../utils/adminIngresoApi.js";
+import { ensureAdminIngresoSuccess } from "../utils/adminIngresoState.js";
 
 function hasReachedReady(interp) {
   return Boolean(interp?.ready_to_quote && interp?.quotable !== false);
@@ -21,6 +22,7 @@ export function useAdminIngreso() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
   const initialRowHandled = useRef(false);
+  const toastTimeoutRef = useRef(null);
 
   const rowFromUrl = useMemo(() => {
     const n = Number(searchParams.get("row"));
@@ -28,8 +30,16 @@ export function useAdminIngreso() {
   }, [searchParams]);
 
   const showToast = useCallback((message, type = "info") => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    toastTimeoutRef.current = setTimeout(() => {
+      toastTimeoutRef.current = null;
+      setToast(null);
+    }, 4000);
+  }, []);
+
+  useEffect(() => () => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
   }, []);
 
   const loadInquiries = useCallback(async () => {
@@ -82,10 +92,11 @@ export function useAdminIngreso() {
 
   const saveConversation = useCallback(
     async (row, convo) => {
-      await adminIngresoFetch(token, `/api/conversation/${row}`, {
+      const result = await adminIngresoFetch(token, `/api/conversation/${row}`, {
         method: "POST",
         body: JSON.stringify(convo),
       });
+      ensureAdminIngresoSuccess(result, "Error al guardar conversación");
     },
     [token],
   );
