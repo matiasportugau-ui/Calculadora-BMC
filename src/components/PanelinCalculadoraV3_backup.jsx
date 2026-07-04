@@ -3,12 +3,12 @@
 // BMC Uruguay · Calculadora de Cotización (semver UI: ../appSemver.js)
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense, Fragment } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, lazy, Suspense, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import { requestAuthGate } from "./auth/AuthGateModal.jsx";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Panel as ResizablePanel, Group as ResizableGroup, Separator as ResizableSeparator, useDefaultLayout } from "react-resizable-panels";
 import {
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
@@ -133,6 +133,65 @@ import PanelinFloatingChatShell, {
 } from "./PanelinFloatingChatShell.jsx";
 import EmailAgentPanel from "./EmailAgentPanel.jsx";
 import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
+
+const percentPanelSize = (value) => (typeof value === "number" ? `${value}%` : value);
+
+function Panel({ defaultSize, minSize, maxSize, ...props }) {
+  return (
+    <ResizablePanel
+      defaultSize={percentPanelSize(defaultSize)}
+      minSize={percentPanelSize(minSize)}
+      maxSize={percentPanelSize(maxSize)}
+      {...props}
+    />
+  );
+}
+
+function PanelResizeHandle({ hitAreaMargins: _hitAreaMargins, ...props }) {
+  return <ResizableSeparator disableDoubleClick {...props} />;
+}
+
+const PanelGroup = forwardRef(function PanelGroupCompat(
+  { direction = "horizontal", autoSaveId, panelIds = [], onLayoutChanged, ...props },
+  ref
+) {
+  const groupRef = useRef(null);
+  const persistedLayout = useDefaultLayout({
+    id: autoSaveId || "bmc-panelin-main-split-disabled",
+    panelIds,
+  });
+
+  useImperativeHandle(ref, () => ({
+    getLayout: () => {
+      const layout = groupRef.current?.getLayout?.();
+      if (!layout || !panelIds.length) return layout;
+      return panelIds.map((panelId) => layout[panelId] ?? 0);
+    },
+    setLayout: (layout) => {
+      if (Array.isArray(layout)) {
+        const mappedLayout = {};
+        panelIds.forEach((panelId, index) => {
+          if (layout[index] !== undefined) mappedLayout[panelId] = layout[index];
+        });
+        return groupRef.current?.setLayout?.(mappedLayout);
+      }
+      return groupRef.current?.setLayout?.(layout);
+    },
+  }), [panelIds]);
+
+  return (
+    <ResizableGroup
+      {...props}
+      orientation={direction}
+      groupRef={groupRef}
+      defaultLayout={autoSaveId ? persistedLayout.defaultLayout : undefined}
+      onLayoutChanged={(layout, meta) => {
+        if (autoSaveId) persistedLayout.onLayoutChanged(layout, meta);
+        onLayoutChanged?.(layout, meta);
+      }}
+    />
+  );
+});
 
 /**
  * Portal `RoofBorderCanvas` + bloque «Visualización 3D» en `QuoteVisualVisor`, y render opcional con textura (`RoofPanelRealisticScene`).
@@ -5389,6 +5448,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       <PanelGroup
         ref={mainPanelGroupRef}
         direction={isCompactLayout ? "vertical" : "horizontal"}
+        panelIds={useSidebarChat ? ["main-left", "main-right", "main-chat"] : ["main-left", "main-right"]}
         autoSaveId={
           isCompactLayout
             ? undefined
@@ -5407,7 +5467,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           minHeight: 0,
         }}
       >
-        <Panel defaultSize={isCompactLayout ? 55 : 35} minSize={isCompactLayout ? 24 : 24} maxSize={isCompactLayout ? 85 : 55} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
+        <Panel id="main-left" defaultSize={isCompactLayout ? 55 : 35} minSize={isCompactLayout ? 24 : 24} maxSize={isCompactLayout ? 85 : 55} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
         {/* LEFT PANEL — Wizard (Modo Vendedor) o formulario completo (Modo Cliente) */}
         <div data-tutorial-id="calc-dimensions" className="bmc-left-panel" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isPhone ? 0 : 12, paddingRight: isPhone ? 0 : 12 }}>
           {modoVendedor && scenario === "solo_techo" ? (
@@ -7487,7 +7547,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
           onDoubleClick={(e) => { e.preventDefault(); if (!isCompactLayout) resetMainSplitLayout(); }}
         />
-        <Panel defaultSize={isCompactLayout ? 45 : 65} minSize={isCompactLayout ? 20 : 32} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
+        <Panel id="main-right" defaultSize={isCompactLayout ? 45 : 65} minSize={isCompactLayout ? 20 : 32} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
         {/* RIGHT PANEL */}
         <div className="bmc-right-panel" style={{ position: "relative", flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", overflowX: "hidden", paddingLeft: isCompactLayout ? 0 : 8, paddingBottom: groups.length > 0 && isCompactLayout ? 96 : 0 }}>
           {useDockedRoofBorderSelector && (
@@ -7749,6 +7809,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               onDoubleClick={(e) => { e.preventDefault(); if (!isCompactLayout) resetChatSplitLayout(); }}
             />
             <Panel
+              id="main-chat"
               defaultSize={isCompactLayout ? 28 : 22}
               minSize={isCompactLayout ? 18 : 18}
               maxSize={isCompactLayout ? 45 : 40}
