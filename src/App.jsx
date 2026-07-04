@@ -26,6 +26,7 @@ import BmcChatPanel from "./components/BmcChatPanel.jsx";
 import DesignPreviewGate from "./components/preview/DesignPreviewGate.jsx";
 
 const DesignMockupsPage = lazy(() => import("./components/preview/DesignMockupsPage.jsx"));
+const WolfboardNextPreview = lazy(() => import("./components/preview/wolfboard-next/index.jsx"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -489,6 +490,14 @@ export default function App() {
                 <PanelinLivePage />
               </Suspense>
             </RequireGrant>
+          }
+        />
+        <Route
+          path="/preview/wolfboard-next"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <WolfboardNextPreview />
+            </Suspense>
           }
         />
         <Route
