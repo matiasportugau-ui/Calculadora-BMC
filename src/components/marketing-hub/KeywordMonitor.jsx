@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Search, RefreshCw, Plus, TrendingUp, TrendingDown, Minus, AlertTriangle, Clock } from 'lucide-react';
-import { apiFetch } from '../../utils/apiFetch';
+import { getCalcApiBase } from '../../utils/calcApiBase.js';
+
+async function apiFetch(path, { headers = {}, ...options } = {}) {
+  const base = getCalcApiBase().replace(/\/+$/, '');
+  return fetch(`${base}${path}`, { ...options, headers });
+}
 
 const PRIORITY_STYLES = {
   P1: 'bg-red-100 text-red-800 border-red-200',
