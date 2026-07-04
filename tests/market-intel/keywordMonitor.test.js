@@ -9,6 +9,8 @@ import {
   volumeProxyFromCount,
   difficultyFromSerp,
   formatKeywordRow,
+  normalizeTrackedKeywordInput,
+  mergeKeywordRefreshState,
 } from '../../server/lib/marketIntel/keywordMonitor.js';
 import { extractDomainsFromUrls, decodeBingRedirectUrl } from '../../server/lib/marketIntel/keywordSerpPlaywright.js';
 
@@ -93,5 +95,40 @@ describe('keywordMonitor helpers', () => {
     assert.equal(row.serp.stale, true);
     assert.equal(row.serp.error, null);
     assert.equal(row.serp.position, 1);
+  });
+
+  it('normalizeTrackedKeywordInput accepts the UI term payload and trims it', () => {
+    assert.deepEqual(
+      normalizeTrackedKeywordInput({ term: '  panel sandwich precio  ', priority: 'P2', intent: 'commercial' }),
+      {
+        keyword: 'panel sandwich precio',
+        cluster: undefined,
+        family: undefined,
+        intent: 'commercial',
+        priority: 'P2',
+        on_site_gap: undefined,
+      }
+    );
+    assert.equal(normalizeTrackedKeywordInput({ term: '   ' }), null);
+  });
+
+  it('mergeKeywordRefreshState preserves keywords added while refresh was running', () => {
+    const latestState = {
+      market: 'uy',
+      keywords: [
+        { id: 'kw-1', keyword: 'isopanel', bmc_serp_position: null },
+        { id: 'kw-added', keyword: 'panel nuevo', bmc_serp_position: null },
+      ],
+    };
+    const next = mergeKeywordRefreshState(
+      latestState,
+      [{ id: 'kw-1', keyword: 'isopanel', bmc_serp_position: 2 }],
+      { errors: 0, targetCount: 1, refreshedAt: '2026-07-04T12:00:00.000Z' }
+    );
+    assert.equal(next.last_refresh_status, 'success');
+    assert.equal(next.last_refresh_at, '2026-07-04T12:00:00.000Z');
+    assert.equal(next.keywords.length, 2);
+    assert.equal(next.keywords.find((k) => k.id === 'kw-1')?.bmc_serp_position, 2);
+    assert.equal(next.keywords.find((k) => k.id === 'kw-added')?.keyword, 'panel nuevo');
   });
 });

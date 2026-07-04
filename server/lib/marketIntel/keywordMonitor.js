@@ -234,6 +234,40 @@ export function markKeywordRefreshRunning() {
   return state;
 }
 
+function markKeywordRefreshFailed(err) {
+  const state = getKeywordMonitorState();
+  state.last_refresh_at = new Date().toISOString();
+  state.last_refresh_status = 'failed';
+  state.last_refresh_error = err?.message || 'refresh failed';
+  saveState(state);
+  return state;
+}
+
+export function normalizeTrackedKeywordInput(body = {}) {
+  const rawKeyword = typeof body.keyword === 'string' ? body.keyword : body.term;
+  const keyword = typeof rawKeyword === 'string' ? rawKeyword.trim() : '';
+  if (!keyword) return null;
+  return {
+    keyword,
+    cluster: body.cluster,
+    family: body.family,
+    intent: body.intent,
+    priority: body.priority,
+    on_site_gap: body.on_site_gap,
+  };
+}
+
+export function mergeKeywordRefreshState(latestState, results, { errors = 0, targetCount = results.length, refreshedAt = new Date().toISOString() } = {}) {
+  const byId = new Map(results.map((r) => [r.id, r]));
+  return {
+    ...latestState,
+    keywords: (latestState.keywords || []).map((k) => byId.get(k.id) || k),
+    last_refresh_at: refreshedAt,
+    last_refresh_status: errors === 0 ? 'success' : errors < targetCount ? 'partial' : 'failed',
+    last_refresh_error: null,
+  };
+}
+
 async function persistSnapshotToDb(kw, snapshot) {
   const p = pool();
   if (!p) return;
@@ -383,14 +417,30 @@ export async function runKeywordRefresh({ ids = null, priority = null } = {}) {
     else await closeSharedSerpSession();
   }
 
-  const byId = new Map(results.map((r) => [r.id, r]));
-  state.keywords = state.keywords.map((k) => byId.get(k.id) || k);
-  state.last_refresh_at = new Date().toISOString();
-  state.last_refresh_status = errors === 0 ? 'success' : errors < targets.length ? 'partial' : 'failed';
-  saveState(state);
+  const latestState = getKeywordMonitorState();
+  const nextState = mergeKeywordRefreshState(latestState, results, { errors, targetCount: targets.length });
+  saveState(nextState);
 
-  log.info({ total: targets.length, errors, status: state.last_refresh_status }, 'keyword refresh complete');
-  return state;
+  log.info({ total: targets.length, errors, status: nextState.last_refresh_status }, 'keyword refresh complete');
+  return nextState;
+}
+
+let _activeKeywordRefresh = null;
+
+export function startKeywordRefresh(options = {}) {
+  if (_activeKeywordRefresh) {
+    return { started: false, promise: _activeKeywordRefresh };
+  }
+  markKeywordRefreshRunning();
+  _activeKeywordRefresh = runKeywordRefresh(options)
+    .catch((err) => {
+      markKeywordRefreshFailed(err);
+      throw err;
+    })
+    .finally(() => {
+      _activeKeywordRefresh = null;
+    });
+  return { started: true, promise: _activeKeywordRefresh };
 }
 
 export async function addTrackedKeyword({ keyword, cluster, family, intent, priority, on_site_gap }) {

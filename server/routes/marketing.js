@@ -24,8 +24,8 @@ import { buildProductMatrix } from '../lib/marketIntel/priceGap.js';
 import {
   getKeywordMonitorState,
   formatKeywordRow,
-  markKeywordRefreshRunning,
-  runKeywordRefresh,
+  normalizeTrackedKeywordInput,
+  startKeywordRefresh,
   addTrackedKeyword,
   getKeywordRefreshMeta,
 } from '../lib/marketIntel/keywordMonitor.js';
@@ -301,12 +301,12 @@ router.get('/keywords', intelLimiter, requireMarketing, async (req, res) => {
 
 // ─── POST /api/marketing/keywords ────────────────────────────────────
 router.post('/keywords', intelLimiter, requireMarketing, async (req, res) => {
-  const { keyword, cluster, family, intent, priority, on_site_gap } = req.body || {};
-  if (!keyword || typeof keyword !== 'string' || !keyword.trim()) {
+  const input = normalizeTrackedKeywordInput(req.body || {});
+  if (!input) {
     return res.status(400).json({ error: 'keyword required' });
   }
   try {
-    const entry = await addTrackedKeyword({ keyword, cluster, family, intent, priority, on_site_gap });
+    const entry = await addTrackedKeyword(input);
     res.status(201).json(entry);
   } catch (err) {
     log.error({ err, route: 'POST /keywords' }, 'add keyword failed');
@@ -320,15 +320,15 @@ router.post('/keywords/refresh', intelLimiter, requireMarketing, (req, res) => {
   const { ids, priority } = req.body || {};
   log.info({ userId: req.user?.id, ids, priority }, 'keyword refresh triggered');
 
-  markKeywordRefreshRunning();
-
-  runKeywordRefresh({
+  const refresh = startKeywordRefresh({
     ids: Array.isArray(ids) ? ids : null,
     priority: priority || null,
-  }).catch((err) => log.error({ err }, 'keyword refresh background run failed'));
+  });
+  refresh.promise.catch((err) => log.error({ err }, 'keyword refresh background run failed'));
 
   res.status(202).json({
-    message: 'Keyword refresh started',
+    message: refresh.started ? 'Keyword refresh started' : 'Keyword refresh already running',
+    already_running: !refresh.started,
     hint: 'Poll GET /api/marketing/keywords until last_refresh_at updates',
   });
 });
