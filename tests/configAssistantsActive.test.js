@@ -10,6 +10,7 @@ import { pathToFileURL } from "node:url";
 
 const configUrl = pathToFileURL(new URL("../server/config.js", import.meta.url).pathname).href;
 const cleanCwd = mkdtempSync(`${tmpdir()}/bmc-config-test-`);
+const resultMarker = "__BMC_CONFIG_RESULT__";
 
 let passed = 0;
 let failed = 0;
@@ -37,7 +38,7 @@ function loadAssistantsActive(envOverrides = {}) {
     [
       "--input-type=module",
       "-e",
-      `import { config } from ${JSON.stringify(configUrl)}; process.stdout.write(JSON.stringify(config.assistantsActive));`,
+      `import { config } from ${JSON.stringify(configUrl)}; process.stdout.write("\\n${resultMarker}" + JSON.stringify(config.assistantsActive));`,
     ],
     {
       cwd: cleanCwd,
@@ -45,7 +46,11 @@ function loadAssistantsActive(envOverrides = {}) {
       encoding: "utf8",
     },
   );
-  return JSON.parse(output);
+  const markerIndex = output.lastIndexOf(resultMarker);
+  if (markerIndex === -1) {
+    throw new Error(`Config child process did not print ${resultMarker}: ${output}`);
+  }
+  return JSON.parse(output.slice(markerIndex + resultMarker.length));
 }
 
 assertEqual(
