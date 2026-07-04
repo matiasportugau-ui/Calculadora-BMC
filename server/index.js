@@ -89,7 +89,7 @@ import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
-import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
+import { startOmniAiWorker, triggerWaCrmSyncNow } from "./lib/omni/orchestrator/aiWorker.js";
 import { startOmniFrtBreachWorker } from "./lib/omni/orchestrator/frtBreachWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
@@ -911,10 +911,25 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       // Omni is the single source of truth: real (awaited) ingest → message.ingested
       // → classify/suggest + the per-conversation-coalesced wa_crm_sync job.
       try {
-        await normalizeAndPersist(
+        const persisted = await normalizeAndPersist(
           waWebhookToOmniEvent({ msg, chatId, contactName }),
           { databaseUrl: config.databaseUrl, logger },
         );
+        if (text.includes("🚀")) {
+          const manual = await triggerWaCrmSyncNow(
+            getOmniPool(config.databaseUrl),
+            persisted,
+          );
+          logger.info(
+            {
+              chat_id: chatId,
+              conversation_id: persisted.conversation_id,
+              job_id: manual.jobId,
+              mode: manual.mode,
+            },
+            "[WA] 🚀 manual trigger (canonical)",
+          );
+        }
       } catch (e) {
         // 200 was already sent to Meta (line above); a failure here only loses this
         // message's enrichment, never the webhook ack.
