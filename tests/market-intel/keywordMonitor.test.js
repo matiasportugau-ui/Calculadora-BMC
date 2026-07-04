@@ -9,6 +9,7 @@ import {
   volumeProxyFromCount,
   difficultyFromSerp,
   formatKeywordRow,
+  mergeKeywordRefreshResults,
 } from '../../server/lib/marketIntel/keywordMonitor.js';
 import { extractDomainsFromUrls, decodeBingRedirectUrl } from '../../server/lib/marketIntel/keywordSerpPlaywright.js';
 
@@ -93,5 +94,27 @@ describe('keywordMonitor helpers', () => {
     assert.equal(row.serp.stale, true);
     assert.equal(row.serp.error, null);
     assert.equal(row.serp.position, 1);
+  });
+
+  it('mergeKeywordRefreshResults preserves keywords added during a refresh', () => {
+    const state = {
+      last_refresh_at: 'old',
+      last_refresh_status: 'running',
+      keywords: [
+        { id: 'kw-001', keyword: 'old keyword', bmc_serp_position: null },
+        { id: 'kw-new', keyword: 'custom keyword', bmc_serp_position: null },
+      ],
+    };
+    const merged = mergeKeywordRefreshResults(
+      state,
+      [{ id: 'kw-001', keyword: 'old keyword', bmc_serp_position: 3 }],
+      { lastRefreshAt: 'new', status: 'success' }
+    );
+
+    assert.equal(merged.last_refresh_at, 'new');
+    assert.equal(merged.last_refresh_status, 'success');
+    assert.equal(merged.keywords.length, 2);
+    assert.equal(merged.keywords[0].bmc_serp_position, 3);
+    assert.equal(merged.keywords[1].keyword, 'custom keyword');
   });
 });
