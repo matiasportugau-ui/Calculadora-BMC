@@ -75,6 +75,24 @@ Base **Cloud Run (canónica smoke):** `https://panelin-calc-q74zutv7dq-uc.a.run.
 
 **Operador run 55 / gates:** [`RUN55-OPERATOR-CHECKLIST.md`](./RUN55-OPERATOR-CHECKLIST.md).
 
+### Resultados smoke — 2026-07-02 (repo `npm run smoke:prod`)
+
+Base **Cloud Run (canónica smoke):** `https://panelin-calc-q74zutv7dq-uc.a.run.app`
+
+| Ruta | HTTP | Nota |
+|------|------|------|
+| `/health` | 200 | Servicio vivo |
+| `/capabilities` | 200 | Manifest agentes |
+| `public_base_url` | 200 | Base alineada |
+| `/api/actualizar-precios-calculadora` | 200 | MATRIZ CSV OK |
+| `/auth/ml/status` | 200 | Token ML presente |
+| `/webhooks/whatsapp` | 403 | Esperado en smoke sin token |
+| `/api/wa/health` | 200 | WA cockpit OK |
+| `/finanzas/` | 200 | Dashboard legacy presente |
+| `POST /api/crm/suggest-response` | 503 | **Bloqueo actual** para cerrar 6.0; respuesta real = `assistant_disabled` para `ml`. Decisión ya tomada: debe quedar ON en prod. El workflow `deploy-calc-api.yml` ya propaga `ASSISTANTS_ACTIVE` y la repo Variable ya quedó seteada a **`canales,ml`**; falta el **redeploy** para que Cloud Run tome la env y recién ahí repetir el smoke. |
+
+**Local verify-tabs (2026-07-03):** no ejecutable en esta sesión — el `.env` local deja vacíos `BMC_SHEET_ID`/IDs relacionados y `GOOGLE_APPLICATION_CREDENTIALS` apunta a `docs/bmc-dashboard-modernization/service-account.json`, archivo inexistente hoy.
+
 ---
 
 ## Pre-requisitos
