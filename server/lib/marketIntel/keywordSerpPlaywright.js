@@ -1,8 +1,13 @@
 // Module: market-intelligence | Owner: bmc-dev | Created: 2026-07-04
 // Playwright-backed SERP extraction (Google → Bing fallback) for keyword monitor.
 
-import { chromium } from 'playwright';
 import pino from 'pino';
+
+/** Lazy-load playwright so Cloud Run boots without Chromium installed. */
+async function getChromium() {
+  const { chromium } = await import('playwright');
+  return chromium;
+}
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 
@@ -102,6 +107,7 @@ export class KeywordSerpSession {
 
   async init() {
     if (this.page) return this;
+    const chromium = await getChromium();
     const launchOpts = { headless: true, args: ['--disable-blink-features=AutomationControlled'] };
     try {
       this.browser = await chromium.launch({ ...launchOpts, timeout: 20_000 });
