@@ -73,6 +73,17 @@ Postgres is absent.)
 
 ## Production flip
 
+> **Status 2026-07-04: FLIPPED ON.** Migrations 011–015 applied via
+> `wa-canonical-cutover.yml` (action=migrate). The workflow's `flip_on`
+> prerequisite check has a bug (`gh variable get` with `github.token` cannot
+> read repo Variables → always reports MISSING), so the flip was executed
+> manually with the equivalent commands: `gh variable set OMNI_WA_CANONICAL
+> --body 1` + deploy dispatch. Cloud Run renders `OMNI_WA_CANONICAL=1` with
+> bus + orchestrator ON. First soak snapshot: clean (0 dead-letter, coalescing
+> invariant holds, no WA traffic in window). Pending: fix the workflow's
+> prerequisite read (use `gh api repos/.../actions/variables/...` or a PAT),
+> and spot-check 🚀 with real WA traffic.
+
 1. Confirm preconditions + soak green.
 2. Set prod repo Variable `OMNI_WA_CANONICAL=1`.
 3. Trigger `deploy-calc-api` (push to main or manual dispatch). Confirm the

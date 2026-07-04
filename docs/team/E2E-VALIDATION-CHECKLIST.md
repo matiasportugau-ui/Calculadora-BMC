@@ -89,9 +89,9 @@ Base **Cloud Run (canónica smoke):** `https://panelin-calc-q74zutv7dq-uc.a.run.
 | `/webhooks/whatsapp` | 403 | Esperado en smoke sin token |
 | `/api/wa/health` | 200 | WA cockpit OK |
 | `/finanzas/` | 200 | Dashboard legacy presente |
-| `POST /api/crm/suggest-response` | 503 | **Bloqueo actual** para cerrar 6.0; respuesta real = `assistant_disabled` para `ml`. Decisión ya tomada: debe quedar ON en prod. El workflow `deploy-calc-api.yml` ya propaga `ASSISTANTS_ACTIVE` y la repo Variable ya quedó seteada a **`canales,ml`**; falta el **redeploy** para que Cloud Run tome la env y recién ahí repetir el smoke. |
+| `POST /api/crm/suggest-response` | 200 | ☑ **cerrado 2026-07-04** — IA ok (gemini), 9/9 en el smoke. La causa era doble: (a) el deploy no propagaba `ASSISTANTS_ACTIVE` (wiring en PR #560) y (b) el action deploy-cloudrun **parte `env_vars` por comas**, truncando `canales,ml` → `canales` (fix: `server/config.js` acepta `;` como separador, PR #561; la repo Variable quedó `canales;ml`). Verificado contra la revisión renderizada por el workflow, sin overrides manuales. |
 
-**Local verify-tabs (2026-07-03):** no ejecutable en esta sesión — el `.env` local deja vacíos `BMC_SHEET_ID`/IDs relacionados y `GOOGLE_APPLICATION_CREDENTIALS` apunta a `docs/bmc-dashboard-modernization/service-account.json`, archivo inexistente hoy.
+**Local verify-tabs (2026-07-04): ☑ VERDE** — credencial materializada desde Doppler `bmc-backend/prd` a `~/.config/bmc/service-account.json` (fuera del repo, chmod 600) + IDs reales de workbooks leídos de Cloud Run + `BMC_SHEET_SCHEMA=CRM_Operativo`. Resultado: tab `CRM_Operativo` verificado en el workbook principal y los 4 workbooks restantes accesibles (pagos, ventas, stock, calendario). Nota histórica (2026-07-03): fallaba porque el `.env` local tenía IDs vacíos y apuntaba a un JSON inexistente.
 
 ---
 
