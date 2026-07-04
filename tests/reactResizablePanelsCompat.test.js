@@ -25,6 +25,7 @@ assert.match(source, /groupRef=\{mainSplitGroupRef\}/, "imperative reset uses v4
 assert.match(source, /orientation=\{isCompactLayout \? "vertical" : "horizontal"\}/, "group orientation uses v4 prop");
 assert.match(source, /resizeTargetMinimumSize=\{\{ coarse: 36, fine: 16 \}\}/, "separator keeps a usable v4 hit target");
 assert.match(source, /data-bmc-main-split-drag-shield/, "drag shield absorbs pointer-up clicks after resizing");
+assert.match(source, /window\.setTimeout\(clearDragging, 160\)/, "drag shield stays through the synthetic click after pointer-up");
 assert.match(source, /onPointerDownCapture=\{\(\) => setMainSplitDragging\(true\)\}/, "separator enables the drag shield on pointer down");
 assert.match(source, /id=\{mainSplitPanelIds\[0\]\}/, "left panel has a stable persisted id");
 assert.match(source, /id=\{mainSplitPanelIds\[1\]\}/, "right panel has a stable persisted id");

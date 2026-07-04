@@ -3543,12 +3543,17 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   useEffect(() => {
     if (!mainSplitDragging) return undefined;
     const clearDragging = () => setMainSplitDragging(false);
-    window.addEventListener("pointerup", clearDragging, { once: true });
-    window.addEventListener("mouseup", clearDragging, { once: true });
+    let releaseTimer = null;
+    const clearAfterClickWindow = () => {
+      releaseTimer = window.setTimeout(clearDragging, 160);
+    };
+    window.addEventListener("pointerup", clearAfterClickWindow, { once: true });
+    window.addEventListener("mouseup", clearAfterClickWindow, { once: true });
     window.addEventListener("blur", clearDragging, { once: true });
     return () => {
-      window.removeEventListener("pointerup", clearDragging);
-      window.removeEventListener("mouseup", clearDragging);
+      if (releaseTimer) window.clearTimeout(releaseTimer);
+      window.removeEventListener("pointerup", clearAfterClickWindow);
+      window.removeEventListener("mouseup", clearAfterClickWindow);
       window.removeEventListener("blur", clearDragging);
     };
   }, [mainSplitDragging]);
@@ -7662,8 +7667,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         <div
           aria-hidden
           data-bmc-main-split-drag-shield
-          onPointerUp={() => setMainSplitDragging(false)}
-          onMouseUp={() => setMainSplitDragging(false)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setMainSplitDragging(false);
+          }}
           style={{
             position: "fixed",
             inset: 0,
