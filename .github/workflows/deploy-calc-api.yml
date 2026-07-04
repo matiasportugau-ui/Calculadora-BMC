@@ -223,10 +223,11 @@ jobs:
         if: steps.paths.outputs.skip != 'true'
         env:
           BMC_API_BASE: ${{ steps.service_url.outputs.url }}
-          # suggest-response is now a hard deploy gate (was SMOKE_SKIP_SUGGEST=1).
-          # Rationale (2026-07-04): the endpoint is a go-live requirement, its
-          # provider chain has 4-deep fallback (low flake risk), and the skip
-          # hid a real regression — the env_vars comma-split truncating
-          # ASSISTANTS_ACTIVE would have failed the deploy smoke immediately.
-          # Escape hatch: re-add SMOKE_SKIP_SUGGEST=1 here or deploy manually.
+          # suggest-response is now a hard deploy gate (this env block used to set
+          # SMOKE_SKIP_SUGGEST: '1'). Rationale (2026-07-04): the endpoint is a
+          # go-live requirement, its provider chain has 4-deep fallback (low flake
+          # risk), and the skip hid a real regression — the env_vars comma-split
+          # truncating ASSISTANTS_ACTIVE would have failed the deploy smoke
+          # immediately. Escape hatch: re-add the line `SMOKE_SKIP_SUGGEST: '1'`
+          # to this env block, or deploy manually.
         run: npm run smoke:prod
