@@ -39,7 +39,7 @@ for (const legacyToken of ["PanelGroup", "PanelResizeHandle", "autoSaveId=", "di
   assert(`does not use legacy token ${legacyToken}`, !component.includes(legacyToken));
 }
 
-assert("Group uses groupRef", component.includes("groupRef={mainPanelGroupRef}"));
+assert("Group uses groupRef", component.includes("groupRef={mainSplitGroupRef}"));
 assert("Group uses orientation", component.includes('orientation={isCompactLayout ? "vertical" : "horizontal"}'));
 assert("Group persists layout through useDefaultLayout", component.includes("mainPanelLayoutPersistence.onLayoutChanged"));
 assert("reset layout uses v4 panel-id map", component.includes("setLayout?.(MAIN_SPLIT_RESET_LAYOUT)"));

@@ -2816,7 +2816,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const opcionesRef = useRef(null);
   /** Ref al host DOM de la **Visualización 3D** en `QuoteVisualVisor` (`[data-bmc-view="visualizacion-3d"]`) para portal de `RoofBorderCanvas`. */
   const roof3dHostRef = useRef(null);
-  const mainPanelGroupRef = useRef(null);
+  const mainSplitGroupRef = useRef(null);
   const mainPanelLayoutPersistence = useDefaultLayout({
     id: "bmc-panelin-main-split",
     panelIds: MAIN_SPLIT_PANEL_IDS,
@@ -3529,7 +3529,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const resetMainSplitLayout = useCallback(() => {
     try {
-      mainPanelGroupRef.current?.setLayout?.(MAIN_SPLIT_RESET_LAYOUT);
+      mainSplitGroupRef.current?.setLayout?.(MAIN_SPLIT_RESET_LAYOUT);
     } catch {
       /* optional API */
     }
@@ -5269,7 +5269,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
 
       <Group
-        groupRef={mainPanelGroupRef}
+        groupRef={mainSplitGroupRef}
         orientation={isCompactLayout ? "vertical" : "horizontal"}
         defaultLayout={isCompactLayout ? undefined : mainPanelLayoutPersistence.defaultLayout}
         onLayoutChanged={isCompactLayout ? undefined : mainPanelLayoutPersistence.onLayoutChanged}
