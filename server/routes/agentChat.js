@@ -784,10 +784,16 @@ router.post("/agent/chat", async (req, res) => {
   }
   const msgs = truncated;
 
+  // Capability-aware fallback order. The tool-EXECUTING branches on this path are
+  // claude and gemini; grok/openai run text-only here and CANNOT call the native
+  // calc tools. Put the two tool-capable providers first so a Claude outage falls
+  // to Gemini (still quotes via tools) rather than Grok — which would narrate
+  // un-tooled numbers, violating the "models never invent prices" invariant. An
+  // explicit `aiProvider` preference (below) still wins; this only orders AUTO.
   const defaultOrder = [];
   if (hasAnthropic) defaultOrder.push("claude");
-  if (hasGrok) defaultOrder.push("grok");
   if (hasGemini) defaultOrder.push("gemini");
+  if (hasGrok) defaultOrder.push("grok");
   if (hasOpenAI) defaultOrder.push("openai");
 
   const pref =

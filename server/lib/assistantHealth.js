@@ -24,6 +24,7 @@ import {
   DEFAULT_PROVIDER_ORDER,
 } from "./aiProviderConfig.js";
 import { listAssistants, isAssistantEnabled } from "./assistantRegistry.js";
+import { getProviderCooldownState } from "./agentCore.js";
 
 const CACHE_TTL_MS = 30_000;
 /** @type {Map<string, { at:number, value:any }>} */
@@ -87,6 +88,9 @@ export async function checkAssistant(key, opts = {}) {
     status,
     activeProvider: enabled && status !== "down" ? activeProvider : null,
     providersAvailable: available,
+    // Real provider liveness (not just key presence): which providers agentCore
+    // has deprioritized after repeated failures. Answers "why is ml on gemini?"
+    providerCooldowns: getProviderCooldownState(),
     fallbackTo: assistant.fallbackTo,
     deps,
     detail,
