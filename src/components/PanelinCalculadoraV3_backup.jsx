@@ -5276,6 +5276,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         groupRef={mainSplitGroupRef}
         id={isCompactLayout ? "bmc-panelin-main-split-compact" : "bmc-panelin-main-split"}
         orientation={isCompactLayout ? "vertical" : "horizontal"}
+        resizeTargetMinimumSize={{ coarse: 36, fine: 16 }}
         defaultLayout={mainSplitLayout.defaultLayout}
         onLayoutChange={mainSplitLayout.onLayoutChange}
         onLayoutChanged={mainSplitLayout.onLayoutChanged}
@@ -7376,7 +7377,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           id={isCompactLayout ? "bmc-main-sash-compact" : "bmc-main-sash"}
           className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
           style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
-          onDoubleClick={(e) => { e.preventDefault(); if (!isCompactLayout) resetMainSplitLayout(); }}
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isCompactLayout) resetMainSplitLayout();
+          }}
         />
         <Panel
           id={mainSplitPanelIds[1]}

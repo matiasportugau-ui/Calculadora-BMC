@@ -23,11 +23,13 @@ assert.match(
 assert.doesNotMatch(source, /PanelGroup|PanelResizeHandle|autoSaveId|direction=\{/, "calculator does not use v3-only props or exports");
 assert.match(source, /groupRef=\{mainSplitGroupRef\}/, "imperative reset uses v4 groupRef");
 assert.match(source, /orientation=\{isCompactLayout \? "vertical" : "horizontal"\}/, "group orientation uses v4 prop");
+assert.match(source, /resizeTargetMinimumSize=\{\{ coarse: 36, fine: 16 \}\}/, "separator keeps a usable v4 hit target");
 assert.match(source, /id=\{mainSplitPanelIds\[0\]\}/, "left panel has a stable persisted id");
 assert.match(source, /id=\{mainSplitPanelIds\[1\]\}/, "right panel has a stable persisted id");
 assert.match(source, /defaultSize=\{isCompactLayout \? "55%" : "35%"\}/, "left panel default size remains percentage-based");
 assert.match(source, /defaultSize=\{isCompactLayout \? "45%" : "65%"\}/, "right panel default size remains percentage-based");
 assert.match(source, /setLayout\?\.\(\{\s*"bmc-main-wizard": 28,\s*"bmc-main-visor": 72,\s*\}\)/s, "reset layout uses the v4 id-to-percent map");
+assert.match(source, /e\.stopPropagation\(\);/, "separator double click does not bubble into calculator cards");
 assert.match(mobileCss, /\[data-separator\]/, "mobile CSS targets v4 separator attribute");
 assert.doesNotMatch(mobileCss, /> \[data-resize-handle\] \{ display: none !important; \}/, "mobile CSS no longer hides only the v3 handle attribute");
 
