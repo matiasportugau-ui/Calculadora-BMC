@@ -199,6 +199,16 @@ export function readDefaultFloatingRect() {
   if (typeof window === "undefined") {
     return { x: 0, y: 72, width: 380, height: 560 };
   }
+  const normalizeRect = (rect) => {
+    const width = clamp(rect.width, 300, Math.max(300, window.innerWidth - 16));
+    const height = clamp(rect.height, 320, Math.max(320, window.innerHeight - 16));
+    return {
+      x: clamp(rect.x, 8, Math.max(8, window.innerWidth - width - 8)),
+      y: clamp(rect.y, 8, Math.max(8, window.innerHeight - height - 8)),
+      width,
+      height,
+    };
+  };
   try {
     const raw = sessionStorage.getItem("panelin-chat-float-rect");
     const parsed = raw ? JSON.parse(raw) : null;
@@ -209,12 +219,7 @@ export function readDefaultFloatingRect() {
       && Number.isFinite(parsed.width)
       && Number.isFinite(parsed.height)
     ) {
-      return {
-        x: parsed.x,
-        y: parsed.y,
-        width: clamp(parsed.width, 300, window.innerWidth - 16),
-        height: clamp(parsed.height, 320, window.innerHeight - 16),
-      };
+      return normalizeRect(parsed);
     }
   } catch {
     /* ignore */
