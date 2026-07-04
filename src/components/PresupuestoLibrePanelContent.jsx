@@ -62,7 +62,7 @@ export function PresupuestoLibrePanelContent() {
             colores={familiaData.col || []}
             especData={familiaData.esp}
             unidad="m²"
-            imagenFamilia={familiaData.fam || familiaKey}
+            imagenFamilia={familiaKey}
             onAdd={handleAddPanel}
           />
         );
@@ -82,7 +82,7 @@ export function PresupuestoLibrePanelContent() {
             colores={familiaData.col || []}
             especData={familiaData.esp}
             unidad="m²"
-            imagenFamilia={familiaData.fam || familiaKey}
+            imagenFamilia={familiaKey}
             onAdd={handleAddPanel}
           />
         );
@@ -123,7 +123,7 @@ export function PresupuestoLibrePanelContent() {
               colores={[]}
               especData={especData}
               unidad="m"
-              imagenFamilia={familyName}
+              imagenFamilia={`${tipoKey}:${familiaKey}`}
               onAdd={handleAddPerfil}
             />
           );
@@ -154,7 +154,7 @@ export function PresupuestoLibrePanelContent() {
           espesores={[]}
           colores={[]}
           unidad={data.unidad || 'unid'}
-          imagenFamilia="FIJACIONES"
+          imagenFamilia={key}
           onAdd={handleAddFijacion}
           especData={{ std: data }}
         />
@@ -174,7 +174,7 @@ export function PresupuestoLibrePanelContent() {
           espesores={[]}
           colores={[]}
           unidad={data.unidad || 'unid'}
-          imagenFamilia="SELLADORES"
+          imagenFamilia={key}
           onAdd={handleAddSellador}
           especData={{ std: data }}
         />
@@ -194,7 +194,7 @@ export function PresupuestoLibrePanelContent() {
           espesores={[]}
           colores={[]}
           unidad={data.unidad || 'servicio'}
-          imagenFamilia="SERVICIOS"
+          imagenFamilia={key}
           onAdd={handleAddServicio}
           especData={{ std: data }}
         />
@@ -217,7 +217,7 @@ export function PresupuestoLibrePanelContent() {
             espesores={[]}
             colores={[]}
             unidad={data.unidad || 'unid'}
-            imagenFamilia="HERRAMIENTAS"
+            imagenFamilia={key}
             onAdd={handleAddHerramienta}
             especData={{ std: data }}
           />
@@ -239,7 +239,7 @@ export function PresupuestoLibrePanelContent() {
               espesores={[]}
               colores={[]}
               unidad={data.unidad || 'unid'}
-              imagenFamilia="FIJACIONES"
+              imagenFamilia={key}
               onAdd={handleAddFijacion}
               especData={{ std: data }}
             />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { p } from '../data/constants';
-import { getProductImage } from '../utils/presupuestoLibreImageMapper';
+import { getProductImageByColor } from '../utils/presupuestoLibreImageMapper';
 import './PresupuestoLibreCard.css';
 
 export function PresupuestoLibreCard({
@@ -39,7 +39,7 @@ export function PresupuestoLibreCard({
   const handleIncrement = () => setCantidad(c => c + 1);
   const handleDecrement = () => setCantidad(c => (c > 0 ? c - 1 : 0));
 
-  const imageSrc = getProductImage(imagenFamilia || familia);
+  const imageSrc = getProductImageByColor(imagenFamilia || familia, selectedColor);
   const subtotal = (cantidad * currentPrice).toFixed(2);
 
   return (

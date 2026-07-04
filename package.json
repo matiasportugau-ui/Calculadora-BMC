@@ -11,6 +11,7 @@
   "scripts": {
     "version:data": "node scripts/update-calculator-data-version.js",
     "version:reconcile": "node scripts/reconcile-version.mjs",
+    "images:presupuesto-libre": "node scripts/build-presupuesto-libre-images.mjs",
     "quotation-preview:render": "node scripts/render-quotation-preview-html.mjs",
     "smoke:bmc-pdf": "node scripts/bmc-pdf-export-smoke.mjs",
     "preview:watch": "node scripts/preview-dev.mjs",
