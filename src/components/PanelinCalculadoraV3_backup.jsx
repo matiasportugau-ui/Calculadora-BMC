@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import { requestAuthGate } from "./auth/AuthGateModal.jsx";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import {
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
@@ -3050,6 +3050,15 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const isPhone = isPhoneViewportWidth(viewportWidth);
   const isTablet = isTabletViewportWidth(viewportWidth);
   const isCompactLayout = isCompactMainLayoutWidth(viewportWidth);
+  const mainSplitPanelIds = useMemo(
+    () => (isCompactLayout ? ["bmc-main-wizard-compact", "bmc-main-visor-compact"] : ["bmc-main-wizard", "bmc-main-visor"]),
+    [isCompactLayout]
+  );
+  const mainSplitLayout = useDefaultLayout({
+    id: isCompactLayout ? "bmc-panelin-main-split-compact" : "bmc-panelin-main-split",
+    panelIds: mainSplitPanelIds,
+    onlySaveAfterUserInteractions: true,
+  });
   const twoCol = isPhone ? "1fr" : "1fr 1fr";
   const threeCol = isPhone ? "1fr" : isTablet ? "1fr 1fr" : "1fr 1fr 1fr";
   const fourCol = isPhone ? "1fr" : "1fr 1fr";
@@ -3521,7 +3530,10 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const resetMainSplitLayout = useCallback(() => {
     try {
-      mainPanelGroupRef.current?.setLayout?.([28, 72]);
+      mainPanelGroupRef.current?.setLayout?.({
+        "bmc-main-wizard": 28,
+        "bmc-main-visor": 72,
+      });
     } catch {
       /* optional API */
     }
@@ -5260,10 +5272,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       </div>
 
 
-      <PanelGroup
-        ref={mainPanelGroupRef}
-        direction={isCompactLayout ? "vertical" : "horizontal"}
-        autoSaveId={isCompactLayout ? undefined : "bmc-panelin-main-split"}
+      <Group
+        groupRef={mainPanelGroupRef}
+        id={isCompactLayout ? "bmc-panelin-main-split-compact" : "bmc-panelin-main-split"}
+        orientation={isCompactLayout ? "vertical" : "horizontal"}
+        defaultLayout={mainSplitLayout.defaultLayout}
+        onLayoutChange={mainSplitLayout.onLayoutChange}
+        onLayoutChanged={mainSplitLayout.onLayoutChanged}
         className="bmc-main-grid"
         style={{
           display: "flex",
@@ -5277,7 +5292,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           minHeight: 0,
         }}
       >
-        <Panel defaultSize={isCompactLayout ? 55 : 35} minSize={isCompactLayout ? 24 : 24} maxSize={isCompactLayout ? 85 : 55} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
+        <Panel
+          id={mainSplitPanelIds[0]}
+          defaultSize={isCompactLayout ? "55%" : "35%"}
+          minSize="24%"
+          maxSize={isCompactLayout ? "85%" : "55%"}
+          style={{ minWidth: 0, minHeight: 0, display: "flex" }}
+        >
         {/* LEFT PANEL — Wizard (Modo Vendedor) o formulario completo (Modo Cliente) */}
         <div data-tutorial-id="calc-dimensions" className="bmc-left-panel" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isPhone ? 0 : 12, paddingRight: isPhone ? 0 : 12 }}>
           {modoVendedor && scenario === "solo_techo" ? (
@@ -7351,13 +7372,18 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           </details>
         </div>
         </Panel>
-        <PanelResizeHandle
+        <Separator
+          id={isCompactLayout ? "bmc-main-sash-compact" : "bmc-main-sash"}
           className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
           style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
-          hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
           onDoubleClick={(e) => { e.preventDefault(); if (!isCompactLayout) resetMainSplitLayout(); }}
         />
-        <Panel defaultSize={isCompactLayout ? 45 : 65} minSize={isCompactLayout ? 20 : 32} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
+        <Panel
+          id={mainSplitPanelIds[1]}
+          defaultSize={isCompactLayout ? "45%" : "65%"}
+          minSize={isCompactLayout ? "20%" : "32%"}
+          style={{ minWidth: 0, minHeight: 0, display: "flex" }}
+        >
         {/* RIGHT PANEL */}
         <div className="bmc-right-panel" style={{ position: "relative", flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", overflowX: "hidden", paddingLeft: isCompactLayout ? 0 : 8, paddingBottom: groups.length > 0 && isCompactLayout ? 96 : 0 }}>
           {useDockedRoofBorderSelector && (
@@ -7610,7 +7636,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           </div>}
         </div>
         </Panel>
-      </PanelGroup>
+      </Group>
 
       <QuotePreviewModal
         pendingQuote={pendingQuote}
