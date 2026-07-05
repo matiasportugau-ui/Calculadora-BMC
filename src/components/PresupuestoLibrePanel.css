@@ -55,13 +55,15 @@
 }
 
 /* Overlay (backdrop) */
+/* Above the FloatingTutorialButton pill (z-index 9999) — otherwise the pill
+   intercepts clicks inside the open panel's bottom-right region. */
 .pl-panel__overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  z-index: 9996;
+  z-index: 10000;
   animation: fadeIn 0.3s var(--lg-easing-bounce);
 }
 
@@ -93,7 +95,7 @@
     inset 0 1px 0 var(--lg-border-light),
     var(--lg-shadow-sm),
     var(--lg-shadow-lg);
-  z-index: 9997;
+  z-index: 10001;
   display: flex;
   flex-direction: column;
   overflow: hidden;

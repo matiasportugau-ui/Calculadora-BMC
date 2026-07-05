@@ -1,7 +1,9 @@
 import React from 'react';
-import { usePresupuestoLibre } from '../contexts/PresupuestoLibreContext';
+import { usePresupuestoLibre, usePresupuestoLibreUi } from '../contexts/PresupuestoLibreContext';
 import { p, PANELS_TECHO, PANELS_PARED, PERFIL_TECHO, PERFIL_PARED, FIJACIONES, SELLADORES, SERVICIOS, HERRAMIENTAS, PRESUPUESTO_LIBRE_IDS } from '../data/constants';
 import { PresupuestoLibreCard } from './PresupuestoLibreCard';
+import { PresupuestoLibreCart } from './PresupuestoLibreCart';
+import { fmtPrice } from '../utils/helpers';
 import './PresupuestoLibrePanelContent.css';
 
 const TABS = [
@@ -11,6 +13,7 @@ const TABS = [
   { id: 'selladores', label: 'Selladores' },
   { id: 'servicios', label: 'Servicios' },
   { id: 'extraordinarios', label: 'Extraordinarios' },
+  { id: 'carrito', label: 'Carrito' },
 ];
 
 // Display names per perfil tipo — constants.js price rows for most tipos
@@ -41,7 +44,17 @@ const PERFIL_RESERVED_KEYS = ['label', 'venta', 'web', 'costo', 'largo'];
 const isPriceRow = (v) => v && typeof v === 'object' && (v.venta !== undefined || v.web !== undefined);
 
 export function PresupuestoLibrePanelContent() {
-  const { activeTab, setActiveTab, addPanelLine, addPerfil, addFijacion, addSellador, addServicio, addHerramienta } = usePresupuestoLibre();
+  const { activeTab, setActiveTab } = usePresupuestoLibreUi();
+  const {
+    addPanelLine, addPerfil, addFijacion, addSellador, addHerramienta,
+    librePanelLines, librePerfilQty, libreFijQty, libreSellQty, flete, setFlete,
+  } = usePresupuestoLibre();
+
+  const cartCount = librePanelLines.length
+    + Object.keys(librePerfilQty).length
+    + Object.keys(libreFijQty).length
+    + Object.keys(libreSellQty).length
+    + (flete > 0 ? 1 : 0);
 
   const handleAddPanel = (productData) => {
     const { familia, espesor, color, cantidad } = productData;
@@ -58,7 +71,6 @@ export function PresupuestoLibrePanelContent() {
 
   const handleAddFijacion = (pd) => addFijacion(pd.familia, pd.cantidad || 1);
   const handleAddSellador = (pd) => addSellador(pd.familia, pd.cantidad || 1);
-  const handleAddServicio = (pd) => addServicio(pd.familia, pd.cantidad || 1);
   const handleAddHerramienta = (pd) => addHerramienta(pd.familia, pd.cantidad || 1);
 
   const renderPanelCards = (panels, prefix) =>
@@ -159,6 +171,31 @@ export function PresupuestoLibrePanelContent() {
       );
     }).filter(Boolean);
 
+  // Flete es un monto único compartido con el calculador (todos los
+  // escenarios), no una colección de ítems — editor directo, no carta.
+  const renderServicios = () => (
+    <div className="pl-flete">
+      <h4 className="pl-flete__title">{SERVICIOS.flete?.label || 'Flete con entrega en obra'}</h4>
+      <p className="pl-flete__hint">
+        Precio de referencia: ${fmtPrice(p(SERVICIOS.flete))}. Este flete es el mismo
+        que usa el calculador en todos los escenarios.
+      </p>
+      <div className="pl-flete__control">
+        <label className="pl-flete__label">Flete (USD s/IVA)</label>
+        <input
+          type="number"
+          className="pl-flete__input"
+          min="0"
+          value={flete}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            setFlete(Number.isFinite(v) ? Math.max(0, v) : 0);
+          }}
+        />
+      </div>
+    </div>
+  );
+
   const renderExtraordinarios = () => [
     ...renderItemCards(Object.entries(HERRAMIENTAS), {
       keyPrefix: 'herramienta', unidadDefault: 'unid', onAdd: handleAddHerramienta,
@@ -184,11 +221,11 @@ export function PresupuestoLibrePanelContent() {
           keyPrefix: 'sellador', unidadDefault: 'unid', onAdd: handleAddSellador,
         });
       case 'servicios':
-        return renderItemCards(Object.entries(SERVICIOS), {
-          keyPrefix: 'servicio', unidadDefault: 'servicio', onAdd: handleAddServicio,
-        });
+        return renderServicios();
       case 'extraordinarios':
         return renderExtraordinarios();
+      case 'carrito':
+        return <PresupuestoLibreCart />;
       default:
         return [];
     }
@@ -205,12 +242,15 @@ export function PresupuestoLibrePanelContent() {
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
+            {tab.id === 'carrito' && cartCount > 0 && (
+              <span className="pl-panel-content__tab-badge">{cartCount}</span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* Grid of Cards */}
-      <div className="pl-panel-content__grid">
+      {/* Grid of Cards (card tabs) / single column (servicios, carrito) */}
+      <div className={['carrito', 'servicios'].includes(activeTab) ? 'pl-panel-content__single' : 'pl-panel-content__grid'}>
         {getTabContent()}
       </div>
     </div>

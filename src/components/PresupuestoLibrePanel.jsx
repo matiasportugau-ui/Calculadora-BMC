@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
-import { usePresupuestoLibre } from '../contexts/PresupuestoLibreContext';
+import { usePresupuestoLibreUi } from '../contexts/PresupuestoLibreContext';
 import { PresupuestoLibrePanelContent } from './PresupuestoLibrePanelContent';
 import './PresupuestoLibrePanel.css';
 
 export function PresupuestoLibrePanel() {
-  const { isOpen, setIsOpen } = usePresupuestoLibre();
+  const { isOpen, setIsOpen } = usePresupuestoLibreUi();
 
   useEffect(() => {
     const handleEscape = (e) => {

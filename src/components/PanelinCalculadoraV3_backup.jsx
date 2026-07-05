@@ -7,6 +7,7 @@ import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, laz
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
+import { usePresupuestoLibre } from "../contexts/PresupuestoLibreContext.jsx";
 import { requestAuthGate } from "./auth/AuthGateModal.jsx";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
@@ -2402,7 +2403,6 @@ export default function PanelinCalculadoraV3() {
   const [pared, _setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [techoAnchoModo, _setTechoAnchoModo] = useState("paneles"); // "metros" | "paneles"
   const [camara, _setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
-  const [flete, _setFlete] = useState(() => getFleteDefault());
   /** Costo interno del flete (USD s/IVA); opcional — afecta margen y hoja Costeo. */
   const [fleteCosto, setFleteCosto] = useState("");
   /** PDF+ (hoja cliente enriquecida): incluir página extra “Planta + resumen” (diseño hero marca). */
@@ -2477,11 +2477,17 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const [libreAcc, setLibreAcc] = useState({
     paneles: true, perfileria: false, tornilleria: false, selladores: false, servicios: false, extraordinarios: false,
   });
-  const [librePanelLines, setLibrePanelLines] = useState([{ familia: "", espesor: "", color: "Blanco", m2: 0 }]);
-  const [librePerfilQty, setLibrePerfilQty] = useState({});
-  const [libreFijQty, setLibreFijQty] = useState({});
-  const [libreSellQty, setLibreSellQty] = useState({});
-  const [libreExtra, setLibreExtra] = useState({ texto: "", precio: "", unidades: "", cantidad: "" });
+  // Estado libre compartido con el panel flotante (fuente única de verdad):
+  // los identificadores coinciden con los que usaba el useState local, por lo
+  // que acordeón/serialización/restores siguen compilando sin cambios.
+  const {
+    librePanelLines, setLibrePanelLines,
+    librePerfilQty, setLibrePerfilQty,
+    libreFijQty, setLibreFijQty,
+    libreSellQty, setLibreSellQty,
+    libreExtra, setLibreExtra,
+    flete, setFlete: _setFlete,
+  } = usePresupuestoLibre();
   const [librePerfilFilter, setLibrePerfilFilter] = useState("");
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1280));
 
@@ -3116,7 +3122,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setLibrePanelLines((lines) => lines.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
   };
   const addLibrePanelLine = () => setLibrePanelLines((l) => [...l, { familia: "", espesor: "", color: "Blanco", m2: 0 }]);
-  const removeLibrePanelLine = (idx) => setLibrePanelLines((l) => (l.length <= 1 ? l : l.filter((_, i) => i !== idx)));
+  const removeLibrePanelLine = (idx) => setLibrePanelLines((l) => l.filter((_, i) => i !== idx));
 
   // ── Helpers: Ancho techo en metros ↔ paneles ──
   const normalizeTechoAnchoToPaneles = useCallback((anchoM, panelData, tipoAguas) => {
@@ -3963,7 +3969,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       return initial;
     });
     setLibreAcc({ paneles: true, perfileria: false, tornilleria: false, selladores: false, servicios: false, extraordinarios: false });
-    setLibrePanelLines([{ familia: "", espesor: "", color: "Blanco", m2: 0 }]);
+    setLibrePanelLines([]);
     setLibrePerfilQty({});
     setLibreFijQty({});
     setLibreSellQty({});

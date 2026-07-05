@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { getFleteDefault } from '../utils/calculatorConfig';
 
+// Data context: single source of truth for the Presupuesto Libre cart, shared
+// by the floating panel AND PanelinCalculadoraV3 (which destructures the same
+// identifiers — see usePresupuestoLibre() call there). UI state (isOpen /
+// activeTab) lives in a separate context so panel open/close and tab changes
+// don't re-render the calculator.
 const PresupuestoLibreContext = createContext();
+const PresupuestoLibreUiContext = createContext();
 
 const STATE_KEY = 'bmc_presupuesto_libre_state';
 const UI_KEY = 'bmc_presupuesto_libre_ui';
@@ -21,6 +28,16 @@ function newLineId() {
   return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+// Ensure every panel line carries an id — the calculator's restore/reset/add
+// paths write id-less lines, and updatePanelLine/removePanelLine match by id.
+// Returns the same reference when nothing is missing.
+function normalizeLines(lines) {
+  if (!Array.isArray(lines)) return [];
+  return lines.some((line) => !line?.id)
+    ? lines.map((line) => (line?.id ? line : { ...line, id: newLineId() }))
+    : lines;
 }
 
 // add/remove/updateQty triplet over a {key: qty} map, using functional
@@ -60,16 +77,17 @@ export function PresupuestoLibreProvider({ children }) {
   const [activeTab, setActiveTab] = useState(savedUI?.activeTab || 'paneles');
 
   // Presupuesto State (persisted to localStorage)
-  const [librePanelLines, setLibrePanelLines] = useState(saved?.librePanelLines || []);
+  const [librePanelLines, _setLibrePanelLines] = useState(() => normalizeLines(saved?.librePanelLines));
   const [librePerfilQty, setLibrePerfilQty] = useState(saved?.librePerfilQty || {});
   // libreFijQty holds fijaciones AND herramientas: the quote engine
   // (computePresupuestoLibreCatalogo) resolves its keys against both
   // FIJACIONES and HERRAMIENTAS.
   const [libreFijQty, setLibreFijQty] = useState(saved?.libreFijQty || {});
   const [libreSellQty, setLibreSellQty] = useState(saved?.libreSellQty || {});
-  const [libreServiciosQty, setLibreServiciosQty] = useState(saved?.libreServiciosQty || {});
   const [libreExtra, setLibreExtra] = useState(saved?.libreExtra || EMPTY_EXTRA);
-  const [flete, setFlete] = useState(saved?.flete || 0);
+  // `||` (not `??`): earlier panel builds persisted flete: 0; the calculator's
+  // canon default is getFleteDefault() and it re-applied it every session.
+  const [flete, setFlete] = useState(saved?.flete || getFleteDefault());
 
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -79,7 +97,6 @@ export function PresupuestoLibreProvider({ children }) {
         librePerfilQty,
         libreFijQty,
         libreSellQty,
-        libreServiciosQty,
         libreExtra,
         flete,
       };
@@ -87,7 +104,7 @@ export function PresupuestoLibreProvider({ children }) {
     } catch (e) {
       console.warn('Failed to save presupuesto libre state to localStorage', e);
     }
-  }, [librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreServiciosQty, libreExtra, flete]);
+  }, [librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, flete]);
 
   // Save UI state (activeTab only — see isOpen note above)
   useEffect(() => {
@@ -99,29 +116,41 @@ export function PresupuestoLibreProvider({ children }) {
   }, [activeTab]);
 
   const actions = useMemo(() => {
+    // Normalizing raw setter: accepts value or updater form, ensures line ids.
+    const setLibrePanelLines = (valueOrFn) => {
+      _setLibrePanelLines((prev) =>
+        normalizeLines(typeof valueOrFn === 'function' ? valueOrFn(prev) : valueOrFn)
+      );
+    };
+
     const perfil = makeQtyActions(setLibrePerfilQty);
     const fijacion = makeQtyActions(setLibreFijQty);
     const sellador = makeQtyActions(setLibreSellQty);
-    const servicio = makeQtyActions(setLibreServiciosQty);
 
     return {
+      // Raw setters (used by the calculator's accordion/restore/reset paths)
+      setLibrePanelLines,
+      setLibrePerfilQty,
+      setLibreFijQty,
+      setLibreSellQty,
+
       // Panel actions
       addPanelLine: (familia, espesor, color, m2 = 0) => {
-        setLibrePanelLines((prev) => [
+        _setLibrePanelLines((prev) => [
           ...prev,
           { familia, espesor, color, m2, id: newLineId() },
         ]);
       },
       removePanelLine: (id) => {
-        setLibrePanelLines((prev) => prev.filter((line) => line.id !== id));
+        _setLibrePanelLines((prev) => prev.filter((line) => line.id !== id));
       },
       updatePanelLine: (id, patch) => {
-        setLibrePanelLines((prev) => prev.map((line) =>
+        _setLibrePanelLines((prev) => prev.map((line) =>
           line.id === id ? { ...line, ...patch } : line
         ));
       },
 
-      // Perfil actions
+      // Perfil actions (keys are the engine's stable pt:/pp: catalog ids)
       addPerfil: perfil.add,
       removePerfil: perfil.remove,
       updatePerfilQty: perfil.updateQty,
@@ -136,54 +165,51 @@ export function PresupuestoLibreProvider({ children }) {
       removeSellador: sellador.remove,
       updateSelladorQty: sellador.updateQty,
 
-      // Servicios actions
-      addServicio: servicio.add,
-      removeServicio: servicio.remove,
-      updateServicioQty: servicio.updateQty,
-
       // Herramientas share the fijaciones map (engine contract — see note
       // on libreFijQty above)
       addHerramienta: fijacion.add,
       removeHerramienta: fijacion.remove,
       updateHerramientaQty: fijacion.updateQty,
 
-      // Utilities
+      // Utilities — flete resets to the calculator's default, not 0: flete is
+      // the global freight shared with every calculator scenario.
       clearAll: () => {
-        setLibrePanelLines([]);
+        _setLibrePanelLines([]);
         setLibrePerfilQty({});
         setLibreFijQty({});
         setLibreSellQty({});
-        setLibreServiciosQty({});
         setLibreExtra(EMPTY_EXTRA);
-        setFlete(0);
+        setFlete(getFleteDefault());
       },
     };
   }, []);
 
   const value = useMemo(() => ({
-    // UI
-    isOpen,
-    setIsOpen,
-    activeTab,
-    setActiveTab,
-
     // State
     librePanelLines,
     librePerfilQty,
     libreFijQty,
     libreSellQty,
-    libreServiciosQty,
     libreExtra,
     setLibreExtra,
     flete,
     setFlete,
 
     ...actions,
-  }), [isOpen, activeTab, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreServiciosQty, libreExtra, flete, actions]);
+  }), [librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, flete, actions]);
+
+  const uiValue = useMemo(() => ({
+    isOpen,
+    setIsOpen,
+    activeTab,
+    setActiveTab,
+  }), [isOpen, activeTab]);
 
   return (
     <PresupuestoLibreContext.Provider value={value}>
-      {children}
+      <PresupuestoLibreUiContext.Provider value={uiValue}>
+        {children}
+      </PresupuestoLibreUiContext.Provider>
     </PresupuestoLibreContext.Provider>
   );
 }
@@ -192,6 +218,14 @@ export function usePresupuestoLibre() {
   const context = useContext(PresupuestoLibreContext);
   if (!context) {
     throw new Error('usePresupuestoLibre must be used within PresupuestoLibreProvider');
+  }
+  return context;
+}
+
+export function usePresupuestoLibreUi() {
+  const context = useContext(PresupuestoLibreUiContext);
+  if (!context) {
+    throw new Error('usePresupuestoLibreUi must be used within PresupuestoLibreProvider');
   }
   return context;
 }
