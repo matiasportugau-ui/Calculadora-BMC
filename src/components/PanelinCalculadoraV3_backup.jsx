@@ -107,6 +107,7 @@ import PlanInlineDropZone from "./PlanInlineDropZone.jsx";
 import InteractionLogPanel from "./InteractionLogPanel.jsx";
 import ConfigPanel from "./ConfigPanel.jsx";
 import FloorPlanEditor from "./FloorPlanEditor.jsx";
+import FloorPlanPolygonEditor from "./FloorPlanPolygonEditor.jsx";
 import RoofPreview, { RoofPreviewMetricsSidebar } from "./RoofPreview.jsx";
 
 const RoofPanelRealisticScene = lazy(() => import("./RoofPanelRealisticScene.jsx"));
@@ -2469,6 +2470,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const [previewTitle, setPreviewTitle] = useState("Vista previa de cotización");
   const [excludedItems, _setExcludedItems] = useState({}); // { lineId: label }
   const [usePlanoTechoFachada, setUsePlanoTechoFachada] = useState(false); // Diseño por plano (techo+fachada)
+  const [planoModoTipo, setPlanoModoTipo] = useState("rectangulo"); // "rectangulo" | "poligono"
+  const [planoPoligono, setPlanoPoligono] = useState({ vertices: [], closed: false, alto: 3.5 }); // dibujo libre (no serializado; ver PLAN-FLOOR-PLAN-TECHO-FACHADA.md)
   const [categoriasActivas, _setCategoriasActivas] = useState(() => {
     const initial = {};
     Object.keys(CATEGORIAS_BOM).forEach(k => { initial[k] = CATEGORIAS_BOM[k].default; });
@@ -2757,7 +2760,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   // Reset modo plano al salir de techo_fachada
   useEffect(() => {
-    if (scenario !== "techo_fachada") setUsePlanoTechoFachada(false);
+    if (scenario !== "techo_fachada") {
+      setUsePlanoTechoFachada(false);
+      setPlanoModoTipo("rectangulo");
+      setPlanoPoligono({ vertices: [], closed: false, alto: 3.5 });
+    }
   }, [scenario]);
 
   useEffect(() => {
@@ -6387,21 +6394,60 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 </button>
               </div>
               {usePlanoTechoFachada && (
-                <FloorPlanEditor
-                  value={{
-                    largo: techo.zonas?.[0]?.largo ?? 6,
-                    ancho: techo.zonas?.[0]?.ancho ?? 5,
-                    alto: pared.alto ?? 3.5,
-                  }}
-                  onChange={(plano) => {
-                    const l = plano.largo ?? 6;
-                    const a = plano.ancho ?? 5;
-                    const h = plano.alto ?? 3.5;
-                    setTecho((t) => ({ ...t, zonas: [{ largo: l, ancho: a }] }));
-                    setPared((p) => ({ ...p, perimetro: 2 * (l + a), alto: h }));
-                  }}
-                  labelS={labelS}
-                />
+                <>
+                  <div style={{ display: "flex", gap: 4, background: C.border, borderRadius: 12, padding: 4, marginBottom: 12, width: "fit-content" }}>
+                    {[{ id: "rectangulo", label: "Rectángulo" }, { id: "poligono", label: "Polígono libre" }].map((opt) => {
+                      const isActive = planoModoTipo === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setPlanoModoTipo(opt.id)}
+                          style={{
+                            padding: "8px 14px", borderRadius: 10, border: "none", cursor: "pointer",
+                            background: isActive ? C.surface : "transparent",
+                            boxShadow: isActive ? "0 2px 6px rgba(0,0,0,0.1)" : "none",
+                            fontSize: 13, fontWeight: isActive ? 600 : 500, color: isActive ? C.tp : C.ts,
+                            transition: TR, fontFamily: FONT,
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {planoModoTipo === "rectangulo" && (
+                    <FloorPlanEditor
+                      value={{
+                        largo: techo.zonas?.[0]?.largo ?? 6,
+                        ancho: techo.zonas?.[0]?.ancho ?? 5,
+                        alto: pared.alto ?? 3.5,
+                      }}
+                      onChange={(plano) => {
+                        const l = plano.largo ?? 6;
+                        const a = plano.ancho ?? 5;
+                        const h = plano.alto ?? 3.5;
+                        setTecho((t) => ({ ...t, zonas: [{ largo: l, ancho: a }] }));
+                        setPared((p) => ({ ...p, perimetro: 2 * (l + a), alto: h }));
+                      }}
+                      labelS={labelS}
+                    />
+                  )}
+                  {planoModoTipo === "poligono" && (
+                    <FloorPlanPolygonEditor
+                      value={planoPoligono}
+                      gridSize={techoPanelData?.au ?? 1.12}
+                      onChange={(plano) => {
+                        setPlanoPoligono(plano);
+                        if (plano.closed && plano.valid) {
+                          setTecho((t) => ({ ...t, zonas: plano.zonas }));
+                          setPared((p) => ({ ...p, perimetro: plano.perimetro, alto: plano.alto }));
+                        }
+                      }}
+                      labelS={labelS}
+                    />
+                  )}
+                </>
               )}
             </div>
           )}

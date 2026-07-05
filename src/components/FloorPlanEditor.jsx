@@ -6,7 +6,7 @@
 import { Minus, Plus } from "lucide-react";
 import { C, FONT, SHC, SHI, TR, TN } from "../data/constants.js";
 
-function StepperInput({ label, value, onChange, min = 0, max = 9999, step = 1, unit = "", decimals = 2 }) {
+export function StepperInput({ label, value, onChange, min = 0, max = 9999, step = 1, unit = "", decimals = 2 }) {
   const bump = (dir) => {
     const next = parseFloat((value + dir * step).toFixed(decimals));
     if (next >= min && next <= max) onChange(next);
