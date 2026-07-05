@@ -109,6 +109,11 @@ jobs:
 
       - name: Smoke prod
         run: npm run smoke:prod
+        env:
+          # suggest-response now requires auth; the smoke presents this as x-api-key.
+          # If the secret is unset, suggest-response 401s — smoke self-skips it only
+          # when SMOKE_SKIP_SUGGEST=1, so keep the secret populated.
+          API_AUTH_TOKEN: ${{ secrets.API_AUTH_TOKEN }}
 
       # continue-on-error deja el fallo como ❌ no-bloqueante que nadie mira;
       # este step lo convierte en issue de tracking (y lo cierra al recuperar).

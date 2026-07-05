@@ -2,7 +2,7 @@
 
 **Propósito:** Lista de verificación para dejar el dashboard operativo para vendedores y administradivos de BMC.
 
-**Última actualización:** 2026-05-13 (auditoría de filas ☐ contra producción — Cloud Run `panelin-calc-00371-j97` + Vercel `calculadora-bmc.vercel.app` live; `npm run smoke:prod` 8/8 verde incl. `suggest-response`)
+**Última actualización:** 2026-07-04 (**6.0 CERRADO**: `npm run smoke:prod` = 9/9 verde incluyendo `POST /api/crm/suggest-response` 200 — `ASSISTANTS_ACTIVE=canales;ml` renderizada por el deploy workflow tras PRs #560/#561. `npm run verify-tabs` también verde con credencial real de Doppler + schema `CRM_Operativo`: los 5 workbooks accesibles.)
 
 ---
 
@@ -13,7 +13,7 @@
 | 1.1 | `.env` con `BMC_SHEET_ID` | ☑ | Verificado run_dashboard_setup.sh 2026-03-16 |
 | 1.2 | `.env` con `GOOGLE_APPLICATION_CREDENTIALS` | ☑ | Verificado run_dashboard_setup.sh |
 | 1.3 | `service-account.json` en `docs/bmc-dashboard-modernization/` | ☑ | Service account JSON valid |
-| 1.4 | Workbook compartido con email de la service account (Editor) | ☐ pendiente acción Matías | Manual en Google Sheets · email SA: `bmc-dashboard-sheets@chatbot-bmc-live.iam.gserviceaccount.com` · pasos: [`GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md` §1.4](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-14--compartir-workbook-con-la-service-account) |
+| 1.4 | Workbook compartido con email de la service account (Editor) | ☑ verificado 2026-07-04 | Probado indirectamente con `npm run verify-tabs` verde: la SA `bmc-dashboard-sheets@chatbot-bmc-live.iam.gserviceaccount.com` accede a los 5 workbooks (principal + pagos + ventas + stock + calendario) |
 
 ---
 
@@ -64,7 +64,7 @@
 
 | # | Prueba | Estado |
 |---|--------|--------|
-| 6.0 | **API prod** (`panelin-calc`): `npm run smoke:prod` — `/health`, `/capabilities`, `public_base_url`, `GET /api/actualizar-precios-calculadora` (CSV MATRIZ), `/auth/ml/status`, `GET /webhooks/whatsapp`, `GET /api/wa/health`, `POST /api/crm/suggest-response` | ☑ full **2026-05-13** — 8/8 verdes incl. `suggest-response` con `claude` (key rotator OPENAI/Anthropic/Gemini/Grok aplicado 2026-05-05; ver PROJECT-STATE 2026-05-05). |
+| 6.0 | **API prod** (`panelin-calc`): `npm run smoke:prod` — `/health`, `/capabilities`, `public_base_url`, `GET /api/actualizar-precios-calculadora` (CSV MATRIZ), `/auth/ml/status`, `GET /webhooks/whatsapp`, `GET /api/wa/health`, `POST /api/crm/suggest-response` | ☑ **2026-07-04 — 9/9 VERDE** (tres corridas consecutivas, la última contra la revisión `panelin-calc-00693` renderizada por el propio workflow de deploy, sin puentes manuales). `POST /api/crm/suggest-response` responde **200 (IA ok, gemini)**: la repo Variable quedó **`ASSISTANTS_ACTIVE=canales;ml`** (separador `;` porque el action deploy-cloudrun parte `env_vars` por comas — fix del parser en `server/config.js`, PR #561) y el wiring del deploy (PR #560) la propaga a Cloud Run. |
 | 6.1 | KPIs cargan con datos reales | ☐ pendiente UAT Matías — [`runbook §6.1`](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-61--kpis-cargan-con-datos-reales) |
 | 6.2 | Trend muestra vencimientos | ☐ pendiente UAT — [`runbook §6.2`](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-62--trend-muestra-vencimientos) |
 | 6.3 | Breakdown con filtros Esta semana/Vencidos | ☐ pendiente UAT — [`runbook §6.3`](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-63--breakdown-con-filtros) |

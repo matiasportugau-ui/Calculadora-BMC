@@ -172,6 +172,7 @@ jobs:
             INTERNAL_SUPERADMIN_EMAILS=${{ secrets.INTERNAL_SUPERADMIN_EMAILS }}
             SHEETS_CLIENT_QUOTES_ENABLED=${{ secrets.SHEETS_CLIENT_QUOTES_ENABLED }}
             SHEETS_CLIENT_QUOTES_TAB=${{ secrets.SHEETS_CLIENT_QUOTES_TAB }}
+            ASSISTANTS_ACTIVE=${{ vars.ASSISTANTS_ACTIVE }}
             OMNI_WA_SHADOW_WRITE=${{ vars.OMNI_WA_SHADOW_WRITE }}
             OMNI_ML_SHADOW_WRITE=${{ vars.OMNI_ML_SHADOW_WRITE }}
             OMNI_EMAIL_SHADOW_WRITE=${{ vars.OMNI_EMAIL_SHADOW_WRITE }}
@@ -191,7 +192,7 @@ jobs:
             --memory=512Mi
             --cpu=1
             --timeout=60
-            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest,MFA_KEK_HEX=MFA_KEK_HEX:latest,DATABASE_URL=DATABASE_URL:latest,GOOGLE_TASKS_CLIENT_ID=GOOGLE_TASKS_CLIENT_ID:latest,GOOGLE_TASKS_CLIENT_SECRET=GOOGLE_TASKS_CLIENT_SECRET:latest,SUPABASE_PGP_ENCRYPT_KEY=SUPABASE_PGP_ENCRYPT_KEY:latest,SYNC_HMAC_SECRET=SYNC_HMAC_SECRET:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GROK_API_KEY=GROK_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,ML_CLIENT_SECRET=ML_CLIENT_SECRET:latest,TOKEN_ENCRYPTION_KEY=TOKEN_ENCRYPTION_KEY:latest,API_AUTH_TOKEN=API_AUTH_TOKEN:latest,GMAIL_INGEST_REFRESH_TOKEN=GMAIL_INGEST_REFRESH_TOKEN:latest,GMAIL_OAUTH_CLIENT_ID=GMAIL_OAUTH_CLIENT_ID:latest,GMAIL_OAUTH_CLIENT_SECRET=GMAIL_OAUTH_CLIENT_SECRET:latest
+            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest,MFA_KEK_HEX=MFA_KEK_HEX:latest,DATABASE_URL=DATABASE_URL:latest,GOOGLE_TASKS_CLIENT_ID=GOOGLE_TASKS_CLIENT_ID:latest,GOOGLE_TASKS_CLIENT_SECRET=GOOGLE_TASKS_CLIENT_SECRET:latest,SUPABASE_PGP_ENCRYPT_KEY=SUPABASE_PGP_ENCRYPT_KEY:latest,SYNC_HMAC_SECRET=SYNC_HMAC_SECRET:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GROK_API_KEY=GROK_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,ML_CLIENT_SECRET=ML_CLIENT_SECRET:latest,TOKEN_ENCRYPTION_KEY=TOKEN_ENCRYPTION_KEY:latest,API_AUTH_TOKEN=API_AUTH_TOKEN:latest,GMAIL_INGEST_REFRESH_TOKEN=GMAIL_INGEST_REFRESH_TOKEN:latest,GMAIL_OAUTH_CLIENT_ID=GMAIL_OAUTH_CLIENT_ID:latest,GMAIL_OAUTH_CLIENT_SECRET=GMAIL_OAUTH_CLIENT_SECRET:latest,WHATSAPP_APP_SECRET=WHATSAPP_APP_SECRET:latest,WHATSAPP_VERIFY_TOKEN=WHATSAPP_VERIFY_TOKEN:latest,WHATSAPP_ACCESS_TOKEN=WHATSAPP_ACCESS_TOKEN:latest
 
       - name: Show service URL
         if: steps.paths.outputs.skip != 'true'
@@ -222,5 +223,15 @@ jobs:
         if: steps.paths.outputs.skip != 'true'
         env:
           BMC_API_BASE: ${{ steps.service_url.outputs.url }}
-          SMOKE_SKIP_SUGGEST: '1'
+          # suggest-response requires auth since #567; the smoke presents this
+          # as x-api-key (same as the ci.yml smoke job). Without it the hard
+          # gate below fails the deploy with a 401.
+          API_AUTH_TOKEN: ${{ secrets.API_AUTH_TOKEN }}
+          # suggest-response is now a hard deploy gate (this env block used to set
+          # SMOKE_SKIP_SUGGEST: '1'). Rationale (2026-07-04): the endpoint is a
+          # go-live requirement, its provider chain has 4-deep fallback (low flake
+          # risk), and the skip hid a real regression — the env_vars comma-split
+          # truncating ASSISTANTS_ACTIVE would have failed the deploy smoke
+          # immediately. Escape hatch: re-add the line `SMOKE_SKIP_SUGGEST: '1'`
+          # to this env block, or deploy manually.
         run: npm run smoke:prod

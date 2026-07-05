@@ -21,6 +21,81 @@ import {
   getApiKey,
 } from "./aiProviderConfig.js";
 
+// ─── Provider timeout + cooldown (reliability) ────────────────────────────────
+// Before this, a hung provider call blocked the whole request indefinitely (the
+// Anthropic SDK default is ~10 min), and a dead-but-slow provider was re-tried
+// first on EVERY request, adding its full latency each time. Two guards:
+//   1) Per-call timeout — rejects (and aborts) so the loop advances to the next
+//      provider instead of hanging the SSE/chat.
+//   2) Cooldown — after N failures in a window, a provider is DEPRIORITIZED (tried
+//      last), never fully removed. Reordering (not skipping) means we can't
+//      self-inflict a total blackout: if every provider is cooling down, we still
+//      try them, just healthy-first.
+const PROVIDER_TIMEOUT_MS = Number(process.env.AGENT_PROVIDER_TIMEOUT_MS) || 30_000;
+const COOLDOWN_MAX_FAILURES = Number(process.env.AGENT_PROVIDER_COOLDOWN_FAILURES) || 3;
+const COOLDOWN_WINDOW_MS = 60_000;
+const COOLDOWN_MS = Number(process.env.AGENT_PROVIDER_COOLDOWN_MS) || 60_000;
+
+/** provider -> { times: number[] (recent failure ts), until: number (cooldown end) } */
+const _providerHealth = new Map();
+
+function isCoolingDown(provider, now) {
+  const rec = _providerHealth.get(provider);
+  return !!(rec && rec.until && now < rec.until);
+}
+
+export function recordProviderFailure(provider, now) {
+  const rec = _providerHealth.get(provider) || { times: [], until: 0 };
+  rec.times = rec.times.filter((t) => now - t < COOLDOWN_WINDOW_MS);
+  rec.times.push(now);
+  if (rec.times.length >= COOLDOWN_MAX_FAILURES) {
+    rec.until = now + COOLDOWN_MS;
+    rec.times = [];
+    console.log(JSON.stringify({ event: "provider_cooldown", provider, until_ms: rec.until }));
+  }
+  _providerHealth.set(provider, rec);
+}
+
+export function recordProviderSuccess(provider) {
+  if (_providerHealth.has(provider)) _providerHealth.set(provider, { times: [], until: 0 });
+}
+
+/** Read-only snapshot for the health panel (assistantHealth). */
+export function getProviderCooldownState() {
+  const now = Date.now();
+  const out = {};
+  for (const [p, rec] of _providerHealth.entries()) {
+    out[p] = { coolingDown: !!(rec.until && now < rec.until), until: rec.until || 0, recentFailures: rec.times.length };
+  }
+  return out;
+}
+
+/** Test-only reset of cooldown state. */
+export function _resetProviderHealth() {
+  _providerHealth.clear();
+}
+
+/**
+ * Run an async provider call with a hard timeout. Aborts via AbortSignal (for
+ * SDKs that honor it) AND rejects via race (guarantees the loop advances even if
+ * the SDK ignores the signal). `fn` receives the signal to forward to the SDK.
+ */
+export async function callWithTimeout(fn, ms, label) {
+  const controller = new AbortController();
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(Object.assign(new Error(`${label} timed out after ${ms}ms`), { code: "PROVIDER_TIMEOUT" }));
+    }, ms);
+  });
+  try {
+    return await Promise.race([Promise.resolve(fn(controller.signal)), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ─── Channel rules ────────────────────────────────────────────────────────────
 
 const CHANNEL_RULES = {
@@ -144,6 +219,17 @@ export async function callAgentOnce(messages, opts = {}) {
   } else {
     chain = getCentralProviderChain();
   }
+
+  // Deprioritize (don't remove) providers in cooldown: try healthy ones first,
+  // cooled-down ones last. Skip reordering when the caller pinned a single
+  // provider (legacy opts.provider) — respect their explicit choice.
+  if (!provider && chain.length > 1) {
+    const now = Date.now();
+    const healthy = chain.filter((p) => !isCoolingDown(p, now));
+    const cooling = chain.filter((p) => isCoolingDown(p, now));
+    if (cooling.length) chain = [...healthy, ...cooling];
+  }
+
   const errors = [];
 
   for (const p of chain) {
@@ -171,7 +257,10 @@ export async function callAgentOnce(messages, opts = {}) {
           messages,
         };
         if (eff.temperature != null) params.temperature = eff.temperature;
-        const msg = await client.messages.create(params);
+        const msg = await callWithTimeout(
+          (signal) => client.messages.create(params, { signal }),
+          PROVIDER_TIMEOUT_MS, "claude",
+        );
         text = msg.content?.[0]?.text || "";
         usage = msg.usage || {};
 
@@ -184,7 +273,10 @@ export async function callAgentOnce(messages, opts = {}) {
           messages: [{ role: "system", content: systemPrompt }, ...messages],
         };
         if (eff.temperature != null) params.temperature = eff.temperature;
-        const r = await client.chat.completions.create(params);
+        const r = await callWithTimeout(
+          (signal) => client.chat.completions.create(params, { signal }),
+          PROVIDER_TIMEOUT_MS, "openai",
+        );
         text = r.choices[0]?.message?.content || "";
         usage = r.usage || {};
 
@@ -197,7 +289,10 @@ export async function callAgentOnce(messages, opts = {}) {
           messages: [{ role: "system", content: systemPrompt }, ...messages],
         };
         if (eff.temperature != null) params.temperature = eff.temperature;
-        const r = await client.chat.completions.create(params);
+        const r = await callWithTimeout(
+          (signal) => client.chat.completions.create(params, { signal }),
+          PROVIDER_TIMEOUT_MS, "grok",
+        );
         text = r.choices[0]?.message?.content || "";
         usage = r.usage || {};
 
@@ -216,13 +311,17 @@ export async function callAgentOnce(messages, opts = {}) {
         if (eff.temperature != null) generationConfig.temperature = eff.temperature;
         if (maxTokens) generationConfig.maxOutputTokens = maxTokens;
         const model = genai.getGenerativeModel({ model: modelUsed, generationConfig });
-        const result = await model.generateContent(`${systemPrompt}\n\n${lastUser}`);
+        const result = await callWithTimeout(
+          (signal) => model.generateContent(`${systemPrompt}\n\n${lastUser}`, { signal }),
+          PROVIDER_TIMEOUT_MS, "gemini",
+        );
         text = result.response.text() || "";
         // Gemini usage is in result.response.usageMetadata in newer SDKs
         usage = result.response?.usageMetadata || {};
       }
 
       if (text.trim()) {
+        recordProviderSuccess(p); // clear any pending failure streak on a good call
         const cost = estimateCostUSD(p, modelUsed, usage);
 
         // Structured cost observability (consistent with Phase 0 changes)
@@ -248,6 +347,7 @@ export async function callAgentOnce(messages, opts = {}) {
       errors.push(`${p}: empty`);
 
     } catch (err) {
+      recordProviderFailure(p, Date.now()); // feeds cooldown deprioritization
       errors.push(`${p}: ${err.message?.slice(0, 80)}`);
     }
   }

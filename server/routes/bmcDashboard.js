@@ -220,6 +220,19 @@ function getEndOfWeek(d) {
 function parseDate(val) {
   if (!val) return null;
   if (val instanceof Date) return val;
+  // Sheets in this workspace write D/M/YYYY (es-UY). JS `new Date("14/7/2025")`
+  // either fails or silently swaps to M/D — parse the numeric form explicitly.
+  const m = String(val).trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (m) {
+    const day = Number(m[1]);
+    const month = Number(m[2]);
+    const year = Number(m[3]);
+    const d = new Date(year, month - 1, day);
+    // new Date() normalizes overflow (31/2 → 3/3): reject unless components round-trip.
+    return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
+      ? d
+      : null;
+  }
   const d = new Date(val);
   return isNaN(d.getTime()) ? null : d;
 }
@@ -406,10 +419,35 @@ function ventasRowIsLogisticaRow(r) {
 
 function parseNum(val) {
   if (val == null || val === "") return 0;
-  const s = String(val).trim();
-  const eu = s.replace(/\./g, "").replace(",", ".");
-  const n = parseFloat(eu);
-  return isNaN(n) ? parseFloat(s.replace(/[^\d.-]/g, "")) || 0 : n;
+  const s = String(val).trim().replace(/[^\d.,-]/g, "");
+  if (!s || s === "-" || s === "." || s === ",") return 0;
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+  let normalized;
+  if (lastDot > -1 && lastComma > -1) {
+    // Both present: the rightmost one is the decimal separator.
+    normalized =
+      lastDot > lastComma
+        ? s.replace(/,/g, "") // US: 3,654.00
+        : s.replace(/\./g, "").replace(",", "."); // EU: 1.860,70
+  } else if (lastComma > -1) {
+    // Comma only: thousands if every group after it has 3 digits (1,000 / 1,000,000).
+    const groups = s.split(",");
+    normalized = groups.slice(1).every((g) => g.length === 3) && groups.length > 1 && groups[0].replace("-", "").length <= 3
+      ? s.replace(/,/g, "")
+      : s.replace(",", ".");
+  } else if (lastDot > -1) {
+    // Dot only: thousands if every group after it has 3 digits AND there is more than one dot
+    // or the integer part looks grouped (1.000). A single dot with 1-2 decimals stays decimal.
+    const groups = s.split(".");
+    const looksGrouped =
+      groups.slice(1).every((g) => g.length === 3) && groups[0].replace("-", "").length <= 3 && groups.length > 1;
+    normalized = looksGrouped && groups[groups.length - 1].length === 3 ? s.replace(/\./g, "") : s;
+  } else {
+    normalized = s;
+  }
+  const n = parseFloat(normalized);
+  return isNaN(n) ? 0 : n;
 }
 
 function mapPagos2026ToCanonical(row) {
@@ -1511,7 +1549,7 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
 }
 
 // Export the core writers so Productos Maestro (and future surfaces) can reuse them
-export { pushMatrizPricingOverrides, handleUpdateStock };
+export { pushMatrizPricingOverrides, handleUpdateStock, parseNum, parseDate };
 
 // ─── Router ───────────────────────────────────────────────────────────────
 

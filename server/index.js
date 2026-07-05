@@ -53,6 +53,7 @@ import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinRouter from "./routes/panelin.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
+import rateLimit from "express-rate-limit";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -89,7 +90,7 @@ import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
-import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
+import { startOmniAiWorker, triggerWaCrmSyncNow } from "./lib/omni/orchestrator/aiWorker.js";
 import { startOmniFrtBreachWorker } from "./lib/omni/orchestrator/frtBreachWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
@@ -911,10 +912,25 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       // Omni is the single source of truth: real (awaited) ingest → message.ingested
       // → classify/suggest + the per-conversation-coalesced wa_crm_sync job.
       try {
-        await normalizeAndPersist(
+        const persisted = await normalizeAndPersist(
           waWebhookToOmniEvent({ msg, chatId, contactName }),
           { databaseUrl: config.databaseUrl, logger },
         );
+        if (text.includes("🚀")) {
+          const manual = await triggerWaCrmSyncNow(
+            getOmniPool(config.databaseUrl),
+            persisted,
+          );
+          logger.info(
+            {
+              chat_id: chatId,
+              conversation_id: persisted.conversation_id,
+              job_id: manual.jobId,
+              mode: manual.mode,
+            },
+            "[WA] 🚀 manual trigger (canonical)",
+          );
+        }
       } catch (e) {
         // 200 was already sent to Meta (line above); a failure here only loses this
         // message's enrichment, never the webhook ack.
@@ -952,11 +968,33 @@ app.use("/api", createAssistantsStatusRouter());
 // and mounted ONLY on the AI-GENERATION paths — inbound ingest/webhooks stay open
 // so a disabled assistant keeps receiving (no lost messages), just stops answering.
 // `canales` (omniRouter, below) is intentionally NOT gated: it is the one kept on.
+//
+// Per-IP limiter for the authenticated AI-generation route below: bounds paid-LLM
+// spend even from a compromised/over-eager operator session (auth already rejects
+// anonymous). Keyed by client IP (same X-Forwarded-For logic as agentChat).
+const aiGenLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const xf = req.headers["x-forwarded-for"];
+    if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
+    return req.ip || req.socket?.remoteAddress || "unknown";
+  },
+  message: { ok: false, error: "rate_limited", detail: "Demasiadas consultas de IA. Esperá un momento." },
+});
 app.use("/api/agent/chat", requireAssistantEnabled("panelin"));
 app.use("/api/email-agent/chat", requireAssistantEnabled("email"));
 app.use("/api/wa/suggestions/run", requireAssistantEnabled("wa"));
 app.use("/api/wa/quotes/run", requireAssistantEnabled("wa"));
-app.use("/api/crm/suggest-response", requireAssistantEnabled("ml"));
+// suggest-response was the one AI-generation route reachable ANONYMOUSLY (verified
+// live: bare curl → 200 + paid LLM completion). The others already carry auth
+// (email→requireCrmCockpitWrite, wa→requireWaAccess, wolfboard→requireWolfboardWrite;
+// agent/chat is public-by-design behind publicLimiter). Close it: rate-limit →
+// authenticate (any operator session OR static service token; rejects anonymous) →
+// then the assistant master-switch gate.
+app.use("/api/crm/suggest-response", aiGenLimiter, requireServiceOrUser({ authOnly: true }), requireAssistantEnabled("ml"));
 app.use("/api/wolfboard/quote-batch", requireAssistantEnabled("wolfboard"));
 // ─────────────────────────────────────────────────────────────────────────────
 app.use("/api", agentChatRouter);

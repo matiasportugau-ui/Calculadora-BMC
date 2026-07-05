@@ -56,9 +56,15 @@ function redactForLog(s) {
 
 /** Short hint from suggest-response error JSON for smoke output */
 function suggestFailureNote(body) {
+  const reason = body && typeof body.reason === "string" ? body.reason : "";
+  const assistant = body && typeof body.assistant === "string" ? body.assistant : "";
+  const hint = body && typeof body.hint === "string" ? redactForLog(body.hint) : "";
   const err = body && typeof body.error === "string" ? redactForLog(body.error) : "";
   const code = body && typeof body.code === "string" ? body.code : "";
   const details = Array.isArray(body?.details) ? body.details.filter(Boolean).slice(0, 3) : [];
+  if (reason === "assistant_disabled") {
+    return `esperado 200 + { ok: true } — assistant "${assistant || "?"}" deshabilitado por ASSISTANTS_ACTIVE${hint ? ` — ${hint}` : ""}`;
+  }
   const parts = [];
   if (code) parts.push(`code=${code}`);
   if (err) parts.push(err);
@@ -85,6 +91,13 @@ async function fetchJson(method, path, base, bodyObj) {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
     };
+    // suggest-response now requires auth (any operator session OR static token).
+    // The smoke is a service caller, so present API_AUTH_TOKEN when available;
+    // harmless on the open endpoints (they ignore it). Without it, suggest-response
+    // returns 401 — set SMOKE_SKIP_SUGGEST=1 in that case.
+    if (process.env.API_AUTH_TOKEN) {
+      opts.headers["x-api-key"] = process.env.API_AUTH_TOKEN;
+    }
     if (bodyObj != null) {
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(bodyObj);
