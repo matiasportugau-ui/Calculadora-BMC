@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-04
+**Última actualización:** 2026-07-05
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-05 (test — Market Intel protege arranque sin Playwright eager):** Cobertura de regresión en `tests/market-intel/keywordMonitor.test.js` para el fix #589: el módulo `keywordSerpPlaywright.js` debe poder importarse y usar helpers puros sin resolver/importar `playwright`; Chromium queda lazy hasta `KeywordSerpSession.init()`. La prueba corre en un proceso Node aislado con loader que falla si `playwright` se importa durante module load. Objetivo: evitar que un import top-level vuelva a romper el boot de Cloud Run cuando Chromium no está disponible.
 
 **2026-07-04 (feat — Market Intel live keyword monitor, Playwright SERP + UI en Hub):** Nuevo monitor de keywords orgánicas para `bmcuruguay.com.uy` en **Hub → Market Intelligence → Inteligencia** (primer bloque de `IntelPanel`). Backend: `keywordMonitor.js` (25 seeds P1/P2/P3, Autocomplete volume proxy, SERP Playwright Google→Bing con reintentos ×3, preserva snapshot ante rate-limit), `keywordSerpPlaywright.js`, estado JSON + migración opcional `009_create_keyword_monitor.sql`. API: `GET/POST /api/marketing/keywords`, `POST /api/marketing/keywords/refresh` (202 + poll). Scheduler P1 04:00 UTC, full domingos 05:00 UTC. UI `KeywordMonitor.jsx`. Tests `keywordMonitor.test.js`. Setup: `npm run playwright:install`. Verificado: 13/13 P1 con posición SERP. PR #585.
 

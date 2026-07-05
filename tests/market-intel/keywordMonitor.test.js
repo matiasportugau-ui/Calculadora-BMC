@@ -3,6 +3,11 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   parseDdgSerpDomains,
   findDomainPosition,
@@ -51,6 +56,43 @@ describe('keywordMonitor helpers', () => {
       'https://bmcuruguay.com.uy/again',
     ]);
     assert.deepEqual(domains, ['bmcuruguay.com.uy', 'kingspan.com.uy', 'example.com']);
+  });
+
+  it('imports SERP helper module without loading Playwright', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bmc-no-playwright-import-'));
+    try {
+      const loaderPath = join(dir, 'no-playwright-loader.mjs');
+      writeFileSync(
+        loaderPath,
+        [
+          'export async function resolve(specifier, context, nextResolve) {',
+          "  if (specifier === 'playwright') {",
+          "    throw new Error('playwright was imported during module load');",
+          '  }',
+          '  return nextResolve(specifier, context);',
+          '}',
+          '',
+        ].join('\n')
+      );
+
+      const moduleUrl = pathToFileURL(join(process.cwd(), 'server/lib/marketIntel/keywordSerpPlaywright.js')).href;
+      const script = [
+        `const mod = await import(${JSON.stringify(moduleUrl)});`,
+        "const domains = mod.extractDomainsFromUrls(['https://www.bmcuruguay.com.uy/a']);",
+        "if (domains[0] !== 'bmcuruguay.com.uy') throw new Error('helper did not run');",
+        'new mod.KeywordSerpSession();',
+      ].join('\n');
+
+      const result = spawnSync(process.execPath, ['--experimental-loader', loaderPath, '--input-type=module', '--eval', script], {
+        cwd: process.cwd(),
+        env: { ...process.env, LOG_LEVEL: 'silent' },
+        encoding: 'utf8',
+      });
+
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('difficultyFromSerp counts competitor density', () => {
