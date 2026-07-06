@@ -9,8 +9,39 @@ import {
   volumeProxyFromCount,
   difficultyFromSerp,
   formatKeywordRow,
+  refreshKeyword,
 } from '../../server/lib/marketIntel/keywordMonitor.js';
 import { extractDomainsFromUrls, decodeBingRedirectUrl } from '../../server/lib/marketIntel/keywordSerpPlaywright.js';
+
+function buildRefreshCtx(fetchDomains) {
+  const domainIndex = new Map([
+    ['kingspan.com.uy', 'Kingspan Uruguay'],
+    ['example.com', 'Example Competitor'],
+  ]);
+  return {
+    domainIndex,
+    competitorDomains: new Set(domainIndex.keys()),
+    bmcDomain: 'bmcuruguay.com.uy',
+    serpSession: { fetchDomains },
+  };
+}
+
+async function withAutocompleteCount(count, run) {
+  const originalFetch = globalThis.fetch;
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
+  globalThis.fetch = async () => ({
+    ok: true,
+    text: async () => JSON.stringify(['query', Array.from({ length: count }, (_, i) => `suggestion-${i}`)]),
+  });
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalDatabaseUrl == null) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = originalDatabaseUrl;
+  }
+}
 
 describe('keywordMonitor helpers', () => {
   it('parseDdgSerpDomains extracts unique hosts', () => {
@@ -93,5 +124,96 @@ describe('keywordMonitor helpers', () => {
     assert.equal(row.serp.stale, true);
     assert.equal(row.serp.error, null);
     assert.equal(row.serp.position, 1);
+  });
+
+  it('refreshKeyword preserves prior SERP snapshot when Playwright/session refresh fails', async () => {
+    const stale = await withAutocompleteCount(6, () =>
+      refreshKeyword(
+        {
+          id: 'kw-stale',
+          keyword: 'isopanel precio uruguay',
+          active: true,
+          autocomplete_count: 2,
+          bmc_serp_position: 2,
+          bmc_serp_prev_position: 4,
+          serp_domains: ['kingspan.com.uy', 'bmcuruguay.com.uy'],
+          serp_engine: 'google',
+          captured_at: '2026-07-04T10:00:00.000Z',
+          error: null,
+        },
+        buildRefreshCtx(async () => {
+          throw new Error('google captcha');
+        })
+      )
+    );
+
+    assert.equal(stale.autocomplete_count, 6);
+    assert.equal(stale.error, 'serp stale: google captcha');
+    assert.deepEqual(stale.serp_domains, ['kingspan.com.uy', 'bmcuruguay.com.uy']);
+    assert.equal(stale.serp_engine, 'google');
+    assert.equal(stale.captured_at, '2026-07-04T10:00:00.000Z');
+    assert.equal(stale.bmc_serp_position, 2);
+    assert.equal(stale.bmc_serp_prev_position, 2);
+    assert.equal(stale.position_delta, 0);
+    assert.equal(stale.top_competitor_domain, 'kingspan.com.uy');
+  });
+
+  it('refreshKeyword records a first-time SERP failure without marking it stale', async () => {
+    const failed = await withAutocompleteCount(1, () =>
+      refreshKeyword(
+        {
+          id: 'kw-empty',
+          keyword: 'panel sandwich techo uruguay',
+          active: true,
+          autocomplete_count: null,
+          bmc_serp_position: null,
+          serp_domains: [],
+          captured_at: null,
+          error: null,
+        },
+        buildRefreshCtx(async () => {
+          throw new Error('chromium executable missing');
+        })
+      )
+    );
+
+    assert.equal(failed.autocomplete_count, 1);
+    assert.equal(failed.error, 'chromium executable missing');
+    assert.equal(failed.error.startsWith('serp stale:'), false);
+    assert.deepEqual(failed.serp_domains, []);
+    assert.equal(failed.bmc_serp_position, null);
+    assert.equal(typeof failed.captured_at, 'string');
+  });
+
+  it('refreshKeyword updates SERP engine, position, and delta on success', async () => {
+    const updated = await withAutocompleteCount(9, () =>
+      refreshKeyword(
+        {
+          id: 'kw-success',
+          keyword: 'panel isofrig precio',
+          active: true,
+          autocomplete_count: 3,
+          bmc_serp_position: 5,
+          serp_domains: ['old.example.com', 'bmcuruguay.com.uy'],
+          serp_engine: 'google',
+          captured_at: '2026-07-04T09:00:00.000Z',
+          error: 'serp stale: previous outage',
+        },
+        buildRefreshCtx(async () => ({
+          domains: ['kingspan.com.uy', 'example.com', 'bmcuruguay.com.uy'],
+          engine: 'bing',
+        }))
+      )
+    );
+
+    assert.equal(updated.autocomplete_count, 9);
+    assert.equal(updated.error, null);
+    assert.deepEqual(updated.serp_domains, ['kingspan.com.uy', 'example.com', 'bmcuruguay.com.uy']);
+    assert.equal(updated.serp_engine, 'bing');
+    assert.equal(updated.bmc_serp_position, 3);
+    assert.equal(updated.bmc_serp_prev_position, 5);
+    assert.equal(updated.position_delta, 2);
+    assert.equal(updated.top_competitor_domain, 'kingspan.com.uy');
+    assert.notEqual(updated.captured_at, '2026-07-04T09:00:00.000Z');
   });
 });
