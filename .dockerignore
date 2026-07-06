@@ -7,8 +7,8 @@ dist
 .env.*
 .ml-tokens*
 npm-debug.log
-public
-!public/bmc-pdf
+public/*
+!public/bmc-pdf/
 !public/bmc-pdf/**
 tests
 # Exclude most of docs/, then re-include only what production images need.

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-04
+**Última actualización:** 2026-07-06
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-06 (fix — Docker context for PDF logo assets):** Follow-up crítico a PR #600: `.dockerignore` ya no excluye el directorio padre `public` completo; ahora excluye `public/*` y re-incluye explícitamente `public/bmc-pdf/` + contenidos, evitando que `server/Dockerfile` falle en `COPY public/bmc-pdf ./public/bmc-pdf` durante deploy Cloud Run. Guardrail nuevo `tests/dockerContextAssets.test.js` en `test:core` valida el contrato Dockerfile ↔ asset ↔ `.dockerignore`.
 
 **2026-07-06 (feat — Hub Wolfboard operator overview):** `/hub` muestra `OperatorOverview` — resúmenes de Control Plane IA (`/api/assistants/status`) y KPIs Finanzas con links a módulos oficiales. Aditivo puro en `BmcWolfboardHub.jsx`; sin cambiar rutas existentes.
 
