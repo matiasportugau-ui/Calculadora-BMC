@@ -15,6 +15,18 @@ const SKIP_HOST_RE = /(^|\.)google\.|gstatic\.|googleusercontent\.|youtube\.com$
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
+export function buildChromiumLaunchOptions(timeout = 20_000) {
+  const opts = {
+    headless: true,
+    args: ['--disable-blink-features=AutomationControlled'],
+    timeout,
+  };
+  if (process.env.CHROMIUM_EXECUTABLE_PATH) {
+    opts.executablePath = process.env.CHROMIUM_EXECUTABLE_PATH;
+  }
+  return opts;
+}
+
 export function normalizeDomain(host) {
   return String(host || '').toLowerCase().replace(/^www\./, '');
 }
@@ -108,9 +120,9 @@ export class KeywordSerpSession {
   async init() {
     if (this.page) return this;
     const chromium = await getChromium();
-    const launchOpts = { headless: true, args: ['--disable-blink-features=AutomationControlled'] };
+    const launchOpts = buildChromiumLaunchOptions(20_000);
     try {
-      this.browser = await chromium.launch({ ...launchOpts, timeout: 20_000 });
+      this.browser = await chromium.launch(launchOpts);
     } catch {
       this.browser = await chromium.launch({ channel: 'chrome', headless: true, timeout: 15_000 });
     }
