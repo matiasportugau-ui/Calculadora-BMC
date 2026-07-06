@@ -182,3 +182,17 @@ gate:local:   pendiente correr al final de la sesión
 **Próximo paso:** decidir si en la frase ambigua "5m×1m" el agente debe auto-asumir 20 m² o seguir confirmando (ablande de 1 línea en `chatPrompts.js`). Opcional: Fase 2 del brain (bidireccional). Path no-streaming `agentCore.js` se deja text-only por decisión del usuario.
 
 **Refs:** PRs #472 / #475 / #478. Handoff: `docs/team/HANDOFF-2026-06-29-gemini-tools-quote-interp.md`.
+
+---
+
+## 2026-07-06 PM — Market Intel keyword monitor shipped + closeout
+
+**Contexto:** investigación SEO Uruguay (panel sandwich) → feature live en Hub con SERP Playwright.
+
+**Acciones:** skills `site-spider-analyze` + `market-keyword-research`; keyword research 266 términos; monitor end-to-end (API + UI + scheduler + tests); ship PR #585 + hotfix lazy Playwright #589; operator overview #599 en main; prod health/keywords verificados.
+
+**Verificación:** `/health` OK; `/api/marketing/keywords` 401 sin token (ruta montada); `origin/main` con commits keyword monitor.
+
+**Próximo paso:** wirear SERP a `CHROMIUM_EXECUTABLE_PATH` para refrescos programados en Cloud Run; UAT UI Inteligencia.
+
+**Refs:** PRs #585, #589, #599. Handoff: `docs/team/HANDOFF-2026-07-06-1755.md`.

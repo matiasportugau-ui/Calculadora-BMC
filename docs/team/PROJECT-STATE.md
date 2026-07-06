@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-04
+**Última actualización:** 2026-07-06
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -14,7 +14,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-07-06 (feat — Hub Wolfboard operator overview):** `/hub` muestra `OperatorOverview` — resúmenes de Control Plane IA (`/api/assistants/status`) y KPIs Finanzas con links a módulos oficiales. Aditivo puro en `BmcWolfboardHub.jsx`; sin cambiar rutas existentes.
+**2026-07-06 (feat — additive Operator Control overview on /hub):** Nuevo componente aditivo `OperatorOverview.jsx` insertado en Wolfboard. Muestra:
+  • IA · Control Plane: estado de asistentes (badges live/degraded), cooldowns, links a `/hub/admin/assistants`
+  • Finanzas: byPeriod (estaSemana/proxima/esteMes), pendientes, links a cotizaciones y planillas (desde `/api/kpi-financiero` + `/api/pagos-pendientes`)
+Todo usando endpoints existentes, patrón useBmcAuth + adminCot cuando aplica. UX mejorada para casos sin token (links siempre visibles). Verificado en vivo: full dev stack + chrome-devtools MCP navigation + snapshot en http://localhost:5174/hub. Gate:local main tests verdes (1 drift pre-existente en secrets). Lint limpio. Sin tocar módulos oficiales.
 
 **2026-07-06 (fix — PDF generation & export):** Diagnosed and fixed primary PDF export path ("PDF Cliente"). Root causes: (1) server route always attempted @sparticuz Linux binary on macOS dev → ENOEXEC + noisy 503 (now early clean guard + explicit detail); (2) templates reference `/bmc-pdf/assets/bmc-logo.png` which fails to load inside puppeteer `setContent` (no origin) → logo missing on server PDFs (now inlined as data: URL at render time); (3) explicit `margin` in `page.pdf` overrode template `@page` rules → wrong spacing (added `preferCSSPageSize:true` + reduced fallback margins). Also hardened client html2pdf fallback (longer settle 800ms, filename passthrough, imageTimeout). Server PDFs now honor modern "simple" family layouts + crisp vector when available (prod Cloud Run). Fallback path improved for dev. No behavior change for clients; gate:local lint clean. 
 
