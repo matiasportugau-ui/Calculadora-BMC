@@ -41,6 +41,7 @@ import {
   requireCrmCockpitRead,
   requireCrmCockpitWrite,
 } from "../middleware/requireCrmCockpitAuth.js";
+import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import {
   estimateCostUSD,
   resolveModel,
@@ -1555,6 +1556,7 @@ export { pushMatrizPricingOverrides, handleUpdateStock, parseNum, parseDate };
 
 export default function createBmcDashboardRouter(config) {
   const router = Router();
+  const requireAdminRead = requireServiceOrUser({ role: "admin" });
   const requireEmailIngestAuth = makeRequireEmailIngestAuth(config);
   const sheetId = config.bmcSheetId || "";
   const schema = config.bmcSheetSchema || "Master_Cotizaciones";
@@ -1922,7 +1924,7 @@ export default function createBmcDashboardRouter(config) {
     });
   })();
 
-  router.get("/kpi-financiero", async (_req, res) => {
+  router.get("/kpi-financiero", requireAdminRead, async (_req, res) => {
     if (!checkPagosAvailable(config)) return noConfig(res);
     try {
       let pagosRows = [];

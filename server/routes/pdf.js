@@ -16,6 +16,37 @@ import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
+
+const FALLBACK_BMC_LOGO_DATA_URL =
+  "data:image/svg+xml;charset=UTF-8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" role="img" aria-label="BMC Uruguay">
+      <rect width="240" height="80" rx="12" fill="#12385f"/>
+      <text x="24" y="48" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800">BMC</text>
+      <text x="121" y="35" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700">URUGUAY</text>
+      <text x="121" y="56" fill="#d6e7f7" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="600">METALOG SAS</text>
+    </svg>`,
+  );
+
+function inlineBmcLogo(html) {
+  const logoCandidates = [
+    path.resolve(process.cwd(), "public/bmc-pdf/assets/bmc-logo.png"),
+    path.resolve(process.cwd(), "dist/bmc-pdf/assets/bmc-logo.png"),
+  ];
+  const logoPath = logoCandidates.find((p) => existsSync(p));
+  const dataUrl = logoPath
+    ? `data:image/png;base64,${readFileSync(logoPath).toString("base64")}`
+    : FALLBACK_BMC_LOGO_DATA_URL;
+
+  return {
+    html: html
+      .replace(/src=["']\/bmc-pdf\/assets\/bmc-logo\.png["']/gi, `src="${dataUrl}"`)
+      .replace(/src=["']assets\/bmc-logo\.png["']/gi, `src="${dataUrl}"`)
+      .replace(/src=["'][^"']*bmc-logo\.png["']/gi, `src="${dataUrl}"`),
+    source: logoPath ? "file" : "fallback",
+  };
+}
 
 export function createPdfRouter() {
   const router = express.Router();
@@ -130,32 +161,19 @@ export function createPdfRouter() {
 
       // Inline logo so puppeteer setContent always has it (no origin for / paths).
       // Handles paths used across templates: /bmc-pdf/assets/... and relative assets/...
-      // The Dockerfile copies public/bmc-pdf so this works in prod Cloud Run.
       let processedHtml = html;
-      let logoInlined = false;
+      let logoSource = null;
       try {
-        const logoCandidates = [
-          path.resolve(process.cwd(), "public/bmc-pdf/assets/bmc-logo.png"),
-          path.resolve(process.cwd(), "dist/bmc-pdf/assets/bmc-logo.png"),
-        ];
-        const logoPath = logoCandidates.find(p => existsSync(p));
-        if (logoPath) {
-          const logoBuf = readFileSync(logoPath);
-          const dataUrl = `data:image/png;base64,${logoBuf.toString("base64")}`;
-          // Cover all variants used by current + legacy templates
-          processedHtml = html
-            .replace(/src=["']\/bmc-pdf\/assets\/bmc-logo\.png["']/gi, `src="${dataUrl}"`)
-            .replace(/src=["']assets\/bmc-logo\.png["']/gi, `src="${dataUrl}"`)
-            .replace(/src=["'][^"']*bmc-logo\.png["']/gi, `src="${dataUrl}"`); // catch any other relative
-          logoInlined = true;
-        }
+        const inlined = inlineBmcLogo(html);
+        processedHtml = inlined.html;
+        logoSource = inlined.source;
       } catch (logoErr) {
         console.warn("[pdf] logo inlining skipped:", logoErr.message);
       }
-      if (logoInlined) {
-        console.info("[pdf] logo inlined as data URL for reliable render");
+      if (logoSource) {
+        console.info(`[pdf] logo inlined as data URL for reliable render (${logoSource})`);
       } else {
-        console.warn("[pdf] proceeding without logo (file not found in container)");
+        console.warn("[pdf] proceeding without logo (inlining failed)");
       }
 
       await page.setContent(processedHtml, { waitUntil: "networkidle0", timeout: 30000 });
@@ -197,7 +215,7 @@ export function createPdfRouter() {
   });
 
   // Lightweight metrics endpoint (admin / observability)
-  router.get("/metrics", (_req, res) => {
+  router.get("/metrics", requireServiceOrUser({ role: "admin" }), (_req, res) => {
     res.json({
       ok: true,
       ...pdfMetrics,
