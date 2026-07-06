@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import BmcModuleNav from "./BmcModuleNav.jsx";
+import OperatorOverview from "./hub/OperatorOverview.jsx";
 
 const wrap = {
   minHeight: "100vh",
@@ -77,6 +78,10 @@ export default function BmcWolfboardHub() {
       <div style={main}>
         <h1 style={h1}>Wolfboard</h1>
         <p style={sub}>Elegí un módulo. Más herramientas se irán sumando acá.</p>
+
+        {/* Aditivo: resúmenes de Control Operativo (IA + Finanzas) */}
+        <OperatorOverview />
+
         <div style={grid}>
           <div style={card}>
             <h2 style={cardTitle}>BMC Uruguay · Calculadora</h2>
