@@ -90,7 +90,12 @@ function IaControlSummary({ data, loading, error }) {
       </div>
 
       {loading && <div style={{ fontSize: 12, color: "#6e6e73" }}>Cargando estado de asistentes…</div>}
-      {error && <div style={{ fontSize: 12, color: "#cf222e" }}>No se pudo cargar el control plane ({error})</div>}
+      {error && (
+        <div style={{ fontSize: 12, color: "#57606a" }}>
+          Datos en vivo requieren acceso admin (rol o token).{" "}
+          <Link to="/hub/admin/assistants" style={linkStyle}>Abrir plano completo</Link>
+        </div>
+      )}
 
       {!loading && !error && (
         <>
@@ -150,7 +155,12 @@ function FinanzasSummary({ data, loading, error }) {
       </div>
 
       {loading && <div style={{ fontSize: 12, color: "#6e6e73" }}>Cargando KPIs financieros…</div>}
-      {error && <div style={{ fontSize: 12, color: "#cf222e" }}>No se pudo cargar finanzas ({error}). Datos de planillas.</div>}
+      {error && (
+        <div style={{ fontSize: 12, color: "#57606a" }}>
+          Datos en vivo desde planillas (acceso admin recomendado).{" "}
+          <Link to="/hub/cotizaciones" style={linkStyle}>Ver cotizaciones</Link>
+        </div>
+      )}
 
       {!loading && !error && (
         <>
