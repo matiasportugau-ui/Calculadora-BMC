@@ -31,6 +31,13 @@ function encodeHeader(value) {
   return `=?UTF-8?B?${Buffer.from(s, "utf8").toString("base64")}?=`;
 }
 
+function normalizeFromAlias(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const match = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match ? match[0].toLowerCase() : "";
+}
+
 /** base64url (no padding) per Gmail API `raw` requirement. */
 function base64url(buf) {
   return Buffer.from(buf).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -77,7 +84,7 @@ export async function sendGmailReply(args = {}) {
     e.code = "not_configured";
     throw e;
   }
-  const from = args.from || env.GMAIL_SEND_FROM || "";
+  const from = normalizeFromAlias(args.from) || normalizeFromAlias(env.GMAIL_SEND_FROM);
   const raw = buildRawMessage({ to, subject, text, inReplyTo, from: from || undefined });
 
   if (typeof sendRaw === "function") {

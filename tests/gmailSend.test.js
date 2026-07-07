@@ -24,6 +24,10 @@ const GMAIL_ENV = {
   GMAIL_OAUTH_CLIENT_ID: "cid.apps.googleusercontent.com",
   GMAIL_OAUTH_CLIENT_SECRET: "csecret",
 };
+const GMAIL_ENV_WITH_FROM = {
+  ...GMAIL_ENV,
+  GMAIL_SEND_FROM: "ventas@bmcuruguay.com.uy",
+};
 
 group("isGmailSendConfigured", () => {
   assert(isGmailSendConfigured(GMAIL_ENV) === true, "all three present → true");
@@ -76,6 +80,18 @@ await group("sendGmailReply (injected transport)", async () => {
   assert(out.transport === "gmail" && out.messageId === "msg-1" && out.threadId === "thr-1", "returns gmail result");
   assert(out.accepted[0] === "juan@x.com", "accepted recipient");
   assert(captured && typeof captured.raw === "string" && !/[+/=]/.test(captured.raw), "transport got base64url raw");
+
+  captured = null;
+  await sendGmailReply({
+    to: "juan@x.com",
+    subject: "Re: hola",
+    text: "cuerpo",
+    from: "bmc-ventas",
+    env: GMAIL_ENV_WITH_FROM,
+    sendRaw: (arg) => { captured = arg; return { id: "msg-2", threadId: "thr-2" }; },
+  });
+  assert(captured?.from === "ventas@bmcuruguay.com.uy", "invalid legacy from id falls back to GMAIL_SEND_FROM");
+  assert(!/^From: bmc-ventas$/m.test(decodeRaw(captured?.raw || "")), "legacy casilla id is not emitted as From");
 
   let threw = null;
   try { await sendGmailReply({ to: "a@b.com", text: "x", env: {} }); } catch (e) { threw = e; }
