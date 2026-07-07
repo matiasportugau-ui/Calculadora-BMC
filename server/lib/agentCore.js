@@ -15,6 +15,7 @@ import { buildSystemPromptParts } from "./chatPrompts.js";
 import { findRelevantExamples } from "./trainingKB.js";
 import { renderExamplesBlock } from "./channelRenderer.js";
 import {
+  DEFAULT_PROVIDER_ORDER,
   getProviderChain,
   resolveModel,
   estimateCostUSD,
@@ -129,8 +130,14 @@ function buildChannelSection(channel) {
 
 // ─── Core call ────────────────────────────────────────────────────────────────
 
-// Centralized provider chain (replaces previous hardcoded list)
-const getCentralProviderChain = () => getProviderChain();
+// Centralized provider chain (replaces previous hardcoded list). Tests and
+// route adapters can pass apiKeys overrides so they stay independent of .env.
+const getCentralProviderChain = (apiKeysOverride = null) => {
+  if (apiKeysOverride) {
+    return DEFAULT_PROVIDER_ORDER.filter((p) => !!apiKeysOverride[p]);
+  }
+  return getProviderChain();
+};
 
 // El módulo waConfig.js es runtime-side; agentCore se usa también offline en
 // tests, así que importamos lazy para no romper si waConfig no está primed.
@@ -228,10 +235,10 @@ export async function callAgentOnce(messages, opts = {}) {
     chain = [provider];
   } else if (eff.provider) {
     const internal = SCHEMA_TO_INTERNAL[eff.provider] || eff.provider;
-    const fullChain = getCentralProviderChain();
+    const fullChain = getCentralProviderChain(apiKeysOverride);
     chain = [internal, ...fullChain.filter((p) => p !== internal)];
   } else {
-    chain = getCentralProviderChain();
+    chain = getCentralProviderChain(apiKeysOverride);
   }
 
   // Deprioritize (don't remove) providers in cooldown: try healthy ones first,
@@ -247,7 +254,7 @@ export async function callAgentOnce(messages, opts = {}) {
   const errors = [];
 
   for (const p of chain) {
-    const apiKey = getApiKey(p);
+    const apiKey = apiKeysOverride ? apiKeysOverride[p] : getApiKey(p);
     if (!apiKey) { errors.push(`${p}: no key`); continue; }
 
     // Resolver modelo usando centralización (respeta overrides + allowlists + defaults)
