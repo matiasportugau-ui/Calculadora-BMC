@@ -182,3 +182,17 @@ gate:local:   pendiente correr al final de la sesión
 **Próximo paso:** decidir si en la frase ambigua "5m×1m" el agente debe auto-asumir 20 m² o seguir confirmando (ablande de 1 línea en `chatPrompts.js`). Opcional: Fase 2 del brain (bidireccional). Path no-streaming `agentCore.js` se deja text-only por decisión del usuario.
 
 **Refs:** PRs #472 / #475 / #478. Handoff: `docs/team/HANDOFF-2026-06-29-gemini-tools-quote-interp.md`.
+
+---
+
+## 2026-07-06 PM — Keyword monitor prod loop closed (system Chromium)
+
+**Contexto:** refrescos SERP programados fallaban en Cloud Run — el bundle de Playwright no está en la imagen Docker.
+
+**Acciones:** `resolveChromiumLaunchOptions()` en `keywordSerpPlaywright.js` usa `CHROMIUM_EXECUTABLE_PATH` + fallback Alpine; 5 tests nuevos; PR #603 mergeado; deploy Cloud Run exitoso.
+
+**Verificación:** `test:market-intel` 39/39; CI verde; deploy API `success`.
+
+**Próximo paso:** UAT — Hub → Inteligencia → **Refrescar P1** en prod.
+
+**Refs:** PR #603 (`b50781a4`).

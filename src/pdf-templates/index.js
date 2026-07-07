@@ -2,12 +2,15 @@
 // Dispatcher + shared helpers for PDF layout templates.
 // Each template receives a QuotationModel and returns a complete HTML string.
 // v2 templates (simple family + others) refactored 2026-06-16 for clean cat rows, no ►, scoped CSS, prominent styling.
+//
+// 'simple' (Presupuesto Simple) is the preferred production template for client PDF quotes.
+// The previous (pre-R3-C) version is available as 'simple-previous'.
 
 export const LAYOUT_OPTIONS = [
-  // Modern lightweight family — strongly recommended for production quotes to clients.
-  // All "Simple *" use the official BMC brand identity (navy #003366 from COMPANY.brandColor + website).
-  // "Presupuesto Simple" (plain) is the most faithful to bmcuruguay.com.uy visual language.
+  // Modern lightweight family — "Presupuesto Simple" (plain) is the most faithful to bmcuruguay.com.uy visual language.
+  // Preferred production default.
   { id: 'simple',            label: 'Presupuesto Simple', recommended: true },
+  { id: 'simple-previous',   label: 'Presupuesto Simple (previous)' },
   { id: 'simple-carbon',     label: 'Simple — Carbon (premium dark)' },
   { id: 'simple-sage',       label: 'Simple — Sage' },
   { id: 'simple-slate',      label: 'Simple — Slate' },
@@ -90,9 +93,13 @@ export function buildQuotationModel(data) {
   const bomDetailGroups = groups.map(g => ({
     groupName: g.title,
     groupTotal: g.items.reduce((s, i) => s + (Number(i.total) || 0), 0),
-    items: g.items.map(i => ({
-      desc: i.label, qty: i.cant, unit: i.unidad, pu: i.pu, total: i.total,
-    })),
+    items: g.items.map(i => {
+      const base = { desc: i.label, qty: i.cant, unit: i.unidad, pu: i.pu, total: i.total };
+      // Pass panel quantity & length so the preferred template can display them explicitly
+      if (i.cantPaneles != null) base.cantPaneles = i.cantPaneles;
+      if (i.largoPanel != null) base.largoPanel = i.largoPanel;
+      return base;
+    }),
   }));
 
   const totalArea = kpi.area != null
@@ -171,6 +178,7 @@ export function buildQuotationModel(data) {
 
 const TEMPLATE_MAP = {
   'simple':            () => import('./simple.js'),
+  'simple-previous':   () => import('./simple-previous.js'),
   'simple-sage':       () => import('./simple-sage.js'),
   'simple-slate':      () => import('./simple-slate.js'),
   'simple-warm':       () => import('./simple-warm.js'),

@@ -1,8 +1,7 @@
 // src/pdf-templates/simple.js
 // Layout G — Presupuesto Simple (single A4 page, full terms)
-// *** R3-C IS NOW THE PRODUCTION THEME (primary BMC-theme) ***
-// - Brand header: logo (32px) + "BMC URUGUAY" + "METALOG SAS" on left, PRESUPUESTO badge + ref/date on right
-// - Logo size: 32px (bumped per iteration), header gap: 6px
+// *** R3-C / REFINED IS THE PRODUCTION THEME (primary BMC-theme) ***
+// - Brand header: "BMC URUGUAY" + "METALOG SAS" on left, PRESUPUESTO badge + ref/date on right
 // - Full original 12 QUOTE_TERMS (with .bl / .hl classes)
 // - Refined styling: .cat navy rows, light th, strong .trow.total, scoped, A4 print-ready
 // This file is the real production renderer. Visual BASE is generated from it + real model for iteration.
@@ -28,7 +27,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 @media screen{body{background:#e5e2dd;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 0 0 1px #ddd;max-width:794px;padding:7mm 8mm}}
 @media print{.page{padding:0}}
 .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2pt solid ${BRAND};padding-bottom:3mm;margin-bottom:3mm}
-.logo{height:32px}
 .badge{background:${BRAND};color:#fff;font-size:7pt;font-weight:700;padding:3px 10px;border-radius:9999px;letter-spacing:.08em;text-transform:uppercase}
 .meta{display:grid;grid-template-columns:1fr 1fr;gap:2mm;font-size:8pt;margin-bottom:2mm}
 .meta b{color:${BRAND}}
@@ -58,12 +56,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 
 function renderBomDetailRows(bomDetailGroups) {
   return bomDetailGroups.map(g => {
+    const isPanelGroup = g.groupName.toUpperCase().includes("PANELES");
     const groupRow = `<tr class="cat"><td colspan="4">${esc(g.groupName)}</td><td class="num">${fmt(g.groupTotal)}</td></tr>`;
     const itemRows = g.items.map(i => {
       const qty = typeof i.qty === 'number'
         ? (i.qty % 1 === 0 ? i.qty : i.qty.toFixed(2))
         : (i.qty ?? '');
-      return `<tr><td>${esc(i.desc)}</td><td class="num">${qty}</td><td class="cen">${esc(i.unit)}</td><td class="num">${fmt(i.pu)}</td><td class="num">${fmt(i.total)}</td></tr>`;
+
+      let desc = esc(i.desc);
+
+      // Explicitly surface quantity and length of panels (user request)
+      if (isPanelGroup) {
+        const np = i.cantPaneles || i.cantPaneles === 0 ? i.cantPaneles : null;
+        const lp = i.largoPanel ? Number(i.largoPanel).toFixed(2) : null;
+        if (np || lp) {
+          const extra = [];
+          if (np) extra.push(`${np} paneles`);
+          if (lp) extra.push(`${lp} m`);
+          if (extra.length) {
+            desc += ` <span style="color:#003366;font-weight:600">(${extra.join(" × ")})</span>`;
+          }
+        }
+      }
+
+      return `<tr><td>${desc}</td><td class="num">${qty}</td><td class="cen">${esc(i.unit)}</td><td class="num">${fmt(i.pu)}</td><td class="num">${fmt(i.total)}</td></tr>`;
     }).join('');
     return groupRow + itemRows;
   }).join('');
@@ -97,12 +113,9 @@ export function render(q) {
 </head><body>
 <div class="page presupuesto-container" id="presupuesto">
   <div class="hdr">
-    <div style="display:flex;align-items:center;gap:6px">
-      <img src="/bmc-pdf/assets/bmc-logo.png" class="logo" alt="BMC">
-      <div>
-        <div style="font-weight:700;color:${BRAND}">BMC URUGUAY</div>
-        <div style="font-size:6pt;color:#64748b">METALOG SAS</div>
-      </div>
+    <div>
+      <div style="font-weight:700;color:${BRAND}">BMC URUGUAY</div>
+      <div style="font-size:6pt;color:#64748b">METALOG SAS</div>
     </div>
     <div style="text-align:right">
       <div class="badge">PRESUPUESTO</div>

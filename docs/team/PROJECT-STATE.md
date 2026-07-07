@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-06
+**Última actualización:** 2026-07-07
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-07 (fix — PDF template: remove logo + show panel qty/length):** Logo removed from preferred "Presupuesto Simple" (refined R3-C) template as it was not rendering reliably. Enhanced `simple.js` + `buildQuotationModel` to explicitly display panel quantity (`cantPaneles`) and length (`largoPanel`) in the BOM (e.g. "ISODEC ... (12 paneles × 4.80 m)"). Test artifacts updated in `.runtime/`. Template approved and ready for production. `simple` remains the recommended layout.
+
+**2026-07-07 (feat — PDF quote preferred template):** Made the refined R3-C version of "Presupuesto Simple" the preferred production template for client PDF quotes (used by "PDF Cliente", Drive exports, WA, etc.). The `simple` layout is now the refined production theme (32px logo, updated header styling, etc.). The previous pre-refinement version is preserved and selectable as `simple-previous`. All generations were exported to `.runtime/pdf-generations-2026-07-07/` for comparison before switching the default. Updated `src/pdf-templates/{simple.js, index.js}` + `simple-previous.js`.
 
 **2026-07-07 (feat — plantilla PDF clásica "Hoja Visual Cliente" recuperada como opción seleccionable):** El PDF cliente original (`generateClientVisualHTML`, la HOJA VISUAL CLIENTE usada antes del sistema de plantillas) había quedado inaccesible desde la UI: el dropdown "Diseño PDF" solo ofrece `LAYOUT_OPTIONS` y el default es `'simple'`, así que ningún valor seleccionable llegaba al fallback clásico de `buildClientePdfHtml`. Recuperada como layout `classic` ("Clásico — Hoja Visual Cliente (formato anterior)", grupo legacy): `buildQuotationModel()` ahora preserva los inputs crudos en `q.raw` y `renderPdfLayout('classic', q)` los enruta a `generateClientVisualHTML` (import dinámico, sin ciclo; modelos sin `raw` caen al mapa de templates). Aparece automáticamente en ambos selectores (calculadora + GoogleDrivePanel) y persiste en `localStorage bmc.pdfLayout` como cualquier otro layout. Test nuevo [`tests/pdfClassicLayout.test.mjs`](../../tests/pdfClassicLayout.test.mjs) (10/10, agregado a `test:core`); `tests/pdf-pipeline.test.mjs` ajustado (classic es HTML de flujo único, sin contenedores `.page`; su SAMPLE.appendix ahora incluye `totals` como el payload real de `buildPdfAppendixPayload`). CLAUDE.md actualizado (12 layouts + classic). Nota: los ✗ pre-existentes de `pdf-pipeline` para la familia simple (pages:false) ya estaban antes de este cambio.
 
