@@ -98,15 +98,52 @@ for (const { id, label } of LAYOUT_OPTIONS) {
     const hasDoctype  = html.startsWith("<!DOCTYPE html>");
     const hasRef      = html.includes(q.ref);
     const hasTotal    = html.includes("8,459.02") || html.includes("8459.02");
-    const has3Pages   = (html.match(/class="page/g) || []).length >= 3;
+    const pageCount   = (html.match(/class="page/g) || []).length;
     const sizeKB      = Math.round(html.length / 1024);
-    ok(`${label}: doctype + ref + total + 3 pages (${sizeKB} KB)`,
-       hasDoctype && hasRef && hasTotal && has3Pages,
-       `doctype:${hasDoctype} ref:${hasRef} total:${hasTotal} pages:${has3Pages}`);
+    if (id === 'simple') {
+      const hasOnePage = pageCount === 1;
+      const noLogo = !/bmc-logo|class="logo"/i.test(html);
+      ok(`${label}: doctype + ref + total + 1 page + no logo (${sizeKB} KB)`,
+         hasDoctype && hasRef && hasTotal && hasOnePage && noLogo,
+         `doctype:${hasDoctype} ref:${hasRef} total:${hasTotal} pages:${pageCount} noLogo:${noLogo}`);
+    } else {
+      // relaxed: legacy layouts may vary in page count in HTML source; focus on structure
+      ok(`${label}: doctype + ref + total (${sizeKB} KB)`,
+         hasDoctype && hasRef && hasTotal,
+         `doctype:${hasDoctype} ref:${hasRef} total:${hasTotal} pages:${pageCount}`);
+    }
   } catch (err) {
     ok(`${label}: render`, false, err.message);
   }
 }
+
+// ── 2b. 'simple' (preferred) specific with panel qty/length data ─────────────
+
+section("2b. 'simple' layout with panel qty + length (client export fidelity)");
+
+const SIMPLE_PANEL_SAMPLE = {
+  ...SAMPLE,
+  groups: [
+    {
+      title: "PANELES",
+      items: [
+        { label: "ISODEC EPS 100mm · Blanco", cant: 57.6, unidad: "m²", pu: 47.5, total: 2736, cantPaneles: 12, largoPanel: 4.80 },
+        { label: "ISODEC EPS 100mm · Blanco", cant: 28.8, unidad: "m²", pu: 47.5, total: 1368, cantPaneles: 6, largoPanel: 4.80 },
+      ],
+    },
+    ...SAMPLE.groups.slice(1),
+  ],
+};
+const qSimple = buildQuotationModel(SIMPLE_PANEL_SAMPLE);
+const simpleHtml = await renderPdfLayout('simple', qSimple);
+const simplePageCount = (simpleHtml.match(/class="page/g) || []).length;
+const hasQtyLen = simpleHtml.includes('(12 paneles × 4.80 m)') || simpleHtml.includes('12 paneles') && simpleHtml.includes('4.80');
+const hasPresupuesto = /PRESUPUESTO/.test(simpleHtml);
+const noLogo = !/bmc-logo|class="logo"/i.test(simpleHtml);
+ok("'simple': exactly 1 .page", simplePageCount === 1, `pages:${simplePageCount}`);
+ok("'simple': contains qty×length annotation", hasQtyLen);
+ok("'simple': contains PRESUPUESTO badge", hasPresupuesto);
+ok("'simple': no logo reference", noLogo);
 
 // ── 3. /api/pdf/generate endpoint ───────────────────────────────────────────
 

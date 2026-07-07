@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-07 (fix — client PDF export fidelity for preferred simple):** Made html2pdf client fallback normalize the template HTML (strip @page, inject print overrides for .page padding/shadows/margins) so raster output matches the designed render. simple.js CSS now @page{margin:0} + unconditional .page padding 7mm 8mm. Panel qty/length and no-logo already in place. Tests updated. (See goal plan for details.)
+
 **2026-07-07 (fix — PDF template: remove logo + show panel qty/length):** Logo removed from preferred "Presupuesto Simple" (refined R3-C) template as it was not rendering reliably. Enhanced `simple.js` + `buildQuotationModel` to explicitly display panel quantity (`cantPaneles`) and length (`largoPanel`) in the BOM (e.g. "ISODEC ... (12 paneles × 4.80 m)"). Test artifacts updated in `.runtime/`. Template approved and ready for production. `simple` remains the recommended layout.
 
 **2026-07-07 (feat — PDF quote preferred template):** Made the refined R3-C version of "Presupuesto Simple" the preferred production template for client PDF quotes (used by "PDF Cliente", Drive exports, WA, etc.). The `simple` layout is now the refined production theme (32px logo, updated header styling, etc.). The previous pre-refinement version is preserved and selectable as `simple-previous`. All generations were exported to `.runtime/pdf-generations-2026-07-07/` for comparison before switching the default. Updated `src/pdf-templates/{simple.js, index.js}` + `simple-previous.js`.
