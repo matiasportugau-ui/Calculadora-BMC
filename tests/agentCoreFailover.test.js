@@ -11,6 +11,7 @@ const {
   recordProviderSuccess,
   getProviderCooldownState,
   _resetProviderHealth,
+  normalizeGeminiContents,
 } = await import("../server/lib/agentCore.js");
 
 describe("callWithTimeout", () => {
@@ -94,5 +95,36 @@ describe("provider cooldown", () => {
     recordProviderFailure("openai", now - 120_000);
     recordProviderFailure("openai", now); // only this one is recent
     assert.equal(getProviderCooldownState().openai?.coolingDown, false);
+  });
+});
+
+describe("normalizeGeminiContents", () => {
+  it("merges consecutive WA user turns so Gemini receives an alternating history", () => {
+    const contents = normalizeGeminiContents([
+      { role: "user", content: "Matias: Necesito precio" },
+      { role: "user", content: "Matias: Son 6 por 4" },
+      { role: "user", content: "Matias: En 100 mm" },
+    ]);
+
+    assert.deepEqual(contents, [
+      {
+        role: "user",
+        parts: [{ text: "Matias: Necesito precio\n\nMatias: Son 6 por 4\n\nMatias: En 100 mm" }],
+      },
+    ]);
+  });
+
+  it("preserves alternating user/model context and ensures the final turn is user", () => {
+    const contents = normalizeGeminiContents([
+      { role: "assistant", content: "Ya tengo las medidas." },
+      { role: "user", content: "Cotizalo en PIR." },
+      { role: "assistant", content: "Necesito el espesor." },
+    ]);
+
+    assert.deepEqual(contents, [
+      { role: "user", parts: [{ text: "Ya tengo las medidas.\n\nCotizalo en PIR." }] },
+      { role: "model", parts: [{ text: "Necesito el espesor." }] },
+      { role: "user", parts: [{ text: "Continua la conversacion respondiendo al ultimo pedido del usuario." }] },
+    ]);
   });
 });

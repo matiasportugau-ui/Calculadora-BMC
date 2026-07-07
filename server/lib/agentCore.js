@@ -75,6 +75,41 @@ export function _resetProviderHealth() {
   _providerHealth.clear();
 }
 
+export function normalizeGeminiContents(messages, fallbackText = "") {
+  const normalized = [];
+
+  for (const message of Array.isArray(messages) ? messages : []) {
+    if (message?.role !== "user" && message?.role !== "assistant") continue;
+    const text = String(message.content ?? "").trim();
+    if (!text) continue;
+
+    // Gemini requires multi-turn contents to start with user and alternate
+    // user/model. Legacy WA can pass several inbound user messages in a row, so
+    // merge adjacent turns instead of letting Gemini reject the fallback call.
+    const role = message.role === "assistant" && normalized.length > 0 ? "model" : "user";
+    const last = normalized[normalized.length - 1];
+    if (last?.role === role) {
+      last.parts[0].text = `${last.parts[0].text}\n\n${text}`;
+    } else {
+      normalized.push({ role, parts: [{ text }] });
+    }
+  }
+
+  if (!normalized.length) {
+    const fallback = String(fallbackText || "").trim() || "Responde al usuario.";
+    normalized.push({ role: "user", parts: [{ text: fallback }] });
+  }
+
+  if (normalized[normalized.length - 1]?.role === "model") {
+    normalized.push({
+      role: "user",
+      parts: [{ text: "Continua la conversacion respondiendo al ultimo pedido del usuario." }],
+    });
+  }
+
+  return normalized;
+}
+
 /**
  * Run an async provider call with a hard timeout. Aborts via AbortSignal (for
  * SDKs that honor it) AND rejects via race (guarantees the loop advances even if
@@ -339,13 +374,11 @@ export async function callAgentOnce(messages, opts = {}) {
         // conversation as contents. Previously this branch sent only
         // `${systemPrompt}\n\n${lastUser}`, silently dropping all prior turns — any
         // multi-turn WA/ML conversation that fell to Gemini lost its history.
-        const contents = messages
-          .filter((m) => m.role === "user" || m.role === "assistant")
-          .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: String(m.content ?? "") }] }));
+        const contents = normalizeGeminiContents(messages, lastUser);
         const model = genai.getGenerativeModel({ model: modelUsed, systemInstruction: systemPrompt, generationConfig });
         const result = await callWithTimeout(
           (signal) => model.generateContent(
-            { contents: contents.length ? contents : [{ role: "user", parts: [{ text: lastUser }] }] },
+            { contents },
             { signal },
           ),
           PROVIDER_TIMEOUT_MS, "gemini",
