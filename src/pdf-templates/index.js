@@ -90,9 +90,13 @@ export function buildQuotationModel(data) {
   const bomDetailGroups = groups.map(g => ({
     groupName: g.title,
     groupTotal: g.items.reduce((s, i) => s + (Number(i.total) || 0), 0),
-    items: g.items.map(i => ({
-      desc: i.label, qty: i.cant, unit: i.unidad, pu: i.pu, total: i.total,
-    })),
+    items: g.items.map(i => {
+      const base = { desc: i.label, qty: i.cant, unit: i.unidad, pu: i.pu, total: i.total };
+      // Pass panel quantity & length so the preferred template can display them explicitly
+      if (i.cantPaneles != null) base.cantPaneles = i.cantPaneles;
+      if (i.largoPanel != null) base.largoPanel = i.largoPanel;
+      return base;
+    }),
   }));
 
   const totalArea = kpi.area != null
