@@ -361,6 +361,10 @@ export async function callAgentOnce(messages, opts = {}) {
 
         // Structured cost observability (consistent with Phase 0 changes)
         // TODO: thread pino logger here once cost-telemetry module exists
+        // cache_read_tokens > 0 ⇒ the Anthropic prompt cache HIT (static prefix
+        // served at 0.1x); cache_write_tokens > 0 ⇒ it seeded the cache (1.25x, the
+        // first call of a 5-min window). Null for non-Anthropic providers (different
+        // usage shape). Lets us confirm the caching hit rate in prod (gh — PR 3 follow-up).
         console.log(JSON.stringify({
           event: "agent_core_call",
           provider: p,
@@ -368,6 +372,9 @@ export async function callAgentOnce(messages, opts = {}) {
           channel,
           latency_ms: Date.now() - t0,
           estimated_cost_usd: cost,
+          input_tokens: usage.input_tokens ?? usage.prompt_tokens ?? null,
+          cache_read_tokens: usage.cache_read_input_tokens ?? null,
+          cache_write_tokens: usage.cache_creation_input_tokens ?? null,
           task_key: taskKey || null,
         }));
 
