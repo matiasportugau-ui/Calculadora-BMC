@@ -34,6 +34,34 @@ async function getHtml2Pdf() {
   return _html2pdfLoader;
 }
 
+/**
+ * Pure helper: post-process template HTML for faithful client-side html2canvas capture.
+ * Strips @page (confuses rasterizer in iframe), injects print-emulation overrides
+ * for .page padding, removes screen-only shadows, resets body/html margins.
+ * Ensures layout seen by capture matches the intended print template.
+ */
+function prepareHtmlForClientCapture(htmlString) {
+  let h = String(htmlString || '');
+  // Remove @page rules (they are for real print/PDF engines, confuse html2canvas)
+  h = h.replace(/@page\s*\{[^}]*\}/gi, '');
+  // Inject capture-time print overrides (idempotent-ish)
+  const override = `
+<style id="client-capture-override">
+  /* Force print-like layout for html2canvas/jsPDF fallback */
+  html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .page, .presupuesto-container { box-shadow: none !important; margin: 0 !important; padding: 7mm 8mm !important; }
+  @media screen { body { background: #fff !important; } }
+</style>`;
+  if (h.includes('</head>')) {
+    h = h.replace('</head>', override + '</head>');
+  } else if (/<body[^>]*>/i.test(h)) {
+    h = h.replace(/<body([^>]*)>/i, `<body$1>${override}`);
+  } else {
+    h = override + h;
+  }
+  return h;
+}
+
 async function htmlToPdfViaHtml2Pdf(htmlString, filename = "cotizacion.pdf") {
   // Use iframe instead of Shadow DOM — html2canvas cannot render Shadow DOM.
   // The iframe gives full CSS isolation (including :root custom properties)
@@ -45,7 +73,8 @@ async function htmlToPdfViaHtml2Pdf(htmlString, filename = "cotizacion.pdf") {
   try {
     const iDoc = iframe.contentDocument || iframe.contentWindow.document;
     iDoc.open();
-    iDoc.write(htmlString);
+    const prepared = prepareHtmlForClientCapture(htmlString);
+    iDoc.write(prepared);
     iDoc.close();
     // Allow fonts, external images (logo etc), SVG and complex layout (cotas) to settle.
     // Complex roof plans with many elements need more time than 400ms.
