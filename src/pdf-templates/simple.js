@@ -63,7 +63,8 @@ function renderBomDetailRows(bomDetailGroups) {
         ? (i.qty % 1 === 0 ? i.qty : i.qty.toFixed(2))
         : (i.qty ?? '');
 
-      let desc = esc(i.desc);
+      // Use original desc, stripping any pre-appended panel info from bomToGroups to avoid dups
+      let desc = esc(i.desc).replace(/ · \d+ paneles × [\d.]+ m/i, '').trim();
 
       // Explicitly surface quantity and length of panels (user request)
       if (isPanelGroup) {
