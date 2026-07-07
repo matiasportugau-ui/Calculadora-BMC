@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-07-06 (fix — keyword monitor SERP uses system Chromium in Cloud Run):** `keywordSerpPlaywright.js` resuelve `CHROMIUM_EXECUTABLE_PATH` (mismo contrato que PDF/TraKtiMe) con fallback a `/usr/bin/chromium-browser` y `/usr/bin/chromium` antes del bundle de Playwright. Args headless estándar para distro Chromium en contenedor. Cierra el gap de refrescos programados P1 (scheduler 04:00 UTC) que fallaban en prod. Tests `keywordSerpPlaywright.test.js`. PR #<pending>.
+**2026-07-06 (fix — keyword monitor SERP uses system Chromium in Cloud Run):** `keywordSerpPlaywright.js` resuelve `CHROMIUM_EXECUTABLE_PATH` (mismo contrato que PDF/TraKtiMe) con fallback a `/usr/bin/chromium-browser` y `/usr/bin/chromium` antes del bundle de Playwright. Args headless estándar para distro Chromium en contenedor. Cierra el gap de refrescos programados P1 (scheduler 04:00 UTC) que fallaban en prod. Tests `keywordSerpPlaywright.test.js`. PR #603.
 
 **2026-07-06 (feat — Hub Wolfboard operator overview):** `/hub` muestra `OperatorOverview` — resúmenes de Control Plane IA (`/api/assistants/status`) y KPIs Finanzas con links a módulos oficiales. Aditivo puro en `BmcWolfboardHub.jsx`; sin cambiar rutas existentes.
 
