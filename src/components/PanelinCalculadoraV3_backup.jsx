@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import { requestAuthGate } from "./auth/AuthGateModal.jsx";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Panel, PanelGroup, PanelResizeHandle } from "./ResizablePanelsCompat.jsx";
 import {
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
@@ -3686,6 +3686,12 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     }
   }, [isCompactLayout]);
 
+  const mainSplitPanelIds = useMemo(() => (
+    useSidebarChat
+      ? ["panelin-left", "panelin-results", "panelin-chat"]
+      : ["panelin-left", "panelin-results"]
+  ), [useSidebarChat]);
+
   const resetRoofPreviewLayout = useCallback(() => {
     setTecho(t => ({
       ...t,
@@ -5412,6 +5418,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         ref={mainPanelGroupRef}
         direction={isCompactLayout ? "vertical" : "horizontal"}
         autoSaveId={panelinMainSplitAutoSaveId(isCompactLayout, useSidebarChat)}
+        panelIds={mainSplitPanelIds}
         storage={panelinPanelGroupStorage}
         className="bmc-main-grid"
         style={{
@@ -5426,7 +5433,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           minHeight: 0,
         }}
       >
-        <Panel defaultSize={isCompactLayout ? 55 : 35} minSize={isCompactLayout ? 24 : 24} maxSize={isCompactLayout ? 85 : 55} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
+        <Panel id="panelin-left" defaultSize={isCompactLayout ? 55 : 35} minSize={isCompactLayout ? 24 : 24} maxSize={isCompactLayout ? 85 : 55} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
         {/* LEFT PANEL — Wizard (Modo Vendedor) o formulario completo (Modo Cliente) */}
         <div data-tutorial-id="calc-dimensions" className="bmc-left-panel" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isPhone ? 0 : 12, paddingRight: isPhone ? 0 : 12 }}>
           {modoVendedor && scenario === "solo_techo" ? (
@@ -7501,12 +7508,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         </div>
         </Panel>
         <PanelResizeHandle
+          id="panelin-left-results-sash"
           className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
           style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
           hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
           onDoubleClick={(e) => { e.preventDefault(); if (!isCompactLayout) resetMainSplitLayout(); }}
         />
-        <Panel defaultSize={isCompactLayout ? 45 : 65} minSize={isCompactLayout ? 20 : 32} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
+        <Panel id="panelin-results" defaultSize={isCompactLayout ? 45 : 65} minSize={isCompactLayout ? 20 : 32} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
         {/* RIGHT PANEL */}
         <div className="bmc-right-panel" style={{ position: "relative", flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", overflowX: "hidden", paddingLeft: isCompactLayout ? 0 : 8, paddingBottom: groups.length > 0 && isCompactLayout ? 96 : 0 }}>
           {useDockedRoofBorderSelector && (
@@ -7762,12 +7770,14 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         {useSidebarChat && (
           <>
             <PanelResizeHandle
+              id="panelin-results-chat-sash"
               className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
               style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
               hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
               onDoubleClick={(e) => { e.preventDefault(); resetChatSplitLayout(); }}
             />
             <Panel
+              id="panelin-chat"
               defaultSize={isCompactLayout ? 28 : 22}
               minSize={isCompactLayout ? 18 : 18}
               maxSize={isCompactLayout ? 45 : 40}

@@ -5,7 +5,7 @@
 
 const PRESENTATION_KEY = "panelin-chat-presentation";
 
-/** @type {import('react-resizable-panels').PanelGroupStorage} */
+/** @type {import('react-resizable-panels').LayoutStorage} */
 export const panelinPanelGroupStorage = {
   getItem(name) {
     if (typeof window === "undefined") return null;
