@@ -131,6 +131,11 @@ import PanelinFloatingChatShell, {
   createFloatingDragHandler,
   readDefaultFloatingRect,
 } from "./PanelinFloatingChatShell.jsx";
+import {
+  panelinPanelGroupStorage,
+  panelinMainSplitAutoSaveId,
+  readStoredChatPresentation,
+} from "../utils/panelinChatLayoutStorage.js";
 import EmailAgentPanel from "./EmailAgentPanel.jsx";
 import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
 
@@ -2550,11 +2555,18 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   });
   const [chatPresentation, setChatPresentation] = useState(() => {
     if (typeof window === "undefined") return "sidebar";
-    return sessionStorage.getItem("panelin-chat-presentation") === "floating" ? "floating" : "sidebar";
+    return readStoredChatPresentation(isCompactMainLayoutWidth(window.innerWidth));
   });
   const [floatingRect, setFloatingRect] = useState(() => readDefaultFloatingRect());
   const floatingShellRef = useRef(null);
   const floatingRectRef = useRef(floatingRect);
+
+  const persistChatPresentation = useCallback((mode) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("panelin-chat-presentation", mode);
+    }
+  }, []);
+
   const [devMode, setDevMode] = useState(() => {
     if (typeof window === "undefined") return false;
     return sessionStorage.getItem("panelin-dev-mode") === "1";
@@ -2802,17 +2814,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [isDetachedChatWindow]);
 
   useEffect(() => {
+    if (!isCompactMainLayoutWidth(viewportWidth)) return;
+    setChatPresentation((prev) => {
+      if (prev === "sidebar") return prev;
+      persistChatPresentation("sidebar");
+      return "sidebar";
+    });
+  }, [viewportWidth, persistChatPresentation]);
+
+  useEffect(() => {
     floatingRectRef.current = floatingRect;
   }, [floatingRect]);
 
   const useSidebarChat = chatOpen && !isDetachedChatWindow && chatPresentation === "sidebar";
   const useFloatingChat = chatOpen && !isDetachedChatWindow && chatPresentation === "floating";
-
-  const persistChatPresentation = useCallback((mode) => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("panelin-chat-presentation", mode);
-    }
-  }, []);
 
   const openChat = useCallback(() => {
     setChatOpen(true);
@@ -2823,10 +2838,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, []);
 
   const requestFloatingChat = useCallback(() => {
+    if (isCompactMainLayoutWidth(viewportWidth)) return;
     setChatPresentation("floating");
     persistChatPresentation("floating");
     setChatOpen(true);
-  }, [persistChatPresentation]);
+  }, [persistChatPresentation, viewportWidth]);
 
   const returnChatToSidebar = useCallback(() => {
     setChatPresentation("sidebar");
@@ -3647,22 +3663,28 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const resetMainSplitLayout = useCallback(() => {
     try {
       if (useSidebarChat) {
-        mainPanelGroupRef.current?.setLayout?.([24, 52, 24]);
+        mainPanelGroupRef.current?.setLayout?.(
+          isCompactLayout ? [50, 30, 20] : [24, 52, 24],
+        );
       } else {
-        mainPanelGroupRef.current?.setLayout?.([28, 72]);
+        mainPanelGroupRef.current?.setLayout?.(
+          isCompactLayout ? [55, 45] : [28, 72],
+        );
       }
     } catch {
       /* optional API */
     }
-  }, [useSidebarChat]);
+  }, [useSidebarChat, isCompactLayout]);
 
   const resetChatSplitLayout = useCallback(() => {
     try {
-      mainPanelGroupRef.current?.setLayout?.([24, 52, 24]);
+      mainPanelGroupRef.current?.setLayout?.(
+        isCompactLayout ? [50, 30, 20] : [24, 52, 24],
+      );
     } catch {
       /* optional API */
     }
-  }, []);
+  }, [isCompactLayout]);
 
   const resetRoofPreviewLayout = useCallback(() => {
     setTecho(t => ({
@@ -5389,11 +5411,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       <PanelGroup
         ref={mainPanelGroupRef}
         direction={isCompactLayout ? "vertical" : "horizontal"}
-        autoSaveId={
-          isCompactLayout
-            ? undefined
-            : (useSidebarChat ? "bmc-panelin-main-split-with-chat" : "bmc-panelin-main-split")
-        }
+        autoSaveId={panelinMainSplitAutoSaveId(isCompactLayout, useSidebarChat)}
+        storage={panelinPanelGroupStorage}
         className="bmc-main-grid"
         style={{
           display: "flex",
@@ -7746,7 +7765,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
               style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
               hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
-              onDoubleClick={(e) => { e.preventDefault(); if (!isCompactLayout) resetChatSplitLayout(); }}
+              onDoubleClick={(e) => { e.preventDefault(); resetChatSplitLayout(); }}
             />
             <Panel
               defaultSize={isCompactLayout ? 28 : 22}
@@ -7758,7 +7777,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 isOpen
                 embeddedMode
                 onClose={closeChat}
-                onRequestFloating={requestFloatingChat}
+                onRequestFloating={isCompactLayout ? undefined : requestFloatingChat}
                 {...panelinChatPanelProps}
               />
             </Panel>

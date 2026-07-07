@@ -11,7 +11,7 @@
  * buildChannelRules(channel) appended to the system prompt.
  */
 import { config } from "../config.js";
-import { buildSystemPrompt } from "./chatPrompts.js";
+import { buildSystemPromptParts } from "./chatPrompts.js";
 import { findRelevantExamples } from "./trainingKB.js";
 import { renderExamplesBlock } from "./channelRenderer.js";
 import {
@@ -197,10 +197,24 @@ export async function callAgentOnce(messages, opts = {}) {
   const bare = opts.bareSystemPrompt || null;
   const kbExamples = bare ? [] : findRelevantExamples(lastUser, { limit: 4 });
   const kbBlock = bare ? "" : renderExamplesBlock(kbExamples, channel);
-  const basePrompt = bare ? "" : buildSystemPrompt(calcState, { trainingExamples: kbExamples });
   const channelSection = bare ? "" : buildChannelSection(channel);
-  const promptCore = bare || opts.systemPrompt || basePrompt;
-  const systemPrompt = [promptCore, channelSection, kbBlock].filter(Boolean).join("\n\n");
+
+  // Split the system prompt into a cacheable static prefix + a per-request dynamic
+  // tail. Only the Anthropic branch consumes the split (stamps cache_control on the
+  // ~20k-token prefix); `systemPrompt` (the joined string used by the other providers
+  // and by logging) stays BYTE-IDENTICAL to the previous construction.
+  let staticSystem, dynamicSystem;
+  if (bare || opts.systemPrompt) {
+    // Specialized/slim prompt (email drafter, wolfboard batch): fully static → cache
+    // it whole; channel rules + KB (if any) form the small dynamic tail.
+    staticSystem = bare || opts.systemPrompt;
+    dynamicSystem = [channelSection, kbBlock].filter(Boolean).join("\n\n");
+  } else {
+    const { staticPrefix, dynamicTail } = buildSystemPromptParts(calcState, { trainingExamples: kbExamples });
+    staticSystem = staticPrefix;
+    dynamicSystem = [dynamicTail, channelSection, kbBlock].filter(Boolean).join("\n\n");
+  }
+  const systemPrompt = [staticSystem, dynamicSystem].filter(Boolean).join("\n\n");
 
   const channelDefault = channel === "ml" ? 120 : channel === "wa" ? 400 : 1200;
   const maxTokens = Number(eff.maxTokens) || channelDefault;
@@ -250,10 +264,21 @@ export async function callAgentOnce(messages, opts = {}) {
       if (p === "claude") {
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
         const client = new Anthropic({ apiKey });
+        // Structured system: cache_control on the large static prefix (identity,
+        // catalog, canonical prices, tools ≈ 20k tokens) → cache reads are 0.1x on
+        // hit within the 5-min TTL. The dynamic tail (calc state, KB, prefs) is a
+        // second, uncached block. Falls back to a single cached block when there is
+        // no dynamic tail (e.g. bare/slim prompts).
+        const system = dynamicSystem
+          ? [
+              { type: "text", text: staticSystem, cache_control: { type: "ephemeral" } },
+              { type: "text", text: dynamicSystem },
+            ]
+          : [{ type: "text", text: staticSystem, cache_control: { type: "ephemeral" } }];
         const params = {
           model: modelUsed,
           max_tokens: maxTokens,
-          system: systemPrompt,
+          system,
           messages,
         };
         if (eff.temperature != null) params.temperature = eff.temperature;
@@ -310,9 +335,19 @@ export async function callAgentOnce(messages, opts = {}) {
         };
         if (eff.temperature != null) generationConfig.temperature = eff.temperature;
         if (maxTokens) generationConfig.maxOutputTokens = maxTokens;
-        const model = genai.getGenerativeModel({ model: modelUsed, generationConfig });
+        // Pass the system prompt as a proper systemInstruction and the FULL
+        // conversation as contents. Previously this branch sent only
+        // `${systemPrompt}\n\n${lastUser}`, silently dropping all prior turns — any
+        // multi-turn WA/ML conversation that fell to Gemini lost its history.
+        const contents = messages
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: String(m.content ?? "") }] }));
+        const model = genai.getGenerativeModel({ model: modelUsed, systemInstruction: systemPrompt, generationConfig });
         const result = await callWithTimeout(
-          (signal) => model.generateContent(`${systemPrompt}\n\n${lastUser}`, { signal }),
+          (signal) => model.generateContent(
+            { contents: contents.length ? contents : [{ role: "user", parts: [{ text: lastUser }] }] },
+            { signal },
+          ),
           PROVIDER_TIMEOUT_MS, "gemini",
         );
         text = result.response.text() || "";
@@ -326,6 +361,10 @@ export async function callAgentOnce(messages, opts = {}) {
 
         // Structured cost observability (consistent with Phase 0 changes)
         // TODO: thread pino logger here once cost-telemetry module exists
+        // cache_read_tokens > 0 ⇒ the Anthropic prompt cache HIT (static prefix
+        // served at 0.1x); cache_write_tokens > 0 ⇒ it seeded the cache (1.25x, the
+        // first call of a 5-min window). Null for non-Anthropic providers (different
+        // usage shape). Lets us confirm the caching hit rate in prod (gh — PR 3 follow-up).
         console.log(JSON.stringify({
           event: "agent_core_call",
           provider: p,
@@ -333,6 +372,9 @@ export async function callAgentOnce(messages, opts = {}) {
           channel,
           latency_ms: Date.now() - t0,
           estimated_cost_usd: cost,
+          input_tokens: usage.input_tokens ?? usage.prompt_tokens ?? null,
+          cache_read_tokens: usage.cache_read_input_tokens ?? null,
+          cache_write_tokens: usage.cache_creation_input_tokens ?? null,
           task_key: taskKey || null,
         }));
 
@@ -344,11 +386,30 @@ export async function callAgentOnce(messages, opts = {}) {
           estimatedCostUsd: cost,
         };
       }
+      // A provider that returns empty text is skipped silently too — surface it.
+      console.log(JSON.stringify({ event: "provider_empty", provider: p, model: modelUsed, channel }));
       errors.push(`${p}: empty`);
 
     } catch (err) {
       recordProviderFailure(p, Date.now()); // feeds cooldown deprioritization
-      errors.push(`${p}: ${err.message?.slice(0, 80)}`);
+      // Surface the EXACT per-provider failure. Before this, an individual
+      // provider error was only accumulated in errors[] and shown on the
+      // ALL_PROVIDERS_FAILED throw — which never fires when a later provider
+      // (e.g. gemini) rescues the call, so "why is claude failing on the seam?"
+      // was invisible in the logs. status/error_type come from the Anthropic +
+      // OpenAI SDK error shapes.
+      const detail = String(err?.message || err).slice(0, 200);
+      console.log(JSON.stringify({
+        event: "provider_error",
+        provider: p,
+        model: modelUsed,
+        channel,
+        status: err?.status ?? null,
+        error_type: err?.error?.type ?? err?.name ?? null,
+        detail,
+        task_key: taskKey || null,
+      }));
+      errors.push(`${p}: ${detail.slice(0, 80)}`);
     }
   }
 

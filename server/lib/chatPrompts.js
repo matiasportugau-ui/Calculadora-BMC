@@ -512,11 +512,17 @@ export function buildVoiceSystemPrompt(calcState = {}, options = {}) {
 }
 
 /**
+ * Build the system prompt SPLIT into a cacheable static prefix and a per-request
+ * dynamic tail. The static prefix (identity, catalog, canonical prices, tools,
+ * protocols) is request-independent — agentCore stamps `cache_control` on it for
+ * the Anthropic prompt cache. The dynamic tail (calc state, KB examples, prefs,
+ * rag, dev rules) varies per call and must NOT be cached.
+ *
  * @param {object} calcState
  * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object, channel?: "chat"|"ml"|"wa", ragContext?: string }} options
- * @returns {string}
+ * @returns {{ staticPrefix: string, dynamicTail: string }}
  */
-export function buildSystemPrompt(calcState = {}, options = {}) {
+export function buildSystemPromptParts(calcState = {}, options = {}) {
   const {
     trainingExamples = [],
     devMode = false,
@@ -669,7 +675,30 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
 - ❌ Llamar \`guardar_en_crm\` sin confirmación explícita del usuario.
 - ❌ Re-preguntar la familia si \`calcState.techo.familia\` ya está seteado.`;
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, brainBlockStr, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules]
-    .filter(Boolean)
-    .join("\n\n");
+  // Cache split. The static prefix is request-independent (→ cache_control in
+  // agentCore's Claude branch); the dynamic tail varies per request. Their join is
+  // BYTE-IDENTICAL to the previous single-array order. `brainBlockStr` stays at its
+  // original position inside the prefix so this stays byte-identical in every mode;
+  // when the brain flag is ON it is request-dependent, so the cache simply won't hit
+  // in that (non-prod) mode — output correctness is unaffected.
+  const staticPrefix = [
+    IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC,
+    canonicalPrices, knowledgeBlock, brainBlockStr, toolsBlock, extractionProtocol, antiRepBlock,
+  ].filter(Boolean).join("\n\n");
+  const dynamicTail = [
+    variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules,
+  ].filter(Boolean).join("\n\n");
+  return { staticPrefix, dynamicTail };
+}
+
+/**
+ * Backwards-compatible single-string system prompt. Byte-identical to the
+ * pre-caching output; all existing callers (agentChat, voice, etc.) are unchanged.
+ * @param {object} calcState
+ * @param {object} [options]
+ * @returns {string}
+ */
+export function buildSystemPrompt(calcState = {}, options = {}) {
+  const { staticPrefix, dynamicTail } = buildSystemPromptParts(calcState, options);
+  return [staticPrefix, dynamicTail].filter(Boolean).join("\n\n");
 }
