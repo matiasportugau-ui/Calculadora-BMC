@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-06
+**Última actualización:** 2026-07-07
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-07 (fix — Playwright vuelve a empaquetarse en Cloud Run para SERP keywords):** Hallazgo post-PR #603: `keywordSerpPlaywright.js` importa `playwright` en runtime, pero la imagen API ejecuta `npm ci --omit=dev`; con `playwright` solo en `devDependencies`, los refreshes SERP seguían fallando antes de llegar al Chromium del sistema. Fix mínimo: `playwright` pasa a `dependencies` y se agrega `tests/serverRuntimeDeps.test.js` a `test:core` para bloquear este drift Docker/runtime.
 
 **2026-07-06 (fix — keyword monitor SERP uses system Chromium in Cloud Run):** `keywordSerpPlaywright.js` resuelve `CHROMIUM_EXECUTABLE_PATH` (mismo contrato que PDF/TraKtiMe) con fallback a `/usr/bin/chromium-browser` y `/usr/bin/chromium` antes del bundle de Playwright. Args headless estándar para distro Chromium en contenedor. Cierra el gap de refrescos programados P1 (scheduler 04:00 UTC) que fallaban en prod. Tests `keywordSerpPlaywright.test.js`. PR #603.
 
