@@ -386,11 +386,30 @@ export async function callAgentOnce(messages, opts = {}) {
           estimatedCostUsd: cost,
         };
       }
+      // A provider that returns empty text is skipped silently too — surface it.
+      console.log(JSON.stringify({ event: "provider_empty", provider: p, model: modelUsed, channel }));
       errors.push(`${p}: empty`);
 
     } catch (err) {
       recordProviderFailure(p, Date.now()); // feeds cooldown deprioritization
-      errors.push(`${p}: ${err.message?.slice(0, 80)}`);
+      // Surface the EXACT per-provider failure. Before this, an individual
+      // provider error was only accumulated in errors[] and shown on the
+      // ALL_PROVIDERS_FAILED throw — which never fires when a later provider
+      // (e.g. gemini) rescues the call, so "why is claude failing on the seam?"
+      // was invisible in the logs. status/error_type come from the Anthropic +
+      // OpenAI SDK error shapes.
+      const detail = String(err?.message || err).slice(0, 200);
+      console.log(JSON.stringify({
+        event: "provider_error",
+        provider: p,
+        model: modelUsed,
+        channel,
+        status: err?.status ?? null,
+        error_type: err?.error?.type ?? err?.name ?? null,
+        detail,
+        task_key: taskKey || null,
+      }));
+      errors.push(`${p}: ${detail.slice(0, 80)}`);
     }
   }
 
