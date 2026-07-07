@@ -18,6 +18,9 @@ export const LAYOUT_OPTIONS = [
   { id: 'simple-ocean',      label: 'Simple — Ocean' },
 
   // Legacy / heavy technical styles (kept for compatibility). The "BMC PDF — Blueprint Técnico" is close to brand navy + technical detail.
+  // 'classic' is the original HOJA VISUAL CLIENTE (generateClientVisualHTML) used before
+  // the template system — recovered as a selectable option; renders from q.raw.
+  { id: 'classic',           label: 'Clásico — Hoja Visual Cliente (formato anterior)', legacy: true },
   { id: 'bmc-pdf',           label: 'BMC PDF — Blueprint Técnico', legacy: true },
   { id: 'soft-modern',       label: 'E — Soft Modern', legacy: true },
   { id: 'executive-dark',    label: 'A — Executive Dark', legacy: true },
@@ -166,6 +169,10 @@ export function buildQuotationModel(data) {
     version: Number(version) || 1,
     createdBy: createdBy || null,
     generatedAt: new Date().toISOString(),
+
+    // Raw quotation inputs — the 'classic' layout (generateClientVisualHTML)
+    // consumes the original data shape, not the flattened model above.
+    raw: { client: clienteSrc, project, scenario, panel, groups, totals, appendix, snapshotImages },
   };
 }
 
@@ -186,6 +193,13 @@ const TEMPLATE_MAP = {
 };
 
 export async function renderPdfLayout(layout, q) {
+  // 'classic' — the original HOJA VISUAL CLIENTE; needs the raw inputs preserved
+  // by buildQuotationModel. Models without q.raw fall through to the default map.
+  if (layout === 'classic' && q?.raw) {
+    const { generateClientVisualHTML } = await import('../utils/quotationViews.js');
+    // includePlantaResumenPage:false matches the pre-existing classic fallback in buildClientePdfHtml
+    return generateClientVisualHTML({ ...q.raw, includePlantaResumenPage: false });
+  }
   const loader = TEMPLATE_MAP[layout] ?? TEMPLATE_MAP['soft-modern'];
   const mod = await loader();
   return mod.render(q);

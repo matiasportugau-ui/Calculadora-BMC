@@ -67,11 +67,11 @@ function renderBomDetailRows(bomDetailGroups) {
 
       // Explicitly surface quantity and length of panels (user request)
       if (isPanelGroup) {
-        const np = i.cantPaneles || i.cantPaneles === 0 ? i.cantPaneles : null;
+        const np = i.cantPaneles != null ? i.cantPaneles : null;
         const lp = i.largoPanel ? Number(i.largoPanel).toFixed(2) : null;
-        if (np || lp) {
+        if (np != null || lp) {
           const extra = [];
-          if (np) extra.push(`${np} paneles`);
+          if (np != null) extra.push(`${np} paneles`);
           if (lp) extra.push(`${lp} m`);
           if (extra.length) {
             desc += ` <span style="color:#003366;font-weight:600">(${extra.join(" × ")})</span>`;

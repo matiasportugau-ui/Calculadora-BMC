@@ -57,7 +57,7 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 - `src/App.jsx` — router; 20+ routes including `/` (calculator), `/hub` (wolfboard), `/hub/ml`, `/hub/wa`, `/hub/canales`, `/hub/tareas`, `/hub/traktime/*`, `/hub/cotizaciones`, `/hub/marketing`, `/hub/admin`, `/hub/admin/users`, `/hub/admin/analytics`, `/logistica`, `/conductor`, `/inspector`, `/preview/pdf`.
 - `src/utils/quotationViews.js` — client visual HTML (`generateClientVisualHTML`), costeo HTML, PDF appendix builders.
 - `src/utils/pdfGenerator.js` — PDF pipeline (server-side Chromium + html2pdf.js fallback).
-- `src/pdf-templates/` — 7 template layouts + `index.js` dispatcher with `buildQuotationModel()` and `LAYOUT_OPTIONS`.
+- `src/pdf-templates/` — 13 template layouts + `index.js` dispatcher with `buildQuotationModel()` and `LAYOUT_OPTIONS`.
 
 ### Backend hot spots
 
@@ -68,11 +68,11 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 
 ### PDF system
 
-- **7 template layouts** in `src/pdf-templates/` — each receives a `QuotationModel` (built by `buildQuotationModel()` in `index.js`) and returns self-contained HTML.
+- **13 template layouts** in `src/pdf-templates/` — each receives a `QuotationModel` (built by `buildQuotationModel()` in `index.js`) and returns self-contained HTML.
 - **Pipeline:** `src/utils/pdfGenerator.js` tries `POST /api/pdf/generate` (server-side Playwright/Chromium, vectorial) first; falls back to `html2pdf.js` (html2canvas + jsPDF, raster).
 - **Layout selector:** persisted in `localStorage` key `bmc.pdfLayout`; dropdown in PanelinCalculadoraV3 and GoogleDrivePanel.
-- **Classic output:** `generateClientVisualHTML()` in `src/utils/quotationViews.js` — inline-styled single-pass HTML (not template-based).
-- Templates: `bmc-pdf`, `soft-modern`, `executive-dark`, `blueprint`, `minimalist`, `construction-bold`, `simple`.
+- **Classic output:** `generateClientVisualHTML()` in `src/utils/quotationViews.js` — inline-styled single-pass HTML (not template-based). Selectable as layout id `classic` ("Clásico — Hoja Visual Cliente"); `renderPdfLayout` routes it through the raw inputs preserved in `QuotationModel.raw`.
+- Templates: `simple` (default, refined R3-C) + `simple-previous` (pre-refinement) + `simple-carbon`/`sage`/`slate`/`warm`/`ocean` variants, `bmc-pdf`, `soft-modern`, `executive-dark`, `blueprint`, `minimalist`, `construction-bold`, plus the `classic` Hoja Visual Cliente.
 
 ### Auth system
 

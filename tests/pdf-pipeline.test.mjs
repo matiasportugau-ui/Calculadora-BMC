@@ -1,7 +1,7 @@
 /**
  * tests/pdf-pipeline.test.mjs
  * Diagnoses the full PDF generation pipeline:
- *   1. HTML generation for all 5 layouts
+ *   1. HTML generation for every layout in LAYOUT_OPTIONS
  *   2. /api/pdf/generate endpoint reachability + error type
  *   3. html2pdf.js fallback path (structure check)
  *   4. pdfGenerator.js logic
@@ -47,6 +47,8 @@ const SAMPLE = {
     tipoAguas: "una_agua",
     encounterByPair: {},
     globalBorders: {},
+    // buildPdfAppendixPayload always includes totals — the classic layout's appendix page reads them
+    totals: { subtotalSinIVA: 6933.62, iva: 1525.40, totalFinal: 8459.02 },
   },
   snapshotImages: {},
 };
@@ -88,7 +90,7 @@ ok("totalConIva > 0",        q.totalConIva > 0);
 ok("conditionsText non-empty", q.conditionsText.length > 10);
 ok("svgPlanHtml empty (no snapshot)", q.svgPlanHtml === "");
 
-// ── 2. renderPdfLayout — all 5 layouts ───────────────────────────────────────
+// ── 2. renderPdfLayout — all LAYOUT_OPTIONS layouts ──────────────────────────
 
 section("2. renderPdfLayout — HTML generation");
 
@@ -98,7 +100,8 @@ for (const { id, label } of LAYOUT_OPTIONS) {
     const hasDoctype  = html.startsWith("<!DOCTYPE html>");
     const hasRef      = html.includes(q.ref);
     const hasTotal    = html.includes("8,459.02") || html.includes("8459.02");
-    const has3Pages   = (html.match(/class="page/g) || []).length >= 3;
+    // 'classic' (Hoja Visual Cliente) is single-flow HTML without .page containers
+    const has3Pages   = id === "classic" || (html.match(/class="page/g) || []).length >= 3;
     const sizeKB      = Math.round(html.length / 1024);
     ok(`${label}: doctype + ref + total + 3 pages (${sizeKB} KB)`,
        hasDoctype && hasRef && hasTotal && has3Pages,
