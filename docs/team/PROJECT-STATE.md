@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-04
+**Última actualización:** 2026-07-07
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-07 (feat — PDF quote preferred template):** Made the refined R3-C version of "Presupuesto Simple" the preferred production template for client PDF quotes (used by "PDF Cliente", Drive exports, WA, etc.). The `simple` layout is now the refined production theme (32px logo, updated header styling, etc.). The previous pre-refinement version is preserved and selectable as `simple-previous`. All generations were exported to `.runtime/pdf-generations-2026-07-07/` for comparison before switching the default. Updated `src/pdf-templates/{simple.js, index.js}` + `simple-previous.js`.
 
 **2026-07-06 (feat — Hub Wolfboard operator overview):** `/hub` muestra `OperatorOverview` — resúmenes de Control Plane IA (`/api/assistants/status`) y KPIs Finanzas con links a módulos oficiales. Aditivo puro en `BmcWolfboardHub.jsx`; sin cambiar rutas existentes.
 

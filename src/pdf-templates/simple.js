@@ -1,6 +1,6 @@
 // src/pdf-templates/simple.js
 // Layout G — Presupuesto Simple (single A4 page, full terms)
-// *** R3-C IS NOW THE PRODUCTION THEME (primary BMC-theme) ***
+// *** R3-C / REFINED IS THE PRODUCTION THEME (primary BMC-theme) ***
 // - Brand header: logo (32px) + "BMC URUGUAY" + "METALOG SAS" on left, PRESUPUESTO badge + ref/date on right
 // - Logo size: 32px (bumped per iteration), header gap: 6px
 // - Full original 12 QUOTE_TERMS (with .bl / .hl classes)
