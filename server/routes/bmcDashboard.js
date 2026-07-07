@@ -1553,12 +1553,21 @@ export { pushMatrizPricingOverrides, handleUpdateStock, parseNum, parseDate };
 
 // ─── Router ───────────────────────────────────────────────────────────────
 
-export default function createBmcDashboardRouter(config) {
+export default function createBmcDashboardRouter(config, deps = {}) {
   const router = Router();
   const requireEmailIngestAuth = makeRequireEmailIngestAuth(config);
   const sheetId = config.bmcSheetId || "";
   const schema = config.bmcSheetSchema || "Master_Cotizaciones";
   const { sheetName: cotizSheet, opts: cotizOpts } = getCotizacionesSheetOpts(schema);
+  const routeDeps = {
+    checkSheetsAvailable,
+    getCrmSheetsWrite: () => getCrmSheetsWrite(),
+    getEmailIngestPool,
+    getIngestByRow,
+    sendEmailReply,
+    extractEmailAddress,
+    ...deps,
+  };
 
   router.use((_req, res, next) => {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -3301,9 +3310,9 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
   async function handleCrmCockpitSendApproved(req, res) {
     const row = Number(req.body?.row);
     if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row` });
-    if (!checkSheetsAvailable(config)) return noConfig(res);
+    if (!routeDeps.checkSheetsAvailable(config)) return noConfig(res);
     try {
-      const sheets = await getCrmSheetsWrite();
+      const sheets = await routeDeps.getCrmSheetsWrite();
       const r = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
         range: `'${CRM_TAB}'!A${row}:AK${row}`,
@@ -3398,18 +3407,18 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       if (/Email/i.test(origen)) {
         // Recipient + receiving casilla: prefer the ingest log (keyed by CRM row),
         // fall back to parsing an address out of the row (col D / observaciones).
-        const ingestPool = getEmailIngestPool(config.databaseUrl);
-        const meta = await getIngestByRow(ingestPool, row);
+        const ingestPool = routeDeps.getEmailIngestPool(config.databaseUrl);
+        const meta = await routeDeps.getIngestByRow(ingestPool, row);
         const recipient =
-          extractEmailAddress(meta?.remitente) ||
-          extractEmailAddress(parsed.telefono) ||
-          extractEmailAddress(parsed.observaciones);
+          routeDeps.extractEmailAddress(meta?.remitente) ||
+          routeDeps.extractEmailAddress(parsed.telefono) ||
+          routeDeps.extractEmailAddress(parsed.observaciones);
         if (!recipient) {
           return res.status(400).json({ ok: false, error: "No recipient email found for this row" });
         }
         const casilla = meta?.account || config.emailReplyDefaultCasilla || "";
         try {
-          await sendEmailReply({
+          await routeDeps.sendEmailReply({
             account: casilla,
             // Reply must leave from the receiving casilla (verified Gmail
             // send-as alias), not the hub account's default identity.
