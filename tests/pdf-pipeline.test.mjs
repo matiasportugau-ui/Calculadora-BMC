@@ -1,7 +1,7 @@
 /**
  * tests/pdf-pipeline.test.mjs
  * Diagnoses the full PDF generation pipeline:
- *   1. HTML generation for all 5 layouts
+ *   1. HTML generation for every layout in LAYOUT_OPTIONS
  *   2. /api/pdf/generate endpoint reachability + error type
  *   3. html2pdf.js fallback path (structure check)
  *   4. pdfGenerator.js logic
@@ -90,7 +90,7 @@ ok("totalConIva > 0",        q.totalConIva > 0);
 ok("conditionsText non-empty", q.conditionsText.length > 10);
 ok("svgPlanHtml empty (no snapshot)", q.svgPlanHtml === "");
 
-// ── 2. renderPdfLayout — all 5 layouts ───────────────────────────────────────
+// ── 2. renderPdfLayout — all LAYOUT_OPTIONS layouts ──────────────────────────
 
 section("2. renderPdfLayout — HTML generation");
 
