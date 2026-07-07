@@ -155,6 +155,55 @@ const SCHEMA_TO_INTERNAL = {
 };
 
 /**
+ * Gemini requires GenerateContentRequest.contents to start with `user`, end with
+ * `user`, and strictly alternate `user`/`model`. Some product paths (notably the
+ * legacy WA burst summarizer) pass several consecutive user turns. Preserve the
+ * history, but collapse it into a Gemini-safe sequence before calling the SDK.
+ */
+export function normalizeGeminiContents(messages = [], fallbackUser = "") {
+  const contents = [];
+  const fallbackText = String(fallbackUser ?? "").trim();
+
+  for (const m of Array.isArray(messages) ? messages : []) {
+    if (m?.role !== "user" && m?.role !== "assistant") continue;
+    let role = m.role === "assistant" ? "model" : "user";
+    let text = String(m.content ?? "").trim();
+    if (!text) continue;
+
+    // A leading assistant/model turn is not valid Gemini history. Treat it as
+    // context for the next response rather than dropping potentially important
+    // operator/business-initiated text.
+    if (role === "model" && contents.length === 0) {
+      role = "user";
+      text = `Contexto previo del asistente/operador:\n${text}`;
+    }
+
+    const last = contents[contents.length - 1];
+    if (last?.role === role) {
+      last.parts[0].text = `${last.parts[0].text}\n\n${text}`;
+    } else {
+      contents.push({ role, parts: [{ text }] });
+    }
+  }
+
+  if (contents.length === 0) {
+    return [{ role: "user", parts: [{ text: fallbackText || "Continuá." }] }];
+  }
+
+  if (contents[contents.length - 1].role !== "user") {
+    if (fallbackText) {
+      contents.push({ role: "user", parts: [{ text: fallbackText }] });
+    } else {
+      while (contents.length && contents[contents.length - 1].role !== "user") {
+        contents.pop();
+      }
+    }
+  }
+
+  return contents.length ? contents : [{ role: "user", parts: [{ text: fallbackText || "Continuá." }] }];
+}
+
+/**
  * Generate a single (non-streaming) agent response.
  *
  * @param {Array<{role:"user"|"assistant", content:string}>} messages
@@ -339,15 +388,10 @@ export async function callAgentOnce(messages, opts = {}) {
         // conversation as contents. Previously this branch sent only
         // `${systemPrompt}\n\n${lastUser}`, silently dropping all prior turns — any
         // multi-turn WA/ML conversation that fell to Gemini lost its history.
-        const contents = messages
-          .filter((m) => m.role === "user" || m.role === "assistant")
-          .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: String(m.content ?? "") }] }));
+        const contents = normalizeGeminiContents(messages, lastUser);
         const model = genai.getGenerativeModel({ model: modelUsed, systemInstruction: systemPrompt, generationConfig });
         const result = await callWithTimeout(
-          (signal) => model.generateContent(
-            { contents: contents.length ? contents : [{ role: "user", parts: [{ text: lastUser }] }] },
-            { signal },
-          ),
+          (signal) => model.generateContent({ contents }, { signal }),
           PROVIDER_TIMEOUT_MS, "gemini",
         );
         text = result.response.text() || "";
