@@ -172,6 +172,7 @@ ok("live: contains PRESUPUESTO", hasPresupuesto);
 ok("live: contains bank grid", hasBank);
 ok("live: contains full terms", hasTerms);
 ok("live: no logo", noLogo);
+ok("live: qty×length span markup", /<span[^>]*>\(12 paneles × 4\.80 m\)<\/span>/.test(simpleHtml));
 
 const livePrepared = prepareHtmlForClientCapture(simpleHtml);
 ok("live prepared: no @page", !/@page\s*\{/i.test(livePrepared));
