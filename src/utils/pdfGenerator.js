@@ -40,7 +40,7 @@ async function getHtml2Pdf() {
  * for .page padding, removes screen-only shadows, resets body/html margins.
  * Ensures layout seen by capture matches the intended print template.
  */
-function prepareHtmlForClientCapture(htmlString) {
+export function prepareHtmlForClientCapture(htmlString) {
   let h = String(htmlString || '');
   // Remove @page rules (they are for real print/PDF engines, confuse html2canvas)
   h = h.replace(/@page\s*\{[^}]*\}/gi, '');
