@@ -14,6 +14,8 @@
 import express from "express";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 
 export function createPdfRouter() {
   const router = express.Router();
@@ -40,7 +42,18 @@ export function createPdfRouter() {
 
     let browser;
     try {
-      const { existsSync } = await import("node:fs");
+      // Early guard: @sparticuz/chromium ships Linux binaries only.
+      // On macOS/Windows dev without explicit CHROMIUM_EXECUTABLE_PATH the spawn will ENOEXEC.
+      // Client-side html2pdf fallback handles this gracefully.
+      const platform = process.platform;
+      const hasExplicitBinary = !!process.env.CHROMIUM_EXECUTABLE_PATH;
+      if (platform !== "linux" && !hasExplicitBinary) {
+        return res.status(503).json({
+          ok: false,
+          error: "pdf_renderer_unavailable",
+          detail: "Server PDF requires Linux Chromium (prod/Cloud Run). Client fallback will be used."
+        });
+      }
 
       const executablePath =
         process.env.CHROMIUM_EXECUTABLE_PATH ||
@@ -115,12 +128,43 @@ export function createPdfRouter() {
       // Emulate print media so @page / @media print rules take effect
       await page.emulateMediaType("print");
 
-      await page.setContent(html, { waitUntil: "networkidle0", timeout: 30000 });
+      // Inline logo so puppeteer setContent always has it (no origin for / paths).
+      // Handles paths used across templates: /bmc-pdf/assets/... and relative assets/...
+      // The Dockerfile copies public/bmc-pdf so this works in prod Cloud Run.
+      let processedHtml = html;
+      let logoInlined = false;
+      try {
+        const logoCandidates = [
+          path.resolve(process.cwd(), "public/bmc-pdf/assets/bmc-logo.png"),
+          path.resolve(process.cwd(), "dist/bmc-pdf/assets/bmc-logo.png"),
+        ];
+        const logoPath = logoCandidates.find(p => existsSync(p));
+        if (logoPath) {
+          const logoBuf = readFileSync(logoPath);
+          const dataUrl = `data:image/png;base64,${logoBuf.toString("base64")}`;
+          // Cover all variants used by current + legacy templates
+          processedHtml = html
+            .replace(/src=["']\/bmc-pdf\/assets\/bmc-logo\.png["']/gi, `src="${dataUrl}"`)
+            .replace(/src=["']assets\/bmc-logo\.png["']/gi, `src="${dataUrl}"`)
+            .replace(/src=["'][^"']*bmc-logo\.png["']/gi, `src="${dataUrl}"`); // catch any other relative
+          logoInlined = true;
+        }
+      } catch (logoErr) {
+        console.warn("[pdf] logo inlining skipped:", logoErr.message);
+      }
+      if (logoInlined) {
+        console.info("[pdf] logo inlined as data URL for reliable render");
+      } else {
+        console.warn("[pdf] proceeding without logo (file not found in container)");
+      }
+
+      await page.setContent(processedHtml, { waitUntil: "networkidle0", timeout: 30000 });
 
       const pdfBuffer = await page.pdf({
         format: "A4",
         printBackground: true,
-        margin: { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" },
+        preferCSSPageSize: true, // honor @page { size; margin } rules defined in templates (e.g. 7mm 8mm)
+        margin: { top: "6mm", right: "6mm", bottom: "6mm", left: "6mm" }, // soft fallback only
       });
 
       const safeName = String(filename).replace(/[^\w\-. áéíóúÁÉÍÓÚñÑ]/g, "_");

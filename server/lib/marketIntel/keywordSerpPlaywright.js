@@ -1,12 +1,63 @@
 // Module: market-intelligence | Owner: bmc-dev | Created: 2026-07-04
 // Playwright-backed SERP extraction (Google → Bing fallback) for keyword monitor.
 
+import { existsSync } from 'node:fs';
 import pino from 'pino';
 
 /** Lazy-load playwright so Cloud Run boots without Chromium installed. */
 async function getChromium() {
   const { chromium } = await import('playwright');
   return chromium;
+}
+
+/** Standard headless args for distro Chromium (Cloud Run / Alpine). */
+export const SYSTEM_CHROMIUM_ARGS = [
+  '--headless=new',
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--no-zygote',
+  '--disable-extensions',
+  '--disable-blink-features=AutomationControlled',
+];
+
+const SYSTEM_CHROMIUM_FALLBACK_PATHS = ['/usr/bin/chromium-browser', '/usr/bin/chromium'];
+
+/**
+ * Resolve a system Chromium binary (env first, then common Alpine paths).
+ * Mirrors the PDF route contract: Cloud Run ships distro Chromium, not Playwright's bundle.
+ */
+export function resolveSystemChromiumPath(
+  envPath = process.env.CHROMIUM_EXECUTABLE_PATH,
+  exists = existsSync
+) {
+  const candidates = [envPath, ...SYSTEM_CHROMIUM_FALLBACK_PATHS].filter(Boolean);
+  const seen = new Set();
+  for (const p of candidates) {
+    if (seen.has(p)) continue;
+    seen.add(p);
+    if (exists(p)) return p;
+  }
+  return null;
+}
+
+/** Build Playwright launch options: system binary in prod, bundled/channel in dev. */
+export function resolveChromiumLaunchOptions({ env = process.env, exists = existsSync } = {}) {
+  const systemPath = resolveSystemChromiumPath(env.CHROMIUM_EXECUTABLE_PATH, exists);
+  if (systemPath) {
+    return {
+      executablePath: systemPath,
+      headless: true,
+      args: SYSTEM_CHROMIUM_ARGS,
+      source: 'system',
+    };
+  }
+  return {
+    headless: true,
+    args: ['--disable-blink-features=AutomationControlled'],
+    source: 'playwright-bundled',
+  };
 }
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
@@ -108,10 +159,15 @@ export class KeywordSerpSession {
   async init() {
     if (this.page) return this;
     const chromium = await getChromium();
-    const launchOpts = { headless: true, args: ['--disable-blink-features=AutomationControlled'] };
+    const launchOpts = resolveChromiumLaunchOptions();
+    log.info({ source: launchOpts.source, executablePath: launchOpts.executablePath ?? 'bundled' }, 'keyword SERP chromium launch');
     try {
       this.browser = await chromium.launch({ ...launchOpts, timeout: 20_000 });
-    } catch {
+    } catch (err) {
+      if (launchOpts.source === 'system') {
+        log.error({ err: err.message, executablePath: launchOpts.executablePath }, 'system chromium launch failed');
+        throw err;
+      }
       this.browser = await chromium.launch({ channel: 'chrome', headless: true, timeout: 15_000 });
     }
     this.page = await this.browser.newPage({

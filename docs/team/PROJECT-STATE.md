@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-04
+**Última actualización:** 2026-07-06
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,14 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-06 (perf — prompt caching en agentCore (Anthropic prompt cache) + fix historial Gemini):** Cierra el PR 3 del programa de 3 sabios, con el diseño que evita el footgun (cachear el prompt entero backfire porque `buildSystemPrompt` embebe `calcState` → nunca pega → 1.25x write). **Solución:** nuevo `buildSystemPromptParts()` en `chatPrompts.js` que separa el prompt en `{ staticPrefix, dynamicTail }` — el prefijo estático (identidad, catálogo, precios canónicos, tools ≈ **75.7k chars / ~20k tokens**, request-independiente) y la cola dinámica (calcState, ejemplos KB, prefs, rag ≈ **~700 chars**). `buildSystemPrompt()` queda como wrapper **byte-idéntico** (todos los callers existentes intactos; `brainBlockStr` se mantiene en su posición original en el prefijo → byte-idéntico en todo modo, y con el flag brain ON simplemente no cachea, no-prod). En `agentCore.js`, la rama Claude arma un `system` estructurado con `cache_control: {type:"ephemeral"}` sobre el prefijo; `systemPrompt` (string) sigue igual para los otros proveedores + logs. **Cobertura de cache ~99% del prompt** (el prefijo estable entre calcStates → lecturas 0.1x sobre hit dentro del TTL de 5min). Además, **fix del historial Gemini**: la rama pasaba solo `${systemPrompt}\n\n${lastUser}` (descartaba todo el historial multi-turno); ahora usa `systemInstruction` + `contents[]` desde `messages`. Tests `tests/promptCacheSplit.test.js` (7/7: byte-identity, prefijo estable entre calcStates, >90% del prompt, calcState solo en la cola). `gate:local` verde (la única falla es `gate-secrets-drift` de WHATSAPP_*, **pre-existente**, confirmada en árbol limpio — no la causa este PR). PR #<pending>.
+
+**2026-07-06 (fix — keyword monitor SERP uses system Chromium in Cloud Run):** `keywordSerpPlaywright.js` resuelve `CHROMIUM_EXECUTABLE_PATH` (mismo contrato que PDF/TraKtiMe) con fallback a `/usr/bin/chromium-browser` y `/usr/bin/chromium` antes del bundle de Playwright. Args headless estándar para distro Chromium en contenedor. Cierra el gap de refrescos programados P1 (scheduler 04:00 UTC) que fallaban en prod. Tests `keywordSerpPlaywright.test.js`. PR #603.
+
+**2026-07-06 (feat — Hub Wolfboard operator overview):** `/hub` muestra `OperatorOverview` — resúmenes de Control Plane IA (`/api/assistants/status`) y KPIs Finanzas con links a módulos oficiales. Aditivo puro en `BmcWolfboardHub.jsx`; sin cambiar rutas existentes.
+
+**2026-07-06 (fix — PDF generation & export):** Diagnosed and fixed primary PDF export path ("PDF Cliente"). Root causes: (1) server route always attempted @sparticuz Linux binary on macOS dev → ENOEXEC + noisy 503 (now early clean guard + explicit detail); (2) templates reference `/bmc-pdf/assets/bmc-logo.png` which fails to load inside puppeteer `setContent` (no origin) → logo missing on server PDFs (now inlined as data: URL at render time); (3) explicit `margin` in `page.pdf` overrode template `@page` rules → wrong spacing (added `preferCSSPageSize:true` + reduced fallback margins). Also hardened client html2pdf fallback (longer settle 800ms, filename passthrough, imageTimeout). Server PDFs now honor modern "simple" family layouts + crisp vector when available (prod Cloud Run). Fallback path improved for dev. No behavior change for clients; gate:local lint clean. 
 
 **2026-07-04 (docs(skills) — nuevo skill `/github-expert`):** Nuevo skill de proyecto [`.claude/skills/github-expert/SKILL.md`](../../.claude/skills/github-expert/SKILL.md): guía operativa GitHub para este repo — convenciones de branch/commit (`type:` prefix), workflow de PR con DoD (`gate:local`, template, regla >500 LOC → DRAFT), mapa de CI (jobs de `ci.yml` + workflows de deploy/seguridad/bots Gemini), playbook de CI rojo (logs por job, ALSA, disk precheck), labels/board (**BMC Dev**, `priority:P0/P1`) y guardrails (`npm audit fix --force` prohibido, secrets solo en `.env`). Invocable como `/github-expert`; en sesiones remotas usa tools MCP de GitHub (no hay `gh` CLI). Sin cambios de código de app.
 

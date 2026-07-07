@@ -11,7 +11,7 @@
  * buildChannelRules(channel) appended to the system prompt.
  */
 import { config } from "../config.js";
-import { buildSystemPrompt } from "./chatPrompts.js";
+import { buildSystemPromptParts } from "./chatPrompts.js";
 import { findRelevantExamples } from "./trainingKB.js";
 import { renderExamplesBlock } from "./channelRenderer.js";
 import {
@@ -197,10 +197,24 @@ export async function callAgentOnce(messages, opts = {}) {
   const bare = opts.bareSystemPrompt || null;
   const kbExamples = bare ? [] : findRelevantExamples(lastUser, { limit: 4 });
   const kbBlock = bare ? "" : renderExamplesBlock(kbExamples, channel);
-  const basePrompt = bare ? "" : buildSystemPrompt(calcState, { trainingExamples: kbExamples });
   const channelSection = bare ? "" : buildChannelSection(channel);
-  const promptCore = bare || opts.systemPrompt || basePrompt;
-  const systemPrompt = [promptCore, channelSection, kbBlock].filter(Boolean).join("\n\n");
+
+  // Split the system prompt into a cacheable static prefix + a per-request dynamic
+  // tail. Only the Anthropic branch consumes the split (stamps cache_control on the
+  // ~20k-token prefix); `systemPrompt` (the joined string used by the other providers
+  // and by logging) stays BYTE-IDENTICAL to the previous construction.
+  let staticSystem, dynamicSystem;
+  if (bare || opts.systemPrompt) {
+    // Specialized/slim prompt (email drafter, wolfboard batch): fully static → cache
+    // it whole; channel rules + KB (if any) form the small dynamic tail.
+    staticSystem = bare || opts.systemPrompt;
+    dynamicSystem = [channelSection, kbBlock].filter(Boolean).join("\n\n");
+  } else {
+    const { staticPrefix, dynamicTail } = buildSystemPromptParts(calcState, { trainingExamples: kbExamples });
+    staticSystem = staticPrefix;
+    dynamicSystem = [dynamicTail, channelSection, kbBlock].filter(Boolean).join("\n\n");
+  }
+  const systemPrompt = [staticSystem, dynamicSystem].filter(Boolean).join("\n\n");
 
   const channelDefault = channel === "ml" ? 120 : channel === "wa" ? 400 : 1200;
   const maxTokens = Number(eff.maxTokens) || channelDefault;
@@ -250,10 +264,21 @@ export async function callAgentOnce(messages, opts = {}) {
       if (p === "claude") {
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
         const client = new Anthropic({ apiKey });
+        // Structured system: cache_control on the large static prefix (identity,
+        // catalog, canonical prices, tools ≈ 20k tokens) → cache reads are 0.1x on
+        // hit within the 5-min TTL. The dynamic tail (calc state, KB, prefs) is a
+        // second, uncached block. Falls back to a single cached block when there is
+        // no dynamic tail (e.g. bare/slim prompts).
+        const system = dynamicSystem
+          ? [
+              { type: "text", text: staticSystem, cache_control: { type: "ephemeral" } },
+              { type: "text", text: dynamicSystem },
+            ]
+          : [{ type: "text", text: staticSystem, cache_control: { type: "ephemeral" } }];
         const params = {
           model: modelUsed,
           max_tokens: maxTokens,
-          system: systemPrompt,
+          system,
           messages,
         };
         if (eff.temperature != null) params.temperature = eff.temperature;
@@ -310,9 +335,19 @@ export async function callAgentOnce(messages, opts = {}) {
         };
         if (eff.temperature != null) generationConfig.temperature = eff.temperature;
         if (maxTokens) generationConfig.maxOutputTokens = maxTokens;
-        const model = genai.getGenerativeModel({ model: modelUsed, generationConfig });
+        // Pass the system prompt as a proper systemInstruction and the FULL
+        // conversation as contents. Previously this branch sent only
+        // `${systemPrompt}\n\n${lastUser}`, silently dropping all prior turns — any
+        // multi-turn WA/ML conversation that fell to Gemini lost its history.
+        const contents = messages
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: String(m.content ?? "") }] }));
+        const model = genai.getGenerativeModel({ model: modelUsed, systemInstruction: systemPrompt, generationConfig });
         const result = await callWithTimeout(
-          (signal) => model.generateContent(`${systemPrompt}\n\n${lastUser}`, { signal }),
+          (signal) => model.generateContent(
+            { contents: contents.length ? contents : [{ role: "user", parts: [{ text: lastUser }] }] },
+            { signal },
+          ),
           PROVIDER_TIMEOUT_MS, "gemini",
         );
         text = result.response.text() || "";
