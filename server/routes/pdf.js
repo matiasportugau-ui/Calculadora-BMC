@@ -95,7 +95,7 @@ export function createPdfRouter() {
             "--disable-dev-shm-usage",
             "--disable-gpu",
             "--no-zygote",
-            "--single-process",
+            // --single-process removed: can cause "Target closed" crashes in Cloud Run containers
             "--disable-extensions",
             "--disable-background-networking",
             "--disable-default-apps",
@@ -106,6 +106,7 @@ export function createPdfRouter() {
             "--no-first-run",
             "--safebrowsing-disable-auto-update",
             "--font-render-hinting=none",
+            "--disable-accelerated-2d-canvas",
           ]
         : [
             ...new Set([...(chromium.args || [])]),
