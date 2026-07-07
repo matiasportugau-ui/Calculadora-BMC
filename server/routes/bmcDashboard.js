@@ -3411,6 +3411,9 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         try {
           await sendEmailReply({
             account: casilla,
+            // Reply must leave from the receiving casilla (verified Gmail
+            // send-as alias), not the hub account's default identity.
+            from: casilla || undefined,
             to: recipient,
             subject: "Re: Tu consulta — BMC Uruguay",
             text,
