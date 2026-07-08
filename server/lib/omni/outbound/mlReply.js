@@ -2,7 +2,7 @@
  * Omni outbound — MercadoLibre answer via internal API loopback
  */
 
-import { buildMlWriteHeaders } from "../mlInternalAuthHeaders.js";
+import { buildMlWriteHeaders } from "../../mlInternalAuthHeaders.js";
 
 /**
  * @param {{ config: object; questionId: string; text: string }} args
