@@ -7,6 +7,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import {
   calcTechoCompleto,
   calcParedCompleto,
@@ -52,6 +53,14 @@ import {
 
 const router = Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const cotizarPdfLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
+});
 
 // ── GET /openapi — Serves OpenAPI schema for GPT Actions ─────────────────────────────
 
@@ -628,7 +637,7 @@ export async function buildCotizacionHtml({ escenario, lista = "web", techo, par
   return { ok: true, html, gptResp, templateUsed };
 }
 
-router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) => {
+router.post("/cotizar/pdf", cotizarPdfLimiter, requireUser({ optional: true }), async (req, res) => {
   try {
     const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente, source: sourceRaw } = req.body;
     // Provenance marker — distinguishes agent-generated quotes from human-driven ones

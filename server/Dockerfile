@@ -39,13 +39,6 @@ COPY src/data/ ./src/data/
 # refined client template server-side; without this COPY the API crashes at boot.
 COPY src/pdf-templates/ ./src/pdf-templates/
 
-# PDF branding assets (required for server-side PDF generation on /api/pdf/generate).
-# The modern templates (simple*, bmc-pdf etc.) reference the BMC logo at /bmc-pdf/assets/bmc-logo.png
-# (or relative assets/bmc-logo.png). We copy the dir so the route can read the PNG and inline it
-# as a data: URL (puppeteer setContent has no web origin for absolute paths).
-# Only the logo is needed today; the dir is small.
-COPY public/bmc-pdf ./public/bmc-pdf
-
 # server/routes/panelin.js statically imports publishForSku from this script (PIM
 # publish worker); it only depends on server/ + node builtins, so it must ship in
 # the API image or the server crashes at boot with ERR_MODULE_NOT_FOUND.
