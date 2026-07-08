@@ -677,13 +677,28 @@ app.get("/webhooks/whatsapp", (req, res) => {
   res.status(403).send("Forbidden");
 });
 
-app.get("/webhooks/instagram", (req, res) => {
+function metaWebhookClientKey(req) {
+  const xf = req.headers["x-forwarded-for"];
+  if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
+  return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+const metaWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: metaWebhookClientKey,
+  message: { ok: false, error: "rate_limited" },
+});
+
+app.get("/webhooks/instagram", metaWebhookLimiter, (req, res) => {
   const result = verifyMetaWebhookSubscribe(req, config.igVerifyToken);
   res.set("Content-Type", "text/plain");
   res.status(result.status).send(result.body);
 });
 
-app.get("/webhooks/messenger", (req, res) => {
+app.get("/webhooks/messenger", metaWebhookLimiter, (req, res) => {
   const result = verifyMetaWebhookSubscribe(req, config.fbVerifyToken);
   res.set("Content-Type", "text/plain");
   res.status(result.status).send(result.body);
@@ -706,11 +721,11 @@ function handleMetaMessagingRoute(req, res, channel) {
   });
 }
 
-app.post("/webhooks/instagram", asyncHandler(async (req, res) => {
+app.post("/webhooks/instagram", metaWebhookLimiter, asyncHandler(async (req, res) => {
   handleMetaMessagingRoute(req, res, "ig");
 }));
 
-app.post("/webhooks/messenger", asyncHandler(async (req, res) => {
+app.post("/webhooks/messenger", metaWebhookLimiter, asyncHandler(async (req, res) => {
   handleMetaMessagingRoute(req, res, "fb");
 }));
 
