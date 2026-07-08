@@ -20,7 +20,7 @@ import rateLimit from "express-rate-limit";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import { checkAllAssistants, checkAssistant } from "../lib/assistantHealth.js";
 import { listAssistants } from "../lib/assistantRegistry.js";
-import { getSetting, setSetting } from "../lib/waConfig.js";
+import { setAssistantOverride } from "../lib/waConfig.js";
 
 // Read-only status probes touch the DB (omni health check) — rate-limit to keep a
 // misbehaving poller from hammering the pool. Mirrors identityAdmin readLimiter.
@@ -78,12 +78,13 @@ export default function createAssistantsStatusRouter() {
       if (typeof enabled !== "boolean") {
         return res.status(400).json({ ok: false, error: "body.enabled must be a boolean" });
       }
-      const current = getSetting("assistants");
-      const map = current && typeof current === "object" ? current : {};
-      const next = { ...map, [key]: enabled };
       const actor = req.user?.email || req.user?.id || "admin";
-      await setSetting("assistants", next, { actor, ip: req.ip, userAgent: req.get?.("user-agent") });
-      res.json({ ok: true, key, enabled, assistants: next });
+      const result = await setAssistantOverride(key, enabled, {
+        actor,
+        ip: req.ip,
+        userAgent: req.get?.("user-agent"),
+      });
+      res.json({ ok: true, key, enabled, assistants: result.applied });
     } catch (err) {
       const status = err?.status === 400 ? 400 : 500;
       res.status(status).json({ ok: false, error: String(err?.message || err).slice(0, 200) });

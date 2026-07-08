@@ -159,6 +159,76 @@ export async function setSetting(path, value, ctx = {}) {
   return { ok: true, applied: getSetting(path) };
 }
 
+/**
+ * Toggle one assistant override without rewriting the whole assistants map.
+ *
+ * The admin UI can send multiple toggles close together. A generic
+ * read-modify-write of `assistants` loses updates when two requests read the
+ * same cached map, so this writer merges the touched key inside Postgres.
+ *
+ * @param {string} key
+ * @param {boolean} enabled
+ * @param {{ actor?: string, ip?: string, userAgent?: string }} ctx
+ */
+export async function setAssistantOverride(key, enabled, ctx = {}) {
+  if (!_pool) throw new Error("setAssistantOverride: waConfig not primed");
+  const assistantKey = String(key || "").trim().toLowerCase();
+  if (!/^[a-z0-9_-]+$/.test(assistantKey)) {
+    const err = new Error(`Invalid assistant key: ${assistantKey}`);
+    err.status = 400;
+    throw err;
+  }
+  if (typeof enabled !== "boolean") {
+    const err = new Error("enabled must be a boolean");
+    err.status = 400;
+    throw err;
+  }
+
+  _ensureFresh();
+  const before = getSetting("assistants") || {};
+  const candidate = _deepMerge(_cachedTenant.data, { assistants: { [assistantKey]: enabled } });
+  const parsed = SettingsSchema.safeParse(candidate);
+  if (!parsed.success) {
+    const err = new Error(`Invalid assistant override: ${parsed.error.message}`);
+    err.status = 400;
+    err.payload = { issues: parsed.error.issues };
+    throw err;
+  }
+
+  const { rows } = await _pool.query(
+    `insert into wa_settings (key, scope, scope_id, value, updated_at, updated_by)
+     values ('assistants', 'tenant', 'tenant', jsonb_build_object($1::text, $2::boolean), now(), $3)
+     on conflict (key, scope, scope_id) do update
+       set value = jsonb_set(
+             case
+               when jsonb_typeof(wa_settings.value) = 'object' then wa_settings.value
+               else '{}'::jsonb
+             end,
+             array[$1::text],
+             to_jsonb($2::boolean),
+             true
+           ),
+           updated_at = excluded.updated_at,
+           updated_by = excluded.updated_by
+     returning value`,
+    [assistantKey, enabled, ctx.actor || null],
+  );
+
+  const after = rows[0]?.value || { ...before, [assistantKey]: enabled };
+  await _audit({
+    operatorId: ctx.actor || null,
+    action: "setting.update",
+    target: `tenant:tenant:assistants.${assistantKey}`,
+    before,
+    after,
+    ip: ctx.ip,
+    userAgent: ctx.userAgent,
+  });
+
+  await _refreshTenant({ silent: true });
+  return { ok: true, applied: getSetting("assistants") };
+}
+
 /** Borra un setting (vuelve al default del schema). */
 export async function deleteSetting(path, ctx = {}) {
   if (!_pool) throw new Error("deleteSetting: waConfig not primed");
