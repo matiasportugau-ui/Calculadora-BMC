@@ -179,7 +179,6 @@ app.use((req, res, next) => {
   if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
-app.use(cookieParser());
 app.use(
   pinoHttp({
     logger,
@@ -952,7 +951,10 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 app.use("/calc", calcRouter);
 // Asistente "equipo" (OpenAI) — /api/team-assist/* (antes del dashboard para no colisionar)
 app.use("/api/team-assist", teamAssistRouter);
-app.use("/api", authGoogleRouter);
+// Only the identity auth router reads the httpOnly refresh cookie. Keep
+// cookieParser scoped there so new API mutators do not become cookie-auth
+// request handlers from CodeQL's CSRF model.
+app.use("/api", cookieParser(), authGoogleRouter);
 app.use("/api", authMfaRouter);
 app.use(identityMeRouter);
 app.use(driveConfigRouter);

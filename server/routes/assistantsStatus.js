@@ -22,6 +22,21 @@ import { checkAllAssistants, checkAssistant } from "../lib/assistantHealth.js";
 import { listAssistants } from "../lib/assistantRegistry.js";
 import { getSetting, setSetting } from "../lib/waConfig.js";
 
+const TOGGLE_SETTERS = Object.freeze({
+  canales: (map, enabled) => ({ ...map, canales: enabled }),
+  panelin: (map, enabled) => ({ ...map, panelin: enabled }),
+  email: (map, enabled) => ({ ...map, email: enabled }),
+  wa: (map, enabled) => ({ ...map, wa: enabled }),
+  ml: (map, enabled) => ({ ...map, ml: enabled }),
+  wolfboard: (map, enabled) => ({ ...map, wolfboard: enabled }),
+});
+
+export function applyAssistantToggle(map, key, enabled) {
+  const setter = TOGGLE_SETTERS[key];
+  if (!setter) return null;
+  return setter(map && typeof map === "object" ? map : {}, enabled);
+}
+
 // Read-only status probes touch the DB (omni health check) — rate-limit to keep a
 // misbehaving poller from hammering the pool. Mirrors identityAdmin readLimiter.
 const readLimiter = rateLimit({
@@ -70,8 +85,8 @@ export default function createAssistantsStatusRouter() {
   router.post("/assistants/:key/toggle", writeLimiter, guard, async (req, res) => {
     try {
       const key = String(req.params.key || "").trim().toLowerCase();
-      const known = listAssistants().some((a) => a.key === key);
-      if (!known || key === "seam") {
+      const known = listAssistants().some((a) => a.key === key && !a.terminal);
+      if (!known || !TOGGLE_SETTERS[key]) {
         return res.status(400).json({ ok: false, error: `invalid or non-toggleable assistant: ${key}` });
       }
       const enabled = req.body?.enabled;
@@ -79,8 +94,7 @@ export default function createAssistantsStatusRouter() {
         return res.status(400).json({ ok: false, error: "body.enabled must be a boolean" });
       }
       const current = getSetting("assistants");
-      const map = current && typeof current === "object" ? current : {};
-      const next = { ...map, [key]: enabled };
+      const next = applyAssistantToggle(current, key, enabled);
       const actor = req.user?.email || req.user?.id || "admin";
       await setSetting("assistants", next, { actor, ip: req.ip, userAgent: req.get?.("user-agent") });
       res.json({ ok: true, key, enabled, assistants: next });

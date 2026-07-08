@@ -11,6 +11,7 @@
 import { config } from "../server/config.js";
 import { isAssistantEnabled, dispatchAssistant, buildFallbackLine, ASSISTANTS, getAssistant } from "../server/lib/assistantRegistry.js";
 import { checkAssistant, _clearAssistantHealthCache } from "../server/lib/assistantHealth.js";
+import { applyAssistantToggle } from "../server/routes/assistantsStatus.js";
 
 let passed = 0;
 let failed = 0;
@@ -37,6 +38,13 @@ await (async () => {
     assert(cur && cur.terminal, `${a.key} fallback chain reaches terminal seam`);
   }
   assert(getAssistant("seam")?.terminal === true, "seam is terminal");
+
+  // ── Runtime toggle map: explicit setters only, no arbitrary property write ─
+  const toggled = applyAssistantToggle({ canales: true }, "panelin", false);
+  assert(toggled.canales === true && toggled.panelin === false, "toggle helper preserves map and applies known key");
+  assert(applyAssistantToggle({}, "seam", false) === null, "seam cannot be toggled");
+  assert(applyAssistantToggle({}, "__proto__", true) === null, "prototype-like key is rejected");
+  assert({}.polluted === undefined, "prototype is not polluted by rejected toggle key");
 
   // ── Master switch (isAssistantEnabled) ──────────────────────────────────────
   config.assistantsActive = ["canales"];
