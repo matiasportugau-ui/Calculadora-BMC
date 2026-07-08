@@ -133,6 +133,12 @@ export const config = {
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 (404 "no longer available"); 2.5-flash is the live model. Used by the SSE chat streaming path (agentChat.js) + visionExtract.
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
+  // OpenRouter — terminal open-source-model fallback. Aggregates open-weights
+  // models (Llama, Mistral, DeepSeek, Qwen) behind an OpenAI-compatible API, with
+  // free tiers. Tried LAST so the seam never runs out of AI even if all four
+  // commercial providers fail at once. Inactive until OPENROUTER_API_KEY is set.
+  openrouterApiKey: process.env.OPENROUTER_API_KEY || "",
+  openrouterModel: process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
   // Vercel AI Gateway (unified multi-provider).
   // Set AI_GATEWAY_API_KEY (or rely on VERCEL_OIDC_TOKEN populated via `vercel env pull`)
   // to route /crm/suggest-response, /crm/parse-email, /crm/ingest-email, and
@@ -144,6 +150,15 @@ export const config = {
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+  // Meta Instagram DM / Facebook Messenger — dormant until cm-0 app review closes.
+  omniIgEnabled: bool(process.env.OMNI_IG_ENABLED, false),
+  omniFbEnabled: bool(process.env.OMNI_FB_ENABLED, false),
+  igVerifyToken: process.env.IG_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "",
+  fbVerifyToken: process.env.FB_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "",
+  igPageToken: process.env.IG_PAGE_TOKEN || "",
+  fbPageToken: process.env.FB_PAGE_TOKEN || "",
+  igAppSecret: process.env.IG_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
+  fbAppSecret: process.env.FB_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
   // Shopify (questions/quotes flow – Mercado Libre replacement)
   shopifyClientId: process.env.SHOPIFY_CLIENT_ID || "",
   shopifyClientSecret: process.env.SHOPIFY_CLIENT_SECRET || "",
@@ -365,6 +380,13 @@ export const config = {
    */
   omniFrtWorkerEnabled: bool(process.env.OMNI_FRT_WORKER_ENABLED, false),
   omniFrtWorkerIntervalMs: Math.max(30_000, Number(process.env.OMNI_FRT_WORKER_INTERVAL_MS || 300_000)),
+  /**
+   * Gap 4 — temporal follow-up sequence evaluator. Default OFF: it only
+   * creates HITL suggestions (never sends), but still intentionally requires a
+   * deliberate prod flip because it can generate operator-visible drafts.
+   */
+  omniSequencesEnabled: bool(process.env.OMNI_SEQUENCES_ENABLED, false),
+  omniSequencesIntervalMs: Math.max(60_000, Number(process.env.OMNI_SEQUENCES_INTERVAL_MS || 300_000)),
   /**
    * Centralized AI brain (self-evolving, human-verified lessons) injected into the agent system prompt.
    * Default OFF: ships dormant. Flipping ON is customer-facing — do it deliberately after dev validation.
