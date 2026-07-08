@@ -15,9 +15,9 @@ import { ensureOperatorToken } from '../../../../utils/operatorApiClient.js';
  * (or the static service token); a cookie is NOT accepted as an access token
  * (`requireUser` reads `Authorization: Bearer` only). So we attach the operator
  * token via `ensureOperatorToken()` (the identity JWT registered by
- * BmcAuthProvider, with env/localStorage fallbacks) as both `Authorization:
- * Bearer` and `x-api-key`. Without it, "Generar con IA" 401s → "IA no
- * disponible." The open `/ml/*` routes simply ignore the extra header.
+ * BmcAuthProvider, with env/localStorage fallbacks) as `Authorization: Bearer`.
+ * Avoid `x-api-key` here: Vercel→Cloud Run browser calls preflight custom
+ * headers against the API CORS allowlist, and `Authorization` is already enough.
  * `credentials: 'include'` is kept for hosts that share the session cookie.
  */
 export async function mlFetch(path, init = {}) {
@@ -31,7 +31,7 @@ export async function mlFetch(path, init = {}) {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}`, 'x-api-key': token } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
     // Auto-stringify object bodies so callers can pass plain objects.
