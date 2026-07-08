@@ -94,6 +94,7 @@ import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
 import { startOmniAiWorker, triggerWaCrmSyncNow } from "./lib/omni/orchestrator/aiWorker.js";
 import { startOmniFrtBreachWorker } from "./lib/omni/orchestrator/frtBreachWorker.js";
+import { startOmniSequenceWorker } from "./lib/omni/orchestrator/sequenceWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
@@ -1239,6 +1240,7 @@ let stopWaFollowups = () => {};
 let stopOmniAiWorker = () => {};
 let stopOmniFrtBreachWorker = () => {};
 let stopOmniSnoozeWorker = () => {};
+let stopOmniSequenceWorker = () => {};
 
 const server = app.listen(config.port, async () => {
   logger.info(
@@ -1326,6 +1328,15 @@ const server = app.listen(config.port, async () => {
     });
     logger.info("Omni FRT breach worker started");
   }
+  if (omniPool && config.omniSequencesEnabled) {
+    stopOmniSequenceWorker = startOmniSequenceWorker({
+      logger,
+      pool: omniPool,
+      enabled: config.omniSequencesEnabled,
+      intervalMs: config.omniSequencesIntervalMs,
+    });
+    logger.info("Omni sequence worker started");
+  }
 });
 
 // ── Graceful shutdown ──
@@ -1347,6 +1358,7 @@ function shutdown(signal) {
   try { stopOmniAiWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniAiWorker failed"); }
   try { stopOmniSnoozeWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSnoozeWorker failed"); }
   try { stopOmniFrtBreachWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniFrtBreachWorker failed"); }
+  try { stopOmniSequenceWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSequenceWorker failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");
