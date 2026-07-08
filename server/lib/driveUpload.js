@@ -1,11 +1,16 @@
 /**
  * server/lib/driveUpload.js
- * Upload quotes to Google Drive (service account → shared company folder).
+ * Upload quotes to Google Drive (user OAuth → the account's own folder).
  *
  * Prerequisites:
- *   - GOOGLE_APPLICATION_CREDENTIALS must be set (same service account used for Sheets).
- *   - The service account email must have "Editor" access to the target Drive folder.
- *   - DRIVE_QUOTE_FOLDER_ID must be set to the ID of that folder.
+ *   - GOOGLE_DRIVE_CLIENT_ID / GOOGLE_DRIVE_CLIENT_SECRET / GOOGLE_DRIVE_REFRESH_TOKEN
+ *     (Desktop OAuth client acting as the account that owns the quotes; minted with
+ *     `node pipeline.mjs --drive-auth` in bmc-sheet-quote-pipeline).
+ *   - DRIVE_QUOTE_FOLDER_ID must be set to a folder created by that same OAuth client.
+ *
+ * Fallback: without those vars it uses GOOGLE_APPLICATION_CREDENTIALS (service account),
+ * which Google rejects for My Drive uploads ("Service Accounts do not have storage
+ * quota") — kept only so non-Drive callers keep failing soft exactly as before.
  *
  * Scope used: drive.file — only files created by this app are accessible.
  */
@@ -23,16 +28,35 @@ const FOLDER_MIME = "application/vnd.google-apps.folder";
 const PDF_MIME = "application/pdf";
 const BMC_MIME = "application/json";
 
+function userOAuthAvailable() {
+  return Boolean(
+    process.env.GOOGLE_DRIVE_CLIENT_ID &&
+    process.env.GOOGLE_DRIVE_CLIENT_SECRET &&
+    process.env.GOOGLE_DRIVE_REFRESH_TOKEN
+  );
+}
+
 let _drivePromise = null;
 function getDriveClient() {
   if (!_drivePromise) {
-    const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_DRIVE] });
-    _drivePromise = auth.getClient()
-      .then((client) => google.drive({ version: "v3", auth: client }))
-      .catch((err) => {
-        _drivePromise = null;
-        throw err;
-      });
+    if (userOAuthAvailable()) {
+      // Act as the user: their Drive, their quota. Service accounts can't upload
+      // to My Drive folders (no storage quota), so this is the only path that works.
+      const oauth = new google.auth.OAuth2(
+        process.env.GOOGLE_DRIVE_CLIENT_ID,
+        process.env.GOOGLE_DRIVE_CLIENT_SECRET
+      );
+      oauth.setCredentials({ refresh_token: process.env.GOOGLE_DRIVE_REFRESH_TOKEN });
+      _drivePromise = Promise.resolve(google.drive({ version: "v3", auth: oauth }));
+    } else {
+      const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_DRIVE] });
+      _drivePromise = auth.getClient()
+        .then((client) => google.drive({ version: "v3", auth: client }))
+        .catch((err) => {
+          _drivePromise = null;
+          throw err;
+        });
+    }
   }
   return _drivePromise;
 }

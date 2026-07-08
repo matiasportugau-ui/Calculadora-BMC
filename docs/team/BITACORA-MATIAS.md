@@ -196,3 +196,20 @@ gate:local:   pendiente correr al final de la sesión
 **Próximo paso:** UAT — Hub → Inteligencia → **Refrescar P1** en prod.
 
 **Refs:** PR #603 (`b50781a4`).
+
+---
+
+## 2026-07-08 AM — PDF real en cotizaciones del agente + renderer compartido (quotePdf.js)
+
+**Contexto:** `generar_pdf` del agente AE nunca generó un PDF: subía HTML imprimible a GCS/Drive. Se pidió PDF real en creación/export de cotizaciones para usuarios y agentes.
+
+**Acciones:**
+- Renderer Chromium extraído de `routes/pdf.js` a `server/lib/quotePdf.js` (semáforo max-2, error tipado, retry de launch legacy→modern).
+- `/calc/cotizar/pdf` ahora renderiza y sube PDF real (GCS `quotes/pdf/` + bundle Drive PDF+JSON); campos nuevos `pdf_file_url`/`pdf_rendered`/`drive_folder_url`; `pdf_url` sigue siendo HTML (contrato del sheet-quote-pipeline). Kill switch `COTIZAR_PDF_RENDER=0`.
+- `export.pdf` de `/api/me/quotes/:id` re-renderiza on-demand desde `payload.request` (antes 404).
+- Bugfix: `driveFileId` recibía el webViewLink y el allowlist de `quoteStore` anulaba el upsert a `identity.quotes` silenciosamente.
+- Hallazgo prod: renderer roto desde deploy 2026-07-04 (Chromium de Alpine bumpeado, `Target closed`); el retry moderno debería auto-repararlo. Memoria Cloud Run 512Mi→1Gi en `deploy-calc-api.yml`.
+
+**Verificación:** `tests/quotePdf.test.js` 17/17 (nuevo, en `test:core`); `agentTools.test.js` 298/298; gate:local verde (salvo `gate-secrets-drift` WHATSAPP_*, pre-existente en main); local con Chrome real: `/api/pdf/generate` 200 `%PDF`, `cotizar/pdf` `pdf_rendered:true`, `smoke:bmc-pdf` OK.
+
+**Próximo paso:** post-deploy confirmar `pdf_rendered:true` en prod + `gsutil stat` (contentType `application/pdf`) + dry-run del sheet-quote-pipeline.
