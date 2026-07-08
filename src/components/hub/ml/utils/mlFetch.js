@@ -15,10 +15,10 @@ import { ensureOperatorToken } from '../../../../utils/operatorApiClient.js';
  * (or the static service token); a cookie is NOT accepted as an access token
  * (`requireUser` reads `Authorization: Bearer` only). So we attach the operator
  * token via `ensureOperatorToken()` (the identity JWT registered by
- * BmcAuthProvider, with env/localStorage fallbacks) as both `Authorization:
- * Bearer` and `x-api-key`. Without it, "Generar con IA" 401s → "IA no
- * disponible." The open `/ml/*` routes simply ignore the extra header.
- * `credentials: 'include'` is kept for hosts that share the session cookie.
+ * BmcAuthProvider, with env/localStorage fallbacks) as `Authorization: Bearer`.
+ * Without it, "Generar con IA" 401s → "IA no disponible." The open `/ml/*`
+ * routes simply ignore the extra header. `credentials: 'include'` is kept for
+ * hosts that share the session cookie.
  */
 export async function mlFetch(path, init = {}) {
   const base = getCalcApiBase();
@@ -31,7 +31,7 @@ export async function mlFetch(path, init = {}) {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}`, 'x-api-key': token } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
     // Auto-stringify object bodies so callers can pass plain objects.
