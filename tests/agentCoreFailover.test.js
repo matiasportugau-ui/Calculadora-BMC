@@ -10,6 +10,7 @@ const {
   recordProviderFailure,
   recordProviderSuccess,
   getProviderCooldownState,
+  resetProviderCooldowns,
   _resetProviderHealth,
 } = await import("../server/lib/agentCore.js");
 
@@ -94,5 +95,51 @@ describe("provider cooldown", () => {
     recordProviderFailure("openai", now - 120_000);
     recordProviderFailure("openai", now); // only this one is recent
     assert.equal(getProviderCooldownState().openai?.coolingDown, false);
+  });
+
+  it("retains the last failure reason for the control panel", () => {
+    const now = Date.now();
+    recordProviderFailure("claude", now, {
+      status: 400,
+      type: "invalid_request_error",
+      detail: "credit balance is too low",
+      model: "claude-x",
+    });
+    const le = getProviderCooldownState().claude?.lastError;
+    assert.equal(le?.status, 400);
+    assert.equal(le?.type, "invalid_request_error");
+    assert.match(le?.detail, /credit balance/);
+    assert.equal(typeof le?.at, "number");
+  });
+
+  it("clears the last error on a subsequent success", () => {
+    const now = Date.now();
+    recordProviderFailure("grok", now, { status: 400, detail: "Incorrect API key" });
+    assert.ok(getProviderCooldownState().grok?.lastError);
+    recordProviderSuccess("grok");
+    assert.equal(getProviderCooldownState().grok?.lastError, null);
+  });
+
+  it("a single HARD error (400/401/403) cools the provider down immediately", () => {
+    const now = Date.now();
+    // ONE hard failure — no 3-strike accumulation needed.
+    recordProviderFailure("claude", now, { status: 400, detail: "credit balance too low" });
+    const st = getProviderCooldownState().claude;
+    assert.equal(st?.coolingDown, true);
+    assert.ok(st.until > now + 60_000, "hard cooldown should be well past the 60s transient window");
+  });
+
+  it("a transient error (429) does NOT trigger the immediate hard cooldown", () => {
+    const now = Date.now();
+    recordProviderFailure("gemini", now, { status: 429, detail: "rate limited" });
+    assert.equal(getProviderCooldownState().gemini?.coolingDown, false);
+  });
+
+  it("resetProviderCooldowns clears all cooldowns (panel 'reset' action)", () => {
+    const now = Date.now();
+    recordProviderFailure("claude", now, { status: 401, detail: "bad key" });
+    assert.equal(getProviderCooldownState().claude?.coolingDown, true);
+    resetProviderCooldowns();
+    assert.deepEqual(getProviderCooldownState(), {});
   });
 });

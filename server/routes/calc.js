@@ -37,8 +37,10 @@ import {
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src/utils/presupuestoLibreCatalogo.js";
 import { config } from "../config.js";
 import { GPT_ACTIONS } from "../gptActions.js";
-import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
-import { uploadQuoteToDrive } from "../lib/driveUpload.js";
+import { uploadQuoteToGcs, uploadPdfToGcs } from "../lib/gcsUpload.js";
+import { uploadQuoteToDrive, saveQuotationBundleToDrive } from "../lib/driveUpload.js";
+import { renderHtmlToPdfBuffer, isPdfRendererAvailable } from "../lib/quotePdf.js";
+import { buildQuotationModel, renderPdfLayout } from "../../src/pdf-templates/index.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
   registerQuotation as registerQuotationStore,
@@ -486,76 +488,125 @@ router.post("/cotizar", (req, res) => {
 
 // ── POST /cotizar/pdf ───────────────────────────────────────────────────────
 
-router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) => {
-  try {
-    const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente, source: sourceRaw } = req.body;
-    // Provenance marker — distinguishes agent-generated quotes from human-driven ones
-    // in the registry. Defaults to "calculator"; agent path passes "ae_agent".
-    const source = sourceRaw === "ae_agent" ? "ae_agent" : "calculator";
-    const results = runCalculation({ escenario, lista, techo, pared, camara });
-    if (results.error && !results.allItems) {
-      return res.status(400).json({ ok: false, error: results.error });
+/**
+ * Build the quote HTML for a /calc/cotizar/pdf-shaped request.
+ * Shared by the route below and by on-demand re-render in quoteExport.js
+ * (GET /api/me/quotes/:id/export.pdf), so both always emit the same document.
+ *
+ * Renders with the refined client-facing template (`simple`, production
+ * default since 2026-07-07) via src/pdf-templates; falls back to the legacy
+ * technical `generatePrintHTML` layout if the template render throws.
+ *
+ * @returns {Promise<{ ok: true, html: string, gptResp: object, templateUsed: string } |
+ *           { ok: false, error: string, gptResp?: object }>}
+ */
+export async function buildCotizacionHtml({ escenario, lista = "web", techo, pared, camara, flete = 0, cliente, template = "simple" }) {
+  const results = runCalculation({ escenario, lista, techo, pared, camara });
+  if (results.error && !results.allItems) {
+    return { ok: false, error: results.error };
+  }
+
+  const gptResp = buildGptResponse(escenario, lista, results, flete);
+  if (!gptResp.ok) return { ok: false, error: gptResp.error || "calc_failed", gptResp };
+
+  const panelLabel = gptResp.bom.find(g => g.grupo === "PANELES")?.items?.[0]?.descripcion || "";
+  const panelData = results.allItems?.find(i => i.unidad === "m²");
+  const panel = {
+    label: panelLabel,
+    espesor: techo?.espesor || pared?.espesor || "",
+    color: techo?.color || pared?.color || "Blanco",
+    au: panelData?.cantPaneles ? undefined : null,
+  };
+  if (escenario === "solo_techo" || escenario === "techo_fachada") {
+    const fam = PANELS_TECHO[techo?.familia];
+    if (fam) panel.au = fam.au;
+  } else if (escenario === "solo_fachada") {
+    const fam = PANELS_PARED[pared?.familia];
+    if (fam) panel.au = fam.au;
+  }
+
+  const clientInfo = cliente || {};
+  const project = {
+    fecha: clientInfo.fecha || new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }),
+    refInterna: clientInfo.ref || "",
+    descripcion: clientInfo.obra || "",
+  };
+  const client = {
+    nombre: clientInfo.nombre || "—",
+    rut: clientInfo.rut || "",
+    telefono: clientInfo.telefono || "",
+    direccion: clientInfo.direccion || "",
+  };
+
+  const dimensions = {};
+  if (techo?.zonas) {
+    dimensions.zonas = techo.zonas;
+    if (results.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
+    if (results.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+  }
+  if (pared) {
+    if (pared.alto) dimensions.alto = pared.alto;
+    if (pared.perimetro) dimensions.perimetro = pared.perimetro;
+    if (results.paneles?.areaNeta) dimensions.area = results.paneles.areaNeta;
+    if (results.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+  }
+  if (escenario === "camara_frig" && camara) {
+    dimensions.zonas = [{ largo: camara.largo_int, ancho: camara.ancho_int }];
+    dimensions.alto = camara.alto_int;
+  }
+
+  const groups = gptResp.bom.map(g => ({
+    title: g.grupo,
+    items: g.items.map(i => ({
+      label: i.descripcion, sku: i.sku, cant: i.cant, unidad: i.unidad,
+      pu: i.pu_usd, total: i.total_usd,
+      largoBarra: i.largo_barra_m, cantPaneles: i.cant_paneles, largoPanel: i.largo_panel_m,
+    })),
+  }));
+
+  const totals = {
+    subtotalSinIVA: gptResp.resumen.subtotal_usd,
+    iva: gptResp.resumen.iva_usd,
+    totalFinal: gptResp.resumen.total_usd,
+  };
+
+  // Preferred path: refined client template (same family the calculator UI
+  // uses). buildQuotationModel takes the exact pieces computed above; the
+  // appendix carries the KPI/zona context the templates surface in the header.
+  let html = null;
+  let templateUsed = null;
+  if (template) {
+    try {
+      const model = buildQuotationModel({
+        client,
+        project: { ...project, refInterna: project.refInterna || clientInfo.quote_code || "" },
+        scenario: escenario,
+        panel,
+        groups,
+        totals,
+        appendix: {
+          zonas: techo?.zonas ||
+            (escenario === "camara_frig" && camara
+              ? [{ largo: camara.largo_int, ancho: camara.ancho_int }]
+              : []),
+          kpi: {
+            area: dimensions.area,
+            paneles: dimensions.cantPaneles,
+            apoyosOrEsq: gptResp.autoportancia?.apoyos,
+          },
+          panelAu: Number(panel.au) || 0,
+        },
+        quoteId: clientInfo.quote_code || null,
+      });
+      html = await renderPdfLayout(template, model);
+      templateUsed = template;
+    } catch (err) {
+      console.warn(`[calc] template "${template}" render failed, falling back to print layout:`, err.message?.slice(0, 120));
     }
+  }
 
-    const gptResp = buildGptResponse(escenario, lista, results, flete);
-    if (!gptResp.ok) return res.status(400).json(gptResp);
-
-    const panelLabel = gptResp.bom.find(g => g.grupo === "PANELES")?.items?.[0]?.descripcion || "";
-    const panelData = results.allItems?.find(i => i.unidad === "m²");
-    const panel = {
-      label: panelLabel,
-      espesor: techo?.espesor || pared?.espesor || "",
-      color: techo?.color || pared?.color || "Blanco",
-      au: panelData?.cantPaneles ? undefined : null,
-    };
-    if (escenario === "solo_techo" || escenario === "techo_fachada") {
-      const fam = PANELS_TECHO[techo?.familia];
-      if (fam) panel.au = fam.au;
-    } else if (escenario === "solo_fachada") {
-      const fam = PANELS_PARED[pared?.familia];
-      if (fam) panel.au = fam.au;
-    }
-
-    const clientInfo = cliente || {};
-    const project = {
-      fecha: clientInfo.fecha || new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }),
-      refInterna: clientInfo.ref || "",
-      descripcion: clientInfo.obra || "",
-    };
-    const client = {
-      nombre: clientInfo.nombre || "—",
-      rut: clientInfo.rut || "",
-      telefono: clientInfo.telefono || "",
-      direccion: clientInfo.direccion || "",
-    };
-
-    const dimensions = {};
-    if (techo?.zonas) {
-      dimensions.zonas = techo.zonas;
-      if (results.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
-      if (results.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
-    }
-    if (pared) {
-      if (pared.alto) dimensions.alto = pared.alto;
-      if (pared.perimetro) dimensions.perimetro = pared.perimetro;
-      if (results.paneles?.areaNeta) dimensions.area = results.paneles.areaNeta;
-      if (results.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
-    }
-    if (escenario === "camara_frig" && camara) {
-      dimensions.zonas = [{ largo: camara.largo_int, ancho: camara.ancho_int }];
-      dimensions.alto = camara.alto_int;
-    }
-
-    const groups = gptResp.bom.map(g => ({
-      title: g.grupo,
-      items: g.items.map(i => ({
-        label: i.descripcion, sku: i.sku, cant: i.cant, unidad: i.unidad,
-        pu: i.pu_usd, total: i.total_usd,
-        largoBarra: i.largo_barra_m, cantPaneles: i.cant_paneles, largoPanel: i.largo_panel_m,
-      })),
-    }));
-
-    const html = generatePrintHTML({
+  if (!html) {
+    html = generatePrintHTML({
       client, project, scenario: escenario, panel,
       autoportancia: gptResp.autoportancia ? {
         ok: gptResp.autoportancia.ok,
@@ -563,11 +614,7 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
         maxSpan: gptResp.autoportancia.vano_max_m,
       } : null,
       groups,
-      totals: {
-        subtotalSinIVA: gptResp.resumen.subtotal_usd,
-        iva: gptResp.resumen.iva_usd,
-        totalFinal: gptResp.resumen.total_usd,
-      },
+      totals,
       warnings: gptResp.advertencias,
       dimensions,
       listaPrecios: lista,
@@ -575,6 +622,28 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
       showSKU: false,
       showUnitPrices: true,
     });
+    templateUsed = "print-legacy";
+  }
+
+  return { ok: true, html, gptResp, templateUsed };
+}
+
+router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) => {
+  try {
+    const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente, source: sourceRaw } = req.body;
+    // Provenance marker — distinguishes agent-generated quotes from human-driven ones
+    // in the registry. Defaults to "calculator"; agent path passes "ae_agent".
+    const source = sourceRaw === "ae_agent" ? "ae_agent" : "calculator";
+
+    // Optional body.template selects a src/pdf-templates layout (default:
+    // "simple", the refined production template). Anything non-string is ignored.
+    const template = typeof req.body?.template === "string" ? req.body.template : undefined;
+    const built = await buildCotizacionHtml({ escenario, lista, techo, pared, camara, flete, cliente, ...(template && { template }) });
+    if (!built.ok) {
+      return res.status(400).json(built.gptResp || { ok: false, error: built.error });
+    }
+    const { html, gptResp } = built;
+    const clientInfo = cliente || {};
 
     const pdfId = storePdf(html);
     const baseUrl = config.publicBaseUrl.replace(/\/$/, "");
@@ -594,9 +663,60 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
     const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
     const driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
 
+    // Real PDF render + upload — best-effort, degrades to the HTML-only
+    // behavior above when Chromium is unavailable (macOS dev) or disabled
+    // (COTIZAR_PDF_RENDER=0). `pdf_url` stays HTML forever: the sheet-quote
+    // pipeline (watch.mjs) fetches it as text; the rendered PDF is exposed
+    // through the new pdf_file_url / drive_url fields instead.
+    let pdfFileUrl = null;
+    let drivePdfUrl = null;
+    let drivePdfFileId = null;
+    let driveFolderUrl = null;
+    let pdfRendered = false;
+    if (config.cotizarPdfRenderEnabled && isPdfRendererAvailable()) {
+      try {
+        const pdfBuffer = await renderHtmlToPdfBuffer(html, { timeoutMs: 30000 });
+        pdfRendered = true;
+        const pdfFilename = `Cotizacion-${code}-${new Date().toISOString().slice(0, 10)}.pdf`;
+        const [gcsPdfRes, driveBundleRes] = await Promise.allSettled([
+          config.gcsQuotesBucket
+            ? uploadPdfToGcs(pdfBuffer, pdfFilename, config.gcsQuotesBucket)
+            : Promise.resolve(null),
+          config.driveQuoteFolderId
+            ? saveQuotationBundleToDrive({
+                rootFolderId: config.driveQuoteFolderId,
+                quotationCode: code,
+                proyecto: { cliente: clientInfo.nombre || "", obra: clientInfo.obra || "" },
+                pdfBuffer,
+                projectData: {
+                  request: { escenario, lista, techo, pared, camara, flete },
+                  cliente: clientInfo,
+                  resumen: gptResp.resumen,
+                },
+                pdfFileName: pdfFilename,
+                source,
+              })
+            : Promise.resolve(null),
+        ]);
+        pdfFileUrl = gcsPdfRes.status === "fulfilled" ? gcsPdfRes.value : null;
+        if (gcsPdfRes.status === "rejected") {
+          req.log.warn({ err: gcsPdfRes.reason }, "cotizar/pdf GCS PDF upload failed (non-fatal)");
+        }
+        if (driveBundleRes.status === "fulfilled" && driveBundleRes.value) {
+          drivePdfUrl = driveBundleRes.value.pdfUrl || null;
+          drivePdfFileId = driveBundleRes.value.pdfFileId || null;
+          driveFolderUrl = driveBundleRes.value.folderUrl || null;
+        } else if (driveBundleRes.status === "rejected") {
+          req.log.warn({ err: driveBundleRes.reason }, "cotizar/pdf Drive PDF bundle failed (non-fatal)");
+        }
+      } catch (err) {
+        req.log.warn({ err }, "cotizar/pdf render degraded to HTML (non-fatal)");
+      }
+    }
+
     await registerQuotation({
       pdfId,
-      pdfUrl: gcsUrl || pdfUrl,
+      pdfUrl: pdfFileUrl || gcsUrl || pdfUrl,
       code: clientInfo.quote_code || null,
       client: clientInfo.nombre || "—",
       scenario: escenario,
@@ -627,11 +747,15 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
             client: clientInfo,
             resumen: gptResp.resumen,
             quote_code: clientInfo.quote_code || null,
+            // Original request params — lets export.pdf re-render on demand.
+            request: { escenario, lista, techo, pared, camara, flete },
           },
           pdfId,
-          pdfUrl: gcsUrl || pdfUrl,
-          gcsUri: gcsUrl || null,
-          driveFileId: driveUrl || null,
+          pdfUrl: pdfFileUrl || gcsUrl || pdfUrl,
+          gcsUri: pdfFileUrl || gcsUrl || null,
+          // Bare Drive file id (quoteStore allowlist rejects URLs — the old
+          // code passed the webViewLink here, which silently voided the upsert).
+          driveFileId: drivePdfFileId || null,
           status: "completed",
           wizardStep: typeof req.body?.wizardStep === "number" ? req.body.wizardStep : null,
         });
@@ -648,11 +772,18 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
     return res.json({
       ok: true,
       pdf_id: pdfId,
+      // Frozen semantics: pdf_url/gcs_url are the printable HTML (the sheet
+      // pipeline fetches pdf_url as text). Real PDF lives in pdf_file_url.
       pdf_url: gcsUrl || pdfUrl,
       gcs_url: gcsUrl || null,
-      drive_url: driveUrl || null,
+      drive_url: drivePdfUrl || driveUrl || null,
+      pdf_file_url: pdfFileUrl,
+      drive_folder_url: driveFolderUrl,
+      pdf_rendered: pdfRendered,
       expires_in_hours: gcsUrl ? null : 24,
-      instrucciones: gcsUrl
+      instrucciones: pdfFileUrl || drivePdfUrl
+        ? "Link directo al PDF — se descarga o abre listo para compartir con el cliente."
+        : gcsUrl
         ? "Link permanente en GCS. Compartilo con el cliente — se abre en el navegador y se puede imprimir como PDF."
         : "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF.",
       resumen: gptResp.resumen,
