@@ -30,6 +30,27 @@ export async function uploadQuoteToGcs(html, filename, bucket) {
 }
 
 /**
+ * Upload a rendered PDF Buffer to GCS and return the permanent public URL.
+ * Stored under quotes/pdf/ so raw PDFs stay distinguishable from the HTML
+ * quotes under quotes/.
+ * @param {Buffer} buffer
+ * @param {string} filename  e.g. "Cotizacion-WB5-2026-04-23.pdf"
+ * @param {string} bucket
+ * @returns {Promise<string|null>} public URL or null on failure
+ */
+export async function uploadPdfToGcs(buffer, filename, bucket) {
+  if (!bucket || !buffer?.length) return null;
+
+  const file = storage.bucket(bucket).file(`quotes/pdf/${filename}`);
+  await file.save(buffer, {
+    contentType: "application/pdf",
+    resumable: false,
+  });
+
+  return `https://storage.googleapis.com/${bucket}/quotes/pdf/${encodeURIComponent(filename)}`;
+}
+
+/**
  * Upload a JSON-serializable object to GCS and return the public URL.
  * @param {object|string} payload  Plain object (stringified) or raw JSON string
  * @param {string} filename  e.g. "Cotizacion-WB5-2026-04-23.json"

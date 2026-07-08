@@ -54,7 +54,25 @@ export async function checkAssistant(key, opts = {}) {
   const available = getAvailableProviders();
   const chain = getProviderChain();
   const primary = DEFAULT_PROVIDER_ORDER[0]; // "claude"
-  const activeProvider = chain[0] || null;
+
+  // Real provider liveness (not just key presence): agentCore records per-provider
+  // failures + the last error reason. Treat a provider as unhealthy when it is in
+  // cooldown OR its last failure was a HARD error (400/401/403 = billing/credential
+  // — persistent until fixed, unlike transient 429/529/timeout). This is what
+  // turns the optimistic "LIVE via claude" badge into the truth (e.g. claude out
+  // of credits → degraded, serving via gemini).
+  const cooldowns = getProviderCooldownState();
+  const isHardError = (le) => !!(le && [400, 401, 403].includes(Number(le.status)));
+  const providerUnhealthy = (p) => {
+    const c = cooldowns[p];
+    return !!(c && (c.coolingDown || isHardError(c.lastError)));
+  };
+  // The provider that would actually serve: first available one that isn't
+  // unhealthy; else the first available (even if unhealthy); else none.
+  const activeProvider =
+    chain.find((p) => available.includes(p) && !providerUnhealthy(p)) ||
+    chain.find((p) => available.includes(p)) ||
+    null;
 
   // Dependency probe (cheap, side-effect-free). Assistants without deps pass.
   let deps = { ok: true, detail: "" };
@@ -73,9 +91,17 @@ export async function checkAssistant(key, opts = {}) {
   } else if (!deps.ok || available.length === 0) {
     status = "down";
     detail = !deps.ok ? deps.detail : "no AI providers available (no keys)";
-  } else if (!available.includes(primary)) {
+  } else if (!available.includes(primary) || providerUnhealthy(primary)) {
     status = "degraded";
-    detail = `primary provider '${primary}' unavailable; serving via '${activeProvider}'`;
+    if (!available.includes(primary)) {
+      detail = `primary provider '${primary}' unavailable; serving via '${activeProvider}'`;
+    } else {
+      const le = cooldowns[primary]?.lastError;
+      const reason = le
+        ? `${le.status ?? "err"}${le.detail ? `: ${String(le.detail).slice(0, 90)}` : ""}`
+        : "in cooldown";
+      detail = `primary '${primary}' failing (${reason}); serving via '${activeProvider}'`;
+    }
   } else {
     status = "live";
   }
@@ -115,6 +141,9 @@ export async function checkAllAssistants(opts = {}) {
       available: getAvailableProviders(),
       chain: getProviderChain(),
       order: DEFAULT_PROVIDER_ORDER,
+      // Real liveness per provider (cooldown + last failure reason) so the panel
+      // can show WHY the primary isn't serving, not just an optimistic badge.
+      cooldowns: getProviderCooldownState(),
     },
     assistants,
   };

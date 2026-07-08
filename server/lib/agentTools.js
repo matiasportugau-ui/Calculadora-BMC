@@ -1322,7 +1322,10 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         ...(camara && { camara }),
       };
 
-      const result = await postCotizarPdf(body);
+      // 90s cap: server-side Chromium render can hang in pathological cases;
+      // without a signal the agent turn would pin for undici's ~300s default.
+      // executeTool()'s try/catch converts the abort into an {error} result.
+      const result = await postCotizarPdf(body, { signal: AbortSignal.timeout(90_000) });
       const data = result.body || {};
 
       // Structured log event for durable out-of-process audit (Cloud Logging /
@@ -1343,12 +1346,20 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       return JSON.stringify({
         ok: true,
         pdf_id: data.pdf_id,
-        pdf_url: data.pdf_url,
+        // Prefer the real rendered PDF when the server produced one; the raw
+        // pdf_url (printable HTML) remains the fallback on degraded platforms.
+        pdf_url: data.pdf_file_url || data.pdf_url,
+        pdf_file_url: data.pdf_file_url || null,
+        pdf_rendered: !!data.pdf_rendered,
         gcs_url: data.gcs_url || null,
         drive_url: data.drive_url || null,
         expires_in_hours: data.expires_in_hours || null,
         resumen: data.resumen,
-        instrucciones: "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF desde Archivo → Imprimir.",
+        // Keyed on pdf_file_url (not pdf_rendered): a render can succeed while
+        // both uploads fail, in which case the shareable link is still HTML.
+        instrucciones: data.pdf_file_url
+          ? "Compartí este link con el cliente: es un PDF real, se descarga o abre directo."
+          : "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF desde Archivo → Imprimir.",
       });
     }
 

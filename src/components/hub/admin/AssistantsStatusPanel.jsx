@@ -38,6 +38,29 @@ async function jget(token, path) {
   return r.json();
 }
 
+async function jpost(token, path, body) {
+  const r = await fetch(`${ApiBase}${path}`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    let detail = `http_${r.status}`;
+    try {
+      const j = await r.json();
+      detail = j?.error || detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
 function Badge({ status }) {
   const m = STATUS_META[status] || STATUS_META.down;
   return (
@@ -59,6 +82,7 @@ function PanelInner() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [busyKey, setBusyKey] = useState(null);
 
   const refresh = useCallback(
     async (force = false) => {
@@ -76,6 +100,42 @@ function PanelInner() {
     },
     [token],
   );
+
+  // Runtime enable/disable — persisted via POST /api/assistants/:key/toggle
+  // (admin-gated, no redeploy). Refetch after so the badge reflects the change.
+  const toggleAssistant = useCallback(
+    async (key, nextEnabled) => {
+      if (!token) return;
+      setBusyKey(key);
+      setError(null);
+      try {
+        await jpost(token, `/api/assistants/${key}/toggle`, { enabled: nextEnabled });
+        await refresh(false);
+      } catch (e) {
+        setError(`No se pudo ${nextEnabled ? "encender" : "apagar"} '${key}': ${String(e?.message || e)}`);
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [token, refresh],
+  );
+
+  // Clear provider cooldowns so the seam re-tries the primary immediately after a
+  // credential/billing fix (Anthropic credits / Grok key) — no waiting out the
+  // hard cooldown. Deep-refetch after so the badges update.
+  const resetCooldowns = useCallback(async () => {
+    if (!token) return;
+    setBusyKey("__reset__");
+    setError(null);
+    try {
+      await jpost(token, "/api/assistants/providers/reset-cooldowns", {});
+      await refresh(true);
+    } catch (e) {
+      setError(`No se pudieron resetear los cooldowns: ${String(e?.message || e)}`);
+    } finally {
+      setBusyKey(null);
+    }
+  }, [token, refresh]);
 
   useEffect(() => {
     refresh();
@@ -102,6 +162,14 @@ function PanelInner() {
           <button className="ac-btn" onClick={() => refresh(true)} disabled={loading} title="Ignora la caché de 30s">
             Deep check
           </button>
+          <button
+            className="ac-btn"
+            onClick={resetCooldowns}
+            disabled={busyKey === "__reset__" || !token}
+            title="Limpia los cooldowns de proveedores para reintentar el primario ya (usar tras cargar créditos / rotar key)"
+          >
+            {busyKey === "__reset__" ? "Reseteando…" : "Reset cooldowns"}
+          </button>
           <Link className="ac-btn" to="/hub/admin/analytics">Analytics</Link>
         </div>
       </div>
@@ -120,13 +188,47 @@ function PanelInner() {
         </div>
       )}
 
+      {providers?.cooldowns &&
+        Object.entries(providers.cooldowns).some(([, c]) => c.recentFailures > 0 || c.lastError) && (
+          <div style={{ background: "#fff8c5", border: "1px solid #d4a72c", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13 }}>
+            <div style={{ fontWeight: 700, color: "#7a5c00", marginBottom: 6 }}>
+              ⚠ Proveedores con fallas reales (no solo presencia de key)
+            </div>
+            {Object.entries(providers.cooldowns)
+              .filter(([, c]) => c.recentFailures > 0 || c.lastError)
+              .map(([p, c]) => (
+                <div key={p} style={{ color: "#57606a", marginTop: 3 }}>
+                  <strong>{p}</strong>
+                  {c.coolingDown ? " · en cooldown" : ""}
+                  {c.recentFailures ? ` · ${c.recentFailures} fallo(s) recientes` : ""}
+                  {c.lastError && (
+                    <>
+                      {" · "}
+                      <span style={{ fontFamily: "monospace" }}>{c.lastError.status ?? "err"}</span>
+                      {c.lastError.detail ? ` ${String(c.lastError.detail).slice(0, 120)}` : ""}
+                      {c.lastError.at ? ` (${new Date(c.lastError.at).toLocaleTimeString()})` : ""}
+                      {[400, 401, 403].includes(Number(c.lastError.status)) && (
+                        <div style={{ fontSize: 12, color: "#7a5c00", marginTop: 2 }}>
+                          → Credencial/billing (owner): revisar créditos/API key del proveedor
+                          {p === "claude" ? " (Anthropic Plans & Billing)" : ""}
+                          {p === "grok" ? " (GCP Secret Manager · GROK_API_KEY + redeploy)" : ""}
+                          {" — no se auto-resuelve desde el panel."}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
+
       <div style={{ display: "grid", gap: 10 }}>
         {(data?.assistants || []).map((a) => (
           <div
             key={a.key}
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr auto",
+              gridTemplateColumns: "1fr auto auto",
               gap: 12,
               alignItems: "center",
               border: "1px solid #d0d7de",
@@ -146,6 +248,19 @@ function PanelInner() {
                 {a.detail ? <> · {a.detail}</> : null}
               </div>
             </div>
+            {a.key === "seam" ? (
+              <span style={{ fontSize: 11, color: "#8c959f", whiteSpace: "nowrap" }}>siempre on</span>
+            ) : (
+              <button
+                className="ac-btn"
+                onClick={() => toggleAssistant(a.key, !a.enabled)}
+                disabled={busyKey === a.key || !token}
+                title={a.enabled ? "Apagar este asistente (sin redeploy)" : "Encender este asistente (sin redeploy)"}
+                style={{ minWidth: 96, fontSize: 12, whiteSpace: "nowrap" }}
+              >
+                {busyKey === a.key ? "…" : a.enabled ? "Apagar" : "Encender"}
+              </button>
+            )}
             <Badge status={a.status} />
           </div>
         ))}
