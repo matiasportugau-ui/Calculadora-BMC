@@ -3,7 +3,7 @@ import {
   layoutArrayToObject,
   layoutObjectToArray,
   panelPercentSize,
-} from "../src/components/ResizablePanelsCompat.jsx";
+} from "../src/utils/resizablePanelsCompat.js";
 
 assert.equal(panelPercentSize(35), "35%");
 assert.equal(panelPercentSize("280px"), "280px");
