@@ -159,7 +159,11 @@ export function resolveModel(provider, requested, preferFast = false) {
  * @returns {Provider[]}
  */
 export function getAvailableProviders() {
-  return PROVIDERS.filter((p) => !!getApiKey(p));
+  return PROVIDERS.filter((p) => {
+    if (!getApiKey(p)) return false;
+    if (p === "openrouter" && !config.openrouterFallbackEnabled) return false;
+    return true;
+  });
 }
 
 /**

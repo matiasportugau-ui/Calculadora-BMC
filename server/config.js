@@ -136,8 +136,11 @@ export const config = {
   // OpenRouter — terminal open-source-model fallback. Aggregates open-weights
   // models (Llama, Mistral, DeepSeek, Qwen) behind an OpenAI-compatible API, with
   // free tiers. Tried LAST so the seam never runs out of AI even if all four
-  // commercial providers fail at once. Inactive until OPENROUTER_API_KEY is set.
+  // commercial providers fail at once. Requires an explicit fallback flag because
+  // this routes customer conversations and the full system prompt through a new
+  // third-party data boundary.
   openrouterApiKey: process.env.OPENROUTER_API_KEY || "",
+  openrouterFallbackEnabled: bool(process.env.OPENROUTER_FALLBACK_ENABLED, false),
   openrouterModel: process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
   // Vercel AI Gateway (unified multi-provider).
   // Set AI_GATEWAY_API_KEY (or rely on VERCEL_OIDC_TOKEN populated via `vercel env pull`)
