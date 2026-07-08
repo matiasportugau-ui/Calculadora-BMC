@@ -20,6 +20,8 @@ import { config } from "../config.js";
 import { getWaPool } from "../lib/waDb.js";
 import { requireUser } from "../lib/identityAuth.js";
 import { safeErr as _safeErr } from "../lib/safeErr.js";
+import { renderHtmlToPdfBuffer, PdfRendererUnavailableError } from "../lib/quotePdf.js";
+import { buildCotizacionHtml } from "./calc.js";
 
 const router = express.Router();
 
@@ -268,10 +270,10 @@ router.get("/api/me/quotes/:id/export.csv", requireUser(), async (req, res) => {
   }
 });
 
-// PDF: redirect to existing pdf_url if present; otherwise return 404 with a
-// machine-readable hint. The puppeteer-based "render server-side" path is a
-// follow-up (GOLIVE doc §"Out of scope"); until then the contract is:
-// `.pdf` ONLY returns a real PDF when one was uploaded by the calc flow.
+// PDF: redirect to existing pdf_url if present; otherwise re-render on demand
+// from the request params persisted in payload.request (calc.js writes them
+// since the shared quotePdf lib landed). Rows saved before that — or via
+// flows that never stored request params — still return 404 pdf_not_available.
 // Defense-in-depth allowlist (cursor[bot] H-1). The lib already validates on
 // write, but pre-existing rows could carry attacker-controlled URLs from
 // before the allowlist landed — re-check before redirecting.
@@ -291,12 +293,32 @@ router.get("/api/me/quotes/:id/export.pdf", requireUser(), async (req, res) => {
       }
       return res.redirect(302, q.pdf_url);
     }
+
+    // On-demand render: rebuild the exact calc HTML and rasterize it.
+    const reqParams = q.payload?.request;
+    if (reqParams?.escenario) {
+      const built = buildCotizacionHtml({ ...reqParams, cliente: q.payload?.client || {} });
+      if (built.ok) {
+        const pdfBuffer = await renderHtmlToPdfBuffer(built.html, { timeoutMs: 30000 });
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="quote-${q.quote_id}.pdf"`);
+        return res.send(pdfBuffer);
+      }
+    }
+
     return res.status(404).json({
       ok: false,
       error: "pdf_not_available",
       detail: "No pdf_url stored for this quote. Use export.html for a printable HTML view.",
     });
   } catch (e) {
+    if (e instanceof PdfRendererUnavailableError) {
+      return res.status(503).json({
+        ok: false,
+        error: "pdf_renderer_unavailable",
+        detail: "Server PDF rendering unavailable on this platform. Use export.html instead.",
+      });
+    }
     res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });

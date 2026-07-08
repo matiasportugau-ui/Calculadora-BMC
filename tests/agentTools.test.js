@@ -387,6 +387,31 @@ await group("generar_pdf — propagates urls", async () => {
   assert(parsed.ok === true, "ok true");
   assert(parsed.pdf_id === "xyz-1", "pdf_id present");
   assert(parsed.gcs_url && parsed.drive_url, "both gcs_url and drive_url present");
+  assert(parsed.pdf_url === "https://gcs/p.html", "degraded server → pdf_url stays HTML link");
+  assert(parsed.pdf_rendered === false, "degraded server → pdf_rendered false");
+  resetFetch();
+});
+
+await group("generar_pdf — prefers real rendered PDF", async () => {
+  setFetch(async () => ({
+    ok: true,
+    pdf_id: "xyz-2",
+    pdf_url: "https://gcs/p.html",
+    gcs_url: "https://gcs/p.html",
+    drive_url: "https://drive/p.pdf",
+    pdf_file_url: "https://gcs/pdf/p.pdf",
+    pdf_rendered: true,
+    resumen: { total_usd: 999 },
+  }));
+  const { parsed } = await run("generar_pdf", {
+    scenario: "solo_techo",
+    techo: { familia: "ISODEC_EPS", espesor: 100, zonas: [{ largo: 10, ancho: 5 }] },
+  });
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.pdf_url === "https://gcs/pdf/p.pdf", "pdf_url prefers the rendered PDF");
+  assert(parsed.pdf_file_url === "https://gcs/pdf/p.pdf", "pdf_file_url exposed");
+  assert(parsed.pdf_rendered === true, "pdf_rendered true");
+  assert(parsed.instrucciones.includes("PDF real"), "instrucciones mention real PDF");
   resetFetch();
 });
 
