@@ -1,21 +1,19 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// server/routes/pdf.js — Server-side PDF generation via @sparticuz/chromium
+// server/routes/pdf.js — Server-side PDF generation endpoint.
 //
 // POST /api/pdf/generate
 //   body: { html: string, filename?: string }
 //   returns: application/pdf blob
 //
-// Uses @sparticuz/chromium (Chromium optimized for serverless / Cloud Run).
-// Preserves @page CSS, SVG vectors, fonts, colors — identical to window.print().
-// Falls back gracefully: if Chromium is unavailable the route returns 503
-// and pdfGenerator.js client-side falls back to html2pdf.js.
+// Rendering lives in server/lib/quotePdf.js (shared with /calc/cotizar/pdf
+// and quote export). Preserves @page CSS, SVG vectors, fonts, colors —
+// identical to window.print(). Falls back gracefully: if Chromium is
+// unavailable the route returns 503 and pdfGenerator.js client-side falls
+// back to html2pdf.js.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
-import chromium from "@sparticuz/chromium";
-import puppeteer from "puppeteer-core";
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
+import { renderHtmlToPdfBuffer } from "../lib/quotePdf.js";
 
 export function createPdfRouter() {
   const router = express.Router();
@@ -40,132 +38,8 @@ export function createPdfRouter() {
 
     const start = Date.now();
 
-    let browser;
     try {
-      // Early guard: @sparticuz/chromium ships Linux binaries only.
-      // On macOS/Windows dev without explicit CHROMIUM_EXECUTABLE_PATH the spawn will ENOEXEC.
-      // Client-side html2pdf fallback handles this gracefully.
-      const platform = process.platform;
-      const hasExplicitBinary = !!process.env.CHROMIUM_EXECUTABLE_PATH;
-      if (platform !== "linux" && !hasExplicitBinary) {
-        return res.status(503).json({
-          ok: false,
-          error: "pdf_renderer_unavailable",
-          detail: "Server PDF requires Linux Chromium (prod/Cloud Run). Client fallback will be used."
-        });
-      }
-
-      const executablePath =
-        process.env.CHROMIUM_EXECUTABLE_PATH ||
-        (await chromium.executablePath());
-
-      // Debug: log state to Cloud Run logs so we can diagnose remotely
-      console.info("[pdf] executablePath:", executablePath);
-      console.info("[pdf] exists:", existsSync(executablePath));
-      console.info("[pdf] chromium.headless:", chromium.headless);
-      console.info("[pdf] chromium.args:", JSON.stringify(chromium.args));
-
-      if (!existsSync(executablePath)) {
-        return res.status(503).json({ ok: false, error: "pdf_renderer_unavailable", detail: `binary not found at ${executablePath}` });
-      }
-
-      // Ensure executable — @sparticuz decompresses but may not chmod in all envs
-      const { chmodSync, statSync } = await import("node:fs");
-      try {
-        const mode = statSync(executablePath).mode;
-        console.info("[pdf] file mode:", mode.toString(8));
-        if (!(mode & 0o111)) {
-          chmodSync(executablePath, 0o755);
-          console.info("[pdf] chmod 755 applied");
-        }
-      } catch (e) {
-        console.warn("[pdf] chmod failed:", e.message);
-      }
-
-      // When CHROMIUM_EXECUTABLE_PATH points to a system binary (e.g. /usr/bin/chromium),
-      // @sparticuz/chromium args are Lambda-specific (--headless='shell', SwiftShader flags)
-      // and incompatible with the distro Chromium. Use a clean standard headless arg set instead.
-      const useSystemBinary = !!process.env.CHROMIUM_EXECUTABLE_PATH;
-
-      const launchArgs = useSystemBinary
-        ? [
-            "--headless=new",
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--no-zygote",
-            "--single-process",
-            "--disable-extensions",
-            "--disable-background-networking",
-            "--disable-default-apps",
-            "--disable-sync",
-            "--disable-translate",
-            "--metrics-recording-only",
-            "--mute-audio",
-            "--no-first-run",
-            "--safebrowsing-disable-auto-update",
-            "--font-render-hinting=none",
-          ]
-        : [
-            ...new Set([...(chromium.args || [])]),
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-          ];
-
-      console.info("[pdf] useSystemBinary:", useSystemBinary, "args[0]:", launchArgs[0]);
-
-      browser = await puppeteer.launch({
-        args: launchArgs,
-        defaultViewport: { width: 1280, height: 900 },
-        executablePath,
-        headless: useSystemBinary ? "new" : true,
-      });
-
-      const page = await browser.newPage();
-
-      // Emulate print media so @page / @media print rules take effect
-      await page.emulateMediaType("print");
-
-      // Inline logo so puppeteer setContent always has it (no origin for / paths).
-      // Handles paths used across templates: /bmc-pdf/assets/... and relative assets/...
-      // The Dockerfile copies public/bmc-pdf so this works in prod Cloud Run.
-      let processedHtml = html;
-      let logoInlined = false;
-      try {
-        const logoCandidates = [
-          path.resolve(process.cwd(), "public/bmc-pdf/assets/bmc-logo.png"),
-          path.resolve(process.cwd(), "dist/bmc-pdf/assets/bmc-logo.png"),
-        ];
-        const logoPath = logoCandidates.find(p => existsSync(p));
-        if (logoPath) {
-          const logoBuf = readFileSync(logoPath);
-          const dataUrl = `data:image/png;base64,${logoBuf.toString("base64")}`;
-          // Cover all variants used by current + legacy templates
-          processedHtml = html
-            .replace(/src=["']\/bmc-pdf\/assets\/bmc-logo\.png["']/gi, `src="${dataUrl}"`)
-            .replace(/src=["']assets\/bmc-logo\.png["']/gi, `src="${dataUrl}"`)
-            .replace(/src=["'][^"']*bmc-logo\.png["']/gi, `src="${dataUrl}"`); // catch any other relative
-          logoInlined = true;
-        }
-      } catch (logoErr) {
-        console.warn("[pdf] logo inlining skipped:", logoErr.message);
-      }
-      if (logoInlined) {
-        console.info("[pdf] logo inlined as data URL for reliable render");
-      } else {
-        console.warn("[pdf] proceeding without logo (file not found in container)");
-      }
-
-      await page.setContent(processedHtml, { waitUntil: "networkidle0", timeout: 30000 });
-
-      const pdfBuffer = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        preferCSSPageSize: true, // honor @page { size; margin } rules defined in templates (e.g. 7mm 8mm)
-        margin: { top: "6mm", right: "6mm", bottom: "6mm", left: "6mm" }, // soft fallback only
-      });
+      const pdfBuffer = await renderHtmlToPdfBuffer(html, { timeoutMs: 30000 });
 
       const safeName = String(filename).replace(/[^\w\-. áéíóúÁÉÍÓÚñÑ]/g, "_");
       const duration = Date.now() - start;
@@ -191,8 +65,6 @@ export function createPdfRouter() {
     } catch (err) {
       console.error("[pdf/generate] error:", err.code, err.message?.slice(0, 200));
       return res.status(503).json({ ok: false, error: "pdf_renderer_unavailable", detail: err.message?.slice(0, 120) });
-    } finally {
-      await browser?.close().catch(() => {});
     }
   });
 
