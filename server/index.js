@@ -382,15 +382,16 @@ app.get("/auth/ml/status", asyncHandler(async (req, res) => {
   });
 }));
 
-// ML state-changing routes (publish an answer to a customer, edit a live
-// listing / its description) must have an authenticated caller: an active
-// identity JWT (operators — mlFetch attaches it) OR the static service token.
-// Closes an anonymous-write hole (anyone could post replies or edit listings).
-// The server-side auto-answer (mlAutoAnswer.js) posts via the ML client
-// directly, NOT this route, so it is unaffected. Reads stay open for now.
-const requireMlWrite = requireServiceOrUser({ authOnly: true });
+// All inline /ml/* routes require an authenticated caller: an active identity
+// JWT (operators — mlFetch attaches it) OR the static service token. Closes the
+// anonymous holes on both writes (publish an answer to a customer, edit a live
+// listing) AND reads (seller profile, listings, customer questions, ORDERS with
+// customer PII). The server-side auto-answer (mlAutoAnswer.js) posts via the ML
+// client directly, not these routes, so it is unaffected; the separate mlSearch
+// router keeps its own static-token guard.
+const requireMlAuth = requireServiceOrUser({ authOnly: true });
 
-app.get("/ml/users/me", asyncHandler(async (req, res) => {
+app.get("/ml/users/me", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: "/users/me",
@@ -398,7 +399,7 @@ app.get("/ml/users/me", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/users/:id", asyncHandler(async (req, res) => {
+app.get("/ml/users/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: `/users/${req.params.id}`,
@@ -406,7 +407,7 @@ app.get("/ml/users/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/listings", asyncHandler(async (req, res) => {
+app.get("/ml/listings", requireMlAuth, asyncHandler(async (req, res) => {
   const { status = "active", limit = 50, offset = 0 } = req.query;
   const sellerId = await ml.resolveSellerId();
   const payload = await ml.requestWithRetries({
@@ -416,7 +417,7 @@ app.get("/ml/listings", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/items/:id", asyncHandler(async (req, res) => {
+app.get("/ml/items/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: `/items/${req.params.id}`,
@@ -424,7 +425,7 @@ app.get("/ml/items/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.patch("/ml/items/:id", requireMlWrite, asyncHandler(async (req, res) => {
+app.patch("/ml/items/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "PUT",
     path: `/items/${req.params.id}`,
@@ -433,7 +434,7 @@ app.patch("/ml/items/:id", requireMlWrite, asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/ml/items/:id/description", requireMlWrite, asyncHandler(async (req, res) => {
+app.post("/ml/items/:id/description", requireMlAuth, asyncHandler(async (req, res) => {
   const { text } = req.body;
   try {
     const payload = await ml.requestWithRetries({
@@ -454,7 +455,7 @@ app.post("/ml/items/:id/description", requireMlWrite, asyncHandler(async (req, r
   }
 }));
 
-app.get("/ml/questions", asyncHandler(async (req, res) => {
+app.get("/ml/questions", requireMlAuth, asyncHandler(async (req, res) => {
   if (req.query.id) {
     const payload = await ml.requestWithRetries({
       method: "GET",
@@ -504,7 +505,7 @@ app.get("/ml/questions", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/questions/:id", asyncHandler(async (req, res) => {
+app.get("/ml/questions/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: `/questions/${req.params.id}`,
@@ -512,7 +513,7 @@ app.get("/ml/questions/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/ml/questions/:id/answer", requireMlWrite, asyncHandler(async (req, res) => {
+app.post("/ml/questions/:id/answer", requireMlAuth, asyncHandler(async (req, res) => {
   if (!req.body?.text) {
     return res.status(400).json({ ok: false, error: "Missing body.text" });
   }
@@ -528,7 +529,7 @@ app.post("/ml/questions/:id/answer", requireMlWrite, asyncHandler(async (req, re
   res.json(payload);
 }));
 
-app.get("/ml/orders", asyncHandler(async (req, res) => {
+app.get("/ml/orders", requireMlAuth, asyncHandler(async (req, res) => {
   if (req.query.id) {
     const payload = await ml.requestWithRetries({
       method: "GET",
@@ -564,7 +565,7 @@ app.get("/ml/orders", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/orders/:id", asyncHandler(async (req, res) => {
+app.get("/ml/orders/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: `/orders/${req.params.id}`,
