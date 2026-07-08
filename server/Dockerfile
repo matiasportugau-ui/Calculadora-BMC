@@ -35,6 +35,9 @@ COPY --from=deps /app/package.json ./package.json
 COPY server/ ./server/
 COPY src/utils/ ./src/utils/
 COPY src/data/ ./src/data/
+# Quote PDF templates — buildCotizacionHtml (server/routes/calc.js) renders the
+# refined client template server-side; without this COPY the API crashes at boot.
+COPY src/pdf-templates/ ./src/pdf-templates/
 
 # PDF branding assets (required for server-side PDF generation on /api/pdf/generate).
 # The modern templates (simple*, bmc-pdf etc.) reference the BMC logo at /bmc-pdf/assets/bmc-logo.png

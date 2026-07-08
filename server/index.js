@@ -373,6 +373,14 @@ app.get("/auth/ml/status", asyncHandler(async (req, res) => {
   });
 }));
 
+// ML state-changing routes (publish an answer to a customer, edit a live
+// listing / its description) must have an authenticated caller: an active
+// identity JWT (operators — mlFetch attaches it) OR the static service token.
+// Closes an anonymous-write hole (anyone could post replies or edit listings).
+// The server-side auto-answer (mlAutoAnswer.js) posts via the ML client
+// directly, NOT this route, so it is unaffected. Reads stay open for now.
+const requireMlWrite = requireServiceOrUser({ authOnly: true });
+
 app.get("/ml/users/me", asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
@@ -407,7 +415,7 @@ app.get("/ml/items/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.patch("/ml/items/:id", asyncHandler(async (req, res) => {
+app.patch("/ml/items/:id", requireMlWrite, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "PUT",
     path: `/items/${req.params.id}`,
@@ -416,7 +424,7 @@ app.patch("/ml/items/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/ml/items/:id/description", asyncHandler(async (req, res) => {
+app.post("/ml/items/:id/description", requireMlWrite, asyncHandler(async (req, res) => {
   const { text } = req.body;
   try {
     const payload = await ml.requestWithRetries({
@@ -495,7 +503,7 @@ app.get("/ml/questions/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/ml/questions/:id/answer", asyncHandler(async (req, res) => {
+app.post("/ml/questions/:id/answer", requireMlWrite, asyncHandler(async (req, res) => {
   if (!req.body?.text) {
     return res.status(400).json({ ok: false, error: "Missing body.text" });
   }
