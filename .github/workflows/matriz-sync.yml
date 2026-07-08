@@ -114,7 +114,7 @@ jobs:
 
       - name: Open PR
         if: steps.diff.outputs.changed == 'true' && github.event.inputs.dry_run != 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const branch = "${{ steps.commit.outputs.branch }}";
