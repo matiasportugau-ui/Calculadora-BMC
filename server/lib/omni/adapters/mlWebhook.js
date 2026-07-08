@@ -11,10 +11,17 @@ import { buildIdempotencyKey } from "../types.js";
 
 const strip = (v) => String(v || "").trim();
 
+function trimTrailingSlashes(value) {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+  return end === value.length ? value : value.slice(0, end);
+}
+
 export function extractMlWebhookResourceId(notification = {}) {
   const raw = strip(notification.resource || notification._id || notification.id);
   if (!raw) return "";
-  const noQuery = raw.split("?")[0].replace(/\/+$/, "");
+  const queryIndex = raw.indexOf("?");
+  const noQuery = trimTrailingSlashes(queryIndex === -1 ? raw : raw.slice(0, queryIndex));
   const parts = noQuery.split("/").filter(Boolean);
   if (parts[0] === "questions" && parts[1]) return parts[1];
   if (parts.length > 1) return parts.join("/");

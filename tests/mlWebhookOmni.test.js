@@ -1,6 +1,6 @@
 // ML webhook → Omni adapter/service offline tests
 // node tests/mlWebhookOmni.test.js
-import { mlWebhookToOmniEvent } from "../server/lib/omni/adapters/mlWebhook.js";
+import { extractMlWebhookResourceId, mlWebhookToOmniEvent } from "../server/lib/omni/adapters/mlWebhook.js";
 import { createMlWebhookProcessor } from "../server/lib/mlWebhookService.js";
 
 let passed = 0;
@@ -30,6 +30,23 @@ const question = {
   date_created: "2026-07-08T11:59:00.000Z",
   status: "UNANSWERED",
 };
+
+
+const parseCases = [
+  [{ resource: "/questions/12345///?foo=bar" }, "12345"],
+  [{ resource: "messages/packs/555/sellers/999///" }, "messages/packs/555/sellers/999"],
+  [{ id: "abc-123///" }, "abc-123"],
+];
+for (const [input, expected] of parseCases) {
+  assert(`resource id parser keeps legacy behavior for ${expected}`, extractMlWebhookResourceId(input) === expected);
+}
+
+const adversarial = `${"/".repeat(120_000)}questions/slow-resource${"/".repeat(120_000)}?ignored=${"/".repeat(120_000)}`;
+const t0 = Date.now();
+const adversarialId = extractMlWebhookResourceId({ resource: adversarial });
+const elapsedMs = Date.now() - t0;
+assert("resource id parser handles long slash-heavy payload", adversarialId === "slow-resource");
+assert("resource id parser stays fast on adversarial payload", elapsedMs < 250);
 
 const event = mlWebhookToOmniEvent({ notification, resourcePayload: question });
 assert("question maps to ml channel", event?.channel === "ml" && event.source === "ml_webhook");
