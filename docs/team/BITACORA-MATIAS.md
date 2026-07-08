@@ -213,3 +213,15 @@ gate:local:   pendiente correr al final de la sesión
 **Verificación:** `tests/quotePdf.test.js` 17/17 (nuevo, en `test:core`); `agentTools.test.js` 298/298; gate:local verde (salvo `gate-secrets-drift` WHATSAPP_*, pre-existente en main); local con Chrome real: `/api/pdf/generate` 200 `%PDF`, `cotizar/pdf` `pdf_rendered:true`, `smoke:bmc-pdf` OK.
 
 **Próximo paso:** post-deploy confirmar `pdf_rendered:true` en prod + `gsutil stat` (contentType `application/pdf`) + dry-run del sheet-quote-pipeline.
+
+---
+
+## 2026-07-08 — Consola gestionable de Asistentes IA + resiliencia del seam + seguridad ML
+
+**Qué:** Se convirtió `/hub/admin/assistants` de panel read-only optimista en **consola honesta y gestionable**, con resiliencia y cierre de agujeros de seguridad. 8 PRs a prod: #638 (fix ML "Generar con IA" = auth), #639 (panel muestra proveedor real + motivo de falla), #641 (enable/disable en runtime sin redeploy, reusa waConfig), #642 (toggles en panel), #648 (auth en rutas ML de escritura), #651 (cooldown 15min para errores duros + botón Reset cooldowns), #652 (fallback terminal OpenRouter open-models, dormant hasta cargar key), #656 (auth en rutas ML de lectura). #610 documentado con acciones owner-gated.
+
+**Verificación:** todos prod-verificados (anon→401, toggles on/off, cooldown 14.5min+reset, seam responde vía Gemini, OpenRouter dormant boot 200). `gate:local` verde (drift WHATSAPP_* ya resuelto en main).
+
+**Bloqueante (owner-gated):** #610 = Anthropic sin créditos + Grok key inválida → seam sirve Gemini. Atajo gratis: cargar key de OpenRouter (#652). Ver `HANDOFF-2026-07-08.md`.
+
+**Próximo paso:** cargar key OpenRouter (piso de AI gratis) → luego #610 (créditos + Grok) → "Reset cooldowns" en el panel. Verificar #656 en prod. task-master-ai arreglado (reiniciar Claude Code); Notion needs reauth.
