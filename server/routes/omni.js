@@ -1190,6 +1190,25 @@ router.post(
 );
 
 router.patch(
+  "/omni/deals/:id/stage",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const to = normalizeStage(req.body?.stage);
+    if (!to) {
+      return res.status(400).json({ ok: false, error: "invalid_stage", to: req.body?.stage ?? null });
+    }
+    const result = await updateDeal(req.omniPool, req.params.id, { stage: to });
+    if (!result.ok) {
+      const status = result.error === "deal_not_found" ? 404 : result.error === "invalid_stage_transition" ? 409 : 400;
+      return res.status(status).json(result);
+    }
+    const sync = await syncDealToCrm(result.deal);
+    res.json({ ok: true, deal: result.deal, sync });
+  },
+);
+
+router.patch(
   "/omni/deals/:id",
   requireGrant.write("canales"),
   requireOmniDb,
