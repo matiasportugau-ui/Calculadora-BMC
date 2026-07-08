@@ -133,6 +133,12 @@ export const config = {
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 (404 "no longer available"); 2.5-flash is the live model. Used by the SSE chat streaming path (agentChat.js) + visionExtract.
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
+  // OpenRouter — terminal open-source-model fallback. Aggregates open-weights
+  // models (Llama, Mistral, DeepSeek, Qwen) behind an OpenAI-compatible API, with
+  // free tiers. Tried LAST so the seam never runs out of AI even if all four
+  // commercial providers fail at once. Inactive until OPENROUTER_API_KEY is set.
+  openrouterApiKey: process.env.OPENROUTER_API_KEY || "",
+  openrouterModel: process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
   // Vercel AI Gateway (unified multi-provider).
   // Set AI_GATEWAY_API_KEY (or rely on VERCEL_OIDC_TOKEN populated via `vercel env pull`)
   // to route /crm/suggest-response, /crm/parse-email, /crm/ingest-email, and
