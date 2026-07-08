@@ -656,6 +656,12 @@ app.post("/api/ml/auto-mode", asyncHandler(async (req, res) => {
 
 // ── WhatsApp Business Cloud API webhook ──
 const waConversations = new Map(); // chatId → { messages: [], lastUpdate }
+const metaWebhookVerifyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Limpieza de conversaciones viejas (>24h) cada hora
 setInterval(() => {
@@ -677,13 +683,13 @@ app.get("/webhooks/whatsapp", (req, res) => {
   res.status(403).send("Forbidden");
 });
 
-app.get("/webhooks/instagram", (req, res) => {
+app.get("/webhooks/instagram", metaWebhookVerifyLimiter, (req, res) => {
   const result = verifyMetaWebhookSubscribe(req, config.igVerifyToken);
   res.set("Content-Type", "text/plain");
   res.status(result.status).send(result.body);
 });
 
-app.get("/webhooks/messenger", (req, res) => {
+app.get("/webhooks/messenger", metaWebhookVerifyLimiter, (req, res) => {
   const result = verifyMetaWebhookSubscribe(req, config.fbVerifyToken);
   res.set("Content-Type", "text/plain");
   res.status(result.status).send(result.body);

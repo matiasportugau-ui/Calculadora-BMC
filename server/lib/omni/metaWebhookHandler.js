@@ -7,6 +7,9 @@ export function verifyMetaWebhookSubscribe(req, verifyToken) {
   const mode = req?.query?.["hub.mode"];
   const token = req?.query?.["hub.verify_token"];
   const challenge = req?.query?.["hub.challenge"];
+  if (!verifyToken) {
+    return { ok: false, status: 503, body: "Webhook verification not configured" };
+  }
   if (mode === "subscribe" && token === verifyToken) {
     return { ok: true, status: 200, body: String(challenge ?? "") };
   }

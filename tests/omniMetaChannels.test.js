@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { igWebhookToOmniEvents } from "../server/lib/omni/adapters/igWebhook.js";
 import { messengerWebhookToOmniEvents } from "../server/lib/omni/adapters/messengerWebhook.js";
-import { handleMetaMessagingWebhook } from "../server/lib/omni/metaWebhookHandler.js";
+import { handleMetaMessagingWebhook, verifyMetaWebhookSubscribe } from "../server/lib/omni/metaWebhookHandler.js";
 import { buildMetaMessagePayload, sendMetaMessage } from "../server/lib/omni/outbound/metaSend.js";
 
 const sample = (senderId, mid, text) => ({
@@ -79,6 +79,30 @@ assert.equal(good.body.events, 1);
 await good.processing;
 assert.equal(persisted[0].idempotency_key, "fb:msg:good_mid");
 
+const subscribeReq = {
+  query: {
+    "hub.mode": "subscribe",
+    "hub.verify_token": "VERIFY_TOKEN",
+    "hub.challenge": "challenge-value",
+  },
+};
+const verifiedSubscribe = verifyMetaWebhookSubscribe(subscribeReq, "VERIFY_TOKEN");
+assert.equal(verifiedSubscribe.status, 200);
+assert.equal(verifiedSubscribe.body, "challenge-value");
+
+const missingVerifyToken = verifyMetaWebhookSubscribe(
+  {
+    query: {
+      "hub.mode": "subscribe",
+      "hub.verify_token": "",
+      "hub.challenge": "challenge-value",
+    },
+  },
+  "",
+);
+assert.equal(missingVerifyToken.status, 503);
+assert.equal(missingVerifyToken.body, "Webhook verification not configured");
+
 const inside = buildMetaMessagePayload({
   recipientId: "RID",
   text: "Dentro",
@@ -110,13 +134,26 @@ const sent = await sendMetaMessage({
   lastCustomerAt: "2026-07-06T09:00:00.000Z",
   now: new Date("2026-07-08T10:00:00.000Z"),
   fetchImpl: async (url, init) => {
-    captured = { url, body: JSON.parse(init.body) };
+    captured = { url, headers: init.headers, body: JSON.parse(init.body) };
     return { ok: true, status: 200, json: async () => ({ recipient_id: "RID", message_id: "mid" }) };
   },
 });
 assert.equal(sent.ok, true);
-assert.match(captured.url, /graph\.facebook\.com\/v21\.0\/me\/messages\?access_token=PAGE_TOKEN/);
+assert.equal(captured.url, "https://graph.facebook.com/v21.0/me/messages");
+assert.equal(captured.headers.Authorization, "Bearer PAGE_TOKEN");
+assert.equal(captured.url.includes("PAGE_TOKEN"), false);
 assert.equal(captured.body.messaging_type, "MESSAGE_TAG");
 assert.equal(captured.body.tag, "HUMAN_AGENT");
+
+const indexSource = await import("node:fs/promises")
+  .then((fs) => fs.readFile(new URL("../server/index.js", import.meta.url), "utf8"));
+assert.match(
+  indexSource,
+  /app\.get\("\/webhooks\/instagram",\s*metaWebhookVerifyLimiter,/,
+);
+assert.match(
+  indexSource,
+  /app\.get\("\/webhooks\/messenger",\s*metaWebhookVerifyLimiter,/,
+);
 
 console.log("omniMetaChannels.test.js: ok");

@@ -20,9 +20,12 @@ export async function sendMetaMessage({ pageToken, recipientId, text, lastCustom
   if (!pageToken) return { ok: false, error: "meta_page_token_missing" };
   if (!recipientId) return { ok: false, error: "meta_recipient_missing" };
   const { payload, inWindow } = buildMetaMessagePayload({ recipientId, text, lastCustomerAt, tag, now });
-  const res = await fetchImpl(`https://graph.facebook.com/${graphApiVersion}/me/messages?access_token=${encodeURIComponent(pageToken)}`, {
+  const res = await fetchImpl(`https://graph.facebook.com/${graphApiVersion}/me/messages`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${pageToken}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(15000),
   });
