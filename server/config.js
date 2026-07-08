@@ -150,6 +150,15 @@ export const config = {
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+  // Meta Instagram DM / Facebook Messenger — dormant until cm-0 app review closes.
+  omniIgEnabled: bool(process.env.OMNI_IG_ENABLED, false),
+  omniFbEnabled: bool(process.env.OMNI_FB_ENABLED, false),
+  igVerifyToken: process.env.IG_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "",
+  fbVerifyToken: process.env.FB_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "",
+  igPageToken: process.env.IG_PAGE_TOKEN || "",
+  fbPageToken: process.env.FB_PAGE_TOKEN || "",
+  igAppSecret: process.env.IG_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
+  fbAppSecret: process.env.FB_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
   // Shopify (questions/quotes flow – Mercado Libre replacement)
   shopifyClientId: process.env.SHOPIFY_CLIENT_ID || "",
   shopifyClientSecret: process.env.SHOPIFY_CLIENT_SECRET || "",
