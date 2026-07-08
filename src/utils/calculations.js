@@ -326,18 +326,34 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
 
 /**
  * Fijaciones caballete (ISOROOF families).
+ *
+ * Modelo: grilla de anclajes (3 por línea de apoyo, por panel) + fijaciones laterales
+ * (una cada `espaciado_lateral` m sobre cada uno de los 2 bordes laterales):
+ *   caballetes = anclajes_por_apoyo × cantP × apoyos  +  2 × (floor(largo / espaciado_lateral) + 1)
+ * `apoyos` = líneas de apoyo enteras según la autoportancia real del panel/espesor
+ * (`esp[espesor].ap`, vía `calcAutoportancia`). Si no se provee, cae al factor genérico `factor_largo`.
+ *
  * @param {number} cantP - panel count across width
  * @param {number} largo - panel length (m)
  * @param {string} [tipoEst="metal"] - "metal" | "madera" | "hormigon" | "combinada"
  * @param {number} [espesorMm=30] - panel thickness in mm (30→4" screws; 50/80→6" screws)
+ * @param {number|null} [overridePuntos=null] - fija el total de caballetes (bypass fórmula)
+ * @param {number|null} [apoyos=null] - líneas de apoyo enteras (autoportancia real); fallback si null
  */
-export function calcFijacionesCaballete(cantP, largo, tipoEst = "metal", espesorMm = 30, overridePuntos = null) {
+export function calcFijacionesCaballete(cantP, largo, tipoEst = "metal", espesorMm = 30, overridePuntos = null, apoyos = null) {
   const { FIJACIONES } = getPricing();
-  const factorLargo = getDimensioningParam("FIJACIONES_CABALETE.factor_largo", 2.9);
-  const factorAncho = getDimensioningParam("FIJACIONES_CABALETE.factor_ancho", 0.3);
+  const factorLargo = getDimensioningParam("FIJACIONES_CABALETE.factor_largo", 2.9); // fallback si no hay autoportancia
+  const espLateral = getDimensioningParam("FIJACIONES_CABALETE.espaciado_lateral", 2.5);
+  const anclajesPorApoyo = getDimensioningParam("FIJACIONES_CABALETE.anclajes_por_apoyo", 3);
+  // Líneas de apoyo enteras: preferir la autoportancia real; si falta, factor genérico.
+  const apoyosCount = apoyos != null && apoyos > 0
+    ? Math.round(apoyos)
+    : Math.ceil(largo / factorLargo) + 1;
+  const grid = cantP * anclajesPorApoyo * apoyosCount;                  // 3 × paneles × apoyos
+  const laterales = espLateral > 0 ? 2 * (Math.floor(largo / espLateral) + 1) : 0; // 1 cada `espLateral` m × 2 bordes
   const caballetes = overridePuntos != null && overridePuntos > 0
     ? Math.round(overridePuntos)
-    : Math.ceil((cantP * 3 * (largo / factorLargo + 1)) + ((largo * 2) / factorAncho));
+    : grid + laterales;
   const items = [];
   const c = (x) => (x?.costo ?? 0);
 
@@ -987,7 +1003,10 @@ export function calcTechoCompleto(inputs) {
     });
   } else {
     const cabOverride = tipoEst !== "combinada" && (ptsHorm + ptsMetal + ptsMadera) > 0 ? (ptsHorm + ptsMetal + ptsMadera) : null;
-    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst || "metal", espesor, cabOverride);
+    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst || "metal", espesor, cabOverride, autoportancia.apoyos);
+  }
+  if (!tipoEst) {
+    warnings.push("Estructura sin definir: fijaciones sugeridas asumiendo metal. Definí la estructura para confirmar el tipo de tornillo/anclaje.");
   }
 
   let perfileria;
@@ -1112,7 +1131,7 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
       );
     } else {
       const cabOv = tipoEst !== "combinada" && (ptsHorm + ptsMetal + ptsMadera) > 0 ? (ptsHorm + ptsMetal + ptsMadera) : null;
-      fij = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst, techo.espesor, cabOv);
+      fij = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst, techo.espesor, cabOv, autop.apoyos);
     }
     const fijacionProductLines = (fij.items || []).map(
       (it) => `${it.label} — ${it.cant} ${it.unidad || "unid"}`,
