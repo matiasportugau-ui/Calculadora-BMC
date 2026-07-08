@@ -95,4 +95,27 @@ describe("provider cooldown", () => {
     recordProviderFailure("openai", now); // only this one is recent
     assert.equal(getProviderCooldownState().openai?.coolingDown, false);
   });
+
+  it("retains the last failure reason for the control panel", () => {
+    const now = Date.now();
+    recordProviderFailure("claude", now, {
+      status: 400,
+      type: "invalid_request_error",
+      detail: "credit balance is too low",
+      model: "claude-x",
+    });
+    const le = getProviderCooldownState().claude?.lastError;
+    assert.equal(le?.status, 400);
+    assert.equal(le?.type, "invalid_request_error");
+    assert.match(le?.detail, /credit balance/);
+    assert.equal(typeof le?.at, "number");
+  });
+
+  it("clears the last error on a subsequent success", () => {
+    const now = Date.now();
+    recordProviderFailure("grok", now, { status: 400, detail: "Incorrect API key" });
+    assert.ok(getProviderCooldownState().grok?.lastError);
+    recordProviderSuccess("grok");
+    assert.equal(getProviderCooldownState().grok?.lastError, null);
+  });
 });
