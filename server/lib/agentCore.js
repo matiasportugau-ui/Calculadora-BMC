@@ -44,10 +44,15 @@ function isCoolingDown(provider, now) {
   return !!(rec && rec.until && now < rec.until);
 }
 
-export function recordProviderFailure(provider, now) {
-  const rec = _providerHealth.get(provider) || { times: [], until: 0 };
+export function recordProviderFailure(provider, now, errorInfo = null) {
+  const rec = _providerHealth.get(provider) || { times: [], until: 0, lastError: null };
   rec.times = rec.times.filter((t) => now - t < COOLDOWN_WINDOW_MS);
   rec.times.push(now);
+  // Retain the reason of the most recent failure so the control panel can show
+  // WHY a provider is failing (e.g. "claude: 400 credit balance too low")
+  // instead of an optimistic key-presence badge. Survives cooldown expiry and
+  // times[] pruning until the next success clears it.
+  if (errorInfo) rec.lastError = { ...errorInfo, at: now };
   if (rec.times.length >= COOLDOWN_MAX_FAILURES) {
     rec.until = now + COOLDOWN_MS;
     rec.times = [];
@@ -57,7 +62,7 @@ export function recordProviderFailure(provider, now) {
 }
 
 export function recordProviderSuccess(provider) {
-  if (_providerHealth.has(provider)) _providerHealth.set(provider, { times: [], until: 0 });
+  if (_providerHealth.has(provider)) _providerHealth.set(provider, { times: [], until: 0, lastError: null });
 }
 
 /** Read-only snapshot for the health panel (assistantHealth). */
@@ -65,7 +70,12 @@ export function getProviderCooldownState() {
   const now = Date.now();
   const out = {};
   for (const [p, rec] of _providerHealth.entries()) {
-    out[p] = { coolingDown: !!(rec.until && now < rec.until), until: rec.until || 0, recentFailures: rec.times.length };
+    out[p] = {
+      coolingDown: !!(rec.until && now < rec.until),
+      until: rec.until || 0,
+      recentFailures: rec.times.length,
+      lastError: rec.lastError || null,
+    };
   }
   return out;
 }
@@ -391,7 +401,6 @@ export async function callAgentOnce(messages, opts = {}) {
       errors.push(`${p}: empty`);
 
     } catch (err) {
-      recordProviderFailure(p, Date.now()); // feeds cooldown deprioritization
       // Surface the EXACT per-provider failure. Before this, an individual
       // provider error was only accumulated in errors[] and shown on the
       // ALL_PROVIDERS_FAILED throw — which never fires when a later provider
@@ -399,13 +408,17 @@ export async function callAgentOnce(messages, opts = {}) {
       // was invisible in the logs. status/error_type come from the Anthropic +
       // OpenAI SDK error shapes.
       const detail = String(err?.message || err).slice(0, 200);
+      const status = err?.status ?? null;
+      const errorType = err?.error?.type ?? err?.name ?? null;
+      // feeds cooldown deprioritization + retains the reason for the control panel
+      recordProviderFailure(p, Date.now(), { status, type: errorType, detail, model: modelUsed });
       console.log(JSON.stringify({
         event: "provider_error",
         provider: p,
         model: modelUsed,
         channel,
-        status: err?.status ?? null,
-        error_type: err?.error?.type ?? err?.name ?? null,
+        status,
+        error_type: errorType,
         detail,
         task_key: taskKey || null,
       }));

@@ -120,6 +120,32 @@ function PanelInner() {
         </div>
       )}
 
+      {providers?.cooldowns &&
+        Object.entries(providers.cooldowns).some(([, c]) => c.recentFailures > 0 || c.lastError) && (
+          <div style={{ background: "#fff8c5", border: "1px solid #d4a72c", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13 }}>
+            <div style={{ fontWeight: 700, color: "#7a5c00", marginBottom: 6 }}>
+              ⚠ Proveedores con fallas reales (no solo presencia de key)
+            </div>
+            {Object.entries(providers.cooldowns)
+              .filter(([, c]) => c.recentFailures > 0 || c.lastError)
+              .map(([p, c]) => (
+                <div key={p} style={{ color: "#57606a", marginTop: 3 }}>
+                  <strong>{p}</strong>
+                  {c.coolingDown ? " · en cooldown" : ""}
+                  {c.recentFailures ? ` · ${c.recentFailures} fallo(s) recientes` : ""}
+                  {c.lastError && (
+                    <>
+                      {" · "}
+                      <span style={{ fontFamily: "monospace" }}>{c.lastError.status ?? "err"}</span>
+                      {c.lastError.detail ? ` ${String(c.lastError.detail).slice(0, 120)}` : ""}
+                      {c.lastError.at ? ` (${new Date(c.lastError.at).toLocaleTimeString()})` : ""}
+                    </>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
+
       <div style={{ display: "grid", gap: 10 }}>
         {(data?.assistants || []).map((a) => (
           <div
