@@ -38,6 +38,29 @@ async function jget(token, path) {
   return r.json();
 }
 
+async function jpost(token, path, body) {
+  const r = await fetch(`${ApiBase}${path}`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    let detail = `http_${r.status}`;
+    try {
+      const j = await r.json();
+      detail = j?.error || detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
 function Badge({ status }) {
   const m = STATUS_META[status] || STATUS_META.down;
   return (
@@ -59,6 +82,7 @@ function PanelInner() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [busyKey, setBusyKey] = useState(null);
 
   const refresh = useCallback(
     async (force = false) => {
@@ -75,6 +99,25 @@ function PanelInner() {
       }
     },
     [token],
+  );
+
+  // Runtime enable/disable — persisted via POST /api/assistants/:key/toggle
+  // (admin-gated, no redeploy). Refetch after so the badge reflects the change.
+  const toggleAssistant = useCallback(
+    async (key, nextEnabled) => {
+      if (!token) return;
+      setBusyKey(key);
+      setError(null);
+      try {
+        await jpost(token, `/api/assistants/${key}/toggle`, { enabled: nextEnabled });
+        await refresh(false);
+      } catch (e) {
+        setError(`No se pudo ${nextEnabled ? "encender" : "apagar"} '${key}': ${String(e?.message || e)}`);
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [token, refresh],
   );
 
   useEffect(() => {
@@ -139,6 +182,14 @@ function PanelInner() {
                       <span style={{ fontFamily: "monospace" }}>{c.lastError.status ?? "err"}</span>
                       {c.lastError.detail ? ` ${String(c.lastError.detail).slice(0, 120)}` : ""}
                       {c.lastError.at ? ` (${new Date(c.lastError.at).toLocaleTimeString()})` : ""}
+                      {[400, 401, 403].includes(Number(c.lastError.status)) && (
+                        <div style={{ fontSize: 12, color: "#7a5c00", marginTop: 2 }}>
+                          → Credencial/billing (owner): revisar créditos/API key del proveedor
+                          {p === "claude" ? " (Anthropic Plans & Billing)" : ""}
+                          {p === "grok" ? " (GCP Secret Manager · GROK_API_KEY + redeploy)" : ""}
+                          {" — no se auto-resuelve desde el panel."}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -152,7 +203,7 @@ function PanelInner() {
             key={a.key}
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr auto",
+              gridTemplateColumns: "1fr auto auto",
               gap: 12,
               alignItems: "center",
               border: "1px solid #d0d7de",
@@ -172,6 +223,19 @@ function PanelInner() {
                 {a.detail ? <> · {a.detail}</> : null}
               </div>
             </div>
+            {a.key === "seam" ? (
+              <span style={{ fontSize: 11, color: "#8c959f", whiteSpace: "nowrap" }}>siempre on</span>
+            ) : (
+              <button
+                className="ac-btn"
+                onClick={() => toggleAssistant(a.key, !a.enabled)}
+                disabled={busyKey === a.key || !token}
+                title={a.enabled ? "Apagar este asistente (sin redeploy)" : "Encender este asistente (sin redeploy)"}
+                style={{ minWidth: 96, fontSize: 12, whiteSpace: "nowrap" }}
+              >
+                {busyKey === a.key ? "…" : a.enabled ? "Apagar" : "Encender"}
+              </button>
+            )}
             <Badge status={a.status} />
           </div>
         ))}
