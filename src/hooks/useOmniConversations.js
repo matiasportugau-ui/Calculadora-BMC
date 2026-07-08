@@ -337,17 +337,20 @@ export function useOmniMessages(token, conversationId) {
   return { conversation, messages, loading, error, reload, sendReply, markRead };
 }
 
-export function useOmniDeals(token, { stage } = {}) {
+export function useOmniDeals(token, { stage, limit = 200 } = {}) {
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const reload = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      setDeals([]);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ limit: "200" });
+      const params = new URLSearchParams({ limit: String(limit) });
       if (stage) params.set("stage", stage);
       const data = await omniFetch(token, `/api/omni/deals?${params}`);
       setDeals(data.deals || []);
@@ -356,7 +359,7 @@ export function useOmniDeals(token, { stage } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [token, stage]);
+  }, [token, stage, limit]);
 
   useEffect(() => {
     reload();
@@ -364,7 +367,7 @@ export function useOmniDeals(token, { stage } = {}) {
 
   const moveDeal = useCallback(
     async (dealId, nextStage) => {
-      const data = await omniFetch(token, `/api/omni/deals/${dealId}`, {
+      const data = await omniFetch(token, `/api/omni/deals/${dealId}/stage`, {
         method: "PATCH",
         body: JSON.stringify({ stage: nextStage }),
       });

@@ -13,6 +13,8 @@ import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import { sendWaReply } from "../lib/omni/outbound/waReply.js";
 import { sendMlReply } from "../lib/omni/outbound/mlReply.js";
 import { sendOmniEmailReply } from "../lib/omni/outbound/emailReply.js";
+import { sendIgReply } from "../lib/omni/outbound/igSend.js";
+import { sendMessengerReply } from "../lib/omni/outbound/messengerSend.js";
 import { collectOmniMetrics, formatPrometheusMetrics } from "../lib/omni/omniMetrics.js";
 import {
   runAutomationForEvent,
@@ -884,6 +886,23 @@ router.post(
         inReplyTo: meta.rfc_message_id || undefined,
         account: meta.account || undefined,
       });
+    } else if (conv.channel === "ig" || conv.channel === "fb") {
+      const { rows: lastIn } = await req.omniPool.query(
+        `SELECT created_at FROM omni_messages
+         WHERE conversation_id = $1 AND sender = 'customer'
+         ORDER BY created_at DESC LIMIT 1`,
+        [conversationId],
+      );
+      const args = {
+        config,
+        recipientId: conv.channel_conversation_id,
+        text,
+        lastCustomerAt: lastIn[0]?.created_at,
+        tag: req.body?.tag || undefined,
+      };
+      outbound = conv.channel === "ig"
+        ? await sendIgReply(args)
+        : await sendMessengerReply(args);
     } else {
       return res.status(400).json({ ok: false, error: "reply_not_supported_for_channel" });
     }
@@ -902,6 +921,7 @@ router.post(
         contact_id: conv.contact_id,
         wa_phone: conv.wa_phone || undefined,
         ml_user_id: conv.ml_user_id ?? undefined,
+        email: conv.email || undefined,
       },
       conversation_hint: { channel_conversation_id: conv.channel_conversation_id },
       message: {
@@ -983,10 +1003,7 @@ router.get(
   },
 );
 
-// Single source of truth for automation trigger events. The engine only
-// evaluates "message.ingested" today (automationEngine.js); reject anything
-// else at creation time so malformed rules can't persist.
-const ALLOWED_TRIGGER_EVENTS = ["message.ingested"];
+const ALLOWED_TRIGGER_EVENTS = ["message.ingested", "conversation.no_reply", "followup.due"];
 
 const automationRuleSchema = z.object({
   name: z.string().min(1).max(200),
@@ -1186,6 +1203,25 @@ router.post(
       properties: req.body?.properties || {},
     });
     res.status(201).json({ ok: true, deal });
+  },
+);
+
+router.patch(
+  "/omni/deals/:id/stage",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const to = normalizeStage(req.body?.stage);
+    if (!to) {
+      return res.status(400).json({ ok: false, error: "invalid_stage", to: req.body?.stage ?? null });
+    }
+    const result = await updateDeal(req.omniPool, req.params.id, { stage: to });
+    if (!result.ok) {
+      const status = result.error === "deal_not_found" ? 404 : result.error === "invalid_stage_transition" ? 409 : 400;
+      return res.status(status).json(result);
+    }
+    const sync = await syncDealToCrm(result.deal);
+    res.json({ ok: true, deal: result.deal, sync });
   },
 );
 
