@@ -145,7 +145,7 @@ async function runCotizacionHtmlContract() {
 
   const { buildCotizacionHtml } = await import("../server/routes/calc.js");
 
-  const good = buildCotizacionHtml({
+  const good = await buildCotizacionHtml({
     escenario: "solo_techo",
     lista: "web",
     techo: { familia: "ISODEC_EPS", espesor: "100", color: "Blanco", zonas: [{ largo: 6, ancho: 4 }] },
@@ -154,9 +154,11 @@ async function runCotizacionHtmlContract() {
   });
   assert("valid request → ok:true", good.ok === true, good.ok, true);
   assert("returns html string", typeof good.html === "string" && good.html.includes("<html"), typeof good.html, "string");
+  assert("renders with the refined simple template", good.templateUsed === "simple", good.templateUsed, "simple");
+  assert("html carries the quote code", good.html.includes("BMC-TEST-0001"), false, "quote code in html");
   assert("returns gptResp with resumen totals", Number(good.gptResp?.resumen?.total_usd) > 0, good.gptResp?.resumen?.total_usd, "> 0");
 
-  const bad = buildCotizacionHtml({ escenario: "solo_techo", lista: "web", techo: null, cliente: {} });
+  const bad = await buildCotizacionHtml({ escenario: "solo_techo", lista: "web", techo: null, cliente: {} });
   assert("invalid request → ok:false with error", bad.ok === false && !!bad.error, bad, "{ ok:false, error }");
 }
 

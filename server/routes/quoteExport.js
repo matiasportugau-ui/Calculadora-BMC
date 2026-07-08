@@ -297,7 +297,7 @@ router.get("/api/me/quotes/:id/export.pdf", requireUser(), async (req, res) => {
     // On-demand render: rebuild the exact calc HTML and rasterize it.
     const reqParams = q.payload?.request;
     if (reqParams?.escenario) {
-      const built = buildCotizacionHtml({ ...reqParams, cliente: q.payload?.client || {} });
+      const built = await buildCotizacionHtml({ ...reqParams, cliente: q.payload?.client || {} });
       if (built.ok) {
         const pdfBuffer = await renderHtmlToPdfBuffer(built.html, { timeoutMs: 30000 });
         res.setHeader("Content-Type", "application/pdf");

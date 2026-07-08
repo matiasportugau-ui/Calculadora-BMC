@@ -40,6 +40,7 @@ import { GPT_ACTIONS } from "../gptActions.js";
 import { uploadQuoteToGcs, uploadPdfToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive, saveQuotationBundleToDrive } from "../lib/driveUpload.js";
 import { renderHtmlToPdfBuffer, isPdfRendererAvailable } from "../lib/quotePdf.js";
+import { buildQuotationModel, renderPdfLayout } from "../../src/pdf-templates/index.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
   registerQuotation as registerQuotationStore,
@@ -488,14 +489,18 @@ router.post("/cotizar", (req, res) => {
 // ── POST /cotizar/pdf ───────────────────────────────────────────────────────
 
 /**
- * Build the printable quote HTML for a /calc/cotizar/pdf-shaped request.
+ * Build the quote HTML for a /calc/cotizar/pdf-shaped request.
  * Shared by the route below and by on-demand re-render in quoteExport.js
  * (GET /api/me/quotes/:id/export.pdf), so both always emit the same document.
  *
- * @returns {{ ok: true, html: string, gptResp: object } |
- *           { ok: false, error: string, gptResp?: object }}
+ * Renders with the refined client-facing template (`simple`, production
+ * default since 2026-07-07) via src/pdf-templates; falls back to the legacy
+ * technical `generatePrintHTML` layout if the template render throws.
+ *
+ * @returns {Promise<{ ok: true, html: string, gptResp: object, templateUsed: string } |
+ *           { ok: false, error: string, gptResp?: object }>}
  */
-export function buildCotizacionHtml({ escenario, lista = "web", techo, pared, camara, flete = 0, cliente }) {
+export async function buildCotizacionHtml({ escenario, lista = "web", techo, pared, camara, flete = 0, cliente, template = "simple" }) {
   const results = runCalculation({ escenario, lista, techo, pared, camara });
   if (results.error && !results.allItems) {
     return { ok: false, error: results.error };
@@ -559,28 +564,68 @@ export function buildCotizacionHtml({ escenario, lista = "web", techo, pared, ca
     })),
   }));
 
-  const html = generatePrintHTML({
-    client, project, scenario: escenario, panel,
-    autoportancia: gptResp.autoportancia ? {
-      ok: gptResp.autoportancia.ok,
-      apoyos: gptResp.autoportancia.apoyos,
-      maxSpan: gptResp.autoportancia.vano_max_m,
-    } : null,
-    groups,
-    totals: {
-      subtotalSinIVA: gptResp.resumen.subtotal_usd,
-      iva: gptResp.resumen.iva_usd,
-      totalFinal: gptResp.resumen.total_usd,
-    },
-    warnings: gptResp.advertencias,
-    dimensions,
-    listaPrecios: lista,
-    quotationId: clientInfo.quote_code || undefined,
-    showSKU: false,
-    showUnitPrices: true,
-  });
+  const totals = {
+    subtotalSinIVA: gptResp.resumen.subtotal_usd,
+    iva: gptResp.resumen.iva_usd,
+    totalFinal: gptResp.resumen.total_usd,
+  };
 
-  return { ok: true, html, gptResp };
+  // Preferred path: refined client template (same family the calculator UI
+  // uses). buildQuotationModel takes the exact pieces computed above; the
+  // appendix carries the KPI/zona context the templates surface in the header.
+  let html = null;
+  let templateUsed = null;
+  if (template) {
+    try {
+      const model = buildQuotationModel({
+        client,
+        project: { ...project, refInterna: project.refInterna || clientInfo.quote_code || "" },
+        scenario: escenario,
+        panel,
+        groups,
+        totals,
+        appendix: {
+          zonas: techo?.zonas ||
+            (escenario === "camara_frig" && camara
+              ? [{ largo: camara.largo_int, ancho: camara.ancho_int }]
+              : []),
+          kpi: {
+            area: dimensions.area,
+            paneles: dimensions.cantPaneles,
+            apoyosOrEsq: gptResp.autoportancia?.apoyos,
+          },
+          panelAu: Number(panel.au) || 0,
+        },
+        quoteId: clientInfo.quote_code || null,
+      });
+      html = await renderPdfLayout(template, model);
+      templateUsed = template;
+    } catch (err) {
+      console.warn(`[calc] template "${template}" render failed, falling back to print layout:`, err.message?.slice(0, 120));
+    }
+  }
+
+  if (!html) {
+    html = generatePrintHTML({
+      client, project, scenario: escenario, panel,
+      autoportancia: gptResp.autoportancia ? {
+        ok: gptResp.autoportancia.ok,
+        apoyos: gptResp.autoportancia.apoyos,
+        maxSpan: gptResp.autoportancia.vano_max_m,
+      } : null,
+      groups,
+      totals,
+      warnings: gptResp.advertencias,
+      dimensions,
+      listaPrecios: lista,
+      quotationId: clientInfo.quote_code || undefined,
+      showSKU: false,
+      showUnitPrices: true,
+    });
+    templateUsed = "print-legacy";
+  }
+
+  return { ok: true, html, gptResp, templateUsed };
 }
 
 router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) => {
@@ -590,7 +635,10 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
     // in the registry. Defaults to "calculator"; agent path passes "ae_agent".
     const source = sourceRaw === "ae_agent" ? "ae_agent" : "calculator";
 
-    const built = buildCotizacionHtml({ escenario, lista, techo, pared, camara, flete, cliente });
+    // Optional body.template selects a src/pdf-templates layout (default:
+    // "simple", the refined production template). Anything non-string is ignored.
+    const template = typeof req.body?.template === "string" ? req.body.template : undefined;
+    const built = await buildCotizacionHtml({ escenario, lista, techo, pared, camara, flete, cliente, ...(template && { template }) });
     if (!built.ok) {
       return res.status(400).json(built.gptResp || { ok: false, error: built.error });
     }
