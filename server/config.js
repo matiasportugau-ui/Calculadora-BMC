@@ -363,6 +363,13 @@ export const config = {
   omniFrtWorkerEnabled: bool(process.env.OMNI_FRT_WORKER_ENABLED, false),
   omniFrtWorkerIntervalMs: Math.max(30_000, Number(process.env.OMNI_FRT_WORKER_INTERVAL_MS || 300_000)),
   /**
+   * Gap 4 — temporal follow-up sequence evaluator. Default OFF: it only
+   * creates HITL suggestions (never sends), but still intentionally requires a
+   * deliberate prod flip because it can generate operator-visible drafts.
+   */
+  omniSequencesEnabled: bool(process.env.OMNI_SEQUENCES_ENABLED, false),
+  omniSequencesIntervalMs: Math.max(60_000, Number(process.env.OMNI_SEQUENCES_INTERVAL_MS || 300_000)),
+  /**
    * Centralized AI brain (self-evolving, human-verified lessons) injected into the agent system prompt.
    * Default OFF: ships dormant. Flipping ON is customer-facing — do it deliberately after dev validation.
    * Source of truth = gs://bmc-ml-tokens/bmc-brain/lessons.json (shared with the sheet-quote pipeline).

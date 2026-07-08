@@ -62,6 +62,25 @@ export function buildSuggestionMetadata(result, prompt, retrieval = {}) {
   };
 }
 
+function buildSuggestionMetadataForJob(result, prompt, retrieval, jobRow) {
+  const metadata = buildSuggestionMetadata(result, prompt, retrieval);
+  const input = jobRow?.input_json && typeof jobRow.input_json === "object" ? jobRow.input_json : {};
+  if (input.source === "sequence" || input.action === "ai_draft_followup") {
+    return {
+      ...metadata,
+      source: "sequence",
+      action: "ai_draft_followup",
+      automation_rule_id: input.automation_rule_id || input.rule_id || null,
+      automation_run_id: input.automation_run_id || null,
+      trigger_event: input.trigger_event || null,
+      requires_approval: true,
+      requires_template: Boolean(input.requires_template),
+      sequence: input.sequence || {},
+    };
+  }
+  return metadata;
+}
+
 /**
  * @param {import('pg').Pool} pool
  * @param {object} job
@@ -318,7 +337,7 @@ export async function processAiJob(pool, jobRow, logger) {
             jobRow.id,
             channel,
             body,
-            JSON.stringify(buildSuggestionMetadata(result, prompt, retrieval)),
+            JSON.stringify(buildSuggestionMetadataForJob(result, prompt, retrieval, jobRow)),
           ],
         );
       }

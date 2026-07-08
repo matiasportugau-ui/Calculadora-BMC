@@ -983,10 +983,7 @@ router.get(
   },
 );
 
-// Single source of truth for automation trigger events. The engine only
-// evaluates "message.ingested" today (automationEngine.js); reject anything
-// else at creation time so malformed rules can't persist.
-const ALLOWED_TRIGGER_EVENTS = ["message.ingested"];
+const ALLOWED_TRIGGER_EVENTS = ["message.ingested", "conversation.no_reply", "followup.due"];
 
 const automationRuleSchema = z.object({
   name: z.string().min(1).max(200),
