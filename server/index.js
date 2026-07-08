@@ -11,6 +11,7 @@ import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { buildVersionInfo } from "./lib/versionInfo.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
+import { createMlWebhookBuffer, createMlWebhookProcessor } from "./lib/mlWebhookService.js";
 import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
@@ -86,6 +87,7 @@ import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
+import { handleMetaMessagingWebhook, verifyMetaWebhookSubscribe } from "./lib/omni/metaWebhookHandler.js";
 import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
@@ -169,15 +171,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// WhatsApp + Shopify webhooks need raw body (HMAC / signature verification)
-app.use("/webhooks/whatsapp", (req, res, next) => {
+// Meta (WhatsApp/IG/FB) + Shopify webhooks need raw body (HMAC / signature verification)
+app.use(["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"], (req, res, next) => {
   if (req.method !== "POST") return next();
   return express.raw({ type: "application/json", limit: "20mb" })(req, res, next);
 });
 app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
 app.use((req, res, next) => {
   if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
-  if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
+  if (
+    ["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"].includes(req.path) &&
+    req.method === "POST"
+  ) return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(cookieParser());
@@ -191,8 +196,7 @@ app.use(
 // Replaced in-memory Map with persistent store (Phase 0 security fix).
 // See server/lib/oauthStateStore.js
 import { oauthStateStore } from "./lib/oauthStateStore.js";
-const webhookEvents = [];
-const maxWebhookEvents = 250;
+const mlWebhookBuffer = createMlWebhookBuffer(250);
 
 // ── ML auto-mode (persisted to disk; resets to false on Cloud Run cold start) ──
 const ML_AUTOMODE_FILE = path.join(__dirname, ".ml-automode.json");
@@ -208,6 +212,14 @@ const tokenStore = createTokenStore({
   logger,
 });
 const ml = createMercadoLibreClient({ config, tokenStore, logger });
+const mlWebhookProcessor = createMlWebhookProcessor({
+  ml,
+  config,
+  logger,
+  syncMLCRM,
+  autoAnswerPipeline,
+  buffer: mlWebhookBuffer,
+});
 
 const missingConfig = () => {
   const missing = [];
@@ -588,55 +600,18 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
     }
   }
 
-  const event = {
-    id: crypto.randomUUID(),
-    receivedAt: new Date().toISOString(),
+  const event = mlWebhookProcessor.handleWebhook({
     body: req.body,
     query: req.query,
-    headers: {
-      "x-request-id": req.headers["x-request-id"],
-      topic: req.headers["x-topic"],
-      "x-signature": req.headers["x-signature"],
-    },
-  };
-  webhookEvents.unshift(event);
-  if (webhookEvents.length > maxWebhookEvents) webhookEvents.pop();
-
-  req.log.info({ eventId: event.id, topic: event.headers.topic }, "MercadoLibre webhook received");
-
-  // Trigger ML→CRM sync cuando llega una pregunta nueva (fire-and-forget — responde 200 de inmediato)
-  const topic = req.body?.topic || req.headers["x-topic"];
-  if (topic === "questions" && config.bmcSheetId) {
-    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
-    (async () => {
-      try {
-        const syncResult = await syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log });
-        if (config.omniMlShadowWrite && syncResult.omniShadow) {
-          req.log.info({ omni: syncResult.omniShadow }, "ML omni shadow write");
-        }
-        if (autoMode.fullAuto && syncResult.rows?.length > 0) {
-          req.log.info({ count: syncResult.rows.length }, "ML auto-mode ON — running auto-answer pipeline");
-          const { answered } = await autoAnswerPipeline({
-            rows:      syncResult.rows,
-            ml,
-            sheetId:   config.bmcSheetId,
-            credsPath,
-            config,
-            logger:    req.log,
-          });
-          req.log.info({ answered }, "ML auto-answer pipeline complete");
-        }
-      } catch (err) {
-        req.log.error({ err }, "ML→CRM webhook pipeline failed");
-      }
-    })();
-  }
+    headers: req.headers,
+    autoMode,
+  });
 
   res.status(200).json({ ok: true, eventId: event.id });
 }));
 
 app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
-  res.json({ ok: true, count: webhookEvents.length, events: webhookEvents });
+  res.json({ ok: true, count: mlWebhookBuffer.count(), events: mlWebhookBuffer.list() });
 }));
 
 // ── ML auto-mode API ──────────────────────────────────────────────────────────
@@ -681,6 +656,58 @@ app.get("/webhooks/whatsapp", (req, res) => {
   }
   res.status(403).send("Forbidden");
 });
+
+function metaWebhookClientKey(req) {
+  const xf = req.headers["x-forwarded-for"];
+  if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
+  return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+const metaWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: metaWebhookClientKey,
+  message: { ok: false, error: "rate_limited" },
+});
+
+app.get("/webhooks/instagram", metaWebhookLimiter, (req, res) => {
+  const result = verifyMetaWebhookSubscribe(req, config.igVerifyToken);
+  res.set("Content-Type", "text/plain");
+  res.status(result.status).send(result.body);
+});
+
+app.get("/webhooks/messenger", metaWebhookLimiter, (req, res) => {
+  const result = verifyMetaWebhookSubscribe(req, config.fbVerifyToken);
+  res.set("Content-Type", "text/plain");
+  res.status(result.status).send(result.body);
+});
+
+function handleMetaMessagingRoute(req, res, channel) {
+  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  const result = handleMetaMessagingWebhook({
+    channel,
+    enabled: channel === "ig" ? config.omniIgEnabled : config.omniFbEnabled,
+    appSecret: channel === "ig" ? config.igAppSecret : config.fbAppSecret,
+    rawBodyBuffer: raw,
+    signatureHeader: req.headers["x-hub-signature-256"],
+    config,
+    logger: req.log || logger,
+  });
+  res.status(result.status).json(result.body);
+  result.processing.catch((err) => {
+    req.log?.warn?.({ err: err?.message, channel }, "Meta webhook async processing failed");
+  });
+}
+
+app.post("/webhooks/instagram", metaWebhookLimiter, asyncHandler(async (req, res) => {
+  handleMetaMessagingRoute(req, res, "ig");
+}));
+
+app.post("/webhooks/messenger", metaWebhookLimiter, asyncHandler(async (req, res) => {
+  handleMetaMessagingRoute(req, res, "fb");
+}));
 
 // POST — mensajes entrantes
 // Note: rate-limiting is intentionally omitted on this endpoint. Meta's Cloud API
