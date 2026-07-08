@@ -356,6 +356,33 @@ export async function callAgentOnce(messages, opts = {}) {
         text = r.choices[0]?.message?.content || "";
         usage = r.usage || {};
 
+      } else if (p === "openrouter") {
+        // Terminal open-source-model fallback (Llama/Mistral/DeepSeek/Qwen). Same
+        // OpenAI-compatible shape as grok — just a different baseURL. Tried LAST,
+        // so if every commercial provider is down the seam STILL answers via an
+        // open model. Attribution headers are recommended by OpenRouter, optional.
+        const { default: OpenAI } = await import("openai");
+        const client = new OpenAI({
+          apiKey,
+          baseURL: "https://openrouter.ai/api/v1",
+          defaultHeaders: {
+            "HTTP-Referer": "https://calculadora-bmc.vercel.app",
+            "X-Title": "Calculadora BMC",
+          },
+        });
+        const params = {
+          model: modelUsed,
+          max_tokens: maxTokens,
+          messages: [{ role: "system", content: systemPrompt }, ...messages],
+        };
+        if (eff.temperature != null) params.temperature = eff.temperature;
+        const r = await callWithTimeout(
+          (signal) => client.chat.completions.create(params, { signal }),
+          PROVIDER_TIMEOUT_MS, "openrouter",
+        );
+        text = r.choices[0]?.message?.content || "";
+        usage = r.usage || {};
+
       } else if (p === "gemini") {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genai = new GoogleGenerativeAI(apiKey);
