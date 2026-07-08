@@ -43,7 +43,7 @@ jobs:
     name: Apply omni migrations to prod
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -106,7 +106,7 @@ jobs:
     name: Soak monitoring snapshot (prod)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
