@@ -709,17 +709,17 @@ router.post("/cotizar/pdf", cotizarPdfLimiter, requireUser({ optional: true }), 
         ]);
         pdfFileUrl = gcsPdfRes.status === "fulfilled" ? gcsPdfRes.value : null;
         if (gcsPdfRes.status === "rejected") {
-          req.log.warn({ err: gcsPdfRes.reason }, "cotizar/pdf GCS PDF upload failed (non-fatal)");
+          req.log?.warn?.({ err: gcsPdfRes.reason }, "cotizar/pdf GCS PDF upload failed (non-fatal)");
         }
         if (driveBundleRes.status === "fulfilled" && driveBundleRes.value) {
           drivePdfUrl = driveBundleRes.value.pdfUrl || null;
           drivePdfFileId = driveBundleRes.value.pdfFileId || null;
           driveFolderUrl = driveBundleRes.value.folderUrl || null;
         } else if (driveBundleRes.status === "rejected") {
-          req.log.warn({ err: driveBundleRes.reason }, "cotizar/pdf Drive PDF bundle failed (non-fatal)");
+          req.log?.warn?.({ err: driveBundleRes.reason }, "cotizar/pdf Drive PDF bundle failed (non-fatal)");
         }
       } catch (err) {
-        req.log.warn({ err }, "cotizar/pdf render degraded to HTML (non-fatal)");
+        req.log?.warn?.({ err }, "cotizar/pdf render degraded to HTML (non-fatal)");
       }
     }
 
@@ -798,7 +798,7 @@ router.post("/cotizar/pdf", cotizarPdfLimiter, requireUser({ optional: true }), 
       resumen: gptResp.resumen,
     });
   } catch (err) {
-    req.log.error({ err }, "calc/cotizar/pdf failed");
+    req.log?.error?.({ err }, "calc/cotizar/pdf failed");
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
