@@ -21,6 +21,7 @@ import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import { checkAllAssistants, checkAssistant } from "../lib/assistantHealth.js";
 import { listAssistants } from "../lib/assistantRegistry.js";
 import { getSetting, setSetting } from "../lib/waConfig.js";
+import { resetProviderCooldowns } from "../lib/agentCore.js";
 
 // Read-only status probes touch the DB (omni health check) — rate-limit to keep a
 // misbehaving poller from hammering the pool. Mirrors identityAdmin readLimiter.
@@ -87,6 +88,19 @@ export default function createAssistantsStatusRouter() {
     } catch (err) {
       const status = err?.status === 400 ? 400 : 500;
       res.status(status).json({ ok: false, error: String(err?.message || err).slice(0, 200) });
+    }
+  });
+
+  // Clear provider cooldowns so the seam re-tries the primary immediately — the
+  // "solve from here" action after fixing a credential/billing issue (e.g. adding
+  // Anthropic credits or rotating the Grok key), instead of waiting out the hard
+  // cooldown. Per-process (in-memory), so it affects the serving instance.
+  router.post("/assistants/providers/reset-cooldowns", writeLimiter, guard, (req, res) => {
+    try {
+      resetProviderCooldowns();
+      res.json({ ok: true, reset: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: String(err?.message || err).slice(0, 200) });
     }
   });
 
