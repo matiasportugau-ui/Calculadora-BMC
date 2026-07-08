@@ -100,9 +100,11 @@ Panel.displayName = "Panel";
 export const PanelResizeHandle = forwardRef(function PanelResizeHandleCompat({
   disableDoubleClick = true,
   elementRef,
-  hitAreaMargins: _hitAreaMargins,
+  hitAreaMargins,
   ...props
 }, forwardedRef) {
+  void hitAreaMargins;
+
   const assignElementRef = (element) => {
     callRef(elementRef, element);
     callRef(forwardedRef, element);
