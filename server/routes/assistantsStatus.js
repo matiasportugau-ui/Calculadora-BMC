@@ -82,7 +82,12 @@ export default function createAssistantsStatusRouter() {
       const map = current && typeof current === "object" ? current : {};
       const next = { ...map, [key]: enabled };
       const actor = req.user?.email || req.user?.id || "admin";
-      await setSetting("assistants", next, { actor, ip: req.ip, userAgent: req.get?.("user-agent") });
+      await setSetting("assistants", next, {
+        actor,
+        ip: req.ip,
+        userAgent: req.get?.("user-agent"),
+        allowAssistantControlPlane: true,
+      });
       res.json({ ok: true, key, enabled, assistants: next });
     } catch (err) {
       const status = err?.status === 400 ? 400 : 500;

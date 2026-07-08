@@ -11,12 +11,22 @@
 import { config } from "../server/config.js";
 import { isAssistantEnabled, dispatchAssistant, buildFallbackLine, ASSISTANTS, getAssistant } from "../server/lib/assistantRegistry.js";
 import { checkAssistant, _clearAssistantHealthCache } from "../server/lib/assistantHealth.js";
+import { setSetting } from "../server/lib/waConfig.js";
 
 let passed = 0;
 let failed = 0;
 function assert(cond, label) {
   if (cond) { passed++; }
   else { failed++; console.error(`  ✗ ${label}`); }
+}
+
+async function captureError(fn) {
+  try {
+    await fn();
+    return null;
+  } catch (err) {
+    return err;
+  }
 }
 
 // Snapshot to restore between blocks.
@@ -47,6 +57,28 @@ await (async () => {
   config.assistantsActive = [];
   assert(isAssistantEnabled("seam"), "seam stays enabled even with empty allowlist");
   assert(!isAssistantEnabled("canales"), "canales disabled when allowlist empty");
+
+  // The runtime override lives in wa_settings, but it is a global assistant
+  // control-plane switch. Generic WA settings writers (wa:write) must not be
+  // able to mutate it; only the admin assistants toggle route opts in.
+  const namespaceWrite = await captureError(() =>
+    setSetting("assistants", { panelin: true }, { actor: "wa-write-user" })
+  );
+  assert(namespaceWrite?.status === 403, "generic setSetting cannot write assistants namespace");
+  const leafWrite = await captureError(() =>
+    setSetting("assistants.panelin", true, { actor: "wa-write-user" })
+  );
+  assert(leafWrite?.status === 403, "generic setSetting cannot write assistants leaf");
+  const adminOptIn = await captureError(() =>
+    setSetting("assistants.panelin", true, {
+      actor: "admin",
+      allowAssistantControlPlane: true,
+    })
+  );
+  assert(
+    adminOptIn?.status !== 403 && /waConfig not primed/i.test(String(adminOptIn?.message || "")),
+    "admin assistants toggle opt-in passes the namespace guard",
+  );
 
   // ── buildFallbackLine: enabled-only ordered line, always ends at seam ────────
   const keysOf = (line) => line.map((n) => n.key);

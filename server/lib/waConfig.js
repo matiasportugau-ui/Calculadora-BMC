@@ -103,6 +103,7 @@ export function getSetting(path, { operatorId } = {}) {
  * @param {{ actor?: string, scope?: 'tenant'|'operator', scopeId?: string, ip?: string, userAgent?: string }} ctx
  */
 export async function setSetting(path, value, ctx = {}) {
+  _assertSettingWriteAllowed(path, ctx);
   if (!_pool) throw new Error("setSetting: waConfig not primed");
   const scope = ctx.scope || "tenant";
   const scopeId = ctx.scopeId || (scope === "tenant" ? "tenant" : null);
@@ -463,6 +464,20 @@ function _setPath(obj, path, value) {
   }
   cur[parts[parts.length - 1]] = value;
   return obj;
+}
+
+function _assertSettingWriteAllowed(path, ctx = {}) {
+  const key = String(path || "").trim();
+  const isAssistantControlPlaneSetting =
+    key === "assistants" || key.startsWith("assistants.");
+  if (!isAssistantControlPlaneSetting || ctx.allowAssistantControlPlane === true) {
+    return;
+  }
+  const err = new Error(
+    "assistants settings can only be changed through the admin assistants toggle endpoint",
+  );
+  err.status = 403;
+  throw err;
 }
 
 function _hasPath(obj, path) {
