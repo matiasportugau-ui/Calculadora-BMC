@@ -211,6 +211,9 @@ jobs:
         run: npm ci --include=dev
 
       - name: channels:automated (JSON)
+        env:
+          # Sin este token el smoke interno da 401 en suggest-response (gh#571)
+          API_AUTH_TOKEN: ${{ secrets.API_AUTH_TOKEN }}
         run: node scripts/channels-automated-pipeline.mjs
 
       - name: Alert on prod-smoke failure (gh#495)
