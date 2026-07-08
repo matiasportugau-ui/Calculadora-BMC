@@ -10,6 +10,7 @@ const {
   recordProviderFailure,
   recordProviderSuccess,
   getProviderCooldownState,
+  resetProviderCooldowns,
   _resetProviderHealth,
 } = await import("../server/lib/agentCore.js");
 
@@ -117,5 +118,28 @@ describe("provider cooldown", () => {
     assert.ok(getProviderCooldownState().grok?.lastError);
     recordProviderSuccess("grok");
     assert.equal(getProviderCooldownState().grok?.lastError, null);
+  });
+
+  it("a single HARD error (400/401/403) cools the provider down immediately", () => {
+    const now = Date.now();
+    // ONE hard failure — no 3-strike accumulation needed.
+    recordProviderFailure("claude", now, { status: 400, detail: "credit balance too low" });
+    const st = getProviderCooldownState().claude;
+    assert.equal(st?.coolingDown, true);
+    assert.ok(st.until > now + 60_000, "hard cooldown should be well past the 60s transient window");
+  });
+
+  it("a transient error (429) does NOT trigger the immediate hard cooldown", () => {
+    const now = Date.now();
+    recordProviderFailure("gemini", now, { status: 429, detail: "rate limited" });
+    assert.equal(getProviderCooldownState().gemini?.coolingDown, false);
+  });
+
+  it("resetProviderCooldowns clears all cooldowns (panel 'reset' action)", () => {
+    const now = Date.now();
+    recordProviderFailure("claude", now, { status: 401, detail: "bad key" });
+    assert.equal(getProviderCooldownState().claude?.coolingDown, true);
+    resetProviderCooldowns();
+    assert.deepEqual(getProviderCooldownState(), {});
   });
 });

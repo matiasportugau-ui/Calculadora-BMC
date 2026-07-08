@@ -35,6 +35,15 @@ const PROVIDER_TIMEOUT_MS = Number(process.env.AGENT_PROVIDER_TIMEOUT_MS) || 30_
 const COOLDOWN_MAX_FAILURES = Number(process.env.AGENT_PROVIDER_COOLDOWN_FAILURES) || 3;
 const COOLDOWN_WINDOW_MS = 60_000;
 const COOLDOWN_MS = Number(process.env.AGENT_PROVIDER_COOLDOWN_MS) || 60_000;
+// Hard credential/billing errors (HTTP 400/401/403) do NOT self-heal in 60s: an
+// out-of-credits account or an invalid key fails EVERY call until an operator
+// fixes it. So a single hard error deprioritizes the provider for a long window
+// (default 15 min) instead of the transient 3-strikes/60s path — cutting the
+// per-request latency + wasted API calls of re-trying a doomed provider each
+// minute. It is still tried LAST (never removed), and cleared instantly by
+// resetProviderCooldowns() (the panel's "reset" button, after the fix) or a success.
+const HARD_COOLDOWN_MS = Number(process.env.AGENT_PROVIDER_HARD_COOLDOWN_MS) || 900_000;
+const HARD_ERROR_STATUSES = new Set([400, 401, 403]);
 
 /** provider -> { times: number[] (recent failure ts), until: number (cooldown end) } */
 const _providerHealth = new Map();
@@ -53,7 +62,13 @@ export function recordProviderFailure(provider, now, errorInfo = null) {
   // instead of an optimistic key-presence badge. Survives cooldown expiry and
   // times[] pruning until the next success clears it.
   if (errorInfo) rec.lastError = { ...errorInfo, at: now };
-  if (rec.times.length >= COOLDOWN_MAX_FAILURES) {
+  const hard = errorInfo && HARD_ERROR_STATUSES.has(Number(errorInfo.status));
+  if (hard) {
+    // Persistent credential/billing failure — sideline for the long window on the
+    // FIRST occurrence (extend, never shorten, an existing cooldown).
+    rec.until = Math.max(rec.until, now + HARD_COOLDOWN_MS);
+    console.log(JSON.stringify({ event: "provider_cooldown", provider, until_ms: rec.until, hard: true }));
+  } else if (rec.times.length >= COOLDOWN_MAX_FAILURES) {
     rec.until = now + COOLDOWN_MS;
     rec.times = [];
     console.log(JSON.stringify({ event: "provider_cooldown", provider, until_ms: rec.until }));
@@ -63,6 +78,16 @@ export function recordProviderFailure(provider, now, errorInfo = null) {
 
 export function recordProviderSuccess(provider) {
   if (_providerHealth.has(provider)) _providerHealth.set(provider, { times: [], until: 0, lastError: null });
+}
+
+/**
+ * Clear all provider cooldowns + lastError. Used by the control panel's "reset"
+ * action so an operator can force an immediate re-test after fixing a credential
+ * or billing issue, instead of waiting out the hard cooldown. Per-process (the
+ * cooldown map is in-memory), so it affects the instance that serves the request.
+ */
+export function resetProviderCooldowns() {
+  _providerHealth.clear();
 }
 
 /** Read-only snapshot for the health panel (assistantHealth). */
