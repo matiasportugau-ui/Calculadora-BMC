@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-07
+**Última actualización:** 2026-07-08
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-08 (feat — Gap 2 Omni: webhook ML → inbox):** Webhook MercadoLibre ahora comparte un servicio chico de buffering + pipeline, transforma notificaciones `questions`/`messages` (recurso ya fetchado) a `OmniInboundEvent` vía `mlWebhook.js` y persiste en Omni detrás de `OMNI_ML_SHADOW_WRITE` sin cambiar defaults. Las preguntas siguen entrando al flujo ML→CRM/auto-answer existente con guard idempotente por recurso para reentregas. Tests offline `mlWebhookOmni.test.js` agregado a `test:core`.
 
 **2026-07-07 (fix — PDF template: remove logo + show panel qty/length):** Logo removed from preferred "Presupuesto Simple" (refined R3-C) template as it was not rendering reliably. Enhanced `simple.js` + `buildQuotationModel` to explicitly display panel quantity (`cantPaneles`) and length (`largoPanel`) in the BOM (e.g. "ISODEC ... (12 paneles × 4.80 m)"). Test artifacts updated in `.runtime/`. Template approved and ready for production. `simple` remains the recommended layout.
 
