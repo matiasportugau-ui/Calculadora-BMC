@@ -22,18 +22,18 @@ import { checkAllAssistants, checkAssistant } from "../lib/assistantHealth.js";
 import { listAssistants } from "../lib/assistantRegistry.js";
 import { getSetting, setSetting } from "../lib/waConfig.js";
 
-const TOGGLE_SETTERS = Object.freeze({
+const TOGGLE_SETTERS = Object.freeze(Object.assign(Object.create(null), {
   canales: (map, enabled) => ({ ...map, canales: enabled }),
   panelin: (map, enabled) => ({ ...map, panelin: enabled }),
   email: (map, enabled) => ({ ...map, email: enabled }),
   wa: (map, enabled) => ({ ...map, wa: enabled }),
   ml: (map, enabled) => ({ ...map, ml: enabled }),
   wolfboard: (map, enabled) => ({ ...map, wolfboard: enabled }),
-});
+}));
 
 export function applyAssistantToggle(map, key, enabled) {
+  if (!Object.prototype.hasOwnProperty.call(TOGGLE_SETTERS, key)) return null;
   const setter = TOGGLE_SETTERS[key];
-  if (!setter) return null;
   return setter(map && typeof map === "object" ? map : {}, enabled);
 }
 
@@ -86,7 +86,7 @@ export default function createAssistantsStatusRouter() {
     try {
       const key = String(req.params.key || "").trim().toLowerCase();
       const known = listAssistants().some((a) => a.key === key && !a.terminal);
-      if (!known || !TOGGLE_SETTERS[key]) {
+      if (!known || !Object.prototype.hasOwnProperty.call(TOGGLE_SETTERS, key)) {
         return res.status(400).json({ ok: false, error: `invalid or non-toggleable assistant: ${key}` });
       }
       const enabled = req.body?.enabled;
