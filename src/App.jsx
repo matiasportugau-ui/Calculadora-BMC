@@ -49,7 +49,7 @@ const PdfPreview = lazy(() => import("./components/PdfPreview.jsx"));
 const BmcWolfboardHub = lazy(() => import("./components/BmcWolfboardHub.jsx"));
 const BmcMlOperativoModule = lazy(() => import("./components/BmcMlOperativoModule.jsx"));
 const BmcWaModuleWithTabs = lazy(() => import("./components/BmcWaModuleWithTabs.jsx"));
-const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUnificadosModule.jsx"));
+const BmcCanalesUnificadosModule = lazy(() => import("./components/hub/canales/CanalesModule.jsx"));
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
 const AdminIngresoModule = lazy(() => import("./components/AdminIngresoModule.jsx"));
