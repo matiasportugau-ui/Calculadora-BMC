@@ -1,6 +1,6 @@
 // ML webhook → Omni adapter/service offline tests
 // node tests/mlWebhookOmni.test.js
-import { mlWebhookToOmniEvent } from "../server/lib/omni/adapters/mlWebhook.js";
+import { extractMlWebhookResourceId, mlWebhookToOmniEvent } from "../server/lib/omni/adapters/mlWebhook.js";
 import { createMlWebhookProcessor } from "../server/lib/mlWebhookService.js";
 
 let passed = 0;
@@ -37,6 +37,14 @@ assert("question idempotency uses resource id", event?.idempotency_key === "ml:m
 assert("question maps contact_hint.ml_user_id", event?.contact_hint?.ml_user_id === 7711);
 assert("question maps conversation hint by question", event?.conversation_hint?.channel_conversation_id === "12345");
 assert("question body preserved", event?.message?.body === question.text);
+assert(
+  "resource extraction removes query and trailing slashes",
+  extractMlWebhookResourceId({ resource: "/questions/12345////?foo=bar" }) === "12345",
+);
+assert(
+  "resource extraction handles long slash-only input",
+  extractMlWebhookResourceId({ resource: `/${"/".repeat(50_000)}?foo=bar` }) === "",
+);
 
 const messageEvent = mlWebhookToOmniEvent({
   notification: { topic: "messages", resource: "/messages/packs/555/sellers/999" },
