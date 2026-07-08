@@ -86,6 +86,7 @@ import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
+import { handleMetaMessagingWebhook, verifyMetaWebhookSubscribe } from "./lib/omni/metaWebhookHandler.js";
 import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
@@ -168,15 +169,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// WhatsApp + Shopify webhooks need raw body (HMAC / signature verification)
-app.use("/webhooks/whatsapp", (req, res, next) => {
+// Meta (WhatsApp/IG/FB) + Shopify webhooks need raw body (HMAC / signature verification)
+app.use(["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"], (req, res, next) => {
   if (req.method !== "POST") return next();
   return express.raw({ type: "application/json", limit: "20mb" })(req, res, next);
 });
 app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
 app.use((req, res, next) => {
   if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
-  if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
+  if (
+    ["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"].includes(req.path) &&
+    req.method === "POST"
+  ) return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(cookieParser());
@@ -672,6 +676,43 @@ app.get("/webhooks/whatsapp", (req, res) => {
   }
   res.status(403).send("Forbidden");
 });
+
+app.get("/webhooks/instagram", (req, res) => {
+  const result = verifyMetaWebhookSubscribe(req, config.igVerifyToken);
+  res.set("Content-Type", "text/plain");
+  res.status(result.status).send(result.body);
+});
+
+app.get("/webhooks/messenger", (req, res) => {
+  const result = verifyMetaWebhookSubscribe(req, config.fbVerifyToken);
+  res.set("Content-Type", "text/plain");
+  res.status(result.status).send(result.body);
+});
+
+function handleMetaMessagingRoute(req, res, channel) {
+  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  const result = handleMetaMessagingWebhook({
+    channel,
+    enabled: channel === "ig" ? config.omniIgEnabled : config.omniFbEnabled,
+    appSecret: channel === "ig" ? config.igAppSecret : config.fbAppSecret,
+    rawBodyBuffer: raw,
+    signatureHeader: req.headers["x-hub-signature-256"],
+    config,
+    logger: req.log || logger,
+  });
+  res.status(result.status).json(result.body);
+  result.processing.catch((err) => {
+    req.log?.warn?.({ err: err?.message, channel }, "Meta webhook async processing failed");
+  });
+}
+
+app.post("/webhooks/instagram", asyncHandler(async (req, res) => {
+  handleMetaMessagingRoute(req, res, "ig");
+}));
+
+app.post("/webhooks/messenger", asyncHandler(async (req, res) => {
+  handleMetaMessagingRoute(req, res, "fb");
+}));
 
 // POST — mensajes entrantes
 // Note: rate-limiting is intentionally omitted on this endpoint. Meta's Cloud API
