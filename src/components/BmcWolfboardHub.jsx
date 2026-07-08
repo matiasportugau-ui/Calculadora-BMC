@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import BmcModuleNav from "./BmcModuleNav.jsx";
 import OperatorOverview from "./hub/OperatorOverview.jsx";
+import EstadoConsultasLive from "./hub/EstadoConsultasLive.jsx";
 
 const wrap = {
   minHeight: "100vh",
@@ -82,6 +83,9 @@ export default function BmcWolfboardHub() {
         {/* Aditivo: resúmenes de Control Operativo (IA + Finanzas) */}
         <OperatorOverview />
 
+        {/* Estado de consultas — Live report (provisional) */}
+        <EstadoConsultasLive />
+
         <div style={grid}>
           <div style={card}>
             <h2 style={cardTitle}>BMC Uruguay · Calculadora</h2>
@@ -109,7 +113,7 @@ export default function BmcWolfboardHub() {
           <div style={card}>
             <h2 style={cardTitle}>Mercado Libre · Operativo</h2>
             <p style={cardDesc}>
-              Cola CRM, respuesta sugerida (AF), aprobar y publicar en ML (mismo flujo cockpit).
+              Cola CRM, respuesta sugerida (AF), aprobar y publicar en ML (mismo flujo cockpit). Pluggable adapter (research Jul 2026).
             </p>
             <Link to="/hub/ml" style={{ ...cta, background: "#1a3a5c" }}>
               Abrir ML operativo
@@ -142,6 +146,29 @@ export default function BmcWolfboardHub() {
             <Link to="/hub/canales" style={{ ...cta, background: "#5e5ce6" }}>
               Abrir inbox unificado
             </Link>
+          </div>
+
+          {/* ── Provisional per Inbound Research (Jul 2026) ───────────────────────── */}
+          <div style={{ ...card, border: "2px dashed #0a84ff", background: "#f0f7ff" }}>
+            <h2 style={cardTitle}>Conversational OS · Inbound (Provisional)</h2>
+            <p style={cardDesc}>
+              Research Jul 2026: decouple ML (LATAM-only) as optional pluggable adapter. Core on unified conversational engine (current: omni + canales). 
+              Existing working tools: Canales (inbox + deals), ML modules (adapter), Admin Ingreso + presup pipeline (IA interpret + quote).
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+              <Link to="/hub/canales" style={{ ...cta, background: "#0a84ff", fontSize: 11, padding: "6px 10px" }}>
+                Canales (Core)
+              </Link>
+              <Link to="/hub/admin-ingreso" style={{ ...cta, background: "#188038", fontSize: 11, padding: "6px 10px" }}>
+                Interpretar consultas
+              </Link>
+              <Link to="/hub/ml-manager" style={{ ...cta, background: "#1a3a5c", fontSize: 11, padding: "6px 10px" }}>
+                ML Adapter
+              </Link>
+            </div>
+            <div style={{ fontSize: 10, color: "#555", marginTop: 6 }}>
+              Recomendación: core Kommo/Respond.io + lightweight ML adapter (Albato/FastAPI). Current custom omni = provisional core.
+            </div>
           </div>
           <div style={card}>
             <h2 style={cardTitle}>{adminTitle}</h2>
