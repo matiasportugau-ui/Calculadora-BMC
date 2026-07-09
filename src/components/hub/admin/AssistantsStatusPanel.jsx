@@ -120,6 +120,23 @@ function PanelInner() {
     [token, refresh],
   );
 
+  // Clear provider cooldowns so the seam re-tries the primary immediately after a
+  // credential/billing fix (Anthropic credits / Grok key) — no waiting out the
+  // hard cooldown. Deep-refetch after so the badges update.
+  const resetCooldowns = useCallback(async () => {
+    if (!token) return;
+    setBusyKey("__reset__");
+    setError(null);
+    try {
+      await jpost(token, "/api/assistants/providers/reset-cooldowns", {});
+      await refresh(true);
+    } catch (e) {
+      setError(`No se pudieron resetear los cooldowns: ${String(e?.message || e)}`);
+    } finally {
+      setBusyKey(null);
+    }
+  }, [token, refresh]);
+
   useEffect(() => {
     refresh();
     const id = setInterval(() => refresh(false), POLL_MS);
@@ -144,6 +161,14 @@ function PanelInner() {
           </button>
           <button className="ac-btn" onClick={() => refresh(true)} disabled={loading} title="Ignora la caché de 30s">
             Deep check
+          </button>
+          <button
+            className="ac-btn"
+            onClick={resetCooldowns}
+            disabled={busyKey === "__reset__" || !token}
+            title="Limpia los cooldowns de proveedores para reintentar el primario ya (usar tras cargar créditos / rotar key)"
+          >
+            {busyKey === "__reset__" ? "Reseteando…" : "Reset cooldowns"}
           </button>
           <Link className="ac-btn" to="/hub/admin/analytics">Analytics</Link>
         </div>
