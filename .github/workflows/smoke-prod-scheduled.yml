@@ -29,7 +29,7 @@ jobs:
       issues: write # prod-alert (gh#495)
     steps:
       - name: Checkout (script only)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -41,6 +41,8 @@ jobs:
           BMC_API_BASE: ${{ github.event.inputs.api_base || vars.BMC_SMOKE_API_BASE || '' }}
           SMOKE_SKIP_MATRIZ: ${{ github.event.inputs.skip_matriz == '1' && '1' || '' }}
           SMOKE_SKIP_SUGGEST: ${{ github.event.inputs.skip_suggest == '1' && '1' || '' }}
+          # Sin este token el check de suggest-response da 401 (gh#542)
+          API_AUTH_TOKEN: ${{ secrets.API_AUTH_TOKEN }}
         run: node scripts/smoke-prod-api.mjs -- --json
 
       - name: Panelin chat ai-options (no secrets)
