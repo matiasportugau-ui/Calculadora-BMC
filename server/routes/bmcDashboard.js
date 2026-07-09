@@ -29,6 +29,7 @@ import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
 import { addTrainingEntry, findRelevantExamples, resolveTrainingAnswer, ensureGcsInit } from "../lib/trainingKB.js";
+import { buildMlWriteHeaders } from "../lib/mlInternalAuthHeaders.js";
 import { mapOrigenToSurface } from "../lib/kbSurface.js";
 import { isAiGatewayEnabled, generateTextViaGateway, generateObjectViaGateway, DEFAULT_PROVIDER_ORDER } from "../lib/aiGatewayClient.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
@@ -3328,7 +3329,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       if (qid && (/ML/i.test(origen) || /Q:\d+/.test(parsed.observaciones))) {
         const fr = await fetch(`${base}/ml/questions/${qid}/answer`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: buildMlWriteHeaders(config, { "Content-Type": "application/json" }),
           body: JSON.stringify({ text }),
         });
         const data = await fr.json().catch(() => ({}));
