@@ -87,7 +87,7 @@ export const config = {
   bmcVentasSheetId: process.env.BMC_VENTAS_SHEET_ID || "",
   bmcStockSheetId: process.env.BMC_STOCK_SHEET_ID || "",
   // Wolfboard — Admin 2.0 ↔ CRM sync (dashboard :3849)
-  wolfbAdminSheetId: process.env.WOLFB_ADMIN_SHEET_ID || "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
+  wolfbAdminSheetId: process.env.WOLFB_ADMIN_SHEET_ID || "",
   wolfbAdminTab: process.env.WOLFB_ADMIN_TAB || "Admin.",
   wolfbCrmMainTab: process.env.WOLFB_CRM_MAIN_TAB || "CRM_Operativo",
   /** Libro CRM (crm_automatizado). Vacío = mismo que bmcSheetId. */
@@ -102,8 +102,7 @@ export const config = {
   /** Primera fila de datos H:K en Admin 2.0 (default 2). */
   wolfbAdminFirstDataRow: Number(process.env.WOLFB_ADMIN_FIRST_DATA_ROW || process.env.WOLFB_ADMIN_DATA_ROW || 2),
   /** MATRIZ de COSTOS y VENTAS 2026 — workbook canónico (Google Sheets nativo). */
-  bmcMatrizSheetId:
-    process.env.BMC_MATRIZ_SHEET_ID || "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
+  bmcMatrizSheetId: process.env.BMC_MATRIZ_SHEET_ID || "",
   googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
   /** JSONL Panelin Knowledge (events-log); default docs/team/knowledge/events-log.jsonl */
   aiKnowledgeEventsLog: process.env.AI_KNOWLEDGE_EVENTS_LOG || "",
