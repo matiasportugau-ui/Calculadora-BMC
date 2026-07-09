@@ -4024,6 +4024,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         proyecto,
         pdfFileName,
         exportedBy: bmcAuth.user?.email || getCachedUser()?.email || null,
+        accessToken: bmcAuth.accessToken || "",
         source,
       });
       return result?.ok ? result : null;
@@ -4031,7 +4032,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       console.warn("[drive-archive]", err?.message || err);
       return null;
     }
-  }, [buildSerializedProject, proyecto, currentBudgetCode, bmcAuth.user?.email]);
+  }, [buildSerializedProject, proyecto, currentBudgetCode, bmcAuth.user?.email, bmcAuth.accessToken]);
 
   const handlePdfEnriquecido = useCallback(async () => {
     if (!groups.length) return;

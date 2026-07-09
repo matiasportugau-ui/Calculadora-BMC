@@ -27,6 +27,7 @@ function blobToBase64(blob) {
  * @param {Object} params.proyecto
  * @param {string} [params.pdfFileName]
  * @param {string} [params.exportedBy] — email vendedor / usuario
+ * @param {string} [params.accessToken] — BMC identity access JWT
  * @param {string} [params.source]
  * @returns {Promise<{ ok: boolean, folderUrl?: string, error?: string }>}
  */
@@ -37,13 +38,17 @@ export async function archiveQuotationToCompanyDrive({
   proyecto,
   pdfFileName,
   exportedBy,
+  accessToken,
   source = "calc_export",
 }) {
   const pdfBase64 = await blobToBase64(pdfBlob);
 
   const resp = await fetch("/api/quotes/drive-archive", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     body: JSON.stringify({
       pdfBase64,
       projectData,

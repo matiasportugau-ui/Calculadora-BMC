@@ -87,7 +87,7 @@ export const config = {
   bmcVentasSheetId: process.env.BMC_VENTAS_SHEET_ID || "",
   bmcStockSheetId: process.env.BMC_STOCK_SHEET_ID || "",
   // Wolfboard — Admin 2.0 ↔ CRM sync (dashboard :3849)
-  wolfbAdminSheetId: process.env.WOLFB_ADMIN_SHEET_ID || "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
+  wolfbAdminSheetId: process.env.WOLFB_ADMIN_SHEET_ID || "",
   wolfbAdminTab: process.env.WOLFB_ADMIN_TAB || "Admin.",
   wolfbCrmMainTab: process.env.WOLFB_CRM_MAIN_TAB || "CRM_Operativo",
   /** Libro CRM (crm_automatizado). Vacío = mismo que bmcSheetId. */
@@ -102,8 +102,7 @@ export const config = {
   /** Primera fila de datos H:K en Admin 2.0 (default 2). */
   wolfbAdminFirstDataRow: Number(process.env.WOLFB_ADMIN_FIRST_DATA_ROW || process.env.WOLFB_ADMIN_DATA_ROW || 2),
   /** MATRIZ de COSTOS y VENTAS 2026 — workbook canónico (Google Sheets nativo). */
-  bmcMatrizSheetId:
-    process.env.BMC_MATRIZ_SHEET_ID || "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
+  bmcMatrizSheetId: process.env.BMC_MATRIZ_SHEET_ID || "",
   googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
   /** JSONL Panelin Knowledge (events-log); default docs/team/knowledge/events-log.jsonl */
   aiKnowledgeEventsLog: process.env.AI_KNOWLEDGE_EVENTS_LOG || "",
@@ -153,6 +152,15 @@ export const config = {
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+  // Meta Instagram DM / Facebook Messenger — dormant until cm-0 app review closes.
+  omniIgEnabled: bool(process.env.OMNI_IG_ENABLED, false),
+  omniFbEnabled: bool(process.env.OMNI_FB_ENABLED, false),
+  igVerifyToken: process.env.IG_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "",
+  fbVerifyToken: process.env.FB_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "",
+  igPageToken: process.env.IG_PAGE_TOKEN || "",
+  fbPageToken: process.env.FB_PAGE_TOKEN || "",
+  igAppSecret: process.env.IG_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
+  fbAppSecret: process.env.FB_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
   // Shopify (questions/quotes flow – Mercado Libre replacement)
   shopifyClientId: process.env.SHOPIFY_CLIENT_ID || "",
   shopifyClientSecret: process.env.SHOPIFY_CLIENT_SECRET || "",
@@ -374,6 +382,13 @@ export const config = {
    */
   omniFrtWorkerEnabled: bool(process.env.OMNI_FRT_WORKER_ENABLED, false),
   omniFrtWorkerIntervalMs: Math.max(30_000, Number(process.env.OMNI_FRT_WORKER_INTERVAL_MS || 300_000)),
+  /**
+   * Gap 4 — temporal follow-up sequence evaluator. Default OFF: it only
+   * creates HITL suggestions (never sends), but still intentionally requires a
+   * deliberate prod flip because it can generate operator-visible drafts.
+   */
+  omniSequencesEnabled: bool(process.env.OMNI_SEQUENCES_ENABLED, false),
+  omniSequencesIntervalMs: Math.max(60_000, Number(process.env.OMNI_SEQUENCES_INTERVAL_MS || 300_000)),
   /**
    * Centralized AI brain (self-evolving, human-verified lessons) injected into the agent system prompt.
    * Default OFF: ships dormant. Flipping ON is customer-facing — do it deliberately after dev validation.

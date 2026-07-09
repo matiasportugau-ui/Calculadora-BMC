@@ -43,7 +43,7 @@ jobs:
         run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout code at CI SHA
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.sha.outputs.sha }}
           fetch-depth: 0
@@ -52,16 +52,19 @@ jobs:
         # Defends against re-running an old successful CI run from the Actions UI,
         # which would otherwise redeploy a stale SHA over current main. workflow_dispatch
         # is intentionally exempt — it's the manual escape hatch for force-deploys.
+        # Stale SHA = neutral skip (not failure): the newer commit's own run deploys the tip.
+        id: guard
         if: github.event_name != 'workflow_dispatch'
         run: |
           set -e
           git fetch origin main --depth=1
           REMOTE_TIP=$(git rev-parse origin/main)
           if [[ "${{ steps.sha.outputs.sha }}" != "$REMOTE_TIP" ]]; then
-            echo "::error::SHA ${{ steps.sha.outputs.sha }} is no longer the tip of origin/main ($REMOTE_TIP). Aborting deploy to prevent stale-rerun rollback."
-            exit 1
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::SHA ${{ steps.sha.outputs.sha }} is no longer the tip of origin/main ($REMOTE_TIP). Skipping deploy — the tip commit's run will deploy instead (stale-rerun protection)."
+          else
+            echo "SHA matches origin/main tip: $REMOTE_TIP"
           fi
-          echo "SHA matches origin/main tip: $REMOTE_TIP"
 
       - name: Skip when no relevant paths changed
         id: paths
@@ -69,6 +72,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
+          # Guard detectó SHA stale → skip total (el run del tip deploya).
+          if [[ "${{ steps.guard.outputs.stale }}" == "true" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Stale SHA — skipping all deploy steps."
+            exit 0
+          fi
+
           # workflow_dispatch always deploys; otherwise replicate the original `paths:` filter.
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -118,7 +128,7 @@ jobs:
 
       - name: Set up Cloud SDK
         if: steps.paths.outputs.skip != 'true'
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Configure Docker for Artifact Registry
         if: steps.paths.outputs.skip != 'true'
@@ -157,6 +167,8 @@ jobs:
             BMC_VENTAS_SHEET_ID=${{ secrets.BMC_VENTAS_SHEET_ID }}
             BMC_STOCK_SHEET_ID=${{ secrets.BMC_STOCK_SHEET_ID }}
             BMC_CALENDARIO_SHEET_ID=${{ secrets.BMC_CALENDARIO_SHEET_ID }}
+            BMC_MATRIZ_SHEET_ID=${{ secrets.BMC_MATRIZ_SHEET_ID }}
+            WOLFB_ADMIN_SHEET_ID=${{ secrets.WOLFB_ADMIN_SHEET_ID }}
             PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}
             GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/service-account.json
             SMTP_HOST=${{ secrets.SMTP_HOST }}

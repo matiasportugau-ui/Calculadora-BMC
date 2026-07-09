@@ -59,7 +59,7 @@ jobs:
 
       - name: Checkout at CI SHA
         if: steps.guard.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.sha.outputs.sha }}
           fetch-depth: 0
@@ -180,7 +180,7 @@ jobs:
 
       - name: Checkout PR head
         if: steps.guard.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         if: steps.guard.outputs.skip != 'true'
@@ -216,7 +216,7 @@ jobs:
 
       - name: Comment preview URL on PR
         if: steps.guard.outputs.skip != 'true' && steps.deploy.outputs.url != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const url = '${{ steps.deploy.outputs.url }}';

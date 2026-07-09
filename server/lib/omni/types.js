@@ -6,6 +6,8 @@ import { z } from "zod";
 
 export const OMNI_SOURCES = [
   "wa_webhook",
+  "ig_webhook",
+  "fb_webhook",
   "wa_extension",
   "ml_webhook",
   "ml_sync",
@@ -17,12 +19,14 @@ export const OMNI_SOURCES = [
   "email_backfill",
 ];
 
-export const OMNI_CHANNELS = ["wa", "ml", "email", "instagram", "facebook", "omnicrm"];
+export const OMNI_CHANNELS = ["wa", "ml", "email", "ig", "fb", "instagram", "facebook", "omnicrm"];
 
 export const contactHintSchema = z
   .object({
     wa_phone: z.string().optional(),
     ml_user_id: z.union([z.number(), z.string()]).optional(),
+    igsid: z.string().optional(),
+    psid: z.string().optional(),
     email: z.string().optional(),
     name: z.string().optional(),
     chrome_ext_contact_id: z.string().optional(),
@@ -101,6 +105,12 @@ export function buildIntegrationUuid(hint, channel) {
   if (channel === "email") {
     const em = normalizeEmail(hint.email);
     if (em) return `email:${em}`;
+  }
+  if (channel === "ig" && hint.igsid) {
+    return `ig:${String(hint.igsid).slice(0, 255)}`;
+  }
+  if (channel === "fb" && hint.psid) {
+    return `fb:${String(hint.psid).slice(0, 255)}`;
   }
   if (hint.chrome_ext_contact_id) {
     return `ext:${hint.chrome_ext_contact_id}`;

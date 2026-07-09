@@ -17,7 +17,7 @@ import {
 import { bomToGroups, buildWhatsAppText, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
 import { upsertQuote } from "../lib/quoteStore.js";
 import { enqueue as sheetEnqueue, isSheetSyncEnabled } from "../lib/clientQuotesSheetSync.js";
-import { requireUser } from "../lib/identityAuth.js";
+import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import {
   setListaPrecios,
   PANELS_TECHO,
@@ -628,7 +628,11 @@ export async function buildCotizacionHtml({ escenario, lista = "web", techo, par
   return { ok: true, html, gptResp, templateUsed };
 }
 
-router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) => {
+function canWriteSharedQuoteDrive(req) {
+  return !!(config.driveQuoteFolderId && req.user);
+}
+
+router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req, res) => {
   try {
     const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente, source: sourceRaw } = req.body;
     // Provenance marker — distinguishes agent-generated quotes from human-driven ones
@@ -656,7 +660,7 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
       config.gcsQuotesBucket
         ? uploadQuoteToGcs(html, filename, config.gcsQuotesBucket)
         : Promise.resolve(null),
-      config.driveQuoteFolderId
+      canWriteSharedQuoteDrive(req)
         ? uploadQuoteToDrive(html, filename, config.driveQuoteFolderId)
         : Promise.resolve(null),
     ]);
@@ -682,7 +686,7 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
           config.gcsQuotesBucket
             ? uploadPdfToGcs(pdfBuffer, pdfFilename, config.gcsQuotesBucket)
             : Promise.resolve(null),
-          config.driveQuoteFolderId
+          canWriteSharedQuoteDrive(req)
             ? saveQuotationBundleToDrive({
                 rootFolderId: config.driveQuoteFolderId,
                 quotationCode: code,
@@ -700,17 +704,17 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
         ]);
         pdfFileUrl = gcsPdfRes.status === "fulfilled" ? gcsPdfRes.value : null;
         if (gcsPdfRes.status === "rejected") {
-          req.log.warn({ err: gcsPdfRes.reason }, "cotizar/pdf GCS PDF upload failed (non-fatal)");
+          req.log?.warn?.({ err: gcsPdfRes.reason }, "cotizar/pdf GCS PDF upload failed (non-fatal)");
         }
         if (driveBundleRes.status === "fulfilled" && driveBundleRes.value) {
           drivePdfUrl = driveBundleRes.value.pdfUrl || null;
           drivePdfFileId = driveBundleRes.value.pdfFileId || null;
           driveFolderUrl = driveBundleRes.value.folderUrl || null;
         } else if (driveBundleRes.status === "rejected") {
-          req.log.warn({ err: driveBundleRes.reason }, "cotizar/pdf Drive PDF bundle failed (non-fatal)");
+          req.log?.warn?.({ err: driveBundleRes.reason }, "cotizar/pdf Drive PDF bundle failed (non-fatal)");
         }
       } catch (err) {
-        req.log.warn({ err }, "cotizar/pdf render degraded to HTML (non-fatal)");
+        req.log?.warn?.({ err }, "cotizar/pdf render degraded to HTML (non-fatal)");
       }
     }
 
@@ -789,7 +793,7 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
       resumen: gptResp.resumen,
     });
   } catch (err) {
-    req.log.error({ err }, "calc/cotizar/pdf failed");
+    req.log?.error?.({ err }, "calc/cotizar/pdf failed");
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
