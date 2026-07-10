@@ -6,6 +6,7 @@
 
 import * as XLSX from "xlsx";
 import {
+  MAX_CSV_CHARS,
   excelSerialToISO,
   matchRule,
   normalizeText,
@@ -144,6 +145,27 @@ assert("fila irreparable → error columnas_inesperadas", bad.errors.some((e) =>
 // tokenizador: comillas con comas y saltos embebidos
 const rows = parseCsvRows('a,"b,1\nb2",c\nd,e,f');
 assert("RFC-4180 comillas", rows.length === 2 && rows[0][1] === "b,1\nb2" && rows[1][2] === "f", rows);
+
+// cota dura de tamaño: error explícito, nunca truncado mudo (CodeQL loop bound)
+const oversized = parseBrouCsv("x".repeat(MAX_CSV_CHARS + 1));
+assert(
+  "CSV > MAX_CSV_CHARS → error csv_demasiado_grande",
+  oversized.headerFound === false && oversized.errors[0]?.reason === "csv_demasiado_grande",
+  oversized.errors,
+);
+
+// meta con whitespace raro (tabs) en Nº de Cuenta — regex sin backtracking polinomial
+const wsAoa = [
+  ["Nº de Cuenta\nCA\t 110520638-00001", "Moneda\nUS$"],
+  ["Fecha", "Descripción", "Débito", "Crédito"],
+  [isoToSerial("2026-07-01"), "TRF", "100.00", null],
+];
+const wsWs = XLSX.utils.aoa_to_sheet(wsAoa);
+const wbWs = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wbWs, wsWs, "H");
+const metaWs = parseBankStatement({ buffer: XLSX.write(wbWs, { type: "buffer", bookType: "xlsx" }) });
+assert("cuenta detectada con tabs", metaWs.meta.accountNumber === "110520638-00001", metaWs.meta);
+assert("moneda US$ → USD", metaWs.meta.currency === "USD", metaWs.meta);
 
 // ── reglas ──────────────────────────────────────────────────────────────────
 console.log("matchRule");

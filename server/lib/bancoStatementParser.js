@@ -24,6 +24,9 @@ export const ENTIDADES = ["bmc", "expreso_este", "personal", "mixta"];
 
 const MAX_MOVEMENT_YEAR = 2100;
 const MIN_MOVEMENT_YEAR = 1990;
+// Cota dura para el tokenizador CSV (el route ya limita a 2 MB; esto acota el
+// loop ante cualquier caller). Por encima → error explícito, nunca truncado mudo.
+export const MAX_CSV_CHARS = 4 * 1024 * 1024;
 
 /** Normaliza celdas de header/reglas: minúsculas, sin acentos ni símbolos. */
 export function normalizeText(v) {
@@ -171,7 +174,8 @@ function detectMeta(rows, headerIdx) {
         if (label.includes("cuenta anterior")) {
           meta.previousAccountNumber = meta.previousAccountNumber || value;
         } else if (/\bde cuenta\b/.test(label)) {
-          const m = value.match(/([A-Z]{2})?\s*([\d][\d-]{5,})/);
+          // sin \s* tras grupo opcional: backtracking polinomial (CodeQL js/polynomial-redos)
+          const m = value.replace(/\s+/g, " ").match(/([A-Z]{2})? ?([\d][\d-]{5,})/);
           if (m) {
             meta.accountLabel = meta.accountLabel || value;
             meta.accountNumber = meta.accountNumber || m[2];
@@ -194,7 +198,9 @@ export function parseCsvRows(text) {
   let field = "";
   let row = [];
   let inQuotes = false;
-  const src = String(text ?? "").replace(/^\uFEFF/, "");
+  // slice = cota superior expl\u00EDcita del loop (CodeQL js/loop-bound-injection);
+  // el caso >MAX ya fue rechazado por parseBrouCsv antes de llegar ac\u00E1.
+  const src = String(text ?? "").slice(0, MAX_CSV_CHARS).replace(/^\uFEFF/, "");
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
     if (inQuotes) {
@@ -356,7 +362,16 @@ export function parseBrouWorkbook(buffer) {
 
 /** CSV (texto) → resultado normalizado. */
 export function parseBrouCsv(text) {
-  return parseRows(parseCsvRows(text), { repairCsv: true });
+  const src = String(text ?? "");
+  if (src.length > MAX_CSV_CHARS) {
+    return {
+      headerFound: false,
+      movements: [],
+      errors: [{ line: 0, reason: "csv_demasiado_grande", raw: `${src.length} chars > ${MAX_CSV_CHARS}` }],
+      meta: { accountNumber: null, accountLabel: null, previousAccountNumber: null, currency: null },
+    };
+  }
+  return parseRows(parseCsvRows(src), { repairCsv: true });
 }
 
 /**
