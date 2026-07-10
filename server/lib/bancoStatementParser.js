@@ -192,49 +192,66 @@ function detectMeta(rows, headerIdx) {
   return meta;
 }
 
-/** Tokenizador CSV RFC-4180 (comillas, comas y saltos de línea embebidos). */
+/**
+ * Tokenizador CSV RFC-4180 (comillas, comas y saltos de línea embebidos).
+ * Máquina de estados sobre for...of — sin loop acotado por .length de datos
+ * de usuario (CodeQL js/loop-bound-injection); el lookahead de `""` y `\r\n`
+ * se resuelve con flags de estado. El tope de tamaño lo aplica parseBrouCsv.
+ */
 export function parseCsvRows(text) {
   const rows = [];
   let field = "";
   let row = [];
   let inQuotes = false;
-  // typeof + Math.min = barrera y cota que CodeQL reconoce (js/loop-bound-injection):
-  // un objeto no-string con .length falso nunca llega al loop, y el bound es
-  // num\u00E9rico expl\u00EDcito. El caso >MAX ya fue rechazado por parseBrouCsv.
+  let pendingQuote = false; // comilla vista dentro de campo citado: ¿escape o cierre?
+  let sawCR = false; // \r fuera de comillas: absorber el \n de un posible \r\n
+
+  const endField = () => {
+    row.push(field);
+    field = "";
+  };
+  const endRow = () => {
+    endField();
+    rows.push(row);
+    row = [];
+  };
+
   const src = typeof text === "string" ? text.replace(/^\uFEFF/, "") : "";
-  const len = Math.min(src.length, MAX_CSV_CHARS);
-  for (let i = 0; i < len; i++) {
-    const c = src[i];
+  for (const c of src) {
+    if (sawCR) {
+      sawCR = false;
+      if (c === "\n") continue;
+    }
     if (inQuotes) {
-      if (c === '"') {
-        if (src[i + 1] === '"') {
+      if (pendingQuote) {
+        pendingQuote = false;
+        if (c === '"') {
           field += '"';
-          i++;
-        } else {
-          inQuotes = false;
+          continue;
         }
+        inQuotes = false; // la comilla anterior cerraba el campo; c se procesa normal
+      } else if (c === '"') {
+        pendingQuote = true;
+        continue;
       } else {
         field += c;
+        continue;
       }
-    } else if (c === '"') {
+    }
+    if (c === '"') {
       inQuotes = true;
     } else if (c === ",") {
-      row.push(field);
-      field = "";
-    } else if (c === "\n" || c === "\r") {
-      if (c === "\r" && src[i + 1] === "\n") i++;
-      row.push(field);
-      field = "";
-      rows.push(row);
-      row = [];
+      endField();
+    } else if (c === "\n") {
+      endRow();
+    } else if (c === "\r") {
+      endRow();
+      sawCR = true;
     } else {
       field += c;
     }
   }
-  if (field.length || row.length) {
-    row.push(field);
-    rows.push(row);
-  }
+  if (field.length || row.length) endRow();
   return rows;
 }
 

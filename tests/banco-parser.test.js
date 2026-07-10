@@ -145,6 +145,16 @@ assert("fila irreparable → error columnas_inesperadas", bad.errors.some((e) =>
 // tokenizador: comillas con comas y saltos embebidos
 const rows = parseCsvRows('a,"b,1\nb2",c\nd,e,f');
 assert("RFC-4180 comillas", rows.length === 2 && rows[0][1] === "b,1\nb2" && rows[1][2] === "f", rows);
+const rowsEsc = parseCsvRows('a,"di""jo",b');
+assert('comilla escapada "" dentro de campo', rowsEsc[0][1] === 'di"jo', rowsEsc);
+const rowsCrlf = parseCsvRows("a,b\r\nc,d\re,f");
+assert(
+  "\\r\\n y \\r solo terminan fila",
+  rowsCrlf.length === 3 && rowsCrlf[1][0] === "c" && rowsCrlf[2][1] === "f",
+  rowsCrlf,
+);
+const rowsQuoteComma = parseCsvRows('"x","y"\n"z",w');
+assert("campo citado seguido de coma", rowsQuoteComma[0][1] === "y" && rowsQuoteComma[1][0] === "z", rowsQuoteComma);
 
 // cota dura de tamaño: error explícito, nunca truncado mudo (CodeQL loop bound)
 const oversized = parseBrouCsv("x".repeat(MAX_CSV_CHARS + 1));
