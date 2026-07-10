@@ -198,10 +198,12 @@ export function parseCsvRows(text) {
   let field = "";
   let row = [];
   let inQuotes = false;
-  // slice = cota superior expl\u00EDcita del loop (CodeQL js/loop-bound-injection);
-  // el caso >MAX ya fue rechazado por parseBrouCsv antes de llegar ac\u00E1.
-  const src = String(text ?? "").slice(0, MAX_CSV_CHARS).replace(/^\uFEFF/, "");
-  for (let i = 0; i < src.length; i++) {
+  // typeof + Math.min = barrera y cota que CodeQL reconoce (js/loop-bound-injection):
+  // un objeto no-string con .length falso nunca llega al loop, y el bound es
+  // num\u00E9rico expl\u00EDcito. El caso >MAX ya fue rechazado por parseBrouCsv.
+  const src = typeof text === "string" ? text.replace(/^\uFEFF/, "") : "";
+  const len = Math.min(src.length, MAX_CSV_CHARS);
+  for (let i = 0; i < len; i++) {
     const c = src[i];
     if (inQuotes) {
       if (c === '"') {
