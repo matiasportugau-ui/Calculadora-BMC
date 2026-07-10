@@ -54,6 +54,7 @@ import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinRouter from "./routes/panelin.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
+import createMlLegacyRouter from "./routes/mlLegacy.js";
 import rateLimit from "express-rate-limit";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
@@ -96,7 +97,6 @@ import { startOmniAiWorker, triggerWaCrmSyncNow } from "./lib/omni/orchestrator/
 import { startOmniFrtBreachWorker } from "./lib/omni/orchestrator/frtBreachWorker.js";
 import { startOmniSequenceWorker } from "./lib/omni/orchestrator/sequenceWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
-import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { writeWaCrmIngest, writeWaCrmAiTail, runWaAutoLearn } from "./lib/wa/crmIngestWrite.js";
 import { google } from "googleapis";
@@ -382,196 +382,7 @@ app.get("/auth/ml/status", asyncHandler(async (req, res) => {
   });
 }));
 
-// All inline /ml/* routes require an authenticated caller: an active identity
-// JWT (operators — mlFetch attaches it) OR the static service token. Closes the
-// anonymous holes on both writes (publish an answer to a customer, edit a live
-// listing) AND reads (seller profile, listings, customer questions, ORDERS with
-// customer PII). The server-side auto-answer (mlAutoAnswer.js) posts via the ML
-// client directly, not these routes, so it is unaffected; the separate mlSearch
-// router keeps its own static-token guard.
-const requireMlAuth = requireServiceOrUser({ authOnly: true });
-
-app.get("/ml/users/me", requireMlAuth, asyncHandler(async (req, res) => {
-  const payload = await ml.requestWithRetries({
-    method: "GET",
-    path: "/users/me",
-  });
-  res.json(payload);
-}));
-
-app.get("/ml/users/:id", requireMlAuth, asyncHandler(async (req, res) => {
-  const payload = await ml.requestWithRetries({
-    method: "GET",
-    path: `/users/${req.params.id}`,
-  });
-  res.json(payload);
-}));
-
-app.get("/ml/listings", requireMlAuth, asyncHandler(async (req, res) => {
-  const { status = "active", limit = 50, offset = 0 } = req.query;
-  const sellerId = await ml.resolveSellerId();
-  const payload = await ml.requestWithRetries({
-    method: "GET",
-    path: `/users/${sellerId}/items/search?status=${status}&limit=${limit}&offset=${offset}`,
-  });
-  res.json(payload);
-}));
-
-app.get("/ml/items/:id", requireMlAuth, asyncHandler(async (req, res) => {
-  const payload = await ml.requestWithRetries({
-    method: "GET",
-    path: `/items/${req.params.id}`,
-  });
-  res.json(payload);
-}));
-
-app.patch("/ml/items/:id", requireMlAuth, asyncHandler(async (req, res) => {
-  const payload = await ml.requestWithRetries({
-    method: "PUT",
-    path: `/items/${req.params.id}`,
-    body: req.body,
-  });
-  res.json(payload);
-}));
-
-app.post("/ml/items/:id/description", requireMlAuth, asyncHandler(async (req, res) => {
-  const { text } = req.body;
-  try {
-    const payload = await ml.requestWithRetries({
-      method: "POST",
-      path: `/items/${req.params.id}/description`,
-      body: { plain_text: text },
-    });
-    res.json(payload);
-  } catch (e) {
-    if (e.payload?.message?.includes("already has a description")) {
-      const payload = await ml.requestWithRetries({
-        method: "PUT",
-        path: `/items/${req.params.id}/description`,
-        body: { plain_text: text },
-      });
-      res.json(payload);
-    } else throw e;
-  }
-}));
-
-app.get("/ml/questions", requireMlAuth, asyncHandler(async (req, res) => {
-  if (req.query.id) {
-    const payload = await ml.requestWithRetries({
-      method: "GET",
-      path: `/questions/${req.query.id}`,
-    });
-    return res.json(payload);
-  }
-  // Solo parámetros que ML acepta en /questions/search (evita invalid_query_string por query basura)
-  const allowedKeys = new Set([
-    "seller_id",
-    "item",
-    "item_id",
-    "api_version",
-    "site_id",
-    "offset",
-    "limit",
-    "status",
-  ]);
-  const query = {};
-  for (const [k, v] of Object.entries(req.query)) {
-    if (allowedKeys.has(k) && v != null && String(v) !== "") {
-      query[k] = v;
-    }
-  }
-  if (!query.seller_id) {
-    const sellerId = await ml.resolveSellerId();
-    if (sellerId) query.seller_id = sellerId;
-  }
-  if (!query.seller_id) {
-    return res.status(400).json({
-      ok: false,
-      error:
-        "Missing seller_id: complete OAuth (/auth/ml/start) or pass ?seller_id=… so /questions/search is valid.",
-    });
-  }
-  if (query.api_version == null || query.api_version === "") {
-    query.api_version = "4";
-  }
-  if (query.site_id == null || query.site_id === "") {
-    query.site_id = config.mlSiteId;
-  }
-  const payload = await ml.requestWithRetries({
-    method: "GET",
-    path: "/questions/search",
-    query,
-  });
-  res.json(payload);
-}));
-
-app.get("/ml/questions/:id", requireMlAuth, asyncHandler(async (req, res) => {
-  const payload = await ml.requestWithRetries({
-    method: "GET",
-    path: `/questions/${req.params.id}`,
-  });
-  res.json(payload);
-}));
-
-app.post("/ml/questions/:id/answer", requireMlAuth, asyncHandler(async (req, res) => {
-  if (!req.body?.text) {
-    return res.status(400).json({ ok: false, error: "Missing body.text" });
-  }
-  const text = normalizeMlAnswerCurrencyText(req.body.text);
-  const payload = await ml.requestWithRetries({
-    method: "POST",
-    path: "/answers",
-    body: {
-      question_id: Number(req.params.id),
-      text,
-    },
-  });
-  res.json(payload);
-}));
-
-app.get("/ml/orders", requireMlAuth, asyncHandler(async (req, res) => {
-  if (req.query.id) {
-    const payload = await ml.requestWithRetries({
-      method: "GET",
-      path: `/orders/${req.query.id}`,
-    });
-    return res.json(payload);
-  }
-  const allowedKeys = new Set([
-    "seller",
-    "seller.id",
-    "offset",
-    "limit",
-    "order.status",
-    "sort",
-    "tags",
-  ]);
-  const query = {};
-  for (const [k, v] of Object.entries(req.query)) {
-    if (allowedKeys.has(k) && v != null && String(v) !== "") {
-      query[k] = v;
-    }
-  }
-  const sellerId = await ml.resolveSellerId();
-  // ML documenta /orders/search?seller=ID; marketplace a veces usa seller.id — alinear caller con el vendedor del token
-  if (!query.seller && !query["seller.id"] && sellerId) {
-    query.seller = sellerId;
-  }
-  const payload = await ml.requestWithRetries({
-    method: "GET",
-    path: "/orders/search",
-    query,
-  });
-  res.json(payload);
-}));
-
-app.get("/ml/orders/:id", requireMlAuth, asyncHandler(async (req, res) => {
-  const payload = await ml.requestWithRetries({
-    method: "GET",
-    path: `/orders/${req.params.id}`,
-  });
-  res.json(payload);
-}));
+app.use("/ml", createMlLegacyRouter({ ml, config }));
 
 app.post("/webhooks/ml", asyncHandler(async (req, res) => {
   // Layer 1: HMAC signature verification (Gap #1 fix)
