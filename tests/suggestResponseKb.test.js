@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
+import { config as appConfig } from "../server/config.js";
 
 let passed = 0;
 let failed = 0;
@@ -61,6 +62,26 @@ const FAKE_KEYS_CONFIG = {
   anthropicApiKey: "sk-ant-fake-test-key-not-real",
 };
 
+function withBlankSingletonAiKeys(fn) {
+  const previous = {
+    anthropicApiKey: appConfig.anthropicApiKey,
+    openaiApiKey: appConfig.openaiApiKey,
+    grokApiKey: appConfig.grokApiKey,
+    geminiApiKey: appConfig.geminiApiKey,
+    openrouterApiKey: appConfig.openrouterApiKey,
+  };
+  appConfig.anthropicApiKey = "";
+  appConfig.openaiApiKey = "";
+  appConfig.grokApiKey = "";
+  appConfig.geminiApiKey = "";
+  appConfig.openrouterApiKey = "";
+  return Promise.resolve()
+    .then(fn)
+    .finally(() => {
+      Object.assign(appConfig, previous);
+    });
+}
+
 async function run() {
   console.log("\n═══ /api/crm/suggest-response — KB delegation contract ═══\n");
 
@@ -103,8 +124,9 @@ async function run() {
     }
   }
 
-  // ── Case 3: agentCore path + bogus key → 503 with details array ────────
-  // Verifies the lib delegation path catches and surfaces err.errors as details.
+  // ── Case 3: agentCore path + unavailable pinned provider → 503 details ──
+  // Verifies the lib delegation path catches and surfaces err.errors as details
+  // without depending on live AI keys that may exist in the agent environment.
   {
     const original = process.env.SUGGEST_RESPONSE_USE_AGENT_CORE;
     process.env.SUGGEST_RESPONSE_USE_AGENT_CORE = "true";
@@ -124,19 +146,20 @@ async function run() {
       const { port } = server.address();
       const baseUrl = `http://127.0.0.1:${port}`;
       try {
-        const { status, json } = await postJson(baseUrl, "/api/crm/suggest-response", {
+        const { status, json } = await withBlankSingletonAiKeys(() => postJson(baseUrl, "/api/crm/suggest-response", {
           consulta: "Plazo entrega?",
           origen: "MLU123",
           cliente: "TestCli",
-        });
+          provider: "claude",
+        }));
         assert(
-          "agentCore path with bogus key → 503 + details array",
+          "agentCore path with unavailable pinned provider → 503 + details array",
           status === 503 &&
             json?.ok === false &&
             Array.isArray(json?.details) &&
             json.details.length > 0,
-          { status, hasDetails: Array.isArray(json?.details) },
-          { status: 503, hasDetails: true },
+          { status, hasDetails: Array.isArray(json?.details), detailsLength: json?.details?.length },
+          { status: 503, hasDetails: true, detailsLength: ">0" },
         );
       } finally {
         server.close();
