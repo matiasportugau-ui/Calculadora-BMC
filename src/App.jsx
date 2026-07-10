@@ -58,6 +58,7 @@ const BmcPlanosModule = lazy(() => import("./components/BmcPlanosModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
+const BancoLedgerModule = lazy(() => import("./components/hub/banco/BancoLedgerModule.jsx"));
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
 const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
 const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx"));
@@ -376,6 +377,18 @@ export default function App() {
               <RequireGrant>
                 <Suspense fallback={suspenseFallback}>
                   <TraKtiMeModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/banco"
+          element={
+            <Shell>
+              <RequireGrant module="banco" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <BancoLedgerModule />
                 </Suspense>
               </RequireGrant>
             </Shell>
