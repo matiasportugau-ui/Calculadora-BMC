@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-08
+**Última actualización:** 2026-07-10
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-10 (feat — Visor 3D · Paneles para cubierta, gated design preview):** Nueva sección colapsable (colapsada por defecto) inmediatamente arriba del visor 2D (`QuoteVisualVisor`) en la calculadora, sólo visible con `isDesignPreviewEnabled()` (`?designPreview=1` / Vercel Preview / `VITE_BMC_DESIGN_PREVIEW=1`). Wrapper nuevo `src/components/roof3d/Roof3DSection.jsx` que reusa `RoofPanelRealisticScene` vía `React.lazy` (mismo chunk lazy existente; cero bytes 3D nuevos con gate apagado), lectura pura del estado del techo (one-way), probe WebGL con fallback amable. `ENABLE_ROOF_3D_VISOR` (flujo portal legacy) queda `false` e intacto. Verificación de aislamiento de chunk: `scripts/playwright-roof3d-lazy-chunk.mjs` (`npm run test:playwright:roof3d-chunk`; build + `vite preview` con service worker bloqueado por el precache PWA; caso A sin gate = 0 requests roof3d, caso B expandir = fetch del chunk + montaje, caso C dims 6×5 = `<canvas>`).
 
 **2026-07-08 (security — OpenRouter fallback requiere opt-in explícito):** Follow-up a PR #652. El nuevo provider `openrouter` ya no entra en `getProviderChain()` sólo por existir `OPENROUTER_API_KEY`; requiere además `OPENROUTER_FALLBACK_ENABLED=1`, porque ese fallback envía prompts y contexto de clientes a un boundary externo nuevo (OpenRouter/modelos abiertos). `.env.example` documenta el doble gate, `deploy-calc-api.yml` propaga el repo var opcional y `tests/aiProviderConfigOpenRouter.test.js` quedó agregado a `test:agent` para cubrir key-presente/flag-apagado vs flag-encendido.
 

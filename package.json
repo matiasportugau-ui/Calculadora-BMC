@@ -67,6 +67,7 @@
     "test:playwright:roof-bordes-local": "node scripts/playwright-roof-bordes-local.mjs",
     "test:playwright:hub-canales": "node scripts/playwright-hub-canales-smoke.mjs",
     "test:playwright:wizard": "node scripts/playwright-wizard-happy-path.mjs",
+    "test:playwright:roof3d-chunk": "node scripts/playwright-roof3d-lazy-chunk.mjs",
     "test:ml-auto": "bash scripts/test-ml-auto-mode.sh",
     "test:ml-auto:prod": "bash scripts/test-ml-auto-mode.sh https://panelin-calc-q74zutv7dq-uc.a.run.app",
     "test:e2e:wizard": "node scripts/playwright-calculator-wizard.mjs",
