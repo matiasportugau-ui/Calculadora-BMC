@@ -161,8 +161,9 @@ function cellToText(v) {
 /** Metadatos del preámbulo e-BROU (Nº de Cuenta / Moneda). */
 function detectMeta(rows, headerIdx) {
   const meta = { accountNumber: null, accountLabel: null, previousAccountNumber: null, currency: null };
-  for (let i = 0; i < headerIdx; i++) {
-    for (const raw of rows[i] || []) {
+  for (const [i, rowArr] of rows.entries()) {
+    if (i >= headerIdx) break;
+    for (const raw of rowArr || []) {
       if (typeof raw !== "string") continue;
       const cell = raw.trim();
       if (!cell) continue;
@@ -283,20 +284,23 @@ function buildMovements(rows, headerIdx, map, options) {
   const headerWidth = Math.max(...Object.values(map)) + 1;
   const movements = [];
   const errors = [];
-  for (let i = headerIdx + 1; i < rows.length; i++) {
-    let row = rows[i] || [];
+  // for...of + entries(): sin loop acotado por .length de datos externos
+  // (sheet_to_json sobre buffer de usuario) — CodeQL js/loop-bound-injection.
+  for (const [i, rawRow] of rows.entries()) {
+    if (i <= headerIdx) continue;
+    let row = rawRow || [];
     const nonEmpty = row.filter((c) => trimCell(c) !== null);
     if (nonEmpty.length === 0) continue;
     if (repairCsv && row.length > headerWidth) {
       row = repairSplitDecimals(row, headerWidth);
       if (row.length > headerWidth) {
-        errors.push({ line: i + 1, reason: "columnas_inesperadas", raw: rows[i].join(",") });
+        errors.push({ line: i + 1, reason: "columnas_inesperadas", raw: (rawRow || []).join(",") });
         continue;
       }
     }
     if (repairCsv && row.length < headerWidth) {
       if (nonEmpty.length <= 1) continue; // nota/pie de página
-      errors.push({ line: i + 1, reason: "columnas_insuficientes", raw: rows[i].join(",") });
+      errors.push({ line: i + 1, reason: "columnas_insuficientes", raw: (rawRow || []).join(",") });
       continue;
     }
     const fecha = parseFecha(row[map.fecha]);
@@ -354,8 +358,8 @@ function withDedupHashes(movements) {
 function parseRows(rows, options) {
   let headerIdx = -1;
   let map = null;
-  for (let i = 0; i < rows.length; i++) {
-    const candidate = mapHeaderRow(rows[i] || []);
+  for (const [i, row] of rows.entries()) {
+    const candidate = mapHeaderRow(row || []);
     if (candidate) {
       headerIdx = i;
       map = candidate;
