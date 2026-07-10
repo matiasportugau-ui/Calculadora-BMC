@@ -155,18 +155,17 @@ export default function BancoLedgerModule() {
     setImporting(true);
     setMessage(null);
     try {
-      const buf = await file.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let binary = "";
-      const chunk = 0x8000;
-      for (let i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-      }
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",", 2)[1] || "");
+        reader.onerror = () => reject(reader.error || new Error("read_failed"));
+        reader.readAsDataURL(file);
+      });
       const r = await apiFetch("/api/banco/import", {
         method: "POST",
         body: JSON.stringify({
           filename: file.name,
-          file_base64: btoa(binary),
+          file_base64: base64,
           ...(filters.account_id ? { account_id: filters.account_id } : {}),
         }),
       });

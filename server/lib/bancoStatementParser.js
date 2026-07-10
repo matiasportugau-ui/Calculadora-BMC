@@ -263,7 +263,9 @@ export function parseCsvRows(text) {
  */
 function repairSplitDecimals(tokens, expected) {
   const out = tokens.slice();
-  while (out.length > expected) {
+  let excess = out.length - expected; // cada merge acorta out en exactamente 1
+  while (excess > 0) {
+    excess -= 1;
     let merged = false;
     for (let i = out.length - 2; i >= 0; i--) {
       const left = String(out[i] ?? "").trim();
