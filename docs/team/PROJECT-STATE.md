@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-08
+**Última actualización:** 2026-07-10
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-10 (docs/skill — Shopify Complete Connector):** Nueva skill de proyecto [`.cursor/skills/shopify-complete-connector/`](../../.cursor/skills/shopify-complete-connector/SKILL.md) para desarrollar desde el repo el conector **completo** de la tienda Shopify (diseño/theme, funcionalidad Admin/Storefront, catálogo/PIM, webhooks, extensiones, Functions, opciones Partner). Incluye `reference.md`, `design-and-storefront.md`, `examples.md`, agente Cursor y rule `.cursor/rules/shopify-complete-connector.mdc`. No reemplaza `shopify-integration-v4` (preguntas/cotizaciones → Sheet); v4 ahora enlaza al conector completo. Código de runtime sin cambios.
 
 **2026-07-08 (security — OpenRouter fallback requiere opt-in explícito):** Follow-up a PR #652. El nuevo provider `openrouter` ya no entra en `getProviderChain()` sólo por existir `OPENROUTER_API_KEY`; requiere además `OPENROUTER_FALLBACK_ENABLED=1`, porque ese fallback envía prompts y contexto de clientes a un boundary externo nuevo (OpenRouter/modelos abiertos). `.env.example` documenta el doble gate, `deploy-calc-api.yml` propaga el repo var opcional y `tests/aiProviderConfigOpenRouter.test.js` quedó agregado a `test:agent` para cubrir key-presente/flag-apagado vs flag-encendido.
 
