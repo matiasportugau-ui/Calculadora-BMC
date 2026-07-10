@@ -36,6 +36,7 @@ import createTransportistaRouter from "./routes/transportista.js";
 import createWaRouter from "./routes/wa.js";
 import createTraktimeRouter from "./routes/traktime.js";
 import createBancoRouter from "./routes/banco.js";
+import createCsrfProtection from "./middleware/csrfProtection.js";
 import createActivityRouter from "./routes/activity.js";
 import { createQuotesRouter } from "./routes/quotes.js";
 import { createQuoteDriveArchiveRouter } from "./routes/quoteDriveArchive.js";
@@ -187,6 +188,9 @@ app.use((req, res, next) => {
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(cookieParser());
+// CSRF (CWE-352): verificación de procedencia para métodos inseguros con
+// cookies — ver server/middleware/csrfProtection.js. Bearer/webhooks pasan.
+app.use(createCsrfProtection(config, logger));
 app.use(
   pinoHttp({
     logger,
