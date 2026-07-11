@@ -2483,6 +2483,7 @@ const TECHO_INITIAL_VENDEDOR = {
   pendiente: 0, pendienteModo: "incluye_pendiente", alturaDif: 0,
   // @deprecated — ignorado en runtime; usar derivedTipoAguas (calculado desde zonas[].dosAguas)
   tipoAguas: "", tipoEst: "", ptsHorm: 0, ptsMetal: 0, ptsMadera: 0,
+  estructuraOmitida: false,
   borders: { frente: "", fondo: "", latIzq: "", latDer: "" },
   inclAccesorios: true,
   bordesExtendido: false,
@@ -3056,6 +3057,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       }
       case "pendiente": return typeof techo.pendiente === "number" && techo.pendiente >= 0;
       case "estructura": {
+        if (techo.estructuraOmitida) return true; // omitir estructura → avanzar con cantidades sugeridas
         if (!techo.tipoEst) return false;
         if (techo.tipoEst === "combinada") {
           const total = (techo.ptsHorm ?? 0) + (techo.ptsMetal ?? 0) + (techo.ptsMadera ?? 0);
@@ -6205,6 +6207,16 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   })()}
                   {stepId === "estructura" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>Estructura del techo</span>
+                        <Toggle label={techo.estructuraOmitida ? "Definir" : "Omitir"} value={!techo.estructuraOmitida} onChange={v => setTecho(t => ({ ...t, estructuraOmitida: !v }))} />
+                      </div>
+                      {techo.estructuraOmitida ? (
+                        <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: "12px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                          Estructura sin definir: se sugieren las cantidades de fijación asumiendo <strong>metal</strong>. Definí la estructura para confirmar el tipo de tornillo/anclaje.
+                        </div>
+                      ) : (
+                      <>
                       <SegmentedControl
                         value={techo.tipoEst}
                         onChange={v => uT("tipoEst", v)}
@@ -6263,6 +6275,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                             </div>
                           )}
                         </div>
+                      )}
+                      </>
                       )}
                       {showRoof2dInQuoteVisor ? (
                         <RoofPreviewMetricsSidebar
