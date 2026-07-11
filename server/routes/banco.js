@@ -16,7 +16,7 @@
  *   503 si DB no disponible · nunca 500 por fallas transitorias de infra
  */
 import { Router } from "express";
-import { getBancoPool } from "../lib/bancoDb.js";
+import { getBancoPool, isDbConnectionError } from "../lib/bancoDb.js";
 import { requireUser } from "../lib/identityAuth.js";
 import {
   ENTIDADES,
@@ -94,7 +94,7 @@ export default function createBancoRouter(config, logger) {
   // ─── Cuentas ─────────────────────────────────────────────────────────
   router.get(
     "/api/banco/accounts",
-    requireUser(),
+    requireUser({ module: "banco" }),
     requireDb,
     asyncHandler(async (req, res) => {
       const includeArchived = req.query.include_archived === "1";
@@ -177,11 +177,12 @@ export default function createBancoRouter(config, logger) {
       }
       let buffer = null;
       if (fileBase64) {
-        try {
-          buffer = Buffer.from(fileBase64, "base64");
-        } catch {
+        // Buffer.from(x, "base64") nunca lanza: valida charset/padding antes.
+        const compact = fileBase64.replace(/[\s\r\n]+/g, "");
+        if (!/^[A-Za-z0-9+/]*={0,2}$/.test(compact) || compact.length % 4 !== 0) {
           return res.status(400).json({ ok: false, error: "base64_invalido" });
         }
+        buffer = Buffer.from(compact, "base64");
         if (!buffer.length) return res.status(400).json({ ok: false, error: "archivo_vacio" });
         if (buffer.length > MAX_FILE_BYTES) {
           return res.status(400).json({ ok: false, error: "archivo_muy_grande", max_bytes: MAX_FILE_BYTES });
@@ -333,64 +334,78 @@ export default function createBancoRouter(config, logger) {
     }),
   );
 
+  /**
+   * Filtros de movimientos compartidos por /movements y /summary — la UI manda
+   * el mismo query string a ambos, así los agregados nunca divergen de la
+   * tabla. Devuelve { error } (→ 400) o { where, params }.
+   */
+  function parseMovementFilters(query) {
+    const where = [];
+    const params = [];
+    const accountId = trimOrNull(query.account_id);
+    if (accountId) {
+      if (!UUID_RE.test(accountId)) return { error: "invalid_account_id" };
+      params.push(accountId);
+      where.push(`m.account_id = $${params.length}`);
+    }
+    const from = isoDateOrNull(query.from);
+    if (from) {
+      params.push(from);
+      where.push(`m.fecha >= $${params.length}`);
+    }
+    const to = isoDateOrNull(query.to);
+    if (to) {
+      params.push(to);
+      where.push(`m.fecha <= $${params.length}`);
+    }
+    const q = trimOrNull(query.q);
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(
+        `(m.descripcion ilike $${params.length} or m.asunto ilike $${params.length} or m.numero_documento ilike $${params.length})`,
+      );
+    }
+    const categoria = trimOrNull(query.categoria);
+    if (categoria) {
+      params.push(categoria);
+      where.push(`m.categoria = $${params.length}`);
+    }
+    const entidad = entidadOrInvalid(trimOrNull(query.entidad) ?? undefined);
+    if (entidad === "__invalid__") return { error: "invalid_entidad" };
+    if (entidad) {
+      params.push(entidad);
+      where.push(`m.entidad = $${params.length}`);
+    }
+    const tipo = trimOrNull(query.tipo);
+    if (tipo === "debito") where.push("m.debito is not null");
+    else if (tipo === "credito") where.push("m.credito is not null");
+    else if (tipo) return { error: "invalid_tipo" };
+    if (query.sin_clasificar === "1") {
+      where.push("m.categoria is null and m.entidad is null");
+    }
+    return { where, params };
+  }
+
   // ─── Movimientos ─────────────────────────────────────────────────────
   router.get(
     "/api/banco/movements",
-    requireUser(),
+    requireUser({ module: "banco" }),
     requireDb,
     asyncHandler(async (req, res) => {
-      const where = [];
-      const params = [];
-      const accountId = trimOrNull(req.query.account_id);
-      if (accountId) {
-        if (!UUID_RE.test(accountId)) return res.status(400).json({ ok: false, error: "invalid_account_id" });
-        params.push(accountId);
-        where.push(`m.account_id = $${params.length}`);
-      }
-      const from = isoDateOrNull(req.query.from);
-      if (from) {
-        params.push(from);
-        where.push(`m.fecha >= $${params.length}`);
-      }
-      const to = isoDateOrNull(req.query.to);
-      if (to) {
-        params.push(to);
-        where.push(`m.fecha <= $${params.length}`);
-      }
-      const q = trimOrNull(req.query.q);
-      if (q) {
-        params.push(`%${q}%`);
-        where.push(
-          `(m.descripcion ilike $${params.length} or m.asunto ilike $${params.length} or m.numero_documento ilike $${params.length})`,
-        );
-      }
-      const categoria = trimOrNull(req.query.categoria);
-      if (categoria) {
-        params.push(categoria);
-        where.push(`m.categoria = $${params.length}`);
-      }
-      const entidad = entidadOrInvalid(trimOrNull(req.query.entidad) ?? undefined);
-      if (entidad === "__invalid__") return res.status(400).json({ ok: false, error: "invalid_entidad" });
-      if (entidad) {
-        params.push(entidad);
-        where.push(`m.entidad = $${params.length}`);
-      }
-      const tipo = trimOrNull(req.query.tipo);
-      if (tipo === "debito") where.push("m.debito is not null");
-      else if (tipo === "credito") where.push("m.credito is not null");
-      else if (tipo) return res.status(400).json({ ok: false, error: "invalid_tipo" });
-      if (req.query.sin_clasificar === "1") {
-        where.push("m.categoria is null and m.entidad is null");
-      }
+      const filters = parseMovementFilters(req.query);
+      if (filters.error) return res.status(400).json({ ok: false, error: filters.error });
+      const { where, params } = filters;
       const whereSql = where.length ? `where ${where.join(" and ")}` : "";
 
       const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
       const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
 
+      // round(sum(numeric), 2)::float8: la suma es exacta en numeric; el cast
+      // final a float de un valor ya redondeado nunca mueve el centavo.
       const totals = await pool.query(
         `select count(*)::int as total,
-                coalesce(sum(m.debito), 0)::float as debito,
-                coalesce(sum(m.credito), 0)::float as credito
+                round(coalesce(sum(m.debito), 0), 2)::float8 as debito,
+                round(coalesce(sum(m.credito), 0), 2)::float8 as credito
            from banco_movements m ${whereSql}`,
         params,
       );
@@ -455,7 +470,7 @@ export default function createBancoRouter(config, logger) {
   // ─── Resumen (conciliación) ──────────────────────────────────────────
   router.get(
     "/api/banco/summary",
-    requireUser(),
+    requireUser({ module: "banco" }),
     requireDb,
     asyncHandler(async (req, res) => {
       const groupKey = trimOrNull(req.query.group) || "mes";
@@ -465,31 +480,18 @@ export default function createBancoRouter(config, logger) {
         entidad: "coalesce(m.entidad, '(sin clasificar)')",
       }[groupKey];
       if (!groupExpr) return res.status(400).json({ ok: false, error: "invalid_group" });
-      const where = [];
-      const params = [];
-      const accountId = trimOrNull(req.query.account_id);
-      if (accountId) {
-        if (!UUID_RE.test(accountId)) return res.status(400).json({ ok: false, error: "invalid_account_id" });
-        params.push(accountId);
-        where.push(`m.account_id = $${params.length}`);
-      }
-      const from = isoDateOrNull(req.query.from);
-      if (from) {
-        params.push(from);
-        where.push(`m.fecha >= $${params.length}`);
-      }
-      const to = isoDateOrNull(req.query.to);
-      if (to) {
-        params.push(to);
-        where.push(`m.fecha <= $${params.length}`);
-      }
+      // Mismos filtros que /movements (q, tipo, entidad, sin_clasificar, …):
+      // la UI manda el mismo query string y los agregados deben calzar 1:1.
+      const filters = parseMovementFilters(req.query);
+      if (filters.error) return res.status(400).json({ ok: false, error: filters.error });
+      const { where, params } = filters;
       const whereSql = where.length ? `where ${where.join(" and ")}` : "";
       const { rows } = await pool.query(
         `select ${groupExpr} as grupo,
                 count(*)::int as movimientos,
-                coalesce(sum(m.debito), 0)::float as debito,
-                coalesce(sum(m.credito), 0)::float as credito,
-                (coalesce(sum(m.credito), 0) - coalesce(sum(m.debito), 0))::float as neto
+                round(coalesce(sum(m.debito), 0), 2)::float8 as debito,
+                round(coalesce(sum(m.credito), 0), 2)::float8 as credito,
+                round(coalesce(sum(m.credito), 0) - coalesce(sum(m.debito), 0), 2)::float8 as neto
            from banco_movements m ${whereSql}
           group by 1 order by 1`,
         params,
@@ -501,7 +503,7 @@ export default function createBancoRouter(config, logger) {
   // ─── Reglas de clasificación ─────────────────────────────────────────
   router.get(
     "/api/banco/rules",
-    requireUser(),
+    requireUser({ module: "banco" }),
     requireDb,
     asyncHandler(async (req, res) => {
       const includeArchived = req.query.include_archived === "1";
@@ -626,6 +628,15 @@ export default function createBancoRouter(config, logger) {
       res.json({ ok: true, scanned: rows.length, updated });
     }),
   );
+
+  // Semántica del proyecto: fallas transitorias de conexión a la DB → 503,
+  // nunca 500. Los errores de programación siguen al handler global.
+  // eslint-disable-next-line no-unused-vars
+  router.use((err, req, res, next) => {
+    if (res.headersSent || !isDbConnectionError(err)) return next(err);
+    log.warn?.({ err: err?.message, path: req.path }, "[banco] DB no disponible");
+    return res.status(503).json({ ok: false, error: "db_unavailable" });
+  });
 
   return router;
 }

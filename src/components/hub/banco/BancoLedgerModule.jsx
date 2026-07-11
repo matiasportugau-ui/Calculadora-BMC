@@ -187,6 +187,10 @@ export default function BancoLedgerModule() {
     }
   }
 
+  // Borradores de categoría por movimiento mientras el usuario tipea; al
+  // guardar (o fallar el PATCH) se limpia y el input vuelve al valor del server.
+  const [catDrafts, setCatDrafts] = useState({});
+
   async function patchMovement(id, patch) {
     try {
       const r = await apiFetch(`/api/banco/movements/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
@@ -357,11 +361,21 @@ export default function BancoLedgerModule() {
                 <td style={ui.td}>
                   <input
                     style={{ ...ui.input, width: 130, padding: "4px 8px" }}
-                    defaultValue={m.categoria || ""}
+                    value={catDrafts[m.movement_id] ?? m.categoria ?? ""}
                     placeholder="—"
-                    onBlur={(e) => {
+                    onChange={(e) =>
+                      setCatDrafts((d) => ({ ...d, [m.movement_id]: e.target.value }))
+                    }
+                    onBlur={async (e) => {
                       const v = e.target.value.trim() || null;
-                      if (v !== (m.categoria || null)) patchMovement(m.movement_id, { categoria: v });
+                      if (v !== (m.categoria || null)) {
+                        await patchMovement(m.movement_id, { categoria: v });
+                      }
+                      setCatDrafts((d) => {
+                        const rest = { ...d };
+                        delete rest[m.movement_id];
+                        return rest;
+                      });
                     }}
                   />
                 </td>

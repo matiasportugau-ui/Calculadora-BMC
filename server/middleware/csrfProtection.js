@@ -14,10 +14,16 @@
  *     espejo del CORS), o un header custom (`X-Requested-With`) que fuerza
  *     preflight CORS — solo aprobado para orígenes permitidos.
  *  2. Double-submit cookie: se emite una cookie legible `bmc_csrf` (random,
- *     no-httpOnly) que el cliente puede reflejar en `X-CSRF-Token`; si ambos
- *     están presentes se exige igualdad (mismatch → 403 aunque haya otros
- *     headers). Un header de token sin cookie gemela vale como señal de
- *     preflight igual que X-Requested-With.
+ *     no-httpOnly) que el cliente puede reflejar en `X-CSRF-Token`.
+ *
+ * Precedencia deliberada: la procedencia confiable (same-origin/same-site u
+ * Origin permitido) pasa PRIMERO — un atacante no puede falsificar Origin
+ * desde su sitio, y rechazar a un usuario legítimo de origen confiable por
+ * un token rotado en otra pestaña sería un 403 gratuito. El double-submit
+ * gobierna solo los requests SIN procedencia confiable: ahí, si cookie y
+ * header están presentes se exige igualdad (mismatch → 403 aunque haya otros
+ * headers); un header de token sin cookie gemela vale como señal de preflight
+ * igual que X-Requested-With.
  *
  *  - Métodos seguros (GET/HEAD/OPTIONS) y requests SIN cookies pasan intactos
  *    (Bearer puro, webhooks HMAC, curl, health checks).

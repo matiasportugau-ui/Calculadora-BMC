@@ -88,6 +88,10 @@ async function main() {
       (await request(port, "POST", "/t", { ...CSRF_COOKIE, ...EVIL, "x-csrf-token": "b".repeat(32), "x-requested-with": "XMLHttpRequest" })).status === 403);
     assert("POST double-submit token corto (<16) → 403",
       (await request(port, "POST", "/t", { cookie: "bmc_csrf=short", ...EVIL, "x-csrf-token": "short" })).status === 403);
+    // Precedencia deliberada: procedencia confiable gana — un Origin permitido
+    // pasa aunque el token esté desincronizado (rotado en otra pestaña).
+    assert("POST mismatch pero Origin permitido → 200 (procedencia gana)",
+      (await request(port, "POST", "/t", { ...CSRF_COOKIE, origin: "https://calculadora-bmc.vercel.app", "sec-fetch-site": "cross-site", "x-csrf-token": "b".repeat(32) })).status === 200);
   } finally {
     server.close();
   }

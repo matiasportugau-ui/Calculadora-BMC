@@ -8,7 +8,7 @@
 import http from "node:http";
 import express from "express";
 import createBancoRouter from "../server/routes/banco.js";
-import { resetBancoPoolForTests } from "../server/lib/bancoDb.js";
+import { isDbConnectionError, resetBancoPoolForTests } from "../server/lib/bancoDb.js";
 
 let passed = 0;
 let failed = 0;
@@ -85,6 +85,17 @@ async function main() {
 
     const rules = await requestJson(port, "POST", "/api/banco/rules", { pattern: "abc" });
     assert("rules POST sin auth → 401", rules.status === 401, rules);
+
+    // isDbConnectionError: fallas de infra → 503; errores de programación → 500
+    assert("ECONNREFUSED es error de conexión", isDbConnectionError({ code: "ECONNREFUSED" }));
+    assert("08006 (connection_failure) es error de conexión", isDbConnectionError({ code: "08006" }));
+    assert("'Connection terminated unexpectedly' es error de conexión",
+      isDbConnectionError({ message: "Connection terminated unexpectedly" }));
+    assert("timeout de pool es error de conexión",
+      isDbConnectionError({ message: "timeout exceeded when trying to connect" }));
+    assert("syntax error (42601) NO es error de conexión", !isDbConnectionError({ code: "42601", message: "syntax error" }));
+    assert("unique_violation (23505) NO es error de conexión", !isDbConnectionError({ code: "23505" }));
+    assert("null NO es error de conexión", !isDbConnectionError(null));
   } finally {
     server.close();
     await resetBancoPoolForTests();
