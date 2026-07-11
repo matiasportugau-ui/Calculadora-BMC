@@ -418,7 +418,8 @@ router.get(
                 co.avatar_url, co.created_at, co.updated_at,
                 COALESCE(agg.conversation_count, 0) AS conversation_count,
                 agg.last_activity_at,
-                COALESCE(agg.channels, '{}') AS channels
+                COALESCE(agg.channels, '{}') AS channels,
+                COUNT(*) OVER() AS total_count
            FROM omni_contacts co
            LEFT JOIN (
              SELECT c.contact_id,
@@ -438,11 +439,13 @@ router.get(
           LIMIT $2 OFFSET $3`,
         params,
       );
+      const totalCount = rows[0]?.total_count ?? 0;
       res.json({
         ok: true,
         generated_at: new Date().toISOString(),
         count: rows.length,
-        contacts: rows,
+        total_count: Number(totalCount),
+        contacts: rows.map(({ total_count: _tc, ...r }) => r),
       });
     } catch (e) {
       if (e?.code !== "42703" && e?.code !== "42P01") throw e;

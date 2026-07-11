@@ -63,7 +63,7 @@ export default function UnifiedContactsPanel({ token }) {
     return () => clearTimeout(id);
   }, [query]);
 
-  const { contacts, loading, error, reload } = useOmniContacts(token, { search });
+  const { contacts, total, loading, error, reload } = useOmniContacts(token, { search });
 
   return (
     <div>
@@ -80,6 +80,13 @@ export default function UnifiedContactsPanel({ token }) {
         <p style={{ margin: 0, fontSize: "0.875rem", color: muted }}>
           Directorio unificado de contactos a través de todos los canales (WhatsApp,
           MercadoLibre, Email). Para fusionar duplicados usá la pestaña «Duplicados».
+          {!loading && total > 0 && (
+            <span style={{ marginLeft: "0.5rem", fontWeight: 500 }}>
+              {contacts.length < total
+                ? `Mostrando ${contacts.length} de ${total}`
+                : `${total} contacto${total !== 1 ? "s" : ""}`}
+            </span>
+          )}
         </p>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <input

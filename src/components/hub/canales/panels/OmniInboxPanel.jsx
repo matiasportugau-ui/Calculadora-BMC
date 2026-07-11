@@ -29,6 +29,11 @@ export default function OmniInboxPanel({ token, initialConversationId, onInitial
   // inbox to a single channel: seed the filter and hide the channel picker so
   // it stays channel-scoped. Absent → the full multi-channel Omni inbox.
   const [channelFilter, setChannelFilter] = useState(() => lockedChannel || "");
+  // Keep channelFilter in sync if the parent changes lockedChannel after mount
+  // (e.g. the host tab strip reuses this panel instance with a different lock).
+  useEffect(() => {
+    if (lockedChannel !== undefined) setChannelFilter(lockedChannel || "");
+  }, [lockedChannel]);
   const [statusFilter, setStatusFilter] = useState("");
   const [accountFilter, setAccountFilter] = useState("");
   const [assignedFilter, setAssignedFilter] = useState(""); // "" | "me" | "unassigned"

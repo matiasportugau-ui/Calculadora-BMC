@@ -209,6 +209,7 @@ export function useOmniDuplicateContacts(token) {
 // Degrades to [] so the panel never breaks pre-migration or when the omni DB is off.
 export function useOmniContacts(token, { search = "", limit = 100 } = {}) {
   const [contacts, setContacts] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -221,9 +222,11 @@ export function useOmniContacts(token, { search = "", limit = 100 } = {}) {
       if (search) params.set("search", search);
       const data = await omniFetch(token, `/api/omni/contacts?${params}`);
       setContacts(Array.isArray(data?.contacts) ? data.contacts : []);
+      setTotal(typeof data?.total_count === "number" ? data.total_count : (data?.contacts?.length ?? 0));
     } catch (e) {
       setError(e.message);
       setContacts([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -233,7 +236,7 @@ export function useOmniContacts(token, { search = "", limit = 100 } = {}) {
     reload();
   }, [reload]);
 
-  return { contacts, loading, error, reload };
+  return { contacts, total, loading, error, reload };
 }
 
 // Merge two duplicate contacts (Wave 6b, admin-only on the backend). Not a
