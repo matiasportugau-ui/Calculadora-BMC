@@ -9,8 +9,10 @@ import { isDesignPreviewEnabled } from "../../lib/designPreviewMode.js";
 
 const RoofPanelRealisticScene = lazy(() => import("../RoofPanelRealisticScene.jsx"));
 
-// La escena no maneja fallo de contexto WebGL y no hay error boundary arriba:
-// sin este probe, un navegador sin WebGL rompería todo el quoter al expandir.
+// La escena no maneja fallo de contexto WebGL; el único boundary por encima es
+// el de ruta (RouteErrorBoundary, App.jsx), que ante un throw reemplazaría TODA
+// la calculadora por la pantalla de error (y no se recupera hasta navegar, por
+// resetKey=pathname). Por eso probamos WebGL y degradamos in-situ.
 let webglSupport = null;
 function isWebglSupported() {
   if (webglSupport !== null) return webglSupport;
@@ -52,6 +54,9 @@ export default function Roof3DSection({
     () => (zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0),
     [zonas],
   );
+  // Defensa para reuso standalone: el gate primario vive en el mount del quoter
+  // (`{isDesignPreviewEnabled() && <Roof3DSection/>}`), así que en el flujo actual
+  // esto nunca retorna null — se mantiene por si el componente se monta suelto.
   if (!isDesignPreviewEnabled()) return null;
 
   return (
