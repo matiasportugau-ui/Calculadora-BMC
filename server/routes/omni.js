@@ -379,6 +379,82 @@ router.post(
   },
 );
 
+// Contact list — read-only unified-contacts directory for the Canales "Contactos
+// Unificados" tab. Searches name/email/phone/wa_phone (case-insensitive),
+// newest-updated first, with each contact's conversation count, last activity and
+// the set of channels it was reached on (derived from its conversations). Excludes
+// already-merged ("loser") contacts via the same properties->>'merged_into' guard
+// the duplicates scan uses, and degrades to an empty list on a missing column/table
+// so the panel never hard-fails pre-migration. Team-isolated for non-admin operators:
+// only contacts with at least one conversation visible to the user's team(s) are
+// returned, and conversation counts/channels reflect only those visible conversations.
+router.get(
+  "/omni/contacts",
+  omniReadLimiter,
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const q = String(req.query.search || req.query.q || "").trim();
+    const search = q ? `%${q}%` : null;
+
+    const isAdmin = req.user?.role === "admin" || req.user?.role === "superadmin";
+    // For non-admins, scope both aggregation and contact visibility to their
+    // team's conversations (matching the predicate used by GET /omni/conversations).
+    const params = [search, limit, offset];
+    let aggWhere = "";
+    let contactTeamFilter = "";
+    if (!isAdmin) {
+      params.push(req.user.id);
+      aggWhere = `WHERE (c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`;
+      // Only expose contacts that have at least one conversation visible to this user.
+      contactTeamFilter = "AND agg.contact_id IS NOT NULL";
+    }
+
+    try {
+      const { rows } = await req.omniPool.query(
+        `SELECT co.id, co.name, co.email, co.phone, co.wa_phone, co.ml_user_id,
+                co.avatar_url, co.created_at, co.updated_at,
+                COALESCE(agg.conversation_count, 0) AS conversation_count,
+                agg.last_activity_at,
+                COALESCE(agg.channels, '{}') AS channels,
+                COUNT(*) OVER() AS total_count
+           FROM omni_contacts co
+           LEFT JOIN (
+             SELECT c.contact_id,
+                    COUNT(*)::int AS conversation_count,
+                    MAX(c.updated_at) AS last_activity_at,
+                    array_agg(DISTINCT c.channel) AS channels
+               FROM omni_conversations c
+               ${aggWhere}
+              GROUP BY c.contact_id
+           ) agg ON agg.contact_id = co.id
+          WHERE co.properties->>'merged_into' IS NULL
+            AND ($1::text IS NULL
+                 OR co.name ILIKE $1 OR co.email ILIKE $1
+                 OR co.phone ILIKE $1 OR co.wa_phone ILIKE $1)
+            ${contactTeamFilter}
+          ORDER BY co.updated_at DESC
+          LIMIT $2 OFFSET $3`,
+        params,
+      );
+      const totalCount = rows[0]?.total_count ?? 0;
+      res.json({
+        ok: true,
+        generated_at: new Date().toISOString(),
+        count: rows.length,
+        total_count: Number(totalCount),
+        contacts: rows.map(({ total_count: _tc, ...r }) => r), // strip the window-function aggregate from each row
+      });
+    } catch (e) {
+      if (e?.code !== "42703" && e?.code !== "42P01") throw e;
+      req.log?.warn?.({ err: e.message, code: e.code }, "omni contacts list degraded");
+      res.json({ ok: true, degraded: e.code, count: 0, contacts: [] });
+    }
+  },
+);
+
 // "Reply-zero" action queue — the ranked, per-conversation "act on THIS now" list
 // the admin cockpit's COUNTS don't give you. Read-only aggregation across all
 // channels, team-isolated, scored by the pure policy in server/lib/omni/urgency.js.
