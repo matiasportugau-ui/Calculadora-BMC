@@ -88,28 +88,37 @@ definido en `roofPanelVisualProfiles.js` pero **nunca se lee** en la escena.
 - Esto sigue siendo la fuente del **material/diffuse map** de la geometría nueva — cero assets
   nuevos por color, solo por forma de perfil.
 
-### 1.3 Arquitectura propuesta
-- **Loader:** `useGLTF` (drei) ya trae `GLTFLoader`/`DRACOLoader` transitivos vía `three-stdlib`;
-  agregarlo como dependencia directa y self-hostear el decoder Draco en `public/draco/` (mismo
-  criterio "local-first" que `public/images/isoroof-colonial-texas-panel.png`).
-- **Hosting:** `public/models/roof-panels/*.glb` local (no CDN remoto) — sin problemas de CORS, y
-  `.glb` no está en el `globPatterns` del PWA precache (`vite.config.js`) así que no infla el bundle
-  offline; solo se descarga bajo demanda (la sección arranca colapsada, `Roof3DSection.jsx:68`).
-- **Mapeo familia → modelo (menos modelos que familias):** `PANELS_TECHO.*.fam` ya agrupa por perfil
-  físico real: `ISOROOF_3G`/`PLUS`/`FOIL` comparten `fam:"ISOROOF"`. Recomendado: **como máximo 4
-  perfiles distintos** (ISOROOF trapezoidal, ISODEC EPS, ISODEC PIR, ISOROOF Colonial) para 6
-  familias. Nuevo archivo `src/data/roofPanelModelUrls.js` con el mapeo familia→key→URL+metadata de
-  tiling (pitch de nervadura, largo nativo de tile).
-- **Color:** un modelo por forma de perfil, sin textura embebida (solo geometría+UVs); en runtime se
-  arma un `MeshStandardMaterial` con el mapa de `getRoofPanelMapUrl` — cero assets nuevos por color.
-- **Tiling/escala:** modelar un tile de `au` metros de ancho × ~1m de largo, repetido con
-  `THREE.InstancedMesh` a lo largo de `largo` (reemplaza el hack actual de `repeat`/`offset` de
-  textura). Presupuesto: ≤1500 triángulos por tile, una `InstancedMesh` + un material compartido por
-  combinación (familia-forma, color) — agrupando **todas las franjas de una zona**, no una
-  `InstancedMesh` por franja, para minimizar draw calls. Con hasta ~700-1000+ instancias en una
-  cotización multi-zona, `InstancedMesh` maneja esto sin problema en un solo draw call; el
-  presupuesto de triángulos por tile es la variable real de performance, no la cantidad de
-  instancias — medir en el spike de la Fase 1, no asumir.
+### 1.3 Arquitectura propuesta — ACTUALIZADO 2026-07-11: procedural desde cotas reales, no glTF externo
+
+**Cambio de enfoque respecto a la versión original de esta sección** (ver §1.4 para el hallazgo que
+lo motiva): en vez de depender de conseguir un `.glb` externo, se construye la geometría con
+`THREE.ExtrudeGeometry` desde una sección 2D real — **la misma técnica ya especificada en la
+Sección 2 para los perfiles de borde**, aplicada ahora también al panel. Sin loader nuevo, sin
+Draco, sin hosting de assets binarios, sin dependencia externa:
+
+- **Sección 2D real para ISOROOF (trapezoidal):** plano técnico acotado de BMC (`isoroof-
+  cross-section-dimensioned.png`, ver §1.4) da la unidad repetible exacta: ancho total 1000mm,
+  nervadura central 26mm de ancho × 40mm de alto, paso entre nervaduras 72mm. Se define un
+  `THREE.Shape` con esa unidad y se repite a lo largo del `au` de la zona.
+- **Sección 2D para ISODEC (engrafado):** panel mayormente plano (espesor real 50/80/120mm por
+  `PANELS_TECHO.esp`) con una costura/gancho angosto solo en los bordes cada `au=1.12m` — visible
+  en el "Detalle engrafe" de la ficha técnica. Geometría más simple que ISOROOF; la única cota sin
+  número exacto es el alto de la costura — estimarla ahí (marcado explícitamente como estimación)
+  tiene bajo riesgo visual dado que el resto del panel es plano.
+- **Nuevo archivo `src/data/roofPanelCrossSections.js`** (mismo patrón que
+  `roofPerfilCrossSections.js` de la Sección 2) — define la unidad repetible por forma de familia
+  (`ISOROOF`, `ISODEC`, `ISODEC_PIR`, `ISOROOF_COLONIAL`) en mm reales, más las cotas generales
+  (`au`, `esp`) ya existentes en `PANELS_TECHO` para escalar correctamente.
+- **Tiling/escala:** `ExtrudeGeometry` de la unidad repetible, instanciada con `THREE.InstancedMesh`
+  a lo largo de `largo` — mismo presupuesto y razonamiento de performance que la versión anterior de
+  esta sección (≤1500 triángulos por tile, una `InstancedMesh` por combinación familia-forma+color,
+  agrupando todas las franjas de una zona).
+- **Color/textura:** sin cambios — sigue usando `getRoofPanelMapUrl`/`getRoofPanelVisualProfile`
+  como diffuse map sobre la geometría real, igual que ya estaba planeado.
+- **Si más adelante aparece un archivo 3D fuente real** (Opción D en §1.4, o Kingspan confirmado por
+  el proveedor), se puede reemplazar la sección paramétrica por geometría importada sin cambiar el
+  resto de la arquitectura (mismo punto de inyección: una función que devuelve geometría de tile) —
+  no es una apuesta irreversible.
 
 ### 1.4 De dónde salen los modelos reales — ACTUALIZADO 2026-07-11: BMC/su proveedor YA TIENE renders 3D fuente
 
@@ -135,11 +144,15 @@ visualmente, no solo por nombre de archivo:
   y precio.
 
 **Conclusión: alguien (BMC, su agencia, o Bromyros/Kingspan) ya tiene los archivos 3D fuente detrás
-de estos renders — probablemente no es necesario modelar desde cero.** Esto reordena las opciones:
+de estos renders.** Y para ISOROOF ni siquiera hace falta esperar ese archivo: `isoroof-cross-
+section-dimensioned.png` (persistida en `docs/team/visual/roof-panel-3d-refs/`) es un plano técnico
+BMC con **cotas exactas en mm**: ancho total 1000, nervadura 26×40, paso 72 — suficiente para
+definir la geometría real HOY, sin depender de nadie. Esto reordena las opciones:
 
 | Opción | Qué es | Uso recomendado |
 |---|---|---|
-| **D. Pedir el archivo 3D fuente al proveedor/agencia (NUEVO, probar primero)** | Los renders `3D-*` y las fichas técnicas con "Detalle engrafe" son evidencia directa de un modelo 3D ya existente en algún lado de la cadena (BMC marketing, agencia de diseño, o Bromyros/Kingspan Uruguay — ver Opción C corregida abajo). | **Primer paso, antes que A/B/C** — costo ~cero, más rápido y con exactitud real de producto. Contactar al equipo de marketing/diseño de BMC (mismo canal que generó estas fichas) y/o soporte técnico de Kingspan Uruguay (ex-Bromyros, ver abajo) pidiendo el `.glb`/`.fbx`/`.blend`/`.step` fuente. Mientras se gestiona, las imágenes ya descargadas sirven como referencia de proporciones para A/B. |
+| **E. Procedural desde cotas reales publicadas (NUEVO, la más rápida)** | El plano acotado de ISOROOF (1000/26/40/72mm, ver §1.3) permite construir la sección 2D exacta con `ExtrudeGeometry` ya, sin depender de conseguir ningún archivo externo. ISODEC es geometría más simple (mayormente plano) con una sola cota estimada (alto de costura). | **Camino por defecto — implementado directamente en el código, ver §1.3.** Cero costo, cero espera, cero riesgo de licencia. Cubre ISOROOF con precisión real; ISODEC con una estimación de bajo riesgo en un solo detalle menor. |
+| **D. Pedir el archivo 3D fuente al proveedor/agencia** | Los renders `3D-*` y las fichas técnicas con "Detalle engrafe" son evidencia directa de un modelo 3D ya existente en algún lado de la cadena (BMC marketing, agencia de diseño, o Bromyros/Kingspan Uruguay — ver Opción C corregida abajo). | Mejora incremental sobre E si aparece — reemplaza la geometría paramétrica por la real sin cambiar la arquitectura (ver §1.3). No bloqueante: E ya funciona sin esto. |
 | **A. Marketplace stock** (CGTrader/TurboSquid/Sketchfab) | Modelos genéricos de chapa/panel corrugado, muchos gratis o de bajo costo; CGTrader ofrece conversión gratis a glTF a pedido. | **Spike de validación de pipeline** (Fase 1) si D no resuelve a tiempo — NO el asset final. Verificar licencia de redistribución comercial en app web viva antes de usar más allá del spike. |
 | **B. Freelance/encargo** (Upwork/Fiverr/3D artist local UY) | Modelar el perfil real de BMC a partir de fotos + dimensiones reales (`au`/`esp` de `PANELS_TECHO`) — ahora con las fichas técnicas y renders `3D-*` como referencia directa de proporciones, mucho más preciso que antes. | Fallback si D no da el archivo fuente. Lanzar en paralelo al spike de la opción A para no bloquear. |
 | **C. Kingspan BIM library — CORREGIDO, no es un competidor** | **Bromyros (el fabricante real detrás de los paneles ISODEC/ISOROOF de BMC) fue adquirida por Kingspan en 2021** y opera hoy como "Kingspan Uruguay" / "Bromyros by Kingspan Isoeste" — confirmado: el propio flyer de BMC lleva el logo "BROMYROS by Kingspan · ISOESTE". La librería BIM pública de Kingspan (kingspan.com/us/en/services/insulated-panel-bim-tools, NBS BIM Library, BIMobject, ARCAT — gratis, LOD300) **no es de un competidor** — es del mismo grupo que fabrica/licencia el producto real. | Verificar con el proveedor si el SKU/perfil de Kingspan coincide con el de BMC antes de usar as-is (nombres de línea pueden diferir entre catálogo internacional y local) — pero ya no aplica el veto ético/de licencia anterior. Puede ser una fuente legítima y de alta fidelidad, o el mismo contacto de la Opción D puede confirmarlo directo. |
@@ -280,9 +293,9 @@ la Sección 2; cumbrera es plano-continuo por diseño, sin escalón visible).
 | Fase | Contenido | Riesgo/duración | Depende de | Estado |
 |---|---|---|---|---|
 | **0** | Fix de una línea (§3.2) — detección de encuentros | Trivial, ~minutos | — | ✅ Shippeado |
-| **1** | Spike glTF con UN perfil (stock, opción A) — valida loader, InstancedMesh, escala, performance real | **Más incierto de toda la spec**, ~1 semana | Fase 0 no bloquea | Pendiente |
-| **1b** | Encargo freelance (opción B) del perfil real BMC — en paralelo, no bloquea la Fase 1 | ~1-2 semanas turnaround (estimado) | — | Pendiente |
-| **2** | Rollout glTF a las 4 formas de perfil restantes | 1-2 semanas | Fase 1 + assets de 1b | Pendiente |
+| **1** | Panel real ISOROOF vía `ExtrudeGeometry` desde cotas exactas (opción E, §1.4) — geometría paramétrica + `InstancedMesh`, sin dependencia externa | Riesgo bajo en dato de entrada (cotas reales confirmadas); riesgo medio en integración three.js/performance — ~1 semana | Fase 0 no bloquea | Pendiente |
+| **1b** | Pedir archivo 3D fuente real a BMC/Kingspan Uruguay (opción D) — mejora incremental, no bloqueante | ~1-2 semanas turnaround (estimado), en paralelo | — | Pendiente |
+| **2** | Rollout a ISODEC (costura estimada) + ISODEC PIR + ISOROOF Colonial | 1 semana | Fase 1 (mismo patrón de código) | Pendiente |
 | **3** | Bordes/perfiles — cross-sections, extrusión, resolución, threading de props | ~1 semana, corre en paralelo a 1/2 (no depende de geometría real de panel) | Sección 0 (contrato de coordenadas, ya existe) | Pendiente |
 | **3a** | Spike de cumbrera Y-stacking (§3.4) | 2-3 días, temprano, en paralelo a Fase 1 | — | Pendiente |
 | **3b** | `resolveRoofZoneLayout3d` + revive step-infill para desnivel | Depende de 3a | 3a | Pendiente |
@@ -302,12 +315,11 @@ archivo gateado).
 | `src/utils/roofZoneConnectivity.js` (nuevo) | Extraer el union-find ya precedentado en `frontComponentModel` (`PanelinCalculadoraV3_backup.jsx:1221-1291`) a un helper compartido |
 | `src/utils/roofEncounterModel.js` | Agregar `desnivel.stepHeightM` |
 | `src/utils/roof3dLateralStepInfill.js` | Renombrar/reimplementar → `roof3dEncounterStepInfill.js` |
-| `src/data/roofPanelModelUrls.js` (nuevo) | Mapeo familia→modelo glTF + metadata de tiling |
-| `src/data/roofPerfilCrossSections.js` (nuevo) | Secciones 2D placeholder por tipo de perfil |
+| `src/data/roofPanelCrossSections.js` (nuevo) | Secciones 2D reales por forma de familia (ISOROOF con cotas exactas 1000/26/40/72mm, ISODEC con costura estimada) — reemplaza el `roofPanelModelUrls.js`/assets `.glb` de la versión anterior de esta tabla |
+| `src/data/roofPerfilCrossSections.js` (nuevo) | Secciones 2D por tipo de perfil de borde, referenciadas contra los renders reales en `docs/team/visual/roof-panel-3d-refs/` |
 | `src/utils/roofBorderTrimGeometry3d.js` (nuevo) | Extrusión + posicionamiento de trim desde `techoBorders`/`encounterByPair` |
 | `src/components/roof3d/Roof3DSection.jsx` | Threading de `techoBorders`/`techoZonasBorders` |
 | `src/components/PanelinCalculadoraV3_backup.jsx:7544-7553` | Agregar los 2 props al mount de `<Roof3DSection>` |
-| `public/models/roof-panels/*.glb`, `public/draco/` (nuevos) | Assets |
 
 ---
 
