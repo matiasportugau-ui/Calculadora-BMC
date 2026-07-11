@@ -10,6 +10,21 @@ import { isVisor3dEnabled } from "../../lib/visor3dMode.js";
 
 const RoofPanelRealisticScene = lazy(() => import("../RoofPanelRealisticScene.jsx"));
 
+// Inject beta-badge pulse keyframe once (respects prefers-reduced-motion, same
+// inject-once pattern as PanelinChatPanel.jsx).
+if (typeof document !== "undefined" && !document.getElementById("roof3d-beta-kf")) {
+  const s = document.createElement("style");
+  s.id = "roof3d-beta-kf";
+  s.textContent = `
+    @keyframes roof3d-beta-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,159,10,0.45)} 50%{box-shadow:0 0 0 5px rgba(255,159,10,0)} }
+    .roof3d-beta-badge { animation: roof3d-beta-pulse 2.2s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .roof3d-beta-badge { animation: none; }
+    }
+  `;
+  document.head.appendChild(s);
+}
+
 // La escena no maneja fallo de contexto WebGL; el único boundary por encima es
 // el de ruta (RouteErrorBoundary, App.jsx), que ante un throw reemplazaría TODA
 // la calculadora por la pantalla de error (y no se recupera hasta navegar, por
@@ -97,7 +112,25 @@ export default function Roof3DSection({
           color: C.ts,
         }}
       >
-        <span>Visor 3D · Paneles para cubierta</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span>Visor 3D · Paneles para cubierta</span>
+          <span
+            className="roof3d-beta-badge"
+            style={{
+              fontSize: 10,
+              fontWeight: 800,
+              color: C.warning,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              padding: "3px 8px",
+              borderRadius: 6,
+              background: C.warningSoft,
+              border: `1px solid ${C.warning}`,
+            }}
+          >
+            Versión Beta
+          </span>
+        </span>
         {open ? <ChevronUp size={18} color={C.ts} /> : <ChevronDown size={18} color={C.ts} />}
       </button>
       {open && (
