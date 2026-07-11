@@ -1,11 +1,12 @@
-// Visor 3D · Paneles para cubierta — sección colapsable (solo design preview).
-// Lectura pura del estado del techo (one-way): reusa RoofPanelRealisticScene vía
-// React.lazy, mismo chunk lazy que el flujo legacy (ENABLE_ROOF_3D_VISOR), por lo
-// que con el gate apagado no se descarga ni un byte 3D nuevo.
+// Visor 3D · Paneles para cubierta — sección colapsable.
+// Gate: isVisor3dEnabled() — dedicated flag (VITE_FEATURE_VISOR_3D / ?visor3d=1),
+// additive to design-preview. Lectura pura del estado del techo (one-way): reusa
+// RoofPanelRealisticScene vía React.lazy, mismo chunk lazy que el flujo legacy
+// (ENABLE_ROOF_3D_VISOR), por lo que con el gate apagado no se descarga ni un byte 3D nuevo.
 import { lazy, Suspense, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { C, FONT, SHC } from "../../data/constants.js";
-import { isDesignPreviewEnabled } from "../../lib/designPreviewMode.js";
+import { isVisor3dEnabled } from "../../lib/visor3dMode.js";
 
 const RoofPanelRealisticScene = lazy(() => import("../RoofPanelRealisticScene.jsx"));
 
@@ -60,9 +61,9 @@ export default function Roof3DSection({
   // (Math.max(0.05, …)) — lo más plano que puede representar. Ver #667.
   const scenePendiente = Number(pendiente) > 0 ? pendiente : 0.5;
   // Defensa para reuso standalone: el gate primario vive en el mount del quoter
-  // (`{isDesignPreviewEnabled() && <Roof3DSection/>}`), así que en el flujo actual
+  // (`{isVisor3dEnabled() && <Roof3DSection/>}`), así que en el flujo actual
   // esto nunca retorna null — se mantiene por si el componente se monta suelto.
-  if (!isDesignPreviewEnabled()) return null;
+  if (!isVisor3dEnabled()) return null;
 
   return (
     <div
