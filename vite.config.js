@@ -3,6 +3,12 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  define: {
+    // Vite sólo expone import.meta.env.VITE_*; sin esto, los checks de
+    // VERCEL_ENV en src/lib/designPreviewMode.js (auto-on en preview,
+    // hard-block de ?designPreview=1 en producción) son código muerto.
+    'import.meta.env.VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV ?? ''),
+  },
   plugins: [
     react(),
     VitePWA({

@@ -120,6 +120,8 @@ import RoofPreview, { RoofPreviewMetricsSidebar } from "./RoofPreview.jsx";
 const RoofPanelRealisticScene = lazy(() => import("./RoofPanelRealisticScene.jsx"));
 import { PanelFamilyShowcase } from "./PanelFamilyShowcase.jsx";
 import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
+import Roof3DSection from "./roof3d/Roof3DSection.jsx";
+import { isDesignPreviewEnabled } from "../lib/designPreviewMode.js";
 import ScenarioStepIcon from "./ScenarioStepIcon.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
@@ -7538,6 +7540,17 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             >
               <RoofBorderSelector {...roofBorderDockProps} />
             </div>
+          )}
+          {isDesignPreviewEnabled() && (
+            <Roof3DSection
+              zonas={techo.zonas}
+              tipoAguas={derivedTipoAguas}
+              pendiente={techo.pendiente}
+              familiaKey={techo.familia}
+              espesorMm={techo.espesor}
+              panelAu={techoPanelData?.au ?? 1.12}
+              techoColor={techo.color || ""}
+            />
           )}
           <QuoteVisualVisor
             scenarioId={scenario}
