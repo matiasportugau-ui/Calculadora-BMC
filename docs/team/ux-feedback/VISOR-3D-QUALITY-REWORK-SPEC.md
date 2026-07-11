@@ -111,18 +111,44 @@ definido en `roofPanelVisualProfiles.js` pero **nunca se lee** en la escena.
   presupuesto de triángulos por tile es la variable real de performance, no la cantidad de
   instancias — medir en el spike de la Fase 1, no asumir.
 
-### 1.4 De dónde salen los modelos reales (investigado, con fuentes actuales verificadas por web)
-No hay ningún DWG ni asset 3D en el repo hoy — hay que conseguirlos. Tres caminos reales,
-**secuenciados, no mutuamente excluyentes**:
+### 1.4 De dónde salen los modelos reales — ACTUALIZADO 2026-07-11: BMC/su proveedor YA TIENE renders 3D fuente
+
+**Hallazgo directo, investigado en la tienda Shopify viva (bmcuruguay.com.uy), no asumido:**
+BMC (o su proveedor) ya produce **renders 3D reales** (no fotos) para marketing — confirmado
+visualmente, no solo por nombre de archivo:
+
+- Las fichas técnicas de ISODEC/ISODEC PIR (`ficha_tecnica_Isodec.png`,
+  `Ficha_Tecnica_Isodec_PIR_.pdf.png`) incluyen un render 3D del panel con el engrafado visible
+  **y** un corte técnico acotado en mm al pie, con un recuadro **"Detalle engrafe"** que muestra
+  exactamente la unión entre paneles — justo el dato de sección que la Sección 1/2 daba por
+  inexistente.
+- El flyer de ISOROOF FOIL (`BMCFlyer10-IsoroofFOIL.jpg`) trae un render 3D del panel **más íconos
+  3D renderizados de cada accesorio de borde**: Babeta frontal/lateral, Gotero Superior, Cumbrera,
+  Gotero Lateral, Gotero Frontal — con volumen y sombreado reales, no ilustraciones planas.
+- **Los perfiles de borde son productos Shopify individuales** (ej. `cumbrera-isoroof-3g`,
+  `babeta-de-atornillar-lateral-isoroof`, `babeta-de-empotrar-lateral-isoroof`,
+  `canalon-doble-isoroof-...`, `arandela-trapezoidal-caballete-roof`), cada uno con imágenes
+  **con prefijo de archivo literal `3D-`** (ej. `3D-CumbreraIsoroof3G-Gris-WEB01.png`,
+  una por color) — confirmado bajando y mirando el render de Cumbrera: geometría CAD limpia y
+  precisa (cresta simétrica, pestañas, muescas que calzan con la greca del panel), no un ícono
+  genérico. Estos productos también traen largo de stock real (3.03m, coincide con `PERFIL_TECHO`)
+  y precio.
+
+**Conclusión: alguien (BMC, su agencia, o Bromyros/Kingspan) ya tiene los archivos 3D fuente detrás
+de estos renders — probablemente no es necesario modelar desde cero.** Esto reordena las opciones:
 
 | Opción | Qué es | Uso recomendado |
 |---|---|---|
-| **A. Marketplace stock** (CGTrader/TurboSquid/Sketchfab) | Modelos genéricos de chapa/panel corrugado, muchos gratis o de bajo costo; CGTrader ofrece conversión gratis a glTF a pedido. | **Spike de validación de pipeline** (Fase 1) — NO el asset final. Verificar licencia de redistribución comercial en app web viva antes de usar más allá del spike. |
-| **B. Freelance/encargo** (Upwork/Fiverr/3D artist local UY) | Modelar el perfil real de BMC a partir de fotos + dimensiones reales (`au`/`esp` de `PANELS_TECHO`). Forma simple (chapa plegada paramétrica), turnaround/costo bajos en este rubro. | **El asset que efectivamente se shippea.** Lanzar en paralelo al spike de la opción A para no bloquear. |
-| **C. Kingspan BIM library** (kingspan.com/us/en/services/insulated-panel-bim-tools, NBS BIM Library, BIMobject, ARCAT — gratis, LOD300) | Geometría real de un **competidor directo**, no de BMC. | **Solo referencia** para calibrar proporciones de nervadura al briefear al freelancer o evaluar un modelo stock. **Nunca** descargar/adaptar/shippear el mesh o textura de Kingspan — dejarlo explícito en el brief de quien consiga los modelos. |
+| **D. Pedir el archivo 3D fuente al proveedor/agencia (NUEVO, probar primero)** | Los renders `3D-*` y las fichas técnicas con "Detalle engrafe" son evidencia directa de un modelo 3D ya existente en algún lado de la cadena (BMC marketing, agencia de diseño, o Bromyros/Kingspan Uruguay — ver Opción C corregida abajo). | **Primer paso, antes que A/B/C** — costo ~cero, más rápido y con exactitud real de producto. Contactar al equipo de marketing/diseño de BMC (mismo canal que generó estas fichas) y/o soporte técnico de Kingspan Uruguay (ex-Bromyros, ver abajo) pidiendo el `.glb`/`.fbx`/`.blend`/`.step` fuente. Mientras se gestiona, las imágenes ya descargadas sirven como referencia de proporciones para A/B. |
+| **A. Marketplace stock** (CGTrader/TurboSquid/Sketchfab) | Modelos genéricos de chapa/panel corrugado, muchos gratis o de bajo costo; CGTrader ofrece conversión gratis a glTF a pedido. | **Spike de validación de pipeline** (Fase 1) si D no resuelve a tiempo — NO el asset final. Verificar licencia de redistribución comercial en app web viva antes de usar más allá del spike. |
+| **B. Freelance/encargo** (Upwork/Fiverr/3D artist local UY) | Modelar el perfil real de BMC a partir de fotos + dimensiones reales (`au`/`esp` de `PANELS_TECHO`) — ahora con las fichas técnicas y renders `3D-*` como referencia directa de proporciones, mucho más preciso que antes. | Fallback si D no da el archivo fuente. Lanzar en paralelo al spike de la opción A para no bloquear. |
+| **C. Kingspan BIM library — CORREGIDO, no es un competidor** | **Bromyros (el fabricante real detrás de los paneles ISODEC/ISOROOF de BMC) fue adquirida por Kingspan en 2021** y opera hoy como "Kingspan Uruguay" / "Bromyros by Kingspan Isoeste" — confirmado: el propio flyer de BMC lleva el logo "BROMYROS by Kingspan · ISOESTE". La librería BIM pública de Kingspan (kingspan.com/us/en/services/insulated-panel-bim-tools, NBS BIM Library, BIMobject, ARCAT — gratis, LOD300) **no es de un competidor** — es del mismo grupo que fabrica/licencia el producto real. | Verificar con el proveedor si el SKU/perfil de Kingspan coincide con el de BMC antes de usar as-is (nombres de línea pueden diferir entre catálogo internacional y local) — pero ya no aplica el veto ético/de licencia anterior. Puede ser una fuente legítima y de alta fidelidad, o el mismo contacto de la Opción D puede confirmarlo directo. |
 
-No existe dato numérico de sección (cantidad/espaciado/alto de nervadura) en ningún lado — se define
-como metadata nueva en `roofPanelModelUrls.js`, provista por quien construya/elija cada modelo.
+No existe dato numérico de sección (cantidad/espaciado/alto de nervadura) estructurado **en este
+repo**, pero si D resuelve, el archivo fuente lo trae; si no, las fichas técnicas ya descargadas
+en [`docs/team/visual/roof-panel-3d-refs/`](../visual/roof-panel-3d-refs/README.md) sirven de
+referencia visual acotada en mm para B. Definir de todos modos como metadata nueva en
+`roofPanelModelUrls.js`.
 
 ---
 
@@ -153,9 +179,15 @@ panel, así que **no requiere el mismo tratamiento de sourcing glTF**.
   autoreada por perfil — correcto para este caso (perfil de chapa simple) a diferencia del panel.
 - **Nuevo archivo `src/data/roofPerfilCrossSections.js`** — secciones 2D agrupadas en ~4-5
   plantillas genéricas parametrizadas (L-drip para goteros, variante greca, Z-fold para babetas,
-  canal U/trapezoidal para canalón, cresta simétrica para cumbrera). Dimensiones en mm son
-  **estimaciones placeholder explícitamente marcadas como tales** en el header del archivo —
-  reemplazar cuando haya fichas técnicas reales del proveedor.
+  canal U/trapezoidal para canalón, cresta simétrica para cumbrera). **Ya no es estimación a
+  ciegas** (ver §1.4 actualizada): la ficha técnica de ISODEC PIR trae un corte acotado en mm con
+  recuadro "Detalle engrafe", y cada perfil (Cumbrera, Babeta de atornillar/empotrar lateral,
+  Canalón doble, Caballete) es un producto Shopify individual con render `3D-*` real por color
+  (confirmado bajando y mirando el de Cumbrera: geometría CAD precisa, no ícono). Usar esas
+  imágenes como referencia directa de proporciones al autorear las formas; si la Opción D de §1.4
+  entrega el archivo fuente, este paso puede directamente extraer la sección real en vez de
+  aproximarla. Dimensiones que igual no se puedan derivar de una imagen quedan como estimación,
+  marcada explícitamente como tal en el header del archivo.
 - **Resolución de qué perfil va en cada borde:**
   - Bordes exteriores: merge zona-gana-sobre-global (mismo patrón que ya usa `quotationViews.js:462-463`), skip si resuelve a `"none"`.
   - Bordes compartidos: `encounterByPair[pk]` → `normalizeEncounter()`. A diferencia del BOM (que
@@ -288,10 +320,13 @@ archivo gateado).
    `applyLateralAnnexLayout` — precio de no arriesgar `RoofBorderSelector`/plano 2D en producción.
 3. **Licencia de assets stock (opción A):** verificar redistribución comercial en app web viva antes
    de usar más allá del spike de validación de pipeline.
-4. **Kingspan es solo referencia** — dejarlo explícito en cualquier brief a freelancer para que nadie
-   lo use como atajo (competidor directo).
-5. **Dimensiones de sección placeholder (§2.2)** — marcadas como estimación, reemplazar con fichas
-   reales del proveedor cuando existan; no dejar que "placeholder" se vuelva permanente por omisión.
+4. ~~Kingspan es solo referencia (competidor directo)~~ — **CORREGIDO 2026-07-11:** Bromyros
+   (fabricante real de BMC) fue adquirida por Kingspan en 2021, opera como "Kingspan Uruguay". No
+   es un competidor — ver §1.4. Riesgo real remanente: confirmar con el proveedor que el SKU/perfil
+   de la librería BIM pública coincide con el catálogo local antes de usarlo as-is.
+5. **Dimensiones de sección** — ya no puramente placeholder (§2.2 tiene fichas técnicas reales con
+   cortes acotados), pero cualquier dato que igual haya que estimar debe quedar marcado como tal;
+   no dejar que "estimación" se vuelva permanente por omisión.
 6. **`desnivel.stepHeightM` es dato nuevo sin default razonable** — exponerlo editable en el UI, no
    adivinarlo en silencio.
 7. **Performance no medida empíricamente** — todos los números de instancias/triángulos en §1.3 son
