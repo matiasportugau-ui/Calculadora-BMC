@@ -54,6 +54,11 @@ export default function Roof3DSection({
     () => (zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0),
     [zonas],
   );
+  // pendiente 0 (techo plano / default vendedor) → el `|| 15` de la escena
+  // (RoofPanelRealisticScene: `Number(pendiente) || 15`) lo inflaría a 15°;
+  // pasamos un sentinel chico que cae en el piso ~2.86° de la escena
+  // (Math.max(0.05, …)) — lo más plano que puede representar. Ver #667.
+  const scenePendiente = Number(pendiente) > 0 ? pendiente : 0.5;
   // Defensa para reuso standalone: el gate primario vive en el mount del quoter
   // (`{isDesignPreviewEnabled() && <Roof3DSection/>}`), así que en el flujo actual
   // esto nunca retorna null — se mantiene por si el componente se monta suelto.
@@ -101,7 +106,7 @@ export default function Roof3DSection({
               <RoofPanelRealisticScene
                 validZonas={validZonas}
                 tipoAguas={tipoAguas}
-                pendiente={pendiente}
+                pendiente={scenePendiente}
                 familiaKey={familiaKey}
                 espesorMm={espesorMm}
                 panelAu={panelAu}
