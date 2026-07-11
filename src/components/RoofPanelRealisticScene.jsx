@@ -15,7 +15,8 @@ import { zonasToPlantRectsLogical } from "../utils/roofLateralAnnexLayout.js";
 import { normalizeEncounter } from "../utils/roofEncounterModel.js";
 import { getRoofPanelVisualProfile } from "../data/roofPanelVisualProfiles.js";
 import { getRoofPanelMapUrl } from "../data/roofPanelMapUrl.js";
-import { C } from "../data/constants.js";
+import { getRoofPanelProfileBuilder } from "../data/roofPanelCrossSections.js";
+import { C, PANELS_TECHO, COLOR_HEX } from "../data/constants.js";
 
 const ENCOUNTER_COLORS = {
   continuo: "#22c55e",
@@ -164,6 +165,52 @@ function CameraRig({ position, target, bounds }) {
   return null;
 }
 
+/**
+ * Franja con geometría real (nervaduras extruidas), para familias con perfil conocido
+ * (ver src/data/roofPanelCrossSections.js). Material sólido del color elegido — con geometría
+ * real la sombra/luz ya viene del 3D, no hace falta la foto de catálogo tileada encima (esa
+ * técnica era para compensar la ausencia de relieve real).
+ */
+function RoofStripMeshRibbed({ stripX, stripW, largo, cy, cz, rot, profile, profileBuilder, colorHex }) {
+  const geom = useMemo(() => {
+    const points = profileBuilder(stripW);
+    const thicknessM = (profile.thicknessMm ?? 80) / 1000;
+    const shape = new THREE.Shape();
+    shape.moveTo(0, -thicknessM);
+    shape.lineTo(0, 0);
+    for (const [x, y] of points) shape.lineTo(x, y);
+    shape.lineTo(stripW, -thicknessM);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(largo, 1e-6), bevelEnabled: false, steps: 1 });
+    // El shape vive en el plano X(ancho)/Y(alto de nervadura); ExtrudeGeometry extruye en Z
+    // (largo). Rotamos para que, igual que la franja plana original, el eje local Y pase a ser
+    // "largo" — el grupo padre aplica después el mismo tilt de pendiente que ya usaba el plano.
+    g.rotateX(Math.PI / 2);
+    // Tras la rotación el rango local en Y queda [-largo, 0]; el plano original (planeGeometry)
+    // está centrado en [-largo/2, largo/2], que es lo que asume el cálculo de cy/cz del padre.
+    g.translate(0, largo / 2, 0);
+    g.computeVertexNormals();
+    return g;
+  }, [profileBuilder, stripW, largo, profile.thicknessMm]);
+
+  const mat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: colorHex,
+        roughness: profile.roughness,
+        metalness: profile.metalness,
+        side: THREE.DoubleSide,
+      }),
+    [colorHex, profile.roughness, profile.metalness],
+  );
+
+  useEffect(() => () => { geom.dispose(); mat.dispose(); }, [geom, mat]);
+
+  return (
+    <mesh position={[stripX, cy, cz]} rotation={rot} castShadow receiveShadow geometry={geom} material={mat} />
+  );
+}
+
 /** Una franja en X (ancho en planta); misma lógica de anchos que `RoofPreview` / `buildAnchoStripsPlanta`. */
 function RoofStripMesh({ stripX, stripW, stripIdx, largo, cy, cz, rot, maps, panelAu, profile }) {
   const mat = useMemo(() => {
@@ -223,7 +270,7 @@ function RoofStripMesh({ stripX, stripW, stripIdx, largo, cy, cz, rot, maps, pan
   );
 }
 
-function SlopeZoneStripedMeshes({ ancho, largo, ox, oy = 0, oz, thetaBase, slopeMark, profile, maps, panelAu }) {
+function SlopeZoneStripedMeshes({ ancho, largo, ox, oy = 0, oz, thetaBase, slopeMark, profile, maps, panelAu, profileBuilder, colorHex }) {
   const strips = useMemo(() => {
     if (!(ancho > 0)) return [];
     if (!(panelAu > 0)) return [{ x0: 0, width: ancho, idx: 0 }];
@@ -243,21 +290,36 @@ function SlopeZoneStripedMeshes({ ancho, largo, ox, oy = 0, oz, thetaBase, slope
 
   return (
     <group position={[ox, oy, oz]}>
-      {strips.map((s) => (
-        <RoofStripMesh
-          key={`${s.idx}-${s.x0}-${s.width}`}
-          stripX={s.x0}
-          stripW={s.width}
-          stripIdx={s.idx}
-          largo={largo}
-          cy={cy}
-          cz={cz}
-          rot={rot}
-          maps={maps}
-          panelAu={auForUv}
-          profile={profile}
-        />
-      ))}
+      {strips.map((s) =>
+        profileBuilder ? (
+          <RoofStripMeshRibbed
+            key={`${s.idx}-${s.x0}-${s.width}`}
+            stripX={s.x0}
+            stripW={s.width}
+            largo={largo}
+            cy={cy}
+            cz={cz}
+            rot={rot}
+            profile={profile}
+            profileBuilder={profileBuilder}
+            colorHex={colorHex}
+          />
+        ) : (
+          <RoofStripMesh
+            key={`${s.idx}-${s.x0}-${s.width}`}
+            stripX={s.x0}
+            stripW={s.width}
+            stripIdx={s.idx}
+            largo={largo}
+            cy={cy}
+            cz={cz}
+            rot={rot}
+            maps={maps}
+            panelAu={auForUv}
+            profile={profile}
+          />
+        )
+      )}
     </group>
   );
 }
@@ -336,6 +398,8 @@ function RoofRealisticSceneContent({
   panelAu,
   encounters3d = [],
   onGlReady,
+  profileBuilder,
+  colorHex,
 }) {
   const orbitRef = useRef(null);
   const { minX, maxX, maxH, maxD, maxLargo, camTarget, camPos } = bounds;
@@ -379,6 +443,8 @@ function RoofRealisticSceneContent({
           profile={profile}
           maps={maps}
           panelAu={panelAu}
+          profileBuilder={profileBuilder}
+          colorHex={colorHex}
         />
       ))}
       {zoneLayouts.map((z) => {
@@ -432,7 +498,9 @@ function RoofRealisticSceneContent({
     </>
   );
 
-  if (!mapUrl) {
+  // Con geometría real (profileBuilder) no hace falta la foto de catálogo tileada — el relieve
+  // ya viene del 3D — así que nos ahorramos el fetch/decode de la textura por completo.
+  if (!mapUrl || profileBuilder) {
     return sceneBody(null);
   }
   return (
@@ -474,6 +542,13 @@ export default function RoofPanelRealisticScene({
     () => getRoofPanelMapUrl(familiaKey, techoColor),
     [familiaKey, techoColor],
   );
+  // Geometría real (nervaduras extruidas) para familias con perfil conocido — ver
+  // src/data/roofPanelCrossSections.js. Familias sin builder mantienen el plano+foto de siempre.
+  const profileBuilder = useMemo(
+    () => getRoofPanelProfileBuilder(PANELS_TECHO[familiaKey]?.fam),
+    [familiaKey],
+  );
+  const colorHex = COLOR_HEX[techoColor] ?? "#c9d2de";
 
   const zoneLayouts = useMemo(() => {
     try {
@@ -577,6 +652,8 @@ export default function RoofPanelRealisticScene({
             panelAu={panelAu}
             encounters3d={encounters3d}
             onGlReady={onGlReady}
+            profileBuilder={profileBuilder}
+            colorHex={colorHex}
           />
         </Suspense>
       </Canvas>
