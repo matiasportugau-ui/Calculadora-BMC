@@ -11,7 +11,7 @@ import { buildZoneLayoutsForRoof3d } from "../utils/roofZoneLayouts3d.js";
 import { buildLateralStepInfillGeometries } from "../utils/roof3dLateralStepInfill.js";
 import { buildAnchoStripsPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { findEncounters, encounterPairKey } from "../utils/roofPlanGeometry.js";
-import { zonasToPlantRectsWithAutoGap } from "../utils/roofLateralAnnexLayout.js";
+import { zonasToPlantRectsLogical } from "../utils/roofLateralAnnexLayout.js";
 import { normalizeEncounter } from "../utils/roofEncounterModel.js";
 import { getRoofPanelVisualProfile } from "../data/roofPanelVisualProfiles.js";
 import { getRoofPanelMapUrl } from "../data/roofPanelMapUrl.js";
@@ -488,7 +488,11 @@ export default function RoofPanelRealisticScene({
   const encounters3d = useMemo(() => {
     if (!validZonas.length) return [];
     try {
-      const plantRects = zonasToPlantRectsWithAutoGap(validZonas, tipoAguasStr);
+      // Encuentro-detection needs the gap-0 "logical" layout — the auto-gapped layout
+      // (used for panel/mesh positioning) separates root zonas by ROOF_LATERAL_LAYOUT_GAP_M
+      // (0.25m), which is always well outside findEncounters' ROOF_PLAN_EPS (0.002m), so
+      // encounters between root zonas were never detected and this overlay never rendered.
+      const plantRects = zonasToPlantRectsLogical(validZonas, tipoAguasStr);
       const encs = findEncounters(plantRects);
       const cosT = Math.cos(theta);
       const sinT = Math.sin(theta);
