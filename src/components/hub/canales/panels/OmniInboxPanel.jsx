@@ -23,9 +23,12 @@ const TABS = [
   { key: "closed", label: "Resueltas" },
 ];
 
-export default function OmniInboxPanel({ token, initialConversationId, onInitialConversationConsumed }) {
+export default function OmniInboxPanel({ token, initialConversationId, onInitialConversationConsumed, lockedChannel }) {
   const [selectedId, setSelectedId] = useState(null);
-  const [channelFilter, setChannelFilter] = useState("");
+  // `lockedChannel` (e.g. the Canales "WA Inbox" tab passing "wa") pins this
+  // inbox to a single channel: seed the filter and hide the channel picker so
+  // it stays channel-scoped. Absent → the full multi-channel Omni inbox.
+  const [channelFilter, setChannelFilter] = useState(() => lockedChannel || "");
   const [statusFilter, setStatusFilter] = useState("");
   const [accountFilter, setAccountFilter] = useState("");
   const [assignedFilter, setAssignedFilter] = useState(""); // "" | "me" | "unassigned"
@@ -99,16 +102,18 @@ export default function OmniInboxPanel({ token, initialConversationId, onInitial
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          className="omniInbox__select"
-          value={channelFilter}
-          onChange={(e) => setChannelFilter(e.target.value)}
-        >
-          <option value="">Todos los canales</option>
-          <option value="wa">WhatsApp</option>
-          <option value="ml">MercadoLibre</option>
-          <option value="email">Email</option>
-        </select>
+        {!lockedChannel && (
+          <select
+            className="omniInbox__select"
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value)}
+          >
+            <option value="">Todos los canales</option>
+            <option value="wa">WhatsApp</option>
+            <option value="ml">MercadoLibre</option>
+            <option value="email">Email</option>
+          </select>
+        )}
         {accounts.length > 0 && (
           <select
             className="omniInbox__select"

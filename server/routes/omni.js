@@ -379,6 +379,54 @@ router.post(
   },
 );
 
+// Contact list — read-only unified-contacts directory for the Canales "Contactos
+// Unificados" tab. Searches name/email/phone/wa_phone (case-insensitive),
+// newest-updated first, with each contact's conversation count, last activity and
+// the set of channels it was reached on (derived from its conversations). Excludes
+// already-merged ("loser") contacts via the same properties->>'merged_into' guard
+// the duplicates scan uses, and degrades to an empty list on a missing column/table
+// so the panel never hard-fails pre-migration. Not team-isolated (omni_contacts has
+// no team_id) — consistent with the other /omni/contacts/* routes.
+router.get(
+  "/omni/contacts",
+  omniReadLimiter,
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const q = String(req.query.search || req.query.q || "").trim();
+    const search = q ? `%${q}%` : null;
+    try {
+      const { rows } = await req.omniPool.query(
+        `SELECT co.id, co.name, co.email, co.phone, co.wa_phone, co.ml_user_id,
+                co.avatar_url, co.created_at, co.updated_at,
+                (SELECT COUNT(*)::int FROM omni_conversations c WHERE c.contact_id = co.id) AS conversation_count,
+                (SELECT MAX(c.updated_at) FROM omni_conversations c WHERE c.contact_id = co.id) AS last_activity_at,
+                (SELECT array_agg(DISTINCT c.channel) FROM omni_conversations c WHERE c.contact_id = co.id) AS channels
+           FROM omni_contacts co
+          WHERE co.properties->>'merged_into' IS NULL
+            AND ($1::text IS NULL
+                 OR co.name ILIKE $1 OR co.email ILIKE $1
+                 OR co.phone ILIKE $1 OR co.wa_phone ILIKE $1)
+          ORDER BY co.updated_at DESC
+          LIMIT $2 OFFSET $3`,
+        [search, limit, offset],
+      );
+      res.json({
+        ok: true,
+        generated_at: new Date().toISOString(),
+        count: rows.length,
+        contacts: rows,
+      });
+    } catch (e) {
+      if (e?.code !== "42703" && e?.code !== "42P01") throw e;
+      req.log?.warn?.({ err: e.message, code: e.code }, "omni contacts list degraded");
+      res.json({ ok: true, degraded: e.code, count: 0, contacts: [] });
+    }
+  },
+);
+
 // "Reply-zero" action queue — the ranked, per-conversation "act on THIS now" list
 // the admin cockpit's COUNTS don't give you. Read-only aggregation across all
 // channels, team-isolated, scored by the pure policy in server/lib/omni/urgency.js.

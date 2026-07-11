@@ -204,6 +204,38 @@ export function useOmniDuplicateContacts(token) {
   return { clusters, scanBounded, loading, error, reload };
 }
 
+// Unified-contacts directory from GET /api/omni/contacts (read-only list for the
+// Canales "Contactos Unificados" tab). Search runs server-side (name/email/phone).
+// Degrades to [] so the panel never breaks pre-migration or when the omni DB is off.
+export function useOmniContacts(token, { search = "", limit = 100 } = {}) {
+  const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const reload = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (search) params.set("search", search);
+      const data = await omniFetch(token, `/api/omni/contacts?${params}`);
+      setContacts(Array.isArray(data?.contacts) ? data.contacts : []);
+    } catch (e) {
+      setError(e.message);
+      setContacts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, search, limit]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { contacts, loading, error, reload };
+}
+
 // Merge two duplicate contacts (Wave 6b, admin-only on the backend). Not a
 // hook — a one-shot action the caller awaits, then reloads its own list.
 export async function mergeOmniContacts(token, fromId, intoId) {
