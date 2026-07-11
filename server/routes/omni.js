@@ -385,8 +385,9 @@ router.post(
 // the set of channels it was reached on (derived from its conversations). Excludes
 // already-merged ("loser") contacts via the same properties->>'merged_into' guard
 // the duplicates scan uses, and degrades to an empty list on a missing column/table
-// so the panel never hard-fails pre-migration. Not team-isolated (omni_contacts has
-// no team_id) — consistent with the other /omni/contacts/* routes.
+// so the panel never hard-fails pre-migration. Team-isolated for non-admin operators:
+// only contacts with at least one conversation visible to the user's team(s) are
+// returned, and conversation counts/channels reflect only those visible conversations.
 router.get(
   "/omni/contacts",
   omniReadLimiter,
