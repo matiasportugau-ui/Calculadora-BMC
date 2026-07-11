@@ -109,12 +109,20 @@ Draco, sin hosting de assets binarios, sin dependencia externa:
   `roofPerfilCrossSections.js` de la Sección 2) — define la unidad repetible por forma de familia
   (`ISOROOF`, `ISODEC`, `ISODEC_PIR`, `ISOROOF_COLONIAL`) en mm reales, más las cotas generales
   (`au`, `esp`) ya existentes en `PANELS_TECHO` para escalar correctamente.
-- **Tiling/escala:** `ExtrudeGeometry` de la unidad repetible, instanciada con `THREE.InstancedMesh`
-  a lo largo de `largo` — mismo presupuesto y razonamiento de performance que la versión anterior de
-  esta sección (≤1500 triángulos por tile, una `InstancedMesh` por combinación familia-forma+color,
-  agrupando todas las franjas de una zona).
-- **Color/textura:** sin cambios — sigue usando `getRoofPanelMapUrl`/`getRoofPanelVisualProfile`
-  como diffuse map sobre la geometría real, igual que ya estaba planeado.
+- **Tiling/escala — IMPLEMENTADO más simple de lo planeado:** la corrugación corre a lo LARGO del
+  panel (misma dirección que "caída de agua"), no a lo ancho — un panel real se extruye una sola
+  vez en fábrica, no se tilea. Por eso no hace falta `InstancedMesh`: se extruye la sección
+  transversal directamente a `depth: largo` (una `ExtrudeGeometry` por franja de `au`, mismo patrón
+  de "una malla por franja" que ya usaba `RoofStripMesh`) — más simple, más preciso físicamente, y
+  sin el costo de definir la lógica de repetición/instancing. Con paneles de hasta 14m de largo y
+  ~13-14 nervaduras por franja de 1m, el conteo de triángulos por franja es bajo (decenas, no miles)
+  — no fue necesario ningún presupuesto especial de performance.
+- **Color/textura — CAMBIÓ del plan original:** con geometría real, la sombra/relieve ya viene del
+  3D — pegar encima la foto de catálogo (pensada para compensar la ausencia de relieve) generaría
+  doble sombreado. Se usa `MeshStandardMaterial` de color sólido vía `COLOR_HEX` (ya existente en
+  `constants.js`, Blanco/Gris/Rojo) — coincide con cómo se ven los renders 3D reales de BMC (§1.4),
+  que tampoco usan foto tileada. `mapUrl`/`MapLoader` se saltea por completo para familias con
+  geometría real (menos un fetch de red).
 - **Si más adelante aparece un archivo 3D fuente real** (Opción D en §1.4, o Kingspan confirmado por
   el proveedor), se puede reemplazar la sección paramétrica por geometría importada sin cambiar el
   resto de la arquitectura (mismo punto de inyección: una función que devuelve geometría de tile) —
@@ -293,7 +301,7 @@ la Sección 2; cumbrera es plano-continuo por diseño, sin escalón visible).
 | Fase | Contenido | Riesgo/duración | Depende de | Estado |
 |---|---|---|---|---|
 | **0** | Fix de una línea (§3.2) — detección de encuentros | Trivial, ~minutos | — | ✅ Shippeado |
-| **1** | Panel real ISOROOF vía `ExtrudeGeometry` desde cotas exactas (opción E, §1.4) — geometría paramétrica + `InstancedMesh`, sin dependencia externa | Riesgo bajo en dato de entrada (cotas reales confirmadas); riesgo medio en integración three.js/performance — ~1 semana | Fase 0 no bloquea | Pendiente |
+| **1** | Panel real ISOROOF vía `ExtrudeGeometry` desde cotas exactas (opción E, §1.4) | Riesgo bajo (cotas reales confirmadas) | Fase 0 no bloquea | ✅ Shippeado (sin `InstancedMesh` — ver nota) |
 | **1b** | Pedir archivo 3D fuente real a BMC/Kingspan Uruguay (opción D) — mejora incremental, no bloqueante | ~1-2 semanas turnaround (estimado), en paralelo | — | Pendiente |
 | **2** | Rollout a ISODEC (costura estimada) + ISODEC PIR + ISOROOF Colonial | 1 semana | Fase 1 (mismo patrón de código) | Pendiente |
 | **3** | Bordes/perfiles — cross-sections, extrusión, resolución, threading de props | ~1 semana, corre en paralelo a 1/2 (no depende de geometría real de panel) | Sección 0 (contrato de coordenadas, ya existe) | Pendiente |
@@ -310,12 +318,12 @@ archivo gateado).
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/RoofPanelRealisticScene.jsx` | Tocado en cada fase: fix de detección (✅ hecho), `InstancedMesh` de paneles, capa de trim, nuevo resolver de layout |
+| `src/components/RoofPanelRealisticScene.jsx` | Tocado en cada fase: fix de detección (✅ hecho), geometría real de paneles ISOROOF (✅ hecho), capa de trim, nuevo resolver de layout |
 | `src/utils/roofZoneLayouts3d.js` | Nueva función `resolveRoofZoneLayout3d` (gap consciente de soldado + modo Y-stack) — `buildZoneLayoutsForRoof3d` queda intacta para `RoofBorderSelector` |
 | `src/utils/roofZoneConnectivity.js` (nuevo) | Extraer el union-find ya precedentado en `frontComponentModel` (`PanelinCalculadoraV3_backup.jsx:1221-1291`) a un helper compartido |
 | `src/utils/roofEncounterModel.js` | Agregar `desnivel.stepHeightM` |
 | `src/utils/roof3dLateralStepInfill.js` | Renombrar/reimplementar → `roof3dEncounterStepInfill.js` |
-| `src/data/roofPanelCrossSections.js` (nuevo) | Secciones 2D reales por forma de familia (ISOROOF con cotas exactas 1000/26/40/72mm, ISODEC con costura estimada) — reemplaza el `roofPanelModelUrls.js`/assets `.glb` de la versión anterior de esta tabla |
+| `src/data/roofPanelCrossSections.js` (✅ nuevo, hecho) | Sección 2D real de ISOROOF (cotas exactas 1000/26/40/72mm); ISODEC/PIR/Colonial pendientes (Fase 2) |
 | `src/data/roofPerfilCrossSections.js` (nuevo) | Secciones 2D por tipo de perfil de borde, referenciadas contra los renders reales en `docs/team/visual/roof-panel-3d-refs/` |
 | `src/utils/roofBorderTrimGeometry3d.js` (nuevo) | Extrusión + posicionamiento de trim desde `techoBorders`/`encounterByPair` |
 | `src/components/roof3d/Roof3DSection.jsx` | Threading de `techoBorders`/`techoZonasBorders` |
