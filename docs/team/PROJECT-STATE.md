@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-10
+**Última actualización:** 2026-07-11
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-11 (fix — Visor 3D respeta techo plano/0° · #667, follow-up de #663):** El visor 3D mostraba un techo a 15° cuando `pendiente = 0` (default vendedor `TECHO_INITIAL_VENDEDOR.pendiente = 0` o cotización de techo plano), porque `RoofPanelRealisticScene` hace `Number(pendiente) || 15` (0 es falsy → 15°). Como esa escena es archivo compartido/no-touch y su `|| 15` derrota cualquier fallback nullish aguas arriba, el fix vive en el wrapper `Roof3DSection.jsx`: `scenePendiente = Number(pendiente) > 0 ? pendiente : 0.5` — sentinel chico que sobrevive el `|| 15` y cae en el piso `~2.86°` de la escena (`Math.max(0.05, …)`), lo más plano representable. Sólo cambia el caso `0`; cualquier pendiente real pasa igual. Detectado por el bot Codex en #663.
 
 **2026-07-10 (fix — VERCEL_ENV expuesto al bundle: gate design preview funciona como documentado):** `vite.config.js` ahora define `import.meta.env.VERCEL_ENV` (Vite sólo expone `VITE_*`), que era código muerto en `designPreviewMode.js` desde Fase 1: los previews de Vercel NO auto-activaban el design preview y el hard-block de `?designPreview=1` en producción NUNCA aplicaba (el param activaba el preview incluso en prod, contra el contrato del archivo). Ahora: branch preview = gate auto-on sin query param; producción = param bloqueado. Local/CI sin cambios (`VERCEL_ENV` vacío → path de query param intacto, verificado re-corriendo `test:playwright:roof3d-chunk` 11/11 + probe simulando `VERCEL_ENV=preview|production`).
 
