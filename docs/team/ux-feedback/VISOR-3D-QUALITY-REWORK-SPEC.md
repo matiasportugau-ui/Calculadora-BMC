@@ -96,10 +96,14 @@ lo motiva): en vez de depender de conseguir un `.glb` externo, se construye la g
 Sección 2 para los perfiles de borde**, aplicada ahora también al panel. Sin loader nuevo, sin
 Draco, sin hosting de assets binarios, sin dependencia externa:
 
-- **Sección 2D real para ISOROOF (trapezoidal):** plano técnico acotado de BMC (`isoroof-
-  cross-section-dimensioned.png`, ver §1.4) da la unidad repetible exacta: ancho total 1000mm,
-  nervadura central 26mm de ancho × 40mm de alto, paso entre nervaduras 72mm. Se define un
-  `THREE.Shape` con esa unidad y se repite a lo largo del `au` de la zona.
+- **Sección 2D real para ISOROOF (trapezoidal) — CORREGIDO 2026-07-11:** plano técnico acotado de
+  BMC (`isoroof-cross-section-dimensioned.png`, ver §1.4) da 3 cotas: ancho total 1000mm,
+  nervadura 26mm de ancho (tope) × 40mm de alto, **72mm = ancho de la BASE de la nervadura**
+  (no un paso de repetición — lectura inicial equivocada, corregida tras revisar el plano con
+  zoom). El panel real tiene solo **3 nervios estructurales por módulo au=1.0m**: medio nervio en
+  cada borde (compartido con el panel vecino, cortado por su propio eje) + uno completo al
+  centro — el resto del ancho es plano. Se define un `THREE.Shape` con esos 3 nervios y tramos
+  planos entre ellos (`buildIsoroofRibProfilePoints`, 10 puntos).
 - **Sección 2D para ISODEC (engrafado):** panel mayormente plano (espesor real 50/80/120mm por
   `PANELS_TECHO.esp`) con una costura/gancho angosto solo en los bordes cada `au=1.12m` — visible
   en el "Detalle engrafe" de la ficha técnica. Geometría más simple que ISOROOF; la única cota sin
