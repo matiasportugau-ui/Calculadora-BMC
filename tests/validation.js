@@ -14,6 +14,7 @@ import {
   calcSelladoresTecho,
   calcSelladoresTechoByEncuentro,
   calcFijacionesVarilla,
+  calcFijacionesCaballete,
   countPuntosFijacionVarillaGrilla,
   countVarillasRoscadasDesdeBarras1m,
   perimetroVerticalInteriorPuntosDesdePlanta,
@@ -344,17 +345,30 @@ assert("Espumas PU = 8", espumas === 8, espumas, 8);
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE 9: Fijaciones Caballete (ISOROOF) ═══");
 
-const cantP_cb = 5, largo_cb = 6.5;
-const caballetes = Math.ceil((cantP_cb * 3 * (largo_cb / 2.9 + 1)) + ((largo_cb * 2) / 0.3));
-assert("Caballetes: positive integer", caballetes > 0 && Number.isInteger(caballetes), caballetes, ">0");
+// Reported case: 4m×8m ISOROOF (4 paneles, autoportancia 2.8 → apoyos 4, metal).
+// Fórmula = grilla (3 × paneles × apoyos) + laterales (2 × (floor(largo/2.5)+1)).
+//   grilla = 3×4×4 = 48 ; laterales = 2×(floor(8/2.5)+1) = 2×4 = 8 ; total = 56 (antes: 99).
+const fijCab = calcFijacionesCaballete(4, 8, "metal", 30, null, 4);
+const cabItem = fijCab.items.find((i) => i.sku === "caballete");
+assert("Caballetes 4p×8m (apoyos 4) = 56 (grilla 48 + lat 8)", fijCab.puntosFijacion === 56, fijCab.puntosFijacion, 56);
+assert("Item caballete.cant == puntosFijacion", cabItem?.cant === fijCab.puntosFijacion, cabItem?.cant, fijCab.puntosFijacion);
+assert("Caballetes 4p×8m ≠ doble (no 96/99)", fijCab.puntosFijacion < 90, fijCab.puntosFijacion, "<90");
 
-const tornillosAguja = caballetes * 2;
-assert("Tornillo aguja cant >= 1 unidad", tornillosAguja >= 1, tornillosAguja, ">=1");
-assert("Tornillos aguja = caballetes × 2", tornillosAguja === caballetes * 2, tornillosAguja, caballetes * 2);
+// 1 tornillo por caballete (no ×2): metal → tornillo mecha.
+const mechaItem = fijCab.items.find((i) => i.sku.startsWith("tornillo_hex_galv") && i.sku.includes("mecha"));
+assert("Tornillo mecha = 1 por caballete", mechaItem?.cant === fijCab.puntosFijacion, mechaItem?.cant, fijCab.puntosFijacion);
 
-// Smaller roof: 3 panels × 4m
-const cab_small = Math.ceil((3 * 3 * (4.0 / 2.9 + 1)) + ((4.0 * 2) / 0.3));
-assert("Caballetes 3p×4m: positive integer", cab_small > 0 && Number.isInteger(cab_small), cab_small, ">0");
+// Autoportancia real manda: 80mm (ap 4.0 → apoyos 3) da menos que 30mm (apoyos 4).
+const fijCab80 = calcFijacionesCaballete(4, 8, "metal", 80, null, 3);
+assert("Caballetes 4p×8m 80mm (apoyos 3) = 44 (grilla 36 + lat 8)", fijCab80.puntosFijacion === 44, fijCab80.puntosFijacion, 44);
+
+// Fallback sin apoyos: apoyos = ceil(largo/factor_largo 2.9)+1.
+const fijCabFb = calcFijacionesCaballete(3, 4, "madera", 30, null, null);
+const apoyosFb = Math.ceil(4 / 2.9) + 1; // 3
+const expFb = 3 * 3 * apoyosFb + 2 * (Math.floor(4 / 2.5) + 1); // 27 + 4 = 31
+assert("Caballetes fallback 3p×4m madera = 31", fijCabFb.puntosFijacion === expFb, fijCabFb.puntosFijacion, expFb);
+const agujaItem = fijCabFb.items.find((i) => i.sku.includes("aguja"));
+assert("Tornillo aguja = 1 por caballete (no ×2)", agujaItem?.cant === fijCabFb.puntosFijacion, agujaItem?.cant, fijCabFb.puntosFijacion);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 10: Perfilería Techo (borders)
