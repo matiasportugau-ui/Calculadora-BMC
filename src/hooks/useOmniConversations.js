@@ -222,7 +222,9 @@ export function useOmniContacts(token, { search = "", limit = 100 } = {}) {
       if (search) params.set("search", search);
       const data = await omniFetch(token, `/api/omni/contacts?${params}`);
       setContacts(Array.isArray(data?.contacts) ? data.contacts : []);
-      setTotal(typeof data?.total_count === "number" ? data.total_count : (data?.contacts?.length ?? 0));
+      // total_count is the full matching set size (pre-LIMIT); fall back to 0
+      // (unknown) rather than contacts.length to avoid suggesting the page is complete.
+      setTotal(typeof data?.total_count === "number" ? data.total_count : 0);
     } catch (e) {
       setError(e.message);
       setContacts([]);

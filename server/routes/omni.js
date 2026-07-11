@@ -445,7 +445,7 @@ router.get(
         generated_at: new Date().toISOString(),
         count: rows.length,
         total_count: Number(totalCount),
-        contacts: rows.map(({ total_count: _tc, ...r }) => r),
+        contacts: rows.map(({ total_count: _tc, ...r }) => r), // strip the window-function aggregate from each row
       });
     } catch (e) {
       if (e?.code !== "42703" && e?.code !== "42P01") throw e;
