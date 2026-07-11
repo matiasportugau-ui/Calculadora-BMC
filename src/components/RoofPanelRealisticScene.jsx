@@ -176,8 +176,10 @@ function RoofStripMeshRibbed({ stripX, stripW, largo, cy, cz, rot, profile, prof
     const points = profileBuilder(stripW);
     const thicknessM = (profile.thicknessMm ?? 80) / 1000;
     const shape = new THREE.Shape();
+    // El primer/último punto del perfil ya define dónde arranca/termina el borde de la
+    // franja (puede ser y=0 o, para perfiles con medio-nervio de borde como ISOROOF, y=height)
+    // — no asumir un tramo plano fijo entre (0,-thicknessM) y el perfil.
     shape.moveTo(0, -thicknessM);
-    shape.lineTo(0, 0);
     for (const [x, y] of points) shape.lineTo(x, y);
     shape.lineTo(stripW, -thicknessM);
     shape.closePath();

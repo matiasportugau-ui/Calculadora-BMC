@@ -3,59 +3,62 @@
  *
  * Fuente: plano técnico BMC del perfil ISOROOF (docs/team/visual/roof-panel-3d-refs/
  * isoroof-cross-section-dimensioned.png, producto ISOROOF FOIL en bmcuruguay.com.uy) — cotas
- * reales publicadas por el fabricante, NO estimadas: ancho útil (au) 1000mm, nervadura 26mm de
- * ancho (tope) × 40mm de alto, paso entre nervaduras 72mm.
+ * reales publicadas por el fabricante.
  *
- * Interpretación de ingeniería (no está en el plano, es una lectura razonable de la imagen):
- * onda trapezoidal uniforme — valle plano + subida + tope de nervadura (26mm) + bajada, repetido
- * cada 72mm. Ancho de subida/bajada (10mm cada uno) no está acotado en el plano; elegido para que
- * valle(26) + subida(10) + tope(26) + bajada(10) = 72mm exacto. Si aparece el archivo 3D fuente
- * real (ver spec §1.4 Opción D), reemplazar esta aproximación por la geometría exacta.
+ * CORREGIDO 2026-07-11 (feedback directo sobre el plano): el ISOROOF NO tiene corrugación
+ * densa repetida cada 72mm. Mirando el plano con cuidado (zoom sobre la nervadura central):
+ * "72" es el ANCHO DE LA BASE de la nervadura central (no un paso de repetición), "26" es
+ * el ancho del tope, "40" el alto. El panel real tiene solo 3 nervios ESTRUCTURALES
+ * trapezoidales por módulo au=1.0m (se ve el núcleo de espuma amarillo asomando debajo de
+ * cada uno, señal de que atraviesan todo el espesor): uno en cada borde — cada uno es
+ * literalmente MEDIO trapezoide, cortado justo por su eje central, porque la otra mitad la
+ * aporta el panel vecino al instalarse en fila — y uno completo en el centro del panel.
+ * Entre esos 3 nervios el resto del ancho es plano (hay ondulaciones finas y poco profundas
+ * en el plano real, puramente cosméticas/de rigidez superficial, que se omiten acá por
+ * simplicidad — no tienen núcleo debajo, no son estructurales).
  */
 
-const ISOROOF_RIB_PITCH_M = 0.072;
+const ISOROOF_RIB_BASE_WIDTH_M = 0.072;
 const ISOROOF_RIB_TOP_WIDTH_M = 0.026;
 const ISOROOF_RIB_HEIGHT_M = 0.04;
-const ISOROOF_SLOPE_WIDTH_M = 0.01; // estimado, no acotado en el plano — ver comentario arriba
-const ISOROOF_VALLEY_WIDTH_M =
-  ISOROOF_RIB_PITCH_M - ISOROOF_RIB_TOP_WIDTH_M - 2 * ISOROOF_SLOPE_WIDTH_M; // 0.026m
 
 /**
- * Puntos 2D (x=ancho, y=alto) del perfil trapezoidal ISOROOF, repetido a lo largo de `widthM`.
- * Empieza y termina en y=0 (valle) para poder cerrar el shape con una base plana.
+ * Puntos 2D (x=ancho, y=alto) del perfil real ISOROOF: 3 nervios trapezoidales por franja
+ * de `widthM` (≈ au) — medio nervio en cada borde (compartido con el panel vecino) + uno
+ * completo al centro — con tramos planos entre ellos. A diferencia del perfil de borde/perfil
+ * (Sección 2), el primer y último punto NO están en y=0: el borde de la franja cae justo
+ * sobre el tope del medio-nervio (y=height), tal como en el plano real.
  * @param {number} widthM
  * @returns {Array<[number, number]>}
  */
 export function buildIsoroofRibProfilePoints(widthM) {
   if (!(widthM > 0)) return [[0, 0], [0, 0]];
-  const pts = [[0, 0]];
-  let x = 0;
-  const halfValley = ISOROOF_VALLEY_WIDTH_M / 2;
-  x += halfValley;
-  if (x >= widthM) return [[0, 0], [widthM, 0]];
-  pts.push([x, 0]);
-  while (x < widthM) {
-    const xUp = Math.min(x + ISOROOF_SLOPE_WIDTH_M, widthM);
-    pts.push([xUp, ISOROOF_RIB_HEIGHT_M * ((xUp - x) / ISOROOF_SLOPE_WIDTH_M)]);
-    x = xUp;
-    if (x >= widthM) break;
+  const baseHalf = ISOROOF_RIB_BASE_WIDTH_M / 2;
+  const topHalf = ISOROOF_RIB_TOP_WIDTH_M / 2;
+  const h = ISOROOF_RIB_HEIGHT_M;
+  const mid = widthM / 2;
 
-    const xTop = Math.min(x + ISOROOF_RIB_TOP_WIDTH_M, widthM);
-    pts.push([xTop, ISOROOF_RIB_HEIGHT_M]);
-    x = xTop;
-    if (x >= widthM) break;
+  // Franja demasiado angosta para el nervio central completo (última franja parcial muy
+  // chica): devolver plano en vez de geometría degenerada/solapada.
+  if (widthM < ISOROOF_RIB_BASE_WIDTH_M * 1.5) return [[0, 0], [widthM, 0]];
 
-    const xDown = Math.min(x + ISOROOF_SLOPE_WIDTH_M, widthM);
-    pts.push([xDown, ISOROOF_RIB_HEIGHT_M * (1 - (xDown - x) / ISOROOF_SLOPE_WIDTH_M)]);
-    x = xDown;
-    if (x >= widthM) break;
-
-    const xValley = Math.min(x + ISOROOF_VALLEY_WIDTH_M, widthM);
-    pts.push([xValley, 0]);
-    x = xValley;
-  }
-  if (pts[pts.length - 1][0] < widthM) pts.push([widthM, 0]);
-  return pts;
+  return [
+    // medio nervio de borde izquierdo — arranca directo en el tope (mitad visible)
+    [0, h],
+    [topHalf, h],
+    [baseHalf, 0],
+    // tramo plano hasta el nervio central
+    [mid - baseHalf, 0],
+    // nervio central completo
+    [mid - topHalf, h],
+    [mid + topHalf, h],
+    [mid + baseHalf, 0],
+    // tramo plano hasta el borde derecho
+    [widthM - baseHalf, 0],
+    // medio nervio de borde derecho — termina en el tope (mitad visible), simétrico al izq.
+    [widthM - topHalf, h],
+    [widthM, h],
+  ];
 }
 
 /** `fam` (PANELS_TECHO) → generador de perfil. Familias sin entrada usan el plano liso (fallback). */
