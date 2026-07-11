@@ -8,9 +8,9 @@
 // (Resumen / Publicaciones / Preguntas / Pedidos) backed by useMlConnector +
 // the live /ml/* API routes.
 //
-// The `token` prop is accepted for signature stability but unused: the ML tabs
-// authenticate via mlFetch/ensureOperatorToken, and the read-only /ml/* routes
-// hold the seller OAuth token server-side.
+// No props are declared; anything the parent passes (including `token`) is
+// silently ignored. The ML tabs authenticate via mlFetch/ensureOperatorToken,
+// and the read-only /ml/* routes hold the seller OAuth token server-side.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import React from "react";
