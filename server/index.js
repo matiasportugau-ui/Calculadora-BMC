@@ -97,6 +97,10 @@ import { startOmniFrtBreachWorker } from "./lib/omni/orchestrator/frtBreachWorke
 import { startOmniSequenceWorker } from "./lib/omni/orchestrator/sequenceWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
+import {
+  buildMlOrdersSearchQuery,
+  buildMlQuestionsSearchQuery,
+} from "./lib/mlInlineQuery.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { writeWaCrmIngest, writeWaCrmAiTail, runWaAutoLearn } from "./lib/wa/crmIngestWrite.js";
 import { google } from "googleapis";
@@ -464,22 +468,7 @@ app.get("/ml/questions", requireMlAuth, asyncHandler(async (req, res) => {
     return res.json(payload);
   }
   // Solo parámetros que ML acepta en /questions/search (evita invalid_query_string por query basura)
-  const allowedKeys = new Set([
-    "seller_id",
-    "item",
-    "item_id",
-    "api_version",
-    "site_id",
-    "offset",
-    "limit",
-    "status",
-  ]);
-  const query = {};
-  for (const [k, v] of Object.entries(req.query)) {
-    if (allowedKeys.has(k) && v != null && String(v) !== "") {
-      query[k] = v;
-    }
-  }
+  const query = buildMlQuestionsSearchQuery(req.query);
   if (!query.seller_id) {
     const sellerId = await ml.resolveSellerId();
     if (sellerId) query.seller_id = sellerId;
@@ -537,21 +526,7 @@ app.get("/ml/orders", requireMlAuth, asyncHandler(async (req, res) => {
     });
     return res.json(payload);
   }
-  const allowedKeys = new Set([
-    "seller",
-    "seller.id",
-    "offset",
-    "limit",
-    "order.status",
-    "sort",
-    "tags",
-  ]);
-  const query = {};
-  for (const [k, v] of Object.entries(req.query)) {
-    if (allowedKeys.has(k) && v != null && String(v) !== "") {
-      query[k] = v;
-    }
-  }
+  const query = buildMlOrdersSearchQuery(req.query);
   const sellerId = await ml.resolveSellerId();
   // ML documenta /orders/search?seller=ID; marketplace a veces usa seller.id — alinear caller con el vendedor del token
   if (!query.seller && !query["seller.id"] && sellerId) {
