@@ -33,6 +33,7 @@ import { rankUrgentConversations } from "../lib/omni/urgency.js";
 import { appendTeamIsolationFilter } from "../lib/omni/teamIsolation.js";
 import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
 import { mergeContacts, ContactMergeError } from "../lib/omni/identity/contactMerge.js";
+import { buildContactsListQuery, mapContactsListRows } from "../lib/omni/contactsList.js";
 import { callAgentOnce } from "../lib/agentCore.js";
 import { dispatchAssistant } from "../lib/assistantRegistry.js";
 
@@ -394,58 +395,13 @@ router.get(
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
-    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
-    const offset = Math.max(Number(req.query.offset) || 0, 0);
-    const q = String(req.query.search || req.query.q || "").trim();
-    const search = q ? `%${q}%` : null;
-
-    const isAdmin = req.user?.role === "admin" || req.user?.role === "superadmin";
-    // For non-admins, scope both aggregation and contact visibility to their
-    // team's conversations (matching the predicate used by GET /omni/conversations).
-    const params = [search, limit, offset];
-    let aggWhere = "";
-    let contactTeamFilter = "";
-    if (!isAdmin) {
-      params.push(req.user.id);
-      aggWhere = `WHERE (c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`;
-      // Only expose contacts that have at least one conversation visible to this user.
-      contactTeamFilter = "AND agg.contact_id IS NOT NULL";
-    }
-
+    const { sql, params } = buildContactsListQuery({ query: req.query, user: req.user });
     try {
-      const { rows } = await req.omniPool.query(
-        `SELECT co.id, co.name, co.email, co.phone, co.wa_phone, co.ml_user_id,
-                co.avatar_url, co.created_at, co.updated_at,
-                COALESCE(agg.conversation_count, 0) AS conversation_count,
-                agg.last_activity_at,
-                COALESCE(agg.channels, '{}') AS channels,
-                COUNT(*) OVER() AS total_count
-           FROM omni_contacts co
-           LEFT JOIN (
-             SELECT c.contact_id,
-                    COUNT(*)::int AS conversation_count,
-                    MAX(c.updated_at) AS last_activity_at,
-                    array_agg(DISTINCT c.channel) AS channels
-               FROM omni_conversations c
-               ${aggWhere}
-              GROUP BY c.contact_id
-           ) agg ON agg.contact_id = co.id
-          WHERE co.properties->>'merged_into' IS NULL
-            AND ($1::text IS NULL
-                 OR co.name ILIKE $1 OR co.email ILIKE $1
-                 OR co.phone ILIKE $1 OR co.wa_phone ILIKE $1)
-            ${contactTeamFilter}
-          ORDER BY co.updated_at DESC
-          LIMIT $2 OFFSET $3`,
-        params,
-      );
-      const totalCount = rows[0]?.total_count ?? 0;
+      const { rows } = await req.omniPool.query(sql, params);
       res.json({
         ok: true,
         generated_at: new Date().toISOString(),
-        count: rows.length,
-        total_count: Number(totalCount),
-        contacts: rows.map(({ total_count: _tc, ...r }) => r), // strip the window-function aggregate from each row
+        ...mapContactsListRows(rows),
       });
     } catch (e) {
       if (e?.code !== "42703" && e?.code !== "42P01") throw e;
