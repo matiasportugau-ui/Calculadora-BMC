@@ -19,6 +19,7 @@ import {
   resolveModel,
   estimateCostUSD,
   getApiKey,
+  DEFAULT_PROVIDER_ORDER,
 } from "./aiProviderConfig.js";
 
 // ─── Provider timeout + cooldown (reliability) ────────────────────────────────
@@ -167,6 +168,23 @@ function buildChannelSection(channel) {
 // Centralized provider chain (replaces previous hardcoded list)
 const getCentralProviderChain = () => getProviderChain();
 
+function hasProviderKeyOverride(apiKeysOverride) {
+  return apiKeysOverride && typeof apiKeysOverride === "object";
+}
+
+function getProviderChainForKeys(apiKeysOverride) {
+  if (!hasProviderKeyOverride(apiKeysOverride)) return getCentralProviderChain();
+  return DEFAULT_PROVIDER_ORDER.filter((p) => {
+    if (p === "openrouter" && !config.openrouterFallbackEnabled) return false;
+    return String(apiKeysOverride[p] || "").trim().length > 0;
+  });
+}
+
+function getProviderApiKey(provider, apiKeysOverride) {
+  if (hasProviderKeyOverride(apiKeysOverride)) return apiKeysOverride[provider];
+  return getApiKey(provider);
+}
+
 // El módulo waConfig.js es runtime-side; agentCore se usa también offline en
 // tests, así que importamos lazy para no romper si waConfig no está primed.
 async function _readAiOverride(taskKey) {
@@ -263,10 +281,10 @@ export async function callAgentOnce(messages, opts = {}) {
     chain = [provider];
   } else if (eff.provider) {
     const internal = SCHEMA_TO_INTERNAL[eff.provider] || eff.provider;
-    const fullChain = getCentralProviderChain();
+    const fullChain = getProviderChainForKeys(apiKeysOverride);
     chain = [internal, ...fullChain.filter((p) => p !== internal)];
   } else {
-    chain = getCentralProviderChain();
+    chain = getProviderChainForKeys(apiKeysOverride);
   }
 
   // Deprioritize (don't remove) providers in cooldown: try healthy ones first,
@@ -282,7 +300,7 @@ export async function callAgentOnce(messages, opts = {}) {
   const errors = [];
 
   for (const p of chain) {
-    const apiKey = getApiKey(p);
+    const apiKey = getProviderApiKey(p, apiKeysOverride);
     if (!apiKey) { errors.push(`${p}: no key`); continue; }
 
     // Resolver modelo usando centralización (respeta overrides + allowlists + defaults)
