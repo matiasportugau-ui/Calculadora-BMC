@@ -14,6 +14,17 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-11 (docs — SDD formal del Visor 3D: arc42 + C4 + ADRs):** Generado
+[`VISOR-3D-SDD.md`](./ux-feedback/VISOR-3D-SDD.md) — documento de arquitectura formal (skill
+`sdd-architect`) para el subsistema Visor 3D: contexto (C4 Nivel 1), vista de contenedores/
+componentes/flujo de datos (C4 Nivel 2-3), atributos de calidad adaptados (sin la fase de IA/LLM
+del template, no aplica), y 5 ADRs cubriendo las decisiones ya tomadas esta sesión (flag aditivo,
+geometría procedural sobre asset externo, material sólido sobre foto tileada, contención de
+blast-radius de las utilidades de layout compartidas con `RoofBorderSelector`/plano 2D, extrusión
+continua sobre `InstancedMesh`). Complementa (no reemplaza) el backlog de ejecución en
+`VISOR-3D-QUALITY-REWORK-SPEC.md` — el SDD es la capa de "por qué se decidió así", la spec sigue
+siendo la de "qué archivo/línea tocar en cada fase". Sin cambios de código.
+
 **2026-07-11 (fix — corrección del perfil ISOROOF: 3 nervios espaciados, no corrugación densa):** El commit anterior (Fase 1 del Visor 3D) leyó mal el plano técnico BMC: interpretó "72" como paso de repetición entre nervaduras (~13 nervios por metro). Con zoom sobre el plano real se ve que "72" es el ancho de la BASE de la nervadura central — el panel real tiene solo 3 nervios estructurales por módulo au=1.0m (visibles porque el núcleo de espuma amarillo asoma debajo de cada uno): medio nervio en cada borde (compartido con el panel vecino, se corta justo por su eje) + uno completo al centro, con tramos planos entre medio. `buildIsoroofRibProfilePoints` reescrita: 10 puntos explícitos en vez de una onda repetida de 58. Verificado con sanity-check en Node + trace en navegador (removido) + screenshot mostrando líneas dispersas y correctamente espaciadas en vez de corrugación densa. `gate:local` verde.
 
 **2026-07-11 (feat — Fase 1 del Visor 3D shippeada: paneles ISOROOF con geometría real, no más foto plana):** Implementado `src/data/roofPanelCrossSections.js` (sección 2D real del perfil ISOROOF: 1000mm ancho, nervadura 26×40mm, paso 72mm — cotas exactas del plano técnico BMC, no estimadas) + `RoofStripMeshRibbed` en `RoofPanelRealisticScene.jsx` que extruye esa sección con `THREE.ExtrudeGeometry` a lo largo de `largo` (una malla por franja de `au`, mismo patrón que la franja plana original — no hizo falta `InstancedMesh`, la corrugación corre a lo largo, no se tilea). Con geometría real la foto de catálogo ya no se pega encima (generaría doble sombreado) — material sólido vía `COLOR_HEX` existente, coincide con cómo se ven los renders 3D reales de BMC. Familias sin perfil conocido (ISODEC y variantes, Fase 2 pendiente) mantienen el plano+foto sin cambios. Verificado: sanity-check numérico en Node (58 puntos, x monotónico, y en [0,0.04]) + confirmación en navegador vía trace temporal mostrando `RoofStripMeshRibbed` invocado con `stripW`/`colorHex`/`pointCount` correctos para 2 zonas de prueba, cero warnings nuevos de consola. `gate:local` verde. Actualiza [`VISOR-3D-QUALITY-REWORK-SPEC.md`](./ux-feedback/VISOR-3D-QUALITY-REWORK-SPEC.md) Fase 1 → shippeada.

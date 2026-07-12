@@ -4,10 +4,14 @@
 > **ya shippeado en PR #669+#670**). Es una tarea completamente distinta: el flag ya existe
 > y funciona; esta spec ataca la CALIDAD del render que el flag revela.
 >
-> **Fase 0 de esta spec ya está shippeada** — ver "Cambios recientes" en `PROJECT-STATE.md`
-> (fix del bug de detección de encuentros en `RoofPanelRealisticScene.jsx`). El resto (Fases
-> 1-4) depende de sourcing de assets 3D externos y de un spike empírico de trigonometría, y
-> queda documentado acá para cuando se retome.
+> **Fase 0 y Fase 1 de esta spec ya están shippeadas** — ver "Cambios recientes" en
+> `PROJECT-STATE.md` (fix del bug de detección de encuentros + geometría real de panel ISOROOF).
+> El resto (Fases 1b-4) depende de sourcing de assets 3D externos y de un spike empírico de
+> trigonometría, y queda documentado acá para cuando se retome.
+>
+> **Ver también** [`VISOR-3D-SDD.md`](./VISOR-3D-SDD.md) — documento de arquitectura formal
+> (arc42 + C4 + ADRs) para este subsistema. Este archivo es el backlog de ejecución línea-por-
+> línea; el SDD es la capa de decisiones/por-qué. No duplican contenido.
 
 ## Contexto
 
