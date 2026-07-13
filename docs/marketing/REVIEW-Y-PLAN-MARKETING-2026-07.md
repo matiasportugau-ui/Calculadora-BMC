@@ -21,7 +21,7 @@ grounded_in: server/lib/marketIntel/data/*.json (captura 2026-06-29 / SERP 2026-
 
 **Situación en 6 puntos:**
 
-1. **El motor comercial es la publicidad paga.** Como dice la propia spec interna: *"BMC's demand comes almost entirely from its own campaigns and referrals, so ad efficiency *is* the commercial engine"* (`adevolve-ai/docs/COMMERCIAL-INTELLIGENCE-SPEC.md`). Todo lo demás amplifica o desperdicia ese motor.
+1. **El motor comercial es la publicidad paga.** Como dice la propia spec interna: _"BMC's demand comes almost entirely from its own campaigns and referrals, so ad efficiency *is* the commercial engine"_ (`adevolve-ai/docs/COMMERCIAL-INTELLIGENCE-SPEC.md`). Todo lo demás amplifica o desperdicia ese motor.
 2. **Ese motor está mayormente apagado.** Auditoría Meta Ads (2026-06-29): **72 campañas, solo 4 activas, 68 "zombies"** → diagnóstico literal *"Ghost Town — 94% inactivo"*. Se gastan **USD 11.000/mes** en 4 campañas sin gestión estructurada.
 3. **Hay una fuga de demanda caliente en MercadoLibre:** **47 preguntas sin responder** (algunas +7 días), **12 listings sin imágenes**, 8 con ficha incompleta, títulos genéricos. Son leads con intención de compra que se enfrían solos.
 4. **En SEO BMC ya rankea bien pero deja plata en la mesa:** posiciona **#1–#2 en varias keywords transaccionales**, pero **17 de 25 keywords prioritarias tienen `on_site_gap`** (no hay página propia que capture esa búsqueda) y **MercadoLibre le gana el clic** en las genéricas de mayor volumen.
@@ -69,19 +69,24 @@ en la COMMERCIAL-INTELLIGENCE-SPEC). Este informe respeta esa disciplina: cada a
 **Qué muestra la data (`adsIntelligence.json`, 2026-06-29):**
 
 - **72 campañas totales · 4 activas · 68 zombies** → *"Ghost Town, 94% inactivas sin tráfico ni presupuesto"*.
-- Las 4 activas ("Big 4") suman **USD 11.000/mes**:
-  - Lead Gen Pilar 1 — Rendimiento: **$4.500** (lead_gen, rendimiento alto)
-  - Lead Gen Pilar 2 — Instalación: **$3.000** (lead_gen, rendimiento alto)
-  - Tráfico Web: **$2.000** (traffic, rendimiento medio)
-  - Remarketing: **$1.500** (conversions, rendimiento medio)
+- Las 4 activas ("Big 4") suman **USD 11.000/mes** (todos los montos en USD, según `*_usd` en `adsIntelligence.json`):
+  - Lead Gen Pilar 1 — Rendimiento: **USD 4.500/mes** (`lead_generation`, rendimiento alto)
+  - Lead Gen Pilar 2 — Instalación: **USD 3.000/mes** (`lead_generation`, rendimiento alto)
+  - Tráfico Web: **USD 2.000/mes** (`traffic`, rendimiento medio)
+  - Remarketing: **USD 1.500/mes** (`conversions`, rendimiento medio)
 - **3 ángulos de copy** ya definidos: *Ahorro garantizado* ("ahorrá hasta 40% en climatización"), *Construcción rápida*, *Durabilidad premium* ("garantía Kingspan 50 años").
 
 **Lectura de analista:**
 
 - 68 campañas zombie no son inocuas: **fragmentan el histórico de la cuenta y confunden la fase de
   aprendizaje** del algoritmo de Meta. Higiene primero.
-- **La campaña "Tráfico Web" ($2.000/mes) es sospechosa de bajo valor**: objetivo *traffic* sin
-  conversión medida suele ser gasto de vanidad. Ese presupuesto rinde más movido a lead/conversión.
+- **Cuidado con juzgar el tráfico por conversión.** El motor AdEvolve (`analyze.py`) es
+  **objective-aware**: puntúa cada campaña contra pares del *mismo objetivo* (traffic/awareness →
+  CPC/CTR; sales/leads → CPA/ROAS) y **nunca pausa** una campaña de tope de embudo por tener 0
+  conversiones — reasigna presupuesto *budget-neutral* (Σ=0, ±20 %/día) hacia el tráfico más
+  eficiente. Por eso la conclusión sobre "Tráfico Web" no es *matarla*, sino: (a) dejar que su
+  presupuesto se reasigne al tráfico de mejor CPC/CTR, y (b) instalar tracking de conversión para
+  recién ahí saber si ese tráfico convierte.
 - **Falta lo esencial: medición de conversión.** No hay CAC/ROAS por campaña conectado (ver §2.6 y §6).
   Sin eso, "rendimiento alto/medio" es una etiqueta cualitativa, no un dato accionable.
 - **Existe la herramienta para arreglarlo y no se está usando:** `adevolve-ai` (ingest Google+Meta →
@@ -201,6 +206,7 @@ Esto conecta SEO (§2.2) + CRO + generación de lead en un solo movimiento, usan
 | SKU | Producto | Núcleo | Espesor | Precio público |
 |---|---|---|---|---|
 | ISOPANEL_EPS_50 | ISOPANEL EPS Pared | EPS | 50mm | **41.88** |
+| ISOPANEL_EPS_100 | ISOPANEL EPS Pared | EPS | 100mm | cotización (N/A) |
 | ISODEC_EPS_100 | ISODEC EPS Techo | EPS | 100mm | 46.07 |
 | ISODEC_PIR_50 | ISODEC PIR Techo | PIR | 50mm | 51.02 |
 | ISOROOF_3G_30 | ISOROOF 3G | PIR | 30mm | 48.74 |
@@ -312,7 +318,7 @@ Formato: **Acción · Por qué · Esfuerzo · Impacto · Owner · KPI**. Impacto
 | **Pausar las 68 campañas zombie**; auditar cada una de las 4 activas con la grilla Winner/Neutral/Bleeder del playbook AdEvolve | Limpiar aprendizaje del algoritmo | B | **A** | Marketing | 0 zombies activas |
 | **Instalar/verificar tracking de conversión** (Meta Pixel + CAPI, Google conv., evento "cotización generada" desde la calculadora) | Sin esto no hay ROAS ni optimización real | M | **A** | Dev | Eventos de conversión disparando |
 | **Consolidar a 1–2 campañas Advantage+ (ASC)** (decisión D1 de presupuesto abajo) usando los 3 ángulos de copy existentes | Recomendación de la auditoría; simplifica gestión | M | **A** | Marketing | CPA por lead medido |
-| **Revaluar "Tráfico Web" ($2.000/mes)** → mover a lead/conversión salvo que pruebe valor | Gasto de vanidad probable | B | M | Marketing | $ reasignado a conversión |
+| **Tratar el tráfico como objective-aware** (CPC/CTR, reasignación budget-neutral vía AdEvolve; no pausar top-of-funnel por 0 conversiones) | Alinear con el motor real de ads (`analyze.py`), no con una grilla CPA genérica | B | M | Marketing | Presupuesto de tráfico movido al mejor CPC/CTR |
 | Cerrar loop: **dashboard de spend/CAC/ROAS por canal** (AdEvolve ingest + conectar Meta/Supermetrics) | Medir para optimizar | M | **A** | Dev | Tablero CAC/ROAS live |
 
 ### Fase 2 — 60 días (capturar demanda orgánica + CRO)
@@ -353,11 +359,11 @@ tracking de conversión** (no antes — reasignar a ciegas es igual de malo que 
 
 | Bloque | Hoy (aprox.) | Propuesta (post-tracking) | Racional |
 |---|---|---|---|
-| Lead Gen (ASC consolidada) | $7.500 (Pilar 1+2) | **$6.000–7.500** | Núcleo del motor; mantener hasta ver CAC, luego escalar el ganador |
-| Tráfico Web | $2.000 | **$0–500** | Vanidad probable; mover a conversión/landings |
-| Remarketing | $1.500 | **$1.500–2.500** | Ampliar a "cotizadores" (lead auto-calificado) |
-| SEO/CRO (landings + contenido) | $0 en medios | **reasignar esfuerzo dev** | Canal de margen propio; capex, no opex de medios |
-| Búsqueda Google (marca + genéricos) | ¿? | **test $500–1.000** | Defender marca y disputar genéricos a PSG/MLU |
+| Lead Gen (ASC consolidada) | USD 7.500 (Pilar 1+2) | **USD 6.000–7.500** | Núcleo del motor; mantener hasta ver CAC, luego escalar el ganador |
+| Tráfico Web | USD 2.000 | **reasignar por CPC/CTR** (budget-neutral) | Objective-aware: no cortar por 0 conversiones; el motor mueve el presupuesto al tráfico más eficiente |
+| Remarketing | USD 1.500 | **USD 1.500–2.500** | Ampliar a "cotizadores" (lead auto-calificado) |
+| SEO/CRO (landings + contenido) | USD 0 en medios | **reasignar esfuerzo dev** | Canal de margen propio; capex, no opex de medios |
+| Búsqueda Google (marca + genéricos) | ¿? | **test USD 500–1.000** | Defender marca y disputar genéricos a PSG/MLU |
 
 > ⚠️ El número exacto lo decide el **CAC por canal**, que hoy no se mide. **Por eso el tracking
 > (Fase 1) es precondición de cualquier movida de plata grande.** El objetivo de AdEvolve/SDD es
