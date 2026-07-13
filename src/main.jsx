@@ -2,6 +2,12 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/applied-ai.css';
 import './styles/bmc-mobile.css';
+import { captureUtmFromLocation } from './utils/leadTracking.js';
+
+// Capture ?utm_* once per page load, before any route-specific logic, so a
+// quote-request event fired later (from any route) can still be attributed
+// back to the ad/campaign that brought the visitor in.
+captureUtmFromLocation();
 
 // Route-aware error labels — the previous "Error en la Calculadora" copy
 // misled users who hit errors on /hub/tareas, /mi-espacio, /hub/admin/users
