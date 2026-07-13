@@ -11,6 +11,7 @@
 import { config } from "../server/config.js";
 import { isAssistantEnabled, dispatchAssistant, buildFallbackLine, ASSISTANTS, getAssistant } from "../server/lib/assistantRegistry.js";
 import { checkAssistant, _clearAssistantHealthCache } from "../server/lib/assistantHealth.js";
+import { recordProviderFailure, resetProviderCooldowns } from "../server/lib/agentCore.js";
 
 let passed = 0;
 let failed = 0;
@@ -106,6 +107,7 @@ await (async () => {
 
   // ── Health classification ───────────────────────────────────────────────────
   _clearAssistantHealthCache();
+  resetProviderCooldowns();
   config.assistantsActive = ["panelin"];
 
   setProviders({ claude: "sk-test-claude-key" });
@@ -122,6 +124,43 @@ await (async () => {
   const down = await checkAssistant("panelin", { force: true });
   assert(down.status === "down", "enabled + no providers → down");
 
+  resetProviderCooldowns();
+  _clearAssistantHealthCache();
+  config.assistantsActive = ["ml"];
+  setProviders({ claude: "sk-test-claude-key", gemini: "sk-test-gemini-key" });
+  recordProviderFailure("claude", Date.now(), {
+    status: 400,
+    detail: "credit balance is too low",
+  });
+  const hardFailure = await checkAssistant("ml", { force: true });
+  assert(hardFailure.enabled === true, "hard-failing primary assistant remains enabled");
+  assert(hardFailure.status === "degraded", "hard primary provider failure → degraded");
+  assert(hardFailure.activeProvider === "gemini", "hard primary provider failure falls back to gemini");
+  assert(
+    /primary 'claude' failing/i.test(hardFailure.detail) &&
+      /400/.test(hardFailure.detail) &&
+      /credit balance/i.test(hardFailure.detail),
+    "hard primary provider failure detail exposes status and billing reason",
+  );
+  assert(hardFailure.providerCooldowns.claude?.coolingDown === true, "hard provider failure enters cooldown");
+  assert(
+    hardFailure.providerCooldowns.claude?.lastError?.status === 400 &&
+      /credit balance/i.test(hardFailure.providerCooldowns.claude?.lastError?.detail || ""),
+    "hard provider failure retains lastError for the health panel",
+  );
+
+  resetProviderCooldowns();
+  _clearAssistantHealthCache();
+  recordProviderFailure("claude", Date.now(), {
+    status: 429,
+    detail: "rate limited once",
+  });
+  const transientFailure = await checkAssistant("ml", { force: true });
+  assert(transientFailure.status === "live", "single transient primary 429 does not degrade health");
+  assert(transientFailure.activeProvider === "claude", "single transient primary 429 keeps claude active");
+
+  resetProviderCooldowns();
+  _clearAssistantHealthCache();
   config.assistantsActive = [];
   const off = await checkAssistant("panelin", { force: true });
   assert(off.status === "disabled", "not in allowlist → disabled");
