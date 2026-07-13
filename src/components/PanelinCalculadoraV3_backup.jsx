@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { PANELIN_VERSION_BADGE } from "../appSemver.js";
+import { trackLeadEvent } from "../utils/leadTracking.js";
 import { mqCompactPdfModal, isPhoneViewportWidth, isTabletViewportWidth, isCompactMainLayoutWidth } from "../constants/viewportBreakpoints.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import StockWebHint from "./StockWebHint.jsx";
@@ -4203,6 +4204,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const blob = await htmlToPdfBlob(html, fname);
       downloadPdfBlob(blob, fname);
+      trackLeadEvent("quote.complete");
       setShowQuoteConfirm(false);
       const archived = await persistExportToCompanyDrive({
         pdfBlob: blob, pdfFileName: fname, quotationCode: code, source: "calc_export_presupuesto",
@@ -4214,6 +4216,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [proyecto, buildClientePdfHtml, showToast, requireProyectoParaPdf, persistExportToCompanyDrive]);
 
   const handleCopyWA = () => {
+    trackLeadEvent("quote.send.whatsapp");
     const txt = buildWhatsAppText({
       client: proyecto, project: proyecto, scenario,
       panel: panelInfo,
