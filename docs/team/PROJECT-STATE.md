@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-18
+**Última actualización:** 2026-07-19
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-14 (feat — Hub Wolfboard: EstadoConsultasLive):** `/hub` muestra `EstadoConsultasLive` debajo de `OperatorOverview` — panel de consultas/canales en vivo (componente desde `feat/hub-operator-control-plane` @ a8984875; wiring mínimo en `BmcWolfboardHub.jsx`; sin caja DEBUG ni bloques de copy de investigación).
 
 **2026-07-19 (prod — Panelin Hands-free build-max):** PR [#717](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/717) merged (`37045e0b`). Vercel **Deploy production** success. Prod SPA: no embedded “Safari…OpenAI Realtime” banner; Hands-free/Whisper markers present in calculator chunk. API `/health` ok. Smoke suggest-response 401 is pre-existing IA credentials (not this PR).
 
