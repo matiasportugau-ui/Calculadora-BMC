@@ -52,6 +52,7 @@ import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
 import marketingRouter from "./routes/marketing.js";
+import adsRouter from "./routes/ads.js";
 import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinRouter from "./routes/panelin.js";
@@ -1106,6 +1107,8 @@ app.use("/api/wolfboard", createWolfboardRouter(config));
 // Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
 // Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
 app.use("/api/marketing", marketingRouter);
+// Google Ads API — read/report + RBAC-gated dry-run-by-default campaign mutations
+app.use("/api/ads", adsRouter);
 app.use("/api/bugs", createBugsRouter(config));
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());

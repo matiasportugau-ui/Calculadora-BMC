@@ -170,6 +170,16 @@ export const config = {
   shopifyWebhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET || "",
   shopifyQuestionsSheetTab: process.env.SHOPIFY_QUESTIONS_SHEET_TAB || "Shopify_Preguntas",
   /**
+   * Google Ads API (requerido para /api/ads/*) — ver docs/procedimientos/GOOGLE-ADS-SETUP.md.
+   * `googleAdsLoginCustomerId` es la MCC ("BMC Manager"); `customerId` (la cuenta
+   * anunciante real, ej. BMC Uruguay) se pasa por request, nunca hardcoded acá.
+   */
+  googleAdsDeveloperToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN || "",
+  googleAdsOAuthClientId: process.env.GOOGLE_ADS_OAUTH_CLIENT_ID || "",
+  googleAdsOAuthClientSecret: process.env.GOOGLE_ADS_OAUTH_CLIENT_SECRET || "",
+  googleAdsRefreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN || "",
+  googleAdsLoginCustomerId: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || "",
+  /**
    * Postgres connection string. Usado por:
    * - Modo Transportista (viajes / eventos / outbox) — `transportista-cursor-package/migrations/`.
    * - WA Cockpit (`wa_conversations`, `wa_messages`, `wa_suggestions`) — `wa-package/migrations/`.
