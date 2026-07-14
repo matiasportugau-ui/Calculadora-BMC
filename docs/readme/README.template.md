@@ -21,7 +21,7 @@ Genera cotizaciones de materiales en tiempo real para obras con paneles sandwich
 
 ## Inicio rápido
 
-**Requisitos:** Node.js 20+
+**Requisitos:** Node.js 24.x
 
 > En Linux, `npm install` / `npm ci` puede requerir `libasound2-dev` por la dependencia nativa de `easymidi`.
 

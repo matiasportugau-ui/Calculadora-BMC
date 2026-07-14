@@ -17,7 +17,7 @@ Cotizador profesional de paneles de aislamiento térmico y acústico para **BMC 
 |-------|-------|
 | **Fecha generación (UTC)** | `2026-07-14` · timestamp ISO en `public/presentation-data.json` |
 | **package.json** | `3.1.5` |
-| **Git** | `171428b` · `copilot/update-readme` |
+| **Git** | `ed40b17` · `copilot/update-readme` |
 | **CALCULATOR_DATA_VERSION** | `66c7c0febf` |
 | **README smoke** | omitidos |
 | **Presentación Matrix** | [Local :5173](http://localhost:5173/matrix-presentation.html) · [Vercel](https://calculadora-bmc.vercel.app/matrix-presentation.html) |
@@ -40,7 +40,7 @@ Genera cotizaciones de materiales en tiempo real para obras con paneles sandwich
 
 ## Inicio rápido
 
-**Requisitos:** Node.js 20+
+**Requisitos:** Node.js 24.x
 
 > En Linux, `npm install` / `npm ci` puede requerir `libasound2-dev` por la dependencia nativa de `easymidi`.
 
