@@ -6,7 +6,7 @@ Cotizador profesional de paneles de aislamiento térmico y acústico para **BMC 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
-![Node](https://img.shields.io/badge/Node-20-339933?logo=node.js&logoColor=white)
+![Node](https://img.shields.io/badge/Node-24-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-UNLICENSED-red)
 
 <!-- AUTO-GENERATED-BLOCK: scripts/generate-readme-presentation.mjs -->
@@ -15,11 +15,11 @@ Cotizador profesional de paneles de aislamiento térmico y acústico para **BMC 
 
 | Campo | Valor |
 |-------|-------|
-| **Fecha generación (UTC)** | `2026-05-06` · timestamp ISO en `public/presentation-data.json` |
+| **Fecha generación (UTC)** | `2026-07-14` · timestamp ISO en `public/presentation-data.json` |
 | **package.json** | `3.1.5` |
-| **Git** | `0bd4d7f` · `copilot/update-readme` |
-| **CALCULATOR_DATA_VERSION** | `45e744c8db` |
-| **README smoke** | `384` passed (`validation.js`) + `10` ok (`roofVisualQuoteConsistency.js`) |
+| **Git** | `171428b` · `copilot/update-readme` |
+| **CALCULATOR_DATA_VERSION** | `66c7c0febf` |
+| **README smoke** | omitidos |
 | **Presentación Matrix** | [Local :5173](http://localhost:5173/matrix-presentation.html) · [Vercel](https://calculadora-bmc.vercel.app/matrix-presentation.html) |
 
 **Regenerar:** `npm run readme:sync` · solo README/JSON: `npm run readme:generate` · comprobar: `npm run readme:check`.
