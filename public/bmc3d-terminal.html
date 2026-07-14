@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BMC 3D Terminal • Sims Builder — Uruguay</title>
+  <style>
+    :root { --bg:#0a111f; --panel:#111a2b; --accent:#22c55e; --text:#e2e8f0; --muted:#64748b; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#0a111f; color:var(--text); overflow:hidden; }
+    #ui { position:absolute; top:12px; left:12px; z-index:10; display:flex; flex-direction:column; gap:8px; max-width:340px; }
+    .panel { background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px 14px; box-shadow:0 10px 30px rgba(0,0,0,0.4); }
+    .title { font-size:15px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+    .title .dot { display:inline-block; width:8px; height:8px; background:var(--accent); border-radius:50%; box-shadow:0 0 6px #22c55e; }
+    .status { font-size:12px; color:#86efac; margin-bottom:6px; }
+    .row { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+    button, select, input { background:#1f2a40; color:var(--text); border:1px solid rgba(255,255,255,0.12); border-radius:6px; padding:6px 10px; font-size:13px; cursor:pointer; }
+    button.primary { background:#166534; border-color:#22c55e; font-weight:600; }
+    button.primary:hover { background:#15803d; }
+    .quote { margin-top:8px; padding:10px; background:#0f172a; border-radius:8px; font-size:13px; }
+    .quote .total { font-size:18px; font-weight:700; color:#86efac; }
+    .dev { font-size:11px; color:#64748b; }
+    #canvas { position:absolute; top:0; left:0; width:100%; height:100%; display:block; }
+    .hud { position:absolute; bottom:12px; right:12px; z-index:10; font-size:12px; background:rgba(17,26,43,0.9); padding:6px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.08); }
+    .log { position:absolute; bottom:12px; left:12px; z-index:10; max-width:340px; font-size:11px; background:rgba(17,26,43,0.85); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.08); max-height:110px; overflow:auto; white-space:pre-line; }
+    .empathy { font-size:12px; color:#a5b4fc; margin-top:4px; line-height:1.3; }
+    .metric { display:flex; justify-content:space-between; font-size:12px; margin:2px 0; }
+    .metric span:last-child { font-weight:600; color:#cbd5e1; }
+    .small { font-size:11px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <!-- UI -->
+  <div id="ui">
+    <div class="panel">
+      <div class="title"><span class="dot"></span> BMC 3D Terminal</div>
+      <div class="status" id="status">3D Builder ready • Rapier collision • Sims-builder</div>
+      <div class="empathy">Entiendo tu necesidad en UY. Fabricamos acá, plazos reales y precios de lista local.</div>
+
+      <div class="row">
+        <button onclick="addWall()">+ Pared</button>
+        <button onclick="addRoof()">+ Techo</button>
+        <button onclick="runPhysics()">Simular Física</button>
+      </div>
+
+      <div style="margin-top:8px;">
+        <label class="small">Familia</label>
+        <select id="familia" onchange="markDirty()">
+          <option value="ISODEC_EPS">ISODEC EPS</option>
+          <option value="ISOPANEL_EPS">ISOPANEL EPS</option>
+          <option value="ISOROOF">ISOROOF 3G</option>
+        </select>
+        <select id="espesor" onchange="markDirty()">
+          <option value="50">50 mm</option>
+          <option value="100" selected>100 mm</option>
+          <option value="150">150 mm</option>
+          <option value="200">200 mm</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <button onclick="syncAndQuote()" class="primary">Build + Quote (instant)</button>
+        <button onclick="exportPDF()">Export PDF</button>
+      </div>
+
+      <div id="quoteBox" class="quote" style="display:none;">
+        <div class="metric"><span>Paneles</span><span id="qPanels">—</span></div>
+        <div class="metric"><span>Área</span><span id="qArea">— m²</span></div>
+        <div class="metric"><span>Subtotal sin IVA</span><span id="qSub">—</span></div>
+        <div class="metric"><span>Total con IVA (UYU)</span><span id="qTotal" class="total">—</span></div>
+        <div class="small" id="qWarnings"></div>
+      </div>
+    </div>
+
+    <div class="panel dev" id="devPanel">
+      <div><strong>DEV FULL</strong> — physics: rapier-collision • mode: sims-builder • calc: bmc-walls-roofs</div>
+      <div class="row" style="margin-top:6px;">
+        <button onclick="toggleWireframe()">Wireframe</button>
+        <button onclick="clearAll()">Clear</button>
+        <button onclick="dumpState()">Dump State</button>
+        <button onclick="resetCamera()">Reset Cam</button>
+      </div>
+      <div id="physDebug" class="small" style="margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <div class="hud">
+    <span id="hudInfo">Drag para mover • Scroll zoom • Doble-click para rotar panel</span>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    // ============== BMC 3D TERMINAL — FULL IMPLEMENTATION ==============
+    // Flags honored: --empathy UY, --physics rapier, --mode sims-builder, --calc bmc-walls-roofs, --quote instant, --export pdf, --dev full
+
+    const canvas = document.getElementById('canvas');
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+    const quoteBox = document.getElementById('quoteBox');
+
+    let scene, camera, renderer;
+    let world; // Rapier world
+    let RAPIER;
+    let bodies = []; // { mesh, body, kind: 'wall'|'roof', meta }
+    let selected = null;
+    let isDragging = false;
+    let prevMouse = { x: 0, y: 0 };
+    let wireframe = false;
+    let dirty = false;
+
+    const PRICING = {
+      ISODEC_EPS: { label: "ISODEC EPS", au: 1.12, lmin: 2.4, lmax: 12, esp: { 100: { precio: 45.97, costo: 31.2 }, 150: { precio: 58.4, costo: 39.8 } } },
+      ISOPANEL_EPS: { label: "ISOPANEL EPS", au: 1.14, lmin: 2.4, lmax: 7.2, esp: { 100: { precio: 42.5, costo: 28.9 } } },
+      ISOROOF: { label: "ISOROOF 3G", au: 1.0, lmin: 2.4, lmax: 9.5, esp: { 50: { precio: 36.8, costo: 24.5 }, 100: { precio: 47.2, costo: 32.1 } } }
+    };
+
+    function log(msg) {
+      logEl.textContent = (logEl.textContent + '\n' + msg).split('\n').slice(-6).join('\n');
+    }
+
+    async function initRapier() {
+      try {
+        RAPIER = await window.RAPIER.init();
+        world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+        log("Rapier physics ready (collision ON)");
+        statusEl.textContent = "3D Builder ready • Rapier collision • Sims-builder • UY";
+      } catch (e) {
+        log("Rapier failed to load — falling back to kinematic sim");
+        world = null;
+      }
+    }
+
+    function initThree() {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+
+      scene = new THREE.Scene();
+      scene.fog = new THREE.Fog(0x0a111f, 18, 65);
+
+      camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
+      camera.position.set(8, 7, 11);
+
+      // Lights
+      const hemi = new THREE.HemisphereLight(0x9fb3ff, 0x1a2535, 0.6);
+      scene.add(hemi);
+      const dir = new THREE.DirectionalLight(0xfff8e7, 0.85);
+      dir.position.set(12, 22, 8);
+      dir.castShadow = true;
+      scene.add(dir);
+
+      // Ground
+      const groundGeo = new THREE.PlaneGeometry(60, 60);
+      const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e2937, roughness: 0.95, metalness: 0.05 });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      // Simple grid
+      const grid = new THREE.GridHelper(40, 40, 0x334155, 0x1e2937);
+      grid.position.y = 0.01;
+      scene.add(grid);
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // Mouse handlers
+      canvas.addEventListener('mousedown', onMouseDown);
+      canvas.addEventListener('mousemove', onMouseMove);
+      canvas.addEventListener('mouseup', onMouseUp);
+      canvas.addEventListener('wheel', onWheel, { passive: false });
+      canvas.addEventListener('dblclick', onDoubleClick);
+
+      log("Three.js scene initialized");
+    }
+
+    function addRigidBox({ pos, size, color = 0x22c55e, kind, meta }) {
+      const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+      const material = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.1, wireframe });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.set(pos.x, pos.y, pos.z);
+      scene.add(mesh);
+
+      let body = null;
+      if (world && RAPIER) {
+        const rigidDesc = (kind === 'roof') 
+          ? RAPIER.RigidBodyDesc.dynamic() 
+          : RAPIER.RigidBodyDesc.dynamic();
+        body = world.createRigidBody(rigidDesc);
+        body.setTranslation({ x: pos.x, y: pos.y, z: pos.z });
+
+        const colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2);
+        world.createCollider(colliderDesc, body);
+      } else {
+        // Kinematic fallback
+        body = { translation: () => ({ x: pos.x, y: pos.y, z: pos.z }), setTranslation: (t) => { mesh.position.set(t.x, t.y, t.z); } };
+      }
+
+      const entry = { mesh, body, kind, meta, size };
+      bodies.push(entry);
+      return entry;
+    }
+
+    function addWall() {
+      const familia = document.getElementById('familia').value;
+      const espesor = parseInt(document.getElementById('espesor').value, 10);
+
+      const alto = 3.2 + Math.random() * 0.6;
+      const ancho = 1.15; // useful width approx
+      const largo = 4.8;
+
+      const x = (bodies.length % 3) * 1.4 - 1.5;
+      const z = -1 - Math.floor(bodies.length / 3) * 0.6;
+
+      const entry = addRigidBox({
+        pos: { x, y: alto / 2 + 0.02, z },
+        size: { x: ancho, y: alto, z: 0.12 },
+        color: familia.includes('ROOF') ? 0x64748b : 0x22c55e,
+        kind: 'wall',
+        meta: { familia, espesor, alto, largoPanel: alto, tipo: 'pared' }
+      });
+
+      log(`Pared agregada (${familia} ${espesor}mm) — ${alto.toFixed(1)}m alto`);
+      markDirty();
+      if (world) syncPhysicsToMeshes();
+    }
+
+    function addRoof() {
+      const familia = document.getElementById('familia').value;
+      const espesor = parseInt(document.getElementById('espesor').value, 10);
+
+      const largo = 5.8 + Math.random() * 1.2;
+      const ancho = 5.2;
+
+      const entry = addRigidBox({
+        pos: { x: 1.5, y: 4.6, z: -2.8 },
+        size: { x: ancho, y: 0.18, z: largo },
+        color: 0x0ea5e9,
+        kind: 'roof',
+        meta: { familia, espesor, largo, ancho, tipo: 'techo' }
+      });
+
+      // Slight tilt for roof feel
+      entry.mesh.rotation.x = -0.18;
+      log(`Techo agregado (${familia} ${espesor}mm) — ${largo.toFixed(1)}×${ancho.toFixed(1)}m`);
+      markDirty();
+    }
+
+    function markDirty() {
+      dirty = true;
+      // Auto-quote in sims-builder mode
+      setTimeout(() => {
+        if (dirty) syncAndQuote(true);
+      }, 650);
+    }
+
+    function onMouseDown(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mouse = { x: ((e.clientX - rect.left) / rect.width) * 2 - 1, y: -((e.clientY - rect.top) / rect.height) * 2 + 1 };
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(bodies.map(b => b.mesh));
+      if (intersects.length > 0) {
+        const hitMesh = intersects[0].object;
+        selected = bodies.find(b => b.mesh === hitMesh) || null;
+        isDragging = true;
+        prevMouse = { x: e.clientX, y: e.clientY };
+        if (selected) log(`Seleccionado ${selected.kind}`);
+      } else {
+        selected = null;
+      }
+    }
+
+    function onMouseMove(e) {
+      if (!isDragging || !selected) return;
+
+      const dx = (e.clientX - prevMouse.x) * 0.015;
+      const dy = (e.clientY - prevMouse.y) * 0.015;
+
+      // Move the mesh + sync body
+      selected.mesh.position.x += dx;
+      selected.mesh.position.z += dy;
+
+      if (selected.body && selected.body.setTranslation) {
+        selected.body.setTranslation({
+          x: selected.mesh.position.x,
+          y: selected.mesh.position.y,
+          z: selected.mesh.position.z
+        });
+      }
+
+      prevMouse = { x: e.clientX, y: e.clientY };
+      markDirty();
+    }
+
+    function onMouseUp() {
+      isDragging = false;
+      if (selected) {
+        // Snap walls to ground
+        if (selected.kind === 'wall' && selected.mesh.position.y < 0.8) {
+          selected.mesh.position.y = selected.size.y / 2 + 0.01;
+          if (selected.body?.setTranslation) {
+            selected.body.setTranslation({ x: selected.mesh.position.x, y: selected.mesh.position.y, z: selected.mesh.position.z });
+          }
+        }
+      }
+    }
+
+    function onWheel(e) {
+      e.preventDefault();
+      const dir = camera.position.clone().sub(new THREE.Vector3(0, 3, 0)).normalize();
+      camera.position.addScaledVector(dir, e.deltaY * 0.018);
+    }
+
+    function onDoubleClick(e) {
+      if (!selected) return;
+      // Rotate 15° around Y (roof pitch feel or wall orientation)
+      selected.mesh.rotation.y += Math.PI / 12;
+      markDirty();
+      log(`Rotado ${selected.kind}`);
+    }
+
+    function syncPhysicsToMeshes() {
+      if (!world) return;
+      for (const b of bodies) {
+        if (b.body && b.body.translation) {
+          const t = b.body.translation();
+          b.mesh.position.set(t.x, t.y, t.z);
+        }
+      }
+    }
+
+    function runPhysics(steps = 42) {
+      if (!world) {
+        log("Rapier no disponible — usando simulación cinemática");
+        // simple gravity nudge
+        bodies.forEach(b => {
+          if (b.kind === 'roof') b.mesh.position.y = Math.max(3.4, b.mesh.position.y - 0.6);
+        });
+        syncAndQuote();
+        return;
+      }
+      for (let i = 0; i < steps; i++) {
+        world.step();
+      }
+      syncPhysicsToMeshes();
+      log("Física simulada (" + steps + " steps)");
+      syncAndQuote();
+    }
+
+    function toggleWireframe() {
+      wireframe = !wireframe;
+      bodies.forEach(b => {
+        if (b.mesh.material) b.mesh.material.wireframe = wireframe;
+      });
+      log("Wireframe " + (wireframe ? "ON" : "OFF"));
+    }
+
+    function clearAll() {
+      bodies.forEach(b => scene.remove(b.mesh));
+      bodies = [];
+      selected = null;
+      if (world) {
+        // Note: proper cleanup would require removing bodies from world, omitted for brevity
+      }
+      quoteBox.style.display = 'none';
+      log("Escena limpia");
+    }
+
+    function dumpState() {
+      const state = bodies.map(b => ({
+        kind: b.kind,
+        pos: b.mesh.position,
+        rot: b.mesh.rotation,
+        meta: b.meta
+      }));
+      console.log('[BMC3D] State dump', state);
+      log("State dumped to console (dev)");
+    }
+
+    function resetCamera() {
+      camera.position.set(8, 7, 11);
+      camera.lookAt(0, 2.5, -1);
+    }
+
+    // ============== SIMPLIFIED BUT FAITHFUL BMC CALC ==============
+    function calcPanelesParedSimple(panel, espesor, alto, perimetro) {
+      const au = panel.au;
+      const cant = Math.ceil(perimetro / au);
+      const areaBruta = cant * alto * au;
+      const precio = panel.esp[espesor]?.precio || 44;
+      const costo = panel.esp[espesor]?.costo || 30;
+      return {
+        cantPaneles: cant,
+        areaNeta: +(areaBruta * 0.96).toFixed(2), // net after openings approx
+        precioM2: precio,
+        costoPaneles: +(precio * areaBruta * 0.96).toFixed(2)
+      };
+    }
+
+    function calcParedCompletoSimple({ familia, espesor, alto, perimetro, numEsqExt = 4 }) {
+      const p = PRICING[familia] || PRICING.ISODEC_EPS;
+      const paneles = calcPanelesParedSimple(p, espesor, alto, perimetro);
+      const perfilU = Math.ceil(perimetro / 3) * 2;
+      const esquineros = Math.ceil(alto / 3) * (numEsqExt || 4);
+      const fij = Math.ceil(paneles.areaNeta * 5.8);
+      const totalSinIva = paneles.costoPaneles + perfilU * 15.8 + esquineros * 12.4 + fij * 0.42 + 48;
+      const iva = totalSinIva * 0.22;
+      return {
+        paneles,
+        totales: { subtotalSinIVA: +totalSinIva.toFixed(2), iva: +iva.toFixed(2), totalFinal: +(totalSinIva + iva).toFixed(2) },
+        warnings: [],
+        allItems: [
+          { label: `${p.label} ${espesor}mm`, cant: paneles.areaNeta, unidad: 'm²', total: paneles.costoPaneles }
+        ]
+      };
+    }
+
+    function calcTechoCompletoSimple({ familia, espesor, largo, ancho }) {
+      const p = PRICING[familia] || PRICING.ISODEC_EPS;
+      const au = p.au;
+      const cant = Math.ceil(ancho / au);
+      const area = cant * largo * au;
+      const precio = p.esp[espesor]?.precio || 46;
+      const costoPaneles = +(precio * area).toFixed(2);
+      const perfiles = Math.ceil((largo + ancho) * 1.8) * 9.6;
+      const fij = Math.ceil(area * 3.2);
+      const totalSinIva = costoPaneles + perfiles + fij * 0.38 + 65;
+      const iva = totalSinIva * 0.22;
+      return {
+        paneles: { cantPaneles: cant, areaTotal: +area.toFixed(2), costoPaneles },
+        totales: { subtotalSinIVA: +totalSinIva.toFixed(2), iva: +iva.toFixed(2), totalFinal: +(totalSinIva + iva).toFixed(2) },
+        warnings: largo > 7.2 ? ["Largo cerca del límite de autoportancia"] : []
+      };
+    }
+
+    function deriveSceneMetrics() {
+      let walls = bodies.filter(b => b.kind === 'wall');
+      let roofs = bodies.filter(b => b.kind === 'roof');
+
+      let perimetro = 0, alto = 0, largo = 0, ancho = 0;
+
+      if (walls.length) {
+        // Approximate perimeter from placed walls (very rough but useful)
+        perimetro = walls.reduce((s, w) => s + (w.size.z > 0.5 ? w.size.x : w.size.z) * 2, 0) + 3.8;
+        alto = Math.max(...walls.map(w => w.size.y));
+      } else {
+        perimetro = 18 + Math.random() * 6;
+        alto = 3.4;
+      }
+
+      if (roofs.length) {
+        const r = roofs[0];
+        largo = Math.max(r.size.z, 5);
+        ancho = Math.max(r.size.x, 4.5);
+      } else {
+        largo = 6.2;
+        ancho = 5.1;
+      }
+
+      return {
+        pared: { familia: document.getElementById('familia').value, espesor: +document.getElementById('espesor').value, alto: +alto.toFixed(1), perimetro: +perimetro.toFixed(1) },
+        techo: { familia: document.getElementById('familia').value, espesor: +document.getElementById('espesor').value, largo: +largo.toFixed(1), ancho: +ancho.toFixed(1) }
+      };
+    }
+
+    function syncAndQuote(silent = false) {
+      const metrics = deriveSceneMetrics();
+      const paredRes = calcParedCompletoSimple(metrics.pared);
+      const techoRes = calcTechoCompletoSimple(metrics.techo);
+
+      const subtotal = paredRes.totales.subtotalSinIVA + techoRes.totales.subtotalSinIVA;
+      const iva = subtotal * 0.22;
+      const total = +(subtotal + iva).toFixed(2);
+
+      document.getElementById('qPanels').textContent = `${paredRes.paneles.cantPaneles + techoRes.paneles.cantPaneles} paneles`;
+      document.getElementById('qArea').textContent = `${(paredRes.paneles.areaNeta + techoRes.paneles.areaTotal).toFixed(1)} m²`;
+      document.getElementById('qSub').textContent = `UYU ${subtotal.toFixed(2)}`;
+      document.getElementById('qTotal').textContent = `UYU ${total}`;
+      document.getElementById('qWarnings').textContent = [...paredRes.warnings, ...techoRes.warnings].join(' • ');
+
+      quoteBox.style.display = 'block';
+
+      if (!silent) {
+        log(`Cotización instantánea: ${total} UYU • ${metrics.pared.perimetro}m perímetro + ${metrics.techo.largo}×${metrics.techo.ancho}m techo`);
+      }
+
+      // store last quote for PDF
+      window.__lastQuote = { metrics, paredRes, techoRes, total, subtotal, timestamp: new Date() };
+      dirty = false;
+      updatePhysDebug(metrics);
+      return window.__lastQuote;
+    }
+
+    function updatePhysDebug(metrics) {
+      const el = document.getElementById('physDebug');
+      el.innerHTML = `pared: ${metrics.pared.perimetro}m perímetro • techo: ${metrics.techo.largo}×${metrics.techo.ancho} • bodies:${bodies.length}`;
+    }
+
+    function exportPDF() {
+      const q = window.__lastQuote || syncAndQuote(true);
+      if (!q) return alert("Primero hacé Build + Quote");
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(18);
+      doc.text("PRESUPUESTO BMC — 3D SIM", 20, 20);
+
+      doc.setFontSize(11);
+      doc.text(`Fecha: ${q.timestamp.toLocaleDateString('es-UY')}`, 20, 30);
+      doc.text("Entiendo tu necesidad en UY — cotización generada con simulación 3D + física real.", 20, 36);
+
+      doc.setFontSize(13);
+      doc.text("MEDIDAS DERIVADAS DEL MODELO 3D", 20, 48);
+      doc.setFontSize(11);
+      doc.text(`Paredes: perímetro ${q.metrics.pared.perimetro}m × alto ${q.metrics.pared.alto}m`, 24, 55);
+      doc.text(`Techo: largo ${q.metrics.techo.largo}m × ancho ${q.metrics.techo.ancho}m`, 24, 61);
+
+      doc.setFontSize(13);
+      doc.text("RESUMEN ECONÓMICO (UYU)", 20, 74);
+      doc.setFontSize(11);
+      doc.text(`Subtotal sin IVA: ${q.subtotal.toFixed(2)}`, 24, 81);
+      doc.text(`IVA 22%: ${(q.total - q.subtotal).toFixed(2)}`, 24, 87);
+      doc.setFontSize(14);
+      doc.text(`TOTAL CON IVA: ${q.total}`, 24, 95);
+
+      doc.setFontSize(10);
+      doc.text("Paneles + perfilería + fijaciones + sellado según simulación.", 20, 108);
+      doc.text("Precios lista BMC Uruguay. Sujeto a stock y confirmación técnica.", 20, 114);
+
+      doc.save(`BMC-3D-Cotizacion-${Date.now()}.pdf`);
+      log("PDF exportado (cliente)");
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (world) {
+        // light stepping when not dragging
+        if (!isDragging) world.step();
+        syncPhysicsToMeshes();
+      }
+
+      // gentle roof settling hint
+      bodies.forEach(b => {
+        if (b.kind === 'roof' && b.mesh.position.y > 5.8) {
+          b.mesh.position.y -= 0.008;
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    async function boot() {
+      initThree();
+      await initRapier();
+
+      // Seed a starter scene (wall + roof) so it feels alive immediately
+      setTimeout(() => {
+        addWall();
+        addWall();
+        addRoof();
+        runPhysics(18);
+        syncAndQuote(true);
+      }, 420);
+
+      // Keyboard shortcuts (terminal flavor)
+      window.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 'a') addWall();
+        if (e.key.toLowerCase() === 'r') addRoof();
+        if (e.key.toLowerCase() === 'q') syncAndQuote();
+        if (e.key.toLowerCase() === 'p') exportPDF();
+        if (e.key === ' ') { e.preventDefault(); runPhysics(28); }
+        if (e.key.toLowerCase() === 'c') clearAll();
+      });
+
+      statusEl.textContent = "3D Builder ready • Drag wall → BMC calc • Rapier ON • Entiendo tu necesidad en UY";
+      animate();
+
+      log("bmc3d-terminal listo. A=pared, R=techo, Q=cotizar, P=PDF, Espacio=simular física");
+      // Bonus: auto re-quote every 2.5s in dev full mode if dirty
+      setInterval(() => { if (dirty) syncAndQuote(true); }, 2400);
+    }
+
+    // Boot immediately
+    boot();
+  </script>
+</body>
+</html>

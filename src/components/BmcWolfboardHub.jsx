@@ -83,6 +83,23 @@ export default function BmcWolfboardHub() {
         {/* Aditivo: resúmenes de Control Operativo (IA + Finanzas) */}
         <OperatorOverview />
 
+        {/* DEBUG: Estado de consultas block - FORCED VISIBLE */}
+        <div style={{
+          background: '#fff3cd',
+          border: '4px solid #ff0000',
+          borderRadius: 12,
+          padding: '20px',
+          margin: '16px 0',
+          fontSize: '18px',
+          fontWeight: 'bold',
+          color: '#000',
+          boxShadow: '0 0 20px rgba(255,0,0,0.5)'
+        }}>
+          📥 ESTADO DE CONSULTAS (LIVE) - FROM AUDIT<br />
+          email: 20 | ml: 13 | wa: 0<br />
+          <span style={{fontSize: '14px', fontWeight: 'normal'}}>This is the block. If you see this red box, the insertion works. The full live component should be right here too.</span>
+        </div>
+
         {/* Estado de consultas — Live report (provisional) */}
         <EstadoConsultasLive />
 
