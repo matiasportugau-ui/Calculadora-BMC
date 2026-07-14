@@ -105,6 +105,7 @@ export function buildAgentCapabilitiesManifest(config) {
   const discovery = {
     capabilities_url: `${base}/capabilities`,
     health_url: `${base}/health`,
+    skills_url: `${base}/api/skills`, // SKILL.md catalogue (auth: service token or identity JWT)
     docs: {
       agent_ui_vs_api: "docs/AGENT-UI-VS-API.md",
       static_capabilities_json: "docs/api/AGENT-CAPABILITIES.json",

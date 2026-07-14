@@ -77,6 +77,7 @@ import tasksRouter from "./routes/tasks.js";
 import tasksOAuthRouter from "./routes/tasksOAuth.js";
 import tasksSyncRouter from "./routes/tasksSync.js";
 import proyectoRouter from "./routes/proyecto.js";
+import skillsRouter from "./routes/skills.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import "./lib/marketIntel/scheduler.js"; // registers daily ETL cron at 03:00 UTC
@@ -1116,6 +1117,10 @@ app.use("/api", planCadRouter);
 app.use(createMlSearchRouter({ ml, config, logger }));
 // Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
 app.use(createMlEtlRunRouter({ config, logger }));
+// Skills catalogue discovery (read-only SKILL.md index) — mount BEFORE the
+// bmcDashboard catch-all so /api/skills resolves here. Auth: service token or
+// identity JWT (requireServiceOrUser authOnly inside the router).
+app.use("/api", skillsRouter);
 // Quote counter (atomic global counter, annual reset)
 app.use("/api", createQuotesRouter(config));
 // Calculator export archive → shared Drive folder (DRIVE_QUOTE_FOLDER_ID)
