@@ -5,7 +5,7 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
-import fs from "node:fs";
+import fs, { mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -47,17 +47,19 @@ function makeSheets({ updateThrows = false, origen = "WA", withQuestion = true }
 }
 
 let credsPath;
+let credsDir;
 
 before(async () => {
-  credsPath = path.join(os.tmpdir(), `bmc-test-creds-${Date.now()}.json`);
-  fs.writeFileSync(credsPath, "{}");
+  credsDir = mkdtempSync(path.join(os.tmpdir(), "bmc-test-creds-"));
+  credsPath = path.join(credsDir, "creds.json");
+  fs.writeFileSync(credsPath, "{}", { mode: 0o600 });
   config.googleApplicationCredentials = credsPath;
   const { config: loadedConfig } = await import("../server/config.js");
   config.apiAuthToken = loadedConfig.apiAuthToken;
 });
 
 after(() => {
-  if (credsPath && fs.existsSync(credsPath)) fs.unlinkSync(credsPath);
+  if (credsDir && fs.existsSync(credsDir)) rmSync(credsDir, { recursive: true, force: true });
 });
 
 describe("/crm/cockpit/send-approved status mapping", () => {
