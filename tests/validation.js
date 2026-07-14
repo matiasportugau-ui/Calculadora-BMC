@@ -572,6 +572,40 @@ const techoResultSmall = calcTechoCompleto(techoInputSmall);
 assert("calcTechoCompleto(descarte<0.5m): descarte.anchoM ≈ 0.04", approx(techoResultSmall.paneles?.descarte?.anchoM, 0.04), techoResultSmall.paneles?.descarte?.anchoM, 0.04);
 assert("calcTechoCompleto(descarte<0.5m): descarte.porcentaje = 1.82 (2 decimals)", techoResultSmall.paneles?.descarte?.porcentaje === 1.82, techoResultSmall.paneles?.descarte?.porcentaje, 1.82);
 
+// --- ISOROOF integration: autoportancia must drive caballete quantities ---
+// This guards the live quote path, not only calcFijacionesCaballete in isolation.
+const isoRoofBaseInput = {
+  familia: "ISOROOF_3G", espesor: 30,
+  largo: 8, ancho: 4,
+  tipoEst: "metal", ptsHorm: 0, ptsMetal: 0, ptsMadera: 0,
+  borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+  opciones: { inclCanalon: false, inclGotSup: false, inclSell: false },
+  color: "Blanco",
+};
+const isoRoof30Result = calcTechoCompleto(isoRoofBaseInput);
+const isoRoof30Caballete = isoRoof30Result.fijaciones?.items?.find((item) => item.sku === "caballete");
+const isoRoof30Screw = isoRoof30Result.fijaciones?.items?.find((item) => item.sku === "tornillo_hex_galv_4_mecha");
+
+assert("calcTechoCompleto(ISOROOF 30): autoportancia requires 4 apoyos", isoRoof30Result.autoportancia?.apoyos === 4, isoRoof30Result.autoportancia?.apoyos, 4);
+assert("calcTechoCompleto(ISOROOF 30): caballete points use 4 apoyos → 56", isoRoof30Result.fijaciones?.puntosFijacion === 56, isoRoof30Result.fijaciones?.puntosFijacion, 56);
+assert("calcTechoCompleto(ISOROOF 30): caballete BOM quantity = 56", isoRoof30Caballete?.cant === 56, isoRoof30Caballete?.cant, 56);
+assert("calcTechoCompleto(ISOROOF 30): 4-inch screw quantity = 56", isoRoof30Screw?.cant === 56, isoRoof30Screw?.cant, 56);
+
+const isoRoof80Result = calcTechoCompleto({ ...isoRoofBaseInput, espesor: 80 });
+const isoRoof80Screw = isoRoof80Result.fijaciones?.items?.find((item) => item.sku === "tornillo_hex_galv_6_mecha");
+assert("calcTechoCompleto(ISOROOF 80): autoportancia requires 3 apoyos", isoRoof80Result.autoportancia?.apoyos === 3, isoRoof80Result.autoportancia?.apoyos, 3);
+assert("calcTechoCompleto(ISOROOF 80): caballete points use 3 apoyos → 44", isoRoof80Result.fijaciones?.puntosFijacion === 44, isoRoof80Result.fijaciones?.puntosFijacion, 44);
+assert("calcTechoCompleto(ISOROOF 80): 6-inch screw quantity = 44", isoRoof80Screw?.cant === 44, isoRoof80Screw?.cant, 44);
+
+const isoRoofNoStructureResult = calcTechoCompleto({ ...isoRoofBaseInput, tipoEst: "" });
+assert(
+  "calcTechoCompleto(ISOROOF): missing structure keeps metal fallback and warns",
+  isoRoofNoStructureResult.warnings?.some((warning) => warning.includes("Estructura sin definir"))
+    && isoRoofNoStructureResult.fijaciones?.items?.some((item) => item.sku === "tornillo_hex_galv_4_mecha" && item.cant === 56),
+  isoRoofNoStructureResult.warnings,
+  "warning + metal fallback",
+);
+
 // --- calcParedCompleto ---
 const paredInput = {
   familia: "ISOPANEL_EPS", espesor: 100,
