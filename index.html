@@ -16,6 +16,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <!-- Meta Pixel base — no-op if VITE_META_PIXEL_ID is unset (never a literal ID here). -->
+    <script>
+      (function(pixelId){
+        // If VITE_META_PIXEL_ID is unset at build time, Vite leaves the literal
+        // "%VITE_META_PIXEL_ID%" placeholder in place instead of an empty string —
+        // guard against that, not just falsy.
+        if (!pixelId || pixelId.indexOf('%') !== -1) return;
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+        n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+        document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', pixelId);
+        fbq('track', 'PageView');
+      })('%VITE_META_PIXEL_ID%');
+    </script>
   </head>
   <body style="margin:0;min-height:100vh;background:#F5F5F7;font-family:system-ui,sans-serif">
     <main id="root" role="main" aria-label="Calculadora BMC" style="min-height:100vh"></main>
