@@ -1,14 +1,19 @@
 // Banco — contrato offline del router (sin DATABASE_URL, sin red).
-//   - GET  /api/banco/health    → 503 (DB no configurada)
-//   - GET  /api/banco/movements → 401 (auth antes que DB)
-//   - POST /api/banco/import    → 401 sin auth
+//   - GET  /api/banco/health     → 503 (DB no configurada)
+//   - GET  /api/banco/movements → RBAC banco:read antes que DB
+//   - POST /api/banco/import     → rol admin antes que DB
 // Espeja tests/traktime-contract.test.js.
 // Run: node tests/banco-routes.test.js
 
 import http from "node:http";
 import express from "express";
+import jwt from "jsonwebtoken";
 import createBancoRouter from "../server/routes/banco.js";
 import { isDbConnectionError, resetBancoPoolForTests } from "../server/lib/bancoDb.js";
+import { __test__ as identityAuthTest, initIdentityAuth } from "../server/lib/identityAuth.js";
+
+process.env.APP_ENV = "test";
+process.env.IDENTITY_JWT_SECRET = "test_test_test_test_test_test_test_secret_xx";
 
 let passed = 0;
 let failed = 0;
@@ -22,7 +27,7 @@ function assert(name, cond, detail = "") {
   }
 }
 
-function requestJson(port, method, path, body) {
+function requestJson(port, method, path, body, authorization = null) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const req = http.request(
@@ -33,6 +38,7 @@ function requestJson(port, method, path, body) {
         path,
         headers: {
           "Content-Type": "application/json",
+          ...(authorization ? { Authorization: authorization } : {}),
           ...(data ? { "Content-Length": Buffer.byteLength(data) } : {}),
         },
       },
@@ -56,8 +62,88 @@ function requestJson(port, method, path, body) {
   });
 }
 
+function makeIdentityPool() {
+  const users = [
+    {
+      user_id: "u-comprador",
+      email: "comprador@bmc.test",
+      name: "Comprador",
+      picture_url: null,
+      avatar_preset: null,
+      plan_tier: "base",
+      status: "active",
+      jwt_revoked_at: null,
+      role: "comprador",
+      grants: [],
+    },
+    {
+      user_id: "u-operator",
+      email: "operator@bmc.test",
+      name: "Operator",
+      picture_url: null,
+      avatar_preset: null,
+      plan_tier: "plus",
+      status: "active",
+      jwt_revoked_at: null,
+      role: "operator",
+      grants: [{ module: "banco", level: "read" }],
+    },
+    {
+      user_id: "u-admin",
+      email: "admin@bmc.test",
+      name: "Admin",
+      picture_url: null,
+      avatar_preset: null,
+      plan_tier: "plus",
+      status: "active",
+      jwt_revoked_at: null,
+      role: "admin",
+      grants: [],
+    },
+  ];
+
+  return {
+    async query(sql, params = []) {
+      const normalized = sql.replace(/\s+/g, " ").trim().toLowerCase();
+      const user = users.find((candidate) => candidate.user_id === params[0]);
+      if (normalized.startsWith("select user_id, email, name, picture_url")) {
+        return { rows: user ? [user] : [] };
+      }
+      if (normalized.startsWith("select role from identity.role_grants")) {
+        return { rows: user ? [{ role: user.role }] : [] };
+      }
+      if (normalized.startsWith("select module, level from identity.module_grants")) {
+        return { rows: user?.grants || [] };
+      }
+      if (normalized.startsWith("update identity.users set last_active_at = now()")) {
+        return { rows: [] };
+      }
+      throw new Error(`Unhandled identity SQL: ${normalized.slice(0, 120)}`);
+    },
+  };
+}
+
+function bearerFor(userId) {
+  const token = jwt.sign(
+    { sub: userId, sid: "sess-banco-test", subject_type: "user" },
+    process.env.IDENTITY_JWT_SECRET,
+    {
+      algorithm: "HS256",
+      expiresIn: 15 * 60,
+      issuer: "bmc-identity",
+      audience: "bmc-identity-api",
+    },
+  );
+  return `Bearer ${token}`;
+}
+
 async function main() {
   await resetBancoPoolForTests();
+  identityAuthTest.reset();
+  initIdentityAuth({
+    pool: makeIdentityPool(),
+    logger: { warn() {}, error() {}, info() {} },
+  });
   const app = express();
   app.use(express.json({ limit: "1mb" }));
   app.use(createBancoRouter({ databaseUrl: "" }, console));
@@ -86,6 +172,75 @@ async function main() {
     const rules = await requestJson(port, "POST", "/api/banco/rules", { pattern: "abc" });
     assert("rules POST sin auth → 401", rules.status === 401, rules);
 
+    const deniedRead = await requestJson(
+      port,
+      "GET",
+      "/api/banco/movements",
+      null,
+      bearerFor("u-comprador"),
+    );
+    assert("comprador sin banco grant → 403", deniedRead.status === 403, deniedRead);
+    assert(
+      "lectura exige grant banco:read",
+      deniedRead.body?.error === "insufficient_module_grant"
+        && deniedRead.body?.required?.module === "banco"
+        && deniedRead.body?.required?.minLevel === "read",
+      deniedRead.body,
+    );
+
+    const grantedRead = await requestJson(
+      port,
+      "GET",
+      "/api/banco/movements",
+      null,
+      bearerFor("u-operator"),
+    );
+    assert("operator con banco:read supera RBAC → 503 sin DB", grantedRead.status === 503, grantedRead);
+    assert(
+      "lectura autorizada alcanza requireDb",
+      grantedRead.body?.error === "DATABASE_URL not configured",
+      grantedRead.body,
+    );
+
+    const deniedImport = await requestJson(
+      port,
+      "POST",
+      "/api/banco/import",
+      { csv: "Fecha,Débito\n" },
+      bearerFor("u-operator"),
+    );
+    assert("operator con banco:read no puede importar → 403", deniedImport.status === 403, deniedImport);
+    assert(
+      "import exige rol admin",
+      deniedImport.body?.error === "insufficient_role"
+        && deniedImport.body?.required === "admin"
+        && deniedImport.body?.have === "operator",
+      deniedImport.body,
+    );
+
+    const adminImport = await requestJson(
+      port,
+      "POST",
+      "/api/banco/import",
+      { csv: "Fecha,Débito\n" },
+      bearerFor("u-admin"),
+    );
+    assert("admin supera RBAC de import → 503 sin DB", adminImport.status === 503, adminImport);
+    assert(
+      "import autorizado alcanza requireDb",
+      adminImport.body?.error === "DATABASE_URL not configured",
+      adminImport.body,
+    );
+
+    const deniedRuleWrite = await requestJson(
+      port,
+      "POST",
+      "/api/banco/rules",
+      { pattern: "abc", categoria: "ventas" },
+      bearerFor("u-operator"),
+    );
+    assert("operator no puede crear reglas bancarias → 403", deniedRuleWrite.status === 403, deniedRuleWrite);
+
     // isDbConnectionError: fallas de infra → 503; errores de programación → 500
     assert("ECONNREFUSED es error de conexión", isDbConnectionError({ code: "ECONNREFUSED" }));
     assert("08006 (connection_failure) es error de conexión", isDbConnectionError({ code: "08006" }));
@@ -99,6 +254,7 @@ async function main() {
   } finally {
     server.close();
     await resetBancoPoolForTests();
+    identityAuthTest.reset();
   }
 
   console.log(`\nbanco-routes: ${passed} passed, ${failed} failed`);
