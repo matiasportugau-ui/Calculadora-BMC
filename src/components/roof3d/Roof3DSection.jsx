@@ -6,6 +6,7 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { C, FONT, SHC } from "../../data/constants.js";
 import { isDesignPreviewEnabled } from "../../lib/designPreviewMode.js";
+import { normalizeRoof3dScenePendiente } from "../../utils/roof3dScenePendiente.js";
 
 const RoofPanelRealisticScene = lazy(() => import("../RoofPanelRealisticScene.jsx"));
 
@@ -58,7 +59,7 @@ export default function Roof3DSection({
   // (RoofPanelRealisticScene: `Number(pendiente) || 15`) lo inflaría a 15°;
   // pasamos un sentinel chico que cae en el piso ~2.86° de la escena
   // (Math.max(0.05, …)) — lo más plano que puede representar. Ver #667.
-  const scenePendiente = Number(pendiente) > 0 ? pendiente : 0.5;
+  const scenePendiente = normalizeRoof3dScenePendiente(pendiente);
   // Defensa para reuso standalone: el gate primario vive en el mount del quoter
   // (`{isDesignPreviewEnabled() && <Roof3DSection/>}`), así que en el flujo actual
   // esto nunca retorna null — se mantiene por si el componente se monta suelto.
