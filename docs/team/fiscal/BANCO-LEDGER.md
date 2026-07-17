@@ -55,6 +55,10 @@ Sin seeds — la taxonomía la define el operador (guardrail: no inventar datos 
 | `GET /api/banco/movements` | user | Filtros: `account_id, from, to, q, categoria, entidad, tipo=debito\|credito, sin_clasificar=1, limit≤500, offset`. Devuelve `movements + total + sums{debito,credito}` |
 | `PATCH /api/banco/movements/:id` | admin | `categoria / entidad / notas` |
 | `GET /api/banco/summary` | user | Agregados `group=mes\|categoria\|entidad` (+ mismos filtros de cuenta/fechas) — insumo directo de conciliación mensual |
+| `GET /api/banco/cash-flow` | user | KPIs + monthly + by_category (`account_id` requerido si hay monedas mixtas) |
+| `GET /api/banco/unlock-status` | user | Estado de desbloqueo del módulo (sin middleware `finLocked`) |
+| `POST /api/banco/unlock` | user | `{ password }` → desbloqueo 12h en `identity.sessions` |
+| `POST /api/banco/lock` | user | Cierra desbloqueo de la sesión actual |
 | `GET/POST /api/banco/rules` · `PATCH /:id` · `POST /rules/apply` | user lee / admin muta | Reglas de clasificación |
 
 Semántica de errores (convención del proyecto): 400/401/403/404, **503 si DB no disponible, nunca 500** por infra.
