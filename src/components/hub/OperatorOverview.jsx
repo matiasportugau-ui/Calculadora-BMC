@@ -178,6 +178,7 @@ function FinanzasSummary({ data, loading, error }) {
           </div>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <Link to="/hub/finanzas" style={linkStyle}>Ir a Finanzas (Banco + Cash Flow) →</Link>
             <Link to="/hub/cotizaciones" style={linkStyle}>Ver cotizaciones</Link>
             <a href="https://docs.google.com/spreadsheets" target="_blank" rel="noreferrer" style={linkStyle}>
               Abrir planillas (Pagos / Ventas)

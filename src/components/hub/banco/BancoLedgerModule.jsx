@@ -7,6 +7,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
+import { taxonomySelectOptions } from "../finanzas/cashFlowTaxonomy.js";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -53,7 +54,7 @@ function fmtMoney(v, currency) {
   return currency === "USD" ? `US$ ${s}` : `$ ${s}`;
 }
 
-export default function BancoLedgerModule() {
+export default function BancoLedgerModule({ embedded = false }) {
   const auth = useBmcAuth();
   const fileRef = useRef(null);
   const [accounts, setAccounts] = useState([]);
@@ -189,7 +190,8 @@ export default function BancoLedgerModule() {
 
   // Borradores de categoría por movimiento mientras el usuario tipea; al
   // guardar (o fallar el PATCH) se limpia y el input vuelve al valor del server.
-  const [catDrafts, setCatDrafts] = useState({});
+  const catOptions = taxonomySelectOptions();
+  const knownCategoryKeys = new Set(catOptions.map((o) => o.value).filter(Boolean));
 
   async function patchMovement(id, patch) {
     try {
@@ -204,13 +206,17 @@ export default function BancoLedgerModule() {
   const neto = (sums.credito || 0) - (sums.debito || 0);
 
   return (
-    <div style={ui.page}>
-      <h1 style={ui.h1}>Banco · Movimientos METALOG</h1>
-      <p style={ui.sub}>
-        Libro de movimientos bancarios (BROU). Importá el export XLS «Saldos y Movimientos» de e-BROU;
-        los duplicados y rangos solapados se omiten solos. Clasificá por categoría y entidad para la
-        conciliación DGI ↔ facturación ↔ banco.
-      </p>
+    <div style={embedded ? { ...ui.page, padding: 0, maxWidth: "none" } : ui.page}>
+      {!embedded && (
+        <>
+          <h1 style={ui.h1}>Banco · Movimientos METALOG</h1>
+          <p style={ui.sub}>
+            Libro de movimientos bancarios (BROU). Importá el export XLS «Saldos y Movimientos» de e-BROU;
+            los duplicados y rangos solapados se omiten solos. Clasificá por categoría y entidad para la
+            conciliación DGI ↔ facturación ↔ banco.
+          </p>
+        </>
+      )}
 
       {message && <div style={message.kind === "ok" ? ui.okMsg : ui.error}>{message.text}</div>}
 
@@ -359,25 +365,18 @@ export default function BancoLedgerModule() {
                 <td style={{ ...ui.td, ...ui.num, color: "#b91c1c" }}>{fmtMoney(m.debito, m.account_currency)}</td>
                 <td style={{ ...ui.td, ...ui.num, color: "#15803d" }}>{fmtMoney(m.credito, m.account_currency)}</td>
                 <td style={ui.td}>
-                  <input
-                    style={{ ...ui.input, width: 130, padding: "4px 8px" }}
-                    value={catDrafts[m.movement_id] ?? m.categoria ?? ""}
-                    placeholder="—"
-                    onChange={(e) =>
-                      setCatDrafts((d) => ({ ...d, [m.movement_id]: e.target.value }))
-                    }
-                    onBlur={async (e) => {
-                      const v = e.target.value.trim() || null;
-                      if (v !== (m.categoria || null)) {
-                        await patchMovement(m.movement_id, { categoria: v });
-                      }
-                      setCatDrafts((d) => {
-                        const rest = { ...d };
-                        delete rest[m.movement_id];
-                        return rest;
-                      });
-                    }}
-                  />
+                  <select
+                    style={{ ...ui.input, width: 160, padding: "4px 8px" }}
+                    value={m.categoria || ""}
+                    onChange={(e) => patchMovement(m.movement_id, { categoria: e.target.value || null })}
+                  >
+                    {catOptions.map((o) => (
+                      <option key={o.value || "_empty"} value={o.value}>{o.label}</option>
+                    ))}
+                    {m.categoria && !knownCategoryKeys.has(m.categoria) ? (
+                      <option value={m.categoria}>{m.categoria} (legacy)</option>
+                    ) : null}
+                  </select>
                 </td>
                 <td style={ui.td}>
                   <select

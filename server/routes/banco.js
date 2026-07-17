@@ -27,6 +27,26 @@ import {
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const CASH_FLOW_TAXONOMY = [
+  { key: "ingreso_venta", label: "Ingreso venta", kind: "inflow" },
+  { key: "ingreso_otro", label: "Otro ingreso", kind: "inflow" },
+  { key: "aporte_socio", label: "Aporte socio", kind: "inflow" },
+  { key: "egreso_proveedor", label: "Proveedores", kind: "outflow" },
+  { key: "egreso_sueldo", label: "Sueldos", kind: "outflow" },
+  { key: "egreso_operativo", label: "Operativo", kind: "outflow" },
+  { key: "egreso_financiero", label: "Financiero", kind: "outflow" },
+  { key: "egreso_impuesto", label: "Impuestos", kind: "outflow" },
+  { key: "transferencia_interna", label: "Transferencia interna", kind: "neutral" },
+  { key: "retiro_socio", label: "Retiro socio", kind: "outflow" },
+];
+
+const TAXONOMY_BY_KEY = Object.fromEntries(CASH_FLOW_TAXONOMY.map((t) => [t.key, t]));
+
+function categoryMeta(key) {
+  if (!key) return { label: "Sin clasificar", kind: "unknown" };
+  return TAXONOMY_BY_KEY[key] || { label: key, kind: "unknown" };
+}
+
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
@@ -497,6 +517,112 @@ export default function createBancoRouter(config, logger) {
         params,
       );
       res.json({ ok: true, group: groupKey, rows });
+    }),
+  );
+
+  // ─── Cash flow (aggregates) ───────────────────────────────────────────
+  router.get(
+    "/api/banco/cash-flow",
+    requireUser({ module: "banco" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const filters = parseMovementFilters(req.query);
+      if (filters.error) return res.status(400).json({ ok: false, error: filters.error });
+      const { where, params } = filters;
+      const whereSql = where.length ? `where ${where.join(" and ")}` : "";
+
+      const accountId = trimOrNull(req.query.account_id);
+      if (!accountId) {
+        const { rows: curRows } = await pool.query(
+          `select distinct a.currency
+             from banco_movements m
+             join banco_accounts a on a.account_id = m.account_id
+            ${whereSql}`,
+          params,
+        );
+        if (curRows.length > 1) {
+          return res.status(400).json({
+            ok: false,
+            error: "account_id_required",
+            detail: "Hay cuentas en distintas monedas; indicá account_id para agregados de cash flow.",
+          });
+        }
+      }
+
+      let currency = "UYU";
+      if (accountId) {
+        const { rows } = await pool.query(
+          "select currency from banco_accounts where account_id = $1",
+          [accountId],
+        );
+        currency = rows[0]?.currency || "UYU";
+      } else {
+        const { rows: curRows } = await pool.query(
+          `select distinct a.currency
+             from banco_movements m
+             join banco_accounts a on a.account_id = m.account_id
+            ${whereSql}`,
+          params,
+        );
+        currency = curRows[0]?.currency || "UYU";
+      }
+
+      const totalsQ = await pool.query(
+        `select round(coalesce(sum(m.credito), 0), 2)::float8 as inflow,
+                round(coalesce(sum(m.debito), 0), 2)::float8 as outflow,
+                round(coalesce(sum(m.credito), 0) - coalesce(sum(m.debito), 0), 2)::float8 as net
+           from banco_movements m ${whereSql}`,
+        params,
+      );
+      const totals = totalsQ.rows[0] || { inflow: 0, outflow: 0, net: 0 };
+
+      const unclassifiedQ = await pool.query(
+        `select count(*)::int as unclassified_count
+           from banco_movements m ${whereSql}${whereSql ? " and" : " where"} m.categoria is null`,
+        params,
+      );
+
+      const monthlyQ = await pool.query(
+        `select to_char(m.fecha, 'YYYY-MM') as month,
+                round(coalesce(sum(m.credito), 0), 2)::float8 as inflow,
+                round(coalesce(sum(m.debito), 0), 2)::float8 as outflow,
+                round(coalesce(sum(m.credito), 0) - coalesce(sum(m.debito), 0), 2)::float8 as net
+           from banco_movements m ${whereSql}
+          group by 1 order by 1`,
+        params,
+      );
+      let cumulative = 0;
+      const monthly = monthlyQ.rows.map((r) => {
+        cumulative = Math.round((cumulative + Number(r.net)) * 100) / 100;
+        return { ...r, cumulative };
+      });
+
+      const byCatQ = await pool.query(
+        `select m.categoria as category,
+                round(coalesce(sum(m.credito), 0) - coalesce(sum(m.debito), 0), 2)::float8 as total
+           from banco_movements m ${whereSql}
+          group by m.categoria
+          order by abs(round(coalesce(sum(m.credito), 0) - coalesce(sum(m.debito), 0), 2)) desc`,
+        params,
+      );
+      const by_category = byCatQ.rows.map((r) => {
+        const meta = categoryMeta(r.category);
+        return {
+          category: r.category,
+          label: meta.label,
+          total: r.total,
+          kind: meta.kind,
+        };
+      });
+
+      res.json({
+        ok: true,
+        currency,
+        totals,
+        unclassified_count: unclassifiedQ.rows[0]?.unclassified_count ?? 0,
+        monthly,
+        by_category,
+      });
     }),
   );
 
