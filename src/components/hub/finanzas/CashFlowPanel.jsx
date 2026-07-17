@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
 import { categoryLabel, taxonomySelectOptions } from "./cashFlowTaxonomy.js";
+import { useFinanzasUnlock } from "./FinanzasUnlockGate.jsx";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -48,6 +49,7 @@ function fmtMoney(v, currency) {
 
 export default function CashFlowPanel() {
   const auth = useBmcAuth();
+  const finanzasUnlock = useFinanzasUnlock();
   const [accounts, setAccounts] = useState([]);
   const [filters, setFilters] = useState({ account_id: "", from: "", to: "" });
   const [cashFlow, setCashFlow] = useState(null);
@@ -70,13 +72,14 @@ export default function CashFlowPanel() {
       const body = await r.json().catch(() => null);
       if (!r.ok) {
         const detail = body?.error || `http_${r.status}`;
+        if (detail === "finanzas_locked") finanzasUnlock?.lockSession?.();
         const err = new Error(detail);
         err.body = body;
         throw err;
       }
       return body;
     },
-    [auth.accessToken],
+    [auth.accessToken, finanzasUnlock],
   );
 
   const buildQuery = useCallback(() => {

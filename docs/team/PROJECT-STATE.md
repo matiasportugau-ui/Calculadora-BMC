@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-11
+**Última actualización:** 2026-07-16
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-17 (feat — Finanzas module password gate):** Segunda capa de acceso al hub **Finanzas** además de OAuth + grant `banco`. Backend: [`server/lib/finanzasUnlock.js`](../../server/lib/finanzasUnlock.js), rutas `GET/POST /api/banco/unlock-status|unlock|lock`, columna `identity.sessions.finanzas_unlocked_until` (migración `20260717000001`), middleware `finLocked` en rutas de datos `/api/banco/*`. Frontend: [`FinanzasUnlockGate.jsx`](../../src/components/hub/finanzas/FinanzasUnlockGate.jsx) en `App.jsx`; re-lock si API devuelve `finanzas_locked` (TTL 12h; bypass local dev + superadmin). Secreto: `FINANZAS_MODULE_PASSWORD` en Doppler — nunca en git. SDD v1.0: [`SDD-finanzas-hub.md`](./SDD-finanzas-hub.md). Tests: `tests/finanzas-unlock.test.js`.
+
+**2026-07-16 (ops — WA improvement batch → Cloud Run prod KB):** `panelin:train:import` contra `https://panelin-calc-q74zutv7dq-uc.a.run.app` — **88 ok / 0 fail** (`import-improvement.json`, process-first, 0 U$S históricos). Verificado: `GET /api/agent/training-kb/match?q=Quiero cotizar un techo de 11x7` → match seed; list ~88 entradas WA. Persistencia GCS Training KB en Cloud Run. Report: `~/whatsapp-export/review/REPORT-2026-07-16-improvement.md`.
 
 **2026-07-13 (feat — instrumentación de conversión en la calculadora pública: beacon + Meta Pixel):** Diagnóstico urgente: Meta Ads reporta **$87,830 de gasto en 30 días con 0 conversiones en las 4 campañas**, pese a CTR/CPC sanos (~112k clicks) — la app no emitía absolutamente ninguna señal de tracking (ni pixel, ni beacon propio), y la acción de mayor volumen ("Enviar por WhatsApp" en `handleCopyWA`) era 100% client-side, invisible incluso internamente. Fix en dos partes: **(1)** nuevo endpoint público sin auth `POST /api/public/lead-event` ([`server/routes/publicLeadEvent.js`](../../server/routes/publicLeadEvent.js)) que escribe en `identity.user_activity_log` con `actor_user_id=null` reusando `logActivity()` — restringido a `PUBLIC_EMITTABLE` (`quote.send.whatsapp`, `quote.complete`; ya existían en `ACTION_TAXONOMY`/Historial pero nunca se emitían). **(2)** Meta Pixel base en `index.html` (`%VITE_META_PIXEL_ID%`, no-op seguro si no está seteado) + captura de `?utm_*` en `src/main.jsx` → `sessionStorage`. Ambos disparan juntos desde [`src/utils/leadTracking.js`](../../src/utils/leadTracking.js) en `handleCopyWA` y `handleConfirmQuote` (`PanelinCalculadoraV3_backup.jsx`), fire-and-forget, nunca bloquean el flujo real. Tests offline nuevos `tests/public-lead-event.test.js` (5/5, agregado a `test:api`). **Pendiente (no incluido en este PR, requiere acción humana):** crear el Pixel real en Meta Events Manager y setear `VITE_META_PIXEL_ID` en Vercel; triage de las 4 campañas (pausar "Stock de prefiles" $42k/0 conv.) vía Marketing API — propuesto, no ejecutado sin aprobación explícita por ser gasto real.
 

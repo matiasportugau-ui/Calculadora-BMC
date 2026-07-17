@@ -179,6 +179,9 @@ export const config = {
    * (Top-20 run 2026-05-11 #L10: doc ampliado para reflejar el doble uso.)
    */
   databaseUrl: process.env.DATABASE_URL || "",
+  /** Finanzas hub — shared module password (Doppler only; never commit). */
+  finanzasModulePassword: process.env.FINANZAS_MODULE_PASSWORD || "",
+  finanzasUnlockTtlHours: Math.max(1, Math.min(72, Number(process.env.FINANZAS_UNLOCK_TTL_HOURS || 12))),
   /** Google Tasks OAuth 2.0 client (separate from identity.authGoogle login OAuth) */
   googleTasksClientId: process.env.GOOGLE_TASKS_CLIENT_ID || "",
   googleTasksClientSecret: process.env.GOOGLE_TASKS_CLIENT_SECRET || "",

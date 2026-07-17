@@ -59,6 +59,7 @@ const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"))
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
 const FinanzasModule = lazy(() => import("./components/hub/finanzas/FinanzasModule.jsx"));
+const FinanzasUnlockGate = lazy(() => import("./components/hub/finanzas/FinanzasUnlockGate.jsx"));
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
 const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
 const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx"));
@@ -388,7 +389,9 @@ export default function App() {
             <Shell>
               <RequireGrant module="banco" minLevel="read">
                 <Suspense fallback={suspenseFallback}>
-                  <FinanzasModule />
+                  <FinanzasUnlockGate>
+                    <FinanzasModule />
+                  </FinanzasUnlockGate>
                 </Suspense>
               </RequireGrant>
             </Shell>

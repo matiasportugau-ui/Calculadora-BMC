@@ -86,6 +86,15 @@ async function main() {
     const rules = await requestJson(port, "POST", "/api/banco/rules", { pattern: "abc" });
     assert("rules POST sin auth → 401", rules.status === 401, rules);
 
+    const unlockStatus = await requestJson(port, "GET", "/api/banco/unlock-status");
+    assert("unlock-status sin auth → 401", unlockStatus.status === 401, unlockStatus);
+
+    const unlock = await requestJson(port, "POST", "/api/banco/unlock", { password: "x" });
+    assert("unlock POST sin auth → 401", unlock.status === 401, unlock);
+
+    const cashFlow = await requestJson(port, "GET", "/api/banco/cash-flow");
+    assert("cash-flow sin auth → 401", cashFlow.status === 401, cashFlow);
+
     // isDbConnectionError: fallas de infra → 503; errores de programación → 500
     assert("ECONNREFUSED es error de conexión", isDbConnectionError({ code: "ECONNREFUSED" }));
     assert("08006 (connection_failure) es error de conexión", isDbConnectionError({ code: "08006" }));

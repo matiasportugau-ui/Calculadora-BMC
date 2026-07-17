@@ -19,6 +19,14 @@ import { Router } from "express";
 import { getBancoPool, isDbConnectionError } from "../lib/bancoDb.js";
 import { requireUser } from "../lib/identityAuth.js";
 import {
+  clearFinanzasUnlock,
+  getFinanzasUnlockExpiry,
+  requireFinanzasUnlock,
+  setFinanzasUnlock,
+  shouldBypassFinanzasUnlock,
+  verifyFinanzasPassword,
+} from "../lib/finanzasUnlock.js";
+import {
   ENTIDADES,
   matchRule,
   parseBankStatement,
@@ -79,6 +87,7 @@ export default function createBancoRouter(config, logger) {
   const router = Router();
   const pool = getBancoPool(config.databaseUrl);
   const log = logger || console;
+  const finLocked = requireFinanzasUnlock(config, pool);
 
   function requireDb(_req, res, next) {
     if (!pool) {
@@ -111,10 +120,72 @@ export default function createBancoRouter(config, logger) {
     }),
   );
 
+  // ─── Finanzas module password gate ───────────────────────────────────
+  router.get(
+    "/api/banco/unlock-status",
+    requireUser({ module: "banco" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      if (shouldBypassFinanzasUnlock(req, config)) {
+        return res.json({ ok: true, unlocked: true, bypass: true });
+      }
+      if (!config.finanzasModulePassword) {
+        return res.json({ ok: true, unlocked: false, configured: false });
+      }
+      const sessionId = req.user.sessionId;
+      const expiresAt = await getFinanzasUnlockExpiry(pool, sessionId);
+      const unlocked = expiresAt ? new Date(expiresAt).getTime() > Date.now() : false;
+      res.json({
+        ok: true,
+        unlocked,
+        configured: true,
+        expires_at: unlocked ? new Date(expiresAt).toISOString() : null,
+      });
+    }),
+  );
+
+  router.post(
+    "/api/banco/unlock",
+    requireUser({ module: "banco" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      if (shouldBypassFinanzasUnlock(req, config)) {
+        return res.json({ ok: true, unlocked: true, bypass: true });
+      }
+      if (!config.finanzasModulePassword) {
+        return res.status(403).json({ ok: false, error: "finanzas_locked" });
+      }
+      const password = trimOrNull(req.body?.password);
+      if (!password || !verifyFinanzasPassword(password, config.finanzasModulePassword)) {
+        return res.status(403).json({ ok: false, error: "invalid_password" });
+      }
+      const sessionId = req.user.sessionId;
+      if (!sessionId) {
+        return res.status(403).json({ ok: false, error: "finanzas_locked" });
+      }
+      const expiresAt = await setFinanzasUnlock(pool, sessionId, config.finanzasUnlockTtlHours);
+      res.json({ ok: true, unlocked: true, expires_at: expiresAt.toISOString() });
+    }),
+  );
+
+  router.post(
+    "/api/banco/lock",
+    requireUser({ module: "banco" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      if (shouldBypassFinanzasUnlock(req, config)) {
+        return res.json({ ok: true, locked: true, bypass: true });
+      }
+      await clearFinanzasUnlock(pool, req.user.sessionId);
+      res.json({ ok: true, locked: true });
+    }),
+  );
+
   // ─── Cuentas ─────────────────────────────────────────────────────────
   router.get(
     "/api/banco/accounts",
     requireUser({ module: "banco" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const includeArchived = req.query.include_archived === "1";
@@ -134,6 +205,7 @@ export default function createBancoRouter(config, logger) {
   router.post(
     "/api/banco/accounts",
     requireUser({ role: "admin" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const name = trimOrNull(req.body?.name);
@@ -154,6 +226,7 @@ export default function createBancoRouter(config, logger) {
   router.patch(
     "/api/banco/accounts/:id",
     requireUser({ role: "admin" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const id = req.params.id;
@@ -188,6 +261,7 @@ export default function createBancoRouter(config, logger) {
   router.post(
     "/api/banco/import",
     requireUser({ role: "admin" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const fileBase64 = trimOrNull(req.body?.file_base64);
@@ -410,6 +484,7 @@ export default function createBancoRouter(config, logger) {
   router.get(
     "/api/banco/movements",
     requireUser({ module: "banco" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const filters = parseMovementFilters(req.query);
@@ -452,6 +527,7 @@ export default function createBancoRouter(config, logger) {
   router.patch(
     "/api/banco/movements/:id",
     requireUser({ role: "admin" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const id = req.params.id;
@@ -491,6 +567,7 @@ export default function createBancoRouter(config, logger) {
   router.get(
     "/api/banco/summary",
     requireUser({ module: "banco" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const groupKey = trimOrNull(req.query.group) || "mes";
@@ -524,6 +601,7 @@ export default function createBancoRouter(config, logger) {
   router.get(
     "/api/banco/cash-flow",
     requireUser({ module: "banco" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const filters = parseMovementFilters(req.query);
@@ -630,6 +708,7 @@ export default function createBancoRouter(config, logger) {
   router.get(
     "/api/banco/rules",
     requireUser({ module: "banco" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const includeArchived = req.query.include_archived === "1";
@@ -644,6 +723,7 @@ export default function createBancoRouter(config, logger) {
   router.post(
     "/api/banco/rules",
     requireUser({ role: "admin" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const pattern = trimOrNull(req.body?.pattern);
@@ -669,6 +749,7 @@ export default function createBancoRouter(config, logger) {
   router.patch(
     "/api/banco/rules/:id",
     requireUser({ role: "admin" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const id = req.params.id;
@@ -714,6 +795,7 @@ export default function createBancoRouter(config, logger) {
   router.post(
     "/api/banco/rules/apply",
     requireUser({ role: "admin" }),
+    finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
       const where = ["m.categoria is null", "m.entidad is null"];

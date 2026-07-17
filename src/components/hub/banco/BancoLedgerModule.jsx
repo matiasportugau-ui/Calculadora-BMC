@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
 import { taxonomySelectOptions } from "../finanzas/cashFlowTaxonomy.js";
+import { useFinanzasUnlock } from "../finanzas/FinanzasUnlockGate.jsx";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -56,6 +57,7 @@ function fmtMoney(v, currency) {
 
 export default function BancoLedgerModule({ embedded = false }) {
   const auth = useBmcAuth();
+  const finanzasUnlock = useFinanzasUnlock();
   const fileRef = useRef(null);
   const [accounts, setAccounts] = useState([]);
   const [movements, setMovements] = useState([]);
@@ -83,11 +85,12 @@ export default function BancoLedgerModule({ embedded = false }) {
       const body = await r.json().catch(() => null);
       if (!r.ok) {
         const detail = body?.error || `http_${r.status}`;
+        if (detail === "finanzas_locked") finanzasUnlock?.lockSession?.();
         throw new Error(detail);
       }
       return body;
     },
-    [auth.accessToken],
+    [auth.accessToken, finanzasUnlock],
   );
 
   const loadAccounts = useCallback(async () => {
