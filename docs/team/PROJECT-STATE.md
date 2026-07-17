@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-16
+**Última actualización:** 2026-07-17
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-17 (feat — Cotizar flete en wizard):** SDD [`SDD-CALCULADORA-FLETES.md`](./SDD-CALCULADORA-FLETES.md) + implementación: `TARIFAS_LOGISTICAS` en [`src/data/constants.js`](../../src/data/constants.js), empaque [`src/utils/logistica/cargoPacking.js`](../../src/utils/logistica/cargoPacking.js), engine [`src/utils/fleteEngine.js`](../../src/utils/fleteEngine.js) + FX [`src/utils/brouFx.js`](../../src/utils/brouFx.js), UI paso Flete **Cotizar flete** ([`FleteCotizarPanel.jsx`](../../src/components/FleteCotizarPanel.jsx)). Tests `tests/fleteEngine.test.js` en `test:core`. PDF sigue solo «Flete — USD X».
 
 **2026-07-17 (feat — Finanzas module password gate):** Segunda capa de acceso al hub **Finanzas** además de OAuth + grant `banco`. Backend: [`server/lib/finanzasUnlock.js`](../../server/lib/finanzasUnlock.js), rutas `GET/POST /api/banco/unlock-status|unlock|lock`, columna `identity.sessions.finanzas_unlocked_until` (migración `20260717000001`), middleware `finLocked` en rutas de datos `/api/banco/*`. Frontend: [`FinanzasUnlockGate.jsx`](../../src/components/hub/finanzas/FinanzasUnlockGate.jsx) en `App.jsx`; re-lock si API devuelve `finanzas_locked` (TTL 12h; bypass local dev + superadmin). Secreto: `FINANZAS_MODULE_PASSWORD` en Doppler — nunca en git. SDD v1.0: [`SDD-finanzas-hub.md`](./SDD-finanzas-hub.md). Tests: `tests/finanzas-unlock.test.js`.
 

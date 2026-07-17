@@ -127,6 +127,7 @@ import ScenarioStepIcon from "./ScenarioStepIcon.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import FleteCotizarPanel from "./FleteCotizarPanel.jsx";
 import { useChat } from "../hooks/useChat.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
@@ -6501,6 +6502,23 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   )}
                   {stepId === "flete" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <FleteCotizarPanel
+                        proyecto={proyecto}
+                        onProyectoPatch={(patch) => {
+                          Object.entries(patch).forEach(([k, v]) => uPr(k, v));
+                        }}
+                        techo={techo}
+                        pared={pared}
+                        results={results}
+                        bomGroups={groups}
+                        flete={flete}
+                        setFlete={setFlete}
+                        fleteCosto={fleteCosto}
+                        setFleteCosto={setFleteCosto}
+                        C={C}
+                        inputS={inputS}
+                        labelS={labelS}
+                      />
                       <StepperInput label="Flete (USD)" value={flete} onChange={v => setFlete(v)} min={0} max={2000} step={50} unit="USD" decimals={0} />
                       <div>
                         <div style={labelS}>Costo interno flete (USD s/IVA, opcional)</div>

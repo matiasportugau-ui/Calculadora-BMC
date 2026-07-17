@@ -467,6 +467,43 @@ export const SERVICIOS = {
   flete: { label: "Flete con entrega en obra", venta: 240.00, web: 252.00, costo: 180.00, unidad: "servicio" },
 };
 
+/**
+ * Tarifas logísticas (flete) — listas para modificar.
+ * Spec: docs/team/SDD-CALCULADORA-FLETES.md
+ * Legacy SERVICIOS.flete above remains catalog default; Cotizar flete uses this block.
+ */
+export const TARIFAS_LOGISTICAS = {
+  fxSource: "brou_diario",
+  redondeoUsd: "entero",
+  alturaMaxEstibaM: 2.4,
+  carroceriaEstandarM: 8,
+  carroceriaLargaM: { min: 12, max: 14, nominalM: 13 },
+  margenCamionCompletoUyu: 3000,
+  apilado: {
+    defaultExtraCmPorPanel: 2,
+    isoroof: { nervioCm: 4, modo: "invertido_pares" },
+    /** Espesor cm → paneles por paquete cerrado */
+    paquetesPorEspesorCm: { 10: 8, 15: 6, 20: 5, 25: 4 },
+  },
+  zonas: {
+    retiro: { ventaUsd: 0 },
+    maldonado_corredor: {
+      unaFilaUsd: 280,
+      camionCompletoCostoUyu: 18000,
+      remolqueCostoUyu: 24000,
+      remolqueVentaUyu: 28000,
+      camionLargoVentaUsd: 650,
+    },
+    ciudad_costa: {
+      unaFilaUsd: 252,
+      factorVsMaldonado: 0.9,
+    },
+    mvd: { minimoUsd: 150, pctSobreCotizacionSinFlete: 0.1 },
+    canelones: { minimoUsd: 220, pctSobreCotizacionSinFlete: 0.1 },
+    especial: { modo: "manual" },
+  },
+};
+
 // ── §4 UI CONFIGURATION ──────────────────────────────────────────────────────
 
 export const SCENARIOS_DEF = [
