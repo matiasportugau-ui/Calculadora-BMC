@@ -74,10 +74,11 @@ function entidadOrInvalid(v) {
 /**
  * @param {import("../config.js").config} config
  * @param {import("pino").Logger} [logger]
+ * @param {{ pool?: import("pg").Pool }} [deps]
  */
-export default function createBancoRouter(config, logger) {
+export default function createBancoRouter(config, logger, deps = {}) {
   const router = Router();
-  const pool = getBancoPool(config.databaseUrl);
+  const pool = deps.pool ?? getBancoPool(config.databaseUrl);
   const log = logger || console;
 
   function requireDb(_req, res, next) {
