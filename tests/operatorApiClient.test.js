@@ -6,8 +6,11 @@ import {
   resolveApiKeyFromStorage,
   COCKPIT_TOKEN_KEY,
   setOperatorJwtGetter,
+  setOperatorJwtRefresh,
   ensureOperatorToken,
   ensureIdentityJwt,
+  refreshIdentityJwt,
+  _resetRefreshInFlightForTests,
 } from "../src/utils/operatorApiClient.js";
 
 let pass = 0;
@@ -52,6 +55,43 @@ await t("ensureIdentityJwt uses JWT getter only (no cockpit fallback)", async ()
   assert.equal(await ensureIdentityJwt(), "jwt-only");
   setOperatorJwtGetter(() => "");
   assert.equal(await ensureIdentityJwt(), "");
+});
+
+await t("refreshIdentityJwt single-flights concurrent callers", async () => {
+  _resetRefreshInFlightForTests();
+  let calls = 0;
+  setOperatorJwtRefresh(async () => {
+    calls += 1;
+    await new Promise((r) => setTimeout(r, 30));
+    return "fresh-jwt";
+  });
+  const [a, b, c] = await Promise.all([
+    refreshIdentityJwt(),
+    refreshIdentityJwt(),
+    refreshIdentityJwt(),
+  ]);
+  assert.equal(calls, 1, "expected one refresh call for three waiters");
+  assert.equal(a, true);
+  assert.equal(b, true);
+  assert.equal(c, true);
+  assert.equal(await ensureIdentityJwt(), "fresh-jwt");
+  setOperatorJwtRefresh(async () => false);
+  setOperatorJwtGetter(() => "");
+  _resetRefreshInFlightForTests();
+});
+
+await t("refreshIdentityJwt sequential after in-flight clears", async () => {
+  _resetRefreshInFlightForTests();
+  let calls = 0;
+  setOperatorJwtRefresh(async () => {
+    calls += 1;
+    return true;
+  });
+  assert.equal(await refreshIdentityJwt(), true);
+  assert.equal(await refreshIdentityJwt(), true);
+  assert.equal(calls, 2);
+  setOperatorJwtRefresh(async () => false);
+  _resetRefreshInFlightForTests();
 });
 
 console.log(

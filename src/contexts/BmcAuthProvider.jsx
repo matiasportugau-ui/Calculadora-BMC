@@ -13,6 +13,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { signIn as gisSignIn, signOut as gisSignOut } from "../utils/googleDrive.js";
@@ -36,6 +37,8 @@ export function BmcAuthProvider({ children }) {
   const [modules, setModules] = useState({});
   const [accessToken, setAccessToken] = useState(null);
   const [status, setStatus] = useState("loading"); // 'loading'|'anonymous'|'authenticated'
+  /** Coalesce concurrent POST /api/auth/refresh (mlFetch parallel 401s + bootstrap). */
+  const refreshInFlightRef = useRef(null);
 
   const applyAuth = useCallback((data) => {
     if (!data?.user) {
@@ -44,6 +47,7 @@ export function BmcAuthProvider({ children }) {
       setPlanTier(null);
       setModules({});
       setAccessToken(null);
+      setOperatorJwtGetter(() => "");
       setStatus("anonymous");
       return;
     }
@@ -51,23 +55,36 @@ export function BmcAuthProvider({ children }) {
     setRole(data.role || data.user.role || null);
     setPlanTier(data.plan_tier || data.user.plan_tier || "base");
     setModules(data.modules || {});
-    if (data.accessToken) setAccessToken(data.accessToken);
+    if (data.accessToken) {
+      setAccessToken(data.accessToken);
+      // Sync getter immediately so mlFetch retries do not wait for React effects.
+      setOperatorJwtGetter(() => data.accessToken);
+    }
     setStatus("authenticated");
   }, []);
 
   const refreshAccess = useCallback(async () => {
-    try {
-      const res = await fetch(`${ApiBase}/api/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) return false;
-      const data = await res.json();
-      applyAuth(data);
-      return true;
-    } catch {
-      return false;
-    }
+    if (refreshInFlightRef.current) return refreshInFlightRef.current;
+
+    refreshInFlightRef.current = (async () => {
+      try {
+        const res = await fetch(`${ApiBase}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        applyAuth(data);
+        // Return token string so refreshIdentityJwt can re-bind getter if needed.
+        return data.accessToken || true;
+      } catch {
+        return false;
+      } finally {
+        refreshInFlightRef.current = null;
+      }
+    })();
+
+    return refreshInFlightRef.current;
   }, [applyAuth]);
 
   const fetchMeAndGrants = useCallback(
