@@ -151,10 +151,12 @@ export function buildAgentChatRequestBody(opts = {}) {
  *   onAction: (action: {type:string, payload:any}) => void,
  *   devMode?: boolean,
  *   devAuthToken?: string,
+ *   operatorAccessToken?: string,
  *   persistHistory?: boolean,
  * }} opts
  * When the API sets `PANELIN_RELAX_DEV_AUTH`, GET /capabilities returns `panelin_relax_dev_auth: true`
  * and dev routes accept requests without API_AUTH_TOKEN (local dev only).
+ * `operatorAccessToken` — identity JWT from Iniciar sesión; unlocks auth tools without DEV mode.
  * @returns {{ messages, isStreaming, aiProvider, aiModel, setAiProvider, setAiModel, setAiSelection, aiOptions, aiOptionsError, send, stop, retry, clear, error, ... }}
  */
 export function useChat({
@@ -162,6 +164,7 @@ export function useChat({
   onAction,
   devMode = false,
   devAuthToken = "",
+  operatorAccessToken = "",
   persistHistory = false,
 }) {
   const [messages, setMessages] = useState(() => (persistHistory ? loadHistory() : []));
@@ -305,15 +308,23 @@ export function useChat({
   }, [devMode, devApisAuthorized]);
 
   const buildDevAuthHeaders = useCallback(() => {
-    if (!devMode) return {};
-    if (relaxDevAuth) return {};
-    const t = String(devAuthToken || "").trim();
-    if (!t) return {};
-    return {
-      Authorization: `Bearer ${t}`,
-      "X-Api-Key": t,
-    };
-  }, [devMode, devAuthToken, relaxDevAuth]);
+    // Prefer DEV static token when active (X-Api-Key for service routes).
+    if (devMode && !relaxDevAuth) {
+      const t = String(devAuthToken || "").trim();
+      if (t) {
+        return {
+          Authorization: `Bearer ${t}`,
+          "X-Api-Key": t,
+        };
+      }
+    }
+    // Logged-in operator (Google identity) — unlocks Co-Work/CRM tools without DEV mode.
+    const op = String(operatorAccessToken || "").trim();
+    if (op) {
+      return { Authorization: `Bearer ${op}` };
+    }
+    return {};
+  }, [devMode, devAuthToken, relaxDevAuth, operatorAccessToken]);
 
   /**
    * @param {string} userText
