@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-18 (feat — Finanzas closeout: cash-flow tests, taxonomy rules seed, sin_clasificar fix):** `tests/banco-cash-flow.test.js` en `test:api`; `createBancoRouter` acepta `deps.pool` para tests; `sin_clasificar` y `POST /rules/apply` alineados a `categoria IS NULL` (SDD). Script [`scripts/seed-banco-rules-from-taxonomy.mjs`](../../scripts/seed-banco-rules-from-taxonomy.mjs) porta patrones metalog → `banco_rules`. Docs: [`SDD-finanzas-hub.md`](./SDD-finanzas-hub.md) Appendix B + [`fiscal/BANCO-LEDGER.md`](./fiscal/BANCO-LEDGER.md) actualizado a `/hub/finanzas`.
+
 **2026-07-18 (fix — ML identity JWT refresh single-flight):** Follow-up a Codex P1 en #704. `refreshIdentityJwt` y `BmcAuthProvider.refreshAccess` coalescen callers concurrentes en un solo `POST /api/auth/refresh`; `applyAuth` actualiza el JWT getter de forma síncrona para retries de `mlFetch` sin esperar React effects. Evita `token_reuse_detected` al abrir ML Manager tras TTL 15m (Overview dispara varias queries en paralelo). Tests en `operatorApiClient.test.js`.
 
 **2026-07-18 (feat — MLOMS P0: playbook queue + deploy fix):** `GET /api/ml/playbooks` (read-only desde marketIntel ml_pulse + product_matrix) + panel **Playbooks · intel → ML** en `OverviewTab`. Fix boot: `mlOptimize.js` import `{ config }` (bloqueaba deploy Cloud Run post-#701). Test `mlPlaybooks.test.js`.
