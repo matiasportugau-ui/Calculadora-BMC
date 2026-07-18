@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-18 (feat — MLOMS P0: playbook queue + deploy fix):** `GET /api/ml/playbooks` (read-only desde marketIntel ml_pulse + product_matrix) + panel **Playbooks · intel → ML** en `OverviewTab`. Fix boot: `mlOptimize.js` import `{ config }` (bloqueaba deploy Cloud Run post-#701). Test `mlPlaybooks.test.js`.
+
 **2026-07-18 (feat — MLOMS P0: Listing Quality Agent + audit UI):** `POST /api/ml/optimize/listing` + [`server/lib/mlListingQuality.js`](../../server/lib/mlListingQuality.js) (agentCore, JSON rubric title/images/attrs/description). ML Manager `ListingsTab` → botón **Auditar IA**, panel scores/issues, **Aplicar sugerencias al formulario** (human gate: guardar manual con confirmación). Test `mlListingQualityParse.test.js`. SDD: [`ml-optimization/SDD-ML-OPTIMIZATION-SYSTEM.md`](./ml-optimization/SDD-ML-OPTIMIZATION-SYSTEM.md) P0.
 
 **2026-07-18 (arch — MLOMS SDD: MercadoLibre optimization & management system):** Design-only SDD [`ml-optimization/SDD-ML-OPTIMIZATION-SYSTEM.md`](./ml-optimization/SDD-ML-OPTIMIZATION-SYSTEM.md) from MATPROMT [`matprompt/MATPROMT-RUN-2026-07-18-ml-sdd.md`](./matprompt/MATPROMT-RUN-2026-07-18-ml-sdd.md). Covers 8 capability domains (ads, campaigns, listings, competition, strategy, discovery, quality, expansion); C4 + 3 sequences; 5 ADRs; P0–P3 roadmap. Grounded on live ML Manager (4 tabs), `/ml/*` routes, marketIntel, agentCore — **no Product Ads backend yet** (`useMlConnector` omits ads routes). Human-in-the-loop mandatory for all ML writes. Handoff: Integrations, Networks, Design, Security, Calc.

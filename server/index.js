@@ -1118,7 +1118,7 @@ app.use(createMlSearchRouter({ ml, config, logger }));
 // Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
 app.use(createMlEtlRunRouter({ config, logger }));
 // MLOMS P0 — listing quality audit (AI proposal only; human applies PATCH in UI)
-app.use(createMlOptimizeRouter({ ml, logger }));
+app.use(createMlOptimizeRouter({ ml, config, logger }));
 // Quote counter (atomic global counter, annual reset)
 app.use("/api", createQuotesRouter(config));
 // Calculator export archive → shared Drive folder (DRIVE_QUOTE_FOLDER_ID)

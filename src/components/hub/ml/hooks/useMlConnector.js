@@ -158,3 +158,14 @@ export function useAuditListing() {
       }),
   });
 }
+
+/** Read-only strategic playbooks — GET /api/ml/playbooks */
+export function useMlPlaybooks() {
+  return useQuery({
+    queryKey: [...BASE_KEY, 'playbooks'],
+    queryFn: () => mlFetch('/api/ml/playbooks'),
+    staleTime: 5 * 60_000,
+    gcTime: GC_TIME,
+    retry: 0,
+  });
+}
