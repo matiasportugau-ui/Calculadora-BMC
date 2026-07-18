@@ -18,6 +18,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
 import { checkDevModeAuthorization } from "../lib/devModeAuth.js";
+import { peekIdentityClaims } from "../lib/identityAuth.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import {
   calcParedCompleto,
@@ -223,6 +224,7 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
   // Co-Work Sheets — Admin/CRM PII and writes (allowlisted service-account sheets)
+  // Reads are open on SPA chat (TOOLS_OPEN_IN_PUBLIC_CHAT); writes stay gated.
   "sheets_list_tabs",
   "sheets_read_range",
   "sheets_find",
@@ -243,6 +245,20 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "traktime_activity_today",
 ]);
 
+/**
+ * Co-Work Sheets tools allowed on public SPA chat without DEV mode.
+ * Internal operator usage (Live Assist / pendientes / cotizar). Still
+ * require Bearer on /api/agent/exec-tool (MCP). Writes stay auth-gated
+ * via TOOLS_REQUIRING_AUTH + user_confirmed.
+ */
+export const TOOLS_OPEN_IN_PUBLIC_CHAT = new Set([
+  "sheets_list_tabs",
+  "sheets_read_range",
+  "sheets_find",
+  "sheets_get_pending_admin",
+  "sheets_propose_write",
+]);
+
 /** Extract a Bearer token from a request's Authorization header, or "". */
 export function bearerFromRequest(req) {
   const auth = String(req?.headers?.authorization || "");
@@ -250,24 +266,48 @@ export function bearerFromRequest(req) {
 }
 
 /**
- * Returns true if the chat tool loop should refuse to execute `toolName`
- * for the current session. Public (non-devMode) chat sessions may not
- * invoke any tool in TOOLS_REQUIRING_AUTH — same gate that protects
- * /api/agent/exec-tool. devMode chats are pre-authenticated by
- * API_AUTH_TOKEN at the route entry, so they pass.
+ * True when this chat request may run tools in TOOLS_REQUIRING_AUTH.
+ * - devMode body (route already validated API_AUTH_TOKEN / relax)
+ * - static API_AUTH_TOKEN / X-Api-Key
+ * - valid identity access JWT (Iniciar sesión — no DEV mode needed)
  *
- * Exported for unit testing the regression Cursor flagged: prior to this
- * gate, an unauthenticated chat could prompt the model to call
- * `listar_cotizaciones_recientes` etc. and receive customer data.
- *
- * @param {string} toolName
- * @param {boolean} isDevModeAuthenticated
+ * @param {import("express").Request} req
+ * @param {boolean} devMode
  * @returns {boolean}
  */
-export function shouldBlockToolForUnauthenticatedChat(toolName, isDevModeAuthenticated) {
-  if (isDevModeAuthenticated) return false;
+export function isChatToolsAuthenticated(req, devMode) {
+  if (devMode) return true;
+  const token = config.apiAuthToken;
+  if (token) {
+    const bearer = bearerFromRequest(req);
+    const xKey = String(req?.headers?.["x-api-key"] || "");
+    if (bearer === token || xKey === token) return true;
+  }
+  return !!peekIdentityClaims(req);
+}
+
+/**
+ * Returns true if the chat tool loop should refuse to execute `toolName`
+ * for the current session.
+ *
+ * - Authenticated (DEV / service token / identity JWT) → never block
+ * - Co-Work sheet reads + propose → open on public SPA chat (internal ops)
+ * - Other TOOLS_REQUIRING_AUTH → block for anonymous public chat
+ *
+ * /api/agent/exec-tool still uses TOOLS_REQUIRING_AUTH fully (Bearer required).
+ *
+ * @param {string} toolName
+ * @param {boolean} isAuthenticated
+ * @returns {boolean}
+ */
+export function shouldBlockToolForUnauthenticatedChat(toolName, isAuthenticated) {
+  if (isAuthenticated) return false;
+  if (TOOLS_OPEN_IN_PUBLIC_CHAT.has(toolName)) return false;
   return TOOLS_REQUIRING_AUTH.has(toolName);
 }
+
+const CHAT_TOOL_AUTH_HINT =
+  "Esta tool requiere autenticación de operador. Iniciá sesión en la calculadora (Google) o usá modo desarrollador (Ctrl+Shift+D + token API) para CRM / registry / escrituras.";
 
 // Bound the MCP / external write surface. The chat endpoint already has
 // 10/min public + 30/min dev rate limits; exec-tool inherits nothing
@@ -574,6 +614,10 @@ router.post("/agent/chat", async (req, res) => {
 
   // Check if rate limiter already sent a response
   if (res.headersSent) return;
+
+  // Tool-loop auth: DEV mode, API_AUTH_TOKEN, or identity JWT (logged-in operator).
+  // Co-Work sheet reads are open even when false (TOOLS_OPEN_IN_PUBLIC_CHAT).
+  const toolsAuthenticated = isChatToolsAuthenticated(req, !!devMode);
 
   // 0.15 — Soft budget (per-conversation/IP). Default OFF: see config.budgetEnabled.
   // Independent from express-rate-limit: limiter caps per-IP/min; budget caps
@@ -1072,18 +1116,12 @@ router.post("/agent/chat", async (req, res) => {
           for (const tc of toolCalls) {
             let toolInput = {};
             try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
-            // Auth gate for the chat tool loop: same TOOLS_REQUIRING_AUTH set
-            // that protects /api/agent/exec-tool. Without this, an
-            // unauthenticated chat session can prompt the model to fire
-            // sensitive registry/CRM/PDF reads (Cursor finding) — the chat
-            // route is public, but devMode chat is auth-gated by API_AUTH_TOKEN
-            // (lines 472-484 above), so devMode === true is our authenticated
-            // signal. Public chat must not be able to execute auth-required
-            // tools regardless of what the model decides to call.
-            if (shouldBlockToolForUnauthenticatedChat(tc.name, devMode)) {
+            // Auth gate for the chat tool loop. Co-Work sheet reads are open
+            // without DEV mode; CRM/registry/writes still need toolsAuthenticated.
+            if (shouldBlockToolForUnauthenticatedChat(tc.name, toolsAuthenticated)) {
               const blockedResult = JSON.stringify({
                 ok: false,
-                error: `Esta tool (${tc.name}) requiere autenticación. El operador debe conectarse en modo desarrollador (Ctrl+Shift+D + token API) antes de ejecutar lecturas de CRM / registry / PDF o escrituras.`,
+                error: `Esta tool (${tc.name}) bloqueada. ${CHAT_TOOL_AUTH_HINT}`,
               });
               send({ type: "tool_call", tool: tc.name, input: toolInput, blocked: "auth_required" });
               req.log?.warn({ tool: tc.name }, "chat tool blocked: requires auth");
@@ -1213,12 +1251,11 @@ router.post("/agent/chat", async (req, res) => {
           const responseParts = [];
           for (const c of calls) {
             const toolInput = c.args || {};
-            // Same auth gate as the Claude loop: public chat must not execute
-            // auth-required tools regardless of what the model decides to call.
-            if (shouldBlockToolForUnauthenticatedChat(c.name, devMode)) {
+            // Same auth gate as the Claude loop (Co-Work reads open; rest need auth).
+            if (shouldBlockToolForUnauthenticatedChat(c.name, toolsAuthenticated)) {
               const blockedResult = JSON.stringify({
                 ok: false,
-                error: `Esta tool (${c.name}) requiere autenticación. El operador debe conectarse en modo desarrollador (Ctrl+Shift+D + token API) antes de ejecutar lecturas de CRM / registry / PDF o escrituras.`,
+                error: `Esta tool (${c.name}) bloqueada. ${CHAT_TOOL_AUTH_HINT}`,
               });
               send({ type: "tool_call", tool: c.name, input: toolInput, blocked: "auth_required" });
               req.log?.warn({ tool: c.name }, "chat tool blocked: requires auth (gemini)");

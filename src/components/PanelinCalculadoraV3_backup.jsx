@@ -2773,6 +2773,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     onAction: handleChatAction,
     devMode,
     devAuthToken,
+    operatorAccessToken: bmcAuth?.accessToken || "",
     persistHistory: false,
   });
   chatSendRef.current = chat.send;

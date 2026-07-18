@@ -869,8 +869,18 @@ async function _readClaimsFromRequest(req) {
   // accept a JWT planted by a client-side script (XSS / extension), bypassing
   // the httpOnly intent that protects the refresh cookie (`bmc_sess`).
   // Refresh cookie → `/auth/refresh` only; access JWT → header only.
-  const auth = req.get?.("authorization") || "";
-  const m = /^Bearer (.+)$/i.exec(auth.trim());
+  return peekIdentityClaims(req);
+}
+
+/**
+ * Lightweight JWT presence check (no DB). Used by agent chat tool gate so
+ * logged-in operators can run auth-required tools without DEV mode + API_AUTH_TOKEN.
+ * @param {import("express").Request} req
+ * @returns {{ sub: string, sid?: string, iat?: number } | null}
+ */
+export function peekIdentityClaims(req) {
+  const auth = req?.get?.("authorization") || req?.headers?.authorization || "";
+  const m = /^Bearer (.+)$/i.exec(String(auth).trim());
   if (!m) return null;
   try {
     const claims = jwt.verify(m[1], getJwtSecret(), {
