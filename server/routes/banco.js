@@ -82,10 +82,11 @@ function entidadOrInvalid(v) {
 /**
  * @param {import("../config.js").config} config
  * @param {import("pino").Logger} [logger]
+ * @param {{ pool?: import("pg").Pool }} [deps]
  */
-export default function createBancoRouter(config, logger) {
+export default function createBancoRouter(config, logger, deps = {}) {
   const router = Router();
-  const pool = getBancoPool(config.databaseUrl);
+  const pool = deps.pool ?? getBancoPool(config.databaseUrl);
   const log = logger || console;
   const finLocked = requireFinanzasUnlock(config, pool);
 
@@ -475,7 +476,7 @@ export default function createBancoRouter(config, logger) {
     else if (tipo === "credito") where.push("m.credito is not null");
     else if (tipo) return { error: "invalid_tipo" };
     if (query.sin_clasificar === "1") {
-      where.push("m.categoria is null and m.entidad is null");
+      where.push("m.categoria is null");
     }
     return { where, params };
   }
@@ -798,7 +799,7 @@ export default function createBancoRouter(config, logger) {
     finLocked,
     requireDb,
     asyncHandler(async (req, res) => {
-      const where = ["m.categoria is null", "m.entidad is null"];
+      const where = ["m.categoria is null"];
       const params = [];
       const accountId = trimOrNull(req.body?.account_id);
       if (accountId) {
