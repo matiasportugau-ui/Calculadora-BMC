@@ -144,3 +144,17 @@ export function useOrders(params = {}) {
     gcTime: GC_TIME,
   });
 }
+
+/**
+ * AI listing quality audit — POST /api/ml/optimize/listing
+ * Returns { ok, audit, provider, model }. Does NOT mutate ML; operator applies patches manually.
+ */
+export function useAuditListing() {
+  return useMutation({
+    mutationFn: ({ itemId, provider }) =>
+      mlFetch('/api/ml/optimize/listing', {
+        method: 'POST',
+        body: { itemId, provider },
+      }),
+  });
+}

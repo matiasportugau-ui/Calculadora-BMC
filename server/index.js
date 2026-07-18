@@ -31,6 +31,7 @@ import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
 import createMlSearchRouter from "./routes/mlSearch.js";
 import createMlEtlRunRouter from "./routes/mlEtlRun.js";
+import createMlOptimizeRouter from "./routes/mlOptimize.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import createWaRouter from "./routes/wa.js";
@@ -1116,6 +1117,8 @@ app.use("/api", planCadRouter);
 app.use(createMlSearchRouter({ ml, config, logger }));
 // Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
 app.use(createMlEtlRunRouter({ config, logger }));
+// MLOMS P0 — listing quality audit (AI proposal only; human applies PATCH in UI)
+app.use(createMlOptimizeRouter({ ml, logger }));
 // Quote counter (atomic global counter, annual reset)
 app.use("/api", createQuotesRouter(config));
 // Calculator export archive → shared Drive folder (DRIVE_QUOTE_FOLDER_ID)
