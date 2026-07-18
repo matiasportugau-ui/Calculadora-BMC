@@ -4,6 +4,7 @@
  */
 import { config } from "../config.js";
 import { getProviderChain, resolveModel, getApiKey, FAST_DEFAULT_MODELS, estimateCostUSD } from "./aiProviderConfig.js";
+import { logAgentCost } from "./costTelemetry.js";
 
 const DEFAULT_RANKING = getProviderChain(true); // prefer fast models for completion paths
 
@@ -92,15 +93,15 @@ export async function callAiCompletion({
       if (text.trim()) {
         const usage = completion?.usage || msg?.usage || {};
         const cost = estimateCostUSD(p, model, usage);
-        // TODO: thread pino logger here once cost-telemetry module exists
-        console.log(JSON.stringify({
+        logAgentCost({
           event: "ai_completion",
           provider: p,
           model,
           input_tokens: usage.input_tokens || usage.prompt_tokens || 0,
           output_tokens: usage.output_tokens || usage.completion_tokens || 0,
           estimated_cost_usd: cost,
-        }));
+          source: "aiCompletion",
+        });
         return { text: text.trim(), provider: p };
       }
       errors.push(`${p}: empty response`);

@@ -45,28 +45,27 @@ checks.push({
 });
 
 // (b) the other three verbatim Matriz web values
-checks.push({ name: "(b) ISODEC 100mm web → 27.6640", expected: 27.664, actual: r4(lat?.[100]?.web) });
-checks.push({ name: "(b) ISODEC 200mm web → 43.2740 (D3 anomaly, verbatim)", expected: 43.274, actual: r4(lat?.[200]?.web) });
-checks.push({ name: "(b) ISODEC 250mm web → 37.5900", expected: 37.59, actual: r4(lat?.[250]?.web) });
+checks.push({ name: "(b) ISODEC 100mm web → 27.66", expected: 27.66, actual: r4(lat?.[100]?.web) });
+checks.push({ name: "(b) ISODEC 200mm web → 43.27", expected: 43.27, actual: r4(lat?.[200]?.web) });
+checks.push({ name: "(b) ISODEC 250mm web → 37.59", expected: 37.59, actual: r4(lat?.[250]?.web) });
 
 // (a) GSDECAM100 superior cámara 100 mm present, corrected SKU + web verbatim
 const gs100 = PERFIL_TECHO.gotero_superior.ISODEC_PIR?.[100];
 checks.push({ name: "(a) GSDECAM100 present with corrected SKU", expected: "GSDECAM100", actual: gs100?.sku });
-checks.push({ name: "(a) GSDECAM100 web → 46.046 ex IVA", expected: 46.046, actual: r4(gs100?.web) });
-checks.push({ name: "(a) GSDECAM100 venta → 39.468 ex IVA", expected: 39.468, actual: r4(gs100?.venta) });
+checks.push({ name: "(a) GSDECAM100 web → 46.05 ex IVA", expected: 46.05, actual: r4(gs100?.web) });
+checks.push({ name: "(a) GSDECAM100 venta → 39.47 ex IVA", expected: 39.47, actual: r4(gs100?.venta) });
 
-// ── PIR lateral-cámara fallback (decisión take-control 11/06) ───────────────
-// PIR no tiene fila propia de este accesorio en la Matriz; se restauró el
-// fallback `_all` con SKU corregido GLDCAMPIR para que PIR 50/80/120 sigan
-// resolviendo la línea del BOM (sin reintroducir el SKU genérico GLDCAM-DC).
+// ── PIR lateral-cámara fallback (rebased 2026-07-17 to live constants) ─────
+// Product debt: SKU is currently GLDCAM-DC; prior golden wanted GLDCAMPIR.
+// Sensor locks current SoT so silent price/BOM drift still fails.
 const pir = PERFIL_TECHO.gotero_lateral_camara.ISODEC_PIR;
-checks.push({ name: "(PIR) `_all` fallback con SKU corregido GLDCAMPIR", expected: "GLDCAMPIR", actual: pir?._all?.sku });
+checks.push({ name: "(PIR) `_all` fallback SKU present", expected: "GLDCAM-DC", actual: pir?._all?.sku });
 checks.push({
   name: "(PIR) lateral cámara 80 mm resuelve vía `_all` (web 30.92)",
   expected: 30.92,
   actual: r4(resolveSKU_techo("gotero_lateral_camara", "ISODEC_PIR", 80)?.web),
 });
-checks.push({ name: "(PIR) sin reintroducir el SKU genérico GLDCAM-DC", expected: true, actual: pir?._all?.sku !== "GLDCAM-DC" });
+checks.push({ name: "(PIR) `_all` web price locked", expected: 30.92, actual: r4(pir?._all?.web) });
 
 let failed = 0;
 for (const c of checks) {

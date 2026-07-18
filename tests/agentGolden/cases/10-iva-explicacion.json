@@ -1,0 +1,17 @@
+{
+  "id": "10-iva-explicacion",
+  "description": "IVA policy question — no quote emission without calc state.",
+  "calcState": "empty",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Los precios de la lista incluyen IVA?" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "tool_not_called", "name": "calcular_cotizacion" },
+    { "type": "verified_quote_not_emitted" }
+  ],
+  "timeoutMs": 60000
+}

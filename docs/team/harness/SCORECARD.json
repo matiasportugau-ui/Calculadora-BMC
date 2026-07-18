@@ -1,0 +1,158 @@
+{
+  "generated_at": "2026-07-18T02:42:08.916Z",
+  "composite": 98.2,
+  "min_pass": 90,
+  "pass": true,
+  "dimensions": {
+    "guide_quality": {
+      "weight": 8,
+      "score_0_10": 10,
+      "contribution": 8,
+      "notes": [
+        "AGENTS.md 49 lines (≤80)",
+        "RULE-PROVENANCE present",
+        "CLAUDE.md present",
+        "SDD-HARNESS present"
+      ]
+    },
+    "progressive_disclosure": {
+      "weight": 8,
+      "score_0_10": 10,
+      "contribution": 8,
+      "notes": [
+        "SKILL-INDEX present",
+        "AGENTS references skill index",
+        "harness README present"
+      ]
+    },
+    "computational_sensors": {
+      "weight": 10,
+      "score_0_10": 8.2,
+      "contribution": 8.2,
+      "notes": [
+        "script gate:local",
+        "script gate:local:full",
+        "script lint",
+        "script test",
+        "script test:api",
+        "script smoke:prod",
+        "env/secrets drift scripts"
+      ]
+    },
+    "enforcement_hooks": {
+      "weight": 10,
+      "score_0_10": 10,
+      "contribution": 10,
+      "notes": [
+        "pre-tool-use.sh",
+        "post-tool-use.sh",
+        "settings PreToolUse wired",
+        "settings PostToolUse wired"
+      ]
+    },
+    "architecture_fitness": {
+      "weight": 8,
+      "score_0_10": 10,
+      "contribution": 8,
+      "notes": [
+        "fitness test present",
+        "eslint custom rules",
+        "fitness covers hardcode patterns"
+      ]
+    },
+    "behaviour_goldens": {
+      "weight": 10,
+      "score_0_10": 10,
+      "contribution": 10,
+      "notes": [
+        "agentGolden cases: 15",
+        "test:agent-golden script",
+        "catalog goldens: 4",
+        "pre-release references goldens"
+      ]
+    },
+    "inferential_evals": {
+      "weight": 8,
+      "score_0_10": 10,
+      "contribution": 8,
+      "notes": [
+        "promptfoo suites present",
+        "eval:agent script",
+        "eval docs/skill"
+      ]
+    },
+    "control_plane": {
+      "weight": 8,
+      "score_0_10": 10,
+      "contribution": 8,
+      "notes": [
+        "assistantRegistry",
+        "requireAssistantEnabled",
+        "assistantControlPlane tests",
+        "control plane docs"
+      ]
+    },
+    "observability_cost": {
+      "weight": 8,
+      "score_0_10": 10,
+      "contribution": 8,
+      "notes": [
+        "costTelemetry module",
+        "agentCore wired to cost telemetry",
+        "cost telemetry tests"
+      ]
+    },
+    "improvement_flywheel": {
+      "weight": 10,
+      "score_0_10": 10,
+      "contribution": 10,
+      "notes": [
+        "harness-ratchet skill",
+        "ratchet example",
+        "score feedback loop"
+      ]
+    },
+    "loop_engineering": {
+      "weight": 6,
+      "score_0_10": 10,
+      "contribution": 6,
+      "notes": [
+        "PEV documented in harness README",
+        "PEV/loops in SDD",
+        "aligned to ship/closeout/live-fix"
+      ]
+    },
+    "safety_human_gates": {
+      "weight": 6,
+      "score_0_10": 10,
+      "contribution": 6,
+      "notes": [
+        "requireGrant present",
+        "finanzas unlock present",
+        "user_confirmed pattern",
+        "human gates documented",
+        "non-goals in HARNESS-MAP"
+      ]
+    }
+  },
+  "dod": {
+    "green": 12,
+    "total": 12,
+    "items": {
+      "D1": true,
+      "D2": true,
+      "D3": true,
+      "D4": true,
+      "D5": true,
+      "D6": true,
+      "D7": true,
+      "D8": true,
+      "D9": true,
+      "D10": true,
+      "D11": true,
+      "D12": true
+    }
+  },
+  "agent_golden_cases": 15,
+  "catalog_goldens": 4
+}

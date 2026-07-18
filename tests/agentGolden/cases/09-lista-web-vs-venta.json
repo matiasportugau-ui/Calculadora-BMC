@@ -1,0 +1,16 @@
+{
+  "id": "09-lista-web-vs-venta",
+  "description": "Ask difference venta vs web list — may use tools but must not emit fake verified quote without calc.",
+  "calcState": "empty",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "¿Cuál es la diferencia entre lista venta y lista web?" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" }
+  ],
+  "timeoutMs": 60000
+}

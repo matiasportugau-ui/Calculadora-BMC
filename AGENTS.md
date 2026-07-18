@@ -1,40 +1,48 @@
 # AGENTS.md — Calculadora BMC / Panelin Dashboard
 
-Single Vite SPA (React 18) + Express 5 API + Postgres. Architecture at `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md`. State at `docs/team/PROJECT-STATE.md`.
+Single Vite SPA (React 18) + Express 5 API + Postgres. State: `docs/team/PROJECT-STATE.md`.  
+**Harness Control System:** `docs/team/harness/README.md` · map · score · PEV.
 
 ## Quick Start
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev:full` | API (:3001) + Vite (:5173) via concurrently |
-| `doppler run -- npm run dev:full` | Same with secrets (project dir: `~/calculadora-bmc`) |
-| `npm run start:api` | API only |
-| `npm run gate:local:full` | **Pre-commit gate:** lint → test → build |
-| `npm run test:contracts` | API contract tests (needs server on :3001) |
+| `doppler run -- npm run dev:full` | API :3001 + Vite :5173 with secrets |
+| `npm run gate:local` | lint + test + test:api before PR |
+| `npm run gate:local:full` | + build |
+| `npm run pre-release` | full gate + fitness + goldens + score |
+| `npm run harness:score` | HCS composite (need ≥90 for expert complete) |
+| `npm run test:contracts` | Live API contracts (API must be up) |
 
-## Rules
+## Rules (failure-earned — see `docs/team/harness/RULE-PROVENANCE.md`)
 
-- ES modules everywhere (`import`/`export`, no `require()`)
-- Node 24.x (`engines.node`). ALSA headers needed on Linux (`sudo apt-get install -y libasound2-dev`)
-- Disk precheck runs before `dev`/`build`; skip with `BMC_DISK_PRECHECK_SKIP=1`
-- Log with `pino`/`pino-http`, never `console.log` in prod
-- `503` = Sheets unavailable; never `500` for Sheets errors
-- Sheet IDs, tokens, URLs: never hardcoded, always from `.env` or `config.*`
-- Run `npm run lint` before any commit touching `src/`
-- After completing work, update `docs/team/PROJECT-STATE.md` (add entry in "Cambios recientes")
+- ES modules only (`import`/`export`); Node 24.x
+- Never hardcode sheet IDs, tokens, prod URLs — config/env only
+- Sheets errors: **503** unavailable; never 500 for Sheets-down
+- Log with pino in server; no `console.log` in prod paths (cost telemetry JSON OK)
+- `BMC_DISK_PRECHECK_SKIP=1` only when disk precheck blocks legitimately
+- Before commit: `npm run lint` if `src/` touched; prefer `gate:local`
+- After behavior change: append **Cambios recientes** in PROJECT-STATE
+- Skills: load only via `docs/team/harness/SKILL-INDEX.md` (progressive disclosure)
+- Release: do not ship with silent golden skip — use `pre-release` / `GOLDEN_REQUIRED=1`
+- Human gates stay: grants, finanzas unlock, `user_confirmed` writes — never “optimize away”
 
-## Architecture
+## Architecture hotspots
 
-- `server/index.js` — mounts all routes on `/api`
-- `server/routes/bmcDashboard.js` — main `/api/*` routes. Calc routes in `routes/calc.js`
-- AI/agent coordination: `docs/team/` — roles, skills, project state, human gates
-- Before working: read `docs/team/PROJECT-STATE.md`
-- Human-gated steps (cm-0/1/2: Meta OAuth, ML OAuth, email ingest): follow `docs/team/HUMAN-GATES-ONE-BY-ONE.md`
+- `server/index.js` mounts `/api`; calc in `routes/calc.js`
+- AI: `server/lib/agentCore.js` + `assistantRegistry.js` + `costTelemetry.js`
+- Calculator UI: `src/components/PanelinCalculadoraV3_backup.jsx` (canonical)
 
 ## Do Not
 
-- Hardcode sheet IDs, tokens, prod URLs
-- Commit `.env` or credentials
-- Use `npm audit fix --force` (can break Vite)
-- Skip `npm run lint` before committing `src/` changes
-- Modify `PROJECT-STATE.md` without a "Cambios recientes" entry
+- Commit `.env` / credentials
+- `npm audit fix --force`
+- Force-push main or `rm -rf` destructive paths from agent loop (PreToolUse deny)
+- Modify PROJECT-STATE without Cambios recientes
+- Disable ASSISTANTS_ACTIVE / human gates to green a smoke
+
+## Before non-trivial work
+
+1. `docs/team/PROJECT-STATE.md`  
+2. This file + `docs/team/harness/HARNESS-MAP.md`  
+3. Role knowledge under `docs/team/knowledge/` if applicable  

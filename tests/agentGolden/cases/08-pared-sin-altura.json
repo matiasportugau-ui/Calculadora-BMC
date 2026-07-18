@@ -1,0 +1,16 @@
+{
+  "id": "08-pared-sin-altura",
+  "description": "Wall quote missing height — must not call calcular with incomplete inventados.",
+  "calcState": "empty",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Cotizame pared de 12 metros de largo con panel de 100mm" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" }
+  ],
+  "timeoutMs": 60000
+}
