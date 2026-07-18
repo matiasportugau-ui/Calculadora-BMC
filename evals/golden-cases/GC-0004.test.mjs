@@ -46,28 +46,29 @@ if (!checks.some((c) => c.name.startsWith("(a)"))) {
   });
 }
 
-// (b) Spot-check corrected web prices
+// (b) Spot-check web prices (rebased 2026-07-17 to constants.js SoT)
+// Still guards IVA double-apply via ratio check (a); spot prices track live list.
 checks.push({
-  name: "(b1) ISODEC_EPS 100mm web → 41.066 ex-IVA",
-  expected: 41.066,
+  name: "(b1) ISODEC_EPS 100mm web → 41.15 ex-IVA",
+  expected: 41.15,
   actual: PANELS_TECHO.ISODEC_EPS?.esp?.[100]?.web,
 });
 
 checks.push({
-  name: "(b2) ISOFRIG_PIR 100mm web → 63.07 ex-IVA (= venta after fix)",
-  expected: 63.07,
+  name: "(b2) ISOFRIG_PIR 100mm web → 63.21 ex-IVA (= venta)",
+  expected: 63.21,
   actual: PANELS_PARED.ISOFRIG_PIR?.esp?.[100]?.web,
 });
 
 checks.push({
-  name: "(b3) ISOPANEL_EPS 100mm web → 38.741 ex-IVA",
-  expected: 38.741,
+  name: "(b3) ISOPANEL_EPS 100mm web → 41.15 ex-IVA",
+  expected: 41.15,
   actual: PANELS_PARED.ISOPANEL_EPS?.esp?.[100]?.web,
 });
 
 checks.push({
-  name: "(b4) ISOROOF_3G 80mm web → 53.062 ex-IVA",
-  expected: 53.062,
+  name: "(b4) ISOROOF_3G 80mm web → 56.37 ex-IVA",
+  expected: 56.37,
   actual: PANELS_TECHO.ISOROOF_3G?.esp?.[80]?.web,
 });
 

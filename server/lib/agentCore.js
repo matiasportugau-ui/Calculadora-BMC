@@ -20,6 +20,7 @@ import {
   estimateCostUSD,
   getApiKey,
 } from "./aiProviderConfig.js";
+import { logAgentCost } from "./costTelemetry.js";
 
 // ─── Provider timeout + cooldown (reliability) ────────────────────────────────
 // Before this, a hung provider call blocked the whole request indefinitely (the
@@ -421,13 +422,8 @@ export async function callAgentOnce(messages, opts = {}) {
         recordProviderSuccess(p); // clear any pending failure streak on a good call
         const cost = estimateCostUSD(p, modelUsed, usage);
 
-        // Structured cost observability (consistent with Phase 0 changes)
-        // TODO: thread pino logger here once cost-telemetry module exists
-        // cache_read_tokens > 0 ⇒ the Anthropic prompt cache HIT (static prefix
-        // served at 0.1x); cache_write_tokens > 0 ⇒ it seeded the cache (1.25x, the
-        // first call of a 5-min window). Null for non-Anthropic providers (different
-        // usage shape). Lets us confirm the caching hit rate in prod (gh — PR 3 follow-up).
-        console.log(JSON.stringify({
+        // Structured cost observability via costTelemetry (cache_read > 0 ⇒ Anthropic cache HIT).
+        logAgentCost({
           event: "agent_core_call",
           provider: p,
           model: modelUsed,
@@ -438,7 +434,8 @@ export async function callAgentOnce(messages, opts = {}) {
           cache_read_tokens: usage.cache_read_input_tokens ?? null,
           cache_write_tokens: usage.cache_creation_input_tokens ?? null,
           task_key: taskKey || null,
-        }));
+          source: "agentCore",
+        });
 
         return {
           text: text.trim(),

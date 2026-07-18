@@ -1,0 +1,16 @@
+{
+  "id": "15-multi-escenario-sin-datos",
+  "description": "Techo+pared without measures — no verified multi quote.",
+  "calcState": "empty",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Quiero techo y paredes para un local, armame el combo completo" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" }
+  ],
+  "timeoutMs": 60000
+}

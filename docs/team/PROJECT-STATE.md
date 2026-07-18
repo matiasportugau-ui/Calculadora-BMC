@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-17 (arch — HCS Expert Harness Engineering go-live):** Dual-layer **Harness Control System** for coding agents + product AI. SDD [`SDD-HARNESS-ENGINEERING.md`](./SDD-HARNESS-ENGINEERING.md); map/score/PEV under [`harness/`](./harness/). Scripts: `harness:score`, `pre-release`, `test:fitness`, `test:catalog-goldens`, `eval:agent`. Hooks PreToolUse/PostToolUse; `costTelemetry` wired in agentCore/aiCompletion; agentGolden expanded to 15 cases; catalog goldens rebased to live `constants.js` SoT. Scorecard **98.2/100**, DoD D1–D12 green. Intentional residual: human gates (OAuth, finanzas unlock, `user_confirmed`) remain. Goal prompt: `goal-prompt-harness-engineering-100.md`. Handoff: [`HANDOFF-HCS-2026-07-17.md`](./HANDOFF-HCS-2026-07-17.md).
+
 **2026-07-17 (feat — Live Assist 100% contract):** Pure core `src/hooks/liveAssistCore.js` (interval 4s, `LiveFrameBuffer`, attach-on-send only, source `live_assist`, shared buffer D2). `useScreenCoWork` interval never POSTs; Panelin `handleSend` + `buildAgentChatRequestBody` attach buffer + `operatorContext.liveAssist`. Admin shares buffer via `sharedLiveFrameBuffer`. Tests `tests/liveAssist.test.js` (47) + `coworkFrames`. ADR-003/D3 verified.
 
 **2026-07-17 (arch — SDD Co-Work v1.1: ventana independiente / desk):** [`SDD-PANELIN-COWORK.md`](./SDD-PANELIN-COWORK.md) v1.1 agrega **D7 + §10.4**: Panelin como ventana independiente (popup multi-monitor sobre Sheets, Document-PiP “Fijar arriba”, ruta mínima `/panelin/cowork`, BroadcastChannel sync). Reutiliza `openDetachedChatWindow` y helpers PiP de Panelin Live / TraKtiMe. PRs planificados PR-G/H. ADR-007.
