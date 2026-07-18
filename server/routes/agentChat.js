@@ -1312,15 +1312,18 @@ router.post("/agent/chat", async (req, res) => {
             const parts = (lastUser?.parts || [{ text: userText }]).length
               ? lastUser.parts
               : [{ text: userText }];
+            // Fixed persona stays in systemInstruction; userText only in user role
+            // (avoids CodeQL js/system-prompt-injection on string concat into "system").
             const r = await plain.generateContent({
+              systemInstruction: {
+                parts: [{
+                  text: "Sos Panelin (BMC Uruguay). Respondé en español rioplatense, breve y útil.",
+                }],
+              },
               contents: [{
                 role: "user",
                 parts: [
-                  {
-                    text:
-                      "Sos Panelin (BMC Uruguay). Respondé en español rioplatense, breve y útil.\n\n" +
-                      userText,
-                  },
+                  { text: String(userText || "") },
                   ...parts.filter((p) => p.inlineData),
                 ],
               }],
