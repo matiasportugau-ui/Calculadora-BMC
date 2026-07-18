@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-17
+**Última actualización:** 2026-07-18
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-18 (prod — Live Assist / Co-Work online):** PR [#697](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/697) squash-merged → `main` `67f10557`. **Deployed:** Cloud Run `panelin-calc-00811-x8k` (image tag `…panelin-calc:67f10557…`, 100% traffic) + Vercel production SPA. **Secrets:** `GEMINI_API_KEY` mounted from GSM (vision path; Claude credits still empty → chain falls to Gemini). **Smoke prod:** `npm run smoke:prod` OK (health, MATRIZ CSV, suggest-response via gemini). **Agent multimodal:** `POST /api/agent/chat` with JPEG attachment → SSE `cowork_ack` `framesAccepted:1` → Gemini text reply + `done` (no hang). Text-only also OK (`PONG` via gemini). **SPA UI verified:** Panelin chat shows `Activar Co-Work (visión)`, `📷 Capturar pestaña`, `Live assist`. **UAT remaining (human):** real `getDisplayMedia` over Google Sheets tab + Live ON attach-on-send in operator browser (permission-gated; agent cannot complete screen-share picker). **Deferred (SDD §20 #11–13):** desk window / Document-PiP (PR-G/H). SDD: [`SDD-PANELIN-COWORK.md`](./SDD-PANELIN-COWORK.md).
 
 **2026-07-17 (arch — HCS Expert Harness Engineering go-live):** Dual-layer **Harness Control System** for coding agents + product AI. SDD [`SDD-HARNESS-ENGINEERING.md`](./SDD-HARNESS-ENGINEERING.md); map/score/PEV under [`harness/`](./harness/). Scripts: `harness:score`, `pre-release`, `test:fitness`, `test:catalog-goldens`, `eval:agent`. Hooks PreToolUse/PostToolUse; `costTelemetry` wired in agentCore/aiCompletion; agentGolden expanded to 15 cases; catalog goldens rebased to live `constants.js` SoT. Scorecard **98.2/100**, DoD D1–D12 green. Intentional residual: human gates (OAuth, finanzas unlock, `user_confirmed`) remain. Goal prompt: `goal-prompt-harness-engineering-100.md`. Handoff: [`HANDOFF-HCS-2026-07-17.md`](./HANDOFF-HCS-2026-07-17.md).
 
