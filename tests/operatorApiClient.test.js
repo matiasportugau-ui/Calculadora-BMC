@@ -7,13 +7,14 @@ import {
   COCKPIT_TOKEN_KEY,
   setOperatorJwtGetter,
   ensureOperatorToken,
+  ensureIdentityJwt,
 } from "../src/utils/operatorApiClient.js";
 
 let pass = 0;
 let fail = 0;
-function t(name, fn) {
+async function t(name, fn) {
   try {
-    fn();
+    await fn();
     pass++;
     console.log(`  ✅ ${name}`);
   } catch (err) {
@@ -24,7 +25,7 @@ function t(name, fn) {
 
 console.log("operatorApiClient — pure helpers");
 
-t("resolveApiKeyFromEnv prefers VITE_API_AUTH_TOKEN then VITE_BMC_API_AUTH_TOKEN", () => {
+await t("resolveApiKeyFromEnv prefers VITE_API_AUTH_TOKEN then VITE_BMC_API_AUTH_TOKEN", () => {
   assert.equal(resolveApiKeyFromEnv({}), "");
   assert.equal(resolveApiKeyFromEnv({ VITE_BMC_API_AUTH_TOKEN: "bmc" }), "bmc");
   assert.equal(
@@ -33,17 +34,24 @@ t("resolveApiKeyFromEnv prefers VITE_API_AUTH_TOKEN then VITE_BMC_API_AUTH_TOKEN
   );
 });
 
-t("resolveApiKeyFromStorage reads bmc_cockpit_token", () => {
+await t("resolveApiKeyFromStorage reads bmc_cockpit_token", () => {
   const bag = new Map();
   bag.set(COCKPIT_TOKEN_KEY, "stored-token");
   assert.equal(resolveApiKeyFromStorage((k) => bag.get(k)), "stored-token");
   assert.equal(resolveApiKeyFromStorage(() => { throw new Error("no storage"); }), "");
 });
 
-t("ensureOperatorToken prefers JWT getter over storage", async () => {
+await t("ensureOperatorToken prefers JWT getter over storage", async () => {
   setOperatorJwtGetter(() => "jwt-from-auth");
   assert.equal(await ensureOperatorToken(), "jwt-from-auth");
   setOperatorJwtGetter(() => "");
+});
+
+await t("ensureIdentityJwt uses JWT getter only (no cockpit fallback)", async () => {
+  setOperatorJwtGetter(() => "jwt-only");
+  assert.equal(await ensureIdentityJwt(), "jwt-only");
+  setOperatorJwtGetter(() => "");
+  assert.equal(await ensureIdentityJwt(), "");
 });
 
 console.log(

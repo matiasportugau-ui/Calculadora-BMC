@@ -26,11 +26,12 @@ export function useConnectorStatus() {
     queryFn: () =>
       mlFetch('/auth/ml/status').catch((err) => {
         if (err.status === 404) return { ok: false };
+        if (err.status === 503) return { ok: false, message: err.payload?.message || 'Token store unavailable' };
         throw err;
       }),
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
-    retry: 0,
+    retry: 1,
   });
 }
 

@@ -38,10 +38,24 @@ export default function OverviewTab({ onNavigateTab }) {
   const playbooks = useMlPlaybooks();
 
   const anyError = me.error || listings.error || questions.error || orders.error;
+  const authError = [me.error, listings.error, questions.error, orders.error].some(
+    (err) => err?.status === 401,
+  );
+
   if (anyError) {
     return (
-      <div style={{ padding: '40px', color: 'var(--ac-error)', textAlign: 'center' }}>
-        Error al cargar el resumen. Verificá la conexión con Mercado Libre.
+      <div style={{ padding: '40px', color: 'var(--ac-error)', textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
+        {authError ? (
+          <>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Sesión expirada o sin permiso</div>
+            <div style={{ fontSize: 13, color: 'var(--ac-text-2)', lineHeight: 1.45 }}>
+              Mercado Libre está conectado en el servidor, pero esta pestaña necesita tu sesión BMC activa.
+              Recargá la página o volvé a iniciar sesión.
+            </div>
+          </>
+        ) : (
+          <>Error al cargar el resumen. Verificá la conexión con Mercado Libre.</>
+        )}
       </div>
     );
   }

@@ -17,10 +17,16 @@ export const COCKPIT_TOKEN_KEY = "bmc_cockpit_token";
 const DEFAULT_TIMEOUT_MS = 20_000;
 
 let jwtGetter = () => "";
+let jwtRefresh = async () => false;
 
 /** Register identity JWT supplier (called from BmcAuthProvider). */
 export function setOperatorJwtGetter(fn) {
   jwtGetter = typeof fn === "function" ? fn : () => "";
+}
+
+/** Register silent refresh (POST /api/auth/refresh) for 401 recovery in mlFetch. */
+export function setOperatorJwtRefresh(fn) {
+  jwtRefresh = typeof fn === "function" ? fn : async () => false;
 }
 
 /** Pure: Vite env aliases for the server `API_AUTH_TOKEN`. */
@@ -51,6 +57,19 @@ function apiKeySync() {
 
 export async function ensureOperatorToken() {
   return apiKeySync();
+}
+
+/** Identity JWT only — skips legacy cockpit/env tokens (ML /ml/* routes need user JWT). */
+export async function ensureIdentityJwt() {
+  return String(jwtGetter() || "").trim();
+}
+
+export async function refreshIdentityJwt() {
+  try {
+    return !!(await jwtRefresh());
+  } catch {
+    return false;
+  }
 }
 
 async function buildOperatorHeaders(extra, hasBody) {
