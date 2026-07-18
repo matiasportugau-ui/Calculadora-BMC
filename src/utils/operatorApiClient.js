@@ -78,21 +78,16 @@ export async function ensureIdentityJwt() {
  * Silent identity JWT refresh. Coalesces concurrent callers onto one in-flight
  * POST so parallel ML Manager queries after access-JWT expiry do not race the
  * refresh cookie (server treats concurrent reuse as token_reuse_detected).
+ * JWT getter is updated by BmcAuthProvider.applyAuth (not here).
  *
- * @returns {Promise<boolean>} true when a usable JWT is available after refresh
+ * @returns {Promise<boolean>} true when refresh succeeded
  */
 export async function refreshIdentityJwt() {
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {
     try {
-      const result = await jwtRefresh();
-      if (typeof result === "string" && result.trim()) {
-        // Provider may return the new access token for immediate use before React re-render.
-        setOperatorJwtGetter(() => result.trim());
-        return true;
-      }
-      return !!result;
+      return !!(await jwtRefresh());
     } catch {
       return false;
     } finally {

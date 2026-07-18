@@ -60,10 +60,12 @@ await t("ensureIdentityJwt uses JWT getter only (no cockpit fallback)", async ()
 await t("refreshIdentityJwt single-flights concurrent callers", async () => {
   _resetRefreshInFlightForTests();
   let calls = 0;
+  // Mimic BmcAuthProvider: refresh returns boolean; getter updated by applyAuth.
   setOperatorJwtRefresh(async () => {
     calls += 1;
     await new Promise((r) => setTimeout(r, 30));
-    return "fresh-jwt";
+    setOperatorJwtGetter(() => "fresh-jwt");
+    return true;
   });
   const [a, b, c] = await Promise.all([
     refreshIdentityJwt(),

@@ -63,6 +63,7 @@ export function BmcAuthProvider({ children }) {
     setStatus("authenticated");
   }, []);
 
+  /** @returns {Promise<boolean>} true if session refreshed; JWT already in getter via applyAuth */
   const refreshAccess = useCallback(async () => {
     if (refreshInFlightRef.current) return refreshInFlightRef.current;
 
@@ -75,8 +76,7 @@ export function BmcAuthProvider({ children }) {
         if (!res.ok) return false;
         const data = await res.json();
         applyAuth(data);
-        // Return token string so refreshIdentityJwt can re-bind getter if needed.
-        return data.accessToken || true;
+        return true;
       } catch {
         return false;
       } finally {
