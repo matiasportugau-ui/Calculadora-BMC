@@ -61,7 +61,7 @@ Classification remains **managerial inference**, not DGI filing authority. The p
 | G2 | P0 | Internal tabs **Banco** \| **Cash Flow** | Shipped |
 | G3 | P0 | Fixed cash-flow taxonomy (`<select>`, not free text) | Shipped |
 | G4 | P0 | Cash Flow: KPIs + unclassified queue + monthly/category aggregates | Shipped |
-| G5 | P0 | Server-enforced **module password** (12h session unlock) | Backend shipped; UI gate in progress |
+| G5 | P0 | Server-enforced **module password** (12h session unlock) | Shipped (PR #694) |
 | G6 | P1 | Redirect `/hub/banco` → `/hub/finanzas/banco` | Shipped |
 | G7 | P1 | Wolfboard Finanzas CTA → `/hub/finanzas` | Shipped |
 | G8 | P2 | Align `banco_rules` patterns to taxonomy keys | Backlog |
@@ -689,15 +689,15 @@ If added, follow Calculadora Panelin guardrails: no auto-PATCH without operator 
 | Mixed UYU+USD without filter | Medium | Medium | 400 + UI hint |
 | UI treated as fiscal truth | High | Medium | Disclaimers; BANCO-LEDGER; Sandra review |
 | Shared password leak | High | Low | Doppler only; rotate; lock endpoint |
-| Password gate UI not deployed | Medium | Medium | Complete FinanzasUnlockGate + App.jsx wiring |
+| Password gate UI not deployed | Medium | Low | Shipped PR #694; rotate password via Doppler if leaked |
 | Migration not applied in prod | High | Low | Checklist in deploy §12.2 |
 
 ### 16.2 Roadmap
 
 | Phase | Scope |
 |-------|-------|
-| **v1.0 (shipped)** | Finanzas nav, Banco + Cash Flow tabs, taxonomy, cash-flow API, prod deploy PR #692 |
-| **v1.1 (in progress)** | Module password gate UI + Doppler + migration + tests |
+| **v1.0 (shipped)** | Finanzas hub: nav, Banco + Cash Flow tabs, taxonomy, `/api/banco/cash-flow`, redirects (PR #692) |
+| **v1.1 (shipped)** | Module password gate UI + Doppler + migration + tests (PR #694) |
 | **v1.2** | Resumen tab (Wolfboard KPIs inline); unclassified count on Wolfboard card |
 | **v2** | Rules aligned to taxonomy keys; legacy categoria remap tool |
 | **v3** | Optional LLM suggest (human-in-the-loop); still no auto fiscal export |
@@ -741,6 +741,23 @@ If added, follow Calculadora Panelin guardrails: no auto-PATCH without operator 
 | `tests/banco-parser.test.js` | Parser tests |
 | `tests/banco-routes.test.js` | Route contract tests |
 | `docs/team/fiscal/BANCO-LEDGER.md` | Operator-facing ledger doc |
+
+---
+
+---
+
+## Appendix B — Plan delivery checklist (2026-07-16 spec)
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | SDD at `docs/team/SDD-finanzas-hub.md` | Done (v1.0) |
+| 2 | `BmcModuleNav` — Finanzas link (after Market Intel, before Tareas; Wolfboard inactive on `/hub/finanzas*`) | Done |
+| 3 | `FinanzasModule` + nested routes in `App.jsx` | Done |
+| 4 | Redirect `/hub/banco` → `/hub/finanzas/banco` | Done |
+| 5 | `cashFlowTaxonomy.js` + Banco category `<select>` | Done |
+| 6 | `GET /api/banco/cash-flow` + `CashFlowPanel` | Done |
+| 7 | `OperatorOverview` CTA → `/hub/finanzas` | Done |
+| 8 | Build + `tests/banco-routes.test.js` smoke | Done |
 
 ---
 
