@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-07-18 (feat — MLOMS P0: playbook queue + deploy fix):** `GET /api/ml/playbooks` (read-only desde marketIntel ml_pulse + product_matrix) + panel **Playbooks · intel → ML** en `OverviewTab`. Fix boot: `mlOptimize.js` import `{ config }` (bloqueaba deploy Cloud Run post-#701). Test `mlPlaybooks.test.js`.
+**2026-07-18 (feat — MLOMS P0: playbook queue + deploy fix):** `GET /api/ml/playbooks` (read-only desde marketIntel ml_pulse + product_matrix via [`mlPlaybooks.js`](../../server/lib/mlPlaybooks.js)) + panel **Playbooks · intel → ML** en `OverviewTab` con nav a Publicaciones/Preguntas; KPIs degradan sin tumbar playbooks si OAuth ML falla. Fix boot: `mlOptimize.js` import `{ config }` (bloqueaba deploy Cloud Run post-#701). Test `mlPlaybooks.test.js` en `test:core`. SDD v1.2.
 
 **2026-07-18 (feat — MLOMS P0: Listing Quality Agent + audit UI):** `POST /api/ml/optimize/listing` + [`server/lib/mlListingQuality.js`](../../server/lib/mlListingQuality.js) (agentCore, JSON rubric title/images/attrs/description). ML Manager `ListingsTab` → botón **Auditar IA**, panel scores/issues, **Aplicar sugerencias al formulario** (human gate: guardar manual con confirmación). Test `mlListingQualityParse.test.js`. SDD: [`ml-optimization/SDD-ML-OPTIMIZATION-SYSTEM.md`](./ml-optimization/SDD-ML-OPTIMIZATION-SYSTEM.md) P0.
 
