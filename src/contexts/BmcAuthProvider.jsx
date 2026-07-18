@@ -19,7 +19,7 @@ import { signIn as gisSignIn, signOut as gisSignOut } from "../utils/googleDrive
 import { getPendingClientQuoteIds, clearPending } from "../utils/clientQuoteId.js";
 // Top-30 run 2026-05-12 (#A13): context + hook extraídos a bmcAuthContext.js para que Fast Refresh trate este archivo como components-only.
 import { BmcAuthContext } from "./bmcAuthContext.js";
-import { setOperatorJwtGetter } from "../utils/operatorApiClient.js";
+import { setOperatorJwtGetter, setOperatorJwtRefresh } from "../utils/operatorApiClient.js";
 import { devBrowserLogin, isLocalDevApp } from "../utils/localDevAuth.js";
 
 const ApiBase = (() => {
@@ -99,6 +99,10 @@ export function BmcAuthProvider({ children }) {
     setOperatorJwtGetter(() => accessToken || "");
   }, [accessToken]);
 
+  useEffect(() => {
+    setOperatorJwtRefresh(refreshAccess);
+  }, [refreshAccess]);
+
   // Bootstrap: try /me with current accessToken; if missing or 401, try refresh.
   useEffect(() => {
     let cancelled = false;
@@ -108,13 +112,14 @@ export function BmcAuthProvider({ children }) {
         if (cancelled) return;
         if (me) {
           if (!accessToken) {
-            // Fetch token before applying auth so status="authenticated" and
-            // accessToken are set atomically, preventing a race in consumers.
+            // Cookie session without JWT in memory — refresh before ML/API bearer routes run.
             const refreshed = await refreshAccess();
             if (cancelled) return;
             if (refreshed) return;
+            setStatus("anonymous");
+            return;
           }
-          applyAuth({ ...me });
+          applyAuth({ ...me, accessToken });
           return;
         }
         const refreshed = await refreshAccess();

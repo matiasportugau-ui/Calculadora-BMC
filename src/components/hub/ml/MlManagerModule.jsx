@@ -25,6 +25,8 @@ export default function MlManagerModule({ embedded = false }) {
   const status = useConnectorStatus();
 
   const connected = status.data?.ok === true;
+  const statusLoading = status.isLoading;
+  const statusError = status.isError;
 
   const connectionPill = (
     <div style={{
@@ -36,7 +38,15 @@ export default function MlManagerModule({ embedded = false }) {
       padding: '5px 12px',
       borderRadius: '20px',
       border: '1px solid',
-      ...(connected ? {
+      ...(statusLoading ? {
+        color: 'var(--ac-text-2)',
+        background: 'var(--ac-surface)',
+        borderColor: 'var(--ac-border)',
+      } : statusError ? {
+        color: '#b45309',
+        background: '#fffbeb',
+        borderColor: '#fde68a',
+      } : connected ? {
         color: '#15803d',
         background: '#f0fdf4',
         borderColor: '#bbf7d0',
@@ -50,9 +60,23 @@ export default function MlManagerModule({ embedded = false }) {
         width: '7px',
         height: '7px',
         borderRadius: '50%',
-        background: connected ? 'var(--ac-success)' : 'var(--ac-error)',
+        background: statusLoading
+          ? 'var(--ac-text-2)'
+          : statusError
+            ? 'var(--ac-warn)'
+            : connected
+              ? 'var(--ac-success)'
+              : 'var(--ac-error)',
       }} />
-      <span>{connected ? 'Cuenta conectada' : 'Sin cuenta'}</span>
+      <span>
+        {statusLoading
+          ? 'Verificando ML…'
+          : statusError
+            ? 'Error al verificar ML'
+            : connected
+              ? 'Cuenta conectada'
+              : 'Sin cuenta ML'}
+      </span>
     </div>
   );
 
