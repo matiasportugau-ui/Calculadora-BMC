@@ -314,9 +314,9 @@ export function useScreenCoWork(opts = {}) {
     stopShare: stopTracks,
     consumeFrameForSend,
     clearFrame,
-    /** Interval ms currently used (for UI/tests) */
-    liveIntervalMs: intervalMsRef.current,
-    /** ADR-003: autosend is off */
+    /** Interval ms currently used (for UI/tests) — constant, not ref-during-render */
+    liveIntervalMs: DEFAULT_INTERVAL_MS,
+    /** ADR-003: autosend is off when LIVE_AUTOSEND_DEFAULT_OFF is true */
     liveAutosendEnabled: !LIVE_AUTOSEND_DEFAULT_OFF,
   };
 }
