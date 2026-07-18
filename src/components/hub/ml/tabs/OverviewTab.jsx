@@ -30,6 +30,25 @@ const priorityColor = {
   baja: 'var(--ac-text-2)',
 };
 
+const TAB_LABELS = {
+  questions: 'Preguntas',
+  listings: 'Publicaciones',
+  orders: 'Pedidos',
+  overview: 'Resumen',
+};
+
+function KpiCard({ label, value, sub, color, loading }) {
+  return (
+    <div style={card}>
+      <div style={cardLabel}>{label}</div>
+      <div style={typeof value === 'string' && value.length > 12 ? { ...cardValue(color), fontSize: '18px' } : cardValue(color)}>
+        {loading ? '…' : value}
+      </div>
+      <div style={cardSub}>{sub}</div>
+    </div>
+  );
+}
+
 export default function OverviewTab({ onNavigateTab }) {
   const me = useUserMe();
   const listings = useListings({ limit: 1 });
@@ -37,49 +56,56 @@ export default function OverviewTab({ onNavigateTab }) {
   const orders = useOrders({ limit: 1 });
   const playbooks = useMlPlaybooks();
 
-  const anyError = me.error || listings.error || questions.error || orders.error;
-  if (anyError) {
-    return (
-      <div style={{ padding: '40px', color: 'var(--ac-error)', textAlign: 'center' }}>
-        Error al cargar el resumen. Verificá la conexión con Mercado Libre.
-      </div>
-    );
-  }
-
+  const mlDegraded = Boolean(me.error || listings.error || questions.error || orders.error);
   const reputation = me.data?.seller_reputation?.level_id || me.data?.seller_reputation?.power_seller_status || 'sin clasificar';
   const items = playbooks.data?.items || [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {mlDegraded && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: '10px',
+            border: '1px solid var(--ac-border)',
+            background: 'var(--ac-bg)',
+            fontSize: '12px',
+            color: 'var(--ac-text-2)',
+          }}
+        >
+          KPIs de cuenta ML no disponibles (OAuth o API). Los playbooks de inteligencia de mercado siguen abajo.
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
-        <div style={card}>
-          <div style={cardLabel}>Vendedor</div>
-          <div style={{ ...cardValue('var(--ac-accent)'), fontSize: '18px' }}>
-            {me.isLoading ? 'Cargando…' : (me.data?.nickname || 'N/A')}
-          </div>
-          <div style={cardSub}>Reputación: {me.isLoading ? '…' : reputation}</div>
-        </div>
-        <div style={card}>
-          <div style={cardLabel}>Publicaciones</div>
-          <div style={cardValue('var(--ac-accent)')}>
-            {listings.isLoading ? '…' : (listings.data?.paging?.total ?? 0)}
-          </div>
-          <div style={cardSub}>totales</div>
-        </div>
-        <div style={card}>
-          <div style={cardLabel}>Preguntas</div>
-          <div style={cardValue('var(--ac-warn)')}>
-            {questions.isLoading ? '…' : (questions.data?.total ?? 0)}
-          </div>
-          <div style={cardSub}>sin responder</div>
-        </div>
-        <div style={card}>
-          <div style={cardLabel}>Pedidos</div>
-          <div style={cardValue('var(--ac-success)')}>
-            {orders.isLoading ? '…' : (orders.data?.paging?.total ?? 0)}
-          </div>
-          <div style={cardSub}>recientes</div>
-        </div>
+        <KpiCard
+          label="Vendedor"
+          value={me.error ? '—' : (me.data?.nickname || 'N/A')}
+          sub={me.error ? 'sin conexión' : `Reputación: ${me.isLoading ? '…' : reputation}`}
+          color="var(--ac-accent)"
+          loading={me.isLoading && !me.error}
+        />
+        <KpiCard
+          label="Publicaciones"
+          value={listings.error ? '—' : (listings.data?.paging?.total ?? 0)}
+          sub="totales"
+          color="var(--ac-accent)"
+          loading={listings.isLoading && !listings.error}
+        />
+        <KpiCard
+          label="Preguntas"
+          value={questions.error ? '—' : (questions.data?.total ?? 0)}
+          sub="sin responder"
+          color="var(--ac-warn)"
+          loading={questions.isLoading && !questions.error}
+        />
+        <KpiCard
+          label="Pedidos"
+          value={orders.error ? '—' : (orders.data?.paging?.total ?? 0)}
+          sub="recientes"
+          color="var(--ac-success)"
+          loading={orders.isLoading && !orders.error}
+        />
       </div>
 
       <div style={{ ...card, padding: '16px 18px' }}>
@@ -118,7 +144,14 @@ export default function OverviewTab({ onNavigateTab }) {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ac-text)' }}>{item.title}</div>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: priorityColor[item.priority] || 'var(--ac-text-2)', textTransform: 'uppercase' }}>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: '700',
+                    color: priorityColor[item.priority] || 'var(--ac-text-2)',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   {item.priority}
                 </span>
               </div>
@@ -142,7 +175,7 @@ export default function OverviewTab({ onNavigateTab }) {
                     cursor: 'pointer',
                   }}
                 >
-                  Ir a {item.tab_hint === 'questions' ? 'Preguntas' : 'Publicaciones'}
+                  Ir a {TAB_LABELS[item.tab_hint] || item.tab_hint}
                 </button>
               )}
             </div>

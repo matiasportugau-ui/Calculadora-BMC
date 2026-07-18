@@ -1,8 +1,8 @@
 ---
 title: System Design Document — BMC MercadoLibre Optimization & Management System (MLOMS)
-version: 1.0 (draft)
+version: 1.2 (draft)
 date: 2026-07-18
-status: Draft
+status: Draft — SDD complete; P0 Listing Quality + playbook queue shipped
 author: sdd-architect (MATPROMT RUN 2026-07-18 / ML-SDD)
 prompt_source: docs/team/matprompt/MATPROMT-RUN-2026-07-18-ml-sdd.md
 ---
@@ -238,11 +238,11 @@ flowchart LR
 |---|--------|--------|----------------------|-----|
 | 1 | Ads creation & creative optimization | **Partial** | [`ML-MANAGER-ROADMAP.md`](../ML-MANAGER-ROADMAP.md) AdsTab plan; hooks absent in [`useMlConnector.js`](../../src/components/hub/ml/hooks/useMlConnector.js) | No `/ml/ads/*` on backend; no Product Ads UI |
 | 2 | Campaign optimization | **Gap** | Roadmap `useCampaigns`, `useUpdateCampaign` | ACOS rules, historical reports, approve-and-apply |
-| 3 | Listing builder & quality | **Partial** | [`ListingsTab.jsx`](../../src/components/hub/ml/tabs/ListingsTab.jsx), PATCH items, POST description, [`ML-ISOFRIG-LISTING-CHECKLIST.md`](../ML-ISOFRIG-LISTING-CHECKLIST.md) | No item create; bulk attrs; penalty remediation workflow |
-| 4 | Competition analysis | **Built** | [`marketIntel/`](../../server/lib/marketIntel/), [`marketing.js`](../../server/routes/marketing.js) `/intel`, `/product-matrix` | Not linked from ML Manager actions |
-| 5 | Strategic moves | **Partial** | [`strategicBrief.js`](../../server/lib/marketIntel/strategicBrief.js), alerts | No playbook UI in ML Manager; no auto-prioritization queue |
+| 3 | Listing builder & quality | **Partial** | [`ListingsTab.jsx`](../../src/components/hub/ml/tabs/ListingsTab.jsx), PATCH items, POST description, [`ML-ISOFRIG-LISTING-CHECKLIST.md`](../ML-ISOFRIG-LISTING-CHECKLIST.md), **Auditar IA** → form (human gate save) | No item create; bulk attrs; penalty remediation workflow |
+| 4 | Competition analysis | **Built** | [`marketIntel/`](../../server/lib/marketIntel/), [`marketing.js`](../../server/routes/marketing.js) `/intel`, `/product-matrix` | Deep ads intel still Marketing-only |
+| 5 | Strategic moves | **Partial→Built (queue read)** | [`mlPlaybooks.js`](../../server/lib/mlPlaybooks.js), `GET /api/ml/playbooks`, OverviewTab **Playbooks · intel → ML** | Write path / approve actions (P1); AI brief → queue refresh |
 | 6 | Product discovery | **Partial** | `keywordMonitor.js`, `productIntelligence.js`, Bromyros audits in PROJECT-STATE | No discovery → draft listing pipeline |
-| 7 | Product quality improve | **Partial** | Listings edit drawer; roadmap AnalyticsTab | Unified quality score; visits ↔ conversion; AI audit button |
+| 7 | Product quality improve | **Partial→Built (audit)** | [`mlListingQuality.js`](../../server/lib/mlListingQuality.js), `POST /api/ml/optimize/listing`, `useAuditListing`, ListingsTab **Auditar IA** | Visits ↔ conversion; AnalyticsTab quality bars; penalty auto-remediation |
 | 8 | Capability expansion | **Partial** | Omni ML shadow, webhooks, Panelin-Gym `ml:*` scripts | Ads API inventory; shipments tab; feedback loop to KB |
 
 ---
@@ -285,7 +285,16 @@ flowchart LR
 | GET | `/api/ml/search` | Competitor listing search |
 | POST | `/api/ml/etl-run` | Price monitor ETL trigger |
 
-### 6.4 Planned — MLOMS Phase 1+ (external spec: ML Developers Product Ads)
+### 6.4 Implemented — MLOMS optimize + playbooks (P0)
+
+| Method | Route | Auth | Purpose |
+|--------|-------|------|---------|
+| POST | `/api/ml/optimize/listing` | requireServiceOrUser | Listing Quality Agent — scores + suggested patches (no auto-write) |
+| GET | `/api/ml/playbooks` | requireServiceOrUser | Read-only queue from ml_pulse + product_matrix (no AI, no ML write) |
+
+Evidence: [`server/routes/mlOptimize.js`](../../server/routes/mlOptimize.js), [`server/lib/mlListingQuality.js`](../../server/lib/mlListingQuality.js), [`server/lib/mlPlaybooks.js`](../../server/lib/mlPlaybooks.js), [`useAuditListing`](../../src/components/hub/ml/hooks/useMlConnector.js) / `useMlPlaybooks`.
+
+### 6.5 Planned — MLOMS Phase 1+ (external spec: ML Developers Product Ads)
 
 | Method | Route | Purpose |
 |--------|-------|---------|
@@ -297,9 +306,8 @@ flowchart LR
 | GET | `/ml/analytics/items/quality` | Item health scores |
 | GET | `/ml/listings/:id/visits` | Visit metrics |
 | POST | `/api/ml/optimize/campaign` | AI proposal → pending approval record |
-| POST | `/api/ml/optimize/listing` | AI audit → pending patches |
 | POST | `/api/ml/discovery/draft` | Draft listing from gap |
-| GET | `/api/ml/playbooks` | Strategic actions queue |
+| POST | `/api/ml/playbooks/:id/apply` | Approve playbook action (P1) |
 
 **Note:** [`useMlConnector.js`](../../src/components/hub/ml/hooks/useMlConnector.js) explicitly omits unimplemented routes to avoid 404 noise — new hooks added only when backend exists.
 
@@ -529,13 +537,13 @@ Auto-answer mode (`/api/ml/auto-mode`) remains **off by default**; if enabled, l
 
 ### P0 — Operable quality loop (4–6 weeks)
 
-| Item | Depends on | Human gate |
-|------|------------|------------|
-| OAuth cm-1 verified (`npm run ml:verify`) | Matias | cm-1 |
-| Listing Quality Agent + audit UI in EditDrawer | agentCore | Approve PATCH |
-| Playbook queue read-only in OverviewTab (from existing brief) | marketing API | N/A read |
-| Unified quality rubric doc in UI | ML-ISOFRIG checklist | — |
-| `ml_action_log` audit table | Postgres migrate | — |
+| Item | Status | Depends on | Human gate |
+|------|--------|------------|------------|
+| OAuth cm-1 verified (`npm run ml:verify`) | **Human** | Matias | cm-1 |
+| Listing Quality Agent + audit UI | **Done** (2026-07-18) | agentCore | Apply to form → manual save |
+| Playbook queue read-only in OverviewTab | **Done** (2026-07-18) | marketIntel loaders | N/A read (nav to tab) |
+| Unified quality rubric doc in UI | Pending | ML-ISOFRIG checklist | — |
+| `ml_action_log` audit table | Pending | Postgres migrate | — |
 
 ### P1 — Ads + intel unification (6–10 weeks)
 
@@ -585,12 +593,27 @@ Auto-answer mode (`/api/ml/auto-mode`) remains **off by default**; if enabled, l
 
 ## 14. Handoff Checklist
 
+- [x] **SDD complete** (this document) — MATPROMT RUN 2026-07-18 / ML-SDD
+- [x] **P0 slice:** Listing Quality Agent + Auditar IA UI
+- [x] **P0 slice:** Playbook queue read-only (`GET /api/ml/playbooks` + OverviewTab)
 - [ ] **Integrations:** Implement `/ml/ads/*` against ML Developers docs (external spec)
 - [ ] **Networks:** Confirm Cloud Run capacity for ETL + webhook load
 - [ ] **Design:** AdsTab/AnalyticsTab + playbook cards — BMC Liquid Glass
 - [ ] **Security:** Review `requireMlAuth` on all new mutators
 - [ ] **Calc:** USD ↔ UYU price sync policy for listing edits
-- [ ] **Matias:** Execute cm-1 if not green; approve P0 sprint
+- [ ] **Matias:** Execute cm-1 if not green; prioritize remaining P0 (playbooks queue / audit log)
+
+### 14.1 MATPROMT acceptance criteria
+
+| Criterion | Met? |
+|-----------|------|
+| 8 capabilities in Capability Matrix | Yes §5 |
+| C4 Context + Container + Component AI + 3 sequences | Yes §2–4, §7 |
+| ≥5 ADRs with rejected alternatives | Yes ADR-001…005 |
+| Roadmap P0–P3 + human gates | Yes §12 |
+| No bare TODO/`{fill}` placeholders | Yes |
+| Real repo paths | Yes (grounded 2026-07-18) |
+| Cost model order-of-magnitude | Yes §8.3 |
 
 ---
 
