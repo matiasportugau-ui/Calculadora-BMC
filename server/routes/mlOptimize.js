@@ -3,10 +3,11 @@
 
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import config from "../config.js";
+import { config } from "../config.js";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import requireAssistantEnabled from "../middleware/requireAssistantEnabled.js";
 import { auditListingQuality } from "../lib/mlListingQuality.js";
+import { buildMlPlaybooks } from "../lib/mlPlaybooks.js";
 
 const asyncHandler =
   (fn) =>
@@ -24,7 +25,8 @@ const aiGenLimiter = rateLimit({
 /**
  * @param {{ ml: object, logger?: object }} deps
  */
-export default function createMlOptimizeRouter({ ml, logger }) {
+export default function createMlOptimizeRouter({ ml, config: cfg, logger }) {
+  const apiConfig = cfg || config;
   const router = Router();
 
   router.post(
@@ -40,10 +42,10 @@ export default function createMlOptimizeRouter({ ml, logger }) {
       }
 
       const apiKeys = {
-        claude: config.anthropicApiKey,
-        openai: config.openaiApiKey,
-        grok: config.grokApiKey,
-        gemini: config.geminiApiKey,
+        claude: apiConfig.anthropicApiKey,
+        openai: apiConfig.openaiApiKey,
+        grok: apiConfig.grokApiKey,
+        gemini: apiConfig.geminiApiKey,
       };
       const hasAnyKey = Object.values(apiKeys).some((k) => String(k || "").trim().length > 0);
       if (!hasAnyKey) {
@@ -89,6 +91,24 @@ export default function createMlOptimizeRouter({ ml, logger }) {
         return res.status(503).json({
           ok: false,
           error: "Listing quality audit failed",
+          detail: err.message || String(err),
+        });
+      }
+    }),
+  );
+
+  router.get(
+    "/api/ml/playbooks",
+    requireServiceOrUser({ authOnly: true }),
+    asyncHandler(async (_req, res) => {
+      try {
+        const payload = buildMlPlaybooks();
+        return res.json({ ok: true, ...payload });
+      } catch (err) {
+        logger?.warn?.({ err: err.message }, "ml playbooks load failed");
+        return res.status(503).json({
+          ok: false,
+          error: "Failed to load ML playbooks",
           detail: err.message || String(err),
         });
       }

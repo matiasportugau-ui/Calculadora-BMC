@@ -87,7 +87,7 @@ export default function MlManagerModule({ embedded = false }) {
         {tabDefs.map((tab) => {
           if (activeTab !== tab.key) return null;
           const Component = tab.component;
-          return <Component key={tab.key} />;
+          return <Component key={tab.key} onNavigateTab={setActiveTab} />;
         })}
       </Suspense>
     </div>
