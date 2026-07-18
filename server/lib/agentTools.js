@@ -46,6 +46,7 @@ import {
 import { recordToolCall, classifyError } from "./toolStats.js";
 import { INTENT_HINTS } from "./userIntentClassifier.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "./rag.js";
+import * as coworkSheets from "./coworkSheets.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -924,6 +925,107 @@ export const AGENT_TOOLS = [
       properties: {
         tz: { type: "string", description: "IANA tz para el día (default America/Montevideo)" },
       },
+    },
+  },
+
+  // ─── Co-Work Sheets (allowlisted Admin + CRM) ─────────────────────────────
+  {
+    name: "sheets_list_tabs",
+    description:
+      "Co-Work: lista las pestañas (tabs) de un workbook BMC allowlisted (admin = Wolfboard Admin, crm = CRM_Operativo). " +
+      "Usar cuando el operador comparte pantalla o pregunta qué pestañas hay. Solo lectura.",
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: {
+          type: "string",
+          description: 'Alias allowlisted: "admin" (default) o "crm"',
+        },
+      },
+    },
+  },
+  {
+    name: "sheets_read_range",
+    description:
+      "Co-Work: lee un rango A1 de un workbook allowlisted y devuelve values + headers. " +
+      "FUENTE DE VERDAD para números de planilla — preferí esta tool antes de confiar en OCR de capturas. " +
+      'Ej range: "Admin.!A1:M30" o "CRM_Operativo!A2:AH10". Solo lectura.',
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: { type: "string", description: '"admin" | "crm" (default admin)' },
+        range: { type: "string", description: "Rango A1 con tab (ej Admin.!A2:M50)" },
+        maxRows: { type: "number", description: "Tope de filas devueltas (default 100, max 500)" },
+      },
+      required: ["range"],
+    },
+  },
+  {
+    name: "sheets_find",
+    description:
+      "Co-Work: busca texto en un rango (case-insensitive) y devuelve filas hit con row number y preview. " +
+      "Usar para 'buscá a García', 'dónde está el teléfono 099…', localizar fila desde captura. Solo lectura.",
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: { type: "string", description: '"admin" | "crm"' },
+        range: { type: "string", description: "Rango A1 a escanear" },
+        query: { type: "string", description: "Texto a buscar" },
+        maxHits: { type: "number", description: "Máx resultados (default 15)" },
+      },
+      required: ["range", "query"],
+    },
+  },
+  {
+    name: "sheets_get_pending_admin",
+    description:
+      "Co-Work: lista consultas pendientes del Admin (col I llena, col M vacía) con row + consulta. " +
+      "Equivalente a la cola de Admin Ingreso / Respondamos Rápido. Solo lectura.",
+    input_schema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "sheets_propose_write",
+    description:
+      "Co-Work: dry-run de escritura — devuelve el diff/values sanitizados SIN escribir. " +
+      "Usar antes de sheets_write_range para mostrarle al operador qué se va a pegar. No muta la planilla.",
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: { type: "string" },
+        range: { type: "string", description: "Rango A1 destino" },
+        values: {
+          type: "array",
+          description: "Filas: array de arrays de celdas",
+          items: { type: "array", items: {} },
+        },
+      },
+      required: ["range", "values"],
+    },
+  },
+  {
+    name: "sheets_write_range",
+    description:
+      "Co-Work: escribe values en un rango allowlisted. REQUIERE confirmación explícita del operador " +
+      '("escribilo", "guardalo en la planilla", "pegá en Admin"). Preferí wolfboard_actualizar_fila para J/K/L del Admin cuando aplique. ' +
+      "Nunca escribas basándote solo en OCR de captura sin verificar con sheets_read_range.",
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: { type: "string" },
+        range: { type: "string" },
+        values: {
+          type: "array",
+          items: { type: "array", items: {} },
+        },
+        user_confirmed: {
+          type: "boolean",
+          description: "OBLIGATORIO=true solo tras confirmación explícita del operador",
+        },
+      },
+      required: ["range", "values", "user_confirmed"],
     },
   },
 ];
@@ -2056,6 +2158,58 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
           by_app: r.body?.by_app || [],
           note: "Usá esto para proponer una o más entradas; pedí confirmación antes de escribir.",
         });
+      }
+    }
+
+    // ─── Co-Work Sheets tools ──────────────────────────────────────────────
+    if (name === "sheets_list_tabs") {
+      const r = await coworkSheets.listTabs(input?.workbook || "admin");
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_read_range") {
+      if (!input?.range) return JSON.stringify({ ok: false, error: "range requerido" });
+      const r = await coworkSheets.readRange({
+        workbook: input?.workbook || "admin",
+        range: input.range,
+        maxRows: input?.maxRows,
+      });
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_find") {
+      if (!input?.range || !input?.query) {
+        return JSON.stringify({ ok: false, error: "range y query requeridos" });
+      }
+      const r = await coworkSheets.findInRange({
+        workbook: input?.workbook || "admin",
+        range: input.range,
+        query: input.query,
+        maxHits: input?.maxHits,
+      });
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_get_pending_admin") {
+      const r = await coworkSheets.getPendingAdmin(opts?.logger);
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_propose_write") {
+      const r = coworkSheets.proposeWrite({
+        workbook: input?.workbook || "admin",
+        range: input?.range,
+        values: input?.values,
+      });
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_write_range") {
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+      try {
+        const r = await coworkSheets.writeRange({
+          workbook: input?.workbook || "admin",
+          range: input?.range,
+          values: input?.values,
+        });
+        return JSON.stringify(r);
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err.message || "sheets_write_failed" });
       }
     }
 

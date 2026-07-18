@@ -58,11 +58,65 @@ import {
   buildAiOptionsResponse,
   estimateCostUSD,
 } from "../lib/aiProviderConfig.js";
+import {
+  buildMultimodalMessages,
+  formatOperatorContextBlock,
+  normalizeAttachments,
+} from "../lib/coworkFrames.js";
 
 const router = Router();
 
 // Track which conversations have already run autolearn — prevents multi-call per session.
 const _autolearned = new Set();
+
+/**
+ * Providers temporarily skipped after hard billing/quota failures (process-local).
+ * Avoids hammering Anthropic with "credit balance too low" on every Co-Work turn.
+ * Key = provider name; value = skip-until epoch ms.
+ */
+const _providerSkipUntil = new Map();
+const PROVIDER_SKIP_MS = 15 * 60 * 1000; // 15 min
+
+function isProviderSkipped(name) {
+  const until = _providerSkipUntil.get(name);
+  if (!until) return false;
+  if (Date.now() >= until) {
+    _providerSkipUntil.delete(name);
+    return false;
+  }
+  return true;
+}
+
+function markProviderSkipped(name, errMsg = "") {
+  const msg = String(errMsg || "").toLowerCase();
+  const isHardFail =
+    msg.includes("credit balance") ||
+    msg.includes("too low to access") ||
+    msg.includes("insufficient") ||
+    msg.includes("billing") ||
+    msg.includes("quota") ||
+    (msg.includes("rate_limit") && msg.includes("exceed")) ||
+    msg.includes("incorrect api key") ||
+    msg.includes("invalid api key") ||
+    msg.includes("invalid_api_key") ||
+    msg.includes("authentication") ||
+    msg.includes("401") ||
+    msg.includes("403");
+  if (!isHardFail && !msg.includes("credit")) return false;
+  _providerSkipUntil.set(name, Date.now() + PROVIDER_SKIP_MS);
+  return true;
+}
+
+function humanProviderFailHint(provider, errMsg) {
+  const msg = String(errMsg || "");
+  if (/credit balance|too low to access|Plans & Billing/i.test(msg)) {
+    return `${provider}: sin créditos en la API. Probando el siguiente proveedor…`;
+  }
+  if (/quota|rate.?limit/i.test(msg)) {
+    return `${provider}: cuota/rate-limit. Probando el siguiente…`;
+  }
+  return `${provider} falló. Probando el siguiente proveedor…`;
+}
 
 const SAFE_MODEL_ID = /^[a-zA-Z0-9._\-]{1,80}$/;
 // Models and labels now come from the central aiProviderConfig.js (single source of truth)
@@ -168,6 +222,13 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_actualizar_fila",
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
+  // Co-Work Sheets — Admin/CRM PII and writes (allowlisted service-account sheets)
+  "sheets_list_tabs",
+  "sheets_read_range",
+  "sheets_find",
+  "sheets_get_pending_admin",
+  "sheets_propose_write",
+  "sheets_write_range",
   // TraKtiMe — read/write a user's time data; the agent acts as the user
   // (forwarded JWT). Gated here so unauthenticated chat / MCP can't poll them.
   "traktime_timer_current",
@@ -461,6 +522,7 @@ router.post("/agent/chat", async (req, res) => {
     thinkingMode = false,
     channel: rawChannel,
     surface: rawSurface,
+    operatorContext: rawOperatorContext = null,
   } = req.body || {};
   // Canonical brand surface (lib/surface.js) + KB training surface (lib/kbSurface.js).
   // Body accepts `surface` and/or legacy `channel`; `surface` string wins when non-empty.
@@ -565,16 +627,26 @@ router.post("/agent/chat", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no"); // disable nginx / Cloud Run buffering
 
-  const send = (obj) => { if (!aborted) res.write(`data: ${JSON.stringify(obj)}\n\n`); };
+  const send = (obj) => { if (!aborted && !res.writableEnded) res.write(`data: ${JSON.stringify(obj)}\n\n`); };
   let visibleAssistantText = "";
   let aborted = false;
   const emittedActions = [];
 
-  // 1.5 — Abort LLM stream on client disconnect
+  // 1.5 — Abort LLM stream only on real client disconnect.
+  // IMPORTANT: do NOT use req.on("close") alone — on Node/Express that can fire when
+  // the request *body* finishes reading (POST JSON), which was setting aborted=true
+  // before Gemini ran → empty response + UI stuck on "…".
   const disconnectController = new AbortController();
-  req.on("close", () => {
-    aborted = true;
-    disconnectController.abort();
+  const markClientGone = () => {
+    if (!res.writableEnded) {
+      aborted = true;
+      try { disconnectController.abort(); } catch { /* ignore */ }
+    }
+  };
+  req.on("aborted", markClientGone);
+  res.on("close", () => {
+    // Response closed before we finished writing = client gone
+    if (!res.writableEnded) markClientGone();
   });
 
   // 1.4 — SSE keepalive heartbeat every 15s to prevent proxy timeouts
@@ -729,7 +801,15 @@ router.post("/agent/chat", async (req, res) => {
     .slice(-3)
     .map((m) => String(m.content || "").slice(0, 120));
 
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages, channel, ragContext: ragContextBlock });
+  const operatorContextBlock = formatOperatorContextBlock(rawOperatorContext);
+  const systemPrompt = buildSystemPrompt(calcState, {
+    trainingExamples,
+    devMode,
+    recentAssistantMessages,
+    channel,
+    ragContext: ragContextBlock,
+    operatorContextBlock,
+  });
 
   // Use a monotonically increasing global index so user and assistant turns never collide.
   // messages includes the current user message, so all-messages-count - 1 = new user global index.
@@ -747,26 +827,52 @@ router.post("/agent/chat", async (req, res) => {
     logConversationTurn(conversationId, { turnIndex, role: "user", content: lastUserMessage });
   }
 
+  // Preserve attachments on the last user message for multimodal (Co-Work frames).
+  const inboundLastUserAtts = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]?.role === "user" && Array.isArray(messages[i].attachments) && messages[i].attachments.length) {
+        return messages[i].attachments;
+      }
+    }
+    return null;
+  })();
+
   let filteredMsgs = messages
     .filter((m) => m.role === "user" || m.role === "assistant")
-    .map((m) => ({ role: m.role, content: String(m.content || "") }));
+    .map((m) => ({
+      role: m.role,
+      content: String(m.content || ""),
+      ...(Array.isArray(m.attachments) && m.attachments.length ? { attachments: m.attachments } : {}),
+    }));
 
   // Summarize older history at >12 messages to save tokens while preserving context.
   // The summary is appended to the system prompt (all providers accept system-level context),
   // and only recent user/assistant turns remain in the messages array.
   let effectiveSystemPrompt = systemPrompt;
   try {
-    const summarizeResult = await summarizeHistory(filteredMsgs);
+    const summarizeResult = await summarizeHistory(filteredMsgs.map((m) => ({ role: m.role, content: m.content })));
     if (summarizeResult.summarized) {
       const summaryMsg = summarizeResult.messages.find((m) => m.role === "system");
       if (summaryMsg?.content) {
         effectiveSystemPrompt = `${systemPrompt}\n\n${summaryMsg.content}`;
       }
-      filteredMsgs = summarizeResult.messages.filter((m) => m.role === "user" || m.role === "assistant");
+      filteredMsgs = summarizeResult.messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role, content: String(m.content || "") }));
       send({ type: "info", message: "Se resumió el historial previo para ahorrar tokens." });
     }
   } catch {
     // Summarization is best-effort; fall back to raw history on failure
+  }
+
+  // Re-attach Co-Work frames onto the last user turn after summarize/truncate prep.
+  if (inboundLastUserAtts) {
+    for (let i = filteredMsgs.length - 1; i >= 0; i--) {
+      if (filteredMsgs[i].role === "user") {
+        filteredMsgs[i] = { ...filteredMsgs[i], attachments: inboundLastUserAtts };
+        break;
+      }
+    }
   }
 
   // 1.7 — Truncate history to stay within token budget (improved estimate for Spanish)
@@ -782,7 +888,24 @@ router.post("/agent/chat", async (req, res) => {
   if (truncated.length < filteredMsgs.length) {
     send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
   }
-  const msgs = truncated;
+  // Text-only msgs for token accounting / fallbacks; multimodal rebuilt per provider below.
+  const msgsText = truncated.map((m) => ({ role: m.role, content: String(m.content || "") }));
+  const msgs = msgsText;
+
+  // Co-Work: acknowledge vision frames (validated, last user only).
+  {
+    const lastUser = [...truncated].reverse().find((m) => m.role === "user");
+    if (lastUser?.attachments?.length) {
+      const norm = normalizeAttachments(lastUser.attachments);
+      if (norm.ok) {
+        send({
+          type: "cowork_ack",
+          framesAccepted: norm.attachments.length,
+          framesDropped: norm.dropped,
+        });
+      }
+    }
+  }
 
   // Capability-aware fallback order. The tool-EXECUTING branches on this path are
   // claude and gemini; grok/openai run text-only here and CANNOT call the native
@@ -790,9 +913,23 @@ router.post("/agent/chat", async (req, res) => {
   // to Gemini (still quotes via tools) rather than Grok — which would narrate
   // un-tooled numbers, violating the "models never invent prices" invariant. An
   // explicit `aiProvider` preference (below) still wins; this only orders AUTO.
+  // With vision attachments, prefer Claude/Gemini (strong multimodal + tools).
+  // If Claude was recently skipped (billing), put Gemini first so Co-Work works.
+  // Also prefer Gemini first when the turn includes vision frames (Co-Work) —
+  // Claude is primary for text, but multimodal co-work is more reliable on Gemini
+  // when Anthropic credits are flaky.
   const defaultOrder = [];
-  if (hasAnthropic) defaultOrder.push("claude");
-  if (hasGemini) defaultOrder.push("gemini");
+  const claudeSkipped = isProviderSkipped("claude");
+  const lastUserForVision = [...truncated].reverse().find((m) => m.role === "user");
+  const hasVisionTurn = Array.isArray(lastUserForVision?.attachments) && lastUserForVision.attachments.length > 0;
+  if ((claudeSkipped || hasVisionTurn) && hasGemini) {
+    defaultOrder.push("gemini");
+    if (hasAnthropic && !claudeSkipped) defaultOrder.push("claude");
+    else if (hasAnthropic) defaultOrder.push("claude"); // keep as fallback after skip window
+  } else {
+    if (hasAnthropic) defaultOrder.push("claude");
+    if (hasGemini) defaultOrder.push("gemini");
+  }
   if (hasGrok) defaultOrder.push("grok");
   if (hasOpenAI) defaultOrder.push("openai");
 
@@ -801,15 +938,28 @@ router.post("/agent/chat", async (req, res) => {
       ? aiProvider
       : "auto";
   const prefOk =
-    (pref === "claude" && hasAnthropic) ||
+    (pref === "claude" && hasAnthropic && !claudeSkipped) ||
     (pref === "grok" && hasGrok) ||
     (pref === "gemini" && hasGemini) ||
     (pref === "openai" && hasOpenAI);
 
-  const providerChain =
+  let providerChain =
     pref !== "auto" && prefOk
       ? [pref, ...defaultOrder.filter((p) => p !== pref)]
       : defaultOrder;
+
+  // Drop currently skipped providers from the chain (except if it's the only one).
+  providerChain = providerChain.filter((p) => !isProviderSkipped(p));
+  if (providerChain.length === 0) {
+    // All skipped — try original order anyway
+    providerChain = defaultOrder;
+  }
+  if (claudeSkipped) {
+    send({
+      type: "info",
+      message: "Claude está en pausa (sin créditos API). Usando Gemini u otro proveedor disponible.",
+    });
+  }
 
   const modelDefaults = {
     claude: config.anthropicChatModel,
@@ -817,6 +967,16 @@ router.post("/agent/chat", async (req, res) => {
     grok: config.grokChatModel,
     gemini: config.geminiChatModel,
   };
+
+  // Live assist / vision turns with full tools can hang on a provider forever.
+  // Hard-cap each attempt so the UI does not spin "…" indefinitely.
+  const providerTimeoutMs = hasVisionTurn ? 45_000 : 90_000;
+  send({
+    type: "info",
+    message: hasVisionTurn
+      ? `Co-Work: analizando captura (proveedores: ${providerChain.join(" → ")})…`
+      : `Procesando (proveedores: ${providerChain.join(" → ")})…`,
+  });
 
   for (const provider of providerChain) {
     try {
@@ -832,6 +992,9 @@ router.post("/agent/chat", async (req, res) => {
       const useRequestedModel = pref !== "auto" && prefOk && provider === pref;
       const requestedId = useRequestedModel ? aiModel : "";
 
+      send({ type: "info", message: `Usando ${provider}…` });
+
+      const runProviderAttempt = async () => {
       if (provider === "claude") {
         const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
         const model = resolveModelForProvider("claude", requestedId, modelDefaults.claude);
@@ -842,11 +1005,14 @@ router.post("/agent/chat", async (req, res) => {
           || model === "claude-opus-4-6"
           || model === "claude-sonnet-4-6";
 
+        const mmClaude = buildMultimodalMessages(truncated, "claude");
+        const claudeMsgs = mmClaude.messages;
+
         const claudeOpts = {
           model,
           max_tokens: thinkingMode ? (isOpus47 ? 8192 : 4096) : CHAT_MAX_TOKENS,
           system: [{ type: "text", text: effectiveSystemPrompt, cache_control: { type: "ephemeral" } }],
-          messages: msgs,
+          messages: claudeMsgs,
           tools: AGENT_TOOLS,
           tool_choice: { type: "auto" },
         };
@@ -866,7 +1032,7 @@ router.post("/agent/chat", async (req, res) => {
         let cacheReadTokens = 0;
         // Tool-use loop: model may call tools up to 8 times before final response.
         // Higher cap accommodates the slot-fill → calc → pdf → crm-format → crm-save chain.
-        const toolMsgs = [...msgs];
+        const toolMsgs = [...claudeMsgs];
         for (let toolRound = 0; toolRound < 8; toolRound++) {
           const stream = anthropic.messages.stream({ ...claudeOpts, messages: toolMsgs });
           const toolCalls = [];
@@ -983,12 +1149,14 @@ router.post("/agent/chat", async (req, res) => {
           // the 42-tool schema exceeds Gemini's forced-call constraint budget.)
           generationConfig: { thinkingConfig: { thinkingBudget: 0 } },
         });
-        const contents = msgs.map((m) => ({
+        const mmGemini = buildMultimodalMessages(truncated, "gemini");
+        const contents = mmGemini.messages.map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
+          parts: Array.isArray(m.parts) ? m.parts : [{ text: String(m.content || "") }],
         }));
         // Function-calling loop, mirroring the Claude tool-use loop above:
         // stream text → collect functionCalls → execute → feed back → repeat.
+        let lastGeminiAgg = null;
         for (let toolRound = 0; toolRound < 8; toolRound++) {
           // Client disconnected mid-loop: stop before spending another API
           // round and (critically) before executing more tools — some have
@@ -1005,11 +1173,24 @@ router.post("/agent/chat", async (req, res) => {
           }
 
           const aggregated = await result.response;
+          lastGeminiAgg = aggregated;
           if (aborted) break;
           const um = aggregated?.usageMetadata;
           if (um) {
             inputTokens += um.promptTokenCount ?? 0;
             outputTokens += um.candidatesTokenCount ?? 0;
+          }
+
+          // Some Gemini builds put final text only on the aggregated response,
+          // not in stream chunks — recover so we don't mark empty and hang fallbacks.
+          if (!String(buf || "").trim()) {
+            try {
+              const recovered = typeof aggregated?.text === "function" ? aggregated.text() : "";
+              if (recovered) {
+                buf += recovered;
+                buf = flushLines(buf);
+              }
+            } catch { /* blocked / empty */ }
           }
 
           const calls =
@@ -1075,6 +1256,51 @@ router.post("/agent/chat", async (req, res) => {
 
           contents.push({ role: "user", parts: responseParts });
         }
+
+        // Recovery: tools+huge system sometimes yield empty stream chunks even when
+        // the model could answer. One short no-tools pass unsticks Live assist.
+        if (!String(buf || "").trim() && !aborted) {
+          try {
+            req.log?.warn({ model: resolvedModel }, "gemini: empty stream — trying no-tools recovery");
+            const plain = genAI.getGenerativeModel({
+              model: resolvedModel || "gemini-2.5-flash",
+            });
+            const lastUser = [...contents].reverse().find((c) => c.role === "user");
+            const userText =
+              (lastUser?.parts || [])
+                .map((p) => p.text || "")
+                .filter(Boolean)
+                .join("\n") || "Hola";
+            // Keep image parts for Live assist if present
+            const parts = (lastUser?.parts || [{ text: userText }]).length
+              ? lastUser.parts
+              : [{ text: userText }];
+            const r = await plain.generateContent({
+              contents: [{
+                role: "user",
+                parts: [
+                  {
+                    text:
+                      "Sos Panelin (BMC Uruguay). Respondé en español rioplatense, breve y útil.\n\n" +
+                      userText,
+                  },
+                  ...parts.filter((p) => p.inlineData),
+                ],
+              }],
+            });
+            let t = "";
+            try { t = r.response?.text?.() || ""; } catch { t = ""; }
+            if (t && String(t).trim()) {
+              buf = String(t).trim();
+              req.log?.info({ model: resolvedModel, n: buf.length }, "gemini: recovered via no-tools pass");
+            } else {
+              req.log?.warn({ model: resolvedModel }, "gemini: no-tools recovery also empty");
+            }
+          } catch (recErr) {
+            req.log?.warn({ err: recErr.message }, "gemini no-tools recovery failed");
+          }
+        }
+        void lastGeminiAgg;
       } else {
         const { default: OpenAI } = await import("openai");
         const client =
@@ -1087,11 +1313,19 @@ router.post("/agent/chat", async (req, res) => {
             : resolveModelForProvider("openai", requestedId, modelDefaults.openai);
         resolvedModel = model;
 
+        // Multimodal: same attachment path as Claude/Gemini (Live assist / Co-Work frames).
+        // Without this, cowork_ack can report framesAccepted while the model only sees text.
+        const mmOpen = buildMultimodalMessages(truncated, provider === "grok" ? "grok" : "openai");
+        const openAiMsgs = mmOpen.messages.map((m) => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content,
+        }));
+
         const stream = await client.chat.completions.create({
           model,
           max_tokens: CHAT_MAX_TOKENS,
           stream: true,
-          messages: [{ role: "system", content: effectiveSystemPrompt }, ...msgs],
+          messages: [{ role: "system", content: effectiveSystemPrompt }, ...openAiMsgs],
         });
         for await (const chunk of stream) {
           const delta = chunk.choices?.[0]?.delta?.content;
@@ -1240,20 +1474,76 @@ router.post("/agent/chat", async (req, res) => {
           });
         }
       }
-      clearInterval(heartbeat);
-      res.end();
-      return; // success
+
+      // Empty completion: soft-fail to next provider, except after Gemini recovery attempt
+      // already ran. Never leave the client spinning on "…".
+      if (!String(visibleAssistantText || "").trim() && emittedActions.length === 0) {
+        throw new Error(`${provider} returned empty response (no text/actions)`);
+      }
+
+      req.log?.info(
+        { provider, model: resolvedModel, textLen: visibleAssistantText.length },
+        "chat provider succeeded",
+      );
+      return { ok: true };
+      }; // end runProviderAttempt
+
+      let timeoutId;
+      const outcome = await Promise.race([
+        runProviderAttempt().finally(() => {
+          if (timeoutId) clearTimeout(timeoutId);
+        }),
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(
+            () => reject(new Error(`${provider} timeout after ${Math.round(providerTimeoutMs / 1000)}s`)),
+            providerTimeoutMs,
+          );
+        }),
+      ]);
+
+      if (outcome?.ok) {
+        // Ensure client leaves the "…" state even if stream had only info events
+        if (!String(visibleAssistantText || "").trim()) {
+          send({ type: "text", delta: "Listo." });
+        }
+        send({ type: "done" });
+        clearInterval(heartbeat);
+        res.end();
+        return; // success
+      }
     } catch (err) {
       // 1.6 — Log provider failure instead of silent catch
-      req.log?.warn({ provider, err: err.message }, "provider failed, trying next");
+      const errMsg = err?.message || String(err);
+      req.log?.warn({ provider, err: errMsg }, "provider failed, trying next");
+      if (markProviderSkipped(provider, errMsg)) {
+        req.log?.warn({ provider, skipMin: PROVIDER_SKIP_MS / 60000 }, "provider skipped after billing/quota error");
+      }
+      // Soft-skip timeouts so we don't hammer a hung vision provider for 15 min,
+      // but still allow a retry later if needed.
+      if (/timeout after/i.test(errMsg)) {
+        _providerSkipUntil.set(provider, Date.now() + 2 * 60 * 1000);
+      }
+      if (!aborted) {
+        send({ type: "info", message: humanProviderFailHint(provider, errMsg) });
+      }
+      // Reset visible text so next provider starts clean
+      visibleAssistantText = "";
     }
   }
 
   clearInterval(heartbeat);
-  // All providers failed
-  if (!aborted) {
-    send({ type: "error", message: "Todos los proveedores de IA fallaron. Intentá más tarde." });
-    res.end();
+  // All providers failed — always terminate the SSE so the UI never spins forever
+  try {
+    if (!aborted) {
+      send({
+        type: "error",
+        message:
+          "No pude completar la respuesta (Live/captura). Claude sin créditos, OpenAI sin cuota, Grok key inválida, o Gemini vacío/timeout. Elegí **Gemini** en el selector de modelo y reintentá, o mandá un mensaje sin captura.",
+      });
+      send({ type: "done" });
+    }
+  } finally {
+    try { res.end(); } catch { /* already closed */ }
   }
 });
 

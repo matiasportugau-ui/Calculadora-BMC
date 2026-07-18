@@ -126,7 +126,7 @@ group("INTENT_HINTS covers every guarded tool", () => {
 });
 
 group("TOOL_INTENT_PATTERNS sanity", () => {
-  assert(Object.keys(TOOL_INTENT_PATTERNS).length === 9, "9 guarded tools covered");
+  assert(Object.keys(TOOL_INTENT_PATTERNS).length === 10, "10 guarded tools covered");
   for (const [tool, patterns] of Object.entries(TOOL_INTENT_PATTERNS)) {
     assert(Array.isArray(patterns) && patterns.length > 0, `${tool}: at least 1 pattern`);
     assert(patterns.every((p) => p instanceof RegExp), `${tool}: all patterns are RegExp`);
