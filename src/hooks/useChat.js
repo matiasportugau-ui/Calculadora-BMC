@@ -89,6 +89,61 @@ function saveHistory(messages) {
 
 
 /**
+ * Build the JSON body posted to POST /api/agent/chat (pure, testable).
+ * Used by send() and unit tests for Live assist attach-on-send contract.
+ *
+ * @param {{
+ *   history?: Array<{role:string, content:string}>,
+ *   userText: string,
+ *   attachments?: Array<object>,
+ *   operatorContext?: object,
+ *   calcState?: object,
+ *   devMode?: boolean,
+ *   aiProvider?: string,
+ *   aiModel?: string,
+ *   conversationId?: string|null,
+ *   surface?: string,
+ * }} opts
+ */
+export function buildAgentChatRequestBody(opts = {}) {
+  const attachments = Array.isArray(opts.attachments)
+    ? opts.attachments.filter((a) => a && a.data)
+    : [];
+  const history = Array.isArray(opts.history) ? opts.history : [];
+  const userMsg = {
+    role: "user",
+    content: String(opts.userText || "").trim(),
+    ...(attachments.length ? { attachments } : {}),
+  };
+  const apiMessages = [...history, userMsg].map((m, idx, arr) => {
+    const base = { role: m.role, content: m.content };
+    if (idx === arr.length - 1 && m.role === "user" && attachments.length) {
+      base.attachments = attachments.map((a) => ({
+        type: "image",
+        mime: a.mime || "image/jpeg",
+        data: a.data,
+        source: a.source || "oneshot",
+        capturedAt: a.capturedAt || null,
+      }));
+    }
+    return base;
+  });
+  const ap = opts.aiProvider || "auto";
+  return {
+    messages: apiMessages,
+    calcState: opts.calcState || {},
+    devMode: !!opts.devMode,
+    aiProvider: ap,
+    ...(ap !== "auto" && opts.aiModel ? { aiModel: opts.aiModel } : {}),
+    ...(opts.conversationId ? { conversationId: opts.conversationId } : {}),
+    surface: opts.surface || opts.operatorContext?.surface || "panelin_chat",
+    ...(opts.operatorContext && typeof opts.operatorContext === "object"
+      ? { operatorContext: opts.operatorContext }
+      : {}),
+  };
+}
+
+/**
  * Manages Panelin chat state and SSE streaming.
  *
  * @param {{
@@ -129,8 +184,9 @@ export function useChat({
   messagesRef.current = messages;
   const aiSelectionRef = useRef({ aiProvider, aiModel });
   aiSelectionRef.current = { aiProvider, aiModel };
-  // 1.2 — Track last user text for retry
+  // 1.2 — Track last user text + send opts (Live assist attachments) for retry
   const lastUserTextRef = useRef("");
+  const lastSendOptsRef = useRef({});
 
   useEffect(() => {
     let cancelled = false;
@@ -259,15 +315,25 @@ export function useChat({
     };
   }, [devMode, devAuthToken, relaxDevAuth]);
 
+  /**
+   * @param {string} userText
+   * @param {{ attachments?: Array<object>, operatorContext?: object }} [sendOpts]
+   */
   const send = useCallback(
-    async (userText) => {
+    async (userText, sendOpts = {}) => {
       if (isStreaming || !String(userText || "").trim()) return;
       lastUserTextRef.current = userText.trim();
+      lastSendOptsRef.current = sendOpts && typeof sendOpts === "object" ? sendOpts : {};
+
+      const attachments = Array.isArray(sendOpts.attachments)
+        ? sendOpts.attachments.filter((a) => a && a.data)
+        : [];
 
       const userMsg = {
         id: crypto.randomUUID(),
         role: "user",
         content: userText.trim(),
+        ...(attachments.length ? { attachments, hasCapture: true } : {}),
       };
       const assistantId = crypto.randomUUID();
       const assistantMsg = {
@@ -283,6 +349,12 @@ export function useChat({
 
       const controller = new AbortController();
       abortRef.current = controller;
+      // Hard client timeout so Live assist never leaves the "…" bubble forever
+      // (server may hang on a vision+tools provider).
+      const clientTimeoutMs = attachments.length ? 70_000 : 120_000;
+      const clientTimer = setTimeout(() => {
+        try { controller.abort(); } catch { /* ignore */ }
+      }, clientTimeoutMs);
 
       try {
         const apiBase = getCalcApiBase();
@@ -293,20 +365,28 @@ export function useChat({
         };
 
         const { aiProvider: ap, aiModel: am } = aiSelectionRef.current;
+        // History for API: text only for prior turns; last user carries attachments.
+        // Live assist: attachments + operatorContext.liveAssist built via shared helper.
+        // Prefer gemini on vision turns when auto — Claude credits are often exhausted.
+        const effectiveProvider =
+          attachments.length && (ap === "auto" || !ap) ? "gemini" : ap;
+        const requestBody = buildAgentChatRequestBody({
+          history: history.map((m) => ({ role: m.role, content: m.content })),
+          userText: userMsg.content,
+          attachments,
+          operatorContext: sendOpts.operatorContext,
+          calcState,
+          devMode,
+          aiProvider: effectiveProvider,
+          aiModel: am,
+          conversationId,
+          surface: sendOpts.operatorContext?.surface || "panelin_chat",
+        });
+
         const res = await fetch(`${apiBase}/api/agent/chat`, {
           method: "POST",
           headers,
-          body: JSON.stringify({
-            messages: [...history, userMsg].map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
-            calcState,
-            devMode,
-            aiProvider: ap,
-            ...(ap !== "auto" && am ? { aiModel: am } : {}),
-            conversationId,
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal,
         });
 
@@ -354,7 +434,52 @@ export function useChat({
                   return prev.map((m, i) => (i === prev.length - 1 ? { ...m, actions } : m));
                 });
               } else if (evt.type === "error") {
-                setError(evt.message || "Error del agente");
+                const errText = evt.message || "Error del agente";
+                setError(errText);
+                // Always clear the thinking dots so the UI never spins forever
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? {
+                          ...m,
+                          pending: false,
+                          content: m.content?.trim()
+                            ? `${m.content}\n\n⚠️ ${errText}`
+                            : `⚠️ ${errText}`,
+                        }
+                      : m
+                  )
+                );
+              } else if (evt.type === "info") {
+                // Provider failover / Co-Work notes — surface under the streaming bubble
+                const note = String(evt.message || "").trim();
+                if (note) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantId
+                        ? {
+                            ...m,
+                            // Keep pending=true while still streaming so we show activity,
+                            // but surface the note as status text so the bubble is not empty.
+                            content: m.content
+                              ? (m.content.includes(note) ? m.content : `${m.content}\n_${note}_`)
+                              : `_${note}_`,
+                            infoNotes: [...(m.infoNotes || []), note],
+                          }
+                        : m
+                    )
+                  );
+                }
+              } else if (evt.type === "cowork_ack") {
+                if (evt.framesAccepted > 0) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantId
+                        ? { ...m, coworkFrames: evt.framesAccepted }
+                        : m
+                    )
+                  );
+                }
               } else if (evt.type === "tool_call") {
                 // Append a tool-call indicator to the assistant message (visible in dev mode)
                 setMessages((prev) => {
@@ -403,13 +528,20 @@ export function useChat({
           }
         }
       } catch (err) {
-        const msg = mapErrorMessage(err);
+        const isAbort = err?.name === "AbortError" || /aborted/i.test(String(err?.message || ""));
+        const msg = isAbort
+          ? "Se agotó el tiempo de espera del chat (Live/captura). Probá de nuevo, elegí Gemini, o mandá sin captura."
+          : mapErrorMessage(err);
         if (msg) {
           setError(msg);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
-                ? { ...m, content: "", pending: false }
+                ? {
+                    ...m,
+                    pending: false,
+                    content: m.content?.trim() ? `${m.content}\n\n⚠️ ${msg}` : `⚠️ ${msg}`,
+                  }
                 : m
             )
           );
@@ -422,7 +554,14 @@ export function useChat({
           );
         }
       } finally {
+        clearTimeout(clientTimer);
         setIsStreaming(false);
+        // Ensure last assistant bubble never stays pending
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, pending: false } : m
+          )
+        );
         abortRef.current = null;
       }
     },
@@ -629,7 +768,7 @@ export function useChat({
     setIsStreaming(false);
   }, []);
 
-  // 1.2 — Retry last user message
+  // 1.2 — Retry last user message (re-applies last Live assist opts / attachments)
   const retry = useCallback(() => {
     if (isStreaming || !lastUserTextRef.current) return;
     // Remove the last user+assistant pair before re-sending
@@ -639,8 +778,9 @@ export function useChat({
       return prev.slice(0, prev.length - idx - 1);
     });
     setError(null);
+    const opts = lastSendOptsRef.current || {};
     // Use setTimeout to let state flush before re-sending
-    setTimeout(() => send(lastUserTextRef.current), 0);
+    setTimeout(() => send(lastUserTextRef.current, opts), 0);
   }, [isStreaming, send]);
 
   const clear = useCallback(() => {
@@ -649,6 +789,7 @@ export function useChat({
     setError(null);
     setIsStreaming(false);
     lastUserTextRef.current = "";
+    lastSendOptsRef.current = {};
     devAutoLoadedRef.current = false;
     const newId = freshConversationId();
     setConversationId(newId);

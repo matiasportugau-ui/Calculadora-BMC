@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useAdminIngreso } from "../hooks/useAdminIngreso.js";
 import { formatMissingL } from "../utils/adminIngresoApi.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
+import { useScreenCoWork } from "../hooks/useScreenCoWork.js";
+import CoWorkToolbar from "./cowork/CoWorkToolbar.jsx";
 import "./admin-ingreso/styles.css";
 
 function StatusDot({ status }) {
@@ -62,6 +64,8 @@ function ChatTurns({ conversation }) {
 
 export default function AdminIngresoModule() {
   const ing = useAdminIngreso();
+  // Shared Live assist buffer (D2): frames captured here are available to Panelin chat on send
+  const cowork = useScreenCoWork({ enabled: true, useSharedBuffer: true });
   const [draft, setDraft] = useState("");
   const activeInquiry = ing.inquiries.find((i) => i.row === ing.selectedRow);
   const missing = formatMissingL(ing.interpretation?.missing_L);
@@ -70,6 +74,7 @@ export default function AdminIngresoModule() {
   const handleSend = () => {
     const text = draft;
     setDraft("");
+    // Interpret path stays text-only (bmcChat). Live buffer stays for Panelin chat (shared).
     ing.sendMessage(text);
   };
 
@@ -170,6 +175,21 @@ export default function AdminIngresoModule() {
                 )}
 
                 <ChatTurns conversation={ing.conversation} />
+
+                <div style={{ marginTop: 8, border: "1px solid var(--ai-border, #e8e4dd)", borderRadius: 10, overflow: "hidden" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", color: "var(--ai-text-2)", background: "var(--ai-surface, #faf9f6)" }}>
+                    Co-Work · captura de planilla (buffer para Panelin)
+                  </div>
+                  <CoWorkToolbar cowork={cowork} disabled={!!ing.busy} compact />
+                  <p style={{ fontSize: 11, color: "var(--ai-text-2)", padding: "0 10px 8px", margin: 0 }}>
+                    {cowork.liveAssist
+                      ? "Live assist ON · buffer local cada ~4s (no se envía hasta que mandes un mensaje en Panelin)."
+                      : "Live assist / Capturar: el buffer se comparte con el chat Panelin de la calculadora."}
+                    {cowork.thumbUrl
+                      ? ` · Frame listo · fila ${ing.selectedRow || "—"} · abrí Panelin y enviá un mensaje para adjuntar.`
+                      : ""}
+                  </p>
+                </div>
 
                 {ing.error && (
                   <p style={{ color: "var(--ai-error)", fontSize: 13 }}>{ing.error}</p>

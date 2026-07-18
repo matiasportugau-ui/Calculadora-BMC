@@ -143,6 +143,13 @@ group("AGENT_TOOLS surface", () => {
     "traktime_billable_report",
     "traktime_suggest_entry",
     "traktime_activity_today",
+    // Co-Work Sheets (allowlisted Admin/CRM)
+    "sheets_list_tabs",
+    "sheets_read_range",
+    "sheets_find",
+    "sheets_get_pending_admin",
+    "sheets_propose_write",
+    "sheets_write_range",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);

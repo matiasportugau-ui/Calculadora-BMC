@@ -561,6 +561,14 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
   const variationBlock = buildAntiRepetitionBlock(recentAssistantMessages);
   const prefsBlock = buildPreferencesBlock(preferences);
 
+  const coworkVisionBlock = `## Co-Work / visión (pantalla + planillas)
+- Las capturas de pantalla del operador son **CONTEXTO**, no fuente de verdad de números ni rowNum.
+- Antes de cotizar o escribir: verificá filas/celdas con \`sheets_read_range\`, \`sheets_find\`, \`sheets_get_pending_admin\` o tools wolfboard_*.
+- Nunca inventes un rowNum: si no está claro en el texto ni en la captura, preguntá o usá \`sheets_find\`.
+- Escrituras: proponé el cambio (\`sheets_propose_write\` o describí el diff) y esperá confirmación explícita antes de \`sheets_write_range\` / \`wolfboard_actualizar_fila\` / \`guardar_en_crm\`.
+- Live assist: la imagen adjunta es la captura más reciente de la pestaña compartida; no repitas el mismo resumen si no hay pedido nuevo del operador.
+- Preferí workbook alias \`admin\` o \`crm\` — no pidas spreadsheet IDs al operador.`;
+
   const toolsBlock = `## TOOLS DE CALCULADORA (OBLIGATORIO)
 La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas estrictas:
 
@@ -617,6 +625,15 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 - \`wolfboard_quote_batch\` — genera respuestas comerciales con IA (Claude Haiku) para todas las filas pendientes. REQUIERE user_confirmed=true. force=true regenera respuestas existentes.
 
 Todas las herramientas Wolfboard requieren API_AUTH_TOKEN configurado en el server (auth admin). Si no está configurado, devuelven error sin tocar el sheet.
+
+**Co-Work / planillas (Admin + CRM allowlisted):**
+- \`sheets_list_tabs\` — pestañas del workbook admin o crm.
+- \`sheets_read_range\` — lee rango A1 (fuente de verdad de celdas; preferí esto al OCR de capturas).
+- \`sheets_find\` — busca texto en un rango y devuelve row hits.
+- \`sheets_get_pending_admin\` — cola Admin (I llena, M vacía).
+- \`sheets_propose_write\` — dry-run de escritura (no muta).
+- \`sheets_write_range\` — escribe rango. REQUIERE confirmación explícita del operador. Preferí \`wolfboard_actualizar_fila\` para J/K/L del Admin cuando aplique.
+- Solo workbooks allowlisted: \`admin\` (WOLFB_ADMIN_SHEET_ID) y \`crm\` (WOLFB_CRM_SHEET_ID).
 
 **Chips automáticos (modo desarrollador):** cuando ejecutás \`wolfboard_pendientes\`, \`wolfboard_export\`, \`wolfboard_sync\`, \`wolfboard_quote_batch\`, \`wolfboard_actualizar_fila\` o \`wolfboard_marcar_enviado\` con éxito, el servidor puede mostrar chips de siguiente paso sin que vos emitas \`SUGGEST_JSON:\`. Los textos de esos chips están alineados con las frases de confirmación que el servidor espera para sync/batch.
 
@@ -683,10 +700,11 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
   // in that (non-prod) mode — output correctness is unaffected.
   const staticPrefix = [
     IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC,
-    canonicalPrices, knowledgeBlock, brainBlockStr, toolsBlock, extractionProtocol, antiRepBlock,
+    canonicalPrices, knowledgeBlock, brainBlockStr, coworkVisionBlock, toolsBlock, extractionProtocol, antiRepBlock,
   ].filter(Boolean).join("\n\n");
+  const operatorCtx = options.operatorContextBlock || "";
   const dynamicTail = [
-    variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules,
+    variationBlock, prefsBlock, currentState, examplesBlock, ragContext, operatorCtx, devModeRules,
   ].filter(Boolean).join("\n\n");
   return { staticPrefix, dynamicTail };
 }

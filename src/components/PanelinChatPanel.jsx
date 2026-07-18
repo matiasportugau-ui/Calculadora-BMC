@@ -5,6 +5,8 @@ import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
 import TrustBlock from "./panelin/TrustBlock.jsx";
 import { useDictation } from "../hooks/useDictation.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
+import { useScreenCoWork } from "../hooks/useScreenCoWork.js";
+import CoWorkToolbar from "./cowork/CoWorkToolbar.jsx";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -512,12 +514,39 @@ export default function PanelinChatPanel({
     // While transcribing, the button is disabled (handled in the JSX below).
   }, [dictation]);
 
+  const cowork = useScreenCoWork({ enabled: true, useSharedBuffer: true });
+
+  /**
+   * Single outbound path for compose / welcome hints / suggestion chips / any UI send.
+   * Live assist ADR-003: always attach latest buffer + operatorContext when Live is ON.
+   */
+  const sendWithLiveAssist = useCallback((rawText) => {
+    const text = String(rawText || "").trim();
+    if (!text || isStreaming) return;
+    const frame = cowork.consumeFrameForSend?.();
+    const liveOn = !!cowork.liveAssist;
+    const attachments = frame
+      ? [{
+          ...frame,
+          source: liveOn ? "live_assist" : (frame.source || "oneshot"),
+        }]
+      : [];
+    send(text, {
+      attachments,
+      operatorContext: {
+        surface: "panelin_chat",
+        liveAssist: liveOn,
+        workbook: "admin",
+      },
+    });
+  }, [isStreaming, send, cowork]);
+
   const handleSend = useCallback(() => {
     const text = input.trim();
     if (!text || isStreaming) return;
     setInput("");
-    send(text);
-  }, [input, isStreaming, send]);
+    sendWithLiveAssist(text);
+  }, [input, isStreaming, sendWithLiveAssist]);
 
   const [deepResearch, setDeepResearch] = useState({ status: "idle", id: null, error: null });
   const deepResearchPollRef = useRef(null);
@@ -1016,6 +1045,11 @@ export default function PanelinChatPanel({
           />
         </div>
 
+        {/* ── Co-Work capture (screen / Sheets tab) ── */}
+        {!voiceMode && (
+          <CoWorkToolbar cowork={cowork} disabled={isStreaming} />
+        )}
+
         {/* ── Messages ── */}
         {!voiceMode && <div
           ref={scrollContainerRef}
@@ -1068,7 +1102,7 @@ export default function PanelinChatPanel({
                 ].map((hint) => (
                   <button
                     key={hint}
-                    onClick={() => send(hint)}
+                    onClick={() => sendWithLiveAssist(hint)}
                     style={{
                       padding: "6px 12px",
                       borderRadius: 20,
@@ -1188,7 +1222,7 @@ export default function PanelinChatPanel({
                                   const text = String(it.send || it.label || "").trim();
                                   if (!text) return;
                                   clearSuggestionsForMessage?.(msg.id);
-                                  send(text);
+                                  sendWithLiveAssist(text);
                                 }}
                                 style={{
                                   padding: "6px 12px",
