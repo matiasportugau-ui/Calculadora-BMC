@@ -18,6 +18,8 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 
 let jwtGetter = () => "";
 let jwtRefresh = async () => false;
+/** Single-flight: parallel 401s share one refresh (avoids refresh-token reuse revoke). */
+let refreshInFlight = null;
 
 /** Register identity JWT supplier (called from BmcAuthProvider). */
 export function setOperatorJwtGetter(fn) {
@@ -27,6 +29,14 @@ export function setOperatorJwtGetter(fn) {
 /** Register silent refresh (POST /api/auth/refresh) for 401 recovery in mlFetch. */
 export function setOperatorJwtRefresh(fn) {
   jwtRefresh = typeof fn === "function" ? fn : async () => false;
+}
+
+/**
+ * Test-only: clear in-flight refresh promise (do not call from app code).
+ * @internal
+ */
+export function _resetRefreshInFlightForTests() {
+  refreshInFlight = null;
 }
 
 /** Pure: Vite env aliases for the server `API_AUTH_TOKEN`. */
@@ -64,12 +74,28 @@ export async function ensureIdentityJwt() {
   return String(jwtGetter() || "").trim();
 }
 
+/**
+ * Silent identity JWT refresh. Coalesces concurrent callers onto one in-flight
+ * POST so parallel ML Manager queries after access-JWT expiry do not race the
+ * refresh cookie (server treats concurrent reuse as token_reuse_detected).
+ * JWT getter is updated by BmcAuthProvider.applyAuth (not here).
+ *
+ * @returns {Promise<boolean>} true when refresh succeeded
+ */
 export async function refreshIdentityJwt() {
-  try {
-    return !!(await jwtRefresh());
-  } catch {
-    return false;
-  }
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    try {
+      return !!(await jwtRefresh());
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
 }
 
 async function buildOperatorHeaders(extra, hasBody) {
