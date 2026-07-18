@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-17
+**Última actualización:** 2026-07-18
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-18 (prod — Live Assist / Co-Work online):** PR [#697](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/697) squash-merged → `main` `67f10557`. **Deployed:** Cloud Run `panelin-calc-00811-x8k` (image tag `…panelin-calc:67f10557…`, 100% traffic) + Vercel production SPA. **Secrets:** `GEMINI_API_KEY` mounted from GSM (vision path; Claude credits still empty → chain falls to Gemini). **Smoke prod:** `npm run smoke:prod` OK (health, MATRIZ CSV, suggest-response via gemini). **Agent multimodal:** `POST /api/agent/chat` with JPEG attachment → SSE `cowork_ack` `framesAccepted:1` → Gemini text reply + `done` (no hang). Text-only also OK (`PONG` via gemini). **SPA UI verified:** Panelin chat shows `Activar Co-Work (visión)`, `📷 Capturar pestaña`, `Live assist`. **UAT remaining (human):** real `getDisplayMedia` over Google Sheets tab + Live ON attach-on-send in operator browser (permission-gated; agent cannot complete screen-share picker). **Deferred (SDD §20 #11–13):** desk window / Document-PiP (PR-G/H). SDD: [`SDD-PANELIN-COWORK.md`](./SDD-PANELIN-COWORK.md).
 
 **2026-07-17 (feat — Live Assist 100% contract):** Pure core `src/hooks/liveAssistCore.js` (interval 4s, `LiveFrameBuffer`, attach-on-send only, source `live_assist`, shared buffer D2). `useScreenCoWork` interval never POSTs; Panelin `handleSend` + `buildAgentChatRequestBody` attach buffer + `operatorContext.liveAssist`. Admin shares buffer via `sharedLiveFrameBuffer`. Tests `tests/liveAssist.test.js` (47) + `coworkFrames`. ADR-003/D3 verified.
 
