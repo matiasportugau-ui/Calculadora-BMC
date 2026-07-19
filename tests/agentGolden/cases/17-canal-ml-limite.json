@@ -1,0 +1,19 @@
+{
+  "id": "17-canal-ml-limite",
+  "description": "Mercado Libre surface: keep reply under ML char budget; no silent quote.",
+  "calcState": "empty",
+  "surface": "mercado_libre",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Hola, hacen envíos a Montevideo?" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" },
+    { "type": "tool_not_called", "name": "calcular_cotizacion" },
+    { "type": "text_max_chars", "value": 350 }
+  ],
+  "timeoutMs": 60000
+}
