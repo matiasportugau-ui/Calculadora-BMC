@@ -29,7 +29,6 @@ import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
 import { addTrainingEntry, findRelevantExamples, resolveTrainingAnswer, ensureGcsInit } from "../lib/trainingKB.js";
-import { buildMlWriteHeaders } from "../lib/mlInternalAuthHeaders.js";
 import { mapOrigenToSurface } from "../lib/kbSurface.js";
 import { isAiGatewayEnabled, generateTextViaGateway, generateObjectViaGateway, DEFAULT_PROVIDER_ORDER } from "../lib/aiGatewayClient.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
@@ -1554,12 +1553,20 @@ export { pushMatrizPricingOverrides, handleUpdateStock, parseNum, parseDate };
 
 // ─── Router ───────────────────────────────────────────────────────────────
 
-export default function createBmcDashboardRouter(config) {
+export default function createBmcDashboardRouter(config, deps = {}) {
   const router = Router();
   const requireEmailIngestAuth = makeRequireEmailIngestAuth(config);
   const sheetId = config.bmcSheetId || "";
   const schema = config.bmcSheetSchema || "Master_Cotizaciones";
   const { sheetName: cotizSheet, opts: cotizOpts } = getCotizacionesSheetOpts(schema);
+  const getCrmSheetsWriteFn = deps.getCrmSheetsWrite || getCrmSheetsWrite;
+  const fetchImpl = deps.fetch || fetch;
+  const sendWhatsAppTextImpl = deps.sendWhatsAppText || sendWhatsAppText;
+  const sendEmailReplyImpl = deps.sendEmailReply || sendEmailReply;
+  const mirrorMlSendApprovedToOmniImpl =
+    deps.mirrorMlSendApprovedToOmni || mirrorMlSendApprovedToOmni;
+  const getEmailIngestPoolImpl = deps.getEmailIngestPool || getEmailIngestPool;
+  const getIngestByRowImpl = deps.getIngestByRow || getIngestByRow;
 
   router.use((_req, res, next) => {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -3304,7 +3311,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row` });
     if (!checkSheetsAvailable(config)) return noConfig(res);
     try {
-      const sheets = await getCrmSheetsWrite();
+      const sheets = await getCrmSheetsWriteFn();
       const r = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
         range: `'${CRM_TAB}'!A${row}:AK${row}`,
@@ -3327,22 +3334,31 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const base = String(config.publicBaseUrl || `http://127.0.0.1:${config.port}`).replace(/\/$/, "");
 
       if (qid && (/ML/i.test(origen) || /Q:\d+/.test(parsed.observaciones))) {
-        const fr = await fetch(`${base}/ml/questions/${qid}/answer`, {
-          method: "POST",
-          headers: buildMlWriteHeaders(config, { "Content-Type": "application/json" }),
-          body: JSON.stringify({ text }),
-        });
-        const data = await fr.json().catch(() => ({}));
-        if (!fr.ok) {
-          return res.status(502).json({ ok: false, error: "ML answer failed", status: fr.status, details: data });
+        let data = {};
+        try {
+          const fr = await fetchImpl(`${base}/ml/questions/${qid}/answer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+          });
+          data = await fr.json().catch(() => ({}));
+          if (!fr.ok) {
+            return res.status(502).json({ ok: false, error: "ML answer failed", status: fr.status, details: data });
+          }
+        } catch (e) {
+          return res.status(502).json({ ok: false, error: "ML answer failed", detail: e.message });
         }
         const sentAt = new Date().toISOString();
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[sentAt]] },
-        });
+        try {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [[sentAt]] },
+          });
+        } catch (e) {
+          return res.status(503).json({ ok: false, error: "Sheets update failed", detail: e.message });
+        }
 
         // KB: human-approved ML answer → save as high-confidence active entry
         const kbQuestion = String(parsed.consulta || parsed.observaciones || "").trim();
@@ -3363,7 +3379,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           });
         }
 
-        void mirrorMlSendApprovedToOmni({
+        void mirrorMlSendApprovedToOmniImpl({
           config,
           logger: req.log,
           questionId: qid,
@@ -3380,27 +3396,36 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         }
         const to = parsed.telefono;
         if (!to) return res.status(400).json({ ok: false, error: "Missing phone (column D)" });
-        const wa = await sendWhatsAppText({
-          to,
-          text,
-          accessToken: config.whatsappAccessToken,
-          phoneNumberId: config.whatsappPhoneNumberId,
-        });
+        let wa;
+        try {
+          wa = await sendWhatsAppTextImpl({
+            to,
+            text,
+            accessToken: config.whatsappAccessToken,
+            phoneNumberId: config.whatsappPhoneNumberId,
+          });
+        } catch (e) {
+          return res.status(502).json({ ok: false, error: "WhatsApp send failed", detail: e.message });
+        }
         const sentAt = new Date().toISOString();
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[sentAt]] },
-        });
+        try {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [[sentAt]] },
+          });
+        } catch (e) {
+          return res.status(503).json({ ok: false, error: "Sheets update failed", detail: e.message });
+        }
         return res.json({ ok: true, channel: "whatsapp", questionId: null, sentAt, wa });
       }
 
       if (/Email/i.test(origen)) {
         // Recipient + receiving casilla: prefer the ingest log (keyed by CRM row),
         // fall back to parsing an address out of the row (col D / observaciones).
-        const ingestPool = getEmailIngestPool(config.databaseUrl);
-        const meta = await getIngestByRow(ingestPool, row);
+        const ingestPool = getEmailIngestPoolImpl(config.databaseUrl);
+        const meta = await getIngestByRowImpl(ingestPool, row);
         const recipient =
           extractEmailAddress(meta?.remitente) ||
           extractEmailAddress(parsed.telefono) ||
@@ -3410,7 +3435,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         }
         const casilla = meta?.account || config.emailReplyDefaultCasilla || "";
         try {
-          await sendEmailReply({
+          await sendEmailReplyImpl({
             account: casilla,
             // Reply must leave from the receiving casilla (verified Gmail
             // send-as alias), not the hub account's default identity.
@@ -3425,12 +3450,16 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           return res.status(code).json({ ok: false, error: "Email send failed", detail: e.message });
         }
         const sentAt = new Date().toISOString();
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[sentAt]] },
-        });
+        try {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [[sentAt]] },
+          });
+        } catch (e) {
+          return res.status(503).json({ ok: false, error: "Sheets update failed", detail: e.message });
+        }
         return res.json({ ok: true, channel: "email", to: recipient, casilla, sentAt });
       }
 
@@ -3441,11 +3470,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
     } catch (e) {
       req.log?.error({ err: e }, "crm/cockpit/send-approved failed");
-      // Mixed route: outer catch wraps the CRM Sheets read/stamp AND the outbound
-      // send (WA/ML can throw before the Sheets update). Keep 500 here so an
-      // outbound-channel failure is not masked as "Sheets unavailable" (503).
-      // Proper per-branch 502 (send) vs 503 (Sheets) mapping is a follow-up.
-      return res.status(500).json({ ok: false, error: e.message });
+      return res.status(503).json({ ok: false, error: e.message });
     }
   }
 
