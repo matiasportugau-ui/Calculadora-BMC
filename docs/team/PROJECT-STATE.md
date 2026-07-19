@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-19 (prod — Panelin Hands-free build-max):** PR [#717](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/717) merged (`37045e0b`). Vercel **Deploy production** success. Prod SPA: no embedded “Safari…OpenAI Realtime” banner; Hands-free/Whisper markers present in calculator chunk. API `/health` ok. Smoke suggest-response 401 is pre-existing IA credentials (not this PR).
+
 **2026-07-18 (feat — Panelin chat agent build-to-max P0/P1):** Hands-free Safari gate (`isHandsFreeSupported`), wake-word `onend` exponential backoff (B-02), Firefox Whisper push-to-talk via `/api/agent/transcribe` (B-03), channel goldens 16–19 (B-07). SDD kit at [`docs/sdd/panelin-chat-agent/`](../sdd/panelin-chat-agent/); target backlog statuses in `SDD-TARGET.md` §11. P2 (OpenAPI/toolStats/circuit breaker) deferred. P0 complete only after Vercel prod UAT (no embedded Realtime Safari banner).
 
 **2026-07-18 (strategy — competitive analysis + sales plays):** Full competitive analysis + 90d sales strategy executed from `goal-prompt-full-competitive-sales-strategy.md` (Claude Code blocked on credits → Cursor). Docs: [`COMPETITIVE-ANALYSIS-FULL-2026-07-18.md`](./COMPETITIVE-ANALYSIS-FULL-2026-07-18.md), [`COMPETITIVE-SALES-STRATEGY-2026-07-18.md`](./COMPETITIVE-SALES-STRATEGY-2026-07-18.md), [`battlecards/BATTLECARDS-TIER1.md`](./battlecards/BATTLECARDS-TIER1.md). North Star proposed = WA quotes calificadas; Meta stays ATC-only until Purchase fires. Live checks: MontFrío, BECAM, TDA, Panel Sandwich Group, BMC Shopify OK; Bromyros/Eco/Casa del Panel fetch gaps. No price/ads mutations.
