@@ -40,7 +40,11 @@ jobs:
           cache: 'npm'
 
       - name: Install ALSA headers
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
+        run: |
+          # GH runners may ship google-chrome apt sources; mirror sync can fail apt-get update.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*.list 2>/dev/null || true
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libasound2-dev
 
       - name: Install dependencies
         run: npm ci --include=dev

@@ -95,10 +95,12 @@ load_env_key SHOPIFY_WEBHOOK_SECRET
 load_env_key SHOPIFY_SCOPES
 load_env_key SHOPIFY_QUESTIONS_SHEET_TAB
 
-# Google Ads API (non-secret; GOOGLE_ADS_DEVELOPER_TOKEN/OAUTH_CLIENT_SECRET/REFRESH_TOKEN
-# go through scripts/provision-secrets.sh → Secret Manager instead)
+# Google Ads API — public IDs as env; high-sensitivity via Secret Manager mount
 load_env_key GOOGLE_ADS_OAUTH_CLIENT_ID
 load_env_key GOOGLE_ADS_LOGIN_CUSTOMER_ID
+load_env_key GOOGLE_ADS_DEVELOPER_TOKEN
+load_env_key GOOGLE_ADS_OAUTH_CLIENT_SECRET
+load_env_key GOOGLE_ADS_REFRESH_TOKEN
 
 # Postgres / CORS / cockpit / RBAC / analytics / followup / PDF
 load_env_key DATABASE_URL
@@ -142,15 +144,16 @@ fi
 declare -a PAIRS         # KEY=VAL  para --update-env-vars
 declare -a SECRET_PAIRS  # KEY=secret-name:latest  para --update-secrets
 
-# Helper: si el secret existe en GSM lo agrega como mount; si no, fallback a env var.
+# Helper: si el secret existe en GSM lo monta; si no, fallback a env var (si hay valor).
+# GSM-only (valor local vacío pero secret ya provisionado) también monta — necesario
+# tras `./scripts/provision-secrets.sh` sin re-exportar el .env al setup de Cloud Run.
 add_sensitive() {
   local key="$1"
   local val="$2"
-  [[ -z "$val" ]] && return 0
   if gcloud secrets describe "$key" --project="$PROJECT_ID" >/dev/null 2>&1; then
     SECRET_PAIRS+=("$key=$key:latest")
     echo "🔒 $key → Secret Manager"
-  else
+  elif [[ -n "$val" ]]; then
     PAIRS+=("$key=$val")
     echo "⚠️  $key → env var (no provisionado en GSM — corré ./scripts/provision-secrets.sh)"
   fi
@@ -248,13 +251,15 @@ echo "→ Wolfboard CRM tabs: sincronizado"
 add_sensitive SHOPIFY_CLIENT_SECRET   "$SHOPIFY_CLIENT_SECRET"
 add_sensitive SHOPIFY_WEBHOOK_SECRET  "$SHOPIFY_WEBHOOK_SECRET"
 
-# Google Ads API (client_id + MCC login_customer_id son IDs; developer_token/
-# oauth_client_secret/refresh_token son alta sensibilidad → scripts/provision-secrets.sh)
+# Google Ads API (client_id + MCC login_customer_id → env; tokens → GSM mount)
 if [[ -n "$GOOGLE_ADS_OAUTH_CLIENT_ID" ]]; then
   PAIRS+=("GOOGLE_ADS_OAUTH_CLIENT_ID=$GOOGLE_ADS_OAUTH_CLIENT_ID")
   [[ -n "$GOOGLE_ADS_LOGIN_CUSTOMER_ID" ]] && PAIRS+=("GOOGLE_ADS_LOGIN_CUSTOMER_ID=$GOOGLE_ADS_LOGIN_CUSTOMER_ID")
   echo "→ Google Ads client_id: env var"
 fi
+add_sensitive GOOGLE_ADS_DEVELOPER_TOKEN "$GOOGLE_ADS_DEVELOPER_TOKEN"
+add_sensitive GOOGLE_ADS_OAUTH_CLIENT_SECRET "$GOOGLE_ADS_OAUTH_CLIENT_SECRET"
+add_sensitive GOOGLE_ADS_REFRESH_TOKEN "$GOOGLE_ADS_REFRESH_TOKEN"
 
 # Postgres (Modo Transportista) — DATABASE_URL contains creds → sensitive
 add_sensitive DATABASE_URL "$DATABASE_URL"

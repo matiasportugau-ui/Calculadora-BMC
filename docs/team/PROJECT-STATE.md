@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-19 (fix — Google Ads Cloud Run secrets + CI apt flake):** PR [#722](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/722) (supersedes #710): `run_ml_cloud_run_setup.sh` monta `GOOGLE_ADS_DEVELOPER_TOKEN` / `OAUTH_CLIENT_SECRET` / `REFRESH_TOKEN` vía `add_sensitive` (GSM-first, incluso sin valor local). CI: step ALSA quita `google-chrome*.list` antes de `apt-get update` (fallos #712/#713 por mirror sync de Chrome).
+
 **2026-07-19 (prod — Panelin Hands-free build-max):** PR [#717](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/717) merged (`37045e0b`). Vercel **Deploy production** success. Prod SPA: no embedded “Safari…OpenAI Realtime” banner; Hands-free/Whisper markers present in calculator chunk. API `/health` ok. Smoke suggest-response 401 is pre-existing IA credentials (not this PR).
 
 **2026-07-18 (feat — Panelin chat agent build-to-max P0/P1):** Hands-free Safari gate (`isHandsFreeSupported`), wake-word `onend` exponential backoff (B-02), Firefox Whisper push-to-talk via `/api/agent/transcribe` (B-03), channel goldens 16–19 (B-07). SDD kit at [`docs/sdd/panelin-chat-agent/`](../sdd/panelin-chat-agent/); target backlog statuses in `SDD-TARGET.md` §11. P2 (OpenAPI/toolStats/circuit breaker) deferred. P0 complete only after Vercel prod UAT (no embedded Realtime Safari banner).
