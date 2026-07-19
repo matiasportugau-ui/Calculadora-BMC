@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-19T08:50:51.967Z",
+  "generated_at": "2026-07-19T11:12:59.147Z",
   "composite": 98.2,
   "min_pass": 90,
   "pass": true,
@@ -9,7 +9,7 @@
       "score_0_10": 10,
       "contribution": 8,
       "notes": [
-        "AGENTS.md 49 lines (≤80)",
+        "AGENTS.md 54 lines (≤80)",
         "RULE-PROVENANCE present",
         "CLAUDE.md present",
         "SDD-HARNESS present"

@@ -14,6 +14,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+- **2026-07-19** — full SDD implementation run closed: `docs/sdd/calculadora-bmc/` SCORECARD **94** pass; GAP P0=0; SoT wired AGENTS/Claude/SKILL-INDEX; A3 pre-deploy contracts hard-fail + `tests/preDeployContractsRatchet.test.js` in `test:api`; `gate:local:full` **GREEN**.
+
+- **2026-07-19** — SDD as development reference: linked in `AGENTS.md` / `Claude.md` / `docs/team/harness/SKILL-INDEX.md`; A3 ratchet — `pre-deploy-check.sh` **fails** on contract validation when API health is up (soft-skip only if unreachable).
+
 - **2026-07-19** — `gate:local:full` **GREEN**: `toolStats` AGENT_TOOLS 42→48; `FINANZAS_MODULE_PASSWORD` declared in `.github/required-cloud-run-secrets.txt`. SDD v0.2 SCORECARD **94**.
 
 - **2026-07-19** — SDD kit full cycle: as-built `docs/sdd/calculadora-bmc/SDD.md` v0.2, audit SCORECARD **94** (pass≥90), GAP-PLAN P0=0, ARCHITECT-IMPROVEMENTS.md; evolution closed assistant table + day-0 bootstrap.
