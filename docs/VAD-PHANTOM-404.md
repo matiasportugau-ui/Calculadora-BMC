@@ -24,9 +24,9 @@ GET /vad/ort-wasm-simd-threaded.mjs HTTP/1.1 -> 404 Not Found
 The actual voice / "animated agent" stack does **not** use a local model:
 
 - `src/hooks/useVoiceSession.js` → **OpenAI Realtime API**, `turn_detection: server_vad`
-  (VAD runs server-side in OpenAI's infra). See `server/routes/agentVoice.js`.
+  (VAD runs server-side in OpenAI's infra). Used by `/panelin/live`. See `server/routes/agentVoice.js`.
 - `src/hooks/useHandsFreeVoice.js` → browser **Web Speech API** wake-word ("Panelín").
-- `src/components/PanelinVoicePanel.jsx` → UI wrapper over the above.
+- `src/components/PanelinVoicePanel.jsx` → UI wrapper for **Hands-free only** (not Realtime).
 
 So nothing this app serves or ships requests `/vad/...`. The request originates from a
 **stale client**: an old service worker, a cached build, or a browser extension on a

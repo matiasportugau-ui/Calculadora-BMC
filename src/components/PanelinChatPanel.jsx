@@ -953,12 +953,12 @@ export default function PanelinChatPanel({
           <button
             data-no-drag
             onClick={() => setVoiceMode((v) => !v)}
-            title={voiceMode ? "Volver a modo texto" : "Modo voz fluido (OpenAI Realtime)"}
+            title={voiceMode ? "Volver a modo texto" : "Modo voz manos libres (decí Panelin)"}
             style={{
               ...ghostBtn,
               background: voiceMode ? "rgba(255,255,255,0.24)" : "transparent",
             }}
-            aria-label={voiceMode ? "Volver a modo texto" : "Activar modo voz"}
+            aria-label={voiceMode ? "Volver a modo texto" : "Activar modo voz manos libres"}
           >
             <Radio size={15} />
           </button>

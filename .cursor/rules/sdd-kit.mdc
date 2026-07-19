@@ -1,0 +1,29 @@
+---
+description: "SDD Kit skill family — design, reverse-engineer, audit, and evolve System Design Documents (arc42+C4). Apply when user says familia SDD, SDD kit, reverse engineer SDD, audit SDD, score SDD, evolution loop SDD, as-built architecture, or ciclo SDD."
+alwaysApply: false
+---
+
+# SDD Kit (agent skills)
+
+When the user works on **system design documentation**, **reverse-engineering a codebase into an SDD**, **scoring/gap-planning an SDD**, or **closing SDD documentation gaps**, read and follow the family guide:
+
+`~/.claude/skills/sdd-kit/README.md`
+
+## Router
+
+| Intent | Skill |
+|--------|-------|
+| Greenfield design | `sdd-architect` → `~/.claude/skills/sdd-kit/architect/SKILL.md` |
+| Existing system / code | `sdd-reverse-engineer` |
+| Score / ideal 100% / gaps | `sdd-quality-auditor` |
+| Close GAP-PLAN | `sdd-evolution-loop` |
+| Unsure | `sdd-kit` router SKILL.md |
+
+## Schema
+
+`~/.claude/skills/sdd-kit/shared/SCHEMA-CONTRACT.md` — do not fork the 12-section layout.
+
+## Complements
+
+- **development-glory** — full dev conductor (design → build → doc → audit)
+- **bmc-orchestrator** — full team runs (not replaced by SDD kit)

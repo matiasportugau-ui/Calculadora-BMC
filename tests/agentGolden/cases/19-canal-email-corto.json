@@ -1,0 +1,18 @@
+{
+  "id": "19-canal-email-corto",
+  "description": "Email surface: professional reply under email char budget; no verified quote from empty calc.",
+  "calcState": "empty",
+  "surface": "email",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Buenos días, me pueden cotizar un tinglado?" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" },
+    { "type": "text_max_chars", "value": 2000 }
+  ],
+  "timeoutMs": 60000
+}
