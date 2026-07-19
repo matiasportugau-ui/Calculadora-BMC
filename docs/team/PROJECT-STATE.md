@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-18
+**Última actualización:** 2026-07-19
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -14,6 +14,19 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+- **2026-07-19** — `gate:local:full` **GREEN**: `toolStats` AGENT_TOOLS 42→48; `FINANZAS_MODULE_PASSWORD` declared in `.github/required-cloud-run-secrets.txt`. SDD v0.2 SCORECARD **94**.
+
+- **2026-07-19** — SDD kit full cycle: as-built `docs/sdd/calculadora-bmc/SDD.md` v0.2, audit SCORECARD **94** (pass≥90), GAP-PLAN P0=0, ARCHITECT-IMPROVEMENTS.md; evolution closed assistant table + day-0 bootstrap.
+
+**2026-07-19 (docs — sdd-quality-auditor Calculadora Fletes):** Audit of [`SDD-CALCULADORA-FLETES.md`](./SDD-CALCULADORA-FLETES.md) → composite **72/100** (usable, fail ≥90). Artifacts: [`docs/sdd/calculadora-fletes/audit/`](../sdd/calculadora-fletes/audit/) (`AUDIT.md`, `SCORECARD.json`, `IDEAL-TARGET.md`, `GAP-PLAN.md`). P0: schema renumber + missing Deployment + FX BROU vs `dolarapi_uy` evidence drift. Doc-only; no code changes.
+
+**2026-07-19 (ops — holistic health ABSOLUTE / sdd-kit):** Evidence snapshot across 12 areas — global readiness **82%**. Sensors: prod `/health`+`/capabilities` OK; `POST /calc/cotizar` OK (ISODEC_EPS 100mm → USD 3,046.77); `doppler … smoke:prod` **9/9** (IA gemini); `harness:score` **98.2**; `gate:local` **FAIL** (`toolStats` 42≠48); `test:api` **FAIL** (UNDECLARED `FINANZAS_MODULE_PASSWORD`); local :3001/:5173 down. Assistants `canales;ml;panelin` degraded→gemini (#610 OPEN). SDD as-built exists (`docs/sdd/calculadora-bmc/`, COMPAT PASS) — next `sdd-quality-auditor`, not reverse-engineer. Report: [`reports/PROJECT-HEALTH-SNAPSHOT-2026-07-19.md`](./reports/PROJECT-HEALTH-SNAPSHOT-2026-07-19.md). No deploy, no full team.
+
+**2026-07-19 (arch — HCS as-built audit):** Evidence audit of Harness Control System (analysis-only). `claude -p` blocked on credits → executed in Cursor. Re-verify `harness:score:report` **98.2/100** (`generated_at` 2026-07-19T08:50:51Z), DoD 12/12; `test:fitness` + `test:catalog-goldens` green; `test:agent-golden` skipped (API :3001 down). agentGolden **19** (map inventory text still 15). Path drift: map S-A-05 `scripts/live-fix-verify.sh` → `~/.claude/skills/live-fix/scripts/`. Report: [`reports/HCS-AUDIT-2026-07-19.md`](./reports/HCS-AUDIT-2026-07-19.md). No deploys, no human-gate changes, no commit unless requested.
+
+**2026-07-19 (arch — SDD as-built full system via sdd-reverse-engineer):** Bundle [`docs/sdd/calculadora-bmc/`](../sdd/calculadora-bmc/) — TARGET, SDD (12§), evidence, KB integrations, RECREATION-CHECKLIST 33/33, COMPAT PASS. Scope: SPA Vercel + API Cloud Run `panelin-calc` + calc/hub/AI/channels as observed (`/health` ok, Sheets+ML tokens). Next: `sdd-quality-auditor` on that SDD.
+
+**2026-07-19 (verify — Grok build-max re-run):** Adapted goal → `goal-prompt-panelin-chat-agent-build-max-GROK.md`. Re-verified prod SPA (Hands-free/Whisper in calc chunk; no embedded Realtime Safari banner), API `/health` ok, `wakeWord` 19/19, goldens 16–19 on disk. Handoff: `docs/team/HANDOFF-PANELIN-CHAT-BUILD-MAX-2026-07-19-GROK.md`. P2 still deferred.
 **2026-07-19 (prod — Panelin Hands-free build-max):** PR [#717](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/717) merged (`37045e0b`). Vercel **Deploy production** success. Prod SPA: no embedded “Safari…OpenAI Realtime” banner; Hands-free/Whisper markers present in calculator chunk. API `/health` ok. Smoke suggest-response 401 is pre-existing IA credentials (not this PR).
 
 **2026-07-18 (feat — Panelin chat agent build-to-max P0/P1):** Hands-free Safari gate (`isHandsFreeSupported`), wake-word `onend` exponential backoff (B-02), Firefox Whisper push-to-talk via `/api/agent/transcribe` (B-03), channel goldens 16–19 (B-07). SDD kit at [`docs/sdd/panelin-chat-agent/`](../sdd/panelin-chat-agent/); target backlog statuses in `SDD-TARGET.md` §11. P2 (OpenAPI/toolStats/circuit breaker) deferred. P0 complete only after Vercel prod UAT (no embedded Realtime Safari banner).

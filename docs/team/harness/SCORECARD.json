@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-18T02:42:08.916Z",
+  "generated_at": "2026-07-19T08:50:51.967Z",
   "composite": 98.2,
   "min_pass": 90,
   "pass": true,
@@ -65,7 +65,7 @@
       "score_0_10": 10,
       "contribution": 10,
       "notes": [
-        "agentGolden cases: 15",
+        "agentGolden cases: 19",
         "test:agent-golden script",
         "catalog goldens: 4",
         "pre-release references goldens"
@@ -153,6 +153,6 @@
       "D12": true
     }
   },
-  "agent_golden_cases": 15,
+  "agent_golden_cases": 19,
   "catalog_goldens": 4
 }
