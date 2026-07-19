@@ -156,7 +156,7 @@ sequenceDiagram
 
 | ID | Item | Priority | Owner | Status |
 |----|------|----------|-------|--------|
-| B-01 | Deploy Safari Hands-free fix to Vercel | P0 | deployment | **In progress** (PR → prod UAT) |
+| B-01 | Deploy Safari Hands-free fix to Vercel | P0 | deployment | **Done** 2026-07-19 — merged #717 → Vercel prod; SPA has no embedded Realtime Safari banner |
 | B-02 | Fix wake-word onend loops (V3) | P1 | panelin-chat | **Done** 2026-07-18 — exponential backoff + max attempts in `useHandsFreeVoice` |
 | B-03 | Whisper fallback for Firefox | P1 | panelin-chat | **Done** 2026-07-18 — push-to-talk via `/api/agent/transcribe` in `PanelinVoicePanel` |
 | B-04 | OpenAPI tools export | P2 | api-contract | **Deferred** 2026-07-18 — after P0 prod green |
