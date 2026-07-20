@@ -15,7 +15,12 @@ import { GoogleAdsApi, enums } from "google-ads-api";
 // GOOGLE-ADS-SETUP.md for credential provisioning.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const createGoogleAdsClient = ({ config, logger }) => {
+export const createGoogleAdsClient = ({
+  config,
+  logger,
+  GoogleAdsApiClass = GoogleAdsApi,
+  campaignStatus = enums.CampaignStatus,
+}) => {
   let _client = null;
 
   const assertConfig = () => {
@@ -34,7 +39,7 @@ export const createGoogleAdsClient = ({ config, logger }) => {
   const getClient = () => {
     assertConfig();
     if (!_client) {
-      _client = new GoogleAdsApi({
+      _client = new GoogleAdsApiClass({
         client_id: config.googleAdsOAuthClientId,
         client_secret: config.googleAdsOAuthClientSecret,
         developer_token: config.googleAdsDeveloperToken,
@@ -114,10 +119,10 @@ export const createGoogleAdsClient = ({ config, logger }) => {
   };
 
   const pauseCampaign = (customerId, campaignId, opts) =>
-    setCampaignStatus(customerId, campaignId, enums.CampaignStatus.PAUSED, opts);
+    setCampaignStatus(customerId, campaignId, campaignStatus.PAUSED, opts);
 
   const enableCampaign = (customerId, campaignId, opts) =>
-    setCampaignStatus(customerId, campaignId, enums.CampaignStatus.ENABLED, opts);
+    setCampaignStatus(customerId, campaignId, campaignStatus.ENABLED, opts);
 
   const updateCampaignName = async (customerId, campaignId, name, { apply = false } = {}) => {
     const campaign = await findCampaign(customerId, campaignId);
