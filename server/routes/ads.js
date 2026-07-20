@@ -24,29 +24,33 @@ const requireAds = requireServiceOrUser({ role: 'admin' });
 const router = Router();
 const googleAds = createGoogleAdsClient({ config, logger: log });
 
-export const __test__ = {
-  shouldApplyMutation(body) {
-    return body?.apply === true;
-  },
-  parseBudgetAmountMicros(body) {
-    const amountMicros = Number(body?.amount_micros);
-    if (!Number.isFinite(amountMicros) || amountMicros <= 0) {
-      const err = new Error('amount_micros must be a positive number');
-      err.status = 400;
-      throw err;
-    }
-    return amountMicros;
-  },
-  parseCampaignName(body) {
-    const name = body?.name;
-    if (!name || typeof name !== 'string' || !name.trim()) {
-      const err = new Error('name is required');
-      err.status = 400;
-      throw err;
-    }
-    return name.trim();
-  },
+const shouldApplyMutation = (body) => body?.apply === true;
+
+const parseBudgetAmountMicros = (body) => {
+  const amountMicros = Number(body?.amount_micros);
+  if (!Number.isFinite(amountMicros) || amountMicros <= 0) {
+    const err = new Error('amount_micros must be a positive number');
+    err.status = 400;
+    throw err;
+  }
+  return amountMicros;
 };
+
+const parseCampaignName = (body) => {
+  const name = body?.name;
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    const err = new Error('name is required');
+    err.status = 400;
+    throw err;
+  }
+  return name.trim();
+};
+
+export const __test__ = Object.freeze({
+  shouldApplyMutation,
+  parseBudgetAmountMicros,
+  parseCampaignName,
+});
 
 let _pool = null;
 const pool = () => {
@@ -177,7 +181,7 @@ router.get('/mcc/linked-accounts', requireAds, async (req, res) => {
 
 const mutationHandler = (action, fn) => async (req, res) => {
   const { customerId, campaignId } = req.params;
-  const apply = __test__.shouldApplyMutation(req.body);
+  const apply = shouldApplyMutation(req.body);
   try {
     const result = await fn(req, { customerId, campaignId, apply });
     audit(req, action, {
@@ -223,7 +227,7 @@ router.post(
   '/accounts/:customerId/campaigns/:campaignId/budget',
   requireAds,
   mutationHandler('ads.campaign.update_budget', (req, { customerId, campaignId, apply }) => {
-    const amountMicros = __test__.parseBudgetAmountMicros(req.body);
+    const amountMicros = parseBudgetAmountMicros(req.body);
     return googleAds.updateBudget(customerId, campaignId, amountMicros, { apply });
   }),
 );
@@ -233,7 +237,7 @@ router.post(
   '/accounts/:customerId/campaigns/:campaignId/name',
   requireAds,
   mutationHandler('ads.campaign.update_name', (req, { customerId, campaignId, apply }) => {
-    const name = __test__.parseCampaignName(req.body);
+    const name = parseCampaignName(req.body);
     return googleAds.updateCampaignName(customerId, campaignId, name, { apply });
   }),
 );
