@@ -14,6 +14,14 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-21 (feat — Panelin Workspace Fase 2 steps 5–13):** BMC-as-platform: Bearer via `POST /api/auth/dev-browser-login`; workspace routes require auth; `POST /api/workspace/change-requests/:id/approve|reject` (superadmin) → in-process `addTrainingEntry` + `bmc_kb_id`; minimal `POST /api/workspace/telemetry`. Companion UI (`~/Projects/panelin-workspace`): `bmcAuth`, HeaderBar login, HttpBmcClient SSE, ClassicChat → PATCH `sess-1`, ReviewPage API, CI Node 24, `npm run smoke:bmc`. **Does not modify** calc/agent/hub. Google OAuth + Vercel project = human leftover (ADR-006).
+
+**2026-07-21 (docs — Panelin Workspace SDD quality sync ADR-008):** Aligned `~/Projects/panelin-workspace/docs/sdd/panelin-workspace/` to DEVELOPMENT-SPEC v2.1 (no Next BFF as Postgres SoT). Re-audit composite **96/100** pass; GAP-PLAN P0 drift closed. See `audit/SCORECARD.json`.
+
+**2026-07-21 (docs — Elon deck Panelin Workspace):** Pitch deck for the agentic workspace product: [`presentations/Panelin-Workspace-Agentic-Elon.pptx`](./presentations/Panelin-Workspace-Agentic-Elon.pptx). Rebuild: `node scripts/build-panelin-workspace-elon-deck.mjs` (assets under `presentations/assets/`).
+
+**2026-07-21 (feat — Panelin Workspace BMC-as-platform steps 1–4):** Additive schema `panelin_workspace` + `npm run workspace:migrate` (`workspace-package/migrations/`). New Express router `server/routes/workspace.js` (`GET /api/workspace/health|state`, CRUD projects/sessions/files). CORS default includes `http://localhost:3000`. **Does not modify** calc/agent/hub routes. Companion UI hydrate in `~/Projects/panelin-workspace`. Spec: `panelin-workspace/docs/sdd/panelin-workspace/DEVELOPMENT-SPEC.md` v2.1 ADR-008.
+
 **2026-07-19 (prod — Panelin Hands-free build-max):** PR [#717](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/717) merged (`37045e0b`). Vercel **Deploy production** success. Prod SPA: no embedded “Safari…OpenAI Realtime” banner; Hands-free/Whisper markers present in calculator chunk. API `/health` ok. Smoke suggest-response 401 is pre-existing IA credentials (not this PR).
 
 **2026-07-18 (ops — Mission Control Package A: hygiene + PR wave):** Sense/reconcile board; shipped orphan competitive docs (#708); stopped 39 zombie Claude jobs; closed 32+ stale draft PRs; rebased conflict PRs as #709–#715 (HCS blocks force-push — superseding branches). Human gates escalated: [`BLOCKED-ESCALATION-2026-07-18.md`](../../../.claude/mission-control/BLOCKED-ESCALATION-2026-07-18.md). Cleanup log: [`housekeeping/cleanup-2026-07-18.md`](./housekeeping/cleanup-2026-07-18.md). Metalog `feat/seed-completion` pushed.

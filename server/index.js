@@ -37,6 +37,7 @@ import createTransportistaRouter from "./routes/transportista.js";
 import createWaRouter from "./routes/wa.js";
 import createTraktimeRouter from "./routes/traktime.js";
 import createBancoRouter from "./routes/banco.js";
+import createWorkspaceRouter from "./routes/workspace.js";
 import createCsrfProtection from "./middleware/csrfProtection.js";
 import createActivityRouter from "./routes/activity.js";
 import { createQuotesRouter } from "./routes/quotes.js";
@@ -1057,6 +1058,8 @@ app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
 app.use(createTraktimeRouter(config, logger));
 app.use(createBancoRouter(config, logger));
+// Panelin Workspace domain (BMC-as-platform, ADR-008) — additive only
+app.use(createWorkspaceRouter(config, logger));
 app.use(createActivityRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
