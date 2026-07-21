@@ -285,7 +285,12 @@ export const config = {
   corsOrigins: (
     process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
-      : ["https://calculadora-bmc.vercel.app", "http://localhost:5173", "http://localhost:3001"]
+      : [
+          "https://calculadora-bmc.vercel.app",
+          "http://localhost:5173",
+          "http://localhost:3001",
+          "http://localhost:3000", // panelin-workspace Next UI (ADR-008)
+        ]
   ),
   /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */
   identityJwtSecret: process.env.IDENTITY_JWT_SECRET || "",

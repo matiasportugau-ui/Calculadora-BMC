@@ -188,6 +188,7 @@
     "transportista:migrate": "node scripts/run-transportista-migrations.mjs",
     "traktime:migrate": "node scripts/run-traktime-migrations.mjs",
     "banco:migrate": "node scripts/run-banco-migrations.mjs",
+    "workspace:migrate": "node scripts/run-workspace-migrations.mjs",
     "wa:migrate": "node scripts/run-wa-migrations.mjs",
     "omni:migrate": "node scripts/omni-migrate.mjs",
     "omni:rag-precheck": "node scripts/omni-rag-precheck.mjs",
