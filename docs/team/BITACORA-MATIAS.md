@@ -225,3 +225,17 @@ gate:local:   pendiente correr al final de la sesión
 **Bloqueante (owner-gated):** #610 = Anthropic sin créditos + Grok key inválida → seam sirve Gemini. Atajo gratis: cargar key de OpenRouter (#652). Ver `HANDOFF-2026-07-08.md`.
 
 **Próximo paso:** cargar key OpenRouter (piso de AI gratis) → luego #610 (créditos + Grok) → "Reset cooldowns" en el panel. Verificar #656 en prod. task-master-ai arreglado (reiniciar Claude Code); Notion needs reauth.
+
+---
+
+## 2026-07-18 AM — Mission Control Package A (hygiene + PR wave)
+
+**Contexto:** Deep board MC Jul18 — máquina quieta pero 87 PRs / 48 jobs blocked; cross-agent reconcile confirmó Finanzas/ML/HCS ya en main.
+
+**Acciones:** #708 competitive docs merged; 39 zombie jobs stopped; 32+ stale draft PRs closed; PR wave rebased as #709–#715 (supersede conflict PRs — HCS bloquea force-push); metalog `feat/seed-completion` pushed; human gates escalados en `BLOCKED-ESCALATION-2026-07-18.md`.
+
+**Verificación:** open PRs ~30 (16 draft); #709 mergeable; cleanup log `docs/team/housekeeping/cleanup-2026-07-18.md`.
+
+**Próximo paso:** merge #709–#715 cuando CI verde; #610 créditos, #624 email H1–H4, #358 Matriz live.
+
+**Refs:** [`~/.claude/mission-control/BOARD.md`](../../../.claude/mission-control/BOARD.md), plan `mission_control_jul18_f0554a93`.
