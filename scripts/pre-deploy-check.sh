@@ -42,17 +42,21 @@ else
   echo "   ⚠️  .env.example not found"
 fi
 
-# 3. API contract validation
+# 3. API contract validation (A3 ratchet: fail hard when API is healthy)
+# Soft-skip only when health is unreachable (local API down is not a contract fail).
 echo ""
 echo "3. API contract validation"
-if command -v node >/dev/null 2>&1; then
-  if BMC_API_BASE="$BASE" node scripts/validate-api-contracts.js 2>/dev/null; then
+if ! command -v node >/dev/null 2>&1; then
+  echo "   ⚠️  Node not found, skip contract validation"
+elif ! curl -sf "$BASE/health" > /dev/null 2>&1; then
+  echo "   ⚠️  API unreachable at $BASE — skip contracts (start API or set BMC_API_BASE)"
+else
+  if BMC_API_BASE="$BASE" node scripts/validate-api-contracts.js; then
     echo "   ✅ Contracts OK"
   else
-    echo "   ⚠️  Contract validation had issues (see above)"
+    echo "   ❌ Contract validation FAILED — fix API/Sheets contracts before deploy (SDD A3)"
+    exit 1
   fi
-else
-  echo "   ⚠️  Node not found, skip contract validation"
 fi
 
 # 4. OpenAI API key audit (local .env source — fails the gate if 401)

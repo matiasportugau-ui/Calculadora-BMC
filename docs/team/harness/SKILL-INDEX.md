@@ -23,11 +23,14 @@ Coding agents must **not** load every skill into context. Use this index to pick
 | Multi-agent orchestration | `team-orchestrator` |
 | Quote pipeline / presupuestación | `presupuestacion-orchestrator` (Grok) / sheet-quote-pipeline |
 | Bank ledger Metalog | `metalog-bank-ledger` |
-| SDD architecture docs | `sdd-architect` |
+| SDD family (design / as-built / score / evolve) | `sdd-kit` → then one of: `sdd-architect`, `sdd-reverse-engineer`, `sdd-quality-auditor`, `sdd-evolution-loop` |
+| As-built system map (read first) | Bundle: `docs/sdd/calculadora-bmc/SDD.md` + `audit/ARCHITECT-IMPROVEMENTS.md` |
 | Autonomous long condition | `goal` (Grok) / set-goal |
 
 ## Load rules
 
 1. Read `AGENTS.md` + this index first.  
-2. Load full skill body only when the trigger matches.  
-3. Prefer computational sensors (`gate:local`, fitness, goldens) over extra skills.
+2. For non-trivial architecture work, open `docs/sdd/calculadora-bmc/SDD.md` (progressive sections) before loading sdd-* skills.  
+3. Load full skill body only when the trigger matches — **one** sdd-* sub-skill per task.  
+4. Prefer computational sensors (`gate:local`, fitness, goldens) over extra skills.  
+5. Product arch backlog = `ARCHITECT-IMPROVEMENTS.md` (A1–A6); GAP-PLAN = documentation gaps only.
