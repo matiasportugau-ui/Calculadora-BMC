@@ -1,6 +1,10 @@
 # Project State — BMC/Panelin
 
+<<<<<<< HEAD
 **Última actualización:** 2026-07-22
+=======
+**Última actualización:** 2026-07-19
+>>>>>>> origin/main
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -16,10 +20,27 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 **2026-07-22 (fix — Panelin Co-Work session analysis Wave 1–3):** Post-mortem sesión operador WA Web + Co-Work: informe [`reports/PANELIN-SESSION-ANALYSIS-2026-07-20.md`](./reports/PANELIN-SESSION-ANALYSIS-2026-07-20.md). **Wave 1:** prompts honestidad WA Web (JPEG only) + bloque aprendizaje Training KB; babeta desarrollo 16 cm + largo pieza ~3 m; `info` SSE → `infoNotes` (no historial); strip noise al request; Error 400 historial>60 accionable; `operatorContext.defaults` (lista venta, 1 agua, falta-info). **Wave 2:** tool agent `wa_lead_to_admin` → `POST /api/wolfboard/row-create` con `notas` (defaults + campos faltantes). **Wave 3:** SSE `provider_reset` + clear bubble/infoNotes on failover; `KEEP_RECENT` 6. SDD Co-Work non-goal WA Web automation. Tests: `chatHistoryNoise.test.js`, `coworkOperatorContext.test.js`, `wa_lead_to_admin` en `agentTools.test.js`.
 
+- **2026-07-19** — full SDD implementation run closed: `docs/sdd/calculadora-bmc/` SCORECARD **94** pass; GAP P0=0; SoT wired AGENTS/Claude/SKILL-INDEX; A3 pre-deploy contracts hard-fail + `tests/preDeployContractsRatchet.test.js` in `test:api`; `gate:local:full` **GREEN**.
+
+- **2026-07-19** — SDD as development reference: linked in `AGENTS.md` / `Claude.md` / `docs/team/harness/SKILL-INDEX.md`; A3 ratchet — `pre-deploy-check.sh` **fails** on contract validation when API health is up (soft-skip only if unreachable).
+
+- **2026-07-19** — `gate:local:full` **GREEN**: `toolStats` AGENT_TOOLS 42→48; `FINANZAS_MODULE_PASSWORD` declared in `.github/required-cloud-run-secrets.txt`. SDD v0.2 SCORECARD **94**.
+
+- **2026-07-19** — SDD kit full cycle: as-built `docs/sdd/calculadora-bmc/SDD.md` v0.2, audit SCORECARD **94** (pass≥90), GAP-PLAN P0=0, ARCHITECT-IMPROVEMENTS.md; evolution closed assistant table + day-0 bootstrap.
+
+**2026-07-19 (docs — sdd-quality-auditor Calculadora Fletes):** Audit of [`SDD-CALCULADORA-FLETES.md`](./SDD-CALCULADORA-FLETES.md) → composite **72/100** (usable, fail ≥90). Artifacts: [`docs/sdd/calculadora-fletes/audit/`](../sdd/calculadora-fletes/audit/) (`AUDIT.md`, `SCORECARD.json`, `IDEAL-TARGET.md`, `GAP-PLAN.md`). P0: schema renumber + missing Deployment + FX BROU vs `dolarapi_uy` evidence drift. Doc-only; no code changes.
+
+**2026-07-19 (ops — holistic health ABSOLUTE / sdd-kit):** Evidence snapshot across 12 areas — global readiness **82%**. Sensors: prod `/health`+`/capabilities` OK; `POST /calc/cotizar` OK (ISODEC_EPS 100mm → USD 3,046.77); `doppler … smoke:prod` **9/9** (IA gemini); `harness:score` **98.2**; `gate:local` **FAIL** (`toolStats` 42≠48); `test:api` **FAIL** (UNDECLARED `FINANZAS_MODULE_PASSWORD`); local :3001/:5173 down. Assistants `canales;ml;panelin` degraded→gemini (#610 OPEN). SDD as-built exists (`docs/sdd/calculadora-bmc/`, COMPAT PASS) — next `sdd-quality-auditor`, not reverse-engineer. Report: [`reports/PROJECT-HEALTH-SNAPSHOT-2026-07-19.md`](./reports/PROJECT-HEALTH-SNAPSHOT-2026-07-19.md). No deploy, no full team.
+
+**2026-07-19 (arch — HCS as-built audit):** Evidence audit of Harness Control System (analysis-only). `claude -p` blocked on credits → executed in Cursor. Re-verify `harness:score:report` **98.2/100** (`generated_at` 2026-07-19T08:50:51Z), DoD 12/12; `test:fitness` + `test:catalog-goldens` green; `test:agent-golden` skipped (API :3001 down). agentGolden **19** (map inventory text still 15). Path drift: map S-A-05 `scripts/live-fix-verify.sh` → `~/.claude/skills/live-fix/scripts/`. Report: [`reports/HCS-AUDIT-2026-07-19.md`](./reports/HCS-AUDIT-2026-07-19.md). No deploys, no human-gate changes, no commit unless requested.
+
+**2026-07-19 (arch — SDD as-built full system via sdd-reverse-engineer):** Bundle [`docs/sdd/calculadora-bmc/`](../sdd/calculadora-bmc/) — TARGET, SDD (12§), evidence, KB integrations, RECREATION-CHECKLIST 33/33, COMPAT PASS. Scope: SPA Vercel + API Cloud Run `panelin-calc` + calc/hub/AI/channels as observed (`/health` ok, Sheets+ML tokens). Next: `sdd-quality-auditor` on that SDD.
+
+**2026-07-19 (verify — Grok build-max re-run):** Adapted goal → `goal-prompt-panelin-chat-agent-build-max-GROK.md`. Re-verified prod SPA (Hands-free/Whisper in calc chunk; no embedded Realtime Safari banner), API `/health` ok, `wakeWord` 19/19, goldens 16–19 on disk. Handoff: `docs/team/HANDOFF-PANELIN-CHAT-BUILD-MAX-2026-07-19-GROK.md`. P2 still deferred.
+
 **2026-07-19 (prod — Panelin Hands-free build-max):** PR [#717](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/717) merged (`37045e0b`). Vercel **Deploy production** success. Prod SPA: no embedded “Safari…OpenAI Realtime” banner; Hands-free/Whisper markers present in calculator chunk. API `/health` ok. Smoke suggest-response 401 is pre-existing IA credentials (not this PR).
 
 **2026-07-18 (ops — Mission Control Package A: hygiene + PR wave):** Sense/reconcile board; shipped orphan competitive docs (#708); stopped 39 zombie Claude jobs; closed 32+ stale draft PRs; rebased conflict PRs as #709–#715 (HCS blocks force-push — superseding branches). Human gates escalated: [`BLOCKED-ESCALATION-2026-07-18.md`](../../../.claude/mission-control/BLOCKED-ESCALATION-2026-07-18.md). Cleanup log: [`housekeeping/cleanup-2026-07-18.md`](./housekeeping/cleanup-2026-07-18.md). Metalog `feat/seed-completion` pushed.
-
 **2026-07-18 (feat — Panelin chat agent build-to-max P0/P1):** Hands-free Safari gate (`isHandsFreeSupported`), wake-word `onend` exponential backoff (B-02), Firefox Whisper push-to-talk via `/api/agent/transcribe` (B-03), channel goldens 16–19 (B-07). SDD kit at [`docs/sdd/panelin-chat-agent/`](../sdd/panelin-chat-agent/); target backlog statuses in `SDD-TARGET.md` §11. P2 (OpenAPI/toolStats/circuit breaker) deferred. P0 complete only after Vercel prod UAT (no embedded Realtime Safari banner).
 
 **2026-07-18 (strategy — competitive analysis + sales plays):** Full competitive analysis + 90d sales strategy executed from `goal-prompt-full-competitive-sales-strategy.md` (Claude Code blocked on credits → Cursor). Docs: [`COMPETITIVE-ANALYSIS-FULL-2026-07-18.md`](./COMPETITIVE-ANALYSIS-FULL-2026-07-18.md), [`COMPETITIVE-SALES-STRATEGY-2026-07-18.md`](./COMPETITIVE-SALES-STRATEGY-2026-07-18.md), [`battlecards/BATTLECARDS-TIER1.md`](./battlecards/BATTLECARDS-TIER1.md). North Star proposed = WA quotes calificadas; Meta stays ATC-only until Purchase fires. Live checks: MontFrío, BECAM, TDA, Panel Sandwich Group, BMC Shopify OK; Bromyros/Eco/Casa del Panel fetch gaps. No price/ads mutations.
@@ -53,8 +74,6 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 **2026-07-17 (feat — Cotizar flete en wizard):** SDD [`SDD-CALCULADORA-FLETES.md`](./SDD-CALCULADORA-FLETES.md) + implementación: `TARIFAS_LOGISTICAS` en [`src/data/constants.js`](../../src/data/constants.js), empaque [`src/utils/logistica/cargoPacking.js`](../../src/utils/logistica/cargoPacking.js), engine [`src/utils/fleteEngine.js`](../../src/utils/fleteEngine.js) + FX [`src/utils/brouFx.js`](../../src/utils/brouFx.js), UI paso Flete **Cotizar flete** ([`FleteCotizarPanel.jsx`](../../src/components/FleteCotizarPanel.jsx)). Tests `tests/fleteEngine.test.js` en `test:core`. PDF sigue solo «Flete — USD X».
 
 **2026-07-17 (feat — Finanzas module password gate):** Segunda capa de acceso al hub **Finanzas** además de OAuth + grant `banco`. Backend: [`server/lib/finanzasUnlock.js`](../../server/lib/finanzasUnlock.js), rutas `GET/POST /api/banco/unlock-status|unlock|lock`, columna `identity.sessions.finanzas_unlocked_until` (migración `20260717000001`), middleware `finLocked` en rutas de datos `/api/banco/*`. Frontend: [`FinanzasUnlockGate.jsx`](../../src/components/hub/finanzas/FinanzasUnlockGate.jsx) en `App.jsx`; re-lock si API devuelve `finanzas_locked` (TTL 12h; bypass local dev + superadmin). Secreto: `FINANZAS_MODULE_PASSWORD` en Doppler — nunca en git. SDD v1.0: [`SDD-finanzas-hub.md`](./SDD-finanzas-hub.md). Tests: `tests/finanzas-unlock.test.js`. **PROD (confirmado via PR #694 → `main`):** Doppler `bmc-backend/prd` + GSM secret montado en Cloud Run (`FINANZAS_UNLOCK_TTL_HOURS=12`); migración aplicada; API + Vercel frontend deployed. UAT manual restante: login con grant `banco` en [`/hub/finanzas`](https://calculadora-bmc.vercel.app/hub/finanzas) → unlock → Banco/Cash Flow.
-
-**2026-07-19 (prod — Panelin Hands-free build-max):** PR [#717](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/717) merged (`37045e0b`). Vercel **Deploy production** success. Prod SPA: no embedded “Safari…OpenAI Realtime” banner; Hands-free/Whisper markers present in calculator chunk. API `/health` ok. Smoke suggest-response 401 is pre-existing IA credentials (not this PR).
 
 **2026-07-16 (ops — WA improvement batch → Cloud Run prod KB):** `panelin:train:import` contra `https://panelin-calc-q74zutv7dq-uc.a.run.app` — **88 ok / 0 fail** (`import-improvement.json`, process-first, 0 U$S históricos). Verificado: `GET /api/agent/training-kb/match?q=Quiero cotizar un techo de 11x7` → match seed; list ~88 entradas WA. Persistencia GCS Training KB en Cloud Run. Report: `~/whatsapp-export/review/REPORT-2026-07-16-improvement.md`.
 

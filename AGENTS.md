@@ -1,7 +1,8 @@
 # AGENTS.md — Calculadora BMC / Panelin Dashboard
 
 Single Vite SPA (React 18) + Express 5 API + Postgres. State: `docs/team/PROJECT-STATE.md`.  
-**Harness Control System:** `docs/team/harness/README.md` · map · score · PEV.
+**Harness Control System:** `docs/team/harness/README.md` · map · score · PEV.  
+**Architecture SoT (as-built SDD):** `docs/sdd/calculadora-bmc/SDD.md` (score ≥90) · product backlog: `docs/sdd/calculadora-bmc/audit/ARCHITECT-IMPROVEMENTS.md` (A1–A6) · do **not** treat `audit/GAP-PLAN.md` as product backlog (docs only).
 
 ## Quick Start
 
@@ -29,6 +30,7 @@ Single Vite SPA (React 18) + Express 5 API + Postgres. State: `docs/team/PROJECT
 
 ## Architecture hotspots
 
+- System map / ADRs / risks: **`docs/sdd/calculadora-bmc/SDD.md`** (§5 containers, §6 AI, §8 deploy, §10 ADRs, §11 risks)
 - `server/index.js` mounts `/api`; calc in `routes/calc.js`
 - AI: `server/lib/agentCore.js` + `assistantRegistry.js` + `costTelemetry.js`
 - Calculator UI: `src/components/PanelinCalculadoraV3_backup.jsx` (canonical)
@@ -43,6 +45,9 @@ Single Vite SPA (React 18) + Express 5 API + Postgres. State: `docs/team/PROJECT
 
 ## Before non-trivial work
 
-1. `docs/team/PROJECT-STATE.md`  
+1. `docs/team/PROJECT-STATE.md` (Cambios recientes)  
 2. This file + `docs/team/harness/HARNESS-MAP.md`  
-3. Role knowledge under `docs/team/knowledge/` if applicable  
+3. **`docs/sdd/calculadora-bmc/SDD.md`** — at least §2 scope, §5 containers, §10 ADRs, §11 risks (progressive: only sections needed for the task)  
+4. Role knowledge under `docs/team/knowledge/` if applicable  
+
+**After topology/ADR change:** patch the SDD (or open a gap in `audit/GAP-PLAN.md`) in the same session; re-score with sdd-quality-auditor only after large structural changes. Sensors (`gate:local`, `smoke:prod`) still prove correctness — SDD does not replace them.

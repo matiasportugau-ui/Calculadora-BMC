@@ -113,10 +113,11 @@ All prices are **without IVA**; 22% IVA is applied once at the total via `calcTo
 
 1. `docs/team/PROJECT-STATE.md` — **canonical** live state, recent changes, pending items.
 2. `AGENTS.md` — full command catalogue and operational procedures.
-3. `docs/team/knowledge/<role>.md` if your task maps to a defined agent role.
-4. `docs/google-sheets-module/README.md` for any Sheets/CRM change (mapping canon in `MAPPER-PRECISO-PLANILLAS-CODIGO.md`).
+3. **`docs/sdd/calculadora-bmc/SDD.md`** — as-built architecture SoT (C4, ADRs, AI, deploy, risks). Product backlog: `docs/sdd/calculadora-bmc/audit/ARCHITECT-IMPROVEMENTS.md`. Progressive: only load sections needed for the task.
+4. `docs/team/knowledge/<role>.md` if your task maps to a defined agent role.
+5. `docs/google-sheets-module/README.md` for any Sheets/CRM change (mapping canon in `MAPPER-PRECISO-PLANILLAS-CODIGO.md`).
 
-When you finish a task that changes behavior, append a line under "Cambios recientes" in `docs/team/PROJECT-STATE.md`.
+When you finish a task that changes behavior, append a line under "Cambios recientes" in `docs/team/PROJECT-STATE.md`. If the change alters topology, ADRs, or external interfaces, patch the SDD (or note a gap) in the same session.
 
 ## Deployment
 
