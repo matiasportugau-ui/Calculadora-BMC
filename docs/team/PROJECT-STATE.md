@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-22 (feat — Panelin Co-Work desk window PR-G):** Route `/panelin/cowork` minimal shell (`PanelinCoWorkPage`) with chat + CoWork toolbar; **Abrir en ventana** opens named popup `panelin-cowork` (default ~420×720, size remembered); `BroadcastChannel('bmc-panelin-cowork-v1')` syncs `calcState` parent→desk and `chatAction` desk→parent. Operator-facing (no longer dev-only). Tests `tests/openPanelinCoworkDesk.test.js`. SDD-PANELIN-COWORK PR-G Done. PR-H Document-PiP still deferred.
+
 **2026-07-22 (fix — CI apt hardening for easymidi on ubuntu-latest):** PR [#726](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/726) merged — `scripts/ci-install-alsa-dev.sh` strips flaky Google Chrome apt sources before `apt-get update` so Lint/Validate no longer fail on mirror hash mismatches when only `libasound2-dev` is needed. Wired in `ci.yml`, `cockpit-e2e-writes.yml`, `product-docs.yml`.
 
 **2026-07-22 (ops — github-pendings clearance):** Merged active PRs [#713](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/713) PDF export fidelity, [#712](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/712) EstadoConsultasLive, [#720](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/720) SDD harness; Dependabot [#723](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/723) setup-node v7. Closed risky majors (#506 ESLint 10, #508 React 19, #551 dev-deps group, #678 react-resizable-panels v4) and 29 stale CONFLICTING PRs. Master prompt: `goal-prompt-github-pendings-clearance.md`.
