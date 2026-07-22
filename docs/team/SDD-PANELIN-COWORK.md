@@ -824,7 +824,7 @@ Reject any tool call with spreadsheetId outside allowlist.
 | PR-D | Frontend capture module + Panelin wire |
 | PR-E | Admin Ingreso wire + polish confirm UX |
 | PR-F | Write proposal path + tests + PROJECT-STATE |
-| PR-G | Desk window: `/panelin/cowork` + pop-out polish + BroadcastChannel |
+| PR-G | Desk window: `/panelin/cowork` + pop-out polish + BroadcastChannel | **Done** 2026-07-22 — route + named window `panelin-cowork` + `bmc-panelin-cowork-v1` calcState/action bus |
 | PR-H | Document-PiP “Fijar arriba” shared helper |
 
 ---

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-19
+**Última actualización:** 2026-07-22
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-22 (feat — Panelin Co-Work desk window PR-G):** Route `/panelin/cowork` minimal shell (`PanelinCoWorkPage`) with chat + CoWork toolbar; **Abrir en ventana** opens named popup `panelin-cowork` (default ~420×720, size remembered); `BroadcastChannel('bmc-panelin-cowork-v1')` syncs `calcState` parent→desk and `chatAction` desk→parent. Operator-facing (no longer dev-only). Tests `tests/openPanelinCoworkDesk.test.js`. SDD-PANELIN-COWORK PR-G Done. PR-H Document-PiP still deferred.
+
 
 **2026-07-22 (fix — Panelin Co-Work session analysis Wave 1–3):** Post-mortem sesión operador WA Web + Co-Work: informe [`reports/PANELIN-SESSION-ANALYSIS-2026-07-20.md`](./reports/PANELIN-SESSION-ANALYSIS-2026-07-20.md). **Wave 1:** prompts honestidad WA Web (JPEG only) + bloque aprendizaje Training KB; babeta desarrollo 16 cm + largo pieza ~3 m; `info` SSE → `infoNotes` (no historial); strip noise al request; Error 400 historial>60 accionable; `operatorContext.defaults` (lista venta, 1 agua, falta-info). **Wave 2:** tool agent `wa_lead_to_admin` → `POST /api/wolfboard/row-create` con `notas` (defaults + campos faltantes). **Wave 3:** SSE `provider_reset` + clear bubble/infoNotes on failover; `KEEP_RECENT` 6. SDD Co-Work non-goal WA Web automation. Tests: `chatHistoryNoise.test.js`, `coworkOperatorContext.test.js`, `wa_lead_to_admin` en `agentTools.test.js`.
 

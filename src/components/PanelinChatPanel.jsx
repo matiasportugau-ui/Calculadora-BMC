@@ -931,11 +931,11 @@ export default function PanelinChatPanel({
               DEV
             </button>
           )}
-          {devMode && onOpenDetachedWindow && (
+          {onOpenDetachedWindow && !detachedMode && (
             <button
               data-no-drag
               onClick={onOpenDetachedWindow}
-              title="Abrir en ventana separada"
+              title="Abrir Panelin Co-Work en ventana (sobre planillas)"
               style={{
                 ...ghostBtn,
                 border: "1px solid rgba(255,255,255,0.35)",
@@ -945,7 +945,7 @@ export default function PanelinChatPanel({
                 color: "#fff",
                 background: "transparent",
               }}
-              aria-label="Abrir en ventana separada"
+              aria-label="Abrir en ventana Co-Work"
             >
               Ventana
             </button>
