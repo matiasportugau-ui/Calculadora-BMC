@@ -2,7 +2,7 @@
 
 Coding agents must **not** load every skill into context. Use this index to pick 1–3 skills per task.
 
-## Repo-local (`.claude/skills`, `.agents/skills`)
+## Repo-local (`.claude/skills`, `.agents/skills`, `.cursor/skills`)
 
 | Trigger | Skill | Path |
 |---------|-------|------|
@@ -10,6 +10,9 @@ Coding agents must **not** load every skill into context. Use this index to pick
 | Applied AI UI look | applied-ai-design | `.claude/skills/applied-ai-design/SKILL.md` |
 | Remotion video | remotion-best-practices | `.agents/skills/remotion-best-practices/SKILL.md` |
 | Failure → permanent harness fix | harness-ratchet | `.claude/skills/harness-ratchet/SKILL.md` |
+| Co-Work / Admin / Gmail OCR / wa_lead | panelin-cowork | `.cursor/skills/panelin-cowork/SKILL.md` |
+| Panelin chat UI + Training KB | bmc-panelin-chat (agent) | `.claude/agents/bmc-panelin-chat.md` |
+| Panelin-Gym / train / gold runs | panelin-gym | `.cursor/skills/panelin-gym/SKILL.md` |
 
 ## Workspace (`~/.claude/skills`) — high leverage for BMC
 

@@ -27,7 +27,7 @@ Realtime voice:   UI → useVoiceSession → POST /api/agent/voice/session → W
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| POST | `/api/agent/chat` | optional / rate-limited | SSE: `text`, `tool_call`, `action`, `info`, `error`, `done` |
+| POST | `/api/agent/chat` | optional / rate-limited | SSE: `text`, `tool_call`, `action`, `info`→UI `infoNotes`, `provider_reset`, `error`, `done` |
 | POST | `/api/agent/voice/session` | as configured | Mint ephemeral Realtime `client_secret` |
 | POST | `/api/agent/voice/action` | as configured | Validate function-call from Realtime |
 | GET | `/api/agent/voice/health` | requireAuth | Key usability + recent errors |
@@ -65,6 +65,12 @@ Live checklist: see canvas review / PROJECT-STATE; Chrome for Realtime; Safari+C
 - `voice/health` and error buffers require auth.
 - Write tools stay behind confirmation / grants (see agent tools + identity).
 
-## 8. Change log
+## 8. Co-Work / Admin (Wave 1–4)
+
+- Skill: [`.cursor/skills/panelin-cowork/SKILL.md`](../../.cursor/skills/panelin-cowork/SKILL.md)
+- Session analysis: [`reports/PANELIN-SESSION-ANALYSIS-2026-07-20.md`](./reports/PANELIN-SESSION-ANALYSIS-2026-07-20.md)
+- Tools: `wa_lead_to_admin`, email draft/summary, `listar_cotizaciones_recientes` date bounds; ACTION_JSON remap for `aplicar_estado_calc`
+
+## 9. Change log
 
 Append product-affecting voice/chat changes under **Cambios recientes** in [`PROJECT-STATE.md`](./PROJECT-STATE.md).

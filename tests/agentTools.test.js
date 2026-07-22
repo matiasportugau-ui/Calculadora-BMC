@@ -134,6 +134,8 @@ group("AGENT_TOOLS surface", () => {
     "wolfboard_marcar_enviado",
     "wolfboard_quote_batch",
     "list_bug_reports",
+    "email_panelsim_resumen",
+    "email_borrador_saliente",
     "traktime_timer_current",
     "traktime_timer_start",
     "traktime_timer_stop",
@@ -832,6 +834,65 @@ await group("unknown tool", async () => {
   assert(parsed.error && parsed.error.includes("no implementada"), "unknown tool returns no-implementada error");
 });
 
+await group("wa_lead_to_admin — requires user_confirmed", async () => {
+  const { parsed } = await run("wa_lead_to_admin", { consulta: "Babeta galpon" });
+  assert(parsed.ok === false, "must reject without user_confirmed");
+});
+
+await group("email_borrador_saliente — hechos required", async () => {
+  const { parsed } = await run("email_borrador_saliente", { hechos: "ab" });
+  assert(parsed.ok === false, "short hechos rejected");
+});
+
+await group("buildAplicarActions / normalizeTipoAguas", async () => {
+  const { buildAplicarActions, normalizeTipoAguas } = await import("../server/lib/agentTools.js");
+  assert(normalizeTipoAguas(1) === "una_agua", "1 → una_agua");
+  assert(normalizeTipoAguas("dos aguas") === "dos_aguas", "dos aguas → dos_aguas");
+  const acts = buildAplicarActions(
+    { techo: { tipoAguas: "1", familia: "ISODEC_EPS" } },
+    { defaults: { aguasTecho: 1 } },
+  );
+  const setTecho = acts.find((a) => a.type === "setTecho");
+  assert(setTecho?.payload?.tipoAguas === "una_agua", "remap tipoAguas on setTecho");
+  const remapped = buildAplicarActions({ type: "aplicar_estado_calc", techo: { tipoAguas: "una_agua" } });
+  assert(remapped.some((a) => a.type === "setTecho"), "top-level techo from ACTION_JSON shape");
+});
+
+await group("listar_cotizaciones_recientes — date filter", async () => {
+  const { registerQuotation, listQuotations } = await import("../server/lib/quoteRegistry.js");
+  const id = `test-jul-${Date.now()}`;
+  const { entry } = await registerQuotation({
+    pdfId: id,
+    code: "TJUL",
+    client: "Wave4DateFilter",
+    scenario: "solo_techo",
+    total: 100,
+    lista: "venta",
+    pdfUrl: "https://example.com/x.pdf",
+  });
+  // Keep createdAt recent so in-memory TTL prune (24h) does not drop the fixture.
+  entry.createdAt = Date.now() - 60_000;
+  const d = new Date(entry.createdAt);
+  const y = d.getUTCFullYear();
+  const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const monthStart = `${y}-${mo}-01`;
+  const monthEnd = `${y}-${mo}-28`;
+  const inMonth = await listQuotations({
+    limit: 50,
+    cliente: "Wave4DateFilter",
+    desde: monthStart,
+    hasta: monthEnd,
+  });
+  assert(inMonth.some((e) => e.id === id), "month filter includes fixture");
+  const otherMonth = await listQuotations({
+    limit: 50,
+    cliente: "Wave4DateFilter",
+    desde: "2020-01-01",
+    hasta: "2020-01-31",
+  });
+  assert(!otherMonth.some((e) => e.id === id), "other month excludes fixture");
+});
+
 // ── Summary ──────────────────────────────────────────────────────────────────
 
 console.log(`\n${"═".repeat(60)}`);
@@ -840,8 +901,3 @@ console.log("═".repeat(60));
 if (failures > 0) {
   process.exit(1);
 }
-
-await group("wa_lead_to_admin — requires user_confirmed", async () => {
-  const { parsed } = await run("wa_lead_to_admin", { consulta: "Babeta galpon" });
-  assert(parsed.ok === false, "must reject without user_confirmed");
-});

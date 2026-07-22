@@ -10,4 +10,5 @@ const b = formatOperatorContextBlock({
 });
 assert.match(b, /wa_lead_to_admin/);
 assert.match(b, /venta/);
+assert.match(b, /tipoAguas/);
 console.log("coworkOperatorContext.test.js OK");

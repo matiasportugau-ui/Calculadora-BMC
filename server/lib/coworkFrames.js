@@ -263,7 +263,10 @@ export function formatOperatorContextBlock(operatorContext) {
   if (d) {
     lines.push("- Defaults operador (usá salvo corrección explícita):");
     if (d.listaPrecios) lines.push(`  · Lista precios: ${d.listaPrecios}`);
-    if (d.aguasTecho != null) lines.push(`  · Aguas techo: ${d.aguasTecho}`);
+    if (d.aguasTecho != null) {
+      const tipo = Number(d.aguasTecho) === 2 ? "dos_aguas" : "una_agua";
+      lines.push(`  · Aguas techo: ${d.aguasTecho} → tipoAguas "${tipo}" (usar en aplicar_estado_calc / setTecho)`);
+    }
     if (d.crmFaltaInfoPrefix) lines.push(`  · Prefijo falta-info CRM: "${d.crmFaltaInfoPrefix}"`);
     lines.push("  · Lead WA sin fila Admin → `wa_lead_to_admin` (no inventes rowNum).");
   }

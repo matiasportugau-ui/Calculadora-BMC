@@ -85,6 +85,7 @@ A second UX gap: if Panelin only lives **inside** the calculadora window, the op
 - Continuous WebRTC video streaming to the model  
 - Agent controlling mouse/keyboard  
 - **Automating WhatsApp Web** (open chats, click, type, add contacts) — Co-Work is JPEG context only; WA actions use Cloud API / Omni  
+- **Typing into Gemini sidebar / Gmail DOM** — JPEG OCR + `email_*` draft/summary tools only; no send from Panelin chat  
 - Public anonymous screen share  
 - Reading personal Drive files outside BMC service-account workbooks  
 - Unattended bulk sheet rewrites  

@@ -42,7 +42,7 @@ import {
 import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET } from "../lib/tokenEstimator.js";
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
-import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
+import { AGENT_TOOLS, executeTool, buildAplicarActions } from "../lib/agentTools.js";
 import { toGeminiTools, toGeminiResponse } from "../lib/geminiTools.js";
 import { getToolStatsAsync } from "../lib/toolStats.js";
 import { buildAgentToolsOpenApi, toYaml } from "../lib/agentToolsOpenApi.js";
@@ -251,6 +251,9 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_actualizar_fila",
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
+  // Email cockpit (draft / PANELSIM summary — no send)
+  "email_panelsim_resumen",
+  "email_borrador_saliente",
   // Co-Work Sheets — Admin/CRM PII and writes (allowlisted service-account sheets)
   // Reads are open on SPA chat (TOOLS_OPEN_IN_PUBLIC_CHAT); writes stay gated.
   "sheets_list_tabs",
@@ -742,6 +745,27 @@ router.post("/agent/chat", async (req, res) => {
     }
   }
 
+  /**
+   * Handle a parsed ACTION_JSON object: emit allow-listed UI actions,
+   * remap aplicar_estado_calc → buildAplicarActions, drop unknown types (no leak).
+   */
+  function handleParsedActionJson(action) {
+    if (!action || typeof action !== "object") return;
+    if (action.type === "aplicar_estado_calc") {
+      const parts = buildAplicarActions(action, rawOperatorContext || null);
+      for (const a of parts) emitAction(a);
+      if (parts.length === 0) {
+        req.log?.warn({ action }, "ACTION_JSON aplicar_estado_calc produced no actions");
+      }
+      return;
+    }
+    if (VALID_ACTION_TYPES.has(action.type)) {
+      emitAction(action);
+      return;
+    }
+    req.log?.warn({ type: action.type }, "ACTION_JSON unknown type dropped (not leaked to client)");
+  }
+
   /** Process buffered text: emit text events, extract ACTION_JSON / SUGGEST_JSON directives. Returns leftover tail. */
   function flushLines(buf) {
     const lines = buf.split("\n");
@@ -751,13 +775,9 @@ router.post("/agent/chat", async (req, res) => {
       if (trimmed.startsWith("ACTION_JSON:")) {
         try {
           const action = JSON.parse(trimmed.slice("ACTION_JSON:".length).trim());
-          if (VALID_ACTION_TYPES.has(action.type)) {
-            emitAction(action);
-          } else {
-            send({ type: "text", delta: line + "\n" });
-          }
+          handleParsedActionJson(action);
         } catch {
-          if (line) send({ type: "text", delta: line + "\n" });
+          req.log?.warn("ACTION_JSON malformed line dropped");
         }
       } else if (trimmed.startsWith("SUGGEST_JSON:")) {
         try {
@@ -781,13 +801,9 @@ router.post("/agent/chat", async (req, res) => {
     if (trimmed.startsWith("ACTION_JSON:")) {
       try {
         const action = JSON.parse(trimmed.slice("ACTION_JSON:".length).trim());
-        if (VALID_ACTION_TYPES.has(action.type)) {
-          emitAction(action);
-        } else {
-          send({ type: "text", delta: trimmed });
-        }
+        handleParsedActionJson(action);
       } catch {
-        send({ type: "text", delta: trimmed });
+        req.log?.warn("ACTION_JSON malformed tail dropped");
       }
     } else if (trimmed.startsWith("SUGGEST_JSON:")) {
       try {
@@ -1160,7 +1176,7 @@ router.post("/agent/chat", async (req, res) => {
               continue;
             }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null });
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null, operatorContext: rawOperatorContext });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
 
@@ -1294,7 +1310,7 @@ router.post("/agent/chat", async (req, res) => {
               continue;
             }
             send({ type: "tool_call", tool: c.name, input: toolInput });
-            const result2 = await executeTool(c.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null });
+            const result2 = await executeTool(c.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null, operatorContext: rawOperatorContext });
             req.log?.info({ tool: c.name, input: toolInput }, "agent tool executed (gemini)");
             responseParts.push({ functionResponse: { name: c.name, response: toGeminiResponse(result2) } });
 

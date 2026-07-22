@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { stripHistoryNoise, buildAgentChatRequestBody } from "../src/hooks/useChat.js";
+import {
+  stripHistoryNoise,
+  buildAgentChatRequestBody,
+  isRoutineInfoNote,
+} from "../src/hooks/useChat.js";
 import { mapErrorMessage } from "../src/utils/chatErrors.js";
 
 assert.equal(
@@ -19,5 +23,9 @@ assert.equal(body.messages[0].content, "ok");
 
 const err400 = { _status: 400, _serverMessage: "Historial demasiado largo (máx. 60 mensajes)." };
 assert.match(mapErrorMessage(err400), /Limpiar chat/i);
+
+assert.equal(isRoutineInfoNote("Usando gemini…"), true);
+assert.equal(isRoutineInfoNote("Se truncó el historial para mantener la calidad de la respuesta."), true);
+assert.equal(isRoutineInfoNote("Sheets no disponible — reintentá."), false);
 
 console.log("chatHistoryNoise.test.js OK");
