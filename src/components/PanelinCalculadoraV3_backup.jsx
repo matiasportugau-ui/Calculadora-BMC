@@ -131,7 +131,7 @@ import FleteCotizarPanel from "./FleteCotizarPanel.jsx";
 import { useChat } from "../hooks/useChat.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
-import { openPanelinCoworkDesk } from "../utils/openPanelinCoworkDesk.js";
+import { openPanelinCoworkDesk, openPanelinCoworkPinned } from "../utils/openPanelinCoworkDesk.js";
 import { COWORK_MSG, onPanelinCoworkMessage, postCalcState } from "../utils/panelinCoworkChannel.js";
 import PanelinFloatingChatShell, {
   createFloatingDragHandler,
@@ -2873,6 +2873,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     postCalcState(calcState);
   }, [calcState]);
 
+  /** PR-H: Document PiP (iframe desk) or popup fallback. */
+  const openPinnedChatWindow = useCallback(async () => {
+    postCalcState(calcState);
+    await openPanelinCoworkPinned();
+    postCalcState(calcState);
+  }, [calcState]);
+
   // Publish calcState to desk window + apply chat actions coming from desk.
   useEffect(() => {
     postCalcState(calcState);
@@ -2929,6 +2936,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     onChatAction: handleChatAction,
     authHeader: panelinChatAuthHeader,
     onOpenDetachedWindow: openDetachedChatWindow,
+    onOpenPinnedWindow: openPinnedChatWindow,
   }), [
     chat.messages,
     chat.isStreaming,
@@ -2960,6 +2968,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     handleChatAction,
     panelinChatAuthHeader,
     openDetachedChatWindow,
+    openPinnedChatWindow,
   ]);
 
   // Section refs for auto-scroll

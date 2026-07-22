@@ -1,8 +1,9 @@
 /**
  * Panelin Co-Work desk shell — minimal chrome at /panelin/cowork.
- * SDD-PANELIN-COWORK §10.4 Mode D: full chat + CoWork toolbar without calculator chrome.
+ * SDD-PANELIN-COWORK §10.4 Mode D + PR-H Document-PiP “Fijar arriba”.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useBmcAuthContext } from "../contexts/bmcAuthContext.js";
 import { useChat } from "../hooks/useChat.js";
@@ -11,15 +12,29 @@ import {
   onPanelinCoworkMessage,
   postPanelinCoworkMessage,
 } from "../utils/panelinCoworkChannel.js";
-import { persistDeskSize } from "../utils/openPanelinCoworkDesk.js";
+import { persistDeskSize, readStoredDeskSize } from "../utils/openPanelinCoworkDesk.js";
+import { isDocumentPipSupported, openDocumentPipWindow } from "../utils/openDocumentPip.js";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
 
 const EMPTY_CALC = {};
+
+const headerBtn = {
+  border: "1px solid rgba(255,255,255,0.35)",
+  background: "transparent",
+  color: "#fff",
+  borderRadius: 999,
+  padding: "6px 12px",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+};
 
 export default function PanelinCoWorkPage() {
   const bmcAuth = useBmcAuthContext();
   const [calcState, setCalcState] = useState(EMPTY_CALC);
   const [parentOnline, setParentOnline] = useState(false);
+  const [pipWindow, setPipWindow] = useState(null);
+  const pipSupported = isDocumentPipSupported();
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -70,7 +85,6 @@ export default function PanelinCoWorkPage() {
 
   const handleChatAction = useCallback((action) => {
     if (!action?.type) return;
-    // Forward to parent calculadora so state stays single-source.
     postPanelinCoworkMessage({ type: COWORK_MSG.CHAT_ACTION, payload: action });
   }, []);
 
@@ -95,27 +109,49 @@ export default function PanelinCoWorkPage() {
     } catch {
       /* ignore */
     }
-    // Fallback: open main SPA in this window's opener chain is gone.
     window.location.href = "/";
   }, []);
 
   const onClose = useCallback(() => {
+    if (pipWindow) {
+      try {
+        pipWindow.close();
+      } catch {
+        /* ignore */
+      }
+      setPipWindow(null);
+      return;
+    }
     try {
       window.close();
     } catch {
       /* ignore */
     }
-    // If browser blocks close (not script-opened), go home.
     setTimeout(() => {
       if (!window.closed) window.location.href = "/";
     }, 150);
-  }, []);
+  }, [pipWindow]);
 
-  return (
+  /** PR-H: portal desk UI into Document PiP when available (Chrome). */
+  const handlePinTop = useCallback(async () => {
+    if (pipWindow) return;
+    const size = readStoredDeskSize();
+    const pip = await openDocumentPipWindow({
+      width: size.width,
+      height: size.height,
+      mirrorStyles: true,
+    });
+    if (pip?.window) {
+      pip.window.addEventListener("pagehide", () => setPipWindow(null), { once: true });
+      setPipWindow(pip.window);
+    }
+  }, [pipWindow]);
+
+  const shell = (
     <div
       style={{
-        minHeight: "100vh",
-        height: "100vh",
+        minHeight: "100%",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         background: "#0f172a",
@@ -138,26 +174,26 @@ export default function PanelinCoWorkPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
           <strong style={{ fontSize: 14, letterSpacing: 0.2 }}>Panelin · Co-Work</strong>
           <span style={{ fontSize: 11, opacity: 0.75 }}>
-            {parentOnline
-              ? "Calculadora conectada (calcState en vivo)"
-              : "Esperando calculadora — abrí desde «Abrir en ventana» o trabajá solo con planillas"}
+            {pipWindow
+              ? "Fijado arriba (Document PiP)"
+              : parentOnline
+                ? "Calculadora conectada (calcState en vivo)"
+                : "Esperando calculadora — abrí desde «Abrir en ventana» o trabajá solo con planillas"}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={focusParent}
-            style={{
-              border: "1px solid rgba(255,255,255,0.35)",
-              background: "transparent",
-              color: "#fff",
-              borderRadius: 999,
-              padding: "6px 12px",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
+          {pipSupported && !pipWindow && (
+            <button
+              type="button"
+              onClick={handlePinTop}
+              style={headerBtn}
+              title="Fijar arriba (Picture-in-Picture sobre el navegador)"
+              aria-label="Fijar arriba"
+            >
+              Fijar arriba
+            </button>
+          )}
+          <button type="button" onClick={focusParent} style={headerBtn}>
             Volver a calculadora
           </button>
           <Link
@@ -197,6 +233,37 @@ export default function PanelinCoWorkPage() {
           onLoadConversationAnalysis={chat.loadConversationAnalysis}
         />
       </div>
+    </div>
+  );
+
+  // Host page keeps full viewport when not in PiP; PiP gets the portal.
+  if (pipWindow?.document?.body) {
+    return (
+      <>
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#0f172a",
+            color: "#94a3b8",
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            fontSize: 13,
+            padding: 24,
+            textAlign: "center",
+          }}
+        >
+          Panelin Co-Work está fijado arriba. Cerrá la ventana PiP para volver acá.
+        </div>
+        {createPortal(shell, pipWindow.document.body)}
+      </>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", height: "100vh" }}>
+      {shell}
     </div>
   );
 }
