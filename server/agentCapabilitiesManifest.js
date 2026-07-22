@@ -74,6 +74,7 @@ export function buildAgentCapabilitiesManifest(config) {
     canonical: {
       gpt_entry_point: `${base}/calc/gpt-entry-point`,
       openapi_yaml: `${base}/calc/openapi`,
+      agent_tools_openapi: `${base}/api/agent/tools/openapi`,
       informe: `${base}/calc/informe`,
       catalogo: `${base}/calc/catalogo`,
       escenarios: `${base}/calc/escenarios`,

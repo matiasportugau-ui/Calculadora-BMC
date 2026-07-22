@@ -159,7 +159,7 @@ sequenceDiagram
 | B-01 | Deploy Safari Hands-free fix to Vercel | P0 | deployment | **Done** 2026-07-19 — merged #717 → Vercel prod; SPA has no embedded Realtime Safari banner |
 | B-02 | Fix wake-word onend loops (V3) | P1 | panelin-chat | **Done** 2026-07-18 — exponential backoff + max attempts in `useHandsFreeVoice` |
 | B-03 | Whisper fallback for Firefox | P1 | panelin-chat | **Done** 2026-07-18 — push-to-talk via `/api/agent/transcribe` in `PanelinVoicePanel` |
-| B-04 | OpenAPI tools export | P2 | api-contract | **Deferred** 2026-07-18 — after P0 prod green |
+| B-04 | OpenAPI tools export | P2 | api-contract | **Done** 2026-07-22 — `GET /api/agent/tools/openapi` + `buildAgentToolsOpenApi` from AGENT_TOOLS |
 | B-05 | Persist toolStats | P2 | platform | **Deferred** 2026-07-18 — after P0 prod green |
 | B-06 | Provider circuit breaker | P2 | agentCore | **Deferred** 2026-07-18 — after P0 prod green |
 | B-07 | Channel golden packs | P1 | harness | **Done** 2026-07-18 — cases 16–19 (+ existing 05/12) for chat/WA/ML/email |
