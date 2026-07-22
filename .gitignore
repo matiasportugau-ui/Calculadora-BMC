@@ -109,6 +109,10 @@ docs/team/ux-feedback/sessions/**/extracted/**
 
 # AUTOTRACE (Python helpers)
 tools/release-traceability/scripts/__pycache__/
+**/__pycache__/
+*.pyc
+.worktrees/
+recovered/
 
 # Accessible Base — local Sheets snapshots (auto-generated, not versioned except manifest)
 .accessible-base/*.json
