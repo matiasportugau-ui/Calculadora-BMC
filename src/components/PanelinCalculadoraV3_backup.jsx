@@ -131,6 +131,8 @@ import FleteCotizarPanel from "./FleteCotizarPanel.jsx";
 import { useChat } from "../hooks/useChat.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
+import { openPanelinCoworkDesk } from "../utils/openPanelinCoworkDesk.js";
+import { COWORK_MSG, onPanelinCoworkMessage, postCalcState } from "../utils/panelinCoworkChannel.js";
 import PanelinFloatingChatShell, {
   createFloatingDragHandler,
   readDefaultFloatingRect,
@@ -2865,16 +2867,27 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   ), [devMode, devAuthToken, bmcAuth?.accessToken]);
 
   const openDetachedChatWindow = useCallback(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("chat", "1");
-    url.searchParams.set("panelinDetached", "1");
-    window.open(
-      url.toString(),
-      "panelin-chat-detached",
-      "popup=yes,width=1280,height=900,resizable=yes,scrollbars=yes"
-    );
-  }, []);
+    // SDD Co-Work §10.4: dedicated desk route (named window panelin-cowork).
+    openPanelinCoworkDesk();
+    // Push latest calcState so the desk is not empty on first open.
+    postCalcState(calcState);
+  }, [calcState]);
+
+  // Publish calcState to desk window + apply chat actions coming from desk.
+  useEffect(() => {
+    postCalcState(calcState);
+  }, [calcState]);
+
+  useEffect(() => {
+    return onPanelinCoworkMessage((msg) => {
+      if (msg.type === COWORK_MSG.CHAT_ACTION && msg.payload) {
+        handleChatAction(msg.payload);
+      }
+      if (msg.type === COWORK_MSG.HELLO) {
+        postCalcState(calcState);
+      }
+    });
+  }, [calcState, handleChatAction]);
 
   const onFloatingHeaderDrag = useMemo(
     () => createFloatingDragHandler({
