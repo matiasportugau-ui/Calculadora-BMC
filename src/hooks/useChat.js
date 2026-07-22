@@ -88,6 +88,21 @@ function saveHistory(messages) {
 }
 
 
+/** Strip Co-Work / truncate info notes from message text before sending as API history. */
+export function stripHistoryNoise(content) {
+  const lines = String(content || "").split("\n");
+  return lines
+    .filter((line) => {
+      const t = line.trim();
+      if (!t) return true;
+      if (/^_(.+)_$/.test(t)) return false;
+      if (/^⚠️/.test(t)) return false;
+      return true;
+    })
+    .join("\n")
+    .trim();
+}
+
 /**
  * Build the JSON body posted to POST /api/agent/chat (pure, testable).
  * Used by send() and unit tests for Live assist attach-on-send contract.
@@ -116,7 +131,7 @@ export function buildAgentChatRequestBody(opts = {}) {
     ...(attachments.length ? { attachments } : {}),
   };
   const apiMessages = [...history, userMsg].map((m, idx, arr) => {
-    const base = { role: m.role, content: m.content };
+    const base = { role: m.role, content: stripHistoryNoise(m.content) };
     if (idx === arr.length - 1 && m.role === "user" && attachments.length) {
       base.attachments = attachments.map((a) => ({
         type: "image",
@@ -402,8 +417,12 @@ export function useChat({
         });
 
         if (!res.ok) {
-          const err = new Error(`HTTP ${res.status}`);
+          let body = null;
+          try { body = await res.json(); } catch { /* ignore */ }
+          const err = new Error(body?.error || `HTTP ${res.status}`);
           err._status = res.status;
+          err._body = body;
+          err._serverMessage = body?.error || "";
           throw err;
         }
 
@@ -462,25 +481,24 @@ export function useChat({
                   )
                 );
               } else if (evt.type === "info") {
-                // Provider failover / Co-Work notes — surface under the streaming bubble
                 const note = String(evt.message || "").trim();
                 if (note) {
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === assistantId
-                        ? {
-                            ...m,
-                            // Keep pending=true while still streaming so we show activity,
-                            // but surface the note as status text so the bubble is not empty.
-                            content: m.content
-                              ? (m.content.includes(note) ? m.content : `${m.content}\n_${note}_`)
-                              : `_${note}_`,
-                            infoNotes: [...(m.infoNotes || []), note],
-                          }
+                        ? { ...m, infoNotes: [...(m.infoNotes || []), note] }
                         : m
                     )
                   );
                 }
+              } else if (evt.type === "provider_reset") {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: "", infoNotes: [], pending: true }
+                      : m
+                  )
+                );
               } else if (evt.type === "cowork_ack") {
                 if (evt.framesAccepted > 0) {
                   setMessages((prev) =>

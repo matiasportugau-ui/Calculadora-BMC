@@ -693,6 +693,27 @@ export const AGENT_TOOLS = [
   // ─── Wolfboard Hub (admin cotizaciones management) ─────────────────────────
 
   {
+    name: "wa_lead_to_admin",
+    description:
+      "Crea una fila nueva en Admin 2.0 para un lead (WhatsApp u otro canal) cuando NO existe fila. " +
+      "Pasá consulta (obligatorio), telefono, cliente, origen (WA/CL/LL/LO/FB/IG), zona, campos_faltantes. " +
+      "REQUIERE user_confirmed=true (ej. cargalo en Admin / creá la consulta / guardalo en Wolfboard).",
+    input_schema: {
+      type: "object",
+      properties: {
+        consulta: { type: "string", description: "Texto de la consulta del cliente (col I)" },
+        telefono: { type: "string" },
+        cliente: { type: "string" },
+        origen: { type: "string", description: "WA, CL, LL, LO, FB, IG — default WA" },
+        zona: { type: "string" },
+        campos_faltantes: { type: "string", description: "Qué falta pedir al cliente" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true." },
+      },
+      required: ["consulta", "user_confirmed"],
+    },
+  },
+
+  {
     name: "wolfboard_pendientes",
     description:
       "Lista filas pendientes del Wolfboard hub (Admin 2.0). " +
@@ -1923,6 +1944,22 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       } catch (err) {
         return JSON.stringify({ ok: false, error: `Error consultando casos similares: ${err.message}` });
       }
+    }
+
+    if (name === "wa_lead_to_admin") {
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+      const consulta = String(input?.consulta ?? "").trim();
+      if (!consulta) return JSON.stringify({ ok: false, error: "consulta requerida" });
+      const notas = buildWaLeadAdminNotas(input, opts?.operatorContext);
+      const body = {
+        consulta,
+        telefono: input?.telefono != null ? String(input.telefono) : "",
+        cliente: input?.cliente != null ? String(input.cliente) : "",
+        origen: input?.origen != null ? String(input.origen) : "WA",
+        zona: input?.zona != null ? String(input.zona) : "",
+        ...(notas ? { notas } : {}),
+      };
+      return await wolfboardForward("/api/wolfboard/row-create", { method: "POST", body }, name);
     }
 
     if (name === "wolfboard_pendientes" || name === "wolfboard_export") {

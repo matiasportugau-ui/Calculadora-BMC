@@ -217,6 +217,7 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   // Wolfboard hub — all routes are admin-only and the underlying router
   // already enforces requireAuth. We mirror that gate at the MCP entry
   // so external clients can't poll pendientes / export without the token.
+  "wa_lead_to_admin",
   "wolfboard_pendientes",
   "wolfboard_export",
   "wolfboard_sync",
@@ -1036,6 +1037,9 @@ router.post("/agent/chat", async (req, res) => {
       const useRequestedModel = pref !== "auto" && prefOk && provider === pref;
       const requestedId = useRequestedModel ? aiModel : "";
 
+      if (provider !== providerChain[0]) {
+        send({ type: "provider_reset" });
+      }
       send({ type: "info", message: `Usando ${provider}…` });
 
       const runProviderAttempt = async () => {
@@ -1564,9 +1568,9 @@ router.post("/agent/chat", async (req, res) => {
         _providerSkipUntil.set(provider, Date.now() + 2 * 60 * 1000);
       }
       if (!aborted) {
+        send({ type: "provider_reset" });
         send({ type: "info", message: humanProviderFailHint(provider, errMsg) });
       }
-      // Reset visible text so next provider starts clean
       visibleAssistantText = "";
     }
   }

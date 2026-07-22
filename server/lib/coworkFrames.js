@@ -259,6 +259,14 @@ export function formatOperatorContextBlock(operatorContext) {
   if (operatorContext.selectedRow != null) lines.push(`- Fila Admin seleccionada: ${operatorContext.selectedRow}`);
   if (operatorContext.workbook) lines.push(`- Workbook preferido: ${operatorContext.workbook}`);
   if (operatorContext.liveAssist) lines.push("- Live assist: ON (la imagen adjunta es la captura más reciente de la pestaña compartida)");
+  const d = operatorContext.defaults && typeof operatorContext.defaults === "object" ? operatorContext.defaults : null;
+  if (d) {
+    lines.push("- Defaults operador (usá salvo corrección explícita):");
+    if (d.listaPrecios) lines.push(`  · Lista precios: ${d.listaPrecios}`);
+    if (d.aguasTecho != null) lines.push(`  · Aguas techo: ${d.aguasTecho}`);
+    if (d.crmFaltaInfoPrefix) lines.push(`  · Prefijo falta-info CRM: "${d.crmFaltaInfoPrefix}"`);
+    lines.push("  · Lead WA sin fila Admin → `wa_lead_to_admin` (no inventes rowNum).");
+  }
   lines.push("- La imagen es HINT visual; verificá números y filas con tools sheets_* / wolfboard_* antes de cotizar o escribir.");
   return lines.join("\n");
 }

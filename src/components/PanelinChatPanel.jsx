@@ -537,6 +537,11 @@ export default function PanelinChatPanel({
         surface: "panelin_chat",
         liveAssist: liveOn,
         workbook: "admin",
+        defaults: {
+          listaPrecios: "venta",
+          aguasTecho: 1,
+          crmFaltaInfoPrefix: "Falta información de:",
+        },
       },
     });
   }, [isStreaming, send, cowork]);
@@ -1169,6 +1174,13 @@ export default function PanelinChatPanel({
                       msg.content
                     )}
                   </div>
+                  {!isUser && Array.isArray(msg.infoNotes) && msg.infoNotes.length > 0 && (
+                    <div style={{ fontSize: 11, color: "#6b7280", fontStyle: "italic", paddingLeft: 4 }}>
+                      {msg.infoNotes.map((n, i) => (
+                        <div key={i}>{n}</div>
+                      ))}
+                    </div>
+                  )}
                   {/* Tool-call indicators (shown in devMode or as subtle pills) */}
                   {!isUser && msg.toolCalls?.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4, paddingLeft: 2 }}>
