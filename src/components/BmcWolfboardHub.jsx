@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import BmcModuleNav from "./BmcModuleNav.jsx";
 import OperatorOverview from "./hub/OperatorOverview.jsx";
+import EstadoConsultasLive from "./hub/EstadoConsultasLive.jsx";
 
 const wrap = {
   minHeight: "100vh",
@@ -81,6 +82,8 @@ export default function BmcWolfboardHub() {
 
         {/* Aditivo: resúmenes de Control Operativo (IA + Finanzas) */}
         <OperatorOverview />
+
+        <EstadoConsultasLive />
 
         <div style={grid}>
           <div style={card}>

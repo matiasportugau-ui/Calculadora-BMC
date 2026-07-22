@@ -1,0 +1,93 @@
+{
+  "generated_at": "2026-07-19T12:00:00-03:00",
+  "system_slug": "calculadora-bmc",
+  "sdd_path": "docs/sdd/calculadora-bmc/SDD.md",
+  "sdd_version": "0.2",
+  "composite": 94,
+  "min_pass": 90,
+  "pass": true,
+  "iteration": 2,
+  "notes": "Iteration 2 closed P1 G-AI-01, G-REC-01, G-EV-01 (assistant table, day-0 bootstrap, stable path citations).",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 95,
+      "notes": [
+        "Sections 1–12 present with correct headings",
+        "Frontmatter complete (title, version 0.2, date, status As-Built, author, as-built extensions)",
+        "No {TBD} placeholders; appendices A/B present"
+      ]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 92,
+      "notes": [
+        "C4Context §2 with persons + externals matching KB/integrations",
+        "C4Container §5 with SPA/API/AI/PDF/data boundaries",
+        "Three sequence diagrams in §7 (quote, OpenAPI, chat SSE)"
+      ]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 95,
+      "notes": [
+        "Deploy topology, rewrites, ports, commands documented",
+        "Env name categories in evidence/surfaces.md + SDD §8",
+        "RECREATION-CHECKLIST 33/33 closed",
+        "Residual UNKNOWN: Postgres backup schedule, live OAuth completeness per session"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 90,
+      "notes": [
+        "Live /health and /capabilities re-probed this run",
+        "Path:line or path citations for mounts, sizes, vercel.json",
+        "CONFIRMED/INFERRED/UNKNOWN used; secrets names only"
+      ]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 95,
+      "notes": [
+        "§6 component table with LOC, gates, loopback, RAG, cost",
+        "Guardrails table with index mount lines",
+        "Not N/A — AI is first-class"
+      ]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 90,
+      "notes": [
+        "Security, reliability, performance, observability, cost covered",
+        "Sheets 503 and assistant kill-switches explicit"
+      ]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 93,
+      "notes": [
+        "Seven ADRs with Status Observed, consequences, alternatives",
+        "Includes loopback calc and pricing IVA decisions"
+      ]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 95,
+      "notes": [
+        "version 0.2, status As-Built, risks actionable, glossary dense",
+        "Companion TARGET + evidence bundle for agents"
+      ]
+    }
+  },
+  "weighted_breakdown": {
+    "schema_completeness": 14.25,
+    "c4_fidelity": 13.8,
+    "recreation_sufficiency": 19.0,
+    "evidence_grounding": 13.5,
+    "ai_architecture_depth": 9.5,
+    "crosscutting_wa": 9.0,
+    "adr_quality": 9.3,
+    "evolution_readiness": 4.75
+  }
+}

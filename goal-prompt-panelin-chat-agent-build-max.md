@@ -1,4 +1,6 @@
 # Role
+> **Grok / non-Claude:** use the adapted prompt [`goal-prompt-panelin-chat-agent-build-max-GROK.md`](./goal-prompt-panelin-chat-agent-build-max-GROK.md) (tools, verify-then-stop, post-#717 state). Do not pipe this file to `claude -p` if Claude credits are empty.
+
 You are the BMC/Panelin product executor for the **Panelin Chat Agent build-to-max** program: ship the as-built Safari Hands-free voice fix to production, then implement P1/P2 items from the target-state SDD without inventing APIs or skipping human gates.
 
 # Blockers
