@@ -218,6 +218,7 @@ if (typeof document !== "undefined" && !document.getElementById("panelin-chat-kf
  *   onReturnToSidebar?: () => void,
  *   onHeaderPointerDown?: (e: import('react').PointerEvent) => void,
  *   onOpenDetachedWindow?: () => void,
+ *   onOpenPinnedWindow?: () => void | Promise<void>,
  *   calcState?: object,
  *   onChatAction?: (action: object) => void,
  *   authHeader?: string,
@@ -259,6 +260,7 @@ export default function PanelinChatPanel({
   onReturnToSidebar,
   onHeaderPointerDown,
   onOpenDetachedWindow,
+  onOpenPinnedWindow,
   calcState,
   onChatAction,
   authHeader,
@@ -953,6 +955,32 @@ export default function PanelinChatPanel({
               aria-label="Abrir en ventana Co-Work"
             >
               Ventana
+            </button>
+          )}
+          {onOpenPinnedWindow && !detachedMode && (
+            <button
+              data-no-drag
+              onClick={() => {
+                try {
+                  const r = onOpenPinnedWindow();
+                  if (r && typeof r.then === "function") r.catch(() => {});
+                } catch {
+                  /* ignore */
+                }
+              }}
+              title="Fijar arriba (Document PiP en Chrome; si no, ventana Co-Work)"
+              style={{
+                ...ghostBtn,
+                border: "1px solid rgba(255,255,255,0.35)",
+                borderRadius: 999,
+                padding: "4px 8px",
+                fontSize: 11,
+                color: "#fff",
+                background: "transparent",
+              }}
+              aria-label="Fijar Panelin Co-Work arriba"
+            >
+              Fijar
             </button>
           )}
           <button

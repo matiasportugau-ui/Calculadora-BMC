@@ -139,3 +139,46 @@ export function isPanelinCoworkDeskWindow() {
     return false;
   }
 }
+
+/**
+ * “Fijar arriba” (PR-H): Document PiP with iframe to desk route when supported,
+ * else named popup (same as openPanelinCoworkDesk).
+ *
+ * PiP + iframe keeps full SPA auth/cookies without portaling React from the parent.
+ *
+ * @param {{ width?: number, height?: number, origin?: string }} [opts]
+ * @returns {Promise<{ documentPiP: boolean, window: Window | null }>}
+ */
+export async function openPanelinCoworkPinned(opts = {}) {
+  if (typeof window === "undefined") {
+    return { documentPiP: false, window: null };
+  }
+  const size = {
+    ...readStoredDeskSize(),
+    ...(opts.width ? { width: opts.width } : {}),
+    ...(opts.height ? { height: opts.height } : {}),
+  };
+
+  // Lazy import keeps Node unit tests free of circular Vite deps when only testing URL builders.
+  const { openDocumentPipWindow, isDocumentPipSupported } = await import("./openDocumentPip.js");
+  if (isDocumentPipSupported()) {
+    const pip = await openDocumentPipWindow({
+      width: size.width,
+      height: size.height,
+      mirrorStyles: true,
+    });
+    if (pip?.window?.document?.body) {
+      const doc = pip.window.document;
+      const iframe = doc.createElement("iframe");
+      iframe.src = buildPanelinCoworkDeskUrl({ origin: opts.origin || window.location.origin });
+      iframe.title = "Panelin Co-Work";
+      iframe.setAttribute("allow", "clipboard-read; clipboard-write; display-capture");
+      iframe.style.cssText = "border:0;width:100%;height:100%;display:block;";
+      doc.body.replaceChildren(iframe);
+      return { documentPiP: true, window: pip.window };
+    }
+  }
+
+  const popup = openPanelinCoworkDesk(opts);
+  return { documentPiP: false, window: popup };
+}
