@@ -1,0 +1,21 @@
+---
+description: Panelin Co-Work — Admin/Gmail/CRM surfaces, ACTION_JSON vs tools, email draft-only. Apply when user says Co-Work, Admin cotizaciones, wa_lead_to_admin, Panelin Gmail OCR, or reviews operator chat mixing Admin and mail.
+globs:
+  - server/lib/chatPrompts.js
+  - server/lib/agentTools.js
+  - server/routes/agentChat.js
+  - src/hooks/useChat.js
+  - src/components/PanelinChatPanel.jsx
+alwaysApply: false
+---
+
+# Panelin Co-Work
+
+Before changing Co-Work / Panelin chat operator flows, load skill [`.cursor/skills/panelin-cowork/SKILL.md`](../skills/panelin-cowork/SKILL.md).
+
+Hard rules:
+- Co-Work is JPEG read-only — no DOM (WA Web, Gmail, Gemini sidebar).
+- “Cargar al Admin” → `wa_lead_to_admin` / sheets, **not** `wolfboard_quote_batch`.
+- `aplicar_estado_calc` is a **tool**; never teach it as ACTION_JSON type.
+- Email from chat = draft/summary tools only — no send.
+- July / month lists → `listar_cotizaciones_recientes` with `desde`/`hasta`; do not require client name to discover.

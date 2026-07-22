@@ -337,14 +337,17 @@ export const AGENT_TOOLS = [
       "Lista las cotizaciones generadas recientemente (registry persistente en GCS, sin TTL). " +
       "Cada entrada incluye id, code, cliente, escenario, total, lista, source ('ae_agent' | 'calculator') y la URL del PDF. " +
       "Usar cuando el usuario diga 'mandale otra vez la cotización a Juan', 'pasame el link del último presupuesto', " +
-      "'¿qué cotizaciones hice hoy?', '¿qué generó la IA?' (filtrar source='ae_agent').",
+      "'¿qué cotizaciones hice hoy?', '¿qué generó la IA?' (filtrar source='ae_agent'), " +
+      "'cotizaciones de julio' (desde=YYYY-MM-01, hasta=último día del mes). No pedís nombre de cliente si la misión es listar/descubrir.",
     input_schema: {
       type: "object",
       properties: {
-        cliente:           { type: "string", description: "Filtrar por nombre de cliente (match parcial, case-insensitive)" },
+        cliente:           { type: "string", description: "Filtrar por nombre de cliente (match parcial, case-insensitive). Opcional." },
         source:            { type: "string", enum: ["ae_agent", "calculator"], description: "Filtrar por origen: 'ae_agent' (generado por el agente) o 'calculator' (UI manual)" },
         include_cancelled: { type: "boolean", description: "Si true, incluye cotizaciones canceladas. Default false." },
         limite:            { type: "number", description: "Máx resultados a devolver. Default 10" },
+        desde:             { type: "string", description: "Fecha inicio inclusiva YYYY-MM-DD (ej. 2026-07-01 para julio)" },
+        hasta:             { type: "string", description: "Fecha fin inclusiva YYYY-MM-DD (ej. 2026-07-31)" },
       },
     },
   },
@@ -382,7 +385,7 @@ export const AGENT_TOOLS = [
             familia:    { type: "string" },
             espesor:    { type: ["string", "number"] },
             color:      { type: "string" },
-            tipoAguas:  { type: "string", enum: ["una_agua", "dos_aguas"] },
+            tipoAguas:  { type: "string", enum: ["una_agua", "dos_aguas"], description: "Default operador aguasTecho=1 → una_agua. Solo una_agua|dos_aguas." },
             pendiente:  { type: "number" },
             tipoEst:    { type: "string", enum: ["metal", "hormigon", "madera", "combinada"] },
             borders:    { type: "object" },
@@ -825,6 +828,36 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ─── Email (PANELSIM summary + outbound draft — no send) ───────────────────
+  {
+    name: "email_panelsim_resumen",
+    description:
+      "Lee el resumen PANELSIM / bandeja IMAP (STATUS + reporte MD) para ver correos recientes relevantes a presupuestos. " +
+      "NO navega Gmail DOM ni tipéa en Gemini sidebar. Co-Work OCR es HINT; preferí esta tool para inbox estructurado. Auth requerida.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reportMaxChars: { type: "number", description: "Máx. chars del reporte MD (opcional)" },
+      },
+    },
+  },
+  {
+    name: "email_borrador_saliente",
+    description:
+      "Genera un BORRADOR de email (asunto + cuerpo) para pegar en Thunderbird/Gmail. NO envía correo. " +
+      "Usar cuando el operador pide 'redactar mail'. Auth requerida.",
+    input_schema: {
+      type: "object",
+      properties: {
+        hechos: { type: "string", description: "Hechos y pedido (mín. 3 chars)" },
+        role: { type: "string", enum: ["cliente", "proveedor"], description: "Default proveedor" },
+        tono: { type: "string", description: "Ej. breve y profesional" },
+        asunto_contexto: { type: "string", description: "Asunto sugerido opcional" },
+      },
+      required: ["hechos"],
+    },
+  },
+
   // ─── TraKtiMe (time tracking) — driven on behalf of the logged-in user ──────
   // These act *as* the user: they require a user JWT (forwarded from the chat
   // session or passed as user_jwt). Reads are protected (return a user's own
@@ -1188,15 +1221,62 @@ const APLICAR_ALLOWED_ACTIONS = new Set([
   "setPared", "setCamara", "setFlete", "setProyecto",
 ]);
 
-function buildAplicarActions(input = {}) {
+/**
+ * Normalize roof waters to enum una_agua | dos_aguas.
+ * Accepts 1/2, Spanish phrases, and operatorContext.defaults.aguasTecho.
+ * @param {unknown} raw
+ * @param {object|null} [operatorContext]
+ * @returns {"una_agua"|"dos_aguas"|undefined}
+ */
+export function normalizeTipoAguas(raw, operatorContext = null) {
+  const fromDefaults = operatorContext?.defaults?.aguasTecho;
+  const candidate = raw != null && String(raw).trim() !== "" ? raw : fromDefaults;
+  if (candidate == null || candidate === "") return undefined;
+  const s = String(candidate).trim().toLowerCase().replace(/\s+/g, "_");
+  if (
+    s === "1" || s === "una" || s === "una_agua" || s === "unaagua"
+    || /^1_?aguas?$/.test(s) || s.includes("una_agua")
+  ) {
+    return "una_agua";
+  }
+  if (
+    s === "2" || s === "dos" || s === "dos_aguas" || s === "dosaguas"
+    || /^2_?aguas?$/.test(s) || s.includes("dos_agua")
+  ) {
+    return "dos_aguas";
+  }
+  if (Number(candidate) === 1) return "una_agua";
+  if (Number(candidate) === 2) return "dos_aguas";
+  return undefined;
+}
+
+/**
+ * Build calc UI actions from aplicar_estado_calc input (or remapped ACTION_JSON).
+ * @param {object} input
+ * @param {object|null} [operatorContext]
+ */
+export function buildAplicarActions(input = {}, operatorContext = null) {
   const actions = [];
-  if (input.scenario) actions.push({ type: "setScenario", payload: String(input.scenario) });
-  if (input.listaPrecios) actions.push({ type: "setLP", payload: String(input.listaPrecios) });
-  if (input.techo && typeof input.techo === "object") {
-    const { zonas, ...rest } = input.techo;
+  // Remap: ACTION_JSON:{type:"aplicar_estado_calc", payload:{...}} or fields at top level
+  const src = input?.payload && typeof input.payload === "object" && !input.scenario && !input.techo && !input.pared
+    ? input.payload
+    : input;
+  if (src.scenario) actions.push({ type: "setScenario", payload: String(src.scenario) });
+  if (src.listaPrecios) actions.push({ type: "setLP", payload: String(src.listaPrecios) });
+  if (src.techo && typeof src.techo === "object") {
+    const { zonas, ...rest } = src.techo;
     const techoFields = { ...rest };
     if (techoFields.familia) techoFields.familia = normalizeFamilia(techoFields.familia);
     if (techoFields.espesor != null) techoFields.espesor = String(techoFields.espesor);
+    const tipo = normalizeTipoAguas(techoFields.tipoAguas, operatorContext);
+    if (tipo) techoFields.tipoAguas = tipo;
+    else delete techoFields.tipoAguas;
+    if (!techoFields.tipoAguas) {
+      const defTipo = normalizeTipoAguas(undefined, operatorContext);
+      if (defTipo && (Object.keys(techoFields).length > 0 || (Array.isArray(zonas) && zonas.length))) {
+        techoFields.tipoAguas = defTipo;
+      }
+    }
     if (Object.keys(techoFields).length > 0) actions.push({ type: "setTecho", payload: techoFields });
     if (Array.isArray(zonas) && zonas.length > 0) {
       const safeZonas = zonas
@@ -1205,25 +1285,25 @@ function buildAplicarActions(input = {}) {
       if (safeZonas.length > 0) actions.push({ type: "setTechoZonas", payload: safeZonas });
     }
   }
-  if (input.pared && typeof input.pared === "object") {
-    const paredFields = { ...input.pared };
+  if (src.pared && typeof src.pared === "object") {
+    const paredFields = { ...src.pared };
     if (paredFields.familia) paredFields.familia = normalizeFamilia(paredFields.familia);
     if (paredFields.espesor != null) paredFields.espesor = String(paredFields.espesor);
     if (Object.keys(paredFields).length > 0) actions.push({ type: "setPared", payload: paredFields });
   }
-  if (input.camara && typeof input.camara === "object") {
-    const c = input.camara;
+  if (src.camara && typeof src.camara === "object") {
+    const c = src.camara;
     if (c.largo_int != null && c.ancho_int != null && c.alto_int != null) {
       actions.push({ type: "setCamara", payload: {
         largo_int: Number(c.largo_int), ancho_int: Number(c.ancho_int), alto_int: Number(c.alto_int),
       }});
     }
   }
-  if (input.flete != null && Number.isFinite(Number(input.flete))) {
-    actions.push({ type: "setFlete", payload: Number(input.flete) });
+  if (src.flete != null && Number.isFinite(Number(src.flete))) {
+    actions.push({ type: "setFlete", payload: Number(src.flete) });
   }
-  if (input.proyecto && typeof input.proyecto === "object" && Object.keys(input.proyecto).length > 0) {
-    actions.push({ type: "setProyecto", payload: input.proyecto });
+  if (src.proyecto && typeof src.proyecto === "object" && Object.keys(src.proyecto).length > 0) {
+    actions.push({ type: "setProyecto", payload: src.proyecto });
   }
   return actions.filter((a) => APLICAR_ALLOWED_ACTIONS.has(a.type));
 }
@@ -1566,12 +1646,16 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const source = input?.source && ["ae_agent", "calculator"].includes(input.source) ? input.source : null;
       const includeCancelled = input?.include_cancelled === true;
       const limit = Math.max(1, Math.min(50, Number(input?.limite || 10)));
+      const desde = input?.desde != null ? String(input.desde).trim() : null;
+      const hasta = input?.hasta != null ? String(input.hasta).trim() : null;
       try {
         const entries = await listQuotationsFromRegistry({
           limit,
           includeCancelled,
           cliente: cliente || null,
           source,
+          desde: desde || null,
+          hasta: hasta || null,
         });
         return JSON.stringify({ ok: true, count: entries.length, cotizaciones: entries });
       } catch (err) {
@@ -1604,7 +1688,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "aplicar_estado_calc") {
-      const actions = buildAplicarActions(input || {});
+      const actions = buildAplicarActions(input || {}, opts?.operatorContext || null);
       if (actions.length === 0) {
         return JSON.stringify({ ok: false, error: "Sin campos válidos para aplicar — pasá scenario, listaPrecios, techo, pared, camara, flete o proyecto." });
       }
@@ -2015,6 +2099,39 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       return await bugsForward(`/api/bugs${qs}`, { method: "GET" }, name);
     }
 
+    if (name === "email_panelsim_resumen") {
+      const params = new URLSearchParams();
+      if (input?.reportMaxChars != null) params.set("reportMaxChars", String(input.reportMaxChars));
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      return await emailCockpitForward(
+        `/api/email/panelsim-summary${qs}`,
+        { method: "GET" },
+        name,
+        opts?.callerAuthToken || null,
+      );
+    }
+
+    if (name === "email_borrador_saliente") {
+      const hechos = String(input?.hechos ?? "").trim();
+      if (hechos.length < 3) {
+        return JSON.stringify({ ok: false, error: "hechos requerido (mín. 3 caracteres)" });
+      }
+      return await emailCockpitForward(
+        "/api/email/draft-outbound",
+        {
+          method: "POST",
+          body: {
+            hechos,
+            role: input?.role === "cliente" ? "cliente" : "proveedor",
+            tono: input?.tono != null ? String(input.tono) : undefined,
+            asunto_contexto: input?.asunto_contexto != null ? String(input.asunto_contexto) : undefined,
+          },
+        },
+        name,
+        opts?.callerAuthToken || null,
+      );
+    }
+
     // ─── TraKtiMe tools ────────────────────────────────────────────────────
     if (name.startsWith("traktime_")) {
       // The agent acts as the user: forward their JWT (from the chat session
@@ -2305,6 +2422,42 @@ async function wolfboardForward(path, { method = "GET", body } = {}, toolName = 
     length: text.length,
     tool: toolName,
   });
+}
+
+/**
+ * Forward to CRM cockpit email routes (JWT or API_AUTH_TOKEN).
+ * Draft-only / summary — never sends mail.
+ */
+async function emailCockpitForward(path, { method = "GET", body } = {}, toolName = "email_*", callerAuthToken = null) {
+  const token = callerAuthToken || config.apiAuthToken;
+  if (!token) {
+    return JSON.stringify({
+      ok: false,
+      error: "Auth requerida — iniciá sesión (JWT canales) o configurá API_AUTH_TOKEN para email tools.",
+      tool: toolName,
+    });
+  }
+  const headers = { Authorization: `Bearer ${token}` };
+  const init = { method, headers };
+  if (method === "POST") {
+    headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body || {});
+  }
+  const url = `${apiBase()}${path}`;
+  const resp = await fetch(url, init);
+  const data = await resp.json().catch(() => null);
+  if (!resp.ok) {
+    return JSON.stringify({
+      ok: false,
+      status: resp.status,
+      error: data?.error || `HTTP ${resp.status}`,
+      tool: toolName,
+      hint: toolName === "email_borrador_saliente"
+        ? "Solo genera borrador; Panelin chat no envía correo."
+        : undefined,
+    });
+  }
+  return JSON.stringify({ ok: true, ...data, tool: toolName });
 }
 
 /**

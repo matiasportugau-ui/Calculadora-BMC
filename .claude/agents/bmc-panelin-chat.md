@@ -6,7 +6,20 @@ model: sonnet
 
 # Panelin Chat Specialist — AI Chat + Training KB
 
-**Project root:** `/Users/matias/Panelin calc loca/Calculadora-BMC`
+**Project root:** `/Users/matias/calculadora-bmc` (canonical). Mirror may exist under `Panelin calc loca/Calculadora-BMC`.
+
+**Co-Work / Admin surfaces:** also load [`.cursor/skills/panelin-cowork/SKILL.md`](../../.cursor/skills/panelin-cowork/SKILL.md).
+
+### Wave 1–4 (2026-07) — must know
+
+| Wave | Contract |
+|------|----------|
+| 1 | Honesty WA JPEG-only; `info`→`infoNotes`; `stripHistoryNoise`; 400 historial>60; `operatorContext.defaults` |
+| 2 | Tool `wa_lead_to_admin` → wolfboard row-create + notas |
+| 3 | SSE `provider_reset`; summarizer `KEEP_RECENT=6` |
+| 4 | Remap/drop bad ACTION_JSON; `normalizeTipoAguas`; date filter `desde`/`hasta`; routine infoNotes filter; `email_panelsim_resumen` + `email_borrador_saliente` (no send); surface-intent prompts |
+
+**Anti-patterns:** quote_batch for “cargar Admin”; “sin acceso CRM”; pedir nombre para listar julio; tipar en Gemini sidebar; leak `ACTION_JSON:aplicar_estado_calc`.
 
 ---
 
@@ -35,7 +48,7 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 | `server/routes/agentTraining.js` | POST /agent/train, GET /agent/training-kb |
 | `server/lib/trainingKB.js` | KB CRUD, findRelevantExamples() |
 | `server/lib/chatPrompts.js` | buildSystemPrompt(), trainingExamples injection (~195-220), `EXTRACTION_PROTOCOL` block |
-| `server/lib/agentTools.js` | 28 Anthropic tools (calc + catalog + state + PDF + CRM + price-list/scenario compare + CRM-search + WhatsApp send + quote-cancel + raw-HTML + follow-up + client-history + 6 Wolfboard hub tools); `executeTool(name,input,calcState,{emitAction})` |
+| `server/lib/agentTools.js` | 51 tools (calc + catalog + state + PDF + CRM + Wolfboard + `wa_lead_to_admin` + sheets + traktime + email draft/summary); `executeTool(..., {emitAction, operatorContext, callerAuthToken})`; exports `buildAplicarActions`, `normalizeTipoAguas` |
 | `server/lib/quoteRegistry.js` | GCS-backed persistent registry. One JSON per quote at `gs://${GCS_QUOTES_BUCKET}/registry/{pdf_id}.json`. Survives Cloud Run cold-starts; falls back to 24h in-memory cache when bucket unset. |
 | `server/lib/toolStats.js` | Per-tool telemetry: in-process ring buffer (1k records). Wraps `executeTool` to capture latency, ok/error, and a small set of error classes (`guard:user_confirmed`, `config:missing_env`, etc.). Exposed via `GET /api/agent/tool-stats`; surfaced in `PanelinDevPanel.jsx` Tools tab (auto-refresh 30s, 24h window default). |
 | `scripts/mcp-panelin-http.mjs` | MCP server (stdio). Boots by fetching `/api/agent/tools-manifest`, registers all 22 tools dynamically, forwards calls to `/api/agent/exec-tool`. Forwards `BMC_API_TOKEN` as Bearer for the 4 write tools. Companion agent definition: `bmc-panelin-mcp.md`. |
@@ -58,14 +71,19 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 **Client history (composite):** `historial_cliente` — composes `buscar_cliente_crm` + `listar_cotizaciones_recientes`, returns merged `{crm, cotizaciones}` for a single client name. One tool call instead of two.
 
 **Wolfboard hub (admin cotizaciones, all auth-gated):**
+- `wa_lead_to_admin` — **create** Admin row for new lead (not quote_batch)
 - `wolfboard_pendientes` — list pending Admin 2.0 rows (consulta scope or full admin)
 - `wolfboard_export` — CSV export of the same listing
 - `wolfboard_sync` — propagate Admin col J → CRM col AF (batch, **user_confirmed**)
 - `wolfboard_actualizar_fila` — edit a single Admin row (respuesta/linkDrive/estado/replaySnapshotUrl) (**user_confirmed**)
 - `wolfboard_marcar_enviado` — move a row to the Enviados tab (**user_confirmed**)
-- `wolfboard_quote_batch` — Claude Haiku batch quoting over pending consultas (**user_confirmed**, optional `force`)
+- `wolfboard_quote_batch` — Claude Haiku batch quoting (**only** when operator asks for mass AI replies)
 
-All Wolfboard tools forward `Authorization: Bearer ${API_AUTH_TOKEN}` to the existing `/api/wolfboard/*` router (which already enforces `requireAuth`). MCP `TOOLS_REQUIRING_AUTH` set mirrors the same gate at the external entry point.
+**Email (auth, draft-only):** `email_panelsim_resumen`, `email_borrador_saliente` — no send from Panelin chat.
+
+**Recall dates:** `listar_cotizaciones_recientes` accepts `desde` / `hasta` (`YYYY-MM-DD`).
+
+All Wolfboard tools forward `Authorization: Bearer ${API_AUTH_TOKEN}` to `/api/wolfboard/*`. Email tools use caller JWT or API token. MCP `TOOLS_REQUIRING_AUTH` mirrors gates.
 
 **Confirmation guard (transversal, dual-path):**
 - **Chat path:** `server/lib/userIntentClassifier.js` reads the user's last message and produces a `Set<string>` of approved tool names. The 8 write tools (`guardar_en_crm`, `enviar_whatsapp_link`, `cancelar_cotizacion`, `programar_seguimiento`, 4 Wolfboard) only fire if their name is in the set. **The model cannot fabricate this signal** — it comes from the user's words.

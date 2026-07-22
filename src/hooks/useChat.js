@@ -103,6 +103,14 @@ export function stripHistoryNoise(content) {
     .trim();
 }
 
+/** Routine SSE info notes — hide from bubble unless DEV mode. */
+const ROUTINE_INFO_NOTE_RE =
+  /^(Usando\s|Procesando|Co-Work:|Se truncó|Se resumió|Claude está|Probando)/i;
+
+export function isRoutineInfoNote(note) {
+  return ROUTINE_INFO_NOTE_RE.test(String(note || "").trim());
+}
+
 /**
  * Build the JSON body posted to POST /api/agent/chat (pure, testable).
  * Used by send() and unit tests for Live assist attach-on-send contract.
@@ -482,7 +490,8 @@ export function useChat({
                 );
               } else if (evt.type === "info") {
                 const note = String(evt.message || "").trim();
-                if (note) {
+                // Skip routine provider/truncate noise in operator UI; keep in DEV.
+                if (note && (devMode || !isRoutineInfoNote(note))) {
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === assistantId
