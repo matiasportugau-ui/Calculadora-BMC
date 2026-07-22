@@ -16,16 +16,16 @@ const BRAND = COMPANY?.brandColor || '#003366'; // Official BMC navy from websit
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* REFINED SIMPLE — adopted as preferred after parallel visual comparison */
-@page{size:A4;margin:7mm 8mm}
+@page{size:A4;margin:0}
 .presupuesto-container,.page{font-size:9pt;line-height:1.25;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .presupuesto-container ul,.presupuesto-container li,.presupuesto-container .cat-row,
 .page ul,.page li,.page .cat-row{list-style:none!important;margin:0;padding:0}
 .presupuesto-container .cat-row::before,.presupuesto-container [class*="header"]::before,
 .page .cat-row::before,.page [class*="header"]::before{content:none!important;display:none!important}
 body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;margin:0;font-size:9pt;color:#1D1D1F;background:#fff}
-.page{width:210mm;min-height:277mm;position:relative;background:#fff}
-@media screen{body{background:#e5e2dd;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 0 0 1px #ddd;max-width:794px;padding:7mm 8mm}}
-@media print{.page{padding:0}}
+.page{width:210mm;min-height:277mm;position:relative;background:#fff;padding:7mm 8mm}
+@media screen{body{background:#e5e2dd;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 0 0 1px #ddd;max-width:794px}}
+@media print{.page{padding:7mm 8mm}}
 .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2pt solid ${BRAND};padding-bottom:3mm;margin-bottom:3mm}
 .badge{background:${BRAND};color:#fff;font-size:7pt;font-weight:700;padding:3px 10px;border-radius:9999px;letter-spacing:.08em;text-transform:uppercase}
 .meta{display:grid;grid-template-columns:1fr 1fr;gap:2mm;font-size:8pt;margin-bottom:2mm}
@@ -63,7 +63,8 @@ function renderBomDetailRows(bomDetailGroups) {
         ? (i.qty % 1 === 0 ? i.qty : i.qty.toFixed(2))
         : (i.qty ?? '');
 
-      let desc = esc(i.desc);
+      // Use original desc, stripping any pre-appended panel info from bomToGroups to avoid dups
+      let desc = esc(i.desc).replace(/ · \d+ paneles × [\d.]+ m/i, '').trim();
 
       // Explicitly surface quantity and length of panels (user request)
       if (isPanelGroup) {
