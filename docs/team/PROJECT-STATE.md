@@ -14,6 +14,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-22 (feat — Panelin agent B-05 toolStats persist):** Durable telemetry in `public.agent_tool_calls` (auto-ensure schema); `recordToolCall` fire-and-forget insert when `DATABASE_URL` set; `GET /api/agent/tool-stats` uses `getToolStatsAsync` (`source: db|memory`). Migration `server/migrations/agent/001_agent_tool_calls.sql`. Tests `toolStatsPersist.test.js`. SDD-TARGET B-05 Done.
+
+
 **2026-07-22 (feat — Panelin agent B-04 OpenAPI tools):** `GET /api/agent/tools/openapi` exports OpenAPI 3.1 generated from live `AGENT_TOOLS` (JSON/YAML); `server/lib/agentToolsOpenApi.js`; tests `agentToolsOpenApi.test.js`. SDD-TARGET B-04 Done.
 
 
