@@ -70,6 +70,13 @@ export const ACTION_TAXONOMY = new Set([
   "traktime.invoice.draft",
   "traktime.invoice.issue",
 
+  // ads.* (Google Ads API — server/routes/ads.js)
+  "ads.account.query",
+  "ads.campaign.pause",
+  "ads.campaign.enable",
+  "ads.campaign.update_budget",
+  "ads.campaign.update_name",
+
   // client-emitted intent (validated against CLIENT_EMITTABLE below)
   "nav.route.change",
   "ui.drawer.open",
@@ -113,6 +120,7 @@ const MODULE_PREFIX_MAP = {
   "traktime.": "traktime",
   "nav.": "nav",
   "ui.": "ui",
+  "ads.": "ads",
 };
 
 function deriveModule(action) {
