@@ -44,7 +44,7 @@ import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
 import { toGeminiTools, toGeminiResponse } from "../lib/geminiTools.js";
-import { getToolStats } from "../lib/toolStats.js";
+import { getToolStatsAsync } from "../lib/toolStats.js";
 import { buildAgentToolsOpenApi, toYaml } from "../lib/agentToolsOpenApi.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
 import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
@@ -164,10 +164,14 @@ router.get("/agent/ai-options", (_req, res) => {
  * error rate, error buckets) over the last `windowMinutes` minutes (default 1440 = 24h).
  * Used by the dev panel "Tool Stats" tab. No secrets; safe to expose without auth.
  */
-router.get("/agent/tool-stats", (req, res) => {
+router.get("/agent/tool-stats", async (req, res) => {
   const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
-  const stats = getToolStats({ windowMs: minutes * 60 * 1000 });
-  res.json({ ok: true, ...stats });
+  try {
+    const stats = await getToolStatsAsync({ windowMs: minutes * 60 * 1000 });
+    res.json({ ok: true, ...stats });
+  } catch {
+    res.status(500).json({ ok: false, error: "tool_stats_unavailable" });
+  }
 });
 
 /**
