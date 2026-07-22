@@ -21,95 +21,27 @@ import {
   getApiKey,
 } from "./aiProviderConfig.js";
 import { logAgentCost } from "./costTelemetry.js";
+import {
+  PROVIDER_TIMEOUT_MS,
+  orderChainByHealth,
+  recordProviderFailure,
+  recordProviderSuccess,
+  resetProviderCooldowns,
+  getProviderCooldownState,
+  _resetProviderHealth,
+} from "./providerCircuitBreaker.js";
 
-// ─── Provider timeout + cooldown (reliability) ────────────────────────────────
-// Before this, a hung provider call blocked the whole request indefinitely (the
-// Anthropic SDK default is ~10 min), and a dead-but-slow provider was re-tried
-// first on EVERY request, adding its full latency each time. Two guards:
-//   1) Per-call timeout — rejects (and aborts) so the loop advances to the next
-//      provider instead of hanging the SSE/chat.
-//   2) Cooldown — after N failures in a window, a provider is DEPRIORITIZED (tried
-//      last), never fully removed. Reordering (not skipping) means we can't
-//      self-inflict a total blackout: if every provider is cooling down, we still
-//      try them, just healthy-first.
-const PROVIDER_TIMEOUT_MS = Number(process.env.AGENT_PROVIDER_TIMEOUT_MS) || 30_000;
-const COOLDOWN_MAX_FAILURES = Number(process.env.AGENT_PROVIDER_COOLDOWN_FAILURES) || 3;
-const COOLDOWN_WINDOW_MS = 60_000;
-const COOLDOWN_MS = Number(process.env.AGENT_PROVIDER_COOLDOWN_MS) || 60_000;
-// Hard credential/billing errors (HTTP 400/401/403) do NOT self-heal in 60s: an
-// out-of-credits account or an invalid key fails EVERY call until an operator
-// fixes it. So a single hard error deprioritizes the provider for a long window
-// (default 15 min) instead of the transient 3-strikes/60s path — cutting the
-// per-request latency + wasted API calls of re-trying a doomed provider each
-// minute. It is still tried LAST (never removed), and cleared instantly by
-// resetProviderCooldowns() (the panel's "reset" button, after the fix) or a success.
-const HARD_COOLDOWN_MS = Number(process.env.AGENT_PROVIDER_HARD_COOLDOWN_MS) || 900_000;
-const HARD_ERROR_STATUSES = new Set([400, 401, 403]);
+export {
+  recordProviderFailure,
+  recordProviderSuccess,
+  resetProviderCooldowns,
+  getProviderCooldownState,
+  _resetProviderHealth,
+  PROVIDER_TIMEOUT_MS,
+};
 
-/** provider -> { times: number[] (recent failure ts), until: number (cooldown end) } */
-const _providerHealth = new Map();
-
-function isCoolingDown(provider, now) {
-  const rec = _providerHealth.get(provider);
-  return !!(rec && rec.until && now < rec.until);
-}
-
-export function recordProviderFailure(provider, now, errorInfo = null) {
-  const rec = _providerHealth.get(provider) || { times: [], until: 0, lastError: null };
-  rec.times = rec.times.filter((t) => now - t < COOLDOWN_WINDOW_MS);
-  rec.times.push(now);
-  // Retain the reason of the most recent failure so the control panel can show
-  // WHY a provider is failing (e.g. "claude: 400 credit balance too low")
-  // instead of an optimistic key-presence badge. Survives cooldown expiry and
-  // times[] pruning until the next success clears it.
-  if (errorInfo) rec.lastError = { ...errorInfo, at: now };
-  const hard = errorInfo && HARD_ERROR_STATUSES.has(Number(errorInfo.status));
-  if (hard) {
-    // Persistent credential/billing failure — sideline for the long window on the
-    // FIRST occurrence (extend, never shorten, an existing cooldown).
-    rec.until = Math.max(rec.until, now + HARD_COOLDOWN_MS);
-    console.log(JSON.stringify({ event: "provider_cooldown", provider, until_ms: rec.until, hard: true }));
-  } else if (rec.times.length >= COOLDOWN_MAX_FAILURES) {
-    rec.until = now + COOLDOWN_MS;
-    rec.times = [];
-    console.log(JSON.stringify({ event: "provider_cooldown", provider, until_ms: rec.until }));
-  }
-  _providerHealth.set(provider, rec);
-}
-
-export function recordProviderSuccess(provider) {
-  if (_providerHealth.has(provider)) _providerHealth.set(provider, { times: [], until: 0, lastError: null });
-}
-
-/**
- * Clear all provider cooldowns + lastError. Used by the control panel's "reset"
- * action so an operator can force an immediate re-test after fixing a credential
- * or billing issue, instead of waiting out the hard cooldown. Per-process (the
- * cooldown map is in-memory), so it affects the instance that serves the request.
- */
-export function resetProviderCooldowns() {
-  _providerHealth.clear();
-}
-
-/** Read-only snapshot for the health panel (assistantHealth). */
-export function getProviderCooldownState() {
-  const now = Date.now();
-  const out = {};
-  for (const [p, rec] of _providerHealth.entries()) {
-    out[p] = {
-      coolingDown: !!(rec.until && now < rec.until),
-      until: rec.until || 0,
-      recentFailures: rec.times.length,
-      lastError: rec.lastError || null,
-    };
-  }
-  return out;
-}
-
-/** Test-only reset of cooldown state. */
-export function _resetProviderHealth() {
-  _providerHealth.clear();
-}
+// ─── Provider timeout + circuit breaker (B-06) ────────────────────────────────
+// See providerCircuitBreaker.js; re-exported below for stable import paths.
 
 /**
  * Run an async provider call with a hard timeout. Aborts via AbortSignal (for
@@ -270,14 +202,9 @@ export async function callAgentOnce(messages, opts = {}) {
     chain = getCentralProviderChain();
   }
 
-  // Deprioritize (don't remove) providers in cooldown: try healthy ones first,
-  // cooled-down ones last. Skip reordering when the caller pinned a single
-  // provider (legacy opts.provider) — respect their explicit choice.
+  // B-06: deprioritize cooling providers (never drop from chain).
   if (!provider && chain.length > 1) {
-    const now = Date.now();
-    const healthy = chain.filter((p) => !isCoolingDown(p, now));
-    const cooling = chain.filter((p) => isCoolingDown(p, now));
-    if (cooling.length) chain = [...healthy, ...cooling];
+    chain = orderChainByHealth(chain);
   }
 
   const errors = [];

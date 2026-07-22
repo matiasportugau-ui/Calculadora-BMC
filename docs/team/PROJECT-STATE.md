@@ -14,6 +14,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-22 (feat — Panelin agent B-06 circuit breaker):** Extracted `server/lib/providerCircuitBreaker.js` (N-failures cooldown, hard 400/401/403 long open, never drop providers — healthy-first reorder). `agentCore` re-exports + uses `orderChainByHealth`. Tests `providerCircuitBreaker.test.js` + existing `agentCoreFailover.test.js`. SDD-TARGET B-06 Done.
+
+
 **2026-07-22 (feat — Panelin agent B-05 toolStats persist):** Durable telemetry in `public.agent_tool_calls` (auto-ensure schema); `recordToolCall` fire-and-forget insert when `DATABASE_URL` set; `GET /api/agent/tool-stats` uses `getToolStatsAsync` (`source: db|memory`). Migration `server/migrations/agent/001_agent_tool_calls.sql`. Tests `toolStatsPersist.test.js`. SDD-TARGET B-05 Done.
 
 

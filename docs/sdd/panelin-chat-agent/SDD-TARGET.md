@@ -161,7 +161,7 @@ sequenceDiagram
 | B-03 | Whisper fallback for Firefox | P1 | panelin-chat | **Done** 2026-07-18 — push-to-talk via `/api/agent/transcribe` in `PanelinVoicePanel` |
 | B-04 | OpenAPI tools export | P2 | api-contract | **Done** 2026-07-22 — `GET /api/agent/tools/openapi` + `buildAgentToolsOpenApi` from AGENT_TOOLS |
 | B-05 | Persist toolStats | P2 | platform | **Done** 2026-07-22 — `public.agent_tool_calls` + async GET tool-stats (source db|memory) |
-| B-06 | Provider circuit breaker | P2 | agentCore | **Deferred** 2026-07-18 — after P0 prod green |
+| B-06 | Provider circuit breaker | P2 | agentCore | **Done** 2026-07-22 — `providerCircuitBreaker.js` (cooldown + hard 4xx + healthy-first order) |
 | B-07 | Channel golden packs | P1 | harness | **Done** 2026-07-18 — cases 16–19 (+ existing 05/12) for chat/WA/ML/email |
 
 ## 12. Glossary
