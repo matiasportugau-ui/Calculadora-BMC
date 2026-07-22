@@ -76,6 +76,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 **2026-07-16 (ops — WA improvement batch → Cloud Run prod KB):** `panelin:train:import` contra `https://panelin-calc-q74zutv7dq-uc.a.run.app` — **88 ok / 0 fail** (`import-improvement.json`, process-first, 0 U$S históricos). Verificado: `GET /api/agent/training-kb/match?q=Quiero cotizar un techo de 11x7` → match seed; list ~88 entradas WA. Persistencia GCS Training KB en Cloud Run. Report: `~/whatsapp-export/review/REPORT-2026-07-16-improvement.md`.
 
+**2026-07-14 (feat — Hub Wolfboard: EstadoConsultasLive):** `/hub` muestra `EstadoConsultasLive` debajo de `OperatorOverview` — panel de consultas/canales en vivo (componente desde `feat/hub-operator-control-plane` @ a8984875; wiring mínimo en `BmcWolfboardHub.jsx`; sin caja DEBUG ni bloques de copy de investigación).
+
 **2026-07-14 (docs — inbound conversational OS research pack):** Publicados en repo (sin código) el resumen de investigación inbound Jul-2026, `INBOUND_CONVERSATIONAL_OS_LOOP_STATE`, handoff 2026-07-06, artefacto `PANELIN-VOICE-XAI-AGENT.json` y runbook operativo de casillas email — extraídos de `feat/hub-operator-control-plane` para PR docs aislado.
 **2026-07-14 (fix — client PDF export fidelity for preferred simple):** html2pdf client fallback now normalizes template HTML (strip `@page`, inject print overrides for `.page` padding/shadows/margins) so raster output matches the designed render. `simple.js` CSS uses `@page{margin:0}` + unconditional `.page` padding `7mm 8mm`. Panel qty/length and no-logo already in place. Tests updated in `tests/pdf-pipeline.test.mjs`.
 
