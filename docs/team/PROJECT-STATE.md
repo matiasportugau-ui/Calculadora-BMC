@@ -1,10 +1,6 @@
 # Project State — BMC/Panelin
 
-<<<<<<< HEAD
 **Última actualización:** 2026-07-22
-=======
-**Última actualización:** 2026-07-19
->>>>>>> origin/main
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -17,6 +13,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-22 (fix — CI apt hardening for easymidi on ubuntu-latest):** PR [#726](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/726) merged — `scripts/ci-install-alsa-dev.sh` strips flaky Google Chrome apt sources before `apt-get update` so Lint/Validate no longer fail on mirror hash mismatches when only `libasound2-dev` is needed. Wired in `ci.yml`, `cockpit-e2e-writes.yml`, `product-docs.yml`.
+
+**2026-07-22 (ops — github-pendings clearance):** Merged active PRs [#713](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/713) PDF export fidelity, [#712](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/712) EstadoConsultasLive, [#720](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/720) SDD harness; Dependabot [#723](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/723) setup-node v7. Closed risky majors (#506 ESLint 10, #508 React 19, #551 dev-deps group, #678 react-resizable-panels v4) and 29 stale CONFLICTING PRs. Master prompt: `goal-prompt-github-pendings-clearance.md`.
 
 **2026-07-22 (fix — Panelin Co-Work session analysis Wave 1–3):** Post-mortem sesión operador WA Web + Co-Work: informe [`reports/PANELIN-SESSION-ANALYSIS-2026-07-20.md`](./reports/PANELIN-SESSION-ANALYSIS-2026-07-20.md). **Wave 1:** prompts honestidad WA Web (JPEG only) + bloque aprendizaje Training KB; babeta desarrollo 16 cm + largo pieza ~3 m; `info` SSE → `infoNotes` (no historial); strip noise al request; Error 400 historial>60 accionable; `operatorContext.defaults` (lista venta, 1 agua, falta-info). **Wave 2:** tool agent `wa_lead_to_admin` → `POST /api/wolfboard/row-create` con `notas` (defaults + campos faltantes). **Wave 3:** SSE `provider_reset` + clear bubble/infoNotes on failover; `KEEP_RECENT` 6. SDD Co-Work non-goal WA Web automation. Tests: `chatHistoryNoise.test.js`, `coworkOperatorContext.test.js`, `wa_lead_to_admin` en `agentTools.test.js`.
 
