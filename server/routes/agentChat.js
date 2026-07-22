@@ -45,6 +45,7 @@ import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
 import { toGeminiTools, toGeminiResponse } from "../lib/geminiTools.js";
 import { getToolStats } from "../lib/toolStats.js";
+import { buildAgentToolsOpenApi, toYaml } from "../lib/agentToolsOpenApi.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
 import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
 import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.js";
@@ -185,6 +186,28 @@ router.get("/agent/tools-manifest", (_req, res) => {
       requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
     })),
   });
+});
+
+/**
+ * GET /api/agent/tools/openapi — OpenAPI 3.1 export of AGENT_TOOLS (B-04).
+ * Query: format=json|yaml (default json). Also honors Accept: application/yaml.
+ */
+router.get("/agent/tools/openapi", (req, res) => {
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("x-forwarded-host") || req.get("host") || "";
+  const baseUrl = host ? `${proto}://${host}` : undefined;
+  const doc = buildAgentToolsOpenApi(AGENT_TOOLS, {
+    baseUrl,
+    toolsRequiringAuth: TOOLS_REQUIRING_AUTH,
+  });
+  const wantYaml =
+    String(req.query?.format || "").toLowerCase() === "yaml" ||
+    /application\/ya?ml|\byaml\b/i.test(String(req.get("accept") || ""));
+  if (wantYaml) {
+    res.type("application/yaml").send(toYaml(doc));
+    return;
+  }
+  res.json(doc);
 });
 
 /**

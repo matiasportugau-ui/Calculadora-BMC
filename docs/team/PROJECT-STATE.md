@@ -14,6 +14,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-22 (feat — Panelin agent B-04 OpenAPI tools):** `GET /api/agent/tools/openapi` exports OpenAPI 3.1 generated from live `AGENT_TOOLS` (JSON/YAML); `server/lib/agentToolsOpenApi.js`; tests `agentToolsOpenApi.test.js`. SDD-TARGET B-04 Done.
+
+
 **2026-07-22 (feat — Panelin Co-Work PR-H Document-PiP):** Shared [`src/utils/openDocumentPip.js`](../../src/utils/openDocumentPip.js); Live detach uses it; desk **Fijar arriba** portals UI into Document PiP; calculator chat **Fijar** → `openPanelinCoworkPinned` (PiP+iframe desk or popup fallback). Tests `tests/openDocumentPip.test.js`. SDD-PANELIN-COWORK PR-H Done (AC §20 #13).
 
 **2026-07-22 (feat — Panelin Co-Work desk window PR-G):** Route `/panelin/cowork` minimal shell (`PanelinCoWorkPage`) with chat + CoWork toolbar; **Abrir en ventana** opens named popup `panelin-cowork` (default ~420×720, size remembered); `BroadcastChannel('bmc-panelin-cowork-v1')` syncs `calcState` parent→desk and `chatAction` desk→parent. Operator-facing (no longer dev-only). Tests `tests/openPanelinCoworkDesk.test.js`. SDD-PANELIN-COWORK PR-G Done.
