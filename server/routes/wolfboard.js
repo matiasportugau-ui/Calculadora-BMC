@@ -599,7 +599,7 @@ export function createWolfboardRouter(config) {
       "",
       sanitizeCellValue(String(body.zona ?? "")),
       sanitizeCellValue(consulta),
-      "",
+      sanitizeCellValue(String(body.notas ?? "")),
       "",
       "Pendiente",
       "",

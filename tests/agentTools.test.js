@@ -126,6 +126,7 @@ group("AGENT_TOOLS surface", () => {
     "recuperar_casos_similares",
     "leer_crm_taxonomia",
     "escribir_crm_taxonomia",
+    "wa_lead_to_admin",
     "wolfboard_pendientes",
     "wolfboard_export",
     "wolfboard_sync",
@@ -839,3 +840,8 @@ console.log("═".repeat(60));
 if (failures > 0) {
   process.exit(1);
 }
+
+await group("wa_lead_to_admin — requires user_confirmed", async () => {
+  const { parsed } = await run("wa_lead_to_admin", { consulta: "Babeta galpon" });
+  assert(parsed.ok === false, "must reject without user_confirmed");
+});

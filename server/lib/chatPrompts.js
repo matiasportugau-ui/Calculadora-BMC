@@ -557,17 +557,26 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
   // prompt is byte-identical to today when the flag is OFF. brainBlock() is sync + fail-soft.
   const brainBlockStr = config.brainEnabled ? brainBlock(userText) : "";
 
+  const learningBmcBlock = `## CÓMO APRENDO (BMC — honestidad operativa)
+- **No** entreno modelos de Google/OpenAI con tus chats. El aprendizaje operativo es **Training KB** interna (Good/Correct en modo dev, entradas curadas).
+- Si el operador corrige algo, orientalo a **Good/Correct** o a escribir en la KB — no prometas "aprendizaje automático" externo.
+- Co-Work Live: solo **JPEG read-only** de la pestaña compartida — **no** controlás mouse/teclado ni WhatsApp Web DOM.`;
+
   const antiRepBlock = ANTI_REPETITION_RULES;
   const variationBlock = buildAntiRepetitionBlock(recentAssistantMessages);
   const prefsBlock = buildPreferencesBlock(preferences);
 
   const coworkVisionBlock = `## Co-Work / visión (pantalla + planillas)
-- Las capturas de pantalla del operador son **CONTEXTO**, no fuente de verdad de números ni rowNum.
+- Las capturas del operador son **CONTEXTO OCR** — no fuente de verdad de números ni rowNum.
+- **WhatsApp Web (JPEG read-only):** podés leer texto visible en la captura; **NO** abrís chats, **NO** clickeás, **NO** escribís en WA Web. Para crear lead en Admin usá \`wa_lead_to_admin\` (confirmación explícita).
+- Checklist WA lead: extraé consulta + teléfono + nombre si aparecen; si falta algo, listalo en campos_faltantes — no inventes.
 - Antes de cotizar o escribir: verificá filas/celdas con \`sheets_read_range\`, \`sheets_find\`, \`sheets_get_pending_admin\` o tools wolfboard_*.
-- Nunca inventes un rowNum: si no está claro en el texto ni en la captura, preguntá o usá \`sheets_find\`.
-- Escrituras: proponé el cambio (\`sheets_propose_write\` o describí el diff) y esperá confirmación explícita antes de \`sheets_write_range\` / \`wolfboard_actualizar_fila\` / \`guardar_en_crm\`.
-- Live assist: la imagen adjunta es la captura más reciente de la pestaña compartida; no repitas el mismo resumen si no hay pedido nuevo del operador.
-- Preferí workbook alias \`admin\` o \`crm\` — no pidas spreadsheet IDs al operador.`;
+- Consulta **nueva** sin fila Admin: \`wa_lead_to_admin\` — **no** pidas rowNum Wolfboard que aún no existe.
+- Nunca inventes un rowNum: si no está claro, preguntá o usá \`sheets_find\`.
+- Escrituras: proponé el cambio y esperá confirmación explícita antes de \`sheets_write_range\` / \`wolfboard_actualizar_fila\` / \`guardar_en_crm\` / \`wa_lead_to_admin\`.
+- Live assist: imagen = captura más reciente; no repitas el mismo resumen sin pedido nuevo.
+- Preferí workbook alias \`admin\` o \`crm\` — no pidas spreadsheet IDs al operador.
+- **Babeta adosar:** desarrollo **16 cm** (plegados incluidos); largo comercial de pieza ~**3 m** — no confundas desarrollo con largo de tramo.`;
 
   const toolsBlock = `## TOOLS DE CALCULADORA (OBLIGATORIO)
 La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas estrictas:
@@ -702,7 +711,7 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
   // in that (non-prod) mode — output correctness is unaffected.
   const staticPrefix = [
     IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC,
-    canonicalPrices, knowledgeBlock, brainBlockStr, coworkVisionBlock, toolsBlock, extractionProtocol, antiRepBlock,
+    canonicalPrices, knowledgeBlock, brainBlockStr, learningBmcBlock, coworkVisionBlock, toolsBlock, extractionProtocol, antiRepBlock,
   ].filter(Boolean).join("\n\n");
   const operatorCtx = options.operatorContextBlock || "";
   const dynamicTail = [
