@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-23 (fix — smoke:prod suggest-response 401 local):** `scripts/smoke-prod-api.mjs` soft-skips suggest when `API_AUTH_TOKEN` unset **outside CI** (was hard-fail 401 `missing_credentials`). CI still requires the secret. Sends Bearer + x-api-key. `npm run smoke:prod:auth` = Doppler full check (verified IA ok gemini).
+
 **2026-07-23 (agent — bmc-live-presentation):** New subagent [`.claude/agents/bmc-live-presentation.md`](../../.claude/agents/bmc-live-presentation.md) + slash [`/bmc-live-presentation`](../../.claude/commands/bmc-live-presentation.md) — reads fresh PROJECT-STATE, asks cut-mode Qs (Hero / Feature reel / Full atlas), captures live usage on calculadora-bmc.vercel.app, delivers MP4 + chapters under `.runtime/presentations/`. Evals: `.claude/agents/evals/bmc-live-presentation.json`, `run-bmc-live-presentation.sh`.
 
 **2026-07-23 (docs — SDD reverse-engineer AI agent platform):** New SoT bundle [`docs/sdd/panelin-ai-agent-platform/`](../sdd/panelin-ai-agent-platform/) — as-built `SDD.md` §1–12, `SDD-TARGET.md`, `evidence/` (tools **55** local / **51** prod, **19** goldens, surfaces, actual-vs-goal), `IMPLEMENTATION-GUIDE.md` (IMP-01…15), recreation checklist ~91%. Child [`panelin-chat-agent`](../sdd/panelin-chat-agent/) points here for tool counts. Self SCORECARD ~88; formal `sdd-quality-auditor` still pending.
