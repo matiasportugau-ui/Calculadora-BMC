@@ -1,8 +1,8 @@
 ---
 title: System Design Document — Panelin Multi-Context Agent
-version: 0.2
+version: 0.3
 date: 2026-07-22
-status: As-Built Draft
+status: As-Built
 author: sdd-architect + glory
 source: hybrid-architect-evidence
 target_path: /Users/matias/calculadora-bmc

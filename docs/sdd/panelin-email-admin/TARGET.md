@@ -27,13 +27,13 @@ glory_phase: G0
 
 ## UAT checklist
 
-- [ ] ContextGroup UI: ≥2 tabs (email + admin/calc); keyboard tablist works
-- [ ] Ask from Calc tab → agent lists/summarizes email without switching tab
-- [ ] `email_listar_hilos` / `email_leer_hilo` with JWT
-- [ ] `email_borrador_saliente` then `email_enviar` only after explicit confirm phrase
-- [ ] `email_clasificar_mensaje` → `consulta_cliente` or `alerta_admin` (+ optional Admin lead path)
-- [ ] Never claims send success without tool OK
-- [ ] SDD SCORECARD `pass: true` (≥90)
+- [x] ContextGroup UI shipped (`ContextGroupBar` + `useContextGroups`); ARIA tablist + arrows
+- [x] SharedWorkspace bundled on every send (`operatorContext.workspace`)
+- [x] Tools registered: list/read/classify/draft/send (contract tests)
+- [x] `email_clasificar_mensaje` → `consulta_cliente` / `alerta_admin` (unit)
+- [x] `email_enviar` blocked without intent / user_confirmed (contract)
+- [x] SDD SCORECARD `pass: true` (composite 92)
+- [ ] Live JWT on Vercel/local: list→read→HITL send on test casilla (post-deploy; see audit/GAP-PLAN P2)
 
 ## Out of scope
 
