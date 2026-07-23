@@ -194,7 +194,11 @@ export function useChat({
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
   const [conversationId, setConversationId] = useState(() => loadConversationId() || freshConversationId());
-  const [devMeta, setDevMeta] = useState({ kbMatches: 0, calcValidation: null });
+  const [devMeta, setDevMeta] = useState({
+    kbMatches: 0,
+    calcValidation: null,
+    lastTurn: null, // IMP-12: { provider_used, model, latency_ms, ttft_ms }
+  });
   const [trainingEntries, setTrainingEntries] = useState([]);
   const [trainingStats, setTrainingStats] = useState({ total: 0 });
   const [promptPreview, setPromptPreview] = useState("");
@@ -558,8 +562,25 @@ export function useChat({
                     m.id === assistantId ? { ...m, suggestions: sug || undefined } : m
                   )
                 );
+              } else if (evt.type === "done") {
+                // IMP-12: surface provider + latency in Dev panel only
+                if (
+                  evt.provider_used != null ||
+                  evt.latency_ms != null ||
+                  evt.model != null
+                ) {
+                  setDevMeta((prev) => ({
+                    ...prev,
+                    lastTurn: {
+                      provider_used: evt.provider_used ?? null,
+                      model: evt.model ?? null,
+                      latency_ms: evt.latency_ms ?? null,
+                      ttft_ms: evt.ttft_ms ?? null,
+                    },
+                  }));
+                }
               }
-              // type === "done" → loop exits naturally when reader closes
+              // type === "done" → loop also exits when reader closes
             } catch {
               // skip malformed event
             }

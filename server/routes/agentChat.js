@@ -706,7 +706,28 @@ router.post("/agent/chat", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no"); // disable nginx / Cloud Run buffering
 
-  const send = (obj) => { if (!aborted && !res.writableEnded) res.write(`data: ${JSON.stringify(obj)}\n\n`); };
+  /** IMP-12: track first streamed text for optional ttft_ms on `done`. */
+  let firstTokenAt = null;
+  const send = (obj) => {
+    if (aborted || res.writableEnded) return;
+    if (obj?.type === "text" && obj.delta && firstTokenAt == null) {
+      firstTokenAt = Date.now();
+    }
+    res.write(`data: ${JSON.stringify(obj)}\n\n`);
+  };
+  /** SSE terminal event with observability fields (IMP-12). */
+  const sendDone = (meta = {}) => {
+    const payload = {
+      type: "done",
+      provider_used: meta.provider_used ?? null,
+      model: meta.model ?? null,
+      latency_ms: meta.latency_ms ?? null,
+    };
+    if (meta.ttft_ms != null && Number.isFinite(meta.ttft_ms)) {
+      payload.ttft_ms = meta.ttft_ms;
+    }
+    send(payload);
+  };
   let visibleAssistantText = "";
   let aborted = false;
   const emittedActions = [];
@@ -1075,6 +1096,7 @@ router.post("/agent/chat", async (req, res) => {
       // Reset per-attempt accumulators so a mid-stream failure doesn't contaminate the next provider's log entry
       visibleAssistantText = "";
       emittedActions.length = 0;
+      firstTokenAt = null; // reset per provider attempt (IMP-12 ttft)
       let buf = "";
       let resolvedModel = "";
       const tStart = Date.now();
@@ -1521,7 +1543,8 @@ router.post("/agent/chat", async (req, res) => {
             hedgeCount,
           });
         }
-        send({ type: "done" });
+        // IMP-12: single `done` is emitted after runProviderAttempt returns ok
+        // (see below) so the client gets provider_used + latency_ms once.
 
         // Fire-and-forget autolearn — runs ONCE per conversation (not per turn).
         // Gate: production only, ≥4 turns (2 full exchanges), no prior autolearn for this convId.
@@ -1597,7 +1620,14 @@ router.post("/agent/chat", async (req, res) => {
         if (!String(visibleAssistantText || "").trim()) {
           send({ type: "text", delta: "Listo." });
         }
-        send({ type: "done" });
+        const latency_ms = Date.now() - tStart;
+        const ttft_ms = firstTokenAt != null ? firstTokenAt - tStart : null;
+        sendDone({
+          provider_used: provider,
+          model: resolvedModel || null,
+          latency_ms,
+          ttft_ms,
+        });
         clearInterval(heartbeat);
         res.end();
         return; // success
@@ -1631,7 +1661,7 @@ router.post("/agent/chat", async (req, res) => {
         message:
           "No pude completar la respuesta (Live/captura). Claude sin créditos, OpenAI sin cuota, Grok key inválida, o Gemini vacío/timeout. Elegí **Gemini** en el selector de modelo y reintentá, o mandá un mensaje sin captura.",
       });
-      send({ type: "done" });
+      sendDone({ provider_used: null, model: null, latency_ms: null });
     }
   } finally {
     try { res.end(); } catch { /* already closed */ }

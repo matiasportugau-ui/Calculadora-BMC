@@ -352,6 +352,19 @@ export default function PanelinDevPanel({
                   {devMeta?.calcValidation?.matches == null ? "n/a"
                     : devMeta.calcValidation.matches ? "ok" : "mismatch"}
                 </b>
+                {devMeta?.lastTurn && (
+                  <>
+                    {" "}· Last turn:{" "}
+                    <b>{devMeta.lastTurn.provider_used || "—"}</b>
+                    {devMeta.lastTurn.model ? ` / ${devMeta.lastTurn.model}` : ""}
+                    {devMeta.lastTurn.latency_ms != null
+                      ? ` · ${devMeta.lastTurn.latency_ms}ms`
+                      : ""}
+                    {devMeta.lastTurn.ttft_ms != null
+                      ? ` · ttft ${devMeta.lastTurn.ttft_ms}ms`
+                      : ""}
+                  </>
+                )}
               </div>
               <button type="button" onClick={() => setTrainExpanded((v) => !v)} style={btn()}>
                 {trainExpanded ? "Compactar" : "Expandir"}
