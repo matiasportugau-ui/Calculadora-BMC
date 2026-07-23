@@ -14,6 +14,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-22 (fix — local API outbox + pg hardiness):** `transportistaOutboxWorker` stops on missing `outbox_notifications` (42P01, one warn); held client gets `on("error")`; gap pools (ads/marketing/marketIntel) add `pool.on("error")`; `TRANSPORTISTA_OUTBOX_DISABLED` config. Stops 15s spam + unhandled pg Client crash in local `dev:full`.
+
+
 **2026-07-22 (feat — Panelin agent B-06 circuit breaker):** Extracted `server/lib/providerCircuitBreaker.js` (N-failures cooldown, hard 400/401/403 long open, never drop providers — healthy-first reorder). `agentCore` re-exports + uses `orderChainByHealth`. Tests `providerCircuitBreaker.test.js` + existing `agentCoreFailover.test.js`. SDD-TARGET B-06 Done.
 
 

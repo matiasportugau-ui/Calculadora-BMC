@@ -39,6 +39,10 @@ const pool = () => {
   if (!_pool) {
     if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL required');
     _pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    _pool.on('error', (err) => {
+      // idle client — do not rethrow (would crash Node)
+      console.error('[marketing] pg pool idle client error:', err?.message);
+    });
   }
   return _pool;
 };

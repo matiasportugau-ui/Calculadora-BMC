@@ -9,10 +9,9 @@
  *   3. Backoff exponencial con jitter en fallos (max 12 intentos → 'failed').
  *   4. trip_events idempotentes via (trip_id, idempotency_key).
  *
- * Trade-off: las llamadas HTTP a Meta (WhatsApp Cloud API) corren dentro de
- * la tx, manteniendo locks por la duración del batch. SKIP LOCKED evita
- * bloquear a otras instancias; auditar idle_in_transaction_session_timeout
- * en Postgres si batch × http_latency > timeout.
+ * Missing schema: if `outbox_notifications` is undefined (42P01), the worker
+ * stops permanently for this process (one warn) so local DBs without
+ * transportista migrations do not spam every 15s.
  */
 import { sendWhatsAppText } from "./whatsappOutbound.js";
 
@@ -22,11 +21,25 @@ function backoffSeconds(attempt) {
   return base + jitter;
 }
 
+/** @param {unknown} err */
+export function isOutboxSchemaMissingError(err) {
+  if (!err || typeof err !== "object") return false;
+  const e = /** @type {{ code?: string, message?: string }} */ (err);
+  if (e.code === "42P01") return true;
+  const msg = String(e.message || "");
+  return /outbox_notifications/i.test(msg) && /does not exist|no existe/i.test(msg);
+}
+
 /**
  * @param {{ config: import("../config.js").config, logger: import("pino").Logger, pool: import("pg").Pool | null }} opts
  */
 export function startTransportistaOutboxWorker({ config, logger, pool }) {
   const log = logger || { info() {}, warn() {}, error() {} };
+
+  if (config.transportistaOutboxDisabled) {
+    log.info("transportista outbox: disabled via TRANSPORTISTA_OUTBOX_DISABLED");
+    return () => {};
+  }
 
   if (!pool) {
     log.warn("transportista outbox: no pool, worker not started");
@@ -35,14 +48,39 @@ export function startTransportistaOutboxWorker({ config, logger, pool }) {
   const intervalMs = config.transportistaOutboxIntervalMs || 15000;
   const batchSize = Number(config.transportistaOutboxBatchSize || 20);
 
-  // Shutdown coordinado: cleanup llama ac.abort() para que el batch
-  // in-flight termine la fila actual y rompa antes de la siguiente.
   const ac = new AbortController();
   let timer = null;
   let running = false;
+  let schemaMissing = false;
+  let schemaMissingLogged = false;
+
+  function stopWorker(reason) {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    if (reason === "schema_missing" && !schemaMissingLogged) {
+      schemaMissingLogged = true;
+      log.warn(
+        {
+          hint: "run: npm run transportista:migrate (then restart API)",
+        },
+        "transportista outbox: schema missing — worker stopped",
+      );
+    }
+  }
+
+  function handleBatchError(e) {
+    if (isOutboxSchemaMissingError(e)) {
+      schemaMissing = true;
+      stopWorker("schema_missing");
+      return;
+    }
+    log.error({ err: e?.message }, "transportista outbox batch failed");
+  }
 
   async function processBatch() {
-    if (running) return;
+    if (running || schemaMissing || ac.signal.aborted) return;
     if (!config.whatsappAccessToken || !config.whatsappPhoneNumberId) return;
     running = true;
 
@@ -52,9 +90,15 @@ export function startTransportistaOutboxWorker({ config, logger, pool }) {
     let retry = 0;
     let failed = 0;
 
-    const client = await pool.connect();
+    let client;
     let inTx = false;
     try {
+      client = await pool.connect();
+      // Prevent unhandled 'error' on this Client from killing the Node process.
+      client.on("error", (err) => {
+        log.warn({ err: err?.message, code: err?.code }, "transportista outbox client error");
+      });
+
       await client.query("begin");
       inTx = true;
 
@@ -117,9 +161,6 @@ export function startTransportistaOutboxWorker({ config, logger, pool }) {
         } catch (err) {
           await client.query("rollback to savepoint tx_row");
 
-          // Si el fallo es por shutdown abort, no penalizamos el row con un
-          // intento extra ni programamos backoff: dejamos pending para que la
-          // próxima instancia lo recoja inmediatamente.
           if (ac.signal.aborted && (err?.name === "AbortError" || /aborted/i.test(err?.message || ""))) {
             await client.query("release savepoint tx_row").catch(() => {});
             break;
@@ -175,12 +216,23 @@ export function startTransportistaOutboxWorker({ config, logger, pool }) {
       await client.query("commit");
       inTx = false;
     } catch (txErr) {
-      if (inTx) {
+      if (inTx && client) {
         await client.query("rollback").catch(() => {});
       }
-      throw txErr;
+      if (isOutboxSchemaMissingError(txErr)) {
+        schemaMissing = true;
+        stopWorker("schema_missing");
+      } else {
+        throw txErr;
+      }
     } finally {
-      client.release();
+      if (client) {
+        try {
+          client.release();
+        } catch {
+          /* ignore */
+        }
+      }
       running = false;
       if (claimed > 0) {
         log.info(
@@ -192,17 +244,16 @@ export function startTransportistaOutboxWorker({ config, logger, pool }) {
   }
 
   timer = setInterval(() => {
-    if (ac.signal.aborted) return;
-    processBatch().catch((e) => log.error({ err: e?.message }, "transportista outbox batch failed"));
+    if (ac.signal.aborted || schemaMissing) return;
+    processBatch().catch(handleBatchError);
   }, intervalMs);
 
   if (typeof timer.unref === "function") timer.unref();
 
-  processBatch().catch((e) => log.error({ err: e?.message }, "transportista outbox initial batch failed"));
+  processBatch().catch(handleBatchError);
 
   return () => {
-    if (timer) clearInterval(timer);
-    timer = null;
+    stopWorker("shutdown");
     ac.abort();
   };
 }

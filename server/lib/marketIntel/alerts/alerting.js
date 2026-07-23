@@ -13,6 +13,9 @@ const pool = () => {
   if (!_pool) {
     if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL required');
     _pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    _pool.on('error', (err) => {
+      log.warn({ err: err?.message, code: err?.code }, 'marketIntel alerts pg pool idle error');
+    });
   }
   return _pool;
 };
