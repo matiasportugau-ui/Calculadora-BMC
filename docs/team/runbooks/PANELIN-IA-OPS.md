@@ -1,7 +1,7 @@
 # Panelin IA — Runbook de operación
 
 > Servicio: **panelin-calc** (Cloud Run · us-central1) · Frontend: **calculadora-bmc.vercel.app**
-> Último review: 2026-05-07. Owner técnico: equipo BMC/Panelin.
+> Último review: **2026-07-23** (SDD evolution: cost query, assistants snapshot, RAG pointers). Owner técnico: equipo BMC/Panelin.
 
 ## 1. Secrets requeridos (Cloud Run)
 
@@ -81,8 +81,11 @@ Implementado en `server/lib/budget.js`. **Default OFF** (`BUDGET_ENABLED=false`)
 ## 7. Logs y observabilidad
 
 - **Estructurados (pino)**: cada turn loggea `tool`, `latencyMs`, `inputTokens`, `outputTokens`, `provider`, `model`, `kbMatchCount`.
-- **In-memory** (`server/lib/toolStats.js`): ring buffer de hasta 1000 calls (24 h). Visible en `/api/agent/tool-stats` (devMode). **Se reinicia con cold start** — no usar como fuente histórica.
+- **Cost events** (via `costTelemetry.logAgentCost`): `agent_core_call`, `ai_completion` — JSON with `estimated_cost_usd`.
+- **SuperAgent** (parallel path): raw stdout event `superagent_ai_call` with `estimated_cost_usd` — **not** yet wired through `costTelemetry` (code debt IMP-07).
+- **In-memory** (`server/lib/toolStats.js`): ring buffer of up to 1000 calls (24 h). Visible in `/api/agent/tool-stats` (auth). Cold-start resets memory ring; durable `agent_tool_calls` when `DATABASE_URL` is set (B-05).
 - **Conversaciones**: si `CHAT_LOG_CONVERSATIONS=true`, persiste en `data/conversations/` (file-based). Revisar retención antes de habilitar en prod por PII.
+- **SDD evidence:** `docs/sdd/panelin-ai-agent-platform/evidence/cost-query.md`.
 
 ## 8. Checklist pre-release de cambios al agente
 
@@ -92,8 +95,54 @@ Implementado en `server/lib/budget.js`. **Default OFF** (`BUDGET_ENABLED=false`)
 - [ ] Si agregaste env nueva → documentada en `.env.example` y en este runbook §1.
 - [ ] Si tocaste rate limit / budget → observar 24 h antes de subir caps.
 
-## 9. Ver también
+## 9. ASSISTANTS_ACTIVE (prod snapshot + how to change)
+
+**Keys:** `canales` · `panelin` · `email` · `wa` · `ml` · `wolfboard` (+ `seam` always on, not listed).
+
+| Environment | Source of truth | Snapshot 2026-07-23 |
+|-------------|-----------------|---------------------|
+| Production Cloud Run `panelin-calc` | Container env `ASSISTANTS_ACTIVE` | **`canales;ml;panelin`** |
+| Local API `appEnv=development` | default if unset | all except seam explicit |
+| Doppler `bmc-backend/prd` | may be **absent** | use Cloud Run / GSM |
+
+Prefer **`;`** separators (comma can break in some transit paths — see `config.js` comment).
+
+**Runtime override:** hub `/hub/admin/assistants` → `POST /api/assistants/:key/toggle` writes `wa_settings` (layered on top of env). Status: `GET /api/assistants/status` (admin JWT or `API_AUTH_TOKEN`).
+
+**Evidence file:** [`docs/sdd/panelin-ai-agent-platform/evidence/assistants-active.md`](../../sdd/panelin-ai-agent-platform/evidence/assistants-active.md).
+
+## 10. AI cost — “¿cuánto gastamos ayer?” (v1)
+
+There is **no** dedicated hub dollar card yet. Operators use Cloud Logging.
+
+1. Open Cloud Logging for project `chatbot-bmc-live`, resource Cloud Run revision `panelin-calc`.
+2. Filter events: `agent_core_call` · `ai_completion` · `superagent_ai_call` (jsonPayload or textPayload JSON).
+3. Sum field `estimated_cost_usd` (estimates, not invoices).
+
+Copy-pasteable command: [`docs/sdd/panelin-ai-agent-platform/evidence/cost-query.md`](../../sdd/panelin-ai-agent-platform/evidence/cost-query.md).
+
+**Omni path:** SQL `SUM(cost_usd)` on `omni_ai_jobs` for orchestrator spend (separate from chat SSE).
+
+**Not cost:** `GET /api/ai-analytics/trends` is knowledge-environment analytics from a file log, not live LLM $.
+
+## 11. RAG enable / disable (Panelin + Omni)
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `RAG_ENABLED` | **false** | Chat inject + `recuperar_casos_similares` / Omni grounding skip when off |
+| `RAG_TOP_K` | 5 | Neighbors |
+| `RAG_THRESHOLD` | (config) | Min similarity |
+
+**Full enable runbook (pgvector + embed batch + precheck + shadow mode):**  
+[`omni-ai-orchestrator-rag-enable.md`](./omni-ai-orchestrator-rag-enable.md)
+
+**Rollback:** set `RAG_ENABLED=0` (or unset) and restart revision if worker already booted with flag on.
+
+**Product default:** keep RAG **off** until embeddings backfill + `npm run omni:rag-precheck` pass. Do not treat “code present” as “feature on”.
+
+## 12. Ver también
 
 - [`docs/team/policies/COMERCIAL-CHAT-ML-SHOPIFY.md`](../policies/COMERCIAL-CHAT-ML-SHOPIFY.md)
 - [`docs/team/panelsim/PANELIN-IA-PREFLIGHT-DOSSIER.md`](../panelsim/PANELIN-IA-PREFLIGHT-DOSSIER.md)
 - [`docs/team/PROJECT-STATE.md`](../PROJECT-STATE.md) — estado del programa BMC.
+- Platform SDD: [`docs/sdd/panelin-ai-agent-platform/SDD.md`](../../sdd/panelin-ai-agent-platform/SDD.md)
