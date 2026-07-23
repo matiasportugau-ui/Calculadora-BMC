@@ -192,6 +192,8 @@ function WhisperVoicePanel({
         {transcript.length === 0 && (
           <p style={{ color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 32 }}>
             Este navegador no tiene Web Speech. Usá el micrófono (transcripción Whisper) o pasá a texto.
+            <br />
+            <span style={{ fontSize: 12 }}>Hands-free (Chrome/Safari) ≠ OpenAI Realtime — esa ruta es solo en /panelin/live.</span>
           </p>
         )}
         {transcript.map((line, i) => (

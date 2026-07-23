@@ -1061,6 +1061,43 @@ function ConversationsTab() {
 }
 
 // ── STATS TAB ──────────────────────────────────────────────────────────────
+const COST_QUERY_GCLOUD = `gcloud logging read '
+  resource.type="cloud_run_revision"
+  AND resource.labels.service_name="panelin-calc"
+  AND (
+    jsonPayload.event="agent_core_call"
+    OR jsonPayload.event="chat_turn_cost"
+    OR jsonPayload.event="ai_completion"
+    OR jsonPayload.event="superagent_ai_call"
+  )
+' --project=chatbot-bmc-live --freshness=1d --limit=500 --format=json`;
+
+function IaCostQueryCard() {
+  const [copied, setCopied] = useState(false);
+  const copyQuery = () => {
+    void navigator.clipboard?.writeText(COST_QUERY_GCLOUD).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <Card>
+      <SectionLabel>Costo IA (estimado $/día)</SectionLabel>
+      <p style={{ fontSize: 13, color: C.sub, fontFamily: C.ff, margin: "0 0 8px", lineHeight: 1.45 }}>
+        Este panel no muestra totales en vivo. Sumá eventos estructurados en Cloud Logging
+        (<code>agent_core_call</code>, <code>chat_turn_cost</code>, <code>superagent_ai_call</code>).
+        No uses <code>/api/ai-analytics/trends</code> para $ de LLM.
+      </p>
+      <p style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, margin: "0 0 10px" }}>
+        Procedimiento completo:{" "}
+        <code style={{ fontSize: 11 }}>docs/sdd/panelin-ai-agent-platform/evidence/cost-query.md</code>
+        {" "}· OPS <code>PANELIN-IA-OPS.md</code> §10
+      </p>
+      <Btn onClick={copyQuery}>{copied ? "✓ Copiado" : "Copiar filtro gcloud (24h)"}</Btn>
+    </Card>
+  );
+}
+
 function StatsTab() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1119,6 +1156,7 @@ function StatsTab() {
           </div>
         </Card>
       )}
+      <IaCostQueryCard />
     </div>
   );
 }
