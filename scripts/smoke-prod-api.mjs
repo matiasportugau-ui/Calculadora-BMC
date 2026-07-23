@@ -23,6 +23,10 @@
 const DEFAULT_BASE = "https://panelin-calc-q74zutv7dq-uc.a.run.app";
 const TIMEOUT_MS = 25_000;
 
+function inCi() {
+  return process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+}
+
 function parseArgs(argv) {
   let base = process.env.BMC_API_BASE || process.env.SMOKE_BASE_URL || DEFAULT_BASE;
   let json = false;
@@ -30,6 +34,7 @@ function parseArgs(argv) {
     process.env.SMOKE_SKIP_MATRIZ === "1" || process.env.SMOKE_SKIP_MATRIZ === "true";
   let skipSuggest =
     process.env.SMOKE_SKIP_SUGGEST === "1" || process.env.SMOKE_SKIP_SUGGEST === "true";
+  let autoSkipSuggestNoAuth = false;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--base" && argv[i + 1]) {
       base = argv[++i];
@@ -41,7 +46,14 @@ function parseArgs(argv) {
       skipSuggest = true;
     }
   }
-  return { base, json, skipMatriz, skipSuggest };
+  // Local (non-CI): suggest-response requires API_AUTH_TOKEN (x-api-key / Bearer).
+  // Without it the route returns 401 missing_credentials — soft-skip so health/MATRIZ
+  // smoke stays green. CI must keep the secret and NOT auto-skip (loud fail if missing).
+  if (!skipSuggest && !process.env.API_AUTH_TOKEN && !inCi()) {
+    skipSuggest = true;
+    autoSkipSuggestNoAuth = true;
+  }
+  return { base, json, skipMatriz, skipSuggest, autoSkipSuggestNoAuth };
 }
 
 /** Redact tokens / long key-like strings in smoke notes (stderr-safe). */
@@ -91,12 +103,11 @@ async function fetchJson(method, path, base, bodyObj) {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
     };
-    // suggest-response now requires auth (any operator session OR static token).
-    // The smoke is a service caller, so present API_AUTH_TOKEN when available;
-    // harmless on the open endpoints (they ignore it). Without it, suggest-response
-    // returns 401 — set SMOKE_SKIP_SUGGEST=1 in that case.
+    // suggest-response requires auth (operator JWT OR static API_AUTH_TOKEN).
+    // Service smoke presents the static token; open endpoints ignore it.
     if (process.env.API_AUTH_TOKEN) {
       opts.headers["x-api-key"] = process.env.API_AUTH_TOKEN;
+      opts.headers.Authorization = `Bearer ${process.env.API_AUTH_TOKEN}`;
     }
     if (bodyObj != null) {
       opts.headers["Content-Type"] = "application/json";
@@ -150,7 +161,8 @@ function matrizCsvOk({ status, contentType, text }) {
 }
 
 async function main() {
-  const { base: rawBase, json, skipMatriz, skipSuggest } = parseArgs(process.argv.slice(2));
+  const { base: rawBase, json, skipMatriz, skipSuggest, autoSkipSuggestNoAuth } =
+    parseArgs(process.argv.slice(2));
   let base;
   try {
     base = normalizeBase(rawBase);
@@ -287,7 +299,9 @@ async function main() {
       path: "POST /api/crm/suggest-response",
       status: 0,
       ok: true,
-      note: "omitido (SMOKE_SKIP_SUGGEST / --skip-suggest)",
+      note: autoSkipSuggestNoAuth
+        ? "omitido local — API_AUTH_TOKEN unset (CI sí lo exige; local: doppler run --project bmc-backend --config prd -- npm run smoke:prod)"
+        : "omitido (SMOKE_SKIP_SUGGEST / --skip-suggest)",
     });
   } else {
     const sr = await fetchJson("POST", "/api/crm/suggest-response", base, {
@@ -295,11 +309,16 @@ async function main() {
       origen: "smoke-prod",
     });
     const suggestOk = sr.status === 200 && sr.body && sr.body.ok === true;
+    let note = suggestOk ? `IA ok (${sr.body.provider || "?"})` : suggestFailureNote(sr.body);
+    if (!suggestOk && sr.status === 401 && !process.env.API_AUTH_TOKEN) {
+      note =
+        "401 missing_credentials — API_AUTH_TOKEN unset; en CI el secret debe existir; local: doppler run --project bmc-backend --config prd -- npm run smoke:prod";
+    }
     rows.push({
       path: "POST /api/crm/suggest-response",
       status: sr.status,
       ok: suggestOk,
-      note: suggestOk ? `IA ok (${sr.body.provider || "?"})` : suggestFailureNote(sr.body),
+      note,
     });
     if (!suggestOk) criticalFail = true;
   }

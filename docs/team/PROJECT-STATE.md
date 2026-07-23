@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-22
+**Última actualización:** 2026-07-23
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-07-23 (fix — smoke:prod suggest-response 401 local):** `scripts/smoke-prod-api.mjs` soft-skips suggest when `API_AUTH_TOKEN` unset **outside CI** (was hard-fail 401 `missing_credentials`). CI still requires the secret. Sends Bearer + x-api-key. `npm run smoke:prod:auth` = Doppler full check (verified IA ok gemini).
+
+**2026-07-23 (agent — bmc-live-presentation):** New subagent [`.claude/agents/bmc-live-presentation.md`](../../.claude/agents/bmc-live-presentation.md) + slash [`/bmc-live-presentation`](../../.claude/commands/bmc-live-presentation.md) — reads fresh PROJECT-STATE, asks cut-mode Qs (Hero / Feature reel / Full atlas), captures live usage on calculadora-bmc.vercel.app, delivers MP4 + chapters under `.runtime/presentations/`. Evals: `.claude/agents/evals/bmc-live-presentation.json`, `run-bmc-live-presentation.sh`.
+
+**2026-07-23 (docs — SDD reverse-engineer AI agent platform):** New SoT bundle [`docs/sdd/panelin-ai-agent-platform/`](../sdd/panelin-ai-agent-platform/) — as-built `SDD.md` §1–12, `SDD-TARGET.md`, `evidence/` (tools **55** local / **51** prod, **19** goldens, surfaces, actual-vs-goal), `IMPLEMENTATION-GUIDE.md` (IMP-01…15), recreation checklist ~91%. Child [`panelin-chat-agent`](../sdd/panelin-chat-agent/) points here for tool counts. Self SCORECARD ~88; formal `sdd-quality-auditor` still pending.
 
 **2026-07-22 (feat — Panelin Multi-Context Agent / PMCA):** SharedWorkspace + ContextGroup UI (Claude-style tabs, a11y tablist) in Panelin chat; `operatorContext.workspace` → prompt. New tools: `email_listar_hilos`, `email_leer_hilo`, `email_clasificar_mensaje`, `email_enviar` (HITL via Omni reply). Intent patterns for `email_enviar` + `wa_lead_to_admin`. SDD `docs/sdd/panelin-email-admin/` (TARGET + SDD + evidence). Tests: sharedWorkspace, tool count 55, OC workspace block. No Gmail DOM; send never autonomous.
 
