@@ -6,7 +6,9 @@ import TrustBlock from "./panelin/TrustBlock.jsx";
 import { useDictation } from "../hooks/useDictation.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
 import { useScreenCoWork } from "../hooks/useScreenCoWork.js";
+import { useContextGroups } from "../hooks/useContextGroups.js";
 import CoWorkToolbar from "./cowork/CoWorkToolbar.jsx";
+import ContextGroupBar from "./cowork/ContextGroupBar.jsx";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -517,10 +519,12 @@ export default function PanelinChatPanel({
   }, [dictation]);
 
   const cowork = useScreenCoWork({ enabled: true, useSharedBuffer: true });
+  const contextGroups = useContextGroups();
 
   /**
    * Single outbound path for compose / welcome hints / suggestion chips / any UI send.
    * Live assist ADR-003: always attach latest buffer + operatorContext when Live is ON.
+   * PMCA: SharedWorkspace (all tabs in active ContextGroup) travels with every turn.
    */
   const sendWithLiveAssist = useCallback((rawText) => {
     const text = String(rawText || "").trim();
@@ -533,12 +537,16 @@ export default function PanelinChatPanel({
           source: liveOn ? "live_assist" : (frame.source || "oneshot"),
         }]
       : [];
+    const focusKind = contextGroups.activeGroup?.tabs?.find(
+      (t) => t.id === contextGroups.activeGroup?.focusTabId,
+    )?.kind;
     send(text, {
       attachments,
       operatorContext: {
-        surface: "panelin_chat",
+        surface: focusKind === "email" ? "email" : "panelin_chat",
         liveAssist: liveOn,
         workbook: "admin",
+        workspace: contextGroups.workspacePayload,
         defaults: {
           listaPrecios: "venta",
           aguasTecho: 1,
@@ -546,7 +554,7 @@ export default function PanelinChatPanel({
         },
       },
     });
-  }, [isStreaming, send, cowork]);
+  }, [isStreaming, send, cowork, contextGroups.activeGroup, contextGroups.workspacePayload]);
 
   const handleSend = useCallback(() => {
     const text = input.trim();
@@ -1077,6 +1085,21 @@ export default function PanelinChatPanel({
             messages={messages}
           />
         </div>
+
+        {/* ── Multi-Context groups (shared with agent) ── */}
+        {!voiceMode && (
+          <ContextGroupBar
+            groups={contextGroups.groups}
+            activeGroupId={contextGroups.activeGroupId}
+            activeGroup={contextGroups.activeGroup}
+            setActiveGroupId={contextGroups.setActiveGroupId}
+            setFocusTab={contextGroups.setFocusTab}
+            addTab={contextGroups.addTab}
+            addGroup={contextGroups.addGroup}
+            kindLabel={contextGroups.kindLabel}
+            disabled={isStreaming}
+          />
+        )}
 
         {/* ── Co-Work capture (screen / Sheets tab) ── */}
         {!voiceMode && (

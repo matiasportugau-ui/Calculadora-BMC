@@ -136,6 +136,10 @@ group("AGENT_TOOLS surface", () => {
     "list_bug_reports",
     "email_panelsim_resumen",
     "email_borrador_saliente",
+    "email_listar_hilos",
+    "email_leer_hilo",
+    "email_clasificar_mensaje",
+    "email_enviar",
     "traktime_timer_current",
     "traktime_timer_start",
     "traktime_timer_stop",
@@ -842,6 +846,28 @@ await group("wa_lead_to_admin — requires user_confirmed", async () => {
 await group("email_borrador_saliente — hechos required", async () => {
   const { parsed } = await run("email_borrador_saliente", { hechos: "ab" });
   assert(parsed.ok === false, "short hechos rejected");
+});
+
+await group("email_clasificar_mensaje — consulta_cliente", async () => {
+  const { parsed } = await run("email_clasificar_mensaje", {
+    text: "Necesito cotización techo ISOROOF 100mm para galpón",
+  });
+  assert(parsed.ok === true, "ok");
+  assert(parsed.label === "consulta_cliente", "label consulta_cliente");
+  assert(parsed.suggestAdminLead === true, "suggest Admin lead");
+});
+
+await group("email_enviar — requires confirmation", async () => {
+  const { parsed } = await run("email_enviar", {
+    conversation_id: "00000000-0000-0000-0000-000000000001",
+    text: "Hola, adjunto presupuesto",
+  });
+  assert(parsed.ok === false, "must reject without confirm");
+});
+
+await group("email_leer_hilo — conversation_id required", async () => {
+  const { parsed } = await run("email_leer_hilo", {});
+  assert(parsed.ok === false, "missing id rejected");
 });
 
 await group("buildAplicarActions / normalizeTipoAguas", async () => {

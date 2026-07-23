@@ -125,8 +125,16 @@ group("INTENT_HINTS covers every guarded tool", () => {
   }
 });
 
+group("email_enviar + wa_lead_to_admin triggers", () => {
+  assert(classifyIntents("enviá el correo").has("email_enviar"), "enviá el correo");
+  assert(classifyIntents("sí envialo").has("email_enviar"), "sí envialo");
+  assert(classifyIntents("mandá el mail").has("email_enviar"), "mandá el mail");
+  assert(classifyIntents("cargalo al Admin").has("wa_lead_to_admin"), "cargalo al Admin");
+  assert(classifyIntents("creá la consulta").has("wa_lead_to_admin"), "creá la consulta");
+});
+
 group("TOOL_INTENT_PATTERNS sanity", () => {
-  assert(Object.keys(TOOL_INTENT_PATTERNS).length === 10, "10 guarded tools covered");
+  assert(Object.keys(TOOL_INTENT_PATTERNS).length === 12, "12 guarded tools covered");
   for (const [tool, patterns] of Object.entries(TOOL_INTENT_PATTERNS)) {
     assert(Array.isArray(patterns) && patterns.length > 0, `${tool}: at least 1 pattern`);
     assert(patterns.every((p) => p instanceof RegExp), `${tool}: all patterns are RegExp`);

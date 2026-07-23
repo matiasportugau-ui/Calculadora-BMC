@@ -19,7 +19,7 @@ Session reports: [`docs/team/reports/PANELIN-SESSION-ANALYSIS-2026-07-20.md`](..
 |---------|---------------------|--------|
 | **Admin / Wolfboard** | List/create/update rows | `wolfboard_*`, `wa_lead_to_admin`, `sheets_*` |
 | **CRM / quote registry** | Search clients, list quotes by month | `buscar_cliente_crm`, `listar_cotizaciones_recientes` (`desde`/`hasta`), `sheets_find` |
-| **Gmail / mail** | OCR capture + PANELSIM summary + **draft only** | `email_panelsim_resumen`, `email_borrador_saliente` |
+| **Gmail / mail (PMCA)** | Omni list/read/classify + draft + **HITL send**; OCR = HINT | `email_listar_hilos`, `email_leer_hilo`, `email_clasificar_mensaje`, `email_panelsim_resumen`, `email_borrador_saliente`, `email_enviar` |
 | **Calculator UI** | Apply state + quote | Tool `aplicar_estado_calc` (not ACTION_JSON type) |
 
 **Never:** tip in Gemini sidebar, control WhatsApp Web / Gmail DOM, claim “no CRM access” when tools exist, use `wolfboard_quote_batch` for “cargar al Admin”.

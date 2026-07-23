@@ -47,6 +47,7 @@ import { recordToolCall, classifyError } from "./toolStats.js";
 import { INTENT_HINTS } from "./userIntentClassifier.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "./rag.js";
 import * as coworkSheets from "./coworkSheets.js";
+import { classifyEmailSignal } from "./sharedWorkspace.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -845,7 +846,7 @@ export const AGENT_TOOLS = [
     name: "email_borrador_saliente",
     description:
       "Genera un BORRADOR de email (asunto + cuerpo) para pegar en Thunderbird/Gmail. NO envía correo. " +
-      "Usar cuando el operador pide 'redactar mail'. Auth requerida.",
+      "Usar cuando el operador pide 'redactar mail'. Auth requerida. Para ENVIAR usá email_enviar tras confirmación.",
     input_schema: {
       type: "object",
       properties: {
@@ -855,6 +856,60 @@ export const AGENT_TOOLS = [
         asunto_contexto: { type: "string", description: "Asunto sugerido opcional" },
       },
       required: ["hechos"],
+    },
+  },
+  {
+    name: "email_listar_hilos",
+    description:
+      "Lista conversaciones Omni de canal email (bandeja unificada). Auth JWT con grant canales. " +
+      "NO controla Gmail DOM. Preferí esta tool vs OCR para listar hilos.",
+    input_schema: {
+      type: "object",
+      properties: {
+        limit: { type: "number", description: "Máx. hilos (default 20, máx 50)" },
+        status: { type: "string", description: "Filtro status Omni opcional" },
+      },
+    },
+  },
+  {
+    name: "email_leer_hilo",
+    description:
+      "Lee mensajes de un hilo Omni por conversation_id (abrir correo). Auth JWT canales requerida.",
+    input_schema: {
+      type: "object",
+      properties: {
+        conversation_id: { type: "string", description: "UUID omni_conversations.id" },
+        limit: { type: "number", description: "Máx. mensajes (default 40)" },
+      },
+      required: ["conversation_id"],
+    },
+  },
+  {
+    name: "email_clasificar_mensaje",
+    description:
+      "Clasifica texto de correo/consulta: consulta_cliente | alerta_admin | otro. " +
+      "Si suggestAdminLead, proponé wa_lead_to_admin (con confirmación). Heurística sync (barata).",
+    input_schema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Asunto + cuerpo o extracto (mín. 3 chars)" },
+      },
+      required: ["text"],
+    },
+  },
+  {
+    name: "email_enviar",
+    description:
+      "ENVÍA respuesta en un hilo Omni email (Gmail/SMTP vía outbound). ACCIÓN DE ESCRITURA: " +
+      "REQUIERE confirmación explícita del operador en sus palabras + user_confirmed. Nunca digas 'enviado' si la tool falla.",
+    input_schema: {
+      type: "object",
+      properties: {
+        conversation_id: { type: "string", description: "UUID del hilo Omni" },
+        text: { type: "string", description: "Cuerpo del reply (mín. 3 chars)" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true tras confirmación del operador" },
+      },
+      required: ["conversation_id", "text", "user_confirmed"],
     },
   },
 
@@ -2132,6 +2187,64 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       );
     }
 
+    if (name === "email_listar_hilos") {
+      const limit = Math.min(Math.max(Number(input?.limit) || 20, 1), 50);
+      const params = new URLSearchParams({ channel: "email", limit: String(limit) });
+      if (input?.status) params.set("status", String(input.status));
+      return await omniApiForward(
+        `/api/omni/conversations?${params}`,
+        { method: "GET" },
+        name,
+        opts?.callerAuthToken || null,
+      );
+    }
+
+    if (name === "email_leer_hilo") {
+      const id = String(input?.conversation_id || "").trim();
+      if (!id) return JSON.stringify({ ok: false, error: "conversation_id requerido" });
+      const limit = Math.min(Math.max(Number(input?.limit) || 40, 1), 200);
+      return await omniApiForward(
+        `/api/omni/conversations/${encodeURIComponent(id)}/messages?limit=${limit}`,
+        { method: "GET" },
+        name,
+        opts?.callerAuthToken || null,
+      );
+    }
+
+    if (name === "email_clasificar_mensaje") {
+      const text = String(input?.text ?? "").trim();
+      if (text.length < 3) {
+        return JSON.stringify({ ok: false, error: "text requerido (mín. 3 caracteres)" });
+      }
+      const result = classifyEmailSignal(text);
+      return JSON.stringify({
+        ok: true,
+        ...result,
+        next_steps:
+          result.suggestAdminLead
+            ? [
+                "Si es consulta nueva sin fila Admin: pedí confirmación y usá wa_lead_to_admin",
+                "Si es alerta: resumí al operador y proponé nota Admin / CRM",
+              ]
+            : ["No requiere lead Admin automático; respondé o archivá según pedido"],
+        tool: name,
+      });
+    }
+
+    if (name === "email_enviar") {
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+      const id = String(input?.conversation_id || "").trim();
+      const text = String(input?.text ?? "").trim();
+      if (!id) return JSON.stringify({ ok: false, error: "conversation_id requerido" });
+      if (text.length < 3) return JSON.stringify({ ok: false, error: "text requerido (mín. 3 caracteres)" });
+      return await omniApiForward(
+        `/api/omni/conversations/${encodeURIComponent(id)}/reply`,
+        { method: "POST", body: { text } },
+        name,
+        opts?.callerAuthToken || null,
+      );
+    }
+
     // ─── TraKtiMe tools ────────────────────────────────────────────────────
     if (name.startsWith("traktime_")) {
       // The agent acts as the user: forward their JWT (from the chat session
@@ -2453,8 +2566,44 @@ async function emailCockpitForward(path, { method = "GET", body } = {}, toolName
       error: data?.error || `HTTP ${resp.status}`,
       tool: toolName,
       hint: toolName === "email_borrador_saliente"
-        ? "Solo genera borrador; Panelin chat no envía correo."
+        ? "Borrador listo; para enviar usá email_enviar tras confirmación explícita del operador."
         : undefined,
+    });
+  }
+  return JSON.stringify({ ok: true, ...data, tool: toolName });
+}
+
+/**
+ * Forward to Omni inbox API (requires operator JWT with canales grant).
+ * Used by email_listar_hilos / email_leer_hilo / email_enviar.
+ */
+async function omniApiForward(path, { method = "GET", body } = {}, toolName = "email_*", callerAuthToken = null) {
+  const token = callerAuthToken || config.apiAuthToken;
+  if (!token) {
+    return JSON.stringify({
+      ok: false,
+      error: "Auth requerida — iniciá sesión (JWT con grant canales) para tools Omni email.",
+      tool: toolName,
+    });
+  }
+  const headers = { Authorization: `Bearer ${token}` };
+  const init = { method, headers };
+  if (method === "POST" || method === "PATCH") {
+    headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body || {});
+  }
+  const url = `${apiBase()}${path}`;
+  const resp = await fetch(url, init);
+  const data = await resp.json().catch(() => null);
+  if (!resp.ok) {
+    return JSON.stringify({
+      ok: false,
+      status: resp.status,
+      error: data?.error || `HTTP ${resp.status}`,
+      tool: toolName,
+      hint: toolName === "email_enviar"
+        ? "No marques como enviado. Verificá grant canales write + Gmail/SMTP configurado."
+        : "Omni puede requerir DATABASE_URL + grant canales read.",
     });
   }
   return JSON.stringify({ ok: true, ...data, tool: toolName });

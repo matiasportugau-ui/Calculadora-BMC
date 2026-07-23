@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-22 (feat — Panelin Multi-Context Agent / PMCA):** SharedWorkspace + ContextGroup UI (Claude-style tabs, a11y tablist) in Panelin chat; `operatorContext.workspace` → prompt. New tools: `email_listar_hilos`, `email_leer_hilo`, `email_clasificar_mensaje`, `email_enviar` (HITL via Omni reply). Intent patterns for `email_enviar` + `wa_lead_to_admin`. SDD `docs/sdd/panelin-email-admin/` (TARGET + SDD + evidence). Tests: sharedWorkspace, tool count 55, OC workspace block. No Gmail DOM; send never autonomous.
+
 **2026-07-22 (fix — local API outbox + pg hardiness):** `transportistaOutboxWorker` stops on missing `outbox_notifications` (42P01, one warn); held client gets `on("error")`; gap pools (ads/marketing/marketIntel) add `pool.on("error")`; `TRANSPORTISTA_OUTBOX_DISABLED` config. Stops 15s spam + unhandled pg Client crash in local `dev:full`.
 
 
