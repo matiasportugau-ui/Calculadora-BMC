@@ -145,6 +145,7 @@
     "panelin:train:import": "node scripts/panelin-training-import.mjs",
     "capabilities:snapshot": "node scripts/capabilities-snapshot.mjs",
     "smoke:prod": "node scripts/smoke-prod-api.mjs",
+    "smoke:prod:auth": "doppler run --project bmc-backend --config prd -- node scripts/smoke-prod-api.mjs",
     "health": "node scripts/health-board.mjs",
     "smoke:routes": "node scripts/demo-route-smoke.mjs",
     "smoke:prod:no-ia": "node scripts/smoke-prod-api.mjs --skip-suggest",
