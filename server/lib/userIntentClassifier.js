@@ -60,8 +60,6 @@ const TOOL_INTENT_PATTERNS = {
     /\b(esta|esto)\s+enviad/,
     /\bmove(r|lo|la)?\s+a\s+enviados\b/,
     /\bsi[,]?\s+(marca(r|lo|la)?|mova(r|lo|la)?)\s+(como\s+)?enviad/,
-    /\bconfirm(o|a(r)?|ado)\b/,
-    /\b(cofifmo|confimo)\b/,
   ],
   sheets_write_range: [
     /\bescribi(lo|r)?\s+(en\s+)?(la\s+)?planilla\b/,
@@ -112,7 +110,7 @@ export const INTENT_HINTS = {
   programar_seguimiento: ["recordame en X días", "agendá seguimiento"],
   wolfboard_sync: ["sincronizá Wolfboard", "propagá las respuestas"],
   wolfboard_actualizar_fila: ["actualizá la fila X", "editá la respuesta"],
-  wolfboard_marcar_enviado: ["marcá como enviada", "sí marcá como enviada", "confirmo", "ya la envié"],
+  wolfboard_marcar_enviado: ["marcá como enviada", "sí marcá como enviada", "ya la envié"],
   wolfboard_quote_batch: ["generá las respuestas con IA", "cotizá todas las pendientes"],
   sheets_write_range: ["escribilo en la planilla", "pegá en Admin", "confirmá la escritura", "guardalo en la planilla"],
   escribir_crm_taxonomia: ["clasificá la fila en CRM", "guardá la taxonomía en CRM", "marcá como proveedor en CRM"],
@@ -161,7 +159,7 @@ const SHORT_AFFIRMATIVE = /^(si|sí|dale|ok|listo|confirmo|confirma|confirmado|c
 
 /** Assistant asked to mark/move a Wolfboard row to Enviados. */
 const ASSISTANT_WOLFBOARD_ENVIADO_PENDING =
-  /\b(marca(r|la|lo)?|mova(r|la|lo)?|pas[aá]\s+a\s+enviados|enviad[oa]s?|tab\s+enviados|wolfboard_marcar_enviado|fila\s+\d+)/;
+  /\b(marcar|marca|marcal[oa]|marque|marquemos|mover|move|movel[oa]|mueva|pasar|pasa|pasal[oa])\b.{0,80}\b(como\s+)?enviad[oa]s?\b|\bwolfboard_marcar_enviado\b/;
 
 const ASSISTANT_WOLFBOARD_CONFIRM_ASK =
   /\b(confirm[aá]|segur[oa]|dec[ií]me\s+si|dec[ií]me\s+(s[ií]|ok)|frase\s+(con\s+creces|de\s+confirmaci)|quier[oé]s?\s+(que\s+)?(la\s+)?marque)/;
@@ -185,8 +183,8 @@ function classifyDirectIntents(lastUserMessage) {
 }
 
 /**
- * Short "sí" / "confirmo" after the agent (or a prior user turn) already scoped
- * wolfboard_marcar_enviado — avoids re-asking when the user already confirmed.
+ * Short "sí" / "confirmo" only after the agent explicitly scoped a pending
+ * wolfboard_marcar_enviado action.
  */
 function applyFollowUpAffirmations(approved, lastUserMessage, messages) {
   const normalized = normalize(lastUserMessage);
@@ -201,14 +199,6 @@ function applyFollowUpAffirmations(approved, lastUserMessage, messages) {
     && ASSISTANT_WOLFBOARD_CONFIRM_ASK.test(assistantNorm)
   ) {
     approved.add("wolfboard_marcar_enviado");
-  }
-
-  const userMsgs = (messages || []).filter((m) => m.role === "user");
-  if (userMsgs.length >= 2) {
-    const priorUser = userMsgs.at(-2)?.content || "";
-    if (classifyDirectIntents(priorUser).has("wolfboard_marcar_enviado")) {
-      approved.add("wolfboard_marcar_enviado");
-    }
   }
 }
 

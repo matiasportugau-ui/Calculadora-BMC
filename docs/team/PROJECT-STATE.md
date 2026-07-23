@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-23 (fix — Wolfboard enviado confirmation gate):** `wolfboard_marcar_enviado` no longer accepts bare/generic “confirmo”; short affirmatives are authorized only after the assistant explicitly asks to mark/move the row to Enviados. Negative regression coverage prevents quote/sheet/report confirmations from mutating Wolfboard rows.
+
 **2026-07-23 (feat — Wave1 IMP-12 + IMP-01 residual):** SSE `done` emits `provider_used` / `model` / `latency_ms` / optional `ttft_ms`; Dev panel last-turn; contract tests `agentChatDonePayload` + `agentToolsCount` (pin 55). Single `done` on success path (removed duplicate bare done).
 
 **2026-07-23 (feat — IMP-11 channel goldens + IMP-01 MCP tool-count hygiene):** Agent goldens **19→22** (`20-wa-write-sin-confirm`, `21-ml-limite-consulta-larga`, `22-email-draft-no-enviar`); runner assert `tool_not_confirmed`. MCP agent doc points at **55** tools / tools-manifest SoT. `pre-release` still `GOLDEN_REQUIRED=1`.
