@@ -337,6 +337,8 @@ export const config = {
   ragTopK: Math.max(1, Math.min(10, Number(process.env.RAG_TOP_K || 5))),
   /** Similitud mínima coseno para incluir un caso (0-1, default 0.70). */
   ragThreshold: Math.max(0, Math.min(1, Number(process.env.RAG_THRESHOLD || 0.70))),
+  /** IMP-10: fuse embedding + keyword boost when ON (default OFF). Requires RAG_ENABLED. */
+  ragHybrid: bool(process.env.RAG_HYBRID, false),
   /** Omni Core — cross-channel inbox shadow writes (default OFF in prod) */
   omniWaShadowWrite: bool(process.env.OMNI_WA_SHADOW_WRITE, false),
   omniMlShadowWrite: bool(process.env.OMNI_ML_SHADOW_WRITE, false),

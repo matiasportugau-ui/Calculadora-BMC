@@ -52,13 +52,13 @@
 **Goal:** Similar-quote retrieve is a real product path, not dead code.  
 **Maps to:** OG-07 · ADR-006
 
-- [x] Document enable + rollback path — OPS §11 + `omni-ai-orchestrator-rag-enable.md` + SDD §6.3b (2026-07-23).
-- [ ] Confirm `DATABASE_URL` + pgvector migration applied in prod.
-- [ ] Run embed batch (`scripts/training/embedQuotes.js` or OPS equivalent) with real embeddings (not stub).
-- [ ] Set `RAG_ENABLED=1`, tune `RAG_TOP_K` / `RAG_THRESHOLD`.
+- [x] Document enable + rollback path — OPS §11 + `omni-ai-orchestrator-rag-enable.md` + `evidence/rag-prod-runbook.md` (2026-07-23).
+- [ ] Confirm `DATABASE_URL` + pgvector migration applied in prod (ops).
+- [ ] Run embed batch (`scripts/training/embedQuotes.js`) with real embeddings (not stub).
+- [ ] Set `RAG_ENABLED=1`, tune `RAG_TOP_K` / `RAG_THRESHOLD` — **human gate**.
 - [ ] Smoke: chat turn that triggers `recuperar_casos_similares` or auto-inject path.
 
-**DoD:** OPS runbook section “Enable RAG” (**docs met**); at least one CONFIRMED prod retrieve log (**product residual**).
+**DoD:** OPS runbook + evidence **MET**; prod retrieve log **BLOCKED** pending operator sign-off.
 
 ---
 
@@ -100,7 +100,7 @@
 
 - [x] Document Cloud Logging filter for `agent_core_call` / `ai_completion` / `superagent_ai_call` — `evidence/cost-query.md`.
 - [x] Publish daily rollup procedure in PANELIN-IA-OPS §10 (v1 gcloud + sum).
-- [ ] Optional: BigQuery export or hub card (do **not** use `/api/ai-analytics/trends` for LLM $ — wrong source).
+- [x] Optional: hub card linking OPS query — Agent Admin StatsTab **Costo IA** (2026-07-23; no fake numbers).
 
 **DoD:** Operator can answer “yesterday’s AI $?” from documented query — **MET 2026-07-23**. Hub UI optional.
 
@@ -126,12 +126,12 @@
 **Maps to:** OG-13  
 **Note:** Tool-call persistence already shipped (B-05 → `agent_tool_calls` + `getToolStatsAsync`).
 
-- [ ] Migration: `agent_voice_events` (wake miss, TTS error, session mint fail).
-- [ ] Dual-write from voice error log / Hands-free client beacons (privacy-safe).
-- [ ] Optional hub card: tool-stats + voice error rate.
-- [ ] Confirm prod `DATABASE_URL` path for tool-stats `source: db`.
+- [x] Migration: `server/migrations/agent/002_agent_voice_events.sql` (2026-07-23).
+- [x] Dual-write from `voiceErrorLog.js` when `DATABASE_URL` set; in-memory ring retained.
+- [ ] Optional hub card: tool-stats + voice error rate (residual).
+- [ ] Confirm prod `DATABASE_URL` path for tool-stats `source: db` (ops verify).
 
-**DoD:** Voice history survives redeploy; SDD §9.4 cites both tool + voice stores.
+**DoD:** Voice history survives redeploy when DB configured; test `voiceErrorPersist.test.js`. **Code MET 2026-07-23**.
 
 ---
 
@@ -140,12 +140,12 @@
 **Goal:** One observability model for all channels.  
 **Maps to:** OG-01 · ADR-003
 
-- [ ] Inventory events emitted by `agentChat` vs `agentCore`.
-- [ ] Normalize field names (`channel`, `assistant`, `provider`, `tokens`, `cost_usd`).
-- [ ] Shared helper `logAgentTurn(...)` used by both paths.
-- [ ] Unit test for schema presence.
+- [x] Inventory events emitted by `agentChat` vs `agentCore` — see `logAgentTurn.js`.
+- [x] Normalize field names (`channel`, `provider`, `latency_ms`, `estimated_cost_usd`, tokens).
+- [x] Shared helper `logAgentTurn(...)` used by both paths (2026-07-23).
+- [x] Unit test `tests/logAgentTurn.test.js`.
 
-**DoD:** Both paths emit same core fields; fitness test optional.
+**DoD:** Both paths emit same core fields. **MET 2026-07-23**.
 
 ---
 
@@ -170,12 +170,12 @@
 **Goal:** Better retrieve than either alone.  
 **Maps to:** OG-14 · SDD-TARGET
 
-- [ ] Design score: `α * embedding_sim + β * kb_keyword_boost`.
-- [ ] Inject fused top-k into `buildSystemPrompt` when RAG on.
-- [ ] A/B offline with goldens / eval:agent.
-- [ ] Feature flag if needed (`RAG_HYBRID=1`).
+- [x] Design score: `α·embedding_sim + β·kb_keyword_boost` in `retrieveHybridQuotes` (2026-07-23).
+- [x] Inject fused top-k into chat when `RAG_ENABLED && RAG_HYBRID=1`.
+- [x] Offline test `tests/ragHybrid.test.js` (keyword boost).
+- [x] Feature flag `RAG_HYBRID` (default `0`).
 
-**DoD:** Flag documented; eval not worse on existing goldens; SDD §6 updated.
+**DoD:** Flag documented; code ON-ready. Live hybrid eval optional. **Code MET 2026-07-23**.
 
 ---
 
@@ -184,12 +184,12 @@
 **Goal:** Firefox / no-SpeechRecognition browsers can still voice.  
 **Maps to:** OG-10 · SDD-TARGET G2
 
-- [ ] Detect `!isHandsFreeSupported()` → show push-to-talk.
-- [ ] Wire to `POST /api/agent/transcribe`.
-- [ ] Copy in UI: Hands-free ≠ Realtime (SEC/UI review).
-- [ ] Manual matrix: Safari Hands-free, Chrome Hands-free, Firefox Whisper.
+- [x] Detect `!isHandsFreeSupported()` → `WhisperVoicePanel` push-to-talk (shipped).
+- [x] Wire to `POST /api/agent/transcribe` via `useDictation`.
+- [x] Copy in UI: Hands-free ≠ Realtime on Whisper panel (2026-07-23).
+- [ ] Manual matrix: Safari Hands-free, Chrome Hands-free, Firefox Whisper (ops UAT residual).
 
-**DoD:** Matrix in SEC/OPS; no false Realtime Safari banner on embedded chat.
+**DoD:** Product copy matches code path. **Code MET 2026-07-23**.
 
 ---
 

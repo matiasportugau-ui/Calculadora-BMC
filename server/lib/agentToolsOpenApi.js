@@ -1,7 +1,46 @@
 /**
  * B-04 — Build OpenAPI 3.1 document from AGENT_TOOLS (Anthropic tool schema).
- * Keeps external agents / GPT Actions / MCP discovery aligned with the live tool list.
+ * IMP-14 — capability tiers on catalog export.
  */
+
+/** @type {Record<string, "open"|"quote"|"crm"|"admin"|"email"|"traktime">} */
+const TOOL_TIER_OVERRIDES = {
+  calcular_cotizacion: "quote",
+  presupuesto_libre: "quote",
+  comparar_listas: "quote",
+  comparar_escenarios: "quote",
+  generar_pdf: "quote",
+  guardar_en_crm: "crm",
+  enviar_whatsapp_link: "crm",
+  historial_cliente: "crm",
+  buscar_cliente_crm: "crm",
+  wa_lead_to_admin: "admin",
+  wolfboard_pendientes: "admin",
+  wolfboard_export: "admin",
+  wolfboard_sync: "admin",
+  wolfboard_actualizar_fila: "admin",
+  wolfboard_marcar_enviado: "admin",
+  wolfboard_quote_batch: "admin",
+  email_listar_hilos: "email",
+  email_leer_hilo: "email",
+  email_clasificar_mensaje: "email",
+  email_borrador_saliente: "email",
+  email_enviar: "email",
+  email_panelsim_resumen: "email",
+};
+
+/**
+ * Resolve MCP/GPT exposure tier for a tool name.
+ * @param {string} name
+ * @returns {"open"|"quote"|"crm"|"admin"|"email"|"traktime"}
+ */
+export function resolveToolTier(name) {
+  if (TOOL_TIER_OVERRIDES[name]) return TOOL_TIER_OVERRIDES[name];
+  if (name.startsWith("traktime_")) return "traktime";
+  if (name.startsWith("email_")) return "email";
+  if (name.startsWith("wolfboard_")) return "admin";
+  return "open";
+}
 
 /**
  * @param {Array<{ name: string, description?: string, input_schema?: object }>} tools
@@ -28,6 +67,7 @@ export function buildAgentToolsOpenApi(tools, opts = {}) {
       name: t.name,
       description: t.description || "",
       requires_auth: authSet.has(t.name),
+      tier: resolveToolTier(t.name),
       input_schema_ref: `#/components/schemas/${schemaName}`,
     });
   }
@@ -170,6 +210,10 @@ export function buildAgentToolsOpenApi(tools, opts = {}) {
             name: { type: "string" },
             description: { type: "string" },
             requires_auth: { type: "boolean" },
+            tier: {
+              type: "string",
+              enum: ["open", "quote", "crm", "admin", "email", "traktime"],
+            },
             input_schema_ref: { type: "string" },
           },
         },

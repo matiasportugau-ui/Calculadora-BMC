@@ -145,3 +145,60 @@ export function formatRetrievedContextForPrompt(quotes) {
     ...lines,
   ].join("\n");
 }
+
+const HYBRID_ALPHA = 0.75;
+const HYBRID_BETA = 0.25;
+
+function _tokens(s) {
+  return new Set(
+    String(s || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9áéíóúñ ]/gi, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2),
+  );
+}
+
+/** Keyword overlap boost for hybrid fusion (IMP-10). */
+export function keywordBoostForQuote(query, metadata = {}) {
+  const q = _tokens(query);
+  if (!q.size) return 0;
+  const metaStr = [
+    metadata.panel_familia,
+    metadata.panel_espesor,
+    metadata.escenario,
+    metadata.descripcion,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const m = _tokens(metaStr);
+  if (!m.size) return 0;
+  let n = 0;
+  for (const w of q) if (m.has(w)) n++;
+  return n / Math.sqrt(q.size * m.size);
+}
+
+/**
+ * Hybrid retrieve: re-rank vector hits with α·sim + β·keyword_boost (IMP-10).
+ * Falls back to plain retrieve when hybrid disabled or on empty vector set.
+ *
+ * @param {string} query
+ * @param {number} [k=5]
+ * @param {number} [threshold=0.70]
+ * @param {{ hybrid?: boolean }} [opts]
+ */
+export async function retrieveHybridQuotes(query, k = 5, threshold = 0.70, opts = {}) {
+  const hybrid = opts.hybrid !== false;
+  const candidates = await retrieveSimilarQuotes(query, hybrid ? Math.min(k * 2, 10) : k, threshold);
+  if (!hybrid || candidates.length === 0) return candidates.slice(0, k);
+
+  const fused = candidates
+    .map((row) => {
+      const kbBoost = keywordBoostForQuote(query, row.metadata);
+      const fusion = HYBRID_ALPHA * row.similarity + HYBRID_BETA * kbBoost;
+      return { ...row, similarity: parseFloat(fusion.toFixed(4)), _kb_boost: kbBoost };
+    })
+    .sort((a, b) => b.similarity - a.similarity);
+
+  return fused.slice(0, k).map(({ _kb_boost, ...rest }) => rest);
+}
