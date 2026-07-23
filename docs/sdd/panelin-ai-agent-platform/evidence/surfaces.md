@@ -6,7 +6,7 @@
 
 | Method | Path | Gate | Notes | Evidence |
 |--------|------|------|-------|----------|
-| POST | `/api/agent/chat` | `requireAssistantEnabled("panelin")` + rate limit | SSE tool loop | `server/index.js:1034`, `agentChat.js` |
+| POST | `/api/agent/chat` | `requireAssistantEnabled("panelin")` + rate limit | SSE tool loop; `done` emits `provider_used`, `latency_ms`, optional `ttft_ms` (IMP-12) | `agentChat.js` |
 | POST | `/api/agent/exec-tool` | Bearer for auth tools; 60/min | MCP / single tool | `agentChat.js:351-395` |
 | GET | `/api/agent/tools-manifest` | public | Tool list | local count 55 |
 | GET | `/api/agent/tools/openapi` | public | OpenAPI 3.1 | `agentToolsOpenApi.js` |
@@ -75,3 +75,15 @@ Defaults: Claude `claude-opus-4-7`, Grok `grok-3-mini`, Gemini `gemini-2.5-flash
 | Wolfboard batch | wolfboard route | `callAgentOnce` / tool `wolfboard_quote_batch` |
 | SuperAgent | `/api/agent/quote-lead` | Direct Anthropic Haiku (parallel to tools) |
 | MCP | `mcp-panelin-http.mjs` | `tools-manifest` + `exec-tool` |
+
+## SSE `done` event (IMP-12, 2026-07-23)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `type` | `"done"` | Terminal |
+| `provider_used` | string\|null | Winning provider or null on total failure |
+| `model` | string\|null | Resolved model id |
+| `latency_ms` | number\|null | Provider-attempt wall ms |
+| `ttft_ms` | number? | First text delta − attempt start |
+
+Dev panel (`PanelinDevPanel` train tab) shows last turn via `useChat` `devMeta.lastTurn`.

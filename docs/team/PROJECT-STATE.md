@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-23 (feat — Wave1 IMP-12 + IMP-01 residual):** SSE `done` emits `provider_used` / `model` / `latency_ms` / optional `ttft_ms`; Dev panel last-turn; contract tests `agentChatDonePayload` + `agentToolsCount` (pin 55). Single `done` on success path (removed duplicate bare done).
+
 **2026-07-23 (feat — IMP-11 channel goldens + IMP-01 MCP tool-count hygiene):** Agent goldens **19→22** (`20-wa-write-sin-confirm`, `21-ml-limite-consulta-larga`, `22-email-draft-no-enviar`); runner assert `tool_not_confirmed`. MCP agent doc points at **55** tools / tools-manifest SoT. `pre-release` still `GOLDEN_REQUIRED=1`.
 
 **2026-07-23 (feat — IMP-07 SuperAgent cost + calc parity):** `logSuperAgentCost` → shared `logAgentCost` (`event: superagent_ai_call`); `ae_agent_quote` log with `source: superagent_inprocess`; export `runSuperAgentCalc` + offline `tests/superAgentCalc.test.js` (totals match `calcTechoCompleto`/`calcParedCompleto`); architecture-fitness guards import. Decision: keep parallel `/quote-lead` route. ADR-007 Accepted. In `test:agent`.

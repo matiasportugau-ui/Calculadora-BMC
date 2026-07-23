@@ -24,11 +24,11 @@
 **Maps to:** OG-05, OG-12
 
 - [x] Diff local `AGENT_TOOLS` vs prod `GET /api/agent/tools-manifest` (**55 = 55** as of 2026-07-23 evening).
-- [ ] Deploy API so prod count matches HEAD **or** document intentional prod lag with ticket.
-- [ ] Update `.claude/agents/bmc-panelin-mcp.md` and any “22 tools” copy to point at `evidence/tools-manifest.md`.
-- [ ] Add CI note or script: `node -e "import {AGENT_TOOLS}…"` count must equal manifest `count` in contract test.
+- [x] Update `.claude/agents/bmc-panelin-mcp.md` → 55 + tools-manifest SoT (#746).
+- [x] Contract test `tests/agentToolsCount.contract.test.js` (pin 55 + OpenAPI parity) in `test:agent`.
+- [ ] Deploy lag: re-check prod after tool-adding PRs (ops hygiene).
 
-**DoD:** Prod count == local HEAD; child SDD `panelin-chat-agent` links here for tools; MCP agent doc not stale.
+**DoD:** Prod count == local HEAD; child SDD links here; MCP doc + CI pin. **Mostly MET 2026-07-23**.
 
 ---
 
@@ -111,11 +111,12 @@
 **Goal:** Measure p95 first-token / turn latency.  
 **Maps to:** OG-15 · SDD-TARGET G1
 
-- [ ] Server: include `provider_used`, `latency_ms` (and optional `ttft_ms`) on SSE `done`.
-- [ ] Client: log/display in Dev panel only (prod UI optional).
-- [ ] Capture baseline for 1 week; set alert threshold later.
+- [x] Server: `sendDone` → `provider_used`, `model`, `latency_ms`, optional `ttft_ms` (2026-07-23).
+- [x] Client: `useChat` → `devMeta.lastTurn`; Dev panel train tab shows last turn.
+- [x] Schema in `evidence/surfaces.md` + offline `tests/agentChatDonePayload.test.js`.
+- [ ] Capture baseline for 1 week; set alert threshold later (ops residual).
 
-**DoD:** Event schema documented in `evidence/surfaces.md`; Dev panel shows last-turn provider/latency.
+**DoD:** Event schema documented; Dev panel shows last-turn provider/latency. **Code MET 2026-07-23**.
 
 ---
 
