@@ -198,11 +198,11 @@
 **Goal:** Prompt edits are reviewable like code.  
 **Maps to:** child G-07
 
-- [ ] PR checklist: `chatPrompts.js` change → note in PROJECT-STATE + golden impact.
+- [x] PR checklist: `chatPrompts.js` change → **Cambios recientes** in PROJECT-STATE + run `test:agent-golden` if behavior-sensitive.
 - [ ] Optional: content hash logged at boot (`prompts_sha`).
-- [ ] Link from SDD §6 to process.
+- [x] Link from SDD §6.5 to process (2026-07-23).
 
-**DoD:** At least one PR follows checklist; SDD cites process.
+**DoD:** Process documented; this PR follows checklist. **MET 2026-07-23**.
 
 ---
 
