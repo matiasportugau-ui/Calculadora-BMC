@@ -20,7 +20,7 @@ import {
   estimateCostUSD,
   getApiKey,
 } from "./aiProviderConfig.js";
-import { logAgentCost } from "./costTelemetry.js";
+import { logAgentTurn } from "./logAgentTurn.js";
 import {
   PROVIDER_TIMEOUT_MS,
   orderChainByHealth,
@@ -347,29 +347,26 @@ export async function callAgentOnce(messages, opts = {}) {
 
       if (text.trim()) {
         recordProviderSuccess(p); // clear any pending failure streak on a good call
-        const cost = estimateCostUSD(p, modelUsed, usage);
-
-        // Structured cost observability via costTelemetry (cache_read > 0 ⇒ Anthropic cache HIT).
-        logAgentCost({
-          event: "agent_core_call",
+        const latencyMs = Date.now() - t0;
+        const { turn } = logAgentTurn({
+          path: "agentCore",
           provider: p,
           model: modelUsed,
           channel,
-          latency_ms: Date.now() - t0,
-          estimated_cost_usd: cost,
+          latency_ms: latencyMs,
           input_tokens: usage.input_tokens ?? usage.prompt_tokens ?? null,
+          output_tokens: usage.output_tokens ?? usage.completion_tokens ?? null,
           cache_read_tokens: usage.cache_read_input_tokens ?? null,
           cache_write_tokens: usage.cache_creation_input_tokens ?? null,
           task_key: taskKey || null,
-          source: "agentCore",
         });
 
         return {
           text: text.trim(),
           provider: p,
           model: modelUsed,
-          latencyMs: Date.now() - t0,
-          estimatedCostUsd: cost,
+          latencyMs,
+          estimatedCostUsd: turn.estimated_cost_usd,
         };
       }
       // A provider that returns empty text is skipped silently too — surface it.
