@@ -194,7 +194,7 @@ C4Container
 | **Training KB** | Corrections / match | `trainingKB.js` + `agentTraining` | CONFIRMED |
 | **Auto-learn** | Extract Q&A pairs | `autoLearnExtractor.js` | CONFIRMED |
 | **Cost telemetry** | Structured cost events | `costTelemetry.js` (`logAgentCost`) | CONFIRMED |
-| **SuperAgent** | Lead quote extract (parallel) | `superAgent.js` | CONFIRMED; cost via raw `superagent_ai_call` JSON (not `logAgentCost`) |
+| **SuperAgent** | Lead quote extract (parallel) | `superAgent.js` | CONFIRMED; cost via `logAgentCost` (`superagent_ai_call`); calc engine parity tested (IMP-07) |
 | **Email toolset** | Chatwoot-specific tools | `emailAgentTools.js` | CONFIRMED (separate from Omni email) |
 | **Omni AI worker** | Channel suggest + optional RAG | `server/lib/omni/*` | CONFIRMED; flags default off |
 | **Eval / goldens** | Offline quality — **19** cases | `tests/agentGolden/` | CONFIRMED |
@@ -347,7 +347,7 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 
 - Prefer Hands-free vs Realtime; model tiering via chain.
 - Omni daily budget env (prod 50 USD/day cap).
-- SuperAgent emits cost JSON but **bypasses** `costTelemetry` module — document parity target: import `logAgentCost({ event: "superagent_ai_call", ... })` and drop ad-hoc logger TODO in `superAgent.js:30-39`.
+- SuperAgent uses `logAgentCost` (`superagent_ai_call`, `source: superAgent`) — IMP-07 closed 2026-07-23.
 
 ## 10. Architecture Decisions (ADRs)
 
@@ -398,10 +398,11 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 
 ### ADR-007: SuperAgent parallel to tool path
 
-**Status**: Observed / debt  
-**Context**: Fast lead→quote extract.  
-**Decision**: Dedicated Haiku route `/quote-lead` alongside agentTools.  
-**Consequences**: + Latency for that flow; − Second path to keep contract-aligned; cost logs as `superagent_ai_call` outside `costTelemetry` (align in IMP-07).
+**Status**: Accepted (IMP-07 closed 2026-07-23)  
+**Context**: Fast lead→quote extract without full tool loop.  
+**Decision**: Keep dedicated Haiku route `POST /api/agent/quote-lead` **parallel** to agentTools; prices only from shared `calcTechoCompleto` / `calcParedCompleto` (in-process, not HTTP loopback). Cost via `logAgentCost` (`event: superagent_ai_call`). Quote meta log `ae_agent_quote` with `source: superagent_inprocess`.  
+**Consequences**: + Low-latency one-shot quote-lead; + cost in same Cloud Logging sum as agentCore; − Still not quoteRegistry/`ae_agent` loopback provenance (acceptable for this surface).  
+**Evidence:** `superAgent.js`, `tests/superAgentCalc.test.js`.
 
 ## 11. Risks & Technical Debt
 
@@ -411,7 +412,7 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 | Provider credit/quota exhaustion | High | Medium | Failover + OpenRouter terminal |
 | RAG assumed on but default off | Medium | High | OPS §11 + omni RAG runbook; default off intentional |
 | Voice / other analytics still ephemeral | Low | Medium | Tool calls persist (B-05); IMP-09 for voice |
-| SuperAgent bypasses `costTelemetry` module | Medium | Medium | Event name known; code IMP-07 to unify sink |
+| SuperAgent cost sink drift | Low | Low | **Closed IMP-07** — `logAgentCost`; fitness test guards |
 | Dual brain paths diverge | High | Medium | Shared tests + IMP-02 event parity |
 | Docs saying 22/42/48 tools | Medium | High | Point to this SDD |
 | Cost $/day no hub UI | Low | Medium | OPS §10 query **done**; hub card optional |

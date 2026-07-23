@@ -68,12 +68,12 @@
 **Maps to:** OG-03 · ADR-007
 
 - [x] Document as-built cost event `superagent_ai_call` + parity target (import `logAgentCost`) — SDD §6.3 / §9.5 / ADR-007 (2026-07-23).
-- [ ] Audit `superAgent.js` quote path vs `AE-AGENT-CALC-CONTRACT.md`.
-- [ ] Emit `costTelemetry` / structured events (replace raw `console.log` in `logSuperAgentCost`).
-- [ ] Add offline test: SuperAgent numbers match `/calc` for a fixture.
-- [ ] Decide: keep parallel route **or** thin-wrap `calcular_cotizacion` (ADR update).
+- [x] Audit `superAgent.js` quote path vs `AE-AGENT-CALC-CONTRACT.md` — same `calcTechoCompleto`/`calcParedCompleto` engine; **in-process** (not HTTP loopback); logs `ae_agent_quote` with `source: superagent_inprocess`.
+- [x] Emit `costTelemetry` via `logAgentCost` (`event: superagent_ai_call`, `source: superAgent`) — 2026-07-23.
+- [x] Offline test: `tests/superAgentCalc.test.js` parity vs direct calc engine + cost wiring.
+- [x] Decision: **keep parallel route** for low-latency quote-lead; must stay engine-aligned (not thin-wrap tools yet). ADR-007 updated.
 
-**DoD:** Test green; ADR-007 consequences updated; no silent price invention path. **Docs telemetry map closed**; code wiring residual.
+**DoD:** Test green; ADR-007 consequences updated; no silent price invention path. **MET 2026-07-23**.
 
 ---
 

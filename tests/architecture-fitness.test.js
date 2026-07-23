@@ -57,6 +57,17 @@ assert.ok(
   "agentCore should use costTelemetry (or remove obsolete TODO without wiring)",
 );
 
+// 3b) SuperAgent must use shared costTelemetry (IMP-07) — no ad-hoc TODO console sink
+const superAgent = fs.readFileSync(path.join(ROOT, "server/routes/superAgent.js"), "utf8");
+assert.ok(
+  /logAgentCost/.test(superAgent) && /from ["'].*costTelemetry/.test(superAgent),
+  "superAgent should import and use logAgentCost from costTelemetry",
+);
+assert.ok(
+  !/TODO: thread pino logger here once cost-telemetry/.test(superAgent),
+  "superAgent must not reintroduce obsolete cost-telemetry TODO",
+);
+
 // 4) Human gates must remain — fitness fails if finanzas unlock or requireGrant removed
 assert.ok(fs.existsSync(path.join(ROOT, "server/middleware/requireGrant.js")) || /requireGrant/.test(fs.readFileSync(path.join(ROOT, "server/index.js"), "utf8")));
 assert.ok(

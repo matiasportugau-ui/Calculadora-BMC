@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-23 (feat — IMP-07 SuperAgent cost + calc parity):** `logSuperAgentCost` → shared `logAgentCost` (`event: superagent_ai_call`); `ae_agent_quote` log with `source: superagent_inprocess`; export `runSuperAgentCalc` + offline `tests/superAgentCalc.test.js` (totals match `calcTechoCompleto`/`calcParedCompleto`); architecture-fitness guards import. Decision: keep parallel `/quote-lead` route. ADR-007 Accepted. In `test:agent`.
+
 **2026-07-23 (fix — smoke:prod suggest-response 401 local):** `scripts/smoke-prod-api.mjs` soft-skips suggest when `API_AUTH_TOKEN` unset **outside CI** (was hard-fail 401 `missing_credentials`). CI still requires the secret. Sends Bearer + x-api-key. `npm run smoke:prod:auth` = Doppler full check (verified IA ok gemini).
 
 **2026-07-23 (agent — bmc-live-presentation):** New subagent [`.claude/agents/bmc-live-presentation.md`](../../.claude/agents/bmc-live-presentation.md) + slash [`/bmc-live-presentation`](../../.claude/commands/bmc-live-presentation.md) — reads fresh PROJECT-STATE, asks cut-mode Qs (Hero / Feature reel / Full atlas), captures live usage on calculadora-bmc.vercel.app, delivers MP4 + chapters under `.runtime/presentations/`. Evals: `.claude/agents/evals/bmc-live-presentation.json`, `run-bmc-live-presentation.sh`.
