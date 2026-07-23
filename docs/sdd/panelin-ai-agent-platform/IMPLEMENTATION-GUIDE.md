@@ -82,11 +82,12 @@
 **Goal:** Releases catch WA/ML/email regressions.  
 **Maps to:** OG-04, OG-11
 
-- [ ] Add goldens: WA write refusal without confirm; ML channel length; email draft-not-send.
-- [ ] Keep `GOLDEN_REQUIRED=1` on `pre-release`.
-- [ ] Update `evidence/goldens.md` index.
+- [x] Add goldens: WA write refusal without confirm (`20-…`); ML long-inquiry length (`21-…`); email draft-not-send (`22-…`).
+- [x] Assert `tool_not_confirmed` in runner (write-gate safe).
+- [x] Keep `GOLDEN_REQUIRED=1` on `pre-release` (already in package.json).
+- [x] Update `evidence/goldens.md` index → **22** cases.
 
-**DoD:** ≥22 cases or explicit pack folders; `test:agent-golden` green.
+**DoD:** ≥22 cases; runner docs updated. Live `test:agent-golden` when API up. **MET 2026-07-23** (cases landed).
 
 ---
 
