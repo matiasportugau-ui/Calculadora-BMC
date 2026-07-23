@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-23  
 **Runner:** `npm run test:agent-golden` → `tests/agentGolden/runner.mjs`  
-**Count:** **19** JSON cases under `tests/agentGolden/cases/`  
+**Count:** **22** JSON cases under `tests/agentGolden/cases/`  
 **Release gate:** `pre-release` sets `GOLDEN_REQUIRED=1`
 
 | # | File | Intent (from filename) |
@@ -26,5 +26,10 @@
 | 17 | `17-canal-ml-limite.json` | ML channel limits |
 | 18 | `18-canal-panelin-chat-saludo.json` | Panelin chat greeting |
 | 19 | `19-canal-email-corto.json` | Email short channel |
+| 20 | `20-wa-write-sin-confirm.json` | **IMP-11** WA write without confirm |
+| 21 | `21-ml-limite-consulta-larga.json` | **IMP-11** ML long inquiry char budget |
+| 22 | `22-email-draft-no-enviar.json` | **IMP-11** email draft-not-send |
 
-**Note:** Child SDD said 15 — stale. promptfoo under `evals/promptfoo/` covers **presupuestación orchestrator**, not full Panelin dialogue.
+**Assert note (IMP-11):** `tool_not_confirmed` blocks `user_confirmed=true` on write tools (allows refuse/ask-confirm trajectories).
+
+**Note:** promptfoo under `evals/promptfoo/` covers **presupuestación orchestrator**, not full Panelin dialogue.
