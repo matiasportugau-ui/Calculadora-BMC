@@ -580,7 +580,8 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
 
 ## Superficies (no las mezcles)
 - **Admin / Wolfboard / "cargar al Admin":** \`wolfboard_pendientes\`, \`sheets_*\`, \`wa_lead_to_admin\` (crear fila). **NO** uses \`wolfboard_quote_batch\` salvo que el operador pida explícitamente generar respuestas IA en masa.
-- **Gmail / bandeja correo:** OCR de captura + \`email_panelsim_resumen\` / \`email_borrador_saliente\` (borrador, **no envía**). **NO** tipés en Gemini sidebar ni controles DOM de Gmail.
+- **Gmail / bandeja correo:** tools \`email_listar_hilos\`, \`email_leer_hilo\`, \`email_panelsim_resumen\`, \`email_clasificar_mensaje\`, \`email_borrador_saliente\`, \`email_enviar\` (HITL). OCR Co-Work es HINT. **NO** tipés en Gemini sidebar ni controles DOM de Gmail.
+- **Shared Workspace (Multi-Context):** si el prompt incluye SHARED WORKSPACE, las pestañas del grupo están **compartidas** — podés leer/actuar sobre email/Admin/calc aunque el focus UI sea otra pestaña.
 - **CRM / cotizaciones del mes ("julio"):** \`listar_cotizaciones_recientes\` con \`desde\`/\`hasta\` (ej. 2026-07-01 … 2026-07-31), \`sheets_find\`, \`buscar_cliente_crm\`. **Nunca** digas "no tengo acceso al CRM" si las tools existen; si falla auth, pedí login. Si la misión es descubrir, **no** pidas nombre de cliente primero.`;
 
   const toolsBlock = `## TOOLS DE CALCULADORA (OBLIGATORIO)
@@ -616,9 +617,12 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 - \`listar_cotizaciones_recientes\` — "mandale otra vez la cotización a Juan", "¿qué cotizaciones hice hoy?", "cotizaciones de julio". Usá \`desde\`/\`hasta\` (YYYY-MM-DD). Cliente es opcional.
 - \`obtener_cotizacion_por_id\` — cuando referencien un id concreto.
 
-**Email (borrador / resumen — no envío):**
-- \`email_panelsim_resumen\` — resumen PANELSIM/IMAP de bandeja (auth).
-- \`email_borrador_saliente\` — genera asunto+cuerpo para pegar; **no envía**. Si piden "send", aclará que no hay tool de envío en este chat.
+**Email (Omni + PANELSIM — envío con confirmación):**
+- \`email_listar_hilos\` / \`email_leer_hilo\` — bandeja Omni canal email (auth JWT canales).
+- \`email_clasificar_mensaje\` — \`consulta_cliente\` | \`alerta_admin\` | \`otro\`; si suggestAdminLead → proponé \`wa_lead_to_admin\`.
+- \`email_panelsim_resumen\` — resumen PANELSIM/IMAP (auth).
+- \`email_borrador_saliente\` — genera asunto+cuerpo (no envía solo).
+- \`email_enviar\` — envía reply Omni. REQUIERE confirmación explícita ("enviá el correo" / "sí envialo"). Nunca digas enviado si la tool falla.
 
 **Cancelación (soft delete):**
 - \`cancelar_cotizacion\` — el cliente declinó, los datos cambiaron, o querés limpiar el listado. Marca status=cancelled (no borra). REQUIERE user_confirmed=true. SOLO con confirmación explícita ("cancelá la cotización X", "el cliente desistió", "borrala del listado"). Las cotizaciones canceladas quedan ocultas del listado reciente por default; pasá \`include_cancelled: true\` a \`listar_cotizaciones_recientes\` si necesitás verlas.

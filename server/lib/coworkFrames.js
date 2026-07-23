@@ -6,6 +6,7 @@
  */
 
 import { config } from "../config.js";
+import { formatSharedWorkspaceBlock, normalizeSharedWorkspace } from "./sharedWorkspace.js";
 
 export const COWORK_ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -271,6 +272,12 @@ export function formatOperatorContextBlock(operatorContext) {
     lines.push("  · Lead WA sin fila Admin → `wa_lead_to_admin` (no inventes rowNum).");
   }
   lines.push("- La imagen es HINT visual; verificá números y filas con tools sheets_* / wolfboard_* antes de cotizar o escribir.");
+  const workspace = normalizeSharedWorkspace(operatorContext.workspace);
+  const wsBlock = formatSharedWorkspaceBlock(workspace);
+  if (wsBlock) {
+    lines.push("");
+    lines.push(wsBlock);
+  }
   return lines.join("\n");
 }
 

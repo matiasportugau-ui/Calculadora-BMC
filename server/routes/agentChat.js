@@ -251,9 +251,13 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_actualizar_fila",
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
-  // Email cockpit (draft / PANELSIM summary — no send)
+  // Email cockpit + Omni (list/read/classify/draft/send — send is HITL)
   "email_panelsim_resumen",
   "email_borrador_saliente",
+  "email_listar_hilos",
+  "email_leer_hilo",
+  "email_clasificar_mensaje",
+  "email_enviar",
   // Co-Work Sheets — Admin/CRM PII and writes (allowlisted service-account sheets)
   // Reads are open on SPA chat (TOOLS_OPEN_IN_PUBLIC_CHAT); writes stay gated.
   "sheets_list_tabs",
