@@ -243,6 +243,8 @@ export const config = {
   transportistaGcsBucket: process.env.TRANSPORTISTA_GCS_BUCKET || "",
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
   transportistaOutboxIntervalMs: Number(process.env.TRANSPORTISTA_OUTBOX_INTERVAL_MS || 15000),
+  /** When true, do not start the transportista outbox worker (local DBs without migrations). */
+  transportistaOutboxDisabled: bool(process.env.TRANSPORTISTA_OUTBOX_DISABLED, false),
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
   /** TraKtiMe — time tracking + invoicing. Reuses databaseUrl. */
   traktimeSheetId: process.env.TRAKTIME_SHEET_ID || "",
