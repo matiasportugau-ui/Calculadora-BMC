@@ -680,12 +680,14 @@ await group("wolfboard_actualizar_fila — happy path", async () => {
     assert(url.endsWith("/api/wolfboard/row"), "hits row endpoint");
     assert(init.method === "POST", "POST");
     const body = JSON.parse(init.body);
-    assert(body.rowNum === 5 && body.respuesta === "Texto OK", "rowNum + respuesta in body");
+    assert(body.adminRow === 5 && body.respuesta === "Texto OK", "adminRow + respuesta in body");
+    assert(body.link === "https://drive.example/quote.pdf", "linkDrive maps to route link field");
     return { ok: true, rowNum: 5 };
   });
   const { parsed } = await run("wolfboard_actualizar_fila", {
     rowNum: 5,
     respuesta: "Texto OK",
+    linkDrive: "https://drive.example/quote.pdf",
     user_confirmed: true,
   });
   assert(parsed.ok === true, "ok true");
@@ -701,7 +703,7 @@ await group("wolfboard_marcar_enviado — happy path", async () => {
   setFetch(async (url, init) => {
     assert(url.endsWith("/api/wolfboard/enviados"), "hits enviados endpoint");
     const body = JSON.parse(init.body);
-    assert(body.rowNum === 7, "rowNum in body");
+    assert(body.adminRow === 7, "adminRow in body");
     return { ok: true, movedRow: 7 };
   });
   const { parsed } = await run("wolfboard_marcar_enviado", { rowNum: 7, user_confirmed: true });

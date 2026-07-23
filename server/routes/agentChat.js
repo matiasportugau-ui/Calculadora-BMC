@@ -45,26 +45,26 @@ import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool, buildAplicarActions } from "../lib/agentTools.js";
 import { toGeminiTools, toGeminiResponse } from "../lib/geminiTools.js";
 import { getToolStatsAsync } from "../lib/toolStats.js";
-import { buildAgentToolsOpenApi, toYaml } from "../lib/agentToolsOpenApi.js";
+import { buildAgentToolsOpenApi, toYaml, resolveToolTier } from "../lib/agentToolsOpenApi.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
 import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
 import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.js";
 import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
 import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
 import { getIvaPct } from "../lib/policyLoader.js";
-import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
+import { retrieveSimilarQuotes, retrieveHybridQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
 import {
   ALLOWED_MODELS as CENTRAL_ALLOWED_MODELS,
   PROVIDER_LABELS as CENTRAL_PROVIDER_LABELS,
   resolveModel as centralResolveModel,
   buildAiOptionsResponse,
-  estimateCostUSD,
 } from "../lib/aiProviderConfig.js";
 import {
   buildMultimodalMessages,
   formatOperatorContextBlock,
   normalizeAttachments,
 } from "../lib/coworkFrames.js";
+import { logAgentTurn } from "../lib/logAgentTurn.js";
 
 const router = Router();
 
@@ -179,16 +179,24 @@ router.get("/agent/tool-stats", async (req, res) => {
  * (e.g. the Panelin MCP server). Returns the same Anthropic input_schema format
  * that the in-process tool-use loop receives.
  */
-router.get("/agent/tools-manifest", (_req, res) => {
+router.get("/agent/tools-manifest", (req, res) => {
+  const tierFilter = String(req.query?.tier || "").trim().toLowerCase();
+  let tools = AGENT_TOOLS.map((t) => ({
+    name: t.name,
+    description: t.description,
+    input_schema: t.input_schema,
+    requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
+    tier: resolveToolTier(t.name),
+  }));
+  if (tierFilter) {
+    tools = tools.filter((t) => t.tier === tierFilter);
+  }
   res.json({
     ok: true,
-    count: AGENT_TOOLS.length,
-    tools: AGENT_TOOLS.map((t) => ({
-      name: t.name,
-      description: t.description,
-      input_schema: t.input_schema,
-      requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
-    })),
+    count: tools.length,
+    total: AGENT_TOOLS.length,
+    ...(tierFilter ? { tier: tierFilter } : {}),
+    tools,
   });
 });
 
@@ -849,7 +857,7 @@ router.post("/agent/chat", async (req, res) => {
   // Server-side intent classification — the only signal the model can't fabricate.
   // Write tools (guardar_en_crm, enviar_whatsapp_link, etc.) check this set, not
   // the model-set user_confirmed flag. See server/lib/userIntentClassifier.js.
-  const approvedActions = classifyIntents(lastUserMessage);
+  const approvedActions = classifyIntents(lastUserMessage, { recentMessages: messages });
   if (devMode && approvedActions.size > 0) {
     // Surface to dev panel for transparency
     setImmediate(() => {
@@ -884,10 +892,12 @@ router.post("/agent/chat", async (req, res) => {
   let ragContextBlock = "";
   if (config.ragEnabled) {
     try {
-      const ragQuotes = await retrieveSimilarQuotes(
+      const retrieveFn = config.ragHybrid ? retrieveHybridQuotes : retrieveSimilarQuotes;
+      const ragQuotes = await retrieveFn(
         lastUserMessage,
         config.ragTopK,
         config.ragThreshold,
+        config.ragHybrid ? { hybrid: true } : undefined,
       );
       ragContextBlock = formatRetrievedContextForPrompt(ragQuotes);
       if (devMode && ragQuotes.length > 0) {
@@ -1461,37 +1471,24 @@ router.post("/agent/chat", async (req, res) => {
         }
 
         const latencyMs = Date.now() - tStart;
-        // Top-20 run 2026-05-11 (#F1): structured log via pino (req.log) en lugar de console.log
-        // para que Cloud Run capture el evento con request id correlation.
-        const turnLog = {
-          event: "chat_turn",
-          provider,
-          model: resolvedModel,
-          latencyMs,
-          inputTokens,
-          outputTokens,
-          kbMatchCount: trainingExamples.length,
-          devMode: devMode || undefined,
-        };
-        if (req.log) req.log.info(turnLog, "chat_turn");
-        else console.log(JSON.stringify(turnLog));
-
-        // Structured cost observability for the primary AI functionality path
-        const chatCost = estimateCostUSD(provider, resolvedModel, {
-          input_tokens: inputTokens,
-          output_tokens: outputTokens,
-        });
-        const costLog = {
-          event: "chat_turn_cost",
-          provider,
-          model: resolvedModel,
-          inputTokens,
-          outputTokens,
-          estimated_cost_usd: chatCost,
-          conversationId,
-        };
-        if (req.log) req.log.info(costLog, "chat_turn_cost");
-        else console.log(JSON.stringify(costLog));
+        const ttft_ms = firstTokenAt != null ? firstTokenAt - tStart : null;
+        logAgentTurn(
+          {
+            path: "sse",
+            provider,
+            model: resolvedModel,
+            channel,
+            assistant: channel,
+            latency_ms: latencyMs,
+            ttft_ms,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            conversation_id: conversationId || null,
+            kb_match_count: trainingExamples.length,
+            dev_mode: devMode || undefined,
+          },
+          req.log || null,
+        );
 
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {

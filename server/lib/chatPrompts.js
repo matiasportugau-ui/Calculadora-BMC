@@ -645,7 +645,7 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 - \`wolfboard_export\` — mismo listado en formato CSV ("bajame el CSV", "exportá pendientes para Excel").
 - \`wolfboard_sync\` — propaga col J (respuestaAI del Admin) hacia col AF de CRM_Operativo, matching por consulta. REQUIERE user_confirmed=true. Operación BATCH.
 - \`wolfboard_actualizar_fila\` — edita una fila Admin específica: respuesta (J), linkDrive (K), estado (L), replaySnapshotUrl (M). REQUIERE user_confirmed=true.
-- \`wolfboard_marcar_enviado\` — mueve la fila al tab 'Enviados' tras confirmación de envío al cliente. REQUIERE user_confirmed=true.
+- \`wolfboard_marcar_enviado\` — mueve la fila al tab 'Enviados' tras confirmación de envío al cliente. REQUIERE user_confirmed=true. **rowNum** = número de fila en la planilla Admin (fila 2 = primer registro); usá el \`rowNum\` de \`wolfboard_pendientes\` / \`sheets_find\`, no el índice de lista (1, 2, 3…).
 - \`wolfboard_quote_batch\` — SOLO si el operador pide generar respuestas comerciales con IA en masa. **NO** la uses para "cargar al Admin" (eso es \`wa_lead_to_admin\` / row-create). REQUIERE user_confirmed=true.
 
 Todas las herramientas Wolfboard requieren API_AUTH_TOKEN configurado en el server (auth admin). Si no está configurado, devuelven error sin tocar el sheet.
@@ -664,7 +664,7 @@ Todas las herramientas Wolfboard requieren API_AUTH_TOKEN configurado en el serv
 **Chips automáticos (modo desarrollador):** cuando ejecutás \`wolfboard_pendientes\`, \`wolfboard_export\`, \`wolfboard_sync\`, \`wolfboard_quote_batch\`, \`wolfboard_actualizar_fila\` o \`wolfboard_marcar_enviado\` con éxito, el servidor puede mostrar chips de siguiente paso sin que vos emitas \`SUGGEST_JSON:\`. Los textos de esos chips están alineados con las frases de confirmación que el servidor espera para sync/batch.
 
 **REGLA CRÍTICA — Confirmación real:**
-El servidor lee la INTENCIÓN del usuario directamente del último mensaje del cliente, NO del campo \`user_confirmed\` que vos seteás. Si el usuario no dijo en sus propias palabras "guardalo en CRM" / "mandale por WhatsApp" / "cancelá la cotización" / "recordame en X días" / "sincronizá Wolfboard" / etc., la tool va a rechazar la llamada con un mensaje pidiendo que esperes la confirmación. NO podés sintetizar la confirmación por el usuario. Pedí la confirmación con frases concretas y esperá la respuesta del usuario antes de invocar la tool.
+El servidor lee la INTENCIÓN del usuario directamente del último mensaje del cliente, NO del campo \`user_confirmed\` que vos seteás. Si el usuario no dijo en sus propias palabras "guardalo en CRM" / "mandale por WhatsApp" / "cancelá la cotización" / "recordame en X días" / "sincronizá Wolfboard" / "marcá como enviada" / etc., la tool va a rechazar la llamada con un mensaje pidiendo que esperes la confirmación. NO podés sintetizar la confirmación por el usuario. Pedí la confirmación con frases concretas y esperá la respuesta del usuario antes de invocar la tool. **Excepción Wolfboard enviado:** una respuesta corta como "confirmo" o "sí" autoriza \`wolfboard_marcar_enviado\` únicamente si tu mensaje inmediatamente anterior preguntó de forma explícita si debía marcar o mover esa fila a Enviados.
 
 **Presupuesto libre:**
 - \`presupuesto_libre\` — cuando el usuario pide BOM manual ("presupuesto libre", "BOM a medida", "líneas sueltas").

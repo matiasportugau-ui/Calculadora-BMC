@@ -11,7 +11,9 @@
 | `agent_core_call` | `callAgentOnce` | `server/lib/agentCore.js` → `logAgentCost` | `provider`, `model`, `channel`, `latency_ms`, `estimated_cost_usd`, tokens, `source: agentCore` |
 | `ai_completion` | shared completions | `server/lib/aiCompletion.js` → `logAgentCost` | `provider`, `model`, `estimated_cost_usd`, tokens, `source: aiCompletion` |
 | `agent_tool_call` | tool runtime | `server/lib/agentTools.js` | `tool`, `ok`, `latency_ms` (not USD) |
-| `superagent_ai_call` | SuperAgent | `server/routes/superAgent.js` raw `console.log` | `provider`, `model`, `estimated_cost_usd`, `call` context — **not** via `costTelemetry` (IMP-07 residual) |
+| `superagent_ai_call` | SuperAgent | `server/routes/superAgent.js` → `logAgentCost` | `provider`, `model`, `estimated_cost_usd`, `call` context, `source: superAgent` |
+| `agent_turn` | SSE + agentCore | `server/lib/logAgentTurn.js` | Normalized turn + cost parity fields |
+| `chat_turn_cost` | SSE chat | `logAgentTurn` → `logAgentCost` | Same shape as `agent_core_call` |
 
 `logAgentCost` shape: `server/lib/costTelemetry.js` — always includes `event`, `ts`, `estimated_cost_usd`, `source`.
 
@@ -60,6 +62,7 @@ gcloud logging read '
 
 - `GET /api/ai-analytics/trends` — **knowledge environment** trends from `events-log.jsonl`, **not** live LLM $ (requires `API_AUTH_TOKEN`).
 - Tool volume: `GET /api/agent/tool-stats` (dev/auth) + durable `agent_tool_calls` when `DATABASE_URL`.
+- Hub UI: **Costo IA** card in Agent Admin → Estadísticas (copy gcloud filter; no live $ total).
 
 ## Acceptance (operator)
 

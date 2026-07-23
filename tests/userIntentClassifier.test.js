@@ -79,6 +79,40 @@ group("wolfboard tool triggers", () => {
   assert(classifyIntents("cotizá todas las pendientes").has("wolfboard_quote_batch"), "cotizá pendientes");
 });
 
+group("Wolfboard enviado requires action-scoped confirmation", () => {
+  assert(!classifyIntents("confirmo").has("wolfboard_marcar_enviado"), "bare confirmo is not enough");
+  assert(!classifyIntents("confirmo el precio").has("wolfboard_marcar_enviado"), "quote confirmation is not enviado intent");
+  assert(!classifyIntents("confirmá la escritura").has("wolfboard_marcar_enviado"), "sheet confirmation is not enviado intent");
+
+  const scopedFollowUp = [
+    { role: "assistant", content: "¿Querés que marque la fila 5 como enviada? Confirmá con sí." },
+    { role: "user", content: "sí" },
+  ];
+  assert(
+    classifyIntents("sí", { recentMessages: scopedFollowUp }).has("wolfboard_marcar_enviado"),
+    "short affirmative after explicit enviado question",
+  );
+
+  const unrelatedFollowUp = [
+    { role: "assistant", content: "Los enviados del mes están en la pestaña Enviados. Confirmá si querés otro reporte." },
+    { role: "user", content: "sí" },
+  ];
+  assert(
+    !classifyIntents("sí", { recentMessages: unrelatedFollowUp }).has("wolfboard_marcar_enviado"),
+    "report follow-up does not authorize a move",
+  );
+
+  const stalePriorIntent = [
+    { role: "user", content: "marcá como enviada" },
+    { role: "assistant", content: "¿Querés que revise también el precio?" },
+    { role: "user", content: "sí" },
+  ];
+  assert(
+    !classifyIntents("sí", { recentMessages: stalePriorIntent }).has("wolfboard_marcar_enviado"),
+    "prior user intent does not leak across an unrelated assistant turn",
+  );
+});
+
 // ── 3. Accent / case insensitivity ───────────────────────────────────────────
 
 group("Accent insensitivity", () => {

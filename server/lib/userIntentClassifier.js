@@ -55,10 +55,11 @@ const TOOL_INTENT_PATTERNS = {
     /\bmodifica(r)?\s+(la\s+)?fila\b/,
   ],
   wolfboard_marcar_enviado: [
-    /\bmarca(r)?\s+(como\s+)?enviad/,
+    /\bmarca(r|lo|la)?\s+(como\s+)?enviad/,
     /\bya\s+(la\s+)?envie\b/,
     /\b(esta|esto)\s+enviad/,
-    /\bmove(r)?\s+a\s+enviados\b/,
+    /\bmove(r|lo|la)?\s+a\s+enviados\b/,
+    /\bsi[,]?\s+(marca(r|lo|la)?|mova(r|lo|la)?)\s+(como\s+)?enviad/,
   ],
   sheets_write_range: [
     /\bescribi(lo|r)?\s+(en\s+)?(la\s+)?planilla\b/,
@@ -109,7 +110,7 @@ export const INTENT_HINTS = {
   programar_seguimiento: ["recordame en X días", "agendá seguimiento"],
   wolfboard_sync: ["sincronizá Wolfboard", "propagá las respuestas"],
   wolfboard_actualizar_fila: ["actualizá la fila X", "editá la respuesta"],
-  wolfboard_marcar_enviado: ["marcá como enviada", "ya la envié"],
+  wolfboard_marcar_enviado: ["marcá como enviada", "sí marcá como enviada", "ya la envié"],
   wolfboard_quote_batch: ["generá las respuestas con IA", "cotizá todas las pendientes"],
   sheets_write_range: ["escribilo en la planilla", "pegá en Admin", "confirmá la escritura", "guardalo en la planilla"],
   escribir_crm_taxonomia: ["clasificá la fila en CRM", "guardá la taxonomía en CRM", "marcá como proveedor en CRM"],
@@ -153,11 +154,17 @@ function stripNegations(text) {
     .replace(new RegExp(`(?<!\\bdejar\\s)\\bsin\\s+(?:${WORD}\\s*)+?${STOP}`, "g"), " ");
 }
 
-/**
- * @param {string} lastUserMessage  the most recent user message in the chat
- * @returns {Set<string>} set of approved tool names for this turn
- */
-export function classifyIntents(lastUserMessage) {
+/** Bare affirmatives after the agent asked to confirm a Wolfboard enviado move. */
+const SHORT_AFFIRMATIVE = /^(si|sí|dale|ok|listo|confirmo|confirma|confirmado|cofifmo|confimo|sip|yes)[\s!.?]*$/;
+
+/** Assistant asked to mark/move a Wolfboard row to Enviados. */
+const ASSISTANT_WOLFBOARD_ENVIADO_PENDING =
+  /\b(marcar|marca|marcal[oa]|marque|marquemos|mover|move|movel[oa]|mueva|pasar|pasa|pasal[oa])\b.{0,80}\b(como\s+)?enviad[oa]s?\b|\bwolfboard_marcar_enviado\b/;
+
+const ASSISTANT_WOLFBOARD_CONFIRM_ASK =
+  /\b(confirm[aá]|segur[oa]|dec[ií]me\s+si|dec[ií]me\s+(s[ií]|ok)|frase\s+(con\s+creces|de\s+confirmaci)|quier[oé]s?\s+(que\s+)?(la\s+)?marque)/;
+
+function classifyDirectIntents(lastUserMessage) {
   const result = new Set();
   if (!lastUserMessage || typeof lastUserMessage !== "string") return result;
 
@@ -171,6 +178,39 @@ export function classifyIntents(lastUserMessage) {
         break;
       }
     }
+  }
+  return result;
+}
+
+/**
+ * Short "sí" / "confirmo" only after the agent explicitly scoped a pending
+ * wolfboard_marcar_enviado action.
+ */
+function applyFollowUpAffirmations(approved, lastUserMessage, messages) {
+  const normalized = normalize(lastUserMessage);
+  if (!SHORT_AFFIRMATIVE.test(normalized)) return;
+
+  const assistantMsgs = (messages || []).filter((m) => m.role === "assistant");
+  const lastAssistant = assistantMsgs.at(-1)?.content || "";
+  const assistantNorm = normalize(String(lastAssistant));
+
+  if (
+    ASSISTANT_WOLFBOARD_ENVIADO_PENDING.test(assistantNorm)
+    && ASSISTANT_WOLFBOARD_CONFIRM_ASK.test(assistantNorm)
+  ) {
+    approved.add("wolfboard_marcar_enviado");
+  }
+}
+
+/**
+ * @param {string} lastUserMessage  the most recent user message in the chat
+ * @param {{ recentMessages?: Array<{role:string, content?:string}> }} [options]
+ * @returns {Set<string>} set of approved tool names for this turn
+ */
+export function classifyIntents(lastUserMessage, options = {}) {
+  const result = classifyDirectIntents(lastUserMessage);
+  if (options.recentMessages?.length) {
+    applyFollowUpAffirmations(result, lastUserMessage, options.recentMessages);
   }
   return result;
 }

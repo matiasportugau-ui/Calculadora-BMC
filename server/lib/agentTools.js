@@ -1189,6 +1189,13 @@ function requireConfirmedAction(name, input, opts) {
   return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
 }
 
+/** Wolfboard API uses `adminRow` (sheet row index); tools expose `rowNum` with the same meaning. */
+function resolveWolfboardAdminRow(input) {
+  const n = Number(input?.rowNum ?? input?.adminRow);
+  if (!Number.isFinite(n) || n < 2) return null;
+  return n;
+}
+
 function normalizeFamilia(f) {
   return f ? String(f).toUpperCase().replace(/-/g, "_") : f;
 }
@@ -2116,25 +2123,25 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
 
     if (name === "wolfboard_actualizar_fila") {
       { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
-      const rowNum = Number(input?.rowNum);
-      if (!Number.isFinite(rowNum) || rowNum < 2) {
-        return JSON.stringify({ ok: false, error: "rowNum (>=2) requerido" });
+      const adminRow = resolveWolfboardAdminRow(input);
+      if (adminRow == null) {
+        return JSON.stringify({ ok: false, error: "rowNum (>=2) requerido — número de fila en planilla Admin (fila 2 = primer registro)" });
       }
-      const body = { rowNum };
+      const body = { adminRow };
       if (input?.respuesta != null) body.respuesta = String(input.respuesta);
-      if (input?.linkDrive != null) body.linkDrive = String(input.linkDrive);
-      if (input?.estado != null) body.estado = String(input.estado);
+      if (input?.linkDrive != null) body.link = String(input.linkDrive);
       if (input?.replaySnapshotUrl != null) body.replaySnapshotUrl = String(input.replaySnapshotUrl);
+      if (input?.estado != null && /\baprobad/i.test(String(input.estado))) body.aprobado = true;
       return await wolfboardForward("/api/wolfboard/row", { method: "POST", body }, name);
     }
 
     if (name === "wolfboard_marcar_enviado") {
       { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
-      const rowNum = Number(input?.rowNum);
-      if (!Number.isFinite(rowNum) || rowNum < 2) {
-        return JSON.stringify({ ok: false, error: "rowNum (>=2) requerido" });
+      const adminRow = resolveWolfboardAdminRow(input);
+      if (adminRow == null) {
+        return JSON.stringify({ ok: false, error: "rowNum (>=2) requerido — número de fila en planilla Admin (fila 2 = primer registro)" });
       }
-      return await wolfboardForward("/api/wolfboard/enviados", { method: "POST", body: { rowNum } }, name);
+      return await wolfboardForward("/api/wolfboard/enviados", { method: "POST", body: { adminRow } }, name);
     }
 
     if (name === "wolfboard_quote_batch") {

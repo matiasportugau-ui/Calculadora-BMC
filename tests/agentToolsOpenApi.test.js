@@ -47,6 +47,8 @@ describe("buildAgentToolsOpenApi", () => {
     assert.equal(catalog.length, 2);
     assert.equal(catalog.find((t) => t.name === "guardar_en_crm").requires_auth, true);
     assert.equal(catalog.find((t) => t.name === "obtener_precio_panel").requires_auth, false);
+    assert.equal(catalog.find((t) => t.name === "guardar_en_crm").tier, "crm");
+    assert.equal(catalog.find((t) => t.name === "obtener_precio_panel").tier, "open");
     const enumNames = doc.paths["/api/agent/exec-tool"].post.requestBody.content["application/json"].schema.properties.name.enum;
     assert.deepEqual(enumNames, ["obtener_precio_panel", "guardar_en_crm"]);
   });
