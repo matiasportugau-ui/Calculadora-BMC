@@ -10,10 +10,15 @@
  * everything in one call — ready to send to the client.
  *
  * Mount at: app.use("/api/agent", createSuperAgentRouter(config))
+ *
+ * IMP-07: cost via logAgentCost (event superagent_ai_call); calc via same
+ * calcTechoCompleto/calcParedCompleto engine as /calc (in-process, not loopback).
+ * Parallel route kept for low-latency quote-lead; numbers must match fixture tests.
  */
 import { Router } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { estimateCostUSD } from "../lib/aiProviderConfig.js";
+import { logAgentCost } from "../lib/costTelemetry.js";
 import {
   calcTechoCompleto,
   calcParedCompleto,
@@ -26,17 +31,54 @@ import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 
 const HAIKU = "claude-haiku-4-5-20251001";
 
-// Helper for consistent Phase A cost observability
-function logSuperAgentCost(usage, context = {}) {
+/**
+ * Cost sink via shared costTelemetry (IMP-07).
+ * Event name kept as superagent_ai_call so Cloud Logging queries still work.
+ * @param {object} usage Anthropic usage block
+ * @param {{ call?: string }} [context]
+ * @param {{ info?: Function } | null} [logger]
+ */
+export function logSuperAgentCost(usage, context = {}, logger = null) {
   const cost = estimateCostUSD("claude", HAIKU, usage || {});
-  // TODO: thread pino logger here once cost-telemetry module exists
-  console.log(JSON.stringify({
-    event: "superagent_ai_call",
-    provider: "claude",
-    model: HAIKU,
-    estimated_cost_usd: cost,
-    ...context,
-  }));
+  return logAgentCost(
+    {
+      event: "superagent_ai_call",
+      provider: "claude",
+      model: HAIKU,
+      channel: "superagent",
+      estimated_cost_usd: cost,
+      input_tokens: usage?.input_tokens ?? null,
+      output_tokens: usage?.output_tokens ?? null,
+      task_key: context.call ? `superagent:${context.call}` : "superagent",
+      source: "superAgent",
+    },
+    logger,
+  );
+}
+
+/**
+ * Pure calc path used by quote-lead (same engine as /calc, in-process).
+ * Exported for offline parity tests (IMP-07). Does not hit loopback HTTP.
+ * @see docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md — SuperAgent is a parallel
+ * fast path that must use the same calc* functions, not invent prices.
+ */
+export function runSuperAgentCalc(extracted, usedDefaults = []) {
+  return runCalc(extracted, usedDefaults);
+}
+
+function logSuperAgentQuote(meta) {
+  // Align log shape with AE contract ae_agent_quote (no PII).
+  console.log(
+    JSON.stringify({
+      event: "ae_agent_quote",
+      tool: "superagent_quote_lead",
+      scenario: meta.scenario || null,
+      lista: "web",
+      ok: meta.ok !== false,
+      source: "superagent_inprocess",
+      total_usd: meta.total_usd ?? null,
+    }),
+  );
 }
 const MIN_LEN = 15;
 
@@ -192,6 +234,12 @@ export function createSuperAgentRouter(config) {
         supuestos: usedDefaults,
         faltan: extracted?.faltan || [],
       };
+
+      logSuperAgentQuote({
+        scenario: escenario,
+        ok: true,
+        total_usd: totalUsd,
+      });
 
       const resumenTexto = `${panelLabel} — ${ESCENARIO_LABELS[escenario] || escenario}. `
         + `Área: ${area} m². Paneles: ${cantPaneles}. `

@@ -27,8 +27,13 @@
 | G-P2-03 | product | Whisper UX not productized | P2 | VoiceFacade product path | IMP-08 | M | eng |
 | G-P2-04 | quality | Channel golden packs thin beyond 19 | P2 | Expand goldens | IMP-11 | S | eng |
 | G-P2-05 | product | Hub $/day card (query path already done) | P2 | Optional UI on cost-query | IMP-06 residual | M | eng |
-| G-P2-06 | product | SuperAgent → `logAgentCost` code | P2 | Wire module (docs already map event) | IMP-07 residual | S | eng |
 | G-P2-07 | product | Enable RAG in prod after embed batch | P2 | Follow OPS §11 when ready | IMP-04 residual | M | ops+eng |
+
+## Closed product (IMP-07)
+
+| ID | Gap | Resolution |
+|----|-----|------------|
+| G-P2-06 | SuperAgent → `logAgentCost` | **CLOSED 2026-07-23** — `logSuperAgentCost` → `logAgentCost`; calc parity tests; ADR-007 Accepted |
 
 ## P0 / P1 documentation
 
