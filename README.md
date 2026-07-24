@@ -347,8 +347,9 @@ Ver [`CONTRIBUTING.md`](CONTRIBUTING.md) para la guía completa de contribución
 
 ## Documentation Agent
 
-- **Daily auto-update** via GitHub Actions (`.github/workflows/update-docs.yml`, cron `0 6 * * *` UTC + `workflow_dispatch`).
-- **Pipeline**: scan repo → Gemini writer → Gemini critic → rewrite `README.md` only if the critic approves.
+- **Daily auto-update** via GitHub Actions (`.github/workflows/update-docs.yml`, cron `0 6 * * *` UTC + `workflow_dispatch` only — not on every `main` push).
+- **Pipeline**: scan repo → Gemini writer → deterministic safety gate (length + required anchors) → Gemini critic (sees current + proposed) → rewrite `README.md` only if both approve.
+- **Scope**: commits `README.md` only (never stages `docs/` / `CHANGELOG.md`).
 - **Local run**: `export GEMINI_API_KEY='…'` then `python3 scripts/doc_agent.py`
 - **Required secret** (repo → Settings → Secrets → Actions): `GEMINI_API_KEY`
 - `GITHUB_TOKEN` is provided automatically by Actions.
