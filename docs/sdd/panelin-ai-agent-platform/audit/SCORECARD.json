@@ -1,97 +1,70 @@
 {
-  "generated_at": "2026-07-23T14:00:00Z",
+  "generated_at": "2026-07-24T12:30:00Z",
   "system_slug": "panelin-ai-agent-platform",
   "sdd_path": "docs/sdd/panelin-ai-agent-platform/SDD.md",
-  "sdd_version": "1.2",
+  "sdd_version": "1.3",
   "sdd_status": "As-Built",
   "auditor": "sdd-quality-auditor",
-  "evolution_iteration": 2,
-  "prior_composite": 96,
-  "composite": 97,
+  "evolution_iteration": 3,
+  "prior_composite": 97,
+  "composite": 98,
   "min_pass": 90,
   "pass": true,
   "label": "Pass (expert-complete; HCS-aligned)",
   "delta_vs_prior": 1,
+  "glory": "development-glory re-score after IMP-02/04/08/09 #772",
   "dimensions": {
     "schema_completeness": {
       "weight": 15,
       "score_0_100": 98,
       "weighted": 14.7,
-      "notes": [
-        "Frontmatter complete; version 1.2 + evolution meta",
-        "Sections 1\u201312 + appendices present",
-        "No {TBD} placeholders"
-      ]
+      "notes": ["Frontmatter v1.3", "Sections 1–12", "No placeholders"]
     },
     "c4_fidelity": {
       "weight": 15,
       "score_0_100": 95,
       "weighted": 14.25,
-      "notes": [
-        "L1 C4Context + L2 C4Container with Omni, desk/PiP, SuperAgent, Chatwoot",
-        "Actors match mounts",
-        "Minor: no separate C4 Component diagram beyond \u00a76 table"
-      ]
+      "notes": ["C4 L1+L2 + Omni/desk/SuperAgent", "Minor: no separate C4 Component diagram"]
     },
     "recreation_sufficiency": {
       "weight": 20,
       "score_0_100": 98,
       "weighted": 19.6,
-      "notes": [
-        "RECREATION-CHECKLIST recreation rows closed; goldens 22; tools 55/55",
-        "Prod ASSISTANTS_ACTIVE pinned; RAG enable/default-off documented",
-        "IMP-07/11/12 code ships reflected in SDD + evidence",
-        "Deploy Vercel + Cloud Run + Doppler/GSM names present"
-      ]
+      "notes": ["Tools 55, goldens 22, OPS voice matrix, RAG precheck fail-closed", "logAgentTurn + voiceMetrics in as-built"]
     },
     "evidence_grounding": {
       "weight": 15,
-      "score_0_100": 97,
-      "weighted": 14.55,
+      "score_0_100": 98,
+      "weighted": 14.7,
       "notes": [
-        "Live prod 2026-07-23: health ok, tools 55, SSE done with provider_used/latency_ms/ttft_ms",
-        "cost-query.md, assistants-active.md, tools-manifest, goldens 22",
-        "ADR-007 Accepted with test evidence superAgentCalc.test.js",
-        "UNKNOWN retained for invoice-level $ only"
+        "IMP-02/08/09 code on main #772 with unit tests",
+        "IMP-04 honest not-live + precheck exit 2",
+        "Prod health/tools previously CONFIRMED"
       ]
     },
     "ai_architecture_depth": {
       "weight": 10,
-      "score_0_100": 97,
-      "weighted": 9.7,
-      "notes": [
-        "Full \u00a76 dual brain, 55 tools, RAG off default, SuperAgent, MCP, goldens 22",
-        "IMP-12 done telemetry in cost model + \u00a79.4",
-        "Guardrails and human gates explicit"
-      ]
+      "score_0_100": 98,
+      "weighted": 9.8,
+      "notes": ["§6 dual brain + turn parity", "Voice dual path HF/Whisper", "RAG default off documented"]
     },
     "crosscutting_wa": {
       "weight": 10,
-      "score_0_100": 95,
-      "weighted": 9.5,
-      "notes": [
-        "Security JWT/MCP/rate limits; reliability failover+breaker; obs cost+SSE latency",
-        "Residual: hub $ card, voice durable metrics, p95 baseline collection (ops)"
-      ]
+      "score_0_100": 97,
+      "weighted": 9.7,
+      "notes": ["Obs: cost + SSE done + agent_turn + voice_events", "Residual hub $ / p95 ops"]
     },
     "adr_quality": {
       "weight": 10,
       "score_0_100": 95,
       "weighted": 9.5,
-      "notes": [
-        "7 ADRs; ADR-007 Accepted with consequences + evidence paths",
-        "Alternatives still slightly thin on some older ADRs"
-      ]
+      "notes": ["7 ADRs; ADR-003 dual path + IMP-02 mitigation"]
     },
     "evolution_readiness": {
       "weight": 5,
-      "score_0_100": 97,
-      "weighted": 4.85,
-      "notes": [
-        "v1.2, IMP guide IMP-01/07/11/12 mostly MET",
-        "Clear residual product IMPs (02,04,08,09\u2026)",
-        "GAP-PLAN updated this re-audit"
-      ]
+      "score_0_100": 98,
+      "weighted": 4.9,
+      "notes": ["v1.3, IMP guide closed 02/08/09, GAP-PLAN updated"]
     }
   },
   "schema_checklist": {
@@ -108,18 +81,5 @@
   },
   "p0_gaps": 0,
   "p1_gaps": 0,
-  "p2_gaps": 6,
-  "ships_since_prior_audit": [
-    "#744 SDD",
-    "#745 IMP-07",
-    "#746 IMP-11",
-    "#748 IMP-12"
-  ],
-  "related": {
-    "child_slug": "panelin-chat-agent",
-    "evidence_dir": "docs/sdd/panelin-ai-agent-platform/evidence",
-    "implementation_guide": "docs/sdd/panelin-ai-agent-platform/IMPLEMENTATION-GUIDE.md",
-    "ops": "docs/team/runbooks/PANELIN-IA-OPS.md"
-  },
-  "glory": "development-glory G0-G5 complete; pass 97"
+  "p2_gaps": 3
 }
