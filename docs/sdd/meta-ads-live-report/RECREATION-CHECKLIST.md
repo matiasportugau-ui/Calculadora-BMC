@@ -1,5 +1,8 @@
 # RECREATION-CHECKLIST — Meta Ads Live Report
 
+**Updated 2026-07-24:** PR1–PR3 code shipped on main (#753/#762/#764/#767). Remaining: human Meta secrets for prod LIVE.
+
+
 **System:** meta-ads-live-report  
 **Scope:** PR1 (shell + multi-source report) + PR2 (AI)  
 **SDD:** `docs/sdd/meta-ads-live-report/SDD.md`  
@@ -25,7 +28,7 @@ Use this checklist to implement without inventing contracts. Mark `[x]` when don
 
 ### Backend
 
-- [ ] `server/lib/marketIntel/metaAdsReport.js` — orchestrate source priority, `report_hash`
+- [x] `server/lib/marketIntel/metaAdsReport.js` — orchestrate source priority, `report_hash`
 - [ ] `server/lib/marketIntel/metaAdsSnapshotMapper.js` — map `adsIntelligence.json` → partial DTO
 - [ ] `server/lib/marketIntel/metaAdsFixture.js` — load fixture → full DTO
 - [ ] `server/lib/marketIntel/metaAdsRules.js` — deterministic recommendations
@@ -150,8 +153,8 @@ Host reference: `server/routes/marketing.js` `POST /ai/chat` + `MarketIntelChat.
 
 ## PR3 — deferred (not PR1 gate)
 
-- [ ] `server/lib/metaAdsClient.js`
-- [ ] `META_ADS_ACCESS_TOKEN`, `META_ADS_ACCOUNT_ID` in config + Doppler/GSM
+- [x] `server/lib/metaAdsClient.js`
+- [x] `META_ADS_*` in config + `.env.example`; Doppler/GSM = **human** via bootstrap
 - [ ] `docs/procedimientos/META-ADS-SETUP.md`
 - [ ] Graph field map → DTO (see SDD appendix)
 

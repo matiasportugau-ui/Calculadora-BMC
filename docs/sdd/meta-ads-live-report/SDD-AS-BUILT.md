@@ -12,8 +12,9 @@ design_companion: docs/sdd/meta-ads-live-report/SDD.md
 
 # System Design Document: Marketing Hub Meta Ads Surface (As-Built)
 
-> **This document describes code that exists today.**  
-> The **proposed** Meta Ads Live Report (tab `ads-meta`, live Graph, DTO, native ads AI) is specified in **`SDD.md` v0.2** and is **not implemented** (CONFIRMED: `rg MetaAds|ads/meta|metaAds` → no matches).
+> **SUPERSEDED for the Live Report feature (2026-07-24).**  
+> Full as-built of **Ads · Meta** (PR1–PR3 + #767) is **`SDD.md` v0.4**.  
+> This file remains as a historical snapshot of the **pre-feature** host (static intel only). Do not treat “no metaAds modules” claims below as current truth.
 
 ---
 

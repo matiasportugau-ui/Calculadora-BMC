@@ -1,93 +1,90 @@
 {
-  "generated_at": "2026-07-23T18:30:00Z",
-  "iteration": 1,
+  "generated_at": "2026-07-24T14:30:00Z",
+  "iteration": 3,
   "system_slug": "meta-ads-live-report",
   "sdd_path": "docs/sdd/meta-ads-live-report/SDD.md",
-  "document_version": "0.2",
-  "document_status": "Draft",
-  "prior_composite": 82,
-  "composite": 92,
-  "delta": 10,
+  "document_version": "0.4",
+  "document_status": "As-Built",
+  "prior_composite": 88,
+  "composite": 94,
+  "delta": 6,
   "min_pass": 90,
   "pass": true,
-  "label": "Pass (expert-complete for greenfield feature SDD)",
+  "label": "Pass (as-built after evidence re-tag)",
+  "audit_skill": "sdd-quality-auditor + auto evolution re-tag",
+  "code_baseline": "main #753 #762 #764 #767",
   "dimensions": {
     "schema_completeness": {
       "weight": 15,
       "score_0_100": 96,
       "weighted": 14.4,
       "notes": [
-        "v0.2 frontmatter extended with schema/checklist/evidence pointers",
-        "Sections 1–12 complete; Graph API version + rate limit in §3",
-        "Canonical MetaAdsReport.schema.json linked"
+        "v0.4 As-Built frontmatter; sections 1–12; health example includes live_implemented",
+        "API appendix retagged CONFIRMED shipped"
       ]
     },
     "c4_fidelity": {
       "weight": 15,
-      "score_0_100": 92,
-      "weighted": 13.8,
+      "score_0_100": 94,
+      "weighted": 14.1,
       "notes": [
-        "Rel_Neighbor and Container_Ext removed; standard Rel + System_Ext",
-        "L1/L2 + dual sequences retained; integration table under §5"
+        "C4 labels updated CONFIRMED for shipped containers",
+        "Host evidence includes ads-meta tab"
       ]
     },
     "recreation_sufficiency": {
       "weight": 20,
-      "score_0_100": 90,
-      "weighted": 18.0,
+      "score_0_100": 96,
+      "weighted": 19.2,
       "notes": [
-        "RECREATION-CHECKLIST.md covers PR1/PR2 files, fixture inventory, curl smoke",
-        "JSON Schema full DTO; API examples + error envelopes",
-        "Wire-up: marketing.js extend, no new mount; local doppler run noted",
-        "Graph field map for PR3 in appendix"
+        "Schema + checklist + META-ADS-SETUP + bootstrap script + code on main",
+        "Human secrets path explicit"
       ]
     },
     "evidence_grounding": {
       "weight": 15,
-      "score_0_100": 90,
-      "weighted": 13.5,
+      "score_0_100": 92,
+      "weighted": 13.8,
       "notes": [
-        "evidence/index.md with CONFIRMED path:line (E-01–E-15)",
-        "PROPOSED badge on feature surfaces; implementation_status frontmatter",
-        "Host claims no longer read as as-built feature"
+        "§1 residual ops gap only; evidence/index E-01–E-19 CONFIRMED",
+        "SDD-AS-BUILT supersession banner"
       ]
     },
     "ai_architecture_depth": {
       "weight": 10,
       "score_0_100": 93,
       "weighted": 9.3,
-      "notes": [
-        "SSE event parity, callAgentOnce defaults from host",
-        "Validation algorithm, prompt paths, golden eval questions"
-      ]
+      "notes": ["§6 confirmed paths ADS_*_SYSTEM_PROMPT"]
     },
     "crosscutting_wa": {
       "weight": 10,
-      "score_0_100": 88,
-      "weighted": 8.8,
+      "score_0_100": 92,
+      "weighted": 9.2,
       "notes": [
-        "intelLimiter 60/min documented",
-        "Optional alert thresholds for live error and parse_fail"
+        "Risks updated for secrets ops + #767 mitigation",
+        "Fail-open documented"
       ]
     },
     "adr_quality": {
       "weight": 10,
-      "score_0_100": 94,
-      "weighted": 9.4,
-      "notes": ["Eight ADRs unchanged — still excellent"]
+      "score_0_100": 96,
+      "weighted": 9.6,
+      "notes": ["ADR-009 fail-open Live; ADR-010 range KPIs #767"]
     },
     "evolution_readiness": {
       "weight": 5,
-      "score_0_100": 95,
-      "weighted": 4.75,
-      "notes": [
-        "v0.2 document control",
-        "Companion pack: schema, checklist, evidence, audit"
-      ]
+      "score_0_100": 94,
+      "weighted": 4.7,
+      "notes": ["v0.4 document control; dual SDD clarified"]
     }
   },
-  "gaps_closed_this_iteration": ["G-01", "G-02", "G-03", "G-04", "G-05", "G-06", "G-07", "G-08", "G-09", "G-10", "G-11", "G-12", "G-13", "G-14"],
-  "gaps_remaining_p0": 0,
-  "gaps_remaining_p1": 0,
-  "gaps_remaining_p2_optional": []
+  "schema_checklist": {
+    "all_pass": true
+  },
+  "p0_gap_count": 0,
+  "p1_gap_count": 0,
+  "p2_gap_count": 1,
+  "remaining_p2": [
+    "Prod LIVE still requires human Meta BM token + Doppler/GSM (ops not docs)"
+  ]
 }

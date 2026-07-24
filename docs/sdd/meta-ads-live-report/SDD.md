@@ -1,12 +1,12 @@
 ---
 title: System Design Document — Meta Ads Live Report
-version: 0.3
+version: 0.4
 date: 2026-07-24
-status: As-Built Draft
-author: sdd-architect + Matias (BMC) + sdd-evolution-loop + PR3 implementer
+status: As-Built
+author: sdd-architect + Matias (BMC) + sdd-evolution-loop + PR3 implementer + quality re-tag
 companion_skill: sdd-architect@compatible
 parent_system: calculadora-bmc / Marketing Hub
-implementation_status: "PR1+PR2 shipped on main (#753, #762). PR3 Live Graph client wired (fail-open without META_ADS_* secrets)."
+implementation_status: "PR1–PR3 + range fix on main (#753, #762, #764, #767). Prod LIVE needs human META_ADS_* secrets."
 schema: docs/sdd/meta-ads-live-report/schemas/MetaAdsReport.schema.json
 recreation_checklist: docs/sdd/meta-ads-live-report/RECREATION-CHECKLIST.md
 evidence_index: docs/sdd/meta-ads-live-report/evidence/index.md
@@ -27,9 +27,11 @@ Bounded feature system: a **professional Meta Ads Live Report** tab inside BMC M
 
 ### 1.1 Problem Statement
 
-BMC’s commercial engine is paid media, yet Meta Ads intelligence inside the product is a **frozen qualitative audit** (`adsIntelligence.json`, corte 2026-06-29) buried under the Inteligencia tab. Operators cannot see board-ready spend/CPL trends, campaign hierarchy, platform/placement mix, creative rank, or grounded recommendations. Generic Market Intel chat is not specialized for paid media and can pollute context with competitor/ML noise. There is **no live Meta Marketing API client** (Google Ads live API exists separately under `/api/ads` with no Marketing Hub UI).
+BMC’s commercial engine is paid media. Before this feature, Meta intelligence in-product was only a **frozen qualitative audit** (`adsIntelligence.json`) buried under Inteligencia, with no board-ready spend/CPL series, hierarchy, or ads-scoped AI.
 
-The Meta Ads Live Report closes that gap: one skinned tab that looks like a professional agency report, always has honest data freshness, and embeds an AI analyst that reasons only over a normalized report DTO.
+**Shipped (CONFIRMED on main):** Marketing Hub tab **Ads · Meta** with multi-source `MetaAdsReport` (Demo fixture / Snapshot audit / Live Graph client), honest freshness badges, rules engine, grounded AI insights + SSE ads chat, and fail-open when `META_ADS_*` secrets are absent. PRs **#753, #762, #764, #767**.
+
+**Residual product gap (ops, not missing code):** production **LIVE** spend requires human Marketing API system-user credentials in Doppler `bmc-backend/prd` + GSM/Cloud Run (`docs/procedimientos/META-ADS-SETUP.md`, `scripts/meta-ads-bootstrap-auto.sh`). Without secrets, operators still use Demo/Snapshot + AI.
 
 ### 1.2 Goals
 
@@ -69,15 +71,15 @@ C4Context
   title System Context — Meta Ads Live Report
   Person(admin, "BMC Admin", "Operator reviewing paid media performance")
   System_Boundary(bmc, "Calculadora BMC") {
-    System(metaReport, "Meta Ads Live Report", "Tab + API + AI analyst for Meta paid media PROPOSED")
+    System(metaReport, "Meta Ads Live Report", "Tab + API + AI analyst CONFIRMED shipped")
     System(hub, "Marketing Hub", "Market intel shell /hub/marketing CONFIRMED")
     System(agentCore, "Agent Core", "callAgentOnce LLM gateway CONFIRMED")
   }
-  System_Ext(metaGraph, "Meta Marketing API", "Ad account insights campaigns creatives PR3")
+  System_Ext(metaGraph, "Meta Marketing API", "Insights when META_ADS secrets present")
   System_Ext(llm, "LLM Provider", "Insights narrative and ads chat")
   System_Ext(snapshot, "adsIntelligence.json", "Offline Meta audit snapshot CONFIRMED")
-  System_Ext(fixture, "metaAdsFixture.json", "Full demo report for UI PROPOSED")
-  System_Ext(googleAds, "Google Ads API", "Existing /api/ads sibling not v1 UI CONFIRMED")
+  System_Ext(fixture, "metaAdsFixture.json", "Demo full report CONFIRMED")
+  System_Ext(googleAds, "Google Ads API", "Existing /api/ads sibling not Hub UI CONFIRMED")
 
   Rel(admin, hub, "Opens /hub/marketing", "HTTPS")
   Rel(hub, metaReport, "Ads Meta tab", "in-app")
@@ -93,10 +95,10 @@ C4Context
 
 | Interface | Direction | Protocol | Auth | Tag | Description |
 |-----------|-----------|----------|------|-----|-------------|
-| Browser → Express | ↔ | HTTPS JSON / SSE | Bearer JWT or service token | PROPOSED routes | Report, health, insights, ads chat |
-| Meta Marketing Graph | → | HTTPS REST (Graph ~v21.0) | `META_ADS_ACCESS_TOKEN` | PROPOSED PR3 | Account insights, campaigns, placements |
-| LLM via agentCore | → | Internal | Existing LLM secrets | CONFIRMED host | Structured insights + streaming chat |
-| Static JSON (repo) | → | Filesystem | N/A | Snapshot CONFIRMED / Fixture PROPOSED | Audit + demo |
+| Browser → Express | ↔ | HTTPS JSON / SSE | Bearer JWT or service token | **CONFIRMED** | Report, health, insights, ads chat |
+| Meta Marketing Graph | → | HTTPS REST (Graph ~v21.0) | `META_ADS_ACCESS_TOKEN` | **CONFIRMED** client; ops secrets human | Insights when configured |
+| LLM via agentCore | → | Internal | Existing LLM secrets | CONFIRMED | Structured insights + streaming chat |
+| Static JSON (repo) | → | Filesystem | N/A | CONFIRMED | Audit + demo fixture |
 | Auth | ← | JWT / service | `requireServiceOrUser({ role: 'admin' })` | CONFIRMED | Same as Marketing Hub |
 
 **Scope boundary:** Feature module inside existing Express + Vite SPA; not a separate deployable.
@@ -105,12 +107,15 @@ C4Context
 
 | Claim | Evidence |
 |-------|----------|
-| Hub route `/hub/marketing` | `src/App.jsx:414` |
-| Tabs today: resumen / inteligencia / detalle | `MarketingHubModule.jsx:140-145` |
-| Static ads in intel payload | `marketing.js:253-258` + `productIntelligence.js:120-122` |
-| Admin gate | `marketing.js:12` |
-| Mount `/api/marketing` | `server/index.js:1112` |
-| SSE chat pattern | `marketing.js:398-449`, `MarketIntelChat.jsx:47-70` |
+| Hub route `/hub/marketing` | `src/App.jsx` path `/hub/marketing` |
+| Tabs: resumen · **ads-meta** · inteligencia · detalle | `MarketingHubModule.jsx:141-145` |
+| Meta Live Report panel | `MetaAdsLiveReport.jsx` when `tab === 'ads-meta'` |
+| Report/health/AI routes | `marketing.js:467+` (`/ads/meta/report`, `/health`, `/ai/ads-insights`, `/ai/ads-chat`) |
+| Live Graph client | `server/lib/metaAdsClient.js` |
+| Static ads in intel payload | `marketing.js` intel + `productIntelligence.js` `getAdsIntelligence` |
+| Admin gate | `marketing.js` `requireMarketing` |
+| Mount `/api/marketing` | `server/index.js` |
+| Secrets bootstrap | `scripts/meta-ads-bootstrap-auto.sh` + `docs/procedimientos/META-ADS-SETUP.md` |
 | Full evidence table | `evidence/index.md` |
 
 ---
@@ -172,24 +177,24 @@ C4Container
   Person(admin, "BMC Admin", "Operator")
 
   Container_Boundary(frontend, "Frontend Vite SPA") {
-    Container(hubShell, "MarketingHubModule", "React", "Tabs skin auth CONFIRMED host")
-    Container(metaTab, "MetaAdsLiveReport", "React", "Report orchestrator PROPOSED")
-    Container(analystUi, "MetaAdsAnalystChat", "React", "SSE ads analyst PROPOSED")
+    Container(hubShell, "MarketingHubModule", "React", "Tabs skin auth CONFIRMED")
+    Container(metaTab, "MetaAdsLiveReport", "React", "Report orchestrator CONFIRMED")
+    Container(analystUi, "MetaAdsAnalystChat", "React", "SSE ads analyst CONFIRMED")
   }
 
   Container_Boundary(backend, "Backend Express API") {
-    Container(routes, "marketing routes", "Express", "Extend marketing.js PROPOSED endpoints")
-    Container(reportSvc, "metaAdsReport.js", "Node", "Source priority hash assembly")
-    Container(rules, "metaAdsRules.js", "Node", "Deterministic recommendations")
-    Container(insights, "metaAdsInsights.js", "Node", "Prompt validate AI JSON")
-    Container(client, "metaAdsClient.js", "Node", "Graph Marketing API PR3")
+    Container(routes, "marketing routes", "Express", "ads meta report health AI CONFIRMED")
+    Container(reportSvc, "metaAdsReport.js", "Node", "Source priority hash assembly CONFIRMED")
+    Container(rules, "metaAdsRules.js", "Node", "Deterministic recommendations CONFIRMED")
+    Container(insights, "metaAdsInsights.js", "Node", "Prompt validate AI JSON CONFIRMED")
+    Container(client, "metaAdsClient.js", "Node", "Graph Marketing API CONFIRMED")
     Container(agent, "agentCore", "Node", "callAgentOnce CONFIRMED")
   }
 
   Container_Boundary(data, "Data") {
     ContainerDb(pg, "PostgreSQL", "bmc_market_intel optional cache later")
-    Container(files, "Static JSON", "adsIntelligence CONFIRMED fixture PROPOSED")
-    System_Ext(graph, "Meta Graph", "Live insights PR3")
+    Container(files, "Static JSON", "adsIntelligence + metaAdsFixture CONFIRMED")
+    System_Ext(graph, "Meta Graph", "Live insights when secrets present")
     System_Ext(llmApi, "LLM API", "Narrative and chat")
   }
 
@@ -211,12 +216,12 @@ C4Container
 
 | Step | Where | Action |
 |------|-------|--------|
-| 1 | `server/routes/marketing.js` | Add `GET /ads/meta/report`, `GET /ads/meta/health`, PR2 AI routes; apply `requireMarketing` + `intelLimiter` |
-| 2 | `server/index.js` | **No new mount** if routes live on marketing router (already `app.use("/api/marketing", …)` at line ~1112) |
-| 3 | `server/config.js` (PR3) | Read `META_ADS_ACCESS_TOKEN`, `META_ADS_ACCOUNT_ID` (names only) |
-| 4 | `src/components/MarketingHubModule.jsx` | Extend `tabs` array; render `MetaAdsLiveReport` when `tab === 'ads-meta'` |
-| 5 | `src/components/marketing-hub/IntelPanel.jsx` | Teaser CTA → parent `setTab('ads-meta')` |
-| 6 | Doppler / GSM (PR3) | Secrets in `bmc-backend/prd` + Cloud Run env |
+| 1 | `server/routes/marketing.js` | **Done:** report, health, ads-insights, ads-chat + `requireMarketing` + `intelLimiter` |
+| 2 | `server/index.js` | Marketing router already mounted at `/api/marketing` |
+| 3 | `server/config.js` | **Done:** `metaAdsAccessToken` / `metaAdsAccountId` env fields |
+| 4 | `MarketingHubModule.jsx` | **Done:** tab `ads-meta` + `MetaAdsLiveReport` |
+| 5 | `IntelPanel.jsx` | **Done:** teaser CTA → Ads · Meta |
+| 6 | Doppler / GSM | **Human:** `META_ADS_*` via `scripts/meta-ads-bootstrap-auto.sh` |
 
 **Local run (parent product):** `cd ~/calculadora-bmc && doppler run -- npm run dev` then open `/hub/marketing`.
 
@@ -248,12 +253,12 @@ Not a full RAG product. **Grounded report analyst** over structured metrics.
 | Tools/agents | No tool-calling in v1 (chat is pure grounded generation) |
 | Defaults (align host) | `maxTokens` ≤1500 chat / ≤2000 insights; `temperature` ~0.3–0.4; history last 12; content slice ≤4000 (**CONFIRMED** market chat: `marketing.js:403-439`) |
 
-### Prompt registry (PROPOSED paths)
+### Prompt registry (CONFIRMED paths)
 
 | Prompt | Location |
 |--------|----------|
-| Insights system prompt | `server/lib/marketIntel/metaAdsInsights.js` constant `ADS_INSIGHTS_SYSTEM_PROMPT` |
-| Chat system prompt | Same module or `ADS_CHAT_SYSTEM_PROMPT` |
+| Insights system prompt | `server/lib/marketIntel/metaAdsInsights.js` → `ADS_INSIGHTS_SYSTEM_PROMPT` |
+| Chat system prompt | Same file → `ADS_CHAT_SYSTEM_PROMPT` |
 | Versioning | Git only in v1 (no DB registry) |
 
 ### SSE event schema (parity with Market Intel chat — CONFIRMED host)
@@ -533,6 +538,22 @@ else:
 **Consequences**: + Correct scopes. − Extra secret ops.  
 **Alternatives**: Reuse page token (rejected: will fail / wrong app).
 
+### ADR-009: Live fail-open to Snapshot (never false LIVE)
+
+**Status**: Observed (shipped #764)  
+**Context**: Marketing API secrets may be absent or Graph may fail.  
+**Decision**: LIVE freshness only on successful Graph Insights; missing token/error → Snapshot with notes.  
+**Consequences**: + Operator trust. − Prod without secrets never shows real spend.  
+**Alternatives**: Hard-fail empty UI (rejected).
+
+### ADR-010: Range-aware KPIs for Demo/Snapshot (#767)
+
+**Status**: Observed (shipped #767)  
+**Context**: Selecting 7d still showed full monthly/fixture spend.  
+**Decision**: Demo slices series to range; Snapshot nulls spend for non-30d with explanatory note.  
+**Consequences**: + Honest windows. − Snapshot lacks true 7d history until Live.  
+**Alternatives**: Scale monthly spend proportionally (rejected: invents daily truth).
+
 ---
 
 ## 11. Risks & Technical Debt
@@ -540,10 +561,11 @@ else:
 | Risk | Impact | Likelihood | Mitigation |
 |------|--------|------------|------------|
 | Operators trust Demo as real | High | Medium | Badge, AI data_mode_note, prod Auto excludes Demo |
-| Snapshot age misleads budget decisions | High | High | Stale badge; AI must flag date; push PR3 Live |
+| Snapshot age misleads budget decisions | High | High | Stale badge; AI flags mode; Live when secrets provisioned |
 | AI invents metrics | High | Medium | Server-side DTO only + campaign allowlist validator |
-| Meta token never provisioned | Medium | Medium | Fixture+Snapshot+rules still valuable for narrative ops |
-| Graph rate limits / cost | Medium | Medium | 10 min cache; health endpoint |
+| Meta token never provisioned in prod | Medium | High (ops) | Fail-open Snapshot; bootstrap script + META-ADS-SETUP.md |
+| Graph rate limits / cost | Medium | Medium | Health endpoint; fail-open; avoid tight polling |
+| Range mislabels monthly spend as 7d | High | Mitigated | **#767** range-aware Demo slice + Snapshot null spend off-30d |
 | Hub LIVE badge conflated with Meta | Medium | High | Separate ads freshness chip only on Ads tab |
 | Dual UI styles (brief hex vs ac tokens) | Low | High | This tab uses `--ac-*` only |
 | Attribution noise on YoY | Medium | High | Document limits; reconcile CRM later |
@@ -573,14 +595,14 @@ else:
 
 ---
 
-## Appendix — API surface (**PROPOSED** — not implemented)
+## Appendix — API surface (**CONFIRMED shipped** — #753 / #762 / #764)
 
 Canonical DTO: [`schemas/MetaAdsReport.schema.json`](./schemas/MetaAdsReport.schema.json)
 
 | Method | Path | Notes |
 |--------|------|-------|
-| GET | `/api/marketing/ads/meta/report?range=&source=` | → MetaAdsReport |
-| GET | `/api/marketing/ads/meta/health` | Config/status, no secrets |
+| GET | `/api/marketing/ads/meta/report?range=&source=` | → MetaAdsReport (async builder) |
+| GET | `/api/marketing/ads/meta/health` | Config/status, no secrets; `live_implemented: true` |
 | POST | `/api/marketing/ai/ads-insights` | Structured insights JSON |
 | POST | `/api/marketing/ai/ads-chat` | SSE analyst |
 
@@ -669,10 +691,12 @@ Authorization: Bearer <admin_jwt>
 {
   "token_configured": false,
   "account_configured": false,
+  "account_id": null,
   "last_success_at": null,
   "cache_age_s": null,
   "mode": "snapshot_or_demo",
-  "graph_api_version": "v21.0"
+  "graph_api_version": "v21.0",
+  "live_implemented": true
 }
 ```
 
@@ -686,8 +710,9 @@ A Scorecards · B AI narrative · C Trend · D Campaigns · E Platform/Placement
 |----|-------------|---------|
 | **PR1** | DTO, snapshot mapper, fixture, rules, report+health API, full tab UI | — |
 | **PR2** | Insights + ads chat + validator + hash cache | PR1 `report_hash` |
-| **PR3** | metaAdsClient + secrets + LIVE badge + setup doc | Secrets provisioned |
-| **PR4** | CSV/PDF export, deltas polish | PR1 |
+| **PR3** | metaAdsClient + fail-open Live + setup doc | **Shipped #764**; prod LIVE needs human secrets |
+| **#767** | Range-aware Demo/Snapshot KPIs | **Shipped** |
+| **PR4** | CSV/PDF export, deltas polish | Optional |
 
 ## Appendix — Graph Insights field map (PR3)
 
@@ -743,3 +768,4 @@ See **`evidence/index.md`** for tagged CONFIRMED/INFERRED/PROPOSED table.
 | 0.2 | 2026-07-23 | Evolution-loop iter 1: DTO schema, recreation checklist, evidence tags, Mermaid fix, API examples, Graph map, SSE contract, wire-up |
 | 0.2 note | 2026-07-23 | As-built reverse-engineer of **current** host surface published as sibling `SDD-AS-BUILT.md` (this file remains **design/proposed**) |
 | 0.3 | 2026-07-24 | Frontmatter: PR1+PR2 as-built on main; PR3 Live client + fail-open; setup doc `META-ADS-SETUP.md` |
+| 0.4 | 2026-07-24 | Evidence re-tag CONFIRMED shipped; ADRs 009–010; risks/API appendix aligned with main (#753–#767) |
