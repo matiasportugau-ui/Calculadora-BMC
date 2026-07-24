@@ -8,8 +8,8 @@
 //
 // Safety / design:
 //  - READ-ONLY: never writes the store (the pipeline owns evolution). No hitCount mutation here.
-//  - Off by default: gated by config.brainEnabled (VITE_FEATURE_BRAIN). Callers still guard, but if the
-//    cache is empty brainBlock() returns "" so a brain hiccup can never break a reply.
+//  - Off by default: gated by config.brainEnabled (VITE_FEATURE_BRAIN). brainBlock(), refreshBrain(), and
+//    ensureBrainInit() are no-ops when disabled; if the cache is empty brainBlock() also returns "".
 //  - GCS fetch is out-of-band (warm load at import + setInterval), never on the request path.
 //  - Local-path override (config.brainLocalPath / BRAIN_LOCAL_PATH) for dev validation without GCS.
 import fs from "node:fs";
@@ -48,8 +48,11 @@ function _loadFromLocal() {
   return _parseLessons(fs.readFileSync(config.brainLocalPath, "utf8"));
 }
 
+const _disabledResult = () => ({ count: 0, source: "none", skipped: true });
+
 /** Refresh the in-memory cache from the canonical store. Best-effort; keeps the prior cache on failure. */
 export async function refreshBrain() {
+  if (!config.brainEnabled) return _disabledResult();
   try {
     let lessons = null, source = "none";
     if (config.brainLocalPath) { lessons = _loadFromLocal(); source = "local"; }
@@ -63,8 +66,9 @@ export async function refreshBrain() {
   }
 }
 
-/** Warm the cache once, then keep it fresh on an interval. Idempotent. Safe no-op when no source set. */
+/** Warm the cache once, then keep it fresh on an interval. Idempotent. Safe no-op when disabled or no source. */
 export function ensureBrainInit() {
+  if (!config.brainEnabled) return Promise.resolve(_disabledResult());
   if (_initPromise) return _initPromise;
   _initPromise = refreshBrain();
   // Background refresh (unref so it never holds the process open, e.g. in tests).
@@ -80,6 +84,7 @@ export function ensureBrainInit() {
  * @param {number} [n]    cap (defaults to config.brainInjectCap).
  */
 export function brainBlock(query = "", n = config.brainInjectCap) {
+  if (!config.brainEnabled) return "";
   const active = _cache.lessons.filter((l) => l && l.status === "active");
   if (!active.length) return "";
   const ranked = active
@@ -104,8 +109,11 @@ export function brainStatus() {
   };
 }
 
-// Self-init at import when a source is configured (GCS on Cloud Run, or a local override anywhere).
+// Self-init at import only when the feature flag is ON and a source is configured.
 // Mirrors trainingKB.js's import-time warm load. In offline tests neither is set → silent no-op.
-if (config.brainLocalPath || (IS_CLOUD_RUN && config.brainGcsBucket)) {
+if (
+  config.brainEnabled
+  && (config.brainLocalPath || (IS_CLOUD_RUN && config.brainGcsBucket))
+) {
   ensureBrainInit();
 }
