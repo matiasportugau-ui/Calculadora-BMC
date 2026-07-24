@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-24 (docs — development-glory re-score 98):** SDD platform **v1.3** reflects IMP-02 `logAgentTurn`, IMP-08 Whisper matrix, IMP-09 voiceMetrics; SCORECARD **98 pass**; P0=0. Residual: RAG enable ops, hub $, p95 baseline.
+
 **2026-07-24 (docs — Meta Ads SDD v0.4 As-Built + bootstrap):** Retag SDD/SCORECARD composite **94 pass** after PR1–PR3 ship; `scripts/meta-ads-bootstrap-auto.sh` (Graph smoke → Doppler `bmc-backend/prd` → GSM → Cloud Run); prod Live still human-gated on Meta BM system-user token. Evidence E-01–E-19; ADR-009 fail-open, ADR-010 range KPIs #767.
 
 **2026-07-24 (feat — IMP-02/04/08/09 product residual):** Shared `logAgentTurn` on SSE + callAgentOnce (IMP-02). RAG precheck fail-closed; prod enable blocked without DB/embed (IMP-04). Whisper/Firefox capability tests + OPS matrix (IMP-08). Durable `agent_voice_events` dual-write via voiceMetrics + voiceErrorLog (IMP-09).

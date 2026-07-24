@@ -1,7 +1,7 @@
 ---
 title: System Design Document — Panelin AI Agent Platform
-version: 1.2
-date: 2026-07-23
+version: 1.3
+date: 2026-07-24
 status: As-Built
 author: sdd-reverse-engineer
 source: reverse-engineering
@@ -9,8 +9,8 @@ target_path: /Users/matias/calculadora-bmc
 companion_skill: sdd-architect@compatible
 system_slug: panelin-ai-agent-platform
 related_slug: panelin-chat-agent
-refreshed: 2026-07-23
-evolution: "iter-1 evolution + IMP-07/11/12 ships; quality re-audit 2026-07-23 evening"
+refreshed: 2026-07-24
+evolution: "post IMP-02/04/08/09 #772; development-glory re-score"
 ---
 
 # System Design Document: Panelin AI Agent Platform
@@ -35,8 +35,8 @@ BMC Uruguay needs a Spanish-first commercial AI that quotes insulation panels (U
 | G3 | Assistants kill-switch + always-on `seam` | High | CONFIRMED done |
 | G4 | Human gates on write tools (confirm + auth) | High | CONFIRMED done |
 | G5 | Measurable quality (goldens, eval, cost + SSE latency telemetry) | Medium | PARTIAL (hub $ UI; p95 baseline ops) |
-| G6 | Multi-channel reuse of brain | High | PARTIAL (SSE chat separate loop — IMP-02) |
-| G7 | Spec-driven evolution from this SDD | High | This bundle (audit **97 PASS**) |
+| G6 | Multi-channel reuse of brain | High | PARTIAL (dual entrypaths by ADR-003; **turn log parity via logAgentTurn IMP-02**) |
+| G7 | Spec-driven evolution from this SDD | High | This bundle (audit **98 PASS**) |
 
 SMART north-star targets live in [`SDD-TARGET.md`](SDD-TARGET.md).
 
@@ -342,11 +342,14 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 ### 9.4 Observability
 
 - pino + structured `agent_core_call` / `ai_completion` / `agent_tool_call` / SuperAgent `superagent_ai_call` (via `logAgentCost`).
+- **IMP-02:** shared `logAgentTurn` (`event: agent_turn`) on **both** SSE `agentChat` and `callAgentOnce` — core fields: channel, provider, tokens, cost, latency_ms, source.
 - SSE chat terminal event `done` carries `provider_used` + `latency_ms` (+ optional `ttft_ms`) — IMP-12; Dev panel `devMeta.lastTurn`.
-- `toolStats`: in-memory ring + durable `agent_tool_calls` when `DATABASE_URL` (B-05, 2026-07-22).
+- `toolStats`: in-memory ring + durable `agent_tool_calls` when `DATABASE_URL` (B-05).
+- **IMP-09:** voice ops events dual-write — `voiceErrorLog` → `voiceMetrics` → `agent_voice_events` when `DATABASE_URL`.
+- **IMP-08:** Firefox/no-SR → Whisper PTT (`canUseWhisperVoice` + `useDictation` → `/api/agent/transcribe`); OPS browser matrix.
 - Hub Assistants status + optional ai-analytics trends (**not** live LLM $).
-- **$/day query path documented** — `evidence/cost-query.md` (ops procedure closed; hub UI still open).
-- Gap residual: voice metrics durability (IMP-09); dual-brain field parity (IMP-02).
+- **$/day query path documented** — `evidence/cost-query.md` (hub UI still open).
+- Gap residual: p95 baseline collection (ops); hub $ card; RAG prod enable (blocked until precheck green).
 
 ### 9.5 Cost & sustainability
 
@@ -418,7 +421,7 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 | RAG assumed on but default off | Medium | High | OPS §11 + omni RAG runbook; default off intentional |
 | Voice / other analytics still ephemeral | Low | Medium | Tool calls persist (B-05); IMP-09 for voice |
 | SuperAgent cost sink drift | Low | Low | **Closed IMP-07** — `logAgentCost`; fitness test guards |
-| Dual brain paths diverge | High | Medium | Shared tests + IMP-02 event parity |
+| Dual brain paths diverge | Medium | Medium | ADR-003 dual entry; **turn log parity closed IMP-02** (`logAgentTurn`) |
 | Docs saying 22/42/48 tools | Medium | High | Point to this SDD |
 | Cost $/day no hub UI | Low | Medium | OPS §10 query **done**; hub card optional |
 | Firefox Hands-free gap | Medium | High | IMP-08 Whisper UX |

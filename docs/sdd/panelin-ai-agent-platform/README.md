@@ -1,9 +1,9 @@
 # SDD — Panelin AI Agent Platform
 
 **Slug:** `panelin-ai-agent-platform`  
-**Status:** As-Built **v1.2** (2026-07-23) — post IMP-07/11/12  
+**Status:** As-Built **v1.3** (2026-07-24) — post IMP-02/04/08/09  
 **Purpose:** Recreation-grade SPEC of the **real** AI agent stack for SDD-driven development.  
-**Audit:** composite **97 PASS** — [`audit/SCORECARD.json`](audit/SCORECARD.json)
+**Audit:** composite **98 PASS** — [`audit/SCORECARD.json`](audit/SCORECARD.json)
 
 ## Start here
 
@@ -33,14 +33,14 @@
 - RAG: code ready, **default OFF**
 - SSE `done`: `provider_used` / `latency_ms` / optional `ttft_ms` (IMP-12)
 - AI runtime: Cloud Run API only (not Vercel)
-- Audit: **97 PASS** · P0 docs **0**
+- Audit: **98 PASS** · P0 docs **0**
+- Turn parity: `logAgentTurn` (IMP-02) · Voice metrics durable (IMP-09) · Whisper FF path (IMP-08)
 
 ## Next command for agents
 
 ```text
 1. Read SDD.md §1, §5, §6, §10
 2. Read audit/SCORECARD.json + audit/GAP-PLAN.md
-3. Pick next unchecked IMP-XX from IMPLEMENTATION-GUIDE.md
-   (GAP-PLAN order: IMP-02 → IMP-04/08 → IMP-09 …)
-4. Implement → npm run test:agent → test:agent-golden → update PROJECT-STATE
+3. Optional product: IMP-04 RAG enable (ops) · hub $ · p95 baseline
+4. Implement → npm run test:agent → update PROJECT-STATE
 ```

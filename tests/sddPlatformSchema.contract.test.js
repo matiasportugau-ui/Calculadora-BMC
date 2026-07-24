@@ -50,6 +50,7 @@ assert.match(sdd, /\b55\b/, "tools 55");
 assert.match(sdd, /22/, "goldens 22");
 assert.match(sdd, /logAgentCost/, "SuperAgent/cost via logAgentCost");
 assert.match(sdd, /provider_used/, "SSE done telemetry");
+assert.match(sdd, /logAgentTurn/, "IMP-02 turn parity");
 assert.match(sdd, /canales;ml;panelin|ASSISTANTS_ACTIVE/, "assistants snapshot");
 
 // Scorecard pass ≥90
