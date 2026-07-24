@@ -52,15 +52,36 @@ export const useCashflowStore = create((set, get) => ({
   moveTransactionDate: (id, newDate, token) => {
     const { state } = get();
     if (!state) return;
-    const prev = state;
+    const prevDate =
+      state.transactions.find((t) => t.id === id)?.date ??
+      state.scenarios.flatMap((s) => s.transactions).find((t) => t.id === id)?.date;
+    if (!prevDate) return;
     const next = applyTransactionDateMove(state, id, newDate);
-    set({ state: next, toast: wouldCreateNegativeGap(next, id, newDate) ? { type: "warn", msg: "Liquidez proyectada negativa — se guarda igual (soft-warn)." } : null });
+    set({
+      state: next,
+      toast: wouldCreateNegativeGap(next, id, newDate)
+        ? { type: "warn", msg: "Liquidez proyectada negativa — se guarda igual (soft-warn)." }
+        : null,
+    });
     if (useMock) return;
     fetch(`${apiBase}/api/panelin/vencimientos`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({ transactionId: id, newDate }),
-    }).catch(() => set({ state: prev, toast: { type: "err", msg: "Error al guardar — cambio revertido." } }));
+    })
+      .then((r) => {
+        // HTTP 4xx/5xx resolve the promise — must check ok or optimistic UI silently lies
+        if (!r.ok) throw new Error(String(r.status));
+      })
+      .catch(() => {
+        const current = get().state;
+        if (!current) return;
+        // Revert only this tx from latest state so a failed save does not wipe concurrent moves
+        set({
+          state: applyTransactionDateMove(current, id, prevDate),
+          toast: { type: "err", msg: "Error al guardar — cambio revertido." },
+        });
+      });
   },
 }));
