@@ -5,7 +5,10 @@ import { createHash } from 'node:crypto';
 
 const RANGE_DAYS = { '7d': 7, '30d': 30, '90d': 90, ytd: null, year: 365 };
 
-function dateRange(rangeKey) {
+/** Snapshot audit figures are monthly (~30d). Other ranges cannot reuse them. */
+export const SNAPSHOT_SPEND_RANGE = '30d';
+
+export function dateRange(rangeKey) {
   const stop = new Date();
   const stopStr = stop.toISOString().slice(0, 10);
   let start;
@@ -17,7 +20,8 @@ function dateRange(rangeKey) {
     s.setUTCDate(s.getUTCDate() - (days - 1));
     start = s.toISOString().slice(0, 10);
   }
-  return { date_start: start, date_stop: stopStr, range_key: rangeKey in RANGE_DAYS || rangeKey === 'ytd' ? rangeKey : '30d' };
+  const valid = Object.prototype.hasOwnProperty.call(RANGE_DAYS, rangeKey);
+  return { date_start: start, date_stop: stopStr, range_key: valid ? rangeKey : '30d' };
 }
 
 function objectiveStatus(nombre, inv) {
@@ -33,15 +37,20 @@ function objectiveStatus(nombre, inv) {
 export function mapSnapshotToReport(ads, rangeKey = '30d') {
   const range = dateRange(rangeKey);
   const big4 = Array.isArray(ads?.big_4_campanas) ? ads.big_4_campanas : [];
-  const spend = ads?.inversion_total_mensual_usd != null ? Number(ads.inversion_total_mensual_usd) : null;
+  // Audit payload is monthly only — never label monthly spend as a 7d/90d/ytd window.
+  const spendCompatible = range.range_key === SNAPSHOT_SPEND_RANGE;
+  const spendRaw =
+    ads?.inversion_total_mensual_usd != null ? Number(ads.inversion_total_mensual_usd) : null;
+  const spend = spendCompatible && Number.isFinite(spendRaw) ? spendRaw : null;
 
   const campaigns = big4.map((c, i) => {
-    const s = c.inversion_mensual_usd != null ? Number(c.inversion_mensual_usd) : null;
+    const sRaw = c.inversion_mensual_usd != null ? Number(c.inversion_mensual_usd) : null;
+    const s = spendCompatible && Number.isFinite(sRaw) ? sRaw : null;
     return {
       id: `snap-${i + 1}`,
       name: c.nombre || `Campaña ${i + 1}`,
       objective: c.objetivo || 'unknown',
-      status: objectiveStatus(c.nombre, s || 0),
+      status: objectiveStatus(c.nombre, sRaw || 0),
       spend: s,
       results: null,
       cpl: null,
@@ -65,7 +74,17 @@ export function mapSnapshotToReport(ads, rangeKey = '30d') {
     thumbnail_url: null,
   }));
 
-  const stale = Boolean(ads?.fecha_audit);
+  const notes = [
+    ads?.fecha_audit ? `fecha_audit=${ads.fecha_audit}` : 'sin fecha_audit',
+    ads?.nota || '',
+    ads?.fuente || '',
+  ];
+  if (!spendCompatible) {
+    notes.push(
+      `Snapshot: gasto auditoría es mensual — range=${range.range_key} no reutiliza inversion_mensual (null hasta Live Graph)`,
+    );
+  }
+
   const report = {
     meta: {
       provider: 'meta',
@@ -74,15 +93,11 @@ export function mapSnapshotToReport(ads, rangeKey = '30d') {
       date_start: range.date_start,
       date_stop: range.date_stop,
       range_key: range.range_key,
-      freshness: stale ? 'snapshot' : 'snapshot',
+      freshness: 'snapshot',
       fetched_at: new Date().toISOString(),
       source: 'adsIntelligence.json',
       report_hash: '',
-      notes: [
-        ads?.fecha_audit ? `fecha_audit=${ads.fecha_audit}` : 'sin fecha_audit',
-        ads?.nota || '',
-        ads?.fuente || '',
-      ].filter(Boolean),
+      notes: notes.filter(Boolean),
     },
     kpis: {
       spend,

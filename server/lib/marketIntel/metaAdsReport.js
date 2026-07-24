@@ -27,6 +27,107 @@ export function resetLiveFetchImpl() {
   _liveFetch = fetchLiveMetaAdsReport;
 }
 
+function round(n, digits = 2) {
+  if (n == null || !Number.isFinite(n)) return null;
+  const f = 10 ** digits;
+  return Math.round(n * f) / f;
+}
+
+function scaleMetric(value, factor) {
+  if (value == null || !Number.isFinite(Number(value))) return value ?? null;
+  return round(Number(value) * factor, 2);
+}
+
+/**
+ * Build a date window anchored to the fixture's last series day (not wall-clock
+ * "today"), so default 30d keeps the full demo and 7d genuinely shortens it.
+ */
+function demoDateRange(rangeKey, fullSeries, fallbackMeta = {}) {
+  const stopStr =
+    fullSeries[fullSeries.length - 1]?.date ||
+    fallbackMeta.date_stop ||
+    new Date().toISOString().slice(0, 10);
+  const stop = new Date(`${stopStr}T00:00:00.000Z`);
+  let start;
+  if (rangeKey === 'ytd') {
+    start = `${stop.getUTCFullYear()}-01-01`;
+  } else {
+    const days = { '7d': 7, '30d': 30, '90d': 90, year: 365 }[rangeKey] || 30;
+    const s = new Date(stop);
+    s.setUTCDate(s.getUTCDate() - (days - 1));
+    start = s.toISOString().slice(0, 10);
+  }
+  return { date_start: start, date_stop: stopStr, range_key: rangeKey };
+}
+
+/**
+ * Slice demo fixture to the requested calendar range and recompute KPIs from series.
+ * Prevents range_key=7d from still showing full 30d fixture spend/dates.
+ */
+export function applyDemoRange(report, rangeKey) {
+  const fullSeries = Array.isArray(report.series) ? [...report.series] : [];
+  fullSeries.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const range = demoDateRange(rangeKey, fullSeries, report.meta || {});
+  const series = fullSeries.filter(
+    (p) => p?.date && p.date >= range.date_start && p.date <= range.date_stop,
+  );
+  const baseSpend = fullSeries.reduce((a, p) => a + (Number(p.spend) || 0), 0);
+  const spend = series.reduce((a, p) => a + (Number(p.spend) || 0), 0);
+  const results = series.reduce((a, p) => a + (Number(p.results) || 0), 0);
+  const impressions = series.reduce((a, p) => a + (Number(p.impressions) || 0), 0);
+  const clicks = series.reduce((a, p) => a + (Number(p.clicks) || 0), 0);
+  const factor = baseSpend > 0 ? spend / baseSpend : 0;
+  const sliced = series.length !== fullSeries.length;
+
+  const kpis = { ...(report.kpis || {}) };
+  kpis.spend = round(spend, 2);
+  kpis.results = results;
+  kpis.impressions = impressions || null;
+  kpis.clicks = clicks || null;
+  kpis.cpl = results > 0 ? round(spend / results, 2) : null;
+  kpis.cost_per_result = kpis.cpl;
+  kpis.ctr = impressions > 0 ? round((clicks / impressions) * 100, 2) : null;
+  kpis.cpm = impressions > 0 ? round((spend / impressions) * 1000, 2) : null;
+  kpis.cpc = clicks > 0 ? round(spend / clicks, 2) : null;
+  // Prior-period deltas in the fixture are for the full window — drop when sliced.
+  if (sliced) kpis.deltas = null;
+  if (kpis.reach != null && factor > 0 && sliced) {
+    kpis.reach = Math.round(Number(kpis.reach) * factor);
+  }
+
+  const scaleRow = (row) => {
+    if (!row || typeof row !== 'object' || !sliced) return row;
+    const next = { ...row };
+    if (next.spend != null) next.spend = scaleMetric(next.spend, factor);
+    if (next.results != null) next.results = Math.round(Number(next.results) * factor);
+    if (next.impressions != null) next.impressions = Math.round(Number(next.impressions) * factor);
+    if (next.clicks != null) next.clicks = Math.round(Number(next.clicks) * factor);
+    if (next.spend != null && next.results > 0) next.cpl = round(next.spend / next.results, 2);
+    else if (next.cpl != null && factor === 0) next.cpl = null;
+    return next;
+  };
+
+  report.meta = {
+    ...(report.meta || {}),
+    date_start: range.date_start,
+    date_stop: range.date_stop,
+    range_key: range.range_key,
+  };
+  report.series = series;
+  report.kpis = kpis;
+  report.campaigns = (report.campaigns || []).map(scaleRow);
+  report.platforms = (report.platforms || []).map(scaleRow);
+  report.placements = (report.placements || []).map(scaleRow);
+  report.creatives = (report.creatives || []).map(scaleRow);
+  if (sliced) {
+    report.meta.notes = [
+      ...(report.meta.notes || []),
+      `Demo recortado a ${range.range_key} (${series.length} días de serie)`,
+    ];
+  }
+  return report;
+}
+
 export function normalizeRange(range) {
   const r = String(range || '30d').toLowerCase();
   return VALID_RANGE.has(r) ? r : null;
@@ -108,7 +209,7 @@ export async function buildMetaAdsReport({ range = '30d', source = 'auto', fetch
 
   if (resolved === 'demo') {
     const report = loadMetaAdsFixture();
-    report.meta.range_key = rangeKey;
+    applyDemoRange(report, rangeKey);
     return { report: attachRulesAndHash(report), resolved_source: 'demo' };
   }
 
