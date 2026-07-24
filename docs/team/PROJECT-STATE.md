@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-24 (fix — HITL email/Admin intent + SuperAgent techo_fachada):** Tightened `email_enviar` / `wa_lead_to_admin` classifier patterns so bare "sí envialo" / "crear la consulta" no longer unlock Omni send or Admin row-create. SuperAgent `runCalc` now prices techo+pared for `techo_fachada` (was ~50% underquote as solo_techo). Tests: `userIntentClassifier`, `superAgentCalc`.
+
 **2026-07-24 (docs — development-glory re-score 98):** SDD platform **v1.3** reflects IMP-02 `logAgentTurn`, IMP-08 Whisper matrix, IMP-09 voiceMetrics; SCORECARD **98 pass**; P0=0. Residual: RAG enable ops, hub $, p95 baseline.
 
 **2026-07-24 (docs — Meta Ads SDD v0.4 As-Built + bootstrap):** Retag SDD/SCORECARD composite **94 pass** after PR1–PR3 ship; `scripts/meta-ads-bootstrap-auto.sh` (Graph smoke → Doppler `bmc-backend/prd` → GSM → Cloud Run); prod Live still human-gated on Meta BM system-user token. Evidence E-01–E-19; ADR-009 fail-open, ADR-010 range KPIs #767.
