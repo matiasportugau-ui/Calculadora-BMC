@@ -1,12 +1,12 @@
 ---
 title: System Design Document — Meta Ads Live Report
-version: 0.2
-date: 2026-07-23
-status: Draft
-author: sdd-architect + Matias (BMC) + sdd-evolution-loop
+version: 0.3
+date: 2026-07-24
+status: As-Built Draft
+author: sdd-architect + Matias (BMC) + sdd-evolution-loop + PR3 implementer
 companion_skill: sdd-architect@compatible
 parent_system: calculadora-bmc / Marketing Hub
-implementation_status: Proposed — feature APIs and UI not implemented as of 2026-07-23
+implementation_status: "PR1+PR2 shipped on main (#753, #762). PR3 Live Graph client wired (fail-open without META_ADS_* secrets)."
 schema: docs/sdd/meta-ads-live-report/schemas/MetaAdsReport.schema.json
 recreation_checklist: docs/sdd/meta-ads-live-report/RECREATION-CHECKLIST.md
 evidence_index: docs/sdd/meta-ads-live-report/evidence/index.md
@@ -16,7 +16,10 @@ evidence_index: docs/sdd/meta-ads-live-report/evidence/index.md
 
 Bounded feature system: a **professional Meta Ads Live Report** tab inside BMC Marketing Hub (`/hub/marketing`), with multi-source data (live / demo fixture / snapshot audit) and a **native AI media analyst**.
 
-> **Implementation status:** **PROPOSED (Draft).** Host Marketing Hub / static Meta audit / Google Ads API are **CONFIRMED**. Endpoints and tab described below are **not yet in code** — see `evidence/index.md`.
+> **Implementation status (2026-07-24):**  
+> - **PR1** Demo/Snapshot report + Hub tab — **shipped** (`#753`)  
+> - **PR2** AI insights + ads chat — **shipped** (`#762`)  
+> - **PR3** Live Graph client — **in code** (`metaAdsClient.js`); requires human `META_ADS_*` in Doppler/GSM for real LIVE in prod; fail-open to Snapshot without secrets
 
 ---
 
@@ -739,3 +742,4 @@ See **`evidence/index.md`** for tagged CONFIRMED/INFERRED/PROPOSED table.
 | 0.1 | 2026-07-23 | Initial greenfield SDD from strengthened Live Report plan + Marketing Hub evidence |
 | 0.2 | 2026-07-23 | Evolution-loop iter 1: DTO schema, recreation checklist, evidence tags, Mermaid fix, API examples, Graph map, SSE contract, wire-up |
 | 0.2 note | 2026-07-23 | As-built reverse-engineer of **current** host surface published as sibling `SDD-AS-BUILT.md` (this file remains **design/proposed**) |
+| 0.3 | 2026-07-24 | Frontmatter: PR1+PR2 as-built on main; PR3 Live client + fail-open; setup doc `META-ADS-SETUP.md` |

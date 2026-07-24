@@ -203,7 +203,7 @@ export async function generateAdsInsights(opts = {}) {
   const source = opts.source || 'auto';
   const agent = opts.callAgent || callAgentOnce;
 
-  const { report } = buildMetaAdsReport({ range, source });
+  const { report } = await buildMetaAdsReport({ range, source });
   const hash = report.meta.report_hash;
   const cached = insightsCache.get(hash);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
