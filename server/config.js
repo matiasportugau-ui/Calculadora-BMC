@@ -180,6 +180,14 @@ export const config = {
   googleAdsRefreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN || "",
   googleAdsLoginCustomerId: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || "",
   /**
+   * Meta Ads Marketing API (optional — Live Insights for /api/marketing/ads/meta/*).
+   * System user token — NOT FB_PAGE_TOKEN / WhatsApp messaging tokens.
+   * Account id from env only (e.g. act_123); never hardcode production act_ in client.
+   * See docs/procedimientos/META-ADS-SETUP.md
+   */
+  metaAdsAccessToken: process.env.META_ADS_ACCESS_TOKEN || "",
+  metaAdsAccountId: process.env.META_ADS_ACCOUNT_ID || "",
+  /**
    * Postgres connection string. Usado por:
    * - Modo Transportista (viajes / eventos / outbox) — `transportista-cursor-package/migrations/`.
    * - WA Cockpit (`wa_conversations`, `wa_messages`, `wa_suggestions`) — `wa-package/migrations/`.

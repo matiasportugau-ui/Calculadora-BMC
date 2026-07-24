@@ -464,11 +464,11 @@ router.post('/ai/chat', intelLimiter, requireMarketing, async (req, res) => {
 // ─── GET /api/marketing/ads/meta/report ────────────────────────────
 // MetaAdsReport DTO: source=auto|live|demo|snapshot · range=7d|30d|90d|ytd|year
 // PR1: demo fixture + static snapshot. Live Graph = PR3 (falls back to snapshot).
-router.get('/ads/meta/report', intelLimiter, requireMarketing, (req, res) => {
+router.get('/ads/meta/report', intelLimiter, requireMarketing, async (req, res) => {
   try {
     const range = req.query.range || '30d';
     const source = req.query.source || 'auto';
-    const { report, resolved_source } = buildMetaAdsReport({ range, source });
+    const { report, resolved_source } = await buildMetaAdsReport({ range, source });
     res.json({ ...report, _resolved_source: resolved_source });
   } catch (err) {
     const status = err?.status || 500;
@@ -523,7 +523,7 @@ router.post('/ai/ads-chat', intelLimiter, requireMarketing, async (req, res) => 
   const source = req.body?.source || 'auto';
   let report;
   try {
-    ({ report } = buildMetaAdsReport({ range, source }));
+    ({ report } = await buildMetaAdsReport({ range, source }));
   } catch (err) {
     return res.status(err?.status || 500).json({ error: err?.message || 'report unavailable' });
   }

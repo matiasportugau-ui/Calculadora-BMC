@@ -25,7 +25,7 @@ function assert(name, cond, actual) {
 
 console.log('\n═══ metaAdsInsights PR2 ═══');
 
-const { report } = buildMetaAdsReport({ range: '30d', source: 'demo' });
+const { report } = await buildMetaAdsReport({ range: '30d', source: 'demo' });
 assert('real report from builder', report?.campaigns?.length >= 8, report?.campaigns?.length);
 assert('data mode note mentions demo', /demo/i.test(formatDataModeNote(report)));
 

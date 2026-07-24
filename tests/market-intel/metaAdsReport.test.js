@@ -65,22 +65,31 @@ assert('fixture creatives >= 5', fix.creatives.length >= 5);
 assert('fixture kpis spend non-null', fix.kpis.spend != null && fix.kpis.spend > 0);
 assert('fixture cpl non-null', fix.kpis.cpl != null);
 
-// Orchestrator demo
-const { report: demoReport, resolved_source } = buildMetaAdsReport({ range: '30d', source: 'demo' });
+// Orchestrator demo/snapshot (async builder)
+const prevTok = process.env.META_ADS_ACCESS_TOKEN;
+const prevAct = process.env.META_ADS_ACCOUNT_ID;
+delete process.env.META_ADS_ACCESS_TOKEN;
+delete process.env.META_ADS_ACCOUNT_ID;
+
+const { report: demoReport, resolved_source } = await buildMetaAdsReport({ range: '30d', source: 'demo' });
 assert('build demo resolved', resolved_source === 'demo');
 assert('build demo recommendations', demoReport.recommendations.length >= 1);
 assert('build demo rules demo disclaimer', demoReport.recommendations.some((r) => r.id === 'rules-demo-disclaimer'));
 
-// Auto resolve
+// Auto resolve (no token)
 assert('auto prod → snapshot without token', resolveSource('auto', { nodeEnv: 'production' }) === 'snapshot');
 assert('auto dev → demo without token', resolveSource('auto', { nodeEnv: 'development' }) === 'demo');
 assert('normalize range rejects bad', normalizeRange('nope') === null);
 assert('normalize range 30d', normalizeRange('30d') === '30d');
 
 // Snapshot via builder
-const { report: snapR, resolved_source: rs } = buildMetaAdsReport({ range: '30d', source: 'snapshot' });
+const { report: snapR, resolved_source: rs } = await buildMetaAdsReport({ range: '30d', source: 'snapshot' });
 assert('build snapshot resolved', rs === 'snapshot');
 assert('build snapshot empty series', snapR.series.length === 0);
+assert('snapshot never live freshness', snapR.meta.freshness !== 'live');
+
+if (prevTok !== undefined) process.env.META_ADS_ACCESS_TOKEN = prevTok;
+if (prevAct !== undefined) process.env.META_ADS_ACCOUNT_ID = prevAct;
 
 console.log(`\n═══ result: ${passed} passed, ${failed} failed ═══\n`);
 process.exit(failed > 0 ? 1 : 0);
