@@ -76,10 +76,20 @@ import {
  * @param {ResolverOptions} [opts]
  * @returns {Promise<ResolverResult>}
  */
+// FIXME(security, Phase B): Cursor flagged identity-poisoning risk —
+// resolveCustomer() persists a permanent (channel, externalId) → customer_id
+// binding after matching only CLAIMED contactHint phone/email/RUT. Untrusted
+// inbound channels (WA/ML/Shopify webhook bodies, sheets import) can claim a
+// victim's identifier and bind the attacker's external_id to the victim. Today
+// this resolver is referenced ONLY from tests, so the risk is "fix-before-wiring".
+// Before any external ingester calls into this resolver, gate auto-link by
+// channel trust + proof-of-possession: only call createIdentity() for strong
+// matches when the channel verified the identifier (WA sender phone == hint,
+// authenticated email account, trusted back-office seed). Untrusted hints must
+// enqueue manual_review instead. See PR #262 review comments by cursor[bot].
 export async function resolveCustomer(input, store, opts = {}) {
   const { channel, externalId, displayName, contactHint } = _validateInput(input);
-  const enableFuzzy = !!opts.enableFuzzy;
-  _validateStore(store, { enableFuzzy });
+  _validateStore(store);
 
   // 1. Manual override.
   const alias = await store.findAlias(channel, externalId);
@@ -120,6 +130,7 @@ export async function resolveCustomer(input, store, opts = {}) {
   }
 
   // 4. Fuzzy match — Phase 2 (gated by opts.enableFuzzy).
+  const enableFuzzy = !!opts.enableFuzzy;
   const maxDistance = Number.isFinite(opts.fuzzyMaxDistance) ? opts.fuzzyMaxDistance : 2;
   if (enableFuzzy && displayName) {
     const candidates = await _findFuzzyCandidates({
@@ -209,24 +220,18 @@ const REQUIRED_STORE_METHODS = [
   "findCustomerByPhone",
   "findCustomerByEmail",
   "findCustomerByRut",
-  "createCustomer",
-  "createIdentity",
-];
-
-const REQUIRED_FUZZY_STORE_METHODS = [
   "findCustomersByName",
   "findCustomersByPhonePrefix",
+  "createCustomer",
+  "createIdentity",
   "enqueueManualReview",
 ];
 
-function _validateStore(store, { enableFuzzy = false } = {}) {
+function _validateStore(store) {
   if (!store || typeof store !== "object") {
     throw new TypeError("resolveCustomer: store must be an object");
   }
-  const required = enableFuzzy
-    ? REQUIRED_STORE_METHODS.concat(REQUIRED_FUZZY_STORE_METHODS)
-    : REQUIRED_STORE_METHODS;
-  for (const m of required) {
+  for (const m of REQUIRED_STORE_METHODS) {
     if (typeof store[m] !== "function") {
       throw new TypeError(`resolveCustomer: store.${m} must be a function`);
     }
