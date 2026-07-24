@@ -564,7 +564,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
               actor: req.user?.email || req.user?.id || "superadmin",
               payload: { crId: id, question, source: "panelin_workspace" },
             });
-            const cand = createCandidate({
+            const cand = await createCandidate({
               source: "panelin_workspace",
               sessionId: `cr:${id}`,
               scope: "org",
@@ -575,10 +575,8 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
                 crId: id,
               },
             });
-            completeEvaluation(cand.id, {
-              pass: !!(question && goodAnswer),
-              details: { kind: "workspace_cr_structural", crId: id },
-            });
+            // Always offline money-guard — never forge structural {pass:true}
+            const evaluated = await completeEvaluation(cand.id, null);
             bmcKbId = null;
             await pool.query(
               `UPDATE panelin_workspace.change_requests
@@ -591,7 +589,14 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
               id,
               status: "approved",
               bmcKbId: null,
-              paos: { candidateId: cand.id, mode: "pending_approval_no_silent_kb" },
+              paos: {
+                candidateId: cand.id,
+                candidateState: evaluated.state,
+                mode:
+                  evaluated.state === "pending_approval"
+                    ? "pending_approval_no_silent_kb"
+                    : "rejected_by_offline_eval",
+              },
             });
           }
           const entry = addTrainingEntry({

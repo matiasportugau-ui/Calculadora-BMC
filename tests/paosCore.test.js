@@ -17,7 +17,7 @@ import {
   listPaosEvents,
 } from "../server/lib/paosEventLedger.js";
 
-function withEnv(vars, fn) {
+async function withEnv(vars, fn) {
   const prev = {};
   for (const [k, v] of Object.entries(vars)) {
     prev[k] = process.env[k];
@@ -25,7 +25,7 @@ function withEnv(vars, fn) {
     else process.env[k] = String(v);
   }
   try {
-    return fn();
+    return await fn();
   } finally {
     for (const [k, v] of Object.entries(prev)) {
       if (v === undefined) delete process.env[k];
@@ -49,7 +49,7 @@ assert.equal(canEnterPendingApproval({ pass: false }), false);
 assert.equal(canEnterPendingApproval(null), false);
 
 // --- Flags off: no ledger ---
-withEnv({ PAOS_ENABLED: "0" }, () => {
+await withEnv({ PAOS_ENABLED: "0" }, () => {
   __paosLedgerTest.reset();
   const r = appendPaosEvent({ type: "agent.tool", payload: { tool: "x" } });
   assert.equal(r, null);
@@ -57,7 +57,7 @@ withEnv({ PAOS_ENABLED: "0" }, () => {
 });
 
 // --- Flags on: ledger + candidates ---
-withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "1" }, () => {
+await withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "1" }, async () => {
   __paosLedgerTest.reset();
   __paosCandidatesTest.reset();
 
@@ -70,33 +70,33 @@ withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "1" }, () => {
   assert.ok(events.length >= 1);
   assert.equal(events[0].type, "session.chat_turn");
 
-  const c = createCandidate({
+  const c = await createCandidate({
     sessionId: "sess-1",
     delta: { question: "m2?", goodAnswer: "use calc" },
   });
   assert.equal(c.state, "drafted");
   assert.throws(() => transition(c.state, "active"), /illegal/);
 
-  const failed = completeEvaluation(c.id, { pass: false, details: {} });
+  const failed = await completeEvaluation(c.id, { pass: false, details: {} });
   assert.equal(failed.state, "rejected");
 
-  const c2 = createCandidate({ delta: { question: "a", goodAnswer: "b" } });
-  const passed = completeEvaluation(c2.id, { pass: true, details: { suite: "structural" } });
+  const c2 = await createCandidate({ delta: { question: "a", goodAnswer: "b" } });
+  const passed = await completeEvaluation(c2.id, { pass: true, details: { suite: "structural" } });
   assert.equal(passed.state, "pending_approval");
 
-  const approved = approveCandidate(c2.id, "canary");
+  const approved = await approveCandidate(c2.id, "canary");
   assert.equal(approved.state, "canary");
 
-  assert.ok(listCandidates().length >= 2);
-  assert.ok(getCandidate(c2.id));
+  assert.ok((await listCandidates()).length >= 2);
+  assert.ok(await getCandidate(c2.id));
 });
 
 // Promote disabled
-withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "0" }, () => {
+await withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "0" }, async () => {
   __paosCandidatesTest.reset();
-  const c = createCandidate({ delta: { question: "q", goodAnswer: "a" } });
-  completeEvaluation(c.id, { pass: true });
-  assert.throws(() => approveCandidate(c.id, "canary"), /paos_promote_disabled/);
+  const c = await createCandidate({ delta: { question: "q", goodAnswer: "a" } });
+  await completeEvaluation(c.id, { pass: true });
+  await assert.rejects(() => approveCandidate(c.id, "canary"), /paos_promote_disabled/);
 });
 
 __paosCandidatesTest.reset();

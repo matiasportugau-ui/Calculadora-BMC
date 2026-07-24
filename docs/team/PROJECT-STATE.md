@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-24 (fix — PAOS G2 critical hardening post-#777):** Superadmin-only `/api/paos/*` (drop inert `authOnly`); evaluate ignores client `{pass}`; strip forgeable `calcProvenance`/`totalUsd`/`calcResult` on create; Workspace CR uses offline money-guard; rollback revokes linked Training KB; candidates PG read-through + awaited dual-write (Cloud Run multi-instance). Tests: `paosSecurityHardening` + updated PAOS suite.
+
 **2026-07-24 (docs — development-glory re-score 98):** SDD platform **v1.3** reflects IMP-02 `logAgentTurn`, IMP-08 Whisper matrix, IMP-09 voiceMetrics; SCORECARD **98 pass**; P0=0. Residual: RAG enable ops, hub $, p95 baseline.
 
 **2026-07-24 (docs — Meta Ads SDD v0.4 As-Built + bootstrap):** Retag SDD/SCORECARD composite **94 pass** after PR1–PR3 ship; `scripts/meta-ads-bootstrap-auto.sh` (Graph smoke → Doppler `bmc-backend/prd` → GSM → Cloud Run); prod Live still human-gated on Meta BM system-user token. Evidence E-01–E-19; ADR-009 fail-open, ADR-010 range KPIs #767.
