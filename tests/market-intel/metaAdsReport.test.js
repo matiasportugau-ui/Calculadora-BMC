@@ -82,5 +82,47 @@ const { report: snapR, resolved_source: rs } = buildMetaAdsReport({ range: '30d'
 assert('build snapshot resolved', rs === 'snapshot');
 assert('build snapshot empty series', snapR.series.length === 0);
 
+// Range consistency — never label monthly audit spend as a 7d window
+const { report: snap7 } = buildMetaAdsReport({ range: '7d', source: 'snapshot' });
+assert('snapshot 7d range_key', snap7.meta.range_key === '7d');
+assert('snapshot 7d spend null (monthly audit not reused)', snap7.kpis.spend === null, snap7.kpis.spend);
+assert(
+  'snapshot 7d campaign spends null',
+  snap7.campaigns.every((c) => c.spend == null),
+  snap7.campaigns.map((c) => c.spend),
+);
+assert(
+  'snapshot 7d notes explain null spend',
+  (snap7.meta.notes || []).some((n) => /mensual|monthly|range=7d/i.test(n)),
+  snap7.meta.notes,
+);
+
+const { report: snap30 } = buildMetaAdsReport({ range: '30d', source: 'snapshot' });
+assert('snapshot 30d keeps monthly spend', snap30.kpis.spend === 11000, snap30.kpis.spend);
+
+// Demo range must slice series + recompute KPIs (not just relabel range_key)
+const { report: demo30 } = buildMetaAdsReport({ range: '30d', source: 'demo' });
+const { report: demo7 } = buildMetaAdsReport({ range: '7d', source: 'demo' });
+assert('demo 30d series ~30', demo30.series.length >= 28, demo30.series.length);
+assert('demo 7d series length', demo7.series.length === 7, demo7.series.length);
+assert('demo 7d range_key', demo7.meta.range_key === '7d');
+assert(
+  'demo 7d dates match series',
+  demo7.meta.date_start === demo7.series[0].date &&
+    demo7.meta.date_stop === demo7.series[demo7.series.length - 1].date,
+  { start: demo7.meta.date_start, stop: demo7.meta.date_stop },
+);
+assert(
+  'demo 7d spend < demo 30d spend',
+  demo7.kpis.spend != null && demo7.kpis.spend < demo30.kpis.spend,
+  { d7: demo7.kpis.spend, d30: demo30.kpis.spend },
+);
+const seriesSpend7 = demo7.series.reduce((a, p) => a + p.spend, 0);
+assert(
+  'demo 7d KPI spend equals series sum',
+  Math.abs(demo7.kpis.spend - seriesSpend7) < 0.02,
+  { kpi: demo7.kpis.spend, series: seriesSpend7 },
+);
+
 console.log(`\n═══ result: ${passed} passed, ${failed} failed ═══\n`);
 process.exit(failed > 0 ? 1 : 0);
