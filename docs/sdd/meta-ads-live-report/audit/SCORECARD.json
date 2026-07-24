@@ -1,0 +1,93 @@
+{
+  "generated_at": "2026-07-23T18:30:00Z",
+  "iteration": 1,
+  "system_slug": "meta-ads-live-report",
+  "sdd_path": "docs/sdd/meta-ads-live-report/SDD.md",
+  "document_version": "0.2",
+  "document_status": "Draft",
+  "prior_composite": 82,
+  "composite": 92,
+  "delta": 10,
+  "min_pass": 90,
+  "pass": true,
+  "label": "Pass (expert-complete for greenfield feature SDD)",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 96,
+      "weighted": 14.4,
+      "notes": [
+        "v0.2 frontmatter extended with schema/checklist/evidence pointers",
+        "Sections 1–12 complete; Graph API version + rate limit in §3",
+        "Canonical MetaAdsReport.schema.json linked"
+      ]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 92,
+      "weighted": 13.8,
+      "notes": [
+        "Rel_Neighbor and Container_Ext removed; standard Rel + System_Ext",
+        "L1/L2 + dual sequences retained; integration table under §5"
+      ]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 90,
+      "weighted": 18.0,
+      "notes": [
+        "RECREATION-CHECKLIST.md covers PR1/PR2 files, fixture inventory, curl smoke",
+        "JSON Schema full DTO; API examples + error envelopes",
+        "Wire-up: marketing.js extend, no new mount; local doppler run noted",
+        "Graph field map for PR3 in appendix"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 90,
+      "weighted": 13.5,
+      "notes": [
+        "evidence/index.md with CONFIRMED path:line (E-01–E-15)",
+        "PROPOSED badge on feature surfaces; implementation_status frontmatter",
+        "Host claims no longer read as as-built feature"
+      ]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 93,
+      "weighted": 9.3,
+      "notes": [
+        "SSE event parity, callAgentOnce defaults from host",
+        "Validation algorithm, prompt paths, golden eval questions"
+      ]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 88,
+      "weighted": 8.8,
+      "notes": [
+        "intelLimiter 60/min documented",
+        "Optional alert thresholds for live error and parse_fail"
+      ]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 94,
+      "weighted": 9.4,
+      "notes": ["Eight ADRs unchanged — still excellent"]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 95,
+      "weighted": 4.75,
+      "notes": [
+        "v0.2 document control",
+        "Companion pack: schema, checklist, evidence, audit"
+      ]
+    }
+  },
+  "gaps_closed_this_iteration": ["G-01", "G-02", "G-03", "G-04", "G-05", "G-06", "G-07", "G-08", "G-09", "G-10", "G-11", "G-12", "G-13", "G-14"],
+  "gaps_remaining_p0": 0,
+  "gaps_remaining_p1": 0,
+  "gaps_remaining_p2_optional": []
+}
