@@ -53,6 +53,7 @@ import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
 import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
 import { getIvaPct } from "../lib/policyLoader.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
+import { logAgentTurn } from "../lib/logAgentTurn.js";
 import {
   ALLOWED_MODELS as CENTRAL_ALLOWED_MODELS,
   PROVIDER_LABELS as CENTRAL_PROVIDER_LABELS,
@@ -1492,6 +1493,23 @@ router.post("/agent/chat", async (req, res) => {
         };
         if (req.log) req.log.info(costLog, "chat_turn_cost");
         else console.log(JSON.stringify(costLog));
+
+        // IMP-02: turn-level parity with callAgentOnce (shared core fields).
+        logAgentTurn(
+          {
+            event: "agent_turn",
+            channel: surfaceToChannel(canonicalBrandSurface(surface || "panelin_chat")) || "chat",
+            assistant: "panelin",
+            provider,
+            model: resolvedModel,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            estimated_cost_usd: chatCost,
+            latency_ms: latencyMs,
+            source: "agentChat",
+          },
+          req.log || null,
+        );
 
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {

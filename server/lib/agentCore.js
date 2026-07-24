@@ -21,6 +21,7 @@ import {
   getApiKey,
 } from "./aiProviderConfig.js";
 import { logAgentCost } from "./costTelemetry.js";
+import { logAgentTurn } from "./logAgentTurn.js";
 import {
   PROVIDER_TIMEOUT_MS,
   orderChainByHealth,
@@ -350,17 +351,34 @@ export async function callAgentOnce(messages, opts = {}) {
         const cost = estimateCostUSD(p, modelUsed, usage);
 
         // Structured cost observability via costTelemetry (cache_read > 0 ⇒ Anthropic cache HIT).
+        const inTok = usage.input_tokens ?? usage.prompt_tokens ?? null;
+        const outTok = usage.output_tokens ?? usage.completion_tokens ?? null;
+        const latencyMs = Date.now() - t0;
         logAgentCost({
           event: "agent_core_call",
           provider: p,
           model: modelUsed,
           channel,
-          latency_ms: Date.now() - t0,
+          latency_ms: latencyMs,
           estimated_cost_usd: cost,
-          input_tokens: usage.input_tokens ?? usage.prompt_tokens ?? null,
+          input_tokens: inTok,
+          output_tokens: outTok,
           cache_read_tokens: usage.cache_read_input_tokens ?? null,
           cache_write_tokens: usage.cache_creation_input_tokens ?? null,
           task_key: taskKey || null,
+          source: "agentCore",
+        });
+        // IMP-02: turn-level parity envelope shared with SSE agentChat.
+        logAgentTurn({
+          event: "agent_turn",
+          channel,
+          assistant: opts.assistant ?? null,
+          provider: p,
+          model: modelUsed,
+          input_tokens: inTok,
+          output_tokens: outTok,
+          estimated_cost_usd: cost,
+          latency_ms: latencyMs,
           source: "agentCore",
         });
 
@@ -368,7 +386,7 @@ export async function callAgentOnce(messages, opts = {}) {
           text: text.trim(),
           provider: p,
           model: modelUsed,
-          latencyMs: Date.now() - t0,
+          latencyMs,
           estimatedCostUsd: cost,
         };
       }
