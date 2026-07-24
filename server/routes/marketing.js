@@ -34,6 +34,10 @@ import {
   buildMetaAdsReport,
   buildMetaAdsHealth,
 } from '../lib/marketIntel/metaAdsReport.js';
+import {
+  generateAdsInsights,
+  buildAdsChatSystemPrompt,
+} from '../lib/marketIntel/metaAdsInsights.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
@@ -482,6 +486,84 @@ router.get('/ads/meta/health', intelLimiter, requireMarketing, (req, res) => {
   } catch (err) {
     log.error({ err, route: 'GET /ads/meta/health' }, 'meta ads health failed');
     res.status(500).json({ error: 'health failed' });
+  }
+});
+
+// ─── POST /api/marketing/ai/ads-insights ───────────────────────────
+// Grounded Meta Ads narrative. Server rebuilds report (never trusts client spend).
+router.post('/ai/ads-insights', intelLimiter, requireMarketing, async (req, res) => {
+  try {
+    const range = req.body?.range || req.query?.range || '30d';
+    const source = req.body?.source || req.query?.source || 'auto';
+    const out = await generateAdsInsights({ range, source });
+    res.json(out);
+  } catch (err) {
+    const status = err?.status || 502;
+    log.error({ err, route: 'POST /ai/ads-insights' }, 'ads insights failed');
+    res.status(status).json({ error: err?.message || 'ads insights failed', confidence: 'low' });
+  }
+});
+
+// ─── POST /api/marketing/ai/ads-chat (SSE) ─────────────────────────
+// Meta-only analyst chat; injects current MetaAdsReport DTO.
+router.post('/ai/ads-chat', intelLimiter, requireMarketing, async (req, res) => {
+  const incoming = Array.isArray(req.body?.messages) ? req.body.messages : null;
+  if (!incoming || incoming.length === 0) {
+    return res.status(400).json({ error: 'messages[] required' });
+  }
+  const messages = incoming
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }))
+    .slice(-12);
+  if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
+    return res.status(400).json({ error: 'last message must be from user' });
+  }
+
+  const range = req.body?.range || '30d';
+  const source = req.body?.source || 'auto';
+  let report;
+  try {
+    ({ report } = buildMetaAdsReport({ range, source }));
+  } catch (err) {
+    return res.status(err?.status || 500).json({ error: err?.message || 'report unavailable' });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  let closed = false;
+  const send = (obj) => {
+    if (closed) return;
+    try { res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* disconnected */ }
+  };
+  const heartbeat = setInterval(() => {
+    if (closed) return;
+    try { res.write(': ping\n\n'); } catch { /* ignore */ }
+  }, 15000);
+  res.on('close', () => { closed = true; clearInterval(heartbeat); });
+
+  try {
+    const systemPrompt = buildAdsChatSystemPrompt(report);
+    const result = await callAgentOnce(messages, {
+      channel: 'chat',
+      systemPrompt,
+      override: { maxTokens: 1500, temperature: 0.35 },
+    });
+    const text = (result?.text || '').trim() || 'No pude generar una respuesta con el reporte Meta disponible.';
+    send({ type: 'text', delta: text });
+    send({ type: 'meta', provider: result?.provider || null, model: result?.model || null, report_hash: report.meta?.report_hash });
+    send({ type: 'done' });
+    if (!closed) res.end();
+  } catch (err) {
+    log.error({ err, route: 'POST /ai/ads-chat' }, 'ads chat failed');
+    send({ type: 'error', message: 'No se pudo contactar al analista Meta Ads. Reintentá.' });
+    send({ type: 'done' });
+    if (!closed) res.end();
+  } finally {
+    clearInterval(heartbeat);
   }
 });
 
