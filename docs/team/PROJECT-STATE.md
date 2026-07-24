@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-24 (docs — Meta Ads SDD v0.4 As-Built + bootstrap):** Retag SDD/SCORECARD composite **94 pass** after PR1–PR3 ship; `scripts/meta-ads-bootstrap-auto.sh` (Graph smoke → Doppler `bmc-backend/prd` → GSM → Cloud Run); prod Live still human-gated on Meta BM system-user token. Evidence E-01–E-19; ADR-009 fail-open, ADR-010 range KPIs #767.
+
 **2026-07-24 (feat — IMP-02/04/08/09 product residual):** Shared `logAgentTurn` on SSE + callAgentOnce (IMP-02). RAG precheck fail-closed; prod enable blocked without DB/embed (IMP-04). Whisper/Firefox capability tests + OPS matrix (IMP-08). Durable `agent_voice_events` dual-write via voiceMetrics + voiceErrorLog (IMP-09).
 
 **2026-07-24 (fix — Meta Ads range/KPI after #764):** Re-land `applyDemoRange` + snapshot null-spend when `range !== 30d` on post-PR3 async builder. PR3 fail-open to Snapshot no longer serves monthly `$11k` under a 7d window. Supersedes dirty #761. Cleared leftover conflict markers in this file from #747 merge.
