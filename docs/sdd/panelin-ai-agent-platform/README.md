@@ -26,18 +26,21 @@
 
 ## Quick facts (CONFIRMED 2026-07-23)
 
-- Local tools: **55** · Prod tools: **55** (aligned 2026-07-23 post-#742)
-- Goldens: **19**
+- Local tools: **55** · Prod tools: **55**
+- Goldens: **22** (IMP-11)
 - Provider order: claude → grok → gemini → openai → openrouter
 - Chat rate limit: **10**/min public · **30**/min dev · exec-tool **60**/min
 - RAG: code ready, **default OFF**
+- SSE `done`: `provider_used` / `latency_ms` / optional `ttft_ms` (IMP-12)
 - AI runtime: Cloud Run API only (not Vercel)
+- Audit: **97 PASS** · P0 docs **0**
 
 ## Next command for agents
 
 ```text
 1. Read SDD.md §1, §5, §6, §10
-2. Read evidence/actual-vs-goal.md
+2. Read audit/SCORECARD.json + audit/GAP-PLAN.md
 3. Pick next unchecked IMP-XX from IMPLEMENTATION-GUIDE.md
-4. Implement → test:agent → test:agent-golden → update PROJECT-STATE
+   (GAP-PLAN order: IMP-02 → IMP-04/08 → IMP-09 …)
+4. Implement → npm run test:agent → test:agent-golden → update PROJECT-STATE
 ```
