@@ -56,6 +56,17 @@ export PAOS_ENABLED=1 PAOS_PROMOTE=1
 # Workspace CR + PAOS_ENABLED=1 → candidate, never silent active KB
 ```
 
+## Production (2026-07-24 LIVE)
+
+| Check | Result |
+|-------|--------|
+| Flags on Cloud Run | `PAOS_ENABLED=1` `PAOS_PROMOTE=1` |
+| Traffic | 100% LATEST `panelin-calc-00886-g5f` |
+| Health | `GET /api/paos/health` → 200 enabled true |
+
+If health 404 after a “successful” image deploy: traffic may be pinned to an old revision — run  
+`gcloud run services update-traffic panelin-calc --to-latest --region=us-central1 --project=chatbot-bmc-live`.
+
 ## Remaining (optional P1)
 
 - Canary % injection into Fast Loop retrieval

@@ -23,7 +23,7 @@ architect_session: "2026-07-24T12:14:39Z finalize-only after evolution STOP at 9
 > Parent: [`../panelin-ai-agent-platform/SDD.md`](../panelin-ai-agent-platform/SDD.md).  
 > Evidence: [`evidence/as-built-learning-surfaces.md`](evidence/as-built-learning-surfaces.md) · [`evidence/turn-session-telemetry.md`](evidence/turn-session-telemetry.md) · [`evidence/g2-runtime-as-built.md`](evidence/g2-runtime-as-built.md).  
 > **Develop this Spec:** [`SDD-TARGET.md`](SDD-TARGET.md) · [`IMPLEMENTATION-GUIDE.md`](IMPLEMENTATION-GUIDE.md) · [`DEVELOPMENT-GLORY.md`](DEVELOPMENT-GLORY.md) · [`ARCHITECT-FINAL.md`](ARCHITECT-FINAL.md).  
-> **Audit:** composite **98** PASS (`audit/SCORECARD.json`, re-scored 2026-07-24).
+> **Audit:** composite **97** PASS (`audit/SCORECARD.json`, re-scored 2026-07-24T12:43:59Z; was 98 — drop = G2 doc-label drift + prod image lag, not schema fail).
 
 **Vocabulary:** “Self-evolving agent” is **not** a PAOS technical mode. Learning = **component evolution** (prompt, memory/RAG, skill schema, workflow) under HITL — never autonomous weight mutation.
 
@@ -309,8 +309,9 @@ C4Deployment
 | API service | Cloud Run **panelin-calc** us-central1 project chatbot-bmc-live | CONFIRMED OPS / parent SDD |
 | Prod API URL | `https://panelin-calc-q74zutv7dq-uc.a.run.app` | CONFIRMED parent SDD |
 | Frontend | Vercel calculadora-bmc.vercel.app | CONFIRMED OPS |
-| Colocation | Same Express as Fast Loop | TARGET |
-| Flags | PAOS_* default 0/safe | TARGET |
+| Colocation | Same Express as Fast Loop | CONFIRMED (same image) |
+| Flags | Code default OFF; prod Cloud Run env ON 2026-07-24 | CONFIRMED ops |
+| Live health | `GET /api/paos/health` → 200 enabled (rev 00886 LATEST) | CONFIRMED 2026-07-24 |
 | CI | pre-release GOLDEN_REQUIRED=1 | CONFIRMED package.json:106 |
 
 ## 9. Crosscutting Concepts
@@ -411,7 +412,7 @@ Prefer programmatic delta; golden subset on canary; no GPU swarm.
 | HITL | Human-in-the-loop |
 
 ## Appendix A — Evidence Index
-[`evidence/as-built-learning-surfaces.md`](evidence/as-built-learning-surfaces.md) · [`evidence/turn-session-telemetry.md`](evidence/turn-session-telemetry.md)
+[`evidence/as-built-learning-surfaces.md`](evidence/as-built-learning-surfaces.md) · [`evidence/turn-session-telemetry.md`](evidence/turn-session-telemetry.md) · [`evidence/g2-runtime-as-built.md`](evidence/g2-runtime-as-built.md) · [`evidence/prod-live-2026-07-24.md`](evidence/prod-live-2026-07-24.md)
 
 ## Appendix B — Recreation Checklist
 [`RECREATION-CHECKLIST.md`](RECREATION-CHECKLIST.md)

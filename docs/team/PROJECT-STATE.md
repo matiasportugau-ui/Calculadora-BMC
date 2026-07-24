@@ -14,12 +14,14 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-24 (prod — PAOS LIVE on panelin-calc):** PR [#777](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/777) on main. Cloud Run env `PAOS_ENABLED=1` `PAOS_PROMOTE=1` `PAOS_CANARY_PCT=0` `PAOS_LEDGER_RETENTION_DAYS=90`. **Root cause of health 404:** traffic pinned 100% to old rev `panelin-calc-00877-4b9` while PAOS images built as 00881–00886 (GHA deploy succeeded; post-deploy `smoke:prod` failed on `/api/crm/suggest-response` AI quota — did not block image, but traffic never moved). **Fix:** `gcloud run services update-traffic panelin-calc --to-latest` → **100% LATEST `panelin-calc-00886-g5f`**. **Verified:** `GET https://panelin-calc-q74zutv7dq-uc.a.run.app/api/paos/health` → **200** `{"ok":true,"paos":{"enabled":true,"promote":true,...}}`. Residual: GHA `smoke:prod` still red on AI keys (unrelated to PAOS); optional IMP-06..08.
+
 **2026-07-24 (docs — development-glory re-score 98):** SDD platform **v1.3** reflects IMP-02 `logAgentTurn`, IMP-08 Whisper matrix, IMP-09 voiceMetrics; SCORECARD **98 pass**; P0=0. Residual: RAG enable ops, hub $, p95 baseline.
 
 **2026-07-24 (docs — Meta Ads SDD v0.4 As-Built + bootstrap):** Retag SDD/SCORECARD composite **94 pass** after PR1–PR3 ship; `scripts/meta-ads-bootstrap-auto.sh` (Graph smoke → Doppler `bmc-backend/prd` → GSM → Cloud Run); prod Live still human-gated on Meta BM system-user token. Evidence E-01–E-19; ADR-009 fail-open, ADR-010 range KPIs #767.
 
 **2026-07-24 (feat — IMP-02/04/08/09 product residual):** Shared `logAgentTurn` on SSE + callAgentOnce (IMP-02). RAG precheck fail-closed; prod enable blocked without DB/embed (IMP-04). Whisper/Firefox capability tests + OPS matrix (IMP-08). Durable `agent_voice_events` dual-write via voiceMetrics + voiceErrorLog (IMP-09).
-**2026-07-24 (feat — PAOS G2 functional + Cloud Run env; image deploy pending):** Supervised loop implemented (ledger, SM, money eval, promote→KB, workspace gate). Unit/e2e tests green. Cloud Run env PAOS_ENABLED=1/PAOS_PROMOTE=1 applied on panelin-calc; **/api/paos/health still 404 until code merges to main and image deploys**. Human: merge PAOS PR → deploy-calc-api → re-probe health.
+**2026-07-24 (feat — PAOS G2 functional + Cloud Run env; image deploy pending):** SUPERSEDED by **PAOS LIVE** entry above. Supervised loop implemented; env set; was 404 until traffic → LATEST.
 
 
 **2026-07-24 (feat — PAOS G2 remaining: promote→KB + money eval + PG dual-write):** `paosEvaluate` rejects price deltas without calcProvenance; `paosPromote` writes Training KB on approve (canary=pending, active=permanent); candidates dual-write `learning_candidates` when DATABASE_URL set; migration 003; tests `paosPromote`. Flags still default OFF.

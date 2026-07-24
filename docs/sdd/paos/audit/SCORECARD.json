@@ -1,13 +1,16 @@
 {
-  "generated_at": "2026-07-24T12:16:41Z",
+  "generated_at": "2026-07-24T12:43:59Z",
   "system_slug": "paos",
   "sdd_path": "docs/sdd/paos/SDD.md",
   "sdd_version": "1.0",
-  "composite": 98,
+  "composite": 97,
   "min_pass": 90,
   "pass": true,
-  "pass_user_target_98": true,
+  "pass_user_target_98": false,
+  "previous_composite": 98,
+  "previous_audit_at": "2026-07-24T12:16:41Z",
   "auditor": "sdd-quality-auditor",
+  "audit_context": "Re-audit after G2 functional complete + PR #777 merge; prod image still lagging (/api/paos/health 404)",
   "q0_fails": [],
   "missing_companions": [],
   "dimensions": {
@@ -15,72 +18,86 @@
       "weight": 15,
       "score_0_100": 100,
       "notes": [
-        "\u00a71-12",
-        "Accepted frontmatter",
-        "Development contract"
+        "§1–12 present in order",
+        "frontmatter complete (Accepted v1.0)",
+        "no {TBD} placeholders",
+        "development contract + appendices"
       ]
     },
     "c4_fidelity": {
       "weight": 15,
       "score_0_100": 98,
       "notes": [
-        "C4Context",
-        "C4Container",
-        "Deployment",
-        "sequences"
+        "C4Context §2 renderable",
+        "C4Container §5 with Fast/Slow boundaries",
+        "C4Deployment §8 panelin-calc pin",
+        "sequenceDiagram Fast + Slow §7",
+        "diagrams/ folder empty (inline mermaid OK)"
       ]
     },
     "recreation_sufficiency": {
       "weight": 20,
-      "score_0_100": 98,
+      "score_0_100": 96,
       "notes": [
-        "IMP guide",
-        "OpenAPI",
-        "migrations/libs",
-        "flags"
+        "IMPLEMENTATION-GUIDE paths + flags + PoC",
+        "migrations 002/003 + lib map",
+        "openapi-paos-sketch.yaml still labeled TARGET (stale vs shipped routes)",
+        "RECREATION-CHECKLIST item 10 still [ ] G2 despite G2 shipped",
+        "prod health 404 / Deploy Calc API failure not fully reflected in §8"
       ]
     },
     "evidence_grounding": {
       "weight": 15,
-      "score_0_100": 98,
+      "score_0_100": 95,
       "notes": [
-        "g2-runtime-as-built",
-        "turn telemetry",
-        "workspace gate"
+        "g2-runtime-as-built.md strong CONFIRMED table",
+        "as-built-learning-surfaces path:line citations",
+        "SDD body still labels ledger/SM/eval/promoter as TARGET|PARTIAL while code CONFIRMED",
+        "goldens-eval-gates / training-kb-apis / workspace stubs thin (≤127B)",
+        "Goals G1–G7 still Status=TARGET after G2 functional complete"
       ]
     },
     "ai_architecture_depth": {
       "weight": 10,
       "score_0_100": 97,
       "notes": [
-        "dual-loop \u00a76",
-        "eval+promote CONFIRMED in evidence"
+        "§6 dual-loop component table",
+        "LLM strategy / memory / cost model",
+        "money = /calc only; no fine-tune",
+        "component status tags lag shipped runtime"
       ]
     },
     "crosscutting_wa": {
       "weight": 10,
       "score_0_100": 96,
       "notes": [
-        "security HITL",
-        "canary SLOs",
-        "privacy TARGET+UNKNOWN legal"
+        "§9.1 security HITL + money oracle",
+        "§9.2 reliability fail-closed",
+        "§9.4 observability table with ABSENT logAgentTurn",
+        "§9.5 canary SLOs TARGET",
+        "privacy productization + legal retention UNKNOWN"
       ]
     },
     "adr_quality": {
       "weight": 10,
       "score_0_100": 100,
       "notes": [
-        "ADR-001..006 Accepted"
+        "ADR-001..006 Accepted with alternatives",
+        "inline §10 + ADRs/ companions",
+        "no-finetune, dual-loop, calc oracle, HITL, owned PG, LangGraph optional"
       ]
     },
     "evolution_readiness": {
       "weight": 5,
-      "score_0_100": 100,
+      "score_0_100": 96,
       "notes": [
-        "Accepted",
-        "architect finalize",
-        "P1 remaining listed"
+        "version 1.0 status Accepted",
+        "glossary + risks present",
+        "§11 risk 'Direct active promote as-built' stale (gate shipped when PAOS_ENABLED=1)",
+        "architect_finalized + development_glory metadata"
       ]
     }
-  }
+  },
+  "weighted_sum": 97.25,
+  "composite_method": "round(sum(score*weight/100))"
 }

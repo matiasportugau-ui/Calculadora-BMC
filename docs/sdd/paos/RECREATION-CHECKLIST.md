@@ -10,4 +10,4 @@
 | 7 | Deploy pin panelin-calc | [x] |
 | 8 | Audit 98 | [x] |
 | 9 | Structural test | [x] |
-| 10 | Runtime IMP-PAOS | [ ] G2 |
+| 10 | Runtime IMP-PAOS | [x] G2 live prod health 200 |
