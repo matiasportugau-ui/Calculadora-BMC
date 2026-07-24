@@ -118,6 +118,11 @@ assert('live fail not freshness live', liveFail.report.meta.freshness !== 'live'
 assert('live fail notes mention Graph', (liveFail.report.meta.notes || []).some((n) => /Graph|falló|Snapshot/i.test(n)));
 assert('live fail resolved snapshot', liveFail.resolved_source === 'snapshot');
 
+const liveFail7 = await buildMetaAdsReport({ range: '7d', source: 'live' });
+assert('live fail-open 7d not freshness live', liveFail7.report.meta.freshness !== 'live');
+assert('live fail-open 7d spend null', liveFail7.report.kpis.spend === null, liveFail7.report.kpis.spend);
+assert('live fail-open 7d range_key', liveFail7.report.meta.range_key === '7d');
+
 // Missing token → not live even if source=live
 delete process.env.META_ADS_ACCESS_TOKEN;
 delete process.env.META_ADS_ACCOUNT_ID;
