@@ -38,6 +38,7 @@ import createWaRouter from "./routes/wa.js";
 import createTraktimeRouter from "./routes/traktime.js";
 import createBancoRouter from "./routes/banco.js";
 import createWorkspaceRouter from "./routes/workspace.js";
+import createPaosRouter from "./routes/paos.js";
 import createCsrfProtection from "./middleware/csrfProtection.js";
 import createActivityRouter from "./routes/activity.js";
 import { createQuotesRouter } from "./routes/quotes.js";
@@ -1060,6 +1061,8 @@ app.use(createTraktimeRouter(config, logger));
 app.use(createBancoRouter(config, logger));
 // Panelin Workspace domain (BMC-as-platform, ADR-008) — additive only
 app.use(createWorkspaceRouter(config, logger));
+// PAOS supervised learning (flags default OFF)
+app.use(createPaosRouter(config));
 app.use(createActivityRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {

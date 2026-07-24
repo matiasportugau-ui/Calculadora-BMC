@@ -1,0 +1,86 @@
+{
+  "generated_at": "2026-07-24T12:16:41Z",
+  "system_slug": "paos",
+  "sdd_path": "docs/sdd/paos/SDD.md",
+  "sdd_version": "1.0",
+  "composite": 98,
+  "min_pass": 90,
+  "pass": true,
+  "pass_user_target_98": true,
+  "auditor": "sdd-quality-auditor",
+  "q0_fails": [],
+  "missing_companions": [],
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 100,
+      "notes": [
+        "\u00a71-12",
+        "Accepted frontmatter",
+        "Development contract"
+      ]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 98,
+      "notes": [
+        "C4Context",
+        "C4Container",
+        "Deployment",
+        "sequences"
+      ]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 98,
+      "notes": [
+        "IMP guide",
+        "OpenAPI",
+        "migrations/libs",
+        "flags"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 98,
+      "notes": [
+        "g2-runtime-as-built",
+        "turn telemetry",
+        "workspace gate"
+      ]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 97,
+      "notes": [
+        "dual-loop \u00a76",
+        "eval+promote CONFIRMED in evidence"
+      ]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 96,
+      "notes": [
+        "security HITL",
+        "canary SLOs",
+        "privacy TARGET+UNKNOWN legal"
+      ]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 100,
+      "notes": [
+        "ADR-001..006 Accepted"
+      ]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 100,
+      "notes": [
+        "Accepted",
+        "architect finalize",
+        "P1 remaining listed"
+      ]
+    }
+  }
+}

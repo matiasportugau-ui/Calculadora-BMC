@@ -676,6 +676,21 @@ export function appendTrainingSessionEvent(event = {}) {
   const filePath = path.join(sessionsDir, `SESSION-${day}.jsonl`);
   const row = { ts: stamp.toISOString(), ...event };
   fs.appendFileSync(filePath, `${JSON.stringify(row)}\n`, "utf8");
+  // PAOS Event Ledger (IMP-PAOS-01) — never blocks training path
+  try {
+    import("./paosEventLedger.js")
+      .then(({ appendPaosEvent }) => {
+        appendPaosEvent({
+          type: event?.type ? `session.${event.type}` : "session.event",
+          sessionId: event?.conversationId || event?.sessionId || null,
+          actor: event?.mode || null,
+          payload: { ...event },
+        });
+      })
+      .catch(() => {});
+  } catch {
+    /* ignore */
+  }
   return filePath;
 }
 

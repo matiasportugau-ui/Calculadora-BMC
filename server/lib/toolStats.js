@@ -102,6 +102,20 @@ export function recordToolCall({ tool, ok, latencyMs, errorClass = null }) {
 
   // Fire-and-forget durable write (never blocks tool execution).
   void persistToolCall(row).catch(() => {});
+  // PAOS Event Ledger (IMP-PAOS-01) — never blocks tools
+  void import("./paosEventLedger.js")
+    .then(({ appendPaosEvent }) => {
+      appendPaosEvent({
+        type: "agent.tool",
+        payload: {
+          tool: row.tool,
+          ok: row.ok,
+          latencyMs: row.latencyMs,
+          errorClass: row.errorClass,
+        },
+      });
+    })
+    .catch(() => {});
 }
 
 /**
