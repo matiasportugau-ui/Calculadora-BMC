@@ -82,16 +82,20 @@ const TOOL_INTENT_PATTERNS = {
     /\bactualiza(r)?\s+(el\s+)?(tipo|tags)\s+(en\s+)?(el\s+)?crm\b/,
     /\bmarca(r)?\s+(como\s+)?(proveedor|cliente)\s+(en\s+)?(el\s+)?crm\b/,
   ],
+  // Require an email channel keyword — never unlock on bare "sí envialo" /
+  // "enviar respuesta" (those collide with WhatsApp / Admin / generic send).
   email_enviar: [
-    /\benvia(r|lo|le)?\s+(el\s+)?(correo|mail|email|respuesta)\b/,
+    /\benvia(r|lo|le)?\s+(el\s+)?(correo|mail|email)\b/,
     /\bmanda(r|lo|le)?\s+(el\s+)?(correo|mail|email)\b/,
-    /\bsi[,]?\s+envia(lo|le)?\b/,
-    /\bconfirma(r)?\s+(el\s+)?envio\b/,
-    /\benvia(lo|le)?\s+ya\b/,
+    /\bsi[,]?\s+envia(lo|le)?\s+(el\s+)?(correo|mail|email)\b/,
+    /\bconfirma(r)?\s+(el\s+)?envio\s+(del\s+)?(correo|mail|email)\b/,
+    /\benvia(lo|le)?\s+(el\s+)?(correo|mail|email)\s+ya\b/,
   ],
+  // Require Admin/Wolfboard locus — bare "crear la consulta" is everyday calc chat.
   wa_lead_to_admin: [
     /\bcarga(r|lo)?\s+(al\s+|en\s+)?admin\b/,
-    /\bcrea(r)?\s+(la\s+)?(fila|consulta|lead)\b/,
+    /\bcrea(r)?\s+(la\s+)?(fila|lead)\s+(en\s+)?(admin|wolfboard)\b/,
+    /\bcrea(r)?\s+(la\s+)?consulta\s+(en\s+)?(el\s+)?(admin|wolfboard|la\s+planilla)\b/,
     /\bguarda(lo)?\s+(en\s+)?(admin|wolfboard)\b/,
     /\bwa_lead_to_admin\b/,
     /\bmetelo\s+(al\s+)?admin\b/,
@@ -113,8 +117,8 @@ export const INTENT_HINTS = {
   wolfboard_quote_batch: ["generá las respuestas con IA", "cotizá todas las pendientes"],
   sheets_write_range: ["escribilo en la planilla", "pegá en Admin", "confirmá la escritura", "guardalo en la planilla"],
   escribir_crm_taxonomia: ["clasificá la fila en CRM", "guardá la taxonomía en CRM", "marcá como proveedor en CRM"],
-  email_enviar: ["enviá el correo", "mandá el mail", "sí envialo", "confirmá el envío"],
-  wa_lead_to_admin: ["cargalo al Admin", "creá la consulta", "guardalo en Admin"],
+  email_enviar: ["enviá el correo", "mandá el mail", "sí enviá el mail", "confirmá el envío del correo"],
+  wa_lead_to_admin: ["cargalo al Admin", "creá la consulta en Admin", "guardalo en Admin"],
 };
 
 /**
