@@ -64,7 +64,7 @@ Inherit as-built. Add:
 | Tools | 55 + OpenAPI + MCP | Capability **tiers** + deploy-synced count |
 | Voice | Dual path | Hands-free default; Realtime premium; Whisper fallback |
 | RAG | Opt-in embeddings | Opt-in + **hybrid KB boost** |
-| Quality | 19 goldens | Channel packs + optional promptfoo chat |
+| Quality | **22** goldens | Optional more packs + promptfoo chat |
 | Cost | pino events | Documented $/day rollup + optional hub card |
 | Docs | Fragmented | This platform SDD is SoT; chat SDD is slice |
 

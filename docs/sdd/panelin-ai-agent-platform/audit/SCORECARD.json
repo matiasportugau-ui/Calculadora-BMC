@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-07-23T07:35:00Z",
+  "generated_at": "2026-07-23T14:00:00Z",
   "system_slug": "panelin-ai-agent-platform",
   "sdd_path": "docs/sdd/panelin-ai-agent-platform/SDD.md",
-  "sdd_version": "1.1",
+  "sdd_version": "1.2",
   "sdd_status": "As-Built",
   "auditor": "sdd-quality-auditor",
-  "evolution_iteration": 1,
-  "prior_composite": 93,
-  "composite": 96,
+  "evolution_iteration": 2,
+  "prior_composite": 96,
+  "composite": 97,
   "min_pass": 90,
   "pass": true,
   "label": "Pass (expert-complete; HCS-aligned)",
-  "delta_vs_prior": 3,
+  "delta_vs_prior": 1,
   "dimensions": {
     "schema_completeness": {
       "weight": 15,
       "score_0_100": 98,
       "weighted": 14.7,
       "notes": [
-        "Frontmatter complete; version 1.1 + evolution meta",
-        "Sections 1–12 + appendices present",
+        "Frontmatter complete; version 1.2 + evolution meta",
+        "Sections 1\u201312 + appendices present",
         "No {TBD} placeholders"
       ]
     },
@@ -28,69 +28,69 @@
       "score_0_100": 95,
       "weighted": 14.25,
       "notes": [
-        "L2 expanded: Co-Work desk/PiP, Omni hub, emailAgentTools, omni worker, Chatwoot ext",
-        "Dual email surface called out under diagram",
-        "Minor: no separate C4 Component beyond §6 table"
+        "L1 C4Context + L2 C4Container with Omni, desk/PiP, SuperAgent, Chatwoot",
+        "Actors match mounts",
+        "Minor: no separate C4 Component diagram beyond \u00a76 table"
       ]
     },
     "recreation_sufficiency": {
       "weight": 20,
-      "score_0_100": 97,
-      "weighted": 19.4,
+      "score_0_100": 98,
+      "weighted": 19.6,
       "notes": [
-        "RECREATION-CHECKLIST recreation rows ~100% after cost/RAG/assistants docs",
-        "Prod ASSISTANTS_ACTIVE pinned canales;ml;panelin",
-        "RAG seed procedure + default-off N/A justified",
-        "Deploy + tools 55/55 unchanged"
+        "RECREATION-CHECKLIST recreation rows closed; goldens 22; tools 55/55",
+        "Prod ASSISTANTS_ACTIVE pinned; RAG enable/default-off documented",
+        "IMP-07/11/12 code ships reflected in SDD + evidence",
+        "Deploy Vercel + Cloud Run + Doppler/GSM names present"
       ]
     },
     "evidence_grounding": {
       "weight": 15,
-      "score_0_100": 96,
-      "weighted": 14.4,
+      "score_0_100": 97,
+      "weighted": 14.55,
       "notes": [
-        "New evidence/cost-query.md + assistants-active.md",
-        "Cloud Run env CONFIRMED for ASSISTANTS + OMNI_AI_DAILY_BUDGET_USD=50",
-        "costTelemetry + superagent_ai_call event map cited from code",
-        "UNKNOWN retained only for invoice-level $ and OpenRouter prod flag"
+        "Live prod 2026-07-23: health ok, tools 55, SSE done with provider_used/latency_ms/ttft_ms",
+        "cost-query.md, assistants-active.md, tools-manifest, goldens 22",
+        "ADR-007 Accepted with test evidence superAgentCalc.test.js",
+        "UNKNOWN retained for invoice-level $ only"
       ]
     },
     "ai_architecture_depth": {
       "weight": 10,
-      "score_0_100": 96,
-      "weighted": 9.6,
+      "score_0_100": 97,
+      "weighted": 9.7,
       "notes": [
-        "§6.3 cost model + §6.3b RAG enablement",
-        "SuperAgent telemetry as-built + parity target",
-        "Omni worker row in component table"
+        "Full \u00a76 dual brain, 55 tools, RAG off default, SuperAgent, MCP, goldens 22",
+        "IMP-12 done telemetry in cost model + \u00a79.4",
+        "Guardrails and human gates explicit"
       ]
     },
     "crosscutting_wa": {
       "weight": 10,
-      "score_0_100": 93,
-      "weighted": 9.3,
+      "score_0_100": 95,
+      "weighted": 9.5,
       "notes": [
-        "§9.4 cost query path closed via OPS §10",
-        "Security/reliability unchanged strong",
-        "Residual: hub $ card, voice metrics, p95 SSE not measured"
+        "Security JWT/MCP/rate limits; reliability failover+breaker; obs cost+SSE latency",
+        "Residual: hub $ card, voice durable metrics, p95 baseline collection (ops)"
       ]
     },
     "adr_quality": {
       "weight": 10,
-      "score_0_100": 93,
-      "weighted": 9.3,
+      "score_0_100": 95,
+      "weighted": 9.5,
       "notes": [
-        "ADR-007 consequences updated for costTelemetry debt",
-        "7 ADRs still meaningful with evidence pointers"
+        "7 ADRs; ADR-007 Accepted with consequences + evidence paths",
+        "Alternatives still slightly thin on some older ADRs"
       ]
     },
     "evolution_readiness": {
       "weight": 5,
-      "score_0_100": 96,
-      "weighted": 4.8,
+      "score_0_100": 97,
+      "weighted": 4.85,
       "notes": [
-        "v1.1, GAP-PLAN P1 docs closed, IMP-03/06 docs met",
-        "Clear residual product IMPs (code not docs)"
+        "v1.2, IMP guide IMP-01/07/11/12 mostly MET",
+        "Clear residual product IMPs (02,04,08,09\u2026)",
+        "GAP-PLAN updated this re-audit"
       ]
     }
   },
@@ -108,12 +108,18 @@
   },
   "p0_gaps": 0,
   "p1_gaps": 0,
-  "p1_docs_closed": 4,
-  "p2_gaps": 4,
+  "p2_gaps": 6,
+  "ships_since_prior_audit": [
+    "#744 SDD",
+    "#745 IMP-07",
+    "#746 IMP-11",
+    "#748 IMP-12"
+  ],
   "related": {
     "child_slug": "panelin-chat-agent",
     "evidence_dir": "docs/sdd/panelin-ai-agent-platform/evidence",
     "implementation_guide": "docs/sdd/panelin-ai-agent-platform/IMPLEMENTATION-GUIDE.md",
     "ops": "docs/team/runbooks/PANELIN-IA-OPS.md"
-  }
+  },
+  "glory": "development-glory G0-G5 complete; pass 97"
 }

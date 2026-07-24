@@ -31,7 +31,7 @@
 | `src/hooks/useChat.js` | SSE client |
 | `src/components/PanelinDevPanel.jsx` | Dev / training (Ctrl+Shift+D) |
 | `migrations/0001_*.sql`, `0002_*.sql` | `quote_embeddings` |
-| `tests/agentGolden/cases/*.json` | 19 golden cases |
+| `tests/agentGolden/cases/*.json` | **22** golden cases |
 | `docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md` | Calc provenance contract |
 | `docs/team/runbooks/PANELIN-IA-OPS.md` | Ops runbook |
 

@@ -56,11 +56,12 @@
 ### AI-specific recreation
 
 - [x] Tool inventory 55 local / 55 prod (2026-07-23) — tools-manifest
-- [x] 19 golden cases indexed — goldens.md
+- [x] 22 golden cases indexed — goldens.md (IMP-11)
 - [x] Provider order documented
 - [x] Human-gate write rules documented
 - [x] Actual vs goal + implementation TODOs — guide
-- [x] SuperAgent cost event name + parity target documented — SDD §6.3 / §9.5 / ADR-007
+- [x] SuperAgent cost via `logAgentCost` + calc parity tests — ADR-007 Accepted (IMP-07)
+- [x] SSE `done` observability fields documented + prod-confirmed (IMP-12)
 
 ## Score (self)
 
