@@ -12,11 +12,18 @@ import {
   freshnessLabel,
   freshnessColor,
 } from './meta-ads/metaAdsFormat.js';
+import MetaAdsInsightsCard from './meta-ads/MetaAdsInsightsCard.jsx';
+import MetaAdsAnalystChat from './meta-ads/MetaAdsAnalystChat.jsx';
 
-async function apiFetch(token, path) {
+async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, '');
   const res = await fetch(`${base}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {}),
+    },
   });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
@@ -131,6 +138,32 @@ export default function MetaAdsLiveReport({ token }) {
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [insights, setInsights] = useState(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState(null);
+  const lastInsightsHash = React.useRef(null);
+
+  const loadInsights = useCallback(async (force = false) => {
+    if (!token) return;
+    setInsightsLoading(true);
+    setInsightsError(null);
+    try {
+      const res = await apiFetch(token, '/api/marketing/ai/ads-insights', {
+        method: 'POST',
+        body: JSON.stringify({ range, source }),
+      });
+      if (!res.ok) {
+        setInsightsError(res.data?.error || `Error ${res.status}`);
+      } else {
+        setInsights(res.data?.insights || null);
+        lastInsightsHash.current = res.data?.report_hash || null;
+      }
+    } catch {
+      setInsightsError('No se pudieron generar insights AI');
+    } finally {
+      setInsightsLoading(false);
+    }
+  }, [token, range, source]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -147,6 +180,11 @@ export default function MetaAdsLiveReport({ token }) {
         setReport(null);
       } else {
         setReport(r.data);
+        const hash = r.data?.meta?.report_hash;
+        if (hash && hash !== lastInsightsHash.current) {
+          // auto insights once per report_hash
+          loadInsights(false);
+        }
       }
       if (h.ok) setHealth(h.data);
     } catch {
@@ -154,7 +192,7 @@ export default function MetaAdsLiveReport({ token }) {
     } finally {
       setLoading(false);
     }
-  }, [token, range, source]);
+  }, [token, range, source, loadInsights]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -289,118 +327,138 @@ export default function MetaAdsLiveReport({ token }) {
         </div>
       )}
 
-      {/* Trend */}
-      <Section title="Tendencia" meta={series.length ? `${series.length} días` : null}>
-        {series.length > 0 ? (
-          <TrendChart series={series} />
-        ) : (
-          <EmptyZone
-            reason="Serie temporal no disponible en Snapshot — usá Demo o Live (PR3)."
-            cta="Activar Demo"
-            onCta={() => setSource('demo')}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 360px)', gap: 16, alignItems: 'start' }} className="metaAdsLiveLayout">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          <MetaAdsInsightsCard
+            insights={insights}
+            loading={insightsLoading}
+            error={insightsError}
+            onRegenerate={() => loadInsights(true)}
           />
-        )}
-      </Section>
 
-      {/* Campaigns */}
-      <Section title="Campañas" meta={`${sortedCampaigns.length} filas`}>
-        {sortedCampaigns.length === 0 ? (
-          <EmptyZone reason="Sin campañas en esta fuente" />
-        ) : (
-          <div style={{ overflowX: 'auto', borderRadius: 'var(--ac-radius-sm)', border: '1px solid var(--ac-border)' }}>
-            <table style={{ minWidth: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr>
-                  {['Campaña', 'Objetivo', 'Status', 'Spend', 'Resultados', 'CPL', 'CTR', 'Share %'].map((h) => (
-                    <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ac-text-2)', borderBottom: '1px solid var(--ac-border)', background: 'var(--ac-surface-2)', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedCampaigns.map((c) => (
-                  <tr key={c.id}>
-                    <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--ac-text)', borderBottom: '1px solid var(--ac-border-2)' }}>{c.name}</td>
-                    <td style={{ padding: '8px 10px', color: 'var(--ac-text-2)', borderBottom: '1px solid var(--ac-border-2)' }}>{c.objective}</td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--ac-border-2)' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: 'var(--ac-surface-2)', border: '1px solid var(--ac-border)', color: c.status === 'ACTIVE' ? 'var(--ac-success)' : c.status === 'ZOMBIE' ? 'var(--ac-warn)' : 'var(--ac-text-3)' }}>{c.status}</span>
-                    </td>
-                    <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{money(c.spend)}</td>
-                    <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{num(c.results)}</td>
-                    <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{moneyPrecise(c.cpl)}</td>
-                    <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{pct(c.ctr)}</td>
-                    <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{c.share_of_spend != null ? `${c.share_of_spend}%` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Trend */}
+          <Section title="Tendencia" meta={series.length ? `${series.length} días` : null}>
+            {series.length > 0 ? (
+              <TrendChart series={series} />
+            ) : (
+              <EmptyZone
+                reason="Serie temporal no disponible en Snapshot — usá Demo o Live (PR3)."
+                cta="Activar Demo"
+                onCta={() => setSource('demo')}
+              />
+            )}
+          </Section>
+
+          {/* Campaigns */}
+          <Section title="Campañas" meta={`${sortedCampaigns.length} filas`}>
+            {sortedCampaigns.length === 0 ? (
+              <EmptyZone reason="Sin campañas en esta fuente" />
+            ) : (
+              <div style={{ overflowX: 'auto', borderRadius: 'var(--ac-radius-sm)', border: '1px solid var(--ac-border)' }}>
+                <table style={{ minWidth: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      {['Campaña', 'Objetivo', 'Status', 'Spend', 'Resultados', 'CPL', 'CTR', 'Share %'].map((h) => (
+                        <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ac-text-2)', borderBottom: '1px solid var(--ac-border)', background: 'var(--ac-surface-2)', whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedCampaigns.map((c) => (
+                      <tr key={c.id}>
+                        <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--ac-text)', borderBottom: '1px solid var(--ac-border-2)' }}>{c.name}</td>
+                        <td style={{ padding: '8px 10px', color: 'var(--ac-text-2)', borderBottom: '1px solid var(--ac-border-2)' }}>{c.objective}</td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--ac-border-2)' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: 'var(--ac-surface-2)', border: '1px solid var(--ac-border)', color: c.status === 'ACTIVE' ? 'var(--ac-success)' : c.status === 'ZOMBIE' ? 'var(--ac-warn)' : 'var(--ac-text-3)' }}>{c.status}</span>
+                        </td>
+                        <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{money(c.spend)}</td>
+                        <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{num(c.results)}</td>
+                        <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{moneyPrecise(c.cpl)}</td>
+                        <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{pct(c.ctr)}</td>
+                        <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{c.share_of_spend != null ? `${c.share_of_spend}%` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+
+          {/* Platform + Placement */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+            <Section title="Plataforma" meta="Facebook vs Instagram">
+              {platforms.length > 0 ? (
+                <HorizontalBars rows={platforms} />
+              ) : (
+                <EmptyZone reason="Breakdown de plataforma no disponible en Snapshot" cta="Activar Demo" onCta={() => setSource('demo')} />
+              )}
+            </Section>
+            <Section title="Placement" meta="No cortar solo por CPA de segmento">
+              {placements.length > 0 ? (
+                <HorizontalBars rows={placements} />
+              ) : (
+                <EmptyZone reason="Breakdown de placement no disponible en Snapshot" cta="Activar Demo" onCta={() => setSource('demo')} />
+              )}
+            </Section>
           </div>
-        )}
-      </Section>
 
-      {/* Platform + Placement */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
-        <Section title="Plataforma" meta="Facebook vs Instagram">
-          {platforms.length > 0 ? (
-            <HorizontalBars rows={platforms} />
-          ) : (
-            <EmptyZone reason="Breakdown de plataforma no disponible en Snapshot" cta="Activar Demo" onCta={() => setSource('demo')} />
-          )}
-        </Section>
-        <Section title="Placement" meta="No cortar solo por CPA de segmento">
-          {placements.length > 0 ? (
-            <HorizontalBars rows={placements} />
-          ) : (
-            <EmptyZone reason="Breakdown de placement no disponible en Snapshot" cta="Activar Demo" onCta={() => setSource('demo')} />
-          )}
-        </Section>
+          {/* Creatives */}
+          <Section title="Top creativos" meta={creatives.length ? `top ${creatives.length}` : null}>
+            {creatives.length === 0 ? (
+              <EmptyZone reason="Sin creativos en esta fuente" />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+                {creatives.map((cr) => (
+                  <div key={cr.id} style={{ padding: '10px 12px', borderRadius: 'var(--ac-radius-sm)', background: 'var(--ac-surface-2)', border: '1px solid var(--ac-border-2)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac-text)' }}>{cr.name}</div>
+                    {cr.headline && <div style={{ fontSize: 12, color: 'var(--ac-text-2)', fontStyle: 'italic', margin: '4px 0' }}>“{cr.headline}”</div>}
+                    <div style={{ fontSize: 11, color: 'var(--ac-text-3)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <span>Spend {money(cr.spend)}</span>
+                      <span>Res {num(cr.results)}</span>
+                      <span>CPL {moneyPrecise(cr.cpl)}</span>
+                      <span>CTR {pct(cr.ctr)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          {/* Recommendations */}
+          <Section title="Recomendaciones" meta={`${recs.length} items`}>
+            {recs.length === 0 ? (
+              <EmptyZone reason="Sin recomendaciones" />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {recs.map((r, idx) => (
+                  <div key={r.id || `rec-${idx}`} style={{ display: 'flex', gap: 10, padding: '10px 12px', borderRadius: 'var(--ac-radius-sm)', background: 'var(--ac-surface-2)', border: '1px solid var(--ac-border-2)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: r.priority === 'alta' ? 'var(--ac-error)' : r.priority === 'media' ? 'var(--ac-warn)' : 'var(--ac-text-3)', minWidth: 40 }}>{r.priority}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac-text)' }}>{r.action}</div>
+                      <div style={{ fontSize: 12, color: 'var(--ac-text-2)', marginTop: 2 }}>{r.reason}</div>
+                      {r.expected_effect && <div style={{ fontSize: 11, color: 'var(--ac-text-3)', marginTop: 2 }}>→ {r.expected_effect}</div>}
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ac-text-3)', alignSelf: 'flex-start' }}>{r.source === 'rules' ? 'Regla' : 'AI'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        </div>
+
+        <div style={{ position: 'sticky', top: 12 }}>
+          <MetaAdsAnalystChat token={token} range={range} source={source} />
+        </div>
       </div>
 
-      {/* Creatives */}
-      <Section title="Top creativos" meta={creatives.length ? `top ${creatives.length}` : null}>
-        {creatives.length === 0 ? (
-          <EmptyZone reason="Sin creativos en esta fuente" />
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-            {creatives.map((cr) => (
-              <div key={cr.id} style={{ padding: '10px 12px', borderRadius: 'var(--ac-radius-sm)', background: 'var(--ac-surface-2)', border: '1px solid var(--ac-border-2)' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac-text)' }}>{cr.name}</div>
-                {cr.headline && <div style={{ fontSize: 12, color: 'var(--ac-text-2)', fontStyle: 'italic', margin: '4px 0' }}>“{cr.headline}”</div>}
-                <div style={{ fontSize: 11, color: 'var(--ac-text-3)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <span>Spend {money(cr.spend)}</span>
-                  <span>Res {num(cr.results)}</span>
-                  <span>CPL {moneyPrecise(cr.cpl)}</span>
-                  <span>CTR {pct(cr.ctr)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      {/* Recommendations */}
-      <Section title="Recomendaciones" meta={`${recs.length} items`}>
-        {recs.length === 0 ? (
-          <EmptyZone reason="Sin recomendaciones" />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {recs.map((r) => (
-              <div key={r.id} style={{ display: 'flex', gap: 10, padding: '10px 12px', borderRadius: 'var(--ac-radius-sm)', background: 'var(--ac-surface-2)', border: '1px solid var(--ac-border-2)' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: r.priority === 'alta' ? 'var(--ac-error)' : r.priority === 'media' ? 'var(--ac-warn)' : 'var(--ac-text-3)', minWidth: 40 }}>{r.priority}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ac-text)' }}>{r.action}</div>
-                  <div style={{ fontSize: 12, color: 'var(--ac-text-2)', marginTop: 2 }}>{r.reason}</div>
-                  {r.expected_effect && <div style={{ fontSize: 11, color: 'var(--ac-text-3)', marginTop: 2 }}>→ {r.expected_effect}</div>}
-                </div>
-                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ac-text-3)', alignSelf: 'flex-start' }}>{r.source === 'rules' ? 'Regla' : 'AI'}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
       <p style={{ margin: 0, fontSize: 11, color: 'var(--ac-text-3)' }}>
-        PR1 · Analista AI nativo y Live Graph llegan en PR2/PR3 · hash {report?.meta?.report_hash || '—'}
+        PR2 · Analista AI nativo · Live Graph = PR3 · hash {report?.meta?.report_hash || '—'}
       </p>
+      <style>{`
+        @media (max-width: 960px) {
+          .metaAdsLiveLayout { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
