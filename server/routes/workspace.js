@@ -548,6 +548,52 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
             /* keep title/description */
           }
           if (!goodAnswer) goodAnswer = String(cr.diff_text || cr.title).trim();
+          // IMP-PAOS-04: PAOS_ENABLED=1 → Learning Candidate, no silent active permanent KB
+          let paosEnabled = false;
+          try {
+            const { isPaosEnabled } = await import("../lib/paosConfig.js");
+            paosEnabled = isPaosEnabled();
+          } catch {
+            paosEnabled = false;
+          }
+          if (paosEnabled) {
+            const { createCandidate, completeEvaluation } = await import("../lib/paosCandidates.js");
+            const { appendPaosEvent } = await import("../lib/paosEventLedger.js");
+            appendPaosEvent({
+              type: "human.override",
+              actor: req.user?.email || req.user?.id || "superadmin",
+              payload: { crId: id, question, source: "panelin_workspace" },
+            });
+            const cand = createCandidate({
+              source: "panelin_workspace",
+              sessionId: `cr:${id}`,
+              scope: "org",
+              delta: {
+                question,
+                goodAnswer,
+                context: `workspace_cr:${id}`,
+                crId: id,
+              },
+            });
+            completeEvaluation(cand.id, {
+              pass: !!(question && goodAnswer),
+              details: { kind: "workspace_cr_structural", crId: id },
+            });
+            bmcKbId = null;
+            await pool.query(
+              `UPDATE panelin_workspace.change_requests
+                 SET status = 'approved', reviewer_id = $2, reviewed_at = now()
+               WHERE id = $1`,
+              [id, req.user?.id || "bmc-superadmin"],
+            );
+            return res.json({
+              ok: true,
+              id,
+              status: "approved",
+              bmcKbId: null,
+              paos: { candidateId: cand.id, mode: "pending_approval_no_silent_kb" },
+            });
+          }
           const entry = addTrainingEntry({
             category: "general",
             question,
