@@ -345,6 +345,14 @@ Ver [`CONTRIBUTING.md`](CONTRIBUTING.md) para la guía completa de contribución
 
 ---
 
+## Documentation Agent
+
+- **Daily auto-update** via GitHub Actions (`.github/workflows/update-docs.yml`, cron `0 6 * * *` UTC + `workflow_dispatch`).
+- **Pipeline**: scan repo → Gemini writer → Gemini critic → rewrite `README.md` only if the critic approves.
+- **Local run**: `export GEMINI_API_KEY='…'` then `python3 scripts/doc_agent.py`
+- **Required secret** (repo → Settings → Secrets → Actions): `GEMINI_API_KEY`
+- `GITHUB_TOKEN` is provided automatically by Actions.
+
 ## Licencia
 
 Código propietario de BMC Uruguay / METALOG SAS. Todos los derechos reservados.
