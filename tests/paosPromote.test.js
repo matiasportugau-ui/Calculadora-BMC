@@ -9,11 +9,12 @@ import {
   approveCandidate,
   completeEvaluation,
   createCandidate,
+  sanitizeCandidateDelta,
 } from "../server/lib/paosCandidates.js";
 import { __paosLedgerTest } from "../server/lib/paosEventLedger.js";
 import { loadTrainingKB, deleteTrainingEntry } from "../server/lib/trainingKB.js";
 
-function withEnv(vars, fn) {
+async function withEnv(vars, fn) {
   const prev = {};
   for (const [k, v] of Object.entries(vars)) {
     prev[k] = process.env[k];
@@ -21,7 +22,7 @@ function withEnv(vars, fn) {
     else process.env[k] = String(v);
   }
   try {
-    return fn();
+    return await fn();
   } finally {
     for (const [k, v] of Object.entries(prev)) {
       if (v === undefined) delete process.env[k];
@@ -56,6 +57,22 @@ assert.equal(isMoneyAdjacent({ goodAnswer: "consultar ficha técnica" }), false)
   assert.equal(ok.pass, true);
 }
 
+// Sanitize strips forgeable provenance for untrusted creates
+{
+  const clean = sanitizeCandidateDelta({
+    question: "precio?",
+    goodAnswer: "USD 40",
+    calcProvenance: true,
+    totalUsd: 40,
+    calcResult: { total: 40 },
+    source: "calc_oracle",
+  });
+  assert.equal(clean.calcProvenance, undefined);
+  assert.equal(clean.totalUsd, undefined);
+  assert.equal(clean.calcResult, undefined);
+  assert.notEqual(clean.source, "calc_oracle");
+}
+
 // Structural pass without money
 {
   const r = evaluateCandidateOffline({
@@ -66,21 +83,21 @@ assert.equal(isMoneyAdjacent({ goodAnswer: "consultar ficha técnica" }), false)
 
 // Promote path end-to-end with flags
 const createdIds = [];
-withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "1" }, () => {
+await withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "1" }, async () => {
   __paosCandidatesTest.reset();
   __paosLedgerTest.reset();
 
   // offline default eval (no explicit report)
-  const c = createCandidate({
+  const c = await createCandidate({
     delta: {
       question: "Qué es babeta desarrollo?",
       goodAnswer: "Pieza de chapa para encuentro techo-pared, desarrollo típico 16 cm en BMC.",
     },
   });
-  const evaluated = completeEvaluation(c.id); // null report → offline
+  const evaluated = await completeEvaluation(c.id); // null report → offline
   assert.equal(evaluated.state, "pending_approval");
 
-  const approved = approveCandidate(c.id, "canary");
+  const approved = await approveCandidate(c.id, "canary");
   assert.equal(approved.state, "canary");
   assert.ok(approved.trainingKbId, "should write training KB on promote");
   createdIds.push(approved.trainingKbId);
@@ -92,23 +109,40 @@ withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "1" }, () => {
   assert.equal(entry.source, "paos_canary");
 
   // active promote
-  const c2 = createCandidate({
+  const c2 = await createCandidate({
     delta: {
       question: "Color estándar techo?",
       goodAnswer: "Consultar stock y ficha; no inventar tono sin catálogo.",
     },
   });
-  completeEvaluation(c2.id);
-  const act = approveCandidate(c2.id, "active");
+  await completeEvaluation(c2.id);
+  const act = await approveCandidate(c2.id, "active");
   assert.equal(act.state, "active");
   createdIds.push(act.trainingKbId);
   const entry2 = loadTrainingKB().entries.find((e) => e.id === act.trainingKbId);
   assert.equal(entry2.status, "active");
   assert.equal(entry2.permanent, true);
+
+  // Forged client provenance on create must not pass money guard
+  const forged = await createCandidate({
+    delta: {
+      question: "precio panel 100mm?",
+      goodAnswer: "Sale USD 99.00 /m2 sin IVA inventado",
+      calcProvenance: true,
+      totalUsd: 99,
+      calcResult: { total: 99 },
+      source: "calc_oracle",
+    },
+  });
+  assert.equal(forged.delta.calcProvenance, undefined);
+  assert.equal(forged.delta.totalUsd, undefined);
+  const forgedEval = await completeEvaluation(forged.id, null);
+  assert.equal(forgedEval.state, "rejected");
+  assert.equal(forgedEval.evalReport?.details?.checks?.money, "fail_no_calc_provenance");
 });
 
 // promote disabled
-withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "0" }, () => {
+await withEnv({ PAOS_ENABLED: "1", PAOS_PROMOTE: "0" }, () => {
   const r = promoteCandidateToTrainingKb(
     {
       id: "x",
