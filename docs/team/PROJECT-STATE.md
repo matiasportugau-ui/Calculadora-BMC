@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-24 (feat — IMP-02/04/08/09 product residual):** Shared `logAgentTurn` on SSE + callAgentOnce (IMP-02). RAG precheck fail-closed; prod enable blocked without DB/embed (IMP-04). Whisper/Firefox capability tests + OPS matrix (IMP-08). Durable `agent_voice_events` dual-write via voiceMetrics + voiceErrorLog (IMP-09).
+
 **2026-07-24 (fix — Meta Ads range/KPI after #764):** Re-land `applyDemoRange` + snapshot null-spend when `range !== 30d` on post-PR3 async builder. PR3 fail-open to Snapshot no longer serves monthly `$11k` under a 7d window. Supersedes dirty #761. Cleared leftover conflict markers in this file from #747 merge.
 
 **2026-07-23 (docs — development-glory SDD platform v1.2 / audit 97):** Architect-grade as-built polish of [`docs/sdd/panelin-ai-agent-platform/`](../sdd/panelin-ai-agent-platform/) — reconciled SuperAgent cost, goldens **22**, SSE `done` telemetry, ASSISTANTS snapshot; formal SCORECARD **composite 97 pass:true**, P0=0. Contract test `tests/sddPlatformSchema.contract.test.js`. Product residual: IMP-02/04/08/09 (non-blocking).

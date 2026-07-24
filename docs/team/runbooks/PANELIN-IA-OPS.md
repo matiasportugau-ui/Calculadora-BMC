@@ -146,3 +146,14 @@ Copy-pasteable command: [`docs/sdd/panelin-ai-agent-platform/evidence/cost-query
 - [`docs/team/panelsim/PANELIN-IA-PREFLIGHT-DOSSIER.md`](../panelsim/PANELIN-IA-PREFLIGHT-DOSSIER.md)
 - [`docs/team/PROJECT-STATE.md`](../PROJECT-STATE.md) — estado del programa BMC.
 - Platform SDD: [`docs/sdd/panelin-ai-agent-platform/SDD.md`](../../sdd/panelin-ai-agent-platform/SDD.md)
+
+
+## 13. Voice browser matrix (IMP-08)
+
+| Browser | Embedded chat voice | Path |
+|---------|---------------------|------|
+| Safari / Chrome / Edge | Hands-free (Web Speech) when mic allowed | `isHandsFreeSupported` |
+| Firefox / no SpeechRecognition | Push-to-talk → Whisper | `canUseWhisperVoice` → `useDictation` → `POST /api/agent/transcribe` |
+| Realtime live | `/panelin/live` only (Chrome/Edge WebRTC) | not required for embedded chat |
+
+**RAG (IMP-04):** Keep `RAG_ENABLED` off until `npm run omni:rag-precheck` exits 0 (needs `DATABASE_URL` + semantic embed key + populated `quote_embeddings`). 2026-07-24: precheck exits 2 without DATABASE_URL — **RAG not live**.

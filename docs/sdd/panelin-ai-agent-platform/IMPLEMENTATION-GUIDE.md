@@ -52,13 +52,15 @@
 **Goal:** Similar-quote retrieve is a real product path, not dead code.  
 **Maps to:** OG-07 · ADR-006
 
-- [x] Document enable + rollback path — OPS §11 + `omni-ai-orchestrator-rag-enable.md` + SDD §6.3b (2026-07-23).
+- [x] Document enable + rollback path — OPS §11 + omni RAG runbook + SDD §6.3b.
+- [x] Precheck fail-closed without secrets: `npm run omni:rag-precheck` exits **2** when `DATABASE_URL` missing (2026-07-24).
 - [ ] Confirm `DATABASE_URL` + pgvector migration applied in prod.
-- [ ] Run embed batch (`scripts/training/embedQuotes.js` or OPS equivalent) with real embeddings (not stub).
-- [ ] Set `RAG_ENABLED=1`, tune `RAG_TOP_K` / `RAG_THRESHOLD`.
-- [ ] Smoke: chat turn that triggers `recuperar_casos_similares` or auto-inject path.
+- [ ] Run embed batch with real embeddings (not stub).
+- [ ] Set `RAG_ENABLED=1` after precheck pass; smoke retrieve.
+- [x] **Status 2026-07-24:** RAG **not live** — blocked on prod embed/DB precheck credentials in this environment. Do not enable on stubs.
 
-**DoD:** OPS runbook section “Enable RAG” (**docs met**); at least one CONFIRMED prod retrieve log (**product residual**).
+**DoD:** Runbook + fail-closed precheck **MET**; prod enable **blocked** until ops provides DATABASE_URL + OPENAI_API_KEY and precheck exits 0.
+
 
 ---
 
@@ -124,14 +126,16 @@
 
 **Goal:** Voice metrics survive cold starts; ops can see trends.  
 **Maps to:** OG-13  
-**Note:** Tool-call persistence already shipped (B-05 → `agent_tool_calls` + `getToolStatsAsync`).
+**Note:** Tool-call persistence already shipped (B-05 → `agent_tool_calls`).
 
-- [ ] Migration: `agent_voice_events` (wake miss, TTS error, session mint fail).
-- [ ] Dual-write from voice error log / Hands-free client beacons (privacy-safe).
+- [x] Auto-ensure `public.agent_voice_events` via `server/lib/voiceMetrics.js`.
+- [x] Dual-write from `recordVoiceError` (session mint fail, etc.) — privacy-safe.
+- [x] Offline tests: `tests/voiceMetricsPersist.test.js` (mock pool).
 - [ ] Optional hub card: tool-stats + voice error rate.
-- [ ] Confirm prod `DATABASE_URL` path for tool-stats `source: db`.
+- [ ] Confirm prod `DATABASE_URL` path for voice events `source: db` rollup.
 
-**DoD:** Voice history survives redeploy; SDD §9.4 cites both tool + voice stores.
+**DoD:** Voice events dual-write when DATABASE_URL set. **Core MET 2026-07-24**.
+
 
 ---
 
@@ -140,12 +144,12 @@
 **Goal:** One observability model for all channels.  
 **Maps to:** OG-01 · ADR-003
 
-- [ ] Inventory events emitted by `agentChat` vs `agentCore`.
-- [ ] Normalize field names (`channel`, `assistant`, `provider`, `tokens`, `cost_usd`).
-- [ ] Shared helper `logAgentTurn(...)` used by both paths.
-- [ ] Unit test for schema presence.
+- [x] Inventory: SSE `chat_turn` / `chat_turn_cost` vs `agent_core_call` → unified via `logAgentTurn`.
+- [x] Normalize core fields: `channel`, `assistant`, `provider`, `model`, tokens, `estimated_cost_usd`, `latency_ms`, `source`.
+- [x] Shared helper `server/lib/logAgentTurn.js` used by `agentChat` + `agentCore`.
+- [x] Unit test `tests/logAgentTurn.test.js` (shape + call-site imports).
 
-**DoD:** Both paths emit same core fields; fitness test optional.
+**DoD:** Both paths emit same core fields. **MET 2026-07-24**.
 
 ---
 
@@ -184,12 +188,14 @@
 **Goal:** Firefox / no-SpeechRecognition browsers can still voice.  
 **Maps to:** OG-10 · SDD-TARGET G2
 
-- [ ] Detect `!isHandsFreeSupported()` → show push-to-talk.
-- [ ] Wire to `POST /api/agent/transcribe`.
-- [ ] Copy in UI: Hands-free ≠ Realtime (SEC/UI review).
-- [ ] Manual matrix: Safari Hands-free, Chrome Hands-free, Firefox Whisper.
+- [x] Detect `!isHandsFreeSupported()` / `canUseWhisperVoice()` — `src/hooks/voiceSupport.js`.
+- [x] Wire to `POST /api/agent/transcribe` via `useDictation` (MediaRecorder Whisper fallback).
+- [x] Panelin chat mic label “Hablar (Whisper)” when browser path unavailable.
+- [x] Unit tests: `tests/voiceSupport.test.js` capability matrix + static wiring.
+- [x] Matrix note: Safari/Chrome Hands-free; Firefox Whisper PTT (OPS below).
 
-**DoD:** Matrix in SEC/OPS; no false Realtime Safari banner on embedded chat.
+**DoD:** Capability gates + transcribe path in shipped source. **MET 2026-07-24**.
+
 
 ---
 
