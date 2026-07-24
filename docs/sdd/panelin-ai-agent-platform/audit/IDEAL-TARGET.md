@@ -1,44 +1,41 @@
 # Ideal 100% — Panelin AI Agent Platform
 
-**System class:** AI agent platform (modular monolith surface inside Calculadora BMC)  
+**System class:** AI agent platform (modular monolith surface)  
 **Target composite:** 100 · **Pass threshold:** ≥90  
-**Date:** 2026-07-23 (post evolution iter-1 · composite **96**)
+**Date:** 2026-07-23 (re-audit · composite **97**)
 
-## Operational definition of 100% for *this* system
+## Operational definition of 100%
 
-A new engineer (or coding agent) can:
+A new engineer/agent can:
 
-1. Deploy API + SPA with all AI env **names** filled from OPS (Doppler `bmc-backend/prd` / GSM / Cloud Run).
-2. Hit `POST /api/agent/chat` and parse every SSE event type including `done` / tool / `verified_quote`.
-3. Recreate the full tool allowlist from `evidence/tools-manifest.md` with write-gate rules; MCP works with Bearer.
-4. Know prod `ASSISTANTS_ACTIVE` (**`canales;ml;panelin`**) and toggle via hub without tribal knowledge.
-5. Choose correct voice path per browser (Hands-free / Realtime / Whisper) with explicit product copy.
-6. Run `test:agent` + `test:agent-golden` (19 cases) and interpret failures.
-7. Answer yesterday’s AI $ from **documented** Cloud Logging query (IMP-06 docs **done**).
-8. Know Actual vs Goal matrix and pick next IMP-XX from the implementation guide.
-9. Rotate provider keys without fiction in the SDD; circuit breaker behavior understood.
-10. Keep prod tool count synchronized with HEAD (automated or runbook).
-11. Enable RAG only via OPS §11 / omni runbook (never assume default-on).
-12. Include SuperAgent cost events in the same logging query (event name known; sink unified optional).
+1. Deploy API + SPA with AI env **names** from OPS / Cloud Run / Doppler.  
+2. Hit `POST /api/agent/chat` and parse SSE including **`done.provider_used` / `latency_ms`**.  
+3. Recreate tool allowlist from `evidence/tools-manifest.md` (**55**) with write gates.  
+4. Know prod `ASSISTANTS_ACTIVE=canales;ml;panelin` and hub toggles.  
+5. Run `test:agent` + `test:agent-golden` (**22** cases).  
+6. Answer yesterday’s AI $ from documented Logging query.  
+7. Use SuperAgent `/quote-lead` knowing cost goes through `logAgentCost` and calc matches engine tests.  
+8. Pick next IMP-XX from the implementation guide.  
+9. Enable RAG only via OPS §11 after `omni:rag-precheck`.  
+10. See the same core turn fields on SSE and `callAgentOnce` (IMP-02 residual).  
 
-## Must-have artifacts (ideal)
+## Must-have artifacts
 
-- [x] `SDD.md` sections 1–12 As-Built  
-- [x] `TARGET.md` + `RECREATION-CHECKLIST.md` recreation-complete  
-- [x] `evidence/tools-manifest.md` living counts  
-- [x] `IMPLEMENTATION-GUIDE.md` + `SDD-TARGET.md`  
-- [x] Cost query + assistants snapshot + RAG enable docs  
-- [ ] Optional product polish: hub $ card, SuperAgent `logAgentCost` wire, voice durable metrics  
+- [x] SDD §1–12 As-Built v1.2  
+- [x] tools-manifest 55/55 + goldens 22  
+- [x] cost-query + assistants-active + SSE done schema  
+- [x] IMP-07/11/12 closed in code + guide  
+- [ ] IMP-02 dual-brain log parity  
+- [ ] Optional: hub $, voice durable, RAG on, Whisper UX  
 
-## Gap to 100 from current 96
+## Gap to 100 from 97
 
-| Delta | Work |
-|-------|------|
-| +1–2 | SuperAgent code uses `logAgentCost` (IMP-07 residual) |
-| +1 | p95 SSE measurement note or measured baseline (IMP-12) |
-| +1 | Hub cost card or BigQuery export (optional) |
-| +1 | Formal C4 Component diagram (nice-to-have) |
+| Δ | Work |
+|---|------|
+| +1 | IMP-02 `logAgentTurn` field parity |
+| +1 | p95 baseline note after 1 week of `latency_ms` |
+| +1 | Hub cost card or explicit permanent defer |
 
-## Ideal artifacts already present
+## Note
 
-As-built SDD v1.1 + recreation checklist closed for docs + tools 55/55 + cost/assistants/RAG ops evidence → **pass ≥90 with headroom (96)**. Remaining points are productization, not schema salvage.
+**97** is expert-complete for as-built docs. Remaining points are product roadmap, not missing architecture narrative.

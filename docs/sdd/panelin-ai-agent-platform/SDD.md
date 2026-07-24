@@ -1,6 +1,6 @@
 ---
 title: System Design Document — Panelin AI Agent Platform
-version: 1.1
+version: 1.2
 date: 2026-07-23
 status: As-Built
 author: sdd-reverse-engineer
@@ -10,7 +10,7 @@ companion_skill: sdd-architect@compatible
 system_slug: panelin-ai-agent-platform
 related_slug: panelin-chat-agent
 refreshed: 2026-07-23
-evolution: "iter-1 sdd-evolution-loop — cost query, RAG OPS, SuperAgent telemetry note, ASSISTANTS snapshot"
+evolution: "iter-1 evolution + IMP-07/11/12 ships; quality re-audit 2026-07-23 evening"
 ---
 
 # System Design Document: Panelin AI Agent Platform
@@ -34,9 +34,9 @@ BMC Uruguay needs a Spanish-first commercial AI that quotes insulation panels (U
 | G2 | Multi-provider failover (Claude → Grok → Gemini → OpenAI → OpenRouter) | High | CONFIRMED done |
 | G3 | Assistants kill-switch + always-on `seam` | High | CONFIRMED done |
 | G4 | Human gates on write tools (confirm + auth) | High | CONFIRMED done |
-| G5 | Measurable quality (goldens, eval, cost telemetry) | Medium | PARTIAL (cost $/day UI gap) |
-| G6 | Multi-channel reuse of brain | High | PARTIAL (SSE chat separate loop) |
-| G7 | Spec-driven evolution from this SDD | High | This bundle |
+| G5 | Measurable quality (goldens, eval, cost + SSE latency telemetry) | Medium | PARTIAL (hub $ UI; p95 baseline ops) |
+| G6 | Multi-channel reuse of brain | High | PARTIAL (SSE chat separate loop — IMP-02) |
+| G7 | Spec-driven evolution from this SDD | High | This bundle (audit **97 PASS**) |
 
 SMART north-star targets live in [`SDD-TARGET.md`](SDD-TARGET.md).
 
@@ -197,7 +197,7 @@ C4Container
 | **SuperAgent** | Lead quote extract (parallel) | `superAgent.js` | CONFIRMED; cost via `logAgentCost` (`superagent_ai_call`); calc engine parity tested (IMP-07) |
 | **Email toolset** | Chatwoot-specific tools | `emailAgentTools.js` | CONFIRMED (separate from Omni email) |
 | **Omni AI worker** | Channel suggest + optional RAG | `server/lib/omni/*` | CONFIRMED; flags default off |
-| **Eval / goldens** | Offline quality — **19** cases | `tests/agentGolden/` | CONFIRMED |
+| **Eval / goldens** | Offline quality — **22** cases | `tests/agentGolden/` | CONFIRMED (IMP-11 #746) |
 | **MCP bridge** | External tool access | `scripts/mcp-panelin-http.mjs` | CONFIRMED |
 
 ### 6.1 LLM strategy
@@ -232,7 +232,8 @@ Full table: [`evidence/tools-manifest.md`](evidence/tools-manifest.md).
 - Soft chat budgets optional (`BUDGET_ENABLED` default false) — `config.js`.
 - Omni daily USD cap `OMNI_AI_DAILY_BUDGET_USD` — **CONFIRMED prod = 50** (Cloud Run env 2026-07-23).
 - **Primary path:** `logAgentCost` → events `agent_core_call` / `ai_completion` — `costTelemetry.js`.
-- **SuperAgent path:** `console.log` event `superagent_ai_call` with `estimated_cost_usd` — **not** via `costTelemetry` (debt → code IMP-07; query path still includes it).
+- **SuperAgent path:** `logAgentCost` → event `superagent_ai_call` (`source: superAgent`) — **IMP-07 closed** (#745).
+- **SSE `done` (IMP-12, #748):** `provider_used`, `model`, `latency_ms`, optional `ttft_ms` — **CONFIRMED prod** 2026-07-23 (live probe).
 - **Operator $/day procedure (docs CLOSED 2026-07-23):** Cloud Logging sum of `estimated_cost_usd` — [`evidence/cost-query.md`](evidence/cost-query.md) + OPS §10. Hub dollar card still **GAP** (product).
 
 ### 6.3b RAG enablement (as-built)
@@ -273,13 +274,16 @@ sequenceDiagram
   T->>Calc: POST /calc/cotizar source=ae_agent
   Calc-->>T: BOM totals
   T-->>API: tool result
-  API-->>C: SSE text / verified_quote / done
-  C-->>UI: Bubble + pills
+  API-->>C: SSE text / verified_quote
+  API-->>C: done (provider_used, latency_ms, ttft_ms?)
+  C-->>UI: Bubble + pills + Dev lastTurn
 ```
+
+**SSE `done` fields (IMP-12, CONFIRMED prod):** `provider_used`, `model`, `latency_ms`, optional `ttft_ms` — see [`evidence/surfaces.md`](evidence/surfaces.md).
 
 ### Channel reuse (`callAgentOnce`)
 
-ML suggest / WA / Omni / email-agent → `callAgentOnce` → provider chain → optional tools (channel-dependent) → `costTelemetry`.
+ML suggest / WA / Omni / email-agent → `callAgentOnce` → provider chain → optional tools (channel-dependent) → `costTelemetry` / `logAgentCost` (`agent_core_call`).
 
 More traces: [`evidence/traces.md`](evidence/traces.md).
 
@@ -337,11 +341,12 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 
 ### 9.4 Observability
 
-- pino + structured `agent_core_call` / `ai_completion` / `agent_tool_call` / SuperAgent `superagent_ai_call`.
+- pino + structured `agent_core_call` / `ai_completion` / `agent_tool_call` / SuperAgent `superagent_ai_call` (via `logAgentCost`).
+- SSE chat terminal event `done` carries `provider_used` + `latency_ms` (+ optional `ttft_ms`) — IMP-12; Dev panel `devMeta.lastTurn`.
 - `toolStats`: in-memory ring + durable `agent_tool_calls` when `DATABASE_URL` (B-05, 2026-07-22).
 - Hub Assistants status + optional ai-analytics trends (**not** live LLM $).
 - **$/day query path documented** — `evidence/cost-query.md` (ops procedure closed; hub UI still open).
-- Gap residual: voice metrics durability (IMP-09); SuperAgent → `logAgentCost` (code IMP-07).
+- Gap residual: voice metrics durability (IMP-09); dual-brain field parity (IMP-02).
 
 ### 9.5 Cost & sustainability
 
@@ -449,7 +454,8 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 | Provider order | CONFIRMED | `aiProviderConfig.js:110` |
 | Rate limits 10/30/60 | CONFIRMED | `agentChat.js:434-452` |
 | RAG default off | CONFIRMED | `config.js:335` |
-| 19 goldens | CONFIRMED | `tests/agentGolden/cases/` |
+| 22 goldens | CONFIRMED | `tests/agentGolden/cases/` + IMP-11 #746 |
+| SSE done telemetry | CONFIRMED | prod probe 2026-07-23 · IMP-12 #748 |
 | Prod health OK | CONFIRMED | Cloud Run `/health` 2026-07-23 |
 | OpenRouter in prod | UNKNOWN | flag/key not probed |
 | Brain feature in prod | UNKNOWN | `VITE_FEATURE_BRAIN` default false |

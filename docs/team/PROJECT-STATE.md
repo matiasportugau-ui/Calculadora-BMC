@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-23 (docs — development-glory SDD platform v1.2 / audit 97):** Architect-grade as-built polish of [`docs/sdd/panelin-ai-agent-platform/`](../sdd/panelin-ai-agent-platform/) — reconciled SuperAgent cost, goldens **22**, SSE `done` telemetry, ASSISTANTS snapshot; formal SCORECARD **composite 97 pass:true**, P0=0. Contract test `tests/sddPlatformSchema.contract.test.js`. Product residual: IMP-02/04/08/09 (non-blocking).
+
 <<<<<<< HEAD
 **2026-07-23 (feat — Wave1 IMP-12 + IMP-01 residual):** SSE `done` emits `provider_used` / `model` / `latency_ms` / optional `ttft_ms`; Dev panel last-turn; contract tests `agentChatDonePayload` + `agentToolsCount` (pin 55). Single `done` on success path (removed duplicate bare done).
 

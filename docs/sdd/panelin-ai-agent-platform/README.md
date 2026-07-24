@@ -1,9 +1,9 @@
 # SDD — Panelin AI Agent Platform
 
 **Slug:** `panelin-ai-agent-platform`  
-**Status:** As-Built v1.1 (2026-07-23) — evolution iter-1  
+**Status:** As-Built **v1.2** (2026-07-23) — post IMP-07/11/12  
 **Purpose:** Recreation-grade SPEC of the **real** AI agent stack for SDD-driven development.  
-**Audit:** [`audit/SCORECARD.json`](audit/SCORECARD.json) (re-score after evolution).
+**Audit:** composite **97 PASS** — [`audit/SCORECARD.json`](audit/SCORECARD.json)
 
 ## Start here
 
