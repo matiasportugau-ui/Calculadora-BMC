@@ -21,6 +21,7 @@ import ProductMatrix from './marketing-hub/ProductMatrix.jsx';
 import StrategyCards from './marketing-hub/StrategyCards.jsx';
 import IntelPanel from './marketing-hub/IntelPanel.jsx';
 import MarketIntelChat from './marketing-hub/MarketIntelChat.jsx';
+import MetaAdsLiveReport from './marketing-hub/MetaAdsLiveReport.jsx';
 
 async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, '');
@@ -139,6 +140,7 @@ function MarketingHubInner() {
 
   const tabs = [
     { id: 'resumen', label: 'Resumen' },
+    { id: 'ads-meta', label: 'Ads · Meta' },
     { id: 'inteligencia', label: 'Inteligencia' },
     { id: 'detalle', label: 'Detalle' },
   ];
@@ -224,10 +226,16 @@ function MarketingHubInner() {
         )}
 
         {/* ── Inteligencia ── */}
+        {tab === 'ads-meta' && (
+          accessToken
+            ? <MetaAdsLiveReport token={accessToken} />
+            : <p style={{ color: 'var(--ac-text-3)', fontSize: 13 }}>Iniciá sesión para ver Meta Ads.</p>
+        )}
+
         {tab === 'inteligencia' && (
           loading && !intel
             ? <p style={{ color: 'var(--ac-text-3)', fontSize: 13 }}>Cargando inteligencia de mercado…</p>
-            : <IntelPanel intel={intel} token={accessToken} />
+            : <IntelPanel intel={intel} token={accessToken} onOpenAdsMeta={() => setTab('ads-meta')} />
         )}
 
         {/* ── Detalle (salvaged widgets) ── */}

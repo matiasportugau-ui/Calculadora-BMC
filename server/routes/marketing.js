@@ -30,6 +30,10 @@ import {
   getKeywordRefreshMeta,
 } from '../lib/marketIntel/keywordMonitor.js';
 import { callAgentOnce } from '../lib/agentCore.js';
+import {
+  buildMetaAdsReport,
+  buildMetaAdsHealth,
+} from '../lib/marketIntel/metaAdsReport.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
@@ -450,6 +454,34 @@ router.post('/ai/chat', intelLimiter, requireMarketing, async (req, res) => {
     if (!closed) res.end();
   } finally {
     clearInterval(heartbeat);
+  }
+});
+
+// ─── GET /api/marketing/ads/meta/report ────────────────────────────
+// MetaAdsReport DTO: source=auto|live|demo|snapshot · range=7d|30d|90d|ytd|year
+// PR1: demo fixture + static snapshot. Live Graph = PR3 (falls back to snapshot).
+router.get('/ads/meta/report', intelLimiter, requireMarketing, (req, res) => {
+  try {
+    const range = req.query.range || '30d';
+    const source = req.query.source || 'auto';
+    const { report, resolved_source } = buildMetaAdsReport({ range, source });
+    res.json({ ...report, _resolved_source: resolved_source });
+  } catch (err) {
+    const status = err?.status || 500;
+    if (status === 400) return res.status(400).json({ error: err.message || 'invalid request' });
+    if (status === 503) return res.status(503).json({ error: err.message || 'unavailable' });
+    log.error({ err, route: 'GET /ads/meta/report' }, 'meta ads report failed');
+    res.status(500).json({ error: 'Meta ads report failed' });
+  }
+});
+
+// ─── GET /api/marketing/ads/meta/health ────────────────────────────
+router.get('/ads/meta/health', intelLimiter, requireMarketing, (req, res) => {
+  try {
+    res.json(buildMetaAdsHealth());
+  } catch (err) {
+    log.error({ err, route: 'GET /ads/meta/health' }, 'meta ads health failed');
+    res.status(500).json({ error: 'health failed' });
   }
 });
 
