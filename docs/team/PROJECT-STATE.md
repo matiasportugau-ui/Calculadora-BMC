@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-24 (fix — README Agent safety gates):** Re-land post-#754 hardening after #773 (supersedes CONFLICTING #769/#760): full README to writer, critic sees current+proposed, deterministic gates in `doc_agent_safety.py`, workflow drops `push: main`, stages `README.md` only. Prevents curated README wipe on cron/merge.
+
 **2026-07-24 (docs — Meta Ads SDD v0.4 As-Built + bootstrap):** Retag SDD/SCORECARD composite **94 pass** after PR1–PR3 ship; `scripts/meta-ads-bootstrap-auto.sh` (Graph smoke → Doppler `bmc-backend/prd` → GSM → Cloud Run); prod Live still human-gated on Meta BM system-user token. Evidence E-01–E-19; ADR-009 fail-open, ADR-010 range KPIs #767.
 
 **2026-07-24 (feat — IMP-02/04/08/09 product residual):** Shared `logAgentTurn` on SSE + callAgentOnce (IMP-02). RAG precheck fail-closed; prod enable blocked without DB/embed (IMP-04). Whisper/Firefox capability tests + OPS matrix (IMP-08). Durable `agent_voice_events` dual-write via voiceMetrics + voiceErrorLog (IMP-09).
