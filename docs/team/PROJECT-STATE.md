@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-25 (test — route regression coverage):** Offline HTTP suites for Workspace API (#741), Meta Ads Live Report gates (#753/#762; re-land of unmerged #763), and PAOS admin routes (#777): auth fail-closed, `PAOS_ENABLED`/`PAOS_PROMOTE` 503s, superadmin-only approve/reject, and knowledge CR approve under PAOS → no silent active Training KB. Wired into `npm run test:api`.
+
 **2026-07-24 (prod — PAOS LIVE on panelin-calc):** PR [#777](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/777) on main. Cloud Run env `PAOS_ENABLED=1` `PAOS_PROMOTE=1` `PAOS_CANARY_PCT=0` `PAOS_LEDGER_RETENTION_DAYS=90`. **Root cause of health 404:** traffic pinned 100% to old rev `panelin-calc-00877-4b9` while PAOS images built as 00881–00886 (GHA deploy succeeded; post-deploy `smoke:prod` failed on `/api/crm/suggest-response` AI quota — did not block image, but traffic never moved). **Fix:** `gcloud run services update-traffic panelin-calc --to-latest` → **100% LATEST `panelin-calc-00886-g5f`**. **Verified:** `GET https://panelin-calc-q74zutv7dq-uc.a.run.app/api/paos/health` → **200** `{"ok":true,"paos":{"enabled":true,"promote":true,...}}`. Residual: GHA `smoke:prod` still red on AI keys (unrelated to PAOS); optional IMP-06..08.
 
 **2026-07-24 (docs — development-glory re-score 98):** SDD platform **v1.3** reflects IMP-02 `logAgentTurn`, IMP-08 Whisper matrix, IMP-09 voiceMetrics; SCORECARD **98 pass**; P0=0. Residual: RAG enable ops, hub $, p95 baseline.
