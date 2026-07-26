@@ -1264,6 +1264,13 @@ let stopOmniSnoozeWorker = () => {};
 let stopOmniSequenceWorker = () => {};
 
 const server = app.listen(config.port, async () => {
+  try {
+    const { getPromptsShaCached } = await import("./lib/promptsSha.js");
+    const ps = getPromptsShaCached();
+    logger.info({ event: "prompts_sha_boot", ...ps }, "prompts_sha_boot");
+  } catch (err) {
+    logger.warn({ err }, "prompts_sha_boot failed");
+  }
   logger.info(
     {
       port: config.port,

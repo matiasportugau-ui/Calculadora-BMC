@@ -1,49 +1,46 @@
 # AUDIT — Panelin AI Agent Platform
 
-**Auditor:** sdd-quality-auditor + development-glory  
-**Date:** 2026-07-24  
-**SDD:** `docs/sdd/panelin-ai-agent-platform/SDD.md` **v1.3** As-Built  
+**Auditor:** sdd-quality-auditor + sdd-evolution-loop  
+**Date:** 2026-07-26  
+**SDD:** `docs/sdd/panelin-ai-agent-platform/SDD.md` **v1.4** As-Built  
 **Composite:** **98 / 100** · **pass: true**  
-**Prior:** 97 · **Δ +1** (IMP-02/08/09 product ships documented)
+**Path:** 98 (glory) → 96 (re-audit PAOS gap) → **98** (evolution closed G-P1-05)
 
 ---
 
 ## Executive summary
 
-Development-glory re-score after **#772** product residual ships. As-built SDD now reflects shared **`logAgentTurn`**, Whisper capability matrix, and durable **voice metrics**. RAG remains **intentionally not live** until ops precheck passes. **No P0/P1 doc gaps.** Platform docs remain SoT for agents.
+Evolution-loop **EXECUTE** documented **PAOS** as the platform’s supervised slow-loop learning surface (parent integration + ADR-008), pointing detail to child SDD `docs/sdd/paos/`. Live probe confirms `/api/paos/health` enabled with **canaryPct=0**. Recreation checklist hygiene (IMP-09) fixed. **No P0/P1 open.** Residual P2 are product/ops only (hub $, RAG enable, p95).
 
 ---
 
-## Development-glory G0–G5
+## Evolution log (PEV)
 
-| Phase | Result |
-|-------|--------|
-| G0 | Existing slug `panelin-ai-agent-platform`; metric SDD ≥90 |
-| G1 | As-built v1.3 polish (not greenfield) |
-| G2 | IMP-02/04/08/09 implemented on main (#772) |
-| G3 | `npm run test:agent` (contracts + new unit tests) |
-| G4 | SCORECARD **98** pass true |
-| G5 | **Skipped** — already ≥90, no P0 |
+| Iter | Plan | Execute | Verify |
+|------|------|---------|--------|
+| 1 | Close G-P1-05 + hygiene G-P2-11 | Patch SDD v1.4 §5/§6.5/§8/§10–12; evidence; RECREATION | **Composite 98** pass |
+
+**Stop:** pass ≥90 and P1=0 — loop complete (max 3 not needed).
 
 ---
 
 ## Q0 Schema
 
-All checks **PASS** (frontmatter, 1–12, C4, sequence, ADRs, risks, no placeholders, no secret leaks).
+All checks **PASS** (frontmatter v1.4, §1–12, C4, sequence, 8 ADRs, risks, no secret leaks).
 
 ---
 
-## Q1 Scores
+## Q1 Scores (post-evolution)
 
 | Dimension | Score |
 |-----------|------:|
 | schema_completeness | 98 |
-| c4_fidelity | 95 |
+| c4_fidelity | 97 |
 | recreation_sufficiency | 98 |
 | evidence_grounding | 98 |
 | ai_architecture_depth | 98 |
 | crosscutting_wa | 97 |
-| adr_quality | 95 |
+| adr_quality | 98 |
 | evolution_readiness | 98 |
 | **Composite** | **98** |
 
@@ -52,7 +49,7 @@ All checks **PASS** (frontmatter, 1–12, C4, sequence, ADRs, risks, no placehol
 ## Open P2 only
 
 - Hub $/day card  
-- RAG prod enable (ops)  
+- RAG prod enable  
 - p95 baseline collection  
 
 ---
@@ -63,5 +60,5 @@ All checks **PASS** (frontmatter, 1–12, C4, sequence, ADRs, risks, no placehol
 |-------|-------|
 | Pass ≥90 | **YES (98)** |
 | Recreation-ready | **YES** |
-| Development-glory | **COMPLETE** |
-| Next product | Optional RAG enable / hub $ / p95 ops |
+| Evolution-loop | **COMPLETE** (P1 closed) |
+| Next optional | Product P2 residual |

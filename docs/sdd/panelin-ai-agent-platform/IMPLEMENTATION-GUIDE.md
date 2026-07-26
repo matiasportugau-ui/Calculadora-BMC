@@ -102,9 +102,9 @@
 
 - [x] Document Cloud Logging filter for `agent_core_call` / `ai_completion` / `superagent_ai_call` — `evidence/cost-query.md`.
 - [x] Publish daily rollup procedure in PANELIN-IA-OPS §10 (v1 gcloud + sum).
-- [ ] Optional: BigQuery export or hub card (do **not** use `/api/ai-analytics/trends` for LLM $ — wrong source).
+- [x] Hub card: `GET /api/agent/obs-summary` + Agent Admin tab **Costo & latencia** (in-memory ring; multi-day still Cloud Logging) — 2026-07-26.
 
-**DoD:** Operator can answer “yesterday’s AI $?” from documented query — **MET 2026-07-23**. Hub UI optional.
+**DoD:** Operator can answer “yesterday’s AI $?” from documented query — **MET 2026-07-23**. Hub live revision estimate **MET 2026-07-26**.
 
 ---
 
@@ -116,9 +116,10 @@
 - [x] Server: `sendDone` → `provider_used`, `model`, `latency_ms`, optional `ttft_ms` (2026-07-23).
 - [x] Client: `useChat` → `devMeta.lastTurn`; Dev panel train tab shows last turn.
 - [x] Schema in `evidence/surfaces.md` + offline `tests/agentChatDonePayload.test.js`.
-- [ ] Capture baseline for 1 week; set alert threshold later (ops residual).
+- [x] p50/p95 from process ring via `GET /api/agent/obs-summary` + hub tab (2026-07-26).
+- [ ] Capture multi-day baseline across revisions; set alert threshold later (ops residual).
 
-**DoD:** Event schema documented; Dev panel shows last-turn provider/latency. **Code MET 2026-07-23**.
+**DoD:** Event schema documented; Dev panel shows last-turn provider/latency. **Code MET 2026-07-23**. Hub p95 **MET 2026-07-26**.
 
 ---
 
@@ -174,12 +175,13 @@
 **Goal:** Better retrieve than either alone.  
 **Maps to:** OG-14 · SDD-TARGET
 
-- [ ] Design score: `α * embedding_sim + β * kb_keyword_boost`.
-- [ ] Inject fused top-k into `buildSystemPrompt` when RAG on.
-- [ ] A/B offline with goldens / eval:agent.
-- [ ] Feature flag if needed (`RAG_HYBRID=1`).
+- [x] Design score: `α * embedding_sim + β * kb_keyword_boost` — `server/lib/hybridRetrieve.js`.
+- [x] Inject fused KB extras into RAG block when `RAG_ENABLED` + `RAG_HYBRID` — `agentChat.js`.
+- [x] Feature flags `RAG_HYBRID` / `RAG_HYBRID_ALPHA` / `RAG_HYBRID_BETA` (default OFF) — `config.js`.
+- [x] Offline unit: `tests/hybridRetrieve.test.js`.
+- [ ] A/B offline with goldens once RAG is ON in an env with embeddings.
 
-**DoD:** Flag documented; eval not worse on existing goldens; SDD §6 updated.
+**DoD:** Flag + fuse path **MET 2026-07-26**; live A/B deferred until RAG prod enable (IMP-04).
 
 ---
 
@@ -204,11 +206,11 @@
 **Goal:** Prompt edits are reviewable like code.  
 **Maps to:** child G-07
 
-- [ ] PR checklist: `chatPrompts.js` change → note in PROJECT-STATE + golden impact.
-- [ ] Optional: content hash logged at boot (`prompts_sha`).
-- [ ] Link from SDD §6 to process.
+- [x] Content hash at boot + obs-summary: `prompts_sha` — `server/lib/promptsSha.js` + `index.js` boot log.
+- [x] Unit test `tests/promptsSha.test.js`.
+- [ ] PR checklist ritual: `chatPrompts.js` change → note in PROJECT-STATE + golden impact (process).
 
-**DoD:** At least one PR follows checklist; SDD cites process.
+**DoD:** Boot `prompts_sha` **MET 2026-07-26**; human PR checklist ongoing.
 
 ---
 
@@ -219,9 +221,11 @@
 **Goal:** Safer MCP/GPT exposure (quote / CRM / admin).  
 **Maps to:** SDD-TARGET tools pillar
 
-- [ ] Tag each tool with tier in schema export.
-- [ ] Filter manifest by tier query param.
-- [ ] Document tiers in tools-manifest.
+- [x] Tag each tool with tier — `server/lib/toolTiers.js` (`quote|crm|ops|email|meta`).
+- [x] Filter manifest: `GET /api/agent/tools-manifest?tier=quote` — `agentChat.js`.
+- [x] Unit test `tests/toolTiers.test.js`.
+
+**DoD:** **MET 2026-07-26**.
 
 ### IMP-15 — Channel-specific eval packs in promptfoo
 
@@ -230,6 +234,8 @@
 
 - [ ] Add `evals/promptfoo/panelin-chat.yaml` smoke (non-secret).
 - [ ] Wire optional CI job (not blocking until stable).
+
+**Status:** Deferred P2 — existing 22 goldens + `test:agent-golden` cover release gate.
 
 ---
 

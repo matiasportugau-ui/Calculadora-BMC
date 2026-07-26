@@ -1222,6 +1222,134 @@ function AnalyticsTab() {
   );
 }
 
+// ── OBS / COST + LATENCY (IMP-06 hub card + IMP-12 p95) ─────────────────────
+function ObsCostLatencyTab() {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [minutes, setMinutes] = useState(1440);
+
+  async function load() {
+    setLoading(true);
+    setErr("");
+    try {
+      const r = await apiFetch(`/api/agent/obs-summary?windowMinutes=${minutes}`);
+      if (!r.ok) setErr(r.error || "Error cargando obs-summary");
+      else setData(r);
+    } catch (e) {
+      setErr(e?.message || "network");
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minutes]);
+
+  const lat = data?.latency || {};
+  const cost = data?.cost || {};
+  const providers = data?.by_provider || {};
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 720, fontFamily: C.ff }}>
+      <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.5 }}>
+        Ring en memoria de esta revisión Cloud Run (cold-start resetea). Para $ multi-día usá Cloud Logging
+        (cost-query.md / OPS §10). Latencia p50/p95 desde muestras de turn/cost.
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <label style={{ fontSize: 12, color: C.sub }}>
+          Ventana (min){" "}
+          <input
+            type="number"
+            value={minutes}
+            min={5}
+            max={10080}
+            onChange={(e) => setMinutes(Number(e.target.value) || 1440)}
+            style={{ width: 80, marginLeft: 6, borderRadius: 6, border: `1px solid ${C.border}`, padding: "4px 8px" }}
+          />
+        </label>
+        <Btn onClick={load} disabled={loading}>
+          {loading ? "Cargando…" : "Refresh"}
+        </Btn>
+      </div>
+      {err && (
+        <div style={{ color: C.danger, fontSize: 12 }}>
+          {err}
+        </div>
+      )}
+      {data && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 12 }}>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>Σ cost (USD)</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.navy }}>{cost.sum_usd ?? "—"}</div>
+              <div style={{ fontSize: 10, color: C.sub }}>{cost.count_with_cost ?? 0} con $ · n={data.sample_count}</div>
+            </div>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>p50 latency</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.navy }}>
+                {lat.p50_ms != null ? `${Math.round(lat.p50_ms)} ms` : "—"}
+              </div>
+            </div>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>p95 latency</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.primary }}>
+                {lat.p95_ms != null ? `${Math.round(lat.p95_ms)} ms` : "—"}
+              </div>
+              <div style={{ fontSize: 10, color: C.sub }}>target &lt; 2500 ms (SSE)</div>
+            </div>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>ttft p95</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.navy }}>
+                {lat.ttft_p95_ms != null ? `${Math.round(lat.ttft_p95_ms)} ms` : "—"}
+              </div>
+            </div>
+          </div>
+          {data.prompts?.prompts_sha && (
+            <div style={{ fontSize: 11, color: C.sub }}>
+              prompts_sha: <code>{data.prompts.prompts_sha}</code> · RAG={String(data.flags?.rag_enabled)} hybrid=
+              {String(data.flags?.rag_hybrid)}
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Por provider</div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: C.sub }}>
+                  <th style={{ padding: "6px 8px" }}>Provider</th>
+                  <th>n</th>
+                  <th>$</th>
+                  <th>p50</th>
+                  <th>p95</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(providers).map(([k, v]) => (
+                  <tr key={k} style={{ borderTop: `1px solid ${C.border}` }}>
+                    <td style={{ padding: "6px 8px", fontWeight: 600 }}>{k}</td>
+                    <td>{v.count}</td>
+                    <td>{v.cost_usd}</td>
+                    <td>{v.p50_latency_ms != null ? Math.round(v.p50_latency_ms) : "—"}</td>
+                    <td>{v.p95_latency_ms != null ? Math.round(v.p95_latency_ms) : "—"}</td>
+                  </tr>
+                ))}
+                {!Object.keys(providers).length && (
+                  <tr>
+                    <td colSpan={5} style={{ padding: 12, color: C.sub }}>
+                      Sin muestras aún en este proceso. Enviá un chat al agente y refrescá.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── CONFIG TAB ─────────────────────────────────────────────────────────────
 function ConfigTab() {
   const [defaults, setDefaults] = useState(null);
@@ -2061,6 +2189,7 @@ const TABS = [
   { id: "conflicts", label: "Conflictos", icon: "⚡" },
   { id: "logs", label: "Logs", icon: "📋" },
   { id: "voice", label: "Voz", icon: "🎙️" },
+  { id: "obs", label: "Costo & latencia", icon: "💵" },
   { id: "config", label: "Configuración", icon: "⚙️" },
 ];
 
@@ -2179,6 +2308,7 @@ export default function AgentAdminModule() {
           {tab === "conflicts" && <ConflictsTab />}
           {tab === "logs" && <LogsTab />}
           {tab === "voice" && <VoiceTab />}
+          {tab === "obs" && <ObsCostLatencyTab />}
           {tab === "config" && <ConfigTab />}
         </main>
       </div>

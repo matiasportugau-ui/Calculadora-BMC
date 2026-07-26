@@ -1,47 +1,42 @@
-# GAP-PLAN — Panelin AI Agent Platform
+# GAP-PLAN — Panelin AI Agent Platform — 2026-07-26 (100% implementation push)
 
-**Auditor:** sdd-quality-auditor + development-glory  
-**Date:** 2026-07-24  
-**Scorecard:** composite **98** · prior **97** · **pass: true** (≥90)  
-**SDD:** `../SDD.md` v1.3 As-Built
+## Score actual: **98**/100 · **pass: true** · implementation residual **mostly closed**
 
-## Closed (do not re-open)
+**Summary:** Code pack closed hub cost+p95 (`obs-summary`), tool tiers, prompts_sha, hybrid RAG (flag OFF). Remaining is **ops/human**: RAG prod enable credentials, multi-day p95 across revisions, Training KB prod sync ritual, promptfoo optional pack.
 
-| ID | Gap | Resolution |
-|----|-----|------------|
-| P-01 | Prod tools ≠ local | **CLOSED** — 55=55 |
-| G-P1-01…04 | Cost query, RAG docs, SuperAgent cost, ASSISTANTS | **CLOSED** |
-| IMP-07 / 11 / 12 | SuperAgent, goldens 22, SSE done | **CLOSED** #745/#746/#748 |
-| **G-P2-08 / IMP-02** | Dual-brain log parity | **CLOSED** #772 — `logAgentTurn` |
-| **G-P2-03 / IMP-08** | Whisper Firefox UX | **CLOSED** #772 — capability tests + OPS matrix |
-| **G-P2-02 / IMP-09** | Voice metrics ephemeral | **CLOSED** #772 — `voiceMetrics` dual-write |
-| IMP-04 precheck | Fail-closed docs | **CLOSED** exit 2 without DATABASE_URL; **enable still open** |
+## Closed this glory/goal pass (2026-07-26)
 
-## Open gaps (product / residual)
+| ID | Item | Resolution |
+|----|------|------------|
+| G-P2-05 / IMP-06 | Hub $/day card | `GET /api/agent/obs-summary` + Admin tab **Costo & latencia** |
+| G-P2-09 / IMP-12 residual | p95 in process | obs-summary latency p50/p95/ttft |
+| IMP-10 | Hybrid RAG+KB | `hybridRetrieve.js` + `RAG_HYBRID` default OFF |
+| IMP-13 | prompts_sha | boot log + obs-summary |
+| IMP-14 | Tool tiers | `toolTiers.js` + `?tier=` on tools-manifest |
+| G-P1-05 | PAOS docs | Closed earlier (v1.4) |
 
-| ID | Dimension | Gap | Sev | Action | Artefacto | Effort | Owner |
-|----|-----------|-----|-----|--------|-----------|--------|-------|
-| G-P2-05 | product | Hub $/day card | P2 | Optional UI | IMP-06 residual | M | eng |
-| G-P2-07 | product | RAG not enabled in prod | P2 | Precheck exit 0 then flags | IMP-04 enable | M | ops+eng |
-| G-P2-09 | ops | p95 SSE baseline not collected | P2 | Week of `latency_ms` logs | IMP-12 residual | S | ops |
+## Still open (honest 100% blockers)
 
-## P0 / P1 documentation
+| ID | Gap | Sev | Why not closed here |
+|----|-----|-----|---------------------|
+| IMP-04 enable | RAG ON in prod | P2 ops | Needs DATABASE_URL + embed batch + precheck exit 0 (human/ops) |
+| IMP-05 | Training KB prod loop | P2 | GCS sync ritual + weekly Gym (process) |
+| IMP-12 multi-day | Cross-revision p95 baseline | P2 ops | Needs week of Cloud Logging / multi-instance |
+| IMP-15 | promptfoo channel packs | P2 | Optional; 22 goldens already gate releases |
+| IMP-13 checklist | PR ritual | process | Human PR discipline |
 
-**None open.** Composite **98** ≥90.
+## Exit “platform SDDD ready” (IMPLEMENTATION-GUIDE)
 
-## Orden de cierre (optional product)
+| Criterion | Status |
+|-----------|--------|
+| SDD ≥90 | **98** |
+| Prod tools == HEAD | **55** |
+| RAG ON **or** deferred ticket | **Deferred** with OPS runbook (explicit) |
+| Cost query | **Docs + hub ring** |
+| Goldens ≥19 | **22** |
 
-1. Ops: collect p95 from SSE `done.latency_ms`  
-2. Ops+eng: RAG enable when precheck green  
-3. Optional: hub $/day card  
+## Handoff for ops
 
-## Re-score trigger
-
-- Topology change or tool-count pin change  
-- After RAG actually enabled in prod  
-
-## Handoff
-
-- Implementation: [`../IMPLEMENTATION-GUIDE.md`](../IMPLEMENTATION-GUIDE.md)  
-- Scorecard: [`SCORECARD.json`](./SCORECARD.json)  
-- Narrative: [`AUDIT.md`](./AUDIT.md)  
+1. Billing: OpenAI quota + Claude credits (session live findings).  
+2. When ready: `omni:rag-precheck` → embed batch → `RAG_ENABLED=1` (optional `RAG_HYBRID=1`).  
+3. Ship this commit to Cloud Run so hub obs-summary is live.

@@ -53,7 +53,12 @@ import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
 import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
 import { getIvaPct } from "../lib/policyLoader.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
+import { fuseRagAndKb } from "../lib/hybridRetrieve.js";
 import { logAgentTurn } from "../lib/logAgentTurn.js";
+import { getObsSummary, recordObsSample } from "../lib/agentObsRing.js";
+import { getToolTier, filterToolsByTier, TOOL_TIERS } from "../lib/toolTiers.js";
+import { getPromptsShaCached } from "../lib/promptsSha.js";
+import { requireDevModeAuthMiddleware } from "../lib/devModeAuth.js";
 import {
   ALLOWED_MODELS as CENTRAL_ALLOWED_MODELS,
   PROVIDER_LABELS as CENTRAL_PROVIDER_LABELS,
@@ -176,20 +181,51 @@ router.get("/agent/tool-stats", async (req, res) => {
 });
 
 /**
+ * GET /api/agent/obs-summary — IMP-06 hub $ + IMP-12 p50/p95 latency (memory ring).
+ * Query: windowMinutes (default 1440). Not multi-instance durable.
+ * Auth: same as other agent admin ops (API_AUTH_TOKEN / relax-dev).
+ */
+router.get("/agent/obs-summary", requireDevModeAuthMiddleware, (req, res) => {
+  const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
+  try {
+    const summary = getObsSummary({ windowMs: minutes * 60 * 1000 });
+    res.json({
+      ok: true,
+      ...summary,
+      prompts: getPromptsShaCached(),
+      flags: {
+        rag_enabled: !!config.ragEnabled,
+        rag_hybrid: !!config.ragHybrid,
+      },
+    });
+  } catch {
+    res.status(500).json({ ok: false, error: "obs_summary_unavailable" });
+  }
+});
+
+/**
  * GET /api/agent/tools-manifest — list of all AGENT_TOOLS for external clients
  * (e.g. the Panelin MCP server). Returns the same Anthropic input_schema format
  * that the in-process tool-use loop receives.
+ * Query: tier=quote|crm|ops|email|meta (comma-separated) — IMP-14.
  */
-router.get("/agent/tools-manifest", (_req, res) => {
+router.get("/agent/tools-manifest", (req, res) => {
+  const tier = req.query?.tier ? String(req.query.tier) : "";
+  const mapped = AGENT_TOOLS.map((t) => ({
+    name: t.name,
+    description: t.description,
+    input_schema: t.input_schema,
+    requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
+    tier: getToolTier(t.name),
+  }));
+  const tools = filterToolsByTier(mapped, tier);
   res.json({
     ok: true,
-    count: AGENT_TOOLS.length,
-    tools: AGENT_TOOLS.map((t) => ({
-      name: t.name,
-      description: t.description,
-      input_schema: t.input_schema,
-      requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
-    })),
+    count: tools.length,
+    total: AGENT_TOOLS.length,
+    tiers: TOOL_TIERS,
+    tier_filter: tier || null,
+    tools,
   });
 });
 
@@ -882,6 +918,7 @@ router.post("/agent/chat", async (req, res) => {
   // RAG v1 — recuperación de cotizaciones históricas similares vía pgvector.
   // Feature flag: RAG_ENABLED (default false). Si el retriever falla (DB caída,
   // embedding service caído), se loggea y se continúa SIN RAG — el chat no se rompe.
+  // IMP-10: optional RAG_HYBRID fuses embedding hits with Training KB keyword boost.
   let ragContextBlock = "";
   if (config.ragEnabled) {
     try {
@@ -891,6 +928,44 @@ router.post("/agent/chat", async (req, res) => {
         config.ragThreshold,
       );
       ragContextBlock = formatRetrievedContextForPrompt(ragQuotes);
+      if (config.ragHybrid) {
+        try {
+          const { blockExtras, fused } = fuseRagAndKb({
+            ragQuotes,
+            kbExamples: trainingExamples,
+            query: lastUserMessage,
+            alpha: config.ragHybridAlpha,
+            beta: config.ragHybridBeta,
+            topK: config.ragTopK,
+          });
+          // Re-rank RAG quotes by fused score for the prompt (not only dev event).
+          const ragReordered = fused
+            .filter((f) => f.kind === "rag")
+            .map((f) => ({
+              lead_id: f.lead_id,
+              similarity: f.similarity,
+              metadata: f.metadata,
+            }));
+          if (ragReordered.length) {
+            ragContextBlock = formatRetrievedContextForPrompt(ragReordered);
+          }
+          if (blockExtras) ragContextBlock = `${ragContextBlock}${blockExtras}`;
+          if (devMode && fused.length) {
+            send({
+              type: "rag_hybrid",
+              count: fused.length,
+              top: fused.slice(0, 5).map((f) => ({
+                kind: f.kind,
+                score: f.fused_score,
+                lead_id: f.lead_id,
+                id: f.id,
+              })),
+            });
+          }
+        } catch (hybErr) {
+          req.log?.warn({ err: hybErr }, "rag: hybrid fuse failed, using pure RAG block");
+        }
+      }
       if (devMode && ragQuotes.length > 0) {
         send({
           type: "rag_match",
@@ -899,7 +974,10 @@ router.post("/agent/chat", async (req, res) => {
         });
       }
       if (ragQuotes.length > 0) {
-        req.log?.info({ rag_count: ragQuotes.length, top_score: ragQuotes[0].similarity }, "rag: retrieved quotes");
+        req.log?.info(
+          { rag_count: ragQuotes.length, top_score: ragQuotes[0].similarity, hybrid: !!config.ragHybrid },
+          "rag: retrieved quotes",
+        );
       } else {
         req.log?.debug("rag: no quotes above threshold");
       }
@@ -1495,6 +1573,9 @@ router.post("/agent/chat", async (req, res) => {
         else console.log(JSON.stringify(costLog));
 
         // IMP-02: turn-level parity with callAgentOnce (shared core fields).
+        // tStart is per-provider attempt; firstTokenAt set on first SSE text delta.
+        const ttftForRing =
+          firstTokenAt != null ? Math.max(0, firstTokenAt - tStart) : null;
         logAgentTurn(
           {
             event: "agent_turn",
@@ -1506,10 +1587,26 @@ router.post("/agent/chat", async (req, res) => {
             output_tokens: outputTokens,
             estimated_cost_usd: chatCost,
             latency_ms: latencyMs,
+            ttft_ms: ttftForRing,
             source: "agentChat",
           },
           req.log || null,
         );
+        // Cost sample once (logAgentTurn no longer writes cost to obs ring).
+        try {
+          recordObsSample({
+            kind: "cost",
+            provider,
+            model: resolvedModel,
+            channel: surfaceToChannel(canonicalBrandSurface(surface || "panelin_chat")) || "chat",
+            estimated_cost_usd: chatCost,
+            latency_ms: latencyMs,
+            ttft_ms: ttftForRing,
+            source: "agentChat",
+          });
+        } catch {
+          /* never break SSE */
+        }
 
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {

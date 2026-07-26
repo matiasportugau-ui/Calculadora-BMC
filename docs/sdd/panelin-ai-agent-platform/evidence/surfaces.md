@@ -1,6 +1,6 @@
 # Evidence — runtime surfaces (R2)
 
-**Date:** 2026-07-23
+**Date:** 2026-07-23 (PAOS rows + tools re-probe 2026-07-26)
 
 ## HTTP API (AI-related)
 
@@ -12,6 +12,8 @@
 | GET | `/api/agent/tools/openapi` | public | OpenAPI 3.1 | `agentToolsOpenApi.js` |
 | GET | `/api/agent/ai-options` | public | Providers/models (no secrets) | `aiProviderConfig.js` |
 | GET | `/api/agent/tool-stats` | (dev/ops) | In-memory latency | `toolStats.js` |
+| GET | `/api/agent/obs-summary` | public | Cost Σ + p50/p95 latency (memory ring) + `prompts_sha` | `agentObsRing.js` 2026-07-26 |
+| GET | `/api/agent/tools-manifest?tier=` | public | Optional filter `quote\|crm\|ops\|email\|meta` | `toolTiers.js` IMP-14 |
 | POST | `/api/agent/quote-lead` | SuperAgent router | Parallel Haiku extract | `superAgent.js` |
 | * | `/api/agent/train*`, `/training-kb*`, `/autolearn*` | Dev token | Training | `agentTraining.js` |
 | POST | `/api/agent/feedback` | — | Feedback | routes |
@@ -23,6 +25,12 @@
 | * | `/api/omni/.../assist` | assistant `canales` | Omni copilot | `omni.js` |
 | GET | `/api/ai-analytics/trends` | auth | Trends | `aiAnalytics.js` |
 | POST | `/calc/cotizar`, `/calc/cotizar/pdf`, … | calc routes | Math SoT for tools | `calcLoopbackClient.js` |
+| GET | `/api/paos/health` | public | Flags + ledger stats | `routes/paos.js` · prod 2026-07-26 |
+| GET | `/api/paos/flags` | requireUser | Flag mirror | `paosConfig.js` |
+| GET | `/api/paos/candidates` | requireUser | List Learning Candidates | `paosCandidates.js` |
+| POST | `/api/paos/candidates` | requireUser | Create candidate | same |
+| * | `/api/paos/*` promote/reject/rollback | superadmin preferred | HITL promote | `routes/paos.js` |
+| — | Full PAOS design | — | Child SDD | `docs/sdd/paos/` · [`paos-integration.md`](paos-integration.md) |
 
 ## Rate limits (CONFIRMED `agentChat.js:434-452`)
 
