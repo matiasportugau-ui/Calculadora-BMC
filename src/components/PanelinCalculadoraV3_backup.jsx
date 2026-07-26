@@ -2937,6 +2937,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     authHeader: panelinChatAuthHeader,
     onOpenDetachedWindow: openDetachedChatWindow,
     onOpenPinnedWindow: openPinnedChatWindow,
+    aiProvider: chat.aiProvider,
+    aiModel: chat.aiModel,
+    aiOptions: chat.aiOptions,
+    aiOptionsError: chat.aiOptionsError,
+    setAiPick: chat.setAiPick,
   }), [
     chat.messages,
     chat.isStreaming,
@@ -2969,6 +2974,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     panelinChatAuthHeader,
     openDetachedChatWindow,
     openPinnedChatWindow,
+    chat.aiProvider,
+    chat.aiModel,
+    chat.aiOptions,
+    chat.aiOptionsError,
+    chat.setAiPick,
   ]);
 
   // Section refs for auto-scroll
