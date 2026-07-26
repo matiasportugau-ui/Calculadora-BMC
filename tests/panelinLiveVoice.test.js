@@ -132,7 +132,8 @@ assert(
 );
 assert(sess.json?.provider === "openai" || sess.json?.voice_provider === "openai", "default provider openai");
 assert(
-  typeof sess.json?.realtime_base === "string" && sess.json.realtime_base.includes("openai.com"),
+  typeof sess.json?.realtime_base === "string" &&
+    new URL(sess.json.realtime_base).hostname === "api.openai.com",
   "default realtime_base is OpenAI",
 );
 assert(sess.json?.session_bootstrap == null, "OpenAI path has no session_bootstrap");
@@ -148,7 +149,8 @@ assert(
   "POST voice/session aiProvider=grok → xAI client_secret",
 );
 assert(
-  grokSess.json?.provider === "grok" && String(grokSess.json?.realtime_base || "").includes("api.x.ai"),
+  grokSess.json?.provider === "grok" &&
+    new URL(String(grokSess.json?.realtime_base || "")).hostname === "api.x.ai",
   "Grok response has provider + xAI realtime_base",
 );
 assert(
@@ -157,7 +159,7 @@ assert(
   "Grok response includes session_bootstrap (instructions + tools)",
 );
 assert(
-  String(lastMintUrl || "").includes("api.x.ai"),
+  new URL(String(lastMintUrl || "http://invalid.local")).hostname === "api.x.ai",
   "Grok mint hits api.x.ai client_secrets",
 );
 
