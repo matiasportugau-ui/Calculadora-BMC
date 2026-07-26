@@ -134,16 +134,36 @@ export async function checkAllAssistants(opts = {}) {
   const assistants = await Promise.all(
     listAssistants().map((a) => checkAssistant(a.key, opts)),
   );
+
+  // Compose live readiness (format + probe cache). Force only when ?deep=1 on status route.
+  let readinessSnippet = null;
+  let readyIds = [];
+  try {
+    const { getAggregateReadiness } = await import("./providerReadiness.js");
+    const agg = await getAggregateReadiness({ force: !!opts.force });
+    readyIds = agg.readyIds || agg.providers.filter((p) => p.state === "ready").map((p) => p.id);
+    readinessSnippet = {
+      ready: agg.ready,
+      light: agg.light,
+      activeProvider: agg.activeProvider,
+      providers: agg.providers,
+    };
+  } catch {
+    readinessSnippet = null;
+  }
+
   return {
     generatedAt: new Date(nowMs()).toISOString(),
     active: config.assistantsActive,
     providers: {
       available: getAvailableProviders(),
+      ready: readyIds,
       chain: getProviderChain(),
       order: DEFAULT_PROVIDER_ORDER,
       // Real liveness per provider (cooldown + last failure reason) so the panel
       // can show WHY the primary isn't serving, not just an optimistic badge.
       cooldowns: getProviderCooldownState(),
+      readiness: readinessSnippet,
     },
     assistants,
   };

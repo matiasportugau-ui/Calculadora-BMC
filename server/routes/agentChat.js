@@ -64,6 +64,7 @@ import {
   PROVIDER_LABELS as CENTRAL_PROVIDER_LABELS,
   resolveModel as centralResolveModel,
   buildAiOptionsResponse,
+  buildAiOptionsResponseWithReadiness,
   estimateCostUSD,
 } from "../lib/aiProviderConfig.js";
 import {
@@ -159,10 +160,16 @@ function modelsForProviderUi(provider, defaultModel) {
 }
 
 /** GET /api/agent/ai-options — which providers/models the server can use (no secrets). */
-router.get("/agent/ai-options", (_req, res) => {
-  // Now powered by the central config for consistency across the entire AI stack
-  const response = buildAiOptionsResponse();
-  res.json(response);
+router.get("/agent/ai-options", async (_req, res) => {
+  // Cache-first readiness only. Never honor ?deep= on this public endpoint —
+  // force probes hit every LLM provider with real API calls (cost amplification).
+  // Admins re-probe via POST /api/agent/providers/probe.
+  try {
+    const response = await buildAiOptionsResponseWithReadiness({ forceProbe: false });
+    res.json(response);
+  } catch {
+    res.json(buildAiOptionsResponse());
+  }
 });
 
 /**

@@ -206,6 +206,8 @@ export function useChat({
   const [{ aiProvider, aiModel }, setAiSelectionState] = useState(loadAiSelection);
   const [aiOptions, setAiOptions] = useState(null);
   const [aiOptionsError, setAiOptionsError] = useState(null);
+  /** Aggregate readiness from ai-options envelope (lights without separate poll). */
+  const aiReadiness = aiOptions?.readiness || null;
   /** Mirrors server `PANELIN_RELAX_DEV_AUTH` (see GET /capabilities `panelin_relax_dev_auth`). */
   const [relaxDevAuth, setRelaxDevAuth] = useState(false);
   const abortRef = useRef(null);
@@ -873,6 +875,8 @@ export function useChat({
     setAiSelection,
     aiOptions,
     aiOptionsError,
+    /** { ready, light, activeProvider } from server readiness probes */
+    aiReadiness,
     relaxDevAuth,
     send,
     stop,

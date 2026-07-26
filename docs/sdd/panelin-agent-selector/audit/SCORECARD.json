@@ -1,0 +1,72 @@
+{
+  "generated_at": "2026-07-26T06:00:00.000Z",
+  "iteration": 1,
+  "system_slug": "panelin-agent-selector",
+  "sdd_path": "docs/sdd/panelin-agent-selector/SDD.md",
+  "sdd_version": "1.1",
+  "prior_composite": 86,
+  "composite": 93,
+  "delta": 7,
+  "min_pass": 90,
+  "pass": true,
+  "label": "Pass (expert-complete)",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 95,
+      "weighted": 14.25,
+      "notes": ["§§1–12 intact", "SMART-ish metrics on goals", "status Accepted"]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 94,
+      "weighted": 14.1,
+      "notes": ["L1+L2+sequences", "L3 C4Component added §6.1b", "parent wire map"]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 94,
+      "weighted": 18.8,
+      "notes": [
+        "RECREATION-CHECKLIST.md present",
+        "All PanelinChatPanel call sites listed with props",
+        "resolveRealtimeModel deterministic algorithm",
+        "STORAGE_AI key cited useChat.js:7"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 94,
+      "weighted": 14.1,
+      "notes": ["Exact lines for voice 174/220/240/334, config:120, STORAGE_AI:7, mounts"]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 92,
+      "weighted": 9.2,
+      "notes": ["Full voice map + allowlist + L3 component diagram"]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 92,
+      "weighted": 9.2,
+      "notes": ["§9.5 observability events", "§9.6 perf", "§9.7 sustainability"]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 94,
+      "weighted": 9.4,
+      "notes": ["ADR-003 alternatives expanded"]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 95,
+      "weighted": 4.75,
+      "notes": ["v1.1, checklist pointer, evolution note in frontmatter"]
+    }
+  },
+  "gaps_closed_this_iteration": ["G-01", "G-02", "G-03", "G-04", "G-05", "G-06", "G-07", "G-08", "G-09"],
+  "remaining_p0": 0,
+  "remaining_p1": 0,
+  "remaining_p2": 0
+}

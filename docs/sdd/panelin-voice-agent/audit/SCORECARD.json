@@ -1,0 +1,110 @@
+{
+  "generated_at": "2026-07-26T06:15:00.000Z",
+  "system_slug": "panelin-voice-agent",
+  "system_name": "Panelin Voice Agent (As-Built + Improvement Ladder)",
+  "sdd_path": "docs/sdd/panelin-voice-agent/SDD.md",
+  "sdd_version": "1.0",
+  "sdd_status": "As-Built Draft",
+  "composite": 91,
+  "min_pass": 90,
+  "pass": true,
+  "label": "Pass (expert-complete)",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 95,
+      "weighted": 14.25,
+      "notes": [
+        "Frontmatter complete; status As-Built Draft valid",
+        "§§1–12 present with contract names",
+        "Goals include metrics; appendices A–C strong",
+        "No TBD placeholders"
+      ]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 92,
+      "weighted": 13.8,
+      "notes": [
+        "C4Context dual-stack actors correct",
+        "C4Container as-built + target",
+        "Three sequence diagrams (HF, Live, hybrid target)",
+        "No C4Component L3 for HF vs Realtime internals"
+      ]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 88,
+      "weighted": 17.6,
+      "notes": [
+        "Dual-stack explained well enough to navigate codebase",
+        "Tier ladder actionable as roadmap",
+        "RECREATION-CHECKLIST + evidence/inventory present",
+        "Gap: Tier 2 tool-bridge interface (function signatures, file targets) still high-level",
+        "Gap: full VALID_ACTION_TYPES list not enumerated in SDD"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 91,
+      "weighted": 13.65,
+      "notes": [
+        "CONFIRMED tags throughout; Appendix A index",
+        "Auditor verified wake helpers, VALID_ACTION_TYPES, buildVoiceSystemPrompt, voiceSupport split",
+        "Some line refs use ranges (65+, 286+) rather than exact exclusive lines"
+      ]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 94,
+      "weighted": 9.4,
+      "notes": [
+        "Capability matrix HF vs Live excellent",
+        "Target brain/transport separation clear",
+        "Cost model for mode choice",
+        "N/A multi-provider Realtime justified"
+      ]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 91,
+      "weighted": 9.1,
+      "notes": [
+        "Security ephemeral keys, reliability dual path, perf targets, obs events, cost/sustainability, UX clarity"
+      ]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 90,
+      "weighted": 9.0,
+      "notes": [
+        "Four ADRs with alternatives; mix Accepted/Proposed appropriate for as-built+target",
+        "ADR-001 is the strategic pivot (keep transports, unify brain)"
+      ]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 95,
+      "weighted": 4.75,
+      "notes": [
+        "version, status, glossary, risks, sprints S1–S3, TARGET.md, checklist"
+      ]
+    }
+  },
+  "schema_checklist": {
+    "frontmatter_complete": true,
+    "sections_1_to_12": true,
+    "c4_context": true,
+    "c4_container": true,
+    "sequence_diagram": true,
+    "c4_component": false,
+    "no_placeholders": true,
+    "adrs": true,
+    "risks": true,
+    "recreation_checklist": true,
+    "evidence_inventory": true
+  },
+  "p0_count": 0,
+  "p1_count": 2,
+  "p2_count": 3
+}
