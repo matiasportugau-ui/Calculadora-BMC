@@ -184,8 +184,19 @@ router.get("/agent/tool-stats", async (req, res) => {
  * GET /api/agent/obs-summary — IMP-06 hub $ + IMP-12 p50/p95 latency (memory ring).
  * Query: windowMinutes (default 1440). Not multi-instance durable.
  * Auth: same as other agent admin ops (API_AUTH_TOKEN / relax-dev).
+ * Rate limit: CodeQL requires limiter on authorized routes (token brute-force / poll DoS).
  */
-router.get("/agent/obs-summary", requireDevModeAuthMiddleware, (req, res) => {
+const obsSummaryLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Default IP key (mirrors assistantsStatus readLimiter). Placed before auth so
+  // unauthenticated token probes are throttled too.
+  message: { ok: false, error: "Demasiadas consultas de obs-summary. Esperá un momento." },
+});
+
+router.get("/agent/obs-summary", obsSummaryLimiter, requireDevModeAuthMiddleware, (req, res) => {
   const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
   try {
     const summary = getObsSummary({ windowMs: minutes * 60 * 1000 });

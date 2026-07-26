@@ -6,6 +6,7 @@ import {
   recordObsSample,
   getObsSummary,
   percentile,
+  sanitizeProviderKey,
   __obsRingTest,
 } from "../server/lib/agentObsRing.js";
 
@@ -49,6 +50,19 @@ recordObsSample({ kind: "cost", provider: "claude", estimated_cost_usd: 0.05, la
 const s2 = getObsSummary({ windowMs: 60_000 });
 assert.equal(s2.cost.count_with_cost, 1);
 assert.ok(Math.abs(s2.cost.sum_usd - 0.05) < 1e-9);
+
+// Prototype-pollution keys must not mutate Object.prototype when summarizing.
+assert.equal(sanitizeProviderKey("__proto__"), "unknown");
+assert.equal(sanitizeProviderKey("constructor"), "unknown");
+ringCtl.reset();
+recordObsSample({ kind: "cost", provider: "__proto__", estimated_cost_usd: 1, latency_ms: 10 });
+recordObsSample({ kind: "cost", provider: "constructor", estimated_cost_usd: 2, latency_ms: 20 });
+recordObsSample({ kind: "cost", provider: "claude", estimated_cost_usd: 0.01, latency_ms: 30 });
+const s3 = getObsSummary({ windowMs: 60_000 });
+assert.equal(s3.by_provider.unknown?.count, 2);
+assert.equal(s3.by_provider.claude?.count, 1);
+assert.equal(Object.prototype.count, undefined);
+assert.equal(Object.prototype.cost_usd, undefined);
 
 ringCtl.reset();
 console.log("agentObsRing.test.js: ok");
