@@ -4,6 +4,8 @@
 
 **Summary:** Code pack closed hub cost+p95 (`obs-summary`), tool tiers, prompts_sha, hybrid RAG (flag OFF). Remaining is **ops/human**: RAG prod enable credentials, multi-day p95 across revisions, Training KB prod sync ritual, promptfoo optional pack.
 
+**P0:** None open (zero open **P0**). All residual is P2 ops/process.
+
 ## Closed this glory/goal pass (2026-07-26)
 
 | ID | Item | Resolution |

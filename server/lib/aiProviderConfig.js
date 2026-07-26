@@ -12,6 +12,7 @@
  */
 
 import { config } from "../config.js";
+import { isUsableApiKey } from "./apiKeyUtils.js";
 
 // ─── Provider identifiers (internal canonical names) ──────────────────────────
 export const PROVIDERS = ["claude", "openai", "grok", "gemini", "openrouter"];
@@ -112,16 +113,24 @@ export const DEFAULT_PROVIDER_ORDER = ["claude", "grok", "gemini", "openai", "op
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
 /**
+ * Return the provider API key only if it looks usable (non-empty, not a
+ * .env.example placeholder). Callers that need "is this provider configured?"
+ * should use truthiness of this value — empty/placeholder keys surface as "".
+ *
  * @param {Provider} provider
+ * @returns {string}
  */
 export function getApiKey(provider) {
+  let key = "";
   switch (provider) {
-    case "claude": return config.anthropicApiKey;
-    case "openai": return config.openaiApiKey;
-    case "grok": return config.grokApiKey;
-    case "gemini": return config.geminiApiKey;
-    case "openrouter": return config.openrouterApiKey;
+    case "claude": key = config.anthropicApiKey; break;
+    case "openai": key = config.openaiApiKey; break;
+    case "grok": key = config.grokApiKey; break;
+    case "gemini": key = config.geminiApiKey; break;
+    case "openrouter": key = config.openrouterApiKey; break;
+    default: return "";
   }
+  return isUsableApiKey(key) ? String(key).trim() : "";
 }
 
 /**
@@ -207,6 +216,62 @@ export function buildAiOptionsResponse() {
     autoOrder: getProviderChain().filter((p) => keys[p]),
     providers,
   };
+}
+
+/**
+ * Async ai-options with readiness envelope + optional live filter (SDD Phase B).
+ * Uses cache-first aggregate (probes only on cold cache / forceProbe).
+ * @param {{ forceProbe?: boolean }} [opts]
+ */
+export async function buildAiOptionsResponseWithReadiness(opts = {}) {
+  const base = buildAiOptionsResponse();
+  try {
+    const { getAggregateReadiness, filterProvidersForPicker, aiOptionsRequireLive } =
+      await import("./providerReadiness.js");
+    // Public ai-options: probe when cache cold so lights populate; TTL prevents thrash.
+    const agg = await getAggregateReadiness({ force: !!opts.forceProbe });
+    const readiness = {
+      ready: agg.ready,
+      light: agg.light,
+      activeProvider: agg.activeProvider,
+    };
+
+    const annotate = (list) =>
+      list.map((p) => {
+        const row = agg.providers.find((r) => r.id === p.id);
+        return {
+          ...p,
+          light: row?.light || "gray",
+          state: row?.state || "unknown",
+          reasonCode: row?.reasonCode || null,
+          reason: row?.reason || null,
+        };
+      });
+
+    if (aiOptionsRequireLive()) {
+      const allowed = new Set(
+        filterProvidersForPicker(
+          agg.providers,
+          base.providers.map((p) => p.id),
+        ),
+      );
+      const providers = annotate(base.providers.filter((p) => allowed.has(p.id)));
+      const readyFirst = DEFAULT_PROVIDER_ORDER.filter((id) =>
+        providers.some((p) => p.id === id && p.state === "ready"),
+      );
+      const autoOrder = readyFirst.length
+        ? readyFirst
+        : base.autoOrder.filter((id) => allowed.has(id));
+      return { ...base, providers, autoOrder, readiness };
+    }
+
+    return { ...base, providers: annotate(base.providers), readiness };
+  } catch {
+    return {
+      ...base,
+      readiness: { ready: false, light: "gray", activeProvider: null },
+    };
+  }
 }
 
 // Used by auto-learn and other background jobs that want cheap + reliable extraction

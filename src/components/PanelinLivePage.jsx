@@ -23,6 +23,29 @@ import { usePanelinCharacterVoice } from "../hooks/usePanelinCharacterVoice.js";
 import { isBrowserSupported, isSafari } from "../hooks/voiceSupport.js";
 import { openFloatingPanelinLive } from "./panelin-live/detach.js";
 import PanelinLiveCharacter from "./PanelinLiveCharacter.jsx";
+import { resolveRealtimeModel } from "../utils/resolveRealtimeModel.js";
+
+/** Same key as useChat STORAGE_AI — shared chat/voice preference. */
+const STORAGE_AI = "panelin-chat-ai-selection-v1";
+
+function loadAiSelectionFromStorage() {
+  try {
+    const raw = typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_AI);
+    if (!raw) return { aiProvider: "auto", aiModel: "" };
+    const o = JSON.parse(raw);
+    const aiProvider =
+      o?.aiProvider === "claude" ||
+      o?.aiProvider === "openai" ||
+      o?.aiProvider === "grok" ||
+      o?.aiProvider === "gemini"
+        ? o.aiProvider
+        : "auto";
+    const aiModel = typeof o?.aiModel === "string" ? o.aiModel : "";
+    return { aiProvider, aiModel };
+  } catch {
+    return { aiProvider: "auto", aiModel: "" };
+  }
+}
 
 const CONSULTA_MAX = 800;
 
@@ -162,10 +185,20 @@ export default function PanelinLivePage() {
 
   const handleError = useCallback((msg) => setVoiceError(msg), []);
 
+  // Shared with chat selector (localStorage panelin-chat-ai-selection-v1)
+  const aiSel = useMemo(() => loadAiSelectionFromStorage(), []);
+  const realtimeModel = useMemo(
+    () => resolveRealtimeModel(aiSel.aiProvider, aiSel.aiModel),
+    [aiSel.aiProvider, aiSel.aiModel],
+  );
+
   const { status, isListening, remoteVuLevel, emotion, start, stop } = usePanelinCharacterVoice({
     authHeader: accessToken ? `Bearer ${accessToken}` : undefined,
     leadContext,
     onError: handleError,
+    realtimeModel,
+    aiProvider: aiSel.aiProvider,
+    aiModel: aiSel.aiModel,
   });
 
   const handleGestureStart = useCallback(() => {
