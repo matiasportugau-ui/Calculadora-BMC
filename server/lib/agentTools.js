@@ -701,7 +701,7 @@ export const AGENT_TOOLS = [
     description:
       "Crea una fila nueva en Admin 2.0 para un lead (WhatsApp u otro canal) cuando NO existe fila. " +
       "Pasá consulta (obligatorio), telefono, cliente, origen (WA/CL/LL/LO/FB/IG), zona, campos_faltantes. " +
-      "REQUIERE user_confirmed=true (ej. cargalo en Admin / creá la consulta / guardalo en Wolfboard).",
+      "REQUIERE user_confirmed=true (ej. cargalo en Admin / creá la consulta en Admin / guardalo en Wolfboard).",
     input_schema: {
       type: "object",
       properties: {

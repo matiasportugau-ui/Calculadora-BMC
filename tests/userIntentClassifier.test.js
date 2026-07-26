@@ -127,10 +127,23 @@ group("INTENT_HINTS covers every guarded tool", () => {
 
 group("email_enviar + wa_lead_to_admin triggers", () => {
   assert(classifyIntents("enviá el correo").has("email_enviar"), "enviá el correo");
-  assert(classifyIntents("sí envialo").has("email_enviar"), "sí envialo");
+  assert(classifyIntents("sí enviá el mail").has("email_enviar"), "sí enviá el mail");
   assert(classifyIntents("mandá el mail").has("email_enviar"), "mandá el mail");
+  assert(classifyIntents("confirmá el envío del correo").has("email_enviar"), "confirmá envío correo");
   assert(classifyIntents("cargalo al Admin").has("wa_lead_to_admin"), "cargalo al Admin");
-  assert(classifyIntents("creá la consulta").has("wa_lead_to_admin"), "creá la consulta");
+  assert(classifyIntents("creá la consulta en Admin").has("wa_lead_to_admin"), "creá la consulta en Admin");
+  assert(classifyIntents("guardalo en Admin").has("wa_lead_to_admin"), "guardalo en Admin");
+});
+
+group("HITL — generic send / calc phrases must NOT unlock email or Admin write", () => {
+  assert(!classifyIntents("sí envialo").has("email_enviar"), "bare sí envialo");
+  assert(!classifyIntents("envialo ya").has("email_enviar"), "bare envialo ya");
+  assert(!classifyIntents("confirma el envio").has("email_enviar"), "bare confirma el envio");
+  assert(!classifyIntents("enviar respuesta").has("email_enviar"), "enviar respuesta");
+  assert(!classifyIntents("envía respuesta al cliente").has("email_enviar"), "envía respuesta al cliente");
+  assert(!classifyIntents("creá la consulta").has("wa_lead_to_admin"), "bare creá la consulta");
+  assert(!classifyIntents("crear la consulta de techo").has("wa_lead_to_admin"), "crear la consulta de techo");
+  assert(!classifyIntents("crea la fila").has("wa_lead_to_admin"), "crea la fila without Admin");
 });
 
 group("TOOL_INTENT_PATTERNS sanity", () => {
