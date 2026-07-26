@@ -903,34 +903,12 @@ export default function PanelinChatPanel({
             isSpeaking={isTtsSpeaking}
             isThinking={isStreaming && !isTtsSpeaking}
           />
+          {/* Title only here — IA selector lives in full-width strip below so floating
+              windows never collapse it under the action buttons. */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>Panelin</div>
             <div style={{ fontSize: 11, opacity: 0.7 }}>
               Asistente BMC Uruguay{devMode ? " · Developer Mode" : ""}
-            </div>
-            <div style={{ marginTop: 4, opacity: 0.95 }} data-no-drag>
-              <ProviderStatusLights
-                readiness={providerReadiness}
-                compact
-                onRefresh={() => refreshReadiness({ deep: true })}
-                style={{ color: HEADER_TEXT_COLOR }}
-              />
-              {typeof setAiPick === "function" ? (
-                <AgentModelSelector
-                  aiProvider={aiProvider}
-                  aiModel={aiModel}
-                  aiOptions={aiOptions}
-                  setAiPick={setAiPick}
-                  readiness={providerReadiness}
-                  disabled={isStreaming}
-                  tone="dark"
-                />
-              ) : null}
-              {aiOptionsError ? (
-                <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>
-                  Modelos: {String(aiOptionsError).slice(0, 60)}
-                </div>
-              ) : null}
             </div>
           </div>
           {embeddedMode && !floatingMode && onRequestFloating && (
@@ -1113,6 +1091,41 @@ export default function PanelinChatPanel({
           >
             <X size={18} />
           </button>
+        </div>
+
+        {/* Full-width IA strip: always visible in floating/sidebar/detached chat */}
+        <div
+          data-no-drag
+          style={{
+            flexShrink: 0,
+            background: BRAND_COLOR,
+            color: HEADER_TEXT_COLOR,
+            borderTop: "1px solid rgba(255,255,255,0.12)",
+            padding: "6px 12px 8px",
+          }}
+        >
+          <ProviderStatusLights
+            readiness={providerReadiness}
+            compact
+            onRefresh={() => refreshReadiness({ deep: true })}
+            style={{ color: HEADER_TEXT_COLOR }}
+          />
+          {typeof setAiPick === "function" ? (
+            <AgentModelSelector
+              aiProvider={aiProvider}
+              aiModel={aiModel}
+              aiOptions={aiOptions}
+              setAiPick={setAiPick}
+              readiness={providerReadiness}
+              disabled={isStreaming}
+              tone="dark"
+            />
+          ) : null}
+          {aiOptionsError ? (
+            <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>
+              Modelos: {String(aiOptionsError).slice(0, 60)}
+            </div>
+          ) : null}
         </div>
 
         {/* ── Voice Mode — panel stays mounted; the WebRTC session is torn down when voiceMode flips off ── */}
