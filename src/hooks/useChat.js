@@ -2,9 +2,12 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { apiGet } from "../utils/apiClient.js";
 import { mapErrorMessage } from "../utils/chatErrors.js";
+import {
+  loadPanelinAiSelection,
+  savePanelinAiSelection,
+} from "../utils/panelinAiSelection.js";
 
 const STORAGE_KEY = "panelin-chat-history";
-const STORAGE_AI = "panelin-chat-ai-selection-v1";
 const STORAGE_CONV_ID = "panelin-conversation-id";
 const ALLOWED_AI_PROVIDERS = new Set(["claude", "openai", "grok", "gemini"]);
 const MAX_STORED = 40; // keep last 40 messages in localStorage
@@ -39,26 +42,11 @@ function freshConversationId() {
 }
 
 function loadAiSelection() {
-  try {
-    const raw = typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_AI);
-    if (!raw) return { aiProvider: "auto", aiModel: "" };
-    const o = JSON.parse(raw);
-    const aiProvider = o?.aiProvider === "claude" || o?.aiProvider === "openai" || o?.aiProvider === "grok" || o?.aiProvider === "gemini"
-      ? o.aiProvider
-      : "auto";
-    const aiModel = typeof o?.aiModel === "string" ? o.aiModel : "";
-    return { aiProvider, aiModel };
-  } catch {
-    return { aiProvider: "auto", aiModel: "" };
-  }
+  return loadPanelinAiSelection();
 }
 
 function saveAiSelection(sel) {
-  try {
-    localStorage.setItem(STORAGE_AI, JSON.stringify(sel));
-  } catch {
-    // ignore
-  }
+  return savePanelinAiSelection(sel);
 }
 
 function loadHistory() {

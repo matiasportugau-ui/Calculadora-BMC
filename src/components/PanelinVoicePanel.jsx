@@ -21,6 +21,12 @@ import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { useHandsFreeVoice } from "../hooks/useHandsFreeVoice.js";
 import { useDictation } from "../hooks/useDictation.js";
 import { isHandsFreeSupported, canUseWhisperVoice } from "../hooks/voiceSupport.js";
+import {
+  PANELIN_AI_EVENT,
+  resolveEffectiveAiPick,
+  formatAiChatModelLabel,
+  loadPanelinAiSelection,
+} from "../utils/panelinAiSelection.js";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -301,10 +307,28 @@ export default function PanelinVoicePanel({
   const PRIMARY = skinTokens?.primary || "#0071e3";
   const [voiceError, setVoiceError] = useState(null);
   const transcriptEndRef = useRef(null);
-  const chatModelLabel =
-    !aiProvider || aiProvider === "auto"
-      ? "Auto (cadena del servidor)"
-      : `${aiProvider}${aiModel ? ` / ${aiModel}` : ""}`;
+  // Keep label in sync with header selector (props can lag; storage is SoT with send()).
+  const [storedPick, setStoredPick] = useState(() => loadPanelinAiSelection());
+  useEffect(() => {
+    const sync = () => setStoredPick(loadPanelinAiSelection());
+    window.addEventListener(PANELIN_AI_EVENT, sync);
+    window.addEventListener("storage", sync);
+    sync();
+    return () => {
+      window.removeEventListener(PANELIN_AI_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  const effective = resolveEffectiveAiPick(
+    aiProvider && aiProvider !== "auto" ? aiProvider : storedPick.aiProvider,
+    aiProvider && aiProvider !== "auto" ? aiModel : storedPick.aiModel,
+  );
+  // Props win when parent passes an explicit non-auto provider
+  const pick =
+    aiProvider && aiProvider !== "auto"
+      ? { aiProvider, aiModel: aiModel || "" }
+      : effective;
+  const chatModelLabel = formatAiChatModelLabel(pick.aiProvider, pick.aiModel);
 
   const handleError = useCallback((msg) => setVoiceError(msg), []);
 
@@ -435,11 +459,13 @@ export default function PanelinVoicePanel({
           title={realtimeModel || undefined}
         >
           Respuestas con modelo de chat: <strong>{chatModelLabel}</strong>
-          {aiProvider === "grok"
+          {pick.aiProvider === "grok"
             ? " · Live full-duplex en /panelin/live usa Grok Voice Agent"
-            : aiProvider && aiProvider !== "openai" && aiProvider !== "auto"
+            : pick.aiProvider && pick.aiProvider !== "openai" && pick.aiProvider !== "auto"
               ? " · Live full-duplex en /panelin/live usa OpenAI Realtime"
-              : ""}
+              : pick.aiProvider === "auto"
+                ? " · Elegí Grok en el selector del header (o IA del chat) para fijar el motor"
+                : ""}
         </p>
         {transcript.length === 0 && (
           <p style={{ color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 16 }}>
