@@ -59,6 +59,14 @@ export function percentile(values, p) {
   return sorted[idx];
 }
 
+/** Reject prototype-pollution keys; keep provider labels alphanumeric-ish. */
+export function sanitizeProviderKey(provider) {
+  const raw = provider == null ? "unknown" : String(provider);
+  const k = raw.replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 48) || "unknown";
+  if (k === "__proto__" || k === "constructor" || k === "prototype") return "unknown";
+  return k;
+}
+
 /**
  * @param {{ windowMs?: number }} [opts]
  */
@@ -75,12 +83,11 @@ export function getObsSummary(opts = {}) {
     .map((r) => r.ttft_ms)
     .filter((n) => n != null && Number.isFinite(n) && n >= 0);
 
-  // Aggregate via Map (not dynamic object props from raw strings) — CodeQL-safe.
+  // Aggregate via Map + null-prototype result (not `obj[userKey] = …` on {}) — CodeQL-safe.
   /** @type {Map<string, {count:number, cost_usd:number, latency_samples:number[]}>} */
   const byProvider = new Map();
   for (const r of rows) {
-    const raw = r.provider == null ? "unknown" : String(r.provider);
-    const k = raw.replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 48) || "unknown";
+    const k = sanitizeProviderKey(r.provider);
     let bucket = byProvider.get(k);
     if (!bucket) {
       bucket = { count: 0, cost_usd: 0, latency_samples: [] };
