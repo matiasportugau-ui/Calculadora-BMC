@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-26 (fix — obs-summary CodeQL):** `GET /api/agent/obs-summary` mounts `obsSummaryLimiter` (60/min) before auth — closes CodeQL `js/missing-rate-limiting` left open when #783 merged. `sanitizeProviderKey` rejects `__proto__`/`constructor`/`prototype`. Tests `obsSummaryRate` + agentObsRing pollution regression.
+
 **2026-07-26 (feat — agent platform IMP residual pack):** Hub **Costo & latencia** via `GET /api/agent/obs-summary` (auth-gated; memory ring cost Σ + p50/p95/ttft; multi-day still Cloud Logging). Tool tiers `tools-manifest?tier=` (IMP-14). `prompts_sha` boot + obs (IMP-13). Hybrid RAG fuse `RAG_HYBRID` default OFF (IMP-10). SDD platform v1.4 PAOS + glory; review fixes: no double-count cost, providerStatus import removed. PR #783.
 
 **2026-07-24 (prod — PAOS LIVE on panelin-calc):** PR [#777](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/777) on main. Cloud Run env `PAOS_ENABLED=1` `PAOS_PROMOTE=1` `PAOS_CANARY_PCT=0` `PAOS_LEDGER_RETENTION_DAYS=90`. **Root cause of health 404:** traffic pinned 100% to old rev `panelin-calc-00877-4b9` while PAOS images built as 00881–00886 (GHA deploy succeeded; post-deploy `smoke:prod` failed on `/api/crm/suggest-response` AI quota — did not block image, but traffic never moved). **Fix:** `gcloud run services update-traffic panelin-calc --to-latest` → **100% LATEST `panelin-calc-00886-g5f`**. **Verified:** `GET https://panelin-calc-q74zutv7dq-uc.a.run.app/api/paos/health` → **200** `{"ok":true,"paos":{"enabled":true,"promote":true,...}}`. Residual: GHA `smoke:prod` still red on AI keys (unrelated to PAOS); optional IMP-06..08.
