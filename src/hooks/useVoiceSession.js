@@ -13,10 +13,14 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import {
+  resolveSdpEndpoint,
+  DEFAULT_REALTIME_SDP_BASE,
+} from "../utils/resolveSdpEndpoint.js";
 
 const API_BASE = getCalcApiBase();
 
-const DEFAULT_REALTIME_BASE = "https://api.openai.com/v1/realtime";
+const DEFAULT_REALTIME_BASE = DEFAULT_REALTIME_SDP_BASE;
 
 export function useVoiceSession({
   onAction,
@@ -320,8 +324,10 @@ export function useVoiceSession({
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
-        const base = realtimeBaseRef.current || DEFAULT_REALTIME_BASE;
-        const sdpUrl = `${base}?model=${encodeURIComponent(modelRef.current || "")}`;
+        const sdpUrl = resolveSdpEndpoint({
+          realtime_base: realtimeBaseRef.current || DEFAULT_REALTIME_BASE,
+          model: modelRef.current,
+        });
         const sdpRes = await fetch(sdpUrl, {
           method: "POST",
           headers: {
