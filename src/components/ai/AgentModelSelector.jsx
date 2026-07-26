@@ -91,15 +91,11 @@ export default function AgentModelSelector({
 
   const voiceNote = (() => {
     const p = String(aiProvider || "auto").toLowerCase();
-    if (p === "grok") return "Voz Live: Grok Voice Agent";
-    if (p === "openai" && aiModel && String(aiModel).includes("realtime")) {
-      return `Voz Live: ${aiModel}`;
-    }
-    if (p === "openai") return "Voz Live: OpenAI Realtime";
-    if (p === "claude" || p === "gemini") {
-      return "Voz Live: OpenAI Realtime (chat usa este modelo; Live = OpenAI)";
-    }
-    return "Voz Live: OpenAI Realtime (default)";
+    if (p === "grok") return "Voz en chat: Grok (decí «Panelin» y hablá)";
+    if (p === "openai") return "Voz en chat: OpenAI";
+    if (p === "claude") return "Voz en chat: Claude";
+    if (p === "gemini") return "Voz en chat: Gemini";
+    return "Voz en chat: Auto (mejor motor listo)";
   })();
 
   return (

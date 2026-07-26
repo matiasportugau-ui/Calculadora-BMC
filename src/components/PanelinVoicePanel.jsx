@@ -458,14 +458,10 @@ export default function PanelinVoicePanel({
           }}
           title={realtimeModel || undefined}
         >
-          Respuestas con modelo de chat: <strong>{chatModelLabel}</strong>
-          {pick.aiProvider === "grok"
-            ? " · Live full-duplex en /panelin/live usa Grok Voice Agent"
-            : pick.aiProvider && pick.aiProvider !== "openai" && pick.aiProvider !== "auto"
-              ? " · Live full-duplex en /panelin/live usa OpenAI Realtime"
-              : pick.aiProvider === "auto"
-                ? " · Elegí Grok en el selector del header (o IA del chat) para fijar el motor"
-                : ""}
+          Hablá con Panelin por acá (chat). Motor: <strong>{chatModelLabel}</strong>
+          {pick.aiProvider === "auto"
+            ? " · Elegí Grok (u otro) en el selector del header para fijar el motor"
+            : " · Decí «Panelin» y pedí lo que necesités"}
         </p>
         {transcript.length === 0 && (
           <p style={{ color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 16 }}>
