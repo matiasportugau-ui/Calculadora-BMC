@@ -58,7 +58,8 @@ const EMPTY_KEYS_CONFIG = {
 
 const FAKE_KEYS_CONFIG = {
   ...EMPTY_KEYS_CONFIG,
-  anthropicApiKey: "sk-ant-fake-test-key-not-real",
+  // Must pass isUsableApiKey (no …-test-… / placeholder tokens) but fail at the provider.
+  anthropicApiKey: "sk-ant-api03-" + "a".repeat(40),
 };
 
 async function run() {

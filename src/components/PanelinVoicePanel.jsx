@@ -294,10 +294,17 @@ export default function PanelinVoicePanel({
   voiceMode = true,
   send,
   messages = [],
+  aiProvider = "auto",
+  aiModel = "",
+  realtimeModel = "",
 }) {
   const PRIMARY = skinTokens?.primary || "#0071e3";
   const [voiceError, setVoiceError] = useState(null);
   const transcriptEndRef = useRef(null);
+  const chatModelLabel =
+    !aiProvider || aiProvider === "auto"
+      ? "Auto (cadena del servidor)"
+      : `${aiProvider}${aiModel ? ` / ${aiModel}` : ""}`;
 
   const handleError = useCallback((msg) => setVoiceError(msg), []);
 
@@ -417,8 +424,25 @@ export default function PanelinVoicePanel({
           gap: 8,
         }}
       >
+        <p
+          style={{
+            color: "#6e6e73",
+            fontSize: 11,
+            textAlign: "center",
+            margin: "0 0 8px",
+            lineHeight: 1.35,
+          }}
+          title={realtimeModel || undefined}
+        >
+          Respuestas con modelo de chat: <strong>{chatModelLabel}</strong>
+          {aiProvider === "grok"
+            ? " · Live full-duplex en /panelin/live usa Grok Voice Agent"
+            : aiProvider && aiProvider !== "openai" && aiProvider !== "auto"
+              ? " · Live full-duplex en /panelin/live usa OpenAI Realtime"
+              : ""}
+        </p>
         {transcript.length === 0 && (
-          <p style={{ color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 32 }}>
+          <p style={{ color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 16 }}>
             La transcripción aparecerá aquí mientras hablás.
           </p>
         )}

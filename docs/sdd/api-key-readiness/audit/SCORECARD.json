@@ -1,0 +1,126 @@
+{
+  "generated_at": "2026-07-24T20:45:00.000Z",
+  "iteration": 1,
+  "system_slug": "api-key-readiness",
+  "system_name": "API Key Readiness & Live Provider Lights",
+  "sdd_path": "docs/sdd/api-key-readiness/SDD.md",
+  "sdd_mirror": "docs/architecture/SDD-API-KEY-READINESS.md",
+  "sdd_version": "1.1",
+  "sdd_status": "Accepted",
+  "prior_composite": 76,
+  "composite": 92,
+  "delta": 16,
+  "min_pass": 90,
+  "pass": true,
+  "label": "Pass (expert-complete)",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 96,
+      "weighted": 14.4,
+      "notes": [
+        "Frontmatter complete; status=Accepted (kit enum)",
+        "Top-level §§1–12 match SCHEMA-CONTRACT names/order",
+        "§4 Solution Strategy elevated; §8 Deployment present",
+        "API/UX/Implementation moved to appendices C–D",
+        "No TBD placeholders"
+      ]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 92,
+      "weighted": 13.8,
+      "notes": [
+        "C4Context + C4Container + sequenceDiagram retained",
+        "Added C4Component L3 for ProviderReadiness internals",
+        "Actors match BMC (Vercel SPA, Cloud Run panelin-calc, Doppler/GSM)"
+      ]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 91,
+      "weighted": 18.2,
+      "notes": [
+        "Standalone RECREATION-CHECKLIST.md",
+        "Deploy: local Doppler, Cloud Run URL, secret names, new env vars",
+        "Auth/mount cites: index.js:1014/1048, requireServiceOrUser, useChat:225",
+        "Picker policy table AI_OPTIONS_REQUIRE_LIVE + openrouter",
+        "Phases A–D + file list remain actionable"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 90,
+      "weighted": 13.5,
+      "notes": [
+        "CONFIRMED/PROPOSED/INFERRED tags throughout",
+        "Appendix A Evidence Index with path:line (assistantHealth:10–12, smoke-prod base, mounts)",
+        "Proposed modules explicitly not claimed as shipped"
+      ]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 92,
+      "weighted": 9.2,
+      "notes": [
+        "Named §6 with N/A RAG/agent evidence + probe component table",
+        "Probe contracts, cost, fail-open, C4Component",
+        "Appropriate depth for readiness subsystem"
+      ]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 92,
+      "weighted": 9.2,
+      "notes": [
+        "Security, reliability, perf, obs, cost, sustainability all present"
+      ]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 92,
+      "weighted": 9.2,
+      "notes": [
+        "Five ADRs with Alternatives considered on each",
+        "Status Accepted; real product trade-offs"
+      ]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 95,
+      "weighted": 4.75,
+      "notes": [
+        "version 1.1, date, Accepted, glossary expanded, risks, checklist pointer"
+      ]
+    }
+  },
+  "schema_checklist": {
+    "frontmatter_complete": true,
+    "section_1_intro": true,
+    "section_2_context_scope": true,
+    "section_3_constraints": true,
+    "section_4_solution_strategy": true,
+    "section_5_container": true,
+    "section_6_ai_architecture": true,
+    "section_7_data_flow": true,
+    "section_8_deployment": true,
+    "section_9_crosscutting": true,
+    "section_10_adrs": true,
+    "section_11_risks": true,
+    "section_12_glossary": true,
+    "c4_context": true,
+    "c4_container": true,
+    "c4_component": true,
+    "sequence_diagram": true,
+    "no_placeholder_tokens": true,
+    "adr_with_alternatives": true,
+    "risks_table": true,
+    "recreation_checklist_artifact": true
+  },
+  "gaps_closed_this_iteration": [
+    "G-01", "G-02", "G-03", "G-04", "G-05", "G-06", "G-07", "G-08", "G-09", "G-10", "G-11", "G-12"
+  ],
+  "remaining_p0": 0,
+  "remaining_p1": 0,
+  "remaining_p2": 0
+}
