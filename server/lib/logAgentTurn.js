@@ -5,6 +5,7 @@
  * queries. Cost-specific sinks still use costTelemetry.logAgentCost; this is
  * the turn-level parity envelope.
  */
+import { recordObsSample } from "./agentObsRing.js";
 
 /**
  * @typedef {object} AgentTurnEvent
@@ -82,6 +83,20 @@ export function logAgentTurn(partial, logger = null) {
     logger.info(payload, payload.event);
   } else {
     console.log(JSON.stringify(payload));
+  }
+  try {
+    recordObsSample({
+      kind: "turn",
+      provider: payload.provider,
+      model: payload.model,
+      channel: payload.channel,
+      estimated_cost_usd: payload.estimated_cost_usd,
+      latency_ms: payload.latency_ms,
+      ttft_ms: partial.ttft_ms ?? null,
+      source: payload.source,
+    });
+  } catch {
+    /* never break caller */
   }
   return payload;
 }

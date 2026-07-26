@@ -2,6 +2,7 @@
  * Cost telemetry for agent / completion calls.
  * Closes the agentCore "cost-telemetry module" TODO with a single structured sink.
  */
+import { recordObsSample } from "./agentObsRing.js";
 
 /**
  * @typedef {object} CostEvent
@@ -49,6 +50,19 @@ export function logAgentCost(partial, logger = null) {
   } else {
     // Structured single-line JSON — same shape agentCore used before.
     console.log(JSON.stringify(payload));
+  }
+  try {
+    recordObsSample({
+      kind: "cost",
+      provider: payload.provider,
+      model: payload.model,
+      channel: payload.channel,
+      estimated_cost_usd: payload.estimated_cost_usd,
+      latency_ms: payload.latency_ms,
+      source: payload.source,
+    });
+  } catch {
+    /* never break caller */
   }
   return payload;
 }

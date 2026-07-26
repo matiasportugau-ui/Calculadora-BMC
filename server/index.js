@@ -92,6 +92,7 @@ import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
 import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
+import createProviderStatusRouter from "./routes/providerStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
 import { handleMetaMessagingWebhook, verifyMetaWebhookSubscribe } from "./lib/omni/metaWebhookHandler.js";
@@ -1012,6 +1013,8 @@ app.use(quoteExportRouter);
 // ── AI Assistant control plane ──────────────────────────────────────────────
 // Status/health aggregate (admin-gated). Never gated by the master switch.
 app.use("/api", createAssistantsStatusRouter());
+// Provider readiness lights (format + live probe). Operator-readable; force probe is admin.
+app.use("/api", createProviderStatusRouter());
 // Master-switch gates. Registered BEFORE their channel routers so they run first,
 // and mounted ONLY on the AI-GENERATION paths — inbound ingest/webhooks stay open
 // so a disabled assistant keeps receiving (no lost messages), just stops answering.
@@ -1264,6 +1267,13 @@ let stopOmniSnoozeWorker = () => {};
 let stopOmniSequenceWorker = () => {};
 
 const server = app.listen(config.port, async () => {
+  try {
+    const { getPromptsShaCached } = await import("./lib/promptsSha.js");
+    const ps = getPromptsShaCached();
+    console.log(JSON.stringify({ event: "prompts_sha_boot", ...ps }));
+  } catch {
+    /* non-fatal */
+  }
   logger.info(
     {
       port: config.port,

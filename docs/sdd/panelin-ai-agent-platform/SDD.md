@@ -1,7 +1,7 @@
 ---
 title: System Design Document — Panelin AI Agent Platform
-version: 1.3
-date: 2026-07-24
+version: 1.4
+date: 2026-07-26
 status: As-Built
 author: sdd-reverse-engineer
 source: reverse-engineering
@@ -9,8 +9,9 @@ target_path: /Users/matias/calculadora-bmc
 companion_skill: sdd-architect@compatible
 system_slug: panelin-ai-agent-platform
 related_slug: panelin-chat-agent
-refreshed: 2026-07-24
-evolution: "post IMP-02/04/08/09 #772; development-glory re-score"
+related_slug_paos: paos
+refreshed: 2026-07-26
+evolution: "v1.4 PAOS integration G-P1-05; post IMP-02/04/08/09 #772; live probe 2026-07-26"
 ---
 
 # System Design Document: Panelin AI Agent Platform
@@ -18,6 +19,7 @@ evolution: "post IMP-02/04/08/09 #772; development-glory re-score"
 > Recreation-grade as-built of the **full AI agent development surface** inside Calculadora BMC.  
 > Evidence tags: **CONFIRMED** | **INFERRED** | **UNKNOWN**.  
 > Child slice (chat/voice UI): [`../panelin-chat-agent/SDD.md`](../panelin-chat-agent/SDD.md).  
+> Supervised learning loop (PAOS): [`../paos/SDD.md`](../paos/SDD.md) — detail Spec; this SDD owns the **platform integration surface**.  
 > Actual vs goal + build TODOs: [`evidence/actual-vs-goal.md`](evidence/actual-vs-goal.md), [`IMPLEMENTATION-GUIDE.md`](IMPLEMENTATION-GUIDE.md).
 
 ## 1. Introduction & Goals
@@ -36,7 +38,8 @@ BMC Uruguay needs a Spanish-first commercial AI that quotes insulation panels (U
 | G4 | Human gates on write tools (confirm + auth) | High | CONFIRMED done |
 | G5 | Measurable quality (goldens, eval, cost + SSE latency telemetry) | Medium | PARTIAL (hub $ UI; p95 baseline ops) |
 | G6 | Multi-channel reuse of brain | High | PARTIAL (dual entrypaths by ADR-003; **turn log parity via logAgentTurn IMP-02**) |
-| G7 | Spec-driven evolution from this SDD | High | This bundle (audit **98 PASS**) |
+| G7 | Spec-driven evolution from this SDD | High | This bundle (audit **98 PASS** post PAOS integration) |
+| G8 | Supervised learning loop (PAOS) without silent money mutation | High | CONFIRMED live (flags ON; canary 0%) — child SDD `paos` |
 
 SMART north-star targets live in [`SDD-TARGET.md`](SDD-TARGET.md).
 
@@ -67,17 +70,20 @@ C4Context
   System_Ext(wa, "WhatsApp Cloud", "Send link")
   System_Ext(gcs, "GCS", "Quotes / KB / brain")
   System_Ext(cw, "Chatwoot", "Email agent path")
+  System_Ext(paos, "PAOS supervised learning", "Candidates / promote / ledger")
 
   Rel(op, platform, "Chat / hub / voice")
   Rel(dev, platform, "Train / autolearn")
   Rel(ext, platform, "manifest + exec-tool")
   Rel(platform, calc, "Loopback HTTP")
   Rel(platform, llms, "Completions / Realtime mint")
-  Rel(platform, pg, "RAG cosine")
+  Rel(platform, pg, "RAG cosine + PAOS dual-write")
   Rel(platform, sheets, "CRM tools")
   Rel(platform, wa, "WA tool")
   Rel(platform, gcs, "Registry / KB")
   Rel(platform, cw, "Email-agent tools")
+  Rel(platform, paos, "Observe / gate Workspace CR")
+  Rel(paos, platform, "Promote → Training KB (HITL)")
 ```
 
 ### External interfaces
@@ -92,9 +98,10 @@ C4Context
 | WhatsApp | → | HTTPS | Optional send |
 | MCP | ← | stdio→HTTP | External agents |
 | Chatwoot | → | HTTPS | Email-agent assistant |
+| PAOS admin | ← | HTTPS | `/api/paos/*` health + candidates (auth except health) |
 
-**CONFIRMED mounts:** `server/index.js:1034-1095`.  
-**Out of scope:** full BOM engine internals; Cursor team agents; Shopify ETL except tool call sites.
+**CONFIRMED mounts:** `server/index.js` agent + PAOS routers.  
+**Out of scope:** full BOM engine internals; Cursor team agents; Shopify ETL except tool call sites; PAOS internal SM detail (see child SDD).
 
 ## 3. Constraints
 
@@ -146,9 +153,10 @@ C4Container
     Container(kb, "trainingKB + autolearn", "Node", "KB")
     Container(cost, "costTelemetry + budget", "Node", "Cost")
     Container(sa, "superAgent", "Express", "quote-lead")
+    Container(paos, "PAOS loop", "Express + lib", "Candidates / evaluate / promote")
   }
 
-  ContainerDb(pg, "Postgres", "pgvector + omni_*", "quote_embeddings / jobs")
+  ContainerDb(pg, "Postgres", "pgvector + omni_* + learning_candidates", "quote_embeddings / PAOS dual-write")
   Container_Ext(llms, "LLM providers", "HTTPS")
   Container_Ext(calc, "Calc /calc", "HTTP loopback")
   Container_Ext(sheets, "Sheets", "HTTPS")
@@ -171,6 +179,9 @@ C4Container
   Rel(emailt, chatwoot, "email tools")
   Rel(admin, cp, "status API")
   Rel(sa, calc, "parallel quote-lead")
+  Rel(paos, kb, "promote → Training KB")
+  Rel(paos, pg, "candidates dual-write")
+  Rel(paos, calc, "money oracle / fail-closed")
 ```
 
 **Dual email surface (CONFIRMED):** Omni inbox tools + worker (`canales` assistant) vs Chatwoot-specific `emailAgentTools` (`email` assistant). Prod allowlist snapshot: see [`evidence/assistants-active.md`](evidence/assistants-active.md).
@@ -199,6 +210,7 @@ C4Container
 | **Omni AI worker** | Channel suggest + optional RAG | `server/lib/omni/*` | CONFIRMED; flags default off |
 | **Eval / goldens** | Offline quality — **22** cases | `tests/agentGolden/` | CONFIRMED (IMP-11 #746) |
 | **MCP bridge** | External tool access | `scripts/mcp-panelin-http.mjs` | CONFIRMED |
+| **PAOS** | Supervised learning candidates → offline eval → HITL promote → Training KB | `server/lib/paos*.js` + `routes/paos.js` | CONFIRMED live 2026-07-26; child SDD [`../paos/`](../paos/) |
 
 ### 6.1 LLM strategy
 
@@ -234,13 +246,15 @@ Full table: [`evidence/tools-manifest.md`](evidence/tools-manifest.md).
 - **Primary path:** `logAgentCost` → events `agent_core_call` / `ai_completion` — `costTelemetry.js`.
 - **SuperAgent path:** `logAgentCost` → event `superagent_ai_call` (`source: superAgent`) — **IMP-07 closed** (#745).
 - **SSE `done` (IMP-12, #748):** `provider_used`, `model`, `latency_ms`, optional `ttft_ms` — **CONFIRMED prod** 2026-07-23 (live probe).
-- **Operator $/day procedure (docs CLOSED 2026-07-23):** Cloud Logging sum of `estimated_cost_usd` — [`evidence/cost-query.md`](evidence/cost-query.md) + OPS §10. Hub dollar card still **GAP** (product).
+- **Operator $/day procedure (docs CLOSED 2026-07-23):** Cloud Logging sum of `estimated_cost_usd` — [`evidence/cost-query.md`](evidence/cost-query.md) + OPS §10.
+- **Hub card (IMP-06, 2026-07-26):** `GET /api/agent/obs-summary` + Agent Admin tab **Costo & latencia** — per-revision memory ring (not multi-instance durable).
 
 ### 6.3b RAG enablement (as-built)
 
 - Default **`RAG_ENABLED=false`** — CONFIRMED `config.js`; prod revision **unset** (2026-07-23).
 - Enable/disable runbook: [`docs/team/runbooks/omni-ai-orchestrator-rag-enable.md`](../../team/runbooks/omni-ai-orchestrator-rag-enable.md) + OPS §11.
 - Seed embeddings required only when turning RAG on; until then seed is **N/A by product default**.
+- **IMP-10 hybrid (2026-07-26):** `RAG_HYBRID` (default false) fuses embedding hits with Training KB keyword boost via `hybridRetrieve.fuseRagAndKb` when RAG is on. Weights `RAG_HYBRID_ALPHA` / `RAG_HYBRID_BETA`.
 
 ### 6.4 Guardrails
 
@@ -249,6 +263,25 @@ Full table: [`evidence/tools-manifest.md`](evidence/tools-manifest.md).
 - MCP/exec-tool auth set — `agentChat.js:370-379`.
 - Origin allowlist for chat — `agentChat.js:398-424`.
 - Rate limits 10 / 30 / 60 per 60s — `agentChat.js:434-452`.
+- **PAOS money:** `paosEvaluate` rejects price deltas without calc provenance; promote never invents USD — child SDD + `tests/paosPromote.test.js`.
+
+### 6.5 PAOS (supervised learning loop) — platform integration
+
+**Full Spec:** [`../paos/SDD.md`](../paos/SDD.md) (Accepted v1.0). This section is the **parent integration** only.
+
+| Concern | As-built |
+|---------|----------|
+| Role | Slow loop: Learning Candidates → evaluate → HITL approve/reject/rollback → optional Training KB promote |
+| Fast loop | Chat/tools **do not** mutate org rules mid-turn; PAOS gates Workspace knowledge CR when enabled |
+| Code | `paosConfig.js`, `paosCandidates.js`, `paosEvaluate.js`, `paosPromote.js`, `paosEventLedger.js`, `routes/paos.js` |
+| Flags (default **OFF** in code; **prod live** 2026-07-24+) | `PAOS_ENABLED`, `PAOS_PROMOTE`, `PAOS_CANARY_PCT`, `PAOS_LEDGER_RETENTION_DAYS` |
+| **Prod probe 2026-07-26** | `GET /api/paos/health` → `enabled:true`, `promote:true`, **`canaryPct:0`**, ledger retention 90d — CONFIRMED |
+| Auth | Health public; list/promote/reject require user / superadmin |
+| Dual-write | Candidates → memory + `learning_candidates` when `DATABASE_URL` |
+| Promote | Writes Training KB (canary pending vs permanent) — `paosPromote.js` |
+| Tests | `tests/paos*.test.js` (promote, workspace gate, core, e2e loop) |
+
+**Not PAOS:** fine-tuning weights, autonomous global knowledge mutation, silent CRM writes.
 
 ## 7. Data Flow
 
@@ -296,24 +329,38 @@ More traces: [`evidence/traces.md`](evidence/traces.md).
 | CI | GitHub Actions | lint/test/build/smoke | workflow secrets |
 | MCP | Local/CI process | Calls API base | `BMC_API_TOKEN` |
 
-**CONFIRMED prod health 2026-07-23:**  
+**CONFIRMED prod health 2026-07-26:**  
 `https://panelin-calc-q74zutv7dq-uc.a.run.app/health` → `ok:true`, `appEnv:production`, Sheets OK.  
-**CONFIRMED:** LLM brain runs **only** on API (Cloud Run), not on Vercel Edge.
+**CONFIRMED revision (AI key rotations):** `panelin-calc-00891-7kk` (100% traffic) after Grok secret rotate.  
+**CONFIRMED:** LLM brain runs **only** on API (Cloud Run), not on Vercel Edge.  
+**CONFIRMED tools:** local + prod `tools-manifest` **55** (2026-07-26 re-probe).  
+**CONFIRMED PAOS:** `GET /api/paos/health` → enabled/promote true, canaryPct **0**.
 
 ### Env names (AI — values REDACTED)
 
-`ANTHROPIC_API_KEY`, `ANTHROPIC_CHAT_MODEL`, `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL`, `OPENAI_REALTIME_MODEL`, `GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`, `GROK_API_KEY`, `GROK_CHAT_MODEL`, `OPENROUTER_API_KEY`, `OPENROUTER_FALLBACK_ENABLED`, `OPENROUTER_MODEL`, `AI_GATEWAY_API_KEY`, `RAG_ENABLED`, `RAG_TOP_K`, `RAG_THRESHOLD`, `ASSISTANTS_ACTIVE`, `BUDGET_*`, `OMNI_AI_*`, `CHAT_LOG_CONVERSATIONS`, `PANELIN_RELAX_DEV_AUTH`, `API_AUTH_TOKEN`, `DATABASE_URL`, `CHATWOOT_*`, `BRAIN_*`, `VITE_FEATURE_BRAIN`, `VITE_FEATURE_EMAIL_AGENT`, `BMC_API_BASE`, `BMC_API_TOKEN`.
+`ANTHROPIC_API_KEY`, `ANTHROPIC_CHAT_MODEL`, `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL`, `OPENAI_REALTIME_MODEL`, `GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`, `GROK_API_KEY`, `GROK_CHAT_MODEL`, `OPENROUTER_API_KEY`, `OPENROUTER_FALLBACK_ENABLED`, `OPENROUTER_MODEL`, `AI_GATEWAY_API_KEY`, `RAG_ENABLED`, `RAG_TOP_K`, `RAG_THRESHOLD`, `ASSISTANTS_ACTIVE`, `BUDGET_*`, `OMNI_AI_*`, `CHAT_LOG_CONVERSATIONS`, `PANELIN_RELAX_DEV_AUTH`, `API_AUTH_TOKEN`, `DATABASE_URL`, `CHATWOOT_*`, `BRAIN_*`, `VITE_FEATURE_BRAIN`, `VITE_FEATURE_EMAIL_AGENT`, `BMC_API_BASE`, `BMC_API_TOKEN`, `PAOS_ENABLED`, `PAOS_PROMOTE`, `PAOS_CANARY_PCT`, `PAOS_LEDGER_RETENTION_DAYS`.
 
-Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
+Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23). Secret rotate: GSM `:latest` + `gcloud run services update --update-secrets=…` (2026-07-26 session).
 
 ### Assistants allowlist (prod snapshot)
 
-| Key | Prod 2026-07-23 |
+| Key | Prod 2026-07-23 (re-check assistants status still auth-gated 2026-07-26) |
 |-----|-----------------|
 | Env `ASSISTANTS_ACTIVE` | **`canales;ml;panelin`** |
 | Always on | `seam` |
 | Probe | `GET /api/assistants/status` → 401 without admin/API token (CONFIRMED) |
 | Evidence | [`evidence/assistants-active.md`](evidence/assistants-active.md) |
+
+### Provider ops snapshot (2026-07-26 live)
+
+| Provider | Status | Note |
+|----------|--------|------|
+| Grok | **OK** | Key rotated; `provider_used=grok` smoke |
+| Gemini | Intermittent | Rate-limit under load |
+| OpenAI | Key valid | Chat **insufficient_quota** (billing) |
+| Claude | Degraded | No credits / fail |
+
+Architecture failover (ADR-001) **CONFIRMED** still correct under multi-provider outage.
 
 ## 9. Crosscutting Concepts
 
@@ -350,6 +397,7 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 - Hub Assistants status + optional ai-analytics trends (**not** live LLM $).
 - **$/day query path documented** — `evidence/cost-query.md` (hub UI still open).
 - Gap residual: p95 baseline collection (ops); hub $ card; RAG prod enable (blocked until precheck green).
+- **PAOS:** `/api/paos/health|metrics|candidates|events` for supervised learning ops; ledger retention flag.
 
 ### 9.5 Cost & sustainability
 
@@ -412,6 +460,15 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 **Consequences**: + Low-latency one-shot quote-lead; + cost in same Cloud Logging sum as agentCore; − Still not quoteRegistry/`ae_agent` loopback provenance (acceptable for this surface).  
 **Evidence:** `superAgent.js`, `tests/superAgentCalc.test.js`.
 
+### ADR-008: PAOS supervised learning as slow loop (not auto fine-tune)
+
+**Status**: Accepted (as-built integration 2026-07-26; child Spec Accepted 2026-07-24)  
+**Context**: Need closed-loop improvement from corrections without silent price invent or autonomous weight updates.  
+**Decision**: Ship **PAOS** as flag-gated slow loop (candidates → offline eval fail-closed → superadmin HITL → promote Training KB). Default code OFF; prod may enable with **canaryPct=0**. Detailed design lives in child SDD `docs/sdd/paos/`; platform SDD records integration only.  
+**Consequences**: + Safe learning path; + Workspace CR gated when `PAOS_ENABLED`; − Extra subsystem + ops flags; canary enforcement still TARGET in child.  
+**Alternatives considered**: Silent autolearn-only (rejected — no HITL); fine-tune weights (rejected — ADR child no-finetune); merge fully into agentChat (rejected — dual-loop separation).  
+**Evidence:** `paosConfig.js`, `routes/paos.js`, prod `/api/paos/health` 2026-07-26, `tests/paosPromote.test.js`, [`../paos/SDD.md`](../paos/SDD.md).
+
 ## 11. Risks & Technical Debt
 
 | Risk | Impact | Likelihood | Mitigation |
@@ -419,13 +476,15 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 | Tool-count doc drift (historical 22/42/48/51) | Medium | Medium | SoT = this SDD + tools-manifest (55/55) |
 | Provider credit/quota exhaustion | High | Medium | Failover + OpenRouter terminal |
 | RAG assumed on but default off | Medium | High | OPS §11 + omni RAG runbook; default off intentional |
-| Voice / other analytics still ephemeral | Low | Medium | Tool calls persist (B-05); IMP-09 for voice |
+| Voice analytics ephemeral | Low | Low | **Closed IMP-09** — `voiceMetrics` → `agent_voice_events` |
 | SuperAgent cost sink drift | Low | Low | **Closed IMP-07** — `logAgentCost`; fitness test guards |
 | Dual brain paths diverge | Medium | Medium | ADR-003 dual entry; **turn log parity closed IMP-02** (`logAgentTurn`) |
 | Docs saying 22/42/48 tools | Medium | High | Point to this SDD |
 | Cost $/day no hub UI | Low | Medium | OPS §10 query **done**; hub card optional |
-| Firefox Hands-free gap | Medium | High | IMP-08 Whisper UX |
+| Firefox Hands-free gap | Medium | High | **Closed IMP-08** Whisper UX |
 | Email Omni vs Chatwoot dual surface | Medium | Medium | Document cutover in OPS |
+| PAOS canary not fully enforced | Medium | Medium | Child TARGET; prod **canaryPct=0** until ready |
+| Provider credit/quota (Claude/OpenAI) | High | High (2026-07-26) | Failover to Grok/Gemini; rotate keys via GSM |
 
 ## 12. Glossary
 
@@ -445,6 +504,9 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 | Realtime | OpenAI WebRTC voice on `/panelin/live` |
 | MCP | Model Context Protocol external tool bridge |
 | SDDD | Spec / SDD-driven development using this bundle |
+| PAOS | Panelin Adaptive Operational System — supervised slow-loop learning |
+| Learning Candidate | Versioned proposed knowledge/prompt delta under PAOS SM |
+| Canary promote | Limited rollout of promoted KB entry (`PAOS_CANARY_PCT`) |
 
 ---
 
@@ -452,14 +514,17 @@ Ops detail: `docs/team/runbooks/PANELIN-IA-OPS.md` (review 2026-07-23).
 
 | Claim | Tag | Source |
 |-------|-----|--------|
-| 55 tools local | CONFIRMED | `node` import `AGENT_TOOLS` 2026-07-23 |
-| 55 tools prod | CONFIRMED | prod `tools-manifest` + openapi 2026-07-23 |
+| 55 tools local | CONFIRMED | `node` import `AGENT_TOOLS` 2026-07-23 + 2026-07-26 |
+| 55 tools prod | CONFIRMED | prod `tools-manifest` + openapi **2026-07-26** |
 | Provider order | CONFIRMED | `aiProviderConfig.js:110` |
 | Rate limits 10/30/60 | CONFIRMED | `agentChat.js:434-452` |
 | RAG default off | CONFIRMED | `config.js:335` |
 | 22 goldens | CONFIRMED | `tests/agentGolden/cases/` + IMP-11 #746 |
 | SSE done telemetry | CONFIRMED | prod probe 2026-07-23 · IMP-12 #748 |
-| Prod health OK | CONFIRMED | Cloud Run `/health` 2026-07-23 |
+| Prod health OK | CONFIRMED | Cloud Run `/health` **2026-07-26** |
+| Grok chat live | CONFIRMED | SSE `provider_used=grok` 2026-07-26 after key rotate |
+| OpenAI chat quota | CONFIRMED ops | `/v1/models` 200; chat `insufficient_quota` 2026-07-26 |
+| PAOS health live | CONFIRMED | `/api/paos/health` enabled+promote, canary 0 — 2026-07-26 |
 | OpenRouter in prod | UNKNOWN | flag/key not probed |
 | Brain feature in prod | UNKNOWN | `VITE_FEATURE_BRAIN` default false |
 | Exact invoice $/day | UNKNOWN | estimates only; use cost-query procedure |

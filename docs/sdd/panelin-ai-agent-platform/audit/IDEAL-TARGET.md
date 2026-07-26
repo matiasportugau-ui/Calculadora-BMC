@@ -1,41 +1,63 @@
 # Ideal 100% — Panelin AI Agent Platform
 
-**System class:** AI agent platform (modular monolith surface)  
-**Target composite:** 100 · **Pass threshold:** ≥90  
-**Date:** 2026-07-23 (re-audit · composite **97**)
+**Date:** 2026-07-26  
+**Target composite:** 100 (pass ≥90)  
+**System class:** Multi-provider commercial AI agent platform (monolith API + SPA clients)
 
-## Operational definition of 100%
+## Operational definition of 100% (this system)
 
-A new engineer/agent can:
+An SDD is **100%** for Panelin AI Agent Platform when:
 
-1. Deploy API + SPA with AI env **names** from OPS / Cloud Run / Doppler.  
-2. Hit `POST /api/agent/chat` and parse SSE including **`done.provider_used` / `latency_ms`**.  
-3. Recreate tool allowlist from `evidence/tools-manifest.md` (**55**) with write gates.  
-4. Know prod `ASSISTANTS_ACTIVE=canales;ml;panelin` and hub toggles.  
-5. Run `test:agent` + `test:agent-golden` (**22** cases).  
-6. Answer yesterday’s AI $ from documented Logging query.  
-7. Use SuperAgent `/quote-lead` knowing cost goes through `logAgentCost` and calc matches engine tests.  
-8. Pick next IMP-XX from the implementation guide.  
-9. Enable RAG only via OPS §11 after `omni:rag-precheck`.  
-10. See the same core turn fields on SSE and `callAgentOnce` (IMP-02 residual).  
+1. **Schema complete** — §1–12, frontmatter, no placeholders (already met).
+2. **C4 accurate** — L1 + L2 include every live AI surface (chat, channels, SuperAgent, **PAOS**, voice).
+3. **Recreation** — RECREATION-CHECKLIST 100% accurate (no stale open items after closed IMPs).
+4. **Interfaces** — every external: direction, protocol, auth; LLM keys **names only**.
+5. **Deploy** — Vercel + Cloud Run, GSM secret names, ASSISTANTS_ACTIVE, Doppler `prd`.
+6. **AI depth** — dual brain, 55 tools groups, RAG default-off + enable runbook, training KB, goldens, cost events, **PAOS** lifecycle.
+7. **ADRs** — dual orchestration, calc loopback, HITL writes, RAG opt-in, SuperAgent, **PAOS canary/promote**.
+8. **Evidence** — prod probes ≤14 days old for tools count, health, ASSISTANTS, provider smoke.
+9. **Ops** — cost $/day query + optional hub card; p95 latency baseline recorded.
+10. **Agent-ready** — coding agent can implement/fix without “where is PAOS / how rotate keys?” gaps.
 
 ## Must-have artifacts
 
-- [x] SDD §1–12 As-Built v1.2  
-- [x] tools-manifest 55/55 + goldens 22  
-- [x] cost-query + assistants-active + SSE done schema  
-- [x] IMP-07/11/12 closed in code + guide  
-- [ ] IMP-02 dual-brain log parity  
-- [ ] Optional: hub $, voice durable, RAG on, Whisper UX  
+| Artifact | Ideal state |
+|----------|-------------|
+| `SDD.md` | v current As-Built, §1–12 + appendices |
+| `RECREATION-CHECKLIST.md` | All rows green; no stale product residuals mislabeled open |
+| `evidence/*` | tools-manifest, surfaces, goldens, cost-query, assistants, traces, **provider-smoke** |
+| `IMPLEMENTATION-GUIDE.md` | Open IMPs only for true residual |
+| `docs/team/runbooks/PANELIN-IA-OPS.md` | Secrets rotate, provider fail, RAG, cost |
+| AE-AGENT-CALC-CONTRACT | Linked from §6 |
 
-## Gap to 100 from 97
+## Section-specific ideal
 
-| Δ | Work |
-|---|------|
-| +1 | IMP-02 `logAgentTurn` field parity |
-| +1 | p95 baseline note after 1 week of `latency_ms` |
-| +1 | Hub cost card or explicit permanent defer |
+### §5 Containers
+Include: SSE chat, agentCore, tools(55), SuperAgent, assistants CP, RAG, training KB, voice mint/transcribe, Omni worker, **PAOS evaluate/promote** (if flags exist in prod).
 
-## Note
+### §6 AI
+Full component table + provider order + tool groups + cost events + RAG OFF default + voice dual path + **PAOS** (`PAOS_ENABLED`, canary, promote→KB).
 
-**97** is expert-complete for as-built docs. Remaining points are product roadmap, not missing architecture narrative.
+### §8 Deployment
+Cloud Run `panelin-calc` us-central1; secret names including `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GROK_API_KEY`, `GEMINI_API_KEY`; note revision probe date.
+
+### §9 Crosscutting
+Security HITL + rate limits; reliability failover/circuit breaker; obs `logAgentTurn` + SSE `done` + toolStats + voice_events; cost-query path.
+
+### §10 ADRs
+≥ existing 001–007 **plus** PAOS supervised learning (canary, human promote, no silent price invent).
+
+## Acceptance test
+
+> A developer with repo + Doppler/GSM access can redeploy the AI surface, verify tools=55, run one SSE chat quote with `verified_quote`, and diagnose a dead provider using only SDD + OPS + evidence — in **&lt; 4 hours**.
+
+## Distance from ideal (2026-07-26 post-evolution)
+
+| Ideal item | Status |
+|------------|--------|
+| Schema 1–12 | Met (v1.4) |
+| Tools/calc/RAG docs | Met |
+| Evidence freshness | Met for tools/PAOS/Grok (2026-07-26) |
+| PAOS in §6/§10/C4 | **Met** (integration + child Spec) |
+| Hub $ + p95 | Optional product residual |
+| RECREATION IMP-09 line | **Met** (closed) |

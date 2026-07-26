@@ -1,6 +1,6 @@
 # Recreation Checklist — panelin-ai-agent-platform
 
-**Date:** 2026-07-23 (evolution iter-1)  
+**Date:** 2026-07-26 (evolution iter-PAOS / G-P1-05)  
 **Rubric:** sdd-reverse-engineer `RECREATION-RUBRIC.md`  
 **Pass target:** ≥90% `[x]` or justified `N/A`
 
@@ -51,17 +51,18 @@
 - [x] Rate limits documented — 10/30/60
 - [x] Runbook PANELIN-IA-OPS.md
 - [x] $/day rollup **procedure** — `evidence/cost-query.md` + OPS §10 (hub UI still optional product)
-- [x] Durable tool analytics — `agent_tool_calls` (B-05); voice still open → IMP-09 (product, not recreation blocker)
+- [x] Durable tool analytics — `agent_tool_calls` (B-05); voice dual-write **IMP-09 closed** (`agent_voice_events`)
 
 ### AI-specific recreation
 
-- [x] Tool inventory 55 local / 55 prod (2026-07-23) — tools-manifest
+- [x] Tool inventory 55 local / 55 prod (2026-07-26 re-probe) — tools-manifest
 - [x] 22 golden cases indexed — goldens.md (IMP-11)
 - [x] Provider order documented
 - [x] Human-gate write rules documented
 - [x] Actual vs goal + implementation TODOs — guide
 - [x] SuperAgent cost via `logAgentCost` + calc parity tests — ADR-007 Accepted (IMP-07)
 - [x] SSE `done` observability fields documented + prod-confirmed (IMP-12)
+- [x] PAOS integration surface — §6.5 + ADR-008 + `/api/paos/health` live; full Spec `docs/sdd/paos/`
 
 ## Score (self)
 
@@ -73,7 +74,7 @@
 | Integrations | 4/4 | 0 | |
 | Deploy | 4/4 | 0 | |
 | UI/routes | 3/3 | 0 | |
-| Ops | 5/5 | 0 | cost procedure closed; voice product residual |
-| AI-specific | 6/6 | 0 | SuperAgent telemetry documented |
+| Ops | 5/5 | 0 | cost procedure closed; voice IMP-09 closed |
+| AI-specific | 7/7 | 0 | SuperAgent + PAOS integration documented |
 
-**Approx:** 34/34 checklist items closed for **recreation** ≈ **100%** of recreation rows (product IMP residual does not block rebuild of as-built default-off RAG).
+**Approx:** 35/35 checklist items closed for **recreation** ≈ **100%** of recreation rows (product residual: RAG enable / hub $ / p95 do not block rebuild).
