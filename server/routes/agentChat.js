@@ -160,11 +160,12 @@ function modelsForProviderUi(provider, defaultModel) {
 }
 
 /** GET /api/agent/ai-options — which providers/models the server can use (no secrets). */
-router.get("/agent/ai-options", async (req, res) => {
-  // Annotate with readiness lights (cache-first probes; ?deep=1 forces live probe).
-  const forceProbe = /^(1|true|yes)$/i.test(String(req.query?.deep || ""));
+router.get("/agent/ai-options", async (_req, res) => {
+  // Cache-first readiness only. Never honor ?deep= on this public endpoint —
+  // force probes hit every LLM provider with real API calls (cost amplification).
+  // Admins re-probe via POST /api/agent/providers/probe.
   try {
-    const response = await buildAiOptionsResponseWithReadiness({ forceProbe });
+    const response = await buildAiOptionsResponseWithReadiness({ forceProbe: false });
     res.json(response);
   } catch {
     res.json(buildAiOptionsResponse());

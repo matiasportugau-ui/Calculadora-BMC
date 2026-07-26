@@ -32,11 +32,11 @@ assert.ok(threw, "invalid openai realtime model throws");
 
 const cfgG = getVoiceProviderConfig("grok");
 assert.equal(cfgG.voiceProvider, "grok");
-assert.ok(cfgG.realtimeBase.includes("api.x.ai"));
-assert.ok(cfgG.clientSecretsUrl.includes("client_secrets"));
+assert.equal(new URL(cfgG.realtimeBase).hostname, "api.x.ai");
+assert.ok(cfgG.clientSecretsUrl.endsWith("/client_secrets"));
 
 const cfgO = getVoiceProviderConfig("openai");
 assert.equal(cfgO.voiceProvider, "openai");
-assert.ok(cfgO.realtimeBase.includes("openai.com"));
+assert.equal(new URL(cfgO.realtimeBase).hostname, "api.openai.com");
 
 console.log("✅ voiceRealtimeProviders tests OK");
