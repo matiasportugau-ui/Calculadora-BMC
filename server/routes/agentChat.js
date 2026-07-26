@@ -55,9 +55,10 @@ import { getIvaPct } from "../lib/policyLoader.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
 import { fuseRagAndKb } from "../lib/hybridRetrieve.js";
 import { logAgentTurn } from "../lib/logAgentTurn.js";
-import { getObsSummary } from "../lib/agentObsRing.js";
+import { getObsSummary, recordObsSample } from "../lib/agentObsRing.js";
 import { getToolTier, filterToolsByTier, TOOL_TIERS } from "../lib/toolTiers.js";
 import { getPromptsShaCached } from "../lib/promptsSha.js";
+import { requireDevModeAuthMiddleware } from "../lib/devModeAuth.js";
 import {
   ALLOWED_MODELS as CENTRAL_ALLOWED_MODELS,
   PROVIDER_LABELS as CENTRAL_PROVIDER_LABELS,
@@ -182,8 +183,9 @@ router.get("/agent/tool-stats", async (req, res) => {
 /**
  * GET /api/agent/obs-summary — IMP-06 hub $ + IMP-12 p50/p95 latency (memory ring).
  * Query: windowMinutes (default 1440). Not multi-instance durable.
+ * Auth: same as other agent admin ops (API_AUTH_TOKEN / relax-dev).
  */
-router.get("/agent/obs-summary", (req, res) => {
+router.get("/agent/obs-summary", requireDevModeAuthMiddleware, (req, res) => {
   const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
   try {
     const summary = getObsSummary({ windowMs: minutes * 60 * 1000 });
@@ -936,6 +938,17 @@ router.post("/agent/chat", async (req, res) => {
             beta: config.ragHybridBeta,
             topK: config.ragTopK,
           });
+          // Re-rank RAG quotes by fused score for the prompt (not only dev event).
+          const ragReordered = fused
+            .filter((f) => f.kind === "rag")
+            .map((f) => ({
+              lead_id: f.lead_id,
+              similarity: f.similarity,
+              metadata: f.metadata,
+            }));
+          if (ragReordered.length) {
+            ragContextBlock = formatRetrievedContextForPrompt(ragReordered);
+          }
           if (blockExtras) ragContextBlock = `${ragContextBlock}${blockExtras}`;
           if (devMode && fused.length) {
             send({
@@ -1560,6 +1573,9 @@ router.post("/agent/chat", async (req, res) => {
         else console.log(JSON.stringify(costLog));
 
         // IMP-02: turn-level parity with callAgentOnce (shared core fields).
+        // tStart is per-provider attempt; firstTokenAt set on first SSE text delta.
+        const ttftForRing =
+          firstTokenAt != null ? Math.max(0, firstTokenAt - tStart) : null;
         logAgentTurn(
           {
             event: "agent_turn",
@@ -1571,10 +1587,26 @@ router.post("/agent/chat", async (req, res) => {
             output_tokens: outputTokens,
             estimated_cost_usd: chatCost,
             latency_ms: latencyMs,
+            ttft_ms: ttftForRing,
             source: "agentChat",
           },
           req.log || null,
         );
+        // Cost sample once (logAgentTurn no longer writes cost to obs ring).
+        try {
+          recordObsSample({
+            kind: "cost",
+            provider,
+            model: resolvedModel,
+            channel: surfaceToChannel(canonicalBrandSurface(surface || "panelin_chat")) || "chat",
+            estimated_cost_usd: chatCost,
+            latency_ms: latencyMs,
+            ttft_ms: ttftForRing,
+            source: "agentChat",
+          });
+        } catch {
+          /* never break SSE */
+        }
 
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {

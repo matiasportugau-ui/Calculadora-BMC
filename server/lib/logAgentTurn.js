@@ -85,12 +85,14 @@ export function logAgentTurn(partial, logger = null) {
     console.log(JSON.stringify(payload));
   }
   try {
+    // Latency/ttft only — never cost. Cost is recorded once via logAgentCost
+    // (agentCore) or an explicit cost sample (agentChat) to avoid double-count.
     recordObsSample({
       kind: "turn",
       provider: payload.provider,
       model: payload.model,
       channel: payload.channel,
-      estimated_cost_usd: payload.estimated_cost_usd,
+      estimated_cost_usd: null,
       latency_ms: payload.latency_ms,
       ttft_ms: partial.ttft_ms ?? null,
       source: payload.source,

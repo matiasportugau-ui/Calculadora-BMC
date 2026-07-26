@@ -75,18 +75,24 @@ export function getObsSummary(opts = {}) {
     .map((r) => r.ttft_ms)
     .filter((n) => n != null && Number.isFinite(n) && n >= 0);
 
-  const byProvider = {};
+  // Aggregate via Map (not dynamic object props from raw strings) — CodeQL-safe.
+  /** @type {Map<string, {count:number, cost_usd:number, latency_samples:number[]}>} */
+  const byProvider = new Map();
   for (const r of rows) {
-    const k = r.provider || "unknown";
-    if (!byProvider[k]) {
-      byProvider[k] = { count: 0, cost_usd: 0, latency_samples: [] };
+    const raw = r.provider == null ? "unknown" : String(r.provider);
+    const k = raw.replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 48) || "unknown";
+    let bucket = byProvider.get(k);
+    if (!bucket) {
+      bucket = { count: 0, cost_usd: 0, latency_samples: [] };
+      byProvider.set(k, bucket);
     }
-    byProvider[k].count += 1;
-    if (r.estimated_cost_usd != null) byProvider[k].cost_usd += r.estimated_cost_usd;
-    if (r.latency_ms != null) byProvider[k].latency_samples.push(r.latency_ms);
+    bucket.count += 1;
+    if (r.estimated_cost_usd != null) bucket.cost_usd += r.estimated_cost_usd;
+    if (r.latency_ms != null) bucket.latency_samples.push(r.latency_ms);
   }
-  const providers = {};
-  for (const [k, v] of Object.entries(byProvider)) {
+  /** @type {Record<string, object>} */
+  const providers = Object.create(null);
+  for (const [k, v] of byProvider) {
     providers[k] = {
       count: v.count,
       cost_usd: Number(v.cost_usd.toFixed(6)),

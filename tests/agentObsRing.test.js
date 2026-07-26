@@ -36,10 +36,19 @@ recordObsSample({
 
 const s = getObsSummary({ windowMs: 60_000 });
 assert.equal(s.sample_count, 3);
-assert.ok(s.cost.sum_usd >= 0.03);
+// Only cost-kind samples with estimated_cost_usd contribute (0.01 + 0.02).
+assert.ok(s.cost.sum_usd >= 0.029 && s.cost.sum_usd <= 0.031);
 assert.ok(s.latency.p50_ms != null);
 assert.ok(s.latency.p95_ms != null);
 assert.ok(s.by_provider.grok?.count >= 2);
+
+// Turn samples without cost must not inflate sum when only latency is set
+ringCtl.reset();
+recordObsSample({ kind: "turn", provider: "claude", latency_ms: 100 });
+recordObsSample({ kind: "cost", provider: "claude", estimated_cost_usd: 0.05, latency_ms: 100 });
+const s2 = getObsSummary({ windowMs: 60_000 });
+assert.equal(s2.cost.count_with_cost, 1);
+assert.ok(Math.abs(s2.cost.sum_usd - 0.05) < 1e-9);
 
 ringCtl.reset();
 console.log("agentObsRing.test.js: ok");
