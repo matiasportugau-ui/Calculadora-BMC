@@ -64,6 +64,7 @@ import {
   PROVIDER_LABELS as CENTRAL_PROVIDER_LABELS,
   resolveModel as centralResolveModel,
   buildAiOptionsResponse,
+  buildAiOptionsResponseWithReadiness,
   estimateCostUSD,
 } from "../lib/aiProviderConfig.js";
 import {
@@ -159,10 +160,15 @@ function modelsForProviderUi(provider, defaultModel) {
 }
 
 /** GET /api/agent/ai-options — which providers/models the server can use (no secrets). */
-router.get("/agent/ai-options", (_req, res) => {
-  // Now powered by the central config for consistency across the entire AI stack
-  const response = buildAiOptionsResponse();
-  res.json(response);
+router.get("/agent/ai-options", async (req, res) => {
+  // Annotate with readiness lights (cache-first probes; ?deep=1 forces live probe).
+  const forceProbe = /^(1|true|yes)$/i.test(String(req.query?.deep || ""));
+  try {
+    const response = await buildAiOptionsResponseWithReadiness({ forceProbe });
+    res.json(response);
+  } catch {
+    res.json(buildAiOptionsResponse());
+  }
 });
 
 /**

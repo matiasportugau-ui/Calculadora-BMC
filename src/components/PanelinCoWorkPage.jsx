@@ -180,6 +180,15 @@ export default function PanelinCoWorkPage() {
                 ? "Calculadora conectada (calcState en vivo)"
                 : "Esperando calculadora — abrí desde «Abrir en ventana» o trabajá solo con planillas"}
           </span>
+          {chat.aiReadiness ? (
+            <span style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>
+              {chat.aiReadiness.light === "green" || chat.aiReadiness.ready
+                ? `● IA lista${chat.aiReadiness.activeProvider ? ` via ${chat.aiReadiness.activeProvider}` : ""}`
+                : chat.aiReadiness.light === "amber"
+                  ? "● IA limitada"
+                  : "● IA no disponible"}
+            </span>
+          ) : null}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {pipSupported && !pipWindow && (
@@ -231,6 +240,11 @@ export default function PanelinCoWorkPage() {
           authHeader={authHeader}
           onLoadConversations={chat.loadConversationList}
           onLoadConversationAnalysis={chat.loadConversationAnalysis}
+          aiProvider={chat.aiProvider}
+          aiModel={chat.aiModel}
+          aiOptions={chat.aiOptions}
+          aiOptionsError={chat.aiOptionsError}
+          setAiPick={chat.setAiPick}
         />
       </div>
     </div>

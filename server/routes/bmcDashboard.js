@@ -2431,10 +2431,15 @@ export default function createBmcDashboardRouter(config, deps = {}) {
           model: result.model || null,
         });
       } catch (err) {
+        // Prefer non-empty err.errors; empty [] is truthy in JS so guard length.
+        const details =
+          Array.isArray(err?.errors) && err.errors.length > 0
+            ? err.errors
+            : [err?.message || "All providers failed"].filter(Boolean);
         return res.status(503).json({
           ok: false,
           error: "All providers failed",
-          details: err.errors || [err.message],
+          details,
         });
       }
     }

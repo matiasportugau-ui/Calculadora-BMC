@@ -9,6 +9,10 @@ import { useScreenCoWork } from "../hooks/useScreenCoWork.js";
 import { useContextGroups } from "../hooks/useContextGroups.js";
 import CoWorkToolbar from "./cowork/CoWorkToolbar.jsx";
 import ContextGroupBar from "./cowork/ContextGroupBar.jsx";
+import ProviderStatusLights from "./ai/ProviderStatusLights.jsx";
+import AgentModelSelector from "./ai/AgentModelSelector.jsx";
+import { useProviderReadiness } from "../hooks/useProviderReadiness.js";
+import { resolveRealtimeModel } from "../utils/resolveRealtimeModel.js";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -266,9 +270,20 @@ export default function PanelinChatPanel({
   calcState,
   onChatAction,
   authHeader,
+  /** AI selection from useChat (Phase 1 selector) */
+  aiProvider = "auto",
+  aiModel = "",
+  aiOptions = null,
+  aiOptionsError = null,
+  setAiPick = null,
 }) {
   const [isSkinMenuOpen, setIsSkinMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  /** Resolved Realtime model for voice session (Phase 2). */
+  const realtimeModel = useMemo(
+    () => resolveRealtimeModel(aiProvider, aiModel),
+    [aiProvider, aiModel],
+  );
   const [customSkins, setCustomSkins] = useState(() => loadCustomSkins());
   const [skinEditorOpen, setSkinEditorOpen] = useState(false);
   const [skinDraft, setSkinDraft] = useState(() => makeSkinDraftFromTokens(BUILTIN_SKINS[0].tokens));
@@ -277,6 +292,11 @@ export default function PanelinChatPanel({
     return localStorage.getItem(STORAGE_SELECTED_SKIN) || "applied-ai";
   });
   const [input, setInput] = useState("");
+  /** Live provider readiness lights (format + probe). */
+  const { readiness: providerReadiness, refresh: refreshReadiness } = useProviderReadiness({
+    enabled: !!isOpen,
+    pollMs: 60_000,
+  });
   const [correctingMsgId, setCorrectingMsgId] = useState(null);
   const [correctionText, setCorrectionText] = useState("");
   const [ttsEnabled, setTtsEnabled] = useState(false);
@@ -888,6 +908,30 @@ export default function PanelinChatPanel({
             <div style={{ fontSize: 11, opacity: 0.7 }}>
               Asistente BMC Uruguay{devMode ? " · Developer Mode" : ""}
             </div>
+            <div style={{ marginTop: 4, opacity: 0.95 }} data-no-drag>
+              <ProviderStatusLights
+                readiness={providerReadiness}
+                compact
+                onRefresh={() => refreshReadiness({ deep: true })}
+                style={{ color: HEADER_TEXT_COLOR }}
+              />
+              {typeof setAiPick === "function" ? (
+                <AgentModelSelector
+                  aiProvider={aiProvider}
+                  aiModel={aiModel}
+                  aiOptions={aiOptions}
+                  setAiPick={setAiPick}
+                  readiness={providerReadiness}
+                  disabled={isStreaming}
+                  tone="dark"
+                />
+              ) : null}
+              {aiOptionsError ? (
+                <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>
+                  Modelos: {String(aiOptionsError).slice(0, 60)}
+                </div>
+              ) : null}
+            </div>
           </div>
           {embeddedMode && !floatingMode && onRequestFloating && (
             <button
@@ -1083,6 +1127,9 @@ export default function PanelinChatPanel({
             voiceMode={voiceMode}
             send={send}
             messages={messages}
+            aiProvider={aiProvider}
+            aiModel={aiModel}
+            realtimeModel={realtimeModel}
           />
         </div>
 

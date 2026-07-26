@@ -1,22 +1,26 @@
 /**
- * POST /api/agent/voice/session  — mint an ephemeral OpenAI Realtime token
+ * POST /api/agent/voice/session  — mint ephemeral Realtime token (OpenAI or Grok/xAI)
  * POST /api/agent/voice/action   — validate + relay a function-call action from voice mode
  *
  * The browser uses the ephemeral client_secret to open a WebRTC peer connection
- * directly to OpenAI Realtime; the long-lived key is never sent to the client.
+ * directly to OpenAI Realtime or xAI Grok Voice; long-lived keys never leave the server.
  */
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
 import { buildVoiceSystemPrompt } from "../lib/chatPrompts.js";
+import { isUsableApiKey } from "../lib/apiKeyUtils.js";
 
 import { recordVoiceError, listVoiceErrors, clearVoiceErrors } from "../lib/voiceErrorLog.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
+import {
+  resolveVoiceProvider,
+  resolveSessionModel,
+  mintRealtimeClientSecret,
+} from "../lib/voiceRealtimeProviders.js";
 
 const router = Router();
-
-const REALTIME_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
 
 const VALID_ACTION_TYPES = new Set([
   "setScenario", "setLP", "setTecho", "setPared", "setCamara",
@@ -55,22 +59,65 @@ const actionLimiter = rateLimit({
 /**
  * POST /api/agent/voice/session
  *
- * Body: { calcState?: object, devMode?: boolean }
- * Returns: { session_id, client_secret, model, expires_at }
+ * Body: {
+ *   calcState?, devMode?, leadContext?,
+ *   realtimeModel?, aiProvider?, aiModel?, voiceProvider? ("openai"|"grok")
+ * }
+ * Returns: {
+ *   session_id, client_secret, model, expires_at,
+ *   provider, voice_provider, realtime_base,
+ *   session_bootstrap?  // Grok: apply via data-channel session.update
+ * }
  *
- * Requires OPENAI_API_KEY. Auth: the static API_AUTH_TOKEN (operators/dev/CI) OR a
- * logged-in user's identity JWT with calc:write (every comprador has this by default).
+ * OpenAI: OPENAI_API_KEY. Grok: GROK_API_KEY / XAI_API_KEY.
+ * Auth: API_AUTH_TOKEN OR identity JWT with calc:write.
  */
 router.post(
   "/agent/voice/session",
   sessionLimiter,
   requireServiceOrUser({ module: "calc", minLevel: "write" }),
   async (req, res) => {
-  if (!config.openaiApiKey) {
-    return res.status(503).json({ ok: false, error: "OpenAI API key not configured" });
+  const {
+    calcState = {},
+    devMode = false,
+    leadContext = null,
+    realtimeModel: rawRealtimeModel = null,
+    aiProvider = "auto",
+    aiModel = "",
+    voiceProvider: rawVoiceProvider = null,
+  } = req.body || {};
+
+  const voiceProvider = resolveVoiceProvider(aiProvider, rawVoiceProvider);
+
+  let sessionModel;
+  try {
+    sessionModel = resolveSessionModel(
+      voiceProvider,
+      aiProvider,
+      aiModel,
+      rawRealtimeModel,
+    );
+  } catch (err) {
+    if (err?.status === 400) {
+      return res.status(400).json({
+        ok: false,
+        error: err.message,
+        allowlist: err.allowlist || undefined,
+      });
+    }
+    throw err;
   }
 
-  const { calcState = {}, devMode = false, leadContext = null } = req.body || {};
+  req.log?.info?.(
+    {
+      event: "panelin_voice_session",
+      voiceProvider,
+      realtimeModel: sessionModel,
+      aiProvider,
+      aiModel: aiModel || null,
+    },
+    "voice session model resolved",
+  );
 
   // Whitelist the lead-context fields we accept from the client (launched from
   // the CRM sheet hyperlink). sanitizeForPrompt inside buildVoiceSystemPrompt
@@ -161,69 +208,44 @@ router.post(
 
   let sessionData;
   try {
-    const response = await fetch(REALTIME_CLIENT_SECRETS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.openaiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        session: {
-          type: "realtime",
-          model: config.openaiRealtimeModel,
-          instructions: systemPrompt,
-          audio: {
-            input: {
-              transcription: { model: "whisper-1" },
-              turn_detection: {
-                type: "server_vad",
-                threshold: 0.5,
-                prefix_padding_ms: 300,
-                silence_duration_ms: 800,
-              },
-            },
-            output: { voice: "shimmer" },
-          },
-          tools,
-          tool_choice: "auto",
-        },
-      }),
-      signal: AbortSignal.timeout(15000),
+    sessionData = await mintRealtimeClientSecret({
+      voiceProvider,
+      sessionModel,
+      systemPrompt,
+      tools,
     });
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      req.log?.warn({ status: response.status, body: errText }, "OpenAI Realtime session mint failed");
+  } catch (err) {
+    if (err?.status === 503) {
+      return res.status(503).json({ ok: false, error: err.message });
+    }
+    if (err?.status && err.status >= 400 && err.status < 600 && err.body != null) {
+      const errText = String(err.body || "");
+      req.log?.warn(
+        { status: err.status, body: errText, voiceProvider },
+        "Realtime session mint failed",
+      );
       let detail = "";
-      try { detail = JSON.parse(errText)?.error?.message || errText; } catch { detail = errText; }
-      // Best-effort redaction of any reflected system prompt before persisting.
-      // Note: the regex doesn't handle escaped quotes (\") inside the value — this is a
-      // defensive measure for the common case (OpenAI rarely reflects values verbatim).
+      try {
+        detail = JSON.parse(errText)?.error?.message || errText;
+      } catch {
+        detail = errText;
+      }
       const safeDetail = (detail || errText || "")
         .replace(/"instructions"\s*:\s*"[^"]*"/g, '"instructions":"[redacted]"');
+      const label = voiceProvider === "grok" ? "Grok" : "OpenAI";
       recordVoiceError({
         kind: "session_mint",
-        status: response.status,
-        message: `OpenAI ${response.status}`,
+        status: err.status,
+        message: `${label} ${err.status}`,
         detail: safeDetail || null,
       });
       return res.status(502).json({
         ok: false,
-        error: `OpenAI ${response.status}: ${detail || "No se pudo iniciar sesión de voz"}`,
+        error: `${label} ${err.status}: ${detail || "No se pudo iniciar sesión de voz"}`,
+        provider: voiceProvider,
       });
     }
-
-    const mintData = await response.json();
-    sessionData = {
-      id: mintData.session?.id,
-      model: mintData.session?.model || config.openaiRealtimeModel,
-      client_secret: {
-        value: mintData.value,
-        expires_at: mintData.expires_at,
-      },
-    };
-  } catch (err) {
-    req.log?.error({ err }, "Voice session fetch error");
+    req.log?.error({ err, voiceProvider }, "Voice session fetch error");
     recordVoiceError({
       kind: "session_mint_network",
       message: "Error de red al iniciar sesión de voz",
@@ -232,12 +254,26 @@ router.post(
     return res.status(502).json({ ok: false, error: "Error de red al iniciar sesión de voz" });
   }
 
+  // Grok client_secrets does not embed session config — client must session.update after connect.
+  const session_bootstrap =
+    voiceProvider === "grok"
+      ? {
+          instructions: systemPrompt,
+          tools,
+          tool_choice: "auto",
+        }
+      : null;
+
   return res.json({
     ok: true,
     session_id: sessionData.id,
     client_secret: sessionData.client_secret,
-    model: sessionData.model || config.openaiRealtimeModel,
+    model: sessionData.model || sessionModel,
     expires_at: sessionData.client_secret?.expires_at,
+    provider: sessionData.voiceProvider,
+    voice_provider: sessionData.voiceProvider,
+    realtime_base: sessionData.realtime_base,
+    session_bootstrap,
   });
 });
 
@@ -322,15 +358,17 @@ router.post("/agent/voice/errors/clear", errorClearLimiter, requireAuth, (req, r
  * Returns metadata (prefix, suffix, length) but never the full key. Admin-only.
  */
 router.get("/agent/voice/health", requireAuth, async (req, res) => {
-  const key = config.openaiApiKey || "";
+  const raw = config.openaiApiKey || "";
+  const usable = isUsableApiKey(raw);
+  const key = usable ? raw : "";
   const meta = {
-    configured: Boolean(key),
+    configured: usable,
     keyLength: key.length,
     keyPrefix: key.slice(0, 8),
     keySuffix: key ? key.slice(-4) : "",
     model: config.openaiRealtimeModel,
   };
-  if (!key) {
+  if (!usable) {
     return res.status(503).json({ ok: false, ...meta, error: "OPENAI_API_KEY not configured" });
   }
 
