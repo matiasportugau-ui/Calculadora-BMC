@@ -6,10 +6,14 @@ import {
   keyMeta,
   filterProvidersForPicker,
   aiOptionsRequireLive,
+  getProviderReadiness,
+  PROVIDER_FORCE_MIN_INTERVAL_MS,
   _clearReadinessCache,
+  _setProbeImplForTests,
   mapProbeErrorToReasonCode,
 } from "../server/lib/providerReadiness.js";
 import { _resetProviderHealth } from "../server/lib/providerCircuitBreaker.js";
+import { config } from "../server/config.js";
 
 _clearReadinessCache();
 _resetProviderHealth();
@@ -131,6 +135,37 @@ assert.equal(lightForReason("auth_failed", "not_ready"), "red");
   assert.deepEqual(all, ["claude", "gemini"]);
   if (prev === undefined) delete process.env.AI_OPTIONS_REQUIRE_LIVE;
   else process.env.AI_OPTIONS_REQUIRE_LIVE = prev;
+}
+
+// force=true still respects PROVIDER_FORCE_MIN_INTERVAL_MS (cost amplification guard)
+{
+  _clearReadinessCache();
+  _resetProviderHealth();
+  const prevKey = config.anthropicApiKey;
+  config.anthropicApiKey = "sk-ant-api03-" + "x".repeat(40);
+
+  let probeCalls = 0;
+  _setProbeImplForTests(async () => {
+    probeCalls += 1;
+    return { ok: true, reasonCode: "ok", model: "claude-haiku", latencyMs: 1, text: "OK" };
+  });
+
+  try {
+    await getProviderReadiness("claude", { force: true });
+    assert.equal(probeCalls, 1, "first force probes once");
+    await getProviderReadiness("claude", { force: true });
+    assert.equal(
+      probeCalls,
+      1,
+      `second force within ${PROVIDER_FORCE_MIN_INTERVAL_MS}ms must reuse cache`,
+    );
+    assert.ok(PROVIDER_FORCE_MIN_INTERVAL_MS >= 1000, "force floor is at least 1s");
+  } finally {
+    _setProbeImplForTests(null);
+    config.anthropicApiKey = prevKey;
+    _clearReadinessCache();
+    _resetProviderHealth();
+  }
 }
 
 console.log("✅ providerReadiness tests OK");

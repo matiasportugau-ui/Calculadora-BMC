@@ -27,9 +27,20 @@ import {
 } from "./providerProbes.js";
 
 export const PROVIDER_READY_TTL_MS = Number(process.env.PROVIDER_READY_TTL_MS) || 90_000;
+/** Even force probes respect a short floor so a tight loop cannot burn keys. */
+export const PROVIDER_FORCE_MIN_INTERVAL_MS =
+  Number(process.env.PROVIDER_FORCE_MIN_INTERVAL_MS) || 5_000;
 
 /** @type {Map<string, { at: number, value: object }>} */
 const cache = new Map();
+
+/** @type {null | typeof probeProvider} */
+let _probeImplForTests = null;
+
+/** Test-only: override live probe (cost-guard unit tests). Pass null to restore. */
+export function _setProbeImplForTests(fn) {
+  _probeImplForTests = typeof fn === "function" ? fn : null;
+}
 
 /**
  * @param {string} key
@@ -178,14 +189,17 @@ export async function getProviderReadiness(provider, opts = {}) {
     });
   }
 
+  const hit = cache.get(provider);
   if (!force) {
-    const hit = cache.get(provider);
     if (hit && Date.now() - hit.at < PROVIDER_READY_TTL_MS) {
       return hit.value;
     }
+  } else if (hit && Date.now() - hit.at < PROVIDER_FORCE_MIN_INTERVAL_MS) {
+    // Defense-in-depth: force still cannot re-probe faster than the floor.
+    return hit.value;
   }
 
-  // Hard CB: surface without burning another probe (still allow force)
+  // Hard CB: surface without burning another probe (still allow force past floor)
   if (!force) {
     const fromCb = statusFromCooldown(provider, cache.get(provider)?.value);
     if (fromCb && fromCb.state === "not_ready") {
@@ -194,7 +208,8 @@ export async function getProviderReadiness(provider, opts = {}) {
     }
   }
 
-  const result = await probeProvider(provider);
+  const probe = _probeImplForTests || probeProvider;
+  const result = await probe(provider);
   const status = buildProviderStatus(provider, result, { configured: true, key });
 
   if (result.ok) {

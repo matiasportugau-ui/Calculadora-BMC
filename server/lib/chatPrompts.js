@@ -329,7 +329,12 @@ export function buildCanonicalPricingBlock() {
  */
 export function sanitizeForPrompt(val, maxLen = 200) {
   if (val == null) return "";
-  const str = String(val)
+  const limit = Math.max(0, Number(maxLen) || 0);
+  // Bound length BEFORE regex work. Running /\$\{[^}]*\}/ on unbounded
+  // attacker-controlled strings is quadratic (CodeQL: polynomial regex) and
+  // can stall the event loop before the old trailing slice ever ran.
+  let str = String(val).slice(0, limit);
+  str = str
     // Remove control chars (except common whitespace)
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
     // Neutralize template-like injection patterns
@@ -337,7 +342,7 @@ export function sanitizeForPrompt(val, maxLen = 200) {
     // Neutralize markdown heading injection
     .replace(/^#{1,6}\s/gm, "")
     .trim();
-  return str.slice(0, maxLen);
+  return str.slice(0, limit);
 }
 
 const ANTI_REPETITION_RULES = `## REGLAS ANTI-REPETICIÓN (OBLIGATORIAS)

@@ -30,16 +30,17 @@ export default function createProviderStatusRouter() {
   const router = Router();
 
   // GET status is public (same class as /api/agent/ai-options): payload has no secrets
-  // (prefix only). Rate-limited. Force deep probe still allowed but TTL-cached.
-  // POST probe stays admin-gated (costs money).
+  // (prefix only). Rate-limited. Cache-first only — never honor ?deep= here.
+  // Unauthenticated force probes burn paid provider API calls (cost amplification).
+  // Admins use POST /agent/providers/probe.
   const adminGuard = requireServiceOrUser({ role: "admin" });
 
   router.get("/agent/providers/status", readLimiter, async (req, res) => {
     try {
-      const force = /^(1|true|yes)$/i.test(String(req.query.deep || ""));
       const only = String(req.query.provider || "").trim().toLowerCase();
       const providers = only ? [only] : undefined;
-      const agg = await getAggregateReadiness({ force, providers });
+      // Intentionally ignore ?deep= / force on the public GET.
+      const agg = await getAggregateReadiness({ force: false, providers });
       res.json({
         ok: true,
         ready: agg.ready,
