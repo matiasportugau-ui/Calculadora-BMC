@@ -184,8 +184,20 @@ router.get("/agent/tool-stats", async (req, res) => {
  * GET /api/agent/obs-summary — IMP-06 hub $ + IMP-12 p50/p95 latency (memory ring).
  * Query: windowMinutes (default 1440). Not multi-instance durable.
  * Auth: same as other agent admin ops (API_AUTH_TOKEN / relax-dev).
+ * Rate-limit: required by CodeQL js/missing-rate-limiting on auth-gated routes;
+ * also bounds online guessing of API_AUTH_TOKEN (Bearer / x-api-key / ?key=).
  */
-router.get("/agent/obs-summary", requireDevModeAuthMiddleware, (req, res) => {
+export const OBS_SUMMARY_RATE = { windowMs: 60 * 1000, max: 60 };
+
+const obsSummaryLimiter = rateLimit({
+  windowMs: OBS_SUMMARY_RATE.windowMs,
+  max: OBS_SUMMARY_RATE.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "Demasiadas consultas a obs-summary. Esperá un momento." },
+});
+
+router.get("/agent/obs-summary", obsSummaryLimiter, requireDevModeAuthMiddleware, (req, res) => {
   const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
   try {
     const summary = getObsSummary({ windowMs: minutes * 60 * 1000 });
