@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-27 (fix — cashflow USD burn + DnD persist):** Re-land of stuck #774/#771/#751 on tip after #797. `getMonthlyBurnDisplay` converts UYU burn via FX in USD mode (was treating 420000 UYU as US$ → runway ~0.02m). Optimistic `PATCH /vencimientos` checks `r.ok` and reverts only the failed tx. Tests in `tests/cashflow-project.test.js`.
+
 **2026-07-26 (feat — Grok Voice + agent selector readiness):** Live voice is dual-engine: selector **Grok** → xAI Grok Voice Agent (`POST client_secrets` + WebRTC SDP on `api.x.ai`); OpenAI Realtime for auto/openai (claude/gemini Live still OpenAI + UI note). In-chat `AgentModelSelector` + `ProviderStatusLights` via `GET /api/agent/providers/status` and readiness envelope on `ai-options`. Server: `voiceRealtimeProviders`, mounted `providerStatus`. SDD: `docs/sdd/grok-voice-agent/`, `panelin-agent-selector/`, `panelin-voice-agent/`, `api-key-readiness/`. On PR #783.
 
 **2026-07-26 (feat — agent platform IMP residual pack):** Hub **Costo & latencia** via `GET /api/agent/obs-summary` (auth-gated; memory ring cost Σ + p50/p95/ttft; multi-day still Cloud Logging). Tool tiers `tools-manifest?tier=` (IMP-14). `prompts_sha` boot + obs (IMP-13). Hybrid RAG fuse `RAG_HYBRID` default OFF (IMP-10). SDD platform v1.4 PAOS + glory; review fixes: no double-count cost, providerStatus import removed. PR #783.
