@@ -1,3 +1,4 @@
+import { getMonthlyBurnDisplay } from "../../../../lib/cashflow/currency.js";
 import { fmtMoney } from "../finanzasUi.js";
 import { useCashflowStore } from "./cashflowStore.js";
 
@@ -12,7 +13,7 @@ export default function VariablesSidebar() {
       <h3>Variables</h3>
       <label style={{ fontSize: 13, fontWeight: 600 }}>Burn mensual</label>
       <div style={{ display: "flex", justifyContent: "space-between", margin: "8px 0 6px", fontFamily: "SF Mono, Menlo, monospace", fontSize: 14, color: "#0071e3", fontWeight: 600 }}>
-        {fmtMoney(state.monthlyBurn, state.currencyMode)}
+        {fmtMoney(getMonthlyBurnDisplay(state), state.currencyMode)}
       </div>
       <input className="fp-range" type="range" min={200000} max={800000} step={10000} value={state.monthlyBurn} onChange={(e) => setMonthlyBurn(e.target.value)} />
 

@@ -25,8 +25,22 @@ export function getCurrentCashDisplay(state) {
     : currentCashUsd + currentCashUyu / fx.rate;
 }
 
+/**
+ * Company-level burn must always be expressed in the active display unit.
+ * Single-currency modes (uyu/usd) filter transactions, but burn is one figure —
+ * convert via FX when the stored burn currency differs. Never fall back to the
+ * raw amount in the wrong currency (that poisoned USD runway/KPIs).
+ */
 export function getMonthlyBurnDisplay(state) {
-  return convertAmount(state.monthlyBurn, state.monthlyBurnCurrency, state.currencyMode, state.fx) ?? state.monthlyBurn;
+  const { currencyMode, fx, monthlyBurn, monthlyBurnCurrency } = state;
+  const displayMode =
+    currencyMode === "uyu" ? "unified_uyu" :
+    currencyMode === "usd" ? "unified_usd" :
+    currencyMode;
+  const converted = convertAmount(monthlyBurn, monthlyBurnCurrency, displayMode, fx);
+  if (converted != null) return converted;
+  // Same-currency path without FX, or unavailable conversion → 0 (runway becomes null)
+  return convertAmount(monthlyBurn, monthlyBurnCurrency, currencyMode, fx) ?? 0;
 }
 
 export function getTransactionDisplayAmount(tx, mode, fx) {

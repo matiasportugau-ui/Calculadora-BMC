@@ -1,6 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { convertAmount, getCurrentCashDisplay, isUnifiedModeAvailable } from "../src/lib/cashflow/currency.js";
+import {
+  convertAmount,
+  getCurrentCashDisplay,
+  getMonthlyBurnDisplay,
+  isUnifiedModeAvailable,
+} from "../src/lib/cashflow/currency.js";
 import { createMockCashflowState } from "../src/lib/cashflow/mockData.js";
 import {
   applyTransactionDateMove,
@@ -34,6 +39,28 @@ describe("cashflow currency", () => {
     const state = createMockCashflowState();
     state.currencyMode = "unified_uyu";
     assert.equal(getCurrentCashDisplay(state), state.currentCashUyu + state.currentCashUsd * state.fx.rate);
+  });
+
+  it("USD mode converts UYU burn via FX (never raw pesos-as-dollars)", () => {
+    const state = createMockCashflowState();
+    assert.equal(state.monthlyBurnCurrency, "UYU");
+    assert.equal(getMonthlyBurnDisplay(state), 420000);
+
+    state.currencyMode = "usd";
+    const burnUsd = getMonthlyBurnDisplay(state);
+    assert.equal(burnUsd, state.monthlyBurn / state.fx.rate); // 420000/40 = 10500
+    assert.ok(burnUsd < state.currentCashUsd * 2, "burn must be in USD units, not UYU");
+
+    const runway = getRunwayMonths(state);
+    assert.ok(runway != null && runway > 0.5 && runway < 2, `expected ~0.8m runway, got ${runway}`);
+  });
+
+  it("burn returns 0 when FX missing and currencies differ", () => {
+    const state = createMockCashflowState();
+    state.currencyMode = "usd";
+    state.fx = null;
+    assert.equal(getMonthlyBurnDisplay(state), 0);
+    assert.equal(getRunwayMonths(state), null);
   });
 });
 
