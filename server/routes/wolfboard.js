@@ -87,13 +87,22 @@ const ESCENARIO_LABELS = {
   techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica",
 };
 
+/**
+ * Pure calc used by POST /quote-batch. Exported for offline regression tests.
+ * @param {object} extracted
+ * @param {string[]} [usedDefaults]
+ */
+export function runWolfboardBatchCalc(extracted, usedDefaults = []) {
+  return runBatchCalc(extracted, usedDefaults);
+}
+
 function runBatchCalc(extracted, usedDefaults) {
   const { escenario, techo, pared, camara } = extracted || {};
   if (!escenario || escenario === "null") return null;
 
   setListaPrecios("web");
 
-  if (escenario === "solo_techo" || escenario === "techo_fachada") {
+  if (escenario === "solo_techo") {
     if (!techo?.largo || !techo?.ancho) return null;
     const familia = techo.familia && techo.familia !== "null" ? techo.familia
       : (usedDefaults.push("panel ISODEC EPS"), "ISODEC_EPS");
@@ -107,6 +116,43 @@ function runBatchCalc(extracted, usedDefaults) {
         opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
       });
       return r?.error ? null : { ...r, _escenario: "solo_techo" };
+    } catch { return null; }
+  }
+
+  // techo_fachada must price BOTH surfaces — previously collapsed to solo_techo
+  // (~50% underquote) and wrote that total into Admin col J via quote-batch.
+  if (escenario === "techo_fachada") {
+    if (!techo?.largo || !techo?.ancho) return null;
+    if (!pared?.alto || !pared?.perimetro) return null;
+    const techoFamilia = techo.familia && techo.familia !== "null" ? techo.familia
+      : (usedDefaults.push("panel ISODEC EPS"), "ISODEC_EPS");
+    const techoEspesor = techo.espesor || (usedDefaults.push("espesor 100mm"), 100);
+    const tipoEst = techo.tipoEst && techo.tipoEst !== "null" ? techo.tipoEst : "metal";
+    const paredFamilia = pared.familia && pared.familia !== "null" ? pared.familia
+      : (usedDefaults.push("panel ISOPANEL EPS"), "ISOPANEL_EPS");
+    const paredEspesor = pared.espesor || (usedDefaults.push("espesor 100mm"), 100);
+    try {
+      const rT = calcTechoCompleto({
+        familia: techoFamilia, espesor: techoEspesor, tipoEst, color: "Blanco",
+        largo: techo.largo, ancho: techo.ancho,
+        borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+        opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+      });
+      if (rT?.error) return null;
+      const rP = calcParedCompleto({
+        familia: paredFamilia, espesor: paredEspesor,
+        alto: pared.alto, perimetro: pared.perimetro,
+        tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true,
+      });
+      if (rP?.error) return null;
+      const allItems = [...(rT?.allItems || []), ...(rP?.allItems || [])];
+      return {
+        ...rT,
+        paredResult: rP,
+        allItems,
+        totales: calcTotalesSinIVA(allItems),
+        _escenario: "techo_fachada",
+      };
     } catch { return null; }
   }
 
