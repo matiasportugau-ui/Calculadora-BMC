@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-27 (test — Google Ads + re-land route coverage):** Offline suites for Google Ads API (#722): `googleAdsClient` dry-run default (never `mutateResources` unless `apply:true`) + `/api/ads` auth/RBAC/validation/MCC-config gates. Re-lands unmerged #798/#782 suites (PAOS, Workspace, Meta Ads, provider-status). Wired into `npm run test:api`. Tiny testability: `createAdsRouter({ googleAds })` + `__testApi` on client.
+
 **2026-07-26 (test — route regression coverage):** Offline HTTP suites for PAOS admin (#777), Workspace API (#741), Meta Ads Live Report gates (#753/#762), and provider readiness status/probe/reset (#789). Wired into `npm run test:api`. Re-lands unmerged coverage intent from PR #782 + adds provider-status auth contract.
 
 **2026-07-26 (feat — Grok Voice + agent selector readiness):** Live voice is dual-engine: selector **Grok** → xAI Grok Voice Agent (`POST client_secrets` + WebRTC SDP on `api.x.ai`); OpenAI Realtime for auto/openai (claude/gemini Live still OpenAI + UI note). In-chat `AgentModelSelector` + `ProviderStatusLights` via `GET /api/agent/providers/status` and readiness envelope on `ai-options`. Server: `voiceRealtimeProviders`, mounted `providerStatus`. SDD: `docs/sdd/grok-voice-agent/`, `panelin-agent-selector/`, `panelin-voice-agent/`, `api-key-readiness/`. On PR #783.
