@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-28 (test — obs-summary auth + Google Ads apply route):** Offline suites for shared `devModeAuth` + `GET /api/agent/obs-summary` (#783: anon/wrong-token 401, Bearer/X-Api-Key OK, RAG flags, windowMinutes clamp, no secret echo) and `tools-manifest?tier=` HTTP filter. Extends Google Ads route suite with `apply:true` strict boolean (string `"true"` stays dry-run). Re-lands unmerged #806/#798/#782 suites (PAOS, Workspace, Meta Ads, provider-status, Google Ads dry-run). Wired into `npm run test:api`.
+
 **2026-07-27 (test — Google Ads + re-land route coverage):** Offline suites for Google Ads API (#722): `googleAdsClient` dry-run default (never `mutateResources` unless `apply:true`) + `/api/ads` auth/RBAC/validation/MCC-config gates. Re-lands unmerged #798/#782 suites (PAOS, Workspace, Meta Ads, provider-status). Wired into `npm run test:api`. Tiny testability: `createAdsRouter({ googleAds })` + `__testApi` on client.
 
 **2026-07-26 (test — route regression coverage):** Offline HTTP suites for PAOS admin (#777), Workspace API (#741), Meta Ads Live Report gates (#753/#762), and provider readiness status/probe/reset (#789). Wired into `npm run test:api`. Re-lands unmerged coverage intent from PR #782 + adds provider-status auth contract.
