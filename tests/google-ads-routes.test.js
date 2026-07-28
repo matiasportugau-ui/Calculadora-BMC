@@ -216,6 +216,33 @@ test("admin pause defaults to dry-run (apply omitted)", async () => {
   });
 });
 
+test("admin pause with apply:true reaches client apply path (truthy string rejected)", async () => {
+  await withAdsApp(async (port, { pauseCalls }) => {
+    const truthyString = await requestJson(
+      port,
+      "POST",
+      "/api/ads/accounts/8607757427/campaigns/99/pause",
+      { token: accessToken(ADMIN_ID), body: { apply: "true" } },
+    );
+    assert.equal(truthyString.status, 200);
+    assert.equal(truthyString.body?.dryRun, true);
+    assert.equal(truthyString.body?.applied, false);
+    assert.equal(pauseCalls[0]?.apply, false);
+
+    const applied = await requestJson(
+      port,
+      "POST",
+      "/api/ads/accounts/8607757427/campaigns/99/pause",
+      { token: accessToken(ADMIN_ID), body: { apply: true } },
+    );
+    assert.equal(applied.status, 200);
+    assert.equal(applied.body?.dryRun, false);
+    assert.equal(applied.body?.applied, true);
+    assert.equal(pauseCalls.length, 2);
+    assert.equal(pauseCalls[1].apply, true);
+  });
+});
+
 test("mutation validation rejects bad budget and empty name", async () => {
   await withAdsApp(async (port) => {
     const badBudget = await requestJson(
