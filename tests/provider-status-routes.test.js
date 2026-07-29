@@ -184,6 +184,11 @@ test("GET /api/agent/providers/status is public and returns readiness without se
     // Raw body must not contain sk-/AIza-looking secrets
     assert.equal(/sk-[a-zA-Z0-9]{20,}/.test(res.raw), false);
     assert.equal(/AIza[a-zA-Z0-9_-]{20,}/.test(res.raw), false);
+
+    // ?deep=1 must not crash the public GET (cost-amp semantics tracked in #790/#791)
+    const deep = await requestJson(port, "GET", "/api/agent/providers/status?deep=1");
+    assert.equal(deep.status, 200);
+    assert.equal(deep.body?.ok, true);
   });
 });
 
