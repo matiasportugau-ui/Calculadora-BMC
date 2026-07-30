@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-07-30 (test — coverage automation):** Re-land unmerged route suites from #808 (PAOS/Workspace/Meta Ads/provider-status/Google Ads dry-run + `apply:true`/obs-summary auth/devModeAuth/ai-options/calc validation — supersedes open #808/#807/#806/#798/#782). New this run: `tests/voiceErrorLog.test.js` (IMP-09 ring + dual-write + truncation); `markReadyFromTraffic` cache path in `providerReadiness` (wired into `test:agent`); voice `/errors` + `/errors/clear` auth gates in `panelinLiveVoice`; `#796` `PANELIN_AI_EVENT` same-tab sync in `panelinAiSelection`.
+
 **2026-07-29 (test — coverage automation):** Re-land unmerged route suites (PAOS/Workspace/Meta Ads/provider-status/Google Ads dry-run + `apply:true` strict boolean/obs-summary auth/devModeAuth — supersedes open #807/#806/#798/#782). New: `tests/ai-options-routes.test.js` (public `GET /api/agent/ai-options` envelope, no secrets); calc `/calc/cotizar` validation edges (invalid escenario, missing techo/camara, techo_fachada empty, solo_fachada + flete=0 omits FLETE); provider-status `?deep=1` no-crash. Wired into `npm run test:api`.
 
 **2026-07-26 (test — route regression coverage):** Offline HTTP suites for PAOS admin (#777), Workspace API (#741), Meta Ads Live Report gates (#753/#762), and provider readiness status/probe/reset (#789). Wired into `npm run test:api`. Re-lands unmerged coverage intent from PR #782 + adds provider-status auth contract.
