@@ -217,6 +217,29 @@ assert(
   "buildVoiceSystemPrompt → no lead block when leadContext absent",
 );
 
+// GET /api/agent/voice/errors — auth gate + ring buffer (IMP-09)
+const { recordVoiceError, clearVoiceErrors } = await import("../server/lib/voiceErrorLog.js");
+clearVoiceErrors();
+recordVoiceError({ kind: "mint_fail", message: "unit-seed", status: 401 });
+const errorsUnauth = await fetch(`${BASE}/api/agent/voice/errors`);
+assert(errorsUnauth.status === 401, "GET voice/errors without token → 401");
+const errorsOk = await req("/api/agent/voice/errors");
+assert(errorsOk.status === 200 && errorsOk.json?.ok === true, "GET voice/errors with token → 200");
+assert(
+  Array.isArray(errorsOk.json?.errors) &&
+    errorsOk.json.errors.some((e) => e.kind === "mint_fail" && e.message === "unit-seed"),
+  "GET voice/errors returns seeded ring entries",
+);
+const clearUnauth = await fetch(`${BASE}/api/agent/voice/errors/clear`, { method: "POST" });
+assert(clearUnauth.status === 401, "POST voice/errors/clear without token → 401");
+const clearOk = await req("/api/agent/voice/errors/clear", { method: "POST" });
+assert(clearOk.status === 200 && clearOk.json?.ok === true, "POST voice/errors/clear → 200");
+const errorsEmpty = await req("/api/agent/voice/errors");
+assert(
+  errorsEmpty.status === 200 && Array.isArray(errorsEmpty.json?.errors) && errorsEmpty.json.errors.length === 0,
+  "GET voice/errors empty after clear",
+);
+
 server.close();
 globalThis.fetch = realFetch;
 

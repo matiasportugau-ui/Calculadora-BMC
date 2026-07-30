@@ -176,6 +176,110 @@ async function run() {
       `count=${cotizacionesJson?.count || 0}`,
       "contains QA Regression entry"
     );
+
+    // ── Test 5: validation edges (invalid escenario / missing required fields) ─
+    const badEscenario = await postJson("/calc/cotizar", {
+      lista: "web",
+      escenario: "presupuesto_libre",
+      techo: baseCotizacionBody.techo,
+    });
+    assert(
+      "POST /calc/cotizar rejects unsupported escenario",
+      badEscenario.status === 400,
+      badEscenario.status,
+      400
+    );
+    assert(
+      "Unsupported escenario error names the field",
+      String(badEscenario.json?.error || "").toLowerCase().includes("escenario") ||
+        String(badEscenario.json?.error || "").includes("presupuesto_libre"),
+      badEscenario.json?.error,
+      "mentions escenario or presupuesto_libre"
+    );
+
+    const missingTecho = await postJson("/calc/cotizar", {
+      lista: "web",
+      escenario: "solo_techo",
+    });
+    assert(
+      "POST /calc/cotizar solo_techo without techo → 400",
+      missingTecho.status === 400,
+      missingTecho.status,
+      400
+    );
+    assert(
+      "solo_techo error mentions techo.familia",
+      String(missingTecho.json?.error || "").includes("techo.familia"),
+      missingTecho.json?.error,
+      "contains techo.familia"
+    );
+
+    const missingCamara = await postJson("/calc/cotizar", {
+      lista: "web",
+      escenario: "camara_frig",
+      pared: { familia: "ISOWALL_PIR", espesor: 100, color: "Blanco", tipoEst: "metal", inclSell: true },
+    });
+    assert(
+      "POST /calc/cotizar camara_frig without camara dims → 400",
+      missingCamara.status === 400,
+      missingCamara.status,
+      400
+    );
+    assert(
+      "camara_frig error mentions camara.largo_int",
+      String(missingCamara.json?.error || "").includes("camara.largo_int"),
+      missingCamara.json?.error,
+      "contains camara.largo_int"
+    );
+
+    const techoFachadaEmpty = await postJson("/calc/cotizar", {
+      lista: "web",
+      escenario: "techo_fachada",
+    });
+    assert(
+      "POST /calc/cotizar techo_fachada without techo/pared → 400",
+      techoFachadaEmpty.status === 400,
+      techoFachadaEmpty.status,
+      400
+    );
+
+    // ── Test 6: solo_fachada happy path + flete=0 omits FLETE line ───────────
+    const fachada = await postJson("/calc/cotizar", {
+      lista: "web",
+      escenario: "solo_fachada",
+      flete: 0,
+      pared: {
+        familia: "ISOWALL_PIR",
+        espesor: 50,
+        color: "Blanco",
+        tipoEst: "metal",
+        inclSell: true,
+        perimetro: 24,
+        alto: 3,
+        numEsqExt: 4,
+        numEsqInt: 0,
+      },
+    });
+    assert(
+      "POST /calc/cotizar solo_fachada response ok",
+      fachada.status === 200 && fachada.json?.ok === true,
+      fachada.status,
+      200
+    );
+    assert(
+      "solo_fachada summary returns positive total",
+      Number(fachada.json?.resumen?.total_usd || 0) > 0,
+      fachada.json?.resumen?.total_usd,
+      ">0"
+    );
+    const fachadaServicios = fachada.json?.bom?.find((g) => g.grupo === "SERVICIOS");
+    const fachadaFlete = fachadaServicios?.items?.find((i) => i.sku === "FLETE");
+    assert(
+      "flete=0 does not add a FLETE BOM line",
+      !fachadaFlete,
+      fachadaFlete ? JSON.stringify(fachadaFlete) : "absent",
+      "absent"
+    );
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
