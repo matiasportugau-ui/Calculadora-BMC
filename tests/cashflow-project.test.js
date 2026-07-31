@@ -1,6 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { convertAmount, getCurrentCashDisplay, isUnifiedModeAvailable } from "../src/lib/cashflow/currency.js";
+import {
+  convertAmount,
+  getCurrentCashDisplay,
+  getMonthlyBurnDisplay,
+  isUnifiedModeAvailable,
+} from "../src/lib/cashflow/currency.js";
 import { createMockCashflowState } from "../src/lib/cashflow/mockData.js";
 import {
   applyTransactionDateMove,
@@ -34,6 +39,19 @@ describe("cashflow currency", () => {
     const state = createMockCashflowState();
     state.currencyMode = "unified_uyu";
     assert.equal(getCurrentCashDisplay(state), state.currentCashUyu + state.currentCashUsd * state.fx.rate);
+  });
+
+  it("UYU mode burn stays in pesos (no FX)", () => {
+    const state = createMockCashflowState();
+    assert.equal(state.monthlyBurnCurrency, "UYU");
+    state.currencyMode = "uyu";
+    assert.equal(getMonthlyBurnDisplay(state), state.monthlyBurn);
+  });
+
+  it("unified_usd burn converts UYU via FX", () => {
+    const state = createMockCashflowState();
+    state.currencyMode = "unified_usd";
+    assert.equal(getMonthlyBurnDisplay(state), state.monthlyBurn / state.fx.rate);
   });
 });
 
