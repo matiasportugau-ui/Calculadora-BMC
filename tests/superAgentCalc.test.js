@@ -83,6 +83,45 @@ function totalFromResult(r) {
   assert.equal(totalFromResult(sa), totalFromResult(direct), "fachada parity");
 }
 
+// --- camara_frig parity (techo + pared surfaces) ---
+{
+  const extracted = {
+    escenario: "camara_frig",
+    camara: { largo_int: 6, ancho_int: 4, alto_int: 2.5 },
+    pared: { familia: "ISOPANEL_EPS", espesor: 150 },
+  };
+  const sa = runSuperAgentCalc(extracted, []);
+  assert.ok(sa, "camara_frig calc");
+  assert.equal(sa._escenario, "camara_frig");
+  assert.ok(sa.techoResult, "camara_frig includes techoResult");
+  assert.ok(Array.isArray(sa.allItems) && sa.allItems.length > 0);
+
+  setListaPrecios("web");
+  const perim = 2 * (6 + 4);
+  const rP = calcParedCompleto({
+    familia: "ISOPANEL_EPS",
+    espesor: 150,
+    perimetro: perim,
+    alto: 2.5,
+    tipoEst: "metal",
+    numEsqExt: 4,
+    numEsqInt: 0,
+    inclSell: true,
+  });
+  const rT = calcTechoCompleto({
+    familia: "ISOPANEL_EPS",
+    espesor: 150,
+    largo: 6,
+    ancho: 4,
+    tipoEst: "metal",
+    borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+    opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+    color: "Blanco",
+  });
+  const combined = calcTotalesSinIVA([...(rP.allItems || []), ...(rT.allItems || [])]);
+  assert.equal(totalFromResult(sa), combined.totalFinal, "camara_frig = pared+techo engine");
+}
+
 // --- missing dimensions → null (no invented prices) ---
 {
   assert.equal(
@@ -90,6 +129,29 @@ function totalFromResult(r) {
     null,
   );
   assert.equal(runSuperAgentCalc({ escenario: null }, []), null);
+  assert.equal(
+    runSuperAgentCalc(
+      {
+        escenario: "techo_fachada",
+        techo: { largo: 0, ancho: 0 },
+        pared: { alto: 3, perimetro: 40 },
+      },
+      [],
+    ),
+    null,
+    "techo_fachada without techo dims must not invent prices",
+  );
+  assert.equal(
+    runSuperAgentCalc(
+      {
+        escenario: "camara_frig",
+        camara: { largo_int: 6, ancho_int: 0, alto_int: 2.5 },
+      },
+      [],
+    ),
+    null,
+    "camara_frig incomplete dims → null",
+  );
 }
 
 // --- cost telemetry wiring ---
