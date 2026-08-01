@@ -88,9 +88,17 @@ router.get('/accounts/:customerId/campaigns', requireAds, async (req, res) => {
 // The PDF-verification pass: account status, current campaign state,
 // last-90-days spend/clicks/conversions, and whether conversion tracking
 // (conversion_action) is actually configured. Read-only, no mutation.
+// Note: Google Ads GAQL has no DURING LAST_90_DAYS — use BETWEEN dates.
 router.get('/accounts/:customerId/report', requireAds, async (req, res) => {
   const { customerId } = req.params;
   try {
+    const end = new Date();
+    const start = new Date();
+    start.setUTCDate(start.getUTCDate() - 90);
+    const ymd = (d) => d.toISOString().slice(0, 10);
+    const dateStart = ymd(start);
+    const dateEnd = ymd(end);
+
     const [customerRows, campaignRows, metricRows, conversionActionRows] = await Promise.all([
       googleAds.searchStream(
         customerId,
@@ -108,7 +116,7 @@ router.get('/accounts/:customerId/report', requireAds, async (req, res) => {
         customerId,
         `SELECT segments.date, campaign.name, metrics.clicks, metrics.impressions,
                 metrics.cost_micros, metrics.conversions, metrics.conversions_value
-         FROM campaign WHERE segments.date DURING LAST_90_DAYS`,
+         FROM campaign WHERE segments.date BETWEEN '${dateStart}' AND '${dateEnd}'`,
       ),
       googleAds.searchStream(
         customerId,
@@ -123,6 +131,7 @@ router.get('/accounts/:customerId/report', requireAds, async (req, res) => {
       customer: customerRows[0]?.customer ?? null,
       campaigns: campaignRows.map((r) => r.campaign),
       metrics_last_90_days: metricRows,
+      date_range: { start: dateStart, end: dateEnd },
       conversion_actions: conversionActionRows.map((r) => r.conversion_action),
     });
   } catch (err) {
