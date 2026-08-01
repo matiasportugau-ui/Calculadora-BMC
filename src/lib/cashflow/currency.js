@@ -26,7 +26,35 @@ export function getCurrentCashDisplay(state) {
 }
 
 export function getMonthlyBurnDisplay(state) {
-  return convertAmount(state.monthlyBurn, state.monthlyBurnCurrency, state.currencyMode, state.fx) ?? state.monthlyBurn;
+  const converted = convertAmount(
+    state.monthlyBurn,
+    state.monthlyBurnCurrency || "UYU",
+    state.currencyMode,
+    state.fx,
+  );
+  // Never fall back to raw UYU burn when displaying USD / unified — that treats
+  // pesos as dollars (~40× runway understatement). Prefer FX conversion; 0 if unavailable.
+  if (converted != null) return converted;
+  if (state.currencyMode === "uyu") return Number(state.monthlyBurn) || 0;
+  if (state.currencyMode === "usd" || state.currencyMode === "unified_usd") {
+    const rate = Number(state.fx?.rate);
+    if (Number.isFinite(rate) && rate > 0) {
+      const cur = state.monthlyBurnCurrency || "UYU";
+      if (cur === "USD") return Number(state.monthlyBurn) || 0;
+      return (Number(state.monthlyBurn) || 0) / rate;
+    }
+    return 0;
+  }
+  if (state.currencyMode === "unified_uyu") {
+    const rate = Number(state.fx?.rate);
+    if (Number.isFinite(rate) && rate > 0) {
+      const cur = state.monthlyBurnCurrency || "UYU";
+      if (cur === "UYU") return Number(state.monthlyBurn) || 0;
+      return (Number(state.monthlyBurn) || 0) * rate;
+    }
+    return 0;
+  }
+  return Number(state.monthlyBurn) || 0;
 }
 
 export function getTransactionDisplayAmount(tx, mode, fx) {
