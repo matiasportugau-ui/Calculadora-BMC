@@ -12,7 +12,8 @@ import {
   calcParedCompleto,
   calcTotalesSinIVA,
 } from "../src/utils/calculations.js";
-import { setListaPrecios } from "../src/data/constants.js";
+import { setListaPrecios, PANELS_TECHO } from "../src/data/constants.js";
+import { executeScenario } from "../src/utils/scenarioOrchestrator.js";
 
 function totalFromResult(r) {
   if (!r) return null;
@@ -83,6 +84,59 @@ function totalFromResult(r) {
   assert.equal(totalFromResult(sa), totalFromResult(direct), "fachada parity");
 }
 
+// --- camara_frig: wall family must not underquote by dropping the ceiling ---
+{
+  const extracted = {
+    escenario: "camara_frig",
+    pared: { familia: "ISOPANEL_EPS", espesor: 150 },
+    camara: { largo_int: 4, ancho_int: 6, alto_int: 3 },
+  };
+  const used = [];
+  const sa = runSuperAgentCalc(extracted, used);
+  assert.ok(sa, "camara_frig calc should return a result");
+  assert.equal(sa._escenario, "camara_frig");
+  assert.ok(sa.techoResult && !sa.techoResult.error, "ceiling must succeed");
+  assert.ok(
+    (sa.allItems || []).length > (sa.techoResult?.allItems || []).length,
+    "BOM must include wall + techo items",
+  );
+
+  setListaPrecios("web");
+  const orchestrated = executeScenario("camara_frig", {
+    techo: {},
+    pared: { familia: "ISOPANEL_EPS", espesor: 150, color: "Blanco", tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true },
+    camara: { largo_int: 4, ancho_int: 6, alto_int: 3 },
+  });
+  assert.ok(orchestrated && !orchestrated.error, "orchestrator baseline");
+  assert.equal(
+    totalFromResult(sa),
+    totalFromResult(orchestrated),
+    "SuperAgent camara_frig total must match scenarioOrchestrator (wall+ceiling)",
+  );
+  assert.ok(
+    totalFromResult(sa) > (sa.totales?.totalFinal ? 0 : -1),
+    "sanity",
+  );
+  // Wall-only total would be ~5569; combined must be higher once ceiling is priced.
+  const perim = 2 * (4 + 6);
+  const wallOnly = calcParedCompleto({
+    familia: "ISOPANEL_EPS",
+    espesor: 150,
+    perimetro: perim,
+    alto: 3,
+    tipoEst: "metal",
+    numEsqExt: 4,
+    numEsqInt: 0,
+    inclSell: true,
+  });
+  assert.ok(totalFromResult(sa) > totalFromResult(wallOnly), "must not return wall-only underquote");
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(PANELS_TECHO, sa.techoResult.panel?.familia || sa.techoResult?.familia || "ISODEC_EPS")
+      || used.some((d) => /ISODEC/i.test(String(d))),
+    "techo family must resolve via PANELS_TECHO / ISODEC fallback",
+  );
+}
+
 // --- missing dimensions → null (no invented prices) ---
 {
   assert.equal(
@@ -90,6 +144,14 @@ function totalFromResult(r) {
     null,
   );
   assert.equal(runSuperAgentCalc({ escenario: null }, []), null);
+  assert.equal(
+    runSuperAgentCalc({
+      escenario: "camara_frig",
+      pared: { familia: "ISOPANEL_EPS", espesor: 150 },
+      camara: { largo_int: 0, ancho_int: 0, alto_int: 0 },
+    }, []),
+    null,
+  );
 }
 
 // --- cost telemetry wiring ---
