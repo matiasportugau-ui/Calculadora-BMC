@@ -137,7 +137,15 @@ router.get('/accounts/:customerId/report', requireAds, async (req, res) => {
   } catch (err) {
     log.error({ err, route: 'GET /accounts/:customerId/report', customerId }, 'report query failed');
     audit(req, 'ads.account.query', { resourceType: 'report', resourceId: customerId, outcome: 'failure' });
-    res.status(502).json({ error: 'Google Ads API request failed', message: err?.message });
+    const detail =
+      err?.errors?.[0]?.message ||
+      err?.message ||
+      null;
+    res.status(502).json({
+      error: 'Google Ads API request failed',
+      message: detail,
+      google_error_code: err?.errors?.[0]?.error_code || null,
+    });
   }
 });
 
