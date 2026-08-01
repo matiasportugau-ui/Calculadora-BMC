@@ -45,7 +45,7 @@ const BASE = `http://127.0.0.1:${port}`;
 
 const SECRET_INSTRUCTIONS = "SYSTEM SECRET PROMPT DO NOT LEAK";
 const realFetch = globalThis.fetch;
-globalThis.fetch = async (url) => {
+globalThis.fetch = async (url, init) => {
   const u = String(url);
   if (u.includes("api.openai.com/v1/realtime/client_secrets")) {
     return {
@@ -59,7 +59,8 @@ globalThis.fetch = async (url) => {
         }),
     };
   }
-  return realFetch(url);
+  // Forward method/headers/body for local voice/action requests.
+  return realFetch(url, init);
 };
 
 async function req(path, init = {}) {
