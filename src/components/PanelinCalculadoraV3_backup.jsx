@@ -3857,10 +3857,15 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     });
     const filteredByCategory = withOverrides.filter(group => allowedGroups.has(group.title));
 
-    // Filter out excluded items
+    // Filter out excluded items and zero-qty noise (empty wizard still produced 0-cant rows).
+    // Keep overridden lines even at cant=0 so operators can see/edit them.
     return filteredByCategory.map(group => ({
       ...group,
-      items: group.items.filter(item => !excludedItems[item.lineId])
+      items: group.items.filter(item => {
+        if (excludedItems[item.lineId]) return false;
+        if (item.isOverridden) return true;
+        return (Number(item.cant) || 0) !== 0;
+      })
     })).filter(group => group.items.length > 0);
   }, [results, overrides, flete, excludedItems, categoriasActivas, proyecto.direccion, additiveLibreGroups]);
 

@@ -277,6 +277,10 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   // from CRM_Operativo; must not be open to unauthenticated callers.
   "buscar_cliente_crm",
   "historial_cliente",
+  // CRM taxonomy — reads/writes CRM_Operativo AL–AN (tipo/tags/notas). Same
+  // PII + mutation surface as other CRM tools; must not be open on exec-tool.
+  "leer_crm_taxonomia",
+  "escribir_crm_taxonomia",
   // Quote registry / PDF read tools — return customer + quote metadata and
   // full quote HTML. Cursor + Copilot security review flagged these as
   // exposing business data through unauthenticated /api/agent/exec-tool.

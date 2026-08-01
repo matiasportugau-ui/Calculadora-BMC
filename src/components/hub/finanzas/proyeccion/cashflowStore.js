@@ -52,7 +52,8 @@ export const useCashflowStore = create((set, get) => ({
   moveTransactionDate: (id, newDate, token) => {
     const { state } = get();
     if (!state) return;
-    const prev = state;
+    const prevTx = state.transactions.find((t) => t.id === id);
+    const prevDate = prevTx?.date;
     const next = applyTransactionDateMove(state, id, newDate);
     set({ state: next, toast: wouldCreateNegativeGap(next, id, newDate) ? { type: "warn", msg: "Liquidez proyectada negativa — se guarda igual (soft-warn)." } : null });
     if (useMock) return;
@@ -61,6 +62,24 @@ export const useCashflowStore = create((set, get) => ({
       credentials: "include",
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({ transactionId: id, newDate }),
-    }).catch(() => set({ state: prev, toast: { type: "err", msg: "Error al guardar — cambio revertido." } }));
+    })
+      .then((r) => {
+        if (r.ok) return;
+        // Revert only this transaction so concurrent successful moves stay put.
+        const cur = get().state;
+        if (!cur || prevDate == null) return;
+        set({
+          state: applyTransactionDateMove(cur, id, prevDate),
+          toast: { type: "err", msg: "Error al guardar — cambio revertido." },
+        });
+      })
+      .catch(() => {
+        const cur = get().state;
+        if (!cur || prevDate == null) return;
+        set({
+          state: applyTransactionDateMove(cur, id, prevDate),
+          toast: { type: "err", msg: "Error al guardar — cambio revertido." },
+        });
+      });
   },
 }));
