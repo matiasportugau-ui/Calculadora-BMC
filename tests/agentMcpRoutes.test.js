@@ -78,6 +78,10 @@ await group("GET /api/agent/tools-manifest", async () => {
   assert(buscar?.requires_auth === true, "buscar_cliente_crm marked requires_auth=true (CRM PII)");
   const historial = body.tools.find((t) => t.name === "historial_cliente");
   assert(historial?.requires_auth === true, "historial_cliente marked requires_auth=true (CRM PII)");
+  const leerTax = body.tools.find((t) => t.name === "leer_crm_taxonomia");
+  assert(leerTax?.requires_auth === true, "leer_crm_taxonomia marked requires_auth=true (CRM PII)");
+  const escribirTax = body.tools.find((t) => t.name === "escribir_crm_taxonomia");
+  assert(escribirTax?.requires_auth === true, "escribir_crm_taxonomia marked requires_auth=true (CRM write)");
   // Quote registry / PDF read tools — also gated (Cursor + Copilot security finding)
   const listar = body.tools.find((t) => t.name === "listar_cotizaciones_recientes");
   assert(listar?.requires_auth === true, "listar_cotizaciones_recientes marked requires_auth=true (quote metadata)");
@@ -213,6 +217,26 @@ await group("POST /api/agent/exec-tool — historial_cliente without auth → 40
     input: { cliente: "Juan Pérez" },
   });
   assert(status === 401, "401 Unauthorized (CRM read requires auth)");
+  assert(body?.ok === false, "ok false");
+  assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
+});
+
+await group("POST /api/agent/exec-tool — leer_crm_taxonomia without auth → 401", async () => {
+  const { status, body } = await post("/api/agent/exec-tool", {
+    name: "leer_crm_taxonomia",
+    input: { row: 4 },
+  });
+  assert(status === 401, "401 Unauthorized (CRM taxonomy read requires auth)");
+  assert(body?.ok === false, "ok false");
+  assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
+});
+
+await group("POST /api/agent/exec-tool — escribir_crm_taxonomia without auth → 401", async () => {
+  const { status, body } = await post("/api/agent/exec-tool", {
+    name: "escribir_crm_taxonomia",
+    input: { row: 4, tipo_contacto: "proveedor", user_confirmed: true },
+  });
+  assert(status === 401, "401 Unauthorized (CRM taxonomy write requires auth)");
   assert(body?.ok === false, "ok false");
   assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
 });
