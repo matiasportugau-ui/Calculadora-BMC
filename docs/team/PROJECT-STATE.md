@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-01 (fix — list_bug_reports auth + Wolfboard camara_frig):** (1) `list_bug_reports` added to `TOOLS_REQUIRING_AUTH` — unauthenticated `POST /api/agent/exec-tool` could list internal bug reports via `bugsForward` injecting server `API_AUTH_TOKEN`. (2) Wolfboard `runBatchCalc` `camara_frig` maps wall family → `PANELS_TECHO`/`ISODEC_EPS` and fails closed on techo errors (parity with SuperAgent #814); previously wrote wall-only underquotes into Admin col J. Tests: agentMcpRoutes, wolfboardCamaraFrig. Sibling open: #791 force-probe, #792 SuperAgent techo_fachada, #804 Wolfboard techo_fachada.
+
 **2026-08-01 (fix — full debug pass calculadora-bmc):** Critical correctness/security fixes from live prod QA: (1) CRM taxonomy tools gated in `TOOLS_REQUIRING_AUTH` (unauth exec-tool R/W closed). (2) SuperAgent `camara_frig` prices ceiling via `PANELS_TECHO`/`ISODEC_EPS` (no more wall-only ~25–30% underquote). (3) Finanzas USD monthly burn converts via FX (never pesos-as-dollars). (4) DnD vencimientos PATCH checks `r.ok` and reverts only the failed tx. (5) Calculator BOM hides zero-cant noise rows; mobile bottom-sheet no longer intercepts taps when closed; horizontal overflow clip on narrow viewports. Tests: superAgentCalc, cashflow-project (+2), agentMcpRoutes taxonomy, validation 441/441.
 
 
