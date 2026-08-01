@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-01 (fix — CRM taxonomy auth + SuperAgent camara_frig ceiling):** `leer_crm_taxonomia` / `escribir_crm_taxonomia` added to `TOOLS_REQUIRING_AUTH` so unauthenticated `POST /api/agent/exec-tool` cannot read/write CRM_Operativo AL–AN. SuperAgent `camara_frig` no longer prices the ceiling with a wall family (which failed silently → wall-only underquote); maps to `PANELS_TECHO` / `ISODEC_EPS` like `scenarioOrchestrator`.
+
 **2026-07-26 (feat — Grok Voice + agent selector readiness):** Live voice is dual-engine: selector **Grok** → xAI Grok Voice Agent (`POST client_secrets` + WebRTC SDP on `api.x.ai`); OpenAI Realtime for auto/openai (claude/gemini Live still OpenAI + UI note). In-chat `AgentModelSelector` + `ProviderStatusLights` via `GET /api/agent/providers/status` and readiness envelope on `ai-options`. Server: `voiceRealtimeProviders`, mounted `providerStatus`. SDD: `docs/sdd/grok-voice-agent/`, `panelin-agent-selector/`, `panelin-voice-agent/`, `api-key-readiness/`. On PR #783.
 
 **2026-07-26 (feat — agent platform IMP residual pack):** Hub **Costo & latencia** via `GET /api/agent/obs-summary` (auth-gated; memory ring cost Σ + p50/p95/ttft; multi-day still Cloud Logging). Tool tiers `tools-manifest?tier=` (IMP-14). `prompts_sha` boot + obs (IMP-13). Hybrid RAG fuse `RAG_HYBRID` default OFF (IMP-10). SDD platform v1.4 PAOS + glory; review fixes: no double-count cost, providerStatus import removed. PR #783.
