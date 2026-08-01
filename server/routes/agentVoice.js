@@ -239,9 +239,10 @@ router.post(
         message: `${label} ${err.status}`,
         detail: safeDetail || null,
       });
+      // Never echo provider prompt/instructions blobs to the browser.
       return res.status(502).json({
         ok: false,
-        error: `${label} ${err.status}: ${detail || "No se pudo iniciar sesión de voz"}`,
+        error: `${label} ${err.status}: ${safeDetail || "No se pudo iniciar sesión de voz"}`,
         provider: voiceProvider,
       });
     }
