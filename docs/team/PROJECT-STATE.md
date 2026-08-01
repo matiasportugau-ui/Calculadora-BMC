@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-26
+**Última actualización:** 2026-08-01
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -15,6 +15,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 **2026-08-01 (fix — full debug pass calculadora-bmc):** Critical correctness/security fixes from live prod QA: (1) CRM taxonomy tools gated in `TOOLS_REQUIRING_AUTH` (unauth exec-tool R/W closed). (2) SuperAgent `camara_frig` prices ceiling via `PANELS_TECHO`/`ISODEC_EPS` (no more wall-only ~25–30% underquote). (3) Finanzas USD monthly burn converts via FX (never pesos-as-dollars). (4) DnD vencimientos PATCH checks `r.ok` and reverts only the failed tx. (5) Calculator BOM hides zero-cant noise rows; mobile bottom-sheet no longer intercepts taps when closed; horizontal overflow clip on narrow viewports. Tests: superAgentCalc, cashflow-project (+2), agentMcpRoutes taxonomy, validation 441/441.
+
+**2026-08-01 (test — coverage automation):** Re-land unmerged #810 suites (PAOS/Workspace/Meta Ads/provider-status/Google Ads/obs-summary/ai-options/calc validation/voiceErrorLog/PAOS edges/hybrid RAG/camara_frig — supersedes open #810/#809/#808/#807/#806/#798/#782). New this run: `tests/quotePayloadValidator.test.js` (buildQuote validation + `listaPrecios` isolation restore); `tests/agentVoiceBuildQuoteEdges.test.js` (voice `buildQuote` reject/enrich + mint instructions redaction in HTTP + ring); `tests/chatSummarizer.test.js` (threshold/keep-recent/6000-cap/AI-failure passthrough). Tiny prod fixes: restore `LISTA_ACTIVA` after preview; use `safeDetail` in voice mint 502 body.
 
 **2026-07-31 (test — coverage automation):** Re-land unmerged route suites from #809 (PAOS/Workspace/Meta Ads/provider-status/Google Ads dry-run + `apply:true`/obs-summary auth/devModeAuth/ai-options/calc validation/voiceErrorLog/providerReadiness wire/AI selection — supersedes open #809/#808/#807/#806/#798/#782). New this run: `tests/paosEvaluateEdges.test.js` (money-adjacent IVA/precio+digits, improvised-language reject, provenance variants); `tests/hybridRetrieveEdges.test.js` (topK sort, accent fold, KB noise filter, no invented prices); SuperAgent `camara_frig` engine parity + incomplete-dim null guards; cashflow `getMonthlyBurnDisplay` for UYU + `unified_usd`.
 
