@@ -1,0 +1,90 @@
+{
+  "generated_at": "2026-08-01T09:15:00Z",
+  "iteration": 1,
+  "system_slug": "digital-marketing-agent",
+  "sdd_path": "docs/sdd/digital-marketing-agent/SDD.md",
+  "document_version": "0.2",
+  "document_status": "As-Built Draft",
+  "prior_composite": 80,
+  "composite": 94,
+  "delta": 14,
+  "min_pass": 90,
+  "pass": true,
+  "label": "Pass (evolution-loop iter 1 — evidence + recreation + AI depth)",
+  "audit_skill": "sdd-quality-auditor + sdd-evolution-loop",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 96,
+      "weighted": 14.4,
+      "notes": [
+        "v0.2 As-Built Draft; sections 1–12 complete",
+        "Non-goals inlined; appendices A/B; no placeholders"
+      ]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 94,
+      "weighted": 14.1,
+      "notes": [
+        "C4 L1/L2 + sequence; sibling skills as distinct externals",
+        "Filesystem paths mapped to containers"
+      ]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 94,
+      "weighted": 18.8,
+      "notes": [
+        "RECREATION-CHECKLIST.md with install/probe/first report",
+        "Exact GOOGLE_ADS_* and META_ADS_* from config.js",
+        "Bearer auth + health-probe command documented"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 93,
+      "weighted": 13.95,
+      "notes": [
+        "evidence/index.md E-01–E-28 with path:line",
+        "Critical mounts/routes/env CONFIRMED; MCP session INFERRED"
+      ]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 92,
+      "weighted": 9.2,
+      "notes": [
+        "Components + pattern + prompt contract + failure modes + cost model",
+        "Optional Hub ads-insights path cited"
+      ]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 90,
+      "weighted": 9.0,
+      "notes": [
+        "Security/reliability/perf/obs/cost/sustainability",
+        "RBAC, dry-run, intelLimiter note, dual-path skill risk"
+      ]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 94,
+      "weighted": 9.4,
+      "notes": [
+        "ADR-001–005 with alternatives and consequences"
+      ]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 95,
+      "weighted": 4.75,
+      "notes": [
+        "version/status/glossary/risks + full audit package + KB pointer"
+      ]
+    }
+  },
+  "composite_formula": "sum(score * weight / 100)",
+  "gaps_closed_iter1": ["G-01", "G-02", "G-03", "G-04", "G-05", "G-06", "G-07", "G-08", "G-09"]
+}

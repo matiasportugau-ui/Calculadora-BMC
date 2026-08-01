@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-26
+**Última actualización:** 2026-08-01
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-01 (feat — digital-marketing-agent):** Grok terminal Digital Marketing Agent (Meta Ads + Google Ads + SEO + cross-channel): skill `.grok/skills/digital-marketing-agent/`, agent `digital-marketing`, Claude `bmc-digital-marketing`, health-probe, playbooks, report template. SDD `docs/sdd/digital-marketing-agent/` v0.2 **94 pass**; glory complete + `gate:local` green. Invoke: `/digital-marketing-agent`. LIVE paid still human-gated on META/GOOGLE secrets.
 
 **2026-07-26 (feat — Grok Voice + agent selector readiness):** Live voice is dual-engine: selector **Grok** → xAI Grok Voice Agent (`POST client_secrets` + WebRTC SDP on `api.x.ai`); OpenAI Realtime for auto/openai (claude/gemini Live still OpenAI + UI note). In-chat `AgentModelSelector` + `ProviderStatusLights` via `GET /api/agent/providers/status` and readiness envelope on `ai-options`. Server: `voiceRealtimeProviders`, mounted `providerStatus`. SDD: `docs/sdd/grok-voice-agent/`, `panelin-agent-selector/`, `panelin-voice-agent/`, `api-key-readiness/`. On PR #783.
 
