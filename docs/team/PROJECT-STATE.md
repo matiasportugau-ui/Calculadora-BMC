@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-01
+**Última actualización:** 2026-08-02
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-02 (test — coverage automation):** Re-land unmerged #812 suites onto main tip (#814) — PAOS/Workspace/Meta Ads/provider-status/Google Ads/obs-summary/ai-options/calc validation/voiceErrorLog/PAOS money edges/hybrid RAG/quote+voice+summarizer (supersedes open #812/#810/#809/#808/#807/#806/#798/#782). New for #814: cashflow selective DnD date-revert (concurrent moves survive); burn edges `unified_uyu` FX-missing → 0 and USD-denominated burn without FX. Tiny prod testability already from #812: `LISTA_ACTIVA` restore, voice mint `safeDetail`, Ads DI / Google Ads `__testApi`, chatSummarizer `complete` inject.
 
 **2026-08-01 (fix — full debug pass calculadora-bmc):** Critical correctness/security fixes from live prod QA: (1) CRM taxonomy tools gated in `TOOLS_REQUIRING_AUTH` (unauth exec-tool R/W closed). (2) SuperAgent `camara_frig` prices ceiling via `PANELS_TECHO`/`ISODEC_EPS` (no more wall-only ~25–30% underquote). (3) Finanzas USD monthly burn converts via FX (never pesos-as-dollars). (4) DnD vencimientos PATCH checks `r.ok` and reverts only the failed tx. (5) Calculator BOM hides zero-cant noise rows; mobile bottom-sheet no longer intercepts taps when closed; horizontal overflow clip on narrow viewports. Tests: superAgentCalc, cashflow-project (+2), agentMcpRoutes taxonomy, validation 441/441.
 
