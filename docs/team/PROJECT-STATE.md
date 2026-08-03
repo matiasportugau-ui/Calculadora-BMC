@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-03 (fix — Shopify admin auth gate):** `GET/POST /admin/questions|answer|auto-config` now require `API_AUTH_TOKEN` via the same `requireApiAuth` used by `/api/shopify/products`. Previously unauthenticated callers could read Shopify question Sheet rows (PII), mutate order notes with the stored Admin API token, and toggle auto-reply config. Regression coverage in `tests/auth-routes.test.js`.
+
 **2026-08-01 (fix — full debug pass calculadora-bmc):** Critical correctness/security fixes from live prod QA: (1) CRM taxonomy tools gated in `TOOLS_REQUIRING_AUTH` (unauth exec-tool R/W closed). (2) SuperAgent `camara_frig` prices ceiling via `PANELS_TECHO`/`ISODEC_EPS` (no more wall-only ~25–30% underquote). (3) Finanzas USD monthly burn converts via FX (never pesos-as-dollars). (4) DnD vencimientos PATCH checks `r.ok` and reverts only the failed tx. (5) Calculator BOM hides zero-cant noise rows; mobile bottom-sheet no longer intercepts taps when closed; horizontal overflow clip on narrow viewports. Tests: superAgentCalc, cashflow-project (+2), agentMcpRoutes taxonomy, validation 441/441.
 
 
