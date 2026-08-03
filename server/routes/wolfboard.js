@@ -20,7 +20,7 @@ import { Router } from "express";
 import { google } from "googleapis";
 import { callAgentOnce } from "../lib/agentCore.js";
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
-import { setListaPrecios } from "../../src/data/constants.js";
+import { setListaPrecios, PANELS_TECHO } from "../../src/data/constants.js";
 import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
 import { uploadQuoteToGcs, uploadQuoteJsonToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive } from "../lib/driveUpload.js";
@@ -87,6 +87,15 @@ const ESCENARIO_LABELS = {
   techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica",
 };
 
+/**
+ * Pure calc used by POST /quote-batch. Exported for offline regression tests.
+ * @param {object} extracted
+ * @param {string[]} [usedDefaults]
+ */
+export function runWolfboardBatchCalc(extracted, usedDefaults = []) {
+  return runBatchCalc(extracted, usedDefaults);
+}
+
 function runBatchCalc(extracted, usedDefaults) {
   const { escenario, techo, pared, camara } = extracted || {};
   if (!escenario || escenario === "null") return null;
@@ -135,11 +144,26 @@ function runBatchCalc(extracted, usedDefaults) {
         familia, espesor, perimetro: perim, alto: camara.alto_int,
         tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true,
       });
+      if (rP?.error) return null;
+      // Wall families (ISOPANEL_EPS / ISOFRIG_PIR / …) are not roof panels.
+      // Match SuperAgent #814 / scenarioOrchestrator: map to PANELS_TECHO or ISODEC_EPS.
+      const techoFam = Object.prototype.hasOwnProperty.call(PANELS_TECHO, familia)
+        ? familia
+        : (usedDefaults.push("ISODEC EPS techo cámara"), "ISODEC_EPS");
+      const techoPanel = PANELS_TECHO[techoFam];
+      let techoEsp = espesor;
+      if (!techoPanel?.esp?.[techoEsp]) {
+        const available = Object.keys(techoPanel?.esp || {}).map(Number).sort((a, b) => a - b);
+        techoEsp = available.find((e) => e >= techoEsp) || available[available.length - 1];
+        if (!techoEsp) return null;
+        usedDefaults.push(`${techoEsp}mm techo cámara`);
+      }
       const rT = calcTechoCompleto({
-        familia, espesor, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal",
+        familia: techoFam, espesor: techoEsp, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal",
         borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
         opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: "Blanco",
       });
+      if (rT?.error) return null;
       const allItems = [...(rP?.allItems || []), ...(rT?.allItems || [])];
       const totales = calcTotalesSinIVA(allItems);
       return { ...rP, techoResult: rT, allItems, totales, _escenario: "camara_frig" };

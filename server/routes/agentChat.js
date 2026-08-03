@@ -298,6 +298,10 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_actualizar_fila",
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
+  // Bug reports — GET /api/bugs is requireAuth, but bugsForward injects the
+  // server API_AUTH_TOKEN. Without this gate, unauthenticated exec-tool /
+  // public chat can list internal bug reports (logs, routes, screenshot URLs).
+  "list_bug_reports",
   // Email cockpit + Omni (list/read/classify/draft/send — send is HITL)
   "email_panelsim_resumen",
   "email_borrador_saliente",

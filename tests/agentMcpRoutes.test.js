@@ -89,6 +89,8 @@ await group("GET /api/agent/tools-manifest", async () => {
   assert(porId?.requires_auth === true, "obtener_cotizacion_por_id marked requires_auth=true (quote metadata)");
   const pdfHtml = body.tools.find((t) => t.name === "obtener_pdf_html");
   assert(pdfHtml?.requires_auth === true, "obtener_pdf_html marked requires_auth=true (full quote HTML)");
+  const bugReports = body.tools.find((t) => t.name === "list_bug_reports");
+  assert(bugReports?.requires_auth === true, "list_bug_reports marked requires_auth=true (internal bugs / logs)");
   const obtener = body.tools.find((t) => t.name === "obtener_escenarios");
   assert(obtener?.requires_auth === false, "obtener_escenarios marked requires_auth=false");
 });
@@ -116,6 +118,7 @@ await group("shouldBlockToolForUnauthenticatedChat — public chat blocks auth-r
     "wolfboard_export",
     "wolfboard_sync",
     "wolfboard_quote_batch",
+    "list_bug_reports",
     "sheets_write_range",
   ]) {
     assert(gate(sensitive, false) === true, `public chat blocks ${sensitive}`);
@@ -237,6 +240,16 @@ await group("POST /api/agent/exec-tool — escribir_crm_taxonomia without auth �
     input: { row: 4, tipo_contacto: "proveedor", user_confirmed: true },
   });
   assert(status === 401, "401 Unauthorized (CRM taxonomy write requires auth)");
+  assert(body?.ok === false, "ok false");
+  assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
+});
+
+await group("POST /api/agent/exec-tool — list_bug_reports without auth → 401", async () => {
+  const { status, body } = await post("/api/agent/exec-tool", {
+    name: "list_bug_reports",
+    input: { limit: 20 },
+  });
+  assert(status === 401, "401 Unauthorized (bug reports require auth — bugsForward uses server token)");
   assert(body?.ok === false, "ok false");
   assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
 });
