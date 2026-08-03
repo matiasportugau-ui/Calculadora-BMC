@@ -1,6 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { convertAmount, getCurrentCashDisplay, getMonthlyBurnDisplay, isUnifiedModeAvailable } from "../src/lib/cashflow/currency.js";
+import {
+  convertAmount,
+  getCurrentCashDisplay,
+  getMonthlyBurnDisplay,
+  isUnifiedModeAvailable,
+} from "../src/lib/cashflow/currency.js";
 import { createMockCashflowState } from "../src/lib/cashflow/mockData.js";
 import {
   applyTransactionDateMove,
@@ -54,6 +59,37 @@ describe("cashflow currency", () => {
     assert.equal(getMonthlyBurnDisplay(state), 0);
   });
 
+  it("UYU mode burn stays in pesos (no FX)", () => {
+    const state = createMockCashflowState();
+    assert.equal(state.monthlyBurnCurrency, "UYU");
+    state.currencyMode = "uyu";
+    assert.equal(getMonthlyBurnDisplay(state), state.monthlyBurn);
+  });
+
+  it("unified_usd burn converts UYU via FX", () => {
+    const state = createMockCashflowState();
+    state.currencyMode = "unified_usd";
+    assert.equal(getMonthlyBurnDisplay(state), state.monthlyBurn / state.fx.rate);
+  });
+
+  it("unified_uyu burn returns 0 when FX missing (no raw USD-as-pesos)", () => {
+    const state = createMockCashflowState();
+    state.currencyMode = "unified_uyu";
+    state.monthlyBurn = 1000;
+    state.monthlyBurnCurrency = "USD";
+    state.fx = null;
+    assert.equal(getMonthlyBurnDisplay(state), 0);
+  });
+
+  it("USD mode keeps USD-denominated burn even when FX missing", () => {
+    // convertAmount(usd→usd) succeeds without FX; must not collapse to 0.
+    const state = createMockCashflowState();
+    state.currencyMode = "usd";
+    state.monthlyBurn = 2500;
+    state.monthlyBurnCurrency = "USD";
+    state.fx = null;
+    assert.equal(getMonthlyBurnDisplay(state), 2500);
+  });
 });
 
 describe("cashflow scenarios", () => {
@@ -94,6 +130,22 @@ describe("cashflow gap + patch", () => {
   it("applyTransactionDateMove", () => {
     const next = applyTransactionDateMove(createMockCashflowState(), "tx_c1", "2026-12-01");
     assert.equal(next.transactions.find((t) => t.id === "tx_c1")?.date, "2026-12-01");
+  });
+
+  // Mirrors cashflowStore.moveTransactionDate fail path (#814): on non-OK PATCH,
+  // only the failed transaction is rewound so concurrent successful moves survive.
+  it("selective date revert leaves concurrent moves intact", () => {
+    const base = createMockCashflowState();
+    const a0 = base.transactions.find((t) => t.id === "tx_c1")?.date;
+    const b0 = base.transactions.find((t) => t.id === "tx_sueldos")?.date;
+    assert.ok(a0 && b0);
+    let state = applyTransactionDateMove(base, "tx_c1", "2026-12-01");
+    state = applyTransactionDateMove(state, "tx_sueldos", "2026-11-15");
+    // Simulate failed PATCH for tx_c1 only.
+    state = applyTransactionDateMove(state, "tx_c1", a0);
+    assert.equal(state.transactions.find((t) => t.id === "tx_c1")?.date, a0);
+    assert.equal(state.transactions.find((t) => t.id === "tx_sueldos")?.date, "2026-11-15");
+    assert.notEqual(state.transactions.find((t) => t.id === "tx_sueldos")?.date, b0);
   });
 
   it("money needed", () => {
