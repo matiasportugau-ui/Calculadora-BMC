@@ -18,6 +18,7 @@ const { default: agentVoiceRouter } = await import("../server/routes/agentVoice.
 const { config } = await import("../server/config.js");
 const { createSuperAgentRouter } = await import("../server/routes/superAgent.js");
 const { createWolfboardRouter } = await import("../server/routes/wolfboard.js");
+const { default: createShopifyRouter } = await import("../server/routes/shopify.js");
 
 let passed = 0;
 let failed = 0;
@@ -41,6 +42,7 @@ async function run() {
   app.use("/api", agentVoiceRouter);
   app.use("/api/agent", createSuperAgentRouter(config));
   app.use("/api/wolfboard", createWolfboardRouter(config));
+  app.use(createShopifyRouter(config, { warn: () => {}, info: () => {} }));
 
   const server = await new Promise((resolve) => {
     const s = app.listen(0, () => resolve(s));
@@ -49,8 +51,74 @@ async function run() {
   const base = `http://127.0.0.1:${port}`;
 
   try {
+    // ── Shopify /admin/* must require API_AUTH_TOKEN (PII + order mutation) ──
+    const shopQ = "example.myshopify.com";
+    let r;
+    let body;
+    for (const path of [
+      `/admin/questions?shop=${shopQ}`,
+      `/admin/auto-config?shop=${shopQ}`,
+    ]) {
+      r = await fetch(`${base}${path}`);
+      body = await r.json().catch(() => ({}));
+      assert(
+        `GET ${path.split("?")[0]} without auth → 401`,
+        r.status === 401 && body.ok === false,
+        { status: r.status, ok: body.ok },
+        { status: 401, ok: false }
+      );
+    }
+
+    r = await fetch(`${base}/admin/answer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shop: shopQ, questionId: "1", text: "unauthorized" }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /admin/answer without auth → 401",
+      r.status === 401 && body.ok === false,
+      { status: r.status, ok: body.ok },
+      { status: 401, ok: false }
+    );
+
+    r = await fetch(`${base}/admin/auto-config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shop: shopQ, enabled: true }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /admin/auto-config without auth → 401",
+      r.status === 401 && body.ok === false,
+      { status: r.status, ok: body.ok },
+      { status: 401, ok: false }
+    );
+
+    r = await fetch(`${base}/admin/questions?shop=${shopQ}`, {
+      headers: { "x-api-key": "wrong-token" },
+    });
+    assert(
+      "GET /admin/questions with wrong token → 401",
+      r.status === 401,
+      r.status,
+      401
+    );
+
+    // Authenticated call reaches handler (Sheets may 503 without BMC_SHEET_ID).
+    r = await fetch(`${base}/admin/questions?shop=${shopQ}`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "GET /admin/questions with Bearer → not 401 (passes auth gate)",
+      r.status !== 401,
+      { status: r.status, ok: body.ok },
+      "status !== 401"
+    );
+
     // ── /calc/interaction-log/list ───────────────────────────────────────────
-    let r = await fetch(`${base}/calc/interaction-log/list`);
+    r = await fetch(`${base}/calc/interaction-log/list`);
     assert(
       "GET /calc/interaction-log/list without auth → 401",
       r.status === 401,
@@ -61,7 +129,7 @@ async function run() {
     r = await fetch(`${base}/calc/interaction-log/list`, {
       headers: { "x-api-key": TOKEN },
     });
-    let body = await r.json();
+    body = await r.json();
     assert(
       "GET /calc/interaction-log/list with x-api-key → 200",
       r.status === 200 && body.ok === true,

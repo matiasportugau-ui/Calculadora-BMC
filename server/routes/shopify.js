@@ -502,7 +502,9 @@ export default function createShopifyRouter(config, logger) {
   }));
 
   // ——— Admin: list questions (from Sheet) ———
-  router.get("/admin/questions", asyncHandler(async (req, res) => {
+  // Same API_AUTH_TOKEN gate as /api/shopify/products — these mutate Shopify
+  // orders / expose Sheet PII and must never be public.
+  router.get("/admin/questions", requireApiAuth, asyncHandler(async (req, res) => {
     const shop = (req.query.shop || "").trim();
     if (!shop) return res.status(400).json({ ok: false, error: "Missing shop" });
     if (!bmcSheetId) return res.status(503).json({ ok: false, error: "Sheets not configured" });
@@ -525,7 +527,7 @@ export default function createShopifyRouter(config, logger) {
   }));
 
   // ——— Admin: approve & send reply (GraphQL order/customer note) ———
-  router.post("/admin/answer", asyncHandler(async (req, res) => {
+  router.post("/admin/answer", requireApiAuth, asyncHandler(async (req, res) => {
     const { shop, questionId, text } = req.body || {};
     if (!shop || !validShop(shop)) return res.status(400).json({ ok: false, error: "Invalid shop" });
     if (!text || typeof text !== "string") return res.status(400).json({ ok: false, error: "Missing text" });
@@ -557,7 +559,7 @@ export default function createShopifyRouter(config, logger) {
   }));
 
   // ——— Admin: auto-reply config (toggle + UTC-3 schedule) ———
-  router.post("/admin/auto-config", asyncHandler(async (req, res) => {
+  router.post("/admin/auto-config", requireApiAuth, asyncHandler(async (req, res) => {
     const shop = (req.body?.shop || req.query.shop || "").trim();
     if (!shop || !validShop(shop)) return res.status(400).json({ ok: false, error: "Invalid shop" });
 
@@ -572,11 +574,11 @@ export default function createShopifyRouter(config, logger) {
     res.json({ ok: true, shop });
   }));
 
-  router.get("/admin/auto-config", asyncHandler(async (req, res) => {
+  router.get("/admin/auto-config", requireApiAuth, asyncHandler(async (req, res) => {
     const shop = (req.query.shop || "").trim();
     if (!shop) return res.status(400).json({ ok: false, error: "Missing shop" });
-    const config = await store.getConfig(shop);
-    res.json({ ok: true, shop, config });
+    const cfg = await store.getConfig(shop);
+    res.json({ ok: true, shop, config: cfg });
   }));
 
   return router;
