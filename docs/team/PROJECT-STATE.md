@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-02 (fix — deep research auth gate):** `POST/GET/cancel /api/research/deep*` now require `API_AUTH_TOKEN` (`requireAuth`) — closes unauthenticated OpenAI Deep Research cost amp. Panelin chat Deep Research button sends Developer Mode bearer and stays disabled without it. Tests: `auth-routes` deep-research 401/200. Re-land of closed #204 (without lockfile churn).
+
 **2026-08-01 (fix — full debug pass calculadora-bmc):** Critical correctness/security fixes from live prod QA: (1) CRM taxonomy tools gated in `TOOLS_REQUIRING_AUTH` (unauth exec-tool R/W closed). (2) SuperAgent `camara_frig` prices ceiling via `PANELS_TECHO`/`ISODEC_EPS` (no more wall-only ~25–30% underquote). (3) Finanzas USD monthly burn converts via FX (never pesos-as-dollars). (4) DnD vencimientos PATCH checks `r.ok` and reverts only the failed tx. (5) Calculator BOM hides zero-cant noise rows; mobile bottom-sheet no longer intercepts taps when closed; horizontal overflow clip on narrow viewports. Tests: superAgentCalc, cashflow-project (+2), agentMcpRoutes taxonomy, validation 441/441.
 
 

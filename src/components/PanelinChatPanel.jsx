@@ -591,12 +591,16 @@ export default function PanelinChatPanel({
 
   const handleDeepResearch = useCallback(async () => {
     const query = input.trim();
-    if (!query || deepResearch.status === "running") return;
+    // Server requires API_AUTH_TOKEN; only Developer Mode supplies it.
+    if (!query || !devMode || !authHeader || deepResearch.status === "running") return;
     setDeepResearch({ status: "running", id: null, error: null });
     try {
       const res = await fetch("/api/research/deep", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+        },
         body: JSON.stringify({ query }),
       });
       const data = await res.json();
@@ -605,7 +609,9 @@ export default function PanelinChatPanel({
       setDeepResearch({ status: "running", id, error: null });
       deepResearchPollRef.current = setInterval(async () => {
         try {
-          const pr = await fetch(`/api/research/deep/${encodeURIComponent(id)}`);
+          const pr = await fetch(`/api/research/deep/${encodeURIComponent(id)}`, {
+            headers: { Authorization: authHeader },
+          });
           const pdata = await pr.json();
           if (pdata.status === "completed") {
             clearInterval(deepResearchPollRef.current);
@@ -630,7 +636,7 @@ export default function PanelinChatPanel({
     } catch (err) {
       setDeepResearch({ status: "error", id: null, error: err.message });
     }
-  }, [input, deepResearch.status]);
+  }, [input, devMode, authHeader, deepResearch.status]);
 
   const saveCurrentSkin = () => {
     const name = typeof window !== "undefined" ? window.prompt("Nombre de la skin:") : "";
@@ -1775,19 +1781,23 @@ export default function PanelinChatPanel({
           />
           <button
             onClick={handleDeepResearch}
-            disabled={!input.trim() || deepResearch.status === "running"}
+            disabled={!devMode || !authHeader || !input.trim() || deepResearch.status === "running"}
             title={
               deepResearch.status === "running"
                 ? "Investigando…"
                 : deepResearch.status === "error"
                   ? `Error: ${deepResearch.error}`
-                  : "Deep Research (OpenAI)"
+                  : devMode && authHeader
+                    ? "Deep Research (OpenAI)"
+                    : "Deep Research requiere Developer Mode + API token"
             }
             style={{
               ...iconBtn,
               background: deepResearch.status === "running" ? "#f59e0b" : BORDER,
               color: deepResearch.status === "running" ? "#fff" : SUBTEXT,
-              cursor: input.trim() && deepResearch.status !== "running" ? "pointer" : "not-allowed",
+              cursor: devMode && authHeader && input.trim() && deepResearch.status !== "running"
+                ? "pointer"
+                : "not-allowed",
             }}
             aria-label="Deep Research"
           >
