@@ -13,11 +13,13 @@ process.env.OPENAI_API_KEY = "sk-test-fake";
 const TOKEN = process.env.API_AUTH_TOKEN;
 
 const { default: express } = await import("express");
+const { default: rateLimit } = await import("express-rate-limit");
 const { default: calcRouter } = await import("../server/routes/calc.js");
 const { default: agentVoiceRouter } = await import("../server/routes/agentVoice.js");
 const { config } = await import("../server/config.js");
 const { createSuperAgentRouter } = await import("../server/routes/superAgent.js");
 const { createWolfboardRouter } = await import("../server/routes/wolfboard.js");
+const { requireServiceOrUser } = await import("../server/middleware/requireServiceOrUser.js");
 
 let passed = 0;
 let failed = 0;
@@ -41,6 +43,16 @@ async function run() {
   app.use("/api", agentVoiceRouter);
   app.use("/api/agent", createSuperAgentRouter(config));
   app.use("/api/wolfboard", createWolfboardRouter(config));
+  // Mirror server/index.js mount for CRM LLM extractors (paid provider loop).
+  const aiGenLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  const crmParseOk = (_req, res) => res.json({ ok: true, stub: true });
+  app.use("/api/crm/parse-email", aiGenLimiter, requireServiceOrUser({ authOnly: true }), crmParseOk);
+  app.use("/api/crm/parse-conversation", aiGenLimiter, requireServiceOrUser({ authOnly: true }), crmParseOk);
 
   const server = await new Promise((resolve) => {
     const s = app.listen(0, () => resolve(s));
@@ -112,6 +124,57 @@ async function run() {
       r.status === 401,
       r.status,
       401
+    );
+
+    // ── /api/crm/parse-* burn paid LLMs — must reject anonymous (same class as suggest-response) ──
+    r = await fetch(`${base}/api/crm/parse-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cuerpo: "Necesito paneles techo 100mm" }),
+    });
+    assert(
+      "POST /api/crm/parse-email without auth → 401",
+      r.status === 401,
+      r.status,
+      401
+    );
+
+    r = await fetch(`${base}/api/crm/parse-conversation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dialogo: "Cliente: quiero presupuesto" }),
+    });
+    assert(
+      "POST /api/crm/parse-conversation without auth → 401",
+      r.status === 401,
+      r.status,
+      401
+    );
+
+    r = await fetch(`${base}/api/crm/parse-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": TOKEN },
+      body: JSON.stringify({ cuerpo: "Necesito paneles techo 100mm" }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/crm/parse-email with x-api-key → 200",
+      r.status === 200 && body.ok === true,
+      { status: r.status, ok: body.ok },
+      { status: 200, ok: true }
+    );
+
+    r = await fetch(`${base}/api/crm/parse-conversation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ dialogo: "Cliente: quiero presupuesto" }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/crm/parse-conversation with Bearer → 200",
+      r.status === 200 && body.ok === true,
+      { status: r.status, ok: body.ok },
+      { status: 200, ok: true }
     );
 
     // ── Legacy routers must fail closed if service token is not configured ──

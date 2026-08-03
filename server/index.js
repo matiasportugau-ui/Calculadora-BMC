@@ -734,9 +734,13 @@ async function processWaConversation(chatId, conv) {
   logger.info(`[WA] Processing conversation for ${chatId} (${conv.messages.length} msgs)`);
 
   try {
+    const parseHeaders = { "Content-Type": "application/json" };
+    if (config.apiAuthToken) {
+      parseHeaders.Authorization = `Bearer ${config.apiAuthToken}`;
+    }
     const parseResp = await fetch(`http://localhost:${config.port}/api/crm/parse-conversation`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: parseHeaders,
       body: JSON.stringify({ dialogo }),
     });
     const parsed = await parseResp.json();
@@ -1037,13 +1041,17 @@ app.use("/api/agent/chat", requireAssistantEnabled("panelin"));
 app.use("/api/email-agent/chat", requireAssistantEnabled("email"));
 app.use("/api/wa/suggestions/run", requireAssistantEnabled("wa"));
 app.use("/api/wa/quotes/run", requireAssistantEnabled("wa"));
-// suggest-response was the one AI-generation route reachable ANONYMOUSLY (verified
-// live: bare curl → 200 + paid LLM completion). The others already carry auth
+// suggest-response was verified live as an anonymous paid-LLM hole (bare curl →
+// 200 + completion). Sibling extractors parse-email / parse-conversation had the
+// same gap (no auth, no rate limit) and burn Anthropic/OpenAI/Grok/Gemini in a
+// provider loop — close them the same way. WA loopbacks below send API_AUTH_TOKEN.
 // (email→requireCrmCockpitWrite, wa→requireWaAccess, wolfboard→requireWolfboardWrite;
-// agent/chat is public-by-design behind publicLimiter). Close it: rate-limit →
-// authenticate (any operator session OR static service token; rejects anonymous) →
-// then the assistant master-switch gate.
+// agent/chat is public-by-design behind publicLimiter). Rate-limit → authenticate
+// (any operator session OR static service token; rejects anonymous) → for
+// suggest-response, also the assistant master-switch gate.
 app.use("/api/crm/suggest-response", aiGenLimiter, requireServiceOrUser({ authOnly: true }), requireAssistantEnabled("ml"));
+app.use("/api/crm/parse-email", aiGenLimiter, requireServiceOrUser({ authOnly: true }));
+app.use("/api/crm/parse-conversation", aiGenLimiter, requireServiceOrUser({ authOnly: true }));
 app.use("/api/wolfboard/quote-batch", requireAssistantEnabled("wolfboard"));
 // ─────────────────────────────────────────────────────────────────────────────
 app.use("/api", agentChatRouter);

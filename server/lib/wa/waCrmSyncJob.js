@@ -86,11 +86,15 @@ export async function runWaCrmSyncJob({ pool, jobRow, config, logger, fetchImpl,
     })
     .join("\n");
 
+  const parseHeaders = { "Content-Type": "application/json" };
+  if (config.apiAuthToken) {
+    parseHeaders.Authorization = `Bearer ${config.apiAuthToken}`;
+  }
   const parseResp = await doFetch(
     `http://localhost:${config.port}/api/crm/parse-conversation`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: parseHeaders,
       body: JSON.stringify({ dialogo }),
     },
   );

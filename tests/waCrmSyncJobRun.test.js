@@ -17,7 +17,12 @@ const msgPool = {
     ],
   }),
 };
-const config = { port: 3001, bmcSheetId: "sheet1", googleApplicationCredentials: "/fake/creds.json" };
+const config = {
+  port: 3001,
+  bmcSheetId: "sheet1",
+  googleApplicationCredentials: "/fake/creds.json",
+  apiAuthToken: "wa-crm-sync-test-token",
+};
 
 // Sheets stub parameterized by what CRM_Operativo!C4:D500 returns.
 function fakeSheets(crmCD) {
@@ -63,14 +68,22 @@ assert("existing row → no Sheets writes", existingSheets.updates.length === 0)
 
 // ── No existing row → parse → create ──
 const createSheets = fakeSheets([["", ""]]); // empty row 4 → create there
+let parseAuthHeader = null;
 const r2 = await runWaCrmSyncJob({
   pool: msgPool, jobRow: { conversation_id: "c1" }, config, logger: null,
   sheets: createSheets,
-  fetchImpl: async () => ({ ok: true, json: async () => ({ ok: true, data: { cliente: "Ana", telefono: CHAT } }) }),
+  fetchImpl: async (_url, opts) => {
+    parseAuthHeader = opts?.headers?.Authorization || null;
+    return { ok: true, json: async () => ({ ok: true, data: { cliente: "Ana", telefono: CHAT } }) };
+  },
 });
 assert("new lead → created (not skipped)", r2.skipped === false);
 assert("new lead → crm_row 4", r2.crm_row === 4);
 assert("new lead → Sheets writes happened", createSheets.updates.length > 0);
+assert(
+  "new lead → parse-conversation sends API_AUTH_TOKEN Bearer",
+  parseAuthHeader === `Bearer ${config.apiAuthToken}`,
+);
 
 // ── Transient parse 503 (no existing row) → throws so the job retries ──
 let threw = false;
