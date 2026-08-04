@@ -6,8 +6,11 @@ const KEEP_RECENT = 6;       // always keep last N messages verbatim
 /**
  * Summarize long conversation history to save token budget.
  * Returns { summarized: boolean, messages: Array }
+ *
+ * @param {Array} messages
+ * @param {{ complete?: typeof callAiCompletion }} [deps] — injectable for offline tests
  */
-export async function summarizeHistory(messages) {
+export async function summarizeHistory(messages, { complete = callAiCompletion } = {}) {
   if (!Array.isArray(messages) || messages.length <= SUMMARY_TRIGGER) {
     return { summarized: false, messages };
   }
@@ -20,7 +23,7 @@ export async function summarizeHistory(messages) {
     .join("\n");
 
   try {
-    const { text: summary } = await callAiCompletion({
+    const { text: summary } = await complete({
       systemPrompt: "Sos un asistente de resumen. Resumí en 3-4 oraciones concisas la conversación, enfocándote en: paneles confirmados, dimensiones, precios y decisiones tomadas. Sé breve y factual.",
       userMessage: transcript.slice(0, 6000),
       maxTokens: 300,

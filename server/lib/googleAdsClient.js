@@ -15,7 +15,14 @@ import { GoogleAdsApi, enums } from "google-ads-api";
 // GOOGLE-ADS-SETUP.md for credential provisioning.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const createGoogleAdsClient = ({ config, logger }) => {
+/**
+ * @param {{
+ *   config: import("../config.js").config,
+ *   logger?: { warn?: Function, error?: Function, info?: Function },
+ *   __testApi?: { listAccessibleCustomers?: Function, Customer?: Function },
+ * }} opts
+ */
+export const createGoogleAdsClient = ({ config, logger, __testApi } = {}) => {
   let _client = null;
 
   const assertConfig = () => {
@@ -33,6 +40,7 @@ export const createGoogleAdsClient = ({ config, logger }) => {
 
   const getClient = () => {
     assertConfig();
+    if (__testApi) return __testApi;
     if (!_client) {
       _client = new GoogleAdsApi({
         client_id: config.googleAdsOAuthClientId,
