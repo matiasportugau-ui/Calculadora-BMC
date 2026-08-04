@@ -8,6 +8,7 @@ import {
   clearInsightsCache,
   compressReportForPrompt,
   formatDataModeNote,
+  buildAdsChatSystemPrompt,
 } from '../../server/lib/marketIntel/metaAdsInsights.js';
 import { buildMetaAdsReport } from '../../server/lib/marketIntel/metaAdsReport.js';
 
@@ -111,6 +112,22 @@ assert('bad llm → rules retained', genFail.insights.rules_retained === true);
 const compact = compressReportForPrompt(report);
 assert('compress has campaigns', compact.campaigns.length >= 1);
 assert('compress no invent spend type', typeof compact.kpis.spend === 'number' || compact.kpis.spend === null);
+
+// Snapshot path: by_line + line tags must flow into AI grounding slice
+const { report: snapReport } = await buildMetaAdsReport({ range: '30d', source: 'snapshot' });
+const snapCompact = compressReportForPrompt(snapReport);
+assert('snapshot compress has by_line array', Array.isArray(snapCompact.by_line), snapCompact.by_line);
+assert('snapshot by_line has ≥4 lines', snapCompact.by_line.length >= 4, snapCompact.by_line.length);
+assert(
+  'snapshot campaigns carry line_id',
+  snapCompact.campaigns.every((c) => c.line_id),
+  snapCompact.campaigns.map((c) => c.line_id),
+);
+const chatPrompt = buildAdsChatSystemPrompt(snapReport);
+assert('chat prompt embeds by_line', chatPrompt.includes('"by_line"') || chatPrompt.includes('by_line'), chatPrompt.slice(0, 200));
+assert('chat prompt mentions service lines rule', /rendimiento|line_id|por línea/i.test(chatPrompt));
+const trafficLine = snapCompact.by_line.find((r) => r.line_id === 'generic' || r.kpi_scoring === 'traffic');
+assert('traffic line present in grounding', !!trafficLine, snapCompact.by_line.map((r) => r.line_id));
 
 console.log(`\n═══ result: ${passed} passed, ${failed} failed ═══\n`);
 process.exit(failed > 0 ? 1 : 0);

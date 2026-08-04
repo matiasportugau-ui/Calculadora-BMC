@@ -23,11 +23,15 @@ Reglas:
 3) Objective-aware: no mates campañas de traffic solo por 0 leads.
 4) Español rioplatense, profesional, money-first.
 5) Máximo 5 insights y 5 recommendations.
-6) No inventes ROAS/CPL si son null.`;
+6) No inventes ROAS/CPL si son null.
+7) Service lines (line_id) en el REPORTE: rendimiento, instalacion, generic, shared_bof, orphan.
+   Preferí comparar por línea / pilar cuando by_line esté presente.
+8) kpi traffic o kpi_scoring traffic: no juzgues como lead-gen fallido por CPL nulo.`;
 
 export const ADS_CHAT_SYSTEM_PROMPT = `Eres el Meta Ads Analyst de BMC Uruguay. Respondés en español rioplatense, concreto y accionable (máx ~8 oraciones o lista corta).
-SOLO usás el REPORTE META inyectado: spend, CPL, campañas, freshness. No inventes campañas ni métricas.
-Si el modo es Demo o Snapshot, decilo. Objective-aware: traffic no se castiga por 0 conversiones.
+SOLO usás el REPORTE META inyectado: spend, CPL, campañas, by_line, line_id, freshness. No inventes campañas ni métricas.
+Service lines (line_id): rendimiento, instalacion, generic, shared_bof, orphan. Preferí responder por línea / por pilar cuando haya datos.
+Si el modo es Demo o Snapshot, decilo. Objective-aware: traffic no se castiga por 0 conversiones; CPL n/a en traffic.
 Si faltan datos, pedí qué haría falta (Live Graph / tracking).`;
 
 /**
@@ -155,10 +159,10 @@ export function formatDataModeNote(report) {
   return `Modo datos: ${f} (source=${src})${notes ? ` — ${notes}` : ''}`;
 }
 
-/** Compact report for prompts */
+/** Compact report for prompts — includes by_line + campaign line tags (server map). */
 export function compressReportForPrompt(report) {
   const k = report?.kpis || {};
-  const camps = (report?.campaigns || []).slice(0, 10).map((c) => ({
+  const camps = (report?.campaigns || []).slice(0, 12).map((c) => ({
     name: c.name,
     objective: c.objective,
     status: c.status,
@@ -166,6 +170,26 @@ export function compressReportForPrompt(report) {
     results: c.results,
     cpl: c.cpl,
     ctr: c.ctr,
+    line_id: c.line_id || null,
+    line_label: c.line_label || null,
+    funnel: c.funnel || null,
+    kpi: c.kpi || null,
+  }));
+  const byLine = (report?.by_line || []).slice(0, 12).map((row) => ({
+    line_id: row.line_id,
+    label: row.label,
+    kpi_scoring: row.kpi_scoring,
+    funnel_modes: row.funnel_modes,
+    campaign_count: row.campaign_count,
+    spend: row.spend,
+    results: row.results,
+    cpl: row.cpl,
+    campaigns: (row.campaigns || []).slice(0, 6).map((c) => ({
+      name: c.name,
+      spend: c.spend,
+      results: c.results,
+      kpi: c.kpi,
+    })),
   }));
   return {
     meta: {
@@ -175,6 +199,7 @@ export function compressReportForPrompt(report) {
       date_start: report?.meta?.date_start,
       date_stop: report?.meta?.date_stop,
       notes: report?.meta?.notes,
+      service_lines_version: report?.meta?.service_lines_version,
     },
     kpis: {
       spend: k.spend,
@@ -187,6 +212,7 @@ export function compressReportForPrompt(report) {
       deltas: k.deltas,
     },
     diagnostics: report?.diagnostics,
+    by_line: byLine,
     campaigns: camps,
     recommendations_rules: (report?.recommendations || [])
       .filter((r) => r.source === 'rules')

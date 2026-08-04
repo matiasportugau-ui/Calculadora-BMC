@@ -1,0 +1,18 @@
+C4Context
+title BMC Paid Media — System Context
+Person(matias, "Matias / media buyer", "Budget, strategy, approvals")
+Person(ops, "Hub admin", "Weekly review")
+System(pmc, "BMC Paid Media Command", "Measure, analyze, recommend, safe apply")
+System_Ext(meta, "Meta Marketing API + Pixel", "FB/IG ads + browser pixel")
+System_Ext(gads, "Google Ads API + tags", "Search/PMax + conversions")
+System_Ext(calc, "Calculadora BMC SPA", "Quote funnel, WA CTA")
+System_Ext(sm, "Doppler + GCP Secret Manager", "META_* GOOGLE_ADS_* secrets")
+System_Ext(llm, "LLM providers", "Ads AI analyst + DMA")
+Rel(matias, pmc, "Approves budgets and applies")
+Rel(ops, pmc, "Reviews scorecards")
+Rel(pmc, meta, "Insights read")
+Rel(pmc, gads, "GAQL read; pause/budget dry-run")
+Rel(calc, meta, "Pixel events")
+Rel(calc, pmc, "POST lead-event")
+Rel(pmc, sm, "Credentials")
+Rel(pmc, llm, "Grounded analysis")

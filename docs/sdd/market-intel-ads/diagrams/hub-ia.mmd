@@ -1,0 +1,27 @@
+flowchart TB
+  subgraph Hub["/hub/marketing"]
+    R[Resumen]
+    AM[Ads · Meta ★]
+    AG[Ads · Google P1]
+    I[Inteligencia]
+    D[Detalle]
+  end
+
+  subgraph AdsMeta["Ads · Meta zones"]
+    SC[Scorecards]
+    SL[Servicios / by_line ★]
+    TR[Tendencia]
+    CA[Campañas + line badges]
+    AI[Analista AI]
+  end
+
+  subgraph Intel["Inteligencia"]
+    COMP[Competidores]
+    ADSC[Auditoría Meta Ads card]
+    ML[ML pulse]
+  end
+
+  AM --> SC --> SL --> TR --> CA
+  AM --> AI
+  ADSC -->|deep-link setTab ads-meta| AM
+  R -.->|KPI campañas| ADSC
