@@ -18,6 +18,9 @@ const { default: agentVoiceRouter } = await import("../server/routes/agentVoice.
 const { config } = await import("../server/config.js");
 const { createSuperAgentRouter } = await import("../server/routes/superAgent.js");
 const { createWolfboardRouter } = await import("../server/routes/wolfboard.js");
+const { default: presupOrchestratorRouter } = await import(
+  "../server/routes/internal/presupOrchestrator.js"
+);
 
 let passed = 0;
 let failed = 0;
@@ -41,6 +44,7 @@ async function run() {
   app.use("/api", agentVoiceRouter);
   app.use("/api/agent", createSuperAgentRouter(config));
   app.use("/api/wolfboard", createWolfboardRouter(config));
+  app.use("/api/internal/presup", presupOrchestratorRouter);
 
   const server = await new Promise((resolve) => {
     const s = app.listen(0, () => resolve(s));
@@ -114,6 +118,56 @@ async function run() {
       401
     );
 
+    // ── /api/internal/presup/* (LLM spend via callAgentOnce) ────────────────
+    r = await fetch(`${base}/api/internal/presup/status`);
+    body = await r.json().catch(() => ({}));
+    assert(
+      "GET /api/internal/presup/status without auth → 401",
+      r.status === 401 && body.ok === false,
+      { status: r.status, ok: body.ok },
+      { status: 401, ok: false }
+    );
+
+    r = await fetch(`${base}/api/internal/presup/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ consulta: "cotizar techo 10x12" }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/internal/presup/run without auth → 401 (no LLM spend)",
+      r.status === 401 && body.ok === false,
+      { status: r.status, ok: body.ok },
+      { status: 401, ok: false }
+    );
+
+    r = await fetch(`${base}/api/internal/presup/status`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "GET /api/internal/presup/status with Bearer → 200",
+      r.status === 200 && body.ok === true && body.service === "presupOrchestrator",
+      { status: r.status, ok: body.ok, service: body.service },
+      { status: 200, ok: true, service: "presupOrchestrator" }
+    );
+
+    r = await fetch(`${base}/api/internal/presup/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${TOKEN}`,
+      },
+      body: JSON.stringify({}),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/internal/presup/run with Bearer + missing consulta → 400 (auth passed)",
+      r.status === 400 && body.ok === false,
+      { status: r.status, ok: body.ok },
+      { status: 400, ok: false }
+    );
+
     // ── Legacy routers must fail closed if service token is not configured ──
     const previousToken = config.apiAuthToken;
     config.apiAuthToken = "";
@@ -136,6 +190,19 @@ async function run() {
       assert(
         "POST /api/agent/quote-lead with missing API_AUTH_TOKEN → 503",
         r.status === 503 && body.error === "API_AUTH_TOKEN not configured",
+        { status: r.status, error: body.error },
+        { status: 503, error: "API_AUTH_TOKEN not configured" }
+      );
+
+      r = await fetch(`${base}/api/internal/presup/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consulta: "cotizar techo" }),
+      });
+      body = await r.json().catch(() => ({}));
+      assert(
+        "POST /api/internal/presup/run with missing API_AUTH_TOKEN → 503",
+        r.status === 503 && /API_AUTH_TOKEN/.test(String(body.error || "")),
         { status: r.status, error: body.error },
         { status: 503, error: "API_AUTH_TOKEN not configured" }
       );

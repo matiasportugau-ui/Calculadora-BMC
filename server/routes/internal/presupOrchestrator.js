@@ -1,19 +1,18 @@
 /**
  * Rutas internas para testing y ejecución del Presupuestación Orchestrator.
  *
- * ⚠️  IMPORTANTE: Estas rutas deben estar protegidas.
- * Solo deben ser accesibles desde:
- *   - Scripts internos / admin tools
- *   - Cloud Scheduler / workers (futuro)
- *   - Entorno de testing controlado
- *
- * Recomendación: Proteger con `requireInternalAuth` o IP allowlist + API key.
+ * Auth: Bearer / X-Api-Key = API_AUTH_TOKEN (same contract as
+ * /api/internal/panelin and Deep Research). Anonymous callers burn
+ * callAgentOnce LLM spend on every sub-agent step — must stay gated.
  */
 
 import { Router } from 'express';
 import { runPresupFlow } from '../../lib/presupOrchestrator.js';
+import { requireAuth } from '../../middleware/requireAuth.js';
 
 const router = Router();
+
+router.use(requireAuth);
 
 /**
  * POST /api/internal/presup/run
@@ -96,7 +95,7 @@ router.get('/run/example', (req, res) => {
       cliente: { nombre: 'Acme Metals', rut: '12345678-9' },
       mode: 'profundo' // o 'ligero'
     },
-    nota: 'Esta ruta es solo para testing interno. Proteger en producción.'
+    nota: 'Ruta interna — requiere Authorization: Bearer ${API_AUTH_TOKEN}.',
   });
 });
 
