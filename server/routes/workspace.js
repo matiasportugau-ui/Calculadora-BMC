@@ -13,6 +13,7 @@ import { Router } from "express";
 import { requireUser } from "../lib/identityAuth.js";
 import { addTrainingEntry } from "../lib/trainingKB.js";
 import { getWorkspacePool, isDbConnectionError } from "../lib/workspaceDb.js";
+import * as workspaceStore from "../lib/workspaceStore.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SEED_SQL_PATH = path.join(
@@ -90,6 +91,8 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
       configs,
       crs,
       telemetry,
+      customers,
+      quotes,
     ] = await Promise.all([
       pool.query(`SELECT id, email, display_name, role FROM panelin_workspace.ws_users ORDER BY id`),
       pool.query(`SELECT * FROM panelin_workspace.workspaces ORDER BY id`),
@@ -102,6 +105,8 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
       pool.query(`SELECT * FROM panelin_workspace.agent_configs ORDER BY id`),
       pool.query(`SELECT * FROM panelin_workspace.change_requests ORDER BY created_at DESC`),
       pool.query(`SELECT * FROM panelin_workspace.telemetry_events ORDER BY created_at DESC`),
+      pool.query(`SELECT * FROM panelin_workspace.customers ORDER BY name`).catch(() => ({ rows: [] })),
+      pool.query(`SELECT * FROM panelin_workspace.quotes ORDER BY created_at DESC`).catch(() => ({ rows: [] })),
     ]);
 
     const workspace = workspaces.rows[0]
@@ -151,12 +156,43 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
         workspaceId: f.workspace_id,
         projectId: f.project_id || undefined,
         sessionId: f.session_id || undefined,
+        customerId: f.customer_id || undefined,
+        quoteId: f.quote_id || undefined,
         name: f.name,
         path: f.path,
         mime: f.mime,
         size: Number(f.size) || 0,
+        kind: f.kind || "other",
+        storageUrl: f.storage_url || undefined,
         createdAt: f.created_at?.toISOString?.() || f.created_at,
         status: f.status || undefined,
+      })),
+      customers: (customers.rows || []).map((c) => ({
+        id: c.id,
+        workspaceId: c.workspace_id,
+        name: c.name,
+        rut: c.rut || undefined,
+        phone: c.phone || undefined,
+        email: c.email || undefined,
+        address: c.address || undefined,
+        tags: c.tags || [],
+        source: c.source || undefined,
+        notes: c.notes || undefined,
+        externalId: c.external_id || undefined,
+        createdAt: c.created_at?.toISOString?.() || c.created_at,
+      })),
+      quotes: (quotes.rows || []).map((q) => ({
+        id: q.id,
+        workspaceId: q.workspace_id,
+        customerId: q.customer_id || undefined,
+        projectId: q.project_id || undefined,
+        code: q.code || undefined,
+        title: q.title || "",
+        status: q.status,
+        currency: q.currency || "USD",
+        totalConIva: q.total_con_iva != null ? Number(q.total_con_iva) : undefined,
+        payloadJson: q.payload_json || {},
+        createdAt: q.created_at?.toISOString?.() || q.created_at,
       })),
       knowledgeDocs: knowledge.rows.map((k) => ({
         id: k.id,
@@ -432,6 +468,141 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
     }),
   );
 
+  // ─── Customers (first-class store) ─────────────────────────────────
+  router.get(
+    "/api/workspace/customers",
+    requireDb,
+    requireUser(),
+    asyncHandler(async (req, res) => {
+      try {
+        await ensureSeeded();
+        const workspaceId = trimOrNull(req.query.workspaceId) || "ws-1";
+        const q = trimOrNull(req.query.q);
+        const list = await workspaceStore.listCustomers(pool, { workspaceId, q });
+        res.json({ ok: true, customers: list });
+      } catch (err) {
+        return handleDbError(res, err, "list_customers");
+      }
+    }),
+  );
+
+  router.get(
+    "/api/workspace/customers/:id",
+    requireDb,
+    requireUser(),
+    asyncHandler(async (req, res) => {
+      try {
+        const customer = await workspaceStore.getCustomer(pool, String(req.params.id || "").trim());
+        if (!customer) return res.status(404).json({ ok: false, error: "not_found" });
+        res.json({ ok: true, customer });
+      } catch (err) {
+        return handleDbError(res, err, "get_customer");
+      }
+    }),
+  );
+
+  router.post(
+    "/api/workspace/customers",
+    requireDb,
+    requireUser(),
+    asyncHandler(async (req, res) => {
+      try {
+        await ensureSeeded();
+        const customer = await workspaceStore.createCustomer(pool, {
+          workspaceId: req.body?.workspaceId,
+          id: req.body?.id,
+          name: req.body?.name,
+          rut: req.body?.rut,
+          phone: req.body?.phone,
+          email: req.body?.email,
+          address: req.body?.address,
+          tags: req.body?.tags,
+          source: req.body?.source,
+          notes: req.body?.notes,
+          externalId: req.body?.externalId,
+        });
+        res.status(201).json({ ok: true, customer });
+      } catch (err) {
+        if (err?.code === "VALIDATION") {
+          return res.status(400).json({ ok: false, error: err.message });
+        }
+        if (err?.code === "23505") {
+          return res.status(409).json({ ok: false, error: "duplicate_id" });
+        }
+        return handleDbError(res, err, "create_customer");
+      }
+    }),
+  );
+
+  // ─── Quotes (first-class store) ────────────────────────────────────
+  router.get(
+    "/api/workspace/quotes",
+    requireDb,
+    requireUser(),
+    asyncHandler(async (req, res) => {
+      try {
+        await ensureSeeded();
+        const list = await workspaceStore.listQuotes(pool, {
+          workspaceId: trimOrNull(req.query.workspaceId) || "ws-1",
+          customerId: trimOrNull(req.query.customerId),
+          status: trimOrNull(req.query.status),
+        });
+        res.json({ ok: true, quotes: list });
+      } catch (err) {
+        return handleDbError(res, err, "list_quotes");
+      }
+    }),
+  );
+
+  router.get(
+    "/api/workspace/quotes/:id",
+    requireDb,
+    requireUser(),
+    asyncHandler(async (req, res) => {
+      try {
+        const quote = await workspaceStore.getQuote(pool, String(req.params.id || "").trim());
+        if (!quote) return res.status(404).json({ ok: false, error: "not_found" });
+        res.json({ ok: true, quote });
+      } catch (err) {
+        return handleDbError(res, err, "get_quote");
+      }
+    }),
+  );
+
+  router.post(
+    "/api/workspace/quotes",
+    requireDb,
+    requireUser(),
+    asyncHandler(async (req, res) => {
+      try {
+        await ensureSeeded();
+        const quote = await workspaceStore.createQuote(pool, {
+          workspaceId: req.body?.workspaceId,
+          id: req.body?.id,
+          customerId: req.body?.customerId,
+          projectId: req.body?.projectId,
+          code: req.body?.code,
+          title: req.body?.title,
+          scenario: req.body?.scenario,
+          lista: req.body?.lista,
+          currency: req.body?.currency,
+          subtotalSinIva: req.body?.subtotalSinIva,
+          totalConIva: req.body?.totalConIva,
+          status: req.body?.status,
+          payloadJson: req.body?.payloadJson,
+          pdfFileId: req.body?.pdfFileId,
+          sessionId: req.body?.sessionId,
+        });
+        res.status(201).json({ ok: true, quote });
+      } catch (err) {
+        if (err?.code === "23505") {
+          return res.status(409).json({ ok: false, error: "duplicate_id" });
+        }
+        return handleDbError(res, err, "create_quote");
+      }
+    }),
+  );
+
   // ─── Files ──────────────────────────────────────────────────────────
   router.get(
     "/api/workspace/files",
@@ -440,28 +611,29 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
     asyncHandler(async (req, res) => {
       try {
         await ensureSeeded();
-        const workspaceId = trimOrNull(req.query.workspaceId) || "ws-1";
-        const { rows } = await pool.query(
-          `SELECT * FROM panelin_workspace.files WHERE workspace_id = $1 ORDER BY created_at DESC`,
-          [workspaceId],
-        );
-        res.json({
-          ok: true,
-          files: rows.map((f) => ({
-            id: f.id,
-            workspaceId: f.workspace_id,
-            projectId: f.project_id || undefined,
-            sessionId: f.session_id || undefined,
-            name: f.name,
-            path: f.path,
-            mime: f.mime,
-            size: Number(f.size) || 0,
-            createdAt: f.created_at?.toISOString?.() || f.created_at,
-            status: f.status || undefined,
-          })),
+        const files = await workspaceStore.listFiles(pool, {
+          workspaceId: trimOrNull(req.query.workspaceId) || "ws-1",
+          customerId: trimOrNull(req.query.customerId),
+          quoteId: trimOrNull(req.query.quoteId),
         });
+        res.json({ ok: true, files });
       } catch (err) {
         return handleDbError(res, err, "list_files");
+      }
+    }),
+  );
+
+  router.get(
+    "/api/workspace/files/:id",
+    requireDb,
+    requireUser(),
+    asyncHandler(async (req, res) => {
+      try {
+        const file = await workspaceStore.getFile(pool, String(req.params.id || "").trim());
+        if (!file) return res.status(404).json({ ok: false, error: "not_found" });
+        res.json({ ok: true, file });
+      } catch (err) {
+        return handleDbError(res, err, "get_file");
       }
     }),
   );
@@ -471,41 +643,28 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
     requireDb,
     requireUser(),
     asyncHandler(async (req, res) => {
-      const workspaceId = trimOrNull(req.body?.workspaceId) || "ws-1";
-      const name = trimOrNull(req.body?.name);
-      const filePath = trimOrNull(req.body?.path);
-      const mime = trimOrNull(req.body?.mime) || "application/octet-stream";
-      if (!name || !filePath) {
-        return res.status(400).json({ ok: false, error: "name_and_path_required" });
-      }
-      const id = trimOrNull(req.body?.id) || `file-${Date.now()}`;
-      const size = Number(req.body?.size) || 0;
-      const projectId = trimOrNull(req.body?.projectId);
-      const sessionId = trimOrNull(req.body?.sessionId);
-      const status = trimOrNull(req.body?.status);
       try {
-        await pool.query(
-          `INSERT INTO panelin_workspace.files
-             (id, workspace_id, project_id, session_id, name, path, mime, size, status)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [id, workspaceId, projectId, sessionId, name, filePath, mime, size, status],
-        );
-        res.status(201).json({
-          ok: true,
-          file: {
-            id,
-            workspaceId,
-            projectId: projectId || undefined,
-            sessionId: sessionId || undefined,
-            name,
-            path: filePath,
-            mime,
-            size,
-            status: status || undefined,
-            createdAt: new Date().toISOString(),
-          },
+        await ensureSeeded();
+        const file = await workspaceStore.createFile(pool, {
+          workspaceId: req.body?.workspaceId,
+          id: req.body?.id,
+          name: req.body?.name,
+          path: req.body?.path,
+          mime: req.body?.mime,
+          size: req.body?.size,
+          projectId: req.body?.projectId,
+          sessionId: req.body?.sessionId,
+          customerId: req.body?.customerId,
+          quoteId: req.body?.quoteId,
+          status: req.body?.status,
+          kind: req.body?.kind,
+          storageUrl: req.body?.storageUrl,
         });
+        res.status(201).json({ ok: true, file });
       } catch (err) {
+        if (err?.code === "VALIDATION") {
+          return res.status(400).json({ ok: false, error: err.message });
+        }
         return handleDbError(res, err, "create_file");
       }
     }),
