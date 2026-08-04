@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-03
+**Última actualización:** 2026-08-04
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-04 (test — coverage automation):** Re-land unmerged #822 suites onto main tip (#824) (PAOS/Workspace/Meta Ads/provider-status/Google Ads/obs-summary/ai-options/calc validation/voiceErrorLog/PAOS edges/hybrid RAG/quote+voice+summarizer/cashflow DnD/calc lista/identity admin+me — supersedes open #822/#816/#812/#810/#809/#808/#807/#806/#798/#782). New this run: `quoteStore.pickTotals` reads `resumen.total_usd` / `totals.totalFinal` (PDF upsert index); wire orphan `tests/quote-store.test.js` + `tests/bmcChatHealthProbe.test.js` (#824 CORS probe) into `test:core`.
 
 **2026-08-03 (test — coverage automation):** Re-land unmerged #816 suites (PAOS/Workspace/Meta Ads/provider-status/Google Ads/obs-summary/ai-options/calc validation/voiceErrorLog/PAOS edges/hybrid RAG/quote+voice+summarizer/cashflow DnD — supersedes open #816/#812/#810/#809/#808/#807/#806/#798/#782). New this run: `tests/calcListaActivaIsolation.test.js` (`runCalculation` web/venta isolation + camara_frig wall+ceiling); `tests/identity-admin-routes.test.js` (admin RBAC: anon/comprador deny, cannot_modify_self, superadmin_required, target_is_superadmin); wire existing `tests/identity-me-routes.test.js` into `test:api`.
 
