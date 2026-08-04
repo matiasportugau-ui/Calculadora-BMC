@@ -34,6 +34,7 @@ import {
   buildMetaAdsReport,
   buildMetaAdsHealth,
 } from '../lib/marketIntel/metaAdsReport.js';
+import { SERVICE_LINES } from '../lib/marketIntel/paidMediaCampaignMap.js';
 import {
   generateAdsInsights,
   buildAdsChatSystemPrompt,
@@ -486,6 +487,50 @@ router.get('/ads/meta/health', intelLimiter, requireMarketing, (req, res) => {
   } catch (err) {
     log.error({ err, route: 'GET /ads/meta/health' }, 'meta ads health failed');
     res.status(500).json({ error: 'health failed' });
+  }
+});
+
+// ─── GET /api/marketing/ads/by-line ────────────────────────────────
+// Service-line rollup on **current** Meta campaigns (Big 4 map + patterns).
+// Reuses buildMetaAdsReport; does not require campaign renames.
+router.get('/ads/by-line', intelLimiter, requireMarketing, async (req, res) => {
+  try {
+    const range = req.query.range || '30d';
+    const source = req.query.source || 'auto';
+    const { report, resolved_source } = await buildMetaAdsReport({ range, source });
+    res.json({
+      provider: 'meta',
+      range_key: report?.meta?.range_key || range,
+      freshness: report?.meta?.freshness || null,
+      resolved_source,
+      service_lines: SERVICE_LINES,
+      by_line: report?.by_line || [],
+      campaigns: (report?.campaigns || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        spend: c.spend,
+        results: c.results,
+        cpl: c.cpl,
+        line_id: c.line_id,
+        line_label: c.line_label,
+        funnel: c.funnel,
+        kpi: c.kpi,
+        line_matched_by: c.line_matched_by,
+      })),
+      diagnostics: {
+        zombie: report?.diagnostics?.zombie ?? null,
+        active: report?.diagnostics?.active ?? null,
+        total_campaigns: report?.diagnostics?.total_campaigns ?? null,
+      },
+      notes: report?.meta?.notes || [],
+    });
+  } catch (err) {
+    const status = err?.status || 500;
+    if (status === 400) return res.status(400).json({ error: err.message || 'invalid request' });
+    if (status === 503) return res.status(503).json({ error: err.message || 'unavailable' });
+    log.error({ err, route: 'GET /ads/by-line' }, 'ads by-line failed');
+    res.status(500).json({ error: 'ads by-line failed' });
   }
 });
 

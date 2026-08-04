@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-07-26
+**Última actualización:** 2026-08-04
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-04 (feat — Market Intel Ads service lines on current Big 4):** Hub **Ads · Meta** shows **Servicios / líneas** from server `by_line` (Pilar 1 Rendimiento, Pilar 2 Instalación, Tráfico Web=traffic KPI, Remarketing); campaigns table has Línea+KPI columns (traffic CPL=n/a). `GET /api/marketing/ads/by-line`; `paidMediaCampaignMap.js` enrich on every Meta report. Inteligencia Ads card chips via by-line API + deep-link. AI insights/chat grounded with `by_line`. SDDs: `docs/sdd/market-intel-ads/`, `docs/sdd/bmc-paid-media/`. Tests: paidMediaCampaignMap, serviceLineUiHelpers, metaAdsInsights by_line. Snapshot works without Meta LIVE secrets.
 
 **2026-08-01 (fix — full debug pass calculadora-bmc):** Critical correctness/security fixes from live prod QA: (1) CRM taxonomy tools gated in `TOOLS_REQUIRING_AUTH` (unauth exec-tool R/W closed). (2) SuperAgent `camara_frig` prices ceiling via `PANELS_TECHO`/`ISODEC_EPS` (no more wall-only ~25–30% underquote). (3) Finanzas USD monthly burn converts via FX (never pesos-as-dollars). (4) DnD vencimientos PATCH checks `r.ok` and reverts only the failed tx. (5) Calculator BOM hides zero-cant noise rows; mobile bottom-sheet no longer intercepts taps when closed; horizontal overflow clip on narrow viewports. Tests: superAgentCalc, cashflow-project (+2), agentMcpRoutes taxonomy, validation 441/441.
 

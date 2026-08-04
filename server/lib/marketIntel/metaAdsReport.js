@@ -6,6 +6,7 @@ import { getAdsIntelligence } from './productIntelligence.js';
 import { mapSnapshotToReport, hashReport } from './metaAdsSnapshotMapper.js';
 import { loadMetaAdsFixture } from './metaAdsFixture.js';
 import { buildRulesRecommendations } from './metaAdsRules.js';
+import { enrichReportWithServiceLines } from './paidMediaCampaignMap.js';
 import {
   fetchLiveMetaAdsReport,
   GRAPH_API_VERSION,
@@ -165,6 +166,8 @@ export function resolveSource(requested, { nodeEnv = process.env.NODE_ENV } = {}
 }
 
 function attachRulesAndHash(report) {
+  // Tag current campaigns → service lines before rules/hash
+  enrichReportWithServiceLines(report, 'meta');
   const rules = buildRulesRecommendations(report);
   const existingAi = (report.recommendations || []).filter((r) => r.source === 'ai');
   report.recommendations = [...rules, ...existingAi];

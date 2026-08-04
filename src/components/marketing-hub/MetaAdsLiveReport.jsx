@@ -11,9 +11,12 @@ import {
   deltaLabel,
   freshnessLabel,
   freshnessColor,
+  kpiBadgeStyle,
+  campaignCplDisplay,
 } from './meta-ads/metaAdsFormat.js';
 import MetaAdsInsightsCard from './meta-ads/MetaAdsInsightsCard.jsx';
 import MetaAdsAnalystChat from './meta-ads/MetaAdsAnalystChat.jsx';
+import ServiceLinesPanel from './meta-ads/ServiceLinesPanel.jsx';
 
 async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, '');
@@ -327,6 +330,9 @@ export default function MetaAdsLiveReport({ token }) {
         </div>
       )}
 
+      {/* Service lines — server by_line from paidMediaCampaignMap (current Big 4) */}
+      <ServiceLinesPanel byLine={report?.by_line} />
+
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 360px)', gap: 16, alignItems: 'start' }} className="metaAdsLiveLayout">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           <MetaAdsInsightsCard
@@ -358,22 +364,32 @@ export default function MetaAdsLiveReport({ token }) {
                 <table style={{ minWidth: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr>
-                      {['Campaña', 'Objetivo', 'Status', 'Spend', 'Resultados', 'CPL', 'CTR', 'Share %'].map((h) => (
+                      {['Campaña', 'Línea', 'KPI', 'Objetivo', 'Status', 'Spend', 'Resultados', 'CPL', 'CTR', 'Share %'].map((h) => (
                         <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ac-text-2)', borderBottom: '1px solid var(--ac-border)', background: 'var(--ac-surface-2)', whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {sortedCampaigns.map((c) => (
-                      <tr key={c.id}>
+                      <tr key={c.id} data-line-id={c.line_id || undefined}>
                         <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--ac-text)', borderBottom: '1px solid var(--ac-border-2)' }}>{c.name}</td>
+                        <td style={{ padding: '8px 10px', color: 'var(--ac-text-2)', borderBottom: '1px solid var(--ac-border-2)', fontSize: 11 }}>
+                          {c.line_label || c.line_id || '—'}
+                        </td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--ac-border-2)' }}>
+                          {c.kpi ? (
+                            <span style={kpiBadgeStyle(c.kpi)}>{c.kpi}</span>
+                          ) : (
+                            <span style={{ color: 'var(--ac-text-3)' }}>—</span>
+                          )}
+                        </td>
                         <td style={{ padding: '8px 10px', color: 'var(--ac-text-2)', borderBottom: '1px solid var(--ac-border-2)' }}>{c.objective}</td>
                         <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--ac-border-2)' }}>
                           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: 'var(--ac-surface-2)', border: '1px solid var(--ac-border)', color: c.status === 'ACTIVE' ? 'var(--ac-success)' : c.status === 'ZOMBIE' ? 'var(--ac-warn)' : 'var(--ac-text-3)' }}>{c.status}</span>
                         </td>
                         <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{money(c.spend)}</td>
                         <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{num(c.results)}</td>
-                        <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{moneyPrecise(c.cpl)}</td>
+                        <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)', color: c.kpi === 'traffic' ? 'var(--ac-text-3)' : 'var(--ac-text)' }}>{campaignCplDisplay(c)}</td>
                         <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{pct(c.ctr)}</td>
                         <td style={{ padding: '8px 10px', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--ac-border-2)' }}>{c.share_of_spend != null ? `${c.share_of_spend}%` : '—'}</td>
                       </tr>
