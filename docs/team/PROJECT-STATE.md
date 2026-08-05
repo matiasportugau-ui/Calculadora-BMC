@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (fix seguridad — writes financieros/CRM del dashboard detrás de auth):** Cerradas 7 rutas de **escritura sin autenticación** en `server/routes/bmcDashboard.js` que un anónimo podía golpear por curl: `POST/PATCH /api/cotizaciones(/:id)`, `POST/PATCH /api/pagos(/:id)`, `POST /api/ventas`, `POST /api/marcar-entregado`, `PUT /api/productos-maestro/links`. Ahora exigen `requireCrmCockpitWrite` (`API_AUTH_TOKEN` o JWT `canales:write`). UI Productos Maestro exige token antes de `saveLinks`. Tests: `dashboardWriteAuth` 14/14 (wired in `test:api`). Re-land limpio en tip tras #872 (supersede CONFLICTING #843/#844/#841/#834).
+
 **2026-08-05 (close — Envíos wave session):** Product complete on main through #867; SDD v1.4 / SCORECARD 96 via #863. **Leave Envíos** unless multi-device P5 or operator bug. Next context: WA or security. Handoff: [`HANDOFF-2026-08-05-envios-session-close.md`](./HANDOFF-2026-08-05-envios-session-close.md).
 
 **2026-08-05 (fix — Envíos NO ENVIADO chip + bridge live state + forced fila):** `classifyVentasCoordination` no longer treats `NO ENVIADO`/`sin enviar` as Enviado. `resolveBridgeHandoff` prefers live destino/panels over stale `lastQuote`. Stack packing overflow honors `rowOverrides` forced fila. Supersedes drafts #859/#851.
