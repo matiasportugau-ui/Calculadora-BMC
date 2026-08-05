@@ -30,13 +30,14 @@
  *   HEADLESS=1        headless browser (not recommended for first run)
  */
 import { chromium } from "playwright";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import { detectAudioKind, validateMediaBuffer } from "../server/lib/waMedia.js";
+import { profileProcPattern } from "./lib/waChromeProfileMatch.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -167,7 +168,32 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** True when another Chrome already holds this exact user-data-dir. */
+function profileBusy() {
+  if (process.env.WA_G8_ALLOW_BUSY_PROFILE === "1") return false;
+  const pattern = profileProcPattern(PROFILE);
+  const r = spawnSync("pgrep", ["-f", pattern], { encoding: "utf8" });
+  return r.status === 0;
+}
+
+function assertProfileExclusive() {
+  if (!profileBusy()) return;
+  console.error("");
+  console.error("ERROR: Chrome is already using this PROFILE (always-on / another session).");
+  console.error("  Profile:", PROFILE);
+  console.error("Sharing the profile with Playwright deletes SingletonLock and can unlink WA Web.");
+  console.error("Stop always-on first, then re-run G8:");
+  console.error("  ./scripts/wa-chrome-always-on.sh --stop");
+  console.error("  ./scripts/wa-g8-one-click.sh");
+  console.error("  ./scripts/wa-chrome-always-on.sh");
+  console.error("Or play ▶ in the always-on window and run STT only:");
+  console.error("  ONCE=1 node scripts/wa-local-stt-worker.mjs");
+  console.error("Escape hatch (unsafe): WA_G8_ALLOW_BUSY_PROFILE=1");
+  process.exit(3);
+}
+
 async function openWaAndPlay(capturedBuffers) {
+  assertProfileExclusive();
   for (const f of ["SingletonLock", "SingletonCookie", "SingletonSocket"]) {
     try {
       fs.unlinkSync(path.join(PROFILE, f));
@@ -533,6 +559,7 @@ async function main() {
     await context.close().catch(() => {});
   } else {
     log("SKIP_BROWSER — CDN-only backfill needs cookies; launching headless profile…");
+    assertProfileExclusive();
     for (const f of ["SingletonLock", "SingletonCookie", "SingletonSocket"]) {
       try {
         fs.unlinkSync(path.join(PROFILE, f));

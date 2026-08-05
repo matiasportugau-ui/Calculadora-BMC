@@ -91,6 +91,18 @@ if command -v open >/dev/null; then
   open "$COCKPIT" 2>/dev/null || true
 fi
 
+# Refuse if always-on (or any Chrome) already holds this exact profile
+profile_proc_pattern() { printf 'user-data-dir=%s( |$)' "$1"; }
+if [[ "${WA_G8_ALLOW_BUSY_PROFILE:-0}" != "1" ]] && pgrep -f "$(profile_proc_pattern "$PROFILE")" >/dev/null 2>&1; then
+  echo "ERROR: Chrome already using PROFILE=$PROFILE"
+  echo "  Stop always-on first (Playwright + live Chrome corrupt/unlink the WA session):"
+  echo "    ./scripts/wa-chrome-always-on.sh --stop"
+  echo "    ./scripts/wa-g8-one-click.sh"
+  echo "    ./scripts/wa-chrome-always-on.sh"
+  echo "  Or play ▶ in always-on, then: ONCE=1 node scripts/wa-local-stt-worker.mjs"
+  exit 3
+fi
+
 echo "You only need to:"
 echo "  • Scan QR if shown"
 echo "  • Click the chat if search misses"
@@ -112,6 +124,8 @@ if [[ $rc -eq 0 ]]; then
 elif [[ $rc -eq 2 ]]; then
   echo "⚠️  No audio media yet. Play notes until you hear sound, then re-run:"
   echo "    ./scripts/wa-g8-one-click.sh"
+elif [[ $rc -eq 3 ]]; then
+  echo "⚠️  Profile busy — stop always-on before G8 (see message above)."
 else
   echo "❌ Operator failed (exit $rc). Log: .runtime/wa-g8-operator.log"
 fi
