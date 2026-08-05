@@ -34,7 +34,7 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 | F1 | Collapsible stop/section cards | **DONE** (PR-2) |
 | F2 | Ventas search haystack + Enviado/Coordinado/Por coordinar chips | **DONE** (#842) |
 | F3a | Stop list DnD reorder | **DONE** (PR-2) |
-| F3b | Remito Presupuesto Simple + package volumes | OPEN |
+| F3b | Remito Presupuesto Simple + package volumes | **DONE** (PR-3) |
 | F4 | 3D labels cliente + pedido + rich detail | OPEN |
 | F5 | Package DnD → manual layout overrides | OPEN |
 | F6 | Load-plan print multi-view + translucent cabin | OPEN |
