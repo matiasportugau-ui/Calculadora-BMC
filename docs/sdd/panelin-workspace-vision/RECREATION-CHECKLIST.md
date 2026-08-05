@@ -13,6 +13,7 @@
 | 9 | Migrate command | ✅ | `npm run workspace:migrate` |
 | 10 | Score ≥90 | ✅ | SCORECARD composite 93 |
 | 11 | Gate evidence pack | ✅ | `evidence/GATE-NOTE.md` + logs |
-| 12 | SPA full vision UI | ⚠️ P2 | Not required for store goal 100% |
+| 12 | SPA full vision UI | ⚠️ P2 | Full mockup still open |
+| 13 | SPA store wire (customers/quotes/files) | ✅ MVP | `panelin-workspace` `/workspace/store` + API client |
 
-**Score:** 11/12 solid → recreation-ready for **store**. Session goal **100%** on store criteria.
+**Score:** 12/13 solid → recreation-ready for **store** + MVP SPA wire.

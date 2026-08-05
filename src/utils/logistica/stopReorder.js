@@ -21,7 +21,10 @@ export function reorderStops(stops = [], activeId, overId, opts = {}) {
   if (from < 0 || to < 0) return renumberStops(list, opts);
 
   const [item] = list.splice(from, 1);
-  list.splice(to, 0, item);
+  // After removal, indices > from shift left by 1. Insert *before* overId:
+  // when dragging down (from < to), over's new index is to - 1.
+  const insertAt = from < to ? to - 1 : to;
+  list.splice(insertAt, 0, item);
   return renumberStops(list, opts);
 }
 

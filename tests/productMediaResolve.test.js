@@ -1,0 +1,11 @@
+import { resolveBorderMedia, resolvePanelMedia, panelFamGroup } from "../src/data/product-media/productMediaResolve.js";
+let p=0,f=0; const ok=(c,m)=>{if(c){p++;console.log("  ✓",m);}else{f++;console.error("  ✗",m);}};
+ok(panelFamGroup("ISODEC_EPS")==="ISODEC","fam group");
+const b=resolveBorderMedia({borderId:"babeta_empotrar",familia:"ISODEC"});
+ok(!!b.primaryImage,"babeta image");
+ok(!/isowall/i.test(b.primaryImage||""),"not isowall");
+ok(/babeta/i.test(b.title+b.handle),"babeta title");
+const panel=resolvePanelMedia({familia:"ISODEC_EPS"});
+ok(!!panel.primaryImage,"panel image");
+console.log(`\n${p} passed, ${f} failed`);
+process.exit(f?1:0);

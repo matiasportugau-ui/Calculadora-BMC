@@ -31,6 +31,17 @@ import {
   defaultCollapsedStopIds,
   toggleCollapsedStopId,
 } from "../utils/logistica/stopReorder.js";
+import {
+  STOP_STATUS,
+  applyStatusTransition,
+  statusSelectOptions,
+} from "../utils/logistica/stopStatusFsm.js";
+import { buildRemitoSimpleModel, formatM3 } from "../utils/logistica/remitoPackageMetrics.js";
+import { applyPackageLayoutChange } from "../utils/logistica/packageDrop.js";
+import {
+  buildLoadPlanPrintModel,
+  packageIdentityLabelFlat,
+} from "../utils/logistica/loadPlanPrintModel.js";
 
 const TRUCK_W = 2.4;
 
@@ -51,7 +62,6 @@ const LogisticaCargoScene3d = lazy(() => import("./logistica/LogisticaCargoScene
 const DEFAULT_ACC_W = 0.3;
 const DEFAULT_ACC_H = 0.2;
 const DEFAULT_ACC_FOAM_MM = 50;
-const STOP_STATUS = ["Pendiente", "Lista para carga", "Cargada", "En reparto", "Entregada", "Observada"];
 const RECEPCION_STATUS = ["Pendiente", "Conforme", "Faltante", "Daño", "No recibido"];
 const DISTRIBUTION_MODES = [
   { id: "balanced", label: "Auto balanceado", short: "Balanceado" },
@@ -626,20 +636,20 @@ function shd(hex, f) {
   return `rgb(${Math.round(parseInt(hex.slice(1, 3), 16) * f)},${Math.round(parseInt(hex.slice(3, 5), 16) * f)},${Math.round(parseInt(hex.slice(5, 7), 16) * f)})`;
 }
 
-function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1 }) {
+function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1, selected = false, onClick }) {
   const c = (px, py, pz) => isoP(px, py, pz, ox, oy);
   const v = [c(x, y, z), c(x + dx, y, z), c(x + dx, y + dy, z), c(x, y + dy, z), c(x, y, z + dz), c(x + dx, y, z + dz), c(x + dx, y + dy, z + dz), c(x, y + dy, z + dz)];
   const tc = isoP(x + dx / 2, y + dy / 2, z + dz, ox, oy);
-  const sw = "rgba(255,255,255,.25)";
+  const sw = selected ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.25)";
   return (
-    <g opacity={alpha}>
-      <polygon points={fp([v[3], v[2], v[6], v[7]])} fill={shd(col, 0.44)} stroke={sw} strokeWidth={0.4} />
-      <polygon points={fp([v[0], v[3], v[7], v[4]])} fill={shd(col, 0.58)} stroke={sw} strokeWidth={0.4} />
-      <polygon points={fp([v[1], v[2], v[6], v[5]])} fill={shd(col, 0.58)} stroke={sw} strokeWidth={0.4} />
-      <polygon points={fp([v[0], v[1], v[5], v[4]])} fill={shd(col, 0.74)} stroke={sw} strokeWidth={0.4} />
-      <polygon points={fp([v[4], v[5], v[6], v[7]])} fill={col} stroke="rgba(255,255,255,.5)" strokeWidth={0.8} />
+    <g opacity={alpha} onClick={onClick} style={{ cursor: onClick ? "pointer" : "default" }}>
+      <polygon points={fp([v[3], v[2], v[6], v[7]])} fill={shd(col, 0.44)} stroke={sw} strokeWidth={selected ? 1.4 : 0.4} />
+      <polygon points={fp([v[0], v[3], v[7], v[4]])} fill={shd(col, 0.58)} stroke={sw} strokeWidth={selected ? 1.2 : 0.4} />
+      <polygon points={fp([v[1], v[2], v[6], v[5]])} fill={shd(col, 0.58)} stroke={sw} strokeWidth={selected ? 1.2 : 0.4} />
+      <polygon points={fp([v[0], v[1], v[5], v[4]])} fill={shd(col, 0.74)} stroke={sw} strokeWidth={selected ? 1.2 : 0.4} />
+      <polygon points={fp([v[4], v[5], v[6], v[7]])} fill={col} stroke={selected ? "#fff" : "rgba(255,255,255,.5)"} strokeWidth={selected ? 1.6 : 0.8} />
       {lbl && dz * ISZ > 11 ? (
-        <text x={tc.px} y={tc.py + 3} textAnchor="middle" fontSize={7} fill="white" fontWeight="bold">
+        <text x={tc.px} y={tc.py + 3} textAnchor="middle" fontSize={6.5} fill="white" fontWeight="bold">
           {lbl}
         </text>
       ) : null}
@@ -647,17 +657,98 @@ function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1 }) {
   );
 }
 
-function DiagramPanel({ cargo, truckL, remitoNumero }) {
+function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
+  const plan = buildLoadPlanPrintModel({ info, stops, cargo, truckL });
+  const maxX = Math.max(plan.maxX, truckL, 1);
+  const scale = 280 / maxX;
+  const sideH = 90;
+  const topH = 70;
+
+  return (
+    <div className="load-plan-print" style={{ background: "#fff", color: "#1D1D1F", borderRadius: 8, padding: 12 }}>
+      <style>{`@media print { .np { display: none !important; } .load-plan-print { box-shadow: none !important; } }`}</style>
+      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #003366", paddingBottom: 8, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontWeight: 800, color: "#003366" }}>BMC URUGUAY · Plan de carga</div>
+          <div style={{ fontSize: 11, color: "#64748b" }}>{plan.header.numero} · {plan.header.fecha}</div>
+        </div>
+        <div style={{ fontSize: 11, textAlign: "right" }}>
+          {plan.header.transportista || "—"} · {plan.header.patente || "—"} · camión {truckL}m
+        </div>
+      </div>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#003366", marginBottom: 6 }}>Orden de descarga (físicamente viable)</div>
+      <ol style={{ margin: "0 0 12px 18px", padding: 0, fontSize: 11, lineHeight: 1.45 }}>
+        {plan.unloadSteps.map((s) => (
+          <li key={`${s.step}-${s.stopId}`}>
+            <b>Paso {s.step}:</b> {s.cliente || `Parada ${s.orden}`}
+            {s.orderId ? ` · #${s.orderId}` : ""} — {s.note}
+          </li>
+        ))}
+        {!plan.unloadSteps.length ? <li>Sin paradas</li> : null}
+      </ol>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#003366", marginBottom: 4 }}>Vista superior</div>
+      <svg width="100%" height={topH + 16} viewBox={`0 0 ${280 + 40} ${topH + 16}`} style={{ background: "#f8fafc", borderRadius: 6, marginBottom: 10 }}>
+        <rect x={20} y={8} width={truckL * scale} height={TRUCK_W * (topH / TRUCK_W) * 0.85} fill="#0d2137" stroke="#3B82F6" />
+        {plan.packages.map((p) => (
+          <g key={`t-${p.id}`}>
+            <rect
+              x={20 + p.xStart * scale}
+              y={8 + p.row * (topH / 2.4) * 0.9}
+              width={Math.max(4, p.len * scale)}
+              height={(topH / 2.4) * 0.85}
+              fill={p.sCol || "#2563eb"}
+              opacity={0.85}
+              stroke="#fff"
+              strokeWidth={0.5}
+            />
+            <text x={20 + p.xStart * scale + 2} y={8 + p.row * (topH / 2.4) * 0.9 + 10} fontSize={7} fill="#fff">{(p.sCli || p.sPed || p.label || "").slice(0, 12)}</text>
+          </g>
+        ))}
+      </svg>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#003366", marginBottom: 4 }}>Vista lateral (altura)</div>
+      <svg width="100%" height={sideH + 10} viewBox={`0 0 ${280 + 40} ${sideH + 10}`} style={{ background: "#f8fafc", borderRadius: 6, marginBottom: 10 }}>
+        <rect x={20} y={sideH - MAX_H * (sideH / MAX_H) * 0.9} width={truckL * scale} height={MAX_H * (sideH / MAX_H) * 0.9} fill="none" stroke="#94a3b8" strokeDasharray="3,2" />
+        {plan.packages.map((p) => {
+          const sy = sideH - (p.zBase + p.h) * (sideH / MAX_H) * 0.9;
+          return (
+            <rect
+              key={`s-${p.id}`}
+              x={20 + p.xStart * scale}
+              y={sy}
+              width={Math.max(4, p.len * scale)}
+              height={Math.max(3, p.h * (sideH / MAX_H) * 0.9)}
+              fill={p.sCol || "#2563eb"}
+              opacity={0.8}
+              stroke="#fff"
+              strokeWidth={0.4}
+            />
+          );
+        })}
+      </svg>
+
+      <div style={{ fontSize: 11, color: "#64748b" }}>
+        Paquetes: {plan.packages.length}. Usá vista 3D para cabina translúcida y etiquetas cliente+pedido. Imprimí con el navegador (Ctrl/Cmd+P).
+      </div>
+    </div>
+  );
+}
+
+function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackageRow }) {
   const { placed, rowH, stopUnloadOrder, strategy, stacksByRow } = cargo;
   const { minXV, maxXV, placedView } = bedViewExtents(placed, truckL);
   const shiftX = -minXV;
   const totalLen = maxXV - minXV;
   const [diagramView, setDiagramView] = useState("svg");
+  const [selectedPkgId, setSelectedPkgId] = useState(null);
   const OX = 60;
   const OY = 85;
   const viewW = Math.max(420, OX + (totalLen * C30 + TRUCK_W * C30) * ISX + 80);
   const viewH = 240;
   const sorted = [...placedView].sort((a, b) => b.row - a.row || a.zBase - b.zBase);
+  const selectedPkg = selectedPkgId ? placedView.find((p) => p.id === selectedPkgId) || placed.find((p) => p.id === selectedPkgId) : null;
   const tf = (x, y, z) => isoP(x, y, z, OX, OY);
   const trLine = (x1, y1, z1, x2, y2, z2, col = "#60A5FA", sw = 1, dash = "", k) => {
     const a = tf(x1, y1, z1);
@@ -668,6 +759,9 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
   const pctB = Math.round((rowH[1] / MAX_H) * 100);
   const barCol = (p) => (p > 95 ? "#ff3b30" : p > 70 ? "#ff9f0a" : "#34c759");
   const totalStacks = stacksByRow.reduce((acc, row) => acc + row.length, 0);
+  const forceRow = (stableKey, row) => {
+    if (onForcePackageRow && stableKey != null) onForcePackageRow(stableKey, row);
+  };
 
   return (
     <div
@@ -684,9 +778,11 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
     >
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-          <h3 style={{ margin: "0 0 4px", fontSize: 15, color: "#fff" }}>{diagramView === "webgl" ? "Explorar carga (WebGL)" : "Vista isométrica (SVG)"}</h3>
+          <h3 style={{ margin: "0 0 4px", fontSize: 15, color: "#fff" }}>
+            {diagramView === "webgl" ? "Explorar carga (WebGL)" : diagramView === "plan" ? "Plan de carga (imprimible)" : "Vista isométrica (SVG)"}
+          </h3>
           <p style={{ margin: 0, color: "rgba(255,255,255,.65)", fontSize: 12 }}>
-            Cabina a la izquierda · cola / carga a la derecha · saliente hacia la cola · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}
+            Cabina a la izquierda · cola a la derecha · clic bulto → fila A/B · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}
           </p>
         </div>
         <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", alignItems: "center" }}>
@@ -695,6 +791,9 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
           </Btn>
           <Btn small outline onClick={() => setDiagramView("webgl")} style={diagramView === "webgl" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
             Explorar 3D
+          </Btn>
+          <Btn small outline onClick={() => setDiagramView("plan")} style={diagramView === "plan" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
+            Plan carga
           </Btn>
           <Btn
             small
@@ -716,8 +815,23 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
         </div>
       </div>
 
+      {selectedPkg ? (
+        <div style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "8px 10px", color: "#fff", fontSize: 12 }}>
+          <b>{packageIdentityLabelFlat(selectedPkg)}</b>
+          {" · "}
+          {selectedPkg.tipo} · Fila {selectedPkg.row === 0 ? "A" : "B"} · {selectedPkg.len?.toFixed(2)}m × {(selectedPkg.h * 100).toFixed(0)}cm
+          <span style={{ marginLeft: 8 }}>
+            <Btn small outline onClick={() => forceRow(selectedPkg.stableKey, 0)} style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff", marginRight: 4 }}>→ Fila A</Btn>
+            <Btn small outline onClick={() => forceRow(selectedPkg.stableKey, 1)} style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff", marginRight: 4 }}>→ Fila B</Btn>
+            <Btn small outline onClick={() => setSelectedPkgId(null)} style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff" }}>Cerrar</Btn>
+          </span>
+        </div>
+      ) : null}
+
       <div style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10, overflow: "hidden", width: "100%", maxWidth: "100%", minWidth: 0 }}>
-        {diagramView === "webgl" ? (
+        {diagramView === "plan" ? (
+          <LoadPlanPrintSheet info={info} stops={stops} cargo={cargo} truckL={truckL} />
+        ) : diagramView === "webgl" ? (
           <Suspense
             fallback={
               <div style={{ height: 280, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.55)", fontSize: 13 }}>
@@ -725,7 +839,15 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
               </div>
             }
           >
-            <LogisticaCargoScene3d placed={placedView} shiftX={shiftX} truckL={truckL} maxLen={maxXV} totalLen={totalLen} />
+            <LogisticaCargoScene3d
+              placed={placedView}
+              shiftX={shiftX}
+              truckL={truckL}
+              maxLen={maxXV}
+              totalLen={totalLen}
+              onForceRow={forceRow}
+              onSelectStableKey={(_key, pkg) => setSelectedPkgId(pkg?.id || null)}
+            />
           </Suspense>
         ) : (
         <svg width="100%" viewBox={`0 -8 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
@@ -744,10 +866,15 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
               dy={ROW_W}
               dz={pkg.h}
               col={pkg.ov ? "#ff3b30" : pkg.sCol}
-              lbl={pkg.kind === "accessory" ? `P${pkg.sOrd}·ACC` : `P${pkg.sOrd}·${pkg.n}`}
+              lbl={(packageIdentityLabelFlat(pkg) || (pkg.kind === "accessory" ? `P${pkg.sOrd}·ACC` : `P${pkg.sOrd}·${pkg.n}`)).slice(0, 22)}
               ox={OX}
               oy={OY}
               alpha={pkg.ov ? 0.65 : 1}
+              selected={selectedPkgId === pkg.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedPkgId(pkg.id);
+              }}
             />
           ))}
           {stacksByRow.flat().map((stack) => {
@@ -879,111 +1006,206 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
   );
 }
 
+/** BMC navy — aligned with Presupuesto Simple (`src/pdf-templates/simple.js`). */
+const REMITO_BRAND = "#003366";
+
+/**
+ * Ops UX F3b — remito print layout (Presupuesto Simple visual language).
+ * Package rows: content, L×W×H, cuboid m³; stop/route material m³ via loadCharacteristics.
+ */
 function RemitoView({ info, stops, cargo, truckL, sendWA }) {
+  const model = buildRemitoSimpleModel({
+    info,
+    stops,
+    cargo,
+    truckL,
+    codeFn: (stop, index) => stopPackageCode(stop, index),
+  });
+  const { header, sections, totals } = model;
+
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }} className="np">
         <Btn onClick={() => window.print()} color={T.success}>🖨️ Imprimir / PDF</Btn>
         <Btn onClick={sendWA} color="#25D366">📲 WhatsApp</Btn>
       </div>
-      <div style={{ ...css.card, padding: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `3px solid ${T.brand}`, paddingBottom: 16, marginBottom: 18 }}>
+
+      <style>{`
+        @media print {
+          .remito-simple-page { box-shadow: none !important; max-width: none !important; }
+        }
+        .remito-simple-page {
+          font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+          color: #1D1D1F;
+          background: #fff;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .remito-simple-page .bom { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 8px; }
+        .remito-simple-page .bom th {
+          background: #f1f5f9; padding: 5px 6px; font-weight: 600; text-transform: uppercase;
+          letter-spacing: .02em; text-align: right; border-bottom: 0.5pt solid #cbd5e1; font-size: 10px;
+        }
+        .remito-simple-page .bom th:first-child, .remito-simple-page .bom td:first-child { text-align: left; }
+        .remito-simple-page .bom td { padding: 4px 6px; border-bottom: 0.4pt solid #e2e8f0; text-align: right; font-variant-numeric: tabular-nums; }
+        .remito-simple-page .bom .cat { background: ${REMITO_BRAND}; color: #fff; font-weight: 700; text-align: left; }
+        .remito-simple-page .bom .cat td { border-bottom: none; color: #fff; text-align: left; }
+      `}</style>
+
+      <div
+        className="remito-simple-page"
+        style={{
+          ...css.card,
+          padding: "10mm 12mm",
+          maxWidth: 794,
+          margin: "0 auto",
+          borderRadius: 4,
+          boxShadow: "0 0 0 1px #ddd",
+        }}
+      >
+        {/* Header — Presupuesto Simple pattern */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `2pt solid ${REMITO_BRAND}`, paddingBottom: 10, marginBottom: 12 }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: T.brand }}>BMC Uruguay</div>
-            <div style={{ fontSize: 12, color: T.muted }}>Metalog SAS · Paneles Sandwich · Maldonado</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: REMITO_BRAND, letterSpacing: "0.04em" }}>BMC URUGUAY</div>
+            <div style={{ fontSize: 11, color: "#64748b" }}>METALOG SAS · Paneles sándwich</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: T.primary }}>HOJA DE RUTA</div>
-            <div style={{ fontWeight: 700 }}>{info.numero}</div>
-            <div style={{ fontSize: 12, color: T.muted }}>{info.fecha}</div>
+            <span style={{
+              display: "inline-block",
+              background: REMITO_BRAND,
+              color: "#fff",
+              fontSize: 10,
+              fontWeight: 700,
+              padding: "3px 12px",
+              borderRadius: 999,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}>
+              Remito / Hoja de ruta
+            </span>
+            <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>{header.numero || "—"}</div>
+            <div style={{ fontSize: 11, color: "#64748b" }}>{header.fecha || "—"}</div>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 16, background: T.surfaceAlt, padding: 12, borderRadius: 10 }}>
-          {[["Transportista", info.transportista || "—"], ["Patente", info.patente || "—"], ["Camión", `${truckL}m`], ["Paradas / Pkgs", `${stops.length} / ${cargo.placed.length}`]].map(([k, v]) => (
-            <div key={k}>
-              <div style={css.lbl}>{k}</div>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>{v}</div>
-            </div>
-          ))}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 12, marginBottom: 10 }}>
+          <div><b style={{ color: REMITO_BRAND }}>Transportista:</b> {header.transportista || "—"}</div>
+          <div><b style={{ color: REMITO_BRAND }}>Patente:</b> {header.patente || "—"}</div>
+          <div><b style={{ color: REMITO_BRAND }}>Camión:</b> {header.truckL}m</div>
+          <div><b style={{ color: REMITO_BRAND }}>Paradas / paquetes:</b> {totals.stops} / {totals.packages}</div>
         </div>
-        {info.notas ? <div style={{ background: "#fff8ec", border: "1px solid #ffd966", padding: "8px 12px", borderRadius: 10, marginBottom: 14, fontSize: 13 }}>📝 {info.notas}</div> : null}
-        {stops.map((stop) => {
-          const pkgs = buildStopPackages(stop);
-          const panelPkgs = pkgs.filter((pkg) => pkg.kind !== "accessory");
-          const accPkg = pkgs.find((pkg) => pkg.kind === "accessory");
-          const placed = cargo.placed.filter((p) => p.sId === stop.id);
-          return (
-            <div key={stop.id} style={{ marginBottom: 20, borderLeft: `4px solid ${stop.color}`, paddingLeft: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: stop.color }}>PARADA {stop.orden}</div>
-                <div style={{ fontSize: 11, color: T.muted }}>{pkgs.length} pkgs · {placed.filter((p) => p.row === 0).length} Fila A · {placed.filter((p) => p.row === 1).length} Fila B</div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 6, fontSize: 13, marginBottom: 10 }}>
-                <div><span style={{ color: T.muted }}>Cliente: </span><b>{stop.cliente || "—"}</b></div>
-                <div><span style={{ color: T.muted }}>Tel: </span><b>{stop.telefono || "—"}</b></div>
-                <div><span style={{ color: T.muted }}>Dir: </span><b>{stop.direccion || "—"}</b></div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, fontSize: 12, marginBottom: 10, color: T.muted }}>
-                <div><span style={{ color: T.muted }}>Pedido: </span><b style={{ color: T.text }}>{stop.cotizacionId || "—"}</b></div>
-                <div><span style={{ color: T.muted }}>Estado: </span><b style={{ color: T.text }}>{stop.estado || "—"}</b></div>
-                <div><span style={{ color: T.muted }}>Recepción: </span><b style={{ color: T.text }}>{stop.recepcionEstado || "—"}</b></div>
-              </div>
-              {stop.paneles.length > 0 ? (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 8 }}>
-                  <thead>
-                    <tr style={{ background: stop.color, color: "white" }}>
-                      {["Tipo", "Espesor", "Largo", "Cant.", "Pkgs", "Alto pkg", "Filas", "IDs bulto"].map((h) => (
-                        <th key={h} style={{ padding: "5px 8px", textAlign: "left", fontWeight: 600 }}>{h}</th>
-                      ))}
+
+        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 12, borderBottom: "0.5pt solid #e2e8f0", paddingBottom: 8 }}>
+          Vol. estiba (cuboides) <b style={{ color: "#1D1D1F" }}>{formatM3(totals.cuboidVolumeM3)} m³</b>
+          {" · "}
+          Vol. material paneles <b style={{ color: "#1D1D1F" }}>{formatM3(totals.materialVolumeM3)} m³</b>
+          {" · "}
+          ≈{Math.round(totals.estWeightKg)} kg · m² {formatM3(totals.m2, 1)}
+          {" · "}
+          Fila A {(totals.rowH[0] * 100).toFixed(0)}cm · Fila B {(totals.rowH[1] * 100).toFixed(0)}cm
+        </div>
+
+        {header.notas ? (
+          <div style={{ background: "#f1f5f9", padding: "6px 10px", borderRadius: 4, marginBottom: 12, fontSize: 12 }}>
+            {header.notas}
+          </div>
+        ) : null}
+
+        {sections.map((sec) => (
+          <div key={sec.stopId} style={{ marginBottom: 16 }}>
+            <table className="bom">
+              <thead>
+                <tr className="cat">
+                  <td colSpan={6}>
+                    PARADA {sec.orden} · {sec.cliente || "—"}
+                    {sec.orderId ? ` · #${sec.orderId}` : ""}
+                    {" · "}
+                    {sec.packageCount} paquete{sec.packageCount === 1 ? "" : "s"}
+                    {" · "}
+                    cuboide {formatM3(sec.cuboidVolumeM3)} m³
+                    {" · "}
+                    material {formatM3(sec.materialVolumeM3)} m³
+                  </td>
+                </tr>
+                <tr>
+                  {["ID bulto", "Contenido", "L × Ancho × H", "Vol m³", "Fila", "Uds"].map((h) => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sec.packages.length ? (
+                  sec.packages.map((row) => (
+                    <tr key={row.packageId || row.code}>
+                      <td style={{ fontWeight: 600 }}>{row.code}</td>
+                      <td style={{ textAlign: "left" }}>{row.contenido}</td>
+                      <td>{row.dimsLabel}</td>
+                      <td>{formatM3(row.volumeM3)}</td>
+                      <td style={{ fontWeight: 700, color: REMITO_BRAND }}>{row.fila}</td>
+                      <td>{row.cantidad || "—"}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {stop.paneles.map((p, i) => {
-                      const pks = buildPkgs(stop, p);
-                      const pl = cargo.placed.filter((pp) => pp.sId === stop.id && pp.esp === safeNum(p.espesor) && pp.len === safeNum(p.longitud));
-                      const filas = [...new Set(pl.map((pp) => (pp.row === 0 ? "A" : "B")))].join("+");
-                      const maxHpk = pks.length ? Math.max(...pks.map((pk) => pk.h)) : 0;
-                      return (
-                        <tr key={p.id} style={{ background: i % 2 ? T.surface : T.surfaceAlt }}>
-                          <td style={{ padding: "4px 8px", fontWeight: 600 }}>{p.tipo}</td>
-                          <td style={{ padding: "4px 8px" }}>{p.espesor}mm</td>
-                          <td style={{ padding: "4px 8px" }}>{p.longitud}m</td>
-                          <td style={{ padding: "4px 8px", fontWeight: 700 }}>{p.cantidad}</td>
-                          <td style={{ padding: "4px 8px" }}>{pks.length}</td>
-                          <td style={{ padding: "4px 8px", fontWeight: 700, color: maxHpk > MAX_H ? T.danger : T.success }}>{(maxHpk * 100).toFixed(0)}cm{maxHpk > MAX_H ? " ⚠️" : ""}</td>
-                          <td style={{ padding: "4px 8px", fontWeight: 700, color: T.primary }}>{filas || "—"}</td>
-                          <td style={{ padding: "4px 8px", color: T.muted }}>{pks.map((_, idx) => stopPackageCode(stop, idx)).join(", ")}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              ) : null}
-              {accPkg ? (
-                <div style={{ background: T.surfaceAlt, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>
-                  <b style={{ color: T.brand }}>Bulto accesorios:</b> {packageSummary(accPkg)} · ID {stopPackageCode(stop, panelPkgs.length)}.
-                </div>
-              ) : null}
-              {stop.accesorios.length > 0 ? <div style={{ fontSize: 12, color: T.muted }}>🔩 {stop.accesorios.map((a) => `${a.cantidad}× ${a.descr}`).join(" · ")}</div> : null}
-              {stop.recepcionDetalle ? <div style={{ fontSize: 12, color: T.muted, marginTop: 6 }}>Observación recepción: {stop.recepcionDetalle}</div> : null}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "left", color: "#64748b" }}>
+                      Sin bultos colocados en camión para esta parada.
+                      {sec.direccion ? ` Dir: ${sec.direccion}` : ""}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>
+              📍 {sec.direccion || "—"} · 📞 {sec.telefono || "—"}
+              {sec.estado ? ` · Estado: ${sec.estado}` : ""}
+              {" · "}Fila A {sec.filaA} · Fila B {sec.filaB}
             </div>
-          );
-        })}
-        <div style={{ borderTop: `2px solid ${T.brand}`, paddingTop: 12, display: "flex", justifyContent: "flex-end", gap: 24, marginBottom: 24 }}>
-          {[["Paquetes", cargo.placed.length], ["Fila A", `${(cargo.rowH[0] * 100).toFixed(0)}cm`], ["Fila B", `${(cargo.rowH[1] * 100).toFixed(0)}cm`]].map(([k, v]) => (
-            <div key={k} style={{ textAlign: "center" }}>
-              <div style={{ color: T.muted, fontSize: 11, textTransform: "uppercase", letterSpacing: ".04em" }}>{k}</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: T.brand }}>{v}</div>
+          </div>
+        ))}
+
+        {!sections.length ? (
+          <div style={{ color: "#64748b", fontSize: 13, marginBottom: 16 }}>Sin paradas en este envío.</div>
+        ) : null}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", margin: "12px 0" }}>
+          <div style={{ minWidth: 220, fontSize: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#475569" }}>
+              <span>Paquetes</span><b>{totals.packages}</b>
             </div>
-          ))}
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#475569" }}>
+              <span>Vol. estiba</span><b>{formatM3(totals.cuboidVolumeM3)} m³</b>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#475569" }}>
+              <span>Vol. material</span><b>{formatM3(totals.materialVolumeM3)} m³</b>
+            </div>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: 13,
+              fontWeight: 800,
+              color: "#fff",
+              background: REMITO_BRAND,
+              padding: "6px 8px",
+              borderRadius: 3,
+              marginTop: 4,
+            }}>
+              <span>Peso est.</span><span>≈{Math.round(totals.estWeightKg)} kg</span>
+            </div>
+          </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24 }}>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginTop: 20 }}>
           {["Entregado (BMC)", "Recibido (Transportista)", "Conforme (Cliente)"].map((l) => (
             <div key={l} style={{ textAlign: "center" }}>
-              <div style={{ height: 52, borderBottom: `1px solid ${T.text}`, marginBottom: 6 }} />
-              <div style={{ fontSize: 10, color: T.muted, textTransform: "uppercase", letterSpacing: ".04em" }}>{l}</div>
+              <div style={{ height: 48, borderBottom: `1px solid ${REMITO_BRAND}`, marginBottom: 6 }} />
+              <div style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase", letterSpacing: ".04em" }}>{l}</div>
             </div>
           ))}
+        </div>
+
+        <div style={{ fontSize: 9, color: "#64748b", borderTop: "0.5pt solid #cbd5e1", paddingTop: 8, marginTop: 16, display: "flex", justifyContent: "space-between" }}>
+          <span>Vol. estiba = L×Ancho×Alto por bulto (ancho fila {ROW_W}m). Vol. material = m²×espesor (estimación).</span>
+          <span>BMC Envíos · remito simple</span>
         </div>
       </div>
     </div>
@@ -1176,6 +1398,21 @@ export default function BmcLogisticaApp() {
   };
   const toggleStopCollapsed = (stopId) => {
     setCollapsedStopIds((c) => toggleCollapsedStopId(c, stopId));
+  };
+  /** Ops UX F5: force package onto fila A/B via packing overrides */
+  const forcePackageRow = (stableKey, targetRow) => {
+    if (!stableKey) return;
+    const next = applyPackageLayoutChange({
+      rowOverrides,
+      manualPkgOrderKeys,
+      stableKey,
+      targetRow,
+      placed: cargo.placed,
+    });
+    setCargoLayoutMode(next.cargoLayoutMode);
+    setRowOverrides(next.rowOverrides);
+    setManualPkgOrderKeys(next.manualPkgOrderKeys);
+    setAutoLoadMsg(`Layout manual: bulto → Fila ${Number(targetRow) === 1 ? "B" : "A"}`);
   };
   async function pushVentasFechaEntrega(stop) {
     const row = stop.ventasSheetRow1Based;
@@ -1557,7 +1794,7 @@ export default function BmcLogisticaApp() {
 
       {view === "carga" ? (
         <div>
-          <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} />
+          <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} />
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12, width: "100%", maxWidth: "100%", minWidth: 0 }}>
             <div style={{ ...css.card, padding: 14, minWidth: 0, maxWidth: "100%" }}>
               <div style={{ ...css.sectionTitle, marginBottom: 8 }}>🔭 Vista Superior</div>
@@ -2062,8 +2299,38 @@ export default function BmcLogisticaApp() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                     <div>
                       <label htmlFor={`s-${stop.id}-estado`} style={css.lbl}>Estado operativo</label>
-                      <select id={`s-${stop.id}-estado`} name={`s-${stop.id}-estado`} style={css.inp} value={stop.estado || "Pendiente"} onChange={(e) => updStop(stop.id, "estado", e.target.value)}>
-                        {STOP_STATUS.map((status) => <option key={status} value={status}>{status}</option>)}
+                      <select
+                        id={`s-${stop.id}-estado`}
+                        name={`s-${stop.id}-estado`}
+                        style={css.inp}
+                        value={stop.estado || "Pendiente"}
+                        title="Transiciones según FSM Envíos (G-U3)"
+                        onChange={(e) => {
+                          const cur = stop.estado || "Pendiente";
+                          const next = e.target.value;
+                          // Soft guard only when jumping Pendiente→Cargada without checklist
+                          const listaOk = Boolean(stop.checks?.datosOk && stop.checks?.bultosOk);
+                          const ctx = {
+                            formValid: true,
+                            ...(next === "Cargada" && cur === "Pendiente" && !listaOk
+                              ? { listaParaCarga: false }
+                              : {}),
+                          };
+                          const result = applyStatusTransition(cur, next, ctx);
+                          if (result.changed) {
+                            updStop(stop.id, "estado", result.status);
+                          } else if (result.error) {
+                            updStop(stop.id, "estado", cur);
+                          }
+                        }}
+                      >
+                        {statusSelectOptions(stop.estado || "Pendiente", { formValid: true }).map(
+                          ({ value, disabled }) => (
+                            <option key={value} value={value} disabled={disabled}>
+                              {value}
+                            </option>
+                          ),
+                        )}
                       </select>
                     </div>
                     <div>
@@ -2187,7 +2454,7 @@ export default function BmcLogisticaApp() {
           </div>
 
           <div style={{ position: "sticky", top: 16, alignSelf: "start" }}>
-            <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} />
+            <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} />
             <div style={{ ...css.card, padding: 16, marginTop: 12 }}>
               <div style={css.sectionTitle}>Variantes sugeridas</div>
               <div style={{ display: "grid", gap: 8 }}>

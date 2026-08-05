@@ -1,6 +1,7 @@
 import { ExternalLink, Check } from "lucide-react";
 import { C, FONT, PANELS_TECHO, PERFIL_TECHO, TR } from "../data/constants.js";
 import { resolveBorderShopifyEntry } from "../data/quoteVisorShopifyResolve.js";
+import { resolveBorderMedia } from "../data/product-media/productMediaResolve.js";
 
 const GLASS_SHELL = {
   background: "rgba(255,255,255,0.62)",
@@ -55,7 +56,18 @@ export default function PlantaBorderGlassPicker({
 }) {
   const previewId = hoverOptId ?? curVal ?? options[0]?.id ?? "none";
   const previewOpt = options.find((o) => o.id === previewId) || options[0];
-  const shop = resolveBorderShopifyEntry(previewId === "none" ? "none" : previewId);
+  const media = resolveBorderMedia({
+    borderId: previewId === "none" ? "none" : previewId,
+    panelFamiliaKey,
+  });
+  const legacy = resolveBorderShopifyEntry(previewId === "none" ? "none" : previewId);
+  const shop = {
+    imageSrc: media.primaryImage || legacy.imageSrc || "",
+    productUrl: media.url || legacy.productUrl || "https://bmcuruguay.com.uy/collections/all",
+    shopifyHandle: media.handle || legacy.shopifyHandle || null,
+    title: media.title || null,
+    description: media.description || null,
+  };
   const skuMeta = resolveBorderPerfilSkuMeta(previewId, panelFamiliaKey, panelEspesorMm);
   const previewTitle = previewOpt?.label || "Sin perfil";
 
