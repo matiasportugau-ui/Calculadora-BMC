@@ -275,3 +275,24 @@ gate:local:   pendiente correr al final de la sesión
 **Próximo paso:** Switch context (WA / dashboard auth). Return to Envíos only for P5 multi-device or named bug.
 
 **Refs:** HANDOFF-2026-08-05-envios-session-close.md · #832 #840 #842–#849 #857 #863 #867.
+
+## 2026-08-05 N — Workspace store + Envíos verification FULL PASS (persisted)
+
+**Contexto:** Cerrar y documentar la verificación completa Logística L1–L7 + Store SPA S0–S6 + checklist Overall PASS, con runners y CORS en main.
+
+**Acciones:**
+- Dual Playwright Logística (`e2e-prod-logistica-dual.mjs`) — DUAL_OK; L3 vía `?e2e=1` → `moveStopBefore`/`reorderStops` (mismo path que DnD drop).
+- Store SPA e2e local (`e2e-store-spa-local.mjs`) — S0–S6 + API list customer stamp (API :3001, SPA :3100, JWT dev-browser-login).
+- CORS: `panelin-workspace.vercel.app` + `localhost|127.0.0.1:3100` en `server/config.js`.
+- Checklist relleno: `docs/team/VERIFY-MANUAL-RUN-2026-08-05_054026.md` Overall PASS.
+- Procedure + scripts: `VERIFY-workspace-envios-store-2026-08-05.md`, `docs/team/scripts/verify-*`, npm `verify:workspace-envios` / `verify:logistica-dual` / `verify:store-spa-local`.
+- PR [#875](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/875) merged → `6537cae0`.
+
+**Verificación:** unit FSM/DnD green; dual L1–L7 pass,pass; store S0–S6 pass; prod unauth health 200 / customers 401; no open checklist boxes.
+
+**Próximo paso:** nada pendiente en este track. Opcional: `NEXT_PUBLIC_BMC_API_BASE` en Vercel Panelin-Workspace para CRUD cloud.
+
+**Refs:** HANDOFF-2026-08-05-verify-workspace-envios-complete.md · VERIFY-MANUAL-RUN-2026-08-05_054026.md · #831 #832 #857 #875 · Panelin-Workspace #4
+
+---
+
