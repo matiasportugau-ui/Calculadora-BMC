@@ -14,7 +14,11 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+<<<<<<< HEAD
 **2026-08-05 (fix — Envíos bridge stale lastQuote):** Quote→Ops **Enviar a Logística** no longer prefers `lastQuote.destino` / `lastQuote.panels` over live calculator state. Editing destination or cargo after Cotizar without re-quoting was silently shipping the stale stop address/cargo into `/logistica`. `resolveBridgeHandoff` reuses the auto quote only when live destino+panels still match; otherwise bridges manual flete. Tests in `bridgePayload.test.js`.
+=======
+**2026-08-05 (feat — Envíos Ops UX F3b Remito Simple):** Tab Remito de `/logistica` con look **Presupuesto Simple** (navy `#003366`, badge, tablas BOM). Por bulto: ID, contenido, L×Ancho×H, vol cuboide m³, fila A/B. Totales: paquetes, vol estiba, vol material (`loadCharacteristics`), kg est. Pure `remitoPackageMetrics.js` + tests.
+>>>>>>> origin/main
 
 **2026-08-05 (feat — Envíos Ops UX F1/F3a collapse + stop DnD):** `/logistica` paradas plegables (chevron + summary; `ui.collapsedStopIds` en localStorage; default collapse si hay más de 3 paradas). Reorden HTML5 por asa ⠿ → `reorderStops` / `renumberStops` (`stopReorder.js`). Tests `stopReorder.test.js`.
 
