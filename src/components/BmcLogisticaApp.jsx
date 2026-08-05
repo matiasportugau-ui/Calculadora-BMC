@@ -25,6 +25,12 @@ import {
   mergeBridgeIntoStops,
 } from "../utils/logistica/bridgePayload.js";
 import { searchMappedVentasRows, withCoordinationChip } from "../utils/logistica/ventasSearch.js";
+import {
+  reorderStops,
+  renumberStops,
+  defaultCollapsedStopIds,
+  toggleCollapsedStopId,
+} from "../utils/logistica/stopReorder.js";
 
 const TRUCK_W = 2.4;
 
@@ -1009,10 +1015,15 @@ export default function BmcLogisticaApp() {
   const [newCarrierName, setNewCarrierName] = useState("");
   /** Gate localStorage writes until draft restore + optional bridge import finish (avoid empty wipe). */
   const [hydrated, setHydrated] = useState(false);
+  /** Ops UX F1: collapsed stop card ids */
+  const [collapsedStopIds, setCollapsedStopIds] = useState([]);
+  /** Ops UX F3a: HTML5 drag source */
+  const [dragStopId, setDragStopId] = useState(null);
 
   useEffect(() => {
     let restoredStops = [];
     let restoredProfiles = {};
+    let restoredCollapsed = null;
     try {
       let raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) raw = localStorage.getItem(STORAGE_KEY_LEGACY);
@@ -1034,6 +1045,10 @@ export default function BmcLogisticaApp() {
           }));
           setStops(restoredStops);
         }
+        if (Array.isArray(parsed.ui?.collapsedStopIds)) {
+          restoredCollapsed = parsed.ui.collapsedStopIds.filter(Boolean);
+          setCollapsedStopIds(restoredCollapsed);
+        }
         if (parsed.truckL) setTruckL(parsed.truckL);
         if (parsed.view) setView(parsed.view);
         if (parsed.distributionMode) setDistributionMode(parsed.distributionMode);
@@ -1047,6 +1062,10 @@ export default function BmcLogisticaApp() {
       }
     } catch {
       // ignore persisted-state errors
+    }
+
+    if (restoredCollapsed == null && restoredStops.length > 3) {
+      setCollapsedStopIds(defaultCollapsedStopIds(restoredStops, 3));
     }
 
     // U2: import quote→ops bridge after draft restore — never wipe a meaningful multi-stop draft.
@@ -1109,6 +1128,7 @@ export default function BmcLogisticaApp() {
           camionesCat,
           priceHistory,
           tripCostLog,
+          ui: { collapsedStopIds },
         })
       );
     } catch {
@@ -1129,6 +1149,7 @@ export default function BmcLogisticaApp() {
     camionesCat,
     priceHistory,
     tripCostLog,
+    collapsedStopIds,
   ]);
 
   useEffect(() => {
@@ -1145,8 +1166,17 @@ export default function BmcLogisticaApp() {
 
   const updInfo = (k, v) => setInfo((p) => ({ ...p, [k]: v }));
   const addStop = () => setStops((p) => [...p, mkStop(p.length)]);
-  const rmStop = (id) => setStops((p) => p.filter((s) => s.id !== id).map((s, i) => ({ ...s, orden: i + 1, color: COLORS[i % 8] })));
+  const rmStop = (id) => {
+    setStops((p) => renumberStops(p.filter((s) => s.id !== id), { colors: COLORS }));
+    setCollapsedStopIds((c) => c.filter((x) => x !== id));
+  };
   const updStop = (id, k, v) => setStops((p) => p.map((s) => (s.id === id ? { ...s, [k]: v } : s)));
+  const moveStopBefore = (activeId, overId) => {
+    setStops((p) => reorderStops(p, activeId, overId, { colors: COLORS }));
+  };
+  const toggleStopCollapsed = (stopId) => {
+    setCollapsedStopIds((c) => toggleCollapsedStopId(c, stopId));
+  };
   async function pushVentasFechaEntrega(stop) {
     const row = stop.ventasSheetRow1Based;
     const gid = stop.ventasTabGid || SH_GID;
@@ -1897,17 +1927,86 @@ export default function BmcLogisticaApp() {
               </div>
             ) : null}
 
+            {stops.length > 1 ? (
+              <div style={{ fontSize: 11, color: T.muted, marginBottom: 4 }}>
+                Arrastrá el asa ⠿ para reordenar paradas · clic en el chevron para plegar/expandir.
+              </div>
+            ) : null}
+
             {stops.map((stop) => {
               const placed = cargo.placed.filter((p) => p.sId === stop.id);
               const rowA = placed.filter((p) => p.row === 0);
               const rowB = placed.filter((p) => p.row === 1);
               const badges = getStopBadges(stop);
               const totalAcc = stop.accesorios.reduce((t, a) => t + safeNum(a.cantidad), 0);
+              const collapsed = collapsedStopIds.includes(stop.id);
+              const panelCount = safeNum(stop.paneles.reduce((t, p) => t + safeNum(p.cantidad), 0));
               return (
-                <div key={stop.id} style={{ ...css.card, padding: 16, borderLeft: `4px solid ${stop.color}` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${stop.color}22` }}>
-                    <strong style={{ color: stop.color, fontSize: 14 }}>📍 PARADA {stop.orden}</strong>
-                    <div style={{ display: "flex", gap: 6 }}>
+                <div
+                  key={stop.id}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const activeId = e.dataTransfer.getData("text/plain") || dragStopId;
+                    if (activeId) moveStopBefore(activeId, stop.id);
+                    setDragStopId(null);
+                  }}
+                  style={{
+                    ...css.card,
+                    padding: 16,
+                    borderLeft: `4px solid ${stop.color}`,
+                    opacity: dragStopId === stop.id ? 0.55 : 1,
+                    outline: dragStopId && dragStopId !== stop.id ? `1px dashed ${T.primary}55` : undefined,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: collapsed ? 0 : 12, paddingBottom: collapsed ? 0 : 10, borderBottom: collapsed ? "none" : `1px solid ${stop.color}22`, gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <span
+                        draggable
+                        title="Arrastrar para reordenar"
+                        aria-label="Arrastrar parada"
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("text/plain", stop.id);
+                          e.dataTransfer.effectAllowed = "move";
+                          setDragStopId(stop.id);
+                        }}
+                        onDragEnd={() => setDragStopId(null)}
+                        style={{ cursor: "grab", color: T.muted, fontSize: 16, lineHeight: 1, userSelect: "none", padding: "2px 4px" }}
+                      >
+                        ⠿
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleStopCollapsed(stop.id)}
+                        aria-expanded={!collapsed}
+                        aria-label={collapsed ? "Expandir parada" : "Plegar parada"}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          padding: "2px 4px",
+                          fontSize: 12,
+                          color: T.muted,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {collapsed ? "▶" : "▼"}
+                      </button>
+                      <strong style={{ color: stop.color, fontSize: 14, whiteSpace: "nowrap" }}>📍 P{stop.orden}</strong>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {stop.cliente || "Sin cliente"}
+                      </span>
+                      <span style={{ fontSize: 11, color: T.muted, flexShrink: 0 }}>#{orderDisplayId(stop)}</span>
+                      {collapsed ? (
+                        <span style={{ fontSize: 11, color: T.muted, flexShrink: 0 }}>
+                          · {placed.length} bultos · {panelCount} paneles · {stop.estado || "Pendiente"}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                       {stop.pdfLink ? <Btn href={stop.pdfLink} target="_blank" outline small>📄 PDF</Btn> : null}
                       {stop.direccion ? <Btn href={stop.mapLink || mapsUrl(stop.direccion)} target="_blank" color={T.success} small>🗺️ Mapa</Btn> : null}
                       {(stop.pdfLink || stop.rawSheetText) ? (
@@ -1918,9 +2017,11 @@ export default function BmcLogisticaApp() {
                       <Btn onClick={() => rmStop(stop.id)} color={T.danger} small>✕</Btn>
                     </div>
                   </div>
+                  {collapsed ? null : (
+                  <>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                     <span style={badgeStyle("neutral")}>Pedido {orderDisplayId(stop)}</span>
-                    <span style={badgeStyle("neutral")}>{placed.length} bultos · {safeNum(stop.paneles.reduce((t, p) => t + safeNum(p.cantidad), 0))} paneles · {totalAcc} acc.</span>
+                    <span style={badgeStyle("neutral")}>{placed.length} bultos · {panelCount} paneles · {totalAcc} acc.</span>
                     {badges.map((badge) => <span key={badge.label} style={badgeStyle(badge.tone)}>{badge.label}</span>)}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 8, marginBottom: 10 }}>
@@ -2074,6 +2175,8 @@ export default function BmcLogisticaApp() {
                     <label style={css.lbl}>Observaciones logísticas / recepción</label>
                     <textarea style={{ ...css.inp, resize: "vertical", minHeight: 50 }} value={stop.recepcionDetalle || stop.observacionesLogistica || ""} onChange={(e) => { updStop(stop.id, "recepcionDetalle", e.target.value); updStop(stop.id, "observacionesLogistica", e.target.value); }} placeholder="Faltantes, daño, acceso, descarga parcial, etc." />
                   </div>
+                  </>
+                  )}
                 </div>
               );
             })}
