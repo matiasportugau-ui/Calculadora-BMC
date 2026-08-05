@@ -27,6 +27,18 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 | U6 | **Contracts** | Gherkin + OpenAPI sketch (NOT DEPLOYED) + evidence INDEX; tests `fleteEngine` |
 | U7 | **Doc SoT** | **DONE** kit path + RECREATION-CHECKLIST + audit loop |
 
+## Ops UX Wave (F1–F6) — see [`SDD-OPS-UX-WAVE.md`](./SDD-OPS-UX-WAVE.md)
+
+| ID | Criterion | Status |
+|----|-----------|--------|
+| F1 | Collapsible stop/section cards | OPEN |
+| F2 | Ventas search haystack + Enviado/Coordinado/Por coordinar chips | **DONE** (PR-1 branch) |
+| F3a | Stop list DnD reorder | OPEN |
+| F3b | Remito Presupuesto Simple + package volumes | OPEN |
+| F4 | 3D labels cliente + pedido + rich detail | OPEN |
+| F5 | Package DnD → manual layout overrides | OPEN |
+| F6 | Load-plan print multi-view + translucent cabin | OPEN |
+
 ## Non-goals (Core)
 
 - SaaS courier multi-modal global  

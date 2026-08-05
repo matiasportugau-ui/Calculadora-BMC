@@ -24,6 +24,7 @@ import {
   bridgePayloadToStops,
   mergeBridgeIntoStops,
 } from "../utils/logistica/bridgePayload.js";
+import { searchMappedVentasRows, withCoordinationChip } from "../utils/logistica/ventasSearch.js";
 
 const TRUCK_W = 2.4;
 
@@ -444,6 +445,8 @@ function mapVentasRow(headers, row, sheetRow1Based) {
     pickupId,
     zona: getVentasCell(H, row, "zona", null) || "",
     recepcionContacto: getVentasCell(H, row, "recepcionContacto", null) || "",
+    /** Col F / estado column — used for Enviado chip + search haystack (Ops UX F2). */
+    estadoText: estadoText || fechaEntregaText || "",
     rawSheetText: buildSheetFallbackText(headers, row),
     fechaEntrega: parsePlanillaFechaGToIso(getVentasFechaDeEntregaCell(H, row)),
     ventasSheetRow1Based: sheetRow1Based ?? null,
@@ -1269,13 +1272,11 @@ export default function BmcLogisticaApp() {
     try {
       const rows = await fetchVentasCsv();
       const headers = rows[0] || [];
-      const q = normalizeText(search);
       const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
       setVentasCache({ headers, rows: dataRows });
-      const found = dataRows
-        .map((r, i) => ({ r, sheetRow: i + 2 }))
-        .filter(({ r }) => normalizeText(r[7] || "").includes(q))
-        .map(({ r, sheetRow }) => mapVentasRow(headers, r, sheetRow));
+      // Ops UX F2: map first, then haystack filter (pedido/tel/dir/estado — not r[7] only).
+      const mapped = dataRows.map((r, i) => mapVentasRow(headers, r, i + 2));
+      const found = searchMappedVentasRows(mapped, search);
       if (!found.length) setShErr(`Sin resultados para "${search}"`);
       else setResults(found);
     } catch (e) {
@@ -1294,7 +1295,7 @@ export default function BmcLogisticaApp() {
       const headers = rows[0] || [];
       const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
       setVentasCache({ headers, rows: dataRows });
-      const found = dataRows.map((r, i) => mapVentasRow(headers, r, i + 2));
+      const found = dataRows.map((r, i) => withCoordinationChip(mapVentasRow(headers, r, i + 2)));
       if (!found.length) setShErr("No hay filas con datos en esta pestaña.");
       else {
         setResults(found);
@@ -1700,31 +1701,67 @@ export default function BmcLogisticaApp() {
             <div style={{ ...css.card, padding: 16, background: "#e8f1fb", borderColor: "#bfdbfe" }}>
               <h3 style={css.sectionTitle}>🔍 Buscar cliente en Ventas</h3>
               <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <input id="log-search" name="log-search" aria-label="Buscar cliente" style={{ ...css.inp, flex: 1, minWidth: 160 }} placeholder="Nombre del cliente..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && buscarSheet()} />
+                <input id="log-search" name="log-search" aria-label="Buscar cliente" style={{ ...css.inp, flex: 1, minWidth: 160 }} placeholder="Nombre, pedido, tel, dirección..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && buscarSheet()} />
                 <Btn onClick={buscarSheet} disabled={loadSh}>{loadSh ? "⏳" : "Buscar"}</Btn>
                 <Btn onClick={cargarActuales} disabled={loadSh} outline>Cargar actuales</Btn>
               </div>
               {ventasCache.rows.length ? <div style={{ fontSize: 11, color: T.muted, marginBottom: 8 }}>Última lectura: {ventasCache.rows.length} filas en pestaña actual.</div> : null}
               {shErr ? <div style={{ color: "#b42318", fontSize: 12, padding: "7px 10px", background: "#ffeceb", borderRadius: 8, marginBottom: 8 }}>{shErr}</div> : null}
               {autoLoadMsg ? <div style={{ color: T.brand, fontSize: 12, padding: "7px 10px", background: "#ffffff", borderRadius: 8, marginBottom: 8, border: "1px solid #bfdbfe" }}>{autoLoadMsg}</div> : null}
-              {results.map((r, i) => (
+              {results.map((r, i) => {
+                const chipColor =
+                  r.coordination?.status === "enviado"
+                    ? "#16a34a"
+                    : r.coordination?.status === "coordinado"
+                      ? r.coordinationColor || "#2563eb"
+                      : "#94a3b8";
+                const chipBg =
+                  r.coordination?.status === "enviado"
+                    ? "#dcfce7"
+                    : r.coordination?.status === "coordinado"
+                      ? "#eff6ff"
+                      : "#f1f5f9";
+                return (
                 <div
-                  key={i}
+                  key={`${r.orderId || r.nombre || "r"}-${r.ventasSheetRow1Based || i}`}
                   onClick={() => agregarStop(r)}
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: T.surface, border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 12px", cursor: "pointer", marginBottom: 6, transition: "background .15s" }}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: T.surface, border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 12px", cursor: "pointer", marginBottom: 6, transition: "background .15s", gap: 8 }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "#dbeafe"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = T.surface; }}
                 >
-                  <div>
-                    <div style={{ fontWeight: 700, color: T.brand, fontSize: 13 }}>{r.nombre}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                      <div style={{ fontWeight: 700, color: T.brand, fontSize: 13 }}>{r.nombre || "—"}</div>
+                      {r.orderId || r.cotizacionId ? (
+                        <span style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>#{r.orderId || r.cotizacionId}</span>
+                      ) : null}
+                      <span
+                        title={r.estadoText || r.coordinationCaption || ""}
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: "0.02em",
+                          textTransform: "uppercase",
+                          color: chipColor,
+                          background: chipBg,
+                          border: `1.5px solid ${chipColor}`,
+                          borderRadius: 999,
+                          padding: "2px 8px",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {r.coordinationCaption || r.coordination?.label || "Por coordinar"}
+                      </span>
+                    </div>
                     <div style={{ fontSize: 11, color: T.muted }}>📍{r.dir || "—"} · 📞{r.tel || "—"}</div>
                   </div>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                     {r.pdf ? <Btn href={r.pdf} target="_blank" outline small>📄 PDF</Btn> : null}
                     <Btn color={T.success} small>+ Parada</Btn>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div style={{ ...css.card, padding: 16 }}>
