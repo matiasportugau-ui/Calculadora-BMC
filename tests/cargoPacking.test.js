@@ -71,6 +71,22 @@ const stop = {
   ok("buildStopPackages");
 }
 
+// Ops UX F4: sPed + sCli on placed meta
+{
+  const s = {
+    id: "sx",
+    orden: 2,
+    cliente: "Cliente X",
+    orderId: "BMC-99",
+    color: "#0071e3",
+    paneles: [{ id: "p", tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 4 }],
+  };
+  const pkgs = buildStopPackages(s);
+  assert.equal(pkgs[0].sCli, "Cliente X");
+  assert.equal(pkgs[0].sPed, "BMC-99");
+  ok("buildPkgs carries sCli and sPed");
+}
+
 // Height helper still SDD-aligned
 {
   const h = packageHeightM("ISODEC", 100, 8);
