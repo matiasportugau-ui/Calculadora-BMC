@@ -21,6 +21,7 @@ import {
 import {
   loadBridgePayload,
   bridgePayloadToStops,
+  mergeBridgeStopsIntoDraft,
 } from "../utils/logistica/bridgePayload.js";
 
 const TRUCK_W = 2.4;
@@ -1038,7 +1039,8 @@ export default function BmcLogisticaApp() {
       // ignore persisted-state errors
     }
 
-    // U2: import quote→ops bridge (sessionStorage) after draft restore
+    // U2: import quote→ops bridge (sessionStorage) after draft restore.
+    // Append as a new stop — never replace an existing multi-stop draft (data loss).
     try {
       const bridge = loadBridgePayload({ clear: true });
       if (!bridge?.panels?.length) return;
@@ -1047,15 +1049,22 @@ export default function BmcLogisticaApp() {
         color: COLORS[0],
       });
       if (!bridgeStops.length) return;
-      setStops(
-        bridgeStops.map((stop, index) => ({
-          ...mkStop(index),
-          ...stop,
-          checks: { ...mkStop(index).checks, datosOk: Boolean(stop.direccion), bultosOk: stop.paneles?.length > 0 },
-          accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, {}),
-        }))
-      );
-      if (infoPatch) setInfo((prev) => ({ ...prev, ...infoPatch }));
+      const enriched = bridgeStops.map((stop, index) => ({
+        ...mkStop(index),
+        ...stop,
+        checks: { ...mkStop(index).checks, datosOk: Boolean(stop.direccion), bultosOk: stop.paneles?.length > 0 },
+        accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, {}),
+      }));
+      setStops((prev) => mergeBridgeStopsIntoDraft(prev, enriched, { colors: COLORS }));
+      if (infoPatch) {
+        setInfo((prev) => {
+          const note = infoPatch.notas || "";
+          const mergedNotas = prev.notas && note && !String(prev.notas).includes(note)
+            ? `${prev.notas} · ${note}`
+            : prev.notas || note;
+          return { ...prev, ...infoPatch, notas: mergedNotas };
+        });
+      }
       setAutoLoadMsg(
         `Importado desde Cotizar flete: ${bridge.panels.length} línea(s) de paneles · ${bridge.destino || "sin destino"}`
       );

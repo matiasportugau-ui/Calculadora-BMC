@@ -7,6 +7,7 @@ import {
   buildBridgePayload,
   parseBridgePayload,
   bridgePayloadToStops,
+  mergeBridgeStopsIntoDraft,
   BRIDGE_SCHEMA_VERSION,
   saveBridgePayload,
   loadBridgePayload,
@@ -97,6 +98,35 @@ const panels = [
   assert.equal(loaded.destino, "Costa");
   assert.equal(store.getItem(BRIDGE_STORAGE_KEY), null);
   ok("sessionStorage-like save/load/clear");
+}
+
+{
+  // Regression: bridge import must append, never wipe an existing multi-stop draft
+  const existing = [
+    { id: "old-1", orden: 1, cliente: "Parada A", paneles: [{ tipo: "ISODEC", cantidad: 4 }] },
+    { id: "old-2", orden: 2, cliente: "Parada B", paneles: [{ tipo: "ISOPARED", cantidad: 2 }] },
+  ];
+  const payload = buildBridgePayload({
+    destino: "Piriápolis",
+    panels: [panels[0]],
+    proyectoRef: { cliente: "Obra nueva" },
+  });
+  const { stops: bridgeStops } = bridgePayloadToStops(payload, {
+    uid: (() => {
+      let i = 0;
+      return () => `br-${++i}`;
+    })(),
+  });
+  const merged = mergeBridgeStopsIntoDraft(existing, bridgeStops, {
+    colors: ["#111", "#222", "#333"],
+  });
+  assert.equal(merged.length, 3, "keeps prior stops + bridge");
+  assert.equal(merged[0].cliente, "Parada A");
+  assert.equal(merged[1].cliente, "Parada B");
+  assert.equal(merged[2].cliente, "Obra nueva");
+  assert.equal(merged[2].orden, 3);
+  assert.equal(merged[2].color, "#333");
+  ok("mergeBridgeStopsIntoDraft appends without wipe");
 }
 
 console.log(`\n${passed} assertions ok`);

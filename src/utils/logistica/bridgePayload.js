@@ -87,6 +87,32 @@ export function parseBridgePayload(raw) {
 }
 
 /**
+ * Append bridge-derived stops onto an existing ops draft.
+ * Never replaces prior paradas — quote→ops handoff must not wipe localStorage drafts.
+ *
+ * @param {object[]} existingStops
+ * @param {object[]} bridgeStops from bridgePayloadToStops().stops
+ * @param {{ colors?: string[] }} [opts]
+ * @returns {object[]}
+ */
+export function mergeBridgeStopsIntoDraft(existingStops = [], bridgeStops = [], opts = {}) {
+  const colors = Array.isArray(opts.colors) && opts.colors.length ? opts.colors : ["#0071e3"];
+  const base = Array.isArray(existingStops) ? existingStops : [];
+  const incoming = Array.isArray(bridgeStops) ? bridgeStops : [];
+  if (!incoming.length) return base;
+  const start = base.length;
+  return [
+    ...base,
+    ...incoming.map((stop, i) => ({
+      ...stop,
+      orden: start + i + 1,
+      // Recolor by draft index so appends stay on the ops palette (bridge default is ignored).
+      color: colors[(start + i) % colors.length],
+    })),
+  ];
+}
+
+/**
  * Convert bridge payload into a minimal stop list for /logistica.
  * @param {BridgePayload} payload
  * @param {{ uid?: () => string, color?: string }} [opts]
