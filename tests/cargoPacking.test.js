@@ -26,13 +26,23 @@ const stop = {
   paneles: [{ id: "p1", tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 16 }],
 };
 
-// Freight column engine: 16 panels → 2 packages of 8 → may fill 1 or 2 rows by height
+// Freight column engine: 16 panels → packages fill one fila when height allows (minimize filasUsadas)
 {
   const pack = placeCargo([stop], STANDARD_BED_M, { maxH: 2.4 });
   assert.equal(pack.layoutEngine, "column");
   assert.ok(pack.placed.length >= 1, "placed packages");
-  assert.ok(pack.filasUsadas >= 1 && pack.filasUsadas <= 2);
-  ok("column engine freight path");
+  assert.equal(pack.filasUsadas, 1, `expected 1 fila for 16×100mm ISODEC, got ${pack.filasUsadas}`);
+  ok("column engine freight path minimizes filasUsadas");
+}
+
+// Leftover after first pack stays on used row A (not load-balance open B)
+{
+  const panels = [{ id: "p1", tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 12 }];
+  const pack = placeCargo([{ id: "s1", orden: 1, paneles: panels }], STANDARD_BED_M, { maxH: 2.4 });
+  assert.equal(pack.filasUsadas, 1);
+  assert.ok(pack.rowH[0] > 0.001);
+  assert.ok(pack.rowH[1] <= 0.001);
+  ok("column leftover packs stay on used fila");
 }
 
 // Ops stack engine strategies

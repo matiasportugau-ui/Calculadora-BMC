@@ -87,6 +87,61 @@ export function parseBridgePayload(raw) {
 }
 
 /**
+ * True when a stop has operator content worth preserving (cliente, address, cargo, notes).
+ * Empty placeholders from mkStop() are not meaningful.
+ * @param {object} stop
+ * @returns {boolean}
+ */
+export function stopHasLogisticsContent(stop) {
+  if (!stop || typeof stop !== "object") return false;
+  if (String(stop.cliente || "").trim()) return true;
+  if (String(stop.direccion || "").trim()) return true;
+  if (String(stop.telefono || "").trim()) return true;
+  if (String(stop.orderId || "").trim()) return true;
+  if (String(stop.pickupId || "").trim()) return true;
+  if (String(stop.notes || "").trim()) return true;
+  if (Array.isArray(stop.paneles) && stop.paneles.some((p) => (Number(p?.cantidad) || 0) > 0)) return true;
+  if (Array.isArray(stop.accesorios) && stop.accesorios.length > 0) return true;
+  return false;
+}
+
+/**
+ * Merge quote→ops bridge stops into an existing /logistica draft.
+ * - Empty / placeholder drafts → replace with bridge stops
+ * - Meaningful multi-stop drafts → append (never wipe)
+ * - Empty bridge → keep draft unchanged
+ *
+ * @param {object[]} existingStops
+ * @param {object[]} bridgeStops from bridgePayloadToStops().stops (already enriched)
+ * @param {{ colors?: string[] }} [opts]
+ * @returns {object[]}
+ */
+export function mergeBridgeIntoStops(existingStops = [], bridgeStops = [], opts = {}) {
+  const colors = Array.isArray(opts.colors) && opts.colors.length ? opts.colors : ["#0071e3"];
+  const base = Array.isArray(existingStops) ? existingStops : [];
+  const incoming = Array.isArray(bridgeStops) ? bridgeStops : [];
+  if (!incoming.length) return base;
+
+  const meaningful = base.some(stopHasLogisticsContent);
+  const seed = meaningful ? base : [];
+  const start = seed.length;
+  const merged = [
+    ...seed,
+    ...incoming.map((stop, i) => ({
+      ...stop,
+      orden: start + i + 1,
+      color: colors[(start + i) % colors.length],
+    })),
+  ];
+  return merged.map((s, i) => ({ ...s, orden: i + 1 }));
+}
+
+/** @deprecated alias — same as mergeBridgeIntoStops */
+export function mergeBridgeStopsIntoDraft(existingStops, bridgeStops, opts) {
+  return mergeBridgeIntoStops(existingStops, bridgeStops, opts);
+}
+
+/**
  * Convert bridge payload into a minimal stop list for /logistica.
  * @param {BridgePayload} payload
  * @param {{ uid?: () => string, color?: string }} [opts]
@@ -156,9 +211,24 @@ export function loadBridgePayload(opts = {}) {
     const raw = s.getItem(BRIDGE_STORAGE_KEY);
     if (!raw) return null;
     const parsed = parseBridgePayload(raw);
+    // Default clear:true for backwards compat; prefer clear:false then clearBridgePayload after apply.
     if (opts.clear !== false) s.removeItem(BRIDGE_STORAGE_KEY);
     return parsed.ok ? parsed.payload : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Remove bridge key from sessionStorage without reading.
+ * @param {Storage} [store]
+ */
+export function clearBridgePayload(store) {
+  const s = store || (typeof sessionStorage !== "undefined" ? sessionStorage : null);
+  if (!s) return;
+  try {
+    s.removeItem(BRIDGE_STORAGE_KEY);
+  } catch {
+    // ignore
   }
 }

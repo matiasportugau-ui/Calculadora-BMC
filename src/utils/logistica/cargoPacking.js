@@ -317,6 +317,26 @@ function normalizePlaceArgs(third, fourth) {
 }
 
 /**
+ * Pick A/B row for freight column fill.
+ * Prefer already-used rows that fit so filasUsadas reflects minimum occupancy
+ * (SDD: 1 fila = A OR B free), not a load-balanced spread across both rows.
+ */
+function pickColumnRow(rowH, pkgH, maxH) {
+  const eps = 0.001;
+  const room = (r) => maxH - rowH[r];
+  const fits = (r) => pkgH <= room(r) + eps;
+  const usedFit = [0, 1].filter((r) => rowH[r] > eps && fits(r));
+  if (usedFit.length) {
+    // Prefer the used row with more remaining height (denser single-fila fill).
+    return usedFit.reduce((best, r) => (room(r) > room(best) ? r : best));
+  }
+  const emptyFit = [0, 1].filter((r) => rowH[r] <= eps && fits(r));
+  if (emptyFit.length) return emptyFit[0];
+  // Neither row fits — return the one with more room (caller may split/overflow).
+  return room(0) >= room(1) ? 0 : 1;
+}
+
+/**
  * Freight column fill (legacy quote packer) — height into rows A/B, no longitudinal stacks.
  * Preserves zone tariff occupancy classification.
  */
@@ -359,14 +379,10 @@ function placeCargoColumn(stops, bed, maxH, uid) {
       warns.add(`Panel ${pkg.len}m supera carrocería ${bed}m`);
     }
 
-    let row = rowH[0] <= rowH[1] ? 0 : 1;
+    let row = pickColumnRow(rowH, pkg.h, maxH);
     let room = maxH - rowH[row];
     const alt = 1 - row;
     const roomAlt = maxH - rowH[alt];
-    if (pkg.h > room + 0.001 && roomAlt >= room) {
-      row = alt;
-      room = roomAlt;
-    }
 
     if (pkg.h <= room + 0.001) {
       placed.push({ ...pkg, row, zBase: rowH[row], ov: false, xStart: 0, xEnd: pkg.len });
@@ -383,7 +399,7 @@ function placeCargoColumn(stops, bed, maxH, uid) {
       }
       if (nFit >= 1) {
         const hFit = packageHeightM(pkg.tipo, pkg.esp, nFit);
-        const useRow = hFit <= room + 0.001 ? row : alt;
+        const useRow = pickColumnRow(rowH, hFit, maxH);
         placed.push({
           ...pkg,
           id: `${pkg.id}_a`,
