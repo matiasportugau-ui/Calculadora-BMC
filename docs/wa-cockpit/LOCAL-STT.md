@@ -1,5 +1,8 @@
 # Local STT (Whisper large-v3-turbo) — G8 free path
 
+> Part of media richness G7/G8/G9. Spec: [`../team/features/WA-MEDIA-RICHNESS-SPEC.md`](../team/features/WA-MEDIA-RICHNESS-SPEC.md) · Operator: [`MEDIA-G7G8G9.md`](./MEDIA-G7G8G9.md).
+
+
 Primary transcription for WA audio runs on the Mac, not paid OpenAI.
 
 ## Operator one-click (recommended)
