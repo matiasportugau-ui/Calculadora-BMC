@@ -28,6 +28,7 @@ here.
 | [`goal-prompt-tareas-phase-c1-c3.md`](./goal-prompt-tareas-phase-c1-c3.md) | 2026-05-19 | Tareas OAuth PKCE + Cloud Scheduler sync (commits `d6526b5`/`4ee410d`/`494ae62`) |
 | [`goal-prompt-user-platform-4-tracks.md`](./goal-prompt-user-platform-4-tracks.md) | 2026-05-20 | User Platform 4-track ship: `/hub/admin/users`, Mensajes, Tareas nav, TraKtiMe combobox (5 commits, ~3,100 LOC) |
 | [`goal-prompt-user-activity-log-and-history.md`](./goal-prompt-user-activity-log-and-history.md) | 2026-05-21 | Unified activity log + per-user Historial + admin Analytics (5 commits, ~1,750 LOC, applied via Supabase MCP migration) |
+| [`goal-prompt-wa-media-richness-100.md`](./goal-prompt-wa-media-richness-100.md) | 2026-08-05 | WA Mode C media G7/G8/G9 + local STT — PR #847 → `panelin-calc-00934-lp5`; as-built [`../features/WA-MEDIA-RICHNESS-SPEC.md`](../features/WA-MEDIA-RICHNESS-SPEC.md) |
 
 ## Convention
 

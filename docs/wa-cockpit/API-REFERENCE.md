@@ -38,6 +38,43 @@ Auth: `Authorization: Bearer ${API_AUTH_TOKEN}` o `X-Api-Key: ${API_AUTH_TOKEN}`
 - **Query**: `chat_id` (requerido), `before` (timestamp ISO), `limit` (max 500).
 - **Orden**: ASC por `ts` (revierte el resultado interno DESC para devolver cronológico al cliente).
 - **200**: `{ ok, chat_id, count, next_before, items }`.
+- **Media fields (G7/G8, 2026-08-05):** each item may include `has_media`, `media_url` (`/api/wa/media/:msg_id`), `media_gcs_path`, `media_mime`, `media_bytes`, `transcript`, `transcript_status`.
+
+---
+
+## Media richness G7/G8/G9 — **LIVE** (PR #847, rev `panelin-calc-00934-lp5`)
+
+Canonical spec: [`../team/features/WA-MEDIA-RICHNESS-SPEC.md`](../team/features/WA-MEDIA-RICHNESS-SPEC.md) · Operator: [`MEDIA-G7G8G9.md`](./MEDIA-G7G8G9.md)
+
+### `POST /api/wa/media`
+- **Auth**: write (operator JWT or shared token).
+- **Body**: `{ msg_id, chat_id, type?, mimetype?, bytes_base64 }` (or nested `media_upload.bytes_base64`).
+- **Gates**: reject empty; reject &lt;2KB unless `force`; **magic-byte** validation (`server/lib/waMedia.js`) before GCS.
+- **400 examples**: `not_audio_junk`, `not_audio_magic`, `media too small (<2KB)`, `empty media`.
+- **200**: `{ ok, msg_id, path, bytes, mime, kind, transcript_status?, updated }`.
+
+### `GET /api/wa/media/:msg_id`
+- **Auth**: read.
+- **302**: `Location` = short-lived signed GCS URL under `wa-media/…`.
+- **401** unauth · **404** if message has no `media_gcs_path`.
+
+### `POST /api/wa/media/link`
+- **Auth**: write.
+- **Body**: `{ msg_id, media_gcs_path }` (must start with `wa-media/`), optional `mimetype`, `media_bytes`, `type`.
+- Attaches existing GCS object without re-upload (used after backfill / recovery).
+
+### `POST /api/wa/media/clear`
+- **Auth**: write.
+- Unsets `media_gcs_path`; optional honesty path reverts STT-filled body to `[Nota de voz · Ns]` (no synthetic transcripts left behind).
+
+### Env (optional, default local STT)
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `WA_TRANSCRIPT_CLOUD` | off | `1` enables cloud Whisper worker on API boot |
+| `WA_TRANSCRIPT_DISABLED` | off | `1` disables transcript worker entirely |
+
+Documented in `.env.example` for env-drift CI. See [`LOCAL-STT.md`](./LOCAL-STT.md).
 
 ---
 

@@ -1,4 +1,5 @@
 # Bitácora — Matías Portugau
+- **2026-08-05** — WA media G7/G8/G9 shipped+verified: PR #847 → Cloud Run panelin-calc-00934-lp5. Documented as-built SPEC + prompt-eng archive. Paths: docs/team/features/WA-MEDIA-RICHNESS-SPEC.md, docs/team/goal-prompts/goal-prompt-wa-media-richness-100.md, docs/wa-cockpit/MEDIA-G7G8G9.md.
 
 **Propósito:** log unificado de sesiones, hitos, deploys y prioridades cerradas. Complementa [PROJECT-STATE.md](./PROJECT-STATE.md) (que es el estado actual del sistema) con una vista cronológica de QUIÉN tocó QUÉ + por qué.
 
