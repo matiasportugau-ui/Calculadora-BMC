@@ -3,6 +3,7 @@
  * Pure — unload order + package identity for multi-view print sheet.
  */
 
+import { mirrorBedXForView } from "../bmcLogisticaBedView.js";
 import { packageCuboidMetrics } from "./remitoPackageMetrics.js";
 
 /**
@@ -73,6 +74,10 @@ export function buildLoadPlanPrintModel(input = {}) {
 
   const packages = placed.map((pkg) => {
     const cuboid = packageCuboidMetrics(pkg);
+    const rawXStart = pkg.xStart ?? 0;
+    const rawXEnd = pkg.xEnd ?? rawXStart + (pkg.len || 0);
+    // Print sheet must match on-screen bed view (cab left / tail right).
+    const view = mirrorBedXForView({ xStart: rawXStart, xEnd: rawXEnd }, truckL);
     return {
       id: pkg.id,
       stableKey: pkg.stableKey,
@@ -81,8 +86,8 @@ export function buildLoadPlanPrintModel(input = {}) {
       sPed: pkg.sPed || "",
       sOrd: pkg.sOrd,
       row: pkg.row,
-      xStart: pkg.xStart ?? 0,
-      xEnd: pkg.xEnd ?? (pkg.xStart || 0) + (pkg.len || 0),
+      xStart: view.xStart,
+      xEnd: view.xEnd,
       zBase: pkg.zBase ?? 0,
       len: pkg.len,
       h: pkg.h,

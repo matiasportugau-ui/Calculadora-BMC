@@ -102,4 +102,27 @@ const stop = {
   ok("empty stops");
 }
 
+// Ops UX F5: forced fila must stick even when package overflows bed length
+{
+  const heavy = {
+    id: "s1",
+    orden: 1,
+    cliente: "Force B",
+    color: "#0071e3",
+    paneles: [{ id: "p1", tipo: "ISODEC", espesor: 250, longitud: 10, cantidad: 12 }],
+  };
+  const keys = buildStopPackages(heavy).map((p) => p.stableKey);
+  assert.ok(keys.length >= 3, "need 3+ packages to force overflow on fila B");
+  const rowOverrides = Object.fromEntries(keys.map((k) => [k, 1]));
+  const pack = placeCargo([heavy], 8, {
+    strategy: "balanced",
+    mode: "manual",
+    manualOrderKeys: keys,
+    rowOverrides,
+  });
+  assert.ok(pack.placed.every((p) => p.row === 1), "all forced-B packages stay on fila B");
+  assert.ok(pack.warns.some((w) => /saliente|largo útil|2° camión/i.test(w)));
+  ok("forced fila override honored on overflow path");
+}
+
 console.log(`\n${passed} assertions ok`);
