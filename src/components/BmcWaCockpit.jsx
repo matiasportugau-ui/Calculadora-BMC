@@ -9,6 +9,7 @@ import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import BmcWaSettingsPanel from "./BmcWaSettingsPanel.jsx";
 import { useCockpitOperatorAuth } from "../hooks/useCockpitOperatorAuth.js";
+import { resolveWaMediaSignedUrl } from "../utils/waCockpitMedia.js";
 const VIEW_STORAGE_KEY = "bmc_cockpit_view";
 
 const STATUS_OPTIONS = [
@@ -212,28 +213,36 @@ function isPlaceholderBody(text) {
   );
 }
 
-/** Auth media URL for <img>/<audio> (query key accepted by API). */
-function mediaSrc(apiBase, mediaUrl, token) {
-  if (!mediaUrl) return null;
-  const base = String(apiBase || "").replace(/\/+$/, "");
-  const path = mediaUrl.startsWith("http")
-    ? mediaUrl
-    : `${base}${mediaUrl.startsWith("/") ? "" : "/"}${mediaUrl}`;
-  if (!token) return path;
-  const sep = path.includes("?") ? "&" : "?";
-  return `${path}${sep}key=${encodeURIComponent(token)}`;
-}
-
+/**
+ * Media display: fetch signed GCS URL with Bearer auth.
+ * Never put JWT/API_AUTH_TOKEN in ?key= (img/audio can't send headers; query
+ * key only matches shared token and leaks secrets on 302→GCS Referer).
+ */
 function MessageBody({ m, apiBase, token }) {
   const type = String(m.type || "text").toLowerCase();
-  const src =
+  const mediaPath =
     m.has_media || m.media_url
-      ? mediaSrc(
-          apiBase,
-          m.media_url || `/api/wa/media/${encodeURIComponent(m.msg_id)}`,
-          token,
-        )
+      ? m.media_url || `/api/wa/media/${encodeURIComponent(m.msg_id)}`
       : null;
+  const [src, setSrc] = useState(null);
+  const [mediaError, setMediaError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSrc(null);
+    setMediaError(false);
+    if (!mediaPath || !token) return undefined;
+    (async () => {
+      const url = await resolveWaMediaSignedUrl(apiBase, mediaPath, token);
+      if (cancelled) return;
+      if (url) setSrc(url);
+      else setMediaError(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBase, mediaPath, token]);
+
   const bodyText =
     m.display_text ||
     m.transcript ||
@@ -268,6 +277,11 @@ function MessageBody({ m, apiBase, token }) {
         >
           <track kind="captions" />
         </audio>
+      ) : null}
+      {mediaPath && mediaError ? (
+        <div style={{ fontSize: 11, color: "#a4262c", marginBottom: 4 }}>
+          Media no disponible
+        </div>
       ) : null}
       {bodyText ? (
         <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{bodyText}</div>
