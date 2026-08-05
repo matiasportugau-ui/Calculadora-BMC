@@ -1,5 +1,6 @@
 import baseMap from "./quoteVisorShopifyMap.json";
 import { BORDER_OPTIONS } from "./constants.js";
+import { resolveBorderMedia } from "./product-media/productMediaResolve.js";
 
 const OVERRIDE_STORAGE_KEY = "bmc-visor-shopify-overrides";
 
@@ -29,14 +30,21 @@ export function writeShopifyImageOverride(borderId, url) {
 }
 
 /** @param {string} borderId */
-export function resolveBorderShopifyEntry(borderId) {
+export function resolveBorderShopifyEntry(borderId, opts = {}) {
+  const media = resolveBorderMedia({
+    borderId,
+    familia: opts.familia,
+    panelFamiliaKey: opts.panelFamiliaKey,
+  });
   const fromBase = baseMap?.byBorderId?.[borderId];
   const ov = readShopifyImageOverrides();
-  const src = ov[borderId] || fromBase?.imageSrc || "";
+  const src = ov[borderId] || media.primaryImage || fromBase?.imageSrc || "";
   return {
     imageSrc: src,
-    productUrl: fromBase?.productUrl || "https://bmcuruguay.com.uy/collections/all",
-    shopifyHandle: fromBase?.shopifyHandle ?? null,
+    productUrl: media.url || fromBase?.productUrl || "https://bmcuruguay.com.uy/collections/all",
+    shopifyHandle: media.handle || fromBase?.shopifyHandle || null,
+    title: media.title || null,
+    description: media.description || null,
   };
 }
 

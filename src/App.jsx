@@ -26,6 +26,7 @@ import BmcChatPanel from "./components/BmcChatPanel.jsx";
 import DesignPreviewGate from "./components/preview/DesignPreviewGate.jsx";
 
 const DesignMockupsPage = lazy(() => import("./components/preview/DesignMockupsPage.jsx"));
+const ProductMediaMapperPage = lazy(() => import("./components/preview/ProductMediaMapperPage.jsx"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -541,6 +542,14 @@ export default function App() {
                 <DesignMockupsPage />
               </Suspense>
             </Shell>
+          }
+        />
+        <Route
+          path="/preview/product-media-mapper"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <ProductMediaMapperPage />
+            </Suspense>
           }
         />
         <Route path="/wa" element={<Navigate to="/hub/wa" replace />} />

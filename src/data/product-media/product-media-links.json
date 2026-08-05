@@ -1,0 +1,441 @@
+{
+  "version": 3,
+  "updatedAt": "2026-08-05T08:00:43.049Z",
+  "note": "Auto-ship 2026-08-05: curated Shopify handles. Mapper /preview/product-media-mapper",
+  "borders": {
+    "babeta_empotrar": {
+      "default": {
+        "handle": "babeta-de-empotrar-isodec",
+        "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_Empotrar_Blanca.jpg?v=1755375091",
+        "title": "BABETA ISODEC - Empotrar",
+        "status": "linked"
+      },
+      "byFamilia": {
+        "ISODEC": {
+          "handle": "babeta-de-empotrar-isodec",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_Empotrar_Blanca.jpg?v=1755375091",
+          "title": "BABETA ISODEC - Empotrar",
+          "status": "linked"
+        },
+        "ISODEC_PIR": {
+          "handle": "babeta-de-empotrar-isodec",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_Empotrar_Blanca.jpg?v=1755375091",
+          "title": "BABETA ISODEC - Empotrar",
+          "status": "linked"
+        },
+        "ISOROOF": {
+          "handle": "babeta-de-empotrar-lateral-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAdosar-ISODEC_4.jpg?v=1755372738",
+          "title": "Babeta de Empotrar Lateral - ISOROOF",
+          "status": "linked"
+        },
+        "ISOROOF_COLONIAL": {
+          "handle": "babeta-de-empotrar-lateral-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAdosar-ISODEC_4.jpg?v=1755372738",
+          "title": "Babeta de Empotrar Lateral - ISOROOF",
+          "status": "linked"
+        }
+      }
+    },
+    "babeta_adosar": {
+      "default": {
+        "handle": "babeta-isodec-adosar",
+        "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_adosar_blanca.jpg?v=1755374853",
+        "title": "BABETA ISODEC - Adosar",
+        "status": "linked"
+      },
+      "byFamilia": {
+        "ISODEC": {
+          "handle": "babeta-isodec-adosar",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_adosar_blanca.jpg?v=1755374853",
+          "title": "BABETA ISODEC - Adosar",
+          "status": "linked"
+        },
+        "ISODEC_PIR": {
+          "handle": "babeta-isodec-adosar",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Babeta_de_adosar_blanca.jpg?v=1755374853",
+          "title": "BABETA ISODEC - Adosar",
+          "status": "linked"
+        },
+        "ISOROOF": {
+          "handle": "babeta-de-atornillar-lateral-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAtornillarIsodec.jpg?v=1755206215",
+          "title": "Babeta de Atornillar Lateral - ISOROOF",
+          "status": "linked"
+        },
+        "ISOROOF_COLONIAL": {
+          "handle": "babeta-de-atornillar-lateral-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAtornillarIsodec.jpg?v=1755206215",
+          "title": "Babeta de Atornillar Lateral - ISOROOF",
+          "status": "linked"
+        }
+      }
+    },
+    "gotero_lateral": {
+      "default": {
+        "handle": "gotero-lateral-isoroof",
+        "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroLateralIsoroof.jpg?v=1755204383",
+        "title": "Gotero Lateral - ISOROOF",
+        "status": "linked"
+      },
+      "byFamilia": {
+        "ISODEC": {
+          "handle": "gotero-lateral-para-isodec-copia",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroLateralIsodecEPS_PIR4.jpg?v=1755373177",
+          "title": "Gotero Lateral y Superior para ISODEC (EPS & PIR)",
+          "status": "linked"
+        },
+        "ISODEC_PIR": {
+          "handle": "gotero-lateral-para-isodec-copia",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroLateralIsodecEPS_PIR4.jpg?v=1755373177",
+          "title": "Gotero Lateral y Superior para ISODEC (EPS & PIR)",
+          "status": "linked"
+        },
+        "ISOROOF": {
+          "handle": "gotero-lateral-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroLateralIsoroof.jpg?v=1755204383",
+          "title": "Gotero Lateral - ISOROOF",
+          "status": "linked"
+        },
+        "ISOROOF_COLONIAL": {
+          "handle": "gotero-lateral-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroLateralIsoroof.jpg?v=1755204383",
+          "title": "Gotero Lateral - ISOROOF",
+          "status": "linked"
+        }
+      }
+    },
+    "gotero_lateral_camara": {
+      "default": {
+        "handle": "gotero-lateral-de-camara-isodec",
+        "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-GoteroLateraldeCamaraISODEC-Blanco-Renderizado-WEB01.png?v=1748581487",
+        "title": "GOTERO LATERAL de CÁMARA - ISODEC (EPS & PIR)",
+        "status": "linked"
+      },
+      "byFamilia": {
+        "ISODEC": {
+          "handle": "gotero-lateral-de-camara-isodec",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-GoteroLateraldeCamaraISODEC-Blanco-Renderizado-WEB01.png?v=1748581487",
+          "title": "GOTERO LATERAL de CÁMARA - ISODEC (EPS & PIR)",
+          "status": "linked"
+        },
+        "ISODEC_PIR": {
+          "handle": "gotero-lateral-de-camara-isodec",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-GoteroLateraldeCamaraISODEC-Blanco-Renderizado-WEB01.png?v=1748581487",
+          "title": "GOTERO LATERAL de CÁMARA - ISODEC (EPS & PIR)",
+          "status": "linked"
+        },
+        "ISOROOF": {
+          "handle": "gotero-lateral-de-camara-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Modelo3dG.LateralCamara-Gris-WEB01.png?v=1752240908",
+          "title": "Gotero Lateral de Cámara - Isoroof",
+          "status": "linked"
+        },
+        "ISOROOF_COLONIAL": {
+          "handle": "gotero-lateral-de-camara-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Modelo3dG.LateralCamara-Gris-WEB01.png?v=1752240908",
+          "title": "Gotero Lateral de Cámara - Isoroof",
+          "status": "linked"
+        }
+      }
+    },
+    "gotero_frontal": {
+      "default": {
+        "handle": "gotero-frontal-isodec",
+        "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalparaISODEC2.jpg?v=1755373732",
+        "title": "Gotero Frontal para ISODEC (EPS & PIR)",
+        "status": "linked"
+      },
+      "byFamilia": {
+        "ISODEC": {
+          "handle": "gotero-frontal-isodec",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalparaISODEC2.jpg?v=1755373732",
+          "title": "Gotero Frontal para ISODEC (EPS & PIR)",
+          "status": "linked"
+        },
+        "ISODEC_PIR": {
+          "handle": "gotero-frontal-isodec",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalparaISODEC2.jpg?v=1755373732",
+          "title": "Gotero Frontal para ISODEC (EPS & PIR)",
+          "status": "linked"
+        },
+        "ISOROOF": {
+          "handle": "gotero-frontal-simple-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3364-Edit_996789a1-58c1-4911-b775-eada26867d06.jpg?v=1755202546",
+          "title": "Gotero Frontal Simple- ISOROOF",
+          "status": "linked"
+        },
+        "ISOROOF_COLONIAL": {
+          "handle": "gotero-frontal-simple-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3364-Edit_996789a1-58c1-4911-b775-eada26867d06.jpg?v=1755202546",
+          "title": "Gotero Frontal Simple- ISOROOF",
+          "status": "linked"
+        }
+      }
+    },
+    "gotero_frontal_greca": {
+      "default": {
+        "handle": "gotero-frontal-con-greca-isoroof",
+        "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalconGreca-ISOROOF.png?v=1755369232",
+        "title": "Gotero Frontal con Greca - ISOROOF",
+        "status": "linked"
+      },
+      "byFamilia": {
+        "ISOROOF": {
+          "handle": "gotero-frontal-con-greca-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalconGreca-ISOROOF.png?v=1755369232",
+          "title": "Gotero Frontal con Greca - ISOROOF",
+          "status": "linked"
+        },
+        "ISOROOF_COLONIAL": {
+          "handle": "gotero-frontal-con-greca-isoroof",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/GoteroFrontalconGreca-ISOROOF.png?v=1755369232",
+          "title": "Gotero Frontal con Greca - ISOROOF",
+          "status": "linked"
+        }
+      }
+    },
+    "canalon": {
+      "default": {
+        "handle": "canalon-doble-isoroof-bandeja-tapas-agujero-bajada",
+        "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/CANALONISODEC_EPS_PIR_Gris_2.jpg?v=1755206403",
+        "title": "Canalón Doble - ISOROOF (Perfil + Bandeja + tapas + agujero + bajada)",
+        "status": "linked"
+      },
+      "byFamilia": {
+        "ISODEC": {
+          "handle": "canalon-isodec-kit-completo",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3324-Edit.jpg?v=1755201703",
+          "title": "CANALÓN ISODEC (EPS & PIR) - KIT COMPLETO",
+          "status": "linked"
+        },
+        "ISODEC_PIR": {
+          "handle": "canalon-isodec-kit-completo",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IMG_3324-Edit.jpg?v=1755201703",
+          "title": "CANALÓN ISODEC (EPS & PIR) - KIT COMPLETO",
+          "status": "linked"
+        },
+        "ISOROOF": {
+          "handle": "canalon-doble-isoroof-bandeja-tapas-agujero-bajada",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/CANALONISODEC_EPS_PIR_Gris_2.jpg?v=1755206403",
+          "title": "Canalón Doble - ISOROOF (Perfil + Bandeja + tapas + agujero + bajada)",
+          "status": "linked"
+        },
+        "ISOROOF_COLONIAL": {
+          "handle": "canalon-doble-isoroof-bandeja-tapas-agujero-bajada",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/CANALONISODEC_EPS_PIR_Gris_2.jpg?v=1755206403",
+          "title": "Canalón Doble - ISOROOF (Perfil + Bandeja + tapas + agujero + bajada)",
+          "status": "linked"
+        }
+      }
+    },
+    "cumbrera": {
+      "default": {
+        "handle": "cumbrera-isoroof-3g",
+        "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-CumbreraIsoroof3G-Rojo-WEB01.png?v=1759860971",
+        "title": "CUMBRERA - ISOROOF 3G",
+        "status": "linked"
+      },
+      "byFamilia": {
+        "ISODEC": {
+          "handle": "cumbrera-isodec",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-PerfilCumbreraISODEC-Blanco-Renderizado-WEB01.png?v=1748581588",
+          "title": "CUMBRERA para ISODEC",
+          "status": "linked"
+        },
+        "ISODEC_PIR": {
+          "handle": "cumbrera-isodec",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-PerfilCumbreraISODEC-Blanco-Renderizado-WEB01.png?v=1748581588",
+          "title": "CUMBRERA para ISODEC",
+          "status": "linked"
+        },
+        "ISOROOF": {
+          "handle": "cumbrera-isoroof-3g",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-CumbreraIsoroof3G-Rojo-WEB01.png?v=1759860971",
+          "title": "CUMBRERA - ISOROOF 3G",
+          "status": "linked"
+        },
+        "ISOROOF_COLONIAL": {
+          "handle": "cumbrera-isoroof-3g",
+          "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-CumbreraIsoroof3G-Rojo-WEB01.png?v=1759860971",
+          "title": "CUMBRERA - ISOROOF 3G",
+          "status": "linked"
+        }
+      }
+    }
+  },
+  "panels": {
+    "ISODEC_EPS": {
+      "handle": "isopanel-isodec-eps-cubiertas-bmc-reloaded",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+      "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+      "status": "linked"
+    },
+    "ISODEC_PIR": {
+      "handle": "isodec®-pir",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+      "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+      "status": "linked"
+    },
+    "ISOROOF_3G": {
+      "handle": "isoroof-3g-gris-rojo-blanco-bromyros",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+      "title": "ISOROOF. 3G.",
+      "status": "linked"
+    },
+    "ISOROOF_PLUS": {
+      "handle": "iroof80-pls",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+      "title": "ISOROOF PLUS. 3G.",
+      "status": "linked"
+    },
+    "ISOROOF_FOIL": {
+      "handle": "iagro30",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+      "title": "ISOROOF FOIL. 3G.",
+      "status": "linked"
+    },
+    "ISOROOF_COLONIAL": {
+      "handle": "isoroof-3g-gris-rojo-blanco-bromyros",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+      "title": "ISOROOF. 3G. (fallback colonial)",
+      "status": "suggested"
+    },
+    "ISOPANEL_EPS": {
+      "handle": "isopanel-eps-paredes-y-fachadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/1e03a1_6071dc1dcd5743968a0bbe3e23fce220_mv2.png?v=1752607327",
+      "title": "ISOPANEL EPS (Paredes y Fachadas) / 50 - 100 - 150 - 200 - 250 mm.",
+      "status": "linked"
+    },
+    "ISOWALL_PIR": {
+      "handle": "isowall-®-pir",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isowall_jpg.webp?v=1756840865",
+      "title": "ISOWALL® PIR- Fachadas - (50 mm - 80 mm)",
+      "status": "linked"
+    },
+    "ISOFRIG_PIR": {
+      "handle": "isowall-®-pir",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isowall_jpg.webp?v=1756840865",
+      "title": "ISOWALL® PIR- Fachadas - (50 mm - 80 mm) (fallback ISOFRIG)",
+      "status": "suggested"
+    }
+  },
+  "fijaciones": {
+    "arandela_carrocero": {
+      "handle": "arandela-carrocero-3-8-galvanizada",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaCarroceroGalv.01.jpg?v=1753478029",
+      "title": "ARANDELA CARROCERO 3/8\" - Galvanizada",
+      "status": "linked"
+    },
+    "arandela_plana": {
+      "handle": "arandela-plana-galv-3-8",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaplanaGalv.3_801.jpg?v=1753466704",
+      "title": "Arandela Plana Galvanizada 3/8\"",
+      "status": "linked"
+    },
+    "arandela_pp": {
+      "handle": "arandela-polipropileno-tortuga",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaPolipropilenoGris_5aa4f3d4-2310-41ae-9896-8c080a8d6c14.jpg?v=1753477945",
+      "title": "ARANDELA DE POLIPROPILENO - \"Tortuga\"",
+      "status": "linked"
+    },
+    "arandela_pp_gris": {
+      "handle": "arandela-polipropileno-tortuga",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ArandelaPolipropilenoGris_5aa4f3d4-2310-41ae-9896-8c080a8d6c14.jpg?v=1753477945",
+      "title": "ARANDELA DE POLIPROPILENO - \"Tortuga\"",
+      "status": "linked"
+    },
+    "caballete": {
+      "handle": "arandela-trapezoidal-caballete-roof",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/20250709_155024.jpg?v=1755369402",
+      "title": "Caballete - Arandela trapezoidal - ISOROOF",
+      "status": "linked"
+    },
+    "varilla_38": {
+      "handle": "varilla-roscada-bsw-3_8",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/VarillaRoscadaBSW3_8.jpg?v=1753468133",
+      "title": "VARILLA ROSCADA BSW 3/8\"",
+      "status": "linked"
+    },
+    "tuerca_38": {
+      "handle": "tuerca-bsw-3-8-galvanizada",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Tuerca_Gal._BSW_3_8_01.jpg?v=1753462996",
+      "title": "TUERCA HEXAGONAL BSW 3/8",
+      "status": "linked"
+    },
+    "taco_expansivo": {
+      "handle": "taco-expansivo-3-8-para-hormigon",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Taco_Expansivo_3_8_H_01.jpg?v=1753463085",
+      "title": "Taco Expansivo 3/8 - para Hormigón - Drop In",
+      "status": "linked"
+    },
+    "anclaje_h": {
+      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
+      "title": "Kit Anclaje a H° - Tornillo N.º 10 + arandela + taco",
+      "status": "linked"
+    },
+    "tornillo_aguja": {
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
+      "title": "Tornillos  Punta Aguja 5 pulgadas",
+      "status": "linked"
+    },
+    "tornillo_t1": {
+      "handle": "tornillo-t1-p-mecha-01",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/T1P.Mecha01.jpg?v=1753467423",
+      "title": "Tornillo T1 P. Mecha",
+      "status": "linked"
+    },
+    "tornillo_t2": {
+      "handle": "tornillo-t1-p-mecha-01",
+      "imageSrc": null,
+      "title": "Tornillo T1 P. Mecha",
+      "status": "linked"
+    },
+    "remache_pop": {
+      "handle": "remache-pop-5-32-x-1-2-zinc-blanco",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/RemachePOP5_32x1_2ZincBlanco.jpg?v=1753467339",
+      "title": "Remache POP 5/32 x 1/2 Zinc Blanco",
+      "status": "linked"
+    },
+    "remache_pop_316": {
+      "handle": "remache-pop-5-32-x-1-2-zinc-blanco",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/RemachePOP5_32x1_2ZincBlanco.jpg?v=1753467339",
+      "title": "Remache POP 5/32 x 1/2 Zinc Blanco",
+      "status": "linked"
+    }
+  },
+  "selladores": {
+    "silicona": {
+      "handle": "bromplast-8-silicona-neutra",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BromplastSiliconaNeutra_Salchicha.jpg?v=1753466136",
+      "title": "Bromplast 8 - Silicona Neutra",
+      "status": "linked"
+    },
+    "silicona_300_neutra": {
+      "handle": "bromplast-8-silicona-neutra",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BromplastSiliconaNeutra_Salchicha.jpg?v=1753466136",
+      "title": "Bromplast 8 - Silicona Neutra",
+      "status": "linked"
+    },
+    "cinta_butilo": {
+      "handle": "cinta-butilo",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Cinta_Butilo_01.jpg?v=1755215262",
+      "title": "Cinta Butilo 2mm x 15mm x 22.5m lineales - ISOROOF - ISODEC - ISOPANEL.",
+      "status": "linked"
+    },
+    "membrana": {
+      "handle": "membrana-auto-adhesiva",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/MembranaAuto-adhesiva.jpg?v=1753467277",
+      "title": "Membrana Auto-adhesiva",
+      "status": "linked"
+    },
+    "espuma_pu": {
+      "handle": "espuma-poliuretano-expansiva",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/EspumaPoliuretanoExpansiva.jpg?v=1753467197",
+      "title": "Espuma Poliuretano Expansiva",
+      "status": "linked"
+    }
+  }
+}
