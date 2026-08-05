@@ -888,12 +888,13 @@ const REMITO_BRAND = "#003366";
  * Package rows: content, L×W×H, cuboid m³; stop/route material m³ via loadCharacteristics.
  */
 function RemitoView({ info, stops, cargo, truckL, sendWA }) {
+  // Package codes come from remitoPackageMetrics via stableKey → buildStopPackages
+  // index (same as WhatsApp). Do not code by cargo.placed index — packing reorders.
   const model = buildRemitoSimpleModel({
     info,
     stops,
     cargo,
     truckL,
-    codeFn: (stop, index) => stopPackageCode(stop, index),
   });
   const { header, sections, totals } = model;
 
