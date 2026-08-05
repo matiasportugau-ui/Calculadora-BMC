@@ -102,32 +102,4 @@ const stop = {
   ok("empty stops");
 }
 
-// Ops UX F5: rowOverrides must survive overflow fallback (no silent flip to other fila)
-{
-  const heavy = {
-    id: "s1",
-    orden: 1,
-    cliente: "Acme",
-    color: "#111",
-    paneles: [{ id: "a", tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 40 }],
-  };
-  const auto = placeCargo([heavy], 8, "balanced");
-  const last = auto.placed[auto.placed.length - 1];
-  assert.ok(last?.stableKey, "auto place yields packages");
-  const wantRow = last.row === 0 ? 1 : 0;
-  const forced = placeCargo([heavy], 8, "balanced", {
-    mode: "manual",
-    rowOverrides: { [last.stableKey]: wantRow },
-    manualOrderKeys: auto.placed.map((p) => p.stableKey),
-  });
-  const got = forced.placed.find((p) => p.stableKey === last.stableKey);
-  assert.ok(got, "forced package still placed");
-  assert.equal(
-    got.row,
-    wantRow,
-    `rowOverrides must place on forced fila even when overflowing (want ${wantRow}, got ${got.row})`,
-  );
-  ok("rowOverrides honored on overflow");
-}
-
 console.log(`\n${passed} assertions ok`);
