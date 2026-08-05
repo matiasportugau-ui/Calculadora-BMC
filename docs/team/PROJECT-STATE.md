@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (fix — Envíos F5 forced fila on overflow):** Overflow packing now honors `rowOverrides` (forced Fila A/B) instead of load-balancing into the opposite row when no candidate fits. Test: cargoPacking forced-overflow. (Print X mirror for Plan carga: prefer open #855.)
+
 **2026-08-05 (feat — Envíos Ops UX F4–F6 3D labels, layout, plan de carga):** Packing meta `sPed`+`sCli` on bultos. 3D: etiquetas cliente+pedido (drei Html), detalle al clic, **cabina translúcida**. SVG/3D: seleccionar bulto → **Fila A/B** via `packageDrop` + `rowOverrides` (layout manual). Tab **Plan carga**: orden de descarga + vistas superior/lateral imprimibles. Pure tests packageDrop, loadPlanPrintModel.
 
 **2026-08-05 (feat — Envíos Ops UX F3b Remito Simple):** Tab Remito de `/logistica` con look **Presupuesto Simple** (navy `#003366`, badge, tablas BOM). Por bulto: ID, contenido, L×Ancho×H, vol cuboide m³, fila A/B. Totales: paquetes, vol estiba, vol material (`loadCharacteristics`), kg est. Pure `remitoPackageMetrics.js` + tests.

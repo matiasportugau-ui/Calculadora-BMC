@@ -579,7 +579,15 @@ export function placeCargo(stops, trL, third = {}, fourth = {}) {
       const anyHeightOk = rowSummaryNow.some(() => pkg.h <= maxH + 0.001);
       if (!anyHeightOk) warns.add(`P${pkg.sOrd}: excede ${maxH}m en ambas filas — se requiere 2° camión.`);
       else warns.add(`P${pkg.sOrd}: no entra en largo útil sin exceder la tolerancia de saliente.`);
-      chosen = { type: "overflow", row: rowCursor[0] >= rowCursor[1] ? 0 : 1 };
+      // Honor operator fila override even when the package must overflow —
+      // otherwise forced B can silently land on A (or vice versa).
+      const overflowRow =
+        forcedRow === 0 || forcedRow === 1
+          ? forcedRow
+          : rowCursor[0] >= rowCursor[1]
+            ? 0
+            : 1;
+      chosen = { type: "overflow", row: overflowRow };
     }
 
     const row = chosen.row;
