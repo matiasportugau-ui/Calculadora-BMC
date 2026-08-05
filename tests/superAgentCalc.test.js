@@ -140,12 +140,35 @@ function totalFromResult(r) {
   );
   assert.equal(runSuperAgentCalc({ escenario: null }, []), null);
   assert.equal(
+    runSuperAgentCalc(
+      {
+        escenario: "techo_fachada",
+        techo: { largo: 0, ancho: 0 },
+        pared: { alto: 3, perimetro: 40 },
+      },
+      [],
+    ),
+    null,
+    "techo_fachada without techo dims must not invent prices",
+  );
+  assert.equal(
     runSuperAgentCalc({
       escenario: "camara_frig",
       pared: { familia: "ISOPANEL_EPS", espesor: 150 },
       camara: { largo_int: 0, ancho_int: 0, alto_int: 0 },
     }, []),
     null,
+  );
+  assert.equal(
+    runSuperAgentCalc(
+      {
+        escenario: "camara_frig",
+        camara: { largo_int: 6, ancho_int: 0, alto_int: 2.5 },
+      },
+      [],
+    ),
+    null,
+    "camara_frig incomplete dims → null",
   );
 }
 

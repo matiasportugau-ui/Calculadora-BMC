@@ -6,10 +6,13 @@ import {
   keyMeta,
   filterProvidersForPicker,
   aiOptionsRequireLive,
+  markReadyFromTraffic,
+  getProviderReadiness,
   _clearReadinessCache,
   mapProbeErrorToReasonCode,
 } from "../server/lib/providerReadiness.js";
 import { _resetProviderHealth } from "../server/lib/providerCircuitBreaker.js";
+import { config } from "../server/config.js";
 
 _clearReadinessCache();
 _resetProviderHealth();
@@ -131,6 +134,39 @@ assert.equal(lightForReason("auth_failed", "not_ready"), "red");
   assert.deepEqual(all, ["claude", "gemini"]);
   if (prev === undefined) delete process.env.AI_OPTIONS_REQUIRE_LIVE;
   else process.env.AI_OPTIONS_REQUIRE_LIVE = prev;
+}
+
+// markReadyFromTraffic — free success signal must populate cache (no paid probe)
+{
+  const prevKey = config.geminiApiKey;
+  // Usable key shape (avoid …-test-… / placeholder patterns rejected by isUsableApiKey)
+  config.geminiApiKey = "AIzaSy" + "a".repeat(35);
+  _clearReadinessCache();
+  _resetProviderHealth();
+
+  markReadyFromTraffic("gemini", { model: "gemini-2.5-flash", latencyMs: 42 });
+  const cached = await getProviderReadiness("gemini", { force: false });
+  assert.equal(cached.state, "ready");
+  assert.equal(cached.light, "green");
+  assert.equal(cached.live, true);
+  assert.equal(cached.modelProbed, "gemini-2.5-flash");
+  assert.equal(cached.latencyMs, 42);
+  // keyMeta must never leak the full key
+  assert.ok(cached.keyMeta?.prefix);
+  assert.ok(String(cached.keyMeta.prefix).length <= 8);
+  assert.notEqual(cached.keyMeta.prefix, config.geminiApiKey);
+
+  // No key → no-op (does not invent readiness)
+  config.geminiApiKey = "";
+  _clearReadinessCache();
+  markReadyFromTraffic("gemini", { model: "x" });
+  const missing = await getProviderReadiness("gemini", { force: false });
+  assert.equal(missing.state, "not_ready");
+  assert.equal(missing.reasonCode, "missing_key");
+
+  config.geminiApiKey = prevKey;
+  _clearReadinessCache();
+  _resetProviderHealth();
 }
 
 console.log("✅ providerReadiness tests OK");
