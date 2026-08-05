@@ -1,8 +1,13 @@
 /**
  * Load-plan printable model (Ops UX F6).
  * Pure — unload order + package identity for multi-view print sheet.
+ *
+ * Package X coordinates are mirrored to the same cabin-left / cola-right
+ * convention as SVG/3D (`bmcLogisticaBedView`), so a printed plan matches
+ * what operators see on screen.
  */
 
+import { bedViewExtents, mirrorBedXForView } from "../bmcLogisticaBedView.js";
 import { packageCuboidMetrics } from "./remitoPackageMetrics.js";
 
 /**
@@ -70,9 +75,13 @@ export function buildLoadPlanPrintModel(input = {}) {
   const cargo = input.cargo || { placed: [], rowH: [0, 0] };
   const placed = Array.isArray(cargo.placed) ? cargo.placed : [];
   const truckL = Number(input.truckL) || 8;
+  const { minXV, maxXV } = bedViewExtents(placed, truckL);
 
   const packages = placed.map((pkg) => {
     const cuboid = packageCuboidMetrics(pkg);
+    const engStart = pkg.xStart ?? 0;
+    const engEnd = pkg.xEnd ?? engStart + (pkg.len || 0);
+    const mirrored = mirrorBedXForView({ xStart: engStart, xEnd: engEnd }, truckL);
     return {
       id: pkg.id,
       stableKey: pkg.stableKey,
@@ -81,8 +90,9 @@ export function buildLoadPlanPrintModel(input = {}) {
       sPed: pkg.sPed || "",
       sOrd: pkg.sOrd,
       row: pkg.row,
-      xStart: pkg.xStart ?? 0,
-      xEnd: pkg.xEnd ?? (pkg.xStart || 0) + (pkg.len || 0),
+      /** View coords: cabin left (low X), cola/door right — same as SVG/3D */
+      xStart: mirrored.xStart,
+      xEnd: mirrored.xEnd,
       zBase: pkg.zBase ?? 0,
       len: pkg.len,
       h: pkg.h,
@@ -105,6 +115,13 @@ export function buildLoadPlanPrintModel(input = {}) {
     unloadSteps: buildUnloadSteps({ cargo, stops: input.stops }),
     packages,
     rowH: cargo.rowH || [0, 0],
-    maxX: Math.max(truckL, ...packages.map((p) => p.xEnd || 0), truckL),
+    /** Left edge of view (0, or negative if ever needed); packages use cabin-left X */
+    minX: minXV,
+    maxX: maxXV,
+    orientation: {
+      cabin: "left",
+      cola: "right",
+      note: "Cabina izquierda · cola / puerta derecha (igual que vistas SVG/3D)",
+    },
   };
 }

@@ -655,10 +655,15 @@ function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1, selected = f
 
 function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
   const plan = buildLoadPlanPrintModel({ info, stops, cargo, truckL });
+  const minX = Number.isFinite(plan.minX) ? plan.minX : 0;
   const maxX = Math.max(plan.maxX, truckL, 1);
-  const scale = 280 / maxX;
+  const span = Math.max(maxX - minX, truckL, 1);
+  const scale = 280 / span;
+  const ox = 20 - minX * scale;
   const sideH = 90;
   const topH = 70;
+  const bedW = truckL * scale;
+  const bedH = TRUCK_W * (topH / TRUCK_W) * 0.85;
 
   return (
     <div className="load-plan-print" style={{ background: "#fff", color: "#1D1D1F", borderRadius: 8, padding: 12 }}>
@@ -685,12 +690,16 @@ function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
       </ol>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: "#003366", marginBottom: 4 }}>Vista superior</div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#64748b", marginBottom: 2, padding: "0 20px" }}>
+        <span>CABINA</span>
+        <span>COLA / PUERTA</span>
+      </div>
       <svg width="100%" height={topH + 16} viewBox={`0 0 ${280 + 40} ${topH + 16}`} style={{ background: "#f8fafc", borderRadius: 6, marginBottom: 10 }}>
-        <rect x={20} y={8} width={truckL * scale} height={TRUCK_W * (topH / TRUCK_W) * 0.85} fill="#0d2137" stroke="#3B82F6" />
+        <rect x={ox} y={8} width={bedW} height={bedH} fill="#0d2137" stroke="#3B82F6" />
         {plan.packages.map((p) => (
           <g key={`t-${p.id}`}>
             <rect
-              x={20 + p.xStart * scale}
+              x={ox + p.xStart * scale}
               y={8 + p.row * (topH / 2.4) * 0.9}
               width={Math.max(4, p.len * scale)}
               height={(topH / 2.4) * 0.85}
@@ -699,20 +708,24 @@ function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
               stroke="#fff"
               strokeWidth={0.5}
             />
-            <text x={20 + p.xStart * scale + 2} y={8 + p.row * (topH / 2.4) * 0.9 + 10} fontSize={7} fill="#fff">{(p.sCli || p.sPed || p.label || "").slice(0, 12)}</text>
+            <text x={ox + p.xStart * scale + 2} y={8 + p.row * (topH / 2.4) * 0.9 + 10} fontSize={7} fill="#fff">{(p.sCli || p.sPed || p.label || "").slice(0, 12)}</text>
           </g>
         ))}
       </svg>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: "#003366", marginBottom: 4 }}>Vista lateral (altura)</div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#64748b", marginBottom: 2, padding: "0 20px" }}>
+        <span>CABINA</span>
+        <span>COLA / PUERTA</span>
+      </div>
       <svg width="100%" height={sideH + 10} viewBox={`0 0 ${280 + 40} ${sideH + 10}`} style={{ background: "#f8fafc", borderRadius: 6, marginBottom: 10 }}>
-        <rect x={20} y={sideH - MAX_H * (sideH / MAX_H) * 0.9} width={truckL * scale} height={MAX_H * (sideH / MAX_H) * 0.9} fill="none" stroke="#94a3b8" strokeDasharray="3,2" />
+        <rect x={ox} y={sideH - MAX_H * (sideH / MAX_H) * 0.9} width={bedW} height={MAX_H * (sideH / MAX_H) * 0.9} fill="none" stroke="#94a3b8" strokeDasharray="3,2" />
         {plan.packages.map((p) => {
           const sy = sideH - (p.zBase + p.h) * (sideH / MAX_H) * 0.9;
           return (
             <rect
               key={`s-${p.id}`}
-              x={20 + p.xStart * scale}
+              x={ox + p.xStart * scale}
               y={sy}
               width={Math.max(4, p.len * scale)}
               height={Math.max(3, p.h * (sideH / MAX_H) * 0.9)}
@@ -726,7 +739,7 @@ function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
       </svg>
 
       <div style={{ fontSize: 11, color: "#64748b" }}>
-        Paquetes: {plan.packages.length}. Usá vista 3D para cabina translúcida y etiquetas cliente+pedido. Imprimí con el navegador (Ctrl/Cmd+P).
+        Paquetes: {plan.packages.length}. Orientación: cabina izquierda · cola derecha (igual que SVG/3D). Imprimí con el navegador (Ctrl/Cmd+P).
       </div>
     </div>
   );
