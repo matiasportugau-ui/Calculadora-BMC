@@ -1,9 +1,9 @@
 ---
 title: System Design Document — BMC Envíos Ops UX Wave (F1–F6)
-version: 1.0
+version: 1.1
 date: 2026-08-05
-status: Target
-author: sdd-architect + sdd-kit review
+status: As-Built
+author: sdd-architect + glory re-audit
 system_slug: bmc-envios-ops-ux
 parent: docs/sdd/bmc-envios/SDD.md
 stack: React 18 + Vite + @dnd-kit/core + R3F + Sheets gviz CSV
@@ -12,121 +12,56 @@ evidence_policy: CONFIRMED | INFERRED | TARGET
 
 # SDD — BMC Envíos Ops UX Wave (F1–F6)
 
-**Agent brief:** Improve `/logistica` operator UX. Prefer **reuse** (`loadCharacteristics`, `manualPkgOrderKeys`/`rowOverrides`, `sCli`, `@dnd-kit/core`, existing 3D selection panel). Fix Ventas search **root cause** (`r[7]` only). No new microservice.
+**Agent brief:** Ops UX improvements on `/logistica`. Prefer reuse of packing meta, `loadCharacteristics`, manual overrides, and pure modules under `src/utils/logistica/`. Parent SoT: [`SDD.md`](./SDD.md) v1.4.
 
-## 1. Goals
+## Status
 
-| ID | Goal | P |
-|----|------|---|
-| F1 | Collapsible stop/section cards | P0 |
-| F2 | Ventas search works (haystack) + chips Enviado / Coordinado(+fecha+batch color) / Por coordinar | P0 |
-| F3a | Stop list DnD reorder | P0 |
-| F3b | Remito estilo Presupuesto Simple + paquetes, contenido, medidas, volumen | P0 |
-| F4 | 3D labels cliente + nº pedido; click full info | P0 |
-| F5 | Package DnD → existing manual layout overrides | P0 |
-| F6 | Printable multi-view load plan + translucent cabin | P1 |
+**As-Built** on `main` via PRs **#842** (F2), **#845** (F1/F3a), **#848** (F3b), **#849** (F4–F6).
 
-### Non-goals
+## Goals (shipped)
 
-Server ENV DB, geocode/TSP, tariff rewrite, free 3D physics, full U3 FSM product.
+| ID | Goal | Status |
+|----|------|--------|
+| F1 | Collapsible stop cards | **DONE** |
+| F2 | Ventas search haystack + coordination chips | **DONE** |
+| F3a | Stop list reorder | **DONE** |
+| F3b | Remito Presupuesto Simple + package volumes | **DONE** |
+| F4 | 3D labels cliente + pedido + detail + cabin | **DONE** |
+| F5 | Package fila A/B override (manual layout) | **DONE** |
+| F6 | Printable load plan multi-view | **DONE** |
 
-## 2. As-built baseline [CONFIRMED]
+## Module map (CONFIRMED)
 
-| Fact | Path |
-|------|------|
-| Search filters only `r[7]` | `BmcLogisticaApp.buscarSheet` |
-| F = estado text / retiro; G = fecha coordinación | comments + `mapVentasRow` |
-| Placed meta `sCli` | `cargoPacking.buildPkgs` |
-| Manual layout opts | `cargoLayoutMode`, `manualPkgOrderKeys`, `rowOverrides` |
-| Volume est. | `loadCharacteristics.js` |
-| 3D select overlay | `LogisticaCargoScene3d.jsx` |
-| dnd-kit | `@dnd-kit/core` in package.json |
+| Module | Path |
+|--------|------|
+| coordinationStatus | `src/utils/logistica/coordinationStatus.js` |
+| ventasSearch | `src/utils/logistica/ventasSearch.js` |
+| stopReorder | `src/utils/logistica/stopReorder.js` |
+| remitoPackageMetrics | `src/utils/logistica/remitoPackageMetrics.js` |
+| packageDrop | `src/utils/logistica/packageDrop.js` |
+| loadPlanPrintModel | `src/utils/logistica/loadPlanPrintModel.js` |
+| 3D scene | `src/components/logistica/LogisticaCargoScene3d.jsx` |
+| UI shell | `src/components/BmcLogisticaApp.jsx` |
 
-## 3. Feature contracts
+## Tests
 
-### F2 — pure modules
-
-**`src/utils/logistica/coordinationStatus.js`**
-
-- `classifyVentasCoordination(row)` → `{ status, coordDateIso, batchKey, label }`
-  - `enviado` if estado/raw `/enviad/i`
-  - else `coordinado` if `fechaEntrega` ISO non-empty (`batchKey = date`)
-  - else `por_coordinar`
-- `batchColorFromKey(batchKey)` stable HSL
-
-**`src/utils/logistica/ventasSearch.js`**
-
-- `normalizeSearchText(s)` NFD lower
-- `mappedRowMatchesQuery(mapped, q)` haystack: nombre, orderId, cotizacionId, pickupId, dir, tel, estadoText, rawSheetText
-- `filterMappedVentasRows(mappedRows, query)`
-
-**UI:** chips on result rows; `mapVentasRow` must expose `estadoText`.
-
-```gherkin
-Given row with orderId BMC-123 and nombre Acme
-When search "BMC-123"
-Then Acme is listed
-And chip Coordinado when fechaEntrega G is set
+```bash
+node tests/coordinationStatus.test.js
+node tests/ventasSearchFilter.test.js
+node tests/stopReorder.test.js
+node tests/remitoPackageMetrics.test.js
+node tests/packageDrop.test.js
+node tests/loadPlanPrintModel.test.js
 ```
 
-### F1 / F3a / F3b / F4 / F5 / F6
+## ADRs
 
-See plan session: collapse state in localStorage `ui`; `reorderStops`; Remito Simple tokens from `simple.js` + `estimateStopLoadPhysical`; packing `sPed`; SVG DnD → overrides; print model + translucent cab mesh. Full signatures in implementation PRs 2–6.
+See parent SDD §10 ADR-012–014 and plan ADRs O1–O7 (search haystack, F/G chips, loadCharacteristics reuse, overrides not free physics, SVG-first layout, remito print CSS, decorative cabin).
 
-## 4. C4 (ops wave)
+## Residual (not this wave)
 
-```mermaid
-C4Component
-  title /logistica Ops UX
-  Component(app, "BmcLogisticaApp", "shell")
-  Component(search, "Ventas search + chips", "F2")
-  Component(stops, "Stop cards DnD", "F1+F3a")
-  Component(remito, "RemitoSimple", "F3b")
-  Component(diagram, "Diagram SVG+3D", "F4-F6")
-  Component(kernel, "cargoPacking + loadCharacteristics", "pure")
-  Rel(app, search, "results")
-  Rel(app, stops, "stops[]")
-  Rel(app, remito, "print")
-  Rel(app, diagram, "cargo")
-  Rel(diagram, kernel, "layout")
-```
+U3 FSM · P2 geocode · P5 server ENV · free 3D package drag physics.
 
-## 5. Data model deltas
+## AI architecture
 
-| Field | Where | Use |
-|-------|--------|-----|
-| `estadoText` | mapVentasRow | chips |
-| `sPed` | placed packages | 3D label |
-| `ui.collapsedStopIds` | localStorage | F1 |
-| `coordination` DTO | search results | chip render |
-
-## 6. ADRs
-
-| ID | Decision |
-|----|----------|
-| O1 | Haystack search not r[7]-only |
-| O2 | Chips from F text + G date |
-| O3 | Reuse loadCharacteristics for m³ |
-| O4 | F5 drives manual packing opts only |
-| O5 | SVG DnD before 3D drag |
-| O6 | Remito print CSS Simple-clone |
-| O7 | Cabin decorative translucent |
-
-## 7. PR plan
-
-| PR | Scope |
-|----|--------|
-| 1 | F2 search + chips + tests |
-| 2 | F1 + F3a |
-| 3 | F3b remito |
-| 4 | F4 sPed + 3D labels |
-| 5 | F5 package DnD |
-| 6 | F6 load plan + cabin |
-
-## 8. Glossary
-
-**Enviado** · **Coordinado** (fecha G + batch color) · **Por coordinar** · **batchKey** · **stableKey** · **sPed** · **sCli**
-
-## 9. AI architecture
-
-N/A — no LLM in this wave.
+**N/A** — no LLM in this wave.

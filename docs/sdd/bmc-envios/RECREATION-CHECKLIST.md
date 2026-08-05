@@ -2,8 +2,8 @@
 
 **System:** BMC Envíos (Quote Flete 10/11 + `/logistica`)  
 **SDD:** [`SDD.md`](./SDD.md)  
-**Last verified:** 2026-08-04 (evolution-loop iter 1)  
-**Scope:** Rebuild / operate **as-built hybrid** module inside `calculadora-bmc`. Items marked **OPEN** are product backlog (U1/U2), not doc failures.
+**Last verified:** 2026-08-05 (glory re-audit F1–F6)  
+**Scope:** Rebuild / operate **as-built** module inside `calculadora-bmc`. OPEN items are residual product (U3/P2/P5), not doc failures.
 
 Legend: `[x]` done / verified · `[ ]` open · `N/A` justified
 
@@ -88,25 +88,40 @@ Legend: `[x]` done / verified · `[ ]` open · `N/A` justified
 
 ---
 
-## 7. Product unification (target — OPEN)
+## 7. Product unification
 
 | Check | Status | TARGET id |
 |-------|--------|-----------|
-| Single packing SoT (ops uses `cargoPacking.js`) | [x] **DONE** | U1 |
-| Quote → ENV bridge payload | [x] **DONE** | U2 |
-| FSM guards enforced in UI | [ ] **OPEN** | U3 |
-| Evidence of zero dual placeCargo | [x] **DONE** | U1 verify |
+| Single packing SoT | [x] **DONE** | U1 |
+| Quote → ENV bridge | [x] **DONE** | U2 |
+| Evidence zero dual placeCargo in app | [x] **DONE** | U1 |
+| pickColumnRow 1-fila tariffs | [x] **DONE** | #840 |
+| FSM guards enforced | [ ] **OPEN** | U3 |
 
-These OPEN items **do not** block reading/operating as-built; they block “fully unified product recreation.”
+---
+
+## 7b. Ops UX Wave F1–F6 (as-built)
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| F1 collapsible stops | [x] | `ui.collapsedStopIds`, chevron UI |
+| F2 Ventas haystack + chips | [x] | `ventasSearch.js`, `coordinationStatus.js` |
+| F3a stop reorder DnD | [x] | `stopReorder.js`, handle ⠿ |
+| F3b Remito Simple + volumes | [x] | `remitoPackageMetrics.js`, `.remito-simple-page` |
+| F4 3D labels + cabin | [x] | `sPed`/`sCli`, `LogisticaCargoScene3d` Html + TruckCabin |
+| F5 fila A/B override | [x] | `packageDrop.js`, DiagramPanel buttons |
+| F6 plan carga print | [x] | `loadPlanPrintModel.js`, Plan carga view |
+| Pure tests in suite | [x] | nine envios-related `tests/*.test.js` |
 
 ---
 
 ## 8. Agent recreation test (doc pass)
 
-- [x] Agent can state zone tariff table from Appendix A without inventing rates  
-- [x] Agent knows dual packing risk and U1  
+- [x] Agent can state zone tariff table from SDD domain appendix without inventing rates  
+- [x] Agent knows dual packing column/stack is intentional (ADR-001)  
 - [x] Agent can run local verify commands from SDD §8  
 - [x] Agent does not implement multi-modal CBM as Core  
+- [x] Agent can list F1–F6 modules under `src/utils/logistica/`  
 
 ---
 
@@ -114,5 +129,6 @@ These OPEN items **do not** block reading/operating as-built; they block “full
 
 | Role | Date | Note |
 |------|------|------|
-| sdd-evolution-loop | 2026-08-04 | Checklist created; as-built verified via path:line evidence |
-| Human | | Re-run `npm test -- fleteEngine` after tariff edits |
+| sdd-evolution-loop | 2026-08-04 | Checklist created |
+| glory re-audit | 2026-08-05 | F1–F6 + U1/U2 as-built; SDD v1.4 |
+| Human | | Re-run envios unit tests after tariff edits |

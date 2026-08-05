@@ -1,8 +1,8 @@
 # TARGET — BMC Envíos (módulo unificado)
 
 **Slug:** `bmc-envios`  
-**Date:** 2026-08-04  
-**Status:** Target for Core unification (as-built hybrid + design)  
+**Date:** 2026-08-05  
+**Status:** As-built Core (U1/U2/U3) + Ops UX F1–F6 DONE; residual P2/P3/P5  
 **Repo:** `calculadora-bmc`  
 **Surfaces (must stay one product):**
 
@@ -21,7 +21,7 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 |----|-----------|---------|
 | U1 | **Single packing SoT** | **DONE** `cargoPacking.js` (stack ops + column freight); 0 local `placeCargo` in app |
 | U2 | **Quote → Ops bridge** | **DONE** `bridgePayload.js` + CTA + sessionStorage import on `/logistica` |
-| U3 | **FSM map** | `STOP_STATUS` ↔ Draft/Scheduled/Dispatched/InTransit/Delivered documentado + guards mínimos |
+| U3 | **FSM map** | **DONE** #857 `stopStatusFsm.js` — guards on STOP_STATUS transitions |
 | U4 | **Quote UX** | Destino vacío explica gap; sync proyecto↔paso; filas 0 / sin paneles explícito |
 | U5 | **Shared design tokens** | **DONE** Liquid Glass DESIGN-UI.md + `bmc-envios-glass.css` + `enviosTheme.js` |
 | U6 | **Contracts** | Gherkin + OpenAPI sketch (NOT DEPLOYED) + evidence INDEX; tests `fleteEngine` |
