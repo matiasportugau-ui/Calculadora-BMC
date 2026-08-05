@@ -5,6 +5,36 @@
 
 Primary transcription for WA audio runs on the Mac, not paid OpenAI.
 
+## Operator one-click (recommended)
+
+Automates open WA Web → search chat → auto-play voice notes → CDN backfill → Whisper → scorecard.
+
+```bash
+cd ~/calculadora-bmc
+./scripts/wa-g8-one-click.sh
+```
+
+**Your few clicks only:**
+
+1. Scan QR if WhatsApp Web asks (first time / session expired).  
+2. Click **Jose Luis** if search didn’t open the chat.  
+3. Click **▶** on any voice notes that didn’t auto-play (you must **hear** them).  
+4. Press **Enter** in the terminal (or wait ~90s).
+
+The script pulls `API_AUTH_TOKEN` from Doppler (`bmc-backend/prd`) or `~/.bmc-secrets/wa-token`.
+
+Optional env:
+
+| Env | Default | Meaning |
+|-----|---------|---------|
+| `CHAT_QUERY` | `Jose Luis` | WA Web search text |
+| `CHAT_ID` | `115500310863875@lid` | API filter for that chat |
+| `WAIT_USER_SEC` | `90` | Manual play window |
+| `WHISPER_MODEL` | `turbo` | Whisper model |
+| `SKIP_BROWSER=1` | — | Backfill+STT only (no UI) |
+
+Log: `.runtime/wa-g8-operator.log` · Cockpit: https://calculadora-bmc.vercel.app/hub/wa
+
 ## Prerequisites
 
 ```bash
@@ -44,3 +74,7 @@ Only if `WA_TRANSCRIPT_CLOUD=1` on Cloud Run **and** `OPENAI_API_KEY` is set. De
 | `WA_TRANSCRIPT_DISABLED` | unset/0 | When `1`, cloud worker stays off even if `WA_TRANSCRIPT_CLOUD=1` |
 
 Local worker is unaffected by these flags.
+
+## Persistent session (no daily QR)
+
+See [PERSISTENT-SESSION.md](./PERSISTENT-SESSION.md) — always-on Chrome + LaunchAgent.
