@@ -12,6 +12,7 @@ import {
 } from "../utils/fleteEngine.js";
 import {
   buildBridgePayload,
+  resolveBridgeHandoff,
   saveBridgePayload,
 } from "../utils/logistica/bridgePayload.js";
 
@@ -99,35 +100,24 @@ export default function FleteCotizarPanel({
   ]);
 
   const sendToLogistica = useCallback(() => {
-    const panels =
-      lastQuote?.panels?.length > 0
-        ? lastQuote.panels
-        : buildPanelLoadsFromQuote({ techo, pared, results });
-    if (!panels.length) {
+    const livePanels = buildPanelLoadsFromQuote({ techo, pared, results });
+    const handoff = resolveBridgeHandoff({
+      lastQuote,
+      proyecto,
+      livePanels,
+      flete,
+      fleteCosto,
+      summary,
+    });
+    if (!handoff.panels.length) {
       setError("No hay paneles en la cotización para enviar a Logística.");
       return;
     }
-    const destino =
-      lastQuote?.destino ||
-      [proyecto?.direccion, proyecto?.departamento, proyecto?.localidad]
-        .filter(Boolean)
-        .join(" ") ||
-      proyecto?.direccion ||
-      "";
     const payload = buildBridgePayload({
-      destino,
-      panels,
-      quote: lastQuote?.quote || {
-        ok: true,
-        mode: "manual",
-        ventaUsd: Number(flete) || 0,
-        costoUsd: fleteCosto ? Number(fleteCosto) : null,
-        summary: summary || { zona: "manual", label: `Flete USD ${Number(flete) || 0}` },
-      },
-      proyectoRef: {
-        cliente: proyecto?.cliente || proyecto?.nombre || null,
-        direccion: proyecto?.direccion || destino || null,
-      },
+      destino: handoff.destino,
+      panels: handoff.panels,
+      quote: handoff.quote,
+      proyectoRef: handoff.proyectoRef,
     });
     saveBridgePayload(payload);
     navigate("/logistica");
@@ -144,9 +134,8 @@ export default function FleteCotizarPanel({
   ]);
 
   const missingDestino = !retiroEnPlanta && !String(proyecto?.direccion || "").trim();
-  const canBridge =
-    (lastQuote?.panels?.length > 0 || buildPanelLoadsFromQuote({ techo, pared, results }).length > 0) &&
-    (lastQuote != null || Number(flete) > 0);
+  const livePanelCount = buildPanelLoadsFromQuote({ techo, pared, results }).length;
+  const canBridge = livePanelCount > 0 && (lastQuote != null || Number(flete) > 0);
 
   return (
     <div className="envios-quote">

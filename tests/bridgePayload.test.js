@@ -9,6 +9,8 @@ import {
   bridgePayloadToStops,
   mergeBridgeIntoStops,
   stopHasLogisticsContent,
+  resolveBridgeHandoff,
+  bridgePanelsFingerprint,
   BRIDGE_SCHEMA_VERSION,
   saveBridgePayload,
   loadBridgePayload,
@@ -155,6 +157,97 @@ const panels = [
   assert.equal(kept.length, 1);
   assert.equal(kept[0].cliente, "Keep");
   ok("mergeBridgeIntoStops noop on empty bridge");
+}
+
+{
+  const fp = bridgePanelsFingerprint([
+    { tipo: "B", espesor: 80, longitud: 5, cantidad: 2 },
+    { tipo: "A", espesor: 100, longitud: 6, cantidad: 8 },
+  ]);
+  const fp2 = bridgePanelsFingerprint([
+    { tipo: "A", espesor: 100, longitud: 6, cantidad: 8 },
+    { tipo: "B", espesor: 80, longitud: 5, cantidad: 2 },
+  ]);
+  assert.equal(fp, fp2);
+  ok("bridgePanelsFingerprint order-insensitive");
+}
+
+{
+  // Stale lastQuote after destination edit must not win over live proyecto.
+  const lastQuote = {
+    destino: "Maldonado Centro",
+    panels: [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }],
+    quote: {
+      ok: true,
+      mode: "auto",
+      ventaUsd: 280,
+      summary: { zona: "maldonado_corredor", label: "1 fila Maldonado" },
+    },
+  };
+  const handoff = resolveBridgeHandoff({
+    lastQuote,
+    proyecto: {
+      cliente: "Obra Pocitos",
+      direccion: "Montevideo Pocitos",
+      departamento: "Montevideo",
+    },
+    livePanels: [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }],
+    flete: 200,
+    fleteCosto: "",
+    summary: null,
+  });
+  assert.equal(handoff.destino, "Montevideo Pocitos Montevideo");
+  assert.equal(handoff.proyectoRef.direccion, "Montevideo Pocitos");
+  assert.equal(handoff.quote.mode, "manual");
+  assert.equal(handoff.quote.ventaUsd, 200);
+  assert.equal(handoff.quoteStale, true);
+  const payload = buildBridgePayload(handoff);
+  const { stops } = bridgePayloadToStops(payload, { uid: () => "s1" });
+  assert.equal(stops[0].direccion, "Montevideo Pocitos Montevideo");
+  ok("resolveBridgeHandoff prefers live destino after edit");
+}
+
+{
+  // Matching live state may reuse the auto quote snapshot.
+  const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }];
+  const lastQuote = {
+    destino: "Maldonado",
+    panels,
+    quote: { ok: true, mode: "auto", ventaUsd: 280, summary: { zona: "maldonado_corredor" } },
+  };
+  const handoff = resolveBridgeHandoff({
+    lastQuote,
+    proyecto: { direccion: "Maldonado", cliente: "X" },
+    livePanels: panels,
+    flete: 280,
+  });
+  assert.equal(handoff.quoteStale, false);
+  assert.equal(handoff.quote.mode, "auto");
+  assert.equal(handoff.quote.ventaUsd, 280);
+  ok("resolveBridgeHandoff reuses quote when destino+panels match");
+}
+
+{
+  // Stale cargo: live panels differ → do not ship lastQuote.panels.
+  const lastQuote = {
+    destino: "Maldonado",
+    panels: [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }],
+    quote: { ok: true, mode: "auto", ventaUsd: 280 },
+  };
+  const handoff = resolveBridgeHandoff({
+    lastQuote,
+    proyecto: { direccion: "Maldonado" },
+    livePanels: [
+      { tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 },
+      { tipo: "ISOROOF", espesor: 50, longitud: 5, cantidad: 18 },
+    ],
+    flete: 525,
+  });
+  assert.equal(handoff.panels.length, 2);
+  assert.equal(handoff.panels[1].cantidad, 18);
+  assert.equal(handoff.quote.mode, "manual");
+  assert.equal(handoff.quoteStale, true);
+  ok("resolveBridgeHandoff prefers live panels when cargo drifts");
 }
 
 console.log(`\n${passed} assertions ok`);

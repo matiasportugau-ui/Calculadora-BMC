@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (fix — Envíos bridge stale lastQuote):** Quote→Ops **Enviar a Logística** no longer prefers `lastQuote.destino` / `lastQuote.panels` over live calculator state. Editing destination or cargo after Cotizar without re-quoting was silently shipping the stale stop address/cargo into `/logistica`. `resolveBridgeHandoff` reuses the auto quote only when live destino+panels still match; otherwise bridges manual flete. Tests in `bridgePayload.test.js`.
+
 **2026-08-05 (feat — Envíos Ops UX F1/F3a collapse + stop DnD):** `/logistica` paradas plegables (chevron + summary; `ui.collapsedStopIds` en localStorage; default collapse si hay más de 3 paradas). Reorden HTML5 por asa ⠿ → `reorderStops` / `renumberStops` (`stopReorder.js`). Tests `stopReorder.test.js`.
 
 **2026-08-05 (feat — Envíos Ops UX F2 Ventas search + chips):** Fix `/logistica` **Buscar cliente en Ventas** — filter haystack (nombre, pedido, tel, dir, estado) instead of hardcoded `r[7]` only. Chips **Enviado** / **Coordinado · fecha** (batch color by G date) / **Por coordinar** via pure `coordinationStatus.js` + `ventasSearch.js`. SDD [`SDD-OPS-UX-WAVE.md`](../sdd/bmc-envios/SDD-OPS-UX-WAVE.md). Tests coordinationStatus + ventasSearchFilter in `test:core`.
