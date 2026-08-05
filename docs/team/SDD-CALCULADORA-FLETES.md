@@ -2,14 +2,19 @@
 title: System Design Document — Calculadora de Fletes BMC
 version: 0.3 (implemented-draft)
 date: 2026-07-17
-status: Draft
+status: Superseded
 author: Matias / BMC Uruguay
 source: Entrevista SDD Architect (casos 1–32)
 related:
   - Paso wizard Flete 10/11 (Calculadora BMC)
   - /logistica (visor de carga filas A/B)
   - src/data/constants.js (SERVICIOS.flete legacy + nuevo bloque tarifas)
+superseded_by: docs/sdd/bmc-envios/SDD.md
 ---
+
+> **SUPERSEDED (2026-08-04).** Canonical SoT for freight + logistics unification is  
+> **[`docs/sdd/bmc-envios/SDD.md`](../sdd/bmc-envios/SDD.md)** (+ [`TARGET.md`](../sdd/bmc-envios/TARGET.md)).  
+> This file remains as historical interview rules / domain appendix source. Prefer the kit-schema SDD for agents and new work.
 
 # System Design Document: Calculadora de Fletes BMC
 

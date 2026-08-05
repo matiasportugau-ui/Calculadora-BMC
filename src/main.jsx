@@ -1,5 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './styles/bmc-glass.css';
+import './styles/bmc-envios-glass.css';
 import './styles/applied-ai.css';
 import './styles/bmc-mobile.css';
 import { captureUtmFromLocation } from './utils/leadTracking.js';

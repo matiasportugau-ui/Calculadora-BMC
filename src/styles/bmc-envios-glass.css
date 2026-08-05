@@ -1,0 +1,428 @@
+/**
+ * BMC Envíos — Liquid Glass module layer (Apple Regular / crystal chrome).
+ * Depends on tokens from bmc-glass.css (--g-*, --lg-*).
+ * Spec: docs/sdd/bmc-envios/DESIGN-UI.md
+ *
+ * Chrome glass: headers, tab bars, quote summary.
+ * Content solid: inputs, forms, diagrams, stop bodies.
+ */
+
+/* ── App shell ─────────────────────────────────────────────── */
+
+.envios-app {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+  background: var(--g-bg-page, #f5f5f7);
+  color: var(--g-text, #1d1d1f);
+  min-height: 100vh;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.envios-app *,
+.envios-app *::before,
+.envios-app *::after {
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .envios-app {
+    padding: 12px;
+  }
+}
+
+/* ── Chrome glass surfaces ─────────────────────────────────── */
+
+.envios-chrome {
+  position: relative;
+  background: rgba(var(--g-tint, 255, 255, 255), var(--g-frost, 0.42));
+  -webkit-backdrop-filter: saturate(var(--g-sat, 165%)) blur(var(--g-blur, 14px));
+  backdrop-filter: saturate(var(--g-sat, 165%)) blur(var(--g-blur, 14px));
+  border: 1px solid rgba(255, 255, 255, var(--g-edge, 0.2));
+  border-radius: var(--g-radius-sm, 12px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, calc(var(--g-spec, 0.5) * 0.85)),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.08),
+    0 4px 16px -4px rgba(0, 0, 0, 0.12);
+}
+
+.envios-chrome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, calc(var(--g-spec, 0.5) * 0.55)) 0%,
+    transparent 42%
+  );
+}
+
+/* Pair with .envios-chrome on the same node for frost material */
+.envios-header {
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  border-left: 4px solid rgb(var(--g-brand, 26, 58, 92));
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.envios-header__title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: rgb(var(--g-brand, 26, 58, 92));
+  letter-spacing: -0.02em;
+}
+
+.envios-header__sub {
+  color: var(--g-text-2, #6e6e73);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.envios-header__meta {
+  text-align: right;
+  color: var(--g-text-2, #6e6e73);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.envios-header__meta-strong {
+  font-weight: 700;
+  color: var(--g-text, #1d1d1f);
+}
+
+/* ── Sticky tab bar (chrome) ───────────────────────────────── */
+
+.envios-tabbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: rgba(var(--g-tint, 255, 255, 255), var(--g-frost, 0.42));
+  -webkit-backdrop-filter: saturate(var(--g-sat, 165%)) blur(var(--g-blur-nav, 20px));
+  backdrop-filter: saturate(var(--g-sat, 165%)) blur(var(--g-blur-nav, 20px));
+  border: 1px solid rgba(255, 255, 255, var(--g-edge, 0.2));
+  border-radius: var(--g-radius-sm, 12px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+    0 4px 16px -4px rgba(0, 0, 0, 0.1);
+}
+
+.envios-tab {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  background: var(--g-solid-bg, #ffffff);
+  color: var(--g-text, #1d1d1f);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.envios-tab:hover:not(.envios-tab--active):not(:disabled) {
+  border-color: rgba(var(--g-accent, 0, 113, 227), 0.35);
+}
+
+.envios-tab--active {
+  border-color: transparent;
+  background: rgb(var(--g-accent, 0, 113, 227));
+  color: #fff;
+}
+
+.envios-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.envios-tab:focus-visible {
+  outline: 2px solid rgb(var(--g-accent, 0, 113, 227));
+  outline-offset: 2px;
+}
+
+/* ── Solid content cards ───────────────────────────────────── */
+
+.envios-card-solid {
+  background: var(--g-solid-bg, #ffffff);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--g-radius-sm, 12px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.06);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.envios-section-title {
+  margin: 0 0 10px;
+  color: rgb(var(--g-brand, 26, 58, 92));
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* ── Quote surface (wizard step Flete) ─────────────────────── */
+
+.envios-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.envios-label {
+  display: block;
+  font-size: 11px;
+  color: var(--g-text-2, #6e6e73);
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.envios-field {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  background: var(--g-solid-bg, #ffffff);
+  color: var(--g-text, #1d1d1f);
+  font-size: 13px;
+  font-family: inherit;
+  box-sizing: border-box;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.envios-field:focus {
+  outline: none;
+  border-color: rgb(var(--g-accent, 0, 113, 227));
+  box-shadow: 0 0 0 3px rgba(var(--g-accent, 0, 113, 227), 0.18);
+}
+
+.envios-field::placeholder {
+  color: var(--g-text-2, #6e6e73);
+  opacity: 0.85;
+}
+
+.envios-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--g-text, #1d1d1f);
+  cursor: pointer;
+  user-select: none;
+}
+
+.envios-check input {
+  accent-color: rgb(var(--g-accent, 0, 113, 227));
+  width: 15px;
+  height: 15px;
+}
+
+.envios-btn-primary {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: none;
+  background: rgb(var(--g-accent, 0, 113, 227));
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  align-self: flex-start;
+  min-height: 36px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 2px 8px rgba(var(--g-accent, 0, 113, 227), 0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.envios-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 14px rgba(var(--g-accent, 0, 113, 227), 0.35);
+}
+
+.envios-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: wait;
+  transform: none;
+}
+
+.envios-btn-primary:focus-visible {
+  outline: 2px solid rgb(var(--g-accent, 0, 113, 227));
+  outline-offset: 2px;
+}
+
+.envios-btn-glass {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(var(--g-accent, 0, 113, 227), 0.45);
+  background: rgba(var(--g-tint, 255, 255, 255), 0.55);
+  -webkit-backdrop-filter: saturate(var(--g-sat, 165%)) blur(var(--g-blur-chip, 12px));
+  backdrop-filter: saturate(var(--g-sat, 165%)) blur(var(--g-blur-chip, 12px));
+  color: rgb(var(--g-accent, 0, 113, 227));
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Quote summary — crystal glass card */
+.envios-summary {
+  position: relative;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--g-text, #1d1d1f);
+  padding: 12px 14px;
+  border-radius: var(--g-radius-sm, 12px);
+  background: rgba(var(--g-tint, 255, 255, 255), var(--g-frost, 0.42));
+  -webkit-backdrop-filter: saturate(var(--g-sat, 165%)) blur(var(--g-blur, 14px));
+  backdrop-filter: saturate(var(--g-sat, 165%)) blur(var(--g-blur, 14px));
+  border: 1px solid rgba(255, 255, 255, var(--g-edge, 0.25));
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
+    0 4px 16px -4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.envios-summary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, transparent 40%);
+}
+
+.envios-summary__title {
+  position: relative;
+  font-weight: 700;
+  margin-bottom: 4px;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+.envios-summary__body {
+  position: relative;
+}
+
+.envios-summary__meta {
+  position: relative;
+  color: var(--g-text-2, #6e6e73);
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.envios-summary__warns {
+  position: relative;
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: #b45309;
+}
+
+.envios-alert-danger {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #b42318;
+  background: #ffeceb;
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  backdrop-filter: none;
+}
+
+.envios-hint {
+  font-size: 11px;
+  color: var(--g-text-2, #6e6e73);
+  line-height: 1.4;
+}
+
+/* ── Alerts (ops) ──────────────────────────────────────────── */
+
+.envios-alert-warn {
+  background: #fff8ec;
+  border: 1px solid rgba(255, 159, 10, 0.35);
+  color: #9a5b00;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+/* ── A11y fallbacks (module-local; mirrors bmc-glass) ───────── */
+
+@media (prefers-reduced-transparency: reduce) {
+  .envios-chrome,
+  .envios-header,
+  .envios-tabbar,
+  .envios-summary,
+  .envios-btn-glass {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--g-solid-bg, #ffffff) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .envios-btn-primary,
+  .envios-tab {
+    transition: none !important;
+  }
+
+  .envios-btn-primary:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .envios-chrome,
+  .envios-header,
+  .envios-tabbar,
+  .envios-summary,
+  .envios-btn-glass {
+    background: var(--g-solid-bg, #ffffff);
+  }
+}
+
+[data-appearance="night"] .envios-tab {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--g-solid-bg, #0c1322);
+  color: var(--g-text, #e2e8f0);
+}
+
+[data-appearance="night"] .envios-field {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-appearance="night"] .envios-header__title {
+  color: rgb(var(--g-brand, 226, 232, 240));
+}
+
+/* Print: solid only, hide sticky chrome chrome effects */
+@media print {
+  .envios-tabbar,
+  .envios-chrome::before,
+  .envios-summary::before {
+    display: none !important;
+  }
+
+  .envios-app,
+  .envios-chrome,
+  .envios-header,
+  .envios-card-solid {
+    background: #fff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+}
