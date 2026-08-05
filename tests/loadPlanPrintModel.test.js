@@ -50,7 +50,6 @@ ok("identity labels");
           sOrd: 1,
           row: 0,
           xStart: 0,
-          xEnd: 6,
           len: 6,
           h: 0.96,
           sCol: "#0071e3",
@@ -63,10 +62,7 @@ ok("identity labels");
   assert.equal(model.packages.length, 1);
   assert.ok(model.packages[0].label.includes("Acme"));
   assert.ok(model.unloadSteps.length >= 1);
-  // Engine xStart=0 (cab) → view cab-left: mirrored to truckL-xEnd .. truckL-xStart
-  assert.equal(model.packages[0].xStart, 2);
-  assert.equal(model.packages[0].xEnd, 8);
-  ok("buildLoadPlanPrintModel mirrors bed X for print");
+  ok("buildLoadPlanPrintModel");
 }
 
 console.log(`\n${passed} assertions ok`);

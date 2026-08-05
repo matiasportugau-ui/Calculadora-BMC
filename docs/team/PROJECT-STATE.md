@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-05 (fix — Envíos F5/F6 forced fila + print mirror):** Overflow packing now honors `rowOverrides` (forced Fila A/B) instead of load-balancing into the opposite row. Load-plan print model mirrors bed X via `mirrorBedXForView` so printed superior/lateral match on-screen cab-left/tail-right. Tests: cargoPacking forced-overflow, loadPlanPrintModel mirror.
+**2026-08-05 (fix — Envíos F5 forced fila on overflow):** Overflow packing now honors `rowOverrides` (forced Fila A/B) instead of load-balancing into the opposite row when no candidate fits. Test: cargoPacking forced-overflow. (Print X mirror for Plan carga: prefer open #855.)
 
 **2026-08-05 (feat — Envíos Ops UX F4–F6 3D labels, layout, plan de carga):** Packing meta `sPed`+`sCli` on bultos. 3D: etiquetas cliente+pedido (drei Html), detalle al clic, **cabina translúcida**. SVG/3D: seleccionar bulto → **Fila A/B** via `packageDrop` + `rowOverrides` (layout manual). Tab **Plan carga**: orden de descarga + vistas superior/lateral imprimibles. Pure tests packageDrop, loadPlanPrintModel.
 
