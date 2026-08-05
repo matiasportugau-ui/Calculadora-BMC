@@ -1,7 +1,7 @@
 {
   "version": 3,
-  "updatedAt": "2026-08-05T08:00:43.049Z",
-  "note": "Auto-ship 2026-08-05: curated Shopify handles. Mapper /preview/product-media-mapper",
+  "updatedAt": "2026-08-05T10:25:15.651Z",
+  "note": "Autofill 2026-08-05: inherited rules for residual fij + colonial/isofrig. Do not treat inherited as exact SKU photos.",
   "borders": {
     "babeta_empotrar": {
       "default": {
@@ -296,10 +296,12 @@
       "status": "linked"
     },
     "ISOROOF_COLONIAL": {
-      "handle": "isoroof-3g-gris-rojo-blanco-bromyros",
-      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
-      "title": "ISOROOF. 3G. (fallback colonial)",
-      "status": "suggested"
+      "handle": null,
+      "imageSrc": "/images/isoroof-colonial-texas-panel.png",
+      "title": "Isoroof Colonial (local asset)",
+      "status": "linked",
+      "confidence": 0.95,
+      "inheritedFrom": "local:public/images/isoroof-colonial-texas-panel.png"
     },
     "ISOPANEL_EPS": {
       "handle": "isopanel-eps-paredes-y-fachadas",
@@ -316,8 +318,10 @@
     "ISOFRIG_PIR": {
       "handle": "isowall-®-pir",
       "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isowall_jpg.webp?v=1756840865",
-      "title": "ISOWALL® PIR- Fachadas - (50 mm - 80 mm) (fallback ISOFRIG)",
-      "status": "suggested"
+      "title": "ISOWALL® PIR- Fachadas - (50 mm - 80 mm)",
+      "status": "inherited",
+      "inheritedFrom": "panel.ISOWALL_PIR",
+      "confidence": 0.55
     }
   },
   "fijaciones": {
@@ -373,13 +377,17 @@
       "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
       "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
       "title": "Kit Anclaje a H° - Tornillo N.º 10 + arandela + taco",
-      "status": "linked"
+      "status": "inherited",
+      "inheritedFrom": "shopify:anclaje_kit",
+      "confidence": 0.5
     },
     "tornillo_aguja": {
       "handle": "tornillos-punta-aguja-5-pulgadas",
       "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
       "title": "Tornillos  Punta Aguja 5 pulgadas",
-      "status": "linked"
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_aguja",
+      "confidence": 0.65
     },
     "tornillo_t1": {
       "handle": "tornillo-t1-p-mecha-01",
@@ -389,9 +397,11 @@
     },
     "tornillo_t2": {
       "handle": "tornillo-t1-p-mecha-01",
-      "imageSrc": null,
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/T1P.Mecha01.jpg?v=1753467423",
       "title": "Tornillo T1 P. Mecha",
-      "status": "linked"
+      "status": "inherited",
+      "inheritedFrom": "shopify:tornillo",
+      "confidence": 0.6
     },
     "remache_pop": {
       "handle": "remache-pop-5-32-x-1-2-zinc-blanco",
@@ -404,6 +414,150 @@
       "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/RemachePOP5_32x1_2ZincBlanco.jpg?v=1753467339",
       "title": "Remache POP 5/32 x 1/2 Zinc Blanco",
       "status": "linked"
+    },
+    "tornillo_hex_galv_4_mecha": {
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
+      "title": "Tornillos Punta  Mecha 4 pulgadas 14x4 (10 unidades)",
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_mecha",
+      "confidence": 0.65
+    },
+    "tornillo_hex_galv_6_mecha": {
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
+      "title": "Tornillos Punta  Mecha 4 pulgadas 14x4 (10 unidades)",
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_mecha",
+      "confidence": 0.65
+    },
+    "tornillo_hex_galv_4_aguja": {
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
+      "title": "Tornillos  Punta Aguja 5 pulgadas",
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_aguja",
+      "confidence": 0.65
+    },
+    "tornillo_hex_galv_6_aguja": {
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
+      "title": "Tornillos  Punta Aguja 5 pulgadas",
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_aguja",
+      "confidence": 0.65
+    },
+    "varilla_roscada_8mm": {
+      "handle": "varilla-roscada-bsw-5_16",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/VarillaRoscadaBSW5_16_0680ce07-3220-405e-8e29-4d732c16f8d9.jpg?v=1753478261",
+      "title": "VARILLA ROSCADA BSW 5/16\"",
+      "status": "inherited",
+      "inheritedFrom": "shopify:varilla",
+      "confidence": 0.55
+    },
+    "taco_expansivo_8mm": {
+      "handle": "taco-expansivo-5-16-para-hormigon-drop-in",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TacoExpansivo5_16_H01.jpg?v=1753468000",
+      "title": "Taco Expansivo 5/16\" - para Hormigón - Drop In",
+      "status": "inherited",
+      "inheritedFrom": "shopify:taco",
+      "confidence": 0.6
+    },
+    "anclaje_isoroof_terracota": {
+      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
+      "title": "Kit Anclaje a H° - Tornillo N.º 10 + arandela + taco",
+      "status": "inherited",
+      "inheritedFrom": "shopify:anclaje_kit",
+      "confidence": 0.5
+    },
+    "anclaje_isoroof_gris": {
+      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
+      "title": "Kit Anclaje a H° - Tornillo N.º 10 + arandela + taco",
+      "status": "inherited",
+      "inheritedFrom": "shopify:anclaje_kit",
+      "confidence": 0.5
+    },
+    "anclaje_chapa_bc18": {
+      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
+      "title": "Kit Anclaje a H° - Tornillo N.º 10 + arandela + taco",
+      "status": "inherited",
+      "inheritedFrom": "shopify:anclaje_kit",
+      "confidence": 0.5
+    },
+    "anclaje_chapa_bc35": {
+      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
+      "title": "Kit Anclaje a H° - Tornillo N.º 10 + arandela + taco",
+      "status": "inherited",
+      "inheritedFrom": "shopify:anclaje_kit",
+      "confidence": 0.5
+    },
+    "anclaje_kit_u_platea": {
+      "handle": "kit-anclaje-a-h-tornillo-n-º-10-arandela-taco",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/KitAnclajeaH_-TornilloN._10_arandela_taco.jpg?v=1753467235",
+      "title": "Kit Anclaje a H° - Tornillo N.º 10 + arandela + taco",
+      "status": "inherited",
+      "inheritedFrom": "shopify:anclaje_kit",
+      "confidence": 0.5
+    },
+    "tornillo_exagonal_12_34": {
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
+      "title": "Tornillos Punta  Mecha 4 pulgadas 14x4 (10 unidades)",
+      "status": "inherited",
+      "inheritedFrom": "shopify:tornillo_hex_generic",
+      "confidence": 0.45
+    },
+    "tornillo_exagonal_12_1_pm": {
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
+      "title": "Tornillos Punta  Mecha 4 pulgadas 14x4 (10 unidades)",
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_mecha",
+      "confidence": 0.65
+    },
+    "tornillo_exagonal_12_212_pm": {
+      "handle": "tornillos-punta-mecha-4-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaMecha4pulgadas.jpg?v=1753468065",
+      "title": "Tornillos Punta  Mecha 4 pulgadas 14x4 (10 unidades)",
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_mecha",
+      "confidence": 0.65
+    },
+    "tornillo_punta_aguja_12x2": {
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
+      "title": "Tornillos  Punta Aguja 5 pulgadas",
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_aguja",
+      "confidence": 0.65
+    },
+    "tornillo_punta_aguja_12x3": {
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
+      "title": "Tornillos  Punta Aguja 5 pulgadas",
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_aguja",
+      "confidence": 0.65
+    },
+    "tornillo_hex_pu_20mm_4in": {
+      "handle": "tornillos-punta-aguja-5-pulgadas",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/TornillosPuntaAguja5pulgadas.jpg?v=1753468032",
+      "title": "Tornillos  Punta Aguja 5 pulgadas",
+      "status": "inherited",
+      "inheritedFrom": "shopify:punta_aguja",
+      "confidence": 0.65
+    },
+    "pistola_apl_dx03": {
+      "handle": "pistola-para-silicona-bromplast",
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/PistolaparaSiliconaBromplast_80a6938c-a669-4553-aeb8-18ecf783771b.jpg?v=1753478217",
+      "title": "Aplicador para Silicona Bromplast",
+      "status": "inherited",
+      "inheritedFrom": "shopify:aplicador",
+      "confidence": 0.7
     }
   },
   "selladores": {
