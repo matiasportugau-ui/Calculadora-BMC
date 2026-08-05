@@ -1,7 +1,7 @@
 ---
 title: System Design Document — BMC Envíos (Cotizar flete + /logistica)
-version: 1.2
-date: 2026-08-04
+version: 1.3
+date: 2026-08-05
 status: As-Built Hybrid
 author: sdd-architect / Matias / BMC Uruguay
 system_slug: bmc-envios
@@ -13,6 +13,7 @@ related:
   - docs/sdd/bmc-envios/RECREATION-CHECKLIST.md
   - docs/sdd/bmc-envios/evidence/INDEX.md
   - docs/sdd/bmc-envios/DESIGN-UI.md
+  - docs/sdd/bmc-envios/SDD-OPS-UX-WAVE.md (F1–F6 ops UX target)
 surfaces:
   - wizard Flete 10/11 (FleteCotizarPanel)
   - /logistica (BmcLogisticaApp)
@@ -22,11 +23,11 @@ evidence_policy: CONFIRMED | INFERRED | UNKNOWN | TARGET — see evidence/INDEX.
 
 # System Design Document: BMC Envíos
 
-**Agent brief:** One BMC module with **two UI surfaces** sharing one **domain kernel**. Do not design a separate courier SaaS. Prefer implementing unification backlog U1–U7 before multi-modal/TSP/CBM-global features.
+**Agent brief:** One BMC module with **two UI surfaces** sharing one **domain kernel**. Do not design a separate courier SaaS. **U1 packing SoT** and **U2 quote→ops bridge** are **DONE** (shipped). Next product surface work: **Ops UX Wave F1–F6** in [`SDD-OPS-UX-WAVE.md`](./SDD-OPS-UX-WAVE.md).
 
-**Status meaning:** *As-Built Hybrid* = quote engine, ops UI, Liquid Glass chrome, and domain rules are **CONFIRMED** in code; **U1 packing SoT** and **U2 quote→ops bridge** remain **TARGET** (documented, not shipped).
+**Status meaning:** *As-Built Hybrid* = quote engine, ops UI, Liquid Glass chrome, domain kernel, U1/U2 **CONFIRMED** in prod; F1–F6 and residual U3/P2/P3/P5 are **TARGET**.
 
-Canonical target: [`TARGET.md`](./TARGET.md) · Recreation: [`RECREATION-CHECKLIST.md`](./RECREATION-CHECKLIST.md) · Evidence: [`evidence/INDEX.md`](./evidence/INDEX.md).
+Canonical target: [`TARGET.md`](./TARGET.md) · Ops UX: [`SDD-OPS-UX-WAVE.md`](./SDD-OPS-UX-WAVE.md) · Recreation: [`RECREATION-CHECKLIST.md`](./RECREATION-CHECKLIST.md) · Evidence: [`evidence/INDEX.md`](./evidence/INDEX.md).
 
 ---
 
