@@ -1824,7 +1824,7 @@ export default function createBmcDashboardRouter(config, deps = {}) {
       }
     });
 
-    router.put("/productos-maestro/links", async (req, res) => {
+    router.put("/productos-maestro/links", requireCrmCockpitWrite, async (req, res) => {
       try {
         const body = req.body || {};
         const incoming = body.links || body;
@@ -2254,7 +2254,7 @@ export default function createBmcDashboardRouter(config, deps = {}) {
     });
   });
 
-  router.post("/cotizaciones", async (req, res) => {
+  router.post("/cotizaciones", requireCrmCockpitWrite, async (req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     if (schema !== "CRM_Operativo") {
       return res.status(501).json({ ok: false, error: "POST cotizaciones solo disponible para schema CRM_Operativo" });
@@ -2267,7 +2267,7 @@ export default function createBmcDashboardRouter(config, deps = {}) {
     }
   });
 
-  router.patch("/cotizaciones/:id", async (req, res) => {
+  router.patch("/cotizaciones/:id", requireCrmCockpitWrite, async (req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     if (schema !== "CRM_Operativo") {
       return res.status(501).json({ ok: false, error: "PATCH cotizaciones solo disponible para schema CRM_Operativo" });
@@ -2280,7 +2280,7 @@ export default function createBmcDashboardRouter(config, deps = {}) {
     }
   });
 
-  router.post("/pagos", async (req, res) => {
+  router.post("/pagos", requireCrmCockpitWrite, async (req, res) => {
     if (!checkPagosAvailable(config)) return noConfig(res);
     const pagoSheetId = config.bmcPagosSheetId || sheetId;
     try {
@@ -2291,7 +2291,7 @@ export default function createBmcDashboardRouter(config, deps = {}) {
     }
   });
 
-  router.patch("/pagos/:id", async (req, res) => {
+  router.patch("/pagos/:id", requireCrmCockpitWrite, async (req, res) => {
     if (!checkPagosAvailable(config)) return noConfig(res);
     const pagoSheetId = config.bmcPagosSheetId || sheetId;
     try {
@@ -2302,7 +2302,7 @@ export default function createBmcDashboardRouter(config, deps = {}) {
     }
   });
 
-  router.post("/ventas", async (req, res) => {
+  router.post("/ventas", requireCrmCockpitWrite, async (req, res) => {
     if (!checkVentasAvailable(config)) return noConfig(res);
     try {
       const result = await handleCreateVenta(config.bmcVentasSheetId, req.body || {});
@@ -2322,7 +2322,7 @@ export default function createBmcDashboardRouter(config, deps = {}) {
     }
   });
 
-  router.post("/marcar-entregado", async (req, res) => {
+  router.post("/marcar-entregado", requireCrmCockpitWrite, async (req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     if (schema === "CRM_Operativo") {
       return res.status(501).json({
