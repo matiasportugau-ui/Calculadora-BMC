@@ -32,6 +32,11 @@ import {
   toggleCollapsedStopId,
 } from "../utils/logistica/stopReorder.js";
 import { buildRemitoSimpleModel, formatM3 } from "../utils/logistica/remitoPackageMetrics.js";
+import { applyPackageLayoutChange } from "../utils/logistica/packageDrop.js";
+import {
+  buildLoadPlanPrintModel,
+  packageIdentityLabelFlat,
+} from "../utils/logistica/loadPlanPrintModel.js";
 
 const TRUCK_W = 2.4;
 
@@ -627,20 +632,20 @@ function shd(hex, f) {
   return `rgb(${Math.round(parseInt(hex.slice(1, 3), 16) * f)},${Math.round(parseInt(hex.slice(3, 5), 16) * f)},${Math.round(parseInt(hex.slice(5, 7), 16) * f)})`;
 }
 
-function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1 }) {
+function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1, selected = false, onClick }) {
   const c = (px, py, pz) => isoP(px, py, pz, ox, oy);
   const v = [c(x, y, z), c(x + dx, y, z), c(x + dx, y + dy, z), c(x, y + dy, z), c(x, y, z + dz), c(x + dx, y, z + dz), c(x + dx, y + dy, z + dz), c(x, y + dy, z + dz)];
   const tc = isoP(x + dx / 2, y + dy / 2, z + dz, ox, oy);
-  const sw = "rgba(255,255,255,.25)";
+  const sw = selected ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.25)";
   return (
-    <g opacity={alpha}>
-      <polygon points={fp([v[3], v[2], v[6], v[7]])} fill={shd(col, 0.44)} stroke={sw} strokeWidth={0.4} />
-      <polygon points={fp([v[0], v[3], v[7], v[4]])} fill={shd(col, 0.58)} stroke={sw} strokeWidth={0.4} />
-      <polygon points={fp([v[1], v[2], v[6], v[5]])} fill={shd(col, 0.58)} stroke={sw} strokeWidth={0.4} />
-      <polygon points={fp([v[0], v[1], v[5], v[4]])} fill={shd(col, 0.74)} stroke={sw} strokeWidth={0.4} />
-      <polygon points={fp([v[4], v[5], v[6], v[7]])} fill={col} stroke="rgba(255,255,255,.5)" strokeWidth={0.8} />
+    <g opacity={alpha} onClick={onClick} style={{ cursor: onClick ? "pointer" : "default" }}>
+      <polygon points={fp([v[3], v[2], v[6], v[7]])} fill={shd(col, 0.44)} stroke={sw} strokeWidth={selected ? 1.4 : 0.4} />
+      <polygon points={fp([v[0], v[3], v[7], v[4]])} fill={shd(col, 0.58)} stroke={sw} strokeWidth={selected ? 1.2 : 0.4} />
+      <polygon points={fp([v[1], v[2], v[6], v[5]])} fill={shd(col, 0.58)} stroke={sw} strokeWidth={selected ? 1.2 : 0.4} />
+      <polygon points={fp([v[0], v[1], v[5], v[4]])} fill={shd(col, 0.74)} stroke={sw} strokeWidth={selected ? 1.2 : 0.4} />
+      <polygon points={fp([v[4], v[5], v[6], v[7]])} fill={col} stroke={selected ? "#fff" : "rgba(255,255,255,.5)"} strokeWidth={selected ? 1.6 : 0.8} />
       {lbl && dz * ISZ > 11 ? (
-        <text x={tc.px} y={tc.py + 3} textAnchor="middle" fontSize={7} fill="white" fontWeight="bold">
+        <text x={tc.px} y={tc.py + 3} textAnchor="middle" fontSize={6.5} fill="white" fontWeight="bold">
           {lbl}
         </text>
       ) : null}
@@ -648,17 +653,98 @@ function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1 }) {
   );
 }
 
-function DiagramPanel({ cargo, truckL, remitoNumero }) {
+function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
+  const plan = buildLoadPlanPrintModel({ info, stops, cargo, truckL });
+  const maxX = Math.max(plan.maxX, truckL, 1);
+  const scale = 280 / maxX;
+  const sideH = 90;
+  const topH = 70;
+
+  return (
+    <div className="load-plan-print" style={{ background: "#fff", color: "#1D1D1F", borderRadius: 8, padding: 12 }}>
+      <style>{`@media print { .np { display: none !important; } .load-plan-print { box-shadow: none !important; } }`}</style>
+      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #003366", paddingBottom: 8, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontWeight: 800, color: "#003366" }}>BMC URUGUAY · Plan de carga</div>
+          <div style={{ fontSize: 11, color: "#64748b" }}>{plan.header.numero} · {plan.header.fecha}</div>
+        </div>
+        <div style={{ fontSize: 11, textAlign: "right" }}>
+          {plan.header.transportista || "—"} · {plan.header.patente || "—"} · camión {truckL}m
+        </div>
+      </div>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#003366", marginBottom: 6 }}>Orden de descarga (físicamente viable)</div>
+      <ol style={{ margin: "0 0 12px 18px", padding: 0, fontSize: 11, lineHeight: 1.45 }}>
+        {plan.unloadSteps.map((s) => (
+          <li key={`${s.step}-${s.stopId}`}>
+            <b>Paso {s.step}:</b> {s.cliente || `Parada ${s.orden}`}
+            {s.orderId ? ` · #${s.orderId}` : ""} — {s.note}
+          </li>
+        ))}
+        {!plan.unloadSteps.length ? <li>Sin paradas</li> : null}
+      </ol>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#003366", marginBottom: 4 }}>Vista superior</div>
+      <svg width="100%" height={topH + 16} viewBox={`0 0 ${280 + 40} ${topH + 16}`} style={{ background: "#f8fafc", borderRadius: 6, marginBottom: 10 }}>
+        <rect x={20} y={8} width={truckL * scale} height={TRUCK_W * (topH / TRUCK_W) * 0.85} fill="#0d2137" stroke="#3B82F6" />
+        {plan.packages.map((p) => (
+          <g key={`t-${p.id}`}>
+            <rect
+              x={20 + p.xStart * scale}
+              y={8 + p.row * (topH / 2.4) * 0.9}
+              width={Math.max(4, p.len * scale)}
+              height={(topH / 2.4) * 0.85}
+              fill={p.sCol || "#2563eb"}
+              opacity={0.85}
+              stroke="#fff"
+              strokeWidth={0.5}
+            />
+            <text x={20 + p.xStart * scale + 2} y={8 + p.row * (topH / 2.4) * 0.9 + 10} fontSize={7} fill="#fff">{(p.sCli || p.sPed || p.label || "").slice(0, 12)}</text>
+          </g>
+        ))}
+      </svg>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#003366", marginBottom: 4 }}>Vista lateral (altura)</div>
+      <svg width="100%" height={sideH + 10} viewBox={`0 0 ${280 + 40} ${sideH + 10}`} style={{ background: "#f8fafc", borderRadius: 6, marginBottom: 10 }}>
+        <rect x={20} y={sideH - MAX_H * (sideH / MAX_H) * 0.9} width={truckL * scale} height={MAX_H * (sideH / MAX_H) * 0.9} fill="none" stroke="#94a3b8" strokeDasharray="3,2" />
+        {plan.packages.map((p) => {
+          const sy = sideH - (p.zBase + p.h) * (sideH / MAX_H) * 0.9;
+          return (
+            <rect
+              key={`s-${p.id}`}
+              x={20 + p.xStart * scale}
+              y={sy}
+              width={Math.max(4, p.len * scale)}
+              height={Math.max(3, p.h * (sideH / MAX_H) * 0.9)}
+              fill={p.sCol || "#2563eb"}
+              opacity={0.8}
+              stroke="#fff"
+              strokeWidth={0.4}
+            />
+          );
+        })}
+      </svg>
+
+      <div style={{ fontSize: 11, color: "#64748b" }}>
+        Paquetes: {plan.packages.length}. Usá vista 3D para cabina translúcida y etiquetas cliente+pedido. Imprimí con el navegador (Ctrl/Cmd+P).
+      </div>
+    </div>
+  );
+}
+
+function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackageRow }) {
   const { placed, rowH, stopUnloadOrder, strategy, stacksByRow } = cargo;
   const { minXV, maxXV, placedView } = bedViewExtents(placed, truckL);
   const shiftX = -minXV;
   const totalLen = maxXV - minXV;
   const [diagramView, setDiagramView] = useState("svg");
+  const [selectedPkgId, setSelectedPkgId] = useState(null);
   const OX = 60;
   const OY = 85;
   const viewW = Math.max(420, OX + (totalLen * C30 + TRUCK_W * C30) * ISX + 80);
   const viewH = 240;
   const sorted = [...placedView].sort((a, b) => b.row - a.row || a.zBase - b.zBase);
+  const selectedPkg = selectedPkgId ? placedView.find((p) => p.id === selectedPkgId) || placed.find((p) => p.id === selectedPkgId) : null;
   const tf = (x, y, z) => isoP(x, y, z, OX, OY);
   const trLine = (x1, y1, z1, x2, y2, z2, col = "#60A5FA", sw = 1, dash = "", k) => {
     const a = tf(x1, y1, z1);
@@ -669,6 +755,9 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
   const pctB = Math.round((rowH[1] / MAX_H) * 100);
   const barCol = (p) => (p > 95 ? "#ff3b30" : p > 70 ? "#ff9f0a" : "#34c759");
   const totalStacks = stacksByRow.reduce((acc, row) => acc + row.length, 0);
+  const forceRow = (stableKey, row) => {
+    if (onForcePackageRow && stableKey != null) onForcePackageRow(stableKey, row);
+  };
 
   return (
     <div
@@ -685,9 +774,11 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
     >
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-          <h3 style={{ margin: "0 0 4px", fontSize: 15, color: "#fff" }}>{diagramView === "webgl" ? "Explorar carga (WebGL)" : "Vista isométrica (SVG)"}</h3>
+          <h3 style={{ margin: "0 0 4px", fontSize: 15, color: "#fff" }}>
+            {diagramView === "webgl" ? "Explorar carga (WebGL)" : diagramView === "plan" ? "Plan de carga (imprimible)" : "Vista isométrica (SVG)"}
+          </h3>
           <p style={{ margin: 0, color: "rgba(255,255,255,.65)", fontSize: 12 }}>
-            Cabina a la izquierda · cola / carga a la derecha · saliente hacia la cola · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}
+            Cabina a la izquierda · cola a la derecha · clic bulto → fila A/B · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}
           </p>
         </div>
         <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", alignItems: "center" }}>
@@ -696,6 +787,9 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
           </Btn>
           <Btn small outline onClick={() => setDiagramView("webgl")} style={diagramView === "webgl" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
             Explorar 3D
+          </Btn>
+          <Btn small outline onClick={() => setDiagramView("plan")} style={diagramView === "plan" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
+            Plan carga
           </Btn>
           <Btn
             small
@@ -717,8 +811,23 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
         </div>
       </div>
 
+      {selectedPkg ? (
+        <div style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "8px 10px", color: "#fff", fontSize: 12 }}>
+          <b>{packageIdentityLabelFlat(selectedPkg)}</b>
+          {" · "}
+          {selectedPkg.tipo} · Fila {selectedPkg.row === 0 ? "A" : "B"} · {selectedPkg.len?.toFixed(2)}m × {(selectedPkg.h * 100).toFixed(0)}cm
+          <span style={{ marginLeft: 8 }}>
+            <Btn small outline onClick={() => forceRow(selectedPkg.stableKey, 0)} style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff", marginRight: 4 }}>→ Fila A</Btn>
+            <Btn small outline onClick={() => forceRow(selectedPkg.stableKey, 1)} style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff", marginRight: 4 }}>→ Fila B</Btn>
+            <Btn small outline onClick={() => setSelectedPkgId(null)} style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff" }}>Cerrar</Btn>
+          </span>
+        </div>
+      ) : null}
+
       <div style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10, overflow: "hidden", width: "100%", maxWidth: "100%", minWidth: 0 }}>
-        {diagramView === "webgl" ? (
+        {diagramView === "plan" ? (
+          <LoadPlanPrintSheet info={info} stops={stops} cargo={cargo} truckL={truckL} />
+        ) : diagramView === "webgl" ? (
           <Suspense
             fallback={
               <div style={{ height: 280, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.55)", fontSize: 13 }}>
@@ -726,7 +835,15 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
               </div>
             }
           >
-            <LogisticaCargoScene3d placed={placedView} shiftX={shiftX} truckL={truckL} maxLen={maxXV} totalLen={totalLen} />
+            <LogisticaCargoScene3d
+              placed={placedView}
+              shiftX={shiftX}
+              truckL={truckL}
+              maxLen={maxXV}
+              totalLen={totalLen}
+              onForceRow={forceRow}
+              onSelectStableKey={(_key, pkg) => setSelectedPkgId(pkg?.id || null)}
+            />
           </Suspense>
         ) : (
         <svg width="100%" viewBox={`0 -8 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
@@ -745,10 +862,15 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
               dy={ROW_W}
               dz={pkg.h}
               col={pkg.ov ? "#ff3b30" : pkg.sCol}
-              lbl={pkg.kind === "accessory" ? `P${pkg.sOrd}·ACC` : `P${pkg.sOrd}·${pkg.n}`}
+              lbl={(packageIdentityLabelFlat(pkg) || (pkg.kind === "accessory" ? `P${pkg.sOrd}·ACC` : `P${pkg.sOrd}·${pkg.n}`)).slice(0, 22)}
               ox={OX}
               oy={OY}
               alpha={pkg.ov ? 0.65 : 1}
+              selected={selectedPkgId === pkg.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedPkgId(pkg.id);
+              }}
             />
           ))}
           {stacksByRow.flat().map((stack) => {
@@ -1273,6 +1395,21 @@ export default function BmcLogisticaApp() {
   const toggleStopCollapsed = (stopId) => {
     setCollapsedStopIds((c) => toggleCollapsedStopId(c, stopId));
   };
+  /** Ops UX F5: force package onto fila A/B via packing overrides */
+  const forcePackageRow = (stableKey, targetRow) => {
+    if (!stableKey) return;
+    const next = applyPackageLayoutChange({
+      rowOverrides,
+      manualPkgOrderKeys,
+      stableKey,
+      targetRow,
+      placed: cargo.placed,
+    });
+    setCargoLayoutMode(next.cargoLayoutMode);
+    setRowOverrides(next.rowOverrides);
+    setManualPkgOrderKeys(next.manualPkgOrderKeys);
+    setAutoLoadMsg(`Layout manual: bulto → Fila ${Number(targetRow) === 1 ? "B" : "A"}`);
+  };
   async function pushVentasFechaEntrega(stop) {
     const row = stop.ventasSheetRow1Based;
     const gid = stop.ventasTabGid || SH_GID;
@@ -1653,7 +1790,7 @@ export default function BmcLogisticaApp() {
 
       {view === "carga" ? (
         <div>
-          <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} />
+          <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} />
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12, width: "100%", maxWidth: "100%", minWidth: 0 }}>
             <div style={{ ...css.card, padding: 14, minWidth: 0, maxWidth: "100%" }}>
               <div style={{ ...css.sectionTitle, marginBottom: 8 }}>🔭 Vista Superior</div>
@@ -2283,7 +2420,7 @@ export default function BmcLogisticaApp() {
           </div>
 
           <div style={{ position: "sticky", top: 16, alignSelf: "start" }}>
-            <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} />
+            <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} />
             <div style={{ ...css.card, padding: 16, marginTop: 12 }}>
               <div style={css.sectionTitle}>Variantes sugeridas</div>
               <div style={{ display: "grid", gap: 8 }}>

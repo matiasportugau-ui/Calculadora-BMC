@@ -101,6 +101,8 @@ export function buildPkgs(stop, panel, uid = defaultUid) {
       sOrd: stop?.orden ?? 1,
       sCol: stop?.color || "",
       sCli: stop?.cliente || "",
+      /** Pedido / cotización for 3D labels (Ops UX F4) */
+      sPed: String(stop?.orderId || stop?.cotizacionId || "").trim(),
       kind: "panel",
       tipo: String(panel.tipo || "PANEL"),
       esp,
@@ -150,6 +152,7 @@ export function buildAccessoryPkgs(stop, uid = defaultUid) {
       sOrd: stop.orden ?? 1,
       sCol: stop.color || "",
       sCli: stop.cliente || "",
+      sPed: String(stop.orderId || stop.cotizacionId || "").trim(),
       kind: "accessory",
       tipo: "ACCESORIOS",
       esp: "",
