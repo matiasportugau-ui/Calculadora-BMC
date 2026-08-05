@@ -108,6 +108,7 @@ import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { writeWaCrmIngest, writeWaCrmAiTail, runWaAutoLearn } from "./lib/wa/crmIngestWrite.js";
+import { jsonBodyLimitForPath } from "./lib/jsonBodyLimit.js";
 import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -192,7 +193,8 @@ app.use((req, res, next) => {
     ["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"].includes(req.path) &&
     req.method === "POST"
   ) return next();
-  return express.json({ limit: "1mb" })(req, res, next);
+  // WA media upload: base64 JSON up to ~25MB binary (see server/lib/jsonBodyLimit.js)
+  return express.json({ limit: jsonBodyLimitForPath(req.method, req.path) })(req, res, next);
 });
 app.use(cookieParser());
 // CSRF (CWE-352): verificación de procedencia para métodos inseguros con
