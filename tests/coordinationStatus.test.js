@@ -58,4 +58,21 @@ ok("normalizeSearchText");
   ok("batch color stable per date");
 }
 
+{
+  for (const estadoText of ["NO ENVIADO", "No enviada todavía", "no enviado", "sin enviar"]) {
+    const c = classifyVentasCoordination({ estadoText, fechaEntrega: "" });
+    assert.notEqual(c.status, "enviado", `should not be enviado for: ${estadoText}`);
+  }
+  ok("negated enviado phrases are not Enviado");
+}
+
+{
+  const c = classifyVentasCoordination({
+    estadoText: "NO ENVIADO",
+    fechaEntrega: "2026-08-12",
+  });
+  assert.equal(c.status, "coordinado");
+  ok("NO ENVIADO + fecha G → coordinado (not enviado)");
+}
+
 console.log(`\n${passed} assertions ok`);

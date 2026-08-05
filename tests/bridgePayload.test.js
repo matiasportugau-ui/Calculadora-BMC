@@ -9,6 +9,8 @@ import {
   bridgePayloadToStops,
   mergeBridgeIntoStops,
   stopHasLogisticsContent,
+  resolveBridgeHandoff,
+  bridgePanelsFingerprint,
   BRIDGE_SCHEMA_VERSION,
   saveBridgePayload,
   loadBridgePayload,
@@ -155,6 +157,75 @@ const panels = [
   assert.equal(kept.length, 1);
   assert.equal(kept[0].cliente, "Keep");
   ok("mergeBridgeIntoStops noop on empty bridge");
+}
+
+{
+  const fp = bridgePanelsFingerprint([
+    { tipo: "B", espesor: 80, longitud: 5, cantidad: 2 },
+    { tipo: "A", espesor: 100, longitud: 6, cantidad: 8 },
+  ]);
+  const fp2 = bridgePanelsFingerprint([
+    { tipo: "A", espesor: 100, longitud: 6, cantidad: 8 },
+    { tipo: "B", espesor: 80, longitud: 5, cantidad: 2 },
+  ]);
+  assert.equal(fp, fp2);
+  ok("bridgePanelsFingerprint order-insensitive");
+}
+
+{
+  const lastQuote = {
+    destino: "Maldonado",
+    panels: [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }],
+    quote: { ok: true, mode: "auto", ventaUsd: 280 },
+  };
+  const handoff = resolveBridgeHandoff({
+    lastQuote,
+    proyecto: { direccion: "Montevideo", cliente: "X" },
+    livePanels: [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }],
+    flete: 150,
+  });
+  assert.equal(handoff.destino, "Montevideo");
+  assert.equal(handoff.quote.mode, "manual");
+  assert.equal(handoff.quote.ventaUsd, 150);
+  assert.equal(handoff.quoteStale, true);
+  ok("resolveBridgeHandoff prefers live destino after edit");
+}
+
+{
+  const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }];
+  const lastQuote = {
+    destino: "Maldonado",
+    panels,
+    quote: { ok: true, mode: "auto", ventaUsd: 280 },
+  };
+  const handoff = resolveBridgeHandoff({
+    lastQuote,
+    proyecto: { direccion: "Maldonado" },
+    livePanels: panels,
+    flete: 999,
+  });
+  assert.equal(handoff.quote.mode, "auto");
+  assert.equal(handoff.quote.ventaUsd, 280);
+  assert.equal(handoff.quoteStale, false);
+  ok("resolveBridgeHandoff reuses quote when destino+panels match");
+}
+
+{
+  const lastQuote = {
+    destino: "Maldonado",
+    panels: [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }],
+    quote: { ok: true, mode: "auto", ventaUsd: 280 },
+  };
+  const handoff = resolveBridgeHandoff({
+    lastQuote,
+    proyecto: { direccion: "Maldonado" },
+    livePanels: [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 16 }],
+    flete: 525,
+  });
+  assert.equal(handoff.panels[0].cantidad, 16);
+  assert.equal(handoff.quote.mode, "manual");
+  assert.equal(handoff.quoteStale, true);
+  ok("resolveBridgeHandoff prefers live panels when cargo drifts");
 }
 
 console.log(`\n${passed} assertions ok`);
