@@ -59,7 +59,17 @@ ok("normalizeSearchText");
 }
 
 {
-  for (const estadoText of ["NO ENVIADO", "No enviada todavía", "no enviado", "sin enviar"]) {
+  for (const estadoText of [
+    "NO ENVIADO",
+    "No enviada todavía",
+    "no enviado",
+    "sin enviar",
+    "no se ha enviado",
+    "NO SE HA ENVIADO",
+    "aún no se ha enviado",
+    "no fue enviado",
+    "nunca enviado",
+  ]) {
     const c = classifyVentasCoordination({ estadoText, fechaEntrega: "" });
     assert.notEqual(c.status, "enviado", `should not be enviado for: ${estadoText}`);
   }
@@ -73,6 +83,27 @@ ok("normalizeSearchText");
   });
   assert.equal(c.status, "coordinado");
   ok("NO ENVIADO + fecha G → coordinado (not enviado)");
+}
+
+{
+  // Regression #867: negation must not scan rawSheetText / notes columns.
+  const c = classifyVentasCoordination({
+    estadoText: "ENVIADO",
+    fechaEntrega: "",
+    rawSheetText: "historial: no enviado el remito anterior · cliente X",
+  });
+  assert.equal(c.status, "enviado", "ENVIADO col F must win over notes with 'no enviado'");
+  ok("ENVIADO estado not overridden by rawSheetText negation");
+}
+
+{
+  const c = classifyVentasCoordination({
+    estadoText: "Pendiente",
+    fechaEntrega: "",
+    rawSheetText: "adjunto dice ENVIADO por error",
+  });
+  assert.equal(c.status, "por_coordinar");
+  ok("rawSheetText alone cannot mark Enviado");
 }
 
 console.log(`\n${passed} assertions ok`);

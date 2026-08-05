@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (fix — Envíos coordination chip estado-only + negation):** `classifyVentasCoordination` reads Enviado/negation from **col F `estadoText` only** (ignores `rawSheetText` notes that contain "no enviado"). Stronger negation for `no se ha enviado` / `no fue enviado` / `nunca enviado`. Residual from #867 blob scan.
+
 **2026-08-05 (fix — Envíos NO ENVIADO chip + bridge live state + forced fila):** `classifyVentasCoordination` no longer treats `NO ENVIADO`/`sin enviar` as Enviado. `resolveBridgeHandoff` prefers live destino/panels over stale `lastQuote`. Stack packing overflow honors `rowOverrides` forced fila. Supersedes drafts #859/#851.
 
 **2026-08-05 (feat — WA cockpit media richness G7/G8/G9):** Mode C media: private GCS `wa-media/` + signed GET; `POST /api/wa/media` (+ link/clear); transcript API + **local Whisper** worker (`scripts/wa-local-stt-worker.mjs`, cloud STT only if `WA_TRANSCRIPT_CLOUD=1`). **Magic-byte gate** rejects FB JS junk as audio/image; `/media/clear` reverts STT-filled text to `[Nota de voz · Ns]`. Cockpit `MessageBody` shows images/audio/transcript. Migration `018_wa_media.sql`. Dockerfile full `COPY src/` + `scripts/`. Prod: ship via PR #847 → main → deploy-calc-api (not ad-hoc dirty tree). G8 residual = CDN 410 / zero real Ogg (no synthetic STT). Tests `waMediaPlaceholder` 28. Handoff: [`HANDOFF-2026-08-05-wa-media-100.md`](./HANDOFF-2026-08-05-wa-media-100.md). Docs: [`docs/wa-cockpit/LOCAL-STT.md`](../wa-cockpit/LOCAL-STT.md).
