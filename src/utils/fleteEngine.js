@@ -41,8 +41,69 @@ export function classifyZona(text) {
 }
 
 /**
+ * Parse `FAMILIA-ESP` SKUs used by libre / structural panel BOM lines.
+ * @param {string} sku
+ * @returns {{ tipo: string, espesor: number }|null}
+ */
+export function parsePanelSkuTipoEspesor(sku) {
+  const m = String(sku || "").trim().match(/^([A-Za-z0-9_]+)-(\d+)$/);
+  if (!m) return null;
+  const espesor = Number(m[2]);
+  if (!Number.isFinite(espesor) || espesor <= 0) return null;
+  return { tipo: m[1], espesor };
+}
+
+/**
+ * Build packing loads from BOM / presupuesto-libre items that carry panel geometry.
+ * Items need cantPaneles + largoPanel, or tramosDetail[{cantPaneles,largo}].
+ * @param {Array<object>|null|undefined} items
+ * @returns {Array<{ tipo: string, espesor: number, longitud: number, cantidad: number }>}
+ */
+export function buildPanelLoadsFromBomItems(items = []) {
+  const loads = [];
+  for (const item of Array.isArray(items) ? items : []) {
+    if (!item || typeof item !== "object") continue;
+    const parsed = parsePanelSkuTipoEspesor(item.sku);
+    const tipo = String(item.tipo || item.familia || parsed?.tipo || "").trim();
+    const espesor = Math.max(
+      0,
+      Number(item.espesor ?? parsed?.espesor ?? 0) || 0
+    );
+    if (!tipo || espesor <= 0) continue;
+
+    if (Array.isArray(item.tramosDetail) && item.tramosDetail.length) {
+      for (const t of item.tramosDetail) {
+        const cant = Math.max(0, Math.floor(Number(t?.cantPaneles) || 0));
+        const largo = Math.max(0, Number(t?.largo) || 0);
+        if (cant > 0 && largo > 0) {
+          loads.push({ tipo, espesor, longitud: largo, cantidad: cant });
+        }
+      }
+      continue;
+    }
+
+    const cant = Math.max(0, Math.floor(Number(item.cantPaneles) || 0));
+    const largo = Math.max(0, Number(item.largoPanel) || 0);
+    if (cant > 0 && largo > 0) {
+      loads.push({ tipo, espesor, longitud: largo, cantidad: cant });
+    }
+  }
+  return loads;
+}
+
+function flattenBomGroupItems(bomGroups) {
+  const out = [];
+  for (const g of Array.isArray(bomGroups) ? bomGroups : []) {
+    for (const it of g?.items || []) out.push(it);
+  }
+  return out;
+}
+
+/**
  * Build panel lines for packing from calculator state.
- * @param {{ techo?: any, pared?: any, results?: any }} state
+ * Structural techo/pared first; Presupuesto libre / empty structural falls back to BOM
+ * items with cantPaneles×largo (and multi-tramo tramosDetail).
+ * @param {{ techo?: any, pared?: any, results?: any, bomGroups?: any[] }} state
  * @returns {Array<{ tipo: string, espesor: number, longitud: number, cantidad: number }>}
  */
 export function buildPanelLoadsFromQuote(state = {}) {
@@ -50,37 +111,54 @@ export function buildPanelLoadsFromQuote(state = {}) {
   const techo = state.techo || {};
   const pared = state.pared || {};
   const results = state.results || {};
+  const isLibre = results?.presupuestoLibre === true;
 
-  const techoTipo = String(techo.familia || techo.tipo || results?.panel?.familia || "ISODEC");
-  const techoEsp = Number(techo.espesor ?? results?.panel?.espesor ?? 0) || 0;
-  const zonas = Array.isArray(techo.zonas) ? techo.zonas : [];
+  if (!isLibre) {
+    const techoTipo = String(techo.familia || techo.tipo || results?.panel?.familia || "ISODEC");
+    const techoEsp = Number(techo.espesor ?? results?.panel?.espesor ?? 0) || 0;
+    const zonas = Array.isArray(techo.zonas) ? techo.zonas : [];
 
-  if (zonas.length) {
-    for (const z of zonas) {
-      const cant = Math.max(
-        0,
-        Math.floor(Number(z.cantPaneles ?? z.panelesAncho ?? results?.paneles?.cantPaneles) || 0)
-      );
-      const largo = Math.max(0, Number(z.largo ?? z.largoPanel ?? results?.largoReal ?? 0) || 0);
-      const esp = Math.max(0, Number(z.espesor ?? techoEsp) || 0);
-      if (cant > 0 && largo > 0 && esp > 0) {
-        loads.push({ tipo: techoTipo, espesor: esp, longitud: largo, cantidad: cant });
+    if (zonas.length) {
+      for (const z of zonas) {
+        const cant = Math.max(
+          0,
+          Math.floor(Number(z.cantPaneles ?? z.panelesAncho ?? results?.paneles?.cantPaneles) || 0)
+        );
+        const largo = Math.max(0, Number(z.largo ?? z.largoPanel ?? results?.largoReal ?? 0) || 0);
+        const esp = Math.max(0, Number(z.espesor ?? techoEsp) || 0);
+        if (cant > 0 && largo > 0 && esp > 0) {
+          loads.push({ tipo: techoTipo, espesor: esp, longitud: largo, cantidad: cant });
+        }
+      }
+    } else {
+      const cant = Math.max(0, Math.floor(Number(results?.paneles?.cantPaneles) || 0));
+      const largo = Math.max(0, Number(results?.largoReal ?? techo.largo ?? 0) || 0);
+      if (cant > 0 && largo > 0 && techoEsp > 0) {
+        loads.push({ tipo: techoTipo, espesor: techoEsp, longitud: largo, cantidad: cant });
       }
     }
-  } else {
-    const cant = Math.max(0, Math.floor(Number(results?.paneles?.cantPaneles) || 0));
-    const largo = Math.max(0, Number(results?.largoReal ?? techo.largo ?? 0) || 0);
-    if (cant > 0 && largo > 0 && techoEsp > 0) {
-      loads.push({ tipo: techoTipo, espesor: techoEsp, longitud: largo, cantidad: cant });
+
+    const paredTipo = String(pared.familia || pared.tipo || "ISOPANEL");
+    const paredEsp = Number(pared.espesor || 0) || 0;
+    const paredCant = Math.max(0, Math.floor(Number(results?.paredResult?.paneles?.cantPaneles || pared.cantPaneles) || 0));
+    const paredLargo = Math.max(0, Number(pared.alto || results?.paredResult?.paneles?.alto || 0) || 0);
+    if (paredCant > 0 && paredLargo > 0 && paredEsp > 0) {
+      loads.push({ tipo: paredTipo, espesor: paredEsp, longitud: paredLargo, cantidad: paredCant });
     }
   }
 
-  const paredTipo = String(pared.familia || pared.tipo || "ISOPANEL");
-  const paredEsp = Number(pared.espesor || 0) || 0;
-  const paredCant = Math.max(0, Math.floor(Number(results?.paredResult?.paneles?.cantPaneles || pared.cantPaneles) || 0));
-  const paredLargo = Math.max(0, Number(pared.alto || results?.paredResult?.paneles?.alto || 0) || 0);
-  if (paredCant > 0 && paredLargo > 0 && paredEsp > 0) {
-    loads.push({ tipo: paredTipo, espesor: paredEsp, longitud: paredLargo, cantidad: paredCant });
+  // Presupuesto libre (and structural quotes with no techo/pared geometry) keep
+  // cantPaneles×largo on BOM lines — use them so freight packing is not empty.
+  if (isLibre || loads.length === 0) {
+    const bomItems = flattenBomGroupItems(state.bomGroups);
+    const fallbackItems = bomItems.length
+      ? bomItems
+      : [
+          ...(Array.isArray(results?.allItems) ? results.allItems : []),
+          ...flattenBomGroupItems(results?.libreGroups),
+        ];
+    const bomLoads = buildPanelLoadsFromBomItems(fallbackItems);
+    if (bomLoads.length) return bomLoads;
   }
 
   return loads;
@@ -320,7 +398,7 @@ export function quoteFreightFromWizard({
   const destino = [proyecto?.direccion, proyecto?.departamento, proyecto?.localidad, proyecto?.zona]
     .filter(Boolean)
     .join(" ");
-  const panels = buildPanelLoadsFromQuote({ techo, pared, results });
+  const panels = buildPanelLoadsFromQuote({ techo, pared, results, bomGroups });
   const cotizacionSinFlete = cotizacionSinFleteFromGroups(bomGroups);
   return quoteFreight({
     destino,

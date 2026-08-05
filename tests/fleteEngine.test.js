@@ -7,7 +7,10 @@ import assert from "node:assert/strict";
 import {
   classifyZona,
   quoteFreight,
+  quoteFreightFromWizard,
   buildPanelLoadsFromQuote,
+  buildPanelLoadsFromBomItems,
+  parsePanelSkuTipoEspesor,
   cotizacionSinFleteFromGroups,
 } from "../src/utils/fleteEngine.js";
 import { packageHeightM, placeCargo, STANDARD_BED_M } from "../src/utils/logistica/cargoPacking.js";
@@ -186,6 +189,78 @@ ok("ISOROOF inverted pair height");
   assert.equal(loads[0].cantidad, 12);
   assert.equal(loads[0].longitud, 6.2);
   ok("buildPanelLoadsFromQuote");
+}
+
+// Presupuesto libre BOM → packing loads (sku + cantPaneles × largoPanel)
+{
+  assert.deepEqual(parsePanelSkuTipoEspesor("ISODEC_EPS-100"), {
+    tipo: "ISODEC_EPS",
+    espesor: 100,
+  });
+  const bomLoads = buildPanelLoadsFromBomItems([
+    {
+      sku: "ISODEC_EPS-100",
+      cantPaneles: 40,
+      largoPanel: 6,
+      total: 10000,
+    },
+  ]);
+  assert.equal(bomLoads.length, 1);
+  assert.equal(bomLoads[0].cantidad, 40);
+  assert.equal(bomLoads[0].longitud, 6);
+  assert.equal(bomLoads[0].espesor, 100);
+
+  const multi = buildPanelLoadsFromBomItems([
+    {
+      sku: "ISODEC_EPS-100",
+      tramosDetail: [
+        { cantPaneles: 10, largo: 5 },
+        { cantPaneles: 10, largo: 7 },
+      ],
+    },
+  ]);
+  assert.equal(multi.length, 2);
+  assert.equal(multi[1].longitud, 7);
+  ok("buildPanelLoadsFromBomItems + sku parse");
+}
+
+// Regression: presupuesto_libre must not assume 1-fila when BOM has panel geometry
+{
+  const bomGroups = [
+    {
+      title: "PANELES",
+      items: [
+        {
+          sku: "ISODEC_EPS-100",
+          label: "ISODEC EPS 100mm · 40 paneles × 6.00 m",
+          cantPaneles: 40,
+          largoPanel: 6,
+          total: 11061,
+        },
+      ],
+    },
+  ];
+  const loads = buildPanelLoadsFromQuote({
+    techo: {},
+    pared: {},
+    results: { presupuestoLibre: true, allItems: bomGroups[0].items },
+    bomGroups,
+  });
+  assert.equal(loads.length, 1);
+  assert.equal(loads[0].cantidad, 40);
+  const q = quoteFreightFromWizard({
+    proyecto: { direccion: "Maldonado" },
+    techo: {},
+    pared: {},
+    results: { presupuestoLibre: true, allItems: bomGroups[0].items },
+    bomGroups,
+    fxRateUyuPerUsd: 40,
+  });
+  assert.equal(q.ok, true);
+  assert.equal(q.summary.filasUsadas, 2);
+  assert.equal(q.ventaUsd, 525);
+  assert.ok(!/Sin paneles/.test(String(q.summary.warns || [])), "must not assume empty cargo");
+  ok("presupuesto_libre 40×6m → 2 filas / USD 525");
 }
 
 // FX helper

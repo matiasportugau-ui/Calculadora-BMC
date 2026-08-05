@@ -67,7 +67,7 @@ export default function FleteCotizarPanel({
       const destino = [proyecto?.direccion, proyecto?.departamento, proyecto?.localidad, proyecto?.zona]
         .filter(Boolean)
         .join(" ");
-      const panels = buildPanelLoadsFromQuote({ techo, pared, results });
+      const panels = buildPanelLoadsFromQuote({ techo, pared, results, bomGroups });
       setLastQuote({ panels, quote: q, destino });
 
       if (q.ok && q.ventaUsd != null) {
@@ -102,7 +102,7 @@ export default function FleteCotizarPanel({
     const panels =
       lastQuote?.panels?.length > 0
         ? lastQuote.panels
-        : buildPanelLoadsFromQuote({ techo, pared, results });
+        : buildPanelLoadsFromQuote({ techo, pared, results, bomGroups });
     if (!panels.length) {
       setError("No hay paneles en la cotización para enviar a Logística.");
       return;
@@ -136,6 +136,7 @@ export default function FleteCotizarPanel({
     techo,
     pared,
     results,
+    bomGroups,
     proyecto,
     flete,
     fleteCosto,
@@ -145,7 +146,8 @@ export default function FleteCotizarPanel({
 
   const missingDestino = !retiroEnPlanta && !String(proyecto?.direccion || "").trim();
   const canBridge =
-    (lastQuote?.panels?.length > 0 || buildPanelLoadsFromQuote({ techo, pared, results }).length > 0) &&
+    (lastQuote?.panels?.length > 0 ||
+      buildPanelLoadsFromQuote({ techo, pared, results, bomGroups }).length > 0) &&
     (lastQuote != null || Number(flete) > 0);
 
   return (
