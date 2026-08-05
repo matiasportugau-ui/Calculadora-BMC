@@ -415,6 +415,8 @@ describe("identityAuth.getModuleGrants", () => {
     const grants = await getModuleGrants(r1.user.id);
     assert.equal(grants.calc, "write");
     assert.equal(grants.wa || "none", "none");
+    // Public Google signup must not inherit the internal workspace store.
+    assert.equal(grants.workspace || "none", "none");
   });
 });
 
