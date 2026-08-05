@@ -50,6 +50,29 @@ ok("normalizeSearchText");
 }
 
 {
+  // Negated shipment must not show green Enviado (Ops UX F2 regression).
+  for (const estadoText of ["NO ENVIADO", "No enviada todavía", "no enviado", "sin enviar"]) {
+    const c = classifyVentasCoordination({ estadoText });
+    assert.equal(
+      c.status,
+      "por_coordinar",
+      `"${estadoText}" must not classify as enviado (got ${c.status})`,
+    );
+  }
+  ok("negated enviado → por_coordinar");
+}
+
+{
+  const c = classifyVentasCoordination({
+    estadoText: "NO ENVIADO",
+    fechaEntrega: "2026-08-20",
+  });
+  assert.equal(c.status, "coordinado");
+  assert.equal(c.batchKey, "2026-08-20");
+  ok("NO ENVIADO + fecha G → coordinado (not enviado)");
+}
+
+{
   const a = batchColorFromKey("2026-08-12");
   const b = batchColorFromKey("2026-08-12");
   const c = batchColorFromKey("2026-09-01");

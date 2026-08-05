@@ -32,13 +32,31 @@ export function normalizeSearchText(s) {
  *   label: string,
  * }}
  */
+/**
+ * True when text negates shipment (must not classify as Enviado).
+ * "NO ENVIADO" / "sin enviar" still contain the substring "enviad*".
+ * @param {string} n normalized search text
+ */
+export function hasNegatedEnviado(n) {
+  const s = String(n || "");
+  return (
+    /\b(?:no|sin)\s+enviad/.test(s) ||
+    /\bno\s+se\s+envi/.test(s) ||
+    /\bsin\s+enviar\b/.test(s)
+  );
+}
+
 export function classifyVentasCoordination(row = {}) {
   const estado = String(row.estadoText || "");
   const raw = String(row.rawSheetText || "");
   const blob = `${estado}\n${raw}`;
   const n = normalizeSearchText(blob);
 
-  if (/\benviado\b|\benviada\b|\benviados\b/.test(n) || /\benviad/.test(n)) {
+  // Negation first: "NO ENVIADO" matches \benviado\b otherwise.
+  if (
+    !hasNegatedEnviado(n) &&
+    (/\benviado\b|\benviada\b|\benviados\b/.test(n) || /\benviad/.test(n))
+  ) {
     return {
       status: "enviado",
       coordDateIso: null,
