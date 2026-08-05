@@ -65,6 +65,29 @@ ok("ISOROOF inverted pair height");
   ok("maldonado 1 fila → 280");
 }
 
+// Regression: leftover packs must fill the used fila (not open row B) when height fits.
+// 9× ISODEC 100 mm → physical 1.08 m ≪ 2.4 m → still 1 fila / USD 280 (was over-quoted as 2 filas / 525).
+{
+  const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 9 }];
+  const pack = placeCargo([{ id: "s", orden: 1, paneles: panels }], STANDARD_BED_M);
+  assert.equal(pack.filasUsadas, 1, `filas=${pack.filasUsadas} rowH=${JSON.stringify(pack.rowH)}`);
+  const q = quoteFreight({ destino: "Maldonado", panels, fxRateUyuPerUsd: 40 });
+  assert.equal(q.ok, true);
+  assert.equal(q.ventaUsd, 280);
+  assert.equal(q.summary.vehicle, "estandar_1_fila");
+  ok("maldonado 9 panels still 1 fila → 280 (no false 2-filas)");
+}
+
+// 16 panels (2× max pack) also fit one column at 1.92 m
+{
+  const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 16 }];
+  const pack = placeCargo([{ id: "s", orden: 1, paneles: panels }], STANDARD_BED_M);
+  assert.equal(pack.filasUsadas, 1, `filas=${pack.filasUsadas}`);
+  const q = quoteFreight({ destino: "Maldonado", panels, fxRateUyuPerUsd: 40 });
+  assert.equal(q.ventaUsd, 280);
+  ok("maldonado 16 panels 1 fila → 280");
+}
+
 // Costa 1 fila
 {
   const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }];
