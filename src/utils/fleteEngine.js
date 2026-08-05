@@ -2,7 +2,7 @@
  * Freight quotation engine — SDD-CALCULADORA-FLETES.md
  */
 
-import { TARIFAS_LOGISTICAS } from "../data/constants.js";
+import { PANELS_PARED, PANELS_TECHO, TARIFAS_LOGISTICAS } from "../data/constants.js";
 import { uyuToUsdInteger } from "./brouFx.js";
 import {
   STANDARD_BED_M,
@@ -10,6 +10,48 @@ import {
   placeCargo,
   classifyVehicleOccupancy,
 } from "./logistica/cargoPacking.js";
+import { countPanels } from "./roofPanelStripsPlanta.js";
+
+/** Useful width (m) for panel-count from zone ancho — matches calcPanelesTecho. */
+function panelAuForTipo(tipo) {
+  const key = String(tipo || "").trim();
+  return Number(PANELS_TECHO[key]?.au || PANELS_PARED[key]?.au || 0) || 0;
+}
+
+/**
+ * Panels across a zone width. dos_aguas mirrors scenarioOrchestrator half-slopes.
+ * @param {number} ancho
+ * @param {number} au
+ * @param {boolean} dosAguas
+ */
+function cantPanelesForZonaAncho(ancho, au, dosAguas) {
+  const w = Math.max(0, Number(ancho) || 0);
+  if (!(au > 0) || !(w > 0)) return 0;
+  if (dosAguas) {
+    const half = +(w / 2).toFixed(2);
+    return countPanels(half, au) + countPanels(half, au);
+  }
+  return countPanels(w, au);
+}
+
+/** First BOM panel line with geometry (camara techoResult has no largoReal). */
+function panelGeometryFromItems(items) {
+  for (const it of Array.isArray(items) ? items : []) {
+    const cant = Math.max(0, Math.floor(Number(it?.cantPaneles) || 0));
+    const largo = Math.max(0, Number(it?.largoPanel) || 0);
+    if (cant > 0 && largo > 0) {
+      const sku = String(it.sku || "");
+      const m = sku.match(/^([A-Za-z0-9_]+)-(\d+)$/);
+      return {
+        cant,
+        largo,
+        tipo: m?.[1] || null,
+        espesor: m ? Number(m[2]) || 0 : 0,
+      };
+    }
+  }
+  return null;
+}
 
 /** @typedef {'retiro'|'ciudad_costa'|'mvd'|'canelones'|'maldonado_corredor'|'especial'} ZonaId */
 
@@ -50,35 +92,83 @@ export function buildPanelLoadsFromQuote(state = {}) {
   const techo = state.techo || {};
   const pared = state.pared || {};
   const results = state.results || {};
+  const techoResult = results.techoResult || null;
+  const techoResultGeom = panelGeometryFromItems(techoResult?.allItems);
 
-  const techoTipo = String(techo.familia || techo.tipo || results?.panel?.familia || "ISODEC");
-  const techoEsp = Number(techo.espesor ?? results?.panel?.espesor ?? 0) || 0;
+  const techoTipo = String(
+    techo.familia || techo.tipo || techoResultGeom?.tipo || results?.panel?.familia || "ISODEC"
+  );
+  const techoEsp =
+    Number(techo.espesor ?? results?.panel?.espesor ?? techoResultGeom?.espesor ?? 0) || 0;
   const zonas = Array.isArray(techo.zonas) ? techo.zonas : [];
+  const au = Number(results?.panel?.au || techo.au || 0) || panelAuForTipo(techoTipo);
+  let usedFlatPanelesAsRoof = false;
 
   if (zonas.length) {
+    // Never fall back to results.paneles.cantPaneles per zone — that total is
+    // shared across all zonas and would N× overstate cargo / freight.
     for (const z of zonas) {
-      const cant = Math.max(
-        0,
-        Math.floor(Number(z.cantPaneles ?? z.panelesAncho ?? results?.paneles?.cantPaneles) || 0)
-      );
-      const largo = Math.max(0, Number(z.largo ?? z.largoPanel ?? results?.largoReal ?? 0) || 0);
+      const largo = Math.max(0, Number(z.largo ?? z.largoPanel) || 0);
       const esp = Math.max(0, Number(z.espesor ?? techoEsp) || 0);
+      let cant = Math.max(0, Math.floor(Number(z.cantPaneles ?? z.panelesAncho) || 0));
+      if (cant <= 0) {
+        const dosAguas = z.dosAguas === true || techo.tipoAguas === "dos_aguas";
+        cant = cantPanelesForZonaAncho(z.ancho, au, dosAguas);
+      }
       if (cant > 0 && largo > 0 && esp > 0) {
         loads.push({ tipo: techoTipo, espesor: esp, longitud: largo, cantidad: cant });
       }
     }
+  } else if (techoResult?.paneles) {
+    // camara_frig: ceiling lives on results.techoResult; walls on flat results.paneles
+    const cant = Math.max(
+      0,
+      Math.floor(Number(techoResult.paneles.cantPaneles ?? techoResultGeom?.cant) || 0)
+    );
+    const largo = Math.max(
+      0,
+      Number(techoResult.largoReal ?? techoResultGeom?.largo ?? techo.largo ?? 0) || 0
+    );
+    const esp =
+      techoEsp ||
+      Math.max(0, Number(techoResultGeom?.espesor || pared.espesor) || 0);
+    const tipo = techoResultGeom?.tipo || techoTipo;
+    if (cant > 0 && largo > 0 && esp > 0) {
+      loads.push({ tipo, espesor: esp, longitud: largo, cantidad: cant });
+    }
   } else {
-    const cant = Math.max(0, Math.floor(Number(results?.paneles?.cantPaneles) || 0));
-    const largo = Math.max(0, Number(results?.largoReal ?? techo.largo ?? 0) || 0);
-    if (cant > 0 && largo > 0 && techoEsp > 0) {
-      loads.push({ tipo: techoTipo, espesor: techoEsp, longitud: largo, cantidad: cant });
+    const hasRoofGeometry =
+      techoEsp > 0 &&
+      (Boolean(techo.familia || techo.tipo) ||
+        Number(results?.largoReal ?? techo.largo) > 0);
+    if (hasRoofGeometry) {
+      const cant = Math.max(0, Math.floor(Number(results?.paneles?.cantPaneles) || 0));
+      const largo = Math.max(0, Number(results?.largoReal ?? techo.largo ?? 0) || 0);
+      if (cant > 0 && largo > 0 && techoEsp > 0) {
+        loads.push({ tipo: techoTipo, espesor: techoEsp, longitud: largo, cantidad: cant });
+        usedFlatPanelesAsRoof = true;
+      }
     }
   }
 
   const paredTipo = String(pared.familia || pared.tipo || "ISOPANEL");
   const paredEsp = Number(pared.espesor || 0) || 0;
-  const paredCant = Math.max(0, Math.floor(Number(results?.paredResult?.paneles?.cantPaneles || pared.cantPaneles) || 0));
-  const paredLargo = Math.max(0, Number(pared.alto || results?.paredResult?.paneles?.alto || 0) || 0);
+  let paredCant = Math.max(
+    0,
+    Math.floor(Number(results?.paredResult?.paneles?.cantPaneles || pared.cantPaneles) || 0)
+  );
+  // solo_fachada / camara_frig spread wall counts on results.paneles (no paredResult).
+  if (
+    !paredCant &&
+    !usedFlatPanelesAsRoof &&
+    (techoResult?.paneles || !techo.familia)
+  ) {
+    paredCant = Math.max(0, Math.floor(Number(results?.paneles?.cantPaneles) || 0));
+  }
+  const paredLargo = Math.max(
+    0,
+    Number(pared.alto || results?.paredResult?.paneles?.alto || 0) || 0
+  );
   if (paredCant > 0 && paredLargo > 0 && paredEsp > 0) {
     loads.push({ tipo: paredTipo, espesor: paredEsp, longitud: paredLargo, cantidad: paredCant });
   }

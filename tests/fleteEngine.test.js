@@ -188,6 +188,84 @@ ok("ISOROOF inverted pair height");
   ok("buildPanelLoadsFromQuote");
 }
 
+// Multi-zona must NOT reuse results.paneles.cantPaneles (total) on every zone —
+// that doubles cargo and can jump Maldonado 1→2 filas (USD 280→525).
+{
+  const techo = {
+    familia: "ISODEC_EPS",
+    espesor: 100,
+    tipoAguas: "una_agua",
+    zonas: [
+      { largo: 8, ancho: 11.2 }, // 10 panels @ au 1.12
+      { largo: 8, ancho: 11.2 },
+    ],
+  };
+  const loads = buildPanelLoadsFromQuote({
+    techo,
+    results: {
+      paneles: { cantPaneles: 20 },
+      largoReal: 8,
+      panel: { familia: "ISODEC_EPS", espesor: 100, au: 1.12 },
+    },
+  });
+  assert.equal(loads.length, 2);
+  assert.equal(loads[0].cantidad, 10);
+  assert.equal(loads[1].cantidad, 10);
+  const q = quoteFreight({ destino: "Maldonado", panels: loads, fxRateUyuPerUsd: 40 });
+  assert.equal(q.ok, true);
+  assert.equal(q.ventaUsd, 280);
+  assert.equal(q.summary.filasUsadas, 1);
+  ok("multi-zona freight uses per-zone count not total×N");
+}
+
+// solo_fachada / camara_frig: walls on flat results.paneles (no paredResult)
+{
+  const loads = buildPanelLoadsFromQuote({
+    techo: {},
+    pared: { familia: "ISOPANEL_EPS", espesor: 100, alto: 3.5 },
+    results: { paneles: { cantPaneles: 36 } },
+  });
+  assert.equal(loads.length, 1);
+  assert.equal(loads[0].tipo, "ISOPANEL_EPS");
+  assert.equal(loads[0].cantidad, 36);
+  assert.equal(loads[0].longitud, 3.5);
+  ok("solo_fachada wall loads from flat results.paneles");
+}
+
+// camara_frig: ceiling on techoResult + walls on flat results.paneles
+{
+  const loads = buildPanelLoadsFromQuote({
+    techo: {},
+    pared: { familia: "ISOPANEL_EPS", espesor: 100, alto: 3 },
+    results: {
+      paneles: { cantPaneles: 18 },
+      techoResult: {
+        paneles: { cantPaneles: 4 },
+        allItems: [
+          {
+            sku: "ISODEC_EPS-100",
+            cantPaneles: 4,
+            largoPanel: 6,
+            total: 1000,
+          },
+        ],
+      },
+    },
+  });
+  assert.equal(loads.length, 2);
+  assert.equal(loads[0].tipo, "ISODEC_EPS");
+  assert.equal(loads[0].cantidad, 4);
+  assert.equal(loads[0].longitud, 6);
+  assert.equal(loads[1].tipo, "ISOPANEL_EPS");
+  assert.equal(loads[1].cantidad, 18);
+  assert.equal(loads[1].longitud, 3);
+  const q = quoteFreight({ destino: "Maldonado", panels: loads, fxRateUyuPerUsd: 40 });
+  assert.equal(q.ok, true);
+  assert.equal(q.ventaUsd, 525);
+  assert.equal(q.summary.filasUsadas, 2);
+  ok("camara_frig freight includes walls + techoResult ceiling");
+}
+
 // FX helper
 assert.equal(uyuToUsdInteger(21000, 40), 525);
 setBrouFxForTests(41);
