@@ -31,6 +31,11 @@ import {
   defaultCollapsedStopIds,
   toggleCollapsedStopId,
 } from "../utils/logistica/stopReorder.js";
+import {
+  STOP_STATUS,
+  applyStatusTransition,
+  statusSelectOptions,
+} from "../utils/logistica/stopStatusFsm.js";
 import { buildRemitoSimpleModel, formatM3 } from "../utils/logistica/remitoPackageMetrics.js";
 import { applyPackageLayoutChange } from "../utils/logistica/packageDrop.js";
 import {
@@ -57,7 +62,6 @@ const LogisticaCargoScene3d = lazy(() => import("./logistica/LogisticaCargoScene
 const DEFAULT_ACC_W = 0.3;
 const DEFAULT_ACC_H = 0.2;
 const DEFAULT_ACC_FOAM_MM = 50;
-const STOP_STATUS = ["Pendiente", "Lista para carga", "Cargada", "En reparto", "Entregada", "Observada"];
 const RECEPCION_STATUS = ["Pendiente", "Conforme", "Faltante", "Daño", "No recibido"];
 const DISTRIBUTION_MODES = [
   { id: "balanced", label: "Auto balanceado", short: "Balanceado" },
@@ -2295,8 +2299,38 @@ export default function BmcLogisticaApp() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                     <div>
                       <label htmlFor={`s-${stop.id}-estado`} style={css.lbl}>Estado operativo</label>
-                      <select id={`s-${stop.id}-estado`} name={`s-${stop.id}-estado`} style={css.inp} value={stop.estado || "Pendiente"} onChange={(e) => updStop(stop.id, "estado", e.target.value)}>
-                        {STOP_STATUS.map((status) => <option key={status} value={status}>{status}</option>)}
+                      <select
+                        id={`s-${stop.id}-estado`}
+                        name={`s-${stop.id}-estado`}
+                        style={css.inp}
+                        value={stop.estado || "Pendiente"}
+                        title="Transiciones según FSM Envíos (G-U3)"
+                        onChange={(e) => {
+                          const cur = stop.estado || "Pendiente";
+                          const next = e.target.value;
+                          // Soft guard only when jumping Pendiente→Cargada without checklist
+                          const listaOk = Boolean(stop.checks?.datosOk && stop.checks?.bultosOk);
+                          const ctx = {
+                            formValid: true,
+                            ...(next === "Cargada" && cur === "Pendiente" && !listaOk
+                              ? { listaParaCarga: false }
+                              : {}),
+                          };
+                          const result = applyStatusTransition(cur, next, ctx);
+                          if (result.changed) {
+                            updStop(stop.id, "estado", result.status);
+                          } else if (result.error) {
+                            updStop(stop.id, "estado", cur);
+                          }
+                        }}
+                      >
+                        {statusSelectOptions(stop.estado || "Pendiente", { formValid: true }).map(
+                          ({ value, disabled }) => (
+                            <option key={value} value={value} disabled={disabled}>
+                              {value}
+                            </option>
+                          ),
+                        )}
                       </select>
                     </div>
                     <div>
