@@ -53,8 +53,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 
 COPY server/ ./server/
-COPY src/utils/ ./src/utils/
-COPY src/data/ ./src/data/
+# Server imports many modules under src/ (utils, data, pdf-templates, lib/cashflow, …)
+COPY src/ ./src/
+# panelin.js and others import scripts/*.mjs at runtime
+COPY scripts/ ./scripts/
 COPY docs/bmc-dashboard-modernization/dashboard ./docs/bmc-dashboard-modernization/dashboard
 COPY --from=calc-build /app/dist ./dist
 
