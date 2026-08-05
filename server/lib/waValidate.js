@@ -7,6 +7,25 @@ const ALLOWED_TYPES = new Set(["text", "image", "audio", "doc", "video", "sticke
 const ALLOWED_SOURCES = new Set(["wa_web", "cloud_api", "manual"]);
 
 /**
+ * Resolve message `type` on idempotent re-ingest (ON CONFLICT).
+ * Never downgrade a concrete media/system type to plain `text` — clients often
+ * default unknown WA Web raw types to text, which would hide cockpit media and
+ * stall STT (`type = 'audio'` filters).
+ *
+ * Mirrors the SQL CASE in POST /api/wa/ingest.
+ *
+ * @param {string|null|undefined} existingType
+ * @param {string|null|undefined} incomingType
+ * @returns {string}
+ */
+export function mergeIngestMessageType(existingType, incomingType) {
+  const existing = String(existingType || "").trim().toLowerCase() || "text";
+  const incoming = String(incomingType || "").trim().toLowerCase() || "text";
+  if (existing !== "text" && incoming === "text") return existing;
+  return incoming || existing;
+}
+
+/**
  * Normaliza un número de teléfono a formato E.164.
  *
  * Reglas (conservadoras para no romper números válidos):
