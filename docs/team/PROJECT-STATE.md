@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (fix — Envíos stop DnD downward index):** `reorderStops` adjusted insert index after `splice(from)` so dragging a stop onto a later card inserts *before* that stop (P1→P3 → `[P2,P1,P3]`, not `[P2,P3,P1]`). Wrong `orden` was persisted and fed cargo unload / WA. Tests cover downward + adjacent stable cases. Supersedes conflicting draft #846.
+
 **2026-08-05 (feat — Envíos Ops UX F3b Remito Simple):** Tab Remito de `/logistica` con look **Presupuesto Simple** (navy `#003366`, badge, tablas BOM). Por bulto: ID, contenido, L×Ancho×H, vol cuboide m³, fila A/B. Totales: paquetes, vol estiba, vol material (`loadCharacteristics`), kg est. Pure `remitoPackageMetrics.js` + tests.
 
 **2026-08-05 (feat — Envíos Ops UX F1/F3a collapse + stop DnD):** `/logistica` paradas plegables (chevron + summary; `ui.collapsedStopIds` en localStorage; default collapse si hay más de 3 paradas). Reorden HTML5 por asa ⠿ → `reorderStops` / `renumberStops` (`stopReorder.js`). Tests `stopReorder.test.js`.
