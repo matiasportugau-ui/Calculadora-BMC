@@ -295,10 +295,15 @@ export const config = {
       ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
       : [
           "https://calculadora-bmc.vercel.app",
+          "https://panelin-workspace.vercel.app",
           "http://localhost:5173",
+          "http://127.0.0.1:5173",
           "http://localhost:3001",
+          "http://127.0.0.1:3001",
           "http://localhost:3000", // panelin-workspace Next UI (ADR-008)
-          "http://localhost:3002", // panelin-workspace when :3000 taken (sheet-quote-pipeline)
+          "http://localhost:3002", // panelin-workspace when :3000 taken
+          "http://localhost:3100", // panelin-workspace e2e / alternate Next port
+          "http://127.0.0.1:3100",
         ]
   ),
   /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */

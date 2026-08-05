@@ -1396,6 +1396,32 @@ export default function BmcLogisticaApp() {
   const moveStopBefore = (activeId, overId) => {
     setStops((p) => reorderStops(p, activeId, overId, { colors: COLORS }));
   };
+  /** E2E hook: same reorderStops path as HTML5 onDrop (enable with ?e2e=1). */
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    let enabled = false;
+    try {
+      enabled = new URLSearchParams(window.location.search).get("e2e") === "1";
+    } catch {
+      enabled = false;
+    }
+    if (!enabled) return undefined;
+    window.__bmcLogisticaE2E = {
+      getStopIds: () => stops.map((s) => s.id),
+      reorder: (activeId, overId) => {
+        moveStopBefore(activeId, overId);
+      },
+      getEstados: () =>
+        stops.map((s) => ({ id: s.id, estado: s.estado || "Pendiente", orden: s.orden })),
+    };
+    return () => {
+      try {
+        delete window.__bmcLogisticaE2E;
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [stops]);
   const toggleStopCollapsed = (stopId) => {
     setCollapsedStopIds((c) => toggleCollapsedStopId(c, stopId));
   };
@@ -2187,7 +2213,10 @@ export default function BmcLogisticaApp() {
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    const activeId = e.dataTransfer.getData("text/plain") || dragStopId;
+                    const activeId =
+                      e.dataTransfer.getData("text/plain") ||
+                      e.dataTransfer.getData("application/x-bmc-stop-id") ||
+                      dragStopId;
                     if (activeId) moveStopBefore(activeId, stop.id);
                     setDragStopId(null);
                   }}
@@ -2203,10 +2232,13 @@ export default function BmcLogisticaApp() {
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
                       <span
                         draggable
+                        data-stop-id={stop.id}
+                        data-testid={`drag-stop-${stop.id}`}
                         title="Arrastrar para reordenar"
                         aria-label="Arrastrar parada"
                         onDragStart={(e) => {
                           e.dataTransfer.setData("text/plain", stop.id);
+                          e.dataTransfer.setData("application/x-bmc-stop-id", stop.id);
                           e.dataTransfer.effectAllowed = "move";
                           setDragStopId(stop.id);
                         }}
