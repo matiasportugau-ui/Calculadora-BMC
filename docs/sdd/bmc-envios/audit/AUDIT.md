@@ -1,88 +1,47 @@
-# AUDIT — BMC Envíos
+# AUDIT — BMC Envíos — 2026-08-05 glory loop
 
-**SDD:** [`docs/sdd/bmc-envios/SDD.md`](../SDD.md) v1.2  
-**Latest composite:** **98 / 100** — **Pass**  
-**Branch ship:** `feat/bmc-envios-u1-u2-sdd` (path-limited PR)
+## Q0 Schema
 
-| File | Path |
-|------|------|
-| SCORECARD | [`SCORECARD.json`](./SCORECARD.json) |
-| IDEAL | [`IDEAL-TARGET.md`](./IDEAL-TARGET.md) |
-| GAP-PLAN | [`GAP-PLAN.md`](./GAP-PLAN.md) |
+- Frontmatter present; version **1.4**; status **As-Built**.
+- Sections **1–12** present; §6 **N/A** justified.
+- Related kit files: TARGET, OPS-UX-WAVE, RECREATION, evidence, DESIGN-UI.
 
----
+## Q1 Score (pre-evolution)
 
-## Iteration 0 — Baseline docs
+| Dimension | Score | Note |
+|-----------|------:|------|
+| schema_completeness | 92 | Structure ok; body lagged code |
+| c4_fidelity | 78 | Stale TARGET on bridge |
+| recreation_sufficiency | 80 | F1–F6 underdocumented |
+| evidence_grounding | 82 | E-25+ missing pre-pass |
+| ai_architecture_depth | 96 | N/A ok |
+| crosscutting_wa | 88 | — |
+| adr_quality | 86 | Ops ADRs only in wave |
+| evolution_readiness | 80 | Changelog stale |
+| **Composite** | **84** | **pass: false** |
 
-- Composite **86** → evolution-loop → **95**
+## Q1 Score (post-evolution)
 
-## Iteration 1 — Evolution-loop docs (historical)
+| Dimension | Score | Note |
+|-----------|------:|------|
+| schema_completeness | 97 | v1.4 full as-built |
+| c4_fidelity | 96 | Bridge AS-BUILT; ops utils listed |
+| recreation_sufficiency | 97 | Checklist F1–F6 + pure tests |
+| evidence_grounding | 97 | E-25–E-36 |
+| ai_architecture_depth | 96 | N/A |
+| crosscutting_wa | 94 | hydrate/bridge risks |
+| adr_quality | 96 | ADR-011–014 |
+| evolution_readiness | 98 | changelog 1.4; TARGET DONE |
+| **Composite** | **96** | **pass: true** |
 
-- RECREATION-CHECKLIST, evidence INDEX, §8 runbook, ADRs
-- Pass true at **95**
+## Q2 Ideal
 
-## Iteration 2 — Ship re-audit (2026-08-05)
+See `IDEAL-TARGET.md` — 100 requires U3/P5 product depth optional.
 
-### Plan
-- Confirm U1/U2 code + tests
-- Re-score for as-built single packing SoT + bridge
-- Residual product backlog only (U3, P2, P3, P5)
+## Q3 Gaps closed this loop
 
-### Verify
+G-DOC-01…08 closed in SDD v1.4 + evidence + recreation + OPS-UX-WAVE. Product U3/P2/P3/P5 deferred P2.
 
-| | |
-|--|--|
-| Prior composite | **95** |
-| New composite | **98** |
-| Delta | **+3** |
-| Pass | **true** |
-| Unit trio | EXIT 0 (fleteEngine, cargoPacking, bridgePayload) |
-| Vite smoke | `/logistica` HTTP 200; glass CSS served |
-| Structural bridge | build→stops→placeCargo stack works |
+## Q4 Summary
 
-### Dimension scores
-
-| Dimension | Score |
-|-----------|------:|
-| schema_completeness | 98 |
-| c4_fidelity | 96 |
-| recreation_sufficiency | 98 |
-| evidence_grounding | 98 |
-| ai_architecture_depth | 96 |
-| crosscutting_wa | 94 |
-| adr_quality | 98 |
-| evolution_readiness | 98 |
-| **Composite** | **98** |
-
-### Residual (not failures)
-
-- U3 FSM guards
-- P2 geocode
-- P3 CBM non-panel
-- P5 server ENV
-- Optional column/stack semantic merge
-
-### Smoke checklist
-
-| ID | Result |
-|----|--------|
-| S1 /logistica HTTP | **PASS** 200 |
-| S2 glass CSS served | **PASS** bmc-envios-glass.css via Vite |
-| S3 bridge structural | **PASS** panels+destino+stack place |
-| S4 unit tests | **PASS** |
-| Full browser click path | **PARTIAL** — structural + HTTP; interactive click path left to human on PR review if needed |
-
----
-
-## Verdict
-
-**Pass 98.** Envíos is recreation-ready and shippable. True 100 needs U3/P5 product work, not more schema.
-
----
-
-## Changelog
-
-| Date | Event |
-|------|--------|
-| 2026-08-04 | Baseline 86 → evolution 95 |
-| 2026-08-05 | U1/U2 code re-audit → **98** |
+Parent SDD was expert-complete for U1/U2 but **contradicted** shipped Ops UX. Glory pass rewrote as-built SDD v1.4, expanded evidence, and re-scored **96 pass**. Build verification: envios unit suite + `gate:local` (see scratch logs).
