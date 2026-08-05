@@ -87,6 +87,28 @@ const stop = {
   ok("buildPkgs carries sCli and sPed");
 }
 
+// F5: forced rowOverrides honored on overflow placement
+{
+  const s = {
+    id: "s1",
+    orden: 1,
+    cliente: "Force",
+    color: "#0071e3",
+    paneles: [{ id: "p1", tipo: "ISODEC", espesor: 100, longitud: 12, cantidad: 40 }],
+  };
+  const pkgs = buildStopPackages(s);
+  assert.ok(pkgs.length >= 1);
+  const key = pkgs[0].stableKey;
+  const pack = placeCargo([s], 8, "balanced", {
+    rowOverrides: { [key]: 1 },
+    mode: "manual",
+    manualOrderKeys: pkgs.map((p) => p.stableKey),
+  });
+  const first = pack.placed.find((p) => p.stableKey === key) || pack.placed[0];
+  assert.equal(first.row, 1, `expected forced fila B, got row=${first.row}`);
+  ok("rowOverrides forced fila B honored (incl. overflow path)");
+}
+
 // Height helper still SDD-aligned
 {
   const h = packageHeightM("ISODEC", 100, 8);

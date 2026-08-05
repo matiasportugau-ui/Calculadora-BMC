@@ -21,6 +21,85 @@ export const BRIDGE_STORAGE_KEY = "bmc-envios-bridge-v1";
  */
 
 /**
+ * Normalize panel lines for equality checks (order-insensitive).
+ * @param {BridgePanel[]|object[]} [panels]
+ * @returns {string}
+ */
+export function bridgePanelsFingerprint(panels = []) {
+  return (Array.isArray(panels) ? panels : [])
+    .map((p) => ({
+      tipo: String(p?.tipo || "PANEL"),
+      espesor: Math.round(Number(p?.espesor) || 0),
+      longitud: Math.round(Math.max(0, Number(p?.longitud) || 0) * 1000) / 1000,
+      cantidad: Math.max(0, Math.floor(Number(p?.cantidad) || 0)),
+    }))
+    .filter((p) => p.cantidad > 0 && p.longitud > 0)
+    .sort((a, b) =>
+      `${a.tipo}|${a.espesor}|${a.longitud}|${a.cantidad}`.localeCompare(
+        `${b.tipo}|${b.espesor}|${b.longitud}|${b.cantidad}`,
+      ),
+    )
+    .map((p) => `${p.tipo}|${p.espesor}|${p.longitud}|${p.cantidad}`)
+    .join(";");
+}
+
+/**
+ * Resolve Quote→Ops handoff from *live* calculator state.
+ * Never prefer a stale lastQuote snapshot for destino/panels.
+ * Reuses lastQuote.quote only when live destino + panels still match the snapshot.
+ *
+ * @param {object} input
+ * @param {{ panels?: object[], quote?: object, destino?: string }|null} [input.lastQuote]
+ * @param {object} [input.proyecto]
+ * @param {object[]} [input.livePanels]
+ * @param {number} [input.flete]
+ * @param {string|number|null} [input.fleteCosto]
+ * @param {object|null} [input.summary]
+ */
+export function resolveBridgeHandoff(input = {}) {
+  const proyecto = input.proyecto || {};
+  const livePanels = Array.isArray(input.livePanels) ? input.livePanels : [];
+  const liveDestino = [proyecto.direccion, proyecto.departamento, proyecto.localidad]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const destino = liveDestino || String(proyecto.direccion || "").trim();
+
+  const last = input.lastQuote && typeof input.lastQuote === "object" ? input.lastQuote : null;
+  const lastDestino = String(last?.destino || "").trim();
+  const destinoMatch =
+    Boolean(destino) && Boolean(lastDestino) && destino.toLowerCase() === lastDestino.toLowerCase();
+  const liveFp = bridgePanelsFingerprint(livePanels);
+  const panelsMatch = liveFp.length > 0 && liveFp === bridgePanelsFingerprint(last?.panels);
+  const quoteReusable = Boolean(last?.quote) && destinoMatch && panelsMatch;
+
+  const fleteNum = Number(input.flete) || 0;
+  const costoRaw = input.fleteCosto;
+  const costoNum =
+    costoRaw === "" || costoRaw == null || costoRaw === undefined ? null : Number(costoRaw);
+  const summary = input.summary || null;
+
+  return {
+    panels: livePanels,
+    destino,
+    quote: quoteReusable
+      ? last.quote
+      : {
+          ok: true,
+          mode: "manual",
+          ventaUsd: fleteNum,
+          costoUsd: Number.isFinite(costoNum) ? costoNum : null,
+          summary: summary || { zona: "manual", label: `Flete USD ${fleteNum}` },
+        },
+    proyectoRef: {
+      cliente: proyecto.cliente || proyecto.nombre || null,
+      direccion: proyecto.direccion || destino || null,
+    },
+    quoteStale: Boolean(last && !quoteReusable),
+  };
+}
+
+/**
  * Build versioned handoff payload from quote state.
  * @param {object} input
  * @param {BridgePanel[]} input.panels

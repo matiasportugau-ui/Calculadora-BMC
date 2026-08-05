@@ -18,6 +18,25 @@ export function normalizeSearchText(s) {
 }
 
 /**
+ * True when "enviado" appears only under negation (NO ENVIADO, sin enviar, etc.).
+ * "NO ENVIADO" / "sin enviar" still contain the substring "enviad*".
+ * @param {string} n already normalizeSearchText'd
+ * @returns {boolean}
+ */
+export function hasNegatedEnviado(n) {
+  const s = String(n || "");
+  if (!s) return false;
+  return (
+    /\bno\s+enviad/.test(s) ||
+    /\bsin\s+enviad/.test(s) ||
+    /\bno\s+se\s+envi/.test(s) ||
+    /\bpendiente\s+de\s+envi/.test(s) ||
+    /\baun\s+no\s+envi/.test(s) ||
+    /\baún\s+no\s+envi/.test(s)
+  );
+}
+
+/**
  * Classify a mapped Ventas row for operator chips.
  * @param {{
  *   estadoText?: string,
@@ -38,7 +57,11 @@ export function classifyVentasCoordination(row = {}) {
   const blob = `${estado}\n${raw}`;
   const n = normalizeSearchText(blob);
 
-  if (/\benviado\b|\benviada\b|\benviados\b/.test(n) || /\benviad/.test(n)) {
+  // Negation first: "NO ENVIADO" matches \benviado\b otherwise.
+  if (
+    !hasNegatedEnviado(n) &&
+    (/\benviado\b|\benviada\b|\benviados\b/.test(n) || /\benviad/.test(n))
+  ) {
     return {
       status: "enviado",
       coordDateIso: null,
@@ -90,7 +113,9 @@ export function batchColorFromKey(batchKey) {
 export function coordinationChipCaption(c) {
   if (!c) return "";
   if (c.status === "coordinado" && c.coordDateIso) {
-    const [y, m, d] = c.coordDateIso.split("-");
+    const parts = c.coordDateIso.split("-");
+    const m = parts[1];
+    const d = parts[2];
     return `${c.label} · ${d}/${m}`;
   }
   return c.label;
