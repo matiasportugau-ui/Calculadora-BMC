@@ -7,9 +7,12 @@ import {
   buildBridgePayload,
   parseBridgePayload,
   bridgePayloadToStops,
+  mergeBridgeIntoStops,
+  stopHasLogisticsContent,
   BRIDGE_SCHEMA_VERSION,
   saveBridgePayload,
   loadBridgePayload,
+  clearBridgePayload,
   BRIDGE_STORAGE_KEY,
 } from "../src/utils/logistica/bridgePayload.js";
 
@@ -97,6 +100,61 @@ const panels = [
   assert.equal(loaded.destino, "Costa");
   assert.equal(store.getItem(BRIDGE_STORAGE_KEY), null);
   ok("sessionStorage-like save/load/clear");
+}
+
+{
+  const mem = new Map();
+  const store = {
+    getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+    setItem: (k, v) => mem.set(k, String(v)),
+    removeItem: (k) => mem.delete(k),
+  };
+  const payload = buildBridgePayload({ destino: "X", panels: [panels[0]] });
+  saveBridgePayload(payload, store);
+  const kept = loadBridgePayload({ store, clear: false });
+  assert.equal(kept.destino, "X");
+  assert.ok(store.getItem(BRIDGE_STORAGE_KEY));
+  clearBridgePayload(store);
+  assert.equal(store.getItem(BRIDGE_STORAGE_KEY), null);
+  ok("load clear:false + clearBridgePayload after apply");
+}
+
+{
+  assert.equal(stopHasLogisticsContent({ cliente: "A" }), true);
+  assert.equal(stopHasLogisticsContent({ paneles: [{ cantidad: 1 }] }), true);
+  assert.equal(stopHasLogisticsContent({ cliente: "", paneles: [] }), false);
+  ok("stopHasLogisticsContent");
+}
+
+{
+  const draft = [
+    { id: "a", orden: 1, cliente: "Keep Me", paneles: [{ id: "p", cantidad: 2 }], color: "#111" },
+    { id: "b", orden: 2, cliente: "Second", paneles: [], color: "#222" },
+  ];
+  const bridgeStops = [{ id: "br", cliente: "From Quote", direccion: "Maldonado", paneles: panels, color: "#999" }];
+  const merged = mergeBridgeIntoStops(draft, bridgeStops, { colors: ["#111", "#222", "#333"] });
+  assert.equal(merged.length, 3);
+  assert.equal(merged[0].cliente, "Keep Me");
+  assert.equal(merged[2].cliente, "From Quote");
+  assert.equal(merged[2].orden, 3);
+  assert.equal(merged[2].color, "#333");
+  ok("mergeBridgeIntoStops appends when draft has content");
+}
+
+{
+  const emptyDraft = [{ id: "placeholder", cliente: "", direccion: "", paneles: [] }];
+  const bridgeStops = [{ id: "br", cliente: "Only", paneles: panels }];
+  const replaced = mergeBridgeIntoStops(emptyDraft, bridgeStops);
+  assert.equal(replaced.length, 1);
+  assert.equal(replaced[0].cliente, "Only");
+  ok("mergeBridgeIntoStops replaces empty draft");
+}
+
+{
+  const kept = mergeBridgeIntoStops([{ id: "x", cliente: "Keep", paneles: [{ id: "p", cantidad: 1 }] }], []);
+  assert.equal(kept.length, 1);
+  assert.equal(kept[0].cliente, "Keep");
+  ok("mergeBridgeIntoStops noop on empty bridge");
 }
 
 console.log(`\n${passed} assertions ok`);

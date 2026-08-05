@@ -65,6 +65,19 @@ ok("ISOROOF inverted pair height");
   ok("maldonado 1 fila → 280");
 }
 
+// Regression: leftover packs must stay on the used fila (not open B → false 2-fila 525)
+{
+  for (const qty of [9, 12, 16]) {
+    const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: qty }];
+    const pack = placeCargo([{ id: "s", orden: 1, paneles: panels }], STANDARD_BED_M);
+    assert.equal(pack.filasUsadas, 1, `qty=${qty} filas=${pack.filasUsadas}`);
+    const q = quoteFreight({ destino: "Maldonado", panels, fxRateUyuPerUsd: 40 });
+    assert.equal(q.ok, true, `qty=${qty} ok`);
+    assert.equal(q.ventaUsd, 280, `qty=${qty} venta=${q.ventaUsd}`);
+  }
+  ok("maldonado 9–16× ISODEC100 → still 1 fila / USD 280");
+}
+
 // Costa 1 fila
 {
   const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }];
