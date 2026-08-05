@@ -100,7 +100,7 @@ ok("ISOROOF inverted pair height");
   ok("2 filas → costo+3000 UYU");
 }
 
-// Remolque >8m
+// Remolque >8m (fits long bed height)
 {
   const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 10, cantidad: 4 }];
   const fx = 40;
@@ -110,6 +110,27 @@ ok("ISOROOF inverted pair height");
   assert.equal(q.ventaUsd, Math.round(28000 / fx));
   assert.equal(q.costoUsd, Math.round(24000 / fx));
   ok("remolque >8m");
+}
+
+// Regression: length >8m must NOT auto-quote remolque when height overflows long bed
+{
+  const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 10, cantidad: 80 }];
+  const q = quoteFreight({ destino: "Maldonado", panels, fxRateUyuPerUsd: 40 });
+  assert.equal(q.ok, false, "over-height long load must not auto-quote");
+  assert.equal(q.error, "no_cabe");
+  assert.equal(q.summary.vehicle, "especial");
+  assert.equal(q.ventaUsd, null);
+  ok("remolque blocked when long-bed height overflows");
+}
+
+// Regression: panels longer than 13m bed → especial (not remolque USD 700)
+{
+  const panels = [{ tipo: "ISODEC", espesor: 100, longitud: 14, cantidad: 4 }];
+  const q = quoteFreight({ destino: "Maldonado", panels, fxRateUyuPerUsd: 40 });
+  assert.equal(q.ok, false);
+  assert.equal(q.error, "no_cabe");
+  assert.equal(q.summary.vehicle, "especial");
+  ok("length >13m → especial / no_cabe");
 }
 
 // Camión largo when 8m height fails but 13m works — hard to force height-only;

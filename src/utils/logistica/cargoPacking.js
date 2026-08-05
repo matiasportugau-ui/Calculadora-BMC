@@ -665,17 +665,31 @@ export function placeCargo(stops, trL, third = {}, fourth = {}) {
 
 /**
  * Classify vehicle / occupancy for freight tariffs.
+ *
+ * Remolque (>8 m) only when the load actually fits on the long bed. A bare
+ * `largoMax > 8` short-circuit previously auto-quoted remolque for height/
+ * length overflows (e.g. 80×10 m ISODEC100 → cabe:false but venta USD 700).
  */
 export function classifyVehicleOccupancy(pack8, packLong = null) {
-  const largoMax = pack8?.largoMax || 0;
+  const largoMax = pack8?.largoMax || packLong?.largoMax || 0;
   if (largoMax > STANDARD_BED_M + 0.001) {
+    if (packLong?.cabe) {
+      return {
+        vehicle: "remolque",
+        filasUsadas: packLong.filasUsadas,
+        largoMax: packLong.largoMax || largoMax,
+        bedM: LONG_BED_M,
+        pack: packLong,
+        needsSpecialReview: false,
+      };
+    }
     return {
-      vehicle: "remolque",
-      filasUsadas: pack8.filasUsadas,
+      vehicle: "especial",
+      filasUsadas: packLong?.filasUsadas || pack8?.filasUsadas || 0,
       largoMax,
-      bedM: STANDARD_BED_M,
-      pack: pack8,
-      needsSpecialReview: false,
+      bedM: LONG_BED_M,
+      pack: packLong || pack8,
+      needsSpecialReview: true,
     };
   }
   if (pack8?.cabe) {
