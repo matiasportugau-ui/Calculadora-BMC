@@ -258,3 +258,20 @@ gate:local:   pendiente correr al final de la sesión
 **Próximo paso:** triage drafts #836 + #837 (1-fila + no wipe drafts); opcional harness-ratchet smoke App-*.js; E2E manual Flete→Enviar con paneles.
 
 **Refs:** #832, drafts #836/#837, `docs/sdd/bmc-envios/`, run GHA 30972626824 (deploy OK / smoke falso rojo).
+---
+
+## 2026-08-05 N — Envíos session close (persist)
+
+**Contexto:** Cerrar y persistir fin de ciclo Envíos (Ops UX + glory + residual fixes); no seguir con packing.
+
+**Acciones:**
+- Product on main: #832 U1/U2, #840 packing/bridge, #842–#849 F1–F6, #857 U3, #867 NO ENVIADO/live bridge/forced fila.
+- Docs: #863 SDD v1.4 SCORECARD 96 pass.
+- Smoke prod OK (`/` + `/logistica` 200, markers, smoke:prod).
+- Decision: leave Envíos; P5 only if multi-device pain; next WA or security auth.
+
+**Verificación:** automated prod smoke + unit tests for residual fixes green at ship time.
+
+**Próximo paso:** Switch context (WA / dashboard auth). Return to Envíos only for P5 multi-device or named bug.
+
+**Refs:** HANDOFF-2026-08-05-envios-session-close.md · #832 #840 #842–#849 #857 #863 #867.
