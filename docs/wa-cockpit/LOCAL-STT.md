@@ -33,4 +33,11 @@ launchctl load ~/Library/LaunchAgents/com.bmc.wa-local-stt.plist
 
 ## Cloud fallback
 
-Only if `WA_TRANSCRIPT_CLOUD=1` on Cloud Run + OPENAI_API_KEY. Default OFF.
+Only if `WA_TRANSCRIPT_CLOUD=1` on Cloud Run **and** `OPENAI_API_KEY` is set. Default **OFF**.
+
+| Env | Default | Meaning |
+|-----|---------|---------|
+| `WA_TRANSCRIPT_CLOUD` | unset/0 | When `1`, API starts `waTranscriptWorker` (OpenAI Whisper) as secondary path |
+| `WA_TRANSCRIPT_DISABLED` | unset/0 | When `1`, cloud worker stays off even if `WA_TRANSCRIPT_CLOUD=1` |
+
+Local worker is unaffected by these flags.
