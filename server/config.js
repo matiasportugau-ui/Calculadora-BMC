@@ -284,6 +284,13 @@ export const config = {
   waTtlDays: Number(process.env.WA_TTL_DAYS || 180),
   /** GCS bucket for persistent quote PDFs — allUsers:objectViewer required. Default: bmc-cotizaciones */
   gcsQuotesBucket: process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
+  /**
+   * Private GCS bucket for WA cockpit media (voice notes / images).
+   * Must NOT be the public quotes bucket. Empty → uploads fail closed unless
+   * WA_MEDIA_ALLOW_QUOTES_BUCKET=1 (dev-only escape hatch).
+   */
+  gcsWaMediaBucket: process.env.GCS_WA_MEDIA_BUCKET || process.env.WA_MEDIA_GCS_BUCKET || "",
+  waMediaAllowQuotesBucket: process.env.WA_MEDIA_ALLOW_QUOTES_BUCKET === "1",
   /** Kill switch for real PDF rendering inside /calc/cotizar/pdf (agent path).
    *  Set COTIZAR_PDF_RENDER=0 to restore HTML-only behavior instantly. */
   cotizarPdfRenderEnabled: process.env.COTIZAR_PDF_RENDER !== "0",
