@@ -27,6 +27,11 @@ PLIST_LABEL="com.bmc.wa-chrome"
 PLIST_SRC="$REPO/docs/wa-cockpit/com.bmc.wa-chrome.plist.example"
 PLIST_DST="$HOME/Library/LaunchAgents/${PLIST_LABEL}.plist"
 
+# Exact profile argv match (avoid chrome-wa-profile-personal-1 when PROFILE is chrome-wa-profile)
+profile_proc_pattern() {
+  printf 'user-data-dir=%s( |$)' "$1"
+}
+
 # Resolve extension build dir (several possible locations on this machine)
 resolve_ext_build() {
   local candidates=(
@@ -77,7 +82,7 @@ is_running() {
     fi
   fi
   # Exact profile path only (avoid matching chrome-wa-profile-personal-1 when PROFILE is chrome-wa-profile)
-  if pgrep -f "user-data-dir=${PROFILE_DIR}( |$)" >/dev/null 2>&1; then
+  if pgrep -f "$(profile_proc_pattern "$PROFILE_DIR")" >/dev/null 2>&1; then
     return 0
   fi
   return 1
@@ -87,7 +92,7 @@ cmd_status() {
   echo "Profile:  $PROFILE_DIR"
   if is_running; then
     echo "Status:   RUNNING"
-    pgrep -fl "user-data-dir=${PROFILE_DIR}( |$)" 2>/dev/null | head -3 || true
+    pgrep -fl "$(profile_proc_pattern "$PROFILE_DIR")" 2>/dev/null | head -3 || true
     [[ -f "$PID_FILE" ]] && echo "PID file: $(cat "$PID_FILE")"
   else
     echo "Status:   stopped"
@@ -118,8 +123,8 @@ cmd_stop() {
     fi
     rm -f "$PID_FILE"
   fi
-  # Kill all chrome instances on this profile (children)
-  pkill -f "user-data-dir=${PROFILE_DIR}" 2>/dev/null || true
+  # Kill chrome instances on THIS profile only (not chrome-wa-profile-personal-1 etc.)
+  pkill -f "$(profile_proc_pattern "$PROFILE_DIR")" 2>/dev/null || true
   echo "Stopped always-on WA Chrome."
 }
 
@@ -214,8 +219,11 @@ cmd_start() {
  Install auto-start on login:
    ./scripts/wa-chrome-always-on.sh --install-agent
 
- G8 voice notes (few clicks when you want transcripts):
+ G8 voice notes (same PROFILE — stop always-on first):
+   ./scripts/wa-chrome-always-on.sh --stop
    ./scripts/wa-g8-one-click.sh
+   ./scripts/wa-chrome-always-on.sh
+ Or play ▶ here, then: ONCE=1 node scripts/wa-local-stt-worker.mjs
 ════════════════════════════════════════════════════════
 EOF
 }

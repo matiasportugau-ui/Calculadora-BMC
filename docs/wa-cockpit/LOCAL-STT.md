@@ -11,8 +11,13 @@ Automates open WA Web → search chat → auto-play voice notes → CDN backfill
 
 ```bash
 cd ~/calculadora-bmc
+# If always-on Chrome is up on the same PROFILE, stop it first:
+./scripts/wa-chrome-always-on.sh --stop
 ./scripts/wa-g8-one-click.sh
+./scripts/wa-chrome-always-on.sh   # optional: restore persistent session
 ```
+
+G8 launches Playwright on `.runtime/chrome-wa-profile`. Sharing that profile with always-on Chrome deletes `SingletonLock` and can unlink WhatsApp Web — the scripts refuse when the profile is busy.
 
 **Your few clicks only:**
 
