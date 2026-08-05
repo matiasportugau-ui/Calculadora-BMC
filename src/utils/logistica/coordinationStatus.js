@@ -20,24 +20,28 @@ export function normalizeSearchText(s) {
 /**
  * True when "enviado" appears only under negation (NO ENVIADO, sin enviar, etc.).
  * "NO ENVIADO" / "sin enviar" still contain the substring "enviad*".
- * @param {string} n already normalizeSearchText'd
+ * Input should already be normalizeSearchText'd (accents stripped, lowercased).
+ * @param {string} n
  * @returns {boolean}
  */
 export function hasNegatedEnviado(n) {
   const s = String(n || "");
   if (!s) return false;
+  // Optional auxiliaries: "no se ha enviado", "aun no se envio", "no fue enviado".
   return (
-    /\bno\s+enviad/.test(s) ||
+    /\bno\s+(se\s+)?(ha\s+|fue\s+|habia\s+)?enviad/.test(s) ||
     /\bsin\s+enviad/.test(s) ||
     /\bno\s+se\s+envi/.test(s) ||
+    /\bnunca\s+enviad/.test(s) ||
     /\bpendiente\s+de\s+envi/.test(s) ||
-    /\baun\s+no\s+envi/.test(s) ||
-    /\baún\s+no\s+envi/.test(s)
+    /\baun\s+no\s+(se\s+)?(ha\s+|fue\s+)?envi/.test(s)
   );
 }
 
 /**
  * Classify a mapped Ventas row for operator chips.
+ * Enviado / negation is read from **estadoText only** (col F). Never scan
+ * rawSheetText — notes/historial with "no enviado" must not override ENVIADO.
  * @param {{
  *   estadoText?: string,
  *   fechaEntrega?: string,
@@ -52,10 +56,8 @@ export function hasNegatedEnviado(n) {
  * }}
  */
 export function classifyVentasCoordination(row = {}) {
-  const estado = String(row.estadoText || "");
-  const raw = String(row.rawSheetText || "");
-  const blob = `${estado}\n${raw}`;
-  const n = normalizeSearchText(blob);
+  // Ops UX F2: col F estado drives Enviado chip — ignore full-row rawSheetText.
+  const n = normalizeSearchText(String(row.estadoText || ""));
 
   // Negation first: "NO ENVIADO" matches \benviado\b otherwise.
   if (

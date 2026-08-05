@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (fix — Envíos coordination chip estado-only + negation):** `classifyVentasCoordination` reads Enviado/negation from **col F `estadoText` only** (ignores `rawSheetText` notes that contain "no enviado"). Stronger negation for `no se ha enviado` / `no fue enviado` / `nunca enviado`. Residual from #867 blob scan.
+
 **2026-08-05 (fix — Envíos NO ENVIADO chip + bridge live state + forced fila):** `classifyVentasCoordination` no longer treats `NO ENVIADO`/`sin enviar` as Enviado. `resolveBridgeHandoff` prefers live destino/panels over stale `lastQuote`. Stack packing overflow honors `rowOverrides` forced fila. Supersedes drafts #859/#851.
 
 **2026-08-05 (feat — WA cockpit media richness G7/G8/G9 · SHIPPED+VERIFIED):** PR [#847](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/847) → main `ff312646` → Cloud Run **`panelin-calc-00934-lp5`**. Mode C: private GCS `wa-media/` + signed GET; magic gate (`not_audio_junk`); link/clear; local Whisper primary (`WA_TRANSCRIPT_CLOUD` default off). **Prod verified:** health 200, media unauth 401, Deli images 302+JPEG, messages `has_media`. Spec: [`features/WA-MEDIA-RICHNESS-SPEC.md`](./features/WA-MEDIA-RICHNESS-SPEC.md). Prompt eng: [`goal-prompts/goal-prompt-wa-media-richness-100.md`](./goal-prompts/goal-prompt-wa-media-richness-100.md). Operator: [`../wa-cockpit/MEDIA-G7G8G9.md`](../wa-cockpit/MEDIA-G7G8G9.md). Handoff: [`HANDOFF-2026-08-05-wa-media-100.md`](./HANDOFF-2026-08-05-wa-media-100.md). Residual G8: operator play-in-WA for real Ogg.
