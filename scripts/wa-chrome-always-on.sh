@@ -87,11 +87,12 @@ cmd_status() {
   echo "Profile:  $PROFILE_DIR"
   if is_running; then
     echo "Status:   RUNNING"
-    pgrep -fl "user-data-dir=${PROFILE_DIR}" 2>/dev/null | head -3 || true
+    pgrep -fl "user-data-dir=${PROFILE_DIR}( |$)" 2>/dev/null | head -3 || true
     [[ -f "$PID_FILE" ]] && echo "PID file: $(cat "$PID_FILE")"
   else
     echo "Status:   stopped"
   fi
+
   if [[ -f "$PLIST_DST" ]]; then
     echo "Agent:    installed ($PLIST_DST)"
     launchctl print "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null | head -5 || echo "  (loaded? check launchctl list | grep bmc.wa)"
