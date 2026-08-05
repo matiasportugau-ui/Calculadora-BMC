@@ -71,3 +71,7 @@ Only if `WA_TRANSCRIPT_CLOUD=1` on Cloud Run **and** `OPENAI_API_KEY` is set. De
 | `WA_TRANSCRIPT_DISABLED` | unset/0 | When `1`, cloud worker stays off even if `WA_TRANSCRIPT_CLOUD=1` |
 
 Local worker is unaffected by these flags.
+
+## Persistent session (no daily QR)
+
+See [PERSISTENT-SESSION.md](./PERSISTENT-SESSION.md) — always-on Chrome + LaunchAgent.
