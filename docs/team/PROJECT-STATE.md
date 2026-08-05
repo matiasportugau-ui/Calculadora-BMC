@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (feat — Envíos Ops UX F1/F3a collapse + stop DnD):** `/logistica` paradas plegables (chevron + summary; `ui.collapsedStopIds` en localStorage; default collapse si hay más de 3 paradas). Reorden HTML5 por asa ⠿ → `reorderStops` / `renumberStops` (`stopReorder.js`). Tests `stopReorder.test.js`.
+
 **2026-08-05 (feat — Envíos Ops UX F2 Ventas search + chips):** Fix `/logistica` **Buscar cliente en Ventas** — filter haystack (nombre, pedido, tel, dir, estado) instead of hardcoded `r[7]` only. Chips **Enviado** / **Coordinado · fecha** (batch color by G date) / **Por coordinar** via pure `coordinationStatus.js` + `ventasSearch.js`. SDD [`SDD-OPS-UX-WAVE.md`](../sdd/bmc-envios/SDD-OPS-UX-WAVE.md). Tests coordinationStatus + ventasSearchFilter in `test:core`.
 
 **2026-08-05 (fix — Envíos 1-fila freight + bridge draft safety):** Column packer `pickColumnRow` minimizes `filasUsadas` (fill used fila before opening B) so Maldonado 9–16× ISODEC 100 mm quotes **USD 280** (1 fila) not false **USD 525**. Quote→ops bridge uses `mergeBridgeIntoStops` (append when draft has content; replace empty placeholders); clear session bridge only after apply; `hydrated` gate so empty `stops=[]` cannot race-wipe `localStorage`. Tests: fleteEngine, cargoPacking, bridgePayload. Supersedes drafts #836/#837.
