@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (feat — WA cockpit media richness G7/G8/G9):** Mode C media: private GCS `wa-media/` + signed GET; `POST /api/wa/media` (+ link/clear); transcript API + **local Whisper** worker (`scripts/wa-local-stt-worker.mjs`, cloud STT only if `WA_TRANSCRIPT_CLOUD=1`). **Magic-byte gate** rejects FB JS junk as audio/image; `/media/clear` reverts STT-filled text to `[Nota de voz · Ns]`. Cockpit `MessageBody` shows images/audio/transcript. Migration `018_wa_media.sql`. Dockerfile full `COPY src/` + `scripts/`. Prod: ship via PR #847 → main → deploy-calc-api (not ad-hoc dirty tree). G8 residual = CDN 410 / zero real Ogg (no synthetic STT). Tests `waMediaPlaceholder` 28. Handoff: [`HANDOFF-2026-08-05-wa-media-100.md`](./HANDOFF-2026-08-05-wa-media-100.md). Docs: [`docs/wa-cockpit/LOCAL-STT.md`](../wa-cockpit/LOCAL-STT.md).
+
 **2026-08-05 (docs — BMC Envíos SDD v1.4 glory + U3):** Quality auditor glory: SDD **v1.4 As-Built** (U1/U2 + F1–F6); SCORECARD **96 pass**. U3 FSM **DONE** #857 (`stopStatusFsm.js`) documented in TARGET/GAP-PLAN/E-37. Residual product: P2/P3/P5 only.
 
 **2026-08-05 (feat — Envíos Ops UX F4–F6 3D labels, layout, plan de carga):** Packing meta `sPed`+`sCli` on bultos. 3D: etiquetas cliente+pedido (drei Html), detalle al clic, **cabina translúcida**. SVG/3D: seleccionar bulto → **Fila A/B** via `packageDrop` + `rowOverrides` (layout manual). Tab **Plan carga**: orden de descarga + vistas superior/lateral imprimibles. Pure tests packageDrop, loadPlanPrintModel.

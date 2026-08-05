@@ -53,6 +53,7 @@ import { setWaConfigModuleForQuoteParams } from "./lib/waQuoteParams.js";
 import { initWaWebhooks } from "./lib/waWebhooks.js";
 import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
+import { startWaTranscriptWorker } from "./lib/waTranscriptWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
 import marketingRouter from "./routes/marketing.js";
 import adsRouter from "./routes/ads.js";
@@ -1260,6 +1261,7 @@ let stopTraktimeMirror = () => {};
 let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
+let stopWaTranscript = () => {};
 let stopOmniAiWorker = () => {};
 let stopOmniFrtBreachWorker = () => {};
 let stopOmniSnoozeWorker = () => {};
@@ -1335,6 +1337,15 @@ const server = app.listen(config.port, async () => {
     logger.info("WA sla + followups workers started");
   }
 
+  // Cloud STT optional — primary path is Mac local whisper turbo (scripts/wa-local-stt-worker.mjs).
+  // Enable only with WA_TRANSCRIPT_CLOUD=1 (uses OPENAI_API_KEY).
+  if (waPool && process.env.WA_TRANSCRIPT_CLOUD === "1") {
+    stopWaTranscript = startWaTranscriptWorker({ config, logger, pool: waPool });
+    logger.info("WA cloud transcript worker started (fallback)");
+  } else {
+    logger.info("WA cloud transcript worker OFF — use local STT worker (default)");
+  }
+
   // Omni WAVE 3 — event bus subscribers + AI worker (flags default OFF)
   wireOmniOrchestration({ config, logger });
   const omniPool = getOmniPool(config.databaseUrl);
@@ -1385,6 +1396,7 @@ function shutdown(signal) {
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
+  try { stopWaTranscript(); } catch (e) { logger.warn({ err: e?.message }, "stopWaTranscript failed"); }
   try { stopOmniAiWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniAiWorker failed"); }
   try { stopOmniSnoozeWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSnoozeWorker failed"); }
   try { stopOmniFrtBreachWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniFrtBreachWorker failed"); }
