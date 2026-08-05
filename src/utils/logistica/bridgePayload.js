@@ -87,6 +87,62 @@ export function parseBridgePayload(raw) {
 }
 
 /**
+ * True when a logistics stop already holds operator-entered content that must
+ * not be silently discarded by a quote→ops bridge import.
+ * @param {object|null|undefined} stop
+ */
+export function stopHasLogisticsContent(stop) {
+  if (!stop || typeof stop !== "object") return false;
+  if ((stop.paneles || []).length > 0) return true;
+  if ((stop.accesorios || []).length > 0) return true;
+  if (String(stop.cliente || "").trim()) return true;
+  if (String(stop.direccion || "").trim()) return true;
+  if (String(stop.orderId || "").trim()) return true;
+  if (String(stop.telefono || "").trim()) return true;
+  return false;
+}
+
+/**
+ * Merge bridge-imported stops into an existing draft without wiping it.
+ * Empty / placeholder drafts are replaced; meaningful drafts append.
+ *
+ * @param {object[]} existingStops
+ * @param {object[]} bridgeStops
+ * @param {{ colors?: string[] }} [opts]
+ * @returns {{ stops: object[], mode: "replace" | "append" | "noop" }}
+ */
+export function mergeBridgeIntoStops(existingStops, bridgeStops, opts = {}) {
+  const incoming = Array.isArray(bridgeStops) ? bridgeStops.filter(Boolean) : [];
+  if (!incoming.length) {
+    return { stops: Array.isArray(existingStops) ? [...existingStops] : [], mode: "noop" };
+  }
+  const base = Array.isArray(existingStops) ? existingStops : [];
+  const meaningful = base.some(stopHasLogisticsContent);
+  if (!meaningful) {
+    return {
+      stops: incoming.map((stop, index) => ({
+        ...stop,
+        orden: index + 1,
+      })),
+      mode: "replace",
+    };
+  }
+  const colors = Array.isArray(opts.colors) && opts.colors.length ? opts.colors : null;
+  return {
+    stops: [
+      ...base,
+      ...incoming.map((stop, i) => {
+        const orden = base.length + i + 1;
+        const next = { ...stop, orden };
+        if (colors) next.color = colors[(orden - 1) % colors.length];
+        return next;
+      }),
+    ],
+    mode: "append",
+  };
+}
+
+/**
  * Convert bridge payload into a minimal stop list for /logistica.
  * @param {BridgePayload} payload
  * @param {{ uid?: () => string, color?: string }} [opts]
