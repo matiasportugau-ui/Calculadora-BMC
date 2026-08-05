@@ -239,3 +239,21 @@ gate:local:   pendiente correr al final de la sesión
 **Próximo paso:** merge #709–#715 cuando CI verde; #610 créditos, #624 email H1–H4, #358 Matriz live.
 
 **Refs:** [`~/.claude/mission-control/BOARD.md`](../../../.claude/mission-control/BOARD.md), plan `mission_control_jul18_f0554a93`.
+
+---
+
+## 2026-08-05 N — BMC Envíos U1/U2 ship (#832) + session close
+
+**Contexto:** Cerrar ciclo SDD + packing SoT + bridge quote→logística; merge a main y verificar prod.
+
+**Acciones:**
+- PR [#832](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/832) merged → `9746f29c` (U1 cargoPacking SoT, U2 bridgePayload + CTA, Liquid Glass, SDD score 98, tests).
+- Deploy Vercel production Ready; API Cloud Run success; smoke:prod OK.
+- Confirmado en prod lazy chunks: `envios-app`, **Enviar a Logística**, `envios-summary`.
+- Docs: PROJECT-STATE entrada 2026-08-05 + handoff `HANDOFF-2026-08-05-bmc-envios-ship.md` (sin commit de cierre; árbol local tiene WA/media dirty no-Envíos).
+
+**Verificación:** `GET /` y `/logistica` 200; App chunk + Google Client ID embebido; markers Envíos en JS lazy.
+
+**Próximo paso:** triage drafts #836 + #837 (1-fila + no wipe drafts); opcional harness-ratchet smoke App-*.js; E2E manual Flete→Enviar con paneles.
+
+**Refs:** #832, drafts #836/#837, `docs/sdd/bmc-envios/`, run GHA 30972626824 (deploy OK / smoke falso rojo).
