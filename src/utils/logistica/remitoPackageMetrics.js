@@ -3,17 +3,18 @@
  * Pure — reuses ROW_W + loadCharacteristics for material volume estimates.
  */
 
+import { buildStopPackages } from "./cargoPacking.js";
 import { ROW_W, estimateStopLoadPhysical, estimateRouteLoadPhysical } from "./loadCharacteristics.js";
 
 /**
  * Cuboid volume of a placed/build package (bed occupancy).
- * @param {{ len?: number, h?: number, w?: number, ancho?: number }} pkg
+ * @param {{ len?: number, h?: number, w?: number, ancho?: number, width?: number }} pkg
  * @param {number} [widthM]
  * @returns {{ L: number, W: number, H: number, volumeM3: number }}
  */
 export function packageCuboidMetrics(pkg = {}, widthM = ROW_W) {
   const L = Math.max(0, Number(pkg.len) || 0);
-  const W = Math.max(0, Number(pkg.w ?? pkg.ancho) || widthM);
+  const W = Math.max(0, Number(pkg.w ?? pkg.ancho ?? pkg.width) || widthM);
   const H = Math.max(0, Number(pkg.h) || 0);
   return {
     L,
@@ -41,20 +42,48 @@ export function formatM(m) {
 }
 
 /**
+ * Canonical remito/WA package code for a stop package index (1-based B#).
+ * Must match `stopPackageCode` / WhatsApp lines from `buildStopPackages` order —
+ * NOT `cargo.placed` order (packing sorts by length and can reorder).
+ * @param {object} stop
+ * @param {number} index zero-based index in buildStopPackages(stop)
+ */
+export function stopPackageCodeAt(stop, index) {
+  const n = Math.max(0, Math.floor(Number(index) || 0)) + 1;
+  return `P${stop?.orden || "?"}-B${n}`;
+}
+
+/**
+ * Map placed packages → codes via stableKey against buildStopPackages(stop).
+ * Packing may reorder or split; codes must stay aligned with WA / form labels.
+ * @param {object} stop
+ * @param {object[]} [placed]
+ * @returns {Map<string, string>} stableKey → code (first placed part wins for splits)
+ */
+export function buildStopPackageCodeMap(stop) {
+  const canonical = buildStopPackages(stop);
+  return new Map(
+    canonical.map((pkg, index) => [pkg.stableKey, stopPackageCodeAt(stop, index)]),
+  );
+}
+
+/**
  * One row per physical package for remito table.
  * @param {object} stop
  * @param {object[]} placed cargo.placed for this stop
- * @param {(stop: object, index: number) => string} [codeFn]
+ * @param {(stop: object, index: number, pkg: object) => string} [codeFn]
  * @returns {object[]}
  */
 export function buildRemitoPackageRows(stop, placed = [], codeFn) {
   const list = Array.isArray(placed) ? placed : [];
+  const codeByStableKey = buildStopPackageCodeMap(stop);
   return list.map((pkg, index) => {
     const cuboid = packageCuboidMetrics(pkg);
+    const resolved =
+      (pkg?.stableKey && codeByStableKey.get(pkg.stableKey)) ||
+      stopPackageCodeAt(stop, index);
     const code =
-      typeof codeFn === "function"
-        ? codeFn(stop, index)
-        : pkg.id || `P${stop?.orden || "?"}-B${index + 1}`;
+      typeof codeFn === "function" ? codeFn(stop, index, pkg) : resolved;
     const kind = pkg.kind === "accessory" ? "Accesorios" : pkg.tipo || "PANEL";
     const contenido =
       pkg.kind === "accessory"
