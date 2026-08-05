@@ -36,6 +36,8 @@ const ALL_MODULES = [
   "tareas",
   "traktime",
   "banco",
+  // Panelin Workspace platform store (customers/quotes/sessions) — not for public comprador
+  "workspace",
 ];
 
 const ROLE_RANK = { superadmin: 4, admin: 3, operator: 2, comprador: 1 };
@@ -848,7 +850,15 @@ function _roleDefaults(role) {
     case "admin":
       return { ...allWrite, admin: "admin" };
     case "operator":
-      return { calc: "write", wa: "write", ml: "write", "agent-admin": "read", canales: "read" };
+      return {
+        calc: "write",
+        wa: "write",
+        ml: "write",
+        "agent-admin": "read",
+        canales: "read",
+        // Internal BMC-as-platform store (PII + chat sessions). Comprador must not inherit this.
+        workspace: "write",
+      };
     case "comprador":
     default:
       return { calc: "write" };

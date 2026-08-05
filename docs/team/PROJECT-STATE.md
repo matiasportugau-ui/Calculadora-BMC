@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (fix — workspace module grant gate):** `/api/workspace/*` CRUD + `/state` now require `requireUser({ module: "workspace" })` (was bare JWT). Self-registered `comprador` (open Google signup) can no longer read/write shared customers/quotes/chat sessions. Operator+ get `workspace:write` via role defaults; seed `identity.modules` slug `workspace`. Tests: `workspaceAuthGate.test.js`.
+
 **2026-08-05 (close — Envíos wave session):** Product complete on main through #867; SDD v1.4 / SCORECARD 96 via #863. **Leave Envíos** unless multi-device P5 or operator bug. Next context: WA or security. Handoff: [`HANDOFF-2026-08-05-envios-session-close.md`](./HANDOFF-2026-08-05-envios-session-close.md).
 
 **2026-08-05 (fix — Envíos NO ENVIADO chip + bridge live state + forced fila):** `classifyVentasCoordination` no longer treats `NO ENVIADO`/`sin enviar` as Enviado. `resolveBridgeHandoff` prefers live destino/panels over stale `lastQuote`. Stack packing overflow honors `rowOverrides` forced fila. Supersedes drafts #859/#851.

@@ -48,6 +48,12 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
     return next();
   }
 
+  // Workspace holds shared customers/quotes/chat sessions (PII). Bare requireUser()
+  // accepted any self-registered comprador JWT — gate on module grant instead.
+  // Operators get workspace:write via role defaults; comprador has none.
+  const requireWorkspaceRead = requireUser({ module: "workspace", minLevel: "read" });
+  const requireWorkspaceWrite = requireUser({ module: "workspace", minLevel: "write" });
+
   function handleDbError(res, err, label) {
     if (isDbConnectionError(err)) {
       log.warn?.({ err }, `[workspace] ${label} db connection`);
@@ -287,7 +293,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.get(
     "/api/workspace/state",
     requireDb,
-    requireUser(),
+    requireWorkspaceRead,
     asyncHandler(async (req, res) => {
       try {
         const seeded = await ensureSeeded();
@@ -313,7 +319,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.get(
     "/api/workspace/projects",
     requireDb,
-    requireUser(),
+    requireWorkspaceRead,
     asyncHandler(async (_req, res) => {
       try {
         await ensureSeeded();
@@ -338,7 +344,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.post(
     "/api/workspace/projects",
     requireDb,
-    requireUser(),
+    requireWorkspaceWrite,
     asyncHandler(async (req, res) => {
       const name = trimOrNull(req.body?.name);
       const workspaceId = trimOrNull(req.body?.workspaceId) || "ws-1";
@@ -368,7 +374,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.get(
     "/api/workspace/sessions",
     requireDb,
-    requireUser(),
+    requireWorkspaceRead,
     asyncHandler(async (req, res) => {
       try {
         await ensureSeeded();
@@ -399,7 +405,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.post(
     "/api/workspace/sessions",
     requireDb,
-    requireUser(),
+    requireWorkspaceWrite,
     asyncHandler(async (req, res) => {
       const projectId = trimOrNull(req.body?.projectId);
       const title = trimOrNull(req.body?.title);
@@ -431,7 +437,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.patch(
     "/api/workspace/sessions/:id",
     requireDb,
-    requireUser(),
+    requireWorkspaceWrite,
     asyncHandler(async (req, res) => {
       const id = req.params.id;
       const sets = [];
@@ -472,7 +478,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.get(
     "/api/workspace/customers",
     requireDb,
-    requireUser(),
+    requireWorkspaceRead,
     asyncHandler(async (req, res) => {
       try {
         await ensureSeeded();
@@ -489,7 +495,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.get(
     "/api/workspace/customers/:id",
     requireDb,
-    requireUser(),
+    requireWorkspaceRead,
     asyncHandler(async (req, res) => {
       try {
         const customer = await workspaceStore.getCustomer(pool, String(req.params.id || "").trim());
@@ -504,7 +510,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.post(
     "/api/workspace/customers",
     requireDb,
-    requireUser(),
+    requireWorkspaceWrite,
     asyncHandler(async (req, res) => {
       try {
         await ensureSeeded();
@@ -538,7 +544,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.get(
     "/api/workspace/quotes",
     requireDb,
-    requireUser(),
+    requireWorkspaceRead,
     asyncHandler(async (req, res) => {
       try {
         await ensureSeeded();
@@ -557,7 +563,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.get(
     "/api/workspace/quotes/:id",
     requireDb,
-    requireUser(),
+    requireWorkspaceRead,
     asyncHandler(async (req, res) => {
       try {
         const quote = await workspaceStore.getQuote(pool, String(req.params.id || "").trim());
@@ -572,7 +578,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.post(
     "/api/workspace/quotes",
     requireDb,
-    requireUser(),
+    requireWorkspaceWrite,
     asyncHandler(async (req, res) => {
       try {
         await ensureSeeded();
@@ -607,7 +613,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.get(
     "/api/workspace/files",
     requireDb,
-    requireUser(),
+    requireWorkspaceRead,
     asyncHandler(async (req, res) => {
       try {
         await ensureSeeded();
@@ -626,7 +632,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.get(
     "/api/workspace/files/:id",
     requireDb,
-    requireUser(),
+    requireWorkspaceRead,
     asyncHandler(async (req, res) => {
       try {
         const file = await workspaceStore.getFile(pool, String(req.params.id || "").trim());
@@ -641,7 +647,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.post(
     "/api/workspace/files",
     requireDb,
-    requireUser(),
+    requireWorkspaceWrite,
     asyncHandler(async (req, res) => {
       try {
         await ensureSeeded();
@@ -852,7 +858,7 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   router.post(
     "/api/workspace/telemetry",
     requireDb,
-    requireUser(),
+    requireWorkspaceWrite,
     asyncHandler(async (req, res) => {
       const workspaceId = trimOrNull(req.body?.workspaceId) || "ws-1";
       const source = trimOrNull(req.body?.source) || "workspace";
