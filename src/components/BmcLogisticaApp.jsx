@@ -1,20 +1,34 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { parseLogisticaFromAdjuntoText } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
 import { extractTextFromPdfArrayBuffer } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/pdfTextExtract.js";
-import { MAX_H, MANUAL_LAYOUT_VERSION, panelStableKey, accessoryStableKey } from "../utils/bmcLogisticaCargo.js";
+import { MAX_H, MANUAL_LAYOUT_VERSION } from "../utils/bmcLogisticaCargo.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { parsePedidoRetiroFromFreeText, parsePedidoFromColumnC, parsePickupIdFromColumnF } from "../utils/ventasPedidoRetiroParse.js";
 import { bedViewExtents, mirrorStackForView, buildLogisticaPlanExportPayload } from "../utils/bmcLogisticaBedView.js";
+import {
+  ENV_T as T,
+  enviosCardSolidStyle,
+  enviosFieldStyle,
+  enviosLabelStyle,
+  enviosSectionTitleStyle,
+} from "../utils/enviosTheme.js";
+import {
+  placeCargo,
+  buildPkgs,
+  buildStopPackages,
+  ROW_W,
+} from "../utils/logistica/cargoPacking.js";
+import {
+  loadBridgePayload,
+  bridgePayloadToStops,
+} from "../utils/logistica/bridgePayload.js";
 
 const TRUCK_W = 2.4;
-const ROW_W = 1.2;
 
 /** Largo esquemático de cabina (solo dibujo orientativo, no afecta el motor de carga). */
 const CAB_LEN_M = 2.4;
 /** Altura cabina en vista lateral (m; escala vertical = SVZ px/m, mismo eje que paquetes). */
 const CAB_HEIGHT_M = 1.5;
-const MAX_OVH = 2.0;
-const MAX_P = { 40: 12, 50: 10, 60: 10, 80: 8, 100: 8, 150: 6, 200: 4, 250: 3 };
 const COLORS = ["#0071e3", "#34c759", "#ff9f0a", "#ff3b30", "#af52de", "#ff375f", "#5ac8fa", "#ff6b00"];
 const TIPOS = ["ISODEC", "ISOPANEL", "ISOROOF", "ISOWALL", "ISOFRIG", "ISOFRIG_PIR"];
 const ESPS = [40, 50, 60, 80, 100, 150, 200, 250];
@@ -44,56 +58,12 @@ const CHECK_KEYS = [
   ["recepcionAvisada", "Recepción avisada"],
 ];
 
-const T = {
-  bg: "#f5f5f7",
-  surface: "#ffffff",
-  surfaceAlt: "#fafafa",
-  primary: "#0071e3",
-  brand: "#1a3a5c",
-  text: "#1d1d1f",
-  muted: "#6e6e73",
-  border: "#e5e5ea",
-  success: "#34c759",
-  danger: "#ff3b30",
-  warning: "#ff9f0a",
-  shadow: "0 1px 3px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.06)",
-  radius: 12,
-  font: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif",
-};
-
+/** Solid content styles; chrome uses CSS classes from bmc-envios-glass.css */
 const css = {
-  card: {
-    background: T.surface,
-    border: `1px solid ${T.border}`,
-    borderRadius: T.radius,
-    boxShadow: T.shadow,
-  },
-  inp: {
-    width: "100%",
-    padding: "9px 12px",
-    border: `1.5px solid ${T.border}`,
-    borderRadius: 10,
-    background: T.surface,
-    color: T.text,
-    fontSize: 13,
-    fontFamily: T.font,
-    boxSizing: "border-box",
-  },
-  lbl: {
-    display: "block",
-    fontSize: 11,
-    color: T.muted,
-    fontWeight: 600,
-    marginBottom: 6,
-    textTransform: "uppercase",
-    letterSpacing: ".05em",
-  },
-  sectionTitle: {
-    margin: "0 0 10px",
-    color: T.brand,
-    fontWeight: 700,
-    fontSize: 14,
-  },
+  card: enviosCardSolidStyle,
+  inp: enviosFieldStyle,
+  lbl: enviosLabelStyle,
+  sectionTitle: enviosSectionTitleStyle,
 };
 
 function Btn({
@@ -159,7 +129,6 @@ function TruckCabSideSvg({ x, cabW, groundY, stroke, fill, showLabel = true, svz
 
 let _id = 0;
 const uid = () => String(++_id);
-const ph = (e, n) => +(0.1 + n * (e / 1000) + Math.max(0, n - 1) * 0.02).toFixed(4);
 const today = () => new Date().toISOString().slice(0, 10);
 const envNo = () => `ENV-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-001`;
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -632,342 +601,6 @@ function badgeStyle(tone) {
   };
 }
 
-function buildPkgs(stop, panel) {
-  const max = MAX_P[panel.espesor] || 8;
-  let rem = Math.max(0, safeNum(panel.cantidad));
-  const pkgs = [];
-  let chunkIdx = 0;
-  while (rem > 0) {
-    const n = Math.min(rem, max);
-    pkgs.push({
-      id: uid(),
-      stableKey: panelStableKey(stop.id, panel.id, chunkIdx),
-      sId: stop.id,
-      sOrd: stop.orden,
-      sCol: stop.color,
-      sCli: stop.cliente,
-      tipo: panel.tipo,
-      esp: safeNum(panel.espesor),
-      len: safeNum(panel.longitud),
-      n,
-      h: ph(panel.espesor, n),
-    });
-    chunkIdx += 1;
-    rem -= n;
-  }
-  return pkgs;
-}
-
-function buildAccessoryPkg(stop) {
-  const accesorios = stop?.accesorios || [];
-  const cfg = buildAccessoryPackageConfig(stop);
-  if (!accesorios.length || !cfg.enabled) return [];
-  const totalAcc = accesorios.reduce((acc, item) => acc + Math.max(1, safeNum(item.cantidad, 1)), 0);
-  const foamM = clamp(safeNum(cfg.foamMm, DEFAULT_ACC_FOAM_MM), 0, 100) / 1000;
-  const contentH = clamp(safeNum(cfg.alto, DEFAULT_ACC_H), 0.1, 0.5);
-  return [{
-    id: uid(),
-    stableKey: accessoryStableKey(stop.id),
-    sId: stop.id,
-    sOrd: stop.orden,
-    sCol: stop.color,
-    sCli: stop.cliente,
-    kind: "accessory",
-    tipo: "ACCESORIOS",
-    esp: "",
-    len: clamp(safeNum(cfg.longitud, getStopLongestLength(stop)), 1, 14),
-    n: 1,
-    h: +(contentH + foamM).toFixed(4),
-    width: clamp(safeNum(cfg.ancho, DEFAULT_ACC_W), 0.2, 0.5),
-    foamMm: Math.round(foamM * 1000),
-    contentHeight: contentH,
-    accessoryCount: totalAcc,
-    accessorySummary: accesorios.map((item) => `${item.cantidad}x ${item.descr}`).join(" · "),
-  }];
-}
-
-function buildStopPackages(stop) {
-  return [
-    ...((stop?.paneles || []).flatMap((panel) => buildPkgs(stop, panel).map((pkg) => ({ ...pkg, kind: "panel" })))),
-    ...buildAccessoryPkg(stop),
-  ];
-}
-
-function getRowSummary(stacksByRow) {
-  return stacksByRow.map((stacks) => ({
-    height: stacks.length ? Math.max(...stacks.map((stack) => stack.height)) : 0,
-    usedLen: stacks.reduce((acc, stack) => acc + stack.len, 0),
-    stackCount: stacks.length,
-  }));
-}
-
-function getStackTopLen(stack) {
-  if (!stack?.items?.length) return stack?.len || 0;
-  return stack.items[stack.items.length - 1].len;
-}
-
-function getHeightSpreadAfter(stacksByRow, row, stackIndex, nextHeight, type) {
-  const heights = stacksByRow[row].map((stack, idx) => (idx === stackIndex ? nextHeight : stack.height));
-  if (type === "new") heights.push(nextHeight);
-  if (!heights.length) return nextHeight;
-  return Math.max(...heights) - Math.min(...heights);
-}
-
-function pickCandidateScore(candidate, strategy) {
-  const { type, rowSummary, nextHeight, row, usedLenAfter, stackHeightAfter, stackIndex, heightSpreadAfter } = candidate;
-  if (strategy === "compact") {
-    return [
-      type === "existing" ? 0 : 1,
-      rowSummary[row].usedLen ? 0 : 1,
-      usedLenAfter,
-      heightSpreadAfter,
-      stackIndex ?? 999,
-      nextHeight,
-      row,
-    ];
-  }
-  if (strategy === "doorPriority") {
-    return [
-      type === "existing" ? 0 : 1,
-      nextHeight,
-      heightSpreadAfter,
-      rowSummary[row].usedLen,
-      stackHeightAfter,
-      row,
-    ];
-  }
-  return [
-    nextHeight,
-    heightSpreadAfter,
-    type === "existing" ? 0 : 1,
-    usedLenAfter,
-    stackHeightAfter,
-    row,
-  ];
-}
-
-function compareScore(a, b) {
-  const len = Math.max(a.length, b.length);
-  for (let i = 0; i < len; i += 1) {
-    const av = a[i] ?? 0;
-    const bv = b[i] ?? 0;
-    if (av < bv) return -1;
-    if (av > bv) return 1;
-  }
-  return 0;
-}
-
-function buildUnloadPlan(placed) {
-  const stackDoorOrder = [...new Set(placed.map((pkg) => pkg.stackId))]
-    .sort((a, b) => {
-      const sa = placed.find((pkg) => pkg.stackId === a);
-      const sb = placed.find((pkg) => pkg.stackId === b);
-      if (!sa || !sb) return 0;
-      if (sa.xStart !== sb.xStart) return sa.xStart - sb.xStart;
-      if (sa.row !== sb.row) return sa.row - sb.row;
-      return a.localeCompare(b);
-    });
-  const stackRankMap = new Map(stackDoorOrder.map((stackId, idx) => [stackId, idx + 1]));
-  const ordered = [...placed].sort((a, b) => {
-    const rankA = stackRankMap.get(a.stackId) || 999;
-    const rankB = stackRankMap.get(b.stackId) || 999;
-    if (rankA !== rankB) return rankA - rankB;
-    if (a.zBase !== b.zBase) return b.zBase - a.zBase;
-    if (a.sOrd !== b.sOrd) return a.sOrd - b.sOrd;
-    return a.id.localeCompare(b.id);
-  });
-  return ordered.map((pkg, idx) => ({ ...pkg, unloadRank: idx + 1, stackUnloadRank: stackRankMap.get(pkg.stackId) || null }));
-}
-
-function summarizeStopUnload(unloadPlan, stops) {
-  return stops
-    .map((stop) => {
-      const pkgs = unloadPlan.filter((pkg) => pkg.sId === stop.id);
-      const firstRank = pkgs.length ? Math.min(...pkgs.map((pkg) => pkg.unloadRank)) : Number.POSITIVE_INFINITY;
-      const avgHeightPct = pkgs.length
-        ? Math.round((pkgs.reduce((acc, pkg) => acc + (pkg.zBase + pkg.h / 2) / MAX_H, 0) / pkgs.length) * 100)
-        : 0;
-      const topZ = pkgs.length ? Math.max(...pkgs.map((pkg) => pkg.zBase + pkg.h)) : 0;
-      return {
-        stop,
-        pkgs,
-        firstRank,
-        avgHeightPct,
-        topZ,
-      };
-    })
-    .sort((a, b) => a.firstRank - b.firstRank || b.topZ - a.topZ || a.stop.orden - b.stop.orden);
-}
-
-function placeCargo(stops, trL, strategy = "balanced", layoutOptions = {}) {
-  const { mode = "auto", manualOrderKeys = [], rowOverrides = {} } = layoutOptions;
-  const all = [...stops]
-    .sort((a, b) => a.orden - b.orden)
-    .flatMap((s) => buildStopPackages(s));
-
-  if (!all.length) {
-    return {
-      placed: [],
-      rowH: [0, 0],
-      warns: [],
-      maxLen: trL,
-      maxX: trL,
-      rowCursor: [trL, trL],
-      minX: 0,
-      stacksByRow: [[], []],
-      unloadPlan: [],
-      stopUnloadOrder: [],
-      strategy,
-      layoutMode: mode,
-      manualLayoutVersion: MANUAL_LAYOUT_VERSION,
-    };
-  }
-
-  const orderIdx = new Map((manualOrderKeys || []).map((k, i) => [k, i]));
-  const load = [...all].sort((a, b) => {
-    if (mode === "manual" && manualOrderKeys.length) {
-      const ia = orderIdx.has(a.stableKey) ? orderIdx.get(a.stableKey) : 9999;
-      const ib = orderIdx.has(b.stableKey) ? orderIdx.get(b.stableKey) : 9999;
-      if (ia !== ib) return ia - ib;
-    }
-    if (a.sOrd !== b.sOrd) return b.sOrd - a.sOrd;
-    if (a.len !== b.len) return b.len - a.len;
-    return b.h - a.h;
-  });
-  const stacksByRow = [[], []];
-  const rowCursor = [trL, trL];
-  const placed = [];
-  const warns = new Set();
-
-  load.forEach((pkg) => {
-    const ovh = Math.max(0, pkg.len - trL);
-    if (ovh > MAX_OVH) {
-      warns.add(`P${pkg.sOrd}: panel ${pkg.len}m sobresale ${ovh.toFixed(1)}m. Revisar largo útil del camión.`);
-    }
-
-    const forcedRow = rowOverrides[pkg.stableKey];
-    const rowSummary = getRowSummary(stacksByRow);
-    const candidates = [];
-
-    for (let row = 0; row < 2; row += 1) {
-      if (forcedRow !== undefined && forcedRow !== row) continue;
-      stacksByRow[row].forEach((stack, stackIndex) => {
-        const topLen = getStackTopLen(stack);
-        const fitsOnImmediateSupport = pkg.len <= topLen + 0.001;
-        const nextStackHeight = stack.height + pkg.h;
-        if (!fitsOnImmediateSupport || nextStackHeight > MAX_H + 0.001) return;
-        const nextHeight = Math.max(rowSummary[row].height, nextStackHeight);
-        const heightSpreadAfter = getHeightSpreadAfter(stacksByRow, row, stackIndex, nextStackHeight, "existing");
-        candidates.push({
-          type: "existing",
-          row,
-          stackIndex,
-          stackHeightAfter: nextStackHeight,
-          nextHeight,
-          rowSummary,
-          usedLenAfter: rowSummary[row].usedLen,
-          heightSpreadAfter,
-          supportLen: topLen,
-        });
-      });
-
-      const stackXStart = rowCursor[row] - pkg.len;
-      const lengthOk = stackXStart >= -MAX_OVH - 0.001;
-      if (lengthOk && pkg.h <= MAX_H + 0.001) {
-        const nextHeight = Math.max(rowSummary[row].height, pkg.h);
-        const heightSpreadAfter = getHeightSpreadAfter(stacksByRow, row, null, pkg.h, "new");
-        candidates.push({
-          type: "new",
-          row,
-          stackHeightAfter: pkg.h,
-          nextHeight,
-          rowSummary,
-          usedLenAfter: rowSummary[row].usedLen + pkg.len,
-          heightSpreadAfter,
-        });
-      }
-    }
-
-    let chosen = null;
-    if (candidates.length) {
-      chosen = [...candidates].sort((a, b) => compareScore(pickCandidateScore(a, strategy), pickCandidateScore(b, strategy)))[0];
-    } else {
-      const rowSummaryNow = getRowSummary(stacksByRow);
-      const anyHeightOk = rowSummaryNow.some(() => pkg.h <= MAX_H + 0.001);
-      if (!anyHeightOk) warns.add(`P${pkg.sOrd}: excede ${MAX_H}m en ambas filas — se requiere 2° camión.`);
-      else warns.add(`P${pkg.sOrd}: no entra en largo útil sin exceder la tolerancia de saliente.`);
-      chosen = { type: "overflow", row: rowCursor[0] >= rowCursor[1] ? 0 : 1 };
-    }
-
-    let row = chosen.row;
-    let stack;
-
-    if (chosen.type === "existing") {
-      stack = stacksByRow[row][chosen.stackIndex];
-    } else {
-      const len = pkg.len;
-      const xStart = rowCursor[row] - len;
-      const xEnd = rowCursor[row];
-      stack = {
-        id: `R${row + 1}-S${stacksByRow[row].length + 1}`,
-        row,
-        len,
-        xStart,
-        xEnd,
-        height: 0,
-        items: [],
-      };
-      stacksByRow[row].push(stack);
-      rowCursor[row] = xStart;
-    }
-
-    const zBase = stack.height;
-    const alignedXStart = stack.xEnd - pkg.len;
-    const alignedXEnd = stack.xEnd;
-    const ov = zBase + pkg.h > MAX_H + 0.001;
-    const supportLen = chosen.type === "existing" ? getStackTopLen(stack) : pkg.len;
-    const placedPkg = {
-      ...pkg,
-      row,
-      zBase,
-      xStart: alignedXStart,
-      xEnd: alignedXEnd,
-      ovh,
-      ov,
-      stackId: stack.id,
-      stackLen: stack.len,
-      layerIndex: stack.items.length,
-      supportLen,
-      supportRatio: supportLen > 0 ? Math.min(1, supportLen / Math.max(pkg.len, 0.001)) : 1,
-    };
-    stack.items.push(placedPkg);
-    stack.height += pkg.h;
-    placed.push(placedPkg);
-  });
-
-  const rowH = getRowSummary(stacksByRow).map((row) => row.height);
-  const unloadPlan = buildUnloadPlan(placed);
-  const stopUnloadOrder = summarizeStopUnload(unloadPlan, stops);
-
-  return {
-    placed,
-    rowH,
-    warns: [...warns],
-    /** Mayor largo de paquete (m); no confundir con extensión en eje X. */
-    maxLen: Math.max(...placed.map((p) => p.len), trL),
-    /** Extensión máxima en eje X del layout (borde derecho de carga). */
-    maxX: placed.length ? Math.max(trL, ...placed.map((p) => p.xEnd)) : trL,
-    rowCursor,
-    minX: Math.min(0, ...placed.map((p) => p.xStart)),
-    stacksByRow,
-    unloadPlan,
-    stopUnloadOrder,
-    strategy,
-    layoutMode: mode,
-    manualLayoutVersion: MANUAL_LAYOUT_VERSION,
-  };
-}
-
 const ISX = 24;
 const ISY = 24;
 const ISZ = 48;
@@ -1374,34 +1007,61 @@ export default function BmcLogisticaApp() {
     try {
       let raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) raw = localStorage.getItem(STORAGE_KEY_LEGACY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed.info) setInfo((prev) => ({ ...prev, ...parsed.info }));
-      if (parsed.accProfiles && typeof parsed.accProfiles === "object") setAccProfiles(parsed.accProfiles);
-      if (Array.isArray(parsed.stops)) {
-        setStops(
-          parsed.stops.map((stop, index) => ({
-            ...mkStop(index),
-            ...stop,
-            orderId: stop.orderId ?? "",
-            pickupId: stop.pickupId ?? "",
-            checks: { ...mkStop(index).checks, ...(stop.checks || {}) },
-            accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, parsed.accProfiles || {}),
-          }))
-        );
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.info) setInfo((prev) => ({ ...prev, ...parsed.info }));
+        if (parsed.accProfiles && typeof parsed.accProfiles === "object") setAccProfiles(parsed.accProfiles);
+        if (Array.isArray(parsed.stops)) {
+          setStops(
+            parsed.stops.map((stop, index) => ({
+              ...mkStop(index),
+              ...stop,
+              orderId: stop.orderId ?? "",
+              pickupId: stop.pickupId ?? "",
+              checks: { ...mkStop(index).checks, ...(stop.checks || {}) },
+              accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, parsed.accProfiles || {}),
+            }))
+          );
+        }
+        if (parsed.truckL) setTruckL(parsed.truckL);
+        if (parsed.view) setView(parsed.view);
+        if (parsed.distributionMode) setDistributionMode(parsed.distributionMode);
+        if (parsed.cargoLayoutMode === "manual" || parsed.cargoLayoutMode === "auto") setCargoLayoutMode(parsed.cargoLayoutMode);
+        if (Array.isArray(parsed.manualPkgOrderKeys)) setManualPkgOrderKeys(parsed.manualPkgOrderKeys);
+        if (parsed.rowOverrides && typeof parsed.rowOverrides === "object") setRowOverrides(parsed.rowOverrides);
+        if (Array.isArray(parsed.transportistas)) setTransportistas(parsed.transportistas);
+        if (Array.isArray(parsed.camionesCat)) setCamionesCat(parsed.camionesCat);
+        if (Array.isArray(parsed.priceHistory)) setPriceHistory(parsed.priceHistory);
+        if (Array.isArray(parsed.tripCostLog)) setTripCostLog(parsed.tripCostLog);
       }
-      if (parsed.truckL) setTruckL(parsed.truckL);
-      if (parsed.view) setView(parsed.view);
-      if (parsed.distributionMode) setDistributionMode(parsed.distributionMode);
-      if (parsed.cargoLayoutMode === "manual" || parsed.cargoLayoutMode === "auto") setCargoLayoutMode(parsed.cargoLayoutMode);
-      if (Array.isArray(parsed.manualPkgOrderKeys)) setManualPkgOrderKeys(parsed.manualPkgOrderKeys);
-      if (parsed.rowOverrides && typeof parsed.rowOverrides === "object") setRowOverrides(parsed.rowOverrides);
-      if (Array.isArray(parsed.transportistas)) setTransportistas(parsed.transportistas);
-      if (Array.isArray(parsed.camionesCat)) setCamionesCat(parsed.camionesCat);
-      if (Array.isArray(parsed.priceHistory)) setPriceHistory(parsed.priceHistory);
-      if (Array.isArray(parsed.tripCostLog)) setTripCostLog(parsed.tripCostLog);
     } catch {
       // ignore persisted-state errors
+    }
+
+    // U2: import quote→ops bridge (sessionStorage) after draft restore
+    try {
+      const bridge = loadBridgePayload({ clear: true });
+      if (!bridge?.panels?.length) return;
+      const { stops: bridgeStops, infoPatch } = bridgePayloadToStops(bridge, {
+        uid: () => uid(),
+        color: COLORS[0],
+      });
+      if (!bridgeStops.length) return;
+      setStops(
+        bridgeStops.map((stop, index) => ({
+          ...mkStop(index),
+          ...stop,
+          checks: { ...mkStop(index).checks, datosOk: Boolean(stop.direccion), bultosOk: stop.paneles?.length > 0 },
+          accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, {}),
+        }))
+      );
+      if (infoPatch) setInfo((prev) => ({ ...prev, ...infoPatch }));
+      setAutoLoadMsg(
+        `Importado desde Cotizar flete: ${bridge.panels.length} línea(s) de paneles · ${bridge.destino || "sin destino"}`
+      );
+      setView("form");
+    } catch {
+      // ignore bridge import errors
     }
   }, []);
 
@@ -1765,41 +1425,31 @@ export default function BmcLogisticaApp() {
   }
 
   return (
-    <div style={{ fontFamily: T.font, background: T.bg, minHeight: "100vh", padding: 16 }}>
-      <style>{`@media print{.np{display:none!important}} * {box-sizing:border-box;}`}</style>
+    <div className="envios-app">
+      <style>{`@media print{.np{display:none!important}}`}</style>
 
-      <div style={{ ...css.card, display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "16px 20px", borderLeft: `4px solid ${T.brand}`, marginBottom: 12 }} className="np">
+      <header className="envios-header envios-chrome np">
         <div>
-          <h1 style={{ margin: "0 0 4px", fontSize: 20, color: T.brand }}>BMC Uruguay — Logística de Carga</h1>
-          <div style={{ color: T.muted, fontSize: 13 }}>{`2 filas máx · altura ${MAX_H}m · saliente 2m · pedidos no se mezclan`}</div>
+          <h1 className="envios-header__title">BMC Uruguay — Logística de Carga</h1>
+          <div className="envios-header__sub">{`2 filas máx · altura ${MAX_H}m · saliente 2m · pedidos no se mezclan`}</div>
         </div>
-        <div style={{ textAlign: "right", color: T.muted, fontSize: 12 }}>
-          <div style={{ fontWeight: 700, color: T.text }}>{info.numero} · {info.fecha}</div>
+        <div className="envios-header__meta">
+          <div className="envios-header__meta-strong">{info.numero} · {info.fecha}</div>
           <div style={{ marginTop: 4 }}>{totPan} paneles · {cargo.placed.length} pkgs · {stops.length} paradas</div>
         </div>
-      </div>
+      </header>
 
       {cargo.warns.map((w, i) => (
-        <div key={i} style={{ background: "#ffeceb", border: "1px solid rgba(255,59,48,.25)", color: "#b42318", padding: "10px 14px", borderRadius: 10, marginBottom: 8, fontSize: 13 }}>⚠️ {w}</div>
+        <div key={i} className="envios-alert-danger" style={{ marginBottom: 8 }}>⚠️ {w}</div>
       ))}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }} className="np">
+      <div className="envios-tabbar np">
         {[["form", "📋 Formulario"], ["remito", "📄 Remito"], ["carga", "🚛 Diagrama 3D"]].map(([v, l]) => (
           <button
             key={v}
             type="button"
             onClick={() => setView(v)}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 10,
-              border: `1.5px solid ${view === v ? T.primary : T.border}`,
-              background: view === v ? T.primary : T.surface,
-              color: view === v ? "#fff" : T.text,
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: "pointer",
-              fontFamily: T.font,
-            }}
+            className={`envios-tab${view === v ? " envios-tab--active" : ""}`}
           >
             {l}
           </button>

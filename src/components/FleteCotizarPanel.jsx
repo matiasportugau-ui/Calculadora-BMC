@@ -1,9 +1,19 @@
 /**
- * Cotizar flete — keeps existing FLETE / costo inputs; adds quote action + summary.
+ * Cotizar flete — Quote surface (wizard Flete 10/11).
+ * UI: Liquid Glass crystal chrome on summary; solid inputs (DESIGN-UI.md).
+ * U2: Enviar a Logística bridge via sessionStorage.
  */
 import { useCallback, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getBrouUsdSellRate } from "../utils/brouFx.js";
-import { quoteFreightFromWizard } from "../utils/fleteEngine.js";
+import {
+  quoteFreightFromWizard,
+  buildPanelLoadsFromQuote,
+} from "../utils/fleteEngine.js";
+import {
+  buildBridgePayload,
+  saveBridgePayload,
+} from "../utils/logistica/bridgePayload.js";
 
 /**
  * @param {object} props
@@ -17,9 +27,6 @@ import { quoteFreightFromWizard } from "../utils/fleteEngine.js";
  * @param {(n: number) => void} props.setFlete
  * @param {string} props.fleteCosto
  * @param {(s: string) => void} props.setFleteCosto
- * @param {object} props.C theme colors
- * @param {object} props.inputS
- * @param {object} props.labelS
  */
 export default function FleteCotizarPanel({
   proyecto,
@@ -32,14 +39,14 @@ export default function FleteCotizarPanel({
   setFlete,
   fleteCosto,
   setFleteCosto,
-  C,
-  inputS,
-  labelS,
 }) {
+  const navigate = useNavigate();
   const [retiroEnPlanta, setRetiroEnPlanta] = useState(false);
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState("");
+  /** @type {[{ panels: object[], quote: object, destino: string }|null, Function]} */
+  const [lastQuote, setLastQuote] = useState(null);
 
   const runQuote = useCallback(async () => {
     setBusy(true);
@@ -56,6 +63,12 @@ export default function FleteCotizarPanel({
         fxRateUyuPerUsd: fx.rate,
       });
       setSummary(q.summary);
+
+      const destino = [proyecto?.direccion, proyecto?.departamento, proyecto?.localidad, proyecto?.zona]
+        .filter(Boolean)
+        .join(" ");
+      const panels = buildPanelLoadsFromQuote({ techo, pared, results });
+      setLastQuote({ panels, quote: q, destino });
 
       if (q.ok && q.ventaUsd != null) {
         setFlete(Number(q.ventaUsd) || 0);
@@ -85,9 +98,59 @@ export default function FleteCotizarPanel({
     setFleteCosto,
   ]);
 
+  const sendToLogistica = useCallback(() => {
+    const panels =
+      lastQuote?.panels?.length > 0
+        ? lastQuote.panels
+        : buildPanelLoadsFromQuote({ techo, pared, results });
+    if (!panels.length) {
+      setError("No hay paneles en la cotización para enviar a Logística.");
+      return;
+    }
+    const destino =
+      lastQuote?.destino ||
+      [proyecto?.direccion, proyecto?.departamento, proyecto?.localidad]
+        .filter(Boolean)
+        .join(" ") ||
+      proyecto?.direccion ||
+      "";
+    const payload = buildBridgePayload({
+      destino,
+      panels,
+      quote: lastQuote?.quote || {
+        ok: true,
+        mode: "manual",
+        ventaUsd: Number(flete) || 0,
+        costoUsd: fleteCosto ? Number(fleteCosto) : null,
+        summary: summary || { zona: "manual", label: `Flete USD ${Number(flete) || 0}` },
+      },
+      proyectoRef: {
+        cliente: proyecto?.cliente || proyecto?.nombre || null,
+        direccion: proyecto?.direccion || destino || null,
+      },
+    });
+    saveBridgePayload(payload);
+    navigate("/logistica");
+  }, [
+    lastQuote,
+    techo,
+    pared,
+    results,
+    proyecto,
+    flete,
+    fleteCosto,
+    summary,
+    navigate,
+  ]);
+
+  const missingDestino = !retiroEnPlanta && !String(proyecto?.direccion || "").trim();
+  const canBridge =
+    (lastQuote?.panels?.length > 0 || buildPanelLoadsFromQuote({ techo, pared, results }).length > 0) &&
+    (lastQuote != null || Number(flete) > 0);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: C.tp, cursor: "pointer" }}>
+    <div className="envios-quote">
+      <label className="envios-check">
         <input
           type="checkbox"
           checked={retiroEnPlanta}
@@ -97,49 +160,45 @@ export default function FleteCotizarPanel({
       </label>
 
       <div>
-        <div style={labelS}>Destino / dirección (completa datos del proyecto)</div>
+        <label className="envios-label" htmlFor="envios-destino">
+          Destino / dirección (completa datos del proyecto)
+        </label>
         <input
-          style={inputS}
+          id="envios-destino"
+          className="envios-field"
           value={proyecto?.direccion || ""}
           onChange={(e) => onProyectoPatch({ direccion: e.target.value })}
           placeholder="ej. Maldonado / Ciudad de la Costa / Montevideo…"
+          autoComplete="street-address"
         />
+        {missingDestino && (
+          <div className="envios-hint" style={{ marginTop: 6 }}>
+            Sin destino se cotiza como zona especial (precio a mano). Completá dirección o marcá retiro en
+            planta.
+          </div>
+        )}
       </div>
 
-      <button
-        type="button"
-        onClick={runQuote}
-        disabled={busy}
-        style={{
-          padding: "8px 14px",
-          borderRadius: 10,
-          border: `1.5px solid ${C.primary}`,
-          background: busy ? C.surfaceAlt : C.primarySoft || "#eff6ff",
-          color: C.primary,
-          fontWeight: 700,
-          fontSize: 12,
-          cursor: busy ? "wait" : "pointer",
-          alignSelf: "flex-start",
-        }}
-      >
-        {busy ? "Cotizando…" : "Cotizar flete"}
-      </button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button type="button" className="envios-btn-primary" onClick={runQuote} disabled={busy}>
+          {busy ? "Cotizando…" : "Cotizar flete"}
+        </button>
+        <button
+          type="button"
+          className="envios-btn-glass"
+          onClick={sendToLogistica}
+          disabled={!canBridge || busy}
+          title="Envía paneles y destino a /logistica"
+        >
+          Enviar a Logística
+        </button>
+      </div>
 
       {summary?.label && (
-        <div
-          style={{
-            fontSize: 12,
-            lineHeight: 1.45,
-            color: C.tp,
-            background: C.surfaceAlt,
-            border: `1px solid ${C.border}`,
-            borderRadius: 10,
-            padding: "10px 12px",
-          }}
-        >
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>Resumen</div>
-          <div>{summary.label}</div>
-          <div style={{ color: C.ts, marginTop: 4, fontSize: 11 }}>
+        <div className="envios-summary" role="status">
+          <div className="envios-summary__title">Resumen</div>
+          <div className="envios-summary__body">{summary.label}</div>
+          <div className="envios-summary__meta">
             Zona: {summary.zona}
             {summary.vehicle ? ` · Vehículo: ${summary.vehicle}` : ""}
             {summary.filasUsadas != null ? ` · Filas: ${summary.filasUsadas}` : ""}
@@ -147,7 +206,7 @@ export default function FleteCotizarPanel({
             {summary.fxRate ? ` · TC: ${summary.fxRate}` : ""}
           </div>
           {Array.isArray(summary.warns) && summary.warns.length > 0 && (
-            <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: C.warning || "#b45309" }}>
+            <ul className="envios-summary__warns">
               {summary.warns.slice(0, 4).map((w) => (
                 <li key={w}>{w}</li>
               ))}
@@ -157,12 +216,15 @@ export default function FleteCotizarPanel({
       )}
 
       {error && (
-        <div style={{ fontSize: 12, color: C.danger || "#b91c1c", lineHeight: 1.4 }}>{error}</div>
+        <div className="envios-alert-danger" role="alert">
+          {error}
+        </div>
       )}
 
-      <div style={{ fontSize: 11, color: C.ts }}>
+      <div className="envios-hint">
         Los montos quedan editables abajo (venta actual: USD {Number(flete) || 0}
         {fleteCosto ? ` · costo ${fleteCosto}` : ""}).
+        {canBridge ? " · Podés enviar paneles a Logística sin re-tipear." : ""}
       </div>
     </div>
   );
