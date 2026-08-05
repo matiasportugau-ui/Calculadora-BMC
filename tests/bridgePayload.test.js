@@ -7,6 +7,8 @@ import {
   buildBridgePayload,
   parseBridgePayload,
   bridgePayloadToStops,
+  mergeBridgeIntoStops,
+  stopHasLogisticsContent,
   BRIDGE_SCHEMA_VERSION,
   saveBridgePayload,
   loadBridgePayload,
@@ -97,6 +99,70 @@ const panels = [
   assert.equal(loaded.destino, "Costa");
   assert.equal(store.getItem(BRIDGE_STORAGE_KEY), null);
   ok("sessionStorage-like save/load/clear");
+}
+
+{
+  assert.equal(stopHasLogisticsContent({ paneles: [{ id: "p" }] }), true);
+  assert.equal(stopHasLogisticsContent({ cliente: "Obra" }), true);
+  assert.equal(stopHasLogisticsContent({ paneles: [], accesorios: [], cliente: "" }), false);
+  ok("stopHasLogisticsContent");
+}
+
+{
+  const draft = [
+    {
+      id: "s-existing",
+      orden: 1,
+      cliente: "Parada A",
+      direccion: "MVD",
+      paneles: [{ id: "p1", tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 4 }],
+      accesorios: [],
+    },
+  ];
+  const bridgeStops = [
+    {
+      id: "s-bridge",
+      orden: 1,
+      cliente: "Obra bridge",
+      direccion: "Maldonado",
+      paneles: [{ id: "p2", tipo: "ISODEC", espesor: 80, longitud: 5, cantidad: 8 }],
+      accesorios: [],
+    },
+  ];
+  const merged = mergeBridgeIntoStops(draft, bridgeStops, { colors: ["#111", "#222"] });
+  assert.equal(merged.mode, "append");
+  assert.equal(merged.stops.length, 2);
+  assert.equal(merged.stops[0].id, "s-existing");
+  assert.equal(merged.stops[0].cliente, "Parada A");
+  assert.equal(merged.stops[1].id, "s-bridge");
+  assert.equal(merged.stops[1].orden, 2);
+  assert.equal(merged.stops[1].color, "#222");
+  ok("mergeBridgeIntoStops appends when draft has content");
+}
+
+{
+  const emptyDraft = [{ id: "blank", orden: 1, cliente: "", direccion: "", paneles: [], accesorios: [] }];
+  const bridgeStops = [
+    {
+      id: "s-bridge",
+      orden: 1,
+      cliente: "Solo bridge",
+      paneles: [{ id: "p2", tipo: "ISODEC", espesor: 80, longitud: 5, cantidad: 2 }],
+      accesorios: [],
+    },
+  ];
+  const replaced = mergeBridgeIntoStops(emptyDraft, bridgeStops);
+  assert.equal(replaced.mode, "replace");
+  assert.equal(replaced.stops.length, 1);
+  assert.equal(replaced.stops[0].id, "s-bridge");
+  ok("mergeBridgeIntoStops replaces empty draft");
+}
+
+{
+  const kept = mergeBridgeIntoStops([{ id: "x", cliente: "Keep", paneles: [{ id: "p" }] }], []);
+  assert.equal(kept.mode, "noop");
+  assert.equal(kept.stops.length, 1);
+  ok("mergeBridgeIntoStops noop on empty bridge");
 }
 
 console.log(`\n${passed} assertions ok`);

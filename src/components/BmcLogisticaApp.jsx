@@ -21,6 +21,8 @@ import {
 import {
   loadBridgePayload,
   bridgePayloadToStops,
+  mergeBridgeIntoStops,
+  BRIDGE_STORAGE_KEY,
 } from "../utils/logistica/bridgePayload.js";
 
 const TRUCK_W = 2.4;
@@ -1002,26 +1004,31 @@ export default function BmcLogisticaApp() {
   const [tripCostLog, setTripCostLog] = useState([]);
   const [tripPriceInput, setTripPriceInput] = useState("");
   const [newCarrierName, setNewCarrierName] = useState("");
+  /** Skip persist until draft (+ optional bridge) hydration finishes — avoids wiping localStorage with []. */
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    let restoredStops = [];
+    let restoredAccProfiles = {};
     try {
       let raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) raw = localStorage.getItem(STORAGE_KEY_LEGACY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.info) setInfo((prev) => ({ ...prev, ...parsed.info }));
-        if (parsed.accProfiles && typeof parsed.accProfiles === "object") setAccProfiles(parsed.accProfiles);
+        if (parsed.accProfiles && typeof parsed.accProfiles === "object") {
+          restoredAccProfiles = parsed.accProfiles;
+          setAccProfiles(parsed.accProfiles);
+        }
         if (Array.isArray(parsed.stops)) {
-          setStops(
-            parsed.stops.map((stop, index) => ({
-              ...mkStop(index),
-              ...stop,
-              orderId: stop.orderId ?? "",
-              pickupId: stop.pickupId ?? "",
-              checks: { ...mkStop(index).checks, ...(stop.checks || {}) },
-              accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, parsed.accProfiles || {}),
-            }))
-          );
+          restoredStops = parsed.stops.map((stop, index) => ({
+            ...mkStop(index),
+            ...stop,
+            orderId: stop.orderId ?? "",
+            pickupId: stop.pickupId ?? "",
+            checks: { ...mkStop(index).checks, ...(stop.checks || {}) },
+            accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, parsed.accProfiles || {}),
+          }));
         }
         if (parsed.truckL) setTruckL(parsed.truckL);
         if (parsed.view) setView(parsed.view);
@@ -1038,34 +1045,47 @@ export default function BmcLogisticaApp() {
       // ignore persisted-state errors
     }
 
-    // U2: import quote→ops bridge (sessionStorage) after draft restore
+    // U2: import quote→ops bridge after draft restore — never wipe a meaningful draft.
+    let nextStops = restoredStops;
     try {
-      const bridge = loadBridgePayload({ clear: true });
-      if (!bridge?.panels?.length) return;
-      const { stops: bridgeStops, infoPatch } = bridgePayloadToStops(bridge, {
-        uid: () => uid(),
-        color: COLORS[0],
-      });
-      if (!bridgeStops.length) return;
-      setStops(
-        bridgeStops.map((stop, index) => ({
-          ...mkStop(index),
-          ...stop,
-          checks: { ...mkStop(index).checks, datosOk: Boolean(stop.direccion), bultosOk: stop.paneles?.length > 0 },
-          accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, {}),
-        }))
-      );
-      if (infoPatch) setInfo((prev) => ({ ...prev, ...infoPatch }));
-      setAutoLoadMsg(
-        `Importado desde Cotizar flete: ${bridge.panels.length} línea(s) de paneles · ${bridge.destino || "sin destino"}`
-      );
-      setView("form");
+      const bridge = loadBridgePayload({ clear: false });
+      if (bridge?.panels?.length) {
+        const { stops: bridgeStops, infoPatch } = bridgePayloadToStops(bridge, {
+          uid: () => uid(),
+          color: COLORS[0],
+        });
+        if (bridgeStops.length) {
+          const mapped = bridgeStops.map((stop, index) => ({
+            ...mkStop(index),
+            ...stop,
+            checks: { ...mkStop(index).checks, datosOk: Boolean(stop.direccion), bultosOk: stop.paneles?.length > 0 },
+            accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, restoredAccProfiles),
+          }));
+          const merged = mergeBridgeIntoStops(restoredStops, mapped, { colors: COLORS });
+          nextStops = merged.stops;
+          if (infoPatch) setInfo((prev) => ({ ...prev, ...infoPatch }));
+          const modeLabel = merged.mode === "append" ? "añadido al borrador" : "importado";
+          setAutoLoadMsg(
+            `Cotizar flete ${modeLabel}: ${bridge.panels.length} línea(s) de paneles · ${bridge.destino || "sin destino"}`
+          );
+          setView("form");
+          try {
+            sessionStorage.removeItem(BRIDGE_STORAGE_KEY);
+          } catch {
+            // ignore
+          }
+        }
+      }
     } catch {
       // ignore bridge import errors
     }
+
+    setStops(nextStops);
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem(
         STORAGE_KEY,
@@ -1089,6 +1109,7 @@ export default function BmcLogisticaApp() {
       // ignore storage quota errors
     }
   }, [
+    hydrated,
     info,
     stops,
     truckL,
