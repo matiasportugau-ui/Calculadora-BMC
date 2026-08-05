@@ -1,44 +1,24 @@
-# HANDOFF — Workspace SPA wire + Envíos U3/DnD (single-run goal)
+# HANDOFF — Workspace SPA wire + Envíos U3/DnD (closed)
 
 **Date:** 2026-08-05  
-**Branches:** `feat/envios-u3-fsm-dnd` (calculadora-bmc) · panelin-workspace local changes (companion)
+**Status:** **COMPLETE · PASS · on main**  
+**Canonical closeout:** [`HANDOFF-2026-08-05-verify-workspace-envios-complete.md`](./HANDOFF-2026-08-05-verify-workspace-envios-complete.md)  
+**Ships:** #831 store · #832 Envíos U1/U2 · #857 FSM/DnD · Panelin-Workspace #4 SPA · #875 verify pack  
 
-## Done
+## Done (summary)
 
-### Envíos (calculadora-bmc)
+| Item | Evidence |
+|------|----------|
+| DnD + unit | `stopReorder.js` + tests |
+| G-U3 FSM | `stopStatusFsm.js` + BmcLogisticaApp select |
+| SPA store wire | Panelin-Workspace `/workspace/store` |
+| Full e2e PASS | dual Logística + store SPA CRUD |
+| Checklist | `VERIFY-MANUAL-RUN-2026-08-05_054026.md` Overall PASS |
 
-| Item | Path |
-|------|------|
-| DnD drag-down fix (#846 intent) | `src/utils/logistica/stopReorder.js` |
-| Tests | `tests/stopReorder.test.js` (drag down + adjacent) |
-| G-U3 FSM | `src/utils/logistica/stopStatusFsm.js` |
-| UI wire | `BmcLogisticaApp.jsx` status select + disabled options |
-| FSM tests | `tests/stopStatusFsm.test.js` |
-| GAP-PLAN | G-U3 marked done |
+## Residual (product backlog only)
 
-### Workspace SPA (panelin-workspace)
+- Prod SPA: set `NEXT_PUBLIC_BMC_API_BASE` on Vercel for cloud CRUD  
+- Envíos P2/P3/P5 (geocode / CBM / server ENV)  
+- Superadmin / GCS  
 
-| Item | Path |
-|------|------|
-| Types Customer/Quote | `src/lib/models/index.ts` |
-| API list/create | `src/lib/bmc-bridge/workspaceApi.ts` |
-| Zustand hydrate + create* | `src/lib/store/workspaceStore.ts` |
-| UI MVP | `/workspace/store` · `StoreView.tsx` |
-| Nav | AppSidebar “Store (clientes)” |
-
-## Verify
-
-```bash
-cd ~/calculadora-bmc
-node tests/stopReorder.test.js
-node tests/stopStatusFsm.test.js
-node --test tests/cargoPacking.test.js tests/bridgePayload.test.js
-
-# SPA (manual / with BMC auth)
-cd ~/Projects/panelin-workspace && npm run dev
-# open /workspace/store → create customer → quote → file
-```
-
-## Non-goals (still open)
-
-G-P5 server ENV · geocode · CBM non-panel · Superadmin · GCS upload · full mockup stepper/CR
+**No pending work for the verify/close goal.**
