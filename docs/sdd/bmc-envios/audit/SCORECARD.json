@@ -1,92 +1,68 @@
 {
-  "generated_at": "2026-08-05T01:30:00Z",
+  "generated_at": "2026-08-05T14:00:00Z",
   "system_slug": "bmc-envios",
   "sdd_path": "docs/sdd/bmc-envios/SDD.md",
   "auditor": "sdd-quality-auditor",
-  "loop": "ship-pr-reaudit",
-  "iteration": 2,
-  "prior_composite": 95,
-  "composite": 98,
+  "loop": "post-ops-ux-f1-f6-glory",
+  "iteration": 4,
+  "prior_composite": 84,
+  "composite": 96,
   "min_pass": 90,
   "pass": true,
-  "label": "Pass (expert-complete as-built hybrid + U1/U2 shipped)",
-  "note": "Residual to 100: U3 FSM enforcement, P5 durable ENV, optional column/stack semantic unify. Not doc gaps.",
+  "label": "Pass — as-built SDD v1.4 reconciles U1/U2 + Ops UX F1–F6",
+  "note": "Residual to 100: product U3 FSM, P5 durable ENV (optional). Dual packing engines intentional ADR-001.",
   "dimensions": {
     "schema_completeness": {
       "weight": 15,
-      "score_0_100": 98,
-      "notes": [
-        "v1.2 As-Built Hybrid; §1–12 complete; related checklist/evidence/audit",
-        "No placeholders"
-      ]
+      "score_0_100": 97,
+      "notes": ["v1.4 As-Built; §1–12; N/A §6; appendices backlog"]
     },
     "c4_fidelity": {
       "weight": 15,
       "score_0_100": 96,
-      "notes": [
-        "C4 L1+L2 with AS-BUILT/TARGET labels",
-        "Ops→kernel Rel updated to shared placeCargo stack",
-        "Bridge container documented AS-BUILT"
-      ]
+      "notes": ["L1+L2; bridge AS-BUILT; scene3d + kernel utils listed"]
     },
     "recreation_sufficiency": {
       "weight": 20,
-      "score_0_100": 98,
-      "notes": [
-        "RECREATION-CHECKLIST U1/U2 DONE",
-        "§8.1 local runbook; unit tests in test:core",
-        "bridge + packing pure modules reconstructible"
-      ]
+      "score_0_100": 97,
+      "notes": ["RECREATION F1–F6; pure module paths; test commands §8"]
     },
     "evidence_grounding": {
       "weight": 15,
-      "score_0_100": 98,
-      "notes": [
-        "E-04 single SoT CONFIRMED (no local placeCargo)",
-        "E-05 stack+column in cargoPacking.js",
-        "E-18 bridge CONFIRMED with paths + tests"
-      ]
+      "score_0_100": 97,
+      "notes": ["E-01–E-36; pickColumnRow, bridge merge, F1–F6 modules CONFIRMED"]
     },
     "ai_architecture_depth": {
       "weight": 10,
       "score_0_100": 96,
-      "notes": ["§6 N/A + ADR-010"]
+      "notes": ["§6 N/A justified"]
     },
     "crosscutting_wa": {
       "weight": 10,
       "score_0_100": 94,
-      "notes": [
-        "Auth Shell without RequireGrant documented",
-        "sessionStorage bridge PII residual noted in risks"
-      ]
+      "notes": ["hydrate gate, storage PII, no grant on logistica"]
     },
     "adr_quality": {
       "weight": 10,
-      "score_0_100": 98,
-      "notes": [
-        "ADR-001 Accepted with column/stack rationale",
-        "ADR-007 Accepted for bridge U2",
-        "All ADRs have alternatives"
-      ]
+      "score_0_100": 96,
+      "notes": ["ADR-001/007/011–014 with alternatives"]
     },
     "evolution_readiness": {
       "weight": 5,
       "score_0_100": 98,
-      "notes": [
-        "changelog 1.2; TARGET U1/U2 DONE; GAP residual U3/P2/P3/P5"
-      ]
+      "notes": ["changelog 1.4; TARGET F1–F6 DONE; GAP residual product only"]
     }
   },
   "weighted_breakdown": {
-    "schema_completeness": 14.7,
+    "schema_completeness": 14.55,
     "c4_fidelity": 14.4,
-    "recreation_sufficiency": 19.6,
-    "evidence_grounding": 14.7,
+    "recreation_sufficiency": 19.4,
+    "evidence_grounding": 14.55,
     "ai_architecture_depth": 9.6,
     "crosscutting_wa": 9.4,
-    "adr_quality": 9.8,
+    "adr_quality": 9.6,
     "evolution_readiness": 4.9,
-    "sum": 97.1,
-    "composite_rounded": 98
+    "sum": 96.4,
+    "composite_rounded": 96
   }
 }

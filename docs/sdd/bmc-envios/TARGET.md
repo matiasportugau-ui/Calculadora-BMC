@@ -1,8 +1,8 @@
 # TARGET — BMC Envíos (módulo unificado)
 
 **Slug:** `bmc-envios`  
-**Date:** 2026-08-04  
-**Status:** Target for Core unification (as-built hybrid + design)  
+**Date:** 2026-08-05  
+**Status:** As-built Core (U1/U2) + Ops UX F1–F6 DONE; residual U3/P2/P3/P5  
 **Repo:** `calculadora-bmc`  
 **Surfaces (must stay one product):**
 
