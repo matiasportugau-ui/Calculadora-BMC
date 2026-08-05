@@ -26,6 +26,7 @@ import {
   uploadWaMediaBytes,
   getWaMediaSignedUrl,
   isPlaceholderText,
+  isSafeWaMediaObjectPath,
   validateMediaBuffer,
   textAfterMediaClear,
   audioVoiceNotePlaceholder,
@@ -627,7 +628,14 @@ export default function createWaRouter(config, logger) {
                      then excluded.text
                      else coalesce(nullif(wa_messages.text, ''), excluded.text)
                    end,
-                   type = coalesce(excluded.type, wa_messages.type),
+                   -- Never downgrade image/audio/… → text on re-ingest (mergeIngestMessageType)
+                   type = case
+                     when wa_messages.type is not null
+                          and wa_messages.type <> 'text'
+                          and excluded.type = 'text'
+                       then wa_messages.type
+                     else coalesce(excluded.type, wa_messages.type)
+                   end,
                    meta = case
                      when excluded.meta is not null and excluded.meta ? 'media'
                        then coalesce(wa_messages.meta, '{}'::jsonb) || jsonb_build_object('media', excluded.meta->'media')
@@ -955,8 +963,8 @@ export default function createWaRouter(config, logger) {
       if (!msgId || !gcsPath) {
         return res.status(400).json({ ok: false, error: "msg_id and media_gcs_path required" });
       }
-      if (!gcsPath.startsWith("wa-media/")) {
-        return res.status(400).json({ ok: false, error: "path must start with wa-media/" });
+      if (!isSafeWaMediaObjectPath(gcsPath)) {
+        return res.status(400).json({ ok: false, error: "invalid wa-media path" });
       }
       const isAudio = msgType === "audio" || (mime && mime.startsWith("audio/"));
       const { rowCount } = await pool.query(
