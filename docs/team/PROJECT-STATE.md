@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-05 (fix — Envíos stop DnD downward index):** `reorderStops` adjusted insert index after `splice(from)` so dragging a stop onto a later card inserts *before* that stop (P1→P3 → `[P2,P1,P3]`, not `[P2,P3,P1]`). Wrong `orden` was persisted and fed cargo unload / WA. Tests cover downward + adjacent stable cases.
+
 **2026-08-05 (feat — Envíos Ops UX F1/F3a collapse + stop DnD):** `/logistica` paradas plegables (chevron + summary; `ui.collapsedStopIds` en localStorage; default collapse si hay más de 3 paradas). Reorden HTML5 por asa ⠿ → `reorderStops` / `renumberStops` (`stopReorder.js`). Tests `stopReorder.test.js`.
 
 **2026-08-05 (feat — Envíos Ops UX F2 Ventas search + chips):** Fix `/logistica` **Buscar cliente en Ventas** — filter haystack (nombre, pedido, tel, dir, estado) instead of hardcoded `r[7]` only. Chips **Enviado** / **Coordinado · fecha** (batch color by G date) / **Por coordinar** via pure `coordinationStatus.js` + `ventasSearch.js`. SDD [`SDD-OPS-UX-WAVE.md`](../sdd/bmc-envios/SDD-OPS-UX-WAVE.md). Tests coordinationStatus + ventasSearchFilter in `test:core`.

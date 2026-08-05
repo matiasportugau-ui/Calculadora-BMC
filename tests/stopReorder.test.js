@@ -36,6 +36,29 @@ const base = [
 }
 
 {
+  // Downward drag: insert before over — must adjust index after splice.
+  const next = reorderStops(base, "s1", "s3", { colors });
+  assert.equal(next.map((s) => s.id).join(","), "s2,s1,s3");
+  assert.equal(next[0].orden, 1);
+  assert.equal(next[1].orden, 2);
+  assert.equal(next[2].orden, 3);
+  ok("reorder s1 before s3 (downward)");
+}
+
+{
+  // Adjacent downward: already before over → stable order.
+  const next = reorderStops(base, "s1", "s2", { colors });
+  assert.equal(next.map((s) => s.id).join(","), "s1,s2,s3");
+  ok("reorder s1 before s2 is stable");
+}
+
+{
+  const next = reorderStops(base, "s2", "s3", { colors });
+  assert.equal(next.map((s) => s.id).join(","), "s1,s2,s3");
+  ok("reorder s2 before s3 is stable");
+}
+
+{
   const same = reorderStops(base, "s1", "s1", { colors });
   assert.equal(same.map((s) => s.id).join(","), "s1,s2,s3");
   ok("noop same ids");
