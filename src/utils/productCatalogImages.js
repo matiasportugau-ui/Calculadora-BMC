@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { ROOF_CATALOG_MAP_URL_BY_FAMILIA } from "../data/roofPanelCatalogMapUrls.js";
+import { resolveCatalogRowMedia } from "../data/product-media/productMediaResolve.js";
 
 /** Panel product photos (Shopify store + local colonial). */
 const PANEL_IMAGE_BY_FAMILIA = {
@@ -172,7 +173,8 @@ function resolveSrc(row, group) {
  */
 export function resolveProductVisual(row) {
   const group = visualGroupFor(row);
-  const src = resolveSrc(row, group);
+  const media = resolveCatalogRowMedia(row);
+  const src = media.primaryImage || resolveSrc(row, group);
   const tone = GROUP_TONES[group] || GROUP_TONES.unknown;
   return {
     src,
@@ -181,6 +183,9 @@ export function resolveProductVisual(row) {
     tone,
     fit: "contain",
     placeholder: group,
+    title: media.title || null,
+    url: media.url || null,
+    handle: media.handle || null,
   };
 }
 

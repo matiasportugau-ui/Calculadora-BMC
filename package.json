@@ -1,7 +1,7 @@
 {
   "name": "calculadora-bmc",
   "version": "3.1.5",
-  "description": "Calculadora de cotización de paneles de aislamiento — BMC Uruguay (METALOG SAS)",
+  "description": "Calculadora de cotizaci\u00f3n de paneles de aislamiento \u2014 BMC Uruguay (METALOG SAS)",
   "private": true,
   "type": "module",
   "main": "src/components/PanelinCalculadoraV3.jsx",
@@ -266,7 +266,9 @@
     "test:market-intel": "node --test tests/market-intel/*.test.js",
     "playwright:install": "playwright install chromium",
     "migrate:market-intel": "node server/migrations/market-intel/run-migrations.js",
-    "etl:run": "node -e \"require(\"./server/lib/marketIntel/scheduler\")\""
+    "etl:run": "node -e \"require(\"./server/lib/marketIntel/scheduler\")\"",
+    "catalog:media:sync": "node scripts/sync-product-media-catalog.mjs",
+    "catalog:media:seed": "node scripts/sync-product-media-catalog.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
