@@ -1,6 +1,13 @@
 /**
  * WA media storage — private GCS under wa-media/ + signed read URLs.
- * Bucket: GCS_QUOTES_BUCKET / config.gcsQuotesBucket (default bmc-cotizaciones).
+ *
+ * Bucket selection (fail-closed):
+ *   1. GCS_WA_MEDIA_BUCKET / WA_MEDIA_GCS_BUCKET (dedicated private bucket)
+ *   2. Only if WA_MEDIA_ALLOW_QUOTES_BUCKET=1 → GCS_QUOTES_BUCKET
+ *
+ * Never silently default to the quotes bucket: gcsUpload requires
+ * allUsers:objectViewer on GCS_QUOTES_BUCKET for permanent quote URLs, so
+ * storing WA voice notes/images there would make customer media world-readable.
  */
 import { Storage } from "@google-cloud/storage";
 import { config } from "../config.js";
@@ -8,7 +15,29 @@ import { config } from "../config.js";
 const storage = new Storage();
 
 export function waMediaBucket() {
-  return config.gcsQuotesBucket || process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones";
+  const dedicated = String(
+    config.gcsWaMediaBucket ||
+      process.env.GCS_WA_MEDIA_BUCKET ||
+      process.env.WA_MEDIA_GCS_BUCKET ||
+      "",
+  ).trim();
+  if (dedicated) return dedicated;
+
+  const allowQuotes =
+    process.env.WA_MEDIA_ALLOW_QUOTES_BUCKET === "1" || config.waMediaAllowQuotesBucket === true;
+  if (allowQuotes) {
+    return String(config.gcsQuotesBucket || process.env.GCS_QUOTES_BUCKET || "").trim();
+  }
+  return "";
+}
+
+/** Reject path traversal / non-prefix objects before GCS read/sign. */
+export function isSafeWaMediaObjectPath(objectPath) {
+  const p = String(objectPath || "");
+  if (!p.startsWith("wa-media/")) return false;
+  if (p.includes("..") || p.includes("\\") || p.includes("\0")) return false;
+  if (p.length > 500) return false;
+  return true;
 }
 
 /**
@@ -277,7 +306,13 @@ export function validateMediaBuffer(buffer, opts = {}) {
  */
 export async function uploadWaMediaBytes({ buffer, chatId, msgId, mime, expect = "any" }) {
   const bucket = waMediaBucket();
-  if (!bucket) return { ok: false, error: "GCS bucket not configured" };
+  if (!bucket) {
+    return {
+      ok: false,
+      error:
+        "GCS_WA_MEDIA_BUCKET not configured (private bucket required; refuse public GCS_QUOTES_BUCKET fallback)",
+    };
+  }
   if (!Buffer.isBuffer(buffer) || !buffer.length) return { ok: false, error: "empty buffer" };
   if (buffer.length > 25 * 1024 * 1024) return { ok: false, error: "media too large (>25MB)" };
 
@@ -331,7 +366,7 @@ export async function uploadWaMediaBytes({ buffer, chatId, msgId, mime, expect =
  */
 export async function getWaMediaSignedUrl(objectPath, opts = {}) {
   const bucket = waMediaBucket();
-  if (!bucket || !objectPath) return null;
+  if (!bucket || !isSafeWaMediaObjectPath(objectPath)) return null;
   const expiresMs = Number(opts.expiresMs || 60 * 60 * 1000);
   try {
     const file = storage.bucket(bucket).file(objectPath);
@@ -352,7 +387,7 @@ export async function getWaMediaSignedUrl(objectPath, opts = {}) {
  */
 export async function downloadWaMediaBytes(objectPath) {
   const bucket = waMediaBucket();
-  if (!bucket || !objectPath) return null;
+  if (!bucket || !isSafeWaMediaObjectPath(objectPath)) return null;
   try {
     const file = storage.bucket(bucket).file(objectPath);
     const [buf] = await file.download();
