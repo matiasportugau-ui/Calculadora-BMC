@@ -109,6 +109,10 @@ export default function ProductosMaestroEditor() {
   });
 
   async function saveLinks(newLinks) {
+    if (!token) {
+      setMsg({ type: 'error', text: 'Ingresa el API_AUTH_TOKEN para guardar links' });
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/api/productos-maestro/links`, {
         method: 'PUT',
