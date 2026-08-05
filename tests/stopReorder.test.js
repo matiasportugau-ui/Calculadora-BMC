@@ -32,7 +32,23 @@ const base = [
   assert.equal(next[1].orden, 2);
   assert.equal(next[2].orden, 3);
   assert.equal(next[0].color, "#a");
-  ok("reorder s3 before s1");
+  ok("reorder s3 before s1 (drag up)");
+}
+
+{
+  // Drag s1 onto s3: insert *before* s3 → [s2, s1, s3] (not [s2, s3, s1])
+  const next = reorderStops(base, "s1", "s3", { colors });
+  assert.equal(next.map((s) => s.id).join(","), "s2,s1,s3");
+  assert.equal(next[0].orden, 1);
+  assert.equal(next[1].orden, 2);
+  assert.equal(next[2].orden, 3);
+  ok("reorder s1 before s3 (drag down — #846)");
+}
+
+{
+  const next = reorderStops(base, "s1", "s2", { colors });
+  assert.equal(next.map((s) => s.id).join(","), "s1,s2,s3");
+  ok("reorder s1 onto s2 adjacent down is stable order");
 }
 
 {
