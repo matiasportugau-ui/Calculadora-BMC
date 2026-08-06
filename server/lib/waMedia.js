@@ -391,15 +391,20 @@ export function audioVoiceNotePlaceholder(meta) {
 
 /**
  * Whether clearing media/transcript should revert `text` (STT had filled it from placeholder).
- * @param {{ type?: string, text?: string|null, meta?: object|null }} row
+ * Requires STT provenance — never treat "audio + non-placeholder body" alone as STT,
+ * or junk clear / CLEAR_JUNK wipes human captions and ingest text.
+ * @param {{ type?: string, text?: string|null, transcript?: string|null, meta?: object|null }} row
  */
 export function shouldRevertSttFilledText(row) {
   const meta = row?.meta && typeof row.meta === "object" ? row.meta : {};
+  // Local STT worker / POST /wa/transcript
   if (meta.stt_source || meta.stt_at) return true;
-  if (String(row?.type || "").toLowerCase() === "audio" && !isPlaceholderText(row?.text)) {
-    // Non-placeholder body on an audio row after STT fill (or synthetic attach)
-    return true;
-  }
+  // Cloud transcript worker (waTranscriptWorker) markers
+  if (meta.transcript_ms != null || meta.transcript_lang) return true;
+  // Body identical to stored transcript ⇒ STT (or copy) filled it
+  const body = row?.text != null ? String(row.text).trim() : "";
+  const tr = row?.transcript != null ? String(row.transcript).trim() : "";
+  if (body && tr && body === tr && !isPlaceholderText(body)) return true;
   return false;
 }
 

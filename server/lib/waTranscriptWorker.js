@@ -97,7 +97,9 @@ export function startWaTranscriptWorker({ config, logger, pool }) {
                     text = case when $3::boolean then $2 else text end,
                     meta = coalesce(meta, '{}'::jsonb) || jsonb_build_object(
                       'transcript_ms', $4::int,
-                      'transcript_lang', 'es'
+                      'transcript_lang', 'es',
+                      'stt_source', 'cloud_whisper',
+                      'stt_at', now()::text
                     )
               where msg_id = $1`,
             [row.msg_id, result.text, fillText, result.duration_ms],
