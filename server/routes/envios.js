@@ -325,42 +325,70 @@ export default function createEnviosRouter(config, logger) {
         body.expectedRevision != null && body.expectedRevision !== ""
           ? Number(body.expectedRevision)
           : null;
+      const useOptimistic =
+        expectedRevision != null && Number.isFinite(expectedRevision);
 
-      if (expectedRevision != null && Number.isFinite(expectedRevision)) {
-        const { rows: existing } = await pool.query(
-          `select id, env_no, payload, revision, updated_at, created_at, updated_by
-           from envios_drafts where id = $1 limit 1`,
-          [id],
+      // Optimistic concurrency must be atomic in the UPSERT WHERE clause.
+      // A prior SELECT-then-UPDATE races: two clients with the same
+      // expectedRevision can both pass the check and silently LWW-overwrite.
+      let rows;
+      if (useOptimistic) {
+        const result = await pool.query(
+          `insert into envios_drafts (id, env_no, payload, revision, updated_by)
+           values ($1, $2, $3::jsonb, 1, $4)
+           on conflict (id) do update set
+             env_no = excluded.env_no,
+             payload = excluded.payload,
+             revision = envios_drafts.revision + 1,
+             updated_at = now(),
+             updated_by = excluded.updated_by
+           where envios_drafts.revision = $5
+           returning id, env_no, revision, updated_at, created_at, updated_by`,
+          [id, envNo, JSON.stringify(payload), updatedBy, expectedRevision],
         );
-        if (existing[0] && Number(existing[0].revision) !== expectedRevision) {
+        rows = result.rows;
+        if (!rows[0]) {
+          const { rows: existing } = await pool.query(
+            `select id, env_no, payload, revision, updated_at, created_at, updated_by
+             from envios_drafts where id = $1 limit 1`,
+            [id],
+          );
+          if (existing[0]) {
+            return res.status(409).json({
+              ok: false,
+              error: "revision_conflict",
+              draft: {
+                id: existing[0].id,
+                envNo: existing[0].env_no,
+                payload: existing[0].payload,
+                revision: existing[0].revision,
+                updatedAt: existing[0].updated_at,
+                createdAt: existing[0].created_at,
+                updatedBy: existing[0].updated_by,
+              },
+            });
+          }
           return res.status(409).json({
             ok: false,
             error: "revision_conflict",
-            draft: {
-              id: existing[0].id,
-              envNo: existing[0].env_no,
-              payload: existing[0].payload,
-              revision: existing[0].revision,
-              updatedAt: existing[0].updated_at,
-              createdAt: existing[0].created_at,
-              updatedBy: existing[0].updated_by,
-            },
+            draft: null,
           });
         }
+      } else {
+        const result = await pool.query(
+          `insert into envios_drafts (id, env_no, payload, revision, updated_by)
+           values ($1, $2, $3::jsonb, 1, $4)
+           on conflict (id) do update set
+             env_no = excluded.env_no,
+             payload = excluded.payload,
+             revision = envios_drafts.revision + 1,
+             updated_at = now(),
+             updated_by = excluded.updated_by
+           returning id, env_no, revision, updated_at, created_at, updated_by`,
+          [id, envNo, JSON.stringify(payload), updatedBy],
+        );
+        rows = result.rows;
       }
-
-      const { rows } = await pool.query(
-        `insert into envios_drafts (id, env_no, payload, revision, updated_by)
-         values ($1, $2, $3::jsonb, 1, $4)
-         on conflict (id) do update set
-           env_no = excluded.env_no,
-           payload = excluded.payload,
-           revision = envios_drafts.revision + 1,
-           updated_at = now(),
-           updated_by = excluded.updated_by
-         returning id, env_no, revision, updated_at, created_at, updated_by`,
-        [id, envNo, JSON.stringify(payload), updatedBy],
-      );
       const row = rows[0];
       res.json({
         ok: true,
