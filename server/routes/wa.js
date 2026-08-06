@@ -992,7 +992,7 @@ export default function createWaRouter(config, logger) {
       const reason = String(req.body?.reason || "media_cleared").slice(0, 120);
 
       const { rows: existing } = await pool.query(
-        `select type, text, meta from wa_messages where msg_id = $1`,
+        `select type, text, transcript, meta from wa_messages where msg_id = $1`,
         [msgId],
       );
       if (!existing[0]) {
@@ -1003,6 +1003,7 @@ export default function createWaRouter(config, logger) {
         {
           type: existing[0].type,
           text: existing[0].text,
+          transcript: existing[0].transcript,
           meta: existing[0].meta,
         },
         { clearTranscript },

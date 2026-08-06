@@ -208,6 +208,39 @@ describe("STT text revert on media clear (skeptic: no leftover synthetic body)",
     );
   });
 
+  it("does NOT wipe human captions without STT provenance (Bug AH)", () => {
+    const human = {
+      type: "audio",
+      text: "Necesito cotización de techo 40m2",
+      meta: { media: { duration: "18" } },
+    };
+    assert.equal(shouldRevertSttFilledText(human), false);
+    const r = textAfterMediaClear(human, { clearTranscript: true });
+    assert.equal(r.reverted, false);
+    assert.equal(r.text, human.text);
+  });
+
+  it("reverts when transcript column matches body (cloud STT without stt_source)", () => {
+    assert.equal(
+      shouldRevertSttFilledText({
+        type: "audio",
+        text: synthetic,
+        transcript: synthetic,
+        meta: {},
+      }),
+      true,
+    );
+    assert.equal(
+      shouldRevertSttFilledText({
+        type: "audio",
+        text: synthetic,
+        transcript: null,
+        meta: { transcript_ms: 1200, transcript_lang: "es" },
+      }),
+      true,
+    );
+  });
+
   it("textAfterMediaClear restores placeholder and drops synthetic Spanish", () => {
     const r = textAfterMediaClear(
       { type: "audio", text: synthetic, meta: metaStt },
