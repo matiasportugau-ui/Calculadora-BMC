@@ -2,16 +2,19 @@ import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import BancoLedgerModule from "../banco/BancoLedgerModule.jsx";
 import CashFlowPanel from "./CashFlowPanel.jsx";
 import ProyeccionModule from "./proyeccion/ProyeccionModule.jsx";
+import RecuperacionModule from "./recuperacion/RecuperacionModule.jsx";
 import { colors, fonts, page, tabBar, tabButton } from "../../traktime/shared/styles.js";
 
 const TABS = [
   { id: "banco", label: "Banco", to: "/hub/finanzas/banco", hint: "Libro y movimientos" },
+  { id: "recuperacion", label: "Recuperación", to: "/hub/finanzas/recuperacion", hint: "Meeting pack: liquidez, deuda, pipeline" },
   { id: "cash-flow", label: "Cash Flow", to: "/hub/finanzas/cash-flow", hint: "Clasificación y neto" },
   { id: "proyeccion", label: "Proyección", to: "/hub/finanzas/proyeccion", hint: "Runway y vencimientos" },
 ];
 
 function tabActive(pathname, id) {
   if (id === "banco") return pathname.includes("/banco") || /\/finanzas\/?$/.test(pathname);
+  if (id === "recuperacion") return pathname.includes("/recuperacion");
   if (id === "cash-flow") return pathname.includes("/cash-flow");
   return pathname.includes("/proyeccion");
 }
@@ -47,6 +50,7 @@ export default function FinanzasModule() {
         <Routes>
           <Route index element={<Navigate to="banco" replace />} />
           <Route path="banco" element={<BancoLedgerModule embedded />} />
+          <Route path="recuperacion" element={<RecuperacionModule />} />
           <Route path="cash-flow" element={<CashFlowPanel />} />
           <Route path="proyeccion" element={<ProyeccionModule />} />
           <Route path="*" element={<Navigate to="banco" replace />} />
