@@ -277,7 +277,11 @@
     "migrate:market-intel": "node server/migrations/market-intel/run-migrations.js",
     "etl:run": "node -e \"require(\"./server/lib/marketIntel/scheduler\")\"",
     "catalog:media:sync": "node scripts/sync-product-media-catalog.mjs",
-    "catalog:media:seed": "node scripts/sync-product-media-catalog.mjs"
+    "catalog:media:seed": "node scripts/sync-product-media-catalog.mjs",
+    "catalog:media:autofill": "node scripts/autofill-product-media-links.mjs",
+    "catalog:media:all": "npm run catalog:media:sync && npm run catalog:media:autofill",
+    "smoke:product-media": "node scripts/playwright-product-media-smoke.mjs",
+    "smoke:product-media:prod": "BASE_URL=https://calculadora-bmc.vercel.app node scripts/playwright-product-media-smoke.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
