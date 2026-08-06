@@ -58,6 +58,7 @@ import {
   applyGeocodeToStop,
   tripLegDistances,
 } from "../utils/logistica/geocode.js";
+import { safeExternalHref, safeTelHref } from "../utils/logistica/safeHref.js";
 import {
   buildEnviosDraft,
   parseEnviosDraftPayload,
@@ -120,7 +121,21 @@ function Btn({
   active = false,
 }) {
   const s = btnStyle({ outline, small, disabled, color, variant, active, style });
-  if (href) return <a href={href} target={target} rel={target === "_blank" ? "noopener noreferrer" : undefined} style={s}>{children}</a>;
+  if (href) {
+    const safe = safeExternalHref(href);
+    if (!safe) {
+      return (
+        <button type="button" onClick={onClick} disabled style={{ ...s, opacity: 0.45, cursor: "not-allowed" }} title="Enlace no permitido">
+          {children}
+        </button>
+      );
+    }
+    return (
+      <a href={safe} target={target} rel={target === "_blank" ? "noopener noreferrer" : undefined} style={s}>
+        {children}
+      </a>
+    );
+  }
   return <button type="button" onClick={onClick} disabled={disabled} style={s}>{children}</button>;
 }
 
@@ -825,10 +840,12 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
     }
   }, [diagramView]);
 
-  const mapHref =
+  const mapHref = safeExternalHref(
     selectedStop?.mapLink ||
-    (selectedStop?.geo ? mapsCoordsUrl(selectedStop.geo.lat, selectedStop.geo.lng, selectedStop.direccion) : "") ||
-    (selectedStop?.direccion ? mapsSearchUrl(selectedStop.direccion) : "");
+      (selectedStop?.geo ? mapsCoordsUrl(selectedStop.geo.lat, selectedStop.geo.lng, selectedStop.direccion) : "") ||
+      (selectedStop?.direccion ? mapsSearchUrl(selectedStop.direccion) : ""),
+  );
+  const telHref = safeTelHref(selectedStop?.telefono);
 
   return (
     <div
@@ -958,8 +975,8 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
               <div style={{ fontWeight: 600 }}>
                 {selectedStop?.contactoRecepcion || selectedStop?.cliente || selectedPkg.sCli || "—"}
               </div>
-              {selectedStop?.telefono ? (
-                <a href={`tel:${String(selectedStop.telefono).replace(/\s/g, "")}`} style={{ color: "#93c5fd", fontSize: 11 }}>
+              {telHref ? (
+                <a href={telHref} style={{ color: "#93c5fd", fontSize: 11 }}>
                   {selectedStop.telefono}
                 </a>
               ) : (
