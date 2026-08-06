@@ -2,7 +2,11 @@
  * Run: node tests/safeExternalUrl.test.js
  */
 import assert from "node:assert/strict";
-import { safeHttpUrl, safeTelUrl } from "../src/utils/logistica/safeExternalUrl.js";
+import {
+  resolveSafeBtnHref,
+  safeHttpUrl,
+  safeTelUrl,
+} from "../src/utils/logistica/safeExternalUrl.js";
 
 let passed = 0;
 function ok(name) {
@@ -18,5 +22,18 @@ assert.equal(safeHttpUrl("data:text/html,x"), null);
 assert.ok(safeTelUrl("+59899111222")?.startsWith("tel:"));
 assert.equal(safeTelUrl("123"), null);
 ok("blocks dangerous schemes");
+
+{
+  // Regression: list/stop Btn href must reject javascript: (Bug AJ residual after #886 drawer-only).
+  assert.equal(resolveSafeBtnHref("javascript:alert(document.domain)"), null);
+  assert.equal(resolveSafeBtnHref("JAVASCRIPT:alert(1)"), null);
+  assert.equal(
+    resolveSafeBtnHref("https://drive.google.com/file/d/abc/view"),
+    "https://drive.google.com/file/d/abc/view",
+  );
+  assert.equal(resolveSafeBtnHref(""), null);
+  assert.equal(resolveSafeBtnHref(null), null);
+  ok("Btn href gate blocks javascript:");
+}
 
 console.log(`safeExternalUrl: ${passed} passed`);
