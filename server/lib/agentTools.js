@@ -829,6 +829,78 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ─── Logística / Ventas 2.0 (Panelin + IAlfred) ─────────────────────────────
+  {
+    name: "logistica_buscar_ventas",
+    description:
+      "Busca clientes/pedidos en la planilla Ventas 2.0 (tab Ventas y Coordinaciones) para el módulo /logistica. " +
+      "Devuelve nombre, pedido, tel, dirección, estado (por_coordinar|coordinado|con_pendientes|entregado|enviado), fecha, fila sheet. " +
+      "Lectura vía proxy CSV autenticado. Usá query con nombre, pedido o teléfono.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Nombre, Nº pedido, teléfono o dirección (parcial)" },
+        activeOnly: {
+          type: "boolean",
+          description: "Si true (default), excluye Entregado/Enviado y filas basura de encabezado",
+        },
+        limit: { type: "number", description: "Máx resultados (default 15, máx 40)" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "logistica_actualizar_estado",
+    description:
+      "Actualiza el estado de una venta en la planilla 2.0 (col F estado + col H fecha). " +
+      "Estados: por_coordinar | coordinado (requiere fechaEntrega YYYY-MM-DD + opcional camion 1..12) | con_pendientes | " +
+      "Para ENTREGADO o ENVIADO usá logistica_confirmar_entrega (mueve a pestaña archivo). " +
+      "REQUIERE user_confirmed=true.",
+    input_schema: {
+      type: "object",
+      properties: {
+        row1Based: { type: "number", description: "Fila 1-based en la pestaña Ventas (mín 2)" },
+        gid: {
+          type: "string",
+          description: "gid de la pestaña (default 926747636 = Ventas y Coordinaciones)",
+        },
+        status: {
+          type: "string",
+          enum: ["por_coordinar", "coordinado", "con_pendientes"],
+          description: "Nuevo estado operativo",
+        },
+        fechaEntrega: { type: "string", description: "YYYY-MM-DD (obligatorio si status=coordinado)" },
+        camion: { type: "number", description: "Nº de camión 1..12 (asociado a transportista)" },
+        transportista: { type: "string", description: "Nombre transportista del camión" },
+        comment: { type: "string", description: "Nota corta opcional" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true" },
+      },
+      required: ["row1Based", "status", "user_confirmed"],
+    },
+  },
+  {
+    name: "logistica_confirmar_entrega",
+    description:
+      "Confirma Entregado o Enviado: escribe estado, mueve la fila a la pestaña de archivo " +
+      "(Enviados / Ventas Realizadas y Entegadas) y opcionalmente archiva remito firmado en Drive. " +
+      "REQUIERE user_confirmed=true. Mostrá siempre el popup de confirmación al operador antes de llamar.",
+    input_schema: {
+      type: "object",
+      properties: {
+        row1Based: { type: "number", description: "Fila 1-based origen" },
+        gid: { type: "string", description: "gid pestaña origen (default 926747636)" },
+        mode: { type: "string", enum: ["entregado", "enviado"], description: "Default entregado" },
+        comment: { type: "string", description: "Comentario de entrega" },
+        cliente: { type: "string" },
+        orderId: { type: "string" },
+        remitoBase64: { type: "string", description: "PDF/imagen remito firmado en base64 (opcional)" },
+        remitoFileName: { type: "string" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true" },
+      },
+      required: ["row1Based", "user_confirmed"],
+    },
+  },
+
   // ─── Email (PANELSIM summary + outbound draft — no send) ───────────────────
   {
     name: "email_panelsim_resumen",
@@ -2141,6 +2213,135 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       const body = { force: !!input?.force };
       return await wolfboardForward("/api/wolfboard/quote-batch", { method: "POST", body }, name);
+    }
+
+    if (name === "logistica_buscar_ventas") {
+      const query = String(input?.query || "").trim();
+      if (!query) return JSON.stringify({ ok: false, error: "query requerido", tool: name });
+      const sheetId =
+        config.bmcVentasSheetId ||
+        process.env.BMC_VENTAS_SHEET_ID ||
+        "1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA";
+      const gid = String(input?.gid || "926747636");
+      const limit = Math.min(40, Math.max(1, Number(input?.limit) || 15));
+      const activeOnly = input?.activeOnly !== false;
+      try {
+        const { mapVentasRowV2 } = await import("../../src/utils/logistica/ventasSheetMap.js");
+        const { searchMappedVentasRows, filterOperationalVentasRows } = await import(
+          "../../src/utils/logistica/ventasSearch.js"
+        );
+
+        const csvUrl = `${apiBase()}/api/envios/ventas-csv?sheetId=${encodeURIComponent(sheetId)}&gid=${encodeURIComponent(gid)}`;
+        const headers = { Authorization: `Bearer ${config.apiAuthToken || ""}` };
+        const resp = await fetch(csvUrl, { headers });
+        if (!resp.ok) {
+          return JSON.stringify({
+            ok: false,
+            error: `ventas-csv HTTP ${resp.status}`,
+            tool: name,
+            hint: "Requiere API_AUTH_TOKEN y acceso a la planilla pública gviz o proxy.",
+          });
+        }
+        const csv = await resp.text();
+        const lines = csv.split(/\r?\n/).filter((l) => l.length);
+        // minimal CSV parse (quoted fields)
+        const parseLine = (s) => {
+          const out = [];
+          let cur = "";
+          let q = false;
+          for (let i = 0; i < s.length; i++) {
+            const c = s[i];
+            if (c === '"') {
+              if (q && s[i + 1] === '"') {
+                cur += '"';
+                i++;
+              } else q = !q;
+            } else if (c === "," && !q) {
+              out.push(cur);
+              cur = "";
+            } else cur += c;
+          }
+          out.push(cur);
+          return out;
+        };
+        const headerRow = parseLine(lines[0] || "");
+        const dataRows = lines.slice(1).map(parseLine).filter((r) => r.some((c) => String(c || "").trim()));
+        let mapped = dataRows.map((r, i) => mapVentasRowV2(headerRow, r, i + 2, { gid }));
+        mapped = filterOperationalVentasRows(mapped, { activeOnly });
+        const found = searchMappedVentasRows(mapped, query)
+          .slice(0, limit)
+          .map((r) => ({
+            nombre: r.nombre,
+            orderId: r.orderId,
+            tel: r.tel,
+            dir: r.dir,
+            fechaEntrega: r.fechaEntrega,
+            saleStatus: r.saleStatus,
+            camion: r.camion,
+            caption: r.saleCaption || r.coordinationCaption,
+            ventasSheetRow1Based: r.ventasSheetRow1Based,
+            ventasTabGid: r.ventasTabGid || gid,
+            pdf: r.pdf ? String(r.pdf).slice(0, 120) : "",
+          }));
+        return JSON.stringify({
+          ok: true,
+          tool: name,
+          count: found.length,
+          results: found,
+          sheetId,
+          gid,
+        });
+      } catch (e) {
+        return JSON.stringify({
+          ok: false,
+          error: e instanceof Error ? e.message : String(e),
+          tool: name,
+        });
+      }
+    }
+
+    if (name === "logistica_actualizar_estado") {
+      {
+        const _conf = requireConfirmedAction(name, input, opts);
+        if (_conf) return _conf;
+      }
+      const row1Based = Number(input?.row1Based);
+      if (!Number.isFinite(row1Based) || row1Based < 2) {
+        return JSON.stringify({ ok: false, error: "row1Based (>=2) requerido", tool: name });
+      }
+      const body = {
+        gid: String(input?.gid || "926747636"),
+        row1Based,
+        status: String(input?.status || ""),
+        fechaEntrega: input?.fechaEntrega || "",
+        camion: input?.camion,
+        transportista: input?.transportista || "",
+        comment: input?.comment || "",
+      };
+      return await wolfboardForward("/api/ventas/logistica-estado", { method: "POST", body }, name);
+    }
+
+    if (name === "logistica_confirmar_entrega") {
+      {
+        const _conf = requireConfirmedAction(name, input, opts);
+        if (_conf) return _conf;
+      }
+      const row1Based = Number(input?.row1Based);
+      if (!Number.isFinite(row1Based) || row1Based < 2) {
+        return JSON.stringify({ ok: false, error: "row1Based (>=2) requerido", tool: name });
+      }
+      const body = {
+        gid: String(input?.gid || "926747636"),
+        row1Based,
+        mode: input?.mode === "enviado" ? "enviado" : "entregado",
+        confirm: true,
+        comment: input?.comment || "",
+        cliente: input?.cliente || "",
+        orderId: input?.orderId || "",
+        remitoBase64: input?.remitoBase64,
+        remitoFileName: input?.remitoFileName,
+      };
+      return await wolfboardForward("/api/ventas/logistica-entregado", { method: "POST", body }, name);
     }
 
     if (name === "list_bug_reports") {

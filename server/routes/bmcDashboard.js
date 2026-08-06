@@ -1166,6 +1166,39 @@ async function getSheetTabTitleByGid(spreadsheetId, gid) {
   return sh?.properties?.title || null;
 }
 
+/**
+ * Ventas 2.0 column letters (A=0): F=estado free text, H=FECHA ENTREGA.
+ * (Legacy bug wrote fecha to G=TIPO — fixed 2026-08.)
+ */
+const VENTAS_LOGISTICA_COL = {
+  estadoText: "F", // idx 5
+  fechaEntrega: "H", // idx 7
+};
+
+const VENTAS_ARCHIVE_TAB_CANDIDATES = [
+  "Enviados",
+  "Ventas Realizadas y Entegadas",
+  "Ventas Realizadas y Entregadas",
+  "Ventas Realizadas E.E",
+];
+
+async function resolveVentasArchiveTabTitle(sheets, spreadsheetId) {
+  const meta = await withSheetsReadRetry("spreadsheets.get", () =>
+    sheets.spreadsheets.get({ spreadsheetId })
+  );
+  const titles = (meta.data.sheets || []).map((s) => s.properties?.title).filter(Boolean);
+  for (const cand of VENTAS_ARCHIVE_TAB_CANDIDATES) {
+    const hit = titles.find((t) => String(t).trim().toLowerCase() === cand.toLowerCase());
+    if (hit) return hit;
+  }
+  // fuzzy: contains "realizadas" + (entegad|entregad|enviad)
+  const fuzzy = titles.find((t) => {
+    const n = String(t).toLowerCase();
+    return /realizad/.test(n) && /(entegad|entregad|enviad)/.test(n);
+  });
+  return fuzzy || null;
+}
+
 async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
   const gid = body?.gid;
   const row1Based = Number(body?.row1Based);
@@ -1186,7 +1219,8 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const safeTab = String(tabTitle).replace(/'/g, "''");
-  const range = `'${safeTab}'!G${row1Based}`;
+  // Column H = FECHA ENTREGA (Ventas 2.0). Do not write G (TIPO).
+  const range = `'${safeTab}'!${VENTAS_LOGISTICA_COL.fechaEntrega}${row1Based}`;
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: ventasSheetId,
@@ -1196,7 +1230,240 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
   });
 
   invalidateVentasSheetsReadCache(ventasSheetId);
-  return { ok: true, range, value };
+  return { ok: true, range, value, column: VENTAS_LOGISTICA_COL.fechaEntrega };
+}
+
+/**
+ * Update sale logistics state on a Ventas row (estado F + fecha H + optional camión marker).
+ * body: { gid, row1Based, status, fechaEntrega?, camion?, transportista?, comment?, estadoText? }
+ */
+async function handleVentasLogisticaEstado(ventasSheetId, body) {
+  const gid = body?.gid;
+  const row1Based = Number(body?.row1Based);
+  if (!ventasSheetId) throw new Error("Ventas sheet no configurado (BMC_VENTAS_SHEET_ID)");
+  if (gid == null || String(gid).trim() === "") throw new Error("Missing gid (pestaña)");
+  if (!Number.isFinite(row1Based) || row1Based < 2) throw new Error("row1Based inválido (mín. 2)");
+
+  const status = String(body?.status || "").trim().toLowerCase();
+  const allowed = new Set(["por_coordinar", "coordinado", "con_pendientes", "entregado", "enviado"]);
+  if (!allowed.has(status)) throw new Error("status inválido");
+
+  const tabTitle = await getSheetTabTitleByGid(ventasSheetId, gid);
+  if (!tabTitle) throw new Error("No se encontró la pestaña para ese gid");
+
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const safeTab = String(tabTitle).replace(/'/g, "''");
+
+  // Read current F so we can preserve free text when building markers server-side
+  let existingEstado = String(body?.estadoText || "");
+  if (!body?.estadoText) {
+    try {
+      const cur = await sheets.spreadsheets.values.get({
+        spreadsheetId: ventasSheetId,
+        range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${row1Based}`,
+      });
+      existingEstado = String(cur.data.values?.[0]?.[0] || "");
+    } catch {
+      /* keep empty */
+    }
+  }
+
+  // Inline marker builder (mirrors saleState.buildEstadoSheetValue — keep in sync)
+  const fechaIso =
+    body?.fechaEntrega === "" || body?.fechaEntrega == null
+      ? status === "por_coordinar"
+        ? ""
+        : ""
+      : String(body.fechaEntrega).trim();
+  const fechaVal =
+    !fechaIso || status === "por_coordinar" ? "" : formatIsoDateToDdMmYyyy(fechaIso);
+  const camion =
+    body?.camion != null && body.camion !== ""
+      ? Math.floor(Number(body.camion))
+      : null;
+  const tte = body?.transportista ? String(body.transportista).slice(0, 40) : "";
+  const comment = body?.comment ? String(body.comment).replace(/[\[\]]/g, "").slice(0, 120) : "";
+
+  const base = existingEstado
+    .replace(/\s*\[LOGISTICA:[^\]]*\]/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const parts = [`LOGISTICA:${status.toUpperCase()}`];
+  if (fechaVal) parts.push(`FECHA=${fechaVal}`);
+  if (camion && Number.isFinite(camion) && camion >= 1) parts.push(`CAMION=${camion}`);
+  if (tte) parts.push(`TTE=${tte}`);
+  if (comment) parts.push(`NOTA=${comment}`);
+  const marker = `[${parts.join(" ")}]`;
+  const estadoVal = body?.estadoText != null && String(body.estadoText).includes("[LOGISTICA:")
+    ? String(body.estadoText)
+    : base
+      ? `${base} ${marker}`
+      : marker;
+
+  const data = [
+    {
+      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${row1Based}`,
+      values: [[estadoVal]],
+    },
+    {
+      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.fechaEntrega}${row1Based}`,
+      values: [[fechaVal]],
+    },
+  ];
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: ventasSheetId,
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data,
+    },
+  });
+
+  invalidateVentasSheetsReadCache(ventasSheetId);
+  return {
+    ok: true,
+    status,
+    row1Based,
+    tab: tabTitle,
+    estadoText: estadoVal,
+    fechaEntrega: fechaVal,
+    camion: camion && Number.isFinite(camion) ? camion : null,
+  };
+}
+
+/**
+ * Confirm entregado/enviado: update estado, optional remito→Drive, move row to archive tab.
+ * body: {
+ *   gid, row1Based, mode: 'entregado'|'enviado',
+ *   comment?, remitoBase64?, remitoFileName?,
+ *   cliente?, orderId?, carpetaDrive?, quotationCode?, confirm: true
+ * }
+ */
+async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) {
+  if (!body?.confirm) throw new Error("confirm=true requerido (popup de confirmación)");
+  const mode = String(body?.mode || "entregado").toLowerCase() === "enviado" ? "enviado" : "entregado";
+  const gid = body?.gid;
+  const row1Based = Number(body?.row1Based);
+  if (!ventasSheetId) throw new Error("Ventas sheet no configurado (BMC_VENTAS_SHEET_ID)");
+  if (gid == null || String(gid).trim() === "") throw new Error("Missing gid (pestaña)");
+  if (!Number.isFinite(row1Based) || row1Based < 2) throw new Error("row1Based inválido (mín. 2)");
+
+  const tabTitle = await getSheetTabTitleByGid(ventasSheetId, gid);
+  if (!tabTitle) throw new Error("No se encontró la pestaña para ese gid");
+
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const safeTab = String(tabTitle).replace(/'/g, "''");
+
+  // Read full row for archive append
+  const rowRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: ventasSheetId,
+    range: `'${safeTab}'!A${row1Based}:ZZ${row1Based}`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const rowData = rowRes.data.values?.[0] || [];
+  if (!rowData.length) throw new Error("Fila vacía o no encontrada");
+
+  // Update estado marker on source row first (before move)
+  await handleVentasLogisticaEstado(ventasSheetId, {
+    gid,
+    row1Based,
+    status: mode,
+    fechaEntrega: body?.fechaEntrega || "",
+    comment: body?.comment || "",
+    transportista: body?.transportista || "",
+    camion: body?.camion,
+  });
+
+  // Re-read row after estado write
+  const rowRes2 = await sheets.spreadsheets.values.get({
+    spreadsheetId: ventasSheetId,
+    range: `'${safeTab}'!A${row1Based}:ZZ${row1Based}`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const rowToArchive = rowRes2.data.values?.[0] || rowData;
+
+  // Optional remito upload
+  let remito = null;
+  if (body?.remitoBase64) {
+    try {
+      const { saveRemitoToDrive } = await import("../lib/driveUpload.js");
+      remito = await saveRemitoToDrive({
+        rootFolderId: config.driveQuoteFolderId || process.env.DRIVE_QUOTE_FOLDER_ID || "",
+        buffer: Buffer.from(String(body.remitoBase64), "base64"),
+        fileName: body.remitoFileName || `remito-firmado-${mode}.pdf`,
+        cliente: body.cliente || rowToArchive[8] || "",
+        orderId: body.orderId || rowToArchive[2] || "",
+        quotationCode: body.quotationCode || body.orderId || "",
+        carpetaDriveHint: body.carpetaDrive || "",
+      });
+    } catch (err) {
+      remito = { ok: false, error: err?.message || String(err) };
+    }
+  }
+
+  const archiveTitle = await resolveVentasArchiveTabTitle(sheets, ventasSheetId);
+  if (!archiveTitle) {
+    throw new Error(
+      "No se encontró pestaña de archivo (Enviados / Ventas Realizadas y Entegadas) en el workbook"
+    );
+  }
+  const safeArchive = String(archiveTitle).replace(/'/g, "''");
+
+  // Append to archive
+  const safeRow = rowToArchive.map((c) => {
+    const s = String(c ?? "");
+    // formula injection guard
+    if (/^[=+\-@]/.test(s)) return `'${s}`;
+    return s;
+  });
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: ventasSheetId,
+    range: `'${safeArchive}'!A:A`,
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: [safeRow] },
+  });
+
+  // Delete from source tab
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: ventasSheetId });
+  const src = (meta.data.sheets || []).find((s) => s.properties?.title === tabTitle);
+  const numericSheetId = src?.properties?.sheetId;
+  if (numericSheetId === undefined) {
+    throw new Error(`Tab origen '${tabTitle}' no encontrado para borrar fila`);
+  }
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: ventasSheetId,
+    requestBody: {
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId: numericSheetId,
+              dimension: "ROWS",
+              startIndex: row1Based - 1,
+              endIndex: row1Based,
+            },
+          },
+        },
+      ],
+    },
+  });
+
+  invalidateVentasSheetsReadCache(ventasSheetId);
+  return {
+    ok: true,
+    mode,
+    moved: true,
+    fromTab: tabTitle,
+    toTab: archiveTitle,
+    archivedRowPreview: {
+      nombre: rowToArchive[8] || "",
+      orderId: rowToArchive[2] || "",
+    },
+    remito,
+  };
 }
 
 async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
@@ -3015,11 +3282,40 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 
   // ── CRM cockpit (columnas AG–AK) — dual auth: API_AUTH_TOKEN | JWT canales ──
 
-  /** Logística: escribe fecha de entrega en columna G de Ventas (fila = cliente; pestaña por gid). Auth = CRM cockpit. */
+  /** Logística: escribe fecha de entrega en columna H de Ventas (fila = cliente; pestaña por gid). Auth = CRM cockpit. */
   router.post("/ventas/logistica-fecha-entrega", requireCrmCockpitWrite, async (req, res) => {
     if (!checkVentasAvailable(config)) return noConfig(res);
     try {
       const result = await handleVentasLogisticaFechaEntrega(config.bmcVentasSheetId, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+  /** Logística Phase B: actualiza estado (F) + fecha (H) + camión marker. */
+  router.post("/ventas/logistica-estado", requireCrmCockpitWrite, async (req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const result = await handleVentasLogisticaEstado(config.bmcVentasSheetId, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+  /**
+   * Logística Phase C: confirmar Entregado/Enviado — popup confirm, remito Drive, mueve a tab archivo.
+   * Body: { gid, row1Based, mode, confirm: true, comment?, remitoBase64?, … }
+   */
+  router.post("/ventas/logistica-entregado", requireCrmCockpitWrite, async (req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const result = await handleVentasLogisticaEntregado(
+        config.bmcVentasSheetId,
+        req.body || {},
+        config
+      );
       res.json(result);
     } catch (e) {
       res.status(400).json({ ok: false, error: e.message || String(e) });
