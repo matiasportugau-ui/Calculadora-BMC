@@ -46,6 +46,19 @@ console.log("enviosDraftSync");
   assert.equal(shouldAutosave({ hydrated: true, envNo: "", hasToken: true, dirty: true, autosaveEnabled: true }).reason, "missing_env_no");
   assert.equal(shouldAutosave({ hydrated: true, envNo: "ENV-1", hasToken: false, dirty: true, autosaveEnabled: true }).reason, "no_token");
   assert.equal(shouldAutosave({ hydrated: true, envNo: "ENV-1", hasToken: true, dirty: false, autosaveEnabled: true }).reason, "clean");
+  // Regression (#886 P5b): unresolved 409 must block autosave or remote wins silently.
+  const blockedConflict = shouldAutosave({
+    hydrated: true,
+    envNo: "ENV-1",
+    hasToken: true,
+    dirty: true,
+    autosaveEnabled: true,
+    hasConflict: true,
+    lastPushAt: 0,
+    now: Date.now(),
+  });
+  assert.equal(blockedConflict.ok, false);
+  assert.equal(blockedConflict.reason, "conflict");
   const throttle = shouldAutosave({
     hydrated: true,
     envNo: "ENV-1",
