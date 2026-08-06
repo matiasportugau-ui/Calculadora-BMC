@@ -190,6 +190,7 @@
     "traktime:migrate": "node scripts/run-traktime-migrations.mjs",
     "banco:migrate": "node scripts/run-banco-migrations.mjs",
     "workspace:migrate": "node scripts/run-workspace-migrations.mjs",
+    "smoke:workspace-knowledge": "node scripts/smoke-workspace-knowledge-loop.mjs",
     "verify:workspace-envios": "bash docs/team/scripts/verify-workspace-envios-store.sh",
     "verify:logistica-dual": "node scripts/e2e-prod-logistica-dual.mjs",
     "verify:store-spa-local": "node scripts/e2e-store-spa-local.mjs",

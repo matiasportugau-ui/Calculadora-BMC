@@ -671,6 +671,111 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
   );
 
   // ─── Change requests → training KB (in-process; step 10) ─────────────
+  /**
+   * Create CR (propose). Required by Panelin Workspace Knowledge UI.
+   * Operators may propose; only superadmin may approve/reject.
+   */
+  router.post(
+    "/api/workspace/change-requests",
+    requireDb,
+    requireUser(),
+    asyncHandler(async (req, res) => {
+      try {
+        await ensureSeeded();
+        const type = String(req.body?.type || "").trim();
+        const allowed = new Set(["knowledge", "skill", "workflow", "config", "quote"]);
+        if (!allowed.has(type)) {
+          return res.status(400).json({ ok: false, error: "invalid_type" });
+        }
+        const title = String(req.body?.title || "").trim();
+        if (!title) return res.status(400).json({ ok: false, error: "title_required" });
+
+        const question = String(req.body?.question || title).trim();
+        const goodAnswer = String(
+          req.body?.goodAnswer || req.body?.answer || req.body?.description || "",
+        ).trim();
+        const description =
+          String(req.body?.description || goodAnswer || title).trim() || title;
+
+        const id =
+          String(req.body?.id || "").trim() ||
+          `CR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const workspaceId = String(req.body?.workspaceId || "ws-1").trim() || "ws-1";
+
+        const diffJsonObj =
+          req.body?.diffJson && typeof req.body.diffJson === "object"
+            ? req.body.diffJson
+            : {
+                type,
+                question,
+                goodAnswer: goodAnswer || description,
+                add: { title: question },
+              };
+        const diffJson =
+          typeof req.body?.diffJson === "string"
+            ? req.body.diffJson
+            : JSON.stringify(diffJsonObj, null, 2);
+        const diffText =
+          String(req.body?.diffText || "").trim() ||
+          `+ Q: ${question}\n+ A: ${goodAnswer || description}`;
+
+        const authorId = req.user?.id || req.user?.user_id || "unknown";
+        const authorName =
+          req.user?.name || req.user?.email || String(req.body?.authorName || "operator");
+
+        await pool.query(
+          `INSERT INTO panelin_workspace.change_requests
+             (id, workspace_id, type, title, description, status, diff_text, diff_json, author_id, author_name)
+           VALUES ($1, $2, $3, $4, $5, 'proposed', $6, $7, $8, $9)`,
+          [
+            id,
+            workspaceId,
+            type,
+            title,
+            description,
+            diffText,
+            diffJson,
+            authorId,
+            authorName,
+          ],
+        );
+
+        if (type === "knowledge") {
+          await pool.query(
+            `INSERT INTO panelin_workspace.knowledge_docs
+               (id, workspace_id, title, source_type, status, proposed_by, size)
+             VALUES ($1, $2, $3, 'Q&A', 'pending', $4, '—')
+             ON CONFLICT (id) DO NOTHING`,
+            [`kb-cr-${id}`, workspaceId, question, authorName],
+          );
+        }
+
+        res.status(201).json({
+          ok: true,
+          changeRequest: {
+            id,
+            workspaceId,
+            type,
+            title,
+            description,
+            status: "proposed",
+            diffText,
+            diffJson,
+            authorId,
+            authorName,
+            createdAt: new Date().toISOString(),
+          },
+          knowledgeDocId: type === "knowledge" ? `kb-cr-${id}` : undefined,
+        });
+      } catch (err) {
+        if (err?.code === "23505") {
+          return res.status(409).json({ ok: false, error: "duplicate_id" });
+        }
+        return handleDbError(res, err, "create_cr");
+      }
+    }),
+  );
+
   router.post(
     "/api/workspace/change-requests/:id/approve",
     requireDb,
@@ -766,9 +871,10 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
           await pool.query(
             `INSERT INTO panelin_workspace.knowledge_docs
                (id, workspace_id, title, source_type, status, bmc_kb_id, indexed_at, size, proposed_by, approved_by)
-             VALUES ($1, $2, $3, 'PDF', 'indexed', $4, $5, '—', $6, $7)
+             VALUES ($1, $2, $3, 'Q&A', 'indexed', $4, $5, '—', $6, $7)
              ON CONFLICT (id) DO UPDATE SET
                status = 'indexed',
+               source_type = EXCLUDED.source_type,
                bmc_kb_id = EXCLUDED.bmc_kb_id,
                indexed_at = EXCLUDED.indexed_at,
                approved_by = EXCLUDED.approved_by`,
@@ -840,6 +946,12 @@ export default function createWorkspaceRouter(config, logger, deps = {}) {
              SET status = 'rejected', reviewer_id = $2, reviewed_at = now()
            WHERE id = $1`,
           [id, reviewerId],
+        );
+        // Drop pending knowledge doc for this CR (kb-cr-{id}); leave indexed rows alone.
+        await pool.query(
+          `DELETE FROM panelin_workspace.knowledge_docs
+            WHERE id = $1 AND status = 'pending'`,
+          [`kb-cr-${id}`],
         );
         res.json({ ok: true, id, status: "rejected" });
       } catch (err) {
