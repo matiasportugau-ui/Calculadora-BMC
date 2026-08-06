@@ -103,6 +103,7 @@ import { Line, OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
   initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
+  reconnectDrive as gdriveReconnect,
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
   saveQuotation as gdriveSaveQuotation,
   listQuotations, loadProjectFromFolder, deleteQuotation,
@@ -4848,6 +4849,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     }
   }, [handleDriveRefresh]);
 
+  // Force Google consent (drive.file) for team accounts stuck with partial scopes
+  // (403 ACCESS_TOKEN_SCOPE_INSUFFICIENT on files.list).
+  const handleDriveReconnect = useCallback(async () => {
+    setDriveError(null);
+    try {
+      const result = await gdriveReconnect();
+      setDriveAuth(true);
+      setDriveUser(result?.user || null);
+      await handleDriveRefresh();
+    } catch (err) {
+      setDriveError(err?.message || "No se pudieron renovar los permisos de Drive");
+    }
+  }, [handleDriveRefresh]);
+
   const handleDriveSignOut = useCallback(() => {
     gdriveSignOut();
     setDriveAuth(false);
@@ -8004,6 +8019,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         currentUser={driveUser}
         onSignIn={handleDriveSignIn}
         onSignOut={handleDriveSignOut}
+        onReconnectDrive={handleDriveReconnect}
         quotations={driveQuotations}
         loading={driveLoading}
         saving={driveSaving}

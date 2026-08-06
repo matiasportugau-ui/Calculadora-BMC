@@ -3,7 +3,6 @@ import { parseLogisticaFromAdjuntoText } from "../../docs/bmc-dashboard-moderniz
 import { extractTextFromPdfArrayBuffer } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/pdfTextExtract.js";
 import { MAX_H, MANUAL_LAYOUT_VERSION } from "../utils/bmcLogisticaCargo.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
-import { parsePedidoRetiroFromFreeText, parsePedidoFromColumnC, parsePickupIdFromColumnF } from "../utils/ventasPedidoRetiroParse.js";
 import { bedViewExtents, mirrorStackForView, buildLogisticaPlanExportPayload } from "../utils/bmcLogisticaBedView.js";
 import {
   ENV_T as T,
@@ -72,6 +71,8 @@ import {
 import { safeHttpUrl, safeTelUrl } from "../utils/logistica/safeExternalUrl.js";
 import PackageLayoutList from "./logistica/PackageLayoutList.jsx";
 import EnviosDraftBrowser from "./logistica/EnviosDraftBrowser.jsx";
+import { mapVentasRowV2 } from "../utils/logistica/ventasSheetMap.js";
+import { inferCargoFromEncargoAndSheet } from "../utils/logistica/cargoFromEncargo.js";
 
 const TRUCK_W = 2.4;
 
@@ -225,6 +226,8 @@ const mkStop = (i) => ({
   ventasTabGid: "",
   pdfLink: "",
   mapLink: "",
+  /** Drive folder from Ventas col L (remito firmado target) */
+  carpetaDrive: "",
   /** P2: { lat, lng, label, source, at } | null */
   geo: null,
   rawSheetText: "",
@@ -366,134 +369,9 @@ async function inferPanelsAndAccessoriesFromPdf(url) {
   };
 }
 
-function buildSheetFallbackText(headers, row) {
-  if (!Array.isArray(headers) || !Array.isArray(row)) return "";
-  const preferred = [];
-  const all = [];
-  headers.forEach((header, index) => {
-    const value = String(row[index] || "").trim();
-    if (!value) return;
-    const h = normalizeText(header);
-    const line = `${header}: ${value}`;
-    all.push(line);
-    if (
-      /pedido|consulta|detalle|descripcion|producto|observ|nota|item|panel|accesorio|obra|material|bulto|unidad|encargo|resumen|lista|linea|cant\.|cantidad|qty/.test(h) &&
-      !/cliente|direccion|telefono|celular|pdf|adjunto|archivo|mail/.test(h)
-    ) {
-      preferred.push(line);
-    }
-  });
-  return [...preferred, ...all].join("\n");
-}
-
-/**
- * Planilla Ventas — columnas F vs G (operativo logístico):
- * - **F** (título típico `FECHA ENTREGA` u otro): resumen de **estado en texto**; los datos van separados por `/`.
- *   Ahí vive el **Nº Retiro** (tras mail a fábrica pidiendo retiro, post análisis de carga); en la planilla puede
- *   mostrarse en **rojo** si está producido o cuándo se producirá (formato Sheets, no se replica en la app).
- * - **G**: **fecha de entrega** que definís al **coordinar la logística** — lectura/escritura desde esta app (`fechaDeEntregaG` o índice 6).
- */
-function buildHeaderIndexMap(headers) {
-  const map = {};
-  if (!Array.isArray(headers)) return map;
-  headers.forEach((h, i) => {
-    const n = normalizeText(String(h || ""));
-    if (!n) return;
-    if (/(^id|nro|numero|#).*pedido|pedido.*id|^pedido$|^order|id.*pedido/.test(n) && map.orderId == null) map.orderId = i;
-    if (/cotiz|remito|factura/.test(n) && map.cotizacionId == null) map.cotizacionId = i;
-    if (/id.*retiro|retiro|pickup/.test(n) && map.pickupId == null) map.pickupId = i;
-    if (/^zona|^barrio|^localidad/.test(n) && map.zona == null) map.zona = i;
-    if (/recepcion|receptor|contacto.*entrega/.test(n) && map.recepcionContacto == null) map.recepcionContacto = i;
-    if (/^cliente|^nombre/.test(n) && map.nombre == null) map.nombre = i;
-    if (/direccion|^dir$|domicilio/.test(n) && map.dir == null) map.dir = i;
-    if (/telefono|celular|^tel$/.test(n) && map.tel == null) map.tel = i;
-    if (/pdf|adjunto|archivo|link/.test(n) && map.pdf == null) map.pdf = i;
-    /** G: encabezado con "fecha … de … entrega" = fecha coordinada logística (no el resumen F). */
-    if (/fecha\s*de\s*entrega/i.test(n) && map.fechaDeEntregaG == null) map.fechaDeEntregaG = i;
-    /** F u otras: "FECHA ENTREGA" / texto estado + Nº Retiro (no confundir con fecha G). */
-    if (/fecha.*entrega|fecha entrega/i.test(n) && map.fechaEntrega == null && map.fechaDeEntregaG !== i) {
-      map.fechaEntrega = i;
-    }
-    if (
-      /estado|gral|fact\.|pu \d+ y pu|entregas pendientes/i.test(n) &&
-      map.estadoText == null &&
-      !/^fecha/i.test(n) &&
-      !/facturacion|datos fact/i.test(n)
-    ) {
-      map.estadoText = i;
-    }
-  });
-  return map;
-}
-
-function getVentasCell(map, row, key, legacyIdx) {
-  const idx = map[key] != null ? map[key] : legacyIdx;
-  if (idx == null || idx < 0 || !row || idx >= row.length) return "";
-  return String(row[idx] || "").trim();
-}
-
-/** Columna C (índice 2): solo ID / Nº Pedido. */
-function getVentasColumnC(row) {
-  if (!row || row.length <= 2) return "";
-  return String(row[2] ?? "").trim();
-}
-
-/** Columna F (índice 5): resumen estado (/, Nº Retiro, etc.); no es la fecha G. */
-function getVentasColumnF(row) {
-  if (!row || row.length <= 5) return "";
-  return String(row[5] ?? "").trim();
-}
-
-/** Columna G (índice legacy 6 si A=0): fecha de entrega coordinada en logística. */
-function getVentasFechaDeEntregaCell(H, row) {
-  return getVentasCell(H, row, "fechaDeEntregaG", 6);
-}
-
-/** Convierte DD/MM/YYYY (celda) → YYYY-MM-DD para input type=date. */
-function parsePlanillaFechaGToIso(cell) {
-  const t = String(cell ?? "").trim();
-  if (!t) return "";
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);
-  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
-  const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
-  if (m2) return t;
-  return "";
-}
-
+/** Ventas 2.0 map — see src/utils/logistica/ventasSheetMap.js */
 function mapVentasRow(headers, row, sheetRow1Based) {
-  const H = buildHeaderIndexMap(headers);
-  const fromC = parsePedidoFromColumnC(getVentasColumnC(row));
-  let orderId = fromC.orderId || "";
-  if (fromC.source === "empty") {
-    orderId = getVentasCell(H, row, "orderId", null) || "";
-  }
-
-  let pickupId = parsePickupIdFromColumnF(getVentasColumnF(row));
-  if (!pickupId) pickupId = getVentasCell(H, row, "pickupId", null) || "";
-
-  const estadoText = getVentasCell(H, row, "estadoText", 4) || "";
-  const fechaEntregaText = getVentasCell(H, row, "fechaEntrega", 5) || "";
-  const parsedIds = parsePedidoRetiroFromFreeText([estadoText, fechaEntregaText].filter(Boolean).join("\n"));
-  if (!String(orderId).trim() && parsedIds.orderId) orderId = parsedIds.orderId;
-  if (!String(pickupId).trim() && parsedIds.pickupId) pickupId = parsedIds.pickupId;
-
-  return {
-    nombre: getVentasCell(H, row, "nombre", 7) || getVentasCell(H, row, "cliente", 7) || "",
-    dir: getVentasCell(H, row, "dir", 8),
-    pdf: getVentasCell(H, row, "pdf", 9),
-    tel: getVentasCell(H, row, "tel", 14),
-    orderId,
-    cotizacionId: getVentasCell(H, row, "cotizacionId", null) || "",
-    pickupId,
-    zona: getVentasCell(H, row, "zona", null) || "",
-    recepcionContacto: getVentasCell(H, row, "recepcionContacto", null) || "",
-    /** Col F / estado column — used for Enviado chip + search haystack (Ops UX F2). */
-    estadoText: estadoText || fechaEntregaText || "",
-    rawSheetText: buildSheetFallbackText(headers, row),
-    fechaEntrega: parsePlanillaFechaGToIso(getVentasFechaDeEntregaCell(H, row)),
-    ventasSheetRow1Based: sheetRow1Based ?? null,
-    ventasTabGid: SH_GID,
-  };
+  return mapVentasRowV2(headers, row, sheetRow1Based, { gid: SH_GID });
 }
 
 function orderDisplayId(stop) {
@@ -573,6 +451,33 @@ async function inferStopCargo(stopLike) {
   const pdfLink = stopLike?.pdfLink || stopLike?.pdf || "";
   const rawSheetText = String(stopLike?.rawSheetText || "").trim();
 
+  // 1) Filename / ENCARGO URL (works when Drive PDF is not downloadable from browser)
+  const fromEncargo = inferCargoFromEncargoAndSheet(
+    { pdf: pdfLink, pdfLink, rawSheetText },
+    (text) => parseLogisticaFromAdjuntoText(text || ""),
+  );
+  if (fromEncargo.paneles.length || fromEncargo.accesorios.length) {
+    // Prefer real PDF text when available (better qty); else filename lines.
+    if (pdfLink) {
+      const fromPdf = await inferPanelsAndAccessoriesFromPdf(pdfLink);
+      if (fromPdf.paneles.length || fromPdf.accesorios.length) {
+        return normalizeInferredCargo(fromPdf, "adjunto");
+      }
+      return normalizeInferredCargo(
+        {
+          paneles: fromEncargo.paneles,
+          accesorios: fromEncargo.accesorios,
+          warnings: [
+            ...(fromPdf.warnings || []),
+            ...fromEncargo.warnings,
+          ],
+        },
+        "ENCARGO filename",
+      );
+    }
+    return normalizeInferredCargo(fromEncargo, "ENCARGO filename");
+  }
+
   if (pdfLink) {
     const fromPdf = await inferPanelsAndAccessoriesFromPdf(pdfLink);
     if (fromPdf.paneles.length || fromPdf.accesorios.length) {
@@ -588,14 +493,30 @@ async function inferStopCargo(stopLike) {
         "Sheets"
       );
     }
-    return normalizeInferredCargo(fromPdf, "adjunto");
+    return normalizeInferredCargo(
+      {
+        ...fromPdf,
+        warnings: [
+          ...(fromPdf.warnings || []),
+          ...fromEncargo.warnings,
+        ],
+      },
+      "adjunto",
+    );
   }
 
   if (rawSheetText) {
     return normalizeInferredCargo(parseLogisticaFromAdjuntoText(rawSheetText), "Sheets");
   }
 
-  return { paneles: [], accesorios: [], warnings: ["Sin PDF ni texto de respaldo en la búsqueda."] };
+  return {
+    paneles: [],
+    accesorios: [],
+    warnings: [
+      "Sin PDF ni texto de respaldo en la búsqueda.",
+      ...fromEncargo.warnings,
+    ],
+  };
 }
 
 function stopPackageCode(stop, index) {
@@ -2177,7 +2098,8 @@ export default function BmcLogisticaApp() {
       direccion: r.dir,
       telefono: r.tel,
       pdfLink: r.pdf,
-      mapLink: r.dir ? mapsUrl(r.dir) : "",
+      mapLink: r.dir && !/drive\.google|docs\.google/i.test(r.dir) ? mapsUrl(r.dir) : (r.dir?.startsWith("http") ? r.dir : ""),
+      carpetaDrive: r.carpetaDrive || "",
       rawSheetText: r.rawSheetText || "",
       orderId: r.orderId || "",
       pickupId: r.pickupId || "",
@@ -2189,12 +2111,13 @@ export default function BmcLogisticaApp() {
       ventasTabGid: r.ventasTabGid || SH_GID,
       checks: {
         ...mkStop(0).checks,
-        datosOk: Boolean(r.nombre && r.dir && r.tel),
+        datosOk: Boolean(r.nombre && (r.dir || r.tel)),
         mapaOk: Boolean(r.dir),
         adjuntoOk: Boolean(r.pdf),
       },
     };
-    setAutoLoadMsg((r.pdf || r.rawSheetText) ? `Intentando autocompletar paneles para ${r.nombre}...` : "");
+    const label = r.nombre || r.orderId || "parada";
+    setAutoLoadMsg((r.pdf || r.rawSheetText) ? `Intentando autocompletar paneles para ${label}...` : "");
     let enrichedStop = baseStop;
     if (r.pdf || r.rawSheetText) {
       const inferred = await inferStopCargo(baseStop);
