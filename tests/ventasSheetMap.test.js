@@ -90,4 +90,21 @@ const ROW = [
   ok("fecha parse");
 }
 
+{
+  // Legacy trap: if we used pre-V2 indices (nombre≈6, pdf≈8), Luis would map to FAB/fecha.
+  const legacyNombreIdx = 6;
+  const legacyPdfIdx = 8;
+  const r = mapVentasRowV2(HEADERS, ROW, 12);
+  assert.notEqual(r.nombre, ROW[legacyNombreIdx], "must not use legacy nombre index");
+  assert.notEqual(r.pdf, ROW[legacyPdfIdx], "must not use legacy pdf index");
+  assert.equal(r.nombre, "Luis González (Petinho)");
+  ok("rejects legacy column indices for nombre/pdf");
+}
+
+{
+  assert.equal(parsePlanillaFechaToIso(""), "");
+  assert.equal(parsePlanillaFechaToIso("no-fecha"), "");
+  ok("fecha parse rejects garbage");
+}
+
 console.log(`ventasSheetMap: ${passed} passed`);

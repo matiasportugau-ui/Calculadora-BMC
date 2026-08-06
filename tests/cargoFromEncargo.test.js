@@ -50,4 +50,20 @@ console.log("cargoFromEncargo");
   ok("inferCargoFromEncargoAndSheet");
 }
 
+{
+  const empty = parsePanelsFromFilename("");
+  assert.equal(empty.paneles.length, 0);
+  assert.ok(empty.warnings.length >= 1);
+
+  const badEspesor = parsePanelsFromFilename("Isopanel-999-mm-job.pdf");
+  assert.equal(badEspesor.paneles.length, 0, "non-catalog espesor must be skipped");
+
+  const fromSheet = inferCargoFromEncargoAndSheet({
+    pdf: "https://drive.google.com/file/d/abc/view",
+    rawSheetText: "Pedido con Isowall 80 mm y largo 7m",
+  });
+  assert.ok(fromSheet.paneles.some((p) => p.tipo === "ISOWALL" && p.espesor === 80));
+  ok("empty/invalid espesor + sheet-text fallback");
+}
+
 console.log(`cargoFromEncargo: ${passed} passed`);
