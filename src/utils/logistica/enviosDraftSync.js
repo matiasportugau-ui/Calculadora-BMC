@@ -118,6 +118,28 @@ export function resolveConflict(opts = {}) {
 }
 
 /**
+ * Fingerprint to store after a successful cloud push.
+ * Must use the payload that was actually sent — not live UI state —
+ * otherwise edits during the in-flight PUT look "clean" and never autosave.
+ * @param {object} savedPayload
+ * @returns {string}
+ */
+export function fingerprintSavedPayload(savedPayload) {
+  if (!savedPayload || typeof savedPayload !== "object") return "";
+  return fingerprintDraft({ payload: savedPayload });
+}
+
+/**
+ * Whether local state still differs from the last successful push fingerprint.
+ * @param {object} currentState
+ * @param {string} lastPushedFp
+ */
+export function isDraftDirtyVersusPush(currentState, lastPushedFp) {
+  const fp = fingerprintDraft(currentState || {});
+  return Boolean(fp && fp !== lastPushedFp);
+}
+
+/**
  * Parse API error for conflict handling.
  * @param {number} status
  * @param {object} body

@@ -65,6 +65,7 @@ import {
 } from "../utils/logistica/enviosDraft.js";
 import {
   fingerprintDraft,
+  fingerprintSavedPayload,
   shouldAutosave,
   parsePutDraftResponse,
   AUTOSAVE_MIN_INTERVAL_MS,
@@ -1864,7 +1865,9 @@ export default function BmcLogisticaApp() {
         return { ok: false, conflict: true, draft: parsed.draft };
       }
       if (!parsed.ok) throw new Error(parsed.error || res.statusText);
-      const fp = fingerprintDraft(currentDraftState());
+      // Fingerprint the payload we actually sent. Fingerprinting live state here
+      // would mark in-flight edits as clean and skip the next autosave (data loss).
+      const fp = fingerprintSavedPayload(built.payload);
       setLastPushedFp(fp);
       setLastPushAt(Date.now());
       setCloudConflict(null);

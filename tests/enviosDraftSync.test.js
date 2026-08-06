@@ -5,11 +5,14 @@
 import assert from "node:assert/strict";
 import {
   fingerprintDraft,
+  fingerprintSavedPayload,
+  isDraftDirtyVersusPush,
   shouldAutosave,
   resolveConflict,
   parsePutDraftResponse,
   AUTOSAVE_MIN_INTERVAL_MS,
 } from "../src/utils/logistica/enviosDraftSync.js";
+import { buildEnviosDraft } from "../src/utils/logistica/enviosDraft.js";
 
 let passed = 0;
 function ok(name) {
@@ -89,6 +92,31 @@ console.log("enviosDraftSync");
   assert.equal(okRes.ok, true);
   assert.equal(okRes.draft.revision, 2);
   ok("parsePutDraftResponse");
+}
+
+{
+  // Regression: edits during an in-flight PUT must stay dirty after success.
+  const baseState = {
+    info: { numero: "ENV-RACE", fecha: "2026-08-06" },
+    stops: [{ id: "s1", cliente: "A", paneles: [] }],
+    cargoLayoutMode: "auto",
+  };
+  const built = buildEnviosDraft(baseState, { now: () => "t0" });
+  assert.equal(built.ok, true);
+  const savedFp = fingerprintSavedPayload(built.payload);
+  const editedDuringFlight = {
+    ...baseState,
+    stops: [
+      { id: "s1", cliente: "A", paneles: [] },
+      { id: "s2", cliente: "B", paneles: [] },
+    ],
+  };
+  assert.equal(isDraftDirtyVersusPush(editedDuringFlight, savedFp), true);
+  // Anti-pattern from #886: fingerprinting live UI after PUT marks edits clean.
+  const buggyFp = fingerprintDraft(editedDuringFlight);
+  assert.equal(isDraftDirtyVersusPush(editedDuringFlight, buggyFp), false);
+  assert.notEqual(savedFp, buggyFp);
+  ok("in-flight edit stays dirty vs saved payload fingerprint");
 }
 
 console.log(`enviosDraftSync: ${passed} passed`);
