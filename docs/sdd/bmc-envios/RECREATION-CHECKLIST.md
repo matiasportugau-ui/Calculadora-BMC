@@ -3,7 +3,7 @@
 **System:** BMC Envíos (Quote Flete 10/11 + `/logistica`)  
 **SDD:** [`SDD.md`](./SDD.md)  
 **Last verified:** 2026-08-05 (glory re-audit F1–F6)  
-**Scope:** Rebuild / operate **as-built** module inside `calculadora-bmc`. OPEN items are residual product (U3/P2/P5), not doc failures.
+**Scope:** Rebuild / operate **as-built** module inside `calculadora-bmc`. Residual OPEN: P3 CBM, P2b Matrix/TSP, P5b autosave (P2/P5 MVP shipped).
 
 Legend: `[x]` done / verified · `[ ]` open · `N/A` justified
 
@@ -71,8 +71,10 @@ Legend: `[x]` done / verified · `[ ]` open · `N/A` justified
 | Ventas Sheets for ops | [x] partial | `GET /api/ventas?logistica=1` when credentials set |
 | Auth for `/logistica` | [x] | Route under `Shell` **without** `RequireGrant` module gate (`App.jsx` ~451–458); session via platform cookie/dev-login |
 | PDF extract (ops) | [x] optional | Prototype lib under `docs/.../logistica-carga-prototype` — Vite dynamic import warn OK |
-| Maps / geocode | N/A Core | Roadmap P2 |
-| `/api/envios/*` HTTP | N/A | **NOT DEPLOYED** — OpenAPI sketch only |
+| Maps / geocode MVP | [x] | `geocode.js` + Geocodificar button + POST `/api/envios/geocode` |
+| Durable drafts P5 | [x] | Save/Load nube + `envios_drafts` + PUT/GET `/api/envios/drafts/:id` |
+| Distance Matrix / TSP | N/A | Roadmap P2b |
+| Autosave cloud | N/A | Roadmap P5b |
 
 ---
 

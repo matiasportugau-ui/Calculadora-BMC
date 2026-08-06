@@ -1,9 +1,9 @@
 ---
 title: System Design Document — BMC Envíos (Cotizar flete + /logistica)
-version: 1.4
+version: 1.6
 date: 2026-08-05
 status: As-Built
-author: sdd-architect / sdd-reverse-engineer / glory-loop
+author: sdd-architect / sdd-reverse-engineer / glory-loop / p2-p5-mvp / ops-ux-wave-2
 system_slug: bmc-envios
 source: reverse-engineering
 target_path: calculadora-bmc
@@ -20,14 +20,14 @@ surfaces:
   - /logistica (BmcLogisticaApp)
 stack: React 18 + Vite + Express 5 + PostgreSQL + Vercel + Cloud Run + R3F
 evidence_policy: CONFIRMED | INFERRED | UNKNOWN | TARGET — see evidence/INDEX.md
-shipped_main_tip_note: "Includes #832 U1/U2, #840 packing/bridge fixes, #842–#849 Ops UX F1–F6"
+shipped_main_tip_note: "Includes #832 U1/U2, #840 packing/bridge, #842–#849 Ops UX F1–F6, #857 U3 FSM; P2 geocode + P5 drafts MVP (branch)"
 ---
 
 # System Design Document: BMC Envíos
 
 **Agent brief:** One BMC module, **two UI surfaces**, one **domain kernel**. Do not invent a courier SaaS. Prefer pure utils under `src/utils/logistica/` over growing `BmcLogisticaApp.jsx`.
 
-**Status:** *As-Built* — quote engine, dual packing engines (column freight + stack ops), quote→ops bridge, Liquid Glass chrome, Ops UX F1–F6, 1-fila tariff fix, and **U3 STOP_STATUS FSM** (`stopStatusFsm.js`, #857) are **CONFIRMED** in code on `main`. Residual product: P2 geocode, P3 CBM-as-tariff, P5 durable ENV.
+**Status:** *As-Built* — quote engine, dual packing engines (column freight + stack ops), quote→ops bridge, Liquid Glass chrome, Ops UX F1–F6, 1-fila tariff fix, **U3 STOP_STATUS FSM**, plus **P2 geocode MVP** (Nominatim proxy + haversine legs) and **P5 durable drafts MVP** (`envios_drafts` + `/api/envios/drafts/*`). Residual: P3 CBM-as-tariff; P2 road Distance Matrix / TSP; P5 auto-sync / multi-draft browser.
 
 Canonical: [`TARGET.md`](./TARGET.md) · Ops detail: [`SDD-OPS-UX-WAVE.md`](./SDD-OPS-UX-WAVE.md) · Recreation: [`RECREATION-CHECKLIST.md`](./RECREATION-CHECKLIST.md) · Evidence: [`evidence/INDEX.md`](./evidence/INDEX.md).
 
@@ -51,7 +51,7 @@ BMC cotiza flete de paneles en el wizard de Calculadora y opera la carga en `/lo
 | G6 | Design tokens Liquid Glass | P1 | **DONE** |
 | G7 | Agent-executable contracts + tests in `test:core` | P1 | **DONE** (pure modules) |
 | G8 | FSM STOP_STATUS guards | P2 | **DONE** U3 #857 |
-| G9 | Geo / CBM / durable ENV | P2 | **OPEN** P2/P3/P5 |
+| G9 | Geo MVP + durable ENV MVP | P2 | **DONE** P2/P5 MVP · residual P3 + Matrix/TSP |
 
 ### 1.3 Stakeholders
 
@@ -99,9 +99,10 @@ C4Context
 | Ventas gviz CSV | → | HTTPS | CONFIRMED |
 | `POST /api/ventas/logistica-fecha-entrega` | → | REST auth | CONFIRMED |
 | FX `getBrouUsdSellRate` | → | HTTPS | CONFIRMED |
-| localStorage `bmc-logistica-online-v2` | ↔ | JSON | CONFIRMED |
-| `POST /api/envios/*` | — | — | NOT DEPLOYED |
-| Maps Distance Matrix | — | — | TARGET P2 |
+| localStorage `bmc-logistica-online-v2` | ↔ | JSON | CONFIRMED (offline cache) |
+| `POST /api/envios/geocode` | → | REST auth | CONFIRMED P2 MVP (Nominatim) |
+| `GET/PUT/DELETE /api/envios/drafts/*` | ↔ | REST auth + PG | CONFIRMED P5 MVP |
+| Maps Distance Matrix / TSP | — | — | TARGET P2b |
 
 ---
 
@@ -115,7 +116,7 @@ C4Context
 | Domain | Uruguay road freight panels; tarifa zona + filas + largo |
 | Dual packing | **Intentional:** column for freight tariffs; stack for ops geometry |
 | Auth | `/logistica` shell without `RequireGrant` (ops convenience) |
-| Storage | Trip draft localStorage; bridge sessionStorage (device-local) |
+| Storage | Trip draft localStorage + optional PG `envios_drafts`; bridge sessionStorage |
 
 ---
 
@@ -169,8 +170,11 @@ C4Container
 | Package drop | `packageDrop.js` | AS-BUILT F5 |
 | Load plan | `loadPlanPrintModel.js` | AS-BUILT F6 |
 | Load physical | `loadCharacteristics.js` | AS-BUILT |
-| PG shipments | — | TARGET P5 |
-| Maps | — | TARGET P2 |
+| Geocode pure | `src/utils/logistica/geocode.js` | AS-BUILT P2 |
+| Draft pure | `src/utils/logistica/enviosDraft.js` | AS-BUILT P5 |
+| Envíos API | `server/routes/envios.js` | AS-BUILT P2/P5 |
+| PG drafts | `envios_drafts` | AS-BUILT P5 MVP |
+| Maps Matrix/TSP | — | TARGET non-MVP |
 
 ### Packing SoT (U1)
 
@@ -252,7 +256,7 @@ sequenceDiagram
 | Layer | Host | Notes |
 |-------|------|-------|
 | SPA | Vercel `calculadora-bmc` | SPA rewrites `/logistica` |
-| API | Cloud Run `panelin-calc` | Ventas fecha, health |
+| API | Cloud Run `panelin-calc` | Ventas fecha, `/api/envios/*` geocode + drafts |
 | CI | GitHub Actions | `gate:local` includes envios pure tests |
 | Secrets | Doppler → Vercel/GCP | names only |
 | Client storage | Browser | trip v2 + bridge session |
@@ -273,6 +277,11 @@ node tests/stopReorder.test.js
 node tests/remitoPackageMetrics.test.js
 node tests/packageDrop.test.js
 node tests/loadPlanPrintModel.test.js
+node tests/geocode.test.js
+node tests/enviosDraft.test.js
+# API (requires API_AUTH_TOKEN + optional DATABASE_URL):
+# curl -H "Authorization: Bearer $API_AUTH_TOKEN" -H 'Content-Type: application/json' \
+#   -d '{"address":"Maldonado"}' http://localhost:3001/api/envios/geocode
 ```
 
 ---
@@ -283,7 +292,7 @@ node tests/loadPlanPrintModel.test.js
 
 - No grant gate on `/logistica` (conscious ops trade-off).
 - Bridge/sessionStorage and localStorage hold customer names/addresses — device local only.
-- Sheets write for fecha entrega requires API token.
+- Sheets write, geocode, and cloud drafts require `API_AUTH_TOKEN` / `VITE_BMC_API_AUTH_TOKEN`.
 
 ### Reliability
 
@@ -353,6 +362,22 @@ node tests/loadPlanPrintModel.test.js
 **Decision**: Print CSS navy `#003366` + BOM tables; browser print, not full `simple.js` PDF pipeline.  
 **Alternatives**: Server PDF render (deferred).
 
+### ADR-015: P2 geocode via Nominatim proxy + haversine (not Distance Matrix)
+
+**Status**: Accepted (MVP)  
+**Context**: Operators need coords / map pin without Google billing day-1.  
+**Decision**: `POST /api/envios/geocode` proxies Nominatim (`countrycodes=uy`); client stores `stop.geo`; leg distances are **haversine air-km** only.  
+**Consequences**: + no Maps API key; − not road distance; rate-limited.  
+**Alternatives**: Google Geocoding + Distance Matrix (future, needs key + cost).
+
+### ADR-016: P5 durable drafts in `envios_drafts` (localStorage cache)
+
+**Status**: Accepted (MVP)  
+**Context**: Multi-device ops pain; full shipment microservice out of scope.  
+**Decision**: Upsert JSON draft by ENV number in Postgres; UI explicit Save/Load; localStorage remains offline cache.  
+**Consequences**: + multi-device; − manual sync; last-write-wins.  
+**Alternatives**: Auto-sync always-on; reuse transportista `trips` (different lifecycle).
+
 ---
 
 ## 11. Risks & Technical Debt
@@ -363,7 +388,9 @@ node tests/loadPlanPrintModel.test.js
 | Dense 3D labels | Clutter | Med | Truncate; detail panel always |
 | Dual engines drift | Tariff vs ops mismatch | Low | Shared module + tests |
 | localStorage wipe | Data loss | Low | hydrated gate + merge bridge |
-| No durable multi-device ENV | Ops pain | Med | P5 backlog |
+| Manual cloud sync only | Ops forgets save | Med | Explicit buttons + later autosave |
+| Nominatim rate / outage | No geocode | Low | Parse lat,lng from map link; cache geo on stop |
+| Haversine ≠ road km | Misread trip length | Med | Label as “km aire”; Matrix later |
 | BmcLogisticaApp size | Maintainability | High | Continue extract pure helpers |
 
 ---
@@ -423,9 +450,18 @@ Feature: BMC Envíos as-built
 
 ---
 
-## Appendix C — OpenAPI sketch
+## Appendix C — OpenAPI sketch (live MVP)
 
-`POST /api/envios/*` remains **NOT DEPLOYED**. Client pure engines are the SoT.
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/api/envios/health` | none | geocode flag + db ping |
+| POST | `/api/envios/geocode` | Bearer API | body `{ address }` or `{ lat, lng }` |
+| GET | `/api/envios/drafts` | Bearer API | recent list |
+| GET | `/api/envios/drafts/:id` | Bearer API | full payload |
+| PUT | `/api/envios/drafts/:id` | Bearer API | upsert JSON draft |
+| DELETE | `/api/envios/drafts/:id` | Bearer API | remove |
+
+Client pure engines remain packing/quote SoT. Transportista `/api/trips/*` is a **separate** driver lifecycle.
 
 ---
 
@@ -437,9 +473,11 @@ Feature: BMC Envíos as-built
 | U2 | Bridge | **DONE** |
 | F1–F6 | Ops UX wave | **DONE** #842–#849 |
 | U3 | FSM guards | **DONE** #857 |
-| P2 | Geocode | OPEN |
+| P2 | Geocode MVP | **DONE** Nominatim + haversine |
+| P2b | Road Distance Matrix / TSP | OPEN |
 | P3 | CBM non-panel | OPEN |
-| P5 | Server ENV | OPEN |
+| P5 | Server ENV drafts MVP | **DONE** `envios_drafts` |
+| P5b | Autosave / conflict UI | OPEN |
 
 ---
 
@@ -450,4 +488,6 @@ Feature: BMC Envíos as-built
 | 1.0–1.1 | 2026-08-04 | Hybrid as-built + evolution checklist |
 | 1.2 | 2026-08-04 | U1 + U2 shipped |
 | 1.3 | 2026-08-05 | Linked OPS-UX-WAVE; U1/U2 marked done in brief |
-| **1.4** | **2026-08-05** | **Full as-built: F1–F6 CONFIRMED, C4/bridge fixed, ADRs 011–014, evidence alignment, glory re-audit** |
+| 1.4 | 2026-08-05 | Full as-built: F1–F6 CONFIRMED, C4/bridge fixed, ADRs 011–014, evidence alignment, glory re-audit |
+| 1.5 | 2026-08-05 | P2 geocode MVP + P5 durable drafts MVP; ADR-015/016; `/api/envios/*` live |
+| **1.6** | **2026-08-05** | **Ops UX Wave 2 F7–F11: onDark buttons, package identity, client group drawer, stack above/below, Ventas proxy** |

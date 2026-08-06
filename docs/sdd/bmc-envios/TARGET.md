@@ -2,7 +2,7 @@
 
 **Slug:** `bmc-envios`  
 **Date:** 2026-08-05  
-**Status:** As-built Core (U1/U2/U3) + Ops UX F1–F6 DONE; residual P2/P3/P5  
+**Status:** As-built Core (U1/U2/U3) + Ops UX F1–F6 + P2/P5 MVP DONE; residual P3 + Matrix/TSP + autosave  
 **Repo:** `calculadora-bmc`  
 **Surfaces (must stay one product):**
 
@@ -39,11 +39,25 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 | F5 | Package DnD → manual layout overrides | **DONE** (fila A/B via select + override) |
 | F6 | Load-plan print multi-view + translucent cabin | **DONE** (plan sheet + 3D cabin) |
 
+## P2 / P5 MVP DoD
+
+| ID | Criterion | Status |
+|----|-----------|--------|
+| P2 | Geocode stop → `stop.geo` + map pin | **DONE** `geocode.js` + `POST /api/envios/geocode` |
+| P2 | Parse lat,lng / Maps URL without API | **DONE** |
+| P2 | Trip air-km legs (haversine) | **DONE** `tripLegDistances` |
+| P2b | Google Distance Matrix / TSP | OPEN |
+| P5 | Durable draft by ENV number in PG | **DONE** `envios_drafts` + PUT/GET |
+| P5 | UI Save/Load nube | **DONE** `/logistica` header |
+| P5 | localStorage offline cache | **DONE** (primary offline) |
+| P5b | Autosave + conflict UI | OPEN |
+| P3 | CBM non-panel tariff | OPEN |
+
 ## Non-goals (Core)
 
 - SaaS courier multi-modal global  
-- Distance Matrix / isochrones / TSP (roadmap P2–P4)  
-- Microservicio o DB nueva obligatoria  
+- Distance Matrix / isochrones / TSP (roadmap P2b)  
+- Replacing transportista driver trips with ENV drafts  
 - Sustituir tarifa panel-zona por CBM puro sin ADR  
 
 ## Success metrics
