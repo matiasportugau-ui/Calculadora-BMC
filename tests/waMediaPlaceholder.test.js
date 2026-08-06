@@ -208,7 +208,7 @@ describe("STT text revert on media clear (skeptic: no leftover synthetic body)",
     );
   });
 
-  it("does NOT wipe human captions without STT provenance (Bug AG)", () => {
+  it("does NOT wipe human captions without STT provenance (Bug AH)", () => {
     const human = {
       type: "audio",
       text: "Necesito cotización de techo 40m2",
