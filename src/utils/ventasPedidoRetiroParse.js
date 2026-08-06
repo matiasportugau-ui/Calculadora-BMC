@@ -1,8 +1,8 @@
 /**
  * Extrae "N° Pedido" y "N° Retiro" desde texto libre.
- * En Ventas 2.0 la **columna F** suele titularse `FECHA ENTREGA` pero el contenido es un **resumen de estado**
- * (segmentos separados por `/`), no la fecha de entrega coordinada (esa va en **columna G**).
- * El **Nº Retiro** aparece ahí tras el mail a fábrica pidiendo retiro post análisis de carga.
+ * En Ventas 2.0 la **columna F** es texto operativo (estado/pago/retiro; segmentos `/`);
+ * la fecha de entrega coordinada vive en **columna H** (`FECHA ENTREGA`). El **Nº Retiro**
+ * suele aparecer en F tras el mail a fábrica pidiendo retiro post análisis de carga.
  * Patrones típicos: "N° Pedido 1342836 / N° Retiro 53733", "Nº Pedido ...", variantes °/º.
  */
 

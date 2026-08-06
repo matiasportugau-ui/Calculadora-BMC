@@ -6,8 +6,11 @@ import {
   mapVentasRowV2,
   buildVentasHeaderMap,
   parsePlanillaFechaToIso,
+  buildVentasFechaEntregaA1Range,
   VENTAS_V2_FALLBACK,
+  VENTAS_FECHA_ENTREGA_COL_LETTER,
 } from "../src/utils/logistica/ventasSheetMap.js";
+import { colIndexToLetter } from "../server/lib/sheetColumnLetters.js";
 
 let passed = 0;
 function ok(name) {
@@ -88,6 +91,22 @@ const ROW = [
   assert.equal(parsePlanillaFechaToIso("22/05/2026"), "2026-05-22");
   assert.equal(parsePlanillaFechaToIso("2026-05-22"), "2026-05-22");
   ok("fecha parse");
+}
+
+{
+  // Regression: logística fecha write must hit H (FECHA ENTREGA), never G (TIPO/FAB).
+  assert.equal(VENTAS_FECHA_ENTREGA_COL_LETTER, "H");
+  assert.equal(colIndexToLetter(VENTAS_V2_FALLBACK.fechaEntrega), "H");
+  assert.equal(colIndexToLetter(VENTAS_V2_FALLBACK.tipo), "G");
+  assert.equal(
+    buildVentasFechaEntregaA1Range("Ventas", 12),
+    "'Ventas'!H12",
+  );
+  assert.equal(
+    buildVentasFechaEntregaA1Range("O'Brien", 3),
+    "'O''Brien'!H3",
+  );
+  ok("fecha entrega write column is H not G");
 }
 
 console.log(`ventasSheetMap: ${passed} passed`);
