@@ -12,6 +12,10 @@ import {
   saleStatusChipCaption,
   formatIsoToDdMm,
   transportistaForCamion,
+  stripLogisticaMarkers,
+  ventasRowIdentityFingerprint,
+  findSheetRow1BasedByFingerprint,
+  isTerminalSaleStatus,
 } from "../src/utils/logistica/saleState.js";
 import { isJunkVentasRow, mapVentasRowV2, parsePlanillaFechaToIso } from "../src/utils/logistica/ventasSheetMap.js";
 import { filterOperationalVentasRows } from "../src/utils/logistica/ventasSearch.js";
@@ -169,6 +173,43 @@ console.log("saleState");
 {
   assert.equal(parsePlanillaFechaToIso("22/05/2026"), "2026-05-22");
   ok("fecha still parses");
+}
+
+{
+  const stripped = stripLogisticaMarkers("Pago 50% [LOGISTICA:OLD X] nota");
+  assert.equal(stripped.includes("[LOGISTICA:"), false);
+  assert.match(stripped, /Pago 50%/);
+  // Pathological tabs + unclosed markers must stay linear / not hang
+  const adversarial = `${"\t".repeat(5000)}[LOGISTICA:${"x".repeat(200)}`;
+  const t0 = Date.now();
+  const out = stripLogisticaMarkers(adversarial);
+  assert.ok(Date.now() - t0 < 200, "stripLogisticaMarkers must stay fast on adversarial input");
+  assert.ok(typeof out === "string");
+  ok("stripLogisticaMarkers linear / no ReDoS");
+}
+
+{
+  const a = ["", "", "1344", "", "", "estado", "", "22/05", "Petinho", "Calle 1", "", "", "", "", "", "099"];
+  const b = ["", "", "1345", "", "", "estado", "", "22/05", "Otro", "Calle 2", "", "", "", "", "", "098"];
+  const fp = ventasRowIdentityFingerprint(a);
+  assert.notEqual(fp, ventasRowIdentityFingerprint(b));
+  // Estado change must not alter identity fingerprint
+  const a2 = a.slice();
+  a2[5] = "ENTREGADO [LOGISTICA:ENTREGADO]";
+  assert.equal(ventasRowIdentityFingerprint(a2), fp);
+  // After a concurrent delete above, hint row 10 is wrong content — scan finds real row
+  const dataRows = [b, a]; // sheet rows 2 and 3
+  assert.equal(findSheetRow1BasedByFingerprint(dataRows, fp, 10), 3);
+  assert.equal(findSheetRow1BasedByFingerprint(dataRows, fp, 3), 3);
+  assert.equal(findSheetRow1BasedByFingerprint(dataRows, "missing", 2), null);
+  ok("fingerprint relocate after row shift");
+}
+
+{
+  assert.equal(isTerminalSaleStatus("entregado"), true);
+  assert.equal(isTerminalSaleStatus("enviado"), true);
+  assert.equal(isTerminalSaleStatus("coordinado"), false);
+  ok("terminal statuses");
 }
 
 console.log(`saleState: ${passed} passed`);

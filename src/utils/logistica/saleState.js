@@ -218,6 +218,86 @@ export function isActiveLogisticsSale(c) {
 }
 
 /**
+ * Remove `[LOGISTICA:…]` markers without nested/polynomial regex (CodeQL ReDoS).
+ * Linear scan — safe on adversarial / huge ESTADO cells.
+ * @param {string} text
+ */
+export function stripLogisticaMarkers(text) {
+  const s = String(text || "");
+  if (!s) return "";
+  const lower = s.toLowerCase();
+  let out = "";
+  let i = 0;
+  while (i < s.length) {
+    const start = lower.indexOf("[logistica:", i);
+    if (start === -1) {
+      out += s.slice(i);
+      break;
+    }
+    out += s.slice(i, start);
+    const close = s.indexOf("]", start);
+    if (close === -1) {
+      // Unclosed marker — drop the rest of the marker prefix only, keep trailing text if any.
+      out += s.slice(start);
+      break;
+    }
+    i = close + 1;
+  }
+  return out.replace(/[ \t\f\v\u00a0]+/g, " ").replace(/\n+/g, "\n").trim();
+}
+
+/**
+ * Identity fingerprint for a Ventas row (orderId + nombre + tel + dir).
+ * Intentionally ignores ESTADO/fecha so estado updates do not break matching.
+ * Used to delete the correct source row after archive append (row indices shift).
+ * @param {string[]|null|undefined} cells row cells A=0
+ * @param {{ orderId?: number, nombre?: number, tel?: number, dir?: number }} [idx]
+ */
+export function ventasRowIdentityFingerprint(cells, idx = {}) {
+  const orderIdIdx = idx.orderId ?? 2;
+  const nombreIdx = idx.nombre ?? 8;
+  const telIdx = idx.tel ?? 15;
+  const dirIdx = idx.dir ?? 9;
+  const row = Array.isArray(cells) ? cells : [];
+  const parts = [orderIdIdx, nombreIdx, telIdx, dirIdx].map((i) =>
+    String(row[i] ?? "")
+      .trim()
+      .replace(/\s+/g, " "),
+  );
+  return parts.join("\u0001");
+}
+
+/**
+ * Find 1-based sheet row whose identity fingerprint matches.
+ * Prefers hintRow1Based when still matching (fast path).
+ * @param {string[][]} dataRows rows from sheet starting at row 2 (index 0 = sheet row 2)
+ * @param {string} fingerprint
+ * @param {number} [hintRow1Based]
+ * @returns {number|null} 1-based row number or null
+ */
+export function findSheetRow1BasedByFingerprint(dataRows, fingerprint, hintRow1Based) {
+  const fp = String(fingerprint || "");
+  if (!fp || !Array.isArray(dataRows)) return null;
+  if (Number.isFinite(hintRow1Based) && hintRow1Based >= 2) {
+    const hintIdx = hintRow1Based - 2;
+    if (hintIdx >= 0 && hintIdx < dataRows.length) {
+      if (ventasRowIdentityFingerprint(dataRows[hintIdx]) === fp) return hintRow1Based;
+    }
+  }
+  for (let i = 0; i < dataRows.length; i += 1) {
+    if (ventasRowIdentityFingerprint(dataRows[i]) === fp) return i + 2;
+  }
+  return null;
+}
+
+/** Statuses that require archive move via logistica-entregado — not plain estado write. */
+export const TERMINAL_SALE_STATUSES = /** @type {const} */ (["entregado", "enviado"]);
+
+export function isTerminalSaleStatus(status) {
+  return TERMINAL_SALE_STATUSES.includes(/** @type {'entregado'|'enviado'} */ (status));
+}
+
+/**
  * Strip previous LOGISTICA markers then append new ones.
  * Keeps human free-text (pagos, notes).
  * @param {string} existingEstado
@@ -230,10 +310,7 @@ export function isActiveLogisticsSale(c) {
  * }} opts
  */
 export function buildEstadoSheetValue(existingEstado, opts) {
-  const base = String(existingEstado || "")
-    .replace(/\s*\[LOGISTICA:[^\]]*\]/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const base = stripLogisticaMarkers(existingEstado);
 
   const status = opts.status;
   const parts = [`LOGISTICA:${status.toUpperCase()}`];
@@ -243,7 +320,9 @@ export function buildEstadoSheetValue(existingEstado, opts) {
   }
   if (opts.camion) parts.push(`CAMION=${opts.camion}`);
   if (opts.transportista) parts.push(`TTE=${String(opts.transportista).slice(0, 40)}`);
-  if (opts.comment) parts.push(`NOTA=${String(opts.comment).replace(/[\[\]]/g, "").slice(0, 120)}`);
+  if (opts.comment) {
+    parts.push(`NOTA=${String(opts.comment).replace(/[[\]]/g, "").slice(0, 120)}`);
+  }
 
   const marker = `[${parts.join(" ")}]`;
   return base ? `${base} ${marker}` : marker;

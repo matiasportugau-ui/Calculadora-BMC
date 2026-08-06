@@ -2309,10 +2309,18 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       if (!Number.isFinite(row1Based) || row1Based < 2) {
         return JSON.stringify({ ok: false, error: "row1Based (>=2) requerido", tool: name });
       }
+      const status = String(input?.status || "").trim().toLowerCase();
+      if (status === "entregado" || status === "enviado") {
+        return JSON.stringify({
+          ok: false,
+          error: "Para entregado/enviado usá logistica_confirmar_entrega (mueve a archivo)",
+          tool: name,
+        });
+      }
       const body = {
         gid: String(input?.gid || "926747636"),
         row1Based,
-        status: String(input?.status || ""),
+        status,
         fechaEntrega: input?.fechaEntrega || "",
         camion: input?.camion,
         transportista: input?.transportista || "",

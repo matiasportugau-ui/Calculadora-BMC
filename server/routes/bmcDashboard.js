@@ -47,6 +47,12 @@ import {
   getExtractorModel,
   FAST_DEFAULT_MODELS,
 } from "../lib/aiProviderConfig.js";
+import {
+  buildEstadoSheetValue,
+  findSheetRow1BasedByFingerprint,
+  isTerminalSaleStatus,
+  ventasRowIdentityFingerprint,
+} from "../../src/utils/logistica/saleState.js";
 
 /**
  * Structured logging for AI calls (tokens + rough cost).
@@ -1247,6 +1253,13 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
   const status = String(body?.status || "").trim().toLowerCase();
   const allowed = new Set(["por_coordinar", "coordinado", "con_pendientes", "entregado", "enviado"]);
   if (!allowed.has(status)) throw new Error("status inválido");
+  // Terminal statuses must go through logistica-entregado (archive move). Plain F/H
+  // write would hide the row from "Cargar actuales" without archiving → operational loss.
+  if (isTerminalSaleStatus(status) && body?.allowTerminal !== true) {
+    throw new Error(
+      "status entregado/enviado requiere POST /api/ventas/logistica-entregado (confirm + archivo)",
+    );
+  }
 
   const tabTitle = await getSheetTabTitleByGid(ventasSheetId, gid);
   if (!tabTitle) throw new Error("No se encontró la pestaña para ese gid");
@@ -1269,12 +1282,9 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
     }
   }
 
-  // Inline marker builder (mirrors saleState.buildEstadoSheetValue — keep in sync)
   const fechaIso =
     body?.fechaEntrega === "" || body?.fechaEntrega == null
-      ? status === "por_coordinar"
-        ? ""
-        : ""
+      ? ""
       : String(body.fechaEntrega).trim();
   const fechaVal =
     !fechaIso || status === "por_coordinar" ? "" : formatIsoDateToDdMmYyyy(fechaIso);
@@ -1283,23 +1293,20 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
       ? Math.floor(Number(body.camion))
       : null;
   const tte = body?.transportista ? String(body.transportista).slice(0, 40) : "";
-  const comment = body?.comment ? String(body.comment).replace(/[\[\]]/g, "").slice(0, 120) : "";
+  const comment = body?.comment ? String(body.comment).replace(/[[\]]/g, "").slice(0, 120) : "";
 
-  const base = existingEstado
-    .replace(/\s*\[LOGISTICA:[^\]]*\]/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  const parts = [`LOGISTICA:${status.toUpperCase()}`];
-  if (fechaVal) parts.push(`FECHA=${fechaVal}`);
-  if (camion && Number.isFinite(camion) && camion >= 1) parts.push(`CAMION=${camion}`);
-  if (tte) parts.push(`TTE=${tte}`);
-  if (comment) parts.push(`NOTA=${comment}`);
-  const marker = `[${parts.join(" ")}]`;
-  const estadoVal = body?.estadoText != null && String(body.estadoText).includes("[LOGISTICA:")
-    ? String(body.estadoText)
-    : base
-      ? `${base} ${marker}`
-      : marker;
+  // Prefer shared builder (linear marker strip — avoids CodeQL ReDoS on ESTADO).
+  // If client already sent a full LOGISTICA marker cell, keep it as-is.
+  const estadoVal =
+    body?.estadoText != null && String(body.estadoText).includes("[LOGISTICA:")
+      ? String(body.estadoText)
+      : buildEstadoSheetValue(existingEstado, {
+          status,
+          fechaIso: fechaVal ? fechaIso : null,
+          camion: camion && Number.isFinite(camion) && camion >= 1 ? camion : null,
+          transportista: tte,
+          comment,
+        });
 
   const data = [
     {
@@ -1356,7 +1363,17 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const safeTab = String(tabTitle).replace(/'/g, "''");
 
-  // Read full row for archive append
+  // Fail-fast: resolve archive BEFORE mutating the active row (avoids orphan
+  // "entregado" markers when the archive tab is missing).
+  const archiveTitle = await resolveVentasArchiveTabTitle(sheets, ventasSheetId);
+  if (!archiveTitle) {
+    throw new Error(
+      "No se encontró pestaña de archivo (Enviados / Ventas Realizadas y Entegadas) en el workbook",
+    );
+  }
+  const safeArchive = String(archiveTitle).replace(/'/g, "''");
+
+  // Read full row + identity fingerprint (orderId/nombre/tel/dir) BEFORE any write.
   const rowRes = await sheets.spreadsheets.values.get({
     spreadsheetId: ventasSheetId,
     range: `'${safeTab}'!A${row1Based}:ZZ${row1Based}`,
@@ -1364,8 +1381,12 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
   });
   const rowData = rowRes.data.values?.[0] || [];
   if (!rowData.length) throw new Error("Fila vacía o no encontrada");
+  const identityFp = ventasRowIdentityFingerprint(rowData);
+  if (!identityFp.replace(/\u0001/g, "").trim()) {
+    throw new Error("Fila sin identidad usable (pedido/nombre/tel/dir vacíos) — abortado para no borrar otra venta");
+  }
 
-  // Update estado marker on source row first (before move)
+  // Update estado marker on source row (internal allowTerminal — archive follows).
   await handleVentasLogisticaEstado(ventasSheetId, {
     gid,
     row1Based,
@@ -1374,12 +1395,26 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
     comment: body?.comment || "",
     transportista: body?.transportista || "",
     camion: body?.camion,
+    allowTerminal: true,
   });
 
-  // Re-read row after estado write
+  // Re-locate by fingerprint (concurrent deletes above this row shift indices).
+  const afterEstadoRow1 = await locateVentasRow1BasedByFingerprint(
+    sheets,
+    ventasSheetId,
+    safeTab,
+    identityFp,
+    row1Based,
+  );
+  if (afterEstadoRow1 == null) {
+    throw new Error(
+      "La fila cambió o fue borrada durante la confirmación (otra operación concurrente). Reintentá.",
+    );
+  }
+
   const rowRes2 = await sheets.spreadsheets.values.get({
     spreadsheetId: ventasSheetId,
-    range: `'${safeTab}'!A${row1Based}:ZZ${row1Based}`,
+    range: `'${safeTab}'!A${afterEstadoRow1}:ZZ${afterEstadoRow1}`,
     valueRenderOption: "FORMATTED_VALUE",
   });
   const rowToArchive = rowRes2.data.values?.[0] || rowData;
@@ -1403,14 +1438,6 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
     }
   }
 
-  const archiveTitle = await resolveVentasArchiveTabTitle(sheets, ventasSheetId);
-  if (!archiveTitle) {
-    throw new Error(
-      "No se encontró pestaña de archivo (Enviados / Ventas Realizadas y Entegadas) en el workbook"
-    );
-  }
-  const safeArchive = String(archiveTitle).replace(/'/g, "''");
-
   // Append to archive
   const safeRow = rowToArchive.map((c) => {
     const s = String(c ?? "");
@@ -1426,36 +1453,56 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
     requestBody: { values: [safeRow] },
   });
 
-  // Delete from source tab
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: ventasSheetId });
-  const src = (meta.data.sheets || []).find((s) => s.properties?.title === tabTitle);
-  const numericSheetId = src?.properties?.sheetId;
-  if (numericSheetId === undefined) {
-    throw new Error(`Tab origen '${tabTitle}' no encontrado para borrar fila`);
-  }
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: ventasSheetId,
-    requestBody: {
-      requests: [
-        {
-          deleteDimension: {
-            range: {
-              sheetId: numericSheetId,
-              dimension: "ROWS",
-              startIndex: row1Based - 1,
-              endIndex: row1Based,
+  // CRITICAL: never delete by the original row1Based after append — concurrent
+  // archive/deletes shift rows and would erase a different sale. Re-find by fingerprint.
+  const deleteRow1 = await locateVentasRow1BasedByFingerprint(
+    sheets,
+    ventasSheetId,
+    safeTab,
+    identityFp,
+    afterEstadoRow1,
+  );
+
+  let deleted = false;
+  let deleteWarning = null;
+  if (deleteRow1 == null) {
+    // Already archived; source row gone (likely concurrent delete of same sale) — do not guess.
+    deleteWarning =
+      "Fila origen no encontrada tras archivar (posible operación concurrente). No se borró ninguna otra fila.";
+  } else {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: ventasSheetId });
+    const src = (meta.data.sheets || []).find((s) => s.properties?.title === tabTitle);
+    const numericSheetId = src?.properties?.sheetId;
+    if (numericSheetId === undefined) {
+      throw new Error(`Tab origen '${tabTitle}' no encontrado para borrar fila`);
+    }
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: ventasSheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: numericSheetId,
+                dimension: "ROWS",
+                startIndex: deleteRow1 - 1,
+                endIndex: deleteRow1,
+              },
             },
           },
-        },
-      ],
-    },
-  });
+        ],
+      },
+    });
+    deleted = true;
+  }
 
   invalidateVentasSheetsReadCache(ventasSheetId);
   return {
     ok: true,
     mode,
     moved: true,
+    deleted,
+    deleteWarning,
     fromTab: tabTitle,
     toTab: archiveTitle,
     archivedRowPreview: {
@@ -1464,6 +1511,43 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
     },
     remito,
   };
+}
+
+/**
+ * Scan source tab for a row matching identity fingerprint.
+ * @returns {Promise<number|null>} 1-based row
+ */
+async function locateVentasRow1BasedByFingerprint(
+  sheets,
+  spreadsheetId,
+  safeTab,
+  fingerprint,
+  hintRow1Based,
+) {
+  // Fast path: hint still matches
+  if (Number.isFinite(hintRow1Based) && hintRow1Based >= 2) {
+    try {
+      const hintRes = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${safeTab}'!A${hintRow1Based}:ZZ${hintRow1Based}`,
+        valueRenderOption: "FORMATTED_VALUE",
+      });
+      const cells = hintRes.data.values?.[0];
+      if (cells && ventasRowIdentityFingerprint(cells) === fingerprint) {
+        return hintRow1Based;
+      }
+    } catch {
+      /* fall through to full scan */
+    }
+  }
+
+  const allRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${safeTab}'!A2:ZZ`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const dataRows = allRes.data.values || [];
+  return findSheetRow1BasedByFingerprint(dataRows, fingerprint, hintRow1Based);
 }
 
 async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
