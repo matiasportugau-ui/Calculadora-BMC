@@ -30,9 +30,11 @@ console.log("safeHref");
 {
   assert.equal(safeTelHref("+598 99 123 456"), "tel:+59899123456");
   assert.equal(safeTelHref("(099) 123-456"), "tel:(099)123-456");
+  assert.equal(safeTelHref("tel:+59899123456"), "tel:+59899123456");
   assert.equal(safeTelHref("javascript:alert(1)"), "");
-  assert.equal(safeTelHref("tel:+59899123456"), "");
+  assert.equal(safeTelHref("javascript:alert(123456789)"), "");
   assert.equal(safeTelHref("abc"), "");
+  assert.equal(safeTelHref("12345"), "");
   assert.equal(safeTelHref(""), "");
   ok("safeTelHref");
 }

@@ -28,11 +28,16 @@ export function safeExternalHref(raw) {
  * @returns {string} "tel:..." or "" when empty/unsafe
  */
 export function safeTelHref(raw) {
-  const s = String(raw ?? "").trim();
+  let s = String(raw ?? "").trim();
   if (!s) return "";
+  // Allow a leading tel: wrapper from paste; reject any other scheme.
+  if (/^tel:/i.test(s)) s = s.slice(4).trim();
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s)) return "";
   // Digits and common phone punctuation only (no colon / scheme injection).
   const cleaned = s.replace(/[^\d+*#().\-\s]/g, "").replace(/\s+/g, "");
-  if (!cleaned || !/\d/.test(cleaned)) return "";
+  if (!cleaned) return "";
+  const digits = cleaned.replace(/\D/g, "");
+  if (digits.length < 6 || digits.length > 20) return "";
   if (cleaned.length > 32) return "";
   return `tel:${cleaned}`;
 }
