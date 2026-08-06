@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import { MAX_H } from "../../utils/bmcLogisticaCargo.js";
-import { packageIdentityLabel } from "../../utils/logistica/loadPlanPrintModel.js";
+import { packageLabelCompact, packageLabelTiny } from "../../utils/logistica/packageIdentity.js";
 
 const TRUCK_W = 2.4;
 const ROW_W = 1.2;
@@ -12,17 +12,6 @@ const CAB_HEIGHT_M = 1.5;
 function hexToColor(hex) {
   if (!hex || typeof hex !== "string" || hex[0] !== "#") return "#888888";
   return hex;
-}
-
-function truncate(s, n = 18) {
-  const t = String(s || "").trim();
-  if (t.length <= n) return t;
-  return `${t.slice(0, n - 1)}…`;
-}
-
-function packageLabelShort(pkg) {
-  if (!pkg) return "";
-  return pkg.kind === "accessory" ? `P${pkg.sOrd}·ACC` : `P${pkg.sOrd}·${pkg.n}`;
 }
 
 function TruckCabin({ shiftX }) {
@@ -54,16 +43,14 @@ function TruckCabin({ shiftX }) {
   );
 }
 
-function CargoBox({ pkg, shiftX, selected, onSelect }) {
+function CargoBox({ pkg, shiftX, selected, dimmed, label, onSelect }) {
   const len = pkg.len;
   const h = pkg.h;
   const cx = shiftX + pkg.xStart + len / 2;
   const cz = pkg.row * ROW_W + ROW_W / 2;
   const cy = pkg.zBase + h / 2;
   const col = pkg.ov ? "#ff3b30" : hexToColor(pkg.sCol);
-  const cli = truncate(pkg.sCli, 16);
-  const ped = String(pkg.sPed || "").trim();
-  const line2 = ped ? `#${truncate(ped, 14)}` : packageLabelShort(pkg);
+  const opacity = pkg.ov ? 0.85 : dimmed ? 0.22 : 1;
 
   const handleClick = useCallback(
     (e) => {
@@ -86,8 +73,8 @@ function CargoBox({ pkg, shiftX, selected, onSelect }) {
         color={col}
         metalness={0.15}
         roughness={0.55}
-        opacity={pkg.ov ? 0.85 : 1}
-        transparent={Boolean(pkg.ov)}
+        opacity={opacity}
+        transparent={Boolean(pkg.ov) || dimmed}
         emissive={selected ? "#ffffff" : "#000000"}
         emissiveIntensity={selected ? 0.38 : 0}
       />
@@ -104,13 +91,11 @@ function CargoBox({ pkg, shiftX, selected, onSelect }) {
           lineHeight: 1.15,
           textShadow: "0 1px 2px rgba(0,0,0,.85)",
           whiteSpace: "nowrap",
+          opacity: dimmed ? 0.35 : 1,
         }}
         zIndexRange={[0, 0]}
       >
-        <div>
-          {cli ? <div>{cli}</div> : null}
-          <div style={{ fontSize: 10, opacity: 0.95 }}>{line2}</div>
-        </div>
+        <div>{label || packageLabelTiny(pkg, null, 22)}</div>
       </Html>
     </mesh>
   );
@@ -165,7 +150,17 @@ function HeightGuides({ shiftX, truckL }) {
   );
 }
 
-function SceneContent({ placed, shiftX, truckL, maxLen, totalLen, selectedId, onSelectPackage }) {
+function SceneContent({
+  placed,
+  shiftX,
+  truckL,
+  maxLen,
+  totalLen,
+  selectedId,
+  onSelectPackage,
+  highlightKeys,
+  bultoCounts,
+}) {
   const cx = totalLen / 2;
   const targetY = MAX_H * 0.35;
 
@@ -178,9 +173,24 @@ function SceneContent({ placed, shiftX, truckL, maxLen, totalLen, selectedId, on
       <TruckCabin shiftX={shiftX} />
       <TruckFloor shiftX={shiftX} truckL={truckL} maxLen={maxLen} totalLen={totalLen} />
       <HeightGuides shiftX={shiftX} truckL={truckL} />
-      {placed.map((pkg) => (
-        <CargoBox key={pkg.id} pkg={pkg} shiftX={shiftX} selected={selectedId === pkg.id} onSelect={onSelectPackage} />
-      ))}
+      {placed.map((pkg) => {
+        const inGroup =
+          !highlightKeys || highlightKeys.size === 0 || highlightKeys.has(pkg.stableKey);
+        const isSelected =
+          selectedId === pkg.id ||
+          (highlightKeys && highlightKeys.size > 0 && highlightKeys.has(pkg.stableKey));
+        return (
+          <CargoBox
+            key={pkg.id}
+            pkg={pkg}
+            shiftX={shiftX}
+            selected={Boolean(isSelected)}
+            dimmed={!inGroup}
+            label={packageLabelTiny(pkg, bultoCounts, 22)}
+            onSelect={onSelectPackage}
+          />
+        );
+      })}
       <OrbitControls
         makeDefault
         enableDamping
@@ -205,16 +215,23 @@ export default function LogisticaCargoScene3d({
   totalLen,
   onSelectStableKey,
   onForceRow,
+  bultoCounts = null,
+  highlightKeys = null,
+  selectedPkgId = null,
 }) {
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(selectedPkgId || null);
   const cx = totalLen / 2;
   const cam = [cx + 4.2, MAX_H + 2.4, TRUCK_W + 5.2];
+
+  useEffect(() => {
+    if (selectedPkgId != null) setSelectedId(selectedPkgId);
+  }, [selectedPkgId]);
 
   const onSelectPackage = useCallback(
     (id) => {
       setSelectedId(id);
       const pkg = placed.find((p) => p.id === id);
-      if (pkg?.stableKey && onSelectStableKey) onSelectStableKey(pkg.stableKey, pkg);
+      if (pkg && onSelectStableKey) onSelectStableKey(pkg.stableKey, pkg);
     },
     [placed, onSelectStableKey],
   );
@@ -247,6 +264,8 @@ export default function LogisticaCargoScene3d({
           totalLen={totalLen}
           selectedId={selectedId}
           onSelectPackage={onSelectPackage}
+          highlightKeys={highlightKeys}
+          bultoCounts={bultoCounts}
         />
       </Canvas>
       <div
@@ -276,7 +295,9 @@ export default function LogisticaCargoScene3d({
               lineHeight: 1.4,
             }}
           >
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>{packageIdentityLabel(selectedPkg).replace(/\n/g, " · ")}</div>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>
+              {packageLabelCompact(selectedPkg, bultoCounts)}
+            </div>
             <div style={{ color: "rgba(255,255,255,.8)", fontSize: 11 }}>
               Cliente: <b>{selectedPkg.sCli || "—"}</b>
               {" · "}Pedido: <b>{selectedPkg.sPed || "—"}</b>
@@ -315,7 +336,7 @@ export default function LogisticaCargoScene3d({
           </div>
         ) : (
           <span style={{ color: "rgba(255,255,255,.4)", fontSize: 11 }}>
-            Clic en un bulto · etiqueta = cliente + nº pedido · cabina translúcida a la izquierda
+            Clic en un bulto · k/N · #pedido · cliente · cabina a la izquierda
           </span>
         )}
       </div>

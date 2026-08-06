@@ -5,7 +5,8 @@
 # ingest without you re-opening browser / re-logging every day.
 #
 # Usage:
-#   ./scripts/wa-chrome-always-on.sh              # start (or focus if running)
+#   ./scripts/wa-chrome-always-on.sh              # start in background (or focus if running)
+#   ./scripts/wa-chrome-always-on.sh start --wait # start + block until Chrome exits (LaunchAgent)
 #   ./scripts/wa-chrome-always-on.sh --status
 #   ./scripts/wa-chrome-always-on.sh --stop
 #   ./scripts/wa-chrome-always-on.sh --install-agent   # LaunchAgent KeepAlive
@@ -26,6 +27,7 @@ WA_URL="https://web.whatsapp.com/"
 PLIST_LABEL="com.bmc.wa-chrome"
 PLIST_SRC="$REPO/docs/wa-cockpit/com.bmc.wa-chrome.plist.example"
 PLIST_DST="$HOME/Library/LaunchAgents/${PLIST_LABEL}.plist"
+POLL_SEC=10
 
 # Resolve extension build dir (several possible locations on this machine)
 resolve_ext_build() {
@@ -68,6 +70,11 @@ resolve_chrome() {
   return 1
 }
 
+# Exact profile path only (avoid matching chrome-wa-profile-personal-1 when PROFILE is chrome-wa-profile)
+profile_pgrep() {
+  pgrep -f "user-data-dir=${PROFILE_DIR}( |$)" 2>/dev/null || true
+}
+
 is_running() {
   if [[ -f "$PID_FILE" ]]; then
     local pid
@@ -76,18 +83,46 @@ is_running() {
       return 0
     fi
   fi
-  # Exact profile path only (avoid matching chrome-wa-profile-personal-1 when PROFILE is chrome-wa-profile)
-  if pgrep -f "user-data-dir=${PROFILE_DIR}( |$)" >/dev/null 2>&1; then
+  if [[ -n "$(profile_pgrep | head -1)" ]]; then
     return 0
   fi
   return 1
+}
+
+# Best-effort main browser PID for this profile
+resolve_running_pid() {
+  local pid
+  if [[ -f "$PID_FILE" ]]; then
+    pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      echo "$pid"
+      return 0
+    fi
+  fi
+  pid="$(profile_pgrep | head -1)"
+  if [[ -n "$pid" ]]; then
+    echo "$pid" >"$PID_FILE"
+    echo "$pid"
+    return 0
+  fi
+  return 1
+}
+
+# Block until no process uses this profile (Chrome main often re-execs / reparents).
+wait_while_running() {
+  echo "→ Waiting on WA Chrome (poll ${POLL_SEC}s). Exit when Chrome quits → KeepAlive restarts."
+  while is_running; do
+    sleep "$POLL_SEC"
+  done
+  echo "→ WA Chrome exited at $(date '+%Y-%m-%d %H:%M:%S')"
+  rm -f "$PID_FILE"
 }
 
 cmd_status() {
   echo "Profile:  $PROFILE_DIR"
   if is_running; then
     echo "Status:   RUNNING"
-    pgrep -fl "user-data-dir=${PROFILE_DIR}( |$)" 2>/dev/null | head -3 || true
+    profile_pgrep | head -3 || true
     [[ -f "$PID_FILE" ]] && echo "PID file: $(cat "$PID_FILE")"
   else
     echo "Status:   stopped"
@@ -95,7 +130,7 @@ cmd_status() {
 
   if [[ -f "$PLIST_DST" ]]; then
     echo "Agent:    installed ($PLIST_DST)"
-    launchctl print "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null | head -5 || echo "  (loaded? check launchctl list | grep bmc.wa)"
+    launchctl print "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null | head -8 || echo "  (loaded? check launchctl list | grep bmc.wa)"
   else
     echo "Agent:    not installed"
   fi
@@ -107,6 +142,7 @@ cmd_status() {
 }
 
 cmd_stop() {
+  # Prefer graceful stop of recorded PID, then any profile match
   if [[ -f "$PID_FILE" ]]; then
     local pid
     pid="$(cat "$PID_FILE" 2>/dev/null || true)"
@@ -118,23 +154,11 @@ cmd_stop() {
     fi
     rm -f "$PID_FILE"
   fi
-  # Kill all chrome instances on this profile (children)
   pkill -f "user-data-dir=${PROFILE_DIR}" 2>/dev/null || true
   echo "Stopped always-on WA Chrome."
 }
 
-cmd_start() {
-  mkdir -p "$REPO/.runtime" "$PROFILE_DIR"
-
-  if is_running; then
-    echo "Already running — leave it alone (session stays linked)."
-    cmd_status
-    echo ""
-    echo "Cockpit: $SPA_URL"
-    echo "Tip: do not run Playwright scripts against the same PROFILE while this is up."
-    return 0
-  fi
-
+launch_chrome() {
   local chrome_pair chrome_kind chrome
   chrome_pair="$(resolve_chrome)" || {
     echo "ERROR: no Chrome/Brave/Edge found in /Applications" >&2
@@ -160,7 +184,7 @@ cmd_start() {
     fi
   fi
 
-  # Clear singleton locks if stale (crash leftovers)
+  # Clear singleton locks if stale (crash leftovers) — only when not running
   for f in SingletonLock SingletonCookie SingletonSocket; do
     rm -f "$PROFILE_DIR/$f" 2>/dev/null || true
   done
@@ -181,24 +205,35 @@ cmd_start() {
   echo "   Profile: $PROFILE_DIR"
   echo "   Log:     $LOG_FILE"
 
-  # Open WA Web + cockpit (prod cockpit default so no local vite needed)
-  nohup "$chrome" "${args[@]}" "$WA_URL" "$SPA_URL" \
-    >>"$LOG_FILE" 2>&1 &
+  # New session so launchd process-group teardown cannot SIGTERM Chrome
+  # if the wrapper ever exits early (belt + suspenders with AbandonProcessGroup).
+  if command -v setsid >/dev/null 2>&1; then
+    setsid "$chrome" "${args[@]}" "$WA_URL" "$SPA_URL" \
+      >>"$LOG_FILE" 2>&1 &
+  else
+    # macOS often lacks setsid; nohup + disown still helps interactive shells
+    nohup "$chrome" "${args[@]}" "$WA_URL" "$SPA_URL" \
+      >>"$LOG_FILE" 2>&1 &
+    disown "$!" 2>/dev/null || true
+  fi
   local pid=$!
   echo "$pid" >"$PID_FILE"
   sleep 2
   if kill -0 "$pid" 2>/dev/null; then
     echo "  ✓ running PID $pid"
   else
-    # Chrome often re-execs; re-detect
     sleep 1
-    if is_running; then
-      echo "  ✓ Chrome reparented — session process is up"
+    if pid="$(resolve_running_pid)"; then
+      echo "  ✓ Chrome reparented — session process is up (PID $pid)"
     else
-      echo "  WARN: process exited quickly — see $LOG_FILE"
+      echo "  WARN: process exited quickly — see $LOG_FILE" >&2
+      return 1
     fi
   fi
+  return 0
+}
 
+print_banner() {
   cat <<EOF
 
 ════════════════════════════════════════════════════════
@@ -220,6 +255,39 @@ cmd_start() {
 EOF
 }
 
+# $1 = wait flag: 0|1
+cmd_start() {
+  local wait_mode="${1:-0}"
+  mkdir -p "$REPO/.runtime" "$PROFILE_DIR"
+
+  if is_running; then
+    echo "Already running — leave it alone (session stays linked)."
+    resolve_running_pid >/dev/null || true
+    cmd_status
+    echo ""
+    echo "Cockpit: $SPA_URL"
+    echo "Tip: do not run Playwright scripts against the same PROFILE while this is up."
+    if [[ "$wait_mode" == "1" ]]; then
+      wait_while_running
+    fi
+    return 0
+  fi
+
+  if ! launch_chrome; then
+    if [[ "$wait_mode" == "1" ]]; then
+      # Non-zero so KeepAlive retries after ThrottleInterval
+      exit 1
+    fi
+    return 1
+  fi
+
+  print_banner
+
+  if [[ "$wait_mode" == "1" ]]; then
+    wait_while_running
+  fi
+}
+
 cmd_install_agent() {
   mkdir -p "$HOME/Library/LaunchAgents"
   if [[ ! -f "$PLIST_SRC" ]]; then
@@ -236,7 +304,7 @@ cmd_install_agent() {
   launchctl enable "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null || true
   launchctl kickstart -k "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null || true
   echo "Installed LaunchAgent: $PLIST_DST"
-  echo "Starts on login and KeepAlive if Chrome exits."
+  echo "Starts on login; KeepAlive only when Chrome actually exits (start --wait)."
   cmd_status
 }
 
@@ -246,17 +314,31 @@ cmd_uninstall_agent() {
   echo "Uninstalled LaunchAgent $PLIST_LABEL"
 }
 
-case "${1:-start}" in
-  start|"") cmd_start ;;
+# Parse: start [--wait] | --status | --stop | --install-agent | ...
+MAIN="${1:-start}"
+shift || true
+WAIT_MODE=0
+for arg in "$@"; do
+  case "$arg" in
+    --wait|wait) WAIT_MODE=1 ;;
+  esac
+done
+# LaunchAgent sets XPC_SERVICE_NAME=com.bmc.wa-chrome — always wait under launchd
+if [[ "${XPC_SERVICE_NAME:-}" == "$PLIST_LABEL" ]]; then
+  WAIT_MODE=1
+fi
+
+case "$MAIN" in
+  start|"") cmd_start "$WAIT_MODE" ;;
   --status|status) cmd_status ;;
   --stop|stop) cmd_stop ;;
   --install-agent|install-agent) cmd_install_agent ;;
   --uninstall-agent|uninstall-agent) cmd_uninstall_agent ;;
   -h|--help)
-    sed -n '1,25p' "$0"
+    sed -n '1,30p' "$0"
     ;;
   *)
-    echo "Unknown: $1 (start|status|stop|install-agent|uninstall-agent)"
+    echo "Unknown: $MAIN (start [--wait]|status|stop|install-agent|uninstall-agent)"
     exit 1
     ;;
 esac

@@ -37,11 +37,32 @@ import {
   statusSelectOptions,
 } from "../utils/logistica/stopStatusFsm.js";
 import { buildRemitoSimpleModel, formatM3 } from "../utils/logistica/remitoPackageMetrics.js";
-import { applyPackageLayoutChange } from "../utils/logistica/packageDrop.js";
+import {
+  applyPackageLayoutChange,
+  findStackNeighbors,
+} from "../utils/logistica/packageDrop.js";
 import {
   buildLoadPlanPrintModel,
-  packageIdentityLabelFlat,
 } from "../utils/logistica/loadPlanPrintModel.js";
+import {
+  packageBultoCounts,
+  packageLabelCompact,
+  packageLabelTiny,
+  highlightKeysForPackage,
+} from "../utils/logistica/packageIdentity.js";
+import { btnStyle } from "../utils/logistica/btnStyle.js";
+import {
+  mapsSearchUrl,
+  mapsCoordsUrl,
+  parseLatLng,
+  applyGeocodeToStop,
+  tripLegDistances,
+} from "../utils/logistica/geocode.js";
+import {
+  buildEnviosDraft,
+  parseEnviosDraftPayload,
+  draftIdFromEnvNo,
+} from "../utils/logistica/enviosDraft.js";
 
 const TRUCK_W = 2.4;
 
@@ -95,23 +116,10 @@ function Btn({
   style = {},
   href,
   target,
+  variant = "default",
+  active = false,
 }) {
-  const s = {
-    padding: small ? "6px 11px" : "8px 14px",
-    borderRadius: 10,
-    border: outline ? `1.5px solid ${T.border}` : "none",
-    background: outline ? T.surface : color,
-    color: outline ? T.text : "#fff",
-    fontWeight: 600,
-    fontSize: 13,
-    cursor: disabled ? "not-allowed" : "pointer",
-    fontFamily: T.font,
-    opacity: disabled ? 0.5 : 1,
-    textDecoration: "none",
-    display: "inline-block",
-    whiteSpace: "nowrap",
-    ...style,
-  };
+  const s = btnStyle({ outline, small, disabled, color, variant, active, style });
   if (href) return <a href={href} target={target} rel={target === "_blank" ? "noopener noreferrer" : undefined} style={s}>{children}</a>;
   return <button type="button" onClick={onClick} disabled={disabled} style={s}>{children}</button>;
 }
@@ -208,6 +216,8 @@ const mkStop = (i) => ({
   ventasTabGid: "",
   pdfLink: "",
   mapLink: "",
+  /** P2: { lat, lng, label, source, at } | null */
+  geo: null,
   rawSheetText: "",
   estado: "Pendiente",
   recepcionEstado: "Pendiente",
@@ -237,7 +247,14 @@ const mkStop = (i) => ({
 });
 const mkPanel = () => ({ id: uid(), tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 1 });
 const mkAcc = () => ({ id: uid(), descr: "", cantidad: 1 });
-const mapsUrl = (a) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a || "")}`;
+/** @deprecated use mapsSearchUrl — kept as thin alias for call sites */
+const mapsUrl = (a) => mapsSearchUrl(a);
+
+function truncate(s, n = 40) {
+  const t = String(s || "").trim();
+  if (t.length <= n) return t;
+  return `${t.slice(0, Math.max(1, n - 1))}…`;
+}
 
 function safeNum(value, fallback = 0) {
   const n = Number(value);
@@ -736,19 +753,45 @@ function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
   );
 }
 
-function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackageRow }) {
+function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackageRow, onForcePackageStack }) {
   const { placed, rowH, stopUnloadOrder, strategy, stacksByRow } = cargo;
   const { minXV, maxXV, placedView } = bedViewExtents(placed, truckL);
   const shiftX = -minXV;
   const totalLen = maxXV - minXV;
-  const [diagramView, setDiagramView] = useState("svg");
+  const [diagramView, setDiagramView] = useState(() => {
+    try {
+      return localStorage.getItem("bmc-logistica-diagram-view") || "svg";
+    } catch {
+      return "svg";
+    }
+  });
   const [selectedPkgId, setSelectedPkgId] = useState(null);
+  const [locExpanded, setLocExpanded] = useState(false);
   const OX = 60;
   const OY = 85;
   const viewW = Math.max(420, OX + (totalLen * C30 + TRUCK_W * C30) * ISX + 80);
   const viewH = 240;
   const sorted = [...placedView].sort((a, b) => b.row - a.row || a.zBase - b.zBase);
-  const selectedPkg = selectedPkgId ? placedView.find((p) => p.id === selectedPkgId) || placed.find((p) => p.id === selectedPkgId) : null;
+  const bultoCounts = useMemo(() => packageBultoCounts(placed), [placed]);
+  const selectedPkg = selectedPkgId
+    ? placedView.find((p) => p.id === selectedPkgId) || placed.find((p) => p.id === selectedPkgId) || null
+    : null;
+  const highlightKeys = selectedPkg ? highlightKeysForPackage(placed, selectedPkg) : new Set();
+  const selectedStop = (() => {
+    if (!selectedPkg || !Array.isArray(stops)) return null;
+    return (
+      stops.find((s) => s.id === selectedPkg.sId) ||
+      stops.find(
+        (s) =>
+          String(s.cliente || "").trim() === String(selectedPkg.sCli || "").trim() &&
+          String(s.orderId || s.cotizacionId || "").trim() === String(selectedPkg.sPed || "").trim(),
+      ) ||
+      null
+    );
+  })();
+  const stackNeighbors = selectedPkg
+    ? findStackNeighbors(placed, selectedPkg)
+    : { above: null, below: null };
   const tf = (x, y, z) => isoP(x, y, z, OX, OY);
   const trLine = (x1, y1, z1, x2, y2, z2, col = "#60A5FA", sw = 1, dash = "", k) => {
     const a = tf(x1, y1, z1);
@@ -762,9 +805,34 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
   const forceRow = (stableKey, row) => {
     if (onForcePackageRow && stableKey != null) onForcePackageRow(stableKey, row);
   };
+  const forceStack = (stableKey, neighborKey, position) => {
+    if (onForcePackageStack && stableKey && neighborKey) onForcePackageStack(stableKey, neighborKey, position);
+  };
+  const selectPkg = (pkg) => {
+    setSelectedPkgId(pkg?.id || null);
+    setLocExpanded(false);
+  };
+  const clearSelect = () => {
+    setSelectedPkgId(null);
+    setLocExpanded(false);
+  };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("bmc-logistica-diagram-view", diagramView);
+    } catch {
+      /* ignore */
+    }
+  }, [diagramView]);
+
+  const mapHref =
+    selectedStop?.mapLink ||
+    (selectedStop?.geo ? mapsCoordsUrl(selectedStop.geo.lat, selectedStop.geo.lng, selectedStop.direccion) : "") ||
+    (selectedStop?.direccion ? mapsSearchUrl(selectedStop.direccion) : "");
 
   return (
     <div
+      className="envios-diagram-panel"
       style={{
         background: T.brand,
         borderRadius: T.radius,
@@ -782,22 +850,22 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
             {diagramView === "webgl" ? "Explorar carga (WebGL)" : diagramView === "plan" ? "Plan de carga (imprimible)" : "Vista isométrica (SVG)"}
           </h3>
           <p style={{ margin: 0, color: "rgba(255,255,255,.65)", fontSize: 12 }}>
-            Cabina a la izquierda · cola a la derecha · clic bulto → fila A/B · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}
+            Clic bulto → ilumina cliente · fila A/B · arriba/abajo · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", alignItems: "center" }}>
-          <Btn small outline onClick={() => setDiagramView("svg")} style={diagramView === "svg" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
+        <div className="envios-diagram-toolbar" style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", alignItems: "center" }}>
+          <Btn small variant="onDark" active={diagramView === "svg"} onClick={() => setDiagramView("svg")}>
             Isométrica
           </Btn>
-          <Btn small outline onClick={() => setDiagramView("webgl")} style={diagramView === "webgl" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
+          <Btn small variant="onDark" active={diagramView === "webgl"} onClick={() => setDiagramView("webgl")}>
             Explorar 3D
           </Btn>
-          <Btn small outline onClick={() => setDiagramView("plan")} style={diagramView === "plan" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
+          <Btn small variant="onDark" active={diagramView === "plan"} onClick={() => setDiagramView("plan")}>
             Plan carga
           </Btn>
           <Btn
             small
-            outline
+            variant="onDark"
             onClick={() => {
               const payload = buildLogisticaPlanExportPayload({ truckL, cargo, remitoNumero });
               const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -808,7 +876,6 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
               a.click();
               URL.revokeObjectURL(a.href);
             }}
-            style={{ borderColor: "rgba(255,255,255,.25)", color: "rgba(255,255,255,.9)" }}
           >
             Exportar plan (JSON)
           </Btn>
@@ -816,15 +883,158 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
       </div>
 
       {selectedPkg ? (
-        <div style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "8px 10px", color: "#fff", fontSize: 12 }}>
-          <b>{packageIdentityLabelFlat(selectedPkg)}</b>
-          {" · "}
-          {selectedPkg.tipo} · Fila {selectedPkg.row === 0 ? "A" : "B"} · {selectedPkg.len?.toFixed(2)}m × {(selectedPkg.h * 100).toFixed(0)}cm
-          <span style={{ marginLeft: 8 }}>
-            <Btn small outline onClick={() => forceRow(selectedPkg.stableKey, 0)} style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff", marginRight: 4 }}>→ Fila A</Btn>
-            <Btn small outline onClick={() => forceRow(selectedPkg.stableKey, 1)} style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff", marginRight: 4 }}>→ Fila B</Btn>
-            <Btn small outline onClick={() => setSelectedPkgId(null)} style={{ borderColor: "rgba(255,255,255,.3)", color: "#fff" }}>Cerrar</Btn>
-          </span>
+        <div
+          style={{
+            background: "rgba(255,255,255,.08)",
+            border: "1px solid rgba(255,255,255,.15)",
+            borderRadius: 10,
+            padding: "10px 12px",
+            color: "#fff",
+            fontSize: 12,
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+              <div style={{ fontWeight: 800, fontSize: 13 }}>
+                {packageLabelCompact(selectedPkg, bultoCounts)}
+              </div>
+              <div style={{ color: "rgba(255,255,255,.7)", marginTop: 2 }}>
+                {selectedPkg.tipo || "—"} · Fila {selectedPkg.row === 0 ? "A" : "B"} ·{" "}
+                {selectedPkg.len?.toFixed(2)}m × {(selectedPkg.h * 100).toFixed(0)}cm
+                {highlightKeys.size > 1 ? ` · ${highlightKeys.size} bultos del cliente` : ""}
+              </div>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              <Btn small variant="onDark" onClick={() => forceRow(selectedPkg.stableKey, 0)}>
+                → Fila A
+              </Btn>
+              <Btn small variant="onDark" onClick={() => forceRow(selectedPkg.stableKey, 1)}>
+                → Fila B
+              </Btn>
+              <Btn
+                small
+                variant="onDark"
+                disabled={!stackNeighbors.above && !stackNeighbors.below}
+                onClick={() => {
+                  const peer = stackNeighbors.below || stackNeighbors.above;
+                  if (peer?.stableKey) forceStack(selectedPkg.stableKey, peer.stableKey, "above");
+                }}
+                title="Apilar encima del bulto contiguo"
+              >
+                ↑ Encima
+              </Btn>
+              <Btn
+                small
+                variant="onDark"
+                disabled={!stackNeighbors.above && !stackNeighbors.below}
+                onClick={() => {
+                  const peer = stackNeighbors.above || stackNeighbors.below;
+                  if (peer?.stableKey) forceStack(selectedPkg.stableKey, peer.stableKey, "below");
+                }}
+                title="Colocar debajo del bulto contiguo"
+              >
+                ↓ Debajo
+              </Btn>
+              <Btn small variant="onDark" onClick={clearSelect}>
+                Cerrar
+              </Btn>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+              gap: 8,
+              background: "rgba(0,0,0,.15)",
+              borderRadius: 8,
+              padding: 8,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: ".04em" }}>Contacto</div>
+              <div style={{ fontWeight: 600 }}>
+                {selectedStop?.contactoRecepcion || selectedStop?.cliente || selectedPkg.sCli || "—"}
+              </div>
+              {selectedStop?.telefono ? (
+                <a href={`tel:${String(selectedStop.telefono).replace(/\s/g, "")}`} style={{ color: "#93c5fd", fontSize: 11 }}>
+                  {selectedStop.telefono}
+                </a>
+              ) : (
+                <span style={{ color: "rgba(255,255,255,.45)", fontSize: 11 }}>Sin teléfono</span>
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: ".04em" }}>Ubicación</div>
+              <button
+                type="button"
+                onClick={() => setLocExpanded((v) => !v)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#fff",
+                  padding: 0,
+                  textAlign: "left",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 12,
+                }}
+              >
+                {locExpanded
+                  ? selectedStop?.direccion || "Sin dirección"
+                  : truncate(selectedStop?.direccion || "Sin dirección", 42)}{" "}
+                {selectedStop?.direccion ? (locExpanded ? "▴" : "▾") : ""}
+              </button>
+              {mapHref ? (
+                <div>
+                  <a href={mapHref} target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", fontSize: 11 }}>
+                    Abrir mapa ↗
+                  </a>
+                </div>
+              ) : null}
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: ".04em" }}>Documentos</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                {selectedStop?.pdfLink ? (
+                  <>
+                    <Btn small variant="onDark" href={selectedStop.pdfLink} target="_blank">
+                      Factura / PDF
+                    </Btn>
+                    <Btn
+                      small
+                      variant="onDark"
+                      href={selectedStop.pdfLink}
+                      target="_blank"
+                      style={{ fontSize: 11 }}
+                    >
+                      Descargar
+                    </Btn>
+                  </>
+                ) : (
+                  <span style={{ color: "rgba(255,255,255,.45)", fontSize: 11 }}>Sin PDF pedido</span>
+                )}
+                <Btn
+                  small
+                  variant="onDark"
+                  onClick={() => {
+                    if (typeof window !== "undefined") window.print();
+                  }}
+                >
+                  Remito (imprimir)
+                </Btn>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: ".04em" }}>Estado</div>
+              <div style={{ fontWeight: 600 }}>{selectedStop?.estado || "—"}</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,.55)" }}>
+                Pedido {selectedPkg.sPed || selectedStop?.orderId || "—"}
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -846,17 +1056,29 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
               maxLen={maxXV}
               totalLen={totalLen}
               onForceRow={forceRow}
-              onSelectStableKey={(_key, pkg) => setSelectedPkgId(pkg?.id || null)}
+              bultoCounts={bultoCounts}
+              highlightKeys={highlightKeys}
+              selectedPkgId={selectedPkgId}
+              onSelectStableKey={(_key, pkg) => selectPkg(pkg)}
             />
           </Suspense>
         ) : (
-        <svg width="100%" viewBox={`0 -8 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
+        <svg
+          width="100%"
+          viewBox={`0 -8 ${viewW} ${viewH}`}
+          preserveAspectRatio="xMidYMid meet"
+          style={{ display: "block", maxWidth: "100%", height: "auto" }}
+          onClick={clearSelect}
+        >
           {maxXV > truckL ? (
             <polygon points={fp([tf(shiftX + truckL, 0, 0), tf(shiftX + maxXV, 0, 0), tf(shiftX + maxXV, TRUCK_W, 0), tf(shiftX + truckL, TRUCK_W, 0)])} fill="rgba(255,159,10,.12)" stroke="#ff9f0a" strokeWidth={1} strokeDasharray="4,3" />
           ) : null}
           <polygon points={fp([tf(shiftX, 0, 0), tf(shiftX + truckL, 0, 0), tf(shiftX + truckL, TRUCK_W, 0), tf(shiftX, TRUCK_W, 0)])} fill="#0d2137" stroke="#3B82F6" strokeWidth={1.2} />
           {trLine(shiftX, ROW_W, 0, shiftX + truckL, ROW_W, 0, "rgba(255,255,255,.2)", 0.8, "3,3")}
-          {sorted.map((pkg) => (
+          {sorted.map((pkg) => {
+            const inGroup = !selectedPkg || highlightKeys.has(pkg.stableKey);
+            const isSeed = selectedPkgId === pkg.id;
+            return (
             <IsoBox
               key={pkg.id}
               x={shiftX + pkg.xStart}
@@ -866,17 +1088,18 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
               dy={ROW_W}
               dz={pkg.h}
               col={pkg.ov ? "#ff3b30" : pkg.sCol}
-              lbl={(packageIdentityLabelFlat(pkg) || (pkg.kind === "accessory" ? `P${pkg.sOrd}·ACC` : `P${pkg.sOrd}·${pkg.n}`)).slice(0, 22)}
+              lbl={packageLabelTiny(pkg, bultoCounts, 22)}
               ox={OX}
               oy={OY}
-              alpha={pkg.ov ? 0.65 : 1}
-              selected={selectedPkgId === pkg.id}
+              alpha={pkg.ov ? 0.65 : inGroup ? 1 : 0.22}
+              selected={isSeed || (selectedPkg && highlightKeys.has(pkg.stableKey))}
               onClick={(e) => {
                 e.stopPropagation();
-                setSelectedPkgId(pkg.id);
+                selectPkg(pkg);
               }}
             />
-          ))}
+            );
+          })}
           {stacksByRow.flat().map((stack) => {
             const sv = mirrorStackForView(stack, truckL);
             const p1 = tf(shiftX + sv.xStart, stack.row * ROW_W, 0);
@@ -1241,6 +1464,11 @@ export default function BmcLogisticaApp() {
   const [collapsedStopIds, setCollapsedStopIds] = useState([]);
   /** Ops UX F3a: HTML5 drag source */
   const [dragStopId, setDragStopId] = useState(null);
+  /** P2 geocode in-flight stop id */
+  const [geocodingStopId, setGeocodingStopId] = useState(null);
+  /** P5 cloud sync */
+  const [cloudSyncBusy, setCloudSyncBusy] = useState(false);
+  const [cloudMeta, setCloudMeta] = useState(null);
 
   useEffect(() => {
     let restoredStops = [];
@@ -1337,6 +1565,9 @@ export default function BmcLogisticaApp() {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
+          schema: "bmc-envios-draft-v1",
+          schemaVersion: 1,
+          savedAt: new Date().toISOString(),
           info,
           stops,
           truckL,
@@ -1440,6 +1671,21 @@ export default function BmcLogisticaApp() {
     setManualPkgOrderKeys(next.manualPkgOrderKeys);
     setAutoLoadMsg(`Layout manual: bulto → Fila ${Number(targetRow) === 1 ? "B" : "A"}`);
   };
+  const forcePackageStack = (stableKey, neighborKey, position) => {
+    if (!stableKey || !neighborKey) return;
+    const next = applyPackageLayoutChange({
+      rowOverrides,
+      manualPkgOrderKeys,
+      stableKey,
+      neighborKey,
+      stackPosition: position === "below" ? "below" : "above",
+      placed: cargo.placed,
+    });
+    setCargoLayoutMode(next.cargoLayoutMode);
+    setRowOverrides(next.rowOverrides);
+    setManualPkgOrderKeys(next.manualPkgOrderKeys);
+    setAutoLoadMsg(`Layout manual: bulto ${position === "below" ? "debajo" : "encima"} del contiguo`);
+  };
   async function pushVentasFechaEntrega(stop) {
     const row = stop.ventasSheetRow1Based;
     const gid = stop.ventasTabGid || SH_GID;
@@ -1474,6 +1720,195 @@ export default function BmcLogisticaApp() {
       return next;
     });
   }
+
+  function enviosAuthToken() {
+    return typeof import.meta !== "undefined"
+      ? String(import.meta.env?.VITE_BMC_API_AUTH_TOKEN || import.meta.env?.VITE_API_AUTH_TOKEN || "").trim()
+      : "";
+  }
+
+  /** P2: geocode stop address via API (or parse coords from map link / paste). */
+  async function geocodeStop(stopId) {
+    const stop = stops.find((s) => s.id === stopId);
+    if (!stop) return;
+    const fromLink = parseLatLng(stop.mapLink) || parseLatLng(stop.direccion);
+    if (fromLink) {
+      setStops((p) =>
+        p.map((s) =>
+          s.id === stopId
+            ? applyGeocodeToStop(s, {
+                ...fromLink,
+                label: s.direccion || s.cliente || "",
+                source: "parsed",
+              })
+            : s,
+        ),
+      );
+      setAutoLoadMsg(`Geocode: coords parseadas (${fromLink.lat.toFixed(5)}, ${fromLink.lng.toFixed(5)})`);
+      return;
+    }
+    if (!stop.direccion?.trim()) {
+      setAutoLoadMsg("Geocode: cargá una dirección o pegá lat,lng en link mapa.");
+      return;
+    }
+    const token = enviosAuthToken();
+    if (!token) {
+      setAutoLoadMsg(
+        "Geocode: falta VITE_BMC_API_AUTH_TOKEN (mismo valor que API_AUTH_TOKEN del servidor).",
+      );
+      return;
+    }
+    setGeocodingStopId(stopId);
+    try {
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/envios/geocode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ address: stop.direccion }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+      if (!j.geo) {
+        setAutoLoadMsg("Geocode: sin resultados en Uruguay para esa dirección.");
+        return;
+      }
+      setStops((p) => p.map((s) => (s.id === stopId ? applyGeocodeToStop(s, j.geo) : s)));
+      setAutoLoadMsg(
+        `Geocode OK: ${j.geo.label || stop.direccion} (${Number(j.geo.lat).toFixed(5)}, ${Number(j.geo.lng).toFixed(5)})`,
+      );
+    } catch (e) {
+      setAutoLoadMsg(`Geocode error: ${e.message}`);
+    } finally {
+      setGeocodingStopId(null);
+    }
+  }
+
+  function currentDraftState() {
+    return {
+      info,
+      stops,
+      truckL,
+      view,
+      distributionMode,
+      accProfiles,
+      cargoLayoutMode,
+      manualPkgOrderKeys,
+      rowOverrides,
+      transportistas,
+      camionesCat,
+      priceHistory,
+      tripCostLog,
+      ui: { collapsedStopIds },
+    };
+  }
+
+  /** P5: push draft to Postgres (multi-device). */
+  async function saveDraftToCloud() {
+    const built = buildEnviosDraft(currentDraftState());
+    if (!built.ok) {
+      setAutoLoadMsg("Nube: asigná un Nº Envío (ENV-…) antes de guardar.");
+      return;
+    }
+    const token = enviosAuthToken();
+    if (!token) {
+      setAutoLoadMsg("Nube: falta VITE_BMC_API_AUTH_TOKEN para guardar en servidor.");
+      return;
+    }
+    setCloudSyncBusy(true);
+    try {
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/envios/drafts/${encodeURIComponent(built.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ payload: built.payload, updatedBy: "logistica-ui" }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+      setCloudMeta({
+        id: j.draft?.id || built.id,
+        revision: j.draft?.revision,
+        updatedAt: j.draft?.updatedAt,
+      });
+      setAutoLoadMsg(
+        `Nube: guardado ${j.draft?.id || built.id} · rev ${j.draft?.revision ?? "—"} · ${built.stopCount} parada(s)`,
+      );
+    } catch (e) {
+      setAutoLoadMsg(`Nube: error al guardar — ${e.message}`);
+    } finally {
+      setCloudSyncBusy(false);
+    }
+  }
+
+  /** P5: pull draft from server into app state (+ localStorage via hydrate persist). */
+  async function loadDraftFromCloud() {
+    const id = draftIdFromEnvNo(info.numero);
+    if (!id) {
+      setAutoLoadMsg("Nube: poné el Nº Envío del draft a cargar.");
+      return;
+    }
+    const token = enviosAuthToken();
+    if (!token) {
+      setAutoLoadMsg("Nube: falta VITE_BMC_API_AUTH_TOKEN para cargar del servidor.");
+      return;
+    }
+    setCloudSyncBusy(true);
+    try {
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/envios/drafts/${encodeURIComponent(id)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.status === 404) {
+        setAutoLoadMsg(`Nube: no hay draft para ${id}.`);
+        return;
+      }
+      if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+      const parsed = parseEnviosDraftPayload(j.draft?.payload);
+      if (!parsed.ok) throw new Error(parsed.error || "invalid_payload");
+      const p = parsed.payload;
+      if (p.info) setInfo((prev) => ({ ...prev, ...p.info }));
+      if (Array.isArray(p.stops)) {
+        setStops(
+          p.stops.map((stop, index) => ({
+            ...mkStop(index),
+            ...stop,
+            orderId: stop.orderId ?? "",
+            pickupId: stop.pickupId ?? "",
+            geo: stop.geo ?? null,
+            checks: { ...mkStop(index).checks, ...(stop.checks || {}) },
+            accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, p.accProfiles || {}),
+          })),
+        );
+      }
+      if (p.accProfiles) setAccProfiles(p.accProfiles);
+      if (p.truckL) setTruckL(p.truckL);
+      if (p.view) setView(p.view);
+      if (p.distributionMode) setDistributionMode(p.distributionMode);
+      if (p.cargoLayoutMode === "manual" || p.cargoLayoutMode === "auto") setCargoLayoutMode(p.cargoLayoutMode);
+      if (Array.isArray(p.manualPkgOrderKeys)) setManualPkgOrderKeys(p.manualPkgOrderKeys);
+      if (p.rowOverrides) setRowOverrides(p.rowOverrides);
+      if (Array.isArray(p.transportistas)) setTransportistas(p.transportistas);
+      if (Array.isArray(p.camionesCat)) setCamionesCat(p.camionesCat);
+      if (Array.isArray(p.priceHistory)) setPriceHistory(p.priceHistory);
+      if (Array.isArray(p.tripCostLog)) setTripCostLog(p.tripCostLog);
+      if (Array.isArray(p.ui?.collapsedStopIds)) setCollapsedStopIds(p.ui.collapsedStopIds);
+      setCloudMeta({
+        id: j.draft?.id || id,
+        revision: j.draft?.revision,
+        updatedAt: j.draft?.updatedAt,
+      });
+      setAutoLoadMsg(
+        `Nube: cargado ${j.draft?.id || id} · rev ${j.draft?.revision ?? "—"} · ${Array.isArray(p.stops) ? p.stops.length : 0} parada(s)`,
+      );
+    } catch (e) {
+      setAutoLoadMsg(`Nube: error al cargar — ${e.message}`);
+    } finally {
+      setCloudSyncBusy(false);
+    }
+  }
+
+  const tripDistance = useMemo(() => tripLegDistances(stops), [stops]);
+
   const updStopCheck = (id, key, value) => setStops((p) => p.map((s) => (s.id === id ? { ...s, checks: { ...s.checks, [key]: value } } : s)));
   const addPanel = (sid) => setStops((p) => p.map((s) => (s.id === sid ? { ...s, paneles: [...s.paneles, mkPanel()] } : s)));
   const rmPanel = (sid, pid) => setStops((p) => p.map((s) => (s.id === sid ? { ...s, paneles: s.paneles.filter((x) => x.id !== pid) } : s)));
@@ -1550,6 +1985,23 @@ export default function BmcLogisticaApp() {
   const totPan = stops.reduce((t, s) => t + s.paneles.reduce((tt, p) => tt + safeNum(p.cantidad), 0), 0);
 
   async function fetchVentasCsv() {
+    const token = enviosAuthToken();
+    const base = getCalcApiBase();
+    // F11: prefer server proxy (avoids browser CORS / Failed to fetch), fallback direct gviz
+    if (token) {
+      try {
+        const proxyUrl = `${base}/api/envios/ventas-csv?sheetId=${encodeURIComponent(SH_ID)}&gid=${encodeURIComponent(SH_GID)}`;
+        const res = await fetch(proxyUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const txt = await res.text();
+          return parseCsv(txt);
+        }
+      } catch {
+        // fall through to direct
+      }
+    }
     const url = `https://docs.google.com/spreadsheets/d/${SH_ID}/gviz/tq?tqx=out:csv&gid=${SH_GID}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1573,7 +2025,12 @@ export default function BmcLogisticaApp() {
       if (!found.length) setShErr(`Sin resultados para "${search}"`);
       else setResults(found);
     } catch (e) {
-      setShErr(`Error: ${e.message}`);
+      const msg = String(e?.message || e || "error");
+      const hint =
+        /failed to fetch|network|cors|load failed/i.test(msg)
+          ? " · Revisá red o usá token API (proxy /api/envios/ventas-csv)."
+          : "";
+      setShErr(`Error: ${msg}${hint}`);
     } finally {
       setLoadSh(false);
     }
@@ -1820,7 +2277,7 @@ export default function BmcLogisticaApp() {
 
       {view === "carga" ? (
         <div>
-          <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} />
+          <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} onForcePackageStack={forcePackageStack} />
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12, width: "100%", maxWidth: "100%", minWidth: 0 }}>
             <div style={{ ...css.card, padding: 14, minWidth: 0, maxWidth: "100%" }}>
               <div style={{ ...css.sectionTitle, marginBottom: 8 }}>🔭 Vista Superior</div>
@@ -2072,6 +2529,31 @@ export default function BmcLogisticaApp() {
                 <div><label htmlFor="log-patente" style={css.lbl}>Patente</label><input id="log-patente" name="log-patente" style={css.inp} value={info.patente} onChange={(e) => updInfo("patente", e.target.value)} /></div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
+                <Btn onClick={saveDraftToCloud} disabled={cloudSyncBusy} color={T.brand} small>
+                  {cloudSyncBusy ? "⏳ Nube…" : "☁ Guardar en nube"}
+                </Btn>
+                <Btn onClick={loadDraftFromCloud} disabled={cloudSyncBusy} outline small>
+                  ☁ Cargar de nube
+                </Btn>
+                {cloudMeta?.revision != null ? (
+                  <span style={{ fontSize: 11, color: T.muted }}>
+                    Cloud rev {cloudMeta.revision}
+                    {cloudMeta.updatedAt ? ` · ${new Date(cloudMeta.updatedAt).toLocaleString()}` : ""}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 11, color: T.muted }}>
+                    P5 multi-device · localStorage sigue de cache offline
+                  </span>
+                )}
+                {tripDistance.geocodedCount >= 2 ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.brand }}>
+                    ≈ {tripDistance.totalKm} km aire ({tripDistance.legs.length} tramos · {tripDistance.geocodedCount} geo)
+                  </span>
+                ) : tripDistance.geocodedCount === 1 ? (
+                  <span style={{ fontSize: 11, color: T.muted }}>1 parada geocodificada · geocodificá otra para km</span>
+                ) : null}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
                 <input id="log-new-carrier" name="log-new-carrier" aria-label="Nuevo transportista" style={{ ...css.inp, flex: 1, minWidth: 140 }} placeholder="Nuevo transportista" value={newCarrierName} onChange={(e) => setNewCarrierName(e.target.value)} />
                 <Btn
                   onClick={() => {
@@ -2277,7 +2759,28 @@ export default function BmcLogisticaApp() {
                     </div>
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                       {stop.pdfLink ? <Btn href={stop.pdfLink} target="_blank" outline small>📄 PDF</Btn> : null}
-                      {stop.direccion ? <Btn href={stop.mapLink || mapsUrl(stop.direccion)} target="_blank" color={T.success} small>🗺️ Mapa</Btn> : null}
+                      {stop.direccion || stop.geo ? (
+                        <Btn
+                          href={
+                            stop.geo
+                              ? mapsCoordsUrl(stop.geo.lat, stop.geo.lng, stop.direccion || stop.cliente)
+                              : stop.mapLink || mapsUrl(stop.direccion)
+                          }
+                          target="_blank"
+                          color={T.success}
+                          small
+                        >
+                          🗺️ Mapa{stop.geo ? " ✓" : ""}
+                        </Btn>
+                      ) : null}
+                      <Btn
+                        onClick={() => geocodeStop(stop.id)}
+                        outline
+                        small
+                        disabled={geocodingStopId === stop.id}
+                      >
+                        {geocodingStopId === stop.id ? "⏳ Geo…" : stop.geo ? "↻ Re-geo" : "📍 Geocodificar"}
+                      </Btn>
                       {(stop.pdfLink || stop.rawSheetText) ? (
                         <Btn onClick={() => retryAutoLoadForStop(stop)} outline small>
                           {retryingStopId === stop.id ? "⏳ Reintentando" : "↻ Reintentar autocarga"}
@@ -2326,7 +2829,37 @@ export default function BmcLogisticaApp() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                     <div><label htmlFor={`s-${stop.id}-pdfLink`} style={css.lbl}>Link PDF pedido</label><input id={`s-${stop.id}-pdfLink`} name={`s-${stop.id}-pdfLink`} style={css.inp} value={stop.pdfLink || ""} onChange={(e) => updStop(stop.id, "pdfLink", e.target.value)} placeholder="https://drive.google.com/..." /></div>
-                    <div><label htmlFor={`s-${stop.id}-mapLink`} style={css.lbl}>Link mapa</label><input id={`s-${stop.id}-mapLink`} name={`s-${stop.id}-mapLink`} style={{ ...css.inp, color: T.muted, fontSize: 11 }} value={stop.mapLink || (stop.direccion ? mapsUrl(stop.direccion) : "")} onChange={(e) => updStop(stop.id, "mapLink", e.target.value)} /></div>
+                    <div>
+                      <label htmlFor={`s-${stop.id}-mapLink`} style={css.lbl}>
+                        Link mapa{stop.geo ? ` · ${Number(stop.geo.lat).toFixed(4)}, ${Number(stop.geo.lng).toFixed(4)}` : ""}
+                      </label>
+                      <input
+                        id={`s-${stop.id}-mapLink`}
+                        name={`s-${stop.id}-mapLink`}
+                        style={{ ...css.inp, color: T.muted, fontSize: 11 }}
+                        value={stop.mapLink || (stop.direccion ? mapsUrl(stop.direccion) : "")}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          const parsed = parseLatLng(v);
+                          if (parsed) {
+                            setStops((p) =>
+                              p.map((s) =>
+                                s.id === stop.id
+                                  ? applyGeocodeToStop(s, {
+                                      ...parsed,
+                                      label: s.direccion || s.cliente || "",
+                                      source: "parsed",
+                                    })
+                                  : s,
+                              ),
+                            );
+                          } else {
+                            updStop(stop.id, "mapLink", v);
+                          }
+                        }}
+                        placeholder="URL Maps o lat,lng"
+                      />
+                    </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                     <div>
@@ -2486,7 +3019,7 @@ export default function BmcLogisticaApp() {
           </div>
 
           <div style={{ position: "sticky", top: 16, alignSelf: "start" }}>
-            <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} />
+            <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} onForcePackageStack={forcePackageStack} />
             <div style={{ ...css.card, padding: 16, marginTop: 12 }}>
               <div style={css.sectionTitle}>Variantes sugeridas</div>
               <div style={{ display: "grid", gap: 8 }}>

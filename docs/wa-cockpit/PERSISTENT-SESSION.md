@@ -56,6 +56,59 @@ npm run wa:always-on:status
 npm run wa:always-on:install
 ```
 
+### LaunchAgent contract (KeepAlive — do not regress)
+
+Installed plist: `~/Library/LaunchAgents/com.bmc.wa-chrome.plist`  
+Source template: `docs/wa-cockpit/com.bmc.wa-chrome.plist.example`
+
+| Key | Value | Why |
+|-----|--------|-----|
+| ProgramArguments | `start --wait` | Bash **stays alive** while Chrome is up |
+| KeepAlive | true | Restart only after Chrome actually exits |
+| ThrottleInterval | 30 | Backoff between restarts |
+| **AbandonProcessGroup** | **true** | Prevents launchd SIGTERM of Chrome when wrapper exits |
+
+**Bug (2026-08-05):** Agent called `start` without `--wait` → script `nohup` Chrome and exited 0 → launchd killed process group (exit 15) → Chrome open/close every ~30s.  
+**Fix:** `start --wait` + `AbandonProcessGroup` + reinstall agent.
+
+Reinstall after template changes:
+
+```bash
+./scripts/wa-chrome-always-on.sh --install-agent
+```
+
+---
+
+## Second phone (parallel profile)
+
+| Profile | Path | Purpose |
+|---------|------|---------|
+| main | `.runtime/chrome-wa-profile` | Ops always-on (LaunchAgent) |
+| phone2 | `.runtime/chrome-wa-profile-phone2` | Other phone / personal |
+
+**One phone number ↔ one profile.** Never QR the same number into both.
+
+```bash
+# Phone 2 only (does not touch main)
+./scripts/wa-chrome-phone2.sh start    # WA Web + CDP :9223
+./scripts/wa-chrome-phone2.sh reset    # wipe + fresh QR
+./scripts/wa-chrome-phone2.sh stop
+./scripts/wa-chrome-phone2.sh status
+```
+
+If the window is off-screen (multi-monitor): use IAlfred `ia wa focus2`.
+
+### IAlfred visibility (persistent)
+
+IAlfred on this Mac reads/writes multi-phone status:
+
+```bash
+~/Projects/personal-agent/scripts/ia wa     # → ~/.ialfred/wa-sessions-status.json
+```
+
+Every IAlfred boot (`ia` / `ia-boot.sh`) includes a **WA SESSIONS** block.  
+Workflow: `~/Projects/personal-agent/docs/workflows/wa-sessions-status.md`.
+
 ---
 
 ## Do not fight the profile

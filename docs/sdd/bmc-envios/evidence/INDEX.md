@@ -22,9 +22,16 @@
 | E-16 | Plan export JSON | **CONFIRMED** | `bmcLogisticaBedView.js` |
 | E-17 | ENV- number | **CONFIRMED** | `envNo` |
 | E-18 | Bridge U2 | **CONFIRMED** | `bridgePayload.js` + CTA + import + `tests/bridgePayload.test.js` |
-| E-19 | HTTP `/api/envios` | **NOT DEPLOYED** | Sketch only |
-| E-20 | Maps | **TARGET** P2 | — |
-| E-21 | PG shipments | **TARGET** P5 | — |
+| E-19 | HTTP `/api/envios` | **CONFIRMED** | `server/routes/envios.js` mounted in `server/index.js` |
+| E-20 | Geocode P2 | **CONFIRMED** | `src/utils/logistica/geocode.js` + POST geocode + `tests/geocode.test.js` |
+| E-21 | PG drafts P5 | **CONFIRMED** | `envios_drafts` + `server/lib/enviosDb.js` + PUT/GET drafts + `tests/enviosDraft.test.js` |
+| E-38 | Distance Matrix / TSP | **TARGET** | P2b non-MVP |
+| E-39 | Autosave cloud | **TARGET** | P5b |
+| E-40 | onDark buttons F7 | **CONFIRMED** | `btnStyle.js` + DiagramPanel `variant=onDark` + `tests/btnStyle.test.js` |
+| E-41 | Package identity F8 | **CONFIRMED** | `packageIdentity.js` + SVG/3D labels |
+| E-42 | Client group F9 | **CONFIRMED** | highlightKeys + drawer contact/map/PDF/remito |
+| E-43 | Stack above/below F10 | **CONFIRMED** | `moveRelativeToNeighbor` / `findStackNeighbors` |
+| E-44 | Ventas proxy F11 | **CONFIRMED** | `GET /api/envios/ventas-csv` + client fallback |
 | E-22 | Legacy SDD superseded | **CONFIRMED** | team SDD fletes |
 | E-23 | DESIGN-UI | **CONFIRMED** | `DESIGN-UI.md` |
 | E-24 | Packing tests | **CONFIRMED** | `tests/cargoPacking.test.js` |
