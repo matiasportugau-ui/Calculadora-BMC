@@ -2675,11 +2675,13 @@ export default function BmcLogisticaApp() {
                   />
                   Autosave nube
                 </label>
-                {cloudMeta?.revision != null ? (
+                {cloudMeta?.revision != null || cloudMeta?.status === "conflict" ? (
                   <span style={{ fontSize: 11, color: cloudMeta.status === "conflict" ? T.danger : T.muted }}>
-                    Cloud rev {cloudMeta.revision}
+                    Cloud rev {cloudMeta.revision ?? "—"}
                     {cloudMeta.status === "saved" ? " · ✓" : ""}
-                    {cloudMeta.status === "conflict" ? " · ⚠ conflicto" : ""}
+                    {cloudMeta.status === "conflict"
+                      ? ` · ⚠ conflicto${cloudMeta.remoteRevision != null ? ` (remota ${cloudMeta.remoteRevision})` : ""}`
+                      : ""}
                     {cloudMeta.updatedAt ? ` · ${new Date(cloudMeta.updatedAt).toLocaleString()}` : ""}
                   </span>
                 ) : (
