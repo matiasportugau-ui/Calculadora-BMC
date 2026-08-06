@@ -1855,13 +1855,10 @@ export default function BmcLogisticaApp() {
       const parsed = parsePutDraftResponse(res.status, j);
       if (parsed.conflict) {
         setCloudConflict(parsed.draft);
-        // Keep local `revision` as the optimistic base. Adopting the remote
-        // revision here would make the next autosave expectedRevision match
-        // and silently overwrite the cloud draft without "Mantener el mío".
         setCloudMeta((m) => ({
           ...(m || {}),
           status: "conflict",
-          remoteRevision: parsed.draft?.revision ?? m?.remoteRevision,
+          revision: parsed.draft?.revision ?? m?.revision,
         }));
         if (!silent) setAutoLoadMsg("Nube: conflicto de revisión — elegí mantener local o usar nube.");
         return { ok: false, conflict: true, draft: parsed.draft };
@@ -1898,14 +1895,12 @@ export default function BmcLogisticaApp() {
     const token = enviosAuthToken();
     const fp = fingerprintDraft(currentDraftState());
     const dirty = Boolean(fp && fp !== lastPushedFp);
-    const inConflict = cloudMeta?.status === "conflict" || Boolean(cloudConflict);
     const gate = shouldAutosave({
       hydrated,
       envNo: info.numero,
       hasToken: Boolean(token),
       dirty,
       cloudBusy: cloudSyncBusy,
-      conflict: inConflict,
       autosaveEnabled,
       lastPushAt,
       now: Date.now(),
@@ -1930,8 +1925,6 @@ export default function BmcLogisticaApp() {
     lastPushedFp,
     cloudSyncBusy,
     lastPushAt,
-    cloudConflict,
-    cloudMeta?.status,
   ]);
 
   /** P5: pull draft from server into app state (+ localStorage via hydrate persist). */
@@ -2716,7 +2709,6 @@ export default function BmcLogisticaApp() {
                   }}
                 >
                   <b>Conflicto de nube</b> (rev remota {cloudConflict.revision}). Otro dispositivo guardó antes.
-                  Autosave pausado hasta que elijas una opción (cerrar el aviso no fuerza sobrescritura).
                   <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                     <Btn
                       small
@@ -2738,17 +2730,7 @@ export default function BmcLogisticaApp() {
                     >
                       Usar versión de la nube
                     </Btn>
-                    <Btn
-                      small
-                      outline
-                      onClick={() => {
-                        // Hide banner only — keep status "conflict" so autosave stays paused.
-                        setCloudConflict(null);
-                        setAutoLoadMsg(
-                          "Nube: conflicto pendiente — autosave pausado. Usá Guardar (forzar) o Cargar nube.",
-                        );
-                      }}
-                    >
+                    <Btn small outline onClick={() => setCloudConflict(null)}>
                       Cerrar
                     </Btn>
                   </div>

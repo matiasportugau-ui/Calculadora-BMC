@@ -64,7 +64,6 @@ function stableStringify(value) {
  *   hasToken?: boolean,
  *   dirty?: boolean,
  *   cloudBusy?: boolean,
- *   conflict?: boolean,
  *   autosaveEnabled?: boolean,
  *   lastPushAt?: number|null,
  *   now?: number,
@@ -79,10 +78,6 @@ export function shouldAutosave(opts = {}) {
   if (!id) return { ok: false, reason: "missing_env_no" };
   if (!opts.dirty) return { ok: false, reason: "clean" };
   if (opts.cloudBusy) return { ok: false, reason: "busy" };
-  // After a 409, autosave must stay paused until the operator picks
-  // "Mantener el mío" (force) or "Usar versión de la nube". Otherwise the
-  // next PUT can silently overwrite the remote draft.
-  if (opts.conflict) return { ok: false, reason: "conflict" };
   const now = opts.now ?? Date.now();
   const last = opts.lastPushAt ?? 0;
   const min = opts.minIntervalMs ?? AUTOSAVE_MIN_INTERVAL_MS;

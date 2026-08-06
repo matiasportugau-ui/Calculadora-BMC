@@ -46,19 +46,6 @@ console.log("enviosDraftSync");
   assert.equal(shouldAutosave({ hydrated: true, envNo: "", hasToken: true, dirty: true, autosaveEnabled: true }).reason, "missing_env_no");
   assert.equal(shouldAutosave({ hydrated: true, envNo: "ENV-1", hasToken: false, dirty: true, autosaveEnabled: true }).reason, "no_token");
   assert.equal(shouldAutosave({ hydrated: true, envNo: "ENV-1", hasToken: true, dirty: false, autosaveEnabled: true }).reason, "clean");
-  assert.equal(
-    shouldAutosave({
-      hydrated: true,
-      envNo: "ENV-1",
-      hasToken: true,
-      dirty: true,
-      autosaveEnabled: true,
-      conflict: true,
-      lastPushAt: 0,
-      now: Date.now(),
-    }).reason,
-    "conflict",
-  );
   const throttle = shouldAutosave({
     hydrated: true,
     envNo: "ENV-1",
