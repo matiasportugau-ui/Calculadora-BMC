@@ -32,6 +32,11 @@
 | E-42 | Client group F9 | **CONFIRMED** | highlightKeys + drawer contact/map/PDF/remito |
 | E-43 | Stack above/below F10 | **CONFIRMED** | `moveRelativeToNeighbor` / `findStackNeighbors` |
 | E-44 | Ventas proxy F11 | **CONFIRMED** | `GET /api/envios/ventas-csv` + client fallback |
+| E-45 | P5b autosave + 409 | **CONFIRMED** | `enviosDraftSync.js` + PUT expectedRevision + tests |
+| E-46 | F10b package list DnD | **CONFIRMED** | `packageListDnD.js` + `PackageLayoutList.jsx` |
+| E-47 | safeExternalUrl | **CONFIRMED** | `safeExternalUrl.js` + tests |
+| E-48 | P2b Matrix | **DEFERRED** | 2026-Q4 |
+| E-49 | P3 CBM tariff | **DEFERRED** | 2026-Q4 |
 | E-22 | Legacy SDD superseded | **CONFIRMED** | team SDD fletes |
 | E-23 | DESIGN-UI | **CONFIRMED** | `DESIGN-UI.md` |
 | E-24 | Packing tests | **CONFIRMED** | `tests/cargoPacking.test.js` |

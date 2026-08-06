@@ -15,7 +15,7 @@ U1–U3 + Ops UX F1–F6 + P2/P5 MVP + **Wave 2 F7–F11** (buttons, identity, c
 | G-F8 | Package identity k/N | P0 | **[x]** | `packageIdentity.js` |
 | G-F9 | Client group + drawer docs | P0 | **[x]** | DiagramPanel drawer |
 | G-F10 | Stack above/below | P1 | **[x]** | packageDrop moveRelative |
-| G-F10b | List DnD reorder packages | P2 | **OPEN** | Deferred |
+| G-F10b | List DnD reorder packages | P2 | **[x]** | packageListDnD + PackageLayoutList |
 | G-F11 | Ventas fetch harden | P0 | **[x]** | proxy + errors + persist view |
 | G-P2b | Distance Matrix / TSP | P3 | **OPEN** | — |
 | G-P3 | CBM non-panel | P2 | **OPEN** | — |
