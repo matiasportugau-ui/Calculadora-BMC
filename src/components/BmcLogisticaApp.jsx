@@ -1649,7 +1649,7 @@ export default function BmcLogisticaApp() {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
-      setAutoLoadMsg(`Planilla Ventas: fecha guardada (fila ${row}, columna G).`);
+      setAutoLoadMsg(`Planilla Ventas: fecha guardada (fila ${row}, columna H).`);
     } catch (e) {
       setAutoLoadMsg(`Planilla Ventas: error al guardar fecha — ${e.message}`);
     }

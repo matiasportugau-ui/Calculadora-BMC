@@ -1,6 +1,6 @@
 /**
  * Ventas → coordination lifecycle chips for /logistica search results (Ops UX F2).
- * Pure functions — column F = estado text; column G = fecha coordinación (ISO).
+ * Pure functions — column F = estado text; column H = fecha coordinación (ISO, Ventas 2.0).
  */
 
 /** @typedef {'enviado'|'coordinado'|'por_coordinar'} CoordinationStatus */

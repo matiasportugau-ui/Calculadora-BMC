@@ -24,6 +24,7 @@ import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
+import { buildVentasFechaEntregaA1Range } from "../../src/utils/logistica/ventasSheetMap.js";
 
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
@@ -1185,8 +1186,8 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
 
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
-  const safeTab = String(tabTitle).replace(/'/g, "''");
-  const range = `'${safeTab}'!G${row1Based}`;
+  // Ventas 2.0: H = FECHA ENTREGA (G = TIPO/FAB) — see ventasSheetMap.js.
+  const range = buildVentasFechaEntregaA1Range(tabTitle, row1Based);
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: ventasSheetId,
@@ -3015,7 +3016,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 
   // ── CRM cockpit (columnas AG–AK) — dual auth: API_AUTH_TOKEN | JWT canales ──
 
-  /** Logística: escribe fecha de entrega en columna G de Ventas (fila = cliente; pestaña por gid). Auth = CRM cockpit. */
+  /** Logística: escribe fecha de entrega en columna H de Ventas 2.0 (fila = cliente; pestaña por gid). Auth = CRM cockpit. */
   router.post("/ventas/logistica-fecha-entrega", requireCrmCockpitWrite, async (req, res) => {
     if (!checkVentasAvailable(config)) return noConfig(res);
     try {

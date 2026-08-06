@@ -29,6 +29,27 @@ export const VENTAS_V2_FALLBACK = {
   tel: 15, // P CONTACTO
 };
 
+/**
+ * A1 column letter for FECHA ENTREGA on Ventas 2.0 (must match VENTAS_V2_FALLBACK.fechaEntrega).
+ * POST /api/ventas/logistica-fecha-entrega writes this cell — never G (TIPO/FAB).
+ */
+export const VENTAS_FECHA_ENTREGA_COL_LETTER = "H";
+
+/**
+ * Build Sheets A1 range for logística fecha de entrega write.
+ * @param {string} tabTitle
+ * @param {number} row1Based
+ * @returns {string}
+ */
+export function buildVentasFechaEntregaA1Range(tabTitle, row1Based) {
+  const safeTab = String(tabTitle ?? "").replace(/'/g, "''");
+  const row = Number(row1Based);
+  if (!Number.isFinite(row) || row < 2) {
+    throw new Error("row1Based inválido (mín. 2)");
+  }
+  return `'${safeTab}'!${VENTAS_FECHA_ENTREGA_COL_LETTER}${row}`;
+}
+
 function normalizeText(s) {
   return String(s || "")
     .normalize("NFD")
