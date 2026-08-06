@@ -474,10 +474,11 @@ Client pure engines remain packing/quote SoT. Transportista `/api/trips/*` is a 
 | F1–F6 | Ops UX wave | **DONE** #842–#849 |
 | U3 | FSM guards | **DONE** #857 |
 | P2 | Geocode MVP | **DONE** Nominatim + haversine |
-| P2b | Road Distance Matrix / TSP | OPEN |
-| P3 | CBM non-panel | OPEN |
+| P2b | Road Distance Matrix / TSP | **DEFERRED** 2026-Q4 |
+| P3 | CBM non-panel | **DEFERRED** 2026-Q4 |
 | P5 | Server ENV drafts MVP | **DONE** `envios_drafts` |
-| P5b | Autosave / conflict UI | OPEN |
+| P5b | Autosave / conflict / browser | **DONE** |
+| F10b | Package list DnD | **DONE** |
 
 ---
 
@@ -490,4 +491,5 @@ Client pure engines remain packing/quote SoT. Transportista `/api/trips/*` is a 
 | 1.3 | 2026-08-05 | Linked OPS-UX-WAVE; U1/U2 marked done in brief |
 | 1.4 | 2026-08-05 | Full as-built: F1–F6 CONFIRMED, C4/bridge fixed, ADRs 011–014, evidence alignment, glory re-audit |
 | 1.5 | 2026-08-05 | P2 geocode MVP + P5 durable drafts MVP; ADR-015/016; `/api/envios/*` live |
-| **1.6** | **2026-08-05** | **Ops UX Wave 2 F7–F11: onDark buttons, package identity, client group drawer, stack above/below, Ventas proxy** |
+| 1.6 | 2026-08-05 | Ops UX Wave 2 F7–F11: onDark buttons, package identity, client group drawer, stack above/below, Ventas proxy |
+| **1.7** | **2026-08-06** | **P5b autosave+409 conflict+draft browser; F10b package DnD; P2b/P3 DEFERRED 2026-Q4; safeExternalUrl** |

@@ -46,12 +46,13 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 | P2 | Geocode stop → `stop.geo` + map pin | **DONE** `geocode.js` + `POST /api/envios/geocode` |
 | P2 | Parse lat,lng / Maps URL without API | **DONE** |
 | P2 | Trip air-km legs (haversine) | **DONE** `tripLegDistances` |
-| P2b | Google Distance Matrix / TSP | OPEN |
+| P2b | Google Distance Matrix / TSP | **DEFERRED** 2026-Q4 (haversine + label “km aire”) |
 | P5 | Durable draft by ENV number in PG | **DONE** `envios_drafts` + PUT/GET |
 | P5 | UI Save/Load nube | **DONE** `/logistica` header |
 | P5 | localStorage offline cache | **DONE** (primary offline) |
-| P5b | Autosave + conflict UI | OPEN |
-| P3 | CBM non-panel tariff | OPEN |
+| P5b | Autosave + conflict UI + draft browser | **DONE** expectedRevision 409 + debounce |
+| F10b | Package list DnD reorder | **DONE** `PackageLayoutList` + `packageListDnD.js` |
+| P3 | CBM non-panel tariff | **DEFERRED** 2026-Q4 (panel-zona remains SoT) |
 
 ## Non-goals (Core)
 

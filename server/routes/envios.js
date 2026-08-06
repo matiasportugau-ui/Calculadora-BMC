@@ -298,7 +298,8 @@ export default function createEnviosRouter(config, logger) {
 
   /**
    * PUT /api/envios/drafts/:id — upsert full draft
-   * body: { payload, updatedBy? } or full draft state fields
+   * body: { payload, updatedBy?, expectedRevision? }
+   * When expectedRevision is set and row exists with different revision → 409.
    */
   router.put(
     "/envios/drafts/:id",
@@ -320,6 +321,33 @@ export default function createEnviosRouter(config, logger) {
         String(payload.info?.numero || body.envNo || idParam).trim() || idParam;
       const id = draftIdFromEnvNo(envNo) || idParam;
       const updatedBy = body.updatedBy != null ? String(body.updatedBy).slice(0, 120) : null;
+      const expectedRevision =
+        body.expectedRevision != null && body.expectedRevision !== ""
+          ? Number(body.expectedRevision)
+          : null;
+
+      if (expectedRevision != null && Number.isFinite(expectedRevision)) {
+        const { rows: existing } = await pool.query(
+          `select id, env_no, payload, revision, updated_at, created_at, updated_by
+           from envios_drafts where id = $1 limit 1`,
+          [id],
+        );
+        if (existing[0] && Number(existing[0].revision) !== expectedRevision) {
+          return res.status(409).json({
+            ok: false,
+            error: "revision_conflict",
+            draft: {
+              id: existing[0].id,
+              envNo: existing[0].env_no,
+              payload: existing[0].payload,
+              revision: existing[0].revision,
+              updatedAt: existing[0].updated_at,
+              createdAt: existing[0].created_at,
+              updatedBy: existing[0].updated_by,
+            },
+          });
+        }
+      }
 
       const { rows } = await pool.query(
         `insert into envios_drafts (id, env_no, payload, revision, updated_by)

@@ -63,6 +63,15 @@ import {
   parseEnviosDraftPayload,
   draftIdFromEnvNo,
 } from "../utils/logistica/enviosDraft.js";
+import {
+  fingerprintDraft,
+  shouldAutosave,
+  parsePutDraftResponse,
+  AUTOSAVE_MIN_INTERVAL_MS,
+} from "../utils/logistica/enviosDraftSync.js";
+import { safeHttpUrl, safeTelUrl } from "../utils/logistica/safeExternalUrl.js";
+import PackageLayoutList from "./logistica/PackageLayoutList.jsx";
+import EnviosDraftBrowser from "./logistica/EnviosDraftBrowser.jsx";
 
 const TRUCK_W = 2.4;
 
@@ -825,10 +834,11 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
     }
   }, [diagramView]);
 
-  const mapHref =
+  const mapHref = safeHttpUrl(
     selectedStop?.mapLink ||
-    (selectedStop?.geo ? mapsCoordsUrl(selectedStop.geo.lat, selectedStop.geo.lng, selectedStop.direccion) : "") ||
-    (selectedStop?.direccion ? mapsSearchUrl(selectedStop.direccion) : "");
+      (selectedStop?.geo ? mapsCoordsUrl(selectedStop.geo.lat, selectedStop.geo.lng, selectedStop.direccion) : "") ||
+      (selectedStop?.direccion ? mapsSearchUrl(selectedStop.direccion) : ""),
+  );
 
   return (
     <div
@@ -958,8 +968,8 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
               <div style={{ fontWeight: 600 }}>
                 {selectedStop?.contactoRecepcion || selectedStop?.cliente || selectedPkg.sCli || "—"}
               </div>
-              {selectedStop?.telefono ? (
-                <a href={`tel:${String(selectedStop.telefono).replace(/\s/g, "")}`} style={{ color: "#93c5fd", fontSize: 11 }}>
+              {safeTelUrl(selectedStop?.telefono) ? (
+                <a href={safeTelUrl(selectedStop.telefono)} style={{ color: "#93c5fd", fontSize: 11 }}>
                   {selectedStop.telefono}
                 </a>
               ) : (
@@ -998,15 +1008,15 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
             <div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: ".04em" }}>Documentos</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                {selectedStop?.pdfLink ? (
+                {safeHttpUrl(selectedStop?.pdfLink) ? (
                   <>
-                    <Btn small variant="onDark" href={selectedStop.pdfLink} target="_blank">
+                    <Btn small variant="onDark" href={safeHttpUrl(selectedStop.pdfLink)} target="_blank">
                       Factura / PDF
                     </Btn>
                     <Btn
                       small
                       variant="onDark"
-                      href={selectedStop.pdfLink}
+                      href={safeHttpUrl(selectedStop.pdfLink)}
                       target="_blank"
                       style={{ fontSize: 11 }}
                     >
@@ -1466,9 +1476,20 @@ export default function BmcLogisticaApp() {
   const [dragStopId, setDragStopId] = useState(null);
   /** P2 geocode in-flight stop id */
   const [geocodingStopId, setGeocodingStopId] = useState(null);
-  /** P5 cloud sync */
+  /** P5 / P5b cloud sync */
   const [cloudSyncBusy, setCloudSyncBusy] = useState(false);
   const [cloudMeta, setCloudMeta] = useState(null);
+  const [autosaveEnabled, setAutosaveEnabled] = useState(() => {
+    try {
+      return localStorage.getItem("bmc-envios-autosave") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const [lastPushedFp, setLastPushedFp] = useState("");
+  const [lastPushAt, setLastPushAt] = useState(0);
+  const [cloudConflict, setCloudConflict] = useState(null);
+  const [draftBrowserOpen, setDraftBrowserOpen] = useState(false);
 
   useEffect(() => {
     let restoredStops = [];
@@ -1802,42 +1823,109 @@ export default function BmcLogisticaApp() {
     };
   }
 
-  /** P5: push draft to Postgres (multi-device). */
-  async function saveDraftToCloud() {
+  /** P5/P5b: push draft to Postgres (multi-device). */
+  async function saveDraftToCloud(opts = {}) {
+    const silent = Boolean(opts.silent);
     const built = buildEnviosDraft(currentDraftState());
     if (!built.ok) {
-      setAutoLoadMsg("Nube: asigná un Nº Envío (ENV-…) antes de guardar.");
-      return;
+      if (!silent) setAutoLoadMsg("Nube: asigná un Nº Envío (ENV-…) antes de guardar.");
+      return { ok: false, error: built.error };
     }
     const token = enviosAuthToken();
     if (!token) {
-      setAutoLoadMsg("Nube: falta VITE_BMC_API_AUTH_TOKEN para guardar en servidor.");
-      return;
+      if (!silent) setAutoLoadMsg("Nube: falta VITE_BMC_API_AUTH_TOKEN para guardar en servidor.");
+      return { ok: false, error: "no_token" };
     }
     setCloudSyncBusy(true);
     try {
       const base = getCalcApiBase();
+      const body = {
+        payload: built.payload,
+        updatedBy: opts.updatedBy || "logistica-ui",
+      };
+      if (cloudMeta?.revision != null && !opts.force) {
+        body.expectedRevision = cloudMeta.revision;
+      }
       const res = await fetch(`${base}/api/envios/drafts/${encodeURIComponent(built.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ payload: built.payload, updatedBy: "logistica-ui" }),
+        body: JSON.stringify(body),
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+      const parsed = parsePutDraftResponse(res.status, j);
+      if (parsed.conflict) {
+        setCloudConflict(parsed.draft);
+        setCloudMeta((m) => ({
+          ...(m || {}),
+          status: "conflict",
+          revision: parsed.draft?.revision ?? m?.revision,
+        }));
+        if (!silent) setAutoLoadMsg("Nube: conflicto de revisión — elegí mantener local o usar nube.");
+        return { ok: false, conflict: true, draft: parsed.draft };
+      }
+      if (!parsed.ok) throw new Error(parsed.error || res.statusText);
+      const fp = fingerprintDraft(currentDraftState());
+      setLastPushedFp(fp);
+      setLastPushAt(Date.now());
+      setCloudConflict(null);
       setCloudMeta({
-        id: j.draft?.id || built.id,
-        revision: j.draft?.revision,
-        updatedAt: j.draft?.updatedAt,
+        id: parsed.draft?.id || built.id,
+        revision: parsed.draft?.revision,
+        updatedAt: parsed.draft?.updatedAt,
+        status: "saved",
       });
-      setAutoLoadMsg(
-        `Nube: guardado ${j.draft?.id || built.id} · rev ${j.draft?.revision ?? "—"} · ${built.stopCount} parada(s)`,
-      );
+      if (!silent) {
+        setAutoLoadMsg(
+          `Nube: guardado ${parsed.draft?.id || built.id} · rev ${parsed.draft?.revision ?? "—"} · ${built.stopCount} parada(s)`,
+        );
+      }
+      return { ok: true, draft: parsed.draft };
     } catch (e) {
-      setAutoLoadMsg(`Nube: error al guardar — ${e.message}`);
+      setCloudMeta((m) => ({ ...(m || {}), status: "error" }));
+      if (!silent) setAutoLoadMsg(`Nube: error al guardar — ${e.message}`);
+      return { ok: false, error: e.message };
     } finally {
       setCloudSyncBusy(false);
     }
   }
+
+  // P5b autosave (debounced)
+  useEffect(() => {
+    if (!hydrated) return undefined;
+    const token = enviosAuthToken();
+    const fp = fingerprintDraft(currentDraftState());
+    const dirty = Boolean(fp && fp !== lastPushedFp);
+    const gate = shouldAutosave({
+      hydrated,
+      envNo: info.numero,
+      hasToken: Boolean(token),
+      dirty,
+      cloudBusy: cloudSyncBusy,
+      autosaveEnabled,
+      lastPushAt,
+      now: Date.now(),
+      minIntervalMs: AUTOSAVE_MIN_INTERVAL_MS,
+    });
+    if (!gate.ok) return undefined;
+    const t = setTimeout(() => {
+      saveDraftToCloud({ silent: true, updatedBy: "autosave" });
+    }, gate.waitMs != null ? gate.waitMs + 50 : AUTOSAVE_MIN_INTERVAL_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional autosave deps
+  }, [
+    hydrated,
+    info,
+    stops,
+    truckL,
+    distributionMode,
+    cargoLayoutMode,
+    manualPkgOrderKeys,
+    rowOverrides,
+    autosaveEnabled,
+    lastPushedFp,
+    cloudSyncBusy,
+    lastPushAt,
+  ]);
 
   /** P5: pull draft from server into app state (+ localStorage via hydrate persist). */
   async function loadDraftFromCloud() {
@@ -1896,6 +1984,24 @@ export default function BmcLogisticaApp() {
         id: j.draft?.id || id,
         revision: j.draft?.revision,
         updatedAt: j.draft?.updatedAt,
+        status: "saved",
+      });
+      setCloudConflict(null);
+      // After load, mark clean so autosave doesn't immediately re-push
+      queueMicrotask(() => {
+        setLastPushedFp(
+          fingerprintDraft({
+            info: p.info,
+            stops: p.stops,
+            truckL: p.truckL,
+            distributionMode: p.distributionMode,
+            cargoLayoutMode: p.cargoLayoutMode,
+            manualPkgOrderKeys: p.manualPkgOrderKeys,
+            rowOverrides: p.rowOverrides,
+            ui: p.ui,
+          }),
+        );
+        setLastPushAt(Date.now());
       });
       setAutoLoadMsg(
         `Nube: cargado ${j.draft?.id || id} · rev ${j.draft?.revision ?? "—"} · ${Array.isArray(p.stops) ? p.stops.length : 0} parada(s)`,
@@ -1905,6 +2011,12 @@ export default function BmcLogisticaApp() {
     } finally {
       setCloudSyncBusy(false);
     }
+  }
+
+  function reorderPackages(keys) {
+    setCargoLayoutMode("manual");
+    setManualPkgOrderKeys(keys);
+    setAutoLoadMsg("Layout manual: orden de bultos actualizado (lista DnD)");
   }
 
   const tripDistance = useMemo(() => tripLegDistances(stops), [stops]);
@@ -2278,6 +2390,15 @@ export default function BmcLogisticaApp() {
       {view === "carga" ? (
         <div>
           <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} onForcePackageStack={forcePackageStack} />
+          <div style={{ ...css.card, padding: 14, marginTop: 12 }}>
+            <PackageLayoutList
+              placed={cargo.placed}
+              counts={packageBultoCounts(cargo.placed)}
+              manualKeys={manualPkgOrderKeys}
+              onReorder={reorderPackages}
+              onForceRow={forcePackageRow}
+            />
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12, width: "100%", maxWidth: "100%", minWidth: 0 }}>
             <div style={{ ...css.card, padding: 14, minWidth: 0, maxWidth: "100%" }}>
               <div style={{ ...css.sectionTitle, marginBottom: 8 }}>🔭 Vista Superior</div>
@@ -2529,20 +2650,41 @@ export default function BmcLogisticaApp() {
                 <div><label htmlFor="log-patente" style={css.lbl}>Patente</label><input id="log-patente" name="log-patente" style={css.inp} value={info.patente} onChange={(e) => updInfo("patente", e.target.value)} /></div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
-                <Btn onClick={saveDraftToCloud} disabled={cloudSyncBusy} color={T.brand} small>
+                <Btn onClick={() => saveDraftToCloud()} disabled={cloudSyncBusy} color={T.brand} small>
                   {cloudSyncBusy ? "⏳ Nube…" : "☁ Guardar en nube"}
                 </Btn>
                 <Btn onClick={loadDraftFromCloud} disabled={cloudSyncBusy} outline small>
                   ☁ Cargar de nube
                 </Btn>
+                <Btn onClick={() => setDraftBrowserOpen(true)} outline small>
+                  Borradores
+                </Btn>
+                <label style={{ fontSize: 11, color: T.muted, display: "flex", alignItems: "center", gap: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={autosaveEnabled}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      setAutosaveEnabled(on);
+                      try {
+                        localStorage.setItem("bmc-envios-autosave", on ? "1" : "0");
+                      } catch {
+                        /* ignore */
+                      }
+                    }}
+                  />
+                  Autosave nube
+                </label>
                 {cloudMeta?.revision != null ? (
-                  <span style={{ fontSize: 11, color: T.muted }}>
+                  <span style={{ fontSize: 11, color: cloudMeta.status === "conflict" ? T.danger : T.muted }}>
                     Cloud rev {cloudMeta.revision}
+                    {cloudMeta.status === "saved" ? " · ✓" : ""}
+                    {cloudMeta.status === "conflict" ? " · ⚠ conflicto" : ""}
                     {cloudMeta.updatedAt ? ` · ${new Date(cloudMeta.updatedAt).toLocaleString()}` : ""}
                   </span>
                 ) : (
                   <span style={{ fontSize: 11, color: T.muted }}>
-                    P5 multi-device · localStorage sigue de cache offline
+                    P5b multi-device · localStorage offline
                   </span>
                 )}
                 {tripDistance.geocodedCount >= 2 ? (
@@ -2553,6 +2695,45 @@ export default function BmcLogisticaApp() {
                   <span style={{ fontSize: 11, color: T.muted }}>1 parada geocodificada · geocodificá otra para km</span>
                 ) : null}
               </div>
+              {cloudConflict ? (
+                <div
+                  style={{
+                    marginBottom: 10,
+                    padding: 10,
+                    borderRadius: 10,
+                    background: "#fff7ed",
+                    border: "1px solid #fdba74",
+                    fontSize: 12,
+                  }}
+                >
+                  <b>Conflicto de nube</b> (rev remota {cloudConflict.revision}). Otro dispositivo guardó antes.
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                    <Btn
+                      small
+                      color={T.brand}
+                      onClick={async () => {
+                        await saveDraftToCloud({ force: true, silent: false });
+                        setCloudConflict(null);
+                      }}
+                    >
+                      Mantener el mío (forzar)
+                    </Btn>
+                    <Btn
+                      small
+                      outline
+                      onClick={async () => {
+                        setCloudConflict(null);
+                        await loadDraftFromCloud();
+                      }}
+                    >
+                      Usar versión de la nube
+                    </Btn>
+                    <Btn small outline onClick={() => setCloudConflict(null)}>
+                      Cerrar
+                    </Btn>
+                  </div>
+                </div>
+              ) : null}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
                 <input id="log-new-carrier" name="log-new-carrier" aria-label="Nuevo transportista" style={{ ...css.inp, flex: 1, minWidth: 140 }} placeholder="Nuevo transportista" value={newCarrierName} onChange={(e) => setNewCarrierName(e.target.value)} />
                 <Btn
@@ -3020,6 +3201,15 @@ export default function BmcLogisticaApp() {
 
           <div style={{ position: "sticky", top: 16, alignSelf: "start" }}>
             <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} onForcePackageStack={forcePackageStack} />
+            <div style={{ ...css.card, padding: 14, marginTop: 12 }}>
+              <PackageLayoutList
+                placed={cargo.placed}
+                counts={packageBultoCounts(cargo.placed)}
+                manualKeys={manualPkgOrderKeys}
+                onReorder={reorderPackages}
+                onForceRow={forcePackageRow}
+              />
+            </div>
             <div style={{ ...css.card, padding: 16, marginTop: 12 }}>
               <div style={css.sectionTitle}>Variantes sugeridas</div>
               <div style={{ display: "grid", gap: 8 }}>
@@ -3124,6 +3314,75 @@ export default function BmcLogisticaApp() {
           </div>
         ))}
       </div>
+
+      <EnviosDraftBrowser
+        open={draftBrowserOpen}
+        token={enviosAuthToken()}
+        onClose={() => setDraftBrowserOpen(false)}
+        onLoad={async (draftId) => {
+          setDraftBrowserOpen(false);
+          if (draftId) {
+            const prev = info.numero;
+            if (draftId && draftId !== prev) {
+              setInfo((i) => ({ ...i, numero: draftId }));
+            }
+            // load uses info.numero — set then call after paint
+            queueMicrotask(() => {
+              if (draftId !== info.numero) {
+                // force load by temporary set + fetch
+                (async () => {
+                  const token = enviosAuthToken();
+                  if (!token) return;
+                  setCloudSyncBusy(true);
+                  try {
+                    const base = getCalcApiBase();
+                    const res = await fetch(`${base}/api/envios/drafts/${encodeURIComponent(draftId)}`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                    const j = await res.json().catch(() => ({}));
+                    if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+                    const parsed = parseEnviosDraftPayload(j.draft?.payload);
+                    if (!parsed.ok) throw new Error(parsed.error);
+                    const p = parsed.payload;
+                    if (p.info) setInfo((prevI) => ({ ...prevI, ...p.info }));
+                    if (Array.isArray(p.stops)) {
+                      setStops(
+                        p.stops.map((stop, index) => ({
+                          ...mkStop(index),
+                          ...stop,
+                          orderId: stop.orderId ?? "",
+                          pickupId: stop.pickupId ?? "",
+                          geo: stop.geo ?? null,
+                          checks: { ...mkStop(index).checks, ...(stop.checks || {}) },
+                          accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, p.accProfiles || {}),
+                        })),
+                      );
+                    }
+                    if (p.truckL) setTruckL(p.truckL);
+                    if (p.distributionMode) setDistributionMode(p.distributionMode);
+                    if (p.cargoLayoutMode === "manual" || p.cargoLayoutMode === "auto") setCargoLayoutMode(p.cargoLayoutMode);
+                    if (Array.isArray(p.manualPkgOrderKeys)) setManualPkgOrderKeys(p.manualPkgOrderKeys);
+                    if (p.rowOverrides) setRowOverrides(p.rowOverrides);
+                    setCloudMeta({
+                      id: j.draft?.id || draftId,
+                      revision: j.draft?.revision,
+                      updatedAt: j.draft?.updatedAt,
+                      status: "saved",
+                    });
+                    setAutoLoadMsg(`Nube: cargado ${draftId}`);
+                  } catch (e) {
+                    setAutoLoadMsg(`Nube: ${e.message}`);
+                  } finally {
+                    setCloudSyncBusy(false);
+                  }
+                })();
+              } else {
+                loadDraftFromCloud();
+              }
+            });
+          }
+        }}
+      />
     </div>
   );
 }
