@@ -68,7 +68,7 @@ import {
   parsePutDraftResponse,
   AUTOSAVE_MIN_INTERVAL_MS,
 } from "../utils/logistica/enviosDraftSync.js";
-import { safeHttpUrl, safeTelUrl } from "../utils/logistica/safeExternalUrl.js";
+import { resolveSafeBtnHref, safeHttpUrl, safeTelUrl } from "../utils/logistica/safeExternalUrl.js";
 import PackageLayoutList from "./logistica/PackageLayoutList.jsx";
 import EnviosDraftBrowser from "./logistica/EnviosDraftBrowser.jsx";
 import { mapVentasRowV2 } from "../utils/logistica/ventasSheetMap.js";
@@ -130,7 +130,23 @@ function Btn({
   active = false,
 }) {
   const s = btnStyle({ outline, small, disabled, color, variant, active, style });
-  if (href) return <a href={href} target={target} rel={target === "_blank" ? "noopener noreferrer" : undefined} style={s}>{children}</a>;
+  // Sheet / draft / operator-controlled links must never reach <a href> raw
+  // (javascript: XSS). Drawer already uses safeHttpUrl; search + stop cards use Btn.
+  if (href != null && href !== "") {
+    const safe = resolveSafeBtnHref(href);
+    if (!safe) {
+      return (
+        <button type="button" disabled style={s} title="Enlace no seguro">
+          {children}
+        </button>
+      );
+    }
+    return (
+      <a href={safe} target={target} rel={target === "_blank" ? "noopener noreferrer" : undefined} style={s}>
+        {children}
+      </a>
+    );
+  }
   return <button type="button" onClick={onClick} disabled={disabled} style={s}>{children}</button>;
 }
 
@@ -2550,7 +2566,12 @@ export default function BmcLogisticaApp() {
                     <div style={{ fontSize: 11, color: T.muted }}>📍{r.dir || "—"} · 📞{r.tel || "—"}</div>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    {r.pdf ? <Btn href={r.pdf} target="_blank" outline small>📄 PDF</Btn> : null}
+                    {(() => {
+                      const pdfSafe = safeHttpUrl(r.pdf);
+                      return pdfSafe ? (
+                        <Btn href={pdfSafe} target="_blank" outline small>📄 PDF</Btn>
+                      ) : null;
+                    })()}
                     <Btn color={T.success} small>+ Parada</Btn>
                   </div>
                 </div>
@@ -2862,20 +2883,21 @@ export default function BmcLogisticaApp() {
                       ) : null}
                     </div>
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      {stop.pdfLink ? <Btn href={stop.pdfLink} target="_blank" outline small>📄 PDF</Btn> : null}
+                      {safeHttpUrl(stop.pdfLink) ? (
+                        <Btn href={safeHttpUrl(stop.pdfLink)} target="_blank" outline small>📄 PDF</Btn>
+                      ) : null}
                       {stop.direccion || stop.geo ? (
-                        <Btn
-                          href={
-                            stop.geo
-                              ? mapsCoordsUrl(stop.geo.lat, stop.geo.lng, stop.direccion || stop.cliente)
-                              : stop.mapLink || mapsUrl(stop.direccion)
-                          }
-                          target="_blank"
-                          color={T.success}
-                          small
-                        >
-                          🗺️ Mapa{stop.geo ? " ✓" : ""}
-                        </Btn>
+                        (() => {
+                          const mapCandidate = stop.geo
+                            ? mapsCoordsUrl(stop.geo.lat, stop.geo.lng, stop.direccion || stop.cliente)
+                            : stop.mapLink || mapsUrl(stop.direccion);
+                          const mapSafe = safeHttpUrl(mapCandidate);
+                          return mapSafe ? (
+                            <Btn href={mapSafe} target="_blank" color={T.success} small>
+                              🗺️ Mapa{stop.geo ? " ✓" : ""}
+                            </Btn>
+                          ) : null;
+                        })()
                       ) : null}
                       <Btn
                         onClick={() => geocodeStop(stop.id)}
