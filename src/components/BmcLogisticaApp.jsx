@@ -1855,10 +1855,11 @@ export default function BmcLogisticaApp() {
       const parsed = parsePutDraftResponse(res.status, j);
       if (parsed.conflict) {
         setCloudConflict(parsed.draft);
+        // Keep local expectedRevision. Advancing to remote rev here would let
+        // the next autosave succeed and silently overwrite the other device.
         setCloudMeta((m) => ({
           ...(m || {}),
           status: "conflict",
-          revision: parsed.draft?.revision ?? m?.revision,
         }));
         if (!silent) setAutoLoadMsg("Nube: conflicto de revisión — elegí mantener local o usar nube.");
         return { ok: false, conflict: true, draft: parsed.draft };
@@ -1901,6 +1902,7 @@ export default function BmcLogisticaApp() {
       hasToken: Boolean(token),
       dirty,
       cloudBusy: cloudSyncBusy,
+      hasConflict: Boolean(cloudConflict),
       autosaveEnabled,
       lastPushAt,
       now: Date.now(),
@@ -1924,6 +1926,7 @@ export default function BmcLogisticaApp() {
     autosaveEnabled,
     lastPushedFp,
     cloudSyncBusy,
+    cloudConflict,
     lastPushAt,
   ]);
 
