@@ -31,6 +31,11 @@ import {
   matchRule,
   parseBankStatement,
 } from "../lib/bancoStatementParser.js";
+import {
+  getLatestRecoverySnapshot,
+  putRecoverySnapshot,
+  validateRecoveryPayload,
+} from "../lib/finanzasRecoverySnapshot.js";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -835,6 +840,52 @@ export default function createBancoRouter(config, logger, deps = {}) {
         updated += 1;
       }
       res.json({ ok: true, scanned: rows.length, updated });
+    }),
+  );
+
+  // ─── Recovery meeting snapshot (Plan de Recuperación visual pack) ─────
+  router.get(
+    "/api/banco/recovery-snapshot",
+    requireUser({ module: "banco" }),
+    finLocked,
+    requireDb,
+    asyncHandler(async (_req, res) => {
+      const row = await getLatestRecoverySnapshot(pool);
+      if (!row) {
+        return res.status(404).json({ ok: false, error: "no_snapshot" });
+      }
+      res.json({
+        ok: true,
+        id: row.id,
+        as_of: row.as_of,
+        created_at: row.created_at,
+        created_by: row.created_by,
+        snapshot: row.payload,
+      });
+    }),
+  );
+
+  router.put(
+    "/api/banco/recovery-snapshot",
+    requireUser({ role: "admin" }),
+    finLocked,
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const body = req.body?.snapshot && typeof req.body.snapshot === "object"
+        ? req.body.snapshot
+        : req.body;
+      const v = validateRecoveryPayload(body);
+      if (!v.ok) return res.status(400).json({ ok: false, error: v.error });
+      const createdBy = req.user?.email || req.user?.userId || null;
+      const row = await putRecoverySnapshot(pool, v.payload, { createdBy });
+      res.json({
+        ok: true,
+        id: row.id,
+        as_of: row.as_of,
+        created_at: row.created_at,
+        created_by: row.created_by,
+        snapshot: row.payload,
+      });
     }),
   );
 

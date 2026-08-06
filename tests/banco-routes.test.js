@@ -95,6 +95,9 @@ async function main() {
     const cashFlow = await requestJson(port, "GET", "/api/banco/cash-flow");
     assert("cash-flow sin auth → 401", cashFlow.status === 401, cashFlow);
 
+    const recovery = await requestJson(port, "GET", "/api/banco/recovery-snapshot");
+    assert("recovery-snapshot sin auth → 401", recovery.status === 401, recovery);
+
     // isDbConnectionError: fallas de infra → 503; errores de programación → 500
     assert("ECONNREFUSED es error de conexión", isDbConnectionError({ code: "ECONNREFUSED" }));
     assert("08006 (connection_failure) es error de conexión", isDbConnectionError({ code: "08006" }));
