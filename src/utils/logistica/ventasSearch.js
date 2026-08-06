@@ -9,6 +9,12 @@ import {
   batchColorFromKey,
   coordinationChipCaption,
 } from "./coordinationStatus.js";
+import {
+  withSaleStatusChip,
+  isJunkVentasMappedRow,
+  isActiveLogisticsSale,
+} from "./saleState.js";
+import { isJunkVentasRow } from "./ventasSheetMap.js";
 
 export { normalizeSearchText };
 
@@ -59,18 +65,31 @@ export function filterMappedVentasRows(mappedRows, queryRaw) {
 }
 
 /**
- * Attach coordination chip DTO for UI.
+ * Attach coordination + sale-state chip DTO for UI.
  * @param {object} mapped
  * @returns {object}
  */
 export function withCoordinationChip(mapped) {
-  const coordination = classifyVentasCoordination(mapped);
-  return {
-    ...mapped,
-    coordination,
-    coordinationCaption: coordinationChipCaption(coordination),
-    coordinationColor: batchColorFromKey(coordination.batchKey),
-  };
+  // Prefer full sale chip (includes camión / con_pendientes / entregado).
+  return withSaleStatusChip(mapped);
+}
+
+/**
+ * Drop junk section headers and optionally archived (entregado/enviado) rows.
+ * @param {object[]} mappedRows
+ * @param {{ activeOnly?: boolean }} [opts]
+ */
+export function filterOperationalVentasRows(mappedRows, opts = {}) {
+  const list = Array.isArray(mappedRows) ? mappedRows : [];
+  return list.filter((row) => {
+    if (isJunkVentasRow(row) || isJunkVentasMappedRow(row)) return false;
+    if (!String(row.nombre || "").trim() && !String(row.orderId || "").trim()) return false;
+    if (opts.activeOnly) {
+      const chip = withSaleStatusChip(row);
+      if (!isActiveLogisticsSale(chip.saleStatus || chip.coordination)) return false;
+    }
+    return true;
+  });
 }
 
 /**
@@ -80,5 +99,6 @@ export function withCoordinationChip(mapped) {
  * @returns {object[]}
  */
 export function searchMappedVentasRows(mappedRows, queryRaw) {
-  return filterMappedVentasRows(mappedRows, queryRaw).map(withCoordinationChip);
+  const operational = filterOperationalVentasRows(mappedRows, { activeOnly: false });
+  return filterMappedVentasRows(operational, queryRaw).map(withCoordinationChip);
 }

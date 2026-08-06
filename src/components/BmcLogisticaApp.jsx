@@ -23,7 +23,18 @@ import {
   bridgePayloadToStops,
   mergeBridgeIntoStops,
 } from "../utils/logistica/bridgePayload.js";
-import { searchMappedVentasRows, withCoordinationChip } from "../utils/logistica/ventasSearch.js";
+import {
+  searchMappedVentasRows,
+  withCoordinationChip,
+  filterOperationalVentasRows,
+} from "../utils/logistica/ventasSearch.js";
+import {
+  buildLogisticaEstadoPayload,
+  transportistaForCamion,
+  SALE_STATUS_LABELS,
+} from "../utils/logistica/saleState.js";
+import SaleStateEditor from "./logistica/SaleStateEditor.jsx";
+import EntregadoConfirmModal from "./logistica/EntregadoConfirmModal.jsx";
 import {
   reorderStops,
   renumberStops,
@@ -1382,6 +1393,12 @@ export default function BmcLogisticaApp() {
   const [rowOverrides, setRowOverrides] = useState({});
   const [autoLoadMsg, setAutoLoadMsg] = useState("");
   const [retryingStopId, setRetryingStopId] = useState("");
+  /** Phase B: camión N → transportista name (local, mirrors list order by default) */
+  const [camionMap, setCamionMap] = useState({});
+  const [saleStateBusyKey, setSaleStateBusyKey] = useState("");
+  /** Phase C: entregado/enviado confirm modal */
+  const [entregadoModal, setEntregadoModal] = useState(null);
+  const [entregadoBusy, setEntregadoBusy] = useState(false);
   const [accProfiles, setAccProfiles] = useState({});
   const [transportistas, setTransportistas] = useState([]);
   const [camionesCat, setCamionesCat] = useState([]);
@@ -1633,7 +1650,7 @@ export default function BmcLogisticaApp() {
     const gid = stop.ventasTabGid || SH_GID;
     const iso = stop.fechaEntrega;
     if (row == null || row < 2) return;
-    const token = typeof import.meta !== "undefined" ? import.meta.env?.VITE_BMC_API_AUTH_TOKEN : "";
+    const token = enviosAuthToken();
     if (!token) {
       setAutoLoadMsg(
         "Planilla: falta VITE_BMC_API_AUTH_TOKEN en el build para escribir en Google Sheets (mismo valor que API_AUTH_TOKEN del servidor)."
@@ -1649,7 +1666,7 @@ export default function BmcLogisticaApp() {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
-      setAutoLoadMsg(`Planilla Ventas: fecha guardada (fila ${row}, columna G).`);
+      setAutoLoadMsg(`Planilla Ventas: fecha guardada (fila ${row}, columna H FECHA ENTREGA).`);
     } catch (e) {
       setAutoLoadMsg(`Planilla Ventas: error al guardar fecha — ${e.message}`);
     }
@@ -1661,6 +1678,175 @@ export default function BmcLogisticaApp() {
       if (snap) queueMicrotask(() => pushVentasFechaEntrega(snap));
       return next;
     });
+  }
+
+  /**
+   * Phase B: write sale state to Ventas sheet (F + H) and refresh local result chip.
+   * @param {object} row mapped Ventas result or stop-like with ventasSheetRow1Based
+   * @param {{ status: string, fechaIso?: string, camion?: number|null }} patch
+   */
+  async function pushVentasSaleState(row, patch) {
+    const row1 = row.ventasSheetRow1Based;
+    const gid = row.ventasTabGid || SH_GID;
+    if (row1 == null || row1 < 2) {
+      setAutoLoadMsg("Planilla: esta fila no está vinculada a Ventas (agregala desde Buscar).");
+      return false;
+    }
+    const token = enviosAuthToken();
+    if (!token) {
+      setAutoLoadMsg("Planilla: falta VITE_BMC_API_AUTH_TOKEN para escribir estado en Sheets.");
+      return false;
+    }
+    const tte = transportistaForCamion(transportistas, patch.camion, camionMap);
+    const built = buildLogisticaEstadoPayload({
+      status: patch.status,
+      fechaEntrega: patch.fechaIso || row.fechaEntrega || "",
+      camion: patch.camion,
+      transportista: tte,
+      existingEstadoText: row.estadoText || "",
+      comment: patch.comment || "",
+    });
+    if (!built.ok) {
+      setAutoLoadMsg(`Estado inválido: ${built.error}`);
+      return false;
+    }
+    const busyKey = `${gid}:${row1}`;
+    setSaleStateBusyKey(busyKey);
+    try {
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/ventas/logistica-estado`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          gid: String(gid),
+          row1Based: row1,
+          status: built.status,
+          fechaEntrega: built.fechaEntrega,
+          camion: built.camion,
+          transportista: built.transportista,
+          estadoText: built.estadoText,
+          comment: patch.comment || "",
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+
+      const nextMapped = withCoordinationChip({
+        ...row,
+        saleStatus: built.status,
+        fechaEntrega: built.fechaEntrega || "",
+        camion: built.camion,
+        estadoText: j.estadoText || built.estadoText,
+      });
+      setResults((prev) =>
+        prev.map((r) =>
+          r.ventasSheetRow1Based === row1 && String(r.ventasTabGid || SH_GID) === String(gid)
+            ? nextMapped
+            : r
+        )
+      );
+      setStops((prev) =>
+        prev.map((s) =>
+          s.ventasSheetRow1Based === row1 && String(s.ventasTabGid || SH_GID) === String(gid)
+            ? {
+                ...s,
+                fechaEntrega: built.fechaEntrega || s.fechaEntrega,
+                saleStatus: built.status,
+                camion: built.camion,
+                estadoText: j.estadoText || built.estadoText,
+              }
+            : s
+        )
+      );
+      setAutoLoadMsg(
+        `Planilla: ${SALE_STATUS_LABELS[built.status] || built.status}` +
+          (built.camion ? ` · Camión ${built.camion}` : "") +
+          ` (fila ${row1}, cols F/H).`
+      );
+      return true;
+    } catch (e) {
+      setAutoLoadMsg(`Planilla estado: error — ${e.message}`);
+      return false;
+    } finally {
+      setSaleStateBusyKey("");
+    }
+  }
+
+  async function confirmEntregadoFromModal({ comment, remitoBase64, remitoFileName, mode }) {
+    const target = entregadoModal;
+    if (!target) return;
+    const row1 = target.ventasSheetRow1Based;
+    const gid = target.ventasTabGid || SH_GID;
+    const token = enviosAuthToken();
+    if (!token) {
+      setAutoLoadMsg("Entrega: falta VITE_BMC_API_AUTH_TOKEN.");
+      return;
+    }
+    setEntregadoBusy(true);
+    try {
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/ventas/logistica-entregado`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          gid: String(gid),
+          row1Based: row1,
+          mode: mode || "entregado",
+          confirm: true,
+          comment: comment || "",
+          remitoBase64: remitoBase64 || undefined,
+          remitoFileName: remitoFileName || undefined,
+          cliente: target.nombre || target.cliente || "",
+          orderId: target.orderId || "",
+          carpetaDrive: target.carpetaDrive || "",
+          quotationCode: target.cotizacionId || target.orderId || "",
+          fechaEntrega: target.fechaEntrega || "",
+          camion: target.camion,
+          transportista: transportistaForCamion(transportistas, target.camion, camionMap),
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+
+      // Remove from results + stops (archived off active list)
+      setResults((prev) =>
+        prev.filter(
+          (r) =>
+            !(r.ventasSheetRow1Based === row1 && String(r.ventasTabGid || SH_GID) === String(gid))
+        )
+      );
+      setStops((prev) =>
+        prev.filter(
+          (s) =>
+            !(s.ventasSheetRow1Based === row1 && String(s.ventasTabGid || SH_GID) === String(gid))
+        )
+      );
+      const remitoNote =
+        j.remito?.ok === true
+          ? ` · Remito en Drive`
+          : j.remito?.error
+            ? ` · Remito no subido: ${j.remito.error}`
+            : "";
+      setAutoLoadMsg(
+        `${mode === "enviado" ? "Enviado" : "Entregado"}: fila ${row1} → «${j.toTab || "archivo"}».${remitoNote}`
+      );
+      setEntregadoModal(null);
+    } catch (e) {
+      setAutoLoadMsg(`Error al archivar: ${e.message}`);
+    } finally {
+      setEntregadoBusy(false);
+    }
+  }
+
+  function removeResultFromList(row, e) {
+    e?.stopPropagation?.();
+    const row1 = row.ventasSheetRow1Based;
+    const gid = row.ventasTabGid || SH_GID;
+    setResults((prev) =>
+      prev.filter(
+        (r) => !(r.ventasSheetRow1Based === row1 && String(r.ventasTabGid || SH_GID) === String(gid))
+      )
+    );
   }
 
   function enviosAuthToken() {
@@ -2052,7 +2238,7 @@ export default function BmcLogisticaApp() {
       const headers = rows[0] || [];
       const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
       setVentasCache({ headers, rows: dataRows });
-      // Ops UX F2: map first, then haystack filter (pedido/tel/dir/estado — not r[7] only).
+      // Ops UX F2 + Phase B: map, drop junk headers, haystack filter.
       const mapped = dataRows.map((r, i) => mapVentasRow(headers, r, i + 2));
       const found = searchMappedVentasRows(mapped, search);
       if (!found.length) setShErr(`Sin resultados para "${search}"`);
@@ -2078,11 +2264,16 @@ export default function BmcLogisticaApp() {
       const headers = rows[0] || [];
       const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
       setVentasCache({ headers, rows: dataRows });
-      const found = dataRows.map((r, i) => withCoordinationChip(mapVentasRow(headers, r, i + 2)));
-      if (!found.length) setShErr("No hay filas con datos en esta pestaña.");
+      const mapped = dataRows.map((r, i) => mapVentasRow(headers, r, i + 2));
+      // Active only: hide Entregado/Enviado; drop NOMBRE section headers.
+      const found = filterOperationalVentasRows(mapped, { activeOnly: true }).map(withCoordinationChip);
+      if (!found.length) setShErr("No hay filas activas (clientes) en esta pestaña.");
       else {
         setResults(found);
         setShErr("");
+        setAutoLoadMsg(
+          `Cargadas ${found.length} ventas activas (sin filas basura ni Entregado/Enviado).`
+        );
       }
     } catch (e) {
       setShErr(`Error: ${e.message}`);
@@ -2107,6 +2298,9 @@ export default function BmcLogisticaApp() {
       zona: r.zona || "",
       contactoRecepcion: r.recepcionContacto || "",
       fechaEntrega: r.fechaEntrega || "",
+      saleStatus: r.saleStatus || r.coordination?.saleStatus || "",
+      camion: r.camion ?? r.coordination?.camion ?? null,
+      estadoText: r.estadoText || "",
       ventasSheetRow1Based: r.ventasSheetRow1Based ?? null,
       ventasTabGid: r.ventasTabGid || SH_GID,
       checks: {
@@ -2503,56 +2697,114 @@ export default function BmcLogisticaApp() {
               {shErr ? <div style={{ color: "#b42318", fontSize: 12, padding: "7px 10px", background: "#ffeceb", borderRadius: 8, marginBottom: 8 }}>{shErr}</div> : null}
               {autoLoadMsg ? <div style={{ color: T.brand, fontSize: 12, padding: "7px 10px", background: "#ffffff", borderRadius: 8, marginBottom: 8, border: "1px solid #bfdbfe" }}>{autoLoadMsg}</div> : null}
               {results.map((r, i) => {
+                const saleSt = r.saleStatus || r.coordination?.saleStatus || r.coordination?.status;
                 const chipColor =
-                  r.coordination?.status === "enviado"
+                  saleSt === "enviado" || saleSt === "entregado"
                     ? "#16a34a"
-                    : r.coordination?.status === "coordinado"
-                      ? r.coordinationColor || "#2563eb"
-                      : "#94a3b8";
+                    : saleSt === "con_pendientes"
+                      ? "#d97706"
+                      : saleSt === "coordinado"
+                        ? r.coordinationColor || "#2563eb"
+                        : "#94a3b8";
                 const chipBg =
-                  r.coordination?.status === "enviado"
+                  saleSt === "enviado" || saleSt === "entregado"
                     ? "#dcfce7"
-                    : r.coordination?.status === "coordinado"
-                      ? "#eff6ff"
-                      : "#f1f5f9";
+                    : saleSt === "con_pendientes"
+                      ? "#fffbeb"
+                      : saleSt === "coordinado"
+                        ? "#eff6ff"
+                        : "#f1f5f9";
+                const busyKey = `${r.ventasTabGid || SH_GID}:${r.ventasSheetRow1Based}`;
                 return (
                 <div
                   key={`${r.orderId || r.nombre || "r"}-${r.ventasSheetRow1Based || i}`}
-                  onClick={() => agregarStop(r)}
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: T.surface, border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 12px", cursor: "pointer", marginBottom: 6, transition: "background .15s", gap: 8 }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#dbeafe"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = T.surface; }}
+                  style={{ background: T.surface, border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 12px", marginBottom: 6, transition: "background .15s" }}
                 >
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                      <div style={{ fontWeight: 700, color: T.brand, fontSize: 13 }}>{r.nombre || "—"}</div>
-                      {r.orderId || r.cotizacionId ? (
-                        <span style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>#{r.orderId || r.cotizacionId}</span>
-                      ) : null}
-                      <span
-                        title={r.estadoText || r.coordinationCaption || ""}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                    <div
+                      style={{ minWidth: 0, flex: 1, cursor: "pointer" }}
+                      onClick={() => agregarStop(r)}
+                      onMouseEnter={(e) => { e.currentTarget.parentElement.parentElement.style.background = "#dbeafe"; }}
+                      onMouseLeave={(e) => { e.currentTarget.parentElement.parentElement.style.background = T.surface; }}
+                    >
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                        <div style={{ fontWeight: 700, color: T.brand, fontSize: 13 }}>{r.nombre || "—"}</div>
+                        {r.orderId || r.cotizacionId ? (
+                          <span style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>#{r.orderId || r.cotizacionId}</span>
+                        ) : null}
+                        <span
+                          title={r.estadoText || r.coordinationCaption || ""}
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: "0.02em",
+                            textTransform: "uppercase",
+                            color: chipColor,
+                            background: chipBg,
+                            border: `1.5px solid ${chipColor}`,
+                            borderRadius: 999,
+                            padding: "2px 8px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {r.saleCaption || r.coordinationCaption || r.coordination?.label || "Por coordinar"}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: T.muted }}>📍{r.dir || "—"} · 📞{r.tel || "—"}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                      {r.pdf ? <Btn href={r.pdf} target="_blank" outline small>📄 PDF</Btn> : null}
+                      <Btn color={T.success} small onClick={() => agregarStop(r)}>+ Parada</Btn>
+                      <button
+                        type="button"
+                        title="Quitar de esta lista (no borra la planilla)"
+                        aria-label="Quitar de la lista"
+                        onClick={(e) => removeResultFromList(r, e)}
                         style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: "0.02em",
-                          textTransform: "uppercase",
-                          color: chipColor,
-                          background: chipBg,
-                          border: `1.5px solid ${chipColor}`,
-                          borderRadius: 999,
-                          padding: "2px 8px",
-                          whiteSpace: "nowrap",
+                          border: "1px solid #fca5a5",
+                          background: "#fff",
+                          color: "#b91c1c",
+                          borderRadius: 8,
+                          width: 28,
+                          height: 28,
+                          cursor: "pointer",
+                          fontWeight: 800,
+                          lineHeight: 1,
                         }}
                       >
-                        {r.coordinationCaption || r.coordination?.label || "Por coordinar"}
-                      </span>
+                        ×
+                      </button>
                     </div>
-                    <div style={{ fontSize: 11, color: T.muted }}>📍{r.dir || "—"} · 📞{r.tel || "—"}</div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    {r.pdf ? <Btn href={r.pdf} target="_blank" outline small>📄 PDF</Btn> : null}
-                    <Btn color={T.success} small>+ Parada</Btn>
-                  </div>
+                  <SaleStateEditor
+                    status={r.saleStatus || r.coordination?.saleStatus || "por_coordinar"}
+                    fechaIso={r.fechaEntrega || r.coordination?.coordDateIso || ""}
+                    camion={r.camion ?? r.coordination?.camion ?? null}
+                    transportistas={transportistas}
+                    camionMap={camionMap}
+                    busy={saleStateBusyKey === busyKey}
+                    onChange={(patch) =>
+                      pushVentasSaleState(r, {
+                        status: patch.status,
+                        fechaIso: patch.fechaIso,
+                        camion: patch.camion,
+                      })
+                    }
+                    onRequestEntregado={() =>
+                      setEntregadoModal({
+                        ...r,
+                        cliente: r.nombre,
+                        mode: "entregado",
+                      })
+                    }
+                    onRequestEnviado={() =>
+                      setEntregadoModal({
+                        ...r,
+                        cliente: r.nombre,
+                        mode: "enviado",
+                      })
+                    }
+                  />
                 </div>
                 );
               })}
@@ -2927,7 +3179,7 @@ export default function BmcLogisticaApp() {
                     </div>
                     <div style={{ fontSize: 11, color: T.muted, paddingBottom: 8, lineHeight: 1.35 }}>
                       {stop.ventasSheetRow1Based
-                        ? `Se guarda en la planilla Ventas (columna «Fecha De Entrega», G), fila ${stop.ventasSheetRow1Based}, formato dd/mm/aaaa. Requiere API y token.`
+                        ? `Se guarda en la planilla Ventas (columna H «Fecha De Entrega»), fila ${stop.ventasSheetRow1Based}, formato dd/mm/aaaa. Estado operativo en col F. Requiere API y token.`
                         : "Para escribir en la planilla, agregá la parada desde Buscar / Cargar actuales (fila vinculada)."}
                     </div>
                   </div>
@@ -3305,6 +3557,21 @@ export default function BmcLogisticaApp() {
             });
           }
         }}
+      />
+      <EntregadoConfirmModal
+        open={Boolean(entregadoModal)}
+        clientLabel={
+          entregadoModal
+            ? `${entregadoModal.nombre || entregadoModal.cliente || "Cliente"}${
+                entregadoModal.orderId ? ` · #${entregadoModal.orderId}` : ""
+              }`
+            : ""
+        }
+        mode={entregadoModal?.mode === "enviado" ? "enviado" : "entregado"}
+        busy={entregadoBusy}
+        theme={T}
+        onCancel={() => !entregadoBusy && setEntregadoModal(null)}
+        onConfirm={confirmEntregadoFromModal}
       />
     </div>
   );

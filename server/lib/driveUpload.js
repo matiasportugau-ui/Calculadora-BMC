@@ -266,3 +266,67 @@ export async function saveQuotationBundleToDrive({
     pdfUrl: pdfFile.webViewLink || null,
   };
 }
+
+/**
+ * Archive signed remito (PDF/image) under client → pedido folder in DRIVE_QUOTE_FOLDER_ID.
+ * Used by /api/ventas/logistica-entregado.
+ *
+ * @returns {Promise<{ ok: true, fileId, fileName, webViewLink, folderId }>}
+ */
+export async function saveRemitoToDrive({
+  rootFolderId,
+  buffer,
+  fileName,
+  cliente = "",
+  orderId = "",
+  quotationCode = "",
+  carpetaDriveHint = "",
+}) {
+  if (!rootFolderId) {
+    throw Object.assign(new Error("drive_folder_unconfigured"), { code: "drive_unavailable" });
+  }
+  if (!buffer?.length) {
+    throw Object.assign(new Error("missing_remito"), { code: "bad_request" });
+  }
+
+  const drive = await getDriveClient();
+  const code = String(quotationCode || orderId || "SIN-PEDIDO").trim() || "SIN-PEDIDO";
+  const proyecto = { nombre: cliente || "Cliente", cliente: cliente || "Cliente" };
+  const { quoteFolderId } = await ensureQuotationFolderPath(drive, rootFolderId, code, proyecto);
+
+  const safeName = String(fileName || `remito-firmado-${code}.pdf`)
+    .replace(/[^\w.\- ()áéíóúñÁÉÍÓÚÑ]+/gi, "_")
+    .slice(0, 180);
+  const lower = safeName.toLowerCase();
+  const mimeType = lower.endsWith(".png")
+    ? "image/png"
+    : lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+      ? "image/jpeg"
+      : lower.endsWith(".webp")
+        ? "image/webp"
+        : PDF_MIME;
+
+  const existing = await findFileInFolder(drive, quoteFolderId, safeName);
+  const uploaded = await uploadBinaryFile(drive, {
+    buffer,
+    filename: safeName,
+    mimeType,
+    folderId: quoteFolderId,
+    existingFileId: existing?.id || null,
+    appProperties: {
+      source: "logistica_remito",
+      orderId: String(orderId || "").slice(0, 40),
+      quotationCode: code.slice(0, 40),
+      carpetaHint: String(carpetaDriveHint || "").slice(0, 80),
+    },
+  });
+
+  return {
+    ok: true,
+    fileId: uploaded.id,
+    fileName: safeName,
+    webViewLink: uploaded.webViewLink || null,
+    folderId: quoteFolderId,
+    folderUrl: `https://drive.google.com/drive/folders/${quoteFolderId}`,
+  };
+}

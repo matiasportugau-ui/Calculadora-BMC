@@ -1,43 +1,68 @@
-# Cómo funciona: Ventas → Logística (Phase A)
+# Cómo funciona: Ventas → Logística (Phase A–C)
 
 **URL prod:** https://calculadora-bmc.vercel.app/logistica  
-**Sheet Ventas:** `1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA` (gid `926747636`)
+**Sheet Ventas:** `1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA`  
+**Tab activa:** `Ventas y Coordinaciones` (gid `926747636`)  
+**Tab archivo (Entregado/Enviado):** `Ventas Realizadas y Entegadas` (o `Enviados` si existe)
+
+## Columnas planilla 2.0 (SoT)
+
+| Col | Letra | Campo |
+|-----|-------|--------|
+| I | — | NOMBRE cliente |
+| J | — | DIRECCIÓN |
+| K | — | ENCARGO (PDF Drive) |
+| P | — | CONTACTO (tel) |
+| F | F | ESTADO GRAL / notas ops + marcador `[LOGISTICA:…]` |
+| H | H | FECHA ENTREGA (dd/mm/aaaa) — **no** G (G = TIPO) |
 
 ## Flujo operador (orden)
 
-1. Abrí **Logística** (nav superior) o ve directo a `/logistica`.
-2. En el tab **Formulario**, bloque **🔍 Buscar cliente en Ventas**:
-   - Escribí nombre, pedido, tel o dirección en el input.
-   - Clic **Buscar** (filtra filas) o **Cargar actuales** (lista operativa).
-3. Debería verse algo como `Última lectura: N filas en pestaña actual.`
-4. Clic en un resultado de la lista (**+ Parada** / fila del cliente).
-5. Se rellenan **Datos del Envío / parada**:
-   - Cliente ← col **I NOMBRE**
-   - Dirección ← col **J**
-   - Tel ← col **P CONTACTO**
-   - PDF ← col **K ENCARGO** (link Drive)
-   - Fecha entrega ← col **H FECHA ENTREGA**
-6. **Autocarga de paneles** (automática al agregar):
-   - Si el PDF de Drive no se puede bajar en el browser, el sistema lee el **nombre del archivo ENCARGO**.
-   - Ej.: `…-Isopanel-100-mm-Isodec-100-mm-….pdf` → líneas ISOPANEL 100 mm e ISODEC 100 mm (cantidad default **1**; ajustá a mano si hace falta).
-   - Mensaje típico: *Autocarga OK…* o *Inferido desde nombre de archivo ENCARGO…*
-7. Revisá paneles en la parada y el diagrama (vista isométrica / 3D).
-8. Opcional: **☁ Guardar en nube** / **Autosave nube** / **Borradores** (P5b ya en prod).
+1. Abrí **Logística** → `/logistica`.
+2. **🔍 Buscar cliente en Ventas** → **Buscar** o **Cargar actuales**.
+   - *Cargar actuales* omite filas basura (`NOMBRE` de secciones BECAM/BROMYROS) y filas ya **Entregado/Enviado**.
+3. En cada resultado:
+   - Chip de estado (Por coordinar / Coordinado · dd/mm · Camión N / Con pendientes / …).
+   - **Editor de estado** inline: cambiá estado → escribe planilla (F + H).
+   - **Coordinado**: elegí fecha + **Camión 1..12** (cada nº se asocia a un transportista de la lista).
+   - **Entregado / Enviado**: abre popup de confirmación (comentarios + remito firmado opcional) → mueve fila a tab archivo.
+   - **×**: saca de la lista UI (no borra la planilla).
+   - **+ Parada**: agrega al envío + autocarga paneles.
+4. Autocarga paneles: filename ENCARGO si Drive no se puede bajar en el browser.
+5. **☁ Guardar en nube** / autosave (P5b).
 
-## Si sigue sin paneles
+## Estados de la venta (alineados a planilla)
 
-- El ENCARGO no trae nombres de producto en la URL → abrí el PDF y cargá líneas a mano, o usá **Reintentar autocarga**.
-- Hard refresh (`Cmd+Shift+R`) si ves UI vieja.
+| Estado | Lista activa | Sheet |
+|--------|--------------|--------|
+| Por coordinar | sí | limpia/actualiza marcador F; fecha H vacía |
+| Coordinado (dd/mm + Camión N) | sí | F marcador + H fecha |
+| Con pendientes | sí | F marcador; queda visible |
+| Entregado | **no** (sale) | confirm popup → archivo tab + remito Drive |
+| Enviado | **no** (sale) | igual, mode=enviado |
 
-## Qué se arregló en Phase A (#890)
+## Agentes (Panelin / IAlfred)
 
-| Antes | Ahora |
-|-------|--------|
-| Índices legacy (nombre≈col H) | Mapa Ventas 2.0 (I/J/K/P/H) |
-| PDF Drive fallaba → 0 paneles | Fallback **filename ENCARGO** |
-| Mensaje confuso | Nombre real del cliente en el toast |
+Tools en `server/lib/agentTools.js`:
+
+| Tool | Uso |
+|------|-----|
+| `logistica_buscar_ventas` | Buscar cliente/pedido (read) |
+| `logistica_actualizar_estado` | por_coordinar / coordinado / con_pendientes (`user_confirmed`) |
+| `logistica_confirmar_entrega` | entregado/enviado + move + remito (`user_confirmed`) |
 
 ## Verificación técnica
 
-- Unit: `node tests/ventasSheetMap.test.js`, `node tests/cargoFromEncargo.test.js`
-- Prod chunk `BmcLogisticaApp-*.js` contains `ENCARGO filename` + `Buscar cliente en Ventas`
+```bash
+node tests/saleState.test.js
+node tests/ventasSheetMap.test.js
+node tests/coordinationStatus.test.js
+node tests/ventasSearchFilter.test.js
+node tests/cargoFromEncargo.test.js
+```
+
+API:
+
+- `POST /api/ventas/logistica-fecha-entrega` → col **H**
+- `POST /api/ventas/logistica-estado` → F + H
+- `POST /api/ventas/logistica-entregado` → confirm + archive + remito

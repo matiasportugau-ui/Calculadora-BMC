@@ -151,8 +151,8 @@ export function mapVentasRowV2(headers, row, sheetRow1Based, opts = {}) {
   if (!String(pickupId).trim() && parsedIds.pickupId) pickupId = parsedIds.pickupId;
 
   let nombre = cell(H, row, "nombre");
-  // Never treat header labels as client names
-  if (/^(nombre|cliente|name)$/i.test(nombre)) nombre = "";
+  // Never treat header labels as client names (also "NOMBRE NOMBRE" from gviz filter rows)
+  if (/^(nombre|cliente|name)(\s+\1)?$/i.test(nombre)) nombre = "";
 
   let pdf = cell(H, row, "pdf");
   // Drive / maps links sometimes land in dirección
@@ -160,12 +160,30 @@ export function mapVentasRowV2(headers, row, sheetRow1Based, opts = {}) {
   if (!pdf && /drive\.google|docs\.google|\/file\/d\//i.test(dirRaw)) {
     pdf = dirRaw;
   }
+  // Drop bogus "DIRECCIÓN" / "PEDIDO" label cells
+  let dir = dirRaw;
+  if (/^(direccion|dirección|dir|pedido|encargo)$/i.test(dir)) dir = "";
+  if (/^(contacto|telefono|tel)$/i.test(cell(H, row, "tel"))) {
+    /* cleaned below */
+  }
+  let tel = cell(H, row, "tel");
+  if (/^(contacto|telefono|tel|nombre)$/i.test(tel)) tel = "";
+
+  // Short planilla dates like "22/05" → assume current year for ISO
+  let fechaIso = fechaEntrega;
+  if (!fechaIso) {
+    const short = /^(\d{1,2})\/(\d{1,2})$/.exec(String(fechaRaw || "").trim());
+    if (short) {
+      const y = new Date().getFullYear();
+      fechaIso = `${y}-${short[2].padStart(2, "0")}-${short[1].padStart(2, "0")}`;
+    }
+  }
 
   return {
     nombre,
-    dir: dirRaw,
+    dir,
     pdf,
-    tel: cell(H, row, "tel"),
+    tel,
     orderId: String(orderId || "").trim(),
     cotizacionId: "",
     pickupId: String(pickupId || "").trim(),
@@ -174,7 +192,7 @@ export function mapVentasRowV2(headers, row, sheetRow1Based, opts = {}) {
     estadoGral,
     estadoText: estadoText || fechaRaw || "",
     rawSheetText: buildSheetFallbackText(headers, row),
-    fechaEntrega,
+    fechaEntrega: fechaIso,
     carpetaDrive: cell(H, row, "carpeta"),
     canal: cell(H, row, "canal"),
     vendedor: cell(H, row, "vendedor"),
@@ -182,4 +200,21 @@ export function mapVentasRowV2(headers, row, sheetRow1Based, opts = {}) {
     ventasSheetRow1Based: sheetRow1Based ?? null,
     ventasTabGid: opts.gid || "",
   };
+}
+
+/**
+ * True when data row is a section/header junk line (not a real client).
+ * @param {ReturnType<typeof mapVentasRowV2>} mapped
+ */
+export function isJunkVentasRow(mapped) {
+  const nombre = String(mapped?.nombre || "").trim();
+  if (/^(nombre|cliente|name)(\s+\1)?$/i.test(nombre)) return true;
+  if (/^fecha\s*entrega/i.test(String(mapped?.fechaEntrega || ""))) return true;
+  if (!nombre && !mapped?.orderId && !mapped?.dir && !mapped?.pdf) {
+    const est = String(mapped?.estadoText || "");
+    // Provider banner rows
+    if (/becam|bromyros|montfrio|100%\s*de\s*seña/i.test(est)) return true;
+    if (!est.trim()) return true;
+  }
+  return false;
 }
