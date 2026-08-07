@@ -38,6 +38,8 @@
 | E-48 | P2b Matrix | **DEFERRED** | 2026-Q4 |
 | E-49 | P3 CBM tariff | **DEFERRED** | 2026-Q4 |
 | E-22 | Legacy SDD superseded | **CONFIRMED** | team SDD fletes |
+| E-50 | Envío Setup Wizard SDD | **TARGET** | `SDD-ENVIO-WIZARD.md` v0.2 · W1–W12 · plan v2 pre-mortem |
+| E-51 | Autocarga A–C–B live | **CONFIRMED** | #899 · `evidence/autocarga-training-2026-08-07.md` |
 | E-23 | DESIGN-UI | **CONFIRMED** | `DESIGN-UI.md` |
 | E-24 | Packing tests | **CONFIRMED** | `tests/cargoPacking.test.js` |
 | E-25 | pickColumnRow 1-fila | **CONFIRMED** | `cargoPacking.js` `pickColumnRow`; flete tests 9–16→280 |

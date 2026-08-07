@@ -55,6 +55,23 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 | F10b | Package list DnD reorder | **DONE** `PackageLayoutList` + `packageListDnD.js` |
 | P3 | CBM non-panel tariff | **DEFERRED** 2026-Q4 (panel-zona remains SoT) |
 
+## Envío Setup Wizard (W1–W12) — see [`SDD-ENVIO-WIZARD.md`](./SDD-ENVIO-WIZARD.md)
+
+| ID | Criterion | Status |
+|----|-----------|--------|
+| W1 | Accordion Pedidos → Flota → Levantes → Ruta → Carga | **TARGET** |
+| W2 | Collapse-on-complete + summary strip | **TARGET** |
+| W3 | Per-order / default pickup (levante) | **TARGET** |
+| W4 | Catalogs pickups + bases + vehicles | **TARGET** |
+| W5 | Seed Kingspan / Montfrío / Ecopaneles + nuevo | **TARGET** |
+| W6 | Route suggest base → pickups → deliveries | **TARGET** |
+| W7 | Trip resume / list previous configs | **TARGET** |
+| W8 | Trackpad/mobile pointer DnD | **TARGET** (list pattern #906) |
+| W9 | Autocarga intact in Step Pedidos | **TARGET** |
+| W10 | Compatible REP + drafts + free-drag | **TARGET** |
+| W11 | Pure tests wizardState/catalog/routeSuggest | **TARGET** |
+| W12 | Faster multi-stop setup vs classic | **TARGET** |
+
 ## Non-goals (Core)
 
 - SaaS courier multi-modal global  
