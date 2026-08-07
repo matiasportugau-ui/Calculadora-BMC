@@ -64,6 +64,7 @@ import {
   isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes,
 } from "../utils/projectFile.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
+import { applyIrregularLayoutByGiChange } from "../utils/irregularRoofLayout.js";
 import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
 import QuotePreviewModal from "./QuotePreviewModal.jsx";
 import { countPtsFromApoyoMateriales, buildDefaultApoyoMateriales, cycleCombinadaMaterial, COMBINADA_MATERIAL_ORDER } from "../utils/combinadaFijacionShared.js";
@@ -2540,25 +2541,8 @@ export default function PanelinCalculadoraV3() {
   /** Per-zone stepped schedules from RoofPreview modo irregular. */
   const [irregularLayoutByGi, setIrregularLayoutByGi] = useState(() => ({}));
   const handleIrregularLayoutChange = useCallback((layout, gi) => {
-    setIrregularLayoutByGi((prev) => {
-      const next = { ...prev };
-      if (layout?.strips?.length && Number.isFinite(Number(gi))) {
-        next[Number(gi)] = layout;
-        return next;
-      }
-      if (Number.isFinite(Number(gi))) {
-        delete next[Number(gi)];
-        return next;
-      }
-      // Clear all when gi missing and layout null
-      if (layout == null) return {};
-      // Fallback: store as zone 0
-      if (layout?.strips?.length) {
-        next[0] = layout;
-        return next;
-      }
-      return prev;
-    });
+    // layout=null + gi missing → clear ALL (modo irregular OFF). Never leave stale byGi billing.
+    setIrregularLayoutByGi((prev) => applyIrregularLayoutByGiChange(prev, layout, gi));
   }, []);
   const [pared, _setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [techoAnchoModo, _setTechoAnchoModo] = useState("paneles"); // "metros" | "paneles"

@@ -8,6 +8,8 @@ import {
   resetStripToAuto,
   bomFromIrregularSchedule,
   irregularSchedulesForPdf,
+  applyIrregularLayoutByGiChange,
+  resolveIrregularLayoutPublish,
   stepCeil,
   sideCross,
   polygonArea,
@@ -308,6 +310,103 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
   ok(
     rBoth.paneles?.areaTotal < rNone.paneles?.areaTotal - 0.5,
     `multi-zone z1 only reduces total: ${rBoth.paneles?.areaTotal} < ${rNone.paneles?.areaTotal}`,
+  );
+}
+
+// Bug BI — multi-zone byGi: toggle OFF must clear ALL zones; zone switch must not wipe siblings
+{
+  const lay0 = { strips: [{ id: "T-01", L_order: 6, L_cover: 5 }], totals: { areaOrdered: 6.72 } };
+  const lay1 = { strips: [{ id: "T-01", L_order: 5, L_cover: 4 }], totals: { areaOrdered: 5.6 } };
+  let byGi = {};
+  byGi = applyIrregularLayoutByGiChange(byGi, lay0, 0);
+  byGi = applyIrregularLayoutByGiChange(byGi, lay1, 1);
+  ok(byGi[0]?.strips?.length === 1 && byGi[1]?.strips?.length === 1, "BI store z0+z1");
+
+  // Pre-fix behavior: clear only current gi left z0 billing after mode OFF while on z1
+  const staleIfOnlyClearCurrent = applyIrregularLayoutByGiChange(byGi, null, 1);
+  ok(staleIfOnlyClearCurrent[0]?.strips?.length === 1, "BI regress probe: clear gi=1 keeps z0");
+
+  const clearedAll = applyIrregularLayoutByGiChange(byGi, null, undefined);
+  ok(Object.keys(clearedAll).length === 0, "BI mode OFF clear_all empties byGi");
+
+  const offPub = resolveIrregularLayoutPublish({
+    irregularOn: false,
+    gi: 1,
+    layout: lay1,
+    hasActiveSchedule: true,
+  });
+  ok(offPub.op === "clear_all", "BI publish mode OFF → clear_all (not clear_gi)");
+
+  const switchNoCut = resolveIrregularLayoutPublish({
+    irregularOn: true,
+    gi: 1,
+    layout: null,
+    hasActiveSchedule: false,
+  });
+  ok(switchNoCut.op === "noop", "BI zone switch without cut → noop (keep sibling byGi)");
+
+  const setPub = resolveIrregularLayoutPublish({
+    irregularOn: true,
+    gi: 0,
+    layout: lay0,
+    hasActiveSchedule: true,
+  });
+  ok(setPub.op === "set" && setPub.gi === 0, "BI active cut → set current gi");
+
+  const clearGiPub = resolveIrregularLayoutPublish({
+    irregularOn: true,
+    gi: 0,
+    clearCurrentGi: true,
+  });
+  ok(clearGiPub.op === "clear_gi" && clearGiPub.gi === 0, "BI explicit clear cut → clear_gi");
+
+  // End-to-end: after clear_all, orchestrator must match rectangular multi-zone
+  const irrZ0 = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho: 5.6,
+    largo: 6,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 0 }, p1: { x: 5.6, y: 6 }, keep: "left" },
+  });
+  const staleTecho = techoBase({
+    zonas: [
+      { largo: 6, ancho: 5.6 },
+      { largo: 6, ancho: 5.6 },
+    ],
+    irregularLayoutByGi: { 0: irrZ0 },
+  });
+  const rStale = executeScenario("solo_techo", { techo: staleTecho, pared: {}, camara: {} });
+  const rCleared = executeScenario("solo_techo", {
+    techo: techoBase({
+      zonas: [
+        { largo: 6, ancho: 5.6 },
+        { largo: 6, ancho: 5.6 },
+      ],
+      irregularLayoutByGi: applyIrregularLayoutByGiChange({ 0: irrZ0, 1: irrZ0 }, null, undefined),
+    }),
+    pared: {},
+    camara: {},
+  });
+  const rRect = executeScenario("solo_techo", {
+    techo: techoBase({
+      zonas: [
+        { largo: 6, ancho: 5.6 },
+        { largo: 6, ancho: 5.6 },
+      ],
+    }),
+    pared: {},
+    camara: {},
+  });
+  ok(rStale && !rStale.error && rCleared && !rCleared.error, "BI scenarios ok");
+  ok(
+    rStale.paneles?.areaTotal < rRect.paneles?.areaTotal - 0.5,
+    "BI stale byGi still undercharges vs rect (trigger)",
+  );
+  ok(
+    approx(rCleared.paneles?.areaTotal, rRect.paneles?.areaTotal, 0.05),
+    `BI clear_all restores rect BOM: cleared=${rCleared.paneles?.areaTotal} rect=${rRect.paneles?.areaTotal}`,
   );
 }
 
