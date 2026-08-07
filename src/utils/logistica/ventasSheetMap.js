@@ -285,12 +285,62 @@ export function filterVentasLogisticaCandidates(mappedRows) {
 }
 
 /**
+ * Parse Google Sheets gviz `tq?tqx=out:csv` text into a 2D cell array.
+ *
+ * **Blank rows are preserved** as placeholders so array index stays aligned with
+ * 1-based Sheets row numbers. Callers that need only non-empty data must drop
+ * blanks *after* capturing the original index via {@link indexVentasCsvDataRows}.
+ * Dropping blanks here (the old BmcLogisticaApp.parseCsv behavior) made #922's
+ * indexer assign wrong `ventasSheetRow1Based` on real gviz CSV with middle `,,,`.
+ *
+ * @param {string} text
+ * @returns {string[][]}
+ */
+export function parseVentasGvizCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+  const src = String(text || "");
+  for (let i = 0; i < src.length; i += 1) {
+    const ch = src[i];
+    const next = src[i + 1];
+    if (ch === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      row.push(cell.trim());
+      cell = "";
+    } else if ((ch === "\n" || ch === "\r") && !inQuotes) {
+      if (ch === "\r" && next === "\n") i += 1;
+      row.push(cell.trim());
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += ch;
+    }
+  }
+  if (cell.length || row.length) {
+    row.push(cell.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+/**
  * Pair CSV data rows with true 1-based Sheets row numbers.
  *
  * gviz CSV: index 0 = header (sheet row 1); data starts at sheet row 2.
  * Blank rows must be dropped *after* capturing the original index — otherwise
  * `filter` + `i + 2` skews `ventasSheetRow1Based` and fecha/archive writes hit
  * the wrong Ventas row (data corruption).
+ *
+ * Pass the full {@link parseVentasGvizCsv} output (blanks included).
  *
  * @param {string[][]} csvRows full parseCsv output including header at [0]
  * @returns {{ row: string[], sheetRow1Based: number }[]}

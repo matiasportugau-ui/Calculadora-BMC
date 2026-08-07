@@ -11,6 +11,7 @@ import {
   filterVentasLogisticaCandidates,
   labelVentasCandidate,
   sanitizeEncargoCell,
+  parseVentasGvizCsv,
   indexVentasCsvDataRows,
 } from "../src/utils/logistica/ventasSheetMap.js";
 
@@ -178,6 +179,53 @@ const ROW = [
   assert.equal(mapped[2].nombre, "Cliente C");
   assert.equal(mapped[2].ventasSheetRow1Based, 5);
   ok("indexVentasCsvDataRows preserves sheet rows across blanks");
+}
+
+{
+  // Live path: gviz CSV text → parseVentasGvizCsv → indexVentasCsvDataRows.
+  // Old BmcLogisticaApp.parseCsv dropped blank `,,,` rows before indexing, so
+  // Cliente C (sheet row 5) was written as row 4 (data corruption / Bug AT).
+  const csvText = [
+    HEADERS.map((h) => `"${h}"`).join(","),
+    (() => {
+      const r = HEADERS.map(() => "");
+      r[VENTAS_V2_FALLBACK.nombre] = "Cliente A";
+      r[VENTAS_V2_FALLBACK.orderId] = "100001";
+      return r.map((c) => (c.includes(",") ? `"${c}"` : c)).join(",");
+    })(),
+    HEADERS.map(() => "").join(","), // blank sheet row 3
+    (() => {
+      const r = HEADERS.map(() => "");
+      r[VENTAS_V2_FALLBACK.nombre] = "Cliente B";
+      r[VENTAS_V2_FALLBACK.orderId] = "100002";
+      return r.map((c) => (c.includes(",") ? `"${c}"` : c)).join(",");
+    })(),
+    (() => {
+      const r = HEADERS.map(() => "");
+      r[VENTAS_V2_FALLBACK.nombre] = "Cliente C";
+      r[VENTAS_V2_FALLBACK.orderId] = "100003";
+      return r.map((c) => (c.includes(",") ? `"${c}"` : c)).join(",");
+    })(),
+  ].join("\n");
+
+  const parsed = parseVentasGvizCsv(csvText);
+  assert.equal(parsed.length, 5, "parser must keep blank middle row placeholder");
+  assert.ok(
+    !parsed[2].some((c) => String(c || "").trim()),
+    "index 2 is the blank sheet row 3 placeholder",
+  );
+
+  const indexed = indexVentasCsvDataRows(parsed);
+  assert.deepEqual(
+    indexed.map((x) => x.sheetRow1Based),
+    [2, 4, 5],
+  );
+  const mapped = indexed.map(({ row, sheetRow1Based }) =>
+    mapVentasRowV2(HEADERS, row, sheetRow1Based, { gid: "1" }),
+  );
+  assert.equal(mapped[2].nombre, "Cliente C");
+  assert.equal(mapped[2].ventasSheetRow1Based, 5);
+  ok("parseVentasGvizCsv + index preserves sheet rows (live gviz path / Bug AT)");
 }
 
 console.log(`ventasSheetMap: ${passed} passed`);
