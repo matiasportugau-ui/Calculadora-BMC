@@ -85,4 +85,24 @@ console.log("enviosDraft");
   ok("preferDraftSource LWW");
 }
 
+{
+  const built = buildEnviosDraft({
+    info: { numero: "ENV-WIZ" },
+    stops: [{ id: "s1" }],
+    route: { orderedLegs: [{ type: "base", label: "Base" }], totalKm: 10 },
+    ui: {
+      collapsedStopIds: [],
+      wizard: { enabled: true, activeStep: "ruta", done: { pedidos: true }, defaultPickupPointId: "p1" },
+    },
+  });
+  assert.equal(built.ok, true);
+  assert.equal(built.payload.route?.orderedLegs?.length, 1);
+  assert.equal(built.payload.ui?.wizard?.activeStep, "ruta");
+  const parsed = parseEnviosDraftPayload(built.payload);
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.payload.route?.totalKm, 10);
+  assert.equal(parsed.payload.ui?.wizard?.defaultPickupPointId, "p1");
+  ok("build/parse keeps route + ui.wizard");
+}
+
 console.log(`enviosDraft: ${passed} passed`);
