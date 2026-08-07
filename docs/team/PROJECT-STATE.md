@@ -16,6 +16,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 **2026-08-07 (fix — Bug AS repartos PUT TOCTOU vs confirm):** `PUT /api/repartos/:id` now atomically gates `WHERE status='en_coordinacion'` (+ optional `revision`), uses `revision = revision + 1`, and rejects `en_curso`/confirmed. Closes race where in-flight PUT could reopen a confirmed snapshot and let a second confirm overwrite it. Offline tests `tests/repartos-put-atomic.test.js`.
 
+**2026-08-07 (fix — concurrent Entregado row identity extract from #896):** Landed pure `saleState` helpers `ventasRowIdentityFingerprint` + `findSheetRow1BasedByFingerprint` + linear `stripLogisticaMarkers` + terminal-status gate (tests). Full UI/API sale-state stack remains #893. Supersedes concurrent-delete core of draft #896.
+
+**2026-08-07 (fix — Ventas blank CSV row index):** Index sheet rows before filtering blank gviz rows so `ventasSheetRow1Based` stays correct. Rebased from #902.
+
 **2026-08-07 (fix — reparto re-confirm immutable):** `canConfirmReparto` + atomic UPDATE WHERE status=en_coordinacion; `calendarDateKeyFromDb` for pg DATE. Rebased from #905.
 
 **2026-08-07 (fix — Free-Drag long-press race Bug AO):** `armedPressRef` + `canFireLongPressDrag` so timer cannot beginDrag after pointerup; slide cancel via `shouldCancelLongPress`. Rebased from #907.
