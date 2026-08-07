@@ -2580,12 +2580,21 @@ export default function RoofPreview({
     if (typeof onIrregularLayoutChange !== "function") return;
     const hasCut = Boolean(irregularCut?.p0 && irregularCut?.p1);
     const hasManual = Boolean(irregularLayoutOverride);
+    const gi = irregularZoneEntry?.gi;
     if (irregularOn && irregularLayout && (hasCut || hasManual)) {
-      onIrregularLayoutChange(irregularLayout);
+      // Second arg: zone index for multi-zone irregularLayoutByGi
+      onIrregularLayoutChange(irregularLayout, gi);
     } else {
-      onIrregularLayoutChange(null);
+      onIrregularLayoutChange(null, gi);
     }
-  }, [irregularOn, irregularLayout, irregularCut, irregularLayoutOverride, onIrregularLayoutChange]);
+  }, [
+    irregularOn,
+    irregularLayout,
+    irregularCut,
+    irregularLayoutOverride,
+    irregularZoneEntry?.gi,
+    onIrregularLayoutChange,
+  ]);
 
   const handleIrregularSvgClick = useCallback(
     (e) => {

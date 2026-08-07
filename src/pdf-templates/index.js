@@ -124,6 +124,17 @@ export function buildQuotationModel(data) {
   const planTitle = `Planta Cubierta — ${aguasLabel} · ${zonaCount} Zona${zonaCount !== 1 ? 's' : ''}`;
   const planSummary = `${totalArea.toFixed(2)} m² · ${kpi.paneles ?? '—'} paneles${au > 0 ? ` · AU ${au.toFixed(2)} m` : ''}`;
 
+  // Irregular stepped panel schedule (Modo irregular) for PDF — from appendix
+  const irregularSchedule = appendix?.irregularSchedule
+    || (appendix?.irregularStrips?.length
+      ? {
+          strips: appendix.irregularStrips,
+          note: appendix.irregularNote || null,
+          areaOrdered: appendix.irregularAreaOrdered ?? null,
+          areaWasteSite: appendix.irregularAreaWasteSite ?? null,
+        }
+      : null);
+
   /** BMC PDF técnico: cliente, perímetro y extras no expuestos en raíz del modelo */
   const bmcExtra = {
     client: {
@@ -161,6 +172,8 @@ export function buildQuotationModel(data) {
     planSummary,
     zoneRows,
     bomDetailGroups,
+    /** @type {{ strips: Array, note?: string, areaOrdered?: number, areaWasteSite?: number }|null} */
+    irregularSchedule,
     conditionsText: 'Fabricación y entrega 10 a 45 días. Seña 60% al confirmar · saldo 40% previo a retiro de fábrica. Oferta válida 10 días. Precios en USD · IVA incluido.',
     bmcExtra,
 

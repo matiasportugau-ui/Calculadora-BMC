@@ -7,6 +7,7 @@ import {
   applyManualOrderLength,
   resetStripToAuto,
   bomFromIrregularSchedule,
+  irregularSchedulesForPdf,
   stepCeil,
   sideCross,
   polygonArea,
@@ -15,6 +16,8 @@ import {
 } from "../src/utils/irregularRoofLayout.js";
 import { calcTechoCompleto } from "../src/utils/calculations.js";
 import { executeScenario } from "../src/utils/scenarioOrchestrator.js";
+import { buildQuotationModel } from "../src/pdf-templates/index.js";
+import { render as renderSimplePdf } from "../src/pdf-templates/simple.js";
 
 let passed = 0;
 function ok(cond, msg) {
@@ -262,12 +265,90 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
     camara: {},
   });
   ok(r2a && !r2a.error, "dos_aguas+irr no error");
-  // With irregular ignored for dos_aguas, area matches rectangular two-slope path
   ok(
     approx(r2a.paneles?.areaTotal, r2aOff.paneles?.areaTotal, 0.05),
     `dos_aguas irr ignored (same as rect): on=${r2a.paneles?.areaTotal} off=${r2aOff.paneles?.areaTotal}`,
   );
   ok(!r2a.paneles?.irregular, "dos_aguas does not set irregular flag on merged BOM");
+}
+
+// Multi-zone: schedule only on zone 1
+{
+  const irrZ1 = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho: 5.6,
+    largo: 6,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 0 }, p1: { x: 5.6, y: 6 }, keep: "left" },
+  });
+  const rBoth = executeScenario("solo_techo", {
+    techo: techoBase({
+      zonas: [
+        { largo: 6, ancho: 5.6 },
+        { largo: 6, ancho: 5.6 },
+      ],
+      irregularLayoutByGi: { 1: irrZ1 },
+    }),
+    pared: {},
+    camara: {},
+  });
+  const rNone = executeScenario("solo_techo", {
+    techo: techoBase({
+      zonas: [
+        { largo: 6, ancho: 5.6 },
+        { largo: 6, ancho: 5.6 },
+      ],
+    }),
+    pared: {},
+    camara: {},
+  });
+  ok(rBoth && !rBoth.error && rNone && !rNone.error, "multi-zone scenarios ok");
+  ok(
+    rBoth.paneles?.areaTotal < rNone.paneles?.areaTotal - 0.5,
+    `multi-zone z1 only reduces total: ${rBoth.paneles?.areaTotal} < ${rNone.paneles?.areaTotal}`,
+  );
+}
+
+// PDF: schedule in model + simple HTML
+{
+  const irr = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho: 5.6,
+    largo: 6,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 0 }, p1: { x: 5.6, y: 6 }, keep: "left" },
+  });
+  const sched = irregularSchedulesForPdf(null, { 0: irr });
+  ok(sched && sched.strips.length === 5, "pdf helper 5 strips");
+  ok(/obra/i.test(sched.note), "pdf helper note");
+
+  const q = buildQuotationModel({
+    client: { nombre: "Test" },
+    project: { refInterna: "BMC-TEST", fecha: "2026-08-07" },
+    scenario: "solo_techo",
+    panel: { label: "ISODEC", espesor: 100, color: "Blanco" },
+    groups: [{ title: "PANELES", items: [{ label: "ISODEC 100", cant: 21.39, unidad: "m²", pu: 40, total: 855.6, cantPaneles: 5 }] }],
+    totals: { subtotalSinIVA: 855.6, iva: 188.23, totalFinal: 1043.83 },
+    appendix: {
+      irregularSchedule: sched,
+      irregularStrips: sched.strips,
+      irregularNote: sched.note,
+      irregularAreaOrdered: sched.areaOrdered,
+      irregularAreaWasteSite: sched.areaWasteSite,
+      kpi: { area: 21.39, paneles: 5 },
+      zonas: [{ largo: 6, ancho: 5.6 }],
+      roofBlocks: [],
+    },
+  });
+  ok(q.irregularSchedule?.strips?.length === 5, "buildQuotationModel irregularSchedule");
+  const html = renderSimplePdf(q);
+  ok(/Largos escalonados/i.test(html), "simple PDF has schedule title");
+  ok(/T-01/.test(html) && /T-05/.test(html), "simple PDF has T-01 and T-05");
+  ok(/obra/i.test(html), "simple PDF corte en obra");
 }
 
 console.log(`\n${passed} assertions passed`);

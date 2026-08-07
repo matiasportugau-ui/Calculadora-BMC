@@ -2537,8 +2537,29 @@ export default function PanelinCalculadoraV3() {
   const [scenario, _setScenario] = useState("solo_techo");
   const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
-  /** Stepped-panel schedule from RoofPreview modo irregular (primary zone). */
-  const [irregularLayout, setIrregularLayout] = useState(null);
+  /** Per-zone stepped schedules from RoofPreview modo irregular. */
+  const [irregularLayoutByGi, setIrregularLayoutByGi] = useState(() => ({}));
+  const handleIrregularLayoutChange = useCallback((layout, gi) => {
+    setIrregularLayoutByGi((prev) => {
+      const next = { ...prev };
+      if (layout?.strips?.length && Number.isFinite(Number(gi))) {
+        next[Number(gi)] = layout;
+        return next;
+      }
+      if (Number.isFinite(Number(gi))) {
+        delete next[Number(gi)];
+        return next;
+      }
+      // Clear all when gi missing and layout null
+      if (layout == null) return {};
+      // Fallback: store as zone 0
+      if (layout?.strips?.length) {
+        next[0] = layout;
+        return next;
+      }
+      return prev;
+    });
+  }, []);
   const [pared, _setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [techoAnchoModo, _setTechoAnchoModo] = useState("paneles"); // "metros" | "paneles"
   const [camara, _setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
@@ -3800,10 +3821,18 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           catalog: libreCatalog || undefined,
         });
       }
+      const byGi = irregularLayoutByGi || {};
+      const hasAny = Object.values(byGi).some((l) => l?.strips?.length);
       const techoForCalc = {
         ...techo,
         tipoAguas: derivedTipoAguas,
-        ...(irregularLayout?.strips?.length ? { irregularLayout } : {}),
+        ...(hasAny
+          ? {
+              irregularLayoutByGi: byGi,
+              // Legacy flat field = zone 0 schedule for older paths
+              irregularLayout: byGi[0]?.strips?.length ? byGi[0] : null,
+            }
+          : {}),
       };
       try {
         return executeScenario(sc, { techo: techoForCalc, pared, camara });
@@ -3812,7 +3841,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         throw e;
       }
     } catch (e) { return { error: e.message }; }
-  }, [scenario, techo, irregularLayout, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
+  }, [scenario, techo, irregularLayoutByGi, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
   // ── Grupos "presupuesto libre" aditivos (líneas manuales sobre cualquier escenario) ──
   // En el escenario dedicado `presupuesto_libre` se devuelve [] porque sus líneas ya
@@ -4179,15 +4208,31 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const roofPlan2dSvg = serializeRoofPlanSvgToString(svgEl);
     const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
     const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
-    const appendix = buildPdfAppendixPayload({
-      scenario, scenarioDef: scenarioDef_, vis: vis_,
-      techo, pared, camara, results, grandTotal,
-      kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
-      kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
-      kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
-      kpiFij: results?.fijaciones?.puntosFijacion ?? null,
-      PANELS_TECHO, PANELS_PARED,
-    });
+    const { irregularSchedulesForPdf } = await import("../utils/irregularRoofLayout.js");
+    const irregularSchedule = irregularSchedulesForPdf(
+      irregularLayoutByGi?.[0] || null,
+      irregularLayoutByGi,
+    );
+    const appendix = {
+      ...buildPdfAppendixPayload({
+        scenario, scenarioDef: scenarioDef_, vis: vis_,
+        techo, pared, camara, results, grandTotal,
+        kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
+        kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
+        kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
+        kpiFij: results?.fijaciones?.puntosFijacion ?? null,
+        PANELS_TECHO, PANELS_PARED,
+      }),
+      ...(irregularSchedule
+        ? {
+            irregularSchedule,
+            irregularStrips: irregularSchedule.strips,
+            irregularNote: irregularSchedule.note,
+            irregularAreaOrdered: irregularSchedule.areaOrdered,
+            irregularAreaWasteSite: irregularSchedule.areaWasteSite,
+          }
+        : {}),
+    };
     const snapshotImages = roofPlan2dSvg ? { roofPlan2dSvg } : {};
     const groupsMapped = groups.map(g => ({ title: g.title, items: g.items }));
     if (pdfLayout) {
@@ -4209,7 +4254,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       totals: grandTotal, appendix, snapshotImages,
       includePlantaResumenPage: false,
     });
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, pdfLayout]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, pdfLayout, irregularLayoutByGi]);
 
   const handleClientePdf = useCallback(async () => {
     if (!groups.length) return;
@@ -4612,7 +4657,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
           })
         }
-        onIrregularLayoutChange={setIrregularLayout}
+        onIrregularLayoutChange={handleIrregularLayoutChange}
       />
     );
   }, [
@@ -5914,7 +5959,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                                 borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
                               })
                             }
-                            onIrregularLayoutChange={setIrregularLayout}
+                            onIrregularLayoutChange={handleIrregularLayoutChange}
                           />
                         );
                         return (
@@ -6240,7 +6285,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                                   borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
                                 })
                               }
-                              onIrregularLayoutChange={setIrregularLayout}
+                              onIrregularLayoutChange={handleIrregularLayoutChange}
                             />
                           )
                         ) : (

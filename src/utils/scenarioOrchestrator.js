@@ -107,14 +107,15 @@ function computeTechoZonas(techo, useEncounterBorders) {
       pendiente: zona.pendiente ?? techo.pendiente ?? 0,
       pendienteModo: zona.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente",
       alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0,
-      // Stepped lengths: una_agua primary zone only. Never on dos_aguas halves
-      // (would double-charge full schedule on each faldón — Codex P1 on #935).
-      irregularLayout:
-        !is2Aguas && gi === 0 && techo.irregularLayout?.strips?.length
-          ? techo.irregularLayout
-          : !is2Aguas
-            ? techo.irregularLayoutByGi?.[gi] ?? null
-            : null,
+      // Stepped lengths: per-zone map preferred; legacy flat irregularLayout = zone 0.
+      // Never on dos_aguas halves (would double-charge — Codex P1 on #935).
+      irregularLayout: !is2Aguas
+        ? (techo.irregularLayoutByGi?.[gi]?.strips?.length
+            ? techo.irregularLayoutByGi[gi]
+            : gi === 0 && techo.irregularLayout?.strips?.length
+              ? techo.irregularLayout
+              : null)
+        : null,
     };
     const globalBorders = techo.inclAccesorios === false ? EMPTY_BORDERS : techo.borders;
     const mergedBorders = { ...globalBorders, ...(zona.preview?.borders ?? {}) };

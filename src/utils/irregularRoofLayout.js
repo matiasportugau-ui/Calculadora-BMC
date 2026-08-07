@@ -361,3 +361,44 @@ export function bomFromIrregularSchedule(layout, precioM2) {
     },
   };
 }
+
+/**
+ * Flatten one or more irregular schedules for PDF quotation model.
+ * @param {object|null} layout - single IrregularLayoutV1
+ * @param {Record<string|number, object>|null} byGi - map gi → layout
+ * @returns {{ strips: Array<{ id: string, L_order: number, L_cover: number, zoneGi?: number }>, note: string, areaOrdered: number, areaWasteSite: number }|null}
+ */
+export function irregularSchedulesForPdf(layout = null, byGi = null) {
+  const rows = [];
+  let areaOrdered = 0;
+  let areaWasteSite = 0;
+  const pushLayout = (lay, gi) => {
+    if (!lay?.strips?.length) return;
+    for (const s of lay.strips) {
+      rows.push({
+        id: s.id,
+        L_order: Number(s.L_order) || 0,
+        L_cover: Number(s.L_cover) || 0,
+        zoneGi: gi != null ? Number(gi) : undefined,
+        source: s.source || "auto",
+      });
+    }
+    areaOrdered += Number(lay.totals?.areaOrdered) || 0;
+    areaWasteSite += Number(lay.totals?.areaWasteSite) || 0;
+  };
+
+  if (byGi && typeof byGi === "object") {
+    const keys = Object.keys(byGi).sort((a, b) => Number(a) - Number(b));
+    for (const k of keys) pushLayout(byGi[k], k);
+  } else if (layout?.strips?.length) {
+    pushLayout(layout, layout.zoneId?.replace?.(/^z/, "") ?? 0);
+  }
+
+  if (!rows.length) return null;
+  return {
+    strips: rows,
+    note: CORTE_EN_OBRA_NOTE,
+    areaOrdered: +areaOrdered.toFixed(2),
+    areaWasteSite: +areaWasteSite.toFixed(2),
+  };
+}
