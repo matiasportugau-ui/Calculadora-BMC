@@ -3,6 +3,8 @@ import {
   canTransitionReparto,
   applyRepartoTransition,
   canConfirmReparto,
+  confirmRevisionGate,
+  shouldAbortConfirmAfterPresave,
   statusOnFirstStop,
   repartoStatusLabel,
   buildRepartoPayload,
@@ -29,6 +31,19 @@ assert.equal(canConfirmReparto("cerrado"), false);
 assert.equal(canConfirmReparto("cancelado"), false);
 assert.equal(canConfirmReparto("draft"), false);
 ok("transitions");
+
+// Bug AU — stale confirm must not freeze outdated payload
+assert.equal(confirmRevisionGate(5, null).ok, true);
+assert.equal(confirmRevisionGate(5, undefined).expected, null);
+assert.equal(confirmRevisionGate(6, 6).ok, true);
+assert.equal(confirmRevisionGate(6, 5).ok, false);
+assert.equal(confirmRevisionGate(6, 5).error, "conflict");
+assert.equal(confirmRevisionGate(6, 5).revision, 6);
+assert.equal(confirmRevisionGate(6, "abc").error, "invalid_revision");
+assert.equal(shouldAbortConfirmAfterPresave({ ok: true, revision: 6 }), false);
+assert.equal(shouldAbortConfirmAfterPresave({ ok: false, error: "conflict" }), true);
+assert.equal(shouldAbortConfirmAfterPresave(undefined), true);
+ok("confirm revision gate + abort after failed presave (Bug AU)");
 
 assert.equal(statusOnFirstStop("draft"), "en_coordinacion");
 assert.equal(repartoStatusLabel("en_coordinacion"), "En Coordinación");

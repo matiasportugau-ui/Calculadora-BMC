@@ -103,12 +103,13 @@ async function main() {
     assert.equal(putRes.status, 200, `put ${putRes.status} ${JSON.stringify(putBody)}`);
     assert.equal(putBody.status, "en_coordinacion");
 
-    // confirm
+    // confirm (Bug AU: send expectedRevision from successful PUT)
     const confRes = await fetch(`${base}/api/repartos/${encodeURIComponent(id)}/confirm`, {
       method: "POST",
       headers: auth,
       body: JSON.stringify({
         actor: "integration-test",
+        expectedRevision: putBody.revision,
         payload: {
           schema: "bmc-reparto-payload-v1",
           stops: [
@@ -132,6 +133,7 @@ async function main() {
       headers: auth,
       body: JSON.stringify({
         actor: "integration-test-evil",
+        expectedRevision: confirmed.reparto.revision,
         payload: {
           schema: "bmc-reparto-payload-v1",
           stops: [{ id: "sX", cliente: "OVERWRITE", orderId: "999", orden: 1 }],

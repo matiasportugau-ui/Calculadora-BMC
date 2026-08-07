@@ -12,6 +12,7 @@ import {
 } from "../../src/utils/logistica/repartoNumber.js";
 import {
   canConfirmReparto,
+  confirmRevisionGate,
   normalizeRepartoStatus,
   buildRepartoPayload,
   stopSummariesForReparto,
@@ -307,6 +308,20 @@ export default function createRepartosRouter(config, logger) {
         });
       }
 
+      // Bug AU: stale tab must not freeze an outdated payload over a newer draft.
+      const revGate = confirmRevisionGate(cur.revision, body.expectedRevision);
+      if (!revGate.ok) {
+        return res.status(409).json({
+          ok: false,
+          error: revGate.error,
+          revision: revGate.revision ?? cur.revision,
+          message:
+            revGate.error === "conflict"
+              ? "Revisión desactualizada — recargá el reparto antes de confirmar."
+              : "expectedRevision inválido",
+        });
+      }
+
       const payloadIn = body.payload && typeof body.payload === "object" ? body.payload : cur.payload || {};
       const stops = Array.isArray(payloadIn.stops) ? payloadIn.stops : [];
       if (!stops.length) {
@@ -335,24 +350,35 @@ export default function createRepartosRouter(config, logger) {
         drivePlan,
       };
 
-      const nextRev = cur.revision + 1;
       // Soft Drive: store planned path; real upload when DRIVE_REPARTOS_FOLDER_ID wired
       const folderUrl = cur.drive_folder_url || null;
 
-      // Atomic gate: only one confirm wins; concurrent/re-confirm cannot overwrite snapshot
+      // Atomic gate: status + optional revision (stale confirm cannot win after concurrent PUT)
       const upd = await pool.query(
         `update repartos set
            status = 'coordinado',
            payload = $2::jsonb,
            confirmed_at = now(),
-           revision = $3,
+           revision = revision + 1,
            updated_at = now(),
-           drive_folder_url = coalesce(drive_folder_url, $4)
-         where id = $1 and status = 'en_coordinacion'
+           drive_folder_url = coalesce(drive_folder_url, $3)
+         where id = $1
+           and status = 'en_coordinacion'
+           and ($4::int is null or revision = $4)
          returning id, revision, confirmed_at`,
-        [cur.id, JSON.stringify(payload), nextRev, folderUrl],
+        [cur.id, JSON.stringify(payload), folderUrl, revGate.expected],
       );
       if (!upd.rowCount) {
+        const { rows: again } = await pool.query(`select status, revision from repartos where id = $1`, [cur.id]);
+        const st = normalizeRepartoStatus(again[0]?.status);
+        if (st === "en_coordinacion") {
+          return res.status(409).json({
+            ok: false,
+            error: "conflict",
+            revision: again[0]?.revision,
+            message: "Revisión desactualizada — recargá el reparto antes de confirmar.",
+          });
+        }
         return res.status(409).json({
           ok: false,
           error: "immutable",
@@ -375,7 +401,7 @@ export default function createRepartosRouter(config, logger) {
           repartoNo: cur.reparto_no,
           status: "coordinado",
           statusLabel: repartoStatusLabel("coordinado"),
-          revision: upd.rows[0]?.revision ?? nextRev,
+          revision: upd.rows[0]?.revision,
           confirmedAt: payload.confirmedAt,
           drivePlan,
           stopsSummary: payload.stopsSummary,

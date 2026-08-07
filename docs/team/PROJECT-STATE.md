@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — Bug AU reparto confirm stale revision):** `POST /api/repartos/:id/confirm` gates on `expectedRevision` (atomic `WHERE revision=…`); UI aborts confirm when pre-save PUT fails/409 (no more swallowed error → stale immutable snapshot). Helpers `confirmRevisionGate` + `shouldAbortConfirmAfterPresave`.
+
 **2026-08-07 (fix — concurrent Entregado row identity extract from #896):** Landed pure `saleState` helpers `ventasRowIdentityFingerprint` + `findSheetRow1BasedByFingerprint` + linear `stripLogisticaMarkers` + terminal-status gate (tests). Full UI/API sale-state stack remains #893. Supersedes concurrent-delete core of draft #896.
 
 **2026-08-07 (fix — Ventas blank CSV row index):** Index sheet rows before filtering blank gviz rows so `ventasSheetRow1Based` stays correct. Rebased from #902.

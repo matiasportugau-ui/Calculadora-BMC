@@ -78,6 +78,7 @@ import {
   buildRepartoPayload,
   statusOnFirstStop,
   repartoStatusLabel,
+  shouldAbortConfirmAfterPresave,
   stopSummariesForReparto,
 } from "../utils/logistica/repartoStatus.js";
 import {
@@ -2932,7 +2933,9 @@ export default function BmcLogisticaApp() {
   }
 
   async function saveRepartoDraft() {
-    if (!activeReparto || activeReparto.status === "coordinado") return;
+    if (!activeReparto || activeReparto.status === "coordinado") {
+      return { ok: false, error: "immutable" };
+    }
     const payload = buildRepartoPayload({
       stops,
       truckL,
@@ -2945,9 +2948,10 @@ export default function BmcLogisticaApp() {
       info,
     });
     if (activeReparto.local || !enviosAuthToken()) {
-      setActiveReparto((r) => (r ? { ...r, revision: (r.revision || 1) + 1, status: "en_coordinacion" } : r));
-      setAutoLoadMsg(`Borrador local ${activeReparto.repartoNo} guardado (rev ${(activeReparto.revision || 1) + 1})`);
-      return;
+      const nextRev = (activeReparto.revision || 1) + 1;
+      setActiveReparto((r) => (r ? { ...r, revision: nextRev, status: "en_coordinacion" } : r));
+      setAutoLoadMsg(`Borrador local ${activeReparto.repartoNo} guardado (rev ${nextRev})`);
+      return { ok: true, revision: nextRev, local: true };
     }
     setRepartoBusy(true);
     try {
@@ -2967,19 +2971,26 @@ export default function BmcLogisticaApp() {
         }),
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok || j.ok === false) throw new Error(j.message || j.error || res.statusText);
+      if (!res.ok || j.ok === false) {
+        const err = new Error(j.message || j.error || res.statusText);
+        err.code = j.error;
+        throw err;
+      }
+      const nextRev = j.revision || (activeReparto.revision || 1) + 1;
       setActiveReparto((r) =>
         r
           ? {
               ...r,
               status: "en_coordinacion",
-              revision: j.revision || (r.revision || 1) + 1,
+              revision: nextRev,
             }
           : r,
       );
-      setAutoLoadMsg(`Borrador ${activeReparto.repartoNo} en nube · rev ${j.revision}`);
+      setAutoLoadMsg(`Borrador ${activeReparto.repartoNo} en nube · rev ${nextRev}`);
+      return { ok: true, revision: nextRev };
     } catch (e) {
       setAutoLoadMsg(`Reparto: no se pudo guardar — ${e.message}`);
+      return { ok: false, error: e.message, code: e.code };
     } finally {
       setRepartoBusy(false);
     }
@@ -3021,8 +3032,15 @@ export default function BmcLogisticaApp() {
     }
     setRepartoBusy(true);
     try {
-      // save latest first
-      await saveRepartoDraft();
+      // Bug AU: pre-save must succeed; swallowed 409 used to let stale confirm freeze wrong stops
+      const saved = await saveRepartoDraft();
+      if (shouldAbortConfirmAfterPresave(saved)) {
+        setAutoLoadMsg(
+          `Confirmar abortado: no se pudo guardar el borrador (${saved?.error || "conflicto de revisión"}). Recargá e intentá de nuevo.`,
+        );
+        return;
+      }
+      const expectedRevision = saved.revision ?? activeReparto.revision;
       const base = getCalcApiBase();
       const res = await fetch(`${base}/api/repartos/${encodeURIComponent(activeReparto.id)}/confirm`, {
         method: "POST",
@@ -3030,7 +3048,7 @@ export default function BmcLogisticaApp() {
           Authorization: `Bearer ${enviosAuthToken()}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ payload, actor: "logistica-ui" }),
+        body: JSON.stringify({ payload, actor: "logistica-ui", expectedRevision }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.ok === false) throw new Error(j.message || j.error || res.statusText);

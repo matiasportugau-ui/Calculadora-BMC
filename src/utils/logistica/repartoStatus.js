@@ -95,6 +95,39 @@ export function canConfirmReparto(status) {
 }
 
 /**
+ * Optimistic concurrency for confirm — reject stale clients before freezing snapshot.
+ * @param {number|null|undefined} curRevision
+ * @param {unknown} expectedRevision body.expectedRevision (optional for legacy callers)
+ * @returns {{ ok: true, expected: number|null } | { ok: false, error: string, revision?: number }}
+ */
+export function confirmRevisionGate(curRevision, expectedRevision) {
+  if (expectedRevision == null || expectedRevision === "") {
+    return { ok: true, expected: null };
+  }
+  const exp = Number(expectedRevision);
+  if (!Number.isFinite(exp)) {
+    return { ok: false, error: "invalid_revision" };
+  }
+  const cur = Number(curRevision);
+  if (!Number.isFinite(cur) || exp !== cur) {
+    return {
+      ok: false,
+      error: "conflict",
+      revision: Number.isFinite(cur) ? cur : undefined,
+    };
+  }
+  return { ok: true, expected: exp };
+}
+
+/**
+ * UI: confirm must not proceed when pre-save PUT failed / conflicted (Bug AU).
+ * @param {{ ok?: boolean }|null|undefined} saveResult
+ */
+export function shouldAbortConfirmAfterPresave(saveResult) {
+  return !saveResult || saveResult.ok !== true;
+}
+
+/**
  * Label for UI chips
  * @param {string} status
  */
