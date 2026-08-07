@@ -261,12 +261,14 @@ export function shouldEnableWizard({ uiWizard, force } = {}) {
 
 /**
  * Apply default pickup id to all stops (single mode).
+ * Always overwrites: switching default / multi→single must not leave stale per-stop pickups
+ * that would send the trip to the wrong levante while the UI shows one default.
  */
 export function applyDefaultPickupToStops(stops, defaultPickupPointId) {
   const id = String(defaultPickupPointId || "").trim();
   if (!id || !Array.isArray(stops)) return stops || [];
   return stops.map((s) => ({
     ...s,
-    pickupPointId: s.pickupPointId || id,
+    pickupPointId: id,
   }));
 }
