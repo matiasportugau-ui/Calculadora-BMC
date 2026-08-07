@@ -17,44 +17,16 @@ import {
   canFireLongPressDrag,
   shouldCancelLongPress,
 } from "../../utils/logistica/freeDragLongPress.js";
+import TruckVisual from "./TruckVisual.jsx";
 
 const TRUCK_W = 2.4;
 const ROW_W = 1.2;
-const CAB_LEN_M = 2.4;
-const CAB_HEIGHT_M = 1.5;
 const DBL_MS = 420;
 const LONG_PRESS_MOVE_CANCEL_PX = 12;
 
 function hexToColor(hex) {
   if (!hex || typeof hex !== "string" || hex[0] !== "#") return "#888888";
   return hex;
-}
-
-function TruckCabin({ shiftX }) {
-  const len = CAB_LEN_M;
-  const h = CAB_HEIGHT_M;
-  const cx = shiftX - len / 2;
-  const cy = h / 2;
-  const cz = TRUCK_W / 2;
-  return (
-    <group>
-      <mesh position={[cx, cy, cz]} castShadow={false} receiveShadow={false}>
-        <boxGeometry args={[len * 0.92, h * 0.85, TRUCK_W * 0.92]} />
-        <meshStandardMaterial
-          color="#7dd3fc"
-          metalness={0.2}
-          roughness={0.25}
-          transparent
-          opacity={0.28}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh position={[cx + len * 0.28, cy + h * 0.12, cz]} castShadow={false}>
-        <boxGeometry args={[len * 0.12, h * 0.35, TRUCK_W * 0.88]} />
-        <meshStandardMaterial color="#e0f2fe" transparent opacity={0.2} depthWrite={false} />
-      </mesh>
-    </group>
-  );
 }
 
 /** Long-press for touch / trackpad free-drag (ms). Double-click still works for mouse. */
@@ -544,7 +516,7 @@ function SceneContent({
       <ambientLight intensity={0.55} />
       <directionalLight position={[8, 14, 6]} intensity={1.05} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <directionalLight position={[-4, 6, -2]} intensity={0.35} />
-      <TruckCabin shiftX={shiftX} />
+      <TruckVisual shiftX={shiftX} truckL={truckL} />
       <TruckFloor shiftX={shiftX} truckL={truckL} maxLen={maxLen} totalLen={totalLen} />
       <HeightGuides shiftX={shiftX} truckL={truckL} />
       {placed.map((pkg) => {
