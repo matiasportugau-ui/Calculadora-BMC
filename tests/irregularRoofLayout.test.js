@@ -233,6 +233,60 @@ ok(stepCeil(1.2, 0.01) === 1.2, "stepCeil 1.2");
 
 ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
 
+// Bug BE — remnant strip must bill full au (same SoT as rectangular calcPanelesTecho)
+{
+  const au = 1.12;
+  const ancho = 8.36; // 7×1.12 + remnant 0.52
+  const largo = 6;
+  const layout = buildIrregularSchedule({
+    mode: "rectangle",
+    ancho,
+    largo,
+    au,
+    lmin: 2.3,
+    lmax: 14,
+  });
+  const remnant = layout.strips.find((s) => s.width < au - 1e-9);
+  ok(!!remnant, "BE remnant strip exists");
+  ok(approx(remnant.width, 0.52), `BE remnant geometric width 0.52 got ${remnant?.width}`);
+  ok(
+    approx(remnant.areaOrdered, largo * au),
+    `BE remnant bills L×au=${largo * au} got ${remnant?.areaOrdered}`,
+  );
+  ok(
+    approx(layout.totals.areaOrdered, 8 * largo * au),
+    `BE areaOrdered=53.76 got ${layout.totals.areaOrdered}`,
+  );
+  ok(
+    approx(layout.totals.areaWasteWidth, largo * (au - 0.52), 1e-3),
+    `BE areaWasteWidth=3.6 got ${layout.totals.areaWasteWidth}`,
+  );
+  const rIrr = calcTechoCompleto({
+    familia: "ISODEC_EPS",
+    espesor: 100,
+    largo,
+    ancho,
+    tipoEst: "metal",
+    borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+    opciones: { inclCanalon: false, inclGotSup: false, inclSell: false },
+    irregularLayout: layout,
+  });
+  const rRect = calcTechoCompleto({
+    familia: "ISODEC_EPS",
+    espesor: 100,
+    largo,
+    ancho,
+    tipoEst: "metal",
+    borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+    opciones: { inclCanalon: false, inclGotSup: false, inclSell: false },
+  });
+  ok(!rIrr.error, `BE quote no error: ${rIrr.error || ""}`);
+  ok(
+    approx(rIrr.paneles.areaTotal, rRect.paneles.areaTotal, 0.02),
+    `BE irregular rectangle matches rect SoT ${rRect.paneles.areaTotal} got ${rIrr.paneles.areaTotal}`,
+  );
+}
+
 // dos_aguas must NOT double-apply irregular schedule on both faldones
 {
   const irr = buildIrregularSchedule({

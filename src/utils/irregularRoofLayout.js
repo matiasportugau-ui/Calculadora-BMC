@@ -151,6 +151,22 @@ export function resolveRoofPolygon(input) {
   return { poly: [], warnings: ["IRR_EMPTY_POLYGON"] };
 }
 
+/**
+ * Billable ordered area for one strip.
+ * Geometric `width` may be a remnant (< au); factory still sells a full-`au` panel
+ * (same SoT as calcPanelesTecho / panelLayout).
+ */
+export function stripOrderedAreas({ L_order, width, au, areaUsable }) {
+  const L = Math.max(0, +L_order || 0);
+  const w = Math.max(0, +width || 0);
+  const billW = au > 0 ? au : w;
+  const aUse = Math.max(0, +areaUsable || 0);
+  const aOrd = L * billW;
+  const wasteWidth = L * Math.max(0, billW - w);
+  const wasteSite = Math.max(0, L * w - aUse);
+  return { aOrd, wasteWidth, wasteSite, billWidth: billW };
+}
+
 export function buildIrregularSchedule(input) {
   const zoneId = input.zoneId || "z1";
   const ancho = +input.ancho;
@@ -180,6 +196,7 @@ export function buildIrregularSchedule(input) {
   let areaOrdered = 0;
   let areaUsable = 0;
   let areaWasteSite = 0;
+  let areaWasteWidth = 0;
 
   for (const s of stripDefs) {
     const box = { x0: s.x0, y0: 0, x1: s.x0 + s.width, y1: largo };
@@ -206,8 +223,12 @@ export function buildIrregularSchedule(input) {
 
     L_order = clamp(L_order, lmin > 0 ? lmin : 0, Number.isFinite(lmax) ? lmax : L_order);
 
-    const aOrd = L_order * s.width;
-    const waste = Math.max(0, aOrd - aUse);
+    const { aOrd, wasteWidth, wasteSite } = stripOrderedAreas({
+      L_order,
+      width: s.width,
+      au,
+      areaUsable: aUse,
+    });
     const id = `T-${String(s.idx + 1).padStart(2, "0")}`;
 
     strips.push({
@@ -221,17 +242,20 @@ export function buildIrregularSchedule(input) {
       source: "auto",
       areaOrdered: +aOrd.toFixed(6),
       areaUsable: +aUse.toFixed(6),
-      wasteM2_site: +waste.toFixed(6),
+      wasteM2_site: +wasteSite.toFixed(6),
+      wasteM2_width: +wasteWidth.toFixed(6),
       codes,
     });
 
     areaOrdered += aOrd;
     areaUsable += aUse;
-    areaWasteSite += waste;
+    areaWasteSite += wasteSite;
+    areaWasteWidth += wasteWidth;
   }
 
   if (!strips.length) warnings.push("IRR_NO_STRIPS");
-  const wastePct = areaOrdered > EPS ? (areaWasteSite / areaOrdered) * 100 : 0;
+  const wasteTotal = areaWasteSite + areaWasteWidth;
+  const wastePct = areaOrdered > EPS ? (wasteTotal / areaOrdered) * 100 : 0;
 
   return {
     schema: SCHEMA,
@@ -248,7 +272,7 @@ export function buildIrregularSchedule(input) {
       areaOrdered: +areaOrdered.toFixed(6),
       areaUsable: +areaUsable.toFixed(6),
       areaWasteSite: +areaWasteSite.toFixed(6),
-      areaWasteWidth: 0,
+      areaWasteWidth: +areaWasteWidth.toFixed(6),
       wastePct: +wastePct.toFixed(4),
     },
     notes,
@@ -257,17 +281,23 @@ export function buildIrregularSchedule(input) {
 }
 
 export function applyManualOrderLength(layout, stripId, L_order) {
+  const au = +layout.au;
   const strips = layout.strips.map((s) => {
     if (s.id !== stripId) return { ...s };
     const L = Math.max(0, +L_order);
-    const aOrd = L * s.width;
-    const waste = Math.max(0, aOrd - s.areaUsable);
+    const { aOrd, wasteWidth, wasteSite } = stripOrderedAreas({
+      L_order: L,
+      width: s.width,
+      au,
+      areaUsable: s.areaUsable,
+    });
     return {
       ...s,
       L_order: +L.toFixed(6),
       source: "manual",
       areaOrdered: +aOrd.toFixed(6),
-      wasteM2_site: +waste.toFixed(6),
+      wasteM2_site: +wasteSite.toFixed(6),
+      wasteM2_width: +wasteWidth.toFixed(6),
     };
   });
   return recomputeTotals({ ...layout, strips });
@@ -277,18 +307,24 @@ export function resetStripToAuto(layout, stripId) {
   const lmin = layout.lmin ?? 0;
   const lmax = layout.lmax != null && Number.isFinite(layout.lmax) ? layout.lmax : Infinity;
   const step = layout.orderLengthStepM ?? DEFAULT_ORDER_LENGTH_STEP_M;
+  const au = +layout.au;
   const strips = layout.strips.map((s) => {
     if (s.id !== stripId) return { ...s };
     let L = stepCeil(s.L_cover, step);
     L = clamp(L, lmin > 0 ? lmin : 0, Number.isFinite(lmax) ? lmax : L);
-    const aOrd = L * s.width;
-    const waste = Math.max(0, aOrd - s.areaUsable);
+    const { aOrd, wasteWidth, wasteSite } = stripOrderedAreas({
+      L_order: L,
+      width: s.width,
+      au,
+      areaUsable: s.areaUsable,
+    });
     return {
       ...s,
       L_order: +L.toFixed(6),
       source: "auto",
       areaOrdered: +aOrd.toFixed(6),
-      wasteM2_site: +waste.toFixed(6),
+      wasteM2_site: +wasteSite.toFixed(6),
+      wasteM2_width: +wasteWidth.toFixed(6),
     };
   });
   return recomputeTotals({ ...layout, strips });
@@ -298,12 +334,15 @@ function recomputeTotals(layout) {
   let areaOrdered = 0;
   let areaUsable = 0;
   let areaWasteSite = 0;
+  let areaWasteWidth = 0;
   for (const s of layout.strips) {
     areaOrdered += s.areaOrdered;
     areaUsable += s.areaUsable;
-    areaWasteSite += s.wasteM2_site;
+    areaWasteSite += s.wasteM2_site || 0;
+    areaWasteWidth += s.wasteM2_width || 0;
   }
-  const wastePct = areaOrdered > EPS ? (areaWasteSite / areaOrdered) * 100 : 0;
+  const wasteTotal = areaWasteSite + areaWasteWidth;
+  const wastePct = areaOrdered > EPS ? (wasteTotal / areaOrdered) * 100 : 0;
   return {
     ...layout,
     totals: {
@@ -311,6 +350,7 @@ function recomputeTotals(layout) {
       areaOrdered: +areaOrdered.toFixed(6),
       areaUsable: +areaUsable.toFixed(6),
       areaWasteSite: +areaWasteSite.toFixed(6),
+      areaWasteWidth: +areaWasteWidth.toFixed(6),
       wastePct: +wastePct.toFixed(4),
     },
   };
@@ -343,12 +383,15 @@ function emptyLayout({ zoneId, mode, au, orderLengthStepM, lmin, lmax, warnings,
 export function bomFromIrregularSchedule(layout, precioM2) {
   const area = layout?.totals?.areaOrdered ?? 0;
   const pu = +precioM2 || 0;
+  const wasteSite = +(layout?.totals?.areaWasteSite ?? 0).toFixed(2);
+  const wasteWidth = +(layout?.totals?.areaWasteWidth ?? 0).toFixed(2);
   return {
     cantPaneles: layout?.strips?.length ?? 0,
     areaTotal: +area.toFixed(2),
     areaOrdered: +area.toFixed(2),
     areaUsable: +(layout?.totals?.areaUsable ?? 0).toFixed(2),
-    areaWasteSite: +(layout?.totals?.areaWasteSite ?? 0).toFixed(2),
+    areaWasteSite: wasteSite,
+    areaWasteWidth: wasteWidth,
     wastePct: layout?.totals?.wastePct ?? 0,
     costoPaneles: +(area * pu).toFixed(2),
     precioM2: pu,
@@ -356,7 +399,8 @@ export function bomFromIrregularSchedule(layout, precioM2) {
     notes: layout?.notes ?? [],
     warnings: layout?.warnings ?? [],
     descarte: {
-      siteM2: +(layout?.totals?.areaWasteSite ?? 0).toFixed(2),
+      siteM2: wasteSite,
+      widthM2: wasteWidth,
       porcentaje: +(layout?.totals?.wastePct ?? 0).toFixed(1),
     },
   };
