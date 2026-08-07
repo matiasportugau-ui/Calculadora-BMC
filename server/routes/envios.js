@@ -22,33 +22,13 @@ import {
   matchAdminQuotes,
   normalizeAdminQuoteRow,
 } from "../../src/utils/logistica/adminQuoteMatch.js";
-
-function extractGoogleDriveFileId(url) {
-  const s = String(url || "");
-  const m1 = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (m1) return m1[1];
-  const m2 = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (m2) return m2[1];
-  return "";
-}
-
-function toServerFetchablePdfUrl(url) {
-  const raw = String(url || "").trim();
-  if (!raw) return "";
-  const driveId = extractGoogleDriveFileId(raw);
-  if (driveId) return `https://drive.google.com/uc?export=download&id=${driveId}`;
-  // Dropbox: force direct download
-  if (/dropbox\.com/i.test(raw)) {
-    try {
-      const u = new URL(raw);
-      u.searchParams.set("dl", "1");
-      return u.toString();
-    } catch {
-      return raw.replace(/\?dl=0/, "?dl=1");
-    }
-  }
-  return raw;
-}
+import {
+  ADJUNTO_MAX_BYTES,
+  extractGoogleDriveFileId,
+  fetchAdjuntoUpstream,
+  readBodyWithLimit,
+  resolveAdjuntoFetchUrl,
+} from "../lib/enviosAdjuntoFetch.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -499,29 +479,46 @@ export default function createEnviosRouter(config, logger) {
   /**
    * POST /api/envios/adjunto-fetch
    * body: { url: string }
-   * Server-side fetch of Drive/Dropbox/HTTP adjunto → base64 for client PDF text extract.
-   * Avoids browser CORS / Failed to fetch on drive.google.com/file/d/…/view
+   * Server-side fetch of Drive/Dropbox adjunto → base64 for client PDF text extract.
+   * Avoids browser CORS / Failed to fetch on drive.google.com/file/d/…/view.
+   * SSRF: https host allowlist only; redirects re-validated; body size capped.
    */
   router.post(
     "/envios/adjunto-fetch",
     auth,
     asyncHandler(async (req, res) => {
       const url = String(req.body?.url || req.query?.url || "").trim();
-      if (!url || !/^https?:\/\//i.test(url)) {
-        return res.status(400).json({ ok: false, error: "url_required" });
-      }
-      const fetchUrl = toServerFetchablePdfUrl(url);
-      let upstream;
+      let fetchUrl;
       try {
-        upstream = await fetch(fetchUrl, {
-          headers: {
-            Accept: "application/pdf,application/octet-stream,*/*",
-            "User-Agent": "BMC-Envios/1.0 (adjunto-fetch)",
-          },
-          redirect: "follow",
-          signal: AbortSignal.timeout(25000),
-        });
+        fetchUrl = resolveAdjuntoFetchUrl(url);
       } catch (err) {
+        const code = err?.code || "url_invalid";
+        return res.status(400).json({
+          ok: false,
+          error: code,
+          message:
+            "Solo se permiten adjuntos https en Drive/Dropbox (y CDN googleusercontent en redirects).",
+        });
+      }
+
+      let upstream;
+      let finalFetchUrl = fetchUrl;
+      try {
+        const result = await fetchAdjuntoUpstream(fetchUrl);
+        upstream = result.upstream;
+        finalFetchUrl = result.fetchUrl;
+      } catch (err) {
+        const code = err?.code || "";
+        if (code === "url_host_forbidden" || code === "url_https_required" || code === "url_credentials_forbidden") {
+          return res.status(400).json({
+            ok: false,
+            error: code,
+            message: "Redirect a host no permitido (SSRF guard).",
+          });
+        }
+        if (code === "too_many_redirects" || code === "redirect_missing_location") {
+          return res.status(502).json({ ok: false, error: code });
+        }
         log.warn?.(
           { err: err instanceof Error ? err.message : String(err), url: fetchUrl },
           "[envios] adjunto-fetch failed",
@@ -539,10 +536,21 @@ export default function createEnviosRouter(config, logger) {
           status: upstream.status,
         });
       }
-      const buf = Buffer.from(await upstream.arrayBuffer());
-      if (buf.byteLength > 12 * 1024 * 1024) {
-        return res.status(413).json({ ok: false, error: "file_too_large", maxBytes: 12 * 1024 * 1024 });
+
+      let buf;
+      try {
+        buf = await readBodyWithLimit(upstream, ADJUNTO_MAX_BYTES);
+      } catch (err) {
+        if (err?.code === "file_too_large") {
+          return res.status(413).json({
+            ok: false,
+            error: "file_too_large",
+            maxBytes: ADJUNTO_MAX_BYTES,
+          });
+        }
+        throw err;
       }
+
       const contentType = (upstream.headers.get("content-type") || "application/octet-stream").toLowerCase();
       // Google sometimes returns HTML interstitial
       const head = buf.slice(0, 20).toString("utf8");
@@ -558,7 +566,7 @@ export default function createEnviosRouter(config, logger) {
         contentType,
         byteLength: buf.byteLength,
         base64: buf.toString("base64"),
-        fetchUrl,
+        fetchUrl: finalFetchUrl,
         driveId: extractGoogleDriveFileId(url) || null,
       });
     }),
