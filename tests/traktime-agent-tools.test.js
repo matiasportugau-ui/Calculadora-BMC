@@ -36,8 +36,10 @@ async function main() {
   app.get("/api/traktime/timer/current", (req, res) => { record(req); res.json({ ok: true, running: { entry_id: "e1", project_id: "p1", project_name: "Proj", started_at: new Date(Date.now() - 60000).toISOString() } }); });
   app.post("/api/traktime/timer/start", (req, res) => { record(req); res.status(201).json({ ok: true, entry: { entry_id: "e2", project_id: req.body.project_id } }); });
   app.post("/api/traktime/timer/stop", (req, res) => { record(req); res.json({ ok: true, entry: { entry_id: "e1", duration_seconds: 60, started_at: "x", stopped_at: "y" } }); });
-  app.get("/api/traktime/entries", (req, res) => { record(req); res.json({ ok: true, entries: [{ entry_id: "e1", project_name: "Proj", duration_seconds: 60 }] }); });
+  app.get("/api/traktime/entries", (req, res) => { record(req); res.json({ ok: true, entries: [{ entry_id: "e1", project_id: "p1", project_name: "Proj", duration_seconds: 60 }] }); });
   app.post("/api/traktime/entries", (req, res) => { record(req); res.status(201).json({ ok: true, entry: { entry_id: "e3" } }); });
+  app.patch("/api/traktime/entries/:id", (req, res) => { record(req); res.json({ ok: true, entry: { entry_id: req.params.id, description: req.body?.description } }); });
+  app.delete("/api/traktime/entries/:id", (req, res) => { record(req); res.json({ ok: true, deleted: true }); });
   app.get("/api/traktime/day-report", (req, res) => { record(req); res.json({ ok: true, date: req.query.date, tz: "America/Montevideo", day: { effective_seconds: 100 } }); });
   app.get("/api/traktime/month-report", (req, res) => { record(req); res.json({ ok: true, month: req.query.month, tz: "America/Montevideo", report: { totals: { effective_seconds: 1 }, projects: [] }, pdf_url: "https://gcs/x.pdf" }); });
   app.get("/api/traktime/reports/billable", (req, res) => { record(req); res.json({ ok: true, groups: [], subtotal_usd: 0 }); });
@@ -105,6 +107,28 @@ async function main() {
       assert("create_entry ok", ok.ok === true, JSON.stringify(ok));
     }
 
+    // ── Write: update_entry (P1.1) ───────────────────────────────────────────
+    {
+      calls.length = 0;
+      const blocked = JSON.parse(await executeTool("traktime_update_entry", { entry_id: "e1", description: "x" }, {}, { callerAuthToken: TOKEN }));
+      assert("update_entry without confirm → blocked", blocked.ok === false && /confirm/i.test(blocked.error), JSON.stringify(blocked));
+      assert("update_entry blocked → no HTTP", calls.length === 0, `calls=${calls.length}`);
+
+      const ok = JSON.parse(await executeTool("traktime_update_entry", { entry_id: "e1", description: "patched", user_confirmed: true }, {}, { callerAuthToken: TOKEN }));
+      assert("update_entry confirmed → PATCH /entries/:id", calls[0]?.method === "PATCH" && calls[0]?.path === "/api/traktime/entries/e1", JSON.stringify(calls[0]));
+      assert("update_entry ok", ok.ok === true && ok.entry?.description === "patched", JSON.stringify(ok));
+    }
+
+    // ── Write: delete_entry (P1.1) ───────────────────────────────────────────
+    {
+      calls.length = 0;
+      const blocked = JSON.parse(await executeTool("traktime_delete_entry", { entry_id: "e1" }, {}, { callerAuthToken: TOKEN }));
+      assert("delete_entry without confirm → blocked", blocked.ok === false, JSON.stringify(blocked));
+      const ok = JSON.parse(await executeTool("traktime_delete_entry", { entry_id: "e1", user_confirmed: true }, {}, { callerAuthToken: TOKEN }));
+      assert("delete_entry confirmed → DELETE /entries/:id", calls.at(-1)?.method === "DELETE" && calls.at(-1)?.path === "/api/traktime/entries/e1", JSON.stringify(calls.at(-1)));
+      assert("delete_entry ok", ok.ok === true && ok.deleted === true, JSON.stringify(ok));
+    }
+
     // ── Reads: list_entries / day / month / billable map correctly ──────────
     {
       calls.length = 0;
@@ -128,6 +152,7 @@ async function main() {
       const r = JSON.parse(await executeTool("traktime_suggest_entry", { lookback_hours: 12 }, {}, { callerAuthToken: TOKEN }));
       assert("suggest_entry ok, no write call", r.ok === true && calls.every((c) => c.method === "GET"), JSON.stringify(calls.map((c) => c.method)));
       assert("suggest_entry returns running_timer + recent_entries", "running_timer" in r && Array.isArray(r.recent_entries), JSON.stringify(Object.keys(r)));
+      assert("suggest_entry returns last_project (P1.4)", "last_project" in r, JSON.stringify(Object.keys(r)));
     }
   } finally {
     config.port = origPort;

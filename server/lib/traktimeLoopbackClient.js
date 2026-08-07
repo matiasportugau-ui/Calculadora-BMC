@@ -74,6 +74,27 @@ export async function tkPost(path, body, { authToken, signal, base } = {}) {
   return normalizeResult(res, await parseJsonResponse(res));
 }
 
+export async function tkPatch(path, body, { authToken, signal, base } = {}) {
+  const url = joinUrl(base || loopbackBase(), path);
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
+    body: JSON.stringify(body || {}),
+    signal,
+  });
+  return normalizeResult(res, await parseJsonResponse(res));
+}
+
+export async function tkDelete(path, { authToken, signal, base } = {}) {
+  const url = joinUrl(base || loopbackBase(), path);
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { ...authHeaders(authToken) },
+    signal,
+  });
+  return normalizeResult(res, await parseJsonResponse(res));
+}
+
 // ─── Named helpers (one per TraKtiMe endpoint the agent can drive) ──────────
 export const getTimerCurrent = (opts) => tkGet("/api/traktime/timer/current", opts);
 export const startTimer = (body, opts = {}) =>
@@ -83,6 +104,10 @@ export const listEntries = (query, opts = {}) =>
   tkGet("/api/traktime/entries", { ...opts, query });
 export const createEntry = (body, opts = {}) =>
   tkPost("/api/traktime/entries", { ...body, source: "ae_agent" }, opts);
+export const updateEntry = (entryId, body, opts = {}) =>
+  tkPatch(`/api/traktime/entries/${encodeURIComponent(entryId)}`, { ...body, source: "ae_agent" }, opts);
+export const deleteEntry = (entryId, opts = {}) =>
+  tkDelete(`/api/traktime/entries/${encodeURIComponent(entryId)}`, opts);
 export const getDayReport = (query, opts = {}) =>
   tkGet("/api/traktime/day-report", { ...opts, query });
 export const getMonthReport = (query, opts = {}) =>

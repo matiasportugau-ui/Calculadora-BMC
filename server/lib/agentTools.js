@@ -21,6 +21,8 @@ import {
   stopTimer as tkStopTimer,
   listEntries as tkListEntries,
   createEntry as tkCreateEntry,
+  updateEntry as tkUpdateEntry,
+  deleteEntry as tkDeleteEntry,
   getDayReport as tkDayReport,
   getMonthReport as tkMonthReport,
   getBillableReport as tkBillable,
@@ -973,6 +975,37 @@ export const AGENT_TOOLS = [
         billable: { type: "boolean", description: "¿Facturable? (default true)" },
       },
       required: ["project_id", "started_at", "stopped_at"],
+    },
+  },
+  {
+    name: "traktime_update_entry",
+    description:
+      "TraKtiMe: actualiza una entrada existente (descripción, proyecto, tiempos, billable, tags). ACCIÓN DE ESCRITURA: requiere confirmación explícita. Falla si la entrada está facturada (locked).",
+    input_schema: {
+      type: "object",
+      properties: {
+        entry_id: { type: "string", description: "UUID de la entrada" },
+        project_id: { type: "string", description: "Nuevo proyecto (opcional)" },
+        task_id: { type: "string", description: "Nueva tarea (opcional)" },
+        description: { type: "string", description: "Nueva descripción (opcional)" },
+        started_at: { type: "string", description: "Nuevo inicio ISO 8601 (opcional)" },
+        stopped_at: { type: "string", description: "Nuevo fin ISO 8601 (opcional)" },
+        billable: { type: "boolean", description: "¿Facturable? (opcional)" },
+        tags: { type: "array", items: { type: "string" }, description: "Tags (opcional)" },
+      },
+      required: ["entry_id"],
+    },
+  },
+  {
+    name: "traktime_delete_entry",
+    description:
+      "TraKtiMe: elimina una entrada de tiempo. ACCIÓN DE ESCRITURA DESTRUCTIVA: requiere confirmación explícita. Falla si está facturada (locked).",
+    input_schema: {
+      type: "object",
+      properties: {
+        entry_id: { type: "string", description: "UUID de la entrada a borrar" },
+      },
+      required: ["entry_id"],
     },
   },
   {
@@ -2341,6 +2374,33 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         return JSON.stringify({ ok: true, entry: r.body?.entry || null });
       }
 
+      if (name === "traktime_update_entry") {
+        { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+        const entryId = input?.entry_id;
+        if (!entryId) return JSON.stringify({ ok: false, error: "entry_id requerido" });
+        const body = {};
+        for (const k of ["project_id", "task_id", "description", "started_at", "stopped_at"]) {
+          if (input[k] != null) body[k] = input[k];
+        }
+        if (input.billable != null) body.billable = !!input.billable;
+        if (Array.isArray(input.tags)) body.tags = input.tags.map(String);
+        if (!Object.keys(body).length) {
+          return JSON.stringify({ ok: false, error: "al menos un campo a actualizar requerido" });
+        }
+        const r = await tkUpdateEntry(entryId, body, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({ ok: true, entry: r.body?.entry || null });
+      }
+
+      if (name === "traktime_delete_entry") {
+        { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+        const entryId = input?.entry_id;
+        if (!entryId) return JSON.stringify({ ok: false, error: "entry_id requerido" });
+        const r = await tkDeleteEntry(entryId, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({ ok: true, deleted: true, entry_id: entryId });
+      }
+
       if (name === "traktime_day_report") {
         if (!input?.date) return JSON.stringify({ ok: false, error: "date (YYYY-MM-DD) requerido" });
         const query = { date: input.date };
@@ -2378,6 +2438,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
 
       if (name === "traktime_suggest_entry") {
         // Read-only context gather for an AI-proposed draft (no write).
+        // Includes last_project for low-friction "continue last" suggestions (P1.4).
         const lookbackHours = Math.max(1, Math.min(168, Number(input?.lookback_hours) || 24));
         const fromIso = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
         const [cur, recent] = await Promise.all([
@@ -2388,20 +2449,34 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
           return JSON.stringify({ ok: false, error: cur.error || "no autorizado" });
         }
         const e = cur.body?.running;
+        const recentList = recent.body?.entries || [];
+        const last = recentList[0] || null;
         return JSON.stringify({
           ok: true,
           now: new Date().toISOString(),
           running_timer: e
             ? { project_id: e.project_id, project_name: e.project_name, started_at: e.started_at }
             : null,
-          recent_entries: (recent.body?.entries || []).slice(0, 20).map((x) => ({
+          last_project: last
+            ? {
+                project_id: last.project_id,
+                project_name: last.project_name,
+                client_name: last.client_name || null,
+                description: last.description || null,
+              }
+            : e
+              ? { project_id: e.project_id, project_name: e.project_name }
+              : null,
+          recent_entries: recentList.slice(0, 20).map((x) => ({
+            entry_id: x.entry_id,
+            project_id: x.project_id,
             project_name: x.project_name,
             description: x.description,
             started_at: x.started_at,
             stopped_at: x.stopped_at,
             duration_seconds: x.duration_seconds,
           })),
-          note: "Proponé un borrador de entrada/categorización al usuario y pedí confirmación antes de escribir.",
+          note: "Proponé un borrador de entrada/categorización al usuario y pedí confirmación antes de escribir. Preferí last_project si no hay timer corriendo.",
         });
       }
 
