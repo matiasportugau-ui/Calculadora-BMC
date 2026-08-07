@@ -126,6 +126,23 @@ async function main() {
     assert.equal(confirmed.reparto.repartoNo, repartoNo);
     assert.ok(confirmed.reparto.drivePlan?.path, "drivePlan.path reserved");
 
+    // Re-confirm must not overwrite immutable snapshot
+    const reConfRes = await fetch(`${base}/api/repartos/${encodeURIComponent(id)}/confirm`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        actor: "integration-test-evil",
+        payload: {
+          schema: "bmc-reparto-payload-v1",
+          stops: [{ id: "sX", cliente: "OVERWRITE", orderId: "999", orden: 1 }],
+          truckL: 12,
+        },
+      }),
+    });
+    const reConf = await reConfRes.json();
+    assert.equal(reConfRes.status, 409, `re-confirm must be 409, got ${reConfRes.status} ${JSON.stringify(reConf)}`);
+    assert.equal(reConf.error, "immutable");
+
     // GET by id
     const getRes = await fetch(`${base}/api/repartos/${encodeURIComponent(repartoNo)}`, {
       headers: { Authorization: `Bearer ${apiAuthToken}` },
@@ -134,6 +151,10 @@ async function main() {
     assert.equal(getRes.status, 200);
     assert.equal(got.reparto.status, "coordinado");
     assert.ok(Array.isArray(got.events) && got.events.some((e) => e.type === "coordination.confirmed"));
+    // Original confirmed stops must remain (not OVERWRITE)
+    const stopClients = (got.reparto.payload?.stops || []).map((s) => s.cliente);
+    assert.ok(stopClients.includes("Alfredo Nario"), "snapshot preserved");
+    assert.ok(!stopClients.includes("OVERWRITE"), "re-confirm must not mutate payload");
 
     // list
     const listRes = await fetch(`${base}/api/repartos?limit=5`, {

@@ -5,6 +5,7 @@ import {
   nextRepartoSeq,
   allocateRepartoNo,
   repartoDateKey,
+  calendarDateKeyFromDb,
 } from "../src/utils/logistica/repartoNumber.js";
 
 let n = 0;
@@ -28,5 +29,15 @@ ok("allocate sequence");
 
 assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(repartoDateKey()));
 ok("date key");
+
+// node-pg DATE → UTC midnight must keep calendar day (not Montevideo -1 day)
+assert.equal(calendarDateKeyFromDb(new Date("2026-08-01T00:00:00.000Z")), "2026-08-01");
+assert.equal(calendarDateKeyFromDb(new Date("2026-01-01T00:00:00.000Z")), "2026-01-01");
+assert.equal(calendarDateKeyFromDb("2026-08-07"), "2026-08-07");
+assert.equal(calendarDateKeyFromDb("2026-08-07T00:00:00.000Z"), "2026-08-07");
+assert.equal(calendarDateKeyFromDb(null), null);
+// Contrast: wall-clock helper shifts UTC-midnight DATE in UY
+assert.equal(repartoDateKey(new Date("2026-08-01T00:00:00.000Z")), "2026-07-31");
+ok("calendarDateKeyFromDb vs wall-clock");
 
 console.log(`\nrepartoNumber: ${n} passed`);
