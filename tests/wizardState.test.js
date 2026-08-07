@@ -98,8 +98,9 @@ console.log("wizardState");
 {
   const next = applyDefaultPickupToStops([{ id: "1" }, { id: "2", pickupPointId: "x" }], "def");
   assert.equal(next[0].pickupPointId, "def");
-  assert.equal(next[1].pickupPointId, "x");
-  ok("applyDefaultPickupToStops");
+  // Single-mode must overwrite stale per-stop pickups (wrong warehouse otherwise).
+  assert.equal(next[1].pickupPointId, "def");
+  ok("applyDefaultPickupToStops overwrites");
 }
 
 {
