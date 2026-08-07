@@ -272,3 +272,49 @@ export function applyDefaultPickupToStops(stops, defaultPickupPointId) {
     pickupPointId: id,
   }));
 }
+
+/**
+ * Whether a StepLevantes wizard patch must force-apply defaultPickup onto stops.
+ * Covers: changing default in single mode, or toggling multi→single.
+ * @param {object} [patch]
+ * @param {object} [wizard] current wizard before patch
+ */
+export function shouldApplyDefaultPickupFromPatch(patch = {}, wizard = {}) {
+  const nextSingle =
+    patch.singlePickup !== undefined ? patch.singlePickup !== false : wizard.singlePickup !== false;
+  if (!nextSingle) return false;
+  const nextDefault =
+    patch.defaultPickupPointId !== undefined
+      ? String(patch.defaultPickupPointId || "").trim()
+      : String(wizard.defaultPickupPointId || "").trim();
+  if (!nextDefault) return false;
+  if (patch.defaultPickupPointId !== undefined) return true;
+  if (patch.singlePickup === true) return true;
+  return false;
+}
+
+/**
+ * Persist route-prep stop mutations (single-mode pickup overwrite + newly parsed geo)
+ * back into app `stops` state. Without this, recalculate builds the route with the new
+ * levante while React/cloud drafts keep the stale warehouse id.
+ * @param {object[]} prevStops
+ * @param {object[]} stopsForRoute
+ */
+export function mergeStopsAfterRoutePrep(prevStops, stopsForRoute) {
+  if (!Array.isArray(prevStops)) return [];
+  if (!Array.isArray(stopsForRoute)) return prevStops;
+  return prevStops.map((s) => {
+    const next = stopsForRoute.find((x) => x.id === s.id);
+    if (!next) return s;
+    const nextPickup = next.pickupPointId != null ? String(next.pickupPointId) : "";
+    const prevPickup = s.pickupPointId != null ? String(s.pickupPointId) : "";
+    const pickupChanged = Boolean(nextPickup) && nextPickup !== prevPickup;
+    const geoChanged = Boolean(next.geo) && !s.geo;
+    if (!pickupChanged && !geoChanged) return s;
+    return {
+      ...s,
+      ...(pickupChanged ? { pickupPointId: next.pickupPointId } : {}),
+      ...(geoChanged ? { geo: next.geo } : {}),
+    };
+  });
+}
