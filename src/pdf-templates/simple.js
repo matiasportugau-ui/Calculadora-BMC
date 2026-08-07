@@ -52,7 +52,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 .bank{background:${BRAND};color:#fff;padding:3px 6px;border-radius:3px;font-size:7pt;margin-bottom:2mm}
 .bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px 6px}
 .ftr{font-size:6.5pt;color:#64748b;border-top:0.5pt solid #cbd5e1;padding-top:2mm;margin-top:2mm;display:flex;justify-content:space-between}
+.irr-note{background:#fff7ed;border-left:2.5pt solid #c2410c;padding:3px 6px;margin-bottom:2mm;font-size:7pt;color:#9a3412}
+.irr-tbl{width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:2mm}
+.irr-tbl th{background:#fff7ed;padding:2px 4px;text-align:left;font-weight:600;color:#9a3412;border-bottom:0.5pt solid #fed7aa}
+.irr-tbl td{padding:2px 4px;border-bottom:0.4pt solid #ffedd5;font-variant-numeric:tabular-nums}
+.irr-tbl td.num{text-align:right}
 `;
+
+function renderIrregularSchedule(sched) {
+  if (!sched?.strips?.length) return '';
+  const rows = sched.strips.map(s => {
+    const zone = s.zoneGi != null && Number.isFinite(Number(s.zoneGi))
+      ? `Z${Number(s.zoneGi) + 1}`
+      : '—';
+    return `<tr><td>${esc(s.id)}</td><td class="num">${esc(zone)}</td><td class="num">${Number(s.L_order).toFixed(2)}</td><td class="num">${Number(s.L_cover).toFixed(2)}</td><td>${esc(s.source || 'auto')}</td></tr>`;
+  }).join('');
+  const note = sched.note
+    ? `<div class="irr-note">${esc(sched.note)}</div>`
+    : `<div class="irr-note">Cortes oblicuos en obra — paneles con extremos rectos (largos escalonados).</div>`;
+  const totals = (sched.areaOrdered != null || sched.areaWasteSite != null)
+    ? `<div style="font-size:7pt;color:#9a3412;margin:-1mm 0 2mm">Pedido ${sched.areaOrdered != null ? Number(sched.areaOrdered).toFixed(2) : '—'} m² · descarte obra ${sched.areaWasteSite != null ? Number(sched.areaWasteSite).toFixed(2) : '—'} m²</div>`
+    : '';
+  return `${note}
+  <div style="font-size:7pt;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:.04em;margin-bottom:1mm">Largos escalonados (fábrica)</div>
+  <table class="irr-tbl"><thead><tr><th>Panel</th><th>Zona</th><th class="num">L pedido (m)</th><th class="num">L cover (m)</th><th>Fuente</th></tr></thead><tbody>${rows}</tbody></table>
+  ${totals}`;
+}
 
 function renderBomDetailRows(bomDetailGroups) {
   return bomDetailGroups.map(g => {
@@ -135,6 +160,7 @@ export function render(q) {
 
   <div class="scope"><b>Alcance:</b> ${esc(q.panelDescLine)}</div>
   ${kpiParts ? `<div class="kpi">${esc(kpiParts)}</div>` : ''}
+  ${renderIrregularSchedule(q.irregularSchedule)}
 
   <table class="bom"><thead><tr>
     <th style="text-align:left">Descripción</th>

@@ -15,6 +15,13 @@
   },
   "residual_gaps": [
     { "id": "G-REM-01", "severity": "P2", "note": "Remnant tray deferred" },
-    { "id": "G-PDF-01", "severity": "P2", "note": "PDF schedule rows deferred" }
-  ]
+    { "id": "G-PDF-02", "severity": "P2", "note": "Schedule rows only on simple PDF family; other templates optional" },
+    { "id": "G-DOS-AGUAS", "severity": "P2", "note": "dos_aguas still ignores irregular (rectangular halves)" }
+  ],
+  "v1_1": {
+    "pdf_simple_schedule": "DONE",
+    "multi_zone_by_gi": "DONE",
+    "tests": 57
+  }
 }
+
