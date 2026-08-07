@@ -85,6 +85,16 @@ export function statusOnFirstStop(currentStatus) {
 }
 
 /**
+ * Confirm is only legal from En Coordinación.
+ * Identity (coordinado→coordinado) is intentionally NOT allowed — confirmed
+ * snapshots are immutable (applyRepartoTransition treats a===b as ok).
+ * @param {string} status
+ */
+export function canConfirmReparto(status) {
+  return normalizeRepartoStatus(status) === "en_coordinacion";
+}
+
+/**
  * Label for UI chips
  * @param {string} status
  */

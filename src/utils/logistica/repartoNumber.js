@@ -15,6 +15,26 @@ export function repartoDateKey(date = new Date()) {
 }
 
 /**
+ * Calendar day from a Postgres DATE / YYYY-MM-DD value.
+ * node-pg returns DATE as JS Date at UTC midnight for that calendar day —
+ * do NOT run those through Montevideo wall-clock (shifts day near UTC midnight).
+ * @param {string|Date|null|undefined} value
+ * @returns {string|null} YYYY-MM-DD or null if unusable
+ */
+export function calendarDateKeyFromDb(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "string") {
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
+    if (m) return m[1];
+    return null;
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+/**
  * @param {string} ymd
  * @param {number} seq 1-based
  */

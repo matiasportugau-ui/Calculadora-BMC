@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — reparto re-confirm immutable):** `canConfirmReparto` + atomic UPDATE WHERE status=en_coordinacion; `calendarDateKeyFromDb` for pg DATE. Rebased from #905.
+
 **2026-08-07 (fix — Free-Drag long-press race Bug AO):** `armedPressRef` + `canFireLongPressDrag` so timer cannot beginDrag after pointerup; slide cancel via `shouldCancelLongPress`. Rebased from #907.
 
 **2026-08-07 (fix — Envíos Btn javascript: href XSS):** `resolveSafeBtnHref` + Btn refuse non-http(s); list/stop PDF/Mapa use `safeHttpUrl`. Rebased from #892.

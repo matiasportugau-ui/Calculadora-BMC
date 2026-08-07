@@ -7,10 +7,11 @@ import { randomUUID } from "node:crypto";
 import { getEnviosPool, ensureEnviosSchema } from "../lib/enviosDb.js";
 import {
   allocateRepartoNo,
+  calendarDateKeyFromDb,
   repartoDateKey,
 } from "../../src/utils/logistica/repartoNumber.js";
 import {
-  applyRepartoTransition,
+  canConfirmReparto,
   normalizeRepartoStatus,
   buildRepartoPayload,
   stopSummariesForReparto,
@@ -295,9 +296,15 @@ export default function createRepartosRouter(config, logger) {
       const { rows } = await pool.query(`select * from repartos where id = $1 or reparto_no = $1`, [id]);
       if (!rows.length) return res.status(404).json({ ok: false, error: "not_found" });
       const cur = rows[0];
-      const tr = applyRepartoTransition(cur.status, "coordinado");
-      if (!tr.ok) {
-        return res.status(400).json({ ok: false, error: "invalid_transition", message: tr.error });
+      // Confirmed snapshots are immutable — identity transition (coordinado→coordinado) must NOT rewrite payload.
+      if (!canConfirmReparto(cur.status)) {
+        return res.status(409).json({
+          ok: false,
+          error: "immutable",
+          message: "Reparto ya confirmado/cerrado — no se puede re-confirmar. Creá uno nuevo.",
+          status: normalizeRepartoStatus(cur.status),
+          statusLabel: repartoStatusLabel(cur.status),
+        });
       }
 
       const payloadIn = body.payload && typeof body.payload === "object" ? body.payload : cur.payload || {};
@@ -306,7 +313,8 @@ export default function createRepartosRouter(config, logger) {
         return res.status(400).json({ ok: false, error: "no_stops", message: "No hay paradas para coordinar" });
       }
 
-      const ymd = repartoDateKey(cur.delivery_date || undefined);
+      // delivery_date from node-pg is a Date at UTC midnight — use calendar key, not UY wall clock
+      const ymd = calendarDateKeyFromDb(cur.delivery_date) || repartoDateKey();
       const drivePlan = {
         rootEnv: "DRIVE_REPARTOS_FOLDER_ID",
         path: `_Repartos/${ymd.slice(0, 4)}/${ymd.slice(0, 7)}/${cur.reparto_no}`,
@@ -318,10 +326,11 @@ export default function createRepartosRouter(config, logger) {
         note: "Drive materialization: phase 3 — path reserved in snapshot",
       };
 
+      const confirmedAt = new Date().toISOString();
       const payload = {
         ...payloadIn,
         schema: "bmc-reparto-payload-v1",
-        confirmedAt: new Date().toISOString(),
+        confirmedAt,
         stopsSummary: stopSummariesForReparto(stops),
         drivePlan,
       };
@@ -330,7 +339,8 @@ export default function createRepartosRouter(config, logger) {
       // Soft Drive: store planned path; real upload when DRIVE_REPARTOS_FOLDER_ID wired
       const folderUrl = cur.drive_folder_url || null;
 
-      await pool.query(
+      // Atomic gate: only one confirm wins; concurrent/re-confirm cannot overwrite snapshot
+      const upd = await pool.query(
         `update repartos set
            status = 'coordinado',
            payload = $2::jsonb,
@@ -338,9 +348,17 @@ export default function createRepartosRouter(config, logger) {
            revision = $3,
            updated_at = now(),
            drive_folder_url = coalesce(drive_folder_url, $4)
-         where id = $1`,
+         where id = $1 and status = 'en_coordinacion'
+         returning id, revision, confirmed_at`,
         [cur.id, JSON.stringify(payload), nextRev, folderUrl],
       );
+      if (!upd.rowCount) {
+        return res.status(409).json({
+          ok: false,
+          error: "immutable",
+          message: "Reparto ya confirmado/cerrado — no se puede re-confirmar. Creá uno nuevo.",
+        });
+      }
       await insertEvent(
         cur.id,
         "coordination.confirmed",
@@ -357,7 +375,7 @@ export default function createRepartosRouter(config, logger) {
           repartoNo: cur.reparto_no,
           status: "coordinado",
           statusLabel: repartoStatusLabel("coordinado"),
-          revision: nextRev,
+          revision: upd.rows[0]?.revision ?? nextRev,
           confirmedAt: payload.confirmedAt,
           drivePlan,
           stopsSummary: payload.stopsSummary,
