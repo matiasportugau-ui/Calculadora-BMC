@@ -61,6 +61,9 @@ export function buildEnviosDraft(state, opts = {}) {
     cargoLayoutMode: state.cargoLayoutMode === "manual" ? "manual" : "auto",
     manualPkgOrderKeys: Array.isArray(state.manualPkgOrderKeys) ? state.manualPkgOrderKeys : [],
     rowOverrides: state.rowOverrides && typeof state.rowOverrides === "object" ? state.rowOverrides : {},
+    freeDragEnabled: state.freeDragEnabled === true,
+    freePositions:
+      state.freePositions && typeof state.freePositions === "object" ? state.freePositions : {},
     transportistas: Array.isArray(state.transportistas) ? state.transportistas : [],
     camionesCat: Array.isArray(state.camionesCat) ? state.camionesCat : [],
     priceHistory: Array.isArray(state.priceHistory) ? state.priceHistory : [],
@@ -115,6 +118,8 @@ export function parseEnviosDraftPayload(raw) {
       cargoLayoutMode: p.cargoLayoutMode === "manual" ? "manual" : "auto",
       manualPkgOrderKeys: Array.isArray(p.manualPkgOrderKeys) ? p.manualPkgOrderKeys : [],
       rowOverrides: p.rowOverrides && typeof p.rowOverrides === "object" ? p.rowOverrides : {},
+      freeDragEnabled: p.freeDragEnabled === true,
+      freePositions: p.freePositions && typeof p.freePositions === "object" ? p.freePositions : {},
       transportistas: Array.isArray(p.transportistas) ? p.transportistas : [],
       camionesCat: Array.isArray(p.camionesCat) ? p.camionesCat : [],
       priceHistory: Array.isArray(p.priceHistory) ? p.priceHistory : [],

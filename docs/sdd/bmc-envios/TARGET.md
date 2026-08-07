@@ -46,7 +46,8 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 | P2 | Geocode stop → `stop.geo` + map pin | **DONE** `geocode.js` + `POST /api/envios/geocode` |
 | P2 | Parse lat,lng / Maps URL without API | **DONE** |
 | P2 | Trip air-km legs (haversine) | **DONE** `tripLegDistances` |
-| P2b | Google Distance Matrix / TSP | **DEFERRED** 2026-Q4 (haversine + label “km aire”) |
+| P2b | Road route + optimize (OSRM; was “Matrix/TSP”) | **SPEC** → [`SDD-GEO-MAPS.md`](./SDD-GEO-MAPS.md) (Leaflet + MapPicker + RouteOptimizer) |
+| P2c | Quote paso 10 MapPicker / MiniMap / DeliveryPoint | **SPEC** → [`SDD-GEO-MAPS.md`](./SDD-GEO-MAPS.md) |
 | P5 | Durable draft by ENV number in PG | **DONE** `envios_drafts` + PUT/GET |
 | P5 | UI Save/Load nube | **DONE** `/logistica` header |
 | P5 | localStorage offline cache | **DONE** (primary offline) |
@@ -57,7 +58,8 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 ## Non-goals (Core)
 
 - SaaS courier multi-modal global  
-- Distance Matrix / isochrones / TSP (roadmap P2b)  
+- Isochrones / multi-vehicle VRP / live GPS tracking  
+- Google Distance Matrix billing (superseded by OSRM in SDD-GEO-MAPS unless ADR-017 reversed)  
 - Replacing transportista driver trips with ENV drafts  
 - Sustituir tarifa panel-zona por CBM puro sin ADR  
 

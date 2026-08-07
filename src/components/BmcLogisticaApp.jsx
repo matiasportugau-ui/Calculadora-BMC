@@ -18,6 +18,11 @@ import {
   ROW_W,
 } from "../utils/logistica/cargoPacking.js";
 import {
+  formatPackageDimsLabel,
+  packagePhysicalDims,
+  packageRowYOffset,
+} from "../utils/logistica/packageDims.js";
+import {
   loadBridgePayload,
   clearBridgePayload,
   bridgePayloadToStops,
@@ -39,7 +44,17 @@ import { buildRemitoSimpleModel, formatM3 } from "../utils/logistica/remitoPacka
 import {
   applyPackageLayoutChange,
   findStackNeighbors,
+  PANEL_ON_PROFILE_REJECT_ES,
 } from "../utils/logistica/packageDrop.js";
+import {
+  PANEL_ON_PROFILE_RULE_ES,
+} from "../utils/logistica/stackConstraints.js";
+import {
+  applyFreePositionsToCargo,
+  setFreePosition,
+  clearFreePosition,
+  normalizeFreePositionsMap,
+} from "../utils/logistica/freeDragLayout.js";
 import {
   buildLoadPlanPrintModel,
 } from "../utils/logistica/loadPlanPrintModel.js";
@@ -71,8 +86,16 @@ import {
 import { safeHttpUrl, safeTelUrl } from "../utils/logistica/safeExternalUrl.js";
 import PackageLayoutList from "./logistica/PackageLayoutList.jsx";
 import EnviosDraftBrowser from "./logistica/EnviosDraftBrowser.jsx";
-import { mapVentasRowV2 } from "../utils/logistica/ventasSheetMap.js";
+import {
+  mapVentasRowV2,
+  filterVentasLogisticaCandidates,
+  labelVentasCandidate,
+} from "../utils/logistica/ventasSheetMap.js";
 import { inferCargoFromEncargoAndSheet } from "../utils/logistica/cargoFromEncargo.js";
+import {
+  matchAdminQuotes,
+  normalizeAdminQuoteRow,
+} from "../utils/logistica/adminQuoteMatch.js";
 
 const TRUCK_W = 2.4;
 
@@ -195,13 +218,31 @@ function buildAccessoryPackageConfig(stop, accProfiles = {}, options = {}) {
   const preset = accessoryPresetFor(stop?.accesorios || []);
   const current = stop?.accPackage || {};
   const preferCurrent = options.preferCurrent !== false;
+  const panelLen = getStopLongestLength(stop);
+  const manual = Boolean(current.manualDims);
+  // When not manual, always track longest panel (mkStop default longitud:3 must not stick).
+  const longitud = manual
+    ? clamp(safeNum(preferCurrent ? current.longitud : undefined, saved?.longitud || panelLen), 1, 14)
+    : panelLen;
   return {
     enabled: (stop?.accesorios || []).length > 0,
-    longitud: safeNum(preferCurrent ? current.longitud : undefined, saved?.longitud || getStopLongestLength(stop)),
-    ancho: clamp(safeNum(preferCurrent ? current.ancho : undefined, saved?.ancho || preset.ancho), 0.2, 0.5),
-    alto: clamp(safeNum(preferCurrent ? current.alto : undefined, saved?.alto || preset.alto), 0.1, 0.5),
-    foamMm: clamp(safeNum(preferCurrent ? current.foamMm : undefined, saved?.foamMm || DEFAULT_ACC_FOAM_MM), 0, 100),
-    manualDims: Boolean(current.manualDims),
+    longitud,
+    ancho: clamp(
+      safeNum(preferCurrent && manual ? current.ancho : undefined, saved?.ancho || preset.ancho),
+      0.15,
+      0.6,
+    ),
+    alto: clamp(
+      safeNum(preferCurrent && manual ? current.alto : undefined, saved?.alto || preset.alto),
+      0.1,
+      0.5,
+    ),
+    foamMm: clamp(
+      safeNum(preferCurrent && manual ? current.foamMm : undefined, saved?.foamMm || DEFAULT_ACC_FOAM_MM),
+      0,
+      100,
+    ),
+    manualDims: manual,
     profileKey: key,
     profileLabel: saved ? `Guardado: ${key}` : preset.label,
   };
@@ -248,13 +289,22 @@ const mkStop = (i) => ({
   accesorios: [],
   accPackage: {
     enabled: false,
-    longitud: 3,
+    /** null → resolve to longest panel when packing (not a sticky 3m default) */
+    longitud: null,
     ancho: DEFAULT_ACC_W,
     alto: DEFAULT_ACC_H,
     foamMm: DEFAULT_ACC_FOAM_MM,
     manualDims: false,
     profileKey: "",
     profileLabel: "General",
+  },
+  /** POD / confirm delivery (local draft; optional cloud draft later) */
+  entregaConfirm: {
+    confirmed: false,
+    confirmedAt: null,
+    comments: "",
+    /** { name, mime, dataUrl, size, at } | null — base64 preview, keep small */
+    proof: null,
   },
 });
 const mkPanel = () => ({ id: uid(), tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 1 });
@@ -333,19 +383,87 @@ function toFetchablePdfUrl(url) {
   return raw;
 }
 
-async function inferPanelsAndAccessoriesFromPdf(url) {
+/**
+ * Phase B: try server adjunto proxy first (avoids Drive CORS), then browser fetch.
+ * @param {string} url
+ * @param {{ token?: string, apiBase?: string }} [opts]
+ */
+async function inferPanelsAndAccessoriesFromPdf(url, opts = {}) {
   const warnings = [];
   if (!url) return { paneles: [], accesorios: [], warnings };
 
+  const token =
+    opts.token ||
+    (typeof import.meta !== "undefined" && import.meta.env?.VITE_BMC_API_AUTH_TOKEN) ||
+    "";
+  const apiBase = opts.apiBase || (typeof getCalcApiBase === "function" ? getCalcApiBase() : "");
+
+  // 1) Server proxy
+  if (token && apiBase) {
+    try {
+      const proxyRes = await fetch(`${apiBase}/api/envios/adjunto-fetch`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url }),
+      });
+      const j = await proxyRes.json().catch(() => ({}));
+      if (proxyRes.ok && j.ok && j.base64) {
+        const binary = atob(j.base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        const buffer = bytes.buffer;
+        const ctype = String(j.contentType || "").toLowerCase();
+        if (ctype.includes("pdf") || /\.pdf/i.test(url) || bytes[0] === 0x25) {
+          const pdf = await extractTextFromPdfArrayBuffer(buffer, { maxPages: 20 });
+          const parsed = parseLogisticaFromAdjuntoText(pdf.text || "");
+          return {
+            paneles: parsed.paneles,
+            accesorios: parsed.accesorios,
+            warnings: ["Adjunto vía proxy API.", ...pdf.warnings, ...parsed.warnings],
+            source: "adjunto_proxy",
+          };
+        }
+        const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+        const parsed = parseLogisticaFromAdjuntoText(text || "");
+        return {
+          paneles: parsed.paneles,
+          accesorios: parsed.accesorios,
+          warnings: ["Adjunto texto vía proxy API.", ...parsed.warnings],
+          source: "adjunto_proxy",
+        };
+      }
+      if (j.error) {
+        warnings.push(`Proxy adjunto: ${j.error}${j.message ? ` (${j.message})` : ""}`);
+      }
+    } catch (e) {
+      warnings.push(`Proxy adjunto falló: ${e.message}`);
+    }
+  }
+
+  // 2) Browser direct (Dropbox / public)
   const fetchUrl = toFetchablePdfUrl(url);
   let res;
   try {
     res = await fetch(fetchUrl);
   } catch (e) {
-    return { paneles: [], accesorios: [], warnings: [`No se pudo descargar el adjunto: ${e.message}`] };
+    return {
+      paneles: [],
+      accesorios: [],
+      warnings: [...warnings, `No se pudo descargar el adjunto: ${e.message}`],
+    };
   }
   if (!res.ok) {
-    return { paneles: [], accesorios: [], warnings: [`Adjunto no accesible (${res.status}). Revisar permisos del PDF/Drive.`] };
+    return {
+      paneles: [],
+      accesorios: [],
+      warnings: [
+        ...warnings,
+        `Adjunto no accesible (${res.status}). Revisar permisos del PDF/Drive.`,
+      ],
+    };
   }
 
   const contentType = (res.headers.get("content-type") || "").toLowerCase();
@@ -356,7 +474,8 @@ async function inferPanelsAndAccessoriesFromPdf(url) {
     return {
       paneles: parsed.paneles,
       accesorios: parsed.accesorios,
-      warnings: [...pdf.warnings, ...parsed.warnings],
+      warnings: [...warnings, ...pdf.warnings, ...parsed.warnings],
+      source: "adjunto_browser",
     };
   }
 
@@ -365,7 +484,8 @@ async function inferPanelsAndAccessoriesFromPdf(url) {
   return {
     paneles: parsed.paneles,
     accesorios: parsed.accesorios,
-    warnings: parsed.warnings,
+    warnings: [...warnings, ...parsed.warnings],
+    source: "adjunto_browser",
   };
 }
 
@@ -524,10 +644,80 @@ function stopPackageCode(stop, index) {
 }
 
 function packageSummary(pkg) {
-  if (pkg.kind === "accessory") {
-    return `${pkg.tipo} ${pkg.len}m · ${(pkg.width * 100).toFixed(0)}x${(pkg.contentHeight * 100).toFixed(0)}cm + espuma ${pkg.foamMm}mm`;
+  if (pkg.kind === "accessory" || String(pkg.tipo || "").toUpperCase() === "ACCESORIOS") {
+    const d = packagePhysicalDims(pkg);
+    const contentH = Number(pkg.contentHeight);
+    const hCm = Number.isFinite(contentH)
+      ? (contentH * 100).toFixed(0)
+      : ((d.H - (Number(pkg.foamMm) || 0) / 1000) * 100).toFixed(0);
+    return `${pkg.tipo} ${d.L}m · ${(d.W * 100).toFixed(0)}×${hCm}cm + espuma ${pkg.foamMm ?? 50}mm`;
   }
   return `${pkg.n}x${pkg.tipo} ${pkg.esp}mm/${pkg.len}m`;
+}
+
+const detailToggleStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 6,
+  width: "100%",
+  textAlign: "left",
+  border: "1px solid rgba(255,255,255,.12)",
+  borderRadius: 8,
+  padding: "8px 10px",
+  color: "#fff",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const detailBodyStyle = {
+  background: "rgba(0,0,0,.2)",
+  borderRadius: 8,
+  padding: 10,
+  fontSize: 12,
+  lineHeight: 1.45,
+  display: "grid",
+  gap: 4,
+};
+
+/** Compact collapsible section for stop editor / package detail */
+function FormSection({ title, summary, defaultOpen = false, children, tone }) {
+  return (
+    <details
+      open={defaultOpen}
+      style={{
+        border: `1px solid ${T.border}`,
+        borderRadius: 10,
+        marginBottom: 10,
+        background: tone === "success" ? "#f0fdf4" : tone === "warn" ? "#fffbeb" : T.surfaceAlt || "#f8fafc",
+        overflow: "hidden",
+      }}
+    >
+      <summary
+        style={{
+          cursor: "pointer",
+          listStyle: "none",
+          padding: "10px 12px",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: 8,
+          fontWeight: 700,
+          fontSize: 13,
+          color: T.brand || T.text,
+          userSelect: "none",
+        }}
+      >
+        <span style={{ flex: "1 1 140px" }}>{title}</span>
+        {summary ? (
+          <span style={{ fontWeight: 500, fontSize: 11, color: T.muted, flex: "2 1 180px" }}>{summary}</span>
+        ) : null}
+      </summary>
+      <div style={{ padding: "0 12px 12px", borderTop: `1px solid ${T.border}` }}>{children}</div>
+    </details>
+  );
 }
 
 function getStopBadges(stop) {
@@ -683,7 +873,21 @@ function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
   );
 }
 
-function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackageRow, onForcePackageStack }) {
+function DiagramPanel({
+  cargo,
+  truckL,
+  remitoNumero,
+  info,
+  stops,
+  onForcePackageRow,
+  onForcePackageStack,
+  onUpdateStop,
+  freeDragEnabled = false,
+  onFreeDragEnd = null,
+  onClearFreeDrag = null,
+  onToggleFreeDrag = null,
+  freeDragCount = 0,
+}) {
   const { placed, rowH, stopUnloadOrder, strategy, stacksByRow } = cargo;
   const { minXV, maxXV, placedView } = bedViewExtents(placed, truckL);
   const shiftX = -minXV;
@@ -697,6 +901,7 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
   });
   const [selectedPkgId, setSelectedPkgId] = useState(null);
   const [locExpanded, setLocExpanded] = useState(false);
+  const [detailOpen, setDetailOpen] = useState({ cliente: false, entrega: false, confirm: false });
   const OX = 60;
   const OY = 85;
   const viewW = Math.max(420, OX + (totalLen * C30 + TRUCK_W * C30) * ISX + 80);
@@ -741,11 +946,14 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
   const selectPkg = (pkg) => {
     setSelectedPkgId(pkg?.id || null);
     setLocExpanded(false);
+    setDetailOpen({ cliente: false, entrega: false, confirm: false });
   };
   const clearSelect = () => {
     setSelectedPkgId(null);
     setLocExpanded(false);
+    setDetailOpen({ cliente: false, entrega: false, confirm: false });
   };
+  const toggleDetail = (key) => setDetailOpen((p) => ({ ...p, [key]: !p[key] }));
 
   useEffect(() => {
     try {
@@ -794,6 +1002,21 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
           <Btn small variant="onDark" active={diagramView === "plan"} onClick={() => setDiagramView("plan")}>
             Plan carga
           </Btn>
+          {typeof onToggleFreeDrag === "function" ? (
+            <Btn
+              small
+              variant="onDark"
+              active={freeDragEnabled}
+              onClick={() => {
+                if (!freeDragEnabled && diagramView !== "webgl") setDiagramView("webgl");
+                onToggleFreeDrag(!freeDragEnabled);
+              }}
+              title="Activá Free-Drag para acomodar bultos a mano en 3D (bypass del motor)"
+            >
+              Free-Drag {freeDragEnabled ? "ON" : "OFF"}
+              {freeDragCount > 0 ? ` (${freeDragCount})` : ""}
+            </Btn>
+          ) : null}
           <Btn
             small
             variant="onDark"
@@ -826,15 +1049,26 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
             gap: 8,
           }}
         >
+          {/* Glance summary — always visible */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ minWidth: 0, flex: "1 1 200px" }}>
               <div style={{ fontWeight: 800, fontSize: 13 }}>
                 {packageLabelCompact(selectedPkg, bultoCounts)}
               </div>
-              <div style={{ color: "rgba(255,255,255,.7)", marginTop: 2 }}>
-                {selectedPkg.tipo || "—"} · Fila {selectedPkg.row === 0 ? "A" : "B"} ·{" "}
-                {selectedPkg.len?.toFixed(2)}m × {(selectedPkg.h * 100).toFixed(0)}cm
+              <div style={{ color: "rgba(255,255,255,.75)", marginTop: 2, lineHeight: 1.35 }}>
+                <b>{selectedPkg.tipo || "—"}</b>
+                {" · "}Fila {selectedPkg.row === 0 ? "A" : "B"}
+                {" · "}
+                {formatPackageDimsLabel(selectedPkg, { includeVol: true })}
                 {highlightKeys.size > 1 ? ` · ${highlightKeys.size} bultos del cliente` : ""}
+              </div>
+              <div style={{ color: "rgba(255,255,255,.55)", fontSize: 11, marginTop: 2 }}>
+                {selectedStop?.cliente || selectedPkg.sCli || "—"}
+                {" · #"}
+                {selectedPkg.sPed || selectedStop?.orderId || "—"}
+                {" · "}
+                {selectedStop?.estado || "Pendiente"}
+                {selectedStop?.zona ? ` · ${selectedStop.zona}` : ""}
               </div>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -874,97 +1108,215 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
             </div>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-              gap: 8,
-              background: "rgba(0,0,0,.15)",
-              borderRadius: 8,
-              padding: 8,
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: ".04em" }}>Contacto</div>
-              <div style={{ fontWeight: 600 }}>
-                {selectedStop?.contactoRecepcion || selectedStop?.cliente || selectedPkg.sCli || "—"}
-              </div>
-              {safeTelUrl(selectedStop?.telefono) ? (
-                <a href={safeTelUrl(selectedStop.telefono)} style={{ color: "#93c5fd", fontSize: 11 }}>
-                  {selectedStop.telefono}
-                </a>
-              ) : (
-                <span style={{ color: "rgba(255,255,255,.45)", fontSize: 11 }}>Sin teléfono</span>
-              )}
-            </div>
-            <div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: ".04em" }}>Ubicación</div>
-              <button
-                type="button"
-                onClick={() => setLocExpanded((v) => !v)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#fff",
-                  padding: 0,
-                  textAlign: "left",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  fontSize: 12,
-                }}
-              >
-                {locExpanded
-                  ? selectedStop?.direccion || "Sin dirección"
-                  : truncate(selectedStop?.direccion || "Sin dirección", 42)}{" "}
-                {selectedStop?.direccion ? (locExpanded ? "▴" : "▾") : ""}
-              </button>
-              {mapHref ? (
-                <div>
-                  <a href={mapHref} target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", fontSize: 11 }}>
-                    Abrir mapa ↗
-                  </a>
+          {/* Collapsible detail sections */}
+          <div style={{ display: "grid", gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => toggleDetail("cliente")}
+              style={{
+                ...detailToggleStyle,
+                background: detailOpen.cliente ? "rgba(0,0,0,.22)" : "rgba(0,0,0,.12)",
+              }}
+            >
+              <span>👤 Datos del cliente {detailOpen.cliente ? "▴" : "▾"}</span>
+              <span style={{ opacity: 0.7, fontWeight: 500, fontSize: 11 }}>
+                {selectedStop?.telefono || "sin tel"} · {truncate(selectedStop?.direccion || "sin dir", 28)}
+              </span>
+            </button>
+            {detailOpen.cliente ? (
+              <div style={detailBodyStyle}>
+                <div style={{ fontWeight: 700 }}>{selectedStop?.cliente || selectedPkg.sCli || "—"}</div>
+                <div>Pedido #{selectedPkg.sPed || selectedStop?.orderId || "—"}
+                  {selectedStop?.cotizacionId ? ` · Cot ${selectedStop.cotizacionId}` : ""}
+                  {selectedStop?.pickupId ? ` · Retiro ${selectedStop.pickupId}` : ""}
                 </div>
-              ) : null}
-            </div>
-            <div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: ".04em" }}>Documentos</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                {safeHttpUrl(selectedStop?.pdfLink) ? (
-                  <>
-                    <Btn small variant="onDark" href={safeHttpUrl(selectedStop.pdfLink)} target="_blank">
-                      Factura / PDF
-                    </Btn>
-                    <Btn
-                      small
-                      variant="onDark"
-                      href={safeHttpUrl(selectedStop.pdfLink)}
-                      target="_blank"
-                      style={{ fontSize: 11 }}
-                    >
-                      Descargar
-                    </Btn>
-                  </>
+                {safeTelUrl(selectedStop?.telefono) ? (
+                  <a href={safeTelUrl(selectedStop.telefono)} style={{ color: "#93c5fd" }}>{selectedStop.telefono}</a>
                 ) : (
-                  <span style={{ color: "rgba(255,255,255,.45)", fontSize: 11 }}>Sin PDF pedido</span>
+                  <span style={{ opacity: 0.5 }}>Sin teléfono</span>
                 )}
-                <Btn
-                  small
-                  variant="onDark"
-                  onClick={() => {
-                    if (typeof window !== "undefined") window.print();
-                  }}
-                >
-                  Remito (imprimir)
-                </Btn>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setLocExpanded((v) => !v)}
+                    style={{ background: "none", border: "none", color: "#fff", padding: 0, cursor: "pointer", fontWeight: 600 }}
+                  >
+                    {locExpanded ? selectedStop?.direccion || "Sin dirección" : truncate(selectedStop?.direccion || "Sin dirección", 48)}
+                  </button>
+                </div>
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", textTransform: "uppercase", letterSpacing: ".04em" }}>Estado</div>
-              <div style={{ fontWeight: 600 }}>{selectedStop?.estado || "—"}</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,.55)" }}>
-                Pedido {selectedPkg.sPed || selectedStop?.orderId || "—"}
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => toggleDetail("entrega")}
+              style={{
+                ...detailToggleStyle,
+                background: detailOpen.entrega ? "rgba(0,0,0,.22)" : "rgba(0,0,0,.12)",
+              }}
+            >
+              <span>🚚 Datos de entrega {detailOpen.entrega ? "▴" : "▾"}</span>
+              <span style={{ opacity: 0.7, fontWeight: 500, fontSize: 11 }}>
+                {selectedStop?.zona || "sin zona"} · {selectedStop?.horarioEntrega || "sin horario"} · {selectedStop?.fechaEntrega || "sin fecha"}
+              </span>
+            </button>
+            {detailOpen.entrega ? (
+              <div style={detailBodyStyle}>
+                <div>Zona: <b>{selectedStop?.zona || "—"}</b>
+                  {" · "}Receptor: <b>{selectedStop?.contactoRecepcion || "—"}</b>
+                </div>
+                <div>Horario: {selectedStop?.horarioEntrega || "—"}
+                  {" · "}Fecha: {selectedStop?.fechaEntrega || "—"}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                  {mapHref ? (
+                    <a href={mapHref} target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd" }}>
+                      Abrir mapa ↗
+                    </a>
+                  ) : (
+                    <span style={{ opacity: 0.5 }}>Sin mapa</span>
+                  )}
+                  {safeHttpUrl(selectedStop?.pdfLink) ? (
+                    <a href={safeHttpUrl(selectedStop.pdfLink)} target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd" }}>
+                      PDF pedido ↗
+                    </a>
+                  ) : (
+                    <span style={{ opacity: 0.5 }}>Sin PDF</span>
+                  )}
+                  <Btn
+                    small
+                    variant="onDark"
+                    onClick={() => {
+                      if (typeof window !== "undefined") window.print();
+                    }}
+                  >
+                    Remito (imprimir)
+                  </Btn>
+                </div>
+                <div style={{ opacity: 0.75, marginTop: 4 }}>
+                  Estado: <b>{selectedStop?.estado || "—"}</b>
+                  {" · "}Recepción: <b>{selectedStop?.recepcionEstado || "—"}</b>
+                </div>
               </div>
-            </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => toggleDetail("confirm")}
+              style={{
+                ...detailToggleStyle,
+                background: detailOpen.confirm ? "rgba(34,197,94,.2)" : "rgba(0,0,0,.12)",
+                borderColor: selectedStop?.entregaConfirm?.confirmed ? "rgba(34,197,94,.5)" : "rgba(255,255,255,.12)",
+              }}
+            >
+              <span>
+                {selectedStop?.entregaConfirm?.confirmed ? "✅ Entrega confirmada" : "☑️ Confirmar entrega"}{" "}
+                {detailOpen.confirm ? "▴" : "▾"}
+              </span>
+              <span style={{ opacity: 0.7, fontWeight: 500, fontSize: 11 }}>
+                {selectedStop?.entregaConfirm?.proof ? "con comprobante" : "comprobante + comentarios"}
+              </span>
+            </button>
+            {detailOpen.confirm && selectedStop && typeof onUpdateStop === "function" ? (
+              <div style={detailBodyStyle}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(selectedStop.entregaConfirm?.confirmed)}
+                    onChange={(e) => {
+                      const confirmed = e.target.checked;
+                      onUpdateStop(selectedStop.id, "entregaConfirm", {
+                        ...(selectedStop.entregaConfirm || {}),
+                        confirmed,
+                        confirmedAt: confirmed ? new Date().toISOString() : null,
+                      });
+                      if (confirmed) {
+                        onUpdateStop(selectedStop.id, "estado", "Entregada");
+                        onUpdateStop(selectedStop.id, "recepcionEstado", selectedStop.recepcionEstado === "Pendiente" ? "Conforme" : selectedStop.recepcionEstado);
+                      }
+                    }}
+                  />
+                  <span>Marcar entrega confirmada</span>
+                </label>
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 4 }}>Comprobante (foto / PDF, máx ~1.5 MB)</div>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    style={{ fontSize: 11, color: "#fff", maxWidth: "100%" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 1.5 * 1024 * 1024) {
+                        window.alert("Archivo demasiado grande (máx 1.5 MB). Comprimí la foto.");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        onUpdateStop(selectedStop.id, "entregaConfirm", {
+                          ...(selectedStop.entregaConfirm || {}),
+                          proof: {
+                            name: file.name,
+                            mime: file.type,
+                            size: file.size,
+                            dataUrl: String(reader.result || ""),
+                            at: new Date().toISOString(),
+                          },
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  {selectedStop.entregaConfirm?.proof?.name ? (
+                    <div style={{ fontSize: 11, marginTop: 4, opacity: 0.85 }}>
+                      📎 {selectedStop.entregaConfirm.proof.name}
+                      {" · "}
+                      <button
+                        type="button"
+                        style={{ background: "none", border: "none", color: "#fca5a5", cursor: "pointer", padding: 0 }}
+                        onClick={() =>
+                          onUpdateStop(selectedStop.id, "entregaConfirm", {
+                            ...(selectedStop.entregaConfirm || {}),
+                            proof: null,
+                          })
+                        }
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 4 }}>Comentarios de entrega</div>
+                  <textarea
+                    value={selectedStop.entregaConfirm?.comments || selectedStop.recepcionDetalle || ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      onUpdateStop(selectedStop.id, "entregaConfirm", {
+                        ...(selectedStop.entregaConfirm || {}),
+                        comments: v,
+                      });
+                      onUpdateStop(selectedStop.id, "recepcionDetalle", v);
+                    }}
+                    placeholder="Receptor, faltantes, daño, acceso…"
+                    rows={2}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,.2)",
+                      background: "rgba(0,0,0,.25)",
+                      color: "#fff",
+                      fontSize: 12,
+                      padding: 8,
+                      resize: "vertical",
+                    }}
+                  />
+                </div>
+              </div>
+            ) : detailOpen.confirm && !selectedStop ? (
+              <div style={detailBodyStyle}>Sin parada vinculada a este bulto.</div>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -991,6 +1343,9 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
               highlightKeys={highlightKeys}
               selectedPkgId={selectedPkgId}
               onSelectStableKey={(_key, pkg) => selectPkg(pkg)}
+              freeDragEnabled={freeDragEnabled}
+              onFreeDragEnd={onFreeDragEnd}
+              onClearFreeDrag={onClearFreeDrag}
             />
           </Suspense>
         ) : (
@@ -1009,15 +1364,16 @@ function DiagramPanel({ cargo, truckL, remitoNumero, info, stops, onForcePackage
           {sorted.map((pkg) => {
             const inGroup = !selectedPkg || highlightKeys.has(pkg.stableKey);
             const isSeed = selectedPkgId === pkg.id;
+            const dims = packagePhysicalDims(pkg);
             return (
             <IsoBox
               key={pkg.id}
               x={shiftX + pkg.xStart}
-              y={pkg.row * ROW_W}
+              y={packageRowYOffset(pkg)}
               z={pkg.zBase}
-              dx={pkg.len}
-              dy={ROW_W}
-              dz={pkg.h}
+              dx={dims.L}
+              dy={dims.W}
+              dz={dims.H}
               col={pkg.ov ? "#ff3b30" : pkg.sCol}
               lbl={packageLabelTiny(pkg, bultoCounts, 22)}
               ox={OX}
@@ -1380,6 +1736,9 @@ export default function BmcLogisticaApp() {
   const [cargoLayoutMode, setCargoLayoutMode] = useState("auto");
   const [manualPkgOrderKeys, setManualPkgOrderKeys] = useState([]);
   const [rowOverrides, setRowOverrides] = useState({});
+  /** Free-Drag: toggle + per-package position overrides (bypass packer) */
+  const [freeDragEnabled, setFreeDragEnabled] = useState(false);
+  const [freePositions, setFreePositions] = useState({});
   const [autoLoadMsg, setAutoLoadMsg] = useState("");
   const [retryingStopId, setRetryingStopId] = useState("");
   const [accProfiles, setAccProfiles] = useState({});
@@ -1447,6 +1806,10 @@ export default function BmcLogisticaApp() {
         if (parsed.cargoLayoutMode === "manual" || parsed.cargoLayoutMode === "auto") setCargoLayoutMode(parsed.cargoLayoutMode);
         if (Array.isArray(parsed.manualPkgOrderKeys)) setManualPkgOrderKeys(parsed.manualPkgOrderKeys);
         if (parsed.rowOverrides && typeof parsed.rowOverrides === "object") setRowOverrides(parsed.rowOverrides);
+        if (parsed.freePositions && typeof parsed.freePositions === "object") {
+          setFreePositions(normalizeFreePositionsMap(parsed.freePositions));
+        }
+        if (parsed.freeDragEnabled === true) setFreeDragEnabled(true);
         if (Array.isArray(parsed.transportistas)) setTransportistas(parsed.transportistas);
         if (Array.isArray(parsed.camionesCat)) setCamionesCat(parsed.camionesCat);
         if (Array.isArray(parsed.priceHistory)) setPriceHistory(parsed.priceHistory);
@@ -1519,6 +1882,8 @@ export default function BmcLogisticaApp() {
           cargoLayoutMode,
           manualPkgOrderKeys,
           rowOverrides,
+          freeDragEnabled,
+          freePositions,
           transportistas,
           camionesCat,
           priceHistory,
@@ -1540,6 +1905,8 @@ export default function BmcLogisticaApp() {
     cargoLayoutMode,
     manualPkgOrderKeys,
     rowOverrides,
+    freeDragEnabled,
+    freePositions,
     transportistas,
     camionesCat,
     priceHistory,
@@ -1598,6 +1965,27 @@ export default function BmcLogisticaApp() {
   const toggleStopCollapsed = (stopId) => {
     setCollapsedStopIds((c) => toggleCollapsedStopId(c, stopId));
   };
+  /**
+   * Preview placeCargo with proposed manual keys; reject if panel-on-profile remains.
+   * Engine normally prevents it; this is a safety net + clear operator message.
+   */
+  const commitManualLayout = (nextKeys, nextRows, successMsg) => {
+    const preview = placeCargo(stops, truckL, distributionMode || "balanced", {
+      mode: "manual",
+      manualOrderKeys: nextKeys,
+      rowOverrides: nextRows,
+    });
+    if (preview.stackConstraintsOk === false) {
+      setAutoLoadMsg(PANEL_ON_PROFILE_REJECT_ES);
+      return false;
+    }
+    setCargoLayoutMode("manual");
+    setManualPkgOrderKeys(nextKeys);
+    setRowOverrides(nextRows);
+    if (successMsg) setAutoLoadMsg(successMsg);
+    return true;
+  };
+
   /** Ops UX F5: force package onto fila A/B via packing overrides */
   const forcePackageRow = (stableKey, targetRow) => {
     if (!stableKey) return;
@@ -1608,10 +1996,11 @@ export default function BmcLogisticaApp() {
       targetRow,
       placed: cargo.placed,
     });
-    setCargoLayoutMode(next.cargoLayoutMode);
-    setRowOverrides(next.rowOverrides);
-    setManualPkgOrderKeys(next.manualPkgOrderKeys);
-    setAutoLoadMsg(`Layout manual: bulto → Fila ${Number(targetRow) === 1 ? "B" : "A"}`);
+    commitManualLayout(
+      next.manualPkgOrderKeys,
+      next.rowOverrides,
+      `Layout manual: bulto → Fila ${Number(targetRow) === 1 ? "B" : "A"}`,
+    );
   };
   const forcePackageStack = (stableKey, neighborKey, position) => {
     if (!stableKey || !neighborKey) return;
@@ -1623,10 +2012,11 @@ export default function BmcLogisticaApp() {
       stackPosition: position === "below" ? "below" : "above",
       placed: cargo.placed,
     });
-    setCargoLayoutMode(next.cargoLayoutMode);
-    setRowOverrides(next.rowOverrides);
-    setManualPkgOrderKeys(next.manualPkgOrderKeys);
-    setAutoLoadMsg(`Layout manual: bulto ${position === "below" ? "debajo" : "encima"} del contiguo`);
+    commitManualLayout(
+      next.manualPkgOrderKeys,
+      next.rowOverrides,
+      `Layout manual: bulto ${position === "below" ? "debajo" : "encima"} del contiguo`,
+    );
   };
   async function pushVentasFechaEntrega(stop) {
     const row = stop.ventasSheetRow1Based;
@@ -1736,6 +2126,8 @@ export default function BmcLogisticaApp() {
       cargoLayoutMode,
       manualPkgOrderKeys,
       rowOverrides,
+      freeDragEnabled,
+      freePositions,
       transportistas,
       camionesCat,
       priceHistory,
@@ -1896,6 +2288,10 @@ export default function BmcLogisticaApp() {
       if (p.cargoLayoutMode === "manual" || p.cargoLayoutMode === "auto") setCargoLayoutMode(p.cargoLayoutMode);
       if (Array.isArray(p.manualPkgOrderKeys)) setManualPkgOrderKeys(p.manualPkgOrderKeys);
       if (p.rowOverrides) setRowOverrides(p.rowOverrides);
+      if (p.freePositions && typeof p.freePositions === "object") {
+        setFreePositions(normalizeFreePositionsMap(p.freePositions));
+      }
+      if (p.freeDragEnabled === true) setFreeDragEnabled(true);
       if (Array.isArray(p.transportistas)) setTransportistas(p.transportistas);
       if (Array.isArray(p.camionesCat)) setCamionesCat(p.camionesCat);
       if (Array.isArray(p.priceHistory)) setPriceHistory(p.priceHistory);
@@ -1919,6 +2315,8 @@ export default function BmcLogisticaApp() {
             cargoLayoutMode: p.cargoLayoutMode,
             manualPkgOrderKeys: p.manualPkgOrderKeys,
             rowOverrides: p.rowOverrides,
+            freePositions: p.freePositions,
+            freeDragEnabled: p.freeDragEnabled,
             ui: p.ui,
           }),
         );
@@ -1935,9 +2333,7 @@ export default function BmcLogisticaApp() {
   }
 
   function reorderPackages(keys) {
-    setCargoLayoutMode("manual");
-    setManualPkgOrderKeys(keys);
-    setAutoLoadMsg("Layout manual: orden de bultos actualizado (lista DnD)");
+    commitManualLayout(keys, rowOverrides, "Layout manual: orden de bultos actualizado (lista DnD)");
   }
 
   const tripDistance = useMemo(() => tripLegDistances(stops), [stops]);
@@ -1983,7 +2379,7 @@ export default function BmcLogisticaApp() {
         ...prev,
         [profileKey]: {
           longitud: safeNum(next.accPackage.longitud, getStopLongestLength(next)),
-          ancho: clamp(safeNum(next.accPackage.ancho, DEFAULT_ACC_W), 0.2, 0.5),
+          ancho: clamp(safeNum(next.accPackage.ancho, DEFAULT_ACC_W), 0.15, 0.6),
           alto: clamp(safeNum(next.accPackage.alto, DEFAULT_ACC_H), 0.1, 0.5),
           foamMm: clamp(safeNum(next.accPackage.foamMm, DEFAULT_ACC_FOAM_MM), 0, 100),
         },
@@ -2010,11 +2406,46 @@ export default function BmcLogisticaApp() {
     () =>
       DISTRIBUTION_MODES.map((mode) => ({
         ...mode,
-        cargo: placeCargo(stops, truckL, mode.id, layoutOpts),
+        cargo: applyFreePositionsToCargo(placeCargo(stops, truckL, mode.id, layoutOpts), freePositions),
       })),
-    [stops, truckL, layoutOpts]
+    [stops, truckL, layoutOpts, freePositions]
   );
-  const cargo = cargoVariants.find((variant) => variant.id === distributionMode)?.cargo || cargoVariants[0]?.cargo || placeCargo(stops, truckL, "balanced", layoutOpts);
+  const cargoBase =
+    cargoVariants.find((variant) => variant.id === distributionMode)?.cargo ||
+    cargoVariants[0]?.cargo ||
+    applyFreePositionsToCargo(placeCargo(stops, truckL, "balanced", layoutOpts), freePositions);
+  const cargo = cargoBase;
+  const freeDragCount = cargo.freeDragCount || Object.keys(freePositions).length;
+
+  const handleFreeDragEnd = (stableKey, pos) => {
+    if (!stableKey) return;
+    setFreePositions((prev) =>
+      setFreePosition(prev, stableKey, pos, { truckL, maxH: MAX_H }),
+    );
+    setCargoLayoutMode("manual");
+    setAutoLoadMsg(`Free-Drag: posición libre guardada (${stableKey.slice(0, 12)}…)`);
+  };
+
+  const handleClearFreeDrag = (stableKey) => {
+    if (!stableKey) {
+      setFreePositions({});
+      setAutoLoadMsg("Free-Drag: todas las posiciones libres borradas — vuelve el motor");
+      return;
+    }
+    setFreePositions((prev) => clearFreePosition(prev, stableKey));
+    setAutoLoadMsg("Free-Drag: bulto vuelve al motor de estiba");
+  };
+
+  const handleToggleFreeDrag = (on) => {
+    setFreeDragEnabled(Boolean(on));
+    setAutoLoadMsg(
+      on
+        ? "Free-Drag ON — arrastrá bultos en vista 3D (Shift = altura). Desactivá cuando termines."
+        : freeDragCount > 0
+          ? `Free-Drag OFF — ${freeDragCount} posición(es) libre(s) siguen aplicadas. “Limpiar free” para volver al motor.`
+          : "Free-Drag OFF — estiba solo con motor (auto/manual orden)",
+    );
+  };
   const totPan = stops.reduce((t, s) => t + s.paneles.reduce((tt, p) => tt + safeNum(p.cantidad), 0), 0);
 
   async function fetchVentasCsv() {
@@ -2052,10 +2483,12 @@ export default function BmcLogisticaApp() {
       const headers = rows[0] || [];
       const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
       setVentasCache({ headers, rows: dataRows });
-      // Ops UX F2: map first, then haystack filter (pedido/tel/dir/estado — not r[7] only).
-      const mapped = dataRows.map((r, i) => mapVentasRow(headers, r, i + 2));
+      // Ops UX F2: map → drop garbage rows → haystack filter (pedido/tel/dir/estado).
+      const mapped = filterVentasLogisticaCandidates(
+        dataRows.map((r, i) => mapVentasRow(headers, r, i + 2)),
+      );
       const found = searchMappedVentasRows(mapped, search);
-      if (!found.length) setShErr(`Sin resultados para "${search}"`);
+      if (!found.length) setShErr(`Sin resultados operativos para "${search}"`);
       else setResults(found);
     } catch (e) {
       const msg = String(e?.message || e || "error");
@@ -2078,11 +2511,17 @@ export default function BmcLogisticaApp() {
       const headers = rows[0] || [];
       const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
       setVentasCache({ headers, rows: dataRows });
-      const found = dataRows.map((r, i) => withCoordinationChip(mapVentasRow(headers, r, i + 2)));
-      if (!found.length) setShErr("No hay filas con datos en esta pestaña.");
+      const mapped = filterVentasLogisticaCandidates(
+        dataRows.map((r, i) => mapVentasRow(headers, r, i + 2)),
+      );
+      const found = mapped.map((r) => withCoordinationChip(r));
+      if (!found.length) setShErr("No hay filas operativas (con cliente o pedido real) en esta pestaña.");
       else {
         setResults(found);
         setShErr("");
+        setAutoLoadMsg(
+          `Ventas: ${found.length} filas operativas (de ${dataRows.length} leídas; basura/encabezados filtrados).`,
+        );
       }
     } catch (e) {
       setShErr(`Error: ${e.message}`);
@@ -2091,16 +2530,82 @@ export default function BmcLogisticaApp() {
     }
   }
 
+  /**
+   * Phase C: try Admin /api/cotizaciones multi-key match (pedido/nombre/tel).
+   * Returns { matchNote, pdfLink?, ambiguousMatches? }
+   */
+  async function tryAdminQuoteMatch(query) {
+    const token = enviosAuthToken();
+    const base = getCalcApiBase();
+    if (!token || !base) {
+      return { matchNote: "", pdfLink: "", ambiguousMatches: null };
+    }
+    try {
+      const res = await fetch(`${base}/api/cotizaciones`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false || !Array.isArray(j.data)) {
+        return {
+          matchNote: j.error ? `Admin cotiz.: ${j.error}` : "Admin cotiz. no disponible",
+          pdfLink: "",
+          ambiguousMatches: null,
+        };
+      }
+      const quotes = j.data.map(normalizeAdminQuoteRow).filter(Boolean);
+      const result = matchAdminQuotes(query, quotes);
+      if (result.autoApply && result.best) {
+        const q = result.best.quote;
+        return {
+          matchNote: `Admin match auto (score ${result.best.score}): ${result.best.reasons.join(", ")}`,
+          pdfLink: q.pdfLink || q.raw?.LINK_COTIZACION || q.raw?.pdf || "",
+          ambiguousMatches: null,
+          best: result.best,
+        };
+      }
+      if (result.ambiguous && result.matches.length) {
+        return {
+          matchNote: `Admin: ${result.matches.length} coincidencias ambiguas — no se aplicó ninguna (revisá pedido/tel).`,
+          pdfLink: "",
+          ambiguousMatches: result.matches.slice(0, 5),
+        };
+      }
+      if (result.best) {
+        return {
+          matchNote: `Admin: mejor score ${result.best.score} sin auto-apply (${result.best.reasons.join(", ") || "débil"})`,
+          pdfLink: "",
+          ambiguousMatches: null,
+        };
+      }
+      return { matchNote: "Admin: sin match", pdfLink: "", ambiguousMatches: null };
+    } catch (e) {
+      return { matchNote: `Admin match error: ${e.message}`, pdfLink: "", ambiguousMatches: null };
+    }
+  }
+
   async function agregarStop(r) {
+    const label = labelVentasCandidate(r);
+    let pdfLink = r.pdf || "";
+    const admin = await tryAdminQuoteMatch({
+      orderId: r.orderId || "",
+      nombre: r.nombre || "",
+      telefono: r.tel || "",
+    });
+    if (admin.pdfLink && !pdfLink) pdfLink = admin.pdfLink;
+    else if (admin.pdfLink && pdfLink && admin.pdfLink !== pdfLink) {
+      // Prefer Admin PDF when auto-applied (more likely the quote BOM)
+      if (admin.best) pdfLink = admin.pdfLink;
+    }
+
     const baseStop = {
       ...mkStop(stops.length),
-      cliente: r.nombre,
+      cliente: r.nombre || "",
       direccion: r.dir,
       telefono: r.tel,
-      pdfLink: r.pdf,
+      pdfLink,
       mapLink: r.dir && !/drive\.google|docs\.google/i.test(r.dir) ? mapsUrl(r.dir) : (r.dir?.startsWith("http") ? r.dir : ""),
       carpetaDrive: r.carpetaDrive || "",
-      rawSheetText: r.rawSheetText || "",
+      rawSheetText: [r.encargoPlain, r.rawSheetText].filter(Boolean).join("\n") || r.rawSheetText || "",
       orderId: r.orderId || "",
       pickupId: r.pickupId || "",
       cotizacionId: r.cotizacionId || r.orderId || "",
@@ -2111,22 +2616,27 @@ export default function BmcLogisticaApp() {
       ventasTabGid: r.ventasTabGid || SH_GID,
       checks: {
         ...mkStop(0).checks,
-        datosOk: Boolean(r.nombre && (r.dir || r.tel)),
+        datosOk: Boolean((r.nombre || r.orderId) && (r.dir || r.tel)),
         mapaOk: Boolean(r.dir),
-        adjuntoOk: Boolean(r.pdf),
+        adjuntoOk: Boolean(pdfLink),
       },
     };
-    const label = r.nombre || r.orderId || "parada";
-    setAutoLoadMsg((r.pdf || r.rawSheetText) ? `Intentando autocompletar paneles para ${label}...` : "");
+    const hasInferSource = Boolean(pdfLink || r.rawSheetText || r.encargoPlain);
+    setAutoLoadMsg(
+      hasInferSource
+        ? `Intentando autocompletar paneles para ${label}...`
+        : `Parada agregada: ${label} (sin ENCARGO/PDF — cargá paneles a mano).${admin.matchNote ? ` · ${admin.matchNote}` : ""}`,
+    );
     let enrichedStop = baseStop;
-    if (r.pdf || r.rawSheetText) {
+    if (hasInferSource) {
       const inferred = await inferStopCargo(baseStop);
+      const adminSuffix = admin.matchNote ? ` · ${admin.matchNote}` : "";
       enrichedStop = {
         ...baseStop,
         paneles: inferred.paneles,
         accesorios: inferred.accesorios,
         accPackage: buildAccessoryPackageConfig({ ...baseStop, accesorios: inferred.accesorios, paneles: inferred.paneles }, accProfiles),
-        observacionesLogistica: inferred.warnings.filter(Boolean).join(" | "),
+        observacionesLogistica: [inferred.warnings.filter(Boolean).join(" | "), admin.matchNote].filter(Boolean).join(" · "),
         recepcionDetalle: inferred.warnings.filter(Boolean).join(" | "),
         checks: {
           ...baseStop.checks,
@@ -2135,12 +2645,16 @@ export default function BmcLogisticaApp() {
         },
       };
       if (inferred.paneles.length || inferred.accesorios.length) {
-        setAutoLoadMsg(`Autocarga OK: ${inferred.paneles.length} líneas de paneles y ${inferred.accesorios.length} accesorios para ${r.nombre}.`);
+        setAutoLoadMsg(
+          `Autocarga OK: ${inferred.paneles.length} líneas de paneles y ${inferred.accesorios.length} accesorios para ${label}.${adminSuffix}`,
+        );
       } else if (inferred.warnings.length) {
-        setAutoLoadMsg(`No se pudo inferir carga automáticamente para ${r.nombre}. ${inferred.warnings[0]}`);
+        setAutoLoadMsg(`No se pudo inferir carga automáticamente para ${label}. ${inferred.warnings[0]}${adminSuffix}`);
       } else {
-        setAutoLoadMsg(`No se detectaron paneles automáticamente para ${r.nombre}.`);
+        setAutoLoadMsg(`No se detectaron paneles automáticamente para ${label}.${adminSuffix}`);
       }
+    } else if (admin.matchNote) {
+      setAutoLoadMsg(`Parada ${label}: ${admin.matchNote}`);
     }
     setStops((p) => [...p, enrichedStop]);
     setResults([]);
@@ -2305,6 +2819,22 @@ export default function BmcLogisticaApp() {
             <option value="manual">Manual (orden)</option>
           </select>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Btn
+            small
+            color={freeDragEnabled ? "#f59e0b" : undefined}
+            onClick={() => handleToggleFreeDrag(!freeDragEnabled)}
+            title="Bypass del motor: acomodá bultos a mano en 3D"
+          >
+            Free-Drag {freeDragEnabled ? "ON" : "OFF"}
+            {freeDragCount > 0 ? ` · ${freeDragCount}` : ""}
+          </Btn>
+          {freeDragCount > 0 ? (
+            <Btn small outline onClick={() => handleClearFreeDrag(null)} title="Borrar todas las posiciones free-drag">
+              Limpiar free
+            </Btn>
+          ) : null}
+        </div>
         <Btn onClick={sendWA} color="#25D366">📲 WhatsApp</Btn>
       </div>
 
@@ -2312,8 +2842,42 @@ export default function BmcLogisticaApp() {
 
       {view === "carga" ? (
         <div>
-          <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} onForcePackageStack={forcePackageStack} />
+          <DiagramPanel
+            cargo={cargo}
+            truckL={truckL}
+            remitoNumero={info.numero}
+            info={info}
+            stops={stops}
+            onForcePackageRow={forcePackageRow}
+            onForcePackageStack={forcePackageStack}
+            onUpdateStop={updStop}
+            freeDragEnabled={freeDragEnabled}
+            freeDragCount={freeDragCount}
+            onFreeDragEnd={handleFreeDragEnd}
+            onClearFreeDrag={handleClearFreeDrag}
+            onToggleFreeDrag={handleToggleFreeDrag}
+          />
           <div style={{ ...css.card, padding: 14, marginTop: 12 }}>
+            <div
+              style={{
+                fontSize: 12,
+                lineHeight: 1.4,
+                color: T.warning || "#b45309",
+                background: "#fff8ec",
+                border: `1px solid ${T.warning || "#f0c36e"}`,
+                borderRadius: 8,
+                padding: "8px 10px",
+                marginBottom: 10,
+                fontWeight: 600,
+              }}
+            >
+              {PANEL_ON_PROFILE_RULE_ES}
+              {cargo.stackConstraintsOk === false ? (
+                <div style={{ marginTop: 6, color: "#b91c1c" }}>
+                  ⚠ Layout inválido: hay paneles sobre perfiles — reordená o mové el perfil a la otra fila.
+                </div>
+              ) : null}
+            </div>
             <PackageLayoutList
               placed={cargo.placed}
               counts={packageBultoCounts(cargo.placed)}
@@ -2898,130 +3462,254 @@ export default function BmcLogisticaApp() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                     <span style={badgeStyle("neutral")}>Pedido {orderDisplayId(stop)}</span>
                     <span style={badgeStyle("neutral")}>{placed.length} bultos · {panelCount} paneles · {totalAcc} acc.</span>
+                    <span style={badgeStyle(stop.entregaConfirm?.confirmed ? "success" : "neutral")}>
+                      {stop.entregaConfirm?.confirmed ? "Entrega OK" : stop.estado || "Pendiente"}
+                    </span>
                     {badges.map((badge) => <span key={badge.label} style={badgeStyle(badge.tone)}>{badge.label}</span>)}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 8, marginBottom: 10 }}>
-                    <div><label htmlFor={`s-${stop.id}-cliente`} style={css.lbl}>Cliente</label><input id={`s-${stop.id}-cliente`} name={`s-${stop.id}-cliente`} style={css.inp} value={stop.cliente} onChange={(e) => updStop(stop.id, "cliente", e.target.value)} /></div>
-                    <div><label htmlFor={`s-${stop.id}-telefono`} style={css.lbl}>Teléfono</label><input id={`s-${stop.id}-telefono`} name={`s-${stop.id}-telefono`} style={css.inp} value={stop.telefono} onChange={(e) => updStop(stop.id, "telefono", e.target.value)} /></div>
-                    <div><label htmlFor={`s-${stop.id}-direccion`} style={css.lbl}>Dirección</label><input id={`s-${stop.id}-direccion`} name={`s-${stop.id}-direccion`} style={css.inp} value={stop.direccion} onChange={(e) => { updStop(stop.id, "direccion", e.target.value); updStop(stop.id, "mapLink", e.target.value ? mapsUrl(e.target.value) : ""); }} /></div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 12 }}>
-                    <div><label htmlFor={`s-${stop.id}-orderId`} style={css.lbl}>ID pedido</label><input id={`s-${stop.id}-orderId`} name={`s-${stop.id}-orderId`} style={css.inp} value={stop.orderId || ""} onChange={(e) => updStop(stop.id, "orderId", e.target.value)} placeholder="Desde Ventas / CRM" /></div>
-                    <div><label htmlFor={`s-${stop.id}-cotizacionId`} style={css.lbl}>ID cotización</label><input id={`s-${stop.id}-cotizacionId`} name={`s-${stop.id}-cotizacionId`} style={css.inp} value={stop.cotizacionId || ""} onChange={(e) => updStop(stop.id, "cotizacionId", e.target.value)} placeholder="Remito / cotización" /></div>
-                    <div><label htmlFor={`s-${stop.id}-pickupId`} style={css.lbl}>ID retiro</label><input id={`s-${stop.id}-pickupId`} name={`s-${stop.id}-pickupId`} style={css.inp} value={stop.pickupId || ""} onChange={(e) => updStop(stop.id, "pickupId", e.target.value)} placeholder="Proveedor / fábrica" /></div>
-                    <div><label htmlFor={`s-${stop.id}-zona`} style={css.lbl}>Zona</label><input id={`s-${stop.id}-zona`} name={`s-${stop.id}-zona`} style={css.inp} value={stop.zona || ""} onChange={(e) => updStop(stop.id, "zona", e.target.value)} placeholder="Barrio / zona" /></div>
-                    <div><label htmlFor={`s-${stop.id}-contacto`} style={css.lbl}>Recepción (contacto)</label><input id={`s-${stop.id}-contacto`} name={`s-${stop.id}-contacto`} style={css.inp} value={stop.contactoRecepcion || ""} onChange={(e) => updStop(stop.id, "contactoRecepcion", e.target.value)} placeholder="Nombre receptor" /></div>
-                    <div><label htmlFor={`s-${stop.id}-horario`} style={css.lbl}>Horario</label><input id={`s-${stop.id}-horario`} name={`s-${stop.id}-horario`} style={css.inp} value={stop.horarioEntrega || ""} onChange={(e) => updStop(stop.id, "horarioEntrega", e.target.value)} placeholder="Ej. 08:00-12:00" /></div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 220px) 1fr", gap: 8, marginBottom: 12, alignItems: "end" }}>
-                    <div>
-                      <label htmlFor={`s-${stop.id}-fechaEntrega`} style={css.lbl}>Fecha De Entrega</label>
-                      <input
-                        id={`s-${stop.id}-fechaEntrega`}
-                        name={`s-${stop.id}-fechaEntrega`}
-                        style={css.inp}
-                        type="date"
-                        value={/^\d{4}-\d{2}-\d{2}$/.test(String(stop.fechaEntrega || "").trim()) ? stop.fechaEntrega : ""}
-                        onChange={(e) => onFechaEntregaChange(stop.id, e.target.value)}
-                      />
-                    </div>
-                    <div style={{ fontSize: 11, color: T.muted, paddingBottom: 8, lineHeight: 1.35 }}>
-                      {stop.ventasSheetRow1Based
-                        ? `Se guarda en la planilla Ventas (columna «Fecha De Entrega», G), fila ${stop.ventasSheetRow1Based}, formato dd/mm/aaaa. Requiere API y token.`
-                        : "Para escribir en la planilla, agregá la parada desde Buscar / Cargar actuales (fila vinculada)."}
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-                    <div><label htmlFor={`s-${stop.id}-pdfLink`} style={css.lbl}>Link PDF pedido</label><input id={`s-${stop.id}-pdfLink`} name={`s-${stop.id}-pdfLink`} style={css.inp} value={stop.pdfLink || ""} onChange={(e) => updStop(stop.id, "pdfLink", e.target.value)} placeholder="https://drive.google.com/..." /></div>
-                    <div>
-                      <label htmlFor={`s-${stop.id}-mapLink`} style={css.lbl}>
-                        Link mapa{stop.geo ? ` · ${Number(stop.geo.lat).toFixed(4)}, ${Number(stop.geo.lng).toFixed(4)}` : ""}
-                      </label>
-                      <input
-                        id={`s-${stop.id}-mapLink`}
-                        name={`s-${stop.id}-mapLink`}
-                        style={{ ...css.inp, color: T.muted, fontSize: 11 }}
-                        value={stop.mapLink || (stop.direccion ? mapsUrl(stop.direccion) : "")}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          const parsed = parseLatLng(v);
-                          if (parsed) {
-                            setStops((p) =>
-                              p.map((s) =>
-                                s.id === stop.id
-                                  ? applyGeocodeToStop(s, {
-                                      ...parsed,
-                                      label: s.direccion || s.cliente || "",
-                                      source: "parsed",
-                                    })
-                                  : s,
-                              ),
-                            );
-                          } else {
-                            updStop(stop.id, "mapLink", v);
-                          }
-                        }}
-                        placeholder="URL Maps o lat,lng"
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-                    <div>
-                      <label htmlFor={`s-${stop.id}-estado`} style={css.lbl}>Estado operativo</label>
-                      <select
-                        id={`s-${stop.id}-estado`}
-                        name={`s-${stop.id}-estado`}
-                        style={css.inp}
-                        value={stop.estado || "Pendiente"}
-                        title="Transiciones según FSM Envíos (G-U3)"
-                        onChange={(e) => {
-                          const cur = stop.estado || "Pendiente";
-                          const next = e.target.value;
-                          // Soft guard only when jumping Pendiente→Cargada without checklist
-                          const listaOk = Boolean(stop.checks?.datosOk && stop.checks?.bultosOk);
-                          const ctx = {
-                            formValid: true,
-                            ...(next === "Cargada" && cur === "Pendiente" && !listaOk
-                              ? { listaParaCarga: false }
-                              : {}),
-                          };
-                          const result = applyStatusTransition(cur, next, ctx);
-                          if (result.changed) {
-                            updStop(stop.id, "estado", result.status);
-                          } else if (result.error) {
-                            updStop(stop.id, "estado", cur);
-                          }
-                        }}
-                      >
-                        {statusSelectOptions(stop.estado || "Pendiente", { formValid: true }).map(
-                          ({ value, disabled }) => (
-                            <option key={value} value={value} disabled={disabled}>
-                              {value}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor={`s-${stop.id}-recepcion`} style={css.lbl}>Recepción</label>
-                      <select id={`s-${stop.id}-recepcion`} name={`s-${stop.id}-recepcion`} style={css.inp} value={stop.recepcionEstado || "Pendiente"} onChange={(e) => updStop(stop.id, "recepcionEstado", e.target.value)}>
-                        {RECEPCION_STATUS.map((status) => <option key={status} value={status}>{status}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <label style={css.lbl}>Checklist de salida</label>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-                      {CHECK_KEYS.map(([key, label]) => (
-                        <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 10px", background: T.surfaceAlt, fontSize: 12, color: T.text, textTransform: "none", letterSpacing: 0, marginBottom: 0 }}>
-                          <input type="checkbox" checked={Boolean(stop.checks?.[key])} onChange={(e) => updStopCheck(stop.id, key, e.target.checked)} />
-                          <span>{label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
 
-                  <div style={{ marginBottom: 12 }}>
+                  <FormSection
+                    title="👤 Datos del cliente"
+                    summary={[stop.cliente || "sin nombre", stop.telefono || "sin tel", truncate(stop.direccion || "sin dir", 32)].join(" · ")}
+                    defaultOpen={!stop.cliente || !stop.telefono}
+                  >
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 8, marginTop: 10 }}>
+                      <div><label htmlFor={`s-${stop.id}-cliente`} style={css.lbl}>Cliente</label><input id={`s-${stop.id}-cliente`} name={`s-${stop.id}-cliente`} style={css.inp} value={stop.cliente} onChange={(e) => updStop(stop.id, "cliente", e.target.value)} /></div>
+                      <div><label htmlFor={`s-${stop.id}-telefono`} style={css.lbl}>Teléfono</label><input id={`s-${stop.id}-telefono`} name={`s-${stop.id}-telefono`} style={css.inp} value={stop.telefono} onChange={(e) => updStop(stop.id, "telefono", e.target.value)} /></div>
+                      <div><label htmlFor={`s-${stop.id}-direccion`} style={css.lbl}>Dirección</label><input id={`s-${stop.id}-direccion`} name={`s-${stop.id}-direccion`} style={css.inp} value={stop.direccion} onChange={(e) => { updStop(stop.id, "direccion", e.target.value); updStop(stop.id, "mapLink", e.target.value ? mapsUrl(e.target.value) : ""); }} /></div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 8 }}>
+                      <div><label htmlFor={`s-${stop.id}-orderId`} style={css.lbl}>ID pedido</label><input id={`s-${stop.id}-orderId`} name={`s-${stop.id}-orderId`} style={css.inp} value={stop.orderId || ""} onChange={(e) => updStop(stop.id, "orderId", e.target.value)} placeholder="Desde Ventas / CRM" /></div>
+                      <div><label htmlFor={`s-${stop.id}-cotizacionId`} style={css.lbl}>ID cotización</label><input id={`s-${stop.id}-cotizacionId`} name={`s-${stop.id}-cotizacionId`} style={css.inp} value={stop.cotizacionId || ""} onChange={(e) => updStop(stop.id, "cotizacionId", e.target.value)} placeholder="Remito / cotización" /></div>
+                      <div><label htmlFor={`s-${stop.id}-pickupId`} style={css.lbl}>ID retiro</label><input id={`s-${stop.id}-pickupId`} name={`s-${stop.id}-pickupId`} style={css.inp} value={stop.pickupId || ""} onChange={(e) => updStop(stop.id, "pickupId", e.target.value)} placeholder="Proveedor / fábrica" /></div>
+                    </div>
+                  </FormSection>
+
+                  <FormSection
+                    title="🚚 Datos para la entrega"
+                    summary={[stop.zona || "sin zona", stop.horarioEntrega || "sin horario", stop.fechaEntrega || "sin fecha", stop.estado || "Pendiente"].join(" · ")}
+                    defaultOpen={false}
+                  >
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 10 }}>
+                      <div><label htmlFor={`s-${stop.id}-zona`} style={css.lbl}>Zona</label><input id={`s-${stop.id}-zona`} name={`s-${stop.id}-zona`} style={css.inp} value={stop.zona || ""} onChange={(e) => updStop(stop.id, "zona", e.target.value)} placeholder="Barrio / zona" /></div>
+                      <div><label htmlFor={`s-${stop.id}-contacto`} style={css.lbl}>Recepción (contacto)</label><input id={`s-${stop.id}-contacto`} name={`s-${stop.id}-contacto`} style={css.inp} value={stop.contactoRecepcion || ""} onChange={(e) => updStop(stop.id, "contactoRecepcion", e.target.value)} placeholder="Nombre receptor" /></div>
+                      <div><label htmlFor={`s-${stop.id}-horario`} style={css.lbl}>Horario</label><input id={`s-${stop.id}-horario`} name={`s-${stop.id}-horario`} style={css.inp} value={stop.horarioEntrega || ""} onChange={(e) => updStop(stop.id, "horarioEntrega", e.target.value)} placeholder="Ej. 08:00-12:00" /></div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 220px) 1fr", gap: 8, marginTop: 8, alignItems: "end" }}>
+                      <div>
+                        <label htmlFor={`s-${stop.id}-fechaEntrega`} style={css.lbl}>Fecha De Entrega</label>
+                        <input
+                          id={`s-${stop.id}-fechaEntrega`}
+                          name={`s-${stop.id}-fechaEntrega`}
+                          style={css.inp}
+                          type="date"
+                          value={/^\d{4}-\d{2}-\d{2}$/.test(String(stop.fechaEntrega || "").trim()) ? stop.fechaEntrega : ""}
+                          onChange={(e) => onFechaEntregaChange(stop.id, e.target.value)}
+                        />
+                      </div>
+                      <div style={{ fontSize: 11, color: T.muted, paddingBottom: 8, lineHeight: 1.35 }}>
+                        {stop.ventasSheetRow1Based
+                          ? `Se guarda en Ventas col. G, fila ${stop.ventasSheetRow1Based}. Requiere API y token.`
+                          : "Vinculá la parada desde Buscar / Cargar actuales para escribir fecha en la planilla."}
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+                      <div><label htmlFor={`s-${stop.id}-pdfLink`} style={css.lbl}>Link PDF pedido</label><input id={`s-${stop.id}-pdfLink`} name={`s-${stop.id}-pdfLink`} style={css.inp} value={stop.pdfLink || ""} onChange={(e) => updStop(stop.id, "pdfLink", e.target.value)} placeholder="https://drive.google.com/..." /></div>
+                      <div>
+                        <label htmlFor={`s-${stop.id}-mapLink`} style={css.lbl}>
+                          Link mapa{stop.geo ? ` · ${Number(stop.geo.lat).toFixed(4)}, ${Number(stop.geo.lng).toFixed(4)}` : ""}
+                        </label>
+                        <input
+                          id={`s-${stop.id}-mapLink`}
+                          name={`s-${stop.id}-mapLink`}
+                          style={{ ...css.inp, color: T.muted, fontSize: 11 }}
+                          value={stop.mapLink || (stop.direccion ? mapsUrl(stop.direccion) : "")}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const parsed = parseLatLng(v);
+                            if (parsed) {
+                              setStops((p) =>
+                                p.map((s) =>
+                                  s.id === stop.id
+                                    ? applyGeocodeToStop(s, {
+                                        ...parsed,
+                                        label: s.direccion || s.cliente || "",
+                                        source: "parsed",
+                                      })
+                                    : s,
+                                ),
+                              );
+                            } else {
+                              updStop(stop.id, "mapLink", v);
+                            }
+                          }}
+                          placeholder="URL Maps o lat,lng"
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+                      <div>
+                        <label htmlFor={`s-${stop.id}-estado`} style={css.lbl}>Estado operativo</label>
+                        <select
+                          id={`s-${stop.id}-estado`}
+                          name={`s-${stop.id}-estado`}
+                          style={css.inp}
+                          value={stop.estado || "Pendiente"}
+                          title="Transiciones según FSM Envíos (G-U3)"
+                          onChange={(e) => {
+                            const cur = stop.estado || "Pendiente";
+                            const next = e.target.value;
+                            const listaOk = Boolean(stop.checks?.datosOk && stop.checks?.bultosOk);
+                            const ctx = {
+                              formValid: true,
+                              ...(next === "Cargada" && cur === "Pendiente" && !listaOk
+                                ? { listaParaCarga: false }
+                                : {}),
+                            };
+                            const result = applyStatusTransition(cur, next, ctx);
+                            if (result.changed) {
+                              updStop(stop.id, "estado", result.status);
+                            } else if (result.error) {
+                              updStop(stop.id, "estado", cur);
+                            }
+                          }}
+                        >
+                          {statusSelectOptions(stop.estado || "Pendiente", { formValid: true }).map(
+                            ({ value, disabled }) => (
+                              <option key={value} value={value} disabled={disabled}>
+                                {value}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor={`s-${stop.id}-recepcion`} style={css.lbl}>Recepción</label>
+                        <select id={`s-${stop.id}-recepcion`} name={`s-${stop.id}-recepcion`} style={css.inp} value={stop.recepcionEstado || "Pendiente"} onChange={(e) => updStop(stop.id, "recepcionEstado", e.target.value)}>
+                          {RECEPCION_STATUS.map((status) => <option key={status} value={status}>{status}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <label style={css.lbl}>Checklist de salida</label>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                        {CHECK_KEYS.map(([key, label]) => (
+                          <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 10px", background: T.surfaceAlt, fontSize: 12, color: T.text, textTransform: "none", letterSpacing: 0, marginBottom: 0 }}>
+                            <input type="checkbox" checked={Boolean(stop.checks?.[key])} onChange={(e) => updStopCheck(stop.id, key, e.target.checked)} />
+                            <span>{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </FormSection>
+
+                  <FormSection
+                    title="☑️ Confirmar entrega"
+                    summary={
+                      stop.entregaConfirm?.confirmed
+                        ? `Confirmada${stop.entregaConfirm.proof ? " · con comprobante" : ""}`
+                        : "Comprobante + comentarios"
+                    }
+                    defaultOpen={false}
+                    tone={stop.entregaConfirm?.confirmed ? "success" : undefined}
+                  >
+                    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(stop.entregaConfirm?.confirmed)}
+                          onChange={(e) => {
+                            const confirmed = e.target.checked;
+                            updStop(stop.id, "entregaConfirm", {
+                              ...(stop.entregaConfirm || {}),
+                              confirmed,
+                              confirmedAt: confirmed ? new Date().toISOString() : null,
+                            });
+                            if (confirmed) {
+                              const result = applyStatusTransition(stop.estado || "Pendiente", "Entregada", { formValid: true });
+                              if (result.changed) updStop(stop.id, "estado", result.status);
+                              else updStop(stop.id, "estado", "Entregada");
+                              if ((stop.recepcionEstado || "Pendiente") === "Pendiente") {
+                                updStop(stop.id, "recepcionEstado", "Conforme");
+                              }
+                            }
+                          }}
+                        />
+                        <span style={{ fontWeight: 600 }}>Marcar entrega confirmada</span>
+                      </label>
+                      <div>
+                        <label style={css.lbl}>Comprobante de entrega (foto / PDF, máx 1.5 MB)</label>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          style={{ fontSize: 12, maxWidth: "100%" }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (file.size > 1.5 * 1024 * 1024) {
+                              window.alert("Archivo demasiado grande (máx 1.5 MB).");
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              updStop(stop.id, "entregaConfirm", {
+                                ...(stop.entregaConfirm || {}),
+                                proof: {
+                                  name: file.name,
+                                  mime: file.type,
+                                  size: file.size,
+                                  dataUrl: String(reader.result || ""),
+                                  at: new Date().toISOString(),
+                                },
+                              });
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                        {stop.entregaConfirm?.proof?.name ? (
+                          <div style={{ fontSize: 12, marginTop: 4, color: T.muted }}>
+                            📎 {stop.entregaConfirm.proof.name}
+                            {" · "}
+                            <button
+                              type="button"
+                              style={{ background: "none", border: "none", color: T.danger, cursor: "pointer", padding: 0 }}
+                              onClick={() =>
+                                updStop(stop.id, "entregaConfirm", {
+                                  ...(stop.entregaConfirm || {}),
+                                  proof: null,
+                                })
+                              }
+                            >
+                              Quitar
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div>
+                        <label style={css.lbl}>Comentarios de entrega</label>
+                        <textarea
+                          style={{ ...css.inp, resize: "vertical", minHeight: 56 }}
+                          value={stop.entregaConfirm?.comments || stop.recepcionDetalle || ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            updStop(stop.id, "entregaConfirm", {
+                              ...(stop.entregaConfirm || {}),
+                              comments: v,
+                            });
+                            updStop(stop.id, "recepcionDetalle", v);
+                          }}
+                          placeholder="Receptor, faltantes, daño, acceso, descarga parcial…"
+                        />
+                      </div>
+                    </div>
+                  </FormSection>
+
+                  <FormSection
+                    title="📦 Carga (paneles y accesorios)"
+                    summary={`${panelCount} paneles · ${totalAcc} acc. · ${placed.length} bultos en camión`}
+                    defaultOpen
+                  >
+                  <div style={{ marginTop: 10, marginBottom: 12 }}>
                     <label style={css.lbl}>Paneles</label>
                     {stop.paneles.map((p) => {
                       const pks = buildPkgs(stop, p);
@@ -3081,7 +3769,7 @@ export default function BmcLogisticaApp() {
                             </div>
                             <div>
                               <label style={css.lbl}>Ancho</label>
-                              <input style={css.inp} type="number" min={0.2} max={0.5} step="0.01" value={accCfg.ancho} onChange={(e) => updAccPackage(stop.id, "ancho", Number(e.target.value))} />
+                              <input style={css.inp} type="number" min={0.15} max={0.6} step="0.01" value={accCfg.ancho} onChange={(e) => updAccPackage(stop.id, "ancho", Number(e.target.value))} />
                             </div>
                             <div>
                               <label style={css.lbl}>Alto carga</label>
@@ -3111,6 +3799,7 @@ export default function BmcLogisticaApp() {
                     <label style={css.lbl}>Observaciones logísticas / recepción</label>
                     <textarea style={{ ...css.inp, resize: "vertical", minHeight: 50 }} value={stop.recepcionDetalle || stop.observacionesLogistica || ""} onChange={(e) => { updStop(stop.id, "recepcionDetalle", e.target.value); updStop(stop.id, "observacionesLogistica", e.target.value); }} placeholder="Faltantes, daño, acceso, descarga parcial, etc." />
                   </div>
+                  </FormSection>
                   </>
                   )}
                 </div>
@@ -3123,8 +3812,37 @@ export default function BmcLogisticaApp() {
           </div>
 
           <div style={{ position: "sticky", top: 16, alignSelf: "start" }}>
-            <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} info={info} stops={stops} onForcePackageRow={forcePackageRow} onForcePackageStack={forcePackageStack} />
+            <DiagramPanel
+              cargo={cargo}
+              truckL={truckL}
+              remitoNumero={info.numero}
+              info={info}
+              freeDragEnabled={freeDragEnabled}
+              freeDragCount={freeDragCount}
+              onFreeDragEnd={handleFreeDragEnd}
+              onClearFreeDrag={handleClearFreeDrag}
+              onToggleFreeDrag={handleToggleFreeDrag}
+              stops={stops}
+              onForcePackageRow={forcePackageRow}
+              onForcePackageStack={forcePackageStack}
+              onUpdateStop={updStop}
+            />
             <div style={{ ...css.card, padding: 14, marginTop: 12 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  lineHeight: 1.4,
+                  color: T.warning || "#b45309",
+                  background: "#fff8ec",
+                  border: `1px solid ${T.warning || "#f0c36e"}`,
+                  borderRadius: 8,
+                  padding: "8px 10px",
+                  marginBottom: 10,
+                  fontWeight: 600,
+                }}
+              >
+                {PANEL_ON_PROFILE_RULE_ES}
+              </div>
               <PackageLayoutList
                 placed={cargo.placed}
                 counts={packageBultoCounts(cargo.placed)}
@@ -3286,6 +4004,10 @@ export default function BmcLogisticaApp() {
                     if (p.cargoLayoutMode === "manual" || p.cargoLayoutMode === "auto") setCargoLayoutMode(p.cargoLayoutMode);
                     if (Array.isArray(p.manualPkgOrderKeys)) setManualPkgOrderKeys(p.manualPkgOrderKeys);
                     if (p.rowOverrides) setRowOverrides(p.rowOverrides);
+                    if (p.freePositions && typeof p.freePositions === "object") {
+                      setFreePositions(normalizeFreePositionsMap(p.freePositions));
+                    }
+                    if (p.freeDragEnabled === true) setFreeDragEnabled(true);
                     setCloudMeta({
                       id: j.draft?.id || draftId,
                       revision: j.draft?.revision,

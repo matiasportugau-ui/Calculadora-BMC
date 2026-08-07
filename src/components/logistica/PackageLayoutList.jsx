@@ -112,9 +112,28 @@ export default function PackageLayoutList({
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {packageLabelCompact(row.pkg, counts)}
+                {row.pkg?.kind === "accessory" || String(row.pkg?.tipo || "").toUpperCase() === "ACCESORIOS" ? (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      fontSize: 9,
+                      fontWeight: 800,
+                      letterSpacing: ".04em",
+                      color: "#92400e",
+                      background: "#fef3c7",
+                      borderRadius: 4,
+                      padding: "1px 5px",
+                      verticalAlign: "middle",
+                    }}
+                    title="No se pueden apilar paneles sobre este bulto"
+                  >
+                    PERFIL
+                  </span>
+                ) : null}
               </div>
               <div style={{ fontSize: 10, color: T.muted }}>
                 Fila {row.row === 1 ? "B" : "A"} · {row.pkg?.tipo || "—"} · {(row.pkg?.len ?? 0).toFixed?.(1) || row.pkg?.len}m
+                {row.pkg?.kind === "accessory" ? " · no soporta paneles encima" : ""}
               </div>
             </div>
             <div style={{ display: "flex", gap: 4, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>

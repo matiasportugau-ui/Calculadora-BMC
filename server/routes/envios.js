@@ -18,6 +18,37 @@ import {
   draftIdFromEnvNo,
   parseEnviosDraftPayload,
 } from "../../src/utils/logistica/enviosDraft.js";
+import {
+  matchAdminQuotes,
+  normalizeAdminQuoteRow,
+} from "../../src/utils/logistica/adminQuoteMatch.js";
+
+function extractGoogleDriveFileId(url) {
+  const s = String(url || "");
+  const m1 = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1) return m1[1];
+  const m2 = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m2) return m2[1];
+  return "";
+}
+
+function toServerFetchablePdfUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  const driveId = extractGoogleDriveFileId(raw);
+  if (driveId) return `https://drive.google.com/uc?export=download&id=${driveId}`;
+  // Dropbox: force direct download
+  if (/dropbox\.com/i.test(raw)) {
+    try {
+      const u = new URL(raw);
+      u.searchParams.set("dl", "1");
+      return u.toString();
+    } catch {
+      return raw.replace(/\?dl=0/, "?dl=1");
+    }
+  }
+  return raw;
+}
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -391,6 +422,145 @@ export default function createEnviosRouter(config, logger) {
       const { rowCount } = await pool.query(`delete from envios_drafts where id = $1`, [id]);
       if (!rowCount) return res.status(404).json({ ok: false, error: "not_found" });
       res.json({ ok: true, deleted: id });
+    }),
+  );
+
+  /**
+   * POST /api/envios/match-quotes
+   * body: { orderId?, nombre?, telefono?, quotes?: object[] }
+   * If `quotes` omitted → 503 sheets_unavailable (client may pass quotes from /api/cotizaciones).
+   * Pure multi-key match: pedido / nombre / teléfono.
+   */
+  router.post(
+    "/envios/match-quotes",
+    auth,
+    asyncHandler(async (req, res) => {
+      const body = req.body || {};
+      const query = {
+        orderId: body.orderId || body.pedido || "",
+        nombre: body.nombre || body.cliente || "",
+        telefono: body.telefono || body.tel || body.phone || "",
+      };
+      let quotes = Array.isArray(body.quotes) ? body.quotes : null;
+      if (!quotes) {
+        // Soft-degrade: Admin sheet load is owned by bmcDashboard /api/cotizaciones.
+        // Callers should pass quotes when Sheets is up; we never invent credentials here.
+        return res.status(503).json({
+          ok: false,
+          error: "quotes_required_or_sheets_unavailable",
+          message:
+            "Pasá body.quotes (p.ej. desde GET /api/cotizaciones) o configurá Sheets en el dashboard. Match puro listo en servidor cuando hay quotes.",
+          query,
+          matches: [],
+          best: null,
+          ambiguous: false,
+          autoApply: false,
+        });
+      }
+      const normalized = quotes.map(normalizeAdminQuoteRow).filter(Boolean);
+      const result = matchAdminQuotes(query, normalized);
+      res.json({
+        ok: true,
+        query,
+        matches: result.matches.map((m) => ({
+          id: m.id,
+          score: m.score,
+          reasons: m.reasons,
+          hits: m.hits,
+          quote: {
+            id: m.quote.id,
+            orderId: m.quote.orderId,
+            nombre: m.quote.nombre,
+            telefono: m.quote.telefono,
+            pdfLink: m.quote.pdfLink,
+          },
+        })),
+        best: result.best
+          ? {
+              id: result.best.id,
+              score: result.best.score,
+              reasons: result.best.reasons,
+              hits: result.best.hits,
+              quote: {
+                id: result.best.quote.id,
+                orderId: result.best.quote.orderId,
+                nombre: result.best.quote.nombre,
+                telefono: result.best.quote.telefono,
+                pdfLink: result.best.quote.pdfLink,
+              },
+            }
+          : null,
+        ambiguous: result.ambiguous,
+        autoApply: result.autoApply,
+      });
+    }),
+  );
+
+  /**
+   * POST /api/envios/adjunto-fetch
+   * body: { url: string }
+   * Server-side fetch of Drive/Dropbox/HTTP adjunto → base64 for client PDF text extract.
+   * Avoids browser CORS / Failed to fetch on drive.google.com/file/d/…/view
+   */
+  router.post(
+    "/envios/adjunto-fetch",
+    auth,
+    asyncHandler(async (req, res) => {
+      const url = String(req.body?.url || req.query?.url || "").trim();
+      if (!url || !/^https?:\/\//i.test(url)) {
+        return res.status(400).json({ ok: false, error: "url_required" });
+      }
+      const fetchUrl = toServerFetchablePdfUrl(url);
+      let upstream;
+      try {
+        upstream = await fetch(fetchUrl, {
+          headers: {
+            Accept: "application/pdf,application/octet-stream,*/*",
+            "User-Agent": "BMC-Envios/1.0 (adjunto-fetch)",
+          },
+          redirect: "follow",
+          signal: AbortSignal.timeout(25000),
+        });
+      } catch (err) {
+        log.warn?.(
+          { err: err instanceof Error ? err.message : String(err), url: fetchUrl },
+          "[envios] adjunto-fetch failed",
+        );
+        return res.status(502).json({
+          ok: false,
+          error: "drive_fetch_failed",
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+      if (!upstream.ok) {
+        return res.status(502).json({
+          ok: false,
+          error: "drive_fetch_status",
+          status: upstream.status,
+        });
+      }
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      if (buf.byteLength > 12 * 1024 * 1024) {
+        return res.status(413).json({ ok: false, error: "file_too_large", maxBytes: 12 * 1024 * 1024 });
+      }
+      const contentType = (upstream.headers.get("content-type") || "application/octet-stream").toLowerCase();
+      // Google sometimes returns HTML interstitial
+      const head = buf.slice(0, 20).toString("utf8");
+      if (/<!doctype html|<html/i.test(head)) {
+        return res.status(502).json({
+          ok: false,
+          error: "drive_html_interstitial",
+          message: "Drive devolvió HTML (permisos o virus-scan). Compartí el PDF o usá filename ENCARGO.",
+        });
+      }
+      res.json({
+        ok: true,
+        contentType,
+        byteLength: buf.byteLength,
+        base64: buf.toString("base64"),
+        fetchUrl,
+        driveId: extractGoogleDriveFileId(url) || null,
+      });
     }),
   );
 
