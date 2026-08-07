@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — irregular + calcular_altura undercharge):** `calcTechoCompleto` scales plant `irregularLayout` lengths/areas by `largoReal/largo` via `scaleIrregularLayoutToLargoReal` before BOM. Without this, Modo irregular + `pendienteModo=calcular_altura` charged plant m² and underquoted panels vs the rectangular path. Tests: `tests/irregularRoofLayout.test.js` (+10 asserts).
+
 **2026-08-07 (feat — techo Modo irregular / largos escalonados):** Plant 2D Freeform-style cut tool on `RoofPreview` (toggle OFF by default; two-point cut; ruler+angle; strip L_order inspector; corte-en-obra copy). Pure engine `irregularRoofLayout.js` → stepped factory lengths; BOM charges **ordered m²** via `calcPanelesTechoFromOptionalIrregular` + `scenarioOrchestrator` zone 0 when cut/manual active. Rectangle path unchanged without cut. Tests: `tests/irregularRoofLayout.test.js` (46 asserts). SDD: `docs/sdd/roof-irregular-panel-layout/` SCORECARD 92. Residual: remnant tray, multi-zone irregular, PDF schedule rows.
 
 **2026-08-07 (fix — wire concurrent Entregado delete):** `POST /api/ventas/logistica-entregado` on `bmcDashboard.js` re-locates by `ventasRowIdentityFingerprint` before `deleteDimension` (never stale row1Based). Also `logistica-estado` + terminal gate. Supersedes #896 production path.
