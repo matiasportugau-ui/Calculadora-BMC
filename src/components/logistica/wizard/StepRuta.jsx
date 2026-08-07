@@ -1,5 +1,6 @@
 /** Step 4 — suggested route legs. */
 import { ENV_T as T } from "../../../utils/enviosTheme.js";
+import { safeHttpUrl } from "../../../utils/logistica/safeExternalUrl.js";
 
 const TYPE_ES = { base: "Salida", pickup: "Levante", delivery: "Entrega" };
 
@@ -22,19 +23,22 @@ export default function StepRuta({ route, onRecalcular, routeStale }) {
         <div style={{ fontSize: 12, color: T.muted }}>Todavía no hay tramos. Generá la sugerencia.</div>
       ) : (
         <ol style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 6 }}>
-          {legs.map((leg, i) => (
+          {legs.map((leg, i) => {
+            const mapHref = safeHttpUrl(leg.mapUrl);
+            return (
             <li key={`${leg.type}-${leg.refId}-${i}`} style={{ fontSize: 13 }}>
               <b>{TYPE_ES[leg.type] || leg.type}</b>: {leg.label}
               {leg.legKmFromPrev != null ? (
                 <span style={{ color: T.muted, fontSize: 11 }}> · +{leg.legKmFromPrev.toFixed(1)} km</span>
               ) : null}
-              {leg.mapUrl ? (
-                <a href={leg.mapUrl} target="_blank" rel="noreferrer" style={{ marginLeft: 6, fontSize: 11 }}>
+              {mapHref ? (
+                <a href={mapHref} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 6, fontSize: 11 }}>
                   mapa
                 </a>
               ) : null}
             </li>
-          ))}
+            );
+          })}
         </ol>
       )}
       {route?.totalKm != null ? (
