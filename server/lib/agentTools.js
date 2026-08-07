@@ -1024,7 +1024,7 @@ export const AGENT_TOOLS = [
   {
     name: "traktime_month_report",
     description:
-      "TraKtiMe: reporte mensual de horas (para administración). Devuelve totales por día + rollup por cliente/proyecto y la URL del PDF en GCS. Lectura protegida.",
+      "TraKtiMe: reporte mensual de horas (para administración). Devuelve totales por día + rollup por cliente/proyecto y la ruta autenticada del PDF (sin URL pública GCS). Lectura protegida.",
     input_schema: {
       type: "object",
       properties: {
@@ -2422,7 +2422,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
           tz: r.body?.tz,
           totals: r.body?.report?.totals || null,
           projects: r.body?.report?.projects || [],
-          pdf_url: r.body?.pdf_url || null,
+          pdf_url: null,
+          pdf_download_url: r.body?.pdf_download_url || null,
         });
       }
 
