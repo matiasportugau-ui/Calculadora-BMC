@@ -1,3 +1,4 @@
+- **2026-08-07** — Logística autocarga A→C→B **LIVE prod**: PR #899 → main `9e08eacf`; Vercel + Cloud Run OK; `/logistica` 200; envios match-quotes/adjunto-fetch 401 unauth. Handoff: docs/team/HANDOFF-2026-08-07-logistica-autocarga-live.md. Evidence: docs/sdd/bmc-envios/evidence/autocarga-training-2026-08-07.md.
 # Bitácora — Matías Portugau
 - **2026-08-05** — All+ residual: disk ~9GB free (stale node_modules + worktrees); closed PR #864/#865; #869 G8 one-click already on main; G8 operator ran → residual CDN 410 / 0 play controls (no synthetic STT); Envíos units + /logistica 200 + WA media 401/302 OK. Handoff: docs/team/HANDOFF-2026-08-05-allplus.md.
 - **2026-08-05** — WA media G7/G8/G9 shipped+verified: PR #847 → Cloud Run panelin-calc-00934-lp5. Documented as-built SPEC + prompt-eng archive. Paths: docs/team/features/WA-MEDIA-RICHNESS-SPEC.md, docs/team/goal-prompts/goal-prompt-wa-media-richness-100.md, docs/wa-cockpit/MEDIA-G7G8G9.md.

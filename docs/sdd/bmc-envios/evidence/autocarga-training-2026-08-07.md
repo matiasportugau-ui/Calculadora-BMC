@@ -53,6 +53,19 @@ Live API smoke (quotes in body):
 - Dropbox ENCARGO: proxy uses `dl=1`; not fully golden-tested this run.
 - Quantities from filename still default 1 unless PDF text parse succeeds.
 
+## LIVE production (persisted)
+
+| Item | Value |
+|------|--------|
+| **Status** | **LIVE** |
+| **PR** | [#899](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/899) MERGED `9e08eacf` |
+| **Feature commit** | `9ac9b85f` |
+| **Prod FE** | https://calculadora-bmc.vercel.app/logistica → **200** (probe 2026-08-07T05:50Z UTC) |
+| **Prod API** | `panelin-calc-q74zutv7dq-uc.a.run.app` health **200**; `match-quotes` / `adjunto-fetch` **401** unauth (routes present) |
+| **Deploys** | GHA Deploy Frontend to Vercel **success**; Deploy Calculator API to Cloud Run **success** |
+| **Handoff** | `docs/team/HANDOFF-2026-08-07-logistica-autocarga-live.md` |
+| **PROJECT-STATE** | Cambios recientes 2026-08-07 |
+
 ## Files touched
 
 - `src/utils/logistica/ventasSheetMap.js`
