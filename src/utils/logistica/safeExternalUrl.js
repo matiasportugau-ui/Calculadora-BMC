@@ -1,6 +1,9 @@
 /**
- * Safe external URL helpers for map / PDF / tel links (Envíos drawer).
+ * Safe external URL helpers for map / PDF / tel links (Envíos /logistica).
  * Blocks javascript: and other dangerous schemes.
+ *
+ * Drawer uses these explicitly; `resolveSafeBtnHref` is the Btn gate so
+ * search-result / stop-card PDF+Mapa buttons cannot execute sheet-controlled XSS.
  */
 
 const BLOCKED = /^(javascript|data|vbscript|file):/i;
@@ -34,6 +37,15 @@ export function safeHttpUrl(raw, opts = {}) {
   }
   if (opts.allowRelative && s.startsWith("/")) return s;
   return null;
+}
+
+/**
+ * Sanitize href for Envíos `<Btn href>` / `<a href>` (http(s) only).
+ * @param {string} [raw]
+ * @returns {string|null}
+ */
+export function resolveSafeBtnHref(raw) {
+  return safeHttpUrl(raw);
 }
 
 /**
