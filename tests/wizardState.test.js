@@ -89,8 +89,10 @@ console.log("wizardState");
 }
 
 {
-  assert.equal(shouldEnableWizard({ stops: [] }), true);
+  assert.equal(shouldEnableWizard({}), false);
+  assert.equal(shouldEnableWizard({ stops: [] }), false);
   assert.equal(shouldEnableWizard({ stops: [{ a: 1 }], uiWizard: { enabled: false } }), false);
+  assert.equal(shouldEnableWizard({ uiWizard: { enabled: true } }), true);
   assert.equal(shouldEnableWizard({ stops: [{ a: 1 }], force: true }), true);
   ok("shouldEnableWizard");
 }

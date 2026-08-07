@@ -6,7 +6,8 @@
 export const WIZARD_STEPS = Object.freeze(["pedidos", "flota", "levantes", "ruta", "carga"]);
 
 export const DEFAULT_WIZARD_UI = Object.freeze({
-  enabled: true,
+  /** Closed by default — user opens via "Configuración del envío" launcher. */
+  enabled: false,
   activeStep: "pedidos",
   done: Object.freeze({
     pedidos: false,
@@ -29,7 +30,7 @@ export function createWizardUi(partial = {}) {
     ? partial.activeStep
     : DEFAULT_WIZARD_UI.activeStep;
   return {
-    enabled: partial.enabled !== false,
+    enabled: typeof partial.enabled === "boolean" ? partial.enabled : DEFAULT_WIZARD_UI.enabled,
     activeStep,
     done,
     singlePickup: partial.singlePickup !== false,
@@ -249,14 +250,13 @@ function getLabel(places, id) {
 
 /**
  * Should open wizard for this session state?
- * New/empty trips → yes; dense legacy without wizard flag → classic.
+ * Entry is always the "Configuración del envío" launcher unless draft/force says otherwise.
  */
-export function shouldEnableWizard({ stops, uiWizard, force } = {}) {
+export function shouldEnableWizard({ uiWizard, force } = {}) {
   if (force === true) return true;
   if (force === false) return false;
   if (uiWizard && typeof uiWizard.enabled === "boolean") return uiWizard.enabled;
-  const n = Array.isArray(stops) ? stops.length : 0;
-  return n === 0;
+  return false;
 }
 
 /**

@@ -86,6 +86,7 @@ import {
   addUserPlace,
   listPlaces,
   getPlaceById,
+  mergeCatalogPlaces,
 } from "../utils/logistica/pickupCatalog.js";
 import {
   createWizardUi,
@@ -1888,7 +1889,7 @@ export default function BmcLogisticaApp() {
   const [draftBrowserOpen, setDraftBrowserOpen] = useState(false);
   /** Setup wizard (SDD-ENVIO-WIZARD) */
   const [catalogPlaces, setCatalogPlaces] = useState(() => loadCatalogFromStorage());
-  const [wizardUi, setWizardUi] = useState(() => createWizardUi({ enabled: true }));
+  const [wizardUi, setWizardUi] = useState(() => createWizardUi({ enabled: false }));
   const [tripRoute, setTripRoute] = useState(null);
   const [newBaseLabel, setNewBaseLabel] = useState("");
   const [newBaseUrl, setNewBaseUrl] = useState("");
@@ -1951,7 +1952,8 @@ export default function BmcLogisticaApp() {
           );
         }
       } else {
-        setWizardUi(createWizardUi({ enabled: true }));
+        // Fresh session: Detalle Completo + launcher "Configuración del envío"
+        setWizardUi(createWizardUi({ enabled: false }));
       }
     } catch {
       // ignore persisted-state errors
@@ -3239,7 +3241,6 @@ export default function BmcLogisticaApp() {
           <EnvioWizardShell
             wizard={wizardUi}
             onWizardChange={(w) => {
-              let next = w;
               if (w.activeStep === "carga") setView("form");
               // when completing levantes single mode, apply default pickup
               if (w.done?.levantes && w.singlePickup !== false && w.defaultPickupPointId) {
@@ -3249,19 +3250,28 @@ export default function BmcLogisticaApp() {
             }}
             ctx={{ stops, info, truckL, wizard: wizardUi, route: tripRoute }}
             places={catalogPlaces}
-            onClassic={() => setWizardUi((p) => createWizardUi({ ...p, enabled: false }))}
+            onClassic={() => {
+              setWizardUi((p) => createWizardUi({ ...p, enabled: false }));
+              setView("form");
+            }}
             childrenByStep={{
               pedidos: (
                 <StepPedidos
                   stops={stops}
+                  search={search}
+                  onSearchChange={setSearch}
+                  onBuscar={buscarSheet}
+                  onCargarActuales={cargarActuales}
+                  loadSh={loadSh}
+                  shErr={shErr}
+                  autoLoadMsg={autoLoadMsg}
+                  ventasRowCount={ventasCache.rows.length}
+                  results={results}
+                  onAddResult={agregarStop}
+                  activeReparto={activeReparto}
                   onRemoveStop={(id) => {
                     setStops((p) => renumberStops(p.filter((s) => s.id !== id), { colors: COLORS }));
                   }}
-                  searchSlot={
-                    <div style={{ fontSize: 12, color: T.muted }}>
-                      Usá el bloque <b>Buscar cliente en Ventas</b> abajo en Formulario para agregar paradas, o cargá actuales.
-                    </div>
-                  }
                 />
               ),
               flota: (
@@ -3339,46 +3349,173 @@ export default function BmcLogisticaApp() {
                 <StepRuta
                   route={tripRoute}
                   routeStale={wizardUi.routeStale}
-                  onRecalcular={() => {
-                    const stopsForRoute =
+                  info={info}
+                  onRecalcular={async () => {
+                    // Best-effort: parse lat,lng from map links; Nominatim for addresses without geo
+                    // Re-merge seed so Kingspan etc. pick up seed geo/address even if LS was stale
+                    let placesForRoute = mergeCatalogPlaces(catalogPlaces);
+                    setCatalogPlaces(placesForRoute);
+                    saveCatalogToStorage(placesForRoute);
+                    let stopsForRoute =
                       wizardUi.singlePickup !== false
                         ? applyDefaultPickupToStops(stops, wizardUi.defaultPickupPointId)
                         : stops;
+
+                    // Parse coords from mapLink/mapUrl into stop.geo when possible
+                    stopsForRoute = stopsForRoute.map((s) => {
+                      if (s.geo && Number.isFinite(s.geo.lat)) return s;
+                      const parsed = parseLatLng(s.mapLink) || parseLatLng(s.direccion);
+                      if (!parsed) return s;
+                      return applyGeocodeToStop(s, { ...parsed, label: s.direccion || s.cliente || "", source: "parsed" });
+                    });
+                    setStops((prev) =>
+                      prev.map((s) => {
+                        const next = stopsForRoute.find((x) => x.id === s.id);
+                        return next?.geo && !s.geo ? next : s;
+                      }),
+                    );
+
+                    // Geocode missing delivery addresses (max 5) via API if token present
+                    const token = enviosAuthToken();
+                    const baseApi = getCalcApiBase();
+                    if (token && baseApi) {
+                      const needGeo = stopsForRoute.filter((s) => !s.geo && String(s.direccion || "").trim()).slice(0, 5);
+                      for (const s of needGeo) {
+                        try {
+                          const res = await fetch(`${baseApi}/api/envios/geocode`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ address: s.direccion }),
+                          });
+                          const j = await res.json().catch(() => ({}));
+                          if (res.ok && j.geo) {
+                            const enriched = applyGeocodeToStop(s, j.geo);
+                            stopsForRoute = stopsForRoute.map((x) => (x.id === s.id ? enriched : x));
+                            setStops((prev) => prev.map((x) => (x.id === s.id ? enriched : x)));
+                          }
+                        } catch {
+                          /* skip */
+                        }
+                      }
+                      // Geocode base place label if missing geo
+                      const basePlace = placesForRoute.find((p) => p.id === info.basePointId);
+                      if (basePlace && !basePlace.geo) {
+                        const q = basePlace.addressText || basePlace.label;
+                        if (q) {
+                          try {
+                            const res = await fetch(`${baseApi}/api/envios/geocode`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ address: q }),
+                            });
+                            const j = await res.json().catch(() => ({}));
+                            if (res.ok && j.geo) {
+                              placesForRoute = placesForRoute.map((p) =>
+                                p.id === basePlace.id
+                                  ? {
+                                      ...p,
+                                      geo: {
+                                        lat: Number(j.geo.lat),
+                                        lng: Number(j.geo.lng),
+                                        source: "nominatim",
+                                      },
+                                      addressText: p.addressText || j.geo.label || p.label,
+                                    }
+                                  : p,
+                              );
+                              setCatalogPlaces(placesForRoute);
+                              saveCatalogToStorage(placesForRoute);
+                            }
+                          } catch {
+                            /* skip */
+                          }
+                        }
+                      }
+                    }
+
                     const r = suggestRoute({
                       basePointId: info.basePointId,
-                      places: catalogPlaces,
+                      places: placesForRoute,
                       stops: stopsForRoute,
                       defaultPickupPointId: wizardUi.defaultPickupPointId,
                     });
                     setTripRoute(r);
                     setWizardUi((p) => createWizardUi({ ...p, routeStale: false, done: { ...p.done, ruta: true } }));
-                    setAutoLoadMsg(`Ruta: ${r.orderedLegs.length} tramos${r.totalKm != null ? ` · ~${r.totalKm.toFixed(0)} km` : ""}`);
+                    const withGeo = (r.orderedLegs || []).filter((l) => l.geo).length;
+                    setAutoLoadMsg(
+                      `Ruta: ${r.orderedLegs.length} tramos · ${withGeo} con geo${r.totalKm != null ? ` · ~${r.totalKm.toFixed(0)} km` : ""} — Maps/WA listos`,
+                    );
                   }}
                 />
               ),
               carga: (
-                <div style={{ fontSize: 13, color: T.muted }}>
-                  Usá las pestañas <b>Formulario</b>, <b>Remito</b> y <b>Diagrama 3D</b> para estiba, remito y WhatsApp al transportista.
+                <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.45 }}>
+                  Listo para estibar. Cerrá el wizard con <b>Detalle Completo</b> o usá las pestañas{" "}
+                  <b>Detalle Completo</b>, <b>Remito</b> y <b>Diagrama 3D</b> para ver todo lo cargado, remito y WhatsApp al
+                  transportista.
                 </div>
               ),
             }}
           />
-          {!wizardUi.enabled ? null : (
-            <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>
-              Wizard activo · catálogo {listPlaces(catalogPlaces).length} lugares
-            </div>
-          )}
+          <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>
+            Configurando envío · catálogo {listPlaces(catalogPlaces).length} lugares
+          </div>
         </div>
       ) : (
-        <div className="np" style={{ marginBottom: 8 }}>
-          <Btn small outline onClick={() => setWizardUi((p) => createWizardUi({ ...p, enabled: true }))}>
-            Activar wizard por etapas
-          </Btn>
+        <div
+          className="np"
+          style={{
+            marginBottom: 12,
+            padding: "14px 16px",
+            borderRadius: 14,
+            border: `1px solid ${T.border}`,
+            background: "linear-gradient(135deg,#eff6ff 0%,#fff 55%)",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: T.brand }}>Configuración del envío</div>
+            <div style={{ fontSize: 12, color: T.muted, marginTop: 2, lineHeight: 1.4 }}>
+              Armá el viaje por etapas: pedidos → flota → levantes → ruta → carga.
+              {stops.length ? ` · ${stops.length} pedido(s) en Detalle Completo` : " · Empezá acá para un envío nuevo"}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setWizardUi((p) =>
+                createWizardUi({
+                  ...p,
+                  enabled: true,
+                  activeStep: "pedidos",
+                }),
+              )
+            }
+            style={{
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "none",
+              background: "#2563eb",
+              color: "#fff",
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: "pointer",
+              minHeight: 48,
+              boxShadow: "0 2px 8px rgba(37,99,235,.25)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Configurar envío →
+          </button>
         </div>
       )}
 
       <div className="envios-tabbar np">
-        {[["form", "📋 Formulario"], ["remito", "📄 Remito"], ["carga", "🚛 Diagrama 3D"]].map(([v, l]) => (
+        {[["form", "📋 Detalle Completo"], ["remito", "📄 Remito"], ["carga", "🚛 Diagrama 3D"]].map(([v, l]) => (
           <button
             key={v}
             type="button"

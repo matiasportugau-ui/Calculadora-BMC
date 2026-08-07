@@ -97,9 +97,10 @@ export default function EnvioWizardShell({
               background: "#fff",
               cursor: "pointer",
               minHeight: 40,
+              fontWeight: 600,
             }}
           >
-            Vista clásica
+            Detalle Completo
           </button>
         ) : null}
       </div>

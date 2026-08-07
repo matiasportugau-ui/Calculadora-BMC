@@ -1,7 +1,10 @@
 /**
  * BMC Envíos Setup Wizard — pure route suggestion (base → pickups → deliveries).
- * Haversine when geo present; OSRM hook later (SDD-GEO-MAPS).
+ * Haversine when geo present; resolves coords from mapUrl / address when possible.
+ * OSRM hook later (SDD-GEO-MAPS).
  */
+
+import { isValidLatLng, parseLatLng } from "./geocode.js";
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -23,6 +26,30 @@ export function haversineKm(a, b) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/**
+ * Best-effort geo from explicit geo, map URL, or free-text (lat,lng paste).
+ * @param {{
+ *   geo?: { lat?: number, lng?: number } | null,
+ *   mapUrl?: string,
+ *   mapLink?: string,
+ *   addressText?: string,
+ *   direccion?: string,
+ *   label?: string,
+ * }} source
+ * @returns {{ lat: number, lng: number, source: string } | null}
+ */
+export function resolvePointGeo(source = {}) {
+  const g = source?.geo;
+  if (g && isValidLatLng(Number(g.lat), Number(g.lng))) {
+    return { lat: Number(g.lat), lng: Number(g.lng), source: String(g.source || "geo") };
+  }
+  for (const field of [source.mapUrl, source.mapLink, source.addressText, source.direccion, source.label]) {
+    const parsed = parseLatLng(field);
+    if (parsed) return { lat: parsed.lat, lng: parsed.lng, source: "parsed" };
+  }
+  return null;
 }
 
 /**
@@ -55,6 +82,7 @@ export function deliveryOrderStops(stops) {
  * Build ordered legs.
  * @param {{
  *   basePoint?: object|null,
+ *   basePointId?: string,
  *   stops?: object[],
  *   places?: object[],
  *   defaultPickupPointId?: string,
@@ -87,15 +115,24 @@ export function suggestRoute(input = {}) {
   let deliveries = deliveryOrderStops(stops);
   if (input.deliveryOrder === "reverse") deliveries = deliveries.reverse();
   for (const s of deliveries) {
-    const geo = s.geo && Number.isFinite(s.geo.lat) ? { lat: s.geo.lat, lng: s.geo.lng } : null;
+    const geo = resolvePointGeo({
+      geo: s.geo,
+      mapLink: s.mapLink,
+      mapUrl: s.mapLink,
+      direccion: s.direccion,
+      addressText: s.direccion,
+      label: s.cliente,
+    });
     if (!geo) missingGeo += 1;
     legs.push({
       type: "delivery",
       refId: s.id || s.orderId || "",
       label: s.cliente || s.orderId || "Entrega",
+      addressText: String(s.direccion || "").trim(),
       mapUrl: s.mapLink || "",
       geo,
       stopId: s.id,
+      telefono: s.telefono || "",
     });
   }
 
@@ -118,18 +155,22 @@ export function suggestRoute(input = {}) {
     missingGeoCount: missingGeo,
     warnings: [
       legs.length < 2 ? "Ruta incompleta (faltan tramos)." : null,
-      missingGeo > 0 ? `${missingGeo} punto(s) sin coordenadas — km parcial o no disponible.` : null,
+      missingGeo > 0
+        ? `${missingGeo} punto(s) sin lat/lng — se exporta por nombre/dirección; km solo donde hay geo.`
+        : null,
     ].filter(Boolean),
   };
 }
 
 function placeToLeg(type, place, fallbackId) {
+  const geo = resolvePointGeo(place || {});
   return {
     type,
     refId: place?.id || fallbackId || "",
     label: place?.label || fallbackId || type,
+    addressText: String(place?.addressText || "").trim(),
     mapUrl: place?.mapUrl || "",
-    geo: place?.geo || null,
+    geo,
   };
 }
 
