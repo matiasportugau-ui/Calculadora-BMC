@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — Ventas gviz parseCsv blank-strip Bug AT):** `#922` indexer was correct but live `parseCsv` in `BmcLogisticaApp` dropped blank `,,,` rows before `indexVentasCsvDataRows`, so `ventasSheetRow1Based` still skewed on real Sheets CSV. Moved to `parseVentasGvizCsv` (preserves blank placeholders) + e2e test through parse→index.
+
 **2026-08-07 (fix — concurrent Entregado row identity extract from #896):** Landed pure `saleState` helpers `ventasRowIdentityFingerprint` + `findSheetRow1BasedByFingerprint` + linear `stripLogisticaMarkers` + terminal-status gate (tests). Full UI/API sale-state stack remains #893. Supersedes concurrent-delete core of draft #896.
 
 **2026-08-07 (fix — Ventas blank CSV row index):** Index sheet rows before filtering blank gviz rows so `ventasSheetRow1Based` stays correct. Rebased from #902.
