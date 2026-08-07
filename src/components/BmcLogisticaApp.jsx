@@ -54,7 +54,32 @@ import {
   setFreePosition,
   clearFreePosition,
   normalizeFreePositionsMap,
+  applyGroupDelta,
 } from "../utils/logistica/freeDragLayout.js";
+import {
+  findSupportUnder,
+  checkLengthOnShorter,
+  BURIED_TOAST_ES,
+} from "../utils/logistica/stackPhysics.js";
+import {
+  appendLoadWarning,
+  formatLoadWarningsForPlan,
+  normalizeLoadWarnings,
+  warningFromLengthCheck,
+  createLoadWarning,
+  LOAD_WARNING_CODES,
+} from "../utils/logistica/loadWarnings.js";
+import { buildYardDump, clearYardPositions, countYardPackages } from "../utils/logistica/yardLayout.js";
+import ViewerChrome from "./logistica/ViewerChrome.jsx";
+import RepartoBar from "./logistica/RepartoBar.jsx";
+import { canPlaceOnTop } from "../utils/logistica/stackConstraints.js";
+import { allocateRepartoNo, repartoDateKey } from "../utils/logistica/repartoNumber.js";
+import {
+  buildRepartoPayload,
+  statusOnFirstStop,
+  repartoStatusLabel,
+  stopSummariesForReparto,
+} from "../utils/logistica/repartoStatus.js";
 import {
   buildLoadPlanPrintModel,
 } from "../utils/logistica/loadPlanPrintModel.js";
@@ -794,8 +819,8 @@ function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1, selected = f
   );
 }
 
-function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
-  const plan = buildLoadPlanPrintModel({ info, stops, cargo, truckL });
+function LoadPlanPrintSheet({ info, stops, cargo, truckL, loadWarnings = [] }) {
+  const plan = buildLoadPlanPrintModel({ info, stops, cargo, truckL, loadWarnings });
   const maxX = Math.max(plan.maxX, truckL, 1);
   const scale = 280 / maxX;
   const sideH = 90;
@@ -813,6 +838,30 @@ function LoadPlanPrintSheet({ info, stops, cargo, truckL }) {
           {plan.header.transportista || "—"} · {plan.header.patente || "—"} · camión {truckL}m
         </div>
       </div>
+
+      {plan.warningLines?.length ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 10,
+            borderRadius: 8,
+            border: "1.5px solid #f59e0b",
+            background: "#fffbeb",
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#92400e", marginBottom: 6 }}>
+            {plan.warningsSectionTitle || "Avisos de estiba (ISO operativa)"}
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, lineHeight: 1.45, color: "#78350f" }}>
+            {plan.warningLines.map((line) => (
+              <li key={line}>{line.replace(/^\d+\.\s*/, "")}</li>
+            ))}
+          </ul>
+          <div style={{ fontSize: 10, color: "#a16207", marginTop: 6 }}>
+            Entregar esta sección al transportista / personal de carga.
+          </div>
+        </div>
+      ) : null}
 
       <div style={{ fontSize: 12, fontWeight: 700, color: "#003366", marginBottom: 6 }}>Orden de descarga (físicamente viable)</div>
       <ol style={{ margin: "0 0 12px 18px", padding: 0, fontSize: 11, lineHeight: 1.45 }}>
@@ -884,9 +933,16 @@ function DiagramPanel({
   onUpdateStop,
   freeDragEnabled = false,
   onFreeDragEnd = null,
+  onGroupDragEnd = null,
   onClearFreeDrag = null,
   onToggleFreeDrag = null,
   freeDragCount = 0,
+  multiSelectKeys = [],
+  onMultiSelectChange = null,
+  onBlocked = null,
+  onUnloadTruck = null,
+  yardMode = false,
+  loadWarnings = [],
 }) {
   const { placed, rowH, stopUnloadOrder, strategy, stacksByRow } = cargo;
   const { minXV, maxXV, placedView } = bedViewExtents(placed, truckL);
@@ -1011,10 +1067,24 @@ function DiagramPanel({
                 if (!freeDragEnabled && diagramView !== "webgl") setDiagramView("webgl");
                 onToggleFreeDrag(!freeDragEnabled);
               }}
-              title="Activá Free-Drag para acomodar bultos a mano en 3D (bypass del motor)"
+              title="1 clic=detalle · Doble-clic+hold=arrastrar"
             >
               Free-Drag {freeDragEnabled ? "ON" : "OFF"}
               {freeDragCount > 0 ? ` (${freeDragCount})` : ""}
+            </Btn>
+          ) : null}
+          {typeof onUnloadTruck === "function" ? (
+            <Btn
+              small
+              variant="onDark"
+              active={yardMode}
+              onClick={() => {
+                if (diagramView !== "webgl") setDiagramView("webgl");
+                onUnloadTruck();
+              }}
+              title="Baja todos los pedidos a pilas separadas alrededor del camión"
+            >
+              {yardMode ? "Yard activo" : "Descargar camión"}
             </Btn>
           ) : null}
           <Btn
@@ -1323,31 +1393,48 @@ function DiagramPanel({
 
       <div style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10, overflow: "hidden", width: "100%", maxWidth: "100%", minWidth: 0 }}>
         {diagramView === "plan" ? (
-          <LoadPlanPrintSheet info={info} stops={stops} cargo={cargo} truckL={truckL} />
+          <LoadPlanPrintSheet info={info} stops={stops} cargo={cargo} truckL={truckL} loadWarnings={loadWarnings} />
         ) : diagramView === "webgl" ? (
-          <Suspense
-            fallback={
-              <div style={{ height: 280, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.55)", fontSize: 13 }}>
-                Cargando vista 3D…
-              </div>
+          <ViewerChrome
+            toolbar={
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,.65)" }}>
+                {freeDragEnabled
+                  ? "1 clic detalle · Doble-clic+hold arrastra · Shift+clic grupo"
+                  : "Activá Free-Drag para armar a mano"}
+                {yardMode ? " · YARD" : ""}
+                {(multiSelectKeys || []).length ? ` · sel ${(multiSelectKeys || []).length}` : ""}
+              </span>
             }
           >
-            <LogisticaCargoScene3d
-              placed={placedView}
-              shiftX={shiftX}
-              truckL={truckL}
-              maxLen={maxXV}
-              totalLen={totalLen}
-              onForceRow={forceRow}
-              bultoCounts={bultoCounts}
-              highlightKeys={highlightKeys}
-              selectedPkgId={selectedPkgId}
-              onSelectStableKey={(_key, pkg) => selectPkg(pkg)}
-              freeDragEnabled={freeDragEnabled}
-              onFreeDragEnd={onFreeDragEnd}
-              onClearFreeDrag={onClearFreeDrag}
-            />
-          </Suspense>
+            <Suspense
+              fallback={
+                <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.55)", fontSize: 13 }}>
+                  Cargando vista 3D…
+                </div>
+              }
+            >
+              <LogisticaCargoScene3d
+                placed={placedView}
+                shiftX={shiftX}
+                truckL={truckL}
+                maxLen={maxXV}
+                totalLen={Math.max(totalLen, truckL + 8)}
+                onForceRow={forceRow}
+                bultoCounts={bultoCounts}
+                highlightKeys={highlightKeys}
+                selectedPkgId={selectedPkgId}
+                onSelectStableKey={(_key, pkg) => selectPkg(pkg)}
+                freeDragEnabled={freeDragEnabled}
+                onFreeDragEnd={onFreeDragEnd}
+                onGroupDragEnd={onGroupDragEnd}
+                onClearFreeDrag={onClearFreeDrag}
+                multiSelectKeys={multiSelectKeys}
+                onMultiSelectChange={onMultiSelectChange}
+                onBlocked={onBlocked}
+                fillParent
+              />
+            </Suspense>
+          </ViewerChrome>
         ) : (
         <svg
           width="100%"
@@ -1739,6 +1826,16 @@ export default function BmcLogisticaApp() {
   /** Free-Drag: toggle + per-package position overrides (bypass packer) */
   const [freeDragEnabled, setFreeDragEnabled] = useState(false);
   const [freePositions, setFreePositions] = useState({});
+  const [loadWarnings, setLoadWarnings] = useState([]);
+  const [multiSelectKeys, setMultiSelectKeys] = useState([]);
+  const [yardMode, setYardMode] = useState(false);
+  const [pendingLengthConfirm, setPendingLengthConfirm] = useState(null);
+  /** Coordinación de reparto — En Coordinación hasta Confirmar */
+  const [activeReparto, setActiveReparto] = useState(null);
+  const [repartoBusy, setRepartoBusy] = useState(false);
+  const [repartoHistoryOpen, setRepartoHistoryOpen] = useState(false);
+  const [repartoHistory, setRepartoHistory] = useState([]);
+  const [confirmCoordOpen, setConfirmCoordOpen] = useState(false);
   const [autoLoadMsg, setAutoLoadMsg] = useState("");
   const [retryingStopId, setRetryingStopId] = useState("");
   const [accProfiles, setAccProfiles] = useState({});
@@ -1808,8 +1905,10 @@ export default function BmcLogisticaApp() {
         if (parsed.rowOverrides && typeof parsed.rowOverrides === "object") setRowOverrides(parsed.rowOverrides);
         if (parsed.freePositions && typeof parsed.freePositions === "object") {
           setFreePositions(normalizeFreePositionsMap(parsed.freePositions));
+          setYardMode(countYardPackages(parsed.freePositions) > 0);
         }
         if (parsed.freeDragEnabled === true) setFreeDragEnabled(true);
+        if (Array.isArray(parsed.loadWarnings)) setLoadWarnings(normalizeLoadWarnings(parsed.loadWarnings));
         if (Array.isArray(parsed.transportistas)) setTransportistas(parsed.transportistas);
         if (Array.isArray(parsed.camionesCat)) setCamionesCat(parsed.camionesCat);
         if (Array.isArray(parsed.priceHistory)) setPriceHistory(parsed.priceHistory);
@@ -1884,6 +1983,7 @@ export default function BmcLogisticaApp() {
           rowOverrides,
           freeDragEnabled,
           freePositions,
+          loadWarnings,
           transportistas,
           camionesCat,
           priceHistory,
@@ -1907,6 +2007,7 @@ export default function BmcLogisticaApp() {
     rowOverrides,
     freeDragEnabled,
     freePositions,
+    loadWarnings,
     transportistas,
     camionesCat,
     priceHistory,
@@ -2128,6 +2229,7 @@ export default function BmcLogisticaApp() {
       rowOverrides,
       freeDragEnabled,
       freePositions,
+      loadWarnings,
       transportistas,
       camionesCat,
       priceHistory,
@@ -2417,18 +2519,85 @@ export default function BmcLogisticaApp() {
   const cargo = cargoBase;
   const freeDragCount = cargo.freeDragCount || Object.keys(freePositions).length;
 
-  const handleFreeDragEnd = (stableKey, pos) => {
-    if (!stableKey) return;
+  const commitFreePosition = (stableKey, pos, extraWarning = null) => {
     setFreePositions((prev) =>
-      setFreePosition(prev, stableKey, pos, { truckL, maxH: MAX_H }),
+      setFreePosition(prev, stableKey, { ...pos, zone: pos.zone === "yard" ? "yard" : "truck" }, { truckL, maxH: MAX_H }),
     );
     setCargoLayoutMode("manual");
-    setAutoLoadMsg(`Free-Drag: posición libre guardada (${stableKey.slice(0, 12)}…)`);
+    if (extraWarning) setLoadWarnings((w) => appendLoadWarning(w, extraWarning));
+    setAutoLoadMsg(`Free-Drag: posición guardada`);
+  };
+
+  const validateAndCommitFreeDrag = (stableKey, pos) => {
+    if (!stableKey) return;
+    const pkg = cargo.placed.find((p) => p.stableKey === stableKey);
+    if (!pkg) {
+      commitFreePosition(stableKey, pos);
+      return;
+    }
+    const candidate = {
+      ...pkg,
+      xStart: pos.xStart,
+      zBase: pos.zBase,
+      row: pos.row,
+      len: pos.len || pkg.len,
+      stableKey,
+    };
+    // Hard: panel on profile
+    const others = cargo.placed.filter((p) => p.stableKey !== stableKey);
+    const { supportPkg } = findSupportUnder(others, candidate);
+    if (supportPkg && !canPlaceOnTop(pkg, supportPkg)) {
+      setAutoLoadMsg(PANEL_ON_PROFILE_RULE_ES);
+      return;
+    }
+    const supportLen = supportPkg ? Number(supportPkg.len) || 0 : Number(pkg.len) || 0;
+    const lenCheck = checkLengthOnShorter({ len: candidate.len }, supportLen);
+    if (!lenCheck.ok && lenCheck.soft) {
+      setPendingLengthConfirm({
+        stableKey,
+        pos,
+        check: lenCheck,
+        packageKeys: [stableKey, supportPkg?.stableKey].filter(Boolean),
+      });
+      return;
+    }
+    commitFreePosition(stableKey, pos);
+  };
+
+  const handleFreeDragEnd = (stableKey, pos) => {
+    validateAndCommitFreeDrag(stableKey, pos);
+  };
+
+  const handleGroupDragEnd = (keys, delta) => {
+    if (!keys?.length) return;
+    setFreePositions((prev) => {
+      // Seed missing free positions from current placed
+      let base = { ...prev };
+      for (const k of keys) {
+        if (!base[k]) {
+          const pkg = cargo.placed.find((p) => p.stableKey === k);
+          if (pkg) {
+            base = setFreePosition(base, k, {
+              xStart: pkg.xStart,
+              zBase: pkg.zBase,
+              row: pkg.row,
+              len: pkg.len,
+              zone: pkg.zone,
+              yardStopId: pkg.yardStopId,
+            }, { truckL, maxH: MAX_H });
+          }
+        }
+      }
+      return applyGroupDelta(base, keys, delta, cargo.placed);
+    });
+    setCargoLayoutMode("manual");
+    setAutoLoadMsg(`Free-Drag: grupo de ${keys.length} bultos movido`);
   };
 
   const handleClearFreeDrag = (stableKey) => {
     if (!stableKey) {
       setFreePositions({});
+      setYardMode(false);
       setAutoLoadMsg("Free-Drag: todas las posiciones libres borradas — vuelve el motor");
       return;
     }
@@ -2440,11 +2609,45 @@ export default function BmcLogisticaApp() {
     setFreeDragEnabled(Boolean(on));
     setAutoLoadMsg(
       on
-        ? "Free-Drag ON — arrastrá bultos en vista 3D (Shift = altura). Desactivá cuando termines."
+        ? "Free-Drag ON — 1 clic = detalle · Doble-clic+hold = arrastrar · Shift+clic = grupo"
         : freeDragCount > 0
-          ? `Free-Drag OFF — ${freeDragCount} posición(es) libre(s) siguen aplicadas. “Limpiar free” para volver al motor.`
-          : "Free-Drag OFF — estiba solo con motor (auto/manual orden)",
+          ? `Free-Drag OFF — ${freeDragCount} posición(es) libre(s) siguen. “Limpiar free” para motor.`
+          : "Free-Drag OFF — estiba solo con motor",
     );
+  };
+
+  const handleUnloadTruckToYard = () => {
+    // place without free overrides first for source packages
+    const baseCargo = placeCargo(stops, truckL, distributionMode || "balanced", layoutOpts);
+    const dump = buildYardDump(stops, baseCargo.placed, truckL);
+    setFreePositions(dump);
+    setYardMode(true);
+    setFreeDragEnabled(true);
+    setCargoLayoutMode("manual");
+    setLoadWarnings((w) =>
+      appendLoadWarning(w, createLoadWarning({
+        code: LOAD_WARNING_CODES.YARD_RELOAD,
+        severity: "info",
+        message: "Camión descargado a patio — pedidos en pilas separadas para reorganización",
+        acknowledged: true,
+        source: "yard_reload",
+      })),
+    );
+    setAutoLoadMsg(
+      `Camión descargado: ${Object.keys(dump).length} bultos en ${stops.length} pila(s) de pedido alrededor. Rearmá con Free-Drag.`,
+    );
+  };
+
+  const handleConfirmLengthSoft = (accept) => {
+    const pending = pendingLengthConfirm;
+    setPendingLengthConfirm(null);
+    if (!pending || !accept) {
+      setAutoLoadMsg("Colocación cancelada — sin limitante forzada");
+      return;
+    }
+    const warn = warningFromLengthCheck(pending.check, pending.packageKeys);
+    commitFreePosition(pending.stableKey, pending.pos, warn);
+    setAutoLoadMsg("Limitante física aceptada — registrada en plan de carga");
   };
   const totPan = stops.reduce((t, s) => t + s.paneles.reduce((tt, p) => tt + safeNum(p.cantidad), 0), 0);
 
@@ -2583,7 +2786,229 @@ export default function BmcLogisticaApp() {
     }
   }
 
+  /**
+   * Ensure an active reparto in "En Coordinación" when organizing stops.
+   * Tries API; falls back to local-only REP number.
+   */
+  async function ensureActiveReparto(nextStopCount) {
+    if (activeReparto?.status === "en_coordinacion" || activeReparto?.status === "draft") {
+      return activeReparto;
+    }
+    if (activeReparto?.status === "coordinado") {
+      // start fresh batch after confirmed
+    }
+    const token = enviosAuthToken();
+    const base = getCalcApiBase();
+    const ymd = repartoDateKey();
+    if (token && base) {
+      try {
+        setRepartoBusy(true);
+        const res = await fetch(`${base}/api/repartos`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            deliveryDate: ymd,
+            truckL,
+            transportista: info.transportista,
+            patente: info.patente,
+            payload: buildRepartoPayload({
+              stops: [],
+              truckL,
+              distributionMode,
+              cargoLayoutMode,
+              manualPkgOrderKeys,
+              rowOverrides,
+              freePositions,
+              loadWarnings,
+              info,
+            }),
+            actor: "logistica-ui",
+          }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (res.ok && j.ok && j.reparto) {
+          const r = {
+            id: j.reparto.id,
+            repartoNo: j.reparto.repartoNo,
+            status: j.reparto.status || "en_coordinacion",
+            revision: j.reparto.revision || 1,
+            local: false,
+          };
+          setActiveReparto(r);
+          setAutoLoadMsg(`Reparto ${r.repartoNo} · ${repartoStatusLabel(r.status)}`);
+          return r;
+        }
+      } catch (e) {
+        /* local fallback */
+      } finally {
+        setRepartoBusy(false);
+      }
+    }
+    const local = {
+      id: `local-${Date.now()}`,
+      repartoNo: allocateRepartoNo([], ymd),
+      status: statusOnFirstStop("draft"),
+      revision: 1,
+      local: true,
+    };
+    setActiveReparto(local);
+    setAutoLoadMsg(
+      `Reparto local ${local.repartoNo} · En Coordinación${token ? " (API no disponible — solo local)" : " (sin token API)"}`,
+    );
+    return local;
+  }
+
+  async function saveRepartoDraft() {
+    if (!activeReparto || activeReparto.status === "coordinado") return;
+    const payload = buildRepartoPayload({
+      stops,
+      truckL,
+      distributionMode,
+      cargoLayoutMode,
+      manualPkgOrderKeys,
+      rowOverrides,
+      freePositions,
+      loadWarnings,
+      info,
+    });
+    if (activeReparto.local || !enviosAuthToken()) {
+      setActiveReparto((r) => (r ? { ...r, revision: (r.revision || 1) + 1, status: "en_coordinacion" } : r));
+      setAutoLoadMsg(`Borrador local ${activeReparto.repartoNo} guardado (rev ${(activeReparto.revision || 1) + 1})`);
+      return;
+    }
+    setRepartoBusy(true);
+    try {
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/repartos/${encodeURIComponent(activeReparto.id)}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${enviosAuthToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          payload,
+          truckL,
+          transportista: info.transportista,
+          patente: info.patente,
+          expectedRevision: activeReparto.revision,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.message || j.error || res.statusText);
+      setActiveReparto((r) =>
+        r
+          ? {
+              ...r,
+              status: "en_coordinacion",
+              revision: j.revision || (r.revision || 1) + 1,
+            }
+          : r,
+      );
+      setAutoLoadMsg(`Borrador ${activeReparto.repartoNo} en nube · rev ${j.revision}`);
+    } catch (e) {
+      setAutoLoadMsg(`Reparto: no se pudo guardar — ${e.message}`);
+    } finally {
+      setRepartoBusy(false);
+    }
+  }
+
+  async function confirmRepartoCoordination() {
+    if (!activeReparto || stops.length < 1) return;
+    const payload = buildRepartoPayload({
+      stops,
+      truckL,
+      distributionMode,
+      cargoLayoutMode,
+      manualPkgOrderKeys,
+      rowOverrides,
+      freePositions,
+      loadWarnings,
+      info,
+    });
+    if (activeReparto.local || !enviosAuthToken()) {
+      setActiveReparto((r) =>
+        r
+          ? {
+              ...r,
+              status: "coordinado",
+              confirmedAt: new Date().toISOString(),
+              stopsSummary: stopSummariesForReparto(stops),
+              drivePlan: {
+                path: `_Repartos/${repartoDateKey()}/${r.repartoNo}`,
+                note: "Local confirm — Drive al conectar API + DRIVE_REPARTOS_FOLDER_ID",
+              },
+            }
+          : r,
+      );
+      setConfirmCoordOpen(false);
+      setAutoLoadMsg(
+        `✓ Coordinación confirmada ${activeReparto.repartoNo} · ${stops.length} parada(s) · registro local`,
+      );
+      return;
+    }
+    setRepartoBusy(true);
+    try {
+      // save latest first
+      await saveRepartoDraft();
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/repartos/${encodeURIComponent(activeReparto.id)}/confirm`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${enviosAuthToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ payload, actor: "logistica-ui" }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.message || j.error || res.statusText);
+      setActiveReparto((r) =>
+        r
+          ? {
+              ...r,
+              status: "coordinado",
+              revision: j.reparto?.revision || r.revision,
+              confirmedAt: j.reparto?.confirmedAt,
+              drivePlan: j.reparto?.drivePlan,
+              stopsSummary: j.reparto?.stopsSummary,
+            }
+          : r,
+      );
+      setConfirmCoordOpen(false);
+      setAutoLoadMsg(
+        `✓ Coordinación confirmada ${j.reparto?.repartoNo || activeReparto.repartoNo} · Drive path reservado · ver Historial`,
+      );
+    } catch (e) {
+      setAutoLoadMsg(`Confirmar falló: ${e.message}`);
+    } finally {
+      setRepartoBusy(false);
+    }
+  }
+
+  async function loadRepartoHistory() {
+    setRepartoHistoryOpen(true);
+    const token = enviosAuthToken();
+    const base = getCalcApiBase();
+    if (!token || !base) {
+      setRepartoHistory(activeReparto ? [activeReparto] : []);
+      return;
+    }
+    try {
+      const res = await fetch(`${base}/api/repartos?limit=30`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j.ok) setRepartoHistory(j.repartos || []);
+      else setRepartoHistory([]);
+    } catch {
+      setRepartoHistory([]);
+    }
+  }
+
   async function agregarStop(r) {
+    await ensureActiveReparto((stops?.length || 0) + 1);
     const label = labelVentasCandidate(r);
     let pdfLink = r.pdf || "";
     const admin = await tryAdminQuoteMatch({
@@ -2834,9 +3259,177 @@ export default function BmcLogisticaApp() {
               Limpiar free
             </Btn>
           ) : null}
+          <Btn
+            small
+            color={yardMode ? "#38bdf8" : undefined}
+            onClick={handleUnloadTruckToYard}
+            title="Descarga pedidos a pilas separadas alrededor del camión"
+          >
+            Descargar camión
+          </Btn>
         </div>
         <Btn onClick={sendWA} color="#25D366">📲 WhatsApp</Btn>
       </div>
+
+      {pendingLengthConfirm ? (
+        <div
+          role="dialog"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10000,
+            background: "rgba(15,23,42,.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 20,
+              maxWidth: 420,
+              boxShadow: "0 20px 50px rgba(0,0,0,.25)",
+            }}
+          >
+            <div style={{ fontWeight: 800, color: "#92400e", marginBottom: 8 }}>Limitante física</div>
+            <p style={{ fontSize: 14, lineHeight: 1.45, color: "#334155", margin: "0 0 16px" }}>
+              {pendingLengthConfirm.check?.message ||
+                "Esto presenta una limitante física. ¿Lo colocamos igual?"}
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <Btn outline onClick={() => handleConfirmLengthSoft(false)}>
+                Cancelar
+              </Btn>
+              <Btn color="#f59e0b" onClick={() => handleConfirmLengthSoft(true)}>
+                Sí, colocar y registrar aviso
+              </Btn>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmCoordOpen ? (
+        <div
+          role="dialog"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10000,
+            background: "rgba(15,23,42,.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 20,
+              maxWidth: 480,
+              width: "100%",
+              boxShadow: "0 20px 50px rgba(0,0,0,.25)",
+            }}
+          >
+            <div style={{ fontWeight: 800, color: "#047857", marginBottom: 8 }}>
+              Confirmar coordinación
+            </div>
+            <p style={{ fontSize: 13, color: "#475569", margin: "0 0 12px" }}>
+              Se cierra el reparto <b>{activeReparto?.repartoNo || "—"}</b> como{" "}
+              <b>Coordinado</b>, se guarda el snapshot y se registra el plan Drive (path).
+            </p>
+            <ul style={{ margin: "0 0 14px", paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
+              {stops.map((s) => (
+                <li key={s.id}>
+                  <b>{s.cliente || "—"}</b>
+                  {s.orderId ? ` · #${s.orderId}` : ""} · {s.direccion || "sin dir"}
+                </li>
+              ))}
+            </ul>
+            {loadWarnings.length ? (
+              <div style={{ fontSize: 12, color: "#92400e", marginBottom: 12 }}>
+                Incluye {loadWarnings.length} aviso(s) de estiba en el registro.
+              </div>
+            ) : null}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <Btn outline onClick={() => setConfirmCoordOpen(false)} disabled={repartoBusy}>
+                Cancelar
+              </Btn>
+              <Btn color="#059669" onClick={confirmRepartoCoordination} disabled={repartoBusy}>
+                {repartoBusy ? "Guardando…" : "Confirmar y guardar"}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {repartoHistoryOpen ? (
+        <div
+          role="dialog"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10000,
+            background: "rgba(15,23,42,.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 20,
+              maxWidth: 560,
+              width: "100%",
+              maxHeight: "80vh",
+              overflow: "auto",
+              boxShadow: "0 20px 50px rgba(0,0,0,.25)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ fontWeight: 800 }}>Historial de repartos</div>
+              <Btn outline small onClick={() => setRepartoHistoryOpen(false)}>
+                Cerrar
+              </Btn>
+            </div>
+            {!repartoHistory.length ? (
+              <div style={{ fontSize: 13, color: "#64748b" }}>
+                Sin historial en nube (o sin API). El reparto activo sigue en esta sesión.
+              </div>
+            ) : (
+              <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
+                    <th style={{ padding: 6 }}>Nº</th>
+                    <th style={{ padding: 6 }}>Estado</th>
+                    <th style={{ padding: 6 }}>Paradas</th>
+                    <th style={{ padding: 6 }}>Actualizado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {repartoHistory.map((row) => (
+                    <tr key={row.id || row.reparto_no} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: 6, fontWeight: 700 }}>{row.reparto_no || row.repartoNo}</td>
+                      <td style={{ padding: 6 }}>{row.statusLabel || row.status}</td>
+                      <td style={{ padding: 6 }}>{row.stop_count ?? "—"}</td>
+                      <td style={{ padding: 6, color: "#64748b" }}>
+                        {row.updated_at ? String(row.updated_at).slice(0, 16) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {view === "remito" ? <RemitoView info={info} stops={stops} cargo={cargo} truckL={truckL} sendWA={sendWA} /> : null}
 
@@ -2854,8 +3447,15 @@ export default function BmcLogisticaApp() {
             freeDragEnabled={freeDragEnabled}
             freeDragCount={freeDragCount}
             onFreeDragEnd={handleFreeDragEnd}
+            onGroupDragEnd={handleGroupDragEnd}
             onClearFreeDrag={handleClearFreeDrag}
             onToggleFreeDrag={handleToggleFreeDrag}
+            multiSelectKeys={multiSelectKeys}
+            onMultiSelectChange={setMultiSelectKeys}
+            onBlocked={(msg) => setAutoLoadMsg(msg || BURIED_TOAST_ES)}
+            onUnloadTruck={handleUnloadTruckToYard}
+            yardMode={yardMode}
+            loadWarnings={loadWarnings}
           />
           <div style={{ ...css.card, padding: 14, marginTop: 12 }}>
             <div
@@ -2878,6 +3478,26 @@ export default function BmcLogisticaApp() {
                 </div>
               ) : null}
             </div>
+            {loadWarnings.length ? (
+              <div
+                style={{
+                  fontSize: 12,
+                  marginBottom: 10,
+                  padding: 8,
+                  borderRadius: 8,
+                  border: "1px solid #f59e0b",
+                  background: "#fffbeb",
+                  color: "#92400e",
+                }}
+              >
+                <b>Avisos de estiba ({loadWarnings.length})</b>
+                <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                  {formatLoadWarningsForPlan(loadWarnings).map((line) => (
+                    <li key={line}>{line.replace(/^\d+\.\s*/, "")}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <PackageLayoutList
               placed={cargo.placed}
               counts={packageBultoCounts(cargo.placed)}
@@ -3056,6 +3676,24 @@ export default function BmcLogisticaApp() {
       {view === "form" ? (
         <div style={{ display: "grid", gridTemplateColumns: "1.3fr .9fr", gap: 12 }}>
           <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
+            <RepartoBar
+              reparto={
+                activeReparto ||
+                (stops.length
+                  ? { status: "en_coordinacion", repartoNo: "…", revision: 0 }
+                  : null)
+              }
+              stopCount={stops.length}
+              truckL={truckL}
+              busy={repartoBusy}
+              onConfirm={() => setConfirmCoordOpen(true)}
+              onSaveDraft={saveRepartoDraft}
+              onOpenHistory={loadRepartoHistory}
+              onNewReparto={() => {
+                setActiveReparto(null);
+                setAutoLoadMsg("Listo para nuevo reparto — agregá paradas");
+              }}
+            />
             <div style={{ ...css.card, padding: 16, background: "#e8f1fb", borderColor: "#bfdbfe" }}>
               <h3 style={css.sectionTitle}>🔍 Buscar cliente en Ventas</h3>
               <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -3067,14 +3705,23 @@ export default function BmcLogisticaApp() {
               {shErr ? <div style={{ color: "#b42318", fontSize: 12, padding: "7px 10px", background: "#ffeceb", borderRadius: 8, marginBottom: 8 }}>{shErr}</div> : null}
               {autoLoadMsg ? <div style={{ color: T.brand, fontSize: 12, padding: "7px 10px", background: "#ffffff", borderRadius: 8, marginBottom: 8, border: "1px solid #bfdbfe" }}>{autoLoadMsg}</div> : null}
               {results.map((r, i) => {
+                const inReparto = stops.some(
+                  (s) =>
+                    (r.orderId && String(s.orderId) === String(r.orderId)) ||
+                    (r.nombre && String(s.cliente || "").toLowerCase() === String(r.nombre || "").toLowerCase()),
+                );
                 const chipColor =
-                  r.coordination?.status === "enviado"
+                  inReparto || activeReparto?.status === "en_coordinacion" && inReparto
+                    ? "#c2410c"
+                    : r.coordination?.status === "enviado"
                     ? "#16a34a"
                     : r.coordination?.status === "coordinado"
                       ? r.coordinationColor || "#2563eb"
                       : "#94a3b8";
                 const chipBg =
-                  r.coordination?.status === "enviado"
+                  inReparto
+                    ? "#fff7ed"
+                    : r.coordination?.status === "enviado"
                     ? "#dcfce7"
                     : r.coordination?.status === "coordinado"
                       ? "#eff6ff"
@@ -3108,7 +3755,11 @@ export default function BmcLogisticaApp() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {r.coordinationCaption || r.coordination?.label || "Por coordinar"}
+                        {inReparto
+                          ? "En este reparto"
+                          : activeReparto?.status === "en_coordinacion" && stops.length
+                            ? "Por coordinar"
+                            : r.coordinationCaption || r.coordination?.label || "Por coordinar"}
                       </span>
                     </div>
                     <div style={{ fontSize: 11, color: T.muted }}>📍{r.dir || "—"} · 📞{r.tel || "—"}</div>
@@ -3820,8 +4471,15 @@ export default function BmcLogisticaApp() {
               freeDragEnabled={freeDragEnabled}
               freeDragCount={freeDragCount}
               onFreeDragEnd={handleFreeDragEnd}
+              onGroupDragEnd={handleGroupDragEnd}
               onClearFreeDrag={handleClearFreeDrag}
               onToggleFreeDrag={handleToggleFreeDrag}
+              multiSelectKeys={multiSelectKeys}
+              onMultiSelectChange={setMultiSelectKeys}
+              onBlocked={(msg) => setAutoLoadMsg(msg || BURIED_TOAST_ES)}
+              onUnloadTruck={handleUnloadTruckToYard}
+              yardMode={yardMode}
+              loadWarnings={loadWarnings}
               stops={stops}
               onForcePackageRow={forcePackageRow}
               onForcePackageStack={forcePackageStack}

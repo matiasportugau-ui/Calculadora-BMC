@@ -166,38 +166,5 @@ export function toggleMultiSelect(keys = [], stableKey, shift = true) {
   return [...set];
 }
 
-/**
- * Apply same delta to a group of free positions.
- * @param {Record<string, object>} freePositions
- * @param {string[]} keys
- * @param {{ dx?: number, dzBase?: number, row?: number }} delta
- * @param {object[]} placed - for current lens
- */
-export function applyGroupDelta(freePositions = {}, keys = [], delta = {}, placed = []) {
-  const byKey = new Map((placed || []).filter((p) => p?.stableKey).map((p) => [p.stableKey, p]));
-  const next = { ...freePositions };
-  for (const k of keys || []) {
-    const pkg = byKey.get(k);
-    const cur = freePositions[k] || {
-      xStart: pkg?.xStart ?? 0,
-      zBase: pkg?.zBase ?? 0,
-      row: pkg?.row ?? 0,
-      freeDrag: true,
-    };
-    const xStart = Number(cur.xStart) + (Number(delta.dx) || 0);
-    const zBase = Math.max(0, Number(cur.zBase) + (Number(delta.dzBase) || 0));
-    const row = delta.row != null ? (Number(delta.row) === 1 ? 1 : 0) : Number(cur.row) === 1 ? 1 : 0;
-    next[k] = {
-      xStart,
-      zBase,
-      row,
-      freeDrag: true,
-      zone: cur.zone || "truck",
-      yardStopId: cur.yardStopId,
-    };
-  }
-  return next;
-}
-
 export const BURIED_TOAST_ES =
   "Primero quita el objeto de arriba o selecciónalo para moverlo en grupo";

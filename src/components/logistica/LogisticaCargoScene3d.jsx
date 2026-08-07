@@ -9,11 +9,16 @@ import {
   packagePhysicalDims,
   packageRowYOffset,
 } from "../../utils/logistica/packageDims.js";
+import {
+  canStartDrag,
+  BURIED_TOAST_ES,
+} from "../../utils/logistica/stackPhysics.js";
 
 const TRUCK_W = 2.4;
 const ROW_W = 1.2;
 const CAB_LEN_M = 2.4;
 const CAB_HEIGHT_M = 1.5;
+const DBL_MS = 420;
 
 function hexToColor(hex) {
   if (!hex || typeof hex !== "string" || hex[0] !== "#") return "#888888";
@@ -48,26 +53,34 @@ function TruckCabin({ shiftX }) {
 }
 
 /**
- * Free-drag: horizontal plane at current height (X along bed, Z across width → row).
- * Hold Shift while dragging to change height (Y / zBase).
+ * Interaction:
+ * - 1 click / pointerup quick → select (details only)
+ * - double-click + hold → drag (if Free-Drag ON and not buried)
+ * - release → stop drag, stay put
+ * - Shift+click → multi-select (parent)
  */
 function CargoBox({
   pkg,
   shiftX,
   selected,
+  multiSelected,
   dimmed,
   label,
-  onSelect,
+  placed,
+  multiSelectKeys,
   freeDragEnabled,
-  onFreeDragMove,
+  onSelect,
+  onShiftSelect,
   onFreeDragEnd,
+  onGroupDragEnd,
+  onBlocked,
   onDragStateChange,
+  lastClickRef,
 }) {
   const dims = packagePhysicalDims(pkg);
   const len = dims.L;
   const h = dims.H;
   const w = dims.W;
-  const meshRef = useRef(null);
   const dragRef = useRef(null);
   const liveRef = useRef(null);
   const { camera, gl } = useThree();
@@ -83,12 +96,16 @@ function CargoBox({
   const row = live?.row ?? pkg.row;
 
   const cx = shiftX + xStart + len / 2;
-  const y0 = row === 1 ? ROW_W : 0;
-  // accessories use packageRowYOffset for width centering; free-drag keeps row band
-  const baseY0 = pkg.freeDrag || live ? y0 : packageRowYOffset({ ...pkg, row });
-  const cz = baseY0 + w / 2;
+  const y0 = pkg.freeDrag || live || pkg.zone === "yard" ? (row === 1 ? ROW_W : 0) : packageRowYOffset({ ...pkg, row });
+  const cz = y0 + w / 2;
   const cy = zBase + h / 2;
-  const col = pkg.ov ? "#ff3b30" : pkg.freeDrag || live ? "#f59e0b" : hexToColor(pkg.sCol);
+  const col = pkg.ov
+    ? "#ff3b30"
+    : pkg.zone === "yard"
+      ? "#38bdf8"
+      : pkg.freeDrag || live
+        ? "#f59e0b"
+        : hexToColor(pkg.sCol);
   const opacity = pkg.ov ? 0.85 : dimmed ? 0.22 : 1;
 
   const projectToPlane = useCallback(
@@ -111,21 +128,68 @@ function CargoBox({
   const handlePointerDown = useCallback(
     (e) => {
       e.stopPropagation();
-      onSelect(pkg.id);
-      if (!freeDragEnabled || !onFreeDragMove) return;
+      const key = pkg.stableKey;
+      const now = Date.now();
+      const shift = Boolean(e.shiftKey);
+
+      if (shift && onShiftSelect) {
+        onShiftSelect(key, pkg);
+        return;
+      }
+
+      onSelect(pkg.id, pkg);
+
+      if (!freeDragEnabled) return;
+
+      const prev = lastClickRef?.current;
+      const isDouble = prev && prev.key === key && now - prev.t < DBL_MS;
+      lastClickRef.current = { key, t: now };
+
+      if (!isDouble) return;
+
+      // Double-click + hold: attempt drag
+      const gate = canStartDrag(placed, pkg, multiSelectKeys);
+      if (!gate.ok) {
+        onBlocked?.(gate.message || BURIED_TOAST_ES);
+        return;
+      }
+
       e.target.setPointerCapture?.(e.pointerId);
-      const planeY = cy;
       dragRef.current = {
         pointerId: e.pointerId,
-        planeY,
-        shiftHeight: Boolean(e.shiftKey),
+        planeY: cy,
+        shiftHeight: false,
         startClientY: e.clientY,
         startZBase: zBase,
+        startX: xStart,
+        startRow: row,
+        startHitX: null,
+        group: Boolean(gate.groupMove) || (multiSelectKeys || []).includes(key),
+        keys:
+          gate.groupMove || (multiSelectKeys || []).length > 1
+            ? [...new Set([key, ...(multiSelectKeys || [])])]
+            : [key],
+        moved: false,
       };
       onDragStateChange?.(true);
       setLiveBoth({ xStart, zBase, row });
     },
-    [freeDragEnabled, onFreeDragMove, onSelect, pkg.id, cy, xStart, zBase, row, onDragStateChange, setLiveBoth],
+    [
+      pkg,
+      freeDragEnabled,
+      onSelect,
+      onShiftSelect,
+      placed,
+      multiSelectKeys,
+      onBlocked,
+      cy,
+      xStart,
+      zBase,
+      row,
+      onDragStateChange,
+      setLiveBoth,
+      lastClickRef,
+    ],
   );
 
   const handlePointerMove = useCallback(
@@ -133,9 +197,9 @@ function CargoBox({
       const d = dragRef.current;
       if (!d || !freeDragEnabled) return;
       e.stopPropagation();
+      d.moved = true;
 
-      if (e.shiftKey || d.shiftHeight) {
-        // Vertical: 1px ≈ 0.01 m
+      if (e.shiftKey) {
         const dy = (d.startClientY - e.clientY) * 0.01;
         const nextZ = Math.max(0, d.startZBase + dy);
         const base = liveRef.current || { xStart, zBase, row };
@@ -145,50 +209,57 @@ function CargoBox({
 
       const hit = projectToPlane(e.clientX, e.clientY, d.planeY);
       if (!hit) return;
-      const nextXStart = hit.x - shiftX - len / 2;
+      if (d.startHitX == null) d.startHitX = hit.x;
+      const dxWorld = hit.x - d.startHitX;
+      const nextXStart = d.startX + dxWorld;
       const nextRow = hit.z >= ROW_W ? 1 : 0;
-      const base = liveRef.current || { xStart, zBase, row };
-      setLiveBoth({ ...base, xStart: nextXStart, row: nextRow });
+      setLiveBoth({ xStart: nextXStart, zBase: liveRef.current?.zBase ?? zBase, row: nextRow });
     },
-    [freeDragEnabled, projectToPlane, shiftX, len, xStart, zBase, row, setLiveBoth],
+    [freeDragEnabled, projectToPlane, xStart, zBase, row, setLiveBoth],
   );
 
   const endDrag = useCallback(
     (e) => {
       if (!dragRef.current) return;
       e?.stopPropagation?.();
+      const d = dragRef.current;
       const finalLive = liveRef.current;
       dragRef.current = null;
       onDragStateChange?.(false);
-      if (finalLive && onFreeDragEnd) {
-        onFreeDragEnd(pkg.stableKey, {
-          xStart: finalLive.xStart,
-          zBase: finalLive.zBase,
-          row: finalLive.row,
-          len,
-        });
+
+      if (finalLive && d.moved) {
+        if (d.group && d.keys.length > 1 && onGroupDragEnd) {
+          const dx = finalLive.xStart - d.startX;
+          const dzBase = finalLive.zBase - d.startZBase;
+          onGroupDragEnd(d.keys, {
+            dx,
+            dzBase,
+            row: finalLive.row,
+            primaryKey: pkg.stableKey,
+            primaryPos: { ...finalLive, len },
+          });
+        } else if (onFreeDragEnd) {
+          onFreeDragEnd(pkg.stableKey, {
+            xStart: finalLive.xStart,
+            zBase: finalLive.zBase,
+            row: finalLive.row,
+            len,
+            zone: pkg.zone === "yard" ? "yard" : "truck",
+            yardStopId: pkg.yardStopId,
+          });
+        }
       }
       setLiveBoth(null);
     },
-    [onFreeDragEnd, pkg.stableKey, len, onDragStateChange, setLiveBoth],
-  );
-
-  const handleClick = useCallback(
-    (e) => {
-      e.stopPropagation();
-      onSelect(pkg.id);
-    },
-    [onSelect, pkg.id],
+    [onFreeDragEnd, onGroupDragEnd, pkg, len, onDragStateChange, setLiveBoth],
   );
 
   return (
     <mesh
-      ref={meshRef}
       position={[cx, cy, cz]}
       castShadow
       receiveShadow
       userData={{ packageId: pkg.id, stableKey: pkg.stableKey }}
-      onClick={handleClick}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
@@ -201,8 +272,8 @@ function CargoBox({
         roughness={0.55}
         opacity={opacity}
         transparent={Boolean(pkg.ov) || dimmed || Boolean(live) || Boolean(pkg.freeDrag)}
-        emissive={selected || live ? "#ffffff" : "#000000"}
-        emissiveIntensity={selected || live ? 0.38 : 0}
+        emissive={selected || multiSelected || live ? "#ffffff" : "#000000"}
+        emissiveIntensity={selected || multiSelected || live ? 0.4 : 0}
       />
       <Html
         center
@@ -223,7 +294,7 @@ function CargoBox({
       >
         <div>
           {label || packageLabelTiny(pkg, null, 22)}
-          {pkg.freeDrag || live ? " · FREE" : ""}
+          {pkg.zone === "yard" ? " · YARD" : pkg.freeDrag || live ? " · FREE" : ""}
         </div>
       </Html>
     </mesh>
@@ -250,7 +321,7 @@ function TruckFloor({ shiftX, truckL, maxLen, totalLen }) {
         </mesh>
       ) : null}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cxGround, 0, cz]} receiveShadow>
-        <planeGeometry args={[totalLen + 2.5 + CAB_LEN_M, TRUCK_W + 2.5]} />
+        <planeGeometry args={[Math.max(totalLen + 8, truckL + 12), TRUCK_W + 6]} />
         <meshStandardMaterial color="#1a2f4a" metalness={0.02} roughness={1} />
       </mesh>
     </group>
@@ -310,29 +381,28 @@ function SceneContent({
   maxLen,
   totalLen,
   selectedId,
+  multiSelectKeys,
   onSelectPackage,
+  onShiftSelect,
   highlightKeys,
   bultoCounts,
   freeDragEnabled,
-  onFreeDragMove,
   onFreeDragEnd,
+  onGroupDragEnd,
+  onBlocked,
   orbitEnabled,
   onDragStateChange,
+  lastClickRef,
 }) {
   const cx = totalLen / 2;
   const targetY = MAX_H * 0.35;
+  const multiSet = useMemo(() => new Set(multiSelectKeys || []), [multiSelectKeys]);
 
   return (
     <>
       <color attach="background" args={["#0b1628"]} />
       <ambientLight intensity={0.55} />
-      <directionalLight
-        position={[8, 14, 6]}
-        intensity={1.05}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
+      <directionalLight position={[8, 14, 6]} intensity={1.05} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <directionalLight position={[-4, 6, -2]} intensity={0.35} />
       <TruckCabin shiftX={shiftX} />
       <TruckFloor shiftX={shiftX} truckL={truckL} maxLen={maxLen} totalLen={totalLen} />
@@ -347,13 +417,19 @@ function SceneContent({
             pkg={pkg}
             shiftX={shiftX}
             selected={Boolean(isSelected)}
+            multiSelected={multiSet.has(pkg.stableKey)}
             dimmed={!inGroup}
             label={packageLabelTiny(pkg, bultoCounts, 22)}
-            onSelect={onSelectPackage}
+            placed={placed}
+            multiSelectKeys={multiSelectKeys}
             freeDragEnabled={freeDragEnabled}
-            onFreeDragMove={onFreeDragMove}
+            onSelect={onSelectPackage}
+            onShiftSelect={onShiftSelect}
             onFreeDragEnd={onFreeDragEnd}
+            onGroupDragEnd={onGroupDragEnd}
+            onBlocked={onBlocked}
             onDragStateChange={onDragStateChange}
+            lastClickRef={lastClickRef}
           />
         );
       })}
@@ -364,7 +440,7 @@ function SceneContent({
         dampingFactor={0.08}
         target={[cx, targetY, TRUCK_W / 2]}
         minDistance={2}
-        maxDistance={28}
+        maxDistance={40}
         maxPolarAngle={Math.PI / 2 - 0.08}
       />
     </>
@@ -372,7 +448,7 @@ function SceneContent({
 }
 
 /**
- * Vista WebGL: bultos con etiqueta, free-drag opcional (toggle desde ops).
+ * Vista WebGL — armado físico: detalle 1-clic, drag doble-clic+hold, multi-select Shift.
  */
 export default function LogisticaCargoScene3d({
   placed,
@@ -387,10 +463,16 @@ export default function LogisticaCargoScene3d({
   selectedPkgId = null,
   freeDragEnabled = false,
   onFreeDragEnd = null,
+  onGroupDragEnd = null,
   onClearFreeDrag = null,
+  multiSelectKeys = [],
+  onMultiSelectChange = null,
+  onBlocked = null,
+  fillParent = false,
 }) {
   const [selectedId, setSelectedId] = useState(selectedPkgId || null);
   const [dragging, setDragging] = useState(false);
+  const lastClickRef = useRef(null);
   const cx = totalLen / 2;
   const cam = useMemo(() => [cx + 4.2, MAX_H + 2.4, TRUCK_W + 5.2], [cx]);
 
@@ -399,12 +481,24 @@ export default function LogisticaCargoScene3d({
   }, [selectedPkgId]);
 
   const onSelectPackage = useCallback(
-    (id) => {
+    (id, pkgArg) => {
       setSelectedId(id);
-      const pkg = placed.find((p) => p.id === id);
+      const pkg = pkgArg || placed.find((p) => p.id === id);
       if (pkg && onSelectStableKey) onSelectStableKey(pkg.stableKey, pkg);
     },
     [placed, onSelectStableKey],
+  );
+
+  const onShiftSelect = useCallback(
+    (key, pkg) => {
+      if (!onMultiSelectChange) return;
+      const set = new Set(multiSelectKeys || []);
+      if (set.has(key)) set.delete(key);
+      else set.add(key);
+      onMultiSelectChange([...set]);
+      if (pkg) onSelectPackage(pkg.id, pkg);
+    },
+    [multiSelectKeys, onMultiSelectChange, onSelectPackage],
   );
 
   useEffect(() => {
@@ -415,18 +509,26 @@ export default function LogisticaCargoScene3d({
   const selectedPkg = selectedId ? placed.find((p) => p.id === selectedId) : null;
   const selectedDims = selectedPkg ? packagePhysicalDims(selectedPkg) : null;
 
+  const wrapStyle = fillParent
+    ? { width: "100%", height: "100%", minHeight: 200, borderRadius: 0, overflow: "hidden", position: "relative" }
+    : { width: "100%", height: "100%", minHeight: 280, borderRadius: 8, overflow: "hidden", position: "relative" };
+
   return (
-    <div style={{ width: "100%", height: 300, minHeight: 280, borderRadius: 8, overflow: "hidden", position: "relative" }}>
+    <div style={wrapStyle}>
       <Canvas
         shadows
-        dpr={[1, 2]}
+        dpr={[1, 1.75]}
         camera={{ position: cam, fov: 48, near: 0.1, far: 200 }}
         gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+        style={{ width: "100%", height: "100%" }}
         onCreated={({ gl }) => {
           gl.setClearColor("#0b1628");
         }}
         onPointerMissed={() => {
-          if (!dragging) setSelectedId(null);
+          if (!dragging) {
+            setSelectedId(null);
+            onMultiSelectChange?.([]);
+          }
         }}
       >
         <SceneContent
@@ -436,14 +538,18 @@ export default function LogisticaCargoScene3d({
           maxLen={maxLen}
           totalLen={totalLen}
           selectedId={selectedId}
+          multiSelectKeys={multiSelectKeys}
           onSelectPackage={onSelectPackage}
+          onShiftSelect={onShiftSelect}
           highlightKeys={highlightKeys}
           bultoCounts={bultoCounts}
           freeDragEnabled={freeDragEnabled}
-          onFreeDragMove={onFreeDragEnd}
           onFreeDragEnd={onFreeDragEnd}
+          onGroupDragEnd={onGroupDragEnd}
+          onBlocked={onBlocked}
           orbitEnabled={!dragging}
           onDragStateChange={setDragging}
+          lastClickRef={lastClickRef}
         />
       </Canvas>
       <div
@@ -476,7 +582,10 @@ export default function LogisticaCargoScene3d({
             <div style={{ fontWeight: 700, marginBottom: 4 }}>
               {packageLabelCompact(selectedPkg, bultoCounts)}
               {selectedPkg.freeDrag ? (
-                <span style={{ marginLeft: 6, fontSize: 10, color: "#fbbf24" }}>FREE-DRAG</span>
+                <span style={{ marginLeft: 6, fontSize: 10, color: "#fbbf24" }}>FREE</span>
+              ) : null}
+              {selectedPkg.zone === "yard" ? (
+                <span style={{ marginLeft: 6, fontSize: 10, color: "#38bdf8" }}>YARD</span>
               ) : null}
             </div>
             <div style={{ color: "rgba(255,255,255,.8)", fontSize: 11 }}>
@@ -487,12 +596,11 @@ export default function LogisticaCargoScene3d({
               {selectedPkg.tipo || "—"} · {selectedPkg.n || 0} u. · Fila {selectedPkg.row === 0 ? "A" : "B"}
               {" · "}
               {formatPackageDimsLabel(selectedPkg, { includeVol: true })}
-              {selectedPkg.stackId != null ? ` · pila ${selectedPkg.stackId}` : ""}
-              {selectedPkg.ov ? " · ⚠️ altura" : ""}
             </div>
             {selectedDims ? (
               <div style={{ color: "rgba(255,255,255,.5)", fontSize: 10, marginTop: 2 }}>
-                pos x={Number(selectedPkg.xStart).toFixed(2)}m · h={Number(selectedPkg.zBase).toFixed(2)}m
+                x={Number(selectedPkg.xStart).toFixed(2)}m · h={Number(selectedPkg.zBase).toFixed(2)}m
+                {(multiSelectKeys || []).length > 1 ? ` · grupo ${(multiSelectKeys || []).length}` : ""}
               </div>
             ) : null}
             <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
@@ -508,7 +616,7 @@ export default function LogisticaCargoScene3d({
               ) : null}
               {freeDragEnabled && selectedPkg.freeDrag && typeof onClearFreeDrag === "function" ? (
                 <button type="button" onClick={() => onClearFreeDrag(selectedPkg.stableKey)} style={btnMini}>
-                  Quitar free-drag
+                  Quitar free
                 </button>
               ) : null}
               <button type="button" onClick={() => setSelectedId(null)} style={btnMini}>
@@ -517,10 +625,10 @@ export default function LogisticaCargoScene3d({
             </div>
           </div>
         ) : (
-          <span style={{ color: "rgba(255,255,255,.4)", fontSize: 11 }}>
+          <span style={{ color: "rgba(255,255,255,.45)", fontSize: 11 }}>
             {freeDragEnabled
-              ? "Free-Drag ON · arrastrá bultos (Shift = altura) · naranja = posición libre"
-              : "Clic en un bulto · k/N · #pedido · cliente · cabina a la izquierda"}
+              ? "1 clic = detalle · Doble-clic+hold = arrastrar · Shift+clic = grupo · Shift+drag = altura"
+              : "Clic = detalle del bulto · activá Free-Drag para mover"}
           </span>
         )}
       </div>
@@ -537,8 +645,8 @@ export default function LogisticaCargoScene3d({
         }}
       >
         {freeDragEnabled
-          ? "FREE-DRAG · arrastrar bulto = mover · Shift+arrastrar = altura · órbita al soltar"
-          : "Arrastrar · rueda zoom · clic derecho pan · vacío deselecciona"}
+          ? "FREE-DRAG · no arrastra con 1 clic · soltar fija posición"
+          : "Órbita · rueda zoom · clic derecho pan"}
       </div>
     </div>
   );

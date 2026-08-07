@@ -4,6 +4,7 @@
  */
 
 import { packageCuboidMetrics } from "./remitoPackageMetrics.js";
+import { formatLoadWarningsForPlan, normalizeLoadWarnings } from "./loadWarnings.js";
 
 /**
  * @param {object} pkg
@@ -64,12 +65,13 @@ export function buildUnloadSteps(input = {}) {
 }
 
 /**
- * @param {{ info?: object, stops?: object[], cargo?: object, truckL?: number }} input
+ * @param {{ info?: object, stops?: object[], cargo?: object, truckL?: number, loadWarnings?: object[] }} input
  */
 export function buildLoadPlanPrintModel(input = {}) {
   const cargo = input.cargo || { placed: [], rowH: [0, 0] };
   const placed = Array.isArray(cargo.placed) ? cargo.placed : [];
   const truckL = Number(input.truckL) || 8;
+  const loadWarnings = normalizeLoadWarnings(input.loadWarnings || cargo.loadWarnings || []);
 
   const packages = placed.map((pkg) => {
     const cuboid = packageCuboidMetrics(pkg);
@@ -91,8 +93,12 @@ export function buildLoadPlanPrintModel(input = {}) {
       sCol: pkg.sCol || "#003366",
       tipo: pkg.tipo,
       n: pkg.n,
+      freeDrag: Boolean(pkg.freeDrag),
+      zone: pkg.zone || "truck",
     };
   });
+
+  const warningLines = formatLoadWarningsForPlan(loadWarnings, { onlyAcknowledged: false });
 
   return {
     header: {
@@ -106,5 +112,9 @@ export function buildLoadPlanPrintModel(input = {}) {
     packages,
     rowH: cargo.rowH || [0, 0],
     maxX: Math.max(truckL, ...packages.map((p) => p.xEnd || 0), truckL),
+    /** Avisos de estiba (ISO operativa) para transportista */
+    loadWarnings,
+    warningLines,
+    warningsSectionTitle: "Avisos de estiba (ISO operativa)",
   };
 }
