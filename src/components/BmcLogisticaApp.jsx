@@ -2931,8 +2931,14 @@ export default function BmcLogisticaApp() {
     return local;
   }
 
+  /**
+   * Persist coordination draft. Returns `{ ok, revision }` — confirm must abort on
+   * `ok: false` so a stale tab cannot stamp the immutable snapshot (Bug AU).
+   */
   async function saveRepartoDraft() {
-    if (!activeReparto || activeReparto.status === "coordinado") return;
+    if (!activeReparto || activeReparto.status === "coordinado") {
+      return { ok: false, revision: null };
+    }
     const payload = buildRepartoPayload({
       stops,
       truckL,
@@ -2945,9 +2951,10 @@ export default function BmcLogisticaApp() {
       info,
     });
     if (activeReparto.local || !enviosAuthToken()) {
-      setActiveReparto((r) => (r ? { ...r, revision: (r.revision || 1) + 1, status: "en_coordinacion" } : r));
-      setAutoLoadMsg(`Borrador local ${activeReparto.repartoNo} guardado (rev ${(activeReparto.revision || 1) + 1})`);
-      return;
+      const nextRev = (activeReparto.revision || 1) + 1;
+      setActiveReparto((r) => (r ? { ...r, revision: nextRev, status: "en_coordinacion" } : r));
+      setAutoLoadMsg(`Borrador local ${activeReparto.repartoNo} guardado (rev ${nextRev})`);
+      return { ok: true, revision: nextRev };
     }
     setRepartoBusy(true);
     try {
@@ -2968,18 +2975,21 @@ export default function BmcLogisticaApp() {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.ok === false) throw new Error(j.message || j.error || res.statusText);
+      const nextRev = j.revision || (activeReparto.revision || 1) + 1;
       setActiveReparto((r) =>
         r
           ? {
               ...r,
               status: "en_coordinacion",
-              revision: j.revision || (r.revision || 1) + 1,
+              revision: nextRev,
             }
           : r,
       );
-      setAutoLoadMsg(`Borrador ${activeReparto.repartoNo} en nube · rev ${j.revision}`);
+      setAutoLoadMsg(`Borrador ${activeReparto.repartoNo} en nube · rev ${nextRev}`);
+      return { ok: true, revision: nextRev };
     } catch (e) {
       setAutoLoadMsg(`Reparto: no se pudo guardar — ${e.message}`);
+      return { ok: false, revision: null };
     } finally {
       setRepartoBusy(false);
     }
@@ -3021,8 +3031,14 @@ export default function BmcLogisticaApp() {
     }
     setRepartoBusy(true);
     try {
-      // save latest first
-      await saveRepartoDraft();
+      // Must succeed before confirm — never stamp a stale client payload (Bug AU).
+      const saved = await saveRepartoDraft();
+      if (!saved.ok) {
+        setAutoLoadMsg(
+          `Confirmar abortado: no se pudo guardar el borrador (¿otra pestaña?). Recargá e intentá de nuevo.`,
+        );
+        return;
+      }
       const base = getCalcApiBase();
       const res = await fetch(`${base}/api/repartos/${encodeURIComponent(activeReparto.id)}/confirm`, {
         method: "POST",
@@ -3030,7 +3046,11 @@ export default function BmcLogisticaApp() {
           Authorization: `Bearer ${enviosAuthToken()}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ payload, actor: "logistica-ui" }),
+        body: JSON.stringify({
+          payload,
+          actor: "logistica-ui",
+          expectedRevision: saved.revision,
+        }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.ok === false) throw new Error(j.message || j.error || res.statusText);

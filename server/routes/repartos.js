@@ -39,10 +39,11 @@ function requireCrmAuth(config) {
 /**
  * @param {import("../config.js").config} config
  * @param {import("pino").Logger} [logger]
+ * @param {{ pool?: import("pg").Pool | null }} [deps] optional pool override (tests)
  */
-export default function createRepartosRouter(config, logger) {
+export default function createRepartosRouter(config, logger, deps = {}) {
   const router = Router();
-  const pool = getEnviosPool(config.databaseUrl);
+  const pool = deps.pool !== undefined ? deps.pool : getEnviosPool(config.databaseUrl);
   const log = logger || console;
   const auth = requireCrmAuth(config);
   let schemaReady = false;
@@ -307,7 +308,31 @@ export default function createRepartosRouter(config, logger) {
         });
       }
 
-      const payloadIn = body.payload && typeof body.payload === "object" ? body.payload : cur.payload || {};
+      // Client payload must carry expectedRevision so a stale tab cannot stamp an
+      // older stops list as the immutable coordinado snapshot (Bug AU).
+      const hasClientPayload = body.payload && typeof body.payload === "object";
+      const expected =
+        body.expectedRevision != null && body.expectedRevision !== ""
+          ? Number(body.expectedRevision)
+          : null;
+      if (hasClientPayload && (expected == null || !Number.isFinite(expected))) {
+        return res.status(400).json({
+          ok: false,
+          error: "expected_revision_required",
+          message: "Confirm con payload requiere expectedRevision (refrescá y reintentá).",
+          revision: cur.revision,
+        });
+      }
+      if (hasClientPayload && expected !== Number(cur.revision)) {
+        return res.status(409).json({
+          ok: false,
+          error: "conflict",
+          message: "El borrador cambió en otra pestaña — recargá antes de confirmar.",
+          revision: cur.revision,
+        });
+      }
+
+      const payloadIn = hasClientPayload ? body.payload : cur.payload || {};
       const stops = Array.isArray(payloadIn.stops) ? payloadIn.stops : [];
       if (!stops.length) {
         return res.status(400).json({ ok: false, error: "no_stops", message: "No hay paradas para coordinar" });
@@ -335,24 +360,43 @@ export default function createRepartosRouter(config, logger) {
         drivePlan,
       };
 
-      const nextRev = cur.revision + 1;
       // Soft Drive: store planned path; real upload when DRIVE_REPARTOS_FOLDER_ID wired
       const folderUrl = cur.drive_folder_url || null;
 
-      // Atomic gate: only one confirm wins; concurrent/re-confirm cannot overwrite snapshot
+      // Atomic gate: status + optional revision (when client sends payload).
+      // revision = revision + 1 avoids colliding with a concurrent PUT's nextRev.
+      const params = [cur.id, JSON.stringify(payload), folderUrl];
+      let where = `where id = $1 and status = 'en_coordinacion'`;
+      if (hasClientPayload) {
+        params.push(expected);
+        where += ` and revision = $${params.length}`;
+      }
       const upd = await pool.query(
         `update repartos set
            status = 'coordinado',
            payload = $2::jsonb,
            confirmed_at = now(),
-           revision = $3,
+           revision = revision + 1,
            updated_at = now(),
-           drive_folder_url = coalesce(drive_folder_url, $4)
-         where id = $1 and status = 'en_coordinacion'
+           drive_folder_url = coalesce(drive_folder_url, $3)
+         ${where}
          returning id, revision, confirmed_at`,
-        [cur.id, JSON.stringify(payload), nextRev, folderUrl],
+        params,
       );
       if (!upd.rowCount) {
+        // Lost race: another confirm won, or revision moved (stale payload).
+        if (hasClientPayload) {
+          const again = await pool.query(`select status, revision from repartos where id = $1`, [cur.id]);
+          const st = normalizeRepartoStatus(again.rows[0]?.status);
+          if (st === "en_coordinacion") {
+            return res.status(409).json({
+              ok: false,
+              error: "conflict",
+              message: "El borrador cambió en otra pestaña — recargá antes de confirmar.",
+              revision: again.rows[0]?.revision,
+            });
+          }
+        }
         return res.status(409).json({
           ok: false,
           error: "immutable",
@@ -375,7 +419,7 @@ export default function createRepartosRouter(config, logger) {
           repartoNo: cur.reparto_no,
           status: "coordinado",
           statusLabel: repartoStatusLabel("coordinado"),
-          revision: upd.rows[0]?.revision ?? nextRev,
+          revision: upd.rows[0]?.revision,
           confirmedAt: payload.confirmedAt,
           drivePlan,
           stopsSummary: payload.stopsSummary,

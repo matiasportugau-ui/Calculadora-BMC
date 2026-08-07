@@ -33,7 +33,7 @@ Al organizar pedidos en `/logistica`, el batch pasa a **En Coordinación** hasta
 | POST | `/api/repartos` | create `en_coordinacion` |
 | GET | `/api/repartos/:id` | + events + docs |
 | PUT | `/api/repartos/:id` | autosave (not if coordinado) |
-| POST | `/api/repartos/:id/confirm` | → coordinado + drivePlan |
+| POST | `/api/repartos/:id/confirm` | → coordinado + drivePlan; client `payload` requires `expectedRevision` (atomic WHERE status+revision) |
 | GET | `/api/repartos/:id/events` | timeline |
 
 ## Drive (híbrido — TARGET phase 3)

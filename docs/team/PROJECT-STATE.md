@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — Bug AU confirm stale payload):** `POST /api/repartos/:id/confirm` requires `expectedRevision` when client sends `payload`, gates UPDATE on `status=en_coordinacion` + revision, uses `revision = revision + 1`. UI `saveRepartoDraft` returns `{ok,revision}` and `confirmRepartoCoordination` aborts if pre-save fails. Offline tests `tests/repartos-confirm-revision.test.js`.
+
 **2026-08-07 (fix — concurrent Entregado row identity extract from #896):** Landed pure `saleState` helpers `ventasRowIdentityFingerprint` + `findSheetRow1BasedByFingerprint` + linear `stripLogisticaMarkers` + terminal-status gate (tests). Full UI/API sale-state stack remains #893. Supersedes concurrent-delete core of draft #896.
 
 **2026-08-07 (fix — Ventas blank CSV row index):** Index sheet rows before filtering blank gviz rows so `ventasSheetRow1Based` stays correct. Rebased from #902.

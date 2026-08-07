@@ -103,12 +103,13 @@ async function main() {
     assert.equal(putRes.status, 200, `put ${putRes.status} ${JSON.stringify(putBody)}`);
     assert.equal(putBody.status, "en_coordinacion");
 
-    // confirm
+    // confirm (Bug AU: payload requires expectedRevision matching post-PUT rev)
     const confRes = await fetch(`${base}/api/repartos/${encodeURIComponent(id)}/confirm`, {
       method: "POST",
       headers: auth,
       body: JSON.stringify({
         actor: "integration-test",
+        expectedRevision: putBody.revision,
         payload: {
           schema: "bmc-reparto-payload-v1",
           stops: [
