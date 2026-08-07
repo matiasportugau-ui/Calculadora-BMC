@@ -28,7 +28,12 @@ export function isAllowedAdjuntoHost(hostname) {
     .replace(/\.$/, "");
   if (!h) return false;
   if (ADJUNTO_HOST_ALLOW.has(h)) return true;
+  // Legacy Drive/Docs CDN: doc-XX-docs.googleusercontent.com
   if (h === "googleusercontent.com" || h.endsWith(".googleusercontent.com")) return true;
+  // Current Drive /uc download redirect: drive.usercontent.google.com
+  if (h === "usercontent.google.com" || h.endsWith(".usercontent.google.com")) return true;
+  // Dropbox content CDN (incl. regional dl-eu / *.dl-*.dropboxusercontent.com)
+  if (h === "dropboxusercontent.com" || h.endsWith(".dropboxusercontent.com")) return true;
   return false;
 }
 
@@ -189,9 +194,20 @@ export async function fetchAdjuntoUpstream(startUrl, opts = {}) {
     if ([301, 302, 303, 307, 308].includes(upstream.status)) {
       const loc = upstream.headers.get("location");
       if (!loc) {
+        try {
+          await upstream.body?.cancel?.();
+        } catch {
+          /* ignore */
+        }
         const err = new Error("redirect_missing_location");
         err.code = "redirect_missing_location";
         throw err;
+      }
+      // Release the redirect response before the next hop (undici connection pool).
+      try {
+        await upstream.body?.cancel?.();
+      } catch {
+        /* ignore */
       }
       // Relative Location → resolve against current
       current = new URL(loc, href).href;

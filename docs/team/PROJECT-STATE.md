@@ -14,7 +14,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-07 (fix — Envíos adjunto-fetch SSRF harden):** Allowlist + DNS/IP checks for `POST /api/envios/adjunto-fetch` (`server/lib/enviosAdjuntoFetch.js` + tests). PR rebased from #901.
+**2026-08-07 (fix — adjunto-fetch Drive CDN allowlist):** After #915 SSRF harden, real Drive `/uc` downloads 303 → `drive.usercontent.google.com` (not `*.googleusercontent.com`) and were rejected as `url_host_forbidden`, breaking Phase B adjunto proxy. Allow `*.usercontent.google.com` (+ `*.dropboxusercontent.com` regional CDN); cancel redirect bodies; regression test.
+
+**2026-08-07 (fix — Envíos adjunto-fetch SSRF harden):** Host allowlist + IP-literal block + redirect re-validation + body cap for `POST /api/envios/adjunto-fetch` (`server/lib/enviosAdjuntoFetch.js` + tests). PR rebased from #901 → merged as #915.
 
 **2026-08-07 (feat — Envío Setup Wizard IMPLEMENTING):** Staged trip config on `/logistica` per `SDD-ENVIO-WIZARD.md`: pure `pickupCatalog` (Kingspan/Montfrío/Ecopaneles), `wizardState`, `routeSuggest`; UI accordion Pedidos→Flota→Levantes→Ruta→Carga; draft `ui.wizard`+`route`. Branch `feat/envio-setup-wizard`. Handoff: `HANDOFF-2026-08-07-envio-wizard-impl.md`.
 
