@@ -87,6 +87,32 @@ console.log("saleState");
   ok("fingerprint relocate after row shift (wrong-row delete guard)");
 }
 
+// --- Bug AY: ambiguous duplicates must not first-match when hint is stale ---
+{
+  const twin = {
+    orderId: "",
+    nombre: "Mismo Cliente",
+    tel: "099999999",
+    dir: "Misma Dir 1",
+  };
+  const dataRows = [
+    rowWithIdentity({ orderId: "keep", nombre: "Other", tel: "1", dir: "A" }), // sheet 2
+    rowWithIdentity({ ...twin, estado: "A" }), // sheet 3 — first twin
+    rowWithIdentity({ orderId: "mid", nombre: "Mid", tel: "2", dir: "B" }), // sheet 4
+    rowWithIdentity({ ...twin, estado: "B" }), // sheet 5 — second twin (intended)
+  ];
+  const fp = ventasRowIdentityFingerprint(dataRows[3]);
+  // Hint still on intended row → OK even with duplicates
+  assert.equal(findSheetRow1BasedByFingerprint(dataRows, fp, 5), 5);
+  // Stale hint after shift → refuse to guess the first twin
+  assert.equal(
+    findSheetRow1BasedByFingerprint(dataRows, fp, 6),
+    null,
+    "ambiguous duplicate identity must abort (Bug AY)",
+  );
+  ok("ambiguous fingerprint duplicates abort when hint misses (Bug AY)");
+}
+
 {
   assert.equal(isTerminalSaleStatus("entregado"), true);
   assert.equal(isTerminalSaleStatus("enviado"), true);
@@ -106,6 +132,23 @@ console.log("saleState");
   assert.match(next, /LOGISTICA:ENTREGADO/);
   assert.ok(!/LOGISTICA:COORDINADO/.test(next));
   ok("buildEstadoSheetValue replaces marker");
+}
+
+// --- Bug AW: rebuild from status strips smuggled terminal markers ---
+{
+  const rebuilt = buildEstadoSheetValue("nota [LOGISTICA:ENTREGADO]", {
+    status: "coordinado",
+    fechaIso: "2026-08-07",
+  });
+  assert.match(rebuilt, /LOGISTICA:COORDINADO/);
+  assert.ok(!/LOGISTICA:ENTREGADO/.test(rebuilt));
+  assert.match(rebuilt, /nota/);
+  const classified = classifySaleStatus({
+    estadoText: rebuilt,
+    fechaEntrega: "2026-08-07",
+  });
+  assert.equal(classified.status, "coordinado");
+  ok("buildEstadoSheetValue defeats smuggled ENTREGADO marker (Bug AW)");
 }
 
 console.log(`saleState: ${passed} passed`);

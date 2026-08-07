@@ -45,6 +45,43 @@ console.log("enviosEntregadoConcurrentDelete");
   ok("bmcDashboard wires concurrent-delete guard on logistica-entregado");
 }
 
+// --- Bug AW: never write client estadoText LOGISTICA markers verbatim ---
+{
+  assert.ok(
+    !/body\?\.estadoText\s*!=\s*null\s*&&\s*String\(body\.estadoText\)\.includes\(\s*"\[LOGISTICA:"\s*\)/.test(
+      dash,
+    ),
+    "must not passthrough client estadoText when it contains [LOGISTICA:",
+  );
+  assert.ok(
+    !/\?\s*String\(body\.estadoText\)\s*:\s*buildEstadoSheetValue/.test(dash),
+    "must not ternary-choose client estadoText over buildEstadoSheetValue",
+  );
+  assert.match(dash, /const estadoVal\s*=\s*buildEstadoSheetValue\s*\(/);
+  ok("estadoText LOGISTICA markers are server-built only (Bug AW)");
+}
+
+// --- Bug AX: fingerprint relocate BEFORE terminal estado write ---
+{
+  const entregadoFn = dash.match(
+    /async function handleVentasLogisticaEntregado[\s\S]*?^async function /m,
+  );
+  const body = entregadoFn ? entregadoFn[0] : dash;
+  const locateIdx = body.search(/locateVentasRow1BasedByFingerprint/);
+  const estadoIdx = body.search(/handleVentasLogisticaEstado\s*\(/);
+  assert.ok(locateIdx >= 0 && estadoIdx >= 0, "entregado must call locate + estado");
+  assert.ok(
+    locateIdx < estadoIdx,
+    "must relocate by fingerprint before writing terminal estado (Bug AX)",
+  );
+  assert.match(
+    body,
+    /handleVentasLogisticaEstado\([\s\S]*?row1Based:\s*writeRow1/,
+    "estado write must use relocated writeRow1",
+  );
+  ok("terminal estado write uses pre-relocate writeRow1 (Bug AX)");
+}
+
 // --- Same algorithm the server calls after re-reading sheet values ---
 {
   function row({ orderId, nombre, tel, dir, estado = "" }) {

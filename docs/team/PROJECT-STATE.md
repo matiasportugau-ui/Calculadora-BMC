@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — Bugs AW/AX/AY Entregado residual after #929):** `logistica-estado` always rebuilds ESTADO via `buildEstadoSheetValue` (never client `[LOGISTICA:…]` passthrough — Bug AW). `logistica-entregado` fingerprint-relocates **before** terminal estado write (`writeRow1`, Bug AX). `findSheetRow1BasedByFingerprint` aborts on ambiguous duplicates when hint misses (Bug AY).
+
 **2026-08-07 (fix — wire concurrent Entregado delete):** `POST /api/ventas/logistica-entregado` on `bmcDashboard.js` re-locates by `ventasRowIdentityFingerprint` before `deleteDimension` (never stale row1Based). Also `logistica-estado` + terminal gate. Supersedes #896 production path.
 
 **2026-08-07 (fix — concurrent Entregado row identity extract from #896):** Landed pure `saleState` helpers `ventasRowIdentityFingerprint` + `findSheetRow1BasedByFingerprint` + linear `stripLogisticaMarkers` + terminal-status gate (tests). Full UI/API sale-state stack remains #893. Supersedes concurrent-delete core of draft #896.
