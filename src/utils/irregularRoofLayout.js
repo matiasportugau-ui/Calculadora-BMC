@@ -363,6 +363,62 @@ export function bomFromIrregularSchedule(layout, precioM2) {
 }
 
 /**
+ * Pure reducer for per-zone irregularLayoutByGi map (parent calculator state).
+ * @param {Record<number, object>} prev
+ * @param {object|null} layout
+ * @param {number|string|null|undefined} gi
+ * @returns {Record<number, object>}
+ */
+export function applyIrregularLayoutByGiChange(prev = {}, layout = null, gi = undefined) {
+  const next = { ...(prev && typeof prev === "object" ? prev : {}) };
+  if (layout?.strips?.length && Number.isFinite(Number(gi))) {
+    next[Number(gi)] = layout;
+    return next;
+  }
+  if (Number.isFinite(Number(gi))) {
+    delete next[Number(gi)];
+    return next;
+  }
+  // Clear all when gi missing and layout null (modo irregular OFF)
+  if (layout == null) return {};
+  // Fallback: store as zone 0 when gi absent but schedule present
+  if (layout?.strips?.length) {
+    next[0] = layout;
+    return next;
+  }
+  return prev && typeof prev === "object" ? prev : {};
+}
+
+/**
+ * Decide what RoofPreview should publish to the parent byGi map.
+ * - Mode OFF → clear_all (must not leave stale zone schedules billing)
+ * - Active cut/manual → set current gi
+ * - Clear cut on current zone → clear_gi
+ * - Zone switch / no active schedule → noop (keep other zones)
+ *
+ * @param {{ irregularOn: boolean, gi: number|string|null|undefined, layout: object|null, hasActiveSchedule: boolean, clearCurrentGi?: boolean }} args
+ * @returns {{ op: 'clear_all'|'set'|'clear_gi'|'noop', gi?: number, layout?: object|null }}
+ */
+export function resolveIrregularLayoutPublish({
+  irregularOn,
+  gi,
+  layout = null,
+  hasActiveSchedule = false,
+  clearCurrentGi = false,
+} = {}) {
+  if (!irregularOn) return { op: "clear_all" };
+  const giNum = Number(gi);
+  if (!Number.isFinite(giNum)) {
+    return layout == null ? { op: "clear_all" } : { op: "noop" };
+  }
+  if (clearCurrentGi) return { op: "clear_gi", gi: giNum };
+  if (hasActiveSchedule && layout?.strips?.length) {
+    return { op: "set", gi: giNum, layout };
+  }
+  return { op: "noop" };
+}
+
+/**
  * Flatten one or more irregular schedules for PDF quotation model.
  * @param {object|null} layout - single IrregularLayoutV1
  * @param {Record<string|number, object>|null} byGi - map gi → layout
