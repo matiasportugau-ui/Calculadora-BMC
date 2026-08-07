@@ -82,10 +82,16 @@ const VENTAS_CSV_TTL_MS = 60_000;
 /**
  * @param {import("../config.js").config} config
  * @param {import("pino").Logger} [logger]
+ * @param {{ pool?: import("pg").Pool | null, fetch?: typeof fetch }} [deps]
+ *        Optional DI for offline tests. Pass `pool: null` to simulate no DATABASE_URL.
+ *        Omit `pool` to use the real envios pool from config.databaseUrl.
  */
-export default function createEnviosRouter(config, logger) {
+export default function createEnviosRouter(config, logger, deps = {}) {
   const router = Router();
-  const pool = getEnviosPool(config.databaseUrl);
+  const pool = Object.prototype.hasOwnProperty.call(deps, "pool")
+    ? deps.pool
+    : getEnviosPool(config.databaseUrl);
+  const fetchImpl = typeof deps.fetch === "function" ? deps.fetch : globalThis.fetch;
   const log = logger || console;
   const auth = requireCrmAuth(config);
   let schemaReady = false;
@@ -152,7 +158,7 @@ export default function createEnviosRouter(config, logger) {
       const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/gviz/tq?tqx=out:csv&gid=${encodeURIComponent(gid)}`;
       let upstream;
       try {
-        upstream = await fetch(url, {
+        upstream = await fetchImpl(url, {
           headers: {
             Accept: "text/csv,text/plain,*/*",
             "User-Agent": "BMC-Envios/1.0 (ventas-csv-proxy)",
@@ -228,7 +234,7 @@ export default function createEnviosRouter(config, logger) {
 
       let upstream;
       try {
-        upstream = await fetch(url.toString(), {
+        upstream = await fetchImpl(url.toString(), {
           headers: {
             Accept: "application/json",
             "User-Agent": "BMC-Envios/1.0 (logistica; contact=ops@bmcuruguay.com)",
@@ -513,7 +519,7 @@ export default function createEnviosRouter(config, logger) {
       const fetchUrl = toServerFetchablePdfUrl(url);
       let upstream;
       try {
-        upstream = await fetch(fetchUrl, {
+        upstream = await fetchImpl(fetchUrl, {
           headers: {
             Accept: "application/pdf,application/octet-stream,*/*",
             "User-Agent": "BMC-Envios/1.0 (adjunto-fetch)",
@@ -565,4 +571,9 @@ export default function createEnviosRouter(config, logger) {
   );
 
   return router;
+}
+
+/** Test-only — clear F11 ventas CSV process cache between cases. */
+export function __resetEnviosVentasCsvCacheForTests() {
+  ventasCsvCache.clear();
 }

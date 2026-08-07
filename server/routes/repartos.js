@@ -38,10 +38,15 @@ function requireCrmAuth(config) {
 /**
  * @param {import("../config.js").config} config
  * @param {import("pino").Logger} [logger]
+ * @param {{ pool?: import("pg").Pool | null }} [deps]
+ *        Optional DI for offline tests. Pass `pool: null` to simulate no DATABASE_URL.
+ *        Omit `pool` to use the real envios pool from config.databaseUrl.
  */
-export default function createRepartosRouter(config, logger) {
+export default function createRepartosRouter(config, logger, deps = {}) {
   const router = Router();
-  const pool = getEnviosPool(config.databaseUrl);
+  const pool = Object.prototype.hasOwnProperty.call(deps, "pool")
+    ? deps.pool
+    : getEnviosPool(config.databaseUrl);
   const log = logger || console;
   const auth = requireCrmAuth(config);
   let schemaReady = false;
