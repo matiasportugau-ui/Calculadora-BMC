@@ -39,10 +39,11 @@ function requireCrmAuth(config) {
 /**
  * @param {import("../config.js").config} config
  * @param {import("pino").Logger} [logger]
+ * @param {{ pool?: import("pg").Pool | null }} [deps] optional pool override (tests)
  */
-export default function createRepartosRouter(config, logger) {
+export default function createRepartosRouter(config, logger, deps = {}) {
   const router = Router();
-  const pool = getEnviosPool(config.databaseUrl);
+  const pool = deps.pool !== undefined ? deps.pool : getEnviosPool(config.databaseUrl);
   const log = logger || console;
   const auth = requireCrmAuth(config);
   let schemaReady = false;
@@ -229,15 +230,19 @@ export default function createRepartosRouter(config, logger) {
       if (!rows.length) return res.status(404).json({ ok: false, error: "not_found" });
       const cur = rows[0];
       const status = normalizeRepartoStatus(cur.status);
-      if (status === "coordinado" || status === "cerrado" || status === "cancelado") {
+      // Only en_coordinacion is mutable. App-level check is a fast reject; the UPDATE
+      // WHERE below is the atomic gate vs concurrent confirm (TOCTOU).
+      if (status !== "en_coordinacion") {
         return res.status(409).json({
           ok: false,
           error: "immutable",
           message: "Reparto confirmado/cerrado — no se puede editar. Creá uno nuevo.",
+          status,
+          statusLabel: repartoStatusLabel(status),
         });
       }
       const expected = body.expectedRevision != null ? Number(body.expectedRevision) : null;
-      if (expected != null && expected !== cur.revision) {
+      if (expected != null && Number.isFinite(expected) && expected !== Number(cur.revision)) {
         return res.status(409).json({
           ok: false,
           error: "conflict",
@@ -247,8 +252,22 @@ export default function createRepartosRouter(config, logger) {
       const payload = body.payload && typeof body.payload === "object"
         ? body.payload
         : { ...(cur.payload || {}), ...buildRepartoPayload(body) };
-      const nextRev = cur.revision + 1;
-      await pool.query(
+      const params = [
+        cur.id,
+        JSON.stringify(payload),
+        body.truckL ?? null,
+        body.transportista ?? null,
+        body.patente ?? null,
+        body.vehicleLabel ?? null,
+      ];
+      // Atomic: must still be en_coordinacion; optional revision match closes lost-update window.
+      // revision = revision + 1 (not stale nextRev) so concurrent PUTs cannot collide on rev.
+      let where = `where id = $1 and status = 'en_coordinacion'`;
+      if (expected != null && Number.isFinite(expected)) {
+        params.push(expected);
+        where += ` and revision = $${params.length}`;
+      }
+      const upd = await pool.query(
         `update repartos set
            payload = $2::jsonb,
            truck_l = coalesce($3, truck_l),
@@ -256,19 +275,34 @@ export default function createRepartosRouter(config, logger) {
            patente = coalesce($5, patente),
            vehicle_label = coalesce($6, vehicle_label),
            status = 'en_coordinacion',
-           revision = $7,
+           revision = revision + 1,
            updated_at = now()
-         where id = $1`,
-        [
-          cur.id,
-          JSON.stringify(payload),
-          body.truckL ?? null,
-          body.transportista ?? null,
-          body.patente ?? null,
-          body.vehicleLabel ?? null,
-          nextRev,
-        ],
+         ${where}
+         returning id, revision`,
+        params,
       );
+      if (!upd.rowCount) {
+        const { rows: again } = await pool.query(
+          `select status, revision from repartos where id = $1`,
+          [cur.id],
+        );
+        const now = again[0];
+        if (!now || normalizeRepartoStatus(now.status) !== "en_coordinacion") {
+          return res.status(409).json({
+            ok: false,
+            error: "immutable",
+            message: "Reparto confirmado/cerrado — no se puede editar. Creá uno nuevo.",
+            status: now ? normalizeRepartoStatus(now.status) : status,
+            statusLabel: repartoStatusLabel(now?.status || status),
+          });
+        }
+        return res.status(409).json({
+          ok: false,
+          error: "conflict",
+          revision: now.revision,
+        });
+      }
+      const nextRev = upd.rows[0].revision;
       res.json({
         ok: true,
         id: cur.id,
