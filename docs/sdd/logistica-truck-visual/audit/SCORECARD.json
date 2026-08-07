@@ -1,0 +1,19 @@
+{
+  "generated_at": "2026-08-07T14:00:00Z",
+  "system_slug": "logistica-truck-visual",
+  "sdd_path": "docs/sdd/logistica-truck-visual/SDD.md",
+  "composite": 78,
+  "min_pass": 90,
+  "pass": false,
+  "baseline_mvp_pre_p0": 58,
+  "notes": "P0 multi-mesh port + packing-aligned deck. Pass requires P1 polish + bmo asset shipped + re-screenshot validation.",
+  "dimensions": {
+    "coordinate_packing_safety": { "weight": 20, "score_0_100": 94, "notes": ["Remap §E applied", "CargoBox external"] },
+    "feature_parity_v1": { "weight": 15, "score_0_100": 90, "notes": ["Axles, lights, planks, multi-cab"] },
+    "visual_readability": { "weight": 20, "score_0_100": 72, "notes": ["FH silhouette ported; needs live screenshot confirm"] },
+    "bmc_brand_realism": { "weight": 15, "score_0_100": 65, "notes": ["Grille/chrome present; no door decal"] },
+    "interaction_affordances": { "weight": 10, "score_0_100": 80, "notes": ["Chip + lights; Panelín fallback if no bmo"] },
+    "performance_budget": { "weight": 10, "score_0_100": 90, "notes": ["Procedural only"] },
+    "docs_sdd": { "weight": 10, "score_0_100": 85, "notes": ["SDD + recipe evidence"] }
+  }
+}

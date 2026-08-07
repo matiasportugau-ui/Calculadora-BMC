@@ -26,6 +26,8 @@ parent: docs/sdd/bmc-envios/SDD.md
 
 - `src/components/logistica/ViewerChrome.jsx`
 - `src/components/logistica/LogisticaCargoScene3d.jsx`
+- `src/components/logistica/TruckVisual.jsx` — procedural BMC cab/bed (**see** `docs/sdd/logistica-truck-visual/SDD.md`)
+- `src/utils/logistica/truckAxles.js`
 - `src/utils/logistica/stackPhysics.js`
 - `src/utils/logistica/loadWarnings.js`
 - `src/utils/logistica/yardLayout.js`
