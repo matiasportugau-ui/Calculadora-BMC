@@ -280,22 +280,15 @@ function CargoBox({
 
   const handlePointerMove = useCallback(
     (e) => {
-      // Cancel pending long-press if user slids before threshold (treat as orbit/pan intent)
-      if (longPressRef.current && !dragRef.current) {
-        const lp = longPressRef.current;
-        // stored as timeout id only — cancel on any significant move during hold wait
-        if (e.movementX || e.movementY || true) {
-          /* cancel if moved > 10px from down — tracked via dragRef start when drag starts */
-        }
+      // Cancel pending long-press if user moves before threshold (orbit/pan intent)
+      if (longPressRef.current && !dragRef.current && (e.movementX || e.movementY)) {
+        clearLongPress();
       }
-      if (!dragRef.current) {
-        // If long-press timer active and finger moved a lot, cancel
-        return;
-      }
+      if (!dragRef.current) return;
       e.stopPropagation();
       applyMove(e);
     },
-    [applyMove],
+    [applyMove, clearLongPress],
   );
 
   const endDrag = useCallback(
