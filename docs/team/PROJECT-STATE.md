@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — ActivityWatch operator gate Bug BE):** `/api/activity/*` required only `requireUser()`, so any self-registered `comprador` JWT could read host-scoped OS activity when `TRAKTIME_AW_ENABLED=1` (also via agent tool `traktime_activity_today`). Now `requireUser({ role: "operator" })`. Regression: `tests/traktime-activity-authz.test.js`. Re-opens closed unmerged #344 on tip.
+
 **2026-08-07 (feat — techo Modo irregular / largos escalonados):** Plant 2D Freeform-style cut tool on `RoofPreview` (toggle OFF by default; two-point cut; ruler+angle; strip L_order inspector; corte-en-obra copy). Pure engine `irregularRoofLayout.js` → stepped factory lengths; BOM charges **ordered m²** via `calcPanelesTechoFromOptionalIrregular` + `scenarioOrchestrator` zone 0 when cut/manual active. Rectangle path unchanged without cut. Tests: `tests/irregularRoofLayout.test.js` (46 asserts). SDD: `docs/sdd/roof-irregular-panel-layout/` SCORECARD 92. Residual: remnant tray, multi-zone irregular, PDF schedule rows.
 
 **2026-08-07 (fix — wire concurrent Entregado delete):** `POST /api/ventas/logistica-entregado` on `bmcDashboard.js` re-locates by `ventasRowIdentityFingerprint` before `deleteDimension` (never stale row1Based). Also `logistica-estado` + terminal gate. Supersedes #896 production path.

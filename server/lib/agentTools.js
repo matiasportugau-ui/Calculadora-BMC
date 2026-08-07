@@ -1061,7 +1061,7 @@ export const AGENT_TOOLS = [
   {
     name: "traktime_activity_today",
     description:
-      "TraKtiMe + ActivityWatch (opt-in, OFF por defecto): cuando el operador habilitó ActivityWatch, devuelve un resumen de la actividad del SO de hoy (apps/títulos por tiempo) para responder '¿en qué trabajé hoy?' y proponer entradas. Si está deshabilitado, lo informa con cómo habilitarlo. Solo lectura.",
+      "TraKtiMe + ActivityWatch (opt-in, OFF por defecto): cuando el operador habilitó ActivityWatch, devuelve un resumen de la actividad del SO de hoy (apps/títulos por tiempo) para responder '¿en qué trabajé hoy?' y proponer entradas. Si está deshabilitado, lo informa con cómo habilitarlo. Solo lectura. Requiere rol operator+ (comprador recibe 403).",
     input_schema: {
       type: "object",
       properties: {
