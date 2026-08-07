@@ -69,8 +69,10 @@ export function buildEnviosDraft(state, opts = {}) {
     camionesCat: Array.isArray(state.camionesCat) ? state.camionesCat : [],
     priceHistory: Array.isArray(state.priceHistory) ? state.priceHistory : [],
     tripCostLog: Array.isArray(state.tripCostLog) ? state.tripCostLog : [],
+    route: state.route && typeof state.route === "object" ? state.route : null,
     ui: {
       collapsedStopIds: Array.isArray(state.ui?.collapsedStopIds) ? state.ui.collapsedStopIds : [],
+      wizard: state.ui?.wizard && typeof state.ui.wizard === "object" ? state.ui.wizard : undefined,
     },
   };
   return {
@@ -126,8 +128,10 @@ export function parseEnviosDraftPayload(raw) {
       camionesCat: Array.isArray(p.camionesCat) ? p.camionesCat : [],
       priceHistory: Array.isArray(p.priceHistory) ? p.priceHistory : [],
       tripCostLog: Array.isArray(p.tripCostLog) ? p.tripCostLog : [],
+      route: p.route && typeof p.route === "object" ? p.route : null,
       ui: {
         collapsedStopIds: Array.isArray(p.ui?.collapsedStopIds) ? p.ui.collapsedStopIds : [],
+        wizard: p.ui?.wizard && typeof p.ui.wizard === "object" ? p.ui.wizard : undefined,
       },
     },
   };

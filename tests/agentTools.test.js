@@ -145,6 +145,8 @@ group("AGENT_TOOLS surface", () => {
     "traktime_timer_stop",
     "traktime_list_entries",
     "traktime_create_entry",
+    "traktime_update_entry",
+    "traktime_delete_entry",
     "traktime_day_report",
     "traktime_month_report",
     "traktime_billable_report",
