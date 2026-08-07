@@ -1434,6 +1434,23 @@ function DiagramPanel({
           <ViewerChrome
             toolbar={
               <span style={{ fontSize: 11, color: "rgba(255,255,255,.65)" }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    marginRight: 8,
+                    padding: "1px 7px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(125, 211, 252, 0.35)",
+                    background: "rgba(11, 61, 145, 0.45)",
+                    color: "rgba(224, 242, 254, 0.95)",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: 0.02,
+                  }}
+                  title="Clic en la cabina del camión para encender luces 10 segundos"
+                >
+                  Cabina BMC · click → luces 10s
+                </span>
                 {freeDragEnabled
                   ? "1 clic detalle · Doble-clic+hold arrastra · Shift+clic grupo"
                   : "Activá Free-Drag para armar a mano"}
