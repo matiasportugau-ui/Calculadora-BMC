@@ -278,16 +278,23 @@ export function ventasRowIdentityFingerprint(cells, idx = {}) {
 export function findSheetRow1BasedByFingerprint(dataRows, fingerprint, hintRow1Based) {
   const fp = String(fingerprint || "");
   if (!fp || !Array.isArray(dataRows)) return null;
+  // Fast path: hint still matches this identity (safe even when duplicates exist).
   if (Number.isFinite(hintRow1Based) && hintRow1Based >= 2) {
     const hintIdx = hintRow1Based - 2;
     if (hintIdx >= 0 && hintIdx < dataRows.length) {
       if (ventasRowIdentityFingerprint(dataRows[hintIdx]) === fp) return hintRow1Based;
     }
   }
+  // Bug AY: when hint is stale/missing, refuse ambiguous first-match. Two rows
+  // sharing orderId+nombre+tel+dir must not archive/delete the wrong sale.
+  let found = null;
   for (let i = 0; i < dataRows.length; i += 1) {
-    if (ventasRowIdentityFingerprint(dataRows[i]) === fp) return i + 2;
+    if (ventasRowIdentityFingerprint(dataRows[i]) === fp) {
+      if (found != null) return null;
+      found = i + 2;
+    }
   }
-  return null;
+  return found;
 }
 
 /** Statuses that require archive move via logistica-entregado — not plain estado write. */

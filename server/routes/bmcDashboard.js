@@ -1286,18 +1286,17 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
   const tte = body?.transportista ? String(body.transportista).slice(0, 40) : "";
   const comment = body?.comment ? String(body.comment).replace(/[[\]]/g, "").slice(0, 120) : "";
 
-  // Prefer shared builder (linear marker strip — avoids CodeQL ReDoS on ESTADO).
-  // If client already sent a full LOGISTICA marker cell, keep it as-is.
-  const estadoVal =
-    body?.estadoText != null && String(body.estadoText).includes("[LOGISTICA:")
-      ? String(body.estadoText)
-      : buildEstadoSheetValue(existingEstado, {
-          status,
-          fechaIso: fechaVal ? fechaIso : null,
-          camion: camion && Number.isFinite(camion) && camion >= 1 ? camion : null,
-          transportista: tte,
-          comment,
-        });
+  // Always rebuild from server-controlled `status` (linear marker strip — avoids
+  // CodeQL ReDoS on ESTADO). Never write client `estadoText` LOGISTICA markers
+  // verbatim: that smuggled ENTREGADO/ENVIADO past the terminal gate while
+  // status stayed non-terminal (Bug AW — same operational loss as allowTerminal bypass).
+  const estadoVal = buildEstadoSheetValue(existingEstado, {
+    status,
+    fechaIso: fechaVal ? fechaIso : null,
+    camion: camion && Number.isFinite(camion) && camion >= 1 ? camion : null,
+    transportista: tte,
+    comment,
+  });
 
   const data = [
     {
@@ -1378,10 +1377,26 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
     throw new Error("Fila sin identidad usable (pedido/nombre/tel/dir vacíos) — abortado para no borrar otra venta");
   }
 
+  // Bug AX: relocate BEFORE writing terminal estado. Concurrent deletes above
+  // this row shift indices; writing at the original row1Based would mark the
+  // wrong sale ENTREGADO/ENVIADO (and hide it) without archiving that wrong row.
+  const writeRow1 = await locateVentasRow1BasedByFingerprint(
+    sheets,
+    ventasSheetId,
+    safeTab,
+    identityFp,
+    row1Based,
+  );
+  if (writeRow1 == null) {
+    throw new Error(
+      "La fila cambió o fue borrada durante la confirmación (otra operación concurrente). Reintentá.",
+    );
+  }
+
   // Update estado marker on source row (internal allowTerminal — archive follows).
   await handleVentasLogisticaEstado(ventasSheetId, {
     gid,
-    row1Based,
+    row1Based: writeRow1,
     status: mode,
     fechaEntrega: body?.fechaEntrega || "",
     comment: body?.comment || "",
@@ -1390,13 +1405,13 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
     allowTerminal: true,
   });
 
-  // Re-locate by fingerprint (concurrent deletes above this row shift indices).
+  // Re-locate again after estado write (further concurrent deletes may shift).
   const afterEstadoRow1 = await locateVentasRow1BasedByFingerprint(
     sheets,
     ventasSheetId,
     safeTab,
     identityFp,
-    row1Based,
+    writeRow1,
   );
   if (afterEstadoRow1 == null) {
     throw new Error(
