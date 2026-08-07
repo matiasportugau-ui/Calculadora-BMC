@@ -13,12 +13,17 @@ import {
   canStartDrag,
   BURIED_TOAST_ES,
 } from "../../utils/logistica/stackPhysics.js";
+import {
+  canFireLongPressDrag,
+  shouldCancelLongPress,
+} from "../../utils/logistica/freeDragLongPress.js";
 
 const TRUCK_W = 2.4;
 const ROW_W = 1.2;
 const CAB_LEN_M = 2.4;
 const CAB_HEIGHT_M = 1.5;
 const DBL_MS = 420;
+const LONG_PRESS_MOVE_CANCEL_PX = 12;
 
 function hexToColor(hex) {
   if (!hex || typeof hex !== "string" || hex[0] !== "#") return "#888888";
@@ -87,6 +92,8 @@ function CargoBox({
   const dragRef = useRef(null);
   const liveRef = useRef(null);
   const longPressRef = useRef(null);
+  /** Armed while pointer is down awaiting long-press; cleared on up/cancel/move. */
+  const armedPressRef = useRef(null);
   const { camera, gl } = useThree();
   const [live, setLive] = useState(null);
 
@@ -135,6 +142,11 @@ function CargoBox({
       longPressRef.current = null;
     }
   }, []);
+
+  const disarmPress = useCallback(() => {
+    armedPressRef.current = null;
+    clearLongPress();
+  }, [clearLongPress]);
 
   const beginDrag = useCallback(
     (e, key) => {
@@ -217,20 +229,30 @@ function CargoBox({
 
       // Mouse: double-click starts drag immediately
       if (!isTouch && isDouble) {
-        clearLongPress();
+        disarmPress();
         beginDrag(e, key);
         return;
       }
 
       // Touch / trackpad / first click: long-press to drag (works without double-tap)
-      clearLongPress();
+      disarmPress();
       const startX = e.clientX;
       const startY = e.clientY;
       const pointerId = e.pointerId;
       const target = e.target;
+      armedPressRef.current = { pointerId, startX, startY };
       longPressRef.current = setTimeout(() => {
         longPressRef.current = null;
-        if (dragRef.current) return;
+        // Guard: pointerup may have already disarmed after this timer was queued.
+        if (
+          !canFireLongPressDrag({
+            armedPointerId: armedPressRef.current?.pointerId,
+            eventPointerId: pointerId,
+            alreadyDragging: Boolean(dragRef.current),
+          })
+        ) {
+          return;
+        }
         beginDrag(
           {
             pointerId,
@@ -243,7 +265,7 @@ function CargoBox({
         );
       }, LONG_PRESS_MS);
     },
-    [pkg, freeDragEnabled, onSelect, onShiftSelect, lastClickRef, beginDrag, clearLongPress],
+    [pkg, freeDragEnabled, onSelect, onShiftSelect, lastClickRef, beginDrag, disarmPress],
   );
 
   const applyMove = useCallback(
@@ -251,11 +273,6 @@ function CargoBox({
       const d = dragRef.current;
       if (!d || !freeDragEnabled) return;
       if (d.pointerId != null && e.pointerId != null && d.pointerId !== e.pointerId) return;
-
-      // Cancel long-press if finger moved before it fired
-      if (longPressRef.current && (Math.abs(e.clientX - (d.startClientX || 0)) > 8 || Math.abs(e.clientY - (d.startClientY || 0)) > 8)) {
-        /* drag already active */
-      }
 
       d.moved = true;
 
@@ -278,22 +295,41 @@ function CargoBox({
     [freeDragEnabled, projectToPlane, xStart, zBase, row, setLiveBoth],
   );
 
+  const cancelLongPressIfSlid = useCallback(
+    (e) => {
+      if (!armedPressRef.current || dragRef.current) return;
+      const armed = armedPressRef.current;
+      if (
+        shouldCancelLongPress(
+          armed.startX,
+          armed.startY,
+          e.clientX,
+          e.clientY,
+          LONG_PRESS_MOVE_CANCEL_PX,
+        )
+      ) {
+        disarmPress();
+      }
+    },
+    [disarmPress],
+  );
+
   const handlePointerMove = useCallback(
     (e) => {
-      // Cancel pending long-press if user moves before threshold (orbit/pan intent)
-      if (longPressRef.current && !dragRef.current && (e.movementX || e.movementY)) {
-        clearLongPress();
+      // Cancel pending long-press if user slides before threshold (orbit/pan intent)
+      if (!dragRef.current) {
+        cancelLongPressIfSlid(e);
+        return;
       }
-      if (!dragRef.current) return;
       e.stopPropagation();
       applyMove(e);
     },
-    [applyMove, clearLongPress],
+    [applyMove, cancelLongPressIfSlid],
   );
 
   const endDrag = useCallback(
     (e) => {
-      clearLongPress();
+      disarmPress();
       if (!dragRef.current) return;
       e?.stopPropagation?.();
       const d = dragRef.current;
@@ -330,23 +366,21 @@ function CargoBox({
       }
       setLiveBoth(null);
     },
-    [onFreeDragEnd, onGroupDragEnd, pkg, len, onDragStateChange, setLiveBoth, clearLongPress, gl],
+    [onFreeDragEnd, onGroupDragEnd, pkg, len, onDragStateChange, setLiveBoth, disarmPress, gl],
   );
 
   // Window-level listeners: trackpad often leaves mesh bounds mid-drag
   useEffect(() => {
     const onMove = (e) => {
       if (!dragRef.current) {
-        // cancel long-press on move while waiting
-        if (longPressRef.current && e.pointerType) {
-          // only cancel if this looks like a drag gesture
-        }
+        cancelLongPressIfSlid(e);
         return;
       }
       applyMove(e);
     };
     const onUp = (e) => {
-      if (longPressRef.current) clearLongPress();
+      // Disarm before any late long-press timer callback can beginDrag.
+      disarmPress();
       if (dragRef.current) endDrag(e);
     };
     window.addEventListener("pointermove", onMove, { passive: false });
@@ -356,24 +390,9 @@ function CargoBox({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
-      clearLongPress();
+      disarmPress();
     };
-  }, [applyMove, endDrag, clearLongPress]);
-
-  // Cancel long-press if pointer moves before fire
-  useEffect(() => {
-    const onEarlyMove = (e) => {
-      if (!longPressRef.current || dragRef.current) return;
-      // Heuristic: any move while holding cancels if > 12px — store start on down via lastClickRef
-      const prev = lastClickRef?.current;
-      if (!prev || prev.startX == null) return;
-      const dx = Math.abs(e.clientX - prev.startX);
-      const dy = Math.abs(e.clientY - prev.startY);
-      if (dx > 12 || dy > 12) clearLongPress();
-    };
-    window.addEventListener("pointermove", onEarlyMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onEarlyMove);
-  }, [clearLongPress, lastClickRef]);
+  }, [applyMove, endDrag, disarmPress, cancelLongPressIfSlid]);
 
   return (
     <mesh

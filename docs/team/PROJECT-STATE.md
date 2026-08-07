@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — Free-Drag long-press race Bug AO):** `armedPressRef` + `canFireLongPressDrag` so timer cannot beginDrag after pointerup; slide cancel via `shouldCancelLongPress`. Rebased from #907.
+
 **2026-08-07 (fix — Envíos Btn javascript: href XSS):** `resolveSafeBtnHref` + Btn refuse non-http(s); list/stop PDF/Mapa use `safeHttpUrl`. Rebased from #892.
 
 **2026-08-07 (fix — Envíos adjunto-fetch SSRF harden):** Allowlist + DNS/IP checks for `POST /api/envios/adjunto-fetch` (`server/lib/enviosAdjuntoFetch.js` + tests). PR rebased from #901.
