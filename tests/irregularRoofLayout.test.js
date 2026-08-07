@@ -233,4 +233,41 @@ ok(stepCeil(1.2, 0.01) === 1.2, "stepCeil 1.2");
 
 ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
 
+// dos_aguas must NOT double-apply irregular schedule on both faldones
+{
+  const irr = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho: 5.6,
+    largo: 6,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 0 }, p1: { x: 5.6, y: 6 }, keep: "left" },
+  });
+  const r2a = executeScenario("solo_techo", {
+    techo: techoBase({
+      tipoAguas: "dos_aguas",
+      irregularLayout: irr,
+      zonas: [{ largo: 6, ancho: 5.6 }],
+    }),
+    pared: {},
+    camara: {},
+  });
+  const r2aOff = executeScenario("solo_techo", {
+    techo: techoBase({
+      tipoAguas: "dos_aguas",
+      zonas: [{ largo: 6, ancho: 5.6 }],
+    }),
+    pared: {},
+    camara: {},
+  });
+  ok(r2a && !r2a.error, "dos_aguas+irr no error");
+  // With irregular ignored for dos_aguas, area matches rectangular two-slope path
+  ok(
+    approx(r2a.paneles?.areaTotal, r2aOff.paneles?.areaTotal, 0.05),
+    `dos_aguas irr ignored (same as rect): on=${r2a.paneles?.areaTotal} off=${r2aOff.paneles?.areaTotal}`,
+  );
+  ok(!r2a.paneles?.irregular, "dos_aguas does not set irregular flag on merged BOM");
+}
+
 console.log(`\n${passed} assertions passed`);

@@ -107,11 +107,14 @@ function computeTechoZonas(techo, useEncounterBorders) {
       pendiente: zona.pendiente ?? techo.pendiente ?? 0,
       pendienteModo: zona.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente",
       alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0,
-      // Stepped lengths: primary zone 0 when schedule present
+      // Stepped lengths: una_agua primary zone only. Never on dos_aguas halves
+      // (would double-charge full schedule on each faldón — Codex P1 on #935).
       irregularLayout:
-        gi === 0 && techo.irregularLayout?.strips?.length
+        !is2Aguas && gi === 0 && techo.irregularLayout?.strips?.length
           ? techo.irregularLayout
-          : techo.irregularLayoutByGi?.[gi] ?? null,
+          : !is2Aguas
+            ? techo.irregularLayoutByGi?.[gi] ?? null
+            : null,
     };
     const globalBorders = techo.inclAccesorios === false ? EMPTY_BORDERS : techo.borders;
     const mergedBorders = { ...globalBorders, ...(zona.preview?.borders ?? {}) };
@@ -163,9 +166,11 @@ function computeTechoZonas(techo, useEncounterBorders) {
         ...baseOpciones,
         ...(edgeML ? { edgeML } : {}),
       };
+      // Force rectangular path per faldón (irregular schedule is full-width plant).
       return [
         calcTechoCompleto({
           ...inputs,
+          irregularLayout: null,
           ancho: halfAncho,
           borders: { ...effectiveBorders, fondo: "cumbrera" },
           opciones: opcionesHalf0,
@@ -174,6 +179,7 @@ function computeTechoZonas(techo, useEncounterBorders) {
         }),
         calcTechoCompleto({
           ...inputs,
+          irregularLayout: null,
           ancho: halfAncho,
           borders: {
             frente: effectiveBorders.fondo === "cumbrera" ? "cumbrera" : effectiveBorders.fondo,
