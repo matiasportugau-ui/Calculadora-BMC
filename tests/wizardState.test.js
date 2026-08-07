@@ -14,6 +14,8 @@ import {
   stepSummary,
   shouldEnableWizard,
   applyDefaultPickupToStops,
+  shouldApplyDefaultPickupFromPatch,
+  mergeStopsAfterRoutePrep,
   createWizardUi,
   adjacentStep,
 } from "../src/utils/logistica/wizardState.js";
@@ -103,6 +105,35 @@ console.log("wizardState");
   // Single-mode must overwrite stale per-stop pickups (wrong warehouse otherwise).
   assert.equal(next[1].pickupPointId, "def");
   ok("applyDefaultPickupToStops overwrites");
+}
+
+{
+  const w = createWizardUi({ singlePickup: true, defaultPickupPointId: "p-a" });
+  assert.equal(shouldApplyDefaultPickupFromPatch({ defaultPickupPointId: "p-b" }, w), true);
+  assert.equal(shouldApplyDefaultPickupFromPatch({ singlePickup: true }, w), true);
+  assert.equal(shouldApplyDefaultPickupFromPatch({ singlePickup: false }, w), false);
+  assert.equal(shouldApplyDefaultPickupFromPatch({ routeStale: true }, w), false);
+  const multi = createWizardUi({ singlePickup: false, defaultPickupPointId: "p-a" });
+  assert.equal(shouldApplyDefaultPickupFromPatch({ defaultPickupPointId: "p-b" }, multi), false);
+  assert.equal(shouldApplyDefaultPickupFromPatch({ singlePickup: true }, multi), true);
+  ok("shouldApplyDefaultPickupFromPatch");
+}
+
+{
+  const prev = [
+    { id: "s1", pickupPointId: "p-a", cliente: "A" },
+    { id: "s2", pickupPointId: "p-a", cliente: "B", geo: { lat: 1, lng: 2 } },
+  ];
+  const prepared = applyDefaultPickupToStops(prev, "p-b").map((s) =>
+    s.id === "s1" ? { ...s, geo: { lat: 3, lng: 4 } } : s,
+  );
+  const merged = mergeStopsAfterRoutePrep(prev, prepared);
+  assert.equal(merged[0].pickupPointId, "p-b");
+  assert.equal(merged[0].geo?.lat, 3);
+  assert.equal(merged[1].pickupPointId, "p-b");
+  assert.equal(merged[1].geo?.lat, 1);
+  assert.equal(merged[0].cliente, "A");
+  ok("mergeStopsAfterRoutePrep persists pickup + new geo");
 }
 
 {

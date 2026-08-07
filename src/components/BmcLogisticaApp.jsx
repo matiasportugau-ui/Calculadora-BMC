@@ -92,6 +92,8 @@ import {
   createWizardUi,
   shouldEnableWizard,
   applyDefaultPickupToStops,
+  shouldApplyDefaultPickupFromPatch,
+  mergeStopsAfterRoutePrep,
 } from "../utils/logistica/wizardState.js";
 import { suggestRoute } from "../utils/logistica/routeSuggest.js";
 import EnvioWizardShell from "./logistica/wizard/EnvioWizardShell.jsx";
@@ -2380,6 +2382,8 @@ export default function BmcLogisticaApp() {
     cargoLayoutMode,
     manualPkgOrderKeys,
     rowOverrides,
+    tripRoute,
+    wizardUi,
     autosaveEnabled,
     lastPushedFp,
     cloudSyncBusy,
@@ -3321,7 +3325,19 @@ export default function BmcLogisticaApp() {
                   stops={stops}
                   wizard={wizardUi}
                   places={catalogPlaces}
-                  onWizardPatch={(patch) => setWizardUi((p) => createWizardUi({ ...p, ...patch, routeStale: true }))}
+                  onWizardPatch={(patch) => {
+                    // Apply default pickup immediately on single-mode default change / multi→single.
+                    // onWizardChange only runs on Continuar/openStep — patch alone used to leave
+                    // stale per-stop warehouses while the UI showed the new default (Bug AP residual).
+                    if (shouldApplyDefaultPickupFromPatch(patch, wizardUi)) {
+                      const nextDefault =
+                        patch.defaultPickupPointId !== undefined
+                          ? patch.defaultPickupPointId
+                          : wizardUi.defaultPickupPointId;
+                      setStops((prev) => applyDefaultPickupToStops(prev, nextDefault));
+                    }
+                    setWizardUi((p) => createWizardUi({ ...p, ...patch, routeStale: true }));
+                  }}
                   onStopPickup={(sid, pid) => {
                     setStops((p) => p.map((s) => (s.id === sid ? { ...s, pickupPointId: pid } : s)));
                     setWizardUi((p) => createWizardUi({ ...p, routeStale: true }));
@@ -3378,12 +3394,7 @@ export default function BmcLogisticaApp() {
                       if (!parsed) return s;
                       return applyGeocodeToStop(s, { ...parsed, label: s.direccion || s.cliente || "", source: "parsed" });
                     });
-                    setStops((prev) =>
-                      prev.map((s) => {
-                        const next = stopsForRoute.find((x) => x.id === s.id);
-                        return next?.geo && !s.geo ? next : s;
-                      }),
-                    );
+                    setStops((prev) => mergeStopsAfterRoutePrep(prev, stopsForRoute));
 
                     // Geocode missing delivery addresses (max 5) via API if token present
                     const token = enviosAuthToken();
