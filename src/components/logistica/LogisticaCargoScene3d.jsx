@@ -52,12 +52,15 @@ function TruckCabin({ shiftX }) {
   );
 }
 
+/** Long-press for touch / trackpad free-drag (ms). Double-click still works for mouse. */
+const LONG_PRESS_MS = 380;
+
 /**
  * Interaction:
  * - 1 click / pointerup quick → select (details only)
- * - double-click + hold → drag (if Free-Drag ON and not buried)
- * - release → stop drag, stay put
- * - Shift+click → multi-select (parent)
+ * - Free-Drag ON: double-click (mouse) OR long-press 380ms (touch/trackpad) → drag
+ * - Window-level pointermove/up so trackpad doesn't drop when leaving the mesh
+ * - Shift+click → multi-select (parent); Shift+drag → height
  */
 function CargoBox({
   pkg,
@@ -83,6 +86,7 @@ function CargoBox({
   const w = dims.W;
   const dragRef = useRef(null);
   const liveRef = useRef(null);
+  const longPressRef = useRef(null);
   const { camera, gl } = useThree();
   const [live, setLive] = useState(null);
 
@@ -125,41 +129,37 @@ function CargoBox({
     [camera, gl],
   );
 
-  const handlePointerDown = useCallback(
-    (e) => {
-      e.stopPropagation();
-      const key = pkg.stableKey;
-      const now = Date.now();
-      const shift = Boolean(e.shiftKey);
+  const clearLongPress = useCallback(() => {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  }, []);
 
-      if (shift && onShiftSelect) {
-        onShiftSelect(key, pkg);
-        return;
-      }
-
-      onSelect(pkg.id, pkg);
-
-      if (!freeDragEnabled) return;
-
-      const prev = lastClickRef?.current;
-      const isDouble = prev && prev.key === key && now - prev.t < DBL_MS;
-      lastClickRef.current = { key, t: now };
-
-      if (!isDouble) return;
-
-      // Double-click + hold: attempt drag
+  const beginDrag = useCallback(
+    (e, key) => {
       const gate = canStartDrag(placed, pkg, multiSelectKeys);
       if (!gate.ok) {
         onBlocked?.(gate.message || BURIED_TOAST_ES);
         return;
       }
-
-      e.target.setPointerCapture?.(e.pointerId);
+      try {
+        e.target?.setPointerCapture?.(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      // Prefer canvas capture so trackpad moves outside mesh still stream events
+      try {
+        gl.domElement.setPointerCapture?.(e.pointerId);
+      } catch {
+        /* ignore */
+      }
       dragRef.current = {
         pointerId: e.pointerId,
         planeY: cy,
         shiftHeight: false,
         startClientY: e.clientY,
+        startClientX: e.clientX,
         startZBase: zBase,
         startX: xStart,
         startRow: row,
@@ -175,28 +175,88 @@ function CargoBox({
       setLiveBoth({ xStart, zBase, row });
     },
     [
-      pkg,
-      freeDragEnabled,
-      onSelect,
-      onShiftSelect,
       placed,
+      pkg,
       multiSelectKeys,
       onBlocked,
+      gl,
       cy,
-      xStart,
       zBase,
+      xStart,
       row,
       onDragStateChange,
       setLiveBoth,
-      lastClickRef,
     ],
   );
 
-  const handlePointerMove = useCallback(
+  const handlePointerDown = useCallback(
+    (e) => {
+      e.stopPropagation();
+      const key = pkg.stableKey;
+      const now = Date.now();
+      const shift = Boolean(e.shiftKey);
+      const isTouch = e.pointerType === "touch" || e.pointerType === "pen";
+
+      if (shift && onShiftSelect) {
+        onShiftSelect(key, pkg);
+        return;
+      }
+
+      onSelect(pkg.id, pkg);
+
+      if (!freeDragEnabled) return;
+
+      const prev = lastClickRef?.current;
+      const isDouble = prev && prev.key === key && now - prev.t < DBL_MS;
+      lastClickRef.current = {
+        key,
+        t: now,
+        startX: e.clientX,
+        startY: e.clientY,
+      };
+
+      // Mouse: double-click starts drag immediately
+      if (!isTouch && isDouble) {
+        clearLongPress();
+        beginDrag(e, key);
+        return;
+      }
+
+      // Touch / trackpad / first click: long-press to drag (works without double-tap)
+      clearLongPress();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const pointerId = e.pointerId;
+      const target = e.target;
+      longPressRef.current = setTimeout(() => {
+        longPressRef.current = null;
+        if (dragRef.current) return;
+        beginDrag(
+          {
+            pointerId,
+            clientX: startX,
+            clientY: startY,
+            target,
+            stopPropagation() {},
+          },
+          key,
+        );
+      }, LONG_PRESS_MS);
+    },
+    [pkg, freeDragEnabled, onSelect, onShiftSelect, lastClickRef, beginDrag, clearLongPress],
+  );
+
+  const applyMove = useCallback(
     (e) => {
       const d = dragRef.current;
       if (!d || !freeDragEnabled) return;
-      e.stopPropagation();
+      if (d.pointerId != null && e.pointerId != null && d.pointerId !== e.pointerId) return;
+
+      // Cancel long-press if finger moved before it fired
+      if (longPressRef.current && (Math.abs(e.clientX - (d.startClientX || 0)) > 8 || Math.abs(e.clientY - (d.startClientY || 0)) > 8)) {
+        /* drag already active */
+      }
+
       d.moved = true;
 
       if (e.shiftKey) {
@@ -218,12 +278,31 @@ function CargoBox({
     [freeDragEnabled, projectToPlane, xStart, zBase, row, setLiveBoth],
   );
 
+  const handlePointerMove = useCallback(
+    (e) => {
+      // Cancel pending long-press if user moves before threshold (orbit/pan intent)
+      if (longPressRef.current && !dragRef.current && (e.movementX || e.movementY)) {
+        clearLongPress();
+      }
+      if (!dragRef.current) return;
+      e.stopPropagation();
+      applyMove(e);
+    },
+    [applyMove, clearLongPress],
+  );
+
   const endDrag = useCallback(
     (e) => {
+      clearLongPress();
       if (!dragRef.current) return;
       e?.stopPropagation?.();
       const d = dragRef.current;
       const finalLive = liveRef.current;
+      try {
+        gl.domElement.releasePointerCapture?.(d.pointerId);
+      } catch {
+        /* ignore */
+      }
       dragRef.current = null;
       onDragStateChange?.(false);
 
@@ -251,8 +330,50 @@ function CargoBox({
       }
       setLiveBoth(null);
     },
-    [onFreeDragEnd, onGroupDragEnd, pkg, len, onDragStateChange, setLiveBoth],
+    [onFreeDragEnd, onGroupDragEnd, pkg, len, onDragStateChange, setLiveBoth, clearLongPress, gl],
   );
+
+  // Window-level listeners: trackpad often leaves mesh bounds mid-drag
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragRef.current) {
+        // cancel long-press on move while waiting
+        if (longPressRef.current && e.pointerType) {
+          // only cancel if this looks like a drag gesture
+        }
+        return;
+      }
+      applyMove(e);
+    };
+    const onUp = (e) => {
+      if (longPressRef.current) clearLongPress();
+      if (dragRef.current) endDrag(e);
+    };
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      clearLongPress();
+    };
+  }, [applyMove, endDrag, clearLongPress]);
+
+  // Cancel long-press if pointer moves before fire
+  useEffect(() => {
+    const onEarlyMove = (e) => {
+      if (!longPressRef.current || dragRef.current) return;
+      // Heuristic: any move while holding cancels if > 12px — store start on down via lastClickRef
+      const prev = lastClickRef?.current;
+      if (!prev || prev.startX == null) return;
+      const dx = Math.abs(e.clientX - prev.startX);
+      const dy = Math.abs(e.clientY - prev.startY);
+      if (dx > 12 || dy > 12) clearLongPress();
+    };
+    window.addEventListener("pointermove", onEarlyMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onEarlyMove);
+  }, [clearLongPress, lastClickRef]);
 
   return (
     <mesh
@@ -448,7 +569,7 @@ function SceneContent({
 }
 
 /**
- * Vista WebGL — armado físico: detalle 1-clic, drag doble-clic+hold, multi-select Shift.
+ * Vista WebGL — detalle 1-clic; Free-Drag: doble-clic (mouse) o long-press (touch/trackpad).
  */
 export default function LogisticaCargoScene3d({
   placed,
@@ -475,6 +596,20 @@ export default function LogisticaCargoScene3d({
   const lastClickRef = useRef(null);
   const cx = totalLen / 2;
   const cam = useMemo(() => [cx + 4.2, MAX_H + 2.4, TRUCK_W + 5.2], [cx]);
+
+  // Touch-friendly canvas: prevent browser scroll/zoom fighting free-drag
+  useEffect(() => {
+    const el = document.querySelector("canvas");
+    if (!el) return undefined;
+    if (freeDragEnabled) {
+      el.style.touchAction = "none";
+    } else {
+      el.style.touchAction = "manipulation";
+    }
+    return () => {
+      el.style.touchAction = "";
+    };
+  }, [freeDragEnabled]);
 
   useEffect(() => {
     if (selectedPkgId != null) setSelectedId(selectedPkgId);
@@ -627,8 +762,8 @@ export default function LogisticaCargoScene3d({
         ) : (
           <span style={{ color: "rgba(255,255,255,.45)", fontSize: 11 }}>
             {freeDragEnabled
-              ? "1 clic = detalle · Doble-clic+hold = arrastrar · Shift+clic = grupo · Shift+drag = altura"
-              : "Clic = detalle del bulto · activá Free-Drag para mover"}
+              ? "1 toque = detalle · Mantener ~0.4s o doble-clic = arrastrar · Shift = grupo/altura"
+              : "Toque = detalle · activá Free-Drag para mover bultos"}
           </span>
         )}
       </div>
@@ -645,8 +780,8 @@ export default function LogisticaCargoScene3d({
         }}
       >
         {freeDragEnabled
-          ? "FREE-DRAG · no arrastra con 1 clic · soltar fija posición"
-          : "Órbita · rueda zoom · clic derecho pan"}
+          ? "FREE-DRAG · trackpad/tablet: long-press y deslizá · soltar fija"
+          : "Órbita · pellizco/rueda zoom · 2 dedos pan"}
       </div>
     </div>
   );
