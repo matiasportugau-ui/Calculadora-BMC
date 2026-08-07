@@ -14,9 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-07 (fix — Bug BF entregado wipe FECHA ENTREGA):** `handleVentasLogisticaEntregado` passed `fechaEntrega: body?.fechaEntrega || ""` into `logistica-estado`, which cleared column H before `rowRes2` archive — permanent date loss on Ventas Realizadas when confirm omitted fecha. Now keeps pre-write sheet H (idx 7) unless body sends an explicit date. Test: `enviosEntregadoConcurrentDelete`. Distinct from open BA/AV/AW/AX/AY.
-
-**2026-08-07 (fix — ActivityWatch operator gate Bug BF):** `/api/activity/*` required only `requireUser()`, so any self-registered `comprador` JWT could read host-scoped OS activity when `TRAKTIME_AW_ENABLED=1` (also via agent tool `traktime_activity_today`). Now `requireUser({ role: "operator" })`. Regression: `tests/traktime-activity-authz.test.js`. Re-opens closed unmerged #344 on tip.
+**2026-08-07 (fix — ActivityWatch operator gate Bug BG):** `/api/activity/*` required only `requireUser()`, so any self-registered `comprador` JWT could read host-scoped OS activity when `TRAKTIME_AW_ENABLED=1` (also via agent tool `traktime_activity_today`). Now `requireUser({ role: "operator" })`. Regression: `tests/traktime-activity-authz.test.js`. Re-opens closed unmerged #344 on tip.
 
 **2026-08-07 (feat — techo Modo irregular / largos escalonados):** Plant 2D Freeform-style cut tool on `RoofPreview` (toggle OFF by default; two-point cut; ruler+angle; strip L_order inspector; corte-en-obra copy). Pure engine `irregularRoofLayout.js` → stepped factory lengths; BOM charges **ordered m²** via `calcPanelesTechoFromOptionalIrregular` + `scenarioOrchestrator` zone 0 when cut/manual active. Rectangle path unchanged without cut. Tests: `tests/irregularRoofLayout.test.js` (46 asserts). SDD: `docs/sdd/roof-irregular-panel-layout/` SCORECARD 92. Residual: remnant tray, multi-zone irregular, PDF schedule rows.
 
@@ -66,7 +64,6 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 **2026-08-01 (fix — full debug pass calculadora-bmc):** Critical correctness/security fixes from live prod QA: (1) CRM taxonomy tools gated in `TOOLS_REQUIRING_AUTH` (unauth exec-tool R/W closed). (2) SuperAgent `camara_frig` prices ceiling via `PANELS_TECHO`/`ISODEC_EPS` (no more wall-only ~25–30% underquote). (3) Finanzas USD monthly burn converts via FX (never pesos-as-dollars). (4) DnD vencimientos PATCH checks `r.ok` and reverts only the failed tx. (5) Calculator BOM hides zero-cant noise rows; mobile bottom-sheet no longer intercepts taps when closed; horizontal overflow clip on narrow viewports. Tests: superAgentCalc, cashflow-project (+2), agentMcpRoutes taxonomy, validation 441/441.
 
-
 **2026-07-26 (feat — Grok Voice + agent selector readiness):** Live voice is dual-engine: selector **Grok** → xAI Grok Voice Agent (`POST client_secrets` + WebRTC SDP on `api.x.ai`); OpenAI Realtime for auto/openai (claude/gemini Live still OpenAI + UI note). In-chat `AgentModelSelector` + `ProviderStatusLights` via `GET /api/agent/providers/status` and readiness envelope on `ai-options`. Server: `voiceRealtimeProviders`, mounted `providerStatus`. SDD: `docs/sdd/grok-voice-agent/`, `panelin-agent-selector/`, `panelin-voice-agent/`, `api-key-readiness/`. On PR #783.
 
 **2026-07-26 (feat — agent platform IMP residual pack):** Hub **Costo & latencia** via `GET /api/agent/obs-summary` (auth-gated; memory ring cost Σ + p50/p95/ttft; multi-day still Cloud Logging). Tool tiers `tools-manifest?tier=` (IMP-14). `prompts_sha` boot + obs (IMP-13). Hybrid RAG fuse `RAG_HYBRID` default OFF (IMP-10). SDD platform v1.4 PAOS + glory; review fixes: no double-count cost, providerStatus import removed. PR #783.
@@ -80,9 +77,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 **2026-07-24 (feat — IMP-02/04/08/09 product residual):** Shared `logAgentTurn` on SSE + callAgentOnce (IMP-02). RAG precheck fail-closed; prod enable blocked without DB/embed (IMP-04). Whisper/Firefox capability tests + OPS matrix (IMP-08). Durable `agent_voice_events` dual-write via voiceMetrics + voiceErrorLog (IMP-09).
 **2026-07-24 (feat — PAOS G2 functional + Cloud Run env; image deploy pending):** SUPERSEDED by **PAOS LIVE** entry above. Supervised loop implemented; env set; was 404 until traffic → LATEST.
 
-
 **2026-07-24 (feat — PAOS G2 remaining: promote→KB + money eval + PG dual-write):** `paosEvaluate` rejects price deltas without calcProvenance; `paosPromote` writes Training KB on approve (canary=pending, active=permanent); candidates dual-write `learning_candidates` when DATABASE_URL set; migration 003; tests `paosPromote`. Flags still default OFF.
-
 
 **2026-07-24 (fix — Meta Ads range/KPI after #764):** Re-land `applyDemoRange` + snapshot null-spend when `range !== 30d` on post-PR3 async builder. PR3 fail-open to Snapshot no longer serves monthly `$11k` under a 7d window. Supersedes dirty #761. Cleared leftover conflict markers in this file from #747 merge.
 
@@ -106,15 +101,11 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 **2026-07-22 (fix — local API outbox + pg hardiness):** `transportistaOutboxWorker` stops on missing `outbox_notifications` (42P01, one warn); held client gets `on("error")`; gap pools (ads/marketing/marketIntel) add `pool.on("error")`; `TRANSPORTISTA_OUTBOX_DISABLED` config. Stops 15s spam + unhandled pg Client crash in local `dev:full`.
 
-
 **2026-07-22 (feat — Panelin agent B-06 circuit breaker):** Extracted `server/lib/providerCircuitBreaker.js` (N-failures cooldown, hard 400/401/403 long open, never drop providers — healthy-first reorder). `agentCore` re-exports + uses `orderChainByHealth`. Tests `providerCircuitBreaker.test.js` + existing `agentCoreFailover.test.js`. SDD-TARGET B-06 Done.
-
 
 **2026-07-22 (feat — Panelin agent B-05 toolStats persist):** Durable telemetry in `public.agent_tool_calls` (auto-ensure schema); `recordToolCall` fire-and-forget insert when `DATABASE_URL` set; `GET /api/agent/tool-stats` uses `getToolStatsAsync` (`source: db|memory`). Migration `server/migrations/agent/001_agent_tool_calls.sql`. Tests `toolStatsPersist.test.js`. SDD-TARGET B-05 Done.
 
-
 **2026-07-22 (feat — Panelin agent B-04 OpenAPI tools):** `GET /api/agent/tools/openapi` exports OpenAPI 3.1 generated from live `AGENT_TOOLS` (JSON/YAML); `server/lib/agentToolsOpenApi.js`; tests `agentToolsOpenApi.test.js`. SDD-TARGET B-04 Done.
-
 
 **2026-07-22 (fix — Panelin Co-Work Wave 4 + skills):** Session gaps post–Wave 1–3: remap/drop `ACTION_JSON:aplicar_estado_calc`; `normalizeTipoAguas` + defaults; surface-intent prompts (Admin vs Gmail vs CRM); `listar_cotizaciones_recientes` `desde`/`hasta`; filter routine `infoNotes`; tools `email_panelsim_resumen` + `email_borrador_saliente` (draft-only). Skill [`.cursor/skills/panelin-cowork/SKILL.md`](../../.cursor/skills/panelin-cowork/SKILL.md), rule `panelin-cowork.mdc`, SKILL-INDEX + `bmc-panelin-chat` / `panelin-gym` updates.
 
@@ -337,7 +328,6 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 **2026-06-30 (Inbox AI-First · Fase 1 — citas RAG en sugerencias Omni + pre-check de embeddings · dormant):** Continuación del blueprint. La investigación confirmó que el núcleo de la Fase 1 ya estaba implementado: el job `suggest` de `server/lib/omni/orchestrator/aiWorker.js` ya pasa por `callAgentOnce()` ("un cerebro") y ya inyecta casos RAG vía `buildOmniRetrievalContext`/`formatOmniContextBlock` (`kbBridge.js`) cuando `config.ragEnabled`. **Gap cerrado (citas):** los casos RAG llegaban al prompt pero **no se registraban como citas** en `omni_suggestions`. Nuevo helper puro `buildSuggestionMetadata(result, prompt, retrieval)` agrega `grounding:{rag_case_ids, rag_count, snippet_count, grounded}` al metadata (aditivo; con `RAG_ENABLED=false` el texto de la sugerencia es byte-idéntico y `grounded:false`). **Pre-check de embeddings:** nuevo `isSemanticEmbeddingAvailable()` en `embeddings.js`; `kbBridge.js` ahora **saltea RAG** (warn una vez `omni_rag_skipped_stub_embeddings`) si `RAG_ENABLED` está on sin key de embeddings usable → nunca aterriza sobre vectores stub no-semánticos. Nuevo `scripts/omni-rag-precheck.mjs` (npm `omni:rag-precheck`) valida tabla `quote_embeddings` poblada + provider semántico + retrieval de muestra antes de habilitar. Test offline `tests/omniRagGrounding.test.js` (7 checks) en `test:core`. Runbook de habilitación (gated por humano): [`runbooks/omni-ai-orchestrator-rag-enable.md`](./runbooks/omni-ai-orchestrator-rag-enable.md). **Todo dormant detrás de flags existentes** (`RAG_ENABLED`/`OMNI_AI_ORCHESTRATOR_ENABLED`/`OMNI_EVENT_BUS_ENABLED` default OFF). Rollback = togglear flags. La migración pgvector root `migrations/0001_*.sql` se aplica vía `psql` (no la cubre `omni:migrate`).
 
 **2026-06-30 (docs — Blueprint Inbox AI-First + captura de prompt maestro · solo documentación):** Investigación y consolidación del sistema **Inbox AI-first** a partir del desarrollo real + research del dueño (síntesis Email→CRM, prompts maestros V1→V5 "Company-Knowledge-First", benchmark OSS Chatwoot/Inbox Zero/Mail0/FreeScout vs Missive/Front/Fin). **Hallazgo central:** ya existe ~80% del inbox AI-first (cerebro `agentCore`, backbone `omni_*`, pipeline Email→CRM en prod, UI estilo Chatwoot Fases 1+2); el trabajo es **consolidación**, no greenfield. **Decisión arquitectónica registrada:** Postgres `omni_*` = fuente de verdad operativa; Sheets `CRM_Operativo` = espejo editable por negocio. Nuevos docs (sin cambios de código): [`INBOX-AI-FIRST-BLUEPRINT.md`](./INBOX-AI-FIRST-BLUEPRINT.md) (arquitectura "un cerebro, un inbox, una SoT" + roadmap por fases 0–5 con semáforo/rollback, **supersede** `OMNI-HUB-ARCHITECTURE.md`), [`EMAIL-SOURCE-MAP.md`](./EMAIL-SOURCE-MAP.md) (índice canónico verificado de archivos/endpoints/scripts/env/tablas del canal Email/Omni), [`docs/prompts/BMC_EMAIL_PANELSIM_COMPANY_KNOWLEDGE_FIRST_AGENT_PROMPT_V5.md`](../prompts/BMC_EMAIL_PANELSIM_COMPANY_KNOWLEDGE_FIRST_AGENT_PROMPT_V5.md) (prompt maestro V5 verbatim + variante compacta) y regla `.cursor/rules/bmc-email-company-knowledge-first.mdc`. Todas las rutas citadas verificadas contra el repo (commit `73bf15b`); huecos marcados `#ZonaDesconocida`. Sin impacto en prod.
-
 
 **2026-06-30 (chore — `voiceSupport.js` sacado de `src/utils/` para evitar redeploys espurios de Cloud Run):** PR #523 (`/panelin/live`) disparó un redeploy real e innecesario de la API en Cloud Run pese a no tocar `server/`. Causa raíz: `deploy-calc-api.yml` trata `src/utils/` como ruta "relevante" para la API (7 archivos de `server/` importan de ahí — el motor de cálculo puro compartido) y ese PR había agregado `src/utils/voiceSupport.js` (dos helpers de detección de navegador, `isBrowserSupported`/`isSafari`, sin relevancia de servidor) — el filtro de paths funcionó **correctamente** según su regla documentada, no es un bug de CI. **Fix:** movido `src/utils/voiceSupport.js` → `src/hooks/voiceSupport.js` (junto a sus únicos consumidores: `useHandsFreeVoice.js`, `useVoiceSession.js`, `usePanelinCharacterVoice.js`), actualizados los 2 imports (`PanelinVoicePanel.jsx`, `PanelinLivePage.jsx`). Solo relocación de archivo, sin cambios de lógica. `gate:local` y `vite build` verdes.
 
@@ -834,7 +824,6 @@ Este documento pasa a ser la fuente única de verdad para el esfuerzo de estabil
 - **Pendiente residual**: `fe3-metrics` (3 campos `sla_breach_count_24h`, `rule_hits`, `flag_changes_24h` aún no agregados a `/wa/metrics`); UI polish opcional (botón Preview en `RoutingSection`, tz selector en `SlaSection`).
 
 **Affects update:** bmc-security (refresh rotation + JWT-on-extension cierra surface de token compartido), bmc-api-contract (sin cambios — endpoints ya estaban), bmc-deployment (CI puede correr `npm run test:wa-pro` cuando haya DB de test), bmc-docs-sync (esta sub-entrada + AGENTS.md fila nueva).
-
 
 **2026-05-05 (Ops — rotación OPENAI_API_KEY + tooling de auditoría/rotación):** Clave de OpenAI activa rotada después de detectar 401 `invalid_api_key` en producción. La clave anterior `sk-proj-…A9IA` se reemplazó por `sk-proj-…AoEA` (token-fingerprint, no se publica el valor) y simultáneamente se restauró el mount vía Secret Manager (regresión de la migración del 2026-04-30: `panelin-calc` venía sirviendo `OPENAI_API_KEY` como env var inline; ahora vuelve a `--set-secrets OPENAI_API_KEY=openai-api-key:latest`). Nueva revisión Cloud Run **`panelin-calc-00352-vxk`**, secreto `openai-api-key` versión 3.
 
@@ -1841,27 +1830,22 @@ Changes:
 
 Gates + pre-deploy running. Plan: Vercel prod + Cloud Run verify + smoke:prod post-deploy.
 
-
 **2026-05-27 (Production Update - PDF Generator Stabilization):** 
 - Vercel production deployed with PDF improvements (default now lightweight simple-carbon, versioning fields wired, legacy templates deprecated in UI).
 - Cloud Run deploy in progress (new `/api/pdf/metrics` endpoint + better observability for PDF generation).
 - Part of Phase 0 Production Readiness execution.
 
-
 **2026-05-27 (smoke:prod post-Vercel deploy):** Production smoke passed cleanly after frontend deploy of PDF improvements.
 - All checks green: /health, /capabilities, MATRIZ CSV, ML status, WA health, suggest-response (Claude).
 - Confirms the new default lightweight PDF templates and versioning work are live and healthy on production.
 
-
 **2026-05-27 (Backend Production Deploy in progress):** Fresh Cloud Run deploy triggered for PDF generator stabilization improvements (metrics endpoint + observability). This is part of Phase 0 Production Readiness execution. Frontend (Vercel) already live with the changes. Current prod revision before this deploy: panelin-calc-00411-fzf.
-
 
 **2026-05-28 (PDF Improvements — Production Live):** Both frontend and backend successfully updated.
 - New Cloud Run revision: panelin-calc-00412-fg4
 - New /api/pdf/metrics endpoint is live and returning data.
 - smoke:prod green.
 - All PDF generator improvements (metrics, better logging, versioning groundwork, lightweight default) are now in production.
-
 
 **2026-05-28 (Phase 0 — Disk + Branch Cleanup Wave 4 + Feature Freeze Start):** 
 - Local disk exhaustion (was ~251MiB, then 9.7Gi) resolved via aggressive safe cleanup (mac-rescue + project `mac:storage-audit` patterns): npm/brew caches, Cursor/Code history+workspace, Library/Caches, ~/.cache subs, logs, ql, tm snapshots. **+5.3Gi freed → 15Gi available** (92% usage). Git ops unblocked.
@@ -1907,7 +1891,6 @@ Próximos pasos recomendados:
 
 **2026-05-27 (Phase 0 — Branch Cleanup Update):** Multiple waves of old cursor/claude/feat branches archived today as part of production hygiene. Wave 3 partially executed before local disk space exhaustion blocked further git operations. Remote branches reduced significantly. Blocker logged; production (PDF improvements) is fully live and verified.
 
-
 **2026-06 (Integración toggleable de mapeo visual + refs DWG en proyecto):** `hecho`. Añadida integración segura (nunca rompe estado actual) del material investigado (imágenes mapeadas a productos + perfiles plegados/grecas/forros/babetas de los DWGs TECHMET/BMC/Desarrollos + PDF de mapeo).
 - Toggle runtime `enhancedProductViz` (default OFF, persistido en local/sessionStorage; activable vía botón "PViz:OFF/ON" en header cuando devMode está activo — Ctrl/Cmd+Shift+D, o localStorage.setItem('bmc-enhanced-product-viz','1')).
 - En PanelFamilyShowcase (catálogo familias): cuando ON muestra "Real ref (investigación UY + DWG)" con imagen pública mapeada + nota.
@@ -1917,7 +1900,6 @@ Próximos pasos recomendados:
 - Archivo de mapeo visual: docs/team/visual/PRODUCT-IMAGE-MAPPING-VERIFICATION.pdf (y .html) — 5 páginas con imágenes embebidas + tabla + cross DWG.
 - Futuro (detrás del mismo flag): mejorar RoofPanelRealisticScene con perfil real de grecas (de Desarrollos/plegados DWG) y 2D constructiva precisa en visor/PDF.
 - No se modificaron datos reales (constants, specs, assets actuales). Ver también el PDF de mapeo y reports de conocimiento para detalles de investigación.
-
 
 **2026-06-02 (Prod status check - enhanced product viz integration):** `verificado`. La integración del toggle `enhancedProductViz` (botón PViz en devMode, refs reales mapeadas de imágenes kingspan/bmcuruguay + notas de DWGs TECHMET/Desarrollos/BabetaLateral/FRONTALES en PanelFamilyShowcase, paso espesor y QuoteVisualVisor) **NO está en production**.
 - Cambios locales sin commitear: 126 inserciones en los 3 archivos de componentes + PROJECT-STATE + nuevos assets en docs/team/visual/.
@@ -1929,7 +1911,6 @@ Próximos pasos recomendados:
   git commit -m "feat(viz): toggleable enhancedProductViz (real product refs + DWG plegados/forros) - default OFF, solo en devMode"
   git push
   # Vercel auto-deploy. Luego probar en prod activando devMode + PViz.
-
 
 **2026-06-02 (Session closeout — panel product viz research + toggleable integration):** Session wrapped with full handoff. Focus: deep "mas completa" research on real UY renders/DWGs (kingspan pages with "3 grecas", bmcuruguay photos, Bromyros PDFs, TECHMET forros/plegados + BMC frontales/babetas/desarrollos) matching exact calculator products (no data mods). Created mapping PDF/HTML + live interactive test HTML. Implemented safe `enhancedProductViz` runtime toggle (default OFF, localStorage, devMode-only "PViz" button in header; additive UI refs in PanelFamilyShowcase/espesor/QuoteVisualVisor with real images + DWG notes). Local run: http://localhost:5173/ (BMC_DISK_PRECHECK_SKIP=1 or after cache clean); standalone test HTML for quick demo. Uncommitted: the 3 component files + docs + visual/. Blockers: disk (partially cleaned), feature freeze. Handoff: docs/team/HANDOFF-2026-06-02-enhanced-product-viz.md (with literal resume prompt, git state, verification cmds). Ready to continue (e.g. 3D profile from DWGs behind flag, or commit/deploy).
 

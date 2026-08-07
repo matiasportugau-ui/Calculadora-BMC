@@ -1,5 +1,5 @@
 // TraKtiMe ActivityWatch authz — comprador must not read host-scoped OS activity.
-// Bug BE: /api/activity/* used bare requireUser(); any Google JWT could call
+// Bug BG: /api/activity/* used bare requireUser(); any Google JWT could call
 // today/buckets when TRAKTIME_AW_ENABLED=1 (incl. via traktime_activity_today).
 //
 // Run: node --test tests/traktime-activity-authz.test.js
@@ -113,7 +113,7 @@ function requestJson(port, method, path, { token } = {}) {
   });
 }
 
-describe("ActivityWatch operator gate (Bug BE)", () => {
+describe("ActivityWatch operator gate (Bug BG)", () => {
   let server;
   let port;
   let awServer;
