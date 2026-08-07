@@ -8,7 +8,7 @@ import { getIVA } from "./calculatorConfig.js";
 import { getDimensioningParam } from "./dimensioningFormulas.js";
 import { buildEdgeBOM, countExposedVerticalPerimeterFixingInteriorPointsForZona } from "./roofPlanGeometry.js";
 import { countPanels } from "./roofPanelStripsPlanta.js";
-import { bomFromIrregularSchedule } from "./irregularRoofLayout.js";
+import { bomFromIrregularSchedule, scaleIrregularLayoutToLargoReal } from "./irregularRoofLayout.js";
 
 // ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
 
@@ -992,12 +992,19 @@ export function calcTechoCompleto(inputs) {
   if (largoReal > panel.lmax) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) excede máximo fabricable ${panel.lmax}m`);
   if (largoReal < panel.lmin) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) < mínimo ${panel.lmin}m`);
 
+  // Irregular schedules are built in plant meters; scale to fabricable largoReal
+  // when pendienteModo=calcular_altura (otherwise plant == fabricable).
+  const irregularForBom =
+    irregularLayout?.strips?.length && Math.abs(largoReal - largo) > 1e-9
+      ? scaleIrregularLayoutToLargoReal(irregularLayout, largo, largoReal)
+      : irregularLayout;
+
   const paneles = calcPanelesTechoFromOptionalIrregular(
     panel,
     espesor,
     largoReal,
     ancho,
-    irregularLayout,
+    irregularForBom,
     warnings,
   );
   if (!paneles) return { error: "Error calculando paneles" };
