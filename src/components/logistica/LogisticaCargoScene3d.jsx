@@ -513,9 +513,21 @@ function SceneContent({
   return (
     <>
       <color attach="background" args={["#0b1628"]} />
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[8, 14, 6]} intensity={1.05} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-      <directionalLight position={[-4, 6, -2]} intensity={0.35} />
+      <ambientLight intensity={0.78} color="#e0e8f4" />
+      <hemisphereLight args={["#d0def2", "#2e3648", 0.55]} />
+      <directionalLight position={[8, 14, 6]} intensity={1.35} color="#fff7ec" castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <directionalLight position={[-4, 6, -2]} intensity={0.5} color="#a8c4e8" />
+      <pointLight position={[cx, 4.5, TRUCK_W / 2]} intensity={0.65} distance={22} decay={1.5} color="#ffe8c8" />
+      <spotLight
+        position={[shiftX + truckL * 0.35, MAX_H + 2.2, TRUCK_W + 2.8]}
+        angle={0.72}
+        penumbra={0.5}
+        intensity={2.2}
+        distance={28}
+        decay={1.35}
+        color="#fff1d0"
+        castShadow={false}
+      />
       <TruckVisual shiftX={shiftX} truckL={truckL} />
       <TruckFloor shiftX={shiftX} truckL={truckL} maxLen={maxLen} totalLen={totalLen} />
       <HeightGuides shiftX={shiftX} truckL={truckL} />
