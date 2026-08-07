@@ -45,6 +45,30 @@ console.log("enviosEntregadoConcurrentDelete");
   ok("bmcDashboard wires concurrent-delete guard on logistica-entregado");
 }
 
+// --- Bug BA: fecha/estado writes must relocate by identity (not bare row1Based) ---
+{
+  assert.match(dash, /async function resolveVentasWriteRow1Based/);
+  assert.match(dash, /identityFingerprintFromVentasWriteBody/);
+  assert.match(dash, /ventasIdentityFingerprintFromFields/);
+  // fecha path must use H (not G) after relocate
+  assert.match(
+    dash,
+    /resolveVentasWriteRow1Based[\s\S]{0,400}VENTAS_LOGISTICA_COL\.fechaEntrega/,
+  );
+  assert.ok(
+    !/const range = `'\$\{safeTab\}'!G\$\{row1Based\}`/.test(dash),
+    "fecha-entrega must not hardcode column G + stale row1Based",
+  );
+  // estado handler relocates before F/H write
+  const estadoFn = dash.indexOf("async function handleVentasLogisticaEstado");
+  const estadoRelocate = dash.indexOf("resolveVentasWriteRow1Based", estadoFn);
+  assert.ok(estadoFn >= 0 && estadoRelocate > estadoFn, "estado relocates before write");
+  assert.ok(estadoRelocate - estadoFn < 2500, "relocate is near start of estado handler");
+  // entregado passes fingerprint into estado write
+  assert.match(dash, /identityFingerprint:\s*identityFp/);
+  ok("bmcDashboard relocates fecha/estado writes by identity (Bug BA)");
+}
+
 // --- Same algorithm the server calls after re-reading sheet values ---
 {
   function row({ orderId, nombre, tel, dir, estado = "" }) {

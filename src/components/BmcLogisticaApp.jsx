@@ -2196,11 +2196,26 @@ export default function BmcLogisticaApp() {
       const res = await fetch(`${base}/api/ventas/logistica-fecha-entrega`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ gid: String(gid), row1Based: row, fechaEntrega: iso || "" }),
+        body: JSON.stringify({
+          gid: String(gid),
+          row1Based: row,
+          fechaEntrega: iso || "",
+          // Identity so server can relocate after concurrent Entregado row shifts (Bug BA).
+          orderId: stop.orderId || "",
+          nombre: stop.cliente || "",
+          tel: stop.telefono || "",
+          dir: stop.direccion || "",
+        }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
-      setAutoLoadMsg(`Planilla Ventas: fecha guardada (fila ${row}, columna G).`);
+      const writtenRow = j.row1Based ?? row;
+      if (writtenRow !== row) {
+        setStops((p) =>
+          p.map((s) => (s.id === stop.id ? { ...s, ventasSheetRow1Based: writtenRow } : s)),
+        );
+      }
+      setAutoLoadMsg(`Planilla Ventas: fecha guardada (fila ${writtenRow}, columna H).`);
     } catch (e) {
       setAutoLoadMsg(`Planilla Ventas: error al guardar fecha — ${e.message}`);
     }
@@ -4524,7 +4539,7 @@ export default function BmcLogisticaApp() {
                       </div>
                       <div style={{ fontSize: 11, color: T.muted, paddingBottom: 8, lineHeight: 1.35 }}>
                         {stop.ventasSheetRow1Based
-                          ? `Se guarda en Ventas col. G, fila ${stop.ventasSheetRow1Based}. Requiere API y token.`
+                          ? `Se guarda en Ventas col. H, fila ${stop.ventasSheetRow1Based}. Requiere API y token.`
                           : "Vinculá la parada desde Buscar / Cargar actuales para escribir fecha en la planilla."}
                       </div>
                     </div>

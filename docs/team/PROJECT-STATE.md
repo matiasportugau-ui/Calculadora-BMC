@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — Bug BA fecha/estado fingerprint relocate):** After #929, `POST /api/ventas/logistica-fecha-entrega` and `logistica-estado` still wrote at client `row1Based` with no identity relocate — concurrent Entregado deletes shifted rows and corrupted the wrong sale. Both paths now `resolveVentasWriteRow1Based` via orderId/nombre/tel/dir; UI sends identity; fecha writes column **H** (not G). Tests: `saleState`, `enviosEntregadoConcurrentDelete`.
+
 **2026-08-07 (fix — wire concurrent Entregado delete):** `POST /api/ventas/logistica-entregado` on `bmcDashboard.js` re-locates by `ventasRowIdentityFingerprint` before `deleteDimension` (never stale row1Based). Also `logistica-estado` + terminal gate. Supersedes #896 production path.
 
 **2026-08-07 (fix — concurrent Entregado row identity extract from #896):** Landed pure `saleState` helpers `ventasRowIdentityFingerprint` + `findSheetRow1BasedByFingerprint` + linear `stripLogisticaMarkers` + terminal-status gate (tests). Full UI/API sale-state stack remains #893. Supersedes concurrent-delete core of draft #896.

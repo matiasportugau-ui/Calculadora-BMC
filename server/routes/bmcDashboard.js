@@ -67,7 +67,9 @@ function logAiCall(eventName, provider, model, usage = {}) {
 import {
   buildEstadoSheetValue,
   findSheetRow1BasedByFingerprint,
+  hasUsableVentasIdentityFingerprint,
   isTerminalSaleStatus,
+  ventasIdentityFingerprintFromFields,
   ventasRowIdentityFingerprint,
   VENTAS_ARCHIVE_TAB_CANDIDATES,
 } from "../../src/utils/logistica/saleState.js";
@@ -1171,6 +1173,27 @@ const VENTAS_LOGISTICA_COL = {
   fechaEntrega: "H",
 };
 
+/** Shared with #891 — FECHA ENTREGA is column H (not G/TIPO FAB). */
+export const VENTAS_FECHA_ENTREGA_COL_LETTER = VENTAS_LOGISTICA_COL.fechaEntrega;
+
+/**
+ * Resolve client identity for Ventas row writes.
+ * Prefer explicit fingerprint; else build from orderId/nombre/tel/dir fields.
+ * @returns {string|null} usable fingerprint or null
+ */
+function identityFingerprintFromVentasWriteBody(body) {
+  const explicit = body?.identityFingerprint != null ? String(body.identityFingerprint) : "";
+  if (hasUsableVentasIdentityFingerprint(explicit)) return explicit;
+  const fromFields = ventasIdentityFingerprintFromFields({
+    orderId: body?.orderId,
+    nombre: body?.nombre ?? body?.cliente,
+    tel: body?.tel ?? body?.telefono,
+    dir: body?.dir ?? body?.direccion,
+  });
+  if (hasUsableVentasIdentityFingerprint(fromFields)) return fromFields;
+  return null;
+}
+
 async function getSheetTabTitleByGid(spreadsheetId, gid) {
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
@@ -1181,6 +1204,32 @@ async function getSheetTabTitleByGid(spreadsheetId, gid) {
   if (!Number.isFinite(gidNum)) return null;
   const sh = (meta.data.sheets || []).find((s) => s.properties?.sheetId === gidNum);
   return sh?.properties?.title || null;
+}
+
+/**
+ * Relocate write target by sale identity when the client still holds a stale row1Based
+ * after concurrent Entregado deletes shifted rows (#929 delete path only — Bug BA).
+ * @returns {Promise<number>} 1-based row to write
+ */
+async function resolveVentasWriteRow1Based(sheets, spreadsheetId, safeTab, body, hintRow1Based) {
+  const identityFp = identityFingerprintFromVentasWriteBody(body);
+  if (!identityFp) {
+    // Legacy callers without identity — keep hint (skew risk documented; UI must send identity).
+    return hintRow1Based;
+  }
+  const located = await locateVentasRow1BasedByFingerprint(
+    sheets,
+    spreadsheetId,
+    safeTab,
+    identityFp,
+    hintRow1Based,
+  );
+  if (located == null) {
+    throw new Error(
+      "No se encontró la venta por identidad (pedido/nombre/tel/dir). La fila pudo haberse archivado o el índice quedó desfasado — recargá Ventas.",
+    );
+  }
+  return located;
 }
 
 async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
@@ -1203,7 +1252,14 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const safeTab = String(tabTitle).replace(/'/g, "''");
-  const range = `'${safeTab}'!G${row1Based}`;
+  const writeRow1 = await resolveVentasWriteRow1Based(
+    sheets,
+    ventasSheetId,
+    safeTab,
+    body,
+    row1Based,
+  );
+  const range = `'${safeTab}'!${VENTAS_LOGISTICA_COL.fechaEntrega}${writeRow1}`;
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: ventasSheetId,
@@ -1213,7 +1269,7 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
   });
 
   invalidateVentasSheetsReadCache(ventasSheetId);
-  return { ok: true, range, value };
+  return { ok: true, range, value, row1Based: writeRow1 };
 }
 
 async function resolveVentasArchiveTabTitle(sheets, spreadsheetId) {
@@ -1259,13 +1315,22 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const safeTab = String(tabTitle).replace(/'/g, "''");
 
+  // Relocate BEFORE reading/writing F/H — concurrent Entregado deletes shift indices (Bug BA).
+  const writeRow1 = await resolveVentasWriteRow1Based(
+    sheets,
+    ventasSheetId,
+    safeTab,
+    body,
+    row1Based,
+  );
+
   // Read current F so we can preserve free text when building markers server-side
   let existingEstado = String(body?.estadoText || "");
   if (!body?.estadoText) {
     try {
       const cur = await sheets.spreadsheets.values.get({
         spreadsheetId: ventasSheetId,
-        range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${row1Based}`,
+        range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${writeRow1}`,
       });
       existingEstado = String(cur.data.values?.[0]?.[0] || "");
     } catch {
@@ -1288,6 +1353,8 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
 
   // Prefer shared builder (linear marker strip — avoids CodeQL ReDoS on ESTADO).
   // If client already sent a full LOGISTICA marker cell, keep it as-is.
+  // (Bug AW / #933: public callers that smuggle terminal markers via estadoText
+  //  still need server rebuild — leave that fix in #933; do not regress here.)
   const estadoVal =
     body?.estadoText != null && String(body.estadoText).includes("[LOGISTICA:")
       ? String(body.estadoText)
@@ -1301,11 +1368,11 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
 
   const data = [
     {
-      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${row1Based}`,
+      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${writeRow1}`,
       values: [[estadoVal]],
     },
     {
-      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.fechaEntrega}${row1Based}`,
+      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.fechaEntrega}${writeRow1}`,
       values: [[fechaVal]],
     },
   ];
@@ -1322,7 +1389,7 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
   return {
     ok: true,
     status,
-    row1Based,
+    row1Based: writeRow1,
     tab: tabTitle,
     estadoText: estadoVal,
     fechaEntrega: fechaVal,
@@ -1379,6 +1446,7 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
   }
 
   // Update estado marker on source row (internal allowTerminal — archive follows).
+  // Pass identityFingerprint so estado relocate survives concurrent deletes above (Bug BA / AX).
   await handleVentasLogisticaEstado(ventasSheetId, {
     gid,
     row1Based,
@@ -1388,6 +1456,7 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
     transportista: body?.transportista || "",
     camion: body?.camion,
     allowTerminal: true,
+    identityFingerprint: identityFp,
   });
 
   // Re-locate by fingerprint (concurrent deletes above this row shift indices).
