@@ -64,6 +64,14 @@ function logAiCall(eventName, provider, model, usage = {}) {
   }));
 }
 
+import {
+  buildEstadoSheetValue,
+  findSheetRow1BasedByFingerprint,
+  isTerminalSaleStatus,
+  ventasRowIdentityFingerprint,
+  VENTAS_ARCHIVE_TAB_CANDIDATES,
+} from "../../src/utils/logistica/saleState.js";
+
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -1154,6 +1162,15 @@ function formatIsoDateToDdMmYyyy(iso) {
   return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
+
+/**
+ * Ventas 2.0 column letters: F=estado free text, H=FECHA ENTREGA.
+ */
+const VENTAS_LOGISTICA_COL = {
+  estadoText: "F",
+  fechaEntrega: "H",
+};
+
 async function getSheetTabTitleByGid(spreadsheetId, gid) {
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
@@ -1198,6 +1215,334 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
   invalidateVentasSheetsReadCache(ventasSheetId);
   return { ok: true, range, value };
 }
+
+async function resolveVentasArchiveTabTitle(sheets, spreadsheetId) {
+  const meta = await withSheetsReadRetry("spreadsheets.get", () =>
+    sheets.spreadsheets.get({ spreadsheetId })
+  );
+  const titles = (meta.data.sheets || []).map((s) => s.properties?.title).filter(Boolean);
+  for (const cand of VENTAS_ARCHIVE_TAB_CANDIDATES) {
+    const hit = titles.find((t) => String(t).trim().toLowerCase() === cand.toLowerCase());
+    if (hit) return hit;
+  }
+  // fuzzy: contains "realizadas" + (entegad|entregad|enviad)
+  const fuzzy = titles.find((t) => {
+    const n = String(t).toLowerCase();
+    return /realizad/.test(n) && /(entegad|entregad|enviad)/.test(n);
+  });
+  return fuzzy || null;
+}
+
+
+async function handleVentasLogisticaEstado(ventasSheetId, body) {
+  const gid = body?.gid;
+  const row1Based = Number(body?.row1Based);
+  if (!ventasSheetId) throw new Error("Ventas sheet no configurado (BMC_VENTAS_SHEET_ID)");
+  if (gid == null || String(gid).trim() === "") throw new Error("Missing gid (pestaña)");
+  if (!Number.isFinite(row1Based) || row1Based < 2) throw new Error("row1Based inválido (mín. 2)");
+
+  const status = String(body?.status || "").trim().toLowerCase();
+  const allowed = new Set(["por_coordinar", "coordinado", "con_pendientes", "entregado", "enviado"]);
+  if (!allowed.has(status)) throw new Error("status inválido");
+  // Terminal statuses must go through logistica-entregado (archive move). Plain F/H
+  // write would hide the row from "Cargar actuales" without archiving → operational loss.
+  if (isTerminalSaleStatus(status) && body?.allowTerminal !== true) {
+    throw new Error(
+      "status entregado/enviado requiere POST /api/ventas/logistica-entregado (confirm + archivo)",
+    );
+  }
+
+  const tabTitle = await getSheetTabTitleByGid(ventasSheetId, gid);
+  if (!tabTitle) throw new Error("No se encontró la pestaña para ese gid");
+
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const safeTab = String(tabTitle).replace(/'/g, "''");
+
+  // Read current F so we can preserve free text when building markers server-side
+  let existingEstado = String(body?.estadoText || "");
+  if (!body?.estadoText) {
+    try {
+      const cur = await sheets.spreadsheets.values.get({
+        spreadsheetId: ventasSheetId,
+        range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${row1Based}`,
+      });
+      existingEstado = String(cur.data.values?.[0]?.[0] || "");
+    } catch {
+      /* keep empty */
+    }
+  }
+
+  const fechaIso =
+    body?.fechaEntrega === "" || body?.fechaEntrega == null
+      ? ""
+      : String(body.fechaEntrega).trim();
+  const fechaVal =
+    !fechaIso || status === "por_coordinar" ? "" : formatIsoDateToDdMmYyyy(fechaIso);
+  const camion =
+    body?.camion != null && body.camion !== ""
+      ? Math.floor(Number(body.camion))
+      : null;
+  const tte = body?.transportista ? String(body.transportista).slice(0, 40) : "";
+  const comment = body?.comment ? String(body.comment).replace(/[[\]]/g, "").slice(0, 120) : "";
+
+  // Prefer shared builder (linear marker strip — avoids CodeQL ReDoS on ESTADO).
+  // If client already sent a full LOGISTICA marker cell, keep it as-is.
+  const estadoVal =
+    body?.estadoText != null && String(body.estadoText).includes("[LOGISTICA:")
+      ? String(body.estadoText)
+      : buildEstadoSheetValue(existingEstado, {
+          status,
+          fechaIso: fechaVal ? fechaIso : null,
+          camion: camion && Number.isFinite(camion) && camion >= 1 ? camion : null,
+          transportista: tte,
+          comment,
+        });
+
+  const data = [
+    {
+      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${row1Based}`,
+      values: [[estadoVal]],
+    },
+    {
+      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.fechaEntrega}${row1Based}`,
+      values: [[fechaVal]],
+    },
+  ];
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: ventasSheetId,
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data,
+    },
+  });
+
+  invalidateVentasSheetsReadCache(ventasSheetId);
+  return {
+    ok: true,
+    status,
+    row1Based,
+    tab: tabTitle,
+    estadoText: estadoVal,
+    fechaEntrega: fechaVal,
+    camion: camion && Number.isFinite(camion) ? camion : null,
+  };
+}
+
+/**
+ * Confirm entregado/enviado: update estado, optional remito→Drive, move row to archive tab.
+ * body: {
+ *   gid, row1Based, mode: 'entregado'|'enviado',
+ *   comment?, remitoBase64?, remitoFileName?,
+ *   cliente?, orderId?, carpetaDrive?, quotationCode?, confirm: true
+ * }
+ */
+
+async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) {
+  if (!body?.confirm) throw new Error("confirm=true requerido (popup de confirmación)");
+  const mode = String(body?.mode || "entregado").toLowerCase() === "enviado" ? "enviado" : "entregado";
+  const gid = body?.gid;
+  const row1Based = Number(body?.row1Based);
+  if (!ventasSheetId) throw new Error("Ventas sheet no configurado (BMC_VENTAS_SHEET_ID)");
+  if (gid == null || String(gid).trim() === "") throw new Error("Missing gid (pestaña)");
+  if (!Number.isFinite(row1Based) || row1Based < 2) throw new Error("row1Based inválido (mín. 2)");
+
+  const tabTitle = await getSheetTabTitleByGid(ventasSheetId, gid);
+  if (!tabTitle) throw new Error("No se encontró la pestaña para ese gid");
+
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const safeTab = String(tabTitle).replace(/'/g, "''");
+
+  // Fail-fast: resolve archive BEFORE mutating the active row (avoids orphan
+  // "entregado" markers when the archive tab is missing).
+  const archiveTitle = await resolveVentasArchiveTabTitle(sheets, ventasSheetId);
+  if (!archiveTitle) {
+    throw new Error(
+      "No se encontró pestaña de archivo (Enviados / Ventas Realizadas y Entegadas) en el workbook",
+    );
+  }
+  const safeArchive = String(archiveTitle).replace(/'/g, "''");
+
+  // Read full row + identity fingerprint (orderId/nombre/tel/dir) BEFORE any write.
+  const rowRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: ventasSheetId,
+    range: `'${safeTab}'!A${row1Based}:ZZ${row1Based}`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const rowData = rowRes.data.values?.[0] || [];
+  if (!rowData.length) throw new Error("Fila vacía o no encontrada");
+  const identityFp = ventasRowIdentityFingerprint(rowData);
+  if (!identityFp.replace(/\u0001/g, "").trim()) {
+    throw new Error("Fila sin identidad usable (pedido/nombre/tel/dir vacíos) — abortado para no borrar otra venta");
+  }
+
+  // Update estado marker on source row (internal allowTerminal — archive follows).
+  await handleVentasLogisticaEstado(ventasSheetId, {
+    gid,
+    row1Based,
+    status: mode,
+    fechaEntrega: body?.fechaEntrega || "",
+    comment: body?.comment || "",
+    transportista: body?.transportista || "",
+    camion: body?.camion,
+    allowTerminal: true,
+  });
+
+  // Re-locate by fingerprint (concurrent deletes above this row shift indices).
+  const afterEstadoRow1 = await locateVentasRow1BasedByFingerprint(
+    sheets,
+    ventasSheetId,
+    safeTab,
+    identityFp,
+    row1Based,
+  );
+  if (afterEstadoRow1 == null) {
+    throw new Error(
+      "La fila cambió o fue borrada durante la confirmación (otra operación concurrente). Reintentá.",
+    );
+  }
+
+  const rowRes2 = await sheets.spreadsheets.values.get({
+    spreadsheetId: ventasSheetId,
+    range: `'${safeTab}'!A${afterEstadoRow1}:ZZ${afterEstadoRow1}`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const rowToArchive = rowRes2.data.values?.[0] || rowData;
+
+  // Optional remito upload
+  let remito = null;
+  if (body?.remitoBase64) {
+    try {
+      const { saveRemitoToDrive } = await import("../lib/driveUpload.js");
+      remito = await saveRemitoToDrive({
+        rootFolderId: config.driveQuoteFolderId || process.env.DRIVE_QUOTE_FOLDER_ID || "",
+        buffer: Buffer.from(String(body.remitoBase64), "base64"),
+        fileName: body.remitoFileName || `remito-firmado-${mode}.pdf`,
+        cliente: body.cliente || rowToArchive[8] || "",
+        orderId: body.orderId || rowToArchive[2] || "",
+        quotationCode: body.quotationCode || body.orderId || "",
+        carpetaDriveHint: body.carpetaDrive || "",
+      });
+    } catch (err) {
+      remito = { ok: false, error: err?.message || String(err) };
+    }
+  }
+
+  // Append to archive
+  const safeRow = rowToArchive.map((c) => {
+    const s = String(c ?? "");
+    // formula injection guard
+    if (/^[=+\-@]/.test(s)) return `'${s}`;
+    return s;
+  });
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: ventasSheetId,
+    range: `'${safeArchive}'!A:A`,
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: [safeRow] },
+  });
+
+  // CRITICAL: never delete by the original row1Based after append — concurrent
+  // archive/deletes shift rows and would erase a different sale. Re-find by fingerprint.
+  const deleteRow1 = await locateVentasRow1BasedByFingerprint(
+    sheets,
+    ventasSheetId,
+    safeTab,
+    identityFp,
+    afterEstadoRow1,
+  );
+
+  let deleted = false;
+  let deleteWarning = null;
+  if (deleteRow1 == null) {
+    // Already archived; source row gone (likely concurrent delete of same sale) — do not guess.
+    deleteWarning =
+      "Fila origen no encontrada tras archivar (posible operación concurrente). No se borró ninguna otra fila.";
+  } else {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: ventasSheetId });
+    const src = (meta.data.sheets || []).find((s) => s.properties?.title === tabTitle);
+    const numericSheetId = src?.properties?.sheetId;
+    if (numericSheetId === undefined) {
+      throw new Error(`Tab origen '${tabTitle}' no encontrado para borrar fila`);
+    }
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: ventasSheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: numericSheetId,
+                dimension: "ROWS",
+                startIndex: deleteRow1 - 1,
+                endIndex: deleteRow1,
+              },
+            },
+          },
+        ],
+      },
+    });
+    deleted = true;
+  }
+
+  invalidateVentasSheetsReadCache(ventasSheetId);
+  return {
+    ok: true,
+    mode,
+    moved: true,
+    deleted,
+    deleteWarning,
+    fromTab: tabTitle,
+    toTab: archiveTitle,
+    archivedRowPreview: {
+      nombre: rowToArchive[8] || "",
+      orderId: rowToArchive[2] || "",
+    },
+    remito,
+  };
+}
+
+/**
+ * Scan source tab for a row matching identity fingerprint.
+ * @returns {Promise<number|null>} 1-based row
+ */
+
+async function locateVentasRow1BasedByFingerprint(
+  sheets,
+  spreadsheetId,
+  safeTab,
+  fingerprint,
+  hintRow1Based,
+) {
+  // Fast path: hint still matches
+  if (Number.isFinite(hintRow1Based) && hintRow1Based >= 2) {
+    try {
+      const hintRes = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${safeTab}'!A${hintRow1Based}:ZZ${hintRow1Based}`,
+        valueRenderOption: "FORMATTED_VALUE",
+      });
+      const cells = hintRes.data.values?.[0];
+      if (cells && ventasRowIdentityFingerprint(cells) === fingerprint) {
+        return hintRow1Based;
+      }
+    } catch {
+      /* fall through to full scan */
+    }
+  }
+
+  const allRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${safeTab}'!A2:ZZ`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const dataRows = allRes.data.values || [];
+  return findSheetRow1BasedByFingerprint(dataRows, fingerprint, hintRow1Based);
+}
+
 
 async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
@@ -3025,6 +3370,36 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       res.status(400).json({ ok: false, error: e.message || String(e) });
     }
   });
+
+  /** Logística: actualiza estado (F) + fecha (H). Terminal statuses require logistica-entregado. */
+  router.post("/ventas/logistica-estado", requireCrmCockpitWrite, async (req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const result = await handleVentasLogisticaEstado(config.bmcVentasSheetId, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+  /**
+   * Confirm Entregado/Enviado: archive append then delete source row by identity fingerprint
+   * (never delete by stale row1Based after concurrent row shifts).
+   */
+  router.post("/ventas/logistica-entregado", requireCrmCockpitWrite, async (req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const result = await handleVentasLogisticaEntregado(
+        config.bmcVentasSheetId,
+        req.body || {},
+        config,
+      );
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
 
   /** Overrides calculadora → celdas MATRIZ (BROMYROS u otras pestañas aprobadas). Mismo auth que CRM cockpit. */
   router.post("/matriz/push-pricing-overrides", requireCrmCockpitWrite, async (req, res) => {
