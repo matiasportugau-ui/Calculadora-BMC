@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { axleCount } from "../../utils/logistica/truckAxles.js";
 
 const TRUCK_W = 2.4;
 const CAB_LEN = 2.4;
@@ -21,7 +22,8 @@ const SILL_H = 0.12;
 const BULKHEAD_H = 0.55;
 const WHEEL_R = 0.42;
 const WHEEL_W = 0.22;
-const LIGHTS_MS = 10_000;
+/** Cab-click headlights + interior light duration (ms). */
+export const CAB_LIGHTS_MS = 10_000;
 
 const BMC_BLUE = "#0B3D91";
 const BMC_BLUE_MID = "#1a4d7a";
@@ -33,10 +35,8 @@ const RUBBER = "#1c1c1c";
 const HEADLIGHT_OFF = "#d4d4d8";
 const HEADLIGHT_ON = "#fff7d6";
 
-/** Axles: ≤6 m → 2; else → 3 (duals under bed). */
-export function axleCount(length) {
-  return length <= 6 ? 2 : 3;
-}
+// Re-export for callers that import axle helper from the visual module.
+export { axleCount };
 
 function Wheel({ position, dual = false }) {
   const one = (zOffset) => (
@@ -354,7 +354,7 @@ export default function TruckVisual({ shiftX, truckL }) {
     timerRef.current = setTimeout(() => {
       setLightsOn(false);
       timerRef.current = null;
-    }, LIGHTS_MS);
+    }, CAB_LIGHTS_MS);
   }, []);
 
   useEffect(
