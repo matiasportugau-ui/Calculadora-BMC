@@ -81,6 +81,26 @@ import {
   stopSummariesForReparto,
 } from "../utils/logistica/repartoStatus.js";
 import {
+  loadCatalogFromStorage,
+  saveCatalogToStorage,
+  addUserPlace,
+  listPlaces,
+  getPlaceById,
+  mergeCatalogPlaces,
+} from "../utils/logistica/pickupCatalog.js";
+import {
+  createWizardUi,
+  shouldEnableWizard,
+  applyDefaultPickupToStops,
+  tryCompleteStep,
+} from "../utils/logistica/wizardState.js";
+import { suggestRoute } from "../utils/logistica/routeSuggest.js";
+import EnvioWizardShell from "./logistica/wizard/EnvioWizardShell.jsx";
+import StepPedidos from "./logistica/wizard/StepPedidos.jsx";
+import StepFlota from "./logistica/wizard/StepFlota.jsx";
+import StepLevantes from "./logistica/wizard/StepLevantes.jsx";
+import StepRuta from "./logistica/wizard/StepRuta.jsx";
+import {
   buildLoadPlanPrintModel,
 } from "../utils/logistica/loadPlanPrintModel.js";
 import {
@@ -1867,6 +1887,14 @@ export default function BmcLogisticaApp() {
   const [lastPushAt, setLastPushAt] = useState(0);
   const [cloudConflict, setCloudConflict] = useState(null);
   const [draftBrowserOpen, setDraftBrowserOpen] = useState(false);
+  /** Setup wizard (SDD-ENVIO-WIZARD) */
+  const [catalogPlaces, setCatalogPlaces] = useState(() => loadCatalogFromStorage());
+  const [wizardUi, setWizardUi] = useState(() => createWizardUi({ enabled: false }));
+  const [tripRoute, setTripRoute] = useState(null);
+  const [newBaseLabel, setNewBaseLabel] = useState("");
+  const [newBaseUrl, setNewBaseUrl] = useState("");
+  const [newPickupLabel, setNewPickupLabel] = useState("");
+  const [newPickupUrl, setNewPickupUrl] = useState("");
 
   useEffect(() => {
     let restoredStops = [];
@@ -1913,6 +1941,19 @@ export default function BmcLogisticaApp() {
         if (Array.isArray(parsed.camionesCat)) setCamionesCat(parsed.camionesCat);
         if (Array.isArray(parsed.priceHistory)) setPriceHistory(parsed.priceHistory);
         if (Array.isArray(parsed.tripCostLog)) setTripCostLog(parsed.tripCostLog);
+        if (parsed.route && typeof parsed.route === "object") setTripRoute(parsed.route);
+        if (parsed.ui?.wizard) {
+          setWizardUi(createWizardUi(parsed.ui.wizard));
+        } else {
+          setWizardUi(
+            createWizardUi({
+              enabled: shouldEnableWizard({ stops: restoredStops }),
+            }),
+          );
+        }
+      } else {
+        // Fresh session: Detalle Completo + launcher "Configuración del envío"
+        setWizardUi(createWizardUi({ enabled: false }));
       }
     } catch {
       // ignore persisted-state errors
@@ -1988,7 +2029,8 @@ export default function BmcLogisticaApp() {
           camionesCat,
           priceHistory,
           tripCostLog,
-          ui: { collapsedStopIds },
+          route: tripRoute,
+          ui: { collapsedStopIds, wizard: wizardUi },
         })
       );
     } catch {
@@ -2013,6 +2055,8 @@ export default function BmcLogisticaApp() {
     priceHistory,
     tripCostLog,
     collapsedStopIds,
+    wizardUi,
+    tripRoute,
   ]);
 
   useEffect(() => {
@@ -3192,8 +3236,286 @@ export default function BmcLogisticaApp() {
         <div key={i} className="envios-alert-danger" style={{ marginBottom: 8 }}>⚠️ {w}</div>
       ))}
 
+      {wizardUi.enabled ? (
+        <div className="np" style={{ marginBottom: 12 }}>
+          <EnvioWizardShell
+            wizard={wizardUi}
+            onWizardChange={(w) => {
+              if (w.activeStep === "carga") setView("form");
+              // when completing levantes single mode, apply default pickup
+              if (w.done?.levantes && w.singlePickup !== false && w.defaultPickupPointId) {
+                setStops((prev) => applyDefaultPickupToStops(prev, w.defaultPickupPointId));
+              }
+              setWizardUi(w);
+            }}
+            ctx={{ stops, info, truckL, wizard: wizardUi, route: tripRoute }}
+            places={catalogPlaces}
+            onClassic={() => {
+              setWizardUi((p) => createWizardUi({ ...p, enabled: false }));
+              setView("form");
+            }}
+            childrenByStep={{
+              pedidos: (
+                <StepPedidos
+                  stops={stops}
+                  search={search}
+                  onSearchChange={setSearch}
+                  onBuscar={buscarSheet}
+                  onCargarActuales={cargarActuales}
+                  loadSh={loadSh}
+                  shErr={shErr}
+                  autoLoadMsg={autoLoadMsg}
+                  ventasRowCount={ventasCache.rows.length}
+                  results={results}
+                  onAddResult={agregarStop}
+                  activeReparto={activeReparto}
+                  onRemoveStop={(id) => {
+                    setStops((p) => renumberStops(p.filter((s) => s.id !== id), { colors: COLORS }));
+                  }}
+                />
+              ),
+              flota: (
+                <StepFlota
+                  info={info}
+                  truckL={truckL}
+                  transportistas={transportistas}
+                  places={catalogPlaces}
+                  onChangeInfo={(k, v) => setInfo((p) => ({ ...p, [k]: v }))}
+                  onTruckL={setTruckL}
+                  newBaseLabel={newBaseLabel}
+                  setNewBaseLabel={setNewBaseLabel}
+                  newBaseUrl={newBaseUrl}
+                  setNewBaseUrl={setNewBaseUrl}
+                  onAddBase={() => {
+                    const r = addUserPlace(catalogPlaces, {
+                      kind: "base",
+                      label: newBaseLabel,
+                      mapUrl: newBaseUrl,
+                      transportistaId: info.transportistaId || null,
+                    });
+                    if (!r.ok) {
+                      setAutoLoadMsg("Base: nombre requerido");
+                      return;
+                    }
+                    setCatalogPlaces(r.places);
+                    saveCatalogToStorage(r.places);
+                    setInfo((p) => ({ ...p, basePointId: r.place.id }));
+                    setNewBaseLabel("");
+                    setNewBaseUrl("");
+                    setAutoLoadMsg(`Base guardada: ${r.place.label}`);
+                  }}
+                />
+              ),
+              levantes: (
+                <StepLevantes
+                  stops={stops}
+                  wizard={wizardUi}
+                  places={catalogPlaces}
+                  onWizardPatch={(patch) => setWizardUi((p) => createWizardUi({ ...p, ...patch, routeStale: true }))}
+                  onStopPickup={(sid, pid) => {
+                    setStops((p) => p.map((s) => (s.id === sid ? { ...s, pickupPointId: pid } : s)));
+                    setWizardUi((p) => createWizardUi({ ...p, routeStale: true }));
+                  }}
+                  newLabel={newPickupLabel}
+                  setNewLabel={setNewPickupLabel}
+                  newUrl={newPickupUrl}
+                  setNewUrl={setNewPickupUrl}
+                  onAddPickup={() => {
+                    const r = addUserPlace(catalogPlaces, {
+                      kind: "pickup",
+                      label: newPickupLabel,
+                      mapUrl: newPickupUrl,
+                    });
+                    if (!r.ok) {
+                      setAutoLoadMsg("Levante: nombre requerido");
+                      return;
+                    }
+                    setCatalogPlaces(r.places);
+                    saveCatalogToStorage(r.places);
+                    setWizardUi((p) =>
+                      createWizardUi({
+                        ...p,
+                        defaultPickupPointId: r.place.id,
+                        routeStale: true,
+                      }),
+                    );
+                    setNewPickupLabel("");
+                    setNewPickupUrl("");
+                    setAutoLoadMsg(`Levante guardado: ${r.place.label}`);
+                  }}
+                />
+              ),
+              ruta: (
+                <StepRuta
+                  route={tripRoute}
+                  routeStale={wizardUi.routeStale}
+                  info={info}
+                  onRecalcular={async () => {
+                    // Best-effort: parse lat,lng from map links; Nominatim for addresses without geo
+                    // Re-merge seed so Kingspan etc. pick up seed geo/address even if LS was stale
+                    let placesForRoute = mergeCatalogPlaces(catalogPlaces);
+                    setCatalogPlaces(placesForRoute);
+                    saveCatalogToStorage(placesForRoute);
+                    let stopsForRoute =
+                      wizardUi.singlePickup !== false
+                        ? applyDefaultPickupToStops(stops, wizardUi.defaultPickupPointId)
+                        : stops;
+
+                    // Parse coords from mapLink/mapUrl into stop.geo when possible
+                    stopsForRoute = stopsForRoute.map((s) => {
+                      if (s.geo && Number.isFinite(s.geo.lat)) return s;
+                      const parsed = parseLatLng(s.mapLink) || parseLatLng(s.direccion);
+                      if (!parsed) return s;
+                      return applyGeocodeToStop(s, { ...parsed, label: s.direccion || s.cliente || "", source: "parsed" });
+                    });
+                    setStops((prev) =>
+                      prev.map((s) => {
+                        const next = stopsForRoute.find((x) => x.id === s.id);
+                        return next?.geo && !s.geo ? next : s;
+                      }),
+                    );
+
+                    // Geocode missing delivery addresses (max 5) via API if token present
+                    const token = enviosAuthToken();
+                    const baseApi = getCalcApiBase();
+                    if (token && baseApi) {
+                      const needGeo = stopsForRoute.filter((s) => !s.geo && String(s.direccion || "").trim()).slice(0, 5);
+                      for (const s of needGeo) {
+                        try {
+                          const res = await fetch(`${baseApi}/api/envios/geocode`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ address: s.direccion }),
+                          });
+                          const j = await res.json().catch(() => ({}));
+                          if (res.ok && j.geo) {
+                            const enriched = applyGeocodeToStop(s, j.geo);
+                            stopsForRoute = stopsForRoute.map((x) => (x.id === s.id ? enriched : x));
+                            setStops((prev) => prev.map((x) => (x.id === s.id ? enriched : x)));
+                          }
+                        } catch {
+                          /* skip */
+                        }
+                      }
+                      // Geocode base place label if missing geo
+                      const basePlace = placesForRoute.find((p) => p.id === info.basePointId);
+                      if (basePlace && !basePlace.geo) {
+                        const q = basePlace.addressText || basePlace.label;
+                        if (q) {
+                          try {
+                            const res = await fetch(`${baseApi}/api/envios/geocode`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ address: q }),
+                            });
+                            const j = await res.json().catch(() => ({}));
+                            if (res.ok && j.geo) {
+                              placesForRoute = placesForRoute.map((p) =>
+                                p.id === basePlace.id
+                                  ? {
+                                      ...p,
+                                      geo: {
+                                        lat: Number(j.geo.lat),
+                                        lng: Number(j.geo.lng),
+                                        source: "nominatim",
+                                      },
+                                      addressText: p.addressText || j.geo.label || p.label,
+                                    }
+                                  : p,
+                              );
+                              setCatalogPlaces(placesForRoute);
+                              saveCatalogToStorage(placesForRoute);
+                            }
+                          } catch {
+                            /* skip */
+                          }
+                        }
+                      }
+                    }
+
+                    const r = suggestRoute({
+                      basePointId: info.basePointId,
+                      places: placesForRoute,
+                      stops: stopsForRoute,
+                      defaultPickupPointId: wizardUi.defaultPickupPointId,
+                    });
+                    setTripRoute(r);
+                    setWizardUi((p) => createWizardUi({ ...p, routeStale: false, done: { ...p.done, ruta: true } }));
+                    const withGeo = (r.orderedLegs || []).filter((l) => l.geo).length;
+                    setAutoLoadMsg(
+                      `Ruta: ${r.orderedLegs.length} tramos · ${withGeo} con geo${r.totalKm != null ? ` · ~${r.totalKm.toFixed(0)} km` : ""} — Maps/WA listos`,
+                    );
+                  }}
+                />
+              ),
+              carga: (
+                <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.45 }}>
+                  Listo para estibar. Cerrá el wizard con <b>Detalle Completo</b> o usá las pestañas{" "}
+                  <b>Detalle Completo</b>, <b>Remito</b> y <b>Diagrama 3D</b> para ver todo lo cargado, remito y WhatsApp al
+                  transportista.
+                </div>
+              ),
+            }}
+          />
+          <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>
+            Configurando envío · catálogo {listPlaces(catalogPlaces).length} lugares
+          </div>
+        </div>
+      ) : (
+        <div
+          className="np"
+          style={{
+            marginBottom: 12,
+            padding: "14px 16px",
+            borderRadius: 14,
+            border: `1px solid ${T.border}`,
+            background: "linear-gradient(135deg,#eff6ff 0%,#fff 55%)",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: T.brand }}>Configuración del envío</div>
+            <div style={{ fontSize: 12, color: T.muted, marginTop: 2, lineHeight: 1.4 }}>
+              Armá el viaje por etapas: pedidos → flota → levantes → ruta → carga.
+              {stops.length ? ` · ${stops.length} pedido(s) en Detalle Completo` : " · Empezá acá para un envío nuevo"}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setWizardUi((p) =>
+                createWizardUi({
+                  ...p,
+                  enabled: true,
+                  activeStep: "pedidos",
+                }),
+              )
+            }
+            style={{
+              padding: "12px 18px",
+              borderRadius: 12,
+              border: "none",
+              background: "#2563eb",
+              color: "#fff",
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: "pointer",
+              minHeight: 48,
+              boxShadow: "0 2px 8px rgba(37,99,235,.25)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Configurar envío →
+          </button>
+        </div>
+      )}
+
       <div className="envios-tabbar np">
-        {[["form", "📋 Formulario"], ["remito", "📄 Remito"], ["carga", "🚛 Diagrama 3D"]].map(([v, l]) => (
+        {[["form", "📋 Detalle Completo"], ["remito", "📄 Remito"], ["carga", "🚛 Diagrama 3D"]].map(([v, l]) => (
           <button
             key={v}
             type="button"

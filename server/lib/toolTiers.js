@@ -54,6 +54,8 @@ const TIER_BY_NAME = {
   traktime_timer_stop: "ops",
   traktime_list_entries: "ops",
   traktime_create_entry: "ops",
+  traktime_update_entry: "ops",
+  traktime_delete_entry: "ops",
   traktime_day_report: "ops",
   traktime_month_report: "ops",
   traktime_billable_report: "ops",
