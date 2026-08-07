@@ -64,6 +64,7 @@ export function buildEnviosDraft(state, opts = {}) {
     freeDragEnabled: state.freeDragEnabled === true,
     freePositions:
       state.freePositions && typeof state.freePositions === "object" ? state.freePositions : {},
+    loadWarnings: Array.isArray(state.loadWarnings) ? state.loadWarnings : [],
     transportistas: Array.isArray(state.transportistas) ? state.transportistas : [],
     camionesCat: Array.isArray(state.camionesCat) ? state.camionesCat : [],
     priceHistory: Array.isArray(state.priceHistory) ? state.priceHistory : [],
@@ -120,6 +121,7 @@ export function parseEnviosDraftPayload(raw) {
       rowOverrides: p.rowOverrides && typeof p.rowOverrides === "object" ? p.rowOverrides : {},
       freeDragEnabled: p.freeDragEnabled === true,
       freePositions: p.freePositions && typeof p.freePositions === "object" ? p.freePositions : {},
+      loadWarnings: Array.isArray(p.loadWarnings) ? p.loadWarnings : [],
       transportistas: Array.isArray(p.transportistas) ? p.transportistas : [],
       camionesCat: Array.isArray(p.camionesCat) ? p.camionesCat : [],
       priceHistory: Array.isArray(p.priceHistory) ? p.priceHistory : [],

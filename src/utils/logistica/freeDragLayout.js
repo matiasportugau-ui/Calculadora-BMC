@@ -16,12 +16,15 @@ export function normalizeFreePosition(pos) {
   const zBase = Number(pos.zBase);
   const row = Number(pos.row) === 1 ? 1 : 0;
   if (!Number.isFinite(xStart) || !Number.isFinite(zBase)) return null;
-  return {
+  const out = {
     xStart,
     zBase: Math.max(0, zBase),
     row,
     freeDrag: true,
   };
+  if (pos.zone === "yard" || pos.zone === "truck") out.zone = pos.zone;
+  if (pos.yardStopId != null && pos.yardStopId !== "") out.yardStopId = String(pos.yardStopId);
+  return out;
 }
 
 /**
@@ -69,6 +72,8 @@ export function setFreePosition(map = {}, stableKey, pos = {}, bounds = {}) {
       zBase,
       row: pos.row,
       freeDrag: true,
+      zone: pos.zone,
+      yardStopId: pos.yardStopId,
     }),
   };
   return next;
@@ -121,8 +126,10 @@ export function applyFreePositionsToCargo(cargo, freePositions = {}) {
       zBase,
       row,
       freeDrag: true,
+      zone: pos.zone || pkg.zone || "truck",
+      yardStopId: pos.yardStopId ?? pkg.yardStopId,
       // Keep stackId for identity but mark as free-placed
-      stackId: pkg.stackId ? `${pkg.stackId}:free` : `FREE-${key}`,
+      stackId: pkg.stackId ? `${String(pkg.stackId).replace(/:free$/, "")}:free` : `FREE-${key}`,
       layerIndex: 0,
       supportLen: len,
       supportRatio: 1,
@@ -159,5 +166,42 @@ export function freePositionFromPkg(pkg) {
     xStart: pkg.xStart,
     zBase: pkg.zBase,
     row: pkg.row,
+    zone: pkg.zone,
+    yardStopId: pkg.yardStopId,
   });
+}
+
+/**
+ * Apply same delta to a group of free positions.
+ * @param {Record<string, object>} freePositions
+ * @param {string[]} keys
+ * @param {{ dx?: number, dzBase?: number, row?: number }} delta
+ * @param {object[]} placed
+ */
+export function applyGroupDelta(freePositions = {}, keys = [], delta = {}, placed = []) {
+  const byKey = new Map((placed || []).filter((p) => p?.stableKey).map((p) => [p.stableKey, p]));
+  const next = { ...normalizeFreePositionsMap(freePositions) };
+  for (const k of keys || []) {
+    const pkg = byKey.get(k);
+    const cur = next[k] || {
+      xStart: pkg?.xStart ?? 0,
+      zBase: pkg?.zBase ?? 0,
+      row: pkg?.row ?? 0,
+      freeDrag: true,
+      zone: pkg?.zone,
+      yardStopId: pkg?.yardStopId,
+    };
+    const xStart = Number(cur.xStart) + (Number(delta.dx) || 0);
+    const zBase = Math.max(0, Number(cur.zBase) + (Number(delta.dzBase) || 0));
+    const row = delta.row != null ? (Number(delta.row) === 1 ? 1 : 0) : Number(cur.row) === 1 ? 1 : 0;
+    next[k] = normalizeFreePosition({
+      xStart,
+      zBase,
+      row,
+      freeDrag: true,
+      zone: cur.zone || "truck",
+      yardStopId: cur.yardStopId,
+    });
+  }
+  return next;
 }
