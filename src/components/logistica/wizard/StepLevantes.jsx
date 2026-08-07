@@ -1,6 +1,7 @@
 /** Step 3 — confirm pickup (levante) points. */
 import { ENV_T as T } from "../../../utils/enviosTheme.js";
 import { listPlaces } from "../../../utils/logistica/pickupCatalog.js";
+import { safeHttpUrl } from "../../../utils/logistica/safeExternalUrl.js";
 
 export default function StepLevantes({
   stops = [],
@@ -16,6 +17,9 @@ export default function StepLevantes({
 }) {
   const pickups = listPlaces(places, "pickup");
   const single = wizard.singlePickup !== false;
+  const defaultPickupMapHref = safeHttpUrl(
+    pickups.find((p) => p.id === wizard.defaultPickupPointId)?.mapUrl,
+  );
   const inp = {
     width: "100%",
     boxSizing: "border-box",
@@ -54,11 +58,11 @@ export default function StepLevantes({
               </option>
             ))}
           </select>
-          {wizard.defaultPickupPointId ? (
+          {defaultPickupMapHref ? (
             <a
-              href={pickups.find((p) => p.id === wizard.defaultPickupPointId)?.mapUrl || "#"}
+              href={defaultPickupMapHref}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               style={{ fontSize: 12, color: "#2563eb" }}
             >
               Abrir mapa ↗

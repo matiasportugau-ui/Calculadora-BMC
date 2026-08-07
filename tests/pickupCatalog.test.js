@@ -74,4 +74,25 @@ console.log("pickupCatalog");
   ok("SEED_PICKUPS constant");
 }
 
+{
+  const r = addUserPlace(mergeCatalogPlaces([]), {
+    label: "Evil",
+    mapUrl: "javascript:alert(1)",
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.place.mapUrl, "");
+  const poisoned = mergeCatalogPlaces([
+    {
+      id: "pickup-evil",
+      kind: "pickup",
+      label: "Evil",
+      mapUrl: "javascript:alert(document.domain)",
+      source: "user",
+      active: true,
+    },
+  ]);
+  assert.equal(getPlaceById(poisoned, "pickup-evil")?.mapUrl, "");
+  ok("normalizePlace strips javascript: mapUrl");
+}
+
 console.log(`pickupCatalog: ${passed} passed`);
