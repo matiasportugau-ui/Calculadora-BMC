@@ -93,4 +93,21 @@ console.log("enviosEntregadoConcurrentDelete");
   ok("terminal statuses force archive path");
 }
 
+// --- Bug BH: entregado must not clear H when body omits fechaEntrega ---
+{
+  assert.match(dash, /FECHA_ENTREGA_COL_IDX\s*=\s*7/);
+  assert.match(dash, /sheetFechaEntrega/);
+  assert.match(
+    dash,
+    /const fechaEntrega\s*=\s*bodyFecha\s*\|\|\s*sheetFechaEntrega/,
+  );
+  assert.ok(
+    !/handleVentasLogisticaEstado\([\s\S]*?fechaEntrega:\s*body\?\.fechaEntrega\s*\|\|\s*""/.test(
+      dash,
+    ),
+    "must not pass body?.fechaEntrega || \"\" into estado (clears H before archive)",
+  );
+  ok("entregado preserves sheet FECHA ENTREGA when body omits fecha (Bug BH)");
+}
+
 console.log(`enviosEntregadoConcurrentDelete: ${passed} passed`);
