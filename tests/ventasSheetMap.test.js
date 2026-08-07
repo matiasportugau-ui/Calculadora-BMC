@@ -11,6 +11,7 @@ import {
   filterVentasLogisticaCandidates,
   labelVentasCandidate,
   sanitizeEncargoCell,
+  indexVentasCsvDataRows,
 } from "../src/utils/logistica/ventasSheetMap.js";
 
 let passed = 0;
@@ -138,6 +139,45 @@ const ROW = [
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].nombre, "Luis González (Petinho)");
   ok("candidate filter + labels reject garbage");
+}
+
+{
+  // Blank middle row must not skew later sheetRow1Based (fecha write target).
+  // CSV: header@1, A@2, blank@3, B@4, C@5 → after drop blank, C must stay row 5 not 4.
+  const blank = HEADERS.map(() => "");
+  const rowA = [...ROW];
+  rowA[VENTAS_V2_FALLBACK.nombre] = "Cliente A";
+  rowA[VENTAS_V2_FALLBACK.orderId] = "100001";
+  const rowB = [...ROW];
+  rowB[VENTAS_V2_FALLBACK.nombre] = "Cliente B";
+  rowB[VENTAS_V2_FALLBACK.orderId] = "100002";
+  const rowC = [...ROW];
+  rowC[VENTAS_V2_FALLBACK.nombre] = "Cliente C";
+  rowC[VENTAS_V2_FALLBACK.orderId] = "100003";
+  const csv = [HEADERS, rowA, blank, rowB, rowC];
+
+  const indexed = indexVentasCsvDataRows(csv);
+  assert.equal(indexed.length, 3);
+  assert.deepEqual(
+    indexed.map((x) => x.sheetRow1Based),
+    [2, 4, 5],
+  );
+
+  // Regress the old bug: filter-then-(i+2) would assign C → 4 (B's real row).
+  const skewed = csv
+    .slice(1)
+    .filter((r) => r.some((c) => String(c || "").trim()))
+    .map((r, i) => ({ row: r, sheetRow1Based: i + 2 }));
+  assert.equal(skewed[2].sheetRow1Based, 4, "documents old skew for C");
+  assert.notEqual(indexed[2].sheetRow1Based, skewed[2].sheetRow1Based);
+  assert.equal(indexed[2].sheetRow1Based, 5);
+
+  const mapped = indexed.map(({ row, sheetRow1Based }) =>
+    mapVentasRowV2(HEADERS, row, sheetRow1Based, { gid: "1" }),
+  );
+  assert.equal(mapped[2].nombre, "Cliente C");
+  assert.equal(mapped[2].ventasSheetRow1Based, 5);
+  ok("indexVentasCsvDataRows preserves sheet rows across blanks");
 }
 
 console.log(`ventasSheetMap: ${passed} passed`);
