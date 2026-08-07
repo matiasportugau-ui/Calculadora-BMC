@@ -2537,6 +2537,8 @@ export default function PanelinCalculadoraV3() {
   const [scenario, _setScenario] = useState("solo_techo");
   const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
+  /** Stepped-panel schedule from RoofPreview modo irregular (primary zone). */
+  const [irregularLayout, setIrregularLayout] = useState(null);
   const [pared, _setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [techoAnchoModo, _setTechoAnchoModo] = useState("paneles"); // "metros" | "paneles"
   const [camara, _setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
@@ -3798,7 +3800,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           catalog: libreCatalog || undefined,
         });
       }
-      const techoForCalc = { ...techo, tipoAguas: derivedTipoAguas };
+      const techoForCalc = {
+        ...techo,
+        tipoAguas: derivedTipoAguas,
+        ...(irregularLayout?.strips?.length ? { irregularLayout } : {}),
+      };
       try {
         return executeScenario(sc, { techo: techoForCalc, pared, camara });
       } catch (e) {
@@ -3806,7 +3812,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         throw e;
       }
     } catch (e) { return { error: e.message }; }
-  }, [scenario, techo, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
+  }, [scenario, techo, irregularLayout, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
   // ── Grupos "presupuesto libre" aditivos (líneas manuales sobre cualquier escenario) ──
   // En el escenario dedicado `presupuesto_libre` se devuelve [] porque sus líneas ya
@@ -4606,6 +4612,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
           })
         }
+        onIrregularLayoutChange={setIrregularLayout}
       />
     );
   }, [
@@ -5907,6 +5914,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                                 borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
                               })
                             }
+                            onIrregularLayoutChange={setIrregularLayout}
                           />
                         );
                         return (
@@ -6232,6 +6240,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                                   borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
                                 })
                               }
+                              onIrregularLayoutChange={setIrregularLayout}
                             />
                           )
                         ) : (

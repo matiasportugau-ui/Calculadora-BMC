@@ -8,6 +8,7 @@ import { getIVA } from "./calculatorConfig.js";
 import { getDimensioningParam } from "./dimensioningFormulas.js";
 import { buildEdgeBOM, countExposedVerticalPerimeterFixingInteriorPointsForZona } from "./roofPlanGeometry.js";
 import { countPanels } from "./roofPanelStripsPlanta.js";
+import { bomFromIrregularSchedule } from "./irregularRoofLayout.js";
 
 // ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
 
@@ -147,6 +148,49 @@ export function calcPanelesTecho(panel, espesor, largo, ancho) {
     cantPaneles, areaTotal, anchoTotal, costoPaneles, precioM2,
     descarte: { anchoM: descarteAncho, areaM2: descarteArea, porcentaje: descartePct }
   };
+}
+
+/**
+ * When irregularLayout has strips, BOM uses ordered stepped area (not uniform largo).
+ */
+export function calcPanelesTechoFromOptionalIrregular(
+  panel,
+  espesor,
+  largo,
+  ancho,
+  irregularLayout,
+  warnings = null,
+) {
+  const espData = panel.esp?.[espesor];
+  if (!espData) return null;
+  if (irregularLayout?.strips?.length && irregularLayout?.totals?.areaOrdered > 0) {
+    const bom = bomFromIrregularSchedule(irregularLayout, p(espData));
+    if (warnings && Array.isArray(warnings)) {
+      warnings.push("Techo irregular: paneles por largos escalonados (corte en obra).");
+      for (const w of bom.warnings || []) {
+        if (w && !warnings.includes(w)) warnings.push(w);
+      }
+    }
+    const anchoTotal = irregularLayout.strips.reduce((s, st) => s + (st.width || 0), 0);
+    return {
+      cantPaneles: bom.cantPaneles,
+      areaTotal: bom.areaTotal,
+      areaOrdered: bom.areaOrdered,
+      areaUsable: bom.areaUsable,
+      anchoTotal: +anchoTotal.toFixed(4),
+      costoPaneles: bom.costoPaneles,
+      precioM2: bom.precioM2,
+      irregular: true,
+      strips: bom.strips,
+      descarte: {
+        anchoM: 0,
+        areaM2: bom.areaWasteSite,
+        porcentaje: bom.wastePct,
+        siteM2: bom.areaWasteSite,
+      },
+    };
+  }
+  return calcPanelesTecho(panel, espesor, largo, ancho);
 }
 
 /**
@@ -931,7 +975,7 @@ export function calcTotalesSinIVA(allItems) {
 
 export function calcTechoCompleto(inputs) {
   const { PANELS_TECHO } = getPricing();
-  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, ptsMetal, ptsMadera, borders, opciones, color, pendiente = 0, pendienteModo = "incluye_pendiente", alturaDif = 0, encuentrosData = [] } = inputs;
+  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, ptsMetal, ptsMadera, borders, opciones, color, pendiente = 0, pendienteModo = "incluye_pendiente", alturaDif = 0, encuentrosData = [], irregularLayout = null } = inputs;
   const panel = PANELS_TECHO[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
@@ -948,7 +992,14 @@ export function calcTechoCompleto(inputs) {
   if (largoReal > panel.lmax) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) excede máximo fabricable ${panel.lmax}m`);
   if (largoReal < panel.lmin) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) < mínimo ${panel.lmin}m`);
 
-  const paneles = calcPanelesTecho(panel, espesor, largoReal, ancho);
+  const paneles = calcPanelesTechoFromOptionalIrregular(
+    panel,
+    espesor,
+    largoReal,
+    ancho,
+    irregularLayout,
+    warnings,
+  );
   if (!paneles) return { error: "Error calculando paneles" };
   if (color && panel.colMinArea && panel.colMinArea[color] && paneles.areaTotal < panel.colMinArea[color]) {
     const minArea = panel.colMinArea[color];

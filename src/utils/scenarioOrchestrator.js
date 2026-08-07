@@ -107,6 +107,11 @@ function computeTechoZonas(techo, useEncounterBorders) {
       pendiente: zona.pendiente ?? techo.pendiente ?? 0,
       pendienteModo: zona.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente",
       alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0,
+      // Stepped lengths: primary zone 0 when schedule present
+      irregularLayout:
+        gi === 0 && techo.irregularLayout?.strips?.length
+          ? techo.irregularLayout
+          : techo.irregularLayoutByGi?.[gi] ?? null,
     };
     const globalBorders = techo.inclAccesorios === false ? EMPTY_BORDERS : techo.borders;
     const mergedBorders = { ...globalBorders, ...(zona.preview?.borders ?? {}) };
