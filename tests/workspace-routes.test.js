@@ -442,6 +442,10 @@ test("change-request approve requires superadmin; reject handles conflicts", asy
         }
         return { rows: [], rowCount: 1 };
       }
+      // reject path drops pending kb-cr-* docs (create-CR companion)
+      if (sql.includes("DELETE FROM panelin_workspace.knowledge_docs")) {
+        return { rows: [], rowCount: 1 };
+      }
       if (sql.includes("INSERT INTO panelin_workspace.telemetry_events")) {
         return { rows: [], rowCount: 1 };
       }
