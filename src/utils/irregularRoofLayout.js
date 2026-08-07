@@ -340,6 +340,48 @@ function emptyLayout({ zoneId, mode, au, orderLengthStepM, lmin, lmax, warnings,
   };
 }
 
+/**
+ * Plant schedules use zona.largo (horizontal). When pendienteModo is
+ * `calcular_altura`, fabricable length is largoReal = √(largo²+altura²).
+ * Scale cover/order lengths and areas so BOM matches the rectangular path.
+ */
+export function scaleIrregularLayoutToLargoReal(layout, plantLargo, largoReal) {
+  if (!layout?.strips?.length) return layout;
+  const L0 = +plantLargo;
+  const Lr = +largoReal;
+  if (!(L0 > 0) || !(Lr > 0)) return layout;
+  const f = Lr / L0;
+  if (Math.abs(f - 1) < 1e-9) return layout;
+
+  const lmax = layout.lmax != null && Number.isFinite(+layout.lmax) ? +layout.lmax : Infinity;
+
+  const strips = layout.strips.map((s) => {
+    // Scale plant lengths directly (no re-stepCeil): matches calcPanelesTecho(largoReal).
+    const L_cover = +(s.L_cover * f).toFixed(6);
+    const y0Cover = +((s.y0Cover ?? 0) * f).toFixed(6);
+    let L_order = Math.max(0, +(s.L_order * f).toFixed(6));
+    if (Number.isFinite(lmax)) L_order = clamp(L_order, 0, lmax);
+    const areaUsable = +(s.areaUsable * f).toFixed(6);
+    const areaOrdered = +(L_order * s.width).toFixed(6);
+    const waste = Math.max(0, areaOrdered - areaUsable);
+    return {
+      ...s,
+      L_cover,
+      L_order,
+      y0Cover,
+      areaUsable,
+      areaOrdered,
+      wasteM2_site: +waste.toFixed(6),
+    };
+  });
+
+  return recomputeTotals({
+    ...layout,
+    strips,
+    scaleFactor: +f.toFixed(6),
+  });
+}
+
 export function bomFromIrregularSchedule(layout, precioM2) {
   const area = layout?.totals?.areaOrdered ?? 0;
   const pu = +precioM2 || 0;

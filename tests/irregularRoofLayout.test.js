@@ -7,13 +7,14 @@ import {
   applyManualOrderLength,
   resetStripToAuto,
   bomFromIrregularSchedule,
+  scaleIrregularLayoutToLargoReal,
   stepCeil,
   sideCross,
   polygonArea,
   SCHEMA,
   CORTE_EN_OBRA_NOTE,
 } from "../src/utils/irregularRoofLayout.js";
-import { calcTechoCompleto } from "../src/utils/calculations.js";
+import { calcTechoCompleto, calcLargoRealFromModo } from "../src/utils/calculations.js";
 import { executeScenario } from "../src/utils/scenarioOrchestrator.js";
 
 let passed = 0;
@@ -268,6 +269,79 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
     `dos_aguas irr ignored (same as rect): on=${r2a.paneles?.areaTotal} off=${r2aOff.paneles?.areaTotal}`,
   );
   ok(!r2a.paneles?.irregular, "dos_aguas does not set irregular flag on merged BOM");
+}
+
+// calcular_altura: irregular BOM must use fabricable largoReal, not plant largo
+{
+  const plantLargo = 6;
+  const alturaDif = 2;
+  const largoReal = calcLargoRealFromModo(plantLargo, "calcular_altura", 0, alturaDif);
+  ok(largoReal > plantLargo, `largoReal ${largoReal} > plant ${plantLargo}`);
+
+  const irrPlant = buildIrregularSchedule({
+    mode: "rectangle",
+    ancho: 5.6,
+    largo: plantLargo,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+  });
+  ok(approx(irrPlant.totals.areaOrdered, 33.6), "plant ordered 33.6");
+
+  const scaled = scaleIrregularLayoutToLargoReal(irrPlant, plantLargo, largoReal);
+  const expectArea = +(5 * largoReal * 1.12).toFixed(2);
+  ok(
+    approx(scaled.totals.areaOrdered, expectArea, 0.02),
+    `scaled ordered ~${expectArea} got ${scaled.totals.areaOrdered}`,
+  );
+  ok(
+    scaled.strips.every((s) => approx(s.L_order, largoReal, 0.015)),
+    "scaled L_order ≈ largoReal",
+  );
+
+  const base = {
+    familia: "ISODEC_EPS",
+    espesor: 100,
+    largo: plantLargo,
+    ancho: 5.6,
+    tipoEst: "metal",
+    pendienteModo: "calcular_altura",
+    alturaDif,
+    borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+    opciones: { inclCanalon: false, inclGotSup: false, inclSell: false },
+  };
+  const rRect = calcTechoCompleto(base);
+  const rIrr = calcTechoCompleto({ ...base, irregularLayout: irrPlant });
+  ok(!rIrr.error, `Q-slope-irr no error: ${rIrr.error || ""}`);
+  ok(
+    approx(rIrr.paneles.areaTotal, rRect.paneles.areaTotal, 0.05),
+    `calcular_altura irregular matches rect area: irr=${rIrr.paneles.areaTotal} rect=${rRect.paneles.areaTotal}`,
+  );
+  ok(
+    approx(rIrr.paneles.costoPaneles, rRect.paneles.costoPaneles, 0.5),
+    `calcular_altura irregular matches rect $: irr=${rIrr.paneles.costoPaneles} rect=${rRect.paneles.costoPaneles}`,
+  );
+
+  // Diagonal cut + slope: ordered must exceed plant ordered (not stay flat)
+  const irrCut = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho: 5.6,
+    largo: plantLargo,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 0 }, p1: { x: 5.6, y: 6 }, keep: "left" },
+  });
+  const rCut = calcTechoCompleto({ ...base, irregularLayout: irrCut });
+  ok(rCut.paneles.irregular === true, "slope+cut irregular flag");
+  ok(
+    rCut.paneles.areaTotal > irrCut.totals.areaOrdered + 0.3,
+    `slope+cut BOM ${rCut.paneles.areaTotal} > plant ordered ${irrCut.totals.areaOrdered}`,
+  );
+  ok(
+    rCut.paneles.areaTotal < rRect.paneles.areaTotal - 0.5,
+    `slope+cut still below full rect (${rCut.paneles.areaTotal} < ${rRect.paneles.areaTotal})`,
+  );
 }
 
 console.log(`\n${passed} assertions passed`);
