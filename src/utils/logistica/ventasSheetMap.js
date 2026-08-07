@@ -285,53 +285,6 @@ export function filterVentasLogisticaCandidates(mappedRows) {
 }
 
 /**
- * Parse Ventas gviz CSV text while preserving blank rows as placeholders.
- *
- * Blank middle rows MUST stay in the array so `indexVentasCsvDataRows` can map
- * to true Sheets 1-based row numbers. Dropping blanks here (legacy parseCsv)
- * made #922's indexer ineffective on the live fetch path (Bug AT).
- *
- * @param {string} text
- * @returns {string[][]}
- */
-export function parseVentasCsvText(text) {
-  const src = String(text ?? "");
-  const rows = [];
-  let row = [];
-  let cell = "";
-  let inQuotes = false;
-  for (let i = 0; i < src.length; i += 1) {
-    const ch = src[i];
-    const next = src[i + 1];
-    if (ch === '"') {
-      if (inQuotes && next === '"') {
-        cell += '"';
-        i += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      row.push(cell.trim());
-      cell = "";
-    } else if ((ch === "\n" || ch === "\r") && !inQuotes) {
-      if (ch === "\r" && next === "\n") i += 1;
-      row.push(cell.trim());
-      // Keep blank rows — sheet index depends on positional placeholders
-      rows.push(row);
-      row = [];
-      cell = "";
-    } else {
-      cell += ch;
-    }
-  }
-  if (cell.length || row.length) {
-    row.push(cell.trim());
-    rows.push(row);
-  }
-  return rows;
-}
-
-/**
  * Pair CSV data rows with true 1-based Sheets row numbers.
  *
  * gviz CSV: index 0 = header (sheet row 1); data starts at sheet row 2.
@@ -339,7 +292,7 @@ export function parseVentasCsvText(text) {
  * `filter` + `i + 2` skews `ventasSheetRow1Based` and fecha/archive writes hit
  * the wrong Ventas row (data corruption).
  *
- * @param {string[][]} csvRows full parseVentasCsvText output including header at [0]
+ * @param {string[][]} csvRows full parseCsv output including header at [0]
  * @returns {{ row: string[], sheetRow1Based: number }[]}
  */
 export function indexVentasCsvDataRows(csvRows) {

@@ -14,8 +14,6 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-07 (fix — Bug AT parseCsv blanks defeat #922):** Live `fetchVentasCsv` used local `parseCsv` that dropped blank rows before `indexVentasCsvDataRows`, so #922's sheet-row fix never applied on gviz CSV with middle blanks (fecha/archive writes still hit wrong Ventas row). Moved to `parseVentasCsvText` (keeps blank placeholders) + e2e regression in `ventasSheetMap.test.js`.
-
 **2026-08-07 (fix — Bug AS repartos PUT TOCTOU vs confirm):** `PUT /api/repartos/:id` now atomically gates `WHERE status='en_coordinacion'` (+ optional `revision`), uses `revision = revision + 1`, and rejects `en_curso`/confirmed. Closes race where in-flight PUT could reopen a confirmed snapshot and let a second confirm overwrite it. Offline tests `tests/repartos-put-atomic.test.js`.
 
 **2026-08-07 (fix — concurrent Entregado row identity extract from #896):** Landed pure `saleState` helpers `ventasRowIdentityFingerprint` + `findSheetRow1BasedByFingerprint` + linear `stripLogisticaMarkers` + terminal-status gate (tests). Full UI/API sale-state stack remains #893. Supersedes concurrent-delete core of draft #896.
