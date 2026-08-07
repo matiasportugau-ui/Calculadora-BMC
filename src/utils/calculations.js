@@ -171,7 +171,11 @@ export function calcPanelesTechoFromOptionalIrregular(
         if (w && !warnings.includes(w)) warnings.push(w);
       }
     }
-    const anchoTotal = irregularLayout.strips.reduce((s, st) => s + (st.width || 0), 0);
+    // Billable width = N × au (remnant strip still a full commercial panel).
+    const au = +irregularLayout.au || +panel.au || 0;
+    const anchoTotal = bom.cantPaneles * au;
+    const wasteWidth = bom.areaWasteWidth || 0;
+    const wasteTotal = (bom.areaWasteSite || 0) + wasteWidth;
     return {
       cantPaneles: bom.cantPaneles,
       areaTotal: bom.areaTotal,
@@ -183,10 +187,11 @@ export function calcPanelesTechoFromOptionalIrregular(
       irregular: true,
       strips: bom.strips,
       descarte: {
-        anchoM: 0,
-        areaM2: bom.areaWasteSite,
+        anchoM: +Math.max(0, anchoTotal - ancho).toFixed(2),
+        areaM2: +wasteTotal.toFixed(2),
         porcentaje: bom.wastePct,
         siteM2: bom.areaWasteSite,
+        widthM2: wasteWidth,
       },
     };
   }

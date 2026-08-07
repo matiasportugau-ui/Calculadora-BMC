@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — Bug BE irregular remnant bills full au):** `irregularRoofLayout` ordered m² used geometric strip `width` (< au on remnant) → undercharged vs rectangular `calcPanelesTecho` (N×L×au). Now each strip bills `L_order × au`; `areaWasteWidth` tracks remnant width waste. Regression in `tests/irregularRoofLayout.test.js`.
+
 **2026-08-07 (feat — techo Modo irregular / largos escalonados):** Plant 2D Freeform-style cut tool on `RoofPreview` (toggle OFF by default; two-point cut; ruler+angle; strip L_order inspector; corte-en-obra copy). Pure engine `irregularRoofLayout.js` → stepped factory lengths; BOM charges **ordered m²** via `calcPanelesTechoFromOptionalIrregular` + `scenarioOrchestrator` zone 0 when cut/manual active. Rectangle path unchanged without cut. Tests: `tests/irregularRoofLayout.test.js` (46 asserts). SDD: `docs/sdd/roof-irregular-panel-layout/` SCORECARD 92. Residual: remnant tray, multi-zone irregular, PDF schedule rows.
 
 **2026-08-07 (fix — wire concurrent Entregado delete):** `POST /api/ventas/logistica-entregado` on `bmcDashboard.js` re-locates by `ventasRowIdentityFingerprint` before `deleteDimension` (never stale row1Based). Also `logistica-estado` + terminal gate. Supersedes #896 production path.
