@@ -13,7 +13,11 @@ import { ROW_W, estimateStopLoadPhysical, estimateRouteLoadPhysical } from "./lo
  */
 export function packageCuboidMetrics(pkg = {}, widthM = ROW_W) {
   const L = Math.max(0, Number(pkg.len) || 0);
-  const W = Math.max(0, Number(pkg.w ?? pkg.ancho) || widthM);
+  const isAcc = pkg.kind === "accessory" || String(pkg.tipo || "").toUpperCase() === "ACCESORIOS";
+  const rawW = Number(pkg.w ?? pkg.ancho ?? pkg.width);
+  const W = isAcc
+    ? Math.max(0.05, Number.isFinite(rawW) && rawW > 0 ? rawW : 0.3)
+    : Math.max(0, Number.isFinite(rawW) && rawW > 0 ? rawW : widthM);
   const H = Math.max(0, Number(pkg.h) || 0);
   return {
     L,

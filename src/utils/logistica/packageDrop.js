@@ -1,7 +1,14 @@
 /**
  * Manual package layout overrides (Ops UX F5).
  * Pure — drives existing cargoPacking manualOrderKeys + rowOverrides.
+ *
+ * Physical rule (stackConstraints): panels never on profiles. Engine enforces
+ * on place; callers may audit with validatePlacedStacks after placeCargo.
  */
+
+import { validatePlacedStacks, PANEL_ON_PROFILE_REJECT_ES } from "./stackConstraints.js";
+
+export { validatePlacedStacks, PANEL_ON_PROFILE_REJECT_ES };
 
 /**
  * Force a package onto fila A (0) or B (1).

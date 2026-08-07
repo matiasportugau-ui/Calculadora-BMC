@@ -7,6 +7,10 @@ import {
   buildVentasHeaderMap,
   parsePlanillaFechaToIso,
   VENTAS_V2_FALLBACK,
+  isVentasLogisticaCandidate,
+  filterVentasLogisticaCandidates,
+  labelVentasCandidate,
+  sanitizeEncargoCell,
 } from "../src/utils/logistica/ventasSheetMap.js";
 
 let passed = 0;
@@ -88,6 +92,52 @@ const ROW = [
   assert.equal(parsePlanillaFechaToIso("22/05/2026"), "2026-05-22");
   assert.equal(parsePlanillaFechaToIso("2026-05-22"), "2026-05-22");
   ok("fecha parse");
+}
+
+{
+  assert.equal(sanitizeEncargoCell("PEDIDO").pdf, "");
+  assert.equal(sanitizeEncargoCell("ENCARGO").pdf, "");
+  assert.ok(sanitizeEncargoCell("https://drive.google.com/file/d/xxx/view").pdf.includes("drive"));
+  assert.equal(sanitizeEncargoCell("2 Gotero Isopanel 200mm").pdf, "");
+  assert.ok(sanitizeEncargoCell("2 Gotero Isopanel 200mm").plainText.includes("Gotero"));
+  ok("sanitizeEncargoCell");
+}
+
+{
+  const good = mapVentasRowV2(HEADERS, ROW, 12, { gid: "926747636" });
+  assert.equal(isVentasLogisticaCandidate(good), true);
+  assert.equal(labelVentasCandidate(good), "Luis González (Petinho)");
+
+  const garbage = mapVentasRowV2(
+    HEADERS,
+    [
+      "CANAL",
+      "VENDEDOR",
+      "ID. Pedido",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "NOMBRE",
+      "DIRECCIÓN",
+      "PEDIDO",
+      "",
+      "",
+      "",
+      "",
+      "CONTACTO",
+    ],
+    3,
+  );
+  assert.equal(isVentasLogisticaCandidate(garbage), false);
+  assert.equal(labelVentasCandidate({ nombre: "", orderId: "", ventasSheetRow1Based: 9 }), "fila 9");
+  assert.equal(labelVentasCandidate({ nombre: "", orderId: "1345381" }), "#1345381");
+
+  const filtered = filterVentasLogisticaCandidates([good, garbage]);
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].nombre, "Luis González (Petinho)");
+  ok("candidate filter + labels reject garbage");
 }
 
 console.log(`ventasSheetMap: ${passed} passed`);

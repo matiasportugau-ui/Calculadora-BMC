@@ -378,6 +378,14 @@ node tests/enviosDraft.test.js
 **Consequences**: + multi-device; − manual sync; last-write-wins.  
 **Alternatives**: Auto-sync always-on; reuse transportista `trips` (different lifecycle).
 
+### ADR-021: Never stack panels on profiles (hard constraint)
+
+**Status**: Accepted  
+**Context**: Physically impossible to load sandwich panels on top of perfilería/accessory bultos; auto-packer ignored kind.  
+**Decision**: `stackConstraints.js` — `canPlaceOnTop` forbids panel on accessory; stack engine filters candidates; post-place `validatePlacedStacks`; manual commits preview+reject; UI hint + PERFIL badge. Profiles may sit on panels, other ACC, other row, or separate longitudinal stack — and may leave their stop’s panels.  
+**Consequences**: + physical layouts; − ACC-first manual order may open extra stacks.  
+**Alternatives**: Silent auto-repair (rejected — surprises ops); free 3D physics (deferred).
+
 ---
 
 ## 11. Risks & Technical Debt

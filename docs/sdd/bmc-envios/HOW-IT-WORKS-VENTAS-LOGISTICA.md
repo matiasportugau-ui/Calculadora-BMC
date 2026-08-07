@@ -28,16 +28,32 @@
 
 - El ENCARGO no trae nombres de producto en la URL → abrí el PDF y cargá líneas a mano, o usá **Reintentar autocarga**.
 - Hard refresh (`Cmd+Shift+R`) si ves UI vieja.
+- Drive `/view` ya no depende solo del browser: el cliente usa **proxy** `POST /api/envios/adjunto-fetch` (requiere `VITE_BMC_API_AUTH_TOKEN` + API).
 
-## Qué se arregló en Phase A (#890)
+## Autocarga — prioridad (2026-08-07)
+
+1. **Admin Cotizaciones** multi-clave (pedido / nombre / teléfono) — auto solo si match único y fuerte  
+2. **PDF** (proxy API → texto)  
+3. **Nombre de archivo ENCARGO** (Isopanel-100-mm…)  
+4. **Texto de fila Ventas** / ENCARGO free-text  
+5. Manual
+
+## Lista Ventas limpia
+
+- “Cargar actuales” / Buscar **filtran basura** (encabezados, `PEDIDO` como ENCARGO, sin nombre ni pedido real).
+- Toasts siempre con etiqueta: cliente, `#pedido`, o `fila N` — nunca `para .`.
+
+## Qué se arregló en Phase A (#890) + A/C/B goal
 
 | Antes | Ahora |
 |-------|--------|
 | Índices legacy (nombre≈col H) | Mapa Ventas 2.0 (I/J/K/P/H) |
-| PDF Drive fallaba → 0 paneles | Fallback **filename ENCARGO** |
-| Mensaje confuso | Nombre real del cliente en el toast |
+| PDF Drive fallaba → 0 paneles | Fallback **filename ENCARGO** + **proxy adjunto** |
+| Mensaje confuso / `para .` | `labelVentasCandidate` + filtro candidatos |
+| Sin Admin | `adminQuoteMatch` + opcional `/api/cotizaciones` |
 
 ## Verificación técnica
 
-- Unit: `node tests/ventasSheetMap.test.js`, `node tests/cargoFromEncargo.test.js`
+- Unit: `node tests/ventasSheetMap.test.js`, `node tests/adminQuoteMatch.test.js`, `node tests/cargoFromEncargo.test.js`
+- Evidence: `docs/sdd/bmc-envios/evidence/autocarga-training-2026-08-07.md`
 - Prod chunk `BmcLogisticaApp-*.js` contains `ENCARGO filename` + `Buscar cliente en Ventas`

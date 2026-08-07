@@ -18,6 +18,13 @@ import {
   panelStableKey,
   accessoryStableKey,
 } from "../bmcLogisticaCargo.js";
+import {
+  canPlaceOnStack,
+  validatePlacedStacks,
+  accessoryPlacementBias,
+  isAccessoryPkg,
+  PANEL_ON_PROFILE_RULE_ES,
+} from "./stackConstraints.js";
 
 export const FREIGHT_MAX_H = 2.4;
 export const ROW_W = 1.2;
@@ -135,6 +142,19 @@ function accessoryPresetFor(accesorios) {
  * @param {object} stop
  * @param {() => string} [uid]
  */
+/**
+ * Effective accessory bulto length (m).
+ * When operator has not locked manualDims, always track longest panel on the stop
+ * (profiles / zinguería usually match panel length — not the mkStop default 3m).
+ */
+export function resolveAccessoryLengthM(stop, cfg = {}) {
+  const panelLen = getStopLongestLength(stop);
+  if (cfg.manualDims) {
+    return clamp(safeNum(cfg.longitud, panelLen), 1, 14);
+  }
+  return clamp(panelLen, 1, 14);
+}
+
 export function buildAccessoryPkgs(stop, uid = defaultUid) {
   const accesorios = stop?.accesorios || [];
   const cfg = stop?.accPackage || {};
@@ -144,6 +164,8 @@ export function buildAccessoryPkgs(stop, uid = defaultUid) {
   const totalAcc = accesorios.reduce((acc, item) => acc + Math.max(1, safeNum(item.cantidad, 1)), 0);
   const foamM = clamp(safeNum(cfg.foamMm, DEFAULT_ACC_FOAM_MM), 0, 100) / 1000;
   const contentH = clamp(safeNum(cfg.alto, preset.alto), 0.1, 0.5);
+  const width = clamp(safeNum(cfg.ancho, preset.ancho), 0.15, 0.6);
+  const len = resolveAccessoryLengthM(stop, cfg);
   return [
     {
       id: uid(),
@@ -156,10 +178,12 @@ export function buildAccessoryPkgs(stop, uid = defaultUid) {
       kind: "accessory",
       tipo: "ACCESORIOS",
       esp: "",
-      len: clamp(safeNum(cfg.longitud, getStopLongestLength(stop)), 1, 14),
+      len,
       n: 1,
       h: +(contentH + foamM).toFixed(4),
-      width: clamp(safeNum(cfg.ancho, preset.ancho), 0.2, 0.5),
+      /** Real lateral footprint (m) — must not be forced to ROW_W in viz */
+      width,
+      w: width,
       foamMm: Math.round(foamM * 1000),
       contentHeight: contentH,
       accessoryCount: totalAcc,
@@ -195,11 +219,14 @@ function getHeightSpreadAfter(stacksByRow, row, stackIndex, nextHeight, type) {
   return Math.max(...heights) - Math.min(...heights);
 }
 
-function pickCandidateScore(candidate, strategy) {
+function pickCandidateScore(candidate, strategy, pkg) {
   const { type, rowSummary, nextHeight, row, usedLenAfter, stackHeightAfter, stackIndex, heightSpreadAfter } =
     candidate;
+  // Soft: accessories prefer topping existing (taller) stacks rather than wedging under panels
+  const accBias = accessoryPlacementBias(candidate, pkg);
   if (strategy === "compact") {
     return [
+      ...accBias,
       type === "existing" ? 0 : 1,
       rowSummary[row].usedLen ? 0 : 1,
       usedLenAfter,
@@ -211,6 +238,7 @@ function pickCandidateScore(candidate, strategy) {
   }
   if (strategy === "doorPriority") {
     return [
+      ...accBias,
       type === "existing" ? 0 : 1,
       nextHeight,
       heightSpreadAfter,
@@ -221,6 +249,7 @@ function pickCandidateScore(candidate, strategy) {
   }
   // balanced
   return [
+    ...accBias,
     nextHeight,
     heightSpreadAfter,
     type === "existing" ? 0 : 1,
@@ -511,6 +540,12 @@ export function placeCargo(stops, trL, third = {}, fourth = {}) {
       if (ia !== ib) return ia - ib;
     }
     if (a.sOrd !== b.sOrd) return b.sOrd - a.sOrd;
+    // Auto: place panels before accessories so profiles land on top (never under panels)
+    if (mode !== "manual" || !manualOrderKeys.length) {
+      const aAcc = isAccessoryPkg(a);
+      const bAcc = isAccessoryPkg(b);
+      if (aAcc !== bAcc) return aAcc ? 1 : -1;
+    }
     if (a.len !== b.len) return b.len - a.len;
     return b.h - a.h;
   });
@@ -533,6 +568,8 @@ export function placeCargo(stops, trL, third = {}, fourth = {}) {
     for (let row = 0; row < 2; row += 1) {
       if (forcedRow !== undefined && forcedRow !== row) continue;
       stacksByRow[row].forEach((stack, stackIndex) => {
+        // Hard rule: never stack panels on profiles/accessories
+        if (!canPlaceOnStack(pkg, stack)) return;
         const topLen = getStackTopLen(stack);
         const fitsOnImmediateSupport = pkg.len <= topLen + 0.001;
         const nextStackHeight = stack.height + pkg.h;
@@ -572,7 +609,7 @@ export function placeCargo(stops, trL, third = {}, fourth = {}) {
     let chosen = null;
     if (candidates.length) {
       chosen = [...candidates].sort((a, b) =>
-        compareScore(pickCandidateScore(a, strategy), pickCandidateScore(b, strategy))
+        compareScore(pickCandidateScore(a, strategy, pkg), pickCandidateScore(b, strategy, pkg))
       )[0];
     } else {
       const rowSummaryNow = getRowSummary(stacksByRow);
@@ -642,9 +679,17 @@ export function placeCargo(stops, trL, third = {}, fourth = {}) {
   const largoMax = placed.length ? Math.max(...placed.map((p) => p.len)) : 0;
   const heightOverflow = rowH.some((h) => h > maxH + 0.001) || placed.some((p) => p.ov);
   const lengthOverflow = largoMax > bed + 0.001;
+  const stackAudit = validatePlacedStacks(placed);
+  if (!stackAudit.ok) {
+    warns.add(PANEL_ON_PROFILE_RULE_ES);
+    for (const v of stackAudit.violations) {
+      warns.add(v.message);
+    }
+  }
   const cabe =
     !heightOverflow &&
     !lengthOverflow &&
+    stackAudit.ok &&
     ![...warns].some((w) => /excede|2° camión|no entra|sobresale/i.test(w));
 
   return {
@@ -667,6 +712,8 @@ export function placeCargo(stops, trL, third = {}, fourth = {}) {
     layoutMode: mode,
     layoutEngine: "stack",
     manualLayoutVersion: MANUAL_LAYOUT_VERSION,
+    stackConstraintsOk: stackAudit.ok,
+    stackViolations: stackAudit.violations,
   };
 }
 

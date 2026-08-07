@@ -71,6 +71,82 @@ const stop = {
   ok("buildStopPackages");
 }
 
+// Hard rule: never place panel on accessory / profile in stack engine
+{
+  const stops = [
+    {
+      id: "s1",
+      orden: 1,
+      cliente: "A",
+      paneles: [{ id: "p1", tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 8 }],
+      accesorios: [{ id: "a1", descr: "Perfil U / zingueria", cantidad: 10 }],
+      accPackage: { enabled: true },
+    },
+    {
+      id: "s2",
+      orden: 2,
+      cliente: "B",
+      paneles: [{ id: "p2", tipo: "ISODEC", espesor: 100, longitud: 5, cantidad: 8 }],
+      accesorios: [{ id: "a2", descr: "Cumbrera", cantidad: 4 }],
+      accPackage: { enabled: true },
+    },
+  ];
+  for (const strategy of ["balanced", "compact", "doorPriority"]) {
+    const pack = placeCargo(stops, 8, strategy);
+    assert.equal(pack.layoutEngine, "stack");
+    assert.equal(pack.stackConstraintsOk, true, `strategy ${strategy} stackConstraintsOk`);
+    assert.equal((pack.stackViolations || []).length, 0, `strategy ${strategy} no violations`);
+    // No panel may sit directly above an accessory in the same stack
+    const byStack = new Map();
+    for (const p of pack.placed) {
+      const sid = p.stackId;
+      if (!byStack.has(sid)) byStack.set(sid, []);
+      byStack.get(sid).push(p);
+    }
+    for (const [, items] of byStack) {
+      const ordered = [...items].sort((a, b) => (a.layerIndex ?? 0) - (b.layerIndex ?? 0));
+      for (let i = 1; i < ordered.length; i += 1) {
+        const lower = ordered[i - 1];
+        const upper = ordered[i];
+        const lowerAcc = lower.kind === "accessory";
+        const upperPanel = upper.kind === "panel";
+        assert.ok(!(lowerAcc && upperPanel), `panel on profile in ${strategy} stack ${lower.stackId}`);
+      }
+    }
+  }
+  ok("stack engine never places panel on profile (all strategies)");
+}
+
+// Manual order that tries panels after ACC still cannot put panel on ACC
+{
+  const stops = [
+    {
+      id: "s1",
+      orden: 1,
+      cliente: "A",
+      paneles: [{ id: "p1", tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 4 }],
+      accesorios: [{ id: "a1", descr: "Perfil", cantidad: 2 }],
+      accPackage: { enabled: true },
+    },
+  ];
+  const pkgs = buildStopPackages(stops[0]);
+  const accKey = pkgs.find((p) => p.kind === "accessory")?.stableKey;
+  const panelKeys = pkgs.filter((p) => p.kind === "panel").map((p) => p.stableKey);
+  assert.ok(accKey && panelKeys.length);
+  // Load ACC first, then panels (would trap profile under panels without constraint)
+  const pack = placeCargo(stops, 8, "balanced", {
+    mode: "manual",
+    manualOrderKeys: [accKey, ...panelKeys],
+  });
+  assert.equal(pack.stackConstraintsOk, true);
+  const acc = pack.placed.find((p) => p.stableKey === accKey);
+  const panelsOnSameStack = pack.placed.filter(
+    (p) => p.kind === "panel" && p.stackId === acc?.stackId && (p.layerIndex ?? 0) > (acc?.layerIndex ?? 0),
+  );
+  assert.equal(panelsOnSameStack.length, 0, "no panel above ACC after manual ACC-first order");
+  ok("manual ACC-first order does not bury profile under panels");
+}
+
 // Ops UX F4: sPed + sCli on placed meta
 {
   const s = {
