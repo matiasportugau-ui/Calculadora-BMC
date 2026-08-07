@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-07 (fix — Ventas gviz parse keep blanks / Bug AT):** `#922` indexed after filter but live `parseCsv` still dropped blank lines, so `ventasSheetRow1Based` stayed skewed. `parseVentasGvizCsv` preserves blanks; search/cargar use it before `indexVentasCsvDataRows`.
+
 **2026-08-07 (fix — Ventas blank CSV row index):** Index sheet rows before filtering blank gviz rows so `ventasSheetRow1Based` stays correct. Rebased from #902.
 
 **2026-08-07 (fix — reparto re-confirm immutable):** `canConfirmReparto` + atomic UPDATE WHERE status=en_coordinacion; `calendarDateKeyFromDb` for pg DATE. Rebased from #905.

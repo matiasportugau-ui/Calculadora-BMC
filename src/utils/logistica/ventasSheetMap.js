@@ -285,6 +285,54 @@ export function filterVentasLogisticaCandidates(mappedRows) {
 }
 
 /**
+ * Parse Google Sheets gviz `tqx=out:csv` text **keeping blank rows**.
+ *
+ * Blank middle rows must survive parse so {@link indexVentasCsvDataRows} can
+ * assign true 1-based sheet indices. Dropping blanks here (or before index)
+ * reintroduces the AM skew: later clients get earlier `ventasSheetRow1Based`
+ * and fecha/archive writes corrupt the wrong Ventas row.
+ *
+ * @param {string} text raw CSV body
+ * @returns {string[][]} rows including header at [0]; blanks are `[]` of empty strings
+ */
+export function parseVentasGvizCsv(text) {
+  const src = String(text ?? "");
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+  for (let i = 0; i < src.length; i += 1) {
+    const ch = src[i];
+    const next = src[i + 1];
+    if (ch === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      row.push(cell.trim());
+      cell = "";
+    } else if ((ch === "\n" || ch === "\r") && !inQuotes) {
+      if (ch === "\r" && next === "\n") i += 1;
+      row.push(cell.trim());
+      // Keep blank rows — sheet index depends on array position.
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += ch;
+    }
+  }
+  if (cell.length || row.length) {
+    row.push(cell.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+/**
  * Pair CSV data rows with true 1-based Sheets row numbers.
  *
  * gviz CSV: index 0 = header (sheet row 1); data starts at sheet row 2.
@@ -292,7 +340,10 @@ export function filterVentasLogisticaCandidates(mappedRows) {
  * `filter` + `i + 2` skews `ventasSheetRow1Based` and fecha/archive writes hit
  * the wrong Ventas row (data corruption).
  *
- * @param {string[][]} csvRows full parseCsv output including header at [0]
+ * Requires {@link parseVentasGvizCsv} (or equivalent) that preserves blanks;
+ * a parser that strips empty lines before this runs defeats the fix.
+ *
+ * @param {string[][]} csvRows full parseVentasGvizCsv output including header at [0]
  * @returns {{ row: string[], sheetRow1Based: number }[]}
  */
 export function indexVentasCsvDataRows(csvRows) {

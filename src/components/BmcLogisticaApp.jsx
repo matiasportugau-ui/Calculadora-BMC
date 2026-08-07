@@ -132,6 +132,7 @@ import PackageLayoutList from "./logistica/PackageLayoutList.jsx";
 import EnviosDraftBrowser from "./logistica/EnviosDraftBrowser.jsx";
 import {
   mapVentasRowV2,
+  parseVentasGvizCsv,
   indexVentasCsvDataRows,
   filterVentasLogisticaCandidates,
   labelVentasCandidate,
@@ -382,41 +383,6 @@ function truncate(s, n = 40) {
 function safeNum(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
-}
-
-function parseCsv(text) {
-  const rows = [];
-  let row = [];
-  let cell = "";
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (ch === '"') {
-      if (inQuotes && next === '"') {
-        cell += '"';
-        i += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      row.push(cell.trim());
-      cell = "";
-    } else if ((ch === "\n" || ch === "\r") && !inQuotes) {
-      if (ch === "\r" && next === "\n") i += 1;
-      row.push(cell.trim());
-      if (row.some((v) => v !== "")) rows.push(row);
-      row = [];
-      cell = "";
-    } else {
-      cell += ch;
-    }
-  }
-  if (cell.length || row.length) {
-    row.push(cell.trim());
-    if (row.some((v) => v !== "")) rows.push(row);
-  }
-  return rows;
 }
 
 function normalizeText(s) {
@@ -2729,7 +2695,8 @@ export default function BmcLogisticaApp() {
         });
         if (res.ok) {
           const txt = await res.text();
-          return parseCsv(txt);
+          // Preserve blank gviz rows so indexVentasCsvDataRows keeps sheet indices.
+          return parseVentasGvizCsv(txt);
         }
       } catch {
         // fall through to direct
@@ -2739,7 +2706,7 @@ export default function BmcLogisticaApp() {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const txt = await res.text();
-    return parseCsv(txt);
+    return parseVentasGvizCsv(txt);
   }
 
   async function buscarSheet() {

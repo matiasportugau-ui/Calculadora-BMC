@@ -11,6 +11,7 @@ import {
   filterVentasLogisticaCandidates,
   labelVentasCandidate,
   sanitizeEncargoCell,
+  parseVentasGvizCsv,
   indexVentasCsvDataRows,
 } from "../src/utils/logistica/ventasSheetMap.js";
 
@@ -178,6 +179,57 @@ const ROW = [
   assert.equal(mapped[2].nombre, "Cliente C");
   assert.equal(mapped[2].ventasSheetRow1Based, 5);
   ok("indexVentasCsvDataRows preserves sheet rows across blanks");
+}
+
+{
+  // Bug AT: live path must parse gviz text WITHOUT dropping blanks first.
+  // Old BmcLogisticaApp parseCsv skipped blank lines → index saw [A,B,C] → B=3 not 4.
+  const blankLine = Array(HEADERS.length).fill("").join(",");
+  const cell = (row, idx, value) => {
+    const cells = Array(HEADERS.length).fill("");
+    for (let i = 0; i < HEADERS.length; i += 1) cells[i] = String(row[i] ?? "");
+    cells[idx] = value;
+    return cells.map((c) => (/[",\n\r]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(",");
+  };
+  const rowA = [...ROW];
+  rowA[VENTAS_V2_FALLBACK.nombre] = "Cliente A";
+  rowA[VENTAS_V2_FALLBACK.orderId] = "100001";
+  const rowB = [...ROW];
+  rowB[VENTAS_V2_FALLBACK.nombre] = "Cliente B";
+  rowB[VENTAS_V2_FALLBACK.orderId] = "100002";
+  const rowC = [...ROW];
+  rowC[VENTAS_V2_FALLBACK.nombre] = "Cliente C";
+  rowC[VENTAS_V2_FALLBACK.orderId] = "100003";
+  const csvText = [
+    HEADERS.join(","),
+    cell(rowA, VENTAS_V2_FALLBACK.nombre, "Cliente A"),
+    blankLine,
+    cell(rowB, VENTAS_V2_FALLBACK.nombre, "Cliente B"),
+    cell(rowC, VENTAS_V2_FALLBACK.nombre, "Cliente C"),
+  ].join("\n");
+
+  const parsed = parseVentasGvizCsv(csvText);
+  assert.equal(parsed.length, 5, "blank middle row kept in parse");
+  assert.ok(
+    !parsed[2].some((c) => String(c || "").trim()),
+    "parsed[2] is the blank sheet row",
+  );
+
+  const indexed = indexVentasCsvDataRows(parsed);
+  assert.deepEqual(
+    indexed.map((x) => x.sheetRow1Based),
+    [2, 4, 5],
+  );
+  assert.equal(indexed[1].row[VENTAS_V2_FALLBACK.nombre], "Cliente B");
+  assert.equal(indexed[1].sheetRow1Based, 4);
+
+  // Document the defeated #922 path: strip blanks at parse → index skews.
+  const stripBlanksParse = (text) =>
+    parseVentasGvizCsv(text).filter((r) => r.some((c) => String(c || "").trim()));
+  const skewed = indexVentasCsvDataRows(stripBlanksParse(csvText));
+  assert.equal(skewed[1].sheetRow1Based, 3, "strip-then-index assigns B → 3");
+  assert.notEqual(indexed[1].sheetRow1Based, skewed[1].sheetRow1Based);
+  ok("parseVentasGvizCsv keeps blanks so live index matches sheet rows");
 }
 
 console.log(`ventasSheetMap: ${passed} passed`);
