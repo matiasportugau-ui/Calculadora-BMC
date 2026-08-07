@@ -3254,6 +3254,11 @@ export default function BmcLogisticaApp() {
             Free-Drag {freeDragEnabled ? "ON" : "OFF"}
             {freeDragCount > 0 ? ` · ${freeDragCount}` : ""}
           </Btn>
+          {freeDragEnabled ? (
+            <span style={{ fontSize: 11, color: T.muted, alignSelf: "center", maxWidth: 220 }}>
+              3D: long-press o doble-clic · Lista: arrastrá ⠿
+            </span>
+          ) : null}
           {freeDragCount > 0 ? (
             <Btn small outline onClick={() => handleClearFreeDrag(null)} title="Borrar todas las posiciones free-drag">
               Limpiar free
