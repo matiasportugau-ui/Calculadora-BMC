@@ -8,8 +8,9 @@
  * inert. `status` is exempt — it always answers so the UI can show an enable
  * hint.
  *
- * Auth: requireUser() — only logged-in operators may query. The data is
- * machine-scoped (whatever runs on the co-located aw-server), not per-user.
+ * Auth: requireUser({ role: "operator" }) — machine-scoped OS activity
+ * (apps/window titles on the co-located aw-server) must not be readable by
+ * self-registered `comprador` JWTs. Admin/superadmin pass the role floor.
  *
  * Error semantics: 404 aw_disabled (flag off) · 503 aw_unreachable (daemon
  * down) · never 500 for the daemon being absent.
@@ -21,6 +22,9 @@ import { awEnabled, getTodaySummary, getBuckets } from "../lib/activityWatchClie
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
+
+/** Operator+ only — ActivityWatch is host-scoped, not per-user. */
+const requireOperator = requireUser({ role: "operator" });
 
 export default function createActivityRouter(config, logger) {
   const router = Router();
@@ -36,7 +40,7 @@ export default function createActivityRouter(config, logger) {
   // Status is readable regardless of the flag (so the UI can show enable hints).
   router.get(
     "/api/activity/status",
-    requireUser(),
+    requireOperator,
     asyncHandler(async (_req, res) => {
       res.json({ ok: true, enabled: awEnabled(), base_url: awEnabled() ? config.traktimeAwBaseUrl : null });
     }),
@@ -44,7 +48,7 @@ export default function createActivityRouter(config, logger) {
 
   router.get(
     "/api/activity/today",
-    requireUser(),
+    requireOperator,
     requireEnabled,
     asyncHandler(async (req, res) => {
       try {
@@ -61,7 +65,7 @@ export default function createActivityRouter(config, logger) {
   // Bucket listing — handy for debugging which watchers are running.
   router.get(
     "/api/activity/buckets",
-    requireUser(),
+    requireOperator,
     requireEnabled,
     asyncHandler(async (_req, res) => {
       try {

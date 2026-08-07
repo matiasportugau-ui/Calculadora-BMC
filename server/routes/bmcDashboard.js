@@ -1378,12 +1378,24 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
     throw new Error("Fila sin identidad usable (pedido/nombre/tel/dir vacíos) — abortado para no borrar otra venta");
   }
 
+  // Bug BH: confirm payloads often omit fechaEntrega. Passing "" made
+  // handleVentasLogisticaEstado clear column H, then rowRes2 archived the
+  // wiped row — permanent loss of FECHA ENTREGA on Ventas Realizadas.
+  // Prefer explicit body date; else keep the pre-write sheet cell (H = idx 7).
+  const FECHA_ENTREGA_COL_IDX = 7;
+  const sheetFechaEntrega = String(rowData[FECHA_ENTREGA_COL_IDX] ?? "").trim();
+  const bodyFecha =
+    body?.fechaEntrega != null && String(body.fechaEntrega).trim() !== ""
+      ? String(body.fechaEntrega).trim()
+      : "";
+  const fechaEntrega = bodyFecha || sheetFechaEntrega;
+
   // Update estado marker on source row (internal allowTerminal — archive follows).
   await handleVentasLogisticaEstado(ventasSheetId, {
     gid,
     row1Based,
     status: mode,
-    fechaEntrega: body?.fechaEntrega || "",
+    fechaEntrega,
     comment: body?.comment || "",
     transportista: body?.transportista || "",
     camion: body?.camion,
