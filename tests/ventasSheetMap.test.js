@@ -12,6 +12,7 @@ import {
   labelVentasCandidate,
   sanitizeEncargoCell,
   indexVentasCsvDataRows,
+  parseVentasCsvText,
 } from "../src/utils/logistica/ventasSheetMap.js";
 
 let passed = 0;
@@ -178,6 +179,43 @@ const ROW = [
   assert.equal(mapped[2].nombre, "Cliente C");
   assert.equal(mapped[2].ventasSheetRow1Based, 5);
   ok("indexVentasCsvDataRows preserves sheet rows across blanks");
+}
+
+{
+  // Bug AT: live path is parseVentasCsvText → indexVentasCsvDataRows.
+  // Legacy parseCsv dropped blank lines before indexing → C got sheet row 4.
+  const blankLine = Array(HEADERS.length).fill("").join(",");
+  const lineA = [...ROW];
+  lineA[VENTAS_V2_FALLBACK.nombre] = "Cliente A";
+  lineA[VENTAS_V2_FALLBACK.orderId] = "100001";
+  const lineB = [...ROW];
+  lineB[VENTAS_V2_FALLBACK.nombre] = "Cliente B";
+  lineB[VENTAS_V2_FALLBACK.orderId] = "100002";
+  const lineC = [...ROW];
+  lineC[VENTAS_V2_FALLBACK.nombre] = "Cliente C";
+  lineC[VENTAS_V2_FALLBACK.orderId] = "100003";
+  const csvText = [HEADERS.join(","), lineA.join(","), blankLine, lineB.join(","), lineC.join(",")].join("\n");
+
+  const parsed = parseVentasCsvText(csvText);
+  assert.equal(parsed.length, 5, "parser must keep blank middle row");
+  assert.ok(
+    !parsed[2].some((c) => String(c || "").trim()),
+    "index 2 is the blank placeholder",
+  );
+
+  const indexed = indexVentasCsvDataRows(parsed);
+  assert.deepEqual(
+    indexed.map((x) => x.sheetRow1Based),
+    [2, 4, 5],
+  );
+  assert.equal(indexed[2].row[VENTAS_V2_FALLBACK.nombre], "Cliente C");
+  assert.equal(indexed[2].sheetRow1Based, 5);
+
+  // Document the defeated #922 path: drop-blanks-then-index skews C → 4
+  const legacyDrop = parsed.filter((r) => r.some((c) => String(c || "").trim()));
+  const skewed = indexVentasCsvDataRows(legacyDrop);
+  assert.equal(skewed[2].sheetRow1Based, 4, "documents Bug AT skew when blanks dropped first");
+  ok("parseVentasCsvText + index preserves sheet rows (Bug AT)");
 }
 
 console.log(`ventasSheetMap: ${passed} passed`);
