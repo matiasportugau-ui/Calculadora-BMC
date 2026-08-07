@@ -26,8 +26,12 @@ assert.equal(isAllowedAdjuntoHost("drive.google.com"), true);
 assert.equal(isAllowedAdjuntoHost("docs.google.com"), true);
 assert.equal(isAllowedAdjuntoHost("www.dropbox.com"), true);
 assert.equal(isAllowedAdjuntoHost("doc-00-00-docs.googleusercontent.com"), true);
+// Current Drive /uc download CDN (not *.googleusercontent.com)
+assert.equal(isAllowedAdjuntoHost("drive.usercontent.google.com"), true);
+assert.equal(isAllowedAdjuntoHost("dl-eu.dropboxusercontent.com"), true);
 assert.equal(isAllowedAdjuntoHost("evil.com"), false);
 assert.equal(isAllowedAdjuntoHost("drive.google.com.evil.com"), false);
+assert.equal(isAllowedAdjuntoHost("drive.usercontent.google.com.evil.com"), false);
 assert.equal(isAllowedAdjuntoHost("169.254.169.254"), false);
 assert.equal(isAllowedAdjuntoHost("localhost"), false);
 
@@ -154,6 +158,7 @@ console.log("enviosAdjuntoFetch — redirect re-validation");
           get: (k) =>
             k === "location" ? "https://doc-00-docs.googleusercontent.com/file.bin" : null,
         },
+        body: { cancel: async () => {} },
         ok: false,
       };
     }
@@ -183,6 +188,60 @@ console.log("enviosAdjuntoFetch — redirect re-validation");
   );
   assert.equal(upstream.status, 200);
   assert.ok(fetchUrl.includes("googleusercontent.com"));
+}
+
+// Live Drive shape (2026): /uc → 303 → drive.usercontent.google.com/download
+{
+  const cancelled = [];
+  const fetchImpl = async (href) => {
+    if (href.includes("drive.google.com/uc")) {
+      return {
+        status: 303,
+        headers: {
+          get: (k) =>
+            k === "location"
+              ? "https://drive.usercontent.google.com/download?id=abc&export=download"
+              : null,
+        },
+        body: {
+          cancel: async () => {
+            cancelled.push(href);
+          },
+        },
+        ok: false,
+      };
+    }
+    assert.ok(
+      href.startsWith("https://drive.usercontent.google.com/"),
+      `expected Drive usercontent CDN, got ${href}`,
+    );
+    return {
+      status: 200,
+      ok: true,
+      headers: { get: (k) => (k === "content-type" ? "application/pdf" : null) },
+      body: {
+        getReader() {
+          const once = Buffer.from("%PDF-1.4");
+          let done = false;
+          return {
+            async read() {
+              if (done) return { done: true };
+              done = true;
+              return { done: false, value: once };
+            },
+            async cancel() {},
+          };
+        },
+      },
+    };
+  };
+  const { upstream, fetchUrl } = await fetchAdjuntoUpstream(
+    "https://drive.google.com/uc?export=download&id=abc",
+    { fetchImpl },
+  );
+  assert.equal(upstream.status, 200);
+  assert.equal(fetchUrl, "https://drive.usercontent.google.com/download?id=abc&export=download");
+  assert.equal(cancelled.length, 1, "redirect hop must cancel body");
 }
 
 console.log("OK enviosAdjuntoFetch.test.js");
