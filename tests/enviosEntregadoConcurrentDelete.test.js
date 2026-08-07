@@ -45,6 +45,31 @@ console.log("enviosEntregadoConcurrentDelete");
   ok("bmcDashboard wires concurrent-delete guard on logistica-entregado");
 }
 
+// --- Bug AV: allowTerminal must be server-only (not client body) ---
+{
+  // Privileged flag must NOT be read from request body (bypass → terminal without archive).
+  assert.ok(
+    !/body\?\.allowTerminal/.test(dash) && !/body\.allowTerminal\s*!==\s*true/.test(dash),
+    "must not honor body.allowTerminal from clients",
+  );
+  assert.match(
+    dash,
+    /serverOpts\.allowTerminal\s*!==\s*true/,
+    "terminal gate must use serverOpts.allowTerminal",
+  );
+  // Entregado path opts in via 3rd arg, not by stuffing the client body
+  assert.match(
+    dash,
+    /handleVentasLogisticaEstado\(\s*ventasSheetId\s*,\s*\{[\s\S]*?\}\s*,\s*\{\s*allowTerminal:\s*true\s*\}/,
+  );
+  // Public logistica-estado route must not pass a 3rd arg that could forward client flag
+  assert.match(
+    dash,
+    /handleVentasLogisticaEstado\(\s*config\.bmcVentasSheetId\s*,\s*req\.body\s*\|\|\s*\{\s*\}\s*\)/,
+  );
+  ok("allowTerminal is server-only — clients cannot skip archive");
+}
+
 // --- Same algorithm the server calls after re-reading sheet values ---
 {
   function row({ orderId, nombre, tel, dir, estado = "" }) {

@@ -1234,7 +1234,12 @@ async function resolveVentasArchiveTabTitle(sheets, spreadsheetId) {
 }
 
 
-async function handleVentasLogisticaEstado(ventasSheetId, body) {
+/**
+ * @param {string} ventasSheetId
+ * @param {object} body client fields (gid, row1Based, status, …) — never trust allowTerminal here
+ * @param {{ allowTerminal?: boolean }} [serverOpts] server-only; set only by logistica-entregado
+ */
+async function handleVentasLogisticaEstado(ventasSheetId, body, serverOpts = {}) {
   const gid = body?.gid;
   const row1Based = Number(body?.row1Based);
   if (!ventasSheetId) throw new Error("Ventas sheet no configurado (BMC_VENTAS_SHEET_ID)");
@@ -1246,7 +1251,8 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
   if (!allowed.has(status)) throw new Error("status inválido");
   // Terminal statuses must go through logistica-entregado (archive move). Plain F/H
   // write would hide the row from "Cargar actuales" without archiving → operational loss.
-  if (isTerminalSaleStatus(status) && body?.allowTerminal !== true) {
+  // allowTerminal is SERVER-ONLY (3rd arg) — never body.allowTerminal (client bypass).
+  if (isTerminalSaleStatus(status) && serverOpts.allowTerminal !== true) {
     throw new Error(
       "status entregado/enviado requiere POST /api/ventas/logistica-entregado (confirm + archivo)",
     );
@@ -1378,17 +1384,20 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
     throw new Error("Fila sin identidad usable (pedido/nombre/tel/dir vacíos) — abortado para no borrar otra venta");
   }
 
-  // Update estado marker on source row (internal allowTerminal — archive follows).
-  await handleVentasLogisticaEstado(ventasSheetId, {
-    gid,
-    row1Based,
-    status: mode,
-    fechaEntrega: body?.fechaEntrega || "",
-    comment: body?.comment || "",
-    transportista: body?.transportista || "",
-    camion: body?.camion,
-    allowTerminal: true,
-  });
+  // Update estado marker on source row (serverOpts.allowTerminal — archive follows).
+  await handleVentasLogisticaEstado(
+    ventasSheetId,
+    {
+      gid,
+      row1Based,
+      status: mode,
+      fechaEntrega: body?.fechaEntrega || "",
+      comment: body?.comment || "",
+      transportista: body?.transportista || "",
+      camion: body?.camion,
+    },
+    { allowTerminal: true },
+  );
 
   // Re-locate by fingerprint (concurrent deletes above this row shift indices).
   const afterEstadoRow1 = await locateVentasRow1BasedByFingerprint(
