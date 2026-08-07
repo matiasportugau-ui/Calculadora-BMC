@@ -1,3 +1,4 @@
+- **2026-08-07** — Git capitalizar + Envíos harden chain on main: #909 wizard, #906 DnD, #908 SDD, #915 SSRF, #916 Bug AP, #918 Btn XSS, #920 Free-Drag AO, #921 re-confirm, #922 blank CSV, #924+#929 concurrent Entregado delete (wired). Session tip `ab3ba43d`. smoke:prod OK. Handoff: docs/team/HANDOFF-2026-08-07-0827.md.
 - **2026-08-07** — Logística autocarga A→C→B **LIVE prod**: PR #899 → main `9e08eacf`; Vercel + Cloud Run OK; `/logistica` 200; envios match-quotes/adjunto-fetch 401 unauth. Handoff: docs/team/HANDOFF-2026-08-07-logistica-autocarga-live.md. Evidence: docs/sdd/bmc-envios/evidence/autocarga-training-2026-08-07.md.
 # Bitácora — Matías Portugau
 - **2026-08-05** — All+ residual: disk ~9GB free (stale node_modules + worktrees); closed PR #864/#865; #869 G8 one-click already on main; G8 operator ran → residual CDN 410 / 0 play controls (no synthetic STT); Envíos units + /logistica 200 + WA media 401/302 OK. Handoff: docs/team/HANDOFF-2026-08-05-allplus.md.
