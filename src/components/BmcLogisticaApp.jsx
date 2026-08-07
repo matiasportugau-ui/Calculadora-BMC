@@ -92,7 +92,6 @@ import {
   createWizardUi,
   shouldEnableWizard,
   applyDefaultPickupToStops,
-  tryCompleteStep,
 } from "../utils/logistica/wizardState.js";
 import { suggestRoute } from "../utils/logistica/routeSuggest.js";
 import EnvioWizardShell from "./logistica/wizard/EnvioWizardShell.jsx";
@@ -2278,7 +2277,8 @@ export default function BmcLogisticaApp() {
       camionesCat,
       priceHistory,
       tripCostLog,
-      ui: { collapsedStopIds },
+      route: tripRoute,
+      ui: { collapsedStopIds, wizard: wizardUi },
     };
   }
 
@@ -2443,6 +2443,10 @@ export default function BmcLogisticaApp() {
       if (Array.isArray(p.priceHistory)) setPriceHistory(p.priceHistory);
       if (Array.isArray(p.tripCostLog)) setTripCostLog(p.tripCostLog);
       if (Array.isArray(p.ui?.collapsedStopIds)) setCollapsedStopIds(p.ui.collapsedStopIds);
+      if (p.route && typeof p.route === "object") setTripRoute(p.route);
+      if (p.ui?.wizard && typeof p.ui.wizard === "object") {
+        setWizardUi(createWizardUi(p.ui.wizard));
+      }
       setCloudMeta({
         id: j.draft?.id || id,
         revision: j.draft?.revision,
@@ -2463,6 +2467,7 @@ export default function BmcLogisticaApp() {
             rowOverrides: p.rowOverrides,
             freePositions: p.freePositions,
             freeDragEnabled: p.freeDragEnabled,
+            route: p.route,
             ui: p.ui,
           }),
         );
@@ -3280,7 +3285,12 @@ export default function BmcLogisticaApp() {
                   truckL={truckL}
                   transportistas={transportistas}
                   places={catalogPlaces}
-                  onChangeInfo={(k, v) => setInfo((p) => ({ ...p, [k]: v }))}
+                  onChangeInfo={(k, v) => {
+                    setInfo((p) => ({ ...p, [k]: v }));
+                    if (k === "basePointId") {
+                      setWizardUi((p) => createWizardUi({ ...p, routeStale: true }));
+                    }
+                  }}
                   onTruckL={setTruckL}
                   newBaseLabel={newBaseLabel}
                   setNewBaseLabel={setNewBaseLabel}

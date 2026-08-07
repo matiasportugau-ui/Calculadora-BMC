@@ -10,13 +10,14 @@ import {
   downloadTextFile,
   legsWithGeo,
 } from "../../../utils/logistica/routeExport.js";
+import { safeHttpUrl } from "../../../utils/logistica/safeExternalUrl.js";
 import RouteMapVisualizer from "./RouteMapVisualizer.jsx";
 
 export default function StepRuta({ route, onRecalcular, routeStale, info = {}, recalculating = false }) {
   const legs = route?.orderedLegs || [];
   const [feedback, setFeedback] = useState("");
 
-  const mapsUrl = useMemo(() => googleMapsDirectionsUrl(legs), [legs]);
+  const mapsUrl = useMemo(() => safeHttpUrl(googleMapsDirectionsUrl(legs)) || "", [legs]);
   const geoCount = useMemo(() => legsWithGeo(legs).length, [legs]);
   const shareText = useMemo(
     () =>
@@ -191,7 +192,7 @@ export default function StepRuta({ route, onRecalcular, routeStale, info = {}, r
             {mapsUrl ? (
               <div style={{ fontSize: 11, color: T.muted, wordBreak: "break-all" }}>
                 Link Maps:{" "}
-                <a href={mapsUrl} target="_blank" rel="noreferrer">
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
                   abrir
                 </a>
                 {geoCount < legs.length

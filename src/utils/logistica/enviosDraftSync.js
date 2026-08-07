@@ -44,7 +44,9 @@ export function fingerprintDraft(state) {
       mapLink: s.mapLink,
       pdfLink: s.pdfLink,
       checks: s.checks,
+      pickupPointId: s.pickupPointId,
     })),
+    route: p.route || null,
     ui: p.ui || {},
   };
   return stableStringify(core);
