@@ -3,6 +3,8 @@
  * Seed suppliers + user custom; merge never clobbers user places.
  */
 
+import { safeHttpUrl } from "./safeExternalUrl.js";
+
 export const CATALOG_STORAGE_KEY = "bmc-envios-catalog-v1";
 export const CATALOG_SCHEMA = "bmc-envios-catalog-v1";
 
@@ -79,7 +81,8 @@ export function normalizePlace(raw, opts = {}) {
     id,
     kind,
     label,
-    mapUrl: String(raw.mapUrl || "").trim(),
+    // Persist only http(s); strip javascript:/data:/etc so catalog cannot re-poison UI hrefs.
+    mapUrl: safeHttpUrl(raw.mapUrl) || "",
     addressText: String(raw.addressText || "").trim(),
     geo,
     aliases: Array.isArray(raw.aliases) ? raw.aliases.map((a) => String(a).toLowerCase()) : [],

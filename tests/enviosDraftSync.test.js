@@ -42,6 +42,28 @@ console.log("enviosDraftSync");
 }
 
 {
+  const base = {
+    info: { numero: "ENV-2", fecha: "2026-08-07" },
+    stops: [{ id: "s1", cliente: "A", paneles: [], pickupPointId: "p1" }],
+    cargoLayoutMode: "auto",
+    route: { orderedLegs: [{ type: "pickup", refId: "p1" }] },
+    ui: { wizard: { activeStep: "ruta", defaultPickupPointId: "p1" } },
+  };
+  const a = fingerprintDraft(base);
+  const b = fingerprintDraft({
+    ...base,
+    route: { orderedLegs: [{ type: "pickup", refId: "p2" }] },
+  });
+  const c = fingerprintDraft({
+    ...base,
+    ui: { wizard: { activeStep: "carga", defaultPickupPointId: "p1" } },
+  });
+  assert.notEqual(a, b);
+  assert.notEqual(a, c);
+  ok("fingerprint sensitive to route + wizard");
+}
+
+{
   assert.equal(shouldAutosave({ hydrated: false, envNo: "ENV-1", hasToken: true, dirty: true, autosaveEnabled: true }).ok, false);
   assert.equal(shouldAutosave({ hydrated: true, envNo: "", hasToken: true, dirty: true, autosaveEnabled: true }).reason, "missing_env_no");
   assert.equal(shouldAutosave({ hydrated: true, envNo: "ENV-1", hasToken: false, dirty: true, autosaveEnabled: true }).reason, "no_token");
