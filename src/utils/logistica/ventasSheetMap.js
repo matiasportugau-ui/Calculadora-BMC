@@ -283,3 +283,26 @@ export function filterVentasLogisticaCandidates(mappedRows) {
   if (!Array.isArray(mappedRows)) return [];
   return mappedRows.filter(isVentasLogisticaCandidate);
 }
+
+/**
+ * Pair CSV data rows with true 1-based Sheets row numbers.
+ *
+ * gviz CSV: index 0 = header (sheet row 1); data starts at sheet row 2.
+ * Blank rows must be dropped *after* capturing the original index — otherwise
+ * `filter` + `i + 2` skews `ventasSheetRow1Based` and fecha/archive writes hit
+ * the wrong Ventas row (data corruption).
+ *
+ * @param {string[][]} csvRows full parseCsv output including header at [0]
+ * @returns {{ row: string[], sheetRow1Based: number }[]}
+ */
+export function indexVentasCsvDataRows(csvRows) {
+  if (!Array.isArray(csvRows) || csvRows.length < 2) return [];
+  const out = [];
+  for (let i = 1; i < csvRows.length; i += 1) {
+    const row = csvRows[i];
+    if (!Array.isArray(row)) continue;
+    if (!row.some((c) => String(c || "").trim())) continue;
+    out.push({ row, sheetRow1Based: i + 1 });
+  }
+  return out;
+}

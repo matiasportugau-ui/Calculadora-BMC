@@ -88,6 +88,7 @@ import PackageLayoutList from "./logistica/PackageLayoutList.jsx";
 import EnviosDraftBrowser from "./logistica/EnviosDraftBrowser.jsx";
 import {
   mapVentasRowV2,
+  indexVentasCsvDataRows,
   filterVentasLogisticaCandidates,
   labelVentasCandidate,
 } from "../utils/logistica/ventasSheetMap.js";
@@ -2481,11 +2482,13 @@ export default function BmcLogisticaApp() {
     try {
       const rows = await fetchVentasCsv();
       const headers = rows[0] || [];
-      const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
+      // Preserve true Sheets row numbers before dropping blanks (avoid i+2 skew).
+      const indexed = indexVentasCsvDataRows(rows);
+      const dataRows = indexed.map((x) => x.row);
       setVentasCache({ headers, rows: dataRows });
       // Ops UX F2: map → drop garbage rows → haystack filter (pedido/tel/dir/estado).
       const mapped = filterVentasLogisticaCandidates(
-        dataRows.map((r, i) => mapVentasRow(headers, r, i + 2)),
+        indexed.map(({ row, sheetRow1Based }) => mapVentasRow(headers, row, sheetRow1Based)),
       );
       const found = searchMappedVentasRows(mapped, search);
       if (!found.length) setShErr(`Sin resultados operativos para "${search}"`);
@@ -2509,10 +2512,12 @@ export default function BmcLogisticaApp() {
     try {
       const rows = await fetchVentasCsv();
       const headers = rows[0] || [];
-      const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
+      // Preserve true Sheets row numbers before dropping blanks (avoid i+2 skew).
+      const indexed = indexVentasCsvDataRows(rows);
+      const dataRows = indexed.map((x) => x.row);
       setVentasCache({ headers, rows: dataRows });
       const mapped = filterVentasLogisticaCandidates(
-        dataRows.map((r, i) => mapVentasRow(headers, r, i + 2)),
+        indexed.map(({ row, sheetRow1Based }) => mapVentasRow(headers, row, sheetRow1Based)),
       );
       const found = mapped.map((r) => withCoordinationChip(r));
       if (!found.length) setShErr("No hay filas operativas (con cliente o pedido real) en esta pestaña.");
