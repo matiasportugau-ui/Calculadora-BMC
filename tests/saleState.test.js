@@ -8,6 +8,8 @@ import assert from "node:assert/strict";
 import {
   stripLogisticaMarkers,
   ventasRowIdentityFingerprint,
+  ventasIdentityFingerprintFromFields,
+  hasUsableVentasIdentityFingerprint,
   findSheetRow1BasedByFingerprint,
   isTerminalSaleStatus,
   TERMINAL_SALE_STATUSES,
@@ -93,6 +95,35 @@ console.log("saleState");
   assert.equal(isTerminalSaleStatus("coordinado"), false);
   assert.ok(TERMINAL_SALE_STATUSES.includes("entregado"));
   ok("terminal statuses gate");
+}
+
+{
+  const cells = rowWithIdentity({
+    orderId: "VENT-BA-1",
+    nombre: "Cliente BA",
+    tel: "099123456",
+    dir: "Av. Italia 1000",
+  });
+  const fromCells = ventasRowIdentityFingerprint(cells);
+  const fromFields = ventasIdentityFingerprintFromFields({
+    orderId: "VENT-BA-1",
+    nombre: "Cliente BA",
+    tel: "099123456",
+    dir: "Av. Italia 1000",
+  });
+  assert.equal(fromFields, fromCells);
+  assert.equal(
+    ventasIdentityFingerprintFromFields({
+      orderId: "VENT-BA-1",
+      cliente: "Cliente BA",
+      telefono: "099123456",
+      direccion: "Av. Italia 1000",
+    }),
+    fromCells,
+  );
+  assert.equal(hasUsableVentasIdentityFingerprint(fromFields), true);
+  assert.equal(hasUsableVentasIdentityFingerprint("\u0001\u0001\u0001"), false);
+  ok("identity fingerprint from stop fields matches sheet cells");
 }
 
 {

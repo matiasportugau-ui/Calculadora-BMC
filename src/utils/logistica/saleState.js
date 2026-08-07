@@ -268,6 +268,30 @@ export function ventasRowIdentityFingerprint(cells, idx = {}) {
 }
 
 /**
+ * Build the same identity fingerprint from client/stop fields (not sheet cells).
+ * Used so fecha/estado writes can relocate after concurrent archive deletes shift rows.
+ * @param {{ orderId?: string, nombre?: string, cliente?: string, tel?: string, telefono?: string, dir?: string, direccion?: string }} fields
+ */
+export function ventasIdentityFingerprintFromFields(fields = {}) {
+  const parts = [
+    fields.orderId,
+    fields.nombre ?? fields.cliente,
+    fields.tel ?? fields.telefono,
+    fields.dir ?? fields.direccion,
+  ].map((v) =>
+    String(v ?? "")
+      .trim()
+      .replace(/\s+/g, " "),
+  );
+  return parts.join("\u0001");
+}
+
+/** True when fingerprint has at least one non-empty identity part. */
+export function hasUsableVentasIdentityFingerprint(fingerprint) {
+  return Boolean(String(fingerprint || "").replace(/\u0001/g, "").trim());
+}
+
+/**
  * Find 1-based sheet row whose identity fingerprint matches.
  * Prefers hintRow1Based when still matching (fast path).
  * @param {string[][]} dataRows rows from sheet starting at row 2 (index 0 = sheet row 2)

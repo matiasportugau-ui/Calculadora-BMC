@@ -45,6 +45,28 @@ async function request(method, path, body) {
   return data;
 }
 
+async function requestBlob(method, path) {
+  const base = getCalcApiBase();
+  const resp = await fetch(`${base}${path}`, {
+    method,
+    credentials: "include",
+    headers: authHeader(),
+  });
+  if (!resp.ok) {
+    let message = `http_${resp.status}`;
+    try {
+      const data = await resp.json();
+      message = data?.error || message;
+    } catch {
+      // Keep generic HTTP status if the renderer returned non-JSON.
+    }
+    const err = new Error(message);
+    err.status = resp.status;
+    throw err;
+  }
+  return resp.blob();
+}
+
 export const tkApi = {
   me: () => request("GET", "/api/traktime/me"),
   health: () => request("GET", "/api/traktime/health"),
@@ -79,6 +101,10 @@ export const tkApi = {
   monthReport: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return request("GET", `/api/traktime/month-report${q ? `?${q}` : ""}`);
+  },
+  monthReportPdf: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return requestBlob("GET", `/api/traktime/month-report.pdf${q ? `?${q}` : ""}`);
   },
   listInvoices: (params = {}) => {
     const q = new URLSearchParams(params).toString();
