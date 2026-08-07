@@ -10,6 +10,9 @@ target_path: calculadora-bmc
 related:
   - docs/sdd/calculadora-bmc/SDD.md (platform)
   - docs/sdd/bmc-envios/SDD-OPS-UX-WAVE.md (Ops UX detail)
+  - docs/sdd/bmc-envios/SDD-ENVIO-WIZARD.md (staged trip setup TARGET)
+  - docs/sdd/bmc-envios/SDD-GEO-MAPS.md (OSRM / maps)
+  - docs/sdd/bmc-envios/SDD-REPARTO-COORDINACION.md (REP batch)
   - docs/sdd/bmc-envios/DESIGN-UI.md
   - docs/sdd/bmc-envios/RECREATION-CHECKLIST.md
   - docs/sdd/bmc-envios/evidence/INDEX.md
