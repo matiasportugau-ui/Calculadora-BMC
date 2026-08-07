@@ -143,6 +143,26 @@ async function main() {
     assert.equal(reConfRes.status, 409, `re-confirm must be 409, got ${reConfRes.status} ${JSON.stringify(reConf)}`);
     assert.equal(reConf.error, "immutable");
 
+    // PUT after confirm must not reopen / overwrite snapshot (Bug AS)
+    const putAfterConfRes = await fetch(`${base}/api/repartos/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: auth,
+      body: JSON.stringify({
+        payload: {
+          schema: "bmc-reparto-payload-v1",
+          stops: [{ id: "sX", cliente: "PUT_OVERWRITE", orderId: "999", orden: 1 }],
+          truckL: 12,
+        },
+      }),
+    });
+    const putAfterConf = await putAfterConfRes.json();
+    assert.equal(
+      putAfterConfRes.status,
+      409,
+      `PUT after confirm must be 409, got ${putAfterConfRes.status} ${JSON.stringify(putAfterConf)}`,
+    );
+    assert.equal(putAfterConf.error, "immutable");
+
     // GET by id
     const getRes = await fetch(`${base}/api/repartos/${encodeURIComponent(repartoNo)}`, {
       headers: { Authorization: `Bearer ${apiAuthToken}` },
