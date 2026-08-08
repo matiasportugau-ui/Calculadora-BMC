@@ -64,6 +64,10 @@ import {
   isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes,
 } from "../utils/projectFile.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
+import {
+  reindexIrregularLayoutByGiAfterRemove,
+  filterIrregularLayoutByGiToZonaCount,
+} from "../utils/irregularRoofLayout.js";
 import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
 import QuotePreviewModal from "./QuotePreviewModal.jsx";
 import { countPtsFromApoyoMateriales, buildDefaultApoyoMateriales, cycleCombinadaMaterial, COMBINADA_MATERIAL_ORDER } from "../utils/combinadaFijacionShared.js";
@@ -3617,6 +3621,14 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [setTecho]);
 
   const onRoofZonaDimensionPatch = useCallback((gi, patch) => {
+    if (patch?.largo != null || patch?.ancho != null) {
+      setIrregularLayoutByGi((prev) => {
+        if (!prev?.[gi]) return prev;
+        const next = { ...prev };
+        delete next[gi];
+        return next;
+      });
+    }
     setTecho((t) => ({
       ...t,
       zonas: t.zonas.map((z, i) => {
@@ -3661,30 +3673,46 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     });
   }, []);
 
-  const removeZona = (idx) => setTecho((t) => {
-    if (t.zonas.length <= 1) return t;
-    const newZonas = t.zonas
-      .filter((_, i) => i !== idx)
-      .map((z) => {
-        const p = z.preview;
-        if (!p || typeof p.attachParentGi !== "number") return z;
-        let ap = p.attachParentGi;
-        if (ap === idx) {
-          const { attachParentGi: _a, lateralSide: _s, lateralRank: _r, x: _x, y: _y, ...rest } = p;
-          if (Object.keys(rest).length) return { ...z, preview: rest };
-          const o = { ...z };
-          delete o.preview;
-          return o;
-        }
-        if (ap > idx) return { ...z, preview: { ...p, attachParentGi: ap - 1 } };
-        return z;
+  const removeZona = (idx) => {
+    // Bug BJ: zonas reindex; keep irregularLayoutByGi keys aligned (or orphan/wrong-zone BOM).
+    if ((techo?.zonas?.length ?? 0) <= 1) return;
+    setIrregularLayoutByGi((prev) => reindexIrregularLayoutByGiAfterRemove(prev, idx));
+    setTecho((t) => {
+      if (t.zonas.length <= 1) return t;
+      const newZonas = t.zonas
+        .filter((_, i) => i !== idx)
+        .map((z) => {
+          const p = z.preview;
+          if (!p || typeof p.attachParentGi !== "number") return z;
+          let ap = p.attachParentGi;
+          if (ap === idx) {
+            const { attachParentGi: _a, lateralSide: _s, lateralRank: _r, x: _x, y: _y, ...rest } = p;
+            if (Object.keys(rest).length) return { ...z, preview: rest };
+            const o = { ...z };
+            delete o.preview;
+            return o;
+          }
+          if (ap > idx) return { ...z, preview: { ...p, attachParentGi: ap - 1 } };
+          return z;
+        });
+      let zp = t.zonaPrincipalGi;
+      if (zp === idx) zp = undefined;
+      else if (typeof zp === "number" && zp > idx) zp = zp - 1;
+      return { ...t, zonas: newZonas, zonaPrincipalGi: zp };
+    });
+  };
+  const updateZona = (idx, key, val) => {
+    // Non-selected zone dim edits leave RoofPreview cut/schedule stale — drop that gi.
+    if (key === "largo" || key === "ancho") {
+      setIrregularLayoutByGi((prev) => {
+        if (!prev?.[idx]) return prev;
+        const next = { ...prev };
+        delete next[idx];
+        return next;
       });
-    let zp = t.zonaPrincipalGi;
-    if (zp === idx) zp = undefined;
-    else if (typeof zp === "number" && zp > idx) zp = zp - 1;
-    return { ...t, zonas: newZonas, zonaPrincipalGi: zp };
-  });
-  const updateZona = (idx, key, val) => setTecho(t => ({ ...t, zonas: t.zonas.map((z, i) => i === idx ? { ...z, [key]: val } : z) }));
+    }
+    setTecho((t) => ({ ...t, zonas: t.zonas.map((z, i) => (i === idx ? { ...z, [key]: val } : z)) }));
+  };
   const updateZonaPreview = useCallback((idx, patch) => {
     setTecho(t => ({
       ...t,
@@ -4209,9 +4237,12 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
     const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
     const { irregularSchedulesForPdf } = await import("../utils/irregularRoofLayout.js");
+    const zonaCount = Array.isArray(techo?.zonas) ? techo.zonas.length : 0;
+    const byGiForPdf = filterIrregularLayoutByGiToZonaCount(irregularLayoutByGi || {}, zonaCount);
     const irregularSchedule = irregularSchedulesForPdf(
-      irregularLayoutByGi?.[0] || null,
-      irregularLayoutByGi,
+      byGiForPdf?.[0] || null,
+      byGiForPdf,
+      { zonaCount },
     );
     const appendix = {
       ...buildPdfAppendixPayload({
@@ -4412,6 +4443,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setLP(getListaDefault());
     setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
     setTecho(modoVendedor ? { ...TECHO_INITIAL_VENDEDOR } : { familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, pendienteModo: "incluye_pendiente", alturaDif: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true, bomComercial: false } });
+    // Bug BJ: stepped schedules live outside techo — must clear on reset or prior quote bleeds.
+    setIrregularLayoutByGi({});
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setTechoAnchoModo("metros");
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });

@@ -363,12 +363,61 @@ export function bomFromIrregularSchedule(layout, precioM2) {
 }
 
 /**
+ * After removeZona(idx), drop that gi and shift higher keys down so byGi tracks
+ * the reindexed zonas array (Bug BJ — stale key applies cut to wrong zone).
+ * @param {Record<string|number, object>} prev
+ * @param {number} removedIdx
+ * @returns {Record<number, object>}
+ */
+export function reindexIrregularLayoutByGiAfterRemove(prev = {}, removedIdx) {
+  const ri = Number(removedIdx);
+  const src = prev && typeof prev === "object" ? prev : {};
+  if (!Number.isFinite(ri)) {
+    const copy = {};
+    for (const [k, lay] of Object.entries(src)) {
+      const gi = Number(k);
+      if (Number.isFinite(gi) && lay?.strips?.length) copy[gi] = lay;
+    }
+    return copy;
+  }
+  const next = {};
+  for (const [k, lay] of Object.entries(src)) {
+    const gi = Number(k);
+    if (!Number.isFinite(gi) || !lay?.strips?.length) continue;
+    if (gi === ri) continue;
+    if (gi > ri) next[gi - 1] = lay;
+    else next[gi] = lay;
+  }
+  return next;
+}
+
+/**
+ * Drop byGi entries whose gi is outside [0, zonaCount).
+ * Prevents orphan schedules (deleted zones) from reaching PDF factory rows.
+ * @param {Record<string|number, object>} prev
+ * @param {number} zonaCount
+ * @returns {Record<number, object>}
+ */
+export function filterIrregularLayoutByGiToZonaCount(prev = {}, zonaCount) {
+  const n = Number(zonaCount);
+  const src = prev && typeof prev === "object" ? prev : {};
+  if (!Number.isFinite(n) || n <= 0) return {};
+  const next = {};
+  for (const [k, lay] of Object.entries(src)) {
+    const gi = Number(k);
+    if (Number.isFinite(gi) && gi >= 0 && gi < n && lay?.strips?.length) next[gi] = lay;
+  }
+  return next;
+}
+
+/**
  * Flatten one or more irregular schedules for PDF quotation model.
  * @param {object|null} layout - single IrregularLayoutV1
  * @param {Record<string|number, object>|null} byGi - map gi → layout
+ * @param {{ zonaCount?: number }|number|null} opts - optional zonaCount to drop orphan keys
  * @returns {{ strips: Array<{ id: string, L_order: number, L_cover: number, zoneGi?: number }>, note: string, areaOrdered: number, areaWasteSite: number }|null}
  */
-export function irregularSchedulesForPdf(layout = null, byGi = null) {
+export function irregularSchedulesForPdf(layout = null, byGi = null, opts = null) {
   const rows = [];
   let areaOrdered = 0;
   let areaWasteSite = 0;
@@ -387,9 +436,20 @@ export function irregularSchedulesForPdf(layout = null, byGi = null) {
     areaWasteSite += Number(lay.totals?.areaWasteSite) || 0;
   };
 
+  const zonaCount =
+    opts != null && typeof opts === "object"
+      ? opts.zonaCount
+      : typeof opts === "number"
+        ? opts
+        : undefined;
+
   if (byGi && typeof byGi === "object") {
-    const keys = Object.keys(byGi).sort((a, b) => Number(a) - Number(b));
-    for (const k of keys) pushLayout(byGi[k], k);
+    const scoped =
+      zonaCount != null && Number.isFinite(Number(zonaCount))
+        ? filterIrregularLayoutByGiToZonaCount(byGi, Number(zonaCount))
+        : byGi;
+    const keys = Object.keys(scoped).sort((a, b) => Number(a) - Number(b));
+    for (const k of keys) pushLayout(scoped[k], k);
   } else if (layout?.strips?.length) {
     pushLayout(layout, layout.zoneId?.replace?.(/^z/, "") ?? 0);
   }
