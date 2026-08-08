@@ -31,6 +31,8 @@ evidence_policy: CONFIRMED | INFERRED | TARGET
 | Mapa interactivo multi-marker / rutas | **TARGET** | este SDD (P2c + P2b) |
 | Distance Matrix / TSP road | **TARGET** | P2b vía OSRM (no Google day-1) |
 
+> **Estado de implementación al 2026-08-08 — verificado.** Nada de las §8–§12 de este documento está implementado. Confirmado por búsqueda en todo el repo: **cero** ocurrencias de `OSRM`, `Distance Matrix`, `Mapbox` u `openrouteservice` en `src/` y `server/`; `routeSuggest.js:4` sigue diciendo *"OSRM hook later (SDD-GEO-MAPS)"*; `RouteMapVisualizer.jsx` dibuja una proyección SVG sin tiles de cartografía. El as-built sigue siendo **Nominatim + haversine**, o sea distancias en línea recta que **subestiman sistemáticamente** el kilometraje real. Inventario completo en [`SDD-LOGISTICA-REVISION-2026-08-08.md`](./SDD-LOGISTICA-REVISION-2026-08-08.md) §7.4.
+
 ---
 
 ## 0. Resumen ejecutivo

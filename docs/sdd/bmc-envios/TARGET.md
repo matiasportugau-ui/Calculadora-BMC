@@ -72,8 +72,49 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 | W11 | Pure tests wizardState/catalog/routeSuggest | **TARGET** |
 | W12 | Faster multi-stop setup vs classic | **TARGET** |
 
+## Documentación de entrega (D — revisión 2026-08-08)
+
+| ID | Outcome | Status |
+|----|---------|--------|
+| D1 | Inventario as-built completo de logística, sección por sección | **DONE** — `SDD-LOGISTICA-REVISION-2026-08-08.md` |
+| D2 | Diagnóstico citable del visor `TruckVisual` | **DONE** — V1–V8 en `SDD-3D-VISOR.md` v0.3 |
+| D3 | Estado real de geo/rutas, separando as-built de diseño | **DONE** — §7.4 + verificación fechada en `SDD-GEO-MAPS.md` |
+| D4 | Deuda del modelo de datos registrada | **DONE** — §8.3 + `audit/GAP-PLAN.md` |
+| D5 | Índice de la familia SDD | **DONE** — `README.md` |
+
+## Etiquetas de bulto y encomienda (E — TARGET)
+
+Diseño en [`SDD-ETIQUETAS-BULTOS.md`](./SDD-ETIQUETAS-BULTOS.md).
+
+| ID | Outcome | Status |
+|----|---------|--------|
+| E1 | Etiquetas de bulto imprimibles en A4, con líneas de corte | **TARGET** |
+| E2 | Numeración k/N por cliente reutilizando `packageBultoCounts()` | **TARGET** |
+| E3 | Etiqueta de encomienda con remitente y destinatario completos | **TARGET** |
+| E4 | Etiquetar N bultos sin pasar por la estiba | **TARGET** |
+| E5 | Cero hardware nuevo (impresora A4 de oficina) | **TARGET** |
+| E6 | Cero dependencias npm nuevas (Code128 en SVG puro) | **TARGET** |
+
+## Remito POD por cliente (R — TARGET)
+
+Diseño en [`SDD-REMITO-CLIENTE.md`](./SDD-REMITO-CLIENTE.md).
+
+| ID | Outcome | Status |
+|----|---------|--------|
+| R1 | Un documento por parada, no por viaje | **TARGET** |
+| R2 | Bloque de firma, aclaración, C.I. y fecha/hora | **TARGET** |
+| R3 | Dos copias en la misma hoja (Original cliente / Duplicado BMC) | **TARGET** |
+| R4 | Detalle de bultos vía `buildRemitoPackageRows()` | **TARGET** |
+| R5 | Observaciones de recepción desde `stop.recepcionDetalle` | **TARGET** |
+| R6 | Emisión registrada en `reparto_documents` | **TARGET** |
+| R7 | Declara explícitamente que no tiene valor fiscal | **TARGET** |
+
 ## Non-goals (Core)
 
+- Emisión de e-Remito fiscal (CFE / DGI) — exige emisor habilitado y firma electrónica avanzada  
+- Integración por API con agencias de encomienda — ninguna publica API abierta  
+- Impresora térmica de rollo day-1 (la arquitectura la admite; la primera entrega es A4)  
+- Códigos QR (fase 2 — suman dependencia)  
 - SaaS courier multi-modal global  
 - Isochrones / multi-vehicle VRP / live GPS tracking  
 - Google Distance Matrix billing (superseded by OSRM in SDD-GEO-MAPS unless ADR-017 reversed)  

@@ -1,7 +1,7 @@
 ---
 title: System Design Document — BMC Envíos (Cotizar flete + /logistica)
-version: 1.6
-date: 2026-08-05
+version: 1.8
+date: 2026-08-08
 status: As-Built
 author: sdd-architect / sdd-reverse-engineer / glory-loop / p2-p5-mvp / ops-ux-wave-2
 system_slug: bmc-envios
@@ -9,6 +9,9 @@ source: reverse-engineering
 target_path: calculadora-bmc
 related:
   - docs/sdd/calculadora-bmc/SDD.md (platform)
+  - docs/sdd/bmc-envios/SDD-LOGISTICA-REVISION-2026-08-08.md (inventario as-built completo)
+  - docs/sdd/bmc-envios/SDD-ETIQUETAS-BULTOS.md (etiquetas bulto + encomienda TARGET)
+  - docs/sdd/bmc-envios/SDD-REMITO-CLIENTE.md (remito POD por cliente TARGET)
   - docs/sdd/bmc-envios/SDD-OPS-UX-WAVE.md (Ops UX detail)
   - docs/sdd/bmc-envios/SDD-ENVIO-WIZARD.md (staged trip setup TARGET)
   - docs/sdd/bmc-envios/SDD-GEO-MAPS.md (OSRM / maps)
@@ -391,6 +394,36 @@ node tests/enviosDraft.test.js
 
 ---
 
+### ADR-026: Etiquetas propias A4, sin integración con agencias de encomienda
+
+**Status**: Accepted
+**Context**: Los bultos salen sin rótulo. Las agencias uruguayas (DAC/Agencia Central, Turil, Nossar) exigen rotulado con datos completos del remitente porque son los que se usan si el envío se devuelve. Ninguna publica API abierta de generación de etiquetas: el flujo estándar de DAC es que su sistema emite la etiqueta, la manda por mail al remitente, y este la imprime y la pega.
+**Decision**: Generar etiquetas propias en HTML/CSS sobre hoja A4 con grilla y líneas de corte, renderizadas por `renderHtmlToPdfBuffer` (que ya honra `@page` vía `preferCSSPageSize`) con fallback `window.print()`. La numeración `k/N` reutiliza `packageBultoCounts()` sin duplicar lógica. Código de barras Code128-B en SVG puro, sin dependencia npm nueva. Catálogo de agencias con el patrón de `pickupCatalog.js` (seed + custom del usuario).
+**Consequences**: + cero hardware, cero dependencias, cero acoplamiento a un tercero; + el mismo motor admite rollo térmico con solo cambiar el preset de `@page`; − hay que mantener un Code128 propio; − sin integración, el número de seguimiento de la agencia se carga a mano.
+**Alternatives considered**: Integrar API de DAC (no existe pública); librería QR (suma dependencia — diferido a fase 2); impresora térmica day-1 (rechazado: exige hardware).
+
+---
+
+### ADR-027: Remito por cliente es POD interno, no e-Remito fiscal
+
+**Status**: Accepted
+**Context**: Se necesita un comprobante por cliente que el cliente firme y retenga. En Uruguay el e-Remito es un CFE que documenta el traslado de mercadería, es obligatorio cuando se traslada sin factura simultánea y exige firma electrónica avanzada de un emisor habilitado por DGI. La Calculadora no es ni puede ser ese emisor.
+**Decision**: Emitir un **comprobante de entrega interno (POD)**, uno por parada, con dos copias en la misma hoja A4 (Original — Cliente / Duplicado — BMC), bloque de firma y observaciones de recepción. El encabezado declara explícitamente que no tiene valor fiscal. Campo opcional `eRemitoNro` para referenciar el CFE emitido aparte por el sistema de facturación.
+**Consequences**: + resuelve la necesidad operativa sin riesgo de cumplimiento; + se puede emitir sin integrar ningún proveedor; − sigue haciendo falta emitir el e-Remito fiscal por fuera; − riesgo de que un operador confunda ambos papeles, mitigado por la leyenda.
+**Alternatives considered**: Integrar un emisor de CFE (alcance mucho mayor, fuera de esta línea de trabajo); no emitir nada y seguir con la hoja de ruta única (rechazado: no sirve al cliente).
+
+---
+
+### ADR-028: `TruckVisual` es visual puro y no debe interceptar punteros
+
+**Status**: Accepted
+**Context**: `TruckVisual` (#937) se monta en el mismo `<Canvas>` que OrbitControls y el free-drag de bultos. Su captador de clic invisible cubre todo el volumen de la cabina y llama `stopPropagation` + `stopImmediatePropagation` en `pointerdown`/`pointerup`, con lo que la interacción de cámara y de arrastre puede quedar bloqueada sobre esa zona.
+**Decision**: `TruckVisual` es **visual puro**: recibe solo `{ shiftX, truckL }`, no altera packing ni coordenadas de carga, y **no debe consumir eventos de puntero que la escena necesita**. Solo puede interceptar `onClick` (para las luces de cabina); `pointerdown`/`pointerup`/`pointermove` deben propagar. El contrato de coordenadas (`TRUCK_W = 2.4`, cargo X `[shiftX, shiftX+truckL]`, cabina en `X < shiftX`) es vinculante para cualquier componente que se sume a la escena.
+**Consequences**: + la cámara y el free-drag siguen funcionando sobre toda la escena; + cualquier decorado futuro tiene una regla clara; − el clic de luces necesita un handler más cuidadoso que un captador de volumen.
+**Alternatives considered**: `raycast={null}` en el captador y mover el handler a la carrocería (equivalente, elegible en implementación); quitar las luces de cabina (rechazado: es feedback que el operador ya usa).
+
+---
+
 ## 11. Risks & Technical Debt
 
 | Risk | Impact | Likelihood | Mitigation |
@@ -403,6 +436,15 @@ node tests/enviosDraft.test.js
 | Nominatim rate / outage | No geocode | Low | Parse lat,lng from map link; cache geo on stop |
 | Haversine ≠ road km | Misread trip length | Med | Label as “km aire”; Matrix later |
 | BmcLogisticaApp size | Maintainability | High | Continue extract pure helpers |
+| `TruckVisual` pointer capture (V1) | Cámara / free-drag bloqueados sobre la cabina | High | ADR-028; ver `SDD-3D-VISOR.md` §Diagnóstico |
+| `truckL` sin coerción al restaurar draft (V2) | Coordenadas NaN en la escena | Med | Coercionar en el borde + guard en la escena |
+| Visor sin cobertura de comportamiento (V7) | Regresiones invisibles | High | El único test es un grep estructural |
+| `trips` ↔ `repartos` desunidos | Un mismo reparto existe dos veces sin cruce posible | Med | Decidir modelo canónico de viaje |
+| `reparto_documents` sin escritor | Documentos efímeros, sin trazabilidad | High | Primer escritor en `SDD-REMITO-CLIENTE.md` §8 |
+| Tests de repartos huérfanos | Falsa sensación de cobertura | High | Cablear a `package.json` |
+| Endpoints de transportista sin tests HTTP | Deriva de contrato | Med | Suite de contrato |
+| `POST /api/pdf/generate` sin auth | Documentos con datos de cliente | Med | Ruta dedicada con auth para POD y etiquetas |
+| `DRIVE_REPARTOS_FOLDER_ID` referenciada pero indefinida | Archivado en Drive no habilitable | Low | Definirla antes de la fase 3 |
 
 ---
 
@@ -503,4 +545,5 @@ Client pure engines remain packing/quote SoT. Transportista `/api/trips/*` is a 
 | 1.4 | 2026-08-05 | Full as-built: F1–F6 CONFIRMED, C4/bridge fixed, ADRs 011–014, evidence alignment, glory re-audit |
 | 1.5 | 2026-08-05 | P2 geocode MVP + P5 durable drafts MVP; ADR-015/016; `/api/envios/*` live |
 | 1.6 | 2026-08-05 | Ops UX Wave 2 F7–F11: onDark buttons, package identity, client group drawer, stack above/below, Ventas proxy |
-| **1.7** | **2026-08-06** | **P5b autosave+409 conflict+draft browser; F10b package DnD; P2b/P3 DEFERRED 2026-Q4; safeExternalUrl** |
+| 1.7 | 2026-08-06 | P5b autosave+409 conflict+draft browser; F10b package DnD; P2b/P3 DEFERRED 2026-Q4; safeExternalUrl |
+| **1.8** | **2026-08-08** | **Revisión completa de logística: ADR-026 (etiquetas A4 propias), ADR-027 (remito POD no fiscal), ADR-028 (`TruckVisual` visual-only); §11 ampliada con V1/V2/V7 del visor, `trips`↔`repartos` desunidos, `reparto_documents` sin escritor, tests huérfanos y PDF sin auth. Nuevos: `SDD-LOGISTICA-REVISION-2026-08-08.md`, `SDD-ETIQUETAS-BULTOS.md`, `SDD-REMITO-CLIENTE.md`** |
