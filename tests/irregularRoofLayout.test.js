@@ -8,6 +8,8 @@ import {
   resetStripToAuto,
   bomFromIrregularSchedule,
   irregularSchedulesForPdf,
+  reindexIrregularLayoutByGiAfterRemove,
+  filterIrregularLayoutByGiToZonaCount,
   stepCeil,
   sideCross,
   polygonArea,
@@ -308,6 +310,84 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
   ok(
     rBoth.paneles?.areaTotal < rNone.paneles?.areaTotal - 0.5,
     `multi-zone z1 only reduces total: ${rBoth.paneles?.areaTotal} < ${rNone.paneles?.areaTotal}`,
+  );
+}
+
+// Bug BJ — removeZona must reindex byGi; orphan keys must not reach PDF
+{
+  const lay0 = {
+    strips: [{ id: "T-01", L_order: 6, L_cover: 6 }],
+    totals: { areaOrdered: 6.72, areaWasteSite: 0 },
+  };
+  const lay1 = {
+    strips: [{ id: "T-01", L_order: 5, L_cover: 5 }],
+    totals: { areaOrdered: 5.6, areaWasteSite: 0 },
+  };
+  const lay2 = {
+    strips: [{ id: "T-01", L_order: 4, L_cover: 4 }],
+    totals: { areaOrdered: 4.48, areaWasteSite: 0 },
+  };
+  const byGi = { 0: lay0, 1: lay1, 2: lay2 };
+  const afterRemove0 = reindexIrregularLayoutByGiAfterRemove(byGi, 0);
+  ok(!afterRemove0[2], "BJ reindex drops old key 2");
+  ok(afterRemove0[0] === lay1, "BJ old z1 → new z0");
+  ok(afterRemove0[1] === lay2, "BJ old z2 → new z1");
+
+  const afterRemove1 = reindexIrregularLayoutByGiAfterRemove(byGi, 1);
+  ok(afterRemove1[0] === lay0, "BJ remove mid keeps z0");
+  ok(afterRemove1[1] === lay2, "BJ old z2 → new z1 after mid remove");
+  ok(!afterRemove1[2], "BJ mid remove no orphan key 2");
+
+  const filtered = filterIrregularLayoutByGiToZonaCount({ 0: lay0, 1: lay1 }, 1);
+  ok(filtered[0] === lay0 && !filtered[1], "BJ filter drops orphan gi>=zonaCount");
+
+  const orphanPdf = irregularSchedulesForPdf(null, { 1: lay1 }, { zonaCount: 1 });
+  ok(orphanPdf == null, "BJ PDF ignores orphan byGi[1] when only 1 zona");
+
+  const irrZ1 = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho: 5.6,
+    largo: 6,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 0 }, p1: { x: 5.6, y: 6 }, keep: "left" },
+  });
+  const staleTecho = techoBase({
+    zonas: [
+      { largo: 6, ancho: 5.6 },
+      { largo: 10, ancho: 11.2 },
+    ],
+    // Pre-fix: remove z0 left byGi[1] pointing at NEW large zone
+    irregularLayoutByGi: { 1: irrZ1 },
+  });
+  const reindexedTecho = techoBase({
+    zonas: [
+      { largo: 6, ancho: 5.6 },
+      { largo: 10, ancho: 11.2 },
+    ],
+    irregularLayoutByGi: reindexIrregularLayoutByGiAfterRemove({ 0: irrZ1, 1: irrZ1 }, 0),
+  });
+  const rStale = executeScenario("solo_techo", { techo: staleTecho, pared: {}, camara: {} });
+  const rOk = executeScenario("solo_techo", { techo: reindexedTecho, pared: {}, camara: {} });
+  const rRect = executeScenario("solo_techo", {
+    techo: techoBase({
+      zonas: [
+        { largo: 6, ancho: 5.6 },
+        { largo: 10, ancho: 11.2 },
+      ],
+    }),
+    pared: {},
+    camara: {},
+  });
+  ok(rStale && !rStale.error && rOk && !rOk.error, "BJ scenarios ok");
+  ok(
+    rStale.paneles?.areaTotal < rOk.paneles?.areaTotal - 10,
+    `BJ stale key undercharges large zone: stale=${rStale.paneles?.areaTotal} ok=${rOk.paneles?.areaTotal}`,
+  );
+  ok(
+    rOk.paneles?.areaTotal < rRect.paneles?.areaTotal - 0.5,
+    "BJ reindexed keeps stepped schedule on surviving cut zone",
   );
 }
 
