@@ -51,10 +51,36 @@
 | E-31 | Package fila override | **CONFIRMED** | `packageDrop.js` + DiagramPanel Fila A/B |
 | E-32 | Load plan print model | **CONFIRMED** | `loadPlanPrintModel.js` + Plan carga view |
 | E-33 | sPed/sCli on packages | **CONFIRMED** | `buildPkgs` / `buildAccessoryPkgs` |
-| E-34 | 3D labels + cabin | **CONFIRMED** | `LogisticaCargoScene3d.jsx` Html + `TruckCabin` |
+| E-34 | 3D labels + cabin | **CONFIRMED** | `LogisticaCargoScene3d.jsx` Html + cabina. **Nota 2026-08-08:** `TruckCabin` fue reemplazado por `TruckVisual.jsx` en #937 |
 | E-35 | loadCharacteristics volumes | **CONFIRMED** | `loadCharacteristics.js` |
 | E-36 | Ops UX SDD | **CONFIRMED** | `SDD-OPS-UX-WAVE.md` |
 | E-37 | STOP_STATUS FSM U3 | **CONFIRMED** | `src/utils/logistica/stopStatusFsm.js`; PR #857 |
+
+## Revisión 2026-08-08
+
+| ID | Claim | Tag | Evidence |
+|----|-------|-----|----------|
+| E-38 | Tres routers de logística montados bajo `/api` | **CONFIRMED** | `server/index.js:1063-1065` |
+| E-39 | `TruckVisual` montado en el mismo Canvas que OrbitControls y free-drag | **CONFIRMED** | `LogisticaCargoScene3d.jsx:519`, `:548`, `:375` |
+| E-40 | V1 — captador de clic invisible con `stopImmediatePropagation` | **CONFIRMED** | `TruckVisual.jsx:285-300`, `:154-160` |
+| E-41 | V2 — `truckL` restaurado sin coerción numérica | **CONFIRMED** | `BmcLogisticaApp.jsx:1961`; uso en `LogisticaCargoScene3d.jsx:449` |
+| E-42 | V7 — único test del visor es un grep estructural | **CONFIRMED** | `tests/truckAxles.test.js` |
+| E-43 | V8 — `preserveDrawingBuffer` + shadows + dpr 1.75 | **CONFIRMED** | `LogisticaCargoScene3d.jsx:645-648` |
+| E-44 | `axleCount()` no valida entrada | **CONFIRMED** | `src/utils/logistica/truckAxles.js` |
+| E-45 | Sin ruteo real: cero OSRM / Distance Matrix / Mapbox / ORS | **CONFIRMED** | Búsqueda en `src/` y `server/` → 0 hits |
+| E-46 | Geocode Nominatim con rate gate de 1100 ms | **CONFIRMED** | `server/routes/envios.js:170`, `:196-199`, `:206` |
+| E-47 | `haversineKm` duplicado en dos módulos | **CONFIRMED** | `geocode.js:128`, `routeSuggest.js:15` |
+| E-48 | `RouteMapVisualizer` sin cartografía, solo proyección SVG | **CONFIRMED** | `wizard/RouteMapVisualizer.jsx:25` vía `projectRouteToSvg` |
+| E-49 | `reparto_documents` creada y nunca escrita | **CONFIRMED** | DDL `server/lib/enviosDb.js:79`; único SELECT `server/routes/repartos.js:203` |
+| E-50 | `RemitoView` es a nivel viaje, no por cliente | **CONFIRMED** | `BmcLogisticaApp.jsx:1666`, título en `:1734` |
+| E-51 | `packageBultoCounts` ya resuelve la numeración k/N | **CONFIRMED** | `src/utils/logistica/packageIdentity.js:25` |
+| E-52 | `buildRemitoPackageRows` ya es por parada | **CONFIRMED** | `src/utils/logistica/remitoPackageMetrics.js:54` |
+| E-53 | `renderHtmlToPdfBuffer` honra `@page` vía `preferCSSPageSize` | **CONFIRMED** | `server/lib/quotePdf.js:164`, `:216` |
+| E-54 | `POST /api/pdf/generate` sin auth | **CONFIRMED** | `server/routes/pdf.js:32` |
+| E-55 | Tres tests de repartos fuera de todo script npm | **CONFIRMED** | 0 menciones de `repartoNumber`, `repartoStatus`, `repartos-api.integration` en `package.json` |
+| E-56 | `DRIVE_REPARTOS_FOLDER_ID` referenciada pero nunca leída ni definida | **CONFIRMED** | `server/routes/repartos.js:319`; ausente en `config.js` y `.env.example` |
+| E-57 | Cero código de etiquetas / encomiendas / agencias | **CONFIRMED** | Búsqueda en `src/` → 0 hits |
+| E-58 | Superficie completa de env de logística | **CONFIRMED** | `server/config.js:251-256` |
 
 ## Commands (re-verify)
 
@@ -70,4 +96,25 @@ node tests/stopReorder.test.js
 node tests/remitoPackageMetrics.test.js
 node tests/packageDrop.test.js
 node tests/loadPlanPrintModel.test.js
+```
+
+### Revisión 2026-08-08
+
+```bash
+# E-38 routers
+grep -n "createTransportistaRouter\|createEnviosRouter\|createRepartosRouter" server/index.js
+
+# E-45 ausencia de ruteo real
+grep -rniE "osrm|distance ?matrix|mapbox|openrouteservice" src/ server/ | grep -v node_modules
+
+# E-49 reparto_documents nunca se escribe
+grep -rn "reparto_documents" server/ scripts/ tests/
+
+# E-55 tests huérfanos
+for t in repartoNumber repartoStatus repartos-api.integration; do
+  echo "$t: $(grep -c "$t" package.json)"
+done
+
+# E-57 ausencia de etiquetas
+grep -rn "encomienda\|agencia" src/ --include="*.jsx" --include="*.js"
 ```
