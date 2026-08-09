@@ -312,11 +312,14 @@ export function parseLogisticaFromAdjuntoText(text) {
   }
 
   const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  // Dedupe by cargo identity (not raw line text): PDFs often echo the same
+  // BOM as a short product line + a priced line (or modern + classic). Including
+  // `${line}` in the key caused silent 2× qty (Bug BQ after #960 multi-format).
   const seenPanel = new Set();
   for (const line of lines) {
     const ph = parsePanelLineHeuristic(line);
     if (ph) {
-      const key = `${ph.tipo}|${ph.espesor}|${ph.longitud}|${ph.cantidad}|${line}`;
+      const key = `${ph.tipo}|${ph.espesor}|${ph.longitud}|${ph.cantidad}`;
       if (!seenPanel.has(key)) {
         seenPanel.add(key);
         paneles.push(ph);
