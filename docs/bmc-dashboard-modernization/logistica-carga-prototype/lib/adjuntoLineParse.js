@@ -87,6 +87,39 @@ function isTipoValid(t) {
   return TIPOS.includes(t);
 }
 
+// Note: "perfiles?" is WRONG (matches perfile/perfiles). Use perfil(?:es)?
+const ACC_WORD_RE =
+  /\b(babeta(?:s)?|gotero(?:s)?|cumbrera(?:s)?|perfil(?:es)?|fijaci[oó]n(?:es)?|varilla(?:s)?|tuerca(?:s)?|tornillo(?:s)?|sellador(?:es)?|canal[oó]n(?:es)?|kit(?:s)?|accesorio(?:s)?|flashing(?:s)?|remate(?:s)?|tortuga(?:s)?|plegado(?:s)?|u\s*de\s*\d+)\b/i;
+
+/** True when line is clearly an accessory (even if it mentions ISO* as context). */
+function looksLikeAccessoryLine(raw) {
+  return ACC_WORD_RE.test(raw);
+}
+
+/**
+ * Classic cotización table row after "NNN mm":
+ *   Isopanel EPS 100 mm (Fachada)   2,50   11   37,00   1.159,95
+ *   → largo=2.50, cantidad=11  (ignore price columns)
+ * @param {string} afterMm
+ * @returns {{ longitud: number, cantidad: number } | null}
+ */
+function parseClassicTableLenQty(afterMm) {
+  const s = String(afterMm || "").replace(/\s+/g, " ").trim();
+  if (!s) return null;
+  // First number in 1.5–14.5 (panel length), then integer qty 1–200 (not a price like 37,00).
+  const re = /(\d{1,2}[.,]\d{1,2}|\d{1,2})\s+(\d{1,3})(?!\s*[.,]\d)/g;
+  let m;
+  while ((m = re.exec(s)) !== null) {
+    const len = parseFloat(String(m[1]).replace(",", "."));
+    const qty = parseInt(m[2], 10);
+    if (!Number.isFinite(len) || len < 1.5 || len > 14.5) continue;
+    if (!Number.isFinite(qty) || qty < 1 || qty > 200) continue;
+    if (qty >= 100 && len >= 10) continue;
+    return { longitud: snapLen(len), cantidad: qty };
+  }
+  return null;
+}
+
 /**
  * @param {string} line
  * @returns {{ tipo: string, espesor: number, longitud: number, cantidad: number } | null}
@@ -94,6 +127,12 @@ function isTipoValid(t) {
 export function parsePanelLineHeuristic(line) {
   let raw = String(line || "").trim();
   if (!raw || /^https?:\/\//i.test(raw)) return null;
+  // Scope blurbs ("Alcance: … 2 Zonas") are not product lines — prefer "N paneles" rows.
+  if (/^\s*alcance\s*:/i.test(raw) || /\b\d+\s*zonas?\b/i.test(raw)) return null;
+  // Title-only lines without qty
+  if (/^\s*cotizaci/i.test(raw)) return null;
+  // "2 Gotero Frontal Isodec/Isopanel 200mm" is accessory cargo, not 2 panels.
+  if (looksLikeAccessoryLine(raw) && !/\bpaneles?\b/i.test(raw)) return null;
 
   let qtyLead = null;
   const leadQty = raw.match(/^(\d+)\s*[x×]\s+/i);
@@ -105,52 +144,63 @@ export function parsePanelLineHeuristic(line) {
   const tipo = extractTipoFromLine(raw);
   if (!tipo || !isTipoValid(tipo)) return null;
 
-  const numMatches = [...raw.matchAll(/\d+(?:[.,]\d+)?/g)];
-  const nums = numMatches.map((m) => parseFloat(m[0].replace(",", "."))).filter((n) => Number.isFinite(n));
-  if (nums.length < 1) return null;
+  // Qty phrases first so "10 paneles" is never mistaken for length (m).
+  // Accept: "cant 12", "cant: 12", "bultos 24", "12 paneles", "12 bultos"
+  const qtyExplicit =
+    raw.match(/\b(?:cant\.?|cantidad|qty|bultos?)\s*[:=]?\s*(\d{1,5})\b/i) ||
+    raw.match(/\b(\d{1,5})\s*(?:bultos?|uds\.?|unidades?|planchas?|paneles?|piezas?)\b/i);
+  const qtyFromPhrase = qtyExplicit ? Math.max(1, parseInt(qtyExplicit[1], 10)) : null;
 
+  const mmMatch = raw.match(/\b(\d{2,3})\s*mm\b/i);
   let espesor = null;
-  for (const n of nums) {
-    const r = Math.round(n);
-    if (Math.abs(n - r) < 0.01 && ESP_SET.has(r)) {
-      espesor = r;
-      break;
+  if (mmMatch) {
+    const r = Math.round(Number(mmMatch[1]));
+    if (r >= 20 && r <= 300) espesor = r;
+  }
+  if (espesor == null) {
+    const numMatches = [...raw.matchAll(/\d+(?:[.,]\d+)?/g)];
+    const nums = numMatches.map((m) => parseFloat(m[0].replace(",", "."))).filter((n) => Number.isFinite(n));
+    for (const n of nums) {
+      const r = Math.round(n);
+      if (Math.abs(n - r) < 0.01 && ESP_SET.has(r)) {
+        espesor = r;
+        break;
+      }
     }
   }
   if (espesor == null) return null;
 
-  const lenCand = nums.filter((n) => {
-    const r = Math.round(n);
-    if (Math.abs(n - r) < 0.01 && r === espesor) return false;
-    return n >= 2 && n <= 14.5;
-  });
-  const longitud = lenCand.length ? snapLen(lenCand[0]) : 6;
+  // Classic table: Producto | Largo | Cantidad | Precio…
+  const afterMm = mmMatch ? raw.slice(mmMatch.index + mmMatch[0].length) : raw;
+  const classic = parseClassicTableLenQty(afterMm);
 
-  let cantidad = qtyLead != null ? qtyLead : 1;
-  const xm = raw.match(/[x×]\s*(\d+)\b/i);
-  const qtyExplicit =
-    raw.match(/\b(?:cant\.?|cantidad|qty|bultos?)\s*[:=]\s*(\d{1,5})\b/i) ||
-    raw.match(/\b(\d{1,5})\s*(?:bultos?|uds\.?|unidades?|planchas?|paneles?|piezas?)\b/i);
-  if (qtyLead == null && qtyExplicit) {
-    cantidad = Math.max(1, parseInt(qtyExplicit[1], 10));
-  } else if (qtyLead == null && xm) {
-    cantidad = Math.max(1, parseInt(xm[1], 10));
-  } else if (qtyLead == null) {
-    const uds = raw.match(/\b(\d+)\s*(?:uds?\.?|unidades?|planchas?|paneles?|bultos?|piezas?)\b/i);
-    if (uds) cantidad = Math.max(1, parseInt(uds[1], 10));
-    else {
-      const tailInts = nums.filter((n) => {
-        const r = Math.round(n);
-        if (Math.abs(n - r) >= 0.01) return false;
-        if (r === espesor) return false;
-        if (lenCand.length && Math.abs(n - lenCand[0]) < 0.01 && n >= 2 && n <= 14) return false;
-        return r >= 1 && r <= 999;
-      });
-      if (tailInts.length) cantidad = Math.max(1, Math.round(tailInts[tailInts.length - 1]));
-    }
+  let longitud;
+  let cantidad;
+
+  if (qtyFromPhrase != null || qtyLead != null) {
+    // Modern BMC PDF: "ISODEC 100mm · 10 paneles" — default L unless explicit meters.
+    cantidad = qtyLead != null ? qtyLead : qtyFromPhrase;
+    const explicitLen =
+      raw.match(/\b(?:largo|longitud)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:m(?![mM²2]))?(?!\w)/i) ||
+      raw.match(/\b(\d+(?:[.,]\d+)?)\s*m(?:ts?|etros?)?(?![mM²2])/i) ||
+      raw.match(/[×x]\s*(\d+(?:[.,]\d+)?)\s*m(?![mM²2])/i);
+    longitud = explicitLen
+      ? snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")))
+      : 6;
+  } else if (classic) {
+    longitud = classic.longitud;
+    cantidad = classic.cantidad;
+  } else {
+    // No reliable qty signal → do not invent a 1-panel ghost from titles/headers.
+    return null;
   }
 
-  return { tipo, espesor: snapEsp(espesor), longitud, cantidad };
+  return {
+    tipo,
+    espesor: ESP_SET.has(espesor) ? snapEsp(espesor) : espesor,
+    longitud,
+    cantidad: Math.max(1, cantidad),
+  };
 }
 
 function normCell(s) {
@@ -287,14 +337,26 @@ export function parseLogisticaFromAdjuntoText(text) {
 
 /**
  * Línea de accesorio: sin tipo panel, texto + cantidad al final o "N x descripción".
+ * Rejects presupuesto / planilla noise (tel, RUT, FLETE, CONTACTO, SALDOS, precios).
  * @param {string} line
  * @returns {{ descr: string, cantidad: number } | null}
  */
 export function parseAccesorioLine(line) {
   const raw = String(line || "").trim();
   if (!raw || /^https?:\/\//i.test(raw)) return null;
-  if (extractTipoFromLine(raw)) return null;
+  // Pure panel product lines are not accessories — but "2 Gotero … Isopanel" is accessory.
+  if (extractTipoFromLine(raw) && !looksLikeAccessoryLine(raw)) return null;
   if (raw.length < 4) return null;
+  // Header / commercial / Ventas-sheet column noise
+  if (
+    /\b(cliente|direcci[oó]n|tel(?:[eé]fono)?|contacto|validez|fecha|ref\.?|alcance|subtotal|total|iva|p\.?u\.?|usd|\$|rut|brou|titular|cuenta|condiciones|oferta|se[nñ]a|montaje|traslado|bmcuruguay|consulta|flete|saldos?|confirmaci[oó]n\s+de\s+pago|pago\s+a\s+proveedor|monto|costo|ganancias?|vendedor|pedido|encargo|carpeta|nombre|ingreso)\b/i.test(
+      raw,
+    )
+  ) {
+    return null;
+  }
+  // Phone / account digit runs
+  if (/\b0?\d{2,3}[\s.-]?\d{3}[\s.-]?\d{3}\b/.test(raw)) return null;
 
   let m = raw.match(/^(\d+)\s*[x×]\s+(.+)$/i);
   if (m) {
@@ -302,17 +364,46 @@ export function parseAccesorioLine(line) {
     const descr = m[2].trim().replace(/\s+/g, " ");
     if (descr.length >= 2) return { descr, cantidad: cant };
   }
+  // Lead qty free text: "2 Gotero Frontal…", "6 perfiles U…", "10 Tortugas…"
+  m = raw.match(/^(\d{1,4})\s+([A-Za-zÁÉÍÓÚáéíóúñÑ].{2,})$/);
+  if (m) {
+    const cant = Math.max(1, parseInt(m[1], 10));
+    const descr = m[2].trim().replace(/\s+/g, " ");
+    if (looksLikeAccessoryLine(descr) && cant <= 999) return { descr, cantidad: cant };
+  }
+  // Classic table accessory: "Gotero Frontal … 30 mm   3,03   3   7,15"
+  if (looksLikeAccessoryLine(raw)) {
+    const mm = raw.match(/\b\d{2,3}\s*mm\b/i);
+    const after = mm ? raw.slice(mm.index + mm[0].length) : raw;
+    const classic = parseClassicTableLenQty(after);
+    if (classic && classic.cantidad >= 1) {
+      let descr = raw.replace(/\s+/g, " ").trim();
+      descr = descr.replace(/\s+\d{1,2}[.,]\d{1,2}\s+\d{1,3}\b.*$/, "").trim();
+      if (descr.length >= 3) return { descr, cantidad: classic.cantidad };
+    }
+  }
   m = raw.match(/^(.+?)\s+[-–:]\s*(\d+)\s*(?:uds?\.?|unidades?)?\s*$/i);
   if (m) {
     const descr = m[1].trim().replace(/\s+/g, " ");
     const cant = Math.max(1, parseInt(m[2], 10));
-    if (descr.length >= 2 && !/^\d+$/.test(descr)) return { descr, cantidad: cant };
+    if (descr.length >= 2 && !/^\d+$/.test(descr) && looksLikeAccessoryLine(descr)) {
+      return { descr, cantidad: cant };
+    }
   }
-  m = raw.match(/^(.+?)\s+(\d+)\s*$/);
+  // Trailing bare number only if line looks like an accessory
+  m = raw.match(/^(.+?)\s+(\d+)\s*(?:uds?\.?|unidades?|pzas?|piezas?|bultos?)?\s*$/i);
   if (m) {
     const descr = m[1].trim().replace(/\s+/g, " ");
     const cant = Math.max(1, parseInt(m[2], 10));
-    if (descr.length >= 3 && cant <= 9999 && !/mm\b/i.test(descr)) return { descr, cantidad: cant };
+    const hasUnit = /\b(uds?\.?|unidades?|pzas?|piezas?|bultos?)\b/i.test(raw);
+    if (
+      (hasUnit || looksLikeAccessoryLine(descr)) &&
+      descr.length >= 3 &&
+      cant <= 9999 &&
+      !/mm\b/i.test(descr)
+    ) {
+      return { descr, cantidad: cant };
+    }
   }
   return null;
 }
