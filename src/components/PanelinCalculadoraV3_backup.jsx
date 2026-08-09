@@ -2547,6 +2547,7 @@ export default function PanelinCalculadoraV3() {
     enabled: false,
     tool: "select",
     cut: null,
+    cutZoneGi: null,
     cutDraft: null,
     selectedStripId: null,
     layoutOverride: null,
