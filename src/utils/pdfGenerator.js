@@ -34,7 +34,35 @@ async function getHtml2Pdf() {
   return _html2pdfLoader;
 }
 
-async function htmlToPdfViaHtml2Pdf(htmlString) {
+/**
+ * Pure helper: post-process template HTML for faithful client-side html2canvas capture.
+ * Strips @page (confuses rasterizer in iframe), injects print-emulation overrides
+ * for .page padding, removes screen-only shadows, resets body/html margins.
+ * Ensures layout seen by capture matches the intended print template.
+ */
+export function prepareHtmlForClientCapture(htmlString) {
+  let h = String(htmlString || '');
+  // Remove @page rules (they are for real print/PDF engines, confuse html2canvas)
+  h = h.replace(/@page\s*\{[^}]*\}/gi, '');
+  // Inject capture-time print overrides (idempotent-ish)
+  const override = `
+<style id="client-capture-override">
+  /* Force print-like layout for html2canvas/jsPDF fallback */
+  html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  .page, .presupuesto-container { box-shadow: none !important; margin: 0 !important; padding: 7mm 8mm !important; }
+  @media screen { body { background: #fff !important; } }
+</style>`;
+  if (h.includes('</head>')) {
+    h = h.replace('</head>', override + '</head>');
+  } else if (/<body[^>]*>/i.test(h)) {
+    h = h.replace(/<body([^>]*)>/i, `<body$1>${override}`);
+  } else {
+    h = override + h;
+  }
+  return h;
+}
+
+async function htmlToPdfViaHtml2Pdf(htmlString, filename = "cotizacion.pdf") {
   // Use iframe instead of Shadow DOM — html2canvas cannot render Shadow DOM.
   // The iframe gives full CSS isolation (including :root custom properties)
   // while remaining accessible to html2canvas.
@@ -45,22 +73,25 @@ async function htmlToPdfViaHtml2Pdf(htmlString) {
   try {
     const iDoc = iframe.contentDocument || iframe.contentWindow.document;
     iDoc.open();
-    iDoc.write(htmlString);
+    const prepared = prepareHtmlForClientCapture(htmlString);
+    iDoc.write(prepared);
     iDoc.close();
-    // Allow fonts + layout to settle
-    await new Promise((r) => setTimeout(r, 400));
+    // Allow fonts, external images (logo etc), SVG and complex layout (cotas) to settle.
+    // Complex roof plans with many elements need more time than 400ms.
+    await new Promise((r) => setTimeout(r, 800));
     const html2pdf = await getHtml2Pdf();
     return await html2pdf()
       .set({
         margin: 0,
-        filename: "cotizacion.pdf",
-        image: { type: "jpeg", quality: 0.95 },
+        filename,
+        image: { type: "jpeg", quality: 0.96 },
         html2canvas: {
           scale: 2,
           useCORS: true,
           logging: false,
           letterRendering: true,
           windowWidth: 794,
+          imageTimeout: 15000,
         },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         pagebreak: { mode: ["css", "legacy"], before: ".page" },
@@ -93,7 +124,7 @@ export async function htmlToPdfBlob(htmlString, filename = "cotizacion.pdf") {
     return blob;
   } catch (serverErr) {
     console.warn("[pdfGenerator] server PDF failed, using html2pdf fallback:", serverErr.message);
-    const blob = await htmlToPdfViaHtml2Pdf(htmlString);
+    const blob = await htmlToPdfViaHtml2Pdf(htmlString, filename);
     const duration = Math.round(performance.now() - start);
     console.info(`[pdf] html2pdf fallback — ${filename} | ${(inputSize/1024).toFixed(1)}KB html → ${(blob.size/1024).toFixed(1)}KB pdf in ${duration}ms`);
     return blob;
@@ -104,7 +135,7 @@ export async function htmlToPdfBlob(htmlString, filename = "cotizacion.pdf") {
  * Quick helper: generate PDF and trigger a browser download.
  */
 export async function downloadPdf(htmlString, filename = "cotizacion.pdf") {
-  const blob = await htmlToPdfBlob(htmlString);
+  const blob = await htmlToPdfBlob(htmlString, filename);
   return downloadPdfBlob(blob, filename);
 }
 

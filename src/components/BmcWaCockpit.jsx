@@ -191,6 +191,101 @@ function buildHeaders(token) {
   return h;
 }
 
+/** Human label when message.text is empty. */
+function formatMsgPlaceholder(type) {
+  const t = String(type || "text").toLowerCase();
+  if (t === "audio") return "🎙 Nota de voz";
+  if (t === "image") return "🖼 Imagen";
+  if (t === "video") return "🎬 Video";
+  if (t === "sticker") return "Sticker";
+  if (t === "doc") return "📄 Documento";
+  if (t === "location") return "📍 Ubicación";
+  return `[${t}]`;
+}
+
+function isPlaceholderBody(text) {
+  if (text == null || !String(text).trim()) return true;
+  const t = String(text).trim();
+  return (
+    /^\[(Nota de voz|Imagen|Video|Sticker|Documento|Ubicación)/i.test(t) ||
+    /^🎙|^🖼|^🎬|^📄|^📍/.test(t)
+  );
+}
+
+/** Auth media URL for <img>/<audio> (query key accepted by API). */
+function mediaSrc(apiBase, mediaUrl, token) {
+  if (!mediaUrl) return null;
+  const base = String(apiBase || "").replace(/\/+$/, "");
+  const path = mediaUrl.startsWith("http")
+    ? mediaUrl
+    : `${base}${mediaUrl.startsWith("/") ? "" : "/"}${mediaUrl}`;
+  if (!token) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}key=${encodeURIComponent(token)}`;
+}
+
+function MessageBody({ m, apiBase, token }) {
+  const type = String(m.type || "text").toLowerCase();
+  const src =
+    m.has_media || m.media_url
+      ? mediaSrc(
+          apiBase,
+          m.media_url || `/api/wa/media/${encodeURIComponent(m.msg_id)}`,
+          token,
+        )
+      : null;
+  const bodyText =
+    m.display_text ||
+    m.transcript ||
+    (!isPlaceholderBody(m.text) ? m.text : null) ||
+    null;
+
+  return (
+    <div>
+      {type === "image" && src ? (
+        <a href={src} target="_blank" rel="noreferrer" style={{ display: "block", marginBottom: 6 }}>
+          <img
+            src={src}
+            alt={bodyText || "Imagen"}
+            style={{
+              maxWidth: "100%",
+              maxHeight: 280,
+              borderRadius: 8,
+              display: "block",
+              objectFit: "contain",
+              background: "#00000008",
+            }}
+            loading="lazy"
+          />
+        </a>
+      ) : null}
+      {type === "audio" && src ? (
+        <audio
+          controls
+          preload="metadata"
+          src={src}
+          style={{ width: "100%", maxWidth: 280, marginBottom: 6 }}
+        >
+          <track kind="captions" />
+        </audio>
+      ) : null}
+      {bodyText ? (
+        <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{bodyText}</div>
+      ) : (
+        <em style={{ color: "#8a8a8e" }}>{formatMsgPlaceholder(type)}</em>
+      )}
+      {m.transcript_status === "pending" && type === "audio" ? (
+        <div style={{ fontSize: 11, color: "#8a8a8e", marginTop: 4 }}>Transcribiendo…</div>
+      ) : null}
+      {m.transcript_status === "error" && type === "audio" ? (
+        <div style={{ fontSize: 11, color: "#a4262c", marginTop: 4 }}>
+          Transcripción no disponible
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function BmcWaCockpit() {
   const apiBase = useMemo(() => getCalcApiBase(), []);
 
@@ -898,9 +993,10 @@ export default function BmcWaCockpit() {
               {loadingThread && <div style={{ color: "#8a8a8e", fontSize: 12 }}>cargando…</div>}
               {messages.map((m) => (
                 <div key={m.msg_id} style={m.direction === "out" ? msgOut : msgIn}>
-                  <div>{m.text || <em style={{ color: "#8a8a8e" }}>[{m.type}]</em>}</div>
+                  <MessageBody m={m} apiBase={apiBase} token={token} />
                   <div style={{ fontSize: 10, color: "#6e6e73", marginTop: 4, textAlign: "right" }}>
-                    {fmtTs(m.ts)} · {m.source}
+                    {fmtTs(m.ts)} · {m.type || "text"} · {m.source}
+                    {m.transcript_status ? ` · stt:${m.transcript_status}` : ""}
                   </div>
                 </div>
               ))}

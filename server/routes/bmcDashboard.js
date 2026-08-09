@@ -64,6 +64,14 @@ function logAiCall(eventName, provider, model, usage = {}) {
   }));
 }
 
+import {
+  buildEstadoSheetValue,
+  findSheetRow1BasedByFingerprint,
+  isTerminalSaleStatus,
+  ventasRowIdentityFingerprint,
+  VENTAS_ARCHIVE_TAB_CANDIDATES,
+} from "../../src/utils/logistica/saleState.js";
+
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -220,6 +228,19 @@ function getEndOfWeek(d) {
 function parseDate(val) {
   if (!val) return null;
   if (val instanceof Date) return val;
+  // Sheets in this workspace write D/M/YYYY (es-UY). JS `new Date("14/7/2025")`
+  // either fails or silently swaps to M/D — parse the numeric form explicitly.
+  const m = String(val).trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (m) {
+    const day = Number(m[1]);
+    const month = Number(m[2]);
+    const year = Number(m[3]);
+    const d = new Date(year, month - 1, day);
+    // new Date() normalizes overflow (31/2 → 3/3): reject unless components round-trip.
+    return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
+      ? d
+      : null;
+  }
   const d = new Date(val);
   return isNaN(d.getTime()) ? null : d;
 }
@@ -406,10 +427,35 @@ function ventasRowIsLogisticaRow(r) {
 
 function parseNum(val) {
   if (val == null || val === "") return 0;
-  const s = String(val).trim();
-  const eu = s.replace(/\./g, "").replace(",", ".");
-  const n = parseFloat(eu);
-  return isNaN(n) ? parseFloat(s.replace(/[^\d.-]/g, "")) || 0 : n;
+  const s = String(val).trim().replace(/[^\d.,-]/g, "");
+  if (!s || s === "-" || s === "." || s === ",") return 0;
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+  let normalized;
+  if (lastDot > -1 && lastComma > -1) {
+    // Both present: the rightmost one is the decimal separator.
+    normalized =
+      lastDot > lastComma
+        ? s.replace(/,/g, "") // US: 3,654.00
+        : s.replace(/\./g, "").replace(",", "."); // EU: 1.860,70
+  } else if (lastComma > -1) {
+    // Comma only: thousands if every group after it has 3 digits (1,000 / 1,000,000).
+    const groups = s.split(",");
+    normalized = groups.slice(1).every((g) => g.length === 3) && groups.length > 1 && groups[0].replace("-", "").length <= 3
+      ? s.replace(/,/g, "")
+      : s.replace(",", ".");
+  } else if (lastDot > -1) {
+    // Dot only: thousands if every group after it has 3 digits AND there is more than one dot
+    // or the integer part looks grouped (1.000). A single dot with 1-2 decimals stays decimal.
+    const groups = s.split(".");
+    const looksGrouped =
+      groups.slice(1).every((g) => g.length === 3) && groups[0].replace("-", "").length <= 3 && groups.length > 1;
+    normalized = looksGrouped && groups[groups.length - 1].length === 3 ? s.replace(/\./g, "") : s;
+  } else {
+    normalized = s;
+  }
+  const n = parseFloat(normalized);
+  return isNaN(n) ? 0 : n;
 }
 
 function mapPagos2026ToCanonical(row) {
@@ -1116,6 +1162,15 @@ function formatIsoDateToDdMmYyyy(iso) {
   return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
+
+/**
+ * Ventas 2.0 column letters: F=estado free text, H=FECHA ENTREGA.
+ */
+const VENTAS_LOGISTICA_COL = {
+  estadoText: "F",
+  fechaEntrega: "H",
+};
+
 async function getSheetTabTitleByGid(spreadsheetId, gid) {
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
@@ -1160,6 +1215,334 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
   invalidateVentasSheetsReadCache(ventasSheetId);
   return { ok: true, range, value };
 }
+
+async function resolveVentasArchiveTabTitle(sheets, spreadsheetId) {
+  const meta = await withSheetsReadRetry("spreadsheets.get", () =>
+    sheets.spreadsheets.get({ spreadsheetId })
+  );
+  const titles = (meta.data.sheets || []).map((s) => s.properties?.title).filter(Boolean);
+  for (const cand of VENTAS_ARCHIVE_TAB_CANDIDATES) {
+    const hit = titles.find((t) => String(t).trim().toLowerCase() === cand.toLowerCase());
+    if (hit) return hit;
+  }
+  // fuzzy: contains "realizadas" + (entegad|entregad|enviad)
+  const fuzzy = titles.find((t) => {
+    const n = String(t).toLowerCase();
+    return /realizad/.test(n) && /(entegad|entregad|enviad)/.test(n);
+  });
+  return fuzzy || null;
+}
+
+
+async function handleVentasLogisticaEstado(ventasSheetId, body) {
+  const gid = body?.gid;
+  const row1Based = Number(body?.row1Based);
+  if (!ventasSheetId) throw new Error("Ventas sheet no configurado (BMC_VENTAS_SHEET_ID)");
+  if (gid == null || String(gid).trim() === "") throw new Error("Missing gid (pestaña)");
+  if (!Number.isFinite(row1Based) || row1Based < 2) throw new Error("row1Based inválido (mín. 2)");
+
+  const status = String(body?.status || "").trim().toLowerCase();
+  const allowed = new Set(["por_coordinar", "coordinado", "con_pendientes", "entregado", "enviado"]);
+  if (!allowed.has(status)) throw new Error("status inválido");
+  // Terminal statuses must go through logistica-entregado (archive move). Plain F/H
+  // write would hide the row from "Cargar actuales" without archiving → operational loss.
+  if (isTerminalSaleStatus(status) && body?.allowTerminal !== true) {
+    throw new Error(
+      "status entregado/enviado requiere POST /api/ventas/logistica-entregado (confirm + archivo)",
+    );
+  }
+
+  const tabTitle = await getSheetTabTitleByGid(ventasSheetId, gid);
+  if (!tabTitle) throw new Error("No se encontró la pestaña para ese gid");
+
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const safeTab = String(tabTitle).replace(/'/g, "''");
+
+  // Read current F so we can preserve free text when building markers server-side
+  let existingEstado = String(body?.estadoText || "");
+  if (!body?.estadoText) {
+    try {
+      const cur = await sheets.spreadsheets.values.get({
+        spreadsheetId: ventasSheetId,
+        range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${row1Based}`,
+      });
+      existingEstado = String(cur.data.values?.[0]?.[0] || "");
+    } catch {
+      /* keep empty */
+    }
+  }
+
+  const fechaIso =
+    body?.fechaEntrega === "" || body?.fechaEntrega == null
+      ? ""
+      : String(body.fechaEntrega).trim();
+  const fechaVal =
+    !fechaIso || status === "por_coordinar" ? "" : formatIsoDateToDdMmYyyy(fechaIso);
+  const camion =
+    body?.camion != null && body.camion !== ""
+      ? Math.floor(Number(body.camion))
+      : null;
+  const tte = body?.transportista ? String(body.transportista).slice(0, 40) : "";
+  const comment = body?.comment ? String(body.comment).replace(/[[\]]/g, "").slice(0, 120) : "";
+
+  // Prefer shared builder (linear marker strip — avoids CodeQL ReDoS on ESTADO).
+  // If client already sent a full LOGISTICA marker cell, keep it as-is.
+  const estadoVal =
+    body?.estadoText != null && String(body.estadoText).includes("[LOGISTICA:")
+      ? String(body.estadoText)
+      : buildEstadoSheetValue(existingEstado, {
+          status,
+          fechaIso: fechaVal ? fechaIso : null,
+          camion: camion && Number.isFinite(camion) && camion >= 1 ? camion : null,
+          transportista: tte,
+          comment,
+        });
+
+  const data = [
+    {
+      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${row1Based}`,
+      values: [[estadoVal]],
+    },
+    {
+      range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.fechaEntrega}${row1Based}`,
+      values: [[fechaVal]],
+    },
+  ];
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: ventasSheetId,
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data,
+    },
+  });
+
+  invalidateVentasSheetsReadCache(ventasSheetId);
+  return {
+    ok: true,
+    status,
+    row1Based,
+    tab: tabTitle,
+    estadoText: estadoVal,
+    fechaEntrega: fechaVal,
+    camion: camion && Number.isFinite(camion) ? camion : null,
+  };
+}
+
+/**
+ * Confirm entregado/enviado: update estado, optional remito→Drive, move row to archive tab.
+ * body: {
+ *   gid, row1Based, mode: 'entregado'|'enviado',
+ *   comment?, remitoBase64?, remitoFileName?,
+ *   cliente?, orderId?, carpetaDrive?, quotationCode?, confirm: true
+ * }
+ */
+
+async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) {
+  if (!body?.confirm) throw new Error("confirm=true requerido (popup de confirmación)");
+  const mode = String(body?.mode || "entregado").toLowerCase() === "enviado" ? "enviado" : "entregado";
+  const gid = body?.gid;
+  const row1Based = Number(body?.row1Based);
+  if (!ventasSheetId) throw new Error("Ventas sheet no configurado (BMC_VENTAS_SHEET_ID)");
+  if (gid == null || String(gid).trim() === "") throw new Error("Missing gid (pestaña)");
+  if (!Number.isFinite(row1Based) || row1Based < 2) throw new Error("row1Based inválido (mín. 2)");
+
+  const tabTitle = await getSheetTabTitleByGid(ventasSheetId, gid);
+  if (!tabTitle) throw new Error("No se encontró la pestaña para ese gid");
+
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const safeTab = String(tabTitle).replace(/'/g, "''");
+
+  // Fail-fast: resolve archive BEFORE mutating the active row (avoids orphan
+  // "entregado" markers when the archive tab is missing).
+  const archiveTitle = await resolveVentasArchiveTabTitle(sheets, ventasSheetId);
+  if (!archiveTitle) {
+    throw new Error(
+      "No se encontró pestaña de archivo (Enviados / Ventas Realizadas y Entegadas) en el workbook",
+    );
+  }
+  const safeArchive = String(archiveTitle).replace(/'/g, "''");
+
+  // Read full row + identity fingerprint (orderId/nombre/tel/dir) BEFORE any write.
+  const rowRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: ventasSheetId,
+    range: `'${safeTab}'!A${row1Based}:ZZ${row1Based}`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const rowData = rowRes.data.values?.[0] || [];
+  if (!rowData.length) throw new Error("Fila vacía o no encontrada");
+  const identityFp = ventasRowIdentityFingerprint(rowData);
+  if (!identityFp.replace(/\u0001/g, "").trim()) {
+    throw new Error("Fila sin identidad usable (pedido/nombre/tel/dir vacíos) — abortado para no borrar otra venta");
+  }
+
+  // Update estado marker on source row (internal allowTerminal — archive follows).
+  await handleVentasLogisticaEstado(ventasSheetId, {
+    gid,
+    row1Based,
+    status: mode,
+    fechaEntrega: body?.fechaEntrega || "",
+    comment: body?.comment || "",
+    transportista: body?.transportista || "",
+    camion: body?.camion,
+    allowTerminal: true,
+  });
+
+  // Re-locate by fingerprint (concurrent deletes above this row shift indices).
+  const afterEstadoRow1 = await locateVentasRow1BasedByFingerprint(
+    sheets,
+    ventasSheetId,
+    safeTab,
+    identityFp,
+    row1Based,
+  );
+  if (afterEstadoRow1 == null) {
+    throw new Error(
+      "La fila cambió o fue borrada durante la confirmación (otra operación concurrente). Reintentá.",
+    );
+  }
+
+  const rowRes2 = await sheets.spreadsheets.values.get({
+    spreadsheetId: ventasSheetId,
+    range: `'${safeTab}'!A${afterEstadoRow1}:ZZ${afterEstadoRow1}`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const rowToArchive = rowRes2.data.values?.[0] || rowData;
+
+  // Optional remito upload
+  let remito = null;
+  if (body?.remitoBase64) {
+    try {
+      const { saveRemitoToDrive } = await import("../lib/driveUpload.js");
+      remito = await saveRemitoToDrive({
+        rootFolderId: config.driveQuoteFolderId || process.env.DRIVE_QUOTE_FOLDER_ID || "",
+        buffer: Buffer.from(String(body.remitoBase64), "base64"),
+        fileName: body.remitoFileName || `remito-firmado-${mode}.pdf`,
+        cliente: body.cliente || rowToArchive[8] || "",
+        orderId: body.orderId || rowToArchive[2] || "",
+        quotationCode: body.quotationCode || body.orderId || "",
+        carpetaDriveHint: body.carpetaDrive || "",
+      });
+    } catch (err) {
+      remito = { ok: false, error: err?.message || String(err) };
+    }
+  }
+
+  // Append to archive
+  const safeRow = rowToArchive.map((c) => {
+    const s = String(c ?? "");
+    // formula injection guard
+    if (/^[=+\-@]/.test(s)) return `'${s}`;
+    return s;
+  });
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: ventasSheetId,
+    range: `'${safeArchive}'!A:A`,
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: [safeRow] },
+  });
+
+  // CRITICAL: never delete by the original row1Based after append — concurrent
+  // archive/deletes shift rows and would erase a different sale. Re-find by fingerprint.
+  const deleteRow1 = await locateVentasRow1BasedByFingerprint(
+    sheets,
+    ventasSheetId,
+    safeTab,
+    identityFp,
+    afterEstadoRow1,
+  );
+
+  let deleted = false;
+  let deleteWarning = null;
+  if (deleteRow1 == null) {
+    // Already archived; source row gone (likely concurrent delete of same sale) — do not guess.
+    deleteWarning =
+      "Fila origen no encontrada tras archivar (posible operación concurrente). No se borró ninguna otra fila.";
+  } else {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: ventasSheetId });
+    const src = (meta.data.sheets || []).find((s) => s.properties?.title === tabTitle);
+    const numericSheetId = src?.properties?.sheetId;
+    if (numericSheetId === undefined) {
+      throw new Error(`Tab origen '${tabTitle}' no encontrado para borrar fila`);
+    }
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: ventasSheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: numericSheetId,
+                dimension: "ROWS",
+                startIndex: deleteRow1 - 1,
+                endIndex: deleteRow1,
+              },
+            },
+          },
+        ],
+      },
+    });
+    deleted = true;
+  }
+
+  invalidateVentasSheetsReadCache(ventasSheetId);
+  return {
+    ok: true,
+    mode,
+    moved: true,
+    deleted,
+    deleteWarning,
+    fromTab: tabTitle,
+    toTab: archiveTitle,
+    archivedRowPreview: {
+      nombre: rowToArchive[8] || "",
+      orderId: rowToArchive[2] || "",
+    },
+    remito,
+  };
+}
+
+/**
+ * Scan source tab for a row matching identity fingerprint.
+ * @returns {Promise<number|null>} 1-based row
+ */
+
+async function locateVentasRow1BasedByFingerprint(
+  sheets,
+  spreadsheetId,
+  safeTab,
+  fingerprint,
+  hintRow1Based,
+) {
+  // Fast path: hint still matches
+  if (Number.isFinite(hintRow1Based) && hintRow1Based >= 2) {
+    try {
+      const hintRes = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${safeTab}'!A${hintRow1Based}:ZZ${hintRow1Based}`,
+        valueRenderOption: "FORMATTED_VALUE",
+      });
+      const cells = hintRes.data.values?.[0];
+      if (cells && ventasRowIdentityFingerprint(cells) === fingerprint) {
+        return hintRow1Based;
+      }
+    } catch {
+      /* fall through to full scan */
+    }
+  }
+
+  const allRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${safeTab}'!A2:ZZ`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const dataRows = allRes.data.values || [];
+  return findSheetRow1BasedByFingerprint(dataRows, fingerprint, hintRow1Based);
+}
+
 
 async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
@@ -1511,16 +1894,24 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
 }
 
 // Export the core writers so Productos Maestro (and future surfaces) can reuse them
-export { pushMatrizPricingOverrides, handleUpdateStock };
+export { pushMatrizPricingOverrides, handleUpdateStock, parseNum, parseDate };
 
 // ─── Router ───────────────────────────────────────────────────────────────
 
-export default function createBmcDashboardRouter(config) {
+export default function createBmcDashboardRouter(config, deps = {}) {
   const router = Router();
   const requireEmailIngestAuth = makeRequireEmailIngestAuth(config);
   const sheetId = config.bmcSheetId || "";
   const schema = config.bmcSheetSchema || "Master_Cotizaciones";
   const { sheetName: cotizSheet, opts: cotizOpts } = getCotizacionesSheetOpts(schema);
+  const getCrmSheetsWriteFn = deps.getCrmSheetsWrite || getCrmSheetsWrite;
+  const fetchImpl = deps.fetch || fetch;
+  const sendWhatsAppTextImpl = deps.sendWhatsAppText || sendWhatsAppText;
+  const sendEmailReplyImpl = deps.sendEmailReply || sendEmailReply;
+  const mirrorMlSendApprovedToOmniImpl =
+    deps.mirrorMlSendApprovedToOmni || mirrorMlSendApprovedToOmni;
+  const getEmailIngestPoolImpl = deps.getEmailIngestPool || getEmailIngestPool;
+  const getIngestByRowImpl = deps.getIngestByRow || getIngestByRow;
 
   router.use((_req, res, next) => {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -2385,10 +2776,15 @@ export default function createBmcDashboardRouter(config) {
           model: result.model || null,
         });
       } catch (err) {
+        // Prefer non-empty err.errors; empty [] is truthy in JS so guard length.
+        const details =
+          Array.isArray(err?.errors) && err.errors.length > 0
+            ? err.errors
+            : [err?.message || "All providers failed"].filter(Boolean);
         return res.status(503).json({
           ok: false,
           error: "All providers failed",
-          details: err.errors || [err.message],
+          details,
         });
       }
     }
@@ -2975,6 +3371,36 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     }
   });
 
+  /** Logística: actualiza estado (F) + fecha (H). Terminal statuses require logistica-entregado. */
+  router.post("/ventas/logistica-estado", requireCrmCockpitWrite, async (req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const result = await handleVentasLogisticaEstado(config.bmcVentasSheetId, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+  /**
+   * Confirm Entregado/Enviado: archive append then delete source row by identity fingerprint
+   * (never delete by stale row1Based after concurrent row shifts).
+   */
+  router.post("/ventas/logistica-entregado", requireCrmCockpitWrite, async (req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const result = await handleVentasLogisticaEntregado(
+        config.bmcVentasSheetId,
+        req.body || {},
+        config,
+      );
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+
   /** Overrides calculadora → celdas MATRIZ (BROMYROS u otras pestañas aprobadas). Mismo auth que CRM cockpit. */
   router.post("/matriz/push-pricing-overrides", requireCrmCockpitWrite, async (req, res) => {
     const matrizId = config.bmcMatrizSheetId;
@@ -3265,7 +3691,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row` });
     if (!checkSheetsAvailable(config)) return noConfig(res);
     try {
-      const sheets = await getCrmSheetsWrite();
+      const sheets = await getCrmSheetsWriteFn();
       const r = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
         range: `'${CRM_TAB}'!A${row}:AK${row}`,
@@ -3288,22 +3714,31 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const base = String(config.publicBaseUrl || `http://127.0.0.1:${config.port}`).replace(/\/$/, "");
 
       if (qid && (/ML/i.test(origen) || /Q:\d+/.test(parsed.observaciones))) {
-        const fr = await fetch(`${base}/ml/questions/${qid}/answer`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
-        });
-        const data = await fr.json().catch(() => ({}));
-        if (!fr.ok) {
-          return res.status(502).json({ ok: false, error: "ML answer failed", status: fr.status, details: data });
+        let data = {};
+        try {
+          const fr = await fetchImpl(`${base}/ml/questions/${qid}/answer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+          });
+          data = await fr.json().catch(() => ({}));
+          if (!fr.ok) {
+            return res.status(502).json({ ok: false, error: "ML answer failed", status: fr.status, details: data });
+          }
+        } catch (e) {
+          return res.status(502).json({ ok: false, error: "ML answer failed", detail: e.message });
         }
         const sentAt = new Date().toISOString();
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[sentAt]] },
-        });
+        try {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [[sentAt]] },
+          });
+        } catch (e) {
+          return res.status(503).json({ ok: false, error: "Sheets update failed", detail: e.message });
+        }
 
         // KB: human-approved ML answer → save as high-confidence active entry
         const kbQuestion = String(parsed.consulta || parsed.observaciones || "").trim();
@@ -3324,7 +3759,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           });
         }
 
-        void mirrorMlSendApprovedToOmni({
+        void mirrorMlSendApprovedToOmniImpl({
           config,
           logger: req.log,
           questionId: qid,
@@ -3341,27 +3776,36 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         }
         const to = parsed.telefono;
         if (!to) return res.status(400).json({ ok: false, error: "Missing phone (column D)" });
-        const wa = await sendWhatsAppText({
-          to,
-          text,
-          accessToken: config.whatsappAccessToken,
-          phoneNumberId: config.whatsappPhoneNumberId,
-        });
+        let wa;
+        try {
+          wa = await sendWhatsAppTextImpl({
+            to,
+            text,
+            accessToken: config.whatsappAccessToken,
+            phoneNumberId: config.whatsappPhoneNumberId,
+          });
+        } catch (e) {
+          return res.status(502).json({ ok: false, error: "WhatsApp send failed", detail: e.message });
+        }
         const sentAt = new Date().toISOString();
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[sentAt]] },
-        });
+        try {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [[sentAt]] },
+          });
+        } catch (e) {
+          return res.status(503).json({ ok: false, error: "Sheets update failed", detail: e.message });
+        }
         return res.json({ ok: true, channel: "whatsapp", questionId: null, sentAt, wa });
       }
 
       if (/Email/i.test(origen)) {
         // Recipient + receiving casilla: prefer the ingest log (keyed by CRM row),
         // fall back to parsing an address out of the row (col D / observaciones).
-        const ingestPool = getEmailIngestPool(config.databaseUrl);
-        const meta = await getIngestByRow(ingestPool, row);
+        const ingestPool = getEmailIngestPoolImpl(config.databaseUrl);
+        const meta = await getIngestByRowImpl(ingestPool, row);
         const recipient =
           extractEmailAddress(meta?.remitente) ||
           extractEmailAddress(parsed.telefono) ||
@@ -3371,8 +3815,11 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         }
         const casilla = meta?.account || config.emailReplyDefaultCasilla || "";
         try {
-          await sendEmailReply({
+          await sendEmailReplyImpl({
             account: casilla,
+            // Reply must leave from the receiving casilla (verified Gmail
+            // send-as alias), not the hub account's default identity.
+            from: casilla || undefined,
             to: recipient,
             subject: "Re: Tu consulta — BMC Uruguay",
             text,
@@ -3383,12 +3830,16 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           return res.status(code).json({ ok: false, error: "Email send failed", detail: e.message });
         }
         const sentAt = new Date().toISOString();
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[sentAt]] },
-        });
+        try {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [[sentAt]] },
+          });
+        } catch (e) {
+          return res.status(503).json({ ok: false, error: "Sheets update failed", detail: e.message });
+        }
         return res.json({ ok: true, channel: "email", to: recipient, casilla, sentAt });
       }
 
@@ -3399,11 +3850,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       });
     } catch (e) {
       req.log?.error({ err: e }, "crm/cockpit/send-approved failed");
-      // Mixed route: outer catch wraps the CRM Sheets read/stamp AND the outbound
-      // send (WA/ML can throw before the Sheets update). Keep 500 here so an
-      // outbound-channel failure is not masked as "Sheets unavailable" (503).
-      // Proper per-branch 502 (send) vs 503 (Sheets) mapping is a follow-up.
-      return res.status(500).json({ ok: false, error: e.message });
+      return res.status(503).json({ ok: false, error: e.message });
     }
   }
 

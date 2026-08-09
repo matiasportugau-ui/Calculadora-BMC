@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-07-19T10:04:10Z",
+  "system_slug": "calculadora-fletes",
+  "sdd_path": "docs/team/SDD-CALCULADORA-FLETES.md",
+  "auditor": "sdd-quality-auditor",
+  "branch": "feat/panelin-build-max-b01-done",
+  "composite": 72,
+  "min_pass": 90,
+  "pass": false,
+  "label": "Usable with gaps",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 55,
+      "notes": [
+        "Frontmatter complete (title/version/date/status/author)",
+        "Schema drift vs SCHEMA-CONTRACT: §6 is Component View (AI N/A nested), §7 Domain Rules displaces Data Flow, Data Flow is §8",
+        "§8 Deployment View missing entirely (P0)",
+        "Glossary is §13; §12 is Delivery plan (appendix-like content in body)",
+        "No {placeholder} tokens; Open questions section is fine as appendix-like"
+      ]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 85,
+      "notes": [
+        "C4Context + C4Container + sequenceDiagram present and renderable",
+        "Actors mostly correct; /logistica modeled as System_Ext though packing is an internal JS module (minor fidelity issue)",
+        "No C4 Component (L3) diagram — acceptable for non-AI module if §6 table covers components"
+      ]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 72,
+      "notes": [
+        "Strong domain rules (§7) + TARIFAS_LOGISTICAS sketch enable rebuild of tariff logic",
+        "Missing deploy/env map: ships inside Vite SPA + Vercel; FX helper path/name not cited",
+        "Implementation file paths (fleteEngine.js, cargoPacking.js, FleteCotizarPanel.jsx, brouFx.js, tests) not listed in SDD",
+        "DoD checkboxes still unchecked despite status implemented-draft / changelog 0.3"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 55,
+      "notes": [
+        "No CONFIRMED/INFERRED tags or path:line citations",
+        "Changelog claims implementation; code exists on disk (spot-checked) but SDD does not cite it",
+        "Evidence drift: SDD says BROU FX; brouFx.js uses uy.dolarapi.com source dolarapi_uy",
+        "Costa −10% on non–1-fila scenarios still TBD in SDD — correctly open, not invented"
+      ]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 90,
+      "notes": [
+        "Explicit N/A for v1 (no LLM) with optional future note — correct for this system class",
+        "Heading not titled '## 6. AI Architecture' (schema naming gap, scored under schema)"
+      ]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 75,
+      "notes": [
+        "§9 covers security, reliability, performance, observability, cost — thin but domain-relevant",
+        "Missing sustainability; FX failure mode documented; no rate-limit/abuse notes (low relevance)"
+      ]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 82,
+      "notes": [
+        "Six meaningful ADRs with consequences",
+        "Most lack Alternatives considered; ADR-004/005 thinner than ADR-001/002"
+      ]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 78,
+      "notes": [
+        "Version 0.3, changelog, open questions, glossary present",
+        "status still Draft while claiming implemented-draft — agent ambiguity",
+        "No Evidence Index / Recreation Checklist companion"
+      ]
+    }
+  },
+  "q0_schema_checklist": {
+    "frontmatter": { "title": true, "version": true, "date": true, "status": true, "author": true },
+    "sections_present_by_name": {
+      "1_Introduction": true,
+      "2_Context_Scope": true,
+      "3_Constraints": true,
+      "4_Solution_Strategy": true,
+      "5_Container_View": true,
+      "6_AI_Architecture": "partial_nested_under_component_view",
+      "7_Data_Flow": "renumbered_to_8",
+      "8_Deployment_View": false,
+      "9_Crosscutting": "as_Quality_attributes",
+      "10_ADRs": true,
+      "11_Risks": true,
+      "12_Glossary": "renumbered_to_13"
+    },
+    "diagrams": { "C4Context": true, "C4Container": true, "sequenceDiagram": true },
+    "content": { "no_placeholders": true, "ai_na_or_table": true, "adr_count": 6, "risks_table": true }
+  }
+}

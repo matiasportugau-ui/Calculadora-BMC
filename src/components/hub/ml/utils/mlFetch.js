@@ -1,4 +1,13 @@
 import { getCalcApiBase } from '../../../../utils/calcApiBase.js';
+import { ensureIdentityJwt, refreshIdentityJwt } from '../../../../utils/operatorApiClient.js';
+
+/** Prefer Vercel same-origin rewrites for /ml/* and /auth/ml/* (matches BmcAuthProvider). */
+function getMlApiBase() {
+  if (typeof window !== 'undefined' && /\.vercel\.app$/i.test(window.location.hostname)) {
+    return '';
+  }
+  return getCalcApiBase();
+}
 
 /**
  * Fetch helper for the ML Manager module.
@@ -8,26 +17,39 @@ import { getCalcApiBase } from '../../../../utils/calcApiBase.js';
  * So we resolve the base URL through `getCalcApiBase()` — the same helper the
  * calculator and ML Operativo modules use — and inherit its origin/proxy logic.
  *
- * Auth: the backend holds the seller's OAuth token server-side, so these routes
- * need no client-side API key. We send credentials in case the API host shares
- * the session cookie.
+ * Auth: `/ml/*` and `/api/ml/*` require a valid identity JWT (`Authorization: Bearer`).
+ * Legacy cockpit tokens in localStorage are intentionally NOT sent here — they caused
+ * misleading 401s while `/auth/ml/status` still showed "Cuenta conectada".
+ * On 401, mlFetch retries once after silent `/api/auth/refresh` (BmcAuthProvider).
  */
 export async function mlFetch(path, init = {}) {
-  const base = getCalcApiBase();
-  const { body, ...rest } = init;
+  const base = getMlApiBase();
+  const { body, _authRetried, ...rest } = init;
 
-  const res = await fetch(`${base}${path}`, {
-    credentials: 'include',
-    ...rest,
-    headers: {
-      'Content-Type': 'application/json',
-      ...init.headers,
-    },
-    // Auto-stringify object bodies so callers can pass plain objects.
-    ...(body !== undefined
-      ? { body: typeof body === 'string' ? body : JSON.stringify(body) }
-      : {}),
-  });
+  async function doFetch(retryAuth) {
+    const token = String((await ensureIdentityJwt()) || '').trim();
+    return fetch(`${base}${path}`, {
+      credentials: 'include',
+      ...rest,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init.headers,
+      },
+      ...(body !== undefined
+        ? { body: typeof body === 'string' ? body : JSON.stringify(body) }
+        : {}),
+    });
+  }
+
+  let res = await doFetch(false);
+
+  if (res.status === 401 && !_authRetried) {
+    const refreshed = await refreshIdentityJwt();
+    if (refreshed) {
+      res = await doFetch(true);
+    }
+  }
 
   if (!res.ok) {
     const err = new Error(`ML API ${res.status}`);

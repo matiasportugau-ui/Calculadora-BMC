@@ -79,6 +79,12 @@ export function buildAutomationContext(payload) {
     sender: payload.message?.sender,
     body: payload.message?.body,
     body_ai_category: payload.body_ai_category,
+    trigger_event: payload.trigger_event,
+    sequence: payload.sequence || {
+      bucket: payload.sequence_bucket,
+      hours_since_last_customer_reply: payload.hours_since_last_customer_reply,
+      requires_template: payload.requires_template,
+    },
     conversation: {
       id: payload.conversation_id,
       status: payload.conversation_status || "open",

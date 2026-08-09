@@ -80,10 +80,8 @@ export function mapOmniSuggestion(r) {
     // wa cockpit renders options[] with {text,tone}; omni stores one body + tone in meta.
     options: [{ text: r.body, tone: meta.tone || "sugerida" }],
     chosen_idx: r.approval_state === "accepted" ? 0 : null,
-    // omni_suggestions has no resolution-timestamp column today, so chosen_at can't be
-    // sourced (it stays null even when accepted). Add a `resolved_at` column + populate
-    // it on the approve path in a future Phase-2 change if the cockpit needs the time.
-    chosen_at: null,
+    // resolved_at is stamped by resolveSuggestion() on accept/reject (migration 015).
+    chosen_at: r.approval_state === "accepted" ? r.resolved_at || null : null,
     sent_msg_id: null,
     provider: meta.provider || null,
     latency_ms: meta.latency_ms ?? null,
@@ -156,7 +154,7 @@ export function buildOmniSuggestionsSql({ chatId, onlyPending, limit }) {
   if (onlyPending) where.push("s.approval_state = 'pending'");
   const text = `
     SELECT s.id, c.channel_conversation_id AS chat_id, s.message_id, s.body, s.metadata,
-           s.approval_state, s.created_at, m.body_ai_category
+           s.approval_state, s.resolved_at, s.created_at, m.body_ai_category
       FROM omni_suggestions s
       JOIN omni_conversations c ON c.id = s.conversation_id
       LEFT JOIN omni_messages m ON m.id = s.message_id

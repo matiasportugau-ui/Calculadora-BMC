@@ -87,7 +87,7 @@ export const config = {
   bmcVentasSheetId: process.env.BMC_VENTAS_SHEET_ID || "",
   bmcStockSheetId: process.env.BMC_STOCK_SHEET_ID || "",
   // Wolfboard — Admin 2.0 ↔ CRM sync (dashboard :3849)
-  wolfbAdminSheetId: process.env.WOLFB_ADMIN_SHEET_ID || "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
+  wolfbAdminSheetId: process.env.WOLFB_ADMIN_SHEET_ID || "",
   wolfbAdminTab: process.env.WOLFB_ADMIN_TAB || "Admin.",
   wolfbCrmMainTab: process.env.WOLFB_CRM_MAIN_TAB || "CRM_Operativo",
   /** Libro CRM (crm_automatizado). Vacío = mismo que bmcSheetId. */
@@ -102,8 +102,7 @@ export const config = {
   /** Primera fila de datos H:K en Admin 2.0 (default 2). */
   wolfbAdminFirstDataRow: Number(process.env.WOLFB_ADMIN_FIRST_DATA_ROW || process.env.WOLFB_ADMIN_DATA_ROW || 2),
   /** MATRIZ de COSTOS y VENTAS 2026 — workbook canónico (Google Sheets nativo). */
-  bmcMatrizSheetId:
-    process.env.BMC_MATRIZ_SHEET_ID || "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
+  bmcMatrizSheetId: process.env.BMC_MATRIZ_SHEET_ID || "",
   googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
   /** JSONL Panelin Knowledge (events-log); default docs/team/knowledge/events-log.jsonl */
   aiKnowledgeEventsLog: process.env.AI_KNOWLEDGE_EVENTS_LOG || "",
@@ -133,6 +132,15 @@ export const config = {
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 (404 "no longer available"); 2.5-flash is the live model. Used by the SSE chat streaming path (agentChat.js) + visionExtract.
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
+  // OpenRouter — terminal open-source-model fallback. Aggregates open-weights
+  // models (Llama, Mistral, DeepSeek, Qwen) behind an OpenAI-compatible API, with
+  // free tiers. Tried LAST so the seam never runs out of AI even if all four
+  // commercial providers fail at once. Requires an explicit fallback flag because
+  // this routes customer conversations and the full system prompt through a new
+  // third-party data boundary.
+  openrouterApiKey: process.env.OPENROUTER_API_KEY || "",
+  openrouterFallbackEnabled: bool(process.env.OPENROUTER_FALLBACK_ENABLED, false),
+  openrouterModel: process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
   // Vercel AI Gateway (unified multi-provider).
   // Set AI_GATEWAY_API_KEY (or rely on VERCEL_OIDC_TOKEN populated via `vercel env pull`)
   // to route /crm/suggest-response, /crm/parse-email, /crm/ingest-email, and
@@ -144,6 +152,15 @@ export const config = {
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+  // Meta Instagram DM / Facebook Messenger — dormant until cm-0 app review closes.
+  omniIgEnabled: bool(process.env.OMNI_IG_ENABLED, false),
+  omniFbEnabled: bool(process.env.OMNI_FB_ENABLED, false),
+  igVerifyToken: process.env.IG_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "",
+  fbVerifyToken: process.env.FB_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "",
+  igPageToken: process.env.IG_PAGE_TOKEN || "",
+  fbPageToken: process.env.FB_PAGE_TOKEN || "",
+  igAppSecret: process.env.IG_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
+  fbAppSecret: process.env.FB_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
   // Shopify (questions/quotes flow – Mercado Libre replacement)
   shopifyClientId: process.env.SHOPIFY_CLIENT_ID || "",
   shopifyClientSecret: process.env.SHOPIFY_CLIENT_SECRET || "",
@@ -152,6 +169,24 @@ export const config = {
     "read_products,write_products,read_orders,write_orders,read_customers,read_draft_orders,write_draft_orders",
   shopifyWebhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET || "",
   shopifyQuestionsSheetTab: process.env.SHOPIFY_QUESTIONS_SHEET_TAB || "Shopify_Preguntas",
+  /**
+   * Google Ads API (requerido para /api/ads/*) — ver docs/procedimientos/GOOGLE-ADS-SETUP.md.
+   * `googleAdsLoginCustomerId` es la MCC ("BMC Manager"); `customerId` (la cuenta
+   * anunciante real, ej. BMC Uruguay) se pasa por request, nunca hardcoded acá.
+   */
+  googleAdsDeveloperToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN || "",
+  googleAdsOAuthClientId: process.env.GOOGLE_ADS_OAUTH_CLIENT_ID || "",
+  googleAdsOAuthClientSecret: process.env.GOOGLE_ADS_OAUTH_CLIENT_SECRET || "",
+  googleAdsRefreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN || "",
+  googleAdsLoginCustomerId: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || "",
+  /**
+   * Meta Ads Marketing API (optional — Live Insights for /api/marketing/ads/meta/*).
+   * System user token — NOT FB_PAGE_TOKEN / WhatsApp messaging tokens.
+   * Account id from env only (e.g. act_123); never hardcode production act_ in client.
+   * See docs/procedimientos/META-ADS-SETUP.md
+   */
+  metaAdsAccessToken: process.env.META_ADS_ACCESS_TOKEN || "",
+  metaAdsAccountId: process.env.META_ADS_ACCOUNT_ID || "",
   /**
    * Postgres connection string. Usado por:
    * - Modo Transportista (viajes / eventos / outbox) — `transportista-cursor-package/migrations/`.
@@ -162,6 +197,9 @@ export const config = {
    * (Top-20 run 2026-05-11 #L10: doc ampliado para reflejar el doble uso.)
    */
   databaseUrl: process.env.DATABASE_URL || "",
+  /** Finanzas hub — shared module password (Doppler only; never commit). */
+  finanzasModulePassword: process.env.FINANZAS_MODULE_PASSWORD || "",
+  finanzasUnlockTtlHours: Math.max(1, Math.min(72, Number(process.env.FINANZAS_UNLOCK_TTL_HOURS || 12))),
   /** Google Tasks OAuth 2.0 client (separate from identity.authGoogle login OAuth) */
   googleTasksClientId: process.env.GOOGLE_TASKS_CLIENT_ID || "",
   googleTasksClientSecret: process.env.GOOGLE_TASKS_CLIENT_SECRET || "",
@@ -213,6 +251,8 @@ export const config = {
   transportistaGcsBucket: process.env.TRANSPORTISTA_GCS_BUCKET || "",
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
   transportistaOutboxIntervalMs: Number(process.env.TRANSPORTISTA_OUTBOX_INTERVAL_MS || 15000),
+  /** When true, do not start the transportista outbox worker (local DBs without migrations). */
+  transportistaOutboxDisabled: bool(process.env.TRANSPORTISTA_OUTBOX_DISABLED, false),
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
   /** TraKtiMe — time tracking + invoicing. Reuses databaseUrl. */
   traktimeSheetId: process.env.TRAKTIME_SHEET_ID || "",
@@ -244,13 +284,27 @@ export const config = {
   waTtlDays: Number(process.env.WA_TTL_DAYS || 180),
   /** GCS bucket for persistent quote PDFs — allUsers:objectViewer required. Default: bmc-cotizaciones */
   gcsQuotesBucket: process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
+  /** Kill switch for real PDF rendering inside /calc/cotizar/pdf (agent path).
+   *  Set COTIZAR_PDF_RENDER=0 to restore HTML-only behavior instantly. */
+  cotizarPdfRenderEnabled: process.env.COTIZAR_PDF_RENDER !== "0",
   /** Drive folder for uploaded quote HTML files (server/lib/driveUpload.js) */
   driveQuoteFolderId: process.env.DRIVE_QUOTE_FOLDER_ID || "",
   /** Allowed CORS origins — comma-separated. Defaults to Vercel prod + local dev. */
   corsOrigins: (
     process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
-      : ["https://calculadora-bmc.vercel.app", "http://localhost:5173", "http://localhost:3001"]
+      : [
+          "https://calculadora-bmc.vercel.app",
+          "https://panelin-workspace.vercel.app",
+          "http://localhost:5173",
+          "http://127.0.0.1:5173",
+          "http://localhost:3001",
+          "http://127.0.0.1:3001",
+          "http://localhost:3000", // panelin-workspace Next UI (ADR-008)
+          "http://localhost:3002", // panelin-workspace when :3000 taken
+          "http://localhost:3100", // panelin-workspace e2e / alternate Next port
+          "http://127.0.0.1:3100",
+        ]
   ),
   /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */
   identityJwtSecret: process.env.IDENTITY_JWT_SECRET || "",
@@ -296,6 +350,15 @@ export const config = {
   ragTopK: Math.max(1, Math.min(10, Number(process.env.RAG_TOP_K || 5))),
   /** Similitud mínima coseno para incluir un caso (0-1, default 0.70). */
   ragThreshold: Math.max(0, Math.min(1, Number(process.env.RAG_THRESHOLD || 0.70))),
+  /**
+   * IMP-10 — Fuse RAG embedding hits with Training KB keyword boost in chat inject.
+   * Only applies when ragEnabled; default OFF.
+   */
+  ragHybrid: bool(process.env.RAG_HYBRID, false),
+  /** α weight for embedding similarity in hybrid fuse (0–1). */
+  ragHybridAlpha: Math.max(0, Math.min(1, Number(process.env.RAG_HYBRID_ALPHA || 0.7))),
+  /** β weight for KB keyword boost (0–1). */
+  ragHybridBeta: Math.max(0, Math.min(1, Number(process.env.RAG_HYBRID_BETA || 0.3))),
   /** Omni Core — cross-channel inbox shadow writes (default OFF in prod) */
   omniWaShadowWrite: bool(process.env.OMNI_WA_SHADOW_WRITE, false),
   omniMlShadowWrite: bool(process.env.OMNI_ML_SHADOW_WRITE, false),
@@ -331,9 +394,12 @@ export const config = {
   omniDealsSheetsAuthority: bool(process.env.OMNI_DEALS_SHEETS_AUTHORITY, true),
   otelEnabled: bool(process.env.OTEL_ENABLED, false),
   /**
-   * AI Assistant control plane — master switch. Comma-separated allowlist of assistant keys
-   * allowed to GENERATE AI responses. Anything not listed returns 503 assistant_disabled on its
-   * AI-generation route (inbound ingest/webhooks stay ungated — no messages are lost).
+   * AI Assistant control plane — master switch. Comma- or semicolon-separated allowlist of
+   * assistant keys allowed to GENERATE AI responses. Anything not listed returns 503
+   * assistant_disabled on its AI-generation route (inbound ingest/webhooks stay ungated — no
+   * messages are lost). Semicolons are accepted because the deploy-cloudrun action's env_vars
+   * block splits on commas — a repo Variable like `canales,ml` gets truncated to `canales`
+   * in transit, while `canales;ml` survives (found the hard way, 2026-07-04).
    * Default `canales` in production; local API (appEnv=development) enables all assistants.
    * Keys: canales, panelin, email, wa, ml, wolfboard. `seam` (shared agentCore) is always enabled.
    * See server/lib/assistantRegistry.js for the registry.
@@ -343,7 +409,7 @@ export const config = {
     : appEnv === "development"
       ? "canales,panelin,email,wa,ml,wolfboard"
       : "canales")
-    .split(",")
+    .split(/[,;]/)
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
   omniAiWorkerIntervalMs: Math.max(2000, Number(process.env.OMNI_AI_WORKER_INTERVAL_MS || 5000)),
@@ -359,6 +425,13 @@ export const config = {
    */
   omniFrtWorkerEnabled: bool(process.env.OMNI_FRT_WORKER_ENABLED, false),
   omniFrtWorkerIntervalMs: Math.max(30_000, Number(process.env.OMNI_FRT_WORKER_INTERVAL_MS || 300_000)),
+  /**
+   * Gap 4 — temporal follow-up sequence evaluator. Default OFF: it only
+   * creates HITL suggestions (never sends), but still intentionally requires a
+   * deliberate prod flip because it can generate operator-visible drafts.
+   */
+  omniSequencesEnabled: bool(process.env.OMNI_SEQUENCES_ENABLED, false),
+  omniSequencesIntervalMs: Math.max(60_000, Number(process.env.OMNI_SEQUENCES_INTERVAL_MS || 300_000)),
   /**
    * Centralized AI brain (self-evolving, human-verified lessons) injected into the agent system prompt.
    * Default OFF: ships dormant. Flipping ON is customer-facing — do it deliberately after dev validation.

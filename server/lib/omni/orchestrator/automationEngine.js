@@ -21,22 +21,27 @@ export { ALLOWED_CONVERSATION_STATUSES } from "../conversationStatus.js";
  */
 export async function runAutomationForEvent(pool, payload, opts = {}) {
   if (!pool) return { matched: [], simulated: opts.simulate };
-  if (!config.omniAutomationEnabled && !opts.simulate) return { matched: [] };
+  if (!config.omniAutomationEnabled && !opts.simulate && !opts.force) return { matched: [] };
 
   const span = startOmniSpan("omni.automation.run", { trace_id: payload.trace_id });
   const ctx = buildAutomationContext(payload);
+  const triggerEvent = opts.triggerEvent || payload.trigger_event || "message.ingested";
 
+  const params = [triggerEvent];
+  const ruleIdClause = opts.ruleId ? "AND id = $2" : "";
+  if (opts.ruleId) params.push(opts.ruleId);
   const { rows: rules } = await pool.query(
     `SELECT id, name, priority, trigger_event, conditions, actions, requires_approval
      FROM omni_automation_rules
      WHERE enabled = true AND trigger_event = $1
+       ${ruleIdClause}
      ORDER BY priority ASC`,
-    ["message.ingested"],
+    params,
   );
 
   const matched = [];
   for (const rule of rules) {
-    if (!evaluateConditions(rule.conditions, ctx)) continue;
+    if (!opts.skipConditions && !evaluateConditions(rule.conditions, ctx)) continue;
 
     const actions = Array.isArray(rule.actions) ? rule.actions : [];
     if (opts.simulate) {
@@ -44,26 +49,32 @@ export async function runAutomationForEvent(pool, payload, opts = {}) {
       continue;
     }
 
-    const idempotencyKey = `auto:${rule.id}:${payload.message_id}`;
+    const idempotencyKey = opts.idempotencyKey?.(rule, payload) || payload.idempotency_key || `auto:${rule.id}:${payload.message_id}`;
+    if (Array.isArray(opts.allowedActionTypes)) {
+      const allowed = new Set(opts.allowedActionTypes);
+      if (actions.some((action) => !allowed.has(action?.type))) continue;
+    }
+    const hitlDraftOnly = actions.length > 0 && actions.every((action) => action?.type === "ai_draft_followup");
     const runIns = await pool.query(
       `INSERT INTO omni_automation_runs (rule_id, idempotency_key, status)
        VALUES ($1, $2, $3)
        ON CONFLICT (idempotency_key) DO NOTHING
        RETURNING id, status`,
-      [rule.id, idempotencyKey, rule.requires_approval ? "pending_approval" : "running"],
+      [rule.id, idempotencyKey, rule.requires_approval && !hitlDraftOnly ? "pending_approval" : "running"],
     );
     if (!runIns.rows[0]) continue;
 
     const runId = runIns.rows[0].id;
-    if (rule.requires_approval) {
+    if (rule.requires_approval && !hitlDraftOnly) {
       matched.push({ rule_id: rule.id, run_id: runId, status: "pending_approval" });
       continue;
     }
-
     const results = [];
+    const actionCtx = { ...ctx, rule: { id: rule.id, name: rule.name, trigger_event: rule.trigger_event } };
+    const actionPayload = { ...payload, rule_id: rule.id, automation_run_id: runId };
     try {
       for (const action of actions) {
-        results.push(await executeAction(pool, action, payload, ctx));
+        results.push(await executeAction(pool, action, actionPayload, actionCtx));
       }
       await pool.query(
         `UPDATE omni_automation_runs SET status = 'completed', actions_result = $2::jsonb, completed_at = now()
@@ -125,6 +136,30 @@ async function executeAction(pool, action, payload, ctx) {
         input_json: { source: "automation" },
       });
       return { type, job_id: jobId };
+    }
+    case "ai_draft_followup": {
+      const jobId = await enqueueAiJob(pool, {
+        job_type: "suggest",
+        message_id: payload.message_id,
+        conversation_id: payload.conversation_id,
+        channel: payload.channel,
+        input_json: {
+          source: "sequence",
+          action: "ai_draft_followup",
+          automation_rule_id: payload.rule_id || ctx.rule?.id || null,
+          automation_run_id: payload.automation_run_id || null,
+          trigger_event: payload.trigger_event || null,
+          requires_approval: true,
+          requires_template: Boolean(payload.requires_template),
+          sequence: {
+            bucket: payload.sequence_bucket || null,
+            hours_since_last_customer_reply: payload.hours_since_last_customer_reply ?? null,
+            last_customer_at: payload.last_customer_at || null,
+            last_agent_at: payload.last_agent_at || null,
+          },
+        },
+      });
+      return { type, job_id: jobId, requires_approval: true, requires_template: Boolean(payload.requires_template) };
     }
     case "create_deal": {
       const { rows: convRows } = await pool.query(

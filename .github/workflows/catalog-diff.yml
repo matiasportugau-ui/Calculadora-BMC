@@ -45,13 +45,13 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # necesitamos el `constants.js` de la base para el gate de regresión
           persist-credentials: false # no dejar el token en el git config (lo lee el código del PR)
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
 
@@ -88,7 +88,7 @@ jobs:
 
       - name: Upload report artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: catalog-diff-report
           path: catalog-diff-report.md
@@ -113,13 +113,13 @@ jobs:
       pull-requests: write
     steps:
       - name: Download report artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true # puede no existir si la MATRIZ no estaba disponible
         with:
           name: catalog-diff-report
 
       - name: Upsert PR comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');

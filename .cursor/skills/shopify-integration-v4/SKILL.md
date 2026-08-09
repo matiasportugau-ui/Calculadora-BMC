@@ -12,6 +12,8 @@ description: >-
 
 **Before working:** Read `docs/team/knowledge/Integrations.md` if it exists.
 
+**Full-store connector (design, catalog, theme, Admin/Storefront, extensions):** use [`shopify-complete-connector`](../shopify-complete-connector/SKILL.md). This skill stays focused on questions/quotes → Sheet → approve/send.
+
 Replaces Mercado Libre questions & quotes with a Shopify-backed flow: questions → Sheet → suggested reply → one-click send. Uruguay/LATAM focus, production hardening, OAuth 2.1–aligned.
 
 ## Propagation

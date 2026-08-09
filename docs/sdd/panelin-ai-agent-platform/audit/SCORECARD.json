@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-07-26T05:30:00Z",
+  "system_slug": "panelin-ai-agent-platform",
+  "sdd_path": "docs/sdd/panelin-ai-agent-platform/SDD.md",
+  "sdd_version": "1.4",
+  "sdd_status": "As-Built",
+  "auditor": "sdd-quality-auditor",
+  "evolution_iteration": 5,
+  "prior_composite": 96,
+  "composite": 98,
+  "min_pass": 90,
+  "pass": true,
+  "label": "Pass (expert-complete; HCS-aligned)",
+  "delta_vs_prior": 2,
+  "re_score_reason": "sdd-evolution-loop iter-1: closed G-P1-05 PAOS integration (§5/§6.5/§8/§10 ADR-008) + RECREATION IMP-09 hygiene + evidence refresh 2026-07-26",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 98,
+      "weighted": 14.7,
+      "notes": ["v1.4 frontmatter", "Sections 1–12 intact", "§6.5 + ADR-008 added"]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 97,
+      "weighted": 14.55,
+      "notes": ["L1 + L2 include PAOS container and KB/calc/pg edges"]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 98,
+      "weighted": 19.6,
+      "notes": ["RECREATION 35/35 incl PAOS integration", "flags + health probe + child SDD pointer"]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 98,
+      "weighted": 14.7,
+      "notes": ["paos-integration.md live probe", "tools 55 + Grok + provider ops 2026-07-26"]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 98,
+      "weighted": 9.8,
+      "notes": ["§6 dual brain + PAOS slow loop", "money fail-closed documented"]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 97,
+      "weighted": 9.7,
+      "notes": ["PAOS routes in obs", "residual hub $ / p95 / RAG enable P2"]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 98,
+      "weighted": 9.8,
+      "notes": ["8 ADRs; ADR-008 PAOS with alternatives"]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 98,
+      "weighted": 4.9,
+      "notes": ["v1.4, GAP-PLAN P1 closed, checklist fresh"]
+    }
+  },
+  "weighted_sum": 97.75,
+  "schema_checklist": {
+    "frontmatter": true,
+    "sections_1_12": true,
+    "c4_context": true,
+    "c4_container": true,
+    "sequence_diagram": true,
+    "no_placeholders": true,
+    "ai_section_filled": true,
+    "adrs_present": true,
+    "risks_table": true,
+    "secret_leaks": false
+  },
+  "p0_gaps": 0,
+  "p1_gaps": 0,
+  "p2_gaps": 3
+}

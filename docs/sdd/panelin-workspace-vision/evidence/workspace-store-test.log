@@ -1,0 +1,15 @@
+◇ injected env (61) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+▶ workspaceStore durable customers/quotes/files
+  ✔ createCustomer + getCustomer round-trip (438.414875ms)
+  ✔ createQuote linked to customer + getQuote (704.730792ms)
+  ✔ createFile linked to customer+quote and list by quoteId (1121.509ms)
+  ✔ listCustomers finds by name fragment (420.771334ms)
+✔ workspaceStore durable customers/quotes/files (3499.1965ms)
+ℹ tests 4
+ℹ suites 1
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3701.866625

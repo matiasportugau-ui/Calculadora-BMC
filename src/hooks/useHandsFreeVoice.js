@@ -15,9 +15,19 @@ export const hasWake = (text) => {
   return n.replace(/[^a-z0-9]/g, "").includes("panelin") || WAKE_WORDS.some((w) => n.includes(w));
 };
 
+/** Exponential backoff for wake-word SpeechRecognition onend restarts (B-02). */
+export function wakeRestartDelayMs(attempt) {
+  const n = Math.max(0, Number(attempt) || 0);
+  const base = 150;
+  const max = 4000;
+  return Math.min(max, base * 2 ** Math.min(n, 5));
+}
+
+const WAKE_RESTART_MAX_ATTEMPTS = 12;
+
 export function useHandsFreeVoice({ onError, send, messages = [] }) {
   const [status, setStatus] = useState("idle");
-  const [phase, setPhase] = useState("Esperando &quot;Panelin&quot;…");
+  const [phase, setPhase] = useState("Esperando 'Panelin'…");
   const [transcript, setTranscript] = useState([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [vuLevel, setVuLevel] = useState(0);
@@ -31,6 +41,8 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
   const bargeInRecRef = useRef(null);
   const thinkingTimeoutRef = useRef(null);
   const startWakeWordDetectionRef = useRef(null);
+  const wakeRestartAttemptRef = useRef(0);
+  const wakeRestartTimerRef = useRef(null);
 
   useEffect(() => {
     const getSR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -186,6 +198,8 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
 
     SR.current.onresult = (event) => {
       updateVU();
+      // Any recognition activity means the engine is healthy — reset backoff.
+      wakeRestartAttemptRef.current = 0;
       let hasWakeWord = false;
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -197,6 +211,10 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
       }
 
       if (hasWakeWord && currentPhaseRef.current === "waking") {
+        if (wakeRestartTimerRef.current) {
+          clearTimeout(wakeRestartTimerRef.current);
+          wakeRestartTimerRef.current = null;
+        }
         SR.current.abort();
         playBeep();
         setPhase(PHASE_LISTENING);
@@ -211,7 +229,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
         setStatus("error");
       } else if (event.error === "network" || event.error === "audio-capture") {
         // Don't let a dead recognition loop masquerade as a healthy "waiting"
-        // state — show a transient hint; onend below restarts and resets the phase.
+        // state — show a transient hint; onend below restarts with backoff.
         console.warn("[voice] wake word error:", event.error);
         if (currentPhaseRef.current === "waking") setPhase("Reconectando voz…");
       } else if (event.error !== "no-speech") {
@@ -220,21 +238,35 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     };
 
     SR.current.onend = () => {
-      if (currentPhaseRef.current === "waking") {
-        // Restart if still in wake phase
-        setTimeout(() => {
-          if (currentPhaseRef.current === "waking" && SR.current) {
-            try {
-              SR.current.start();
-              setPhase("Esperando 'Panelin'…"); // clear any "Reconectando voz…" hint
-            } catch {
-              // start() throws if recognition is already running — safe to ignore
-            }
-          }
-        }, 100);
+      if (currentPhaseRef.current !== "waking") return;
+
+      const attempt = wakeRestartAttemptRef.current;
+      if (attempt >= WAKE_RESTART_MAX_ATTEMPTS) {
+        setPhase("Voz pausada — tocá el micrófono");
+        setStatus("error");
+        onError?.("Reconocimiento de voz se reinició demasiadas veces. Tocá el micrófono para reintentar.");
+        return;
       }
+
+      wakeRestartAttemptRef.current = attempt + 1;
+      const delay = wakeRestartDelayMs(attempt);
+      if (attempt >= 2) setPhase("Reconectando voz…");
+
+      if (wakeRestartTimerRef.current) clearTimeout(wakeRestartTimerRef.current);
+      wakeRestartTimerRef.current = setTimeout(() => {
+        wakeRestartTimerRef.current = null;
+        if (currentPhaseRef.current === "waking" && SR.current) {
+          try {
+            SR.current.start();
+            setPhase("Esperando 'Panelin'…");
+          } catch {
+            // start() throws if recognition is already running — safe to ignore
+          }
+        }
+      }, delay);
     };
 
+    wakeRestartAttemptRef.current = 0;
     SR.current.start();
     setStatus("active");
     currentPhaseRef.current = "waking";
@@ -304,6 +336,11 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
   }, [onError, startWakeWordDetection]);
 
   const stop = useCallback(() => {
+    if (wakeRestartTimerRef.current) {
+      clearTimeout(wakeRestartTimerRef.current);
+      wakeRestartTimerRef.current = null;
+    }
+    wakeRestartAttemptRef.current = 0;
     if (SR.current) SR.current.abort();
     if (bargeInRecRef.current) bargeInRecRef.current.abort();
     window.speechSynthesis?.cancel();

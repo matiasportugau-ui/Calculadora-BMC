@@ -1,0 +1,18 @@
+{
+  "id": "18-canal-panelin-chat-saludo",
+  "description": "panelin_chat surface: greeting stays tool-light (no quote without measures).",
+  "calcState": "empty",
+  "surface": "panelin_chat",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Buenas, soy nuevo, qué hacen?" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" },
+    { "type": "tool_not_called", "name": "calcular_cotizacion" }
+  ],
+  "timeoutMs": 60000
+}

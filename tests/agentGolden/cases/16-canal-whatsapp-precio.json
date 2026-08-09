@@ -1,0 +1,18 @@
+{
+  "id": "16-canal-whatsapp-precio",
+  "description": "WhatsApp surface: short answer about price list without inventing a verified quote.",
+  "calcState": "empty",
+  "surface": "whatsapp",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Cuánto sale el panel de 50mm?" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" },
+    { "type": "text_max_chars", "value": 700 }
+  ],
+  "timeoutMs": 60000
+}

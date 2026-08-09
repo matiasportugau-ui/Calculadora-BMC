@@ -1,14 +1,16 @@
 import express from "express";
-import crypto from "node:crypto";
 import { verifyWhatsAppSignature } from "../lib/whatsappSignature.js";
 import { verifyMLSignature } from "../lib/mlSignature.js";
 import { config } from "../config.js";
+import { createMlWebhookBuffer, createMlWebhookProcessor } from "../lib/mlWebhookService.js";
 
 // This module begins the monolith decomposition (Phase 1 from the audit).
 // The raw body parsers for /webhooks/whatsapp and /webhooks/shopify remain in server/index.js
 // (they must run before json parsing). We mount this router after those parsers.
 
 const router = express.Router();
+const mlWebhookBuffer = createMlWebhookBuffer(250);
+const mlWebhookProcessor = createMlWebhookProcessor({ config, buffer: mlWebhookBuffer });
 
 // ML webhook (signature verification + basic handling)
 router.post("/ml", async (req, res, next) => {
@@ -39,10 +41,14 @@ router.post("/ml", async (req, res, next) => {
       }
     }
 
-    req.log?.info({ topic: req.headers["x-topic"] }, "MercadoLibre webhook received");
+    const event = mlWebhookProcessor.handleWebhook({
+      body: req.body,
+      query: req.query,
+      headers: req.headers,
+      autoMode: { fullAuto: false },
+    });
 
-    // TODO (next iteration): move event buffering + CRM sync trigger here or to a service
-    res.status(200).json({ ok: true });
+    res.status(200).json({ ok: true, eventId: event.id });
   } catch (err) {
     next(err);
   }

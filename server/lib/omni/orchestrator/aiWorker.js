@@ -62,6 +62,25 @@ export function buildSuggestionMetadata(result, prompt, retrieval = {}) {
   };
 }
 
+function buildSuggestionMetadataForJob(result, prompt, retrieval, jobRow) {
+  const metadata = buildSuggestionMetadata(result, prompt, retrieval);
+  const input = jobRow?.input_json && typeof jobRow.input_json === "object" ? jobRow.input_json : {};
+  if (input.source === "sequence" || input.action === "ai_draft_followup") {
+    return {
+      ...metadata,
+      source: "sequence",
+      action: "ai_draft_followup",
+      automation_rule_id: input.automation_rule_id || input.rule_id || null,
+      automation_run_id: input.automation_run_id || null,
+      trigger_event: input.trigger_event || null,
+      requires_approval: true,
+      requires_template: Boolean(input.requires_template),
+      sequence: input.sequence || {},
+    };
+  }
+  return metadata;
+}
+
 /**
  * @param {import('pg').Pool} pool
  * @param {object} job
@@ -167,6 +186,46 @@ export async function enqueueIngestAiJobs(pool, payload) {
   }
 
   return ids.filter(Boolean);
+}
+
+/**
+ * Force the canonical WA CRM-sync job to run ASAP for the current conversation,
+ * preserving the same operator-visible 🚀 affordance used by the legacy path.
+ *
+ * Preferred behavior: if the coalesced non-terminal `wa_crm_sync` row already
+ * exists, pull its `run_after` window to `now()` so the worker can claim it
+ * immediately. If a row does not yet exist (unexpected but possible under future
+ * refactors), enqueue one without debounce.
+ *
+ * @param {import('pg').Pool} pool
+ * @param {{ conversation_id: string, message_id: string, channel?: string }} payload
+ * @returns {Promise<{mode:"expedited"|"enqueued"|"skipped", jobId?:string|null}>}
+ */
+export async function triggerWaCrmSyncNow(pool, payload) {
+  if (!pool || !payload?.conversation_id || !payload?.message_id) {
+    return { mode: "skipped", jobId: null };
+  }
+
+  const upd = await pool.query(
+    `UPDATE omni_ai_jobs
+        SET run_after = now()
+      WHERE conversation_id = $1
+        AND job_type = 'wa_crm_sync'
+        AND status IN ('pending', 'failed')
+      RETURNING id`,
+    [payload.conversation_id],
+  );
+  if (upd.rows[0]?.id) {
+    return { mode: "expedited", jobId: upd.rows[0].id };
+  }
+
+  const jobId = await enqueueAiJob(pool, {
+    job_type: "wa_crm_sync",
+    message_id: payload.message_id,
+    conversation_id: payload.conversation_id,
+    channel: payload.channel || "wa",
+  });
+  return { mode: "enqueued", jobId };
 }
 
 export async function getDailyAiCost(pool) {
@@ -278,7 +337,7 @@ export async function processAiJob(pool, jobRow, logger) {
             jobRow.id,
             channel,
             body,
-            JSON.stringify(buildSuggestionMetadata(result, prompt, retrieval)),
+            JSON.stringify(buildSuggestionMetadataForJob(result, prompt, retrieval, jobRow)),
           ],
         );
       }

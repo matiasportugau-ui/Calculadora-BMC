@@ -99,6 +99,18 @@ flowchart LR
 
 ---
 
+## Gold scenarios — Co-Work / Admin (Wave 4)
+
+Use with Live ON + DEV when validating regressions (see also [panelin-cowork](../panelin-cowork/SKILL.md)):
+
+1. **Cotizar fila N** — `sheets_get_pending_admin` / `wolfboard_pendientes` → extract → `aplicar_estado_calc` tool (not ACTION_JSON type) → `calcular_cotizacion`.
+2. **Cargar lead al Admin** — confirm → `wa_lead_to_admin` (not `wolfboard_quote_batch`).
+3. **Barrido julio** — `listar_cotizaciones_recientes` with `desde`/`hasta`; no client name required.
+4. **Gmail vs Admin** — if operator says Gmail, use OCR + `email_panelsim_resumen`; never claim Admin list is Gmail.
+5. **Redactar mail** — `email_borrador_saliente`; refuse send.
+
+---
+
 ## Fase E — Mejores prácticas (operativo, no SFT)
 
 - **Versionado de política:** tras cambios fuertes de MATRIZ/precios/logística, actualizar KB Markdown + re-exportar corpus si entrenás o auditás con datos viejos.

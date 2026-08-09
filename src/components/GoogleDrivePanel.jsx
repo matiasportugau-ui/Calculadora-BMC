@@ -40,6 +40,16 @@ function StatusBadge({ connected }) {
   );
 }
 
+function isScopeErrorMessage(error) {
+  const msg = String(error || "");
+  return (
+    /Faltan permisos de Google Drive/i.test(msg) ||
+    /ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(msg) ||
+    /insufficient authentication scopes/i.test(msg) ||
+    /insufficientPermissions/i.test(msg)
+  );
+}
+
 export default function GoogleDrivePanel({
   visible,
   onClose,
@@ -51,6 +61,7 @@ export default function GoogleDrivePanel({
   currentUser,
   onSignIn,
   onSignOut,
+  onReconnectDrive,
   quotations,
   loading,
   saving,
@@ -66,6 +77,7 @@ export default function GoogleDrivePanel({
   onFolderConfigured,
 }) {
   const listRef = useRef(null);
+  const showReconnect = !!(error && isScopeErrorMessage(error) && onReconnectDrive);
 
   if (!visible) return null;
 
@@ -203,14 +215,32 @@ export default function GoogleDrivePanel({
           </div>
         )}
 
-        {/* Error */}
+        {/* Error — scope-insufficient shows reconnect CTA for team Gmails */}
         {error && (
           <div style={{
             margin: "10px 20px", padding: "10px 14px", borderRadius: 10,
             background: C.dangerSoft, color: C.danger,
-            fontSize: 13, display: "flex", alignItems: "center", gap: 8,
+            fontSize: 13, display: "flex", flexDirection: "column", gap: 10,
           }}>
-            <AlertTriangle size={14} /> {error}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, lineHeight: 1.4 }}>
+              <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span style={{ wordBreak: "break-word" }}>{error}</span>
+            </div>
+            {showReconnect && (
+              <button
+                type="button"
+                onClick={onReconnectDrive}
+                style={{
+                  alignSelf: "stretch",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "9px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  border: "none", background: C.primary, color: "#fff",
+                  cursor: "pointer", transition: TR,
+                }}
+              >
+                <LogIn size={14} /> Reconectar permisos de Drive
+              </button>
+            )}
           </div>
         )}
 

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { PANELIN_VERSION_BADGE } from "../appSemver.js";
+import { trackLeadEvent } from "../utils/leadTracking.js";
 import { mqCompactPdfModal, isPhoneViewportWidth, isTabletViewportWidth, isCompactMainLayoutWidth } from "../constants/viewportBreakpoints.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import StockWebHint from "./StockWebHint.jsx";
@@ -109,6 +110,7 @@ import { Line, OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
   initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
+  reconnectDrive as gdriveReconnect,
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
   saveQuotation as gdriveSaveQuotation,
   listQuotations, loadProjectFromFolder, deleteQuotation,
@@ -127,13 +129,26 @@ import RoofPreview, { RoofPreviewMetricsSidebar } from "./RoofPreview.jsx";
 const RoofPanelRealisticScene = lazy(() => import("./RoofPanelRealisticScene.jsx"));
 import { PanelFamilyShowcase } from "./PanelFamilyShowcase.jsx";
 import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
+import Roof3DSection from "./roof3d/Roof3DSection.jsx";
 import ScenarioStepIcon from "./ScenarioStepIcon.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import FleteCotizarPanel from "./FleteCotizarPanel.jsx";
 import { useChat } from "../hooks/useChat.js";
-import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
+import PanelinCharacter from "./PanelinCharacter.jsx";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
+import { openPanelinCoworkDesk, openPanelinCoworkPinned } from "../utils/openPanelinCoworkDesk.js";
+import { COWORK_MSG, onPanelinCoworkMessage, postCalcState } from "../utils/panelinCoworkChannel.js";
+import PanelinFloatingChatShell, {
+  createFloatingDragHandler,
+  readDefaultFloatingRect,
+} from "./PanelinFloatingChatShell.jsx";
+import {
+  panelinPanelGroupStorage,
+  panelinMainSplitAutoSaveId,
+  readStoredChatPresentation,
+} from "../utils/panelinChatLayoutStorage.js";
 import EmailAgentPanel from "./EmailAgentPanel.jsx";
 import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
 
@@ -2481,6 +2496,7 @@ const TECHO_INITIAL_VENDEDOR = {
   pendiente: 0, pendienteModo: "incluye_pendiente", alturaDif: 0,
   // @deprecated — ignorado en runtime; usar derivedTipoAguas (calculado desde zonas[].dosAguas)
   tipoAguas: "", tipoEst: "", ptsHorm: 0, ptsMetal: 0, ptsMadera: 0,
+  estructuraOmitida: false,
   borders: { frente: "", fondo: "", latIzq: "", latDer: "" },
   inclAccesorios: true,
   bordesExtendido: false,
@@ -2538,6 +2554,41 @@ export default function PanelinCalculadoraV3() {
   const [scenario, _setScenario] = useState("solo_techo");
   const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
+  /** Per-zone stepped schedules from RoofPreview modo irregular. */
+  const [irregularLayoutByGi, setIrregularLayoutByGi] = useState(() => ({}));
+  /**
+   * Shared cut session so left wizard plant and right visor stay in sync.
+   * left = factory (stepped pedido); right = final_plane (smooth roof).
+   */
+  const [irregularSession, setIrregularSession] = useState(() => ({
+    enabled: false,
+    tool: "select",
+    cut: null,
+    cutDraft: null,
+    selectedStripId: null,
+    layoutOverride: null,
+  })); // patches via RoofPreview must use functional setState (mergeIrregularSessionPatch)
+  const handleIrregularLayoutChange = useCallback((layout, gi) => {
+    setIrregularLayoutByGi((prev) => {
+      const next = { ...prev };
+      if (layout?.strips?.length && Number.isFinite(Number(gi))) {
+        next[Number(gi)] = layout;
+        return next;
+      }
+      if (Number.isFinite(Number(gi))) {
+        delete next[Number(gi)];
+        return next;
+      }
+      // Clear all when gi missing and layout null
+      if (layout == null) return {};
+      // Fallback: store as zone 0
+      if (layout?.strips?.length) {
+        next[0] = layout;
+        return next;
+      }
+      return prev;
+    });
+  }, []);
   const [pared, _setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [techoAnchoModo, _setTechoAnchoModo] = useState("paneles"); // "metros" | "paneles"
   const [camara, _setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
@@ -2562,6 +2613,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const params = new URLSearchParams(window.location.search);
     return params.get("chat") === "1" || params.get("panelinDetached") === "1";
   });
+  const [chatPresentation, setChatPresentation] = useState(() => {
+    if (typeof window === "undefined") return "sidebar";
+    return readStoredChatPresentation(isCompactMainLayoutWidth(window.innerWidth));
+  });
+  const [floatingRect, setFloatingRect] = useState(() => readDefaultFloatingRect());
+  const floatingShellRef = useRef(null);
+  const floatingRectRef = useRef(floatingRect);
+
+  const persistChatPresentation = useCallback((mode) => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("panelin-chat-presentation", mode);
+    }
+  }, []);
+
   const [devMode, setDevMode] = useState(() => {
     if (typeof window === "undefined") return false;
     return sessionStorage.getItem("panelin-dev-mode") === "1";
@@ -2763,6 +2828,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     onAction: handleChatAction,
     devMode,
     devAuthToken,
+    operatorAccessToken: bmcAuth?.accessToken || "",
     persistHistory: false,
   });
   chatSendRef.current = chat.send;
@@ -2808,17 +2874,165 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (isDetachedChatWindow) setChatOpen(true);
   }, [isDetachedChatWindow]);
 
-  const openDetachedChatWindow = useCallback(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("chat", "1");
-    url.searchParams.set("panelinDetached", "1");
-    window.open(
-      url.toString(),
-      "panelin-chat-detached",
-      "popup=yes,width=1280,height=900,resizable=yes,scrollbars=yes"
-    );
+  useEffect(() => {
+    if (!isCompactMainLayoutWidth(viewportWidth)) return;
+    setChatPresentation((prev) => {
+      if (prev === "sidebar") return prev;
+      persistChatPresentation("sidebar");
+      return "sidebar";
+    });
+  }, [viewportWidth, persistChatPresentation]);
+
+  useEffect(() => {
+    floatingRectRef.current = floatingRect;
+  }, [floatingRect]);
+
+  const useSidebarChat = chatOpen && !isDetachedChatWindow && chatPresentation === "sidebar";
+  const useFloatingChat = chatOpen && !isDetachedChatWindow && chatPresentation === "floating";
+
+  const openChat = useCallback(() => {
+    setChatOpen(true);
   }, []);
+
+  const closeChat = useCallback(() => {
+    setChatOpen(false);
+  }, []);
+
+  const requestFloatingChat = useCallback(() => {
+    if (isCompactMainLayoutWidth(viewportWidth)) return;
+    setChatPresentation("floating");
+    persistChatPresentation("floating");
+    setChatOpen(true);
+  }, [persistChatPresentation, viewportWidth]);
+
+  const returnChatToSidebar = useCallback(() => {
+    setChatPresentation("sidebar");
+    persistChatPresentation("sidebar");
+    setChatOpen(true);
+  }, [persistChatPresentation]);
+
+  const panelinChatAuthHeader = useMemo(() => (
+    devMode && devAuthToken
+      ? `Bearer ${devAuthToken}`
+      : bmcAuth?.accessToken
+        ? `Bearer ${bmcAuth.accessToken}`
+        : undefined
+  ), [devMode, devAuthToken, bmcAuth?.accessToken]);
+
+  const openDetachedChatWindow = useCallback(() => {
+    // SDD Co-Work §10.4: dedicated desk route (named window panelin-cowork).
+    openPanelinCoworkDesk();
+    // Push latest calcState so the desk is not empty on first open.
+    postCalcState(calcState);
+  }, [calcState]);
+
+  /** PR-H: Document PiP (iframe desk) or popup fallback. */
+  const openPinnedChatWindow = useCallback(async () => {
+    postCalcState(calcState);
+    await openPanelinCoworkPinned();
+    postCalcState(calcState);
+  }, [calcState]);
+
+  // Publish calcState to desk window + apply chat actions coming from desk.
+  useEffect(() => {
+    postCalcState(calcState);
+  }, [calcState]);
+
+  useEffect(() => {
+    return onPanelinCoworkMessage((msg) => {
+      if (msg.type === COWORK_MSG.CHAT_ACTION && msg.payload) {
+        handleChatAction(msg.payload);
+      }
+      if (msg.type === COWORK_MSG.HELLO) {
+        postCalcState(calcState);
+      }
+    });
+  }, [calcState, handleChatAction]);
+
+  const onFloatingHeaderDrag = useMemo(
+    () => createFloatingDragHandler({
+      rectRef: floatingRectRef,
+      shellRef: floatingShellRef,
+      onRectChange: setFloatingRect,
+    }),
+    [],
+  );
+
+  const panelinChatPanelProps = useMemo(() => ({
+    messages: chat.messages,
+    isStreaming: chat.isStreaming,
+    send: chat.send,
+    clearSuggestionsForMessage: chat.clearSuggestionsForMessage,
+    stop: chat.stop,
+    retry: chat.retry,
+    clear: chat.clear,
+    error: chat.error,
+    devMode,
+    onToggleDevMode: toggleDevMode,
+    devMeta: chat.devMeta,
+    trainingEntries: chat.trainingEntries,
+    trainingStats: chat.trainingStats,
+    promptPreview: chat.promptPreview,
+    promptSections: chat.promptSections,
+    onSaveCorrection: chat.saveCorrection,
+    onSendFeedback: chat.sendFeedback,
+    onReloadTrainingKB: chat.reloadTrainingKB,
+    onReloadPromptPreview: chat.reloadPromptPreview,
+    onReloadPromptSections: chat.reloadPromptSections,
+    onSavePromptSection: chat.savePromptSection,
+    onVerifyCalculation: chat.verifyCalculation,
+    onBulkDeleteKB: chat.bulkDeleteKB,
+    onBulkArchiveKB: chat.bulkArchiveKB,
+    onLoadConversations: chat.loadConversationList,
+    onLoadConversationAnalysis: chat.loadConversationAnalysis,
+    calcState,
+    onChatAction: handleChatAction,
+    authHeader: panelinChatAuthHeader,
+    onOpenDetachedWindow: openDetachedChatWindow,
+    onOpenPinnedWindow: openPinnedChatWindow,
+    aiProvider: chat.aiProvider,
+    aiModel: chat.aiModel,
+    aiOptions: chat.aiOptions,
+    aiOptionsError: chat.aiOptionsError,
+    setAiPick: chat.setAiPick,
+  }), [
+    chat.messages,
+    chat.isStreaming,
+    chat.send,
+    chat.clearSuggestionsForMessage,
+    chat.stop,
+    chat.retry,
+    chat.clear,
+    chat.error,
+    chat.devMeta,
+    chat.trainingEntries,
+    chat.trainingStats,
+    chat.promptPreview,
+    chat.promptSections,
+    chat.saveCorrection,
+    chat.sendFeedback,
+    chat.reloadTrainingKB,
+    chat.reloadPromptPreview,
+    chat.reloadPromptSections,
+    chat.savePromptSection,
+    chat.verifyCalculation,
+    chat.bulkDeleteKB,
+    chat.bulkArchiveKB,
+    chat.loadConversationList,
+    chat.loadConversationAnalysis,
+    devMode,
+    toggleDevMode,
+    calcState,
+    handleChatAction,
+    panelinChatAuthHeader,
+    openDetachedChatWindow,
+    openPinnedChatWindow,
+    chat.aiProvider,
+    chat.aiModel,
+    chat.aiOptions,
+    chat.aiOptionsError,
+    chat.setAiPick,
+  ]);
 
   // Section refs for auto-scroll
   const panelRef = useRef(null);
@@ -2933,6 +3147,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       }
       case "pendiente": return typeof techo.pendiente === "number" && techo.pendiente >= 0;
       case "estructura": {
+        if (techo.estructuraOmitida) return true; // omitir estructura → avanzar con cantidades sugeridas
         if (!techo.tipoEst) return false;
         if (techo.tipoEst === "combinada") {
           const total = (techo.ptsHorm ?? 0) + (techo.ptsMetal ?? 0) + (techo.ptsMadera ?? 0);
@@ -3539,11 +3754,29 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const resetMainSplitLayout = useCallback(() => {
     try {
-      mainPanelGroupRef.current?.setLayout?.([28, 72]);
+      if (useSidebarChat) {
+        mainPanelGroupRef.current?.setLayout?.(
+          isCompactLayout ? [50, 30, 20] : [24, 52, 24],
+        );
+      } else {
+        mainPanelGroupRef.current?.setLayout?.(
+          isCompactLayout ? [55, 45] : [28, 72],
+        );
+      }
     } catch {
       /* optional API */
     }
-  }, []);
+  }, [useSidebarChat, isCompactLayout]);
+
+  const resetChatSplitLayout = useCallback(() => {
+    try {
+      mainPanelGroupRef.current?.setLayout?.(
+        isCompactLayout ? [50, 30, 20] : [24, 52, 24],
+      );
+    } catch {
+      /* optional API */
+    }
+  }, [isCompactLayout]);
 
   const resetRoofPreviewLayout = useCallback(() => {
     setTecho(t => ({
@@ -3617,7 +3850,19 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           catalog: libreCatalog || undefined,
         });
       }
-      const techoForCalc = { ...techo, tipoAguas: derivedTipoAguas };
+      const byGi = irregularLayoutByGi || {};
+      const hasAny = Object.values(byGi).some((l) => l?.strips?.length);
+      const techoForCalc = {
+        ...techo,
+        tipoAguas: derivedTipoAguas,
+        ...(hasAny
+          ? {
+              irregularLayoutByGi: byGi,
+              // Legacy flat field = zone 0 schedule for older paths
+              irregularLayout: byGi[0]?.strips?.length ? byGi[0] : null,
+            }
+          : {}),
+      };
       try {
         return executeScenario(sc, { techo: techoForCalc, pared, camara });
       } catch (e) {
@@ -3625,7 +3870,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         throw e;
       }
     } catch (e) { return { error: e.message }; }
-  }, [scenario, techo, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
+  }, [scenario, techo, irregularLayoutByGi, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
   // ── Grupos "presupuesto libre" aditivos (líneas manuales sobre cualquier escenario) ──
   // En el escenario dedicado `presupuesto_libre` se devuelve [] porque sus líneas ya
@@ -3677,10 +3922,15 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     });
     const filteredByCategory = withOverrides.filter(group => allowedGroups.has(group.title));
 
-    // Filter out excluded items
+    // Filter out excluded items and zero-qty noise (empty wizard still produced 0-cant rows).
+    // Keep overridden lines even at cant=0 so operators can see/edit them.
     return filteredByCategory.map(group => ({
       ...group,
-      items: group.items.filter(item => !excludedItems[item.lineId])
+      items: group.items.filter(item => {
+        if (excludedItems[item.lineId]) return false;
+        if (item.isOverridden) return true;
+        return (Number(item.cant) || 0) !== 0;
+      })
     })).filter(group => group.items.length > 0);
   }, [results, overrides, flete, excludedItems, categoriasActivas, proyecto.direccion, additiveLibreGroups]);
 
@@ -3883,6 +4133,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         proyecto,
         pdfFileName,
         exportedBy: bmcAuth.user?.email || getCachedUser()?.email || null,
+        accessToken: bmcAuth.accessToken || "",
         source,
       });
       return result?.ok ? result : null;
@@ -3890,7 +4141,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       console.warn("[drive-archive]", err?.message || err);
       return null;
     }
-  }, [buildSerializedProject, proyecto, currentBudgetCode, bmcAuth.user?.email]);
+  }, [buildSerializedProject, proyecto, currentBudgetCode, bmcAuth.user?.email, bmcAuth.accessToken]);
 
   const handlePdfEnriquecido = useCallback(async () => {
     if (!groups.length) return;
@@ -3986,15 +4237,31 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const roofPlan2dSvg = serializeRoofPlanSvgToString(svgEl);
     const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
     const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
-    const appendix = buildPdfAppendixPayload({
-      scenario, scenarioDef: scenarioDef_, vis: vis_,
-      techo, pared, camara, results, grandTotal,
-      kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
-      kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
-      kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
-      kpiFij: results?.fijaciones?.puntosFijacion ?? null,
-      PANELS_TECHO, PANELS_PARED,
-    });
+    const { irregularSchedulesForPdf } = await import("../utils/irregularRoofLayout.js");
+    const irregularSchedule = irregularSchedulesForPdf(
+      irregularLayoutByGi?.[0] || null,
+      irregularLayoutByGi,
+    );
+    const appendix = {
+      ...buildPdfAppendixPayload({
+        scenario, scenarioDef: scenarioDef_, vis: vis_,
+        techo, pared, camara, results, grandTotal,
+        kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
+        kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
+        kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
+        kpiFij: results?.fijaciones?.puntosFijacion ?? null,
+        PANELS_TECHO, PANELS_PARED,
+      }),
+      ...(irregularSchedule
+        ? {
+            irregularSchedule,
+            irregularStrips: irregularSchedule.strips,
+            irregularNote: irregularSchedule.note,
+            irregularAreaOrdered: irregularSchedule.areaOrdered,
+            irregularAreaWasteSite: irregularSchedule.areaWasteSite,
+          }
+        : {}),
+    };
     const snapshotImages = roofPlan2dSvg ? { roofPlan2dSvg } : {};
     const groupsMapped = groups.map(g => ({ title: g.title, items: g.items }));
     if (pdfLayout) {
@@ -4016,7 +4283,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       totals: grandTotal, appendix, snapshotImages,
       includePlantaResumenPage: false,
     });
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, pdfLayout]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, pdfLayout, irregularLayoutByGi]);
 
   const handleClientePdf = useCallback(async () => {
     if (!groups.length) return;
@@ -4057,6 +4324,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const blob = await htmlToPdfBlob(html, fname);
       downloadPdfBlob(blob, fname);
+      trackLeadEvent("quote.complete");
       setShowQuoteConfirm(false);
       const archived = await persistExportToCompanyDrive({
         pdfBlob: blob, pdfFileName: fname, quotationCode: code, source: "calc_export_presupuesto",
@@ -4068,6 +4336,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [proyecto, buildClientePdfHtml, showToast, requireProyectoParaPdf, persistExportToCompanyDrive]);
 
   const handleCopyWA = () => {
+    trackLeadEvent("quote.send.whatsapp");
     const txt = buildWhatsAppText({
       client: proyecto, project: proyecto, scenario,
       panel: panelInfo,
@@ -4417,6 +4686,10 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
           })
         }
+        onIrregularLayoutChange={handleIrregularLayoutChange}
+        irregularSession={irregularSession}
+        onIrregularSessionChange={setIrregularSession}
+        irregularDisplayMode="final_plane"
       />
     );
   }, [
@@ -4450,6 +4723,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     techo.borders,
     techo.inclAccesorios,
     setTecho,
+    handleIrregularLayoutChange,
+    irregularSession,
   ]);
 
   /** Con panel apilado (≤1023px), la planta 2D se muestra en el flujo del wizard; el visor derecho queda en cotización / carrusel. */
@@ -4657,6 +4932,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       handleDriveRefresh();
     } catch (err) {
       setDriveError(err?.message || "Error al iniciar sesión");
+    }
+  }, [handleDriveRefresh]);
+
+  // Force Google consent (drive.file) for team accounts stuck with partial scopes
+  // (403 ACCESS_TOKEN_SCOPE_INSUFFICIENT on files.list).
+  const handleDriveReconnect = useCallback(async () => {
+    setDriveError(null);
+    try {
+      const result = await gdriveReconnect();
+      setDriveAuth(true);
+      setDriveUser(result?.user || null);
+      await handleDriveRefresh();
+    } catch (err) {
+      setDriveError(err?.message || "No se pudieron renovar los permisos de Drive");
     }
   }, [handleDriveRefresh]);
 
@@ -5231,31 +5520,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             </>
           ) : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: isPhone ? "auto" : undefined }}>
-            <video
-              src={PANELIN_AGENT_VIDEO_SRC}
-              autoPlay
-              muted
-              loop
-              playsInline
-              aria-hidden
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "1px solid rgba(255,255,255,0.35)",
-                background: "rgba(0,0,0,0.2)",
-                flexShrink: 0,
-              }}
-            />
-            {panelinHeaderAiSelect}
-            <button
-              type="button"
-              onClick={() => setChatOpen((o) => !o)}
-              style={{ padding: "6px 12px", borderRadius: 8, border: chatOpen ? "none" : "1px solid rgba(255,255,255,0.3)", background: chatOpen ? "rgba(255,255,255,0.2)" : "transparent", color: "#fff", fontSize: 13, fontWeight: chatOpen ? 600 : 400, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
-            >
-              💬 Panelin
-            </button>
+            {!chatOpen && !isDetachedChatWindow ? (
+              <>
+                <PanelinCharacter
+                  size={40}
+                  onClick={openChat}
+                  showGreet
+                  title="Abrir Panelin"
+                  aria-label="Abrir asistente Panelin"
+                />
+                {panelinHeaderAiSelect}
+              </>
+            ) : (
+              panelinHeaderAiSelect
+            )}
           </div>
           {!isPhone && devMode ? (
             <button
@@ -5303,7 +5581,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       <PanelGroup
         ref={mainPanelGroupRef}
         direction={isCompactLayout ? "vertical" : "horizontal"}
-        autoSaveId={isCompactLayout ? undefined : "bmc-panelin-main-split"}
+        autoSaveId={panelinMainSplitAutoSaveId(isCompactLayout, useSidebarChat)}
+        storage={panelinPanelGroupStorage}
         className="bmc-main-grid"
         style={{
           display: "flex",
@@ -5736,6 +6015,10 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                                 borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
                               })
                             }
+                            onIrregularLayoutChange={handleIrregularLayoutChange}
+                            irregularSession={irregularSession}
+                            onIrregularSessionChange={setIrregularSession}
+                            irregularDisplayMode="factory"
                           />
                         );
                         return (
@@ -6061,6 +6344,10 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                                   borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
                                 })
                               }
+                              onIrregularLayoutChange={handleIrregularLayoutChange}
+                              irregularSession={irregularSession}
+                              onIrregularSessionChange={setIrregularSession}
+                              irregularDisplayMode="factory"
                             />
                           )
                         ) : (
@@ -6095,6 +6382,16 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   })()}
                   {stepId === "estructura" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>Estructura del techo</span>
+                        <Toggle label={techo.estructuraOmitida ? "Definir" : "Omitir"} value={!techo.estructuraOmitida} onChange={v => setTecho(t => ({ ...t, estructuraOmitida: !v }))} />
+                      </div>
+                      {techo.estructuraOmitida ? (
+                        <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: "12px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                          Estructura sin definir: se sugieren las cantidades de fijación asumiendo <strong>metal</strong>. Definí la estructura para confirmar el tipo de tornillo/anclaje.
+                        </div>
+                      ) : (
+                      <>
                       <SegmentedControl
                         value={techo.tipoEst}
                         onChange={v => uT("tipoEst", v)}
@@ -6153,6 +6450,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                             </div>
                           )}
                         </div>
+                      )}
+                      </>
                       )}
                       {showRoof2dInQuoteVisor ? (
                         <RoofPreviewMetricsSidebar
@@ -6372,6 +6671,23 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   )}
                   {stepId === "flete" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <FleteCotizarPanel
+                        proyecto={proyecto}
+                        onProyectoPatch={(patch) => {
+                          Object.entries(patch).forEach(([k, v]) => uPr(k, v));
+                        }}
+                        techo={techo}
+                        pared={pared}
+                        results={results}
+                        bomGroups={groups}
+                        flete={flete}
+                        setFlete={setFlete}
+                        fleteCosto={fleteCosto}
+                        setFleteCosto={setFleteCosto}
+                        C={C}
+                        inputS={inputS}
+                        labelS={labelS}
+                      />
                       <StepperInput label="Flete (USD)" value={flete} onChange={v => setFlete(v)} min={0} max={2000} step={50} unit="USD" decimals={0} />
                       <div>
                         <div style={labelS}>Costo interno flete (USD s/IVA, opcional)</div>
@@ -7415,6 +7731,17 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               <RoofBorderSelector {...roofBorderDockProps} />
             </div>
           )}
+          {isDesignPreviewEnabled() && (
+            <Roof3DSection
+              zonas={techo.zonas}
+              tipoAguas={derivedTipoAguas}
+              pendiente={techo.pendiente}
+              familiaKey={techo.familia}
+              espesorMm={techo.espesor}
+              panelAu={techoPanelData?.au ?? 1.12}
+              techoColor={techo.color || ""}
+            />
+          )}
           <QuoteVisualVisor
             scenarioId={scenario}
             hoverScenarioId={scenarioHoverId}
@@ -7650,7 +7977,49 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           </div>}
         </div>
         </Panel>
+        {useSidebarChat && (
+          <>
+            <PanelResizeHandle
+              className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
+              style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
+              hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
+              onDoubleClick={(e) => { e.preventDefault(); resetChatSplitLayout(); }}
+            />
+            <Panel
+              defaultSize={isCompactLayout ? 28 : 22}
+              minSize={isCompactLayout ? 18 : 18}
+              maxSize={isCompactLayout ? 45 : 40}
+              style={{ minWidth: 0, minHeight: 0, display: "flex" }}
+            >
+              <PanelinChatPanel
+                isOpen
+                embeddedMode
+                onClose={closeChat}
+                onRequestFloating={isCompactLayout ? undefined : requestFloatingChat}
+                {...panelinChatPanelProps}
+              />
+            </Panel>
+          </>
+        )}
       </PanelGroup>
+
+      {useFloatingChat && typeof document !== "undefined" && createPortal(
+        <PanelinFloatingChatShell
+          rect={floatingRect}
+          onRectChange={setFloatingRect}
+          shellRef={floatingShellRef}
+        >
+          <PanelinChatPanel
+            isOpen
+            floatingMode
+            onClose={closeChat}
+            onReturnToSidebar={returnChatToSidebar}
+            onHeaderPointerDown={onFloatingHeaderDrag}
+            {...panelinChatPanelProps}
+          />
+        </PanelinFloatingChatShell>,
+        document.body,
+      )}
 
       <QuotePreviewModal
         pendingQuote={pendingQuote}
@@ -7677,46 +8046,16 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         </button>
       )}
 
-      <PanelinChatPanel
-        isOpen={chatOpen}
-        onClose={() => {
-          if (isDetachedChatWindow && typeof window !== "undefined") {
-            window.close();
-            return;
-          }
-          setChatOpen(false);
-        }}
-        {...chat}
-        devMode={devMode}
-        onToggleDevMode={toggleDevMode}
-        detachedMode={isDetachedChatWindow}
-        onOpenDetachedWindow={openDetachedChatWindow}
-        devMeta={chat.devMeta}
-        trainingEntries={chat.trainingEntries}
-        trainingStats={chat.trainingStats}
-        promptPreview={chat.promptPreview}
-        promptSections={chat.promptSections}
-        onSaveCorrection={chat.saveCorrection}
-        onSendFeedback={chat.sendFeedback}
-        onReloadTrainingKB={chat.reloadTrainingKB}
-        onReloadPromptPreview={chat.reloadPromptPreview}
-        onReloadPromptSections={chat.reloadPromptSections}
-        onSavePromptSection={chat.savePromptSection}
-        onVerifyCalculation={chat.verifyCalculation}
-        onBulkDeleteKB={chat.bulkDeleteKB}
-        onBulkArchiveKB={chat.bulkArchiveKB}
-        onLoadConversations={chat.loadConversationList}
-        onLoadConversationAnalysis={chat.loadConversationAnalysis}
-        calcState={calcState}
-        onChatAction={handleChatAction}
-        authHeader={
-          devMode && devAuthToken
-            ? `Bearer ${devAuthToken}`
-            : bmcAuth?.accessToken
-              ? `Bearer ${bmcAuth.accessToken}`
-              : undefined
-        }
-      />
+      {isDetachedChatWindow && (
+        <PanelinChatPanel
+          isOpen={chatOpen}
+          detachedMode
+          onClose={() => {
+            if (typeof window !== "undefined") window.close();
+          }}
+          {...panelinChatPanelProps}
+        />
+      )}
 
       {/* Asistente de Correos BMC — second agent (gated by VITE_FEATURE_EMAIL_AGENT) */}
       <EmailAgentPanel />
@@ -7796,6 +8135,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         currentUser={driveUser}
         onSignIn={handleDriveSignIn}
         onSignOut={handleDriveSignOut}
+        onReconnectDrive={handleDriveReconnect}
         quotations={driveQuotations}
         loading={driveLoading}
         saving={driveSaving}

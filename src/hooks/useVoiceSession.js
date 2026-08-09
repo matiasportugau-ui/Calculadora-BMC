@@ -1,23 +1,41 @@
 /**
- * useVoiceSession — WebRTC lifecycle for OpenAI Realtime API voice mode.
+ * useVoiceSession — WebRTC lifecycle for OpenAI Realtime / Grok Voice Agent.
  *
  * Flow:
- *   1. POST /api/agent/voice/session → ephemeral client_secret
+ *   1. POST /api/agent/voice/session → ephemeral client_secret + realtime_base
  *   2. Create RTCPeerConnection; add mic audio track
  *   3. Create data channel for events (function calls, transcripts)
- *   4. Create SDP offer → POST to OpenAI Realtime with ephemeral token → apply answer
- *   5. On function_call events, relay to POST /api/agent/voice/action and call onAction
- *   6. Expose transcript deltas via onTranscriptDelta callback
+ *   4. Create SDP offer → POST to realtime_base (OpenAI or xAI) with ephemeral token
+ *   5. Grok only: session.update with session_bootstrap (instructions + tools)
+ *   6. On function_call events, relay to POST /api/agent/voice/action and call onAction
+ *   7. Expose transcript deltas via onTranscriptDelta callback
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import {
+  resolveSdpEndpoint,
+  DEFAULT_REALTIME_SDP_BASE,
+} from "../utils/resolveSdpEndpoint.js";
 
 const API_BASE = getCalcApiBase();
 
-const OPENAI_REALTIME_BASE = "https://api.openai.com/v1/realtime";
+const DEFAULT_REALTIME_BASE = DEFAULT_REALTIME_SDP_BASE;
 
-export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode = false, authHeader, leadContext = null }) {
+export function useVoiceSession({
+  onAction,
+  onTranscriptDelta,
+  onError,
+  devMode = false,
+  authHeader,
+  leadContext = null,
+  /** Preferred Realtime model (allowlisted server-side). */
+  realtimeModel = null,
+  aiProvider = "auto",
+  aiModel = "",
+  /** Optional override: "openai" | "grok" */
+  voiceProvider = null,
+}) {
   const [status, setStatus] = useState("idle"); // idle | connecting | active | error
   const [isSpeaking, setIsSpeaking] = useState(false); // assistant is speaking
   const [isListening, setIsListening] = useState(false); // VAD detected user speech
@@ -35,6 +53,9 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
   const remoteVuRafRef = useRef(null);
   const sessionIdRef = useRef(null);
   const modelRef = useRef(null);
+  const realtimeBaseRef = useRef(DEFAULT_REALTIME_BASE);
+  const sessionBootstrapRef = useRef(null);
+  const voiceProviderRef = useRef("openai");
 
   const stopVu = useCallback(() => {
     if (vuRafRef.current) {
@@ -182,7 +203,7 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         // Apply the action via the calculator's handler
         onAction?.(validatedAction);
 
-        // Acknowledge to OpenAI so the turn can continue
+        // Acknowledge so the turn can continue (OpenAI / Grok Realtime)
         dcRef.current?.send(JSON.stringify({
           type: "conversation.item.create",
           item: {
@@ -197,19 +218,52 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
     [onAction, onTranscriptDelta, authHeader, devMode]
   );
 
+  const applySessionBootstrap = useCallback((dc) => {
+    const boot = sessionBootstrapRef.current;
+    if (!boot || !dc || dc.readyState !== "open") return;
+    try {
+      dc.send(
+        JSON.stringify({
+          type: "session.update",
+          session: {
+            instructions: boot.instructions,
+            tools: boot.tools || [],
+            tool_choice: boot.tool_choice || "auto",
+          },
+        }),
+      );
+      if (devMode) {
+        console.info(
+          `[voice] session.update applied for ${voiceProviderRef.current}`,
+          { tools: (boot.tools || []).length },
+        );
+      }
+    } catch (err) {
+      console.warn("[voice] session.update failed", err?.message);
+    }
+  }, [devMode]);
+
   const start = useCallback(
     async (calcState = {}) => {
       if (status === "connecting" || status === "active") return;
       setStatus("connecting");
 
       try {
-        // 1. Mint ephemeral session token
+        // 1. Mint ephemeral session token (OpenAI or Grok)
         const headers = { "Content-Type": "application/json" };
         if (authHeader) headers.Authorization = authHeader;
         const sessRes = await fetch(`${API_BASE}/api/agent/voice/session`, {
           method: "POST",
           headers,
-          body: JSON.stringify({ calcState, devMode, leadContext }),
+          body: JSON.stringify({
+            calcState,
+            devMode,
+            leadContext,
+            realtimeModel: realtimeModel || undefined,
+            aiProvider,
+            aiModel,
+            voiceProvider: voiceProvider || undefined,
+          }),
         });
         if (!sessRes.ok) {
           const err = await sessRes.json().catch(() => ({ error: "Error al iniciar sesión de voz" }));
@@ -221,6 +275,11 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         }
         sessionIdRef.current = sessData.session_id;
         modelRef.current = sessData.model;
+        realtimeBaseRef.current =
+          sessData.realtime_base || DEFAULT_REALTIME_BASE;
+        voiceProviderRef.current =
+          sessData.provider || sessData.voice_provider || "openai";
+        sessionBootstrapRef.current = sessData.session_bootstrap || null;
 
         const ephemeralKey = sessData.client_secret.value;
 
@@ -245,11 +304,14 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         // 5. Add mic track
         stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
-        // 6. Data channel for function calls + events
+        // 6. Data channel for function calls + transcripts
         const dc = pc.createDataChannel("oai-events");
         dcRef.current = dc;
         dc.onmessage = (e) => handleDataChannelMessage(e.data);
-        dc.onopen = () => setStatus("active");
+        dc.onopen = () => {
+          applySessionBootstrap(dc);
+          setStatus("active");
+        };
         dc.onclose = () => {
           setStatus("idle");
           setIsSpeaking(false);
@@ -258,11 +320,15 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
           stopRemoteVu();
         };
 
-        // 7. SDP negotiation
+        // 7. SDP negotiation against provider realtime_base (OpenAI or xAI)
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
-        const sdpRes = await fetch(`${OPENAI_REALTIME_BASE}?model=${encodeURIComponent(modelRef.current)}`, {
+        const sdpUrl = resolveSdpEndpoint({
+          realtime_base: realtimeBaseRef.current || DEFAULT_REALTIME_BASE,
+          model: modelRef.current,
+        });
+        const sdpRes = await fetch(sdpUrl, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${ephemeralKey}`,
@@ -287,7 +353,23 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         onError?.(err.message || "Error de voz");
       }
     },
-    [status, devMode, authHeader, leadContext, startVu, stopVu, startRemoteVu, stopRemoteVu, handleDataChannelMessage, onError]
+    [
+      status,
+      devMode,
+      authHeader,
+      leadContext,
+      realtimeModel,
+      aiProvider,
+      aiModel,
+      voiceProvider,
+      startVu,
+      stopVu,
+      startRemoteVu,
+      stopRemoteVu,
+      handleDataChannelMessage,
+      applySessionBootstrap,
+      onError,
+    ]
   );
 
   const stop = useCallback(() => {

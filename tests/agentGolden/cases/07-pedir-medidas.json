@@ -1,0 +1,16 @@
+{
+  "id": "07-pedir-medidas",
+  "description": "User wants a roof quote without dimensions — ask, do not emit verified_quote.",
+  "calcState": "empty",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Necesito cotizar un techo de panel isopanel para un galpón" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" }
+  ],
+  "timeoutMs": 60000
+}

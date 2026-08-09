@@ -51,9 +51,13 @@ function normalizeResult(res, parsed) {
 
 async function postJson(path, body, { signal, base } = {}) {
   const url = joinUrl(base || loopbackBase(), path);
+  const headers = { "Content-Type": "application/json" };
+  if (!base && config.apiAuthToken) {
+    headers.Authorization = `Bearer ${config.apiAuthToken}`;
+  }
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body || {}),
     signal,
   });

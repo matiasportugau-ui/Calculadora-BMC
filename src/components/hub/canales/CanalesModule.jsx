@@ -7,7 +7,6 @@
 
 import React, { Suspense, useCallback, useState } from "react";
 import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
-import { useOmniDeals } from "../../../hooks/useOmniConversations.js";
 import { SkinProvider, useSkin } from "../../admin-cotizaciones/SkinProvider.jsx";
 import "../../admin-cotizaciones/styles.css";
 
@@ -19,10 +18,9 @@ const UnifiedContactsPanel = React.lazy(() =>
 const OmniInboxPanel = React.lazy(() => import("./panels/OmniInboxPanel.jsx"));
 const OmniAdminCockpit = React.lazy(() => import("./panels/OmniAdminCockpit.jsx"));
 const OmniDuplicateContactsPanel = React.lazy(() => import("./panels/OmniDuplicateContactsPanel.jsx"));
-const OmniDealsKanban = React.lazy(() => import("./panels/OmniDealsKanban.jsx"));
+const OmniDealsKanbanPanel = React.lazy(() => import("./OmniDealsKanbanPanel.jsx"));
 
 const OMNI_INBOX_ENABLED = import.meta.env.VITE_OMNI_INBOX === "1";
-const OMNI_DEALS_ENABLED = import.meta.env.VITE_OMNI_DEALS === "1";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab bar and loading skeleton
@@ -32,8 +30,8 @@ function TabBar({ activeTab, onTabChange }) {
   const tabs = [
     ...(OMNI_INBOX_ENABLED ? [{ id: "omni", label: "Omni Inbox" }] : []),
     ...(OMNI_INBOX_ENABLED ? [{ id: "cockpit", label: "Cockpit" }] : []),
+    { id: "pipeline", label: "Pipeline" },
     ...(OMNI_INBOX_ENABLED ? [{ id: "duplicates", label: "Duplicados" }] : []),
-    ...(OMNI_DEALS_ENABLED ? [{ id: "deals", label: "Pipeline Deals" }] : []),
     { id: "ml", label: "ML Manager" },
     { id: "wa", label: "WA Inbox" },
     { id: "contacts", label: "Contactos Unificados" },
@@ -99,9 +97,6 @@ function CanalesModuleInner() {
   const { skin } = useSkin();
   const { accessToken } = useBmcAuth();
   const [activeTab, setActiveTab] = useState(OMNI_INBOX_ENABLED ? "omni" : "ml");
-  const { deals, loading: dealsLoading, moveDeal } = useOmniDeals(
-    OMNI_DEALS_ENABLED ? accessToken : null,
-  );
 
   // Cross-tab deep-link: the cockpit's "Para responder ahora" queue jumps here
   // by id; OmniInboxPanel consumes it once and we clear it so a later plain tab
@@ -148,7 +143,7 @@ function CanalesModuleInner() {
               letterSpacing: "0.05em",
             }}
           >
-            ML | WA | Contactos{OMNI_INBOX_ENABLED ? " | Omni" : ""}
+            ML | WA | Contactos | Pipeline{OMNI_INBOX_ENABLED ? " | Omni" : ""}
           </span>
         </div>
 
@@ -170,8 +165,8 @@ function CanalesModuleInner() {
           {activeTab === "duplicates" && OMNI_INBOX_ENABLED && (
             <OmniDuplicateContactsPanel token={accessToken} />
           )}
-          {activeTab === "deals" && OMNI_DEALS_ENABLED && (
-            <OmniDealsKanban deals={deals} loading={dealsLoading} onMoveDeal={moveDeal} />
+          {activeTab === "pipeline" && (
+            <OmniDealsKanbanPanel token={accessToken} />
           )}
           {activeTab === "ml" && <MlManagerPanel token={accessToken} />}
           {activeTab === "wa" && <WaInboxPanel token={accessToken} />}

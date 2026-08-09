@@ -1,8 +1,7 @@
 // src/pdf-templates/simple.js
 // Layout G — Presupuesto Simple (single A4 page, full terms)
-// *** R3-C IS NOW THE PRODUCTION THEME (primary BMC-theme) ***
-// - Brand header: logo (32px) + "BMC URUGUAY" + "METALOG SAS" on left, PRESUPUESTO badge + ref/date on right
-// - Logo size: 32px (bumped per iteration), header gap: 6px
+// *** R3-C / REFINED IS THE PRODUCTION THEME (primary BMC-theme) ***
+// - Brand header: "BMC URUGUAY" + "METALOG SAS" on left, PRESUPUESTO badge + ref/date on right
 // - Full original 12 QUOTE_TERMS (with .bl / .hl classes)
 // - Refined styling: .cat navy rows, light th, strong .trow.total, scoped, A4 print-ready
 // This file is the real production renderer. Visual BASE is generated from it + real model for iteration.
@@ -17,18 +16,17 @@ const BRAND = COMPANY?.brandColor || '#003366'; // Official BMC navy from websit
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* REFINED SIMPLE — adopted as preferred after parallel visual comparison */
-@page{size:A4;margin:7mm 8mm}
+@page{size:A4;margin:0}
 .presupuesto-container,.page{font-size:9pt;line-height:1.25;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .presupuesto-container ul,.presupuesto-container li,.presupuesto-container .cat-row,
 .page ul,.page li,.page .cat-row{list-style:none!important;margin:0;padding:0}
 .presupuesto-container .cat-row::before,.presupuesto-container [class*="header"]::before,
 .page .cat-row::before,.page [class*="header"]::before{content:none!important;display:none!important}
 body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;margin:0;font-size:9pt;color:#1D1D1F;background:#fff}
-.page{width:210mm;min-height:277mm;position:relative;background:#fff}
-@media screen{body{background:#e5e2dd;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 0 0 1px #ddd;max-width:794px;padding:7mm 8mm}}
-@media print{.page{padding:0}}
+.page{width:210mm;min-height:277mm;position:relative;background:#fff;padding:7mm 8mm}
+@media screen{body{background:#e5e2dd;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 0 0 1px #ddd;max-width:794px}}
+@media print{.page{padding:7mm 8mm}}
 .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2pt solid ${BRAND};padding-bottom:3mm;margin-bottom:3mm}
-.logo{height:32px}
 .badge{background:${BRAND};color:#fff;font-size:7pt;font-weight:700;padding:3px 10px;border-radius:9999px;letter-spacing:.08em;text-transform:uppercase}
 .meta{display:grid;grid-template-columns:1fr 1fr;gap:2mm;font-size:8pt;margin-bottom:2mm}
 .meta b{color:${BRAND}}
@@ -54,16 +52,64 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-se
 .bank{background:${BRAND};color:#fff;padding:3px 6px;border-radius:3px;font-size:7pt;margin-bottom:2mm}
 .bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px 6px}
 .ftr{font-size:6.5pt;color:#64748b;border-top:0.5pt solid #cbd5e1;padding-top:2mm;margin-top:2mm;display:flex;justify-content:space-between}
+.irr-note{background:#fff7ed;border-left:2.5pt solid #c2410c;padding:3px 6px;margin-bottom:2mm;font-size:7pt;color:#9a3412}
+.irr-tbl{width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:2mm}
+.irr-tbl th{background:#fff7ed;padding:2px 4px;text-align:left;font-weight:600;color:#9a3412;border-bottom:0.5pt solid #fed7aa}
+.irr-tbl td{padding:2px 4px;border-bottom:0.4pt solid #ffedd5;font-variant-numeric:tabular-nums}
+.irr-tbl td.num{text-align:right}
 `;
+
+function renderIrregularSchedule(sched) {
+  if (!sched?.strips?.length) return '';
+  const rows = sched.strips.map(s => {
+    const zone = s.zoneGi != null && Number.isFinite(Number(s.zoneGi))
+      ? `Z${Number(s.zoneGi) + 1}`
+      : '—';
+    return `<tr><td>${esc(s.id)}</td><td class="num">${esc(zone)}</td><td class="num">${Number(s.L_order).toFixed(2)}</td><td class="num">${Number(s.L_cover).toFixed(2)}</td><td>${esc(s.source || 'auto')}</td></tr>`;
+  }).join('');
+  const note = sched.note
+    ? `<div class="irr-note">${esc(sched.note)}</div>`
+    : `<div class="irr-note">Cortes oblicuos en obra — paneles con extremos rectos (largos escalonados).</div>`;
+  const totals = (sched.areaOrdered != null || sched.areaWasteSite != null)
+    ? `<div style="font-size:7pt;color:#9a3412;margin:-1mm 0 2mm">Pedido ${sched.areaOrdered != null ? Number(sched.areaOrdered).toFixed(2) : '—'} m² · descarte obra ${sched.areaWasteSite != null ? Number(sched.areaWasteSite).toFixed(2) : '—'} m²</div>`
+    : '';
+  const summary = sched.factorySummary
+    ? `<div style="font-size:7.5pt;font-weight:600;color:#003366;margin:0 0 1.5mm">Resumen fábrica: ${esc(sched.factorySummary)}</div>`
+    : '';
+  return `${note}
+  <div style="font-size:7pt;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:.04em;margin-bottom:1mm">Pedido de paneles (largos escalonados)</div>
+  ${summary}
+  <table class="irr-tbl"><thead><tr><th>Panel</th><th>Zona</th><th class="num">L pedido (m)</th><th class="num">L cover (m)</th><th>Fuente</th></tr></thead><tbody>${rows}</tbody></table>
+  ${totals}`;
+}
 
 function renderBomDetailRows(bomDetailGroups) {
   return bomDetailGroups.map(g => {
+    const isPanelGroup = g.groupName.toUpperCase().includes("PANELES");
     const groupRow = `<tr class="cat"><td colspan="4">${esc(g.groupName)}</td><td class="num">${fmt(g.groupTotal)}</td></tr>`;
     const itemRows = g.items.map(i => {
       const qty = typeof i.qty === 'number'
         ? (i.qty % 1 === 0 ? i.qty : i.qty.toFixed(2))
         : (i.qty ?? '');
-      return `<tr><td>${esc(i.desc)}</td><td class="num">${qty}</td><td class="cen">${esc(i.unit)}</td><td class="num">${fmt(i.pu)}</td><td class="num">${fmt(i.total)}</td></tr>`;
+
+      // Use original desc, stripping any pre-appended panel info from bomToGroups to avoid dups
+      let desc = esc(i.desc).replace(/ · \d+ paneles × [\d.]+ m/i, '').trim();
+
+      // Explicitly surface quantity and length of panels (user request)
+      if (isPanelGroup) {
+        const np = i.cantPaneles != null ? i.cantPaneles : null;
+        const lp = i.largoPanel ? Number(i.largoPanel).toFixed(2) : null;
+        if (np != null || lp) {
+          const extra = [];
+          if (np != null) extra.push(`${np} paneles`);
+          if (lp) extra.push(`${lp} m`);
+          if (extra.length) {
+            desc += ` <span style="color:#003366;font-weight:600">(${extra.join(" × ")})</span>`;
+          }
+        }
+      }
+
+      return `<tr><td>${desc}</td><td class="num">${qty}</td><td class="cen">${esc(i.unit)}</td><td class="num">${fmt(i.pu)}</td><td class="num">${fmt(i.total)}</td></tr>`;
     }).join('');
     return groupRow + itemRows;
   }).join('');
@@ -97,12 +143,9 @@ export function render(q) {
 </head><body>
 <div class="page presupuesto-container" id="presupuesto">
   <div class="hdr">
-    <div style="display:flex;align-items:center;gap:6px">
-      <img src="/bmc-pdf/assets/bmc-logo.png" class="logo" alt="BMC">
-      <div>
-        <div style="font-weight:700;color:${BRAND}">BMC URUGUAY</div>
-        <div style="font-size:6pt;color:#64748b">METALOG SAS</div>
-      </div>
+    <div>
+      <div style="font-weight:700;color:${BRAND}">BMC URUGUAY</div>
+      <div style="font-size:6pt;color:#64748b">METALOG SAS</div>
     </div>
     <div style="text-align:right">
       <div class="badge">PRESUPUESTO</div>
@@ -121,6 +164,7 @@ export function render(q) {
 
   <div class="scope"><b>Alcance:</b> ${esc(q.panelDescLine)}</div>
   ${kpiParts ? `<div class="kpi">${esc(kpiParts)}</div>` : ''}
+  ${renderIrregularSchedule(q.irregularSchedule)}
 
   <table class="bom"><thead><tr>
     <th style="text-align:left">Descripción</th>

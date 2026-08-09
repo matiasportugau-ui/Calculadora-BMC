@@ -76,12 +76,13 @@
 
 ---
 
-## Integrations (shopify-integration-v4, browser-agent-orchestration)
+## Integrations (shopify-complete-connector, shopify-integration-v4, browser-agent-orchestration)
 
 | Criterio | Entregable / Cómo juzgar |
 |----------|---------------------------|
 | **OAuth / webhooks** | Configuración documentada; HMAC, redirects correctos |
 | **Sync** | Sheets ↔ integración documentada; flujos claros |
+| **Conector completo** | Skill `shopify-complete-connector` cubre diseño/theme, catálogo/PIM, Admin/Storefront y extensiones; v4 queda para preguntas/cotizaciones |
 | **Propagación** | Log for Networks cuando hay cambios en webhooks/URLs |
 
 **Áreas de ranqueo:** Funcionalidad (1–5), Documentación (1–5), Propagación (1–5).

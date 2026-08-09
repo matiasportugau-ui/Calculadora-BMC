@@ -13,13 +13,14 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { signIn as gisSignIn, signOut as gisSignOut } from "../utils/googleDrive.js";
 import { getPendingClientQuoteIds, clearPending } from "../utils/clientQuoteId.js";
 // Top-30 run 2026-05-12 (#A13): context + hook extraídos a bmcAuthContext.js para que Fast Refresh trate este archivo como components-only.
 import { BmcAuthContext } from "./bmcAuthContext.js";
-import { setOperatorJwtGetter } from "../utils/operatorApiClient.js";
+import { setOperatorJwtGetter, setOperatorJwtRefresh } from "../utils/operatorApiClient.js";
 import { devBrowserLogin, isLocalDevApp } from "../utils/localDevAuth.js";
 
 const ApiBase = (() => {
@@ -36,6 +37,8 @@ export function BmcAuthProvider({ children }) {
   const [modules, setModules] = useState({});
   const [accessToken, setAccessToken] = useState(null);
   const [status, setStatus] = useState("loading"); // 'loading'|'anonymous'|'authenticated'
+  /** Coalesce concurrent POST /api/auth/refresh (mlFetch parallel 401s + bootstrap). */
+  const refreshInFlightRef = useRef(null);
 
   const applyAuth = useCallback((data) => {
     if (!data?.user) {
@@ -44,6 +47,7 @@ export function BmcAuthProvider({ children }) {
       setPlanTier(null);
       setModules({});
       setAccessToken(null);
+      setOperatorJwtGetter(() => "");
       setStatus("anonymous");
       return;
     }
@@ -51,23 +55,36 @@ export function BmcAuthProvider({ children }) {
     setRole(data.role || data.user.role || null);
     setPlanTier(data.plan_tier || data.user.plan_tier || "base");
     setModules(data.modules || {});
-    if (data.accessToken) setAccessToken(data.accessToken);
+    if (data.accessToken) {
+      setAccessToken(data.accessToken);
+      // Sync getter immediately so mlFetch retries do not wait for React effects.
+      setOperatorJwtGetter(() => data.accessToken);
+    }
     setStatus("authenticated");
   }, []);
 
+  /** @returns {Promise<boolean>} true if session refreshed; JWT already in getter via applyAuth */
   const refreshAccess = useCallback(async () => {
-    try {
-      const res = await fetch(`${ApiBase}/api/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) return false;
-      const data = await res.json();
-      applyAuth(data);
-      return true;
-    } catch {
-      return false;
-    }
+    if (refreshInFlightRef.current) return refreshInFlightRef.current;
+
+    refreshInFlightRef.current = (async () => {
+      try {
+        const res = await fetch(`${ApiBase}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        applyAuth(data);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        refreshInFlightRef.current = null;
+      }
+    })();
+
+    return refreshInFlightRef.current;
   }, [applyAuth]);
 
   const fetchMeAndGrants = useCallback(
@@ -99,6 +116,10 @@ export function BmcAuthProvider({ children }) {
     setOperatorJwtGetter(() => accessToken || "");
   }, [accessToken]);
 
+  useEffect(() => {
+    setOperatorJwtRefresh(refreshAccess);
+  }, [refreshAccess]);
+
   // Bootstrap: try /me with current accessToken; if missing or 401, try refresh.
   useEffect(() => {
     let cancelled = false;
@@ -108,13 +129,14 @@ export function BmcAuthProvider({ children }) {
         if (cancelled) return;
         if (me) {
           if (!accessToken) {
-            // Fetch token before applying auth so status="authenticated" and
-            // accessToken are set atomically, preventing a race in consumers.
+            // Cookie session without JWT in memory — refresh before ML/API bearer routes run.
             const refreshed = await refreshAccess();
             if (cancelled) return;
             if (refreshed) return;
+            setStatus("anonymous");
+            return;
           }
-          applyAuth({ ...me });
+          applyAuth({ ...me, accessToken });
           return;
         }
         const refreshed = await refreshAccess();

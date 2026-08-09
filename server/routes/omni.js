@@ -13,6 +13,8 @@ import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import { sendWaReply } from "../lib/omni/outbound/waReply.js";
 import { sendMlReply } from "../lib/omni/outbound/mlReply.js";
 import { sendOmniEmailReply } from "../lib/omni/outbound/emailReply.js";
+import { sendIgReply } from "../lib/omni/outbound/igSend.js";
+import { sendMessengerReply } from "../lib/omni/outbound/messengerSend.js";
 import { collectOmniMetrics, formatPrometheusMetrics } from "../lib/omni/omniMetrics.js";
 import {
   runAutomationForEvent,
@@ -373,6 +375,82 @@ router.post(
         });
       }
       throw e;
+    }
+  },
+);
+
+// Contact list — read-only unified-contacts directory for the Canales "Contactos
+// Unificados" tab. Searches name/email/phone/wa_phone (case-insensitive),
+// newest-updated first, with each contact's conversation count, last activity and
+// the set of channels it was reached on (derived from its conversations). Excludes
+// already-merged ("loser") contacts via the same properties->>'merged_into' guard
+// the duplicates scan uses, and degrades to an empty list on a missing column/table
+// so the panel never hard-fails pre-migration. Team-isolated for non-admin operators:
+// only contacts with at least one conversation visible to the user's team(s) are
+// returned, and conversation counts/channels reflect only those visible conversations.
+router.get(
+  "/omni/contacts",
+  omniReadLimiter,
+  requireGrant.read("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const q = String(req.query.search || req.query.q || "").trim();
+    const search = q ? `%${q}%` : null;
+
+    const isAdmin = req.user?.role === "admin" || req.user?.role === "superadmin";
+    // For non-admins, scope both aggregation and contact visibility to their
+    // team's conversations (matching the predicate used by GET /omni/conversations).
+    const params = [search, limit, offset];
+    let aggWhere = "";
+    let contactTeamFilter = "";
+    if (!isAdmin) {
+      params.push(req.user.id);
+      aggWhere = `WHERE (c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`;
+      // Only expose contacts that have at least one conversation visible to this user.
+      contactTeamFilter = "AND agg.contact_id IS NOT NULL";
+    }
+
+    try {
+      const { rows } = await req.omniPool.query(
+        `SELECT co.id, co.name, co.email, co.phone, co.wa_phone, co.ml_user_id,
+                co.avatar_url, co.created_at, co.updated_at,
+                COALESCE(agg.conversation_count, 0) AS conversation_count,
+                agg.last_activity_at,
+                COALESCE(agg.channels, '{}') AS channels,
+                COUNT(*) OVER() AS total_count
+           FROM omni_contacts co
+           LEFT JOIN (
+             SELECT c.contact_id,
+                    COUNT(*)::int AS conversation_count,
+                    MAX(c.updated_at) AS last_activity_at,
+                    array_agg(DISTINCT c.channel) AS channels
+               FROM omni_conversations c
+               ${aggWhere}
+              GROUP BY c.contact_id
+           ) agg ON agg.contact_id = co.id
+          WHERE co.properties->>'merged_into' IS NULL
+            AND ($1::text IS NULL
+                 OR co.name ILIKE $1 OR co.email ILIKE $1
+                 OR co.phone ILIKE $1 OR co.wa_phone ILIKE $1)
+            ${contactTeamFilter}
+          ORDER BY co.updated_at DESC
+          LIMIT $2 OFFSET $3`,
+        params,
+      );
+      const totalCount = rows[0]?.total_count ?? 0;
+      res.json({
+        ok: true,
+        generated_at: new Date().toISOString(),
+        count: rows.length,
+        total_count: Number(totalCount),
+        contacts: rows.map(({ total_count: _tc, ...r }) => r), // strip the window-function aggregate from each row
+      });
+    } catch (e) {
+      if (e?.code !== "42703" && e?.code !== "42P01") throw e;
+      req.log?.warn?.({ err: e.message, code: e.code }, "omni contacts list degraded");
+      res.json({ ok: true, degraded: e.code, count: 0, contacts: [] });
     }
   },
 );
@@ -884,6 +962,23 @@ router.post(
         inReplyTo: meta.rfc_message_id || undefined,
         account: meta.account || undefined,
       });
+    } else if (conv.channel === "ig" || conv.channel === "fb") {
+      const { rows: lastIn } = await req.omniPool.query(
+        `SELECT created_at FROM omni_messages
+         WHERE conversation_id = $1 AND sender = 'customer'
+         ORDER BY created_at DESC LIMIT 1`,
+        [conversationId],
+      );
+      const args = {
+        config,
+        recipientId: conv.channel_conversation_id,
+        text,
+        lastCustomerAt: lastIn[0]?.created_at,
+        tag: req.body?.tag || undefined,
+      };
+      outbound = conv.channel === "ig"
+        ? await sendIgReply(args)
+        : await sendMessengerReply(args);
     } else {
       return res.status(400).json({ ok: false, error: "reply_not_supported_for_channel" });
     }
@@ -902,6 +997,7 @@ router.post(
         contact_id: conv.contact_id,
         wa_phone: conv.wa_phone || undefined,
         ml_user_id: conv.ml_user_id ?? undefined,
+        email: conv.email || undefined,
       },
       conversation_hint: { channel_conversation_id: conv.channel_conversation_id },
       message: {
@@ -983,10 +1079,7 @@ router.get(
   },
 );
 
-// Single source of truth for automation trigger events. The engine only
-// evaluates "message.ingested" today (automationEngine.js); reject anything
-// else at creation time so malformed rules can't persist.
-const ALLOWED_TRIGGER_EVENTS = ["message.ingested"];
+const ALLOWED_TRIGGER_EVENTS = ["message.ingested", "conversation.no_reply", "followup.due"];
 
 const automationRuleSchema = z.object({
   name: z.string().min(1).max(200),
@@ -1186,6 +1279,25 @@ router.post(
       properties: req.body?.properties || {},
     });
     res.status(201).json({ ok: true, deal });
+  },
+);
+
+router.patch(
+  "/omni/deals/:id/stage",
+  requireGrant.write("canales"),
+  requireOmniDb,
+  async (req, res) => {
+    const to = normalizeStage(req.body?.stage);
+    if (!to) {
+      return res.status(400).json({ ok: false, error: "invalid_stage", to: req.body?.stage ?? null });
+    }
+    const result = await updateDeal(req.omniPool, req.params.id, { stage: to });
+    if (!result.ok) {
+      const status = result.error === "deal_not_found" ? 404 : result.error === "invalid_stage_transition" ? 409 : 400;
+      return res.status(status).json(result);
+    }
+    const sync = await syncDealToCrm(result.deal);
+    res.json({ ok: true, deal: result.deal, sync });
   },
 );
 

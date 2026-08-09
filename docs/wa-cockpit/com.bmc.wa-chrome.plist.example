@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Always-on WA Web Chrome (Mode C persistent session).
+  Installed by: ./scripts/wa-chrome-always-on.sh --install-agent
+  Paths __REPO__ are substituted at install time.
+
+  Critical: ProgramArguments uses "start --wait" so the bash job stays alive
+  while Chrome is up. KeepAlive only respawns after Chrome actually quits.
+  AbandonProcessGroup prevents launchd from SIGTERM'ing Chrome children if
+  the wrapper ever exits early (the original open/close loop bug).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bmc.wa-chrome</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__REPO__/scripts/wa-chrome-always-on.sh</string>
+    <string>start</string>
+    <string>--wait</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__REPO__</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <!-- Do not kill Chrome if the job leader exits unexpectedly -->
+  <key>AbandonProcessGroup</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>__REPO__/.runtime/wa-chrome-launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__REPO__/.runtime/wa-chrome-launchd.err.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>SPA_URL</key>
+    <string>https://calculadora-bmc.vercel.app/hub/wa</string>
+  </dict>
+</dict>
+</plist>

@@ -5,6 +5,7 @@
  */
 import { Router } from "express";
 import { saveQuotationBundleToDrive } from "../lib/driveUpload.js";
+import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 
 const MAX_PDF_BYTES = 12 * 1024 * 1024;
 const MAX_JSON_BYTES = 4 * 1024 * 1024;
@@ -57,10 +58,12 @@ export function validateDriveArchiveBody(body) {
   };
 }
 
-export function createQuoteDriveArchiveRouter(config) {
+export function createQuoteDriveArchiveRouter(config, deps = {}) {
   const router = Router();
+  const saveBundle = deps.saveQuotationBundleToDrive || saveQuotationBundleToDrive;
+  const authGuard = deps.authGuard || requireServiceOrUser({ authOnly: true });
 
-  router.post("/quotes/drive-archive", async (req, res) => {
+  router.post("/quotes/drive-archive", authGuard, async (req, res) => {
     if (!config.driveQuoteFolderId) {
       return res.status(503).json({ ok: false, error: "drive_unavailable" });
     }
@@ -71,7 +74,7 @@ export function createQuoteDriveArchiveRouter(config) {
     }
 
     try {
-      const result = await saveQuotationBundleToDrive({
+      const result = await saveBundle({
         rootFolderId: config.driveQuoteFolderId,
         quotationCode: parsed.quotationCode,
         proyecto: parsed.proyecto,

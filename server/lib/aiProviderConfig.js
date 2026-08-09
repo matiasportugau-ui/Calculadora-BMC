@@ -12,10 +12,11 @@
  */
 
 import { config } from "../config.js";
+import { isUsableApiKey } from "./apiKeyUtils.js";
 
 // ─── Provider identifiers (internal canonical names) ──────────────────────────
-export const PROVIDERS = ["claude", "openai", "grok", "gemini"];
-/** @typedef {"claude"|"openai"|"grok"|"gemini"} Provider */
+export const PROVIDERS = ["claude", "openai", "grok", "gemini", "openrouter"];
+/** @typedef {"claude"|"openai"|"grok"|"gemini"|"openrouter"} Provider */
 
 // ─── Human labels ─────────────────────────────────────────────────────────────
 /** @type {Record<Provider, string>} */
@@ -24,6 +25,7 @@ export const PROVIDER_LABELS = {
   openai: "OpenAI",
   grok: "Grok (xAI)",
   gemini: "Gemini (Google)",
+  openrouter: "OpenRouter (open models)",
 };
 
 // ─── Environment variable names for API keys ─────────────────────────────────
@@ -33,6 +35,7 @@ export const API_KEY_ENV = {
   openai: "OPENAI_API_KEY",
   grok: "GROK_API_KEY",
   gemini: "GEMINI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
 };
 
 // ─── Default models (used when .env does not override) ────────────────────────
@@ -43,6 +46,7 @@ export const DEFAULT_MODELS = {
   openai: "gpt-4o-mini",
   grok: "grok-3-mini",
   gemini: "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 ("no longer available")
+  openrouter: config.openrouterModel, // env-configurable open model (default: free Llama 3.3 70B)
 };
 
 // Cheaper / faster defaults (used by auto-learn, some CRM paths, fallbacks)
@@ -52,6 +56,7 @@ export const FAST_DEFAULT_MODELS = {
   openai: "gpt-4o-mini",
   grok: "grok-3-mini",
   gemini: "gemini-2.5-flash",
+  openrouter: config.openrouterModel,
 };
 
 // ─── Allowed models per provider (strict allowlist for safety) ────────────────
@@ -79,6 +84,15 @@ export const ALLOWED_MODELS = {
     "gemini-1.5-flash-8b",
     "gemini-1.5-pro",
   ]),
+  // OpenRouter model slugs (open-weights). The configured default is always
+  // allowed (isAllowedModel also permits the default); these are common free tiers.
+  openrouter: new Set([
+    config.openrouterModel,
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+    "mistralai/mistral-small-3.2-24b-instruct:free",
+  ]),
 };
 
 // ─── Vercel AI Gateway slugs (when using the gateway) ─────────────────────────
@@ -90,21 +104,33 @@ export const GATEWAY_MODEL_SLUGS = {
   gemini: "google/gemini-2.5-flash",
 };
 
-// Preferred fallback order (best Spanish + tool use first)
-export const DEFAULT_PROVIDER_ORDER = ["claude", "grok", "gemini", "openai"];
+// Preferred fallback order (best Spanish + tool use first). `openrouter` is the
+// TERMINAL open-source-model fallback — tried last so the seam never runs out of
+// AI even if all four commercial providers fail at once (inactive until its key
+// is set, so it simply doesn't appear in the chain otherwise).
+export const DEFAULT_PROVIDER_ORDER = ["claude", "grok", "gemini", "openai", "openrouter"];
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
 /**
+ * Return the provider API key only if it looks usable (non-empty, not a
+ * .env.example placeholder). Callers that need "is this provider configured?"
+ * should use truthiness of this value — empty/placeholder keys surface as "".
+ *
  * @param {Provider} provider
+ * @returns {string}
  */
 export function getApiKey(provider) {
+  let key = "";
   switch (provider) {
-    case "claude": return config.anthropicApiKey;
-    case "openai": return config.openaiApiKey;
-    case "grok": return config.grokApiKey;
-    case "gemini": return config.geminiApiKey;
+    case "claude": key = config.anthropicApiKey; break;
+    case "openai": key = config.openaiApiKey; break;
+    case "grok": key = config.grokApiKey; break;
+    case "gemini": key = config.geminiApiKey; break;
+    case "openrouter": key = config.openrouterApiKey; break;
+    default: return "";
   }
+  return isUsableApiKey(key) ? String(key).trim() : "";
 }
 
 /**
@@ -142,7 +168,11 @@ export function resolveModel(provider, requested, preferFast = false) {
  * @returns {Provider[]}
  */
 export function getAvailableProviders() {
-  return PROVIDERS.filter((p) => !!getApiKey(p));
+  return PROVIDERS.filter((p) => {
+    if (!getApiKey(p)) return false;
+    if (p === "openrouter" && !config.openrouterFallbackEnabled) return false;
+    return true;
+  });
 }
 
 /**
@@ -186,6 +216,62 @@ export function buildAiOptionsResponse() {
     autoOrder: getProviderChain().filter((p) => keys[p]),
     providers,
   };
+}
+
+/**
+ * Async ai-options with readiness envelope + optional live filter (SDD Phase B).
+ * Uses cache-first aggregate (probes only on cold cache / forceProbe).
+ * @param {{ forceProbe?: boolean }} [opts]
+ */
+export async function buildAiOptionsResponseWithReadiness(opts = {}) {
+  const base = buildAiOptionsResponse();
+  try {
+    const { getAggregateReadiness, filterProvidersForPicker, aiOptionsRequireLive } =
+      await import("./providerReadiness.js");
+    // Public ai-options: probe when cache cold so lights populate; TTL prevents thrash.
+    const agg = await getAggregateReadiness({ force: !!opts.forceProbe });
+    const readiness = {
+      ready: agg.ready,
+      light: agg.light,
+      activeProvider: agg.activeProvider,
+    };
+
+    const annotate = (list) =>
+      list.map((p) => {
+        const row = agg.providers.find((r) => r.id === p.id);
+        return {
+          ...p,
+          light: row?.light || "gray",
+          state: row?.state || "unknown",
+          reasonCode: row?.reasonCode || null,
+          reason: row?.reason || null,
+        };
+      });
+
+    if (aiOptionsRequireLive()) {
+      const allowed = new Set(
+        filterProvidersForPicker(
+          agg.providers,
+          base.providers.map((p) => p.id),
+        ),
+      );
+      const providers = annotate(base.providers.filter((p) => allowed.has(p.id)));
+      const readyFirst = DEFAULT_PROVIDER_ORDER.filter((id) =>
+        providers.some((p) => p.id === id && p.state === "ready"),
+      );
+      const autoOrder = readyFirst.length
+        ? readyFirst
+        : base.autoOrder.filter((id) => allowed.has(id));
+      return { ...base, providers, autoOrder, readiness };
+    }
+
+    return { ...base, providers: annotate(base.providers), readiness };
+  } catch {
+    return {
+      ...base,
+      readiness: { ready: false, light: "gray", activeProvider: null },
+    };
+  }
 }
 
 // Used by auto-learn and other background jobs that want cheap + reliable extraction

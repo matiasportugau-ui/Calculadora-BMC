@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import BmcModuleNav from "./BmcModuleNav.jsx";
+import OperatorOverview from "./hub/OperatorOverview.jsx";
+import EstadoConsultasLive from "./hub/EstadoConsultasLive.jsx";
 
 const wrap = {
   minHeight: "100vh",
@@ -77,6 +79,12 @@ export default function BmcWolfboardHub() {
       <div style={main}>
         <h1 style={h1}>Wolfboard</h1>
         <p style={sub}>Elegí un módulo. Más herramientas se irán sumando acá.</p>
+
+        {/* Aditivo: resúmenes de Control Operativo (IA + Finanzas) */}
+        <OperatorOverview />
+
+        <EstadoConsultasLive />
+
         <div style={grid}>
           <div style={card}>
             <h2 style={cardTitle}>BMC Uruguay · Calculadora</h2>
@@ -145,6 +153,15 @@ export default function BmcWolfboardHub() {
             </p>
             <Link to={adminPath} style={{ ...cta, background: "#1a3a5c" }}>
               Abrir Admin operativo
+            </Link>
+          </div>
+          <div style={card}>
+            <h2 style={cardTitle}>Ingreso y actualización Admin</h2>
+            <p style={cardDesc}>
+              Interpretá consultas con IA, conversá fila por fila y guardá J/K/L en la planilla antes de cotizar.
+            </p>
+            <Link to="/hub/admin-ingreso" style={{ ...cta, background: "#188038" }}>
+              Abrir interpretación
             </Link>
           </div>
           <div style={card}>

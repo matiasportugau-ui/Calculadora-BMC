@@ -57,7 +57,7 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 - `src/App.jsx` — router; 20+ routes including `/` (calculator), `/hub` (wolfboard), `/hub/ml`, `/hub/wa`, `/hub/canales`, `/hub/tareas`, `/hub/traktime/*`, `/hub/cotizaciones`, `/hub/marketing`, `/hub/admin`, `/hub/admin/users`, `/hub/admin/analytics`, `/logistica`, `/conductor`, `/inspector`, `/preview/pdf`.
 - `src/utils/quotationViews.js` — client visual HTML (`generateClientVisualHTML`), costeo HTML, PDF appendix builders.
 - `src/utils/pdfGenerator.js` — PDF pipeline (server-side Chromium + html2pdf.js fallback).
-- `src/pdf-templates/` — 7 template layouts + `index.js` dispatcher with `buildQuotationModel()` and `LAYOUT_OPTIONS`.
+- `src/pdf-templates/` — 13 template layouts + `index.js` dispatcher with `buildQuotationModel()` and `LAYOUT_OPTIONS`.
 
 ### Backend hot spots
 
@@ -68,11 +68,11 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 
 ### PDF system
 
-- **7 template layouts** in `src/pdf-templates/` — each receives a `QuotationModel` (built by `buildQuotationModel()` in `index.js`) and returns self-contained HTML.
+- **13 template layouts** in `src/pdf-templates/` — each receives a `QuotationModel` (built by `buildQuotationModel()` in `index.js`) and returns self-contained HTML.
 - **Pipeline:** `src/utils/pdfGenerator.js` tries `POST /api/pdf/generate` (server-side Playwright/Chromium, vectorial) first; falls back to `html2pdf.js` (html2canvas + jsPDF, raster).
 - **Layout selector:** persisted in `localStorage` key `bmc.pdfLayout`; dropdown in PanelinCalculadoraV3 and GoogleDrivePanel.
-- **Classic output:** `generateClientVisualHTML()` in `src/utils/quotationViews.js` — inline-styled single-pass HTML (not template-based).
-- Templates: `bmc-pdf`, `soft-modern`, `executive-dark`, `blueprint`, `minimalist`, `construction-bold`, `simple`.
+- **Classic output:** `generateClientVisualHTML()` in `src/utils/quotationViews.js` — inline-styled single-pass HTML (not template-based). Selectable as layout id `classic` ("Clásico — Hoja Visual Cliente"); `renderPdfLayout` routes it through the raw inputs preserved in `QuotationModel.raw`.
+- Templates: `simple` (default, refined R3-C) + `simple-previous` (pre-refinement) + `simple-carbon`/`sage`/`slate`/`warm`/`ocean` variants, `bmc-pdf`, `soft-modern`, `executive-dark`, `blueprint`, `minimalist`, `construction-bold`, plus the `classic` Hoja Visual Cliente.
 
 ### Auth system
 
@@ -113,10 +113,11 @@ All prices are **without IVA**; 22% IVA is applied once at the total via `calcTo
 
 1. `docs/team/PROJECT-STATE.md` — **canonical** live state, recent changes, pending items.
 2. `AGENTS.md` — full command catalogue and operational procedures.
-3. `docs/team/knowledge/<role>.md` if your task maps to a defined agent role.
-4. `docs/google-sheets-module/README.md` for any Sheets/CRM change (mapping canon in `MAPPER-PRECISO-PLANILLAS-CODIGO.md`).
+3. **`docs/sdd/calculadora-bmc/SDD.md`** — as-built architecture SoT (C4, ADRs, AI, deploy, risks). Product backlog: `docs/sdd/calculadora-bmc/audit/ARCHITECT-IMPROVEMENTS.md`. Progressive: only load sections needed for the task.
+4. `docs/team/knowledge/<role>.md` if your task maps to a defined agent role.
+5. `docs/google-sheets-module/README.md` for any Sheets/CRM change (mapping canon in `MAPPER-PRECISO-PLANILLAS-CODIGO.md`).
 
-When you finish a task that changes behavior, append a line under "Cambios recientes" in `docs/team/PROJECT-STATE.md`.
+When you finish a task that changes behavior, append a line under "Cambios recientes" in `docs/team/PROJECT-STATE.md`. If the change alters topology, ADRs, or external interfaces, patch the SDD (or note a gap) in the same session.
 
 ## Deployment
 

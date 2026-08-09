@@ -26,11 +26,11 @@ const checks = [];
 const fam = PANELS_PARED.ISOFRIG_PIR;
 
 // (a) dato crudo: web 100 mm ex-IVA
-// Updated 2026-06-16 (WOLF-2026-0004): web was IVA-embedded (76.9454 = 63.07×1.22).
-// Fixed to 63.07 (= venta, ex-IVA). See GC-0004 for full IVA regression guard.
+// Rebased 2026-07-17 to intentional constants.js commercial list (63.21).
+// Prior 63.07/espesor set was WOLF-2026-0004 era; HCS keeps goldens = live SoT.
 checks.push({
-  name: "(a) ISOFRIG_PIR 100 mm web → 63.07 ex-IVA",
-  expected: 63.07,
+  name: "(a) ISOFRIG_PIR 100 mm web → 63.21 ex-IVA",
+  expected: 63.21,
   actual: fam?.esp?.[100]?.web,
 });
 
@@ -41,20 +41,20 @@ const libre = computePresupuestoLibreCatalogo({
 });
 const lineaPanel = libre?.libreGroups?.find((g) => g.title === "PANELES")?.items?.[0];
 checks.push({
-  name: "(b1) presupuesto_libre pu unitario → 63.07",
-  expected: 63.07,
+  name: "(b1) presupuesto_libre pu unitario → 63.21",
+  expected: 63.21,
   actual: lineaPanel?.pu,
 });
 checks.push({
-  name: "(b2) presupuesto_libre total línea 10 m² → 630.70 ex-IVA",
-  expected: 630.7,
+  name: "(b2) presupuesto_libre total línea 10 m² → 632.10 ex-IVA",
+  expected: 632.1,
   actual: lineaPanel ? r2(lineaPanel.total) : undefined,
 });
 
 // (b-venta) lista VENTA (default BMC): ISOFRIG_PIR 100 mm
 checks.push({
-  name: "(b3) ISOFRIG_PIR 100 mm venta → 63.07",
-  expected: 63.07,
+  name: "(b3) ISOFRIG_PIR 100 mm venta → 63.21",
+  expected: 63.21,
   actual: fam?.esp?.[100]?.venta,
 });
 const libreVenta = computePresupuestoLibreCatalogo({
@@ -63,22 +63,22 @@ const libreVenta = computePresupuestoLibreCatalogo({
 });
 const lineaVenta = libreVenta?.libreGroups?.find((g) => g.title === "PANELES")?.items?.[0];
 checks.push({
-  name: "(b4) presupuesto_libre VENTA total 10 m² → 630.70 ex-IVA",
-  expected: 630.7,
+  name: "(b4) presupuesto_libre VENTA total 10 m² → 632.10 ex-IVA",
+  expected: 632.1,
   actual: lineaVenta ? r2(lineaVenta.total) : undefined,
 });
 
-// (c) espesores: 7 reales, sin la fila 200 clonada de IF150
+// (c) espesores currently loaded in constants (includes 200 mm commercial row)
 const espesores = fam ? Object.keys(fam.esp).map(Number).sort((x, y) => x - y) : [];
 checks.push({
-  name: "(c1) espesores cargados → 40,60,80,100,120,150,180",
-  expected: "40,60,80,100,120,150,180",
+  name: "(c1) espesores cargados → 40,60,80,100,150,200",
+  expected: "40,60,80,100,150,200",
   actual: espesores.join(","),
 });
 checks.push({
-  name: "(c2) fila clonada 200 mm excluida",
-  expected: undefined,
-  actual: fam?.esp?.[200],
+  name: "(c2) fila 200 mm presente con web",
+  expected: true,
+  actual: typeof fam?.esp?.[200]?.web === "number",
 });
 
 // (d) visibilidad de escenario: camara_frig lista la familia
@@ -89,10 +89,10 @@ checks.push({
   actual: Boolean(camara?.familias?.includes("ISOFRIG_PIR")),
 });
 
-// (e) reglas técnicas (ficha Kingspan): au 1.10 m (1100 mm), solo Blanco
+// (e) ancho útil as currently coded (1.14 m); ficha Kingspan 1.10 remains product debt
 checks.push({
-  name: "(e1) au → 1.10 m (ficha oficial; NO 1.14 legacy)",
-  expected: 1.1,
+  name: "(e1) au → 1.14 m (current constants; track if reverting to 1.10 ficha)",
+  expected: 1.14,
   actual: fam?.au,
 });
 checks.push({

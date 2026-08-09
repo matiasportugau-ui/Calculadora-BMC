@@ -1,0 +1,15 @@
+{
+  "id": "06-saludo-sin-calculo",
+  "description": "Greeting only — must not invent a quote or call calcular_cotizacion.",
+  "calcState": "empty",
+  "request": {
+    "messages": [{ "role": "user", "content": "Hola, buenos días" }],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "tool_not_called", "name": "calcular_cotizacion" },
+    { "type": "verified_quote_not_emitted" }
+  ],
+  "timeoutMs": 60000
+}

@@ -95,6 +95,11 @@ load_env_key SHOPIFY_WEBHOOK_SECRET
 load_env_key SHOPIFY_SCOPES
 load_env_key SHOPIFY_QUESTIONS_SHEET_TAB
 
+# Google Ads API (non-secret; GOOGLE_ADS_DEVELOPER_TOKEN/OAUTH_CLIENT_SECRET/REFRESH_TOKEN
+# go through scripts/provision-secrets.sh → Secret Manager instead)
+load_env_key GOOGLE_ADS_OAUTH_CLIENT_ID
+load_env_key GOOGLE_ADS_LOGIN_CUSTOMER_ID
+
 # Postgres / CORS / cockpit / RBAC / analytics / followup / PDF
 load_env_key DATABASE_URL
 load_env_key CORS_ORIGIN
@@ -242,6 +247,14 @@ echo "→ Wolfboard CRM tabs: sincronizado"
 [[ -n "$SHOPIFY_QUESTIONS_SHEET_TAB" ]]  && PAIRS+=("SHOPIFY_QUESTIONS_SHEET_TAB=$SHOPIFY_QUESTIONS_SHEET_TAB")
 add_sensitive SHOPIFY_CLIENT_SECRET   "$SHOPIFY_CLIENT_SECRET"
 add_sensitive SHOPIFY_WEBHOOK_SECRET  "$SHOPIFY_WEBHOOK_SECRET"
+
+# Google Ads API (client_id + MCC login_customer_id son IDs; developer_token/
+# oauth_client_secret/refresh_token son alta sensibilidad → scripts/provision-secrets.sh)
+if [[ -n "$GOOGLE_ADS_OAUTH_CLIENT_ID" ]]; then
+  PAIRS+=("GOOGLE_ADS_OAUTH_CLIENT_ID=$GOOGLE_ADS_OAUTH_CLIENT_ID")
+  [[ -n "$GOOGLE_ADS_LOGIN_CUSTOMER_ID" ]] && PAIRS+=("GOOGLE_ADS_LOGIN_CUSTOMER_ID=$GOOGLE_ADS_LOGIN_CUSTOMER_ID")
+  echo "→ Google Ads client_id: env var"
+fi
 
 # Postgres (Modo Transportista) — DATABASE_URL contains creds → sensitive
 add_sensitive DATABASE_URL "$DATABASE_URL"

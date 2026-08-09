@@ -762,12 +762,12 @@ const EXPLANATIONS = {
     titulo: 'Cómo se calculan las Fijaciones ISOROOF (Caballete)',
     que: 'Determina la cantidad de caballetes metálicos para fijar los paneles ISOROOF a correas o madera. El caballete abraza la costilla del panel y se atornilla a la estructura.',
     como: [
-      '① Caballetes interiores: cantP × 3 × (largo / factor_largo + 1). Por cada vano entre apoyos se instalan 3 caballetes (uno por costilla) más los de los extremos.',
-      '② Caballetes perimetrales: ⌈(largo × 2) / factor_ancho⌉ — para los bordes laterales cada 30cm, resistiendo el viento.',
-      '③ Total = interiores + perimetrales.',
+      '① Grilla: anclajes_por_apoyo (3) × cantP × apoyos. Por cada línea de apoyo y por panel van 3 caballetes. apoyos = líneas de apoyo enteras según la autoportancia real del panel/espesor (ceil(largo / autoportancia) + 1).',
+      '② Fijaciones laterales: 2 × (⌊largo / espaciado_lateral⌋ + 1) — una fijación cada espaciado_lateral (default 2.5m) sobre cada uno de los 2 bordes laterales, resistiendo el viento.',
+      '③ Total = grilla + laterales.',
       '④ Tornillos: para metal → tornillo mecha; para madera → tornillo aguja.',
     ],
-    porque: 'ISOROOF tiene costillas de acero que permiten el agarre físico del caballete. La mayor densidad en bordes laterales previene el levantamiento por viento. El factor_largo (default 2.9m) es configurable en Parámetros.',
+    porque: 'ISOROOF tiene costillas de acero que permiten el agarre físico del caballete. Los bordes laterales llevan una fijación cada 2.5m para prevenir el levantamiento por viento. anclajes_por_apoyo y espaciado_lateral son configurables en Parámetros; apoyos usa la autoportancia real del panel (fallback factor_largo 2.9m).',
     terminologia: [
       { termino: 'Caballete', def: 'Pieza metálica en U invertida que abraza la costilla del panel.' },
       { termino: 'Tornillo mecha', def: 'Tornillo autoroscante para estructura metálica (perfora el acero).' },

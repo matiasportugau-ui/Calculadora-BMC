@@ -6,14 +6,18 @@ import {
   resolveApiKeyFromStorage,
   COCKPIT_TOKEN_KEY,
   setOperatorJwtGetter,
+  setOperatorJwtRefresh,
   ensureOperatorToken,
+  ensureIdentityJwt,
+  refreshIdentityJwt,
+  _resetRefreshInFlightForTests,
 } from "../src/utils/operatorApiClient.js";
 
 let pass = 0;
 let fail = 0;
-function t(name, fn) {
+async function t(name, fn) {
   try {
-    fn();
+    await fn();
     pass++;
     console.log(`  ✅ ${name}`);
   } catch (err) {
@@ -24,7 +28,7 @@ function t(name, fn) {
 
 console.log("operatorApiClient — pure helpers");
 
-t("resolveApiKeyFromEnv prefers VITE_API_AUTH_TOKEN then VITE_BMC_API_AUTH_TOKEN", () => {
+await t("resolveApiKeyFromEnv prefers VITE_API_AUTH_TOKEN then VITE_BMC_API_AUTH_TOKEN", () => {
   assert.equal(resolveApiKeyFromEnv({}), "");
   assert.equal(resolveApiKeyFromEnv({ VITE_BMC_API_AUTH_TOKEN: "bmc" }), "bmc");
   assert.equal(
@@ -33,17 +37,63 @@ t("resolveApiKeyFromEnv prefers VITE_API_AUTH_TOKEN then VITE_BMC_API_AUTH_TOKEN
   );
 });
 
-t("resolveApiKeyFromStorage reads bmc_cockpit_token", () => {
+await t("resolveApiKeyFromStorage reads bmc_cockpit_token", () => {
   const bag = new Map();
   bag.set(COCKPIT_TOKEN_KEY, "stored-token");
   assert.equal(resolveApiKeyFromStorage((k) => bag.get(k)), "stored-token");
   assert.equal(resolveApiKeyFromStorage(() => { throw new Error("no storage"); }), "");
 });
 
-t("ensureOperatorToken prefers JWT getter over storage", async () => {
+await t("ensureOperatorToken prefers JWT getter over storage", async () => {
   setOperatorJwtGetter(() => "jwt-from-auth");
   assert.equal(await ensureOperatorToken(), "jwt-from-auth");
   setOperatorJwtGetter(() => "");
+});
+
+await t("ensureIdentityJwt uses JWT getter only (no cockpit fallback)", async () => {
+  setOperatorJwtGetter(() => "jwt-only");
+  assert.equal(await ensureIdentityJwt(), "jwt-only");
+  setOperatorJwtGetter(() => "");
+  assert.equal(await ensureIdentityJwt(), "");
+});
+
+await t("refreshIdentityJwt single-flights concurrent callers", async () => {
+  _resetRefreshInFlightForTests();
+  let calls = 0;
+  // Mimic BmcAuthProvider: refresh returns boolean; getter updated by applyAuth.
+  setOperatorJwtRefresh(async () => {
+    calls += 1;
+    await new Promise((r) => setTimeout(r, 30));
+    setOperatorJwtGetter(() => "fresh-jwt");
+    return true;
+  });
+  const [a, b, c] = await Promise.all([
+    refreshIdentityJwt(),
+    refreshIdentityJwt(),
+    refreshIdentityJwt(),
+  ]);
+  assert.equal(calls, 1, "expected one refresh call for three waiters");
+  assert.equal(a, true);
+  assert.equal(b, true);
+  assert.equal(c, true);
+  assert.equal(await ensureIdentityJwt(), "fresh-jwt");
+  setOperatorJwtRefresh(async () => false);
+  setOperatorJwtGetter(() => "");
+  _resetRefreshInFlightForTests();
+});
+
+await t("refreshIdentityJwt sequential after in-flight clears", async () => {
+  _resetRefreshInFlightForTests();
+  let calls = 0;
+  setOperatorJwtRefresh(async () => {
+    calls += 1;
+    return true;
+  });
+  assert.equal(await refreshIdentityJwt(), true);
+  assert.equal(await refreshIdentityJwt(), true);
+  assert.equal(calls, 2);
+  setOperatorJwtRefresh(async () => false);
+  _resetRefreshInFlightForTests();
 });
 
 console.log(

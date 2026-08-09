@@ -1,0 +1,492 @@
+{
+  "meta": {
+    "provider": "meta",
+    "account_id": "act_109433652503382",
+    "currency": "USD",
+    "date_start": "2026-06-23",
+    "date_stop": "2026-07-22",
+    "range_key": "30d",
+    "freshness": "demo",
+    "fetched_at": "2026-07-24T08:53:21.123Z",
+    "source": "fixture",
+    "report_hash": "5c782d4f990103ff",
+    "notes": [
+      "Demo fixture — not live spend",
+      "Inspired by BMC Big 4 + zombies narrative"
+    ]
+  },
+  "kpis": {
+    "spend": 10309.51,
+    "impressions": 751667,
+    "clicks": 10525,
+    "reach": 210000,
+    "frequency": 2.4,
+    "results": 183,
+    "result_type": "lead",
+    "cpl": 56.34,
+    "roas": null,
+    "cost_per_result": 56.34,
+    "ctr": 1.4,
+    "cpm": 13.72,
+    "cpc": 0.98,
+    "deltas": {
+      "spend_pct": -4.2,
+      "results_pct": 8.1,
+      "cpl_pct": -11
+    }
+  },
+  "series": [
+    {
+      "date": "2026-06-23",
+      "spend": 342.42,
+      "results": 9,
+      "impressions": 24969,
+      "clicks": 350
+    },
+    {
+      "date": "2026-06-24",
+      "spend": 347.65,
+      "results": 7,
+      "impressions": 25336,
+      "clicks": 355
+    },
+    {
+      "date": "2026-06-25",
+      "spend": 352.48,
+      "results": 6,
+      "impressions": 25674,
+      "clicks": 359
+    },
+    {
+      "date": "2026-06-26",
+      "spend": 355.5,
+      "results": 7,
+      "impressions": 25885,
+      "clicks": 362
+    },
+    {
+      "date": "2026-06-27",
+      "spend": 355.49,
+      "results": 6,
+      "impressions": 25884,
+      "clicks": 362
+    },
+    {
+      "date": "2026-06-28",
+      "spend": 391.57,
+      "results": 4,
+      "impressions": 28410,
+      "clicks": 398
+    },
+    {
+      "date": "2026-06-29",
+      "spend": 383.3,
+      "results": 6,
+      "impressions": 27831,
+      "clicks": 390
+    },
+    {
+      "date": "2026-06-30",
+      "spend": 370.7,
+      "results": 5,
+      "impressions": 26949,
+      "clicks": 377
+    },
+    {
+      "date": "2026-07-01",
+      "spend": 354.28,
+      "results": 3,
+      "impressions": 25800,
+      "clicks": 361
+    },
+    {
+      "date": "2026-07-02",
+      "spend": 334.97,
+      "results": 5,
+      "impressions": 24448,
+      "clicks": 342
+    },
+    {
+      "date": "2026-07-03",
+      "spend": 354.01,
+      "results": 4,
+      "impressions": 25781,
+      "clicks": 361
+    },
+    {
+      "date": "2026-07-04",
+      "spend": 332.82,
+      "results": 3,
+      "impressions": 24297,
+      "clicks": 340
+    },
+    {
+      "date": "2026-07-05",
+      "spend": 312.87,
+      "results": 5,
+      "impressions": 22901,
+      "clicks": 321
+    },
+    {
+      "date": "2026-07-06",
+      "spend": 295.47,
+      "results": 4,
+      "impressions": 21683,
+      "clicks": 304
+    },
+    {
+      "date": "2026-07-07",
+      "spend": 281.64,
+      "results": 4,
+      "impressions": 20715,
+      "clicks": 290
+    },
+    {
+      "date": "2026-07-08",
+      "spend": 312.04,
+      "results": 6,
+      "impressions": 22843,
+      "clicks": 320
+    },
+    {
+      "date": "2026-07-09",
+      "spend": 306.84,
+      "results": 6,
+      "impressions": 22479,
+      "clicks": 315
+    },
+    {
+      "date": "2026-07-10",
+      "spend": 305.73,
+      "results": 5,
+      "impressions": 22401,
+      "clicks": 314
+    },
+    {
+      "date": "2026-07-11",
+      "spend": 307.95,
+      "results": 8,
+      "impressions": 22557,
+      "clicks": 316
+    },
+    {
+      "date": "2026-07-12",
+      "spend": 312.38,
+      "results": 7,
+      "impressions": 22867,
+      "clicks": 320
+    },
+    {
+      "date": "2026-07-13",
+      "spend": 357.64,
+      "results": 7,
+      "impressions": 26035,
+      "clicks": 364
+    },
+    {
+      "date": "2026-07-14",
+      "spend": 362.29,
+      "results": 9,
+      "impressions": 26360,
+      "clicks": 369
+    },
+    {
+      "date": "2026-07-15",
+      "spend": 364.92,
+      "results": 8,
+      "impressions": 26544,
+      "clicks": 372
+    },
+    {
+      "date": "2026-07-16",
+      "spend": 364.37,
+      "results": 7,
+      "impressions": 26506,
+      "clicks": 371
+    },
+    {
+      "date": "2026-07-17",
+      "spend": 359.82,
+      "results": 9,
+      "impressions": 26187,
+      "clicks": 367
+    },
+    {
+      "date": "2026-07-18",
+      "spend": 390.88,
+      "results": 8,
+      "impressions": 28362,
+      "clicks": 397
+    },
+    {
+      "date": "2026-07-19",
+      "spend": 377.66,
+      "results": 6,
+      "impressions": 27436,
+      "clicks": 384
+    },
+    {
+      "date": "2026-07-20",
+      "spend": 360.73,
+      "results": 8,
+      "impressions": 26251,
+      "clicks": 368
+    },
+    {
+      "date": "2026-07-21",
+      "spend": 341.09,
+      "results": 6,
+      "impressions": 24876,
+      "clicks": 348
+    },
+    {
+      "date": "2026-07-22",
+      "spend": 320,
+      "results": 5,
+      "impressions": 23400,
+      "clicks": 328
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "c1",
+      "name": "Lead Gen Pilar 1 — Rendimiento",
+      "objective": "lead_generation",
+      "status": "ACTIVE",
+      "spend": 4200,
+      "results": 78,
+      "impressions": 290000,
+      "clicks": 4100,
+      "cpl": 53.85,
+      "roas": null,
+      "ctr": 1.41,
+      "share_of_spend": 37.4
+    },
+    {
+      "id": "c2",
+      "name": "Lead Gen Pilar 2 — Instalación",
+      "objective": "lead_generation",
+      "status": "ACTIVE",
+      "spend": 2800,
+      "results": 52,
+      "impressions": 195000,
+      "clicks": 2800,
+      "cpl": 53.85,
+      "roas": null,
+      "ctr": 1.44,
+      "share_of_spend": 24.9
+    },
+    {
+      "id": "c3",
+      "name": "Tráfico Web",
+      "objective": "traffic",
+      "status": "ACTIVE",
+      "spend": 1900,
+      "results": 0,
+      "impressions": 220000,
+      "clicks": 3200,
+      "cpl": null,
+      "roas": null,
+      "ctr": 1.45,
+      "share_of_spend": 16.9
+    },
+    {
+      "id": "c4",
+      "name": "Remarketing",
+      "objective": "conversions",
+      "status": "ACTIVE",
+      "spend": 1400,
+      "results": 28,
+      "impressions": 95000,
+      "clicks": 1400,
+      "cpl": 50,
+      "roas": null,
+      "ctr": 1.47,
+      "share_of_spend": 12.5
+    },
+    {
+      "id": "c5",
+      "name": "Zombie EPS 2024",
+      "objective": "lead_generation",
+      "status": "ZOMBIE",
+      "spend": 0,
+      "results": 0,
+      "impressions": 0,
+      "clicks": 0,
+      "cpl": null,
+      "roas": null,
+      "ctr": null,
+      "share_of_spend": 0
+    },
+    {
+      "id": "c6",
+      "name": "Zombie Awareness Q1",
+      "objective": "awareness",
+      "status": "ZOMBIE",
+      "spend": 0,
+      "results": 0,
+      "impressions": 0,
+      "clicks": 0,
+      "cpl": null,
+      "roas": null,
+      "ctr": null,
+      "share_of_spend": 0
+    },
+    {
+      "id": "c7",
+      "name": "Paused Test ASC",
+      "objective": "lead_generation",
+      "status": "PAUSED",
+      "spend": 140,
+      "results": 2,
+      "impressions": 12000,
+      "clicks": 120,
+      "cpl": 70,
+      "roas": null,
+      "ctr": 1,
+      "share_of_spend": 1.2
+    },
+    {
+      "id": "c8",
+      "name": "Zombie Catalog 2023",
+      "objective": "traffic",
+      "status": "ZOMBIE",
+      "spend": 0,
+      "results": 0,
+      "impressions": 0,
+      "clicks": 0,
+      "cpl": null,
+      "roas": null,
+      "ctr": null,
+      "share_of_spend": 0
+    },
+    {
+      "id": "c9",
+      "name": "IG Reels Test",
+      "objective": "traffic",
+      "status": "ACTIVE",
+      "spend": 800,
+      "results": 0,
+      "impressions": 88000,
+      "clicks": 980,
+      "cpl": null,
+      "roas": null,
+      "ctr": 1.11,
+      "share_of_spend": 7.1
+    },
+    {
+      "id": "c10",
+      "name": "Zombie Lookalike V1",
+      "objective": "lead_generation",
+      "status": "ZOMBIE",
+      "spend": 0,
+      "results": 0,
+      "impressions": 0,
+      "clicks": 0,
+      "cpl": null,
+      "roas": null,
+      "ctr": null,
+      "share_of_spend": 0
+    }
+  ],
+  "platforms": [
+    {
+      "platform": "facebook",
+      "spend": 5979.52,
+      "results": 101,
+      "impressions": 413417
+    },
+    {
+      "platform": "instagram",
+      "spend": 4329.99,
+      "results": 82,
+      "impressions": 338250
+    }
+  ],
+  "placements": [
+    {
+      "placement": "feed",
+      "spend": 4639.28,
+      "results": 92
+    },
+    {
+      "placement": "reels",
+      "spend": 2886.66,
+      "results": 40
+    },
+    {
+      "placement": "stories",
+      "spend": 1855.71,
+      "results": 33
+    },
+    {
+      "placement": "other",
+      "spend": 927.86,
+      "results": 18
+    }
+  ],
+  "creatives": [
+    {
+      "id": "cr1",
+      "name": "Ahorro 40% techo",
+      "headline": "Aislá tu techo y ahorrá hasta 40%",
+      "spend": 2100,
+      "results": 41,
+      "cpl": 51.22,
+      "ctr": 1.55,
+      "thumbnail_url": null
+    },
+    {
+      "id": "cr2",
+      "name": "Construcción rápida",
+      "headline": "Construí en la mitad del tiempo",
+      "spend": 1800,
+      "results": 32,
+      "cpl": 56.25,
+      "ctr": 1.42,
+      "thumbnail_url": null
+    },
+    {
+      "id": "cr3",
+      "name": "Garantía 50 años",
+      "headline": "Paneles con garantía Kingspan",
+      "spend": 1500,
+      "results": 28,
+      "cpl": 53.57,
+      "ctr": 1.38,
+      "thumbnail_url": null
+    },
+    {
+      "id": "cr4",
+      "name": "Reels obra",
+      "headline": "De techo a panel en días",
+      "spend": 1200,
+      "results": 18,
+      "cpl": 66.67,
+      "ctr": 1.21,
+      "thumbnail_url": null
+    },
+    {
+      "id": "cr5",
+      "name": "Remarketing PDF",
+      "headline": "Tu cotización te espera",
+      "spend": 900,
+      "results": 15,
+      "cpl": 60,
+      "ctr": 1.65,
+      "thumbnail_url": null
+    }
+  ],
+  "diagnostics": {
+    "total_campaigns": 12,
+    "active": 5,
+    "zombie": 4,
+    "diagnostico": "Demo: cuenta con zombies y 4–5 campañas activas tipo Big 4 BMC",
+    "frequency_warning": false,
+    "notes": [
+      "Fixture for UI validation",
+      "Lead-gen primary story"
+    ]
+  },
+  "recommendations": []
+}

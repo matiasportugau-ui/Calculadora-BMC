@@ -1,8 +1,14 @@
+import fs from 'node:fs';
 import { google } from 'googleapis';
 import 'dotenv/config';
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   console.error('Error: GOOGLE_APPLICATION_CREDENTIALS no está configurada. Apunta al JSON de la cuenta de servicio.');
+  process.exit(1);
+}
+
+if (!fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+  console.error(`Error: GOOGLE_APPLICATION_CREDENTIALS apunta a un archivo inexistente: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
   process.exit(1);
 }
 

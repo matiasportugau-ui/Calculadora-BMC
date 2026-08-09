@@ -55,6 +55,17 @@
 
 ---
 
+## Bundle — RUN 2026-07-18 / ML-SDD
+
+**Archivo dedicado:** [matprompt/MATPROMT-RUN-2026-07-18-ml-sdd.md](./matprompt/MATPROMT-RUN-2026-07-18-ml-sdd.md)
+
+- **Resumen ejecutivo:** Prompt MATPROMT dedicado para **sdd-architect** — diseñar SDD del sistema integral **MLOMS** (MercadoLibre Optimization & Management System): ads, campañas, listings, competencia, estrategia, discovery, calidad, expansión de capacidades; extensión del stack BMC existente (ML Manager, marketIntel, agentCore); site MLU; human gates en escrituras ML.
+- **Objetivos:** SDD completo fases 0–6 → `docs/team/ml-optimization/SDD-ML-OPTIMIZATION-SYSTEM.md`.
+- **Roles activos:** sdd-architect **Profundo**; resto N/A (no full-team run).
+- **Handoff post-SDD:** Integrations, Networks, Design, Security, Calc.
+
+---
+
 ## Bundle — RUN 2026-03-20 / run33
 
 **Archivo dedicado:** [matprompt/MATPROMT-RUN-2026-03-20-run33.md](./matprompt/MATPROMT-RUN-2026-03-20-run33.md)

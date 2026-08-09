@@ -12,9 +12,11 @@ and roll it back. Companion to [`OMNI-STAGING-ROLLOUT.md`](../orientation/OMNI-S
   timer → `processWaConversation` (CRM Sheets + `callAgentOnce` AF–AG + auto-learn)
   + Omni shadow-write. WhatsApp is processed twice.
 - **ON:** Omni is the single path — the webhook `await`s `normalizeAndPersist`;
-  the in-memory map / 5-min timer / 🚀 trigger / duplicate `callAgentOnce` are
-  disabled; CRM Sheets ingest + auto-learn run as the durable `wa_crm_sync` job
-  on `omni_ai_jobs` (one row per phone, per-conversation coalesced). The
+  the in-memory map / 5-min timer / duplicate `callAgentOnce` are disabled; the
+  operator-visible **🚀 affordance stays alive** by expediting the durable
+  `wa_crm_sync` job instead of calling the legacy immediate path. CRM Sheets
+  ingest + auto-learn run as that durable `wa_crm_sync` job on `omni_ai_jobs`
+  (one row per phone, per-conversation coalesced). The
   `wa_messages` mirror still runs, so the `/hub/wa` cockpit is unaffected.
 
 ## Preconditions (all must hold before setting the variable to 1)
@@ -35,13 +37,22 @@ and roll it back. Companion to [`OMNI-STAGING-ROLLOUT.md`](../orientation/OMNI-S
 - [ ] `OMNI_WA_CANONICAL` is wired into `deploy-calc-api.yml` (done) so the repo
       Variable actually reaches Cloud Run.
 - [ ] Owner decisions confirmed:
-  - **AF–AG retirement** — under canonical mode the WA-driven AF–AG AI auto-fill
-    is dropped (single AI = the Omni `suggest` job). Confirm no Sheet/wolfboard
-    consumer depends on it.
-  - **Upsert-by-phone** — CRM_Operativo reuses the existing row for a phone
-    instead of appending. Confirm this matches how WA leads should appear.
-  - **🚀 manual trigger** — disabled in canonical mode; confirm not needed.
-- [ ] Staging soak passed (below).
+  - [x] **AF–AG retirement** — decidido: bajo canonical mode se retira el WA-driven
+    AF–AG AI auto-fill y queda **Omni `suggest`** como único camino IA.
+  - [x] **Upsert-by-phone** — decidido: se mantiene **una sola fila por teléfono**
+    en CRM_Operativo; las distintas cotizaciones/recontactos se deben distinguir en
+    metadata, no creando filas nuevas por default.
+  - [x] **🚀 manual trigger equivalent** — decisión tomada: en canonical mode debe
+    seguir existiendo **el mismo affordance UI** (mismo botón / affordance visible
+    para el operador), aunque su implementación interna cambie para disparar el flujo
+    canónico en vez del path legacy.
+- [x] ~~Staging soak passed (below), including~~ **🚀 spot-check DONE in prod
+      (2026-07-04):** a signed webhook with a `🚀` message went end-to-end on
+      the canonical path — ingest → classify/suggest completed → `wa_crm_sync`
+      **expedited** (`run_after` ≈ now instead of the 60s debounce) → completed
+      in 1 attempt → CRM row written (test data cleaned afterwards). Note: the
+      flip happened before any staging soak (see Production flip status); soak
+      monitoring continues in prod via the cutover workflow's `soak` action.
 
 ## Validation gate (local / staging, needs Postgres)
 
@@ -66,6 +77,17 @@ Postgres is absent.)
    Omni suggestion (`omni_suggestions`), and NO legacy AF–AG write.
 
 ## Production flip
+
+> **Status 2026-07-04: FLIPPED ON.** Migrations 011–015 applied via
+> `wa-canonical-cutover.yml` (action=migrate). The workflow's `flip_on`
+> prerequisite check has a bug (`gh variable get` with `github.token` cannot
+> read repo Variables → always reports MISSING), so the flip was executed
+> manually with the equivalent commands: `gh variable set OMNI_WA_CANONICAL
+> --body 1` + deploy dispatch. Cloud Run renders `OMNI_WA_CANONICAL=1` with
+> bus + orchestrator ON. First soak snapshot: clean (0 dead-letter, coalescing
+> invariant holds, no WA traffic in window). Pending: fix the workflow's
+> prerequisite read (use `gh api repos/.../actions/variables/...` or a PAT),
+> and spot-check 🚀 with real WA traffic.
 
 1. Confirm preconditions + soak green.
 2. Set prod repo Variable `OMNI_WA_CANONICAL=1`.

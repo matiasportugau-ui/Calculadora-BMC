@@ -2,9 +2,12 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { apiGet } from "../utils/apiClient.js";
 import { mapErrorMessage } from "../utils/chatErrors.js";
+import {
+  loadPanelinAiSelection,
+  savePanelinAiSelection,
+} from "../utils/panelinAiSelection.js";
 
 const STORAGE_KEY = "panelin-chat-history";
-const STORAGE_AI = "panelin-chat-ai-selection-v1";
 const STORAGE_CONV_ID = "panelin-conversation-id";
 const ALLOWED_AI_PROVIDERS = new Set(["claude", "openai", "grok", "gemini"]);
 const MAX_STORED = 40; // keep last 40 messages in localStorage
@@ -39,26 +42,11 @@ function freshConversationId() {
 }
 
 function loadAiSelection() {
-  try {
-    const raw = typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_AI);
-    if (!raw) return { aiProvider: "auto", aiModel: "" };
-    const o = JSON.parse(raw);
-    const aiProvider = o?.aiProvider === "claude" || o?.aiProvider === "openai" || o?.aiProvider === "grok" || o?.aiProvider === "gemini"
-      ? o.aiProvider
-      : "auto";
-    const aiModel = typeof o?.aiModel === "string" ? o.aiModel : "";
-    return { aiProvider, aiModel };
-  } catch {
-    return { aiProvider: "auto", aiModel: "" };
-  }
+  return loadPanelinAiSelection();
 }
 
 function saveAiSelection(sel) {
-  try {
-    localStorage.setItem(STORAGE_AI, JSON.stringify(sel));
-  } catch {
-    // ignore
-  }
+  return savePanelinAiSelection(sel);
 }
 
 function loadHistory() {
@@ -88,6 +76,84 @@ function saveHistory(messages) {
 }
 
 
+/** Strip Co-Work / truncate info notes from message text before sending as API history. */
+export function stripHistoryNoise(content) {
+  const lines = String(content || "").split("\n");
+  return lines
+    .filter((line) => {
+      const t = line.trim();
+      if (!t) return true;
+      if (/^_(.+)_$/.test(t)) return false;
+      if (/^⚠️/.test(t)) return false;
+      return true;
+    })
+    .join("\n")
+    .trim();
+}
+
+/** Routine SSE info notes — hide from bubble unless DEV mode. */
+const ROUTINE_INFO_NOTE_RE =
+  /^(Usando\s|Procesando|Co-Work:|Se truncó|Se resumió|Claude está|Probando)/i;
+
+export function isRoutineInfoNote(note) {
+  return ROUTINE_INFO_NOTE_RE.test(String(note || "").trim());
+}
+
+/**
+ * Build the JSON body posted to POST /api/agent/chat (pure, testable).
+ * Used by send() and unit tests for Live assist attach-on-send contract.
+ *
+ * @param {{
+ *   history?: Array<{role:string, content:string}>,
+ *   userText: string,
+ *   attachments?: Array<object>,
+ *   operatorContext?: object,
+ *   calcState?: object,
+ *   devMode?: boolean,
+ *   aiProvider?: string,
+ *   aiModel?: string,
+ *   conversationId?: string|null,
+ *   surface?: string,
+ * }} opts
+ */
+export function buildAgentChatRequestBody(opts = {}) {
+  const attachments = Array.isArray(opts.attachments)
+    ? opts.attachments.filter((a) => a && a.data)
+    : [];
+  const history = Array.isArray(opts.history) ? opts.history : [];
+  const userMsg = {
+    role: "user",
+    content: String(opts.userText || "").trim(),
+    ...(attachments.length ? { attachments } : {}),
+  };
+  const apiMessages = [...history, userMsg].map((m, idx, arr) => {
+    const base = { role: m.role, content: stripHistoryNoise(m.content) };
+    if (idx === arr.length - 1 && m.role === "user" && attachments.length) {
+      base.attachments = attachments.map((a) => ({
+        type: "image",
+        mime: a.mime || "image/jpeg",
+        data: a.data,
+        source: a.source || "oneshot",
+        capturedAt: a.capturedAt || null,
+      }));
+    }
+    return base;
+  });
+  const ap = opts.aiProvider || "auto";
+  return {
+    messages: apiMessages,
+    calcState: opts.calcState || {},
+    devMode: !!opts.devMode,
+    aiProvider: ap,
+    ...(ap !== "auto" && opts.aiModel ? { aiModel: opts.aiModel } : {}),
+    ...(opts.conversationId ? { conversationId: opts.conversationId } : {}),
+    surface: opts.surface || opts.operatorContext?.surface || "panelin_chat",
+    ...(opts.operatorContext && typeof opts.operatorContext === "object"
+      ? { operatorContext: opts.operatorContext }
+      : {}),
+  };
+}
+
 /**
  * Manages Panelin chat state and SSE streaming.
  *
@@ -96,10 +162,12 @@ function saveHistory(messages) {
  *   onAction: (action: {type:string, payload:any}) => void,
  *   devMode?: boolean,
  *   devAuthToken?: string,
+ *   operatorAccessToken?: string,
  *   persistHistory?: boolean,
  * }} opts
  * When the API sets `PANELIN_RELAX_DEV_AUTH`, GET /capabilities returns `panelin_relax_dev_auth: true`
  * and dev routes accept requests without API_AUTH_TOKEN (local dev only).
+ * `operatorAccessToken` — identity JWT from Iniciar sesión; unlocks auth tools without DEV mode.
  * @returns {{ messages, isStreaming, aiProvider, aiModel, setAiProvider, setAiModel, setAiSelection, aiOptions, aiOptionsError, send, stop, retry, clear, error, ... }}
  */
 export function useChat({
@@ -107,13 +175,18 @@ export function useChat({
   onAction,
   devMode = false,
   devAuthToken = "",
+  operatorAccessToken = "",
   persistHistory = false,
 }) {
   const [messages, setMessages] = useState(() => (persistHistory ? loadHistory() : []));
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
   const [conversationId, setConversationId] = useState(() => loadConversationId() || freshConversationId());
-  const [devMeta, setDevMeta] = useState({ kbMatches: 0, calcValidation: null });
+  const [devMeta, setDevMeta] = useState({
+    kbMatches: 0,
+    calcValidation: null,
+    lastTurn: null, // IMP-12: { provider_used, model, latency_ms, ttft_ms }
+  });
   const [trainingEntries, setTrainingEntries] = useState([]);
   const [trainingStats, setTrainingStats] = useState({ total: 0 });
   const [promptPreview, setPromptPreview] = useState("");
@@ -121,6 +194,8 @@ export function useChat({
   const [{ aiProvider, aiModel }, setAiSelectionState] = useState(loadAiSelection);
   const [aiOptions, setAiOptions] = useState(null);
   const [aiOptionsError, setAiOptionsError] = useState(null);
+  /** Aggregate readiness from ai-options envelope (lights without separate poll). */
+  const aiReadiness = aiOptions?.readiness || null;
   /** Mirrors server `PANELIN_RELAX_DEV_AUTH` (see GET /capabilities `panelin_relax_dev_auth`). */
   const [relaxDevAuth, setRelaxDevAuth] = useState(false);
   const abortRef = useRef(null);
@@ -129,8 +204,9 @@ export function useChat({
   messagesRef.current = messages;
   const aiSelectionRef = useRef({ aiProvider, aiModel });
   aiSelectionRef.current = { aiProvider, aiModel };
-  // 1.2 — Track last user text for retry
+  // 1.2 — Track last user text + send opts (Live assist attachments) for retry
   const lastUserTextRef = useRef("");
+  const lastSendOptsRef = useRef({});
 
   useEffect(() => {
     let cancelled = false;
@@ -249,25 +325,43 @@ export function useChat({
   }, [devMode, devApisAuthorized]);
 
   const buildDevAuthHeaders = useCallback(() => {
-    if (!devMode) return {};
-    if (relaxDevAuth) return {};
-    const t = String(devAuthToken || "").trim();
-    if (!t) return {};
-    return {
-      Authorization: `Bearer ${t}`,
-      "X-Api-Key": t,
-    };
-  }, [devMode, devAuthToken, relaxDevAuth]);
+    // Prefer DEV static token when active (X-Api-Key for service routes).
+    if (devMode && !relaxDevAuth) {
+      const t = String(devAuthToken || "").trim();
+      if (t) {
+        return {
+          Authorization: `Bearer ${t}`,
+          "X-Api-Key": t,
+        };
+      }
+    }
+    // Logged-in operator (Google identity) — unlocks Co-Work/CRM tools without DEV mode.
+    const op = String(operatorAccessToken || "").trim();
+    if (op) {
+      return { Authorization: `Bearer ${op}` };
+    }
+    return {};
+  }, [devMode, devAuthToken, relaxDevAuth, operatorAccessToken]);
 
+  /**
+   * @param {string} userText
+   * @param {{ attachments?: Array<object>, operatorContext?: object }} [sendOpts]
+   */
   const send = useCallback(
-    async (userText) => {
+    async (userText, sendOpts = {}) => {
       if (isStreaming || !String(userText || "").trim()) return;
       lastUserTextRef.current = userText.trim();
+      lastSendOptsRef.current = sendOpts && typeof sendOpts === "object" ? sendOpts : {};
+
+      const attachments = Array.isArray(sendOpts.attachments)
+        ? sendOpts.attachments.filter((a) => a && a.data)
+        : [];
 
       const userMsg = {
         id: crypto.randomUUID(),
         role: "user",
         content: userText.trim(),
+        ...(attachments.length ? { attachments, hasCapture: true } : {}),
       };
       const assistantId = crypto.randomUUID();
       const assistantMsg = {
@@ -283,6 +377,12 @@ export function useChat({
 
       const controller = new AbortController();
       abortRef.current = controller;
+      // Hard client timeout so Live assist never leaves the "…" bubble forever
+      // (server may hang on a vision+tools provider).
+      const clientTimeoutMs = attachments.length ? 70_000 : 120_000;
+      const clientTimer = setTimeout(() => {
+        try { controller.abort(); } catch { /* ignore */ }
+      }, clientTimeoutMs);
 
       try {
         const apiBase = getCalcApiBase();
@@ -293,26 +393,38 @@ export function useChat({
         };
 
         const { aiProvider: ap, aiModel: am } = aiSelectionRef.current;
+        // History for API: text only for prior turns; last user carries attachments.
+        // Live assist: attachments + operatorContext.liveAssist built via shared helper.
+        // Prefer gemini on vision turns when auto — Claude credits are often exhausted.
+        const effectiveProvider =
+          attachments.length && (ap === "auto" || !ap) ? "gemini" : ap;
+        const requestBody = buildAgentChatRequestBody({
+          history: history.map((m) => ({ role: m.role, content: m.content })),
+          userText: userMsg.content,
+          attachments,
+          operatorContext: sendOpts.operatorContext,
+          calcState,
+          devMode,
+          aiProvider: effectiveProvider,
+          aiModel: am,
+          conversationId,
+          surface: sendOpts.operatorContext?.surface || "panelin_chat",
+        });
+
         const res = await fetch(`${apiBase}/api/agent/chat`, {
           method: "POST",
           headers,
-          body: JSON.stringify({
-            messages: [...history, userMsg].map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
-            calcState,
-            devMode,
-            aiProvider: ap,
-            ...(ap !== "auto" && am ? { aiModel: am } : {}),
-            conversationId,
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal,
         });
 
         if (!res.ok) {
-          const err = new Error(`HTTP ${res.status}`);
+          let body = null;
+          try { body = await res.json(); } catch { /* ignore */ }
+          const err = new Error(body?.error || `HTTP ${res.status}`);
           err._status = res.status;
+          err._body = body;
+          err._serverMessage = body?.error || "";
           throw err;
         }
 
@@ -354,7 +466,52 @@ export function useChat({
                   return prev.map((m, i) => (i === prev.length - 1 ? { ...m, actions } : m));
                 });
               } else if (evt.type === "error") {
-                setError(evt.message || "Error del agente");
+                const errText = evt.message || "Error del agente";
+                setError(errText);
+                // Always clear the thinking dots so the UI never spins forever
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? {
+                          ...m,
+                          pending: false,
+                          content: m.content?.trim()
+                            ? `${m.content}\n\n⚠️ ${errText}`
+                            : `⚠️ ${errText}`,
+                        }
+                      : m
+                  )
+                );
+              } else if (evt.type === "info") {
+                const note = String(evt.message || "").trim();
+                // Skip routine provider/truncate noise in operator UI; keep in DEV.
+                if (note && (devMode || !isRoutineInfoNote(note))) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantId
+                        ? { ...m, infoNotes: [...(m.infoNotes || []), note] }
+                        : m
+                    )
+                  );
+                }
+              } else if (evt.type === "provider_reset") {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: "", infoNotes: [], pending: true }
+                      : m
+                  )
+                );
+              } else if (evt.type === "cowork_ack") {
+                if (evt.framesAccepted > 0) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantId
+                        ? { ...m, coworkFrames: evt.framesAccepted }
+                        : m
+                    )
+                  );
+                }
               } else if (evt.type === "tool_call") {
                 // Append a tool-call indicator to the assistant message (visible in dev mode)
                 setMessages((prev) => {
@@ -395,21 +552,45 @@ export function useChat({
                     m.id === assistantId ? { ...m, suggestions: sug || undefined } : m
                   )
                 );
+              } else if (evt.type === "done") {
+                // IMP-12: surface provider + latency in Dev panel only
+                if (
+                  evt.provider_used != null ||
+                  evt.latency_ms != null ||
+                  evt.model != null
+                ) {
+                  setDevMeta((prev) => ({
+                    ...prev,
+                    lastTurn: {
+                      provider_used: evt.provider_used ?? null,
+                      model: evt.model ?? null,
+                      latency_ms: evt.latency_ms ?? null,
+                      ttft_ms: evt.ttft_ms ?? null,
+                    },
+                  }));
+                }
               }
-              // type === "done" → loop exits naturally when reader closes
+              // type === "done" → loop also exits when reader closes
             } catch {
               // skip malformed event
             }
           }
         }
       } catch (err) {
-        const msg = mapErrorMessage(err);
+        const isAbort = err?.name === "AbortError" || /aborted/i.test(String(err?.message || ""));
+        const msg = isAbort
+          ? "Se agotó el tiempo de espera del chat (Live/captura). Probá de nuevo, elegí Gemini, o mandá sin captura."
+          : mapErrorMessage(err);
         if (msg) {
           setError(msg);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
-                ? { ...m, content: "", pending: false }
+                ? {
+                    ...m,
+                    pending: false,
+                    content: m.content?.trim() ? `${m.content}\n\n⚠️ ${msg}` : `⚠️ ${msg}`,
+                  }
                 : m
             )
           );
@@ -422,7 +603,14 @@ export function useChat({
           );
         }
       } finally {
+        clearTimeout(clientTimer);
         setIsStreaming(false);
+        // Ensure last assistant bubble never stays pending
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, pending: false } : m
+          )
+        );
         abortRef.current = null;
       }
     },
@@ -629,7 +817,7 @@ export function useChat({
     setIsStreaming(false);
   }, []);
 
-  // 1.2 — Retry last user message
+  // 1.2 — Retry last user message (re-applies last Live assist opts / attachments)
   const retry = useCallback(() => {
     if (isStreaming || !lastUserTextRef.current) return;
     // Remove the last user+assistant pair before re-sending
@@ -639,8 +827,9 @@ export function useChat({
       return prev.slice(0, prev.length - idx - 1);
     });
     setError(null);
+    const opts = lastSendOptsRef.current || {};
     // Use setTimeout to let state flush before re-sending
-    setTimeout(() => send(lastUserTextRef.current), 0);
+    setTimeout(() => send(lastUserTextRef.current, opts), 0);
   }, [isStreaming, send]);
 
   const clear = useCallback(() => {
@@ -649,6 +838,7 @@ export function useChat({
     setError(null);
     setIsStreaming(false);
     lastUserTextRef.current = "";
+    lastSendOptsRef.current = {};
     devAutoLoadedRef.current = false;
     const newId = freshConversationId();
     setConversationId(newId);
@@ -673,6 +863,8 @@ export function useChat({
     setAiSelection,
     aiOptions,
     aiOptionsError,
+    /** { ready, light, activeProvider } from server readiness probes */
+    aiReadiness,
     relaxDevAuth,
     send,
     stop,

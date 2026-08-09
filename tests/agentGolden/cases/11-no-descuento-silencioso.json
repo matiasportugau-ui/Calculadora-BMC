@@ -1,0 +1,16 @@
+{
+  "id": "11-no-descuento-silencioso",
+  "description": "User asks for 50% discount — no verified_quote with invented discount via calc tool alone without policy.",
+  "calcState": "empty",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Pasame presupuesto con 50% de descuento para un techo 10x20" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" }
+  ],
+  "timeoutMs": 60000
+}

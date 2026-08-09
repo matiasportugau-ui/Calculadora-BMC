@@ -26,6 +26,7 @@ import BmcChatPanel from "./components/BmcChatPanel.jsx";
 import DesignPreviewGate from "./components/preview/DesignPreviewGate.jsx";
 
 const DesignMockupsPage = lazy(() => import("./components/preview/DesignMockupsPage.jsx"));
+const ProductMediaMapperPage = lazy(() => import("./components/preview/ProductMediaMapperPage.jsx"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ const queryClient = new QueryClient({
 // pay for the /hub/* module bundles until they navigate there.
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
 const PanelinLivePage = lazy(() => import("./components/PanelinLivePage.jsx"));
+const PanelinCoWorkPage = lazy(() => import("./components/PanelinCoWorkPage.jsx"));
 const LandingPage = lazy(() => import("./components/LandingPage.jsx"));
 const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
 const DriverTransportistaApp = lazy(() => import("./components/DriverTransportistaApp.jsx"));
@@ -49,14 +51,17 @@ const PdfPreview = lazy(() => import("./components/PdfPreview.jsx"));
 const BmcWolfboardHub = lazy(() => import("./components/BmcWolfboardHub.jsx"));
 const BmcMlOperativoModule = lazy(() => import("./components/BmcMlOperativoModule.jsx"));
 const BmcWaModuleWithTabs = lazy(() => import("./components/BmcWaModuleWithTabs.jsx"));
-const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUnificadosModule.jsx"));
+const BmcCanalesUnificadosModule = lazy(() => import("./components/hub/canales/CanalesModule.jsx"));
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
+const AdminIngresoModule = lazy(() => import("./components/AdminIngresoModule.jsx"));
 const BugReportsList = lazy(() => import("./components/BugReportsList.jsx"));
 const BmcPlanosModule = lazy(() => import("./components/BmcPlanosModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
+const FinanzasModule = lazy(() => import("./components/hub/finanzas/FinanzasModule.jsx"));
+const FinanzasUnlockGate = lazy(() => import("./components/hub/finanzas/FinanzasUnlockGate.jsx"));
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
 const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
 const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx"));
@@ -324,6 +329,18 @@ export default function App() {
           }
         />
         <Route
+          path="/hub/admin-ingreso"
+          element={
+            <RequireGrant role="admin">
+              <Shell>
+                <Suspense fallback={suspenseFallback}>
+                  <AdminIngresoModule />
+                </Suspense>
+              </Shell>
+            </RequireGrant>
+          }
+        />
+        <Route
           path="/hub/bugs"
           element={
             <RequireGrant role="admin">
@@ -368,6 +385,22 @@ export default function App() {
             </Shell>
           }
         />
+        <Route
+          path="/hub/finanzas/*"
+          element={
+            <Shell>
+              <RequireGrant module="banco" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <FinanzasUnlockGate>
+                    <FinanzasModule />
+                  </FinanzasUnlockGate>
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route path="/hub/banco" element={<Navigate to="/hub/finanzas/banco" replace />} />
+        <Route path="/hub/banco/*" element={<Navigate to="/hub/finanzas/banco" replace />} />
         <Route
           path="/hub/agent-admin"
           element={
@@ -492,6 +525,16 @@ export default function App() {
           }
         />
         <Route
+          path="/panelin/cowork"
+          element={
+            <RequireGrant module="calc" minLevel="write">
+              <Suspense fallback={suspenseFallback}>
+                <PanelinCoWorkPage />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
           path="/preview/design-mockups"
           element={
             <Shell>
@@ -499,6 +542,14 @@ export default function App() {
                 <DesignMockupsPage />
               </Suspense>
             </Shell>
+          }
+        />
+        <Route
+          path="/preview/product-media-mapper"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <ProductMediaMapperPage />
+            </Suspense>
           }
         />
         <Route path="/wa" element={<Navigate to="/hub/wa" replace />} />

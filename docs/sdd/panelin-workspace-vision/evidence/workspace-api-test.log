@@ -1,0 +1,16 @@
+◇ injected env (61) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+▶ workspace HTTP API customers/quotes/files
+  ✔ POST without auth → 401 (17.575833ms)
+  ✔ POST customer → GET customer (HTTP get-after-set) (555.213667ms)
+  ✔ POST quote linked to customer → GET quote (964.368458ms)
+  ✔ POST file linked to customer+quote → GET + list by quoteId (1654.179167ms)
+✔ workspace HTTP API customers/quotes/files (3895.944792ms)
+ℹ tests 4
+ℹ suites 1
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4220.855542

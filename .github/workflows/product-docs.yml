@@ -29,14 +29,14 @@ jobs:
       BMC_DISK_PRECHECK_SKIP: "1"
     steps:
       # uses: pineados a SHA (no tags móviles) — supply-chain.
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v4.2.2
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4.1.0
         with:
           node-version: "24"
 
       - name: System deps (ALSA headers para easymidi)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
+        run: bash scripts/ci-install-alsa-dev.sh
 
       - name: Install dependencies
         run: npm ci --include=dev
@@ -72,7 +72,7 @@ jobs:
 
       # 4) PR borrador con la doc regenerada (docs-private queda gitignored).
       - name: Create / update draft PR
-        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6.1.0
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: automation/product-docs
           base: main

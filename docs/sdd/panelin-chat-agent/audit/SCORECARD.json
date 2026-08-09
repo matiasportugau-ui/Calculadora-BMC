@@ -1,0 +1,52 @@
+{
+  "generated_at": "2026-07-18T21:45:00-03:00",
+  "system_slug": "panelin-chat-agent",
+  "sdd_path": "docs/sdd/panelin-chat-agent/SDD.md",
+  "composite": 92,
+  "min_pass": 90,
+  "pass": true,
+  "iteration": 1,
+  "prior_composite": 84,
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 98,
+      "notes": ["§1–12 complete", "TARGET companion SDD-TARGET.md added"]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 90,
+      "notes": ["Context + Container + sequences in as-built and target"]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 92,
+      "notes": ["tools-manifest 48", "15 goldens listed", "rate limits pinned"]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 94,
+      "notes": ["Prod /health CONFIRMED", "path:line throughout"]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 90,
+      "notes": ["Dual voice, RAG, 48 tools, goldens", "daily $ still soft UNKNOWN"]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 88,
+      "notes": ["Security rate limits cited", "DR still light"]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 90,
+      "notes": ["As-built ADRs + target ADR-T01..T03"]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 95,
+      "notes": ["GAP-PLAN closed P0", "Build sequence in SDD-TARGET"]
+    }
+  }
+}

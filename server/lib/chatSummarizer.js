@@ -1,7 +1,7 @@
 import { callAiCompletion } from "./aiCompletion.js";
 
 const SUMMARY_TRIGGER = 12; // messages before summarization kicks in
-const KEEP_RECENT = 4;       // always keep last N messages verbatim
+const KEEP_RECENT = 6;       // always keep last N messages verbatim
 
 /**
  * Summarize long conversation history to save token budget.

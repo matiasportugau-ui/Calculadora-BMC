@@ -3,6 +3,12 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  define: {
+    // Vite sólo expone import.meta.env.VITE_*; sin esto, los checks de
+    // VERCEL_ENV en src/lib/designPreviewMode.js (auto-on en preview,
+    // hard-block de ?designPreview=1 en producción) son código muerto.
+    'import.meta.env.VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV ?? ''),
+  },
   plugins: [
     react(),
     VitePWA({
@@ -77,12 +83,16 @@ export default defineConfig({
   base: process.env.VITE_BASE ?? "/",
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: Number(process.env.PORT) || 5173,
+    strictPort: true,
     proxy: {
-      '/calc': { target: 'http://localhost:3001', changeOrigin: true },
-      '/api': { target: 'http://localhost:3001', changeOrigin: true },
-      '/auth': { target: 'http://localhost:3001', changeOrigin: true },
-      '/chat': { target: 'http://localhost:3001', changeOrigin: true },
+      // BMC_API_PROXY overrides (e.g. Cloud Run URL) when local API is not running.
+      '/calc': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
+      '/api': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
+      '/auth': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
+      '/chat': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
+      '/sync': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
+      '/ml': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
     },
   },
   build: {

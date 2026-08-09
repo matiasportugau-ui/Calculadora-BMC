@@ -1,4 +1,8 @@
+- **2026-08-07** — Git capitalizar + Envíos harden chain on main: #909 wizard, #906 DnD, #908 SDD, #915 SSRF, #916 Bug AP, #918 Btn XSS, #920 Free-Drag AO, #921 re-confirm, #922 blank CSV, #924+#929 concurrent Entregado delete (wired). Session tip `ab3ba43d`. smoke:prod OK. Handoff: docs/team/HANDOFF-2026-08-07-0827.md.
+- **2026-08-07** — Logística autocarga A→C→B **LIVE prod**: PR #899 → main `9e08eacf`; Vercel + Cloud Run OK; `/logistica` 200; envios match-quotes/adjunto-fetch 401 unauth. Handoff: docs/team/HANDOFF-2026-08-07-logistica-autocarga-live.md. Evidence: docs/sdd/bmc-envios/evidence/autocarga-training-2026-08-07.md.
 # Bitácora — Matías Portugau
+- **2026-08-05** — All+ residual: disk ~9GB free (stale node_modules + worktrees); closed PR #864/#865; #869 G8 one-click already on main; G8 operator ran → residual CDN 410 / 0 play controls (no synthetic STT); Envíos units + /logistica 200 + WA media 401/302 OK. Handoff: docs/team/HANDOFF-2026-08-05-allplus.md.
+- **2026-08-05** — WA media G7/G8/G9 shipped+verified: PR #847 → Cloud Run panelin-calc-00934-lp5. Documented as-built SPEC + prompt-eng archive. Paths: docs/team/features/WA-MEDIA-RICHNESS-SPEC.md, docs/team/goal-prompts/goal-prompt-wa-media-richness-100.md, docs/wa-cockpit/MEDIA-G7G8G9.md.
 
 **Propósito:** log unificado de sesiones, hitos, deploys y prioridades cerradas. Complementa [PROJECT-STATE.md](./PROJECT-STATE.md) (que es el estado actual del sistema) con una vista cronológica de QUIÉN tocó QUÉ + por qué.
 
@@ -182,3 +186,116 @@ gate:local:   pendiente correr al final de la sesión
 **Próximo paso:** decidir si en la frase ambigua "5m×1m" el agente debe auto-asumir 20 m² o seguir confirmando (ablande de 1 línea en `chatPrompts.js`). Opcional: Fase 2 del brain (bidireccional). Path no-streaming `agentCore.js` se deja text-only por decisión del usuario.
 
 **Refs:** PRs #472 / #475 / #478. Handoff: `docs/team/HANDOFF-2026-06-29-gemini-tools-quote-interp.md`.
+
+---
+
+## 2026-07-06 PM — Keyword monitor prod loop closed (system Chromium)
+
+**Contexto:** refrescos SERP programados fallaban en Cloud Run — el bundle de Playwright no está en la imagen Docker.
+
+**Acciones:** `resolveChromiumLaunchOptions()` en `keywordSerpPlaywright.js` usa `CHROMIUM_EXECUTABLE_PATH` + fallback Alpine; 5 tests nuevos; PR #603 mergeado; deploy Cloud Run exitoso.
+
+**Verificación:** `test:market-intel` 39/39; CI verde; deploy API `success`.
+
+**Próximo paso:** UAT — Hub → Inteligencia → **Refrescar P1** en prod.
+
+**Refs:** PR #603 (`b50781a4`).
+
+---
+
+## 2026-07-08 AM — PDF real en cotizaciones del agente + renderer compartido (quotePdf.js)
+
+**Contexto:** `generar_pdf` del agente AE nunca generó un PDF: subía HTML imprimible a GCS/Drive. Se pidió PDF real en creación/export de cotizaciones para usuarios y agentes.
+
+**Acciones:**
+- Renderer Chromium extraído de `routes/pdf.js` a `server/lib/quotePdf.js` (semáforo max-2, error tipado, retry de launch legacy→modern).
+- `/calc/cotizar/pdf` ahora renderiza y sube PDF real (GCS `quotes/pdf/` + bundle Drive PDF+JSON); campos nuevos `pdf_file_url`/`pdf_rendered`/`drive_folder_url`; `pdf_url` sigue siendo HTML (contrato del sheet-quote-pipeline). Kill switch `COTIZAR_PDF_RENDER=0`.
+- `export.pdf` de `/api/me/quotes/:id` re-renderiza on-demand desde `payload.request` (antes 404).
+- Bugfix: `driveFileId` recibía el webViewLink y el allowlist de `quoteStore` anulaba el upsert a `identity.quotes` silenciosamente.
+- Hallazgo prod: renderer roto desde deploy 2026-07-04 (Chromium de Alpine bumpeado, `Target closed`); el retry moderno debería auto-repararlo. Memoria Cloud Run 512Mi→1Gi en `deploy-calc-api.yml`.
+
+**Verificación:** `tests/quotePdf.test.js` 17/17 (nuevo, en `test:core`); `agentTools.test.js` 298/298; gate:local verde (salvo `gate-secrets-drift` WHATSAPP_*, pre-existente en main); local con Chrome real: `/api/pdf/generate` 200 `%PDF`, `cotizar/pdf` `pdf_rendered:true`, `smoke:bmc-pdf` OK.
+
+**Próximo paso:** post-deploy confirmar `pdf_rendered:true` en prod + `gsutil stat` (contentType `application/pdf`) + dry-run del sheet-quote-pipeline.
+
+---
+
+## 2026-07-08 — Consola gestionable de Asistentes IA + resiliencia del seam + seguridad ML
+
+**Qué:** Se convirtió `/hub/admin/assistants` de panel read-only optimista en **consola honesta y gestionable**, con resiliencia y cierre de agujeros de seguridad. 8 PRs a prod: #638 (fix ML "Generar con IA" = auth), #639 (panel muestra proveedor real + motivo de falla), #641 (enable/disable en runtime sin redeploy, reusa waConfig), #642 (toggles en panel), #648 (auth en rutas ML de escritura), #651 (cooldown 15min para errores duros + botón Reset cooldowns), #652 (fallback terminal OpenRouter open-models, dormant hasta cargar key), #656 (auth en rutas ML de lectura). #610 documentado con acciones owner-gated.
+
+**Verificación:** todos prod-verificados (anon→401, toggles on/off, cooldown 14.5min+reset, seam responde vía Gemini, OpenRouter dormant boot 200). `gate:local` verde (drift WHATSAPP_* ya resuelto en main).
+
+**Bloqueante (owner-gated):** #610 = Anthropic sin créditos + Grok key inválida → seam sirve Gemini. Atajo gratis: cargar key de OpenRouter (#652). Ver `HANDOFF-2026-07-08.md`.
+
+**Próximo paso:** cargar key OpenRouter (piso de AI gratis) → luego #610 (créditos + Grok) → "Reset cooldowns" en el panel. Verificar #656 en prod. task-master-ai arreglado (reiniciar Claude Code); Notion needs reauth.
+
+---
+
+## 2026-07-18 AM — Mission Control Package A (hygiene + PR wave)
+
+**Contexto:** Deep board MC Jul18 — máquina quieta pero 87 PRs / 48 jobs blocked; cross-agent reconcile confirmó Finanzas/ML/HCS ya en main.
+
+**Acciones:** #708 competitive docs merged; 39 zombie jobs stopped; 32+ stale draft PRs closed; PR wave rebased as #709–#715 (supersede conflict PRs — HCS bloquea force-push); metalog `feat/seed-completion` pushed; human gates escalados en `BLOCKED-ESCALATION-2026-07-18.md`.
+
+**Verificación:** open PRs ~30 (16 draft); #709 mergeable; cleanup log `docs/team/housekeeping/cleanup-2026-07-18.md`.
+
+**Próximo paso:** merge #709–#715 cuando CI verde; #610 créditos, #624 email H1–H4, #358 Matriz live.
+
+**Refs:** [`~/.claude/mission-control/BOARD.md`](../../../.claude/mission-control/BOARD.md), plan `mission_control_jul18_f0554a93`.
+
+---
+
+## 2026-08-05 N — BMC Envíos U1/U2 ship (#832) + session close
+
+**Contexto:** Cerrar ciclo SDD + packing SoT + bridge quote→logística; merge a main y verificar prod.
+
+**Acciones:**
+- PR [#832](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/832) merged → `9746f29c` (U1 cargoPacking SoT, U2 bridgePayload + CTA, Liquid Glass, SDD score 98, tests).
+- Deploy Vercel production Ready; API Cloud Run success; smoke:prod OK.
+- Confirmado en prod lazy chunks: `envios-app`, **Enviar a Logística**, `envios-summary`.
+- Docs: PROJECT-STATE entrada 2026-08-05 + handoff `HANDOFF-2026-08-05-bmc-envios-ship.md` (sin commit de cierre; árbol local tiene WA/media dirty no-Envíos).
+
+**Verificación:** `GET /` y `/logistica` 200; App chunk + Google Client ID embebido; markers Envíos en JS lazy.
+
+**Próximo paso:** triage drafts #836 + #837 (1-fila + no wipe drafts); opcional harness-ratchet smoke App-*.js; E2E manual Flete→Enviar con paneles.
+
+**Refs:** #832, drafts #836/#837, `docs/sdd/bmc-envios/`, run GHA 30972626824 (deploy OK / smoke falso rojo).
+---
+
+## 2026-08-05 N — Envíos session close (persist)
+
+**Contexto:** Cerrar y persistir fin de ciclo Envíos (Ops UX + glory + residual fixes); no seguir con packing.
+
+**Acciones:**
+- Product on main: #832 U1/U2, #840 packing/bridge, #842–#849 F1–F6, #857 U3, #867 NO ENVIADO/live bridge/forced fila.
+- Docs: #863 SDD v1.4 SCORECARD 96 pass.
+- Smoke prod OK (`/` + `/logistica` 200, markers, smoke:prod).
+- Decision: leave Envíos; P5 only if multi-device pain; next WA or security auth.
+
+**Verificación:** automated prod smoke + unit tests for residual fixes green at ship time.
+
+**Próximo paso:** Switch context (WA / dashboard auth). Return to Envíos only for P5 multi-device or named bug.
+
+**Refs:** HANDOFF-2026-08-05-envios-session-close.md · #832 #840 #842–#849 #857 #863 #867.
+
+## 2026-08-05 N — Workspace store + Envíos verification FULL PASS (persisted)
+
+**Contexto:** Cerrar y documentar la verificación completa Logística L1–L7 + Store SPA S0–S6 + checklist Overall PASS, con runners y CORS en main.
+
+**Acciones:**
+- Dual Playwright Logística (`e2e-prod-logistica-dual.mjs`) — DUAL_OK; L3 vía `?e2e=1` → `moveStopBefore`/`reorderStops` (mismo path que DnD drop).
+- Store SPA e2e local (`e2e-store-spa-local.mjs`) — S0–S6 + API list customer stamp (API :3001, SPA :3100, JWT dev-browser-login).
+- CORS: `panelin-workspace.vercel.app` + `localhost|127.0.0.1:3100` en `server/config.js`.
+- Checklist relleno: `docs/team/VERIFY-MANUAL-RUN-2026-08-05_054026.md` Overall PASS.
+- Procedure + scripts: `VERIFY-workspace-envios-store-2026-08-05.md`, `docs/team/scripts/verify-*`, npm `verify:workspace-envios` / `verify:logistica-dual` / `verify:store-spa-local`.
+- PR [#875](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/875) merged → `6537cae0`.
+
+**Verificación:** unit FSM/DnD green; dual L1–L7 pass,pass; store S0–S6 pass; prod unauth health 200 / customers 401; no open checklist boxes.
+
+**Próximo paso:** nada pendiente en este track. Opcional: `NEXT_PUBLIC_BMC_API_BASE` en Vercel Panelin-Workspace para CRUD cloud.
+
+**Refs:** HANDOFF-2026-08-05-verify-workspace-envios-complete.md · VERIFY-MANUAL-RUN-2026-08-05_054026.md · #831 #832 #857 #875 · Panelin-Workspace #4
+
+---
+

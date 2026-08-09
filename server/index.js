@@ -11,6 +11,7 @@ import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { buildVersionInfo } from "./lib/versionInfo.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
+import { createMlWebhookBuffer, createMlWebhookProcessor } from "./lib/mlWebhookService.js";
 import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
@@ -20,6 +21,7 @@ import agentChatRouter from "./routes/agentChat.js";
 import agentTrainingRouter from "./routes/agentTraining.js";
 import agentConversationsRouter from "./routes/agentConversations.js";
 import agentVoiceRouter from "./routes/agentVoice.js";
+import createProviderStatusRouter from "./routes/providerStatus.js";
 import agentTranscribeRouter from "./routes/agentTranscribe.js";
 import agentFeedbackRouter from "./routes/agentFeedback.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
@@ -30,10 +32,17 @@ import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
 import createMlSearchRouter from "./routes/mlSearch.js";
 import createMlEtlRunRouter from "./routes/mlEtlRun.js";
+import createMlOptimizeRouter from "./routes/mlOptimize.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
+import createEnviosRouter from "./routes/envios.js";
+import createRepartosRouter from "./routes/repartos.js";
 import createWaRouter from "./routes/wa.js";
 import createTraktimeRouter from "./routes/traktime.js";
+import createBancoRouter from "./routes/banco.js";
+import createWorkspaceRouter from "./routes/workspace.js";
+import createPaosRouter from "./routes/paos.js";
+import createCsrfProtection from "./middleware/csrfProtection.js";
 import createActivityRouter from "./routes/activity.js";
 import { createQuotesRouter } from "./routes/quotes.js";
 import { createQuoteDriveArchiveRouter } from "./routes/quoteDriveArchive.js";
@@ -46,13 +55,16 @@ import { setWaConfigModuleForQuoteParams } from "./lib/waQuoteParams.js";
 import { initWaWebhooks } from "./lib/waWebhooks.js";
 import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
+import { startWaTranscriptWorker } from "./lib/waTranscriptWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
 import marketingRouter from "./routes/marketing.js";
+import adsRouter from "./routes/ads.js";
 import { createBugsRouter } from "./routes/bugs.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinRouter from "./routes/panelin.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
+import rateLimit from "express-rate-limit";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -62,6 +74,7 @@ import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
 import createBmcChatRouter from "./routes/bmcChat.js";
 import { startOrphanCloseScheduler } from "./jobs/closeOrphanSessions.js";
 import identityMeRouter from "./routes/identityMe.js";
+import publicLeadEventRouter from "./routes/publicLeadEvent.js";
 import driveConfigRouter from "./routes/driveConfig.js";
 import identityAdminRouter from "./routes/identityAdmin.js";
 import identityAnalyticsRouter from "./routes/identityAnalytics.js";
@@ -85,12 +98,14 @@ import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
+import { handleMetaMessagingWebhook, verifyMetaWebhookSubscribe } from "./lib/omni/metaWebhookHandler.js";
 import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
 import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
-import { startOmniAiWorker } from "./lib/omni/orchestrator/aiWorker.js";
+import { startOmniAiWorker, triggerWaCrmSyncNow } from "./lib/omni/orchestrator/aiWorker.js";
 import { startOmniFrtBreachWorker } from "./lib/omni/orchestrator/frtBreachWorker.js";
+import { startOmniSequenceWorker } from "./lib/omni/orchestrator/sequenceWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
@@ -167,18 +182,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// WhatsApp + Shopify webhooks need raw body (HMAC / signature verification)
-app.use("/webhooks/whatsapp", (req, res, next) => {
+// Meta (WhatsApp/IG/FB) + Shopify webhooks need raw body (HMAC / signature verification)
+app.use(["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"], (req, res, next) => {
   if (req.method !== "POST") return next();
   return express.raw({ type: "application/json", limit: "20mb" })(req, res, next);
 });
 app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
 app.use((req, res, next) => {
   if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
-  if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
+  if (
+    ["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"].includes(req.path) &&
+    req.method === "POST"
+  ) return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(cookieParser());
+// CSRF (CWE-352): verificación de procedencia para métodos inseguros con
+// cookies — ver server/middleware/csrfProtection.js. Bearer/webhooks pasan.
+app.use(createCsrfProtection(config, logger));
 app.use(
   pinoHttp({
     logger,
@@ -189,8 +210,7 @@ app.use(
 // Replaced in-memory Map with persistent store (Phase 0 security fix).
 // See server/lib/oauthStateStore.js
 import { oauthStateStore } from "./lib/oauthStateStore.js";
-const webhookEvents = [];
-const maxWebhookEvents = 250;
+const mlWebhookBuffer = createMlWebhookBuffer(250);
 
 // ── ML auto-mode (persisted to disk; resets to false on Cloud Run cold start) ──
 const ML_AUTOMODE_FILE = path.join(__dirname, ".ml-automode.json");
@@ -206,6 +226,14 @@ const tokenStore = createTokenStore({
   logger,
 });
 const ml = createMercadoLibreClient({ config, tokenStore, logger });
+const mlWebhookProcessor = createMlWebhookProcessor({
+  ml,
+  config,
+  logger,
+  syncMLCRM,
+  autoAnswerPipeline,
+  buffer: mlWebhookBuffer,
+});
 
 const missingConfig = () => {
   const missing = [];
@@ -368,7 +396,16 @@ app.get("/auth/ml/status", asyncHandler(async (req, res) => {
   });
 }));
 
-app.get("/ml/users/me", asyncHandler(async (req, res) => {
+// All inline /ml/* routes require an authenticated caller: an active identity
+// JWT (operators — mlFetch attaches it) OR the static service token. Closes the
+// anonymous holes on both writes (publish an answer to a customer, edit a live
+// listing) AND reads (seller profile, listings, customer questions, ORDERS with
+// customer PII). The server-side auto-answer (mlAutoAnswer.js) posts via the ML
+// client directly, not these routes, so it is unaffected; the separate mlSearch
+// router keeps its own static-token guard.
+const requireMlAuth = requireServiceOrUser({ authOnly: true });
+
+app.get("/ml/users/me", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: "/users/me",
@@ -376,7 +413,7 @@ app.get("/ml/users/me", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/users/:id", asyncHandler(async (req, res) => {
+app.get("/ml/users/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: `/users/${req.params.id}`,
@@ -384,7 +421,7 @@ app.get("/ml/users/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/listings", asyncHandler(async (req, res) => {
+app.get("/ml/listings", requireMlAuth, asyncHandler(async (req, res) => {
   const { status = "active", limit = 50, offset = 0 } = req.query;
   const sellerId = await ml.resolveSellerId();
   const payload = await ml.requestWithRetries({
@@ -394,7 +431,7 @@ app.get("/ml/listings", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/items/:id", asyncHandler(async (req, res) => {
+app.get("/ml/items/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: `/items/${req.params.id}`,
@@ -402,7 +439,7 @@ app.get("/ml/items/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.patch("/ml/items/:id", asyncHandler(async (req, res) => {
+app.patch("/ml/items/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "PUT",
     path: `/items/${req.params.id}`,
@@ -411,7 +448,7 @@ app.patch("/ml/items/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/ml/items/:id/description", asyncHandler(async (req, res) => {
+app.post("/ml/items/:id/description", requireMlAuth, asyncHandler(async (req, res) => {
   const { text } = req.body;
   try {
     const payload = await ml.requestWithRetries({
@@ -432,7 +469,7 @@ app.post("/ml/items/:id/description", asyncHandler(async (req, res) => {
   }
 }));
 
-app.get("/ml/questions", asyncHandler(async (req, res) => {
+app.get("/ml/questions", requireMlAuth, asyncHandler(async (req, res) => {
   if (req.query.id) {
     const payload = await ml.requestWithRetries({
       method: "GET",
@@ -482,7 +519,7 @@ app.get("/ml/questions", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/questions/:id", asyncHandler(async (req, res) => {
+app.get("/ml/questions/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: `/questions/${req.params.id}`,
@@ -490,7 +527,7 @@ app.get("/ml/questions/:id", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/ml/questions/:id/answer", asyncHandler(async (req, res) => {
+app.post("/ml/questions/:id/answer", requireMlAuth, asyncHandler(async (req, res) => {
   if (!req.body?.text) {
     return res.status(400).json({ ok: false, error: "Missing body.text" });
   }
@@ -506,7 +543,7 @@ app.post("/ml/questions/:id/answer", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/orders", asyncHandler(async (req, res) => {
+app.get("/ml/orders", requireMlAuth, asyncHandler(async (req, res) => {
   if (req.query.id) {
     const payload = await ml.requestWithRetries({
       method: "GET",
@@ -542,7 +579,7 @@ app.get("/ml/orders", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.get("/ml/orders/:id", asyncHandler(async (req, res) => {
+app.get("/ml/orders/:id", requireMlAuth, asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: `/orders/${req.params.id}`,
@@ -578,55 +615,18 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
     }
   }
 
-  const event = {
-    id: crypto.randomUUID(),
-    receivedAt: new Date().toISOString(),
+  const event = mlWebhookProcessor.handleWebhook({
     body: req.body,
     query: req.query,
-    headers: {
-      "x-request-id": req.headers["x-request-id"],
-      topic: req.headers["x-topic"],
-      "x-signature": req.headers["x-signature"],
-    },
-  };
-  webhookEvents.unshift(event);
-  if (webhookEvents.length > maxWebhookEvents) webhookEvents.pop();
-
-  req.log.info({ eventId: event.id, topic: event.headers.topic }, "MercadoLibre webhook received");
-
-  // Trigger ML→CRM sync cuando llega una pregunta nueva (fire-and-forget — responde 200 de inmediato)
-  const topic = req.body?.topic || req.headers["x-topic"];
-  if (topic === "questions" && config.bmcSheetId) {
-    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
-    (async () => {
-      try {
-        const syncResult = await syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log });
-        if (config.omniMlShadowWrite && syncResult.omniShadow) {
-          req.log.info({ omni: syncResult.omniShadow }, "ML omni shadow write");
-        }
-        if (autoMode.fullAuto && syncResult.rows?.length > 0) {
-          req.log.info({ count: syncResult.rows.length }, "ML auto-mode ON — running auto-answer pipeline");
-          const { answered } = await autoAnswerPipeline({
-            rows:      syncResult.rows,
-            ml,
-            sheetId:   config.bmcSheetId,
-            credsPath,
-            config,
-            logger:    req.log,
-          });
-          req.log.info({ answered }, "ML auto-answer pipeline complete");
-        }
-      } catch (err) {
-        req.log.error({ err }, "ML→CRM webhook pipeline failed");
-      }
-    })();
-  }
+    headers: req.headers,
+    autoMode,
+  });
 
   res.status(200).json({ ok: true, eventId: event.id });
 }));
 
 app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
-  res.json({ ok: true, count: webhookEvents.length, events: webhookEvents });
+  res.json({ ok: true, count: mlWebhookBuffer.count(), events: mlWebhookBuffer.list() });
 }));
 
 // ── ML auto-mode API ──────────────────────────────────────────────────────────
@@ -671,6 +671,58 @@ app.get("/webhooks/whatsapp", (req, res) => {
   }
   res.status(403).send("Forbidden");
 });
+
+function metaWebhookClientKey(req) {
+  const xf = req.headers["x-forwarded-for"];
+  if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
+  return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+const metaWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: metaWebhookClientKey,
+  message: { ok: false, error: "rate_limited" },
+});
+
+app.get("/webhooks/instagram", metaWebhookLimiter, (req, res) => {
+  const result = verifyMetaWebhookSubscribe(req, config.igVerifyToken);
+  res.set("Content-Type", "text/plain");
+  res.status(result.status).send(result.body);
+});
+
+app.get("/webhooks/messenger", metaWebhookLimiter, (req, res) => {
+  const result = verifyMetaWebhookSubscribe(req, config.fbVerifyToken);
+  res.set("Content-Type", "text/plain");
+  res.status(result.status).send(result.body);
+});
+
+function handleMetaMessagingRoute(req, res, channel) {
+  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  const result = handleMetaMessagingWebhook({
+    channel,
+    enabled: channel === "ig" ? config.omniIgEnabled : config.omniFbEnabled,
+    appSecret: channel === "ig" ? config.igAppSecret : config.fbAppSecret,
+    rawBodyBuffer: raw,
+    signatureHeader: req.headers["x-hub-signature-256"],
+    config,
+    logger: req.log || logger,
+  });
+  res.status(result.status).json(result.body);
+  result.processing.catch((err) => {
+    req.log?.warn?.({ err: err?.message, channel }, "Meta webhook async processing failed");
+  });
+}
+
+app.post("/webhooks/instagram", metaWebhookLimiter, asyncHandler(async (req, res) => {
+  handleMetaMessagingRoute(req, res, "ig");
+}));
+
+app.post("/webhooks/messenger", metaWebhookLimiter, asyncHandler(async (req, res) => {
+  handleMetaMessagingRoute(req, res, "fb");
+}));
 
 // POST — mensajes entrantes
 // Note: rate-limiting is intentionally omitted on this endpoint. Meta's Cloud API
@@ -911,10 +963,25 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
       // Omni is the single source of truth: real (awaited) ingest → message.ingested
       // → classify/suggest + the per-conversation-coalesced wa_crm_sync job.
       try {
-        await normalizeAndPersist(
+        const persisted = await normalizeAndPersist(
           waWebhookToOmniEvent({ msg, chatId, contactName }),
           { databaseUrl: config.databaseUrl, logger },
         );
+        if (text.includes("🚀")) {
+          const manual = await triggerWaCrmSyncNow(
+            getOmniPool(config.databaseUrl),
+            persisted,
+          );
+          logger.info(
+            {
+              chat_id: chatId,
+              conversation_id: persisted.conversation_id,
+              job_id: manual.jobId,
+              mode: manual.mode,
+            },
+            "[WA] 🚀 manual trigger (canonical)",
+          );
+        }
       } catch (e) {
         // 200 was already sent to Meta (line above); a failure here only loses this
         // message's enrichment, never the webhook ack.
@@ -939,6 +1006,7 @@ app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", authGoogleRouter);
 app.use("/api", authMfaRouter);
 app.use(identityMeRouter);
+app.use(publicLeadEventRouter);
 app.use(driveConfigRouter);
 app.use(identityAdminRouter);
 app.use(identityAnalyticsRouter);
@@ -952,11 +1020,33 @@ app.use("/api", createAssistantsStatusRouter());
 // and mounted ONLY on the AI-GENERATION paths — inbound ingest/webhooks stay open
 // so a disabled assistant keeps receiving (no lost messages), just stops answering.
 // `canales` (omniRouter, below) is intentionally NOT gated: it is the one kept on.
+//
+// Per-IP limiter for the authenticated AI-generation route below: bounds paid-LLM
+// spend even from a compromised/over-eager operator session (auth already rejects
+// anonymous). Keyed by client IP (same X-Forwarded-For logic as agentChat).
+const aiGenLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const xf = req.headers["x-forwarded-for"];
+    if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
+    return req.ip || req.socket?.remoteAddress || "unknown";
+  },
+  message: { ok: false, error: "rate_limited", detail: "Demasiadas consultas de IA. Esperá un momento." },
+});
 app.use("/api/agent/chat", requireAssistantEnabled("panelin"));
 app.use("/api/email-agent/chat", requireAssistantEnabled("email"));
 app.use("/api/wa/suggestions/run", requireAssistantEnabled("wa"));
 app.use("/api/wa/quotes/run", requireAssistantEnabled("wa"));
-app.use("/api/crm/suggest-response", requireAssistantEnabled("ml"));
+// suggest-response was the one AI-generation route reachable ANONYMOUSLY (verified
+// live: bare curl → 200 + paid LLM completion). The others already carry auth
+// (email→requireCrmCockpitWrite, wa→requireWaAccess, wolfboard→requireWolfboardWrite;
+// agent/chat is public-by-design behind publicLimiter). Close it: rate-limit →
+// authenticate (any operator session OR static service token; rejects anonymous) →
+// then the assistant master-switch gate.
+app.use("/api/crm/suggest-response", aiGenLimiter, requireServiceOrUser({ authOnly: true }), requireAssistantEnabled("ml"));
 app.use("/api/wolfboard/quote-batch", requireAssistantEnabled("wolfboard"));
 // ─────────────────────────────────────────────────────────────────────────────
 app.use("/api", agentChatRouter);
@@ -964,14 +1054,22 @@ app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);
 app.use("/api", agentFeedbackRouter);
 app.use("/api", agentVoiceRouter);
+app.use("/api", createProviderStatusRouter());
 app.use("/api", agentTranscribeRouter);
 app.use("/api", aiAnalyticsRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
 app.use("/api", omniRouter);
 app.use("/api", createTransportistaRouter(config, logger));
+app.use("/api", createEnviosRouter(config, logger));
+app.use("/api", createRepartosRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
 app.use(createTraktimeRouter(config, logger));
+app.use(createBancoRouter(config, logger));
+// Panelin Workspace domain (BMC-as-platform, ADR-008) — additive only
+app.use(createWorkspaceRouter(config, logger));
+// PAOS supervised learning (flags default OFF)
+app.use(createPaosRouter(config));
 app.use(createActivityRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
@@ -1022,6 +1120,8 @@ app.use("/api/wolfboard", createWolfboardRouter(config));
 // Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
 // Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
 app.use("/api/marketing", marketingRouter);
+// Google Ads API — read/report + RBAC-gated dry-run-by-default campaign mutations
+app.use("/api/ads", adsRouter);
 app.use("/api/bugs", createBugsRouter(config));
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
@@ -1033,6 +1133,8 @@ app.use("/api", planCadRouter);
 app.use(createMlSearchRouter({ ml, config, logger }));
 // Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
 app.use(createMlEtlRunRouter({ config, logger }));
+// MLOMS P0 — listing quality audit (AI proposal only; human applies PATCH in UI)
+app.use(createMlOptimizeRouter({ ml, config, logger }));
 // Quote counter (atomic global counter, annual reset)
 app.use("/api", createQuotesRouter(config));
 // Calculator export archive → shared Drive folder (DRIVE_QUOTE_FOLDER_ID)
@@ -1163,11 +1265,20 @@ let stopTraktimeMirror = () => {};
 let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
+let stopWaTranscript = () => {};
 let stopOmniAiWorker = () => {};
 let stopOmniFrtBreachWorker = () => {};
 let stopOmniSnoozeWorker = () => {};
+let stopOmniSequenceWorker = () => {};
 
 const server = app.listen(config.port, async () => {
+  try {
+    const { getPromptsShaCached } = await import("./lib/promptsSha.js");
+    const ps = getPromptsShaCached();
+    logger.info({ event: "prompts_sha_boot", ...ps }, "prompts_sha_boot");
+  } catch (err) {
+    logger.warn({ err }, "prompts_sha_boot failed");
+  }
   logger.info(
     {
       port: config.port,
@@ -1230,6 +1341,15 @@ const server = app.listen(config.port, async () => {
     logger.info("WA sla + followups workers started");
   }
 
+  // Cloud STT optional — primary path is Mac local whisper turbo (scripts/wa-local-stt-worker.mjs).
+  // Enable only with WA_TRANSCRIPT_CLOUD=1 (uses OPENAI_API_KEY).
+  if (waPool && process.env.WA_TRANSCRIPT_CLOUD === "1") {
+    stopWaTranscript = startWaTranscriptWorker({ config, logger, pool: waPool });
+    logger.info("WA cloud transcript worker started (fallback)");
+  } else {
+    logger.info("WA cloud transcript worker OFF — use local STT worker (default)");
+  }
+
   // Omni WAVE 3 — event bus subscribers + AI worker (flags default OFF)
   wireOmniOrchestration({ config, logger });
   const omniPool = getOmniPool(config.databaseUrl);
@@ -1253,6 +1373,15 @@ const server = app.listen(config.port, async () => {
     });
     logger.info("Omni FRT breach worker started");
   }
+  if (omniPool && config.omniSequencesEnabled) {
+    stopOmniSequenceWorker = startOmniSequenceWorker({
+      logger,
+      pool: omniPool,
+      enabled: config.omniSequencesEnabled,
+      intervalMs: config.omniSequencesIntervalMs,
+    });
+    logger.info("Omni sequence worker started");
+  }
 });
 
 // ── Graceful shutdown ──
@@ -1271,9 +1400,11 @@ function shutdown(signal) {
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
+  try { stopWaTranscript(); } catch (e) { logger.warn({ err: e?.message }, "stopWaTranscript failed"); }
   try { stopOmniAiWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniAiWorker failed"); }
   try { stopOmniSnoozeWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSnoozeWorker failed"); }
   try { stopOmniFrtBreachWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniFrtBreachWorker failed"); }
+  try { stopOmniSequenceWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSequenceWorker failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");

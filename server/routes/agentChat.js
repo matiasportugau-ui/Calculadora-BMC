@@ -18,6 +18,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
 import { checkDevModeAuthorization } from "../lib/devModeAuth.js";
+import { peekIdentityClaims } from "../lib/identityAuth.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import {
   calcParedCompleto,
@@ -41,9 +42,10 @@ import {
 import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET } from "../lib/tokenEstimator.js";
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
-import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
+import { AGENT_TOOLS, executeTool, buildAplicarActions } from "../lib/agentTools.js";
 import { toGeminiTools, toGeminiResponse } from "../lib/geminiTools.js";
-import { getToolStats } from "../lib/toolStats.js";
+import { getToolStatsAsync } from "../lib/toolStats.js";
+import { buildAgentToolsOpenApi, toYaml } from "../lib/agentToolsOpenApi.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
 import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
 import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.js";
@@ -51,18 +53,79 @@ import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
 import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
 import { getIvaPct } from "../lib/policyLoader.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
+import { fuseRagAndKb } from "../lib/hybridRetrieve.js";
+import { logAgentTurn } from "../lib/logAgentTurn.js";
+import { getObsSummary, recordObsSample } from "../lib/agentObsRing.js";
+import { getToolTier, filterToolsByTier, TOOL_TIERS } from "../lib/toolTiers.js";
+import { getPromptsShaCached } from "../lib/promptsSha.js";
+import { requireDevModeAuthMiddleware } from "../lib/devModeAuth.js";
 import {
   ALLOWED_MODELS as CENTRAL_ALLOWED_MODELS,
   PROVIDER_LABELS as CENTRAL_PROVIDER_LABELS,
   resolveModel as centralResolveModel,
   buildAiOptionsResponse,
+  buildAiOptionsResponseWithReadiness,
   estimateCostUSD,
 } from "../lib/aiProviderConfig.js";
+import {
+  buildMultimodalMessages,
+  formatOperatorContextBlock,
+  normalizeAttachments,
+} from "../lib/coworkFrames.js";
 
 const router = Router();
 
 // Track which conversations have already run autolearn — prevents multi-call per session.
 const _autolearned = new Set();
+
+/**
+ * Providers temporarily skipped after hard billing/quota failures (process-local).
+ * Avoids hammering Anthropic with "credit balance too low" on every Co-Work turn.
+ * Key = provider name; value = skip-until epoch ms.
+ */
+const _providerSkipUntil = new Map();
+const PROVIDER_SKIP_MS = 15 * 60 * 1000; // 15 min
+
+function isProviderSkipped(name) {
+  const until = _providerSkipUntil.get(name);
+  if (!until) return false;
+  if (Date.now() >= until) {
+    _providerSkipUntil.delete(name);
+    return false;
+  }
+  return true;
+}
+
+function markProviderSkipped(name, errMsg = "") {
+  const msg = String(errMsg || "").toLowerCase();
+  const isHardFail =
+    msg.includes("credit balance") ||
+    msg.includes("too low to access") ||
+    msg.includes("insufficient") ||
+    msg.includes("billing") ||
+    msg.includes("quota") ||
+    (msg.includes("rate_limit") && msg.includes("exceed")) ||
+    msg.includes("incorrect api key") ||
+    msg.includes("invalid api key") ||
+    msg.includes("invalid_api_key") ||
+    msg.includes("authentication") ||
+    msg.includes("401") ||
+    msg.includes("403");
+  if (!isHardFail && !msg.includes("credit")) return false;
+  _providerSkipUntil.set(name, Date.now() + PROVIDER_SKIP_MS);
+  return true;
+}
+
+function humanProviderFailHint(provider, errMsg) {
+  const msg = String(errMsg || "");
+  if (/credit balance|too low to access|Plans & Billing/i.test(msg)) {
+    return `${provider}: sin créditos en la API. Probando el siguiente proveedor…`;
+  }
+  if (/quota|rate.?limit/i.test(msg)) {
+    return `${provider}: cuota/rate-limit. Probando el siguiente…`;
+  }
+  return `${provider} falló. Probando el siguiente proveedor…`;
+}
 
 const SAFE_MODEL_ID = /^[a-zA-Z0-9._\-]{1,80}$/;
 // Models and labels now come from the central aiProviderConfig.js (single source of truth)
@@ -97,10 +160,15 @@ function modelsForProviderUi(provider, defaultModel) {
 }
 
 /** GET /api/agent/ai-options — which providers/models the server can use (no secrets). */
-router.get("/agent/ai-options", (_req, res) => {
-  // Now powered by the central config for consistency across the entire AI stack
-  const response = buildAiOptionsResponse();
-  res.json(response);
+router.get("/agent/ai-options", async (req, res) => {
+  // Annotate with readiness lights (cache-first probes; ?deep=1 forces live probe).
+  const forceProbe = /^(1|true|yes)$/i.test(String(req.query?.deep || ""));
+  try {
+    const response = await buildAiOptionsResponseWithReadiness({ forceProbe });
+    res.json(response);
+  } catch {
+    res.json(buildAiOptionsResponse());
+  }
 });
 
 /**
@@ -108,28 +176,85 @@ router.get("/agent/ai-options", (_req, res) => {
  * error rate, error buckets) over the last `windowMinutes` minutes (default 1440 = 24h).
  * Used by the dev panel "Tool Stats" tab. No secrets; safe to expose without auth.
  */
-router.get("/agent/tool-stats", (req, res) => {
+router.get("/agent/tool-stats", async (req, res) => {
   const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
-  const stats = getToolStats({ windowMs: minutes * 60 * 1000 });
-  res.json({ ok: true, ...stats });
+  try {
+    const stats = await getToolStatsAsync({ windowMs: minutes * 60 * 1000 });
+    res.json({ ok: true, ...stats });
+  } catch {
+    res.status(500).json({ ok: false, error: "tool_stats_unavailable" });
+  }
+});
+
+/**
+ * GET /api/agent/obs-summary — IMP-06 hub $ + IMP-12 p50/p95 latency (memory ring).
+ * Query: windowMinutes (default 1440). Not multi-instance durable.
+ * Auth: same as other agent admin ops (API_AUTH_TOKEN / relax-dev).
+ */
+router.get("/agent/obs-summary", requireDevModeAuthMiddleware, (req, res) => {
+  const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
+  try {
+    const summary = getObsSummary({ windowMs: minutes * 60 * 1000 });
+    res.json({
+      ok: true,
+      ...summary,
+      prompts: getPromptsShaCached(),
+      flags: {
+        rag_enabled: !!config.ragEnabled,
+        rag_hybrid: !!config.ragHybrid,
+      },
+    });
+  } catch {
+    res.status(500).json({ ok: false, error: "obs_summary_unavailable" });
+  }
 });
 
 /**
  * GET /api/agent/tools-manifest — list of all AGENT_TOOLS for external clients
  * (e.g. the Panelin MCP server). Returns the same Anthropic input_schema format
  * that the in-process tool-use loop receives.
+ * Query: tier=quote|crm|ops|email|meta (comma-separated) — IMP-14.
  */
-router.get("/agent/tools-manifest", (_req, res) => {
+router.get("/agent/tools-manifest", (req, res) => {
+  const tier = req.query?.tier ? String(req.query.tier) : "";
+  const mapped = AGENT_TOOLS.map((t) => ({
+    name: t.name,
+    description: t.description,
+    input_schema: t.input_schema,
+    requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
+    tier: getToolTier(t.name),
+  }));
+  const tools = filterToolsByTier(mapped, tier);
   res.json({
     ok: true,
-    count: AGENT_TOOLS.length,
-    tools: AGENT_TOOLS.map((t) => ({
-      name: t.name,
-      description: t.description,
-      input_schema: t.input_schema,
-      requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
-    })),
+    count: tools.length,
+    total: AGENT_TOOLS.length,
+    tiers: TOOL_TIERS,
+    tier_filter: tier || null,
+    tools,
   });
+});
+
+/**
+ * GET /api/agent/tools/openapi — OpenAPI 3.1 export of AGENT_TOOLS (B-04).
+ * Query: format=json|yaml (default json). Also honors Accept: application/yaml.
+ */
+router.get("/agent/tools/openapi", (req, res) => {
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("x-forwarded-host") || req.get("host") || "";
+  const baseUrl = host ? `${proto}://${host}` : undefined;
+  const doc = buildAgentToolsOpenApi(AGENT_TOOLS, {
+    baseUrl,
+    toolsRequiringAuth: TOOLS_REQUIRING_AUTH,
+  });
+  const wantYaml =
+    String(req.query?.format || "").toLowerCase() === "yaml" ||
+    /application\/ya?ml|\byaml\b/i.test(String(req.get("accept") || ""));
+  if (wantYaml) {
+    res.type("application/yaml").send(toYaml(doc));
+    return;
+  }
+  res.json(doc);
 });
 
 /**
@@ -152,6 +277,10 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   // from CRM_Operativo; must not be open to unauthenticated callers.
   "buscar_cliente_crm",
   "historial_cliente",
+  // CRM taxonomy — reads/writes CRM_Operativo AL–AN (tipo/tags/notas). Same
+  // PII + mutation surface as other CRM tools; must not be open on exec-tool.
+  "leer_crm_taxonomia",
+  "escribir_crm_taxonomia",
   // Quote registry / PDF read tools — return customer + quote metadata and
   // full quote HTML. Cursor + Copilot security review flagged these as
   // exposing business data through unauthenticated /api/agent/exec-tool.
@@ -162,12 +291,28 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   // Wolfboard hub — all routes are admin-only and the underlying router
   // already enforces requireAuth. We mirror that gate at the MCP entry
   // so external clients can't poll pendientes / export without the token.
+  "wa_lead_to_admin",
   "wolfboard_pendientes",
   "wolfboard_export",
   "wolfboard_sync",
   "wolfboard_actualizar_fila",
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
+  // Email cockpit + Omni (list/read/classify/draft/send — send is HITL)
+  "email_panelsim_resumen",
+  "email_borrador_saliente",
+  "email_listar_hilos",
+  "email_leer_hilo",
+  "email_clasificar_mensaje",
+  "email_enviar",
+  // Co-Work Sheets — Admin/CRM PII and writes (allowlisted service-account sheets)
+  // Reads are open on SPA chat (TOOLS_OPEN_IN_PUBLIC_CHAT); writes stay gated.
+  "sheets_list_tabs",
+  "sheets_read_range",
+  "sheets_find",
+  "sheets_get_pending_admin",
+  "sheets_propose_write",
+  "sheets_write_range",
   // TraKtiMe — read/write a user's time data; the agent acts as the user
   // (forwarded JWT). Gated here so unauthenticated chat / MCP can't poll them.
   "traktime_timer_current",
@@ -175,11 +320,27 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "traktime_timer_stop",
   "traktime_list_entries",
   "traktime_create_entry",
+  "traktime_update_entry",
+  "traktime_delete_entry",
   "traktime_day_report",
   "traktime_month_report",
   "traktime_billable_report",
   "traktime_suggest_entry",
   "traktime_activity_today",
+]);
+
+/**
+ * Co-Work Sheets tools allowed on public SPA chat without DEV mode.
+ * Internal operator usage (Live Assist / pendientes / cotizar). Still
+ * require Bearer on /api/agent/exec-tool (MCP). Writes stay auth-gated
+ * via TOOLS_REQUIRING_AUTH + user_confirmed.
+ */
+export const TOOLS_OPEN_IN_PUBLIC_CHAT = new Set([
+  "sheets_list_tabs",
+  "sheets_read_range",
+  "sheets_find",
+  "sheets_get_pending_admin",
+  "sheets_propose_write",
 ]);
 
 /** Extract a Bearer token from a request's Authorization header, or "". */
@@ -189,24 +350,48 @@ export function bearerFromRequest(req) {
 }
 
 /**
- * Returns true if the chat tool loop should refuse to execute `toolName`
- * for the current session. Public (non-devMode) chat sessions may not
- * invoke any tool in TOOLS_REQUIRING_AUTH — same gate that protects
- * /api/agent/exec-tool. devMode chats are pre-authenticated by
- * API_AUTH_TOKEN at the route entry, so they pass.
+ * True when this chat request may run tools in TOOLS_REQUIRING_AUTH.
+ * - devMode body (route already validated API_AUTH_TOKEN / relax)
+ * - static API_AUTH_TOKEN / X-Api-Key
+ * - valid identity access JWT (Iniciar sesión — no DEV mode needed)
  *
- * Exported for unit testing the regression Cursor flagged: prior to this
- * gate, an unauthenticated chat could prompt the model to call
- * `listar_cotizaciones_recientes` etc. and receive customer data.
- *
- * @param {string} toolName
- * @param {boolean} isDevModeAuthenticated
+ * @param {import("express").Request} req
+ * @param {boolean} devMode
  * @returns {boolean}
  */
-export function shouldBlockToolForUnauthenticatedChat(toolName, isDevModeAuthenticated) {
-  if (isDevModeAuthenticated) return false;
+export function isChatToolsAuthenticated(req, devMode) {
+  if (devMode) return true;
+  const token = config.apiAuthToken;
+  if (token) {
+    const bearer = bearerFromRequest(req);
+    const xKey = String(req?.headers?.["x-api-key"] || "");
+    if (bearer === token || xKey === token) return true;
+  }
+  return !!peekIdentityClaims(req);
+}
+
+/**
+ * Returns true if the chat tool loop should refuse to execute `toolName`
+ * for the current session.
+ *
+ * - Authenticated (DEV / service token / identity JWT) → never block
+ * - Co-Work sheet reads + propose → open on public SPA chat (internal ops)
+ * - Other TOOLS_REQUIRING_AUTH → block for anonymous public chat
+ *
+ * /api/agent/exec-tool still uses TOOLS_REQUIRING_AUTH fully (Bearer required).
+ *
+ * @param {string} toolName
+ * @param {boolean} isAuthenticated
+ * @returns {boolean}
+ */
+export function shouldBlockToolForUnauthenticatedChat(toolName, isAuthenticated) {
+  if (isAuthenticated) return false;
+  if (TOOLS_OPEN_IN_PUBLIC_CHAT.has(toolName)) return false;
   return TOOLS_REQUIRING_AUTH.has(toolName);
 }
+
+const CHAT_TOOL_AUTH_HINT =
+  "Esta tool requiere autenticación de operador. Iniciá sesión en la calculadora (Google) o usá modo desarrollador (Ctrl+Shift+D + token API) para CRM / registry / escrituras.";
 
 // Bound the MCP / external write surface. The chat endpoint already has
 // 10/min public + 30/min dev rate limits; exec-tool inherits nothing
@@ -461,6 +646,7 @@ router.post("/agent/chat", async (req, res) => {
     thinkingMode = false,
     channel: rawChannel,
     surface: rawSurface,
+    operatorContext: rawOperatorContext = null,
   } = req.body || {};
   // Canonical brand surface (lib/surface.js) + KB training surface (lib/kbSurface.js).
   // Body accepts `surface` and/or legacy `channel`; `surface` string wins when non-empty.
@@ -512,6 +698,10 @@ router.post("/agent/chat", async (req, res) => {
 
   // Check if rate limiter already sent a response
   if (res.headersSent) return;
+
+  // Tool-loop auth: DEV mode, API_AUTH_TOKEN, or identity JWT (logged-in operator).
+  // Co-Work sheet reads are open even when false (TOOLS_OPEN_IN_PUBLIC_CHAT).
+  const toolsAuthenticated = isChatToolsAuthenticated(req, !!devMode);
 
   // 0.15 — Soft budget (per-conversation/IP). Default OFF: see config.budgetEnabled.
   // Independent from express-rate-limit: limiter caps per-IP/min; budget caps
@@ -565,16 +755,47 @@ router.post("/agent/chat", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no"); // disable nginx / Cloud Run buffering
 
-  const send = (obj) => { if (!aborted) res.write(`data: ${JSON.stringify(obj)}\n\n`); };
+  /** IMP-12: track first streamed text for optional ttft_ms on `done`. */
+  let firstTokenAt = null;
+  const send = (obj) => {
+    if (aborted || res.writableEnded) return;
+    if (obj?.type === "text" && obj.delta && firstTokenAt == null) {
+      firstTokenAt = Date.now();
+    }
+    res.write(`data: ${JSON.stringify(obj)}\n\n`);
+  };
+  /** SSE terminal event with observability fields (IMP-12). */
+  const sendDone = (meta = {}) => {
+    const payload = {
+      type: "done",
+      provider_used: meta.provider_used ?? null,
+      model: meta.model ?? null,
+      latency_ms: meta.latency_ms ?? null,
+    };
+    if (meta.ttft_ms != null && Number.isFinite(meta.ttft_ms)) {
+      payload.ttft_ms = meta.ttft_ms;
+    }
+    send(payload);
+  };
   let visibleAssistantText = "";
   let aborted = false;
   const emittedActions = [];
 
-  // 1.5 — Abort LLM stream on client disconnect
+  // 1.5 — Abort LLM stream only on real client disconnect.
+  // IMPORTANT: do NOT use req.on("close") alone — on Node/Express that can fire when
+  // the request *body* finishes reading (POST JSON), which was setting aborted=true
+  // before Gemini ran → empty response + UI stuck on "…".
   const disconnectController = new AbortController();
-  req.on("close", () => {
-    aborted = true;
-    disconnectController.abort();
+  const markClientGone = () => {
+    if (!res.writableEnded) {
+      aborted = true;
+      try { disconnectController.abort(); } catch { /* ignore */ }
+    }
+  };
+  req.on("aborted", markClientGone);
+  res.on("close", () => {
+    // Response closed before we finished writing = client gone
+    if (!res.writableEnded) markClientGone();
   });
 
   // 1.4 — SSE keepalive heartbeat every 15s to prevent proxy timeouts
@@ -598,6 +819,27 @@ router.post("/agent/chat", async (req, res) => {
     }
   }
 
+  /**
+   * Handle a parsed ACTION_JSON object: emit allow-listed UI actions,
+   * remap aplicar_estado_calc → buildAplicarActions, drop unknown types (no leak).
+   */
+  function handleParsedActionJson(action) {
+    if (!action || typeof action !== "object") return;
+    if (action.type === "aplicar_estado_calc") {
+      const parts = buildAplicarActions(action, rawOperatorContext || null);
+      for (const a of parts) emitAction(a);
+      if (parts.length === 0) {
+        req.log?.warn({ action }, "ACTION_JSON aplicar_estado_calc produced no actions");
+      }
+      return;
+    }
+    if (VALID_ACTION_TYPES.has(action.type)) {
+      emitAction(action);
+      return;
+    }
+    req.log?.warn({ type: action.type }, "ACTION_JSON unknown type dropped (not leaked to client)");
+  }
+
   /** Process buffered text: emit text events, extract ACTION_JSON / SUGGEST_JSON directives. Returns leftover tail. */
   function flushLines(buf) {
     const lines = buf.split("\n");
@@ -607,13 +849,9 @@ router.post("/agent/chat", async (req, res) => {
       if (trimmed.startsWith("ACTION_JSON:")) {
         try {
           const action = JSON.parse(trimmed.slice("ACTION_JSON:".length).trim());
-          if (VALID_ACTION_TYPES.has(action.type)) {
-            emitAction(action);
-          } else {
-            send({ type: "text", delta: line + "\n" });
-          }
+          handleParsedActionJson(action);
         } catch {
-          if (line) send({ type: "text", delta: line + "\n" });
+          req.log?.warn("ACTION_JSON malformed line dropped");
         }
       } else if (trimmed.startsWith("SUGGEST_JSON:")) {
         try {
@@ -637,13 +875,9 @@ router.post("/agent/chat", async (req, res) => {
     if (trimmed.startsWith("ACTION_JSON:")) {
       try {
         const action = JSON.parse(trimmed.slice("ACTION_JSON:".length).trim());
-        if (VALID_ACTION_TYPES.has(action.type)) {
-          emitAction(action);
-        } else {
-          send({ type: "text", delta: trimmed });
-        }
+        handleParsedActionJson(action);
       } catch {
-        send({ type: "text", delta: trimmed });
+        req.log?.warn("ACTION_JSON malformed tail dropped");
       }
     } else if (trimmed.startsWith("SUGGEST_JSON:")) {
       try {
@@ -696,6 +930,7 @@ router.post("/agent/chat", async (req, res) => {
   // RAG v1 — recuperación de cotizaciones históricas similares vía pgvector.
   // Feature flag: RAG_ENABLED (default false). Si el retriever falla (DB caída,
   // embedding service caído), se loggea y se continúa SIN RAG — el chat no se rompe.
+  // IMP-10: optional RAG_HYBRID fuses embedding hits with Training KB keyword boost.
   let ragContextBlock = "";
   if (config.ragEnabled) {
     try {
@@ -705,6 +940,44 @@ router.post("/agent/chat", async (req, res) => {
         config.ragThreshold,
       );
       ragContextBlock = formatRetrievedContextForPrompt(ragQuotes);
+      if (config.ragHybrid) {
+        try {
+          const { blockExtras, fused } = fuseRagAndKb({
+            ragQuotes,
+            kbExamples: trainingExamples,
+            query: lastUserMessage,
+            alpha: config.ragHybridAlpha,
+            beta: config.ragHybridBeta,
+            topK: config.ragTopK,
+          });
+          // Re-rank RAG quotes by fused score for the prompt (not only dev event).
+          const ragReordered = fused
+            .filter((f) => f.kind === "rag")
+            .map((f) => ({
+              lead_id: f.lead_id,
+              similarity: f.similarity,
+              metadata: f.metadata,
+            }));
+          if (ragReordered.length) {
+            ragContextBlock = formatRetrievedContextForPrompt(ragReordered);
+          }
+          if (blockExtras) ragContextBlock = `${ragContextBlock}${blockExtras}`;
+          if (devMode && fused.length) {
+            send({
+              type: "rag_hybrid",
+              count: fused.length,
+              top: fused.slice(0, 5).map((f) => ({
+                kind: f.kind,
+                score: f.fused_score,
+                lead_id: f.lead_id,
+                id: f.id,
+              })),
+            });
+          }
+        } catch (hybErr) {
+          req.log?.warn({ err: hybErr }, "rag: hybrid fuse failed, using pure RAG block");
+        }
+      }
       if (devMode && ragQuotes.length > 0) {
         send({
           type: "rag_match",
@@ -713,7 +986,10 @@ router.post("/agent/chat", async (req, res) => {
         });
       }
       if (ragQuotes.length > 0) {
-        req.log?.info({ rag_count: ragQuotes.length, top_score: ragQuotes[0].similarity }, "rag: retrieved quotes");
+        req.log?.info(
+          { rag_count: ragQuotes.length, top_score: ragQuotes[0].similarity, hybrid: !!config.ragHybrid },
+          "rag: retrieved quotes",
+        );
       } else {
         req.log?.debug("rag: no quotes above threshold");
       }
@@ -729,7 +1005,15 @@ router.post("/agent/chat", async (req, res) => {
     .slice(-3)
     .map((m) => String(m.content || "").slice(0, 120));
 
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages, channel, ragContext: ragContextBlock });
+  const operatorContextBlock = formatOperatorContextBlock(rawOperatorContext);
+  const systemPrompt = buildSystemPrompt(calcState, {
+    trainingExamples,
+    devMode,
+    recentAssistantMessages,
+    channel,
+    ragContext: ragContextBlock,
+    operatorContextBlock,
+  });
 
   // Use a monotonically increasing global index so user and assistant turns never collide.
   // messages includes the current user message, so all-messages-count - 1 = new user global index.
@@ -747,26 +1031,52 @@ router.post("/agent/chat", async (req, res) => {
     logConversationTurn(conversationId, { turnIndex, role: "user", content: lastUserMessage });
   }
 
+  // Preserve attachments on the last user message for multimodal (Co-Work frames).
+  const inboundLastUserAtts = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]?.role === "user" && Array.isArray(messages[i].attachments) && messages[i].attachments.length) {
+        return messages[i].attachments;
+      }
+    }
+    return null;
+  })();
+
   let filteredMsgs = messages
     .filter((m) => m.role === "user" || m.role === "assistant")
-    .map((m) => ({ role: m.role, content: String(m.content || "") }));
+    .map((m) => ({
+      role: m.role,
+      content: String(m.content || ""),
+      ...(Array.isArray(m.attachments) && m.attachments.length ? { attachments: m.attachments } : {}),
+    }));
 
   // Summarize older history at >12 messages to save tokens while preserving context.
   // The summary is appended to the system prompt (all providers accept system-level context),
   // and only recent user/assistant turns remain in the messages array.
   let effectiveSystemPrompt = systemPrompt;
   try {
-    const summarizeResult = await summarizeHistory(filteredMsgs);
+    const summarizeResult = await summarizeHistory(filteredMsgs.map((m) => ({ role: m.role, content: m.content })));
     if (summarizeResult.summarized) {
       const summaryMsg = summarizeResult.messages.find((m) => m.role === "system");
       if (summaryMsg?.content) {
         effectiveSystemPrompt = `${systemPrompt}\n\n${summaryMsg.content}`;
       }
-      filteredMsgs = summarizeResult.messages.filter((m) => m.role === "user" || m.role === "assistant");
+      filteredMsgs = summarizeResult.messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role, content: String(m.content || "") }));
       send({ type: "info", message: "Se resumió el historial previo para ahorrar tokens." });
     }
   } catch {
     // Summarization is best-effort; fall back to raw history on failure
+  }
+
+  // Re-attach Co-Work frames onto the last user turn after summarize/truncate prep.
+  if (inboundLastUserAtts) {
+    for (let i = filteredMsgs.length - 1; i >= 0; i--) {
+      if (filteredMsgs[i].role === "user") {
+        filteredMsgs[i] = { ...filteredMsgs[i], attachments: inboundLastUserAtts };
+        break;
+      }
+    }
   }
 
   // 1.7 — Truncate history to stay within token budget (improved estimate for Spanish)
@@ -782,12 +1092,49 @@ router.post("/agent/chat", async (req, res) => {
   if (truncated.length < filteredMsgs.length) {
     send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
   }
-  const msgs = truncated;
+  // Text-only msgs for token accounting / fallbacks; multimodal rebuilt per provider below.
+  const msgsText = truncated.map((m) => ({ role: m.role, content: String(m.content || "") }));
+  const msgs = msgsText;
 
+  // Co-Work: acknowledge vision frames (validated, last user only).
+  {
+    const lastUser = [...truncated].reverse().find((m) => m.role === "user");
+    if (lastUser?.attachments?.length) {
+      const norm = normalizeAttachments(lastUser.attachments);
+      if (norm.ok) {
+        send({
+          type: "cowork_ack",
+          framesAccepted: norm.attachments.length,
+          framesDropped: norm.dropped,
+        });
+      }
+    }
+  }
+
+  // Capability-aware fallback order. The tool-EXECUTING branches on this path are
+  // claude and gemini; grok/openai run text-only here and CANNOT call the native
+  // calc tools. Put the two tool-capable providers first so a Claude outage falls
+  // to Gemini (still quotes via tools) rather than Grok — which would narrate
+  // un-tooled numbers, violating the "models never invent prices" invariant. An
+  // explicit `aiProvider` preference (below) still wins; this only orders AUTO.
+  // With vision attachments, prefer Claude/Gemini (strong multimodal + tools).
+  // If Claude was recently skipped (billing), put Gemini first so Co-Work works.
+  // Also prefer Gemini first when the turn includes vision frames (Co-Work) —
+  // Claude is primary for text, but multimodal co-work is more reliable on Gemini
+  // when Anthropic credits are flaky.
   const defaultOrder = [];
-  if (hasAnthropic) defaultOrder.push("claude");
+  const claudeSkipped = isProviderSkipped("claude");
+  const lastUserForVision = [...truncated].reverse().find((m) => m.role === "user");
+  const hasVisionTurn = Array.isArray(lastUserForVision?.attachments) && lastUserForVision.attachments.length > 0;
+  if ((claudeSkipped || hasVisionTurn) && hasGemini) {
+    defaultOrder.push("gemini");
+    if (hasAnthropic && !claudeSkipped) defaultOrder.push("claude");
+    else if (hasAnthropic) defaultOrder.push("claude"); // keep as fallback after skip window
+  } else {
+    if (hasAnthropic) defaultOrder.push("claude");
+    if (hasGemini) defaultOrder.push("gemini");
+  }
   if (hasGrok) defaultOrder.push("grok");
-  if (hasGemini) defaultOrder.push("gemini");
   if (hasOpenAI) defaultOrder.push("openai");
 
   const pref =
@@ -795,15 +1142,28 @@ router.post("/agent/chat", async (req, res) => {
       ? aiProvider
       : "auto";
   const prefOk =
-    (pref === "claude" && hasAnthropic) ||
+    (pref === "claude" && hasAnthropic && !claudeSkipped) ||
     (pref === "grok" && hasGrok) ||
     (pref === "gemini" && hasGemini) ||
     (pref === "openai" && hasOpenAI);
 
-  const providerChain =
+  let providerChain =
     pref !== "auto" && prefOk
       ? [pref, ...defaultOrder.filter((p) => p !== pref)]
       : defaultOrder;
+
+  // Drop currently skipped providers from the chain (except if it's the only one).
+  providerChain = providerChain.filter((p) => !isProviderSkipped(p));
+  if (providerChain.length === 0) {
+    // All skipped — try original order anyway
+    providerChain = defaultOrder;
+  }
+  if (claudeSkipped) {
+    send({
+      type: "info",
+      message: "Claude está en pausa (sin créditos API). Usando Gemini u otro proveedor disponible.",
+    });
+  }
 
   const modelDefaults = {
     claude: config.anthropicChatModel,
@@ -812,11 +1172,22 @@ router.post("/agent/chat", async (req, res) => {
     gemini: config.geminiChatModel,
   };
 
+  // Live assist / vision turns with full tools can hang on a provider forever.
+  // Hard-cap each attempt so the UI does not spin "…" indefinitely.
+  const providerTimeoutMs = hasVisionTurn ? 45_000 : 90_000;
+  send({
+    type: "info",
+    message: hasVisionTurn
+      ? `Co-Work: analizando captura (proveedores: ${providerChain.join(" → ")})…`
+      : `Procesando (proveedores: ${providerChain.join(" → ")})…`,
+  });
+
   for (const provider of providerChain) {
     try {
       // Reset per-attempt accumulators so a mid-stream failure doesn't contaminate the next provider's log entry
       visibleAssistantText = "";
       emittedActions.length = 0;
+      firstTokenAt = null; // reset per provider attempt (IMP-12 ttft)
       let buf = "";
       let resolvedModel = "";
       const tStart = Date.now();
@@ -826,6 +1197,12 @@ router.post("/agent/chat", async (req, res) => {
       const useRequestedModel = pref !== "auto" && prefOk && provider === pref;
       const requestedId = useRequestedModel ? aiModel : "";
 
+      if (provider !== providerChain[0]) {
+        send({ type: "provider_reset" });
+      }
+      send({ type: "info", message: `Usando ${provider}…` });
+
+      const runProviderAttempt = async () => {
       if (provider === "claude") {
         const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
         const model = resolveModelForProvider("claude", requestedId, modelDefaults.claude);
@@ -836,11 +1213,14 @@ router.post("/agent/chat", async (req, res) => {
           || model === "claude-opus-4-6"
           || model === "claude-sonnet-4-6";
 
+        const mmClaude = buildMultimodalMessages(truncated, "claude");
+        const claudeMsgs = mmClaude.messages;
+
         const claudeOpts = {
           model,
           max_tokens: thinkingMode ? (isOpus47 ? 8192 : 4096) : CHAT_MAX_TOKENS,
           system: [{ type: "text", text: effectiveSystemPrompt, cache_control: { type: "ephemeral" } }],
-          messages: msgs,
+          messages: claudeMsgs,
           tools: AGENT_TOOLS,
           tool_choice: { type: "auto" },
         };
@@ -860,7 +1240,7 @@ router.post("/agent/chat", async (req, res) => {
         let cacheReadTokens = 0;
         // Tool-use loop: model may call tools up to 8 times before final response.
         // Higher cap accommodates the slot-fill → calc → pdf → crm-format → crm-save chain.
-        const toolMsgs = [...msgs];
+        const toolMsgs = [...claudeMsgs];
         for (let toolRound = 0; toolRound < 8; toolRound++) {
           const stream = anthropic.messages.stream({ ...claudeOpts, messages: toolMsgs });
           const toolCalls = [];
@@ -900,18 +1280,12 @@ router.post("/agent/chat", async (req, res) => {
           for (const tc of toolCalls) {
             let toolInput = {};
             try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
-            // Auth gate for the chat tool loop: same TOOLS_REQUIRING_AUTH set
-            // that protects /api/agent/exec-tool. Without this, an
-            // unauthenticated chat session can prompt the model to fire
-            // sensitive registry/CRM/PDF reads (Cursor finding) — the chat
-            // route is public, but devMode chat is auth-gated by API_AUTH_TOKEN
-            // (lines 472-484 above), so devMode === true is our authenticated
-            // signal. Public chat must not be able to execute auth-required
-            // tools regardless of what the model decides to call.
-            if (shouldBlockToolForUnauthenticatedChat(tc.name, devMode)) {
+            // Auth gate for the chat tool loop. Co-Work sheet reads are open
+            // without DEV mode; CRM/registry/writes still need toolsAuthenticated.
+            if (shouldBlockToolForUnauthenticatedChat(tc.name, toolsAuthenticated)) {
               const blockedResult = JSON.stringify({
                 ok: false,
-                error: `Esta tool (${tc.name}) requiere autenticación. El operador debe conectarse en modo desarrollador (Ctrl+Shift+D + token API) antes de ejecutar lecturas de CRM / registry / PDF o escrituras.`,
+                error: `Esta tool (${tc.name}) bloqueada. ${CHAT_TOOL_AUTH_HINT}`,
               });
               send({ type: "tool_call", tool: tc.name, input: toolInput, blocked: "auth_required" });
               req.log?.warn({ tool: tc.name }, "chat tool blocked: requires auth");
@@ -919,7 +1293,7 @@ router.post("/agent/chat", async (req, res) => {
               continue;
             }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null });
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null, operatorContext: rawOperatorContext });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
 
@@ -977,12 +1351,14 @@ router.post("/agent/chat", async (req, res) => {
           // the 42-tool schema exceeds Gemini's forced-call constraint budget.)
           generationConfig: { thinkingConfig: { thinkingBudget: 0 } },
         });
-        const contents = msgs.map((m) => ({
+        const mmGemini = buildMultimodalMessages(truncated, "gemini");
+        const contents = mmGemini.messages.map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
+          parts: Array.isArray(m.parts) ? m.parts : [{ text: String(m.content || "") }],
         }));
         // Function-calling loop, mirroring the Claude tool-use loop above:
         // stream text → collect functionCalls → execute → feed back → repeat.
+        let lastGeminiAgg = null;
         for (let toolRound = 0; toolRound < 8; toolRound++) {
           // Client disconnected mid-loop: stop before spending another API
           // round and (critically) before executing more tools — some have
@@ -999,11 +1375,24 @@ router.post("/agent/chat", async (req, res) => {
           }
 
           const aggregated = await result.response;
+          lastGeminiAgg = aggregated;
           if (aborted) break;
           const um = aggregated?.usageMetadata;
           if (um) {
             inputTokens += um.promptTokenCount ?? 0;
             outputTokens += um.candidatesTokenCount ?? 0;
+          }
+
+          // Some Gemini builds put final text only on the aggregated response,
+          // not in stream chunks — recover so we don't mark empty and hang fallbacks.
+          if (!String(buf || "").trim()) {
+            try {
+              const recovered = typeof aggregated?.text === "function" ? aggregated.text() : "";
+              if (recovered) {
+                buf += recovered;
+                buf = flushLines(buf);
+              }
+            } catch { /* blocked / empty */ }
           }
 
           const calls =
@@ -1026,12 +1415,11 @@ router.post("/agent/chat", async (req, res) => {
           const responseParts = [];
           for (const c of calls) {
             const toolInput = c.args || {};
-            // Same auth gate as the Claude loop: public chat must not execute
-            // auth-required tools regardless of what the model decides to call.
-            if (shouldBlockToolForUnauthenticatedChat(c.name, devMode)) {
+            // Same auth gate as the Claude loop (Co-Work reads open; rest need auth).
+            if (shouldBlockToolForUnauthenticatedChat(c.name, toolsAuthenticated)) {
               const blockedResult = JSON.stringify({
                 ok: false,
-                error: `Esta tool (${c.name}) requiere autenticación. El operador debe conectarse en modo desarrollador (Ctrl+Shift+D + token API) antes de ejecutar lecturas de CRM / registry / PDF o escrituras.`,
+                error: `Esta tool (${c.name}) bloqueada. ${CHAT_TOOL_AUTH_HINT}`,
               });
               send({ type: "tool_call", tool: c.name, input: toolInput, blocked: "auth_required" });
               req.log?.warn({ tool: c.name }, "chat tool blocked: requires auth (gemini)");
@@ -1039,7 +1427,7 @@ router.post("/agent/chat", async (req, res) => {
               continue;
             }
             send({ type: "tool_call", tool: c.name, input: toolInput });
-            const result2 = await executeTool(c.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null });
+            const result2 = await executeTool(c.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null, operatorContext: rawOperatorContext });
             req.log?.info({ tool: c.name, input: toolInput }, "agent tool executed (gemini)");
             responseParts.push({ functionResponse: { name: c.name, response: toGeminiResponse(result2) } });
 
@@ -1069,6 +1457,54 @@ router.post("/agent/chat", async (req, res) => {
 
           contents.push({ role: "user", parts: responseParts });
         }
+
+        // Recovery: tools+huge system sometimes yield empty stream chunks even when
+        // the model could answer. One short no-tools pass unsticks Live assist.
+        if (!String(buf || "").trim() && !aborted) {
+          try {
+            req.log?.warn({ model: resolvedModel }, "gemini: empty stream — trying no-tools recovery");
+            const plain = genAI.getGenerativeModel({
+              model: resolvedModel || "gemini-2.5-flash",
+            });
+            const lastUser = [...contents].reverse().find((c) => c.role === "user");
+            const userText =
+              (lastUser?.parts || [])
+                .map((p) => p.text || "")
+                .filter(Boolean)
+                .join("\n") || "Hola";
+            // Keep image parts for Live assist if present
+            const parts = (lastUser?.parts || [{ text: userText }]).length
+              ? lastUser.parts
+              : [{ text: userText }];
+            // Fixed persona stays in systemInstruction; userText only in user role
+            // (avoids CodeQL js/system-prompt-injection on string concat into "system").
+            const r = await plain.generateContent({
+              systemInstruction: {
+                parts: [{
+                  text: "Sos Panelin (BMC Uruguay). Respondé en español rioplatense, breve y útil.",
+                }],
+              },
+              contents: [{
+                role: "user",
+                parts: [
+                  { text: String(userText || "") },
+                  ...parts.filter((p) => p.inlineData),
+                ],
+              }],
+            });
+            let t = "";
+            try { t = r.response?.text?.() || ""; } catch { t = ""; }
+            if (t && String(t).trim()) {
+              buf = String(t).trim();
+              req.log?.info({ model: resolvedModel, n: buf.length }, "gemini: recovered via no-tools pass");
+            } else {
+              req.log?.warn({ model: resolvedModel }, "gemini: no-tools recovery also empty");
+            }
+          } catch (recErr) {
+            req.log?.warn({ err: recErr.message }, "gemini no-tools recovery failed");
+          }
+        }
+        void lastGeminiAgg;
       } else {
         const { default: OpenAI } = await import("openai");
         const client =
@@ -1081,11 +1517,19 @@ router.post("/agent/chat", async (req, res) => {
             : resolveModelForProvider("openai", requestedId, modelDefaults.openai);
         resolvedModel = model;
 
+        // Multimodal: same attachment path as Claude/Gemini (Live assist / Co-Work frames).
+        // Without this, cowork_ack can report framesAccepted while the model only sees text.
+        const mmOpen = buildMultimodalMessages(truncated, provider === "grok" ? "grok" : "openai");
+        const openAiMsgs = mmOpen.messages.map((m) => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content,
+        }));
+
         const stream = await client.chat.completions.create({
           model,
           max_tokens: CHAT_MAX_TOKENS,
           stream: true,
-          messages: [{ role: "system", content: effectiveSystemPrompt }, ...msgs],
+          messages: [{ role: "system", content: effectiveSystemPrompt }, ...openAiMsgs],
         });
         for await (const chunk of stream) {
           const delta = chunk.choices?.[0]?.delta?.content;
@@ -1140,6 +1584,42 @@ router.post("/agent/chat", async (req, res) => {
         if (req.log) req.log.info(costLog, "chat_turn_cost");
         else console.log(JSON.stringify(costLog));
 
+        // IMP-02: turn-level parity with callAgentOnce (shared core fields).
+        // tStart is per-provider attempt; firstTokenAt set on first SSE text delta.
+        const ttftForRing =
+          firstTokenAt != null ? Math.max(0, firstTokenAt - tStart) : null;
+        logAgentTurn(
+          {
+            event: "agent_turn",
+            channel: surfaceToChannel(canonicalBrandSurface(surface || "panelin_chat")) || "chat",
+            assistant: "panelin",
+            provider,
+            model: resolvedModel,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            estimated_cost_usd: chatCost,
+            latency_ms: latencyMs,
+            ttft_ms: ttftForRing,
+            source: "agentChat",
+          },
+          req.log || null,
+        );
+        // Cost sample once (logAgentTurn no longer writes cost to obs ring).
+        try {
+          recordObsSample({
+            kind: "cost",
+            provider,
+            model: resolvedModel,
+            channel: surfaceToChannel(canonicalBrandSurface(surface || "panelin_chat")) || "chat",
+            estimated_cost_usd: chatCost,
+            latency_ms: latencyMs,
+            ttft_ms: ttftForRing,
+            source: "agentChat",
+          });
+        } catch {
+          /* never break SSE */
+        }
+
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {
           logConversationTurn(conversationId, {
@@ -1190,7 +1670,8 @@ router.post("/agent/chat", async (req, res) => {
             hedgeCount,
           });
         }
-        send({ type: "done" });
+        // IMP-12: single `done` is emitted after runProviderAttempt returns ok
+        // (see below) so the client gets provider_used + latency_ms once.
 
         // Fire-and-forget autolearn — runs ONCE per conversation (not per turn).
         // Gate: production only, ≥4 turns (2 full exchanges), no prior autolearn for this convId.
@@ -1234,20 +1715,83 @@ router.post("/agent/chat", async (req, res) => {
           });
         }
       }
-      clearInterval(heartbeat);
-      res.end();
-      return; // success
+
+      // Empty completion: soft-fail to next provider, except after Gemini recovery attempt
+      // already ran. Never leave the client spinning on "…".
+      if (!String(visibleAssistantText || "").trim() && emittedActions.length === 0) {
+        throw new Error(`${provider} returned empty response (no text/actions)`);
+      }
+
+      req.log?.info(
+        { provider, model: resolvedModel, textLen: visibleAssistantText.length },
+        "chat provider succeeded",
+      );
+      return { ok: true };
+      }; // end runProviderAttempt
+
+      let timeoutId;
+      const outcome = await Promise.race([
+        runProviderAttempt().finally(() => {
+          if (timeoutId) clearTimeout(timeoutId);
+        }),
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(
+            () => reject(new Error(`${provider} timeout after ${Math.round(providerTimeoutMs / 1000)}s`)),
+            providerTimeoutMs,
+          );
+        }),
+      ]);
+
+      if (outcome?.ok) {
+        // Ensure client leaves the "…" state even if stream had only info events
+        if (!String(visibleAssistantText || "").trim()) {
+          send({ type: "text", delta: "Listo." });
+        }
+        const latency_ms = Date.now() - tStart;
+        const ttft_ms = firstTokenAt != null ? firstTokenAt - tStart : null;
+        sendDone({
+          provider_used: provider,
+          model: resolvedModel || null,
+          latency_ms,
+          ttft_ms,
+        });
+        clearInterval(heartbeat);
+        res.end();
+        return; // success
+      }
     } catch (err) {
       // 1.6 — Log provider failure instead of silent catch
-      req.log?.warn({ provider, err: err.message }, "provider failed, trying next");
+      const errMsg = err?.message || String(err);
+      req.log?.warn({ provider, err: errMsg }, "provider failed, trying next");
+      if (markProviderSkipped(provider, errMsg)) {
+        req.log?.warn({ provider, skipMin: PROVIDER_SKIP_MS / 60000 }, "provider skipped after billing/quota error");
+      }
+      // Soft-skip timeouts so we don't hammer a hung vision provider for 15 min,
+      // but still allow a retry later if needed.
+      if (/timeout after/i.test(errMsg)) {
+        _providerSkipUntil.set(provider, Date.now() + 2 * 60 * 1000);
+      }
+      if (!aborted) {
+        send({ type: "provider_reset" });
+        send({ type: "info", message: humanProviderFailHint(provider, errMsg) });
+      }
+      visibleAssistantText = "";
     }
   }
 
   clearInterval(heartbeat);
-  // All providers failed
-  if (!aborted) {
-    send({ type: "error", message: "Todos los proveedores de IA fallaron. Intentá más tarde." });
-    res.end();
+  // All providers failed — always terminate the SSE so the UI never spins forever
+  try {
+    if (!aborted) {
+      send({
+        type: "error",
+        message:
+          "No pude completar la respuesta (Live/captura). Claude sin créditos, OpenAI sin cuota, Grok key inválida, o Gemini vacío/timeout. Elegí **Gemini** en el selector de modelo y reintentá, o mandá un mensaje sin captura.",
+      });
+      sendDone({ provider_used: null, model: null, latency_ms: null });
+    }
+  } finally {
+    try { res.end(); } catch { /* already closed */ }
   }
 });
 

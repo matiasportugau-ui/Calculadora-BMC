@@ -4,6 +4,7 @@ import {
   useItem,
   useUpdateItem,
   useUpdateDescription,
+  useAuditListing,
 } from '../hooks/useMlConnector.js';
 
 const PAGE_SIZE = 50;
@@ -46,6 +47,7 @@ function EditDrawer({ id, onClose }) {
   const item = useItem(id);
   const updateItem = useUpdateItem();
   const updateDescription = useUpdateDescription();
+  const auditListing = useAuditListing();
 
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
@@ -58,6 +60,7 @@ function EditDrawer({ id, onClose }) {
   const [imagesText, setImagesText] = useState('');
   const [descriptionText, setDescriptionText] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [auditResult, setAuditResult] = useState(null);
 
   useEffect(() => {
     const d = item.data;
@@ -117,6 +120,36 @@ function EditDrawer({ id, onClose }) {
     setConfirming(false);
   };
 
+  const handleAudit = () => {
+    setAuditResult(null);
+    auditListing.mutate(
+      { itemId: id },
+      {
+        onSuccess: (data) => setAuditResult(data),
+      },
+    );
+  };
+
+  const applyAuditSuggestions = () => {
+    const audit = auditResult?.audit;
+    const patches = audit?.suggested_patches;
+    if (!patches) return;
+    if (patches.title) setTitle(String(patches.title).slice(0, 60));
+    if (patches.description) setDescriptionText(String(patches.description));
+    if (Array.isArray(patches.attributes)) {
+      setAttrs((prev) => {
+        const next = { ...prev };
+        for (const a of patches.attributes) {
+          if (a?.id && a.value_name != null) next[a.id] = a.value_name;
+        }
+        return next;
+      });
+    }
+  };
+
+  const audit = auditResult?.audit;
+  const auditError = auditListing.error;
+
   return (
     <div
       style={{
@@ -154,6 +187,89 @@ function EditDrawer({ id, onClose }) {
                 <div style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--ac-accent)', marginTop: '3px' }}>{d.id} ↗</div>
               </div>
             </a>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={handleAudit}
+                disabled={auditListing.isPending}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  background: 'var(--ac-bg)',
+                  color: 'var(--ac-accent)',
+                  border: '1.5px solid var(--ac-accent)',
+                  cursor: auditListing.isPending ? 'wait' : 'pointer',
+                }}
+              >
+                {auditListing.isPending ? 'Auditando…' : 'Auditar IA'}
+              </button>
+              {audit?.scores && (
+                <span style={{ fontSize: '11px', color: 'var(--ac-text-2)' }}>
+                  Score {audit.scores.overall}/10
+                  {auditResult?.provider ? ` · ${auditResult.provider}` : ''}
+                </span>
+              )}
+            </div>
+
+            {auditError && (
+              <div style={{ fontSize: '12px', color: 'var(--ac-error)', padding: '10px', borderRadius: '8px', background: '#fff1f0' }}>
+                {auditError.payload?.error || auditError.message || 'No se pudo auditar.'}
+                {auditError.payload?.code === 'IA_NOT_CONFIGURED' && ' Configurá claves IA en el servidor.'}
+              </div>
+            )}
+
+            {audit && (
+              <div style={{ padding: '12px', borderRadius: '10px', border: '1px solid var(--ac-border)', background: 'var(--ac-bg)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--ac-text)' }}>Auditoría IA</div>
+                {audit.summary && <div style={{ fontSize: '12px', color: 'var(--ac-text-2)', lineHeight: 1.4 }}>{audit.summary}</div>}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', fontSize: '11px' }}>
+                  {['title', 'images', 'attributes', 'description'].map((k) => (
+                    <span key={k} style={{ padding: '2px 8px', borderRadius: '12px', background: 'var(--ac-surface)', border: '1px solid var(--ac-border)' }}>
+                      {k}: {audit.scores?.[k] ?? '—'}/10
+                    </span>
+                  ))}
+                </div>
+                {audit.issues?.length > 0 && (
+                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '11px', color: 'var(--ac-text-2)' }}>
+                    {audit.issues.slice(0, 5).map((issue, idx) => (
+                      <li key={idx}>
+                        <strong>{issue.area}</strong> ({issue.severity}): {issue.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {audit.suggested_patches?.image_notes && (
+                  <div style={{ fontSize: '11px', color: 'var(--ac-text-2)' }}>
+                    Fotos: {audit.suggested_patches.image_notes}
+                  </div>
+                )}
+                {(audit.suggested_patches?.title || audit.suggested_patches?.description || audit.suggested_patches?.attributes?.length > 0) && (
+                  <button
+                    type="button"
+                    onClick={applyAuditSuggestions}
+                    style={{
+                      alignSelf: 'flex-start',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      background: 'var(--ac-accent)',
+                      color: '#fff',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Aplicar sugerencias al formulario
+                  </button>
+                )}
+                <div style={{ fontSize: '10px', color: 'var(--ac-warn)' }}>
+                  Revisá y guardá manualmente — no se publica en ML sin confirmación.
+                </div>
+              </div>
+            )}
 
             <div>
               <label style={fieldLabel} htmlFor="ml-title">Título</label>

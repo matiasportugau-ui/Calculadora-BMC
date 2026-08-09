@@ -2,12 +2,15 @@
 // Dispatcher + shared helpers for PDF layout templates.
 // Each template receives a QuotationModel and returns a complete HTML string.
 // v2 templates (simple family + others) refactored 2026-06-16 for clean cat rows, no ►, scoped CSS, prominent styling.
+//
+// 'simple' (Presupuesto Simple) is the preferred production template for client PDF quotes.
+// The previous (pre-R3-C) version is available as 'simple-previous'.
 
 export const LAYOUT_OPTIONS = [
-  // Modern lightweight family — strongly recommended for production quotes to clients.
-  // All "Simple *" use the official BMC brand identity (navy #003366 from COMPANY.brandColor + website).
-  // "Presupuesto Simple" (plain) is the most faithful to bmcuruguay.com.uy visual language.
+  // Modern lightweight family — "Presupuesto Simple" (plain) is the most faithful to bmcuruguay.com.uy visual language.
+  // Preferred production default.
   { id: 'simple',            label: 'Presupuesto Simple', recommended: true },
+  { id: 'simple-previous',   label: 'Presupuesto Simple (previous)' },
   { id: 'simple-carbon',     label: 'Simple — Carbon (premium dark)' },
   { id: 'simple-sage',       label: 'Simple — Sage' },
   { id: 'simple-slate',      label: 'Simple — Slate' },
@@ -15,6 +18,9 @@ export const LAYOUT_OPTIONS = [
   { id: 'simple-ocean',      label: 'Simple — Ocean' },
 
   // Legacy / heavy technical styles (kept for compatibility). The "BMC PDF — Blueprint Técnico" is close to brand navy + technical detail.
+  // 'classic' is the original HOJA VISUAL CLIENTE (generateClientVisualHTML) used before
+  // the template system — recovered as a selectable option; renders from q.raw.
+  { id: 'classic',           label: 'Clásico — Hoja Visual Cliente (formato anterior)', legacy: true },
   { id: 'bmc-pdf',           label: 'BMC PDF — Blueprint Técnico', legacy: true },
   { id: 'soft-modern',       label: 'E — Soft Modern', legacy: true },
   { id: 'executive-dark',    label: 'A — Executive Dark', legacy: true },
@@ -87,9 +93,13 @@ export function buildQuotationModel(data) {
   const bomDetailGroups = groups.map(g => ({
     groupName: g.title,
     groupTotal: g.items.reduce((s, i) => s + (Number(i.total) || 0), 0),
-    items: g.items.map(i => ({
-      desc: i.label, qty: i.cant, unit: i.unidad, pu: i.pu, total: i.total,
-    })),
+    items: g.items.map(i => {
+      const base = { desc: i.label, qty: i.cant, unit: i.unidad, pu: i.pu, total: i.total };
+      // Pass panel quantity & length so the preferred template can display them explicitly
+      if (i.cantPaneles != null) base.cantPaneles = i.cantPaneles;
+      if (i.largoPanel != null) base.largoPanel = i.largoPanel;
+      return base;
+    }),
   }));
 
   const totalArea = kpi.area != null
@@ -113,6 +123,17 @@ export function buildQuotationModel(data) {
   const aguasLabel = tipoAguas === 'dos_aguas' ? 'Dos Aguas' : 'Única Agua';
   const planTitle = `Planta Cubierta — ${aguasLabel} · ${zonaCount} Zona${zonaCount !== 1 ? 's' : ''}`;
   const planSummary = `${totalArea.toFixed(2)} m² · ${kpi.paneles ?? '—'} paneles${au > 0 ? ` · AU ${au.toFixed(2)} m` : ''}`;
+
+  // Irregular stepped panel schedule (Modo irregular) for PDF — from appendix
+  const irregularSchedule = appendix?.irregularSchedule
+    || (appendix?.irregularStrips?.length
+      ? {
+          strips: appendix.irregularStrips,
+          note: appendix.irregularNote || null,
+          areaOrdered: appendix.irregularAreaOrdered ?? null,
+          areaWasteSite: appendix.irregularAreaWasteSite ?? null,
+        }
+      : null);
 
   /** BMC PDF técnico: cliente, perímetro y extras no expuestos en raíz del modelo */
   const bmcExtra = {
@@ -151,6 +172,8 @@ export function buildQuotationModel(data) {
     planSummary,
     zoneRows,
     bomDetailGroups,
+    /** @type {{ strips: Array, note?: string, areaOrdered?: number, areaWasteSite?: number }|null} */
+    irregularSchedule,
     conditionsText: 'Fabricación y entrega 10 a 45 días. Seña 60% al confirmar · saldo 40% previo a retiro de fábrica. Oferta válida 10 días. Precios en USD · IVA incluido.',
     bmcExtra,
 
@@ -159,11 +182,16 @@ export function buildQuotationModel(data) {
     version: Number(version) || 1,
     createdBy: createdBy || null,
     generatedAt: new Date().toISOString(),
+
+    // Raw quotation inputs — the 'classic' layout (generateClientVisualHTML)
+    // consumes the original data shape, not the flattened model above.
+    raw: { client: clienteSrc, project, scenario, panel, groups, totals, appendix, snapshotImages },
   };
 }
 
 const TEMPLATE_MAP = {
   'simple':            () => import('./simple.js'),
+  'simple-previous':   () => import('./simple-previous.js'),
   'simple-sage':       () => import('./simple-sage.js'),
   'simple-slate':      () => import('./simple-slate.js'),
   'simple-warm':       () => import('./simple-warm.js'),
@@ -178,6 +206,13 @@ const TEMPLATE_MAP = {
 };
 
 export async function renderPdfLayout(layout, q) {
+  // 'classic' — the original HOJA VISUAL CLIENTE; needs the raw inputs preserved
+  // by buildQuotationModel. Models without q.raw fall through to the default map.
+  if (layout === 'classic' && q?.raw) {
+    const { generateClientVisualHTML } = await import('../utils/quotationViews.js');
+    // includePlantaResumenPage:false matches the pre-existing classic fallback in buildClientePdfHtml
+    return generateClientVisualHTML({ ...q.raw, includePlantaResumenPage: false });
+  }
   const loader = TEMPLATE_MAP[layout] ?? TEMPLATE_MAP['soft-modern'];
   const mod = await loader();
   return mod.render(q);

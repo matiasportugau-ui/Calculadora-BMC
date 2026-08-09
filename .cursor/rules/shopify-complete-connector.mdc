@@ -1,0 +1,15 @@
+---
+description: Shopify complete connector — full-store design, functionality, and Shopify platform options from Calculadora BMC. Apply when connecting or developing the Shopify account, theme, catalog, Admin/Storefront APIs, extensions, or any Shopify option (broader than questions/quotes).
+globs:
+alwaysApply: false
+---
+
+# Shopify Complete Connector
+
+When the user wants a **complete Shopify connector**, store development, theme/design, catalog/PIM, Admin or Storefront APIs, webhooks, app extensions, Checkout/Functions, or “all Shopify options” from this repo:
+
+1. Read and follow [`.cursor/skills/shopify-complete-connector/SKILL.md`](../skills/shopify-complete-connector/SKILL.md).
+2. For questions/quotes-only auto-reply, prefer [`.cursor/skills/shopify-integration-v4/SKILL.md`](../skills/shopify-integration-v4/SKILL.md).
+3. Load [reference.md](../skills/shopify-complete-connector/reference.md) and [design-and-storefront.md](../skills/shopify-complete-connector/design-and-storefront.md) as needed.
+
+Do not invent a second OAuth stack; extend `server/routes/shopify.js` and `server/shopifyStore.js`. Never expose Admin tokens to the browser or Liquid.

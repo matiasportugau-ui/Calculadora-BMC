@@ -126,6 +126,7 @@ group("AGENT_TOOLS surface", () => {
     "recuperar_casos_similares",
     "leer_crm_taxonomia",
     "escribir_crm_taxonomia",
+    "wa_lead_to_admin",
     "wolfboard_pendientes",
     "wolfboard_export",
     "wolfboard_sync",
@@ -133,16 +134,31 @@ group("AGENT_TOOLS surface", () => {
     "wolfboard_marcar_enviado",
     "wolfboard_quote_batch",
     "list_bug_reports",
+    "email_panelsim_resumen",
+    "email_borrador_saliente",
+    "email_listar_hilos",
+    "email_leer_hilo",
+    "email_clasificar_mensaje",
+    "email_enviar",
     "traktime_timer_current",
     "traktime_timer_start",
     "traktime_timer_stop",
     "traktime_list_entries",
     "traktime_create_entry",
+    "traktime_update_entry",
+    "traktime_delete_entry",
     "traktime_day_report",
     "traktime_month_report",
     "traktime_billable_report",
     "traktime_suggest_entry",
     "traktime_activity_today",
+    // Co-Work Sheets (allowlisted Admin/CRM)
+    "sheets_list_tabs",
+    "sheets_read_range",
+    "sheets_find",
+    "sheets_get_pending_admin",
+    "sheets_propose_write",
+    "sheets_write_range",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);
@@ -387,6 +403,31 @@ await group("generar_pdf — propagates urls", async () => {
   assert(parsed.ok === true, "ok true");
   assert(parsed.pdf_id === "xyz-1", "pdf_id present");
   assert(parsed.gcs_url && parsed.drive_url, "both gcs_url and drive_url present");
+  assert(parsed.pdf_url === "https://gcs/p.html", "degraded server → pdf_url stays HTML link");
+  assert(parsed.pdf_rendered === false, "degraded server → pdf_rendered false");
+  resetFetch();
+});
+
+await group("generar_pdf — prefers real rendered PDF", async () => {
+  setFetch(async () => ({
+    ok: true,
+    pdf_id: "xyz-2",
+    pdf_url: "https://gcs/p.html",
+    gcs_url: "https://gcs/p.html",
+    drive_url: "https://drive/p.pdf",
+    pdf_file_url: "https://gcs/pdf/p.pdf",
+    pdf_rendered: true,
+    resumen: { total_usd: 999 },
+  }));
+  const { parsed } = await run("generar_pdf", {
+    scenario: "solo_techo",
+    techo: { familia: "ISODEC_EPS", espesor: 100, zonas: [{ largo: 10, ancho: 5 }] },
+  });
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.pdf_url === "https://gcs/pdf/p.pdf", "pdf_url prefers the rendered PDF");
+  assert(parsed.pdf_file_url === "https://gcs/pdf/p.pdf", "pdf_file_url exposed");
+  assert(parsed.pdf_rendered === true, "pdf_rendered true");
+  assert(parsed.instrucciones.includes("PDF real"), "instrucciones mention real PDF");
   resetFetch();
 });
 
@@ -797,6 +838,87 @@ await group("chat path — wolfboard_quote_batch without intent rejected", async
 await group("unknown tool", async () => {
   const { parsed } = await run("does_not_exist", {});
   assert(parsed.error && parsed.error.includes("no implementada"), "unknown tool returns no-implementada error");
+});
+
+await group("wa_lead_to_admin — requires user_confirmed", async () => {
+  const { parsed } = await run("wa_lead_to_admin", { consulta: "Babeta galpon" });
+  assert(parsed.ok === false, "must reject without user_confirmed");
+});
+
+await group("email_borrador_saliente — hechos required", async () => {
+  const { parsed } = await run("email_borrador_saliente", { hechos: "ab" });
+  assert(parsed.ok === false, "short hechos rejected");
+});
+
+await group("email_clasificar_mensaje — consulta_cliente", async () => {
+  const { parsed } = await run("email_clasificar_mensaje", {
+    text: "Necesito cotización techo ISOROOF 100mm para galpón",
+  });
+  assert(parsed.ok === true, "ok");
+  assert(parsed.label === "consulta_cliente", "label consulta_cliente");
+  assert(parsed.suggestAdminLead === true, "suggest Admin lead");
+});
+
+await group("email_enviar — requires confirmation", async () => {
+  const { parsed } = await run("email_enviar", {
+    conversation_id: "00000000-0000-0000-0000-000000000001",
+    text: "Hola, adjunto presupuesto",
+  });
+  assert(parsed.ok === false, "must reject without confirm");
+});
+
+await group("email_leer_hilo — conversation_id required", async () => {
+  const { parsed } = await run("email_leer_hilo", {});
+  assert(parsed.ok === false, "missing id rejected");
+});
+
+await group("buildAplicarActions / normalizeTipoAguas", async () => {
+  const { buildAplicarActions, normalizeTipoAguas } = await import("../server/lib/agentTools.js");
+  assert(normalizeTipoAguas(1) === "una_agua", "1 → una_agua");
+  assert(normalizeTipoAguas("dos aguas") === "dos_aguas", "dos aguas → dos_aguas");
+  const acts = buildAplicarActions(
+    { techo: { tipoAguas: "1", familia: "ISODEC_EPS" } },
+    { defaults: { aguasTecho: 1 } },
+  );
+  const setTecho = acts.find((a) => a.type === "setTecho");
+  assert(setTecho?.payload?.tipoAguas === "una_agua", "remap tipoAguas on setTecho");
+  const remapped = buildAplicarActions({ type: "aplicar_estado_calc", techo: { tipoAguas: "una_agua" } });
+  assert(remapped.some((a) => a.type === "setTecho"), "top-level techo from ACTION_JSON shape");
+});
+
+await group("listar_cotizaciones_recientes — date filter", async () => {
+  const { registerQuotation, listQuotations } = await import("../server/lib/quoteRegistry.js");
+  const id = `test-jul-${Date.now()}`;
+  const { entry } = await registerQuotation({
+    pdfId: id,
+    code: "TJUL",
+    client: "Wave4DateFilter",
+    scenario: "solo_techo",
+    total: 100,
+    lista: "venta",
+    pdfUrl: "https://example.com/x.pdf",
+  });
+  // Keep createdAt recent so in-memory TTL prune (24h) does not drop the fixture.
+  entry.createdAt = Date.now() - 60_000;
+  const d = new Date(entry.createdAt);
+  const y = d.getUTCFullYear();
+  const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const monthStart = `${y}-${mo}-01`;
+  const monthEnd = `${y}-${mo}-28`;
+  const inMonth = await listQuotations({
+    limit: 50,
+    cliente: "Wave4DateFilter",
+    desde: monthStart,
+    hasta: monthEnd,
+  });
+  assert(inMonth.some((e) => e.id === id), "month filter includes fixture");
+  const otherMonth = await listQuotations({
+    limit: 50,
+    cliente: "Wave4DateFilter",
+    desde: "2020-01-01",
+    hasta: "2020-01-31",
+  });
+  assert(!otherMonth.some((e) => e.id === id), "other month excludes fixture");
 });
 
 // ── Summary ──────────────────────────────────────────────────────────────────

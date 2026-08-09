@@ -89,7 +89,11 @@ export async function resolveContact(client, { contact_hint: hint, channel, sour
   }
 
   const name = hint.name ? String(hint.name).slice(0, 255) : null;
-  const properties = source ? { last_ingest_source: source } : {};
+  const properties = {
+    ...(source ? { last_ingest_source: source } : {}),
+    ...(hint.igsid ? { igsid: String(hint.igsid).slice(0, 255) } : {}),
+    ...(hint.psid ? { psid: String(hint.psid).slice(0, 255) } : {}),
+  };
 
   // ON CONFLICT DO NOTHING on any UNIQUE key (integration_uuid / ml_user_id /
   // wa_phone / chrome_ext_contact_id — email is NOT unique; it dedups via the

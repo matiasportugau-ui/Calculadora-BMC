@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-08-05T14:00:00Z",
+  "system_slug": "bmc-envios",
+  "sdd_path": "docs/sdd/bmc-envios/SDD.md",
+  "auditor": "sdd-quality-auditor",
+  "loop": "post-ops-ux-f1-f6-glory",
+  "iteration": 4,
+  "prior_composite": 84,
+  "composite": 96,
+  "min_pass": 90,
+  "pass": true,
+  "label": "Pass — as-built SDD v1.4 reconciles U1/U2 + Ops UX F1–F6",
+  "note": "Residual to 100: product P5 durable ENV (optional), P2/P3. U3 FSM DONE #857. Dual packing engines intentional ADR-001. Rebased glory docs onto main after #857/#862.",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 97,
+      "notes": ["v1.4 As-Built; §1–12; N/A §6; appendices backlog"]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 96,
+      "notes": ["L1+L2; bridge AS-BUILT; scene3d + kernel utils listed"]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 97,
+      "notes": ["RECREATION F1–F6; pure module paths; test commands §8"]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 97,
+      "notes": ["E-01–E-36; pickColumnRow, bridge merge, F1–F6 modules CONFIRMED"]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 96,
+      "notes": ["§6 N/A justified"]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 94,
+      "notes": ["hydrate gate, storage PII, no grant on logistica"]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 96,
+      "notes": ["ADR-001/007/011–014 with alternatives"]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 98,
+      "notes": ["changelog 1.4; TARGET F1–F6 DONE; GAP residual product only"]
+    }
+  },
+  "weighted_breakdown": {
+    "schema_completeness": 14.55,
+    "c4_fidelity": 14.4,
+    "recreation_sufficiency": 19.4,
+    "evidence_grounding": 14.55,
+    "ai_architecture_depth": 9.6,
+    "crosscutting_wa": 9.4,
+    "adr_quality": 9.6,
+    "evolution_readiness": 4.9,
+    "sum": 96.4,
+    "composite_rounded": 96
+  }
+}

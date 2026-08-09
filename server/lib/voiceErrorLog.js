@@ -1,9 +1,10 @@
 /**
  * server/lib/voiceErrorLog.js
  * In-memory ring buffer for voice mode errors (session mint failures, network errors).
- * Ephemeral by design — survives only until process restart. For audit-grade history,
- * pipe into a Sheets/GCS sink later.
+ * IMP-09: also dual-writes privacy-safe events to voiceMetrics (Postgres when DATABASE_URL set).
  */
+
+import { recordVoiceEvent } from "./voiceMetrics.js";
 
 const MAX_ENTRIES = 50;
 const MAX_MESSAGE_CHARS = 500;
@@ -27,6 +28,16 @@ export function recordVoiceError({ kind, message, status = null, detail = null }
   buffer.push(entry);
   if (buffer.length > MAX_ENTRIES) {
     buffer.splice(0, buffer.length - MAX_ENTRIES);
+  }
+  // Durable dual-write (no raw audio; short detail only)
+  try {
+    recordVoiceEvent({
+      kind: entry.kind,
+      detail: entry.message || entry.detail,
+      surface: "voice",
+    });
+  } catch {
+    /* never block voice path */
   }
   return entry;
 }

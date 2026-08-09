@@ -75,6 +75,24 @@ Base **Cloud Run (canónica smoke):** `https://panelin-calc-q74zutv7dq-uc.a.run.
 
 **Operador run 55 / gates:** [`RUN55-OPERATOR-CHECKLIST.md`](./RUN55-OPERATOR-CHECKLIST.md).
 
+### Resultados smoke — 2026-07-02 (repo `npm run smoke:prod`)
+
+Base **Cloud Run (canónica smoke):** `https://panelin-calc-q74zutv7dq-uc.a.run.app`
+
+| Ruta | HTTP | Nota |
+|------|------|------|
+| `/health` | 200 | Servicio vivo |
+| `/capabilities` | 200 | Manifest agentes |
+| `public_base_url` | 200 | Base alineada |
+| `/api/actualizar-precios-calculadora` | 200 | MATRIZ CSV OK |
+| `/auth/ml/status` | 200 | Token ML presente |
+| `/webhooks/whatsapp` | 403 | Esperado en smoke sin token |
+| `/api/wa/health` | 200 | WA cockpit OK |
+| `/finanzas/` | 200 | Dashboard legacy presente |
+| `POST /api/crm/suggest-response` | 200 | ☑ **cerrado 2026-07-04** — IA ok (gemini), 9/9 en el smoke. La causa era doble: (a) el deploy no propagaba `ASSISTANTS_ACTIVE` (wiring en PR #560) y (b) el action deploy-cloudrun **parte `env_vars` por comas**, truncando `canales,ml` → `canales` (fix: `server/config.js` acepta `;` como separador, PR #561; la repo Variable quedó `canales;ml`). Verificado contra la revisión renderizada por el workflow, sin overrides manuales. |
+
+**Local verify-tabs (2026-07-04): ☑ VERDE** — credencial materializada desde Doppler `bmc-backend/prd` a `~/.config/bmc/service-account.json` (fuera del repo, chmod 600) + IDs reales de workbooks leídos de Cloud Run + `BMC_SHEET_SCHEMA=CRM_Operativo`. Resultado: tab `CRM_Operativo` verificado en el workbook principal y los 4 workbooks restantes accesibles (pagos, ventas, stock, calendario). Nota histórica (2026-07-03): fallaba porque el `.env` local tenía IDs vacíos y apuntaba a un JSON inexistente.
+
 ---
 
 ## Pre-requisitos

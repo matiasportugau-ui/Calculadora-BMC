@@ -6,6 +6,18 @@ Cockpit operativo de WhatsApp Web para Calculadora BMC. Capturamos conversacione
 
 > **Plan canónico**: `.cursor/plans/wa_cockpit_f1-f5_plan_*.plan.md` (5 fases). Esta página es el hub vivo.
 
+### Media richness G7/G8/G9 — **LIVE** (2026-08-05)
+
+| Doc | Role |
+|-----|------|
+| [`MEDIA-G7G8G9.md`](./MEDIA-G7G8G9.md) | Operator summary + health checks |
+| [`../team/features/WA-MEDIA-RICHNESS-SPEC.md`](../team/features/WA-MEDIA-RICHNESS-SPEC.md) | **As-built SPEC** + full prod verification matrix |
+| [`API-REFERENCE.md`](./API-REFERENCE.md) § Media | Endpoint contract |
+| [`LOCAL-STT.md`](./LOCAL-STT.md) | Mac Whisper primary path |
+| [`../team/goal-prompts/goal-prompt-wa-media-richness-100.md`](../team/goal-prompts/goal-prompt-wa-media-richness-100.md) | Goal prompt eng archive + ship outcome |
+
+**Prod:** PR #847 → `panelin-calc-00934-lp5`. Verified: media unauth **401**, Deli images **302** + real JPEG, junk **400** `not_audio_junk`.
+
 ---
 
 ## Estado por fase

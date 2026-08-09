@@ -80,7 +80,8 @@ await (async () => {
   // ── dispatchAssistant: happy path served by primary handler ─────────────────
   // Availability requires a provider key present, so set one before dispatch.
   config.assistantsActive = ["panelin"];
-  setProviders({ claude: "sk-test-claude-key" });
+  // Must pass isUsableApiKey (avoid …-test-… / placeholder tokens).
+  setProviders({ claude: "sk-ant-api03-" + "c".repeat(40) });
   const ok = await dispatchAssistant("panelin", [{ role: "user", content: "hola" }], {
     handler: async () => ({ text: "primary ok" }),
   });
@@ -108,12 +109,12 @@ await (async () => {
   _clearAssistantHealthCache();
   config.assistantsActive = ["panelin"];
 
-  setProviders({ claude: "sk-test-claude-key" });
+  setProviders({ claude: "sk-ant-api03-" + "c".repeat(40) });
   const live = await checkAssistant("panelin", { force: true });
   assert(live.status === "live", "enabled + primary provider present → live");
   assert(live.activeProvider === "claude", "activeProvider is claude when available");
 
-  setProviders({ grok: "sk-test-grok-key" }); // claude key gone, only fallback provider
+  setProviders({ grok: "xai-" + "g".repeat(48) }); // claude key gone, only fallback provider
   const degraded = await checkAssistant("panelin", { force: true });
   assert(degraded.status === "degraded", "enabled + only fallback provider → degraded");
   assert(degraded.activeProvider === "grok", "activeProvider falls to grok");
@@ -143,7 +144,7 @@ await (async () => {
   };
 
   config.assistantsActive = ["email"];
-  setProviders({ claude: "sk-test-claude-key" }); // isolate: deps, not providers, drive status
+  setProviders({ claude: "sk-ant-api03-" + "c".repeat(40) }); // isolate: deps, not providers, drive status
 
   setChatwootEnv({ token: "cw-token-only" }); // token but no base/accountId → NOT configured
   const emailPartial = await checkAssistant("email", { force: true });

@@ -8,6 +8,8 @@ dist
 .ml-tokens*
 npm-debug.log
 public
+!public/bmc-pdf
+!public/bmc-pdf/**
 tests
 # Exclude most of docs/, then re-include only what production images need.
 # Docker requires un-excluding parent directories before nested paths.

@@ -78,6 +78,10 @@ await group("GET /api/agent/tools-manifest", async () => {
   assert(buscar?.requires_auth === true, "buscar_cliente_crm marked requires_auth=true (CRM PII)");
   const historial = body.tools.find((t) => t.name === "historial_cliente");
   assert(historial?.requires_auth === true, "historial_cliente marked requires_auth=true (CRM PII)");
+  const leerTax = body.tools.find((t) => t.name === "leer_crm_taxonomia");
+  assert(leerTax?.requires_auth === true, "leer_crm_taxonomia marked requires_auth=true (CRM PII)");
+  const escribirTax = body.tools.find((t) => t.name === "escribir_crm_taxonomia");
+  assert(escribirTax?.requires_auth === true, "escribir_crm_taxonomia marked requires_auth=true (CRM write)");
   // Quote registry / PDF read tools — also gated (Cursor + Copilot security finding)
   const listar = body.tools.find((t) => t.name === "listar_cotizaciones_recientes");
   assert(listar?.requires_auth === true, "listar_cotizaciones_recientes marked requires_auth=true (quote metadata)");
@@ -92,9 +96,12 @@ await group("GET /api/agent/tools-manifest", async () => {
 // ── 1.5. Chat tool-loop auth gate (Cursor regression) ───────────────────────
 
 await group("shouldBlockToolForUnauthenticatedChat — public chat blocks auth-required tools", async () => {
-  const { shouldBlockToolForUnauthenticatedChat: gate } = await import("../server/routes/agentChat.js");
+  const {
+    shouldBlockToolForUnauthenticatedChat: gate,
+    TOOLS_OPEN_IN_PUBLIC_CHAT,
+  } = await import("../server/routes/agentChat.js");
 
-  // Public chat (devMode=false) MUST block every auth-required tool
+  // Public chat (unauthenticated) MUST block sensitive CRM/registry/write tools
   for (const sensitive of [
     "listar_cotizaciones_recientes",
     "obtener_cotizacion_por_id",
@@ -109,25 +116,39 @@ await group("shouldBlockToolForUnauthenticatedChat — public chat blocks auth-r
     "wolfboard_export",
     "wolfboard_sync",
     "wolfboard_quote_batch",
+    "sheets_write_range",
   ]) {
     assert(gate(sensitive, false) === true, `public chat blocks ${sensitive}`);
   }
 
-  // devMode chat (authenticated via API_AUTH_TOKEN at route entry) passes
+  // Co-Work sheet reads + propose: open on SPA chat without DEV mode (internal ops)
+  for (const open of [
+    "sheets_list_tabs",
+    "sheets_read_range",
+    "sheets_find",
+    "sheets_get_pending_admin",
+    "sheets_propose_write",
+  ]) {
+    assert(TOOLS_OPEN_IN_PUBLIC_CHAT.has(open), `${open} in TOOLS_OPEN_IN_PUBLIC_CHAT`);
+    assert(gate(open, false) === false, `public chat allows Co-Work ${open}`);
+  }
+
+  // Authenticated chat (DEV / identity JWT / service token) passes all gated tools
   for (const sensitive of [
     "listar_cotizaciones_recientes",
     "guardar_en_crm",
     "wolfboard_quote_batch",
     "wolfboard_actualizar_fila",
     "wolfboard_marcar_enviado",
+    "sheets_write_range",
   ]) {
-    assert(gate(sensitive, true) === false, `devMode chat allows ${sensitive}`);
+    assert(gate(sensitive, true) === false, `authenticated chat allows ${sensitive}`);
   }
 
-  // Non-sensitive read tools always pass, regardless of devMode
+  // Non-sensitive read tools always pass, regardless of auth
   for (const safe of ["calcular_cotizacion", "obtener_precio_panel", "obtener_escenarios", "obtener_catalogo"]) {
     assert(gate(safe, false) === false, `public chat allows ${safe}`);
-    assert(gate(safe, true) === false, `devMode chat allows ${safe}`);
+    assert(gate(safe, true) === false, `authenticated chat allows ${safe}`);
   }
 });
 
@@ -196,6 +217,26 @@ await group("POST /api/agent/exec-tool — historial_cliente without auth → 40
     input: { cliente: "Juan Pérez" },
   });
   assert(status === 401, "401 Unauthorized (CRM read requires auth)");
+  assert(body?.ok === false, "ok false");
+  assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
+});
+
+await group("POST /api/agent/exec-tool — leer_crm_taxonomia without auth → 401", async () => {
+  const { status, body } = await post("/api/agent/exec-tool", {
+    name: "leer_crm_taxonomia",
+    input: { row: 4 },
+  });
+  assert(status === 401, "401 Unauthorized (CRM taxonomy read requires auth)");
+  assert(body?.ok === false, "ok false");
+  assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
+});
+
+await group("POST /api/agent/exec-tool — escribir_crm_taxonomia without auth → 401", async () => {
+  const { status, body } = await post("/api/agent/exec-tool", {
+    name: "escribir_crm_taxonomia",
+    input: { row: 4, tipo_contacto: "proveedor", user_confirmed: true },
+  });
+  assert(status === 401, "401 Unauthorized (CRM taxonomy write requires auth)");
   assert(body?.ok === false, "ok false");
   assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
 });

@@ -46,9 +46,11 @@ assert("sug: options[] single with text+tone", sug.options.length === 1 && sug.o
 assert("sug: pending → chosen_idx null", sug.chosen_idx === null);
 assert("sug: intent from body_ai_category", sug.intent === "cotizacion");
 assert("sug: provider from metadata", sug.provider === "claude");
-const sugAcc = mapOmniSuggestion({ id: "s2", body: "x", metadata: {}, approval_state: "accepted", created_at: "t" });
-// chosen_at is always null: omni_suggestions has no resolved_at column to source it.
-assert("sug: accepted → chosen_idx 0, chosen_at null", sugAcc.chosen_idx === 0 && sugAcc.chosen_at === null);
+const sugAcc = mapOmniSuggestion({ id: "s2", body: "x", metadata: {}, approval_state: "accepted", resolved_at: "t2", created_at: "t" });
+// chosen_at comes from resolved_at (stamped by resolveSuggestion, migration 015).
+assert("sug: accepted → chosen_idx 0, chosen_at from resolved_at", sugAcc.chosen_idx === 0 && sugAcc.chosen_at === "t2");
+const sugAccOld = mapOmniSuggestion({ id: "s3", body: "x", metadata: {}, approval_state: "accepted", created_at: "t" });
+assert("sug: accepted pre-015 (no resolved_at) → chosen_at null", sugAccOld.chosen_at === null);
 assert("sug: default tone 'sugerida'", sugAcc.options[0].tone === "sugerida");
 
 // ── SQL builders ──
@@ -70,8 +72,9 @@ const s1 = buildOmniSuggestionsSql({ chatId: "59899", onlyPending: true, limit: 
 assert("sugSql: pending filter", s1.text.includes("s.approval_state = 'pending'") && s1.params[0] === "59899");
 const s2 = buildOmniSuggestionsSql({ chatId: "59899", onlyPending: false, limit: 20 });
 assert("sugSql: no pending filter when false", !s2.text.includes("approval_state = 'pending'"));
-// Regression: never select resolved_at — the column does not exist in omni_suggestions.
-assert("sugSql: does NOT select non-existent resolved_at", !s1.text.includes("resolved_at") && !s2.text.includes("resolved_at"));
+// resolved_at exists as of migration 015 (stamped on approve) — the adapter maps
+// chosen_at from it. OMNI_WA_READS=1 therefore requires 015 applied first.
+assert("sugSql: selects resolved_at (migration 015)", s1.text.includes("s.resolved_at") && s2.text.includes("s.resolved_at"));
 
 console.log(`\nomniReadAdapter: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -512,11 +512,17 @@ export function buildVoiceSystemPrompt(calcState = {}, options = {}) {
 }
 
 /**
+ * Build the system prompt SPLIT into a cacheable static prefix and a per-request
+ * dynamic tail. The static prefix (identity, catalog, canonical prices, tools,
+ * protocols) is request-independent — agentCore stamps `cache_control` on it for
+ * the Anthropic prompt cache. The dynamic tail (calc state, KB examples, prefs,
+ * rag, dev rules) varies per call and must NOT be cached.
+ *
  * @param {object} calcState
  * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object, channel?: "chat"|"ml"|"wa", ragContext?: string }} options
- * @returns {string}
+ * @returns {{ staticPrefix: string, dynamicTail: string }}
  */
-export function buildSystemPrompt(calcState = {}, options = {}) {
+export function buildSystemPromptParts(calcState = {}, options = {}) {
   const {
     trainingExamples = [],
     devMode = false,
@@ -551,9 +557,32 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
   // prompt is byte-identical to today when the flag is OFF. brainBlock() is sync + fail-soft.
   const brainBlockStr = config.brainEnabled ? brainBlock(userText) : "";
 
+  const learningBmcBlock = `## CÓMO APRENDO (BMC — honestidad operativa)
+- **No** entreno modelos de Google/OpenAI con tus chats. El aprendizaje operativo es **Training KB** interna (Good/Correct en modo dev, entradas curadas).
+- Si el operador corrige algo, orientalo a **Good/Correct** o a escribir en la KB — no prometas "aprendizaje automático" externo.
+- Co-Work Live: solo **JPEG read-only** de la pestaña compartida — **no** controlás mouse/teclado ni WhatsApp Web DOM.`;
+
   const antiRepBlock = ANTI_REPETITION_RULES;
   const variationBlock = buildAntiRepetitionBlock(recentAssistantMessages);
   const prefsBlock = buildPreferencesBlock(preferences);
+
+  const coworkVisionBlock = `## Co-Work / visión (pantalla + planillas)
+- Las capturas del operador son **CONTEXTO OCR** — no fuente de verdad de números ni rowNum.
+- **WhatsApp Web (JPEG read-only):** podés leer texto visible en la captura; **NO** abrís chats, **NO** clickeás, **NO** escribís en WA Web. Para crear lead en Admin usá \`wa_lead_to_admin\` (confirmación explícita).
+- Checklist WA lead: extraé consulta + teléfono + nombre si aparecen; si falta algo, listalo en campos_faltantes — no inventes.
+- Antes de cotizar o escribir: verificá filas/celdas con \`sheets_read_range\`, \`sheets_find\`, \`sheets_get_pending_admin\` o tools wolfboard_*.
+- Consulta **nueva** sin fila Admin: \`wa_lead_to_admin\` — **no** pidas rowNum Wolfboard que aún no existe.
+- Nunca inventes un rowNum: si no está claro, preguntá o usá \`sheets_find\`.
+- Escrituras: proponé el cambio y esperá confirmación explícita antes de \`sheets_write_range\` / \`wolfboard_actualizar_fila\` / \`guardar_en_crm\` / \`wa_lead_to_admin\`.
+- Live assist: imagen = captura más reciente; no repitas el mismo resumen sin pedido nuevo.
+- Preferí workbook alias \`admin\` o \`crm\` — no pidas spreadsheet IDs al operador.
+- **Babeta adosar:** desarrollo **16 cm** (plegados incluidos); largo comercial de pieza ~**3 m** — no confundas desarrollo con largo de tramo.
+
+## Superficies (no las mezcles)
+- **Admin / Wolfboard / "cargar al Admin":** \`wolfboard_pendientes\`, \`sheets_*\`, \`wa_lead_to_admin\` (crear fila). **NO** uses \`wolfboard_quote_batch\` salvo que el operador pida explícitamente generar respuestas IA en masa.
+- **Gmail / bandeja correo:** tools \`email_listar_hilos\`, \`email_leer_hilo\`, \`email_panelsim_resumen\`, \`email_clasificar_mensaje\`, \`email_borrador_saliente\`, \`email_enviar\` (HITL). OCR Co-Work es HINT. **NO** tipés en Gemini sidebar ni controles DOM de Gmail.
+- **Shared Workspace (Multi-Context):** si el prompt incluye SHARED WORKSPACE, las pestañas del grupo están **compartidas** — podés leer/actuar sobre email/Admin/calc aunque el focus UI sea otra pestaña.
+- **CRM / cotizaciones del mes ("julio"):** \`listar_cotizaciones_recientes\` con \`desde\`/\`hasta\` (ej. 2026-07-01 … 2026-07-31), \`sheets_find\`, \`buscar_cliente_crm\`. **Nunca** digas "no tengo acceso al CRM" si las tools existen; si falla auth, pedí login. Si la misión es descubrir, **no** pidas nombre de cliente primero.`;
 
   const toolsBlock = `## TOOLS DE CALCULADORA (OBLIGATORIO)
 La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas estrictas:
@@ -571,6 +600,7 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 
 **Estado live de la calculadora (write):**
 - \`aplicar_estado_calc\` — auto-rellena el formulario con los datos confirmados. Pasá SOLO lo que el usuario confirmó (scenario, listaPrecios, techo, pared, camara, flete, proyecto). Llamala apenas tengas datos suficientes — no esperes a tener todo. Emite las ACTION_JSON necesarias en una sola llamada.
+- **NUNCA** emitas \`ACTION_JSON:{"type":"aplicar_estado_calc",...}\` — \`aplicar_estado_calc\` es una **tool**, no un type de ACTION_JSON. ACTION_JSON solo: setScenario, setLP, setTecho, setTechoZonas, setPared, setCamara, setFlete, setProyecto, setWizardStep, advanceWizard, buildQuote.
 
 **REGLA DURA — Geometría de zonas (SOLO TECHO).** Aplica únicamente a techos (campo \`techo.zonas\`). **NO aplica a paredes** (\`pared\` usa \`alto\` + \`perimetro\`, no \`zonas\`: nunca multipliques una cantidad de paneles de pared por el ancho útil). Cada zona de techo es un rectángulo físico en METROS: \`{largo, ancho}\`. El \`ancho\` es el ancho TOTAL del techo, **nunca** el ancho de un solo panel. La calculadora deriva la cantidad de paneles con \`ceil(ancho / ancho_útil)\` (ancho útil del paño: **ISOROOF ≈ 1.0 m**, **ISODEC ≈ 1.12 m**). Dos formas de leer al cliente:
 - **Por medidas totales** ("un techo de 6 × 4 m", "galpón de 10 × 20"): usá esas medidas tal cual → \`{largo: 6, ancho: 4}\`. NO las multipliques por el ancho útil.
@@ -584,8 +614,15 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 - \`guardar_en_crm\` — SOLO si el usuario confirma explícitamente ("guardalo en CRM", "pegalo al CRM", "agregalo a la planilla"). Nunca automáticamente.
 
 **Recall:**
-- \`listar_cotizaciones_recientes\` — "mandale otra vez la cotización a Juan", "¿qué cotizaciones hice hoy?". Filtrá por nombre.
+- \`listar_cotizaciones_recientes\` — "mandale otra vez la cotización a Juan", "¿qué cotizaciones hice hoy?", "cotizaciones de julio". Usá \`desde\`/\`hasta\` (YYYY-MM-DD). Cliente es opcional.
 - \`obtener_cotizacion_por_id\` — cuando referencien un id concreto.
+
+**Email (Omni + PANELSIM — envío con confirmación):**
+- \`email_listar_hilos\` / \`email_leer_hilo\` — bandeja Omni canal email (auth JWT canales).
+- \`email_clasificar_mensaje\` — \`consulta_cliente\` | \`alerta_admin\` | \`otro\`; si suggestAdminLead → proponé \`wa_lead_to_admin\`.
+- \`email_panelsim_resumen\` — resumen PANELSIM/IMAP (auth).
+- \`email_borrador_saliente\` — genera asunto+cuerpo (no envía solo).
+- \`email_enviar\` — envía reply Omni. REQUIERE confirmación explícita ("enviá el correo" / "sí envialo"). Nunca digas enviado si la tool falla.
 
 **Cancelación (soft delete):**
 - \`cancelar_cotizacion\` — el cliente declinó, los datos cambiaron, o querés limpiar el listado. Marca status=cancelled (no borra). REQUIERE user_confirmed=true. SOLO con confirmación explícita ("cancelá la cotización X", "el cliente desistió", "borrala del listado"). Las cotizaciones canceladas quedan ocultas del listado reciente por default; pasá \`include_cancelled: true\` a \`listar_cotizaciones_recientes\` si necesitás verlas.
@@ -603,14 +640,26 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 - \`programar_seguimiento\` — agenda un follow-up local para el operador ("recordame llamar a Juan en 3 días"). REQUIERE user_confirmed=true. Pasá title + uno de daysUntil o nextFollowUpAt. Tags opcional. Es un recordatorio INTERNO (no toca al cliente).
 
 **Wolfboard hub (admin cotizaciones):**
+- \`wa_lead_to_admin\` — **crea fila nueva** cuando no existe (cargar lead). REQUIERE user_confirmed=true.
 - \`wolfboard_pendientes\` — lista filas pendientes del Admin 2.0 (consultas de clientes esperando respuesta o aprobación). scope=consulta (default) / scope=admin (todas).
 - \`wolfboard_export\` — mismo listado en formato CSV ("bajame el CSV", "exportá pendientes para Excel").
 - \`wolfboard_sync\` — propaga col J (respuestaAI del Admin) hacia col AF de CRM_Operativo, matching por consulta. REQUIERE user_confirmed=true. Operación BATCH.
 - \`wolfboard_actualizar_fila\` — edita una fila Admin específica: respuesta (J), linkDrive (K), estado (L), replaySnapshotUrl (M). REQUIERE user_confirmed=true.
 - \`wolfboard_marcar_enviado\` — mueve la fila al tab 'Enviados' tras confirmación de envío al cliente. REQUIERE user_confirmed=true.
-- \`wolfboard_quote_batch\` — genera respuestas comerciales con IA (Claude Haiku) para todas las filas pendientes. REQUIERE user_confirmed=true. force=true regenera respuestas existentes.
+- \`wolfboard_quote_batch\` — SOLO si el operador pide generar respuestas comerciales con IA en masa. **NO** la uses para "cargar al Admin" (eso es \`wa_lead_to_admin\` / row-create). REQUIERE user_confirmed=true.
 
 Todas las herramientas Wolfboard requieren API_AUTH_TOKEN configurado en el server (auth admin). Si no está configurado, devuelven error sin tocar el sheet.
+
+**Co-Work / planillas (Admin + CRM allowlisted):**
+- Lecturas y propuesta (\`sheets_list_tabs\`, \`sheets_read_range\`, \`sheets_find\`, \`sheets_get_pending_admin\`, \`sheets_propose_write\`) **funcionan en chat normal — no pedís modo desarrollador**.
+- \`sheets_list_tabs\` — pestañas del workbook admin o crm.
+- \`sheets_read_range\` — lee rango A1 (fuente de verdad de celdas; preferí esto al OCR de capturas).
+- \`sheets_find\` — busca texto en un rango y devuelve row hits.
+- \`sheets_get_pending_admin\` — cola Admin (I llena, M vacía). Preferí esta tool para "chequeá pendientes / cuáles cotizar".
+- \`sheets_propose_write\` — dry-run de escritura (no muta).
+- \`sheets_write_range\` — escribe rango. REQUIERE operador autenticado + confirmación explícita. Preferí \`wolfboard_actualizar_fila\` para J/K/L del Admin cuando aplique.
+- Solo workbooks allowlisted: \`admin\` (WOLFB_ADMIN_SHEET_ID) y \`crm\` (WOLFB_CRM_SHEET_ID).
+- Nunca digas que hace falta DEV mode para leer la planilla.
 
 **Chips automáticos (modo desarrollador):** cuando ejecutás \`wolfboard_pendientes\`, \`wolfboard_export\`, \`wolfboard_sync\`, \`wolfboard_quote_batch\`, \`wolfboard_actualizar_fila\` o \`wolfboard_marcar_enviado\` con éxito, el servidor puede mostrar chips de siguiente paso sin que vos emitas \`SUGGEST_JSON:\`. Los textos de esos chips están alineados con las frases de confirmación que el servidor espera para sync/batch.
 
@@ -669,7 +718,31 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
 - ❌ Llamar \`guardar_en_crm\` sin confirmación explícita del usuario.
 - ❌ Re-preguntar la familia si \`calcState.techo.familia\` ya está seteado.`;
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, brainBlockStr, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules]
-    .filter(Boolean)
-    .join("\n\n");
+  // Cache split. The static prefix is request-independent (→ cache_control in
+  // agentCore's Claude branch); the dynamic tail varies per request. Their join is
+  // BYTE-IDENTICAL to the previous single-array order. `brainBlockStr` stays at its
+  // original position inside the prefix so this stays byte-identical in every mode;
+  // when the brain flag is ON it is request-dependent, so the cache simply won't hit
+  // in that (non-prod) mode — output correctness is unaffected.
+  const staticPrefix = [
+    IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC,
+    canonicalPrices, knowledgeBlock, brainBlockStr, learningBmcBlock, coworkVisionBlock, toolsBlock, extractionProtocol, antiRepBlock,
+  ].filter(Boolean).join("\n\n");
+  const operatorCtx = options.operatorContextBlock || "";
+  const dynamicTail = [
+    variationBlock, prefsBlock, currentState, examplesBlock, ragContext, operatorCtx, devModeRules,
+  ].filter(Boolean).join("\n\n");
+  return { staticPrefix, dynamicTail };
+}
+
+/**
+ * Backwards-compatible single-string system prompt. Byte-identical to the
+ * pre-caching output; all existing callers (agentChat, voice, etc.) are unchanged.
+ * @param {object} calcState
+ * @param {object} [options]
+ * @returns {string}
+ */
+export function buildSystemPrompt(calcState = {}, options = {}) {
+  const { staticPrefix, dynamicTail } = buildSystemPromptParts(calcState, options);
+  return [staticPrefix, dynamicTail].filter(Boolean).join("\n\n");
 }

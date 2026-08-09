@@ -2,8 +2,11 @@
 // "Inteligencia" tab — surfaces the offline market investigation captured in the
 // repo: 31-competitor tier map, Meta Ads audit, MercadoLibre pulse.
 // Data comes from GET /api/marketing/intel ({ competitors, ads, ml }).
+// Ads card also pulls GET /api/marketing/ads/by-line for service-line chips.
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import KeywordMonitor from './KeywordMonitor.jsx';
+import { getCalcApiBase } from '../../utils/calcApiBase.js';
 
 const TIER_COLOR = {
   1: 'var(--ac-error)',
@@ -85,8 +88,42 @@ function Competitors({ data }) {
   );
 }
 
-function Ads({ data }) {
+function LineChip({ label, spend, kpi }) {
+  const isTraffic = kpi === 'traffic';
+  return (
+    <span
+      data-testid="ads-line-chip"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '5px 10px',
+        borderRadius: 999,
+        fontSize: 11,
+        fontWeight: 600,
+        color: isTraffic ? 'var(--ac-text-3)' : 'var(--ac-text)',
+        background: 'var(--ac-surface-2)',
+        border: '1px solid var(--ac-border)',
+      }}
+    >
+      <span>{label}</span>
+      {spend != null && Number.isFinite(Number(spend)) && (
+        <span style={{ color: 'var(--ac-accent)', fontVariantNumeric: 'tabular-nums' }}>
+          ${Number(spend).toLocaleString('es-UY')}
+        </span>
+      )}
+      {kpi && (
+        <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ac-text-3)' }}>
+          {kpi}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function Ads({ data, onOpenAdsMeta, byLine, byLineFreshness }) {
   if (!data) return null;
+  const lines = Array.isArray(byLine) ? byLine.filter((r) => r.line_id && r.line_id !== 'orphan') : [];
   return (
     <Section title="Auditoría Meta Ads" meta={data.fecha_audit ? `audit ${data.fecha_audit}` : null}>
       {tilesGrid(
@@ -101,6 +138,43 @@ function Ads({ data }) {
         <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 'var(--ac-radius-sm)', background: 'color-mix(in srgb, var(--ac-warn) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--ac-warn) 30%, transparent)', fontSize: 12, color: 'var(--ac-text)' }}>
           <strong>Diagnóstico:</strong> {data.diagnostico}
         </div>
+      )}
+      {lines.length > 0 && (
+        <div style={{ marginTop: 14 }} data-testid="ads-line-strip">
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ac-text-2)', marginBottom: 8 }}>
+            Líneas de servicio {byLineFreshness ? `· ${byLineFreshness}` : ''}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {lines.map((row) => (
+              <LineChip
+                key={row.line_id}
+                label={row.label || row.line_id}
+                spend={row.spend}
+                kpi={row.kpi_scoring || (row.kpi_modes && row.kpi_modes[0])}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {onOpenAdsMeta && (
+        <button
+          type="button"
+          onClick={onOpenAdsMeta}
+          data-testid="open-ads-meta"
+          style={{
+            marginTop: 14,
+            fontSize: 12,
+            fontWeight: 600,
+            padding: '8px 14px',
+            borderRadius: 'var(--ac-radius-sm)',
+            border: 'none',
+            background: 'var(--ac-accent)',
+            color: 'var(--ac-accent-fg)',
+            cursor: 'pointer',
+          }}
+        >
+          Abrir Ads · Meta (reporte completo) →
+        </button>
       )}
       {Array.isArray(data.big_4_campanas) && data.big_4_campanas.length > 0 && (
         <div style={{ marginTop: 14 }}>
@@ -118,23 +192,9 @@ function Ads({ data }) {
           </div>
         </div>
       )}
-      {Array.isArray(data.ad_copy_angles) && data.ad_copy_angles.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ac-text-2)', marginBottom: 8 }}>Ángulos de copy</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-            {data.ad_copy_angles.map((a, i) => (
-              <div key={i} style={{ padding: '10px 12px', borderRadius: 'var(--ac-radius-sm)', background: 'var(--ac-surface-2)', border: '1px solid var(--ac-border-2)' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ac-accent)' }}>{a.nombre}</div>
-                <div style={{ fontSize: 12, color: 'var(--ac-text)', margin: '4px 0', fontStyle: 'italic' }}>“{a.headline}”</div>
-                <div style={{ fontSize: 11, color: 'var(--ac-text-3)' }}>{a.descripcion}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       {data.recomendacion_asc && (
         <p style={{ margin: '14px 0 0', fontSize: 12, color: 'var(--ac-text-2)', lineHeight: 1.5 }}>
-          <strong style={{ color: 'var(--ac-text)' }}>ASC:</strong> {data.recomendacion_asc} {data.presupuesto_recomendado_asc_usd && <em>(presupuesto sugerido ${data.presupuesto_recomendado_asc_usd}/mes)</em>}
+          <strong style={{ color: 'var(--ac-text)' }}>ASC:</strong> {data.recomendacion_asc}
         </p>
       )}
     </Section>
@@ -183,14 +243,50 @@ function MlPulse({ data }) {
   );
 }
 
-export default function IntelPanel({ intel }) {
+export default function IntelPanel({ intel, token, onOpenAdsMeta }) {
+  const [byLine, setByLine] = useState(null);
+  const [byLineFreshness, setByLineFreshness] = useState(null);
+
+  useEffect(() => {
+    if (!token) {
+      setByLine(null);
+      setByLineFreshness(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const base = getCalcApiBase().replace(/\/+$/, '');
+    // Snapshot-friendly: works without Meta LIVE secrets; server map tags Big 4.
+    fetch(`${base}/api/marketing/ads/by-line?range=30d&source=auto`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setByLine(Array.isArray(data.by_line) ? data.by_line : []);
+        setByLineFreshness(data.freshness || data.resolved_source || null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setByLine(null);
+          setByLineFreshness(null);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [token]);
+
   if (!intel) {
     return <p style={{ color: 'var(--ac-text-3)', fontSize: 13 }}>Inteligencia de mercado no disponible.</p>;
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {token && <KeywordMonitor token={token} />}
       <Competitors data={intel.competitors} />
-      <Ads data={intel.ads} />
+      <Ads
+        data={intel.ads}
+        onOpenAdsMeta={onOpenAdsMeta}
+        byLine={byLine}
+        byLineFreshness={byLineFreshness}
+      />
       <MlPulse data={intel.ml} />
     </div>
   );

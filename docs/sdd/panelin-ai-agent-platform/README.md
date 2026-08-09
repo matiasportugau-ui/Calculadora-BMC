@@ -1,0 +1,48 @@
+# SDD — Panelin AI Agent Platform
+
+**Slug:** `panelin-ai-agent-platform`  
+**Status:** As-Built **v1.4** (2026-07-26) — PAOS integration + IMP-02/04/08/09  
+**Purpose:** Recreation-grade SPEC of the **real** AI agent stack for SDD-driven development.  
+**Audit:** composite **98 PASS** (evolution closed G-P1-05) — [`audit/SCORECARD.json`](audit/SCORECARD.json)
+
+## Start here
+
+| Doc | Use |
+|-----|-----|
+| [`SDD.md`](SDD.md) | As-built architecture §1–12 (SoT) |
+| [`SDD-TARGET.md`](SDD-TARGET.md) | North-star / ideal state |
+| [`evidence/actual-vs-goal.md`](evidence/actual-vs-goal.md) | Actual vs objective matrix |
+| [`IMPLEMENTATION-GUIDE.md`](IMPLEMENTATION-GUIDE.md) | Step-by-step IMP-XX TODOs |
+| [`RECREATION-CHECKLIST.md`](RECREATION-CHECKLIST.md) | Can a new team rebuild? |
+| [`evidence/tools-manifest.md`](evidence/tools-manifest.md) | **55** tools (local HEAD) |
+| [`audit/GAP-PLAN.md`](audit/GAP-PLAN.md) | Gaps & severity |
+
+## Related
+
+- Child slice (chat/voice UI): [`../panelin-chat-agent/`](../panelin-chat-agent/) — defer tool counts to this platform SDD.
+- Parent monolith SDD: [`../calculadora-bmc/SDD.md`](../calculadora-bmc/SDD.md)
+- Calc contract: [`../../team/panelsim/AE-AGENT-CALC-CONTRACT.md`](../../team/panelsim/AE-AGENT-CALC-CONTRACT.md)
+- Ops: [`../../team/runbooks/PANELIN-IA-OPS.md`](../../team/runbooks/PANELIN-IA-OPS.md)
+
+## Quick facts (CONFIRMED 2026-07-23)
+
+- Local tools: **55** · Prod tools: **55**
+- Goldens: **22** (IMP-11)
+- Provider order: claude → grok → gemini → openai → openrouter
+- Chat rate limit: **10**/min public · **30**/min dev · exec-tool **60**/min
+- RAG: code ready, **default OFF**
+- SSE `done`: `provider_used` / `latency_ms` / optional `ttft_ms` (IMP-12)
+- AI runtime: Cloud Run API only (not Vercel)
+- Audit: **98 PASS** · P0/P1 docs **0** · PAOS §6.5 + ADR-008
+- Live probe 2026-07-26: tools **55**, Grok OK, PAOS health OK, OpenAI quota ops
+- Child Spec: [`../paos/`](../paos/) · evidence [`evidence/paos-integration.md`](evidence/paos-integration.md)
+- Turn parity: `logAgentTurn` (IMP-02) · Voice metrics durable (IMP-09) · Whisper FF path (IMP-08)
+
+## Next command for agents
+
+```text
+1. Read SDD.md §1, §5, §6 (§6.5 PAOS), §10 (ADR-008)
+2. Read audit/SCORECARD.json + audit/GAP-PLAN.md (P2 only)
+3. Optional product: RAG enable · hub $ · p95 baseline
+4. Implement → npm run test:agent → update PROJECT-STATE
+```

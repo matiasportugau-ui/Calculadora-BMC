@@ -21,7 +21,24 @@ import {
   getEtlSummary,
 } from '../lib/marketIntel/productIntelligence.js';
 import { buildProductMatrix } from '../lib/marketIntel/priceGap.js';
+import {
+  getKeywordMonitorState,
+  formatKeywordRow,
+  markKeywordRefreshRunning,
+  runKeywordRefresh,
+  addTrackedKeyword,
+  getKeywordRefreshMeta,
+} from '../lib/marketIntel/keywordMonitor.js';
 import { callAgentOnce } from '../lib/agentCore.js';
+import {
+  buildMetaAdsReport,
+  buildMetaAdsHealth,
+} from '../lib/marketIntel/metaAdsReport.js';
+import { SERVICE_LINES } from '../lib/marketIntel/paidMediaCampaignMap.js';
+import {
+  generateAdsInsights,
+  buildAdsChatSystemPrompt,
+} from '../lib/marketIntel/metaAdsInsights.js';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 const router = Router();
@@ -31,6 +48,10 @@ const pool = () => {
   if (!_pool) {
     if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL required');
     _pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    _pool.on('error', (err) => {
+      // idle client — do not rethrow (would crash Node)
+      console.error('[marketing] pg pool idle client error:', err?.message);
+    });
   }
   return _pool;
 };
@@ -268,6 +289,63 @@ router.get('/product-matrix', intelLimiter, requireMarketing, (req, res) => {
   }
 });
 
+// ─── GET /api/marketing/keywords ─────────────────────────────────────
+router.get('/keywords', intelLimiter, requireMarketing, async (req, res) => {
+  try {
+    const state = getKeywordMonitorState();
+    const meta = await getKeywordRefreshMeta();
+    const priority = req.query.priority;
+    let keywords = state.keywords.filter((k) => k.active !== false);
+    if (priority) keywords = keywords.filter((k) => k.priority === priority);
+    res.json({
+      market: state.market,
+      bmc_domain: state.bmc_domain,
+      serp_engine: process.env.KEYWORD_MONITOR_SERP_ENGINE || 'playwright',
+      last_refresh_at: state.last_refresh_at || meta?.last_refresh_at,
+      last_refresh_status: state.last_refresh_status,
+      keywords: keywords.map(formatKeywordRow),
+      total: keywords.length,
+    });
+  } catch (err) {
+    log.error({ err, route: 'GET /keywords' }, 'keyword monitor load failed');
+    res.status(503).json({ error: 'Keyword monitor unavailable' });
+  }
+});
+
+// ─── POST /api/marketing/keywords ────────────────────────────────────
+router.post('/keywords', intelLimiter, requireMarketing, async (req, res) => {
+  const { keyword, cluster, family, intent, priority, on_site_gap } = req.body || {};
+  if (!keyword || typeof keyword !== 'string' || !keyword.trim()) {
+    return res.status(400).json({ error: 'keyword required' });
+  }
+  try {
+    const entry = await addTrackedKeyword({ keyword, cluster, family, intent, priority, on_site_gap });
+    res.status(201).json(entry);
+  } catch (err) {
+    log.error({ err, route: 'POST /keywords' }, 'add keyword failed');
+    res.status(503).json({ error: 'Could not add keyword' });
+  }
+});
+
+// ─── POST /api/marketing/keywords/refresh ────────────────────────────
+// Fire-and-forget (Playwright SERP can take several minutes). Poll GET /keywords.
+router.post('/keywords/refresh', intelLimiter, requireMarketing, (req, res) => {
+  const { ids, priority } = req.body || {};
+  log.info({ userId: req.user?.id, ids, priority }, 'keyword refresh triggered');
+
+  markKeywordRefreshRunning();
+
+  runKeywordRefresh({
+    ids: Array.isArray(ids) ? ids : null,
+    priority: priority || null,
+  }).catch((err) => log.error({ err }, 'keyword refresh background run failed'));
+
+  res.status(202).json({
+    message: 'Keyword refresh started',
+    hint: 'Poll GET /api/marketing/keywords until last_refresh_at updates',
+  });
+});
+
 // ─── POST /api/marketing/ai/chat (SSE) ───────────────────────────────
 // Market-scoped chat. Injects the full offline + live intel as context and
 // streams the answer in the same `data: {type,...}` shape the frontend SSE
@@ -377,6 +455,156 @@ router.post('/ai/chat', intelLimiter, requireMarketing, async (req, res) => {
   } catch (err) {
     log.error({ err, route: 'POST /ai/chat' }, 'market chat failed');
     send({ type: 'error', message: 'No se pudo contactar al analista AI. Reintentá en unos segundos.' });
+    send({ type: 'done' });
+    if (!closed) res.end();
+  } finally {
+    clearInterval(heartbeat);
+  }
+});
+
+// ─── GET /api/marketing/ads/meta/report ────────────────────────────
+// MetaAdsReport DTO: source=auto|live|demo|snapshot · range=7d|30d|90d|ytd|year
+// PR1: demo fixture + static snapshot. Live Graph = PR3 (falls back to snapshot).
+router.get('/ads/meta/report', intelLimiter, requireMarketing, async (req, res) => {
+  try {
+    const range = req.query.range || '30d';
+    const source = req.query.source || 'auto';
+    const { report, resolved_source } = await buildMetaAdsReport({ range, source });
+    res.json({ ...report, _resolved_source: resolved_source });
+  } catch (err) {
+    const status = err?.status || 500;
+    if (status === 400) return res.status(400).json({ error: err.message || 'invalid request' });
+    if (status === 503) return res.status(503).json({ error: err.message || 'unavailable' });
+    log.error({ err, route: 'GET /ads/meta/report' }, 'meta ads report failed');
+    res.status(500).json({ error: 'Meta ads report failed' });
+  }
+});
+
+// ─── GET /api/marketing/ads/meta/health ────────────────────────────
+router.get('/ads/meta/health', intelLimiter, requireMarketing, (req, res) => {
+  try {
+    res.json(buildMetaAdsHealth());
+  } catch (err) {
+    log.error({ err, route: 'GET /ads/meta/health' }, 'meta ads health failed');
+    res.status(500).json({ error: 'health failed' });
+  }
+});
+
+// ─── GET /api/marketing/ads/by-line ────────────────────────────────
+// Service-line rollup on **current** Meta campaigns (Big 4 map + patterns).
+// Reuses buildMetaAdsReport; does not require campaign renames.
+router.get('/ads/by-line', intelLimiter, requireMarketing, async (req, res) => {
+  try {
+    const range = req.query.range || '30d';
+    const source = req.query.source || 'auto';
+    const { report, resolved_source } = await buildMetaAdsReport({ range, source });
+    res.json({
+      provider: 'meta',
+      range_key: report?.meta?.range_key || range,
+      freshness: report?.meta?.freshness || null,
+      resolved_source,
+      service_lines: SERVICE_LINES,
+      by_line: report?.by_line || [],
+      campaigns: (report?.campaigns || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        spend: c.spend,
+        results: c.results,
+        cpl: c.cpl,
+        line_id: c.line_id,
+        line_label: c.line_label,
+        funnel: c.funnel,
+        kpi: c.kpi,
+        line_matched_by: c.line_matched_by,
+      })),
+      diagnostics: {
+        zombie: report?.diagnostics?.zombie ?? null,
+        active: report?.diagnostics?.active ?? null,
+        total_campaigns: report?.diagnostics?.total_campaigns ?? null,
+      },
+      notes: report?.meta?.notes || [],
+    });
+  } catch (err) {
+    const status = err?.status || 500;
+    if (status === 400) return res.status(400).json({ error: err.message || 'invalid request' });
+    if (status === 503) return res.status(503).json({ error: err.message || 'unavailable' });
+    log.error({ err, route: 'GET /ads/by-line' }, 'ads by-line failed');
+    res.status(500).json({ error: 'ads by-line failed' });
+  }
+});
+
+// ─── POST /api/marketing/ai/ads-insights ───────────────────────────
+// Grounded Meta Ads narrative. Server rebuilds report (never trusts client spend).
+router.post('/ai/ads-insights', intelLimiter, requireMarketing, async (req, res) => {
+  try {
+    const range = req.body?.range || req.query?.range || '30d';
+    const source = req.body?.source || req.query?.source || 'auto';
+    const out = await generateAdsInsights({ range, source });
+    res.json(out);
+  } catch (err) {
+    const status = err?.status || 502;
+    log.error({ err, route: 'POST /ai/ads-insights' }, 'ads insights failed');
+    res.status(status).json({ error: err?.message || 'ads insights failed', confidence: 'low' });
+  }
+});
+
+// ─── POST /api/marketing/ai/ads-chat (SSE) ─────────────────────────
+// Meta-only analyst chat; injects current MetaAdsReport DTO.
+router.post('/ai/ads-chat', intelLimiter, requireMarketing, async (req, res) => {
+  const incoming = Array.isArray(req.body?.messages) ? req.body.messages : null;
+  if (!incoming || incoming.length === 0) {
+    return res.status(400).json({ error: 'messages[] required' });
+  }
+  const messages = incoming
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }))
+    .slice(-12);
+  if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
+    return res.status(400).json({ error: 'last message must be from user' });
+  }
+
+  const range = req.body?.range || '30d';
+  const source = req.body?.source || 'auto';
+  let report;
+  try {
+    ({ report } = await buildMetaAdsReport({ range, source }));
+  } catch (err) {
+    return res.status(err?.status || 500).json({ error: err?.message || 'report unavailable' });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  let closed = false;
+  const send = (obj) => {
+    if (closed) return;
+    try { res.write(`data: ${JSON.stringify(obj)}\n\n`); } catch { /* disconnected */ }
+  };
+  const heartbeat = setInterval(() => {
+    if (closed) return;
+    try { res.write(': ping\n\n'); } catch { /* ignore */ }
+  }, 15000);
+  res.on('close', () => { closed = true; clearInterval(heartbeat); });
+
+  try {
+    const systemPrompt = buildAdsChatSystemPrompt(report);
+    const result = await callAgentOnce(messages, {
+      channel: 'chat',
+      systemPrompt,
+      override: { maxTokens: 1500, temperature: 0.35 },
+    });
+    const text = (result?.text || '').trim() || 'No pude generar una respuesta con el reporte Meta disponible.';
+    send({ type: 'text', delta: text });
+    send({ type: 'meta', provider: result?.provider || null, model: result?.model || null, report_hash: report.meta?.report_hash });
+    send({ type: 'done' });
+    if (!closed) res.end();
+  } catch (err) {
+    log.error({ err, route: 'POST /ai/ads-chat' }, 'ads chat failed');
+    send({ type: 'error', message: 'No se pudo contactar al analista Meta Ads. Reintentá.' });
     send({ type: 'done' });
     if (!closed) res.end();
   } finally {

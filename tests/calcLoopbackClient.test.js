@@ -30,12 +30,18 @@ async function runUnit() {
   const { config } = await import("../server/config.js");
   config.port = 13017;
   config.publicBaseUrl = "http://localhost:13017";
+  config.apiAuthToken = "loopback_service_token";
 
   const calls = [];
   const realFetch = globalThis.fetch;
 
   globalThis.fetch = async (url, init = {}) => {
-    calls.push({ url: String(url), method: init.method || "GET", body: init.body || null });
+    calls.push({
+      url: String(url),
+      method: init.method || "GET",
+      body: init.body || null,
+      headers: init.headers || {},
+    });
     if (String(url).endsWith("/calc/cotizar")) {
       return new Response(JSON.stringify({ ok: true, resumen: { total_usd: 1234 } }), {
         status: 200, headers: { "Content-Type": "application/json" },
@@ -60,6 +66,7 @@ async function runUnit() {
   const r1 = await mod.postCotizar({ lista: "web", escenario: "solo_techo" });
   assert("postCotizar hits 127.0.0.1:port loopback", calls[0].url.startsWith("http://127.0.0.1:13017/"), calls[0].url, "127.0.0.1:13017");
   assert("postCotizar path correct", calls[0].url.endsWith("/calc/cotizar"), calls[0].url, "/calc/cotizar");
+  assert("loopback posts include service Bearer", calls[0].headers.Authorization === "Bearer loopback_service_token", calls[0].headers, "Bearer token");
   assert("postCotizar normalizes ok=true", r1.ok === true, r1.ok, true);
   assert("postCotizar returns body", r1.body?.resumen?.total_usd === 1234, r1.body, { resumen: { total_usd: 1234 } });
 
@@ -79,8 +86,10 @@ async function runUnit() {
 
   // Transport-level failure on PDF → falls back to publicBaseUrl
   let attempt = 0;
-  globalThis.fetch = async (url) => {
+  const fallbackCalls = [];
+  globalThis.fetch = async (url, init = {}) => {
     attempt += 1;
+    fallbackCalls.push({ url: String(url), headers: init.headers || {} });
     if (attempt === 1) throw new Error("connect ECONNREFUSED");
     return new Response(JSON.stringify({ ok: true, pdf_id: "fallback" }), { status: 200 });
   };
@@ -88,6 +97,7 @@ async function runUnit() {
   const r5 = await mod.postCotizarPdf({});
   assert("PDF transport failure triggers fallback", r5.ok === true && r5.body?.pdf_id === "fallback", r5, { ok: true });
   assert("PDF fallback was attempted twice", attempt === 2, attempt, 2);
+  assert("public fallback does not forward service Bearer", !fallbackCalls[1].headers.Authorization, fallbackCalls[1].headers, "no Authorization");
 
   globalThis.fetch = realFetch;
 }
@@ -96,6 +106,7 @@ async function runIntegration() {
   console.log("\n═══ SUITE: calcLoopbackClient integration ═══");
 
   const { config } = await import("../server/config.js");
+  config.apiAuthToken = "loopback_service_token";
 
   const app = express();
   app.use(express.json());

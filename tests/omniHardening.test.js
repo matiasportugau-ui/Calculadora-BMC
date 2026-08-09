@@ -4,6 +4,7 @@ import {
   enqueueAiJob,
   runAiJobById,
   ALLOWED_AI_JOB_TYPES,
+  triggerWaCrmSyncNow,
 } from "../server/lib/omni/orchestrator/aiWorker.js";
 import { getActivePromptContract } from "../server/lib/omni/orchestrator/aiRegistry.js";
 import { ALLOWED_CONVERSATION_STATUSES } from "../server/lib/omni/orchestrator/automationEngine.js";
@@ -113,6 +114,32 @@ await (async () => {
 // ── P5: conversation status whitelist ─────────────────────────────────────
 assert("status whitelist includes seed default 'open'", ALLOWED_CONVERSATION_STATUSES.includes("open"));
 assert("status whitelist excludes arbitrary values", !ALLOWED_CONVERSATION_STATUSES.includes("pwned"));
+
+// ── P6: canonical 🚀 trigger expedites durable wa_crm_sync ──────────────────
+await (async () => {
+  const pool = makePool([
+    ["UPDATE omni_ai_jobs", { rows: [{ id: "wa-job-1" }] }],
+  ]);
+  const res = await triggerWaCrmSyncNow(pool, {
+    conversation_id: "c-wa-1",
+    message_id: "m-wa-1",
+    channel: "wa",
+  });
+  assert("triggerWaCrmSyncNow expedites existing pending/failed job", res.mode === "expedited" && res.jobId === "wa-job-1");
+})();
+
+await (async () => {
+  const pool = makePool([
+    ["UPDATE omni_ai_jobs", { rows: [] }],
+    ["INSERT INTO omni_ai_jobs", { rows: [{ id: "wa-job-2" }] }],
+  ]);
+  const res = await triggerWaCrmSyncNow(pool, {
+    conversation_id: "c-wa-2",
+    message_id: "m-wa-2",
+    channel: "wa",
+  });
+  assert("triggerWaCrmSyncNow enqueues when no active job exists", res.mode === "enqueued" && res.jobId === "wa-job-2");
+})();
 
 console.log(`\nomniHardening (offline): ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bmc.local/schemas/MetaAdsReport.schema.json",
+  "title": "MetaAdsReport",
+  "description": "Normalized Meta Ads Live Report DTO. All monetary fields in USD. Missing metrics MUST be null, never fabricated zeros.",
+  "type": "object",
+  "required": ["meta", "kpis", "series", "campaigns", "platforms", "placements", "creatives", "diagnostics", "recommendations"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["provider", "currency", "date_start", "date_stop", "range_key", "freshness", "fetched_at", "source", "report_hash"],
+      "properties": {
+        "provider": { "const": "meta" },
+        "account_id": { "type": ["string", "null"] },
+        "currency": { "const": "USD" },
+        "date_start": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "date_stop": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "range_key": { "enum": ["7d", "30d", "90d", "ytd", "year"] },
+        "freshness": { "enum": ["live", "demo", "snapshot", "stale", "error"] },
+        "fetched_at": { "type": "string", "format": "date-time" },
+        "source": { "enum": ["graph_api", "fixture", "adsIntelligence.json", "cache"] },
+        "report_hash": { "type": "string", "minLength": 8 },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "kpis": {
+      "type": "object",
+      "required": ["spend", "results", "result_type", "cpl", "ctr", "cpm", "cpc", "reach", "frequency", "impressions", "clicks", "roas", "cost_per_result", "deltas"],
+      "properties": {
+        "spend": { "type": ["number", "null"] },
+        "impressions": { "type": ["number", "null"] },
+        "clicks": { "type": ["number", "null"] },
+        "reach": { "type": ["number", "null"] },
+        "frequency": { "type": ["number", "null"] },
+        "results": { "type": ["number", "null"] },
+        "result_type": { "enum": ["lead", "purchase", "link_click", "other", null] },
+        "cpl": { "type": ["number", "null"], "description": "Primary BMC efficiency KPI for lead gen" },
+        "roas": { "type": ["number", "null"] },
+        "cost_per_result": { "type": ["number", "null"] },
+        "ctr": { "type": ["number", "null"], "description": "Click-through rate as percent (e.g. 1.25 = 1.25%)" },
+        "cpm": { "type": ["number", "null"] },
+        "cpc": { "type": ["number", "null"] },
+        "deltas": {
+          "type": ["object", "null"],
+          "properties": {
+            "spend_pct": { "type": ["number", "null"] },
+            "results_pct": { "type": ["number", "null"] },
+            "cpl_pct": { "type": ["number", "null"] }
+          }
+        }
+      }
+    },
+    "series": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["date", "spend", "results"],
+        "properties": {
+          "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "spend": { "type": "number" },
+          "results": { "type": "number" },
+          "impressions": { "type": "number" },
+          "clicks": { "type": "number" }
+        }
+      }
+    },
+    "campaigns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "objective", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "objective": { "type": "string" },
+          "status": { "enum": ["ACTIVE", "PAUSED", "ZOMBIE", "UNKNOWN"] },
+          "spend": { "type": ["number", "null"] },
+          "results": { "type": ["number", "null"] },
+          "cpl": { "type": ["number", "null"] },
+          "roas": { "type": ["number", "null"] },
+          "ctr": { "type": ["number", "null"] },
+          "impressions": { "type": ["number", "null"] },
+          "clicks": { "type": ["number", "null"] },
+          "share_of_spend": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "platforms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["platform", "spend"],
+        "properties": {
+          "platform": { "type": "string" },
+          "spend": { "type": "number" },
+          "results": { "type": ["number", "null"] },
+          "impressions": { "type": "number" }
+        }
+      }
+    },
+    "placements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["placement", "spend"],
+        "properties": {
+          "placement": { "type": "string" },
+          "spend": { "type": "number" },
+          "results": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "creatives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "headline": { "type": "string" },
+          "spend": { "type": ["number", "null"] },
+          "results": { "type": ["number", "null"] },
+          "cpl": { "type": ["number", "null"] },
+          "ctr": { "type": ["number", "null"] },
+          "thumbnail_url": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "required": ["total_campaigns", "active", "zombie", "frequency_warning", "notes"],
+      "properties": {
+        "total_campaigns": { "type": ["number", "null"] },
+        "active": { "type": ["number", "null"] },
+        "zombie": { "type": ["number", "null"] },
+        "diagnostico": { "type": ["string", "null"] },
+        "frequency_warning": { "type": "boolean" },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "priority", "action", "reason", "source"],
+        "properties": {
+          "id": { "type": "string" },
+          "priority": { "enum": ["alta", "media", "baja"] },
+          "action": { "type": "string" },
+          "reason": { "type": "string" },
+          "expected_effect": { "type": "string" },
+          "source": { "enum": ["rules", "ai"] }
+        }
+      }
+    }
+  }
+}

@@ -15,18 +15,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Install ALSA headers
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libasound2-dev
+        run: bash scripts/ci-install-alsa-dev.sh
 
       - name: Install dependencies
         run: npm ci --include=dev
@@ -43,18 +41,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Install ALSA headers
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libasound2-dev
+        run: bash scripts/ci-install-alsa-dev.sh
 
       - name: Install dependencies
         run: npm ci --include=dev
@@ -69,10 +65,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
 
@@ -93,22 +89,27 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Install ALSA headers
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
+        run: bash scripts/ci-install-alsa-dev.sh
 
       - name: Install dependencies
         run: npm ci --include=dev
 
       - name: Smoke prod
         run: npm run smoke:prod
+        env:
+          # suggest-response now requires auth; the smoke presents this as x-api-key.
+          # If the secret is unset, suggest-response 401s — smoke self-skips it only
+          # when SMOKE_SKIP_SUGGEST=1, so keep the secret populated.
+          API_AUTH_TOKEN: ${{ secrets.API_AUTH_TOKEN }}
 
       # continue-on-error deja el fallo como ❌ no-bloqueante que nadie mira;
       # este step lo convierte en issue de tracking (y lo cierra al recuperar).
@@ -134,16 +135,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Install ALSA headers
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
+        run: bash scripts/ci-install-alsa-dev.sh
 
       - name: Install dependencies
         run: npm ci --include=dev
@@ -189,23 +190,24 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Install ALSA headers
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libasound2-dev
+        run: bash scripts/ci-install-alsa-dev.sh
 
       - name: Install dependencies
         run: npm ci --include=dev
 
       - name: channels:automated (JSON)
+        env:
+          # Sin este token el smoke interno da 401 en suggest-response (gh#571)
+          API_AUTH_TOKEN: ${{ secrets.API_AUTH_TOKEN }}
         run: node scripts/channels-automated-pipeline.mjs
 
       - name: Alert on prod-smoke failure (gh#495)
@@ -229,7 +231,7 @@ jobs:
     steps:
       # Checkout solo para disponer de ./.github/actions/prod-alert (el probe no usa el repo).
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Probe /api/agent/voice/health on prod Cloud Run
         env:

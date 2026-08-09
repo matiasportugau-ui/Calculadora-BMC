@@ -1,0 +1,19 @@
+{
+  "id": "12-canal-wa-corto",
+  "description": "WhatsApp-length channel: response should stay relatively short when surface is wa.",
+  "calcState": "empty",
+  "surface": "wa",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Hola, venden paneles?" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": "",
+    "channel": "wa"
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" },
+    { "type": "text_max_chars", "value": 1200 }
+  ],
+  "timeoutMs": 60000
+}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useBmcAuthContext } from "../contexts/bmcAuthContext.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 
@@ -24,6 +25,33 @@ function resolveChatBase() {
 function chatIframeOrigin(chatBase) {
   if (chatBase.startsWith("http")) return new URL(chatBase).origin;
   return window.location.origin;
+}
+
+/**
+ * Build URL + fetch init for the chat health probe (GET /api/inquiries).
+ * Must never attach Authorization — bmc-chat Cloud Run CORS only allows Content-Type;
+ * a Bearer header triggers preflight failure (console CORS noise on every logged-in load).
+ * Operator JWT is delivered separately via postMessage type "bmc-chat-auth".
+ *
+ * @param {string} chatBase
+ * @param {{ timeoutMs?: number }} [opts]
+ * @returns {{ url: string, init: RequestInit }}
+ */
+export function buildChatHealthProbe(chatBase, opts = {}) {
+  const timeoutMs = Number.isFinite(opts.timeoutMs) ? opts.timeoutMs : 3000;
+  const base = String(chatBase || "").replace(/\/+$/, "");
+  return {
+    url: `${base}/api/inquiries`,
+    init: {
+      // Explicit empty headers: no Authorization, no credentials-driven preflight extras.
+      signal: AbortSignal.timeout(timeoutMs),
+    },
+  };
+}
+
+/** postMessage payload that passes the operator JWT into the chat iframe. */
+export function buildChatAuthPostMessage(accessToken) {
+  return { type: "bmc-chat-auth", token: accessToken };
 }
 
 function readStoredOpen() {
@@ -53,20 +81,18 @@ export default function BmcChatPanel() {
   const postAuthToIframe = useCallback(() => {
     if (!accessToken || !iframeRef.current?.contentWindow) return;
     iframeRef.current.contentWindow.postMessage(
-      { type: "bmc-chat-auth", token: accessToken },
+      buildChatAuthPostMessage(accessToken),
       chatIframeOrigin(chatBase),
     );
   }, [accessToken, chatBase]);
 
+  // Health probe only — do NOT send Authorization (see buildChatHealthProbe).
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
       try {
-        const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-        const r = await fetch(`${chatBase}/api/inquiries`, {
-          headers,
-          signal: AbortSignal.timeout(3000),
-        });
+        const { url, init } = buildChatHealthProbe(chatBase);
+        const r = await fetch(url, init);
         if (!cancelled) setServerUp(r.ok);
       } catch {
         if (!cancelled) setServerUp(false);
@@ -75,7 +101,7 @@ export default function BmcChatPanel() {
     check();
     const interval = setInterval(check, 15000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [accessToken, chatBase]);
+  }, [chatBase]);
 
   useEffect(() => {
     if (open && serverUp === true) postAuthToIframe();
@@ -197,14 +223,33 @@ export default function BmcChatPanel() {
                 </div>
               )}
               {serverUp === true && (
-                <div style={{ flex: "1 1 auto", minHeight: 0, position: "relative" }}>
-                  <iframe
-                    ref={iframeRef}
-                    src={chatBase}
-                    onLoad={postAuthToIframe}
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-                    title={PANEL_TITLE}
-                  />
+                <div style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column" }}>
+                  <div style={{ flex: "1 1 auto", minHeight: 0, position: "relative" }}>
+                    <iframe
+                      ref={iframeRef}
+                      src={chatBase}
+                      onLoad={postAuthToIframe}
+                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+                      title={PANEL_TITLE}
+                    />
+                  </div>
+                  <Link
+                    to="/hub/admin-ingreso"
+                    style={{
+                      flexShrink: 0,
+                      display: "block",
+                      textAlign: "center",
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#1a73e8",
+                      textDecoration: "none",
+                      borderTop: "1px solid #e8eaed",
+                      background: "#f8f9fa",
+                    }}
+                  >
+                    Abrir módulo completo ↗
+                  </Link>
                 </div>
               )}
             </div>

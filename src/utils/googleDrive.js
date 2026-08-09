@@ -269,6 +269,81 @@ function describeOAuthError(resp) {
 }
 
 /**
+ * Detect Google Drive 403 when the access token lacks drive.file (or any Drive scope).
+ * Common when a team Gmail got openid/email/profile only, or silent refresh reused a partial grant.
+ * Pure helper — exported for unit tests.
+ *
+ * @param {number} status
+ * @param {string} [bodyText]
+ * @returns {boolean}
+ */
+export function isDriveScopeInsufficient(status, bodyText) {
+  if (Number(status) !== 403) return false;
+  const t = String(bodyText || "");
+  if (!t) return false;
+  return (
+    /ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(t) ||
+    /insufficient authentication scopes/i.test(t) ||
+    /"reason"\s*:\s*"insufficientPermissions"/i.test(t) ||
+    /Insufficient Permission/i.test(t)
+  );
+}
+
+/** Friendly Spanish copy for scope-insufficient (and raw Drive API) errors. */
+export const DRIVE_SCOPE_INSUFFICIENT_MSG =
+  "Faltan permisos de Google Drive en esta cuenta. Usá «Reconectar permisos de Drive» y aceptá el acceso a Drive en Google. Si la app está en Testing en GCP, agregá este Gmail como test user.";
+
+/**
+ * @param {number} status
+ * @param {string} [bodyText]
+ * @returns {Error}
+ */
+export function formatDriveApiError(status, bodyText) {
+  if (isDriveScopeInsufficient(status, bodyText)) {
+    const err = new Error(DRIVE_SCOPE_INSUFFICIENT_MSG);
+    err.code = "DRIVE_SCOPE_INSUFFICIENT";
+    err.status = 403;
+    return err;
+  }
+  const body = String(bodyText || "").trim();
+  const err = new Error(body ? `Drive API ${status}: ${body}` : `Drive API ${status}`);
+  err.status = status;
+  return err;
+}
+
+/**
+ * True when an error (or message string) is the sticky partial-scope case.
+ * Used by the Drive panel to show a reconnect CTA.
+ */
+export function isDriveScopeError(err) {
+  if (!err) return false;
+  if (err.code === "DRIVE_SCOPE_INSUFFICIENT") return true;
+  const msg = String(err?.message || err || "");
+  return (
+    /Faltan permisos de Google Drive/i.test(msg) ||
+    /ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(msg) ||
+    /insufficient authentication scopes/i.test(msg)
+  );
+}
+
+function clearConsentFlag() {
+  _hasConsented = false;
+  try {
+    if (typeof localStorage !== "undefined") localStorage.removeItem(CONSENT_KEY);
+  } catch { /* ignore */ }
+}
+
+function invalidateAccessToken({ revoke = false } = {}) {
+  if (revoke && _accessToken && typeof google !== "undefined" && google.accounts?.oauth2?.revoke) {
+    try { google.accounts.oauth2.revoke(_accessToken, () => {}); } catch { /* ignore */ }
+  }
+  _accessToken = null;
+  _tokenExpiry = 0;
+  clearIdentity();
+  notifyAuth();
+}
+
+/**
  * Request an access token (triggers Google sign-in popup if needed) and fetch
  * the OIDC user profile in the same call.
  *
@@ -277,10 +352,19 @@ function describeOAuthError(resp) {
  * Uses prompt="consent" the first time so users actually see the consent
  * screen — empty prompt can silently fail in some browser/cookie contexts.
  *
+ * @param {{ forceConsent?: boolean }} [options]
+ *   forceConsent: drop cached token + consent flag and always show Google consent
+ *   (fixes team accounts stuck with openid/email/profile only, no drive.file).
  * @returns {Promise<{ accessToken: string, expiresAt: number, user: object|null }>}
  */
-export async function signIn() {
-  if (_signInPromise) return _signInPromise;
+export async function signIn(options = {}) {
+  const forceConsent = !!(options && options.forceConsent);
+
+  // Coalesce concurrent normal sign-ins; forceConsent waits then starts a fresh flow.
+  if (_signInPromise) {
+    if (!forceConsent) return _signInPromise;
+    try { await _signInPromise; } catch { /* ignore prior failure */ }
+  }
 
   _signInPromise = (async () => {
     if (!_tokenClient) {
@@ -294,7 +378,12 @@ export async function signIn() {
         return;
       }
 
-      if (isAuthenticated()) {
+      if (forceConsent) {
+        // Drop sticky token/consent so we do not short-circuit with a partial-scope token.
+        invalidateAccessToken({ revoke: true });
+        clearConsentFlag();
+        _user = null;
+      } else if (isAuthenticated()) {
         resolve({ accessToken: _accessToken, expiresAt: _tokenExpiry, user: _user });
         return;
       }
@@ -340,7 +429,9 @@ export async function signIn() {
 
       try {
         _tokenClient.requestAccessToken({
-          prompt: _hasConsented ? "" : "consent",
+          // forceConsent always re-shows the Google permissions screen so drive.file
+          // is granted even when bmc.gdrive.consented was stuck true from a partial grant.
+          prompt: forceConsent || !_hasConsented ? "consent" : "",
         });
       } catch (err) {
         _pendingErrorHandler = null;
@@ -356,42 +447,64 @@ export async function signIn() {
   }
 }
 
+/**
+ * Explicit reconnect: revoke cached token, clear consent, force Google consent popup.
+ * Use when the user sees ACCESS_TOKEN_SCOPE_INSUFFICIENT on a team Gmail.
+ */
+export function reconnectDrive() {
+  return signIn({ forceConsent: true });
+}
+
 export function signOut() {
-  if (_accessToken && typeof google !== "undefined" && google.accounts?.oauth2?.revoke) {
-    try { google.accounts.oauth2.revoke(_accessToken, () => {}); } catch { /* ignore */ }
-  }
-  _accessToken = null;
-  _tokenExpiry = 0;
-  _hasConsented = false;
+  invalidateAccessToken({ revoke: true });
   _user = null;
-  clearIdentity();
   // Explicit signOut DOES clear the consent flag (revocation == user
   // affirmatively logging out). The next sign-in will show consent again.
-  try {
-    if (typeof localStorage !== "undefined") localStorage.removeItem(CONSENT_KEY);
-  } catch { /* ignore */ }
+  clearConsentFlag();
   notifyAuth();
 }
 
-async function authFetch(url, opts = {}) {
+/**
+ * Authenticated fetch against Drive API.
+ * - 401 → silent re-signIn once (expired token)
+ * - 403 ACCESS_TOKEN_SCOPE_INSUFFICIENT → forceConsent re-signIn once (partial grant)
+ *
+ * @param {string} url
+ * @param {RequestInit} [opts]
+ * @param {{ retried401?: boolean, retriedScope?: boolean }} [_meta]
+ */
+async function authFetch(url, opts = {}, _meta = {}) {
   if (!isAuthenticated()) await signIn();
   const headers = { Authorization: `Bearer ${_accessToken}`, ...(opts.headers || {}) };
-  let resp = await fetch(url, { ...opts, headers });
+  const resp = await fetch(url, { ...opts, headers });
+
   // Token may have been revoked or expired between the local check and the
   // actual request — retry once after a fresh signIn.
-  if (resp.status === 401) {
-    _accessToken = null;
-    _tokenExpiry = 0;
+  if (resp.status === 401 && !_meta.retried401) {
+    invalidateAccessToken({ revoke: false });
     _user = null;
-    clearIdentity();
-    notifyAuth();
     await signIn();
-    const retryHeaders = { Authorization: `Bearer ${_accessToken}`, ...(opts.headers || {}) };
-    resp = await fetch(url, { ...opts, headers: retryHeaders });
+    return authFetch(url, opts, { ..._meta, retried401: true });
   }
+
+  // Sticky partial-scope token (team Gmail with only openid/email/profile).
+  // authFetch used to throw raw 403 forever because only 401 was retried.
+  if (resp.status === 403 && !_meta.retriedScope) {
+    const body = await resp.text().catch(() => "");
+    if (isDriveScopeInsufficient(403, body)) {
+      try {
+        await signIn({ forceConsent: true });
+        return authFetch(url, opts, { ..._meta, retriedScope: true });
+      } catch {
+        throw formatDriveApiError(403, body);
+      }
+    }
+    throw formatDriveApiError(403, body);
+  }
+
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
-    throw new Error(`Drive API ${resp.status}: ${body}`);
+    throw formatDriveApiError(resp.status, body);
   }
   return resp;
 }

@@ -26,11 +26,12 @@ export function useConnectorStatus() {
     queryFn: () =>
       mlFetch('/auth/ml/status').catch((err) => {
         if (err.status === 404) return { ok: false };
+        if (err.status === 503) return { ok: false, message: err.payload?.message || 'Token store unavailable' };
         throw err;
       }),
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
-    retry: 0,
+    retry: 1,
   });
 }
 
@@ -142,5 +143,30 @@ export function useOrders(params = {}) {
       mlFetch(`/ml/orders${qs({ 'order.status': params.status, limit: params.limit || 50, offset: params.offset || 0 })}`),
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
+  });
+}
+
+/**
+ * AI listing quality audit — POST /api/ml/optimize/listing
+ * Returns { ok, audit, provider, model }. Does NOT mutate ML; operator applies patches manually.
+ */
+export function useAuditListing() {
+  return useMutation({
+    mutationFn: ({ itemId, provider }) =>
+      mlFetch('/api/ml/optimize/listing', {
+        method: 'POST',
+        body: { itemId, provider },
+      }),
+  });
+}
+
+/** Read-only strategic playbooks — GET /api/ml/playbooks */
+export function useMlPlaybooks() {
+  return useQuery({
+    queryKey: [...BASE_KEY, 'playbooks'],
+    queryFn: () => mlFetch('/api/ml/playbooks'),
+    staleTime: 5 * 60_000,
+    gcTime: GC_TIME,
+    retry: 0,
   });
 }

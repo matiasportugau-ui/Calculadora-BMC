@@ -9,7 +9,7 @@
 // Run: node tests/wakeWord.test.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { hasWake } from "../src/hooks/useHandsFreeVoice.js";
+import { hasWake, wakeRestartDelayMs } from "../src/hooks/useHandsFreeVoice.js";
 
 let passed = 0;
 let failed = 0;
@@ -35,6 +35,13 @@ assert(!hasWake(null), "null is safe");
 assert(!hasWake(undefined), "undefined is safe");
 assert(!hasWake("hola buenos días"), "unrelated speech");
 assert(!hasWake("el panel está roto"), "the word 'panel' alone does not wake");
+
+// ── Wake onend backoff (B-02) ───────────────────────────────────────────────
+assert(wakeRestartDelayMs(0) === 150, "attempt 0 → 150ms");
+assert(wakeRestartDelayMs(1) === 300, "attempt 1 → 300ms");
+assert(wakeRestartDelayMs(2) === 600, "attempt 2 → 600ms");
+assert(wakeRestartDelayMs(5) === 4000, "attempt 5 → 4000ms cap");
+assert(wakeRestartDelayMs(99) === 4000, "high attempt still capped");
 
 console.log(`\n${failed === 0 ? "✅" : "❌"} wakeWord: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

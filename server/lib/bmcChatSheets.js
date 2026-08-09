@@ -188,7 +188,10 @@ export async function writeBmcChatInterpretation(config, rowIndex, interpretatio
 
   const j = sanitizeCellValue(interpretation.interpretation_J || "");
   const k = sanitizeCellValue(interpretation.question_K || "");
-  const l = sanitizeCellValue(interpretation.missing_L || "");
+  const missingRaw = interpretation.missing_L;
+  const l = sanitizeCellValue(
+    Array.isArray(missingRaw) ? missingRaw.filter(Boolean).join(", ") : (missingRaw || ""),
+  );
 
   const sheets = await getSheetsClient();
   await sheets.spreadsheets.values.update({

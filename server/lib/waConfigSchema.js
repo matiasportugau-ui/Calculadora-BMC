@@ -73,6 +73,14 @@ export const FLAG_KEYS = Object.freeze(Object.keys(FlagsSchema.shape));
 // de leaves se apliquen recursivamente cuando el input es {} o undefined.
 
 export const SettingsSchema = z.object({
+  // AI Assistant control plane — runtime enable/disable overrides.
+  // Maps an assistant key (canales|panelin|email|wa|ml|wolfboard) → enabled bool.
+  // When present, wins over the ASSISTANTS_ACTIVE env allowlist (see
+  // assistantRegistry.isAssistantEnabled), so an admin can flip an assistant on/off
+  // WITHOUT a redeploy. Empty {} = no override, the env allowlist decides. The
+  // POST /api/assistants/:key/toggle route is the only writer; it validates keys.
+  assistants: z.record(z.boolean()).default({}),
+
   // Enricher
   enricher: z.object({
     intervalMs: z.number().int().min(1000).max(300000).default(8000),

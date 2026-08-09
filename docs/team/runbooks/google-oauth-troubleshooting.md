@@ -134,6 +134,39 @@ El refresh backend (server-side, vía `oauth2.googleapis.com/token` con `client_
 - **Token expirado** — `/api/auth/me` 401 sin trigger de popup; el silent refresh lo maneja.
 - **Mismatch de client_id entre frontend y backend** — daría errores 4xx en `/api/auth/google`, no en la pantalla de Google.
 
+## Drive API 403 · `ACCESS_TOKEN_SCOPE_INSUFFICIENT` (team Gmail)
+
+### Síntoma
+
+- Panel Drive muestra **Conectado** con el Gmail del equipo (ej. `bmctecnopanel@gmail.com`).
+- **Carpeta configurada** OK, a veces **Guardado en Drive** residual.
+- Error rojo al listar cotizaciones:
+
+```text
+Drive API 403 … ACCESS_TOKEN_SCOPE_INSUFFICIENT … DriveFiles.List
+```
+
+- La cuenta personal del admin (Matías) **sí** funciona en el mismo navegador/app.
+
+### Causa
+
+El access token GIS solo tiene `openid email profile` (o un grant viejo), **sin** `https://www.googleapis.com/auth/drive.file`.  
+El flag `localStorage bmc.gdrive.consented=1` hacía silent refresh (`prompt: ""`) y **nunca** re-pedía Drive.  
+`authFetch` solo reintentaba en **401**, no en **403 scope**.
+
+### Fix en producto (código)
+
+- `signIn({ forceConsent: true })` / `reconnectDrive()` limpian token + consent y fuerzan pantalla de permisos.
+- `authFetch` ante 403 scope-insufficient reintenta **una vez** con `forceConsent`.
+- CTA en el panel: **Reconectar permisos de Drive**.
+
+### Fix operador (sin deploy)
+
+1. En el panel Drive → **Reconectar permisos de Drive** (o Cerrar sesión + borrar `bmc.gdrive.identity` y `bmc.gdrive.consented` + Iniciar sesión).
+2. En el popup de Google, aceptar **Drive** (archivos que usa la app).
+3. Si no aparece el permiso Drive y OAuth está en **Testing**: agregar el Gmail del equipo como **test user** en  
+   `https://console.cloud.google.com/apis/credentials/consent?project=chatbot-bmc-live`.
+
 ## Apéndice — Lo que `gcloud` puede y no puede hacer aquí
 
 ```bash

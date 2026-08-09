@@ -30,6 +30,7 @@ El script lee directamente de `.env` y publica como `--update-env-vars`. Grupos 
 | Sheets | `BMC_SHEET_ID`, `BMC_SHEET_SCHEMA`, `BMC_PAGOS_SHEET_ID`, `BMC_CALENDARIO_SHEET_ID`, `BMC_VENTAS_SHEET_ID`, `BMC_STOCK_SHEET_ID`, `BMC_MATRIZ_SHEET_ID`, `WOLFB_*` | CRM operativo + MATRIZ + Wolfboard |
 | Drive / GCS | `DRIVE_QUOTE_FOLDER_ID`, `GCS_QUOTES_BUCKET`, `TRANSPORTISTA_GCS_BUCKET` | Mirror Drive + cotizaciones HTML + evidencias firmadas |
 | Shopify | `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET` (GSM), `SHOPIFY_WEBHOOK_SECRET` (GSM), `SHOPIFY_SCOPES`, `SHOPIFY_QUESTIONS_SHEET_TAB` | OAuth + webhook |
+| Google Ads | `GOOGLE_ADS_OAUTH_CLIENT_ID`, `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (env); `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_OAUTH_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN` (GSM vía `scripts/provision-secrets.sh`) | `/api/ads/*` — ver `GOOGLE-ADS-SETUP.md` |
 | Postgres | `DATABASE_URL` (GSM) | Modo Transportista (viajes/eventos/outbox) |
 | Operación | `CORS_ORIGIN`, `COCKPIT_TOKEN_ALLOWED_ORIGINS`, `PANELIN_SERVICE_DEFAULT_ROLE`, `AI_KNOWLEDGE_EVENTS_LOG`, `FOLLOWUP_STORE_PATH`, `CHROMIUM_EXECUTABLE_PATH` | CORS, RBAC, analytics, followup store, PDF runtime |
 

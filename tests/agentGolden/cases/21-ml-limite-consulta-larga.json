@@ -1,0 +1,23 @@
+{
+  "id": "21-ml-limite-consulta-larga",
+  "description": "ML surface: long customer inquiry must stay under ML char budget; no verified quote without measures.",
+  "calcState": "empty",
+  "surface": "mercado_libre",
+  "request": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hola buenas, vi su publicación de paneles sandwich, necesito para un galpón de más o menos 200 metros cuadrados en Canelones, me pueden pasar precios y plazos de entrega y si hacen flete? Gracias"
+      }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" },
+    { "type": "tool_not_called", "name": "guardar_en_crm" },
+    { "type": "tool_not_confirmed", "name": "email_enviar" },
+    { "type": "text_max_chars", "value": 400 }
+  ],
+  "timeoutMs": 60000
+}

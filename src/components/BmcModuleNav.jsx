@@ -42,6 +42,8 @@ export default function BmcModuleNav() {
   const previewNav = isDesignPreviewEnabled();
   const auth = useBmcAuth();
   const isAdmin = auth?.role === "admin" || auth?.role === "superadmin";
+  const finanzasActive =
+    pathname.startsWith("/hub/finanzas") || pathname.startsWith("/hub/banco");
   const hubActive =
     pathname === "/hub" ||
     pathname.startsWith("/hub/ml") ||
@@ -82,6 +84,9 @@ export default function BmcModuleNav() {
       </Link>
       <Link to="/hub/marketing" style={btn(marketingActive)}>
         Market Intel
+      </Link>
+      <Link to="/hub/finanzas" style={btn(finanzasActive)}>
+        Finanzas
       </Link>
       <Link to="/hub/tareas" style={btn(tareasActive)}>
         Tareas

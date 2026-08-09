@@ -21,6 +21,7 @@ import { callAgentOnce } from "./agentCore.js";
 import { getAvailableProviders } from "./aiProviderConfig.js";
 import { getOmniPool, omniHealthCheck } from "./omni/omniDb.js";
 import { isChatwootConfigured } from "./chatwootClient.js";
+import { getSetting } from "./waConfig.js";
 
 /** @typedef {"canales"|"panelin"|"email"|"wa"|"ml"|"wolfboard"|"seam"} AssistantKey */
 
@@ -129,7 +130,15 @@ export function listAssistants() {
  * @param {string} key
  */
 export function isAssistantEnabled(key) {
-  if (key === "seam") return true;
+  if (key === "seam") return true; // safety net: always on, not overridable
+  // Runtime override (wa_settings 'assistants' map) wins over the env allowlist,
+  // so an admin can enable/disable an assistant WITHOUT a redeploy. getSetting
+  // reads waConfig's in-memory cache (sync, cross-instance via LISTEN/NOTIFY).
+  // Tolerant: if waConfig isn't primed (offline/tests), fall back to the env.
+  try {
+    const ov = getSetting("assistants")?.[key];
+    if (typeof ov === "boolean") return ov;
+  } catch { /* not primed → env default */ }
   return config.assistantsActive.includes(key);
 }
 

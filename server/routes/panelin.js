@@ -129,5 +129,32 @@ export default function createPanelinRouter(config) {
     res.json({ ok: true, emitted: type });
   });
 
+  // ── Cashflow Projection (mock API — Sheets mapper follow-up) ─────────────
+  router.get("/cashflow-init", async (_req, res) => {
+    try {
+      const { getCashflowStateForApi } = await import("../lib/cashflowMockState.js");
+      res.json(getCashflowStateForApi());
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e?.message || "cashflow_init_failed" });
+    }
+  });
+
+  router.patch("/vencimientos", async (req, res) => {
+    try {
+      const { transactionId, newDate } = req.body || {};
+      if (!transactionId || !newDate) {
+        return res.status(400).json({ ok: false, error: "missing_transactionId_or_newDate" });
+      }
+      const { patchVencimientoDate } = await import("../lib/cashflowMockState.js");
+      const result = patchVencimientoDate(String(transactionId), String(newDate));
+      if (!result.ok) {
+        return res.status(result.status).json({ ok: false, error: result.error });
+      }
+      res.json({ ok: true, transactionId: result.transactionId, newDate: result.newDate });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e?.message || "patch_failed" });
+    }
+  });
+
   return router;
 }

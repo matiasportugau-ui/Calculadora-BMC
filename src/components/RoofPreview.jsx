@@ -48,6 +48,15 @@ import {
 import { buildPanelLayout } from "../utils/panelLayout.js";
 import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
 import {
+  buildIrregularSchedule,
+  applyManualOrderLength,
+  resetStripToAuto,
+  mergeIrregularSessionPatch,
+} from "../utils/irregularRoofLayout.js";
+import IrregularModeChrome from "./roofPlan/IrregularModeChrome.jsx";
+import IrregularPlantOverlay from "./roofPlan/IrregularPlantOverlay.jsx";
+import IrregularFinalPlaneOverlay from "./roofPlan/IrregularFinalPlaneOverlay.jsx";
+import {
   fijacionDotsLayout,
   fijacionRowsFromHints,
   yForFijacionRowPlanta,
@@ -1868,6 +1877,24 @@ export default function RoofPreview({
   onApoyoMaterialCycle = null,
   onApoyoMaterialDirect = null,
   tipoEst = "metal",
+  /** Callback when irregular schedule should affect BOM (cut or manual L). */
+  onIrregularLayoutChange = null,
+  /** Start with modo irregular on (default off). */
+  irregularModeDefault = false,
+  /**
+   * Shared irregular session (parent-owned). When set with onIrregularSessionChange,
+   * cut/mode stay in sync across left + right RoofPreview mounts.
+   * Shape: { enabled, tool, cut, cutDraft, selectedStripId, layoutOverride }
+   * onIrregularSessionChange MUST accept a functional updater (React setState style)
+   * so sequential patches in one pointer event do not lose the cut.
+   */
+  irregularSession = null,
+  onIrregularSessionChange = null,
+  /**
+   * factory = stepped strips + pedido list (left wizard)
+   * final_plane = clean post-cut roof silhouette (right visor)
+   */
+  irregularDisplayMode = "factory",
 }) {
   const panelAuForPickFp = Number(panelObj?.au ?? panelAu) || 0;
   const svgRef = useRef(null);
@@ -1890,6 +1917,123 @@ export default function RoofPreview({
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
+  /** Modo irregular: local state, or controlled via irregularSession (dual plant). */
+  const irregularControlled =
+    irregularSession != null && typeof onIrregularSessionChange === "function";
+  const [localIrregularOn, setLocalIrregularOn] = useState(() => Boolean(irregularModeDefault));
+  const [localIrregularTool, setLocalIrregularTool] = useState("select");
+  const [localIrregularCut, setLocalIrregularCut] = useState(null);
+  const [localIrregularCutDraft, setLocalIrregularCutDraft] = useState(null);
+  const [localIrregularStripId, setLocalIrregularStripId] = useState(null);
+  const [localIrregularLayoutOverride, setLocalIrregularLayoutOverride] = useState(null);
+
+  const irregularOn = irregularControlled ? Boolean(irregularSession.enabled) : localIrregularOn;
+  const irregularTool = irregularControlled ? irregularSession.tool || "select" : localIrregularTool;
+  const irregularCut = irregularControlled ? irregularSession.cut ?? null : localIrregularCut;
+  const irregularCutDraft = irregularControlled
+    ? irregularSession.cutDraft ?? null
+    : localIrregularCutDraft;
+  const irregularStripId = irregularControlled
+    ? irregularSession.selectedStripId ?? null
+    : localIrregularStripId;
+  const irregularLayoutOverride = irregularControlled
+    ? irregularSession.layoutOverride ?? null
+    : localIrregularLayoutOverride;
+
+  const patchIrregularSession = useCallback(
+    (patch) => {
+      if (!irregularControlled) return;
+      // Functional updater: dual-plant click handlers issue multiple patches
+      // in one event; absolute setState would keep only the last write (cut lost).
+      onIrregularSessionChange((prev) => mergeIrregularSessionPatch(prev, patch));
+    },
+    [irregularControlled, onIrregularSessionChange],
+  );
+
+  const setIrregularOn = useCallback(
+    (v) => {
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.enabled) : v;
+          return mergeIrregularSessionPatch(cur, { enabled: Boolean(next), cutDraft: null });
+        });
+      } else {
+        setLocalIrregularOn((prev) => Boolean(typeof v === "function" ? v(prev) : v));
+      }
+    },
+    [irregularControlled, onIrregularSessionChange],
+  );
+  const setIrregularTool = useCallback(
+    (v) => {
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.tool) : v;
+          return mergeIrregularSessionPatch(cur, { tool: next });
+        });
+      } else {
+        setLocalIrregularTool(v);
+      }
+    },
+    [irregularControlled, onIrregularSessionChange],
+  );
+  const setIrregularCut = useCallback(
+    (v) => {
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.cut) : v;
+          return mergeIrregularSessionPatch(cur, { cut: next });
+        });
+      } else {
+        setLocalIrregularCut(v);
+      }
+    },
+    [irregularControlled, onIrregularSessionChange],
+  );
+  const setIrregularCutDraft = useCallback(
+    (v) => {
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.cutDraft) : v;
+          return mergeIrregularSessionPatch(cur, { cutDraft: next });
+        });
+      } else {
+        setLocalIrregularCutDraft(v);
+      }
+    },
+    [irregularControlled, onIrregularSessionChange],
+  );
+  const setIrregularStripId = useCallback(
+    (v) => {
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.selectedStripId) : v;
+          return mergeIrregularSessionPatch(cur, { selectedStripId: next });
+        });
+      } else {
+        setLocalIrregularStripId(v);
+      }
+    },
+    [irregularControlled, onIrregularSessionChange],
+  );
+  const setIrregularLayoutOverride = useCallback(
+    (v) => {
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.layoutOverride) : v;
+          return mergeIrregularSessionPatch(cur, { layoutOverride: next });
+        });
+      } else {
+        setLocalIrregularLayoutOverride(v);
+      }
+    },
+    [irregularControlled, onIrregularSessionChange],
+  );
   /** `${gi}:${strip.idx}` — inspección en planta (sin editar BOM). Hidrata desde sessionStorage si la huella coincide. */
   const [plantaPanelPick, setPlantaPanelPick] = useState(() => {
     if (typeof sessionStorage === "undefined") return null;
@@ -2517,6 +2661,108 @@ export default function RoofPreview({
     return { x: r.x + strip.x0, y: r.y, w: strip.width, h: r.h };
   }, [plantaPanelPick, panelLayouts, layout.entries]);
 
+  const irregularZoneEntry = useMemo(() => {
+    if (!layout.entries?.length) return null;
+    if (selectedGi != null) {
+      const hit = layout.entries.find((e) => e.gi === selectedGi);
+      if (hit) return hit;
+    }
+    return layout.entries[0];
+  }, [layout.entries, selectedGi]);
+
+  const irregularAutoLayout = useMemo(() => {
+    if (!irregularOn || !irregularZoneEntry) return null;
+    const r = irregularZoneEntry;
+    const au = effectivePanelAu;
+    if (!(au > 0) || !(r.w > 0) || !(r.h > 0)) return null;
+    const lmin = panelObj?.lmin ?? 0;
+    const lmax = panelObj?.lmax ?? 14;
+    const base = {
+      zoneId: `z${r.gi}`,
+      ancho: r.w,
+      largo: r.h,
+      au,
+      lmin,
+      lmax,
+      orderLengthStepM: 0.01,
+    };
+    if (irregularCut?.p0 && irregularCut?.p1) {
+      return buildIrregularSchedule({
+        ...base,
+        mode: "diagonal_halfplane",
+        cut: { p0: irregularCut.p0, p1: irregularCut.p1, keep: "left" },
+      });
+    }
+    return buildIrregularSchedule({ ...base, mode: "rectangle" });
+  }, [irregularOn, irregularZoneEntry, irregularCut, effectivePanelAu, panelObj]);
+
+  const irregularLayout = irregularLayoutOverride || irregularAutoLayout;
+
+  useEffect(() => {
+    setIrregularLayoutOverride(null);
+  }, [irregularCut, irregularZoneEntry?.gi, irregularZoneEntry?.w, irregularZoneEntry?.h, effectivePanelAu]);
+
+  useEffect(() => {
+    if (typeof onIrregularLayoutChange !== "function") return;
+    const hasCut = Boolean(irregularCut?.p0 && irregularCut?.p1);
+    const hasManual = Boolean(irregularLayoutOverride);
+    const gi = irregularZoneEntry?.gi;
+    if (irregularOn && irregularLayout && (hasCut || hasManual)) {
+      // Second arg: zone index for multi-zone irregularLayoutByGi
+      onIrregularLayoutChange(irregularLayout, gi);
+    } else {
+      onIrregularLayoutChange(null, gi);
+    }
+  }, [
+    irregularOn,
+    irregularLayout,
+    irregularCut,
+    irregularLayoutOverride,
+    irregularZoneEntry?.gi,
+    onIrregularLayoutChange,
+  ]);
+
+  const handleIrregularSvgClick = useCallback(
+    (e) => {
+      if (!irregularOn || irregularTool !== "cut" || !irregularZoneEntry || !svgRef.current) return;
+      e.stopPropagation();
+      const pt = clientToSvg(svgRef.current, e.clientX, e.clientY);
+      const r = irregularZoneEntry;
+      const p = {
+        x: Math.min(Math.max(pt.x - r.x, 0), r.w),
+        y: Math.min(Math.max(pt.y - r.y, 0), r.h),
+      };
+      if (!irregularCutDraft) {
+        // Single patch when controlled — avoid multi-setState lost updates.
+        if (irregularControlled) patchIrregularSession({ cutDraft: p, cut: null });
+        else {
+          setLocalIrregularCutDraft(p);
+          setLocalIrregularCut(null);
+        }
+        return;
+      }
+      if (irregularControlled) {
+        patchIrregularSession({
+          cut: { p0: irregularCutDraft, p1: p },
+          cutDraft: null,
+          tool: "select",
+        });
+      } else {
+        setLocalIrregularCut({ p0: irregularCutDraft, p1: p });
+        setLocalIrregularCutDraft(null);
+        setLocalIrregularTool("select");
+      }
+    },
+    [
+      irregularOn,
+      irregularTool,
+      irregularZoneEntry,
+      irregularCutDraft,
+      irregularControlled,
+      patchIrregularSession,
+    ],
+  );
+
   const selectedPlantaPanelMeta = useMemo(() => {
     if (!plantaPanelPick) return null;
     return flatPlantaPanels.find((p) => p.key === plantaPanelPick) ?? null;
@@ -2917,6 +3163,37 @@ export default function RoofPreview({
           : {}),
       }}
     >
+      <IrregularModeChrome
+        enabled={irregularOn}
+        onToggle={() => {
+          // setIrregularOn already clears cutDraft in the controlled patch.
+          setIrregularOn((v) => !v);
+        }}
+        tool={irregularTool}
+        onTool={setIrregularTool}
+        layout={irregularLayout}
+        selectedStripId={irregularStripId}
+        onSelectStrip={setIrregularStripId}
+        onManualLength={(id, L) => {
+          if (!irregularLayout) return;
+          setIrregularLayoutOverride(applyManualOrderLength(irregularLayout, id, L));
+        }}
+        onResetStrip={(id) => {
+          if (!irregularLayout) return;
+          setIrregularLayoutOverride(resetStripToAuto(irregularLayout, id));
+        }}
+        onClearCut={() => {
+          if (irregularControlled) {
+            patchIrregularSession({ cut: null, cutDraft: null, layoutOverride: null });
+          } else {
+            setLocalIrregularCut(null);
+            setLocalIrregularCutDraft(null);
+            setLocalIrregularLayoutOverride(null);
+          }
+        }}
+        dense={denseChrome}
+        displayMode={irregularDisplayMode === "final_plane" ? "final_plane" : "factory"}
+      />
       <div
         style={{
           fontSize: 12,
@@ -2934,6 +3211,22 @@ export default function RoofPreview({
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <span>Vista previa del techo</span>
+          {irregularOn ? (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: "#c2410c",
+                background: "rgba(194,65,12,0.12)",
+                padding: "2px 8px",
+                borderRadius: 999,
+                textTransform: "none",
+                letterSpacing: 0,
+              }}
+            >
+              Irregular
+            </span>
+          ) : null}
           {plantaMobileHelp ? (
             <button
               type="button"
@@ -3564,8 +3857,14 @@ export default function RoofPreview({
                 flex: 1,
                 minHeight: 0,
                 display: "block",
-                cursor: onZonaPreviewChange ? "default" : undefined,
+                cursor:
+                  irregularOn && irregularTool === "cut"
+                    ? "crosshair"
+                    : onZonaPreviewChange
+                      ? "default"
+                      : undefined,
               }}
+              onClick={handleIrregularSvgClick}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handleLostCapture}
@@ -4053,6 +4352,32 @@ export default function RoofPreview({
                 </g>
               );
             })}
+            {irregularOn && irregularZoneEntry && irregularLayout ? (
+              irregularDisplayMode === "final_plane" ? (
+                <IrregularFinalPlaneOverlay
+                  zoneRect={irregularZoneEntry}
+                  layout={irregularLayout}
+                  cut={irregularCut}
+                  cutDraft={irregularCutDraft}
+                  showRuler={Boolean(irregularCut?.p0 && irregularCut?.p1) || Boolean(irregularCutDraft)}
+                />
+              ) : (
+                <IrregularPlantOverlay
+                  zoneRect={irregularZoneEntry}
+                  layout={irregularLayout}
+                  cut={
+                    irregularCut ||
+                    (irregularCutDraft ? { p0: irregularCutDraft, p1: irregularCutDraft } : null)
+                  }
+                  selectedStripId={irregularStripId}
+                  onSelectStrip={(id) => {
+                    setIrregularStripId(id);
+                    setIrregularTool("select");
+                  }}
+                  showRuler={Boolean(irregularCut?.p0 && irregularCut?.p1)}
+                />
+              )
+            ) : null}
             </svg>
             </div>
           </div>

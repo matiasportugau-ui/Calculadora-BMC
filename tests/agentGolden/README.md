@@ -59,6 +59,7 @@ se puede embeber un objeto en `request.calcState`.
 |---|---|---|
 | `tool_called` | `name` | algún `tool_call` con ese nombre |
 | `tool_not_called` | `name` | ningún `tool_call` con ese nombre |
+| `tool_not_confirmed` | `name` | no hay call con `user_confirmed=true` sin `blocked` (write-gate / IMP-11) |
 | `verified_quote_emitted` | — | ≥1 `verified_quote` en la traza |
 | `verified_quote_not_emitted` | — | 0 `verified_quote` en la traza |
 | `verified_quote_field_eq` | `field`, `value` | igualdad exacta sobre el primer payload |

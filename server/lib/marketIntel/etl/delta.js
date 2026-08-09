@@ -7,7 +7,11 @@ const log = pino({ level: process.env.LOG_LEVEL ?? 'info' });
 
 function getPool() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL required');
-  return new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  const p = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  p.on('error', (err) => {
+    log.warn({ err: err?.message, code: err?.code }, 'marketIntel etl/delta pg pool idle error');
+  });
+  return p;
 }
 
 let _pool = null;

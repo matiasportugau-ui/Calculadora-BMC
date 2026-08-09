@@ -11,7 +11,7 @@
  * buildChannelRules(channel) appended to the system prompt.
  */
 import { config } from "../config.js";
-import { buildSystemPrompt } from "./chatPrompts.js";
+import { buildSystemPromptParts } from "./chatPrompts.js";
 import { findRelevantExamples } from "./trainingKB.js";
 import { renderExamplesBlock } from "./channelRenderer.js";
 import {
@@ -20,6 +20,50 @@ import {
   estimateCostUSD,
   getApiKey,
 } from "./aiProviderConfig.js";
+import { logAgentCost } from "./costTelemetry.js";
+import { logAgentTurn } from "./logAgentTurn.js";
+import {
+  PROVIDER_TIMEOUT_MS,
+  orderChainByHealth,
+  recordProviderFailure,
+  recordProviderSuccess,
+  resetProviderCooldowns,
+  getProviderCooldownState,
+  _resetProviderHealth,
+} from "./providerCircuitBreaker.js";
+
+export {
+  recordProviderFailure,
+  recordProviderSuccess,
+  resetProviderCooldowns,
+  getProviderCooldownState,
+  _resetProviderHealth,
+  PROVIDER_TIMEOUT_MS,
+};
+
+// ─── Provider timeout + circuit breaker (B-06) ────────────────────────────────
+// See providerCircuitBreaker.js; re-exported below for stable import paths.
+
+/**
+ * Run an async provider call with a hard timeout. Aborts via AbortSignal (for
+ * SDKs that honor it) AND rejects via race (guarantees the loop advances even if
+ * the SDK ignores the signal). `fn` receives the signal to forward to the SDK.
+ */
+export async function callWithTimeout(fn, ms, label) {
+  const controller = new AbortController();
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(Object.assign(new Error(`${label} timed out after ${ms}ms`), { code: "PROVIDER_TIMEOUT" }));
+    }, ms);
+  });
+  try {
+    return await Promise.race([Promise.resolve(fn(controller.signal)), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // ─── Channel rules ────────────────────────────────────────────────────────────
 
@@ -122,10 +166,24 @@ export async function callAgentOnce(messages, opts = {}) {
   const bare = opts.bareSystemPrompt || null;
   const kbExamples = bare ? [] : findRelevantExamples(lastUser, { limit: 4 });
   const kbBlock = bare ? "" : renderExamplesBlock(kbExamples, channel);
-  const basePrompt = bare ? "" : buildSystemPrompt(calcState, { trainingExamples: kbExamples });
   const channelSection = bare ? "" : buildChannelSection(channel);
-  const promptCore = bare || opts.systemPrompt || basePrompt;
-  const systemPrompt = [promptCore, channelSection, kbBlock].filter(Boolean).join("\n\n");
+
+  // Split the system prompt into a cacheable static prefix + a per-request dynamic
+  // tail. Only the Anthropic branch consumes the split (stamps cache_control on the
+  // ~20k-token prefix); `systemPrompt` (the joined string used by the other providers
+  // and by logging) stays BYTE-IDENTICAL to the previous construction.
+  let staticSystem, dynamicSystem;
+  if (bare || opts.systemPrompt) {
+    // Specialized/slim prompt (email drafter, wolfboard batch): fully static → cache
+    // it whole; channel rules + KB (if any) form the small dynamic tail.
+    staticSystem = bare || opts.systemPrompt;
+    dynamicSystem = [channelSection, kbBlock].filter(Boolean).join("\n\n");
+  } else {
+    const { staticPrefix, dynamicTail } = buildSystemPromptParts(calcState, { trainingExamples: kbExamples });
+    staticSystem = staticPrefix;
+    dynamicSystem = [dynamicTail, channelSection, kbBlock].filter(Boolean).join("\n\n");
+  }
+  const systemPrompt = [staticSystem, dynamicSystem].filter(Boolean).join("\n\n");
 
   const channelDefault = channel === "ml" ? 120 : channel === "wa" ? 400 : 1200;
   const maxTokens = Number(eff.maxTokens) || channelDefault;
@@ -144,6 +202,12 @@ export async function callAgentOnce(messages, opts = {}) {
   } else {
     chain = getCentralProviderChain();
   }
+
+  // B-06: deprioritize cooling providers (never drop from chain).
+  if (!provider && chain.length > 1) {
+    chain = orderChainByHealth(chain);
+  }
+
   const errors = [];
 
   for (const p of chain) {
@@ -164,14 +228,28 @@ export async function callAgentOnce(messages, opts = {}) {
       if (p === "claude") {
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
         const client = new Anthropic({ apiKey });
+        // Structured system: cache_control on the large static prefix (identity,
+        // catalog, canonical prices, tools ≈ 20k tokens) → cache reads are 0.1x on
+        // hit within the 5-min TTL. The dynamic tail (calc state, KB, prefs) is a
+        // second, uncached block. Falls back to a single cached block when there is
+        // no dynamic tail (e.g. bare/slim prompts).
+        const system = dynamicSystem
+          ? [
+              { type: "text", text: staticSystem, cache_control: { type: "ephemeral" } },
+              { type: "text", text: dynamicSystem },
+            ]
+          : [{ type: "text", text: staticSystem, cache_control: { type: "ephemeral" } }];
         const params = {
           model: modelUsed,
           max_tokens: maxTokens,
-          system: systemPrompt,
+          system,
           messages,
         };
         if (eff.temperature != null) params.temperature = eff.temperature;
-        const msg = await client.messages.create(params);
+        const msg = await callWithTimeout(
+          (signal) => client.messages.create(params, { signal }),
+          PROVIDER_TIMEOUT_MS, "claude",
+        );
         text = msg.content?.[0]?.text || "";
         usage = msg.usage || {};
 
@@ -184,7 +262,10 @@ export async function callAgentOnce(messages, opts = {}) {
           messages: [{ role: "system", content: systemPrompt }, ...messages],
         };
         if (eff.temperature != null) params.temperature = eff.temperature;
-        const r = await client.chat.completions.create(params);
+        const r = await callWithTimeout(
+          (signal) => client.chat.completions.create(params, { signal }),
+          PROVIDER_TIMEOUT_MS, "openai",
+        );
         text = r.choices[0]?.message?.content || "";
         usage = r.usage || {};
 
@@ -197,7 +278,37 @@ export async function callAgentOnce(messages, opts = {}) {
           messages: [{ role: "system", content: systemPrompt }, ...messages],
         };
         if (eff.temperature != null) params.temperature = eff.temperature;
-        const r = await client.chat.completions.create(params);
+        const r = await callWithTimeout(
+          (signal) => client.chat.completions.create(params, { signal }),
+          PROVIDER_TIMEOUT_MS, "grok",
+        );
+        text = r.choices[0]?.message?.content || "";
+        usage = r.usage || {};
+
+      } else if (p === "openrouter") {
+        // Terminal open-source-model fallback (Llama/Mistral/DeepSeek/Qwen). Same
+        // OpenAI-compatible shape as grok — just a different baseURL. Tried LAST,
+        // so if every commercial provider is down the seam STILL answers via an
+        // open model. Attribution headers are recommended by OpenRouter, optional.
+        const { default: OpenAI } = await import("openai");
+        const client = new OpenAI({
+          apiKey,
+          baseURL: "https://openrouter.ai/api/v1",
+          defaultHeaders: {
+            "HTTP-Referer": "https://calculadora-bmc.vercel.app",
+            "X-Title": "Calculadora BMC",
+          },
+        });
+        const params = {
+          model: modelUsed,
+          max_tokens: maxTokens,
+          messages: [{ role: "system", content: systemPrompt }, ...messages],
+        };
+        if (eff.temperature != null) params.temperature = eff.temperature;
+        const r = await callWithTimeout(
+          (signal) => client.chat.completions.create(params, { signal }),
+          PROVIDER_TIMEOUT_MS, "openrouter",
+        );
         text = r.choices[0]?.message?.content || "";
         usage = r.usage || {};
 
@@ -215,40 +326,97 @@ export async function callAgentOnce(messages, opts = {}) {
         };
         if (eff.temperature != null) generationConfig.temperature = eff.temperature;
         if (maxTokens) generationConfig.maxOutputTokens = maxTokens;
-        const model = genai.getGenerativeModel({ model: modelUsed, generationConfig });
-        const result = await model.generateContent(`${systemPrompt}\n\n${lastUser}`);
+        // Pass the system prompt as a proper systemInstruction and the FULL
+        // conversation as contents. Previously this branch sent only
+        // `${systemPrompt}\n\n${lastUser}`, silently dropping all prior turns — any
+        // multi-turn WA/ML conversation that fell to Gemini lost its history.
+        const contents = messages
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: String(m.content ?? "") }] }));
+        const model = genai.getGenerativeModel({ model: modelUsed, systemInstruction: systemPrompt, generationConfig });
+        const result = await callWithTimeout(
+          (signal) => model.generateContent(
+            { contents: contents.length ? contents : [{ role: "user", parts: [{ text: lastUser }] }] },
+            { signal },
+          ),
+          PROVIDER_TIMEOUT_MS, "gemini",
+        );
         text = result.response.text() || "";
         // Gemini usage is in result.response.usageMetadata in newer SDKs
         usage = result.response?.usageMetadata || {};
       }
 
       if (text.trim()) {
+        recordProviderSuccess(p); // clear any pending failure streak on a good call
         const cost = estimateCostUSD(p, modelUsed, usage);
 
-        // Structured cost observability (consistent with Phase 0 changes)
-        // TODO: thread pino logger here once cost-telemetry module exists
-        console.log(JSON.stringify({
+        // Structured cost observability via costTelemetry (cache_read > 0 ⇒ Anthropic cache HIT).
+        const inTok = usage.input_tokens ?? usage.prompt_tokens ?? null;
+        const outTok = usage.output_tokens ?? usage.completion_tokens ?? null;
+        const latencyMs = Date.now() - t0;
+        logAgentCost({
           event: "agent_core_call",
           provider: p,
           model: modelUsed,
           channel,
-          latency_ms: Date.now() - t0,
+          latency_ms: latencyMs,
           estimated_cost_usd: cost,
+          input_tokens: inTok,
+          output_tokens: outTok,
+          cache_read_tokens: usage.cache_read_input_tokens ?? null,
+          cache_write_tokens: usage.cache_creation_input_tokens ?? null,
           task_key: taskKey || null,
-        }));
+          source: "agentCore",
+        });
+        // IMP-02: turn-level parity envelope shared with SSE agentChat.
+        logAgentTurn({
+          event: "agent_turn",
+          channel,
+          assistant: opts.assistant ?? null,
+          provider: p,
+          model: modelUsed,
+          input_tokens: inTok,
+          output_tokens: outTok,
+          estimated_cost_usd: cost,
+          latency_ms: latencyMs,
+          source: "agentCore",
+        });
 
         return {
           text: text.trim(),
           provider: p,
           model: modelUsed,
-          latencyMs: Date.now() - t0,
+          latencyMs,
           estimatedCostUsd: cost,
         };
       }
+      // A provider that returns empty text is skipped silently too — surface it.
+      console.log(JSON.stringify({ event: "provider_empty", provider: p, model: modelUsed, channel }));
       errors.push(`${p}: empty`);
 
     } catch (err) {
-      errors.push(`${p}: ${err.message?.slice(0, 80)}`);
+      // Surface the EXACT per-provider failure. Before this, an individual
+      // provider error was only accumulated in errors[] and shown on the
+      // ALL_PROVIDERS_FAILED throw — which never fires when a later provider
+      // (e.g. gemini) rescues the call, so "why is claude failing on the seam?"
+      // was invisible in the logs. status/error_type come from the Anthropic +
+      // OpenAI SDK error shapes.
+      const detail = String(err?.message || err).slice(0, 200);
+      const status = err?.status ?? null;
+      const errorType = err?.error?.type ?? err?.name ?? null;
+      // feeds cooldown deprioritization + retains the reason for the control panel
+      recordProviderFailure(p, Date.now(), { status, type: errorType, detail, model: modelUsed });
+      console.log(JSON.stringify({
+        event: "provider_error",
+        provider: p,
+        model: modelUsed,
+        channel,
+        status,
+        error_type: errorType,
+        detail,
+        task_key: taskKey || null,
+      }));
+      errors.push(`${p}: ${detail.slice(0, 80)}`);
     }
   }
 

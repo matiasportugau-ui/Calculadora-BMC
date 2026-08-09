@@ -10,33 +10,75 @@
  * everything in one call — ready to send to the client.
  *
  * Mount at: app.use("/api/agent", createSuperAgentRouter(config))
+ *
+ * IMP-07: cost via logAgentCost (event superagent_ai_call); calc via same
+ * calcTechoCompleto/calcParedCompleto engine as /calc (in-process, not loopback).
+ * Parallel route kept for low-latency quote-lead; numbers must match fixture tests.
  */
 import { Router } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { estimateCostUSD } from "../lib/aiProviderConfig.js";
+import { logAgentCost } from "../lib/costTelemetry.js";
 import {
   calcTechoCompleto,
   calcParedCompleto,
   calcTotalesSinIVA,
 } from "../../src/utils/calculations.js";
-import { setListaPrecios } from "../../src/data/constants.js";
+import { setListaPrecios, PANELS_TECHO } from "../../src/data/constants.js";
 import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
 import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 
 const HAIKU = "claude-haiku-4-5-20251001";
 
-// Helper for consistent Phase A cost observability
-function logSuperAgentCost(usage, context = {}) {
+/**
+ * Cost sink via shared costTelemetry (IMP-07).
+ * Event name kept as superagent_ai_call so Cloud Logging queries still work.
+ * @param {object} usage Anthropic usage block
+ * @param {{ call?: string }} [context]
+ * @param {{ info?: Function } | null} [logger]
+ */
+export function logSuperAgentCost(usage, context = {}, logger = null) {
   const cost = estimateCostUSD("claude", HAIKU, usage || {});
-  // TODO: thread pino logger here once cost-telemetry module exists
-  console.log(JSON.stringify({
-    event: "superagent_ai_call",
-    provider: "claude",
-    model: HAIKU,
-    estimated_cost_usd: cost,
-    ...context,
-  }));
+  return logAgentCost(
+    {
+      event: "superagent_ai_call",
+      provider: "claude",
+      model: HAIKU,
+      channel: "superagent",
+      estimated_cost_usd: cost,
+      input_tokens: usage?.input_tokens ?? null,
+      output_tokens: usage?.output_tokens ?? null,
+      task_key: context.call ? `superagent:${context.call}` : "superagent",
+      source: "superAgent",
+    },
+    logger,
+  );
+}
+
+/**
+ * Pure calc path used by quote-lead (same engine as /calc, in-process).
+ * Exported for offline parity tests (IMP-07). Does not hit loopback HTTP.
+ * @see docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md — SuperAgent is a parallel
+ * fast path that must use the same calc* functions, not invent prices.
+ */
+export function runSuperAgentCalc(extracted, usedDefaults = []) {
+  return runCalc(extracted, usedDefaults);
+}
+
+function logSuperAgentQuote(meta) {
+  // Align log shape with AE contract ae_agent_quote (no PII).
+  console.log(
+    JSON.stringify({
+      event: "ae_agent_quote",
+      tool: "superagent_quote_lead",
+      scenario: meta.scenario || null,
+      lista: "web",
+      ok: meta.ok !== false,
+      source: "superagent_inprocess",
+      total_usd: meta.total_usd ?? null,
+    }),
+  );
 }
 const MIN_LEN = 15;
 
@@ -117,11 +159,26 @@ function runCalc(extracted, usedDefaults) {
         familia, espesor, perimetro: perim, alto: camara.alto_int,
         tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true,
       });
+      if (rP?.error) return null;
+      // Wall families (ISOPANEL_EPS / ISOFRIG_PIR / …) are not roof panels.
+      // Match scenarioOrchestrator: map to a techo family or fall back to ISODEC_EPS.
+      const techoFam = Object.prototype.hasOwnProperty.call(PANELS_TECHO, familia)
+        ? familia
+        : (usedDefaults.push("ISODEC EPS techo cámara"), "ISODEC_EPS");
+      const techoPanel = PANELS_TECHO[techoFam];
+      let techoEsp = espesor;
+      if (!techoPanel?.esp?.[techoEsp]) {
+        const available = Object.keys(techoPanel?.esp || {}).map(Number).sort((a, b) => a - b);
+        techoEsp = available.find((e) => e >= techoEsp) || available[available.length - 1];
+        if (!techoEsp) return null;
+        usedDefaults.push(`${techoEsp}mm techo cámara`);
+      }
       const rT = calcTechoCompleto({
-        familia, espesor, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal",
+        familia: techoFam, espesor: techoEsp, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal",
         borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
         opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: "Blanco",
       });
+      if (rT?.error) return null;
       const allItems = [...(rP?.allItems || []), ...(rT?.allItems || [])];
       return { ...rP, techoResult: rT, allItems, totales: calcTotalesSinIVA(allItems), _escenario: "camara_frig" };
     } catch { return null; }
@@ -192,6 +249,12 @@ export function createSuperAgentRouter(config) {
         supuestos: usedDefaults,
         faltan: extracted?.faltan || [],
       };
+
+      logSuperAgentQuote({
+        scenario: escenario,
+        ok: true,
+        total_usd: totalUsd,
+      });
 
       const resumenTexto = `${panelLabel} — ${ESCENARIO_LABELS[escenario] || escenario}. `
         + `Área: ${area} m². Paneles: ${cantPaneles}. `

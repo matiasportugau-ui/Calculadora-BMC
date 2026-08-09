@@ -23,6 +23,13 @@ import { usePanelinCharacterVoice } from "../hooks/usePanelinCharacterVoice.js";
 import { isBrowserSupported, isSafari } from "../hooks/voiceSupport.js";
 import { openFloatingPanelinLive } from "./panelin-live/detach.js";
 import PanelinLiveCharacter from "./PanelinLiveCharacter.jsx";
+import { resolveRealtimeModel } from "../utils/resolveRealtimeModel.js";
+
+import { loadPanelinAiSelection } from "../utils/panelinAiSelection.js";
+
+function loadAiSelectionFromStorage() {
+  return loadPanelinAiSelection();
+}
 
 const CONSULTA_MAX = 800;
 
@@ -162,10 +169,20 @@ export default function PanelinLivePage() {
 
   const handleError = useCallback((msg) => setVoiceError(msg), []);
 
+  // Shared with chat selector (localStorage panelin-chat-ai-selection-v1)
+  const aiSel = useMemo(() => loadAiSelectionFromStorage(), []);
+  const realtimeModel = useMemo(
+    () => resolveRealtimeModel(aiSel.aiProvider, aiSel.aiModel),
+    [aiSel.aiProvider, aiSel.aiModel],
+  );
+
   const { status, isListening, remoteVuLevel, emotion, start, stop } = usePanelinCharacterVoice({
     authHeader: accessToken ? `Bearer ${accessToken}` : undefined,
     leadContext,
     onError: handleError,
+    realtimeModel,
+    aiProvider: aiSel.aiProvider,
+    aiModel: aiSel.aiModel,
   });
 
   const handleGestureStart = useCallback(() => {

@@ -22,6 +22,14 @@ import {
   buildOmniConversationsSql, buildOmniMessagesSql, buildOmniSuggestionsSql,
   mapOmniConversation, mapOmniMessage, mapOmniSuggestion,
 } from "../lib/wa/omniReadAdapter.js";
+import {
+  uploadWaMediaBytes,
+  getWaMediaSignedUrl,
+  isPlaceholderText,
+  validateMediaBuffer,
+  textAfterMediaClear,
+  audioVoiceNotePlaceholder,
+} from "../lib/waMedia.js";
 import jwt from "jsonwebtoken";
 
 function asyncHandler(fn) {
@@ -599,13 +607,34 @@ export default function createWaRouter(config, logger) {
           upsertedConversations += 1;
         }
 
-        // Insert messages — idempotent by msg_id
+        // Insert messages — idempotent by msg_id; refresh empty text + media meta (G9)
         for (const m of valid) {
           const r = await client.query(
             `insert into wa_messages
                (msg_id, chat_id, ts, direction, type, text, reply_to, source, status, raw, meta, created_by)
              values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12)
-             on conflict (msg_id) do nothing`,
+             on conflict (msg_id) do update
+               set text = case
+                     when excluded.text is not null and btrim(excluded.text) <> ''
+                       and (
+                         wa_messages.text is null
+                         or btrim(wa_messages.text) = ''
+                         or (
+                           wa_messages.text ~ '^\\[.*(Imagen|Nota de voz|Video|Sticker|Documento|Ubicación).*\\]'
+                           and excluded.text !~ '^\\['
+                         )
+                       )
+                     then excluded.text
+                     else coalesce(nullif(wa_messages.text, ''), excluded.text)
+                   end,
+                   type = coalesce(excluded.type, wa_messages.type),
+                   meta = case
+                     when excluded.meta is not null and excluded.meta ? 'media'
+                       then coalesce(wa_messages.meta, '{}'::jsonb) || jsonb_build_object('media', excluded.meta->'media')
+                     when wa_messages.meta is null or wa_messages.meta = '{}'::jsonb
+                       then excluded.meta
+                     else wa_messages.meta
+                   end`,
             [
               m.msg_id,
               m.chat_id,
@@ -784,27 +813,332 @@ export default function createWaRouter(config, logger) {
         params.push(before);
       }
 
-      const { rows } = await pool.query(
-        `select msg_id, chat_id, ts, direction, type, text, reply_to, source, status, meta
-         from wa_messages
-         where ${where}
-         order by ts desc
-         limit ${limit + 1}`,
-        params,
-      );
+      let rows;
+      try {
+        const q = await pool.query(
+          `select msg_id, chat_id, ts, direction, type, text, reply_to, source, status, meta,
+                  media_gcs_path, media_mime, media_bytes, transcript, transcript_status
+           from wa_messages
+           where ${where}
+           order by ts desc
+           limit ${limit + 1}`,
+          params,
+        );
+        rows = q.rows;
+      } catch (colErr) {
+        if (String(colErr?.message || "").includes("media_gcs_path") || colErr?.code === "42703") {
+          const q = await pool.query(
+            `select msg_id, chat_id, ts, direction, type, text, reply_to, source, status, meta
+             from wa_messages
+             where ${where}
+             order by ts desc
+             limit ${limit + 1}`,
+            params,
+          );
+          rows = q.rows;
+        } else {
+          throw colErr;
+        }
+      }
       const hasMore = rows.length > limit;
       const items = hasMore ? rows.slice(0, limit) : rows;
       const nextBefore = hasMore && items[items.length - 1]?.ts
         ? new Date(items[items.length - 1].ts).toISOString()
         : null;
 
+      const mapped = items.reverse().map((row) => ({
+        ...row,
+        has_media: Boolean(row.media_gcs_path),
+        media_url: row.media_gcs_path ? `/api/wa/media/${encodeURIComponent(row.msg_id)}` : null,
+        display_text:
+          row.transcript && isPlaceholderText(row.text)
+            ? row.transcript
+            : row.text || row.transcript || null,
+      }));
+
       return res.json({
         ok: true,
         chat_id: chatId,
-        count: items.length,
+        count: mapped.length,
         next_before: nextBefore,
-        items: items.reverse(),
+        items: mapped,
       });
+    }),
+  );
+
+  // ── Media upload (decrypted bytes from extension / backfill) ────────────
+  router.post(
+    "/wa/media",
+    requireWaAccess({ requireWrite: true }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const msgId = String(req.body?.msg_id || "").trim().slice(0, 250);
+      const chatId = String(req.body?.chat_id || "").trim().slice(0, 200);
+      const mime = String(req.body?.mimetype || req.body?.mime || "application/octet-stream").slice(0, 128);
+      const b64 = req.body?.bytes_base64 || req.body?.media_upload?.bytes_base64;
+      if (!msgId || !chatId || !b64) {
+        return res.status(400).json({ ok: false, error: "msg_id, chat_id, bytes_base64 required" });
+      }
+      let buffer;
+      try {
+        buffer = Buffer.from(String(b64), "base64");
+      } catch {
+        return res.status(400).json({ ok: false, error: "invalid base64" });
+      }
+      if (!buffer.length) return res.status(400).json({ ok: false, error: "empty media" });
+      // Reject junk < 2KB for media (prefs blobs etc.)
+      if (buffer.length < 2048 && !String(req.body?.force).match(/1|true/i)) {
+        return res.status(400).json({ ok: false, error: "media too small (<2KB)" });
+      }
+
+      const msgType = String(req.body?.type || "").toLowerCase();
+      let expect = "any";
+      if (msgType === "audio" || mime.startsWith("audio/")) expect = "audio";
+      else if (msgType === "image" || mime.startsWith("image/")) expect = "image";
+
+      // Magic-byte gate before GCS (reject FB JS packages claimed as audio/image)
+      const pre = validateMediaBuffer(buffer, { expect });
+      if (!pre.ok) {
+        return res.status(400).json({
+          ok: false,
+          error: pre.error,
+          note: "media magic validation failed — not real audio/image bytes",
+        });
+      }
+
+      const up = await uploadWaMediaBytes({ buffer, chatId, msgId, mime: pre.mime || mime, expect });
+      if (!up.ok) return res.status(502).json({ ok: false, error: up.error });
+
+      const isAudio = up.kind === "audio" || msgType === "audio" || (up.mime || "").startsWith("audio/");
+      const transcriptStatus = isAudio ? "pending" : null;
+
+      const { rowCount } = await pool.query(
+        `update wa_messages
+            set media_gcs_path = $2,
+                media_mime = $3,
+                media_bytes = $4,
+                transcript_status = coalesce($5, transcript_status),
+                type = case
+                  when type is null or type = 'text' then $6
+                  else type
+                end
+          where msg_id = $1`,
+        [msgId, up.path, up.mime, up.bytes, transcriptStatus, isAudio ? "audio" : msgType || "image"],
+      );
+
+      return res.json({
+        ok: true,
+        msg_id: msgId,
+        path: up.path,
+        bytes: up.bytes,
+        mime: up.mime,
+        kind: up.kind || null,
+        subkind: up.subkind || null,
+        transcript_status: transcriptStatus,
+        updated: Boolean(rowCount),
+        note: rowCount ? null : "message_not_yet_ingested",
+      });
+    }),
+  );
+
+  // Link existing GCS object without re-upload
+  router.post(
+    "/wa/media/link",
+    requireWaAccess({ requireWrite: true }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const msgId = String(req.body?.msg_id || "").trim().slice(0, 250);
+      const gcsPath = String(req.body?.media_gcs_path || req.body?.path || "").trim().slice(0, 500);
+      const mime = String(req.body?.mimetype || req.body?.mime || "").slice(0, 128) || null;
+      const bytes = req.body?.media_bytes != null ? Number(req.body.media_bytes) : null;
+      const msgType = String(req.body?.type || "").toLowerCase();
+      if (!msgId || !gcsPath) {
+        return res.status(400).json({ ok: false, error: "msg_id and media_gcs_path required" });
+      }
+      if (!gcsPath.startsWith("wa-media/")) {
+        return res.status(400).json({ ok: false, error: "path must start with wa-media/" });
+      }
+      const isAudio = msgType === "audio" || (mime && mime.startsWith("audio/"));
+      const { rowCount } = await pool.query(
+        `update wa_messages
+            set media_gcs_path = $2,
+                media_mime = coalesce($3, media_mime),
+                media_bytes = coalesce($4, media_bytes),
+                transcript_status = case
+                  when $5::boolean and (transcript_status is null or transcript_status = '')
+                    then 'pending' else transcript_status end
+          where msg_id = $1`,
+        [msgId, gcsPath, mime, Number.isFinite(bytes) ? bytes : null, isAudio],
+      );
+      return res.json({ ok: true, updated: Boolean(rowCount), msg_id: msgId, path: gcsPath });
+    }),
+  );
+
+  /**
+   * Clear media linkage on a message (junk cleanup / residual honesty).
+   * Unsets media_gcs_path so has_media becomes false. Optionally marks transcript skipped,
+   * clears transcript, and **reverts text** when STT had filled it from a placeholder
+   * (so cockpit does not keep invented Spanish as human body text).
+   * Body: { msg_id, clear_transcript?: true, reason?: string }
+   */
+  router.post(
+    "/wa/media/clear",
+    requireWaAccess({ requireWrite: true }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const msgId = String(req.body?.msg_id || "").trim().slice(0, 250);
+      if (!msgId) return res.status(400).json({ ok: false, error: "msg_id required" });
+      const clearTranscript = req.body?.clear_transcript !== false; // default true
+      const reason = String(req.body?.reason || "media_cleared").slice(0, 120);
+
+      const { rows: existing } = await pool.query(
+        `select type, text, meta from wa_messages where msg_id = $1`,
+        [msgId],
+      );
+      if (!existing[0]) {
+        return res.json({ ok: true, updated: false, msg_id: msgId, has_media: false, reason });
+      }
+
+      const revert = textAfterMediaClear(
+        {
+          type: existing[0].type,
+          text: existing[0].text,
+          meta: existing[0].meta,
+        },
+        { clearTranscript },
+      );
+      const newText = clearTranscript && revert.reverted ? revert.text : existing[0].text;
+      // Keep duration in media meta; drop stt_source/stt_at so UI does not claim live STT
+      const metaPatch = {
+        media_clear_reason: reason,
+        media_cleared_at: new Date().toISOString(),
+      };
+      if (clearTranscript) {
+        metaPatch.stt_text_reverted = Boolean(revert.reverted);
+        metaPatch.stt_source = null;
+        metaPatch.stt_at = null;
+      }
+
+      const { rowCount } = await pool.query(
+        `update wa_messages
+            set media_gcs_path = null,
+                media_mime = null,
+                media_bytes = null,
+                transcript = case when $2::boolean then null else transcript end,
+                transcript_status = case
+                  when $2::boolean then 'skipped'
+                  else transcript_status
+                end,
+                text = case when $2::boolean and $4::boolean then $5 else text end,
+                meta = (
+                  (coalesce(meta, '{}'::jsonb) - 'stt_source' - 'stt_at')
+                  || $3::jsonb
+                )
+          where msg_id = $1`,
+        [
+          msgId,
+          clearTranscript,
+          JSON.stringify(metaPatch),
+          Boolean(revert.reverted),
+          newText,
+        ],
+      );
+      return res.json({
+        ok: true,
+        updated: Boolean(rowCount),
+        msg_id: msgId,
+        has_media: false,
+        reason,
+        text_reverted: Boolean(revert.reverted),
+        text: clearTranscript && revert.reverted ? newText : undefined,
+        placeholder: revert.placeholder || audioVoiceNotePlaceholder(existing[0].meta),
+      });
+    }),
+  );
+
+  router.get(
+    "/wa/media/:msg_id",
+    requireWaAccess({ requireWrite: false }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const msgId = String(req.params.msg_id || "").trim();
+      if (!msgId) return res.status(400).json({ ok: false, error: "msg_id required" });
+      const { rows } = await pool.query(
+        `select media_gcs_path, media_mime from wa_messages where msg_id = $1`,
+        [msgId],
+      );
+      const row = rows[0];
+      if (!row?.media_gcs_path) {
+        return res.status(404).json({ ok: false, error: "media_not_found" });
+      }
+      const url = await getWaMediaSignedUrl(row.media_gcs_path, { expiresMs: 60 * 60 * 1000 });
+      if (!url) return res.status(502).json({ ok: false, error: "signed_url_failed" });
+      if (req.query.redirect === "0" || req.query.json === "1") {
+        return res.json({ ok: true, url, mime: row.media_mime || null });
+      }
+      return res.redirect(302, url);
+    }),
+  );
+
+  // Local STT worker → transcript (ADR-009)
+  router.post(
+    "/wa/transcript",
+    requireWaAccess({ requireWrite: true }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const msgId = String(req.body?.msg_id || "").trim().slice(0, 250);
+      const transcript = req.body?.transcript != null ? String(req.body.transcript) : null;
+      const status = String(req.body?.transcript_status || "done").slice(0, 32);
+      if (!msgId) return res.status(400).json({ ok: false, error: "msg_id required" });
+      if (!["pending", "done", "error", "skipped"].includes(status)) {
+        return res.status(400).json({ ok: false, error: "invalid transcript_status" });
+      }
+      const { rows } = await pool.query(`select text from wa_messages where msg_id = $1`, [msgId]);
+      if (!rows[0]) return res.status(404).json({ ok: false, error: "message_not_found" });
+      const fillText = status === "done" && transcript && isPlaceholderText(rows[0].text);
+      await pool.query(
+        `update wa_messages
+            set transcript = case when $2::text is null then transcript else $2 end,
+                transcript_status = $3,
+                text = case when $4::boolean then $2 else text end,
+                meta = coalesce(meta, '{}'::jsonb) || jsonb_build_object(
+                  'stt_source', $5::text,
+                  'stt_at', now()::text
+                )
+          where msg_id = $1`,
+        [msgId, transcript, status, fillText, String(req.body?.source || "local_stt").slice(0, 64)],
+      );
+      return res.json({ ok: true, msg_id: msgId, transcript_status: status, text_filled: fillText });
+    }),
+  );
+
+  router.get(
+    "/wa/transcript/pending",
+    requireWaAccess({ requireWrite: false }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const limit = Math.min(Math.max(Number(req.query.limit || 10), 1), 50);
+      try {
+        const { rows } = await pool.query(
+          `select msg_id, chat_id, type, media_gcs_path, media_mime, media_bytes,
+                  transcript_status, text, ts
+             from wa_messages
+            where type = 'audio'
+              and media_gcs_path is not null
+              and (
+                transcript_status = 'pending'
+                or transcript_status is null
+                or transcript_status = 'error'
+              )
+            order by ts desc
+            limit $1`,
+          [limit],
+        );
+        return res.json({ ok: true, count: rows.length, items: rows });
+      } catch (e) {
+        if (e?.code === "42703") return res.json({ ok: true, count: 0, items: [] });
+        throw e;
+      }
     }),
   );
 

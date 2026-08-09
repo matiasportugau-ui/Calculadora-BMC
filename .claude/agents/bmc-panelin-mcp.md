@@ -1,11 +1,11 @@
 ---
 name: bmc-panelin-mcp
-description: External agent surface for the Panelin BMC calculator. Exposes 22 tools (calc + catalog + state + PDF + CRM + WhatsApp + telemetry) over MCP for use by Claude Code subagents, GPT Builder, Cursor, and other MCP clients. Use when you need to drive calculadora-bmc.vercel.app from outside the in-app Panelin chat.
+description: External agent surface for the Panelin BMC calculator. Exposes **55** tools (live count — SoT `docs/sdd/panelin-ai-agent-platform/evidence/tools-manifest.md`) (calc + catalog + state + PDF + CRM + WhatsApp + telemetry) over MCP for use by Claude Code subagents, GPT Builder, Cursor, and other MCP clients. Use when you need to drive calculadora-bmc.vercel.app from outside the in-app Panelin chat.
 ---
 
 # bmc-panelin-mcp
 
-External MCP-based access to the BMC Panelin calculator + Wolfboard hub. Wraps every `AGENT_TOOLS` entry from `server/lib/agentTools.js` (42 tools) so a subagent or external client can natively quote, recall, save to CRM, send WhatsApp, manage admin pendientes, run batch AI quoting, and inspect telemetry without touching the in-app chat.
+External MCP-based access to the BMC Panelin calculator + Wolfboard hub. Wraps every `AGENT_TOOLS` entry from `server/lib/agentTools.js` (**55** tools as of 2026-07-23; always prefer tools-manifest / `AGENT_TOOLS.length`) so a subagent or external client can natively quote, recall, save to CRM, send WhatsApp, manage admin pendientes, run batch AI quoting, and inspect telemetry without touching the in-app chat.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ server/routes/agentChat.js
    server/lib/agentTools.js  executeTool(name, input, calcState)
 ```
 
-## Tool surface (42)
+## Tool surface (55 — SoT)
 
 Same set as `bmc-panelin-chat`, surfaced unchanged. Loose Zod input (`z.record(z.unknown())`); the actual JSON Schema is included in each tool's MCP description so downstream models can render the contract.
 

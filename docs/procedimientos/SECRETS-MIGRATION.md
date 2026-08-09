@@ -25,6 +25,9 @@ o dar acceso a sistemas externos):
 | `WEBHOOK_VERIFY_TOKEN` | Self | Spoofing del webhook ML |
 | `TOKEN_ENCRYPTION_KEY` | Self | Decrypta tokens GCS persistidos |
 | `API_AUTH_TOKEN` | Self | Acceso admin/cockpit + voz/logs |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | Google Ads API Center | Mutates reales sobre campañas (pause/budget) |
+| `GOOGLE_ADS_OAUTH_CLIENT_SECRET` | GCP Console | OAuth client takeover |
+| `GOOGLE_ADS_REFRESH_TOKEN` | Google (matias.portugau@gmail.com) | Acceso a las 3 cuentas Ads de BMC |
 
 **Quedan como env vars** (IDs públicos / config / URLs, sin riesgo si se leen):
 `ML_CLIENT_ID`, `BMC_*_SHEET_ID`, `WHATSAPP_PHONE_NUMBER_ID`,

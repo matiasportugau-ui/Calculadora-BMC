@@ -21,6 +21,8 @@ import {
   stopTimer as tkStopTimer,
   listEntries as tkListEntries,
   createEntry as tkCreateEntry,
+  updateEntry as tkUpdateEntry,
+  deleteEntry as tkDeleteEntry,
   getDayReport as tkDayReport,
   getMonthReport as tkMonthReport,
   getBillableReport as tkBillable,
@@ -46,6 +48,8 @@ import {
 import { recordToolCall, classifyError } from "./toolStats.js";
 import { INTENT_HINTS } from "./userIntentClassifier.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "./rag.js";
+import * as coworkSheets from "./coworkSheets.js";
+import { classifyEmailSignal } from "./sharedWorkspace.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -336,14 +340,17 @@ export const AGENT_TOOLS = [
       "Lista las cotizaciones generadas recientemente (registry persistente en GCS, sin TTL). " +
       "Cada entrada incluye id, code, cliente, escenario, total, lista, source ('ae_agent' | 'calculator') y la URL del PDF. " +
       "Usar cuando el usuario diga 'mandale otra vez la cotización a Juan', 'pasame el link del último presupuesto', " +
-      "'¿qué cotizaciones hice hoy?', '¿qué generó la IA?' (filtrar source='ae_agent').",
+      "'¿qué cotizaciones hice hoy?', '¿qué generó la IA?' (filtrar source='ae_agent'), " +
+      "'cotizaciones de julio' (desde=YYYY-MM-01, hasta=último día del mes). No pedís nombre de cliente si la misión es listar/descubrir.",
     input_schema: {
       type: "object",
       properties: {
-        cliente:           { type: "string", description: "Filtrar por nombre de cliente (match parcial, case-insensitive)" },
+        cliente:           { type: "string", description: "Filtrar por nombre de cliente (match parcial, case-insensitive). Opcional." },
         source:            { type: "string", enum: ["ae_agent", "calculator"], description: "Filtrar por origen: 'ae_agent' (generado por el agente) o 'calculator' (UI manual)" },
         include_cancelled: { type: "boolean", description: "Si true, incluye cotizaciones canceladas. Default false." },
         limite:            { type: "number", description: "Máx resultados a devolver. Default 10" },
+        desde:             { type: "string", description: "Fecha inicio inclusiva YYYY-MM-DD (ej. 2026-07-01 para julio)" },
+        hasta:             { type: "string", description: "Fecha fin inclusiva YYYY-MM-DD (ej. 2026-07-31)" },
       },
     },
   },
@@ -381,7 +388,7 @@ export const AGENT_TOOLS = [
             familia:    { type: "string" },
             espesor:    { type: ["string", "number"] },
             color:      { type: "string" },
-            tipoAguas:  { type: "string", enum: ["una_agua", "dos_aguas"] },
+            tipoAguas:  { type: "string", enum: ["una_agua", "dos_aguas"], description: "Default operador aguasTecho=1 → una_agua. Solo una_agua|dos_aguas." },
             pendiente:  { type: "number" },
             tipoEst:    { type: "string", enum: ["metal", "hormigon", "madera", "combinada"] },
             borders:    { type: "object" },
@@ -692,6 +699,27 @@ export const AGENT_TOOLS = [
   // ─── Wolfboard Hub (admin cotizaciones management) ─────────────────────────
 
   {
+    name: "wa_lead_to_admin",
+    description:
+      "Crea una fila nueva en Admin 2.0 para un lead (WhatsApp u otro canal) cuando NO existe fila. " +
+      "Pasá consulta (obligatorio), telefono, cliente, origen (WA/CL/LL/LO/FB/IG), zona, campos_faltantes. " +
+      "REQUIERE user_confirmed=true (ej. cargalo en Admin / creá la consulta / guardalo en Wolfboard).",
+    input_schema: {
+      type: "object",
+      properties: {
+        consulta: { type: "string", description: "Texto de la consulta del cliente (col I)" },
+        telefono: { type: "string" },
+        cliente: { type: "string" },
+        origen: { type: "string", description: "WA, CL, LL, LO, FB, IG — default WA" },
+        zona: { type: "string" },
+        campos_faltantes: { type: "string", description: "Qué falta pedir al cliente" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true." },
+      },
+      required: ["consulta", "user_confirmed"],
+    },
+  },
+
+  {
     name: "wolfboard_pendientes",
     description:
       "Lista filas pendientes del Wolfboard hub (Admin 2.0). " +
@@ -803,6 +831,90 @@ export const AGENT_TOOLS = [
     },
   },
 
+  // ─── Email (PANELSIM summary + outbound draft — no send) ───────────────────
+  {
+    name: "email_panelsim_resumen",
+    description:
+      "Lee el resumen PANELSIM / bandeja IMAP (STATUS + reporte MD) para ver correos recientes relevantes a presupuestos. " +
+      "NO navega Gmail DOM ni tipéa en Gemini sidebar. Co-Work OCR es HINT; preferí esta tool para inbox estructurado. Auth requerida.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reportMaxChars: { type: "number", description: "Máx. chars del reporte MD (opcional)" },
+      },
+    },
+  },
+  {
+    name: "email_borrador_saliente",
+    description:
+      "Genera un BORRADOR de email (asunto + cuerpo) para pegar en Thunderbird/Gmail. NO envía correo. " +
+      "Usar cuando el operador pide 'redactar mail'. Auth requerida. Para ENVIAR usá email_enviar tras confirmación.",
+    input_schema: {
+      type: "object",
+      properties: {
+        hechos: { type: "string", description: "Hechos y pedido (mín. 3 chars)" },
+        role: { type: "string", enum: ["cliente", "proveedor"], description: "Default proveedor" },
+        tono: { type: "string", description: "Ej. breve y profesional" },
+        asunto_contexto: { type: "string", description: "Asunto sugerido opcional" },
+      },
+      required: ["hechos"],
+    },
+  },
+  {
+    name: "email_listar_hilos",
+    description:
+      "Lista conversaciones Omni de canal email (bandeja unificada). Auth JWT con grant canales. " +
+      "NO controla Gmail DOM. Preferí esta tool vs OCR para listar hilos.",
+    input_schema: {
+      type: "object",
+      properties: {
+        limit: { type: "number", description: "Máx. hilos (default 20, máx 50)" },
+        status: { type: "string", description: "Filtro status Omni opcional" },
+      },
+    },
+  },
+  {
+    name: "email_leer_hilo",
+    description:
+      "Lee mensajes de un hilo Omni por conversation_id (abrir correo). Auth JWT canales requerida.",
+    input_schema: {
+      type: "object",
+      properties: {
+        conversation_id: { type: "string", description: "UUID omni_conversations.id" },
+        limit: { type: "number", description: "Máx. mensajes (default 40)" },
+      },
+      required: ["conversation_id"],
+    },
+  },
+  {
+    name: "email_clasificar_mensaje",
+    description:
+      "Clasifica texto de correo/consulta: consulta_cliente | alerta_admin | otro. " +
+      "Si suggestAdminLead, proponé wa_lead_to_admin (con confirmación). Heurística sync (barata).",
+    input_schema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Asunto + cuerpo o extracto (mín. 3 chars)" },
+      },
+      required: ["text"],
+    },
+  },
+  {
+    name: "email_enviar",
+    description:
+      "ENVÍA respuesta en un hilo Omni email (Gmail/SMTP vía outbound). ACCIÓN DE ESCRITURA: " +
+      "REQUIERE confirmación explícita del operador en sus palabras + user_confirmed. Nunca digas 'enviado' si la tool falla.",
+    input_schema: {
+      type: "object",
+      properties: {
+        conversation_id: { type: "string", description: "UUID del hilo Omni" },
+        text: { type: "string", description: "Cuerpo del reply (mín. 3 chars)" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true tras confirmación del operador" },
+      },
+      required: ["conversation_id", "text", "user_confirmed"],
+    },
+  },
+
   // ─── TraKtiMe (time tracking) — driven on behalf of the logged-in user ──────
   // These act *as* the user: they require a user JWT (forwarded from the chat
   // session or passed as user_jwt). Reads are protected (return a user's own
@@ -866,6 +978,37 @@ export const AGENT_TOOLS = [
     },
   },
   {
+    name: "traktime_update_entry",
+    description:
+      "TraKtiMe: actualiza una entrada existente (descripción, proyecto, tiempos, billable, tags). ACCIÓN DE ESCRITURA: requiere confirmación explícita. Falla si la entrada está facturada (locked).",
+    input_schema: {
+      type: "object",
+      properties: {
+        entry_id: { type: "string", description: "UUID de la entrada" },
+        project_id: { type: "string", description: "Nuevo proyecto (opcional)" },
+        task_id: { type: "string", description: "Nueva tarea (opcional)" },
+        description: { type: "string", description: "Nueva descripción (opcional)" },
+        started_at: { type: "string", description: "Nuevo inicio ISO 8601 (opcional)" },
+        stopped_at: { type: "string", description: "Nuevo fin ISO 8601 (opcional)" },
+        billable: { type: "boolean", description: "¿Facturable? (opcional)" },
+        tags: { type: "array", items: { type: "string" }, description: "Tags (opcional)" },
+      },
+      required: ["entry_id"],
+    },
+  },
+  {
+    name: "traktime_delete_entry",
+    description:
+      "TraKtiMe: elimina una entrada de tiempo. ACCIÓN DE ESCRITURA DESTRUCTIVA: requiere confirmación explícita. Falla si está facturada (locked).",
+    input_schema: {
+      type: "object",
+      properties: {
+        entry_id: { type: "string", description: "UUID de la entrada a borrar" },
+      },
+      required: ["entry_id"],
+    },
+  },
+  {
     name: "traktime_day_report",
     description:
       "TraKtiMe: reporte de jornada de un día (UY-local) — entradas ordenadas, gaps de coordinación/pausa, tiempo efectivo, span de jornada e idle. Lectura protegida.",
@@ -924,6 +1067,107 @@ export const AGENT_TOOLS = [
       properties: {
         tz: { type: "string", description: "IANA tz para el día (default America/Montevideo)" },
       },
+    },
+  },
+
+  // ─── Co-Work Sheets (allowlisted Admin + CRM) ─────────────────────────────
+  {
+    name: "sheets_list_tabs",
+    description:
+      "Co-Work: lista las pestañas (tabs) de un workbook BMC allowlisted (admin = Wolfboard Admin, crm = CRM_Operativo). " +
+      "Usar cuando el operador comparte pantalla o pregunta qué pestañas hay. Solo lectura.",
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: {
+          type: "string",
+          description: 'Alias allowlisted: "admin" (default) o "crm"',
+        },
+      },
+    },
+  },
+  {
+    name: "sheets_read_range",
+    description:
+      "Co-Work: lee un rango A1 de un workbook allowlisted y devuelve values + headers. " +
+      "FUENTE DE VERDAD para números de planilla — preferí esta tool antes de confiar en OCR de capturas. " +
+      'Ej range: "Admin.!A1:M30" o "CRM_Operativo!A2:AH10". Solo lectura.',
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: { type: "string", description: '"admin" | "crm" (default admin)' },
+        range: { type: "string", description: "Rango A1 con tab (ej Admin.!A2:M50)" },
+        maxRows: { type: "number", description: "Tope de filas devueltas (default 100, max 500)" },
+      },
+      required: ["range"],
+    },
+  },
+  {
+    name: "sheets_find",
+    description:
+      "Co-Work: busca texto en un rango (case-insensitive) y devuelve filas hit con row number y preview. " +
+      "Usar para 'buscá a García', 'dónde está el teléfono 099…', localizar fila desde captura. Solo lectura.",
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: { type: "string", description: '"admin" | "crm"' },
+        range: { type: "string", description: "Rango A1 a escanear" },
+        query: { type: "string", description: "Texto a buscar" },
+        maxHits: { type: "number", description: "Máx resultados (default 15)" },
+      },
+      required: ["range", "query"],
+    },
+  },
+  {
+    name: "sheets_get_pending_admin",
+    description:
+      "Co-Work: lista consultas pendientes del Admin (col I llena, col M vacía) con row + consulta. " +
+      "Equivalente a la cola de Admin Ingreso / Respondamos Rápido. Solo lectura.",
+    input_schema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "sheets_propose_write",
+    description:
+      "Co-Work: dry-run de escritura — devuelve el diff/values sanitizados SIN escribir. " +
+      "Usar antes de sheets_write_range para mostrarle al operador qué se va a pegar. No muta la planilla.",
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: { type: "string" },
+        range: { type: "string", description: "Rango A1 destino" },
+        values: {
+          type: "array",
+          description: "Filas: array de arrays de celdas",
+          items: { type: "array", items: {} },
+        },
+      },
+      required: ["range", "values"],
+    },
+  },
+  {
+    name: "sheets_write_range",
+    description:
+      "Co-Work: escribe values en un rango allowlisted. REQUIERE confirmación explícita del operador " +
+      '("escribilo", "guardalo en la planilla", "pegá en Admin"). Preferí wolfboard_actualizar_fila para J/K/L del Admin cuando aplique. ' +
+      "Nunca escribas basándote solo en OCR de captura sin verificar con sheets_read_range.",
+    input_schema: {
+      type: "object",
+      properties: {
+        workbook: { type: "string" },
+        range: { type: "string" },
+        values: {
+          type: "array",
+          items: { type: "array", items: {} },
+        },
+        user_confirmed: {
+          type: "boolean",
+          description: "OBLIGATORIO=true solo tras confirmación explícita del operador",
+        },
+      },
+      required: ["range", "values", "user_confirmed"],
     },
   },
 ];
@@ -1065,15 +1309,62 @@ const APLICAR_ALLOWED_ACTIONS = new Set([
   "setPared", "setCamara", "setFlete", "setProyecto",
 ]);
 
-function buildAplicarActions(input = {}) {
+/**
+ * Normalize roof waters to enum una_agua | dos_aguas.
+ * Accepts 1/2, Spanish phrases, and operatorContext.defaults.aguasTecho.
+ * @param {unknown} raw
+ * @param {object|null} [operatorContext]
+ * @returns {"una_agua"|"dos_aguas"|undefined}
+ */
+export function normalizeTipoAguas(raw, operatorContext = null) {
+  const fromDefaults = operatorContext?.defaults?.aguasTecho;
+  const candidate = raw != null && String(raw).trim() !== "" ? raw : fromDefaults;
+  if (candidate == null || candidate === "") return undefined;
+  const s = String(candidate).trim().toLowerCase().replace(/\s+/g, "_");
+  if (
+    s === "1" || s === "una" || s === "una_agua" || s === "unaagua"
+    || /^1_?aguas?$/.test(s) || s.includes("una_agua")
+  ) {
+    return "una_agua";
+  }
+  if (
+    s === "2" || s === "dos" || s === "dos_aguas" || s === "dosaguas"
+    || /^2_?aguas?$/.test(s) || s.includes("dos_agua")
+  ) {
+    return "dos_aguas";
+  }
+  if (Number(candidate) === 1) return "una_agua";
+  if (Number(candidate) === 2) return "dos_aguas";
+  return undefined;
+}
+
+/**
+ * Build calc UI actions from aplicar_estado_calc input (or remapped ACTION_JSON).
+ * @param {object} input
+ * @param {object|null} [operatorContext]
+ */
+export function buildAplicarActions(input = {}, operatorContext = null) {
   const actions = [];
-  if (input.scenario) actions.push({ type: "setScenario", payload: String(input.scenario) });
-  if (input.listaPrecios) actions.push({ type: "setLP", payload: String(input.listaPrecios) });
-  if (input.techo && typeof input.techo === "object") {
-    const { zonas, ...rest } = input.techo;
+  // Remap: ACTION_JSON:{type:"aplicar_estado_calc", payload:{...}} or fields at top level
+  const src = input?.payload && typeof input.payload === "object" && !input.scenario && !input.techo && !input.pared
+    ? input.payload
+    : input;
+  if (src.scenario) actions.push({ type: "setScenario", payload: String(src.scenario) });
+  if (src.listaPrecios) actions.push({ type: "setLP", payload: String(src.listaPrecios) });
+  if (src.techo && typeof src.techo === "object") {
+    const { zonas, ...rest } = src.techo;
     const techoFields = { ...rest };
     if (techoFields.familia) techoFields.familia = normalizeFamilia(techoFields.familia);
     if (techoFields.espesor != null) techoFields.espesor = String(techoFields.espesor);
+    const tipo = normalizeTipoAguas(techoFields.tipoAguas, operatorContext);
+    if (tipo) techoFields.tipoAguas = tipo;
+    else delete techoFields.tipoAguas;
+    if (!techoFields.tipoAguas) {
+      const defTipo = normalizeTipoAguas(undefined, operatorContext);
+      if (defTipo && (Object.keys(techoFields).length > 0 || (Array.isArray(zonas) && zonas.length))) {
+        techoFields.tipoAguas = defTipo;
+      }
+    }
     if (Object.keys(techoFields).length > 0) actions.push({ type: "setTecho", payload: techoFields });
     if (Array.isArray(zonas) && zonas.length > 0) {
       const safeZonas = zonas
@@ -1082,25 +1373,25 @@ function buildAplicarActions(input = {}) {
       if (safeZonas.length > 0) actions.push({ type: "setTechoZonas", payload: safeZonas });
     }
   }
-  if (input.pared && typeof input.pared === "object") {
-    const paredFields = { ...input.pared };
+  if (src.pared && typeof src.pared === "object") {
+    const paredFields = { ...src.pared };
     if (paredFields.familia) paredFields.familia = normalizeFamilia(paredFields.familia);
     if (paredFields.espesor != null) paredFields.espesor = String(paredFields.espesor);
     if (Object.keys(paredFields).length > 0) actions.push({ type: "setPared", payload: paredFields });
   }
-  if (input.camara && typeof input.camara === "object") {
-    const c = input.camara;
+  if (src.camara && typeof src.camara === "object") {
+    const c = src.camara;
     if (c.largo_int != null && c.ancho_int != null && c.alto_int != null) {
       actions.push({ type: "setCamara", payload: {
         largo_int: Number(c.largo_int), ancho_int: Number(c.ancho_int), alto_int: Number(c.alto_int),
       }});
     }
   }
-  if (input.flete != null && Number.isFinite(Number(input.flete))) {
-    actions.push({ type: "setFlete", payload: Number(input.flete) });
+  if (src.flete != null && Number.isFinite(Number(src.flete))) {
+    actions.push({ type: "setFlete", payload: Number(src.flete) });
   }
-  if (input.proyecto && typeof input.proyecto === "object" && Object.keys(input.proyecto).length > 0) {
-    actions.push({ type: "setProyecto", payload: input.proyecto });
+  if (src.proyecto && typeof src.proyecto === "object" && Object.keys(src.proyecto).length > 0) {
+    actions.push({ type: "setProyecto", payload: src.proyecto });
   }
   return actions.filter((a) => APLICAR_ALLOWED_ACTIONS.has(a.type));
 }
@@ -1322,7 +1613,10 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         ...(camara && { camara }),
       };
 
-      const result = await postCotizarPdf(body);
+      // 90s cap: server-side Chromium render can hang in pathological cases;
+      // without a signal the agent turn would pin for undici's ~300s default.
+      // executeTool()'s try/catch converts the abort into an {error} result.
+      const result = await postCotizarPdf(body, { signal: AbortSignal.timeout(90_000) });
       const data = result.body || {};
 
       // Structured log event for durable out-of-process audit (Cloud Logging /
@@ -1343,12 +1637,20 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       return JSON.stringify({
         ok: true,
         pdf_id: data.pdf_id,
-        pdf_url: data.pdf_url,
+        // Prefer the real rendered PDF when the server produced one; the raw
+        // pdf_url (printable HTML) remains the fallback on degraded platforms.
+        pdf_url: data.pdf_file_url || data.pdf_url,
+        pdf_file_url: data.pdf_file_url || null,
+        pdf_rendered: !!data.pdf_rendered,
         gcs_url: data.gcs_url || null,
         drive_url: data.drive_url || null,
         expires_in_hours: data.expires_in_hours || null,
         resumen: data.resumen,
-        instrucciones: "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF desde Archivo → Imprimir.",
+        // Keyed on pdf_file_url (not pdf_rendered): a render can succeed while
+        // both uploads fail, in which case the shareable link is still HTML.
+        instrucciones: data.pdf_file_url
+          ? "Compartí este link con el cliente: es un PDF real, se descarga o abre directo."
+          : "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF desde Archivo → Imprimir.",
       });
     }
 
@@ -1432,12 +1734,16 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const source = input?.source && ["ae_agent", "calculator"].includes(input.source) ? input.source : null;
       const includeCancelled = input?.include_cancelled === true;
       const limit = Math.max(1, Math.min(50, Number(input?.limite || 10)));
+      const desde = input?.desde != null ? String(input.desde).trim() : null;
+      const hasta = input?.hasta != null ? String(input.hasta).trim() : null;
       try {
         const entries = await listQuotationsFromRegistry({
           limit,
           includeCancelled,
           cliente: cliente || null,
           source,
+          desde: desde || null,
+          hasta: hasta || null,
         });
         return JSON.stringify({ ok: true, count: entries.length, cotizaciones: entries });
       } catch (err) {
@@ -1470,7 +1776,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "aplicar_estado_calc") {
-      const actions = buildAplicarActions(input || {});
+      const actions = buildAplicarActions(input || {}, opts?.operatorContext || null);
       if (actions.length === 0) {
         return JSON.stringify({ ok: false, error: "Sin campos válidos para aplicar — pasá scenario, listaPrecios, techo, pared, camara, flete o proyecto." });
       }
@@ -1812,6 +2118,22 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       }
     }
 
+    if (name === "wa_lead_to_admin") {
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+      const consulta = String(input?.consulta ?? "").trim();
+      if (!consulta) return JSON.stringify({ ok: false, error: "consulta requerida" });
+      const notas = buildWaLeadAdminNotas(input, opts?.operatorContext);
+      const body = {
+        consulta,
+        telefono: input?.telefono != null ? String(input.telefono) : "",
+        cliente: input?.cliente != null ? String(input.cliente) : "",
+        origen: input?.origen != null ? String(input.origen) : "WA",
+        zona: input?.zona != null ? String(input.zona) : "",
+        ...(notas ? { notas } : {}),
+      };
+      return await wolfboardForward("/api/wolfboard/row-create", { method: "POST", body }, name);
+    }
+
     if (name === "wolfboard_pendientes" || name === "wolfboard_export") {
       const scope = (input?.scope === "admin") ? "admin" : "consulta";
       const path = name === "wolfboard_export"
@@ -1863,6 +2185,97 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const qs = params.toString() ? `?${params.toString()}` : "";
       // Reuse the same forward pattern (server-side token) but hit the bugs surface
       return await bugsForward(`/api/bugs${qs}`, { method: "GET" }, name);
+    }
+
+    if (name === "email_panelsim_resumen") {
+      const params = new URLSearchParams();
+      if (input?.reportMaxChars != null) params.set("reportMaxChars", String(input.reportMaxChars));
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      return await emailCockpitForward(
+        `/api/email/panelsim-summary${qs}`,
+        { method: "GET" },
+        name,
+        opts?.callerAuthToken || null,
+      );
+    }
+
+    if (name === "email_borrador_saliente") {
+      const hechos = String(input?.hechos ?? "").trim();
+      if (hechos.length < 3) {
+        return JSON.stringify({ ok: false, error: "hechos requerido (mín. 3 caracteres)" });
+      }
+      return await emailCockpitForward(
+        "/api/email/draft-outbound",
+        {
+          method: "POST",
+          body: {
+            hechos,
+            role: input?.role === "cliente" ? "cliente" : "proveedor",
+            tono: input?.tono != null ? String(input.tono) : undefined,
+            asunto_contexto: input?.asunto_contexto != null ? String(input.asunto_contexto) : undefined,
+          },
+        },
+        name,
+        opts?.callerAuthToken || null,
+      );
+    }
+
+    if (name === "email_listar_hilos") {
+      const limit = Math.min(Math.max(Number(input?.limit) || 20, 1), 50);
+      const params = new URLSearchParams({ channel: "email", limit: String(limit) });
+      if (input?.status) params.set("status", String(input.status));
+      return await omniApiForward(
+        `/api/omni/conversations?${params}`,
+        { method: "GET" },
+        name,
+        opts?.callerAuthToken || null,
+      );
+    }
+
+    if (name === "email_leer_hilo") {
+      const id = String(input?.conversation_id || "").trim();
+      if (!id) return JSON.stringify({ ok: false, error: "conversation_id requerido" });
+      const limit = Math.min(Math.max(Number(input?.limit) || 40, 1), 200);
+      return await omniApiForward(
+        `/api/omni/conversations/${encodeURIComponent(id)}/messages?limit=${limit}`,
+        { method: "GET" },
+        name,
+        opts?.callerAuthToken || null,
+      );
+    }
+
+    if (name === "email_clasificar_mensaje") {
+      const text = String(input?.text ?? "").trim();
+      if (text.length < 3) {
+        return JSON.stringify({ ok: false, error: "text requerido (mín. 3 caracteres)" });
+      }
+      const result = classifyEmailSignal(text);
+      return JSON.stringify({
+        ok: true,
+        ...result,
+        next_steps:
+          result.suggestAdminLead
+            ? [
+                "Si es consulta nueva sin fila Admin: pedí confirmación y usá wa_lead_to_admin",
+                "Si es alerta: resumí al operador y proponé nota Admin / CRM",
+              ]
+            : ["No requiere lead Admin automático; respondé o archivá según pedido"],
+        tool: name,
+      });
+    }
+
+    if (name === "email_enviar") {
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+      const id = String(input?.conversation_id || "").trim();
+      const text = String(input?.text ?? "").trim();
+      if (!id) return JSON.stringify({ ok: false, error: "conversation_id requerido" });
+      if (text.length < 3) return JSON.stringify({ ok: false, error: "text requerido (mín. 3 caracteres)" });
+      return await omniApiForward(
+        `/api/omni/conversations/${encodeURIComponent(id)}/reply`,
+        { method: "POST", body: { text } },
+        name,
+        opts?.callerAuthToken || null,
+      );
     }
 
     // ─── TraKtiMe tools ────────────────────────────────────────────────────
@@ -1961,6 +2374,33 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         return JSON.stringify({ ok: true, entry: r.body?.entry || null });
       }
 
+      if (name === "traktime_update_entry") {
+        { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+        const entryId = input?.entry_id;
+        if (!entryId) return JSON.stringify({ ok: false, error: "entry_id requerido" });
+        const body = {};
+        for (const k of ["project_id", "task_id", "description", "started_at", "stopped_at"]) {
+          if (input[k] != null) body[k] = input[k];
+        }
+        if (input.billable != null) body.billable = !!input.billable;
+        if (Array.isArray(input.tags)) body.tags = input.tags.map(String);
+        if (!Object.keys(body).length) {
+          return JSON.stringify({ ok: false, error: "al menos un campo a actualizar requerido" });
+        }
+        const r = await tkUpdateEntry(entryId, body, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({ ok: true, entry: r.body?.entry || null });
+      }
+
+      if (name === "traktime_delete_entry") {
+        { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+        const entryId = input?.entry_id;
+        if (!entryId) return JSON.stringify({ ok: false, error: "entry_id requerido" });
+        const r = await tkDeleteEntry(entryId, o);
+        if (!r.ok) return JSON.stringify({ ok: false, error: r.error });
+        return JSON.stringify({ ok: true, deleted: true, entry_id: entryId });
+      }
+
       if (name === "traktime_day_report") {
         if (!input?.date) return JSON.stringify({ ok: false, error: "date (YYYY-MM-DD) requerido" });
         const query = { date: input.date };
@@ -1998,6 +2438,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
 
       if (name === "traktime_suggest_entry") {
         // Read-only context gather for an AI-proposed draft (no write).
+        // Includes last_project for low-friction "continue last" suggestions (P1.4).
         const lookbackHours = Math.max(1, Math.min(168, Number(input?.lookback_hours) || 24));
         const fromIso = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
         const [cur, recent] = await Promise.all([
@@ -2008,20 +2449,34 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
           return JSON.stringify({ ok: false, error: cur.error || "no autorizado" });
         }
         const e = cur.body?.running;
+        const recentList = recent.body?.entries || [];
+        const last = recentList[0] || null;
         return JSON.stringify({
           ok: true,
           now: new Date().toISOString(),
           running_timer: e
             ? { project_id: e.project_id, project_name: e.project_name, started_at: e.started_at }
             : null,
-          recent_entries: (recent.body?.entries || []).slice(0, 20).map((x) => ({
+          last_project: last
+            ? {
+                project_id: last.project_id,
+                project_name: last.project_name,
+                client_name: last.client_name || null,
+                description: last.description || null,
+              }
+            : e
+              ? { project_id: e.project_id, project_name: e.project_name }
+              : null,
+          recent_entries: recentList.slice(0, 20).map((x) => ({
+            entry_id: x.entry_id,
+            project_id: x.project_id,
             project_name: x.project_name,
             description: x.description,
             started_at: x.started_at,
             stopped_at: x.stopped_at,
             duration_seconds: x.duration_seconds,
           })),
-          note: "Proponé un borrador de entrada/categorización al usuario y pedí confirmación antes de escribir.",
+          note: "Proponé un borrador de entrada/categorización al usuario y pedí confirmación antes de escribir. Preferí last_project si no hay timer corriendo.",
         });
       }
 
@@ -2045,6 +2500,58 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
           by_app: r.body?.by_app || [],
           note: "Usá esto para proponer una o más entradas; pedí confirmación antes de escribir.",
         });
+      }
+    }
+
+    // ─── Co-Work Sheets tools ──────────────────────────────────────────────
+    if (name === "sheets_list_tabs") {
+      const r = await coworkSheets.listTabs(input?.workbook || "admin");
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_read_range") {
+      if (!input?.range) return JSON.stringify({ ok: false, error: "range requerido" });
+      const r = await coworkSheets.readRange({
+        workbook: input?.workbook || "admin",
+        range: input.range,
+        maxRows: input?.maxRows,
+      });
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_find") {
+      if (!input?.range || !input?.query) {
+        return JSON.stringify({ ok: false, error: "range y query requeridos" });
+      }
+      const r = await coworkSheets.findInRange({
+        workbook: input?.workbook || "admin",
+        range: input.range,
+        query: input.query,
+        maxHits: input?.maxHits,
+      });
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_get_pending_admin") {
+      const r = await coworkSheets.getPendingAdmin(opts?.logger);
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_propose_write") {
+      const r = coworkSheets.proposeWrite({
+        workbook: input?.workbook || "admin",
+        range: input?.range,
+        values: input?.values,
+      });
+      return JSON.stringify(r);
+    }
+    if (name === "sheets_write_range") {
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+      try {
+        const r = await coworkSheets.writeRange({
+          workbook: input?.workbook || "admin",
+          range: input?.range,
+          values: input?.values,
+        });
+        return JSON.stringify(r);
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err.message || "sheets_write_failed" });
       }
     }
 
@@ -2103,6 +2610,78 @@ async function wolfboardForward(path, { method = "GET", body } = {}, toolName = 
     length: text.length,
     tool: toolName,
   });
+}
+
+/**
+ * Forward to CRM cockpit email routes (JWT or API_AUTH_TOKEN).
+ * Draft-only / summary — never sends mail.
+ */
+async function emailCockpitForward(path, { method = "GET", body } = {}, toolName = "email_*", callerAuthToken = null) {
+  const token = callerAuthToken || config.apiAuthToken;
+  if (!token) {
+    return JSON.stringify({
+      ok: false,
+      error: "Auth requerida — iniciá sesión (JWT canales) o configurá API_AUTH_TOKEN para email tools.",
+      tool: toolName,
+    });
+  }
+  const headers = { Authorization: `Bearer ${token}` };
+  const init = { method, headers };
+  if (method === "POST") {
+    headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body || {});
+  }
+  const url = `${apiBase()}${path}`;
+  const resp = await fetch(url, init);
+  const data = await resp.json().catch(() => null);
+  if (!resp.ok) {
+    return JSON.stringify({
+      ok: false,
+      status: resp.status,
+      error: data?.error || `HTTP ${resp.status}`,
+      tool: toolName,
+      hint: toolName === "email_borrador_saliente"
+        ? "Borrador listo; para enviar usá email_enviar tras confirmación explícita del operador."
+        : undefined,
+    });
+  }
+  return JSON.stringify({ ok: true, ...data, tool: toolName });
+}
+
+/**
+ * Forward to Omni inbox API (requires operator JWT with canales grant).
+ * Used by email_listar_hilos / email_leer_hilo / email_enviar.
+ */
+async function omniApiForward(path, { method = "GET", body } = {}, toolName = "email_*", callerAuthToken = null) {
+  const token = callerAuthToken || config.apiAuthToken;
+  if (!token) {
+    return JSON.stringify({
+      ok: false,
+      error: "Auth requerida — iniciá sesión (JWT con grant canales) para tools Omni email.",
+      tool: toolName,
+    });
+  }
+  const headers = { Authorization: `Bearer ${token}` };
+  const init = { method, headers };
+  if (method === "POST" || method === "PATCH") {
+    headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body || {});
+  }
+  const url = `${apiBase()}${path}`;
+  const resp = await fetch(url, init);
+  const data = await resp.json().catch(() => null);
+  if (!resp.ok) {
+    return JSON.stringify({
+      ok: false,
+      status: resp.status,
+      error: data?.error || `HTTP ${resp.status}`,
+      tool: toolName,
+      hint: toolName === "email_enviar"
+        ? "No marques como enviado. Verificá grant canales write + Gmail/SMTP configurado."
+        : "Omni puede requerir DATABASE_URL + grant canales read.",
+    });
+  }
+  return JSON.stringify({ ok: true, ...data, tool: toolName });
 }
 
 /**

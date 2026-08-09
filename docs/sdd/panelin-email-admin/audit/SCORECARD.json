@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-07-23T03:00:00.000Z",
+  "system_slug": "panelin-email-admin",
+  "sdd_path": "docs/sdd/panelin-email-admin/SDD.md",
+  "composite": 92,
+  "min_pass": 90,
+  "pass": true,
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 95,
+      "notes": ["Sections 1–12 present; appendices A/B present"]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 92,
+      "notes": ["C4Context + C4Container Mermaid; actors match SPA/API/Omni/Gmail"]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 90,
+      "notes": ["TARGET + recreation checklist; tool names and files concrete"]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 93,
+      "notes": ["evidence/inventory.md; EMAIL-SOURCE-MAP + blueprint cited"]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 88,
+      "notes": ["Component table + LLM/cost; heuristic classify documented"]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 90,
+      "notes": ["Security HITL, a11y, Sheets 503, observability"]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 94,
+      "notes": ["ADR-PMCA-001..005 with alternatives"]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 90,
+      "notes": ["Version 0.2, risks table, glossary"]
+    }
+  },
+  "method": "sdd-quality-auditor rubric applied post-implementation"
+}
