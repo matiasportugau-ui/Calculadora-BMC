@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-09 (fix — Bugs BX/BY/BZ + BP adjunto autocarga qty):** After #960: **BX** modern default-L=6 + classic real-L same tipo|esp|qty doubled panels; **BY** free-text + classic accessory echo doubled; **BZ** all-integer `L PU Total` (`6 37 222`) → qty=37; **BP** `(?!\d)` decimal PU digit-steal. Also soft-fail adjunto PDF parse throws in `adjuntoInfer`/`agregarStop`. Tests: `adjuntoLineParse.test.js`, `adjuntoInfer.test.js`.
+**2026-08-09 (fix — Bugs BX/BY/CB + BP adjunto autocarga qty):** After #960: **BX** modern default-L=6 + classic real-L same tipo|esp|qty doubled panels; **BY** free-text + classic accessory echo doubled; **CB** all-integer `L PU Total` (`6 37 222`) → qty=37; **BP** `(?!\d)` decimal PU digit-steal. Also soft-fail adjunto PDF parse throws in `adjuntoInfer`/`agregarStop`. Tests: `adjuntoLineParse.test.js`, `adjuntoInfer.test.js`. (Letter **CB** — PEA escalate already uses **BZ**.)
 
 **2026-08-09 (feat — PEA M0–M4 SHIPPED · PR #967 → main):** Squash-merged [`#967`](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/967) (`a723f666`). Runtime `server/lib/pea/*`, migrations 001–003, `/api/pea/*`, `/hub/pea`, `pea_explain_gap` (58 tools), `test:pea` in gate + CI (`pea_tests`, `pea_staging_config`, env drift fix). SDD kit `docs/sdd/panelin-evolution-architect/` + live campaign goal prompts phase 0–7. **All `PEA_*` default OFF.** Next: `/goal` with `goal-prompt-pea-live-orchestrator.md` → phase 1 live-probe (human).
 

@@ -170,7 +170,7 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
   const withDec = parsePanelLineHeuristic("Isodec EPS 100 mm (Cubierta) 6 10 37,00");
   assert.ok(withDec);
   assert.equal(withDec.cantidad, 10);
-  ok("classic all-integer L PU Total → null (Bug BZ)");
+  ok("classic all-integer L PU Total → null (Bug CB)");
 }
 
 {
