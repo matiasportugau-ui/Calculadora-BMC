@@ -220,6 +220,9 @@ export default function createPeaRouter(config, logger) {
         reason: req.body?.reason || null,
       });
       if (result.error === "not_found") return res.status(404).json({ ok: false, error: "not_found" });
+      if (result.error === "invalid_status") {
+        return res.status(409).json({ ok: false, error: "invalid_status", status: result.status });
+      }
       res.json(result);
     }),
   );
@@ -239,6 +242,9 @@ export default function createPeaRouter(config, logger) {
           note: req.body?.note || null,
         });
         if (result.error === "not_found") return res.status(404).json({ ok: false, error: "not_found" });
+        if (result.error === "invalid_status") {
+          return res.status(409).json({ ok: false, error: "invalid_status", status: result.status });
+        }
         res.status(201).json(result);
       } catch (e) {
         if (e.code === "grant_level_too_low") {

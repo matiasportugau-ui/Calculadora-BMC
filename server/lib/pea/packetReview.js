@@ -113,12 +113,40 @@ export async function acceptPeaPacket(db, config, input) {
 }
 
 /**
+ * Packet statuses that may still be rejected (Bug BT / #972).
+ * Accepted/rejected/superseded must not be clobbered → gap ignored.
+ */
+export const REJECTABLE_PACKET_STATUSES = new Set([
+  "draft",
+  "critic_pending",
+  "critic_failed",
+  "ready_for_review",
+]);
+
+/**
+ * Packet statuses that may be escalated to L3 (Bug BU).
+ * Escalating an accepted/rejected packet would flip a resolved gap to blocked
+ * and mint a spurious L3 grant.
+ */
+export const ESCALATABLE_PACKET_STATUSES = new Set([
+  "draft",
+  "critic_pending",
+  "critic_failed",
+  "ready_for_review",
+]);
+
+/**
  * @param {import('pg').Pool|import('pg').PoolClient} db
  * @param {{ packetId: string, actorId: string, reason?: string }} input
  */
 export async function rejectPeaPacket(db, input) {
   const row = await loadPacketWithGap(db, input.packetId);
   if (!row) return { error: "not_found" };
+  // Do not allow reject to clobber accepted/rejected/superseded packets
+  // (would flip a resolved gap back to ignored — data corruption).
+  if (!REJECTABLE_PACKET_STATUSES.has(row.status)) {
+    return { error: "invalid_status", status: row.status };
+  }
 
   await db.query(
     `UPDATE pea.evolution_packets SET status = 'rejected', updated_at = now() WHERE id = $1`,
@@ -148,6 +176,10 @@ export async function rejectPeaPacket(db, input) {
 export async function escalatePeaPacket(db, config, input) {
   const row = await loadPacketWithGap(db, input.packetId);
   if (!row) return { error: "not_found" };
+  // Bug BU: never escalate terminal/resolved packets (would set gap=blocked + new grant).
+  if (!ESCALATABLE_PACKET_STATUSES.has(row.status)) {
+    return { error: "invalid_status", status: row.status };
+  }
 
   const grant = await createPeaGrant(db, config, {
     maxLevel: input.maxLevel ?? 3,

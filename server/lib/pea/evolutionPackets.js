@@ -52,11 +52,28 @@ export function buildMockArchitectPacket(gap, laneInfo, exploreNotes) {
   };
 }
 
+/** Packet statuses that must not be overwritten by version=1 UPSERT (Bug BV). */
+export const IMMUTABLE_PACKET_STATUSES = new Set(["accepted", "rejected", "superseded"]);
+
 /**
  * @param {import('pg').Pool} pool
  * @param {object} packet
  */
 export async function saveEvolutionPacket(pool, packet) {
+  // Bug BV defense-in-depth: never clobber an accepted/rejected v1 packet via ON CONFLICT.
+  const existing = await pool.query(
+    `SELECT id, status FROM pea.evolution_packets WHERE gap_id = $1 AND version = 1`,
+    [packet.gap_id],
+  );
+  const prior = existing.rows[0];
+  if (prior && IMMUTABLE_PACKET_STATUSES.has(prior.status)) {
+    const err = new Error("packet_immutable");
+    err.code = "packet_immutable";
+    err.status = prior.status;
+    err.packetId = prior.id;
+    throw err;
+  }
+
   const { rows } = await pool.query(
     `INSERT INTO pea.evolution_packets
        (gap_id, version, status, primary_lane, secondary_lanes, diagnosis,
