@@ -145,8 +145,9 @@ export function parsePanelLineHeuristic(line) {
   if (!tipo || !isTipoValid(tipo)) return null;
 
   // Qty phrases first so "10 paneles" is never mistaken for length (m).
+  // Accept: "cant 12", "cant: 12", "bultos 24", "12 paneles", "12 bultos"
   const qtyExplicit =
-    raw.match(/\b(?:cant\.?|cantidad|qty|bultos?)\s*[:=]\s*(\d{1,5})\b/i) ||
+    raw.match(/\b(?:cant\.?|cantidad|qty|bultos?)\s*[:=]?\s*(\d{1,5})\b/i) ||
     raw.match(/\b(\d{1,5})\s*(?:bultos?|uds\.?|unidades?|planchas?|paneles?|piezas?)\b/i);
   const qtyFromPhrase = qtyExplicit ? Math.max(1, parseInt(qtyExplicit[1], 10)) : null;
 
