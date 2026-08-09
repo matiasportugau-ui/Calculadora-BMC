@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-09 (fix — Bug BU classic integer PU qty + adjunto parse throw):** After #960, `parseClassicTableLenQty` treated all-integer `L PU Total` tails (`6 37 222`) as qty=37 (residual beyond Bug BP decimal digit-steal). Fail-closed when rest is integer-only with no decimal prices; also `(?!\d)` for BP. `adjuntoInfer` + `agregarStop` swallow PDF parse throws so autocarga cannot abort stop add. Tests: `adjuntoLineParse.test.js` (BP+BU), `adjuntoInfer.test.js` proxy-parse soft-fail.
+**2026-08-09 (fix — Bug BX classic integer PU qty + adjunto parse throw):** After #960, `parseClassicTableLenQty` treated all-integer `L PU Total` tails (`6 37 222`) as qty=37 (residual beyond Bug BP decimal digit-steal). Fail-closed when rest is integer-only with no decimal prices; also `(?!\d)` for BP. `adjuntoInfer` + `agregarStop` swallow PDF parse throws so autocarga cannot abort stop add. Tests: `adjuntoLineParse.test.js` (BP+BX), `adjuntoInfer.test.js` proxy-parse soft-fail.
 
 **2026-08-09 (feat — PEA M0–M4 SHIPPED · PR #967 → main):** Squash-merged [`#967`](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/967) (`a723f666`). Runtime `server/lib/pea/*`, migrations 001–003, `/api/pea/*`, `/hub/pea`, `pea_explain_gap` (58 tools), `test:pea` in gate + CI (`pea_tests`, `pea_staging_config`, env drift fix). SDD kit `docs/sdd/panelin-evolution-architect/` + live campaign goal prompts phase 0–7. **All `PEA_*` default OFF.** Next: `/goal` with `goal-prompt-pea-live-orchestrator.md` → phase 1 live-probe (human).
 
