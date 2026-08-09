@@ -160,19 +160,60 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
 }
 
 {
-  // Bug BX — all-integer L PU Total (no decimals) must not treat PU as qty.
-  // Residual after BP digit-prefix fix: `6 37 222` still matched qty=37.
+  // Bug BZ — all-integer L PU Total (no decimals) must not treat PU as qty.
   const intPu = parsePanelLineHeuristic(
     "Isodec EPS 100 mm (Cubierta)                              6         37                 222",
   );
   assert.equal(intPu, null, `expected null, got ${JSON.stringify(intPu)}`);
   const intPu2 = parsePanelLineHeuristic("Isodec EPS 100 mm (Cubierta) 6 45 270");
   assert.equal(intPu2, null, `expected null, got ${JSON.stringify(intPu2)}`);
-  // Still accept L + qty when a decimal price follows.
   const withDec = parsePanelLineHeuristic("Isodec EPS 100 mm (Cubierta) 6 10 37,00");
   assert.ok(withDec);
   assert.equal(withDec.cantidad, 10);
-  ok("classic all-integer L PU Total → null (Bug BX)");
+  ok("classic all-integer L PU Total → null (Bug BZ)");
+}
+
+{
+  // Bug BQ — short+priced same identity must not 2×.
+  const echo = `ISODEC EPS 100mm · 10 paneles
+ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15 4,677.93`;
+  const r = parseLogisticaFromAdjuntoText(echo);
+  assert.equal(r.paneles.length, 1, JSON.stringify(r.paneles));
+  assert.equal(r.paneles[0].cantidad, 10);
+  ok("dedupe short+priced product echo (Bug BQ)");
+}
+
+{
+  // Bug BX — modern default L=6 + classic real L (same tipo|esp|qty) → one line, classic L.
+  const hybrid = `ISODEC EPS 100mm · 10 paneles
+Isodec EPS 100 mm (Cubierta)                              4,00        10                  37,00`;
+  const r = parseLogisticaFromAdjuntoText(hybrid);
+  assert.equal(r.paneles.length, 1, JSON.stringify(r.paneles));
+  assert.equal(r.paneles[0].cantidad, 10);
+  assert.equal(r.paneles[0].longitud, 4);
+  // Reverse order (classic then modern)
+  const rev = parseLogisticaFromAdjuntoText(
+    `Isodec EPS 100 mm (Cubierta) 4,00 10 37,00\nISODEC EPS 100mm · 10 paneles`,
+  );
+  assert.equal(rev.paneles.length, 1, JSON.stringify(rev.paneles));
+  assert.equal(rev.paneles[0].longitud, 4);
+  // Distinct explicit lengths with same qty still kept
+  const distinct = `Isopanel EPS 100 mm (Fachada) 2,50 11 37,00
+Isopanel EPS 100 mm (Fachada) 2,30 5 37,00`;
+  const d = parseLogisticaFromAdjuntoText(distinct);
+  assert.equal(d.paneles.length, 2, JSON.stringify(d.paneles));
+  ok("modern default-L + classic real-L merge (Bug BX)");
+}
+
+{
+  // Bug BY — free-text lead qty + classic table echo of same accessory.
+  const by = parseLogisticaFromAdjuntoText(
+    `2 Gotero Frontal Isodec/Isopanel 200mm
+Gotero Frontal Isodec 200 mm   3,00   2   7,15`,
+  );
+  assert.equal(by.accesorios.length, 1, JSON.stringify(by.accesorios));
+  assert.equal(by.accesorios[0].cantidad, 2);
+  ok("dedupe accessory free-text + classic echo (Bug BY)");
 }
 
 console.log(`\n${passed} passed`);

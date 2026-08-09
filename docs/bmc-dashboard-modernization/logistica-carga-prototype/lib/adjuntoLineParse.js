@@ -117,7 +117,7 @@ function parseClassicTableLenQty(afterMm) {
     if (!Number.isFinite(len) || len < 1.5 || len > 14.5) continue;
     if (!Number.isFinite(qty) || qty < 1 || qty > 200) continue;
     if (qty >= 100 && len >= 10) continue;
-    // Bug BX: all-integer tail `L PU Total` (no decimal prices) — e.g. `6 37 222`.
+    // Bug BZ: all-integer tail `L PU Total` (no decimal prices) — e.g. `6 37 222`.
     // Without decimals we cannot tell qty from PU; fail closed (distinct from BP decimal digit steal).
     const rest = s.slice(m.index + m[0].length).trim();
     if (rest) {
@@ -188,6 +188,7 @@ export function parsePanelLineHeuristic(line) {
   let longitud;
   let cantidad;
 
+  let lenDefaulted = false;
   if (qtyFromPhrase != null || qtyLead != null) {
     // Modern BMC PDF: "ISODEC 100mm · 10 paneles" — default L unless explicit meters.
     cantidad = qtyLead != null ? qtyLead : qtyFromPhrase;
@@ -195,9 +196,12 @@ export function parsePanelLineHeuristic(line) {
       raw.match(/\b(?:largo|longitud)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:m(?![mM²2]))?(?!\w)/i) ||
       raw.match(/\b(\d+(?:[.,]\d+)?)\s*m(?:ts?|etros?)?(?![mM²2])/i) ||
       raw.match(/[×x]\s*(\d+(?:[.,]\d+)?)\s*m(?![mM²2])/i);
-    longitud = explicitLen
-      ? snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")))
-      : 6;
+    if (explicitLen) {
+      longitud = snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")));
+    } else {
+      longitud = 6;
+      lenDefaulted = true;
+    }
   } else if (classic) {
     longitud = classic.longitud;
     cantidad = classic.cantidad;
@@ -211,6 +215,8 @@ export function parsePanelLineHeuristic(line) {
     espesor: ESP_SET.has(espesor) ? snapEsp(espesor) : espesor,
     longitud,
     cantidad: Math.max(1, cantidad),
+    // Internal: modern phrase path defaulted L=6 (Bug BX merge with classic real L).
+    lenDefaulted,
   };
 }
 
@@ -323,27 +329,73 @@ export function parseLogisticaFromAdjuntoText(text) {
   }
 
   const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  // Dedupe by cargo identity (not raw line): short+priced echo (Bug BQ) and
+  // modern default-L=6 + classic real-L same tipo|esp|qty (Bug BX).
+  // Distinct explicit lengths with same qty (e.g. 10×6m + 10×4m) are kept.
   const seenPanel = new Set();
+  const defaultedSoftIdx = new Map(); // tipo|esp|qty → index of lenDefaulted row
   for (const line of lines) {
     const ph = parsePanelLineHeuristic(line);
     if (ph) {
-      const key = `${ph.tipo}|${ph.espesor}|${ph.longitud}|${ph.cantidad}|${line}`;
-      if (!seenPanel.has(key)) {
-        seenPanel.add(key);
-        paneles.push(ph);
+      const hardKey = `${ph.tipo}|${ph.espesor}|${ph.longitud}|${ph.cantidad}`;
+      const softKey = `${ph.tipo}|${ph.espesor}|${ph.cantidad}`;
+      if (seenPanel.has(hardKey)) continue;
+
+      if (ph.lenDefaulted) {
+        // Drop if an explicit-L row with same soft identity already exists (or arrives later — see below).
+        const hasExplicit = paneles.some(
+          (p) =>
+            !p.lenDefaulted &&
+            p.tipo === ph.tipo &&
+            p.espesor === ph.espesor &&
+            p.cantidad === ph.cantidad,
+        );
+        if (hasExplicit || defaultedSoftIdx.has(softKey)) continue;
+        defaultedSoftIdx.set(softKey, paneles.length);
+      } else if (defaultedSoftIdx.has(softKey)) {
+        // Bug BX: replace modern default-L=6 echo with classic/explicit L.
+        const di = defaultedSoftIdx.get(softKey);
+        const prior = paneles[di];
+        seenPanel.delete(`${prior.tipo}|${prior.espesor}|${prior.longitud}|${prior.cantidad}`);
+        paneles[di] = ph;
+        seenPanel.add(hardKey);
+        defaultedSoftIdx.delete(softKey);
+        continue;
       }
+
+      seenPanel.add(hardKey);
+      paneles.push(ph);
       continue;
     }
     const acc = parseAccesorioLine(line);
     if (acc) accesorios.push(acc);
   }
 
-  if (!paneles.length && !accesorios.length) {
+  // Bug BY: free-text lead qty + classic table echo of same accessory kind|qty.
+  const seenAcc = new Set();
+  const dedupedAcc = [];
+  for (const acc of accesorios) {
+    const kindM = String(acc.descr || "").match(ACC_WORD_RE);
+    const kind = kindM ? String(kindM[1]).toLowerCase().replace(/es$/i, "") : "";
+    const key = kind
+      ? `${kind}|${acc.cantidad}`
+      : `${String(acc.descr || "")
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .trim()}|${acc.cantidad}`;
+    if (seenAcc.has(key)) continue;
+    seenAcc.add(key);
+    dedupedAcc.push(acc);
+  }
+
+  const cleanPaneles = paneles.map(({ lenDefaulted: _ld, ...rest }) => rest);
+
+  if (!cleanPaneles.length && !dedupedAcc.length) {
     warnings.push(
       "No se detectaron líneas con tipo de panel (ISODEC, ISOPANEL, …) ni accesorios con cantidad. Copiá la tabla o las líneas de producto desde el PDF."
     );
   }
-  return { paneles, accesorios, warnings };
+  return { paneles: cleanPaneles, accesorios: dedupedAcc, warnings };
 }
 
 /**
