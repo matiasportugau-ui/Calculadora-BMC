@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-09 (fix — Bug BK irregularSession cut lost):** Dual-plant `irregularSession` patches used absolute `setState` from a stale closure; multi-set in one pointer event (cut draft / complete / clear) kept only the last write → cut never stuck, modo irregular dual broken. Fix: `mergeIrregularSessionPatch` + functional updater in `RoofPreview`; atomic patches for cut click / clearCut. Tests: BK goldens in `irregularRoofLayout.test.js`.
+
 **2026-08-08 (feat — irregular v1.2 dual view + factory list):** Shared `irregularSession` across left/right `RoofPreview`. **Left** `irregularDisplayMode=factory`: franjas T-xx + pedido escalonado (`buildFactoryOrderList` + resumen N×L). **Right** `final_plane`: silueta lisa del techo post-corte (sin escalera). PDF simple: resumen fábrica + tabla paneles. Residual: remnant tray, accesorios sobre borde de corte, dos_aguas real irregular geometry.
 
 **2026-08-07 (feat — irregular roof v1.1 PDF + multi-zone):** PDF **simple** lists **T-xx × L_order** + corte-en-obra when schedule active (`buildQuotationModel.irregularSchedule` + `irregularSchedulesForPdf`). Multi-zone: `irregularLayoutByGi` from RoofPreview selected zone → `scenarioOrchestrator` per-gi (not only zone 0). Prod QA checklist: `VERIFY-irregular-roof-prod-2026-08-07.md`. Residual: remnant tray, dos_aguas real irregular geometry, other PDF templates.
