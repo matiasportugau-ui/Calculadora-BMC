@@ -44,6 +44,27 @@ export function mergeIrregularSessionPatch(prev, patch = {}) {
   };
 }
 
+/**
+ * Shared dual-plant `layoutOverride` is zone-tagged via `layout.zoneId` (`z${gi}`).
+ * Only honor the override when it belongs to the plant's selected zone — otherwise
+ * a sibling with divergent selectedGi would display/publish foreign-zone manual
+ * L_pedido strips into the wrong `irregularLayoutByGi` key (Bug BM).
+ *
+ * Untagged overrides are refused (safe default for dual-plant).
+ *
+ * @param {object|null|undefined} override
+ * @param {number|string|null|undefined} zoneGi
+ * @returns {object|null}
+ */
+export function irregularOverrideForZoneGi(override, zoneGi) {
+  if (!override?.strips?.length) return null;
+  if (zoneGi == null || zoneGi === "" || !Number.isFinite(Number(zoneGi))) return null;
+  const zid = override.zoneId;
+  if (zid == null || zid === "") return null;
+  if (String(zid) !== `z${Number(zoneGi)}`) return null;
+  return override;
+}
+
 export function stepCeil(v, step) {
   if (!(step > 0)) return v;
   if (!(v > 0)) return 0;
