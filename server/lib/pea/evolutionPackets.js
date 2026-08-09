@@ -52,7 +52,7 @@ export function buildMockArchitectPacket(gap, laneInfo, exploreNotes) {
   };
 }
 
-/** Packet statuses that must not be overwritten by version=1 UPSERT (Bug BV). */
+/** Packet statuses that must not be overwritten by version=1 UPSERT (Bug CA). */
 export const IMMUTABLE_PACKET_STATUSES = new Set(["accepted", "rejected", "superseded"]);
 
 /**
@@ -60,7 +60,7 @@ export const IMMUTABLE_PACKET_STATUSES = new Set(["accepted", "rejected", "super
  * @param {object} packet
  */
 export async function saveEvolutionPacket(pool, packet) {
-  // Bug BV defense-in-depth: never clobber an accepted/rejected v1 packet via ON CONFLICT.
+  // Bug CA defense-in-depth: never clobber an accepted/rejected v1 packet via ON CONFLICT.
   const existing = await pool.query(
     `SELECT id, status FROM pea.evolution_packets WHERE gap_id = $1 AND version = 1`,
     [packet.gap_id],

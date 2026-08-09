@@ -124,7 +124,7 @@ export const REJECTABLE_PACKET_STATUSES = new Set([
 ]);
 
 /**
- * Packet statuses that may be escalated to L3 (Bug BU).
+ * Packet statuses that may be escalated to L3 (Bug BZ).
  * Escalating an accepted/rejected packet would flip a resolved gap to blocked
  * and mint a spurious L3 grant.
  */
@@ -176,7 +176,7 @@ export async function rejectPeaPacket(db, input) {
 export async function escalatePeaPacket(db, config, input) {
   const row = await loadPacketWithGap(db, input.packetId);
   if (!row) return { error: "not_found" };
-  // Bug BU: never escalate terminal/resolved packets (would set gap=blocked + new grant).
+  // Bug BZ: never escalate terminal/resolved packets (would set gap=blocked + new grant).
   if (!ESCALATABLE_PACKET_STATUSES.has(row.status)) {
     return { error: "invalid_status", status: row.status };
   }

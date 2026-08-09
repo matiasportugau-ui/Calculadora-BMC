@@ -34,7 +34,7 @@ export async function runAnalyzeGapJob(pool, config, job, logger) {
     throw new Error("gap_not_found");
   }
 
-  // Bug BV: never re-analyze terminal gaps (even force diagnose) — saveEvolutionPacket
+  // Bug CA: never re-analyze terminal gaps (even force diagnose) — saveEvolutionPacket
   // UPSERTs version=1 and would destroy accepted packets + flip gap off resolved.
   if (TERMINAL_GAP_STATUSES.has(gap.status)) {
     await pool.query(

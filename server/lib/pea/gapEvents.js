@@ -10,7 +10,7 @@ import { insertOutboxEvent, enqueuePeaJob } from "./outbox.js";
 
 const SEVERITY_WEIGHT = { low: 1, medium: 2, high: 5, critical: 10 };
 
-/** Gap statuses that must not be reopened by analyze / auto-diagnose (Bug BV). */
+/** Gap statuses that must not be reopened by analyze / auto-diagnose (Bug CA). */
 export const TERMINAL_GAP_STATUSES = new Set(["resolved", "ignored"]);
 
 /**
@@ -121,7 +121,7 @@ export async function recordGapSignal(pool, config, signal) {
     });
 
     let jobId = null;
-    // Bug BV: do not auto-enqueue analyze on terminal gaps (resolved/ignored).
+    // Bug CA: do not auto-enqueue analyze on terminal gaps (resolved/ignored).
     const shouldAnalyze =
       config.peaAutoDiagnose &&
       !TERMINAL_GAP_STATUSES.has(gap.status) &&

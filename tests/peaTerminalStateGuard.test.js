@@ -1,7 +1,7 @@
 /**
- * PEA terminal-state guards — Bugs BU / BV (#967).
- * - Escalate must not clobber accepted → gap blocked + L3 grant (BU)
- * - Re-analyze must not destroy accepted packets / flip resolved gaps (BV)
+ * PEA terminal-state guards — Bugs BZ / CA (#967).
+ * - Escalate must not clobber accepted → gap blocked + L3 grant (BZ)
+ * - Re-analyze must not destroy accepted packets / flip resolved gaps (CA)
  * Run: node tests/peaTerminalStateGuard.test.js
  */
 import {
@@ -66,11 +66,11 @@ async function testEscalateAcceptedRefused() {
     packetId: "pkt-1",
     actorId: "admin@test",
   });
-  assert(result.error === "invalid_status", "BU escalate accepted → invalid_status");
-  assert(result.status === "accepted", "BU escalate preserves accepted status");
+  assert(result.error === "invalid_status", "BZ escalate accepted → invalid_status");
+  assert(result.status === "accepted", "BZ escalate preserves accepted status");
   assert(
     !calls.some((c) => /UPDATE pea\.gaps SET status = 'blocked'/i.test(c.sql)),
-    "BU escalate does not set gap blocked",
+    "BZ escalate does not set gap blocked",
   );
 }
 
@@ -116,11 +116,11 @@ async function testAnalyzeTerminalSkipped() {
     { peaArchitectMock: true, peaAutoMinOccurrences: 1 },
     { id: "job-1", gap_id: "gap-1", input_json: { force: true } },
   );
-  assert(out.skipped === true, "BV analyze skips terminal gap");
-  assert(out.reason === "terminal_gap_status", "BV analyze skip reason");
+  assert(out.skipped === true, "CA analyze skips terminal gap");
+  assert(out.reason === "terminal_gap_status", "CA analyze skip reason");
   assert(
     String(updates[0] || "").includes("terminal_gap_status"),
-    "BV job output records terminal skip",
+    "CA job output records terminal skip",
   );
 }
 
@@ -144,8 +144,8 @@ async function testSaveImmutablePacket() {
   } catch (e) {
     threw = e;
   }
-  assert(threw?.code === "packet_immutable", "BV saveEvolutionPacket refuses accepted overwrite");
-  assert(threw?.status === "accepted", "BV immutable status surfaced");
+  assert(threw?.code === "packet_immutable", "CA saveEvolutionPacket refuses accepted overwrite");
+  assert(threw?.status === "accepted", "CA immutable status surfaced");
 }
 
 await testEscalateAcceptedRefused();
