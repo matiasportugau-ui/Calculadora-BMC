@@ -141,4 +141,23 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
   ok("UAM-style perfiles as accessories");
 }
 
+{
+  // Bug BO — after #960 classic parser: missing Cantidad must not steal first digit of PU.
+  // Trigger: Largo + Precio (37,00) without qty column → previously qty=3 from "3" in "37".
+  const missingQty = parsePanelLineHeuristic(
+    "Isopanel EPS 100 mm (Fachada)                             2,50                  37,00              1.159,95",
+  );
+  assert.equal(
+    missingQty,
+    null,
+    `expected null (fail closed), got ${JSON.stringify(missingQty)}`,
+  );
+  const stillOk = parsePanelLineHeuristic(
+    "Isopanel EPS 100 mm (Fachada)                             2,50        11                  37,00              1.159,95",
+  );
+  assert.ok(stillOk);
+  assert.equal(stillOk.cantidad, 11);
+  ok("classic Largo+PU without Cantidad → null (no price-digit qty)");
+}
+
 console.log(`\n${passed} passed`);
