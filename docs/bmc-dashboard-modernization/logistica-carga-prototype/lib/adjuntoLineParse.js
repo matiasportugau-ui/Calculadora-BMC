@@ -120,6 +120,33 @@ function parseClassicTableLenQty(afterMm) {
   return null;
 }
 
+/** Split before each ISO* product token (pdf.js often omits hasEOL between classic table rows). */
+const PANEL_TIPO_SPLIT_RE =
+  /(?=\b(?:ISOFRIG(?:\s|_)?PIR|ISOFRIG|ISOWALL|ISOROOF|ISOPANEL|ISODEC)\b)/i;
+
+/**
+ * When one text line holds several classic/modern panel rows, return each parseable segment.
+ * Returns [] when the line is not a clear multi-product row (callers keep the single-line path).
+ * Bug CE: collapsed pdf.js / paste lines were silently truncated to the first Largo+Cantidad pair.
+ * @param {string} line
+ * @returns {Array<{ tipo: string, espesor: number, longitud: number, cantidad: number }>}
+ */
+export function parsePanelRowsFromPossiblyCollapsedLine(line) {
+  const raw = String(line || "").trim();
+  if (!raw) return [];
+  const parts = raw
+    .split(PANEL_TIPO_SPLIT_RE)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return [];
+  const panels = [];
+  for (const part of parts) {
+    const ph = parsePanelLineHeuristic(part);
+    if (ph) panels.push(ph);
+  }
+  return panels;
+}
+
 /**
  * @param {string} line
  * @returns {{ tipo: string, espesor: number, longitud: number, cantidad: number } | null}
@@ -128,6 +155,7 @@ export function parsePanelLineHeuristic(line) {
   let raw = String(line || "").trim();
   if (!raw || /^https?:\/\//i.test(raw)) return null;
   // Scope blurbs ("Alcance: … 2 Zonas") are not product lines — prefer "N paneles" rows.
+  // Collapsed Alcance+product blobs are recovered by parsePanelRowsFromPossiblyCollapsedLine (Bug CE).
   if (/^\s*alcance\s*:/i.test(raw) || /\b\d+\s*zonas?\b/i.test(raw)) return null;
   // Title-only lines without qty
   if (/^\s*cotizaci/i.test(raw)) return null;
@@ -376,14 +404,35 @@ export function parseLogisticaFromAdjuntoText(text) {
 
   const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const seenPanel = new Set();
+  const pushPanel = (ph, lineKey) => {
+    const key = `${ph.tipo}|${ph.espesor}|${ph.longitud}|${ph.cantidad}|${lineKey}`;
+    if (!seenPanel.has(key)) {
+      seenPanel.add(key);
+      paneles.push(ph);
+    }
+  };
   for (const line of lines) {
+    // Bug CE: pdf.js / paste may put several classic rows on one line (no hasEOL).
+    // Split on ISO* boundaries and keep every parseable panel row.
+    const collapsed = parsePanelRowsFromPossiblyCollapsedLine(line);
+    if (collapsed.length >= 1) {
+      for (const ph of collapsed) {
+        pushPanel(ph, `${ph.tipo}|${ph.espesor}|${ph.longitud}|${ph.cantidad}`);
+      }
+      const accParts = line
+        .split(PANEL_TIPO_SPLIT_RE)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      for (const part of accParts) {
+        if (parsePanelLineHeuristic(part)) continue;
+        const acc = parseAccesorioLine(part);
+        if (acc) accesorios.push(acc);
+      }
+      continue;
+    }
     const ph = parsePanelLineHeuristic(line);
     if (ph) {
-      const key = `${ph.tipo}|${ph.espesor}|${ph.longitud}|${ph.cantidad}|${line}`;
-      if (!seenPanel.has(key)) {
-        seenPanel.add(key);
-        paneles.push(ph);
-      }
+      pushPanel(ph, line);
       continue;
     }
     const acc = parseAccesorioLine(line);
