@@ -316,6 +316,26 @@ describe("upsertQuote", () => {
     assert.equal(Number(row.total_usd), 999.99);
     assert.equal(Number(row.total_uyu), 41000);
   });
+
+  it("extracts totals from calc.js resumen shape (cotizar/pdf upsert)", async () => {
+    await upsertQuote({
+      userId: "u1",
+      clientQuoteId: "cq-resumen",
+      payload: { resumen: { total_usd: 1220.5, subtotal_usd: 1000, iva_usd: 220.5 } },
+    });
+    const row = pool._tables.quotes[0];
+    assert.equal(Number(row.total_usd), 1220.5);
+  });
+
+  it("extracts totals from UI totals.totalFinal shape", async () => {
+    await upsertQuote({
+      userId: "u2",
+      clientQuoteId: "cq-totalFinal",
+      payload: { totals: { totalFinal: 850.25 } },
+    });
+    const row = pool._tables.quotes[0];
+    assert.equal(Number(row.total_usd), 850.25);
+  });
 });
 
 describe("listMyQuotes", () => {

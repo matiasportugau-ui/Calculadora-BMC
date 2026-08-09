@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-09 (test — coverage automation re-land #944 + wire #953/#960 orphans):** Offline route DI for `createRepartosRouter` / `createEnviosRouter` (+ adjunto `fetchImpl`); `DEFAULT_CORS_ORIGINS` export; `quoteStore.pickTotals` reads `resumen.total_usd` / `totals.totalFinal`. Wired orphan suites: adjuntoLineParse (#960), cspAdjuntoConnectSrc (#953), freeDrag*/stack*/yard/loadWarnings/reparto*, quote-store, googleDriveScopeError, identity-me, finanzas-recovery, envios/repartos/workspace routes. Supersedes open #944/#912 for these pins.
+
 **2026-08-09 (fix — Bug BK irregularSession cut lost):** Dual-plant `irregularSession` patches used absolute `setState` from a stale closure; multi-set in one pointer event (cut draft / complete / clear) kept only the last write → cut never stuck, modo irregular dual broken. Fix: `mergeIrregularSessionPatch` + functional updater in `RoofPreview`; atomic patches for cut click / clearCut. Tests: BK goldens in `irregularRoofLayout.test.js`.
 
 **2026-08-08 (feat — irregular v1.2 dual view + factory list):** Shared `irregularSession` across left/right `RoofPreview`. **Left** `irregularDisplayMode=factory`: franjas T-xx + pedido escalonado (`buildFactoryOrderList` + resumen N×L). **Right** `final_plane`: silueta lisa del techo post-corte (sin escalera). PDF simple: resumen fábrica + tabla paneles. Residual: remnant tray, accesorios sobre borde de corte, dos_aguas real irregular geometry.
