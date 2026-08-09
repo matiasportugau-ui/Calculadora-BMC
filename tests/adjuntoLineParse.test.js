@@ -141,4 +141,52 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
   ok("UAM-style perfiles as accessories");
 }
 
+{
+  // Bug BX — modern summary invents L=6; classic table has real L=4 → must not bill 20.
+  const bx = parseLogisticaFromAdjuntoText(
+    `ISODEC EPS 100mm · 10 paneles
+Isodec EPS 100mm 4,00 10 37,00`,
+  );
+  assert.equal(bx.paneles.length, 1, `expected 1 panel after collapse, got ${JSON.stringify(bx.paneles)}`);
+  assert.equal(bx.paneles[0].cantidad, 10);
+  assert.equal(bx.paneles[0].longitud, 4, "prefer classic explicit L over default 6");
+  assert.equal(
+    bx.paneles.reduce((s, p) => s + p.cantidad, 0),
+    10,
+    `BX total qty must be 10, got ${JSON.stringify(bx.paneles)}`,
+  );
+  ok("Bug BX: modern default-L + classic real-L → single panel qty");
+}
+
+{
+  // Distinct explicit lengths with same qty must both survive (not BX).
+  const twoL = parseLogisticaFromAdjuntoText(
+    `Isopanel EPS 100 mm (Fachada) 4,00 11 37,00
+Isopanel EPS 100 mm (Fachada) 6,00 11 37,00`,
+  );
+  assert.equal(twoL.paneles.length, 2, JSON.stringify(twoL.paneles));
+  assert.equal(
+    twoL.paneles.reduce((s, p) => s + p.cantidad, 0),
+    22,
+  );
+  ok("two explicit lengths same qty kept (not collapsed)");
+}
+
+{
+  // Bug BY — ENCARGO free-text + classic priced echo → qty 2 not 4.
+  const by = parseLogisticaFromAdjuntoText(
+    `2 Gotero Frontal Isodec/Isopanel 200mm
+Perf. Ch. Gotero Frontal 100mm 3,03 2 5,30`,
+  );
+  const goteros = by.accesorios.filter((a) => /gotero/i.test(a.descr));
+  assert.equal(goteros.length, 1, `expected 1 gotero line, got ${JSON.stringify(by.accesorios)}`);
+  assert.equal(goteros[0].cantidad, 2);
+  assert.equal(
+    by.accesorios.reduce((s, a) => s + a.cantidad, 0),
+    2,
+    `BY total acc qty must be 2, got ${JSON.stringify(by.accesorios)}`,
+  );
+  ok("Bug BY: accessory free-text + classic echo → single qty");
+}
+
 console.log(`\n${passed} passed`);

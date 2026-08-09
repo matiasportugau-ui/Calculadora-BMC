@@ -177,6 +177,7 @@ export function parsePanelLineHeuristic(line) {
   let longitud;
   let cantidad;
 
+  let longitudDefaulted = false;
   if (qtyFromPhrase != null || qtyLead != null) {
     // Modern BMC PDF: "ISODEC 100mm · 10 paneles" — default L unless explicit meters.
     cantidad = qtyLead != null ? qtyLead : qtyFromPhrase;
@@ -184,9 +185,12 @@ export function parsePanelLineHeuristic(line) {
       raw.match(/\b(?:largo|longitud)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:m(?![mM²2]))?(?!\w)/i) ||
       raw.match(/\b(\d+(?:[.,]\d+)?)\s*m(?:ts?|etros?)?(?![mM²2])/i) ||
       raw.match(/[×x]\s*(\d+(?:[.,]\d+)?)\s*m(?![mM²2])/i);
-    longitud = explicitLen
-      ? snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")))
-      : 6;
+    if (explicitLen) {
+      longitud = snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")));
+    } else {
+      longitud = 6;
+      longitudDefaulted = true;
+    }
   } else if (classic) {
     longitud = classic.longitud;
     cantidad = classic.cantidad;
@@ -200,7 +204,79 @@ export function parsePanelLineHeuristic(line) {
     espesor: ESP_SET.has(espesor) ? snapEsp(espesor) : espesor,
     longitud,
     cantidad: Math.max(1, cantidad),
+    // Internal: modern summary invented L=6 — used to collapse PDF echo vs classic table.
+    ...(longitudDefaulted ? { longitudDefaulted: true } : {}),
   };
+}
+
+/**
+ * Bug BX — modern "N paneles" invents L=6; classic table later has real L.
+ * Prefer explicit length; keep distinct explicit lengths of same tipo/esp/qty.
+ * @param {Array<{ tipo: string, espesor: number, longitud: number, cantidad: number, longitudDefaulted?: boolean }>} paneles
+ */
+function collapseDefaultLenPanelEchoes(paneles) {
+  const out = [];
+  for (const p of paneles) {
+    const rivalIdx = out.findIndex(
+      (e) => e.tipo === p.tipo && e.espesor === p.espesor && e.cantidad === p.cantidad,
+    );
+    if (rivalIdx < 0) {
+      out.push(p);
+      continue;
+    }
+    const e = out[rivalIdx];
+    if (p.longitudDefaulted && !e.longitudDefaulted) continue;
+    if (!p.longitudDefaulted && e.longitudDefaulted) {
+      out[rivalIdx] = p;
+      continue;
+    }
+    if (e.longitud === p.longitud) continue;
+    out.push(p);
+  }
+  return out.map(({ longitudDefaulted: _d, ...rest }) => rest);
+}
+
+/**
+ * Normalize accessory description for ENCARGO free-text ↔ classic table echo (Bug BY).
+ * @param {string} descr
+ */
+function accessoryEchoKey(descr, cantidad) {
+  const n = String(descr || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/^(perf\.?\s*ch\.?|perfil(?:es)?(?:\s+ch\.?)?)\s+/i, "")
+    .replace(/\b\d+(?:[.,]\d+)?\s*mm\b/gi, " ")
+    .replace(/\b(isodec|isopanel|isoroof|isorock)\b/gi, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const tokens = n.split(/\s+/).filter(Boolean);
+  const core = tokens.slice(0, 2).join(" ");
+  return `${core}|${cantidad}`;
+}
+
+/**
+ * Bug BY — free-text "2 Gotero…" + classic "Perf. Ch. Gotero… qty 2" double-count.
+ * Prefer the longer / more specific description when echo keys match.
+ * @param {Array<{ descr: string, cantidad: number }>} accesorios
+ */
+function collapseAccessoryEchoes(accesorios) {
+  const out = [];
+  const byKey = new Map();
+  for (const a of accesorios) {
+    const key = accessoryEchoKey(a.descr, a.cantidad);
+    if (!key.startsWith("|") && byKey.has(key)) {
+      const idx = byKey.get(key);
+      const prev = out[idx];
+      if (String(a.descr || "").length > String(prev.descr || "").length) {
+        out[idx] = a;
+      }
+      continue;
+    }
+    byKey.set(key, out.length);
+    out.push(a);
+  }
+  return out;
 }
 
 function normCell(s) {
@@ -327,12 +403,15 @@ export function parseLogisticaFromAdjuntoText(text) {
     if (acc) accesorios.push(acc);
   }
 
-  if (!paneles.length && !accesorios.length) {
+  const collapsedPaneles = collapseDefaultLenPanelEchoes(paneles);
+  const collapsedAccesorios = collapseAccessoryEchoes(accesorios);
+
+  if (!collapsedPaneles.length && !collapsedAccesorios.length) {
     warnings.push(
       "No se detectaron líneas con tipo de panel (ISODEC, ISOPANEL, …) ni accesorios con cantidad. Copiá la tabla o las líneas de producto desde el PDF."
     );
   }
-  return { paneles, accesorios, warnings };
+  return { paneles: collapsedPaneles, accesorios: collapsedAccesorios, warnings };
 }
 
 /**
