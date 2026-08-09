@@ -141,4 +141,60 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
   ok("UAM-style perfiles as accessories");
 }
 
+{
+  // Bug BX: modern summary defaults L=6; classic row has real L — same tipo|esp|qty must not 2×.
+  const hybrid = `ISODEC EPS 100mm · 10 paneles
+Isodec EPS 100 mm (Cubierta) 4,00 10 37,00`;
+  const r = parseLogisticaFromAdjuntoText(hybrid);
+  assert.equal(r.paneles.length, 1, `expected 1 panel, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(r.paneles[0].cantidad, 10);
+  assert.equal(r.paneles[0].longitud, 4, "prefer classic explicit L over default 6");
+  assert.equal(r.paneles[0].tipo, "ISODEC");
+  assert.equal(r.paneles[0].lengthInferred, undefined, "do not leak parser flag");
+  ok("collapse modern default-L + classic real-L (Bug BX)");
+}
+
+{
+  // Bug BQ residual: same cargo identity (incl. L) via short + priced echo.
+  const echo = `ISODEC EPS 100mm · 10 paneles
+ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15 4,677.93`;
+  const r = parseLogisticaFromAdjuntoText(echo);
+  assert.equal(r.paneles.length, 1, `expected 1 panel, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(r.paneles[0].cantidad, 10);
+  ok("dedupe short+priced same cargo identity (Bug BQ)");
+}
+
+{
+  // Distinct classic lengths still kept after BX soft-merge.
+  const distinct = `Isopanel EPS 100 mm (Fachada) 2,50 11 37,00
+Isopanel EPS 100 mm (Fachada) 2,30 5 37,00`;
+  const r = parseLogisticaFromAdjuntoText(distinct);
+  assert.equal(r.paneles.length, 2, JSON.stringify(r.paneles));
+  assert.equal(
+    r.paneles.reduce((a, p) => a + p.cantidad, 0),
+    16,
+  );
+  ok("distinct classic L/qty rows still kept");
+}
+
+{
+  // Bug BY: free-text accessory + classic priced echo → qty 2 not 4.
+  const accHybrid = `2 Gotero Frontal Isodec/Isopanel 200mm
+Perf. Ch. Gotero Frontal Isodec 200 mm 3,03 2 7,15`;
+  const r = parseLogisticaFromAdjuntoText(accHybrid);
+  assert.equal(r.accesorios.length, 1, `expected 1 acc, got ${JSON.stringify(r.accesorios)}`);
+  assert.equal(r.accesorios[0].cantidad, 2);
+  assert.match(r.accesorios[0].descr, /gotero/i);
+  ok("dedupe free-text + classic accessory echo (Bug BY)");
+}
+
+{
+  // Distinct accessories (frontal vs lateral) must not collapse.
+  const distinctAcc = `2 Gotero Frontal Isodec 200mm
+2 Gotero Lateral Isodec 200mm`;
+  const r = parseLogisticaFromAdjuntoText(distinctAcc);
+  assert.equal(r.accesorios.length, 2, JSON.stringify(r.accesorios));
+  ok("distinct gotero frontal/lateral still kept");
+}
+
 console.log(`\n${passed} passed`);

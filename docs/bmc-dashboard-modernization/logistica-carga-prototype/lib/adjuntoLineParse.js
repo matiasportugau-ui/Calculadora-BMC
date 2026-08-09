@@ -177,6 +177,9 @@ export function parsePanelLineHeuristic(line) {
   let longitud;
   let cantidad;
 
+  /** True when modern summary omitted meters and we fell back to catalog default L=6. */
+  let lengthInferred = false;
+
   if (qtyFromPhrase != null || qtyLead != null) {
     // Modern BMC PDF: "ISODEC 100mm · 10 paneles" — default L unless explicit meters.
     cantidad = qtyLead != null ? qtyLead : qtyFromPhrase;
@@ -184,9 +187,12 @@ export function parsePanelLineHeuristic(line) {
       raw.match(/\b(?:largo|longitud)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:m(?![mM²2]))?(?!\w)/i) ||
       raw.match(/\b(\d+(?:[.,]\d+)?)\s*m(?:ts?|etros?)?(?![mM²2])/i) ||
       raw.match(/[×x]\s*(\d+(?:[.,]\d+)?)\s*m(?![mM²2])/i);
-    longitud = explicitLen
-      ? snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")))
-      : 6;
+    if (explicitLen) {
+      longitud = snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")));
+    } else {
+      longitud = 6;
+      lengthInferred = true;
+    }
   } else if (classic) {
     longitud = classic.longitud;
     cantidad = classic.cantidad;
@@ -200,6 +206,7 @@ export function parsePanelLineHeuristic(line) {
     espesor: ESP_SET.has(espesor) ? snapEsp(espesor) : espesor,
     longitud,
     cantidad: Math.max(1, cantidad),
+    lengthInferred,
   };
 }
 
@@ -210,6 +217,108 @@ function normCell(s) {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .replace(/\s+/g, " ");
+}
+
+/** Public panel shape (strip parser-only flags). */
+function toPublicPanel(ph) {
+  return {
+    tipo: ph.tipo,
+    espesor: ph.espesor,
+    longitud: ph.longitud,
+    cantidad: ph.cantidad,
+  };
+}
+
+/**
+ * Upsert panel into list. Collapses PDF echoes that would silent-2× autocarga:
+ * - Bug BQ: same tipo|esp|L|qty (short product + priced line)
+ * - Bug BX: modern default L=6 + classic priced row with real L, same tipo|esp|qty
+ * Distinct classic lengths (Petinho 2.50×11 + 2.30×5) stay separate.
+ * @param {Array<{tipo:string,espesor:number,longitud:number,cantidad:number,_lengthInferred?:boolean}>} paneles
+ * @param {{tipo:string,espesor:number,longitud:number,cantidad:number,lengthInferred?:boolean}} ph
+ */
+function upsertParsedPanel(paneles, ph) {
+  const inferred = Boolean(ph.lengthInferred);
+  const softIdx = paneles.findIndex(
+    (p) => p.tipo === ph.tipo && p.espesor === ph.espesor && p.cantidad === ph.cantidad,
+  );
+  if (softIdx >= 0) {
+    const existing = paneles[softIdx];
+    const existingInferred = Boolean(existing._lengthInferred);
+    if (existing.longitud === ph.longitud) {
+      // Exact cargo identity — drop echo (Bug BQ).
+      return;
+    }
+    if (existingInferred && !inferred) {
+      // Prefer classic/explicit L over modern default L=6 (Bug BX).
+      paneles[softIdx] = { ...toPublicPanel(ph), _lengthInferred: false };
+      return;
+    }
+    if (!existingInferred && inferred) {
+      // Keep classic; drop modern default echo.
+      return;
+    }
+    // Both explicit with different L → keep both (distinct cargo rows).
+  }
+  paneles.push({ ...toPublicPanel(ph), _lengthInferred: inferred });
+}
+
+/**
+ * Parse accessory identity parts for echo collapse (Bug BY).
+ * Free-text often lists "Isodec/Isopanel" while classic row has one family —
+ * match on product stem + esp + qty with overlapping tipo sets (not single extractTipo).
+ * @param {{ descr: string, cantidad: number }} acc
+ */
+function parseAccessoryIdentity(acc) {
+  const descr = String(acc.descr || "");
+  const n = normCell(descr);
+  const u = descr.toUpperCase();
+  const tipos = new Set();
+  if (/\bISOFRIG(?:\s|_)?PIR\b/.test(u) || /\bISOFRIG_PIR\b/.test(u)) tipos.add("ISOFRIG_PIR");
+  else if (/\bISOFRIG\b/.test(u)) tipos.add("ISOFRIG");
+  if (/\bISOWALL\b/.test(u)) tipos.add("ISOWALL");
+  if (/\bISOROOF\b/.test(u)) tipos.add("ISOROOF");
+  if (/\bISOPANEL\b/.test(u)) tipos.add("ISOPANEL");
+  if (/\bISODEC\b/.test(u)) tipos.add("ISODEC");
+  const mm = descr.match(/\b(\d{2,3})\s*mm\b/i);
+  const esp = mm ? String(Math.round(Number(mm[1]))) : "";
+  const tokenRe =
+    /\b(babeta(?:s)?|gotero(?:s)?|cumbrera(?:s)?|perfil(?:es)?|fijaci[oó]n(?:es)?|varilla(?:s)?|tuerca(?:s)?|tornillo(?:s)?|sellador(?:es)?|canal[oó]n(?:es)?|kit(?:s)?|flashing(?:s)?|remate(?:s)?|tortuga(?:s)?|plegado(?:s)?|frontal|lateral|posterior|inferior|superior|g\d+|u\s*de\s*\d+)\b/gi;
+  const tokens = new Set();
+  let m;
+  while ((m = tokenRe.exec(n)) !== null) {
+    tokens.add(
+      String(m[1])
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .replace(/\s+/g, ""),
+    );
+  }
+  const stem = [...tokens].sort().join("+") || n.slice(0, 48);
+  return { stem, esp, cantidad: acc.cantidad, tipos };
+}
+
+/**
+ * @param {Array<{ descr: string, cantidad: number }>} accesorios
+ * @param {{ descr: string, cantidad: number }} acc
+ */
+function upsertParsedAccessory(accesorios, acc) {
+  const id = parseAccessoryIdentity(acc);
+  const dup = accesorios.some((existing) => {
+    const e = parseAccessoryIdentity(existing);
+    if (e.cantidad !== id.cantidad) return false;
+    if (e.stem !== id.stem) return false;
+    if (e.esp && id.esp && e.esp !== id.esp) return false;
+    if (e.tipos.size && id.tipos.size) {
+      for (const t of e.tipos) {
+        if (id.tipos.has(t)) return true;
+      }
+      return false;
+    }
+    return true;
+  });
+  if (!dup) accesorios.push(acc);
 }
 
 /**
@@ -291,7 +400,7 @@ export function parseLogisticaFromAdjuntoText(text) {
         const line = cells.join("\t");
         const ph = parsePanelLineHeuristic(line);
         if (ph) {
-          paneles.push(ph);
+          upsertParsedPanel(paneles, ph);
           continue;
         }
         let acc = parseAccesorioLine(line);
@@ -302,29 +411,36 @@ export function parseLogisticaFromAdjuntoText(text) {
             acc = { descr, cantidad: Math.min(99999, cantAcc) };
           }
         }
-        if (acc) accesorios.push(acc);
+        if (acc) upsertParsedAccessory(accesorios, acc);
       }
       if (paneles.length || accesorios.length) {
         warnings.push("Interpretado como tabla con encabezados (TSV).");
+        for (let i = 0; i < paneles.length; i++) {
+          const { _lengthInferred, ...pub } = paneles[i];
+          void _lengthInferred;
+          paneles[i] = pub;
+        }
         return { paneles, accesorios, warnings };
       }
     }
   }
 
   const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const seenPanel = new Set();
   for (const line of lines) {
     const ph = parsePanelLineHeuristic(line);
     if (ph) {
-      const key = `${ph.tipo}|${ph.espesor}|${ph.longitud}|${ph.cantidad}|${line}`;
-      if (!seenPanel.has(key)) {
-        seenPanel.add(key);
-        paneles.push(ph);
-      }
+      upsertParsedPanel(paneles, ph);
       continue;
     }
     const acc = parseAccesorioLine(line);
-    if (acc) accesorios.push(acc);
+    if (acc) upsertParsedAccessory(accesorios, acc);
+  }
+
+  // Strip parser-only flags before returning public cargo shape.
+  for (let i = 0; i < paneles.length; i++) {
+    const { _lengthInferred, ...pub } = paneles[i];
+    void _lengthInferred;
+    paneles[i] = pub;
   }
 
   if (!paneles.length && !accesorios.length) {
