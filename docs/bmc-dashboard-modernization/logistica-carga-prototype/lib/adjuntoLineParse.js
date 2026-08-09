@@ -117,7 +117,7 @@ function parseClassicTableLenQty(afterMm) {
     if (!Number.isFinite(len) || len < 1.5 || len > 14.5) continue;
     if (!Number.isFinite(qty) || qty < 1 || qty > 200) continue;
     if (qty >= 100 && len >= 10) continue;
-    // Bug BZ: all-integer tail `L PU Total` (no decimal prices) — e.g. `6 37 222`.
+    // Bug CB: all-integer tail `L PU Total` (no decimal prices) — e.g. `6 37 222`.
     // Without decimals we cannot tell qty from PU; fail closed (distinct from BP decimal digit steal).
     const rest = s.slice(m.index + m[0].length).trim();
     if (rest) {

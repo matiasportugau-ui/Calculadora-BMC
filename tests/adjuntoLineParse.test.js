@@ -160,7 +160,7 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
 }
 
 {
-  // Bug BZ — all-integer L PU Total (no decimals) must not treat PU as qty.
+  // Bug CB — all-integer L PU Total (no decimals) must not treat PU as qty.
   const intPu = parsePanelLineHeuristic(
     "Isodec EPS 100 mm (Cubierta)                              6         37                 222",
   );
