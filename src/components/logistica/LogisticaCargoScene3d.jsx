@@ -510,12 +510,47 @@ function SceneContent({
   const targetY = MAX_H * 0.35;
   const multiSet = useMemo(() => new Set(multiSelectKeys || []), [multiSelectKeys]);
 
+  // Readable work lighting (kept dark BMC aesthetic, raised fill for cargo/cabin clarity).
+  // Tuned with correctly oriented cab (nose −X); do not dim again without re-checking 3D.
+  const deckFocusX = shiftX + truckL * 0.45;
+  const deckFocusZ = TRUCK_W / 2;
+
   return (
     <>
-      <color attach="background" args={["#0b1628"]} />
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[8, 14, 6]} intensity={1.05} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-      <directionalLight position={[-4, 6, -2]} intensity={0.35} />
+      <color attach="background" args={["#121a28"]} />
+      <fog attach="fog" args={["#121a28", 28, Math.max(55, truckL * 5.5)]} />
+      <ambientLight intensity={0.82} color="#e8eef6" />
+      <hemisphereLight args={["#d4e2f5", "#2a3448", 0.72]} />
+      {/* Key — slightly from front-left so cab nose (−X) and deck read clearly */}
+      <directionalLight
+        position={[shiftX - 4, 14, deckFocusZ + 7]}
+        intensity={1.55}
+        color="#fff8f0"
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+      />
+      {/* Fill */}
+      <directionalLight position={[shiftX + truckL + 6, 8, deckFocusZ - 5]} intensity={0.55} color="#b8d0f0" />
+      {/* Soft top fill over cargo */}
+      <pointLight
+        position={[deckFocusX, MAX_H + 2.2, deckFocusZ]}
+        intensity={0.95}
+        distance={Math.max(18, truckL * 2.2)}
+        decay={1.4}
+        color="#ffe8c8"
+      />
+      {/* Cargo / deck focus spot */}
+      <spotLight
+        position={[deckFocusX, MAX_H + 3.2, deckFocusZ + 3.2]}
+        angle={0.75}
+        penumbra={0.55}
+        intensity={2.4}
+        distance={Math.max(22, truckL * 2.5)}
+        decay={1.3}
+        color="#fff1d0"
+        castShadow={false}
+      />
       <TruckVisual shiftX={shiftX} truckL={truckL} />
       <TruckFloor shiftX={shiftX} truckL={truckL} maxLen={maxLen} totalLen={totalLen} />
       <HeightGuides shiftX={shiftX} truckL={truckL} />
