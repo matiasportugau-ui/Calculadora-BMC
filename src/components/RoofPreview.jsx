@@ -52,6 +52,7 @@ import {
   applyManualOrderLength,
   resetStripToAuto,
   mergeIrregularSessionPatch,
+  irregularOverrideForZoneGi,
 } from "../utils/irregularRoofLayout.js";
 import IrregularModeChrome from "./roofPlan/IrregularModeChrome.jsx";
 import IrregularPlantOverlay from "./roofPlan/IrregularPlantOverlay.jsx";
@@ -2696,16 +2697,29 @@ export default function RoofPreview({
     return buildIrregularSchedule({ ...base, mode: "rectangle" });
   }, [irregularOn, irregularZoneEntry, irregularCut, effectivePanelAu, panelObj]);
 
-  const irregularLayout = irregularLayoutOverride || irregularAutoLayout;
+  // Bug BM: shared layoutOverride must only apply on the zone that owns it.
+  const zoneLayoutOverride = useMemo(
+    () => irregularOverrideForZoneGi(irregularLayoutOverride, irregularZoneEntry?.gi),
+    [irregularLayoutOverride, irregularZoneEntry?.gi],
+  );
+  const irregularLayout = zoneLayoutOverride || irregularAutoLayout;
 
   useEffect(() => {
-    setIrregularLayoutOverride(null);
+    const gi = irregularZoneEntry?.gi;
+    // Only invalidate THIS zone's override when cut/dims/au change.
+    // Dual-plant sibling must not wipe a foreign-zone shared manual edit.
+    setIrregularLayoutOverride((prev) => {
+      if (!prev) return prev;
+      if (!irregularOverrideForZoneGi(prev, gi)) return prev;
+      return null;
+    });
   }, [irregularCut, irregularZoneEntry?.gi, irregularZoneEntry?.w, irregularZoneEntry?.h, effectivePanelAu]);
 
   useEffect(() => {
     if (typeof onIrregularLayoutChange !== "function") return;
     const hasCut = Boolean(irregularCut?.p0 && irregularCut?.p1);
-    const hasManual = Boolean(irregularLayoutOverride);
+    // hasManual zone-gated — shared override must not activate publish for sibling gi
+    const hasManual = Boolean(zoneLayoutOverride);
     const gi = irregularZoneEntry?.gi;
     if (irregularOn && irregularLayout && (hasCut || hasManual)) {
       // Second arg: zone index for multi-zone irregularLayoutByGi
@@ -2717,7 +2731,7 @@ export default function RoofPreview({
     irregularOn,
     irregularLayout,
     irregularCut,
-    irregularLayoutOverride,
+    zoneLayoutOverride,
     irregularZoneEntry?.gi,
     onIrregularLayoutChange,
   ]);

@@ -10,6 +10,7 @@ import {
   buildFactoryOrderList,
   irregularSchedulesForPdf,
   mergeIrregularSessionPatch,
+  irregularOverrideForZoneGi,
   EMPTY_IRREGULAR_SESSION,
   stepCeil,
   sideCross,
@@ -388,6 +389,45 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
   );
   sess = mergeIrregularSessionPatch(sess, { cut: null, cutDraft: null, layoutOverride: null });
   ok(sess.cut == null && sess.enabled === true, "BK clearCut keeps enabled");
+}
+
+// Bug BM — shared layoutOverride must not apply/publish on sibling zone (dual-plant)
+{
+  const baseZ0 = buildIrregularSchedule({
+    zoneId: "z0",
+    ancho: 5.6,
+    largo: 6,
+    au: 1.12,
+    lmin: 2,
+    lmax: 12,
+    mode: "rectangle",
+  });
+  ok(baseZ0.strips?.length > 0 && baseZ0.zoneId === "z0", "BM zone0 rectangle schedule");
+  const manualZ0 = applyManualOrderLength(baseZ0, baseZ0.strips[0].id, 9.5);
+  ok(manualZ0.zoneId === "z0" && manualZ0.strips[0].source === "manual", "BM manual keeps zoneId z0");
+
+  ok(irregularOverrideForZoneGi(manualZ0, 0) === manualZ0, "BM override applies on owning zone 0");
+  ok(irregularOverrideForZoneGi(manualZ0, 1) == null, "BM override blocked on sibling zone 1");
+  ok(irregularOverrideForZoneGi(manualZ0, null) == null, "BM override refused without zoneGi");
+  ok(
+    irregularOverrideForZoneGi({ ...manualZ0, zoneId: "" }, 0) == null,
+    "BM untagged override refused (safe)",
+  );
+  ok(irregularOverrideForZoneGi(null, 0) == null, "BM null override → null");
+
+  // Dual-plant publish gate: hasManual must be zone-scoped (mirrors RoofPreview).
+  const hasManualForGi = (override, gi) => Boolean(irregularOverrideForZoneGi(override, gi));
+  ok(hasManualForGi(manualZ0, 0) === true, "BM hasManual true on owner");
+  ok(hasManualForGi(manualZ0, 1) === false, "BM hasManual false on sibling — no cross-zone bill");
+
+  // Sibling clear must not wipe owner override (functional clear predicate).
+  const clearIfOwnedBy = (prev, gi) => {
+    if (!prev) return prev;
+    if (!irregularOverrideForZoneGi(prev, gi)) return prev;
+    return null;
+  };
+  ok(clearIfOwnedBy(manualZ0, 1) === manualZ0, "BM sibling dim/gi change keeps owner override");
+  ok(clearIfOwnedBy(manualZ0, 0) == null, "BM owner dim/cut change clears own override");
 }
 
 console.log(`\n${passed} assertions passed`);
