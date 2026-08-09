@@ -11,6 +11,8 @@ import {
   irregularSchedulesForPdf,
   mergeIrregularSessionPatch,
   EMPTY_IRREGULAR_SESSION,
+  irregularCutForZoneGi,
+  resolveIrregularLayoutPublish,
   stepCeil,
   sideCross,
   polygonArea,
@@ -379,6 +381,7 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
   ok(sess.cutDraft?.x === 1 && sess.cut == null, "BK first click keeps cutDraft");
   sess = mergeIrregularSessionPatch(sess, {
     cut: { p0: sess.cutDraft, p1: { x: 2, y: 2 } },
+    cutZoneGi: 0,
     cutDraft: null,
     tool: "select",
   });
@@ -386,8 +389,111 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
     sess.cut?.p0?.x === 1 && sess.cut?.p1?.x === 2 && sess.cutDraft == null && sess.tool === "select",
     "BK second click completes cut atomically",
   );
-  sess = mergeIrregularSessionPatch(sess, { cut: null, cutDraft: null, layoutOverride: null });
-  ok(sess.cut == null && sess.enabled === true, "BK clearCut keeps enabled");
+  ok(sess.cutZoneGi === 0, "BK second click tags cutZoneGi");
+  sess = mergeIrregularSessionPatch(sess, {
+    cut: null,
+    cutZoneGi: null,
+    cutDraft: null,
+    layoutOverride: null,
+  });
+  ok(sess.cut == null && sess.cutZoneGi == null && sess.enabled === true, "BK clearCut keeps enabled");
+}
+
+// Bug BL — dual-plant / divergent selectedGi must not bill shared cut into wrong zone
+{
+  const cut = { p0: { x: 0, y: 0 }, p1: { x: 5.6, y: 6 } };
+  ok(irregularCutForZoneGi(cut, 0, 0) === cut, "BL cut applies on tagged zone");
+  ok(irregularCutForZoneGi(cut, 0, 1) == null, "BL cut blocked on sibling zone (dual-plant)");
+  ok(irregularCutForZoneGi(cut, null, 0) == null, "BL untagged cut refused (safe)");
+
+  let sess = { ...EMPTY_IRREGULAR_SESSION, enabled: true, tool: "cut" };
+  sess = mergeIrregularSessionPatch(sess, { cutDraft: { x: 1, y: 1 }, cut: null, cutZoneGi: 0 });
+  ok(sess.cutZoneGi === 0 && sess.cutDraft?.x === 1, "BL first click tags cutZoneGi with draft");
+  sess = mergeIrregularSessionPatch(sess, {
+    cut: { p0: sess.cutDraft, p1: { x: 2, y: 2 } },
+    cutZoneGi: 0,
+    cutDraft: null,
+    tool: "select",
+  });
+
+  // Simulate left plant on gi=0 (publish) vs right plant on gi=1 (must noop)
+  const pub0 = resolveIrregularLayoutPublish({
+    irregularOn: true,
+    gi: 0,
+    layout: { strips: [{ id: "T-01", L_order: 6 }] },
+    hasActiveSchedule: Boolean(irregularCutForZoneGi(sess.cut, sess.cutZoneGi, 0)),
+  });
+  ok(pub0.op === "set" && pub0.gi === 0, "BL factory plant on cut zone → set");
+
+  const pub1 = resolveIrregularLayoutPublish({
+    irregularOn: true,
+    gi: 1,
+    layout: { strips: [{ id: "T-01", L_order: 6 }] },
+    hasActiveSchedule: Boolean(irregularCutForZoneGi(sess.cut, sess.cutZoneGi, 1)),
+  });
+  ok(pub1.op === "noop", "BL sibling plant divergent selectedGi → noop (no wrong-zone BOM)");
+
+  const offPub = resolveIrregularLayoutPublish({
+    irregularOn: false,
+    gi: 1,
+    layout: { strips: [{ id: "T-01" }] },
+    hasActiveSchedule: true,
+  });
+  ok(offPub.op === "clear_all", "BL mode OFF → clear_all (not clear_gi only)");
+
+  // End-to-end: cut geometry for zone 0 must not undercharge zone 1 when wrongly applied
+  const z0 = { largo: 6, ancho: 5.6 };
+  const z1 = { largo: 10, ancho: 11.2 };
+  const cutZ0 = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho: z0.ancho,
+    largo: z0.largo,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 0 }, p1: { x: z0.ancho, y: z0.largo }, keep: "left" },
+  });
+  // Pre-fix dual-plant: same cut coords applied to zone 1 dims → wrong schedule key
+  const wrongZ1 = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho: z1.ancho,
+    largo: z1.largo,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 0 }, p1: { x: z0.ancho, y: z0.largo }, keep: "left" },
+  });
+  const rBleed = executeScenario("solo_techo", {
+    techo: techoBase({
+      zonas: [z0, z1],
+      irregularLayoutByGi: { 0: cutZ0, 1: wrongZ1 },
+    }),
+    pared: {},
+    camara: {},
+  });
+  const rFixed = executeScenario("solo_techo", {
+    techo: techoBase({
+      zonas: [z0, z1],
+      // Only tagged zone keeps schedule (sibling noop)
+      irregularLayoutByGi: { 0: cutZ0 },
+    }),
+    pared: {},
+    camara: {},
+  });
+  const rRect = executeScenario("solo_techo", {
+    techo: techoBase({ zonas: [z0, z1] }),
+    pared: {},
+    camara: {},
+  });
+  ok(rBleed && !rBleed.error && rFixed && !rFixed.error && rRect && !rRect.error, "BL scenarios ok");
+  ok(
+    rBleed.paneles?.areaTotal < rFixed.paneles?.areaTotal - 0.5,
+    "BL cross-zone bleed undercharges vs tagged-only publish",
+  );
+  ok(
+    rFixed.paneles?.areaTotal < rRect.paneles?.areaTotal,
+    "BL tagged zone 0 still uses stepped schedule (not full rect)",
+  );
 }
 
 console.log(`\n${passed} assertions passed`);

@@ -52,6 +52,8 @@ import {
   applyManualOrderLength,
   resetStripToAuto,
   mergeIrregularSessionPatch,
+  irregularCutForZoneGi,
+  resolveIrregularLayoutPublish,
 } from "../utils/irregularRoofLayout.js";
 import IrregularModeChrome from "./roofPlan/IrregularModeChrome.jsx";
 import IrregularPlantOverlay from "./roofPlan/IrregularPlantOverlay.jsx";
@@ -1884,9 +1886,11 @@ export default function RoofPreview({
   /**
    * Shared irregular session (parent-owned). When set with onIrregularSessionChange,
    * cut/mode stay in sync across left + right RoofPreview mounts.
-   * Shape: { enabled, tool, cut, cutDraft, selectedStripId, layoutOverride }
+   * Shape: { enabled, tool, cut, cutZoneGi, cutDraft, selectedStripId, layoutOverride }
    * onIrregularSessionChange MUST accept a functional updater (React setState style)
    * so sequential patches in one pointer event do not lose the cut.
+   * cutZoneGi tags the cut to one zone so dual plants with divergent selectedGi
+   * cannot bill zone-N geometry into zone-M (Bug BL).
    */
   irregularSession = null,
   onIrregularSessionChange = null,
@@ -1923,6 +1927,7 @@ export default function RoofPreview({
   const [localIrregularOn, setLocalIrregularOn] = useState(() => Boolean(irregularModeDefault));
   const [localIrregularTool, setLocalIrregularTool] = useState("select");
   const [localIrregularCut, setLocalIrregularCut] = useState(null);
+  const [localIrregularCutZoneGi, setLocalIrregularCutZoneGi] = useState(null);
   const [localIrregularCutDraft, setLocalIrregularCutDraft] = useState(null);
   const [localIrregularStripId, setLocalIrregularStripId] = useState(null);
   const [localIrregularLayoutOverride, setLocalIrregularLayoutOverride] = useState(null);
@@ -1930,6 +1935,9 @@ export default function RoofPreview({
   const irregularOn = irregularControlled ? Boolean(irregularSession.enabled) : localIrregularOn;
   const irregularTool = irregularControlled ? irregularSession.tool || "select" : localIrregularTool;
   const irregularCut = irregularControlled ? irregularSession.cut ?? null : localIrregularCut;
+  const irregularCutZoneGi = irregularControlled
+    ? irregularSession.cutZoneGi ?? null
+    : localIrregularCutZoneGi;
   const irregularCutDraft = irregularControlled
     ? irregularSession.cutDraft ?? null
     : localIrregularCutDraft;
@@ -1955,11 +1963,34 @@ export default function RoofPreview({
       if (irregularControlled) {
         onIrregularSessionChange((prev) => {
           const cur = mergeIrregularSessionPatch(prev, {});
-          const next = typeof v === "function" ? v(cur.enabled) : v;
-          return mergeIrregularSessionPatch(cur, { enabled: Boolean(next), cutDraft: null });
+          const next = Boolean(typeof v === "function" ? v(cur.enabled) : v);
+          // Turning OFF must drop cut + draft so dual plants and byGi publish clear together.
+          if (!next) {
+            return mergeIrregularSessionPatch(cur, {
+              enabled: false,
+              cut: null,
+              cutZoneGi: null,
+              cutDraft: null,
+              layoutOverride: null,
+              tool: "select",
+            });
+          }
+          return mergeIrregularSessionPatch(cur, { enabled: true, cutDraft: null });
         });
       } else {
-        setLocalIrregularOn((prev) => Boolean(typeof v === "function" ? v(prev) : v));
+        setLocalIrregularOn((prev) => {
+          const next = Boolean(typeof v === "function" ? v(prev) : v);
+          if (!next) {
+            setLocalIrregularCut(null);
+            setLocalIrregularCutZoneGi(null);
+            setLocalIrregularCutDraft(null);
+            setLocalIrregularLayoutOverride(null);
+            setLocalIrregularTool("select");
+          } else {
+            setLocalIrregularCutDraft(null);
+          }
+          return next;
+        });
       }
     },
     [irregularControlled, onIrregularSessionChange],
@@ -2670,6 +2701,13 @@ export default function RoofPreview({
     return layout.entries[0];
   }, [layout.entries, selectedGi]);
 
+  // Cut is zone-local; ignore when this plant's selected zone ≠ cutZoneGi
+  // (dual-plant divergent selectedGi / zone switch — Bug BL).
+  const irregularCutForZone = useMemo(
+    () => irregularCutForZoneGi(irregularCut, irregularCutZoneGi, irregularZoneEntry?.gi),
+    [irregularCut, irregularCutZoneGi, irregularZoneEntry?.gi],
+  );
+
   const irregularAutoLayout = useMemo(() => {
     if (!irregularOn || !irregularZoneEntry) return null;
     const r = irregularZoneEntry;
@@ -2686,37 +2724,46 @@ export default function RoofPreview({
       lmax,
       orderLengthStepM: 0.01,
     };
-    if (irregularCut?.p0 && irregularCut?.p1) {
+    if (irregularCutForZone?.p0 && irregularCutForZone?.p1) {
       return buildIrregularSchedule({
         ...base,
         mode: "diagonal_halfplane",
-        cut: { p0: irregularCut.p0, p1: irregularCut.p1, keep: "left" },
+        cut: { p0: irregularCutForZone.p0, p1: irregularCutForZone.p1, keep: "left" },
       });
     }
     return buildIrregularSchedule({ ...base, mode: "rectangle" });
-  }, [irregularOn, irregularZoneEntry, irregularCut, effectivePanelAu, panelObj]);
+  }, [irregularOn, irregularZoneEntry, irregularCutForZone, effectivePanelAu, panelObj]);
 
   const irregularLayout = irregularLayoutOverride || irregularAutoLayout;
 
   useEffect(() => {
     setIrregularLayoutOverride(null);
-  }, [irregularCut, irregularZoneEntry?.gi, irregularZoneEntry?.w, irregularZoneEntry?.h, effectivePanelAu]);
+  }, [irregularCut, irregularCutZoneGi, irregularZoneEntry?.w, irregularZoneEntry?.h, effectivePanelAu]);
 
   useEffect(() => {
     if (typeof onIrregularLayoutChange !== "function") return;
-    const hasCut = Boolean(irregularCut?.p0 && irregularCut?.p1);
+    const hasCut = Boolean(irregularCutForZone?.p0 && irregularCutForZone?.p1);
     const hasManual = Boolean(irregularLayoutOverride);
     const gi = irregularZoneEntry?.gi;
-    if (irregularOn && irregularLayout && (hasCut || hasManual)) {
-      // Second arg: zone index for multi-zone irregularLayoutByGi
-      onIrregularLayoutChange(irregularLayout, gi);
-    } else {
-      onIrregularLayoutChange(null, gi);
+    const action = resolveIrregularLayoutPublish({
+      irregularOn,
+      gi,
+      layout: irregularLayout,
+      hasActiveSchedule: Boolean(hasCut || hasManual),
+    });
+    if (action.op === "clear_all") {
+      // Mode OFF must wipe every zone — clearing only current gi left stale BOM (Bug BI).
+      onIrregularLayoutChange(null);
+      return;
     }
+    if (action.op === "set") {
+      onIrregularLayoutChange(action.layout, action.gi);
+    }
+    // noop: zone without matching cut — keep sibling byGi (dual-plant / zone switch)
   }, [
     irregularOn,
     irregularLayout,
-    irregularCut,
+    irregularCutForZone,
     irregularLayoutOverride,
     irregularZoneEntry?.gi,
     onIrregularLayoutChange,
@@ -2733,22 +2780,33 @@ export default function RoofPreview({
         y: Math.min(Math.max(pt.y - r.y, 0), r.h),
       };
       if (!irregularCutDraft) {
-        // Single patch when controlled — avoid multi-setState lost updates.
-        if (irregularControlled) patchIrregularSession({ cutDraft: p, cut: null });
-        else {
+        // Tag zone on first click so the sibling plant cannot show/bill the draft (Bug BL).
+        if (irregularControlled) {
+          patchIrregularSession({ cutDraft: p, cut: null, cutZoneGi: r.gi });
+        } else {
           setLocalIrregularCutDraft(p);
           setLocalIrregularCut(null);
+          setLocalIrregularCutZoneGi(r.gi);
         }
+        return;
+      }
+      // Second click must stay on the tagged zone (dual-plant may have a different selectedGi).
+      if (
+        Number.isFinite(Number(irregularCutZoneGi)) &&
+        Number(irregularCutZoneGi) !== Number(r.gi)
+      ) {
         return;
       }
       if (irregularControlled) {
         patchIrregularSession({
           cut: { p0: irregularCutDraft, p1: p },
+          cutZoneGi: r.gi,
           cutDraft: null,
           tool: "select",
         });
       } else {
         setLocalIrregularCut({ p0: irregularCutDraft, p1: p });
+        setLocalIrregularCutZoneGi(r.gi);
         setLocalIrregularCutDraft(null);
         setLocalIrregularTool("select");
       }
@@ -2758,6 +2816,7 @@ export default function RoofPreview({
       irregularTool,
       irregularZoneEntry,
       irregularCutDraft,
+      irregularCutZoneGi,
       irregularControlled,
       patchIrregularSession,
     ],
@@ -3183,12 +3242,31 @@ export default function RoofPreview({
           setIrregularLayoutOverride(resetStripToAuto(irregularLayout, id));
         }}
         onClearCut={() => {
+          const clearGi =
+            Number.isFinite(Number(irregularCutZoneGi))
+              ? Number(irregularCutZoneGi)
+              : irregularZoneEntry?.gi;
           if (irregularControlled) {
-            patchIrregularSession({ cut: null, cutDraft: null, layoutOverride: null });
+            patchIrregularSession({
+              cut: null,
+              cutZoneGi: null,
+              cutDraft: null,
+              layoutOverride: null,
+            });
           } else {
             setLocalIrregularCut(null);
+            setLocalIrregularCutZoneGi(null);
             setLocalIrregularCutDraft(null);
             setLocalIrregularLayoutOverride(null);
+          }
+          // Explicit clear of the cut's zone only (sibling byGi entries kept)
+          if (typeof onIrregularLayoutChange === "function") {
+            const action = resolveIrregularLayoutPublish({
+              irregularOn: true,
+              gi: clearGi,
+              clearCurrentGi: true,
+            });
+            if (action.op === "clear_gi") onIrregularLayoutChange(null, action.gi);
           }
         }}
         dense={denseChrome}
@@ -4357,24 +4435,35 @@ export default function RoofPreview({
                 <IrregularFinalPlaneOverlay
                   zoneRect={irregularZoneEntry}
                   layout={irregularLayout}
-                  cut={irregularCut}
-                  cutDraft={irregularCutDraft}
-                  showRuler={Boolean(irregularCut?.p0 && irregularCut?.p1) || Boolean(irregularCutDraft)}
+                  cut={irregularCutForZone}
+                  cutDraft={
+                    Number.isFinite(Number(irregularCutZoneGi)) &&
+                    Number(irregularCutZoneGi) === Number(irregularZoneEntry.gi)
+                      ? irregularCutDraft
+                      : null
+                  }
+                  showRuler={
+                    Boolean(irregularCutForZone?.p0 && irregularCutForZone?.p1) ||
+                    (Number(irregularCutZoneGi) === Number(irregularZoneEntry.gi) &&
+                      Boolean(irregularCutDraft))
+                  }
                 />
               ) : (
                 <IrregularPlantOverlay
                   zoneRect={irregularZoneEntry}
                   layout={irregularLayout}
                   cut={
-                    irregularCut ||
-                    (irregularCutDraft ? { p0: irregularCutDraft, p1: irregularCutDraft } : null)
+                    irregularCutForZone ||
+                    (Number(irregularCutZoneGi) === Number(irregularZoneEntry.gi) && irregularCutDraft
+                      ? { p0: irregularCutDraft, p1: irregularCutDraft }
+                      : null)
                   }
                   selectedStripId={irregularStripId}
                   onSelectStrip={(id) => {
                     setIrregularStripId(id);
                     setIrregularTool("select");
                   }}
-                  showRuler={Boolean(irregularCut?.p0 && irregularCut?.p1)}
+                  showRuler={Boolean(irregularCutForZone?.p0 && irregularCutForZone?.p1)}
                 />
               )
             ) : null}

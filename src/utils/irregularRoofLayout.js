@@ -16,6 +16,8 @@ export const EMPTY_IRREGULAR_SESSION = Object.freeze({
   enabled: false,
   tool: "select",
   cut: null,
+  /** Zone gi the cut was drawn on — required so dual plants / zone switch cannot bill another zone. */
+  cutZoneGi: null,
   cutDraft: null,
   selectedStripId: null,
   layoutOverride: null,
@@ -33,15 +35,77 @@ export const EMPTY_IRREGULAR_SESSION = Object.freeze({
  */
 export function mergeIrregularSessionPatch(prev, patch = {}) {
   const base = prev && typeof prev === "object" ? prev : EMPTY_IRREGULAR_SESSION;
-  return {
+  const merged = {
     enabled: Boolean(base.enabled),
     tool: base.tool || "select",
     cut: base.cut ?? null,
+    cutZoneGi: base.cutZoneGi ?? null,
     cutDraft: base.cutDraft ?? null,
     selectedStripId: base.selectedStripId ?? null,
     layoutOverride: base.layoutOverride ?? null,
     ...patch,
   };
+  // Number(null)===0 — must treat null/undefined/'' as cleared, not zone 0.
+  merged.cutZoneGi =
+    merged.cutZoneGi == null || merged.cutZoneGi === ""
+      ? null
+      : Number.isFinite(Number(merged.cutZoneGi))
+        ? Number(merged.cutZoneGi)
+        : null;
+  merged.enabled = Boolean(merged.enabled);
+  merged.tool = merged.tool || "select";
+  merged.cut = merged.cut ?? null;
+  merged.cutDraft = merged.cutDraft ?? null;
+  merged.selectedStripId = merged.selectedStripId ?? null;
+  merged.layoutOverride = merged.layoutOverride ?? null;
+  return merged;
+}
+
+/**
+ * Cut geometry is zone-local. Only return the cut when it was tagged for `zoneGi`
+ * (Bug BL — dual-plant divergent selectedGi / zone switch must not apply zone-N cut to zone-M).
+ *
+ * @param {{ p0?: object, p1?: object }|null|undefined} cut
+ * @param {number|string|null|undefined} cutZoneGi
+ * @param {number|string|null|undefined} zoneGi
+ * @returns {{ p0: object, p1: object }|null}
+ */
+export function irregularCutForZoneGi(cut, cutZoneGi, zoneGi) {
+  if (!cut?.p0 || !cut?.p1) return null;
+  if (zoneGi == null || zoneGi === "" || !Number.isFinite(Number(zoneGi))) return null;
+  // Number(null)===0 — untagged cuts must never match zone 0 by accident.
+  if (cutZoneGi == null || cutZoneGi === "" || !Number.isFinite(Number(cutZoneGi))) return null;
+  if (Number(cutZoneGi) !== Number(zoneGi)) return null;
+  return cut;
+}
+
+/**
+ * Decide what RoofPreview should publish to the parent byGi map.
+ * - Mode OFF → clear_all (must not leave stale zone schedules billing)
+ * - Active cut/manual for current gi → set
+ * - Explicit clear of current zone → clear_gi
+ * - Zone without matching cut (dual-plant sibling / switch) → noop
+ *
+ * @param {{ irregularOn: boolean, gi: number|string|null|undefined, layout?: object|null, hasActiveSchedule?: boolean, clearCurrentGi?: boolean }} args
+ * @returns {{ op: 'clear_all'|'set'|'clear_gi'|'noop', gi?: number, layout?: object|null }}
+ */
+export function resolveIrregularLayoutPublish({
+  irregularOn,
+  gi,
+  layout = null,
+  hasActiveSchedule = false,
+  clearCurrentGi = false,
+} = {}) {
+  if (!irregularOn) return { op: "clear_all" };
+  const giNum = Number(gi);
+  if (!Number.isFinite(giNum)) {
+    return layout == null ? { op: "clear_all" } : { op: "noop" };
+  }
+  if (clearCurrentGi) return { op: "clear_gi", gi: giNum };
+  if (hasActiveSchedule && layout?.strips?.length) {
+    return { op: "set", gi: giNum, layout };
+  }
+  return { op: "noop" };
 }
 
 export function stepCeil(v, step) {

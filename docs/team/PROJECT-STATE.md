@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-09 (fix — Bug BL dual-plant cutZoneGi cross-zone BOM):** After #949/#951, shared `irregularSession.cut` had no zone tag while left/right `RoofPreview` keep independent `selectedGi`. Cut on zone 0 while the sibling plant selected zone 1 published stepped schedules into both `irregularLayoutByGi` keys → wrong panel m². Fix: `cutZoneGi` in session + `irregularCutForZoneGi`; `resolveIrregularLayoutPublish` (mode OFF → clear_all; mismatch → noop). Tests: BL goldens.
+
 **2026-08-09 (fix — Bug BK irregularSession cut lost):** Dual-plant `irregularSession` patches used absolute `setState` from a stale closure; multi-set in one pointer event (cut draft / complete / clear) kept only the last write → cut never stuck, modo irregular dual broken. Fix: `mergeIrregularSessionPatch` + functional updater in `RoofPreview`; atomic patches for cut click / clearCut. Tests: BK goldens in `irregularRoofLayout.test.js`.
 
 **2026-08-08 (feat — irregular v1.2 dual view + factory list):** Shared `irregularSession` across left/right `RoofPreview`. **Left** `irregularDisplayMode=factory`: franjas T-xx + pedido escalonado (`buildFactoryOrderList` + resumen N×L). **Right** `final_plane`: silueta lisa del techo post-corte (sin escalera). PDF simple: resumen fábrica + tabla paneles. Residual: remnant tray, accesorios sobre borde de corte, dos_aguas real irregular geometry.
