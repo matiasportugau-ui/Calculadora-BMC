@@ -3,6 +3,11 @@ import { parseLogisticaFromAdjuntoText } from "../../docs/bmc-dashboard-moderniz
 import { extractTextFromPdfArrayBuffer } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/pdfTextExtract.js";
 import { MAX_H, MANUAL_LAYOUT_VERSION } from "../utils/bmcLogisticaCargo.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import {
+  getAdjuntoBadge,
+  inferPanelsAndAccessoriesFromPdf as inferPanelsAndAccessoriesFromPdfCore,
+  summarizeAdjuntoInfer,
+} from "../utils/logistica/adjuntoInfer.js";
 import { bedViewExtents, mirrorStackForView, buildLogisticaPlanExportPayload } from "../utils/bmcLogisticaBedView.js";
 import {
   ENV_T as T,
@@ -427,127 +432,18 @@ function normalizeText(s) {
     .trim();
 }
 
-function extractGoogleDriveFileId(url) {
-  const s = String(url || "");
-  const m1 = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (m1) return m1[1];
-  const m2 = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (m2) return m2[1];
-  return "";
-}
-
-function toFetchablePdfUrl(url) {
-  const raw = String(url || "").trim();
-  if (!raw) return "";
-  const driveId = extractGoogleDriveFileId(raw);
-  if (driveId) return `https://drive.google.com/uc?export=download&id=${driveId}`;
-  return raw;
-}
-
 /**
- * Phase B: try server adjunto proxy first (avoids Drive CORS), then browser fetch.
+ * Proxy-first adjunto inference (see src/utils/logistica/adjuntoInfer.js).
  * @param {string} url
  * @param {{ token?: string, apiBase?: string }} [opts]
  */
 async function inferPanelsAndAccessoriesFromPdf(url, opts = {}) {
-  const warnings = [];
-  if (!url) return { paneles: [], accesorios: [], warnings };
-
-  const token =
-    opts.token ||
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_BMC_API_AUTH_TOKEN) ||
-    "";
-  const apiBase = opts.apiBase || (typeof getCalcApiBase === "function" ? getCalcApiBase() : "");
-
-  // 1) Server proxy
-  if (token && apiBase) {
-    try {
-      const proxyRes = await fetch(`${apiBase}/api/envios/adjunto-fetch`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url }),
-      });
-      const j = await proxyRes.json().catch(() => ({}));
-      if (proxyRes.ok && j.ok && j.base64) {
-        const binary = atob(j.base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-        const buffer = bytes.buffer;
-        const ctype = String(j.contentType || "").toLowerCase();
-        if (ctype.includes("pdf") || /\.pdf/i.test(url) || bytes[0] === 0x25) {
-          const pdf = await extractTextFromPdfArrayBuffer(buffer, { maxPages: 20 });
-          const parsed = parseLogisticaFromAdjuntoText(pdf.text || "");
-          return {
-            paneles: parsed.paneles,
-            accesorios: parsed.accesorios,
-            warnings: ["Adjunto vía proxy API.", ...pdf.warnings, ...parsed.warnings],
-            source: "adjunto_proxy",
-          };
-        }
-        const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-        const parsed = parseLogisticaFromAdjuntoText(text || "");
-        return {
-          paneles: parsed.paneles,
-          accesorios: parsed.accesorios,
-          warnings: ["Adjunto texto vía proxy API.", ...parsed.warnings],
-          source: "adjunto_proxy",
-        };
-      }
-      if (j.error) {
-        warnings.push(`Proxy adjunto: ${j.error}${j.message ? ` (${j.message})` : ""}`);
-      }
-    } catch (e) {
-      warnings.push(`Proxy adjunto falló: ${e.message}`);
-    }
-  }
-
-  // 2) Browser direct (Dropbox / public)
-  const fetchUrl = toFetchablePdfUrl(url);
-  let res;
-  try {
-    res = await fetch(fetchUrl);
-  } catch (e) {
-    return {
-      paneles: [],
-      accesorios: [],
-      warnings: [...warnings, `No se pudo descargar el adjunto: ${e.message}`],
-    };
-  }
-  if (!res.ok) {
-    return {
-      paneles: [],
-      accesorios: [],
-      warnings: [
-        ...warnings,
-        `Adjunto no accesible (${res.status}). Revisar permisos del PDF/Drive.`,
-      ],
-    };
-  }
-
-  const contentType = (res.headers.get("content-type") || "").toLowerCase();
-  if (contentType.includes("pdf") || /\.pdf(\?|$)/i.test(fetchUrl)) {
-    const buffer = await res.arrayBuffer();
-    const pdf = await extractTextFromPdfArrayBuffer(buffer, { maxPages: 20 });
-    const parsed = parseLogisticaFromAdjuntoText(pdf.text || "");
-    return {
-      paneles: parsed.paneles,
-      accesorios: parsed.accesorios,
-      warnings: [...warnings, ...pdf.warnings, ...parsed.warnings],
-      source: "adjunto_browser",
-    };
-  }
-
-  const text = await res.text();
-  const parsed = parseLogisticaFromAdjuntoText(text || "");
-  return {
-    paneles: parsed.paneles,
-    accesorios: parsed.accesorios,
-    warnings: [...warnings, ...parsed.warnings],
-    source: "adjunto_browser",
-  };
+  return inferPanelsAndAccessoriesFromPdfCore(url, {
+    token: opts.token,
+    apiBase: opts.apiBase ?? (typeof getCalcApiBase === "function" ? getCalcApiBase() : ""),
+    extractTextFromPdfArrayBuffer,
+    parseLogisticaFromAdjuntoText,
+  });
 }
 
 /** Ventas 2.0 map — see src/utils/logistica/ventasSheetMap.js */
@@ -619,12 +515,18 @@ function buildDefaultManualOrderKeys(stops) {
 
 function normalizeInferredCargo(inferred, sourceLabel) {
   return {
-    paneles: inferred.paneles.map((p) => ({ id: uid(), ...p })),
-    accesorios: inferred.accesorios.map((a) => ({ id: uid(), ...a })),
+    paneles: (inferred.paneles || []).map((p) => ({ id: uid(), ...p })),
+    accesorios: (inferred.accesorios || []).map((a) => ({ id: uid(), ...a })),
     warnings: [
-      sourceLabel && (inferred.paneles.length || inferred.accesorios.length) ? `Fuente: ${sourceLabel}.` : "",
+      sourceLabel && (inferred.paneles?.length || inferred.accesorios?.length) ? `Fuente: ${sourceLabel}.` : "",
       ...(inferred.warnings || []),
     ].filter(Boolean),
+    // Preserve adjunto fetch meta for badges / error UI
+    source: inferred.source || sourceLabel || "unknown",
+    proxyAttempted: inferred.proxyAttempted,
+    browserAttempted: inferred.browserAttempted,
+    userMessage: inferred.userMessage,
+    ok: inferred.ok,
   };
 }
 
@@ -785,7 +687,8 @@ function getStopBadges(stop) {
   const badges = [];
   if (!stop.telefono) badges.push({ label: "Sin teléfono", tone: "warning" });
   if (!stop.direccion && !stop.mapLink) badges.push({ label: "Sin mapa", tone: "warning" });
-  if (!stop.pdfLink) badges.push({ label: "Sin adjunto", tone: "warning" });
+  // Adjunto status: structured badge (proxy/browser/fail) when meta present
+  badges.push(getAdjuntoBadge(stop));
   if (!stop.paneles.length) badges.push({ label: "Sin paneles", tone: "danger" });
   if (stop.estado === "Entregada") badges.push({ label: "Entregada", tone: "success" });
   if (stop.estado === "Observada" || stop.recepcionEstado === "Faltante" || stop.recepcionEstado === "Daño") {
@@ -1289,6 +1192,26 @@ function DiagramPanel({
                   ) : (
                     <span style={{ opacity: 0.5 }}>Sin PDF</span>
                   )}
+                  {selectedStop?.adjuntoMeta?.userMessage ? (
+                    <span
+                      title={(selectedStop.adjuntoMeta.warnings || []).join("\n")}
+                      style={{
+                        ...badgeStyle(
+                          selectedStop.adjuntoMeta.ok
+                            ? "success"
+                            : selectedStop.adjuntoMeta.source === "adjunto_failed"
+                              ? "danger"
+                              : "warning",
+                        ),
+                        maxWidth: 280,
+                        whiteSpace: "normal",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {selectedStop.adjuntoMeta.ok ? "✓ " : "⚠ "}
+                      {selectedStop.adjuntoMeta.userMessage}
+                    </span>
+                  ) : null}
                   <Btn
                     small
                     variant="onDark"
@@ -3143,25 +3066,37 @@ export default function BmcLogisticaApp() {
     if (hasInferSource) {
       const inferred = await inferStopCargo(baseStop);
       const adminSuffix = admin.matchNote ? ` · ${admin.matchNote}` : "";
+      const adjuntoMeta = {
+        source: inferred.source || "unknown",
+        ok: Boolean(inferred.paneles?.length || inferred.accesorios?.length),
+        proxyAttempted: inferred.proxyAttempted,
+        browserAttempted: inferred.browserAttempted,
+        userMessage: inferred.userMessage || summarizeAdjuntoInfer(inferred),
+        warnings: inferred.warnings || [],
+      };
       enrichedStop = {
         ...baseStop,
         paneles: inferred.paneles,
         accesorios: inferred.accesorios,
         accPackage: buildAccessoryPackageConfig({ ...baseStop, accesorios: inferred.accesorios, paneles: inferred.paneles }, accProfiles),
+        adjuntoMeta,
         observacionesLogistica: [inferred.warnings.filter(Boolean).join(" | "), admin.matchNote].filter(Boolean).join(" · "),
         recepcionDetalle: inferred.warnings.filter(Boolean).join(" | "),
         checks: {
           ...baseStop.checks,
           bultosOk: inferred.paneles.length > 0,
           accesoriosOk: inferred.accesorios.length > 0 || baseStop.checks.accesoriosOk,
+          adjuntoOk: Boolean(pdfLink) && (adjuntoMeta.ok || adjuntoMeta.source === "adjunto_proxy" || adjuntoMeta.source === "adjunto_browser"),
         },
       };
       if (inferred.paneles.length || inferred.accesorios.length) {
         setAutoLoadMsg(
-          `Autocarga OK: ${inferred.paneles.length} líneas de paneles y ${inferred.accesorios.length} accesorios para ${label}.${adminSuffix}`,
+          `Autocarga OK: ${inferred.paneles.length} líneas de paneles y ${inferred.accesorios.length} accesorios para ${label}. ${summarizeAdjuntoInfer(inferred)}${adminSuffix}`,
         );
       } else if (inferred.warnings.length) {
-        setAutoLoadMsg(`No se pudo inferir carga automáticamente para ${label}. ${inferred.warnings[0]}${adminSuffix}`);
+        setAutoLoadMsg(
+          `No se pudo inferir carga para ${label}. ${inferred.userMessage || inferred.warnings[0]}${adminSuffix}`,
+        );
       } else {
         setAutoLoadMsg(`No se detectaron paneles automáticamente para ${label}.${adminSuffix}`);
       }
@@ -3179,6 +3114,14 @@ export default function BmcLogisticaApp() {
     setAutoLoadMsg(`Reintentando autocarga para ${stop.cliente || `Parada ${stop.orden}`}...`);
     try {
       const inferred = await inferStopCargo(stop);
+      const adjuntoMeta = {
+        source: inferred.source || "unknown",
+        ok: Boolean(inferred.paneles?.length || inferred.accesorios?.length),
+        proxyAttempted: inferred.proxyAttempted,
+        browserAttempted: inferred.browserAttempted,
+        userMessage: inferred.userMessage || summarizeAdjuntoInfer(inferred),
+        warnings: inferred.warnings || [],
+      };
       setStops((prev) =>
         prev.map((item) =>
           item.id === stop.id
@@ -3191,19 +3134,23 @@ export default function BmcLogisticaApp() {
                   paneles: inferred.paneles.length ? inferred.paneles : item.paneles,
                   accesorios: inferred.accesorios.length ? inferred.accesorios : item.accesorios,
                 }, accProfiles),
+                adjuntoMeta,
                 observacionesLogistica: inferred.warnings.filter(Boolean).join(" | "),
                 recepcionDetalle: inferred.warnings.filter(Boolean).join(" | "),
                 checks: {
                   ...item.checks,
                   bultosOk: inferred.paneles.length > 0 || item.paneles.length > 0,
                   accesoriosOk: inferred.accesorios.length > 0 || item.accesorios.length > 0 || item.checks?.accesoriosOk,
+                  adjuntoOk: Boolean(item.pdfLink) && (adjuntoMeta.ok || adjuntoMeta.source === "adjunto_proxy" || adjuntoMeta.source === "adjunto_browser"),
                 },
               }
             : item
         )
       );
       if (inferred.paneles.length || inferred.accesorios.length) {
-        setAutoLoadMsg(`Reintento OK para ${stop.cliente || `Parada ${stop.orden}`}: ${inferred.paneles.length} líneas de paneles y ${inferred.accesorios.length} accesorios.`);
+        setAutoLoadMsg(
+          `Reintento OK para ${stop.cliente || `Parada ${stop.orden}`}: ${inferred.paneles.length} líneas de paneles y ${inferred.accesorios.length} accesorios. ${summarizeAdjuntoInfer(inferred)}`,
+        );
       } else if (inferred.warnings.length) {
         setAutoLoadMsg(`Sin autocarga para ${stop.cliente || `Parada ${stop.orden}`}. ${inferred.warnings[0]}`);
       } else {
