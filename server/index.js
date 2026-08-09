@@ -42,6 +42,8 @@ import createTraktimeRouter from "./routes/traktime.js";
 import createBancoRouter from "./routes/banco.js";
 import createWorkspaceRouter from "./routes/workspace.js";
 import createPaosRouter from "./routes/paos.js";
+import createPeaRouter from "./routes/pea.js";
+import createEnvironmentRouter from "./routes/environment.js";
 import createCsrfProtection from "./middleware/csrfProtection.js";
 import createActivityRouter from "./routes/activity.js";
 import { createQuotesRouter } from "./routes/quotes.js";
@@ -106,6 +108,7 @@ import { wireOmniOrchestration } from "./lib/omni/orchestrator/bootstrap.js";
 import { startOmniAiWorker, triggerWaCrmSyncNow } from "./lib/omni/orchestrator/aiWorker.js";
 import { startOmniFrtBreachWorker } from "./lib/omni/orchestrator/frtBreachWorker.js";
 import { startOmniSequenceWorker } from "./lib/omni/orchestrator/sequenceWorker.js";
+import { startPeaWorker } from "./lib/pea/peaWorker.js";
 import { startOmniSnoozeWorker } from "./lib/omni/snoozeWorker.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
@@ -1070,6 +1073,8 @@ app.use(createBancoRouter(config, logger));
 app.use(createWorkspaceRouter(config, logger));
 // PAOS supervised learning (flags default OFF)
 app.use(createPaosRouter(config));
+app.use("/api", createPeaRouter(config, logger));
+app.use("/api", createEnvironmentRouter(config));
 app.use(createActivityRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
@@ -1270,6 +1275,7 @@ let stopOmniAiWorker = () => {};
 let stopOmniFrtBreachWorker = () => {};
 let stopOmniSnoozeWorker = () => {};
 let stopOmniSequenceWorker = () => {};
+let stopPeaWorker = () => {};
 
 const server = app.listen(config.port, async () => {
   try {
@@ -1382,6 +1388,12 @@ const server = app.listen(config.port, async () => {
     });
     logger.info("Omni sequence worker started");
   }
+  if (omniPool) {
+    stopPeaWorker = startPeaWorker({ config, logger, pool: omniPool });
+    if (config.peaEnabled && config.peaWorkerEnabled) {
+      logger.info("PEA worker started");
+    }
+  }
 });
 
 // ── Graceful shutdown ──
@@ -1405,6 +1417,7 @@ function shutdown(signal) {
   try { stopOmniSnoozeWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSnoozeWorker failed"); }
   try { stopOmniFrtBreachWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniFrtBreachWorker failed"); }
   try { stopOmniSequenceWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopOmniSequenceWorker failed"); }
+  try { stopPeaWorker(); } catch (e) { logger.warn({ err: e?.message }, "stopPeaWorker failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");

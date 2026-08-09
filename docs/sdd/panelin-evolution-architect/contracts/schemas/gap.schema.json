@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docs/sdd/panelin-evolution-architect/contracts/schemas/gap.schema.json",
+  "title": "Gap",
+  "description": "Aggregated gap row (mass dedupe target). Maps to pea.gaps.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "fingerprint",
+    "fingerprint_version",
+    "status",
+    "occurrence_count",
+    "first_seen",
+    "last_seen",
+    "priority_score",
+    "title",
+    "summary"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hex from contracts/fingerprint.md."
+    },
+    "fingerprint_version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "investigating", "ready_for_review", "resolved", "ignored", "blocked"]
+    },
+    "occurrence_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "first_seen": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_seen": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "priority_score": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Impact × severity × recency (SDD §6)."
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "signal_type": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "latest_packet_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

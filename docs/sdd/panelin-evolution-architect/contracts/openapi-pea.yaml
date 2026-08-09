@@ -1,0 +1,399 @@
+openapi: 3.1.0
+info:
+  title: Panelin Evolution Architect API
+  version: 0.1.0-m0
+  description: |
+    TARGET contract for `/api/pea/*` (MVP L0–L2). Runtime not shipped in M0.
+    Auth: BMC JWT (Bearer) → Principal; permissions `pea:read`, `pea:analyze`, `pea:grant:read`, `pea:grant:write`.
+    L3+ routes return 403 `not_enabled` until grants + staging (ADR-006).
+  contact:
+    name: BMC Uruguay / METALOG SAS
+
+servers:
+  - url: http://localhost:3001
+    description: Local API (doppler run -- npm run start:api)
+  - url: https://panelin-calc-XXXX.run.app
+    description: Cloud Run panelin-calc (prod TARGET)
+
+tags:
+  - name: health
+  - name: gaps
+  - name: packets
+  - name: grants
+  - name: worker
+
+paths:
+  /api/pea/health:
+    get:
+      tags: [health]
+      summary: PEA subsystem health and flags
+      operationId: peaHealth
+      security: []
+      responses:
+        "200":
+          description: Flags and schema version (PEA may be disabled)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PeaHealth"
+
+  /api/pea/gaps:
+    get:
+      tags: [gaps]
+      summary: List aggregated gaps
+      operationId: listPeaGaps
+      security:
+        - bearerAuth: [pea:read]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, investigating, ready_for_review, resolved, ignored, blocked]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Gap list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GapList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          description: PEA disabled or DB unavailable
+
+  /api/pea/gaps/{gapId}:
+    get:
+      tags: [gaps]
+      summary: Gap detail with occurrence summary
+      operationId: getPeaGap
+      security:
+        - bearerAuth: [pea:read]
+      parameters:
+        - $ref: "#/components/parameters/gapId"
+      responses:
+        "200":
+          description: Gap detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GapDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/pea/gaps/{gapId}/diagnose:
+    post:
+      tags: [gaps]
+      summary: Human "diagnose now" (threshold bypass)
+      operationId: diagnosePeaGap
+      security:
+        - bearerAuth: [pea:analyze]
+      parameters:
+        - $ref: "#/components/parameters/gapId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force:
+                  type: boolean
+                  default: true
+                note:
+                  type: string
+      responses:
+        "202":
+          description: Analysis job enqueued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobAccepted"
+        "403":
+          $ref: "#/components/responses/NotEnabled"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/pea/packets:
+    get:
+      tags: [packets]
+      summary: List evolution packets
+      operationId: listPeaPackets
+      security:
+        - bearerAuth: [pea:read]
+      parameters:
+        - name: gap_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, critic_pending, critic_failed, ready_for_review, accepted, rejected, superseded]
+      responses:
+        "200":
+          description: Packet list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvolutionPacketList"
+
+  /api/pea/packets/{packetId}:
+    get:
+      tags: [packets]
+      summary: Get evolution packet by id
+      operationId: getPeaPacket
+      security:
+        - bearerAuth: [pea:read]
+      parameters:
+        - $ref: "#/components/parameters/packetId"
+      responses:
+        "200":
+          description: Evolution packet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvolutionPacket"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/pea/packets/{packetId}/implement:
+    post:
+      tags: [packets]
+      summary: L3 implementer entry (stub until grant + staging)
+      operationId: implementPeaPacket
+      security:
+        - bearerAuth: [pea:implement]
+      parameters:
+        - $ref: "#/components/parameters/packetId"
+      responses:
+        "403":
+          description: L3 not enabled in MVP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotEnabledError"
+
+  /api/pea/grants:
+    get:
+      tags: [grants]
+      summary: List active grants (admin)
+      operationId: listPeaGrants
+      security:
+        - bearerAuth: [pea:grant:read]
+      responses:
+        "200":
+          description: Grant list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  grants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Grant"
+    post:
+      tags: [grants]
+      summary: Create grant (L3+ stub in MVP)
+      operationId: createPeaGrant
+      security:
+        - bearerAuth: [pea:grant:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GrantCreate"
+      responses:
+        "403":
+          description: Grant write requires L3+ platform hardening
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotEnabledError"
+
+  /api/pea/worker/tick:
+    post:
+      tags: [worker]
+      summary: Optional Scheduler escalation (ADR-011 deferred)
+      description: |
+        x-deferred: Cloud Scheduler may call this when in-process worker drain latency
+        is unacceptable. Same claim batch as startPeaWorker(). Not implemented in M0.
+      operationId: peaWorkerTick
+      x-deferred: true
+      security:
+        - serviceAuth: [pea:worker:tick]
+      responses:
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotEnabledError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: BMC identity JWT (see contracts/principal-and-side-effects.md)
+    serviceAuth:
+      type: http
+      scheme: bearer
+      description: Service account or internal Scheduler token (TARGET)
+
+  parameters:
+    gapId:
+      name: gapId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    packetId:
+      name: packetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT
+    Forbidden:
+      description: Principal lacks permission
+    NotFound:
+      description: Resource not found
+    NotEnabled:
+      description: PEA or autonomy level not enabled
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/NotEnabledError"
+
+  schemas:
+    PeaHealth:
+      type: object
+      required: [ok, pea_enabled, schema_version]
+      properties:
+        ok:
+          type: boolean
+        pea_enabled:
+          type: boolean
+          description: PEA_ENABLED env (default false in prod)
+        worker_enabled:
+          type: boolean
+        schema_version:
+          type: string
+          example: pea-001
+        contracts:
+          type: object
+          properties:
+            openapi:
+              type: string
+            migration:
+              type: string
+
+    Gap:
+      $ref: "./schemas/gap.schema.json"
+
+    GapList:
+      type: object
+      properties:
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/Gap"
+        next_cursor:
+          type: string
+
+    GapDetail:
+      type: object
+      properties:
+        gap:
+          $ref: "#/components/schemas/Gap"
+        recent_occurrences:
+          type: integer
+        last_event_at:
+          type: string
+          format: date-time
+
+    EvolutionPacket:
+      $ref: "./schemas/evolution-packet.schema.json"
+
+    EvolutionPacketList:
+      type: object
+      properties:
+        packets:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvolutionPacket"
+
+    Grant:
+      $ref: "./schemas/grant.schema.json"
+
+    GrantCreate:
+      type: object
+      required: [max_level, scope, expires_at]
+      properties:
+        max_level:
+          type: integer
+          minimum: 0
+          maximum: 5
+        scope:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        gap_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        packet_id:
+          type: string
+          format: uuid
+
+    JobAccepted:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        gap_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending]
+
+    NotEnabledError:
+      type: object
+      required: [error, min_level]
+      properties:
+        error:
+          type: string
+          enum: [not_enabled, pea_disabled]
+        min_level:
+          type: integer
+          description: Minimum autonomy level required
+        message:
+          type: string

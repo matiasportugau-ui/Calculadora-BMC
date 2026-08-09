@@ -37,7 +37,7 @@ assert.equal(
 // Hard pin current SoT (bump intentionally when tools change + update tools-manifest evidence)
 assert.equal(
   AGENT_TOOLS.length,
-  57,
+  58,
   `AGENT_TOOLS length is ${AGENT_TOOLS.length}; update pin + docs/sdd/.../tools-manifest.md if intentional`,
 );
 
