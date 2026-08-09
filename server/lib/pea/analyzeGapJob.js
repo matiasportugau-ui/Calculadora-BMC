@@ -10,6 +10,7 @@ import {
 } from "./analysisPreflight.js";
 import { passesAnalysisThreshold } from "./gapEvents.js";
 import { runArchitectRuntime } from "./architectRuntime.js";
+import { TERMINAL_GAP_STATUSES } from "./evolutionPackets.js";
 
 const MOCK_MODEL = {
   model_id: "pea-mock-haiku",
@@ -32,6 +33,23 @@ export async function runAnalyzeGapJob(pool, config, job, logger) {
   const gap = gapRows[0];
   if (!gap) {
     throw new Error("gap_not_found");
+  }
+
+  // Bug BV: diagnose always passes force:true; without a terminal guard,
+  // re-analyze overwrote accepted packets and flipped resolved → investigating.
+  if (TERMINAL_GAP_STATUSES.has(gap.status)) {
+    await pool.query(
+      `UPDATE pea.jobs SET status = 'completed', output_json = $2::jsonb, completed_at = now() WHERE id = $1`,
+      [
+        job.id,
+        JSON.stringify({
+          ok: true,
+          skipped: "terminal_gap_status",
+          gap_status: gap.status,
+        }),
+      ],
+    );
+    return { skipped: true, reason: "terminal_gap_status", gap_status: gap.status };
   }
 
   if (!passesAnalysisThreshold(config, gap, { force })) {

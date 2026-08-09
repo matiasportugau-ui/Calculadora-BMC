@@ -52,29 +52,58 @@ export function buildMockArchitectPacket(gap, laneInfo, exploreNotes) {
   };
 }
 
+/** Gap statuses that must not be reopened by a silent re-analyze save. */
+export const TERMINAL_GAP_STATUSES = new Set(["resolved", "ignored"]);
+
 /**
  * @param {import('pg').Pool} pool
  * @param {object} packet
  */
 export async function saveEvolutionPacket(pool, packet) {
+  // Bug BV: always writing version=1 with ON CONFLICT DO UPDATE clobbered
+  // accepted packets and flipped resolved gaps back to ready_for_review.
+  // Schema supports versioned packets + superseded — allocate next version.
+  const { rows: gapRows } = await pool.query(`SELECT id, status FROM pea.gaps WHERE id = $1`, [
+    packet.gap_id,
+  ]);
+  const gap = gapRows[0];
+  if (!gap) {
+    const err = new Error("gap_not_found");
+    err.code = "gap_not_found";
+    throw err;
+  }
+  if (TERMINAL_GAP_STATUSES.has(gap.status)) {
+    const err = new Error("terminal_gap_status");
+    err.code = "terminal_gap_status";
+    err.gapStatus = gap.status;
+    throw err;
+  }
+
+  const { rows: verRows } = await pool.query(
+    `SELECT COALESCE(MAX(version), 0) + 1 AS next_version
+       FROM pea.evolution_packets
+      WHERE gap_id = $1`,
+    [packet.gap_id],
+  );
+  const version = Number(verRows[0]?.next_version) || 1;
+
+  await pool.query(
+    `UPDATE pea.evolution_packets
+        SET status = 'superseded', updated_at = now()
+      WHERE gap_id = $1
+        AND status IN ('draft', 'critic_pending', 'critic_failed', 'ready_for_review')`,
+    [packet.gap_id],
+  );
+
   const { rows } = await pool.query(
     `INSERT INTO pea.evolution_packets
        (gap_id, version, status, primary_lane, secondary_lanes, diagnosis,
         recommended_changes, ratchet_plan, spec_citations, critic_result, blast_radius)
-     VALUES ($1, 1, $2, $3, $4::jsonb, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb)
-     ON CONFLICT (gap_id, version) DO UPDATE SET
-       status = EXCLUDED.status,
-       primary_lane = EXCLUDED.primary_lane,
-       diagnosis = EXCLUDED.diagnosis,
-       recommended_changes = EXCLUDED.recommended_changes,
-       ratchet_plan = EXCLUDED.ratchet_plan,
-       spec_citations = EXCLUDED.spec_citations,
-       critic_result = EXCLUDED.critic_result,
-       blast_radius = EXCLUDED.blast_radius,
-       updated_at = now()
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb)
      RETURNING *`,
     [
       packet.gap_id,
+      version,
       packet.status,
       packet.primary_lane,
       JSON.stringify(packet.secondary_lanes || []),
@@ -91,7 +120,14 @@ export async function saveEvolutionPacket(pool, packet) {
   );
   const saved = rows[0];
   await pool.query(
-    `UPDATE pea.gaps SET latest_packet_id = $2, status = 'ready_for_review', updated_at = now() WHERE id = $1`,
+    `UPDATE pea.gaps
+        SET latest_packet_id = $2,
+            status = CASE
+              WHEN status IN ('resolved', 'ignored') THEN status
+              ELSE 'ready_for_review'
+            END,
+            updated_at = now()
+      WHERE id = $1`,
     [packet.gap_id, saved.id],
   );
   return saved;

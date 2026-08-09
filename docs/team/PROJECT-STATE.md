@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-09 (fix — Bugs BU/BV PEA escalate + re-analyze clobber):** After `#967`, `escalatePeaPacket` had no status guard (accepted/resolved → `blocked` + grant mint) and `saveEvolutionPacket` always UPSERTed `version=1` (clobbered `accepted` packets; flipped gap `resolved` → `ready_for_review`). Fix: reviewable-status guards on escalate/reject; analyze skips terminal gaps; versioned insert + supersede prior drafts (no destructive UPSERT). Tests: `tests/peaPacketLifecycleGuards.test.js`.
+
 **2026-08-09 (feat — PEA M0–M4 SHIPPED · PR #967 → main):** Squash-merged [`#967`](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/967) (`a723f666`). Runtime `server/lib/pea/*`, migrations 001–003, `/api/pea/*`, `/hub/pea`, `pea_explain_gap` (58 tools), `test:pea` in gate + CI (`pea_tests`, `pea_staging_config`, env drift fix). SDD kit `docs/sdd/panelin-evolution-architect/` + live campaign goal prompts phase 0–7. **All `PEA_*` default OFF.** Next: `/goal` with `goal-prompt-pea-live-orchestrator.md` → phase 1 live-probe (human).
 
 **2026-08-09 (feat — PEA E2E quality campaign oleada 0):** `test:pea` (15 files) wired into `gate:local` + CI job `pea_tests`; contract validator adds `/api/pea/health`, `/api/environment`, JWT 401 on `/api/pea/gaps`; deploy workflow + `.env.example` PEA vars; `architectLlm.js` live path; `nativeAdapter.js` L3; `piiDenylist.js` (G-10); `pea-live-probe.mjs`; RECREATION-CHECKLIST as-built; ADR-012 IMP-05b risk acceptance; staging/prod runbooks in `docs/sdd/panelin-evolution-architect/evidence/`. Prod flags remain OFF until human oleadas 2–3.
