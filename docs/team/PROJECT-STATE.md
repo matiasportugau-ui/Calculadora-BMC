@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-09 (fix — Bug BO autocarga phantom apoyos/fijaciones):** After #960 accessory free-text, pdftotext wraps of modern BMC resumen (`113.7 m² · 10 paneles · 3 apoyos · 57 fijaciones` → `57 fijaciones` / `3 apoyos · …`) were parsed as accessories → fake kg/m³ and packing blockers. `parseAccesorioLine` now rejects engineering-summary apoyos/fijaciones lines; kit/gotero with uds still parse. Tests in `adjuntoLineParse.test.js`.
+
 **2026-08-09 (fix — Bug BK irregularSession cut lost):** Dual-plant `irregularSession` patches used absolute `setState` from a stale closure; multi-set in one pointer event (cut draft / complete / clear) kept only the last write → cut never stuck, modo irregular dual broken. Fix: `mergeIrregularSessionPatch` + functional updater in `RoofPreview`; atomic patches for cut click / clearCut. Tests: BK goldens in `irregularRoofLayout.test.js`.
 
 **2026-08-08 (feat — irregular v1.2 dual view + factory list):** Shared `irregularSession` across left/right `RoofPreview`. **Left** `irregularDisplayMode=factory`: franjas T-xx + pedido escalonado (`buildFactoryOrderList` + resumen N×L). **Right** `final_plane`: silueta lisa del techo post-corte (sin escalera). PDF simple: resumen fábrica + tabla paneles. Residual: remnant tray, accesorios sobre borde de corte, dos_aguas real irregular geometry.

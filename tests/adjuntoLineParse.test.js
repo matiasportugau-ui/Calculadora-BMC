@@ -141,4 +141,44 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
   ok("UAM-style perfiles as accessories");
 }
 
+{
+  // pdftotext wrap of modern BMC resumen (Alvaro-style) must not invent bultos.
+  const wrapped = parseLogisticaFromAdjuntoText(
+    `Alcance: ISODEC EPS · 100mm · Color Blanco · Techo · 2 Zonas
+113.7 m² · 10 paneles · 3 apoyos ·
+57 fijaciones
+ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15 4,677.93`,
+  );
+  assert.equal(wrapped.paneles.length, 1, JSON.stringify(wrapped.paneles));
+  assert.equal(wrapped.paneles[0].cantidad, 10);
+  assert.equal(
+    wrapped.accesorios.length,
+    0,
+    `phantom engineering summary: ${JSON.stringify(wrapped.accesorios)}`,
+  );
+  ok("reject wrapped apoyos/fijaciones summary as accessories");
+}
+
+{
+  const split = parseLogisticaFromAdjuntoText(
+    `113.7 m² · 10 paneles
+3 apoyos · 57 fijaciones
+ISODEC EPS 100mm · 10 paneles`,
+  );
+  assert.equal(split.accesorios.length, 0, JSON.stringify(split.accesorios));
+  assert.ok(split.paneles.some((p) => p.cantidad === 10));
+  ok("reject split apoyos·fijaciones summary line");
+}
+
+{
+  // Real accessory product lines must still parse (kit / gotero with uds).
+  const kit = parseLogisticaFromAdjuntoText("Kit de fijación 57 uds\nGotero frontal 6 uds");
+  assert.ok(
+    kit.accesorios.some((a) => /kit/i.test(a.descr) && a.cantidad === 57),
+    JSON.stringify(kit.accesorios),
+  );
+  assert.ok(kit.accesorios.some((a) => /gotero/i.test(a.descr) && a.cantidad === 6));
+  ok("kit de fijación + gotero with uds still parse");
+}
+
 console.log(`\n${passed} passed`);
