@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   parseLogisticaFromAdjuntoText,
   parsePanelLineHeuristic,
+  parseQtyCell,
   extractTipoFromLine,
 } from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
 
@@ -139,6 +140,27 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
   assert.ok(uam.accesorios.length >= 2, JSON.stringify(uam.accesorios));
   assert.ok(uam.accesorios.some((a) => /perfil/i.test(a.descr) && a.cantidad === 3));
   ok("UAM-style perfiles as accessories");
+}
+
+{
+  // Bug BS — Excel/Sheets integer qty cells often look like "2,00" / "10.00".
+  assert.equal(parseQtyCell("2,00"), 2);
+  assert.equal(parseQtyCell("10,00"), 10);
+  assert.equal(parseQtyCell("2.00"), 2);
+  assert.equal(parseQtyCell("10.00"), 10);
+  assert.equal(parseQtyCell("11"), 11);
+  assert.equal(parseQtyCell("2 uds"), 2);
+  assert.equal(parseQtyCell("10,5"), 10, "integer part of fractional cell");
+  const tsv = [
+    "Producto\tEspesor\tLargo\tCantidad",
+    "ISODEC EPS\t100\t6\t2,00",
+    "ISOPANEL EPS\t50\t3\t10.00",
+  ].join("\n");
+  const r = parseLogisticaFromAdjuntoText(tsv);
+  assert.equal(r.paneles.length, 2, JSON.stringify(r.paneles));
+  assert.equal(r.paneles[0].cantidad, 2, `got ${JSON.stringify(r.paneles[0])}`);
+  assert.equal(r.paneles[1].cantidad, 10, `got ${JSON.stringify(r.paneles[1])}`);
+  ok("Bug BS: TSV Cantidad Excel decimals keep integer qty");
 }
 
 console.log(`\n${passed} passed`);

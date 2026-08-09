@@ -49,12 +49,22 @@ export function parseQtyCell(raw) {
   if (!s) return null;
   const m1 = s.match(/\b(\d{1,5})\s*(?:uds?\.?|unidades?|bultos?|planchas?|paneles?|piezas?|pzas?|und\.?|u\.)\b/i);
   if (m1) return Math.min(99999, Math.max(1, parseInt(m1[1], 10)));
+  // Whole-cell number (Excel/Sheets often emit "2,00" / "10.00" for integer qty).
+  // Take the integer part — never strip separators into a larger digit run ("2.00" ≠ 200).
+  const wholeNum = s.match(/^(\d{1,5})(?:[.,]\d+)?$/);
+  if (wholeNum) {
+    const n = parseInt(wholeNum[1], 10);
+    if (Number.isFinite(n) && n >= 1) return Math.min(99999, n);
+  }
   const m2 = s.match(/(?:^|[\s:;,-])(\d{1,5})\s*$/);
   if (m2) return Math.min(99999, Math.max(1, parseInt(m2[1], 10)));
-  const digits = s.replace(/[^\d]/g, "");
-  if (digits.length >= 1 && digits.length <= 5) {
-    const n = parseInt(digits, 10);
-    if (Number.isFinite(n) && n >= 1) return Math.min(99999, n);
+  // Digits-only fallback only when no decimal separator (avoids "2.00" → 200).
+  if (!/[.,]/.test(s)) {
+    const digits = s.replace(/[^\d]/g, "");
+    if (digits.length >= 1 && digits.length <= 5) {
+      const n = parseInt(digits, 10);
+      if (Number.isFinite(n) && n >= 1) return Math.min(99999, n);
+    }
   }
   return null;
 }
