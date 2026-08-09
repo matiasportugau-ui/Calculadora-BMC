@@ -142,8 +142,9 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
 }
 
 {
-  // Bug BO — after #960 classic parser: missing Cantidad must not steal first digit of PU.
+  // Bug BP — after #960 classic parser: missing Cantidad must not steal first digit of PU.
   // Trigger: Largo + Precio (37,00) without qty column → previously qty=3 from "3" in "37".
+  // Distinct from Bug BO (#961) phantom apoyos/fijaciones accessories.
   const missingQty = parsePanelLineHeuristic(
     "Isopanel EPS 100 mm (Fachada)                             2,50                  37,00              1.159,95",
   );

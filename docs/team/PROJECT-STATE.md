@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-09 (fix — Bug BO classic adjunto qty price-digit):** After #960, `parseClassicTableLenQty` could take the first digit of a PU like `37,00` as `cantidad` when the Cantidad column was missing from PDF text (`2,50 37,00` → qty=3). Fail-closed with complete qty token `(?!\d)(?!\s*[.,]\d)`. Tests in `adjuntoLineParse.test.js`.
+**2026-08-09 (fix — Bug BP classic adjunto qty price-digit):** After #960, `parseClassicTableLenQty` could take the first digit of a PU like `37,00` as `cantidad` when the Cantidad column was missing from PDF text (`2,50 37,00` → qty=3). Fail-closed with complete qty token `(?!\d)(?!\s*[.,]\d)`. Tests in `adjuntoLineParse.test.js`. Distinct from Bug BO (#961 phantom apoyos/fijaciones accessories).
 
 **2026-08-09 (fix — Bug BK irregularSession cut lost):** Dual-plant `irregularSession` patches used absolute `setState` from a stale closure; multi-set in one pointer event (cut draft / complete / clear) kept only the last write → cut never stuck, modo irregular dual broken. Fix: `mergeIrregularSessionPatch` + functional updater in `RoofPreview`; atomic patches for cut click / clearCut. Tests: BK goldens in `irregularRoofLayout.test.js`.
 

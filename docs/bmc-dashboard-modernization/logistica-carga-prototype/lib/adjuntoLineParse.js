@@ -107,7 +107,7 @@ function parseClassicTableLenQty(afterMm) {
   const s = String(afterMm || "").replace(/\s+/g, " ").trim();
   if (!s) return null;
   // First number in 1.5–14.5 (panel length), then a *complete* integer qty 1–200.
-  // `(?!\d)` is required: otherwise `2,50 37,00` matches qty=3 (prefix of price 37).
+  // Bug BP: `(?!\d)` required — otherwise `2,50 37,00` matches qty=3 (prefix of price 37).
   // `(?!\s*[.,]\d)` still rejects full prices like `37,00` when taken as qty.
   const re = /(\d{1,2}[.,]\d{1,2}|\d{1,2})\s+(\d{1,3})(?!\d)(?!\s*[.,]\d)/g;
   let m;
