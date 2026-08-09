@@ -159,6 +159,7 @@ group("AGENT_TOOLS surface", () => {
     "sheets_get_pending_admin",
     "sheets_propose_write",
     "sheets_write_range",
+    "pea_explain_gap",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);

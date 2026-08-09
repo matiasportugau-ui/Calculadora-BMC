@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docs/sdd/panelin-evolution-architect/contracts/schemas/gap-event.schema.json",
+  "title": "GapEvent",
+  "description": "Normalized failure/capability signal emitted by Panelin fast loop (PEA ingest).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "source",
+    "signal_type",
+    "occurred_at",
+    "severity",
+    "fingerprint_inputs",
+    "payload"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique event id (pea.gap_events.id)."
+    },
+    "gap_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Aggregated gap after dedupe (nullable on first insert)."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["panelin_fast", "operator_feedback", "system_probe"]
+    },
+    "signal_type": {
+      "type": "string",
+      "description": "e.g. tool_fail, provider_fail, calc_error, missing_capability, operator_report",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "tool_id": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "SideEffectRegistry tool_id when applicable."
+    },
+    "session_id": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "Panelin session; stored but excluded from fingerprint hash."
+    },
+    "conversation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "fingerprint_inputs": {
+      "type": "object",
+      "description": "Normalized subset used for dedupe; see contracts/fingerprint.md.",
+      "additionalProperties": true
+    },
+    "payload": {
+      "type": "object",
+      "description": "Redacted diagnostic blob (no PII by default).",
+      "additionalProperties": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

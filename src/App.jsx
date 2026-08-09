@@ -70,6 +70,7 @@ const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminMod
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
 const AssistantsStatusPanel = lazy(() => import("./components/hub/admin/AssistantsStatusPanel.jsx"));
 const MlManagerModule = lazy(() => import("./components/hub/ml/MlManagerModule.jsx"));
+const PeaConsoleModule = lazy(() => import("./components/hub/pea/PeaConsoleModule.jsx"));
 
 const suspenseFallback = (
   <div
@@ -401,6 +402,16 @@ export default function App() {
         />
         <Route path="/hub/banco" element={<Navigate to="/hub/finanzas/banco" replace />} />
         <Route path="/hub/banco/*" element={<Navigate to="/hub/finanzas/banco" replace />} />
+        <Route
+          path="/hub/pea"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <PeaConsoleModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
         <Route
           path="/hub/agent-admin"
           element={

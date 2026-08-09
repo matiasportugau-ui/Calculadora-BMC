@@ -444,6 +444,32 @@ export const config = {
   brainLocalPath: process.env.BRAIN_LOCAL_PATH || "",
   /** Max lessons injected per prompt (policies, not retrieval — top-N by confidence×overlap). */
   brainInjectCap: Math.max(1, Math.min(20, Number(process.env.BRAIN_INJECT_CAP || 10))),
+  /** Panelin Evolution Architect (PEA) — default OFF in prod (SDD §8). */
+  peaEnabled: bool(process.env.PEA_ENABLED, false),
+  peaWorkerEnabled: bool(process.env.PEA_WORKER_ENABLED, false),
+  peaAutoDiagnose: bool(process.env.PEA_AUTO_DIAGNOSE, false),
+  peaAutoMaxTotalTokens: Math.max(1000, Number(process.env.PEA_AUTO_MAX_TOTAL_TOKENS || 32000)),
+  peaApprovalMaxTotalTokens: Math.max(1000, Number(process.env.PEA_APPROVAL_MAX_TOTAL_TOKENS || 96000)),
+  peaMaxOutputTokensPerCall: Math.max(256, Number(process.env.PEA_MAX_OUTPUT_TOKENS_PER_CALL || 6000)),
+  peaAutoMaxCostUsd: Math.max(0, Number(process.env.PEA_AUTO_MAX_COST_USD || 0.5)),
+  peaApprovedMaxCostUsd: Math.max(0, Number(process.env.PEA_APPROVED_MAX_COST_USD || 2.5)),
+  peaAutoDailyBudgetUsd: Math.max(0, Number(process.env.PEA_AUTO_DAILY_BUDGET_USD || 10)),
+  peaMaxConcurrency: Math.max(1, Math.min(10, Number(process.env.PEA_MAX_CONCURRENCY || 2))),
+  peaEstimateSafetyFactor: Math.max(1, Number(process.env.PEA_ESTIMATE_SAFETY_FACTOR || 1.2)),
+  peaFallbackReservationMode: process.env.PEA_FALLBACK_RESERVATION_MODE || "sum",
+  peaRequireModelPricing: bool(process.env.PEA_REQUIRE_MODEL_PRICING, true),
+  peaWorkerIntervalMs: Math.max(2000, Number(process.env.PEA_WORKER_INTERVAL_MS || 5000)),
+  peaWorkerBatchSize: Math.max(1, Math.min(20, Number(process.env.PEA_WORKER_BATCH_SIZE || 2))),
+  peaAutoMinOccurrences: Math.max(1, Number(process.env.PEA_AUTO_MIN_OCCURRENCES || 3)),
+  peaArchitectMock: bool(process.env.PEA_ARCHITECT_MOCK, true),
+  peaMaxGrantLevel: Math.max(1, Math.min(5, Number(process.env.PEA_MAX_GRANT_LEVEL || 3))),
+  peaRatchetRequired: bool(process.env.PEA_RATCHET_REQUIRED, true),
+  peaSideEffectEnforce: bool(process.env.PEA_SIDE_EFFECT_ENFORCE, false),
+  peaDoomLoopGuard: bool(process.env.PEA_DOOM_LOOP_GUARD, false),
+  peaStagingMode: bool(process.env.PEA_STAGING_MODE, false),
+  peaImplementEnabled: bool(process.env.PEA_IMPLEMENT_ENABLED, false),
+  peaProjectLabel: process.env.PEA_PROJECT_LABEL || "calculadora-bmc",
+  peaDbLabel: process.env.PEA_DB_LABEL || "",
 };
 
 export const redirectUri = () => {

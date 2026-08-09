@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docs/sdd/panelin-evolution-architect/contracts/schemas/analysis-run.schema.json",
+  "title": "AnalysisRun",
+  "description": "ArchitectRuntime iteration with mandatory AnalysisPreflight record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "gap_id",
+    "phase",
+    "preflight_verdict",
+    "estimated_tokens",
+    "reserved_usd",
+    "model_calls_planned",
+    "started_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "gap_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "packet_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["triage", "explore", "plan", "critic", "full_iteration"]
+    },
+    "preflight_verdict": {
+      "type": "string",
+      "enum": ["AUTO_RUN", "ASK_INTERNAL", "DECOMPOSE", "DENY_UNPRICED", "BLOCKED"]
+    },
+    "estimated_tokens": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reserved_usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "actual_tokens": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "actual_usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "model_calls_planned": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "model_calls_used": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "blocked_reason": {
+      "type": "string"
+    },
+    "evidence_pack_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

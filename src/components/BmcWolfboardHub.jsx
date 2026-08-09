@@ -227,6 +227,21 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
 
+          <div style={{ ...card, borderColor: "#d1d9e6", background: "#f8fafc" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 26, height: 26, borderRadius: 6, background: "#5b21b6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
+                🧬
+              </div>
+              <h2 style={{ ...cardTitle, color: "#5b21b6" }}>PEA · Evolution Architect</h2>
+            </div>
+            <p style={cardDesc}>
+              Gaps, paquetes de evolución y ratchet gate. Consola admin para revisar diagnósticos Panelin (flags PEA_* default OFF).
+            </p>
+            <Link to="/hub/pea" style={{ ...cta, background: "#5b21b6" }}>
+              Abrir consola PEA
+            </Link>
+          </div>
+
           <div style={{ ...card, borderColor: "#fee2e2", background: "#fff7f7" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 26, height: 26, borderRadius: 6, background: "#c0392b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🐛</div>

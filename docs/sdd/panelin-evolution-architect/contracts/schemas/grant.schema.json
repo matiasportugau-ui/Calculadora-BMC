@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docs/sdd/panelin-evolution-architect/contracts/schemas/grant.schema.json",
+  "title": "Grant",
+  "description": "Durable autonomy authorization (L0–L5). Maps to pea.grants.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "max_level",
+    "scope",
+    "granted_by",
+    "granted_at",
+    "expires_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "max_level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Autonomy ladder ceiling (ADR-002)."
+    },
+    "scope": {
+      "type": "string",
+      "description": "e.g. gap:*, packet:<uuid>, lane:H, repo:calculadora-bmc",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "granted_by": {
+      "type": "string",
+      "description": "Principal subject_id of granting operator."
+    },
+    "granted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "gap_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "packet_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

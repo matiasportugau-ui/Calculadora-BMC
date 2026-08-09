@@ -46,6 +46,9 @@ import {
   parseDays,
 } from "./followUpStore.js";
 import { recordToolCall, classifyError } from "./toolStats.js";
+import { maybeEmitToolGap } from "./pea/gapIngest.js";
+import { explainGap } from "./pea/explainGap.js";
+import { getOmniPool } from "./omni/omniDb.js";
 import { INTENT_HINTS } from "./userIntentClassifier.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "./rag.js";
 import * as coworkSheets from "./coworkSheets.js";
@@ -1170,6 +1173,21 @@ export const AGENT_TOOLS = [
       required: ["range", "values", "user_confirmed"],
     },
   },
+  {
+    name: "pea_explain_gap",
+    description:
+      "Panelin Evolution Architect (PEA): explica en lenguaje operativo un gap de evolución del sistema " +
+      "(fallos recurrentes de tools, provider_fail, etc.). Solo lectura — no inventa precios ni cambia código. " +
+      "Usar cuando el operador pregunta por mejoras internas o errores recurrentes del asistente.",
+    input_schema: {
+      type: "object",
+      properties: {
+        gap_id: { type: "string", description: "UUID del gap en pea.gaps (opcional)" },
+        fingerprint: { type: "string", description: "Fingerprint estable del gap (opcional)" },
+        signal_type: { type: "string", description: "Filtrar por signal_type (opcional)" },
+      },
+    },
+  },
 ];
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -1447,6 +1465,15 @@ export async function executeTool(name, input, calcState = {}, opts = {}) {
         { event: "agent_tool_call", tool: name, ok, latency_ms: latencyMs, error_class: errorClass },
         "agent tool call",
       );
+    }
+    if (!ok) {
+      maybeEmitToolGap({
+        tool: name,
+        ok,
+        errorClass,
+        input,
+        opts: { ...opts, logger },
+      }).catch(() => {});
     }
   }
 
@@ -2553,6 +2580,16 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       } catch (err) {
         return JSON.stringify({ ok: false, error: err.message || "sheets_write_failed" });
       }
+    }
+
+    if (name === "pea_explain_gap") {
+      const pool = getOmniPool(config.databaseUrl);
+      const result = await explainGap(pool, config, {
+        gapId: input?.gap_id,
+        fingerprint: input?.fingerprint,
+        signalType: input?.signal_type,
+      });
+      return JSON.stringify(result);
     }
 
     return JSON.stringify({ error: `Tool "${name}" no implementada` });

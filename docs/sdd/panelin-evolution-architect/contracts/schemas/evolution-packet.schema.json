@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docs/sdd/panelin-evolution-architect/contracts/schemas/evolution-packet.schema.json",
+  "title": "EvolutionPacket",
+  "description": "Versioned diagnosis + recommended evolution (ArchitectRuntime L2 output).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "gap_id",
+    "version",
+    "status",
+    "primary_lane",
+    "diagnosis",
+    "recommended_changes",
+    "ratchet_plan",
+    "spec_citations",
+    "critic_result",
+    "blast_radius",
+    "created_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "gap_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "critic_pending",
+        "critic_failed",
+        "ready_for_review",
+        "accepted",
+        "rejected",
+        "superseded"
+      ]
+    },
+    "primary_lane": {
+      "type": "string",
+      "enum": ["H", "K", "C"],
+      "description": "Harness | Knowledge (PAOS bridge) | Code/product."
+    },
+    "secondary_lanes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["H", "K", "C"]
+      },
+      "uniqueItems": true
+    },
+    "diagnosis": {
+      "type": "string",
+      "minLength": 1
+    },
+    "recommended_changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "description"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "harness_prompt",
+              "harness_tool_schema",
+              "harness_golden",
+              "harness_sensor",
+              "knowledge_candidate",
+              "code_patch",
+              "config_flag",
+              "documentation"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "lane": {
+            "type": "string",
+            "enum": ["H", "K", "C"]
+          }
+        }
+      }
+    },
+    "ratchet_plan": {
+      "type": "object",
+      "required": ["artifacts"],
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["type", "description"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["golden", "fitness_sensor", "rule_provenance", "kb_entry", "adr"]
+              },
+              "path": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "spec_citations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["ref"],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "SDD section, ADR id, golden id, or TARGET id."
+          },
+          "quote": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "critic_result": {
+      "type": "object",
+      "required": ["passed", "checked_at"],
+      "properties": {
+        "passed": {
+          "type": "boolean"
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "model_phase": {
+          "type": "string",
+          "const": "pea:critic"
+        }
+      }
+    },
+    "blast_radius": {
+      "type": "object",
+      "required": ["summary", "risk_level"],
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["R0", "R1", "R2", "R3"]
+        },
+        "surfaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "analysis_run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

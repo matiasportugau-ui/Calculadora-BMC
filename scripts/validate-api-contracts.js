@@ -121,6 +121,36 @@ function checkCapabilities(data) {
   return { ok: true };
 }
 
+function checkPeaHealth(data) {
+  if (!data || data.ok !== true) return { ok: false, msg: "ok must be true" };
+  const required = [
+    "pea_enabled",
+    "worker_enabled",
+    "auto_diagnose",
+    "schema_ready",
+    "schema_version",
+    "contracts",
+  ];
+  if (!hasKeys(data, required)) {
+    return { ok: false, msg: `Missing keys: ${required.filter((k) => !(k in data)).join(", ")}` };
+  }
+  if (typeof data.pea_enabled !== "boolean") return { ok: false, msg: "pea_enabled must be boolean" };
+  if (typeof data.schema_ready !== "boolean") return { ok: false, msg: "schema_ready must be boolean" };
+  if (!data.contracts?.openapi?.includes("openapi-pea")) {
+    return { ok: false, msg: "contracts.openapi must reference openapi-pea.yaml" };
+  }
+  return { ok: true };
+}
+
+function checkEnvironment(data) {
+  if (!data || typeof data !== "object") return { ok: false, msg: "not an object" };
+  const required = ["env", "project", "db_label", "staging", "outbound_allowed", "implement_allowed"];
+  if (!hasKeys(data, required)) {
+    return { ok: false, msg: `Missing keys: ${required.filter((k) => !(k in data)).join(", ")}` };
+  }
+  return { ok: true };
+}
+
 function checkFollowups(data) {
   if (!data || data.ok !== true) return { ok: false, msg: "ok must be true" };
   if (!Array.isArray(data.items)) return { ok: false, msg: "items must be array" };
@@ -233,6 +263,18 @@ async function main() {
         return { ok: true };
       },
       allow503: true,
+    },
+    {
+      name: "GET /api/pea/health",
+      path: "/api/pea/health",
+      check: checkPeaHealth,
+      allow503: false,
+    },
+    {
+      name: "GET /api/environment",
+      path: "/api/environment",
+      check: checkEnvironment,
+      allow503: false,
     },
   ];
 
@@ -445,6 +487,22 @@ async function main() {
       console.log(`  ❌ ${name} — ${err.message}`);
       failed++;
     }
+  }
+
+  // ── PEA auth contract (JWT required on protected routes) ───────────────────
+  console.log("\n── /api/pea auth ──");
+  try {
+    const { status } = await fetchJson("/api/pea/gaps");
+    if (status === 401) {
+      console.log("  ✅ GET /api/pea/gaps (no token) → 401");
+      passed++;
+    } else {
+      console.log(`  ❌ GET /api/pea/gaps (no token) — expected 401, got HTTP ${status}`);
+      failed++;
+    }
+  } catch (err) {
+    console.log(`  ❌ GET /api/pea/gaps (no token) — ${err.message}`);
+    failed++;
   }
 
   // ── /api/agent/chat contract tests (3.4) ────────────────────────────────────
