@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-09 (fix — Bug BS PEA auth factory / grant revoke):** `#967` PEA routes passed bare `requireUser` (factory) as Express middleware → auth never ran (request hang) and several mutate/read handlers lacked `peaGrantWrite`/`peaRead` (any JWT could reject packets / revoke grants once PEA_ENABLED). Fix: `requireUser()` + permission middleware; reject refuses non-reviewable statuses. Tests: `tests/peaAuthHardening.test.js`.
+**2026-08-09 (fix — Bug BT PEA auth factory / grant revoke):** `#967` PEA routes passed bare `requireUser` (factory) as Express middleware → auth never ran (request hang) and several mutate/read handlers lacked `peaGrantWrite`/`peaRead` (any JWT could reject packets / revoke grants once PEA_ENABLED). Fix: `requireUser()` + permission middleware; reject refuses non-reviewable statuses. Tests: `tests/peaAuthHardening.test.js`. Fix PR: **#972**.
 
 **2026-08-09 (feat — PEA E2E quality campaign oleada 0):** `test:pea` (15 files) wired into `gate:local` + CI job `pea_tests`; contract validator adds `/api/pea/health`, `/api/environment`, JWT 401 on `/api/pea/gaps`; deploy workflow + `.env.example` PEA vars; `architectLlm.js` live path; `nativeAdapter.js` L3; `piiDenylist.js` (G-10); `pea-live-probe.mjs`; RECREATION-CHECKLIST as-built; ADR-012 IMP-05b risk acceptance; staging/prod runbooks in `docs/sdd/panelin-evolution-architect/evidence/`. Prod flags remain OFF until human oleadas 2–3.
 

@@ -50,7 +50,7 @@ export default function createPeaRouter(config, logger) {
   const peaGrantWrite = requirePeaAction(config, PEA_ACTIONS.GRANT_WRITE);
   const peaImplement = requirePeaAction(config, PEA_ACTIONS.IMPLEMENT);
   const peaReplay = requirePeaAction(config, PEA_ACTIONS.REPLAY);
-  // requireUser is a factory — must invoke requireUser() (Bug BS / #967).
+  // requireUser is a factory — must invoke requireUser() (Bug BT / #967).
   const authUser = requireUser();
   const authAdmin = requireUser({ role: "admin" });
 

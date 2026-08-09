@@ -1,5 +1,5 @@
 /**
- * PEA auth hardening — Bug BS (#967): bare requireUser factory hang +
+ * PEA auth hardening — Bug BT (#967): bare requireUser factory hang +
  * missing GRANT_WRITE on reject/revoke + reject status clobber.
  * Run: node tests/peaAuthHardening.test.js
  */
