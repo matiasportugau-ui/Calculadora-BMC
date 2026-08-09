@@ -29,12 +29,15 @@ export const CAB_LIGHTS_MS = 10_000;
 const BMC_BLUE = "#0B3D91";
 const BMC_BLUE_MID = "#1a4d7a";
 const BMC_DARK = "#0f2a45";
-const WOOD = "#9a6b42";
-const METAL = "#3d4652";
-const GLASS = "#9ec8e8";
+const WOOD = "#b07d4e"; // slightly lighter for readability under work lighting
+const METAL = "#4a5562";
+const GLASS = "#b8dcf0";
 const RUBBER = "#1c1c1c";
-const HEADLIGHT_OFF = "#d4d4d8";
+const HEADLIGHT_OFF = "#e4e4e7";
 const HEADLIGHT_ON = "#fff7d6";
+/** Slight emissive on paint so cab/bed don’t sink into dark environment */
+const PAINT_EMISSIVE = "#0a1f3a";
+const PAINT_EMISSIVE_I = 0.06;
 
 // Re-export for callers that import axle helper from the visual module.
 export { axleCount };
@@ -178,12 +181,24 @@ function BmcCab({ cabCenterX, lightsOn, onCabClick }) {
       {/* Main body */}
       <mesh position={[-0.05, bodyY, 0]} castShadow={false}>
         <boxGeometry args={[CAB_LEN * 0.88, bodyH, TRUCK_W * 0.9]} />
-        <meshStandardMaterial color={BMC_BLUE} metalness={0.35} roughness={0.4} />
+        <meshStandardMaterial
+          color={BMC_BLUE}
+          metalness={0.28}
+          roughness={0.42}
+          emissive={PAINT_EMISSIVE}
+          emissiveIntensity={PAINT_EMISSIVE_I}
+        />
       </mesh>
       {/* High roof / sleeper bias slightly rearward */}
       <mesh position={[0.05, roofY, 0]} castShadow={false}>
         <boxGeometry args={[CAB_LEN * 0.72, roofH, TRUCK_W * 0.86]} />
-        <meshStandardMaterial color={BMC_BLUE_MID} metalness={0.3} roughness={0.45} />
+        <meshStandardMaterial
+          color={BMC_BLUE_MID}
+          metalness={0.26}
+          roughness={0.46}
+          emissive={PAINT_EMISSIVE}
+          emissiveIntensity={PAINT_EMISSIVE_I}
+        />
       </mesh>
       {/* Windshield — nose */}
       <mesh position={[-CAB_LEN * 0.32, bodyY + 0.25, 0]} castShadow={false}>
@@ -321,7 +336,7 @@ function CargoBed({ shiftX, truckL }) {
       {/* Flat wood deck */}
       <mesh position={[cx, DECK_Y, cz]} receiveShadow castShadow={false}>
         <boxGeometry args={[truckL * 0.995, deckT, TRUCK_W * 0.98]} />
-        <meshStandardMaterial color={WOOD} roughness={0.85} metalness={0.05} />
+        <meshStandardMaterial color={WOOD} roughness={0.78} metalness={0.04} emissive="#3a2410" emissiveIntensity={0.04} />
       </mesh>
       {/* Front bulkhead at shiftX */}
       <mesh position={[shiftX + 0.04, DECK_Y + BULKHEAD_H / 2, cz]} castShadow={false}>
