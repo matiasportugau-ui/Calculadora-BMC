@@ -141,4 +141,59 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
   ok("UAM-style perfiles as accessories");
 }
 
+{
+  // Bug BX — modern default-L=6 echo + classic explicit L for same tipo|esp|qty must not 2×.
+  const dual = parseLogisticaFromAdjuntoText(
+    `ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15 4,677.93
+Isodec EPS 100 mm 4,00 10 37,00 370,00`,
+  );
+  assert.equal(dual.paneles.length, 1, `expected 1 panel after BX collapse, got ${JSON.stringify(dual.paneles)}`);
+  assert.equal(dual.paneles[0].cantidad, 10);
+  assert.equal(dual.paneles[0].longitud, 4, "prefer classic explicit length over default 6");
+  assert.equal(
+    dual.paneles.reduce((s, p) => s + p.cantidad, 0),
+    10,
+    `panel qty must stay 10, got ${JSON.stringify(dual.paneles)}`,
+  );
+  ok("Bug BX: dual-format modern+classic → single ISODEC ×10 @ L=4");
+}
+
+{
+  // Modern-only (no classic) still keeps default L=6.
+  const modernOnly = parseLogisticaFromAdjuntoText("ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15 4,677.93");
+  assert.equal(modernOnly.paneles.length, 1);
+  assert.equal(modernOnly.paneles[0].longitud, 6);
+  assert.equal(modernOnly.paneles[0].cantidad, 10);
+  ok("modern-only still defaults length to 6");
+}
+
+{
+  // Distinct lengths with same qty remain (true multi-length order).
+  const multi = parseLogisticaFromAdjuntoText(
+    `Isopanel EPS 100 mm (Fachada)                             2,50        11                  37,00              1.159,95
+Isopanel EPS 100 mm (Fachada)                             2,30        11                  37,00                 485,07`,
+  );
+  assert.equal(multi.paneles.length, 2, `expected 2 distinct L rows: ${JSON.stringify(multi.paneles)}`);
+  assert.equal(
+    multi.paneles.reduce((s, p) => s + p.cantidad, 0),
+    22,
+  );
+  ok("distinct classic lengths same qty are kept");
+}
+
+{
+  // Bug BY — free-text accessory + classic table echo of same piece.
+  const accEcho = parseLogisticaFromAdjuntoText(
+    `2 Gotero Frontal Izquierdo
+Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
+  );
+  assert.equal(
+    accEcho.accesorios.length,
+    1,
+    `expected 1 gotero after BY collapse, got ${JSON.stringify(accEcho.accesorios)}`,
+  );
+  assert.equal(accEcho.accesorios[0].cantidad, 2);
+  ok("Bug BY: free-text + classic gotero echo → qty 2 once");
+}
+
 console.log(`\n${passed} passed`);
