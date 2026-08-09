@@ -44,6 +44,21 @@ export function mergeIrregularSessionPatch(prev, patch = {}) {
   };
 }
 
+/**
+ * Full wipe for calculator Limpiar / handleReset.
+ * Must clear BOTH byGi schedules AND the shared dual-plant session — clearing
+ * only byGi leaves enabled+cut in session, so RoofPreview republishes the prior
+ * cut onto the reset techo (Bug BR).
+ *
+ * @returns {{ session: typeof EMPTY_IRREGULAR_SESSION, byGi: Record<string, never> }}
+ */
+export function resetIrregularCalculatorState() {
+  return {
+    session: { ...EMPTY_IRREGULAR_SESSION },
+    byGi: {},
+  };
+}
+
 export function stepCeil(v, step) {
   if (!(step > 0)) return v;
   if (!(v > 0)) return 0;

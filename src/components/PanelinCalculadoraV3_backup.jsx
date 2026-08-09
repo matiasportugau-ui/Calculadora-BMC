@@ -64,6 +64,7 @@ import {
   isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes,
 } from "../utils/projectFile.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
+import { EMPTY_IRREGULAR_SESSION, resetIrregularCalculatorState } from "../utils/irregularRoofLayout.js";
 import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
 import QuotePreviewModal from "./QuotePreviewModal.jsx";
 import { countPtsFromApoyoMateriales, buildDefaultApoyoMateriales, cycleCombinadaMaterial, COMBINADA_MATERIAL_ORDER } from "../utils/combinadaFijacionShared.js";
@@ -2544,12 +2545,7 @@ export default function PanelinCalculadoraV3() {
    * left = factory (stepped pedido); right = final_plane (smooth roof).
    */
   const [irregularSession, setIrregularSession] = useState(() => ({
-    enabled: false,
-    tool: "select",
-    cut: null,
-    cutDraft: null,
-    selectedStripId: null,
-    layoutOverride: null,
+    ...EMPTY_IRREGULAR_SESSION,
   })); // patches via RoofPreview must use functional setState (mergeIrregularSessionPatch)
   const handleIrregularLayoutChange = useCallback((layout, gi) => {
     setIrregularLayoutByGi((prev) => {
@@ -4430,6 +4426,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setFlete(getFleteDefault());
     setOverrides({});
     setExcludedItems({});
+    // Bug BR: wipe byGi + shared irregularSession (enabled/cut/override). Clearing
+    // only byGi lets RoofPreview republish the prior cut onto the reset techo.
+    const irrReset = resetIrregularCalculatorState();
+    setIrregularLayoutByGi(irrReset.byGi);
+    setIrregularSession(irrReset.session);
     if (modoVendedor) setWizardStep(0);
     setCategoriasActivas(() => {
       const initial = {};
