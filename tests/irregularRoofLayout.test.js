@@ -11,6 +11,7 @@ import {
   irregularSchedulesForPdf,
   mergeIrregularSessionPatch,
   EMPTY_IRREGULAR_SESSION,
+  resetIrregularCalculatorState,
   stepCeil,
   sideCross,
   polygonArea,
@@ -388,6 +389,50 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
   );
   sess = mergeIrregularSessionPatch(sess, { cut: null, cutDraft: null, layoutOverride: null });
   ok(sess.cut == null && sess.enabled === true, "BK clearCut keeps enabled");
+}
+
+// Bug BR — Limpiar/handleReset must wipe irregularSession (not only byGi).
+// After #949, leftover enabled+cut republishes onto the reset techo → wrong BOM.
+{
+  const staleCut = { p0: { x: 0, y: 0 }, p1: { x: 8, y: 9 }, keep: "left" };
+  const defaultZona = { largo: 6.0, ancho: 5.0 };
+
+  // Pre-fix: clear byGi only (BJ half) but keep session → RoofPreview republishes.
+  const republished = buildIrregularSchedule({
+    zoneId: "z0",
+    mode: "diagonal_halfplane",
+    ancho: defaultZona.ancho,
+    largo: defaultZona.largo,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: staleCut,
+  });
+  ok(republished.strips.length >= 1, "BR stale session cut yields strips on reset dims");
+  const techoBleed = techoBase({
+    zonas: [defaultZona],
+    irregularLayoutByGi: { 0: republished },
+  });
+  const techoClean = techoBase({
+    zonas: [defaultZona],
+    irregularLayoutByGi: {},
+  });
+  const rBleed = executeScenario("solo_techo", { techo: techoBleed, pared: {}, camara: {} });
+  const rClean = executeScenario("solo_techo", { techo: techoClean, pared: {}, camara: {} });
+  ok(
+    rBleed.paneles?.areaTotal < rClean.paneles?.areaTotal - 5,
+    `BR session bleed undercharges vs clean reset: bleed=${rBleed.paneles?.areaTotal} clean=${rClean.paneles?.areaTotal}`,
+  );
+
+  const wiped = resetIrregularCalculatorState();
+  ok(wiped.session.enabled === false, "BR reset session.enabled=false");
+  ok(wiped.session.cut == null, "BR reset session.cut=null");
+  ok(wiped.session.layoutOverride == null, "BR reset session.layoutOverride=null");
+  ok(Object.keys(wiped.byGi).length === 0, "BR reset byGi empty");
+  ok(
+    !wiped.session.enabled && !wiped.session.cut,
+    "BR wiped session cannot republish a cut",
+  );
 }
 
 console.log(`\n${passed} assertions passed`);
