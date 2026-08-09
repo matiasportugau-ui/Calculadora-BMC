@@ -106,8 +106,10 @@ function looksLikeAccessoryLine(raw) {
 function parseClassicTableLenQty(afterMm) {
   const s = String(afterMm || "").replace(/\s+/g, " ").trim();
   if (!s) return null;
-  // First number in 1.5–14.5 (panel length), then integer qty 1–200 (not a price like 37,00).
-  const re = /(\d{1,2}[.,]\d{1,2}|\d{1,2})\s+(\d{1,3})(?!\s*[.,]\d)/g;
+  // First number in 1.5–14.5 (panel length), then a *complete* integer qty 1–200.
+  // Bug BP: `(?!\d)` — otherwise `2,50 37,00` matches qty=3 (prefix of price 37).
+  // `(?!\s*[.,]\d)` still rejects full decimal prices when taken as qty.
+  const re = /(\d{1,2}[.,]\d{1,2}|\d{1,2})\s+(\d{1,3})(?!\d)(?!\s*[.,]\d)/g;
   let m;
   while ((m = re.exec(s)) !== null) {
     const len = parseFloat(String(m[1]).replace(",", "."));
@@ -115,6 +117,15 @@ function parseClassicTableLenQty(afterMm) {
     if (!Number.isFinite(len) || len < 1.5 || len > 14.5) continue;
     if (!Number.isFinite(qty) || qty < 1 || qty > 200) continue;
     if (qty >= 100 && len >= 10) continue;
+    // Bug BU: all-integer tail `L PU Total` (no decimal prices) — e.g. `6 37 222`.
+    // Without decimals we cannot tell qty from PU; fail closed (distinct from BP decimal digit steal).
+    const rest = s.slice(m.index + m[0].length).trim();
+    if (rest) {
+      const nextTok = rest.match(/^(\d+(?:[.,]\d+)?)/);
+      if (nextTok && !/[.,]/.test(nextTok[1]) && !/\d+[.,]\d+/.test(rest)) {
+        continue;
+      }
+    }
     return { longitud: snapLen(len), cantidad: qty };
   }
   return null;

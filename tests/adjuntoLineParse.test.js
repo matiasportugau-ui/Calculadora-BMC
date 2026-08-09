@@ -141,4 +141,38 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
   ok("UAM-style perfiles as accessories");
 }
 
+{
+  // Bug BP — missing Cantidad must not steal first digit of decimal PU.
+  const missingQty = parsePanelLineHeuristic(
+    "Isopanel EPS 100 mm (Fachada)                             2,50                  37,00              1.159,95",
+  );
+  assert.equal(
+    missingQty,
+    null,
+    `expected null (fail closed), got ${JSON.stringify(missingQty)}`,
+  );
+  const stillOk = parsePanelLineHeuristic(
+    "Isopanel EPS 100 mm (Fachada)                             2,50        11                  37,00              1.159,95",
+  );
+  assert.ok(stillOk);
+  assert.equal(stillOk.cantidad, 11);
+  ok("classic Largo+PU without Cantidad → null (Bug BP)");
+}
+
+{
+  // Bug BU — all-integer L PU Total (no decimals) must not treat PU as qty.
+  // Residual after BP digit-prefix fix: `6 37 222` still matched qty=37.
+  const intPu = parsePanelLineHeuristic(
+    "Isodec EPS 100 mm (Cubierta)                              6         37                 222",
+  );
+  assert.equal(intPu, null, `expected null, got ${JSON.stringify(intPu)}`);
+  const intPu2 = parsePanelLineHeuristic("Isodec EPS 100 mm (Cubierta) 6 45 270");
+  assert.equal(intPu2, null, `expected null, got ${JSON.stringify(intPu2)}`);
+  // Still accept L + qty when a decimal price follows.
+  const withDec = parsePanelLineHeuristic("Isodec EPS 100 mm (Cubierta) 6 10 37,00");
+  assert.ok(withDec);
+  assert.equal(withDec.cantidad, 10);
+  ok("classic all-integer L PU Total → null (Bug BU)");
+}
+
 console.log(`\n${passed} passed`);
