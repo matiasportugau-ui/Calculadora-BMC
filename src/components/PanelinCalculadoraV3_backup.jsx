@@ -2539,6 +2539,18 @@ export default function PanelinCalculadoraV3() {
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
   /** Per-zone stepped schedules from RoofPreview modo irregular. */
   const [irregularLayoutByGi, setIrregularLayoutByGi] = useState(() => ({}));
+  /**
+   * Shared cut session so left wizard plant and right visor stay in sync.
+   * left = factory (stepped pedido); right = final_plane (smooth roof).
+   */
+  const [irregularSession, setIrregularSession] = useState(() => ({
+    enabled: false,
+    tool: "select",
+    cut: null,
+    cutDraft: null,
+    selectedStripId: null,
+    layoutOverride: null,
+  }));
   const handleIrregularLayoutChange = useCallback((layout, gi) => {
     setIrregularLayoutByGi((prev) => {
       const next = { ...prev };
@@ -4658,6 +4670,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           })
         }
         onIrregularLayoutChange={handleIrregularLayoutChange}
+        irregularSession={irregularSession}
+        onIrregularSessionChange={setIrregularSession}
+        irregularDisplayMode="final_plane"
       />
     );
   }, [
@@ -4691,6 +4706,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     techo.borders,
     techo.inclAccesorios,
     setTecho,
+    handleIrregularLayoutChange,
+    irregularSession,
   ]);
 
   /** Con panel apilado (≤1023px), la planta 2D se muestra en el flujo del wizard; el visor derecho queda en cotización / carrusel. */
@@ -5960,6 +5977,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                               })
                             }
                             onIrregularLayoutChange={handleIrregularLayoutChange}
+                            irregularSession={irregularSession}
+                            onIrregularSessionChange={setIrregularSession}
+                            irregularDisplayMode="factory"
                           />
                         );
                         return (
@@ -6286,6 +6306,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                                 })
                               }
                               onIrregularLayoutChange={handleIrregularLayoutChange}
+                              irregularSession={irregularSession}
+                              onIrregularSessionChange={setIrregularSession}
+                              irregularDisplayMode="factory"
                             />
                           )
                         ) : (

@@ -7,6 +7,7 @@ import {
   applyManualOrderLength,
   resetStripToAuto,
   bomFromIrregularSchedule,
+  buildFactoryOrderList,
   irregularSchedulesForPdf,
   stepCeil,
   sideCross,
@@ -311,7 +312,7 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
   );
 }
 
-// PDF: schedule in model + simple HTML
+// Factory order list + PDF schedule
 {
   const irr = buildIrregularSchedule({
     mode: "diagonal_halfplane",
@@ -322,9 +323,18 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
     lmax: 14,
     cut: { p0: { x: 0, y: 0 }, p1: { x: 5.6, y: 6 }, keep: "left" },
   });
+  const factory = buildFactoryOrderList(irr);
+  ok(factory && factory.rows.length === 5, "factory list 5 panels");
+  ok(factory.summaryByLength.length >= 1, "factory has N×L summary groups");
+  const sumCount = factory.summaryByLength.reduce((s, g) => s + g.count, 0);
+  ok(sumCount === 5, "summary counts sum to panel count");
+  ok(factory.rows.every((r) => r.L_order + 1e-9 >= r.L_cover), "each L_order >= L_cover");
+  ok(factory.totals.areaOrdered > 0, "factory totals ordered > 0");
+
   const sched = irregularSchedulesForPdf(null, { 0: irr });
   ok(sched && sched.strips.length === 5, "pdf helper 5 strips");
   ok(/obra/i.test(sched.note), "pdf helper note");
+  ok(sched.factorySummary && /\d+×/.test(sched.factorySummary), "pdf helper factorySummary");
 
   const q = buildQuotationModel({
     client: { nombre: "Test" },
@@ -346,7 +356,8 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
   });
   ok(q.irregularSchedule?.strips?.length === 5, "buildQuotationModel irregularSchedule");
   const html = renderSimplePdf(q);
-  ok(/Largos escalonados/i.test(html), "simple PDF has schedule title");
+  ok(/Pedido de paneles|Largos escalonados/i.test(html), "simple PDF has schedule title");
+  ok(/Resumen fábrica/i.test(html), "simple PDF has factory summary");
   ok(/T-01/.test(html) && /T-05/.test(html), "simple PDF has T-01 and T-05");
   ok(/obra/i.test(html), "simple PDF corte en obra");
 }

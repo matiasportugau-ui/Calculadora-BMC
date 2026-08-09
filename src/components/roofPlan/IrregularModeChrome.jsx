@@ -1,5 +1,7 @@
-// Toolbar + schedule inspector for Modo irregular (Freeform-style)
+// Toolbar + factory order inspector for Modo irregular
+// factory mode: full stepped pedido list | final_plane: compact tools only
 import { C, FONT } from "../../data/constants.js";
+import { buildFactoryOrderList } from "../../utils/irregularRoofLayout.js";
 
 const CORTE_NOTE =
   "Corte en obra: paneles con extremos rectos (largos escalonados). Los cortes oblicuos los hace el cliente en obra.";
@@ -16,8 +18,12 @@ export default function IrregularModeChrome({
   onResetStrip,
   onClearCut,
   dense = false,
+  /** factory = full pedido list; final_plane = tools only (right plant) */
+  displayMode = "factory",
 }) {
   const strip = layout?.strips?.find((s) => s.id === selectedStripId);
+  const factory = enabled && layout?.strips?.length ? buildFactoryOrderList(layout) : null;
+  const showOrder = displayMode === "factory";
   const btn = (active) => ({
     fontFamily: FONT,
     fontSize: dense ? 11 : 12,
@@ -31,7 +37,7 @@ export default function IrregularModeChrome({
   });
 
   return (
-    <div data-bmc="irregular-chrome" style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8, fontFamily: FONT }}>
+    <div data-bmc="irregular-chrome" data-mode={displayMode} style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8, fontFamily: FONT }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
         <button type="button" style={btn(enabled)} onClick={onToggle} aria-pressed={enabled}>
           Modo irregular
@@ -63,11 +69,13 @@ export default function IrregularModeChrome({
             lineHeight: 1.35,
           }}
         >
-          {CORTE_NOTE}
+          {displayMode === "final_plane"
+            ? "Plano final: silueta del techo como queda instalado (sin escalera de paneles). El pedido a fábrica se detalla en la columna izquierda."
+            : CORTE_NOTE}
         </div>
       )}
 
-      {enabled && layout?.totals && (
+      {enabled && showOrder && layout?.totals && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 6, fontSize: 11 }}>
           <Metric label="Pedido m²" value={layout.totals.areaOrdered?.toFixed(2)} />
           <Metric label="Útil m²" value={layout.totals.areaUsable?.toFixed(2)} />
@@ -79,19 +87,42 @@ export default function IrregularModeChrome({
         </div>
       )}
 
-      {enabled && layout?.strips?.length > 0 && (
-        <div style={{ overflowX: "auto", maxHeight: dense ? 140 : 180, overflowY: "auto" }}>
+      {enabled && showOrder && factory?.summaryByLength?.length > 0 && (
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: C.tp,
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 8,
+            padding: "8px 10px",
+            lineHeight: 1.4,
+          }}
+        >
+          <div style={{ fontSize: 10, color: C.ts, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+            Resumen fábrica
+          </div>
+          {factory.summaryByLength.map((g) => `${g.count}× ${g.L_order.toFixed(2)} m`).join(" · ")}
+        </div>
+      )}
+
+      {enabled && showOrder && factory?.rows?.length > 0 && (
+        <div style={{ overflowX: "auto", maxHeight: dense ? 160 : 200, overflowY: "auto" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.tp, marginBottom: 4 }}>
+            Pedido de paneles (largos escalonados)
+          </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <thead>
               <tr style={{ textAlign: "left", color: C.ts }}>
-                <th style={th}>ID</th>
-                <th style={th}>L cover</th>
+                <th style={th}>Panel</th>
                 <th style={th}>L pedido</th>
+                <th style={th}>L cover</th>
                 <th style={th}>Fuente</th>
               </tr>
             </thead>
             <tbody>
-              {layout.strips.map((s) => (
+              {factory.rows.map((s) => (
                 <tr
                   key={s.id}
                   onClick={() => onSelectStrip(s.id)}
@@ -100,9 +131,9 @@ export default function IrregularModeChrome({
                     background: selectedStripId === s.id ? "rgba(0,113,227,0.1)" : "transparent",
                   }}
                 >
-                  <td style={td}>{s.id}</td>
-                  <td style={td}>{s.L_cover?.toFixed(2)}</td>
-                  <td style={td}>{s.L_order?.toFixed(2)}</td>
+                  <td style={{ ...td, fontWeight: 700 }}>{s.id}</td>
+                  <td style={td}>{s.L_order?.toFixed(2)} m</td>
+                  <td style={td}>{s.L_cover?.toFixed(2)} m</td>
                   <td style={td}>{s.source}</td>
                 </tr>
               ))}
@@ -111,7 +142,7 @@ export default function IrregularModeChrome({
         </div>
       )}
 
-      {enabled && strip && (
+      {enabled && showOrder && strip && (
         <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, background: C.surface }}>
           <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>{strip.id} — editar largo</div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -147,7 +178,7 @@ export default function IrregularModeChrome({
 
       {enabled && tool === "cut" && (
         <div style={{ fontSize: 11, color: C.brand, fontWeight: 600 }}>
-          Clic en dos puntos de la zona para definir el corte (regla + ángulo).
+          Clic en dos puntos de la zona para definir el corte (regla + ángulo). Luego: izquierda = pedido escalonado · derecha = plano final liso.
         </div>
       )}
     </div>
