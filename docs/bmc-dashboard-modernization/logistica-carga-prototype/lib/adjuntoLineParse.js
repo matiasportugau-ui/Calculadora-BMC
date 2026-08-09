@@ -355,6 +355,17 @@ export function parseAccesorioLine(line) {
   ) {
     return null;
   }
+  // Modern BMC PDF engineering summary — not shippable bultos.
+  // pdftotext often wraps "113.7 m² · 10 paneles · 3 apoyos · 57 fijaciones"
+  // into "57 fijaciones" / "3 apoyos · 57 fijaciones", which would otherwise
+  // become phantom accessories (wrong kg/m³ + packing blockers).
+  if (/\bapoyos?\b/i.test(raw)) return null;
+  if (
+    /^\d{1,5}\s*fijaciones?\s*$/i.test(raw) ||
+    (/\bfijaciones?\b/i.test(raw) && /\b(?:paneles?|m\s*[²2]|apoyos?)\b/i.test(raw))
+  ) {
+    return null;
+  }
   // Phone / account digit runs
   if (/\b0?\d{2,3}[\s.-]?\d{3}[\s.-]?\d{3}\b/.test(raw)) return null;
 
