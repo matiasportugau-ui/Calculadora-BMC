@@ -9,6 +9,8 @@ import {
   bomFromIrregularSchedule,
   buildFactoryOrderList,
   irregularSchedulesForPdf,
+  mergeIrregularSessionPatch,
+  EMPTY_IRREGULAR_SESSION,
   stepCeil,
   sideCross,
   polygonArea,
@@ -360,6 +362,32 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
   ok(/Resumen fábrica/i.test(html), "simple PDF has factory summary");
   ok(/T-01/.test(html) && /T-05/.test(html), "simple PDF has T-01 and T-05");
   ok(/obra/i.test(html), "simple PDF corte en obra");
+}
+
+// Bug BK — shared irregularSession sequential patches must not lose cut
+{
+  // Absolute setState (pre-fix dual-plant bug): last write wins → cutDraft lost.
+  let abs = { ...EMPTY_IRREGULAR_SESSION, enabled: true, tool: "cut" };
+  const sessionSnap = abs;
+  abs = { ...sessionSnap, cutDraft: { x: 1, y: 1 } };
+  abs = { ...sessionSnap, cut: null };
+  ok(abs.cutDraft == null, "BK absolute multi-set loses cutDraft (repro)");
+
+  // Functional merge (fix): sequential patches in one click keep all fields.
+  let sess = { ...EMPTY_IRREGULAR_SESSION, enabled: true, tool: "cut" };
+  sess = mergeIrregularSessionPatch(sess, { cutDraft: { x: 1, y: 1 }, cut: null });
+  ok(sess.cutDraft?.x === 1 && sess.cut == null, "BK first click keeps cutDraft");
+  sess = mergeIrregularSessionPatch(sess, {
+    cut: { p0: sess.cutDraft, p1: { x: 2, y: 2 } },
+    cutDraft: null,
+    tool: "select",
+  });
+  ok(
+    sess.cut?.p0?.x === 1 && sess.cut?.p1?.x === 2 && sess.cutDraft == null && sess.tool === "select",
+    "BK second click completes cut atomically",
+  );
+  sess = mergeIrregularSessionPatch(sess, { cut: null, cutDraft: null, layoutOverride: null });
+  ok(sess.cut == null && sess.enabled === true, "BK clearCut keeps enabled");
 }
 
 console.log(`\n${passed} assertions passed`);

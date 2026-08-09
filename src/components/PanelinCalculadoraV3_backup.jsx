@@ -2550,7 +2550,7 @@ export default function PanelinCalculadoraV3() {
     cutDraft: null,
     selectedStripId: null,
     layoutOverride: null,
-  }));
+  })); // patches via RoofPreview must use functional setState (mergeIrregularSessionPatch)
   const handleIrregularLayoutChange = useCallback((layout, gi) => {
     setIrregularLayoutByGi((prev) => {
       const next = { ...prev };

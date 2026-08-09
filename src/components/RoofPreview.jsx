@@ -51,6 +51,7 @@ import {
   buildIrregularSchedule,
   applyManualOrderLength,
   resetStripToAuto,
+  mergeIrregularSessionPatch,
 } from "../utils/irregularRoofLayout.js";
 import IrregularModeChrome from "./roofPlan/IrregularModeChrome.jsx";
 import IrregularPlantOverlay from "./roofPlan/IrregularPlantOverlay.jsx";
@@ -1884,6 +1885,8 @@ export default function RoofPreview({
    * Shared irregular session (parent-owned). When set with onIrregularSessionChange,
    * cut/mode stay in sync across left + right RoofPreview mounts.
    * Shape: { enabled, tool, cut, cutDraft, selectedStripId, layoutOverride }
+   * onIrregularSessionChange MUST accept a functional updater (React setState style)
+   * so sequential patches in one pointer event do not lose the cut.
    */
   irregularSession = null,
   onIrregularSessionChange = null,
@@ -1940,66 +1943,96 @@ export default function RoofPreview({
   const patchIrregularSession = useCallback(
     (patch) => {
       if (!irregularControlled) return;
-      onIrregularSessionChange({
-        enabled: Boolean(irregularSession.enabled),
-        tool: irregularSession.tool || "select",
-        cut: irregularSession.cut ?? null,
-        cutDraft: irregularSession.cutDraft ?? null,
-        selectedStripId: irregularSession.selectedStripId ?? null,
-        layoutOverride: irregularSession.layoutOverride ?? null,
-        ...patch,
-      });
+      // Functional updater: dual-plant click handlers issue multiple patches
+      // in one event; absolute setState would keep only the last write (cut lost).
+      onIrregularSessionChange((prev) => mergeIrregularSessionPatch(prev, patch));
     },
-    [irregularControlled, irregularSession, onIrregularSessionChange],
+    [irregularControlled, onIrregularSessionChange],
   );
 
   const setIrregularOn = useCallback(
     (v) => {
-      const next = typeof v === "function" ? v(irregularOn) : v;
-      if (irregularControlled) patchIrregularSession({ enabled: Boolean(next), cutDraft: null });
-      else setLocalIrregularOn(Boolean(next));
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.enabled) : v;
+          return mergeIrregularSessionPatch(cur, { enabled: Boolean(next), cutDraft: null });
+        });
+      } else {
+        setLocalIrregularOn((prev) => Boolean(typeof v === "function" ? v(prev) : v));
+      }
     },
-    [irregularControlled, irregularOn, patchIrregularSession],
+    [irregularControlled, onIrregularSessionChange],
   );
   const setIrregularTool = useCallback(
     (v) => {
-      const next = typeof v === "function" ? v(irregularTool) : v;
-      if (irregularControlled) patchIrregularSession({ tool: next });
-      else setLocalIrregularTool(next);
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.tool) : v;
+          return mergeIrregularSessionPatch(cur, { tool: next });
+        });
+      } else {
+        setLocalIrregularTool(v);
+      }
     },
-    [irregularControlled, irregularTool, patchIrregularSession],
+    [irregularControlled, onIrregularSessionChange],
   );
   const setIrregularCut = useCallback(
     (v) => {
-      const next = typeof v === "function" ? v(irregularCut) : v;
-      if (irregularControlled) patchIrregularSession({ cut: next });
-      else setLocalIrregularCut(next);
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.cut) : v;
+          return mergeIrregularSessionPatch(cur, { cut: next });
+        });
+      } else {
+        setLocalIrregularCut(v);
+      }
     },
-    [irregularControlled, irregularCut, patchIrregularSession],
+    [irregularControlled, onIrregularSessionChange],
   );
   const setIrregularCutDraft = useCallback(
     (v) => {
-      const next = typeof v === "function" ? v(irregularCutDraft) : v;
-      if (irregularControlled) patchIrregularSession({ cutDraft: next });
-      else setLocalIrregularCutDraft(next);
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.cutDraft) : v;
+          return mergeIrregularSessionPatch(cur, { cutDraft: next });
+        });
+      } else {
+        setLocalIrregularCutDraft(v);
+      }
     },
-    [irregularControlled, irregularCutDraft, patchIrregularSession],
+    [irregularControlled, onIrregularSessionChange],
   );
   const setIrregularStripId = useCallback(
     (v) => {
-      const next = typeof v === "function" ? v(irregularStripId) : v;
-      if (irregularControlled) patchIrregularSession({ selectedStripId: next });
-      else setLocalIrregularStripId(next);
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.selectedStripId) : v;
+          return mergeIrregularSessionPatch(cur, { selectedStripId: next });
+        });
+      } else {
+        setLocalIrregularStripId(v);
+      }
     },
-    [irregularControlled, irregularStripId, patchIrregularSession],
+    [irregularControlled, onIrregularSessionChange],
   );
   const setIrregularLayoutOverride = useCallback(
     (v) => {
-      const next = typeof v === "function" ? v(irregularLayoutOverride) : v;
-      if (irregularControlled) patchIrregularSession({ layoutOverride: next });
-      else setLocalIrregularLayoutOverride(next);
+      if (irregularControlled) {
+        onIrregularSessionChange((prev) => {
+          const cur = mergeIrregularSessionPatch(prev, {});
+          const next = typeof v === "function" ? v(cur.layoutOverride) : v;
+          return mergeIrregularSessionPatch(cur, { layoutOverride: next });
+        });
+      } else {
+        setLocalIrregularLayoutOverride(v);
+      }
     },
-    [irregularControlled, irregularLayoutOverride, patchIrregularSession],
+    [irregularControlled, onIrregularSessionChange],
   );
   /** `${gi}:${strip.idx}` — inspección en planta (sin editar BOM). Hidrata desde sessionStorage si la huella coincide. */
   const [plantaPanelPick, setPlantaPanelPick] = useState(() => {
@@ -2700,15 +2733,34 @@ export default function RoofPreview({
         y: Math.min(Math.max(pt.y - r.y, 0), r.h),
       };
       if (!irregularCutDraft) {
-        setIrregularCutDraft(p);
-        setIrregularCut(null);
+        // Single patch when controlled — avoid multi-setState lost updates.
+        if (irregularControlled) patchIrregularSession({ cutDraft: p, cut: null });
+        else {
+          setLocalIrregularCutDraft(p);
+          setLocalIrregularCut(null);
+        }
         return;
       }
-      setIrregularCut({ p0: irregularCutDraft, p1: p });
-      setIrregularCutDraft(null);
-      setIrregularTool("select");
+      if (irregularControlled) {
+        patchIrregularSession({
+          cut: { p0: irregularCutDraft, p1: p },
+          cutDraft: null,
+          tool: "select",
+        });
+      } else {
+        setLocalIrregularCut({ p0: irregularCutDraft, p1: p });
+        setLocalIrregularCutDraft(null);
+        setLocalIrregularTool("select");
+      }
     },
-    [irregularOn, irregularTool, irregularZoneEntry, irregularCutDraft],
+    [
+      irregularOn,
+      irregularTool,
+      irregularZoneEntry,
+      irregularCutDraft,
+      irregularControlled,
+      patchIrregularSession,
+    ],
   );
 
   const selectedPlantaPanelMeta = useMemo(() => {
@@ -3114,8 +3166,8 @@ export default function RoofPreview({
       <IrregularModeChrome
         enabled={irregularOn}
         onToggle={() => {
+          // setIrregularOn already clears cutDraft in the controlled patch.
           setIrregularOn((v) => !v);
-          setIrregularCutDraft(null);
         }}
         tool={irregularTool}
         onTool={setIrregularTool}
@@ -3131,9 +3183,13 @@ export default function RoofPreview({
           setIrregularLayoutOverride(resetStripToAuto(irregularLayout, id));
         }}
         onClearCut={() => {
-          setIrregularCut(null);
-          setIrregularCutDraft(null);
-          setIrregularLayoutOverride(null);
+          if (irregularControlled) {
+            patchIrregularSession({ cut: null, cutDraft: null, layoutOverride: null });
+          } else {
+            setLocalIrregularCut(null);
+            setLocalIrregularCutDraft(null);
+            setLocalIrregularLayoutOverride(null);
+          }
         }}
         dense={denseChrome}
         displayMode={irregularDisplayMode === "final_plane" ? "final_plane" : "factory"}
