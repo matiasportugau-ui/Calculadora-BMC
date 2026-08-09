@@ -116,9 +116,21 @@ export async function acceptPeaPacket(db, config, input) {
  * @param {import('pg').Pool|import('pg').PoolClient} db
  * @param {{ packetId: string, actorId: string, reason?: string }} input
  */
+const REJECTABLE_PACKET_STATUSES = new Set([
+  "draft",
+  "critic_pending",
+  "critic_failed",
+  "ready_for_review",
+]);
+
 export async function rejectPeaPacket(db, input) {
   const row = await loadPacketWithGap(db, input.packetId);
   if (!row) return { error: "not_found" };
+  // Do not allow reject to clobber accepted/rejected/superseded packets
+  // (would flip a resolved gap back to ignored — data corruption).
+  if (!REJECTABLE_PACKET_STATUSES.has(row.status)) {
+    return { error: "invalid_status", status: row.status };
+  }
 
   await db.query(
     `UPDATE pea.evolution_packets SET status = 'rejected', updated_at = now() WHERE id = $1`,

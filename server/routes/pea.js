@@ -21,10 +21,6 @@ function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
-function notEnabled(res, minLevel = 3) {
-  return res.status(403).json({ error: "not_enabled", min_level: minLevel, message: "PEA autonomy level not enabled in M1" });
-}
-
 function peaDisabled(res) {
   return res.status(503).json({ ok: false, error: "pea_disabled" });
 }
@@ -54,6 +50,9 @@ export default function createPeaRouter(config, logger) {
   const peaGrantWrite = requirePeaAction(config, PEA_ACTIONS.GRANT_WRITE);
   const peaImplement = requirePeaAction(config, PEA_ACTIONS.IMPLEMENT);
   const peaReplay = requirePeaAction(config, PEA_ACTIONS.REPLAY);
+  // requireUser is a factory — must invoke requireUser() (Bug BS / #967).
+  const authUser = requireUser();
+  const authAdmin = requireUser({ role: "admin" });
 
   router.get(
     "/pea/health",
@@ -65,7 +64,7 @@ export default function createPeaRouter(config, logger) {
 
   router.get(
     "/pea/gaps",
-    requireUser,
+    authUser,
     peaRead,
     asyncHandler(async (req, res) => {
       if (!requirePeaEnabled(config, res)) return;
@@ -95,7 +94,8 @@ export default function createPeaRouter(config, logger) {
 
   router.get(
     "/pea/gaps/:gapId",
-    requireUser,
+    authUser,
+    peaRead,
     asyncHandler(async (req, res) => {
       if (!requirePeaEnabled(config, res)) return;
       if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
@@ -115,7 +115,8 @@ export default function createPeaRouter(config, logger) {
 
   router.get(
     "/pea/gaps/:gapId/ratchet-links",
-    requireUser,
+    authUser,
+    peaRead,
     asyncHandler(async (req, res) => {
       if (!requirePeaEnabled(config, res)) return;
       if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
@@ -127,7 +128,7 @@ export default function createPeaRouter(config, logger) {
 
   router.post(
     "/pea/gaps/:gapId/replay",
-    requireUser,
+    authUser,
     peaReplay,
     asyncHandler(async (req, res) => {
       if (!requirePeaEnabled(config, res)) return;
@@ -144,7 +145,7 @@ export default function createPeaRouter(config, logger) {
 
   router.post(
     "/pea/gaps/:gapId/diagnose",
-    requireUser,
+    authUser,
     peaAnalyze,
     asyncHandler(async (req, res) => {
       if (!requirePeaEnabled(config, res)) return;
@@ -159,7 +160,7 @@ export default function createPeaRouter(config, logger) {
     }),
   );
 
-  router.get("/pea/packets", requireUser, asyncHandler(async (req, res) => {
+  router.get("/pea/packets", authUser, peaRead, asyncHandler(async (req, res) => {
     if (!requirePeaEnabled(config, res)) return;
     if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
     const { rows } = await pool.query(
@@ -171,7 +172,7 @@ export default function createPeaRouter(config, logger) {
     res.json({ packets: rows });
   }));
 
-  router.get("/pea/packets/:packetId", requireUser, asyncHandler(async (req, res) => {
+  router.get("/pea/packets/:packetId", authUser, peaRead, asyncHandler(async (req, res) => {
     if (!requirePeaEnabled(config, res)) return;
     if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
     const { rows } = await pool.query(`SELECT * FROM pea.evolution_packets WHERE id = $1`, [req.params.packetId]);
@@ -181,7 +182,7 @@ export default function createPeaRouter(config, logger) {
 
   router.post(
     "/pea/packets/:packetId/accept",
-    requireUser,
+    authUser,
     peaGrantWrite,
     asyncHandler(async (req, res) => {
       if (!requirePeaEnabled(config, res)) return;
@@ -210,7 +211,8 @@ export default function createPeaRouter(config, logger) {
 
   router.post(
     "/pea/packets/:packetId/reject",
-    requireUser,
+    authUser,
+    peaGrantWrite,
     asyncHandler(async (req, res) => {
       if (!requirePeaEnabled(config, res)) return;
       if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
@@ -220,13 +222,16 @@ export default function createPeaRouter(config, logger) {
         reason: req.body?.reason || null,
       });
       if (result.error === "not_found") return res.status(404).json({ ok: false, error: "not_found" });
+      if (result.error === "invalid_status") {
+        return res.status(409).json({ ok: false, error: "invalid_status", status: result.status });
+      }
       res.json(result);
     }),
   );
 
   router.post(
     "/pea/packets/:packetId/escalate",
-    requireUser,
+    authUser,
     peaGrantWrite,
     asyncHandler(async (req, res) => {
       if (!requirePeaEnabled(config, res)) return;
@@ -249,7 +254,7 @@ export default function createPeaRouter(config, logger) {
     }),
   );
 
-  router.post("/pea/packets/:packetId/implement", requireUser, peaImplement, asyncHandler(async (req, res) => {
+  router.post("/pea/packets/:packetId/implement", authUser, peaImplement, asyncHandler(async (req, res) => {
     if (!requirePeaEnabled(config, res)) return;
     if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
     const result = await runImplementPacket(pool, config, {
@@ -267,7 +272,7 @@ export default function createPeaRouter(config, logger) {
     res.status(201).json(result);
   }));
 
-  router.get("/pea/grants", requireUser, peaGrantRead, asyncHandler(async (_req, res) => {
+  router.get("/pea/grants", authUser, peaGrantRead, asyncHandler(async (_req, res) => {
     if (!requirePeaEnabled(config, res)) return;
     if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
     const { rows } = await pool.query(
@@ -279,7 +284,7 @@ export default function createPeaRouter(config, logger) {
     res.json({ grants: rows });
   }));
 
-  router.post("/pea/grants", requireUser, peaGrantWrite, asyncHandler(async (req, res) => {
+  router.post("/pea/grants", authUser, peaGrantWrite, asyncHandler(async (req, res) => {
     if (!requirePeaEnabled(config, res)) return;
     if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
     try {
@@ -304,7 +309,7 @@ export default function createPeaRouter(config, logger) {
     }
   }));
 
-  router.post("/pea/grants/:grantId/revoke", requireUser, asyncHandler(async (req, res) => {
+  router.post("/pea/grants/:grantId/revoke", authUser, peaGrantWrite, asyncHandler(async (req, res) => {
     if (!requirePeaEnabled(config, res)) return;
     if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
     const revoked = await revokePeaGrant(pool, {
@@ -318,7 +323,7 @@ export default function createPeaRouter(config, logger) {
 
   router.post(
     "/pea/worker/tick",
-    requireUser,
+    authAdmin,
     asyncHandler(async (_req, res) => {
       if (!config.peaEnabled) return peaDisabled(res);
       if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
