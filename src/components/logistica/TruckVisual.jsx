@@ -7,6 +7,7 @@
  *   Cargo X: [shiftX, shiftX + truckL]
  *   Cargo Z: [0, TRUCK_W], center = TRUCK_W/2
  *   Cab sits at X < shiftX (left of cargo)
+ *   Truck nose / front faces −X (away from bed); cab rear faces +X (toward bulkhead)
  *
  * Props: { shiftX, truckL } only.
  */
@@ -103,9 +104,10 @@ function CabDriver({ lit }) {
   const emissive = lit ? 0.55 : 0.12;
   const opacity = lit ? 0.95 : 0.72;
 
+  // Face truck front (−X): plane default faces +Z; −Y90 → looks along −X
   if (tex) {
     return (
-      <mesh position={[0.15, 1.15, 0]} rotation={[0, Math.PI / 2, 0]}>
+      <mesh position={[-0.12, 1.15, 0]} rotation={[0, -Math.PI / 2, 0]}>
         <planeGeometry args={[0.55, 0.7]} />
         <meshStandardMaterial
           map={tex}
@@ -122,7 +124,7 @@ function CabDriver({ lit }) {
 
   // Emissive box silhouette fallback (Panelín-ish screen + body)
   return (
-    <group position={[0.1, 1.05, 0]}>
+    <group position={[-0.08, 1.05, 0]}>
       <mesh>
         <boxGeometry args={[0.35, 0.45, 0.28]} />
         <meshStandardMaterial
@@ -132,7 +134,7 @@ function CabDriver({ lit }) {
           roughness={0.6}
         />
       </mesh>
-      <mesh position={[0.12, 0.08, 0]}>
+      <mesh position={[-0.12, 0.08, 0]}>
         <boxGeometry args={[0.18, 0.2, 0.22]} />
         <meshStandardMaterial
           color="#111"
@@ -170,20 +172,21 @@ function BmcCab({ cabCenterX, lightsOn, onCabClick }) {
   const headEmissive = lightsOn ? HEADLIGHT_ON : HEADLIGHT_OFF;
   const headIntensity = lightsOn ? 1.2 : 0.05;
 
+  // Local X: −X = truck nose (away from bed), +X = cab rear (toward cargo bulkhead at shiftX)
   return (
     <group position={[cabCenterX, 0, cz]}>
       {/* Main body */}
-      <mesh position={[0.05, bodyY, 0]} castShadow={false}>
+      <mesh position={[-0.05, bodyY, 0]} castShadow={false}>
         <boxGeometry args={[CAB_LEN * 0.88, bodyH, TRUCK_W * 0.9]} />
         <meshStandardMaterial color={BMC_BLUE} metalness={0.35} roughness={0.4} />
       </mesh>
-      {/* High roof */}
-      <mesh position={[-0.05, roofY, 0]} castShadow={false}>
+      {/* High roof / sleeper bias slightly rearward */}
+      <mesh position={[0.05, roofY, 0]} castShadow={false}>
         <boxGeometry args={[CAB_LEN * 0.72, roofH, TRUCK_W * 0.86]} />
         <meshStandardMaterial color={BMC_BLUE_MID} metalness={0.3} roughness={0.45} />
       </mesh>
-      {/* Windshield */}
-      <mesh position={[CAB_LEN * 0.32, bodyY + 0.25, 0]} castShadow={false}>
+      {/* Windshield — nose */}
+      <mesh position={[-CAB_LEN * 0.32, bodyY + 0.25, 0]} castShadow={false}>
         <boxGeometry args={[0.08, bodyH * 0.55, TRUCK_W * 0.78]} />
         <meshStandardMaterial
           color={GLASS}
@@ -195,26 +198,26 @@ function BmcCab({ cabCenterX, lightsOn, onCabClick }) {
         />
       </mesh>
       {/* Side windows */}
-      <mesh position={[0.05, bodyY + 0.22, TRUCK_W * 0.46]} castShadow={false}>
+      <mesh position={[-0.05, bodyY + 0.22, TRUCK_W * 0.46]} castShadow={false}>
         <boxGeometry args={[CAB_LEN * 0.5, bodyH * 0.35, 0.04]} />
         <meshStandardMaterial color={GLASS} transparent opacity={0.28} depthWrite={false} />
       </mesh>
-      <mesh position={[0.05, bodyY + 0.22, -TRUCK_W * 0.46]} castShadow={false}>
+      <mesh position={[-0.05, bodyY + 0.22, -TRUCK_W * 0.46]} castShadow={false}>
         <boxGeometry args={[CAB_LEN * 0.5, bodyH * 0.35, 0.04]} />
         <meshStandardMaterial color={GLASS} transparent opacity={0.28} depthWrite={false} />
       </mesh>
-      {/* Grille */}
-      <mesh position={[CAB_LEN * 0.42, 0.85, 0]} castShadow={false}>
+      {/* Grille — nose */}
+      <mesh position={[-CAB_LEN * 0.42, 0.85, 0]} castShadow={false}>
         <boxGeometry args={[0.1, 0.55, TRUCK_W * 0.7]} />
         <meshStandardMaterial color={BMC_DARK} metalness={0.5} roughness={0.5} />
       </mesh>
-      {/* Bumper */}
-      <mesh position={[CAB_LEN * 0.45, 0.38, 0]} castShadow={false}>
+      {/* Bumper — nose */}
+      <mesh position={[-CAB_LEN * 0.45, 0.38, 0]} castShadow={false}>
         <boxGeometry args={[0.18, 0.22, TRUCK_W * 0.95]} />
         <meshStandardMaterial color={METAL} metalness={0.6} roughness={0.4} />
       </mesh>
-      {/* Headlights */}
-      <mesh position={[CAB_LEN * 0.46, 0.72, TRUCK_W * 0.32]} castShadow={false}>
+      {/* Headlights — nose */}
+      <mesh position={[-CAB_LEN * 0.46, 0.72, TRUCK_W * 0.32]} castShadow={false}>
         <boxGeometry args={[0.12, 0.16, 0.22]} />
         <meshStandardMaterial
           color={headEmissive}
@@ -224,7 +227,7 @@ function BmcCab({ cabCenterX, lightsOn, onCabClick }) {
           roughness={0.3}
         />
       </mesh>
-      <mesh position={[CAB_LEN * 0.46, 0.72, -TRUCK_W * 0.32]} castShadow={false}>
+      <mesh position={[-CAB_LEN * 0.46, 0.72, -TRUCK_W * 0.32]} castShadow={false}>
         <boxGeometry args={[0.12, 0.16, 0.22]} />
         <meshStandardMaterial
           color={headEmissive}
@@ -234,22 +237,27 @@ function BmcCab({ cabCenterX, lightsOn, onCabClick }) {
           roughness={0.3}
         />
       </mesh>
-      {/* Mirrors */}
-      <mesh position={[CAB_LEN * 0.2, bodyY + 0.35, TRUCK_W * 0.52]} castShadow={false}>
+      {/* Mirrors — near A-pillar / front doors */}
+      <mesh position={[-CAB_LEN * 0.2, bodyY + 0.35, TRUCK_W * 0.52]} castShadow={false}>
         <boxGeometry args={[0.12, 0.28, 0.08]} />
         <meshStandardMaterial color={METAL} metalness={0.5} roughness={0.4} />
       </mesh>
-      <mesh position={[CAB_LEN * 0.2, bodyY + 0.35, -TRUCK_W * 0.52]} castShadow={false}>
+      <mesh position={[-CAB_LEN * 0.2, bodyY + 0.35, -TRUCK_W * 0.52]} castShadow={false}>
         <boxGeometry args={[0.12, 0.28, 0.08]} />
         <meshStandardMaterial color={METAL} metalness={0.5} roughness={0.4} />
       </mesh>
-      {/* Fuel tank silhouette (driver side) */}
-      <mesh position={[-CAB_LEN * 0.15, 0.7, -TRUCK_W * 0.48]} castShadow={false}>
+      {/* Fuel tank silhouette (driver side, mid-cab toward rear) */}
+      <mesh position={[CAB_LEN * 0.15, 0.7, -TRUCK_W * 0.48]} castShadow={false}>
         <cylinderGeometry args={[0.16, 0.16, 0.7, 12]} />
         <meshStandardMaterial color={METAL} metalness={0.55} roughness={0.45} />
       </mesh>
+      {/* Cab rear wall facing cargo bulkhead */}
+      <mesh position={[CAB_LEN * 0.42, bodyY, 0]} castShadow={false}>
+        <boxGeometry args={[0.1, bodyH * 0.95, TRUCK_W * 0.92]} />
+        <meshStandardMaterial color={BMC_DARK} metalness={0.25} roughness={0.55} />
+      </mesh>
       {/* Interior cabin floor / seat block */}
-      <mesh position={[-0.1, 0.85, 0]} castShadow={false}>
+      <mesh position={[0.1, 0.85, 0]} castShadow={false}>
         <boxGeometry args={[CAB_LEN * 0.55, 0.15, TRUCK_W * 0.7]} />
         <meshStandardMaterial color={BMC_DARK} roughness={0.8} />
       </mesh>
@@ -259,8 +267,9 @@ function BmcCab({ cabCenterX, lightsOn, onCabClick }) {
       ) : null}
       {lightsOn ? (
         <>
+          {/* Spotlights sit at nose (−X); default −Z aim is fine for ambient fill */}
           <spotLight
-            position={[CAB_LEN * 0.55, 0.95, TRUCK_W * 0.28]}
+            position={[-CAB_LEN * 0.55, 0.95, TRUCK_W * 0.28]}
             angle={0.5}
             penumbra={0.45}
             intensity={2.4}
@@ -269,7 +278,7 @@ function BmcCab({ cabCenterX, lightsOn, onCabClick }) {
             castShadow={false}
           />
           <spotLight
-            position={[CAB_LEN * 0.55, 0.95, -TRUCK_W * 0.28]}
+            position={[-CAB_LEN * 0.55, 0.95, -TRUCK_W * 0.28]}
             angle={0.5}
             penumbra={0.45}
             intensity={2.4}
@@ -277,7 +286,7 @@ function BmcCab({ cabCenterX, lightsOn, onCabClick }) {
             color="#fff7d6"
             castShadow={false}
           />
-          <pointLight position={[CAB_LEN * 0.6, 0.7, 0]} intensity={1.1} distance={10} color="#fff7d6" />
+          <pointLight position={[-CAB_LEN * 0.6, 0.7, 0]} intensity={1.1} distance={10} color="#fff7d6" />
         </>
       ) : null}
       <CabDriver lit={lightsOn} />
@@ -364,9 +373,8 @@ export default function TruckVisual({ shiftX, truckL }) {
     [],
   );
 
-  // Axle X positions
-  // Front: under cab; rear dual(s) under bed
-  const frontAxleX = cabCenterX + CAB_LEN * 0.12;
+  // Axle X positions — front under nose (−X of cab), rear dual(s) under bed
+  const frontAxleX = cabCenterX - CAB_LEN * 0.28;
   const bedStart = shiftX;
   const rearAxles =
     nAxles === 2
