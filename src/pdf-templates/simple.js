@@ -73,8 +73,12 @@ function renderIrregularSchedule(sched) {
   const totals = (sched.areaOrdered != null || sched.areaWasteSite != null)
     ? `<div style="font-size:7pt;color:#9a3412;margin:-1mm 0 2mm">Pedido ${sched.areaOrdered != null ? Number(sched.areaOrdered).toFixed(2) : '—'} m² · descarte obra ${sched.areaWasteSite != null ? Number(sched.areaWasteSite).toFixed(2) : '—'} m²</div>`
     : '';
+  const summary = sched.factorySummary
+    ? `<div style="font-size:7.5pt;font-weight:600;color:#003366;margin:0 0 1.5mm">Resumen fábrica: ${esc(sched.factorySummary)}</div>`
+    : '';
   return `${note}
-  <div style="font-size:7pt;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:.04em;margin-bottom:1mm">Largos escalonados (fábrica)</div>
+  <div style="font-size:7pt;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:.04em;margin-bottom:1mm">Pedido de paneles (largos escalonados)</div>
+  ${summary}
   <table class="irr-tbl"><thead><tr><th>Panel</th><th>Zona</th><th class="num">L pedido (m)</th><th class="num">L cover (m)</th><th>Fuente</th></tr></thead><tbody>${rows}</tbody></table>
   ${totals}`;
 }

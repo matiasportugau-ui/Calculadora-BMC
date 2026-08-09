@@ -54,6 +54,7 @@ import {
 } from "../utils/irregularRoofLayout.js";
 import IrregularModeChrome from "./roofPlan/IrregularModeChrome.jsx";
 import IrregularPlantOverlay from "./roofPlan/IrregularPlantOverlay.jsx";
+import IrregularFinalPlaneOverlay from "./roofPlan/IrregularFinalPlaneOverlay.jsx";
 import {
   fijacionDotsLayout,
   fijacionRowsFromHints,
@@ -1879,6 +1880,18 @@ export default function RoofPreview({
   onIrregularLayoutChange = null,
   /** Start with modo irregular on (default off). */
   irregularModeDefault = false,
+  /**
+   * Shared irregular session (parent-owned). When set with onIrregularSessionChange,
+   * cut/mode stay in sync across left + right RoofPreview mounts.
+   * Shape: { enabled, tool, cut, cutDraft, selectedStripId, layoutOverride }
+   */
+  irregularSession = null,
+  onIrregularSessionChange = null,
+  /**
+   * factory = stepped strips + pedido list (left wizard)
+   * final_plane = clean post-cut roof silhouette (right visor)
+   */
+  irregularDisplayMode = "factory",
 }) {
   const panelAuForPickFp = Number(panelObj?.au ?? panelAu) || 0;
   const svgRef = useRef(null);
@@ -1901,13 +1914,93 @@ export default function RoofPreview({
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-  /** Modo irregular: largos escalonados + corte en obra (Freeform-style). Default OFF. */
-  const [irregularOn, setIrregularOn] = useState(() => Boolean(irregularModeDefault));
-  const [irregularTool, setIrregularTool] = useState("select");
-  const [irregularCut, setIrregularCut] = useState(null);
-  const [irregularCutDraft, setIrregularCutDraft] = useState(null);
-  const [irregularStripId, setIrregularStripId] = useState(null);
-  const [irregularLayoutOverride, setIrregularLayoutOverride] = useState(null);
+  /** Modo irregular: local state, or controlled via irregularSession (dual plant). */
+  const irregularControlled =
+    irregularSession != null && typeof onIrregularSessionChange === "function";
+  const [localIrregularOn, setLocalIrregularOn] = useState(() => Boolean(irregularModeDefault));
+  const [localIrregularTool, setLocalIrregularTool] = useState("select");
+  const [localIrregularCut, setLocalIrregularCut] = useState(null);
+  const [localIrregularCutDraft, setLocalIrregularCutDraft] = useState(null);
+  const [localIrregularStripId, setLocalIrregularStripId] = useState(null);
+  const [localIrregularLayoutOverride, setLocalIrregularLayoutOverride] = useState(null);
+
+  const irregularOn = irregularControlled ? Boolean(irregularSession.enabled) : localIrregularOn;
+  const irregularTool = irregularControlled ? irregularSession.tool || "select" : localIrregularTool;
+  const irregularCut = irregularControlled ? irregularSession.cut ?? null : localIrregularCut;
+  const irregularCutDraft = irregularControlled
+    ? irregularSession.cutDraft ?? null
+    : localIrregularCutDraft;
+  const irregularStripId = irregularControlled
+    ? irregularSession.selectedStripId ?? null
+    : localIrregularStripId;
+  const irregularLayoutOverride = irregularControlled
+    ? irregularSession.layoutOverride ?? null
+    : localIrregularLayoutOverride;
+
+  const patchIrregularSession = useCallback(
+    (patch) => {
+      if (!irregularControlled) return;
+      onIrregularSessionChange({
+        enabled: Boolean(irregularSession.enabled),
+        tool: irregularSession.tool || "select",
+        cut: irregularSession.cut ?? null,
+        cutDraft: irregularSession.cutDraft ?? null,
+        selectedStripId: irregularSession.selectedStripId ?? null,
+        layoutOverride: irregularSession.layoutOverride ?? null,
+        ...patch,
+      });
+    },
+    [irregularControlled, irregularSession, onIrregularSessionChange],
+  );
+
+  const setIrregularOn = useCallback(
+    (v) => {
+      const next = typeof v === "function" ? v(irregularOn) : v;
+      if (irregularControlled) patchIrregularSession({ enabled: Boolean(next), cutDraft: null });
+      else setLocalIrregularOn(Boolean(next));
+    },
+    [irregularControlled, irregularOn, patchIrregularSession],
+  );
+  const setIrregularTool = useCallback(
+    (v) => {
+      const next = typeof v === "function" ? v(irregularTool) : v;
+      if (irregularControlled) patchIrregularSession({ tool: next });
+      else setLocalIrregularTool(next);
+    },
+    [irregularControlled, irregularTool, patchIrregularSession],
+  );
+  const setIrregularCut = useCallback(
+    (v) => {
+      const next = typeof v === "function" ? v(irregularCut) : v;
+      if (irregularControlled) patchIrregularSession({ cut: next });
+      else setLocalIrregularCut(next);
+    },
+    [irregularControlled, irregularCut, patchIrregularSession],
+  );
+  const setIrregularCutDraft = useCallback(
+    (v) => {
+      const next = typeof v === "function" ? v(irregularCutDraft) : v;
+      if (irregularControlled) patchIrregularSession({ cutDraft: next });
+      else setLocalIrregularCutDraft(next);
+    },
+    [irregularControlled, irregularCutDraft, patchIrregularSession],
+  );
+  const setIrregularStripId = useCallback(
+    (v) => {
+      const next = typeof v === "function" ? v(irregularStripId) : v;
+      if (irregularControlled) patchIrregularSession({ selectedStripId: next });
+      else setLocalIrregularStripId(next);
+    },
+    [irregularControlled, irregularStripId, patchIrregularSession],
+  );
+  const setIrregularLayoutOverride = useCallback(
+    (v) => {
+      const next = typeof v === "function" ? v(irregularLayoutOverride) : v;
+      if (irregularControlled) patchIrregularSession({ layoutOverride: next });
+      else setLocalIrregularLayoutOverride(next);
+    },
+    [irregularControlled, irregularLayoutOverride, patchIrregularSession],
+  );
   /** `${gi}:${strip.idx}` — inspección en planta (sin editar BOM). Hidrata desde sessionStorage si la huella coincide. */
   const [plantaPanelPick, setPlantaPanelPick] = useState(() => {
     if (typeof sessionStorage === "undefined") return null;
@@ -3043,6 +3136,7 @@ export default function RoofPreview({
           setIrregularLayoutOverride(null);
         }}
         dense={denseChrome}
+        displayMode={irregularDisplayMode === "final_plane" ? "final_plane" : "factory"}
       />
       <div
         style={{
@@ -4203,20 +4297,30 @@ export default function RoofPreview({
               );
             })}
             {irregularOn && irregularZoneEntry && irregularLayout ? (
-              <IrregularPlantOverlay
-                zoneRect={irregularZoneEntry}
-                layout={irregularLayout}
-                cut={
-                  irregularCut ||
-                  (irregularCutDraft ? { p0: irregularCutDraft, p1: irregularCutDraft } : null)
-                }
-                selectedStripId={irregularStripId}
-                onSelectStrip={(id) => {
-                  setIrregularStripId(id);
-                  setIrregularTool("select");
-                }}
-                showRuler={Boolean(irregularCut?.p0 && irregularCut?.p1)}
-              />
+              irregularDisplayMode === "final_plane" ? (
+                <IrregularFinalPlaneOverlay
+                  zoneRect={irregularZoneEntry}
+                  layout={irregularLayout}
+                  cut={irregularCut}
+                  cutDraft={irregularCutDraft}
+                  showRuler={Boolean(irregularCut?.p0 && irregularCut?.p1) || Boolean(irregularCutDraft)}
+                />
+              ) : (
+                <IrregularPlantOverlay
+                  zoneRect={irregularZoneEntry}
+                  layout={irregularLayout}
+                  cut={
+                    irregularCut ||
+                    (irregularCutDraft ? { p0: irregularCutDraft, p1: irregularCutDraft } : null)
+                  }
+                  selectedStripId={irregularStripId}
+                  onSelectStrip={(id) => {
+                    setIrregularStripId(id);
+                    setIrregularTool("select");
+                  }}
+                  showRuler={Boolean(irregularCut?.p0 && irregularCut?.p1)}
+                />
+              )
             ) : null}
             </svg>
             </div>
