@@ -141,4 +141,36 @@ Perfil G2 Ch. Blanca 100mm (Ext.)                         3,00         1        
   ok("UAM-style perfiles as accessories");
 }
 
+{
+  // Bug BQ: short product echo + priced line (same tipo|esp|L|qty) must not 2×.
+  const echo = `ISODEC EPS 100mm · 10 paneles
+ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15 4,677.93`;
+  const r = parseLogisticaFromAdjuntoText(echo);
+  assert.equal(r.paneles.length, 1, `expected 1 panel line, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(r.paneles[0].cantidad, 10);
+  assert.equal(r.paneles[0].tipo, "ISODEC");
+  ok("dedupe short+priced product echo (Bug BQ)");
+}
+
+{
+  // Modern summary + classic row for same cargo identity → single line.
+  const hybrid = `ISODEC EPS 100mm · 10 paneles
+Isodec EPS 100 mm (Cubierta) 6,00 10 37,00`;
+  const r = parseLogisticaFromAdjuntoText(hybrid);
+  assert.equal(r.paneles.length, 1, `expected dedupe, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(r.paneles[0].cantidad, 10);
+  ok("dedupe modern+classic same cargo identity");
+}
+
+{
+  // Distinct lengths/qty still kept (Petinho-style).
+  const distinct = `Isopanel EPS 100 mm (Fachada) 2,50 11 37,00
+Isopanel EPS 100 mm (Fachada) 2,30 5 37,00`;
+  const r = parseLogisticaFromAdjuntoText(distinct);
+  assert.equal(r.paneles.length, 2, JSON.stringify(r.paneles));
+  const sum = r.paneles.reduce((a, p) => a + p.cantidad, 0);
+  assert.equal(sum, 16);
+  ok("distinct classic rows still kept after cargo-identity dedupe");
+}
+
 console.log(`\n${passed} passed`);
