@@ -7,8 +7,13 @@ export const ADJUNTO_MAX_BYTES = 12 * 1024 * 1024;
 export const ADJUNTO_MAX_REDIRECTS = 5;
 export const ADJUNTO_FETCH_TIMEOUT_MS = 25_000;
 
-/** Hosts allowed for the *initial* client URL and rewritten fetch URL. */
-const ADJUNTO_HOST_ALLOW = new Set([
+/**
+ * Hosts allowed for the *initial* client URL and rewritten fetch URL.
+ * Keep in sync with Vercel CSP `connect-src` adjunto hosts in `vercel.json`
+ * (exact https://host entries; googleusercontent uses wildcard suffix rule).
+ * Enforced by `tests/cspAdjuntoConnectSrc.test.js`.
+ */
+export const ADJUNTO_ALLOWED_HOSTS = Object.freeze([
   "drive.google.com",
   "docs.google.com",
   "www.dropbox.com",
@@ -16,6 +21,8 @@ const ADJUNTO_HOST_ALLOW = new Set([
   "dl.dropbox.com",
   "dl.dropboxusercontent.com",
 ]);
+
+const ADJUNTO_HOST_ALLOW = new Set(ADJUNTO_ALLOWED_HOSTS);
 
 /**
  * Drive/Docs often redirect download to *.googleusercontent.com CDNs.
