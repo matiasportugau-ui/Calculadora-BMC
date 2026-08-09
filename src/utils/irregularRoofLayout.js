@@ -11,6 +11,39 @@ export const CORTE_EN_OBRA_NOTE =
 export const EPS = 1e-9;
 export const DEFAULT_ORDER_LENGTH_STEP_M = 0.01;
 
+/** Default shared irregular session (left factory + right final_plane). */
+export const EMPTY_IRREGULAR_SESSION = Object.freeze({
+  enabled: false,
+  tool: "select",
+  cut: null,
+  cutDraft: null,
+  selectedStripId: null,
+  layoutOverride: null,
+});
+
+/**
+ * Merge a partial irregular-session patch onto previous state.
+ * Must be used with a functional React setState updater so sequential
+ * patches in one event (cut draft → cut complete → tool) do not clobber
+ * each other when dual RoofPreview mounts share one session.
+ *
+ * @param {object|null|undefined} prev
+ * @param {object} patch
+ * @returns {typeof EMPTY_IRREGULAR_SESSION}
+ */
+export function mergeIrregularSessionPatch(prev, patch = {}) {
+  const base = prev && typeof prev === "object" ? prev : EMPTY_IRREGULAR_SESSION;
+  return {
+    enabled: Boolean(base.enabled),
+    tool: base.tool || "select",
+    cut: base.cut ?? null,
+    cutDraft: base.cutDraft ?? null,
+    selectedStripId: base.selectedStripId ?? null,
+    layoutOverride: base.layoutOverride ?? null,
+    ...patch,
+  };
+}
+
 export function stepCeil(v, step) {
   if (!(step > 0)) return v;
   if (!(v > 0)) return 0;
