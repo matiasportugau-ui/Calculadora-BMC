@@ -1,0 +1,30 @@
+---
+description: "Operator Module Final Test (OMFT) — module-agnostic PREP → human live run → INTAKE report → IMPLEMENT only approved NAV-IDs. Apply when the user says OMFT, module final test, corrida final de módulo, or prepará el pack de prueba."
+alwaysApply: false
+---
+
+# Operator Module Final Test (OMFT)
+
+When the user wants a **reusable live operator final test** of any product module (not only one surface):
+
+1. Read and follow: `.cursor/skills/operator-module-final-test/SKILL.md`
+2. Phases:
+   - **PREP** → module pack + run brief under `docs/team/ux-feedback/`
+   - **YOU RUN** → human only
+   - **INTAKE** → `USER-NAV-REPORT-*-omft.md` via `navigation-user-feedback` shape
+   - **IMPLEMENT** → only after approved `NAV-…` IDs (`live-fix` / `ship`)
+3. Do not invent findings in PREP. Do not implement without approved NAV-IDs.
+
+## Triggers
+
+- `OMFT`, `OMFT prep:`, `OMFT intake`, `OMFT implement`
+- "module final test", "operator final test", "corrida final de módulo"
+- "prepará el pack de prueba", "mapa del módulo para la corrida"
+
+## References
+
+- `docs/team/ux-feedback/README.md`
+- `docs/team/ux-feedback/module-packs/`
+- `docs/team/ux-feedback/TEMPLATE-MODULE-PACK.md`
+- `docs/team/ux-feedback/TEMPLATE-OMFT-RUN-BRIEF.md`
+- Skill: `navigation-user-feedback` (intake report shape)

@@ -2,10 +2,36 @@
 
 Flujo para convertir **transcripción de audio**, **capturas** y **URL de la app desplegada** en un informe Markdown único que un agente de implementación pueda ejecutar paso a paso. Complemento: **sesiones en vídeo** y el método nombrado **Video-User-interactive-dev** (revisión completa + procedimiento de desarrollo en un solo informe) — ver [`METHOD-VIDEO-USER-INTERACTIVE-DEV.md`](./METHOD-VIDEO-USER-INTERACTIVE-DEV.md) y la skill **`user-session-video-to-backlog`**. **MCP en vivo:** **Live DevTools narrative** / **Narrativa en vivo DevTools** — el agente usa **chrome-devtools** en Cursor, navega (default **`https://calculadora-bmc.vercel.app`**), extrae consola/red/snapshots y cruza con la narrativa o transcripción pegada; informe `LIVE-DEVTOOLS-NARRATIVE-REPORT-*.md` — skill **`live-devtools-narrative-mcp`**, plantilla [`TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md`](./TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md).
 
+## Operator Module Final Test (OMFT) — ritual reutilizable
+
+**Conductor multi-módulo** (no solo logística): prep → vos corrés en vivo → intake → implement solo por IDs.
+
+| Fase | Qué decís | Qué hace el agente |
+|------|-----------|-------------------|
+| **PREP** | `OMFT prep: logistica` (o `envios`, `techo`, `custom`…) | Carga/crea **module pack** + **run brief** |
+| **YOU RUN** | (vos, en prod) | Fotos + ACTION/EXPECT/OBSERVED |
+| **INTAKE** | `OMFT intake` + notas/fotos | `USER-NAV-REPORT-*-omft.md` con NAV-IDs |
+| **IMPLEMENT** | `Implementá NAV-01…` | `live-fix` / `ship` solo IDs aprobados |
+
+| Artefacto | Ruta |
+|-----------|------|
+| Skill | [`.cursor/skills/operator-module-final-test/SKILL.md`](../../.cursor/skills/operator-module-final-test/SKILL.md) |
+| Regla | [`.cursor/rules/operator-module-final-test.mdc`](../../.cursor/rules/operator-module-final-test.mdc) |
+| Plantilla pack | [TEMPLATE-MODULE-PACK.md](./TEMPLATE-MODULE-PACK.md) |
+| Plantilla brief | [TEMPLATE-OMFT-RUN-BRIEF.md](./TEMPLATE-OMFT-RUN-BRIEF.md) |
+| Packs seed | [module-packs/](./module-packs/) (`logistica`, `envios`, `techo`) |
+| Run briefs | [runs/](./runs/) (`OMFT-PREP-YYYY-MM-DD-<slug>.md`) |
+
+También instalado en `~/.claude/skills/operator-module-final-test/` y `~/.grok/skills/operator-module-final-test/` para parity de agentes.
+
 ## Contenido de esta carpeta
 
 | Archivo | Uso |
 |---------|-----|
+| [TEMPLATE-MODULE-PACK.md](./TEMPLATE-MODULE-PACK.md) | Mapa reutilizable de un módulo (OMFT PREP). |
+| [TEMPLATE-OMFT-RUN-BRIEF.md](./TEMPLATE-OMFT-RUN-BRIEF.md) | Brief corto para llevar a la corrida en vivo. |
+| [module-packs/](./module-packs/) | Packs por slug (`logistica`, `envios`, `techo`, …). |
+| [runs/](./runs/) | Briefs generados por sesión OMFT PREP. |
 | [TEMPLATE-USER-NAV-REPORT.md](./TEMPLATE-USER-NAV-REPORT.md) | Plantilla con secciones fijas; el agente la copia y rellena. |
 | [TEMPLATE-SESSION-VIDEO-METADATA.json](./TEMPLATE-SESSION-VIDEO-METADATA.json) | Metadatos mínimos para acompañar un MP4 en el flujo vídeo → backlog. |
 | [sessions/README.md](./sessions/README.md) | Dónde guardar vídeos locales y cómo extraer audio/frames (`npm run session:video-extract`). |
@@ -35,6 +61,8 @@ Flujo para convertir **transcripción de audio**, **capturas** y **URL de la app
 
 ## Skill y regla Cursor
 
+- Skill (**OMFT** conductor): `.cursor/skills/operator-module-final-test/SKILL.md`
+- Regla OMFT: `.cursor/rules/operator-module-final-test.mdc`
 - Skill (transcripción + capturas): `.cursor/skills/navigation-user-feedback/SKILL.md`
 - Regla opcional: `.cursor/rules/navigation-user-feedback.mdc`
 - Skill (vídeo / **Video-User-interactive-dev**): `.cursor/skills/user-session-video-to-backlog/SKILL.md`
