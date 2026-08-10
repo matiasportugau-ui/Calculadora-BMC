@@ -115,6 +115,9 @@ function parseClassicTableLenQty(afterMm) {
   const s = String(afterMm || "").replace(/\s+/g, " ").trim();
   if (!s) return null;
   // First number in 1.5–14.5 (panel length), then integer qty 1–200 (not a price like 37,00).
+  // Bug DA: never skip qty≥100 when L≥10 — that dropped real industrial classic rows
+  // (e.g. 10 m × 120 / 12 m × 150) to zero cargo. Decimal PU/total tails stay rejected by
+  // `(?!\s*[.,]\d)`.
   const re = /(\d{1,2}[.,]\d{1,2}|\d{1,2})\s+(\d{1,3})(?!\s*[.,]\d)/g;
   let m;
   while ((m = re.exec(s)) !== null) {
@@ -122,7 +125,6 @@ function parseClassicTableLenQty(afterMm) {
     const qty = parseInt(m[2], 10);
     if (!Number.isFinite(len) || len < 1.5 || len > 14.5) continue;
     if (!Number.isFinite(qty) || qty < 1 || qty > 200) continue;
-    if (qty >= 100 && len >= 10) continue;
     return { longitud: snapLen(len), cantidad: qty };
   }
   return null;
