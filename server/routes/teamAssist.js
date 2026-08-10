@@ -1,10 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// server/routes/teamAssist.js — Chat “equipo” para simulacro / asistencia (OpenAI)
+// server/routes/teamAssist.js — Chat “equipo” para simulacro / asistencia.
+// Multi-provider: usa la misma cadena de fallback que el resto del server
+// (claude → grok → gemini → openai → openrouter) vía callAiCompletion.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { config } from "../config.js";
+import { callAiCompletion } from "../lib/aiCompletion.js";
+import { getApiKey, getProviderChain } from "../lib/aiProviderConfig.js";
 
 const router = Router();
 
@@ -69,12 +72,16 @@ const AGENT_INSTRUCTIONS = {
   sheets: `Rol: Planillas y Google Sheets del proyecto. Explicá en términos de tabs, columnas y flujos según la documentación típica del repo (sin inventar sheet IDs). Si el usuario pide “cargar planilla”, describí qué campos conviene completar y en qué orden; recordá que credenciales y edición estructural la define el operador.`,
 };
 
-function requireOpenAIConfigured(req, res, next) {
-  if (!config.openaiApiKey) {
+function configuredAiProviders() {
+  return getProviderChain().filter((p) => Boolean(getApiKey(p)));
+}
+
+function requireAiConfigured(req, res, next) {
+  if (configuredAiProviders().length === 0) {
     return res.status(503).json({
       ok: false,
-      error: "OPENAI_API_KEY no configurada en el servidor",
-      hint: "Agregá OPENAI_API_KEY al .env y reiniciá npm run start:api",
+      error: "Ninguna API key de IA configurada en el servidor",
+      hint: "Agregá al menos una de ANTHROPIC_API_KEY / GROK_API_KEY / GEMINI_API_KEY / OPENAI_API_KEY al .env y reiniciá npm run start:api",
     });
   }
   next();
@@ -122,10 +129,15 @@ ${ctx}`;
 }
 
 router.get("/health", (req, res) => {
+  const providers = configuredAiProviders();
   res.json({
     ok: true,
-    openai_configured: Boolean(config.openaiApiKey),
-    model: config.openaiChatModel,
+    ai_configured: providers.length > 0,
+    providers,
+    // Deprecated alias (era literal "hay key de OpenAI"); ahora significa
+    // "hay algún provider IA usable". Mantener hasta migrar consumidores.
+    openai_configured: providers.length > 0,
+    model: providers[0] || null,
     auth_required: false,
     rate_limit: {
       window_ms: TEAM_ASSIST_CHAT_RATE.windowMs,
@@ -138,7 +150,7 @@ router.get("/agents", (req, res) => {
   res.json({ ok: true, agents: TEAM_ASSIST_AGENTS });
 });
 
-router.post("/chat", chatLimiter, requireOpenAIConfigured, async (req, res) => {
+router.post("/chat", chatLimiter, requireAiConfigured, async (req, res) => {
   const agentId = String(req.body?.agentId || "orchestrator");
   const messages = clampMessages(req.body?.messages);
   const context = req.body?.context;
@@ -149,64 +161,36 @@ router.post("/chat", chatLimiter, requireOpenAIConfigured, async (req, res) => {
 
   const system = buildSystemPrompt(agentId, context);
 
+  // callAiCompletion acepta un solo turno de usuario: aplanar el historial
+  // clampeado (máx 8 mensajes / 32k chars) en una transcripción etiquetada.
+  const transcript = messages
+    .map((m) => `${m.role === "assistant" ? "Asistente" : "Usuario"}: ${m.content}`)
+    .join("\n\n");
+
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
-    let r;
-    try {
-      r = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${config.openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: config.openaiChatModel,
-          messages: [{ role: "system", content: system }, ...messages],
-          temperature: 0.5,
-          max_tokens: 4096,
-        }),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
+    const { text, provider } = await callAiCompletion({
+      systemPrompt: system,
+      userMessage: transcript,
+      maxTokens: 4096,
+    });
 
-    const raw = await r.text();
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      req.log?.error?.({ raw: raw.slice(0, 500) }, "teamAssist OpenAI non-JSON");
-      return res.status(502).json({ ok: false, error: "Respuesta inválida del proveedor IA" });
-    }
-
-    if (!r.ok) {
-      const msg = data?.error?.message || raw.slice(0, 300);
-      req.log?.warn?.({ status: r.status, msg }, "teamAssist OpenAI error");
-      return res.status(r.status >= 400 && r.status < 600 ? r.status : 502).json({
-        ok: false,
-        error: msg,
-      });
-    }
-
-    const reply = data?.choices?.[0]?.message?.content?.trim() || "";
-    if (!reply) {
+    if (!text) {
       return res.status(502).json({ ok: false, error: "Respuesta vacía del modelo" });
     }
 
     return res.json({
       ok: true,
-      reply,
-      model: data?.model || config.openaiChatModel,
+      reply: text,
+      model: provider,
+      provider,
       agentId,
     });
   } catch (err) {
-    req.log?.error?.({ err }, "teamAssist fetch failed");
-    if (err.name === "AbortError") {
-      return res.status(504).json({ ok: false, error: "Timeout al contactar OpenAI (30 s)" });
-    }
-    return res.status(503).json({ ok: false, error: err.message || "Error al contactar OpenAI" });
+    req.log?.error?.({ err, details: err?.details }, "teamAssist AI chain failed");
+    return res.status(503).json({
+      ok: false,
+      error: "Ningún proveedor de IA respondió. Intentá de nuevo en unos minutos.",
+    });
   }
 });
 

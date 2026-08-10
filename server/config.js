@@ -129,6 +129,9 @@ export const config = {
   budgetTurnsPer24h: process.env.BUDGET_TURNS_PER_24H ? Number(process.env.BUDGET_TURNS_PER_24H) : null,
   budgetTokensPer24h: process.env.BUDGET_TOKENS_PER_24H ? Number(process.env.BUDGET_TOKENS_PER_24H) : null,
   geminiApiKey: process.env.GEMINI_API_KEY || "",
+  // Embeddings: "auto" (openai→gemini según keys usables), "openai", "gemini" o "stub".
+  // Ver server/lib/embeddings.js — cambiar de provider requiere re-embeber el corpus.
+  embeddingsProvider: process.env.EMBEDDINGS_PROVIDER || "auto",
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 (404 "no longer available"); 2.5-flash is the live model. Used by the SSE chat streaming path (agentChat.js) + visionExtract.
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",

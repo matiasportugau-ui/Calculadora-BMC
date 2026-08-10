@@ -40,7 +40,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
 
 // Importar después de cargar dotenv para que config.js lea las vars
-const { embedText, hashText, activeProvider } = await import(
+const { embedTextWithProvider, hashText, activeProvider } = await import(
   path.join(repoRoot, "server/lib/embeddings.js")
 );
 const { config } = await import(path.join(repoRoot, "server/config.js"));
@@ -225,8 +225,12 @@ async function main() {
 
     // Generar embedding
     let embedding;
+    let embedProvider;
     try {
-      embedding = await embedText(textForEmbedding, contentHash);
+      ({ embedding, provider: embedProvider } = await embedTextWithProvider(
+        textForEmbedding,
+        contentHash,
+      ));
       stats.embedded++;
     } catch (err) {
       console.warn(`[${stats.total}] Error embebiendo ${lead.lead_id}: ${err.message}`);
@@ -257,8 +261,10 @@ async function main() {
             // Store only non-PII quote facts — this metadata is later injected
             // into LLM prompts via RAG retrieval. See server/lib/quoteMetadata.js.
             JSON.stringify(sanitizeQuoteMetadata(lead)),
-            // Tag the provider so the RAG pre-check can refuse stub vectors (0002).
-            activeProvider(),
+            // Tag the provider that actually generated THIS vector so the RAG
+            // pre-check can refuse stub vectors (0002) and rag.js can filter
+            // by compatible vector space.
+            embedProvider,
           ],
         );
         stats.upserted++;
