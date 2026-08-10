@@ -1,0 +1,139 @@
+
+> calculadora-bmc@3.1.5 release:audit
+> node scripts/release-readiness-audit.mjs
+
+Release Readiness Audit
+Generated: 2026-08-10T08:55:42.441Z
+Repo: /Users/matias/calculadora-bmc
+Risk: HIGH
+
+=== Current Branch & Status ===
+branch: main
+## main...origin/main [ahead 1, behind 5]
+ M .gitignore
+ M package.json
+?? .claude/commands/release-audit.md
+?? docs/sdd/release-readiness-audit/
+?? scripts/mcp-panelin-claude-setup.sh
+?? scripts/release-readiness-audit.mjs
+
+=== Main Divergence (origin/main...HEAD) ===
+ahead: 1 | behind: 5
+
+=== Blockers ===
+Working tree has 6 uncommitted change(s).
+Local branch is behind origin/main by 5 commit(s).
+Local main has 1 commit(s) not in origin/main.
+
+=== Local-only commits vs origin/main ===
+e6c7419d (HEAD -> main) docs(team): closeout after PEA PR #967 merge to main
+
+=== Remote-only commits missing locally ===
+0cbbb03b (origin/main, origin/HEAD) fix(logistica): sanitize ENCARGO adjunto URLs before proxy fetch (#985)
+d6956779 docs(logistica): prod audit 2026-08-10 and Wave A closeout notes (#983)
+92a722eb fix(logistica): unify chips and ventas filter for planilla dates and junk rows (#982)
+f436448f (work/omft-wave1-foundation-20260809, fix/logistica-route-export-parity) docs(ux): arm OMFT conductor for multi-agent operator final tests (#980)
+9039b284 docs(team): closeout after PEA PR #967 merge to main (#971)
+
+=== Top branch divergence vs origin/main ===
+final/ultimate-consolidation-20260612 | ahead:34 behind:525
+fix/review-5ae44e21-facturaexpress-platform | ahead:27 behind:527
+wip/cotizar-and-presup | ahead:24 behind:595
+final/wolf-debug-voice-hardening-20260611 | ahead:18 behind:527
+fix/cors-preflight-raw-handler | ahead:17 behind:445
+fix/secrets-auth-hardening-20260611 | ahead:17 behind:528
+worktree-ml-product-clips | ahead:16 behind:388
+fix/panelin-323-review | ahead:15 behind:528
+feat/panelin-floating-chat-20260611 | ahead:13 behind:528
+feat/visor3d-flag | ahead:12 behind:182
+reconcile-main-branch | ahead:11 behind:443
+update713 | ahead:9 behind:149
+worktree-omni-wave3-hardening | ahead:9 behind:429
+feat/pdf-customer-brand-eval | ahead:9 behind:496
+backup/main-pre-sync-20260611-050136 | ahead:9 behind:529
+claude/quote-accuracy-merged | ahead:9 behind:597
+chore/wa-g8-one-click | ahead:7 behind:78
+work720 | ahead:7 behind:148
+feat/omni-wave4 | ahead:7 behind:429
+feat/ml-manager-integrated | ahead:7 behind:433
+
+=== Unmerged local branches (top 30) ===
+backup/main-pre-sync-20260611-050136
+chore/gh495-prod-smoke-alerts
+chore/harden-deploy-smoke
+chore/react-router-6-30-4
+chore/wa-g8-one-click
+claude/bmc-marketing-review-r5uokp
+claude/fix-engine-correctness
+claude/fix-ml-questions-shape
+claude/quote-accuracy-merged
+claude/ship-drive-glass-c0a18f6
+claude/widen-consulta-parser
+clearance-docs
+cursor/critical-bug-investigation-43b3
+cursor/critical-bug-investigation-6777
+docs/architecture-audit
+docs/bmc-envios-sdd-v1-4-glory
+docs/bmc-envios-sdd-v1-4-rebase
+docs/competitive-sales-and-goal-prompts-2026-07-18
+docs/envios-session-closeout
+docs/envios-ship-closeout
+docs/finanzas-gate-prod-confirm
+docs/follow-up-closeout
+docs/glory-post-imp-wave
+docs/inbound-conversational-os-notes
+docs/mc-run-closeout-20260718
+docs/meta-ads-sdd-v04-bootstrap
+docs/omft-wave1-v1
+docs/omni-full-build-spec
+docs/omni-rollout-note
+docs/panelin-ai-sdd-platform
+
+=== Stash entries (top 20) ===
+stash@{0}: On feat/bmc-envios-wave2-p2-p5: wip-before-wave-a-logistica
+stash@{1}: On feat/pea-live-e2e-pr: wip-before-cab-flip
+stash@{2}: On feat/pea-live-e2e-campaign: local-parser-wip
+stash@{3}: On feat/pea-live-e2e-campaign: wip-rest
+stash@{4}: On feat/pea-live-e2e-campaign: wip-pea-and-misc
+stash@{5}: On main: wip-before-adjunto-harden
+stash@{6}: On main: wip-agent-other
+stash@{7}: On feat/irregular-roof-pdf-multizone: wip-all-before-irregular-v11
+stash@{8}: On feat/irregular-roof-pdf-multizone: wip-unrelated
+stash@{9}: On docs/sdd-envio-wizard: wip-before-envio-wizard
+stash@{10}: On feat/logistica-ops-session: wip-before-docs-persist-2026-08-07
+stash@{11}: On feat/roof-measure-legibility: wip-roof-measure-before-logistica-ops-session
+stash@{12}: On feat/hub-finanzas-recuperacion: finanzas-wip-before-roof-legibility
+stash@{13}: On feat/envios-ventas-map-autocarga: goal-scratch-wip
+stash@{14}: On feat/envios-full-build-p5b-f10b: wip non-envios
+stash@{15}: On feat/bmc-envios-wave2-p2-p5: wip product-media local
+stash@{16}: On docs/persist-verify-closeout: allplus-wip-before-main-071057
+stash@{17}: On chore/wa-g8-one-click: wip-before-envios-closeout-persist
+stash@{18}: On fix/envios-no-enviado-bridge-stale: wip-before-g8-oneclick
+stash@{19}: On docs/bmc-envios-sdd-v1-4-rebase: wip-all-aside
+
+=== Latest Open PRs ===
+#986 | 2026-08-10 | cursor/critical-bug-investigation-32dd -> main | fix(logistica): keep HYPERLINK ENCARGO label for filename cargo (Bug CH)
+#984 | 2026-08-10 | cursor/critical-bug-investigation-5512 -> main | fix(logistica): preserve cut-to-length meters in adjunto snapLen (Bug CG)
+#926 | 2026-08-10 | dependabot/npm_and_yarn/production-dependencies-384ee2c3ec -> main | build(deps): bump the production-dependencies group across 1 directory with 4 updates
+#819 | 2026-08-10 | dependabot/npm_and_yarn/development-dependencies-56b0971d75 -> main | build(deps-dev): bump the development-dependencies group across 1 directory with 8 updates
+#981 | 2026-08-09 | docs/omft-wave1-v1 -> main | docs(ux): Wave 1 OMFT plan 1.0.0 freeze (DO NOT MERGE for deploy)
+#979 | 2026-08-09 | cursor/critical-bug-investigation-31b5 -> main | fix(pea): count refunds in daily budget spend (Bug CD)
+#978 | 2026-08-09 | cursor/critical-bug-investigation-1df2 -> main | fix(logistica): collapse dual-format adjunto panel/acc echoes (Bugs BX/BY)
+#977 | 2026-08-09 | cursor/critical-bug-investigation-195b -> main | fix(pea): guard escalate/re-analyze from clobbering terminal state (Bugs BZ/CA)
+
+=== Latest Closed PRs ===
+#985 | 2026-08-10 | fix/logistica-adjunto-url-sanitize -> main | fix(logistica): sanitize ENCARGO adjunto URLs before proxy fetch
+#983 | 2026-08-10 | fix/logistica-wave-a-chips-junk -> main | fix(logistica): chips dd/mm + ventas junk filter (Wave A)
+#982 | 2026-08-10 | fix/logistica-wave-a-chips-junk -> main | fix(logistica): unify chips and ventas filter for planilla dates and junk rows
+#980 | 2026-08-09 | docs/omft-operator-final-test -> main | docs(ux): arm OMFT for multi-agent operator final tests
+#971 | 2026-08-09 | docs/pea-pr967-closeout -> main | docs(team): closeout after PEA PR #967 merge
+#967 | 2026-08-09 | feat/pea-live-e2e-pr -> main | feat(pea): Panelin Evolution Architect M0–M4 offline stack
+#968 | 2026-08-09 | docs/handoff-3d-logistica-2026-08-09 -> main | docs(team): handoff 3D logistica glory closeout 2026-08-09
+#962 | 2026-08-09 | fix/logistica-cab-orientation -> main | fix(logistica): cab facing wrong way (nose toward bed)
+
+=== Recommended Safe Sequence ===
+1. Create rescue branch from current state and push it.
+2. Create integration branch from fresh origin/main.
+3. Integrate only verified branches/PRs in small batches.
+4. Run npm run gate:local:full after each batch.
+5. Run npm run smoke:prod before final merge/deploy.

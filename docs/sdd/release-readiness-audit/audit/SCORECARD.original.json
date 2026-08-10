@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-08-10T06:01:00-03:00",
+  "iteration": 0,
+  "system_slug": "release-readiness-audit",
+  "system_name": "Release Readiness Audit Workflow",
+  "sdd_path": "docs/sdd/release-readiness-audit/SDD.md",
+  "composite": 82,
+  "min_pass": 90,
+  "pass": false,
+  "label": "Usable with gaps",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 96,
+      "notes": [
+        "Frontmatter present and sections 1-12 exist in correct order",
+        "C4Context, C4Container and sequenceDiagram present",
+        "Section 6 has explicit N/A"
+      ]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 86,
+      "notes": [
+        "Context and container boundaries are coherent",
+        "Could improve actor/system detail and deployment relation traceability"
+      ]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 78,
+      "notes": [
+        "Flow and interfaces are documented",
+        "Missing standalone recreation checklist and explicit command matrix"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 58,
+      "notes": [
+        "No CONFIRMED/INFERRED/PROPOSED tagging",
+        "No path:line evidence index for key claims"
+      ]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 90,
+      "notes": [
+        "Correctly scoped N/A with non-AI architecture"
+      ]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 82,
+      "notes": [
+        "Security/reliability/performance/observability/cost/sustainability covered",
+        "Could add stricter error-budget/gate policy detail"
+      ]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 72,
+      "notes": [
+        "ADRs are relevant",
+        "Alternatives considered are missing"
+      ]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 80,
+      "notes": [
+        "Version/date/status present",
+        "No appendix linkage to evidence assets and baseline comparisons"
+      ]
+    }
+  }
+}
