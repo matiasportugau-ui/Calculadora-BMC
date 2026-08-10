@@ -134,6 +134,8 @@ import {
 } from "../utils/logistica/enviosDraftSync.js";
 import {
   buildEnviosDriveDocument,
+  formatCoordinationSaveMessage,
+  sessionPointersAfterCoordinationOpen,
   takeEnviosDriveResume,
 } from "../utils/logistica/enviosDrive.js";
 import {
@@ -1992,6 +1994,9 @@ export default function BmcLogisticaApp() {
               })),
             );
           }
+          if (p.accProfiles && typeof p.accProfiles === "object") {
+            setAccProfiles(p.accProfiles);
+          }
           if (p.truckL) setTruckL(p.truckL);
           if (p.distributionMode) setDistributionMode(p.distributionMode);
           if (p.cargoLayoutMode === "manual" || p.cargoLayoutMode === "auto") {
@@ -2005,6 +2010,29 @@ export default function BmcLogisticaApp() {
           if (p.freeDragEnabled === true) setFreeDragEnabled(true);
           if (p.ui?.wizard) setWizardUi(createWizardUi({ ...p.ui.wizard, enabled: true }));
           else setWizardUi(createWizardUi({ enabled: true }));
+          // Bug DE: drop prior session pointers; mark clean so autosave cannot
+          // immediately PUT this Drive snapshot over a newer cloud revision.
+          const pointers = sessionPointersAfterCoordinationOpen({});
+          setActiveReparto(pointers.activeReparto);
+          setCloudMeta(pointers.cloudMeta);
+          setCloudConflict(null);
+          setLastPushedFp(
+            fingerprintDraft({
+              info: p.info,
+              stops: p.stops,
+              truckL: p.truckL,
+              distributionMode: p.distributionMode,
+              cargoLayoutMode: p.cargoLayoutMode,
+              manualPkgOrderKeys: p.manualPkgOrderKeys,
+              rowOverrides: p.rowOverrides,
+              freePositions: p.freePositions,
+              freeDragEnabled: p.freeDragEnabled,
+              route: p.route,
+              ui: p.ui,
+              accProfiles: p.accProfiles,
+            }),
+          );
+          setLastPushAt(Date.now());
           setAutoLoadMsg(
             `Drive: reanudado ${p.info?.numero || "envío"} · ${Array.isArray(p.stops) ? p.stops.length : 0} parada(s)`,
           );
@@ -2379,6 +2407,11 @@ export default function BmcLogisticaApp() {
         })),
       );
     }
+    if (p.accProfiles && typeof p.accProfiles === "object") {
+      setAccProfiles(p.accProfiles);
+    } else {
+      setAccProfiles({});
+    }
     if (p.truckL) setTruckL(p.truckL);
     if (p.view) setView(p.view);
     if (p.distributionMode) setDistributionMode(p.distributionMode);
@@ -2398,8 +2431,31 @@ export default function BmcLogisticaApp() {
     if (p.route && typeof p.route === "object") setTripRoute(p.route);
     if (Array.isArray(p.ui?.collapsedStopIds)) setCollapsedStopIds(p.ui.collapsedStopIds);
     if (p.ui?.wizard) setWizardUi(createWizardUi({ ...p.ui.wizard, enabled: true }));
-    if (meta.cloudMeta) setCloudMeta(meta.cloudMeta);
-    if (meta.reparto) setActiveReparto(meta.reparto);
+    // Bug DE: replace (or clear) session pointers so Confirm/autosave cannot
+    // target the previous coordination.
+    const pointers = sessionPointersAfterCoordinationOpen(meta);
+    setCloudMeta(pointers.cloudMeta);
+    setActiveReparto(pointers.activeReparto);
+    setCloudConflict(null);
+    queueMicrotask(() => {
+      setLastPushedFp(
+        fingerprintDraft({
+          info: p.info,
+          stops: p.stops,
+          truckL: p.truckL,
+          distributionMode: p.distributionMode,
+          cargoLayoutMode: p.cargoLayoutMode,
+          manualPkgOrderKeys: p.manualPkgOrderKeys,
+          rowOverrides: p.rowOverrides,
+          freePositions: p.freePositions,
+          freeDragEnabled: p.freeDragEnabled,
+          route: p.route,
+          ui: p.ui,
+          accProfiles: p.accProfiles,
+        }),
+      );
+      setLastPushAt(Date.now());
+    });
   }
 
   /**
@@ -2437,10 +2493,17 @@ export default function BmcLogisticaApp() {
         document,
         status,
       });
+      const cloudOk = Boolean(cloud?.ok);
       setAutoLoadMsg(
-        `✓ Guardado ${built.envNo} · ${status === "completed" ? "Completada" : "Guardada"} · Drive + nube · ${built.stopCount} parada(s)`,
+        formatCoordinationSaveMessage({
+          envNo: built.envNo,
+          status,
+          stopCount: built.stopCount,
+          cloudOk,
+          cloudError: cloud?.error || (cloud?.conflict ? "revision_conflict" : null),
+        }),
       );
-      return { ok: true, cloud, drive };
+      return { ok: cloudOk, partial: !cloudOk, cloud, drive };
     } catch (e) {
       setAutoLoadMsg(
         cloud?.ok
