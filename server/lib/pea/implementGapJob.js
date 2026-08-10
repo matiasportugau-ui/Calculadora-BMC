@@ -7,10 +7,10 @@ import { runNativeImplementer } from "./implementer/nativeAdapter.js";
 import { recordPeaAudit } from "./auditEvents.js";
 import { loadPacketWithGap } from "./packetReview.js";
 
-/** Packet statuses that may still be implemented (Bug DB). */
+/** Packet statuses that may still be implemented (Bug DC). */
 export const IMPLEMENTABLE_PACKET_STATUSES = new Set(["ready_for_review"]);
 
-/** Gap statuses that must never authorize L3 implement (Bug DB). */
+/** Gap statuses that must never authorize L3 implement (Bug DC). */
 export const NON_IMPLEMENTABLE_GAP_STATUSES = new Set(["resolved", "ignored"]);
 
 /**
@@ -43,7 +43,7 @@ export async function runImplementPacket(pool, config, input) {
   const row = await loadPacketWithGap(pool, input.packetId);
   if (!row) return { error: "not_found" };
 
-  // Bug DB: active grant alone must not resurrect rejected/ignored/resolved work.
+  // Bug DC: active grant alone must not resurrect rejected/ignored/resolved work.
   if (!IMPLEMENTABLE_PACKET_STATUSES.has(row.status)) {
     return { ok: false, error: "invalid_status", status: row.status };
   }

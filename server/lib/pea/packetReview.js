@@ -73,7 +73,7 @@ export async function acceptPeaPacket(db, config, input) {
       ],
     );
 
-    // Bug DB: drop orphan L3 grants (e.g. prior escalate) so accept cannot leave
+    // Bug DC: drop orphan L3 grants (e.g. prior escalate) so accept cannot leave
     // an implementable grant on a resolved gap.
     await revokePeaGrantsForPacket(client, {
       packetId: input.packetId,
@@ -165,7 +165,7 @@ export async function rejectPeaPacket(db, input) {
     [row.gap_id],
   );
 
-  // Bug DB: escalate mints an L3 grant but reject previously left it active —
+  // Bug DC: escalate mints an L3 grant but reject previously left it active —
   // implement would still write artifacts for a rejected/ignored packet.
   await revokePeaGrantsForPacket(db, {
     packetId: input.packetId,

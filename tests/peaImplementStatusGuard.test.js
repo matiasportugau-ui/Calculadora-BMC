@@ -1,5 +1,5 @@
 /**
- * PEA Bug DB — implement must not honor orphan grants on terminal packets/gaps.
+ * PEA Bug DC — implement must not honor orphan grants on terminal packets/gaps.
  * Run: node tests/peaImplementStatusGuard.test.js
  */
 import {

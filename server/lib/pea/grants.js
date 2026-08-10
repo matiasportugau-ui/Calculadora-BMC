@@ -95,7 +95,7 @@ export async function revokePeaGrant(db, input) {
 }
 
 /**
- * Revoke every active grant scoped to a packet (Bug DB).
+ * Revoke every active grant scoped to a packet (Bug DC).
  * Used when accept/reject terminalizes a packet so orphan L3 grants cannot
  * still authorize implement.
  *
