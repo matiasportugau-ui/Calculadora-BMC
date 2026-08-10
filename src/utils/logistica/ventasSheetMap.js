@@ -243,10 +243,27 @@ export function isHeaderLikeLabel(value) {
 }
 
 /**
+ * Second quoted/arg label from =HYPERLINK("url","label") / HYPERLINK("url"; "label").
+ * Labels often carry Cotizacion-Isodec-100-mm….pdf used for filename cargo infer when
+ * Drive bytes are unavailable — must not be discarded with the formula wrapper.
+ * @param {string} raw
+ * @returns {string}
+ */
+function extractHyperlinkLabel(raw) {
+  const s = String(raw || "");
+  const m =
+    s.match(/HYPERLINK\s*\(\s*"(?:[^"]*)"\s*[,;]\s*"([^"]+)"\s*\)/i) ||
+    s.match(/HYPERLINK\s*\(\s*'(?:[^']*)'\s*[,;]\s*'([^']+)'\s*\)/i);
+  return m?.[1] ? String(m[1]).trim() : "";
+}
+
+/**
  * ENCARGO cell → real URL/pdf vs free text vs garbage labels.
  * Only returns `pdf` when a real Drive/Dropbox https URL can be extracted.
  * Bare filenames (common gviz HYPERLINK display text) go to plainText only —
  * never as pdfLink (proxy would answer url_invalid / "URL no permitida").
+ * When the cell is a HYPERLINK formula, keep the display label in plainText so
+ * `inferCargoFromEncargoAndSheet` can still parse panel specs if PDF fetch fails.
  *
  * @param {string} raw
  * @returns {{ pdf: string, plainText: string }}
@@ -258,13 +275,18 @@ export function sanitizeEncargoCell(raw) {
   }
   const url = extractAdjuntoHttpsUrl(t);
   if (url) {
-    const leftover = t
+    // Capture label before stripping the formula (label has panel filename cues).
+    const hlLabel = extractHyperlinkLabel(t);
+    let leftover = t
       .replace(url, " ")
       .replace(/https?:\/\/[^\s]+/gi, " ")
       .replace(/[=]?HYPERLINK\s*\([^)]*\)/gi, " ")
       .replace(/["'`]+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+    if (hlLabel && !leftover.includes(hlLabel)) {
+      leftover = [leftover, hlLabel].filter(Boolean).join(" ").trim();
+    }
     return { pdf: url, plainText: leftover };
   }
   // Product lines / bare .pdf filenames — text infer only
