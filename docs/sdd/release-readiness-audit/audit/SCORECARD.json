@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-08-10T06:07:00-03:00",
+  "iteration": 1,
+  "system_slug": "release-readiness-audit",
+  "system_name": "Release Readiness Audit Workflow",
+  "sdd_path": "docs/sdd/release-readiness-audit/SDD.md",
+  "composite": 94,
+  "min_pass": 90,
+  "pass": true,
+  "label": "Pass (expert-complete)",
+  "prior_composite": 82,
+  "delta": 12,
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 98,
+      "notes": [
+        "Frontmatter complete and section contract 1-12 preserved",
+        "Diagrams and section 6 N/A are present and justified"
+      ]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 92,
+      "notes": [
+        "C4Context/C4Container correctly represent actual runtime boundaries",
+        "Sequence diagram aligns with script control flow"
+      ]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 95,
+      "notes": [
+        "Standalone recreation checklist added",
+        "Baseline output artifacts captured and linked"
+      ]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 90,
+      "notes": [
+        "CONFIRMED/INFERRED tags added on key claims",
+        "Appendix A includes path:line evidence links"
+      ]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 94,
+      "notes": [
+        "Explicit N/A with repository evidence that workflow is non-AI"
+      ]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 92,
+      "notes": [
+        "Security/reliability/performance/observability controls tied to actual behavior"
+      ]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 91,
+      "notes": [
+        "ADRs include alternatives considered and trade-offs"
+      ]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 95,
+      "notes": [
+        "Version bumped, appendices added, and baseline comparison integrated"
+      ]
+    }
+  },
+  "remaining_p0": 0,
+  "remaining_p1": 0
+}
