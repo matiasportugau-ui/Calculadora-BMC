@@ -180,6 +180,11 @@ export async function escalatePeaPacket(db, config, input) {
   if (!ESCALATABLE_PACKET_STATUSES.has(row.status)) {
     return { error: "invalid_status", status: row.status };
   }
+  // Bug CI (residual of #977): packet stays ready_for_review after escalate, so a second
+  // Escalar L3 would mint another L3 grant while the gap is already blocked.
+  if (row.gap_status === "blocked") {
+    return { error: "invalid_status", status: row.status, gap_status: "blocked" };
+  }
 
   const grant = await createPeaGrant(db, config, {
     maxLevel: input.maxLevel ?? 3,

@@ -1,7 +1,8 @@
 /**
- * PEA terminal-state guards — Bugs BZ / CA (#967).
+ * PEA terminal-state guards — Bugs BZ / CA (#977) + CI residual.
  * - Escalate must not clobber accepted → gap blocked + L3 grant (BZ)
  * - Re-analyze must not destroy accepted packets / flip resolved gaps (CA)
+ * - Re-escalate / re-analyze must not clear gap=blocked or mint duplicate L3 (CI)
  * Run: node tests/peaTerminalStateGuard.test.js
  */
 import {
@@ -35,6 +36,7 @@ assert(REJECTABLE_PACKET_STATUSES.has("ready_for_review"), "reject allows ready_
 assert(!REJECTABLE_PACKET_STATUSES.has("accepted"), "reject refuses accepted");
 assert(TERMINAL_GAP_STATUSES.has("resolved"), "resolved is terminal");
 assert(TERMINAL_GAP_STATUSES.has("ignored"), "ignored is terminal");
+assert(TERMINAL_GAP_STATUSES.has("blocked"), "CI blocked is terminal for analyze");
 assert(!TERMINAL_GAP_STATUSES.has("investigating"), "investigating is not terminal");
 assert(IMMUTABLE_PACKET_STATUSES.has("accepted"), "accepted packet immutable");
 assert(IMMUTABLE_PACKET_STATUSES.has("rejected"), "rejected packet immutable");
@@ -97,6 +99,41 @@ async function testRejectAcceptedRefused() {
   assert(result.error === "invalid_status", "reject accepted → invalid_status");
 }
 
+async function testEscalateAlreadyBlockedRefused() {
+  const calls = [];
+  const db = {
+    async query(sql, params) {
+      calls.push({ sql, params });
+      if (/FROM pea\.evolution_packets/i.test(sql)) {
+        return {
+          rows: [
+            {
+              id: "pkt-1",
+              gap_id: "gap-1",
+              status: "ready_for_review",
+              gap_row_id: "gap-1",
+              gap_status: "blocked",
+              signal_type: "tool_fail",
+              fingerprint: "fp",
+            },
+          ],
+        };
+      }
+      throw new Error(`unexpected query: ${sql}`);
+    },
+  };
+  const result = await escalatePeaPacket(db, { peaMaxGrantLevel: 3 }, {
+    packetId: "pkt-1",
+    actorId: "admin@test",
+  });
+  assert(result.error === "invalid_status", "CI re-escalate blocked → invalid_status");
+  assert(result.gap_status === "blocked", "CI re-escalate surfaces gap_status");
+  assert(
+    !calls.some((c) => /INSERT INTO pea\.grants/i.test(c.sql)),
+    "CI re-escalate does not mint another grant",
+  );
+}
+
 async function testAnalyzeTerminalSkipped() {
   const updates = [];
   const pool = {
@@ -122,6 +159,27 @@ async function testAnalyzeTerminalSkipped() {
     String(updates[0] || "").includes("terminal_gap_status"),
     "CA job output records terminal skip",
   );
+}
+
+async function testAnalyzeBlockedSkipped() {
+  const pool = {
+    async query(sql, params) {
+      if (/SELECT \* FROM pea\.gaps/i.test(sql)) {
+        return { rows: [{ id: "gap-1", status: "blocked", occurrence_count: 9, severity: "high" }] };
+      }
+      if (/UPDATE pea\.jobs/i.test(sql)) {
+        return { rows: [] };
+      }
+      throw new Error(`unexpected analyze query: ${sql}`);
+    },
+  };
+  const out = await runAnalyzeGapJob(
+    pool,
+    { peaArchitectMock: true, peaAutoMinOccurrences: 1 },
+    { id: "job-1", gap_id: "gap-1", input_json: { force: true } },
+  );
+  assert(out.skipped === true, "CI analyze skips blocked gap");
+  assert(out.status === "blocked", "CI analyze skip status is blocked");
 }
 
 async function testSaveImmutablePacket() {
@@ -150,7 +208,9 @@ async function testSaveImmutablePacket() {
 
 await testEscalateAcceptedRefused();
 await testRejectAcceptedRefused();
+await testEscalateAlreadyBlockedRefused();
 await testAnalyzeTerminalSkipped();
+await testAnalyzeBlockedSkipped();
 await testSaveImmutablePacket();
 
 console.log(`\npeaTerminalStateGuard: ${passed} passed, ${failed} failed`);

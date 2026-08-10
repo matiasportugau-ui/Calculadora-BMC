@@ -10,8 +10,11 @@ import { insertOutboxEvent, enqueuePeaJob } from "./outbox.js";
 
 const SEVERITY_WEIGHT = { low: 1, medium: 2, high: 5, critical: 10 };
 
-/** Gap statuses that must not be reopened by analyze / auto-diagnose (Bug CA). */
-export const TERMINAL_GAP_STATUSES = new Set(["resolved", "ignored"]);
+/**
+ * Gap statuses that must not be reopened by analyze / auto-diagnose (Bugs CA / CI).
+ * `blocked` = L3 escalation in flight — re-analyze would UPSERT v1 and clear blocked.
+ */
+export const TERMINAL_GAP_STATUSES = new Set(["resolved", "ignored", "blocked"]);
 
 /**
  * @param {import('../../config.js').config} config
