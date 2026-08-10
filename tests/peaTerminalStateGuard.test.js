@@ -1,12 +1,15 @@
 /**
- * PEA terminal-state guards — Bugs BZ / CA (#967).
+ * PEA terminal-state guards — Bugs BZ / CA (#967) + Bug CS (accept/reject race).
  * - Escalate must not clobber accepted → gap blocked + L3 grant (BZ)
  * - Re-analyze must not destroy accepted packets / flip resolved gaps (CA)
+ * - Concurrent accept+reject: only one ok:true; loser gets invalid_status (CS)
  * Run: node tests/peaTerminalStateGuard.test.js
  */
 import {
+  acceptPeaPacket,
   escalatePeaPacket,
   rejectPeaPacket,
+  ACCEPTABLE_PACKET_STATUSES,
   ESCALATABLE_PACKET_STATUSES,
   REJECTABLE_PACKET_STATUSES,
 } from "../server/lib/pea/packetReview.js";
@@ -33,6 +36,8 @@ assert(!ESCALATABLE_PACKET_STATUSES.has("accepted"), "escalate refuses accepted"
 assert(!ESCALATABLE_PACKET_STATUSES.has("rejected"), "escalate refuses rejected");
 assert(REJECTABLE_PACKET_STATUSES.has("ready_for_review"), "reject allows ready_for_review");
 assert(!REJECTABLE_PACKET_STATUSES.has("accepted"), "reject refuses accepted");
+assert(ACCEPTABLE_PACKET_STATUSES.has("ready_for_review"), "accept allows ready_for_review");
+assert(!ACCEPTABLE_PACKET_STATUSES.has("rejected"), "accept refuses rejected");
 assert(TERMINAL_GAP_STATUSES.has("resolved"), "resolved is terminal");
 assert(TERMINAL_GAP_STATUSES.has("ignored"), "ignored is terminal");
 assert(!TERMINAL_GAP_STATUSES.has("investigating"), "investigating is not terminal");
@@ -148,10 +153,189 @@ async function testSaveImmutablePacket() {
   assert(threw?.status === "accepted", "CA immutable status surfaced");
 }
 
+/**
+ * Bug CS: reject's status-guarded UPDATE must lose when accept flips the packet
+ * between the initial SELECT and the UPDATE (classic TOCTOU).
+ */
+async function testRejectLosesToAcceptRace() {
+  let packetStatus = "ready_for_review";
+  const sqlLog = [];
+  const client = {
+    async query(sql) {
+      sqlLog.push(sql);
+      if (/^\s*BEGIN/i.test(sql) || /^\s*COMMIT/i.test(sql) || /^\s*ROLLBACK/i.test(sql)) {
+        return { rows: [], rowCount: 0 };
+      }
+      if (/FROM pea\.evolution_packets/i.test(sql) && /JOIN pea\.gaps/i.test(sql)) {
+        return {
+          rows: [
+            {
+              id: "pkt-cs",
+              gap_id: "gap-cs",
+              status: packetStatus,
+              gap_row_id: "gap-cs",
+              gap_status: packetStatus === "accepted" ? "resolved" : "ready_for_review",
+            },
+          ],
+          rowCount: 1,
+        };
+      }
+      if (/UPDATE pea\.evolution_packets/i.test(sql) && /'rejected'/i.test(sql)) {
+        // Accept commits between SELECT and guarded UPDATE.
+        packetStatus = "accepted";
+        return { rows: [], rowCount: 0 };
+      }
+      throw new Error(`unexpected CS reject query: ${sql.slice(0, 120)}`);
+    },
+    release() {},
+  };
+  const pool = {
+    async connect() {
+      return client;
+    },
+  };
+
+  const result = await rejectPeaPacket(pool, { packetId: "pkt-cs", actorId: "op-b" });
+  assert(result.error === "invalid_status", "CS reject loses to accept → invalid_status");
+  assert(result.status === "accepted", "CS reject surfaces accepted status");
+  assert(
+    sqlLog.some((s) => /UPDATE pea\.evolution_packets/i.test(s) && /'rejected'/i.test(s)),
+    "CS reject attempted status-guarded UPDATE",
+  );
+  assert(
+    !sqlLog.some((s) => /UPDATE pea\.gaps SET status = 'ignored'/i.test(s)),
+    "CS reject does not set gap ignored after losing race",
+  );
+}
+
+/**
+ * Bug CS: accept's status-guarded UPDATE must lose when reject flips the packet
+ * between the initial SELECT and the UPDATE.
+ */
+async function testAcceptLosesToRejectRace() {
+  let packetStatus = "ready_for_review";
+  const sqlLog = [];
+  const client = {
+    async query(sql) {
+      sqlLog.push(sql);
+      if (/^\s*BEGIN/i.test(sql) || /^\s*COMMIT/i.test(sql) || /^\s*ROLLBACK/i.test(sql)) {
+        return { rows: [], rowCount: 0 };
+      }
+      if (/FROM pea\.evolution_packets/i.test(sql) && /JOIN pea\.gaps/i.test(sql)) {
+        return {
+          rows: [
+            {
+              id: "pkt-cs2",
+              gap_id: "gap-cs2",
+              status: packetStatus,
+              gap_row_id: "gap-cs2",
+              gap_status: packetStatus === "rejected" ? "ignored" : "ready_for_review",
+              signal_type: "tool_fail",
+              fingerprint: "fp",
+            },
+          ],
+          rowCount: 1,
+        };
+      }
+      if (/UPDATE pea\.evolution_packets/i.test(sql) && /'accepted'/i.test(sql)) {
+        // Reject commits between SELECT and guarded UPDATE.
+        packetStatus = "rejected";
+        return { rows: [], rowCount: 0 };
+      }
+      throw new Error(`unexpected CS accept query: ${sql.slice(0, 120)}`);
+    },
+    release() {},
+  };
+  const pool = {
+    async connect() {
+      return client;
+    },
+  };
+
+  const result = await acceptPeaPacket(
+    pool,
+    { peaRatchetRequired: false },
+    { packetId: "pkt-cs2", actorId: "op-a" },
+  );
+  assert(result.error === "invalid_status", "CS accept loses to reject → invalid_status");
+  assert(result.status === "rejected", "CS accept surfaces rejected status");
+  assert(
+    sqlLog.some((s) => /UPDATE pea\.evolution_packets/i.test(s) && /'accepted'/i.test(s)),
+    "CS accept attempted status-guarded UPDATE",
+  );
+  assert(
+    !sqlLog.some((s) => /SET status = 'resolved'/i.test(s)),
+    "CS accept does not resolve gap after losing race",
+  );
+}
+
+/**
+ * Bug CS sibling: escalate must not mint L3 grant after accept flipped the packet
+ * between the initial SELECT and the escalatable re-check.
+ */
+async function testEscalateLosesToAcceptRace() {
+  let packetStatus = "ready_for_review";
+  const sqlLog = [];
+  const client = {
+    async query(sql) {
+      sqlLog.push(sql);
+      if (/^\s*BEGIN/i.test(sql) || /^\s*COMMIT/i.test(sql) || /^\s*ROLLBACK/i.test(sql)) {
+        return { rows: [], rowCount: 0 };
+      }
+      if (/FROM pea\.evolution_packets/i.test(sql) && /JOIN pea\.gaps/i.test(sql)) {
+        return {
+          rows: [
+            {
+              id: "pkt-cs3",
+              gap_id: "gap-cs3",
+              status: packetStatus,
+              gap_row_id: "gap-cs3",
+              gap_status: packetStatus === "accepted" ? "resolved" : "ready_for_review",
+              signal_type: "tool_fail",
+              fingerprint: "fp",
+            },
+          ],
+          rowCount: 1,
+        };
+      }
+      if (/SELECT id, status FROM pea\.evolution_packets/i.test(sql)) {
+        // Accept commits between initial load and re-check.
+        packetStatus = "accepted";
+        return { rows: [], rowCount: 0 };
+      }
+      throw new Error(`unexpected CS escalate query: ${sql.slice(0, 120)}`);
+    },
+    release() {},
+  };
+  const pool = {
+    async connect() {
+      return client;
+    },
+  };
+
+  const result = await escalatePeaPacket(pool, { peaMaxGrantLevel: 3 }, {
+    packetId: "pkt-cs3",
+    actorId: "op-c",
+  });
+  assert(result.error === "invalid_status", "CS escalate loses to accept → invalid_status");
+  assert(result.status === "accepted", "CS escalate surfaces accepted status");
+  assert(
+    !sqlLog.some((s) => /INSERT INTO pea\.grants/i.test(s)),
+    "CS escalate does not mint grant after losing race",
+  );
+  assert(
+    !sqlLog.some((s) => /UPDATE pea\.gaps SET status = 'blocked'/i.test(s)),
+    "CS escalate does not block gap after losing race",
+  );
+}
+
 await testEscalateAcceptedRefused();
 await testRejectAcceptedRefused();
 await testAnalyzeTerminalSkipped();
 await testSaveImmutablePacket();
+await testRejectLosesToAcceptRace();
+await testAcceptLosesToRejectRace();
+await testEscalateLosesToAcceptRace();
 
 console.log(`\npeaTerminalStateGuard: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
