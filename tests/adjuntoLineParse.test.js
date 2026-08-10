@@ -240,6 +240,46 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
     `gotero survived split: ${JSON.stringify(free.accesorios)}`,
   );
   assert.equal(free.paneles.length, 0);
-  ok("Bug CE: accessory with ISO* context still parses after split guard");}
+  ok("Bug CE: accessory with ISO* context still parses after split guard");
+}
+
+{
+  // Bug DB — classic accessory naming ISO* family must not CE-split into phantom panels.
+  // Tip before fix: collapsed → ISOPANEL×2 @ L=3.03, accesorios=[].
+  const classicGotero = parseLogisticaFromAdjuntoText(
+    "Perf. Ch. Gotero Frontal Isopanel 100mm 3,03 2 5,30",
+  );
+  assert.equal(
+    classicGotero.paneles.length,
+    0,
+    `no phantom panels from classic Gotero+Isopanel: ${JSON.stringify(classicGotero.paneles)}`,
+  );
+  assert.ok(
+    classicGotero.accesorios.some((a) => /gotero/i.test(a.descr) && a.cantidad === 2),
+    `classic Gotero must stay accessory: ${JSON.stringify(classicGotero.accesorios)}`,
+  );
+  ok("Bug DB: classic Gotero … Isopanel stays accessory (no CE phantom panels)");
+}
+
+{
+  // Bug DB — mixed classic table: real panels kept; Gotero/Babeta with ISO* context stay accessories.
+  const mixed = parseLogisticaFromAdjuntoText(`Isopanel EPS 100 mm (Fachada)   2,50   11   37,00   1.159,95
+Perf. Ch. Gotero Frontal Isopanel 100mm 3,03 2 5,30
+Perf. Ch. Babeta Isopanel 50mm 2,50 4 8,00`);
+  assert.equal(mixed.paneles.length, 1, `expected 1 panel row, got ${JSON.stringify(mixed.paneles)}`);
+  assert.equal(mixed.paneles[0].cantidad, 11);
+  assert.equal(mixed.paneles[0].longitud, 2.5);
+  const accQty = mixed.accesorios.reduce((s, a) => s + a.cantidad, 0);
+  assert.equal(accQty, 6, `expected Gotero×2 + Babeta×4=6, got ${JSON.stringify(mixed.accesorios)}`);
+  assert.ok(
+    mixed.accesorios.some((a) => /gotero/i.test(a.descr)),
+    `gotero present: ${JSON.stringify(mixed.accesorios)}`,
+  );
+  assert.ok(
+    mixed.accesorios.some((a) => /babeta/i.test(a.descr)),
+    `babeta present: ${JSON.stringify(mixed.accesorios)}`,
+  );
+  ok("Bug DB: mixed classic panels + ISO*-named accessories keep cargo identity");
+}
 
 console.log(`\n${passed} passed`);
