@@ -112,6 +112,63 @@ async function findFileInFolder(drive, folderId, fileName) {
 }
 
 /**
+ * Load the first .bmc.json inside a quotation folder (pipeline / calc archive).
+ * Uses the same user OAuth as uploads so openDrive works even when the browser
+ * GIS client (drive.file, different client id) cannot see pipeline-created files.
+ *
+ * @param {string} folderId
+ * @returns {Promise<{ projectData: object, fileId: string, fileName: string } | null>}
+ */
+export async function loadProjectFromDriveFolder(folderId) {
+  const id = String(folderId || "").trim();
+  if (!/^[a-zA-Z0-9_-]{10,128}$/.test(id)) {
+    throw Object.assign(new Error("invalid_folder_id"), { code: "bad_request" });
+  }
+  if (!userOAuthAvailable() && !process.env.DRIVE_QUOTE_FOLDER_ID) {
+    throw Object.assign(new Error("drive_unavailable"), { code: "drive_unavailable" });
+  }
+
+  const drive = await getDriveClient();
+  const q = [
+    `'${escapeDriveQueryLiteral(id)}' in parents`,
+    "trashed=false",
+    "(name contains '.bmc.json' or name contains '.json')",
+  ].join(" and ");
+
+  const { data: listed } = await drive.files.list({
+    q,
+    fields: "files(id,name,mimeType)",
+    spaces: "drive",
+    pageSize: 10,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+
+  const files = listed.files || [];
+  const preferred =
+    files.find((f) => /\.bmc\.json$/i.test(f.name || "")) ||
+    files.find((f) => /\.json$/i.test(f.name || "")) ||
+    null;
+  if (!preferred?.id) return null;
+
+  const { data: media } = await drive.files.get(
+    { fileId: preferred.id, alt: "media" },
+    { responseType: "text" },
+  );
+  const text = typeof media === "string" ? media : String(media || "");
+  let projectData;
+  try {
+    projectData = JSON.parse(text);
+  } catch {
+    throw Object.assign(new Error("invalid_bmc_json"), { code: "bad_request" });
+  }
+  if (!projectData || typeof projectData !== "object") {
+    throw Object.assign(new Error("invalid_bmc_json"), { code: "bad_request" });
+  }
+  return { projectData, fileId: preferred.id, fileName: preferred.name || "" };
+}
+
+/**
  * DRIVE_QUOTE_FOLDER_ID → cliente → código cotización.
  */
 export async function ensureQuotationFolderPath(drive, rootFolderId, quotationCode, proyecto = {}) {
