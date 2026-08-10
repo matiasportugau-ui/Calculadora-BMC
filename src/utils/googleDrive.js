@@ -826,3 +826,102 @@ export async function getPdfUrl(folderId) {
 export async function deleteQuotation(folderId) {
   await authFetch(`${DRIVE_API}/files/${folderId}`, { method: "DELETE" });
 }
+
+// ── Logística coordinations (.bmc-envios.json) ───────────────────────────────
+
+const ENVIOS_FOLDER_NAME = "BMC Envíos Coordinaciones";
+const ENVIOS_KIND = "bmc-envios";
+
+async function ensureEnviosFolder(rootFolderId = null) {
+  const rootId = rootFolderId || (await findOrCreateFolder(APP_FOLDER_NAME));
+  const folderId = await findOrCreateFolder(ENVIOS_FOLDER_NAME, rootId);
+  return { rootId, folderId };
+}
+
+/**
+ * Save / update a resumable envíos coordination JSON next to cotizaciones root.
+ *
+ * @param {object} params
+ * @param {string} params.envNo
+ * @param {object} params.document — full .bmc-envios.json body
+ * @param {"saved"|"completed"} [params.status]
+ * @param {string|null} [params.rootFolderId]
+ */
+export async function saveEnviosCoordination({
+  envNo,
+  document,
+  status = "saved",
+  rootFolderId = null,
+}) {
+  const { folderId } = await ensureEnviosFolder(rootFolderId);
+  const id = String(envNo || document?.info?.numero || "ENV")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9._-]+/g, "-")
+    .slice(0, 80) || "ENV";
+  const fileName = `${id}.bmc-envios.json`;
+  const existing = await findFileInFolder(folderId, fileName);
+  const ownerEmail = _user?.email || "";
+  const blob = new Blob([JSON.stringify(document, null, 2)], { type: BMC_MIME });
+  const file = await uploadFile(folderId, fileName, blob, BMC_MIME, existing?.id, {
+    appProperties: {
+      kind: ENVIOS_KIND,
+      coordinationStatus: status === "completed" ? "completed" : "saved",
+      envNo: id,
+      ...(ownerEmail ? { ownerEmail } : {}),
+    },
+  });
+  return {
+    folderId,
+    fileId: file.id,
+    fileName,
+    folderUrl: `https://drive.google.com/drive/folders/${folderId}`,
+    webViewLink: file.webViewLink || null,
+  };
+}
+
+/**
+ * List coordination files in Drive (newest first).
+ *
+ * @param {{ rootFolderId?: string|null, status?: "saved"|"completed"|null }} [opts]
+ * @returns {Promise<Array<{ id: string, name: string, modifiedTime?: string, status: string, envNo: string }>>}
+ */
+export async function listEnviosCoordinations({ rootFolderId = null, status = null } = {}) {
+  const { folderId } = await ensureEnviosFolder(rootFolderId);
+  const q = [
+    `'${folderId}' in parents`,
+    "name contains '.bmc-envios.json'",
+    "trashed=false",
+  ];
+  const resp = await authFetch(
+    `${DRIVE_API}/files?q=${encodeURIComponent(q.join(" and "))}` +
+      `&fields=files(id,name,modifiedTime,appProperties)&pageSize=50&spaces=drive` +
+      `&orderBy=modifiedTime desc`,
+  );
+  const { files } = await resp.json();
+  const want = status === "completed" || status === "saved" ? status : null;
+  return (files || [])
+    .map((f) => {
+      const st = f.appProperties?.coordinationStatus === "completed" ? "completed" : "saved";
+      const envNo =
+        f.appProperties?.envNo ||
+        String(f.name || "").replace(/\.bmc-envios\.json$/i, "");
+      return {
+        id: f.id,
+        name: f.name,
+        modifiedTime: f.modifiedTime,
+        status: st,
+        envNo,
+      };
+    })
+    .filter((f) => (want ? f.status === want : true));
+}
+
+/**
+ * Download and parse a .bmc-envios.json by file id.
+ * @param {string} fileId
+ */
+export async function loadEnviosCoordinationFile(fileId) {
+  const download = await authFetch(`${DRIVE_API}/files/${fileId}?alt=media`);
+  return download.json();
+}

@@ -107,7 +107,9 @@ import {
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
   saveQuotation as gdriveSaveQuotation,
   listQuotations, loadProjectFromFolder, deleteQuotation,
+  listEnviosCoordinations, loadEnviosCoordinationFile,
 } from "../utils/googleDrive.js";
+import { stashEnviosDriveResume } from "../utils/logistica/enviosDrive.js";
 import { getDriveConfig } from "../utils/driveConfigApi.js";
 import { LAYOUT_OPTIONS } from "../pdf-templates/index.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
@@ -4828,6 +4830,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const [driveAuth, setDriveAuth] = useState(() => gdriveIsAuth());
   const [driveUser, setDriveUser] = useState(() => getCachedUser());
   const [driveQuotations, setDriveQuotations] = useState([]);
+  const [driveEnvios, setDriveEnvios] = useState([]);
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveSaving, setDriveSaving] = useState(false);
   const [driveError, setDriveError] = useState(null);
@@ -4897,6 +4900,14 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       // list stays consistent with where saves land; falls back to legacy root.
       const folders = await listQuotations(driveFolderConfig?.folderId || null);
       setDriveQuotations(folders);
+      try {
+        // Canonical: Panelin BMC Cotizaciones / BMC Envíos Coordinaciones
+        // (same path Logística uses — not the per-user quote folder).
+        const envios = await listEnviosCoordinations({ rootFolderId: null });
+        setDriveEnvios(envios);
+      } catch {
+        setDriveEnvios([]);
+      }
     } catch (err) {
       setDriveError(err.message || "Error al cargar cotizaciones");
     } finally {
@@ -4937,7 +4948,27 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setDriveAuth(false);
     setDriveUser(null);
     setDriveQuotations([]);
+    setDriveEnvios([]);
   }, []);
+
+  /** Open a .bmc-envios.json from Drive → resume in /logistica */
+  const handleDriveLoadEnvio = useCallback(async (fileId) => {
+    setDriveLoading(true);
+    setDriveError(null);
+    try {
+      const doc = await loadEnviosCoordinationFile(fileId);
+      if (!stashEnviosDriveResume(doc)) {
+        throw new Error("No se pudo preparar la reanudación");
+      }
+      setShowDrivePanel(false);
+      showToast("Abriendo coordinación en Logística…");
+      navigate("/logistica");
+    } catch (err) {
+      setDriveError(err.message || "Error al abrir coordinación");
+    } finally {
+      setDriveLoading(false);
+    }
+  }, [navigate, showToast]);
 
   const handleDriveSave = useCallback(async () => {
     if (!groups.length) return;
@@ -8113,6 +8144,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         driveFolderConfig={driveFolderConfig}
         driveAccessToken={bmcAuth.accessToken}
         onFolderConfigured={(cfg) => { setDriveFolderConfig(cfg); handleDriveRefresh(); }}
+        enviosCoordinations={driveEnvios}
+        onLoadEnvio={handleDriveLoadEnvio}
       />
 
       {/* ── Agregar producto (drawer siempre disponible, cualquier escenario) ── */}
