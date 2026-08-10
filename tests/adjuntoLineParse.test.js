@@ -240,6 +240,55 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
     `gotero survived split: ${JSON.stringify(free.accesorios)}`,
   );
   assert.equal(free.paneles.length, 0);
-  ok("Bug CE: accessory with ISO* context still parses after split guard");}
+  ok("Bug CE: accessory with ISO* context still parses after split guard");
+}
+
+{
+  // Bug DA — classic L≥10 + qty≥100 used to fail-closed (qty≥100 && len≥10 skip) → 0 cargo.
+  const industrial = parseLogisticaFromAdjuntoText(
+    `Producto                                            Largos (m) Cantidades         Costo m2 (USD)
+Isopanel EPS 100 mm (Fachada)                            10,00       120                  37,00              4.440,00
+Isodec EPS 100 mm (Cubierta)                             12          150                  37,00              6.660,00
+Isopanel EPS 50 mm (Fachada)                             10          100                  25,00              2.500,00`,
+  );
+  assert.equal(
+    industrial.paneles.length,
+    3,
+    `Bug DA expected 3 industrial classic rows, got ${JSON.stringify(industrial.paneles)}`,
+  );
+  const sum = industrial.paneles.reduce((a, p) => a + p.cantidad, 0);
+  assert.equal(sum, 370, `120+150+100=370, got ${sum} ${JSON.stringify(industrial.paneles)}`);
+  const byQty = Object.fromEntries(industrial.paneles.map((p) => [p.cantidad, p.longitud]));
+  assert.equal(byQty[120], 10, `120× Fachada @10m: ${JSON.stringify(industrial.paneles)}`);
+  assert.equal(byQty[150], 12, `150× Cubierta @12m: ${JSON.stringify(industrial.paneles)}`);
+  assert.equal(byQty[100], 10, `100× Fachada 50mm @10m: ${JSON.stringify(industrial.paneles)}`);
+  ok("Bug DA: classic L≥10 + qty≥100 keep full industrial cargo");
+}
+
+{
+  // Bug DA border: qty 99 @ L=10 always worked; qty 100 must too.
+  const border99 = parsePanelLineHeuristic("Isopanel EPS 100 mm (Fachada)  10  99  37,00  3.663,00");
+  const border100 = parsePanelLineHeuristic("Isopanel EPS 100 mm (Fachada)  10  100  37,00  3.700,00");
+  assert.ok(border99 && border99.cantidad === 99 && border99.longitud === 10);
+  assert.ok(
+    border100 && border100.cantidad === 100 && border100.longitud === 10,
+    JSON.stringify(border100),
+  );
+  ok("Bug DA: qty 99 and 100 at L=10 both parse");
+}
+
+{
+  // Regression: small classic Petinho rows still parse after removing the L≥10/qty≥100 skip.
+  const petinho = parsePanelLineHeuristic("Isopanel EPS 100 mm (Fachada)  2,50  11  37,00  1.159,95");
+  assert.ok(petinho);
+  assert.equal(petinho.cantidad, 11);
+  assert.equal(petinho.longitud, 2.5);
+  // qty=99 @ L=10 was already accepted before DA; keep as lower-bound control.
+  const under = parsePanelLineHeuristic("Isodec EPS 100 mm (Cubierta)  10  80  37,00  2.960,00");
+  assert.ok(under);
+  assert.equal(under.cantidad, 80);
+  assert.equal(under.longitud, 10);
+  ok("Bug DA: Petinho small qty + L=10 qty<100 still parse");
+}
 
 console.log(`\n${passed} passed`);
