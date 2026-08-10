@@ -244,8 +244,9 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
 }
 
 {
-  // Bug CY — classic Largo carries unit m/M (from "Largos (m)" header / industrial paste).
+  // Bug CZ — classic Largo carries unit m/M (from "Largos (m)" header / paste).
   // Pre-fix: "2,50 m 11 37,00" skipped the Largo pair → matched "11 37" as L=11 qty=3 (PU digit steal).
+  // Distinct from #998 Bug CY (modern ×L without m / industrial qty×len).
   const spaced = parsePanelLineHeuristic(
     "Isopanel EPS 100 mm (Fachada)                             2,50 m        11                  37,00              1.159,95",
   );
@@ -268,22 +269,22 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
 Isopanel EPS 100 mm (Fachada)                             2,50 m        11                  37,00              1.159,95
 Isopanel EPS 100 mm (Fachada)                             2,30 m         5                  37,00                 485,07
 Isodec EPS 100 mm (Cubierta)                              4,00 m         6                  37,00                 994,56`);
-  assert.equal(table.paneles.length, 3, `CY table panels: ${JSON.stringify(table.paneles)}`);
+  assert.equal(table.paneles.length, 3, `CZ table panels: ${JSON.stringify(table.paneles)}`);
   const sum = table.paneles.reduce((a, p) => a + p.cantidad, 0);
-  assert.equal(sum, 22, `CY table must stay 11+5+6=22, got ${sum} ${JSON.stringify(table.paneles)}`);
-  ok("Bug CY: classic Largo with unit m keeps qty/len (no PU steal / drop)");
+  assert.equal(sum, 22, `CZ table must stay 11+5+6=22, got ${sum} ${JSON.stringify(table.paneles)}`);
+  ok("Bug CZ: classic Largo with unit m keeps qty/len (no PU steal / drop)");
 }
 
 {
-  // Bug CY — accessory classic row with "3 m" between Largo and Cantidad.
+  // Bug CZ — accessory classic row with "3 m" between Largo and Cantidad.
   const acc = parseLogisticaFromAdjuntoText(
     "Perfil Ch. Blanco U 100 mm x 35 mm / 3 m         12                  4,20                    37,84",
   );
   assert.ok(
     acc.accesorios.some((a) => /perfil/i.test(a.descr) && a.cantidad === 12),
-    `expected perfil×12 after CY m-unit, got ${JSON.stringify(acc.accesorios)}`,
+    `expected perfil×12 after CZ m-unit, got ${JSON.stringify(acc.accesorios)}`,
   );
-  ok("Bug CY: accessory Largo with unit m keeps qty");
+  ok("Bug CZ: accessory Largo with unit m keeps qty");
 }
 
 console.log(`\n${passed} passed`);
