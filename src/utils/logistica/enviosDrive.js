@@ -105,3 +105,43 @@ export function takeEnviosDriveResume() {
     return null;
   }
 }
+
+/**
+ * Session pointers after opening a coordination (Drive / cloud draft / reparto).
+ *
+ * Opening must not keep the previous activeReparto or cloudMeta unless the open
+ * explicitly provides replacements — otherwise Confirm writes into the wrong
+ * reparto, and a stale revision / null expectedRevision can clobber a newer
+ * cloud draft on autosave.
+ *
+ * @param {{ reparto?: object|null, cloudMeta?: object|null }} [meta]
+ * @returns {{ activeReparto: object|null, cloudMeta: object|null }}
+ */
+export function sessionPointersAfterCoordinationOpen(meta = {}) {
+  return {
+    activeReparto: meta.reparto != null ? meta.reparto : null,
+    cloudMeta: meta.cloudMeta != null ? meta.cloudMeta : null,
+  };
+}
+
+/**
+ * Operator-facing save result: never claim "Drive + nube" unless both succeeded.
+ *
+ * @param {{
+ *   envNo: string,
+ *   status: "saved"|"completed"|string,
+ *   stopCount: number,
+ *   cloudOk: boolean,
+ *   cloudError?: string|null,
+ * }} opts
+ */
+export function formatCoordinationSaveMessage(opts) {
+  const envNo = opts.envNo || "ENV";
+  const statusLabel = opts.status === "completed" ? "Completada" : "Guardada";
+  const stops = `${opts.stopCount ?? 0} parada(s)`;
+  if (opts.cloudOk) {
+    return `✓ Guardado ${envNo} · ${statusLabel} · Drive + nube · ${stops}`;
+  }
+  const cloudErr = opts.cloudError || "error";
+  return `✓ Drive ${envNo} · ${statusLabel} · nube: ${cloudErr} · ${stops}`;
+}
