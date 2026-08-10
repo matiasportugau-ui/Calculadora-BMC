@@ -203,6 +203,42 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
 }
 
 {
+  // Bug DF — classic qty hard-cap at 200 dropped industrial short-length rows.
+  // Distinct from Bug DA (open #1004): DA is qty≥100 && len≥10; DF is qty>200 at any len.
+  const industrial = parseLogisticaFromAdjuntoText(
+    "Isopanel EPS 100 mm (Fachada)                             6,00       250                  37,00              9.250,00",
+  );
+  assert.equal(
+    industrial.paneles.length,
+    1,
+    `Bug DF: expected 1 panel for 6,00×250, got ${JSON.stringify(industrial.paneles)}`,
+  );
+  assert.equal(industrial.paneles[0].cantidad, 250);
+  assert.equal(industrial.paneles[0].longitud, 6);
+  ok("Bug DF: classic L=6 qty=250 industrial cargo kept");
+
+  const border201 = parseLogisticaFromAdjuntoText(
+    "Isopanel EPS 100 mm (Fachada)  6,00  201  37,00  7.437,00",
+  );
+  assert.equal(border201.paneles[0]?.cantidad, 201, "qty 201 must parse after DF");
+  ok("Bug DF: classic qty=201 border kept");
+
+  const at200 = parseLogisticaFromAdjuntoText(
+    "Isopanel EPS 100 mm (Fachada)  6,00  200  37,00  7.400,00",
+  );
+  assert.equal(at200.paneles[0]?.cantidad, 200, "qty 200 regression");
+  ok("Bug DF: classic qty=200 still kept");
+
+  // Small Petinho rows must not change.
+  const petinho = parseLogisticaFromAdjuntoText(
+    "Isopanel EPS 100 mm (Fachada)                             2,50        11                  37,00              1.159,95",
+  );
+  assert.equal(petinho.paneles[0]?.cantidad, 11);
+  assert.equal(petinho.paneles[0]?.longitud, 2.5);
+  ok("Bug DF: Petinho 2,50×11 unchanged");
+}
+
+{
   // Bug CE — pdf.js often omits hasEOL between classic table rows → one line, was qty 11 only.
   const collapsed = [
     "Isopanel EPS 100 mm (Fachada) 2,50 11 37,00 1.159,95 ",

@@ -114,14 +114,16 @@ function looksLikeAccessoryLine(raw) {
 function parseClassicTableLenQty(afterMm) {
   const s = String(afterMm || "").replace(/\s+/g, " ").trim();
   if (!s) return null;
-  // First number in 1.5–14.5 (panel length), then integer qty 1–200 (not a price like 37,00).
+  // First number in 1.5–14.5 (panel length), then integer qty 1–999 (regex \d{1,3}).
+  // Prices like 37,00 are rejected by (?!\s*[.,]\d). Cap used to be 200 (Bug DF):
+  // industrial classic rows such as `6,00 250` silently dropped → 0 panels in autocarga.
   const re = /(\d{1,2}[.,]\d{1,2}|\d{1,2})\s+(\d{1,3})(?!\s*[.,]\d)/g;
   let m;
   while ((m = re.exec(s)) !== null) {
     const len = parseFloat(String(m[1]).replace(",", "."));
     const qty = parseInt(m[2], 10);
     if (!Number.isFinite(len) || len < 1.5 || len > 14.5) continue;
-    if (!Number.isFinite(qty) || qty < 1 || qty > 200) continue;
+    if (!Number.isFinite(qty) || qty < 1 || qty > 999) continue;
     if (qty >= 100 && len >= 10) continue;
     return { longitud: snapLen(len), cantidad: qty };
   }
