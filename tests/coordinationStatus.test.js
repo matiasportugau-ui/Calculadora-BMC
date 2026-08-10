@@ -75,4 +75,35 @@ ok("normalizeSearchText");
   ok("NO ENVIADO + fecha G → coordinado (not enviado)");
 }
 
+{
+  // Planilla often stores DD/MM without year — must still chip Coordinado.
+  const c = classifyVentasCoordination({
+    estadoText: "Pendiente",
+    fechaEntrega: "07/08",
+  });
+  assert.equal(c.status, "coordinado", "07/08 should be coordinado");
+  assert.ok(/^\d{4}-08-07$/.test(c.coordDateIso), `iso got ${c.coordDateIso}`);
+  assert.equal(coordinationChipCaption(c), "Coordinado · 07/08");
+  ok("dd/mm without year → Coordinado chip");
+}
+
+{
+  const c = classifyVentasCoordination({
+    estadoText: "",
+    fechaEntrega: "22/05/2026",
+  });
+  assert.equal(c.status, "coordinado");
+  assert.equal(c.coordDateIso, "2026-05-22");
+  assert.equal(coordinationChipCaption(c), "Coordinado · 22/05");
+  ok("dd/mm/yyyy → Coordinado");
+}
+
+{
+  for (const fechaEntrega of ["Falta pagar la seña", "Coordinar", "Stock", "Mayo / Junio", ""]) {
+    const c = classifyVentasCoordination({ estadoText: "Pendiente", fechaEntrega });
+    assert.equal(c.status, "por_coordinar", `expected por_coordinar for: ${fechaEntrega}`);
+  }
+  ok("free-text fecha stays por_coordinar");
+}
+
 console.log(`\n${passed} assertions ok`);

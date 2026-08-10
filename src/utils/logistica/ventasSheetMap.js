@@ -89,17 +89,49 @@ function cell(map, row, key) {
   return String(row[idx] ?? "").trim();
 }
 
-/** DD/MM/YYYY or YYYY-MM-DD → YYYY-MM-DD */
-export function parsePlanillaFechaToIso(cellVal) {
+/**
+ * Planilla fecha → YYYY-MM-DD for chips / input type=date.
+ * Accepts:
+ * - YYYY-MM-DD
+ * - DD/MM/YYYY or DD/MM/YY
+ * - DD/MM (year defaults to current calendar year; override via opts.now)
+ * Rejects free-text ops notes ("Falta pagar la seña", "Coordinar", "Stock", months-only, code dumps).
+ *
+ * @param {unknown} cellVal
+ * @param {{ now?: Date }} [opts]
+ * @returns {string} ISO date or ""
+ */
+export function parsePlanillaFechaToIso(cellVal, opts = {}) {
   const t = String(cellVal ?? "").trim();
   if (!t) return "";
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(t);
-  if (m) {
-    const y = m[3].length === 2 ? `20${m[3]}` : m[3];
-    return `${y}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  // Free-text / garbage cells — not a coordination date
+  if (/import\s+pandas|print\s*\(\s*df/i.test(t)) return "";
+  if (
+    /falta\s+pagar|seña|coordinar|^stock$|mayo\s*\/|junio|julio|agosto|setiembre|septiembre|octubre|noviembre|diciembre|enero|febrero|marzo|abril/i.test(
+      t,
+    ) &&
+    !/^\d{1,2}\//.test(t)
+  ) {
+    return "";
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-  return "";
+
+  // DD/MM[/YY[YY]]
+  const m = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/.exec(t);
+  if (!m) return "";
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  if (!Number.isFinite(day) || !Number.isFinite(month) || day < 1 || day > 31 || month < 1 || month > 12) {
+    return "";
+  }
+  let year;
+  if (m[3]) {
+    year = m[3].length === 2 ? `20${m[3]}` : m[3];
+  } else {
+    const now = opts.now instanceof Date && !Number.isNaN(opts.now.getTime()) ? opts.now : new Date();
+    year = String(now.getFullYear());
+  }
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function buildSheetFallbackText(headers, row) {
@@ -230,8 +262,28 @@ export function sanitizeEncargoCell(raw) {
 }
 
 /**
+ * Instruction / note rows pasted into NOMBRE (not real clients).
+ * @param {string} nombre
+ * @returns {boolean}
+ */
+export function isInstructionNoiseNombre(nombre) {
+  const n = normalizeText(nombre);
+  if (!n) return false;
+  if (/escaneo de ci|pedir celular|hacer un escaneo|cuando entregamos/.test(n)) return true;
+  // Long imperative ops notes without a person-like short name
+  if (
+    n.length >= 36 &&
+    /^(hacer|pedir|no olvid|recordar|cuando|escanear|entregamos)\b/.test(n)
+  ) {
+    return true;
+  }
+  if (/import\s+pandas|print\s*\(\s*df/.test(n)) return true;
+  return false;
+}
+
+/**
  * True when mapped Ventas row is worth listing / adding as a logistics stop.
- * Rejects header clones, empty shells, and label-only ENCARGO noise.
+ * Rejects header clones, empty shells, instruction notes, and label-only ENCARGO noise.
  * @param {object} row mapVentasRowV2 result
  */
 export function isVentasLogisticaCandidate(row) {
@@ -242,12 +294,20 @@ export function isVentasLogisticaCandidate(row) {
   const dir = String(row.dir || "").trim();
   const pdf = String(row.pdf || "").trim();
   const encargoPlain = String(row.encargoPlain || "").trim();
+  const rawBlob = String(row.rawSheetText || row.estadoText || row.fechaEntrega || "");
+
+  if (isInstructionNoiseNombre(nombre)) return false;
+  if (/import\s+pandas|print\s*\(\s*df/i.test(rawBlob)) return false;
+  // Placeholder pedido labels that are not real IDs
+  if (/^(id\.?\s*pedido|encargar|origen)$/i.test(orderId) && isHeaderLikeLabel(nombre || "NOMBRE")) {
+    return false;
+  }
 
   if (nombre && !isHeaderLikeLabel(nombre)) {
     // Real name is enough if we also have any ops signal
     if (orderId || tel || dir || pdf || encargoPlain || row.fechaEntrega) return true;
-    // Name-only still useful for manual fill
-    return nombre.length >= 2;
+    // Name-only still useful for manual fill — but not ultra-thin shells (1–2 chars)
+    return nombre.length >= 3;
   }
 
   // No real name: need a real pedido id (digits) and some other signal

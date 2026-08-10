@@ -1,7 +1,19 @@
 # Cómo funciona: Ventas → Logística (Phase A)
 
-**URL prod:** https://calculadora-bmc.vercel.app/logistica  
+**URL prod (SPA canónica):** https://calculadora-bmc.vercel.app/logistica  
+**API prod:** https://panelin-calc-q74zutv7dq-uc.a.run.app (Cloud Run — **no** sirve la SPA `/logistica`; usar Vercel para UI)  
 **Sheet Ventas:** `1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA` (gid `926747636`)
+
+### Chips de coordinación (Cargar actuales / Buscar)
+
+| Fecha en planilla (col FECHA ENTREGA) | Chip |
+|---------------------------------------|------|
+| `07/08`, `22/05/2026`, `2026-08-07` | **Coordinado** · dd/mm |
+| `Falta pagar la seña`, `Coordinar`, `Stock`, `Mayo / Junio` | **Por coordinar** |
+| Texto con “enviado” (sin negación) | **Enviado** |
+| `NO ENVIADO` / `sin enviar` + fecha válida | **Coordinado** (no Enviado) |
+
+Filas basura (encabezados `ID. Pedido`/`NOMBRE`, notas tipo “escaneo de CI”, celdas con `import pandas`) se filtran en UI **y** en `GET /api/ventas?logistica=1`.
 
 ## Flujo operador (orden)
 

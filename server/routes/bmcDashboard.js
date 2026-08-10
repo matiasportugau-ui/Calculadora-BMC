@@ -24,6 +24,10 @@ import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
+import {
+  isVentasLogisticaCandidate,
+  parsePlanillaFechaToIso,
+} from "../../src/utils/logistica/ventasSheetMap.js";
 
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
@@ -414,15 +418,35 @@ function extractFirstHttpUrl(text) {
 
 /**
  * Fila de la pestaña Ventas apta para logística (cliente/pedido real, no separadores de semana).
+ * Delegates to shared isVentasLogisticaCandidate (same rules as /logistica CSV path).
  * @param {Record<string, unknown>} r
  */
 function ventasRowIsLogisticaRow(r) {
   const id = String(findKey(r, "ID. Pedido", "ID Pedido", "Id. Pedido") || "").trim();
   const nom = String(findKey(r, "NOMBRE", "Nombre") || "").trim();
-  if (!id && !nom) return false;
+  const fechaRaw = String(findKey(r, "FECHA ENTREGA", "Fecha entrega", "FECHA_ENTREGA") || "").trim();
+  const dir = String(findKey(r, "DIRECCIÓN", "Dirección", "DIRECCION") || "").trim();
+  const tel = String(
+    findKey(r, "CONTACTO", "Teléfono", "Telefono", "TELEFONO", "Tel") || "",
+  ).trim();
+  const pdf = String(
+    findKey(r, "ENCARGO", "CARPETA", "LINK_CARPETA", "PDF", "Adjunto") || "",
+  ).trim();
+  // Week separators / origen column labels
   if (/^semana del\b/i.test(nom)) return false;
   if (/^origen$/i.test(id)) return false;
-  return true;
+  // Map to the shared candidate shape used by /logistica UI.
+  return isVentasLogisticaCandidate({
+    nombre: nom,
+    orderId: id,
+    tel,
+    dir,
+    pdf: /^https?:\/\//i.test(pdf) || /drive\.google|dropbox\.com/i.test(pdf) ? pdf : "",
+    encargoPlain: /^https?:\/\//i.test(pdf) ? "" : pdf,
+    fechaEntrega: parsePlanillaFechaToIso(fechaRaw),
+    estadoText: fechaRaw,
+    rawSheetText: [id, nom, fechaRaw, dir, tel, pdf].filter(Boolean).join("\n"),
+  });
 }
 
 function parseNum(val) {
