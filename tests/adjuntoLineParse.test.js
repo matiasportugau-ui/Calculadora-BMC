@@ -240,6 +240,56 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
     `gotero survived split: ${JSON.stringify(free.accesorios)}`,
   );
   assert.equal(free.paneles.length, 0);
-  ok("Bug CE: accessory with ISO* context still parses after split guard");}
+  ok("Bug CE: accessory with ISO* context still parses after split guard");
+}
+
+{
+  // Bug CT — qty header "Paneles" used to overwrite Producto → ISODEC row dropped.
+  const tsv = [
+    "Producto\tEspesor (mm)\tLargo (m)\tPaneles",
+    "ISODEC\t100\t4\t6",
+    "ISOPANEL\t50\t2.5\t11",
+  ].join("\n");
+  const r = parseLogisticaFromAdjuntoText(tsv);
+  assert.equal(r.paneles.length, 2, `CT expected 2 panels, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(
+    r.paneles.reduce((s, p) => s + p.cantidad, 0),
+    17,
+    `CT qty sum 6+11=17, got ${JSON.stringify(r.paneles)}`,
+  );
+  ok("Bug CT: TSV header Paneles keeps Producto column (ISODEC+ISOPANEL)");
+}
+
+{
+  // Bug CT — product cell with mm + Paneles qty col used to yield 0 panels.
+  const tsv = ["Producto\tEspesor (mm)\tLargo (m)\tPaneles", "ISODEC 100 mm\t100\t4\t6"].join("\n");
+  const r = parseLogisticaFromAdjuntoText(tsv);
+  assert.equal(r.paneles.length, 1, `CT mm product: ${JSON.stringify(r.paneles)}`);
+  assert.equal(r.paneles[0].cantidad, 6);
+  assert.equal(r.paneles[0].longitud, 4);
+  ok("Bug CT: Producto+Paneles with mm in product cell");
+}
+
+{
+  // Bug CU — TSV path skipped BX collapse → dual-format 2× qty.
+  const tsv = [
+    "Producto\tEspesor (mm)\tLargo (m)\tCantidad",
+    "ISODEC 100mm · 10 paneles\t100\t\t10",
+    "ISODEC\t100\t4\t10",
+  ].join("\n");
+  const r = parseLogisticaFromAdjuntoText(tsv);
+  assert.equal(r.paneles.length, 1, `CU expected 1 panel after collapse, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(r.paneles[0].cantidad, 10);
+  assert.equal(r.paneles[0].longitud, 4, "keep explicit L");
+  ok("Bug CU: TSV modern default-L + classic explicit-L → qty 10 once");
+}
+
+{
+  // Bug CV — blank Cantidad invented cantidad:1 ghost panel.
+  const tsv = ["Producto\tEspesor (mm)\tLargo (m)\tCantidad", "ISODEC\t100\t4\t"].join("\n");
+  const r = parseLogisticaFromAdjuntoText(tsv);
+  assert.equal(r.paneles.length, 0, `CV must not invent qty 1: ${JSON.stringify(r.paneles)}`);
+  ok("Bug CV: TSV blank Cantidad does not invent qty 1");
+}
 
 console.log(`\n${passed} passed`);
