@@ -128,6 +128,61 @@ function parseClassicTableLenQty(afterMm) {
   return null;
 }
 
+/**
+ * Explicit panel length from modern / industrial product lines.
+ * Bug CY: pdf.js and industrial PDFs often emit `× 4,40` / `× 4.40` without a trailing `m`,
+ * which previously defaulted L=6 and corrupted packing geometry (same class as CG).
+ * @param {string} raw
+ * @returns {number|null} meters, or null when no reliable length token
+ */
+function matchExplicitPanelLength(raw) {
+  const s = String(raw || "");
+  const candidates = [
+    s.match(/\b(?:largo|longitud)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:m(?![mM²2]))?(?!\w)/i),
+    s.match(/\b(\d+(?:[.,]\d+)?)\s*m(?:ts?|etros?)?(?![mM²2])/i),
+    // Prefer × L with unit when present.
+    s.match(/[×x]\s*(\d+(?:[.,]\d+)?)\s*m(?![mM²2])/i),
+    // Bug CY — unit optional after ×; reject × qty words / mm / prices.
+    s.match(
+      /[×x]\s*(\d{1,2}(?:[.,]\d{1,2})?)\b(?!\s*(?:paneles?|uds?\.?|unidades?|bultos?|planchas?|piezas?|pzas?|mm)\b)/i,
+    ),
+  ];
+  for (const m of candidates) {
+    if (!m) continue;
+    const len = parseFloat(String(m[1]).replace(",", "."));
+    if (!Number.isFinite(len) || len < 1.5 || len > 14.5) continue;
+    return len;
+  }
+  return null;
+}
+
+/**
+ * Industrial packing / ENCARGO free-text: qty × length without "paneles|uds".
+ * Examples: "— 20 × 6,00 m", "20×6m", "20 x 6,00".
+ * @param {string} fragment
+ * @returns {{ longitud: number, cantidad: number } | null}
+ */
+function matchIndustrialQtyLen(fragment) {
+  const s = String(fragment || "").replace(/\s+/g, " ").trim();
+  if (!s || !/[×x]/i.test(s)) return null;
+  const patterns = [
+    // "— 20 × 6,00 m" / "20 × 6,00 m" / "20×6m"
+    /(?:^|[—–\-:,;]\s*)(\d{1,4})\s*[×x]\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*m(?![mM²2a-zA-Z])/i,
+    // Unit-less industrial: "20 × 6,00" / "20x6.00" (length window enforced below)
+    /(?:^|[—–\-:,;]\s*)(\d{1,4})\s*[×x]\s*(\d{1,2}(?:[.,]\d{1,2})?)\b(?!\s*(?:paneles?|uds?\.?|unidades?|bultos?|mm)\b)/i,
+  ];
+  for (const re of patterns) {
+    const m = s.match(re);
+    if (!m) continue;
+    const qty = parseInt(m[1], 10);
+    const len = parseFloat(String(m[2]).replace(",", "."));
+    if (!Number.isFinite(qty) || qty < 1 || qty > 200) continue;
+    if (!Number.isFinite(len) || len < 1.5 || len > 14.5) continue;
+    return { longitud: snapLen(len), cantidad: qty };
+  }
+  return null;
+}
+
 /** Split before each ISO* product token (pdf.js often omits hasEOL between classic table rows). */
 const PANEL_TIPO_SPLIT_RE =
   /(?=\b(?:ISOFRIG(?:\s|_)?PIR|ISOFRIG|ISOWALL|ISOROOF|ISOPANEL|ISODEC)\b)/i;
@@ -217,12 +272,9 @@ export function parsePanelLineHeuristic(line) {
   if (qtyFromPhrase != null || qtyLead != null) {
     // Modern BMC PDF: "ISODEC 100mm · 10 paneles" — default L unless explicit meters.
     cantidad = qtyLead != null ? qtyLead : qtyFromPhrase;
-    const explicitLen =
-      raw.match(/\b(?:largo|longitud)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:m(?![mM²2]))?(?!\w)/i) ||
-      raw.match(/\b(\d+(?:[.,]\d+)?)\s*m(?:ts?|etros?)?(?![mM²2])/i) ||
-      raw.match(/[×x]\s*(\d+(?:[.,]\d+)?)\s*m(?![mM²2])/i);
-    if (explicitLen) {
-      longitud = snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")));
+    const explicitLen = matchExplicitPanelLength(raw);
+    if (explicitLen != null) {
+      longitud = snapLen(explicitLen);
     } else {
       longitud = 6;
       lengthDefaulted = true;
@@ -231,8 +283,15 @@ export function parsePanelLineHeuristic(line) {
     longitud = classic.longitud;
     cantidad = classic.cantidad;
   } else {
-    // No reliable qty signal → do not invent a 1-panel ghost from titles/headers.
-    return null;
+    // Bug CY — industrial ENCARGO / packing lines omit "paneles|uds":
+    //   "ISOPANEL 100 mm — 20 × 6,00 m"  /  "ISOPANEL EPS 100mm 20×6m"
+    const industrial = matchIndustrialQtyLen(afterMm) || matchIndustrialQtyLen(raw);
+    if (!industrial) {
+      // No reliable qty signal → do not invent a 1-panel ghost from titles/headers.
+      return null;
+    }
+    longitud = industrial.longitud;
+    cantidad = industrial.cantidad;
   }
 
   return {

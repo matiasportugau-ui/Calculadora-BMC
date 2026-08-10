@@ -240,6 +240,53 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
     `gotero survived split: ${JSON.stringify(free.accesorios)}`,
   );
   assert.equal(free.paneles.length, 0);
-  ok("Bug CE: accessory with ISO* context still parses after split guard");}
+  ok("Bug CE: accessory with ISO* context still parses after split guard");
+}
+
+{
+  // Bug CY — industrial / pdf.js often omit unit after × → was lengthDefaulted L=6 (len drop).
+  const noUnit = parsePanelLineHeuristic("ISOROOF 3G 80mm · 8 paneles × 4,40");
+  assert.ok(noUnit, "expected panel from × L without m");
+  assert.equal(noUnit.cantidad, 8);
+  assert.equal(noUnit.longitud, 4.4, `× 4,40 without m must keep 4.4, got ${JSON.stringify(noUnit)}`);
+  assert.equal(noUnit.lengthDefaulted, undefined, "must not tag lengthDefaulted when × L present");
+  const dot = parsePanelLineHeuristic("ISOROOF 3G 80mm · 8 paneles × 4.40");
+  assert.equal(dot?.longitud, 4.4);
+  ok("Bug CY: × L without trailing m keeps cut length");
+}
+
+{
+  // Bug CY — industrial ENCARGO packing without "paneles|uds" was fail-closed → 0 cargo.
+  const encargo = parseLogisticaFromAdjuntoText(
+    `ISOPANEL 100 mm — 20 × 6,00 m
+ISODEC 100 mm — 12 × 4,00 m
+ISOROOF EPS 80mm 8×4.40m`,
+  );
+  assert.equal(encargo.paneles.length, 3, `expected 3 industrial lines, got ${JSON.stringify(encargo.paneles)}`);
+  const sum = encargo.paneles.reduce((a, p) => a + p.cantidad, 0);
+  assert.equal(sum, 40, `20+12+8=40, got ${sum}`);
+  assert.ok(
+    encargo.paneles.some((p) => p.tipo === "ISOPANEL" && p.cantidad === 20 && p.longitud === 6),
+    JSON.stringify(encargo.paneles),
+  );
+  assert.ok(
+    encargo.paneles.some((p) => p.tipo === "ISODEC" && p.cantidad === 12 && p.longitud === 4),
+    JSON.stringify(encargo.paneles),
+  );
+  assert.ok(
+    encargo.paneles.some((p) => p.tipo === "ISOROOF" && p.cantidad === 8 && p.longitud === 4.4),
+    JSON.stringify(encargo.paneles),
+  );
+  ok("Bug CY: industrial ENCARGO qty×len without paneles word");
+}
+
+{
+  // Regression: modern without any length token still defaults L=6.
+  const modern = parsePanelLineHeuristic("ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15");
+  assert.equal(modern?.longitud, 6);
+  assert.equal(modern?.lengthDefaulted, true);
+  assert.equal(modern?.cantidad, 10);
+  ok("Bug CY regression: modern default L=6 when no × L");
+}
 
 console.log(`\n${passed} passed`);
