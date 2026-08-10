@@ -250,18 +250,55 @@ function normalizeAccCore(descr) {
 }
 
 /**
+ * Panel-thickness mm from accessory text (SKU discriminator). Null if absent.
+ * @param {string} descr
+ * @returns {number|null}
+ */
+function extractAccMm(descr) {
+  const m = String(descr || "").match(/\b(\d{2,3})\s*mm\b/i);
+  return m ? Number(m[1]) : null;
+}
+
+/**
  * Drop free-text / classic-table accessory echoes with the same core name + qty (Bug BY).
+ * Keep distinct mm thicknesses for the same core|qty (Bug CL — #978 stripped mm from the key).
  * @param {Array<{ descr: string, cantidad: number }>} accesorios
  */
 function collapseAccessoryEchoes(accesorios) {
-  const seen = new Set();
-  const out = [];
+  /** @type {Map<string, Array<{ descr: string, cantidad: number }>>} */
+  const buckets = new Map();
+  const passthrough = [];
   for (const acc of accesorios) {
     const core = normalizeAccCore(acc.descr);
-    const key = core ? `${core}|${acc.cantidad}` : "";
-    if (key && seen.has(key)) continue;
-    if (key) seen.add(key);
-    out.push(acc);
+    if (!core) {
+      passthrough.push(acc);
+      continue;
+    }
+    const key = `${core}|${acc.cantidad}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(acc);
+  }
+  const out = [...passthrough];
+  for (const group of buckets.values()) {
+    const withMm = [];
+    const seenMm = new Set();
+    const withoutMm = [];
+    for (const acc of group) {
+      const mm = extractAccMm(acc.descr);
+      if (mm != null) {
+        if (seenMm.has(mm)) continue;
+        seenMm.add(mm);
+        withMm.push(acc);
+      } else {
+        withoutMm.push(acc);
+      }
+    }
+    if (withMm.length) {
+      // Prefer mm-tagged classic rows; drop no-mm free-text as dual-format echoes (BY).
+      out.push(...withMm);
+    } else if (withoutMm.length) {
+      out.push(withoutMm[0]);
+    }
   }
   return out;
 }

@@ -196,4 +196,39 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
   ok("Bug BY: free-text + classic gotero echo → qty 2 once");
 }
 
+{
+  // Bug CL — distinct mm thicknesses same core|qty must not collapse (#978 BY key stripped mm).
+  const mmDistinct = parseLogisticaFromAdjuntoText(
+    `Perf. Ch. Gotero Frontal 100 mm   3,03   2   7,15
+Perf. Ch. Gotero Frontal 200 mm   3,03   2   7,15`,
+  );
+  assert.equal(
+    mmDistinct.accesorios.length,
+    2,
+    `expected 100mm + 200mm goteros, got ${JSON.stringify(mmDistinct.accesorios)}`,
+  );
+  assert.equal(
+    mmDistinct.accesorios.reduce((s, a) => s + a.cantidad, 0),
+    4,
+    `gotero qty must stay 2+2=4, got ${JSON.stringify(mmDistinct.accesorios)}`,
+  );
+  ok("Bug CL: classic gotero 100mm + 200mm same qty stay distinct");
+}
+
+{
+  // BY+CL: free-text without mm still collapses into classic mm row.
+  const echoMm = parseLogisticaFromAdjuntoText(
+    `2 Gotero Frontal
+Perf. Ch. Gotero Frontal 100 mm   3,03   2   7,15`,
+  );
+  assert.equal(
+    echoMm.accesorios.length,
+    1,
+    `expected free-text echo collapsed into 100mm row, got ${JSON.stringify(echoMm.accesorios)}`,
+  );
+  assert.equal(echoMm.accesorios[0].cantidad, 2);
+  assert.match(echoMm.accesorios[0].descr, /100\s*mm/i);
+  ok("Bug BY+CL: free-text Gotero + classic 100mm → qty 2 once (prefer mm row)");
+}
+
 console.log(`\n${passed} passed`);
