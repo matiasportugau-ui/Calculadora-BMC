@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-10 (fix — Bug CI adjunto accessory echo over-collapse):** After #978 Bug BY, `normalizeAccCore` stripped `udeN` / all digits / `blanca` / `ext`, so classic rows `U de 50` + `U de 80` (same qty) or `Cumbrera Blanca` + `Cumbrera Ext` collapsed to one accessory → silent autocarga under-count. Fix: protect U/G size codes before digit wipe; stop stripping finish tokens; keep Perf./Ch./mm noise strip so BY gotero echoes still collapse. Tests in `adjuntoLineParse.test.js`.
+**2026-08-10 (fix — Bug CJ adjunto accessory echo over-collapse):** After #978 Bug BY, `normalizeAccCore` stripped `udeN` / all digits / `blanca` / `ext`, so classic rows `U de 50` + `U de 80` (same qty) or `Cumbrera Blanca` + `Cumbrera Ext` collapsed to one accessory → silent autocarga under-count. Fix: protect U/G size codes before digit wipe; stop stripping finish tokens; keep Perf./Ch./mm noise strip so BY gotero echoes still collapse. Tests in `adjuntoLineParse.test.js`. Distinct from PEA Bug CI (#989).
 
 **2026-08-10 (fix — Bug CH Logística HYPERLINK label lost after #985):** `#985` `sanitizeEncargoCell` extracted the Drive URL from `=HYPERLINK("url","Cotizacion-Isodec-….pdf")` then stripped the whole formula, dropping the display label. When Drive PDF fetch fails (common), `inferCargoFromEncargoAndSheet` no longer saw panel specs in the filename → empty autocarga cargo (pre-#985 still inferred from the label). Fix: preserve HYPERLINK second-arg label in `plainText`. Tests: `ventasSheetMap` + `cargoFromEncargo` Bug CH cases.
 

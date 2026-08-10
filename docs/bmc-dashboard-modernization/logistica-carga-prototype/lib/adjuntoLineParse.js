@@ -238,7 +238,7 @@ function collapseDefaultLengthPanelEchoes(paneles) {
  * Core accessory identity for echo dedupe (free-text + classic table of the same piece).
  * Strips classic table noise (Perf./Ch./mm/prices) but keeps SKU discriminators:
  * U/G profile sizes (`ude50`, `u de 80`, `g2`) and finish (`blanca` / `ext`).
- * Blind digit wipe after stripping those codes caused Bug CI (U50+U80 / blanca+ext collapsed).
+ * Blind digit wipe after stripping those codes caused Bug CJ (U50+U80 / blanca+ext collapsed).
  * @param {string} descr
  */
 function normalizeAccCore(descr) {

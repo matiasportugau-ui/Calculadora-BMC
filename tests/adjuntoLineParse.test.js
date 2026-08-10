@@ -197,7 +197,7 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
 }
 
 {
-  // Bug CI — #978 normalizeAccCore stripped udeN/digits/blanca/ext → distinct SKUs collapsed.
+  // Bug CJ — #978 normalizeAccCore stripped udeN/digits/blanca/ext → distinct SKUs collapsed.
   const uProfiles = parseLogisticaFromAdjuntoText(
     `Perf. Ch. U de 50 30 mm   3,03   4   7,15
 Perf. Ch. U de 80 30 mm   3,03   4   7,15`,
@@ -212,7 +212,7 @@ Perf. Ch. U de 80 30 mm   3,03   4   7,15`,
     8,
     `U profile qty must stay 4+4=8, got ${JSON.stringify(uProfiles.accesorios)}`,
   );
-  ok("Bug CI: classic U de 50 + U de 80 same qty stay distinct");
+  ok("Bug CJ: classic U de 50 + U de 80 same qty stay distinct");
 }
 
 {
@@ -225,7 +225,7 @@ Perf. Ch. Cumbrera Ext 100mm   3,03   2   7,15`,
     2,
     `expected blanca + ext cumbreras, got ${JSON.stringify(finishes.accesorios)}`,
   );
-  ok("Bug CI: cumbrera blanca vs ext same qty stay distinct");
+  ok("Bug CJ: cumbrera blanca vs ext same qty stay distinct");
 }
 
 {
@@ -240,7 +240,7 @@ Perf. Ch. U de 50 30 mm   3,03   6   7,15`,
     `expected Ude50 echo collapsed, got ${JSON.stringify(uEcho.accesorios)}`,
   );
   assert.equal(uEcho.accesorios[0].cantidad, 6);
-  ok("Bug BY+CI: free-text Ude50 + classic U de 50 → qty 6 once");
+  ok("Bug BY+CJ: free-text Ude50 + classic U de 50 → qty 6 once");
 }
 
 console.log(`\n${passed} passed`);
