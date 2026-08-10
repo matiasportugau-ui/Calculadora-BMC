@@ -63,6 +63,7 @@ import {
   serializeProject, deserializeProject, pdfFileName,
   isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes,
 } from "../utils/projectFile.js";
+import { resolveOpenBmcUrl } from "../utils/openBmcUrl.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
 import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
 import QuotePreviewModal from "./QuotePreviewModal.jsx";
@@ -5076,7 +5077,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [handleDriveLoad]);
 
   // Deep-link: `?openBmc=<url|key>` loads a public .bmc.json (GCS) without Drive OAuth.
-  // Allowlist: https://storage.googleapis.com/bmc-cotizaciones/...  or short key under quotes/bmc-json/
+  // Allowlist enforced by resolveOpenBmcUrl (bucket + path after URL normalize).
   // Used when server Drive refresh token is broken / SA has no storage quota.
   const openBmcDoneRef = useRef(false);
   useEffect(() => {
@@ -5085,30 +5086,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (!raw) return;
     openBmcDoneRef.current = true;
 
-    const GCS_HOST = "https://storage.googleapis.com/bmc-cotizaciones/";
-    const resolveUrl = (v) => {
-      const s = String(v || "").trim();
-      if (!s) return null;
-      if (/^https?:\/\//i.test(s)) {
-        try {
-          const u = new URL(s);
-          if (u.hostname !== "storage.googleapis.com") return null;
-          if (!u.pathname.startsWith("/bmc-cotizaciones/")) return null;
-          if (!u.pathname.toLowerCase().endsWith(".bmc.json") && !u.pathname.toLowerCase().endsWith(".json")) return null;
-          return u.toString();
-        } catch {
-          return null;
-        }
-      }
-      // short key: "Sory-IsoRoof-Foil-30" or "quotes/bmc-json/foo.bmc.json"
-      const key = s.replace(/^\//, "");
-      const path = key.includes("/")
-        ? key
-        : `quotes/bmc-json/${key.endsWith(".bmc.json") || key.endsWith(".json") ? key : `${key}.bmc.json`}`;
-      return `${GCS_HOST}${path.replace(/^bmc-cotizaciones\//, "")}`;
-    };
-
-    const url = resolveUrl(raw);
+    const url = resolveOpenBmcUrl(raw);
     if (!url) {
       showToast("Link openBmc inválido (solo GCS bmc-cotizaciones)");
       return;
@@ -5118,7 +5096,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       setDriveLoading(true);
       setDriveError(null);
       try {
-        const resp = await fetch(url, { credentials: "omit" });
+        // redirect:error — prevent hop off the allowlisted GCS object URL
+        const resp = await fetch(url, { credentials: "omit", redirect: "error" });
         if (!resp.ok) throw new Error(`No se pudo bajar el .bmc.json (${resp.status})`);
         const data = await resp.json();
         applyDeserializedProject(deserializeProject(data), "Cotización cargada (.bmc.json)");
