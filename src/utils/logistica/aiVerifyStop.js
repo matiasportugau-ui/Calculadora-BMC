@@ -260,14 +260,10 @@ export function normalizeAiVerifyProposal(raw) {
     accesorios.push({ descr, cantidad });
   }
 
-  const replacePaneles =
-    obj.replacePaneles !== false &&
-    obj.replace_paneles !== false &&
-    (paneles.length > 0 || obj.replacePaneles === true);
-  const replaceAccesorios =
-    obj.replaceAccesorios === true ||
-    obj.replace_accesorios === true ||
-    (accesorios.length > 0 && obj.replaceAccesorios !== false);
+  // Explicit opt-in only. applyAiVerifyProposal still fills empty cargo without this flag;
+  // defaulting to true (old behavior) wiped correct paneles when the model echoed the schema.
+  const replacePaneles = obj.replacePaneles === true || obj.replace_paneles === true;
+  const replaceAccesorios = obj.replaceAccesorios === true || obj.replace_accesorios === true;
 
   const hasSomething =
     paneles.length > 0 ||
@@ -283,8 +279,8 @@ export function normalizeAiVerifyProposal(raw) {
     fields,
     paneles,
     accesorios,
-    replacePaneles: Boolean(paneles.length) && replacePaneles !== false,
-    replaceAccesorios: Boolean(accesorios.length) && (replaceAccesorios || accesorios.length > 0),
+    replacePaneles,
+    replaceAccesorios,
   };
 }
 
@@ -305,19 +301,28 @@ function emptyProposal(error) {
 
 /**
  * Apply a confirmed proposal onto a stop (immutable).
+ * Cargo policy (Bug DN): fill empty paneles/accesorios only. Never wipe existing cargo
+ * unless opts.forceReplaceCargo === true AND proposal.replace* === true (explicit dual gate).
+ * Contact fields still fill-empty unless forceFields.
+ *
  * @param {object} stop
  * @param {ReturnType<typeof normalizeAiVerifyProposal>} proposal
- * @param {{ uid?: () => string, applyFields?: boolean }} [opts]
+ * @param {{ uid?: () => string, forceFields?: boolean, forceReplaceCargo?: boolean }} [opts]
  */
 export function applyAiVerifyProposal(stop, proposal, opts = {}) {
   const uid = typeof opts.uid === "function" ? opts.uid : () => `ai-${Math.random().toString(36).slice(2, 9)}`;
   const forceFields = opts.forceFields === true;
+  const forceReplaceCargo = opts.forceReplaceCargo === true;
   if (!stop || !proposal) return stop;
   const hasCargo = (proposal.paneles || []).length > 0 || (proposal.accesorios || []).length > 0;
   const hasFields = proposal.fields && Object.keys(proposal.fields).length > 0;
   if (!proposal.ok && !hasCargo && !hasFields) return stop;
 
   const next = { ...stop };
+  const existingPaneles = Array.isArray(stop.paneles) ? stop.paneles : [];
+  const existingAccesorios = Array.isArray(stop.accesorios) ? stop.accesorios : [];
+  let preservedPaneles = false;
+  let preservedAccesorios = false;
 
   // Fill empty contact fields; only overwrite existing when forceFields
   const fill = (key) => {
@@ -330,16 +335,39 @@ export function applyAiVerifyProposal(stop, proposal, opts = {}) {
   fill("direccion");
   fill("orderId");
 
-  if (proposal.paneles?.length && proposal.replacePaneles !== false) {
-    next.paneles = proposal.paneles.map((p) => ({ id: uid(), ...p }));
+  if (proposal.paneles?.length) {
+    const canReplace =
+      !existingPaneles.length || (forceReplaceCargo && proposal.replacePaneles === true);
+    if (canReplace) {
+      next.paneles = proposal.paneles.map((p) => ({ id: uid(), ...p }));
+    } else {
+      preservedPaneles = true;
+    }
   }
-  if (proposal.accesorios?.length && proposal.replaceAccesorios !== false) {
-    next.accesorios = proposal.accesorios.map((a) => ({ id: uid(), ...a }));
+  if (proposal.accesorios?.length) {
+    const canReplace =
+      !existingAccesorios.length || (forceReplaceCargo && proposal.replaceAccesorios === true);
+    if (canReplace) {
+      next.accesorios = proposal.accesorios.map((a) => ({ id: uid(), ...a }));
+    } else {
+      preservedAccesorios = true;
+    }
   }
+
+  const preserveNote =
+    preservedPaneles || preservedAccesorios
+      ? `Cargo existente preservado (${[
+          preservedPaneles ? "paneles" : null,
+          preservedAccesorios ? "accesorios" : null,
+        ]
+          .filter(Boolean)
+          .join("+")}); IA no reemplaza bultos ya cargados.`
+      : "";
 
   const noteLine = [
     "IA verify aplicada (confirmada por operador).",
     proposal.confidence ? `Confianza: ${proposal.confidence}.` : "",
+    preserveNote,
     ...(proposal.notes || []).slice(0, 3),
   ]
     .filter(Boolean)
@@ -350,6 +378,8 @@ export function applyAiVerifyProposal(stop, proposal, opts = {}) {
     confidence: proposal.confidence,
     notes: proposal.notes || [],
     needsHuman: proposal.needsHuman || [],
+    preservedPaneles,
+    preservedAccesorios,
   };
   next.checks = {
     ...(stop.checks || {}),
@@ -377,6 +407,8 @@ REGLAS:
 - Si falta evidencia: needsHuman con instrucciones concretas (ej. "Pegá link Compartir del PDF").
 - No escribas a planillas; solo proponé.
 - Preferí no sobrescribir cliente/tel/dir si ya están completos; proponé solo si faltan o hay corrección clara en la evidencia.
+- Si la parada YA tiene paneles/accesorios, NO propongas reemplazo de cargo (dejá paneles/accesorios vacíos o omitilos). Solo completá fields faltantes + needsHuman.
+- replacePaneles / replaceAccesorios deben ser false salvo que la evidencia demuestre que el cargo actual está vacío o claramente erróneo (el cliente igual preserva cargo existente).
 
 ESQUEMA:
 {
@@ -386,8 +418,8 @@ ESQUEMA:
   "fields": { "cliente"?: string, "telefono"?: string, "direccion"?: string, "orderId"?: string },
   "paneles": [{ "tipo": "ISODEC"|"ISOPANEL"|..., "espesor": number, "longitud": number, "cantidad": number }],
   "accesorios": [{ "descr": string, "cantidad": number }],
-  "replacePaneles": true,
-  "replaceAccesorios": true
+  "replacePaneles": false,
+  "replaceAccesorios": false
 }`;
 }
 

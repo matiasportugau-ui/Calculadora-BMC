@@ -62,6 +62,17 @@ assert.equal(prop.paneles[0].tipo, "ISODEC");
 assert.equal(prop.paneles[0].cantidad, 12);
 assert.equal(prop.accesorios[0].descr, "Gotero");
 assert.equal(prop.fields.telefono, "099111222");
+assert.equal(prop.replacePaneles, true);
+assert.equal(prop.replaceAccesorios, true);
+
+// Bug DN: omit replace* → must NOT default to true (schema echo used to wipe cargo)
+const noReplaceFlag = normalizeAiVerifyProposal({
+  confidence: "alta",
+  paneles: [{ tipo: "ISOPANEL", espesor: 100, longitud: 6, cantidad: 3 }],
+  accesorios: [{ descr: "Tornillo", cantidad: 10 }],
+});
+assert.equal(noReplaceFlag.replacePaneles, false);
+assert.equal(noReplaceFlag.replaceAccesorios, false);
 
 const badEsp = normalizeAiVerifyProposal({
   paneles: [{ tipo: "ISODEC", espesor: 99, longitud: 6, cantidad: 1 }],
@@ -97,5 +108,52 @@ const applied2 = applyAiVerifyProposal(
   }),
 );
 assert.equal(applied2.cliente, "Keep Me");
+
+console.log("aiVerifyStop — Bug DN preserve existing cargo on Aplicar");
+const stopWithCargo = {
+  id: "s2",
+  cliente: "Alvaro",
+  telefono: "",
+  direccion: "Maldonado",
+  paneles: [{ id: "keep-p1", tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 12 }],
+  accesorios: [{ id: "keep-a1", descr: "Gotero original", cantidad: 4 }],
+  checks: { bultosOk: true },
+};
+// Model echoes schema replacePaneles:true (common) — must still preserve without forceReplaceCargo
+const wipeAttempt = normalizeAiVerifyProposal({
+  confidence: "alta",
+  fields: { telefono: "099999999" },
+  paneles: [{ tipo: "ISOPANEL", espesor: 50, longitud: 6, cantidad: 1 }],
+  accesorios: [{ descr: "Wrong acc", cantidad: 99 }],
+  replacePaneles: true,
+  replaceAccesorios: true,
+});
+const preserved = applyAiVerifyProposal(stopWithCargo, wipeAttempt, { uid: () => "new-id" });
+assert.equal(preserved.telefono, "099999999", "empty tel should fill");
+assert.equal(preserved.paneles.length, 1);
+assert.equal(preserved.paneles[0].id, "keep-p1", "existing paneles must not be wiped");
+assert.equal(preserved.paneles[0].cantidad, 12);
+assert.equal(preserved.accesorios[0].id, "keep-a1");
+assert.equal(preserved.aiVerifyMeta.preservedPaneles, true);
+assert.equal(preserved.aiVerifyMeta.preservedAccesorios, true);
+assert.ok(String(preserved.observacionesLogistica).includes("preservado"));
+
+// Empty cargo still filled (P0 incomplete path)
+const filledEmpty = applyAiVerifyProposal(
+  { ...stopWithCargo, paneles: [], accesorios: [] },
+  wipeAttempt,
+  { uid: () => "fill-1" },
+);
+assert.equal(filledEmpty.paneles.length, 1);
+assert.equal(filledEmpty.paneles[0].tipo, "ISOPANEL");
+assert.equal(filledEmpty.accesorios.length, 1);
+
+// Explicit dual gate can replace when operator opts in
+const forced = applyAiVerifyProposal(stopWithCargo, wipeAttempt, {
+  uid: () => "force-1",
+  forceReplaceCargo: true,
+});
+assert.equal(forced.paneles[0].tipo, "ISOPANEL");
+assert.equal(forced.paneles[0].id, "force-1");
 
 console.log("aiVerifyStop — OK");
