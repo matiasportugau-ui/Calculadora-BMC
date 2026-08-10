@@ -128,4 +128,48 @@ assert.equal(browserCalled, true);
 assert.equal(dropboxBrowser.source, "adjunto_browser");
 assert.equal(dropboxBrowser.ok, true);
 
+console.log("adjuntoInfer — proxy parse throw soft-fails (no hard throw)");
+let browserAfterProxyThrow = false;
+const proxyParseBoom = await inferPanelsAndAccessoriesFromPdf(
+  "https://www.dropbox.com/s/abc/file.pdf?dl=0",
+  {
+    token: "tok",
+    apiBase: "https://api.example",
+    fetchImpl: async (url, init) => {
+      if (init?.method === "POST") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            base64: Buffer.from("%PDF-1.4").toString("base64"),
+            contentType: "application/pdf",
+          }),
+        };
+      }
+      browserAfterProxyThrow = true;
+      const body = new TextEncoder().encode("%PDF fallback");
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => "application/pdf" },
+        arrayBuffer: async () => body.buffer,
+      };
+    },
+    extractTextFromPdfArrayBuffer: async () => {
+      throw new Error("pdfjs boom");
+    },
+    parseLogisticaFromAdjuntoText: () => ({
+      paneles: [],
+      accesorios: [],
+      warnings: [],
+    }),
+  },
+);
+assert.equal(proxyParseBoom.proxyAttempted, true);
+assert.equal(browserAfterProxyThrow, true, "should fall through to browser after proxy parse throw");
+assert.equal(proxyParseBoom.source, "adjunto_failed");
+assert.equal(proxyParseBoom.ok, false);
+assert.match(proxyParseBoom.userMessage || proxyParseBoom.warnings.join(" "), /pdfjs boom|parseo|falló/i);
+
 console.log("adjuntoInfer — OK");

@@ -289,17 +289,26 @@ export async function inferPanelsAndAccessoriesFromPdf(url, deps) {
       });
       const j = await proxyRes.json().catch(() => ({}));
       if (proxyRes.ok && j.ok && j.base64) {
-        const buffer = base64ToArrayBuffer(j.base64);
-        const result = await parseBufferAsCargo(
-          buffer,
-          url,
-          j.contentType || "",
-          extractTextFromPdfArrayBuffer,
-          parseLogisticaFromAdjuntoText,
-          ["Adjunto vía proxy API."],
-          "adjunto_proxy",
-        );
-        return { ...result, proxyAttempted, browserAttempted };
+        try {
+          const buffer = base64ToArrayBuffer(j.base64);
+          const result = await parseBufferAsCargo(
+            buffer,
+            url,
+            j.contentType || "",
+            extractTextFromPdfArrayBuffer,
+            parseLogisticaFromAdjuntoText,
+            ["Adjunto vía proxy API."],
+            "adjunto_proxy",
+          );
+          return { ...result, proxyAttempted, browserAttempted };
+        } catch (e) {
+          // Do not abort inferStopCargo / agregarStop — fall through to browser or soft fail.
+          warnings.push(
+            formatAdjuntoProxyError("drive_fetch_failed", {
+              message: e instanceof Error ? e.message : String(e),
+            }),
+          );
+        }
       }
       const errCode = j.error || (proxyRes.ok ? "proxy_empty" : "http_error");
       warnings.push(
@@ -373,17 +382,50 @@ export async function inferPanelsAndAccessoriesFromPdf(url, deps) {
     };
   }
 
-  const buffer = await res.arrayBuffer();
-  const result = await parseBufferAsCargo(
-    buffer,
-    fetchUrl,
-    res.headers.get("content-type") || "",
-    extractTextFromPdfArrayBuffer,
-    parseLogisticaFromAdjuntoText,
-    [...warnings, "Adjunto vía descarga directa (fallback navegador)."],
-    "adjunto_browser",
-  );
-  return { ...result, proxyAttempted, browserAttempted };
+  let buffer;
+  try {
+    buffer = await res.arrayBuffer();
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    const userMessage = `Adjunto: fallo al leer el cuerpo (${detail}).`;
+    warnings.push(userMessage);
+    return {
+      paneles: [],
+      accesorios: [],
+      warnings,
+      source: "adjunto_failed",
+      proxyAttempted,
+      browserAttempted,
+      ok: false,
+      userMessage,
+    };
+  }
+  try {
+    const result = await parseBufferAsCargo(
+      buffer,
+      fetchUrl,
+      res.headers.get("content-type") || "",
+      extractTextFromPdfArrayBuffer,
+      parseLogisticaFromAdjuntoText,
+      [...warnings, "Adjunto vía descarga directa (fallback navegador)."],
+      "adjunto_browser",
+    );
+    return { ...result, proxyAttempted, browserAttempted };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    const userMessage = `Adjunto descargado pero falló el parseo PDF/texto (${detail}).`;
+    warnings.push(userMessage);
+    return {
+      paneles: [],
+      accesorios: [],
+      warnings,
+      source: "adjunto_failed",
+      proxyAttempted,
+      browserAttempted,
+      ok: false,
+      userMessage,
+    };
+  }
 }
 
 /**

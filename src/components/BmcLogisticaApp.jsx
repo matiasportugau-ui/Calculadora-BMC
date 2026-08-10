@@ -3064,41 +3064,57 @@ export default function BmcLogisticaApp() {
     );
     let enrichedStop = baseStop;
     if (hasInferSource) {
-      const inferred = await inferStopCargo(baseStop);
-      const adminSuffix = admin.matchNote ? ` · ${admin.matchNote}` : "";
-      const adjuntoMeta = {
-        source: inferred.source || "unknown",
-        ok: Boolean(inferred.paneles?.length || inferred.accesorios?.length),
-        proxyAttempted: inferred.proxyAttempted,
-        browserAttempted: inferred.browserAttempted,
-        userMessage: inferred.userMessage || summarizeAdjuntoInfer(inferred),
-        warnings: inferred.warnings || [],
-      };
-      enrichedStop = {
-        ...baseStop,
-        paneles: inferred.paneles,
-        accesorios: inferred.accesorios,
-        accPackage: buildAccessoryPackageConfig({ ...baseStop, accesorios: inferred.accesorios, paneles: inferred.paneles }, accProfiles),
-        adjuntoMeta,
-        observacionesLogistica: [inferred.warnings.filter(Boolean).join(" | "), admin.matchNote].filter(Boolean).join(" · "),
-        recepcionDetalle: inferred.warnings.filter(Boolean).join(" | "),
-        checks: {
-          ...baseStop.checks,
-          bultosOk: inferred.paneles.length > 0,
-          accesoriosOk: inferred.accesorios.length > 0 || baseStop.checks.accesoriosOk,
-          adjuntoOk: Boolean(pdfLink) && (adjuntoMeta.ok || adjuntoMeta.source === "adjunto_proxy" || adjuntoMeta.source === "adjunto_browser"),
-        },
-      };
-      if (inferred.paneles.length || inferred.accesorios.length) {
+      try {
+        const inferred = await inferStopCargo(baseStop);
+        const adminSuffix = admin.matchNote ? ` · ${admin.matchNote}` : "";
+        const adjuntoMeta = {
+          source: inferred.source || "unknown",
+          ok: Boolean(inferred.paneles?.length || inferred.accesorios?.length),
+          proxyAttempted: inferred.proxyAttempted,
+          browserAttempted: inferred.browserAttempted,
+          userMessage: inferred.userMessage || summarizeAdjuntoInfer(inferred),
+          warnings: inferred.warnings || [],
+        };
+        enrichedStop = {
+          ...baseStop,
+          paneles: inferred.paneles,
+          accesorios: inferred.accesorios,
+          accPackage: buildAccessoryPackageConfig({ ...baseStop, accesorios: inferred.accesorios, paneles: inferred.paneles }, accProfiles),
+          adjuntoMeta,
+          observacionesLogistica: [inferred.warnings.filter(Boolean).join(" | "), admin.matchNote].filter(Boolean).join(" · "),
+          recepcionDetalle: inferred.warnings.filter(Boolean).join(" | "),
+          checks: {
+            ...baseStop.checks,
+            bultosOk: inferred.paneles.length > 0,
+            accesoriosOk: inferred.accesorios.length > 0 || baseStop.checks.accesoriosOk,
+            adjuntoOk: Boolean(pdfLink) && (adjuntoMeta.ok || adjuntoMeta.source === "adjunto_proxy" || adjuntoMeta.source === "adjunto_browser"),
+          },
+        };
+        if (inferred.paneles.length || inferred.accesorios.length) {
+          setAutoLoadMsg(
+            `Autocarga OK: ${inferred.paneles.length} líneas de paneles y ${inferred.accesorios.length} accesorios para ${label}. ${summarizeAdjuntoInfer(inferred)}${adminSuffix}`,
+          );
+        } else if (inferred.warnings.length) {
+          setAutoLoadMsg(
+            `No se pudo inferir carga para ${label}. ${inferred.userMessage || inferred.warnings[0]}${adminSuffix}`,
+          );
+        } else {
+          setAutoLoadMsg(`No se detectaron paneles automáticamente para ${label}.${adminSuffix}`);
+        }
+      } catch (e) {
+        const detail = e instanceof Error ? e.message : String(e);
         setAutoLoadMsg(
-          `Autocarga OK: ${inferred.paneles.length} líneas de paneles y ${inferred.accesorios.length} accesorios para ${label}. ${summarizeAdjuntoInfer(inferred)}${adminSuffix}`,
+          `Parada agregada sin autocarga (${label}): error al leer adjunto — ${detail}. Cargá paneles a mano.`,
         );
-      } else if (inferred.warnings.length) {
-        setAutoLoadMsg(
-          `No se pudo inferir carga para ${label}. ${inferred.userMessage || inferred.warnings[0]}${adminSuffix}`,
-        );
-      } else {
-        setAutoLoadMsg(`No se detectaron paneles automáticamente para ${label}.${adminSuffix}`);
+        enrichedStop = {
+          ...baseStop,
+          adjuntoMeta: {
+            source: "adjunto_failed",
+            ok: false,
+            userMessage: `Error al leer adjunto: ${detail}`,
+            warnings: [detail],
+          },
+        };
       }
     } else if (admin.matchNote) {
       setAutoLoadMsg(`Parada ${label}: ${admin.matchNote}`);
