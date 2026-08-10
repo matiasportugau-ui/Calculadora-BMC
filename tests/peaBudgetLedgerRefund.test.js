@@ -1,8 +1,12 @@
 /**
  * PEA budget ledger — refund must reverse daily spend (Bug CD).
+ * Settle at full reserve keeps daily spend accurate (Bug CR).
  * Run: node tests/peaBudgetLedgerRefund.test.js
  */
 import { getDailyPeaSpend, refundBudget, settleBudget } from "../server/lib/pea/budgetLedger.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 let passed = 0;
 let failed = 0;
@@ -101,6 +105,35 @@ function makePool(rows) {
   await settleBudget(pool, "res-2", { actualUsd: 0.4, actualTokens: 1200 });
   const spend = await getDailyPeaSpend(pool);
   assert(Math.abs(spend - 0.4) < 1e-9, "reserve+settle nets to actual spend");
+}
+
+// ── Bug CR: analyze_gap must not settle at 50% of reserve ─────────────────
+{
+  const pool = makePool([
+    {
+      id: "res-3",
+      gap_id: "gap-3",
+      analysis_run_id: "run-3",
+      entry_type: "reserve",
+      amount_usd: 2.0,
+      tokens: 5000,
+    },
+  ]);
+  // Correct settle uses full reserved amount → delta 0 → daily spend stays reserved.
+  await settleBudget(pool, "res-3", { actualUsd: 2.0, actualTokens: 5000 });
+  const spend = await getDailyPeaSpend(pool);
+  assert(Math.abs(spend - 2.0) < 1e-9, "Bug CR: full-reserve settle keeps daily spend = reserved");
+
+  const here = dirname(fileURLToPath(import.meta.url));
+  const analyzeSrc = readFileSync(join(here, "../server/lib/pea/analyzeGapJob.js"), "utf8");
+  assert(
+    !/reservedUsd\s*\*\s*0\.5/.test(analyzeSrc),
+    "Bug CR: analyzeGapJob no longer settles at reservedUsd * 0.5",
+  );
+  assert(
+    /actualUsd:\s*preflight\.reservedUsd/.test(analyzeSrc),
+    "Bug CR: analyzeGapJob settles at preflight.reservedUsd",
+  );
 }
 
 console.log(`\npeaBudgetLedgerRefund: ${passed} passed, ${failed} failed`);
