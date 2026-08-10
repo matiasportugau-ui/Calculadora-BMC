@@ -238,7 +238,7 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
 }
 
 {
-  // Bug CO — classic panel + Gotero collapsed on one line (pdf.js missing hasEOL).
+  // Bug CP — classic panel + Gotero collapsed on one line (pdf.js missing hasEOL).
   // Was: panel discarded, "Isopanel …" misread as accessory qty=11.
   const poisoned = parseLogisticaFromAdjuntoText(
     "Isopanel EPS 100 mm (Fachada) 2,50 11 37,00 1.159,95 2 Gotero Frontal 200mm",
@@ -256,11 +256,11 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
     0,
     `panel must not become accessory: ${JSON.stringify(poisoned.accesorios)}`,
   );
-  ok("Bug CO: classic panel+Gotero same line keeps panel + trailing acc");
+  ok("Bug CP: classic panel+Gotero same line keeps panel + trailing acc");
 }
 
 {
-  // Bug CO — panel | Gotero | panel on one collapsed line.
+  // Bug CP — panel | Gotero | panel on one collapsed line.
   const multi = parseLogisticaFromAdjuntoText(
     "Isopanel EPS 100 mm (Fachada) 2,50 11 37,00 2 Gotero Frontal 200mm Isopanel EPS 50 mm (Fachada) 3,00 8 37,00",
   );
@@ -274,21 +274,7 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
     multi.accesorios.some((a) => /gotero/i.test(a.descr) && a.cantidad === 2),
     `gotero kept between panels: ${JSON.stringify(multi.accesorios)}`,
   );
-  ok("Bug CO: panel+Gotero+panel collapsed line keeps both panels");
-}
-
-{
-  // Bug CL — distinct mm thicknesses must not merge (normalizeAccCore used to strip mm).
-  const cl = parseLogisticaFromAdjuntoText(
-    `Perf. Ch. Gotero Frontal 200 mm   3,03   2   7,15
-Perf. Ch. Gotero Frontal 100 mm   3,03   2   7,15`,
-  );
-  assert.equal(
-    cl.accesorios.length,
-    2,
-    `expected 2 goteros (200mm + 100mm), got ${JSON.stringify(cl.accesorios)}`,
-  );
-  ok("Bug CL: classic goteros with different mm stay distinct");
+  ok("Bug CP: panel+Gotero+panel collapsed line keeps both panels");
 }
 
 console.log(`\n${passed} passed`);

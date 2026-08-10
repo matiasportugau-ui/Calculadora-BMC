@@ -301,20 +301,6 @@ export function sanitizeEncargoCell(raw) {
 export function isInstructionNoiseNombre(nombre) {
   const n = normalizeText(nombre);
   if (!n) return false;
-  // "Luis González - pedir celular" is a real client with an ops note (Bug CN).
-  // Only treat the row as instruction-noise when it does not start with a person-like name.
-  const personHead = n.match(/^([a-zà-ÿ'.+-]+(?:\s+[a-zà-ÿ'.+-]+){1,3})\b/);
-  const head = personHead ? personHead[1].trim() : "";
-  const headIsImperative = /^(hacer|pedir|no olvid|recordar|cuando|escanear|entregamos)\b/.test(
-    head || n,
-  );
-  const looksLikePerson =
-    Boolean(head) &&
-    !headIsImperative &&
-    head.split(/\s+/).length >= 2 &&
-    !/escaneo de ci|pedir celular|hacer un escaneo/.test(head);
-  if (looksLikePerson) return false;
-
   if (/escaneo de ci|pedir celular|hacer un escaneo|cuando entregamos/.test(n)) return true;
   // Long imperative ops notes without a person-like short name
   if (

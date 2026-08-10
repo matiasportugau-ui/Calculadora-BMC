@@ -202,7 +202,7 @@ export function parsePanelLineHeuristic(line) {
 
   // "2 Gotero Frontal Isodec/Isopanel 200mm" is accessory cargo, not 2 panels.
   // But do NOT reject classic Largo+Cantidad panel rows when pdf.js collapsed a
-  // trailing Gotero/Babeta onto the same line (Bug CO) — those must stay panels.
+  // trailing Gotero/Babeta onto the same line (Bug CP) — those must stay panels.
   if (
     looksLikeAccessoryLine(raw) &&
     !/\bpaneles?\b/i.test(raw) &&
@@ -249,7 +249,7 @@ export function parsePanelLineHeuristic(line) {
 
 /**
  * When pdf.js omits hasEOL, a classic panel row may be followed by "N Gotero…".
- * Recover that trailing accessory without treating the whole blob as accessory (Bug CO).
+ * Recover that trailing accessory without treating the whole blob as accessory (Bug CP).
  * @param {string} line
  * @returns {{ descr: string, cantidad: number } | null}
  */
@@ -313,31 +313,16 @@ function normalizeAccCore(descr) {
 
 /**
  * Drop free-text / classic-table accessory echoes with the same core name + qty (Bug BY).
- * Keep distinct mm thicknesses when both rows carry mm (Bug CL: 100mm vs 200mm gotero).
- * Free-text without mm still collapses onto classic with mm (BY).
  * @param {Array<{ descr: string, cantidad: number }>} accesorios
  */
 function collapseAccessoryEchoes(accesorios) {
+  const seen = new Set();
   const out = [];
   for (const acc of accesorios) {
     const core = normalizeAccCore(acc.descr);
-    if (!core) {
-      out.push(acc);
-      continue;
-    }
-    const mmMatch = normCell(acc.descr).match(/\b(\d{2,3})\s*mm\b/);
-    const mm = mmMatch ? mmMatch[1] : null;
-    const qty = acc.cantidad;
-    const dupIdx = out.findIndex((prev) => {
-      const prevCore = normalizeAccCore(prev.descr);
-      if (!prevCore || prevCore !== core || prev.cantidad !== qty) return false;
-      const prevMm = normCell(prev.descr).match(/\b(\d{2,3})\s*mm\b/);
-      const pmm = prevMm ? prevMm[1] : null;
-      // Distinct thicknesses on both sides → separate SKUs (Bug CL).
-      if (pmm && mm && pmm !== mm) return false;
-      return true;
-    });
-    if (dupIdx >= 0) continue;
+    const key = core ? `${core}|${acc.cantidad}` : "";
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
     out.push(acc);
   }
   return out;
@@ -473,7 +458,7 @@ export function parseLogisticaFromAdjuntoText(text) {
         const ph = parsePanelLineHeuristic(part);
         if (ph) {
           pushPanel(ph, `${ph.tipo}|${ph.espesor}|${ph.longitud}|${ph.cantidad}`);
-          // Bug CO: trailing Gotero/Babeta collapsed onto the panel segment.
+          // Bug CP: trailing Gotero/Babeta collapsed onto the panel segment.
           const trail = extractTrailingAccessoryAfterPanel(part);
           if (trail) accesorios.push(trail);
           continue;
