@@ -134,6 +134,8 @@ import {
 } from "../utils/logistica/enviosDraftSync.js";
 import {
   buildEnviosDriveDocument,
+  formatCoordinationConflictDriveSkipMessage,
+  shouldWriteDriveAfterCloudSave,
   takeEnviosDriveResume,
 } from "../utils/logistica/enviosDrive.js";
 import {
@@ -2407,6 +2409,12 @@ export default function BmcLogisticaApp() {
    */
   async function saveCoordination({ completed = false } = {}) {
     const cloud = await saveDraftToCloud({ silent: true });
+    // Bug DG: never overwrite Drive when cloud lost a revision race — stale
+    // local stops would clobber a newer .bmc-envios.json (incl. false Completada).
+    if (!shouldWriteDriveAfterCloudSave(cloud)) {
+      setAutoLoadMsg(formatCoordinationConflictDriveSkipMessage());
+      return { ok: false, conflict: true, cloud };
+    }
     if (!gdriveIsConfigured()) {
       setAutoLoadMsg(
         cloud?.ok

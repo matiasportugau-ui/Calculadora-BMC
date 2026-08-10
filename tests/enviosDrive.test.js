@@ -5,8 +5,10 @@ import assert from "node:assert/strict";
 import {
   buildEnviosDriveDocument,
   enviosDriveFileName,
+  formatCoordinationConflictDriveSkipMessage,
   isEnviosDriveDocument,
   normalizeCoordinationStatus,
+  shouldWriteDriveAfterCloudSave,
 } from "../src/utils/logistica/enviosDrive.js";
 import { DRAFT_SCHEMA } from "../src/utils/logistica/enviosDraft.js";
 
@@ -34,5 +36,14 @@ assert.ok(doc.coordination.resumableFrom.includes("calculadora"));
 assert.ok(isEnviosDriveDocument(doc));
 assert.equal(isEnviosDriveDocument({ scenario: "solo_techo" }), false);
 assert.ok(isEnviosDriveDocument({ schema: DRAFT_SCHEMA, stops: [] }));
+
+// Bug DG: cloud revision conflict must not overwrite Drive
+assert.equal(shouldWriteDriveAfterCloudSave({ ok: false, conflict: true }), false);
+assert.equal(shouldWriteDriveAfterCloudSave({ ok: true }), true);
+assert.equal(shouldWriteDriveAfterCloudSave({ ok: false, error: "network" }), true);
+assert.equal(shouldWriteDriveAfterCloudSave(null), true);
+assert.equal(shouldWriteDriveAfterCloudSave(undefined), true);
+assert.match(formatCoordinationConflictDriveSkipMessage(), /conflicto de revisión/i);
+assert.match(formatCoordinationConflictDriveSkipMessage(), /no se escribió Drive/i);
 
 console.log("enviosDrive.test.js OK");

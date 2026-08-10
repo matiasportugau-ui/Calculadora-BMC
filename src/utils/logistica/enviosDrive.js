@@ -105,3 +105,26 @@ export function takeEnviosDriveResume() {
     return null;
   }
 }
+
+/**
+ * Bug DG: after a cloud PUT attempt, decide whether Guardar/Confirmar may
+ * overwrite Drive. A revision conflict means another client already won the
+ * cloud draft — uploading our stale local stops would clobber their newer
+ * `.bmc-envios.json` (filename upsert, no etag). Non-conflict cloud failures
+ * still allow Drive as a backup.
+ *
+ * @param {{ ok?: boolean, conflict?: boolean } | null | undefined} cloudResult
+ * @returns {boolean}
+ */
+export function shouldWriteDriveAfterCloudSave(cloudResult) {
+  if (cloudResult && cloudResult.conflict) return false;
+  return true;
+}
+
+/**
+ * Operator message when Drive write is skipped due to cloud revision conflict.
+ * @returns {string}
+ */
+export function formatCoordinationConflictDriveSkipMessage() {
+  return "Nube: conflicto de revisión — no se escribió Drive (resolvé el conflicto primero).";
+}
