@@ -30,6 +30,7 @@ export default function EnvioWizardShell({
   places = [],
   onClassic,
   childrenByStep,
+  headerActions = null,
 }) {
   const w = createWizardUi(wizard || {});
   const active = w.activeStep;
@@ -77,7 +78,7 @@ export default function EnvioWizardShell({
           background: "linear-gradient(180deg,#f8fafc,#fff)",
         }}
       >
-        <div>
+        <div style={{ minWidth: 0, flex: "1 1 160px" }}>
           <div style={{ fontWeight: 800, fontSize: 15, color: T.brand || "#1e3a5f" }}>
             Configuración del envío
           </div>
@@ -85,24 +86,27 @@ export default function EnvioWizardShell({
             Completá cada etapa · se resume al avanzar (como la calculadora)
           </div>
         </div>
-        {typeof onClassic === "function" ? (
-          <button
-            type="button"
-            onClick={onClassic}
-            style={{
-              fontSize: 12,
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: `1px solid ${T.border}`,
-              background: "#fff",
-              cursor: "pointer",
-              minHeight: 40,
-              fontWeight: 600,
-            }}
-          >
-            Detalle Completo
-          </button>
-        ) : null}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
+          {headerActions}
+          {typeof onClassic === "function" ? (
+            <button
+              type="button"
+              onClick={onClassic}
+              style={{
+                fontSize: 12,
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: `1px solid ${T.border}`,
+                background: "#fff",
+                cursor: "pointer",
+                minHeight: 40,
+                fontWeight: 600,
+              }}
+            >
+              Detalle Completo
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div style={{ padding: 10, display: "grid", gap: 8 }}>

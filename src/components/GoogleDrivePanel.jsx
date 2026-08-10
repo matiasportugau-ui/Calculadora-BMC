@@ -75,6 +75,9 @@ export default function GoogleDrivePanel({
   driveFolderConfig,
   driveAccessToken,
   onFolderConfigured,
+  /** Logística .bmc-envios.json list (optional) */
+  enviosCoordinations = [],
+  onLoadEnvio,
 }) {
   const listRef = useRef(null);
   const showReconnect = !!(error && isScopeErrorMessage(error) && onReconnectDrive);
@@ -406,6 +409,68 @@ export default function GoogleDrivePanel({
                   </div>
                 </div>
               ))}
+
+              {typeof onLoadEnvio === "function" ? (
+                <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.brand, marginBottom: 8 }}>
+                    Coordinaciones Logística
+                  </div>
+                  <div style={{ fontSize: 11, color: C.ts, marginBottom: 10, lineHeight: 1.35 }}>
+                    Archivos <code>.bmc-envios.json</code> — abrís en Logística y seguís el envío.
+                  </div>
+                  {!enviosCoordinations.length ? (
+                    <div style={{ fontSize: 12, color: C.tt, marginBottom: 8 }}>
+                      Ninguna coordinación en Drive todavía.
+                    </div>
+                  ) : null}
+                  {enviosCoordinations.map((e) => (
+                    <div
+                      key={e.id}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        marginBottom: 8,
+                        border: `1px solid ${C.border}`,
+                        background: C.surface,
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{e.envNo || e.name}</div>
+                      <div style={{ fontSize: 11, color: C.ts, marginBottom: 8 }}>
+                        {e.status === "completed" ? "Completada" : "Guardada"}
+                        {e.modifiedTime
+                          ? ` · ${new Date(e.modifiedTime).toLocaleString("es-UY", {
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}`
+                          : ""}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onLoadEnvio(e.id)}
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 5,
+                          padding: "7px 10px",
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          border: "none",
+                          background: "#0ea5e9",
+                          color: "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Download size={13} /> Abrir en Logística
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         )}

@@ -132,6 +132,16 @@ import {
   parsePutDraftResponse,
   AUTOSAVE_MIN_INTERVAL_MS,
 } from "../utils/logistica/enviosDraftSync.js";
+import {
+  buildEnviosDriveDocument,
+  takeEnviosDriveResume,
+} from "../utils/logistica/enviosDrive.js";
+import {
+  isAuthenticated as gdriveIsAuth,
+  isDriveConfigured as gdriveIsConfigured,
+  saveEnviosCoordination,
+  signIn as gdriveSignIn,
+} from "../utils/googleDrive.js";
 import { resolveSafeBtnHref, safeHttpUrl, safeTelUrl } from "../utils/logistica/safeExternalUrl.js";
 import PackageLayoutList from "./logistica/PackageLayoutList.jsx";
 import EnviosDraftBrowser from "./logistica/EnviosDraftBrowser.jsx";
@@ -1842,6 +1852,8 @@ export default function BmcLogisticaApp() {
   const [lastPushAt, setLastPushAt] = useState(0);
   const [cloudConflict, setCloudConflict] = useState(null);
   const [draftBrowserOpen, setDraftBrowserOpen] = useState(false);
+  const [draftBrowserTab, setDraftBrowserTab] = useState("saved");
+  const [driveSaveBusy, setDriveSaveBusy] = useState(false);
   /** Setup wizard (SDD-ENVIO-WIZARD) */
   const [catalogPlaces, setCatalogPlaces] = useState(() => loadCatalogFromStorage());
   const [wizardUi, setWizardUi] = useState(() => createWizardUi({ enabled: false }));
@@ -1954,6 +1966,52 @@ export default function BmcLogisticaApp() {
       }
     } catch {
       // ignore bridge import errors
+    }
+
+    // Resume from Calculadora Drive panel (.bmc-envios.json handoff)
+    try {
+      const resume = takeEnviosDriveResume();
+      if (resume?.doc) {
+        const parsed = parseEnviosDraftPayload(resume.doc);
+        if (parsed.ok) {
+          const p = parsed.payload;
+          if (p.info) setInfo((prevI) => ({ ...prevI, ...p.info }));
+          if (Array.isArray(p.stops)) {
+            setStops(
+              p.stops.map((stop, index) => ({
+                ...mkStop(index),
+                ...stop,
+                orderId: stop.orderId ?? "",
+                pickupId: stop.pickupId ?? "",
+                geo: stop.geo ?? null,
+                checks: { ...mkStop(index).checks, ...(stop.checks || {}) },
+                accPackage: buildAccessoryPackageConfig(
+                  { ...mkStop(index), ...stop },
+                  p.accProfiles || restoredProfiles,
+                ),
+              })),
+            );
+          }
+          if (p.truckL) setTruckL(p.truckL);
+          if (p.distributionMode) setDistributionMode(p.distributionMode);
+          if (p.cargoLayoutMode === "manual" || p.cargoLayoutMode === "auto") {
+            setCargoLayoutMode(p.cargoLayoutMode);
+          }
+          if (Array.isArray(p.manualPkgOrderKeys)) setManualPkgOrderKeys(p.manualPkgOrderKeys);
+          if (p.rowOverrides) setRowOverrides(p.rowOverrides);
+          if (p.freePositions && typeof p.freePositions === "object") {
+            setFreePositions(normalizeFreePositionsMap(p.freePositions));
+          }
+          if (p.freeDragEnabled === true) setFreeDragEnabled(true);
+          if (p.ui?.wizard) setWizardUi(createWizardUi({ ...p.ui.wizard, enabled: true }));
+          else setWizardUi(createWizardUi({ enabled: true }));
+          setAutoLoadMsg(
+            `Drive: reanudado ${p.info?.numero || "envío"} · ${Array.isArray(p.stops) ? p.stops.length : 0} parada(s)`,
+          );
+        }
+      }
+    } catch {
+      // ignore resume errors
     }
 
     setHydrated(true);
@@ -2302,6 +2360,191 @@ export default function BmcLogisticaApp() {
     } finally {
       setCloudSyncBusy(false);
     }
+  }
+
+  /** Apply a parsed envíos draft payload into React state. */
+  function applyDraftPayload(p, meta = {}) {
+    if (!p || typeof p !== "object") return;
+    if (p.info) setInfo((prevI) => ({ ...prevI, ...p.info }));
+    if (Array.isArray(p.stops)) {
+      setStops(
+        p.stops.map((stop, index) => ({
+          ...mkStop(index),
+          ...stop,
+          orderId: stop.orderId ?? "",
+          pickupId: stop.pickupId ?? "",
+          geo: stop.geo ?? null,
+          checks: { ...mkStop(index).checks, ...(stop.checks || {}) },
+          accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, p.accProfiles || {}),
+        })),
+      );
+    }
+    if (p.truckL) setTruckL(p.truckL);
+    if (p.view) setView(p.view);
+    if (p.distributionMode) setDistributionMode(p.distributionMode);
+    if (p.cargoLayoutMode === "manual" || p.cargoLayoutMode === "auto") setCargoLayoutMode(p.cargoLayoutMode);
+    if (Array.isArray(p.manualPkgOrderKeys)) setManualPkgOrderKeys(p.manualPkgOrderKeys);
+    if (p.rowOverrides) setRowOverrides(p.rowOverrides);
+    if (p.freePositions && typeof p.freePositions === "object") {
+      setFreePositions(normalizeFreePositionsMap(p.freePositions));
+      setYardMode(countYardPackages(p.freePositions) > 0);
+    }
+    if (p.freeDragEnabled === true) setFreeDragEnabled(true);
+    if (Array.isArray(p.loadWarnings)) setLoadWarnings(normalizeLoadWarnings(p.loadWarnings));
+    if (Array.isArray(p.transportistas)) setTransportistas(p.transportistas);
+    if (Array.isArray(p.camionesCat)) setCamionesCat(p.camionesCat);
+    if (Array.isArray(p.priceHistory)) setPriceHistory(p.priceHistory);
+    if (Array.isArray(p.tripCostLog)) setTripCostLog(p.tripCostLog);
+    if (p.route && typeof p.route === "object") setTripRoute(p.route);
+    if (Array.isArray(p.ui?.collapsedStopIds)) setCollapsedStopIds(p.ui.collapsedStopIds);
+    if (p.ui?.wizard) setWizardUi(createWizardUi({ ...p.ui.wizard, enabled: true }));
+    if (meta.cloudMeta) setCloudMeta(meta.cloudMeta);
+    if (meta.reparto) setActiveReparto(meta.reparto);
+  }
+
+  /**
+   * Operator Save: cloud draft + Drive .bmc-envios.json (resumable from Calculadora).
+   */
+  async function saveCoordination({ completed = false } = {}) {
+    const cloud = await saveDraftToCloud({ silent: true });
+    if (!gdriveIsConfigured()) {
+      setAutoLoadMsg(
+        cloud?.ok
+          ? "Guardado en nube · Drive no configurado (VITE_GOOGLE_CLIENT_ID)"
+          : cloud?.error === "missing_env_no"
+            ? "Asigná un Nº Envío (ENV-…) antes de guardar."
+            : `Nube: ${cloud?.error || "error"} · Drive no configurado`,
+      );
+      return cloud;
+    }
+    const built = buildEnviosDraft(currentDraftState());
+    if (!built.ok) {
+      setAutoLoadMsg("Asigná un Nº Envío (ENV-…) antes de guardar.");
+      return { ok: false, error: built.error };
+    }
+    const status =
+      completed || activeReparto?.status === "coordinado" ? "completed" : "saved";
+    setDriveSaveBusy(true);
+    try {
+      if (!gdriveIsAuth()) await gdriveSignIn();
+      const document = buildEnviosDriveDocument(built.payload, {
+        status,
+        repartoNo: activeReparto?.repartoNo || null,
+        label: built.envNo,
+      });
+      const drive = await saveEnviosCoordination({
+        envNo: built.envNo,
+        document,
+        status,
+      });
+      setAutoLoadMsg(
+        `✓ Guardado ${built.envNo} · ${status === "completed" ? "Completada" : "Guardada"} · Drive + nube · ${built.stopCount} parada(s)`,
+      );
+      return { ok: true, cloud, drive };
+    } catch (e) {
+      setAutoLoadMsg(
+        cloud?.ok
+          ? `Nube OK · Drive error: ${e.message}`
+          : `Error al guardar: ${e.message}`,
+      );
+      return { ok: false, error: e.message, cloud };
+    } finally {
+      setDriveSaveBusy(false);
+    }
+  }
+
+  async function openCoordinationSelection(sel) {
+    setDraftBrowserOpen(false);
+    if (!sel?.id && !sel?.doc) return;
+    if (sel.source === "drive" && sel.doc) {
+      const parsed = parseEnviosDraftPayload(sel.doc);
+      if (!parsed.ok) {
+        setAutoLoadMsg(`Drive: archivo inválido (${parsed.error})`);
+        return;
+      }
+      applyDraftPayload(parsed.payload);
+      setAutoLoadMsg(`Drive: abierto ${parsed.payload.info?.numero || sel.id}`);
+      return;
+    }
+    if (sel.source === "reparto") {
+      const token = enviosAuthToken();
+      if (!token) {
+        setAutoLoadMsg("Nube: falta token API para abrir el reparto.");
+        return;
+      }
+      setCloudSyncBusy(true);
+      try {
+        const base = getCalcApiBase();
+        const res = await fetch(`${base}/api/repartos/${encodeURIComponent(sel.id)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+        const payload = j.reparto?.payload || {};
+        const asDraft = {
+          schema: "bmc-envios-draft-v1",
+          info: payload.info || { numero: info.numero, fecha: info.fecha },
+          stops: Array.isArray(payload.stops) ? payload.stops : [],
+          truckL: j.reparto?.truck_l ?? payload.truckL,
+          distributionMode: payload.distributionMode,
+          cargoLayoutMode: payload.cargoLayoutMode,
+          manualPkgOrderKeys: payload.manualPkgOrderKeys,
+          rowOverrides: payload.rowOverrides,
+          freePositions: payload.freePositions,
+          loadWarnings: payload.loadWarnings,
+          route: payload.route,
+          ui: payload.ui,
+        };
+        const parsed = parseEnviosDraftPayload(asDraft);
+        if (!parsed.ok) throw new Error(parsed.error);
+        applyDraftPayload(parsed.payload, {
+          reparto: {
+            id: j.reparto.id,
+            repartoNo: j.reparto.reparto_no,
+            status: j.reparto.status,
+            revision: j.reparto.revision,
+            local: false,
+          },
+        });
+        setAutoLoadMsg(`Reparto ${j.reparto.reparto_no} · ${j.reparto.statusLabel || j.reparto.status}`);
+      } catch (e) {
+        setAutoLoadMsg(`Reparto: ${e.message}`);
+      } finally {
+        setCloudSyncBusy(false);
+      }
+      return;
+    }
+    // draft cloud
+    const draftId = sel.id;
+    setInfo((i) => ({ ...i, numero: draftId }));
+    queueMicrotask(async () => {
+      const token = enviosAuthToken();
+      if (!token) return;
+      setCloudSyncBusy(true);
+      try {
+        const base = getCalcApiBase();
+        const res = await fetch(`${base}/api/envios/drafts/${encodeURIComponent(draftId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+        const parsed = parseEnviosDraftPayload(j.draft?.payload);
+        if (!parsed.ok) throw new Error(parsed.error);
+        applyDraftPayload(parsed.payload, {
+          cloudMeta: {
+            id: j.draft?.id || draftId,
+            revision: j.draft?.revision,
+            updatedAt: j.draft?.updatedAt,
+            status: "saved",
+          },
+        });
+        setAutoLoadMsg(`Nube: cargado ${draftId}`);
+      } catch (e) {
+        setAutoLoadMsg(`Nube: ${e.message}`);
+      } finally {
+        setCloudSyncBusy(false);
+      }
+    });
   }
 
   // P5b autosave (debounced)
@@ -2956,6 +3199,7 @@ export default function BmcLogisticaApp() {
       setAutoLoadMsg(
         `✓ Coordinación confirmada ${activeReparto.repartoNo} · ${stops.length} parada(s) · registro local`,
       );
+      void saveCoordination({ completed: true });
       return;
     }
     setRepartoBusy(true);
@@ -2989,6 +3233,7 @@ export default function BmcLogisticaApp() {
       setAutoLoadMsg(
         `✓ Coordinación confirmada ${j.reparto?.repartoNo || activeReparto.repartoNo} · Drive path reservado · ver Historial`,
       );
+      void saveCoordination({ completed: true });
     } catch (e) {
       setAutoLoadMsg(`Confirmar falló: ${e.message}`);
     } finally {
@@ -3239,6 +3484,56 @@ export default function BmcLogisticaApp() {
             }}
             ctx={{ stops, info, truckL, wizard: wizardUi, route: tripRoute }}
             places={catalogPlaces}
+            headerActions={(
+              <>
+                <select
+                  aria-label="Abrir coordinaciones"
+                  value=""
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    e.target.value = "";
+                    if (v === "saved" || v === "completed") {
+                      setDraftBrowserTab(v);
+                      setDraftBrowserOpen(true);
+                    }
+                  }}
+                  style={{
+                    fontSize: 12,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: `1px solid ${T.border}`,
+                    background: "#fff",
+                    minHeight: 40,
+                    fontWeight: 600,
+                    maxWidth: 200,
+                  }}
+                >
+                  <option value="" disabled>
+                    Abrir coordinación…
+                  </option>
+                  <option value="saved">Guardadas (en curso)</option>
+                  <option value="completed">Completadas</option>
+                </select>
+                <button
+                  type="button"
+                  disabled={cloudSyncBusy || driveSaveBusy}
+                  onClick={() => saveCoordination()}
+                  style={{
+                    fontSize: 12,
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#2563eb",
+                    color: "#fff",
+                    cursor: cloudSyncBusy || driveSaveBusy ? "wait" : "pointer",
+                    minHeight: 40,
+                    fontWeight: 700,
+                  }}
+                >
+                  {driveSaveBusy || cloudSyncBusy ? "Guardando…" : "☁ Guardar"}
+                </button>
+              </>
+            )}
             onClassic={() => {
               setWizardUi((p) => createWizardUi({ ...p, enabled: false }));
               setView("form");
@@ -4114,14 +4409,36 @@ export default function BmcLogisticaApp() {
                 <div><label htmlFor="log-patente" style={css.lbl}>Patente</label><input id="log-patente" name="log-patente" style={css.inp} value={info.patente} onChange={(e) => updInfo("patente", e.target.value)} /></div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
-                <Btn onClick={() => saveDraftToCloud()} disabled={cloudSyncBusy} color={T.brand} small>
-                  {cloudSyncBusy ? "⏳ Nube…" : "☁ Guardar en nube"}
+                <Btn
+                  onClick={() => saveCoordination()}
+                  disabled={cloudSyncBusy || driveSaveBusy}
+                  color={T.brand}
+                  small
+                >
+                  {driveSaveBusy || cloudSyncBusy ? "⏳ Guardando…" : "☁ Guardar (nube + Drive)"}
+                </Btn>
+                <Btn
+                  onClick={() => {
+                    setDraftBrowserTab("saved");
+                    setDraftBrowserOpen(true);
+                  }}
+                  outline
+                  small
+                >
+                  Abrir guardadas
+                </Btn>
+                <Btn
+                  onClick={() => {
+                    setDraftBrowserTab("completed");
+                    setDraftBrowserOpen(true);
+                  }}
+                  outline
+                  small
+                >
+                  Completadas
                 </Btn>
                 <Btn onClick={loadDraftFromCloud} disabled={cloudSyncBusy} outline small>
-                  ☁ Cargar de nube
-                </Btn>
-                <Btn onClick={() => setDraftBrowserOpen(true)} outline small>
-                  Borradores
+                  ☁ Cargar Nº actual
                 </Btn>
                 <label style={{ fontSize: 11, color: T.muted, display: "flex", alignItems: "center", gap: 4 }}>
                   <input
@@ -4950,75 +5267,10 @@ export default function BmcLogisticaApp() {
 
       <EnviosDraftBrowser
         open={draftBrowserOpen}
+        initialTab={draftBrowserTab}
         token={enviosAuthToken()}
         onClose={() => setDraftBrowserOpen(false)}
-        onLoad={async (draftId) => {
-          setDraftBrowserOpen(false);
-          if (draftId) {
-            const prev = info.numero;
-            if (draftId && draftId !== prev) {
-              setInfo((i) => ({ ...i, numero: draftId }));
-            }
-            // load uses info.numero — set then call after paint
-            queueMicrotask(() => {
-              if (draftId !== info.numero) {
-                // force load by temporary set + fetch
-                (async () => {
-                  const token = enviosAuthToken();
-                  if (!token) return;
-                  setCloudSyncBusy(true);
-                  try {
-                    const base = getCalcApiBase();
-                    const res = await fetch(`${base}/api/envios/drafts/${encodeURIComponent(draftId)}`, {
-                      headers: { Authorization: `Bearer ${token}` },
-                    });
-                    const j = await res.json().catch(() => ({}));
-                    if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
-                    const parsed = parseEnviosDraftPayload(j.draft?.payload);
-                    if (!parsed.ok) throw new Error(parsed.error);
-                    const p = parsed.payload;
-                    if (p.info) setInfo((prevI) => ({ ...prevI, ...p.info }));
-                    if (Array.isArray(p.stops)) {
-                      setStops(
-                        p.stops.map((stop, index) => ({
-                          ...mkStop(index),
-                          ...stop,
-                          orderId: stop.orderId ?? "",
-                          pickupId: stop.pickupId ?? "",
-                          geo: stop.geo ?? null,
-                          checks: { ...mkStop(index).checks, ...(stop.checks || {}) },
-                          accPackage: buildAccessoryPackageConfig({ ...mkStop(index), ...stop }, p.accProfiles || {}),
-                        })),
-                      );
-                    }
-                    if (p.truckL) setTruckL(p.truckL);
-                    if (p.distributionMode) setDistributionMode(p.distributionMode);
-                    if (p.cargoLayoutMode === "manual" || p.cargoLayoutMode === "auto") setCargoLayoutMode(p.cargoLayoutMode);
-                    if (Array.isArray(p.manualPkgOrderKeys)) setManualPkgOrderKeys(p.manualPkgOrderKeys);
-                    if (p.rowOverrides) setRowOverrides(p.rowOverrides);
-                    if (p.freePositions && typeof p.freePositions === "object") {
-                      setFreePositions(normalizeFreePositionsMap(p.freePositions));
-                    }
-                    if (p.freeDragEnabled === true) setFreeDragEnabled(true);
-                    setCloudMeta({
-                      id: j.draft?.id || draftId,
-                      revision: j.draft?.revision,
-                      updatedAt: j.draft?.updatedAt,
-                      status: "saved",
-                    });
-                    setAutoLoadMsg(`Nube: cargado ${draftId}`);
-                  } catch (e) {
-                    setAutoLoadMsg(`Nube: ${e.message}`);
-                  } finally {
-                    setCloudSyncBusy(false);
-                  }
-                })();
-              } else {
-                loadDraftFromCloud();
-              }
-            });
-          }
-        }}
+        onLoad={(sel) => openCoordinationSelection(sel)}
       />
     </div>
   );
