@@ -12,6 +12,7 @@ import {
   labelVentasCandidate,
   sanitizeEncargoCell,
   indexVentasCsvDataRows,
+  isInstructionNoiseNombre,
 } from "../src/utils/logistica/ventasSheetMap.js";
 
 let passed = 0;
@@ -92,7 +93,12 @@ const ROW = [
 {
   assert.equal(parsePlanillaFechaToIso("22/05/2026"), "2026-05-22");
   assert.equal(parsePlanillaFechaToIso("2026-05-22"), "2026-05-22");
-  ok("fecha parse");
+  assert.equal(parsePlanillaFechaToIso("07/08", { now: new Date("2026-08-10T12:00:00Z") }), "2026-08-07");
+  assert.equal(parsePlanillaFechaToIso("22/05", { now: new Date("2026-01-15T12:00:00Z") }), "2026-05-22");
+  assert.equal(parsePlanillaFechaToIso("Falta pagar la seña"), "");
+  assert.equal(parsePlanillaFechaToIso("Coordinar"), "");
+  assert.equal(parsePlanillaFechaToIso("Mayo / Junio"), "");
+  ok("fecha parse incl. dd/mm and free-text reject");
 }
 
 {
@@ -139,6 +145,34 @@ const ROW = [
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].nombre, "Luis González (Petinho)");
   ok("candidate filter + labels reject garbage");
+}
+
+{
+  assert.equal(
+    isInstructionNoiseNombre("Hacer un escaneo de CI cuando entregamos Pedir Celular"),
+    true,
+  );
+  assert.equal(isInstructionNoiseNombre("Luis González"), false);
+  const instruction = {
+    nombre: "Hacer un escaneo de CI cuando entregamos Pedir Celular",
+    orderId: "",
+    tel: "",
+    dir: "",
+    pdf: "",
+    encargoPlain: "",
+  };
+  assert.equal(isVentasLogisticaCandidate(instruction), false);
+  const pandasBlob = {
+    nombre: "",
+    orderId: "ID. Pedido",
+    tel: "CONTACTO",
+    dir: "",
+    pdf: "",
+    encargoPlain: "",
+    rawSheetText: "import pandas as pd\nprint(df.head())",
+  };
+  assert.equal(isVentasLogisticaCandidate(pandasBlob), false);
+  ok("instruction + pandas noise rejected as candidates");
 }
 
 {

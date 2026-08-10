@@ -1,7 +1,10 @@
 /**
  * Ventas → coordination lifecycle chips for /logistica search results (Ops UX F2).
- * Pure functions — column F = estado text; column G = fecha coordinación (ISO).
+ * Pure functions — column F = estado text; fecha entrega / G = coordinación.
+ * Fechas planilla (dd/mm, dd/mm/yy) se normalizan vía parsePlanillaFechaToIso.
  */
+
+import { parsePlanillaFechaToIso } from "./ventasSheetMap.js";
 
 /** @typedef {'enviado'|'coordinado'|'por_coordinar'} CoordinationStatus */
 
@@ -70,8 +73,10 @@ export function classifyVentasCoordination(row = {}) {
     };
   }
 
-  const iso = String(row.fechaEntrega || "").trim();
-  const coordDateIso = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : null;
+  // Prefer already-normalized ISO; also accept raw planilla forms (07/08, 22/05/2026).
+  const rawFecha = String(row.fechaEntrega || "").trim();
+  const coordDateIso =
+    (/^\d{4}-\d{2}-\d{2}$/.test(rawFecha) ? rawFecha : "") || parsePlanillaFechaToIso(rawFecha) || null;
   if (coordDateIso) {
     return {
       status: "coordinado",
