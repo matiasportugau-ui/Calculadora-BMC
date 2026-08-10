@@ -159,6 +159,45 @@ Isodec EPS 100 mm 4,00 10 37,00 370,00`,
 }
 
 {
+  // Bug CO — Abril modern line already has explicit × L m (lengthDefaulted=false), so BX
+  // lengthDefaulted collapse does not fire; classic echo must still not 2× qty.
+  // (Letter CO: parallel hunt already claimed CL/CM/CN for other residuals.)
+  const abrilDual = parseLogisticaFromAdjuntoText(
+    `ISOROOF 3G 80mm · 8 paneles × 4.40 m (8 paneles × 4.40 m)
+Isoroof EPS 80 mm (Techo)   4,40   8   35,20   900,00`,
+  );
+  assert.equal(
+    abrilDual.paneles.length,
+    1,
+    `expected 1 panel after CO collapse, got ${JSON.stringify(abrilDual.paneles)}`,
+  );
+  assert.equal(abrilDual.paneles[0].tipo, "ISOROOF");
+  assert.equal(abrilDual.paneles[0].espesor, 80);
+  assert.equal(abrilDual.paneles[0].cantidad, 8);
+  assert.equal(
+    abrilDual.paneles.reduce((s, p) => s + p.cantidad, 0),
+    8,
+    `panel qty must stay 8, got ${JSON.stringify(abrilDual.paneles)}`,
+  );
+  ok("Bug CO: Abril explicit-L modern + classic echo → single ISOROOF ×8");
+}
+
+{
+  // Bug CO — modern "largo N m" + classic same L+qty (also both non-defaulted).
+  const modernLargo = parseLogisticaFromAdjuntoText(
+    `ISODEC EPS 100mm · 10 paneles largo 4.40 m
+Isodec EPS 100 mm (Techo)   4,40   10   44,00   1.200,00`,
+  );
+  assert.equal(
+    modernLargo.paneles.length,
+    1,
+    `expected 1 panel after CO largo collapse, got ${JSON.stringify(modernLargo.paneles)}`,
+  );
+  assert.equal(modernLargo.paneles[0].cantidad, 10);
+  ok("Bug CO: modern largo= + classic same identity → qty once");
+}
+
+{
   // Modern-only (no classic) still keeps default L=6.
   const modernOnly = parseLogisticaFromAdjuntoText("ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15 4,677.93");
   assert.equal(modernOnly.paneles.length, 1);
