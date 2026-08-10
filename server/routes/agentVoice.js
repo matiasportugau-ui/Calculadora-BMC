@@ -221,9 +221,13 @@ router.post(
       // Auto-fallback a Grok Voice cuando OpenAI no responde (cuota/auth/5xx/
       // timeout de egress) y el usuario no eligió engine explícitamente.
       // Visto 2026-08-10: api.openai.com inalcanzable desde Cloud Run.
+      // Honor ops pin: VOICE_PROVIDER=openai must NOT cross-provider fallback
+      // (would send system prompt + mic stream to a provider ops disabled).
+      const opsPin = String(config.voiceProvider || "").trim().toLowerCase();
       const canFallback =
         voiceProvider === "openai" &&
         !rawVoiceProvider &&
+        !opsPin &&
         isVoiceMintFallbackError(mintErr) &&
         getVoiceProviderConfig("grok").keyOk;
       if (!canFallback) throw mintErr;
