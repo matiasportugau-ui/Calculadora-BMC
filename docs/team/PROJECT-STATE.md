@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-10
+**Última actualización:** 2026-08-10 (ai-verify-stop P0)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-10 (feat — Logística P0 «Verificar con IA»):** After Cargar actuales, incomplete stops get **✨ Verificar con IA** → `POST /api/envios/ai-verify-stop` builds multi-source evidence pack (Ventas row, adjunto meta, fields) + LLM structured proposal; modal shows paneles/accesorios/fields + **Aplicar** (human gate only; no Sheets write). Pure: `src/utils/logistica/aiVerifyStop.js`; server `server/lib/enviosAiVerify.js` via `callAiCompletion`. Tests: `tests/aiVerifyStop.test.js`. Branch `feat/logistica-ai-verify-stop`.
 
 **2026-08-10 (feat — Voz realtime multi-engine: fallback OpenAI→Grok + pin `VOICE_PROVIDER`):** El engine de voz dúplex dejó de depender de OpenAI-only: [`voiceRealtimeProviders.js`](../../server/lib/voiceRealtimeProviders.js) suma **dead-mark de 5 min** por engine (mismo patrón que embeddings) y `resolveVoiceProvider()` ahora prioriza **elección explícita del usuario > pin de ops `VOICE_PROVIDER` > mapeo de aiProvider**, con fallback automático a Grok Voice cuando la key OpenAI no es usable o está dead-marked. En [`agentVoice.js`](../../server/routes/agentVoice.js): si el mint de OpenAI falla por cuota/auth (401/402/403/429), 5xx **o timeout de red** (`isVoiceMintFallbackError`) y el usuario no eligió engine, se re-mintea con Grok en el mismo request (root cause verificado en vivo: **`api.openai.com` inalcanzable desde el egress de Cloud Run** — timeout a 8s — mientras `api.x.ai` responde 200; por eso el fallback cubre errores de red, no solo 4xx). `/agent/voice/health` ahora prueba el **engine activo** (resuelve `auto` + `modelsUrl` del provider, expone `voiceProvider` en el body) en vez de hardcodear OpenAI, y dead-marks al engine caído para acelerar el self-heal. Pin de prod: `VOICE_PROVIDER=grok` (GH var + Doppler prd + línea en deploy-calc-api.yml). CI `voice_health` renombrado provider-agnostic. Tests offline ampliados (`tests/voiceRealtimeProviders.test.js`: fallback por keys, pin, dead-marks, clasificación de errores). **Pendiente:** Whisper (`whisperTranscribe.js`) sigue OpenAI-only — evaluar Gemini STT como fallback.
 
