@@ -236,17 +236,31 @@ function collapseDefaultLengthPanelEchoes(paneles) {
 
 /**
  * Core accessory identity for echo dedupe (free-text + classic table of the same piece).
+ * Strips classic table noise (Perf./Ch./mm/prices) but keeps SKU discriminators:
+ * U/G profile sizes (`ude50`, `u de 80`, `g2`) and finish (`blanca` / `ext`).
+ * Blind digit wipe after stripping those codes caused Bug CI (U50+U80 / blanca+ext collapsed).
  * @param {string} descr
  */
 function normalizeAccCore(descr) {
-  return normCell(descr)
+  let s = normCell(descr);
+  // Extract profile size / series codes before digit wipe (placeholders with digits
+  // would be destroyed by the numeric strip below).
+  const sizeToks = [];
+  s = s.replace(/\b(u\s*de\s*\d+|ude\d+|g\d+)\b/gi, (m) => {
+    sizeToks.push(String(m).toLowerCase().replace(/\s+/g, ""));
+    return " ";
+  });
+  s = s
     .replace(/\b\d{2,3}\s*mm\b/g, " ")
-    .replace(/\b(perf\.?|perfil(?:es)?|ch\.?|chapa|blanca?|ext\.?|ude\d+)\b/g, " ")
+    // Classic ENCARGO noise only — do not strip blanca/ext (finish) or udeN (size).
+    .replace(/\b(perf\.?|perfil(?:es)?|ch\.?|chapa)\b/g, " ")
     .replace(/\b(de|la|el|los|las|del|para)\b/g, " ")
     .replace(/\d+(?:[.,]\d+)?/g, " ")
     .replace(/[^\p{L}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
+  if (sizeToks.length) s = [s, ...sizeToks].filter(Boolean).join(" ");
+  return s.replace(/\s+/g, " ").trim();
 }
 
 /**

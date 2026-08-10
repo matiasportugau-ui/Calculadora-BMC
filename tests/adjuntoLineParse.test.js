@@ -196,4 +196,51 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
   ok("Bug BY: free-text + classic gotero echo → qty 2 once");
 }
 
+{
+  // Bug CI — #978 normalizeAccCore stripped udeN/digits/blanca/ext → distinct SKUs collapsed.
+  const uProfiles = parseLogisticaFromAdjuntoText(
+    `Perf. Ch. U de 50 30 mm   3,03   4   7,15
+Perf. Ch. U de 80 30 mm   3,03   4   7,15`,
+  );
+  assert.equal(
+    uProfiles.accesorios.length,
+    2,
+    `expected U50 + U80 kept, got ${JSON.stringify(uProfiles.accesorios)}`,
+  );
+  assert.equal(
+    uProfiles.accesorios.reduce((s, a) => s + a.cantidad, 0),
+    8,
+    `U profile qty must stay 4+4=8, got ${JSON.stringify(uProfiles.accesorios)}`,
+  );
+  ok("Bug CI: classic U de 50 + U de 80 same qty stay distinct");
+}
+
+{
+  const finishes = parseLogisticaFromAdjuntoText(
+    `Perf. Ch. Cumbrera Blanca 100mm   3,03   2   7,15
+Perf. Ch. Cumbrera Ext 100mm   3,03   2   7,15`,
+  );
+  assert.equal(
+    finishes.accesorios.length,
+    2,
+    `expected blanca + ext cumbreras, got ${JSON.stringify(finishes.accesorios)}`,
+  );
+  ok("Bug CI: cumbrera blanca vs ext same qty stay distinct");
+}
+
+{
+  // BY must still collapse free-text Ude50 with classic U de 50 echo.
+  const uEcho = parseLogisticaFromAdjuntoText(
+    `6 perfiles Ude50
+Perf. Ch. U de 50 30 mm   3,03   6   7,15`,
+  );
+  assert.equal(
+    uEcho.accesorios.length,
+    1,
+    `expected Ude50 echo collapsed, got ${JSON.stringify(uEcho.accesorios)}`,
+  );
+  assert.equal(uEcho.accesorios[0].cantidad, 6);
+  ok("Bug BY+CI: free-text Ude50 + classic U de 50 → qty 6 once");
+}
+
 console.log(`\n${passed} passed`);
