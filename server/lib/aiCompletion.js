@@ -2,11 +2,41 @@
  * Llamada a modelos de IA con la misma cadena de fallback que POST /api/crm/suggest-response.
  * Uso desde scripts o rutas que necesiten un único completion sin duplicar lógica.
  */
-import { config } from "../config.js";
-import { getProviderChain, resolveModel, getApiKey, FAST_DEFAULT_MODELS, estimateCostUSD } from "./aiProviderConfig.js";
+import { getProviderChain, resolveModel, getApiKey, estimateCostUSD } from "./aiProviderConfig.js";
 import { logAgentCost } from "./costTelemetry.js";
+import { PROVIDER_TIMEOUT_MS } from "./providerCircuitBreaker.js";
 
 const DEFAULT_RANKING = getProviderChain(true); // prefer fast models for completion paths
+
+/**
+ * Hard timeout per provider attempt — same contract as agentCore.callWithTimeout.
+ * Aborts via AbortSignal AND rejects via race so a hung SDK cannot block failover
+ * (teamAssist previously had a 30s AbortController; callAiCompletion had none).
+ *
+ * @param {(signal: AbortSignal) => Promise<T>} fn
+ * @param {string} label
+ * @returns {Promise<T>}
+ * @template T
+ */
+async function withProviderTimeout(fn, label) {
+  const controller = new AbortController();
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(
+        Object.assign(new Error(`${label} timed out after ${PROVIDER_TIMEOUT_MS}ms`), {
+          code: "PROVIDER_TIMEOUT",
+        }),
+      );
+    }, PROVIDER_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([Promise.resolve(fn(controller.signal)), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * @param {object} opts
@@ -51,42 +81,67 @@ export async function callAiCompletion({
       if (p === "claude") {
         const { default: Anthropic } = await import("@anthropic-ai/sdk");
         const anthropic = new Anthropic({ apiKey });
-        msg = await anthropic.messages.create({
-          model,
-          max_tokens: maxTokens,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userMessage }],
-        });
+        msg = await withProviderTimeout(
+          (signal) =>
+            anthropic.messages.create(
+              {
+                model,
+                max_tokens: maxTokens,
+                system: systemPrompt,
+                messages: [{ role: "user", content: userMessage }],
+              },
+              { signal },
+            ),
+          "claude",
+        );
         text = msg.content[0]?.text || "";
       } else if (p === "openai") {
         const { default: OpenAI } = await import("openai");
         const openai = new OpenAI({ apiKey });
-        completion = await openai.chat.completions.create({
-          model,
-          max_tokens: maxTokens,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage },
-          ],
-        });
+        completion = await withProviderTimeout(
+          (signal) =>
+            openai.chat.completions.create(
+              {
+                model,
+                max_tokens: maxTokens,
+                messages: [
+                  { role: "system", content: systemPrompt },
+                  { role: "user", content: userMessage },
+                ],
+              },
+              { signal },
+            ),
+          "openai",
+        );
         text = completion.choices[0]?.message?.content || "";
       } else if (p === "grok") {
         const { default: OpenAI } = await import("openai");
         const grok = new OpenAI({ apiKey, baseURL: "https://api.x.ai/v1" });
-        completion = await grok.chat.completions.create({
-          model,
-          max_tokens: maxTokens,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage },
-          ],
-        });
+        completion = await withProviderTimeout(
+          (signal) =>
+            grok.chat.completions.create(
+              {
+                model,
+                max_tokens: maxTokens,
+                messages: [
+                  { role: "system", content: systemPrompt },
+                  { role: "user", content: userMessage },
+                ],
+              },
+              { signal },
+            ),
+          "grok",
+        );
         text = completion.choices[0]?.message?.content || "";
       } else if (p === "gemini") {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genai = new GoogleGenerativeAI(apiKey);
         const modelInstance = genai.getGenerativeModel({ model });
-        const result = await modelInstance.generateContent(`${systemPrompt}\n\n${userMessage}`);
+        const result = await withProviderTimeout(
+          (signal) =>
+            modelInstance.generateContent(`${systemPrompt}\n\n${userMessage}`, { signal }),
+          "gemini",
+        );
         text = result.response.text() || "";
       }
 

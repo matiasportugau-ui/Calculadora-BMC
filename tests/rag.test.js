@@ -14,7 +14,12 @@
  */
 
 import { strict as assert } from "node:assert";
-import { hashText, embedText, activeProvider } from "../server/lib/embeddings.js";
+import {
+  hashText,
+  embedText,
+  activeProvider,
+  shouldSkipCachedEmbedding,
+} from "../server/lib/embeddings.js";
 import { formatRetrievedContextForPrompt, retrieveSimilarQuotes } from "../server/lib/rag.js";
 import { buildSystemPrompt } from "../server/lib/chatPrompts.js";
 
@@ -88,6 +93,29 @@ if (activeProvider() === "stub") {
   const v = await embedText("test normalization vector");
   const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
   ok(Math.abs(norm - 1.0) < 0.001, `stub produce vector L2-normalizado (norma=${norm.toFixed(4)})`);
+}
+
+{
+  // Bug DI: hash-only skip after provider switch leaves RAG empty (openai corpus
+  // vs gemini queries). Skip must require matching provider too.
+  const hash = hashText("same quote text");
+  ok(
+    shouldSkipCachedEmbedding({ content_hash: hash, provider: "openai" }, hash, "openai"),
+    "skip when hash+provider match",
+  );
+  ok(
+    !shouldSkipCachedEmbedding({ content_hash: hash, provider: "openai" }, hash, "gemini"),
+    "do NOT skip when provider diverges (openai→gemini)",
+  );
+  ok(
+    !shouldSkipCachedEmbedding({ content_hash: hash, provider: null }, hash, "openai"),
+    "do NOT skip untagged pre-0002 rows (force re-embed)",
+  );
+  ok(
+    !shouldSkipCachedEmbedding({ content_hash: "other", provider: "openai" }, hash, "openai"),
+    "do NOT skip when content_hash changed",
+  );
+  ok(!shouldSkipCachedEmbedding(null, hash, "openai"), "do NOT skip when row missing");
 }
 
 // ─── 2. retrieveSimilarQuotes — inputs inválidos ──────────────────────────────
