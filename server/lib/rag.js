@@ -13,7 +13,7 @@
  */
 
 import pg from "pg";
-import { embedText } from "./embeddings.js";
+import { embedTextWithProvider } from "./embeddings.js";
 import { sanitizeQuoteMetadata } from "./quoteMetadata.js";
 import { config } from "../config.js";
 
@@ -54,8 +54,13 @@ export async function retrieveSimilarQuotes(query, k = 5, threshold = 0.70) {
   const maxDistance = 1 - threshold;
 
   let queryEmbedding;
+  let queryProvider;
   try {
-    queryEmbedding = await embedText(query.trim());
+    // Los espacios vectoriales de providers distintos NO son comparables: un
+    // query Gemini contra corpus OpenAI da distancias sin sentido. Usar el
+    // provider real que generó ESTE vector para filtrar (columna de 0002).
+    ({ embedding: queryEmbedding, provider: queryProvider } =
+      await embedTextWithProvider(query.trim()));
   } catch (err) {
     console.warn("[rag] embedText falló:", err.message);
     return [];
@@ -73,10 +78,11 @@ export async function retrieveSimilarQuotes(query, k = 5, threshold = 0.70) {
          (embedding <=> $1::vector) AS distance
        FROM quote_embeddings
        WHERE embedding IS NOT NULL
+         AND provider = $4
          AND (embedding <=> $1::vector) <= $2
        ORDER BY embedding <=> $1::vector
        LIMIT $3`,
-      [embeddingLiteral, maxDistance, k],
+      [embeddingLiteral, maxDistance, k, queryProvider],
     );
 
     return result.rows.map((row) => ({

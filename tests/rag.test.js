@@ -47,7 +47,7 @@ console.log("\n[1] embeddings.js — stub mode");
 
 {
   const provider = activeProvider();
-  ok(["stub", "openai"].includes(provider), `activeProvider retorna valor válido: ${provider}`);
+  ok(["stub", "openai", "gemini"].includes(provider), `activeProvider retorna valor válido: ${provider}`);
 }
 
 {

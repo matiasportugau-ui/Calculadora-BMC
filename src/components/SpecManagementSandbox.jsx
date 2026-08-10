@@ -388,8 +388,9 @@ function TeamAssistPanel({ data, assistHealth }) {
     }
   }, [agentId, messages, data, sending, draft]);
 
-  const ready = assistHealth?.openai_configured === true;
-  const needServer = assistHealth && assistHealth.ok === false && !assistHealth.openai_configured;
+  const aiConfigured = assistHealth?.ai_configured ?? assistHealth?.openai_configured;
+  const ready = aiConfigured === true;
+  const needServer = assistHealth && assistHealth.ok === false && !aiConfigured;
 
   return (
     <div style={{ ...sectionBlockS, marginBottom: 20, border: `1.5px solid ${C.primarySoft}`, background: "#FAFBFF" }}>
