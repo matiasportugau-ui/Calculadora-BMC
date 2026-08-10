@@ -3,6 +3,8 @@
  * Used by POST /api/envios/adjunto-fetch.
  */
 
+import { extractAdjuntoHttpsUrl } from "../../src/utils/logistica/adjuntoUrl.js";
+
 export const ADJUNTO_MAX_BYTES = 12 * 1024 * 1024;
 export const ADJUNTO_MAX_REDIRECTS = 5;
 export const ADJUNTO_FETCH_TIMEOUT_MS = 25_000;
@@ -215,11 +217,13 @@ export async function fetchAdjuntoUpstream(startUrl, opts = {}) {
 
 /**
  * Resolve client URL → validated fetch URL (allowlist + Drive/Dropbox rewrite).
+ * Accepts messy cells (HYPERLINK, "Ver PDF https://…") via extractAdjuntoHttpsUrl.
  * @param {string} clientUrl
  */
 export function resolveAdjuntoFetchUrl(clientUrl) {
-  // Validate the operator-supplied URL first (blocks SSRF before rewrite).
-  assertAllowedAdjuntoUrl(clientUrl);
-  const fetchUrl = toServerFetchablePdfUrl(clientUrl);
+  const extracted = extractAdjuntoHttpsUrl(clientUrl) || String(clientUrl || "").trim();
+  // Validate the (possibly cleaned) URL first (blocks SSRF before rewrite).
+  assertAllowedAdjuntoUrl(extracted);
+  const fetchUrl = toServerFetchablePdfUrl(extracted);
   return assertAllowedAdjuntoUrl(fetchUrl).href;
 }

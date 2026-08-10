@@ -5,17 +5,19 @@
  * @typedef {{ paneles: any[], accesorios: any[], warnings: string[], source: string, proxyAttempted?: boolean, browserAttempted?: boolean, ok?: boolean, userMessage?: string }} AdjuntoInferResult
  */
 
+import {
+  adjuntoUrlMissingHint,
+  extractAdjuntoHttpsUrl,
+  extractGoogleDriveFileId as extractDriveIdFromUrl,
+  isAdjuntoAllowedHost,
+} from "./adjuntoUrl.js";
+
 /**
  * @param {string} url
  * @returns {string}
  */
 export function extractGoogleDriveFileId(url) {
-  const s = String(url || "");
-  const m1 = s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (m1) return m1[1];
-  const m2 = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (m2) return m2[1];
-  return "";
+  return extractDriveIdFromUrl(url);
 }
 
 /**
@@ -24,8 +26,13 @@ export function extractGoogleDriveFileId(url) {
  */
 export function classifyAdjuntoHost(url) {
   try {
-    const host = new URL(String(url || "").trim()).hostname.toLowerCase();
-    if (!host) return "";
+    const cleaned = extractAdjuntoHttpsUrl(url) || String(url || "").trim();
+    const host = new URL(cleaned).hostname.toLowerCase();
+    if (!host || !isAdjuntoAllowedHost(host)) {
+      // Still classify non-allowed https as "other" for browser fallback attempts
+      if (host) return "other";
+      return "";
+    }
     if (
       host === "drive.google.com" ||
       host === "docs.google.com" ||
@@ -242,6 +249,22 @@ export async function inferPanelsAndAccessoriesFromPdf(url, deps) {
     };
   }
 
+  // Normalize messy ENCARGO cells before any network call
+  const normalizedUrl = extractAdjuntoHttpsUrl(url) || "";
+  if (!normalizedUrl) {
+    const hint = adjuntoUrlMissingHint(url);
+    return {
+      paneles: [],
+      accesorios: [],
+      warnings: [hint],
+      source: "adjunto_failed",
+      proxyAttempted: false,
+      browserAttempted: false,
+      ok: false,
+      userMessage: hint,
+    };
+  }
+
   const {
     extractTextFromPdfArrayBuffer,
     parseLogisticaFromAdjuntoText,
@@ -285,14 +308,14 @@ export async function inferPanelsAndAccessoriesFromPdf(url, deps) {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url: normalizedUrl }),
       });
       const j = await proxyRes.json().catch(() => ({}));
       if (proxyRes.ok && j.ok && j.base64) {
         const buffer = base64ToArrayBuffer(j.base64);
         const result = await parseBufferAsCargo(
           buffer,
-          url,
+          normalizedUrl,
           j.contentType || "",
           extractTextFromPdfArrayBuffer,
           parseLogisticaFromAdjuntoText,
@@ -322,9 +345,9 @@ export async function inferPanelsAndAccessoriesFromPdf(url, deps) {
   }
 
   // 2) Browser fallback — skip Drive (CORS); allow Dropbox/other public
-  if (shouldSkipBrowserAdjuntoFetch(url)) {
+  if (shouldSkipBrowserAdjuntoFetch(normalizedUrl)) {
     const userMessage =
-      "No se pudo leer el PDF de Drive. Revisá permisos de enlace o configurá el proxy API (token). No se intenta descarga en el navegador (CORS).";
+      "No se pudo leer el PDF de Drive. Revisá permisos de enlace (cualquiera con el link) o configurá el proxy API (token). No se intenta descarga en el navegador (CORS).";
     warnings.push(userMessage);
     return {
       paneles: [],
@@ -339,7 +362,7 @@ export async function inferPanelsAndAccessoriesFromPdf(url, deps) {
   }
 
   browserAttempted = true;
-  const fetchUrl = toFetchablePdfUrl(url);
+  const fetchUrl = toFetchablePdfUrl(normalizedUrl);
   let res;
   try {
     res = await fetchImpl(fetchUrl, { mode: "cors", credentials: "omit" });
