@@ -6,7 +6,7 @@ import {
   computeFingerprint,
   FINGERPRINT_VERSION,
 } from "./gapFingerprint.js";
-import { insertOutboxEvent, enqueuePeaJob } from "./outbox.js";
+import { insertOutboxEvent, enqueueAnalyzeGapJob } from "./outbox.js";
 
 const SEVERITY_WEIGHT = { low: 1, medium: 2, high: 5, critical: 10 };
 
@@ -128,11 +128,11 @@ export async function recordGapSignal(pool, config, signal) {
       passesAnalysisThreshold(config, gap, { force: signal.force_analyze });
 
     if (shouldAnalyze) {
-      jobId = await enqueuePeaJob(client, {
-        jobType: "analyze_gap",
+      const enqueued = await enqueueAnalyzeGapJob(client, {
         gapId: gap.id,
         input: { trigger: "threshold", gap_id: gap.id },
       });
+      jobId = enqueued.jobId;
     }
 
     await client.query("COMMIT");
