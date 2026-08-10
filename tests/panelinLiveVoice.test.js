@@ -193,6 +193,24 @@ const explicitFail = await req("/api/agent/voice/session", {
 assert(explicitFail.status === 502, "mint 429 con voiceProvider explícito openai → 502 sin fallback");
 clearVoiceProviderDeadMarks();
 
+// Ops pin VOICE_PROVIDER=openai also blocks cross-provider mint fallback
+// (Bug DL — pin must not send prompt/mic to a provider ops disabled).
+const prevVoicePin = config.voiceProvider;
+config.voiceProvider = "openai";
+failOpenAiMintStatus = 429;
+const pinnedFail = await req("/api/agent/voice/session", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({}),
+});
+config.voiceProvider = prevVoicePin;
+clearVoiceProviderDeadMarks();
+assert(
+  pinnedFail.status === 502 &&
+    (pinnedFail.json?.provider === "openai" || pinnedFail.json?.provider == null),
+  "mint 429 con VOICE_PROVIDER=openai pin → 502 sin fallback a Grok",
+);
+
 // Grok Voice Agent mint
 const grokSess = await req("/api/agent/voice/session", {
   method: "POST",
