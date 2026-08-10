@@ -153,6 +153,24 @@ export function isSemanticEmbeddingAvailable() {
   return PROVIDER_ORDER.some(_hasUsableKey);
 }
 
+/**
+ * Idempotency gate for quote_embeddings upserts.
+ *
+ * Same content_hash alone is NOT enough: OpenAI and Gemini vectors live in
+ * incompatible spaces. After switching EMBEDDINGS_PROVIDER (or auto-failover
+ * dead-marking OpenAI), a hash-only skip would leave rows tagged with the old
+ * provider while queries filter by the new one → RAG returns [] forever.
+ *
+ * @param {{ content_hash?: string, provider?: string|null }|null|undefined} existing
+ * @param {string} contentHash
+ * @param {string} provider — provider that would generate the new vector
+ * @returns {boolean}
+ */
+export function shouldSkipCachedEmbedding(existing, contentHash, provider) {
+  if (!existing || !contentHash || !provider) return false;
+  return existing.content_hash === contentHash && existing.provider === provider;
+}
+
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
 /** @returns {string} valor normalizado de EMBEDDINGS_PROVIDER ("" si auto) */

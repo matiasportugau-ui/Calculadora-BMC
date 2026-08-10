@@ -18,8 +18,10 @@
  *
  * Idempotencia:
  *   Para cada lead: si lead_id ya existe en quote_embeddings con el mismo
- *   content_hash → skip (no hay cambios). Solo re-embede si el hash cambió
- *   (texto actualizado) o si se pasa --reembed-all.
+ *   content_hash Y el mismo provider → skip. Si el hash cambió, el provider
+ *   divergió (p.ej. openai→gemini tras EMBEDDINGS_PROVIDER), o se pasa
+ *   --reembed-all, se re-embede. Hash-only skip rompería RAG al cambiar de
+ *   espacio vectorial (queries filtran por provider).
  *
  * Errores por doc:
  *   Los errores de embedding o DB de un lead individual se loggean y se
@@ -40,7 +42,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
 
 // Importar después de cargar dotenv para que config.js lea las vars
-const { embedTextWithProvider, hashText, activeProvider } = await import(
+const { embedTextWithProvider, hashText, activeProvider, shouldSkipCachedEmbedding } = await import(
   path.join(repoRoot, "server/lib/embeddings.js")
 );
 const { config } = await import(path.join(repoRoot, "server/config.js"));
@@ -153,18 +155,25 @@ async function main() {
     }
   }
 
-  // Leer hashes existentes de la DB para detección de cambios
-  const existingHashes = new Map(); // lead_id → content_hash
+  // Leer hash+provider existentes para detección de cambios (espacio vectorial)
+  const existingRows = new Map(); // lead_id → { content_hash, provider }
   if (pool && !reembedAll) {
     try {
-      const res = await pool.query("SELECT lead_id, content_hash FROM quote_embeddings");
+      const res = await pool.query(
+        "SELECT lead_id, content_hash, provider FROM quote_embeddings",
+      );
       for (const row of res.rows) {
-        existingHashes.set(row.lead_id, row.content_hash);
+        existingRows.set(row.lead_id, {
+          content_hash: row.content_hash,
+          provider: row.provider,
+        });
       }
-      console.log(`Hashes existentes en DB: ${existingHashes.size}`);
+      console.log(
+        `Filas existentes en DB: ${existingRows.size} (active provider: ${activeProvider()})`,
+      );
     } catch (err) {
-      console.warn("Advertencia: no se pudieron leer hashes existentes:", err.message);
-      console.warn("¿Corriste la migración 0001? Ver migrations/README.md");
+      console.warn("Advertencia: no se pudieron leer filas existentes:", err.message);
+      console.warn("¿Corriste la migración 0001/0002? Ver migrations/README.md");
     }
   }
 
@@ -217,8 +226,17 @@ async function main() {
 
     const contentHash = hashText(textForEmbedding);
 
-    // Skip si el hash no cambió (idempotencia)
-    if (!reembedAll && existingHashes.get(lead.lead_id) === contentHash) {
+    // Skip solo si hash Y provider coinciden (espacios vectoriales incompatibles).
+    // Re-leer activeProvider() por lead: un dead-mark mid-batch (OpenAI sin
+    // créditos) cambia el target a gemini y debe forzar re-embed del corpus.
+    if (
+      !reembedAll &&
+      shouldSkipCachedEmbedding(
+        existingRows.get(lead.lead_id),
+        contentHash,
+        activeProvider(),
+      )
+    ) {
       stats.skipped_hash_match++;
       continue;
     }
