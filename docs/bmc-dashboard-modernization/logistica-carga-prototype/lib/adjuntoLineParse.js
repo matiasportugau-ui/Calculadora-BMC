@@ -115,9 +115,10 @@ function parseClassicTableLenQty(afterMm) {
   const s = String(afterMm || "").replace(/\s+/g, " ").trim();
   if (!s) return null;
   // First number in 1.5–14.5 (panel/acc length), optional unit m/M (not mm), then integer qty 1–200.
-  // Bug CY: PDF/Excel often emit Largo as "2,50 m" / "2,50m" (unit from "Largos (m)" header).
+  // Bug CZ: PDF/Excel often emit Largo as "2,50 m" / "2,50m" (unit from "Largos (m)" header).
   // Without optional m, the pair was skipped and the next match stole qty from PU ("11 37,00" → L=11 qty=3)
   // or fail-closed to null after BP/(?!\d) — silent wrong/missing cargo.
+  // Distinct from #998 Bug CY (modern ×L without m / industrial qty×len ENCARGO).
   const re = /(\d{1,2}[.,]\d{1,2}|\d{1,2})(?:\s*[mM](?![mM]))?\s+(\d{1,3})(?!\s*[.,]\d)/g;
   let m;
   while ((m = re.exec(s)) !== null) {
