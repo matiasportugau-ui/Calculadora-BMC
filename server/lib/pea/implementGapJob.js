@@ -7,6 +7,12 @@ import { runNativeImplementer } from "./implementer/nativeAdapter.js";
 import { recordPeaAudit } from "./auditEvents.js";
 import { loadPacketWithGap } from "./packetReview.js";
 
+/** Packet statuses that may still be implemented (Bug DB). */
+export const IMPLEMENTABLE_PACKET_STATUSES = new Set(["ready_for_review"]);
+
+/** Gap statuses that must never authorize L3 implement (Bug DB). */
+export const NON_IMPLEMENTABLE_GAP_STATUSES = new Set(["resolved", "ignored"]);
+
 /**
  * @param {import('pg').Pool} pool
  * @param {string} packetId
@@ -28,19 +34,27 @@ export async function findActiveGrantForPacket(pool, packetId) {
 /**
  * @param {import('pg').Pool} pool
  * @param {import('../../config.js').config} config
- * @param {{ packetId: string, actorId: string, repoRoot?: string }} input
+ * @param {{ packetId: string, actorId: string, repoRoot?: string, adapter?: string }} input
  */
 export async function runImplementPacket(pool, config, input) {
   const envCheck = assertImplementEnvironment(config);
   if (!envCheck.ok) return envCheck;
 
+  const row = await loadPacketWithGap(pool, input.packetId);
+  if (!row) return { error: "not_found" };
+
+  // Bug DB: active grant alone must not resurrect rejected/ignored/resolved work.
+  if (!IMPLEMENTABLE_PACKET_STATUSES.has(row.status)) {
+    return { ok: false, error: "invalid_status", status: row.status };
+  }
+  if (NON_IMPLEMENTABLE_GAP_STATUSES.has(row.gap_status)) {
+    return { ok: false, error: "invalid_gap_status", status: row.gap_status };
+  }
+
   const grant = await findActiveGrantForPacket(pool, input.packetId);
   if (!grant) {
     return { ok: false, error: "grant_required", min_level: 3 };
   }
-
-  const row = await loadPacketWithGap(pool, input.packetId);
-  if (!row) return { error: "not_found" };
 
   const gap = {
     id: row.gap_id,
@@ -56,6 +70,16 @@ export async function runImplementPacket(pool, config, input) {
     gap,
     repoRoot: input.repoRoot || process.cwd(),
   });
+
+  if (artifact?.ok === false) {
+    return {
+      ok: false,
+      error: artifact.error || "implement_failed",
+      adapter: artifact.adapter,
+      artifact_path: artifact.path || artifact.artifact_path || null,
+      grant_id: grant.id,
+    };
+  }
 
   await recordPeaAudit(pool, {
     actorId: input.actorId,

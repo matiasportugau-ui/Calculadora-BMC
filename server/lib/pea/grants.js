@@ -93,3 +93,42 @@ export async function revokePeaGrant(db, input) {
 
   return rows[0];
 }
+
+/**
+ * Revoke every active grant scoped to a packet (Bug DB).
+ * Used when accept/reject terminalizes a packet so orphan L3 grants cannot
+ * still authorize implement.
+ *
+ * @param {import('pg').Pool|import('pg').PoolClient} db
+ * @param {{ packetId: string, revokedBy: string, reason?: string }} input
+ */
+export async function revokePeaGrantsForPacket(db, input) {
+  const scope = `packet:${input.packetId}`;
+  const { rows } = await db.query(
+    `UPDATE pea.grants SET revoked_at = now(), metadata = metadata || $3::jsonb
+     WHERE revoked_at IS NULL
+       AND (packet_id = $1 OR scope = $2)
+     RETURNING id`,
+    [
+      input.packetId,
+      scope,
+      JSON.stringify({
+        revoke_reason: input.reason || "packet_terminalized",
+        revoked_by: input.revokedBy,
+      }),
+    ],
+  );
+  for (const row of rows) {
+    await recordPeaAudit(db, {
+      actorId: input.revokedBy,
+      action: "grant.revoke",
+      resourceType: "grant",
+      resourceId: row.id,
+      metadata: {
+        reason: input.reason || "packet_terminalized",
+        packet_id: input.packetId,
+      },
+    });
+  }
+  return rows;
+}

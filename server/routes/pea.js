@@ -267,8 +267,18 @@ export default function createPeaRouter(config, logger) {
     if (result.error === "grant_required") {
       return res.status(403).json({ ok: false, error: "grant_required", min_level: 3 });
     }
+    if (result.error === "invalid_status" || result.error === "invalid_gap_status") {
+      return res.status(409).json({
+        ok: false,
+        error: result.error,
+        status: result.status,
+      });
+    }
     if (result.error === "implement_disabled" || result.error === "implement_staging_only") {
       return res.status(403).json({ ok: false, error: result.error, info: result.info });
+    }
+    if (result.ok === false) {
+      return res.status(422).json({ ok: false, error: result.error || "implement_failed", ...result });
     }
     res.status(201).json(result);
   }));
