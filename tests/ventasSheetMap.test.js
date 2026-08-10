@@ -176,6 +176,23 @@ const ROW = [
     true,
   );
   assert.equal(isInstructionNoiseNombre("Luis González"), false);
+  // Bug CN — ops note on a real client name must not hide the Ventas row.
+  assert.equal(isInstructionNoiseNombre("Luis González - pedir celular"), false);
+  assert.equal(isInstructionNoiseNombre("pedir celular"), true);
+  const namedWithNote = {
+    nombre: "Luis González - pedir celular",
+    orderId: "1345381",
+    tel: "099123456",
+    dir: "Maldonado",
+    pdf: "https://example.com/a.pdf",
+    encargoPlain: "",
+    fechaEntrega: "2026-08-10",
+  };
+  assert.equal(
+    isVentasLogisticaCandidate(namedWithNote),
+    true,
+    "Bug CN: named client + pedir celular note stays a candidate",
+  );
   const instruction = {
     nombre: "Hacer un escaneo de CI cuando entregamos Pedir Celular",
     orderId: "",
