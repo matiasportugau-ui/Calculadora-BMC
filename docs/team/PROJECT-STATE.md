@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-10 (fix — Bug CS PEA accept/reject race):** `acceptPeaPacket` / `rejectPeaPacket` checked status outside the write path (accept: before `BEGIN`; reject: no transaction) and UPDATEd by id only — concurrent accept+reject both returned `ok: true` and last writer corrupted the terminal decision (accepted↔rejected, gap resolved↔ignored). Same class: escalate then accept could overwrite `gap=blocked` → `resolved`. Fix: `SELECT … FOR UPDATE OF p, g`, re-check status (and gap terminal/blocked on accept), conditional `UPDATE … WHERE status = ANY(…) RETURNING`. Tests: `peaTerminalStateGuard` Bug CS cases.
+
 **2026-08-10 (fix — Bug CY adjunto industrial qty/len drop):** Modern lines `… N paneles × 4,40` / `× 4.40` (unit omitted by pdf.js / industrial PDFs) silently `lengthDefaulted` to L=6 → wrong packing geometry after #984 CG. Same class: ENCARGO packing `ISOPANEL 100 mm — 20 × 6,00 m` / `20×6m` without `paneles|uds` fail-closed to 0 cargo. Fix: accept `× L` in the 1.5–14.5 m window without requiring `m`; parse industrial `qty × L` when classic/modern qty phrases are absent. Tests: `adjuntoLineParse` Bug CY cases.
 
 **2026-08-10 (fix — Bug CH Logística HYPERLINK label lost after #985):** `#985` `sanitizeEncargoCell` extracted the Drive URL from `=HYPERLINK("url","Cotizacion-Isodec-….pdf")` then stripped the whole formula, dropping the display label. When Drive PDF fetch fails (common), `inferCargoFromEncargoAndSheet` no longer saw panel specs in the filename → empty autocarga cargo (pre-#985 still inferred from the label). Fix: preserve HYPERLINK second-arg label in `plainText`. Tests: `ventasSheetMap` + `cargoFromEncargo` Bug CH cases.
