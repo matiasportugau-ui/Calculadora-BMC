@@ -5025,40 +5025,43 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     }
   }, [groups, proyecto, currentBudgetCode, showToast, buildClientePdfHtml, requireProyectoParaPdf, driveFolderConfig, buildSerializedProject, handleDriveRefresh, persistExportToCompanyDrive]);
 
+  const applyDeserializedProject = useCallback((state, toastMsg) => {
+    setScenario(state.scenario);
+    setLP(state.listaPrecios);
+    setProyecto(state.proyecto);
+    setTecho(state.techo);
+    setPared(state.pared);
+    setCamara(state.camara);
+    setFlete(state.flete);
+    setOverrides(state.overrides);
+    setExcludedItems(state.excludedItems);
+    if (state.categoriasActivas && Object.keys(state.categoriasActivas).length) setCategoriasActivas(state.categoriasActivas);
+    if (state.libreAcc) setLibreAcc(state.libreAcc);
+    if (state.librePanelLines) setLibrePanelLines(state.librePanelLines.map(normalizeLibrePanelLine));
+    if (state.librePerfilQty) setLibrePerfilQty(state.librePerfilQty);
+    if (state.libreFijQty) setLibreFijQty(state.libreFijQty);
+    if (state.libreSellQty) setLibreSellQty(state.libreSellQty);
+    if (state.libreExtra) setLibreExtra(state.libreExtra);
+    if (state.librePerfilFilter != null) setLibrePerfilFilter(state.librePerfilFilter);
+    if (state.techoAnchoModo) setTechoAnchoModo(state.techoAnchoModo);
+    if (state._meta?.quotationCode) setCurrentBudgetCode(state._meta.quotationCode);
+    setShowDrivePanel(false);
+    if (toastMsg) showToast(toastMsg);
+  }, [showToast]);
+
   const handleDriveLoad = useCallback(async (folderId) => {
     setDriveLoading(true);
     setDriveError(null);
     try {
       const data = await loadProjectFromFolder(folderId);
       if (!data) { setDriveError("No se encontró archivo de proyecto (.bmc.json)"); return; }
-      const state = deserializeProject(data);
-      setScenario(state.scenario);
-      setLP(state.listaPrecios);
-      setProyecto(state.proyecto);
-      setTecho(state.techo);
-      setPared(state.pared);
-      setCamara(state.camara);
-      setFlete(state.flete);
-      setOverrides(state.overrides);
-      setExcludedItems(state.excludedItems);
-      if (state.categoriasActivas && Object.keys(state.categoriasActivas).length) setCategoriasActivas(state.categoriasActivas);
-      if (state.libreAcc) setLibreAcc(state.libreAcc);
-      if (state.librePanelLines) setLibrePanelLines(state.librePanelLines.map(normalizeLibrePanelLine));
-      if (state.librePerfilQty) setLibrePerfilQty(state.librePerfilQty);
-      if (state.libreFijQty) setLibreFijQty(state.libreFijQty);
-      if (state.libreSellQty) setLibreSellQty(state.libreSellQty);
-      if (state.libreExtra) setLibreExtra(state.libreExtra);
-      if (state.librePerfilFilter != null) setLibrePerfilFilter(state.librePerfilFilter);
-      if (state.techoAnchoModo) setTechoAnchoModo(state.techoAnchoModo);
-      if (state._meta?.quotationCode) setCurrentBudgetCode(state._meta.quotationCode);
-      setShowDrivePanel(false);
-      showToast("Cotización cargada desde Drive");
+      applyDeserializedProject(deserializeProject(data), "Cotización cargada desde Drive");
     } catch (err) {
       setDriveError(err.message || "Error al cargar cotización");
     } finally {
       setDriveLoading(false);
     }
-  }, [showToast]);
+  }, [applyDeserializedProject]);
 
   // Deep-link: `?openDrive=<folderId>` opens a saved Drive quote on page load (one-click edit from the
   // leads sheet). Inert unless the param is present; reuses the existing Drive-load flow. Runs once.
@@ -5071,6 +5074,68 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setShowDrivePanel(true);      // surfaces the Drive panel so sign-in is available if not yet authed
     handleDriveLoad(folderId);    // on success this loads the .bmc.json and closes the panel
   }, [handleDriveLoad]);
+
+  // Deep-link: `?openBmc=<url|key>` loads a public .bmc.json (GCS) without Drive OAuth.
+  // Allowlist: https://storage.googleapis.com/bmc-cotizaciones/...  or short key under quotes/bmc-json/
+  // Used when server Drive refresh token is broken / SA has no storage quota.
+  const openBmcDoneRef = useRef(false);
+  useEffect(() => {
+    if (openBmcDoneRef.current) return;
+    const raw = new URLSearchParams(window.location.search).get("openBmc");
+    if (!raw) return;
+    openBmcDoneRef.current = true;
+
+    const GCS_HOST = "https://storage.googleapis.com/bmc-cotizaciones/";
+    const resolveUrl = (v) => {
+      const s = String(v || "").trim();
+      if (!s) return null;
+      if (/^https?:\/\//i.test(s)) {
+        try {
+          const u = new URL(s);
+          if (u.hostname !== "storage.googleapis.com") return null;
+          if (!u.pathname.startsWith("/bmc-cotizaciones/")) return null;
+          if (!u.pathname.toLowerCase().endsWith(".bmc.json") && !u.pathname.toLowerCase().endsWith(".json")) return null;
+          return u.toString();
+        } catch {
+          return null;
+        }
+      }
+      // short key: "Sory-IsoRoof-Foil-30" or "quotes/bmc-json/foo.bmc.json"
+      const key = s.replace(/^\//, "");
+      const path = key.includes("/")
+        ? key
+        : `quotes/bmc-json/${key.endsWith(".bmc.json") || key.endsWith(".json") ? key : `${key}.bmc.json`}`;
+      return `${GCS_HOST}${path.replace(/^bmc-cotizaciones\//, "")}`;
+    };
+
+    const url = resolveUrl(raw);
+    if (!url) {
+      showToast("Link openBmc inválido (solo GCS bmc-cotizaciones)");
+      return;
+    }
+
+    (async () => {
+      setDriveLoading(true);
+      setDriveError(null);
+      try {
+        const resp = await fetch(url, { credentials: "omit" });
+        if (!resp.ok) throw new Error(`No se pudo bajar el .bmc.json (${resp.status})`);
+        const data = await resp.json();
+        applyDeserializedProject(deserializeProject(data), "Cotización cargada (.bmc.json)");
+        // Clean query so refresh doesn't re-import
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.delete("openBmc");
+          window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+        } catch { /* ignore */ }
+      } catch (err) {
+        setDriveError(err.message || "Error al cargar .bmc.json");
+        showToast(err.message || "Error al cargar .bmc.json");
+      } finally {
+        setDriveLoading(false);
+      }
+    })();
+  }, [applyDeserializedProject, showToast]);
 
   const handleDriveDelete = useCallback(async (folderId) => {
     if (!confirm("¿Eliminar esta cotización de Google Drive?")) return;
