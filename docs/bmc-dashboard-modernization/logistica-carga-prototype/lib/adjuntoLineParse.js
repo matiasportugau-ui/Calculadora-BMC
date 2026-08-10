@@ -9,9 +9,17 @@ import { parseTsvRows } from "./sheetPaste.js";
 const ESP_SET = new Set(ESPS.map(Number));
 const LENS_NUM = LENS.map(Number);
 
+/**
+ * Normalize panel length for autocarga.
+ * Cut-to-length quotes use fractional meters (2.30 / 2.50 / 4.40). Collapsing those
+ * onto integer catalog LENS (3..12) corrupted packing geometry (e.g. 2.50 → 3).
+ */
 function snapLen(x) {
   const n = Number(String(x ?? "").replace(",", "."));
   if (!Number.isFinite(n)) return 6;
+  // Preserve cut lengths in the classic/modern parse window (cm precision).
+  if (n >= 1.5 && n <= 14.5) return Math.round(n * 100) / 100;
+  // Outside that window: nearest catalog length for defensive UI defaults.
   let best = LENS_NUM[0];
   let bestD = Math.abs(best - n);
   for (const L of LENS_NUM) {
