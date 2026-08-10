@@ -196,4 +196,22 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
   ok("Bug BY: free-text + classic gotero echo → qty 2 once");
 }
 
+{
+  // Bug CJ — classic inline Excel Cantidad "11,00" / "11.00" must not become qty=1
+  // (regex backtrack took the first digit of 11 when ,00 rejected the full match).
+  const excelComma = parsePanelLineHeuristic(
+    "Isopanel EPS 100 mm (Fachada)  2,50  11,00  37,00  1.159,95",
+  );
+  assert.ok(excelComma, "expected classic Excel-decimal qty row");
+  assert.equal(excelComma.cantidad, 11, `comma qty got ${JSON.stringify(excelComma)}`);
+  const excelDot = parsePanelLineHeuristic("Isopanel EPS 100 mm 2.50 11.00 37.00");
+  assert.ok(excelDot);
+  assert.equal(excelDot.cantidad, 11, `dot qty got ${JSON.stringify(excelDot)}`);
+  const plain = parsePanelLineHeuristic(
+    "Isopanel EPS 100 mm (Fachada)  2,50  11  37,00  1.159,95",
+  );
+  assert.equal(plain?.cantidad, 11, "integer qty still works");
+  ok("Bug CJ: classic Excel decimal Cantidad keeps full integer qty");
+}
+
 console.log(`\n${passed} passed`);

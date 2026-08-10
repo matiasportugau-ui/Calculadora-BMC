@@ -106,8 +106,13 @@ function looksLikeAccessoryLine(raw) {
 function parseClassicTableLenQty(afterMm) {
   const s = String(afterMm || "").replace(/\s+/g, " ").trim();
   if (!s) return null;
-  // First number in 1.5–14.5 (panel length), then integer qty 1–200 (not a price like 37,00).
-  const re = /(\d{1,2}[.,]\d{1,2}|\d{1,2})\s+(\d{1,3})(?!\s*[.,]\d)/g;
+  // First number in 1.5–14.5 (panel length), then qty 1–200.
+  // Excel/Sheets often emit Cantidad as "11,00" / "11.00". The old
+  // `(?!\s*[.,]\d)` lookahead rejected that and backtracked to qty=1
+  // (first digit of 11) — silent under-cargo (Bug CJ).
+  // Allow optional trailing ,00/.00 on qty; require `(?!\d)` so "11,00"
+  // cannot match as qty=1.
+  const re = /(\d{1,2}[.,]\d{1,2}|\d{1,2})\s+(\d{1,3})(?:[.,]0+)?(?!\d)/g;
   let m;
   while ((m = re.exec(s)) !== null) {
     const len = parseFloat(String(m[1]).replace(",", "."));
