@@ -8,7 +8,7 @@ import {
   settleBudget,
   refundBudget,
 } from "./analysisPreflight.js";
-import { passesAnalysisThreshold } from "./gapEvents.js";
+import { passesAnalysisThreshold, TERMINAL_GAP_STATUSES } from "./gapEvents.js";
 import { runArchitectRuntime } from "./architectRuntime.js";
 
 const MOCK_MODEL = {
@@ -32,6 +32,23 @@ export async function runAnalyzeGapJob(pool, config, job, logger) {
   const gap = gapRows[0];
   if (!gap) {
     throw new Error("gap_not_found");
+  }
+
+  // Bug CA: never re-analyze terminal gaps (even force diagnose) — saveEvolutionPacket
+  // UPSERTs version=1 and would destroy accepted packets + flip gap off resolved.
+  if (TERMINAL_GAP_STATUSES.has(gap.status)) {
+    await pool.query(
+      `UPDATE pea.jobs SET status = 'completed', output_json = $2::jsonb, completed_at = now() WHERE id = $1`,
+      [
+        job.id,
+        JSON.stringify({
+          ok: true,
+          skipped: "terminal_gap_status",
+          status: gap.status,
+        }),
+      ],
+    );
+    return { skipped: true, reason: "terminal_gap_status", status: gap.status };
   }
 
   if (!passesAnalysisThreshold(config, gap, { force })) {
