@@ -246,7 +246,7 @@ export function parsePanelLineHeuristic(line) {
  * (classic table). Prevents dual-format PDFs from billing 2× panel qty (Bug BX).
  *
  * Also drop modern rows that share exact tipo|esp|L|qty with a classic sibling — Abril-style
- * `× 4.40 m` sets lengthDefaulted=false, so BX alone still billed 2× (Bug CL). Collapse is
+ * `× 4.40 m` sets lengthDefaulted=false, so BX alone still billed 2× (Bug CO). Collapse is
  * cross-source only so classic multi-length rows that snapLen maps to the same catalog L
  * (open CG/#984) are not merged into one under-count.
  * @param {Array<{ tipo: string, espesor: number, longitud: number, cantidad: number, lengthDefaulted?: boolean, echoSource?: string }>} paneles
@@ -267,7 +267,7 @@ function collapseDefaultLengthPanelEchoes(paneles) {
     const key = `${p.tipo}|${p.espesor}|${p.cantidad}`;
     if (p.lengthDefaulted && explicitKeys.has(key)) continue;
     const exactKey = `${p.tipo}|${p.espesor}|${p.longitud}|${p.cantidad}`;
-    // Bug CL: modern explicit-L echo of a classic row with the same snapped identity.
+    // Bug CO: modern explicit-L echo of a classic row with the same snapped identity.
     if (p.echoSource === "modern" && !p.lengthDefaulted && classicExactKeys.has(exactKey)) {
       continue;
     }
