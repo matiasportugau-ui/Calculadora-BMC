@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-10 (fix — Bug CJ classic Excel Cantidad digit-prefix):** Classic cotización rows with Excel/Sheets qty `11,00` / `11.00` were parsed as **qty=1** — `parseClassicTableLenQty` rejected the `,00` via `(?!\s*[.,]\d)` then backtracked so `\d{1,3}` matched only the leading `1` of `11`. Silent under-cargo on autocarga from pasted classic tables. Fix: allow optional trailing `,00`/`.00` on qty and require `(?!\d)`. Distinct from BS/#970 (TSV `parseQtyCell`) and CG/#984 (`snapLen`). Tests: `adjuntoLineParse` Bug CJ.
+**2026-08-10 (fix — Bug CK classic Excel Cantidad digit-prefix):** Classic cotización rows with Excel/Sheets qty `11,00` / `11.00` were parsed as **qty=1** — `parseClassicTableLenQty` rejected the `,00` via `(?!\s*[.,]\d)` then backtracked so `\d{1,3}` matched only the leading `1` of `11`. Silent under-cargo on autocarga from pasted classic tables. Fix: allow optional trailing `,00`/`.00` on qty and require `(?!\d)`. Distinct from BS/#970 (TSV `parseQtyCell`), CJ/#990 (accessory echo keys), and CG/#984 (`snapLen`). Tests: `adjuntoLineParse` Bug CK.
 
 **2026-08-10 (fix — Bug CH Logística HYPERLINK label lost after #985):** `#985` `sanitizeEncargoCell` extracted the Drive URL from `=HYPERLINK("url","Cotizacion-Isodec-….pdf")` then stripped the whole formula, dropping the display label. When Drive PDF fetch fails (common), `inferCargoFromEncargoAndSheet` no longer saw panel specs in the filename → empty autocarga cargo (pre-#985 still inferred from the label). Fix: preserve HYPERLINK second-arg label in `plainText`. Tests: `ventasSheetMap` + `cargoFromEncargo` Bug CH cases.
 
