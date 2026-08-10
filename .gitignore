@@ -136,3 +136,7 @@ gha-creds-*.json
 
 # Playwright MCP run artifacts (screenshots, console logs, downloaded crx)
 .playwright-mcp/
+
+# panelin-mcp worker local secrets/runtime state
+workers/panelin-mcp/.dev.vars
+workers/panelin-mcp/.wrangler/

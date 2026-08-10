@@ -156,7 +156,6 @@ const CAB_HEIGHT_M = 1.5;
 const COLORS = ["#0071e3", "#34c759", "#ff9f0a", "#ff3b30", "#af52de", "#ff375f", "#5ac8fa", "#ff6b00"];
 const TIPOS = ["ISODEC", "ISOPANEL", "ISOROOF", "ISOWALL", "ISOFRIG", "ISOFRIG_PIR"];
 const ESPS = [40, 50, 60, 80, 100, 150, 200, 250];
-const LENS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const SH_ID = "1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA";
 const SH_GID = "926747636";
 const STORAGE_KEY = "bmc-logistica-online-v2";
@@ -4701,9 +4700,16 @@ export default function BmcLogisticaApp() {
                             <select style={{ ...css.inp, width: 86 }} value={p.espesor} onChange={(e) => updPanel(stop.id, p.id, "espesor", Number(e.target.value))}>
                               {ESPS.map((e) => <option key={e} value={e}>{e}mm</option>)}
                             </select>
-                            <select style={{ ...css.inp, width: 70 }} value={p.longitud} onChange={(e) => updPanel(stop.id, p.id, "longitud", Number(e.target.value))}>
-                              {LENS.map((l) => <option key={l} value={l}>{l}m</option>)}
-                            </select>
+                            <input
+                              style={{ ...css.inp, width: 70 }}
+                              type="number"
+                              min={1.5}
+                              max={14.5}
+                              step="0.1"
+                              title="Largo (m)"
+                              value={p.longitud}
+                              onChange={(e) => updPanel(stop.id, p.id, "longitud", Number(e.target.value))}
+                            />
                             <input style={{ ...css.inp, width: 56 }} type="number" min={1} value={p.cantidad} onChange={(e) => updPanel(stop.id, p.id, "cantidad", Math.max(1, Number(e.target.value)))} />
                             <Btn onClick={() => rmPanel(stop.id, p.id)} color={T.danger} small>✕</Btn>
                           </div>

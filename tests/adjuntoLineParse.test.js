@@ -115,6 +115,11 @@ Cotización                                            Isopanel e Isodec EPS 100
   assert.equal(r.paneles.length, 3, `expected 3 panel lines, got ${JSON.stringify(r.paneles)}`);
   const sum = r.paneles.reduce((a, p) => a + p.cantidad, 0);
   assert.equal(sum, 22, `11+5+6=22, got ${sum} ${JSON.stringify(r.paneles)}`);
+  // Bug CG: must keep cut lengths — nearest integer LENS would turn 2.50/2.30 → 3.
+  const byQty = Object.fromEntries(r.paneles.map((p) => [p.cantidad, p.longitud]));
+  assert.equal(byQty[11], 2.5, `11× Fachada largo 2.50, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(byQty[5], 2.3, `5× Fachada largo 2.30, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(byQty[6], 4, `6× Cubierta largo 4.00, got ${JSON.stringify(r.paneles)}`);
   assert.ok(
     r.accesorios.some((a) => /gotero/i.test(a.descr) && a.cantidad === 2),
     `goteros: ${JSON.stringify(r.accesorios)}`,
@@ -128,6 +133,7 @@ Cotización                                            Isopanel e Isodec EPS 100
   assert.ok(p);
   assert.equal(p.cantidad, 8);
   assert.equal(p.espesor, 80);
+  assert.equal(p.longitud, 4.4, "Bug CG: explicit × 4.40 m must not snap to catalog 4");
   ok("Abril-style modern line with paneles");
 }
 
