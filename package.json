@@ -158,6 +158,8 @@
     "wa:cloud-check": "node scripts/whatsapp-cloud-check.mjs",
     "matriz:rename-headers": "node scripts/matriz-rename-bromyros-headers.mjs",
     "followup": "node scripts/followup.mjs",
+    "release:audit": "node scripts/release-readiness-audit.mjs",
+    "release:audit:strict": "node scripts/release-readiness-audit.mjs --strict",
     "program:status": "node scripts/program-status.mjs",
     "project:compass": "node scripts/project-compass.mjs",
     "schedule": "npm run project:compass",
