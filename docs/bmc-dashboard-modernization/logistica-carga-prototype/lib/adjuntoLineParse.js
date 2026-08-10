@@ -206,8 +206,11 @@ export function parsePanelLineHeuristic(line) {
   let cantidad;
 
   let lengthDefaulted = false;
+  /** @type {"modern"|"classic"|null} */
+  let echoSource = null;
   if (qtyFromPhrase != null || qtyLead != null) {
     // Modern BMC PDF: "ISODEC 100mm · 10 paneles" — default L unless explicit meters.
+    echoSource = "modern";
     cantidad = qtyLead != null ? qtyLead : qtyFromPhrase;
     const explicitLen =
       raw.match(/\b(?:largo|longitud)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:m(?![mM²2]))?(?!\w)/i) ||
@@ -220,6 +223,7 @@ export function parsePanelLineHeuristic(line) {
       lengthDefaulted = true;
     }
   } else if (classic) {
+    echoSource = "classic";
     longitud = classic.longitud;
     cantidad = classic.cantidad;
   } else {
@@ -233,25 +237,40 @@ export function parsePanelLineHeuristic(line) {
     longitud,
     cantidad: Math.max(1, cantidad),
     ...(lengthDefaulted ? { lengthDefaulted: true } : {}),
+    ...(echoSource ? { echoSource } : {}),
   };
 }
 
 /**
  * Drop modern default-L=6 echoes when the same tipo|esp|qty already has an explicit length
  * (classic table). Prevents dual-format PDFs from billing 2× panel qty (Bug BX).
- * @param {Array<{ tipo: string, espesor: number, longitud: number, cantidad: number, lengthDefaulted?: boolean }>} paneles
+ *
+ * Also drop modern rows that share exact tipo|esp|L|qty with a classic sibling — Abril-style
+ * `× 4.40 m` sets lengthDefaulted=false, so BX alone still billed 2× (Bug CL). Collapse is
+ * cross-source only so classic multi-length rows that snapLen maps to the same catalog L
+ * (open CG/#984) are not merged into one under-count.
+ * @param {Array<{ tipo: string, espesor: number, longitud: number, cantidad: number, lengthDefaulted?: boolean, echoSource?: string }>} paneles
  */
 function collapseDefaultLengthPanelEchoes(paneles) {
   const explicitKeys = new Set();
+  const classicExactKeys = new Set();
   for (const p of paneles) {
     if (!p.lengthDefaulted) {
       explicitKeys.add(`${p.tipo}|${p.espesor}|${p.cantidad}`);
+    }
+    if (p.echoSource === "classic") {
+      classicExactKeys.add(`${p.tipo}|${p.espesor}|${p.longitud}|${p.cantidad}`);
     }
   }
   const out = [];
   for (const p of paneles) {
     const key = `${p.tipo}|${p.espesor}|${p.cantidad}`;
     if (p.lengthDefaulted && explicitKeys.has(key)) continue;
+    const exactKey = `${p.tipo}|${p.espesor}|${p.longitud}|${p.cantidad}`;
+    // Bug CL: modern explicit-L echo of a classic row with the same snapped identity.
+    if (p.echoSource === "modern" && !p.lengthDefaulted && classicExactKeys.has(exactKey)) {
+      continue;
+    }
     out.push({
       tipo: p.tipo,
       espesor: p.espesor,
