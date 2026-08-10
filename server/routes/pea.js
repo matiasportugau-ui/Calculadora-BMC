@@ -16,6 +16,7 @@ import { createPeaGrant, revokePeaGrant } from "../lib/pea/grants.js";
 import { PEA_ACTIONS, requirePeaAction } from "../lib/pea/principal.js";
 import { runImplementPacket } from "../lib/pea/implementGapJob.js";
 import { runPeaReplay } from "../lib/pea/replayJob.js";
+import { enqueueAnalyzeGapJob } from "../lib/pea/outbox.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -149,13 +150,18 @@ export default function createPeaRouter(config, logger) {
     asyncHandler(async (req, res) => {
       if (!requirePeaEnabled(config, res)) return;
       if (!pool) return res.status(503).json({ ok: false, error: "db_unavailable" });
-      const { rows } = await pool.query(
-        `INSERT INTO pea.jobs (job_type, gap_id, status, input_json)
-         VALUES ('analyze_gap', $1, 'pending', $2::jsonb)
-         RETURNING id`,
-        [req.params.gapId, JSON.stringify({ force: true, note: req.body?.note || null, by: req.user?.sub })],
-      );
-      res.status(202).json({ job_id: rows[0].id, gap_id: req.params.gapId, status: "pending" });
+      // Bug CF: coalesce with any active analyze_gap for this gap (no N× jobs).
+      const { jobId, coalesced } = await enqueueAnalyzeGapJob(pool, {
+        gapId: req.params.gapId,
+        input: { force: true, note: req.body?.note || null, by: req.user?.sub },
+      });
+      if (!jobId) return res.status(503).json({ ok: false, error: "enqueue_failed" });
+      res.status(202).json({
+        job_id: jobId,
+        gap_id: req.params.gapId,
+        status: "pending",
+        coalesced,
+      });
     }),
   );
 

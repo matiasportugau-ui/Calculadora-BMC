@@ -41,6 +41,67 @@ export async function enqueuePeaJob(client, job) {
   return rows[0].id;
 }
 
+/** Statuses that still occupy the per-gap analyze slot (Bug CF). */
+export const ACTIVE_ANALYZE_GAP_STATUSES = Object.freeze(["pending", "running", "failed"]);
+
+/**
+ * Enqueue analyze_gap with per-gap coalescing (Bug CF).
+ * Returns the existing active job when one is already pending/running/failed
+ * so threshold storms and diagnose double-submit cannot mint N concurrent
+ * ArchitectRuntime runs (budget burn + packet/status races).
+ *
+ * Requires migration `004_pea_analyze_gap_active_dedup.sql` for race safety;
+ * the SELECT path still collapses sequential duplicates before the index lands.
+ *
+ * @param {import('pg').Pool|import('pg').PoolClient} db
+ * @param {{ gapId: string, input?: object, runAfter?: Date|null }} job
+ * @returns {Promise<{ jobId: string|null, coalesced: boolean }>}
+ */
+export async function enqueueAnalyzeGapJob(db, job) {
+  const gapId = job?.gapId;
+  if (!gapId) {
+    throw new Error("gap_id_required");
+  }
+
+  const existing = await db.query(
+    `SELECT id FROM pea.jobs
+      WHERE gap_id = $1
+        AND job_type = 'analyze_gap'
+        AND status = ANY($2::text[])
+      ORDER BY created_at ASC
+      LIMIT 1`,
+    [gapId, ACTIVE_ANALYZE_GAP_STATUSES],
+  );
+  if (existing.rows[0]?.id) {
+    return { jobId: existing.rows[0].id, coalesced: true };
+  }
+
+  try {
+    const { rows } = await db.query(
+      `INSERT INTO pea.jobs (job_type, gap_id, status, input_json, run_after)
+       VALUES ('analyze_gap', $1, 'pending', $2::jsonb, $3)
+       RETURNING id`,
+      [gapId, JSON.stringify(job.input || {}), job.runAfter || null],
+    );
+    return { jobId: rows[0]?.id || null, coalesced: false };
+  } catch (e) {
+    // Unique violation from pea_jobs_analyze_gap_active_dedup (concurrent enqueue).
+    if (e && (e.code === "23505" || /pea_jobs_analyze_gap_active_dedup/i.test(String(e.message || "")))) {
+      const again = await db.query(
+        `SELECT id FROM pea.jobs
+          WHERE gap_id = $1
+            AND job_type = 'analyze_gap'
+            AND status = ANY($2::text[])
+          ORDER BY created_at ASC
+          LIMIT 1`,
+        [gapId, ACTIVE_ANALYZE_GAP_STATUSES],
+      );
+      return { jobId: again.rows[0]?.id || null, coalesced: true };
+    }
+    throw e;
+  }
+}
+
 /**
  * Write gap_event + outbox + optional analyze job in one transaction (M2a-ready API).
  * @param {import('pg').Pool} pool
@@ -76,11 +137,14 @@ export async function writeGapEventWithOutbox(pool, { gapEvent, enqueueAnalyze =
     });
     let jobId = null;
     if (enqueueAnalyze) {
-      jobId = await enqueuePeaJob(client, {
-        jobType: "analyze_gap",
-        gapId: gapEvent.gap_id || null,
+      if (!gapEvent.gap_id) {
+        throw new Error("gap_id_required");
+      }
+      const enqueued = await enqueueAnalyzeGapJob(client, {
+        gapId: gapEvent.gap_id,
         input: { gap_event_id: eventId, outbox_id: outboxId },
       });
+      jobId = enqueued.jobId;
     }
     await client.query("COMMIT");
     return { eventId, outboxId, jobId };
