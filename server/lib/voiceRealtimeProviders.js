@@ -25,18 +25,74 @@ export const OPENAI_REALTIME_BASE = "https://api.openai.com/v1/realtime";
 export const XAI_REALTIME_BASE = "https://api.x.ai/v1/realtime";
 export const OPENAI_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
 export const XAI_CLIENT_SECRETS_URL = "https://api.x.ai/v1/realtime/client_secrets";
+export const OPENAI_MODELS_URL = "https://api.openai.com/v1/models";
+export const XAI_MODELS_URL = "https://api.x.ai/v1/models";
+
+// Dead-mark: tras un fallo de mint/health de un engine (cuota, auth, timeout de
+// egress — visto 2026-08-10: api.openai.com inalcanzable desde Cloud Run), se lo
+// marca muerto por 5 min para que "auto" resuelva directo al otro engine sin
+// esperar otro timeout. Mismo patrón que server/lib/embeddings.js.
+const VOICE_DEAD_COOLDOWN_MS = 5 * 60 * 1000;
+const _voiceDeadUntil = new Map();
+
+/** @param {"openai"|"grok"} provider */
+export function markVoiceProviderDead(provider) {
+  _voiceDeadUntil.set(provider, Date.now() + VOICE_DEAD_COOLDOWN_MS);
+}
+
+/** @param {"openai"|"grok"} provider */
+export function isVoiceProviderDead(provider) {
+  return (_voiceDeadUntil.get(provider) || 0) > Date.now();
+}
+
+/** Test helper — clears in-process dead-marks. */
+export function clearVoiceProviderDeadMarks() {
+  _voiceDeadUntil.clear();
+}
+
+/**
+ * Errores de mint que justifican fallback al otro engine: cuota/auth
+ * (401/402/403/429), fallo del lado del provider (>=500) o error de red /
+ * timeout (sin status HTTP).
+ *
+ * @param {Error & { status?: number }} err
+ */
+export function isVoiceMintFallbackError(err) {
+  const s = Number(err?.status) || 0;
+  if ([401, 402, 403, 429].includes(s)) return true;
+  if (s >= 500) return true;
+  return s === 0; // network error / AbortSignal timeout
+}
 
 /**
  * Effective duplex voice engine from chat selection.
+ *
+ * Prioridad: elección explícita del usuario > pin de ops (VOICE_PROVIDER) >
+ * mapeo de aiProvider — y en el default "openai", fallback a Grok cuando la
+ * key OpenAI no es usable o el engine está dead-marked y Grok sí está vivo.
+ *
  * @param {string} aiProvider
  * @param {string} [explicitVoiceProvider]  optional override "openai" | "grok"
+ * @param {{ pin?: string, openaiKeyOk?: boolean, grokKeyOk?: boolean }} [opts]
+ *   test seams; production callers omit them.
  * @returns {"openai"|"grok"}
  */
-export function resolveVoiceProvider(aiProvider, explicitVoiceProvider) {
+export function resolveVoiceProvider(aiProvider, explicitVoiceProvider, opts = {}) {
   const ex = String(explicitVoiceProvider || "").trim().toLowerCase();
   if (ex === "openai" || ex === "grok") return ex;
+
+  const pin = String(opts.pin ?? config.voiceProvider ?? "").trim().toLowerCase();
+  if (pin === "openai" || pin === "grok") return pin;
+
   const p = String(aiProvider || "auto").trim().toLowerCase();
   if (p === "grok") return "grok";
+
+  const openaiOk =
+    opts.openaiKeyOk ?? (isUsableApiKey(config.openaiApiKey) && !isVoiceProviderDead("openai"));
+  const grokOk =
+    opts.grokKeyOk ??
+    (isUsableApiKey(config.grokApiKey || process.env.XAI_API_KEY) && !isVoiceProviderDead("grok"));
+  if (!openaiOk && grokOk) return "grok";
   return "openai";
 }
 
@@ -84,6 +140,7 @@ export function getVoiceProviderConfig(voiceProvider) {
       keyOk: isUsableApiKey(apiKey),
       clientSecretsUrl: XAI_CLIENT_SECRETS_URL,
       realtimeBase: XAI_REALTIME_BASE,
+      modelsUrl: XAI_MODELS_URL,
       missingKeyError: "GROK_API_KEY / XAI_API_KEY not configured for Grok Voice",
     };
   }
@@ -94,6 +151,7 @@ export function getVoiceProviderConfig(voiceProvider) {
     keyOk: isUsableApiKey(apiKey),
     clientSecretsUrl: OPENAI_CLIENT_SECRETS_URL,
     realtimeBase: OPENAI_REALTIME_BASE,
+    modelsUrl: OPENAI_MODELS_URL,
     missingKeyError: "OpenAI API key not configured",
   };
 }
