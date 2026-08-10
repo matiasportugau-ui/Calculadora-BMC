@@ -1,7 +1,7 @@
 /**
  * EvolutionPacket operator review — accept / reject / escalate (M2b+).
  */
-import { createPeaGrant } from "./grants.js";
+import { createPeaGrant, revokePeaGrantsForPacket } from "./grants.js";
 import { recordPeaAudit } from "./auditEvents.js";
 import { insertOutboxEvent } from "./outbox.js";
 import { persistRatchetLinks, validateRatchetLinks } from "./ratchetGate.js";
@@ -72,6 +72,14 @@ export async function acceptPeaPacket(db, config, input) {
         }),
       ],
     );
+
+    // Bug DC: drop orphan L3 grants (e.g. prior escalate) so accept cannot leave
+    // an implementable grant on a resolved gap.
+    await revokePeaGrantsForPacket(client, {
+      packetId: input.packetId,
+      revokedBy: input.actorId,
+      reason: "packet_accepted",
+    });
 
     await recordPeaAudit(client, {
       actorId: input.actorId,
@@ -156,6 +164,14 @@ export async function rejectPeaPacket(db, input) {
     `UPDATE pea.gaps SET status = 'ignored', updated_at = now() WHERE id = $1`,
     [row.gap_id],
   );
+
+  // Bug DC: escalate mints an L3 grant but reject previously left it active —
+  // implement would still write artifacts for a rejected/ignored packet.
+  await revokePeaGrantsForPacket(db, {
+    packetId: input.packetId,
+    revokedBy: input.actorId,
+    reason: input.reason || "packet_rejected",
+  });
 
   await recordPeaAudit(db, {
     actorId: input.actorId,
