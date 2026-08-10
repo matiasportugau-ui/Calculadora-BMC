@@ -89,6 +89,7 @@ export async function saveEvolutionPacket(pool, packet) {
        critic_result = EXCLUDED.critic_result,
        blast_radius = EXCLUDED.blast_radius,
        updated_at = now()
+     WHERE pea.evolution_packets.status NOT IN ('accepted', 'rejected', 'superseded')
      RETURNING *`,
     [
       packet.gap_id,
@@ -107,8 +108,24 @@ export async function saveEvolutionPacket(pool, packet) {
     ],
   );
   const saved = rows[0];
+  // Race: SELECT saw mutable status but accept landed before UPSERT → RETURNING empty.
+  if (!saved) {
+    const err = new Error("packet_immutable");
+    err.code = "packet_immutable";
+    err.status = "accepted_or_terminal";
+    err.packetId = prior?.id || null;
+    throw err;
+  }
+  // Never clear L3 blocked / resolved / ignored via packet save (Bug CI).
   await pool.query(
-    `UPDATE pea.gaps SET latest_packet_id = $2, status = 'ready_for_review', updated_at = now() WHERE id = $1`,
+    `UPDATE pea.gaps
+        SET latest_packet_id = $2,
+            status = CASE
+              WHEN status IN ('resolved', 'ignored', 'blocked') THEN status
+              ELSE 'ready_for_review'
+            END,
+            updated_at = now()
+      WHERE id = $1`,
     [packet.gap_id, saved.id],
   );
   return saved;
