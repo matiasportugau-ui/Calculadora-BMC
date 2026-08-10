@@ -29,6 +29,7 @@ import {
   readBodyWithLimit,
   resolveAdjuntoFetchUrl,
 } from "../lib/enviosAdjuntoFetch.js";
+import { runEnviosAiVerify } from "../lib/enviosAiVerify.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -473,6 +474,63 @@ export default function createEnviosRouter(config, logger) {
         ambiguous: result.ambiguous,
         autoApply: result.autoApply,
       });
+    }),
+  );
+
+  /**
+   * POST /api/envios/ai-verify-stop
+   * body: { stop: object } — stop snapshot + optional pdfText / rawSheetText / adjuntoMeta
+   * Returns structured proposal for operator to confirm (human gate). Never writes Sheets.
+   */
+  router.post(
+    "/envios/ai-verify-stop",
+    auth,
+    asyncHandler(async (req, res) => {
+      const stop = req.body?.stop || req.body;
+      if (!stop || typeof stop !== "object") {
+        return res.status(400).json({ ok: false, error: "stop_required" });
+      }
+      // Bound payload size (pdfText can be large)
+      const pdfText = String(stop.pdfText || "").slice(0, 20_000);
+      const rawSheetText = String(stop.rawSheetText || "").slice(0, 12_000);
+      const slim = {
+        ...stop,
+        pdfText,
+        rawSheetText,
+        paneles: Array.isArray(stop.paneles) ? stop.paneles.slice(0, 80) : [],
+        accesorios: Array.isArray(stop.accesorios) ? stop.accesorios.slice(0, 80) : [],
+      };
+      try {
+        const result = await runEnviosAiVerify(slim);
+        if (result.error === "ai_failed") {
+          return res.status(502).json({
+            ok: false,
+            error: result.error,
+            message: result.message,
+            details: result.details,
+            proposal: result.proposal,
+            evidence: result.evidence,
+          });
+        }
+        return res.json({
+          ok: true,
+          proposal: result.proposal,
+          evidence: result.evidence,
+          provider: result.provider || null,
+          // rawPreview only in non-prod? keep short for debug
+          rawPreview: result.rawPreview,
+        });
+      } catch (err) {
+        log.warn?.(
+          { err: err instanceof Error ? err.message : String(err) },
+          "[envios] ai-verify-stop failed",
+        );
+        return res.status(502).json({
+          ok: false,
+          error: "ai_verify_failed",
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
     }),
   );
 

@@ -156,6 +156,11 @@ import {
   matchAdminQuotes,
   normalizeAdminQuoteRow,
 } from "../utils/logistica/adminQuoteMatch.js";
+import {
+  applyAiVerifyProposal,
+  isStopIncompleteForAi,
+} from "../utils/logistica/aiVerifyStop.js";
+import { resolveEnviosAuthToken } from "../utils/logistica/adjuntoInfer.js";
 
 const TRUCK_W = 2.4;
 
@@ -1823,6 +1828,8 @@ export default function BmcLogisticaApp() {
   const [confirmCoordOpen, setConfirmCoordOpen] = useState(false);
   const [autoLoadMsg, setAutoLoadMsg] = useState("");
   const [retryingStopId, setRetryingStopId] = useState("");
+  /** @type {[null|{stopId:string, loading?:boolean, error?:string, proposal?:object, evidence?:object, provider?:string}, Function]} */
+  const [aiVerifyModal, setAiVerifyModal] = useState(null);
   const [accProfiles, setAccProfiles] = useState({});
   const [transportistas, setTransportistas] = useState([]);
   const [camionesCat, setCamionesCat] = useState([]);
@@ -3353,6 +3360,109 @@ export default function BmcLogisticaApp() {
     setView("form");
   }
 
+  async function runAiVerifyForStop(stop) {
+    const token = resolveEnviosAuthToken();
+    if (!token) {
+      setAutoLoadMsg(
+        "Verificar con IA: falta VITE_API_AUTH_TOKEN / VITE_BMC_API_AUTH_TOKEN en el frontend.",
+      );
+      return;
+    }
+    setAiVerifyModal({ stopId: stop.id, loading: true, error: "", proposal: null, evidence: null });
+    setAutoLoadMsg(`IA verificando parada ${stop.cliente || `P${stop.orden}`}…`);
+    try {
+      const base = getCalcApiBase() || "";
+      const res = await fetch(`${String(base).replace(/\/+$/, "")}/api/envios/ai-verify-stop`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          stop: {
+            orden: stop.orden,
+            cliente: stop.cliente,
+            telefono: stop.telefono,
+            direccion: stop.direccion,
+            orderId: stop.orderId,
+            cotizacionId: stop.cotizacionId,
+            pickupId: stop.pickupId,
+            zona: stop.zona,
+            fechaEntrega: stop.fechaEntrega,
+            pdfLink: stop.pdfLink,
+            carpetaDrive: stop.carpetaDrive,
+            rawSheetText: stop.rawSheetText,
+            observacionesLogistica: stop.observacionesLogistica,
+            recepcionDetalle: stop.recepcionDetalle,
+            adjuntoMeta: stop.adjuntoMeta,
+            paneles: stop.paneles,
+            accesorios: stop.accesorios,
+          },
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAiVerifyModal({
+          stopId: stop.id,
+          loading: false,
+          error: j.message || j.error || `HTTP ${res.status}`,
+          proposal: j.proposal || null,
+          evidence: j.evidence || null,
+        });
+        setAutoLoadMsg(`IA verify falló: ${j.message || j.error || res.status}`);
+        return;
+      }
+      setAiVerifyModal({
+        stopId: stop.id,
+        loading: false,
+        error: "",
+        proposal: j.proposal,
+        evidence: j.evidence,
+        provider: j.provider,
+      });
+      setAutoLoadMsg(
+        j.proposal?.ok
+          ? `IA propone cambios para ${stop.cliente || `P${stop.orden}`} — revisá y Aplicá o Descartá.`
+          : `IA sin propuesta fuerte para ${stop.cliente || `P${stop.orden}`}. Revisá needsHuman.`,
+      );
+    } catch (e) {
+      setAiVerifyModal({
+        stopId: stop.id,
+        loading: false,
+        error: e instanceof Error ? e.message : String(e),
+        proposal: null,
+        evidence: null,
+      });
+      setAutoLoadMsg(`IA verify error de red: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  function applyAiVerifyModal() {
+    const modal = aiVerifyModal;
+    if (!modal?.stopId || !modal.proposal) return;
+    setStops((prev) =>
+      prev.map((s) => {
+        if (s.id !== modal.stopId) return s;
+        const next = applyAiVerifyProposal(s, modal.proposal, { uid });
+        return {
+          ...next,
+          accPackage: buildAccessoryPackageConfig(
+            {
+              ...next,
+              paneles: next.paneles,
+              accesorios: next.accesorios,
+            },
+            accProfiles,
+          ),
+        };
+      }),
+    );
+    setAutoLoadMsg(
+      `IA aplicada (confirmada) en parada — ${modal.proposal.paneles?.length || 0} paneles, ${modal.proposal.accesorios?.length || 0} acc.`,
+    );
+    setAiVerifyModal(null);
+  }
+
   async function retryAutoLoadForStop(stop) {
     setRetryingStopId(stop.id);
     setAutoLoadMsg(`Reintentando autocarga para ${stop.cliente || `Parada ${stop.orden}`}...`);
@@ -4320,6 +4430,130 @@ export default function BmcLogisticaApp() {
               {ventasCache.rows.length ? <div style={{ fontSize: 11, color: T.muted, marginBottom: 8 }}>Última lectura: {ventasCache.rows.length} filas en pestaña actual.</div> : null}
               {shErr ? <div style={{ color: "#b42318", fontSize: 12, padding: "7px 10px", background: "#ffeceb", borderRadius: 8, marginBottom: 8 }}>{shErr}</div> : null}
               {autoLoadMsg ? <div style={{ color: T.brand, fontSize: 12, padding: "7px 10px", background: "#ffffff", borderRadius: 8, marginBottom: 8, border: "1px solid #bfdbfe" }}>{autoLoadMsg}</div> : null}
+              {aiVerifyModal ? (
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Propuesta IA de verificación de parada"
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 1200,
+                    background: "rgba(15,23,42,0.45)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 16,
+                  }}
+                  onClick={() => !aiVerifyModal.loading && setAiVerifyModal(null)}
+                >
+                  <div
+                    style={{
+                      background: T.surface || "#fff",
+                      borderRadius: 12,
+                      maxWidth: 560,
+                      width: "100%",
+                      maxHeight: "85vh",
+                      overflow: "auto",
+                      padding: 16,
+                      border: `1px solid ${T.border || "#e2e8f0"}`,
+                      boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <strong style={{ fontSize: 15 }}>✨ Verificar con IA</strong>
+                      <Btn outline small onClick={() => setAiVerifyModal(null)} disabled={aiVerifyModal.loading}>
+                        Cerrar
+                      </Btn>
+                    </div>
+                    {aiVerifyModal.loading ? (
+                      <p style={{ fontSize: 13, color: T.muted }}>Interpretando evidencia (planilla, adjunto, warnings)…</p>
+                    ) : null}
+                    {aiVerifyModal.error ? (
+                      <div style={{ color: "#b42318", fontSize: 12, marginBottom: 10, padding: 8, background: "#ffeceb", borderRadius: 8 }}>
+                        {aiVerifyModal.error}
+                      </div>
+                    ) : null}
+                    {aiVerifyModal.proposal ? (
+                      <>
+                        <div style={{ fontSize: 12, color: T.muted, marginBottom: 8 }}>
+                          Confianza: <strong>{aiVerifyModal.proposal.confidence || "—"}</strong>
+                          {aiVerifyModal.provider ? ` · modelo vía ${aiVerifyModal.provider}` : ""}
+                        </div>
+                        {(aiVerifyModal.proposal.notes || []).length ? (
+                          <ul style={{ fontSize: 12, margin: "0 0 10px", paddingLeft: 18 }}>
+                            {aiVerifyModal.proposal.notes.map((n, i) => (
+                              <li key={`n-${i}`}>{n}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {(aiVerifyModal.proposal.needsHuman || []).length ? (
+                          <div style={{ fontSize: 12, marginBottom: 10, padding: 8, background: "#fff7ed", borderRadius: 8, border: "1px solid #fed7aa" }}>
+                            <strong>Necesita operador:</strong>
+                            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                              {aiVerifyModal.proposal.needsHuman.map((n, i) => (
+                                <li key={`h-${i}`}>{n}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {Object.keys(aiVerifyModal.proposal.fields || {}).length ? (
+                          <div style={{ fontSize: 12, marginBottom: 10 }}>
+                            <strong>Campos propuestos</strong>
+                            <pre style={{ margin: "6px 0 0", whiteSpace: "pre-wrap", fontSize: 11, background: "#f8fafc", padding: 8, borderRadius: 8 }}>
+                              {JSON.stringify(aiVerifyModal.proposal.fields, null, 2)}
+                            </pre>
+                          </div>
+                        ) : null}
+                        <div style={{ fontSize: 12, marginBottom: 10 }}>
+                          <strong>Paneles ({(aiVerifyModal.proposal.paneles || []).length})</strong>
+                          {(aiVerifyModal.proposal.paneles || []).length ? (
+                            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                              {aiVerifyModal.proposal.paneles.map((p, i) => (
+                                <li key={`p-${i}`}>
+                                  {p.cantidad}× {p.tipo} {p.espesor}mm / {p.longitud}m
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p style={{ margin: "6px 0 0", color: T.muted }}>Sin líneas de panel.</p>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, marginBottom: 12 }}>
+                          <strong>Accesorios ({(aiVerifyModal.proposal.accesorios || []).length})</strong>
+                          {(aiVerifyModal.proposal.accesorios || []).length ? (
+                            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                              {aiVerifyModal.proposal.accesorios.map((a, i) => (
+                                <li key={`a-${i}`}>
+                                  {a.cantidad}× {a.descr}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p style={{ margin: "6px 0 0", color: T.muted }}>Sin accesorios.</p>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          <Btn outline onClick={() => setAiVerifyModal(null)}>
+                            Descartar
+                          </Btn>
+                          <Btn
+                            onClick={applyAiVerifyModal}
+                            disabled={!aiVerifyModal.proposal?.ok && !(aiVerifyModal.proposal?.paneles || []).length && !Object.keys(aiVerifyModal.proposal?.fields || {}).length}
+                            color={T.success || "#16a34a"}
+                          >
+                            ✓ Aplicar a la parada
+                          </Btn>
+                        </div>
+                        <p style={{ fontSize: 11, color: T.muted, marginTop: 10, marginBottom: 0 }}>
+                          No se escribe a Ventas. Solo actualiza esta parada en el borrador local/nube después de tu confirmación.
+                        </p>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
               {results.map((r, i) => {
                 const inReparto = stops.some(
                   (s) =>
@@ -4747,6 +4981,19 @@ export default function BmcLogisticaApp() {
                       {(stop.pdfLink || stop.rawSheetText) ? (
                         <Btn onClick={() => retryAutoLoadForStop(stop)} outline small>
                           {retryingStopId === stop.id ? "⏳ Reintentando" : "↻ Reintentar autocarga"}
+                        </Btn>
+                      ) : null}
+                      {isStopIncompleteForAi(stop) || stop.pdfLink || stop.rawSheetText ? (
+                        <Btn
+                          onClick={() => runAiVerifyForStop(stop)}
+                          outline
+                          small
+                          disabled={aiVerifyModal?.loading && aiVerifyModal?.stopId === stop.id}
+                          title="Interpreta evidencia (planilla/PDF/warnings) y propone completar — vos confirmás"
+                        >
+                          {aiVerifyModal?.loading && aiVerifyModal?.stopId === stop.id
+                            ? "⏳ IA…"
+                            : "✨ Verificar con IA"}
                         </Btn>
                       ) : null}
                       <Btn onClick={() => rmStop(stop.id)} color={T.danger} small>✕</Btn>
