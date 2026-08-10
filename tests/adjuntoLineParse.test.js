@@ -128,7 +128,27 @@ Cotización                                            Isopanel e Isodec EPS 100
   assert.ok(p);
   assert.equal(p.cantidad, 8);
   assert.equal(p.espesor, 80);
+  assert.equal(p.longitud, 4.4, "cut-to-length 4.40 m is preserved, not snapped to stock 4");
   ok("Abril-style modern line with paneles");
+}
+
+{
+  const cut = parsePanelLineHeuristic("ISODEC EPS 100mm · 5 paneles × 2.30 m");
+  assert.ok(cut);
+  assert.equal(cut.longitud, 2.3, "cut-to-length 2.30 m preserved");
+  ok("modern cut-to-length line preserves exact meters");
+}
+
+{
+  const classic = `Producto                                            Largos (m) Cantidades         Costo m2 (USD)
+Isopanel EPS 100 mm (Fachada)                             2,50        11                  37,00              1.159,95
+Isopanel EPS 100 mm (Fachada)                             2,30         5                  37,00                 485,07
+Isodec EPS 100 mm (Cubierta)                              4,00         6                  37,00                 994,56`;
+  const r = parseLogisticaFromAdjuntoText(classic);
+  assert.ok(r.paneles.some((p) => p.longitud === 2.5 && p.cantidad === 11), `2.50 m cut preserved: ${JSON.stringify(r.paneles)}`);
+  assert.ok(r.paneles.some((p) => p.longitud === 2.3 && p.cantidad === 5), `2.30 m cut preserved: ${JSON.stringify(r.paneles)}`);
+  assert.ok(r.paneles.some((p) => p.longitud === 4 && p.cantidad === 6), `stock 4.00 m snapped: ${JSON.stringify(r.paneles)}`);
+  ok("classic table preserves cut-to-length meters and still snaps stock lengths");
 }
 
 {

@@ -9,19 +9,16 @@ import { parseTsvRows } from "./sheetPaste.js";
 const ESP_SET = new Set(ESPS.map(Number));
 const LENS_NUM = LENS.map(Number);
 
+const LEN_TOLERANCE = 0.05;
+
 function snapLen(x) {
   const n = Number(String(x ?? "").replace(",", "."));
   if (!Number.isFinite(n)) return 6;
-  let best = LENS_NUM[0];
-  let bestD = Math.abs(best - n);
-  for (const L of LENS_NUM) {
-    const d = Math.abs(L - n);
-    if (d < bestD) {
-      best = L;
-      bestD = d;
-    }
-  }
-  return best;
+  // Preserve cut-to-length meters (e.g. 4.40, 2.30, 2.50) unless they are
+  // close enough to a stock length to be considered a rounding artifact.
+  const stockMatch = LENS_NUM.find((L) => Math.abs(L - n) <= LEN_TOLERANCE);
+  if (stockMatch != null) return stockMatch;
+  return +n.toFixed(2);
 }
 
 function snapEsp(x) {
