@@ -10,6 +10,7 @@ import {
   buildFactoryOrderList,
   irregularSchedulesForPdf,
   mergeIrregularSessionPatch,
+  resolveCutKeepSide,
   EMPTY_IRREGULAR_SESSION,
   stepCeil,
   sideCross,
@@ -388,6 +389,85 @@ ok(/obra/i.test(CORTE_EN_OBRA_NOTE), "CORTE_EN_OBRA_NOTE mentions obra");
   );
   sess = mergeIrregularSessionPatch(sess, { cut: null, cutDraft: null, layoutOverride: null });
   ok(sess.cut == null && sess.enabled === true, "BK clearCut keeps enabled");
+}
+
+// Bug BN — cut keep side must not depend on click stroke direction
+{
+  const ancho = 5.6;
+  const largo = 6;
+  // Same geometric cut near top: L→R vs R→L. Hardcoded keep:"left" kept opposite halves.
+  const keepLR = resolveCutKeepSide(ancho, largo, { x: 0, y: 5 }, { x: 5.6, y: 5 });
+  const keepRL = resolveCutKeepSide(ancho, largo, { x: 5.6, y: 5 }, { x: 0, y: 5 });
+  ok(keepLR === "right", `BN top L→R keeps larger (right/bottom) got ${keepLR}`);
+  ok(keepRL === "left", `BN top R→L keeps larger (left/bottom) got ${keepRL}`);
+
+  const layLR = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho,
+    largo,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 5 }, p1: { x: 5.6, y: 5 }, keep: keepLR },
+  });
+  const layRL = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho,
+    largo,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 5.6, y: 5 }, p1: { x: 0, y: 5 }, keep: keepRL },
+  });
+  ok(approx(layLR.totals.areaOrdered, layRL.totals.areaOrdered, 0.02), "BN same cut geometry → same ordered m²");
+  ok(approx(layLR.totals.areaOrdered, 28, 0.05), `BN keeps larger half (~28) got ${layLR.totals.areaOrdered}`);
+
+  // Bottom-edge R→L emptied the polygon with hardcoded keep:"left" → byGi clear → silent full rect.
+  const keepBottomRL = resolveCutKeepSide(ancho, largo, { x: 5.6, y: 0 }, { x: 0, y: 0 });
+  ok(keepBottomRL === "right", `BN bottom R→L picks non-empty side got ${keepBottomRL}`);
+  const layBottom = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho,
+    largo,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 5.6, y: 0 }, p1: { x: 0, y: 0 }, keep: keepBottomRL },
+  });
+  ok(layBottom.strips.length === 5, `BN bottom R→L has strips (not empty) got ${layBottom.strips.length}`);
+  ok(approx(layBottom.totals.areaOrdered, 33.6, 0.05), "BN bottom R→L keeps full roof ordered");
+
+  // Legacy cuts without keep: engine auto-resolves larger side
+  const legacy = buildIrregularSchedule({
+    mode: "diagonal_halfplane",
+    ancho,
+    largo,
+    au: 1.12,
+    lmin: 2.3,
+    lmax: 14,
+    cut: { p0: { x: 0, y: 5 }, p1: { x: 5.6, y: 5 } },
+  });
+  ok(approx(legacy.totals.areaOrdered, 28, 0.05), `BN legacy no-keep auto larger got ${legacy.totals.areaOrdered}`);
+
+  const rLR = executeScenario("solo_techo", {
+    techo: techoBase({ irregularLayoutByGi: { 0: layLR }, irregularLayout: layLR }),
+    pared: {},
+    camara: {},
+  });
+  const rRL = executeScenario("solo_techo", {
+    techo: techoBase({ irregularLayoutByGi: { 0: layRL }, irregularLayout: layRL }),
+    pared: {},
+    camara: {},
+  });
+  ok(rLR && !rLR.error && rRL && !rRL.error, "BN quote paths ok");
+  ok(
+    approx(rLR.paneles?.areaTotal, rRL.paneles?.areaTotal, 0.05),
+    `BN quote money matches both stroke dirs: ${rLR.paneles?.areaTotal} vs ${rRL.paneles?.areaTotal}`,
+  );
+  ok(
+    rLR.paneles?.areaTotal > 20,
+    `BN quote keeps larger half (not ~12.88 undercharge) got ${rLR.paneles?.areaTotal}`,
+  );
 }
 
 console.log(`\n${passed} assertions passed`);

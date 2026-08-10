@@ -148,6 +148,32 @@ export function clipAabb(subject, box) {
   return poly;
 }
 
+/**
+ * Choose which side of directed cut p0→p1 to keep.
+ * Hardcoding keep:"left" makes retained area depend on click order (Bug BN):
+ * the same geometric cut line can undercharge or empty the polygon (silent
+ * rectangular BOM fallback) when the operator draws R→L vs L→R.
+ * Default: keep the larger half-plane; prefer "left" on ties / both empty.
+ *
+ * @param {number} ancho
+ * @param {number} largo
+ * @param {{x:number,y:number}} p0
+ * @param {{x:number,y:number}} p1
+ * @returns {"left"|"right"}
+ */
+export function resolveCutKeepSide(ancho, largo, p0, p1) {
+  const w = +ancho;
+  const h = +largo;
+  if (!(w > 0) || !(h > 0) || !p0 || !p1) return "left";
+  const rect = rectRing(0, 0, w, h);
+  const aL = polygonArea(clipHalfPlane(rect, p0, p1, "left"));
+  const aR = polygonArea(clipHalfPlane(rect, p0, p1, "right"));
+  if (aL < EPS && aR < EPS) return "left";
+  if (aL < EPS) return "right";
+  if (aR < EPS) return "left";
+  return aL >= aR - EPS ? "left" : "right";
+}
+
 export function resolveRoofPolygon(input) {
   const warnings = [];
   const mode = input.mode || "rectangle";
@@ -165,7 +191,10 @@ export function resolveRoofPolygon(input) {
   if (mode === "diagonal_halfplane") {
     const cut = input.cut;
     if (!cut?.p0 || !cut?.p1) return { poly: [], warnings: ["IRR_EMPTY_POLYGON"] };
-    const keep = cut.keep === "right" ? "right" : "left";
+    const keep =
+      cut.keep === "right" || cut.keep === "left"
+        ? cut.keep
+        : resolveCutKeepSide(ancho, largo, cut.p0, cut.p1);
     poly = clipHalfPlane(poly, cut.p0, cut.p1, keep);
     if (polygonArea(poly) < EPS) return { poly: [], warnings: ["IRR_EMPTY_POLYGON"] };
     return { poly, warnings };

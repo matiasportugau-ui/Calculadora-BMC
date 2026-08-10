@@ -52,6 +52,7 @@ import {
   applyManualOrderLength,
   resetStripToAuto,
   mergeIrregularSessionPatch,
+  resolveCutKeepSide,
 } from "../utils/irregularRoofLayout.js";
 import IrregularModeChrome from "./roofPlan/IrregularModeChrome.jsx";
 import IrregularPlantOverlay from "./roofPlan/IrregularPlantOverlay.jsx";
@@ -2687,10 +2688,15 @@ export default function RoofPreview({
       orderLengthStepM: 0.01,
     };
     if (irregularCut?.p0 && irregularCut?.p1) {
+      // Bug BN: never hardcode keep:"left" — retained half must not depend on click order.
+      const keep =
+        irregularCut.keep === "right" || irregularCut.keep === "left"
+          ? irregularCut.keep
+          : resolveCutKeepSide(r.w, r.h, irregularCut.p0, irregularCut.p1);
       return buildIrregularSchedule({
         ...base,
         mode: "diagonal_halfplane",
-        cut: { p0: irregularCut.p0, p1: irregularCut.p1, keep: "left" },
+        cut: { p0: irregularCut.p0, p1: irregularCut.p1, keep },
       });
     }
     return buildIrregularSchedule({ ...base, mode: "rectangle" });
@@ -2741,14 +2747,16 @@ export default function RoofPreview({
         }
         return;
       }
+      const keep = resolveCutKeepSide(r.w, r.h, irregularCutDraft, p);
+      const cut = { p0: irregularCutDraft, p1: p, keep };
       if (irregularControlled) {
         patchIrregularSession({
-          cut: { p0: irregularCutDraft, p1: p },
+          cut,
           cutDraft: null,
           tool: "select",
         });
       } else {
-        setLocalIrregularCut({ p0: irregularCutDraft, p1: p });
+        setLocalIrregularCut(cut);
         setLocalIrregularCutDraft(null);
         setLocalIrregularTool("select");
       }

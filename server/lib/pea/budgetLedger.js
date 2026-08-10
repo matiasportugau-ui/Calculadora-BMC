@@ -6,10 +6,12 @@
  * @param {import('pg').Pool} pool
  */
 export async function getDailyPeaSpend(pool) {
+  // Include refund (negative amounts) so failed analyze_gap paths that call
+  // refundBudget do not permanently burn peaAutoDailyBudgetUsd (Bug CD).
   const { rows } = await pool.query(
     `SELECT COALESCE(SUM(amount_usd), 0)::float AS total
        FROM pea.budget_ledger
-      WHERE entry_type IN ('reserve', 'settle')
+      WHERE entry_type IN ('reserve', 'settle', 'refund')
         AND created_at >= date_trunc('day', now())`,
   );
   return rows[0]?.total ?? 0;

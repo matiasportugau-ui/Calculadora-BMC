@@ -196,4 +196,44 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
   ok("Bug BY: free-text + classic gotero echo → qty 2 once");
 }
 
+{
+  // Bug CE — pdf.js often omits hasEOL between classic table rows → one line, was qty 11 only.
+  const collapsed = [
+    "Isopanel EPS 100 mm (Fachada) 2,50 11 37,00 1.159,95 ",
+    "Isopanel EPS 100 mm (Fachada) 2,30 5 37,00 485,07 ",
+    "Isodec EPS 100 mm (Cubierta) 4,00 6 37,00 994,56",
+  ].join("");
+  const r = parseLogisticaFromAdjuntoText(collapsed);
+  assert.equal(r.paneles.length, 3, `expected 3 panels from collapsed line, got ${JSON.stringify(r.paneles)}`);
+  const sum = r.paneles.reduce((a, p) => a + p.cantidad, 0);
+  assert.equal(sum, 22, `collapsed Petinho must stay 11+5+6=22, got ${sum}`);
+  ok("Bug CE: collapsed classic multi-row line keeps all qty");
+}
+
+{
+  // Bug CE — Alcance "2 Zonas" + product on same line used to null the whole blob → 0 panels.
+  const alvaroCollapsed =
+    "Alcance: ISODEC EPS · 100mm · Color Blanco · Techo · 2 Zonas 113.7 m² · 10 paneles · 3 apoyos · 57 fijaciones " +
+    "ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15 4,677.93";
+  const r = parseLogisticaFromAdjuntoText(alvaroCollapsed);
+  const main = r.paneles.find((p) => p.cantidad === 10 && p.espesor === 100 && p.tipo === "ISODEC");
+  assert.ok(main, `expected ISODEC×10 from collapsed Alvaro, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(
+    r.paneles.filter((p) => p.tipo === "ISODEC" && p.cantidad === 10).length,
+    1,
+    `no double-count on collapsed Alvaro: ${JSON.stringify(r.paneles)}`,
+  );
+  ok("Bug CE: collapsed Alvaro Alcance+product still yields 10 panels");
+}
+
+{
+  // Accessory line mentioning Isodec/Isopanel must not be destroyed by tipo-split.
+  const free = parseLogisticaFromAdjuntoText("2 Gotero Frontal Isodec Isopanel 200mm");
+  assert.ok(
+    free.accesorios.some((a) => /gotero/i.test(a.descr) && a.cantidad === 2),
+    `gotero survived split: ${JSON.stringify(free.accesorios)}`,
+  );
+  assert.equal(free.paneles.length, 0);
+  ok("Bug CE: accessory with ISO* context still parses after split guard");}
+
 console.log(`\n${passed} passed`);
