@@ -117,6 +117,19 @@ const ROW = [
   assert.ok(quoted.pdf.includes("drive.google.com"));
   const hyper = sanitizeEncargoCell('=HYPERLINK("https://drive.google.com/file/d/abc123xyz99/view","Cotizacion.pdf")');
   assert.ok(hyper.pdf.includes("file/d/abc123xyz99"));
+  // Bug CH: keep HYPERLINK display label for filename cargo infer when Drive fails
+  assert.ok(
+    hyper.plainText.includes("Cotizacion.pdf"),
+    `expected HYPERLINK label in plainText, got ${JSON.stringify(hyper.plainText)}`,
+  );
+  const hyperSemi = sanitizeEncargoCell(
+    '=HYPERLINK("https://drive.google.com/file/d/abc123xyz99/view"; "Cotizacion-Isodec-100-mm.pdf")',
+  );
+  assert.ok(hyperSemi.pdf.includes("file/d/abc123xyz99"));
+  assert.ok(
+    /Isodec-100-mm\.pdf/i.test(hyperSemi.plainText),
+    `expected panel filename label preserved, got ${JSON.stringify(hyperSemi.plainText)}`,
+  );
   ok("sanitizeEncargoCell");
 }
 
