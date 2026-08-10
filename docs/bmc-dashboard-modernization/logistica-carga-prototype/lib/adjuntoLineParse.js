@@ -315,21 +315,34 @@ function normCell(s) {
  * @param {string[]} headers
  * @returns {Record<string, number>}
  */
+function isQtyHeaderName(n) {
+  return (
+    /^(cant\.?|cantidad|qty|bultos?|uds\.?|unidades?|planchas?|paneles?|piezas?|pzas?|#)$/.test(n) ||
+    /^(n|n[ºo°]?|num|numero)\s*\.?\s*(bultos|uds|unidades|planchas|paneles|piezas)/i.test(n) ||
+    (/\b(cant|qty|bultos?|uds)\b/i.test(n) && !/fabric|direccion|observ|ubicacion|cliente/i.test(n))
+  );
+}
+
 function mapHeaderIndices(headers) {
   const idx = {};
   headers.forEach((h, i) => {
     const n = normCell(h);
     if (!n) return;
-    if (/^(producto|descripcion|item|linea|panel)/.test(n) || n.includes("producto")) idx.producto = i;
+    // Bug CT: `^panel` also matched qty header "Paneles" and overwrote Producto → dropped rows.
+    // Keep singular "Panel" as product; never map qty synonyms onto producto.
+    if (
+      idx.producto == null &&
+      !isQtyHeaderName(n) &&
+      (/^(producto|descripcion|item|linea)$/.test(n) ||
+        /^panel$/.test(n) ||
+        (n.includes("producto") && !/\bpaneles?\b/.test(n)))
+    ) {
+      idx.producto = i;
+    }
     if (/^tipo$/.test(n) || n === "familia") idx.tipoCol = i;
     if (n.includes("espesor") || n === "esp") idx.espesor = i;
     if (n.includes("largo") || n.includes("longitud") || n === "l m" || n === "largo m") idx.largo = i;
-    if (
-      idx.cantidad == null &&
-      (/^(cant\.?|cantidad|qty|bultos?|uds\.?|unidades?|planchas?|paneles?|piezas?|pzas?|#)$/.test(n) ||
-        /^(n|nº|num|numero)\s*\.?\s*(bultos|uds|unidades|planchas|paneles|piezas)/i.test(n) ||
-        (/\b(cant|qty|bultos?|uds)\b/i.test(n) && !/fabric|direccion|observ|ubicacion|cliente/i.test(n)))
-    ) {
+    if (idx.cantidad == null && isQtyHeaderName(n)) {
       idx.cantidad = i;
     }
   });
@@ -377,12 +390,15 @@ export function parseLogisticaFromAdjuntoText(text) {
             if (ph0 && ph0.tipo === tipo) cantN = ph0.cantidad;
           }
           const espesor = Number.isFinite(espN) ? snapEsp(espN) : null;
-          if (espesor != null && ESP_SET.has(espesor)) {
+          // Bug CV: do not invent cantidad:1 when Cantidad is blank (free-text fail-closes).
+          if (espesor != null && ESP_SET.has(espesor) && cantN != null && cantN >= 1) {
+            const lengthDefaulted = !Number.isFinite(largoN);
             paneles.push({
               tipo,
               espesor,
-              longitud: Number.isFinite(largoN) ? snapLen(largoN) : 6,
-              cantidad: Math.max(1, cantN != null ? cantN : 1),
+              longitud: lengthDefaulted ? 6 : snapLen(largoN),
+              cantidad: Math.max(1, cantN),
+              ...(lengthDefaulted ? { lengthDefaulted: true } : {}),
             });
             continue;
           }
@@ -404,8 +420,11 @@ export function parseLogisticaFromAdjuntoText(text) {
         if (acc) accesorios.push(acc);
       }
       if (paneles.length || accesorios.length) {
+        // Bug CU: TSV early-return used to skip BX/BY collapse → dual-format 2× qty.
+        const collapsedPaneles = collapseDefaultLengthPanelEchoes(paneles);
+        const collapsedAccesorios = collapseAccessoryEchoes(accesorios);
         warnings.push("Interpretado como tabla con encabezados (TSV).");
-        return { paneles, accesorios, warnings };
+        return { paneles: collapsedPaneles, accesorios: collapsedAccesorios, warnings };
       }
     }
   }
