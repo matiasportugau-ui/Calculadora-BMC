@@ -295,21 +295,28 @@ export function sanitizeEncargoCell(raw) {
 
 /**
  * Instruction / note rows pasted into NOMBRE (not real clients).
+ * Phrases must lead the cell — substring match hid real clients like
+ * "Luis González - pedir celular" after #982 (Bug CN).
  * @param {string} nombre
  * @returns {boolean}
  */
 export function isInstructionNoiseNombre(nombre) {
   const n = normalizeText(nombre);
   if (!n) return false;
-  if (/escaneo de ci|pedir celular|hacer un escaneo|cuando entregamos/.test(n)) return true;
-  // Long imperative ops notes without a person-like short name
+  if (/import\s+pandas|print\s*\(\s*df/.test(n)) return true;
+  // Ops-instruction rows dominate NOMBRE (start-anchored).
+  if (
+    /^(hacer un escaneo|escaneo de ci|pedir celular|cuando entregamos)\b/.test(n)
+  ) {
+    return true;
+  }
+  // Long imperative ops notes without a leading person name
   if (
     n.length >= 36 &&
     /^(hacer|pedir|no olvid|recordar|cuando|escanear|entregamos)\b/.test(n)
   ) {
     return true;
   }
-  if (/import\s+pandas|print\s*\(\s*df/.test(n)) return true;
   return false;
 }
 

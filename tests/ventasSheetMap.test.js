@@ -199,6 +199,28 @@ const ROW = [
 }
 
 {
+  // Bug CN — #982 substring "pedir celular" hid real clients with ops notes in NOMBRE.
+  assert.equal(isInstructionNoiseNombre("Luis González - pedir celular"), false);
+  assert.equal(isInstructionNoiseNombre("pedir celular"), true);
+  assert.equal(isInstructionNoiseNombre("Cuando entregamos - pedir celular"), true);
+  const realWithNote = {
+    nombre: "Luis González - pedir celular",
+    orderId: "1345381",
+    tel: "099123456",
+    dir: "Rivera 1234",
+    pdf: "https://drive.google.com/file/d/abc123/view",
+    encargoPlain: "",
+    fechaEntrega: "2026-08-12",
+  };
+  assert.equal(
+    isVentasLogisticaCandidate(realWithNote),
+    true,
+    "real Ventas row with trailing ops note must stay a candidate",
+  );
+  ok("Bug CN: client name + pedir celular note is still a logistics candidate");
+}
+
+{
   // Blank middle row must not skew later sheetRow1Based (fecha write target).
   // CSV: header@1, A@2, blank@3, B@4, C@5 → after drop blank, C must stay row 5 not 4.
   const blank = HEADERS.map(() => "");
