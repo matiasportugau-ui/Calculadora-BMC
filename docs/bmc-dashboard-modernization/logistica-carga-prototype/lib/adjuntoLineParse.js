@@ -177,6 +177,7 @@ export function parsePanelLineHeuristic(line) {
   let longitud;
   let cantidad;
 
+  let lengthDefaulted = false;
   if (qtyFromPhrase != null || qtyLead != null) {
     // Modern BMC PDF: "ISODEC 100mm · 10 paneles" — default L unless explicit meters.
     cantidad = qtyLead != null ? qtyLead : qtyFromPhrase;
@@ -184,9 +185,12 @@ export function parsePanelLineHeuristic(line) {
       raw.match(/\b(?:largo|longitud)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:m(?![mM²2]))?(?!\w)/i) ||
       raw.match(/\b(\d+(?:[.,]\d+)?)\s*m(?:ts?|etros?)?(?![mM²2])/i) ||
       raw.match(/[×x]\s*(\d+(?:[.,]\d+)?)\s*m(?![mM²2])/i);
-    longitud = explicitLen
-      ? snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")))
-      : 6;
+    if (explicitLen) {
+      longitud = snapLen(parseFloat(String(explicitLen[1]).replace(",", ".")));
+    } else {
+      longitud = 6;
+      lengthDefaulted = true;
+    }
   } else if (classic) {
     longitud = classic.longitud;
     cantidad = classic.cantidad;
@@ -200,7 +204,66 @@ export function parsePanelLineHeuristic(line) {
     espesor: ESP_SET.has(espesor) ? snapEsp(espesor) : espesor,
     longitud,
     cantidad: Math.max(1, cantidad),
+    ...(lengthDefaulted ? { lengthDefaulted: true } : {}),
   };
+}
+
+/**
+ * Drop modern default-L=6 echoes when the same tipo|esp|qty already has an explicit length
+ * (classic table). Prevents dual-format PDFs from billing 2× panel qty (Bug BX).
+ * @param {Array<{ tipo: string, espesor: number, longitud: number, cantidad: number, lengthDefaulted?: boolean }>} paneles
+ */
+function collapseDefaultLengthPanelEchoes(paneles) {
+  const explicitKeys = new Set();
+  for (const p of paneles) {
+    if (!p.lengthDefaulted) {
+      explicitKeys.add(`${p.tipo}|${p.espesor}|${p.cantidad}`);
+    }
+  }
+  const out = [];
+  for (const p of paneles) {
+    const key = `${p.tipo}|${p.espesor}|${p.cantidad}`;
+    if (p.lengthDefaulted && explicitKeys.has(key)) continue;
+    out.push({
+      tipo: p.tipo,
+      espesor: p.espesor,
+      longitud: p.longitud,
+      cantidad: p.cantidad,
+    });
+  }
+  return out;
+}
+
+/**
+ * Core accessory identity for echo dedupe (free-text + classic table of the same piece).
+ * @param {string} descr
+ */
+function normalizeAccCore(descr) {
+  return normCell(descr)
+    .replace(/\b\d{2,3}\s*mm\b/g, " ")
+    .replace(/\b(perf\.?|perfil(?:es)?|ch\.?|chapa|blanca?|ext\.?|ude\d+)\b/g, " ")
+    .replace(/\b(de|la|el|los|las|del|para)\b/g, " ")
+    .replace(/\d+(?:[.,]\d+)?/g, " ")
+    .replace(/[^\p{L}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Drop free-text / classic-table accessory echoes with the same core name + qty (Bug BY).
+ * @param {Array<{ descr: string, cantidad: number }>} accesorios
+ */
+function collapseAccessoryEchoes(accesorios) {
+  const seen = new Set();
+  const out = [];
+  for (const acc of accesorios) {
+    const core = normalizeAccCore(acc.descr);
+    const key = core ? `${core}|${acc.cantidad}` : "";
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    out.push(acc);
+  }
+  return out;
 }
 
 function normCell(s) {
@@ -327,12 +390,15 @@ export function parseLogisticaFromAdjuntoText(text) {
     if (acc) accesorios.push(acc);
   }
 
-  if (!paneles.length && !accesorios.length) {
+  const collapsedPaneles = collapseDefaultLengthPanelEchoes(paneles);
+  const collapsedAccesorios = collapseAccessoryEchoes(accesorios);
+
+  if (!collapsedPaneles.length && !collapsedAccesorios.length) {
     warnings.push(
       "No se detectaron líneas con tipo de panel (ISODEC, ISOPANEL, …) ni accesorios con cantidad. Copiá la tabla o las líneas de producto desde el PDF."
     );
   }
-  return { paneles, accesorios, warnings };
+  return { paneles: collapsedPaneles, accesorios: collapsedAccesorios, warnings };
 }
 
 /**
