@@ -105,6 +105,25 @@ function looksLikeAccessoryLine(raw) {
 }
 
 /**
+ * True when an accessory vocabulary word appears *before* the first ISO* panel token.
+ * Classic rows like "Gotero Frontal Isopanel 100mm …" name the panel family as context —
+ * CE tipo-split must not treat the ISO* tail as a panel product (Bug DB).
+ * Distinct from panel+trailing-Gotero (`Isopanel … 2 Gotero`), where Gotero is after ISO*.
+ * @param {string} raw
+ * @returns {boolean}
+ */
+function accessoryWordBeforePanelTipo(raw) {
+  const s = String(raw || "");
+  const accMatch = ACC_WORD_RE.exec(s);
+  if (!accMatch || accMatch.index == null) return false;
+  const tipoMatch = s.match(
+    /\b(?:ISOFRIG(?:\s|_)?PIR|ISOFRIG|ISOWALL|ISOROOF|ISOPANEL|ISODEC)\b/i,
+  );
+  if (!tipoMatch || tipoMatch.index == null) return true;
+  return accMatch.index < tipoMatch.index;
+}
+
+/**
  * Classic cotización table row after "NNN mm":
  *   Isopanel EPS 100 mm (Fachada)   2,50   11   37,00   1.159,95
  *   → largo=2.50, cantidad=11  (ignore price columns)
@@ -142,6 +161,10 @@ const PANEL_TIPO_SPLIT_RE =
 export function parsePanelRowsFromPossiblyCollapsedLine(line) {
   const raw = String(line || "").trim();
   if (!raw) return [];
+  // Bug DB: "Perf. Ch. Gotero Frontal Isopanel 100mm 3,03 2 …" splits into
+  // ["Perf. Ch. Gotero Frontal", "Isopanel 100mm …"] → phantom panels, lost accessory.
+  // Defer to the single-line accessory path when the accessory word leads the ISO* token.
+  if (accessoryWordBeforePanelTipo(raw) && !/\bpaneles?\b/i.test(raw)) return [];
   const parts = raw
     .split(PANEL_TIPO_SPLIT_RE)
     .map((s) => s.trim())
@@ -167,8 +190,10 @@ export function parsePanelLineHeuristic(line) {
   if (/^\s*alcance\s*:/i.test(raw) || /\b\d+\s*zonas?\b/i.test(raw)) return null;
   // Title-only lines without qty
   if (/^\s*cotizaci/i.test(raw)) return null;
-  // "2 Gotero Frontal Isodec/Isopanel 200mm" is accessory cargo, not 2 panels.
-  if (looksLikeAccessoryLine(raw) && !/\bpaneles?\b/i.test(raw)) return null;
+  // "2 Gotero Frontal Isodec/Isopanel 200mm" / classic "Gotero … Isopanel …" are accessories.
+  // Require the accessory word to lead the ISO* token so panel+trailing-Gotero (Bug CO/CP)
+  // can still parse as a panel when those fixes land.
+  if (accessoryWordBeforePanelTipo(raw) && !/\bpaneles?\b/i.test(raw)) return null;
 
   let qtyLead = null;
   const leadQty = raw.match(/^(\d+)\s*[x×]\s+/i);
