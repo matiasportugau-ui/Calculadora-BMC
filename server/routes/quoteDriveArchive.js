@@ -5,6 +5,7 @@
  *
  * GET /api/quotes/drive-project?folderId=
  * Lee el .bmc.json de una carpeta de cotización (user OAuth del servidor) para deep-link openDrive.
+ * Auth: same guard as drive-archive (identity JWT or API_AUTH_TOKEN) — not public.
  */
 import { Router } from "express";
 import { saveQuotationBundleToDrive, loadProjectFromDriveFolder } from "../lib/driveUpload.js";
@@ -67,9 +68,10 @@ export function createQuoteDriveArchiveRouter(config, deps = {}) {
   const loadProject = deps.loadProjectFromDriveFolder || loadProjectFromDriveFolder;
   const authGuard = deps.authGuard || requireServiceOrUser({ authOnly: true });
 
-  // Public-ish deep-link: folder IDs are secrets-by-obscurity (same as openDrive in Admin sheet).
-  // Uses server OAuth so GIS drive.file client mismatch does not block edit.
-  router.get("/quotes/drive-project", async (req, res) => {
+  // Authenticated deep-link load: uses server Drive OAuth so GIS drive.file client
+  // mismatch does not block edit. Must NOT be public — projectData includes customer PII
+  // (RUT, teléfono, dirección) and full quote pricing; folder IDs appear in Admin sheet URLs.
+  router.get("/quotes/drive-project", authGuard, async (req, res) => {
     const folderId = String(req.query.folderId || "").trim();
     if (!folderId) {
       return res.status(400).json({ ok: false, error: "missing_folder_id" });
