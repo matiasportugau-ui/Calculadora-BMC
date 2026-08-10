@@ -9,7 +9,6 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
 import { buildVoiceSystemPrompt } from "../lib/chatPrompts.js";
-import { isUsableApiKey } from "../lib/apiKeyUtils.js";
 
 import { recordVoiceError, listVoiceErrors, clearVoiceErrors } from "../lib/voiceErrorLog.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -18,6 +17,9 @@ import {
   resolveVoiceProvider,
   resolveSessionModel,
   mintRealtimeClientSecret,
+  markVoiceProviderDead,
+  isVoiceMintFallbackError,
+  getVoiceProviderConfig,
 } from "../lib/voiceRealtimeProviders.js";
 
 const router = Router();
@@ -87,7 +89,7 @@ router.post(
     voiceProvider: rawVoiceProvider = null,
   } = req.body || {};
 
-  const voiceProvider = resolveVoiceProvider(aiProvider, rawVoiceProvider);
+  let voiceProvider = resolveVoiceProvider(aiProvider, rawVoiceProvider);
 
   let sessionModel;
   try {
@@ -208,12 +210,44 @@ router.post(
 
   let sessionData;
   try {
-    sessionData = await mintRealtimeClientSecret({
-      voiceProvider,
-      sessionModel,
-      systemPrompt,
-      tools,
-    });
+    try {
+      sessionData = await mintRealtimeClientSecret({
+        voiceProvider,
+        sessionModel,
+        systemPrompt,
+        tools,
+      });
+    } catch (mintErr) {
+      // Auto-fallback a Grok Voice cuando OpenAI no responde (cuota/auth/5xx/
+      // timeout de egress) y el usuario no eligió engine explícitamente.
+      // Visto 2026-08-10: api.openai.com inalcanzable desde Cloud Run.
+      const canFallback =
+        voiceProvider === "openai" &&
+        !rawVoiceProvider &&
+        isVoiceMintFallbackError(mintErr) &&
+        getVoiceProviderConfig("grok").keyOk;
+      if (!canFallback) throw mintErr;
+
+      markVoiceProviderDead("openai");
+      req.log?.warn?.(
+        { status: mintErr?.status || 0, detail: mintErr?.message },
+        "OpenAI voice mint failed — falling back to Grok Voice",
+      );
+      recordVoiceError({
+        kind: "session_mint_fallback",
+        status: mintErr?.status || 0,
+        message: "OpenAI mint failed — fallback a Grok Voice",
+        detail: mintErr?.message || null,
+      });
+      voiceProvider = "grok";
+      sessionModel = resolveSessionModel("grok", aiProvider, aiModel, null);
+      sessionData = await mintRealtimeClientSecret({
+        voiceProvider,
+        sessionModel,
+        systemPrompt,
+        tools,
+      });
+    }
   } catch (err) {
     if (err?.status === 503) {
       return res.status(503).json({ ok: false, error: err.message });
@@ -354,27 +388,29 @@ router.post("/agent/voice/errors/clear", errorClearLimiter, requireAuth, (req, r
 
 /**
  * GET /api/agent/voice/health
- * Pings OpenAI /v1/models with the configured key to confirm it is still active.
+ * Resuelve el engine de voz activo (auto: openai con fallback a grok, o pin
+ * VOICE_PROVIDER) y pinguea su /v1/models para confirmar que la key sirve.
  * Returns metadata (prefix, suffix, length) but never the full key. Admin-only.
  */
 router.get("/agent/voice/health", requireAuth, async (req, res) => {
-  const raw = config.openaiApiKey || "";
-  const usable = isUsableApiKey(raw);
-  const key = usable ? raw : "";
+  const voiceProvider = resolveVoiceProvider("auto");
+  const cfg = getVoiceProviderConfig(voiceProvider);
+  const key = cfg.keyOk ? cfg.apiKey : "";
   const meta = {
-    configured: usable,
+    voiceProvider,
+    configured: cfg.keyOk,
     keyLength: key.length,
     keyPrefix: key.slice(0, 8),
     keySuffix: key ? key.slice(-4) : "",
-    model: config.openaiRealtimeModel,
+    model: resolveSessionModel(voiceProvider, "auto", "", null),
   };
-  if (!usable) {
-    return res.status(503).json({ ok: false, ...meta, error: "OPENAI_API_KEY not configured" });
+  if (!cfg.keyOk) {
+    return res.status(503).json({ ok: false, ...meta, error: cfg.missingKeyError });
   }
 
   const t0 = Date.now();
   try {
-    const r = await fetch("https://api.openai.com/v1/models", {
+    const r = await fetch(cfg.modelsUrl, {
       headers: { Authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(8000),
     });
@@ -384,14 +420,17 @@ router.get("/agent/voice/health", requireAuth, async (req, res) => {
     }
     let detail = "";
     try { detail = (await r.json())?.error?.message || ""; } catch { /* ignore */ }
+    // Acelera el self-heal: el próximo resolveVoiceProvider("auto") evita este engine.
+    markVoiceProviderDead(voiceProvider);
     return res.status(502).json({
       ok: false,
       status: r.status,
       latencyMs,
       ...meta,
-      error: detail || `OpenAI ${r.status}`,
+      error: detail || `${voiceProvider} ${r.status}`,
     });
   } catch (err) {
+    markVoiceProviderDead(voiceProvider);
     return res.status(502).json({
       ok: false,
       latencyMs: Date.now() - t0,

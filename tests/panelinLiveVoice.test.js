@@ -41,11 +41,22 @@ const BASE = `http://127.0.0.1:${port}`;
 
 let lastMintInstructions = null;
 let lastMintUrl = null;
+let failOpenAiMintStatus = 0;
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init) => {
   const u = String(url);
   lastMintUrl = u;
   if (u.includes("api.openai.com/v1/realtime/client_secrets")) {
+    if (failOpenAiMintStatus) {
+      const status = failOpenAiMintStatus;
+      failOpenAiMintStatus = 0;
+      return {
+        ok: false,
+        status,
+        json: async () => ({ error: { message: "credit_balance_exhausted" } }),
+        text: async () => '{"error":{"message":"credit_balance_exhausted"}}',
+      };
+    }
     try {
       lastMintInstructions = JSON.parse(init?.body || "{}")?.session?.instructions ?? null;
     } catch {
@@ -112,14 +123,33 @@ const health = await req("/api/agent/voice/health");
 assert(health.status === 200 && health.json?.ok === true, "GET voice/health → 200 ok");
 
 const noKey = config.openaiApiKey;
+// Sin key OpenAI pero con Grok viva → auto resuelve grok (fallback, no 503).
 config.openaiApiKey = "";
+const fallbackSess = await req("/api/agent/voice/session", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({}),
+});
+assert(
+  fallbackSess.status === 200 &&
+    (fallbackSess.json?.provider === "grok" || fallbackSess.json?.voice_provider === "grok"),
+  "POST voice/session sin key OpenAI → fallback Grok 200",
+);
+
+// Sin ninguna key usable → 503 explícito (nunca degradación silenciosa).
+const noGrok = config.grokApiKey;
+const xaiEnv = process.env.XAI_API_KEY;
+config.grokApiKey = "";
+delete process.env.XAI_API_KEY;
 const noKeySess = await req("/api/agent/voice/session", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({}),
 });
 config.openaiApiKey = noKey;
-assert(noKeySess.status === 503, "POST voice/session without OpenAI key → 503");
+config.grokApiKey = noGrok;
+if (xaiEnv !== undefined) process.env.XAI_API_KEY = xaiEnv;
+assert(noKeySess.status === 503, "POST voice/session sin ninguna key → 503");
 
 const sess = await req("/api/agent/voice/session", {
   method: "POST",
@@ -136,6 +166,32 @@ assert(
   "default realtime_base is OpenAI",
 );
 assert(sess.json?.session_bootstrap == null, "OpenAI path has no session_bootstrap");
+
+// Mint retry: OpenAI mint falla 429 en pleno request → re-mint con Grok.
+const { clearVoiceProviderDeadMarks } = await import("../server/lib/voiceRealtimeProviders.js");
+clearVoiceProviderDeadMarks();
+failOpenAiMintStatus = 429;
+const retrySess = await req("/api/agent/voice/session", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({}),
+});
+assert(
+  retrySess.status === 200 &&
+    (retrySess.json?.provider === "grok" || retrySess.json?.voice_provider === "grok") &&
+    retrySess.json?.client_secret?.value === "xai-ek_test_secret",
+  "mint OpenAI 429 → retry con Grok en el mismo request",
+);
+// Elección explícita del usuario NO hace fallback (error transparente).
+clearVoiceProviderDeadMarks();
+failOpenAiMintStatus = 429;
+const explicitFail = await req("/api/agent/voice/session", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ voiceProvider: "openai" }),
+});
+assert(explicitFail.status === 502, "mint 429 con voiceProvider explícito openai → 502 sin fallback");
+clearVoiceProviderDeadMarks();
 
 // Grok Voice Agent mint
 const grokSess = await req("/api/agent/voice/session", {

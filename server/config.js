@@ -132,6 +132,10 @@ export const config = {
   // Embeddings: "auto" (openai→gemini según keys usables), "openai", "gemini" o "stub".
   // Ver server/lib/embeddings.js — cambiar de provider requiere re-embeber el corpus.
   embeddingsProvider: process.env.EMBEDDINGS_PROVIDER || "auto",
+  // Voz realtime: "" (auto: openai con fallback a grok si la key openai no
+  // sirve o el engine está dead-marked), o pin "openai" | "grok".
+  // Ver server/lib/voiceRealtimeProviders.js.
+  voiceProvider: process.env.VOICE_PROVIDER || "",
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 (404 "no longer available"); 2.5-flash is the live model. Used by the SSE chat streaming path (agentChat.js) + visionExtract.
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",

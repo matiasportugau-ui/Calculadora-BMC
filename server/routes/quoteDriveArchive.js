@@ -2,9 +2,12 @@
  * POST /api/quotes/drive-archive
  * Archiva PDF + .bmc.json en la carpeta compartida DRIVE_QUOTE_FOLDER_ID (service account).
  * Llamado automáticamente desde la calculadora tras cada exportación de presupuesto.
+ *
+ * GET /api/quotes/drive-project?folderId=
+ * Lee el .bmc.json de una carpeta de cotización (user OAuth del servidor) para deep-link openDrive.
  */
 import { Router } from "express";
-import { saveQuotationBundleToDrive } from "../lib/driveUpload.js";
+import { saveQuotationBundleToDrive, loadProjectFromDriveFolder } from "../lib/driveUpload.js";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 
 const MAX_PDF_BYTES = 12 * 1024 * 1024;
@@ -61,7 +64,41 @@ export function validateDriveArchiveBody(body) {
 export function createQuoteDriveArchiveRouter(config, deps = {}) {
   const router = Router();
   const saveBundle = deps.saveQuotationBundleToDrive || saveQuotationBundleToDrive;
+  const loadProject = deps.loadProjectFromDriveFolder || loadProjectFromDriveFolder;
   const authGuard = deps.authGuard || requireServiceOrUser({ authOnly: true });
+
+  // Public-ish deep-link: folder IDs are secrets-by-obscurity (same as openDrive in Admin sheet).
+  // Uses server OAuth so GIS drive.file client mismatch does not block edit.
+  router.get("/quotes/drive-project", async (req, res) => {
+    const folderId = String(req.query.folderId || "").trim();
+    if (!folderId) {
+      return res.status(400).json({ ok: false, error: "missing_folder_id" });
+    }
+    try {
+      const loaded = await loadProject(folderId);
+      if (!loaded) {
+        return res.status(404).json({ ok: false, error: "bmc_json_not_found" });
+      }
+      res.setHeader("Cache-Control", "private, max-age=60");
+      return res.json({
+        ok: true,
+        folderId,
+        fileId: loaded.fileId,
+        fileName: loaded.fileName,
+        projectData: loaded.projectData,
+      });
+    } catch (err) {
+      const code = err?.code || "";
+      console.error("[drive-project]", err?.message || err);
+      if (code === "bad_request") {
+        return res.status(400).json({ ok: false, error: err.message || "bad_request" });
+      }
+      if (code === "drive_unavailable" || /invalid_grant|ENOENT|credentials/i.test(String(err?.message))) {
+        return res.status(503).json({ ok: false, error: "drive_unavailable" });
+      }
+      return res.status(500).json({ ok: false, error: "drive_load_failed" });
+    }
+  });
 
   router.post("/quotes/drive-archive", authGuard, async (req, res) => {
     if (!config.driveQuoteFolderId) {

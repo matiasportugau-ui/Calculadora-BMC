@@ -5025,12 +5025,46 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     }
   }, [groups, proyecto, currentBudgetCode, showToast, buildClientePdfHtml, requireProyectoParaPdf, driveFolderConfig, buildSerializedProject, handleDriveRefresh, persistExportToCompanyDrive]);
 
+  /**
+   * When a full quote is loaded (Drive / openBmc / import), unlock the whole wizard and land on
+   * "Datos del proyecto" so the operator sees measures/color/BOM already applied — not stuck on step 1.
+   */
+  const unlockWizardForLoadedProject = useCallback((scenarioId) => {
+    const steps = SCENARIOS_DEF.find((s) => s.id === (scenarioId || "solo_techo"))?.wizardSteps ?? [];
+    if (!steps.length) {
+      setWizardStep(0);
+      setMaxReachedStep(0);
+      return;
+    }
+    const last = steps.length - 1;
+    setWizardStep(last);
+    setMaxReachedStep(last);
+  }, []);
+
   const applyDeserializedProject = useCallback((state, toastMsg) => {
-    setScenario(state.scenario);
+    const scenarioId = state.scenario || "solo_techo";
+    setScenario(scenarioId);
     setLP(state.listaPrecios);
     setProyecto(state.proyecto);
-    setTecho(state.techo);
-    setPared(state.pared);
+    // Normalize numeric espesor → string for select controls
+    const techoNorm = state.techo
+      ? {
+          ...state.techo,
+          espesor: state.techo.espesor != null && state.techo.espesor !== ""
+            ? String(state.techo.espesor)
+            : state.techo.espesor,
+        }
+      : state.techo;
+    const paredNorm = state.pared
+      ? {
+          ...state.pared,
+          espesor: state.pared.espesor != null && state.pared.espesor !== ""
+            ? String(state.pared.espesor)
+            : state.pared.espesor,
+        }
+      : state.pared;
+    setTecho(techoNorm);
+    setPared(paredNorm);
     setCamara(state.camara);
     setFlete(state.flete);
     setOverrides(state.overrides);
@@ -5045,23 +5079,61 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (state.librePerfilFilter != null) setLibrePerfilFilter(state.librePerfilFilter);
     if (state.techoAnchoModo) setTechoAnchoModo(state.techoAnchoModo);
     if (state._meta?.quotationCode) setCurrentBudgetCode(state._meta.quotationCode);
+    // Defer wizard unlock so scenario-change effects don't reset maxReachedStep after us.
+    queueMicrotask(() => unlockWizardForLoadedProject(scenarioId));
     setShowDrivePanel(false);
     if (toastMsg) showToast(toastMsg);
-  }, [showToast]);
+  }, [showToast, unlockWizardForLoadedProject]);
+
+  const loadProjectViaServer = useCallback(async (folderId) => {
+    const base = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE)
+      ? String(import.meta.env.VITE_API_BASE).replace(/\/+$/, "")
+      : "";
+    const resp = await fetch(
+      `${base}/api/quotes/drive-project?folderId=${encodeURIComponent(folderId)}`,
+      { credentials: "omit" },
+    );
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body?.error || `drive-project ${resp.status}`);
+    }
+    const json = await resp.json();
+    if (!json?.projectData) throw new Error("bmc_json_not_found");
+    return json.projectData;
+  }, []);
 
   const handleDriveLoad = useCallback(async (folderId) => {
     setDriveLoading(true);
     setDriveError(null);
     try {
-      const data = await loadProjectFromFolder(folderId);
+      let data = null;
+      // 1) Browser GIS (files created by this app / user session)
+      try {
+        data = await loadProjectFromFolder(folderId);
+      } catch {
+        data = null;
+      }
+      // 2) Server OAuth (pipeline-created folders the GIS drive.file client cannot see)
+      if (!data) {
+        try {
+          data = await loadProjectViaServer(folderId);
+        } catch (serverErr) {
+          throw new Error(
+            serverErr.message === "bmc_json_not_found"
+              ? "No se encontró archivo de proyecto (.bmc.json)"
+              : (serverErr.message || "Error al cargar cotización"),
+          );
+        }
+      }
       if (!data) { setDriveError("No se encontró archivo de proyecto (.bmc.json)"); return; }
       applyDeserializedProject(deserializeProject(data), "Cotización cargada desde Drive");
     } catch (err) {
       setDriveError(err.message || "Error al cargar cotización");
+      showToast(err.message || "Error al cargar cotización");
     } finally {
       setDriveLoading(false);
     }
-  }, [applyDeserializedProject]);
+  }, [applyDeserializedProject, loadProjectViaServer, showToast]);
 
   // Deep-link: `?openDrive=<folderId>` opens a saved Drive quote on page load (one-click edit from the
   // leads sheet). Inert unless the param is present; reuses the existing Drive-load flow. Runs once.
@@ -5071,8 +5143,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const folderId = new URLSearchParams(window.location.search).get("openDrive");
     if (!folderId) return;
     openDriveDoneRef.current = true;
-    setShowDrivePanel(true);      // surfaces the Drive panel so sign-in is available if not yet authed
-    handleDriveLoad(folderId);    // on success this loads the .bmc.json and closes the panel
+    // Prefer server path; no need to force Drive panel open for sign-in first.
+    handleDriveLoad(folderId);
   }, [handleDriveLoad]);
 
   // Deep-link: `?openBmc=<url|key>` loads a public .bmc.json (GCS) without Drive OAuth.

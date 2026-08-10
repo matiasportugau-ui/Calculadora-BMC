@@ -3,17 +3,57 @@ import assert from "node:assert/strict";
 import {
   resolveVoiceProvider,
   resolveSessionModel,
+  isVoiceMintFallbackError,
+  markVoiceProviderDead,
+  isVoiceProviderDead,
+  clearVoiceProviderDeadMarks,
   GROK_VOICE_MODELS,
   getVoiceProviderConfig,
 } from "../server/lib/voiceRealtimeProviders.js";
 
-assert.equal(resolveVoiceProvider("auto"), "openai");
-assert.equal(resolveVoiceProvider("openai"), "openai");
-assert.equal(resolveVoiceProvider("grok"), "grok");
-assert.equal(resolveVoiceProvider("claude"), "openai");
-assert.equal(resolveVoiceProvider("gemini"), "openai");
-assert.equal(resolveVoiceProvider("auto", "grok"), "grok");
-assert.equal(resolveVoiceProvider("openai", "grok"), "grok");
+// Seam determinista: ambas keys OK, sin pin — mapeo clásico aiProvider→engine.
+const bothOk = { pin: "", openaiKeyOk: true, grokKeyOk: true };
+assert.equal(resolveVoiceProvider("auto", null, bothOk), "openai");
+assert.equal(resolveVoiceProvider("openai", null, bothOk), "openai");
+assert.equal(resolveVoiceProvider("grok", null, bothOk), "grok");
+assert.equal(resolveVoiceProvider("claude", null, bothOk), "openai");
+assert.equal(resolveVoiceProvider("gemini", null, bothOk), "openai");
+assert.equal(resolveVoiceProvider("auto", "grok", bothOk), "grok");
+assert.equal(resolveVoiceProvider("openai", "grok", bothOk), "grok");
+
+// Fallback: OpenAI key muerta/dead-marked y Grok viva → auto resuelve grok.
+const openaiDead = { pin: "", openaiKeyOk: false, grokKeyOk: true };
+assert.equal(resolveVoiceProvider("auto", null, openaiDead), "grok");
+assert.equal(resolveVoiceProvider("claude", null, openaiDead), "grok");
+// Elección explícita del usuario gana siempre, aunque la key esté muerta.
+assert.equal(resolveVoiceProvider("auto", "openai", openaiDead), "openai");
+// Ambas muertas → default openai (error claro en mint, no silencios).
+assert.equal(
+  resolveVoiceProvider("auto", null, { pin: "", openaiKeyOk: false, grokKeyOk: false }),
+  "openai",
+);
+
+// Pin de ops (VOICE_PROVIDER) gana sobre el mapeo pero no sobre el usuario.
+assert.equal(resolveVoiceProvider("auto", null, { ...bothOk, pin: "grok" }), "grok");
+assert.equal(resolveVoiceProvider("claude", null, { ...bothOk, pin: "grok" }), "grok");
+assert.equal(resolveVoiceProvider("auto", "openai", { ...bothOk, pin: "grok" }), "openai");
+
+// Dead-marks en proceso.
+clearVoiceProviderDeadMarks();
+assert.equal(isVoiceProviderDead("openai"), false);
+markVoiceProviderDead("openai");
+assert.equal(isVoiceProviderDead("openai"), true);
+assert.equal(isVoiceProviderDead("grok"), false);
+clearVoiceProviderDeadMarks();
+assert.equal(isVoiceProviderDead("openai"), false);
+
+// Clasificación de errores que justifican fallback de mint.
+for (const status of [401, 402, 403, 429, 500, 502, 503]) {
+  assert.equal(isVoiceMintFallbackError({ status }), true, `status ${status} → fallback`);
+}
+assert.equal(isVoiceMintFallbackError(new Error("fetch failed")), true, "network error → fallback");
+assert.equal(isVoiceMintFallbackError({ status: 400 }), false, "400 no es fallback");
+assert.equal(isVoiceMintFallbackError({ status: 404 }), false, "404 no es fallback");
 
 const grokModel = resolveSessionModel("grok", "grok", "grok-3-mini", null);
 assert.ok(GROK_VOICE_MODELS.includes(grokModel) || grokModel.startsWith("grok-voice"));
