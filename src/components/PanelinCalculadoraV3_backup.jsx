@@ -5086,12 +5086,19 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [showToast, unlockWizardForLoadedProject]);
 
   const loadProjectViaServer = useCallback(async (folderId) => {
+    // Identity JWT only — never fall back to VITE_API_AUTH_TOKEN (that would re-open
+    // anonymous Drive reads via the SPA-bundled service token).
+    const token = String(bmcAuth.accessToken || "").trim();
+    if (!token) throw new Error("auth_required");
     const base = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE)
       ? String(import.meta.env.VITE_API_BASE).replace(/\/+$/, "")
       : "";
     const resp = await fetch(
       `${base}/api/quotes/drive-project?folderId=${encodeURIComponent(folderId)}`,
-      { credentials: "omit" },
+      {
+        credentials: "omit",
+        headers: { Authorization: `Bearer ${token}` },
+      },
     );
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
@@ -5100,7 +5107,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const json = await resp.json();
     if (!json?.projectData) throw new Error("bmc_json_not_found");
     return json.projectData;
-  }, []);
+  }, [bmcAuth.accessToken]);
 
   const handleDriveLoad = useCallback(async (folderId) => {
     setDriveLoading(true);
@@ -5113,19 +5120,29 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       } catch {
         data = null;
       }
-      // 2) Server OAuth (pipeline-created folders the GIS drive.file client cannot see)
-      if (!data) {
+      // 2) Server OAuth (pipeline-created folders the GIS drive.file client cannot see).
+      // Requires BMC identity JWT — endpoint is authenticated (customer PII in projectData).
+      if (!data && bmcAuth.accessToken) {
         try {
           data = await loadProjectViaServer(folderId);
         } catch (serverErr) {
           throw new Error(
             serverErr.message === "bmc_json_not_found"
               ? "No se encontró archivo de proyecto (.bmc.json)"
-              : (serverErr.message || "Error al cargar cotización"),
+              : serverErr.message === "auth_required"
+                ? "Iniciá sesión para abrir cotizaciones de Drive del servidor"
+                : (serverErr.message || "Error al cargar cotización"),
           );
         }
       }
-      if (!data) { setDriveError("No se encontró archivo de proyecto (.bmc.json)"); return; }
+      if (!data) {
+        const msg = bmcAuth.accessToken
+          ? "No se encontró archivo de proyecto (.bmc.json)"
+          : "Iniciá sesión (BMC) o conectá Drive para abrir esta cotización";
+        setDriveError(msg);
+        showToast(msg);
+        return;
+      }
       applyDeserializedProject(deserializeProject(data), "Cotización cargada desde Drive");
     } catch (err) {
       setDriveError(err.message || "Error al cargar cotización");
@@ -5133,19 +5150,21 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     } finally {
       setDriveLoading(false);
     }
-  }, [applyDeserializedProject, loadProjectViaServer, showToast]);
+  }, [applyDeserializedProject, loadProjectViaServer, showToast, bmcAuth.accessToken]);
 
   // Deep-link: `?openDrive=<folderId>` opens a saved Drive quote on page load (one-click edit from the
-  // leads sheet). Inert unless the param is present; reuses the existing Drive-load flow. Runs once.
+  // leads sheet). Wait for identity bootstrap so the authenticated server path can run; if still
+  // anonymous, surface the Drive panel for GIS sign-in.
   const openDriveDoneRef = useRef(false);
   useEffect(() => {
     if (openDriveDoneRef.current) return;
+    if (bmcAuth.status === "loading") return;
     const folderId = new URLSearchParams(window.location.search).get("openDrive");
     if (!folderId) return;
     openDriveDoneRef.current = true;
-    // Prefer server path; no need to force Drive panel open for sign-in first.
+    if (!bmcAuth.accessToken) setShowDrivePanel(true);
     handleDriveLoad(folderId);
-  }, [handleDriveLoad]);
+  }, [handleDriveLoad, bmcAuth.status, bmcAuth.accessToken]);
 
   // Deep-link: `?openBmc=<url|key>` loads a public .bmc.json (GCS) without Drive OAuth.
   // Allowlist: https://storage.googleapis.com/bmc-cotizaciones/...  or short key under quotes/bmc-json/

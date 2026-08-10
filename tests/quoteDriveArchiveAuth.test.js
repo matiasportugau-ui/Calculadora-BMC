@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Security regression guard — /api/quotes/drive-archive must not be public.
+// Security regression guard — /api/quotes/drive-archive and drive-project
+// must not be public (projectData includes customer PII).
 // Run: node tests/quoteDriveArchiveAuth.test.js
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -77,9 +78,16 @@ const payload = {
   proyecto: { nombre: "Cliente Test" },
 };
 
+const sampleProject = {
+  _meta: { quotationCode: "BMC-SEC-0002" },
+  scenario: "solo_techo",
+  proyecto: { nombre: "Sory", rut: "12.345.678-9", telefono: "099123456", direccion: "Artigas 1" },
+};
+
 let server;
 let port;
 let uploadCalls;
+let loadCalls;
 
 before(async () => {
   const app = express();
@@ -90,6 +98,14 @@ before(async () => {
       saveQuotationBundleToDrive: async (args) => {
         uploadCalls.push(args);
         return { folderUrl: "https://drive.example/folder", pdfUrl: "https://drive.example/pdf" };
+      },
+      loadProjectFromDriveFolder: async (folderId) => {
+        loadCalls.push(folderId);
+        return {
+          projectData: sampleProject,
+          fileId: "file-bmc-1",
+          fileName: "BMC-SEC-0002.bmc.json",
+        };
       },
     }),
   );
@@ -106,6 +122,7 @@ after(async () => {
 
 beforeEach(() => {
   uploadCalls = [];
+  loadCalls = [];
   identityAuth.__test__.reset();
   identityAuth.initIdentityAuth({
     pool: makeIdentityPool(),
@@ -162,5 +179,43 @@ describe("POST /api/quotes/drive-archive auth", () => {
     assert.equal(body.ok, true);
     assert.equal(uploadCalls.length, 1);
     assert.equal(uploadCalls[0].exportedBy, "operator@bmc.test");
+  });
+});
+
+describe("GET /api/quotes/drive-project auth (Bug DM)", () => {
+  const folderId = "12ImW2Oe05TPTHhFFqkvBMPHtBLq1-Ay4";
+
+  it("rejects anonymous drive-project reads before Drive load", async () => {
+    const res = await fetch(url(`/api/quotes/drive-project?folderId=${folderId}`));
+    const body = await res.json();
+
+    assert.equal(res.status, 401);
+    assert.equal(body.ok, false);
+    assert.equal(loadCalls.length, 0);
+  });
+
+  it("accepts identity JWT and returns projectData", async () => {
+    const res = await fetch(url(`/api/quotes/drive-project?folderId=${folderId}`), {
+      headers: { Authorization: bearerFor() },
+    });
+    const body = await res.json();
+
+    assert.equal(res.status, 200);
+    assert.equal(body.ok, true);
+    assert.equal(loadCalls.length, 1);
+    assert.equal(loadCalls[0], folderId);
+    assert.equal(body.projectData?.proyecto?.rut, "12.345.678-9");
+    assert.equal(body.fileId, "file-bmc-1");
+  });
+
+  it("accepts the static service token for internal reads", async () => {
+    const res = await fetch(url(`/api/quotes/drive-project?folderId=${folderId}`), {
+      headers: { Authorization: "Bearer static_service_token_xyz" },
+    });
+    const body = await res.json();
+
+    assert.equal(res.status, 200);
+    assert.equal(body.ok, true);
+    assert.equal(loadCalls.length, 1);
   });
 });
