@@ -262,7 +262,7 @@ jobs:
           status: ${{ job.status }}
 
   voice_health:
-    name: Voice — OpenAI key health (main only)
+    name: Voice — realtime engine health (main only)
     runs-on: ubuntu-latest
     needs: [validate, lint]
     # Señal de prod-health, NO gate de deploy (ver nota en channels_pipeline).
@@ -295,7 +295,7 @@ jobs:
           cat /tmp/voice-health.json
           echo
           if [ "$body" != "200" ]; then
-            echo "::error::voice/health returned HTTP $body — OPENAI_API_KEY likely revoked or misconfigured. Run 'npm run keys:rotate' locally."
+            echo "::error::voice/health returned HTTP $body — active voice engine key (see voiceProvider in body) revoked, exhausted, or unreachable from Cloud Run. Check VOICE_PROVIDER pin / provider keys."
             exit 1
           fi
           if ! grep -q '"ok":true' /tmp/voice-health.json; then
