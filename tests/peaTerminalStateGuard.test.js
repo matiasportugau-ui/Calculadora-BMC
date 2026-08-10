@@ -39,29 +39,40 @@ assert(!TERMINAL_GAP_STATUSES.has("investigating"), "investigating is not termin
 assert(IMMUTABLE_PACKET_STATUSES.has("accepted"), "accepted packet immutable");
 assert(IMMUTABLE_PACKET_STATUSES.has("rejected"), "rejected packet immutable");
 
-async function testEscalateAcceptedRefused() {
+/** Pool mock for Bug BZ/CS transactional packetReview paths. */
+function makeGuardPool(packetRow) {
   const calls = [];
-  const db = {
+  const client = {
     async query(sql, params) {
       calls.push({ sql, params });
+      if (/^BEGIN$/i.test(sql.trim()) || /^COMMIT$/i.test(sql.trim()) || /^ROLLBACK$/i.test(sql.trim())) {
+        return { rows: [] };
+      }
       if (/FROM pea\.evolution_packets/i.test(sql)) {
-        return {
-          rows: [
-            {
-              id: "pkt-1",
-              gap_id: "gap-1",
-              status: "accepted",
-              gap_row_id: "gap-1",
-              gap_status: "resolved",
-              signal_type: "tool_fail",
-              fingerprint: "fp",
-            },
-          ],
-        };
+        return { rows: [packetRow] };
       }
       throw new Error(`unexpected query: ${sql}`);
     },
+    release() {},
   };
+  return {
+    calls,
+    async connect() {
+      return client;
+    },
+  };
+}
+
+async function testEscalateAcceptedRefused() {
+  const db = makeGuardPool({
+    id: "pkt-1",
+    gap_id: "gap-1",
+    status: "accepted",
+    gap_row_id: "gap-1",
+    gap_status: "resolved",
+    signal_type: "tool_fail",
+    fingerprint: "fp",
+  });
   const result = await escalatePeaPacket(db, { peaMaxGrantLevel: 3 }, {
     packetId: "pkt-1",
     actorId: "admin@test",
@@ -69,30 +80,19 @@ async function testEscalateAcceptedRefused() {
   assert(result.error === "invalid_status", "BZ escalate accepted → invalid_status");
   assert(result.status === "accepted", "BZ escalate preserves accepted status");
   assert(
-    !calls.some((c) => /UPDATE pea\.gaps SET status = 'blocked'/i.test(c.sql)),
+    !db.calls.some((c) => /UPDATE pea\.gaps SET status = 'blocked'/i.test(c.sql)),
     "BZ escalate does not set gap blocked",
   );
 }
 
 async function testRejectAcceptedRefused() {
-  const db = {
-    async query(sql) {
-      if (/FROM pea\.evolution_packets/i.test(sql)) {
-        return {
-          rows: [
-            {
-              id: "pkt-1",
-              gap_id: "gap-1",
-              status: "accepted",
-              gap_row_id: "gap-1",
-              gap_status: "resolved",
-            },
-          ],
-        };
-      }
-      throw new Error(`unexpected mutate: ${sql}`);
-    },
-  };
+  const db = makeGuardPool({
+    id: "pkt-1",
+    gap_id: "gap-1",
+    status: "accepted",
+    gap_row_id: "gap-1",
+    gap_status: "resolved",
+  });
   const result = await rejectPeaPacket(db, { packetId: "pkt-1", actorId: "admin@test" });
   assert(result.error === "invalid_status", "reject accepted → invalid_status");
 }
