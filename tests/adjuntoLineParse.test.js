@@ -203,6 +203,36 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
 }
 
 {
+  // Bug CP — #978 BY keyed only core|qty after stripping classic Largo from descr → distinct
+  // cut lengths of the same accessory collapsed (Gotero 3,03×2 + 6,00×2 → one row qty 2).
+  const cutLens = parseLogisticaFromAdjuntoText(
+    `Perf. Ch. Gotero Frontal 100mm                             3,03              2             5,30                  32,14
+Perf. Ch. Gotero Frontal 100mm                             6,00              2             5,30                  32,14
+Perf. Ch. Babeta Lateral 100mm                             3,00              2             4,10                  20,00
+Perf. Ch. Babeta Lateral 100mm                             2,50              2             4,10                  20,00`,
+  );
+  assert.equal(
+    cutLens.accesorios.length,
+    4,
+    `expected 4 distinct cut-length accessory rows, got ${JSON.stringify(cutLens.accesorios)}`,
+  );
+  const goteros = cutLens.accesorios.filter((a) => /gotero/i.test(a.descr));
+  const babetas = cutLens.accesorios.filter((a) => /babeta/i.test(a.descr));
+  assert.equal(goteros.length, 2, `gotero cuts: ${JSON.stringify(goteros)}`);
+  assert.equal(babetas.length, 2, `babeta cuts: ${JSON.stringify(babetas)}`);
+  assert.equal(
+    cutLens.accesorios.reduce((s, a) => s + a.cantidad, 0),
+    8,
+    `total accessory qty must stay 8, got ${JSON.stringify(cutLens.accesorios)}`,
+  );
+  assert.ok(
+    goteros.some((a) => a.largo === 3.03) && goteros.some((a) => a.largo === 6),
+    `gotero largos preserved: ${JSON.stringify(goteros)}`,
+  );
+  ok("Bug CP: classic accessory cut lengths same qty are kept");
+}
+
+{
   // Bug CE — pdf.js often omits hasEOL between classic table rows → one line, was qty 11 only.
   const collapsed = [
     "Isopanel EPS 100 mm (Fachada) 2,50 11 37,00 1.159,95 ",

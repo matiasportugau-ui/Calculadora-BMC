@@ -286,17 +286,47 @@ function normalizeAccCore(descr) {
 }
 
 /**
+ * Round accessory cut length (m) for echo keys. Null when absent / non-finite.
+ * @param {unknown} largo
+ * @returns {number|null}
+ */
+function accessoryLargoKey(largo) {
+  const n = Number(largo);
+  if (!Number.isFinite(n) || n < 1.5 || n > 14.5) return null;
+  return Math.round(n * 100) / 100;
+}
+
+/**
  * Drop free-text / classic-table accessory echoes with the same core name + qty (Bug BY).
- * @param {Array<{ descr: string, cantidad: number }>} accesorios
+ * Keep classic rows that share core|qty but differ in cut length (Bug CP — #978 stripped
+ * Largo from descr and keyed only core|qty, so Gotero 3,03×2 + 6,00×2 collapsed to one).
+ * Free-text (no largo) still collapses onto a classic sibling of the same core|qty.
+ * @param {Array<{ descr: string, cantidad: number, largo?: number }>} accesorios
  */
 function collapseAccessoryEchoes(accesorios) {
+  /** @type {Set<string>} */
+  const coresWithClassicLargo = new Set();
+  for (const acc of accesorios) {
+    const core = normalizeAccCore(acc.descr);
+    if (core && accessoryLargoKey(acc.largo) != null) {
+      coresWithClassicLargo.add(`${core}|${acc.cantidad}`);
+    }
+  }
   const seen = new Set();
   const out = [];
   for (const acc of accesorios) {
     const core = normalizeAccCore(acc.descr);
-    const key = core ? `${core}|${acc.cantidad}` : "";
-    if (key && seen.has(key)) continue;
-    if (key) seen.add(key);
+    if (!core) {
+      out.push(acc);
+      continue;
+    }
+    const base = `${core}|${acc.cantidad}`;
+    const L = accessoryLargoKey(acc.largo);
+    // Bug BY: drop free-text (no cut length) when a classic sibling already carries Largo.
+    if (L == null && coresWithClassicLargo.has(base)) continue;
+    const key = L != null ? `${base}|L${L}` : base;
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(acc);
   }
   return out;
@@ -502,7 +532,12 @@ export function parseAccesorioLine(line) {
     if (classic && classic.cantidad >= 1) {
       let descr = raw.replace(/\s+/g, " ").trim();
       descr = descr.replace(/\s+\d{1,2}[.,]\d{1,2}\s+\d{1,3}\b.*$/, "").trim();
-      if (descr.length >= 3) return { descr, cantidad: classic.cantidad };
+      if (descr.length >= 3) {
+        // Persist cut length for Bug CP echo keys (stripped from descr above so BY
+        // free-text + classic still share normalizeAccCore; do not re-append "m").
+        const L = accessoryLargoKey(classic.longitud);
+        return { descr, cantidad: classic.cantidad, ...(L != null ? { largo: L } : {}) };
+      }
     }
   }
   m = raw.match(/^(.+?)\s+[-–:]\s*(\d+)\s*(?:uds?\.?|unidades?)?\s*$/i);
