@@ -66,9 +66,12 @@ async function markPeaJobFailed(pool, jobRow, error, logger) {
  */
 export async function claimAndRunPeaBatch(pool, cfg, logger) {
   const log = logger || { warn() {} };
+  // Bug CW: stale reclaim must respect attempts → dead, otherwise hung jobs
+  // bounce forever (failed → reclaim → running → stale → failed…) and never
+  // dead-letter. markPeaJobFailed already uses attempts >= 2 → dead on throw.
   await pool.query(
     `UPDATE pea.jobs SET
-       status = 'failed',
+       status = CASE WHEN attempts >= 2 THEN 'dead' ELSE 'failed' END,
        error = 'stale_running_recovered',
        completed_at = now()
      WHERE status = 'running'

@@ -148,10 +148,106 @@ async function testSaveImmutablePacket() {
   assert(threw?.status === "accepted", "CA immutable status surfaced");
 }
 
+async function testInvestigatingGuardRefundsOnTerminalRace() {
+  // Bug CQ: gap becomes resolved after initial SELECT; investigating UPDATE must
+  // no-op and refund the reserve instead of reopening the gap.
+  const sqlLog = [];
+  let gapStatus = "open";
+  const pool = {
+    async query(sql, params) {
+      sqlLog.push({ sql, params });
+      if (/SELECT \* FROM pea\.gaps WHERE id/i.test(sql)) {
+        return {
+          rows: [
+            {
+              id: "gap-race",
+              status: gapStatus,
+              occurrence_count: 9,
+              severity: "high",
+              signal_type: "tool_fail",
+              summary: "race",
+              fingerprint: "fp-race",
+              metadata: {},
+            },
+          ],
+        };
+      }
+      if (/SELECT COALESCE\(SUM\(amount_usd\)/i.test(sql)) {
+        return { rows: [{ total: 0 }] };
+      }
+      if (/INSERT INTO pea\.analysis_runs/i.test(sql)) {
+        return { rows: [{ id: "run-race" }] };
+      }
+      if (/INSERT INTO pea\.budget_ledger/i.test(sql) && /'reserve'/i.test(sql)) {
+        return { rows: [{ id: "res-race", amount_usd: params[2], tokens: params[3] }] };
+      }
+      if (/UPDATE pea\.gaps SET status = 'investigating'/i.test(sql)) {
+        // Simulate accept winning the race: gap already terminal.
+        gapStatus = "resolved";
+        return { rows: [], rowCount: 0 };
+      }
+      if (/SELECT gap_id, analysis_run_id, amount_usd, tokens FROM pea\.budget_ledger WHERE id/i.test(sql)) {
+        return {
+          rows: [
+            {
+              id: "res-race",
+              gap_id: "gap-race",
+              analysis_run_id: "run-race",
+              amount_usd: 0.01,
+              tokens: 100,
+            },
+          ],
+        };
+      }
+      if (/INSERT INTO pea\.budget_ledger/i.test(sql) && /'refund'/i.test(sql)) {
+        return { rows: [{ id: "refund-race" }] };
+      }
+      if (/UPDATE pea\.jobs SET status = 'completed'/i.test(sql)) {
+        return { rows: [], rowCount: 1 };
+      }
+      throw new Error(`unexpected CQ query: ${sql.slice(0, 140)}`);
+    },
+  };
+
+  const out = await runAnalyzeGapJob(
+    pool,
+    {
+      peaArchitectMock: true,
+      peaAutoMinOccurrences: 1,
+      peaAutoMaxTotalTokens: 1_000_000,
+      peaApprovalMaxTotalTokens: 2_000_000,
+      peaAutoMaxCostUsd: 100,
+      peaApprovedMaxCostUsd: 200,
+      peaAutoDailyBudgetUsd: 100,
+      peaRequireModelPricing: false,
+      peaEstimateSafetyFactor: 1.2,
+      peaFallbackReservationMode: "sum",
+      peaMaxOutputTokensPerCall: 6000,
+    },
+    { id: "job-race", gap_id: "gap-race", input_json: { force: true } },
+  );
+
+  assert(out.skipped === true, "CQ analyze skips when investigating loses race");
+  assert(out.race === "investigating_guard", "CQ skip tagged investigating_guard");
+  assert(
+    sqlLog.some((c) => /NOT \(status = ANY/i.test(c.sql)),
+    "CQ investigating UPDATE uses terminal status predicate",
+  );
+  assert(
+    sqlLog.some((c) => /'refund'/i.test(c.sql)),
+    "CQ refunds reserve when terminal race wins",
+  );
+  assert(
+    !sqlLog.some((c) => /runArchitectRuntime|INSERT INTO pea\.evolution_packets/i.test(c.sql)),
+    "CQ does not persist a new packet after terminal race",
+  );
+}
+
 await testEscalateAcceptedRefused();
 await testRejectAcceptedRefused();
 await testAnalyzeTerminalSkipped();
 await testSaveImmutablePacket();
+await testInvestigatingGuardRefundsOnTerminalRace();
 
 console.log(`\npeaTerminalStateGuard: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
