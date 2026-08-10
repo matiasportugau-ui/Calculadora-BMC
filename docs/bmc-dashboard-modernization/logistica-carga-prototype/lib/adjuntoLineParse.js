@@ -142,6 +142,21 @@ const PANEL_TIPO_SPLIT_RE =
 export function parsePanelRowsFromPossiblyCollapsedLine(line) {
   const raw = String(line || "").trim();
   if (!raw) return [];
+  // Bug DD: classic accessory rows often name the compatible panel family
+  // ("Gotero Frontal Isopanel…", "Babeta … Isodec…"). Splitting on ISO* turns the
+  // trailing fragment into a phantom panel and skips parseAccesorioLine.
+  // If an accessory keyword appears before the first ISO* token, defer to the
+  // single-line accessory path (keeps Bug CE multi-panel splits intact).
+  const firstIso = raw.search(PANEL_TIPO_SPLIT_RE);
+  const acc = ACC_WORD_RE.exec(raw);
+  if (
+    acc &&
+    firstIso >= 0 &&
+    acc.index < firstIso &&
+    !/\bpaneles?\b/i.test(raw)
+  ) {
+    return [];
+  }
   const parts = raw
     .split(PANEL_TIPO_SPLIT_RE)
     .map((s) => s.trim())

@@ -240,6 +240,39 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
     `gotero survived split: ${JSON.stringify(free.accesorios)}`,
   );
   assert.equal(free.paneles.length, 0);
-  ok("Bug CE: accessory with ISO* context still parses after split guard");}
+  ok("Bug CE: accessory with ISO* context still parses after split guard");
+}
+
+{
+  // Bug DD — classic table accessories that name the panel family must not become panels.
+  // Pre-fix: "Gotero … Isopanel" / "Babeta … Isodec" → phantom ISO* rows, accesorios=[].
+  const named = parseLogisticaFromAdjuntoText(
+    `Isopanel EPS 100 mm (Fachada)  2,50  11  37,00  1.159,95
+Perf. Ch. Gotero Frontal Isopanel 100mm  3,03  2  5,30  32,14
+Perf. Ch. Babeta adosar Isodec 50mm  2,50  6  4,20  63,00`,
+  );
+  assert.equal(
+    named.paneles.length,
+    1,
+    `expected only Fachada×11, got ${JSON.stringify(named.paneles)}`,
+  );
+  assert.equal(named.paneles[0].tipo, "ISOPANEL");
+  assert.equal(named.paneles[0].cantidad, 11);
+  assert.equal(named.paneles[0].longitud, 2.5);
+  assert.ok(
+    named.accesorios.some((a) => /gotero/i.test(a.descr) && a.cantidad === 2),
+    `gotero accessory: ${JSON.stringify(named.accesorios)}`,
+  );
+  assert.ok(
+    named.accesorios.some((a) => /babeta/i.test(a.descr) && a.cantidad === 6),
+    `babeta accessory: ${JSON.stringify(named.accesorios)}`,
+  );
+  assert.equal(
+    named.paneles.filter((p) => p.cantidad === 2 || p.cantidad === 6).length,
+    0,
+    `no phantom panels from accessory lengths: ${JSON.stringify(named.paneles)}`,
+  );
+  ok("Bug DD: classic Gotero/Babeta naming ISO* stay accessories");
+}
 
 console.log(`\n${passed} passed`);

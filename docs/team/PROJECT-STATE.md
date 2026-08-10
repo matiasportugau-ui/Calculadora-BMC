@@ -14,7 +14,11 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+<<<<<<< HEAD
 **2026-08-10 (fix — Bug DC PEA implement honors orphan L3 grants):** `runImplementPacket` checked grant only — not packet/gap status — so escalate→reject (or manual grant on a rejected/ignored packet) still wrote L3 implement artifacts. Fix: implement requires `ready_for_review` + non-terminal gap; `reject`/`accept` revoke packet-scoped grants; adapter `ok:false` no longer reported as success. Tests: `tests/peaImplementStatusGuard.test.js`.
+=======
+**2026-08-10 (fix — Bug DD Logística accessory→phantom panel):** After Bug CE ISO* split, classic accessory rows that name the compatible panel family (`Perf. Ch. Gotero Frontal Isopanel 100mm …`, `Babeta … Isodec …`) were treated as collapsed multi-panel lines → phantom ISOPANEL/ISODEC cargo and empty `accesorios`. Fix: if an accessory keyword appears before the first ISO* token, skip the collapsed-panel path so `parseAccesorioLine` runs. Tests: `adjuntoLineParse` Bug DD case.
+>>>>>>> f987a98a (fix(logistica): keep classic accessories naming ISO* as accessories (Bug DD))
 
 **2026-08-10 (fix — Bug CH Logística HYPERLINK label lost after #985):** `#985` `sanitizeEncargoCell` extracted the Drive URL from `=HYPERLINK("url","Cotizacion-Isodec-….pdf")` then stripped the whole formula, dropping the display label. When Drive PDF fetch fails (common), `inferCargoFromEncargoAndSheet` no longer saw panel specs in the filename → empty autocarga cargo (pre-#985 still inferred from the label). Fix: preserve HYPERLINK second-arg label in `plainText`. Tests: `ventasSheetMap` + `cargoFromEncargo` Bug CH cases.
 
