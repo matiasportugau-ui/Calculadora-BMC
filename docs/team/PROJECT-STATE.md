@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-09
+**Última actualización:** 2026-08-10
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-10 (fix — Logística adjunto ENCARGO URL sanitize):** Prod showed `Proxy adjunto: URL no permitida (solo Drive/Dropbox https)` when Ventas ENCARGO was a bare PDF filename (gviz HYPERLINK display text) or a dirty cell (`Ver PDF https://…`, quotes, `=HYPERLINK(...)`). New pure `src/utils/logistica/adjuntoUrl.js` extracts clean Drive/Dropbox https; `sanitizeEncargoCell` no longer sets `pdf` for bare `.pdf` names (plainText only → filename infer); client + `resolveAdjuntoFetchUrl` normalize before allowlist; clearer operator hint to paste share link. Tests: `tests/adjuntoUrl.test.js` + ventas/enviosAdjuntoFetch cases. Branch `fix/logistica-adjunto-url-sanitize`.
 
 **2026-08-09 (feat — PEA M0–M4 SHIPPED · PR #967 → main):** Squash-merged [`#967`](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/967) (`a723f666`). Runtime `server/lib/pea/*`, migrations 001–003, `/api/pea/*`, `/hub/pea`, `pea_explain_gap` (58 tools), `test:pea` in gate + CI (`pea_tests`, `pea_staging_config`, env drift fix). SDD kit `docs/sdd/panelin-evolution-architect/` + live campaign goal prompts phase 0–7. **All `PEA_*` default OFF.** Next: `/goal` with `goal-prompt-pea-live-orchestrator.md` → phase 1 live-probe (human).
 

@@ -107,6 +107,16 @@ const ROW = [
   assert.ok(sanitizeEncargoCell("https://drive.google.com/file/d/xxx/view").pdf.includes("drive"));
   assert.equal(sanitizeEncargoCell("2 Gotero Isopanel 200mm").pdf, "");
   assert.ok(sanitizeEncargoCell("2 Gotero Isopanel 200mm").plainText.includes("Gotero"));
+  // gviz often exports HYPERLINK display text only — never treat bare filename as pdf URL
+  assert.equal(sanitizeEncargoCell("Cotizacion-Alvaro-Isodec.pdf").pdf, "");
+  assert.ok(sanitizeEncargoCell("Cotizacion-Alvaro-Isodec.pdf").plainText.includes(".pdf"));
+  // Dirty cells: extract embedded Drive URL
+  const dirty = sanitizeEncargoCell('Ver PDF https://drive.google.com/file/d/1SPwE80c1aQ6HsqR1fMPAAvcuVsk0YhQv/view');
+  assert.ok(dirty.pdf.includes("drive.google.com/file/d/1SPwE80c1aQ6HsqR1fMPAAvcuVsk0YhQv"));
+  const quoted = sanitizeEncargoCell('"https://drive.google.com/file/d/abc123xyz99/view"');
+  assert.ok(quoted.pdf.includes("drive.google.com"));
+  const hyper = sanitizeEncargoCell('=HYPERLINK("https://drive.google.com/file/d/abc123xyz99/view","Cotizacion.pdf")');
+  assert.ok(hyper.pdf.includes("file/d/abc123xyz99"));
   ok("sanitizeEncargoCell");
 }
 

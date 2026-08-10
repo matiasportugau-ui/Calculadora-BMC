@@ -61,6 +61,16 @@ expectCode(() => resolveAdjuntoFetchUrl("http://127.0.0.1:3001/health"), "url_ht
 const okResolved = resolveAdjuntoFetchUrl("https://drive.google.com/file/d/abcXYZ123/view");
 assert.equal(okResolved, "https://drive.google.com/uc?export=download&id=abcXYZ123");
 
+// Dirty operator paste / sheet cell → extract then rewrite
+assert.equal(
+  resolveAdjuntoFetchUrl('Ver PDF https://drive.google.com/file/d/abcXYZ123/view?usp=sharing'),
+  "https://drive.google.com/uc?export=download&id=abcXYZ123",
+);
+assert.equal(
+  resolveAdjuntoFetchUrl('=HYPERLINK("https://drive.google.com/file/d/abcXYZ123/view","cot.pdf")'),
+  "https://drive.google.com/uc?export=download&id=abcXYZ123",
+);
+
 console.log("enviosAdjuntoFetch — body limit");
 
 {

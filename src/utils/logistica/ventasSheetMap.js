@@ -8,6 +8,7 @@ import {
   parsePickupIdFromColumnF,
   parsePedidoRetiroFromFreeText,
 } from "../ventasPedidoRetiroParse.js";
+import { extractAdjuntoHttpsUrl } from "./adjuntoUrl.js";
 
 /** Fixed indices when headers missing / gviz weird (A=0). */
 export const VENTAS_V2_FALLBACK = {
@@ -243,6 +244,10 @@ export function isHeaderLikeLabel(value) {
 
 /**
  * ENCARGO cell → real URL/pdf vs free text vs garbage labels.
+ * Only returns `pdf` when a real Drive/Dropbox https URL can be extracted.
+ * Bare filenames (common gviz HYPERLINK display text) go to plainText only —
+ * never as pdfLink (proxy would answer url_invalid / "URL no permitida").
+ *
  * @param {string} raw
  * @returns {{ pdf: string, plainText: string }}
  */
@@ -251,13 +256,18 @@ export function sanitizeEncargoCell(raw) {
   if (!t || isHeaderLikeLabel(t) || /^pedido$/i.test(t)) {
     return { pdf: "", plainText: "" };
   }
-  if (/^https?:\/\//i.test(t) || /drive\.google|dropbox\.com|docs\.google|\/file\/d\//i.test(t)) {
-    return { pdf: t, plainText: "" };
+  const url = extractAdjuntoHttpsUrl(t);
+  if (url) {
+    const leftover = t
+      .replace(url, " ")
+      .replace(/https?:\/\/[^\s]+/gi, " ")
+      .replace(/[=]?HYPERLINK\s*\([^)]*\)/gi, " ")
+      .replace(/["'`]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return { pdf: url, plainText: leftover };
   }
-  if (/\.pdf(\?|$)/i.test(t)) {
-    return { pdf: t, plainText: t };
-  }
-  // Product line text (goteros, isopanel…) — keep for text infer, not as PDF link
+  // Product lines / bare .pdf filenames — text infer only
   return { pdf: "", plainText: t };
 }
 
