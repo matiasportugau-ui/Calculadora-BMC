@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-10 (ai-verify-stop P0)
+**Última actualización:** 2026-08-10 (Bug DN ai-verify cargo preserve)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-10 (fix — Bug DN Logística AI verify wiped existing cargo):** After #1019, `normalizeAiVerifyProposal` defaulted `replacePaneles`/`replaceAccesorios` to true whenever the model proposed lines, and the system prompt schema example set both to `true` — so **Aplicar** replaced correct paneles/accesorios on stops that were incomplete only for tel/dir/adjunto (or any stop with `pdfLink`/`rawSheetText`, which still shows the button). Fix: replace flags are explicit opt-in; `applyAiVerifyProposal` fills empty cargo only and never wipes existing bultos unless `forceReplaceCargo` + explicit replace (UI does not pass force). Tests: Bug DN cases in `tests/aiVerifyStop.test.js`.
 
 **2026-08-10 (feat — Logística P0 «Verificar con IA»):** After Cargar actuales, incomplete stops get **✨ Verificar con IA** → `POST /api/envios/ai-verify-stop` builds multi-source evidence pack (Ventas row, adjunto meta, fields) + LLM structured proposal; modal shows paneles/accesorios/fields + **Aplicar** (human gate only; no Sheets write). Pure: `src/utils/logistica/aiVerifyStop.js`; server `server/lib/enviosAiVerify.js` via `callAiCompletion`. Tests: `tests/aiVerifyStop.test.js`. Branch `feat/logistica-ai-verify-stop`.
 

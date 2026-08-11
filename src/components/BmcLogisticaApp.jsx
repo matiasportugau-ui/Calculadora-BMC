@@ -3440,10 +3440,12 @@ export default function BmcLogisticaApp() {
   function applyAiVerifyModal() {
     const modal = aiVerifyModal;
     if (!modal?.stopId || !modal.proposal) return;
+    let appliedMeta = null;
     setStops((prev) =>
       prev.map((s) => {
         if (s.id !== modal.stopId) return s;
         const next = applyAiVerifyProposal(s, modal.proposal, { uid });
+        appliedMeta = next.aiVerifyMeta || null;
         return {
           ...next,
           accPackage: buildAccessoryPackageConfig(
@@ -3457,8 +3459,12 @@ export default function BmcLogisticaApp() {
         };
       }),
     );
+    const preserved =
+      appliedMeta?.preservedPaneles || appliedMeta?.preservedAccesorios
+        ? " (cargo existente preservado)"
+        : "";
     setAutoLoadMsg(
-      `IA aplicada (confirmada) en parada — ${modal.proposal.paneles?.length || 0} paneles, ${modal.proposal.accesorios?.length || 0} acc.`,
+      `IA aplicada (confirmada) en parada — ${modal.proposal.paneles?.length || 0} paneles, ${modal.proposal.accesorios?.length || 0} acc.${preserved}`,
     );
     setAiVerifyModal(null);
   }
