@@ -173,6 +173,19 @@ ok(
   !voiceHook.includes("POST to realtime_base (OpenAI or xAI)"),
   "hook header no longer claims xAI SDP POST",
 );
+// Bug DO: post-open mic setup must reject (not mark settled before try), and must
+// reuse the VU AudioContext instead of orphaning a second one per start.
+ok(
+  /ws\.onopen\s*=\s*\(\)\s*=>\s*\{[\s\S]*?try\s*\{[\s\S]*?settled\s*=\s*true[\s\S]*?\}\s*catch/.test(
+    voiceHook,
+  ),
+  "Grok WS onopen sets settled only after mic setup succeeds (no hang on AudioContext throw)",
+);
+ok(
+  voiceHook.includes("Reuse VU AudioContext") ||
+    /let ctx = audioCtxRef\.current/.test(voiceHook),
+  "Grok mic capture reuses VU AudioContext (no orphaned second context leak)",
+);
 const chatPanel = fs.readFileSync(path.join(root, "src/components/PanelinChatPanel.jsx"), "utf8");
 ok(chatPanel.includes("send={send}"), "chat voice panel receives send()");
 ok(chatPanel.includes("aiProvider={aiProvider}"), "chat voice panel receives aiProvider");
