@@ -432,7 +432,7 @@ test("GET draft 404 when missing", async () => {
   }
 });
 
-test("POST ai-verify-stop requires auth and non-object body → 400 (#1019)", async () => {
+test("POST ai-verify-stop requires auth; empty body → 400 stop_required (#1019)", async () => {
   let called = 0;
   const { port, close } = await listenRouter(
     { apiAuthToken: API_TOKEN, databaseUrl: "" },
@@ -451,37 +451,12 @@ test("POST ai-verify-stop requires auth and non-object body → 400 (#1019)", as
     assert.equal(anon.status, 401);
     assert.equal(called, 0);
 
-    // JSON primitive body → req.body is a string → stop_required
-    const badType = await new Promise((resolve, reject) => {
-      const data = JSON.stringify("not-an-object");
-      const req = http.request(
-        {
-          host: "127.0.0.1",
-          port,
-          method: "POST",
-          path: "/api/envios/ai-verify-stop",
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(data),
-            Authorization: `Bearer ${API_TOKEN}`,
-          },
-        },
-        (res) => {
-          let chunks = "";
-          res.on("data", (c) => {
-            chunks += c;
-          });
-          res.on("end", () => {
-            resolve({ status: res.statusCode, body: chunks ? JSON.parse(chunks) : null });
-          });
-        },
-      );
-      req.on("error", reject);
-      req.write(data);
-      req.end();
+    // No JSON body → req.body undefined → stop_required (never calls AI)
+    const empty = await request(port, "POST", "/api/envios/ai-verify-stop", {
+      token: API_TOKEN,
     });
-    assert.equal(badType.status, 400);
-    assert.equal(badType.body.error, "stop_required");
+    assert.equal(empty.status, 400);
+    assert.equal(empty.body.error, "stop_required");
     assert.equal(called, 0);
   } finally {
     await close();
