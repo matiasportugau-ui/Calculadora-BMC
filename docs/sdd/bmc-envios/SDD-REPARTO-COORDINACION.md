@@ -23,6 +23,7 @@ Al organizar pedidos en `/logistica`, el batch pasa a **En Coordinación** hasta
 | UI bar | `src/components/logistica/RepartoBar.jsx` | DONE |
 | Wire app | `BmcLogisticaApp.jsx` | DONE (local + API if token/DB) |
 | Drive tree write | phase 3 | TARGET (`drivePlan` en confirm payload) |
+| Client Drive `.bmc-envios.json` | GIS dual-write | **DONE** — [`SDD-DRIVE-COORDINACIONES.md`](./SDD-DRIVE-COORDINACIONES.md) (completed flag on confirm; server `_Repartos/` still TARGET) |
 
 ## API
 
@@ -36,12 +37,20 @@ Al organizar pedidos en `/logistica`, el batch pasa a **En Coordinación** hasta
 | POST | `/api/repartos/:id/confirm` | → coordinado + drivePlan |
 | GET | `/api/repartos/:id/events` | timeline |
 
-## Drive (híbrido — TARGET phase 3)
+## Drive
+
+### Client dual-write (AS-BUILT)
+
+Operator **Guardar** / **Confirmar** writes resumable `ENV-….bmc-envios.json` via GIS (`drive.file`) under `Panelin BMC Cotizaciones/BMC Envíos Coordinaciones/`. Calculadora Drive panel can open → `/logistica`. Spec: [`SDD-DRIVE-COORDINACIONES.md`](./SDD-DRIVE-COORDINACIONES.md).
+
+### Server híbrido (TARGET phase 3)
 
 ```
-_Repartos/YYYY/YYYY-MM/REP-…/   ← canónico
+_Repartos/YYYY/YYYY-MM/REP-…/   ← canónico (DRIVE_REPARTOS_FOLDER_ID)
 Clientes/{slug}/Entregas/{fecha}_REP-…/  ← legajo + shortcuts
 ```
+
+Confirm today stores `drivePlan` path in snapshot only (no materialization).
 
 ## Estados
 

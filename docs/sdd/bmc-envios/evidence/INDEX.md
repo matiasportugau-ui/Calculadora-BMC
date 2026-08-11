@@ -55,6 +55,8 @@
 | E-35 | loadCharacteristics volumes | **CONFIRMED** | `loadCharacteristics.js` |
 | E-36 | Ops UX SDD | **CONFIRMED** | `SDD-OPS-UX-WAVE.md` |
 | E-37 | STOP_STATUS FSM U3 | **CONFIRMED** | `src/utils/logistica/stopStatusFsm.js`; PR #857 |
+| E-D01–D07 | Drive coordinaciones | **CONFIRMED** | [`SDD-DRIVE-COORDINACIONES.md`](../SDD-DRIVE-COORDINACIONES.md) Appendix A; `enviosDrive.js` + `googleDrive.js` save/list/load; Calculadora `handleDriveLoadEnvio` |
+| E-D08 | Server REP Drive tree | **TARGET** | `DRIVE_REPARTOS_FOLDER_ID` materialization |
 
 ## Commands (re-verify)
 
@@ -70,4 +72,6 @@ node tests/stopReorder.test.js
 node tests/remitoPackageMetrics.test.js
 node tests/packageDrop.test.js
 node tests/loadPlanPrintModel.test.js
+node tests/enviosDrive.test.js
+node tests/enviosDraft.test.js
 ```

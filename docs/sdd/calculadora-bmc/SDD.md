@@ -56,7 +56,7 @@ C4Context
   System_Ext(vercel, "Vercel", "SPA CDN + rewrites")
   System_Ext(run, "Cloud Run panelin-calc", "API runtime")
   System_Ext(sheets, "Google Sheets", "CRM Finanzas Matriz")
-  System_Ext(gdrive, "Google Drive", "Quote archive / config")
+  System_Ext(gdrive, "Google Drive", "Quotes .bmc.json + Envíos .bmc-envios.json")
   System_Ext(ml, "Mercado Libre", "Q&A / orders OAuth")
   System_Ext(meta, "Meta", "WA / IG / Messenger webhooks")
   System_Ext(llm, "Anthropic OpenAI OpenRouter", "LLM providers")
@@ -86,6 +86,7 @@ C4Context
 | Vercel ↔ Cloud Run | → | HTTPS rewrite | Same-origin from browser for proxied paths | `vercel.json` lines 6–26 |
 | API ↔ Google Sheets | → | HTTPS REST | Service account JSON | CRM/finanzas/MATRIZ |
 | API ↔ Google OAuth | ↔ | OAuth 2.0 | Client ID/secret | Login, Drive, Tasks |
+| SPA GIS ↔ Google Drive | ↔ | Drive API v3 | GIS `drive.file` | Quotes `.bmc.json` + Logística `.bmc-envios.json` (see [`bmc-envios/SDD-DRIVE-COORDINACIONES.md`](../bmc-envios/SDD-DRIVE-COORDINACIONES.md)) |
 | API ↔ Mercado Libre | ↔ | OAuth + REST | Encrypted tokens (GCS prod) | Questions, orders |
 | API ↔ Meta | ↔ | Webhooks + Graph | Verify token / app secret | WA/IG/Messenger |
 | API ↔ LLM providers | → | HTTPS | API keys | Anthropic primary, OpenAI fallback, OpenRouter optional |

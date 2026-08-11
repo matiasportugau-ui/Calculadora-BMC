@@ -2,7 +2,8 @@
 
 **Slug:** `bmc-envios`  
 **Date:** 2026-08-05  
-**Status:** As-built Core (U1/U2/U3) + Ops UX F1–F6 + P2/P5 MVP DONE; residual P3 + Matrix/TSP + autosave  
+**Status:** As-built Core (U1/U2/U3) + Ops UX F1–F6 + P2/P5 MVP + Drive coordinaciones DONE; residual P3 + Matrix/TSP + server REP Drive tree  
+
 **Repo:** `calculadora-bmc`  
 **Surfaces (must stay one product):**
 
@@ -52,6 +53,8 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 | P5 | UI Save/Load nube | **DONE** `/logistica` header |
 | P5 | localStorage offline cache | **DONE** (primary offline) |
 | P5b | Autosave + conflict UI + draft browser | **DONE** expectedRevision 409 + debounce |
+| D1–D8 | Drive `.bmc-envios.json` + Calculadora open | **DONE** — [`SDD-DRIVE-COORDINACIONES.md`](./SDD-DRIVE-COORDINACIONES.md) |
+| D9 | Server `DRIVE_REPARTOS_FOLDER_ID` tree | **TARGET** |
 | F10b | Package list DnD reorder | **DONE** `PackageLayoutList` + `packageListDnD.js` |
 | P3 | CBM non-panel tariff | **DEFERRED** 2026-Q4 (panel-zona remains SoT) |
 
@@ -65,7 +68,7 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 | W4 | Catalogs pickups + bases + vehicles | **TARGET** |
 | W5 | Seed Kingspan / Montfrío / Ecopaneles + nuevo | **TARGET** |
 | W6 | Route suggest base → pickups → deliveries | **TARGET** |
-| W7 | Trip resume / list previous configs | **TARGET** |
+| W7 | Trip resume / list previous configs | **PARTIAL** — Drive + draft browser DONE (D1–D8); wizard-native history polish residual |
 | W8 | Trackpad/mobile pointer DnD | **TARGET** (list pattern #906) |
 | W9 | Autocarga intact in Step Pedidos | **TARGET** |
 | W10 | Compatible REP + drafts + free-drag | **TARGET** |

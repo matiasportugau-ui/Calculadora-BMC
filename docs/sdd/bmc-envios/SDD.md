@@ -1,7 +1,7 @@
 ---
 title: System Design Document — BMC Envíos (Cotizar flete + /logistica)
-version: 1.6
-date: 2026-08-05
+version: 1.8
+date: 2026-08-11
 status: As-Built
 author: sdd-architect / sdd-reverse-engineer / glory-loop / p2-p5-mvp / ops-ux-wave-2
 system_slug: bmc-envios
@@ -13,6 +13,7 @@ related:
   - docs/sdd/bmc-envios/SDD-ENVIO-WIZARD.md (staged trip setup TARGET)
   - docs/sdd/bmc-envios/SDD-GEO-MAPS.md (OSRM / maps)
   - docs/sdd/bmc-envios/SDD-REPARTO-COORDINACION.md (REP batch)
+  - docs/sdd/bmc-envios/SDD-DRIVE-COORDINACIONES.md (Drive .bmc-envios.json ↔ Calculadora)
   - docs/sdd/bmc-envios/DESIGN-UI.md
   - docs/sdd/bmc-envios/RECREATION-CHECKLIST.md
   - docs/sdd/bmc-envios/evidence/INDEX.md
@@ -30,9 +31,9 @@ shipped_main_tip_note: "Includes #832 U1/U2, #840 packing/bridge, #842–#849 Op
 
 **Agent brief:** One BMC module, **two UI surfaces**, one **domain kernel**. Do not invent a courier SaaS. Prefer pure utils under `src/utils/logistica/` over growing `BmcLogisticaApp.jsx`.
 
-**Status:** *As-Built* — quote engine, dual packing engines (column freight + stack ops), quote→ops bridge, Liquid Glass chrome, Ops UX F1–F6, 1-fila tariff fix, **U3 STOP_STATUS FSM**, plus **P2 geocode MVP** (Nominatim proxy + haversine legs) and **P5 durable drafts MVP** (`envios_drafts` + `/api/envios/drafts/*`). Residual: P3 CBM-as-tariff; P2 road Distance Matrix / TSP; P5 auto-sync / multi-draft browser.
+**Status:** *As-Built* — quote engine, dual packing engines (column freight + stack ops), quote→ops bridge, Liquid Glass chrome, Ops UX F1–F6, 1-fila tariff fix, **U3 STOP_STATUS FSM**, **P2 geocode MVP**, **P5 durable drafts MVP**, plus **Drive coordinaciones** (`.bmc-envios.json` dual-write + Calculadora open — [`SDD-DRIVE-COORDINACIONES.md`](./SDD-DRIVE-COORDINACIONES.md)). Residual: P3 CBM-as-tariff; P2b road Matrix/TSP; server `DRIVE_REPARTOS_FOLDER_ID` tree.
 
-Canonical: [`TARGET.md`](./TARGET.md) · Ops detail: [`SDD-OPS-UX-WAVE.md`](./SDD-OPS-UX-WAVE.md) · Recreation: [`RECREATION-CHECKLIST.md`](./RECREATION-CHECKLIST.md) · Evidence: [`evidence/INDEX.md`](./evidence/INDEX.md).
+Canonical: [`TARGET.md`](./TARGET.md) · Drive: [`SDD-DRIVE-COORDINACIONES.md`](./SDD-DRIVE-COORDINACIONES.md) · Ops detail: [`SDD-OPS-UX-WAVE.md`](./SDD-OPS-UX-WAVE.md) · Recreation: [`RECREATION-CHECKLIST.md`](./RECREATION-CHECKLIST.md) · Evidence: [`evidence/INDEX.md`](./evidence/INDEX.md).
 
 ---
 
@@ -55,6 +56,7 @@ BMC cotiza flete de paneles en el wizard de Calculadora y opera la carga en `/lo
 | G7 | Agent-executable contracts + tests in `test:core` | P1 | **DONE** (pure modules) |
 | G8 | FSM STOP_STATUS guards | P2 | **DONE** U3 #857 |
 | G9 | Geo MVP + durable ENV MVP | P2 | **DONE** P2/P5 MVP · residual P3 + Matrix/TSP |
+| G10 | Drive coordinaciones resumable from Calculadora | P1 | **DONE** — see [`SDD-DRIVE-COORDINACIONES.md`](./SDD-DRIVE-COORDINACIONES.md) |
 
 ### 1.3 Stakeholders
 
@@ -105,6 +107,8 @@ C4Context
 | localStorage `bmc-logistica-online-v2` | ↔ | JSON | CONFIRMED (offline cache) |
 | `POST /api/envios/geocode` | → | REST auth | CONFIRMED P2 MVP (Nominatim) |
 | `GET/PUT/DELETE /api/envios/drafts/*` | ↔ | REST auth + PG | CONFIRMED P5 MVP |
+| Google Drive `.bmc-envios.json` (GIS) | ↔ | Drive API v3 | CONFIRMED — [`SDD-DRIVE-COORDINACIONES.md`](./SDD-DRIVE-COORDINACIONES.md) |
+| sessionStorage `bmc-envios-drive-resume-v1` | ↔ | JSON | CONFIRMED Calculadora→Logística |
 | Maps Distance Matrix / TSP | — | — | TARGET P2b |
 
 ---
@@ -381,6 +385,14 @@ node tests/enviosDraft.test.js
 **Consequences**: + multi-device; − manual sync; last-write-wins.  
 **Alternatives**: Auto-sync always-on; reuse transportista `trips` (different lifecycle).
 
+### ADR-017: Drive dual-write for coordinations (Calculadora-visible)
+
+**Status**: Accepted  
+**Context**: Postgres drafts invisible in Calculadora Drive panel; operators need resume next to `.bmc.json` quotes.  
+**Decision**: Client GIS upsert of `ENV-….bmc-envios.json` under `Panelin BMC Cotizaciones/BMC Envíos Coordinaciones`; Calculadora lists + sessionStorage handoff to `/logistica`. Detail ADRs D01–D05 in [`SDD-DRIVE-COORDINACIONES.md`](./SDD-DRIVE-COORDINACIONES.md).  
+**Consequences**: + same Drive UX as quotes; − dual-write; server `_Repartos/` tree still TARGET.  
+**Alternatives**: PG-only; embed logistics in `.bmc.json`.
+
 ### ADR-021: Never stack panels on profiles (hard constraint)
 
 **Status**: Accepted  
@@ -414,6 +426,8 @@ node tests/enviosDraft.test.js
 | column engine | Freight packer height-into-rows |
 | stack engine | Ops longitudinal stacks + strategies |
 | bridge | Quote→ops sessionStorage handoff |
+| `.bmc-envios.json` | Drive coordination file (resume Logística/Calculadora) |
+| Drive resume | `bmc-envios-drive-resume-v1` Calculadora→`/logistica` |
 | sCli / sPed | Package meta cliente / pedido |
 | stableKey | Manual layout identity for overrides |
 | Enviado / Coordinado / Por coordinar | Ventas coordination chips (F2) |
@@ -504,3 +518,4 @@ Client pure engines remain packing/quote SoT. Transportista `/api/trips/*` is a 
 | 1.5 | 2026-08-05 | P2 geocode MVP + P5 durable drafts MVP; ADR-015/016; `/api/envios/*` live |
 | 1.6 | 2026-08-05 | Ops UX Wave 2 F7–F11: onDark buttons, package identity, client group drawer, stack above/below, Ventas proxy |
 | **1.7** | **2026-08-06** | **P5b autosave+409 conflict+draft browser; F10b package DnD; P2b/P3 DEFERRED 2026-Q4; safeExternalUrl** |
+| **1.8** | **2026-08-11** | **Drive coordinaciones G10 + ADR-017; child [`SDD-DRIVE-COORDINACIONES.md`](./SDD-DRIVE-COORDINACIONES.md)** |
