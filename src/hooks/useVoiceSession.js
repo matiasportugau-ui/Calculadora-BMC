@@ -373,9 +373,18 @@ export function useVoiceSession({
         wsRef.current = ws;
         ws.binaryType = "arraybuffer";
 
+        let connectFailed = false;
         const fail = (err) => {
           if (settled) return;
           settled = true;
+          connectFailed = true;
+          sendEventRef.current = null;
+          try {
+            ws.close();
+          } catch { /* ignore */ }
+          try {
+            stopMicCapture();
+          } catch { /* ignore */ }
           reject(err instanceof Error ? err : new Error(String(err)));
         };
 
@@ -392,7 +401,8 @@ export function useVoiceSession({
             );
             return;
           }
-          if (!stoppedRef.current) {
+          // Avoid clobbering start()'s "error" status when connect setup failed post-open.
+          if (!stoppedRef.current && !connectFailed) {
             setStatus("idle");
             setIsSpeaking(false);
             setIsListening(false);
@@ -411,27 +421,33 @@ export function useVoiceSession({
 
         ws.onopen = () => {
           if (settled) return;
-          settled = true;
 
-          const transportSend = (payload) => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(typeof payload === "string" ? payload : JSON.stringify(payload));
-            }
-          };
-          sendEventRef.current = transportSend;
-
-          // Always configure session (bootstrap from server or minimal defaults)
-          const boot = sessionBootstrapRef.current || {
-            instructions: "Sos Panelin, asistente de ventas de BMC Uruguay. Respondé en español rioplatense, breve.",
-            tools: [],
-          };
-          sessionBootstrapRef.current = boot;
-          applySessionBootstrap(transportSend);
-
-          // Mic → PCM16 append at 24 kHz
           try {
-            const ctx = new AudioContext();
-            // Prefer native rate; resample to Grok rate on each chunk
+            const transportSend = (payload) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(typeof payload === "string" ? payload : JSON.stringify(payload));
+              }
+            };
+            sendEventRef.current = transportSend;
+
+            // Always configure session (bootstrap from server or minimal defaults)
+            const boot = sessionBootstrapRef.current || {
+              instructions: "Sos Panelin, asistente de ventas de BMC Uruguay. Respondé en español rioplatense, breve.",
+              tools: [],
+            };
+            sessionBootstrapRef.current = boot;
+            applySessionBootstrap(transportSend);
+
+            // Mic → PCM16 append at 24 kHz.
+            // Reuse VU AudioContext when present — a second context per start was
+            // orphaned (audioCtxRef already set by startVu) and leaked until the
+            // browser AudioContext limit made later starts hang forever.
+            let ctx = audioCtxRef.current;
+            if (!ctx || ctx.state === "closed") {
+              ctx = new AudioContext();
+              audioCtxRef.current = ctx;
+            }
+            if (ctx.state === "suspended") ctx.resume().catch(() => {});
             const src = ctx.createMediaStreamSource(stream);
             micSourceRef.current = src;
             const bufferSize = 4096;
@@ -457,14 +473,15 @@ export function useVoiceSession({
             mute.gain.value = 0;
             processor.connect(mute);
             mute.connect(ctx.destination);
-            if (!audioCtxRef.current) audioCtxRef.current = ctx;
-          } catch (err) {
-            fail(err);
-            return;
-          }
 
-          setStatus("active");
-          resolve();
+            settled = true;
+            setStatus("active");
+            resolve();
+          } catch (err) {
+            // Must reject here: calling fail() after settled=true was a no-op and
+            // left start() awaiting forever with status "connecting".
+            fail(err);
+          }
         };
       });
     },
