@@ -150,23 +150,26 @@ export function buildGrokSessionUpdate(boot = {}) {
 }
 
 function bytesToBase64(bytes) {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(bytes).toString("base64");
+  // Browser-safe (and Node via global btoa when available). Avoid bare `Buffer`
+  // so ESLint browser env does not flag no-undef.
+  const btoaFn = globalThis.btoa?.bind(globalThis);
+  if (!btoaFn) {
+    throw new Error("btoa not available for PCM base64 encode");
   }
   let binary = "";
   const chunk = 0x8000;
   for (let i = 0; i < bytes.length; i += chunk) {
     binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
   }
-  return btoa(binary);
+  return btoaFn(binary);
 }
 
 function base64ToBytes(b64) {
-  if (typeof Buffer !== "undefined") {
-    const buf = Buffer.from(b64, "base64");
-    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  const atobFn = globalThis.atob?.bind(globalThis);
+  if (!atobFn) {
+    throw new Error("atob not available for PCM base64 decode");
   }
-  const binary = atob(b64);
+  const binary = atobFn(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
