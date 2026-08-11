@@ -19,6 +19,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
 import { checkDevModeAuthorization } from "../lib/devModeAuth.js";
 import { peekIdentityClaims } from "../lib/identityAuth.js";
+import { clientIpKey } from "../lib/rateLimitKeys.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import {
   calcParedCompleto,
@@ -451,11 +452,8 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 function rateLimitClientKey(req) {
-  const xf = req.headers["x-forwarded-for"];
-  if (typeof xf === "string" && xf.trim()) {
-    return xf.split(",")[0].trim();
-  }
-  return req.ip || req.socket?.remoteAddress || "unknown";
+  // Bug DP: use trusted Express req.ip (trust proxy), not spoofable XFF prefix.
+  return clientIpKey(req);
 }
 
 /** Allows Vercel previews (*.vercel.app) and localhost dev; exact list for canonical URLs. */
@@ -487,6 +485,7 @@ const publicLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: rateLimitClientKey,
+  validate: { keyGeneratorIpFallback: false },
   message: { ok: false, error: "Demasiadas consultas. Esperá un momento." },
   skip: () => false, // devMode bypass is handled post-parse via devModeLimiter
 });
@@ -497,6 +496,7 @@ const devModeLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: rateLimitClientKey,
+  validate: { keyGeneratorIpFallback: false },
   message: { ok: false, error: "Demasiadas consultas en modo dev. Esperá un momento." },
 });
 

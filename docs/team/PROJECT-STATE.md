@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-10 (ai-verify-stop P0)
+**Última actualización:** 2026-08-11 (Bug DP AI rate-limit IP key)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-11 (fix — Bug DP public AI rate-limit XFF spoof):** Public paid-AI routes (`/api/team-assist/chat`, `/api/agent/chat`, `/api/crm/suggest-response` limiter) keyed rate limits on the first raw `X-Forwarded-For` hop. Callers could rotate a spoofed XFF prefix per request while Cloud Run appended the same real IP, bypassing the only abuse control and enabling unbounded provider spend (worse after #1012 multi-provider teamAssist). Fix: shared `server/lib/rateLimitKeys.js` `clientIpKey()` uses Express `req.ip` under `trust proxy=1`. Tests: `tests/teamAssistRate.test.js` + `tests/aiRateLimitClientKey.test.js`.
 
 **2026-08-10 (feat — Logística P0 «Verificar con IA»):** After Cargar actuales, incomplete stops get **✨ Verificar con IA** → `POST /api/envios/ai-verify-stop` builds multi-source evidence pack (Ventas row, adjunto meta, fields) + LLM structured proposal; modal shows paneles/accesorios/fields + **Aplicar** (human gate only; no Sheets write). Pure: `src/utils/logistica/aiVerifyStop.js`; server `server/lib/enviosAiVerify.js` via `callAiCompletion`. Tests: `tests/aiVerifyStop.test.js`. Branch `feat/logistica-ai-verify-stop`.
 

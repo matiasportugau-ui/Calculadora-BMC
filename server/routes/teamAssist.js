@@ -8,6 +8,7 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { callAiCompletion } from "../lib/aiCompletion.js";
 import { getApiKey, getProviderChain } from "../lib/aiProviderConfig.js";
+import { clientIpKey } from "../lib/rateLimitKeys.js";
 
 const router = Router();
 
@@ -17,12 +18,9 @@ export const TEAM_ASSIST_CHAT_RATE = {
   max: Number(process.env.TEAM_ASSIST_RATE_MAX || 20),
 };
 
-function teamAssistClientKey(req) {
-  return (
-    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    "unknown"
-  );
+/** @deprecated use clientIpKey — exported for regression tests */
+export function teamAssistClientKey(req) {
+  return clientIpKey(req);
 }
 
 const chatLimiter = rateLimit({
@@ -30,7 +28,9 @@ const chatLimiter = rateLimit({
   max: TEAM_ASSIST_CHAT_RATE.max,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: teamAssistClientKey,
+  // Bug DP: never key on raw X-Forwarded-For first hop (client-spoofable).
+  keyGenerator: clientIpKey,
+  validate: { keyGeneratorIpFallback: false },
   message: {
     ok: false,
     error: "Demasiadas solicitudes al asistente. Esperá unos minutos e intentá de nuevo.",

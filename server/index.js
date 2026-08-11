@@ -67,6 +67,7 @@ import createPanelinRouter from "./routes/panelin.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import { requireServiceOrUser } from "./middleware/requireServiceOrUser.js";
 import rateLimit from "express-rate-limit";
+import { clientIpKey } from "./lib/rateLimitKeys.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
@@ -1032,11 +1033,9 @@ const aiGenLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    const xf = req.headers["x-forwarded-for"];
-    if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
-    return req.ip || req.socket?.remoteAddress || "unknown";
-  },
+  // Bug DP: trusted req.ip under trust proxy — not spoofable XFF first hop.
+  keyGenerator: (req) => clientIpKey(req),
+  validate: { keyGeneratorIpFallback: false },
   message: { ok: false, error: "rate_limited", detail: "Demasiadas consultas de IA. Esperá un momento." },
 });
 app.use("/api/agent/chat", requireAssistantEnabled("panelin"));
