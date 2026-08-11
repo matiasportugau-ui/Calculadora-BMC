@@ -63,10 +63,18 @@ const VENTAS_CSV_TTL_MS = 60_000;
 /**
  * @param {import("../config.js").config} config
  * @param {import("pino").Logger} [logger]
+ * @param {{ pool?: import("pg").Pool | null, fetch?: typeof fetch, runEnviosAiVerify?: typeof runEnviosAiVerify }} [deps]
+ *        Optional DI for offline tests. Pass `pool: null` to simulate no DATABASE_URL.
+ *        Omit `pool` to use the real envios pool from config.databaseUrl.
  */
-export default function createEnviosRouter(config, logger) {
+export default function createEnviosRouter(config, logger, deps = {}) {
   const router = Router();
-  const pool = getEnviosPool(config.databaseUrl);
+  const pool = Object.prototype.hasOwnProperty.call(deps, "pool")
+    ? deps.pool
+    : getEnviosPool(config.databaseUrl);
+  const fetchImpl = typeof deps.fetch === "function" ? deps.fetch : globalThis.fetch;
+  const runAiVerify =
+    typeof deps.runEnviosAiVerify === "function" ? deps.runEnviosAiVerify : runEnviosAiVerify;
   const log = logger || console;
   const auth = requireCrmAuth(config);
   let schemaReady = false;
@@ -133,7 +141,7 @@ export default function createEnviosRouter(config, logger) {
       const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/gviz/tq?tqx=out:csv&gid=${encodeURIComponent(gid)}`;
       let upstream;
       try {
-        upstream = await fetch(url, {
+        upstream = await fetchImpl(url, {
           headers: {
             Accept: "text/csv,text/plain,*/*",
             "User-Agent": "BMC-Envios/1.0 (ventas-csv-proxy)",
@@ -209,7 +217,7 @@ export default function createEnviosRouter(config, logger) {
 
       let upstream;
       try {
-        upstream = await fetch(url.toString(), {
+        upstream = await fetchImpl(url.toString(), {
           headers: {
             Accept: "application/json",
             "User-Agent": "BMC-Envios/1.0 (logistica; contact=ops@bmcuruguay.com)",
@@ -501,7 +509,7 @@ export default function createEnviosRouter(config, logger) {
         accesorios: Array.isArray(stop.accesorios) ? stop.accesorios.slice(0, 80) : [],
       };
       try {
-        const result = await runEnviosAiVerify(slim);
+        const result = await runAiVerify(slim);
         if (result.error === "ai_failed") {
           return res.status(502).json({
             ok: false,
@@ -562,7 +570,7 @@ export default function createEnviosRouter(config, logger) {
       let upstream;
       let finalFetchUrl = fetchUrl;
       try {
-        const result = await fetchAdjuntoUpstream(fetchUrl);
+        const result = await fetchAdjuntoUpstream(fetchUrl, { fetchImpl });
         upstream = result.upstream;
         finalFetchUrl = result.fetchUrl;
       } catch (err) {
@@ -631,4 +639,9 @@ export default function createEnviosRouter(config, logger) {
   );
 
   return router;
+}
+
+/** Test-only — clear F11 ventas CSV process cache between cases. */
+export function __resetEnviosVentasCsvCacheForTests() {
+  ventasCsvCache.clear();
 }
