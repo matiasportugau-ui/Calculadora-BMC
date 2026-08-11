@@ -1,14 +1,20 @@
 /**
- * useVoiceSession — WebRTC lifecycle for OpenAI Realtime / Grok Voice Agent.
+ * useVoiceSession — duplex voice for OpenAI Realtime (WebRTC/SDP) and
+ * Grok Voice Agent (WebSocket PCM — xAI does not accept browser SDP POST).
  *
- * Flow:
+ * Flow (shared):
  *   1. POST /api/agent/voice/session → ephemeral client_secret + realtime_base
- *   2. Create RTCPeerConnection; add mic audio track
- *   3. Create data channel for events (function calls, transcripts)
- *   4. Create SDP offer → POST to realtime_base (OpenAI or xAI) with ephemeral token
- *   5. Grok only: session.update with session_bootstrap (instructions + tools)
- *   6. On function_call events, relay to POST /api/agent/voice/action and call onAction
- *   7. Expose transcript deltas via onTranscriptDelta callback
+ *
+ * OpenAI:
+ *   2–7. RTCPeerConnection + SDP POST to realtime_base + data channel events
+ *
+ * Grok / xAI:
+ *   2–7. WebSocket wss://api.x.ai/v1/realtime?model=…
+ *        auth via subprotocol xai-client-secret.<token>
+ *        mic → PCM16 base64 append; play output_audio deltas
+ *        session.update from session_bootstrap
+ *
+ * Function calls → POST /api/agent/voice/action → onAction
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -17,9 +23,18 @@ import {
   resolveSdpEndpoint,
   DEFAULT_REALTIME_SDP_BASE,
 } from "../utils/resolveSdpEndpoint.js";
+import {
+  GROK_VOICE_SAMPLE_RATE,
+  buildGrokRealtimeWsUrl,
+  buildGrokWsProtocols,
+  usesGrokWebSocketTransport,
+  float32ToBase64Pcm16,
+  base64Pcm16ToFloat32,
+  resampleFloat32Linear,
+  buildGrokSessionUpdate,
+} from "../utils/grokRealtimeTransport.js";
 
 const API_BASE = getCalcApiBase();
-
 const DEFAULT_REALTIME_BASE = DEFAULT_REALTIME_SDP_BASE;
 
 export function useVoiceSession({
@@ -37,13 +52,15 @@ export function useVoiceSession({
   voiceProvider = null,
 }) {
   const [status, setStatus] = useState("idle"); // idle | connecting | active | error
-  const [isSpeaking, setIsSpeaking] = useState(false); // assistant is speaking
-  const [isListening, setIsListening] = useState(false); // VAD detected user speech
-  const [vuLevel, setVuLevel] = useState(0); // 0-1 for VU meter (mic/local input)
-  const [remoteVuLevel, setRemoteVuLevel] = useState(0); // 0-1, assistant's own audio output — drives viseme lip-sync
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [vuLevel, setVuLevel] = useState(0);
+  const [remoteVuLevel, setRemoteVuLevel] = useState(0);
 
   const pcRef = useRef(null);
   const dcRef = useRef(null);
+  const wsRef = useRef(null);
+  const sendEventRef = useRef(null);
   const audioElRef = useRef(null);
   const audioCtxRef = useRef(null);
   const analyserRef = useRef(null);
@@ -51,11 +68,17 @@ export function useVoiceSession({
   const remoteAudioCtxRef = useRef(null);
   const remoteAnalyserRef = useRef(null);
   const remoteVuRafRef = useRef(null);
+  const micStreamRef = useRef(null);
+  const micProcessorRef = useRef(null);
+  const micSourceRef = useRef(null);
+  const playCtxRef = useRef(null);
+  const playTimeRef = useRef(0);
   const sessionIdRef = useRef(null);
   const modelRef = useRef(null);
   const realtimeBaseRef = useRef(DEFAULT_REALTIME_BASE);
   const sessionBootstrapRef = useRef(null);
   const voiceProviderRef = useRef("openai");
+  const stoppedRef = useRef(false);
 
   const stopVu = useCallback(() => {
     if (vuRafRef.current) {
@@ -95,11 +118,6 @@ export function useVoiceSession({
     setRemoteVuLevel(0);
   }, []);
 
-  // Same amplitude-analysis pattern as startVu, but on the assistant's own
-  // remote audio track (only available inside pc.ontrack). Drives the
-  // character's mouth-openness (viseme) while it speaks — this is amplitude
-  // -based, not phoneme-accurate, but is the standard "good enough" approach
-  // without a phoneme-timing API.
   const startRemoteVu = useCallback((remoteStream) => {
     try {
       const ctx = new AudioContext();
@@ -118,27 +136,82 @@ export function useVoiceSession({
       };
       remoteVuRafRef.current = requestAnimationFrame(tick);
     } catch {
-      // AudioContext not available (e.g. test env)
+      // ignore
     }
   }, []);
 
-  const handleDataChannelMessage = useCallback(
+  const sendEvent = useCallback((payload) => {
+    const fn = sendEventRef.current;
+    if (typeof fn === "function") {
+      try {
+        fn(payload);
+      } catch (err) {
+        if (devMode) console.warn("[voice] sendEvent failed", err?.message);
+      }
+      return;
+    }
+    // OpenAI data channel
+    if (dcRef.current?.readyState === "open") {
+      dcRef.current.send(typeof payload === "string" ? payload : JSON.stringify(payload));
+    }
+  }, [devMode]);
+
+  const playPcm16Base64 = useCallback((b64) => {
+    try {
+      const float32 = base64Pcm16ToFloat32(b64);
+      if (!float32.length) return;
+      let ctx = playCtxRef.current;
+      if (!ctx || ctx.state === "closed") {
+        ctx = new AudioContext({ sampleRate: GROK_VOICE_SAMPLE_RATE });
+        playCtxRef.current = ctx;
+        playTimeRef.current = 0;
+      }
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      const buf = ctx.createBuffer(1, float32.length, GROK_VOICE_SAMPLE_RATE);
+      buf.copyToChannel(float32, 0);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      // Simple VU from RMS of chunk
+      let sum = 0;
+      for (let i = 0; i < float32.length; i++) sum += float32[i] * float32[i];
+      const rms = Math.sqrt(sum / float32.length);
+      setRemoteVuLevel(Math.min(1, rms * 4));
+      src.connect(ctx.destination);
+      const now = ctx.currentTime;
+      const startAt = Math.max(now + 0.02, playTimeRef.current || now);
+      src.start(startAt);
+      playTimeRef.current = startAt + buf.duration;
+    } catch (err) {
+      if (devMode) console.warn("[voice] playPcm failed", err?.message);
+    }
+  }, [devMode]);
+
+  const handleRealtimeEvent = useCallback(
     async (raw) => {
       let msg;
       try {
-        msg = JSON.parse(raw);
+        msg = typeof raw === "string" ? JSON.parse(raw) : raw;
       } catch (err) {
-        if (devMode) console.warn("[voice] dropped malformed data-channel message", err?.message);
+        if (devMode) console.warn("[voice] dropped malformed message", err?.message);
         return;
       }
 
       const type = msg?.type;
 
-      if (type === "response.audio.delta") {
+      if (
+        type === "response.audio.delta" ||
+        type === "response.output_audio.delta"
+      ) {
         setIsSpeaking(true);
+        if (msg.delta) playPcm16Base64(msg.delta);
       }
-      if (type === "response.audio.done" || type === "response.done") {
+      if (
+        type === "response.audio.done" ||
+        type === "response.output_audio.done" ||
+        type === "response.done"
+      ) {
         setIsSpeaking(false);
+        setRemoteVuLevel(0);
       }
       if (type === "input_audio_buffer.speech_started") {
         setIsListening(true);
@@ -147,15 +220,23 @@ export function useVoiceSession({
         setIsListening(false);
       }
 
-      // Transcript deltas from the assistant
-      if (type === "response.audio_transcript.delta") {
+      if (
+        type === "response.audio_transcript.delta" ||
+        type === "response.output_audio_transcript.delta"
+      ) {
         onTranscriptDelta?.({ role: "assistant", delta: msg.delta || "" });
       }
       if (type === "conversation.item.input_audio_transcription.completed") {
         onTranscriptDelta?.({ role: "user", transcript: msg.transcript || "" });
       }
 
-      // Function call handling
+      if (type === "error") {
+        const errMsg =
+          msg.error?.message || msg.message || "Error de sesión de voz (provider)";
+        if (devMode) console.warn("[voice] provider error event", msg);
+        onError?.(errMsg);
+      }
+
       if (type === "response.function_call_arguments.done") {
         const callId = msg.call_id;
         const fnName = msg.name;
@@ -163,11 +244,13 @@ export function useVoiceSession({
         try {
           args = JSON.parse(msg.arguments || "{}");
         } catch (err) {
-          console.warn(`[voice] could not parse arguments for ${fnName}, applying empty payload`, err?.message);
+          console.warn(
+            `[voice] could not parse arguments for ${fnName}, applying empty payload`,
+            err?.message,
+          );
           args = {};
         }
 
-        // Relay to server for validation + logging
         let validatedAction = { type: fnName, payload: args };
         try {
           const headers = { "Content-Type": "application/json" };
@@ -182,74 +265,312 @@ export function useVoiceSession({
             if (relayData.ok && relayData.action) {
               validatedAction = relayData.action;
             } else if (relayData.rejected) {
-              // Send rejection back via data channel so agent can correct itself
-              dcRef.current?.send(JSON.stringify({
+              sendEvent({
                 type: "conversation.item.create",
                 item: {
                   type: "function_call_output",
                   call_id: callId,
                   output: JSON.stringify({ ok: false, errors: relayData.errors }),
                 },
-              }));
-              dcRef.current?.send(JSON.stringify({ type: "response.create" }));
+              });
+              sendEvent({ type: "response.create" });
               return;
             }
           }
         } catch (err) {
-          // Non-fatal: apply the raw action anyway, but log so the issue is visible
-          console.warn(`[voice] action relay failed for ${fnName}, applying raw payload`, err?.message);
+          console.warn(
+            `[voice] action relay failed for ${fnName}, applying raw payload`,
+            err?.message,
+          );
         }
 
-        // Apply the action via the calculator's handler
         onAction?.(validatedAction);
 
-        // Acknowledge so the turn can continue (OpenAI / Grok Realtime)
-        dcRef.current?.send(JSON.stringify({
+        sendEvent({
           type: "conversation.item.create",
           item: {
             type: "function_call_output",
             call_id: callId,
             output: JSON.stringify({ ok: true }),
           },
-        }));
-        dcRef.current?.send(JSON.stringify({ type: "response.create" }));
+        });
+        sendEvent({ type: "response.create" });
       }
     },
-    [onAction, onTranscriptDelta, authHeader, devMode]
+    [onAction, onTranscriptDelta, authHeader, devMode, playPcm16Base64, sendEvent, onError],
   );
 
-  const applySessionBootstrap = useCallback((dc) => {
-    const boot = sessionBootstrapRef.current;
-    if (!boot || !dc || dc.readyState !== "open") return;
-    try {
-      dc.send(
-        JSON.stringify({
-          type: "session.update",
-          session: {
-            instructions: boot.instructions,
-            tools: boot.tools || [],
-            tool_choice: boot.tool_choice || "auto",
-          },
-        }),
-      );
-      if (devMode) {
-        console.info(
-          `[voice] session.update applied for ${voiceProviderRef.current}`,
-          { tools: (boot.tools || []).length },
-        );
+  const applySessionBootstrap = useCallback(
+    (transportSend) => {
+      const boot = sessionBootstrapRef.current;
+      if (!boot || typeof transportSend !== "function") return;
+      try {
+        const payload = buildGrokSessionUpdate(boot);
+        transportSend(payload);
+        if (devMode) {
+          console.info(
+            `[voice] session.update applied for ${voiceProviderRef.current}`,
+            { tools: (boot.tools || []).length, transport: "ws-or-dc" },
+          );
+        }
+      } catch (err) {
+        console.warn("[voice] session.update failed", err?.message);
       }
-    } catch (err) {
-      console.warn("[voice] session.update failed", err?.message);
+    },
+    [devMode],
+  );
+
+  const stopMicCapture = useCallback(() => {
+    try {
+      micProcessorRef.current?.disconnect?.();
+    } catch { /* ignore */ }
+    micProcessorRef.current = null;
+    try {
+      micSourceRef.current?.disconnect?.();
+    } catch { /* ignore */ }
+    micSourceRef.current = null;
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch { /* ignore */ }
+      });
+      micStreamRef.current = null;
     }
-  }, [devMode]);
+  }, []);
+
+  const startGrokWebSocket = useCallback(
+    async (ephemeralKey) => {
+      const wsUrl = buildGrokRealtimeWsUrl({
+        realtime_base: realtimeBaseRef.current,
+        model: modelRef.current || "grok-voice-latest",
+      });
+      const protocols = buildGrokWsProtocols(ephemeralKey);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+        },
+      });
+      if (stoppedRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      micStreamRef.current = stream;
+      startVu(stream);
+
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        let ws;
+        try {
+          ws = new WebSocket(wsUrl, protocols);
+        } catch (err) {
+          reject(err);
+          return;
+        }
+        wsRef.current = ws;
+        ws.binaryType = "arraybuffer";
+
+        const fail = (err) => {
+          if (settled) return;
+          settled = true;
+          reject(err instanceof Error ? err : new Error(String(err)));
+        };
+
+        ws.onerror = () => {
+          fail(new Error("WebSocket error al conectar con Grok Voice"));
+        };
+
+        ws.onclose = (ev) => {
+          if (!settled) {
+            fail(
+              new Error(
+                `WebSocket cerrado antes de activar (code=${ev.code}${ev.reason ? ` ${ev.reason}` : ""})`,
+              ),
+            );
+            return;
+          }
+          if (!stoppedRef.current) {
+            setStatus("idle");
+            setIsSpeaking(false);
+            setIsListening(false);
+            stopVu();
+            stopRemoteVu();
+            stopMicCapture();
+          }
+        };
+
+        ws.onmessage = (e) => {
+          if (typeof e.data === "string") {
+            handleRealtimeEvent(e.data);
+          }
+          // binary frames reserved for optional binary transport — ignore for now
+        };
+
+        ws.onopen = () => {
+          if (settled) return;
+          settled = true;
+
+          const transportSend = (payload) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(typeof payload === "string" ? payload : JSON.stringify(payload));
+            }
+          };
+          sendEventRef.current = transportSend;
+
+          // Always configure session (bootstrap from server or minimal defaults)
+          const boot = sessionBootstrapRef.current || {
+            instructions: "Sos Panelin, asistente de ventas de BMC Uruguay. Respondé en español rioplatense, breve.",
+            tools: [],
+          };
+          sessionBootstrapRef.current = boot;
+          applySessionBootstrap(transportSend);
+
+          // Mic → PCM16 append at 24 kHz
+          try {
+            const ctx = new AudioContext();
+            // Prefer native rate; resample to Grok rate on each chunk
+            const src = ctx.createMediaStreamSource(stream);
+            micSourceRef.current = src;
+            const bufferSize = 4096;
+            const processor = ctx.createScriptProcessor(bufferSize, 1, 1);
+            micProcessorRef.current = processor;
+            processor.onaudioprocess = (ev) => {
+              if (ws.readyState !== WebSocket.OPEN || stoppedRef.current) return;
+              const input = ev.inputBuffer.getChannelData(0);
+              const resampled = resampleFloat32Linear(
+                input,
+                ctx.sampleRate,
+                GROK_VOICE_SAMPLE_RATE,
+              );
+              const b64 = float32ToBase64Pcm16(resampled);
+              transportSend({
+                type: "input_audio_buffer.append",
+                audio: b64,
+              });
+            };
+            src.connect(processor);
+            // Keep processor alive (mute destination)
+            const mute = ctx.createGain();
+            mute.gain.value = 0;
+            processor.connect(mute);
+            mute.connect(ctx.destination);
+            if (!audioCtxRef.current) audioCtxRef.current = ctx;
+          } catch (err) {
+            fail(err);
+            return;
+          }
+
+          setStatus("active");
+          resolve();
+        };
+      });
+    },
+    [
+      startVu,
+      stopVu,
+      stopRemoteVu,
+      stopMicCapture,
+      handleRealtimeEvent,
+      applySessionBootstrap,
+    ],
+  );
+
+  const startOpenAiWebRtc = useCallback(
+    async (ephemeralKey) => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (stoppedRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      micStreamRef.current = stream;
+      startVu(stream);
+
+      const pc = new RTCPeerConnection();
+      pcRef.current = pc;
+
+      const audioEl = document.createElement("audio");
+      audioEl.autoplay = true;
+      document.body.appendChild(audioEl);
+      audioElRef.current = audioEl;
+      pc.ontrack = (e) => {
+        audioEl.srcObject = e.streams[0];
+        startRemoteVu(e.streams[0]);
+      };
+
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+
+      const dc = pc.createDataChannel("oai-events");
+      dcRef.current = dc;
+      sendEventRef.current = (payload) => {
+        if (dc.readyState === "open") {
+          dc.send(typeof payload === "string" ? payload : JSON.stringify(payload));
+        }
+      };
+      dc.onmessage = (e) => handleRealtimeEvent(e.data);
+      dc.onopen = () => {
+        // OpenAI usually embeds session config at mint; bootstrap only if present
+        if (sessionBootstrapRef.current) {
+          applySessionBootstrap(sendEventRef.current);
+        }
+        setStatus("active");
+      };
+      dc.onclose = () => {
+        if (!stoppedRef.current) {
+          setStatus("idle");
+          setIsSpeaking(false);
+          setIsListening(false);
+          stopVu();
+          stopRemoteVu();
+        }
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const sdpUrl = resolveSdpEndpoint({
+        realtime_base: realtimeBaseRef.current || DEFAULT_REALTIME_BASE,
+        model: modelRef.current,
+      });
+      const sdpRes = await fetch(sdpUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ephemeralKey}`,
+          "Content-Type": "application/sdp",
+        },
+        body: offer.sdp,
+      });
+
+      if (!sdpRes.ok) {
+        const hint =
+          sdpRes.status === 405
+            ? " (405: el host no acepta SDP POST — ¿engine Grok mal ruteado?)"
+            : "";
+        throw new Error(`SDP negotiation failed: ${sdpRes.status}${hint}`);
+      }
+
+      const answerSdp = await sdpRes.text();
+      await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+    },
+    [
+      startVu,
+      stopVu,
+      startRemoteVu,
+      stopRemoteVu,
+      handleRealtimeEvent,
+      applySessionBootstrap,
+    ],
+  );
 
   const start = useCallback(
     async (calcState = {}) => {
       if (status === "connecting" || status === "active") return;
+      stoppedRef.current = false;
       setStatus("connecting");
 
       try {
-        // 1. Mint ephemeral session token (OpenAI or Grok)
         const headers = { "Content-Type": "application/json" };
         if (authHeader) headers.Authorization = authHeader;
         const sessRes = await fetch(`${API_BASE}/api/agent/voice/session`, {
@@ -282,74 +603,35 @@ export function useVoiceSession({
         sessionBootstrapRef.current = sessData.session_bootstrap || null;
 
         const ephemeralKey = sessData.client_secret.value;
+        const provider = voiceProviderRef.current;
 
-        // 2. Get mic stream
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        startVu(stream);
-
-        // 3. Create peer connection
-        const pc = new RTCPeerConnection();
-        pcRef.current = pc;
-
-        // 4. Wire remote audio to a hidden <audio> element
-        const audioEl = document.createElement("audio");
-        audioEl.autoplay = true;
-        document.body.appendChild(audioEl);
-        audioElRef.current = audioEl;
-        pc.ontrack = (e) => {
-          audioEl.srcObject = e.streams[0];
-          startRemoteVu(e.streams[0]);
-        };
-
-        // 5. Add mic track
-        stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-
-        // 6. Data channel for function calls + transcripts
-        const dc = pc.createDataChannel("oai-events");
-        dcRef.current = dc;
-        dc.onmessage = (e) => handleDataChannelMessage(e.data);
-        dc.onopen = () => {
-          applySessionBootstrap(dc);
-          setStatus("active");
-        };
-        dc.onclose = () => {
-          setStatus("idle");
-          setIsSpeaking(false);
-          setIsListening(false);
-          stopVu();
-          stopRemoteVu();
-        };
-
-        // 7. SDP negotiation against provider realtime_base (OpenAI or xAI)
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-
-        const sdpUrl = resolveSdpEndpoint({
-          realtime_base: realtimeBaseRef.current || DEFAULT_REALTIME_BASE,
-          model: modelRef.current,
-        });
-        const sdpRes = await fetch(sdpUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${ephemeralKey}`,
-            "Content-Type": "application/sdp",
-          },
-          body: offer.sdp,
-        });
-
-        if (!sdpRes.ok) {
-          throw new Error(`SDP negotiation failed: ${sdpRes.status}`);
+        if (usesGrokWebSocketTransport(provider)) {
+          if (devMode) {
+            console.info("[voice] using Grok WebSocket transport (no SDP)", {
+              model: modelRef.current,
+              base: realtimeBaseRef.current,
+            });
+          }
+          await startGrokWebSocket(ephemeralKey);
+        } else {
+          await startOpenAiWebRtc(ephemeralKey);
         }
-
-        const answerSdp = await sdpRes.text();
-        await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
-
       } catch (err) {
+        stoppedRef.current = true;
         setStatus("error");
         setIsSpeaking(false);
         setIsListening(false);
         stopVu();
         stopRemoteVu();
+        stopMicCapture();
+        try {
+          wsRef.current?.close();
+        } catch { /* ignore */ }
+        wsRef.current = null;
+        try {
+          pcRef.current?.close();
+        } catch { /* ignore */ }
+        pcRef.current = null;
         onError?.(err.message || "Error de voz");
       }
     },
@@ -362,26 +644,39 @@ export function useVoiceSession({
       aiProvider,
       aiModel,
       voiceProvider,
-      startVu,
+      startGrokWebSocket,
+      startOpenAiWebRtc,
       stopVu,
-      startRemoteVu,
       stopRemoteVu,
-      handleDataChannelMessage,
-      applySessionBootstrap,
+      stopMicCapture,
       onError,
-    ]
+    ],
   );
 
   const stop = useCallback(() => {
+    stoppedRef.current = true;
     stopVu();
     stopRemoteVu();
+    stopMicCapture();
+    sendEventRef.current = null;
+
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch { /* ignore */ }
+      wsRef.current = null;
+    }
     if (dcRef.current) {
-      try { dcRef.current.close(); } catch { /* ignore */ }
+      try {
+        dcRef.current.close();
+      } catch { /* ignore */ }
       dcRef.current = null;
     }
     if (pcRef.current) {
       pcRef.current.getSenders().forEach((s) => s.track?.stop());
-      try { pcRef.current.close(); } catch { /* ignore */ }
+      try {
+        pcRef.current.close();
+      } catch { /* ignore */ }
       pcRef.current = null;
     }
     if (audioElRef.current) {
@@ -397,22 +692,22 @@ export function useVoiceSession({
       remoteAudioCtxRef.current.close().catch(() => {});
       remoteAudioCtxRef.current = null;
     }
+    if (playCtxRef.current) {
+      playCtxRef.current.close().catch(() => {});
+      playCtxRef.current = null;
+    }
+    playTimeRef.current = 0;
     sessionIdRef.current = null;
     setStatus("idle");
     setIsSpeaking(false);
     setIsListening(false);
-  }, [stopVu, stopRemoteVu]);
+  }, [stopVu, stopRemoteVu, stopMicCapture]);
 
-  // Barge-in: user talks while assistant is speaking — just let audio flow;
-  // OpenAI VAD handles it server-side. We can also send a cancel event:
   const interrupt = useCallback(() => {
-    if (dcRef.current?.readyState === "open") {
-      dcRef.current.send(JSON.stringify({ type: "response.cancel" }));
-    }
+    sendEvent({ type: "response.cancel" });
     setIsSpeaking(false);
-  }, []);
+  }, [sendEvent]);
 
-  // Stop and release all resources when the consuming component unmounts
   useEffect(() => () => stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { status, isSpeaking, isListening, vuLevel, remoteVuLevel, start, stop, interrupt };
