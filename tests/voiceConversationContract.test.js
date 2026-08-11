@@ -23,6 +23,10 @@ import {
   resolveLiveVoiceEngine,
   DEFAULT_REALTIME_SDP_BASE,
 } from "../src/utils/resolveSdpEndpoint.js";
+import {
+  buildGrokRealtimeWsUrl,
+  usesGrokWebSocketTransport,
+} from "../src/utils/grokRealtimeTransport.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -47,14 +51,7 @@ ok(resolveVoiceProvider("auto") === "openai", "resolveVoiceProvider(auto) → op
 ok(resolveLiveVoiceEngine("grok") === "grok", "resolveLiveVoiceEngine(grok) → grok");
 ok(resolveLiveVoiceEngine("claude") === "openai", "claude Live defaults openai");
 
-// ── 2. SDP URL must follow server realtime_base (not hardcoded OpenAI only) ─
-const grokSdp = resolveSdpEndpoint({
-  realtime_base: XAI_REALTIME_BASE,
-  model: "grok-voice-latest",
-});
-ok(grokSdp.startsWith("https://api.x.ai/v1/realtime?"), "Grok SDP targets api.x.ai");
-ok(grokSdp.includes("model=grok-voice-latest"), "Grok SDP includes model");
-
+// ── 2. OpenAI SDP URL + Grok WebSocket URL (Grok does NOT use SDP POST) ─────
 const openaiSdp = resolveSdpEndpoint({
   realtime_base: OPENAI_REALTIME_BASE,
   model: "gpt-4o-realtime-preview",
@@ -73,8 +70,16 @@ try {
 } catch {
   threw = true;
 }
-ok(threw, "non-https realtime_base rejected");
+ok(threw, "non-https realtime_base rejected for SDP helper");
 
+const grokWs = buildGrokRealtimeWsUrl({
+  realtime_base: XAI_REALTIME_BASE,
+  model: "grok-voice-latest",
+});
+ok(grokWs.startsWith("wss://api.x.ai/v1/realtime?"), "Grok duplex uses wss WebSocket URL");
+ok(grokWs.includes("model=grok-voice-latest"), "Grok WS includes model");
+ok(usesGrokWebSocketTransport("grok"), "Grok provider → WebSocket transport");
+ok(!usesGrokWebSocketTransport("openai"), "OpenAI provider → not WebSocket transport");
 // ── 3. Mint shape via real mintRealtimeClientSecret (mocked fetch) ────────
 const realFetch = globalThis.fetch;
 let lastMintUrl = "";
@@ -145,10 +150,9 @@ ok(
   "SDP from OpenAI mint session targets openai.com",
 );
 ok(
-  resolveSdpEndpoint(grokMint).includes("api.x.ai"),
-  "SDP from Grok mint session targets api.x.ai",
+  buildGrokRealtimeWsUrl(grokMint).includes("wss://api.x.ai"),
+  "Grok mint session maps to wss://api.x.ai (not SDP POST)",
 );
-
 globalThis.fetch = realFetch;
 
 // ── 4. Source wiring (must hold for chat shell + Live) ────────────────────
@@ -160,10 +164,15 @@ ok(shell.includes("setAiPick: chat.setAiPick"), "shell forwards setAiPick into c
 ok(shell.includes("aiProvider: chat.aiProvider"), "shell forwards aiProvider");
 
 const voiceHook = fs.readFileSync(path.join(root, "src/hooks/useVoiceSession.js"), "utf8");
-ok(voiceHook.includes("resolveSdpEndpoint"), "useVoiceSession uses resolveSdpEndpoint");
+ok(voiceHook.includes("resolveSdpEndpoint"), "useVoiceSession uses resolveSdpEndpoint (OpenAI)");
+ok(voiceHook.includes("buildGrokRealtimeWsUrl"), "useVoiceSession uses Grok WebSocket URL builder");
+ok(voiceHook.includes("usesGrokWebSocketTransport"), "useVoiceSession branches Grok vs OpenAI transport");
 ok(voiceHook.includes("sessData.realtime_base"), "useVoiceSession stores server realtime_base");
 ok(voiceHook.includes("aiProvider"), "useVoiceSession sends aiProvider on mint");
-
+ok(
+  !voiceHook.includes("POST to realtime_base (OpenAI or xAI)"),
+  "hook header no longer claims xAI SDP POST",
+);
 const chatPanel = fs.readFileSync(path.join(root, "src/components/PanelinChatPanel.jsx"), "utf8");
 ok(chatPanel.includes("send={send}"), "chat voice panel receives send()");
 ok(chatPanel.includes("aiProvider={aiProvider}"), "chat voice panel receives aiProvider");
@@ -174,9 +183,9 @@ ok(livePage.includes("aiProvider: aiSel.aiProvider"), "Live page passes aiProvid
 
 const csp = fs.readFileSync(path.join(root, "vercel.json"), "utf8");
 ok(csp.includes("https://api.x.ai"), "CSP allows api.x.ai");
+ok(csp.includes("wss://api.x.ai"), "CSP allows wss://api.x.ai for Grok Voice WebSocket");
 ok(csp.includes("https://api.openai.com"), "CSP allows api.openai.com");
 ok(csp.includes("media-src"), "CSP sets media-src for Realtime audio");
-
 // ── 5. voice/action relay (real Express route) ────────────────────────────
 process.env.API_AUTH_TOKEN = process.env.API_AUTH_TOKEN || "voice-contract-token";
 process.env.PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || "http://localhost:3001";
