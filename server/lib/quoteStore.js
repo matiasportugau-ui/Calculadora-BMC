@@ -76,15 +76,20 @@ function _safeDriveFileId(value) {
 
 function pickTotals(payload) {
   if (!payload || typeof payload !== "object") return { totalUsd: null, totalUyu: null };
+  // calc.js /cotizar/pdf upserts `{ resumen: { total_usd } }` — must read that
+  // shape or identity.quotes.total_usd stays null while the JSON payload is correct.
   const totalUsd =
     Number(payload.totalUsd) ||
     Number(payload.totals?.usd) ||
+    Number(payload.totals?.totalFinal) ||
     Number(payload.summary?.total_usd) ||
+    Number(payload.resumen?.total_usd) ||
     null;
   const totalUyu =
     Number(payload.totalUyu) ||
     Number(payload.totals?.uyu) ||
     Number(payload.summary?.total_uyu) ||
+    Number(payload.resumen?.total_uyu) ||
     null;
   return {
     totalUsd: Number.isFinite(totalUsd) && totalUsd > 0 ? totalUsd : null,
