@@ -18,6 +18,8 @@ export const ADJUNTO_FETCH_TIMEOUT_MS = 25_000;
 export const ADJUNTO_ALLOWED_HOSTS = Object.freeze([
   "drive.google.com",
   "docs.google.com",
+  // Drive uc?export=download now 303s here (2026+) — not under *.googleusercontent.com
+  "drive.usercontent.google.com",
   "www.dropbox.com",
   "dropbox.com",
   "dl.dropbox.com",
@@ -27,7 +29,9 @@ export const ADJUNTO_ALLOWED_HOSTS = Object.freeze([
 const ADJUNTO_HOST_ALLOW = new Set(ADJUNTO_ALLOWED_HOSTS);
 
 /**
- * Drive/Docs often redirect download to *.googleusercontent.com CDNs.
+ * Drive/Docs redirect downloads to CDN hosts:
+ * - legacy: *.googleusercontent.com
+ * - current (2026+): drive.usercontent.google.com (different suffix — must be allowlisted)
  * @param {string} hostname
  */
 export function isAllowedAdjuntoHost(hostname) {
@@ -38,6 +42,8 @@ export function isAllowedAdjuntoHost(hostname) {
   if (!h) return false;
   if (ADJUNTO_HOST_ALLOW.has(h)) return true;
   if (h === "googleusercontent.com" || h.endsWith(".googleusercontent.com")) return true;
+  // Subdomains of the new Drive content CDN (if Google adds regional hosts)
+  if (h.endsWith(".drive.usercontent.google.com")) return true;
   return false;
 }
 

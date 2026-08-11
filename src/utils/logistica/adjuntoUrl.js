@@ -20,6 +20,8 @@ export function isAdjuntoAllowedHost(hostname) {
   if (
     h === "drive.google.com" ||
     h === "docs.google.com" ||
+    // Drive uc?export=download 303 target (2026+) — not under *.googleusercontent.com
+    h === "drive.usercontent.google.com" ||
     h === "www.dropbox.com" ||
     h === "dropbox.com" ||
     h === "dl.dropbox.com" ||
@@ -28,6 +30,7 @@ export function isAdjuntoAllowedHost(hostname) {
     return true;
   }
   if (h === "googleusercontent.com" || h.endsWith(".googleusercontent.com")) return true;
+  if (h.endsWith(".drive.usercontent.google.com")) return true;
   if (h.endsWith(".dropboxusercontent.com")) return true;
   return false;
 }

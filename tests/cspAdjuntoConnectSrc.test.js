@@ -30,10 +30,14 @@ for (const host of ADJUNTO_ALLOWED_HOSTS) {
   );
 }
 
-console.log("cspAdjuntoConnectSrc — Drive redirect CDN wildcard");
+console.log("cspAdjuntoConnectSrc — Drive redirect CDN wildcard + new content host");
 assert.ok(
   connectSrc.includes("https://*.googleusercontent.com"),
   "connect-src must allow https://*.googleusercontent.com for Drive redirects",
+);
+assert.ok(
+  connectSrc.includes("https://drive.usercontent.google.com"),
+  "connect-src must allow https://drive.usercontent.google.com (Drive uc download 303, 2026+)",
 );
 
 // Review feedback: do not use broader *.dropboxusercontent.com than server allowlist
