@@ -24,6 +24,20 @@ const panelinRelaxDevAuthExplicit = /^(1|true|yes)$/i.test(
   String(process.env.PANELIN_RELAX_DEV_AUTH || "").trim(),
 );
 
+/** Default CORS allow-list when CORS_ORIGIN env is unset (#875). Exported for regression pins. */
+export const DEFAULT_CORS_ORIGINS = Object.freeze([
+  "https://calculadora-bmc.vercel.app",
+  "https://panelin-workspace.vercel.app",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
+  "http://localhost:3000", // panelin-workspace Next UI (ADR-008)
+  "http://localhost:3002", // panelin-workspace when :3000 taken
+  "http://localhost:3100", // panelin-workspace e2e / alternate Next port
+  "http://127.0.0.1:3100",
+]);
+
 export const config = {
   appEnv,
   port: Number(process.env.PORT || 3001),
@@ -300,18 +314,7 @@ export const config = {
   corsOrigins: (
     process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
-      : [
-          "https://calculadora-bmc.vercel.app",
-          "https://panelin-workspace.vercel.app",
-          "http://localhost:5173",
-          "http://127.0.0.1:5173",
-          "http://localhost:3001",
-          "http://127.0.0.1:3001",
-          "http://localhost:3000", // panelin-workspace Next UI (ADR-008)
-          "http://localhost:3002", // panelin-workspace when :3000 taken
-          "http://localhost:3100", // panelin-workspace e2e / alternate Next port
-          "http://127.0.0.1:3100",
-        ]
+      : [...DEFAULT_CORS_ORIGINS]
   ),
   /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */
   identityJwtSecret: process.env.IDENTITY_JWT_SECRET || "",
