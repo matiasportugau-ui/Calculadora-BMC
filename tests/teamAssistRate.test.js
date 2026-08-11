@@ -99,7 +99,6 @@ await t("live limiter: spoofed XFF prefixes share one bucket (Bug DP)", async ()
       standardHeaders: true,
       legacyHeaders: false,
       keyGenerator: clientIpKey,
-      validate: { keyGeneratorIpFallback: false },
       message: { ok: false, error: "rate_limited" },
     }),
   );

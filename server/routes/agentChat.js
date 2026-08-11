@@ -485,7 +485,6 @@ const publicLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: rateLimitClientKey,
-  validate: { keyGeneratorIpFallback: false },
   message: { ok: false, error: "Demasiadas consultas. Esperá un momento." },
   skip: () => false, // devMode bypass is handled post-parse via devModeLimiter
 });
@@ -496,7 +495,6 @@ const devModeLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: rateLimitClientKey,
-  validate: { keyGeneratorIpFallback: false },
   message: { ok: false, error: "Demasiadas consultas en modo dev. Esperá un momento." },
 });
 

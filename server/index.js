@@ -1035,7 +1035,6 @@ const aiGenLimiter = rateLimit({
   legacyHeaders: false,
   // Bug DP: trusted req.ip under trust proxy — not spoofable XFF first hop.
   keyGenerator: (req) => clientIpKey(req),
-  validate: { keyGeneratorIpFallback: false },
   message: { ok: false, error: "rate_limited", detail: "Demasiadas consultas de IA. Esperá un momento." },
 });
 app.use("/api/agent/chat", requireAssistantEnabled("panelin"));

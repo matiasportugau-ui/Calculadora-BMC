@@ -30,7 +30,6 @@ const chatLimiter = rateLimit({
   legacyHeaders: false,
   // Bug DP: never key on raw X-Forwarded-For first hop (client-spoofable).
   keyGenerator: clientIpKey,
-  validate: { keyGeneratorIpFallback: false },
   message: {
     ok: false,
     error: "Demasiadas solicitudes al asistente. Esperá unos minutos e intentá de nuevo.",
