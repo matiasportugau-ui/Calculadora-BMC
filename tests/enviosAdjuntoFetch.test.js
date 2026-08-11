@@ -26,8 +26,13 @@ assert.equal(isAllowedAdjuntoHost("drive.google.com"), true);
 assert.equal(isAllowedAdjuntoHost("docs.google.com"), true);
 assert.equal(isAllowedAdjuntoHost("www.dropbox.com"), true);
 assert.equal(isAllowedAdjuntoHost("doc-00-00-docs.googleusercontent.com"), true);
+// Google Drive download CDN (2026+): uc?export=download → 303 drive.usercontent.google.com
+assert.equal(isAllowedAdjuntoHost("drive.usercontent.google.com"), true);
+assert.equal(isAllowedAdjuntoHost("cdn.drive.usercontent.google.com"), true);
 assert.equal(isAllowedAdjuntoHost("evil.com"), false);
 assert.equal(isAllowedAdjuntoHost("drive.google.com.evil.com"), false);
+assert.equal(isAllowedAdjuntoHost("drive.usercontent.google.com.evil.com"), false);
+assert.equal(isAllowedAdjuntoHost("usercontent.google.com"), false);
 assert.equal(isAllowedAdjuntoHost("169.254.169.254"), false);
 assert.equal(isAllowedAdjuntoHost("localhost"), false);
 
