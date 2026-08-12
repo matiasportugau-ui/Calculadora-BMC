@@ -165,16 +165,57 @@ function _providerOverride() {
  * Resuelve la cadena de providers reales a intentar, en orden.
  * Vacía ⇒ usar stub.
  *
+ * @param {{
+ *   override?: string,
+ *   openaiKeyOk?: boolean,
+ *   geminiKeyOk?: boolean,
+ *   nowMs?: number,
+ *   deadUntil?: Map<string, number> | Record<string, number>,
+ * }} [opts] — seam de test; omitir en producción (lee config + dead-marks vivos).
  * @returns {("openai"|"gemini")[]}
  */
-function _resolveChain() {
-  const override = _providerOverride();
+export function resolveEmbeddingsProviderChain(opts = {}) {
+  const overrideRaw =
+    opts.override !== undefined
+      ? String(opts.override || "").trim().toLowerCase()
+      : _providerOverride();
+  const override = overrideRaw === "auto" ? "" : overrideRaw;
+
+  const hasKey = (provider) => {
+    if (provider === "openai" && typeof opts.openaiKeyOk === "boolean") return opts.openaiKeyOk;
+    if (provider === "gemini" && typeof opts.geminiKeyOk === "boolean") return opts.geminiKeyOk;
+    return _hasUsableKey(provider);
+  };
+
   if (override === "stub") return [];
   if (override === "openai" || override === "gemini") {
-    return _hasUsableKey(override) ? [override] : [];
+    return hasKey(override) ? [override] : [];
   }
-  const now = Date.now();
-  return PROVIDER_ORDER.filter((p) => _hasUsableKey(p) && (_deadUntil.get(p) || 0) <= now);
+
+  const now = typeof opts.nowMs === "number" ? opts.nowMs : Date.now();
+  const deadUntilMs = (provider) => {
+    if (opts.deadUntil instanceof Map) return opts.deadUntil.get(provider) || 0;
+    if (opts.deadUntil && typeof opts.deadUntil === "object") {
+      return Number(opts.deadUntil[provider] || 0) || 0;
+    }
+    return _deadUntil.get(provider) || 0;
+  };
+
+  return PROVIDER_ORDER.filter((p) => hasKey(p) && deadUntilMs(p) <= now);
+}
+
+function _resolveChain() {
+  return resolveEmbeddingsProviderChain();
+}
+
+/** Clasifica errores de cuota/auth que disparan dead-mark (exportado para tests). */
+export function isEmbeddingsQuotaOrAuthError(err) {
+  return _isQuotaOrAuthError(err);
+}
+
+/** @internal Limpia dead-marks in-process — solo tests. */
+export function __clearEmbeddingsDeadMarksForTests() {
+  _deadUntil.clear();
 }
 
 /**
