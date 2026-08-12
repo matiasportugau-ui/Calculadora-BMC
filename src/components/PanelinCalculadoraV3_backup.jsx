@@ -60,7 +60,7 @@ import {
   exportLogsAsJSON, exportSingleBudget,
 } from "../utils/budgetLog.js";
 import {
-  serializeProject, deserializeProject, pdfFileName,
+  serializeProject, deserializeProject, pdfFileName, budgetCodeFromDeserialized,
   isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes,
 } from "../utils/projectFile.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
@@ -5078,7 +5078,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (state.libreExtra) setLibreExtra(state.libreExtra);
     if (state.librePerfilFilter != null) setLibrePerfilFilter(state.librePerfilFilter);
     if (state.techoAnchoModo) setTechoAnchoModo(state.techoAnchoModo);
-    if (state._meta?.quotationCode) setCurrentBudgetCode(state._meta.quotationCode);
+    // Bug DS: always reset — missing/null _meta.quotationCode must not keep a prior code
+    // (stale code → next Drive archive overwrites the wrong quote folder).
+    setCurrentBudgetCode(budgetCodeFromDeserialized(state));
     // Defer wizard unlock so scenario-change effects don't reset maxReachedStep after us.
     queueMicrotask(() => unlockWizardForLoadedProject(scenarioId));
     setShowDrivePanel(false);

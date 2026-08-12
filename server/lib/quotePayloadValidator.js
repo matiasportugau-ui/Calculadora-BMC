@@ -1,4 +1,4 @@
-import { setListaPrecios } from "../../src/data/constants.js";
+import { LISTA_ACTIVA, setListaPrecios } from "../../src/data/constants.js";
 import { executeScenario } from "../../src/utils/scenarioOrchestrator.js";
 
 const VALID_SCENARIOS = new Set(["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"]);
@@ -64,48 +64,56 @@ export function validateAndPreviewQuote(rawPayload) {
   }
   if (errors.length) return { valid: false, errors };
 
-  if (p.listaPrecios) {
-    try { setListaPrecios(p.listaPrecios); } catch { /* ignore — pricing might not be switchable server-side */ }
-  }
-
-  const techo = normalizeTecho(p.techo);
-  const pared = normalizePared(p.pared);
-  const camara = normalizeCamara(p.camara);
-
-  let result;
+  // LISTA_ACTIVA is a process-global singleton used by p()/calc routes. Preview
+  // must never leave it flipped — unauthenticated voice/action buildQuote used
+  // to permanently switch web↔venta for the whole Cloud Run instance (Bug DT).
+  const prevLista = LISTA_ACTIVA;
   try {
-    result = executeScenario(p.scenario, { techo, pared, camara });
-  } catch (err) {
-    return { valid: false, errors: [`Error en cálculo: ${err.message}`] };
-  }
+    if (p.listaPrecios) {
+      setListaPrecios(p.listaPrecios);
+    }
 
-  if (!result) {
+    const techo = normalizeTecho(p.techo);
+    const pared = normalizePared(p.pared);
+    const camara = normalizeCamara(p.camara);
+
+    let result;
+    try {
+      result = executeScenario(p.scenario, { techo, pared, camara });
+    } catch (err) {
+      return { valid: false, errors: [`Error en cálculo: ${err.message}`] };
+    }
+
+    if (!result) {
+      return {
+        valid: false,
+        errors: ["El escenario retornó null. Verificá que familia y espesor sean válidos para el escenario elegido."],
+      };
+    }
+
+    const items = result.allItems || [];
+    const totales = result.totales || {};
+    const subtotalUSD = Number(totales.subtotalSinIVA) || 0;
+    const totalConIVA = Number(totales.totalFinal) || 0;
+
+    if (items.length === 0 || subtotalUSD === 0) {
+      return {
+        valid: false,
+        errors: ["BOM resultó vacío. Verificá que familia y espesor sean válidos para el escenario."],
+      };
+    }
+
     return {
-      valid: false,
-      errors: ["El escenario retornó null. Verificá que familia y espesor sean válidos para el escenario elegido."],
+      valid: true,
+      errors: [],
+      preview: {
+        totalItems: items.length,
+        subtotalUSD: +subtotalUSD.toFixed(2),
+        totalConIVA: +totalConIVA.toFixed(2),
+        warnings: result.warnings || [],
+      },
     };
+  } finally {
+    setListaPrecios(prevLista);
   }
-
-  const items = result.allItems || [];
-  const totales = result.totales || {};
-  const subtotalUSD = Number(totales.subtotalSinIVA) || 0;
-  const totalConIVA = Number(totales.totalFinal) || 0;
-
-  if (items.length === 0 || subtotalUSD === 0) {
-    return {
-      valid: false,
-      errors: ["BOM resultó vacío. Verificá que familia y espesor sean válidos para el escenario."],
-    };
-  }
-
-  return {
-    valid: true,
-    errors: [],
-    preview: {
-      totalItems: items.length,
-      subtotalUSD: +subtotalUSD.toFixed(2),
-      totalConIVA: +totalConIVA.toFixed(2),
-      warnings: result.warnings || [],
-    },
-  };
 }

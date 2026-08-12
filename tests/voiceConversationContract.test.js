@@ -201,18 +201,30 @@ const server = await new Promise((resolve, reject) => {
 const port = server.address().port;
 const base = `http://127.0.0.1:${port}`;
 
-const actionOk = await fetch(`${base}/api/agent/voice/action`, {
+const authHeaders = {
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${process.env.API_AUTH_TOKEN}`,
+};
+
+const actionUnauth = await fetch(`${base}/api/agent/voice/action`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ action: { type: "setScenario", payload: { scenario: "techo" } } }),
 });
+ok(actionUnauth.status === 401 || actionUnauth.status === 503, "voice/action rejects unauthenticated relay (Bug DT)");
+
+const actionOk = await fetch(`${base}/api/agent/voice/action`, {
+  method: "POST",
+  headers: authHeaders,
+  body: JSON.stringify({ action: { type: "setScenario", payload: { scenario: "techo" } } }),
+});
 const actionJson = await actionOk.json();
-ok(actionOk.status === 200 && actionJson.ok === true, "voice/action accepts setScenario");
+ok(actionOk.status === 200 && actionJson.ok === true, "voice/action accepts setScenario with auth");
 ok(actionJson.action?.type === "setScenario", "voice/action echoes validated action");
 
 const actionBad = await fetch(`${base}/api/agent/voice/action`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: authHeaders,
   body: JSON.stringify({ action: { type: "dropDatabase", payload: {} } }),
 });
 ok(actionBad.status === 400, "voice/action rejects unknown action type");

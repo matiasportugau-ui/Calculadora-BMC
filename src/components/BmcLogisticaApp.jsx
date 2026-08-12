@@ -134,6 +134,7 @@ import {
 } from "../utils/logistica/enviosDraftSync.js";
 import {
   buildEnviosDriveDocument,
+  planCloudDraftOpen,
   takeEnviosDriveResume,
 } from "../utils/logistica/enviosDrive.js";
 import {
@@ -2521,37 +2522,42 @@ export default function BmcLogisticaApp() {
       }
       return;
     }
-    // draft cloud
-    const draftId = sel.id;
-    setInfo((i) => ({ ...i, numero: draftId }));
-    queueMicrotask(async () => {
-      const token = enviosAuthToken();
-      if (!token) return;
-      setCloudSyncBusy(true);
-      try {
-        const base = getCalcApiBase();
-        const res = await fetch(`${base}/api/envios/drafts/${encodeURIComponent(draftId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const j = await res.json().catch(() => ({}));
-        if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
-        const parsed = parseEnviosDraftPayload(j.draft?.payload);
-        if (!parsed.ok) throw new Error(parsed.error);
-        applyDraftPayload(parsed.payload, {
-          cloudMeta: {
-            id: j.draft?.id || draftId,
-            revision: j.draft?.revision,
-            updatedAt: j.draft?.updatedAt,
-            status: "saved",
-          },
-        });
-        setAutoLoadMsg(`Nube: cargado ${draftId}`);
-      } catch (e) {
-        setAutoLoadMsg(`Nube: ${e.message}`);
-      } finally {
-        setCloudSyncBusy(false);
-      }
-    });
+    // draft cloud — Bug DR: do not set info.numero until payload apply succeeds
+    const token = enviosAuthToken();
+    const plan = planCloudDraftOpen({ draftId: sel.id, hasToken: Boolean(token) });
+    if (!plan.ok) {
+      setAutoLoadMsg(
+        plan.error === "no_token"
+          ? "Nube: falta token API para abrir el borrador."
+          : "Nube: borrador sin id válido.",
+      );
+      return;
+    }
+    const draftId = plan.draftId;
+    setCloudSyncBusy(true);
+    try {
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/envios/drafts/${encodeURIComponent(draftId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+      const parsed = parseEnviosDraftPayload(j.draft?.payload);
+      if (!parsed.ok) throw new Error(parsed.error);
+      applyDraftPayload(parsed.payload, {
+        cloudMeta: {
+          id: j.draft?.id || draftId,
+          revision: j.draft?.revision,
+          updatedAt: j.draft?.updatedAt,
+          status: "saved",
+        },
+      });
+      setAutoLoadMsg(`Nube: cargado ${draftId}`);
+    } catch (e) {
+      setAutoLoadMsg(`Nube: ${e.message}`);
+    } finally {
+      setCloudSyncBusy(false);
+    }
   }
 
   // P5b autosave (debounced)

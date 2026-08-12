@@ -66,6 +66,22 @@ export function serializeProject({
 }
 
 /**
+ * Budget / Drive archive identity from a deserialized project.
+ * Always returns a string or null — callers must set currentBudgetCode
+ * unconditionally so a prior session code cannot survive an import that
+ * omits `_meta.quotationCode` (Bug DS).
+ *
+ * @param {{ _meta?: { quotationCode?: unknown } } | null | undefined} state
+ * @returns {string|null}
+ */
+export function budgetCodeFromDeserialized(state) {
+  const raw = state?._meta?.quotationCode;
+  if (raw == null) return null;
+  const code = String(raw).trim();
+  return code || null;
+}
+
+/**
  * Deserialize a .bmc.json object back into calculator state fields.
  * Returns a flat object with every state key, using safe defaults.
  */
