@@ -321,7 +321,13 @@ router.post(
  * handleChatAction pipeline, then sends the result back to OpenAI via
  * the WebRTC data channel to let the voice agent continue.
  */
-router.post("/agent/voice/action", actionLimiter, async (req, res) => {
+router.post(
+  "/agent/voice/action",
+  actionLimiter,
+  // Same auth as session mint — buildQuote preview mutates pricing helpers;
+  // never leave this public (Bug DT).
+  requireServiceOrUser({ module: "calc", minLevel: "write" }),
+  async (req, res) => {
   const { action } = req.body || {};
 
   if (!action || typeof action !== "object") {

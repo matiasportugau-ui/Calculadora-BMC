@@ -105,3 +105,46 @@ export function takeEnviosDriveResume() {
     return null;
   }
 }
+
+/**
+ * Bug DR — plan opening a Postgres cloud draft from the coordination browser.
+ *
+ * Never mutate session `info.numero` before the remote payload is applied.
+ * Eager numero swap + autosave (ON by default) can PUT the previous stops
+ * under the newly selected draft id when the GET fails or is still in flight.
+ *
+ * @param {{ draftId?: string, hasToken?: boolean }} opts
+ * @returns {{
+ *   ok: boolean,
+ *   draftId?: string,
+ *   error?: string,
+ *   setEnvNoBeforeFetch: false,
+ *   setCloudBusyBeforeFetch: true,
+ * }}
+ */
+export function planCloudDraftOpen(opts = {}) {
+  const draftId = draftIdFromEnvNo(opts.draftId);
+  if (!draftId) {
+    return {
+      ok: false,
+      error: "missing_draft_id",
+      setEnvNoBeforeFetch: false,
+      setCloudBusyBeforeFetch: true,
+    };
+  }
+  if (!opts.hasToken) {
+    return {
+      ok: false,
+      error: "no_token",
+      draftId,
+      setEnvNoBeforeFetch: false,
+      setCloudBusyBeforeFetch: true,
+    };
+  }
+  return {
+    ok: true,
+    draftId,
+    setEnvNoBeforeFetch: false,
+    setCloudBusyBeforeFetch: true,
+  };
+}
