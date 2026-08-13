@@ -33,6 +33,9 @@ function normalizePared(p) {
     numEsqInt: Number(raw.numEsqInt) || 0,
     tipoEst: raw.tipoEst || "metal",
     inclSell: raw.inclSell !== false,
+    // Money flags — must reach calcParedCompleto / PA5852 + cinta butilo
+    incl5852: raw.incl5852 === true,
+    inclCintaButilo: raw.inclCintaButilo === true,
     aberturas: Array.isArray(raw.aberturas) ? raw.aberturas : [],
   };
 }

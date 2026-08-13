@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-13 (fix — Bugs EA/EB pared money flags):** After `#1038` PA5852, `normalizePared` (buildQuote preview) and `runPared` (`get_calc_state` liveResult) dropped `incl5852` / `inclCintaButilo` (and `runPared` also dropped `tipoEst`/`inclSell`) → agent/voice preview understated fachada totals (~USD 449+). Also forward techo `opciones` in `runTecho`. Tests: `tests/paredMoneyFlagsPropagate.test.js`.
+
 **2026-08-13 (fix — Agregar producto visible otra vez):** El buscador nuevo había quedado solo en el FAB del borde (fácil de perder / tapado). Volvió una tarjeta **Agregar producto · NUEVO** en la columna izquierda (junto a Datos del proyecto), el chip del wizard abre el drawer, y se restauró el catálogo por categoría (Paneles / Perfilería / Tornillería / Selladores) dentro de *Agregar productos manuales*. Drawer controlado (`open`/`onOpenChange`).
 
 **2026-08-13 (feat — TTS Español Argentina Diego):** Radio y lectura en voz usan **Diego (Argentina)** por defecto (`appleTts.js` + `POST /api/agent/speak` + `apple-tts` AVSpeech). Isabela en el selector. Si la voz no está en macOS, 409 + botón **Instalar voz Español (Argentina)** abre Ajustes → Contenido leído. Tests `appleTts` / `appleTtsSpeak`. Reiniciar API local.

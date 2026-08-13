@@ -1300,6 +1300,13 @@ function runTecho(techo, lista) {
   const zonas = techo.zonas || [];
   if (zonas.length === 0) return null;
 
+  const optsIn = techo.opciones && typeof techo.opciones === "object" ? techo.opciones : {};
+  const opciones = {
+    inclCanalon: optsIn.inclCanalon === true,
+    inclGotSup: optsIn.inclGotSup === true,
+    inclSell: optsIn.inclSell !== false,
+  };
+
   const zonaResults = zonas.map((z) =>
     calcTechoCompleto({
       familia: normalizeFamilia(techo.familia),
@@ -1316,7 +1323,7 @@ function runTecho(techo, lista) {
         latIzq: "gotero_lateral",
         latDer: "gotero_lateral",
       },
-      opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+      opciones,
     })
   );
 
@@ -1334,6 +1341,10 @@ function runPared(pared, lista) {
     numEsqInt: Number(pared.numEsqInt ?? 0),
     color: pared.color || "Blanco",
     aberturas: pared.aberturas || [],
+    tipoEst: pared.tipoEst || "metal",
+    inclSell: pared.inclSell !== false,
+    incl5852: pared.incl5852 === true,
+    inclCintaButilo: pared.inclCintaButilo === true,
   });
 }
 
