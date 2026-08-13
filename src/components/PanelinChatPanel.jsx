@@ -4,7 +4,8 @@ import PanelinDevPanel from "./PanelinDevPanel.jsx";
 import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
 import TrustBlock from "./panelin/TrustBlock.jsx";
 import { useDictation } from "../hooks/useDictation.js";
-import { speakApple, cancelAppleTts } from "../hooks/appleTts.js";
+import { speakApple, cancelAppleTts, setAppleTtsAuthTokenProvider } from "../hooks/appleTts.js";
+import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
 import { useScreenCoWork } from "../hooks/useScreenCoWork.js";
 import { useTabShares } from "../hooks/useTabShares.js";
@@ -282,6 +283,13 @@ export default function PanelinChatPanel({
 }) {
   const [isSkinMenuOpen, setIsSkinMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  // /api/agent/speak* requires auth; appleTts.js is a plain module, so bridge
+  // the identity token into it here (single registration covers VoicePanel
+  // and useHandsFreeVoice too — they all speak through the same module).
+  const { accessToken: bmcAccessToken } = useBmcAuth();
+  useEffect(() => {
+    setAppleTtsAuthTokenProvider(() => bmcAccessToken);
+  }, [bmcAccessToken]);
   /** Resolved Realtime model for voice session (Phase 2). */
   const realtimeModel = useMemo(
     () => resolveRealtimeModel(aiProvider, aiModel),

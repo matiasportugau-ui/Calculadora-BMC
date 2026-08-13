@@ -157,6 +157,28 @@ export function splitTtsChunks(text, maxLen = 280) {
 let resumeTimer = null;
 let speakGeneration = 0;
 
+// ── auth bridge ─────────────────────────────────────────────────────────────
+// /api/agent/speak* now requires auth (service token or identity JWT with
+// calc read). This plain module can't call useBmcAuth(), so a component
+// inside BmcAuthProvider registers a token getter (see PanelinChatPanel).
+// Without a token the API answers 401 and speakApple falls back to browser
+// speechSynthesis — anonymous users keep a voice, just not Diego.
+let speakAuthTokenProvider = null;
+
+export function setAppleTtsAuthTokenProvider(fn) {
+  speakAuthTokenProvider = typeof fn === "function" ? fn : null;
+}
+
+function speakAuthHeaders(extra = {}) {
+  let token = null;
+  try {
+    token = speakAuthTokenProvider ? speakAuthTokenProvider() : null;
+  } catch {
+    token = null;
+  }
+  return token ? { ...extra, Authorization: `Bearer ${token}` } : { ...extra };
+}
+
 function stopResumeWatchdog() {
   if (resumeTimer) {
     clearInterval(resumeTimer);
@@ -191,7 +213,7 @@ async function speakViaLocalArgentinaApi(text, voiceName) {
   const apiBase = getCalcApiBase();
   const resp = await fetch(`${apiBase}/api/agent/speak`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: speakAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ text, voice: argentinaVoiceId(voiceName) }),
   });
   const data = await resp.json().catch(() => ({}));
@@ -302,12 +324,17 @@ export async function speakApple(text, opts = {}) {
 
 export async function requestArgentinaVoiceInstall() {
   const apiBase = getCalcApiBase();
-  const resp = await fetch(`${apiBase}/api/agent/speak/install`, { method: "POST" });
+  const resp = await fetch(`${apiBase}/api/agent/speak/install`, {
+    method: "POST",
+    headers: speakAuthHeaders(),
+  });
   return resp.json().catch(() => ({ ok: false }));
 }
 
 export async function fetchArgentinaVoiceStatus() {
   const apiBase = getCalcApiBase();
-  const resp = await fetch(`${apiBase}/api/agent/speak/status`);
+  const resp = await fetch(`${apiBase}/api/agent/speak/status`, {
+    headers: speakAuthHeaders(),
+  });
   return resp.json().catch(() => ({ ok: false, argentina_installed: false }));
 }

@@ -78,7 +78,7 @@ export const ARGENTINA_PICKER_VOICES = [
   { name: "Isabela (Argentina)", lang: "es-AR", id: "isabela", gender: "female" },
 ];
 
-function runBin(bin, args, timeoutMs = 60_000) {
+function runBin(bin, args, timeoutMs = 60_000, onChild) {
   return new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
@@ -89,6 +89,7 @@ function runBin(bin, args, timeoutMs = 60_000) {
       resolve({ code: 127, stdout: "", stderr: err?.message || "spawn failed" });
       return;
     }
+    onChild?.(child);
     const t = setTimeout(() => {
       try {
         child.kill("SIGKILL");
@@ -136,6 +137,34 @@ export async function probeArgentinaTts(opts = {}) {
   }
 }
 
+// ── in-flight speak tracking ────────────────────────────────────────────────
+// Radio UX is one voice at a time: a new /speak kills the previous child, and
+// the route kills it when the request is aborted (grok-review deaf816d bug 2 —
+// before this, cancel only stopped browser TTS; apple-tts kept talking).
+let activeSpeakChild = null;
+
+export function registerActiveSpeakChild(child) {
+  activeSpeakChild = child || null;
+  if (child) {
+    child.on?.("close", () => {
+      if (activeSpeakChild === child) activeSpeakChild = null;
+    });
+  }
+}
+
+/** Kill the in-flight apple-tts child, if any. Returns true if one was killed. */
+export function killActiveSpeak() {
+  const child = activeSpeakChild;
+  activeSpeakChild = null;
+  if (!child) return false;
+  try {
+    child.kill("SIGKILL");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Speak via AVSpeech (speakers) — used when we do not need a file.
  * @returns {Promise<{ ok: true, voice: string } | { ok: false, needs_download?: boolean, error: string, status: number }>}
@@ -147,7 +176,13 @@ export async function speakArgentina(text, opts = {}) {
   const bin = opts.binary || ensureAppleTtsBinary(opts);
   if (!bin) return { ok: false, error: "apple-tts no disponible", status: 503 };
   const voice = normalizeArgentinaVoice(opts.voice);
-  const r = await runBin(bin, ["--voice", voice, raw], Number(opts.timeoutMs || 90_000));
+  killActiveSpeak();
+  const r = await runBin(
+    bin,
+    ["--voice", voice, raw],
+    Number(opts.timeoutMs || 90_000),
+    registerActiveSpeakChild,
+  );
   if (r.code === 0) return { ok: true, voice, engine: "apple-tts" };
   if (r.code === 12 || /needs_download/i.test(r.stderr || "")) {
     return {

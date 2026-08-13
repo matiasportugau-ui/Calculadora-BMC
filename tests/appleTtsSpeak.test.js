@@ -4,6 +4,8 @@ import {
   isArgentinaVoiceName,
   ARGENTINA_PICKER_VOICES,
   findAppleTtsBinary,
+  registerActiveSpeakChild,
+  killActiveSpeak,
 } from "../server/lib/appleTtsSpeak.js";
 
 let passed = 0;
@@ -29,6 +31,20 @@ assert(
   findAppleTtsBinary({ platform: "darwin", exists: () => true, env: { BMC_APPLE_TTS: "0" } }) === null,
   "disabled",
 );
+
+// in-flight child tracking (cancel must kill apple-tts — review deaf816d)
+assert(killActiveSpeak() === false, "killActiveSpeak no-op without child");
+const fakeChild = {
+  killedWith: null,
+  kill(sig) {
+    this.killedWith = sig;
+  },
+  on() {},
+};
+registerActiveSpeakChild(fakeChild);
+assert(killActiveSpeak() === true, "killActiveSpeak kills registered child");
+assert(fakeChild.killedWith === "SIGKILL", "child killed with SIGKILL");
+assert(killActiveSpeak() === false, "child cleared after kill");
 
 console.log(`\n${failed === 0 ? "✅" : "❌"} appleTtsSpeak: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
