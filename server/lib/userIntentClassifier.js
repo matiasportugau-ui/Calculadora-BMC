@@ -90,11 +90,11 @@ const TOOL_INTENT_PATTERNS = {
     /\benvia(lo|le)?\s+ya\b/,
   ],
   agregar_extraordinario: [
+    // Require an approve verb / sí — bare "producto fuera de lista" is FAQ/mention only.
     /\bagrega(lo)?\s+al\s+presupuesto\b/,
     /\bsuma(lo)?\s+al\s+presupuesto\b/,
     /\bagrega(lo)?\s+(como\s+)?(extra|extraordinario|fuera\s+de\s+lista)\b/,
     /\bsuma(lo)?\s+(como\s+)?(extra|extraordinario|fuera\s+de\s+lista)\b/,
-    /\bproducto\s+fuera\s+de\s+lista\b/,
     /\bitem\s+(nuevo|no\s+listado)\s+al\s+presupuesto\b/,
     /\bsi[,]?\s+(agrega|suma)lo\s+(como\s+)?(producto\s+)?nuevo\b/,
     /\bsi[,]?\s+como\s+producto\s+nuevo\b/,

@@ -2684,6 +2684,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const [saveExtraLocal, setSaveExtraLocal] = useState(true);
   const [savedCustomProducts, setSavedCustomProducts] = useState(() => loadSavedCustomProducts());
   const extraTitleRef = useRef(null);
+  const confirmingExtraRef = useRef(false);
   const [librePerfilFilter, setLibrePerfilFilter] = useState("");
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1280));
 
@@ -4480,13 +4481,17 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   };
 
   const confirmExtraordinario = useCallback(() => {
+    // Double-click before draft clears would append the same line twice (wrong totals).
+    if (confirmingExtraRef.current) return;
     const titulo = String(extraDraft.titulo || "").trim();
     if (!titulo) {
       showToast("Escribí un título para el producto fuera de lista");
       extraTitleRef.current?.focus();
       return;
     }
+    confirmingExtraRef.current = true;
     const row = { ...extraDraft, titulo, id: extraDraft.id || newExtraId() };
+    setExtraDraft(emptyExtraDraft());
     setLibreExtras((list) => [...list, row]);
     if (saveExtraLocal) {
       setSavedCustomProducts(saveCustomProductLocal(row));
@@ -4500,9 +4505,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       quotationCode: currentBudgetCode || null,
       viewport: typeof window !== "undefined" ? window.innerWidth : null,
     });
-    setExtraDraft(emptyExtraDraft());
     showToast("Agregado. Avisamos a desarrollo para evaluarlo en la matriz.");
-    queueMicrotask(() => extraTitleRef.current?.focus());
+    queueMicrotask(() => {
+      confirmingExtraRef.current = false;
+      extraTitleRef.current?.focus();
+    });
   }, [extraDraft, saveExtraLocal, currentBudgetCode, showToast]);
 
   const reuseSavedCustom = useCallback((saved) => {
