@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-13 (fix — extras description → BOM/PDF):** `extraToEngineItem` folded `descripcion` into `label` (`Título — detalle`). Before, description lived only in unused `note` → silent drop from presupuesto UI, PDF and WA lines. Trigger: Producto fuera de lista with both title + description.
+
 **2026-08-13 (feat — TTS Español Argentina Diego):** Radio y lectura en voz usan **Diego (Argentina)** por defecto (`appleTts.js` + `POST /api/agent/speak` + `apple-tts` AVSpeech). Isabela en el selector. Si la voz no está en macOS, 409 + botón **Instalar voz Español (Argentina)** abre Ajustes → Contenido leído. Tests `appleTts` / `appleTtsSpeak`. Reiniciar API local.
 
 **2026-08-13 (fix — 5852 precio matriz):** Ángulo/perfil alu 5852 6,8 m: SKU `PA5852` (antes PLECHU98), venta/web **64.19** USD s/IVA (matriz J 64.188; K 78.31 = ×1,22), costo **53.49**. Largo barra 6,8 m.

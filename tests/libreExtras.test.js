@@ -36,7 +36,10 @@ const list = hydrateLibreExtras({
 });
 assert(list.length === 2 && list[0].titulo === "A", "prefer libreExtras array");
 const items = extrasToEngineItems(list);
-assert(items[0].label === "A" && items[0].note === "nota" && items[0].total === 20, "title/note/total");
+assert(
+  items[0].label === "A — nota" && items[0].note === "nota" && items[0].total === 20,
+  "title+description folded into BOM label",
+);
 
 const r = computePresupuestoLibreCatalogo({
   listaPrecios: "web",
@@ -52,7 +55,10 @@ const r = computePresupuestoLibreCatalogo({
   ],
 });
 const g = r.libreGroups.find((x) => x.title === "EXTRAORDINARIOS");
-assert(g && g.items.length === 2 && g.items[0].label === "Andamio" && g.items[1].total === 36, "engine two extras");
+assert(
+  g && g.items.length === 2 && g.items[0].label === "Andamio — alquiler semanal" && g.items[1].total === 36,
+  "engine two extras; description reaches BOM label",
+);
 
 const r2 = computePresupuestoLibreCatalogo({
   listaPrecios: "web",
