@@ -2,6 +2,9 @@
  * Extraordinarios: title vs description, confirm stack, legacy hydrate.
  * Run: node tests/libreExtras.test.js
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import {
   hydrateLibreExtras,
   extrasToEngineItems,
@@ -66,6 +69,18 @@ assert(!!extraToEngineItem({ titulo: "X" }), "title-only extra ok");
 
 const alias = extraToEngineItem({ label: "Andamio", pu: "80", cant: "2" });
 assert(alias && alias.label === "Andamio" && alias.total === 160, "agent alias label/pu/cant");
+
+// Bug DX: confirm path must re-entry-lock before append (double-click doubled money)
+const calcSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../src/components/PanelinCalculadoraV3_backup.jsx"),
+  "utf8",
+);
+assert(/confirmingExtraRef/.test(calcSrc), "confirmExtraordinario has confirmingExtraRef (Bug DX)");
+assert(
+  /confirmingExtraRef\.current\s*=\s*true/.test(calcSrc) &&
+    /if \(confirmingExtraRef\.current\) return/.test(calcSrc),
+  "confirmExtraordinario guards re-entry (Bug DX)",
+);
 
 console.log(`\nlibreExtras: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
