@@ -252,6 +252,7 @@ export default function FloatingTutorialButton() {
   return (
     <div
       ref={elementRef}
+      className="bmc-tutorial-fab"
       role="button"
       tabIndex={0}
       aria-label="Modo Tutorial — arrastrable. Clic o Enter para abrir."

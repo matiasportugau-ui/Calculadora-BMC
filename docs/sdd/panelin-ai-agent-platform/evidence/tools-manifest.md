@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-23  
 **Source of truth:** `server/lib/agentTools.js` → `AGENT_TOOLS`  
-**Local count:** 55 (CONFIRMED 2026-07-23 via `node` import `AGENT_TOOLS`)  
+**Local count:** 60 (CONFIRMED 2026-08-13 via AGENT_TOOLS + buscar_producto + agregar_extraordinario)  
 **Prod count:** 55 (CONFIRMED 2026-07-23 `GET …/api/agent/tools-manifest` → `ok:true,count:55`)  
 **Live OpenAPI:** `GET /api/agent/tools/openapi` (prod 200, OpenAPI 3.1.0, 55 tools in `x-agent-tools`)  
 **Calc contract:** `docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md`
@@ -26,7 +26,9 @@ Tools with `user_confirmed` in schema (write path) marked **yes**. Runtime also 
 | `obtener_escenarios` | Devuelve la lista canónica de escenarios de cotización con sus campos REQUERIDOS y OPCIONALES. Usar al inicio de cada co… | — | no |
 | `obtener_catalogo` | Devuelve el catálogo completo de paneles (techo + pared) con familias, espesores válidos, colores permitidos, ancho útil… | lista | no |
 | `obtener_informe_completo` | Dump completo de pricing + reglas de asesoría + fórmulas de cálculo + endpoints. Más pesado que catalogo, pero útil cuan… | lista | no |
-| `presupuesto_libre` | Genera una cotización en formato BOM libre (líneas manuales): el usuario describe paneles + perfilería + fijaciones + se… | lista, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, flete | no |
+| `presupuesto_libre` | Genera una cotización en formato BOM libre (líneas manuales): el usuario describe paneles + perfilería + fijaciones + se… | lista, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, libreExtras, flete | no |
+| `buscar_producto` | Busca catálogo con tokens AND + alias (hexagonal/exagonal, SKU, gotero 100). | q, category, limit | no |
+| `agregar_extraordinario` | Suma partida fuera de matriz a la UI live y devuelve la línea BOM. | titulo, label, precio, pu, cantidad, cant | no |
 | `listar_cotizaciones_recientes` | Lista las cotizaciones generadas recientemente (registry persistente en GCS, sin TTL). Cada entrada incluye id, code, cl… | cliente, source, include_cancelled, limite, desde, hasta | no |
 | `obtener_cotizacion_por_id` | Recupera el resumen + URL del PDF de una cotización por su pdf_id (UUID). Usar cuando el usuario referencia un id especí… | pdf_id | no |
 | `aplicar_estado_calc` | Aplica datos extraídos de la conversación al estado live de la calculadora (auto-rellena el formulario). Emite las ACTIO… | scenario, listaPrecios, techo, pared, camara, flete, proyecto | no |

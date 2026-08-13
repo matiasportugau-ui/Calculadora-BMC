@@ -13,6 +13,7 @@ import {
   memo,
 } from "react";
 import { rowPriceHint } from "../utils/productCatalogIndex.js";
+import { filterAndRankProducts } from "../utils/productSearch.js";
 import {
   resolveProductVisual,
   splitProductLabel,
@@ -229,16 +230,6 @@ const ProductThumb = memo(function ProductThumb({ row, already = 0, visual }) {
   );
 });
 
-function rowMatchesQuery(row, q, visual, labels) {
-  if (!q) return true;
-  if (row.searchText?.includes(q)) return true;
-  if (visual?.shortCode?.toLowerCase().includes(q)) return true;
-  if (visual?.group?.toLowerCase().includes(q)) return true;
-  if (labels?.primary?.toLowerCase().includes(q)) return true;
-  if (labels?.secondary?.toLowerCase().includes(q)) return true;
-  return false;
-}
-
 export default function ProductQuickAddDrawer({
   catalogIndex = [],
   currentQty = { perfilQty: {}, fijQty: {}, sellQty: {} },
@@ -249,6 +240,18 @@ export default function ProductQuickAddDrawer({
   listaPrecios = "web",
 }) {
   const [open, setOpen] = useState(readStoredOpen);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    let last = window.scrollY || 0;
+    const onScroll = () => {
+      const y = window.scrollY || 0;
+      document.documentElement.classList.toggle("bmc-fabs-hide", y > last && y > 20);
+      last = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("ALL");
   const [qtyDraft, setQtyDraft] = useState({});
@@ -325,11 +328,13 @@ export default function ProductQuickAddDrawer({
   }, [catalogIndex, listaPrecios]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return enriched.filter(({ row, visual, labels }) => {
-      if (category !== "ALL" && row.category !== category) return false;
-      return rowMatchesQuery(row, q, visual, labels);
-    });
+    const ranked = filterAndRankProducts(
+      enriched.map((e) => e.row),
+      query,
+      { category },
+    );
+    const byId = new Map(enriched.map((e) => [e.row.id, e]));
+    return ranked.map((row) => byId.get(row.id)).filter(Boolean);
   }, [enriched, query, category]);
 
   const qtyOf = useCallback(

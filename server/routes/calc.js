@@ -15,6 +15,7 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { bomToGroups, buildWhatsAppText, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
+import { hydrateLibreExtras } from "../../src/utils/libreExtras.js";
 import { upsertQuote } from "../lib/quoteStore.js";
 import { enqueue as sheetEnqueue, isSheetSyncEnabled } from "../lib/clientQuotesSheetSync.js";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
@@ -420,6 +421,9 @@ function runPresupuestoLibreFromBody(body) {
     libreSellQty = {},
     flete = 0,
     libreExtra = {},
+    libreExtras,
+    extra,
+    extras,
   } = body || {};
   setListaPrecios(lista === "venta" ? "venta" : "web");
   const perfilRows = flattenPerfilesLibre(PERFIL_TECHO, PERFIL_PARED);
@@ -433,6 +437,7 @@ function runPresupuestoLibreFromBody(body) {
     libreSellQty,
     flete,
     libreExtra,
+    libreExtras: hydrateLibreExtras({ libreExtra, libreExtras, extra, extras }),
   });
 }
 

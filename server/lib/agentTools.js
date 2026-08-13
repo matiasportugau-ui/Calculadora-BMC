@@ -12,6 +12,9 @@ import {
   mergeZonaResults,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src/data/constants.js";
+import { hydrateLibreExtras, extraToEngineItem, normalizeLibreExtra } from "../../src/utils/libreExtras.js";
+import { buildProductCatalogIndex, rowPriceHint } from "../../src/utils/productCatalogIndex.js";
+import { filterAndRankProducts } from "../../src/utils/productSearch.js";
 import { config } from "../config.js";
 import { getPdf } from "../routes/calc.js";
 import { postCotizar, postCotizarPdf, postPresupuestoLibre } from "./calcLoopbackClient.js";
@@ -331,9 +334,54 @@ export const AGENT_TOOLS = [
         librePerfilQty: { type: "object", description: "Mapa { perfilId: cantidad }" },
         libreFijQty:    { type: "object", description: "Mapa { fijacionId: cantidad }" },
         libreSellQty:   { type: "object", description: "Mapa { selladorId: cantidad }" },
-        libreExtra:     { type: "object", description: "Items extra { label, pu, cant }" },
+        libreExtra:     { type: "object", description: "Una partida extra (alias: label/pu/cant o titulo/precio/cantidad). Preferí libreExtras." },
+        libreExtras:    {
+          type: "array",
+          description: "Partidas fuera de matriz (Extraordinarios). Cada ítem: titulo|label, descripcion?, precio|pu, unidades?, cantidad|cant. No requiere SKU.",
+          items: { type: "object" },
+        },
         flete:          { type: "number", description: "Flete USD" },
       },
+    },
+  },
+  {
+    name: "buscar_producto",
+    description:
+      "Busca en el catálogo vendible (paneles, perfilería, tornillería, selladores) con el mismo motor que el drawer Agregar producto: acentos, alias (hexagonal/exagonal, PU/espuma) y tokens AND. " +
+      "Usar ANTES de presupuesto_libre cuando el usuario nombra un producto y no tenés el id/SKU exacto.",
+    input_schema: {
+      type: "object",
+      properties: {
+        q: { type: "string", description: "Texto libre: nombre, SKU, gotero 100, tornillo hexagonal…" },
+        category: { type: "string", enum: ["ALL", "PANELES", "PERFILERÍA", "TORNILLERÍA", "SELLADORES"] },
+        limit: { type: "number", description: "Máx resultados. Default 8." },
+      },
+      required: ["q"],
+    },
+  },
+  {
+    name: "agregar_extraordinario",
+    description:
+      "Suma un PRODUCTO FUERA DE LISTA (Nuevo) al presupuesto live — partidas que no están en la matriz. " +
+      "Usar SOLO: (1) buscar_producto no encontró el ítem, o (2) el vendedor pidió agregarlo fuera de lista. " +
+      "REQUIERE confirmación explícita del usuario (user_confirmed + frase en sus palabras: " +
+      "\"agregalo al presupuesto\", \"sumalo fuera de lista\", \"sí, como producto nuevo\"). " +
+      "Antes de llamar: mostrá título, precio y cantidad y pedí aprobación. No inventes SKU. " +
+      "Acepta titulo|label, descripcion, precio|pu, unidades, cantidad|cant. Ofrecé chips SUGGEST_JSON de Sí/No.",
+    input_schema: {
+      type: "object",
+      properties: {
+        titulo: { type: "string" },
+        label: { type: "string" },
+        descripcion: { type: "string" },
+        precio: { type: "number" },
+        pu: { type: "number" },
+        unidades: { type: "string" },
+        cantidad: { type: "number" },
+        cant: { type: "number" },
+        user_confirmed: { type: "boolean", description: "true solo si el vendedor aprobó en sus palabras agregar el ítem fuera de lista." },
+      },
+      required: ["user_confirmed"],
     },
   },
 
@@ -376,7 +424,7 @@ export const AGENT_TOOLS = [
     name: "aplicar_estado_calc",
     description:
       "Aplica datos extraídos de la conversación al estado live de la calculadora (auto-rellena el formulario). " +
-      "Emite las ACTION_JSON correspondientes en una sola llamada: setScenario, setLP, setTecho, setTechoZonas, setPared, setCamara, setFlete, setProyecto. " +
+      "Emite las ACTION_JSON correspondientes en una sola llamada: setScenario, setLP, setTecho, setTechoZonas, setPared, setCamara, setFlete, setProyecto, addLibreExtra, setLibreExtras. " +
       "Pasá SOLO los campos que el usuario confirmó explícitamente. Llamala en cuanto tengas datos suficientes para un campo — no esperes a tener todo. " +
       "Tras llamarla, calculá con calcular_cotizacion para mostrar el total parcial al usuario.",
     input_schema: {
@@ -413,6 +461,9 @@ export const AGENT_TOOLS = [
           },
         },
         flete:    { type: "number", description: "Flete USD" },
+        extra:    { type: "object", description: "Una partida Extraordinarios (titulo|label, precio|pu, cantidad|cant)." },
+        libreExtra: { type: "object" },
+        libreExtras: { type: "array", items: { type: "object" }, description: "Reemplaza la lista de Extraordinarios en la UI." },
         proyecto: {
           type: "object",
           properties: {
@@ -1325,6 +1376,7 @@ function summarizeResult(result, scenario) {
 const APLICAR_ALLOWED_ACTIONS = new Set([
   "setScenario", "setLP", "setTecho", "setTechoZonas",
   "setPared", "setCamara", "setFlete", "setProyecto",
+  "addLibreExtra", "setLibreExtras",
 ]);
 
 /**
@@ -1732,6 +1784,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         libreSellQty: input?.libreSellQty || {},
         flete: Number(input?.flete || 0),
         libreExtra: input?.libreExtra || {},
+        libreExtras: hydrateLibreExtras(input),
         source: "ae_agent",
       };
       const result = await postPresupuestoLibre(body);
@@ -1750,6 +1803,51 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         bom: data.bom,
         advertencias: data.advertencias || [],
         texto_resumen: data.texto_resumen,
+      });
+    }
+
+    if (name === "buscar_producto") {
+      const q = String(input?.q || "").trim();
+      if (!q) return JSON.stringify({ error: "q requerido" });
+      const limit = Math.min(20, Math.max(1, Number(input?.limit) || 8));
+      const index = buildProductCatalogIndex();
+      const hits = filterAndRankProducts(index, q, { category: input?.category || "ALL" }).slice(0, limit);
+      return JSON.stringify({
+        ok: true,
+        q,
+        count: hits.length,
+        productos: hits.map((r) => ({
+          id: r.id,
+          label: r.label,
+          sku: r.sku,
+          kind: r.kind,
+          addBy: r.addBy,
+          key: r.key || null,
+          familia: r.familia || null,
+          espesor: r.espesor ?? null,
+          unidad: r.unidad,
+          category: r.category,
+          priceHint: rowPriceHint(r, "web"),
+        })),
+      });
+    }
+
+    if (name === "agregar_extraordinario") {
+      const denied = requireConfirmedAction("agregar_extraordinario", input, opts);
+      if (denied) return denied;
+      const n = normalizeLibreExtra(input);
+      if (!n || !n.titulo) {
+        return JSON.stringify({ error: "titulo o label requerido" });
+      }
+      if (typeof opts.emitAction === "function") {
+        opts.emitAction({ type: "addLibreExtra", payload: n });
+      }
+      const line = extraToEngineItem(n);
+      return JSON.stringify({
+        ok: true,
+        applied: typeof opts.emitAction === "function",
+        extra: n,
+        linea: line,
       });
     }
 

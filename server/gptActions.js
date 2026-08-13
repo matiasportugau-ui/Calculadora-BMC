@@ -46,6 +46,7 @@ export const GPT_ACTIONS = [
       { name: "libreSellQty", in: "body", type: "object" },
       { name: "flete", in: "body", type: "number", default: 0 },
       { name: "libreExtra", in: "body", type: "object" },
+      { name: "libreExtras", in: "body", type: "array" },
     ],
   },
   {

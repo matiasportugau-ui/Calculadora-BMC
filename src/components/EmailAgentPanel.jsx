@@ -10,7 +10,7 @@
  * /api/agent/chat) — keeps the canonical calculator component untouched.
  */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 const FEATURE_ON = import.meta.env.VITE_FEATURE_EMAIL_AGENT === "true";
 
@@ -30,6 +30,12 @@ function authHeaders() {
 
 export default function EmailAgentPanel({ apiBase = "" }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("bmc-open-email-agent", onOpen);
+    return () => window.removeEventListener("bmc-open-email-agent", onOpen);
+  }, []);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
