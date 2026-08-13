@@ -62,6 +62,7 @@ import { createWolfboardRouter } from "./routes/wolfboard.js";
 import marketingRouter from "./routes/marketing.js";
 import adsRouter from "./routes/ads.js";
 import { createBugsRouter } from "./routes/bugs.js";
+import { createCatalogCustomProductRouter } from "./routes/catalogCustomProduct.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinRouter from "./routes/panelin.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
@@ -1128,6 +1129,7 @@ app.use("/api/marketing", marketingRouter);
 // Google Ads API — read/report + RBAC-gated dry-run-by-default campaign mutations
 app.use("/api/ads", adsRouter);
 app.use("/api/bugs", createBugsRouter(config));
+app.use("/api", createCatalogCustomProductRouter(config, logger));
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
 app.use("/api", deepResearchRouter);

@@ -35,6 +35,7 @@ export function serializeProject({
   libreFijQty,
   libreSellQty,
   libreExtra,
+  libreExtras,
   librePerfilFilter,
 }) {
   return {
@@ -61,6 +62,7 @@ export function serializeProject({
     libreFijQty: libreFijQty || undefined,
     libreSellQty: libreSellQty || undefined,
     libreExtra: libreExtra || undefined,
+    libreExtras: Array.isArray(libreExtras) && libreExtras.length ? libreExtras : undefined,
     librePerfilFilter: librePerfilFilter || undefined,
   };
 }
@@ -109,6 +111,7 @@ export function deserializeProject(data) {
     libreFijQty: null,
     libreSellQty: null,
     libreExtra: null,
+    libreExtras: null,
     librePerfilFilter: null,
   };
 
@@ -148,7 +151,10 @@ export function deserializeProject(data) {
     librePerfilQty: data.librePerfilQty && typeof data.librePerfilQty === "object" ? data.librePerfilQty : defaults.librePerfilQty,
     libreFijQty: data.libreFijQty && typeof data.libreFijQty === "object" ? data.libreFijQty : defaults.libreFijQty,
     libreSellQty: data.libreSellQty && typeof data.libreSellQty === "object" ? data.libreSellQty : defaults.libreSellQty,
-    libreExtra: { ...defaults.libreExtra, ...(data.libreExtra && typeof data.libreExtra === "object" ? data.libreExtra : {}) },
+    libreExtra: data.libreExtra && typeof data.libreExtra === "object" && !Array.isArray(data.libreExtra)
+      ? { ...defaults.libreExtra, ...data.libreExtra }
+      : defaults.libreExtra,
+    libreExtras: Array.isArray(data.libreExtras) ? data.libreExtras : defaults.libreExtras,
     librePerfilFilter: typeof data.librePerfilFilter === "string" ? data.librePerfilFilter : defaults.librePerfilFilter,
   };
 }

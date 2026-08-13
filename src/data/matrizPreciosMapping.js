@@ -217,6 +217,7 @@ export const MATRIZ_SKU_TO_PATH = {
   ESQEXT: "PERFIL_PARED.esquinero_ext._all",
   ESQINT: "PERFIL_PARED.esquinero_int._all",
   PLECHU98: "PERFIL_PARED.perfil_5852._all",
+  PA5852: "PERFIL_PARED.perfil_5852._all",
 
   // === Incorporación 2026-06-15 (SKUs cargados en MATRIZ por el usuario) ===
   // Fijaciones (antes catalog-only)

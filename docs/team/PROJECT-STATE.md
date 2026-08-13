@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-10 (ai-verify-stop P0)
+**Última actualización:** 2026-08-13 (quote extras + PA5852 + search)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,16 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-13 (feat — TTS Español Argentina Diego):** Radio y lectura en voz usan **Diego (Argentina)** por defecto (`appleTts.js` + `POST /api/agent/speak` + `apple-tts` AVSpeech). Isabela en el selector. Si la voz no está en macOS, 409 + botón **Instalar voz Español (Argentina)** abre Ajustes → Contenido leído. Tests `appleTts` / `appleTtsSpeak`. Reiniciar API local.
+
+**2026-08-13 (fix — 5852 precio matriz):** Ángulo/perfil alu 5852 6,8 m: SKU `PA5852` (antes PLECHU98), venta/web **64.19** USD s/IVA (matriz J 64.188; K 78.31 = ×1,22), costo **53.49**. Largo barra 6,8 m.
+
+**2026-08-13 (feat — Producto fuera de lista + Panelin HITL):** Extraordinarios → **Producto fuera de lista · NUEVO**. Título ≠ descripción, confirmar para sumar líneas. Panelin `agregar_extraordinario` solo tras frase del vendedor. Tools `buscar_producto` + `agregar_extraordinario` (AGENT_TOOLS 60). `POST /api/catalog/custom-product`.
+
+**2026-08-13 (feat — Agregar producto search + flatten `_all`):** Buscador tokens AND, acentos, alias (hexagonal/exagonal, angulo estructural). Perfiles `_all` (5852, K2, esquineros) ahora entran al índice. Drawer mobile bottom sheet.
+
+**2026-08-13 (feat — Panelin workspace + Flotar):** Workspace colapsado; Flotar dentro/fuera; un clic Email/Admin/Calc abre + share; +Tab «Seleccioná la pestaña»; mobile chat como hoja (no tercera columna).
 
 **2026-08-10 (feat — Logística P0 «Verificar con IA»):** After Cargar actuales, incomplete stops get **✨ Verificar con IA** → `POST /api/envios/ai-verify-stop` builds multi-source evidence pack (Ventas row, adjunto meta, fields) + LLM structured proposal; modal shows paneles/accesorios/fields + **Aplicar** (human gate only; no Sheets write). Pure: `src/utils/logistica/aiVerifyStop.js`; server `server/lib/enviosAiVerify.js` via `callAiCompletion`. Tests: `tests/aiVerifyStop.test.js`. Branch `feat/logistica-ai-verify-stop`.
 

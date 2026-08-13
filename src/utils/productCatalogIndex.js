@@ -15,6 +15,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { flattenPerfilesLibre } from "./presupuestoLibreCatalogo.js";
+import { foldSearchText } from "./productSearch.js";
 import {
   PANELS_TECHO as DEF_PANELS_TECHO,
   PANELS_PARED as DEF_PANELS_PARED,
@@ -64,7 +65,25 @@ export function buildProductCatalogIndex({ catalog } = {}) {
   /** @type {ProductRow[]} */
   const rows = [];
   const push = (row) => {
-    row.searchText = `${row.label || ""} ${row.sku || ""}`.toLowerCase();
+    const extra =
+      /5852|PLECHU|PA5852|aluminio/i.test(`${row.label} ${row.sku} ${row.id || ""}`)
+        ? " angulo estructural aluminio anodizado k6 2x2 perfil L 5852"
+        : "";
+    const bag = [
+      row.label,
+      row.sku,
+      row.key,
+      row.id,
+      row.familia,
+      row.kind,
+      row.category,
+      row.unidad,
+      extra,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    row.searchText = bag.toLowerCase();
+    row.searchHaystack = foldSearchText(bag);
     rows.push(row);
   };
 

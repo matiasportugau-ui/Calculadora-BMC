@@ -459,7 +459,7 @@ assert("calcPerfilesParedExtra cantP=1 sin 5852 → items=[]", _resPerf1.items.l
 assert("calcPerfilesParedExtra cantP=1 sin 5852 → total=0", _resPerf1.total === 0, _resPerf1.total, 0);
 
 const _resPerf1plus = calcPerfilesParedExtra(paredEPS, 100, 1, 3.5, { incl5852: true });
-// Perfil 5852 tiene sku "PLECHU98" en constants.js:387; identificarlo por label "5852".
+// Perfil 5852: SKU matriz PA5852 (alias histórico PLECHU98); identificarlo por label "5852".
 const _is5852 = (i) => i.label && /5852/.test(i.label);
 const _isK2G2 = (i) => i.sku && (i.sku.includes("K2") || i.sku.includes("G2"));
 const _has5852 = _resPerf1plus.items.some(_is5852);

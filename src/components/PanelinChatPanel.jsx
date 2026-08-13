@@ -6,9 +6,10 @@ import TrustBlock from "./panelin/TrustBlock.jsx";
 import { useDictation } from "../hooks/useDictation.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
 import { useScreenCoWork } from "../hooks/useScreenCoWork.js";
+import { useTabShares } from "../hooks/useTabShares.js";
 import { useContextGroups } from "../hooks/useContextGroups.js";
-import CoWorkToolbar from "./cowork/CoWorkToolbar.jsx";
 import ContextGroupBar from "./cowork/ContextGroupBar.jsx";
+import ContextGroupStage from "./cowork/ContextGroupStage.jsx";
 import ProviderStatusLights from "./ai/ProviderStatusLights.jsx";
 import AgentModelSelector from "./ai/AgentModelSelector.jsx";
 import { useProviderReadiness } from "../hooks/useProviderReadiness.js";
@@ -263,6 +264,7 @@ export default function PanelinChatPanel({
   embeddedMode = false,
   floatingMode = false,
   onRequestFloating,
+  onRequestFloatOut,
   onReturnToSidebar,
   onHeaderPointerDown,
   onOpenDetachedWindow,
@@ -291,6 +293,7 @@ export default function PanelinChatPanel({
     if (typeof window === "undefined") return "classic";
     return localStorage.getItem(STORAGE_SELECTED_SKIN) || "applied-ai";
   });
+  const [floatMenu, setFloatMenu] = useState(false);
   const [input, setInput] = useState("");
   /** Live provider readiness lights (format + probe). */
   const { readiness: providerReadiness, refresh: refreshReadiness } = useProviderReadiness({
@@ -306,6 +309,7 @@ export default function PanelinChatPanel({
     return Number.isFinite(raw) ? clamp(raw, TTS_SPEED_MIN, TTS_SPEED_MAX) : TTS_SPEED_DEFAULT;
   });
   const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
+  const [voicePhase, setVoicePhase] = useState("");
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [devDrawerWidth, setDevDrawerWidth] = useState(() => {
@@ -401,14 +405,11 @@ export default function PanelinChatPanel({
 
   const speakWithReaction = useCallback((text) => {
     if (typeof window === "undefined" || !window.speechSynthesis || !text) return;
+    setIsTtsSpeaking(true);
     const speak = () => {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "es-UY";
       utterance.rate = ttsSpeed;
-      const voices = window.speechSynthesis.getVoices();
-      const esVoice = voices.find((v) => v.lang.startsWith("es"));
-      if (esVoice) utterance.voice = esVoice;
-      utterance.onstart = () => setIsTtsSpeaking(true);
+      utterance.lang = "es-UY";
       utterance.onend = () => setIsTtsSpeaking(false);
       utterance.onerror = () => setIsTtsSpeaking(false);
       window.speechSynthesis.cancel();
@@ -539,7 +540,24 @@ export default function PanelinChatPanel({
   }, [dictation]);
 
   const cowork = useScreenCoWork({ enabled: true, useSharedBuffer: true });
+  const tabShares = useTabShares();
   const contextGroups = useContextGroups();
+  const focusTab = contextGroups.activeGroup?.tabs?.find(
+    (t) => t.id === contextGroups.activeGroup?.focusTabId,
+  );
+
+  const shareKind = useCallback((kind, tabId) => {
+    const id = tabId || contextGroups.activeGroup?.focusTabId;
+    if (kind === "email") {
+      window.dispatchEvent(new CustomEvent("bmc-open-email-agent"));
+    }
+    if (kind === "admin") {
+      window.open("/hub", "_blank", "noopener,noreferrer");
+    }
+    if (id && (kind === "email" || kind === "admin" || kind === "calc" || kind === "screen")) {
+      tabShares.setLive(id, true, { preferCurrentTab: kind === "calc" });
+    }
+  }, [contextGroups.activeGroup?.focusTabId, tabShares]);
 
   /**
    * Single outbound path for compose / welcome hints / suggestion chips / any UI send.
@@ -549,8 +567,8 @@ export default function PanelinChatPanel({
   const sendWithLiveAssist = useCallback((rawText) => {
     const text = String(rawText || "").trim();
     if (!text || isStreaming) return;
-    const frame = cowork.consumeFrameForSend?.();
-    const liveOn = !!cowork.liveAssist;
+    const frame = (focusTab && tabShares.consumeFocusedFrame(focusTab.id)) || cowork.consumeFrameForSend?.();
+    const liveOn = !!(focusTab && tabShares.meta[focusTab.id]?.live) || !!cowork.liveAssist;
     const attachments = frame
       ? [{
           ...frame,
@@ -574,7 +592,7 @@ export default function PanelinChatPanel({
         },
       },
     });
-  }, [isStreaming, send, cowork, contextGroups.activeGroup, contextGroups.workspacePayload]);
+  }, [isStreaming, send, cowork, tabShares, focusTab, contextGroups.activeGroup, contextGroups.workspacePayload]);
 
   const handleSend = useCallback(() => {
     const text = input.trim();
@@ -787,6 +805,7 @@ export default function PanelinChatPanel({
 
   const isEmpty = messages.length === 0;
   const isInPageLayout = embeddedMode || floatingMode;
+  const compactChrome = embeddedMode && !floatingMode;
   const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280;
   const devDrawerMax = Math.min(860, Math.floor(viewportWidth * 0.95));
   const drawerMaxWidth = devMode ? clamp(devDrawerWidth, 320, devDrawerMax) : 380;
@@ -892,8 +911,10 @@ export default function PanelinChatPanel({
             padding: "12px 14px",
             display: "flex",
             alignItems: "center",
-            gap: 10,
+            gap: compactChrome ? 6 : 10,
             flexShrink: 0,
+            flexWrap: compactChrome ? "nowrap" : "wrap",
+            minWidth: 0,
             cursor: floatingMode ? "grab" : undefined,
             touchAction: floatingMode ? "none" : undefined,
           }}
@@ -911,24 +932,66 @@ export default function PanelinChatPanel({
               Asistente BMC Uruguay{devMode ? " · Developer Mode" : ""}
             </div>
           </div>
-          {embeddedMode && !floatingMode && onRequestFloating && (
-            <button
-              type="button"
-              data-no-drag
-              onClick={onRequestFloating}
-              title="Flotar chat"
-              style={{
-                ...ghostBtn,
-                border: "1px solid rgba(255,255,255,0.35)",
-                borderRadius: 999,
-                padding: "4px 8px",
-                fontSize: 11,
-                color: "#fff",
-              }}
-              aria-label="Flotar chat"
-            >
-              Flotar
-            </button>
+          {(onRequestFloating || onRequestFloatOut) && !floatingMode && (
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <button
+                type="button"
+                data-no-drag
+                onClick={() => setFloatMenu((v) => !v)}
+                title="Flotar el chat"
+                style={{
+                  ...ghostBtn,
+                  border: "1px solid rgba(255,255,255,0.35)",
+                  borderRadius: 999,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#fff",
+                }}
+                aria-label="Flotar chat"
+              >
+                Flotar ▾
+              </button>
+              {floatMenu && (
+                <div
+                  data-no-drag
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    right: 0,
+                    zIndex: 30,
+                    marginTop: 4,
+                    minWidth: 168,
+                    background: "#1d1d1f",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    borderRadius: 10,
+                    padding: 4,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                  }}
+                >
+                  {onRequestFloating && (
+                    <button
+                      type="button"
+                      data-no-drag
+                      onClick={() => { setFloatMenu(false); onRequestFloating(); }}
+                      style={{ ...ghostBtn, display: "block", width: "100%", textAlign: "left", padding: "8px 10px", color: "#fff" }}
+                    >
+                      En esta ventana
+                    </button>
+                  )}
+                  {onRequestFloatOut && (
+                    <button
+                      type="button"
+                      data-no-drag
+                      onClick={() => { setFloatMenu(false); onRequestFloatOut(); }}
+                      style={{ ...ghostBtn, display: "block", width: "100%", textAlign: "left", padding: "8px 10px", color: "#fff" }}
+                    >
+                      Fuera (otra ventana)
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
           {floatingMode && onReturnToSidebar && (
             <button
@@ -968,7 +1031,7 @@ export default function PanelinChatPanel({
               DEV
             </button>
           )}
-          {onOpenDetachedWindow && !detachedMode && (
+          {onOpenDetachedWindow && !detachedMode && !compactChrome && (
             <button
               data-no-drag
               onClick={onOpenDetachedWindow}
@@ -984,10 +1047,10 @@ export default function PanelinChatPanel({
               }}
               aria-label="Abrir en ventana Co-Work"
             >
-              Ventana
+              {compactChrome ? "⧉" : "Ventana"}
             </button>
           )}
-          {onOpenPinnedWindow && !detachedMode && (
+          {onOpenPinnedWindow && !detachedMode && !compactChrome && (
             <button
               data-no-drag
               onClick={() => {
@@ -1010,18 +1073,31 @@ export default function PanelinChatPanel({
               }}
               aria-label="Fijar Panelin Co-Work arriba"
             >
-              Fijar
+              {compactChrome ? "📌" : "Fijar"}
             </button>
           )}
           <button
             data-no-drag
-            onClick={() => setVoiceMode((v) => !v)}
-            title={voiceMode ? "Volver a modo texto" : "Modo voz manos libres (decí Panelin)"}
+            onClick={() => {
+              setVoiceMode((v) => {
+                const next = !v;
+                if (next) {
+                  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+                  setTtsEnabled(false);
+                }
+                return next;
+              });
+            }}
+            title={
+              voiceMode
+                ? voicePhase || "Detener voz local"
+                : "Hablar con Panelin (voz local Apple)"
+            }
             style={{
               ...ghostBtn,
               background: voiceMode ? "rgba(255,255,255,0.24)" : "transparent",
             }}
-            aria-label={voiceMode ? "Volver a modo texto" : "Activar modo voz manos libres"}
+            aria-label={voiceMode ? "Detener voz local" : "Hablar con Panelin (voz local Apple)"}
           >
             <Radio size={15} />
           </button>
@@ -1039,7 +1115,7 @@ export default function PanelinChatPanel({
             {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
           )}
-          {ttsEnabled && !voiceMode && (
+          {ttsEnabled && !voiceMode && !compactChrome && (
             <div
               data-no-drag
               style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
@@ -1101,7 +1177,8 @@ export default function PanelinChatPanel({
             background: BRAND_COLOR,
             color: HEADER_TEXT_COLOR,
             borderTop: "1px solid rgba(255,255,255,0.12)",
-            padding: "6px 12px 8px",
+            padding: compactChrome ? "4px 8px 6px" : "6px 12px 8px",
+            minWidth: 0,
           }}
         >
           <ProviderStatusLights
@@ -1140,6 +1217,8 @@ export default function PanelinChatPanel({
             voiceMode={voiceMode}
             send={send}
             messages={messages}
+            isStreaming={isStreaming}
+            onPhase={setVoicePhase}
             aiProvider={aiProvider}
             aiModel={aiModel}
             realtimeModel={realtimeModel}
@@ -1156,14 +1235,27 @@ export default function PanelinChatPanel({
             setFocusTab={contextGroups.setFocusTab}
             addTab={contextGroups.addTab}
             addGroup={contextGroups.addGroup}
+            renameGroup={contextGroups.renameGroup}
             kindLabel={contextGroups.kindLabel}
+            workspaceOpen={contextGroups.workspaceOpen}
+            setWorkspaceOpen={contextGroups.setWorkspaceOpen}
+            onShareKind={shareKind}
             disabled={isStreaming}
           />
         )}
 
-        {/* ── Co-Work capture (screen / Sheets tab) ── */}
-        {!voiceMode && (
-          <CoWorkToolbar cowork={cowork} disabled={isStreaming} />
+        {!voiceMode && contextGroups.workspaceOpen && focusTab && (
+          <ContextGroupStage
+            tab={focusTab}
+            shareMeta={tabShares.meta[focusTab.id] || {}}
+            calcState={calcState}
+            setAiPick={setAiPick}
+            disabled={isStreaming}
+            onCapture={() => tabShares.captureOnce(focusTab.id)}
+            onLive={(on) => tabShares.setLive(focusTab.id, on)}
+            onStopShare={() => tabShares.stopTab(focusTab.id)}
+            onPatchTab={(patch) => contextGroups.patchTab(focusTab.id, patch)}
+          />
         )}
 
         {/* ── Messages ── */}

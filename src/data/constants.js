@@ -458,8 +458,8 @@ export const PERFIL_PARED = {
     _all: { sku: "ESQ-INT", venta: 8.59, web: 10.48, costo: 7.73, largo: 3.0, label: "Esquinero interior" },
   },
   perfil_5852: {
-    _all: { sku: "PLECHU98", venta: 22.14, web: 25.83, costo: 18.45, largo: 6.8,
-            label: "Ángulo aluminio 5852 anodizado (6.8m)" },
+    _all: { sku: "PA5852", venta: 64.19, web: 64.19, costo: 53.49, largo: 6.8,
+            label: "Perfil Alu 5852 Anodizado (6,8 m)" },
   },
 };
 
