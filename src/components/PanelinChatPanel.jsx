@@ -4,6 +4,7 @@ import PanelinDevPanel from "./PanelinDevPanel.jsx";
 import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
 import TrustBlock from "./panelin/TrustBlock.jsx";
 import { useDictation } from "../hooks/useDictation.js";
+import { speakApple, cancelAppleTts } from "../hooks/appleTts.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
 import { useScreenCoWork } from "../hooks/useScreenCoWork.js";
 import { useTabShares } from "../hooks/useTabShares.js";
@@ -404,20 +405,9 @@ export default function PanelinChatPanel({
   }, [ttsSpeed]);
 
   const speakWithReaction = useCallback((text) => {
-    if (typeof window === "undefined" || !window.speechSynthesis || !text) return;
+    if (!text) return;
     setIsTtsSpeaking(true);
-    const speak = () => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = ttsSpeed;
-      utterance.lang = "es-UY";
-      utterance.onend = () => setIsTtsSpeaking(false);
-      utterance.onerror = () => setIsTtsSpeaking(false);
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    };
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) speak();
-    else window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
+    speakApple(text, { rate: ttsSpeed }).finally(() => setIsTtsSpeaking(false));
   }, [ttsSpeed]);
 
   // 2.2 — Focus trap: keep Tab/Shift+Tab inside drawer (skip in embedded sidebar)
@@ -1082,7 +1072,7 @@ export default function PanelinChatPanel({
               setVoiceMode((v) => {
                 const next = !v;
                 if (next) {
-                  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+                  try { cancelAppleTts(); } catch { /* ignore */ }
                   setTtsEnabled(false);
                 }
                 return next;
