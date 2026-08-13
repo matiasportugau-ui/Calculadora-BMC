@@ -74,6 +74,7 @@ import {
 } from "../utils/projectFile.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
 import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
+import { normalizeChatAction } from "../utils/normalizeChatAction.js";
 import QuotePreviewModal from "./QuotePreviewModal.jsx";
 import { countPtsFromApoyoMateriales, buildDefaultApoyoMateriales, cycleCombinadaMaterial, COMBINADA_MATERIAL_ORDER } from "../utils/combinadaFijacionShared.js";
 import { buildCostingReport } from "../utils/bomCosting.js";
@@ -2708,12 +2709,15 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const handleChatAction = useCallback(
     (action) => {
-      if (!action?.type) return;
-      switch (action.type) {
-        case "setScenario":   setScenario(action.payload); break;
-        case "setLP":         setLP(action.payload); break;
+      // Voice tools wrap scalars in objects ({ listaPrecios }, { flete }, …);
+      // text-chat emits scalars. Normalize before apply (Bug DY).
+      const normalized = normalizeChatAction(action);
+      if (!normalized?.type) return;
+      switch (normalized.type) {
+        case "setScenario":   setScenario(normalized.payload); break;
+        case "setLP":         setLP(normalized.payload); break;
         case "setTecho": {
-          const p = { ...action.payload };
+          const p = { ...normalized.payload };
           // Coerce numeric fields so calculations don't break
           if (p.pendiente != null) p.pendiente = Number(p.pendiente) || 0;
           if (p.alturaDif != null) p.alturaDif = Number(p.alturaDif) || 0;
@@ -2727,7 +2731,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           break;
         }
         case "setPared": {
-          const p = { ...action.payload };
+          const p = { ...normalized.payload };
           if (p.alto != null) p.alto = Number(p.alto) || 0;
           if (p.perimetro != null) p.perimetro = Number(p.perimetro) || 0;
           if (p.numEsqExt != null) p.numEsqExt = Number(p.numEsqExt) || 0;
@@ -2736,29 +2740,29 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           break;
         }
         case "setCamara": {
-          const p = { ...action.payload };
+          const p = { ...normalized.payload };
           if (p.largo_int != null) p.largo_int = Number(p.largo_int) || 0;
           if (p.ancho_int != null) p.ancho_int = Number(p.ancho_int) || 0;
           if (p.alto_int != null) p.alto_int = Number(p.alto_int) || 0;
           setCamara((prev) => ({ ...prev, ...p }));
           break;
         }
-        case "setFlete":      setFlete(Number(action.payload)); break;
+        case "setFlete":      setFlete(Number(normalized.payload)); break;
         case "addLibreExtra": {
-          const n = normalizeLibreExtra(action.payload);
+          const n = normalizeLibreExtra(normalized.payload);
           if (n) setLibreExtras((list) => [...list, n]);
           break;
         }
         case "setLibreExtras": {
-          const list = hydrateLibreExtras({ libreExtras: action.payload });
+          const list = hydrateLibreExtras({ libreExtras: normalized.payload });
           setLibreExtras(list);
           break;
         }
-        case "setProyecto":   setProyecto((prev) => ({ ...prev, ...action.payload })); break;
-        case "setWizardStep": setWizardStep(Number(action.payload)); break;
+        case "setProyecto":   setProyecto((prev) => ({ ...prev, ...normalized.payload })); break;
+        case "setWizardStep": setWizardStep(Number(normalized.payload)); break;
         case "setTechoZonas": {
-          const zonas = Array.isArray(action.payload)
-            ? action.payload.map((z) => ({ largo: Number(z.largo) || 0, ancho: Number(z.ancho) || 0 }))
+          const zonas = Array.isArray(normalized.payload)
+            ? normalized.payload.map((z) => ({ largo: Number(z.largo) || 0, ancho: Number(z.ancho) || 0 }))
             : [];
           if (zonas.length > 0) setTecho((prev) => ({ ...prev, zonas }));
           break;
@@ -2770,7 +2774,12 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             scenario, listaPrecios, proyecto, techo, pared, camara, flete,
             overrides, excludedItems, categoriasActivas, techoAnchoModo,
           });
-          setPendingQuote({ payload: action.payload, preview: action.preview, warnings: action.warnings || [], snapshot });
+          setPendingQuote({
+            payload: normalized.payload,
+            preview: normalized.preview,
+            warnings: normalized.warnings || [],
+            snapshot,
+          });
           break;
         }
         default: break;
