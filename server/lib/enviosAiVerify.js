@@ -12,9 +12,10 @@ import {
 
 /**
  * @param {object} stop — client stop snapshot (may include pdfText)
- * @param {{ maxTokens?: number }} [opts]
+ * @param {{ maxTokens?: number, callAiCompletion?: typeof callAiCompletion }} [opts]
  */
 export async function runEnviosAiVerify(stop, opts = {}) {
+  const complete = typeof opts.callAiCompletion === "function" ? opts.callAiCompletion : callAiCompletion;
   const pack = buildAiVerifyEvidencePack(stop || {});
   if (!pack.sources.length) {
     return {
@@ -38,7 +39,7 @@ export async function runEnviosAiVerify(stop, opts = {}) {
   let text;
   let provider;
   try {
-    const result = await callAiCompletion({
+    const result = await complete({
       systemPrompt: buildAiVerifySystemPrompt(),
       userMessage: buildAiVerifyUserMessage(pack),
       maxTokens: opts.maxTokens ?? 1800,
