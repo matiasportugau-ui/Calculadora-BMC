@@ -19,6 +19,8 @@ const TIER_BY_NAME = {
   obtener_catalogo: "quote",
   obtener_informe_completo: "quote",
   presupuesto_libre: "quote",
+  buscar_producto: "quote",
+  agregar_extraordinario: "quote",
   listar_cotizaciones_recientes: "quote",
   obtener_cotizacion_por_id: "quote",
   aplicar_estado_calc: "quote",

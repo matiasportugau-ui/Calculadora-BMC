@@ -468,6 +468,81 @@
   transform: scale(0.98);
 }
 
+/* Compact / tablet+phone: bottom pill + sheet (not the desktop rail) */
+@media (max-width: 1023px) {
+  html.bmc-fabs-hide .bmc-qa__fab,
+  html.bmc-chat-sheet-open .bmc-qa__fab {
+    transform: translateY(140%) !important;
+    pointer-events: none;
+  }
+  html.bmc-fabs-hide .bmc-tutorial-fab,
+  html.bmc-chat-sheet-open .bmc-tutorial-fab {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .bmc-qa__fab {
+    top: auto;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    transform: none;
+    writing-mode: horizontal-tb;
+    border-radius: 999px;
+    border-right: 1px solid rgba(255, 255, 255, var(--g-edge, 0.2));
+    padding: 12px 16px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  }
+  .bmc-qa__fab:hover {
+    transform: translateY(-2px);
+  }
+  .bmc-qa__fab-icon {
+    writing-mode: horizontal-tb;
+  }
+  .bmc-qa__fab-badge {
+    writing-mode: horizontal-tb;
+    margin-top: 0;
+    margin-left: 2px;
+  }
+  .bmc-qa__drawer {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: min(92vh, 860px);
+    max-height: 92dvh;
+    border-left: none;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.22);
+    animation: bmcQaSheetIn 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .bmc-qa__drawer::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    margin-left: -20px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.18);
+    z-index: 2;
+  }
+  .bmc-qa__header {
+    padding-top: 22px;
+  }
+}
+
+@keyframes bmcQaSheetIn {
+  from {
+    transform: translateY(18px);
+    opacity: 0.6;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
 /* Narrow phones: stack actions under text, keep thumb */
 @media (max-width: 420px) {
   .bmc-qa__drawer {

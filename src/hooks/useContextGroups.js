@@ -12,7 +12,18 @@ const KIND_LABELS = {
   calc: "Calc",
   note: "Nota",
   crm: "CRM",
+  screen: "Pantalla",
+  term: "Terminal",
 };
+
+export const TAB_KINDS = [
+  { kind: "email", label: "Email" },
+  { kind: "admin", label: "Admin" },
+  { kind: "calc", label: "Calc" },
+  { kind: "note", label: "Nota" },
+  { kind: "screen", label: "Pantalla" },
+  { kind: "term", label: "Terminal" },
+];
 
 function uid(prefix) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -65,6 +76,14 @@ function loadGroups() {
  *   kindLabel: (kind: string) => string,
  * }}
  */
+function readWsOpen() {
+  try {
+    return sessionStorage.getItem("bmc.panelin.wsOpen") === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function useContextGroups() {
   const initial = useMemo(() => {
     const loaded = typeof localStorage !== "undefined" ? loadGroups() : null;
@@ -75,6 +94,15 @@ export function useContextGroups() {
 
   const [groups, setGroups] = useState(initial.groups);
   const [activeGroupId, setActiveGroupId] = useState(initial.activeGroupId);
+  const [workspaceOpen, setWorkspaceOpen] = useState(readWsOpen);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("bmc.panelin.wsOpen", workspaceOpen ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [workspaceOpen]);
 
   useEffect(() => {
     try {
@@ -137,13 +165,31 @@ export function useContextGroups() {
     setActiveGroupId(g.id);
   }, [groups.length]);
 
+  const patchTab = useCallback((tabId, patch) => {
+    patchActive((g) => ({
+      ...g,
+      tabs: g.tabs.map((t) => (t.id === tabId ? { ...t, ...patch } : t)),
+    }));
+  }, [patchActive]);
+
+  const setTabShareMeta = useCallback((tabId, share) => {
+    patchTab(tabId, { share: { ...(share || {}) } });
+  }, [patchTab]);
+
   const workspacePayload = useMemo(() => {
     if (!activeGroup) return null;
     return {
       groupId: activeGroup.id,
       groupLabel: activeGroup.label,
       focusTabId: activeGroup.focusTabId,
-      tabs: activeGroup.tabs,
+      tabs: (activeGroup.tabs || []).map((t) => ({
+        id: t.id,
+        kind: t.kind,
+        label: t.label,
+        summary: t.summary || "",
+        hasShare: !!(t.share?.capturedAt || t.share?.live),
+        live: !!t.share?.live,
+      })),
       sharedMemory: activeGroup.sharedMemory || { clientName: null, flags: [] },
     };
   }, [activeGroup]);
@@ -158,6 +204,10 @@ export function useContextGroups() {
     removeTab,
     renameGroup,
     addGroup,
+    patchTab,
+    setTabShareMeta,
+    workspaceOpen,
+    setWorkspaceOpen,
     workspacePayload,
     kindLabel: (kind) => KIND_LABELS[kind] || kind,
   };

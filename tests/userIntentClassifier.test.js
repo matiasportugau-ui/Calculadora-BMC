@@ -133,8 +133,17 @@ group("email_enviar + wa_lead_to_admin triggers", () => {
   assert(classifyIntents("creá la consulta").has("wa_lead_to_admin"), "creá la consulta");
 });
 
+group("agregar_extraordinario (producto fuera de lista)", () => {
+  assert(classifyIntents("agregalo al presupuesto").has("agregar_extraordinario"), "agregalo al presupuesto");
+  assert(classifyIntents("sumalo fuera de lista").has("agregar_extraordinario"), "sumalo fuera de lista");
+  assert(classifyIntents("sí, como producto nuevo").has("agregar_extraordinario"), "sí como producto nuevo");
+  assert(classifyIntents("agregalo como extra").has("agregar_extraordinario"), "como extra");
+  assert(!classifyIntents("agregalo a la planilla").has("agregar_extraordinario"), "planilla stays CRM");
+  assert(!classifyIntents("no lo agregues al presupuesto").has("agregar_extraordinario"), "negation");
+});
+
 group("TOOL_INTENT_PATTERNS sanity", () => {
-  assert(Object.keys(TOOL_INTENT_PATTERNS).length === 12, "12 guarded tools covered");
+  assert(Object.keys(TOOL_INTENT_PATTERNS).length === 13, "13 guarded tools covered");
   for (const [tool, patterns] of Object.entries(TOOL_INTENT_PATTERNS)) {
     assert(Array.isArray(patterns) && patterns.length > 0, `${tool}: at least 1 pattern`);
     assert(patterns.every((p) => p instanceof RegExp), `${tool}: all patterns are RegExp`);

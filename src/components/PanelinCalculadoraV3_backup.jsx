@@ -36,6 +36,15 @@ import {
 } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { flattenPerfilesLibre, computePresupuestoLibreCatalogo } from "../utils/presupuestoLibreCatalogo.js";
+import {
+  emptyExtraDraft,
+  hydrateLibreExtras,
+  loadSavedCustomProducts,
+  saveCustomProductLocal,
+  notifyCustomProduct,
+  newExtraId,
+  normalizeLibreExtra,
+} from "../utils/libreExtras.js";
 import { buildProductCatalogIndex } from "../utils/productCatalogIndex.js";
 import {
   computeLibrePanelLineMetrics,
@@ -2670,7 +2679,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const [librePerfilQty, setLibrePerfilQty] = useState({});
   const [libreFijQty, setLibreFijQty] = useState({});
   const [libreSellQty, setLibreSellQty] = useState({});
-  const [libreExtra, setLibreExtra] = useState({ texto: "", precio: "", unidades: "", cantidad: "" });
+  const [libreExtras, setLibreExtras] = useState([]);
+  const [extraDraft, setExtraDraft] = useState(emptyExtraDraft);
+  const [saveExtraLocal, setSaveExtraLocal] = useState(true);
+  const [savedCustomProducts, setSavedCustomProducts] = useState(() => loadSavedCustomProducts());
+  const extraTitleRef = useRef(null);
   const [librePerfilFilter, setLibrePerfilFilter] = useState("");
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1280));
 
@@ -2731,6 +2744,16 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           break;
         }
         case "setFlete":      setFlete(Number(action.payload)); break;
+        case "addLibreExtra": {
+          const n = normalizeLibreExtra(action.payload);
+          if (n) setLibreExtras((list) => [...list, n]);
+          break;
+        }
+        case "setLibreExtras": {
+          const list = hydrateLibreExtras({ libreExtras: action.payload });
+          setLibreExtras(list);
+          break;
+        }
         case "setProyecto":   setProyecto((prev) => ({ ...prev, ...action.payload })); break;
         case "setWizardStep": setWizardStep(Number(action.payload)); break;
         case "setTechoZonas": {
@@ -2872,8 +2895,18 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     floatingRectRef.current = floatingRect;
   }, [floatingRect]);
 
-  const useSidebarChat = chatOpen && !isDetachedChatWindow && chatPresentation === "sidebar";
+  const isPhone = isPhoneViewportWidth(viewportWidth);
+  const isTablet = isTabletViewportWidth(viewportWidth);
+  const isCompactLayout = isCompactMainLayoutWidth(viewportWidth);
+
+  const useSidebarChat = chatOpen && !isDetachedChatWindow && chatPresentation === "sidebar" && !isCompactLayout;
   const useFloatingChat = chatOpen && !isDetachedChatWindow && chatPresentation === "floating";
+  const useMobileSheetChat = chatOpen && !isDetachedChatWindow && isCompactLayout && chatPresentation !== "floating";
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("bmc-chat-sheet-open", !!useMobileSheetChat);
+    return () => document.documentElement.classList.remove("bmc-chat-sheet-open");
+  }, [useMobileSheetChat]);
 
   const openChat = useCallback(() => {
     setChatOpen(true);
@@ -2884,11 +2917,10 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, []);
 
   const requestFloatingChat = useCallback(() => {
-    if (isCompactMainLayoutWidth(viewportWidth)) return;
     setChatPresentation("floating");
     persistChatPresentation("floating");
     setChatOpen(true);
-  }, [persistChatPresentation, viewportWidth]);
+  }, [persistChatPresentation]);
 
   const returnChatToSidebar = useCallback(() => {
     setChatPresentation("sidebar");
@@ -2975,6 +3007,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     authHeader: panelinChatAuthHeader,
     onOpenDetachedWindow: openDetachedChatWindow,
     onOpenPinnedWindow: openPinnedChatWindow,
+    onRequestFloatOut: openPinnedChatWindow,
     aiProvider: chat.aiProvider,
     aiModel: chat.aiModel,
     aiOptions: chat.aiOptions,
@@ -3185,6 +3218,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   // defecto en el escenario dedicado, colapsada pero expandible (sticky) en los demás.
   // Estado explícito + onToggle para no re-cerrarla en cada render (no derivarla del render).
   const [manualLibreOpen, setManualLibreOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [proyectoQuickOpen, setProyectoQuickOpen] = useState(false);
   const proyectoQuickRef = useRef(null);
   const manualLibreRef = useRef(null);
@@ -3265,9 +3299,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       .join(" · ");
   }, [activeWizardStepId, scenarioDef?.hasTecho, techo.zonas]);
 
-  const isPhone = isPhoneViewportWidth(viewportWidth);
-  const isTablet = isTabletViewportWidth(viewportWidth);
-  const isCompactLayout = isCompactMainLayoutWidth(viewportWidth);
   const twoCol = isPhone ? "1fr" : "1fr 1fr";
   const threeCol = isPhone ? "1fr" : isTablet ? "1fr 1fr" : "1fr 1fr 1fr";
   const fourCol = isPhone ? "1fr" : "1fr 1fr";
@@ -3831,7 +3862,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           libreFijQty,
           libreSellQty,
           flete,
-          libreExtra,
+          libreExtras,
           catalog: libreCatalog || undefined,
         });
       }
@@ -3855,7 +3886,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         throw e;
       }
     } catch (e) { return { error: e.message }; }
-  }, [scenario, techo, irregularLayoutByGi, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
+  }, [scenario, techo, irregularLayoutByGi, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtras, libreCatalog]);
 
   // ── Grupos "presupuesto libre" aditivos (líneas manuales sobre cualquier escenario) ──
   // En el escenario dedicado `presupuesto_libre` se devuelve [] porque sus líneas ya
@@ -3871,11 +3902,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       libreFijQty,
       libreSellQty,
       flete: 0,
-      libreExtra,
+      libreExtras,
       catalog: libreCatalog || undefined,
     });
     return r.libreGroups || [];
-  }, [scenarioDef, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, libreExtra, libreCatalog]);
+  }, [scenarioDef, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, libreExtras, libreCatalog]);
 
   // ── Build BOM groups ──
   const groups = useMemo(() => {
@@ -4098,8 +4129,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     scenario, listaPrecios, proyecto, techo, pared, camara, flete,
     overrides, excludedItems, categoriasActivas, techoAnchoModo,
     quotationCode: quotationCodeOverride ?? currentBudgetCode,
-    libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter,
-  }), [scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, currentBudgetCode, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter]);
+    libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter,
+  }), [scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, currentBudgetCode, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter]);
 
   /** Archivo en carpeta compartida BMC (service account) — best-effort, no bloquea export. */
   const persistExportToCompanyDrive = useCallback(async ({
@@ -4443,9 +4474,47 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setLibrePerfilQty({});
     setLibreFijQty({});
     setLibreSellQty({});
-    setLibreExtra({ texto: "", precio: "", unidades: "", cantidad: "" });
+    setLibreExtras([]);
+    setExtraDraft(emptyExtraDraft());
     setLibrePerfilFilter("");
   };
+
+  const confirmExtraordinario = useCallback(() => {
+    const titulo = String(extraDraft.titulo || "").trim();
+    if (!titulo) {
+      showToast("Escribí un título para el producto fuera de lista");
+      extraTitleRef.current?.focus();
+      return;
+    }
+    const row = { ...extraDraft, titulo, id: extraDraft.id || newExtraId() };
+    setLibreExtras((list) => [...list, row]);
+    if (saveExtraLocal) {
+      setSavedCustomProducts(saveCustomProductLocal(row));
+    }
+    notifyCustomProduct({
+      titulo: row.titulo,
+      descripcion: row.descripcion,
+      unidades: row.unidades,
+      precio: row.precio,
+      cantidad: row.cantidad,
+      quotationCode: currentBudgetCode || null,
+      viewport: typeof window !== "undefined" ? window.innerWidth : null,
+    });
+    setExtraDraft(emptyExtraDraft());
+    showToast("Agregado. Avisamos a desarrollo para evaluarlo en la matriz.");
+    queueMicrotask(() => extraTitleRef.current?.focus());
+  }, [extraDraft, saveExtraLocal, currentBudgetCode, showToast]);
+
+  const reuseSavedCustom = useCallback((saved) => {
+    setExtraDraft({
+      ...emptyExtraDraft(),
+      titulo: saved.titulo || "",
+      descripcion: saved.descripcion || "",
+      unidades: saved.unidades || "",
+      precio: saved.precio || "",
+    });
+    extraTitleRef.current?.focus();
+  }, []);
 
   // ── Input updaters ──
   const uT = (k, v) => setTecho(t => {
@@ -5075,7 +5144,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (state.librePerfilQty) setLibrePerfilQty(state.librePerfilQty);
     if (state.libreFijQty) setLibreFijQty(state.libreFijQty);
     if (state.libreSellQty) setLibreSellQty(state.libreSellQty);
-    if (state.libreExtra) setLibreExtra(state.libreExtra);
+    setLibreExtras(hydrateLibreExtras(state));
     if (state.librePerfilFilter != null) setLibrePerfilFilter(state.librePerfilFilter);
     if (state.techoAnchoModo) setTechoAnchoModo(state.techoAnchoModo);
     if (state._meta?.quotationCode) setCurrentBudgetCode(state._meta.quotationCode);
@@ -5272,7 +5341,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     autoSaveTimer.current = setTimeout(() => {
       const snapshot = {
         scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas,
-        libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter,
+        libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter,
       };
       const entry = saveBudget({
         cliente: proyecto.nombre,
@@ -5289,7 +5358,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     }, 2000);
 
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter]);
+  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter]);
 
   // ── Fetch global counter on mount ──
   useEffect(() => {
@@ -5305,7 +5374,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const productoStr = panelInfo.espesor ? `${panelInfo.label} ${panelInfo.espesor}mm` : panelInfo.label;
     const snapshot = {
       scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas,
-      libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter,
+      libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter,
     };
     const entry = saveBudget({
       cliente: proyecto.nombre,
@@ -5320,7 +5389,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setLogEntries(getAllLogs());
     lastSavedHash.current = `${scenario}|${productoStr}|${proyecto.nombre}|${grandTotal.totalFinal.toFixed(2)}`;
     showToast(`Guardado ${entry.id}`);
-  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter, showToast]);
+  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter, showToast]);
 
   // ── Restore a saved budget ──
   const handleRestoreBudget = useCallback((entry) => {
@@ -5341,7 +5410,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (s.librePerfilQty) setLibrePerfilQty(s.librePerfilQty);
     if (s.libreFijQty) setLibreFijQty(s.libreFijQty);
     if (s.libreSellQty) setLibreSellQty(s.libreSellQty);
-    if (s.libreExtra) setLibreExtra(s.libreExtra);
+    setLibreExtras(hydrateLibreExtras(s));
     if (s.librePerfilFilter != null) setLibrePerfilFilter(s.librePerfilFilter);
     setCurrentBudgetCode(entry.id);
     setShowLogPanel(false);
@@ -5843,11 +5912,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                       </button>
                       <button
                         type="button"
-                        onClick={scrollToManualLibreSection}
-                        title="Agregar líneas manuales / presupuesto libre sobre este escenario"
-                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.primary}`, background: manualLibreOpen ? C.primarySoft : "transparent", color: C.primary, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
+                        onClick={() => setQuickAddOpen(true)}
+                        title="Agregar producto de catálogo — buscador de matriz"
+                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.primary}`, background: quickAddOpen ? C.primarySoft : "transparent", color: C.primary, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
                       >
-                        <Plus size={11} />Líneas manuales
+                        <Plus size={11} />Agregar producto
+                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.06em", padding: "1px 5px", borderRadius: 6, background: "#16a34a", color: "#fff" }}>NUEVO</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={scrollToManualLibreSection}
+                        title="Producto fuera de lista — partidas que no están en la matriz"
+                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.border}`, background: manualLibreOpen ? C.primarySoft : "transparent", color: C.ts, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        Fuera de lista
                       </button>
                     </div>
                   </div>
@@ -7601,6 +7679,37 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             </div>
           </details>
 
+          <button
+            type="button"
+            data-tutorial-id="calc-agregar-producto"
+            onClick={() => setQuickAddOpen(true)}
+            title="Buscar en catálogo y sumar al presupuesto"
+            style={{
+              ...sectionS,
+              padding: "16px 20px",
+              width: "100%",
+              textAlign: "left",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              fontWeight: 600,
+              fontSize: 12,
+              color: C.ts,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              fontFamily: FONT,
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Plus size={14} color={C.primary} />
+              Agregar producto
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", padding: "2px 7px", borderRadius: 999, background: "#16a34a", color: "#fff", textTransform: "uppercase" }}>Nuevo</span>
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.primary, textTransform: "none", letterSpacing: 0 }}>Buscar catálogo</span>
+          </button>
+
           <details
             ref={manualLibreRef}
             data-tutorial-id="calc-presupuesto-libre"
@@ -7608,12 +7717,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             open={manualLibreOpen}
             onToggle={(e) => setManualLibreOpen(e.currentTarget.open)}
           >
-            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none" }}>
+            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none", display: "flex", alignItems: "center", gap: 8 }}>
               {scenarioDef?.isLibre ? "PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA" : "AGREGAR PRODUCTOS MANUALES (PRESUPUESTO LIBRE)"}
             </summary>
             <div style={{ padding: "0 20px 20px" }}>
-            <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>{scenarioDef?.isLibre ? "Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en " : "Líneas manuales que se suman al presupuesto de este escenario. Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en "}<b>Extraordinarios</b> son opcionales.</div>
-
+            <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>
+              Productos de matriz: usá <b>Agregar producto</b> (buscador) o las categorías de abajo. Si no está en catálogo, cargalo en <b>Producto fuera de lista</b>. Confirmá cada partida para sumarla al presupuesto.
+            </div>
             <LibreAccordionBar title="Paneles" open={libreAcc.paneles} onToggle={() => toggleLibreAcc("paneles")}>
               {librePanelLines.map((line, idx) => {
                 const pt = libreCatalog?.PANELS_TECHO || PANELS_TECHO;
@@ -7810,7 +7920,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 })}
               </div>
             </LibreAccordionBar>
-
             {scenarioDef?.isLibre && (
             <LibreAccordionBar title="Servicios" open={libreAcc.servicios} onToggle={() => toggleLibreAcc("servicios")}>
               <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
@@ -7821,16 +7930,52 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               </div>
             </LibreAccordionBar>
             )}
-
-            <LibreAccordionBar title="Extraordinarios" open={libreAcc.extraordinarios} onToggle={() => toggleLibreAcc("extraordinarios")}>
-              <div style={{ marginBottom: 10 }}><div style={labelS}>Descripción / texto libre</div>
-                <textarea value={libreExtra.texto} onChange={(e) => setLibreExtra((x) => ({ ...x, texto: e.target.value }))} rows={4} placeholder="Escribí la partida…" style={{ ...inputS, resize: "vertical", minHeight: 88 }} />
+            <LibreAccordionBar title="Producto fuera de lista" open={libreAcc.extraordinarios || true} onToggle={() => toggleLibreAcc("extraordinarios")}>
+              {savedCustomProducts.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ ...labelS, marginBottom: 6 }}>Usados en este dispositivo</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {savedCustomProducts.slice(0, 12).map((p) => (
+                      <button key={p.id} type="button" onClick={() => reuseSavedCustom(p)} style={{ padding: "5px 10px", borderRadius: 16, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 11, cursor: "pointer", color: C.tp }}>
+                        {p.titulo}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div style={{ marginBottom: 10 }}>
+                <div style={labelS}>Título</div>
+                <input ref={extraTitleRef} style={inputS} value={extraDraft.titulo} onChange={(e) => setExtraDraft((x) => ({ ...x, titulo: e.target.value }))} placeholder="Nombre del producto o partida" />
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <div style={labelS}>Descripción / texto libre</div>
+                <textarea value={extraDraft.descripcion} onChange={(e) => setExtraDraft((x) => ({ ...x, descripcion: e.target.value }))} rows={3} placeholder="Detalle opcional…" style={{ ...inputS, resize: "vertical", minHeight: 72 }} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: threeCol, gap: 10 }}>
-                <div><div style={labelS}>Precio (USD s/IVA, opcional)</div><input style={inputS} value={libreExtra.precio} onChange={(e) => setLibreExtra((x) => ({ ...x, precio: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
-                <div><div style={labelS}>Unidades (opcional)</div><input style={inputS} value={libreExtra.unidades} onChange={(e) => setLibreExtra((x) => ({ ...x, unidades: e.target.value }))} placeholder="ej. unid, m²" /></div>
-                <div><div style={labelS}>Cantidad (opcional)</div><input style={inputS} value={libreExtra.cantidad} onChange={(e) => setLibreExtra((x) => ({ ...x, cantidad: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
+                <div><div style={labelS}>Precio (USD s/IVA, opcional)</div><input style={inputS} value={extraDraft.precio} onChange={(e) => setExtraDraft((x) => ({ ...x, precio: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
+                <div><div style={labelS}>Unidades (opcional)</div><input style={inputS} value={extraDraft.unidades} onChange={(e) => setExtraDraft((x) => ({ ...x, unidades: e.target.value }))} placeholder="ej. unid, m²" /></div>
+                <div><div style={labelS}>Cantidad (opcional)</div><input style={inputS} value={extraDraft.cantidad} onChange={(e) => setExtraDraft((x) => ({ ...x, cantidad: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
               </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 12, color: C.ts, cursor: "pointer" }}>
+                <input type="checkbox" checked={saveExtraLocal} onChange={(e) => setSaveExtraLocal(e.target.checked)} />
+                Guardar en este dispositivo para próximos presupuestos
+              </label>
+              <button type="button" onClick={confirmExtraordinario} style={{ marginTop: 12, width: "100%", padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                Agregar al presupuesto
+              </button>
+              {libreExtras.length > 0 && (
+                <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {libreExtras.map((row) => (
+                    <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 10, background: C.surfaceAlt }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{row.titulo}</div>
+                        {row.descripcion ? <div style={{ fontSize: 11, color: C.ts }}>{row.descripcion}</div> : null}
+                      </div>
+                      <button type="button" onClick={() => setLibreExtras((list) => list.filter((x) => x.id !== row.id))} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, fontSize: 12, cursor: "pointer", color: C.danger }}>Quitar</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </LibreAccordionBar>
             </div>
           </details>
@@ -8124,13 +8269,39 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 isOpen
                 embeddedMode
                 onClose={closeChat}
-                onRequestFloating={isCompactLayout ? undefined : requestFloatingChat}
+                onRequestFloating={requestFloatingChat}
                 {...panelinChatPanelProps}
               />
             </Panel>
           </>
         )}
       </PanelGroup>
+
+      {useMobileSheetChat && typeof document !== "undefined" && createPortal(
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: "min(70vh, 640px)",
+            zIndex: 9000,
+            borderRadius: "16px 16px 0 0",
+            overflow: "hidden",
+            boxShadow: "0 -12px 40px rgba(0,0,0,0.28)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
+          <PanelinChatPanel
+            isOpen
+            embeddedMode
+            onClose={closeChat}
+            onRequestFloating={requestFloatingChat}
+            {...panelinChatPanelProps}
+          />
+        </div>,
+        document.body,
+      )}
 
       {useFloatingChat && typeof document !== "undefined" && createPortal(
         <PanelinFloatingChatShell
@@ -8294,6 +8465,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         onAddSellador={quickAddSellador}
         onAddPanel={quickAddPanel}
         listaPrecios={listaPrecios}
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
       />
 
       {/* ── Budget Log Panel (slide-over drawer) ── */}

@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { calcTotalesSinIVA } from "./calculations.js";
+import { extrasToEngineItems, hydrateLibreExtras } from "./libreExtras.js";
 import {
   computeLibrePanelLineMetrics,
   formatLibrePanelBomLabel,
@@ -39,30 +40,31 @@ export function flattenPerfilesLibre(perfilTecho, perfilPared) {
       largo: row.largo,
     });
   };
-  for (const [tipo, byFam] of Object.entries(perfilTecho || {})) {
-    if (!byFam || typeof byFam !== "object") continue;
-    for (const [fam, byEsp] of Object.entries(byFam)) {
-      if (!byEsp || typeof byEsp !== "object") continue;
-      for (const [espKey, row] of Object.entries(byEsp)) {
-        const espLab = espKey === "_all" ? "" : ` ${espKey}mm`;
-        const id = `pt:${tipo}:${fam}:${espKey}`;
-        const base = `${prettyTipo(tipo)} · ${fam}${espLab}`;
-        addRow(id, base, row);
+  const walk = (source, prefix) => {
+    for (const [tipo, byFam] of Object.entries(source || {})) {
+      if (!byFam || typeof byFam !== "object") continue;
+      if (byFam.sku) {
+        addRow(`${prefix}:${tipo}:_all:_all`, prettyTipo(tipo), byFam);
+        continue;
+      }
+      for (const [fam, byEsp] of Object.entries(byFam)) {
+        if (!byEsp || typeof byEsp !== "object") continue;
+        if (byEsp.sku) {
+          const base = fam === "_all" ? prettyTipo(tipo) : `${prettyTipo(tipo)} · ${fam}`;
+          addRow(`${prefix}:${tipo}:${fam}:_all`, base, byEsp);
+          continue;
+        }
+        for (const [espKey, row] of Object.entries(byEsp)) {
+          const espLab = espKey === "_all" ? "" : ` ${espKey}mm`;
+          const id = `${prefix}:${tipo}:${fam}:${espKey}`;
+          const base = `${prettyTipo(tipo)} · ${fam}${espLab}`;
+          addRow(id, base, row);
+        }
       }
     }
-  }
-  for (const [tipo, byFam] of Object.entries(perfilPared || {})) {
-    if (!byFam || typeof byFam !== "object") continue;
-    for (const [fam, byEsp] of Object.entries(byFam)) {
-      if (!byEsp || typeof byEsp !== "object") continue;
-      for (const [espKey, row] of Object.entries(byEsp)) {
-        const espLab = espKey === "_all" ? "" : ` ${espKey}mm`;
-        const id = `pp:${tipo}:${fam}:${espKey}`;
-        const base = `${prettyTipo(tipo)} · ${fam}${espLab}`;
-        addRow(id, base, row);
-      }
-    }
-  }
+  };
+  walk(perfilTecho, "pt");
+  walk(perfilPared, "pp");
   return out.sort((a, b) => a.label.localeCompare(b.label, "es"));
 }
 
@@ -86,7 +88,8 @@ export function flattenPerfilesLibre(perfilTecho, perfilPared) {
  * @param {Record<string, number>} [input.libreFijQty]
  * @param {Record<string, number>} [input.libreSellQty]
  * @param {number} [input.flete]
- * @param {{ texto?: string, precio?: string|number, unidades?: string, cantidad?: string|number }} [input.libreExtra]
+ * @param {{ texto?: string, titulo?: string, precio?: string|number, unidades?: string, cantidad?: string|number }} [input.libreExtra]
+ * @param {Array} [input.libreExtras] Extraordinarios confirmados (prioridad sobre libreExtra)
  * @param {PresupuestoLibreCatalog} [input.catalog] Si se omite, usa constants base.
  */
 export function computePresupuestoLibreCatalogo(input) {
@@ -99,6 +102,7 @@ export function computePresupuestoLibreCatalogo(input) {
     libreSellQty,
     flete,
     libreExtra,
+    libreExtras,
     catalog = {},
   } = input || {};
 
@@ -224,28 +228,10 @@ export function computePresupuestoLibreCatalogo(input) {
     });
   }
 
-  const ex = libreExtra || {};
-  const texto = (ex.texto || "").trim();
-  const precioRaw = ex.precio === "" || ex.precio == null ? NaN : parseFloat(String(ex.precio).replace(",", "."));
-  const cantRaw = ex.cantidad === "" || ex.cantidad == null ? NaN : parseFloat(String(ex.cantidad).replace(",", "."));
-  const unidadStr = (ex.unidades || "").trim();
-  const hasText = texto.length > 0;
-  const hasPrecio = !Number.isNaN(precioRaw) && precioRaw >= 0;
-  const hasCant = !Number.isNaN(cantRaw) && cantRaw > 0;
-  if (hasText || hasPrecio || hasCant || unidadStr) {
-    const label = hasText ? texto : "Partida extraordinaria";
-    const unidad = unidadStr || "unid";
-    const puE = hasPrecio ? precioRaw : 0;
-    const cE = hasCant ? cantRaw : 1;
-    grouped.EXTRAORDINARIOS.push({
-      label,
-      sku: "EXTRA",
-      cant: cE,
-      unidad,
-      pu: puE,
-      total: +(cE * puE).toFixed(2),
-    });
-  }
+  const extraItems = extrasToEngineItems(
+    Array.isArray(libreExtras) ? libreExtras : hydrateLibreExtras({ libreExtra, libreExtras }),
+  );
+  for (const item of extraItems) grouped.EXTRAORDINARIOS.push(item);
 
   const allItems = Object.values(grouped).flat();
   const totales = calcTotalesSinIVA(allItems);

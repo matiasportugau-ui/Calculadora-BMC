@@ -110,6 +110,8 @@ group("AGENT_TOOLS surface", () => {
     "obtener_catalogo",
     "obtener_informe_completo",
     "presupuesto_libre",
+    "buscar_producto",
+    "agregar_extraordinario",
     "listar_cotizaciones_recientes",
     "obtener_cotizacion_por_id",
     "aplicar_estado_calc",
@@ -255,6 +257,51 @@ await group("aplicar_estado_calc — emits actions", async () => {
   const zonasAct = emitted.find((a) => a.type === "setTechoZonas");
   assert(zonasAct && zonasAct.payload[0].largo === 10, "setTechoZonas zonas coerced to numbers");
   assert(emitted.some((a) => a.type === "setProyecto"), "emits setProyecto");
+});
+
+await group("aplicar_estado_calc — extra no escribe UI (HITL vía agregar_extraordinario)", async () => {
+  const emitted = [];
+  const { parsed } = await run(
+    "aplicar_estado_calc",
+    { extra: { label: "Andamio", pu: 80, cant: 1 }, scenario: "solo_techo" },
+    {},
+    { emitAction: (a) => emitted.push(a) },
+  );
+  assert(parsed.ok === true, "ok without extra write");
+  assert(!emitted.some((a) => a.type === "addLibreExtra" || a.type === "setLibreExtras"), "extras not applied via aplicar");
+});
+
+await group("buscar_producto — hexagonal alias", async () => {
+  const { parsed } = await run("buscar_producto", { q: "hexagonal", limit: 8 });
+  assert(parsed.ok === true && parsed.count > 0, "hexagonal finds rows");
+  const labels = (parsed.productos || []).map((p) => p.label.toLowerCase()).join(" ");
+  assert(labels.includes("exagonal") || labels.includes("hexagonal"), "hits tornillo exagonal family");
+});
+
+await group("agregar_extraordinario — requiere confirmación", async () => {
+  const { parsed: denied } = await run("agregar_extraordinario", { label: "Mano de obra", pu: 250 });
+  assert(denied.ok === false, "MCP sin user_confirmed → deny");
+
+  const emitted = [];
+  const { parsed } = await run(
+    "agregar_extraordinario",
+    { label: "Mano de obra", pu: 250, cant: 1, user_confirmed: true },
+    {},
+    { emitAction: (a) => emitted.push(a) },
+  );
+  assert(parsed.ok === true, "ok with user_confirmed");
+  assert(parsed.linea && parsed.linea.total === 250, "engine line total");
+  assert(emitted.some((a) => a.type === "addLibreExtra"), "emits addLibreExtra");
+
+  const blocked = [];
+  const { parsed: chatDeny } = await run(
+    "agregar_extraordinario",
+    { label: "X", user_confirmed: true },
+    {},
+    { approvedActions: new Set(), emitAction: (a) => blocked.push(a) },
+  );
+  assert(chatDeny.ok === false, "chat path without intent → deny");
+  assert(blocked.length === 0, "no UI write when denied");
 });
 
 await group("aplicar_estado_calc — empty input", async () => {

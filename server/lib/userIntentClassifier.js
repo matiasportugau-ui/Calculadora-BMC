@@ -89,6 +89,17 @@ const TOOL_INTENT_PATTERNS = {
     /\bconfirma(r)?\s+(el\s+)?envio\b/,
     /\benvia(lo|le)?\s+ya\b/,
   ],
+  agregar_extraordinario: [
+    /\bagrega(lo)?\s+al\s+presupuesto\b/,
+    /\bsuma(lo)?\s+al\s+presupuesto\b/,
+    /\bagrega(lo)?\s+(como\s+)?(extra|extraordinario|fuera\s+de\s+lista)\b/,
+    /\bsuma(lo)?\s+(como\s+)?(extra|extraordinario|fuera\s+de\s+lista)\b/,
+    /\bproducto\s+fuera\s+de\s+lista\b/,
+    /\bitem\s+(nuevo|no\s+listado)\s+al\s+presupuesto\b/,
+    /\bsi[,]?\s+(agrega|suma)lo\s+(como\s+)?(producto\s+)?nuevo\b/,
+    /\bsi[,]?\s+como\s+producto\s+nuevo\b/,
+    /\bsi[,]?\s+fuera\s+de\s+lista\b/,
+  ],
   wa_lead_to_admin: [
     /\bcarga(r|lo)?\s+(al\s+|en\s+)?admin\b/,
     /\bcrea(r)?\s+(la\s+)?(fila|consulta|lead)\b/,
@@ -115,6 +126,12 @@ export const INTENT_HINTS = {
   escribir_crm_taxonomia: ["clasificá la fila en CRM", "guardá la taxonomía en CRM", "marcá como proveedor en CRM"],
   email_enviar: ["enviá el correo", "mandá el mail", "sí envialo", "confirmá el envío"],
   wa_lead_to_admin: ["cargalo al Admin", "creá la consulta", "guardalo en Admin"],
+  agregar_extraordinario: [
+    "agregalo al presupuesto",
+    "sumalo fuera de lista",
+    "sí, como producto nuevo",
+    "agregalo como extra",
+  ],
 };
 
 /**
