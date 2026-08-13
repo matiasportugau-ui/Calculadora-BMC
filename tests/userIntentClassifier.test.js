@@ -138,8 +138,15 @@ group("agregar_extraordinario (producto fuera de lista)", () => {
   assert(classifyIntents("sumalo fuera de lista").has("agregar_extraordinario"), "sumalo fuera de lista");
   assert(classifyIntents("sí, como producto nuevo").has("agregar_extraordinario"), "sí como producto nuevo");
   assert(classifyIntents("agregalo como extra").has("agregar_extraordinario"), "como extra");
+  assert(classifyIntents("agregar un producto fuera de lista").has("agregar_extraordinario"), "explicit add verb");
+  assert(classifyIntents("sumalo producto fuera de lista").has("agregar_extraordinario"), "suma + producto fuera");
   assert(!classifyIntents("agregalo a la planilla").has("agregar_extraordinario"), "planilla stays CRM");
   assert(!classifyIntents("no lo agregues al presupuesto").has("agregar_extraordinario"), "negation");
+  // Bug DV: bare mention / FAQ must not unlock the write tool
+  assert(!classifyIntents("producto fuera de lista").has("agregar_extraordinario"), "bare mention");
+  assert(!classifyIntents("qué es un producto fuera de lista?").has("agregar_extraordinario"), "FAQ");
+  assert(!classifyIntents("cómo agrego un producto fuera de lista").has("agregar_extraordinario"), "how-to FAQ");
+  assert(!classifyIntents("hay producto fuera de lista en la calculadora").has("agregar_extraordinario"), "feature mention");
 });
 
 group("TOOL_INTENT_PATTERNS sanity", () => {

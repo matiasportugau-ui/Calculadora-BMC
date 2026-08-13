@@ -72,6 +72,7 @@ import {
   serializeProject, deserializeProject, pdfFileName,
   isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes,
 } from "../utils/projectFile.js";
+import { buildLibreUiStateFromDeserialized } from "../utils/projectLibreReset.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
 import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
 import QuotePreviewModal from "./QuotePreviewModal.jsx";
@@ -2684,6 +2685,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const [saveExtraLocal, setSaveExtraLocal] = useState(true);
   const [savedCustomProducts, setSavedCustomProducts] = useState(() => loadSavedCustomProducts());
   const extraTitleRef = useRef(null);
+  /** Bug DX: block double-click / re-entry before draft clears. */
+  const confirmingExtraRef = useRef(false);
   const [librePerfilFilter, setLibrePerfilFilter] = useState("");
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1280));
 
@@ -4480,13 +4483,17 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   };
 
   const confirmExtraordinario = useCallback(() => {
+    // Bug DX: synchronous re-entry lock — double-click before re-render doubled EXTRAORDINARIOS $.
+    if (confirmingExtraRef.current) return;
     const titulo = String(extraDraft.titulo || "").trim();
     if (!titulo) {
       showToast("Escribí un título para el producto fuera de lista");
       extraTitleRef.current?.focus();
       return;
     }
+    confirmingExtraRef.current = true;
     const row = { ...extraDraft, titulo, id: extraDraft.id || newExtraId() };
+    setExtraDraft(emptyExtraDraft());
     setLibreExtras((list) => [...list, row]);
     if (saveExtraLocal) {
       setSavedCustomProducts(saveCustomProductLocal(row));
@@ -4500,9 +4507,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       quotationCode: currentBudgetCode || null,
       viewport: typeof window !== "undefined" ? window.innerWidth : null,
     });
-    setExtraDraft(emptyExtraDraft());
     showToast("Agregado. Avisamos a desarrollo para evaluarlo en la matriz.");
-    queueMicrotask(() => extraTitleRef.current?.focus());
+    queueMicrotask(() => {
+      confirmingExtraRef.current = false;
+      extraTitleRef.current?.focus();
+    });
   }, [extraDraft, saveExtraLocal, currentBudgetCode, showToast]);
 
   const reuseSavedCustom = useCallback((saved) => {
@@ -5139,13 +5148,16 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setOverrides(state.overrides);
     setExcludedItems(state.excludedItems);
     if (state.categoriasActivas && Object.keys(state.categoriasActivas).length) setCategoriasActivas(state.categoriasActivas);
-    if (state.libreAcc) setLibreAcc(state.libreAcc);
-    if (state.librePanelLines) setLibrePanelLines(state.librePanelLines.map(normalizeLibrePanelLine));
-    if (state.librePerfilQty) setLibrePerfilQty(state.librePerfilQty);
-    if (state.libreFijQty) setLibreFijQty(state.libreFijQty);
-    if (state.libreSellQty) setLibreSellQty(state.libreSellQty);
-    setLibreExtras(hydrateLibreExtras(state));
-    if (state.librePerfilFilter != null) setLibrePerfilFilter(state.librePerfilFilter);
+    // Bug DW/DQ: always reset libre* — conditional `if (state.libre*)` left prior-session
+    // additive lines in BOM after Drive/openBmc import of a clean quote.
+    const libreUi = buildLibreUiStateFromDeserialized(state);
+    setLibreAcc(libreUi.libreAcc);
+    setLibrePanelLines(libreUi.librePanelLines);
+    setLibrePerfilQty(libreUi.librePerfilQty);
+    setLibreFijQty(libreUi.libreFijQty);
+    setLibreSellQty(libreUi.libreSellQty);
+    setLibreExtras(libreUi.libreExtras);
+    setLibrePerfilFilter(libreUi.librePerfilFilter);
     if (state.techoAnchoModo) setTechoAnchoModo(state.techoAnchoModo);
     if (state._meta?.quotationCode) setCurrentBudgetCode(state._meta.quotationCode);
     // Defer wizard unlock so scenario-change effects don't reset maxReachedStep after us.
@@ -5405,13 +5417,14 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setOverrides(s.overrides || {});
     setExcludedItems(s.excludedItems || {});
     if (s.categoriasActivas) setCategoriasActivas(s.categoriasActivas);
-    if (s.libreAcc) setLibreAcc(s.libreAcc);
-    if (s.librePanelLines) setLibrePanelLines(s.librePanelLines.map(normalizeLibrePanelLine));
-    if (s.librePerfilQty) setLibrePerfilQty(s.librePerfilQty);
-    if (s.libreFijQty) setLibreFijQty(s.libreFijQty);
-    if (s.libreSellQty) setLibreSellQty(s.libreSellQty);
-    setLibreExtras(hydrateLibreExtras(s));
-    if (s.librePerfilFilter != null) setLibrePerfilFilter(s.librePerfilFilter);
+    const libreUi = buildLibreUiStateFromDeserialized(s);
+    setLibreAcc(libreUi.libreAcc);
+    setLibrePanelLines(libreUi.librePanelLines);
+    setLibrePerfilQty(libreUi.librePerfilQty);
+    setLibreFijQty(libreUi.libreFijQty);
+    setLibreSellQty(libreUi.libreSellQty);
+    setLibreExtras(libreUi.libreExtras);
+    setLibrePerfilFilter(libreUi.librePerfilFilter);
     setCurrentBudgetCode(entry.id);
     setShowLogPanel(false);
     showToast(`Restaurado ${entry.id}`);

@@ -94,7 +94,9 @@ const TOOL_INTENT_PATTERNS = {
     /\bsuma(lo)?\s+al\s+presupuesto\b/,
     /\bagrega(lo)?\s+(como\s+)?(extra|extraordinario|fuera\s+de\s+lista)\b/,
     /\bsuma(lo)?\s+(como\s+)?(extra|extraordinario|fuera\s+de\s+lista)\b/,
-    /\bproducto\s+fuera\s+de\s+lista\b/,
+    // Bug DV: bare "producto fuera de lista" (FAQ / mention) must NOT unlock the write tool.
+    /\bagrega(r|lo)?\s+(un\s+|el\s+)?producto\s+fuera\s+de\s+lista\b/,
+    /\bsuma(r|lo)?\s+(un\s+|el\s+)?producto\s+fuera\s+de\s+lista\b/,
     /\bitem\s+(nuevo|no\s+listado)\s+al\s+presupuesto\b/,
     /\bsi[,]?\s+(agrega|suma)lo\s+(como\s+)?(producto\s+)?nuevo\b/,
     /\bsi[,]?\s+como\s+producto\s+nuevo\b/,
