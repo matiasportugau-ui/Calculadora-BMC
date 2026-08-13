@@ -3218,6 +3218,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   // defecto en el escenario dedicado, colapsada pero expandible (sticky) en los demás.
   // Estado explícito + onToggle para no re-cerrarla en cada render (no derivarla del render).
   const [manualLibreOpen, setManualLibreOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [proyectoQuickOpen, setProyectoQuickOpen] = useState(false);
   const proyectoQuickRef = useRef(null);
   const manualLibreRef = useRef(null);
@@ -5911,12 +5912,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                       </button>
                       <button
                         type="button"
+                        onClick={() => setQuickAddOpen(true)}
+                        title="Agregar producto de catálogo — buscador de matriz"
+                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.primary}`, background: quickAddOpen ? C.primarySoft : "transparent", color: C.primary, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        <Plus size={11} />Agregar producto
+                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.06em", padding: "1px 5px", borderRadius: 6, background: "#16a34a", color: "#fff" }}>NUEVO</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={scrollToManualLibreSection}
                         title="Producto fuera de lista — partidas que no están en la matriz"
-                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.primary}`, background: manualLibreOpen ? C.primarySoft : "transparent", color: C.primary, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
+                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.border}`, background: manualLibreOpen ? C.primarySoft : "transparent", color: C.ts, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
                       >
-                        <Plus size={11} />Fuera de lista
-                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.06em", padding: "1px 5px", borderRadius: 6, background: "#16a34a", color: "#fff" }}>NUEVO</span>
+                        Fuera de lista
                       </button>
                     </div>
                   </div>
@@ -7670,6 +7679,37 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             </div>
           </details>
 
+          <button
+            type="button"
+            data-tutorial-id="calc-agregar-producto"
+            onClick={() => setQuickAddOpen(true)}
+            title="Buscar en catálogo y sumar al presupuesto"
+            style={{
+              ...sectionS,
+              padding: "16px 20px",
+              width: "100%",
+              textAlign: "left",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              fontWeight: 600,
+              fontSize: 12,
+              color: C.ts,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              fontFamily: FONT,
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Plus size={14} color={C.primary} />
+              Agregar producto
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", padding: "2px 7px", borderRadius: 999, background: "#16a34a", color: "#fff", textTransform: "uppercase" }}>Nuevo</span>
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.primary, textTransform: "none", letterSpacing: 0 }}>Buscar catálogo</span>
+          </button>
+
           <details
             ref={manualLibreRef}
             data-tutorial-id="calc-presupuesto-libre"
@@ -7678,13 +7718,208 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             onToggle={(e) => setManualLibreOpen(e.currentTarget.open)}
           >
             <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none", display: "flex", alignItems: "center", gap: 8 }}>
-              Producto fuera de lista
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", padding: "2px 7px", borderRadius: 999, background: "#16a34a", color: "#fff", textTransform: "uppercase" }}>Nuevo</span>
+              {scenarioDef?.isLibre ? "PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA" : "AGREGAR PRODUCTOS MANUALES (PRESUPUESTO LIBRE)"}
             </summary>
             <div style={{ padding: "0 20px 20px" }}>
             <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>
-              Productos de matriz: usá <b>Agregar producto</b>. Si no está en catálogo, cargalo acá (antes Extraordinarios). Confirmá cada partida para sumarla al presupuesto. Panelin también puede proponerlo: solo se agrega si el vendedor lo aprueba.
+              Productos de matriz: usá <b>Agregar producto</b> (buscador) o las categorías de abajo. Si no está en catálogo, cargalo en <b>Producto fuera de lista</b>. Confirmá cada partida para sumarla al presupuesto.
             </div>
+            <LibreAccordionBar title="Paneles" open={libreAcc.paneles} onToggle={() => toggleLibreAcc("paneles")}>
+              {librePanelLines.map((line, idx) => {
+                const pt = libreCatalog?.PANELS_TECHO || PANELS_TECHO;
+                const pp = libreCatalog?.PANELS_PARED || PANELS_PARED;
+                const all = { ...pt, ...pp };
+                const pd = line.familia ? all[line.familia] : null;
+                const espOpts = pd ? Object.keys(pd.esp).map((e) => ({ value: Number(e), label: `${e} mm`, badge: pd.esp[e].ap ? `AP ${pd.esp[e].ap}m` : undefined })) : [];
+                const inputModo = line.inputModo === "m2" ? "m2" : "dimensiones";
+                const anchoModo = line.anchoModo === "metros" ? "metros" : "paneles";
+                const tramos = line.tramos?.length ? line.tramos : [{ largo: 6 }];
+                const metrics = computeLibrePanelLineMetrics(line, libreCatalog || {});
+                return (
+                  <div key={idx} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: idx < librePanelLines.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                    <CustomSelect label="Familia" value={line.familia} options={libreFamiliaOpts} onChange={(v) => {
+                      const pan = all[v];
+                      const fe = pan ? Number(Object.keys(pan.esp)[0]) : "";
+                      const col0 = pan?.col?.[0] || "Blanco";
+                      const anchoDef = librePanelDefaultAnchoFor(pan);
+                      updateLibrePanelLine(idx, {
+                        familia: v,
+                        espesor: fe,
+                        color: col0,
+                        panelesAncho: anchoDef.panelesAncho,
+                        anchoM: anchoDef.anchoM,
+                        tramos: line.tramos?.length ? line.tramos : [defaultLibrePanelTramo()],
+                      });
+                    }} />
+                    {pd && <>
+                      <div style={{ marginTop: 12 }}>
+                        <CustomSelect label="Espesor" value={line.espesor} options={espOpts} onChange={(ev) => updateLibrePanelLine(idx, { espesor: ev })} showBadge />
+                      </div>
+                      <div style={{ marginTop: 12 }}>
+                        <div style={labelS}>Color</div>
+                        <ColorChips colors={pd.col} value={line.color} onChange={(c) => updateLibrePanelLine(idx, { color: c })} onHover={line.tipo === "techo" ? setHoverTechoColor : setHoverParedColor} notes={pd.colNotes || {}} familia={line.familia} />
+                      </div>
+                    </>}
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Forma de carga</div>
+                      <SegmentedControl
+                        value={inputModo}
+                        onChange={(v) => updateLibrePanelLine(idx, { inputModo: v })}
+                        options={[{ id: "dimensiones", label: "Por medidas (Solo techo)" }, { id: "m2", label: "M² directo" }]}
+                      />
+                    </div>
+                    {inputModo === "dimensiones" && pd ? (
+                      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ancho del techo</div>
+                          <SegmentedControl
+                            value={anchoModo}
+                            onChange={(v) => updateLibrePanelLine(idx, { anchoModo: v })}
+                            options={[{ id: "paneles", label: "Paneles (cantidad)" }, { id: "metros", label: "Metros" }]}
+                          />
+                        </div>
+                        <div data-stepper-group style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+                          {anchoModo === "paneles" ? (
+                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                              <StepperInput
+                                size="large"
+                                label="Paneles (ancho)"
+                                value={line.panelesAncho ?? 9}
+                                onChange={(v) => updateLibrePanelLine(idx, { panelesAncho: v })}
+                                min={1}
+                                max={500}
+                                step={1}
+                                unit="pan."
+                                decimals={0}
+                                chainFocus
+                              />
+                            </div>
+                          ) : (
+                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                              <StepperInput
+                                size="large"
+                                label="Ancho (m)"
+                                value={line.anchoM ?? 0}
+                                onChange={(v) => updateLibrePanelLine(idx, { anchoM: v })}
+                                min={0}
+                                max={200}
+                                step={0.01}
+                                unit="m"
+                                decimals={2}
+                                chainFocus
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Largos en esta zona / techo</div>
+                          {tramos.map((tramo, tIdx) => (
+                            <div key={tIdx} style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                              <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                                <StepperInput
+                                  size="large"
+                                  label={tramos.length > 1 ? `Largo tramo ${tIdx + 1} (m)` : "Largo (m)"}
+                                  value={tramo.largo ?? 0}
+                                  onChange={(v) => updateLibrePanelTramo(idx, tIdx, { largo: v })}
+                                  min={0}
+                                  max={30}
+                                  step={0.01}
+                                  unit="m"
+                                  decimals={2}
+                                  chainFocus={tIdx < tramos.length - 1}
+                                />
+                              </div>
+                              {tramos.length > 1 && (
+                                <button type="button" onClick={() => removeLibrePanelTramo(idx, tIdx)} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 12, cursor: "pointer", color: C.danger, marginBottom: 2 }}>
+                                  Quitar tramo
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => addLibrePanelTramo(idx)} style={{ padding: "8px 14px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 12, cursor: "pointer", color: C.primary, fontWeight: 600 }}>
+                            + Otro largo (misma zona)
+                          </button>
+                        </div>
+                        {metrics.tramosDetail?.length > 0 && (
+                          <div style={{ padding: "12px 14px", background: C.primarySoft, borderRadius: 10, border: `1px solid rgba(0,113,227,0.2)` }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.primary, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Detalle de paneles</div>
+                            {metrics.tramosDetail.map((t) => (
+                              <div key={t.idx} style={{ fontSize: 12, color: C.tp, lineHeight: 1.6, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                                <span>
+                                  <strong style={{ color: C.primary }}>{t.cantPaneles} paneles</strong>
+                                  {" "}× <strong>{t.largo.toFixed(2)} m</strong>
+                                  <span style={{ color: C.ts }}> (ancho útil {t.au.toFixed(2)} m)</span>
+                                </span>
+                                <span style={{ fontWeight: 600, ...TN }}>{t.areaM2.toFixed(2)} m²</span>
+                              </div>
+                            ))}
+                            <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid rgba(0,113,227,0.15)`, display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: C.primary }}>
+                              <span>{metrics.totalPaneles} paneles en total</span>
+                              <span style={{ ...TN }}>{metrics.m2.toFixed(2)} m²</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 12 }}>
+                        <StepperInput label="M² a cotizar" value={line.m2} onChange={(v) => updateLibrePanelLine(idx, { m2: v })} min={0} max={999999} step={1} unit="m²" />
+                      </div>
+                    )}
+                    {librePanelLines.length > 1 && (
+                      <button type="button" onClick={() => removeLibrePanelLine(idx)} style={{ marginTop: 10, padding: "6px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 12, cursor: "pointer", color: C.danger }}>Quitar línea</button>
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" onClick={addLibrePanelLine} style={{ marginTop: 4, padding: "8px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 13, cursor: "pointer", color: C.primary, fontWeight: 500 }}>+ Agregar panel</button>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Perfilería" open={libreAcc.perfileria} onToggle={() => toggleLibreAcc("perfileria")}>
+              <input style={{ ...inputS, marginBottom: 12 }} value={librePerfilFilter} onChange={(e) => setLibrePerfilFilter(e.target.value)} placeholder="Filtrar por nombre o SKU…" />
+              <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                {librePerfilFiltered.map((row) => (
+                  <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
+                    <span style={{ flex: "1 1 200px", fontSize: 12, color: C.tp }}>{row.label}</span>
+                    <StepperInput label="Cant. barras" value={librePerfilQty[row.id] || 0} onChange={(v) => setLibrePerfilQty((q) => ({ ...q, [row.id]: v }))} min={0} max={9999} step={1} decimals={0} />
+                  </div>
+                ))}
+              </div>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Tornillería y herrajes" open={libreAcc.tornilleria} onToggle={() => toggleLibreAcc("tornilleria")}>
+              <div style={{ maxHeight: 280, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                {libreTornilleriaKeys.map((key) => {
+                  const F = libreCatalog?.FIJACIONES || FIJACIONES;
+                  const H = libreCatalog?.HERRAMIENTAS || HERRAMIENTAS;
+                  const row = F[key] || H[key];
+                  if (!row) return null;
+                  return (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
+                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{row.label}</span>
+                      <span style={{ fontSize: 11, color: C.tt }}>{row.unidad || "unid"}</span>
+                      <StepperInput label="Cant." value={libreFijQty[key] || 0} onChange={(v) => setLibreFijQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
+                    </div>
+                  );
+                })}
+              </div>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Selladores" open={libreAcc.selladores} onToggle={() => toggleLibreAcc("selladores")}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {libreSelladorKeys.map((key) => {
+                  const S = libreCatalog?.SELLADORES || SELLADORES;
+                  const s = S[key];
+                  if (!s) return null;
+                  return (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
+                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{s.label}</span>
+                      <span style={{ fontSize: 11, color: C.tt }}>{s.unidad || "unid"}</span>
+                      <StepperInput label="Cant." value={libreSellQty[key] || 0} onChange={(v) => setLibreSellQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
+                    </div>
+                  );
+                })}
+              </div>
+            </LibreAccordionBar>
             {scenarioDef?.isLibre && (
             <LibreAccordionBar title="Servicios" open={libreAcc.servicios} onToggle={() => toggleLibreAcc("servicios")}>
               <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
@@ -8230,6 +8465,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         onAddSellador={quickAddSellador}
         onAddPanel={quickAddPanel}
         listaPrecios={listaPrecios}
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
       />
 
       {/* ── Budget Log Panel (slide-over drawer) ── */}

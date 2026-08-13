@@ -238,8 +238,21 @@ export default function ProductQuickAddDrawer({
   onAddSellador,
   onAddPanel,
   listaPrecios = "web",
+  open: openProp,
+  onOpenChange,
 }) {
-  const [open, setOpen] = useState(readStoredOpen);
+  const [internalOpen, setInternalOpen] = useState(readStoredOpen);
+  const controlled = typeof openProp === "boolean";
+  const open = controlled ? openProp : internalOpen;
+  const setOpen = useCallback(
+    (updater) => {
+      const prev = controlled ? openProp : internalOpen;
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (!controlled) setInternalOpen(next);
+      onOpenChange?.(next);
+    },
+    [controlled, openProp, internalOpen, onOpenChange],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -307,7 +320,7 @@ export default function ProductQuickAddDrawer({
       document.removeEventListener("keydown", onKey);
       cancelAnimationFrame(t);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   // Clear flash timer on unmount
   useEffect(
