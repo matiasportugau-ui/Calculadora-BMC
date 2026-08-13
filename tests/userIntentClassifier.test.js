@@ -138,8 +138,13 @@ group("agregar_extraordinario (producto fuera de lista)", () => {
   assert(classifyIntents("sumalo fuera de lista").has("agregar_extraordinario"), "sumalo fuera de lista");
   assert(classifyIntents("sí, como producto nuevo").has("agregar_extraordinario"), "sí como producto nuevo");
   assert(classifyIntents("agregalo como extra").has("agregar_extraordinario"), "como extra");
+  assert(classifyIntents("sí, fuera de lista").has("agregar_extraordinario"), "sí fuera de lista");
   assert(!classifyIntents("agregalo a la planilla").has("agregar_extraordinario"), "planilla stays CRM");
   assert(!classifyIntents("no lo agregues al presupuesto").has("agregar_extraordinario"), "negation");
+  // FAQ / feature talk must NOT unlock the write tool (HITL bypass).
+  assert(!classifyIntents("qué es producto fuera de lista").has("agregar_extraordinario"), "FAQ qué es");
+  assert(!classifyIntents("puedo usar producto fuera de lista").has("agregar_extraordinario"), "puedo usar");
+  assert(!classifyIntents("producto fuera de lista").has("agregar_extraordinario"), "bare phrase");
 });
 
 group("TOOL_INTENT_PATTERNS sanity", () => {

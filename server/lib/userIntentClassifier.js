@@ -94,7 +94,7 @@ const TOOL_INTENT_PATTERNS = {
     /\bsuma(lo)?\s+al\s+presupuesto\b/,
     /\bagrega(lo)?\s+(como\s+)?(extra|extraordinario|fuera\s+de\s+lista)\b/,
     /\bsuma(lo)?\s+(como\s+)?(extra|extraordinario|fuera\s+de\s+lista)\b/,
-    /\bproducto\s+fuera\s+de\s+lista\b/,
+    // Bare "producto fuera de lista" is FAQ / feature talk — not approval to write EXTRA.
     /\bitem\s+(nuevo|no\s+listado)\s+al\s+presupuesto\b/,
     /\bsi[,]?\s+(agrega|suma)lo\s+(como\s+)?(producto\s+)?nuevo\b/,
     /\bsi[,]?\s+como\s+producto\s+nuevo\b/,
