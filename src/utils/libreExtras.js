@@ -56,8 +56,11 @@ export function extraToEngineItem(ex) {
   const cantRaw = n.cantidad === "" ? NaN : parseFloat(String(n.cantidad).replace(",", "."));
   const hasPrecio = !Number.isNaN(precioRaw) && precioRaw >= 0;
   const hasCant = !Number.isNaN(cantRaw) && cantRaw > 0;
-  const label = n.titulo || n.descripcion || "Partida extraordinaria";
+  // BOM / PDF / WA only render `label` — fold description in so it is not silently dropped.
   const note = n.titulo && n.descripcion ? n.descripcion : "";
+  const label = note
+    ? `${n.titulo} — ${n.descripcion}`
+    : (n.titulo || n.descripcion || "Partida extraordinaria");
   const puE = hasPrecio ? precioRaw : 0;
   const cE = hasCant ? cantRaw : 1;
   return {
