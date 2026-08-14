@@ -120,6 +120,20 @@ await group("darwin guard (404 on non-macOS even with token)", async () => {
   }
 });
 
+await group("rate limit on status (CodeQL Missing rate limiting)", async () => {
+  // speakLimiter max=30 / min — burn the bucket with unauthenticated GETs
+  // so token-guessing cannot hammer identity auth lookups unboundedly.
+  let limited = false;
+  for (let i = 0; i < 40; i++) {
+    const r = await fetch(`${BASE}/api/agent/speak/status`);
+    if (r.status === 429) {
+      limited = true;
+      break;
+    }
+  }
+  assert(limited === true, "status GET returns 429 after burst without auth");
+});
+
 server.close();
 
 console.log(`\n${failed === 0 ? "✅" : "❌"} agentSpeak routes: ${passed} passed, ${failed} failed`);

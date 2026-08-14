@@ -50,7 +50,9 @@ const speakLimiter = rateLimit({
   message: { ok: false, error: "Demasiadas lecturas de voz. Esperá un momento." },
 });
 
-router.get("/agent/speak/status", speakAuth, async (_req, res) => {
+// Rate-limit BEFORE auth so unauthenticated token-guessing against status/
+// install/speak cannot burn identity DB lookups unbounded (CodeQL high).
+router.get("/agent/speak/status", speakLimiter, speakAuth, async (_req, res) => {
   const probe = await probeArgentinaTts();
   return res.json({
     ok: true,
@@ -61,7 +63,7 @@ router.get("/agent/speak/status", speakAuth, async (_req, res) => {
   });
 });
 
-router.post("/agent/speak/install", speakAuth, (_req, res) => {
+router.post("/agent/speak/install", speakLimiter, speakAuth, (_req, res) => {
   const r = openSpokenContentSettings();
   if (!r.ok) return res.status(500).json({ ok: false, error: r.error });
   return res.json({
