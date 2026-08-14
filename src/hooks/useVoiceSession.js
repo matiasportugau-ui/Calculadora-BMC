@@ -33,6 +33,7 @@ import {
   resampleFloat32Linear,
   buildGrokSessionUpdate,
 } from "../utils/grokRealtimeTransport.js";
+import { decideVoiceActionRelay } from "../utils/voiceActionRelay.js";
 
 const API_BASE = getCalcApiBase();
 const DEFAULT_REALTIME_BASE = DEFAULT_REALTIME_SDP_BASE;
@@ -251,7 +252,9 @@ export function useVoiceSession({
           args = {};
         }
 
-        let validatedAction = { type: fnName, payload: args };
+        // Bug EC: never fail-open on relay failure — applying raw buildQuote /
+        // setLP/setFlete skips server validation and lies to the model with ok:true.
+        let decision;
         try {
           const headers = { "Content-Type": "application/json" };
           if (authHeader) headers.Authorization = authHeader;
@@ -260,38 +263,52 @@ export function useVoiceSession({
             headers,
             body: JSON.stringify({ action: { type: fnName, payload: args } }),
           });
-          if (relayRes.ok) {
-            const relayData = await relayRes.json();
-            if (relayData.ok && relayData.action) {
-              validatedAction = relayData.action;
-            } else if (relayData.rejected) {
-              sendEvent({
-                type: "conversation.item.create",
-                item: {
-                  type: "function_call_output",
-                  call_id: callId,
-                  output: JSON.stringify({ ok: false, errors: relayData.errors }),
-                },
-              });
-              sendEvent({ type: "response.create" });
-              return;
-            }
+          let relayData = null;
+          try {
+            relayData = await relayRes.json();
+          } catch {
+            relayData = null;
           }
+          decision = decideVoiceActionRelay({
+            fnName,
+            rawArgs: args,
+            relayOk: relayRes.ok,
+            relayStatus: relayRes.status,
+            relayData,
+          });
         } catch (err) {
-          console.warn(
-            `[voice] action relay failed for ${fnName}, applying raw payload`,
-            err?.message,
-          );
+          console.warn(`[voice] action relay failed for ${fnName}`, err?.message);
+          decision = decideVoiceActionRelay({
+            fnName,
+            rawArgs: args,
+            networkError: err,
+          });
         }
 
-        onAction?.(validatedAction);
+        if (!decision.apply) {
+          if (devMode) {
+            console.warn(`[voice] action relay blocked (${decision.reason}) for ${fnName}`);
+          }
+          sendEvent({
+            type: "conversation.item.create",
+            item: {
+              type: "function_call_output",
+              call_id: callId,
+              output: JSON.stringify(decision.modelOutput),
+            },
+          });
+          sendEvent({ type: "response.create" });
+          return;
+        }
+
+        onAction?.(decision.action);
 
         sendEvent({
           type: "conversation.item.create",
           item: {
             type: "function_call_output",
             call_id: callId,
-            output: JSON.stringify({ ok: true }),
+            output: JSON.stringify(decision.modelOutput),
           },
         });
         sendEvent({ type: "response.create" });
