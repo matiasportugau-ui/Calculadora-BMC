@@ -167,6 +167,26 @@ async function run() {
       "contains QA Regression or QA-ROUTES-001"
     );
 
+    const libreExtras = await postJson("/calc/cotizar/presupuesto-libre", {
+      lista: "web",
+      extras: [{ label: "Andamio", pu: "80,5", cant: "2", descripcion: "alquiler" }],
+    });
+    assert(
+      "POST /calc/cotizar/presupuesto-libre hydrates extras[] alias",
+      libreExtras.status === 200 && libreExtras.json?.ok === true,
+      libreExtras.status,
+      200
+    );
+    const extraItem = (libreExtras.json?.bom || [])
+      .flatMap((g) => g.items || [])
+      .find((i) => /Andamio/i.test(i.descripcion || i.label || ""));
+    assert(
+      "presupuesto-libre bills comma-decimal extra 80,5 × 2",
+      extraItem && approx(extraItem.total_usd ?? extraItem.total, 161),
+      extraItem?.total_usd ?? extraItem?.total,
+      161
+    );
+
     const cotizaciones = await getText("/calc/cotizaciones", { headers: authHdr });
     const cotizacionesJson = JSON.parse(cotizaciones.text);
     assert("GET /calc/cotizaciones returns ok", cotizaciones.status === 200 && cotizacionesJson?.ok === true, cotizaciones.status, 200);
