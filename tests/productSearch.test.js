@@ -42,5 +42,16 @@ assert(ang.some((r) => /5852|PLECHU|aluminio/i.test(r.label + r.sku)), "angulo e
 const sku5852 = filterAndRankProducts(index, "5852");
 assert(sku5852.some((r) => /5852/i.test(r.label)), "5852 in index");
 
+assert(filterAndRankProducts(index, "   ").length === index.length, "blank query returns full index");
+assert(filterAndRankProducts(index, "").length === index.length, "empty query returns full index");
+
+const tornilleria = filterAndRankProducts(index, "hexagonal", { category: "TORNILLERÍA" });
+assert(tornilleria.length > 0 && tornilleria.every((r) => r.category === "TORNILLERÍA"), "category filter TORNILLERÍA");
+const noneInSell = filterAndRankProducts(index, "hexagonal", { category: "SELLADORES" });
+assert(noneInSell.length === 0, "hexagonal not in SELLADORES");
+
+const flash = filterAndRankProducts(index, "flashing");
+assert(flash.some((r) => /babeta|flashing/i.test(r.label + r.searchText + r.key)), "flashing → babeta alias");
+
 console.log(`\nproductSearch: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

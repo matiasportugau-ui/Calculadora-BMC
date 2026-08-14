@@ -32,7 +32,29 @@ assert.equal(
   }),
   "wss://api.x.ai/v1/realtime?model=grok-voice-think-fast-1.0",
 );
+assert.equal(
+  buildGrokRealtimeWsUrl({
+    realtime_base: "http://api.x.ai/v1/realtime",
+    model: "grok-voice-latest",
+  }),
+  "ws://api.x.ai/v1/realtime?model=grok-voice-latest",
+  "http → ws (never POST SDP)",
+);
+assert.equal(
+  buildGrokRealtimeWsUrl({ realtimeBase: "https://api.x.ai/v1/realtime" }),
+  "wss://api.x.ai/v1/realtime",
+  "camelCase realtimeBase + empty model omits query",
+);
+assert.equal(
+  buildGrokRealtimeWsUrl({
+    realtime_base: "wss://api.x.ai/v1/realtime?region=us",
+    model: "grok-voice-latest",
+  }),
+  "wss://api.x.ai/v1/realtime?region=us&model=grok-voice-latest",
+  "existing query uses & not a second ?",
+);
 assert.throws(() => buildGrokRealtimeWsUrl({ realtime_base: "ftp://x" }), /http/);
+assert.throws(() => buildGrokRealtimeWsUrl({ realtime_base: "   " }), /missing/);
 
 // Protocols
 assert.deepEqual(
@@ -50,9 +72,11 @@ assert.throws(() => buildGrokWsProtocols(""), /ephemeral/);
 
 // Transport choice
 assert.equal(usesGrokWebSocketTransport("grok"), true);
+assert.equal(usesGrokWebSocketTransport("GROK"), true);
 assert.equal(usesGrokWebSocketTransport("xai"), true);
 assert.equal(usesGrokWebSocketTransport("openai"), false);
 assert.equal(usesGrokWebSocketTransport("auto"), false);
+assert.equal(usesGrokWebSocketTransport(""), false);
 
 // PCM round-trip
 const samples = new Float32Array([0, 0.5, -0.5, 1, -1]);
@@ -79,5 +103,13 @@ assert.equal(upd.session.instructions, "hola");
 assert.equal(upd.session.audio.input.format.rate, GROK_VOICE_SAMPLE_RATE);
 assert.equal(upd.session.tools.length, 1);
 assert.equal(upd.session.turn_detection.type, "server_vad");
+
+const noTools = buildGrokSessionUpdate({ instructions: "solo voz" });
+assert.equal(noTools.session.instructions, "solo voz");
+assert.equal(noTools.session.voice, "eve");
+assert.equal(noTools.session.tools, undefined, "omit tools when boot has none");
+
+const sameRate = resampleFloat32Linear(in48, 48000, 48000);
+assert.equal(sameRate, in48, "same-rate resample returns input reference");
 
 console.log("  ✅ all grokRealtimeTransport asserts passed\n");
