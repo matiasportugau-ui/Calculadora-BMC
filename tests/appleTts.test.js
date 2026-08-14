@@ -8,6 +8,8 @@ import {
   listLatamSpeechVoices,
   ARGENTINA_VOICES,
   DEFAULT_APPLE_TTS_VOICE,
+  speakApple,
+  cancelAppleTts,
 } from "../src/hooks/appleTts.js";
 
 let passed = 0;
@@ -53,6 +55,49 @@ assert(withAr?.lang === "es-AR", "installed es-AR wins");
 
 assert(splitTtsChunks("Hola.").length === 1, "short chunk");
 assert(splitTtsChunks("Uno. ".repeat(80), 40).length > 1, "long splits");
+
+// Cancel must abort the in-flight POST /api/agent/speak (Bug EF) so the
+// server req.close handler can kill apple-tts. Without AbortController,
+// cancel only stopped browser speechSynthesis while Diego kept talking.
+{
+  const origFetch = globalThis.fetch;
+  let aborted = false;
+  let sawSignal = false;
+  globalThis.fetch = (url, opts = {}) => {
+    if (String(url).includes("/api/agent/speak") && opts.method === "POST") {
+      sawSignal = !!opts.signal;
+      return new Promise((_resolve, reject) => {
+        const onAbort = () => {
+          aborted = true;
+          const err = new Error("aborted");
+          err.name = "AbortError";
+          reject(err);
+        };
+        if (opts.signal?.aborted) {
+          onAbort();
+          return;
+        }
+        opts.signal?.addEventListener?.("abort", onAbort, { once: true });
+      });
+    }
+    return Promise.resolve({
+      ok: false,
+      status: 404,
+      json: async () => ({}),
+    });
+  };
+  try {
+    const speakP = speakApple("Che, ¿cómo andás? Soy Diego.");
+    // Let speakViaLocalArgentinaApi attach the AbortController
+    await new Promise((r) => setTimeout(r, 20));
+    cancelAppleTts();
+    await speakP;
+    assert(sawSignal === true, "speak fetch receives AbortSignal");
+    assert(aborted === true, "cancelAppleTts aborts in-flight speak fetch");
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+}
 
 console.log(`\n${failed === 0 ? "✅" : "❌"} appleTts: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

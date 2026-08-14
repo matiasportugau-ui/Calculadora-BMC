@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-14 (fix — Apple TTS cancel + CodeQL rate-limit):** `cancelAppleTts` now aborts the in-flight `POST /api/agent/speak` so the server `req.close` handler can SIGKILL `apple-tts` (before: cancel only stopped browser TTS). Rate-limit on `/speak/status` + `/speak/install`. Document `BMC_APPLE_TTS_PLATFORM` in `.env.example` (env drift).
+
 **2026-08-13 (fix — Agregar producto visible otra vez):** El buscador nuevo había quedado solo en el FAB del borde (fácil de perder / tapado). Volvió una tarjeta **Agregar producto · NUEVO** en la columna izquierda (junto a Datos del proyecto), el chip del wizard abre el drawer, y se restauró el catálogo por categoría (Paneles / Perfilería / Tornillería / Selladores) dentro de *Agregar productos manuales*. Drawer controlado (`open`/`onOpenChange`).
 
 **2026-08-13 (feat — TTS Español Argentina Diego):** Radio y lectura en voz usan **Diego (Argentina)** por defecto (`appleTts.js` + `POST /api/agent/speak` + `apple-tts` AVSpeech). Isabela en el selector. Si la voz no está en macOS, 409 + botón **Instalar voz Español (Argentina)** abre Ajustes → Contenido leído. Tests `appleTts` / `appleTtsSpeak`. Reiniciar API local.

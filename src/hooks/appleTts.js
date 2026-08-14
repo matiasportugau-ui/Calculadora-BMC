@@ -156,6 +156,8 @@ export function splitTtsChunks(text, maxLen = 280) {
 
 let resumeTimer = null;
 let speakGeneration = 0;
+/** AbortController for the in-flight POST /api/agent/speak (local Apple TTS). */
+let activeSpeakAbort = null;
 
 // ── auth bridge ─────────────────────────────────────────────────────────────
 // /api/agent/speak* now requires auth (service token or identity JWT with
@@ -198,9 +200,24 @@ function startResumeWatchdog(synth) {
   }, 8000);
 }
 
+function abortActiveSpeakFetch() {
+  const ctrl = activeSpeakAbort;
+  activeSpeakAbort = null;
+  if (!ctrl) return;
+  try {
+    ctrl.abort();
+  } catch {
+    /* ignore */
+  }
+}
+
 export function cancelAppleTts() {
   speakGeneration += 1;
   stopResumeWatchdog();
+  // Abort the local Apple TTS fetch so the API req "close" handler can
+  // SIGKILL the apple-tts child (Camino A). Without this, cancel only
+  // stopped browser speechSynthesis while Diego kept talking.
+  abortActiveSpeakFetch();
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   try {
     window.speechSynthesis.cancel();
@@ -209,21 +226,36 @@ export function cancelAppleTts() {
   }
 }
 
+function isAbortError(err) {
+  if (!err) return false;
+  if (err.name === "AbortError") return true;
+  // Some runtimes use DOMException code 20 / message includes "aborted"
+  if (err.code === 20) return true;
+  return /aborted|AbortError/i.test(String(err.message || ""));
+}
+
 async function speakViaLocalArgentinaApi(text, voiceName) {
   const apiBase = getCalcApiBase();
-  const resp = await fetch(`${apiBase}/api/agent/speak`, {
-    method: "POST",
-    headers: speakAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ text, voice: argentinaVoiceId(voiceName) }),
-  });
-  const data = await resp.json().catch(() => ({}));
-  if (resp.status === 409 || data.needs_download) {
-    const err = new Error(data.error || "needs_download");
-    err.needs_download = true;
-    throw err;
-  }
-  if (!resp.ok || !data.ok) {
-    throw new Error(data.error || `speak HTTP ${resp.status}`);
+  const controller = new AbortController();
+  activeSpeakAbort = controller;
+  try {
+    const resp = await fetch(`${apiBase}/api/agent/speak`, {
+      method: "POST",
+      headers: speakAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ text, voice: argentinaVoiceId(voiceName) }),
+      signal: controller.signal,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.status === 409 || data.needs_download) {
+      const err = new Error(data.error || "needs_download");
+      err.needs_download = true;
+      throw err;
+    }
+    if (!resp.ok || !data.ok) {
+      throw new Error(data.error || `speak HTTP ${resp.status}`);
+    }
+  } finally {
+    if (activeSpeakAbort === controller) activeSpeakAbort = null;
   }
 }
 
@@ -314,6 +346,8 @@ export async function speakApple(text, opts = {}) {
       await speakViaLocalArgentinaApi(text, preferred);
       return;
     } catch (err) {
+      // Cancel / barge-in aborted the fetch — do not fall through to browser TTS.
+      if (isAbortError(err) || gen !== speakGeneration) return;
       if (err?.needs_download) opts.onNeedsDownload?.(err.message);
       // fall through to browser
     }
