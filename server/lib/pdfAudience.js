@@ -6,17 +6,35 @@
 
 const BMC_HEADER_RE = /BMC Uruguay/gi;
 
+/** Escape text for HTML text nodes / attributes. */
+export function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Only allow data:image/(png|jpeg|webp);base64,... logos in src attributes. */
+export function safeLogoSrc(logo) {
+  const s = String(logo || "").trim();
+  if (!/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/i.test(s)) return null;
+  return s;
+}
+
 export function applyPdfAudience(html, { audience = "client", branding = null, snapshot = null } = {}) {
   let out = String(html || "");
   if (audience === "client" && branding) {
-    const logo = branding.logo_data_url || branding.logoDataUrl || null;
+    const logo = safeLogoSrc(branding.logo_data_url || branding.logoDataUrl || null);
     if (logo) {
       out = out
         .replace(/src=["']\/bmc-pdf\/assets\/bmc-logo\.png["']/gi, `src="${logo}"`)
         .replace(/src=["']assets\/bmc-logo\.png["']/gi, `src="${logo}"`)
         .replace(/src=["'][^"']*bmc-logo\.png["']/gi, `src="${logo}"`);
     }
-    const name = branding.display_name || branding.displayName || "";
+    const rawName = branding.display_name || branding.displayName || "";
+    const name = escapeHtml(rawName);
     if (name) {
       out = out.replace(BMC_HEADER_RE, name);
     } else {
@@ -29,7 +47,7 @@ export function applyPdfAudience(html, { audience = "client", branding = null, s
     const margin = snapshot.margin_usd != null ? Number(snapshot.margin_usd).toFixed(2) : "—";
     const total = snapshot.total_usd != null ? Number(snapshot.total_usd).toFixed(2) : "—";
     const drift = snapshot.price_drift ? " · DRIFT" : "";
-    const block = `<div data-bmc-internal="margin">BMC interno · total USD ${total} · margen USD ${margin}${drift}</div>`;
+    const block = `<div data-bmc-internal="margin">BMC interno · total USD ${escapeHtml(total)} · margen USD ${escapeHtml(margin)}${drift}</div>`;
     if (/<\/body>/i.test(out)) out = out.replace(/<\/body>/i, `${block}</body>`);
     else out += block;
   }

@@ -1,6 +1,8 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-15 (paid white-label SDD + implementation branch)
+**Última actualización:** 2026-08-15 (fix — bmc_snapshot fail-closed + branding XSS/rate-limit)
+
+**2026-08-15 (fix — bmc_snapshot ADR-004 + branding sinks on paid PR tip):** `completeQuote` previously froze client unit prices when `catalog` was empty (all production call sites) and `/calc/cotizar/pdf` omitted `bom` so freeze could lock `$0`. Fail-closed: server catalog only, nested BOM extract, refuse empty freeze (422). Also escape/allowlist branding in `applyPdfAudience` + rate-limit `GET/POST /api/me/branding` (CodeQL). Tests in `paid-white-label.test.js`.
 
 **2026-08-15 (ops — paid white-label parallel sandbox, not prod):** Current production stays `calculadora-bmc.vercel.app` + Cloud Run `panelin-calc`. Paid code stays on PR [#1051](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/1051) (`feat/paid-white-label-presupuestos`). Sibling deploy: Cloud Run **`panelin-calc-paid`** + Vercel preview via `deploy-paid-parallel.yml` (workflow_dispatch, refuses `main`, never `--prod`). Runbook: [`runbooks/paid-white-label-parallel-prod.md`](./runbooks/paid-white-label-parallel-prod.md). **Do not merge #1051** until this should replace real prod.
 
