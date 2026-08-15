@@ -105,7 +105,7 @@ export default function MySpacePage() {
       {tab === "historial" ? <HistorialTab /> : null}
       {tab === "tareas" ? <TareasSummaryTab token={auth.accessToken} /> : null}
       {tab === "solicitudes" ? <RequestsTab token={auth.accessToken} /> : null}
-      {tab === "preferencias" ? <PrefsTab user={auth.user} /> : null}
+      {tab === "preferencias" ? <PrefsTab user={auth.user} token={auth.accessToken} planTier={auth.plan_tier} /> : null}
     </div>
   );
 }
@@ -298,7 +298,30 @@ function RequestsTab({ token }) {
   );
 }
 
-function PrefsTab({ user }) {
+function PrefsTab({ user, token, planTier }) {
+  const [displayName, setDisplayName] = useState("");
+  const [msg, setMsg] = useState("");
+  const paid = planTier === "paid";
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+    setMsg("Subiendo…");
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const b64 = btoa(binary);
+    try {
+      await api("/api/me/branding", {
+        token,
+        method: "POST",
+        body: { display_name: displayName || user?.name, logo_base64: b64 },
+      });
+      setMsg("Logo guardado.");
+    } catch (err) {
+      setMsg(err.message === "http_403" ? "Plan paid requerido." : String(err.message));
+    }
+  };
   return (
     <div style={cardStyle()}>
       <h3 style={{ margin: "0 0 6px", fontSize: 14 }}>Perfil</h3>
@@ -307,12 +330,32 @@ function PrefsTab({ user }) {
         <dd style={ddStyle()}>{user?.name || "—"}</dd>
         <dt style={dtStyle()}>Email</dt>
         <dd style={ddStyle()}>{user?.email}</dd>
-        <dt style={dtStyle()}>Avatar</dt>
-        <dd style={ddStyle()}>{user?.picture ? "Google profile picture" : user?.avatar_preset || "default"}</dd>
+        <dt style={dtStyle()}>Plan</dt>
+        <dd style={ddStyle()}>{planTier || "base"}</dd>
       </dl>
-      <p style={{ marginTop: 12, fontSize: 11, color: "#94a3b8" }}>
-        (Edición de avatar y consentimientos: pendiente — Phase J)
-      </p>
+      <h3 style={{ margin: "16px 0 6px", fontSize: 14 }}>Marca (white-label)</h3>
+      {paid ? (
+        <>
+          <label style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+            Nombre en PDF
+            <input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              style={{ display: "block", marginTop: 4, width: "100%", padding: 8 }}
+              placeholder={user?.name || "Tu empresa"}
+            />
+          </label>
+          <label style={{ fontSize: 12, display: "block" }}>
+            Logo (png/jpeg/webp, máx 1 MB)
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onFile} style={{ display: "block", marginTop: 4 }} />
+          </label>
+        </>
+      ) : (
+        <p style={{ fontSize: 12, color: "#64748b" }}>
+          El PDF con tu logo está en el plan paid. Pedile a BMC que active tu cuenta.
+        </p>
+      )}
+      {msg ? <p style={{ fontSize: 12, color: "#0f172a" }}>{msg}</p> : null}
     </div>
   );
 }

@@ -2,6 +2,8 @@
 // src/utils/helpers.js — BOM override helpers, print/PDF utilities
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { applyPdfAudience } from "../../server/lib/pdfAudience.js";
+
 // ── Override helpers ─────────────────────────────────────────────────────────
 
 export function createLineId(groupTitle, idx) { return groupTitle.toUpperCase().replace(/\s/g, "_") + "-" + idx; }
@@ -431,7 +433,15 @@ export function generatePrintHTML(data) {
     "</body></html>",
   ];
 
-  return sections.join("\n");
+  let html = sections.join("\n");
+  if (data?.branding || data?.pdfAudience === "bmc") {
+    html = applyPdfAudience(html, {
+      audience: data.pdfAudience || "client",
+      branding: data.branding || null,
+      snapshot: data.bmcSnapshot || null,
+    });
+  }
+  return html;
 }
 
 // ── Internal Report PDF ───────────────────────────────────────────────────────

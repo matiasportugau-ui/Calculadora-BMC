@@ -19,6 +19,8 @@ import JSZip from "jszip";
 import { config } from "../config.js";
 import { getWaPool } from "../lib/waDb.js";
 import { requireUser } from "../lib/identityAuth.js";
+import { canUseWhiteLabel } from "../lib/paidEntitlement.js";
+import { applyPdfAudience, resolveAudience } from "../lib/pdfAudience.js";
 import { safeErr as _safeErr } from "../lib/safeErr.js";
 import { renderHtmlToPdfBuffer, PdfRendererUnavailableError } from "../lib/quotePdf.js";
 import { buildCotizacionHtml } from "./calc.js";
@@ -238,6 +240,30 @@ async function loadOwnedQuote(userId, quoteId) {
   return rows[0] || null;
 }
 
+async function loadUserBranding(userId) {
+  try {
+    const { rows } = await pool().query(
+      `select branding from identity.users where user_id = $1`,
+      [userId],
+    );
+    return rows[0]?.branding || null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadSnapshot(quoteId) {
+  try {
+    const { rows } = await pool().query(
+      `select bmc_snapshot from identity.quotes where quote_id = $1`,
+      [quoteId],
+    );
+    return rows[0]?.bmc_snapshot || null;
+  } catch {
+    return null;
+  }
+}
+
 router.get("/api/me/quotes/:id/export.json", requireUser(), async (req, res) => {
   try {
     const q = await loadOwnedQuote(req.user.id, req.params.id);
@@ -281,9 +307,18 @@ const ALLOWED_PDF_REDIRECT = /^https:\/\/(?:storage\.googleapis\.com|drive\.goog
 
 router.get("/api/me/quotes/:id/export.pdf", requireUser(), async (req, res) => {
   try {
+    const aud = resolveAudience(req.query.audience, req.user);
+    if (!aud.ok) return res.status(aud.status).json({ ok: false, error: aud.error });
     const q = await loadOwnedQuote(req.user.id, req.params.id);
     if (!q) return res.status(404).json({ ok: false, error: "not_found" });
-    if (q.pdf_url) {
+    const branding = aud.audience === "client" && canUseWhiteLabel(req.user)
+      ? await loadUserBranding(req.user.id)
+      : null;
+    const snapshot = aud.audience === "bmc" ? await loadSnapshot(q.quote_id) : null;
+
+    // Stored pdf_url is BMC-branded historical file — skip redirect when white-label/bmc audience needs re-render.
+    const mustRerender = (branding && aud.audience === "client") || aud.audience === "bmc";
+    if (q.pdf_url && !mustRerender) {
       if (!ALLOWED_PDF_REDIRECT.test(String(q.pdf_url))) {
         return res.status(400).json({
           ok: false,
@@ -299,7 +334,12 @@ router.get("/api/me/quotes/:id/export.pdf", requireUser(), async (req, res) => {
     if (reqParams?.escenario) {
       const built = await buildCotizacionHtml({ ...reqParams, cliente: q.payload?.client || {} });
       if (built.ok) {
-        const pdfBuffer = await renderHtmlToPdfBuffer(built.html, { timeoutMs: 30000 });
+        const pdfBuffer = await renderHtmlToPdfBuffer(built.html, {
+          timeoutMs: 30000,
+          audience: aud.audience,
+          branding,
+          snapshot,
+        });
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `attachment; filename="quote-${q.quote_id}.pdf"`);
         return res.send(pdfBuffer);
@@ -328,9 +368,17 @@ router.get("/api/me/quotes/:id/export.html", requireUser(), async (req, res) => 
   try {
     const q = await loadOwnedQuote(req.user.id, req.params.id);
     if (!q) return res.status(404).json({ ok: false, error: "not_found" });
+    const aud = resolveAudience(req.query.audience, req.user);
+    if (!aud.ok) return res.status(aud.status).json({ ok: false, error: aud.error });
+    const branding = aud.audience === "client" && canUseWhiteLabel(req.user)
+      ? await loadUserBranding(req.user.id)
+      : null;
+    const snapshot = aud.audience === "bmc" ? await loadSnapshot(q.quote_id) : null;
+    const raw = `<!doctype html><html><body><h1>BMC Uruguay</h1>${entityToHtmlTable("quote", [q])}</body></html>`;
+    const html = applyPdfAudience(raw, { audience: aud.audience, branding, snapshot });
     res.setHeader("Content-Type", "text/html");
     res.setHeader("Content-Disposition", `attachment; filename="quote-${q.quote_id}.html"`);
-    res.send(`<!doctype html><html><body>${entityToHtmlTable("quote", [q])}</body></html>`);
+    res.send(html);
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }

@@ -1,6 +1,10 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-13 (quote extras + PA5852 + search)
+**Última actualización:** 2026-08-15 (paid white-label SDD + implementation branch)
+
+**2026-08-15 (feat — Paid Comprador + white-label presupuestos, branch):** `feat/paid-white-label-presupuestos` from `origin/main`. Spec: [`docs/sdd/paid-white-label-presupuestos/SDD.md`](../sdd/paid-white-label-presupuestos/SDD.md) ADRs 001–008. Runtime: `plan_tier=paid`, `PATCH /api/admin/users/:id/plan-tier`, `GET/POST /api/me/branding`, `POST /api/me/quotes/:id/complete` + `bmc_snapshot`, dual PDF `audience=client|bmc`. Runbook: [`runbooks/paid-white-label-mvp.md`](./runbooks/paid-white-label-mvp.md). Goal: `goal-prompt-paid-white-label-presupuestos-grok.md`. **No merge / no deploy** this turn.
+
+**Última actualización previa:** 2026-08-13 (quote extras + PA5852 + search)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
