@@ -16,6 +16,7 @@ import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import { existsSync, readFileSync, chmodSync, statSync } from "node:fs";
 import path from "node:path";
+import { applyPdfAudience } from "./pdfAudience.js";
 
 export class PdfRendererUnavailableError extends Error {
   constructor(detail) {
@@ -161,7 +162,7 @@ function buildLaunchConfigs(useSystemBinary) {
  * @returns {Promise<Buffer>}
  * @throws {PdfRendererUnavailableError} when Chromium can't run here
  */
-export async function renderHtmlToPdfBuffer(html, { timeoutMs = 30000 } = {}) {
+export async function renderHtmlToPdfBuffer(html, { timeoutMs = 30000, audience, branding, snapshot } = {}) {
   if (!html || typeof html !== "string") {
     throw new Error("renderHtmlToPdfBuffer: html (string) is required");
   }
@@ -173,7 +174,7 @@ export async function renderHtmlToPdfBuffer(html, { timeoutMs = 30000 } = {}) {
 
   const executablePath = await resolveExecutablePath();
   const useSystemBinary = !!process.env.CHROMIUM_EXECUTABLE_PATH;
-  const processedHtml = inlineLogo(html);
+  const processedHtml = applyPdfAudience(inlineLogo(html), { audience, branding, snapshot });
   const launchConfigs = buildLaunchConfigs(useSystemBinary);
 
   await acquireRenderSlot();

@@ -1,0 +1,189 @@
+# Parallel sandbox for paid white-label. NEVER touches production.
+# - Cloud Run service: panelin-calc-paid  (not panelin-calc)
+# - Vercel: preview only (never --prod)
+# Trigger: workflow_dispatch on the feature branch only.
+
+name: Deploy paid white-label PARALLEL (not prod)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  PROJECT_ID: chatbot-bmc-live
+  REGION: us-central1
+  SERVICE_NAME: panelin-calc-paid
+  PROD_SERVICE_NAME: panelin-calc
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  guard:
+    name: Refuse main / refuse prod service
+    runs-on: ubuntu-latest
+    steps:
+      - name: Branch and name guards
+        run: |
+          set -euo pipefail
+          REF="${{ github.ref_name }}"
+          echo "Dispatch ref=$REF service=${{ env.SERVICE_NAME }}"
+          if [[ "$REF" == "main" || "$REF" == "master" ]]; then
+            echo "::error::Refusing to run paid-parallel deploy from $REF. Use feat/paid-white-label-presupuestos."
+            exit 1
+          fi
+          if [[ "${{ env.SERVICE_NAME }}" == "${{ env.PROD_SERVICE_NAME }}" ]]; then
+            echo "::error::SERVICE_NAME must not be production panelin-calc."
+            exit 1
+          fi
+
+  api:
+    name: Deploy Cloud Run panelin-calc-paid
+    needs: guard
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.service_url.outputs.url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA_EMAIL }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+
+      - name: Build and push image
+        run: |
+          IMAGE_NAME="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc-paid"
+          docker build \
+            -f server/Dockerfile \
+            --build-arg GIT_SHA=${{ github.sha }} \
+            -t "${IMAGE_NAME}:${{ github.sha }}" \
+            .
+          docker push "${IMAGE_NAME}:${{ github.sha }}"
+          echo "IMAGE_NAME=$IMAGE_NAME" >> "$GITHUB_ENV"
+
+      - name: Deploy sibling service (not panelin-calc)
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: panelin-calc-paid
+          region: ${{ env.REGION }}
+          image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc-paid:${{ github.sha }}
+          env_vars: |
+            BMC_SHEET_ID=${{ secrets.BMC_SHEET_ID }}
+            PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}
+            GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/service-account.json
+            GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+            IDENTITY_COOKIE_DOMAIN=${{ secrets.IDENTITY_COOKIE_DOMAIN }}
+            IDENTITY_COOKIE_NAME=${{ secrets.IDENTITY_COOKIE_NAME }}
+            SHEETS_CLIENT_QUOTES_ENABLED=false
+            ASSISTANTS_ACTIVE=${{ vars.ASSISTANTS_ACTIVE }}
+          flags: |
+            --service-account=${{ secrets.GCP_RUNTIME_SA_EMAIL }}
+            --allow-unauthenticated
+            --min-instances=0
+            --max-instances=3
+            --memory=1Gi
+            --cpu=1
+            --timeout=60
+            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest,MFA_KEK_HEX=MFA_KEK_HEX:latest,DATABASE_URL=DATABASE_URL:latest,API_AUTH_TOKEN=API_AUTH_TOKEN:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GROK_API_KEY=GROK_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest
+
+      - name: Show paid API URL
+        id: service_url
+        run: |
+          SERVICE_URL=$(gcloud run services describe panelin-calc-paid \
+            --region=${{ env.REGION }} \
+            --format='value(status.url)')
+          echo "url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
+          echo "Paid API: $SERVICE_URL"
+          if [[ "$SERVICE_URL" == *"panelin-calc-q74zutv7dq"* ]]; then
+            echo "::error::Deployed URL looks like production panelin-calc. Abort."
+            exit 1
+          fi
+
+      - name: Smoke paid API health
+        run: |
+          CODE=$(curl -sS -o /tmp/paid-health.json -w "%{http_code}" --max-time 20 "${{ steps.service_url.outputs.url }}/health")
+          echo "health=$CODE"
+          cat /tmp/paid-health.json || true
+          test "$CODE" = "200"
+
+  web:
+    name: Vercel preview (never --prod)
+    needs: api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - name: Point vercel.paid.json at paid API
+        env:
+          PAID_API: ${{ needs.api.outputs.url }}
+        run: |
+          set -euo pipefail
+          HOST="${PAID_API#https://}"
+          HOST="${HOST%/}"
+          python3 - <<'PY'
+          import os, pathlib
+          p = pathlib.Path("vercel.paid.json")
+          text = p.read_text()
+          origin = os.environ["PAID_API"].rstrip("/")
+          if "panelin-calc-q74zutv7dq" in origin:
+              raise SystemExit("refusing to point paid frontend at production API")
+          p.write_text(text.replace("https://PAID_API_ORIGIN", origin))
+          print("rewrites ->", origin)
+          PY
+      - name: Pull preview env (not production)
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }} --local-config vercel.paid.json
+      - name: Deploy preview (NO --prod)
+        id: deploy
+        run: |
+          set -euo pipefail
+          URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} --local-config vercel.paid.json)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Paid preview: $URL"
+          case "$URL" in
+            *calculadora-bmc.vercel.app) echo "::error::Preview aliased to production host"; exit 1 ;;
+          esac
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = "${{ steps.deploy.outputs.url }}";
+            const api = "${{ needs.api.outputs.url }}";
+            const body = [
+              "## Paid parallel sandbox (not production)",
+              "",
+              `- Frontend preview: ${url}`,
+              `- API: \`${api}\` (Cloud Run **panelin-calc-paid**)`,
+              `- Production remains https://calculadora-bmc.vercel.app + \`panelin-calc\``,
+              "",
+              "Do **not** merge this PR until you want this behavior on real prod.",
+            ].join("\n");
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${context.ref.replace("refs/heads/", "")}`,
+              state: "open",
+            });
+            if (!prs.length) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prs[0].number,
+              body,
+            });

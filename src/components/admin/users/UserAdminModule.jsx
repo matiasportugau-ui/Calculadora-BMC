@@ -80,6 +80,7 @@ function ModuleInner() {
         onAddRole={ua.addRole}
         onRemoveRole={ua.removeRole}
         onSetModuleGrant={ua.setModuleGrant}
+        onSetPlanTier={ua.setPlanTier}
         onSuspend={ua.suspendUser}
         onReactivate={ua.reactivateUser}
         onRevokeSessions={ua.revokeSessions}

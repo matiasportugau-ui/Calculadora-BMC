@@ -1,6 +1,12 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-13 (quote extras + PA5852 + search)
+**Última actualización:** 2026-08-15 (paid white-label SDD + implementation branch)
+
+**2026-08-15 (ops — paid white-label parallel sandbox, not prod):** Current production stays `calculadora-bmc.vercel.app` + Cloud Run `panelin-calc`. Paid code stays on PR [#1051](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/1051) (`feat/paid-white-label-presupuestos`). Sibling deploy: Cloud Run **`panelin-calc-paid`** + Vercel preview via `deploy-paid-parallel.yml` (workflow_dispatch, refuses `main`, never `--prod`). Runbook: [`runbooks/paid-white-label-parallel-prod.md`](./runbooks/paid-white-label-parallel-prod.md). **Do not merge #1051** until this should replace real prod.
+
+**2026-08-15 (feat — Paid Comprador + white-label presupuestos, branch):** `feat/paid-white-label-presupuestos` from `origin/main`. Spec: [`docs/sdd/paid-white-label-presupuestos/SDD.md`](../sdd/paid-white-label-presupuestos/SDD.md) ADRs 001–008. Runtime: `plan_tier=paid`, `PATCH /api/admin/users/:id/plan-tier`, `GET/POST /api/me/branding`, `POST /api/me/quotes/:id/complete` + `bmc_snapshot`, dual PDF `audience=client|bmc`. Runbook: [`runbooks/paid-white-label-mvp.md`](./runbooks/paid-white-label-mvp.md). Goal: `goal-prompt-paid-white-label-presupuestos-grok.md`. **No merge / no deploy** this turn.
+
+**Última actualización previa:** 2026-08-13 (quote extras + PA5852 + search)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +19,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-15 (fix — paid white-label snapshot + XSS):** `completeQuote` now loads LISTA_ACTIVA via `bmcPriceCatalog` (client unit prices no longer win on empty catalog). `extractLines` reads calc `bom`/`pu_usd`; calc upsert stores `bom`. `applyPdfAudience` HTML-escapes `display_name` + allowlists logo data-URLs. Branding routes rate-limited. Tests in `paid-white-label.test.js`. Branch `cursor/critical-bug-investigation-ac44` (fix for #1051).
 
 **2026-08-13 (fix — Agregar producto visible otra vez):** El buscador nuevo había quedado solo en el FAB del borde (fácil de perder / tapado). Volvió una tarjeta **Agregar producto · NUEVO** en la columna izquierda (junto a Datos del proyecto), el chip del wizard abre el drawer, y se restauró el catálogo por categoría (Paneles / Perfilería / Tornillería / Selladores) dentro de *Agregar productos manuales*. Drawer controlado (`open`/`onOpenChange`).
 
