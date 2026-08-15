@@ -20,6 +20,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-15 (fix — paid white-label snapshot + XSS):** `completeQuote` now loads LISTA_ACTIVA via `bmcPriceCatalog` (client unit prices no longer win on empty catalog). `extractLines` reads calc `bom`/`pu_usd`; calc upsert stores `bom`. `applyPdfAudience` HTML-escapes `display_name` + allowlists logo data-URLs. Branding routes rate-limited. Tests in `paid-white-label.test.js`. Branch `cursor/critical-bug-investigation-ac44` (fix for #1051).
+
 **2026-08-13 (fix — Agregar producto visible otra vez):** El buscador nuevo había quedado solo en el FAB del borde (fácil de perder / tapado). Volvió una tarjeta **Agregar producto · NUEVO** en la columna izquierda (junto a Datos del proyecto), el chip del wizard abre el drawer, y se restauró el catálogo por categoría (Paneles / Perfilería / Tornillería / Selladores) dentro de *Agregar productos manuales*. Drawer controlado (`open`/`onOpenChange`).
 
 **2026-08-13 (feat — TTS Español Argentina Diego):** Radio y lectura en voz usan **Diego (Argentina)** por defecto (`appleTts.js` + `POST /api/agent/speak` + `apple-tts` AVSpeech). Isabela en el selector. Si la voz no está en macOS, 409 + botón **Instalar voz Español (Argentina)** abre Ajustes → Contenido leído. Tests `appleTts` / `appleTtsSpeak`. Reiniciar API local.

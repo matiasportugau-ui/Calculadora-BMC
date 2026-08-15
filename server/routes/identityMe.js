@@ -182,6 +182,25 @@ const claimLimiter = rateLimit({
   message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
 });
 
+const brandingReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  keyGenerator: _userOrIpKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
+});
+
+// Logo uploads can be ~1 MiB JSON; keep POST tight to limit DB/JSONB abuse.
+const brandingWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  keyGenerator: _userOrIpKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
+});
+
 router.post("/api/access-requests", requireUser(), accessRequestLimiter, async (req, res) => {
   try {
     const { module: m, notes } = req.body || {};
@@ -357,7 +376,7 @@ router.get("/api/me/special-quote-requests", requireUser(), async (req, res) => 
 
 // ─── Branding (paid white-label) ───────────────────────────────────────
 
-router.get("/api/me/branding", requireUser(), async (req, res) => {
+router.get("/api/me/branding", requireUser(), brandingReadLimiter, async (req, res) => {
   try {
     const { rows } = await pool().query(
       `select branding from identity.users where user_id = $1`,
@@ -372,7 +391,7 @@ router.get("/api/me/branding", requireUser(), async (req, res) => {
   }
 });
 
-router.post("/api/me/branding", requirePaid(), async (req, res) => {
+router.post("/api/me/branding", requirePaid(), brandingWriteLimiter, async (req, res) => {
   try {
     const displayName = String(req.body?.display_name || req.body?.displayName || "").trim().slice(0, 120);
     let buf = null;

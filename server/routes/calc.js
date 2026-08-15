@@ -755,6 +755,8 @@ router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req
             lista,
             client: clientInfo,
             resumen: gptResp.resumen,
+            // Required for bmc_snapshot line re-price (extractLines reads bom/items).
+            bom: gptResp.bom,
             quote_code: clientInfo.quote_code || null,
             // Original request params — lets export.pdf re-render on demand.
             request: { escenario, lista, techo, pared, camara, flete },

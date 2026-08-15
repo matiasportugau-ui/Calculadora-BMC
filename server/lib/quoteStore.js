@@ -253,13 +253,26 @@ export async function completeQuote({ userId, quoteId, catalog, dataVersion } = 
     throw Object.assign(new Error("quote_deleted"), { status: 409 });
   }
 
+  const lista = q.payload?.lista || q.payload?.request?.lista || "venta";
+  let priceCatalog = catalog;
+  if (!priceCatalog || typeof priceCatalog !== "object") {
+    const { buildBmcPriceCatalog } = await import("./bmcPriceCatalog.js");
+    priceCatalog = buildBmcPriceCatalog(lista);
+  }
+
   const { buildBmcSnapshot } = await import("./quoteSnapshot.js");
   const { snapshot, reused } = buildBmcSnapshot(q.payload || {}, {
-    catalog: catalog || {},
+    catalog: priceCatalog,
     existingSnapshot: q.bmc_snapshot,
     dataVersion,
-    lista: q.payload?.lista,
+    lista,
   });
+
+  // Never write total_usd=0 when extractLines found nothing — keep prior total.
+  const pricedTotal =
+    Array.isArray(snapshot.lines) && snapshot.lines.length > 0
+      ? snapshot.total_usd
+      : null;
 
   const upd = await pool().query(
     `update identity.quotes
@@ -269,7 +282,7 @@ export async function completeQuote({ userId, quoteId, catalog, dataVersion } = 
             total_usd = coalesce($4, total_usd)
       where quote_id = $1 and user_id = $2
       returning quote_id, status, total_usd, bmc_snapshot, bmc_snapshot_at, updated_at`,
-    [quoteId, userId, JSON.stringify(snapshot), snapshot.total_usd],
+    [quoteId, userId, JSON.stringify(snapshot), pricedTotal],
   );
   const row = upd.rows[0];
   if (!reused) {

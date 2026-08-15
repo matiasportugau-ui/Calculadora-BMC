@@ -8,33 +8,60 @@ function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Flatten calc `bom` groups → line items. */
+function flattenBom(bom) {
+  if (!Array.isArray(bom)) return [];
+  const out = [];
+  for (const g of bom) {
+    if (Array.isArray(g?.items)) out.push(...g.items);
+    else if (g && typeof g === "object" && (g.sku || g.descripcion || g.label)) out.push(g);
+  }
+  return out;
+}
+
 export function extractLines(payload) {
   if (!payload || typeof payload !== "object") return [];
-  const raw =
-    payload.lines ||
-    payload.items ||
-    payload.bom ||
-    payload.resumen?.lines ||
-    payload.summary?.lines ||
-    [];
-  if (!Array.isArray(raw)) return [];
+  const candidates = [
+    payload.lines,
+    payload.items,
+    payload.allItems,
+    flattenBom(payload.bom),
+    payload.resumen?.lines,
+    payload.resumen?.items,
+    flattenBom(payload.resumen?.bom),
+    payload.summary?.lines,
+  ];
+  let raw = [];
+  for (const c of candidates) {
+    if (Array.isArray(c) && c.length > 0) {
+      raw = c;
+      break;
+    }
+  }
+  if (!raw.length) return [];
   return raw.map((l) => ({
-    sku: String(l.sku || l.id || l.code || l.nombre || "line"),
+    sku: String(l.sku || l.id || l.code || l.nombre || l.descripcion || "line"),
     qty: num(l.qty ?? l.cantidad ?? l.cant) ?? 0,
-    client_unit: num(l.unit_price ?? l.precio ?? l.unit_price_client),
+    client_unit: num(
+      l.unit_price ?? l.precio ?? l.unit_price_client ?? l.pu ?? l.pu_usd,
+    ),
   })).filter((l) => l.qty > 0);
 }
 
 export function pickClientTotal(payload) {
   if (!payload || typeof payload !== "object") return null;
-  return (
-    num(payload.totalUsd) ||
-    num(payload.total_usd) ||
-    num(payload.totals?.usd) ||
-    num(payload.summary?.total_usd) ||
-    num(payload.resumen?.total_usd) ||
-    null
-  );
+  const candidates = [
+    num(payload.totalUsd),
+    num(payload.total_usd),
+    num(payload.totals?.usd),
+    num(payload.totals?.totalFinal),
+    num(payload.summary?.total_usd),
+    num(payload.resumen?.total_usd),
+  ];
+  for (const c of candidates) {
+    if (c != null) return c;
+  }
+  return null;
 }
 
 /**

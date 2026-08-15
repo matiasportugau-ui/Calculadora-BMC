@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import express from "express";
 import { isPaidTier, canUseWhiteLabel, assertPaid, requirePaid } from "../server/lib/paidEntitlement.js";
 import { validateLogoBuffer, sniffImageMime } from "../server/lib/brandingValidate.js";
-import { applyPdfAudience, resolveAudience } from "../server/lib/pdfAudience.js";
-import { buildBmcSnapshot } from "../server/lib/quoteSnapshot.js";
+import { applyPdfAudience, resolveAudience, escapeHtml } from "../server/lib/pdfAudience.js";
+import { buildBmcSnapshot, extractLines } from "../server/lib/quoteSnapshot.js";
+import { buildBmcPriceCatalog } from "../server/lib/bmcPriceCatalog.js";
 
 function png1x1() {
   return Buffer.from(
@@ -90,6 +91,32 @@ describe("pdf audience", () => {
     const ok = resolveAudience("bmc", { role: "admin" });
     assert.equal(ok.ok, true);
   });
+
+  it("escapes hostile display_name (no HTML injection)", () => {
+    const out = applyPdfAudience(html, {
+      audience: "client",
+      branding: {
+        display_name: `</h1><img src=x onerror=alert(1)><h1>`,
+        logo_data_url: "data:image/png;base64,AAA",
+      },
+    });
+    assert.equal(/<img\s+src=x/i.test(out), false);
+    assert.equal(out.includes("<img src=x onerror=alert(1)>"), false);
+    assert.equal(out.includes("&lt;img src=x onerror=alert(1)&gt;"), true);
+    assert.equal(out.includes(escapeHtml(`</h1><img src=x onerror=alert(1)><h1>`)), true);
+  });
+
+  it("rejects non-data-url logo src injection", () => {
+    const out = applyPdfAudience(html, {
+      audience: "client",
+      branding: {
+        display_name: "OK",
+        logo_data_url: `javascript:alert(1)`,
+      },
+    });
+    assert.equal(out.includes("javascript:"), false);
+    assert.equal(out.includes("bmc-logo.png"), true);
+  });
 });
 
 describe("bmc snapshot freeze", () => {
@@ -119,5 +146,54 @@ describe("bmc snapshot freeze", () => {
     }, { catalog, existingSnapshot: first });
     assert.equal(second.reused, true);
     assert.deepEqual(second.snapshot, first);
+  });
+
+  it("production catalog rejects empty-catalog client unit win", () => {
+    const live = buildBmcPriceCatalog("venta");
+    assert.ok(live.ISODEC_EPS_100 > 1);
+    const { snapshot } = buildBmcSnapshot({
+      lista: "venta",
+      totalUsd: 1,
+      lines: [{ sku: "ISODEC_EPS_100", qty: 10, unit_price: 1 }],
+    }, { catalog: live });
+    assert.equal(snapshot.lines[0].source, "LISTA_ACTIVA");
+    assert.equal(snapshot.lines[0].unit_price_server, live.ISODEC_EPS_100);
+    assert.notEqual(snapshot.total_usd, 1.22);
+    assert.ok(snapshot.total_usd > 100);
+  });
+
+  it("extracts calc bom groups with pu_usd", () => {
+    const lines = extractLines({
+      lista: "venta",
+      resumen: { total_usd: 1 },
+      bom: [
+        {
+          grupo: "PANELES",
+          items: [
+            { descripcion: "ISODEC EPS 100", sku: "ISODEC_EPS-100", cant: 10, pu_usd: 1, total_usd: 10 },
+          ],
+        },
+      ],
+    });
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0].sku, "ISODEC_EPS-100");
+    assert.equal(lines[0].qty, 10);
+    assert.equal(lines[0].client_unit, 1);
+
+    const live = buildBmcPriceCatalog("venta");
+    const { snapshot } = buildBmcSnapshot({
+      lista: "venta",
+      resumen: { total_usd: 1 },
+      bom: [
+        {
+          grupo: "PANELES",
+          items: [
+            { sku: "ISODEC_EPS-100", cant: 10, pu_usd: 1 },
+          ],
+        },
+      ],
+    }, { catalog: live });
+    assert.equal(snapshot.lines[0].source, "LISTA_ACTIVA");
+    assert.equal(snapshot.lines[0].unit_price_server, live["ISODEC_EPS-100"]);
   });
 });
