@@ -124,3 +124,5 @@ planning/retro formales ni velocity mientras el equipo sea chico.
 **TL;DR:** Issues = cards. Columnas `Backlog → Ready → In Progress → In Review → Done`
 con WIP. Labels `type` / `priority` / `area`. DoD = `gate:local` verde + merge a `main`.
 `PROJECT-STATE.md` sigue siendo el relato; este tablero es el tracker de tareas.
+
+Para onboarding y refresh en vivo, ver el guion del facilitador en [`TEAM-TRAINING-HOW-WE-WORK.md`](./TEAM-TRAINING-HOW-WE-WORK.md).
