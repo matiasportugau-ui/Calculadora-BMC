@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-13 (quote extras + PA5852 + search)
+**Última actualización:** 2026-08-15 (coverage: drive-project + PA5852 flatten)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-15 (test — drive-project + flatten `_all`):** Coverage pin for `#1024` `GET /api/quotes/drive-project` (folderId validation + 400/404/503/500/200 mapping; does not lock anonymous access — `#1025` still open) and `#1038` `flattenPerfilesLibre` `_all` / PA5852 billing (`2 × 64.19`). Wired already-green orphans `resolveRealtimeModel`, `providerReadiness`, `providerProbes` into `test:agent`. Complementary to open `#1047` (extras HITL / catalog notify).
 
 **2026-08-13 (fix — Agregar producto visible otra vez):** El buscador nuevo había quedado solo en el FAB del borde (fácil de perder / tapado). Volvió una tarjeta **Agregar producto · NUEVO** en la columna izquierda (junto a Datos del proyecto), el chip del wizard abre el drawer, y se restauró el catálogo por categoría (Paneles / Perfilería / Tornillería / Selladores) dentro de *Agregar productos manuales*. Drawer controlado (`open`/`onOpenChange`).
 
