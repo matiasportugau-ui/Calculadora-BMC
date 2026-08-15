@@ -1,0 +1,36 @@
+{
+  "installCommand": "npm install --ignore-scripts",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://PAID_API_ORIGIN/api/:path*"
+    },
+    {
+      "source": "/calc/:path*",
+      "destination": "https://PAID_API_ORIGIN/calc/:path*"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "https://PAID_API_ORIGIN/auth/:path*"
+    },
+    {
+      "source": "/sync/:path*",
+      "destination": "https://PAID_API_ORIGIN/sync/:path*"
+    },
+    {
+      "source": "/ml/:path*",
+      "destination": "https://PAID_API_ORIGIN/ml/:path*"
+    },
+    {
+      "source": "/logistica",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

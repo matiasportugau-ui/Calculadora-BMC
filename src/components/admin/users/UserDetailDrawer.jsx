@@ -4,7 +4,7 @@ import { ALL_MODULES, ALL_ROLES, ALL_LEVELS } from "../../../hooks/useUserAdmin.
 export default function UserDetailDrawer({
   open, detail, loading, onClose,
   currentUserId, currentRole,
-  onAddRole, onRemoveRole, onSetModuleGrant,
+  onAddRole, onRemoveRole, onSetModuleGrant, onSetPlanTier,
   onSuspend, onReactivate, onRevokeSessions,
 }) {
   useEffect(() => {
@@ -62,6 +62,7 @@ export default function UserDetailDrawer({
               onAddRole={onAddRole}
               onRemoveRole={onRemoveRole}
               onSetModuleGrant={onSetModuleGrant}
+              onSetPlanTier={onSetPlanTier}
               onSuspend={onSuspend}
               onReactivate={onReactivate}
               onRevokeSessions={onRevokeSessions}
@@ -75,7 +76,7 @@ export default function UserDetailDrawer({
 
 function DetailBody({
   detail, currentUserId, currentRole,
-  onAddRole, onRemoveRole, onSetModuleGrant,
+  onAddRole, onRemoveRole, onSetModuleGrant, onSetPlanTier,
   onSuspend, onReactivate, onRevokeSessions,
 }) {
   const { user, roles, module_grants, sessions, recent_audit } = detail;
@@ -91,7 +92,25 @@ function DetailBody({
         <p style={meta}>{user.email}</p>
         <p style={{ ...meta, fontSize: 12 }}>id: <code>{user.user_id}</code></p>
         <p style={meta}>
-          Plan: <strong>{user.plan_tier}</strong> · Estado: <strong>{user.status}</strong>
+          Plan:{" "}
+          <select
+            value={user.plan_tier || "base"}
+            onChange={(e) => onSetPlanTier?.(user.user_id, e.target.value)}
+            disabled={isSelf || !onSetPlanTier}
+            style={{
+              padding: "4px 8px",
+              borderRadius: "var(--ac-radius-sm)",
+              border: "1px solid var(--ac-border)",
+              background: "var(--ac-surface)",
+              color: "var(--ac-text)",
+              fontSize: 13,
+            }}
+          >
+            <option value="base">base</option>
+            <option value="paid">paid</option>
+            <option value="plus">plus</option>
+          </select>
+          {" "}· Estado: <strong>{user.status}</strong>
           {user.mfa_required ? " · MFA requerido" : ""}
         </p>
       </Section>
