@@ -18,6 +18,9 @@
 
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
+import { requirePaid as _requirePaid } from "./paidEntitlement.js";
+
+export { isPaidTier, canUseWhiteLabel } from "./paidEntitlement.js";
 
 const ACCESS_JWT_TTL_SEC = 15 * 60;
 const REFRESH_TTL_MS = 30 * 24 * 3600 * 1000;
@@ -710,6 +713,10 @@ export async function getModuleGrants(userId) {
 }
 
 /** Express middleware: requires authenticated user; optionally role/module/level. */
+export function requirePaid() {
+  return _requirePaid(requireUser);
+}
+
 export function requireUser(opts = {}) {
   const { role, module: requiredModule, minLevel = "read", optional = false } = opts;
   return async (req, res, next) => {

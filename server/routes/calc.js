@@ -16,7 +16,7 @@ import {
 } from "../../src/utils/calculations.js";
 import { bomToGroups, buildWhatsAppText, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
 import { hydrateLibreExtras } from "../../src/utils/libreExtras.js";
-import { upsertQuote } from "../lib/quoteStore.js";
+import { upsertQuote, completeQuote } from "../lib/quoteStore.js";
 import { enqueue as sheetEnqueue, isSheetSyncEnabled } from "../lib/clientQuotesSheetSync.js";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import {
@@ -769,6 +769,11 @@ router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req
           wizardStep: typeof req.body?.wizardStep === "number" ? req.body.wizardStep : null,
         });
         // Phase I trigger: enqueue Sheets sync (debounced 60s) when authenticated.
+        if (req.user?.id && stored?.quote_id) {
+          try { await completeQuote({ userId: req.user.id, quoteId: stored.quote_id }); } catch (e) {
+            req.log.warn?.({ err: e }, "bmc_snapshot freeze failed (non-fatal)");
+          }
+        }
         if (req.user?.id && stored?.quote_id && isSheetSyncEnabled()) {
           try { sheetEnqueue(stored.quote_id); } catch (e) { req.log.warn?.({ err: e }, "sheet enqueue failed"); }
         }

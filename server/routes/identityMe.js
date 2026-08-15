@@ -12,7 +12,8 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { getWaPool } from "../lib/waDb.js";
 import { config } from "../config.js";
-import { requireUser } from "../lib/identityAuth.js";
+import { requireUser, requirePaid } from "../lib/identityAuth.js";
+import { validateLogoBuffer, toDataUrl } from "../lib/brandingValidate.js";
 // cursor[bot] round-5 LOW: scrub raw DB messages from wire responses.
 // Shared with quoteExport.js — see server/lib/safeErr.js.
 import { safeErr as _safeErr } from "../lib/safeErr.js";
@@ -27,11 +28,13 @@ import {
   softDeleteQuote,
   upsertQuote,
   claimAnonymousQuotes,
+  completeQuote,
 } from "../lib/quoteStore.js";
 import {
   syncQuote as sheetSyncQuote,
   reconcile as sheetReconcile,
   isSheetSyncEnabled,
+  enqueue as sheetEnqueue,
 } from "../lib/clientQuotesSheetSync.js";
 
 const router = express.Router();
@@ -352,6 +355,67 @@ router.get("/api/me/special-quote-requests", requireUser(), async (req, res) => 
   }
 });
 
+// ─── Branding (paid white-label) ───────────────────────────────────────
+
+router.get("/api/me/branding", requireUser(), async (req, res) => {
+  try {
+    const { rows } = await pool().query(
+      `select branding from identity.users where user_id = $1`,
+      [req.user.id],
+    );
+    const branding = rows[0]?.branding && Object.keys(rows[0].branding).length
+      ? rows[0].branding
+      : null;
+    res.json({ ok: true, branding, plan_tier: req.user.plan_tier || null });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+router.post("/api/me/branding", requirePaid(), async (req, res) => {
+  try {
+    const displayName = String(req.body?.display_name || req.body?.displayName || "").trim().slice(0, 120);
+    let buf = null;
+    if (req.body?.logo_base64) {
+      try {
+        buf = Buffer.from(String(req.body.logo_base64), "base64");
+      } catch {
+        return res.status(400).json({ ok: false, error: "invalid_logo_b64" });
+      }
+    }
+    const branding = {
+      display_name: displayName || req.user.name || "",
+      updated_at: new Date().toISOString(),
+    };
+    if (buf) {
+      const v = validateLogoBuffer(buf);
+      if (!v.ok) return res.status(v.status).json({ ok: false, error: v.error });
+      branding.logo_content_type = v.mime;
+      branding.logo_data_url = toDataUrl(buf, v.mime);
+    } else {
+      const { rows: prev } = await pool().query(
+        `select branding from identity.users where user_id = $1`,
+        [req.user.id],
+      );
+      const old = prev[0]?.branding || {};
+      if (old.logo_data_url) {
+        branding.logo_data_url = old.logo_data_url;
+        branding.logo_content_type = old.logo_content_type;
+        branding.logo_gcs_uri = old.logo_gcs_uri;
+      }
+    }
+    const { rows } = await pool().query(
+      `update identity.users set branding = $2::jsonb, updated_at = now()
+        where user_id = $1
+        returning branding`,
+      [req.user.id, JSON.stringify(branding)],
+    );
+    res.json({ ok: true, branding: rows[0]?.branding || branding });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
 // ─── Per-user quotes ───────────────────────────────────────────────────
 
 router.get("/api/me/quotes", requireUser(), async (req, res) => {
@@ -397,6 +461,20 @@ router.post("/api/me/quotes", requireUser(), meQuotesLimiter, async (req, res) =
     // cursor[bot] LOW: match the F-1/W-3 pattern from authGoogle.js — log
     // e.detail server-side, return only the coarse error code on the wire.
     if (e.detail) req.log?.warn?.({ detail: e.detail }, "[me/quotes] upsert detail");
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+router.post("/api/me/quotes/:id/complete", requireUser(), meQuotesLimiter, async (req, res) => {
+  try {
+    const q = await completeQuote({ userId: req.user.id, quoteId: req.params.id });
+    if (!q) return res.status(404).json({ ok: false, error: "not_found" });
+    if (req.user.id && q.quote_id && isSheetSyncEnabled()) {
+      try { sheetEnqueue(q.quote_id); } catch (e) { req.log?.warn?.({ err: e }, "sheet enqueue failed"); }
+    }
+    const { bmc_snapshot: _snap, ...safe } = q;
+    res.json({ ok: true, quote: safe, price_drift: q.bmc_snapshot?.price_drift || false });
+  } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });

@@ -177,6 +177,19 @@ export function useUserAdmin() {
     return true;
   }, [token, load, refreshDetail, showToast]);
 
+  const setPlanTier = useCallback(async (userId, planTier) => {
+    const r = await apiFetch(token, `/api/admin/users/${userId}/plan-tier`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_tier: planTier }),
+    });
+    if (!r.ok) { showToast(`Error: ${r.data?.error || r.status}`); return false; }
+    showToast(`Plan: ${planTier}`);
+    await refreshDetail();
+    await load({ append: false });
+    return true;
+  }, [token, refreshDetail, showToast, load]);
+
   const revokeSessions = useCallback(async (userId) => {
     const r = await apiFetch(token, `/api/admin/users/${userId}/revoke-sessions`, { method: "POST" });
     if (!r.ok) { showToast(`Error: ${r.data?.error || r.status}`); return false; }
@@ -209,7 +222,7 @@ export function useUserAdmin() {
     selectedId, setSelectedId,
     detail, detailLoading,
     // mutations
-    addRole, removeRole, setModuleGrant, suspendUser, reactivateUser, revokeSessions,
+    addRole, removeRole, setModuleGrant, setPlanTier, suspendUser, reactivateUser, revokeSessions,
     // toast
     toast,
     // current user (so UI can guard self-modification)

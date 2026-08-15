@@ -37,6 +37,7 @@ export const __test__ = {
   reset() { _testPool = null; },
 };
 
+const VALID_PLAN_TIERS = new Set(["base", "plus", "paid"]);
 const VALID_ROLES = new Set(["comprador", "operator", "admin", "superadmin"]);
 const VALID_LEVELS = new Set(["none", "read", "write", "admin"]);
 const ROLE_RANK = { superadmin: 4, admin: 3, operator: 2, comprador: 1 };
@@ -318,6 +319,35 @@ router.patch("/api/admin/users/:id/module-grants/:module", writeLimiter, require
       payload: { module: moduleName, level },
     });
     res.json({ ok: true, module: moduleName, level });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
+  }
+});
+
+// ─── PATCH /api/admin/users/:id/plan-tier ──────────────────────────────────
+router.patch("/api/admin/users/:id/plan-tier", writeLimiter, requireUser({ role: "admin" }), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const planTier = String(req.body?.plan_tier || "").trim();
+    if (!VALID_PLAN_TIERS.has(planTier)) {
+      return res.status(400).json({ ok: false, error: "invalid_plan_tier", allowed: [...VALID_PLAN_TIERS] });
+    }
+    const { rows } = await pool().query(
+      `UPDATE identity.users SET plan_tier = $2, updated_at = now()
+        WHERE user_id = $1
+        RETURNING user_id, email, plan_tier, status`,
+      [id, planTier],
+    );
+    if (!rows.length) return res.status(404).json({ ok: false, error: "not_found" });
+    await audit({
+      actorId: req.user.id,
+      action: "admin.user.plan_tier",
+      resourceId: id,
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+      payload: { plan_tier: planTier },
+    });
+    res.json({ ok: true, user: rows[0] });
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
