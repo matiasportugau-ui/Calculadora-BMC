@@ -253,13 +253,36 @@ export async function completeQuote({ userId, quoteId, catalog, dataVersion } = 
     throw Object.assign(new Error("quote_deleted"), { status: 409 });
   }
 
-  const { buildBmcSnapshot } = await import("./quoteSnapshot.js");
-  const { snapshot, reused } = buildBmcSnapshot(q.payload || {}, {
-    catalog: catalog || {},
-    existingSnapshot: q.bmc_snapshot,
+  // Already frozen — do not rebuild (ADR-003 immutability).
+  if (q.bmc_snapshot && typeof q.bmc_snapshot === "object") {
+    const updDone = await pool().query(
+      `update identity.quotes set status = 'completed'
+        where quote_id = $1 and user_id = $2
+        returning quote_id, status, total_usd, bmc_snapshot, bmc_snapshot_at, updated_at`,
+      [quoteId, userId],
+    );
+    return { ...updDone.rows[0], reused: true };
+  }
+
+  const { buildBmcSnapshot, buildServerPriceCatalog } = await import("./quoteSnapshot.js");
+  const lista = q.payload?.lista || q.payload?.meta?.lista || "venta";
+  const resolvedCatalog =
+    catalog && Object.keys(catalog).length ? catalog : buildServerPriceCatalog(lista);
+  const { snapshot, reused, incomplete } = buildBmcSnapshot(q.payload || {}, {
+    catalog: resolvedCatalog,
+    existingSnapshot: null,
     dataVersion,
-    lista: q.payload?.lista,
+    lista,
   });
+
+  // Refuse to permanently freeze an empty/$0 snapshot when the payload had no
+  // extractable lines — that would lock a poisoned audit copy forever.
+  if (!reused && (!snapshot.lines?.length || (incomplete && snapshot.total_usd === 0))) {
+    throw Object.assign(new Error("snapshot_incomplete"), {
+      status: 422,
+      detail: "cannot freeze bmc_snapshot without server-priced lines",
+    });
+  }
 
   const upd = await pool().query(
     `update identity.quotes
@@ -276,6 +299,7 @@ export async function completeQuote({ userId, quoteId, catalog, dataVersion } = 
     await _event(quoteId, "completed", userId, {
       total_usd: snapshot.total_usd,
       price_drift: snapshot.price_drift,
+      incomplete: !!snapshot.incomplete,
     });
   }
   return { ...row, reused };

@@ -755,6 +755,8 @@ router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req
             lista,
             client: clientInfo,
             resumen: gptResp.resumen,
+            // Persist BOM so completeQuote can re-price from LISTA_ACTIVA (ADR-004).
+            bom: gptResp.bom,
             quote_code: clientInfo.quote_code || null,
             // Original request params — lets export.pdf re-render on demand.
             request: { escenario, lista, techo, pared, camara, flete },

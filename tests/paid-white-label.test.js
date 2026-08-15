@@ -3,8 +3,12 @@ import assert from "node:assert/strict";
 import express from "express";
 import { isPaidTier, canUseWhiteLabel, assertPaid, requirePaid } from "../server/lib/paidEntitlement.js";
 import { validateLogoBuffer, sniffImageMime } from "../server/lib/brandingValidate.js";
-import { applyPdfAudience, resolveAudience } from "../server/lib/pdfAudience.js";
-import { buildBmcSnapshot } from "../server/lib/quoteSnapshot.js";
+import { applyPdfAudience, resolveAudience, escapeHtml, safeLogoSrc } from "../server/lib/pdfAudience.js";
+import {
+  buildBmcSnapshot,
+  buildServerPriceCatalog,
+  extractLines,
+} from "../server/lib/quoteSnapshot.js";
 
 function png1x1() {
   return Buffer.from(
@@ -77,6 +81,26 @@ describe("pdf audience", () => {
     assert.equal(out.includes("Barraca Sur"), true);
   });
 
+  it("escapes hostile display_name (no HTML injection)", () => {
+    const hostile = `"><img src=x onerror=alert(1)><script>alert(1)</script>`;
+    const out = applyPdfAudience(html, {
+      audience: "client",
+      branding: {
+        display_name: hostile,
+        logo_data_url: "data:image/png;base64,AAA",
+      },
+    });
+    assert.equal(out.includes("<script>"), false);
+    assert.equal(out.includes("<img src=x"), false);
+    assert.equal(out.includes(escapeHtml(hostile)), true);
+  });
+
+  it("rejects non-data-image logo src", () => {
+    assert.equal(safeLogoSrc("javascript:alert(1)"), null);
+    assert.equal(safeLogoSrc("data:text/html;base64,AAA"), null);
+    assert.ok(safeLogoSrc("data:image/png;base64,AAA"));
+  });
+
   it("anonymous / unpaid HTML stays BMC-branded", () => {
     const out = applyPdfAudience(html, { audience: "client", branding: null });
     assert.equal(out.includes("bmc-logo.png"), true);
@@ -95,7 +119,7 @@ describe("pdf audience", () => {
 describe("bmc snapshot freeze", () => {
   const catalog = { ISODEC_EPS_100: 37.76 };
 
-  it("ignores tampered client totals", () => {
+  it("ignores tampered client totals when catalog provided", () => {
     const { snapshot, reused } = buildBmcSnapshot({
       totalUsd: 1,
       lines: [{ sku: "ISODEC_EPS_100", qty: 10, unit_price: 1 }],
@@ -107,6 +131,55 @@ describe("bmc snapshot freeze", () => {
     assert.equal(snapshot.subtotal_usd, expectedSub);
     assert.equal(snapshot.total_usd, Math.round(expectedSub * 1.22 * 100) / 100);
     assert.notEqual(snapshot.total_usd, 1);
+  });
+
+  it("fail-closed: empty catalog must NOT freeze client unit prices (ADR-004)", () => {
+    // Production call sites previously passed catalog:{} — attacker could lock $1.
+    const { snapshot } = buildBmcSnapshot({
+      totalUsd: 122.61,
+      lista: "venta",
+      lines: [{ sku: "ISODEC_EPS_100", qty: 100, unit_price: 1 }],
+    }, { catalog: {} });
+    // Empty opts.catalog triggers buildServerPriceCatalog — not payload_fallback.
+    assert.equal(snapshot.lines[0].source, "LISTA_ACTIVA");
+    assert.notEqual(snapshot.lines[0].unit_price_server, 1);
+    assert.ok(snapshot.lines[0].unit_price_server > 30);
+  });
+
+  it("unknown SKU is unpriced (0), never client unit", () => {
+    const { snapshot, incomplete } = buildBmcSnapshot({
+      lines: [{ sku: "ATTACKER_FAKE_SKU", qty: 50, unit_price: 999 }],
+    }, { catalog: { ISODEC_EPS_100: 37.76 } });
+    assert.equal(incomplete, true);
+    assert.equal(snapshot.lines[0].source, "unpriced");
+    assert.equal(snapshot.lines[0].unit_price_server, 0);
+    assert.equal(snapshot.total_usd, 0);
+  });
+
+  it("extracts nested bom[].items with pu_usd (calc payload shape)", () => {
+    const lines = extractLines({
+      resumen: { total_usd: 100 },
+      bom: [{
+        grupo: "PANELES",
+        items: [{ sku: "ISODEC_EPS-100", cant: 10, pu_usd: 1, descripcion: "panel" }],
+      }],
+    });
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0].sku, "ISODEC_EPS-100");
+    assert.equal(lines[0].qty, 10);
+    assert.equal(lines[0].client_unit, 1);
+
+    const cat = buildServerPriceCatalog("venta");
+    const { snapshot } = buildBmcSnapshot({
+      lista: "venta",
+      resumen: { total_usd: 100 },
+      bom: [{
+        grupo: "PANELES",
+        items: [{ sku: "ISODEC_EPS-100", cant: 10, pu_usd: 1 }],
+      }],
+    }, { catalog: cat });
+    assert.equal(snapshot.lines[0].source, "LISTA_ACTIVA");
+    assert.notEqual(snapshot.lines[0].unit_price_server, 1);
   });
 
   it("does not overwrite existing snapshot (soft-delete safe freeze)", () => {
