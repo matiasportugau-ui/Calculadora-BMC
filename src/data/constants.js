@@ -194,9 +194,9 @@ export const PANELS_PARED = {
 export const FIJACIONES = {
   varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.94, web: 3.68, costo: 2.63, unidad: "unid" },
   tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.09, web: 0.08, costo: 0.06, unidad: "unid" },
-  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 0.7, web: 0.66, costo: 0.47, unidad: "unid" },
+  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 2, web: 0.66, costo: 0.47, unidad: "unid" },
   /** Lado inferior del anclaje pasante (contra el panel); metal/madera. Sincronizar precios con MATRIZ (SKU ARPLA38). */
-  arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.13, web: 0.12, costo: 0.09, unidad: "unid" },
+  arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.24, web: 0.12, costo: 0.09, unidad: "unid" },
   arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.62, web: 1.51, costo: 1.08, unidad: "unid" },
   arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.73, web: 1.61, costo: 1.15, unidad: "unid" },
   taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 1.23, web: 1.15, costo: 0.82, unidad: "unid" },
@@ -267,7 +267,7 @@ export const PRESUPUESTO_LIBRE_IDS = [
 export const SELLADORES = {
   silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.64, web: 11.24, costo: 8.03, unidad: "unid", ml_por_unid: 10.27 },
   /** 300 ml neutra (MATRIZ BROMYROS ~fila 168; col D SIL300N para CSV): junto a 600 ml; cantidad = ratio × unid. 600 (`SELLADORES_TECHO.silicona_300_por_unid_600`, default 2). */
-  silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.11, web: 4.2, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
+  silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.11, web: 7.11, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
   cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 15.77, web: 19.19, costo: 13.71, unidad: "unid" },
   // ml_por_unid = metros lineales cubiertos por unidad (misma convención que silicona).
   // membrana: rollo de 10 m. espuma PU: ~10 m de cordón por unidad (estimado).
@@ -332,7 +332,7 @@ export const PERFIL_TECHO = {
       100: { sku: "GLDCAM100", venta: 23.71, web: 27.66, costo: 19.76, largo: 3.0 },
       150: { sku: "GLDCAM150", venta: 24.78, web: 28.910, costo: 20.65, largo: 3.0 },
       200: { sku: "GLDCAM200", venta: 37.09,  web: 43.27, costo: 30.91, largo: 3.0 },
-      250: { sku: "GLDCAM250", venta: 32.22,  web: 37.590, costo: 26.85, largo: 3.0 },
+      250: { sku: "GLDCAM250", venta: 37.3,  web: 43.51, costo: 31.08, largo: 3.0 },
     },
     ISODEC_PIR: { _all: { sku: "GLDCAM-DC", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
   },
@@ -422,10 +422,8 @@ export const PERFIL_PARED = {
       100: { sku: "PU100MM", venta: 12.61, web: 14.71, costo: 10.51, largo: 3.0 },
       150: { sku: "PU150MM", venta: 14.17, web: 16.53, costo: 11.81, largo: 3.0 },
       200: { sku: "PU200MM", venta: 17.68, web: 20.62, costo: 14.73, largo: 3.0 },
-      // 250mm usa intencionalmente el mismo SKU y precio que 200mm (PU200MM).
-      // El proveedor (Bromyros) no diferencia perfil U entre 200 y 250mm en su lista de precios;
-      // ambos espesores usan el mismo perfil comercial. Verificar en MATRIZ si esto cambia.
-      250: { sku: "PU200MM", venta: 17.68, web: 20.62, costo: 14.73, largo: 3.0 },
+      // SKU de catálogo sigue PU200MM; precios = fila MATRIZ PU250MM (bake 2026-08-15).
+      250: { sku: "PU200MM", venta: 21.25, web: 24.79, costo: 17.71, largo: 3.0 },
     },
     ISOWALL: {
       50:  { sku: "PU50MM", venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
@@ -458,7 +456,7 @@ export const PERFIL_PARED = {
     _all: { sku: "ESQ-INT", venta: 8.59, web: 10.48, costo: 7.73, largo: 3.0, label: "Esquinero interior" },
   },
   perfil_5852: {
-    _all: { sku: "PA5852", venta: 64.19, web: 64.19, costo: 53.49, largo: 6.8,
+    _all: { sku: "PA5852", venta: 64.19, web: 74.89, costo: 53.49, largo: 6.8,
             label: "Perfil Alu 5852 Anodizado (6,8 m)" },
   },
 };
