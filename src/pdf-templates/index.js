@@ -233,6 +233,11 @@ export async function renderPdfLayout(layout, q) {
   // localStorage, un body.template a mano) se fuerza al de la marca: si no, se
   // escapa un PDF con branding BMC desde la calculadora del socio.
   if (WHITELABEL_LAYOUT && layout !== WHITELABEL_LAYOUT) layout = WHITELABEL_LAYOUT;
+  // Mirror gate for BMC prod: TEMPLATE_MAP still contains partner layouts for
+  // the parallel deploy, but /calc/cotizar/pdf accepts body.template with
+  // optional auth. Without this, `template: "bc"` on production emits another
+  // company's RUT/legal identity (Jenerik Bentancor) from BMC infrastructure.
+  else if (WHITELABEL_LAYOUT_IDS.includes(layout)) layout = DEFAULT_LAYOUT;
 
   // 'classic' — the original HOJA VISUAL CLIENTE; needs the raw inputs preserved
   // by buildQuotationModel. Models without q.raw fall through to the default map.

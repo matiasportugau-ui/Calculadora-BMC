@@ -105,6 +105,15 @@ test('prod BMC: renderPdfLayout respeta el layout pedido', () => {
   assert.match(r.html.simple, /BMC URUGUAY/);
 });
 
+test('prod BMC: pedir layout white-label cae al default BMC (no filtra identidad del socio)', () => {
+  // /calc/cotizar/pdf acepta body.template con auth opcional. Sin este gate,
+  // template:"bc" en prod BMC emitiría RUT/razón social de Jenerik Bentancor.
+  const r = probe({ layouts: ['bc'] });
+  assert.match(r.html.bc, /BMC URUGUAY/);
+  assert.ok(!r.html.bc.includes('Jenerik Bentancor'), 'no debe filtrar razón social del socio');
+  assert.ok(!r.html.bc.includes('150633750010'), 'no debe filtrar RUT del socio');
+});
+
 // ── White-label BC ───────────────────────────────────────────────────────────
 
 test('white-label bc: un único layout y es el default', () => {
