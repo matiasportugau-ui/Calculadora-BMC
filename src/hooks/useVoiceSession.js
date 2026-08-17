@@ -203,7 +203,11 @@ export function useVoiceSession({
         type === "response.output_audio.delta"
       ) {
         setIsSpeaking(true);
-        if (msg.delta) playPcm16Base64(msg.delta);
+        // Grok WS has no media track — play PCM deltas. OpenAI WebRTC already
+        // plays via RTCPeerConnection; scheduling the same delta here doubles audio.
+        if (msg.delta && usesGrokWebSocketTransport(voiceProviderRef.current)) {
+          playPcm16Base64(msg.delta);
+        }
       }
       if (
         type === "response.audio.done" ||
