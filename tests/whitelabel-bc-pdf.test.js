@@ -150,6 +150,39 @@ test('white-label bc: el P.U. sub-centavo conserva decimales para que cierre', (
   assert.match(html.bc, /48\.60/, 'un P.U. normal se mantiene con 2 decimales');
 });
 
+test('white-label bc: el branding no puede romper un atributo HTML', () => {
+  // El branding lo carga el socio, y se interpola dentro de src/alt del logo.
+  // Sin escapar comillas se sale del atributo (CodeQL #652/#653).
+  const { html } = probe({
+    whitelabel: 'bc',
+    layouts: ['bc'],
+    quote: { ...QUOTE, branding: { marca: '" onerror="alert(1)', razonSocial: "O'Brien & <hijos>" } },
+  });
+  assert.ok(!html.bc.includes('onerror="alert(1)"'), 'se rompió el atributo');
+  assert.ok(!html.bc.includes('<hijos>'), 'no se escapó el markup del branding');
+  assert.match(html.bc, /O&#39;Brien &amp; &lt;hijos&gt;/);
+});
+
+test('white-label bc: sólo se acepta un logo data: de imagen', () => {
+  const casos = [
+    ['javascript:alert(1)', false],
+    ['data:text/html;base64,PHNjcmlwdD4=', false],
+    ['https://tercero.example/logo.png', false],
+    ['data:image/png;base64,iVBORw0KGgo=', true],
+  ];
+  for (const [logoDataUrl, deberiaUsarse] of casos) {
+    const { html } = probe({
+      whitelabel: 'bc',
+      layouts: ['bc'],
+      quote: { ...QUOTE, branding: { logoDataUrl } },
+    });
+    const usaImg = html.bc.includes('<img class="bc-logo-img"');
+    assert.equal(usaImg, deberiaUsarse, `logo "${logoDataUrl.slice(0, 32)}" mal resuelto`);
+    // Si se rechaza, cae al logo vectorial y nunca entra la URL al documento.
+    if (!deberiaUsarse) assert.ok(!html.bc.includes(logoDataUrl));
+  }
+});
+
 test('white-label bc: el branding del modelo pisa el default del deploy', () => {
   const { html } = probe({
     whitelabel: 'bc',

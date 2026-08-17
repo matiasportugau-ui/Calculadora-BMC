@@ -28,7 +28,14 @@ const fmtPu = (n) => {
     : fmt(v);
 };
 
-const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// Escapa también comillas: el branding es dato cargado por el socio y acá se
+// interpola dentro de atributos (src/alt del logo), no sólo en texto.
+const esc = s => String(s ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
 const nl2br = s => esc(s).replace(/\n/g, '<br>');
 
 const GOLD_DEEP = '#C6A02A';
@@ -246,7 +253,13 @@ export function render(q) {
   const cl = q.bmcExtra?.client ?? {};
   const brand = mergeBranding(WHITELABEL_BRANDS.bc, q.branding);
 
-  const logo = brand.logoDataUrl
+  // Sólo se acepta un data: URL de imagen rasterizada. El logo llega del
+  // branding cargado por el socio; una URL remota filtraría el render a un
+  // tercero y un esquema raro (javascript:, data:text/html) no tiene por qué
+  // entrar en el documento. Si no valida, cae al logo vectorial.
+  const logoOk = typeof brand.logoDataUrl === 'string'
+    && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(brand.logoDataUrl);
+  const logo = logoOk
     ? `<img class="bc-logo-img" src="${esc(brand.logoDataUrl)}" alt="${esc(brand.marca)}">`
     : logoSvg(62);
 
