@@ -1437,9 +1437,20 @@ export function buildAplicarActions(input = {}, operatorContext = null) {
     }
     if (Object.keys(techoFields).length > 0) actions.push({ type: "setTecho", payload: techoFields });
     if (Array.isArray(zonas) && zonas.length > 0) {
-      const safeZonas = zonas
-        .map((z) => ({ largo: Number(z.largo), ancho: Number(z.ancho) }))
+      // Stamp dosAguas when tipoAguas is known — live UI derives aguas from zonas[].dosAguas,
+      // not techo.tipoAguas. Bare {largo,ancho} would silently price as una_agua.
+      const tipoForZonas = techoFields.tipoAguas || normalizeTipoAguas(src.techo?.tipoAguas, operatorContext);
+      let safeZonas = zonas
+        .map((z) => {
+          const row = { largo: Number(z.largo), ancho: Number(z.ancho) };
+          if (z.dosAguas != null) row.dosAguas = !!z.dosAguas;
+          return row;
+        })
         .filter((z) => Number.isFinite(z.largo) && Number.isFinite(z.ancho));
+      if (tipoForZonas === "dos_aguas" || tipoForZonas === "una_agua") {
+        const want = tipoForZonas === "dos_aguas";
+        safeZonas = safeZonas.map((z) => (z.dosAguas != null ? z : { ...z, dosAguas: want }));
+      }
       if (safeZonas.length > 0) actions.push({ type: "setTechoZonas", payload: safeZonas });
     }
   }

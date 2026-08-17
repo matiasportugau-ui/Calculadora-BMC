@@ -99,6 +99,10 @@ import {
   snapLateralAnnexPlanta,
   zonasToPlantRectsWithAutoGap,
 } from "../utils/roofLateralAnnexLayout.js";
+import {
+  mergeTechoZonasPayload,
+  syncZonasDosAguasFromTipoAguas,
+} from "../utils/techoZonasActions.js";
 import { buildZoneLayoutsForRoof3d } from "../utils/roofZoneLayouts3d.js";
 import {
   normalizeEncounter,
@@ -2720,10 +2724,18 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           if (p.ptsHorm != null) p.ptsHorm = Number(p.ptsHorm) || 0;
           if (p.ptsMetal != null) p.ptsMetal = Number(p.ptsMetal) || 0;
           if (p.ptsMadera != null) p.ptsMadera = Number(p.ptsMadera) || 0;
-          if (Array.isArray(p.zonas)) {
-            p.zonas = p.zonas.map((z) => ({ ...z, largo: Number(z.largo) || 0, ancho: Number(z.ancho) || 0 }));
-          }
-          setTecho((prev) => ({ ...prev, ...p }));
+          setTecho((prev) => {
+            const next = { ...prev, ...p };
+            // Merge zonas by index — bare {largo,ancho} from agent must not wipe dosAguas/preview.
+            if (Array.isArray(p.zonas)) {
+              next.zonas = mergeTechoZonasPayload(prev.zonas, p.zonas);
+            }
+            // Live calc uses derivedTipoAguas from zonas[].dosAguas (techo.tipoAguas is deprecated).
+            if (p.tipoAguas === "dos_aguas" || p.tipoAguas === "una_agua") {
+              next.zonas = syncZonasDosAguasFromTipoAguas(next.zonas, p.tipoAguas, isLateralAnnexZona);
+            }
+            return next;
+          });
           break;
         }
         case "setPared": {
@@ -2757,10 +2769,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         case "setProyecto":   setProyecto((prev) => ({ ...prev, ...action.payload })); break;
         case "setWizardStep": setWizardStep(Number(action.payload)); break;
         case "setTechoZonas": {
-          const zonas = Array.isArray(action.payload)
-            ? action.payload.map((z) => ({ largo: Number(z.largo) || 0, ancho: Number(z.ancho) || 0 }))
-            : [];
-          if (zonas.length > 0) setTecho((prev) => ({ ...prev, zonas }));
+          const incoming = Array.isArray(action.payload) ? action.payload : [];
+          if (incoming.length > 0) {
+            setTecho((prev) => ({
+              ...prev,
+              zonas: mergeTechoZonasPayload(prev.zonas, incoming),
+            }));
+          }
           break;
         }
         case "advanceWizard": window.dispatchEvent(new CustomEvent("bmc-wizard-next")); break;
@@ -4905,6 +4920,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const [driveError, setDriveError] = useState(null);
   const [driveLastSave, setDriveLastSave] = useState(null);
   const [driveFolderConfig, setDriveFolderConfig] = useState(null);
+  /** Monotonic id so a slower Drive load cannot overwrite a newer one (race on double-click / openDrive). */
+  const driveLoadSeqRef = useRef(0);
 
   const ensureDriveGsi = useCallback(async () => {
     if (!isDriveConfigured()) {
@@ -5172,6 +5189,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, []);
 
   const handleDriveLoad = useCallback(async (folderId) => {
+    const seq = ++driveLoadSeqRef.current;
     setDriveLoading(true);
     setDriveError(null);
     try {
@@ -5194,13 +5212,15 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           );
         }
       }
+      if (seq !== driveLoadSeqRef.current) return; // stale — a newer load started
       if (!data) { setDriveError("No se encontró archivo de proyecto (.bmc.json)"); return; }
       applyDeserializedProject(deserializeProject(data), "Cotización cargada desde Drive");
     } catch (err) {
+      if (seq !== driveLoadSeqRef.current) return;
       setDriveError(err.message || "Error al cargar cotización");
       showToast(err.message || "Error al cargar cotización");
     } finally {
-      setDriveLoading(false);
+      if (seq === driveLoadSeqRef.current) setDriveLoading(false);
     }
   }, [applyDeserializedProject, loadProjectViaServer, showToast]);
 

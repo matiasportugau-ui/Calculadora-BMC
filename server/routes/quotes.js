@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { getQuoteCounterPool } from "../lib/quoteCounterDb.js";
 
 function uruguayYear() {
@@ -32,6 +33,24 @@ export function isDbUnavailable(err) {
     String(err.message || "")
   );
 }
+
+/**
+ * Bug EF — POST /quotes/counter/next is public (calculator "Confirmar presupuesto"
+ * has no auth). Bound anonymous burns of BMC-YYYY-NNNN with a tight per-IP cap.
+ * Uses default express-rate-limit keying (req.ip) — do not key on raw XFF.
+ * Exported for offline contract tests.
+ */
+export const QUOTE_COUNTER_NEXT_RATE = {
+  windowMs: 60 * 1000,
+  max: 10,
+};
+
+const counterNextLimiter = rateLimit({
+  ...QUOTE_COUNTER_NEXT_RATE,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", detail: "Demasiados números de cotización. Esperá un momento." },
+});
 
 export function createQuotesRouter(config) {
   const router = Router();
@@ -65,7 +84,7 @@ export function createQuotesRouter(config) {
   });
 
   // POST /api/quotes/counter/next — atomic increment, return new counter
-  router.post("/quotes/counter/next", async (req, res) => {
+  router.post("/quotes/counter/next", counterNextLimiter, async (req, res) => {
     try {
       const pool = getQuoteCounterPool(config.databaseUrl);
       if (!pool) {
