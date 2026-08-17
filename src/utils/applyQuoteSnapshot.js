@@ -1,7 +1,35 @@
 /**
  * Apply a buildQuote payload to calculator state setters in the correct order.
  * setters = { setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto }
+ *
+ * Live UI derives dos_aguas from zonas[].dosAguas (techo.tipoAguas is deprecated).
+ * Stripping zones down to {largo, ancho} silently flips quotes to una_agua (~2× panels).
  */
+
+/**
+ * Coerce zone dims and preserve dosAguas / annex preview markers.
+ * When tipoAguas is known and a zone lacks dosAguas, stamp it.
+ *
+ * @param {Array<object>|null|undefined} zonas
+ * @param {string|null|undefined} tipoAguas
+ * @returns {Array<object>}
+ */
+export function normalizeSnapshotZonas(zonas, tipoAguas) {
+  const rows = (Array.isArray(zonas) ? zonas : []).map((z) => {
+    const raw = z && typeof z === "object" ? z : {};
+    const row = {
+      ...raw,
+      largo: Number(raw.largo) || 0,
+      ancho: Number(raw.ancho) || 0,
+    };
+    if (raw.dosAguas != null) row.dosAguas = !!raw.dosAguas;
+    return row;
+  });
+  if (tipoAguas !== "dos_aguas" && tipoAguas !== "una_agua") return rows;
+  const want = tipoAguas === "dos_aguas";
+  return rows.map((z) => (z.dosAguas != null ? z : { ...z, dosAguas: want }));
+}
+
 export function applyQuoteSnapshot(payload, setters) {
   const { setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto } = setters;
 
@@ -14,7 +42,7 @@ export function applyQuoteSnapshot(payload, setters) {
     if (t.pendiente != null) t.pendiente = Number(t.pendiente) || 0;
     if (t.espesor != null) t.espesor = String(t.espesor);
     if (Array.isArray(t.zonas)) {
-      t.zonas = t.zonas.map((z) => ({ largo: Number(z.largo) || 0, ancho: Number(z.ancho) || 0 }));
+      t.zonas = normalizeSnapshotZonas(t.zonas, t.tipoAguas);
     }
     setTecho((prev) => ({ ...prev, ...t }));
   }

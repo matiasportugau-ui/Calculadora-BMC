@@ -4,20 +4,41 @@ import { executeScenario } from "../../src/utils/scenarioOrchestrator.js";
 const VALID_SCENARIOS = new Set(["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"]);
 const VALID_LP = new Set(["web", "venta"]);
 
+/**
+ * Keep zone dims + dosAguas. Live UI derives aguas from zonas[].dosAguas;
+ * stripping to {largo,ancho} made buildQuote preview (tipoAguas) disagree with
+ * post-confirm calculator totals.
+ */
+function normalizeZonas(rawZonas, tipoAguas, fallbackLargo, fallbackAncho) {
+  const base =
+    Array.isArray(rawZonas) && rawZonas.length > 0
+      ? rawZonas.map((z) => {
+          const row = {
+            largo: Number(z?.largo) || 0,
+            ancho: Number(z?.ancho) || 0,
+          };
+          if (z?.dosAguas != null) row.dosAguas = !!z.dosAguas;
+          return row;
+        })
+      : [{ largo: Number(fallbackLargo) || 0, ancho: Number(fallbackAncho) || 0 }];
+  if (tipoAguas !== "dos_aguas" && tipoAguas !== "una_agua") return base;
+  const want = tipoAguas === "dos_aguas";
+  return base.map((z) => (z.dosAguas != null ? z : { ...z, dosAguas: want }));
+}
+
 function normalizeTecho(t) {
   const raw = t && typeof t === "object" ? t : {};
+  const tipoAguas = raw.tipoAguas || "una_agua";
   return {
     familia: String(raw.familia || ""),
     espesor: raw.espesor != null ? String(raw.espesor) : "",
     color: raw.color || "Blanco",
-    tipoAguas: raw.tipoAguas || "una_agua",
+    tipoAguas,
     tipoEst: raw.tipoEst || "metal",
     pendiente: Number(raw.pendiente) || 0,
     borders: raw.borders || { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" },
     opciones: raw.opciones || { inclCanalon: false, inclGotSup: false, inclSell: true },
-    zonas: Array.isArray(raw.zonas) && raw.zonas.length > 0
-      ? raw.zonas.map((z) => ({ largo: Number(z.largo) || 0, ancho: Number(z.ancho) || 0 }))
-      : [{ largo: Number(raw.largo) || 0, ancho: Number(raw.ancho) || 0 }],
+    zonas: normalizeZonas(raw.zonas, tipoAguas, raw.largo, raw.ancho),
   };
 }
 
