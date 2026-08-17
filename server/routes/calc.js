@@ -41,7 +41,7 @@ import { GPT_ACTIONS } from "../gptActions.js";
 import { uploadQuoteToGcs, uploadPdfToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive, saveQuotationBundleToDrive } from "../lib/driveUpload.js";
 import { renderHtmlToPdfBuffer, isPdfRendererAvailable } from "../lib/quotePdf.js";
-import { buildQuotationModel, renderPdfLayout } from "../../src/pdf-templates/index.js";
+import { buildQuotationModel, renderPdfLayout, DEFAULT_LAYOUT } from "../../src/pdf-templates/index.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
   registerQuotation as registerQuotationStore,
@@ -505,7 +505,7 @@ router.post("/cotizar", (req, res) => {
  * @returns {Promise<{ ok: true, html: string, gptResp: object, templateUsed: string } |
  *           { ok: false, error: string, gptResp?: object }>}
  */
-export async function buildCotizacionHtml({ escenario, lista = "web", techo, pared, camara, flete = 0, cliente, template = "simple" }) {
+export async function buildCotizacionHtml({ escenario, lista = "web", techo, pared, camara, flete = 0, cliente, template = DEFAULT_LAYOUT }) {
   const results = runCalculation({ escenario, lista, techo, pared, camara });
   if (results.error && !results.allItems) {
     return { ok: false, error: results.error };
