@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-17 (fix — Bug EJ/EK/EL critical hunt):** `setTechoZonas` / `aplicar_estado_calc` ya no borran `zonas[].dosAguas` (live calc deriva aguas de ese flag → precios ×~2 mal) — **EJ**. Drive load usa seq id anti-carrera — **EK**. Grok PCM playback gated (OpenAI WebRTC no duplica audio) — **EL**. Tests `techoZonasActions.test.js`. (Letras EF/EG ya usadas por hunt paralelo: counter/dashboard auth.)
+**2026-08-17 (fix — Bug EF + EJ/EK/EL critical hunt):** **EF** — `POST /api/quotes/counter/next` rate-limited (10/min/IP; public calc cannot take JWT). **EJ** — `setTechoZonas` / `aplicar_estado_calc` ya no borran `zonas[].dosAguas` (live calc deriva aguas de ese flag → precios ×~2 mal). **EK** — Drive load seq anti-carrera. **EL** — Grok-only PCM (OpenAI WebRTC no duplica audio). Tests `techoZonasActions.test.js`, `quotesCounterRateLimit.test.js`. **EG** (dashboard unauth CRM GETs) sigue abierto — prefer drafts #880 family for writes; reads not re-filed.
 
 **2026-08-15 (chore — precios MATRIZ horneados en constants.js):** Bake del CSV vivo (`/api/actualizar-precios-calculadora`) → `src/data/constants.js`. Suben AC38G venta 0.70→2, APHG38 0.13→0.24, SN300B web 4.20→7.11, PGLC250 32.22/37.59/26.85→37.30/43.51/31.08, PU250MM 17.68/20.62/14.73→21.25/24.79/17.71, PA5852 web 64.19→74.89 (venta local 64.19). Data version `90e7168e36`. Catalog-diff vs MATRIZ: 0 S1. GLDCAM100 y CD100 no vienen en el CSV de 111 paths (quedan).
 
