@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-17 (fix — Bug EG/EH/EI critical hunt):** `setTechoZonas` / `aplicar_estado_calc` ya no borran `zonas[].dosAguas` (live calc deriva aguas de ese flag → precios ×~2 mal). Drive load usa seq id anti-carrera. Grok PCM playback gated (OpenAI WebRTC no duplica audio). Tests `techoZonasActions.test.js`.
+
 **2026-08-15 (chore — precios MATRIZ horneados en constants.js):** Bake del CSV vivo (`/api/actualizar-precios-calculadora`) → `src/data/constants.js`. Suben AC38G venta 0.70→2, APHG38 0.13→0.24, SN300B web 4.20→7.11, PGLC250 32.22/37.59/26.85→37.30/43.51/31.08, PU250MM 17.68/20.62/14.73→21.25/24.79/17.71, PA5852 web 64.19→74.89 (venta local 64.19). Data version `90e7168e36`. Catalog-diff vs MATRIZ: 0 S1. GLDCAM100 y CD100 no vienen en el CSV de 111 paths (quedan).
 
 **2026-08-13 (fix — Agregar producto visible otra vez):** El buscador nuevo había quedado solo en el FAB del borde (fácil de perder / tapado). Volvió una tarjeta **Agregar producto · NUEVO** en la columna izquierda (junto a Datos del proyecto), el chip del wizard abre el drawer, y se restauró el catálogo por categoría (Paneles / Perfilería / Tornillería / Selladores) dentro de *Agregar productos manuales*. Drawer controlado (`open`/`onOpenChange`).
