@@ -120,7 +120,7 @@ import {
 } from "../utils/googleDrive.js";
 import { stashEnviosDriveResume } from "../utils/logistica/enviosDrive.js";
 import { getDriveConfig } from "../utils/driveConfigApi.js";
-import { LAYOUT_OPTIONS } from "../pdf-templates/index.js";
+import { LAYOUT_OPTIONS, DEFAULT_LAYOUT, isAllowedLayout } from "../pdf-templates/index.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
 import PlanUploadModal from "./PlanUploadModal.jsx";
 import PlanInlineDropZone from "./PlanInlineDropZone.jsx";
@@ -2595,7 +2595,12 @@ export default function PanelinCalculadoraV3() {
   // Default changed 2026-05-27 during PDF generator improvement session.
 // Old default 'bmc-pdf' was the heavy 50k+ template that required the Python optimizer post-process.
 // New default uses the modern lightweight "simple" family (much smaller, cleaner 1-2 page output).
-const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'simple');
+// El valor guardado sólo vale si este deploy lo ofrece: en un deploy
+// white-label un 'simple' viejo en localStorage tiene que caer al layout de la marca.
+const [pdfLayout, setPdfLayout] = useState(() => {
+  const saved = localStorage.getItem('bmc.pdfLayout');
+  return saved && isAllowedLayout(saved) ? saved : DEFAULT_LAYOUT;
+});
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
