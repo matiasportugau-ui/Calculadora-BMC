@@ -6,7 +6,12 @@
 // 'simple' (Presupuesto Simple) is the preferred production template for client PDF quotes.
 // The previous (pre-R3-C) version is available as 'simple-previous'.
 
-export const LAYOUT_OPTIONS = [
+import { WHITELABEL_BRAND, WHITELABEL_LAYOUT, WHITELABEL_LAYOUT_IDS } from '../config/whitelabel.js';
+
+const ALL_LAYOUT_OPTIONS = [
+  // White-label — sólo visible dentro del deploy de la marca correspondiente.
+  { id: 'bc',                label: 'Presupuesto BC', recommended: true, whitelabel: true },
+
   // Modern lightweight family — "Presupuesto Simple" (plain) is the most faithful to bmcuruguay.com.uy visual language.
   // Preferred production default.
   { id: 'simple',            label: 'Presupuesto Simple', recommended: true },
@@ -28,6 +33,23 @@ export const LAYOUT_OPTIONS = [
   { id: 'minimalist',        label: 'C — Minimalist', legacy: true },
   { id: 'construction-bold', label: 'D — Construction Bold', legacy: true },
 ];
+
+// En un deploy white-label el socio ve un único layout — el suyo — y es el
+// default. En la prod BMC normal los layouts white-label no se ofrecen.
+export const LAYOUT_OPTIONS = WHITELABEL_LAYOUT
+  ? ALL_LAYOUT_OPTIONS.filter(o => o.id === WHITELABEL_LAYOUT)
+  : ALL_LAYOUT_OPTIONS.filter(o => !WHITELABEL_LAYOUT_IDS.includes(o.id));
+
+/** Layout por defecto del deploy. Usarlo en vez de hardcodear 'simple'. */
+export const DEFAULT_LAYOUT = WHITELABEL_LAYOUT ?? 'simple';
+
+/** Marca white-label activa (null en la prod BMC). */
+export const ACTIVE_BRAND = WHITELABEL_BRAND;
+
+/** ¿Es `id` un layout ofrecido por este deploy? */
+export function isAllowedLayout(id) {
+  return LAYOUT_OPTIONS.some(o => o.id === id);
+}
 
 export const PDF_LAYOUT_KEY = 'bmc.pdfLayout';
 
@@ -190,6 +212,7 @@ export function buildQuotationModel(data) {
 }
 
 const TEMPLATE_MAP = {
+  'bc':                () => import('./bc.js'),
   'simple':            () => import('./simple.js'),
   'simple-previous':   () => import('./simple-previous.js'),
   'simple-sage':       () => import('./simple-sage.js'),
@@ -206,6 +229,11 @@ const TEMPLATE_MAP = {
 };
 
 export async function renderPdfLayout(layout, q) {
+  // En un deploy white-label cualquier layout ajeno (un `bmc.pdfLayout` viejo en
+  // localStorage, un body.template a mano) se fuerza al de la marca: si no, se
+  // escapa un PDF con branding BMC desde la calculadora del socio.
+  if (WHITELABEL_LAYOUT && layout !== WHITELABEL_LAYOUT) layout = WHITELABEL_LAYOUT;
+
   // 'classic' — the original HOJA VISUAL CLIENTE; needs the raw inputs preserved
   // by buildQuotationModel. Models without q.raw fall through to the default map.
   if (layout === 'classic' && q?.raw) {
@@ -213,7 +241,7 @@ export async function renderPdfLayout(layout, q) {
     // includePlantaResumenPage:false matches the pre-existing classic fallback in buildClientePdfHtml
     return generateClientVisualHTML({ ...q.raw, includePlantaResumenPage: false });
   }
-  const loader = TEMPLATE_MAP[layout] ?? TEMPLATE_MAP['soft-modern'];
+  const loader = TEMPLATE_MAP[layout] ?? TEMPLATE_MAP[DEFAULT_LAYOUT] ?? TEMPLATE_MAP['soft-modern'];
   const mod = await loader();
   return mod.render(q);
 }
