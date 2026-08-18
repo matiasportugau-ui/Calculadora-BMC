@@ -24,10 +24,10 @@ Use when the task is **visual / theme / UX** on the Shopify store or bridging st
 
 ```
 Design task:
-- [ ] Confirm target: live theme vs app extension vs calculator-only
+- [ ] Confirm target: live theme vs app extension vs calculator-only vs Local Studio catalog
 - [ ] Pull brand assets / existing section list
-- [ ] Implement in extension or theme PR
-- [ ] Preview on development theme / `shopify theme dev`
+- [ ] Theme: npm run shopify:theme:pull → edit shopify-theme/ → theme:dev → theme:push
+- [ ] Catalog drafts: http://localhost:5173/shopify-local (save local → upload later)
 - [ ] If media mapping changed: npm run visor:shopify-sync
 - [ ] Document in PROJECT-STATE
 ```

@@ -6,6 +6,16 @@ import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
 import { Router } from "express";
 import { google } from "googleapis";
+import {
+  applyDraftOverlay,
+  buildUploadMutations,
+  fetchStorefrontCatalogPage,
+  readDrafts,
+  resolveShopDomain,
+  resolveStorefrontUrl,
+  toProductGid,
+  writeDrafts,
+} from "../lib/shopifyStudio.js";
 import { createShopifyStore } from "../shopifyStore.js";
 import { oauthStateStore } from "../lib/oauthStateStore.js";
 
@@ -82,6 +92,9 @@ export default function createShopifyRouter(config, logger) {
     publicBaseUrl,
     tokenEncryptionKey,
   } = config;
+
+  const storefrontUrl = resolveStorefrontUrl(config);
+  const configuredShop = resolveShopDomain(config);
 
   const store = createShopifyStore({
     dataDir: ".shopify-shops",
@@ -577,6 +590,185 @@ export default function createShopifyRouter(config, logger) {
     if (!shop) return res.status(400).json({ ok: false, error: "Missing shop" });
     const config = await store.getConfig(shop);
     res.json({ ok: true, shop, config });
+  }));
+
+  // ——— Local Studio: status / catalog / drafts / upload ———
+  router.get("/api/shopify/studio/status", asyncHandler(async (_req, res) => {
+    const shops = await store.listShops();
+    const shop = configuredShop || shops[0] || "";
+    let hasToken = false;
+    if (shop) {
+      const tokens = await store.getTokens(shop);
+      hasToken = Boolean(tokens?.access_token);
+    }
+    res.json({
+      ok: true,
+      storefrontUrl,
+      shop: shop || null,
+      hasAppConfig: Boolean(shopifyClientId && shopifyClientSecret),
+      hasShopToken: hasToken,
+      authStartUrl: shop
+        ? `/auth/shopify?shop=${encodeURIComponent(shop)}`
+        : "/auth/shopify?shop=YOUR_STORE.myshopify.com",
+      localStudioPath: "/hub/shopify",
+      themeCommands: {
+        pull: "npm run shopify:theme:pull",
+        dev: "npm run shopify:theme:dev",
+        push: "npm run shopify:theme:push",
+      },
+    });
+  }));
+
+  router.get("/api/shopify/studio/catalog", asyncHandler(async (req, res) => {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 50;
+    const catalog = await fetchStorefrontCatalogPage({
+      storefrontUrl,
+      page,
+      limit,
+    });
+    if (!catalog.ok) {
+      return res.status(catalog.status || 502).json(catalog);
+    }
+    const { drafts } = await readDrafts();
+    const products = catalog.products.map((p) =>
+      applyDraftOverlay(p, drafts[p.handle] || drafts[String(p.id)])
+    );
+    const draftCount = Object.keys(drafts).length;
+    res.json({
+      ...catalog,
+      products,
+      draftCount,
+      liveStoreUrl: storefrontUrl,
+    });
+  }));
+
+  router.get("/api/shopify/studio/drafts", asyncHandler(async (_req, res) => {
+    const data = await readDrafts();
+    res.json({ ok: true, ...data });
+  }));
+
+  router.put("/api/shopify/studio/drafts", asyncHandler(async (req, res) => {
+    const body = req.body || {};
+    const incoming = body.drafts;
+    if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {
+      return res.status(400).json({ ok: false, error: "Body must include drafts object keyed by handle" });
+    }
+    const mode = String(body.mode || "merge").toLowerCase();
+    let next = incoming;
+    if (mode === "merge") {
+      const current = await readDrafts();
+      next = { ...current.drafts, ...incoming };
+      for (const [k, v] of Object.entries(incoming)) {
+        if (v === null) delete next[k];
+      }
+    }
+    const saved = await writeDrafts(next);
+    res.json({ ok: true, ...saved });
+  }));
+
+  router.post("/api/shopify/studio/upload", requireApiAuth, asyncHandler(async (req, res) => {
+    const dryRun = req.body?.dryRun !== false && req.body?.write !== true;
+    const shop = String(req.body?.shop || configuredShop || "").trim().toLowerCase();
+    if (!validShop(shop)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid shop — set SHOPIFY_SHOP or pass body.shop (store.myshopify.com)",
+      });
+    }
+    const tokens = await store.getTokens(shop);
+    if (!tokens?.access_token) {
+      return res.status(401).json({
+        ok: false,
+        error: "Not installed — open /auth/shopify?shop=… first",
+        authStartUrl: `/auth/shopify?shop=${encodeURIComponent(shop)}`,
+      });
+    }
+
+    const { drafts } = await readDrafts();
+    const handlesFilter = Array.isArray(req.body?.handles) ? req.body.handles.map(String) : null;
+    const entries = Object.entries(drafts).filter(([handle]) =>
+      handlesFilter ? handlesFilter.includes(handle) : true
+    );
+    if (!entries.length) {
+      return res.json({ ok: true, dryRun, uploaded: 0, results: [], message: "No drafts to upload" });
+    }
+
+    const results = [];
+    for (const [handle, draft] of entries) {
+      const findQuery = `
+        query FindProduct($q: String!) {
+          products(first: 1, query: $q) {
+            edges { node { id handle title } }
+          }
+        }`;
+      const found = await shopifyGraphql({
+        shop,
+        accessToken: tokens.access_token,
+        query: findQuery,
+        variables: { q: `handle:${handle}` },
+      });
+      if (!found.ok) {
+        results.push({ handle, ok: false, error: found.error });
+        continue;
+      }
+      const node = found.data?.products?.edges?.[0]?.node;
+      if (!node?.id) {
+        results.push({ handle, ok: false, error: "Product not found in Admin API" });
+        continue;
+      }
+      const productGid = toProductGid(node.id);
+      const ops = buildUploadMutations(productGid, draft);
+      if (!ops.length) {
+        results.push({ handle, ok: true, skipped: true, reason: "No uploadable fields" });
+        continue;
+      }
+      if (dryRun) {
+        results.push({
+          handle,
+          ok: true,
+          dryRun: true,
+          productId: productGid,
+          operations: ops.map((o) => o.kind),
+        });
+        continue;
+      }
+      const opResults = [];
+      let failed = false;
+      for (const op of ops) {
+        const gql = await shopifyGraphql({
+          shop,
+          accessToken: tokens.access_token,
+          query: op.query,
+          variables: op.variables,
+        });
+        if (!gql.ok) {
+          failed = true;
+          opResults.push({ kind: op.kind, ok: false, error: gql.error });
+          break;
+        }
+        const userErrors =
+          gql.data?.productUpdate?.userErrors ||
+          gql.data?.productVariantsBulkUpdate?.userErrors ||
+          [];
+        if (userErrors.length) {
+          failed = true;
+          opResults.push({ kind: op.kind, ok: false, userErrors });
+          break;
+        }
+        opResults.push({ kind: op.kind, ok: true });
+      }
+      results.push({ handle, ok: !failed, productId: productGid, operations: opResults });
+    }
+
+    const uploaded = results.filter((r) => r.ok && !r.dryRun && !r.skipped).length;
+    res.json({
+      ok: results.every((r) => r.ok),
+      dryRun,
+      shop,
+      uploaded,
+      results,
+    });
   }));
 
   return router;

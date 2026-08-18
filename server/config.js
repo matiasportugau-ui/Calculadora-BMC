@@ -176,6 +176,10 @@ export const config = {
     "read_products,write_products,read_orders,write_orders,read_customers,read_draft_orders,write_draft_orders",
   shopifyWebhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET || "",
   shopifyQuestionsSheetTab: process.env.SHOPIFY_QUESTIONS_SHEET_TAB || "Shopify_Preguntas",
+  /** myshopify.com domain for OAuth/theme CLI (e.g. store.myshopify.com) */
+  shopifyShop: process.env.SHOPIFY_SHOP || "",
+  /** Public Online Store URL for Local Studio catalog snapshot */
+  shopifyStorefrontUrl: process.env.SHOPIFY_STOREFRONT_URL || "https://bmcuruguay.com.uy",
   /**
    * Google Ads API (requerido para /api/ads/*) — ver docs/procedimientos/GOOGLE-ADS-SETUP.md.
    * `googleAdsLoginCustomerId` es la MCC ("BMC Manager"); `customerId` (la cuenta
