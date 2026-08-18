@@ -47,6 +47,7 @@ export default function BmcModuleNav() {
   const hubActive =
     pathname === "/hub" ||
     pathname.startsWith("/hub/ml") ||
+    pathname.startsWith("/hub/shopify") ||
     pathname.startsWith("/hub/wa") ||
     pathname.startsWith("/hub/canales") ||
     pathname.startsWith("/hub/admin") ||

@@ -1,0 +1,4 @@
+# Pulled theme files go here (gitignored). Keep README.md tracked.
+*
+!.gitignore
+!README.md

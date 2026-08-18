@@ -90,11 +90,15 @@ Shopify connector task:
 | **B. Catalog & PIM** | Products, variants, images, collections, sync | Admin GraphQL; `/api/shopify/*`; visor scripts; publish script |
 | **C. Commerce ops** | Orders, draft orders, customers, fulfillments | Admin GraphQL + webhooks (`orders/*`, `customers/*`) |
 | **D. Merchandising** | Discounts, price lists, metafields, metaobjects | Admin GraphQL; metaobject definitions |
-| **E. Design / theme** | Theme, sections, CSS, brand assets, OS 2.0 | Theme editor, Liquid, theme app extensions |
+| **E. Design / theme** | Theme, sections, CSS, brand assets, OS 2.0 | Theme editor; `shopify-theme/` + `npm run shopify:theme:*`; theme app extensions |
 | **F. Storefront UX** | Product pages, cart, customer account | Storefront API, Hydrogen (optional), Checkout Extensibility |
 | **G. App extensions** | Admin blocks, checkout UI, POS, Flow | Shopify app extensions + Functions |
 | **H. Comms** | Questions/quotes, chat agent | `shopify-integration-v4` + `shop-chat-agent/` |
 | **I. Analytics / markets** | Markets, duties, reports (read) | Admin GraphQL; respect Uruguay/LATAM + USD list prices |
+| **J. Local Studio** | Edit locally → upload later | `/shopify-local` + `/hub/shopify`; drafts in `.runtime/`; theme pull/dev/push |
+
+**Local Studio (catalog):** browse live storefront → save drafts → dry-run → `POST /api/shopify/studio/upload` (OAuth + API key).  
+**Local Studio (theme):** `npm run shopify:theme:pull` → edit `shopify-theme/` → `dev` → `push` (unpublished by default).
 
 Prices in BMC remain **USD ex-IVA**; 22% IVA at totals. Channel `web` aligns with Shopify list — see commercial policy doc. Do not invent prices; source from MATRIZ / `constants.js` / Panelin PIM.
 
@@ -107,6 +111,10 @@ Prices in BMC remain **USD ex-IVA**; 22% IVA at totals. Channel `web` aligns wit
 | POST | `/webhooks/shopify` | HMAC | Ingest topics → Sheet/DB |
 | GET | `/api/shopify/products` | API key | Paginated Admin catalog |
 | GET | `/api/shopify/catalog/full` | API key | Multi-page catalog sweep |
+| GET | `/api/shopify/studio/status` | public | Local Studio connection status |
+| GET | `/api/shopify/studio/catalog` | public | Storefront snapshot + draft overlays |
+| GET/PUT | `/api/shopify/studio/drafts` | public | Local draft store (`.runtime/`) |
+| POST | `/api/shopify/studio/upload` | API key | Apply drafts via Admin GraphQL |
 | GET | `/admin/questions` | (module) | Pending questions list |
 | POST | `/admin/answer` | (module) | Approve & send reply |
 | GET/POST | `/admin/auto-config` | (module) | Auto-reply schedule (UTC-3) |

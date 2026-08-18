@@ -70,6 +70,7 @@ const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminMod
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
 const AssistantsStatusPanel = lazy(() => import("./components/hub/admin/AssistantsStatusPanel.jsx"));
 const MlManagerModule = lazy(() => import("./components/hub/ml/MlManagerModule.jsx"));
+const ShopifyLocalStudioModule = lazy(() => import("./components/hub/shopify/ShopifyLocalStudioModule.jsx"));
 const PeaConsoleModule = lazy(() => import("./components/hub/pea/PeaConsoleModule.jsx"));
 
 const suspenseFallback = (
@@ -218,6 +219,18 @@ export default function App() {
               <RequireGrant module="canales" minLevel="read">
                 <Suspense fallback={suspenseFallback}>
                   <MlManagerModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/shopify"
+          element={
+            <Shell>
+              <RequireGrant module="canales" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <ShopifyLocalStudioModule />
                 </Suspense>
               </RequireGrant>
             </Shell>
@@ -514,6 +527,14 @@ export default function App() {
           element={
             <Suspense fallback={suspenseFallback}>
               <FichasPreview />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/shopify-local"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <ShopifyLocalStudioModule />
             </Suspense>
           }
         />
