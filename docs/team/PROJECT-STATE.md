@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-15 (bake MATRIZ → constants.js)
+**Última actualización:** 2026-08-18 (test coverage: libre-panel metrics + claim id + safeErr)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-18 (test — coverage pin libre-panel metrics + claim id + safeErr):** Offline pins for presupuesto-libre panel m²/cantPaneles (`tests/librePanelDimensions.test.js`), anonymous `client_quote_id` claim list (`tests/clientQuoteId.test.js`), and identity wire-error scrubber (`tests/safeErr.test.js`). Wired into `test:core` / `test:api`. No production behavior change.
 
 **2026-08-15 (chore — precios MATRIZ horneados en constants.js):** Bake del CSV vivo (`/api/actualizar-precios-calculadora`) → `src/data/constants.js`. Suben AC38G venta 0.70→2, APHG38 0.13→0.24, SN300B web 4.20→7.11, PGLC250 32.22/37.59/26.85→37.30/43.51/31.08, PU250MM 17.68/20.62/14.73→21.25/24.79/17.71, PA5852 web 64.19→74.89 (venta local 64.19). Data version `90e7168e36`. Catalog-diff vs MATRIZ: 0 S1. GLDCAM100 y CD100 no vienen en el CSV de 111 paths (quedan).
 
