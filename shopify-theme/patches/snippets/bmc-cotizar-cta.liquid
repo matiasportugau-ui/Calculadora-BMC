@@ -1,0 +1,38 @@
+{% comment %}
+  BMC — Cotizar con Panelin CTA (Dawn / OS 2.0)
+  Styles: assets/bmc-cotizar-cta.css (loaded by section or theme).
+{% endcomment %}
+
+{%- liquid
+  assign calc_base = calc_url | default: 'https://calculadora-bmc.vercel.app'
+  if calc_base == blank
+    assign calc_base = 'https://calculadora-bmc.vercel.app'
+  endif
+  assign label = cta_label | default: 'Cotizar con Panelin'
+  assign sub = cta_sub | default: 'Presupuesto a medida · techo y fachada'
+  assign handle = product.handle | default: ''
+  assign title = product.title | default: ''
+  assign href = calc_base | append: '/?chat=1&utm_source=shopify&utm_medium=pdp&utm_campaign=cotizar_panelin'
+  if handle != blank
+    assign href = href | append: '&shopify_handle=' | append: handle
+  endif
+-%}
+
+{{ 'bmc-cotizar-cta.css' | asset_url | stylesheet_tag }}
+
+<div class="bmc-cotizar" data-bmc-cotizar>
+  <a
+    class="bmc-cotizar__btn"
+    href="{{ href | escape }}"
+    target="_blank"
+    rel="noopener noreferrer"
+    data-bmc-product-handle="{{ handle | escape }}"
+    data-bmc-product-title="{{ title | escape }}"
+  >
+    <span class="bmc-cotizar__label">{{ label }}</span>
+    <span class="bmc-cotizar__sub">{{ sub }}</span>
+  </a>
+  <p class="bmc-cotizar__note">
+    Abrí la calculadora BMC para un presupuesto en USD (precios sin IVA; IVA 22% al total).
+  </p>
+</div>

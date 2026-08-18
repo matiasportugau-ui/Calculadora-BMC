@@ -128,6 +128,15 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
+            <h2 style={cardTitle}>Shopify · Local Studio</h2>
+            <p style={cardDesc}>
+              Vista local de la tienda: editar borradores (título, descripción, precios) y subir a Shopify cuando esté listo. Theme Liquid: pull → edit → push.
+            </p>
+            <Link to="/shopify-local" style={{ ...cta, background: "#0d9488" }}>
+              Abrir Shopify Local Studio
+            </Link>
+          </div>
+          <div style={card}>
             <h2 style={cardTitle}>WhatsApp · Operativo</h2>
             <p style={cardDesc}>
               Cola CRM con origen WA, aprobar y enviar respuestas vía WhatsApp Cloud API.
