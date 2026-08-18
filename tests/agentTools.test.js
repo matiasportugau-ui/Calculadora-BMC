@@ -278,6 +278,36 @@ await group("buscar_producto — hexagonal alias", async () => {
   assert(labels.includes("exagonal") || labels.includes("hexagonal"), "hits tornillo exagonal family");
 });
 
+await group("buscar_producto — priceHint follows calcState lista (Bug EO)", async () => {
+  const { parsed: asVenta } = await run(
+    "buscar_producto",
+    { q: "PA5852", limit: 5 },
+    { listaPrecios: "venta" },
+  );
+  assert(asVenta.ok === true && asVenta.lista === "venta", "lista=venta from calcState");
+  const paVenta = (asVenta.productos || []).find((p) => p.sku === "PA5852");
+  assert(!!paVenta, "finds PA5852");
+  assert(paVenta.priceHint === 64.19, `venta priceHint 64.19 (got ${paVenta.priceHint})`);
+
+  const { parsed: asWeb } = await run(
+    "buscar_producto",
+    { q: "PA5852", limit: 5 },
+    { listaPrecios: "web" },
+  );
+  assert(asWeb.lista === "web", "lista=web from calcState");
+  const paWeb = (asWeb.productos || []).find((p) => p.sku === "PA5852");
+  assert(paWeb.priceHint === 74.89, `web priceHint 74.89 (got ${paWeb?.priceHint})`);
+
+  const { parsed: override } = await run(
+    "buscar_producto",
+    { q: "PA5852", limit: 5, lista: "venta" },
+    { listaPrecios: "web" },
+  );
+  assert(override.lista === "venta", "input.lista overrides calcState");
+  const paOv = (override.productos || []).find((p) => p.sku === "PA5852");
+  assert(paOv.priceHint === 64.19, "override venta priceHint");
+});
+
 await group("agregar_extraordinario — requiere confirmación", async () => {
   const { parsed: denied } = await run("agregar_extraordinario", { label: "Mano de obra", pu: 250 });
   assert(denied.ok === false, "MCP sin user_confirmed → deny");

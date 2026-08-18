@@ -348,13 +348,15 @@ export const AGENT_TOOLS = [
     name: "buscar_producto",
     description:
       "Busca en el catálogo vendible (paneles, perfilería, tornillería, selladores) con el mismo motor que el drawer Agregar producto: acentos, alias (hexagonal/exagonal, PU/espuma) y tokens AND. " +
-      "Usar ANTES de presupuesto_libre cuando el usuario nombra un producto y no tenés el id/SKU exacto.",
+      "Usar ANTES de presupuesto_libre cuando el usuario nombra un producto y no tenés el id/SKU exacto. " +
+      "priceHint usa la lista activa del calc (venta/web); no asumas web.",
     input_schema: {
       type: "object",
       properties: {
         q: { type: "string", description: "Texto libre: nombre, SKU, gotero 100, tornillo hexagonal…" },
         category: { type: "string", enum: ["ALL", "PANELES", "PERFILERÍA", "TORNILLERÍA", "SELLADORES"] },
         limit: { type: "number", description: "Máx resultados. Default 8." },
+        lista: { type: "string", enum: ["web", "venta"], description: "Override de lista para priceHint. Default: calcState.listaPrecios (else web)." },
       },
       required: ["q"],
     },
@@ -1810,11 +1812,19 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const q = String(input?.q || "").trim();
       if (!q) return JSON.stringify({ error: "q requerido" });
       const limit = Math.min(20, Math.max(1, Number(input?.limit) || 8));
+      // Bug EO — never hardcode web: match ProductQuickAddDrawer (listaPrecios).
+      const lista =
+        input?.lista === "venta" || input?.lista === "web"
+          ? input.lista
+          : calcState?.listaPrecios === "venta"
+            ? "venta"
+            : "web";
       const index = buildProductCatalogIndex();
       const hits = filterAndRankProducts(index, q, { category: input?.category || "ALL" }).slice(0, limit);
       return JSON.stringify({
         ok: true,
         q,
+        lista,
         count: hits.length,
         productos: hits.map((r) => ({
           id: r.id,
@@ -1827,7 +1837,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
           espesor: r.espesor ?? null,
           unidad: r.unidad,
           category: r.category,
-          priceHint: rowPriceHint(r, "web"),
+          priceHint: rowPriceHint(r, lista),
         })),
       });
     }
