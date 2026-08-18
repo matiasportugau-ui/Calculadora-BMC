@@ -1,0 +1,33 @@
+---
+description: >-
+  WhatsApp + Google Drive work in Calculadora-BMC. Company-knowledge-first:
+  read the WhatsApp Drive pack (MANIFEST, source map, blueprint, context recipe)
+  before designing or coding. Apply when the task mentions WhatsApp Drive,
+  conector WhatsApp Drive, WA+Drive, Drive as WhatsApp context, wa-media vs
+  Drive, quote archive for WhatsApp, or the whatsapp-drive knowledge pack.
+alwaysApply: false
+---
+
+# BMC WhatsApp Drive — Company-Knowledge-First
+
+When the task touches **WhatsApp together with Google Drive**, a **WhatsApp Drive connector**, or **Drive files as WA context**, ground in the real repo **before** proposing specs or code. Read, in order:
+
+1. `docs/team/connectors/whatsapp-drive/README.md`
+2. `docs/team/connectors/whatsapp-drive/MANIFEST.json`
+3. `docs/team/connectors/whatsapp-drive/SOURCE-MAP.md`
+4. `docs/team/connectors/whatsapp-drive/BLUEPRINT.md`
+5. `docs/team/connectors/whatsapp-drive/CONTEXT-RECIPE.md`
+6. `docs/team/connectors/whatsapp-drive/knowledge/` files for the layer you need
+
+## Non-negotiable invariants
+
+- **Human gate on every outbound WhatsApp** to a customer. Inbound generates suggestions (CRM / Omni / cockpit), not autonomous Cloud API replies.
+- **Inbound WA = no tools.** Tool loop is Panelin chat / MCP only (`enviar_whatsapp_link` needs `user_confirmed`).
+- **Drive scope is `drive.file` only.** Do not assume the app can list an arbitrary company knowledge library.
+- **WA media is GCS** (`wa-media/`), not Google Drive. Quote PDFs / `.bmc.json` are Drive.
+- **Do not** dump this pack into `data/knowledge/` or `knowledgeLoader.js` (that injects into **all** chats).
+- **Never** log or paste `WHATSAPP_*` tokens, `GOOGLE_DRIVE_REFRESH_TOKEN`, or live folder IDs.
+- **Don't invent** files/routes/flag state. Unverified → `#ZonaDesconocida`.
+- There is **no** shipped WA↔Drive sync. Reuse `whatsappOutbound.js` and `driveUpload.js`; do not fork Graph or Drive clients.
+
+Complements (does not replace): `.cursor/rules/human-gates-bmc.mdc`, `.cursor/skills/whatsapp-drive-connector/SKILL.md`, `.cursor/skills/bmc-google-drive-oauth/SKILL.md`.

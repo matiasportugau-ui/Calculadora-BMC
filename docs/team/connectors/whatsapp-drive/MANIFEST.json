@@ -1,0 +1,56 @@
+{
+  "id": "whatsapp-drive-connector-kb",
+  "version": 1,
+  "title": "WhatsApp Drive connector knowledge pack",
+  "root": "docs/team/connectors/whatsapp-drive",
+  "purpose": "Accessible files so a WhatsApp Drive connector (or Cursor agent) can assemble context without hunting the rest of the repo.",
+  "read_order": [
+    "README.md",
+    "SOURCE-MAP.md",
+    "BLUEPRINT.md",
+    "CONTEXT-RECIPE.md"
+  ],
+  "knowledge_dir": "knowledge",
+  "layers": {
+    "always": [
+      "knowledge/00-identity-and-rules.md",
+      "knowledge/08-ai-context-stack.md",
+      "knowledge/11-gaps-and-non-goals.md"
+    ],
+    "on_quote": [
+      "knowledge/06-drive-quote-archive.md",
+      "knowledge/07-drive-folder-conventions.md",
+      "knowledge/09-quote-wa-drive-exports.md"
+    ],
+    "on_media": [
+      "knowledge/10-media-gcs-vs-drive.md"
+    ],
+    "on_ops": [
+      "knowledge/01-whatsapp-inbound.md",
+      "knowledge/02-whatsapp-outbound.md",
+      "knowledge/03-wa-cockpit-and-omni.md",
+      "knowledge/04-env-and-secrets.md",
+      "knowledge/05-drive-auth-and-scopes.md",
+      "knowledge/12-operator-playbook.md"
+    ]
+  },
+  "files": [
+    { "path": "README.md", "tags": ["entry"] },
+    { "path": "SOURCE-MAP.md", "tags": ["index", "verified"] },
+    { "path": "BLUEPRINT.md", "tags": ["architecture"] },
+    { "path": "CONTEXT-RECIPE.md", "tags": ["ingest"] },
+    { "path": "knowledge/00-identity-and-rules.md", "tags": ["always", "gates"] },
+    { "path": "knowledge/01-whatsapp-inbound.md", "tags": ["wa", "inbound"] },
+    { "path": "knowledge/02-whatsapp-outbound.md", "tags": ["wa", "outbound"] },
+    { "path": "knowledge/03-wa-cockpit-and-omni.md", "tags": ["wa", "omni"] },
+    { "path": "knowledge/04-env-and-secrets.md", "tags": ["env"] },
+    { "path": "knowledge/05-drive-auth-and-scopes.md", "tags": ["drive", "oauth"] },
+    { "path": "knowledge/06-drive-quote-archive.md", "tags": ["drive", "quotes"] },
+    { "path": "knowledge/07-drive-folder-conventions.md", "tags": ["drive", "naming"] },
+    { "path": "knowledge/08-ai-context-stack.md", "tags": ["always", "ai"] },
+    { "path": "knowledge/09-quote-wa-drive-exports.md", "tags": ["export"] },
+    { "path": "knowledge/10-media-gcs-vs-drive.md", "tags": ["media"] },
+    { "path": "knowledge/11-gaps-and-non-goals.md", "tags": ["always", "gaps"] },
+    { "path": "knowledge/12-operator-playbook.md", "tags": ["ops"] }
+  ]
+}

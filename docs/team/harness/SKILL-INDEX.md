@@ -14,6 +14,7 @@ Coding agents must **not** load every skill into context. Use this index to pick
 | Multi-Context Agent (tabs shared + email R/W) | panelin-email-admin SDD | `docs/sdd/panelin-email-admin/SDD.md` |
 | Panelin chat UI + Training KB | bmc-panelin-chat (agent) | `.claude/agents/bmc-panelin-chat.md` |
 | Panelin-Gym / train / gold runs | panelin-gym | `.cursor/skills/panelin-gym/SKILL.md` |
+| WhatsApp Drive connector knowledge pack | whatsapp-drive-connector | `.cursor/skills/whatsapp-drive-connector/SKILL.md` |
 
 ## Workspace (`~/.claude/skills`) — high leverage for BMC
 
