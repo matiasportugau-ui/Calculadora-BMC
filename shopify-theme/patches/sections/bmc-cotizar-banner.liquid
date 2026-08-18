@@ -1,0 +1,47 @@
+{% comment %}
+  Section wrapper so merchants can add "Cotizar con Panelin" in the Theme Editor
+  on the Product template without editing Liquid by hand.
+{% endcomment %}
+
+{% if product %}
+  {% render 'bmc-cotizar-cta',
+    product: product,
+    calc_url: section.settings.calc_url,
+    cta_label: section.settings.cta_label,
+    cta_sub: section.settings.cta_sub
+  %}
+{% endif %}
+
+{% schema %}
+{
+  "name": "BMC Cotizar Panelin",
+  "tag": "section",
+  "class": "section-bmc-cotizar",
+  "settings": [
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "Button label",
+      "default": "Cotizar con Panelin"
+    },
+    {
+      "type": "text",
+      "id": "cta_sub",
+      "label": "Subtitle",
+      "default": "Presupuesto a medida · techo y fachada"
+    },
+    {
+      "type": "text",
+      "id": "calc_url",
+      "label": "Calculator base URL",
+      "default": "https://calculadora-bmc.vercel.app",
+      "info": "Opens with ?chat=1 and shopify_handle for the current product"
+    }
+  ],
+  "presets": [
+    {
+      "name": "BMC Cotizar Panelin"
+    }
+  ]
+}
+{% endschema %}

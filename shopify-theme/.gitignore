@@ -1,4 +1,7 @@
-# Pulled theme files go here (gitignored). Keep README.md tracked.
+# Pulled theme files are local-only. Keep docs + BMC patches tracked.
 *
 !.gitignore
 !README.md
+!SETUP-THEME-ACCESS.md
+!patches/
+!patches/**

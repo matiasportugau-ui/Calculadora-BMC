@@ -31,6 +31,7 @@
     "shopify:theme:dev": "bash scripts/shopify-theme-local.sh dev",
     "shopify:theme:push": "bash scripts/shopify-theme-local.sh push",
     "shopify:theme:help": "bash scripts/shopify-theme-local.sh help",
+    "shopify:theme:apply-patches": "bash scripts/shopify-theme-apply-patches.sh",
     "local:stack:launchd:install": "bash scripts/install-local-stack-launchagent.sh",
     "local:stack:launchd:uninstall": "bash scripts/uninstall-local-stack-launchagent.sh",
     "dev:full:watch": "concurrently -n api,vite -c blue,green \"npm run dev:api\" \"npm run dev\"",

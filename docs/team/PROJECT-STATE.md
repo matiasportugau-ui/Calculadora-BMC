@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-18 (feat — Shopify theme PDP patch: Cotizar con Panelin):** Pack Dawn/OS2.0 en `shopify-theme/patches/` (`bmc-cotizar-cta` snippet + section + CSS). Flujo: Theme Access → `shopify:theme:pull` → `shopify:theme:apply-patches` → `theme:dev` → add section in Theme Editor → `theme:push` unpublished. Doc: `shopify-theme/SETUP-THEME-ACCESS.md`. Requiere `SHOPIFY_SHOP` + `SHOPIFY_CLI_THEME_TOKEN` (aún vacíos en local).
+
 **2026-08-18 (feat — Shopify Local Studio: edit local → upload later):** Vista local de la tienda en `/shopify-local` (sin login) y `/hub/shopify`: catálogo live desde `SHOPIFY_STOREFRONT_URL` (default `bmcuruguay.com.uy`), borradores en `.runtime/shopify-studio-drafts.json`, dry-run + upload Admin GraphQL (`POST /api/shopify/studio/upload`). Theme workflow: `npm run shopify:theme:pull|dev|push` → carpeta `shopify-theme/`. Env: `SHOPIFY_SHOP`, `SHOPIFY_STOREFRONT_URL`, `SHOPIFY_CLI_THEME_TOKEN`. Test `tests/shopifyStudio.test.js`.
 
 **2026-08-15 (chore — precios MATRIZ horneados en constants.js):** Bake del CSV vivo (`/api/actualizar-precios-calculadora`) → `src/data/constants.js`. Suben AC38G venta 0.70→2, APHG38 0.13→0.24, SN300B web 4.20→7.11, PGLC250 32.22/37.59/26.85→37.30/43.51/31.08, PU250MM 17.68/20.62/14.73→21.25/24.79/17.71, PA5852 web 64.19→74.89 (venta local 64.19). Data version `90e7168e36`. Catalog-diff vs MATRIZ: 0 S1. GLDCAM100 y CD100 no vienen en el CSV de 111 paths (quedan).
