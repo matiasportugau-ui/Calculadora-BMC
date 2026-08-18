@@ -26,6 +26,7 @@ Cada archivo en esta carpeta es la **base de conocimiento** de un rol: entradas/
 - `MATPROMT.md` — MATPROMT (prompts por full team run, paso 0a)
 - `RepoSync.md` — RepoSync
 - `SIM.md` — **Stub:** redirige a [`../panelsim/knowledge/SIM.md`](../panelsim/knowledge/SIM.md). Todo el agente vive en [`../panelsim/`](../panelsim/).
+- `WhatsAppDrive.md` — **Stub:** redirige a [`../connectors/whatsapp-drive/README.md`](../connectors/whatsapp-drive/README.md) (pack de contexto WA + Drive).
 - `PANELSIM-FULL-PROJECT-KB.md` — **Stub:** [`../panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md`](../panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md)
 - `SIM-REV.md` — **Stub:** [`../panelsim/knowledge/SIM-REV.md`](../panelsim/knowledge/SIM-REV.md)
 
