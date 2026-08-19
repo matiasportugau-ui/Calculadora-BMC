@@ -15,6 +15,7 @@ import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src
 import { hydrateLibreExtras, extraToEngineItem, normalizeLibreExtra } from "../../src/utils/libreExtras.js";
 import { buildProductCatalogIndex, rowPriceHint } from "../../src/utils/productCatalogIndex.js";
 import { filterAndRankProducts } from "../../src/utils/productSearch.js";
+import { resolveTipoAguas } from "../../src/utils/techoTipoAguas.js";
 import { config } from "../config.js";
 import { getPdf } from "../routes/calc.js";
 import { postCotizar, postCotizarPdf, postPresupuestoLibre } from "./calcLoopbackClient.js";
@@ -1300,25 +1301,55 @@ function runTecho(techo, lista) {
   const zonas = techo.zonas || [];
   if (zonas.length === 0) return null;
 
-  const zonaResults = zonas.map((z) =>
-    calcTechoCompleto({
-      familia: normalizeFamilia(techo.familia),
-      espesor: Number(techo.espesor),
-      largo: Number(z.largo),
-      ancho: Number(z.ancho),
-      tipoAguas: techo.tipoAguas || "una_agua",
-      pendiente: Number(techo.pendiente || 0),
-      tipoEst: techo.tipoEst || "metal",
-      color: techo.color || "Blanco",
-      borders: techo.borders || {
-        frente: "gotero_frontal",
-        fondo: "gotero_lateral",
-        latIzq: "gotero_lateral",
-        latDer: "gotero_lateral",
-      },
-      opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
-    })
-  );
+  // Bug EQ — live UI prices from zonas[].dosAguas; techo.tipoAguas is often stale.
+  // Mirror server/routes/calc.js runCalcTecho (half-width + cumbrera) for dos_aguas.
+  const tipoAguas = resolveTipoAguas(techo);
+  const is2A = tipoAguas === "dos_aguas";
+  const familia = normalizeFamilia(techo.familia);
+  const espesor = Number(techo.espesor);
+  const pendiente = Number(techo.pendiente || 0);
+  const tipoEst = techo.tipoEst || "metal";
+  const color = techo.color || "Blanco";
+  const borders = techo.borders || {
+    frente: "gotero_frontal",
+    fondo: "gotero_lateral",
+    latIzq: "gotero_lateral",
+    latDer: "gotero_lateral",
+  };
+  const opciones = { inclCanalon: false, inclGotSup: false, inclSell: true };
+
+  const zonaResults = zonas.flatMap((z) => {
+    const largo = Number(z.largo);
+    const ancho = Number(z.ancho);
+    if (is2A) {
+      const ha = +(ancho / 2).toFixed(2);
+      return [
+        calcTechoCompleto({
+          familia, espesor, largo, ancho: ha, tipoAguas: "una_agua",
+          pendiente, tipoEst, color,
+          borders: { ...borders, fondo: "cumbrera" },
+          opciones,
+        }),
+        calcTechoCompleto({
+          familia, espesor, largo, ancho: ha, tipoAguas: "una_agua",
+          pendiente, tipoEst, color,
+          borders: {
+            frente: borders.fondo === "cumbrera" ? "cumbrera" : (borders.fondo || "none"),
+            fondo: "none",
+            latIzq: borders.latIzq || "none",
+            latDer: borders.latDer || "none",
+          },
+          opciones,
+        }),
+      ];
+    }
+    return [
+      calcTechoCompleto({
+        familia, espesor, largo, ancho, tipoAguas,
+        pendiente, tipoEst, color, borders, opciones,
+      }),
+    ];
+  });
 
   return zonaResults.length === 1 ? zonaResults[0] : mergeZonaResults(zonaResults);
 }

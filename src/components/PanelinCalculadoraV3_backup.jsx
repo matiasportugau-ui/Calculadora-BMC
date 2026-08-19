@@ -2701,10 +2701,25 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const setCategoriasActivas = useMemo(() => wrapSetter(_setCategoriasActivas, "categoriasActivas"), [_setCategoriasActivas]);
 
   // ── Panelin AI agent ──
-  const calcState = useMemo(
-    () => ({ scenario, listaPrecios, techo, pared, camara, flete, proyecto, wizardStep }),
-    [scenario, listaPrecios, techo, pared, camara, flete, proyecto, wizardStep]
-  );
+  // Stamp derived tipoAguas so agent tools /calc loopback match live UI pricing
+  // (Bug EQ — techo.tipoAguas is deprecated and often stale after zone toggles).
+  const calcState = useMemo(() => {
+    const tipoAguas = (techo.zonas || [])
+      .filter((z) => !isLateralAnnexZona(z))
+      .some((z) => z.dosAguas)
+      ? "dos_aguas"
+      : "una_agua";
+    return {
+      scenario,
+      listaPrecios,
+      techo: { ...techo, tipoAguas },
+      pared,
+      camara,
+      flete,
+      proyecto,
+      wizardStep,
+    };
+  }, [scenario, listaPrecios, techo, pared, camara, flete, proyecto, wizardStep]);
 
   const handleChatAction = useCallback(
     (action) => {
