@@ -36,6 +36,7 @@ import {
   CALCULATOR_DATA_VERSION_DATE,
 } from "../../src/data/constants.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src/utils/presupuestoLibreCatalogo.js";
+import { resolveTipoAguas } from "../../src/utils/techoTipoAguas.js";
 import { config } from "../config.js";
 import { GPT_ACTIONS } from "../gptActions.js";
 import { uploadQuoteToGcs, uploadPdfToGcs } from "../lib/gcsUpload.js";
@@ -318,34 +319,37 @@ function buildGptResponse(escenario, lista, results, flete) {
 }
 
 function runCalcTecho(techo) {
-  const is2A = techo.tipoAguas === "dos_aguas";
-  const zonas = techo.zonas || [{ largo: techo.largo || 6, ancho: techo.ancho || 5 }];
+  // Bug EQ — prefer zonas[].dosAguas (live UI source of truth) over stale tipoAguas.
+  const tipoAguas = resolveTipoAguas(techo);
+  const techoEff = techo?.tipoAguas === tipoAguas ? techo : { ...techo, tipoAguas };
+  const is2A = tipoAguas === "dos_aguas";
+  const zonas = techoEff.zonas || [{ largo: techoEff.largo || 6, ancho: techoEff.ancho || 5 }];
 
   const zonaResults = zonas.flatMap((zona, gi) => {
     const perimVertPts =
       !is2A && zonas.length
-        ? perimetroVerticalInteriorPuntosDesdePlanta(zonas, techo.tipoAguas, gi)
+        ? perimetroVerticalInteriorPuntosDesdePlanta(zonas, tipoAguas, gi)
         : undefined;
     if (is2A) {
       const ha = +(zona.ancho / 2).toFixed(2);
       const a1 = calcTechoCompleto({
-        ...techo, largo: zona.largo, ancho: ha,
-        borders: { ...techo.borders, fondo: "cumbrera" },
+        ...techoEff, largo: zona.largo, ancho: ha,
+        borders: { ...techoEff.borders, fondo: "cumbrera" },
       });
       const a2 = calcTechoCompleto({
-        ...techo, largo: zona.largo, ancho: ha,
+        ...techoEff, largo: zona.largo, ancho: ha,
         borders: {
-          frente: techo.borders?.fondo === "cumbrera" ? "cumbrera" : (techo.borders?.fondo || "none"),
+          frente: techoEff.borders?.fondo === "cumbrera" ? "cumbrera" : (techoEff.borders?.fondo || "none"),
           fondo: "none",
-          latIzq: techo.borders?.latIzq || "none",
-          latDer: techo.borders?.latDer || "none",
+          latIzq: techoEff.borders?.latIzq || "none",
+          latDer: techoEff.borders?.latDer || "none",
         },
       });
       return [a1, a2];
     }
     return [
       calcTechoCompleto({
-        ...techo,
+        ...techoEff,
         largo: zona.largo,
         ancho: zona.ancho,
         ...(perimVertPts != null ? { perimetroVerticalInteriorPuntos: perimVertPts } : {}),
