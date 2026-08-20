@@ -5,6 +5,7 @@
 import React, { useCallback, useState } from "react";
 import { useBmcAuth } from "../../hooks/useBmcAuth.js";
 import { requestAuthGate } from "./AuthGateModal.jsx";
+import { WHITELABEL_BRAND } from "../../config/whitelabel.js";
 
 const PRESET_AVATAR = {
   comercial: "🏢",
@@ -135,12 +136,14 @@ export default function AuthHeader() {
           >
             Mis cotizaciones
           </a>
+          {!WHITELABEL_BRAND ? (
           <a
             href="/mi-espacio?tab=bandeja"
             style={{ display: "block", padding: "6px 4px", fontSize: 13, color: "#0f172a", textDecoration: "none" }}
           >
             Bandeja
           </a>
+          ) : null}
           <button
             type="button"
             onClick={async () => {

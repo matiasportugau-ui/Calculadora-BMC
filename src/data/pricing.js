@@ -16,6 +16,18 @@ import {
 } from "./constants.js";
 import { getPricingOverrides, applyOverridesToObject } from "../utils/pricingOverrides.js";
 import { getDimensioningOverrides } from "../utils/dimensioningFormulasOverrides.js";
+import { WHITELABEL } from "../config/whitelabel.js";
+import { getJenerikPricingOverrides } from "../utils/jenerikMatriz.js";
+
+function stripCostoDeep(node) {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    node.forEach(stripCostoDeep);
+    return;
+  }
+  delete node.costo;
+  for (const v of Object.values(node)) stripCostoDeep(v);
+}
 
 const BASE = {
   PANELS_TECHO: PT,
@@ -34,6 +46,11 @@ let _cache = null;
 /** Obtener pricing con overrides aplicados. Cache se invalida al guardar overrides. */
 export function getPricing() {
   if (_cache) return _cache;
+  if (WHITELABEL) {
+    _cache = applyOverridesToObject(BASE, getJenerikPricingOverrides());
+    stripCostoDeep(_cache);
+    return _cache;
+  }
   const pricingOverrides = getPricingOverrides();
   const dimensioningOverrides = getDimensioningOverrides();
   const allOverrides = { ...pricingOverrides, ...dimensioningOverrides };

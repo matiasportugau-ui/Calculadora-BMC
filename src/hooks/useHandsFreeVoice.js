@@ -1,18 +1,25 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { WHITELABEL_AGENT } from "../config/whitelabel.js";
 
 const PHASE_LISTENING = "Escuchando…";
 
 // Brand wake word + the variants Spanish ASR commonly returns for the coined
 // word "Panelín" — it tends to add the accent ("panelín") or split it ("panel in").
-const WAKE_WORDS = ["panelin", "panel in", "panelina", "panecillo"];
+export const PANELIN_WAKE_WORDS = ["panelin", "panel in", "panelina", "panecillo"];
 // Accent stripping reuses the repo idiom (BmcLogisticaApp.jsx, BmcPlanosModule.jsx).
 const normWake = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 // Tolerant wake-word test: accent-insensitive, and collapses spaces so the
 // split transcription "panel in" still matches the contiguous "panelin".
-export const hasWake = (text) => {
+export const hasWake = (text, words = PANELIN_WAKE_WORDS) => {
   if (!text) return false;
-  const n = normWake(text);
-  return n.replace(/[^a-z0-9]/g, "").includes("panelin") || WAKE_WORDS.some((w) => n.includes(w));
+  const n = normWake(String(text));
+  const compact = n.replace(/[^a-z0-9]/g, "");
+  const list = Array.isArray(words) && words.length ? words : PANELIN_WAKE_WORDS;
+  return list.some((w) => {
+    const nw = normWake(String(w || ""));
+    const cw = nw.replace(/[^a-z0-9]/g, "");
+    return (nw && n.includes(nw)) || (cw && compact.includes(cw));
+  });
 };
 
 /** Exponential backoff for wake-word SpeechRecognition onend restarts (B-02). */
@@ -26,8 +33,11 @@ export function wakeRestartDelayMs(attempt) {
 const WAKE_RESTART_MAX_ATTEMPTS = 12;
 
 export function useHandsFreeVoice({ onError, send, messages = [] }) {
+  const agentName = WHITELABEL_AGENT.name;
+  const wakeWords = WHITELABEL_AGENT.wake || PANELIN_WAKE_WORDS;
+  const waitingPhase = `Esperando '${agentName}'…`;
   const [status, setStatus] = useState("idle");
-  const [phase, setPhase] = useState("Esperando 'Panelin'…");
+  const [phase, setPhase] = useState(waitingPhase);
   const [transcript, setTranscript] = useState([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [vuLevel, setVuLevel] = useState(0);
@@ -159,7 +169,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
 
         thinkingTimeoutRef.current = setTimeout(() => {
           if (currentPhaseRef.current === "thinking") {
-            speakText("Lo siento, hubo un error. Decí 'Panelin' para comenzar.")
+            speakText(`Lo siento, hubo un error. Decí '${agentName}' para comenzar.`)
               .then(() => startWakeWordDetectionRef.current?.());
           }
         }, 30000);
@@ -174,7 +184,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     };
 
     SR.current.start();
-  }, [updateVU, send, messages.length, speakText, onError]);
+  }, [updateVU, send, messages.length, speakText, onError, agentName, waitingPhase]);
 
   const startWakeWordDetection = useCallback(() => {
     if (!SR.current) {
@@ -205,7 +215,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         // Check interim results too: with continuous=true the wake word can sit
         // un-finalized for a long time, so waiting for isFinal adds latency/misses.
-        if (hasWake(event.results[i][0].transcript)) {
+        if (hasWake(event.results[i][0].transcript, wakeWords)) {
           hasWakeWord = true;
         }
       }
@@ -258,7 +268,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
         if (currentPhaseRef.current === "waking" && SR.current) {
           try {
             SR.current.start();
-            setPhase("Esperando 'Panelin'…");
+            setPhase(waitingPhase);
           } catch {
             // start() throws if recognition is already running — safe to ignore
           }
@@ -270,8 +280,8 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     SR.current.start();
     setStatus("active");
     currentPhaseRef.current = "waking";
-    setPhase("Esperando 'Panelin'…");
-  }, [onError, startVU, updateVU, playBeep, startQueryListening]);
+    setPhase(waitingPhase);
+  }, [onError, startVU, updateVU, playBeep, startQueryListening, wakeWords, waitingPhase]);
 
   useEffect(() => {
     startWakeWordDetectionRef.current = startWakeWordDetection;
@@ -302,7 +312,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
               SR.current.onresult = (event) => {
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                   const trans = event.results[i][0].transcript;
-                  if (hasWake(trans)) {
+                  if (hasWake(trans, wakeWords)) {
                     window.speechSynthesis.cancel();
                     SR.current.abort();
                     playBeep();
@@ -351,7 +361,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     }
     setStatus("idle");
     currentPhaseRef.current = "idle";
-    setPhase("Esperando 'Panelin'…");
+    setPhase(waitingPhase);
     setTranscript([]);
   }, []);
 

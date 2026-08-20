@@ -10,6 +10,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import { requestAuthGate } from "./auth/AuthGateModal.jsx";
 import HistorialTab from "./me/HistorialTab.jsx";
+import TenantTeamTab from "./me/TenantTeamTab.jsx";
+import { WHITELABEL_BRAND } from "../config/whitelabel.js";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -18,11 +20,15 @@ const ApiBase = (() => {
   return "";
 })();
 
+const BC_TABS = new Set(["cotizaciones", "equipo", "preferencias"]);
+
 function useTab() {
   const initial = (() => {
     if (typeof window === "undefined") return "cotizaciones";
     const u = new URL(window.location.href);
-    return u.searchParams.get("tab") || "cotizaciones";
+    const raw = u.searchParams.get("tab") || "cotizaciones";
+    if (WHITELABEL_BRAND && !BC_TABS.has(raw)) return "cotizaciones";
+    return raw;
   })();
   const [tab, setTab] = useState(initial);
   const change = useCallback((next) => {
@@ -78,17 +84,25 @@ export default function MySpacePage() {
           {auth.user?.email} · plan {auth.plan_tier} · rol {auth.role}
         </div>
       </header>
-      <KpiStrip token={auth.accessToken} onClickTab={setTab} />
+      {!WHITELABEL_BRAND ? <KpiStrip token={auth.accessToken} onClickTab={setTab} /> : null}
       <nav style={{ display: "flex", gap: 6, borderBottom: "1px solid #e2e8f0", marginBottom: 16, flexWrap: "wrap" }}>
-        {[
-          ["cotizaciones", "Mis cotizaciones"],
-          ["bandeja", "Bandeja"],
-          ["mensajes", "Mensajes"],
-          ["historial", "Historial"],
-          ["tareas", "Tareas"],
-          ["solicitudes", "Solicitudes"],
-          ["preferencias", "Preferencias"],
-        ].map(([id, label]) => (
+        {(WHITELABEL_BRAND
+          ? [
+              ["cotizaciones", "Mis cotizaciones"],
+              ["equipo", "Equipo BC"],
+              ["preferencias", "Preferencias"],
+            ]
+          : [
+              ["cotizaciones", "Mis cotizaciones"],
+              ["bandeja", "Bandeja"],
+              ["mensajes", "Mensajes"],
+              ["historial", "Historial"],
+              ["tareas", "Tareas"],
+              ["solicitudes", "Solicitudes"],
+              ["equipo", "Equipo BC"],
+              ["preferencias", "Preferencias"],
+            ]
+        ).map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -105,6 +119,7 @@ export default function MySpacePage() {
       {tab === "historial" ? <HistorialTab /> : null}
       {tab === "tareas" ? <TareasSummaryTab token={auth.accessToken} /> : null}
       {tab === "solicitudes" ? <RequestsTab token={auth.accessToken} /> : null}
+      {tab === "equipo" ? <TenantTeamTab token={auth.accessToken} /> : null}
       {tab === "preferencias" ? <PrefsTab user={auth.user} /> : null}
     </div>
   );
@@ -114,23 +129,33 @@ function QuotesTab({ token }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   useEffect(() => {
-    api("/api/me/quotes", { token }).then((j) => setItems(j.items)).catch((e) => setError(e.message));
+    const load = async () => {
+      if (WHITELABEL_BRAND) {
+        const tenant = await api("/api/me/tenant", { token }).catch(() => ({ tenant: null }));
+        if (tenant.tenant?.role === "owner") {
+          const j = await api("/api/me/tenant/quotes?limit=200", { token });
+          setItems(j.items || []);
+          return;
+        }
+        const admin = await api("/api/admin/tenants/bc/quotes?limit=200", { token }).catch(() => null);
+        if (admin?.items) {
+          setItems(admin.items);
+          return;
+        }
+      }
+      const j = await api("/api/me/quotes", { token });
+      setItems(j.items || []);
+    };
+    load().catch((e) => setError(e.message));
   }, [token]);
   if (error) return <Empty>Error: {error}</Empty>;
   if (!items) return <Empty>Cargando…</Empty>;
   if (!items.length) return (
-    // Top-20 run 2026-05-11 (#L6): empty state con call-to-action al cotizador.
     <Empty>
-      Aún no tenés cotizaciones guardadas.
+      Aún no hay presupuestos. Al llegar a Estructura se guardan solos como borrador y toman número.
       <div style={{ marginTop: 12 }}>
-        {/* Frontend run 2026-05-12 (#FE4): hover state — opacidad reducida + transition para feedback visual. */}
-        <a
-          href="/"
-          style={{ display: "inline-block", padding: "8px 16px", borderRadius: 8, background: "#0071e3", color: "#fff", textDecoration: "none", fontSize: 13, fontWeight: 600, transition: "opacity 150ms" }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
-        >
-          Crear nueva cotización →
+        <a href="/" style={{ display: "inline-block", padding: "8px 16px", borderRadius: 8, background: "#211E17", color: "#FBF6E9", textDecoration: "none", fontSize: 13, fontWeight: 600 }}>
+          Nueva cotización →
         </a>
       </div>
     </Empty>
@@ -138,36 +163,40 @@ function QuotesTab({ token }) {
   return (
     <div style={{ display: "grid", gap: 8 }}>
       {items.map((q) => (
-        <div key={q.quote_id} style={cardStyle()}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
-                Cotización {q.quote_id.slice(0, 8)}
-              </div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>
-                {new Date(q.created_at).toLocaleString("es-UY")} · {q.status}
-              </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
-                {q.total_usd ? `USD ${Number(q.total_usd).toFixed(2)}` : "—"}
-              </div>
-              {Number(q.total_usd) > 8500 ? <SpecialQuoteCta token={token} quoteId={q.quote_id} totalUsd={q.total_usd} /> : null}
-            </div>
-          </div>
-          {q.pdf_url ? (
-            <a
-              href={q.pdf_url}
-              target="_blank"
-              rel="noreferrer"
-              style={{ marginTop: 6, fontSize: 12, color: "#2563eb", textDecoration: "none" }}
-            >
-              Ver PDF →
-            </a>
-          ) : null}
-        </div>
+        <QuoteSummaryCard key={q.quote_id} q={q} showUser={WHITELABEL_BRAND} />
       ))}
     </div>
+  );
+}
+
+function QuoteSummaryCard({ q, showUser }) {
+  const code = q.code || q.client_quote_id || String(q.quote_id || "").slice(0, 8);
+  const when = q.updated_at || q.created_at;
+  return (
+    <a
+      href={`/?quote=${encodeURIComponent(q.quote_id)}`}
+      style={{ ...cardStyle(), textDecoration: "none", color: "inherit", display: "block" }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{code}</div>
+          <div style={{ fontSize: 13, color: "#334155", marginTop: 2 }}>
+            {q.cliente || "Sin cliente"} · {q.escenario || q.producto || "—"}
+          </div>
+          <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+            {when ? new Date(when).toLocaleString("es-UY") : ""} · {q.status === "draft" ? "borrador" : q.status}
+            {q.wizard_step ? ` · paso ${q.wizard_step}` : ""}
+            {showUser && q.user_email ? ` · ${q.user_email}` : ""}
+          </div>
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+            {q.total_usd ? `USD ${Number(q.total_usd).toFixed(2)}` : "—"}
+          </div>
+          <div style={{ fontSize: 12, color: "#A88420", marginTop: 4 }}>Abrir →</div>
+        </div>
+      </div>
+    </a>
   );
 }
 

@@ -316,6 +316,24 @@ export async function verifyGoogleAndUpsert({
       [u.user_id],
     );
 
+    try {
+      const { claimTenantInvites } = await import("./tenantBc.js");
+      const claimed = await claimTenantInvites(tx, u.user_id, email);
+      if (claimed?.claimed) {
+        const { recordTenantActivity } = await import("./tenantActivity.js");
+        await recordTenantActivity({
+          pool: { query: (...args) => tx.query(...args) },
+          actorId: u.user_id,
+          action: "tenant.invite.claim",
+          resourceType: "user",
+          resourceId: u.user_id,
+          payload: { email },
+        });
+      }
+    } catch {
+      // Tenant table may not exist yet on older DBs; login must still work.
+    }
+
     mfaRequired = !!u.mfa_required;
 
     // MFA gate: when mfa_required=true, do NOT create a session here — return

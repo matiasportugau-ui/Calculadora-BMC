@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { HelpCircle, Trash2 } from "lucide-react";
 import { isCompactMainLayoutWidth, isPhoneViewportWidth } from "../constants/viewportBreakpoints.js";
 import { BORDER_OPTIONS, C, FONT, PANELS_TECHO, PERFIL_TECHO, TR } from "../data/constants.js";
+import { WHITELABEL_BRAND } from "../config/whitelabel.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import PlantaBorderGlassPicker from "./PlantaBorderGlassPicker.jsx";
 import { calcFactorPendiente, calcLargoRealFromModo } from "../utils/calculations.js";
@@ -54,6 +55,12 @@ import {
   mergeIrregularSessionPatch,
   resolveCutKeepSide,
 } from "../utils/irregularRoofLayout.js";
+import {
+  buildIrregularPerimeterEdges,
+  remainingToPlantIntervals,
+  intersectIntervalMaps,
+  catalogSideForCutRole,
+} from "../utils/irregularPerimeterEdges.js";
 import IrregularModeChrome from "./roofPlan/IrregularModeChrome.jsx";
 import IrregularPlantOverlay from "./roofPlan/IrregularPlantOverlay.jsx";
 import IrregularFinalPlaneOverlay from "./roofPlan/IrregularFinalPlaneOverlay.jsx";
@@ -1501,6 +1508,86 @@ function PlantaBordesEdgeStrips({
   );
 }
 
+function PlantaIrregularCutEdges({
+  zoneRect,
+  cutEdges = [],
+  cutBorders = {},
+  gi,
+  svgTy,
+  openCutId,
+  onStripPointerDown,
+  onStripPointerEnter,
+  onStripPointerLeave,
+}) {
+  const zm = svgTy?.m ?? 1;
+  const thick = Math.min(0.42, Math.max(0.14, (zoneRect.w + zoneRect.h) * 0.018));
+  const zx = zoneRect.x;
+  const zy = zoneRect.y;
+  return (
+    <g data-bmc-layer="planta-irregular-cut-edges" pointerEvents="auto">
+      {cutEdges.map((edge) => {
+        const x1 = zx + edge.p0.x;
+        const y1 = zy + edge.p0.y;
+        const x2 = zx + edge.p1.x;
+        const y2 = zy + edge.p1.y;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = (-dy / len) * (thick / 2);
+        const ny = (dx / len) * (thick / 2);
+        const points = [
+          `${x1 + nx},${y1 + ny}`,
+          `${x2 + nx},${y2 + ny}`,
+          `${x2 - nx},${y2 - ny}`,
+          `${x1 - nx},${y1 - ny}`,
+        ].join(" ");
+        const cx = (x1 + x2) / 2;
+        const cy = (y1 + y2) / 2;
+        const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+        const side = catalogSideForCutRole(edge.role);
+        const val = cutBorders[edge.id];
+        const active = val && val !== "none";
+        const isOpen = openCutId === edge.id;
+        const label = edge.role === "lateral" ? "Lateral" : "Frente";
+        return (
+          <g key={edge.id}>
+            <title>{`${label} (corte) — ${active ? val : "elegí accesorio"}`}</title>
+            <polygon
+              points={points}
+              fill={isOpen ? "rgba(59,130,246,0.50)" : active ? "rgba(96,165,250,0.28)" : "rgba(37,99,235,0.18)"}
+              stroke={isOpen ? C.primary : "#2563eb"}
+              strokeWidth={0.045 * zm}
+              style={{ cursor: "pointer" }}
+              onPointerDown={(ev) => {
+                ev.stopPropagation();
+                ev.preventDefault();
+                onStripPointerDown?.(ev, gi, side, { cutId: edge.id, cutRole: edge.role });
+              }}
+              onMouseEnter={(ev) => onStripPointerEnter?.(ev, gi, side, { cutId: edge.id, cutRole: edge.role })}
+              onMouseLeave={() => onStripPointerLeave?.()}
+            />
+            <text
+              x={cx}
+              y={cy}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={Math.max(0.16, Math.min(0.32, len * 0.08))}
+              fontWeight={700}
+              fill="#0f172a"
+              fontFamily={FONT}
+              transform={`rotate(${ang}, ${cx}, ${cy})`}
+              pointerEvents="none"
+              style={{ userSelect: "none" }}
+            >
+              {label}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 /**
  * Vista en planta alineada al motor de cálculo: el **largo** del panel sigue el **largo** del techo
  * (arista lateral del rectángulo = `h` en SVG); el **ancho útil au** se repite a lo largo del **ancho** en planta (`w`),
@@ -1856,6 +1943,8 @@ export default function RoofPreview({
   selectedZonaGi: selectedZonaGiProp,
   onSelectedZonaGiChange,
   denseChrome = false,
+  /** Wizard Dimensiones · Vista previa: only add-body + plant, no irregular/help. */
+  simplePreviewChrome = false,
   panelObj = null,
   bomPanelResultsByGi = null,
   combinadaFijacionAssign = false,
@@ -1880,6 +1969,8 @@ export default function RoofPreview({
   tipoEst = "metal",
   /** Callback when irregular schedule should affect BOM (cut or manual L). */
   onIrregularLayoutChange = null,
+  /** Persist accessory on a new cut-edge (`cut_0` → gotero_frontal). */
+  onIrregularCutBorderChange = null,
   /** Start with modo irregular on (default off). */
   irregularModeDefault = false,
   /**
@@ -1927,6 +2018,7 @@ export default function RoofPreview({
   const [localIrregularCutDraft, setLocalIrregularCutDraft] = useState(null);
   const [localIrregularStripId, setLocalIrregularStripId] = useState(null);
   const [localIrregularLayoutOverride, setLocalIrregularLayoutOverride] = useState(null);
+  const [cutBordersLocal, setCutBordersLocal] = useState({});
 
   const irregularOn = irregularControlled ? Boolean(irregularSession.enabled) : localIrregularOn;
   const irregularTool = irregularControlled ? irregularSession.tool || "select" : localIrregularTool;
@@ -2206,11 +2298,11 @@ export default function RoofPreview({
     }, 340);
   }, [clearPlantaBorderCloseTimer]);
 
-  const handlePlantaBordeStripEnter = useCallback((ev, gi, side) => {
+  const handlePlantaBordeStripEnter = useCallback((ev, gi, side, extra = {}) => {
     clearPlantaBorderCloseTimer();
     setPlantaBorderPick((prev) => {
-      if (prev?.gi === gi && prev?.side === side) return prev;
-      return { gi, side, ax: ev.clientX, ay: ev.clientY };
+      if (prev?.gi === gi && prev?.side === side && (prev?.cutId || null) === (extra.cutId || null)) return prev;
+      return { gi, side, cutId: extra.cutId || null, cutRole: extra.cutRole || null, ax: ev.clientX, ay: ev.clientY };
     });
   }, [clearPlantaBorderCloseTimer]);
 
@@ -2218,18 +2310,25 @@ export default function RoofPreview({
     schedulePlantaBorderClose();
   }, [schedulePlantaBorderClose]);
 
-  const handlePlantaBordeStripDown = useCallback((ev, gi, side) => {
+  const handlePlantaBordeStripDown = useCallback((ev, gi, side, extra = {}) => {
     clearPlantaBorderCloseTimer();
     setPlantaBorderPick((prev) => {
-      if (prev?.gi === gi && prev?.side === side) return null;
-      return { gi, side, ax: ev.clientX, ay: ev.clientY };
+      if (prev?.gi === gi && prev?.side === side && (prev?.cutId || null) === (extra.cutId || null)) return null;
+      return { gi, side, cutId: extra.cutId || null, cutRole: extra.cutRole || null, ax: ev.clientX, ay: ev.clientY };
     });
   }, [clearPlantaBorderCloseTimer]);
 
   const applyPlantaBorderOption = useCallback(
     (optId) => {
       if (!plantaBorderPick) return;
-      const { gi, side } = plantaBorderPick;
+      const { gi, side, cutId } = plantaBorderPick;
+      if (cutId && typeof onIrregularCutBorderChange === "function") {
+        onIrregularCutBorderChange(gi, cutId, optId);
+        setCutBordersLocal((prev) => ({ ...prev, [cutId]: optId }));
+        setPlantaBorderPick(null);
+        setPlantaBorderPopoverStyle(null);
+        return;
+      }
       const meta = computePlantaSharedEdgeMeta(
         gi,
         side,
@@ -2327,6 +2426,7 @@ export default function RoofPreview({
       layout.entries,
       zonas,
       onEncounterPairChange,
+      onIrregularCutBorderChange,
     ],
   );
 
@@ -2618,7 +2718,7 @@ export default function RoofPreview({
     });
   }, [layoutPanelSource, layout.entries, tipoAguas]);
 
-  /** Lista global T-xx → metadatos para selector de inspección (solo lectura; no BOM). */
+  /** Lista global T-xx → metadatos para selector y edición de largo por panel. */
   const flatPlantaPanels = useMemo(() => {
     if (!panelLayouts?.length) return [];
     const rows = [];
@@ -2704,8 +2804,30 @@ export default function RoofPreview({
 
   const irregularLayout = irregularLayoutOverride || irregularAutoLayout;
 
+  const irregularPerimeter = useMemo(() => {
+    const r = irregularZoneEntry;
+    if (!irregularOn || !r || !irregularCut?.p0 || !irregularCut?.p1) return null;
+    return buildIrregularPerimeterEdges({
+      ancho: r.w,
+      largo: r.h,
+      cut: irregularCut,
+      panelRun: "along_largo",
+    });
+  }, [irregularOn, irregularZoneEntry, irregularCut]);
+
+  const irregularIntervalsByGi = useMemo(() => {
+    if (!irregularPerimeter || !irregularZoneEntry) return {};
+    return {
+      [irregularZoneEntry.gi]: remainingToPlantIntervals(irregularPerimeter.remaining, {
+        x: irregularZoneEntry.x,
+        y: irregularZoneEntry.y,
+      }),
+    };
+  }, [irregularPerimeter, irregularZoneEntry]);
+
   useEffect(() => {
     setIrregularLayoutOverride(null);
+    setCutBordersLocal({});
   }, [irregularCut, irregularZoneEntry?.gi, irregularZoneEntry?.w, irregularZoneEntry?.h, effectivePanelAu]);
 
   useEffect(() => {
@@ -2713,20 +2835,58 @@ export default function RoofPreview({
     const hasCut = Boolean(irregularCut?.p0 && irregularCut?.p1);
     const hasManual = Boolean(irregularLayoutOverride);
     const gi = irregularZoneEntry?.gi;
-    if (irregularOn && irregularLayout && (hasCut || hasManual)) {
+    if (irregularLayout && (hasCut || hasManual)) {
       // Second arg: zone index for multi-zone irregularLayoutByGi
       onIrregularLayoutChange(irregularLayout, gi);
     } else {
       onIrregularLayoutChange(null, gi);
     }
   }, [
-    irregularOn,
     irregularLayout,
     irregularCut,
     irregularLayoutOverride,
     irregularZoneEntry?.gi,
     onIrregularLayoutChange,
   ]);
+
+  const scheduleForPanelGi = useCallback((gi) => {
+    const r = layout.entries.find((e) => e.gi === gi);
+    if (!r) return null;
+    if (irregularLayout?.strips?.length && irregularZoneEntry?.gi === gi) return irregularLayout;
+    const au = effectivePanelAu;
+    if (!(au > 0) || !(r.w > 0) || !(r.h > 0)) return null;
+    const hasCut = Boolean(irregularCut?.p0 && irregularCut?.p1 && irregularZoneEntry?.gi === gi);
+    return buildIrregularSchedule({
+      zoneId: `z${gi}`,
+      ancho: r.w,
+      largo: r.h,
+      au,
+      lmin: panelObj?.lmin ?? 0,
+      lmax: panelObj?.lmax ?? 14,
+      orderLengthStepM: 0.01,
+      ...(hasCut
+        ? { mode: "diagonal_halfplane", cut: irregularCut }
+        : { mode: "rectangle" }),
+    });
+  }, [layout.entries, irregularLayout, irregularZoneEntry, effectivePanelAu, panelObj, irregularCut]);
+
+  const handlePlantaPanelLength = useCallback((meta, L) => {
+    if (!meta) return;
+    const base = scheduleForPanelGi(meta.gi);
+    if (!base?.strips?.length) return;
+    const next = applyManualOrderLength(base, meta.id, L);
+    setIrregularLayoutOverride(next);
+    if (typeof onIrregularLayoutChange === "function") onIrregularLayoutChange(next, meta.gi);
+  }, [scheduleForPanelGi, setIrregularLayoutOverride, onIrregularLayoutChange]);
+
+  const handlePlantaPanelLengthAuto = useCallback((meta) => {
+    if (!meta) return;
+    const base = scheduleForPanelGi(meta.gi);
+    if (!base?.strips?.length) return;
+    const next = resetStripToAuto(base, meta.id);
+    setIrregularLayoutOverride(next);
+    if (typeof onIrregularLayoutChange === "function") onIrregularLayoutChange(next, meta.gi);
+  }, [scheduleForPanelGi, setIrregularLayoutOverride, onIrregularLayoutChange]);
 
   const handleIrregularSvgClick = useCallback(
     (e) => {
@@ -3171,7 +3331,7 @@ export default function RoofPreview({
           : {}),
       }}
     >
-      <IrregularModeChrome
+      {!simplePreviewChrome && <IrregularModeChrome
         enabled={irregularOn}
         onToggle={() => {
           // setIrregularOn already clears cutDraft in the controlled patch.
@@ -3201,7 +3361,7 @@ export default function RoofPreview({
         }}
         dense={denseChrome}
         displayMode={irregularDisplayMode === "final_plane" ? "final_plane" : "factory"}
-      />
+      />}
       <div
         style={{
           fontSize: 12,
@@ -3218,8 +3378,8 @@ export default function RoofPreview({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <span>Vista previa del techo</span>
-          {irregularOn ? (
+          {!simplePreviewChrome && <span>Vista previa del techo</span>}
+          {!simplePreviewChrome && irregularOn ? (
             <span
               style={{
                 fontSize: 10,
@@ -3235,7 +3395,7 @@ export default function RoofPreview({
               Irregular
             </span>
           ) : null}
-          {plantaMobileHelp ? (
+          {!simplePreviewChrome && plantaMobileHelp ? (
             <button
               type="button"
               aria-label="Ayuda · planta 2D"
@@ -3265,7 +3425,19 @@ export default function RoofPreview({
             <button
               type="button"
               onClick={onAddZona}
-              style={{
+              style={simplePreviewChrome ? {
+                fontSize: 13,
+                fontWeight: 700,
+                color: C.primary,
+                background: C.surface,
+                border: `2px dashed ${C.primary}`,
+                borderRadius: 10,
+                padding: "10px 14px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              } : {
                 fontSize: 11,
                 fontWeight: 600,
                 color: C.tp,
@@ -3276,7 +3448,7 @@ export default function RoofPreview({
                 cursor: "pointer",
               }}
             >
-              Otro cuerpo de techo
+              {simplePreviewChrome ? "+ Otro cuerpo de techo" : "Otro cuerpo de techo"}
             </button>
           )}
           {onRemoveZona && selectedGi != null && zonas.length > 1 && (
@@ -3300,7 +3472,7 @@ export default function RoofPreview({
               <Trash2 size={12} />Quitar zona
             </button>
           )}
-          {onResetLayout && layout.entries.length > 0 && (
+          {!simplePreviewChrome && onResetLayout && layout.entries.length > 0 && (
             <button
               type="button"
               onClick={onResetLayout}
@@ -3318,7 +3490,7 @@ export default function RoofPreview({
               Alinear zonas
             </button>
           )}
-          {undoStack.length > 0 && onZonaPreviewChange && (
+          {!simplePreviewChrome && undoStack.length > 0 && onZonaPreviewChange && (
             <button
               type="button"
               onClick={applyUndo}
@@ -3337,7 +3509,7 @@ export default function RoofPreview({
               Deshacer
             </button>
           )}
-          {redoStack.length > 0 && onZonaPreviewChange && (
+          {!simplePreviewChrome && redoStack.length > 0 && onZonaPreviewChange && (
             <button
               type="button"
               onClick={applyRedo}
@@ -3358,7 +3530,7 @@ export default function RoofPreview({
           )}
         </div>
       </div>
-      {showPlantaDimensionChrome && !plantaMobileHelp && (
+      {!simplePreviewChrome && showPlantaDimensionChrome && !plantaMobileHelp && (
         <div
           style={{
             fontSize: 11,
@@ -3694,7 +3866,7 @@ export default function RoofPreview({
           <strong style={{ color: C.tp }}>Accesorios perimetrales (planta):</strong> tocá los bordes resaltados de cada zona; misma convención que el 3D (frente = borde inferior del rectángulo en 2D). Los lados totalmente compartidos entre zonas no se eligen aquí.
         </div>
       )}
-      {!plantaMobileHelp ? (
+      {!simplePreviewChrome && !plantaMobileHelp ? (
         <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
           Cada rectángulo es una zona: arrastrá con libertad en planta; se imantan aristas (L / T / U) y aparecen guías punteadas.
           Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir. Con encuentro ya definido: podés partir en tramos, marcar si cada tramo entra al BOM y elegir perfil del catálogo por tramo (laterales o frente/fondo según el eje del encuentro).
@@ -3766,7 +3938,7 @@ export default function RoofPreview({
               order: embedMetricsSidebar ? 1 : undefined,
             }}
           >
-            {!plantaPerimeterLiteMode && flatPlantaPanels.length > 0 && (
+            {!WHITELABEL_BRAND && !plantaPerimeterLiteMode && flatPlantaPanels.length > 0 && (
               <div
                 onPointerDown={(e) => e.stopPropagation()}
                 style={{
@@ -3816,33 +3988,65 @@ export default function RoofPreview({
                     </option>
                   ))}
                 </select>
-                {selectedPlantaPanelMeta && (
-                  <span style={{ flex: "1 1 220px", minWidth: 0, lineHeight: 1.4 }}>
-                    <span style={{ color: C.tp, fontWeight: 600 }}>
-                      Largo eje{" "}
-                      {selectedPlantaPanelMeta.hasSlope
-                        ? `${selectedPlantaPanelMeta.largoReal.toFixed(2)} m`
-                        : `${selectedPlantaPanelMeta.largoPlanta.toFixed(2)} m`}
-                    </span>
-                    {selectedPlantaPanelMeta.hasSlope && (
-                      <span style={{ color: C.ts, fontWeight: 500 }}>
-                        {" "}
-                        (planta {selectedPlantaPanelMeta.largoPlanta.toFixed(2)} m)
-                      </span>
-                    )}
-                    {" · "}
-                    <span style={{ color: C.tp, fontWeight: 600 }}>
-                      Franja {fmtDimMm(selectedPlantaPanelMeta.widthM)} mm
-                    </span>
-                    <span style={{ color: C.ts }}> ({selectedPlantaPanelMeta.widthM.toFixed(2)} m)</span>
-                    {selectedPlantaPanelMeta.isCut ? (
-                      <span style={{ color: C.warning, fontWeight: 700 }}> · Corte</span>
+                {selectedPlantaPanelMeta && (() => {
+                  const liveStrip = irregularLayout?.strips?.find((s) => s.id === selectedPlantaPanelMeta.id);
+                  const liveL = liveStrip?.L_order
+                    ?? (selectedPlantaPanelMeta.hasSlope
+                      ? selectedPlantaPanelMeta.largoReal
+                      : selectedPlantaPanelMeta.largoPlanta);
+                  const isManual = liveStrip?.source === "manual";
+                  return (
+                  <span style={{ flex: "1 1 260px", minWidth: 0, lineHeight: 1.4, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, color: C.tp, fontWeight: 600 }}>
+                      Largo
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step={0.01}
+                        min={0}
+                        max={panelObj?.lmax ?? 20}
+                        value={Number.isFinite(liveL) ? Number(liveL).toFixed(2) : ""}
+                        onChange={(e) => handlePlantaPanelLength(selectedPlantaPanelMeta, parseFloat(e.target.value) || 0)}
+                        style={{
+                          width: 88,
+                          padding: "5px 8px",
+                          borderRadius: 8,
+                          border: `1.5px solid ${isManual ? C.primary : C.border}`,
+                          background: C.surface,
+                          color: C.tp,
+                          fontWeight: 700,
+                          fontSize: 13,
+                          fontFamily: FONT,
+                        }}
+                      />
+                      m
+                    </label>
+                    {isManual ? (
+                      <button
+                        type="button"
+                        onClick={() => handlePlantaPanelLengthAuto(selectedPlantaPanelMeta)}
+                        style={{
+                          padding: "5px 10px",
+                          borderRadius: 8,
+                          border: `1px solid ${C.border}`,
+                          background: C.surface,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          color: C.ts,
+                        }}
+                      >
+                        Auto
+                      </button>
                     ) : null}
-                    <span style={{ display: "block", fontSize: denseChrome ? 10 : 11, marginTop: 4, color: C.ts }}>
-                      Solo inspección; cotización sigue en Dimensiones y BOM.
+                    <span style={{ color: C.ts, fontSize: denseChrome ? 10 : 11 }}>
+                      Franja {fmtDimMm(selectedPlantaPanelMeta.widthM)} mm
+                      {selectedPlantaPanelMeta.isCut ? " · Corte" : ""}
+                      {isManual ? " · largo pedido" : ""}
                     </span>
                   </span>
-                )}
+                  );
+                })()}
               </div>
             )}
             <div
@@ -4210,9 +4414,25 @@ export default function RoofPreview({
                         onStripPointerLeave={handlePlantaBordeStripLeave}
                         bordesPanelFamiliaKey={bordesPanelFamiliaKey}
                         plantRects={layout.entries}
-                        exteriorIntervals={zoneBorderExteriorIntervals[r.gi] ?? null}
+                        exteriorIntervals={intersectIntervalMaps(
+                          zoneBorderExteriorIntervals[r.gi] ?? null,
+                          irregularIntervalsByGi[r.gi] || null,
+                        )}
                       />
                     </>
+                  ) : null}
+                  {irregularPerimeter?.cutEdges?.length && irregularZoneEntry?.gi === r.gi ? (
+                    <PlantaIrregularCutEdges
+                      zoneRect={r}
+                      cutEdges={irregularPerimeter.cutEdges}
+                      cutBorders={cutBordersLocal}
+                      gi={r.gi}
+                      svgTy={svgTy}
+                      openCutId={plantaBorderPick?.cutId || null}
+                      onStripPointerDown={handlePlantaBordeStripDown}
+                      onStripPointerEnter={handlePlantaBordeStripEnter}
+                      onStripPointerLeave={handlePlantaBordeStripLeave}
+                    />
                   ) : null}
                 </g>
               );
@@ -4423,25 +4643,32 @@ export default function RoofPreview({
           </div>
         ) : null}
       </div>
-      {plantaBorderPick && typeof document !== "undefined" && bordesPlantaAssign && bordesPlantaHandlersOk
+      {plantaBorderPick && typeof document !== "undefined" && (
+        (bordesPlantaAssign && bordesPlantaHandlersOk) || Boolean(plantaBorderPick.cutId)
+      )
         ? createPortal(
             (() => {
-              const { gi, side } = plantaBorderPick;
-              const curVal = resolvePlantaBorderEffectiveValue(
-                gi,
-                side,
-                multiZonaBordes,
-                bordersGlobalForPlanta,
-                zonas,
-                bordesSharedSidesMap,
-                layout.entries,
-              );
+              const { gi, side, cutId } = plantaBorderPick;
+              const curVal = cutId
+                ? (cutBordersLocal[cutId] || "")
+                : resolvePlantaBorderEffectiveValue(
+                  gi,
+                  side,
+                  multiZonaBordes,
+                  bordersGlobalForPlanta,
+                  zonas,
+                  bordesSharedSidesMap,
+                  layout.entries,
+                );
               const opts = plantaBorderOptsForSideFiltered(side, bordesPanelFamiliaKey, bordesExtendido, bordesCualquierFamilia, curVal);
               const hoverId = plantaBorderHoverOptId ?? curVal ?? opts[0]?.id ?? "none";
+              const sideLabel = cutId
+                ? (plantaBorderPick.cutRole === "lateral" ? "Lateral (corte)" : "Frente (corte)")
+                : (PLANTA_BORDER_SIDE_LABELS[side] || side);
               return (
                 <PlantaBorderGlassPicker
                   popRef={plantaBorderPopRef}
-                  sideLabel={PLANTA_BORDER_SIDE_LABELS[side] || side}
+                  sideLabel={sideLabel}
                   curVal={curVal}
                   options={opts}
                   panelFamiliaKey={bordesPanelFamiliaKey}

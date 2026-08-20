@@ -147,6 +147,15 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
+            <h2 style={cardTitle}>Tenants · control</h2>
+            <p style={cardDesc}>
+              Pausar, dar de alta, ver venta y extraer la actividad de cada socio (BC, LAM, SmartBuilding). Silos separados.
+            </p>
+            <Link to="/hub/admin/tenants" style={{ ...cta, background: "#0f172a" }}>
+              Abrir control de tenants
+            </Link>
+          </div>
+          <div style={card}>
             <h2 style={cardTitle}>{adminTitle}</h2>
             <p style={cardDesc}>
               Filas pendientes de Admin 2.0 ↔ CRM. Generá respuestas IA en lote, editá por fila y cerrá a Enviados.

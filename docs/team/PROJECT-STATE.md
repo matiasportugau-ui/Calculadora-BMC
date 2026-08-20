@@ -1,6 +1,22 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-15 (bake MATRIZ → constants.js)
+**2026-08-20 (fix — ident after Google grant):** El popup de Google ya no tapa el lock. Click → Conectando + GIS → grant → sting + logo 2.4s → calculadora. Audio se prima en el click. Sin invite, no hay cinema. No merge #1051.
+
+**2026-08-20 (feat — ident glory sting + landing `/`):** Click «Continuar con Google» reproduce un sting por marca (BC gold-foil, LAM three-planks, SMART IMAX-air) junto al lock cinematográfico. Sin sesión, cualquier URL del tenant vuelve a `/` — el ident ES el index. No merge #1051. No rebuild BMC.
+
+**2026-08-19 (feat — tenant agent voice, no BMC speech):** El prompt de tenant ya no es Panelin: identidad + persona + tools de calculadora + cierre `Saludos, {marca}`. Compiler `server/lib/tenantPrompt.js`. Tests: cero leak BMC/Panelin/Metalog. El API prod `panelin-calc` todavía no tiene este código — hasta el deploy Cloud Run el chat en vivo sigue hablando BMC. No mergear #1051.
+
+**2026-08-19 (feat — tenant agents + eval transcripts):** Cada socio tiene su IA: BC **JenIA**, Paneles LAM **MonkIA**, SmartBuilding **Basuuuu IA**. BMC ve transcripciones completas + tokens + USD estimado (eval, no factura) en `/hub/admin/tenant/:slug` tab **IA (eval)**. Persistencia `identity.tenant_agent_conversations` / `_turns`. No mergear #1051.
+
+**2026-08-20 (feat — tenant Gmail ident):** White-label apps no abren la calculadora sin Google. Ident cinematográfico por marca (BC gold-title, LAM stack, SMART imax-void) + «Continuar con Google». Silo cerrado: no invite → “pedí acceso al dueño”; admin BMC sí entra. Telemetry lleva email/nombre tras login. No merge #1051.
+
+**2026-08-19 (feat — Control Tower v1 / Phase 0):** `/hub/admin/tenants` luces en línea/hoy/silencioso (último evento &lt;5 min). Cabin: tabs Live + Analytics (usuarios, tiempo en app estimado, fallos, timeline, funnel wizard→PDF). APIs `…/analytics` `…/funnel` `…/live` scoped por `payload.tenant`. No heartbeat aún; no pixel replay. No mergear #1051.
+
+**2026-08-19 (feat — tenant control plane):** BMC admin `/hub/admin/tenants` lista cada silo (BC, LAM, SmartBuilding). Por tenant: pausar/reanudar, altas/revocar, venta + actividad, export JSON/CSV. APIs `GET /api/admin/tenants`, `PATCH …/:slug`, `DELETE …/members`, `GET …/export`. Pausa = 423 en invite owner y autosave público de ese slug. No mergear #1051.
+
+**2026-08-18 (feat — tenant BC Jenerik, sale-only):** Worktree `feat/jenerik-bc-tenant` (`~/calculadora-bmc-jenerik`) = `origin/main` + PDF BC + tenant accounts. BMC da de alta el tenant; Jenerik invita usuarios. PDF y logs guardan **venta**; **sin** comisión ni costo fábrica. No mergear #1051. SoT: [`JENERIK-WHITE-LABEL-DELIVERY.md`](./JENERIK-WHITE-LABEL-DELIVERY.md).
+
+**Última actualización:** 2026-08-19 (tenant agents JenIA/MonkIA/Basuuuu IA + eval transcripts; no merge #1051)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +29,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-20 (fix — API local bind loopback):** `server/index.js` ya no escucha en `*:3001` en local. `resolveListenHost()` (`server/lib/listenHost.js`) usa `127.0.0.1` salvo `K_SERVICE` (Cloud Run sigue en todas las interfaces). Test: `tests/listenHost.test.js`.
+
+**2026-08-17 (feat — white-label BC: presupuesto propio en deploy paralelo):** Un socio corre su calculadora con **su** PDF sin tocar la prod BMC. Se enciende por env (`VITE_WHITELABEL=bc` en el build de Vite, `WHITELABEL=bc` en la API) y **sin la variable no cambia nada**: el layout `bc` ni aparece en el selector y el default sigue siendo `simple`. Con el flag, el selector ofrece un **único** layout y es el default; cualquier otro layout pedido (un `bmc.pdfLayout` viejo en localStorage, un `body.template` a mano) **cae igual** en el de la marca, para que no se escape un PDF con branding BMC desde la calculadora del socio. Nuevos [`src/config/whitelabel.js`](../../src/config/whitelabel.js) (lee env en Vite **y** Node; perfil de marca + `mergeBranding`) y [`src/pdf-templates/bc.js`](../../src/pdf-templates/bc.js) (logo BC vectorial, paleta derivada del logo, Charter para display; secciones: cliente/obra, alcance+KPIs, **detalle por zona**, BOM, totales, 12 condiciones, banco, firmas, pie legal). Identidad: la marca comercial es **BC**; razón social (Jenerik Bentancor), RUT y dirección van **sólo** en el pie legal. Tres detalles no obvios: (1) el pie legal va **en el flujo**, no `position:fixed` — producción imprime con `preferCSSPageSize:true` sin header/footer de Chromium y en ese modo el elemento fijo se dibuja una sola vez y encima del contenido; (2) los márgenes van en `@page` porque `preferCSSPageSize` hace ganar al CSS; (3) `QUOTE_TERMS` nombra a BMC ("BMC no asume responsabilidad…") y se reescribe con la marca del socio — `Bromyros` queda, es la planta real de retiro. Los P.U. sub-centavo salen con 4 decimales (un remache a `0.0213` mostrado como `0.02` hace que cant. × P.U. no cierre contra el total). `DEFAULT_LAYOUT` reemplaza el `'simple'` hardcodeado en `PanelinCalculadoraV3` y en `buildCotizacionHtml`. Test nuevo [`tests/whitelabel-bc-pdf.test.js`](../../tests/whitelabel-bc-pdf.test.js) (8/8, en `test:api`) — corre cada modo en **su propio proceso** porque el env se lee una vez al cargar el módulo; verifica que ningún PDF del socio contenga `BMC`/`Metalog`/`bmcuruguay`/RUT de METALOG. Sólo cambia el **PDF**: la UI queda igual. Runbook [`docs/team/runbooks/white-label-bc.md`](runbooks/white-label-bc.md). Pendiente con el socio: cuenta bancaria y teléfono (hoy salen como "A completar", no se inventan). La infra del deploy paralelo (`vercel.paid.json`, plan `paid`, `identity.users.branding`) vive en el PR #1051 y es independiente: cuando merge, el branding por usuario entra por `q.branding` sin tocar el template. Branch `claude/white-label-calculator-904fhv`.
 
 **2026-08-15 (chore — precios MATRIZ horneados en constants.js):** Bake del CSV vivo (`/api/actualizar-precios-calculadora`) → `src/data/constants.js`. Suben AC38G venta 0.70→2, APHG38 0.13→0.24, SN300B web 4.20→7.11, PGLC250 32.22/37.59/26.85→37.30/43.51/31.08, PU250MM 17.68/20.62/14.73→21.25/24.79/17.71, PA5852 web 64.19→74.89 (venta local 64.19). Data version `90e7168e36`. Catalog-diff vs MATRIZ: 0 S1. GLDCAM100 y CD100 no vienen en el CSV de 111 paths (quedan).
 

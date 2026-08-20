@@ -3,7 +3,7 @@
  * Used as the external header trigger (chat closed) and inside the chat panel.
  */
 import { useEffect, useId, useRef, useState } from "react";
-import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
+import { PANELIN_AGENT_POSTER_SRC, PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 
 const GREET_LINES = [
   "¿Cotizamos?",
@@ -131,44 +131,48 @@ export default function PanelinCharacter({
   const interactive = typeof onClick === "function";
   const Wrapper = interactive ? "button" : "div";
 
-  const avatar = videoFailed ? (
-    <div
-      aria-hidden
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        flexShrink: 0,
-        background: "#1a3a5c",
-        color: "#fff",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: Math.max(11, Math.round(size * 0.36)),
-        fontWeight: 700,
-      }}
-    >
-      P
-    </div>
+  const mediaStyle = {
+    width: size,
+    height: size,
+    borderRadius: "50%",
+    objectFit: "cover",
+    flexShrink: 0,
+    background: "#0B0B0C",
+    border: "2px solid rgba(255,255,255,0.35)",
+    animation: `${breatheAnimation}${ringAnimation !== "none" ? `, ${ringAnimation}` : ""}`,
+  };
+
+  const avatar = videoFailed || !PANELIN_AGENT_VIDEO_SRC ? (
+    PANELIN_AGENT_POSTER_SRC ? (
+      <img src={PANELIN_AGENT_POSTER_SRC} alt="" aria-hidden style={mediaStyle} />
+    ) : (
+      <div
+        aria-hidden
+        style={{
+          ...mediaStyle,
+          background: "#1a3a5c",
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: Math.max(11, Math.round(size * 0.36)),
+          fontWeight: 700,
+        }}
+      >
+        P
+      </div>
+    )
   ) : (
     <video
       src={PANELIN_AGENT_VIDEO_SRC}
+      poster={PANELIN_AGENT_POSTER_SRC}
       autoPlay
       muted
       loop
       playsInline
       onError={() => setVideoFailed(true)}
       aria-hidden
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        objectFit: "cover",
-        flexShrink: 0,
-        background: "#1a3a5c",
-        border: "2px solid rgba(255,255,255,0.35)",
-        animation: `${breatheAnimation}${ringAnimation !== "none" ? `, ${ringAnimation}` : ""}`,
-      }}
+      style={mediaStyle}
     />
   );
 

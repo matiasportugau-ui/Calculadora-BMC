@@ -179,6 +179,32 @@ export async function upsertQuote({
       await _event(upd.rows[0].quote_id, "updated", userId, { status });
       return upd.rows[0];
     }
+    if (userId) {
+      const claimed = await pool().query(
+        `update identity.quotes
+            set user_id = $1,
+                payload = $3::jsonb,
+                total_usd = coalesce($4, total_usd),
+                total_uyu = coalesce($5, total_uyu),
+                pdf_id = coalesce($6, pdf_id),
+                pdf_url = coalesce($7, pdf_url),
+                gcs_uri = coalesce($8, gcs_uri),
+                drive_file_id = coalesce($9, drive_file_id),
+                wizard_step = coalesce($10, wizard_step),
+                status = case when status = 'deleted' then status else $11 end
+          where user_id is null and client_quote_id = $2
+          returning quote_id, status, total_usd, total_uyu, created_at, updated_at`,
+        [
+          userId, clientQuoteId, JSON.stringify(payload || {}),
+          totalUsd, totalUyu, pdfId || null, safePdfUrl,
+          safeGcsUri, safeDriveFileId, wizardStep ?? null, status,
+        ],
+      );
+      if (claimed.rows.length) {
+        await _event(claimed.rows[0].quote_id, "updated", userId, { status, claimed: true });
+        return claimed.rows[0];
+      }
+    }
   }
 
   const ins = await pool().query(
@@ -215,12 +241,12 @@ export async function claimAnonymousQuotes({ userId, clientQuoteIds }) {
 export async function listMyQuotes({ userId, limit = 50, includeDeleted = false }) {
   const sql = includeDeleted
     ? `select quote_id, client_quote_id, total_usd, total_uyu, status, pdf_url,
-              wizard_step, created_at, updated_at
+              wizard_step, created_at, updated_at, payload
          from identity.quotes
         where user_id = $1
         order by created_at desc limit $2`
     : `select quote_id, client_quote_id, total_usd, total_uyu, status, pdf_url,
-              wizard_step, created_at, updated_at
+              wizard_step, created_at, updated_at, payload
          from identity.quotes
         where user_id = $1 and status <> 'deleted'
         order by created_at desc limit $2`;
