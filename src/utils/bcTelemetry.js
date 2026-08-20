@@ -5,9 +5,12 @@ import { WHITELABEL } from "../config/whitelabel.js";
 
 export const BC_TELEMETRY_PATH = "/bc-telemetry";
 
-const ALLOWED = new Set([
+export const TENANT_HEARTBEAT_MS = 60_000;
+
+export const TENANT_CLIENT_TRACK_ACTIONS = [
   "tenant.session.start",
   "tenant.session.end",
+  "tenant.session.ping",
   "tenant.nav.route",
   "tenant.ui.click",
   "tenant.wizard.step",
@@ -15,7 +18,19 @@ const ALLOWED = new Set([
   "tenant.quote.open",
   "tenant.quote.export.pdf",
   "tenant.quote.export.html",
-]);
+];
+
+const ALLOWED = new Set(TENANT_CLIENT_TRACK_ACTIONS);
+
+export function shouldEmitTenantPing({
+  lastAt = 0,
+  now = Date.now(),
+  hidden = false,
+  intervalMs = TENANT_HEARTBEAT_MS,
+} = {}) {
+  if (hidden) return false;
+  return now - lastAt >= intervalMs;
+}
 
 let lastKey = "";
 let lastAt = 0;

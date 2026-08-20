@@ -85,6 +85,7 @@ export const ACTION_TAXONOMY = new Set([
   // tenant BC (Jenerik) — also registered from tenantActivity.js
   "tenant.session.start",
   "tenant.session.end",
+  "tenant.session.ping",
   "tenant.nav.route",
   "tenant.ui.click",
   "tenant.wizard.step",
@@ -107,6 +108,7 @@ export const CLIENT_EMITTABLE = new Set([
   "ui.search.submit",
   "tenant.session.start",
   "tenant.session.end",
+  "tenant.session.ping",
   "tenant.nav.route",
   "tenant.ui.click",
   "tenant.wizard.step",

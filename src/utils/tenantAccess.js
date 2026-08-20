@@ -52,14 +52,3 @@ export function tenantSiloDecision({ slug = null, user = null, member = null } =
   if (member && member.slug === slug) return { ok: true, status: 200, error: null };
   return { ok: false, status: 403, error: "not_tenant_member" };
 }
-
-export function tenantSlugFromRequest(req) {
-  const env = String(
-    (typeof process !== "undefined" && process.env && process.env.WHITELABEL) || "",
-  ).trim().toLowerCase();
-  if (env === "bc" || env === "paneleslam" || env === "smartbuilding") return env;
-  const origin = req?.headers?.origin || (typeof req?.get === "function" ? req.get("origin") : "") || "";
-  const referer = req?.headers?.referer || (typeof req?.get === "function" ? req.get("referer") : "") || "";
-  const host = req?.headers?.host || (typeof req?.get === "function" ? req.get("host") : "") || "";
-  return tenantSlugFromHost(origin) || tenantSlugFromHost(referer) || tenantSlugFromHost(host);
-}

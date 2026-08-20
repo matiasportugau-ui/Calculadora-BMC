@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { WHITELABEL_BRANDS } from "../src/config/whitelabel.js";
-import { tenantAccessState, tenantSlugFromHost, tenantSiloDecision, tenantSlugFromRequest } from "../src/utils/tenantAccess.js";
+import { tenantAccessState, tenantSlugFromHost, tenantSiloDecision } from "../src/utils/tenantAccess.js";
+import { tenantSlugFromRequest } from "../server/lib/tenantSlugFromRequest.js";
 import { IDENT_OVERTURE_MS, identOvertureMs, shouldPlayIdentCinema } from "../src/utils/tenantIdentMotion.js";
 import { IDENT_STING_SRC, identStingSrc } from "../src/utils/tenantIdentAudio.js";
 
@@ -89,4 +90,13 @@ test("tenantSlugFromRequest prefers Origin over BMC-less host", () => {
   assert.equal(tenantSlugFromRequest({
     headers: { origin: "https://calculadora-bmc.vercel.app", host: "panelin-calc-q74zutv7dq-uc.a.run.app" },
   }), null);
+});
+
+test("tenantSlugFromRequest ignores WHITELABEL when Origin is BMC", () => {
+  assert.equal(tenantSlugFromRequest({
+    headers: { origin: "https://calculadora-bmc.vercel.app" },
+  }, { WHITELABEL: "bc" }), null);
+  assert.equal(tenantSlugFromRequest({
+    headers: {},
+  }, { WHITELABEL: "bc" }), "bc");
 });

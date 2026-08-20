@@ -1,13 +1,14 @@
 // Tenant Control Tower analytics — always scoped by payload.tenant.
-// Phase 0: derive from existing identity.user_activity_log (no heartbeat yet).
+// Presence: last LIVE_ACTIONS event (includes tenant.session.ping). ONLINE_MS = 5 min.
 
 import { displayPerson } from "../../src/utils/tenantInviteView.js";
 
 const ACTOR = `coalesce(nullif(l.payload->>'email', ''), l.actor_user_id::text, l.ip, 'anon')`;
 
-const LIVE_ACTIONS = [
+export const LIVE_ACTIONS = [
   "tenant.session.start",
   "tenant.session.end",
+  "tenant.session.ping",
   "tenant.nav.route",
   "tenant.ui.click",
   "tenant.wizard.step",

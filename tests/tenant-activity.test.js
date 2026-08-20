@@ -9,7 +9,11 @@ import {
   TENANT_CLIENT_ACTIONS,
 } from "../server/lib/tenantActivity.js";
 import { WHITELABEL } from "../src/config/whitelabel.js";
-import { BC_TELEMETRY_PATH } from "../src/utils/bcTelemetry.js";
+import {
+  BC_TELEMETRY_PATH,
+  TENANT_HEARTBEAT_MS,
+  shouldEmitTenantPing,
+} from "../src/utils/bcTelemetry.js";
 
 test("tenant actions are in the shipped taxonomy and client-emittable", () => {
   for (const a of TENANT_CLIENT_ACTIONS) {
@@ -17,6 +21,7 @@ test("tenant actions are in the shipped taxonomy and client-emittable", () => {
     assert.equal(CLIENT_EMITTABLE.has(a), true, a);
     assert.equal(isTenantClientAction(a), true, a);
   }
+  assert.equal(isTenantClientAction("tenant.session.ping"), true);
   assert.equal(isTenantClientAction("quote.complete"), false);
   assert.equal(isTenantClientAction("admin.user.suspend"), false);
   assert.equal(ACTION_TAXONOMY.has("tenant.agent.turn"), true);
@@ -56,6 +61,15 @@ test("listTenantActivity filters by payload.tenant, not a fake origin", async ()
   assert.equal(rows.length, 1);
   assert.equal(calls[0].params[0], "bc");
   assert.match(calls[0].sql, /payload->>'tenant'/);
+});
+
+test("heartbeat ping only while tab is visible and 60s elapsed", () => {
+  assert.equal(TENANT_HEARTBEAT_MS, 60_000);
+  const t0 = 1_000_000;
+  assert.equal(shouldEmitTenantPing({ lastAt: 0, now: t0, hidden: false }), true);
+  assert.equal(shouldEmitTenantPing({ lastAt: t0, now: t0 + 59_000, hidden: false }), false);
+  assert.equal(shouldEmitTenantPing({ lastAt: t0, now: t0 + 60_000, hidden: false }), true);
+  assert.equal(shouldEmitTenantPing({ lastAt: t0, now: t0 + 120_000, hidden: true }), false);
 });
 
 test("BMC default build does not activate white-label telemetry path as brand", () => {

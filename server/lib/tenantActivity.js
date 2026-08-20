@@ -7,6 +7,7 @@ export const TENANT_SLUG = WHITELABEL || "bc";
 export const TENANT_CLIENT_ACTIONS = [
   "tenant.session.start",
   "tenant.session.end",
+  "tenant.session.ping",
   "tenant.nav.route",
   "tenant.ui.click",
   "tenant.wizard.step",

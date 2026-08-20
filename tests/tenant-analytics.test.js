@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  LIVE_ACTIONS,
   ONLINE_MS,
   getTenantAnalytics,
   getTenantFunnel,
@@ -80,6 +81,10 @@ test("getTenantLive marks recent who as online and names visitors", async () => 
       }
       assert.match(sql, /payload->>'tenant'/);
       assert.match(sql, /action = any/);
+      if (Array.isArray(params[1])) {
+        assert.equal(params[1].includes("tenant.session.ping"), true);
+        assert.equal(params[1].includes("tenant.member.invite"), false);
+      }
       return {
         rows: [
           { who: "a@b.com", email: "a@b.com", ip: null, last_at: "2026-08-19T19:58:00Z", last_action: "tenant.ui.click", path: "/", step: "Proyecto", last_click: "PDF", quote_code: "BC-1" },
@@ -95,6 +100,11 @@ test("getTenantLive marks recent who as online and names visitors", async () => 
   assert.equal(live.items[1].title, "Visitante no identificado");
   assert.match(live.items[1].subtitle, /179\.1\.2\.3/);
   assert.equal(live.items[1].light, "recent");
+});
+
+test("live counts ping; invite rows stay off the live feed", () => {
+  assert.equal(LIVE_ACTIONS.includes("tenant.session.ping"), true);
+  assert.equal(LIVE_ACTIONS.includes("tenant.member.invite"), false);
 });
 
 test("invite copy is accepted vs not", () => {
@@ -131,6 +141,7 @@ test("getTenantSessions SQL stays on one slug", async () => {
       if (/tenant_members/.test(sql)) return { rows: [] };
       assert.match(sql, /payload->>'tenant'/);
       assert.equal(params[1].includes("tenant.session.start"), true);
+      assert.equal(params[1].includes("tenant.session.ping"), false);
       return { rows: [] };
     },
   };

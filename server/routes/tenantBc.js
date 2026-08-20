@@ -21,7 +21,8 @@ import rateLimit from "express-rate-limit";
 import { getWaPool } from "../lib/waDb.js";
 import { config } from "../config.js";
 import { requireUser } from "../lib/identityAuth.js";
-import { tenantSlugFromRequest, tenantSiloDecision } from "../../src/utils/tenantAccess.js";
+import { tenantSiloDecision } from "../../src/utils/tenantAccess.js";
+import { tenantSlugFromRequest } from "../lib/tenantSlugFromRequest.js";
 import { safeErr as _safeErr } from "../lib/safeErr.js";
 import {
   getMembership,

@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { WHITELABEL } from "../../config/whitelabel.js";
 import { useBmcAuth } from "../../hooks/useBmcAuth.js";
-import { clickLabel, trackBc } from "../../utils/bcTelemetry.js";
+import { clickLabel, shouldEmitTenantPing, trackBc } from "../../utils/bcTelemetry.js";
 
 export default function BcTelemetryTracker() {
   const auth = useBmcAuth();
@@ -22,7 +22,7 @@ export default function BcTelemetryTracker() {
       });
     }
     return undefined;
-  }, [auth?.isAuthenticated, auth?.user?.email]);
+  }, [auth?.isAuthenticated, auth?.user?.email, auth?.user?.name]);
 
   useEffect(() => {
     if (!WHITELABEL) return undefined;
@@ -35,7 +35,7 @@ export default function BcTelemetryTracker() {
       });
     }
     return undefined;
-  }, [auth?.isAuthenticated, auth?.user?.email]);
+  }, [auth?.isAuthenticated, auth?.user?.email, auth?.user?.name]);
 
   useEffect(() => {
     if (!WHITELABEL) return undefined;
@@ -64,6 +64,28 @@ export default function BcTelemetryTracker() {
       window.removeEventListener("pagehide", onEnd);
     };
   }, []);
+
+  useEffect(() => {
+    if (!WHITELABEL) return undefined;
+    let lastAt = Date.now();
+    function ping() {
+      const now = Date.now();
+      if (!shouldEmitTenantPing({ lastAt, now, hidden: document.hidden })) return;
+      lastAt = now;
+      trackBc("tenant.session.ping", {
+        path: window.location.pathname,
+        email: auth?.user?.email || null,
+        name: auth?.user?.name || null,
+        authed: !!auth?.isAuthenticated,
+      });
+    }
+    const id = window.setInterval(ping, 15_000);
+    document.addEventListener("visibilitychange", ping);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", ping);
+    };
+  }, [auth?.isAuthenticated, auth?.user?.email, auth?.user?.name]);
 
   return null;
 }
