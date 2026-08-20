@@ -9,13 +9,34 @@ export function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
 
-export async function getMembership(pool, userId) {
+/**
+ * @param {string} [slug] When set (deployment / Origin tenant), only that
+ *   membership counts. Shared Cloud Run serves BC+LAM+SmartBuilding against
+ *   one DB — without this filter a BC invitee would appear as a member on
+ *   every white-label host.
+ */
+export async function getMembership(pool, userId, slug = null) {
   if (!userId) return null;
+  const want = slug != null && String(slug).trim()
+    ? String(slug).trim().toLowerCase()
+    : null;
+  if (want) {
+    const { rows } = await pool.query(
+      `select m.tenant_id, m.role, m.invited_email, t.slug, t.display_name, t.legal_name, t.branding
+         from identity.tenant_members m
+         join identity.tenants t on t.tenant_id = m.tenant_id
+        where m.user_id = $1 and lower(t.slug) = $2
+        limit 1`,
+      [userId, want],
+    );
+    return rows[0] || null;
+  }
   const { rows } = await pool.query(
     `select m.tenant_id, m.role, m.invited_email, t.slug, t.display_name, t.legal_name, t.branding
        from identity.tenant_members m
        join identity.tenants t on t.tenant_id = m.tenant_id
       where m.user_id = $1
+      order by m.claimed_at nulls last, m.created_at asc
       limit 1`,
     [userId],
   );
@@ -85,8 +106,8 @@ export async function listMembers(pool, tenantId) {
   return rows;
 }
 
-export async function attachQuoteToTenant(pool, { quoteId, userId, payload }) {
-  const mem = await getMembership(pool, userId);
+export async function attachQuoteToTenant(pool, { quoteId, userId, payload, slug = null }) {
+  const mem = await getMembership(pool, userId, slug);
   if (!mem || !quoteId) return null;
   const sale = toSalePayload(payload || {});
   await pool.query(

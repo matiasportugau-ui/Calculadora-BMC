@@ -539,7 +539,7 @@ router.post("/api/public/bc-quotes", publicLimiter, requireUser({ optional: true
     if (!tenantSlug) {
       return res.status(404).json({ ok: false, error: "not_found" });
     }
-    const member = req.user?.id ? await getMembership(pool(), req.user.id) : null;
+    const member = req.user?.id ? await getMembership(pool(), req.user.id, tenantSlug) : null;
     const silo = tenantSiloDecision({ slug: tenantSlug, user: req.user, member });
     if (!silo.ok) {
       return res.status(silo.status).json({ ok: false, error: silo.error });
@@ -553,9 +553,11 @@ router.post("/api/public/bc-quotes", publicLimiter, requireUser({ optional: true
       return res.status(400).json({ ok: false, error: "missing_client_quote_id" });
     }
     const sale = toSalePayload(payload && typeof payload === "object" ? payload : {});
+    // Scope bc_code reuse to anonymous rows for this client id — never steal
+    // codes from another user's authenticated quote via unscoped lookup.
     const existing = await pool().query(
       `select quote_id, payload from identity.quotes
-        where client_quote_id = $1 and status <> 'deleted'
+        where client_quote_id = $1 and user_id is null and status <> 'deleted'
         order by created_at desc limit 1`,
       [clientQuoteId],
     );

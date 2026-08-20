@@ -1,7 +1,8 @@
 // tests/tenant-bc.test.js — sale-only tenant BC (no cost / commission now)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { toSalePayload, saleUsageMetrics, isCostOrCommissionKey } from "../src/utils/tenantSaleView.js";
+import { toSalePayload, saleUsageMetrics, isCostOrCommissionKey, persistQuotePayload } from "../src/utils/tenantSaleView.js";
+import { scrubPayload } from "../server/lib/userActivityLog.js";
 import { saleCopyOfQuote } from "../server/lib/tenantBc.js";
 
 test("cost and commission keys are blocked; sale prices stay", () => {
@@ -27,6 +28,33 @@ test("cost and commission keys are blocked; sale prices stay", () => {
   assert.equal(cleaned.items[0].pu, 48.6);
   assert.equal(cleaned.items[0].costo, undefined);
   assert.equal(cleaned.items[0].comision, undefined);
+});
+
+test("BMC /api/me/quotes keeps factory_cost; tenant Origin scrubs", () => {
+  const full = { total_usd: 100, factory_cost: 40.5, comision_usd: 4, pu: 48.6 };
+  const bmc = persistQuotePayload(full, null);
+  assert.equal(bmc, full);
+  assert.equal(bmc.factory_cost, 40.5);
+  const tenant = persistQuotePayload(full, "bc");
+  assert.equal(tenant.factory_cost, undefined);
+  assert.equal(tenant.comision_usd, undefined);
+  assert.equal(tenant.total_usd, 100);
+  assert.equal(tenant.pu, 48.6);
+});
+
+test("toSalePayload ignores __proto__ so Object.prototype stays clean", () => {
+  const marker = `polluted_${Date.now()}`;
+  const cleaned = toSalePayload(JSON.parse(`{"pu":1,"__proto__":{"${marker}":true}}`));
+  assert.equal(cleaned.pu, 1);
+  assert.equal(Object.prototype[marker], undefined);
+  assert.equal(Object.hasOwn(cleaned, "__proto__"), false);
+});
+
+test("scrubPayload ignores __proto__ injection keys", () => {
+  const marker = `scrub_${Date.now()}`;
+  const clean = scrubPayload(JSON.parse(`{"tenant":"bc","__proto__":{"${marker}":true}}`));
+  assert.equal(clean.tenant, "bc");
+  assert.equal(Object.prototype[marker], undefined);
 });
 
 test("usage metrics keep sale totals and drop commission", () => {

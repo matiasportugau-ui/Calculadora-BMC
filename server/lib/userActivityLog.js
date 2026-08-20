@@ -180,10 +180,14 @@ const BLOCKED_KEYS = new Set([
   "margin",
 ]);
 
+const DANGEROUS_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+
 export function scrubPayload(p) {
   if (!p || typeof p !== "object") return {};
-  const out = {};
+  // Null prototype: client-supplied keys must not become Object.prototype props.
+  const out = Object.create(null);
   for (const [k, v] of Object.entries(p)) {
+    if (DANGEROUS_KEYS.has(k)) continue;
     if (BLOCKED_KEYS.has(k.toLowerCase())) continue;
     if (typeof v === "string" && v.length > 200) out[k] = v.slice(0, 200) + "…";
     else if (typeof v === "object" && v !== null) {

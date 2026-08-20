@@ -28,7 +28,9 @@ import {
   upsertQuote,
   claimAnonymousQuotes,
 } from "../lib/quoteStore.js";
-import { attachQuoteToTenant, toSalePayload, saleUsageMetrics, takeNextTenantCode } from "../lib/tenantBc.js";
+import { attachQuoteToTenant, takeNextTenantCode } from "../lib/tenantBc.js";
+import { tenantSlugFromRequest } from "../lib/tenantSlugFromRequest.js";
+import { persistQuotePayload, saleUsageMetrics } from "../../src/utils/tenantSaleView.js";
 import {
   syncQuote as sheetSyncQuote,
   reconcile as sheetReconcile,
@@ -394,36 +396,45 @@ router.post("/api/me/quotes", requireUser(), meQuotesLimiter, async (req, res) =
     // workflow (calc completion path, admin queue, soft delete) is what flips
     // status to 'completed', 'exported', or 'deleted' — never a user POST.
     const safeStatus = VALID_USER_QUOTE_STATUSES.has(status) ? status : "draft";
-    const salePayload = toSalePayload(payload);
-    const tenantSlug = String(process.env.WHITELABEL || "").trim().toLowerCase() || null;
-    if (tenantSlug && !salePayload.bc_code) {
+    // Shared Cloud Run serves BMC + white-label SPAs. Only scrub/attach when
+    // the request is a tenant Origin (or WHITELABEL env). Unconditional
+    // toSalePayload permanently strips factory_cost / commission from BMC
+    // /api/me/quotes saves.
+    const tenantSlug = tenantSlugFromRequest(req);
+    const storedPayload = persistQuotePayload(payload, tenantSlug);
+    if (tenantSlug && !storedPayload.bc_code) {
       try {
         if (clientQuoteId) {
           const prev = await pool().query(
-            `select payload from identity.quotes where client_quote_id = $1 and status <> 'deleted' order by created_at desc limit 1`,
-            [clientQuoteId],
+            `select payload from identity.quotes
+              where client_quote_id = $1 and user_id = $2 and status <> 'deleted'
+              order by created_at desc limit 1`,
+            [clientQuoteId, req.user.id],
           );
-          if (prev.rows[0]?.payload?.bc_code) salePayload.bc_code = prev.rows[0].payload.bc_code;
+          if (prev.rows[0]?.payload?.bc_code) storedPayload.bc_code = prev.rows[0].payload.bc_code;
         }
-        if (!salePayload.bc_code) salePayload.bc_code = await takeNextTenantCode(pool(), tenantSlug);
+        if (!storedPayload.bc_code) storedPayload.bc_code = await takeNextTenantCode(pool(), tenantSlug);
       } catch { /* counter optional */ }
     }
     const q = await upsertQuote({
       userId: req.user.id,
       clientQuoteId,
-      payload: salePayload,
+      payload: storedPayload,
       pdfId, pdfUrl, gcsUri, driveFileId,
       status: safeStatus,
       wizardStep,
     });
-    try {
-      await attachQuoteToTenant(pool(), {
-        quoteId: q.quote_id,
-        userId: req.user.id,
-        payload: salePayload,
-      });
-    } catch (attachErr) {
-      req.log?.warn?.({ err: attachErr?.message }, "[me/quotes] tenant attach skipped");
+    if (tenantSlug) {
+      try {
+        await attachQuoteToTenant(pool(), {
+          quoteId: q.quote_id,
+          userId: req.user.id,
+          payload: storedPayload,
+          slug: tenantSlug,
+        });
+      } catch (attachErr) {
+        req.log?.warn?.({ err: attachErr?.message }, "[me/quotes] tenant attach skipped");
+      }
     }
     await logActivity({
       pool: pool(),
@@ -434,7 +445,7 @@ router.post("/api/me/quotes", requireUser(), meQuotesLimiter, async (req, res) =
       resourceType: "quote",
       resourceId: q.quote_id,
       payload: {
-        ...saleUsageMetrics({ ...salePayload, total_usd: q.total_usd }),
+        ...saleUsageMetrics({ ...storedPayload, total_usd: q.total_usd }),
         ...(tenantSlug ? { tenant: tenantSlug } : {}),
       },
       req,
@@ -448,7 +459,7 @@ router.post("/api/me/quotes", requireUser(), meQuotesLimiter, async (req, res) =
         action: safeStatus === "draft" ? "tenant.quote.autosave" : "tenant.quote.complete",
         resourceType: "quote",
         resourceId: q.quote_id,
-        payload: saleUsageMetrics({ ...salePayload, total_usd: q.total_usd }),
+        payload: saleUsageMetrics({ ...storedPayload, total_usd: q.total_usd }),
         req,
       });
     }

@@ -31,19 +31,33 @@ export function isCostOrCommissionKey(key) {
   return COST_OR_COMMISSION_KEY.test(k);
 }
 
+/** Reject keys that would pollute Object.prototype via `out[k] = …`. */
+const DANGEROUS_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+
 /**
  * Deep-clone `value` without cost / commission keys.
  * Sale fields (pu, total, total_usd, area_m2, lista) stay.
+ * Uses null-prototype objects so hostile `__proto__` keys cannot pollute.
  */
 export function toSalePayload(value, depth = 0) {
   if (value == null || typeof value !== "object" || depth > 8) return value;
   if (Array.isArray(value)) return value.map((item) => toSalePayload(item, depth + 1));
-  const out = {};
+  const out = Object.create(null);
   for (const [k, v] of Object.entries(value)) {
+    if (DANGEROUS_KEYS.has(k)) continue;
     if (isCostOrCommissionKey(k)) continue;
     out[k] = toSalePayload(v, depth + 1);
   }
   return out;
+}
+
+/**
+ * Shared Cloud Run serves BMC + white-label. Only scrub cost/commission when
+ * the request is a tenant silo; BMC Origin must keep factory fields intact.
+ */
+export function persistQuotePayload(payload, tenantSlug = null) {
+  if (!tenantSlug) return payload;
+  return toSalePayload(payload && typeof payload === "object" ? payload : {});
 }
 
 /** Metrics we keep in usage history for later pricing-model work. */
