@@ -7,6 +7,7 @@ import cors from "cors";
 import pino from "pino";
 import pinoHttp from "pino-http";
 import { config } from "./config.js";
+import { resolveListenHost } from "./lib/listenHost.js";
 import { isCorsOriginAllowed } from "./lib/corsAllow.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { buildVersionInfo } from "./lib/versionInfo.js";
@@ -1276,7 +1277,8 @@ let stopOmniSnoozeWorker = () => {};
 let stopOmniSequenceWorker = () => {};
 let stopPeaWorker = () => {};
 
-const server = app.listen(config.port, async () => {
+const listenHost = resolveListenHost(process.env);
+const onListening = async () => {
   try {
     const { getPromptsShaCached } = await import("./lib/promptsSha.js");
     const ps = getPromptsShaCached();
@@ -1287,6 +1289,7 @@ const server = app.listen(config.port, async () => {
   logger.info(
     {
       port: config.port,
+      listenHost: listenHost || "*",
       appEnv: config.appEnv,
       publicBaseUrl: config.publicBaseUrl,
       hasFinanzasDashboard,
@@ -1393,7 +1396,11 @@ const server = app.listen(config.port, async () => {
       logger.info("PEA worker started");
     }
   }
-});
+};
+
+const server = listenHost
+  ? app.listen(config.port, listenHost, onListening)
+  : app.listen(config.port, onListening);
 
 // ── Graceful shutdown ──
 // Cloud Run otorga ~10s entre SIGTERM y SIGKILL. Disparamos los cleanups de
