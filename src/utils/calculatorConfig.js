@@ -3,7 +3,11 @@
 // Persiste en localStorage (bmc-calculator-config)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const STORAGE_KEY = "bmc-calculator-config";
+import { WHITELABEL } from "../config/whitelabel.js";
+import { readScopedItem, removeScopedItem, writeScopedItem } from "./tenantScope.js";
+
+const BMC_LEGACY_KEY = "bmc-calculator-config";
+const LEAF = "calculator-config";
 
 const DEFAULTS = {
   iva: 0.22,
@@ -16,7 +20,7 @@ let _config = null;
 function load() {
   if (_config) return _config;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readScopedItem(LEAF, BMC_LEGACY_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       _config = { ...DEFAULTS, ...parsed };
@@ -32,7 +36,7 @@ function load() {
 function save(config) {
   _config = { ...DEFAULTS, ...config };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(_config));
+    writeScopedItem(LEAF, JSON.stringify(_config), BMC_LEGACY_KEY);
   } catch (e) {
     console.warn("calculatorConfig: could not save to localStorage", e);
   }
@@ -58,13 +62,14 @@ export function getListaDefault() {
 }
 
 export function getFleteDefault() {
+  if (WHITELABEL) return 0;
   return load().fleteDefault ?? DEFAULTS.fleteDefault;
 }
 
 export function resetConfig() {
   _config = null;
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    removeScopedItem(LEAF, BMC_LEGACY_KEY);
   } catch {
     // ignore
   }

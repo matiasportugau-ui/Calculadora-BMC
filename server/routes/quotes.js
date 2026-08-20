@@ -7,6 +7,25 @@
 import { Router } from "express";
 import { getQuoteCounterPool } from "../lib/quoteCounterDb.js";
 
+function quotePrefix() {
+  const wl = String(process.env.WHITELABEL || "").trim().toLowerCase();
+  return wl === "bc" ? "BC" : "BMC";
+}
+
+function counterTable() {
+  return quotePrefix() === "BC" ? "bc_quote_counter" : "bmc_quote_counter";
+}
+
+async function ensureBcCounterTable(pool) {
+  await pool.query(`
+    create table if not exists bc_quote_counter (
+      year        int          primary key,
+      seq         int          not null default 0,
+      updated_at  timestamptz  not null default now()
+    )
+  `);
+}
+
 function uruguayYear() {
   return parseInt(
     new Intl.DateTimeFormat("en-CA", {
@@ -44,15 +63,17 @@ export function createQuotesRouter(config) {
         return res.status(503).json({ ok: false, error: "database_unavailable" });
       }
       const year = uruguayYear();
+      const table = counterTable();
+      if (table === "bc_quote_counter") await ensureBcCounterTable(pool);
       const { rows } = await pool.query(
-        "select seq from bmc_quote_counter where year = $1",
+        `select seq from ${table} where year = $1`,
         [year]
       );
       const seq = rows[0]?.seq ?? 0;
       return res.json({
         ok: true,
         counter: seq,
-        code: `BMC-${year}-${String(seq).padStart(4, "0")}`,
+        code: `${quotePrefix()}-${year}-${String(seq).padStart(4, "0")}`,
         year,
       });
     } catch (err) {
@@ -72,11 +93,13 @@ export function createQuotesRouter(config) {
         return res.status(503).json({ ok: false, error: "database_unavailable" });
       }
       const year = uruguayYear();
+      const table = counterTable();
+      if (table === "bc_quote_counter") await ensureBcCounterTable(pool);
       const { rows } = await pool.query(
-        `insert into bmc_quote_counter (year, seq)
+        `insert into ${table} (year, seq)
          values ($1, 1)
          on conflict (year)
-         do update set seq = bmc_quote_counter.seq + 1, updated_at = now()
+         do update set seq = ${table}.seq + 1, updated_at = now()
          returning seq, year`,
         [year]
       );
@@ -84,7 +107,7 @@ export function createQuotesRouter(config) {
       return res.json({
         ok: true,
         counter: seq,
-        code: `BMC-${retYear}-${String(seq).padStart(4, "0")}`,
+        code: `${quotePrefix()}-${retYear}-${String(seq).padStart(4, "0")}`,
         year: retYear,
       });
     } catch (err) {

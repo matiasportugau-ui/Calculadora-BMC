@@ -8,6 +8,14 @@ import { loadKnowledgeDocs } from "./knowledgeLoader.js";
 import { renderExamplesBlock } from "./channelRenderer.js";
 import { config } from "../config.js";
 import { brainBlock } from "./brainKB.js";
+import { agentIdentity } from "../../src/config/whitelabel.js";
+import {
+  buildTenantChannelSection,
+  buildTenantExtractionProtocol,
+  buildTenantIdentityBlock,
+  buildTenantToolsBlock,
+  tenantizePrompt,
+} from "./tenantPrompt.js";
 
 const IDENTITY = `Tu nombre es Panelin. Sos el asistente experto de ventas de BMC Uruguay (METALOG SAS).
 BMC Uruguay fabrica y vende paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
@@ -17,6 +25,12 @@ Cuando el usuario confirma datos concretos, podés emitir acciones para auto-com
 Los montos totales y el BOM los calcula la aplicación a partir del estado de la calculadora: no afirmes totales finales si faltan datos o no podés contrastar con ese estado.
 Para **USD/m² sin IVA**, espesores y listas **web** vs **venta**, usá siempre el bloque **PRECIOS CANÓNICOS** de este system prompt (generado desde la misma fuente que el motor de cotización). Si otra sección contradice esos números, **prevalece PRECIOS CANÓNICOS**. Si el usuario pide un número que no figura ahí, decilo y pedí confirmación o derivá a un asesor.
 Nunca inventés precios, dimensiones ni datos que el usuario no te dio. Si falta información, preguntala.`;
+
+export function buildIdentityBlock(tenantSlug = null) {
+  const id = agentIdentity(tenantSlug);
+  if (!id.slug) return IDENTITY;
+  return buildTenantIdentityBlock(id);
+}
 
 const CONSTRUCTION_SYSTEM = `## SISTEMA CONSTRUCTIVO Y LÓGICA DE COTIZACIÓN (BMC)
 
@@ -502,11 +516,12 @@ Usá esta consulta solo como contexto para dar más información sobre esta coti
  * @param {{ devMode?: boolean, leadContext?: {quoteId?: string, cliente?: string, consulta?: string}|null }} options
  */
 export function buildVoiceSystemPrompt(calcState = {}, options = {}) {
-  const { devMode = false, leadContext = null } = options;
+  const { devMode = false, leadContext = null, tenantSlug = null } = options;
   const devModeRules = devMode
     ? "## MODO DESARROLLADOR\nPriorizá precisión; si falta un dato, preguntá antes de afirmar números."
     : "";
-  return [IDENTITY, VOICE_REALTIME_RULES, buildCalcStateBlock(calcState), buildLeadContextBlock(leadContext), devModeRules]
+  const lead = tenantSlug ? "" : buildLeadContextBlock(leadContext);
+  return [buildIdentityBlock(tenantSlug), VOICE_REALTIME_RULES, buildCalcStateBlock(calcState), lead, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }
@@ -519,7 +534,7 @@ export function buildVoiceSystemPrompt(calcState = {}, options = {}) {
  * rag, dev rules) varies per call and must NOT be cached.
  *
  * @param {object} calcState
- * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object, channel?: "chat"|"ml"|"wa", ragContext?: string }} options
+ * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object, channel?: "chat"|"ml"|"wa", ragContext?: string, tenantSlug?: string|null }} options
  * @returns {{ staticPrefix: string, dynamicTail: string }}
  */
 export function buildSystemPromptParts(calcState = {}, options = {}) {
@@ -527,6 +542,7 @@ export function buildSystemPromptParts(calcState = {}, options = {}) {
     trainingExamples = [],
     devMode = false,
     recentAssistantMessages = [],
+    tenantSlug = null,
     preferences = null,
     channel = "chat",
     ragContext = "",
@@ -727,13 +743,28 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
   // original position inside the prefix so this stays byte-identical in every mode;
   // when the brain flag is ON it is request-dependent, so the cache simply won't hit
   // in that (non-prod) mode — output correctness is unaffected.
+  const identityBlock = buildIdentityBlock(tenantSlug);
+  const tenantId = tenantSlug ? agentIdentity(tenantSlug) : null;
+  const isTenant = Boolean(tenantId?.slug);
+  const learningBlock = isTenant ? "" : learningBmcBlock;
+  const knowledgeForPrompt = isTenant ? "" : knowledgeBlock;
+  const brainForPrompt = isTenant ? "" : brainBlockStr;
+  const coworkForPrompt = isTenant ? "" : coworkVisionBlock;
+  const toolsForPrompt = isTenant ? buildTenantToolsBlock() : toolsBlock;
+  const extractionForPrompt = isTenant ? buildTenantExtractionProtocol() : extractionProtocol;
+  const constructionForPrompt = isTenant ? tenantizePrompt(CONSTRUCTION_SYSTEM, tenantId) : CONSTRUCTION_SYSTEM;
+  const catalogForPrompt = isTenant ? tenantizePrompt(CATALOG, tenantId) : CATALOG;
+  const workflowForPrompt = isTenant ? tenantizePrompt(WORKFLOW, tenantId) : WORKFLOW;
+  const pricesForPrompt = isTenant ? tenantizePrompt(canonicalPrices, tenantId) : canonicalPrices;
   const staticPrefix = [
-    IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC,
-    canonicalPrices, knowledgeBlock, brainBlockStr, learningBmcBlock, coworkVisionBlock, toolsBlock, extractionProtocol, antiRepBlock,
+    identityBlock, constructionForPrompt, catalogForPrompt, workflowForPrompt, ACTIONS_DOC, SUGGESTIONS_DOC,
+    pricesForPrompt, knowledgeForPrompt, brainForPrompt, learningBlock, coworkForPrompt, toolsForPrompt, extractionForPrompt, antiRepBlock,
   ].filter(Boolean).join("\n\n");
-  const operatorCtx = options.operatorContextBlock || "";
+  const operatorCtx = isTenant ? "" : (options.operatorContextBlock || "");
+  const examplesForPrompt = isTenant ? tenantizePrompt(examplesBlock, tenantId) : examplesBlock;
+  const ragForPrompt = isTenant ? tenantizePrompt(ragContext, tenantId) : ragContext;
   const dynamicTail = [
-    variationBlock, prefsBlock, currentState, examplesBlock, ragContext, operatorCtx, devModeRules,
+    variationBlock, prefsBlock, currentState, examplesForPrompt, ragForPrompt, operatorCtx, devModeRules,
   ].filter(Boolean).join("\n\n");
   return { staticPrefix, dynamicTail };
 }

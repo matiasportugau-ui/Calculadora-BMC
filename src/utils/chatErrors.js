@@ -21,5 +21,5 @@ export function mapErrorMessage(err) {
     return "No se puede conectar con el servidor. Verificá tu conexión.";
   }
   if (status) return `Error ${status}. Intentá de nuevo.`;
-  return "No se pudo conectar con Panelin. Intentá de nuevo.";
+  return "No se pudo conectar con el asistente. Intentá de nuevo.";
 }

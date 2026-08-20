@@ -1,0 +1,337 @@
+/* Cinematic tenant login ident — letterbox 2.39, movie-title motion. */
+
+.tenantIdent {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+  color: var(--ti-ink, #f4e8c8);
+  font-family: Charter, "Palatino Linotype", Palatino, Georgia, serif;
+}
+
+.tenantIdent__letterbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 9vh;
+  background: #000;
+  z-index: 4;
+  pointer-events: none;
+}
+.tenantIdent__letterbox--top { top: 0; }
+.tenantIdent__letterbox--bot { bottom: 0; }
+
+.tenantIdent__grain {
+  position: absolute;
+  inset: -8%;
+  background:
+    radial-gradient(1200px 600px at 50% 40%, rgba(255, 220, 140, 0.08), transparent 55%),
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.12) 2px 3px);
+  opacity: 0.55;
+  animation: ti-ken 28s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes ti-ken {
+  from { transform: scale(1) translate3d(0, 0, 0); }
+  to { transform: scale(1.08) translate3d(-1.5%, 1%, 0); }
+}
+
+.tenantIdent__stage {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  padding: 24px 28px 32px;
+  max-width: 560px;
+}
+
+.tenantIdent__mark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+  animation: ti-fade-up 1.4s ease-out both;
+}
+
+.tenantIdent__title {
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-size: clamp(28px, 7vw, 64px);
+  line-height: 0.95;
+  color: var(--ti-accent, #c4a15a);
+  animation: ti-title 1.8s ease-out 0.2s both;
+}
+
+.tenantIdent[data-style="imax-void"] .tenantIdent__title {
+  letter-spacing: 0.18em;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  color: var(--ti-ink, #f4f5f7);
+}
+
+.tenantIdent[data-style="stack"] .tenantIdent__title {
+  font-family: "Arial Black", Arial, sans-serif;
+  letter-spacing: 0.08em;
+}
+
+.tenantIdent__line {
+  margin: 14px auto 0;
+  height: 1px;
+  width: 0;
+  background: var(--ti-accent, #c4a15a);
+  animation: ti-rule 1.2s ease-out 0.8s forwards;
+}
+
+.tenantIdent__credit {
+  margin: 16px 0 0;
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ti-ink, #f4e8c8);
+  opacity: 0.78;
+  white-space: pre-line;
+  line-height: 1.7;
+  animation: ti-fade-up 1.2s ease-out 1s both;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.tenantIdent__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  margin: 0 auto 16px;
+  width: min(220px, 50vw);
+}
+.tenantIdent__plank {
+  height: 10px;
+  width: 100%;
+  background: var(--ti-accent, #b85c42);
+  opacity: 0;
+  animation: ti-plank 0.7s ease-out forwards;
+}
+.tenantIdent__plank:nth-child(2) { width: 86%; background: var(--ti-soft, #a3988c); animation-delay: 0.18s; }
+.tenantIdent__plank:nth-child(3) { width: 72%; animation-delay: 0.36s; }
+
+@keyframes ti-plank {
+  from { opacity: 0; transform: translateY(12px) scaleX(0.6); }
+  to { opacity: 1; transform: none; }
+}
+
+.tenantIdent__cta {
+  margin-top: 28px;
+  animation: ti-fade-up 1s ease-out 1.4s both;
+}
+.tenantIdent__btn {
+  appearance: none;
+  border: 1px solid var(--ti-accent, #c4a15a);
+  background: transparent;
+  color: var(--ti-ink, #f4e8c8);
+  padding: 12px 22px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.tenantIdent__btn:hover { background: color-mix(in srgb, var(--ti-accent, #c4a15a) 18%, transparent); }
+.tenantIdent__btn:disabled { opacity: 0.55; cursor: wait; }
+
+.tenantIdent__deny {
+  margin-top: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ti-ink, #f4e8c8);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  animation: ti-fade-up 0.8s ease-out both;
+}
+
+@keyframes ti-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ti-title {
+  from { opacity: 0; letter-spacing: 0.55em; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ti-rule {
+  to { width: min(180px, 40vw); }
+}
+
+/* ── click → logo lock → cut to black (before calculator) ── */
+.tenantIdent__flare,
+.tenantIdent__cut {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.tenantIdent__flare { z-index: 2; }
+.tenantIdent__cut {
+  z-index: 6;
+  background: #000;
+}
+
+.tenantIdent[data-phase="overture"] {
+  pointer-events: none;
+}
+.tenantIdent[data-phase="overture"] .tenantIdent__cta,
+.tenantIdent[data-phase="overture"] .tenantIdent__credit,
+.tenantIdent[data-phase="overture"] .tenantIdent__deny {
+  animation: ti-fade-out 0.45s ease-out forwards;
+}
+.tenantIdent[data-phase="overture"] .tenantIdent__line {
+  animation: ti-rule-out 0.7s ease-in forwards;
+}
+.tenantIdent[data-phase="overture"] .tenantIdent__letterbox--top {
+  animation: ti-box-in-top 2.4s ease-in-out both;
+}
+.tenantIdent[data-phase="overture"] .tenantIdent__letterbox--bot {
+  animation: ti-box-in-bot 2.4s ease-in-out both;
+}
+.tenantIdent[data-phase="overture"] .tenantIdent__cut {
+  animation: ti-cut 2.4s ease-in forwards;
+}
+.tenantIdent[data-phase="overture"] .tenantIdent__grain {
+  animation: ti-ken-lock 2.4s ease-in-out both;
+}
+
+.tenantIdent[data-phase="overture"][data-style="gold-title"] .tenantIdent__flare {
+  background: radial-gradient(ellipse at 50% 42%, rgba(196, 161, 90, 0.55), transparent 58%);
+  animation: ti-flare 2.4s ease-out both;
+}
+.tenantIdent[data-phase="overture"][data-style="gold-title"] .tenantIdent__mark {
+  animation: ti-gold-logo 2.4s ease-in-out both;
+}
+.tenantIdent[data-phase="overture"][data-style="gold-title"] .tenantIdent__title {
+  animation: ti-gold-title 2.4s ease-in-out both;
+}
+
+.tenantIdent[data-phase="overture"][data-style="stack"] .tenantIdent__flare {
+  background: radial-gradient(ellipse at 50% 38%, rgba(184, 92, 66, 0.42), transparent 55%);
+  animation: ti-flare 2.4s ease-out both;
+}
+.tenantIdent[data-phase="overture"][data-style="stack"] .tenantIdent__plank {
+  animation: ti-stamp-plank 1.35s cubic-bezier(0.16, 0.84, 0.24, 1) both;
+}
+.tenantIdent[data-phase="overture"][data-style="stack"] .tenantIdent__plank:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.tenantIdent[data-phase="overture"][data-style="stack"] .tenantIdent__plank:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.tenantIdent__stampMark {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+.tenantIdent[data-phase="overture"][data-style="stack"] .tenantIdent__stampMark {
+  animation: ti-stamp-mark 1.2s ease-out 0.28s both;
+}
+.tenantIdent[data-phase="overture"][data-style="stack"] .tenantIdent__title {
+  animation: ti-stamp-title 2.4s cubic-bezier(0.16, 0.84, 0.24, 1) both;
+}
+
+.tenantIdent[data-phase="overture"][data-style="imax-void"] .tenantIdent__flare {
+  background: radial-gradient(circle at 50% 46%, rgba(228, 231, 235, 0.16), transparent 42%);
+  animation: ti-void-flare 2.4s ease-out both;
+}
+.tenantIdent[data-phase="overture"][data-style="imax-void"] .tenantIdent__mark {
+  animation: ti-void-mark 2.4s ease-in-out both;
+}
+.tenantIdent[data-phase="overture"][data-style="imax-void"] .tenantIdent__title {
+  animation: ti-void-title 2.4s ease-in-out both;
+}
+
+@keyframes ti-fade-out {
+  to { opacity: 0; transform: translateY(8px); }
+}
+@keyframes ti-rule-out {
+  from { width: min(180px, 40vw); opacity: 1; }
+  to { width: 0; opacity: 0; }
+}
+@keyframes ti-box-in-top {
+  from { height: 9vh; }
+  to { height: 18vh; }
+}
+@keyframes ti-box-in-bot {
+  from { height: 9vh; }
+  to { height: 18vh; }
+}
+@keyframes ti-cut {
+  0%, 70% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes ti-ken-lock {
+  from { transform: scale(1.04); opacity: 0.55; }
+  to { transform: scale(1.16) translate3d(-2%, 1.5%, 0); opacity: 0.2; }
+}
+@keyframes ti-flare {
+  0% { opacity: 0; }
+  22% { opacity: 1; }
+  70% { opacity: 0.25; }
+  100% { opacity: 0; }
+}
+@keyframes ti-gold-logo {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  30% { transform: scale(1.1); filter: drop-shadow(0 0 28px rgba(196, 161, 90, 0.75)); }
+  68% { transform: scale(1.16); filter: drop-shadow(0 0 16px rgba(196, 161, 90, 0.4)); }
+  100% { transform: scale(1.05); filter: drop-shadow(0 0 0 transparent); }
+}
+@keyframes ti-gold-title {
+  0% { letter-spacing: 0.28em; transform: scale(1); }
+  40% { letter-spacing: 0.42em; transform: scale(1.04); }
+  100% { letter-spacing: 0.34em; transform: scale(1.02); }
+}
+@keyframes ti-stamp-plank {
+  0% { transform: scaleX(1) translateY(0); }
+  38% { transform: scaleX(1.12) translateY(4px); }
+  52% { transform: scaleX(0.18) scaleY(2.6); }
+  100% { transform: scaleX(1) scaleY(1); }
+}
+@keyframes ti-stamp-mark {
+  from { max-height: 0; opacity: 0; transform: scale(0.86) translateY(10px); }
+  to { max-height: 88px; opacity: 1; transform: none; }
+}
+@keyframes ti-stamp-title {
+  0% { transform: scale(1); letter-spacing: 0.08em; }
+  45% { transform: scale(1.12); letter-spacing: 0.16em; }
+  100% { transform: scale(1.04); letter-spacing: 0.1em; }
+}
+@keyframes ti-void-flare {
+  0% { opacity: 0; }
+  18% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+@keyframes ti-void-mark {
+  0% { transform: scale(1); opacity: 1; }
+  28% { transform: scale(0.08); opacity: 0.35; }
+  52% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes ti-void-title {
+  0% { letter-spacing: 0.18em; opacity: 1; }
+  30% { letter-spacing: 0.42em; opacity: 0.55; }
+  100% { letter-spacing: 0.22em; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tenantIdent__grain,
+  .tenantIdent__mark,
+  .tenantIdent__title,
+  .tenantIdent__credit,
+  .tenantIdent__cta,
+  .tenantIdent__plank,
+  .tenantIdent__flare,
+  .tenantIdent__cut,
+  .tenantIdent__letterbox { animation: none; opacity: 1; width: auto; }
+  .tenantIdent__line { width: min(180px, 40vw); }
+  .tenantIdent[data-phase="overture"] .tenantIdent__cta { opacity: 0; }
+}

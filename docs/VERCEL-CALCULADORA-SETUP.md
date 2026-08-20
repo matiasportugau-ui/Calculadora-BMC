@@ -22,7 +22,7 @@ En el proyecto Vercel: **Settings → Environment Variables**. Aplicar a **Produ
 
 En **APIs & Services → Credentials →** tu cliente OAuth **Web application**:
 
-- **Authorized JavaScript origins:** `https://calculadora-bmc.vercel.app`
+- **Authorized JavaScript origins:** `https://calculadora-bmc.vercel.app` (BMC). El tenant paralelo `https://calculadora-bc.vercel.app` se **agrega** a la misma lista; no se reemplaza ni se borra BMC. Ver `docs/team/runbooks/google-oauth-troubleshooting.md`.
 - **Authorized redirect URIs:** para GIS con token client suele bastar el origen; si Google pide redirect, usá el que indique la consola para tu flujo.
 
 Sin el origen de Vercel, el login de Drive puede fallar desde producción aunque funcione en `localhost`.

@@ -28,6 +28,8 @@ import {
   upsertQuote,
   claimAnonymousQuotes,
 } from "../lib/quoteStore.js";
+import { attachQuoteToTenant, toSalePayload, saleUsageMetrics, takeNextTenantCode } from "../lib/tenantBc.js";
+import { tenantSlugFromOrigin } from "../lib/tenantAgentEval.js";
 import {
   syncQuote as sheetSyncQuote,
   reconcile as sheetReconcile,
@@ -42,6 +44,13 @@ function pool() {
   const p = getWaPool(config.databaseUrl);
   if (!p) throw Object.assign(new Error("db_unavailable"), { status: 503 });
   return p;
+}
+
+function requestTenantSlug(req) {
+  const fromOrigin = tenantSlugFromOrigin(req.get?.("origin") || req.headers?.origin || "");
+  if (fromOrigin) return fromOrigin;
+  const env = String(process.env.WHITELABEL || "").trim().toLowerCase();
+  return env || null;
 }
 
 /** Test-only — inject the same in-memory shim used by quoteStore + identityAuth. */
@@ -358,7 +367,16 @@ router.get("/api/me/quotes", requireUser(), async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const items = await listMyQuotes({ userId: req.user.id, limit });
-    res.json({ ok: true, items });
+    res.json({
+      ok: true,
+      items: items.map((row) => ({
+        ...row,
+        code: row.payload?.bc_code || row.client_quote_id,
+        cliente: row.payload?.cliente || null,
+        escenario: row.payload?.scenario || null,
+        producto: row.payload?.producto || null,
+      })),
+    });
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
@@ -384,14 +402,67 @@ router.post("/api/me/quotes", requireUser(), meQuotesLimiter, async (req, res) =
     // workflow (calc completion path, admin queue, soft delete) is what flips
     // status to 'completed', 'exported', or 'deleted' — never a user POST.
     const safeStatus = VALID_USER_QUOTE_STATUSES.has(status) ? status : "draft";
+    const salePayload = toSalePayload(payload);
+    const tenantSlug = requestTenantSlug(req);
+    if (tenantSlug && !salePayload.bc_code) {
+      try {
+        if (clientQuoteId) {
+          const prev = await pool().query(
+            `select payload from identity.quotes
+              where client_quote_id = $1 and user_id = $2 and status <> 'deleted'
+              order by created_at desc limit 1`,
+            [clientQuoteId, req.user.id],
+          );
+          if (prev.rows[0]?.payload?.bc_code) salePayload.bc_code = prev.rows[0].payload.bc_code;
+        }
+        if (!salePayload.bc_code) salePayload.bc_code = await takeNextTenantCode(pool(), tenantSlug);
+      } catch { /* counter optional */ }
+    }
     const q = await upsertQuote({
       userId: req.user.id,
       clientQuoteId,
-      payload,
+      payload: salePayload,
       pdfId, pdfUrl, gcsUri, driveFileId,
       status: safeStatus,
       wizardStep,
     });
+    try {
+      await attachQuoteToTenant(pool(), {
+        quoteId: q.quote_id,
+        userId: req.user.id,
+        payload: salePayload,
+        slug: tenantSlug,
+      });
+    } catch (attachErr) {
+      req.log?.warn?.({ err: attachErr?.message }, "[me/quotes] tenant attach skipped");
+    }
+    await logActivity({
+      pool: pool(),
+      actorId: req.user.id,
+      sessionId: req.user.sessionId,
+      action: safeStatus === "draft" ? "quote.draft.update" : "quote.complete",
+      module: "quote",
+      resourceType: "quote",
+      resourceId: q.quote_id,
+      payload: {
+        ...saleUsageMetrics({ ...salePayload, total_usd: q.total_usd }),
+        ...(tenantSlug ? { tenant: tenantSlug } : {}),
+      },
+      req,
+    });
+    if (tenantSlug) {
+      const { recordTenantActivity } = await import("../lib/tenantActivity.js");
+      await recordTenantActivity({
+        pool: pool(),
+        actorId: req.user.id,
+        sessionId: req.user.sessionId,
+        action: safeStatus === "draft" ? "tenant.quote.autosave" : "tenant.quote.complete",
+        resourceType: "quote",
+        resourceId: q.quote_id,
+        payload: saleUsageMetrics({ ...salePayload, total_usd: q.total_usd }),
+        req,
+      });
+    }
     res.json({ ok: true, quote: q });
   } catch (e) {
     // cursor[bot] LOW: match the F-1/W-3 pattern from authGoogle.js — log

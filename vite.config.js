@@ -89,6 +89,7 @@ export default defineConfig({
       // BMC_API_PROXY overrides (e.g. Cloud Run URL) when local API is not running.
       '/calc': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
       '/api': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
+      '/bc-telemetry': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
       '/auth': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
       '/chat': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },
       '/sync': { target: process.env.BMC_API_PROXY || 'http://localhost:3001', changeOrigin: true, secure: true },

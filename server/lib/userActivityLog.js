@@ -81,6 +81,20 @@ export const ACTION_TAXONOMY = new Set([
   "nav.route.change",
   "ui.drawer.open",
   "ui.search.submit",
+
+  // tenant BC (Jenerik) — also registered from tenantActivity.js
+  "tenant.session.start",
+  "tenant.session.end",
+  "tenant.nav.route",
+  "tenant.ui.click",
+  "tenant.wizard.step",
+  "tenant.quote.autosave",
+  "tenant.quote.open",
+  "tenant.quote.export.pdf",
+  "tenant.quote.export.html",
+  "tenant.quote.complete",
+  "tenant.member.invite",
+  "tenant.invite.claim",
 ]);
 
 // Actions that POST /api/me/activity is allowed to claim. Server-emitted actions
@@ -91,6 +105,15 @@ export const CLIENT_EMITTABLE = new Set([
   "nav.route.change",
   "ui.drawer.open",
   "ui.search.submit",
+  "tenant.session.start",
+  "tenant.session.end",
+  "tenant.nav.route",
+  "tenant.ui.click",
+  "tenant.wizard.step",
+  "tenant.quote.autosave",
+  "tenant.quote.open",
+  "tenant.quote.export.pdf",
+  "tenant.quote.export.html",
   // The browser knows when the user navigates away. Allowing client-emitted
   // session.end + sendBeacon on `beforeunload` captures graceful tab closes
   // that would otherwise look like orphan sessions and only get cleaned up
@@ -121,6 +144,7 @@ const MODULE_PREFIX_MAP = {
   "nav.": "nav",
   "ui.": "ui",
   "ads.": "ads",
+  "tenant.": "tenant",
 };
 
 function deriveModule(action) {
@@ -142,6 +166,16 @@ const BLOCKED_KEYS = new Set([
   "body",           // message body content
   "content",
   "phone",          // PII; OK to log resource_id (the message_id), not the phone string
+  "costo",
+  "cost",
+  "factory_cost",
+  "factorycost",
+  "costo_bmc",
+  "comision",
+  "commission",
+  "comision_usd",
+  "margen",
+  "margin",
 ]);
 
 export function scrubPayload(p) {

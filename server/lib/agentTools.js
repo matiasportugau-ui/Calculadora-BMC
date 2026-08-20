@@ -16,6 +16,7 @@ import { hydrateLibreExtras, extraToEngineItem, normalizeLibreExtra } from "../.
 import { buildProductCatalogIndex, rowPriceHint } from "../../src/utils/productCatalogIndex.js";
 import { filterAndRankProducts } from "../../src/utils/productSearch.js";
 import { config } from "../config.js";
+import { agentIdentity } from "../../src/config/whitelabel.js";
 import { getPdf } from "../routes/calc.js";
 import { postCotizar, postCotizarPdf, postPresupuestoLibre } from "./calcLoopbackClient.js";
 import {
@@ -2048,7 +2049,10 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         if (!pdfUrl) return JSON.stringify({ ok: false, error: "pdf_url requerido cuando no se pasa text override" });
         const greeting = cliente ? `Hola ${cliente}, ` : "Hola, ";
         const totalLine = Number.isFinite(total) && total > 0 ? `\nTotal: USD ${total.toFixed(2)} c/IVA.` : "";
-        text = `${greeting}te paso la cotización de BMC Uruguay:${totalLine}\n${pdfUrl}\n\nAbrila en el navegador y se imprime como PDF desde Archivo → Imprimir. Saludos, BMC Uruguay.`;
+        const id = agentIdentity(opts.tenantSlug || process.env.WHITELABEL);
+        const shop = id.slug ? id.brandName : "BMC Uruguay";
+        const close = id.slug ? `${id.closing}.` : "Saludos, BMC Uruguay.";
+        text = `${greeting}te paso la cotización de ${shop}:${totalLine}\n${pdfUrl}\n\nAbrila en el navegador y se imprime como PDF desde Archivo → Imprimir. ${close}`;
       }
       try {
         const data = await sendWhatsAppText({
