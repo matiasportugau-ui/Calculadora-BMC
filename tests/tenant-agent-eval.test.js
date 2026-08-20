@@ -22,12 +22,18 @@ test("slug allowlist and origin mapping", () => {
   assert.equal(isBmcProdOrigin("https://calculadora-bmc.vercel.app"), true);
 });
 
-test("resolve prefers membership, then origin, ignores body on BMC prod", () => {
+test("resolve prefers Origin host over foreign membership (shared Cloud Run silo)", () => {
+  // BC invitee on LAM Origin must resolve as paneleslam, not bc.
+  assert.equal(resolveTenantSlug({
+    membershipSlug: "bc",
+    bodyTenant: "bc",
+    origin: "https://calculadora-paneleslam.vercel.app",
+  }), "paneleslam");
   assert.equal(resolveTenantSlug({
     membershipSlug: "paneleslam",
     bodyTenant: "bc",
     origin: "https://calculadora-bc.vercel.app",
-  }), "paneleslam");
+  }), "bc");
   assert.equal(resolveTenantSlug({
     bodyTenant: "bc",
     origin: "https://calculadora-bmc.vercel.app",

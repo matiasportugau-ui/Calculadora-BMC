@@ -40,7 +40,10 @@ export function tenantSlugFromOrigin(origin) {
 
 /**
  * Resolve tenant for a chat request.
- * Membership > Origin host > API WHITELABEL env > body (never from BMC prod Origin).
+ * Origin host (known tenant SPA) > membership matching that host > API
+ * WHITELABEL env > body. Never trust membership alone on a shared Cloud Run:
+ * a BC invitee hitting LAM Origin must not resolve as "bc".
+ * BMC prod Origin never tags as a tenant.
  */
 export function resolveTenantSlug({
   bodyTenant,
@@ -48,12 +51,13 @@ export function resolveTenantSlug({
   membershipSlug,
   envSlug,
 } = {}) {
-  const mem = normalizeTenantSlug(membershipSlug);
-  if (mem) return mem;
   const fromOrigin = tenantSlugFromOrigin(origin);
+  // Known tenant SPA host wins — never let a foreign membership remap the silo.
   if (fromOrigin) return fromOrigin;
   // Shared Cloud Run must never tag BMC prod as a tenant, even if WHITELABEL=bc.
   if (isBmcProdOrigin(origin)) return null;
+  const mem = normalizeTenantSlug(membershipSlug);
+  if (mem) return mem;
   const env = normalizeTenantSlug(envSlug);
   if (env) return env;
   return normalizeTenantSlug(bodyTenant);

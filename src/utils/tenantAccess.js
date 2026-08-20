@@ -9,7 +9,12 @@ export function tenantAccessState({
   if (status === "loading") return "boot";
   if (status !== "authenticated") return "login";
   if (role === "admin" || role === "superadmin") return "ok";
-  if (member && member.slug) return "ok";
+  // Closed silo: membership for a *different* tenant must not unlock this host.
+  // Shared Cloud Run + shared identity DB return any membership from /api/me/tenant
+  // unless the server (and this check) scopes by slug === VITE_WHITELABEL.
+  const want = String(whitelabel || "").trim().toLowerCase();
+  const got = String(member?.slug || "").trim().toLowerCase();
+  if (want && got && got === want) return "ok";
   return "denied";
 }
 

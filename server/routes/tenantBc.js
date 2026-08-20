@@ -63,6 +63,7 @@ import {
   getTenantAiStats,
   getTenantConversation,
   listTenantConversations,
+  tenantSlugFromOrigin,
 } from "../lib/tenantAgentEval.js";
 import { agentIdentity } from "../../src/config/whitelabel.js";
 import { upsertQuote, getMyQuote } from "../lib/quoteStore.js";
@@ -82,6 +83,18 @@ export const __test__ = {
   reset() { _testPool = null; },
 };
 
+/** Prefer browser Origin host (shared Cloud Run); fall back to WHITELABEL env. */
+function requestTenantSlug(req) {
+  const fromOrigin = tenantSlugFromOrigin(req.get?.("origin") || req.headers?.origin || "");
+  if (fromOrigin) return fromOrigin;
+  const env = String(process.env.WHITELABEL || "").trim().toLowerCase();
+  return env || null;
+}
+
+async function membershipForRequest(req) {
+  return getMembership(pool(), req.user.id, requestTenantSlug(req));
+}
+
 const writeLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 60,
@@ -96,7 +109,7 @@ function isBmcAdmin(user) {
 
 router.get("/api/me/tenant", requireUser(), async (req, res) => {
   try {
-    const mem = await getMembership(pool(), req.user.id);
+    const mem = await membershipForRequest(req);
     if (!mem) return res.json({ ok: true, tenant: null });
     res.json({
       ok: true,
@@ -118,7 +131,7 @@ router.get("/api/me/tenant", requireUser(), async (req, res) => {
 
 router.get("/api/me/tenant/members", requireUser(), async (req, res) => {
   try {
-    const mem = await getMembership(pool(), req.user.id);
+    const mem = await membershipForRequest(req);
     if (!mem) return res.status(403).json({ ok: false, error: "not_tenant_member" });
     const items = await listMembers(pool(), mem.tenant_id);
     res.json({ ok: true, items });
@@ -129,7 +142,7 @@ router.get("/api/me/tenant/members", requireUser(), async (req, res) => {
 
 router.post("/api/me/tenant/members", requireUser(), writeLimiter, async (req, res) => {
   try {
-    const mem = await getMembership(pool(), req.user.id);
+    const mem = await membershipForRequest(req);
     if (!mem || mem.role !== "owner") {
       return res.status(403).json({ ok: false, error: "owner_required" });
     }
@@ -158,7 +171,7 @@ router.post("/api/me/tenant/members", requireUser(), writeLimiter, async (req, r
 
 router.get("/api/me/tenant/quotes/:id", requireUser(), async (req, res) => {
   try {
-    const mem = await getMembership(pool(), req.user.id);
+    const mem = await membershipForRequest(req);
     if (!mem || mem.role !== "owner") {
       const own = await getMyQuote({ userId: req.user.id, quoteId: req.params.id });
       if (!own) return res.status(404).json({ ok: false, error: "not_found" });
@@ -174,7 +187,7 @@ router.get("/api/me/tenant/quotes/:id", requireUser(), async (req, res) => {
 
 router.get("/api/me/tenant/quotes", requireUser(), async (req, res) => {
   try {
-    const mem = await getMembership(pool(), req.user.id);
+    const mem = await membershipForRequest(req);
     if (!mem) return res.status(403).json({ ok: false, error: "not_tenant_member" });
     if (mem.role !== "owner") {
       return res.status(403).json({ ok: false, error: "owner_required" });
@@ -508,7 +521,8 @@ router.get("/api/admin/tenants/:slug/activity", requireUser({ role: "admin" }), 
 
 router.post("/bc-telemetry", publicLimiter, async (req, res) => {
   try {
-    if (!String(process.env.WHITELABEL || "").trim()) {
+    const tenantSlug = requestTenantSlug(req);
+    if (!tenantSlug) {
       return res.status(404).json({ ok: false, error: "not_found" });
     }
     const action = String(req.body?.action || "");
@@ -520,7 +534,10 @@ router.post("/bc-telemetry", publicLimiter, async (req, res) => {
       action,
       resourceType: typeof req.body?.resource_type === "string" ? req.body.resource_type : undefined,
       resourceId: typeof req.body?.resource_id === "string" ? req.body.resource_id : undefined,
-      payload: req.body?.payload && typeof req.body.payload === "object" ? req.body.payload : {},
+      payload: {
+        ...(req.body?.payload && typeof req.body.payload === "object" ? req.body.payload : {}),
+        tenant: tenantSlug,
+      },
       req,
       clientEmitted: true,
     });
@@ -532,7 +549,7 @@ router.post("/bc-telemetry", publicLimiter, async (req, res) => {
 
 router.post("/api/public/bc-quotes", publicLimiter, async (req, res) => {
   try {
-    const tenantSlug = String(process.env.WHITELABEL || "").trim().toLowerCase();
+    const tenantSlug = requestTenantSlug(req);
     if (!tenantSlug) {
       return res.status(404).json({ ok: false, error: "not_found" });
     }
@@ -545,9 +562,11 @@ router.post("/api/public/bc-quotes", publicLimiter, async (req, res) => {
       return res.status(400).json({ ok: false, error: "missing_client_quote_id" });
     }
     const sale = toSalePayload(payload && typeof payload === "object" ? payload : {});
+    // Scope bc_code reuse to anonymous rows for this client id — never steal
+    // codes from another user's authenticated quote via unscoped lookup.
     const existing = await pool().query(
       `select quote_id, payload from identity.quotes
-        where client_quote_id = $1 and status <> 'deleted'
+        where client_quote_id = $1 and user_id is null and status <> 'deleted'
         order by created_at desc limit 1`,
       [clientQuoteId],
     );
@@ -572,6 +591,7 @@ router.post("/api/public/bc-quotes", publicLimiter, async (req, res) => {
         client_quote_id: clientQuoteId,
         bc_code: bcCode,
         total_usd: sale.totalUsd || sale.total_usd || null,
+        tenant: tenantSlug,
       },
       req,
     });

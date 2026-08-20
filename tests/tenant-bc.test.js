@@ -61,3 +61,26 @@ test("BMC copy of a quote is sale-only", () => {
   assert.equal(copy.payload.comision_usd, undefined);
   assert.equal(copy.usage.total_usd, 100);
 });
+
+test("getMembership scopes by slug so BC invitee is null on LAM host", async () => {
+  const { getMembership } = await import("../server/lib/tenantBc.js");
+  const pool = {
+    query: async (sql, params) => {
+      if (String(sql).includes("lower(t.slug)") && params[1] === "paneleslam") {
+        return { rows: [] };
+      }
+      if (String(sql).includes("lower(t.slug)") && params[1] === "bc") {
+        return {
+          rows: [{
+            tenant_id: "t-bc", slug: "bc", role: "owner",
+            display_name: "BC", legal_name: "Jenerik", branding: {},
+          }],
+        };
+      }
+      throw new Error(`unexpected query: ${sql} ${JSON.stringify(params)}`);
+    },
+  };
+  assert.equal(await getMembership(pool, "u1", "paneleslam"), null);
+  const bc = await getMembership(pool, "u1", "bc");
+  assert.equal(bc?.slug, "bc");
+});
