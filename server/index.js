@@ -7,6 +7,7 @@ import cors from "cors";
 import pino from "pino";
 import pinoHttp from "pino-http";
 import { config } from "./config.js";
+import { isCorsOriginAllowed } from "./lib/corsAllow.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { buildVersionInfo } from "./lib/versionInfo.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
@@ -80,6 +81,7 @@ import identityMeRouter from "./routes/identityMe.js";
 import publicLeadEventRouter from "./routes/publicLeadEvent.js";
 import driveConfigRouter from "./routes/driveConfig.js";
 import identityAdminRouter from "./routes/identityAdmin.js";
+import tenantBcRouter from "./routes/tenantBc.js";
 import identityAnalyticsRouter from "./routes/identityAnalytics.js";
 import clientesCustomersRouter from "./routes/clientes/customers.js";
 import clientesFollowupsRouter from "./routes/clientes/followups.js";
@@ -147,9 +149,7 @@ app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel prox
 app.use((req, res, next) => {
   if (req.method !== "OPTIONS") return next();
   const origin = req.headers.origin;
-  const allowed = !origin ||
-    origin.startsWith("chrome-extension://") ||
-    config.corsOrigins.includes(origin);
+  const allowed = isCorsOriginAllowed(origin, config.corsOrigins);
   if (!allowed) return res.status(403).end();
   res.setHeader("Access-Control-Allow-Origin", origin || "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
@@ -163,11 +163,7 @@ app.use((req, res, next) => {
 app.use(
   cors({
     origin: (origin, cb) => {
-      // Allow non-browser requests (curl, Cloud Run health checks, server-to-server)
-      if (!origin) return cb(null, true);
-      // Allow chrome-extension://* (BMC WA Cockpit extension and any sibling)
-      if (origin.startsWith("chrome-extension://")) return cb(null, true);
-      if (config.corsOrigins.includes(origin)) return cb(null, true);
+      if (isCorsOriginAllowed(origin, config.corsOrigins)) return cb(null, true);
       cb(Object.assign(new Error(`CORS: origin not allowed — ${origin}`), { status: 403 }));
     },
     credentials: true,
@@ -1013,6 +1009,7 @@ app.use(identityMeRouter);
 app.use(publicLeadEventRouter);
 app.use(driveConfigRouter);
 app.use(identityAdminRouter);
+app.use(tenantBcRouter);
 app.use(identityAnalyticsRouter);
 app.use(clientesCustomersRouter);
 app.use(clientesFollowupsRouter);

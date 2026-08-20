@@ -1,6 +1,22 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-15 (bake MATRIZ → constants.js)
+**2026-08-20 (fix — ident after Google grant):** El popup de Google ya no tapa el lock. Click → Conectando + GIS → grant → sting + logo 2.4s → calculadora. Audio se prima en el click. Sin invite, no hay cinema. No merge #1051.
+
+**2026-08-20 (feat — ident glory sting + landing `/`):** Click «Continuar con Google» reproduce un sting por marca (BC gold-foil, LAM three-planks, SMART IMAX-air) junto al lock cinematográfico. Sin sesión, cualquier URL del tenant vuelve a `/` — el ident ES el index. No merge #1051. No rebuild BMC.
+
+**2026-08-19 (feat — tenant agent voice, no BMC speech):** El prompt de tenant ya no es Panelin: identidad + persona + tools de calculadora + cierre `Saludos, {marca}`. Compiler `server/lib/tenantPrompt.js`. Tests: cero leak BMC/Panelin/Metalog. El API prod `panelin-calc` todavía no tiene este código — hasta el deploy Cloud Run el chat en vivo sigue hablando BMC. No mergear #1051.
+
+**2026-08-19 (feat — tenant agents + eval transcripts):** Cada socio tiene su IA: BC **JenIA**, Paneles LAM **MonkIA**, SmartBuilding **Basuuuu IA**. BMC ve transcripciones completas + tokens + USD estimado (eval, no factura) en `/hub/admin/tenant/:slug` tab **IA (eval)**. Persistencia `identity.tenant_agent_conversations` / `_turns`. No mergear #1051.
+
+**2026-08-20 (feat — tenant Gmail ident):** White-label apps no abren la calculadora sin Google. Ident cinematográfico por marca (BC gold-title, LAM stack, SMART imax-void) + «Continuar con Google». Silo cerrado: no invite → “pedí acceso al dueño”; admin BMC sí entra. Telemetry lleva email/nombre tras login. No merge #1051.
+
+**2026-08-19 (feat — Control Tower v1 / Phase 0):** `/hub/admin/tenants` luces en línea/hoy/silencioso (último evento &lt;5 min). Cabin: tabs Live + Analytics (usuarios, tiempo en app estimado, fallos, timeline, funnel wizard→PDF). APIs `…/analytics` `…/funnel` `…/live` scoped por `payload.tenant`. No heartbeat aún; no pixel replay. No mergear #1051.
+
+**2026-08-19 (feat — tenant control plane):** BMC admin `/hub/admin/tenants` lista cada silo (BC, LAM, SmartBuilding). Por tenant: pausar/reanudar, altas/revocar, venta + actividad, export JSON/CSV. APIs `GET /api/admin/tenants`, `PATCH …/:slug`, `DELETE …/members`, `GET …/export`. Pausa = 423 en invite owner y autosave público de ese slug. No mergear #1051.
+
+**2026-08-18 (feat — tenant BC Jenerik, sale-only):** Worktree `feat/jenerik-bc-tenant` (`~/calculadora-bmc-jenerik`) = `origin/main` + PDF BC + tenant accounts. BMC da de alta el tenant; Jenerik invita usuarios. PDF y logs guardan **venta**; **sin** comisión ni costo fábrica. No mergear #1051. SoT: [`JENERIK-WHITE-LABEL-DELIVERY.md`](./JENERIK-WHITE-LABEL-DELIVERY.md).
+
+**Última actualización:** 2026-08-19 (tenant agents JenIA/MonkIA/Basuuuu IA + eval transcripts; no merge #1051)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 

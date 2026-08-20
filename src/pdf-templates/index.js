@@ -11,6 +11,8 @@ import { WHITELABEL_BRAND, WHITELABEL_LAYOUT, WHITELABEL_LAYOUT_IDS } from '../c
 const ALL_LAYOUT_OPTIONS = [
   // White-label — sólo visible dentro del deploy de la marca correspondiente.
   { id: 'bc',                label: 'Presupuesto BC', recommended: true, whitelabel: true },
+  { id: 'paneleslam',        label: 'Presupuesto LAM', recommended: true, whitelabel: true },
+  { id: 'smartbuilding',     label: 'Presupuesto SmartBuilding', recommended: true, whitelabel: true },
 
   // Modern lightweight family — "Presupuesto Simple" (plain) is the most faithful to bmcuruguay.com.uy visual language.
   // Preferred production default.
@@ -213,6 +215,8 @@ export function buildQuotationModel(data) {
 
 const TEMPLATE_MAP = {
   'bc':                () => import('./bc.js'),
+  'paneleslam':        () => import('./bc.js'),
+  'smartbuilding':     () => import('./bc.js'),
   'simple':            () => import('./simple.js'),
   'simple-previous':   () => import('./simple-previous.js'),
   'simple-sage':       () => import('./simple-sage.js'),

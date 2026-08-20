@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Pencil
 import { C, FONT, ROOF_2D_QUOTE_VISOR_STEP_IDS, SHC, TR } from "../data/constants.js";
 import { DEFAULT_AGUA_REFERENCE_IMAGES, getQuoteVisorContext, QUOTE_VISOR_SHOP_URLS } from "../data/quoteVisorMedia.js";
 import { getBorderAccentSlides, readShopifyImageOverrides, writeShopifyImageOverride } from "../data/quoteVisorShopifyResolve.js";
+import { WHITELABEL_BRAND } from "../config/whitelabel.js";
 
 const CAROUSEL_MS = 5500;
 
@@ -992,6 +993,7 @@ export default function QuoteVisualVisor({
                   ))}
                 </div>
               )}
+              {!WHITELABEL_BRAND ? (
               <a
                 href={slideShopHref}
                 target="_blank"
@@ -1009,6 +1011,7 @@ export default function QuoteVisualVisor({
               >
                 Ver en tienda BMC <ExternalLink size={14} />
               </a>
+              ) : null}
             </>
           ) : null}
         </div>

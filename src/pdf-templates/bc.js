@@ -15,7 +15,9 @@
 // se declaran en @page y el pie legal es un elemento fijo que repite por página.
 
 import { QUOTE_TERMS } from '../utils/helpers.js';
-import { WHITELABEL_BRANDS, mergeBranding } from '../config/whitelabel.js';
+import { WHITELABEL_BRAND, WHITELABEL_BRANDS, mergeBranding } from '../config/whitelabel.js';
+import { lamLogoSvg } from '../branding/lamLogo.js';
+import { smartbuildingLogoImg } from '../branding/smartbuildingLogo.js';
 
 const fmt = n => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -251,7 +253,7 @@ function renderTerms(marca) {
 
 export function render(q) {
   const cl = q.bmcExtra?.client ?? {};
-  const brand = mergeBranding(WHITELABEL_BRANDS.bc, q.branding);
+  const brand = mergeBranding(WHITELABEL_BRAND || WHITELABEL_BRANDS.bc, q.branding);
 
   // Sólo se acepta un data: URL de imagen rasterizada. El logo llega del
   // branding cargado por el socio; una URL remota filtraría el render a un
@@ -261,7 +263,11 @@ export function render(q) {
     && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(brand.logoDataUrl);
   const logo = logoOk
     ? `<img class="bc-logo-img" src="${esc(brand.logoDataUrl)}" alt="${esc(brand.marca)}">`
-    : logoSvg(62);
+    : (brand.marca === 'LAM'
+      ? lamLogoSvg(62)
+      : (brand.layout === 'smartbuilding' || brand.marca === 'SMARTBUILDING'
+        ? smartbuildingLogoImg(62)
+        : logoSvg(62)));
 
   const kpi = [
     q.areaTotalM2 > 0 ? ['Área total', `${Number(q.areaTotalM2).toFixed(2)} m²`] : null,
@@ -273,9 +279,25 @@ export function render(q) {
   const legal = [brand.razonSocial, brand.rut ? `RUT ${brand.rut}` : null, brand.direccion]
     .filter(Boolean).map(esc).join(' · ');
 
+  const theme = brand.theme;
+  const themeOverride = theme ? `
+:root{
+  --gold-deep:${theme.ink || '#101114'};
+  --gold:${theme.accent || '#E4E7EB'};
+  --gold-soft:${theme.accentSoft || '#9AA3AD'};
+  --wash:${theme.wash || '#EEF2F5'};
+  --rule:${theme.rule || '#C5CCD3'};
+  --ink:${theme.ink || '#101114'};
+  --ink-soft:${theme.accentSoft || '#9AA3AD'};
+  --paper:${theme.paper || '#FFFFFF'};
+}
+.bc-hdr{border-bottom-color:var(--ink)}
+.bc-doc-kind{color:var(--ink)}
+` : '';
+
   return `<!DOCTYPE html><html lang="es"><head>
 <meta charset="UTF-8"><title>Presupuesto ${esc(q.ref)}</title>
-<style>${CSS}</style>
+<style>${CSS}${themeOverride}</style>
 </head><body>
 <div class="bc-doc">
 

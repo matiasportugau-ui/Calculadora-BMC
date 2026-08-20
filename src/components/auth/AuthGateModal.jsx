@@ -12,6 +12,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useBmcAuth } from "../../hooks/useBmcAuth.js";
 import { isLocalDevApp } from "../../utils/localDevAuth.js";
+import { WHITELABEL_BRAND } from "../../config/whitelabel.js";
 
 export default function AuthGateModal() {
   const { user, login, isAuthenticated } = useBmcAuth();
@@ -41,9 +42,9 @@ export default function AuthGateModal() {
     function onGate(_e) {
       if (isAuthenticated) {
         window.dispatchEvent(new CustomEvent("bmc-wizard-next", { detail: { source: "auth-gate-already-auth" } }));
-      } else if (isLocalDevApp()) {
+      } else if (isLocalDevApp() && !WHITELABEL_BRAND) {
         handleLogin();
-      } else {
+      } else if (!WHITELABEL_BRAND) {
         setOpen(true);
       }
     }
@@ -51,13 +52,16 @@ export default function AuthGateModal() {
     return () => window.removeEventListener("bmc-auth-gate-required", onGate);
   }, [isAuthenticated, handleLogin]);
 
-  // Local dev: never show the Google login modal (BmcAuthProvider + handleLogin mint session).
+  // Local BMC: silent mint. White-label apps use TenantAuthGate (must click Google).
   useEffect(() => {
+    if (WHITELABEL_BRAND) return undefined;
     if (isLocalDevApp() && !isAuthenticated && !loading) {
       handleLogin();
     }
+    return undefined;
   }, [isAuthenticated, loading, handleLogin]);
 
+  if (WHITELABEL_BRAND) return null;
   if (isLocalDevApp() || !open || isAuthenticated) return null;
 
   return (

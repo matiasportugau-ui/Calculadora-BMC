@@ -25,11 +25,16 @@ Con la variable encendida:
   layout de la marca. Es a propósito: si no, se escapa un PDF con branding BMC
   desde la calculadora del socio.
 
+## Tenant (2026-08-18)
+
+BMC es dueño del SaaS. Tenant `bc` = Jenerik. El owner invita cuentas Google.
+El PDF usa precios de **venta**. Comisión y costo fábrica **no** se calculan
+ni se muestran en esta entrega. Detalle: `docs/team/JENERIK-WHITE-LABEL-DELIVERY.md`.
+
 ## Qué NO hace todavía
 
-Sólo cambia el **PDF**. La UI de la calculadora es la misma (no se pidió
-tocarla). Branding en pantalla, rutas recortadas y precios del socio son pasos
-aparte.
+No hay cobro automático ni snapshot de costo/comisión. Cuando elijamos el
+modelo, se suma un snapshot interno sin tocar el PDF del cliente.
 
 ## Archivos
 
@@ -96,11 +101,21 @@ El test cubre lo que importa: que la prod BMC no cambie, que el socio vea un
 
 ## Deploy paralelo
 
-La infraestructura del deploy paralelo (`vercel.paid.json`, workflow
+Producción **aparte** de BMC (2026-08-18):
+
+| | BMC | BC / Jenerik |
+|---|---|---|
+| Proyecto Vercel | `calculadora-bmc` (`prj_y9uwzAznDKiwV5NyEwo9J4oTwvmB`) | `calculadora-bc` (`prj_ByRwAZI6dWjIY5Kz2fRyoUn78cq8`) |
+| URL | https://calculadora-bmc.vercel.app | https://calculadora-bc.vercel.app |
+| `VITE_WHITELABEL` | **ausente** | `bc` (solo Production de BC) |
+| Deploy de BC | no toca aliases ni rebuild de BMC | `vercel --prod` desde `~/calculadora-bmc-jenerik` |
+
+La infraestructura extra (`vercel.paid.json`, workflow
 `deploy-paid-parallel.yml`, plan `paid` y `identity.users.branding`) vive en el
 PR #1051 `feat/paid-white-label-presupuestos`. Este cambio es independiente y
 funciona solo: alcanza con un proyecto Vercel aparte que buildee con
-`VITE_WHITELABEL=bc`, apuntando a una API con `WHITELABEL=bc`.
+`VITE_WHITELABEL=bc`. `/api` de BC todavía reescribe al Cloud Run BMC
+(`panelin-calc`) — números de cotización pueden verse BMC hasta API propia.
 
 Cuando #1051 esté mergeado, el `branding` por usuario entra por `q.branding` sin
 tocar el template.

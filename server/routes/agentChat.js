@@ -72,6 +72,16 @@ import {
   formatOperatorContextBlock,
   normalizeAttachments,
 } from "../lib/coworkFrames.js";
+import { getWaPool } from "../lib/waDb.js";
+import { getMembership } from "../lib/tenantBc.js";
+import { recordTenantActivity } from "../lib/tenantActivity.js";
+import {
+  resolveTenantSlug,
+  recordTenantChatTurn,
+  isValidConversationId,
+  personaLine,
+} from "../lib/tenantAgentEval.js";
+import { toolsForTenantChat } from "../lib/tenantPrompt.js";
 
 const router = Router();
 
@@ -646,6 +656,7 @@ router.post("/agent/chat", async (req, res) => {
     thinkingMode = false,
     channel: rawChannel,
     surface: rawSurface,
+    tenant: rawTenant,
     operatorContext: rawOperatorContext = null,
   } = req.body || {};
   // Canonical brand surface (lib/surface.js) + KB training surface (lib/kbSurface.js).
@@ -669,6 +680,46 @@ router.post("/agent/chat", async (req, res) => {
   const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
     ? rawConvId
     : null;
+  const tenantConvId = isValidConversationId(rawConvId) ? rawConvId : null;
+
+  const claims = peekIdentityClaims(req);
+  let membershipSlug = null;
+  const tenantUserId = claims?.sub || claims?.user_id || null;
+  const tenantUserEmail = claims?.email || null;
+  try {
+    if (tenantUserId && config.databaseUrl) {
+      const memPool = getWaPool(config.databaseUrl);
+      if (memPool) {
+        const mem = await getMembership(memPool, tenantUserId);
+        membershipSlug = mem?.slug || null;
+      }
+    }
+  } catch {
+    /* membership lookup is optional */
+  }
+  const tenantSlug = resolveTenantSlug({
+    bodyTenant: rawTenant,
+    origin: req.headers.origin,
+    membershipSlug,
+    envSlug: process.env.WHITELABEL,
+  });
+
+  async function persistTenantEvalTurn(partial) {
+    if (!tenantSlug || !tenantConvId) return;
+    try {
+      const p = getWaPool(config.databaseUrl);
+      await recordTenantChatTurn({
+        pool: p,
+        conversationId: tenantConvId,
+        tenantSlug,
+        userId: tenantUserId,
+        userEmail: tenantUserEmail,
+        ...partial,
+      });
+    } catch (err) {
+      req.log?.warn({ err, tenantSlug }, "tenant_agent_eval: persist failed");
+    }
+  }
   const aiProvider = String(rawAiProvider || "auto").toLowerCase();
   const aiModel = rawAiModel != null ? String(rawAiModel) : "";
 
@@ -1013,6 +1064,7 @@ router.post("/agent/chat", async (req, res) => {
     channel,
     ragContext: ragContextBlock,
     operatorContextBlock,
+    tenantSlug,
   });
 
   // Use a monotonically increasing global index so user and assistant turns never collide.
@@ -1030,6 +1082,11 @@ router.post("/agent/chat", async (req, res) => {
   if (conversationId) {
     logConversationTurn(conversationId, { turnIndex, role: "user", content: lastUserMessage });
   }
+  await persistTenantEvalTurn({
+    role: "user",
+    content: lastUserMessage,
+    turnIndex,
+  });
 
   // Preserve attachments on the last user message for multimodal (Co-Work frames).
   const inboundLastUserAtts = (() => {
@@ -1182,6 +1239,8 @@ router.post("/agent/chat", async (req, res) => {
       : `Procesando (proveedores: ${providerChain.join(" → ")})…`,
   });
 
+  const chatTools = toolsForTenantChat(AGENT_TOOLS, tenantSlug);
+
   for (const provider of providerChain) {
     try {
       // Reset per-attempt accumulators so a mid-stream failure doesn't contaminate the next provider's log entry
@@ -1221,7 +1280,7 @@ router.post("/agent/chat", async (req, res) => {
           max_tokens: thinkingMode ? (isOpus47 ? 8192 : 4096) : CHAT_MAX_TOKENS,
           system: [{ type: "text", text: effectiveSystemPrompt, cache_control: { type: "ephemeral" } }],
           messages: claudeMsgs,
-          tools: AGENT_TOOLS,
+          tools: chatTools,
           tool_choice: { type: "auto" },
         };
 
@@ -1293,7 +1352,7 @@ router.post("/agent/chat", async (req, res) => {
               continue;
             }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null, operatorContext: rawOperatorContext });
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null, operatorContext: rawOperatorContext, tenantSlug });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
 
@@ -1342,7 +1401,7 @@ router.post("/agent/chat", async (req, res) => {
         const geminiModel = genAI.getGenerativeModel({
           model,
           systemInstruction: effectiveSystemPrompt,
-          tools: toGeminiTools(AGENT_TOOLS),
+          tools: toGeminiTools(chatTools),
           // gemini-2.5-flash enables "thinking" by default, and empirically that
           // makes it role-play tool calls in TEXT (the exact bug we're fixing)
           // instead of emitting real functionCall parts. Disabling the thinking
@@ -1427,7 +1486,7 @@ router.post("/agent/chat", async (req, res) => {
               continue;
             }
             send({ type: "tool_call", tool: c.name, input: toolInput });
-            const result2 = await executeTool(c.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null, operatorContext: rawOperatorContext });
+            const result2 = await executeTool(c.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log, callerAuthToken: bearerFromRequest(req) || null, operatorContext: rawOperatorContext, tenantSlug });
             req.log?.info({ tool: c.name, input: toolInput }, "agent tool executed (gemini)");
             responseParts.push({ functionResponse: { name: c.name, response: toGeminiResponse(result2) } });
 
@@ -1481,7 +1540,7 @@ router.post("/agent/chat", async (req, res) => {
             const r = await plain.generateContent({
               systemInstruction: {
                 parts: [{
-                  text: "Sos Panelin (BMC Uruguay). Respondé en español rioplatense, breve y útil.",
+                  text: personaLine(tenantSlug),
                 }],
               },
               contents: [{
@@ -1643,6 +1702,40 @@ router.post("/agent/chat", async (req, res) => {
             turnCount: assistantTurnIndex + 1,
             hedgeCount,
           });
+        }
+
+        await persistTenantEvalTurn({
+          role: "assistant",
+          content: visibleAssistantText,
+          turnIndex: assistantTurnIndex,
+          provider,
+          model: resolvedModel,
+          inputTokens,
+          outputTokens,
+          estimatedCostUsd: chatCost,
+          latencyMs,
+        });
+        if (tenantSlug && tenantConvId) {
+          try {
+            const p = getWaPool(config.databaseUrl);
+            if (p) {
+              await recordTenantActivity({
+                pool: p,
+                actorId: tenantUserId,
+                action: "tenant.agent.turn",
+                resourceType: "agent_conversation",
+                resourceId: tenantConvId,
+                payload: {
+                  tenant: tenantSlug,
+                  input_tokens: inputTokens,
+                  output_tokens: outputTokens,
+                },
+                req,
+              });
+            }
+          } catch (err) {
+            req.log?.warn({ err }, "tenant_agent_eval: activity failed");
+          }
         }
 
         if (devMode) {

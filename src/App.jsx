@@ -10,11 +10,14 @@ import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
 import { BmcAuthProvider } from "./contexts/BmcAuthProvider.jsx";
 import AuthGateModal from "./components/auth/AuthGateModal.jsx";
+import TenantAuthGate from "./components/auth/TenantAuthGate.jsx";
 import AuthHeader from "./components/auth/AuthHeader.jsx";
 import RequireGrant from "./components/auth/RequireGrant.jsx";
 import ActivityTracker from "./components/activity/ActivityTracker.jsx";
+import BcTelemetryTracker from "./components/activity/BcTelemetryTracker.jsx";
 import RouteErrorBoundary from "./components/RouteErrorBoundary.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WHITELABEL_BRAND } from "./config/whitelabel.js";
 
 // Tutorial interactivo (nuevo sistema) — gated for safety
 const TUTORIAL_ENABLED = import.meta.env.VITE_FEATURE_TUTORIAL_MODE !== "false";
@@ -67,6 +70,8 @@ const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"))
 const ClientesMVP = lazy(() => import("./components/hub/clientes/ClientesMVP.jsx"));
 const ProyectoStatusModule = lazy(() => import("./components/hub/proyecto/ProyectoStatusModule.jsx"));
 const UserAdminModule = lazy(() => import("./components/admin/users/UserAdminModule.jsx"));
+const TenantBcAdminPage = lazy(() => import("./components/admin/TenantBcAdminPage.jsx"));
+const TenantControlModule = lazy(() => import("./components/admin/tenants/TenantControlModule.jsx"));
 const AnalyticsModule = lazy(() => import("./components/admin/analytics/AnalyticsModule.jsx"));
 const AssistantsStatusPanel = lazy(() => import("./components/hub/admin/AssistantsStatusPanel.jsx"));
 const MlManagerModule = lazy(() => import("./components/hub/ml/MlManagerModule.jsx"));
@@ -111,10 +116,10 @@ function Shell({ children }) {
       >
         <AuthHeader />
       </div>
-      {!isCalc && <BmcModuleNav />}
+      {!isCalc && !WHITELABEL_BRAND && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
-      {TUTORIAL_ENABLED && <FloatingTutorialButton />}
-      <BmcChatPanel />
+      {TUTORIAL_ENABLED && !WHITELABEL_BRAND && <FloatingTutorialButton />}
+      {!WHITELABEL_BRAND && <BmcChatPanel />}
     </div>
   );
 }
@@ -128,6 +133,20 @@ function sendVitals(metric) {
 // `?legacy=1` bypasses the redirect so operators can still reach the old
 // module while the flag is on (transitional escape hatch wired from the
 // new module's topbar / palette).
+function WhiteLabelHubBlock() {
+  const { pathname } = useLocation();
+  if (!WHITELABEL_BRAND) return null;
+  const blocked =
+    pathname.startsWith("/hub") ||
+    pathname === "/logistica" ||
+    pathname.startsWith("/conductor") ||
+    pathname.startsWith("/wolfboard") ||
+    pathname.startsWith("/especificaciones") ||
+    pathname.startsWith("/presentacion-licitacion");
+  if (!blocked) return null;
+  return <Navigate to="/mi-espacio" replace />;
+}
+
 function AdminRoute() {
   const [params] = useSearchParams();
   const flagOn = import.meta.env.VITE_FEATURE_ADMIN_COT_V2 === "true";
@@ -177,14 +196,50 @@ export default function App() {
     onCLS(sendVitals);
   }, []);
 
+  useEffect(() => {
+    if (!WHITELABEL_BRAND) return undefined;
+    const prev = document.title;
+    document.title = `${WHITELABEL_BRAND.marca} · Calculadora`;
+    const theme = WHITELABEL_BRAND.theme;
+    const root = document.documentElement;
+    const prevVars = {};
+    if (theme) {
+      const map = {
+        "--wl-header-bg": theme.headerBg,
+        "--wl-header-ink": theme.headerInk,
+        "--wl-accent": theme.accent,
+        "--wl-accent-soft": theme.accentSoft,
+        "--wl-wash": theme.wash,
+        "--wl-ink": theme.ink,
+        "--wl-paper": theme.paper,
+        "--wl-rule": theme.rule,
+      };
+      for (const [k, v] of Object.entries(map)) {
+        if (!v) continue;
+        prevVars[k] = root.style.getPropertyValue(k);
+        root.style.setProperty(k, v);
+      }
+    }
+    return () => {
+      document.title = prev;
+      for (const [k, v] of Object.entries(prevVars)) {
+        if (v) root.style.setProperty(k, v);
+        else root.style.removeProperty(k);
+      }
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <DesignPreviewGate>
       <BmcAuthProvider>
+      <TenantAuthGate>
       <TutorialProvider>
       <ActivityTracker />
+      {WHITELABEL_BRAND ? <BcTelemetryTracker /> : null}
       <LegacyAppQueryRedirect />
+      <WhiteLabelHubBlock />
       <AuthGateModal />
       <TutorialOverlay />
       <RoutedErrorBoundary>
@@ -297,6 +352,30 @@ export default function App() {
             <RequireGrant role="admin">
               <Suspense fallback={suspenseFallback}>
                 <UserAdminModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/admin/tenants"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <TenantControlModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/admin/tenant-bc"
+          element={<Navigate to="/hub/admin/tenant/bc" replace />}
+        />
+        <Route
+          path="/hub/admin/tenant/:slug"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <TenantBcAdminPage />
               </Suspense>
             </RequireGrant>
           }
@@ -438,9 +517,11 @@ export default function App() {
           path="/"
           element={
             <>
-              <Suspense fallback={null}>
-                <LandingPage />
-              </Suspense>
+              {WHITELABEL_BRAND ? null : (
+                <Suspense fallback={null}>
+                  <LandingPage />
+                </Suspense>
+              )}
               <Shell>
                 <Suspense fallback={suspenseFallback}>
                   <PanelinCalculadora />
@@ -568,6 +649,7 @@ export default function App() {
       </Routes>
       </RoutedErrorBoundary>
       </TutorialProvider>
+      </TenantAuthGate>
       </BmcAuthProvider>
       </DesignPreviewGate>
     </BrowserRouter>
