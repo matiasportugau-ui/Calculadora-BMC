@@ -13,11 +13,13 @@ To enable login on `https://calculadora-bmc.vercel.app`:
 1. Go to **Google Cloud Console** → **APIs & Services** → **Credentials**
 2. Find the OAuth 2.0 Client ID (Web application) matching `VITE_GOOGLE_CLIENT_ID` in Vercel
 3. Click **Edit**
-4. Add to **"Authorized JavaScript origins"**:
-   - `https://calculadora-bmc.vercel.app`
-   - `http://localhost:5173` (local dev)
+4. Add to **"Authorized JavaScript origins"** (ADD only — do not delete existing rows):
+   - `https://calculadora-bmc.vercel.app`  ← keep; BMC prod
+   - `https://calculadora-bc.vercel.app`   ← add; Jenerik / tenant BC (parallel Vercel project)
+   - `http://localhost:5173` (local BMC)
+   - `http://127.0.0.1:5180` (local BC)
    - `http://localhost:3001` (local API)
-5. **Save**
+5. **Save** (never replace the list; never remove the BMC origin)
 6. Wait 2-5 minutes for Google's cache to refresh
 7. Test login at https://calculadora-bmc.vercel.app
 

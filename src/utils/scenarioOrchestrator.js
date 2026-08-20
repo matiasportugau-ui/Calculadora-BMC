@@ -21,6 +21,7 @@ import {
   normalizeEncounter,
 } from "./roofEncounterModel.js";
 import { getPricing } from "../data/pricing.js";
+import { edgesFromPolygon, catalogSideForCutRole } from "./irregularPerimeterEdges.js";
 
 const EMPTY_BORDERS = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };
 
@@ -138,12 +139,39 @@ function computeTechoZonas(techo, useEncounterBorders) {
       effectiveBorders = effectiveBordersTechoFachada(mergedBorders, sharedSideMap);
     }
 
-    const edgeML = edgePack?.mlByZona?.[gi]
+    let edgeML = edgePack?.mlByZona?.[gi]
       ? { ...edgePack.mlByZona[gi] }
       : undefined;
     const encounterJunctions = edgePack?.encounters?.length
       ? junctionListForZonaGi(gi, edgePack.encounters, techo.zonas)
       : [];
+    const irrLayout = !is2Aguas
+      ? (techo.irregularLayoutByGi?.[gi]?.strips?.length
+        ? techo.irregularLayoutByGi[gi]
+        : gi === 0 && techo.irregularLayout?.strips?.length
+          ? techo.irregularLayout
+          : null)
+      : null;
+    if (irrLayout?.polygon?.length >= 3 && zona.ancho > 0 && zona.largo > 0) {
+      const peri = edgesFromPolygon(irrLayout.polygon, zona.ancho, zona.largo);
+      if (!edgeML) {
+        edgeML = { frente: zona.ancho, fondo: zona.ancho, latIzq: zona.largo, latDer: zona.largo };
+      }
+      for (const k of ["frente", "fondo", "latIzq", "latDer"]) {
+        if (peri.remaining[k]) edgeML[k] = peri.remaining[k].ml;
+      }
+      const chosen = irrLayout.cutBorders || {};
+      for (const edge of peri.cutEdges) {
+        const perfil = chosen[edge.id];
+        if (!perfil || perfil === "none") continue;
+        encounterJunctions.push({
+          perfil,
+          modo: "pretil",
+          lengthM: edge.lengthM,
+          label: `${catalogSideForCutRole(edge.role) === "latIzq" ? "Lateral" : "Frente"} (corte): ${perfil}`,
+        });
+      }
+    }
     // Datos por encuentro para selladores (membrana/espuma PU) por modo. Ver calcSelladoresTechoByEncuentro.
     const encuentrosData = encounterJunctions.map((j) => ({ modo: j.modo, length: j.lengthM }));
     const baseOpciones = inputs.opciones && typeof inputs.opciones === "object" ? inputs.opciones : {};

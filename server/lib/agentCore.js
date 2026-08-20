@@ -12,6 +12,8 @@
  */
 import { config } from "../config.js";
 import { buildSystemPromptParts } from "./chatPrompts.js";
+import { agentIdentity } from "../../src/config/whitelabel.js";
+import { buildTenantChannelSection } from "./tenantPrompt.js";
 import { findRelevantExamples } from "./trainingKB.js";
 import { renderExamplesBlock } from "./channelRenderer.js";
 import {
@@ -164,9 +166,13 @@ export async function callAgentOnce(messages, opts = {}) {
   // Email drafter and Wolfboard batch so they gain provider fallback WITHOUT
   // inheriting Panelin's persona. Existing callers don't pass it → unchanged.
   const bare = opts.bareSystemPrompt || null;
+  const tenantSlug = opts.tenantSlug || null;
   const kbExamples = bare ? [] : findRelevantExamples(lastUser, { limit: 4 });
   const kbBlock = bare ? "" : renderExamplesBlock(kbExamples, channel);
-  const channelSection = bare ? "" : buildChannelSection(channel);
+  const tenantId = tenantSlug ? agentIdentity(tenantSlug) : null;
+  const channelSection = bare
+    ? ""
+    : (tenantId?.slug ? buildTenantChannelSection(tenantId) : buildChannelSection(channel));
 
   // Split the system prompt into a cacheable static prefix + a per-request dynamic
   // tail. Only the Anthropic branch consumes the split (stamps cache_control on the
@@ -179,7 +185,10 @@ export async function callAgentOnce(messages, opts = {}) {
     staticSystem = bare || opts.systemPrompt;
     dynamicSystem = [channelSection, kbBlock].filter(Boolean).join("\n\n");
   } else {
-    const { staticPrefix, dynamicTail } = buildSystemPromptParts(calcState, { trainingExamples: kbExamples });
+    const { staticPrefix, dynamicTail } = buildSystemPromptParts(calcState, {
+      trainingExamples: kbExamples,
+      tenantSlug,
+    });
     staticSystem = staticPrefix;
     dynamicSystem = [dynamicTail, channelSection, kbBlock].filter(Boolean).join("\n\n");
   }

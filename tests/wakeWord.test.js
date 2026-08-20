@@ -9,7 +9,8 @@
 // Run: node tests/wakeWord.test.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { hasWake, wakeRestartDelayMs } from "../src/hooks/useHandsFreeVoice.js";
+import { hasWake, wakeRestartDelayMs, PANELIN_WAKE_WORDS } from "../src/hooks/useHandsFreeVoice.js";
+import { agentIdentity } from "../src/config/whitelabel.js";
 
 let passed = 0;
 let failed = 0;
@@ -35,6 +36,13 @@ assert(!hasWake(null), "null is safe");
 assert(!hasWake(undefined), "undefined is safe");
 assert(!hasWake("hola buenos días"), "unrelated speech");
 assert(!hasWake("el panel está roto"), "the word 'panel' alone does not wake");
+
+assert(hasWake("jenia", agentIdentity("bc").wake), "JenIA wake");
+assert(hasWake("genia", agentIdentity("bc").wake), "JenIA ASR genia");
+assert(hasWake("monkia", agentIdentity("paneleslam").wake), "MonkIA wake");
+assert(hasWake("basuuuu", agentIdentity("smartbuilding").wake), "Basuuuu wake");
+assert(hasWake("basu", agentIdentity("smartbuilding").wake), "Basu short wake");
+assert(!hasWake("jenia", PANELIN_WAKE_WORDS), "JenIA does not wake BMC Panelin list");
 
 // ── Wake onend backoff (B-02) ───────────────────────────────────────────────
 assert(wakeRestartDelayMs(0) === 150, "attempt 0 → 150ms");

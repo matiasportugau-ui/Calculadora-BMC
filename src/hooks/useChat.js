@@ -6,6 +6,7 @@ import {
   loadPanelinAiSelection,
   savePanelinAiSelection,
 } from "../utils/panelinAiSelection.js";
+import { WHITELABEL } from "../config/whitelabel.js";
 
 const STORAGE_KEY = "panelin-chat-history";
 const STORAGE_CONV_ID = "panelin-conversation-id";
@@ -148,6 +149,7 @@ export function buildAgentChatRequestBody(opts = {}) {
     ...(ap !== "auto" && opts.aiModel ? { aiModel: opts.aiModel } : {}),
     ...(opts.conversationId ? { conversationId: opts.conversationId } : {}),
     surface: opts.surface || opts.operatorContext?.surface || "panelin_chat",
+    ...(opts.tenant ? { tenant: opts.tenant } : {}),
     ...(opts.operatorContext && typeof opts.operatorContext === "object"
       ? { operatorContext: opts.operatorContext }
       : {}),
@@ -409,6 +411,7 @@ export function useChat({
           aiModel: am,
           conversationId,
           surface: sendOpts.operatorContext?.surface || "panelin_chat",
+          tenant: WHITELABEL || undefined,
         });
 
         const res = await fetch(`${apiBase}/api/agent/chat`, {

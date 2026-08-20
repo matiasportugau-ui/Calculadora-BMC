@@ -1,6 +1,6 @@
 # Google OAuth troubleshooting — runbook
 
-Last updated: 2026-05-21
+Last updated: 2026-08-18
 Owner: Matías Portugau · created after the `redirect_uri_mismatch` incident on prod login.
 
 ## What this covers
@@ -78,11 +78,22 @@ Buscar el client con el ID que arrojó `vercel env pull`. Click para editarlo.
 
 ### Paso 2 — Agregar el origin del request
 
-En **Authorized JavaScript origins** (sección de arriba), agregar exactamente lo que el diagnóstico mostró en `origin=` — sin trailing slash, sin path, scheme + host nada más:
+En **Authorized JavaScript origins** (sección de arriba), agregar exactamente lo que el diagnóstico mostró en `origin=` — sin trailing slash, sin path, scheme + host nada más.
+
+**Lista requerida (ADD only — nunca reemplazar / nunca borrar BMC):**
 
 ```
 https://calculadora-bmc.vercel.app
+https://calculadora-bc.vercel.app
 ```
+
+Opcional local del tenant BC:
+
+```
+http://127.0.0.1:5180
+```
+
+`calculadora-bc` es un proyecto Vercel **aparte**. El login de BC usa el **mismo** OAuth client (`642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3` en `chatbot-bmc-live`). Agregar el origin de BC **no** cambia BMC; borrar el origin de BMC **sí** rompe BMC. gcloud IAP no edita este Web client (API deprecada / el proyecto no pertenece a una org) — solo Console → Save.
 
 Defensive: agregar también el mismo URI en **Authorized redirect URIs** (sección de abajo) por si código futuro cambia a authorization-code flow.
 

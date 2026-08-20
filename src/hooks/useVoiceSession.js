@@ -19,6 +19,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import { WHITELABEL_AGENT } from "../config/whitelabel.js";
 import {
   resolveSdpEndpoint,
   DEFAULT_REALTIME_SDP_BASE,
@@ -422,7 +423,9 @@ export function useVoiceSession({
 
           // Always configure session (bootstrap from server or minimal defaults)
           const boot = sessionBootstrapRef.current || {
-            instructions: "Sos Panelin, asistente de ventas de BMC Uruguay. Respondé en español rioplatense, breve.",
+            instructions: WHITELABEL_AGENT.slug
+              ? `Sos ${WHITELABEL_AGENT.name}, asistente de cotización de ${WHITELABEL_AGENT.brandName}. Respondé en español rioplatense, breve. No menciones BMC ni Panelin.`
+              : "Sos Panelin, asistente de ventas de BMC Uruguay. Respondé en español rioplatense, breve.",
             tools: [],
           };
           sessionBootstrapRef.current = boot;

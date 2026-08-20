@@ -5,6 +5,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/bc-telemetry",
+      "destination": "/api/bc-telemetry"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/:path*"
     },

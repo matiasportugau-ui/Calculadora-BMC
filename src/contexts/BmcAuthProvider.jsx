@@ -22,6 +22,7 @@ import { getPendingClientQuoteIds, clearPending } from "../utils/clientQuoteId.j
 import { BmcAuthContext } from "./bmcAuthContext.js";
 import { setOperatorJwtGetter, setOperatorJwtRefresh } from "../utils/operatorApiClient.js";
 import { devBrowserLogin, isLocalDevApp } from "../utils/localDevAuth.js";
+import { WHITELABEL } from "../config/whitelabel.js";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -142,7 +143,7 @@ export function BmcAuthProvider({ children }) {
         const refreshed = await refreshAccess();
         if (cancelled) return;
         if (refreshed) return;
-        if (isLocalDevApp()) {
+        if (isLocalDevApp() && !WHITELABEL) {
           const devData = await devBrowserLogin(ApiBase);
           if (cancelled) return;
           if (devData) {

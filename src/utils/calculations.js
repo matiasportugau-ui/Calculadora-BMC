@@ -4,6 +4,7 @@
 
 import { p, BORDER_OPTIONS } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
+import { WHITELABEL } from "../config/whitelabel.js";
 import { getIVA } from "./calculatorConfig.js";
 import { getDimensioningParam } from "./dimensioningFormulas.js";
 import { buildEdgeBOM, countExposedVerticalPerimeterFixingInteriorPointsForZona } from "./roofPlanGeometry.js";
@@ -758,28 +759,30 @@ export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0
   const puSil = p(SELLADORES.silicona);
   items.push({ label: SELLADORES.silicona.label, sku: "silicona", cant: siliconas, unidad: "unid", pu: puSil, costo: c(SELLADORES.silicona), total: +(siliconas * puSil).toFixed(2) });
 
-  const sil300 = SELLADORES.silicona_300_neutra;
-  const ratio300 = getDimensioningParam("SELLADORES_TECHO.silicona_300_por_unid_600", 2);
-  if (sil300 && siliconas > 0 && ratio300 > 0) {
-    const cant300 = Math.max(0, Math.round(siliconas * ratio300));
-    if (cant300 > 0) {
-      const pu3 = p(sil300);
-      items.push({
-        label: sil300.label,
-        sku: "silicona_300_neutra",
-        cant: cant300,
-        unidad: "unid",
-        pu: pu3,
-        costo: c(sil300),
-        total: +(cant300 * pu3).toFixed(2),
-      });
+  if (!WHITELABEL) {
+    const sil300 = SELLADORES.silicona_300_neutra;
+    const ratio300 = getDimensioningParam("SELLADORES_TECHO.silicona_300_por_unid_600", 2);
+    if (sil300 && siliconas > 0 && ratio300 > 0) {
+      const cant300 = Math.max(0, Math.round(siliconas * ratio300));
+      if (cant300 > 0) {
+        const pu3 = p(sil300);
+        items.push({
+          label: sil300.label,
+          sku: "silicona_300_neutra",
+          cant: cant300,
+          unidad: "unid",
+          pu: pu3,
+          costo: c(sil300),
+          total: +(cant300 * pu3).toFixed(2),
+        });
+      }
     }
-  }
 
-  const panelesPorRollo = getDimensioningParam("SELLADORES_TECHO.cinta_paneles_por_rollo", 10);
-  const cintas = Math.ceil(cantP / panelesPorRollo);
-  const puCinta = p(SELLADORES.cinta_butilo);
-  items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, costo: c(SELLADORES.cinta_butilo), total: +(cintas * puCinta).toFixed(2) });
+    const panelesPorRollo = getDimensioningParam("SELLADORES_TECHO.cinta_paneles_por_rollo", 10);
+    const cintas = Math.ceil(cantP / panelesPorRollo);
+    const puCinta = p(SELLADORES.cinta_butilo);
+    items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, costo: c(SELLADORES.cinta_butilo), total: +(cintas * puCinta).toFixed(2) });
+  }
 
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2) };
@@ -1061,7 +1064,7 @@ export function calcTechoCompleto(inputs) {
   }
 
   let perfileria;
-  if (bomComercial) {
+  if (bomComercial && !WHITELABEL) {
     perfileria = calcPerfileriaTechoComercial(panel.fam, espesor);
   } else {
     perfileria = calcPerfileriaTecho(borders || { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, paneles.cantPaneles, largoReal, paneles.anchoTotal, panel.fam, espesor, opciones || {});
@@ -1069,7 +1072,7 @@ export function calcTechoCompleto(inputs) {
 
   let selladores = { items: [], total: 0 };
   if (!opciones || opciones.inclSell !== false) {
-    selladores = bomComercial
+    selladores = bomComercial && !WHITELABEL
       ? calcSelladoresTechoComercial()
       : calcSelladoresTecho(paneles.cantPaneles, {
           panel,

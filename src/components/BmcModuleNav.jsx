@@ -100,6 +100,14 @@ export default function BmcModuleNav() {
         </Link>
       ) : null}
       {isAdmin ? (
+        <Link
+          to="/hub/admin/tenants"
+          style={btn(pathname.startsWith("/hub/admin/tenant"))}
+        >
+          Tenants
+        </Link>
+      ) : null}
+      {isAdmin ? (
         <Link to="/hub/admin/analytics" style={btn(pathname.startsWith("/hub/admin/analytics"))}>
           Analytics
         </Link>

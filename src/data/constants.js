@@ -2,9 +2,11 @@
 // src/data/constants.js — Design tokens, pricing engine, and all static data
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { brandTheme } from "../config/whitelabel.js";
+
 // ── §1 DESIGN TOKENS ────────────────────────────────────────────────────────
 
-export const C = {
+const C_BMC = {
   bg: "#F5F5F7", surface: "#FFFFFF", surfaceAlt: "#FAFAFA",
   primary: "#0071E3", primarySoft: "#E8F1FB",
   brand: "#1A3A5C", brandLight: "#EEF3F8",
@@ -15,6 +17,24 @@ export const C = {
   border: "#E5E5EA",
   tp: "#1D1D1F", ts: "#6E6E73", tt: "#AEAEB2",
 };
+
+// Tenant theme remaps tokens at BUILD time (VITE_WHITELABEL). Other deploys
+// keep C_BMC unchanged — never mutate a shared runtime palette.
+const _theme = brandTheme();
+export const C = _theme
+  ? {
+      ...C_BMC,
+      bg: _theme.wash || C_BMC.bg,
+      brand: _theme.headerBg || _theme.ink || C_BMC.brand,
+      brandLight: _theme.wash || C_BMC.brandLight,
+      primary: _theme.ink || C_BMC.primary,
+      primarySoft: _theme.wash || C_BMC.primarySoft,
+      dark: _theme.ink || C_BMC.dark,
+      border: _theme.rule || C_BMC.border,
+      tp: _theme.ink || C_BMC.tp,
+      ts: _theme.accentSoft || C_BMC.ts,
+    }
+  : C_BMC;
 export const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif";
 export const SHC = "0 1px 3px rgba(0,0,0,0.04),0 4px 16px rgba(0,0,0,0.06)";
 export const SHI = "inset 0 1px 2px rgba(0,0,0,0.04)";
