@@ -2,6 +2,7 @@ import { ExternalLink, Check } from "lucide-react";
 import { C, FONT, PANELS_TECHO, PERFIL_TECHO, TR } from "../data/constants.js";
 import { resolveBorderShopifyEntry } from "../data/quoteVisorShopifyResolve.js";
 import { resolveBorderMedia } from "../data/product-media/productMediaResolve.js";
+import { WHITELABEL_BRAND } from "../config/whitelabel.js";
 
 const GLASS_SHELL = {
   background: "rgba(255,255,255,0.62)",
@@ -235,7 +236,7 @@ export default function PlantaBorderGlassPicker({
                 </div>
               ) : null}
             </div>
-            {shop.productUrl && previewId !== "none" ? (
+            {shop.productUrl && previewId !== "none" && !WHITELABEL_BRAND ? (
               <a
                 href={shop.productUrl}
                 target="_blank"

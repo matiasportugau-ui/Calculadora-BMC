@@ -18,6 +18,16 @@ import {
 } from "lucide-react";
 
 import { PANELIN_VERSION_BADGE } from "../appSemver.js";
+import { WHITELABEL_BRAND, formatQuoteCode, quoteCodePrefix, priceListLabels } from "../config/whitelabel.js";
+import BcLogo from "./BcLogo.jsx";
+import {
+  BC_AUTOSAVE_STEP_ID,
+  persistBcDraft,
+  fetchBcQuote,
+  claimBcQuotes,
+  rotateBcClientQuoteId,
+} from "../utils/bcQuoteBoard.js";
+import { getWizardSteps } from "../utils/wizardSteps.js";
 import { trackLeadEvent } from "../utils/leadTracking.js";
 import { mqCompactPdfModal, isPhoneViewportWidth, isTabletViewportWidth, isCompactMainLayoutWidth } from "../constants/viewportBreakpoints.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
@@ -120,7 +130,7 @@ import {
 } from "../utils/googleDrive.js";
 import { stashEnviosDriveResume } from "../utils/logistica/enviosDrive.js";
 import { getDriveConfig } from "../utils/driveConfigApi.js";
-import { LAYOUT_OPTIONS } from "../pdf-templates/index.js";
+import { LAYOUT_OPTIONS, DEFAULT_LAYOUT, isAllowedLayout } from "../pdf-templates/index.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
 import PlanUploadModal from "./PlanUploadModal.jsx";
 import PlanInlineDropZone from "./PlanInlineDropZone.jsx";
@@ -298,15 +308,21 @@ function StepperInput({
   };
 
   const isLarge = size === "large";
+  const show = draft !== null ? draft : formatNumDisplay(num, decimals);
+  const shownChars = Math.max(String(show ?? "").length, decimals > 0 ? decimals + 2 : 2, 2);
+  // Shrink type before clipping: 0,00 stays 26px; longer drafts step down.
+  const largeFont = shownChars >= 8 ? 16 : shownChars >= 6 ? 18 : shownChars >= 5 ? 20 : 26;
+  const fontPx = isLarge ? largeFont : 15;
+  const padX = isLarge ? 8 : 8;
+  const valueBoxWidth = `calc(${shownChars}ch + ${padX * 2}px)`;
   const btnDim = isLarge ? 44 : 36;
   const btnS = (dis) => ({ width: btnDim, height: btnDim, borderRadius: isLarge ? 12 : 10, border: `1.5px solid ${C.border}`, background: C.surface, cursor: dis ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: dis ? 0.5 : 1, transition: TR, flexShrink: 0 });
-  const show = draft !== null ? draft : formatNumDisplay(num, decimals);
   const effective = Number.isFinite(num) ? num : min;
 
   return (
-    <div style={{ fontFamily: FONT }}>
+    <div style={{ fontFamily: FONT, minWidth: "min-content", width: "100%", maxWidth: "100%" }}>
       {label && <div style={{ fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", flexWrap: "nowrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", flexWrap: "nowrap", minWidth: "min-content" }}>
         <button type="button" style={btnS(effective <= min)} onClick={() => bump(-1)}><Minus size={isLarge ? 18 : 16} color={C.tp} /></button>
         <input
           ref={inputRef}
@@ -352,7 +368,29 @@ function StepperInput({
             setDraft(null);
             commit(d);
           }}
-          style={{ width: "100%", minWidth: 0, flex: isLarge ? "1 1 120px" : 1, textAlign: "center", borderRadius: isLarge ? 12 : 10, border: `1.5px solid ${C.border}`, padding: isLarge ? "14px 12px" : "8px 10px", fontSize: isLarge ? 26 : 15, fontWeight: 700, background: C.surface, color: C.tp, outline: "none", boxShadow: SHI, transition: TR, fontFamily: FONT, ...TN }}
+          style={{
+            boxSizing: "border-box",
+            flex: "1 1 auto",
+            width: valueBoxWidth,
+            minWidth: valueBoxWidth,
+            maxWidth: "100%",
+            fieldSizing: "content",
+            textAlign: "center",
+            borderRadius: isLarge ? 12 : 10,
+            border: `1.5px solid ${C.border}`,
+            padding: isLarge ? `12px ${padX}px` : `8px ${padX}px`,
+            fontSize: fontPx,
+            fontWeight: 700,
+            lineHeight: 1.15,
+            background: C.surface,
+            color: C.tp,
+            outline: "none",
+            boxShadow: SHI,
+            transition: "font-size 120ms ease, width 120ms ease",
+            fontFamily: FONT,
+            overflow: "visible",
+            ...TN,
+          }}
         />
         <button type="button" style={btnS(effective >= max)} onClick={() => bump(1)}><Plus size={isLarge ? 18 : 16} color={C.tp} /></button>
         {unit && <span style={{ fontSize: isLarge ? 16 : 14, fontWeight: 600, color: C.tp, marginLeft: 4, minWidth: isLarge ? 28 : 24 }}>{unit}</span>}
@@ -379,7 +417,7 @@ function ZonaExtensionTabs({ tabs, activeId, onSelect, children }) {
   const [hoveredId, setHoveredId] = useState(null);
   return (
     <div style={{ marginTop: 2, marginBottom: 16 }}>
-      <div role="tablist" style={{ display: "flex", alignItems: "flex-end", gap: 0, paddingLeft: 6, paddingRight: 6, position: "relative", zIndex: 1 }}>
+      <div role="tablist" style={{ display: "flex", alignItems: "flex-end", flexWrap: "wrap", gap: 0, paddingLeft: 6, paddingRight: 6, position: "relative", zIndex: 1 }}>
         {tabs.map((tab, i) => {
           const isActive = activeId === tab.id;
           const isHovered = hoveredId === tab.id;
@@ -395,9 +433,9 @@ function ZonaExtensionTabs({ tabs, activeId, onSelect, children }) {
               onMouseLeave={() => setHoveredId(null)}
               onClick={() => onSelect(tab.id)}
               style={{
-                flex: extend ? "1.22 1 0" : "1 1 0",
-                minWidth: 0,
-                padding: extend ? "12px 22px 10px" : "8px 14px 7px",
+                flex: extend ? "1 1 auto" : "0 1 auto",
+                minWidth: "min-content",
+                padding: extend ? "10px 12px 8px" : "8px 10px 7px",
                 marginLeft: i > 0 ? -3 : 0,
                 background: isActive ? C.surface : isHovered ? ZONA_TAB_GRAY_HOVER : ZONA_TAB_GRAY,
                 color: C.primary,
@@ -407,14 +445,13 @@ function ZonaExtensionTabs({ tabs, activeId, onSelect, children }) {
                 borderBottom: isActive ? `1px solid ${C.surface}` : `1px solid ${C.border}`,
                 borderRadius: "10px 10px 0 0",
                 cursor: "pointer",
-                transition: "flex 220ms cubic-bezier(0.4,0,0.2,1), padding 220ms cubic-bezier(0.4,0,0.2,1), background 150ms ease, box-shadow 150ms ease",
+                transition: "padding 180ms ease, background 150ms ease, box-shadow 150ms ease",
                 fontFamily: FONT,
-                letterSpacing: "0.03em",
+                letterSpacing: "0.02em",
                 zIndex: isActive ? 3 : isHovered ? 2 : 1,
                 position: "relative",
                 whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                overflow: "visible",
                 boxShadow: isActive ? "0 -2px 10px rgba(0,113,227,0.1)" : isHovered ? "0 -1px 8px rgba(0,0,0,0.05)" : "none",
               }}
             >
@@ -2468,7 +2505,7 @@ function RoofBorderSelector({
 
 // ── Wizard steps — derived from SCENARIOS_DEF (single source of truth) ─────
 // Adding a new scenario only requires adding it to SCENARIOS_DEF in constants.js.
-const SOLO_TECHO_STEPS = SCENARIOS_DEF.find(s => s.id === "solo_techo")?.wizardSteps ?? [];
+const SOLO_TECHO_STEPS = getWizardSteps("solo_techo");
 
 /** Paso "Pendiente" (solo_techo): con varios cuerpos de techo se configura pendiente por zona en Dimensiones — saltar este paso. */
 const SOLO_TECHO_DIM_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones");
@@ -2566,7 +2603,11 @@ export default function PanelinCalculadoraV3() {
     setIrregularLayoutByGi((prev) => {
       const next = { ...prev };
       if (layout?.strips?.length && Number.isFinite(Number(gi))) {
-        next[Number(gi)] = layout;
+        const prevL = prev[Number(gi)];
+        next[Number(gi)] = {
+          ...layout,
+          cutBorders: layout.cutBorders || prevL?.cutBorders || {},
+        };
         return next;
       }
       if (Number.isFinite(Number(gi))) {
@@ -2583,6 +2624,21 @@ export default function PanelinCalculadoraV3() {
       return prev;
     });
   }, []);
+  const handleIrregularCutBorderChange = useCallback((gi, cutId, optionId) => {
+    if (!cutId || !Number.isFinite(Number(gi))) return;
+    setIrregularLayoutByGi((prev) => {
+      const key = Number(gi);
+      const cur = prev[key];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [key]: {
+          ...cur,
+          cutBorders: { ...(cur.cutBorders || {}), [cutId]: optionId },
+        },
+      };
+    });
+  }, []);
   const [pared, _setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [techoAnchoModo, _setTechoAnchoModo] = useState("paneles"); // "metros" | "paneles"
   const [camara, _setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
@@ -2595,7 +2651,12 @@ export default function PanelinCalculadoraV3() {
   // Default changed 2026-05-27 during PDF generator improvement session.
 // Old default 'bmc-pdf' was the heavy 50k+ template that required the Python optimizer post-process.
 // New default uses the modern lightweight "simple" family (much smaller, cleaner 1-2 page output).
-const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'simple');
+// El valor guardado sólo vale si este deploy lo ofrece: en un deploy
+// white-label un 'simple' viejo en localStorage tiene que caer al layout de la marca.
+const [pdfLayout, setPdfLayout] = useState(() => {
+  const saved = localStorage.getItem('bmc.pdfLayout');
+  return saved && isAllowedLayout(saved) ? saved : DEFAULT_LAYOUT;
+});
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
@@ -2608,6 +2669,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     return params.get("chat") === "1" || params.get("panelinDetached") === "1";
   });
   const [chatPresentation, setChatPresentation] = useState(() => {
+    if (WHITELABEL_BRAND) return "floating";
     if (typeof window === "undefined") return "sidebar";
     return readStoredChatPresentation(isCompactMainLayoutWidth(window.innerWidth));
   });
@@ -2862,6 +2924,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   useEffect(() => {
     const onKeyDown = (e) => {
+      if (WHITELABEL_BRAND) return;
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && String(e.key).toLowerCase() === "d") {
         e.preventDefault();
         toggleDevMode();
@@ -2883,6 +2946,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [isDetachedChatWindow]);
 
   useEffect(() => {
+    if (WHITELABEL_BRAND) return;
     if (!isCompactMainLayoutWidth(viewportWidth)) return;
     setChatPresentation((prev) => {
       if (prev === "sidebar") return prev;
@@ -2899,9 +2963,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   const isTablet = isTabletViewportWidth(viewportWidth);
   const isCompactLayout = isCompactMainLayoutWidth(viewportWidth);
 
-  const useSidebarChat = chatOpen && !isDetachedChatWindow && chatPresentation === "sidebar" && !isCompactLayout;
-  const useFloatingChat = chatOpen && !isDetachedChatWindow && chatPresentation === "floating";
-  const useMobileSheetChat = chatOpen && !isDetachedChatWindow && isCompactLayout && chatPresentation !== "floating";
+  const useSidebarChat = !WHITELABEL_BRAND && chatOpen && !isDetachedChatWindow && chatPresentation === "sidebar" && !isCompactLayout;
+  const useFloatingChat = chatOpen && !isDetachedChatWindow && (WHITELABEL_BRAND || chatPresentation === "floating");
+  const useMobileSheetChat = !WHITELABEL_BRAND && chatOpen && !isDetachedChatWindow && isCompactLayout && chatPresentation !== "floating";
 
   useEffect(() => {
     document.documentElement.classList.toggle("bmc-chat-sheet-open", !!useMobileSheetChat);
@@ -2909,8 +2973,12 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [useMobileSheetChat]);
 
   const openChat = useCallback(() => {
+    if (WHITELABEL_BRAND) {
+      setChatPresentation("floating");
+      persistChatPresentation("floating");
+    }
     setChatOpen(true);
-  }, []);
+  }, [persistChatPresentation]);
 
   const closeChat = useCallback(() => {
     setChatOpen(false);
@@ -2985,7 +3053,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     clear: chat.clear,
     error: chat.error,
     devMode,
-    onToggleDevMode: toggleDevMode,
+    onToggleDevMode: WHITELABEL_BRAND ? undefined : toggleDevMode,
     devMeta: chat.devMeta,
     trainingEntries: chat.trainingEntries,
     trainingStats: chat.trainingStats,
@@ -3005,9 +3073,10 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     calcState,
     onChatAction: handleChatAction,
     authHeader: panelinChatAuthHeader,
-    onOpenDetachedWindow: openDetachedChatWindow,
-    onOpenPinnedWindow: openPinnedChatWindow,
-    onRequestFloatOut: openPinnedChatWindow,
+    simpleChrome: !!WHITELABEL_BRAND,
+    onOpenDetachedWindow: WHITELABEL_BRAND ? undefined : openDetachedChatWindow,
+    onOpenPinnedWindow: WHITELABEL_BRAND ? undefined : openPinnedChatWindow,
+    onRequestFloatOut: WHITELABEL_BRAND ? undefined : openPinnedChatWindow,
     aiProvider: chat.aiProvider,
     aiModel: chat.aiModel,
     aiOptions: chat.aiOptions,
@@ -3119,6 +3188,19 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   // Sync maxReachedStep cuando el paso actual supera el máximo previo
   useEffect(() => { setMaxReachedStep(mr => Math.max(mr, wizardStep)); }, [wizardStep]);
+  useEffect(() => {
+    if (!WHITELABEL_BRAND) return;
+    const steps = getWizardSteps(scenario);
+    const step = steps[wizardStep];
+    import("../utils/bcTelemetry.js").then(({ trackBc }) => {
+      trackBc("tenant.wizard.step", {
+        step_id: step?.id || String(wizardStep),
+        step_label: step?.label || step?.title || "",
+        index: wizardStep,
+        scenario,
+      });
+    }).catch(() => {});
+  }, [WHITELABEL_BRAND, wizardStep, scenario]);
 
   // Sync LISTA_ACTIVA (solo cuando hay valor)
   useEffect(() => { if (listaPrecios) setListaPrecios(listaPrecios); }, [listaPrecios]);
@@ -3179,7 +3261,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       case "selladores": return true;
       case "flete": return typeof flete === "number";
       case "proyecto":
-        return isProyectoDatosObligatoriosCompletos(proyecto);
+        // No bloquea el wizard: se exige al exportar o al salir del último paso.
+        return true;
       default: return false;
     }
   }, [scenario, listaPrecios, techo, flete, proyecto]);
@@ -3187,7 +3270,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   // Enter / ArrowRight → Siguiente | ArrowLeft → Anterior (all wizard scenarios)
   useEffect(() => {
     if (!modoVendedor) return;
-    const steps = SCENARIOS_DEF.find(s => s.id === scenario)?.wizardSteps ?? [];
+    const steps = getWizardSteps(scenario);
     if (!steps.length) return;
     const stepId = steps[wizardStep]?.id;
     const isValid = stepId ? isWizardStepValid(stepId) : false;
@@ -3196,11 +3279,25 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     const handler = (e) => {
       const tag = e.target?.tagName;
       const editable = e.target?.isContentEditable;
-      if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT" || editable) return;
-      if ((e.key === "ArrowRight" || e.key === "Enter") && canNext && isValid) {
-        e.preventDefault();
-        if (scenario === "solo_techo") advanceWizardStep();
-        else setWizardStep((s) => s + 1);
+      const onProyecto = stepId === "proyecto";
+      const onLast = !canNext;
+      if (tag === "TEXTAREA") return;
+      if ((tag === "INPUT" || tag === "SELECT" || editable) && !onProyecto && !onLast) return;
+      if (e.key === "ArrowRight" || e.key === "Enter") {
+        if (canNext && isValid) {
+          e.preventDefault();
+          if (scenario === "solo_techo") advanceWizardStep();
+          else setWizardStep((s) => s + 1);
+          return;
+        }
+        if (onLast && !isProyectoDatosObligatoriosCompletos(proyecto)) {
+          e.preventDefault();
+          const idx = steps.findIndex((s) => s.id === "proyecto");
+          if (idx >= 0) {
+            setWizardStep(idx);
+            setMaxReachedStep((mr) => Math.max(mr, idx));
+          }
+        }
       }
       if (e.key === "ArrowLeft" && canPrev) {
         e.preventDefault();
@@ -3210,7 +3307,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [modoVendedor, scenario, wizardStep, isWizardStepValid, advanceWizardStep, goPrevWizardSoloTecho]);
+  }, [modoVendedor, scenario, wizardStep, isWizardStepValid, advanceWizardStep, goPrevWizardSoloTecho, proyecto]);
 
   const vis = SCENARIOS_DEF.find(s => s.id === scenario)?.visibility ?? SCENARIOS_DEF[0].visibility;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
@@ -3240,6 +3337,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
 
   const scrollToManualLibreSection = useCallback(() => {
     setManualLibreOpen(true);
+    setLibreAcc((a) => ({ ...a, extraordinarios: true }));
     requestAnimationFrame(() => {
       manualLibreRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -4126,11 +4224,16 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast]);
 
   const buildSerializedProject = useCallback((quotationCodeOverride) => serializeProject({
-    scenario, listaPrecios, proyecto, techo, pared, camara, flete,
+    scenario, listaPrecios, proyecto,
+    techo: {
+      ...techo,
+      ...(Object.keys(irregularLayoutByGi || {}).length ? { irregularLayoutByGi } : {}),
+    },
+    pared, camara, flete,
     overrides, excludedItems, categoriasActivas, techoAnchoModo,
     quotationCode: quotationCodeOverride ?? currentBudgetCode,
     libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter,
-  }), [scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, currentBudgetCode, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter]);
+  }), [scenario, listaPrecios, proyecto, techo, irregularLayoutByGi, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, currentBudgetCode, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter]);
 
   /** Archivo en carpeta compartida BMC (service account) — best-effort, no bloquea export. */
   const persistExportToCompanyDrive = useCallback(async ({
@@ -4140,7 +4243,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       const code = quotationCode ||
         currentBudgetCode ||
         (proyecto.refInterna || "").trim() ||
-        `BMC-${new Date().getFullYear()}-TEMP`;
+        `${quoteCodePrefix()}-${new Date().getFullYear()}-TEMP`;
       const { archiveQuotationToCompanyDrive } = await import("../utils/companyDriveArchive.js");
       const result = await archiveQuotationToCompanyDrive({
         pdfBlob,
@@ -4197,7 +4300,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       const resolvedCode =
         currentBudgetCode ||
         (proyecto.refInterna || "").trim() ||
-        `BMC-${new Date().getFullYear()}-TEMP`;
+        `${quoteCodePrefix()}-${new Date().getFullYear()}-TEMP`;
       const fname = pdfFileName(resolvedCode, proyecto);
       downloadPdfBlob(pdfBlob, fname);
       const archived = await persistExportToCompanyDrive({
@@ -4312,7 +4415,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       const resolvedCode =
         currentBudgetCode ||
         (proyecto.refInterna || "").trim() ||
-        `BMC-${new Date().getFullYear()}-TEMP`;
+        `${quoteCodePrefix()}-${new Date().getFullYear()}-TEMP`;
       const fname = pdfFileName(resolvedCode, proyecto);
       downloadPdfBlob(pdfBlob, fname);
       const archived = await persistExportToCompanyDrive({
@@ -4477,6 +4580,10 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setLibreExtras([]);
     setExtraDraft(emptyExtraDraft());
     setLibrePerfilFilter("");
+    if (WHITELABEL_BRAND) {
+      rotateBcClientQuoteId();
+      setCurrentBudgetCode(null);
+    }
   };
 
   const confirmExtraordinario = useCallback(() => {
@@ -4741,6 +4848,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           })
         }
         onIrregularLayoutChange={handleIrregularLayoutChange}
+        onIrregularCutBorderChange={handleIrregularCutBorderChange}
         irregularSession={irregularSession}
         onIrregularSessionChange={setIrregularSession}
         irregularDisplayMode="final_plane"
@@ -5056,7 +5164,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       const html = await buildClientePdfHtml();
       const { htmlToPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
-      const code = currentBudgetCode || `BMC-${new Date().getFullYear()}-TEMP`;
+      const code = currentBudgetCode || `${quoteCodePrefix()}-${new Date().getFullYear()}-TEMP`;
       const fname = pdfFileName(code, proyecto);
       const result = await gdriveSaveQuotation({
         quotationCode: code,
@@ -5099,7 +5207,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
    * "Datos del proyecto" so the operator sees measures/color/BOM already applied — not stuck on step 1.
    */
   const unlockWizardForLoadedProject = useCallback((scenarioId) => {
-    const steps = SCENARIOS_DEF.find((s) => s.id === (scenarioId || "solo_techo"))?.wizardSteps ?? [];
+    const steps = getWizardSteps(scenarioId || "solo_techo");
     if (!steps.length) {
       setWizardStep(0);
       setMaxReachedStep(0);
@@ -5133,6 +5241,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
         }
       : state.pared;
     setTecho(techoNorm);
+    if (techoNorm?.irregularLayoutByGi && typeof techoNorm.irregularLayoutByGi === "object") {
+      setIrregularLayoutByGi(techoNorm.irregularLayoutByGi);
+    }
     setPared(paredNorm);
     setCamara(state.camara);
     setFlete(state.flete);
@@ -5368,6 +5479,71 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!WHITELABEL_BRAND || !bmcAuth?.accessToken) return;
+    claimBcQuotes(bmcAuth.accessToken).catch(() => {});
+  }, [bmcAuth?.accessToken]);
+
+  useEffect(() => {
+    if (!WHITELABEL_BRAND) return;
+    if (typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("quote");
+    if (!id) return;
+    let cancelled = false;
+    fetchBcQuote(id, bmcAuth?.accessToken)
+      .then((quote) => {
+        if (cancelled) return;
+        const project = quote.payload?.project || quote.payload;
+        applyDeserializedProject(deserializeProject(project), `Abierto ${quote.code || quote.quote_id}`);
+        if (quote.code) setCurrentBudgetCode(quote.code);
+      })
+      .catch((e) => showToast(e.message || "No se pudo abrir el presupuesto"));
+    return () => { cancelled = true; };
+  }, [bmcAuth?.accessToken, applyDeserializedProject, showToast]);
+
+  const bcAutosaveTimer = useRef(null);
+  useEffect(() => {
+    if (!WHITELABEL_BRAND) return;
+    const autosaveIdx = SOLO_TECHO_STEPS.findIndex((s) => s.id === BC_AUTOSAVE_STEP_ID);
+    const gate = autosaveIdx >= 0 ? autosaveIdx : 7;
+    if (maxReachedStep < gate && wizardStep < gate) return;
+    if (bcAutosaveTimer.current) clearTimeout(bcAutosaveTimer.current);
+    bcAutosaveTimer.current = setTimeout(() => {
+      const productoStr = panelInfo.espesor ? `${panelInfo.label} ${panelInfo.espesor}mm` : panelInfo.label;
+      const project = serializeProject({
+        scenario, listaPrecios, proyecto, techo, pared, camara, flete,
+        overrides, excludedItems, categoriasActivas, techoAnchoModo,
+        quotationCode: currentBudgetCode,
+        libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter,
+      });
+      persistBcDraft({
+        token: bmcAuth?.accessToken,
+        wizardStep: Math.max(wizardStep, maxReachedStep) + 1,
+        payload: {
+          project,
+          wizardStep: Math.max(wizardStep, maxReachedStep) + 1,
+          scenario,
+          totalUsd: grandTotal?.totalFinal || 0,
+          cliente: proyecto?.nombre || proyecto?.razonSocial || "",
+          producto: productoStr,
+          bc_code: currentBudgetCode && String(currentBudgetCode).startsWith("BC-") ? currentBudgetCode : undefined,
+        },
+      }).then((q) => {
+        const code = q.code || q.payload?.bc_code;
+        if (code) setCurrentBudgetCode(code);
+        fetch("/api/quotes/counter").then((r) => r.ok ? r.json() : null).then((d) => {
+          if (d?.ok) setGlobalCounter(d.counter);
+        }).catch(() => {});
+      }).catch(() => {});
+    }, 900);
+    return () => { if (bcAutosaveTimer.current) clearTimeout(bcAutosaveTimer.current); };
+  }, [
+    WHITELABEL_BRAND, wizardStep, maxReachedStep, scenario, listaPrecios, proyecto, techo, pared, camara, flete,
+    overrides, excludedItems, categoriasActivas, techoAnchoModo, currentBudgetCode,
+    libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtras, librePerfilFilter,
+    panelInfo, grandTotal, bmcAuth?.accessToken,
+  ]);
+
   // ── Manual save ──
   const handleManualSave = useCallback(() => {
     if (!groups.length) return;
@@ -5430,21 +5606,34 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setCurrentBudgetCode(null);
   }, []);
 
+  const wlTheme = WHITELABEL_BRAND?.theme || null;
+  const headerBg = wlTheme?.headerBg || (WHITELABEL_BRAND ? "#211E17" : C.brand);
+  const headerInk = wlTheme?.headerInk || (WHITELABEL_BRAND ? "#FBF6E9" : "#fff");
+  const headerAccent = wlTheme?.accent || (WHITELABEL_BRAND ? "#C6A02A" : "#fff");
+  const headerSoft = wlTheme?.accentSoft || "#DCC384";
+
   return (
-    <div data-tutorial-id="calc-main" style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
+    <div data-tutorial-id="calc-main" style={{ fontFamily: FONT, background: wlTheme?.wash || C.bg, minHeight: "100vh" }}>
       {/* HEADER */}
-      <div style={{ background: C.brand, color: "#fff", padding: isPhone ? "12px 14px" : "16px 24px", display: "flex", alignItems: isCompactLayout ? "stretch" : "center", flexDirection: isCompactLayout ? "column" : "row", justifyContent: "space-between", gap: isCompactLayout ? 10 : 16, position: "sticky", top: 0, zIndex: 40 }}>
+      <div style={{ background: headerBg, color: headerInk, padding: isPhone ? "12px 14px" : "16px 24px", display: "flex", alignItems: isCompactLayout ? "stretch" : "center", flexDirection: isCompactLayout ? "column" : "row", justifyContent: "space-between", gap: isCompactLayout ? 10 : 16, position: "sticky", top: 0, zIndex: 40 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ fontSize: isPhone ? 18 : 20, fontWeight: 800, letterSpacing: "-0.5px" }}>BMC Uruguay</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>{PANELIN_VERSION_BADGE}</div>
-          {!isPhone && (
+          {WHITELABEL_BRAND ? <BcLogo height={isPhone ? 28 : 36} /> : null}
+          <div>
+            <div style={{ fontSize: isPhone ? 18 : 20, fontWeight: 800, letterSpacing: WHITELABEL_BRAND ? "0.06em" : "-0.5px", color: headerAccent }}>{WHITELABEL_BRAND?.marca || "BMC Uruguay"}</div>
+            {WHITELABEL_BRAND ? (
+              <div style={{ fontSize: 11, opacity: 0.8, color: headerSoft }}>{WHITELABEL_BRAND.descriptor.replace("\n", " · ")}</div>
+            ) : (
+              <div style={{ fontSize: 12, opacity: 0.7 }}>{PANELIN_VERSION_BADGE}</div>
+            )}
+          </div>
+          {!isPhone && !WHITELABEL_BRAND && (
             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               <button onClick={() => navigate("/hub")} style={{ padding: "2px 9px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.65)", fontSize: 11, fontWeight: 500, cursor: "pointer", letterSpacing: "0.01em" }}>Hub</button>
               <button onClick={() => navigate("/logistica")} style={{ padding: "2px 9px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.65)", fontSize: 11, fontWeight: 500, cursor: "pointer", letterSpacing: "0.01em" }}>Logística</button>
             </div>
           )}
           {currentBudgetCode && (
-            <div style={{ fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.04em", ...TN }}>{currentBudgetCode}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, background: wlTheme ? "rgba(228,231,235,0.14)" : (WHITELABEL_BRAND ? "rgba(198,160,42,0.18)" : "rgba(255,255,255,0.15)"), color: wlTheme ? headerAccent : (WHITELABEL_BRAND ? "#DCC384" : "#fff"), padding: "3px 10px", borderRadius: 6, letterSpacing: "0.04em", ...TN }}>{formatQuoteCode(currentBudgetCode)}</div>
           )}
           {globalCounter !== null && (
             <div style={{ fontSize: 11, fontWeight: 500, background: "rgba(255,255,255,0.12)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.03em", ...TN }}>
@@ -5577,6 +5766,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   >
                     <Trash2 size={14} color="#555" />Limpiar
                   </button>
+                  {!WHITELABEL_BRAND ? (
                   <button
                     type="button"
                     role="menuitem"
@@ -5585,6 +5775,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   >
                     <Printer size={14} color={C.primary} />Imprimir
                   </button>
+                  ) : null}
+                  {!WHITELABEL_BRAND ? (
+                    <>
                   <button
                     type="button"
                     role="menuitem"
@@ -5617,7 +5810,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   >
                     <FileText size={14} color="#555" />Presentación
                   </button>
-                  {devMode ? (
+                    </>
+                  ) : null}
+                  {!WHITELABEL_BRAND && devMode ? (
                     <button
                       type="button"
                       role="menuitem"
@@ -5639,6 +5834,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
               </div>
               )}
+              {!WHITELABEL_BRAND ? (
               <div ref={toolsMenuRef} style={{ position: "relative" }}>
                 <button
                   type="button"
@@ -5669,6 +5865,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   </div>
                 )}
               </div>
+              ) : null}
               <button onClick={() => setShowConfigPanel(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                 <Settings size={14} />Config
               </button>
@@ -5714,7 +5911,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 <button onClick={handleManualSave} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Save size={14} />Guardar</button>
               )}
               <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
+              {!WHITELABEL_BRAND ? (
               <button onClick={handlePrint} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Printer size={14} />Imprimir</button>
+              ) : null}
             </>
           ) : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: isPhone ? "auto" : undefined }}>
@@ -5727,13 +5926,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                   title="Abrir Panelin"
                   aria-label="Abrir asistente Panelin"
                 />
-                {panelinHeaderAiSelect}
+                {!WHITELABEL_BRAND ? panelinHeaderAiSelect : null}
               </>
             ) : (
-              panelinHeaderAiSelect
+              !WHITELABEL_BRAND ? panelinHeaderAiSelect : null
             )}
           </div>
-          {!isPhone && devMode ? (
+          {!WHITELABEL_BRAND && !isPhone && devMode ? (
             <button
               onClick={toggleDevMode}
               style={{
@@ -5896,17 +6095,17 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                       );
                     })}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0, overflow: "visible" }}>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: C.tp }}>{step?.label}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, minWidth: 0 }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: C.tp, lineHeight: 1.25, minWidth: 0 }}>{step?.label}</div>
                       <div style={{ fontSize: 11, fontWeight: 500, color: C.tt, flexShrink: 0 }}>{wizardStep + 1}/{SOLO_TECHO_STEPS.length}</div>
                     </div>
-                    <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                       <button
                         type="button"
                         onClick={scrollToProyectoSection}
                         title="Datos del proyecto — cliente, dirección, cargar desde Drive"
-                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.warning}`, background: proyectoQuickOpen || wizardStep === proyectoStepIdx ? C.warningSoft || "#fffbeb" : "transparent", color: C.warning, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
+                        style={{ padding: "4px 10px", borderRadius: 20, border: `1.5px solid ${C.warning}`, background: proyectoQuickOpen || wizardStep === proyectoStepIdx ? C.warningSoft || "#fffbeb" : "transparent", color: C.warning, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
                       >
                         <FileText size={11} />Datos proyecto
                       </button>
@@ -5914,16 +6113,15 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                         type="button"
                         onClick={() => setQuickAddOpen(true)}
                         title="Agregar producto de catálogo — buscador de matriz"
-                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.primary}`, background: quickAddOpen ? C.primarySoft : "transparent", color: C.primary, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
+                        style={{ padding: "4px 10px", borderRadius: 20, border: `1.5px solid ${C.primary}`, background: quickAddOpen ? C.primarySoft : "transparent", color: C.primary, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
                       >
                         <Plus size={11} />Agregar producto
-                        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.06em", padding: "1px 5px", borderRadius: 6, background: "#16a34a", color: "#fff" }}>NUEVO</span>
                       </button>
                       <button
                         type="button"
                         onClick={scrollToManualLibreSection}
                         title="Producto fuera de lista — partidas que no están en la matriz"
-                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.border}`, background: manualLibreOpen ? C.primarySoft : "transparent", color: C.ts, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
+                        style={{ padding: "4px 10px", borderRadius: 20, border: `1.5px solid ${C.border}`, background: manualLibreOpen ? C.primarySoft : "transparent", color: C.ts, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}
                       >
                         Fuera de lista
                       </button>
@@ -6223,9 +6421,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                               })
                             }
                             onIrregularLayoutChange={handleIrregularLayoutChange}
+                            onIrregularCutBorderChange={handleIrregularCutBorderChange}
                             irregularSession={irregularSession}
                             onIrregularSessionChange={setIrregularSession}
                             irregularDisplayMode="factory"
+                            simplePreviewChrome
                           />
                         );
                         return (
@@ -6273,11 +6473,11 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                               <button onClick={() => removeZona(idx)} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.dangerSoft, color: C.danger, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><X size={14} />Quitar</button>
                             )}
                           </div>
-                          <div data-stepper-group style={{ display: "flex", gap: 24, alignItems: "flex-end", flexWrap: "wrap" }}>
-                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                          <div data-stepper-group style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+                            <div style={{ flex: "1 1 168px", minWidth: "min-content" }}>
                               <StepperInput size="large" label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus inputRef={idx === 0 ? dimensionesLargoInputRef : undefined} />
                             </div>
-                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                            <div style={{ flex: "1 1 168px", minWidth: "min-content" }}>
                               {techoAnchoModo === "paneles" && techoPanelData ? (
                                 <StepperInput size="large" label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, derivedTipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, derivedTipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
                               ) : (
@@ -6294,11 +6494,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                       >
                         {dimensionesExtensionTab === "vista" ? (
                           <>
-                            {showRoof2dInQuoteVisor ? (
-                              <div style={{ fontSize: 12, color: C.ts, marginBottom: 12, lineHeight: 1.5 }}>
-                                También podés ver la planta ampliada en el <strong style={{ color: C.primary }}>panel derecho</strong>.
-                              </div>
-                            ) : null}
                             {roofPreviewNode}
                             {ENABLE_ROOF_3D_VISOR ? (
                               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginTop: 14 }}>
@@ -6552,6 +6747,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                                 })
                               }
                               onIrregularLayoutChange={handleIrregularLayoutChange}
+                              onIrregularCutBorderChange={handleIrregularCutBorderChange}
                               irregularSession={irregularSession}
                               onIrregularSessionChange={setIrregularSession}
                               irregularDisplayMode="factory"
@@ -6735,14 +6931,18 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                           onChange={(v) => uP("inclSell", v)}
                         />
                       ) : null}
-                      <Toggle
-                        label="BOM comercial ISODEC PIR (2 goteros + 6 babetas + kit selladores + 22 pts fijación)"
-                        value={techo.opciones?.bomComercial === true}
-                        onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, bomComercial: v } }))}
-                        disabled={techo.familia !== "ISODEC_PIR" || derivedTipoAguas === "dos_aguas"}
-                      />
-                      {(techo.familia !== "ISODEC_PIR" || derivedTipoAguas === "dos_aguas") && (
-                        <div style={{ fontSize: 11, color: C.ts, opacity: 0.85 }}>Solo familia ISODEC PIR y techo una agua. En dos aguas el kit se duplicaría por faldón.</div>
+                      {!WHITELABEL_BRAND && (
+                        <>
+                          <Toggle
+                            label="BOM comercial ISODEC PIR (2 goteros + 6 babetas + kit selladores + 22 pts fijación)"
+                            value={techo.opciones?.bomComercial === true}
+                            onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, bomComercial: v } }))}
+                            disabled={techo.familia !== "ISODEC_PIR" || derivedTipoAguas === "dos_aguas"}
+                          />
+                          {(techo.familia !== "ISODEC_PIR" || derivedTipoAguas === "dos_aguas") && (
+                            <div style={{ fontSize: 11, color: C.ts, opacity: 0.85 }}>Solo familia ISODEC PIR y techo una agua. En dos aguas el kit se duplicaría por faldón.</div>
+                          )}
+                        </>
                       )}
                       {!categoriasActivas.SELLADORES && (
                         <div
@@ -6977,8 +7177,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                         Exportar presupuesto
                       </button>
                     )}
-                    {canNext && !isValid && (
+                    {canNext && !isValid && stepId !== "proyecto" && (
                       <span style={{ fontSize: 12, color: C.warning, textAlign: "center", lineHeight: 1.35 }}>Completá este paso para avanzar</span>
+                    )}
+                    {canNext && stepId === "proyecto" && !proyectoPdfReady && (
+                      <span style={{ fontSize: 11, color: C.ts, textAlign: "center", lineHeight: 1.35 }}>
+                        Podés seguir con Enter y completar estos datos al final
+                      </span>
                     )}
                     {canNext && isValid && (
                       <span style={{ fontSize: 11, color: C.ts, textAlign: "center", lineHeight: 1.35 }}>
@@ -6989,13 +7194,20 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 </div>
                   <button
                     type="button"
-                    className={`bmc-wizard-edge-nav bmc-wizard-edge-nav--next${canNext && isValid ? " bmc-wizard-edge-nav--ready" : ""}`}
-                    aria-label={canNext ? "Paso siguiente" : "Último paso"}
-                    title={canNext ? (isValid ? "Siguiente" : "Completá el paso") : "Último paso — exportar presupuesto abajo"}
+                    className={`bmc-wizard-edge-nav bmc-wizard-edge-nav--next${(canNext && isValid) || (!canNext && !proyectoPdfReady) ? " bmc-wizard-edge-nav--ready" : ""}`}
+                    aria-label={canNext ? "Paso siguiente" : (!proyectoPdfReady ? "Volver a datos del proyecto" : "Último paso")}
+                    title={canNext ? (isValid ? "Siguiente" : "Completá el paso") : (!proyectoPdfReady ? "Faltan datos del proyecto" : "Último paso — exportar presupuesto abajo")}
                     onClick={() => {
                       if (canNext && isValid) advanceWizardStep();
+                      else if (!canNext && !proyectoPdfReady) {
+                        const idx = SOLO_TECHO_STEPS.findIndex((s) => s.id === "proyecto");
+                        if (idx >= 0) {
+                          setWizardStep(idx);
+                          setMaxReachedStep((mr) => Math.max(mr, idx));
+                        }
+                      }
                     }}
-                    disabled={!canNext || !isValid}
+                    disabled={canNext ? !isValid : proyectoPdfReady}
                   >
                     <ChevronRight size={28} strokeWidth={2.25} aria-hidden />
                   </button>
@@ -7039,7 +7251,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
           {/* Lista precios + Escenario (Modo Cliente) */}
           <div style={sectionS}>
             <div style={labelS}>LISTA DE PRECIOS</div>
-            <SegmentedControl value={listaPrecios || "web"} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
+            <SegmentedControl value={listaPrecios || "web"} onChange={v => setLP(v)} options={[{ id: "venta", label: priceListLabels().venta }, { id: "web", label: priceListLabels().web }]} />
             <StockWebHint listaPrecios={listaPrecios} />
             <div style={{ marginTop: 16 }}>
               <div style={labelS}>ESCENARIO DE OBRA</div>
@@ -7705,22 +7917,13 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Plus size={14} color={C.primary} />
               Agregar producto
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", padding: "2px 7px", borderRadius: 999, background: "#16a34a", color: "#fff", textTransform: "uppercase" }}>Nuevo</span>
             </span>
             <span style={{ fontSize: 11, fontWeight: 500, color: C.primary, textTransform: "none", letterSpacing: 0 }}>Buscar catálogo</span>
           </button>
 
-          <details
-            ref={manualLibreRef}
-            data-tutorial-id="calc-presupuesto-libre"
-            style={{ ...sectionS, padding: 0 }}
-            open={manualLibreOpen}
-            onToggle={(e) => setManualLibreOpen(e.currentTarget.open)}
-          >
-            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none", display: "flex", alignItems: "center", gap: 8 }}>
-              {scenarioDef?.isLibre ? "PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA" : "AGREGAR PRODUCTOS MANUALES (PRESUPUESTO LIBRE)"}
-            </summary>
-            <div style={{ padding: "0 20px 20px" }}>
+          <div ref={manualLibreRef} data-tutorial-id="calc-presupuesto-libre">
+            {scenarioDef?.isLibre && (
+            <>
             <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>
               Productos de matriz: usá <b>Agregar producto</b> (buscador) o las categorías de abajo. Si no está en catálogo, cargalo en <b>Producto fuera de lista</b>. Confirmá cada partida para sumarla al presupuesto.
             </div>
@@ -7780,7 +7983,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                         </div>
                         <div data-stepper-group style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
                           {anchoModo === "paneles" ? (
-                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                            <div style={{ flex: "1 1 168px", minWidth: "min-content" }}>
                               <StepperInput
                                 size="large"
                                 label="Paneles (ancho)"
@@ -7795,7 +7998,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                               />
                             </div>
                           ) : (
-                            <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                            <div style={{ flex: "1 1 168px", minWidth: "min-content" }}>
                               <StepperInput
                                 size="large"
                                 label="Ancho (m)"
@@ -7815,7 +8018,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                           <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Largos en esta zona / techo</div>
                           {tramos.map((tramo, tIdx) => (
                             <div key={tIdx} style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-                              <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                              <div style={{ flex: "1 1 168px", minWidth: "min-content" }}>
                                 <StepperInput
                                   size="large"
                                   label={tramos.length > 1 ? `Largo tramo ${tIdx + 1} (m)` : "Largo (m)"}
@@ -7920,7 +8123,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 })}
               </div>
             </LibreAccordionBar>
-            {scenarioDef?.isLibre && (
             <LibreAccordionBar title="Servicios" open={libreAcc.servicios} onToggle={() => toggleLibreAcc("servicios")}>
               <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
               <div style={{ fontSize: 12, color: C.ts, marginTop: 8 }}>Se suma al presupuesto como servicio con el importe indicado.</div>
@@ -7929,8 +8131,9 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 <input style={inputS} value={fleteCosto} onChange={e => setFleteCosto(e.target.value)} placeholder="—" inputMode="decimal" />
               </div>
             </LibreAccordionBar>
+            </>
             )}
-            <LibreAccordionBar title="Producto fuera de lista" open={libreAcc.extraordinarios || true} onToggle={() => toggleLibreAcc("extraordinarios")}>
+            <LibreAccordionBar title="Producto fuera de lista" open={manualLibreOpen} onToggle={() => setManualLibreOpen((v) => !v)}>
               {savedCustomProducts.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ ...labelS, marginBottom: 6 }}>Usados en este dispositivo</div>
@@ -7977,8 +8180,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 </div>
               )}
             </LibreAccordionBar>
-            </div>
-          </details>
+          </div>
         </div>
         </Panel>
         <PanelResizeHandle
@@ -8044,7 +8246,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               <SegmentedControl
                 value={listaPrecios || getListaDefault()}
                 onChange={v => setLP(v)}
-                options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]}
+                options={[{ id: "venta", label: priceListLabels().venta }, { id: "web", label: priceListLabels().web }]}
               />
             </div>
           )}
@@ -8313,7 +8515,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             isOpen
             floatingMode
             onClose={closeChat}
-            onReturnToSidebar={returnChatToSidebar}
+            onReturnToSidebar={WHITELABEL_BRAND ? undefined : returnChatToSidebar}
             onHeaderPointerDown={onFloatingHeaderDrag}
             {...panelinChatPanelProps}
           />

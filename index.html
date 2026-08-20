@@ -13,6 +13,18 @@
     <link rel="apple-touch-icon" href="/pwa-192x192.svg" />
     <meta name="description" content="Cotizador de paneles de aislamiento — BMC Uruguay" />
     <title>Calculadora BMC</title>
+    <script>
+      (function () {
+        var w = "%VITE_WHITELABEL%";
+        if (!w || w.indexOf("%") !== -1) return;
+        var bg = { bc: "#0C0906", paneleslam: "#1A1410", smartbuilding: "#0B0B0C" };
+        var titles = { bc: "BC · Calculadora", paneleslam: "LAM · Calculadora", smartbuilding: "SMARTBUILDING · Calculadora" };
+        var s = document.createElement("style");
+        s.textContent = "html,body{background:" + (bg[w] || "#000") + " !important}";
+        document.head.appendChild(s);
+        if (titles[w]) document.title = titles[w];
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />

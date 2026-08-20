@@ -62,12 +62,12 @@ function sameBodyRoot(zonas, giA, giB) {
  * Intervalos [y0,y1] sobre el borde derecho (x = r.x+r.w) cubiertos por vecino
  * mismo cuerpo a la derecha (arista vertical compartida).
  */
-function collectInternalYOnRight(r, rects, zonas) {
+function collectInternalYOnRight(r, rects, zonas, { anyNeighbor = false } = {}) {
   const intervals = [];
   const xLine = r.x + r.w;
   for (const e of rects) {
     if (e.gi === r.gi) continue;
-    if (!sameBodyRoot(zonas, r.gi, e.gi)) continue;
+    if (!anyNeighbor && !sameBodyRoot(zonas, r.gi, e.gi)) continue;
     if (!nearlyEq(e.x, xLine)) continue;
     const y0 = Math.max(r.y, e.y);
     const y1 = Math.min(r.y + r.h, e.y + e.h);
@@ -76,12 +76,12 @@ function collectInternalYOnRight(r, rects, zonas) {
   return mergeIntervals(intervals);
 }
 
-function collectInternalYOnLeft(r, rects, zonas) {
+function collectInternalYOnLeft(r, rects, zonas, { anyNeighbor = false } = {}) {
   const intervals = [];
   const xLine = r.x;
   for (const e of rects) {
     if (e.gi === r.gi) continue;
-    if (!sameBodyRoot(zonas, r.gi, e.gi)) continue;
+    if (!anyNeighbor && !sameBodyRoot(zonas, r.gi, e.gi)) continue;
     if (!nearlyEq(e.x + e.w, xLine)) continue;
     const y0 = Math.max(r.y, e.y);
     const y1 = Math.min(r.y + r.h, e.y + e.h);
@@ -90,12 +90,12 @@ function collectInternalYOnLeft(r, rects, zonas) {
   return mergeIntervals(intervals);
 }
 
-function collectInternalXOnTop(r, rects, zonas) {
+function collectInternalXOnTop(r, rects, zonas, { anyNeighbor = false } = {}) {
   const intervals = [];
   const yLine = r.y;
   for (const e of rects) {
     if (e.gi === r.gi) continue;
-    if (!sameBodyRoot(zonas, r.gi, e.gi)) continue;
+    if (!anyNeighbor && !sameBodyRoot(zonas, r.gi, e.gi)) continue;
     if (!nearlyEq(e.y + e.h, yLine)) continue;
     const x0 = Math.max(r.x, e.x);
     const x1 = Math.min(r.x + r.w, e.x + e.w);
@@ -104,12 +104,12 @@ function collectInternalXOnTop(r, rects, zonas) {
   return mergeIntervals(intervals);
 }
 
-function collectInternalXOnBottom(r, rects, zonas) {
+function collectInternalXOnBottom(r, rects, zonas, { anyNeighbor = false } = {}) {
   const intervals = [];
   const yLine = r.y + r.h;
   for (const e of rects) {
     if (e.gi === r.gi) continue;
-    if (!sameBodyRoot(zonas, r.gi, e.gi)) continue;
+    if (!anyNeighbor && !sameBodyRoot(zonas, r.gi, e.gi)) continue;
     if (!nearlyEq(e.y, yLine)) continue;
     const x0 = Math.max(r.x, e.x);
     const x1 = Math.min(r.x + r.w, e.x + e.w);
@@ -135,14 +135,15 @@ function collectInternalXOnBottom(r, rects, zonas) {
 export function buildZoneBorderExteriorIntervals(entries, zonas) {
   const rects = Array.isArray(entries) ? entries : [];
   const z = Array.isArray(zonas) ? zonas : [];
+  const any = { anyNeighbor: true };
   const out = {};
   for (const r of rects) {
     const filter = (ivs) => ivs.filter(([a, b]) => b - a > ROOF_PLAN_EPS);
     out[r.gi] = {
-      top:    filter(subtractIntervals1D(r.x, r.x + r.w, collectInternalXOnTop(r, rects, z))),
-      bottom: filter(subtractIntervals1D(r.x, r.x + r.w, collectInternalXOnBottom(r, rects, z))),
-      left:   filter(subtractIntervals1D(r.y, r.y + r.h, collectInternalYOnLeft(r, rects, z))),
-      right:  filter(subtractIntervals1D(r.y, r.y + r.h, collectInternalYOnRight(r, rects, z))),
+      top:    filter(subtractIntervals1D(r.x, r.x + r.w, collectInternalXOnTop(r, rects, z, any))),
+      bottom: filter(subtractIntervals1D(r.x, r.x + r.w, collectInternalXOnBottom(r, rects, z, any))),
+      left:   filter(subtractIntervals1D(r.y, r.y + r.h, collectInternalYOnLeft(r, rects, z, any))),
+      right:  filter(subtractIntervals1D(r.y, r.y + r.h, collectInternalYOnRight(r, rects, z, any))),
     };
   }
   return out;

@@ -81,6 +81,21 @@ export const ACTION_TAXONOMY = new Set([
   "nav.route.change",
   "ui.drawer.open",
   "ui.search.submit",
+
+  // tenant BC (Jenerik) — also registered from tenantActivity.js
+  "tenant.session.start",
+  "tenant.session.end",
+  "tenant.session.ping",
+  "tenant.nav.route",
+  "tenant.ui.click",
+  "tenant.wizard.step",
+  "tenant.quote.autosave",
+  "tenant.quote.open",
+  "tenant.quote.export.pdf",
+  "tenant.quote.export.html",
+  "tenant.quote.complete",
+  "tenant.member.invite",
+  "tenant.invite.claim",
 ]);
 
 // Actions that POST /api/me/activity is allowed to claim. Server-emitted actions
@@ -91,6 +106,16 @@ export const CLIENT_EMITTABLE = new Set([
   "nav.route.change",
   "ui.drawer.open",
   "ui.search.submit",
+  "tenant.session.start",
+  "tenant.session.end",
+  "tenant.session.ping",
+  "tenant.nav.route",
+  "tenant.ui.click",
+  "tenant.wizard.step",
+  "tenant.quote.autosave",
+  "tenant.quote.open",
+  "tenant.quote.export.pdf",
+  "tenant.quote.export.html",
   // The browser knows when the user navigates away. Allowing client-emitted
   // session.end + sendBeacon on `beforeunload` captures graceful tab closes
   // that would otherwise look like orphan sessions and only get cleaned up
@@ -121,6 +146,7 @@ const MODULE_PREFIX_MAP = {
   "nav.": "nav",
   "ui.": "ui",
   "ads.": "ads",
+  "tenant.": "tenant",
 };
 
 function deriveModule(action) {
@@ -142,12 +168,26 @@ const BLOCKED_KEYS = new Set([
   "body",           // message body content
   "content",
   "phone",          // PII; OK to log resource_id (the message_id), not the phone string
+  "costo",
+  "cost",
+  "factory_cost",
+  "factorycost",
+  "costo_bmc",
+  "comision",
+  "commission",
+  "comision_usd",
+  "margen",
+  "margin",
 ]);
+
+const DANGEROUS_KEYS = new Set(["__proto__", "prototype", "constructor"]);
 
 export function scrubPayload(p) {
   if (!p || typeof p !== "object") return {};
-  const out = {};
+  // Null prototype: client-supplied keys must not become Object.prototype props.
+  const out = Object.create(null);
   for (const [k, v] of Object.entries(p)) {
+    if (DANGEROUS_KEYS.has(k)) continue;
     if (BLOCKED_KEYS.has(k.toLowerCase())) continue;
     if (typeof v === "string" && v.length > 200) out[k] = v.slice(0, 200) + "…";
     else if (typeof v === "object" && v !== null) {

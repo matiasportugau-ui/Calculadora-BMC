@@ -15,6 +15,7 @@ import {
   resolveBridgeHandoff,
   saveBridgePayload,
 } from "../utils/logistica/bridgePayload.js";
+import { WHITELABEL_BRAND } from "../config/whitelabel.js";
 
 /**
  * @param {object} props
@@ -158,19 +159,34 @@ export default function FleteCotizarPanel({
         )}
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <button type="button" className="envios-btn-primary" onClick={runQuote} disabled={busy}>
-          {busy ? "Cotizando…" : "Cotizar flete"}
-        </button>
-        <button
-          type="button"
-          className="envios-btn-glass"
-          onClick={sendToLogistica}
-          disabled={!canBridge || busy}
-          title="Envía paneles y destino a /logistica"
-        >
-          Enviar a Logística
-        </button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+        {WHITELABEL_BRAND ? (
+          <>
+            <button type="button" className="envios-btn-primary" disabled title="Próximamente">
+              Cotizar flete
+              <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", padding: "2px 6px", borderRadius: 6, background: "rgba(255,255,255,0.28)", color: "#fff" }}>PRÓXIMAMENTE</span>
+            </button>
+            <button type="button" className="envios-btn-glass" disabled title="Próximamente">
+              Enviar a Logística
+              <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", padding: "2px 6px", borderRadius: 6, background: "#eef2ff", color: "#4338ca" }}>PRÓXIMAMENTE</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="envios-btn-primary" onClick={runQuote} disabled={busy}>
+              {busy ? "Cotizando…" : "Cotizar flete"}
+            </button>
+            <button
+              type="button"
+              className="envios-btn-glass"
+              onClick={sendToLogistica}
+              disabled={!canBridge || busy}
+              title="Envía paneles y destino a /logistica"
+            >
+              Enviar a Logística
+            </button>
+          </>
+        )}
       </div>
 
       {summary?.label && (

@@ -19,6 +19,33 @@ const isCloudRun = process.env.K_SERVICE || /\.run\.app$/i.test(publicBaseUrl);
 const frontendBaseUrl =
   process.env.FRONTEND_BASE_URL || "https://calculadora-bmc.vercel.app";
 
+/** Default browser origins. ADD only — never drop BMC when adding a parallel host. */
+export const DEFAULT_CORS_ORIGINS = [
+  "https://calculadora-bmc.vercel.app",
+  "https://calculadora-bc.vercel.app",
+  "https://calculadora-paneleslam.vercel.app",
+  "https://calculadora-smartbuilding.vercel.app",
+  "https://panelin-workspace.vercel.app",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5180",
+  "http://127.0.0.1:5180",
+  "http://localhost:5181",
+  "http://127.0.0.1:5181",
+  "http://localhost:5182",
+  "http://127.0.0.1:5182",
+  "http://localhost:3010",
+  "http://127.0.0.1:3010",
+  "http://192.168.1.11:5180",
+  "http://100.66.185.105:5180",
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
+  "http://localhost:3000", // panelin-workspace Next UI (ADR-008)
+  "http://localhost:3002", // panelin-workspace when :3000 taken
+  "http://localhost:3100", // panelin-workspace e2e / alternate Next port
+  "http://127.0.0.1:3100",
+];
+
 const appEnv = process.env.APP_ENV || process.env.NODE_ENV || "development";
 const panelinRelaxDevAuthExplicit = /^(1|true|yes)$/i.test(
   String(process.env.PANELIN_RELAX_DEV_AUTH || "").trim(),
@@ -300,18 +327,7 @@ export const config = {
   corsOrigins: (
     process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
-      : [
-          "https://calculadora-bmc.vercel.app",
-          "https://panelin-workspace.vercel.app",
-          "http://localhost:5173",
-          "http://127.0.0.1:5173",
-          "http://localhost:3001",
-          "http://127.0.0.1:3001",
-          "http://localhost:3000", // panelin-workspace Next UI (ADR-008)
-          "http://localhost:3002", // panelin-workspace when :3000 taken
-          "http://localhost:3100", // panelin-workspace e2e / alternate Next port
-          "http://127.0.0.1:3100",
-        ]
+      : DEFAULT_CORS_ORIGINS
   ),
   /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */
   identityJwtSecret: process.env.IDENTITY_JWT_SECRET || "",

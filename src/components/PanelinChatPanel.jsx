@@ -5,6 +5,7 @@ import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
 import TrustBlock from "./panelin/TrustBlock.jsx";
 import { useDictation } from "../hooks/useDictation.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
+import { WHITELABEL_AGENT } from "../config/whitelabel.js";
 import { useScreenCoWork } from "../hooks/useScreenCoWork.js";
 import { useTabShares } from "../hooks/useTabShares.js";
 import { useContextGroups } from "../hooks/useContextGroups.js";
@@ -278,6 +279,7 @@ export default function PanelinChatPanel({
   aiOptions = null,
   aiOptionsError = null,
   setAiPick = null,
+  simpleChrome = false,
 }) {
   const [isSkinMenuOpen, setIsSkinMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
@@ -850,7 +852,7 @@ export default function PanelinChatPanel({
       <div
         ref={drawerRef}
         role={embeddedMode ? "complementary" : "dialog"}
-        aria-label="Panelin Asistente BMC"
+        aria-label={`${WHITELABEL_AGENT.name} ${WHITELABEL_AGENT.subtitle}`}
         aria-modal={embeddedMode ? undefined : "true"}
         style={{
           position: isInPageLayout ? "relative" : "fixed",
@@ -927,12 +929,14 @@ export default function PanelinChatPanel({
           {/* Title only here — IA selector lives in full-width strip below so floating
               windows never collapse it under the action buttons. */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>Panelin</div>
+            <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>{WHITELABEL_AGENT.name}</div>
             <div style={{ fontSize: 11, opacity: 0.7 }}>
-              Asistente BMC Uruguay{devMode ? " · Developer Mode" : ""}
+              {simpleChrome
+                ? WHITELABEL_AGENT.subtitle
+                : `${WHITELABEL_AGENT.subtitle}${devMode ? " · Developer Mode" : ""}`}
             </div>
           </div>
-          {(onRequestFloating || onRequestFloatOut) && !floatingMode && (
+          {!simpleChrome && (onRequestFloating || onRequestFloatOut) && !floatingMode && (
             <div style={{ position: "relative", flexShrink: 0 }}>
               <button
                 type="button"
@@ -993,7 +997,7 @@ export default function PanelinChatPanel({
               )}
             </div>
           )}
-          {floatingMode && onReturnToSidebar && (
+          {!simpleChrome && floatingMode && onReturnToSidebar && (
             <button
               type="button"
               data-no-drag
@@ -1012,7 +1016,7 @@ export default function PanelinChatPanel({
               Volver a sidebar
             </button>
           )}
-          {onToggleDevMode && (
+          {!simpleChrome && onToggleDevMode && (
             <button
               data-no-drag
               onClick={onToggleDevMode}
@@ -1031,7 +1035,7 @@ export default function PanelinChatPanel({
               DEV
             </button>
           )}
-          {onOpenDetachedWindow && !detachedMode && !compactChrome && (
+          {!simpleChrome && onOpenDetachedWindow && !detachedMode && !compactChrome && (
             <button
               data-no-drag
               onClick={onOpenDetachedWindow}
@@ -1050,7 +1054,7 @@ export default function PanelinChatPanel({
               {compactChrome ? "⧉" : "Ventana"}
             </button>
           )}
-          {onOpenPinnedWindow && !detachedMode && !compactChrome && (
+          {!simpleChrome && onOpenPinnedWindow && !detachedMode && !compactChrome && (
             <button
               data-no-drag
               onClick={() => {
@@ -1076,6 +1080,8 @@ export default function PanelinChatPanel({
               {compactChrome ? "📌" : "Fijar"}
             </button>
           )}
+          {!simpleChrome ? (
+            <>
           <button
             data-no-drag
             onClick={() => {
@@ -1091,13 +1097,13 @@ export default function PanelinChatPanel({
             title={
               voiceMode
                 ? voicePhase || "Detener voz local"
-                : "Hablar con Panelin (voz local Apple)"
+                : `Hablar con ${WHITELABEL_AGENT.name} (voz local Apple)`
             }
             style={{
               ...ghostBtn,
               background: voiceMode ? "rgba(255,255,255,0.24)" : "transparent",
             }}
-            aria-label={voiceMode ? "Detener voz local" : "Hablar con Panelin (voz local Apple)"}
+            aria-label={voiceMode ? "Detener voz local" : `Hablar con ${WHITELABEL_AGENT.name} (voz local Apple)`}
           >
             <Radio size={15} />
           </button>
@@ -1134,6 +1140,8 @@ export default function PanelinChatPanel({
               />
             </div>
           )}
+            </>
+          ) : null}
           {isStreaming && stop && (
             <button
               type="button"
@@ -1170,6 +1178,7 @@ export default function PanelinChatPanel({
         </div>
 
         {/* Full-width IA strip: always visible in floating/sidebar/detached chat */}
+        {!simpleChrome ? (
         <div
           data-no-drag
           style={{
@@ -1204,6 +1213,7 @@ export default function PanelinChatPanel({
             </div>
           ) : null}
         </div>
+        ) : null}
 
         {/* ── Voice Mode — panel stays mounted; the WebRTC session is torn down when voiceMode flips off ── */}
         <div style={{ display: voiceMode ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
@@ -1226,7 +1236,7 @@ export default function PanelinChatPanel({
         </div>
 
         {/* ── Multi-Context groups (shared with agent) ── */}
-        {!voiceMode && (
+        {!simpleChrome && !voiceMode && (
           <ContextGroupBar
             groups={contextGroups.groups}
             activeGroupId={contextGroups.activeGroupId}
@@ -1244,7 +1254,7 @@ export default function PanelinChatPanel({
           />
         )}
 
-        {!voiceMode && contextGroups.workspaceOpen && focusTab && (
+        {!simpleChrome && !voiceMode && contextGroups.workspaceOpen && focusTab && (
           <ContextGroupStage
             tab={focusTab}
             shareMeta={tabShares.meta[focusTab.id] || {}}
@@ -1289,10 +1299,10 @@ export default function PanelinChatPanel({
             >
               <PanelinCharacter size={56} isThinking={isStreaming} />
               <div style={{ fontWeight: 600, fontSize: 15, color: TEXT }}>
-                ¡Hola! Soy Panelin
+                {WHITELABEL_AGENT.greeting}
               </div>
               <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                Te ayudo a cotizar paneles para tu obra. Contame qué necesitás.
+                {WHITELABEL_AGENT.emptyHint}
               </div>
               <div
                 style={{
@@ -1847,7 +1857,7 @@ export default function PanelinChatPanel({
             rows={1}
             disabled={isStreaming}
             aria-disabled={isStreaming}
-            aria-label="Mensaje para Panelin"
+            aria-label={`Mensaje para ${WHITELABEL_AGENT.name}`}
             style={{
               flex: 1,
               resize: "none",

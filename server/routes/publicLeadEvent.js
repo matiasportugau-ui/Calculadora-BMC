@@ -18,6 +18,7 @@ import rateLimit from "express-rate-limit";
 import { getWaPool } from "../lib/waDb.js";
 import { config } from "../config.js";
 import { logActivity, ACTION_TAXONOMY, PUBLIC_EMITTABLE } from "../lib/userActivityLog.js";
+import { saleUsageMetrics, toSalePayload } from "../lib/tenantBc.js";
 
 const router = express.Router();
 
@@ -61,7 +62,10 @@ router.post("/api/public/lead-event", publicLeadEventLimiter, async (req, res) =
       module: "quote",
       resourceType: "public_lead",
       clientEmitted: true,
-      payload: typeof payload === "object" && payload !== null ? payload : {},
+      payload: (() => {
+        const raw = typeof payload === "object" && payload !== null ? payload : {};
+        return toSalePayload({ ...raw, ...saleUsageMetrics(raw) });
+      })(),
       req,
     });
     res.status(202).json({ ok: true });

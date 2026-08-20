@@ -2,6 +2,7 @@
  * In-page draggable/resizable host for Panelin chat (floating presentation).
  */
 import { useCallback, useEffect, useRef } from "react";
+import { WHITELABEL_AGENT } from "../config/whitelabel.js";
 
 const STYLE_ID = "panelin-float-shell-keyframes";
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
@@ -101,7 +102,7 @@ export default function PanelinFloatingChatShell({
     <div
       ref={shellRef}
       role="complementary"
-      aria-label="Panelin Asistente BMC flotante"
+      aria-label={`${WHITELABEL_AGENT.name} ${WHITELABEL_AGENT.subtitle} flotante`}
       style={{
         position: "fixed",
         left: rect.x,

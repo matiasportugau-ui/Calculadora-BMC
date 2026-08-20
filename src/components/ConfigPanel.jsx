@@ -6,10 +6,13 @@ import { useState, useEffect } from "react";
 import { Settings, RotateCcw, DollarSign, Sliders, Calculator } from "lucide-react";
 import { getConfig, setConfig, resetConfig } from "../utils/calculatorConfig.js";
 import PricingEditor from "./PricingEditor.jsx";
+import JenerikMatrizEditor from "./JenerikMatrizEditor.jsx";
 import DimensioningFormulasEditor from "./DimensioningFormulasEditor.jsx";
 import ProductosMaestroEditor from "./ProductosMaestroEditor.jsx";
 import { invalidatePricingCache } from "../data/pricing.js";
 import { C, FONT, CALCULATOR_DATA_VERSION } from "../data/constants.js";
+import { WHITELABEL_BRAND } from "../config/whitelabel.js";
+import { tenantVarsLabel } from "../utils/tenantVars.js";
 
 export default function ConfigPanel({ visible, onClose, onConfigChange }) {
   const [config, setConfigState] = useState(getConfig);
@@ -107,7 +110,11 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
             <Settings size={20} />
             <div>
               <div style={{ fontSize: 18, fontWeight: 800 }}>Configuración</div>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>Variables de la calculadora · datos v.{CALCULATOR_DATA_VERSION}</div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>
+                {WHITELABEL_BRAND
+                  ? `${tenantVarsLabel()} · solo este tenant · v.${CALCULATOR_DATA_VERSION}`
+                  : `Variables de la calculadora · datos v.${CALCULATOR_DATA_VERSION}`}
+              </div>
             </div>
           </div>
           <button
@@ -136,12 +143,18 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
             borderRadius: 12,
             border: `1px solid ${C.border}`,
           }}>
-            {[
-              { id: "general", label: "General", icon: Sliders },
-              { id: "precios", label: "Listado de precios", icon: DollarSign },
-              { id: "productos", label: "Productos (Maestro)", icon: DollarSign },
-              { id: "formulas", label: "Fórmulas", icon: Calculator },
-            ].map(({ id, label, icon: Icon }) => {
+            {(WHITELABEL_BRAND
+              ? [
+                  { id: "general", label: "General", icon: Sliders },
+                  { id: "precios", label: "Tu matriz", icon: DollarSign },
+                ]
+              : [
+                  { id: "general", label: "General", icon: Sliders },
+                  { id: "precios", label: "Listado de precios", icon: DollarSign },
+                  { id: "productos", label: "Productos (Maestro)", icon: DollarSign },
+                  { id: "formulas", label: "Fórmulas", icon: Calculator },
+                ]
+            ).map(({ id, label, icon: Icon }) => {
               const isActive = tab === id;
               return (
                 <button
@@ -173,13 +186,20 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
           </div>
 
           {tab === "precios" ? (
-            <PricingEditor onSave={handlePricingSave} />
-          ) : tab === "productos" ? (
+            WHITELABEL_BRAND
+              ? <JenerikMatrizEditor onSave={handlePricingSave} />
+              : <PricingEditor onSave={handlePricingSave} />
+          ) : tab === "productos" && !WHITELABEL_BRAND ? (
             <ProductosMaestroEditor />
           ) : tab === "formulas" ? (
             <DimensioningFormulasEditor onSave={handleFormulasSave} />
           ) : (
             <>
+          {WHITELABEL_BRAND ? (
+            <p style={{ fontSize: 13, color: C.ts, lineHeight: 1.45, marginTop: 0 }}>
+              {tenantVarsLabel()}. Independientes de BMC y de cualquier otro tenant.
+            </p>
+          ) : null}
           {/* IVA */}
           <div style={{ marginBottom: 20 }}>
             <label htmlFor="cfg-iva" style={labelS}>IVA (%)</label>
@@ -212,8 +232,14 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
               onChange={(e) => setConfigState((c) => ({ ...c, listaDefault: e.target.value }))}
               style={inputS}
             >
-              <option value="web">Precio Web</option>
-              <option value="venta">Precio BMC (venta directa)</option>
+              {WHITELABEL_BRAND ? (
+                <option value="venta">Tu lista de venta</option>
+              ) : (
+                <>
+                  <option value="web">Precio Web</option>
+                  <option value="venta">Precio BMC (venta directa)</option>
+                </>
+              )}
             </select>
           </div>
 

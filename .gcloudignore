@@ -1,0 +1,23 @@
+# Keep Cloud Build upload small (Mac disk is tight). Mirror Docker context.
+
+.node_modules
+node_modules
+dist
+.git
+.github
+.vercel
+.env
+.env.*
+.ml-tokens*
+npm-debug.log
+tests
+docs/team
+docs/sdd
+docs/dev-trace
+public
+!public/bmc-pdf
+!public/bmc-pdf/**
+
+*.md
+!package.json
+!package-lock.json
