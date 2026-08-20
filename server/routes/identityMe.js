@@ -29,6 +29,7 @@ import {
   claimAnonymousQuotes,
 } from "../lib/quoteStore.js";
 import { attachQuoteToTenant, toSalePayload, saleUsageMetrics, takeNextTenantCode } from "../lib/tenantBc.js";
+import { tenantSlugFromOrigin } from "../lib/tenantAgentEval.js";
 import {
   syncQuote as sheetSyncQuote,
   reconcile as sheetReconcile,
@@ -43,6 +44,13 @@ function pool() {
   const p = getWaPool(config.databaseUrl);
   if (!p) throw Object.assign(new Error("db_unavailable"), { status: 503 });
   return p;
+}
+
+function requestTenantSlug(req) {
+  const fromOrigin = tenantSlugFromOrigin(req.get?.("origin") || req.headers?.origin || "");
+  if (fromOrigin) return fromOrigin;
+  const env = String(process.env.WHITELABEL || "").trim().toLowerCase();
+  return env || null;
 }
 
 /** Test-only — inject the same in-memory shim used by quoteStore + identityAuth. */
@@ -395,13 +403,15 @@ router.post("/api/me/quotes", requireUser(), meQuotesLimiter, async (req, res) =
     // status to 'completed', 'exported', or 'deleted' — never a user POST.
     const safeStatus = VALID_USER_QUOTE_STATUSES.has(status) ? status : "draft";
     const salePayload = toSalePayload(payload);
-    const tenantSlug = String(process.env.WHITELABEL || "").trim().toLowerCase() || null;
+    const tenantSlug = requestTenantSlug(req);
     if (tenantSlug && !salePayload.bc_code) {
       try {
         if (clientQuoteId) {
           const prev = await pool().query(
-            `select payload from identity.quotes where client_quote_id = $1 and status <> 'deleted' order by created_at desc limit 1`,
-            [clientQuoteId],
+            `select payload from identity.quotes
+              where client_quote_id = $1 and user_id = $2 and status <> 'deleted'
+              order by created_at desc limit 1`,
+            [clientQuoteId, req.user.id],
           );
           if (prev.rows[0]?.payload?.bc_code) salePayload.bc_code = prev.rows[0].payload.bc_code;
         }
@@ -421,6 +431,7 @@ router.post("/api/me/quotes", requireUser(), meQuotesLimiter, async (req, res) =
         quoteId: q.quote_id,
         userId: req.user.id,
         payload: salePayload,
+        slug: tenantSlug,
       });
     } catch (attachErr) {
       req.log?.warn?.({ err: attachErr?.message }, "[me/quotes] tenant attach skipped");

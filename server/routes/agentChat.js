@@ -80,6 +80,7 @@ import {
   recordTenantChatTurn,
   isValidConversationId,
   personaLine,
+  tenantSlugFromOrigin,
 } from "../lib/tenantAgentEval.js";
 import { toolsForTenantChat } from "../lib/tenantPrompt.js";
 
@@ -690,7 +691,8 @@ router.post("/agent/chat", async (req, res) => {
     if (tenantUserId && config.databaseUrl) {
       const memPool = getWaPool(config.databaseUrl);
       if (memPool) {
-        const mem = await getMembership(memPool, tenantUserId);
+        const originSlug = tenantSlugFromOrigin(req.headers.origin);
+        const mem = await getMembership(memPool, tenantUserId, originSlug);
         membershipSlug = mem?.slug || null;
       }
     }

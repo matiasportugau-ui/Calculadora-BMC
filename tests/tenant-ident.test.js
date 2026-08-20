@@ -30,6 +30,33 @@ test("tenant calculator is gated until Google; BMC hub is open", () => {
   }), "ok");
 });
 
+test("membership for a different tenant does not unlock this host (closed silo)", () => {
+  assert.equal(tenantAccessState({
+    whitelabel: "paneleslam",
+    status: "authenticated",
+    member: { slug: "bc" },
+    role: "comprador",
+  }), "denied");
+  assert.equal(tenantAccessState({
+    whitelabel: "smartbuilding",
+    status: "authenticated",
+    member: { slug: "bc", role: "owner" },
+    role: "user",
+  }), "denied");
+  assert.equal(tenantAccessState({
+    whitelabel: "paneleslam",
+    status: "authenticated",
+    member: { slug: "paneleslam" },
+    role: "comprador",
+  }), "ok");
+  assert.equal(tenantAccessState({
+    whitelabel: "BC",
+    status: "authenticated",
+    member: { slug: "bc" },
+    role: "comprador",
+  }), "ok");
+});
+
 test("glory cinema plays after grant, not for uninvited Gmail", () => {
   assert.equal(shouldPlayIdentCinema({ role: "superadmin", member: null }), true);
   assert.equal(shouldPlayIdentCinema({ role: "admin", member: null }), true);
