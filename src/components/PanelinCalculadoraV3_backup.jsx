@@ -72,6 +72,7 @@ import {
   serializeProject, deserializeProject, pdfFileName,
   isProyectoDatosObligatoriosCompletos, getProyectoPdfBlockReason, getProyectoCamposObligatoriosFaltantes,
 } from "../utils/projectFile.js";
+import { resolveOpenBmcUrl } from "../utils/openBmcUrl.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
 import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
 import QuotePreviewModal from "./QuotePreviewModal.jsx";
@@ -5226,30 +5227,8 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     if (!raw) return;
     openBmcDoneRef.current = true;
 
-    const GCS_HOST = "https://storage.googleapis.com/bmc-cotizaciones/";
-    const resolveUrl = (v) => {
-      const s = String(v || "").trim();
-      if (!s) return null;
-      if (/^https?:\/\//i.test(s)) {
-        try {
-          const u = new URL(s);
-          if (u.hostname !== "storage.googleapis.com") return null;
-          if (!u.pathname.startsWith("/bmc-cotizaciones/")) return null;
-          if (!u.pathname.toLowerCase().endsWith(".bmc.json") && !u.pathname.toLowerCase().endsWith(".json")) return null;
-          return u.toString();
-        } catch {
-          return null;
-        }
-      }
-      // short key: "Sory-IsoRoof-Foil-30" or "quotes/bmc-json/foo.bmc.json"
-      const key = s.replace(/^\//, "");
-      const path = key.includes("/")
-        ? key
-        : `quotes/bmc-json/${key.endsWith(".bmc.json") || key.endsWith(".json") ? key : `${key}.bmc.json`}`;
-      return `${GCS_HOST}${path.replace(/^bmc-cotizaciones\//, "")}`;
-    };
-
-    const url = resolveUrl(raw);
+    // Short-key concat must re-validate after URL normalization (Bug ES: `../` escaped bucket).
+    const url = resolveOpenBmcUrl(raw);
     if (!url) {
       showToast("Link openBmc inválido (solo GCS bmc-cotizaciones)");
       return;
