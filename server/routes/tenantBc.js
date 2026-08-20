@@ -21,6 +21,7 @@ import rateLimit from "express-rate-limit";
 import { getWaPool } from "../lib/waDb.js";
 import { config } from "../config.js";
 import { requireUser } from "../lib/identityAuth.js";
+import { tenantSlugFromRequest, tenantSiloDecision } from "../../src/utils/tenantAccess.js";
 import { safeErr as _safeErr } from "../lib/safeErr.js";
 import {
   getMembership,
@@ -508,7 +509,8 @@ router.get("/api/admin/tenants/:slug/activity", requireUser({ role: "admin" }), 
 
 router.post("/bc-telemetry", publicLimiter, async (req, res) => {
   try {
-    if (!String(process.env.WHITELABEL || "").trim()) {
+    const tenantSlug = tenantSlugFromRequest(req);
+    if (!tenantSlug) {
       return res.status(404).json({ ok: false, error: "not_found" });
     }
     const action = String(req.body?.action || "");
@@ -530,11 +532,16 @@ router.post("/bc-telemetry", publicLimiter, async (req, res) => {
   }
 });
 
-router.post("/api/public/bc-quotes", publicLimiter, async (req, res) => {
+router.post("/api/public/bc-quotes", publicLimiter, requireUser({ optional: true }), async (req, res) => {
   try {
-    const tenantSlug = String(process.env.WHITELABEL || "").trim().toLowerCase();
+    const tenantSlug = tenantSlugFromRequest(req);
     if (!tenantSlug) {
       return res.status(404).json({ ok: false, error: "not_found" });
+    }
+    const member = req.user?.id ? await getMembership(pool(), req.user.id) : null;
+    const silo = tenantSiloDecision({ slug: tenantSlug, user: req.user, member });
+    if (!silo.ok) {
+      return res.status(silo.status).json({ ok: false, error: silo.error });
     }
     const tenantRow = await getTenantBySlug(pool(), tenantSlug);
     if (tenantRow && isTenantPaused(tenantRow)) {
@@ -555,7 +562,7 @@ router.post("/api/public/bc-quotes", publicLimiter, async (req, res) => {
     if (!bcCode) bcCode = await takeNextTenantCode(pool(), tenantSlug);
     sale.bc_code = bcCode;
     const q = await upsertQuote({
-      userId: null,
+      userId: req.user?.id || null,
       clientQuoteId,
       payload: sale,
       status: "draft",

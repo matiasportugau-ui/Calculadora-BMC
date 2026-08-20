@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { WHITELABEL_BRANDS } from "../src/config/whitelabel.js";
-import { tenantAccessState, tenantSlugFromHost } from "../src/utils/tenantAccess.js";
+import { tenantAccessState, tenantSlugFromHost, tenantSiloDecision, tenantSlugFromRequest } from "../src/utils/tenantAccess.js";
 import { IDENT_OVERTURE_MS, identOvertureMs, shouldPlayIdentCinema } from "../src/utils/tenantIdentMotion.js";
 import { IDENT_STING_SRC, identStingSrc } from "../src/utils/tenantIdentAudio.js";
 
@@ -60,4 +60,33 @@ test("host map keeps tenant silos", () => {
   assert.equal(tenantSlugFromHost("calculadora-paneleslam.vercel.app"), "paneleslam");
   assert.equal(tenantSlugFromHost("https://calculadora-smartbuilding.vercel.app"), "smartbuilding");
   assert.equal(tenantSlugFromHost("https://calculadora-bmc.vercel.app"), null);
+  assert.equal(tenantSlugFromHost("http://127.0.0.1:5180/"), "bc");
+  assert.equal(tenantSlugFromHost("http://127.0.0.1:5181/"), "paneleslam");
+  assert.equal(tenantSlugFromHost("http://127.0.0.1:5182/"), "smartbuilding");
+});
+
+test("tenant silo: BMC open; tenant origin needs invite or admin", () => {
+  assert.equal(tenantSiloDecision({ slug: null }).ok, true);
+  assert.equal(tenantSiloDecision({ slug: "bc", user: null }).status, 401);
+  assert.equal(tenantSiloDecision({
+    slug: "bc", user: { role: "comprador" }, member: null,
+  }).status, 403);
+  assert.equal(tenantSiloDecision({
+    slug: "bc", user: { role: "comprador" }, member: { slug: "paneleslam" },
+  }).status, 403);
+  assert.equal(tenantSiloDecision({
+    slug: "bc", user: { role: "comprador" }, member: { slug: "bc" },
+  }).ok, true);
+  assert.equal(tenantSiloDecision({
+    slug: "bc", user: { role: "superadmin" }, member: null,
+  }).ok, true);
+});
+
+test("tenantSlugFromRequest prefers Origin over BMC-less host", () => {
+  assert.equal(tenantSlugFromRequest({
+    headers: { origin: "https://calculadora-bc.vercel.app", host: "panelin-calc-q74zutv7dq-uc.a.run.app" },
+  }), "bc");
+  assert.equal(tenantSlugFromRequest({
+    headers: { origin: "https://calculadora-bmc.vercel.app", host: "panelin-calc-q74zutv7dq-uc.a.run.app" },
+  }), null);
 });
