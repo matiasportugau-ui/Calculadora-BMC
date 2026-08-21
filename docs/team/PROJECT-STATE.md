@@ -1,6 +1,8 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (/logistica: depo = BMC URUGUAY)
+**Última actualización:** 2026-08-21 (fix — archive merge no borra ruta)
+
+**2026-08-21 (fix — EV archive merge write):** `writeDraftArchive` ya no trata `decideDraftLoad === "merge"` como overwrite ciego. Autosave con más paradas pero sin `orderedLegs` ahora llama `mergeKeepRouteWork` y conserva el itinerario archivado. Test en `enviosDraftArchive`. Suite 29 validation alineada a AU 1.12 (no ROW_W 1.2).
 
 **2026-08-21 (ux — Viene a depo = BMC URUGUAY):** Identidad fija **BMC URUGUAY**. Destino Maps `https://maps.app.goo.gl/H4JrCnTgmke7ZRReA` (pin −34.9053458, −54.928693). Catálogo `base-deposito-bmc`. Tests `uyGazetteer` + `routeSuggest` + `pickupCatalog`.
 
