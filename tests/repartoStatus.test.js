@@ -8,6 +8,7 @@ import {
   buildRepartoPayload,
   stopSummariesForReparto,
 } from "../src/utils/logistica/repartoStatus.js";
+import { isUuid } from "../src/utils/logistica/stopUuid.js";
 
 let n = 0;
 function ok(m) {
@@ -40,7 +41,11 @@ const p = buildRepartoPayload({
 });
 assert.equal(p.schema, "bmc-reparto-payload-v1");
 assert.equal(p.stops.length, 1);
+assert.ok(isUuid(p.stops[0].id), "non-UUID stop id is stamped for driver events");
 assert.equal(stopSummariesForReparto(p.stops)[0].cliente, "A");
+const keepId = "11111111-1111-4111-8111-111111111111";
+const keep = buildRepartoPayload({ stops: [{ id: keepId, cliente: "B" }] });
+assert.equal(keep.stops[0].id, keepId);
 ok("payload");
 
 console.log(`\nrepartoStatus: ${n} passed`);

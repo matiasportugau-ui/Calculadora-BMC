@@ -142,4 +142,34 @@ console.log("customerTrackView");
   console.log("  ✓ OSM embed");
 }
 
+{
+  const now = Date.parse("2026-08-19T11:00:00.000Z");
+  const geo = lastFreshGeo(
+    [
+      { geo_lat: 91, geo_lng: -56.2, at_server: "2026-08-19T10:58:00.000Z" },
+      { geo_lat: "x", geo_lng: -56.2, at_server: "2026-08-19T10:57:00.000Z" },
+      { geo_lat: -34.8, geo_lng: -56.1, at_server: "2026-08-19T10:55:00.000Z" },
+    ],
+    { now },
+  );
+  assert.ok(geo);
+  assert.equal(geo.lat, -34.8);
+  assert.equal(lastFreshGeo([{ geo_lat: 0, geo_lng: 181, at_server: "2026-08-19T10:55:00.000Z" }], { now }), null);
+  console.log("  ✓ GPS skips out-of-range / non-numeric coords");
+}
+
+{
+  const long = "Q".repeat(300);
+  const snap = sanitizeSnapshot({
+    quote_ref: long,
+    customer_display_name: `  ${long}  `,
+    driver_phone: "+59899111222",
+    notes: "internal",
+  });
+  assert.equal(snap.quote_ref.length, 240);
+  assert.equal(snap.customer_display_name.length, 240);
+  assert.equal(snap.driver_phone, undefined);
+  console.log("  ✓ snapshot fields trim + cap at 240");
+}
+
 console.log("customerTrackView OK");
