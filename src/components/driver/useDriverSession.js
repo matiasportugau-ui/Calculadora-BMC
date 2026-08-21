@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { extractDriverTokenFromPaste } from "../../utils/conductorUrl.js";
 
 const TOKEN_KEY = "transportista_driver_token";
 const PROFILE_KEY = "bmc-driver-profile-v1";
@@ -223,9 +224,9 @@ export default function useDriverSession() {
   }, [token, trip, sendEvent]);
 
   const loginWithToken = (plain, name) => {
-    const t = String(plain || "").trim();
+    const t = extractDriverTokenFromPaste(plain);
     if (!t) {
-      setStatus("Pegá el token del enlace o la contraseña del operador.");
+      setStatus("Pegá el enlace que te dio logística (el que termina en ?t=…).");
       return;
     }
     localStorage.setItem(TOKEN_KEY, t);

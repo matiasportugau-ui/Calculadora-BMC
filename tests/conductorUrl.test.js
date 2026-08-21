@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { conductorPublicUrl } from "../src/utils/conductorUrl.js";
+import { conductorPublicUrl, extractDriverTokenFromPaste } from "../src/utils/conductorUrl.js";
 import { driverIdFromPhone, ensureStopUuid } from "../server/lib/driverId.js";
 
 console.log("conductorUrl + driverId");
@@ -9,6 +9,18 @@ assert.equal(
   "https://calculadora-bmc.vercel.app/conductor?t=tok",
 );
 assert.ok(!conductorPublicUrl("https://x.com", "a").includes("/calculadora/conductor"));
+
+{
+  assert.equal(
+    extractDriverTokenFromPaste("https://calculadora-bmc.vercel.app/conductor?t=abcTok"),
+    "abcTok",
+  );
+  assert.equal(extractDriverTokenFromPaste("https://x.com/conductor?t=zz&x=1"), "zz");
+  assert.equal(extractDriverTokenFromPaste("/conductor?t=plain"), "plain");
+  assert.equal(extractDriverTokenFromPaste("alreadyRaw"), "alreadyRaw");
+  assert.equal(extractDriverTokenFromPaste("  "), "");
+  console.log("  ✓ paste full link extracts t=");
+}
 
 const a = driverIdFromPhone("+59899111222");
 const b = driverIdFromPhone("59899111222");
