@@ -4,6 +4,7 @@
  */
 
 import { ROW_W } from "./cargoPacking.js";
+import { panelMaterialMetrics } from "./panelAnchoUtil.js";
 
 /**
  * @param {object} pkg placed or built package
@@ -38,8 +39,21 @@ export function formatPackageDimsLabel(pkg, opts = {}) {
     const base = `${d.L.toFixed(2)}m × ${(d.W * 100).toFixed(0)}cm × ${(d.H * 100).toFixed(0)}cm`;
     return opts.includeVol ? `${base} · ≈${d.volumeM3.toFixed(2)} m³` : base;
   }
-  const base = `${d.L.toFixed(2)}m × ${(d.H * 100).toFixed(0)}cm (fila ${ROW_W}m)`;
-  return opts.includeVol ? `${base} · ≈${d.volumeM3.toFixed(2)} m³` : base;
+  const base = `${d.L.toFixed(2)}m × ${(d.H * 100).toFixed(0)}cm (fila ${ROW_W.toFixed(2)}m)`;
+  if (!opts.includeVol) return base;
+  let s = `${base} · ocupa ≈${d.volumeM3.toFixed(2)} m³`;
+  const n = Number(pkg.n);
+  const esp = Number(pkg.esp);
+  if (Number.isFinite(n) && n > 0 && Number.isFinite(esp) && esp > 0) {
+    const mat = panelMaterialMetrics({
+      tipo: pkg.tipo,
+      espesor: esp,
+      longitud: d.L,
+      cantidad: n,
+    });
+    s += ` · material ≈${mat.volumeM3.toFixed(2)} m³`;
+  }
+  return s;
 }
 
 /**

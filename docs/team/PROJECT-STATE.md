@@ -1,6 +1,18 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (BMC Driver Loop — join REP→trip + 5 visual specs)
+**Última actualización:** 2026-08-21 (/logistica mesa depo + BMC Driver Loop)
+
+**2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA). PWA Outdoor Night. Customer `/seguimiento/:token` parked. Merged #1078.
+
+**2026-08-21 (ux — Viene a depo = BMC URUGUAY):** Identidad fija **BMC URUGUAY**. Destino Maps `https://maps.app.goo.gl/H4JrCnTgmke7ZRReA` (pin −34.9053458, −54.928693). Catálogo `base-deposito-bmc`. Tests `uyGazetteer` + `routeSuggest` + `pickupCatalog`.
+
+**2026-08-21 (ux — mesa de ruta, modo de entrega):** Tres chips compactos: **Entrega en destino** (default), **Retiran en planta**, **Viene a depo**. Depo no entrega a obra; el itinerario suma un tramo BMC URUGUAY.
+
+**2026-08-21 (ux — origen/clientes):** Chip de levante por pedido; Levantes agrupa bajo planta; faltas **sin origen** → Levantes. Autosave vacío no pisa archive. Fixture `ENV-260821-001`.
+
+**2026-08-20 (feat — mesa /logistica paneles + OSRM):** 2 col + sash + Leaflet. Trazo por **calles** `POST /api/envios/route`; fallback km aire. Tests `osrmPolyline`.
+
+**2026-08-20 (fix — Guardar en /logistica es este Mac):** Draft local; Drive = **Subir a Drive**.
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 

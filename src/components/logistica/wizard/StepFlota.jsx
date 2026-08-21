@@ -24,12 +24,12 @@ export default function StepFlota({
     padding: "10px 12px",
     borderRadius: 8,
     border: `1px solid ${T.border}`,
-    fontSize: 14,
-    minHeight: 44,
+    fontSize: 16,
+    minHeight: 48,
   };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div className="envios-step-form" style={{ display: "grid", gap: 12 }}>
       <p style={{ margin: 0, fontSize: 13, color: T.muted }}>
         Transportista, camión y zona de salida (base) para el primer tramo hacia el levante.
       </p>
@@ -48,7 +48,7 @@ export default function StepFlota({
           ))}
         </datalist>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="envios-flota-pair">
         <div>
           <label style={lbl}>Camión (largo m)</label>
           <select style={inp} value={truckL || ""} onChange={(e) => onTruckL?.(Number(e.target.value))}>

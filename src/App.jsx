@@ -91,9 +91,10 @@ const suspenseFallback = (
 function Shell({ children }) {
   const { pathname } = useLocation();
   const isCalc = pathname === "/" || pathname === "/calculadora";
+  const fillViewport = pathname === "/logistica";
   return (
     <div
-      className="bmc-app-shell"
+      className={`bmc-app-shell${fillViewport ? " bmc-app-shell--fill" : ""}`}
       style={{
         minHeight: "100vh",
         display: "flex",
@@ -115,7 +116,16 @@ function Shell({ children }) {
         <AuthHeader />
       </div>
       {!isCalc && <BmcModuleNav />}
-      <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: fillViewport ? "flex" : undefined,
+          flexDirection: fillViewport ? "column" : undefined,
+        }}
+      >
+        {children}
+      </div>
       {TUTORIAL_ENABLED && <FloatingTutorialButton />}
       <BmcChatPanel />
     </div>

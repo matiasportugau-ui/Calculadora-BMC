@@ -200,4 +200,46 @@ const stop = {
   ok("empty stops");
 }
 
+// Álvaro-class 10 × ~10.15 m on 8 m bed cannot cabe (saliente > 2 m)
+{
+  const alvaro = {
+    id: "s-alvaro",
+    orden: 1,
+    cliente: "Alvaro Gonzalez",
+    paneles: [{ id: "p1", tipo: "ISODEC", espesor: 100, longitud: 10.15, cantidad: 10 }],
+  };
+  const pack8 = placeCargo([alvaro], 8, "balanced");
+  assert.equal(pack8.cabe, false, "10.15 m pieces on 8 m bed must not cabe");
+  assert.ok(pack8.largoMax >= 10.15 - 0.001);
+  const pack13 = placeCargo([alvaro], 13, "balanced");
+  assert.equal(pack13.cabe, true, "same load on 13 m bed caben");
+  ok("Alvaro 10.15 m needs 13 m bed");
+}
+
+// 100 vs 150 same covering L — different pack count / height
+{
+  const base = {
+    id: "s1",
+    orden: 1,
+    cliente: "Alvaro",
+    paneles: [{ id: "p1", tipo: "ISODEC", espesor: 100, longitud: 10.15, cantidad: 10 }],
+  };
+  const thick = {
+    ...base,
+    paneles: [{ id: "p1", tipo: "ISODEC", espesor: 150, longitud: 10.15, cantidad: 10 }],
+  };
+  const p100 = buildStopPackages(base).filter((p) => p.kind === "panel");
+  const p150 = buildStopPackages(thick).filter((p) => p.kind === "panel");
+  assert.equal(p100.reduce((s, p) => s + p.n, 0), 10);
+  assert.equal(p150.reduce((s, p) => s + p.n, 0), 10);
+  assert.ok(p100.every((p) => p.len === 10.15));
+  assert.ok(p150.every((p) => p.len === 10.15));
+  assert.notEqual(
+    p100.map((p) => `${p.n}:${p.h}`).join(";"),
+    p150.map((p) => `${p.n}:${p.h}`).join(";"),
+    "100 vs 150 MAX_P / height fingerprint differs",
+  );
+  ok("100 vs 150 same L, different pack geometry");
+}
+
 console.log(`\n${passed} assertions ok`);

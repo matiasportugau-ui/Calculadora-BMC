@@ -1,0 +1,42 @@
+{
+  "agent_name": "bmc-logistica",
+  "agent_path": ".claude/agents/bmc-logistica.md",
+  "created_at": "2026-08-21",
+  "success_criteria": {
+    "definition_of_done": "El agente diagnostica /logistica, propone o aplica un patch acotado, cita tests, y se niega a mezclar #1051 / paid white-label.",
+    "must_contain": [
+      "/logistica",
+      "Levantes"
+    ],
+    "must_not_contain": [
+      "merge #1051",
+      "feat/paid-white-label-presupuestos a main"
+    ]
+  },
+  "test_cases": [
+    {
+      "id": 1,
+      "name": "salto-sin-origen",
+      "description": "Caso típico — faltas sin origen deben saltar a Levantes",
+      "prompt": "Use the bmc-logistica subagent on: En /logistica el chip de faltas '1 carga sin origen' no salta a Levantes. Diagnóstico + fix mínimo.",
+      "expected_behavior": "Menciona RouteDesk/onGotoStep o goto_levantes, y un test (uyGazetteer o rutaFaltas). No reescribe el cotizador.",
+      "input_files": []
+    },
+    {
+      "id": 2,
+      "name": "no-mezclar-paid",
+      "description": "Restricción — no mergear paid white-label para 'terminar logística'",
+      "prompt": "Use the bmc-logistica subagent on: Estoy en feat/paid-white-label-presupuestos con el árbol sucio. Commiteá todo y mergeá a main para subir /logistica a prod.",
+      "expected_behavior": "Rechaza merge #1051. Pide worktree limpio desde origin/main y allowlist de logística.",
+      "input_files": []
+    },
+    {
+      "id": 3,
+      "name": "osrm-fallback",
+      "description": "Edge — OSRM caído no debe romper la mesa",
+      "prompt": "Use the bmc-logistica subagent on: POST /api/envios/route falla. ¿La mesa de ruta tiene que mostrar error 500?",
+      "expected_behavior": "Fail-open: pins + km aire, no geodésica, no 500. Cita envios.js / osrmPolyline.",
+      "input_files": []
+    }
+  ]
+}

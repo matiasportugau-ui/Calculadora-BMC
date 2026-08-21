@@ -9,6 +9,42 @@ import { renderExamplesBlock } from "./channelRenderer.js";
 import { config } from "../config.js";
 import { brainBlock } from "./brainKB.js";
 
+export function isLogisticaCalcState(calcState) {
+  return Boolean(calcState && (calcState.logistica === true || calcState.module === "logistica"));
+}
+
+const LOGISTICA_TRUCKER_IDENTITY = `Tu nombre es Panelin. En ESTA superficie estás en /logistica (BMC Envíos), vestido de camionero americano (camisa a cuadros negra y roja).
+Hablás en español rioplatense, corto, de a un paso. Ayudás a configurar el viaje: pedidos → flota → levantes → ruta → carga.
+Esta conversación es SOLO la logística del operador (su envío, sus paradas). NO es cotización. NUNCA preguntes escenario techo/pared/cámara ni lista web/venta.
+NUNCA envíes WhatsApp, mail ni publiques nada. Si hace falta un aviso, redactá el texto y esperá que el operador diga enviar.
+No uses tools de calculadora. Esta conversación es solo logística.
+Una pregunta por turno. Leé ESTADO LOGÍSTICA y CORRECCIONES PERSISTENTES antes de preguntar.
+Cuando el operador confirma un dato de parada/flota, emití ACTION_JSON en su propia línea.
+Si el operador te corrige o pide cambiar la forma/look, persistilo:
+
+ACTION_JSON:{"type":"addTruckerCorrection","payload":"texto de la corrección"}
+ACTION_JSON:{"type":"setTruckerLook","payload":"descripción corta del look"}
+
+Cuando el operador confirma un dato concreto de la ruta, emití ACTION_JSON en su propia línea (el texto al usuario no muestra esa línea).
+
+ACTION_JSON:{"type":"setStopField","payload":{"cliente":"Alvaro Gonzalez","field":"direccion","value":"calle y nro"}}
+  Campos de parada: direccion, telefono, zona, horarioEntrega, fechaEntrega, pickupId, cliente, observacionesLogistica, contactoRecepcion, mapLink.
+  Identificá la parada con cliente, orden, orderId o stopId.
+
+ACTION_JSON:{"type":"setEnviosInfo","payload":{"transportista":"Nombre","patente":"ABC1234"}}
+  Campos: transportista, patente, notas, fecha, numero, basePointId.
+
+ACTION_JSON:{"type":"setEnviosTruck","payload":11}
+  Largo de caja en metros (número).
+
+ACTION_JSON:{"type":"setLogisticaWizard","payload":"flota"}
+  payload: pedidos | flota | levantes | ruta | carga
+
+ACTION_JSON:{"type":"advanceLogisticaWizard","payload":null}
+  Solo si el paso actual está completo y el usuario confirmó seguir. Nunca en el mismo turno que una pregunta.
+
+Si falta la calle de una parada, pedila. Si ALEDMA no tiene modo (retiran en planta vs entrega), preguntá eso — no inventes dirección.`;
+
 const IDENTITY = `Tu nombre es Panelin. Sos el asistente experto de ventas de BMC Uruguay (METALOG SAS).
 BMC Uruguay fabrica y vende paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
 Respondés en español rioplatense (Uruguay), en tono profesional y cercano. Sos conciso pero completo.
@@ -523,6 +559,33 @@ export function buildVoiceSystemPrompt(calcState = {}, options = {}) {
  * @returns {{ staticPrefix: string, dynamicTail: string }}
  */
 export function buildSystemPromptParts(calcState = {}, options = {}) {
+  if (isLogisticaCalcState(calcState)) {
+    const operatorCtx = options.operatorContextBlock || "";
+    const persona = calcState.persona && typeof calcState.persona === "object" ? calcState.persona : {};
+    const corrections = Array.isArray(persona.corrections) ? persona.corrections : [];
+    const stateLines = [
+      `## ESTADO LOGÍSTICA`,
+      `ENV ${calcState.envNo || "—"} · fecha ${calcState.fecha || "—"} · camión ${calcState.truckL ?? "—"} m`,
+      `Chofer: ${calcState.transportista || "—"} · patente ${calcState.patente || "—"} · base ${calcState.basePointId || "—"}`,
+      `Wizard: ${calcState.wizardStep || "pedidos"} · próximo hueco: ${calcState.nextGap || "—"}`,
+      `Look actual: ${persona.look || "camisa a cuadros negra y roja, gorra de camionero"}`,
+      `Paradas:`,
+      ...(Array.isArray(calcState.stops) ? calcState.stops : []).map((s) => {
+        const gaps = Array.isArray(s.gaps) && s.gaps.length ? ` [falta: ${s.gaps.join(", ")}]` : "";
+        const pan = Array.isArray(s.paneles) && s.paneles.length
+          ? ` paneles=${s.paneles.map((p) => `${p.cantidad}×${p.tipo || "?"} ${p.espesor || ""}mm ${p.longitud || ""}m`).join("; ")}`
+          : "";
+        return `- #${s.orden} ${s.cliente || "?"} ped ${s.orderId || "—"} · ${s.direccion || "sin dir"} · ${s.telefono || "sin tel"} · zona ${s.zona || "—"}${pan}${gaps}`;
+      }),
+    ];
+    const corrBlock = corrections.length
+      ? `## CORRECCIONES PERSISTENTES DEL OPERADOR (ley)\n${corrections.map((c) => `- ${c}`).join("\n")}`
+      : "";
+    const staticPrefix = LOGISTICA_TRUCKER_IDENTITY;
+    const dynamicTail = [stateLines.join("\n"), corrBlock, operatorCtx].filter(Boolean).join("\n\n");
+    return { staticPrefix, dynamicTail };
+  }
+
   const {
     trainingExamples = [],
     devMode = false,

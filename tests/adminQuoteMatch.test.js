@@ -9,6 +9,7 @@ import {
   matchAdminQuotes,
   shouldAutoApplyMatch,
   normalizeAdminQuoteRow,
+  extractPanelsFromAdminQuote,
 } from "../src/utils/logistica/adminQuoteMatch.js";
 
 let passed = 0;
@@ -83,6 +84,26 @@ console.log("adminQuoteMatch");
   assert.equal(n.nombre, "X");
   assert.ok(n.telefono);
   ok("normalizeAdminQuoteRow");
+}
+
+{
+  const sheetsOnly = normalizeAdminQuoteRow({ CODIGO: "C1", NOMBRE: "Alvaro", LINK_COTIZACION: "https://x" });
+  assert.equal(extractPanelsFromAdminQuote(sheetsOnly).length, 0);
+  const withZonas = {
+    techo: {
+      familia: "ISODEC",
+      espesor: 100,
+      zonas: [
+        { cantPaneles: 5, largo: 10.2 },
+        { cantPaneles: 5, largo: 10.1 },
+      ],
+    },
+  };
+  const loads = extractPanelsFromAdminQuote(withZonas);
+  assert.equal(loads.length, 2);
+  assert.equal(loads[0].longitud, 10.2);
+  assert.equal(loads[1].cantidad, 5);
+  ok("extractPanelsFromAdminQuote zonas vs sheets-only");
 }
 
 console.log(`adminQuoteMatch: ${passed} passed`);

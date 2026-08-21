@@ -9,6 +9,7 @@ const TYPE_ES = {
   base: "Salida",
   pickup: "Levante",
   delivery: "Entrega",
+  depot: "BMC URUGUAY",
 };
 
 /**

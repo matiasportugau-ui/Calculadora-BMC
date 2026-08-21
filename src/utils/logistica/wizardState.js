@@ -16,9 +16,12 @@ export const DEFAULT_WIZARD_UI = Object.freeze({
     ruta: false,
     carga: false,
   }),
-  singlePickup: true,
+  /** Per-load origin is the default; “un solo levante” is an explicit shortcut. */
+  singlePickup: false,
   defaultPickupPointId: "pickup-kingspan-bromyros",
   routeStale: false,
+  /** Operator explicitly allows some loads without pickup origin. */
+  unassignedPickupApproved: false,
 });
 
 /**
@@ -33,13 +36,69 @@ export function createWizardUi(partial = {}) {
     enabled: typeof partial.enabled === "boolean" ? partial.enabled : DEFAULT_WIZARD_UI.enabled,
     activeStep,
     done,
-    singlePickup: partial.singlePickup !== false,
+    singlePickup:
+      typeof partial.singlePickup === "boolean"
+        ? partial.singlePickup
+        : DEFAULT_WIZARD_UI.singlePickup,
     defaultPickupPointId:
       partial.defaultPickupPointId != null
         ? String(partial.defaultPickupPointId)
         : DEFAULT_WIZARD_UI.defaultPickupPointId,
     routeStale: partial.routeStale === true,
+    unassignedPickupApproved: partial.unassignedPickupApproved === true,
   };
+}
+
+/**
+ * Effective pickup id for a stop (single-mode default fills empty per-stop ids).
+ * @param {object} stop
+ * @param {{ singlePickup?: boolean, defaultPickupPointId?: string }} [wizard]
+ */
+export function pickupIdForStop(stop, wizard = {}) {
+  const own = String(stop?.pickupPointId || "").trim();
+  if (wizard.singlePickup === true) {
+    return String(own || wizard.defaultPickupPointId || "").trim();
+  }
+  return own;
+}
+
+/**
+ * @param {object[]} stops
+ * @param {object} [wizard]
+ * @returns {{ assigned: object[], missing: object[] }}
+ */
+export function partitionLevantes(stops, wizard = {}) {
+  const list = Array.isArray(stops) ? stops : [];
+  const assigned = [];
+  const missing = [];
+  for (const s of list) {
+    if (pickupIdForStop(s, wizard)) assigned.push(s);
+    else missing.push(s);
+  }
+  return { assigned, missing };
+}
+
+/**
+ * Group assigned stops by origin for the levantes summary.
+ * @param {object[]} stops
+ * @param {object} [wizard]
+ * @param {object[]} [places]
+ */
+export function consolidateLevantes(stops, wizard = {}, places = []) {
+  const { assigned, missing } = partitionLevantes(stops, wizard);
+  const groups = [];
+  const indexById = new Map();
+  for (const s of assigned) {
+    const id = pickupIdForStop(s, wizard);
+    let g = indexById.get(id);
+    if (!g) {
+      g = { id, label: placeLabel(places, id) || id, stops: [] };
+      indexById.set(id, g);
+      groups.push(g);
+    }
+    g.stops.push(s);
+  }
+  return { groups, missing };
 }
 
 /**
@@ -71,13 +130,12 @@ export function isFlotaComplete(info, truckL) {
  */
 export function isLevantesComplete(stops, wizard = {}) {
   if (!Array.isArray(stops) || !stops.length) return false;
-  const single = wizard.singlePickup !== false;
+  const single = wizard.singlePickup === true;
   const def = String(wizard.defaultPickupPointId || "").trim();
-  if (single) {
-    if (!def) return false;
-    return stops.every((s) => String(s?.pickupPointId || def).trim());
-  }
-  return stops.every((s) => String(s?.pickupPointId || "").trim());
+  if (single && !def) return false;
+  const { missing } = partitionLevantes(stops, wizard);
+  if (missing.length === 0) return true;
+  return wizard.unassignedPickupApproved === true;
 }
 
 /**
@@ -182,10 +240,15 @@ export function stepMissingHints(step, ctx = {}) {
     if (!String(ctx.info?.basePointId || "").trim()) hints.push("Elegí base / zona de salida");
   }
   if (step === "levantes") {
-    if (wizard.singlePickup !== false) {
+    if (wizard.singlePickup === true) {
       if (!String(wizard.defaultPickupPointId || "").trim()) hints.push("Elegí lugar de levante");
-    } else if (!isLevantesComplete(ctx.stops, wizard)) {
-      hints.push("Confirmá levante en cada pedido");
+    } else {
+      const { missing } = partitionLevantes(ctx.stops, wizard);
+      if (missing.length && wizard.unassignedPickupApproved !== true) {
+        hints.push(
+          `Hay ${missing.length} carga${missing.length === 1 ? "" : "s"} sin origen — confirmá que es adrede`,
+        );
+      }
     }
   }
   if (step === "ruta") {
@@ -213,21 +276,17 @@ export function stepSummary(step, ctx = {}, places = []) {
   if (step === "flota") {
     const t = ctx.info?.transportista || "—";
     const L = ctx.truckL ? `${ctx.truckL} m` : "—";
-    const base = getLabel(places, ctx.info?.basePointId) || "sin base";
+    const base = placeLabel(places, ctx.info?.basePointId) || "sin base";
     return `${t} · camión ${L} · ${base}`;
   }
   if (step === "levantes") {
-    if (wizard.singlePickup !== false) {
-      return `Un levante · ${getLabel(places, wizard.defaultPickupPointId) || "—"}`;
+    const { groups, missing } = consolidateLevantes(stops, wizard, places);
+    const bits = groups.map((g) => `${g.label} (×${g.stops.length})`);
+    if (missing.length) bits.push(`sin origen (×${missing.length})`);
+    if (wizard.singlePickup === true && !groups.length) {
+      return `Un levante · ${placeLabel(places, wizard.defaultPickupPointId) || "—"}`;
     }
-    const counts = {};
-    for (const s of stops) {
-      const id = s.pickupPointId || "—";
-      counts[id] = (counts[id] || 0) + 1;
-    }
-    return Object.entries(counts)
-      .map(([id, n]) => `${getLabel(places, id) || id} (×${n})`)
-      .join(" · ");
+    return bits.join(" · ") || "Sin levantes";
   }
   if (step === "ruta") {
     const n = ctx.route?.orderedLegs?.length || 0;
@@ -242,10 +301,19 @@ export function stepSummary(step, ctx = {}, places = []) {
   return "";
 }
 
-function getLabel(places, id) {
+export function placeLabel(places, id) {
   if (!id) return "";
   const p = (places || []).find((x) => x.id === id);
   return p?.label || "";
+}
+
+/**
+ * Catalog label for a stop's effective pickup origin (empty if none).
+ */
+export function originLabelForStop(stop, wizard = {}, places = []) {
+  const id = pickupIdForStop(stop, wizard);
+  if (!id) return "";
+  return placeLabel(places, id) || id;
 }
 
 /**
