@@ -1,0 +1,181 @@
+/* BMC Driver — Outdoor Night (docs/sdd/bmc-driver-loop/DESIGN-UI.md) */
+.drv-app {
+  --drv-bg: #07111f;
+  --drv-bg-2: #0c1a2e;
+  --drv-card: #122033;
+  --drv-text: #f4f7fb;
+  --drv-mute: #8b9bb0;
+  --drv-orange: #f15a24;
+  --drv-navy: #1e3a8a;
+  --drv-green: #22c55e;
+  --drv-blue: #2563eb;
+  --drv-radius: 16px;
+  --drv-cta-h: 52px;
+  min-height: 100dvh;
+  background: var(--drv-bg);
+  color: var(--drv-text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.drv-app * { box-sizing: border-box; }
+.drv-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  padding-bottom: 96px;
+}
+.drv-h1 { font-size: 26px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.02em; }
+.drv-sub { color: var(--drv-mute); font-size: 14px; margin: 0 0 16px; }
+.drv-card {
+  background: var(--drv-card);
+  border-radius: var(--drv-radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.drv-label { display: block; font-size: 12px; color: var(--drv-mute); margin-bottom: 6px; }
+.drv-input {
+  width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: 1px solid #2a3d55;
+  background: #0b1726;
+  color: var(--drv-text);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.drv-cta {
+  width: 100%;
+  min-height: var(--drv-cta-h);
+  border: 0;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.drv-cta--orange { background: var(--drv-orange); color: #fff; }
+.drv-cta--navy { background: var(--drv-navy); color: #fff; }
+.drv-cta--blue { background: var(--drv-blue); color: #fff; }
+.drv-cta--ghost {
+  background: transparent;
+  color: var(--drv-text);
+  border: 1px solid #2a3d55;
+}
+.drv-cta:disabled { opacity: 0.5; }
+.drv-banner {
+  background: #2a1a0a;
+  color: #fbbf24;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.drv-row { display: flex; gap: 10px; align-items: center; }
+.drv-muted { color: var(--drv-mute); font-size: 13px; }
+.drv-tabs {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  background: #0a1524;
+  border-top: 1px solid #1c2d42;
+}
+.drv-tab {
+  flex: 1;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--drv-mute);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.drv-tab.is-on { color: var(--drv-orange); }
+.drv-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #1c2d42;
+}
+.drv-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex: 0 0 28px;
+}
+.drv-dot--done { background: var(--drv-green); color: #052e16; }
+.drv-dot--now { background: var(--drv-blue); color: #fff; }
+.drv-dot--wait { background: #243044; color: var(--drv-mute); }
+.drv-login {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+  background:
+    linear-gradient(180deg, rgba(7,17,31,0.35) 0%, rgba(7,17,31,0.92) 55%, #07111f 100%),
+    radial-gradient(ellipse at 50% 20%, #1b3a5a 0%, #07111f 70%);
+}
+.drv-mark {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.drv-mark .hex {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 16px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #1a3a5c, #0b1726);
+  border: 1px solid #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+}
+.drv-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  text-align: center;
+  margin: 12px 0;
+}
+.drv-stats strong { display: block; font-size: 18px; }
+.drv-stats span { font-size: 11px; color: var(--drv-mute); }
+.drv-quick {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.drv-quick button {
+  min-height: 72px;
+  border: 0;
+  border-radius: 12px;
+  background: #0f2236;
+  color: var(--drv-text);
+  font-size: 11px;
+  cursor: pointer;
+}
+.drv-light {
+  background: #f4f6f8;
+  color: #1a2330;
+}
+.drv-light .drv-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  color: #1a2330;
+}
+.drv-danger { color: #ef4444; }

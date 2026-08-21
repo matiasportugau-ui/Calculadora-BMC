@@ -4,6 +4,7 @@ import './styles/bmc-glass.css';
 import './styles/bmc-envios-glass.css';
 import './styles/applied-ai.css';
 import './styles/bmc-mobile.css';
+import './styles/bmc-driver.css';
 import { captureUtmFromLocation } from './utils/leadTracking.js';
 
 // Capture ?utm_* once per page load, before any route-specific logic, so a

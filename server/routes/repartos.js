@@ -17,6 +17,7 @@ import {
   stopSummariesForReparto,
   repartoStatusLabel,
 } from "../../src/utils/logistica/repartoStatus.js";
+import { joinRepartoToTrip } from "../lib/repartoTripBridge.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -368,8 +369,45 @@ export default function createRepartosRouter(config, logger) {
       );
 
       log.info?.({ repartoNo: cur.reparto_no, stops: stops.length }, "[repartos] confirmed");
+      const notifyDriver = Boolean(body.notify_driver);
+      let driverLoop = { ok: false, error: "not_attempted" };
+      try {
+        driverLoop = await joinRepartoToTrip({
+          pool,
+          config,
+          reparto: cur,
+          payload,
+          notifyDriver,
+          actor,
+        });
+        if (driverLoop.ok) {
+          await pool.query(
+            `update repartos
+                set payload = payload || $2::jsonb, updated_at = now()
+              where id = $1`,
+            [
+              cur.id,
+              JSON.stringify({
+                trip_id: driverLoop.trip_id,
+                driver_url: driverLoop.driver_url,
+                customer_links: driverLoop.customer_links || [],
+              }),
+            ],
+          );
+        }
+      } catch (joinErr) {
+        log.warn?.(
+          { err: joinErr instanceof Error ? joinErr.message : String(joinErr), repartoNo: cur.reparto_no },
+          "[repartos] driver_loop join failed",
+        );
+        driverLoop = { ok: false, error: joinErr instanceof Error ? joinErr.message : String(joinErr) };
+      }
       res.json({
         ok: true,
+        driver_loop: driverLoop.ok ? "ok" : "failed",
+        driver_url: driverLoop.driver_url || null,
+        customer_links: driverLoop.customer_links || [],
+        driver_loop_error: driverLoop.ok ? undefined : driverLoop.error,
         reparto: {
           id: cur.id,
           repartoNo: cur.reparto_no,
@@ -379,7 +417,70 @@ export default function createRepartosRouter(config, logger) {
           confirmedAt: payload.confirmedAt,
           drivePlan,
           stopsSummary: payload.stopsSummary,
+          trip_id: driverLoop.trip_id || null,
         },
+      });
+    }),
+  );
+
+  /**
+   * POST /api/repartos/:id/driver-link
+   * Retry join if confirm already coordinado but trip mint failed.
+   */
+  router.post(
+    "/repartos/:id/driver-link",
+    requireDb,
+    auth,
+    asyncHandler(async (req, res) => {
+      await ensureSchema();
+      const id = String(req.params.id || "").trim();
+      const { rows } = await pool.query(`select * from repartos where id = $1 or reparto_no = $1`, [id]);
+      if (!rows.length) return res.status(404).json({ ok: false, error: "not_found" });
+      const cur = rows[0];
+      const st = normalizeRepartoStatus(cur.status);
+      if (st !== "coordinado" && st !== "en_curso") {
+        return res.status(409).json({
+          ok: false,
+          error: "not_confirmed",
+          message: "Confirmá la coordinación antes de emitir el link del chofer.",
+        });
+      }
+      const payload = cur.payload && typeof cur.payload === "object" ? cur.payload : {};
+      const notifyDriver = Boolean(req.body?.notify_driver);
+      const driverLoop = await joinRepartoToTrip({
+        pool,
+        config,
+        reparto: cur,
+        payload,
+        notifyDriver,
+        actor: String(req.body?.actor || "driver-link-retry"),
+      });
+      if (!driverLoop.ok) {
+        return res.status(503).json({
+          ok: false,
+          driver_loop: "failed",
+          error: driverLoop.error || "join_failed",
+        });
+      }
+      await pool.query(
+        `update repartos
+            set payload = payload || $2::jsonb, updated_at = now()
+          where id = $1`,
+        [
+          cur.id,
+          JSON.stringify({
+            trip_id: driverLoop.trip_id,
+            driver_url: driverLoop.driver_url,
+            customer_links: driverLoop.customer_links || [],
+          }),
+        ],
+      );
+      res.json({
+        ok: true,
+        driver_loop: "ok",
+        driver_url: driverLoop.driver_url,
+        customer_links: driverLoop.customer_links || [],
+        trip_id: driverLoop.trip_id,
       });
     }),
   );

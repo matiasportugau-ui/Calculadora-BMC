@@ -24,6 +24,7 @@ import TutorialOverlay from "./components/tutorial/TutorialOverlay.jsx";
 import FloatingTutorialButton from "./components/tutorial/FloatingTutorialButton.jsx";
 import BmcChatPanel from "./components/BmcChatPanel.jsx";
 import DesignPreviewGate from "./components/preview/DesignPreviewGate.jsx";
+import ConductorLegacyRedirect from "./components/driver/ConductorLegacyRedirect.jsx";
 
 const DesignMockupsPage = lazy(() => import("./components/preview/DesignMockupsPage.jsx"));
 const ProductMediaMapperPage = lazy(() => import("./components/preview/ProductMediaMapperPage.jsx"));
@@ -42,7 +43,9 @@ const PanelinLivePage = lazy(() => import("./components/PanelinLivePage.jsx"));
 const PanelinCoWorkPage = lazy(() => import("./components/PanelinCoWorkPage.jsx"));
 const LandingPage = lazy(() => import("./components/LandingPage.jsx"));
 const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
-const DriverTransportistaApp = lazy(() => import("./components/DriverTransportistaApp.jsx"));
+const DriverApp = lazy(() => import("./components/driver/DriverApp.jsx"));
+const CustomerTrackPage = lazy(() => import("./components/CustomerTrackPage.jsx"));
+const CustomerTrackIssuePage = lazy(() => import("./components/CustomerTrackIssuePage.jsx"));
 const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSandbox.jsx"));
 const BidPresentation = lazy(() => import("./components/BidPresentation.jsx"));
 const CalcLogicInspector = lazy(() => import("./components/CalcLogicInspector.jsx"));
@@ -470,12 +473,34 @@ export default function App() {
           }
         />
         <Route
-          path="/conductor"
+          path="/calculadora/conductor"
+          element={<ConductorLegacyRedirect />}
+        />
+        <Route
+          path="/conductor/*"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <DriverApp />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/seguimiento/:token"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <CustomerTrackPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/hub/seguimiento"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <DriverTransportistaApp />
-              </Suspense>
+              <RequireGrant module="calc" minLevel="write">
+                <Suspense fallback={suspenseFallback}>
+                  <CustomerTrackIssuePage />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />

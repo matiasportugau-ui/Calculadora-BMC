@@ -6,6 +6,7 @@ import { getTransportistaPool } from "../lib/transportistaDb.js";
 import { generateOpaqueToken, sha256Hex } from "../lib/driverToken.js";
 import { isAllowedDriverEventType, hasEvidenceForStop } from "../lib/transportistaFsm.js";
 import { createGcsV4UploadUrl, writeLocalDevEvidence } from "../lib/transportistaEvidence.js";
+import { conductorPublicUrl } from "../../src/utils/conductorUrl.js";
 import path from "node:path";
 import crypto from "node:crypto";
 
@@ -28,11 +29,6 @@ function requireCrmAuth(config) {
     if (bearer === token || xKey === token) return next();
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   };
-}
-
-function conductorBaseUrl(config) {
-  const base = String(config.publicBaseUrl || "").replace(/\/$/, "");
-  return `${base}/calculadora/conductor`;
 }
 
 /**
@@ -256,7 +252,7 @@ export default function createTransportistaRouter(config, logger) {
           [tripId, driver_id, tokenHash, expiresAt.toISOString()],
         );
 
-        const url = `${conductorBaseUrl(config)}?t=${encodeURIComponent(plainToken)}`;
+        const url = conductorPublicUrl(config.frontendBaseUrl || "https://calculadora-bmc.vercel.app", plainToken);
         await client.query(
           `insert into trip_events (trip_id, stop_id, event_type, actor_type, actor_id, idempotency_key, payload)
            values ($1::uuid, null, 'driver_link_issued', 'system', null, $2, $3::jsonb)`,
@@ -357,7 +353,7 @@ export default function createTransportistaRouter(config, logger) {
           [tripId, driver_id, tokenHash, expiresAt.toISOString()],
         );
 
-        const url = `${conductorBaseUrl(config)}?t=${encodeURIComponent(plainToken)}`;
+        const url = conductorPublicUrl(config.frontendBaseUrl || "https://calculadora-bmc.vercel.app", plainToken);
         await client.query(
           `insert into trip_events (trip_id, stop_id, event_type, actor_type, actor_id, idempotency_key, payload)
            values ($1::uuid, null, 'driver_link_issued', 'system', null, $2, $3::jsonb)`,
@@ -563,6 +559,13 @@ export default function createTransportistaRouter(config, logger) {
         }
         throw e;
       }
+      if (type !== "location_ping") {
+        try {
+          await projectRepartoFromDriverEvent(pool, trip_id, type);
+        } catch {
+          /* projection is best-effort */
+        }
+      }
       res.json({ ok: true });
     }),
   );
@@ -699,4 +702,47 @@ export default function createTransportistaRouter(config, logger) {
 
 function randomFileSuffix() {
   return `${Date.now()}-${crypto.randomBytes(6).toString("hex")}`;
+}
+
+const FACTORY_TYPES = new Set([
+  "factory_arrived",
+  "load_started",
+  "load_completed",
+  "factory_departed",
+]);
+
+async function projectRepartoFromDriverEvent(pool, tripId, type) {
+  const { rows } = await pool.query(`select plan_snapshot from trips where trip_id = $1::uuid`, [tripId]);
+  const repartoId = rows[0]?.plan_snapshot?.reparto_id;
+  if (!repartoId) return;
+  if (FACTORY_TYPES.has(type)) {
+    await pool.query(
+      `update repartos set status = 'en_curso', updated_at = now()
+        where id = $1 and status = 'coordinado'`,
+      [String(repartoId)],
+    );
+  }
+  if (type === "delivery_completed") {
+    const ev = await pool.query(
+      `select stop_id from trip_events
+        where trip_id = $1::uuid and event_type = 'delivery_completed'`,
+      [tripId],
+    );
+    const stops = rows[0]?.plan_snapshot?.stops;
+    const needed = Array.isArray(stops) ? stops.filter((s) => s && s.id).map((s) => String(s.id)) : [];
+    const got = new Set(ev.rows.map((r) => String(r.stop_id || "")));
+    const all = needed.length > 0 && needed.every((id) => got.has(id));
+    if (all) {
+      await pool.query(
+        `update repartos set status = 'cerrado', updated_at = now()
+          where id = $1 and status in ('coordinado', 'en_curso')`,
+        [String(repartoId)],
+      );
+      await pool.query(
+        `update trips set status = 'closed', closed_at = now(), updated_at = now()
+          where trip_id = $1::uuid`,
+        [tripId],
+      );
+    }
+  }
 }
