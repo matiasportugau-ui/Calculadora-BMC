@@ -50,6 +50,12 @@ yarn-error.log*
 # Runtime exports (MATRIZ CSV pull, logs locales)
 .runtime/
 
+# Local /logistica ENV drafts (operator PII — never commit)
+public/envios-local/
+
+# Subagent eval run artifacts
+.claude/agents/evals/results/
+
 # Cache
 .eslintcache
 .parcel-cache

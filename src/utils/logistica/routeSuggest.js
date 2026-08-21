@@ -5,6 +5,7 @@
  */
 
 import { isValidLatLng, parseLatLng } from "./geocode.js";
+import { lookupUyGazetteer, isOffTruckDelivery, isDepotPickupStop, BMC_DEPO } from "./uyGazetteer.js";
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -48,6 +49,12 @@ export function resolvePointGeo(source = {}) {
   for (const field of [source.mapUrl, source.mapLink, source.addressText, source.direccion, source.label]) {
     const parsed = parseLatLng(field);
     if (parsed) return { lat: parsed.lat, lng: parsed.lng, source: "parsed" };
+  }
+  const gaz = lookupUyGazetteer(
+    [source.addressText, source.direccion, source.label].filter(Boolean).join(" "),
+  );
+  if (gaz) {
+    return { lat: gaz.lat, lng: gaz.lng, source: gaz.source, precision: gaz.precision };
   }
   return null;
 }
@@ -105,16 +112,12 @@ export function suggestRoute(input = {}) {
     legs.push(leg);
   }
 
-  for (const pid of orderedUniquePickupIds(stops, defPickup)) {
-    const place = byId.get(pid);
-    const leg = placeToLeg("pickup", place, pid);
-    if (!leg.geo) missingGeo += 1;
-    legs.push(leg);
-  }
-
-  let deliveries = deliveryOrderStops(stops);
+  const pickupOf = (s) => String(s?.pickupPointId || defPickup || "").trim();
+  let deliveries = deliveryOrderStops(stops).filter((s) => !isOffTruckDelivery(s));
+  const depoStops = deliveryOrderStops(stops).filter(isDepotPickupStop);
   if (input.deliveryOrder === "reverse") deliveries = deliveries.reverse();
-  for (const s of deliveries) {
+
+  const pushDelivery = (s) => {
     const geo = resolvePointGeo({
       geo: s.geo,
       mapLink: s.mapLink,
@@ -133,6 +136,34 @@ export function suggestRoute(input = {}) {
       geo,
       stopId: s.id,
       telefono: s.telefono || "",
+    });
+  };
+
+  // One vuelta per plant: levante → sus entregas (not all pickups first).
+  for (const pid of orderedUniquePickupIds(stops, defPickup)) {
+    const place = byId.get(pid);
+    const leg = placeToLeg("pickup", place, pid);
+    if (!leg.geo) missingGeo += 1;
+    legs.push(leg);
+    for (const s of deliveries.filter((d) => pickupOf(d) === pid)) pushDelivery(s);
+  }
+
+  for (const s of deliveries.filter((d) => !pickupOf(d))) pushDelivery(s);
+
+  if (depoStops.length) {
+    legs.push({
+      type: "depot",
+      refId: BMC_DEPO.id,
+      label: BMC_DEPO.label,
+      addressText: BMC_DEPO.addressText,
+      mapUrl: BMC_DEPO.mapUrl,
+      geo: {
+        lat: BMC_DEPO.lat,
+        lng: BMC_DEPO.lng,
+        source: "maps-place",
+        precision: BMC_DEPO.precision,
+      },
+      stopIds: depoStops.map((s) => s.id),
     });
   }
 

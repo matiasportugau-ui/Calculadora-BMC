@@ -1,0 +1,492 @@
+/* Mesa de ruta — compact (≤767) first, then regular 768, wide 1024.
+   Breakpoints: VIEWPORT.LOGISTICA_* in src/constants/viewportBreakpoints.js */
+
+.ruta-desk {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+.envios-app--split .ruta-desk {
+  min-height: 0;
+  height: auto;
+  grid-template-rows: auto auto auto;
+}
+
+.ruta-desk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ruta-desk-bar h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--g-text, #1d1d1f);
+}
+
+.ruta-desk-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--g-text-2, #6e6e73);
+}
+
+.ruta-desk-kpis strong {
+  color: var(--g-text, #1d1d1f);
+}
+
+.ruta-desk-actions {
+  display: none;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ruta-desk-actions button,
+.ruta-desk-thumb button {
+  touch-action: manipulation;
+  min-height: 48px;
+}
+
+.ruta-desk-thumb {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin: 0;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(245, 245, 247, 0.94);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--g-border, #e5e5ea);
+}
+
+.ruta-desk-thumb__primary,
+.ruta-desk-thumb__secondary {
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 48px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: background 220ms ease-out, opacity 220ms ease-out, transform 220ms ease-out;
+}
+
+.ruta-desk-thumb__primary {
+  flex: 1.4;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  min-width: 0;
+}
+
+.ruta-desk-thumb__secondary {
+  flex: 1;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #1d1d1f;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.ruta-desk-thumb button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ruta-desk-thumb button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ruta-desk-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+
+.ruta-leg-clients {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+
+.ruta-leg-client {
+  font-size: 12px;
+  color: #334155;
+  padding-left: 2px;
+}
+
+.ruta-leg-client span {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.ruta-desk-body--itinerary {
+  grid-template-columns: 1fr;
+}
+
+.ruta-desk-col {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #fff;
+  border: 1px solid var(--g-border, #e5e5ea);
+  border-radius: 12px;
+  padding: 12px;
+  padding-bottom: calc(12px + 88px + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling: touch;
+}
+
+.ruta-desk-map-wrap {
+  min-height: 36vh;
+  height: 36vh;
+  border: 1px solid var(--g-border, #e5e5ea);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #e8eef5;
+  touch-action: auto;
+  order: -1;
+}
+
+.ruta-desk-map {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  touch-action: auto;
+}
+
+.ruta-leg {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+  min-height: 48px;
+  align-items: flex-start;
+  transition: background 220ms ease-out;
+}
+
+.ruta-leg:last-child {
+  border-bottom: none;
+}
+
+.ruta-leg.is-selected {
+  background: #f0f7ff;
+  margin: 0 -8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 8px;
+}
+
+.ruta-leg.is-drag-over {
+  outline: 2px solid #93c5fd;
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+.ruta-leg.is-dragging {
+  opacity: 0.55;
+}
+
+.ruta-leg-handle {
+  flex-shrink: 0;
+  width: 44px;
+  min-height: 44px;
+  margin: -4px 0;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 16px;
+  letter-spacing: -1px;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+.ruta-leg-handle:active {
+  cursor: grabbing;
+  color: #1e3a5f;
+}
+
+.ruta-leg-num {
+  width: 26px;
+  height: 26px;
+  margin-top: 2px;
+  border-radius: 99px;
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ruta-faltas {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ruta-falta {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+}
+
+.ruta-falta.is-block {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.ruta-falta button {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+
+.ruta-depo-maps {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f766e;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ruta-toggle {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.ruta-toggle button {
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: 26px;
+  touch-action: manipulation;
+  font-family: inherit;
+}
+
+.ruta-toggle button.is-off {
+  opacity: 0.55;
+}
+
+.ruta-toggle button.is-on {
+  opacity: 1;
+  border-color: #2563eb;
+  background: #eff6ff;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.envios-wizard--desk {
+  margin-bottom: 0;
+}
+
+.envios-wizard--desk .envios-wizard-steps-compact {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--g-border, #e5e5ea);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.envios-wizard--desk .envios-wizard-steps-compact button {
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  min-height: 44px;
+  font-weight: 600;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  transition: background 220ms ease-out, border-color 220ms ease-out;
+}
+
+.envios-wizard--desk .envios-wizard-steps-compact button.is-on {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1e3a5f;
+}
+
+.envios-wizard--setup {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+.envios-wizard-setup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--g-border, #e5e5ea);
+}
+
+.envios-wizard-setup-head__title {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--g-text, #1d1d1f);
+}
+
+.envios-wizard-setup-head__sub {
+  font-size: 12px;
+  color: var(--g-text-2, #6e6e73);
+}
+
+.envios-wizard-setup-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.envios-wizard-setup-head__actions button,
+.envios-wizard-setup-head__actions select {
+  min-height: 44px;
+  touch-action: manipulation;
+  font-size: 16px;
+}
+
+.envios-wizard-setup-body {
+  padding: 12px;
+}
+
+.envios-wizard-desk-body {
+  padding: 12px;
+}
+
+.envios-wizard-missing {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  font-size: 12px;
+  color: #9a3412;
+}
+
+.envios-wizard-inline-nav {
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 10px 12px 12px;
+}
+
+.envios-flota-pair {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.envios-step-form input,
+.envios-step-form select {
+  font-size: 16px;
+}
+
+@media (min-width: 768px) {
+  .ruta-desk {
+    min-height: calc(100vh - 132px);
+    padding-bottom: 0;
+  }
+
+  .ruta-desk-col {
+    padding-bottom: 12px;
+  }
+
+  .envios-wizard--setup {
+    padding-bottom: 0;
+  }
+
+  .envios-wizard-inline-nav {
+    display: flex;
+  }
+
+  .envios-flota-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .envios-wizard-setup-head__actions button,
+  .envios-wizard-setup-head__actions select {
+    font-size: 13px;
+  }
+
+  .envios-step-form input,
+  .envios-step-form select {
+    font-size: 14px;
+  }
+
+  .ruta-desk-actions {
+    display: flex;
+  }
+
+  .ruta-desk-actions button {
+    min-height: 44px;
+  }
+
+  .ruta-desk-thumb {
+    display: none;
+  }
+
+  .ruta-desk-body:not(.ruta-desk-body--itinerary) {
+    grid-template-columns: minmax(260px, 1fr) minmax(0, 1.1fr);
+  }
+
+  .ruta-desk-map-wrap {
+    order: 0;
+    min-height: 320px;
+    height: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ruta-desk-thumb__primary,
+  .ruta-desk-thumb__secondary,
+  .ruta-leg,
+  .envios-wizard--desk .envios-wizard-steps-compact button {
+    transition: none;
+  }
+
+  .ruta-desk-thumb button:active:not(:disabled) {
+    transform: none;
+  }
+}

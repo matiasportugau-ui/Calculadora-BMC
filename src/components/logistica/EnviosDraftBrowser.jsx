@@ -12,6 +12,7 @@ import {
   loadEnviosCoordinationFile,
   signIn as gdriveSignIn,
 } from "../../utils/googleDrive.js";
+import { listDraftArchive } from "../../utils/logistica/enviosDraftArchive.js";
 
 /**
  * @param {{
@@ -20,7 +21,7 @@ import {
  *   initialTab?: "saved"|"completed",
  *   onClose: () => void,
  *   onLoad: (sel: {
- *     source: "draft"|"reparto"|"drive",
+ *     source: "draft"|"reparto"|"drive"|"local",
  *     id: string,
  *     status?: string,
  *     doc?: object,
@@ -52,6 +53,21 @@ export default function EnviosDraftBrowser({
       setLoading(true);
       setErr("");
       const next = [];
+      if (tab === "saved") {
+        const localRows = listDraftArchive(typeof window !== "undefined" ? window.localStorage : null);
+        for (const r of localRows) {
+          if (!r?.id) continue;
+          next.push({
+            key: `local:${r.id}`,
+            source: "local",
+            id: r.id,
+            title: r.label || r.id,
+            subtitle: `Este Mac · ${r.stopCount ?? "?"} paradas${r.legCount ? ` · ${r.legCount} tramos` : ""}`,
+            updatedAt: r.savedAt,
+            status: "saved",
+          });
+        }
+      }
       try {
         const base = getCalcApiBase();
         if (token) {
@@ -228,7 +244,7 @@ export default function EnviosDraftBrowser({
         </div>
 
         <div style={{ fontSize: 11, color: T.muted, marginBottom: 10 }}>
-          Nube (borradores / repartos) + Drive (carpeta «BMC Envíos Coordinaciones»). Formato reanudable desde Logística o Calculadora.
+          Este Mac (rutas trabajadas) + nube + Drive. Abrí «Este Mac» si perdiste la ruta al recargar.
         </div>
 
         {!token ? (
