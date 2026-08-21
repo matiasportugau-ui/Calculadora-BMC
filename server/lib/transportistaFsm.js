@@ -9,6 +9,8 @@ const DRIVER_EVENT_TYPES = new Set([
   "delivery_partial",
   "delivery_failed",
   "incident_reported",
+  // BMC Driver Loop PWA watchPosition (~40s). Required for customer /seguimiento GPS.
+  "location_ping",
 ]);
 
 export function isAllowedDriverEventType(type) {
