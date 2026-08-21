@@ -65,6 +65,29 @@ export function eventTypes(timeline) {
   return new Set((timeline || []).map((e) => e.event_type));
 }
 
+/** Mirror server isPickupStop — keep client free of server imports. */
+export function isPickupStopClient(stop) {
+  const k = `${stop?.kind || ""} ${stop?.tipo || ""} ${stop?.role || ""}`.toLowerCase();
+  return /\b(pickup|levante|planta|fabrica|fábrica|deposito|depósito)\b/.test(k);
+}
+
+export function deliveryStopsOf(stops) {
+  return (Array.isArray(stops) ? stops : []).filter((s) => s && !isPickupStopClient(s));
+}
+
+export function allDeliveriesCompleted(timeline, stops) {
+  const deliveryStops = deliveryStopsOf(stops);
+  if (deliveryStops.length === 0) {
+    return eventTypes(timeline).has("delivery_completed");
+  }
+  const got = new Set(
+    (timeline || [])
+      .filter((e) => e.event_type === "delivery_completed" && e.stop_id != null)
+      .map((e) => String(e.stop_id)),
+  );
+  return deliveryStops.every((s) => got.has(String(s.id)));
+}
+
 export function factoryPhase(timeline) {
   const t = eventTypes(timeline);
   if (t.has("factory_departed")) return 4;
@@ -284,12 +307,7 @@ export default function useDriverSession() {
   const stops = Array.isArray(plan.stops) ? plan.stops : [];
   const phase = factoryPhase(timeline);
   const types = eventTypes(timeline);
-  const done =
-    types.has("delivery_completed") ||
-    trip?.status === "closed" ||
-    (stops.length > 0 &&
-      stops.every(() => types.has("delivery_completed")) &&
-      phase >= 4);
+  const done = trip?.status === "closed" || (allDeliveriesCompleted(timeline, stops) && phase >= 4);
 
   return {
     token,

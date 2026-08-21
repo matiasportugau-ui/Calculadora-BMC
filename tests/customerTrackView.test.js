@@ -135,8 +135,48 @@ console.log("customerTrackView");
 }
 
 {
+  const stopA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const stopB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const now = Date.parse("2026-08-19T11:30:00.000Z");
+  const events = [
+    { event_type: "factory_departed", at_server: "2026-08-19T10:40:00.000Z" },
+    {
+      event_type: "delivery_completed",
+      stop_id: stopA,
+      at_server: "2026-08-19T11:00:00.000Z",
+    },
+    {
+      event_type: "location_ping",
+      geo_lat: -34.85,
+      geo_lng: -56.15,
+      at_server: "2026-08-19T11:20:00.000Z",
+    },
+  ];
+  const forA = deriveCustomerTrack({
+    snapshot: { quote_ref: "BMC-A", customer_display_name: "Cliente A" },
+    events,
+    stopId: stopA,
+    now,
+  });
+  const forB = deriveCustomerTrack({
+    snapshot: { quote_ref: "BMC-B", customer_display_name: "Cliente B" },
+    events,
+    stopId: stopB,
+    now,
+  });
+  assert.equal(forA.stages[3].status, "done");
+  assert.equal(forA.inTransit, false);
+  assert.equal(forA.truck, null);
+  assert.equal(forB.stages[3].status, "current");
+  assert.equal(forB.inTransit, true);
+  assert.ok(forB.truck);
+  assert.equal(forB.truck.lat, -34.85);
+  console.log("  ✓ multi-stop: sibling delivery does not mark other customer delivered");
+}
+
+{
   const url = osmEmbedUrl(-34.8776, -56.1033);
-  assert.ok(url.includes("openstreetmap.org"));
+  assert.equal(new URL(url).hostname, "www.openstreetmap.org");
   assert.ok(url.includes("-34.8776"));
   assert.equal(osmEmbedUrl("x", "y"), null);
   console.log("  ✓ OSM embed");

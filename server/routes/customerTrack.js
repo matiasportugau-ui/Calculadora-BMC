@@ -126,6 +126,7 @@ export default function createCustomerTrackRouter(config, logger) {
         snapshot: row.public_snapshot || {},
         tripStatus,
         events,
+        stopId: row.stop_id || null,
       });
       res.set("Cache-Control", "no-store");
       res.json(payload);

@@ -28,3 +28,10 @@ export function isPickupStop(stop) {
   const k = `${stop?.kind || ""} ${stop?.tipo || ""} ${stop?.role || ""}`.toLowerCase();
   return /\b(pickup|levante|planta|fabrica|fábrica|deposito|depósito)\b/.test(k);
 }
+
+/** Stop ids that must receive delivery_completed before a trip/REP can close. */
+export function deliveryStopIdsFromPlan(stops) {
+  return Array.isArray(stops)
+    ? stops.filter((s) => s && s.id && !isPickupStop(s)).map((s) => String(s.id))
+    : [];
+}

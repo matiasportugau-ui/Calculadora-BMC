@@ -29,8 +29,8 @@ export function trackingPublicUrl(frontendBaseUrl, token) {
   return `${spa}/seguimiento/${encodeURIComponent(token)}`;
 }
 
-export function buildPublicTrackPayload({ snapshot, tripStatus, events, now }) {
-  const view = deriveCustomerTrack({ snapshot, tripStatus, events, now });
+export function buildPublicTrackPayload({ snapshot, tripStatus, events, now, stopId }) {
+  const view = deriveCustomerTrack({ snapshot, tripStatus, events, now, stopId });
   return {
     ok: true,
     ...view,

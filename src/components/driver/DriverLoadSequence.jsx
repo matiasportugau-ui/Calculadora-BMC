@@ -5,6 +5,11 @@ const STEPS = [
   { n: 4, type: "factory_departed", label: "Salí de fábrica" },
 ];
 
+function isPickupStop(stop) {
+  const k = `${stop?.kind || ""} ${stop?.tipo || ""} ${stop?.role || ""}`.toLowerCase();
+  return /\b(pickup|levante|planta|fabrica|fábrica|deposito|depósito)\b/.test(k);
+}
+
 export default function DriverLoadSequence({
   phase,
   plan,
@@ -14,15 +19,16 @@ export default function DriverLoadSequence({
 }) {
   const current = STEPS[Math.min(phase, 3)];
   const info = plan.info || {};
-  const dest = stops[stops.length - 1];
-  const qty = stops.reduce((n, s) => n + Number(s.qty || s.cantidad || 0), 0);
+  const deliveryStops = (stops || []).filter((s) => s && !isPickupStop(s));
+  const dest = deliveryStops[deliveryStops.length - 1] || stops[stops.length - 1];
+  const qty = deliveryStops.reduce((n, s) => n + Number(s.qty || s.cantidad || 0), 0);
 
   if (phase >= 4) {
     return (
       <div className="drv-scroll">
         <h1 className="drv-h1">Entregas</h1>
         <p className="drv-sub">Marcá llegada y entrega en cada parada</p>
-        {stops.map((s) => (
+        {deliveryStops.map((s) => (
           <div className="drv-card" key={s.id}>
             <strong>{s.cliente || "Parada"}</strong>
             <p className="drv-muted">{s.direccion || s.orderId || ""}</p>
