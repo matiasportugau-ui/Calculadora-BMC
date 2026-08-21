@@ -75,7 +75,7 @@ Operadores BMC cotizan y ejecutan el **mismo envío de paneles** en Uruguay sin 
 ## Non-goals (Core)
 
 - SaaS courier multi-modal global  
-- Isochrones / multi-vehicle VRP / live GPS tracking  
+- Isochrones / multi-vehicle VRP / live GPS **inside packing** (chofer GPS is [`bmc-driver-loop`](../bmc-driver-loop/TARGET.md))  
 - Google Distance Matrix billing (superseded by OSRM in SDD-GEO-MAPS unless ADR-017 reversed)  
 - Replacing transportista driver trips with ENV drafts  
 - Sustituir tarifa panel-zona por CBM puro sin ADR  
