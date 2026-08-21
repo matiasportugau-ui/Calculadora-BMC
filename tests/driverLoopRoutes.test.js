@@ -66,6 +66,14 @@ function routeBlock(src, pathLiteral) {
   for (const f of screens) {
     readFileSync(join(root, "src/components/driver", f));
   }
+  const appDrv = readFileSync(join(root, "src/components/driver/DriverApp.jsx"), "utf8");
+  assert.ok(appDrv.includes('path="carga"'));
+  assert.ok(appDrv.includes('path="listo"'));
+  assert.ok(appDrv.includes('path="perfil"'));
+  const carga = readFileSync(join(root, "src/components/driver/DriverLoadSequence.jsx"), "utf8");
+  assert.ok(carga.includes('sendEvent("delivery_completed"'));
+  assert.ok(carga.includes("s.id"));
+  assert.ok(carga.includes('sendEvent("stop_arrived"'));
   console.log("  ✓ five chofer screens exist");
 }
 

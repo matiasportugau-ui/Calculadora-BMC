@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (BMC Driver Loop — join REP→trip + 5 visual specs)
+**Última actualización:** 2026-08-21 (test — Driver Loop FSM, join edges, GPS sanitize)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-21 (test — Driver Loop regression pins):** After `#1078`, complementary coverage for carga `factoryPhase` 0–4, PWA event allowlist, join reuse/rollback/`42P01`, customer_links mint, GPS out-of-range skip + snapshot 240 cap, token URL encoding, and `buildRepartoPayload` UUID stamp. New `tests/driverSessionFsm.test.js`; wired orphan `tests/repartoStatus.test.js` into `test:core`. Did not pin `location_ping` allowlist (open `#1081`) or per-stop `delivery_completed` close (open `#1080`).
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { conductorPublicUrl } from "../src/utils/conductorUrl.js";
+import { conductorPublicUrl, conductorLegacyPath } from "../src/utils/conductorUrl.js";
 import { driverIdFromPhone, ensureStopUuid } from "../server/lib/driverId.js";
 
 console.log("conductorUrl + driverId");
@@ -9,6 +9,16 @@ assert.equal(
   "https://calculadora-bmc.vercel.app/conductor?t=tok",
 );
 assert.ok(!conductorPublicUrl("https://x.com", "a").includes("/calculadora/conductor"));
+assert.equal(
+  conductorPublicUrl("https://calculadora-bmc.vercel.app/", "tok"),
+  "https://calculadora-bmc.vercel.app/conductor?t=tok",
+);
+assert.equal(conductorPublicUrl("https://calculadora-bmc.vercel.app", ""), "https://calculadora-bmc.vercel.app/conductor");
+assert.equal(
+  conductorPublicUrl("https://calculadora-bmc.vercel.app", "a/b?x=1"),
+  "https://calculadora-bmc.vercel.app/conductor?t=a%2Fb%3Fx%3D1",
+);
+assert.equal(conductorLegacyPath(), "/calculadora/conductor");
 
 const a = driverIdFromPhone("+59899111222");
 const b = driverIdFromPhone("59899111222");
