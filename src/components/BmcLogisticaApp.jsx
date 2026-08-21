@@ -77,6 +77,7 @@ import {
 import { buildYardDump, clearYardPositions, countYardPackages } from "../utils/logistica/yardLayout.js";
 import ViewerChrome from "./logistica/ViewerChrome.jsx";
 import RepartoBar from "./logistica/RepartoBar.jsx";
+import DriverLoopPanel from "./logistica/DriverLoopPanel.jsx";
 import { canPlaceOnTop } from "../utils/logistica/stackConstraints.js";
 import { allocateRepartoNo, repartoDateKey } from "../utils/logistica/repartoNumber.js";
 import {
@@ -1827,6 +1828,7 @@ export default function BmcLogisticaApp() {
   const [repartoHistory, setRepartoHistory] = useState([]);
   const [confirmCoordOpen, setConfirmCoordOpen] = useState(false);
   const [autoLoadMsg, setAutoLoadMsg] = useState("");
+  const [driverLoopResult, setDriverLoopResult] = useState(null);
   const [retryingStopId, setRetryingStopId] = useState("");
   /** @type {[null|{stopId:string, loading?:boolean, error?:string, proposal?:object, evidence?:object, provider?:string}, Function]} */
   const [aiVerifyModal, setAiVerifyModal] = useState(null);
@@ -3203,8 +3205,9 @@ export default function BmcLogisticaApp() {
           : r,
       );
       setConfirmCoordOpen(false);
+      setDriverLoopResult({ local: true, driver_loop: "failed" });
       setAutoLoadMsg(
-        `✓ Coordinación confirmada ${activeReparto.repartoNo} · ${stops.length} parada(s) · registro local`,
+        `✓ Coordinación confirmada ${activeReparto.repartoNo} · ${stops.length} parada(s) · registro local · sin enlace chofer (no hay API)`,
       );
       void saveCoordination({ completed: true });
       return;
@@ -3220,7 +3223,11 @@ export default function BmcLogisticaApp() {
           Authorization: `Bearer ${enviosAuthToken()}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ payload, actor: "logistica-ui" }),
+        body: JSON.stringify({
+          payload,
+          actor: "logistica-ui",
+          notify_driver: Boolean(info.chofer_notify_wa),
+        }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.ok === false) throw new Error(j.message || j.error || res.statusText);
@@ -3233,16 +3240,62 @@ export default function BmcLogisticaApp() {
               confirmedAt: j.reparto?.confirmedAt,
               drivePlan: j.reparto?.drivePlan,
               stopsSummary: j.reparto?.stopsSummary,
+              driverUrl: j.driver_url || null,
             }
           : r,
       );
       setConfirmCoordOpen(false);
+      setDriverLoopResult({
+        driver_loop: j.driver_loop,
+        driver_url: j.driver_url || null,
+        customer_links: j.customer_links || [],
+        error: j.driver_loop_error,
+        repartoId: j.reparto?.id || activeReparto.id,
+      });
+      const linkBit = j.driver_url ? " · enlace chofer listo" : j.driver_loop === "failed" ? " · sin link chofer" : "";
       setAutoLoadMsg(
-        `✓ Coordinación confirmada ${j.reparto?.repartoNo || activeReparto.repartoNo} · Drive path reservado · ver Historial`,
+        `✓ Coordinación confirmada ${j.reparto?.repartoNo || activeReparto.repartoNo} · Drive path reservado${linkBit}`,
       );
+      if (j.driver_url && typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        void navigator.clipboard.writeText(j.driver_url).catch(() => {});
+      }
       void saveCoordination({ completed: true });
     } catch (e) {
       setAutoLoadMsg(`Confirmar falló: ${e.message}`);
+    } finally {
+      setRepartoBusy(false);
+    }
+  }
+
+  async function retryDriverLink() {
+    const id = driverLoopResult?.repartoId || activeReparto?.id;
+    if (!id || !enviosAuthToken()) return;
+    setRepartoBusy(true);
+    try {
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/repartos/${encodeURIComponent(id)}/driver-link`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${enviosAuthToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          actor: "logistica-ui",
+          notify_driver: Boolean(info.chofer_notify_wa),
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.message || j.error || res.statusText);
+      setDriverLoopResult({
+        driver_loop: j.driver_loop,
+        driver_url: j.driver_url || null,
+        customer_links: j.customer_links || [],
+        error: j.error,
+        repartoId: id,
+      });
+      setAutoLoadMsg(j.driver_url ? "✓ Enlace chofer reemitido" : "Reintento sin URL");
+    } catch (e) {
+      setAutoLoadMsg(`Reintentar link: ${e.message}`);
     } finally {
       setRepartoBusy(false);
     }
@@ -4066,7 +4119,8 @@ export default function BmcLogisticaApp() {
             </div>
             <p style={{ fontSize: 13, color: "#475569", margin: "0 0 12px" }}>
               Se cierra el reparto <b>{activeReparto?.repartoNo || "—"}</b> como{" "}
-              <b>Coordinado</b>, se guarda el snapshot y se registra el plan Drive (path).
+              <b>Coordinado</b>, se guarda el snapshot, el plan Drive, y se emite el enlace BMC Driver
+              (WhatsApp al chofer solo si lo marcaste en Flota).
             </p>
             <ul style={{ margin: "0 0 14px", paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
               {stops.map((s) => (
@@ -4417,8 +4471,14 @@ export default function BmcLogisticaApp() {
               onOpenHistory={loadRepartoHistory}
               onNewReparto={() => {
                 setActiveReparto(null);
+                setDriverLoopResult(null);
                 setAutoLoadMsg("Listo para nuevo reparto — agregá paradas");
               }}
+            />
+            <DriverLoopPanel
+              result={driverLoopResult}
+              busy={repartoBusy}
+              onRetry={retryDriverLink}
             />
             <div style={{ ...css.card, padding: 16, background: "#e8f1fb", borderColor: "#bfdbfe" }}>
               <h3 style={css.sectionTitle}>🔍 Buscar cliente en Ventas</h3>

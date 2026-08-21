@@ -2,6 +2,7 @@
  * FSM de batch de reparto / coordinación.
  * Separado de stopStatusFsm (carga física) y de chips Ventas.
  */
+import { withStopUuids } from "./stopUuid.js";
 
 /** @typedef {'draft'|'en_coordinacion'|'coordinado'|'en_curso'|'cerrado'|'cancelado'} RepartoStatus */
 
@@ -125,7 +126,7 @@ export function buildRepartoPayload(state = {}) {
   return {
     schema: "bmc-reparto-payload-v1",
     schemaVersion: 1,
-    stops: Array.isArray(state.stops) ? state.stops : [],
+    stops: withStopUuids(Array.isArray(state.stops) ? state.stops : []),
     truckL: state.truckL ?? null,
     distributionMode: state.distributionMode ?? "balanced",
     cargoLayoutMode: state.cargoLayoutMode ?? "auto",

@@ -71,6 +71,24 @@ export default function StepFlota({
         </div>
       </div>
       <div>
+        <label style={lbl}>Celular del chofer (para el enlace BMC Driver)</label>
+        <input
+          style={inp}
+          inputMode="tel"
+          value={info.chofer_phone || ""}
+          onChange={(e) => onChangeInfo?.("chofer_phone", e.target.value)}
+          placeholder="+598 99 123 456"
+        />
+      </div>
+      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+        <input
+          type="checkbox"
+          checked={Boolean(info.chofer_notify_wa)}
+          onChange={(e) => onChangeInfo?.("chofer_notify_wa", e.target.checked)}
+        />
+        Mandar WhatsApp al chofer (si no, solo copiamos el enlace)
+      </label>
+      <div>
         <label style={lbl}>Base / zona de salida</label>
         <select
           style={inp}
