@@ -88,4 +88,50 @@ console.log("repartoTripBridge");
   console.log("  ✓ join mock: URL + no outbox when notify false");
 }
 
+{
+  const calls = [];
+  const client = {
+    async query(sql, params) {
+      calls.push({ sql: String(sql).replace(/\s+/g, " ").trim(), params });
+      if (/BEGIN/i.test(sql)) return { rows: [] };
+      if (/plan_snapshot->>'reparto_id'/i.test(sql)) return { rows: [] };
+      if (/insert into trips/i.test(sql)) return { rows: [{ trip_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }] };
+      if (/COMMIT/i.test(sql)) return { rows: [] };
+      return { rows: [], rowCount: 1 };
+    },
+    release() {},
+  };
+  const pool = { connect: async () => client, query: client.query };
+  const r = await joinRepartoToTrip({
+    pool,
+    config: { frontendBaseUrl: "https://calculadora-bmc.vercel.app" },
+    reparto: { id: "rep-10", reparto_no: "REP-2026-08-21-010" },
+    payload: {
+      stops: [
+        { kind: "levante", cliente: "Kingspan", orderId: "PICK" },
+        { cliente: "Obra", orderId: "BMC-10", direccion: "Maldonado" },
+      ],
+      info: { chofer_phone: "099111222" },
+    },
+    notifyDriver: true,
+  });
+  assert.equal(r.ok, true);
+  assert.ok(String(r.driver_url).includes("/conductor?t="));
+  assert.ok(!String(r.driver_url).includes("/calculadora/conductor"));
+  assert.ok(calls.some((c) => /outbox_notifications/i.test(c.sql)));
+  const ctx = prepareJoinContext(
+    { id: "rep-10", reparto_no: "REP-2026-08-21-010" },
+    {
+      stops: [
+        { kind: "levante", cliente: "Kingspan", orderId: "PICK" },
+        { cliente: "Obra", orderId: "BMC-10", direccion: "Maldonado" },
+      ],
+      info: { chofer_phone: "099111222" },
+    },
+  );
+  assert.equal(ctx.deliveryStops.length, 1);
+  assert.equal(ctx.deliveryStops[0].orderId, "BMC-10");
+  console.log("  ✓ join mock: outbox when notify+phone; pickup skipped");
+}
+
 console.log("repartoTripBridge OK");

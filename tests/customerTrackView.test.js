@@ -94,6 +94,26 @@ console.log("customerTrackView");
 }
 
 {
+  const now = Date.parse("2026-08-19T11:00:00.000Z");
+  const view = deriveCustomerTrack({
+    snapshot: { quote_ref: "BMC-2026-1048" },
+    tripStatus: "assigned",
+    events: [
+      {
+        event_type: "location_ping",
+        geo_lat: -34.83,
+        geo_lng: -56.2,
+        at_server: "2026-08-19T10:55:00.000Z",
+      },
+    ],
+    now,
+  });
+  assert.equal(view.truck, null);
+  assert.equal(view.inTransit, false);
+  console.log("  ✓ GPS hidden before factory_departed");
+}
+
+{
   const view = deriveCustomerTrack({
     snapshot: { quote_ref: "X" },
     events: [
