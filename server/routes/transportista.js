@@ -7,6 +7,7 @@ import { generateOpaqueToken, sha256Hex } from "../lib/driverToken.js";
 import { isAllowedDriverEventType, hasEvidenceForStop } from "../lib/transportistaFsm.js";
 import { createGcsV4UploadUrl, writeLocalDevEvidence } from "../lib/transportistaEvidence.js";
 import { conductorPublicUrl } from "../../src/utils/conductorUrl.js";
+import { deliveryStopIdsFromPlan } from "../lib/driverId.js";
 import path from "node:path";
 import crypto from "node:crypto";
 
@@ -729,7 +730,8 @@ async function projectRepartoFromDriverEvent(pool, tripId, type) {
       [tripId],
     );
     const stops = rows[0]?.plan_snapshot?.stops;
-    const needed = Array.isArray(stops) ? stops.filter((s) => s && s.id).map((s) => String(s.id)) : [];
+    // Only delivery stops must complete — pickup/levante never get delivery_completed.
+    const needed = deliveryStopIdsFromPlan(stops);
     const got = new Set(ev.rows.map((r) => String(r.stop_id || "")));
     const all = needed.length > 0 && needed.every((id) => got.has(id));
     if (all) {

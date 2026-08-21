@@ -49,11 +49,28 @@ function typesOf(events) {
 }
 
 /**
+ * True when this customer's stop (or the whole trip if stopId unset) is delivered.
+ * Multi-stop trips must not treat sibling stops' delivery_completed as this token's.
+ */
+export function isDeliveryCompletedForStop(events, stopId) {
+  const list = Array.isArray(events) ? events : [];
+  const scoped = stopId != null && String(stopId) !== "";
+  const want = scoped ? String(stopId) : null;
+  return list.some((e) => {
+    if (e?.event_type !== "delivery_completed") return false;
+    if (!want) return true;
+    const sid = e.stop_id != null ? String(e.stop_id) : "";
+    return sid === want;
+  });
+}
+
+/**
  * @param {{
  *   snapshot?: object,
  *   tripStatus?: string | null,
- *   events?: Array<{ event_type: string, at_server?: string, geo_lat?: number, geo_lng?: number }>,
+ *   events?: Array<{ event_type: string, at_server?: string, geo_lat?: number, geo_lng?: number, stop_id?: string }>,
  *   now?: number,
+ *   stopId?: string | null,
  * }} input
  */
 export function deriveCustomerTrack(input = {}) {
@@ -62,8 +79,9 @@ export function deriveCustomerTrack(input = {}) {
   const types = typesOf(events);
   const tripStatus = String(input.tripStatus || "");
   const now = input.now ?? Date.now();
+  const stopId = input.stopId != null && input.stopId !== "" ? String(input.stopId) : null;
 
-  const delivered = types.has("delivery_completed");
+  const delivered = isDeliveryCompletedForStop(events, stopId);
   const departed = types.has("factory_departed");
   const transportBooked =
     types.has("trip_assigned") ||
