@@ -1,6 +1,24 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-15 (bake MATRIZ → constants.js)
+**Última actualización:** 2026-08-21 (/logistica: depo = BMC URUGUAY)
+
+**2026-08-21 (ux — Viene a depo = BMC URUGUAY):** Identidad fija **BMC URUGUAY**. Destino Maps `https://maps.app.goo.gl/H4JrCnTgmke7ZRReA` (pin −34.9053458, −54.928693). Catálogo `base-deposito-bmc`. Tests `uyGazetteer` + `routeSuggest` + `pickupCatalog`.
+
+**2026-08-21 (ux — mesa de ruta, modo de entrega):** Tres chips compactos: **Entrega en destino** (default), **Retiran en planta**, **Viene a depo**. Los no usados quedan apagados. Depo no entrega a obra; el itinerario suma un tramo BMC URUGUAY. Tests `uyGazetteer` + `routeSuggest`.
+
+**2026-08-21 (ux — origen/clientes en Pedidos, Levantes y Mesa):** Cada pedido muestra chip de levante. Levantes agrupa clientes bajo planta (`consolidateLevantes`). Mesa lista clientes bajo cada levante. Chip de faltas **sin origen** salta a Levantes (`goto_levantes`). Autosave vacío ya no pisa un archive con paradas. Fixture `ENV-260821-001`. Tests `wizardState` + `rutaFaltas` + `enviosDraftArchive`.
+
+**2026-08-20 (fix — persistencia de rutas trabajadas):** Cada ENV se archiva en este Mac (`bmc-logistica-draft-v1:{ENV}`). `?seed=` ya no apaga autosave ni pisa un itinerario con tramos. Abrir coordinación lista **Este Mac**. Tests `enviosDraftArchive`.
+
+**2026-08-20 (feat — mesa /logistica paneles + OSRM):** Columna visual con 3 paneles plegables (mapa / 3D / croquis+itinerario), sash `react-resizable-panels`. Trazo por **calles** vía `POST /api/envios/route` (OSRM público driving); si falla, pins + km aire, sin geodésica. Tests `osrmPolyline`.
+
+**2026-08-21 (ux — /logistica clientes + origen por carga):** La cola de clientes no se cierra al sumar una parada (chips “En este envío”). Origen **por carga** por defecto; **Continuar** pide confirmar si hay cargas sin origen.
+
+**2026-08-20 (fix — Guardar en /logistica es este Mac):** El botón **Guardar** escribe el draft local (`bmc-logistica-draft-v1:{ENV}`) y no abre Google OAuth. Drive queda en **Subir a Drive**.
+
+**2026-08-20 (ux — /logistica cola por fecha + split 50/50):** Pedidos de Ventas agrupados por fecha de entrega. Desktop `PanelGroup` `logistica-main-split-v2`. Mobile ≤767 apila. Tests `ventasFechaGroups`.
+
+**2026-08-20 (feat — Panelin camionero en /logistica):** Agente on-site (solo logística, no cotiza, no envía WA). Tests `logisticaTruckerAgent`.
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 

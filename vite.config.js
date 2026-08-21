@@ -8,6 +8,14 @@ export default defineConfig({
     // VERCEL_ENV en src/lib/designPreviewMode.js (auto-on en preview,
     // hard-block de ?designPreview=1 en producción) son código muerto.
     'import.meta.env.VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV ?? ''),
+    // Doppler `bmc-backend/prd` has API_AUTH_TOKEN, not VITE_*. Map for local /logistica
+    // drafts + adjunto proxy. Production Vercel still uses VITE_BMC_API_AUTH_TOKEN.
+    'import.meta.env.VITE_BMC_API_AUTH_TOKEN': JSON.stringify(
+      process.env.VITE_BMC_API_AUTH_TOKEN || process.env.VITE_API_AUTH_TOKEN || process.env.API_AUTH_TOKEN || '',
+    ),
+    'import.meta.env.VITE_API_AUTH_TOKEN': JSON.stringify(
+      process.env.VITE_API_AUTH_TOKEN || process.env.VITE_BMC_API_AUTH_TOKEN || process.env.API_AUTH_TOKEN || '',
+    ),
   },
   plugins: [
     react(),
