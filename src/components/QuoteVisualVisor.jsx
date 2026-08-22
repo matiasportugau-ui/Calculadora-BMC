@@ -3,6 +3,9 @@ import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Pencil
 import { C, FONT, ROOF_2D_QUOTE_VISOR_STEP_IDS, SHC, TR } from "../data/constants.js";
 import { DEFAULT_AGUA_REFERENCE_IMAGES, getQuoteVisorContext, QUOTE_VISOR_SHOP_URLS } from "../data/quoteVisorMedia.js";
 import { getBorderAccentSlides, readShopifyImageOverrides, writeShopifyImageOverride } from "../data/quoteVisorShopifyResolve.js";
+import ProductExplorerTabs from "./ProductExplorerTabs.jsx";
+import ProductTooltip from "./ProductTooltip.jsx";
+import "../styles/productExplorer.css";
 
 const CAROUSEL_MS = 5500;
 
@@ -63,6 +66,9 @@ export default function QuoteVisualVisor({
   const [overrideDraft, setOverrideDraft] = useState("");
   const [showOverride, setShowOverride] = useState(false);
   const [shopifyOverrideGen, setShopifyOverrideGen] = useState(0);
+  const [shiftPressed, setShiftPressed] = useState(false);
+  const [hoveredTab, setHoveredTab] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const timerRef = useRef(null);
   const touchUnpauseRef = useRef(null);
   const panelinVideoRef = useRef(null);
@@ -166,6 +172,22 @@ export default function QuoteVisualVisor({
 
   useEffect(() => {
     return () => clearTimeout(touchUnpauseRef.current);
+  }, []);
+
+  // Keyboard listener for Shift key (ProductExplorerTabs Shift+hover)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.shiftKey) setShiftPressed(true);
+    };
+    const handleKeyUp = (e) => {
+      if (!e.shiftKey) setShiftPressed(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, []);
 
   const go = useCallback(
@@ -1009,9 +1031,28 @@ export default function QuoteVisualVisor({
               >
                 Ver en tienda BMC <ExternalLink size={14} />
               </a>
+
+              {/* ProductExplorerTabs: 3-tab interface for product details */}
+              {slide && (
+                <ProductExplorerTabs
+                  product={slide}
+                  onMouseEnter={() => setHoveredTab(true)}
+                  onMouseLeave={() => setHoveredTab(false)}
+                  onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
+                />
+              )}
             </>
           ) : null}
         </div>
+      )}
+
+      {/* ProductTooltip: Shift+hover description tooltip */}
+      {slide && shiftPressed && hoveredTab && (
+        <ProductTooltip
+          product={slide}
+          visible={true}
+          position={tooltipPos}
+        />
       )}
     </div>
   );
