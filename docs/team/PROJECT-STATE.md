@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (/logistica mesa depo + BMC Driver Loop)
+**Última actualización:** 2026-08-22 (pack chofer ENV-260821-001 HITL)
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA). PWA Outdoor Night. Customer `/seguimiento/:token` parked. Merged #1078.
 
@@ -25,6 +25,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-22 (docs — pack chofer ENV-260821-001 HITL):** Hoja + remito con mercadería + plan de carga + still 3D. Static `public/driver-pack/ENV-260821-001/` (`index.html` + PDF). Preview path `/driver-pack/ENV-260821-001/`. **No WhatsApp.** Javier Plada FALTA calle/tel. No mezclar #1051.
+
+**2026-08-21 (feat — logistica cargo P0 sólidos + patio):** Worktree `logistica-mesa-depo` (#1077). Free-drag ya no atraviesa: AABB + 50 % apoyo (`cargoSolidBodies.js`). Patio = carriles de piso por pedido, placa con nombre, Sacar/Cargar/Quitar patio. Estudio industria en `docs/team/LOGISTICA-AGENT-STUDY-PACK.md` §8. Tests `cargoSolidBodies` + `yardLayout`. **No push** hasta “dale”. No mezclar #1051.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 

@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>PACK CHOFER · ENV-260821-001</title>
+<style>
+  :root {
+    --bmc: #0B3D91;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --ok: #16a34a;
+    --warn: #f59e0b;
+    --depo: #0284c7;
+    --pick: #ea580c;
+    --bar-h: 52px;
+  }
+  @page { size: A4; margin: 8mm; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font: 13px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: #e8eef6;
+    padding-bottom: calc(var(--bar-h) + 12px + env(safe-area-inset-bottom));
+  }
+  a { color: inherit; }
+
+  .nav-bar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: #fff;
+    border-bottom: 2px solid var(--bmc);
+    padding: 6px 8px calc(6px + env(safe-area-inset-top));
+    padding-top: calc(6px + env(safe-area-inset-top));
+  }
+  .nav-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .nav-top .env { font-weight: 800; color: var(--bmc); font-size: 13px; }
+  .nav-top .prog {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .nav-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+  }
+  .nav-chips a, .nav-chips button {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: #f8fafc;
+    color: var(--ink);
+    font: inherit;
+    font-weight: 800;
+    font-size: 12px;
+    min-height: 36px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .nav-chips a.on, .nav-chips button.on {
+    background: var(--bmc);
+    color: #fff;
+    border-color: var(--bmc);
+  }
+  .nav-chips a.maps {
+    background: var(--ok);
+    color: #fff;
+    border-color: var(--ok);
+  }
+  .nav-chips .arrows { margin-left: auto; display: flex; gap: 5px; }
+  .nav-chips .arrows button { min-width: 44px; font-size: 16px; }
+
+  section.pack-sec {
+    max-width: 820px;
+    margin: 10px auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(15,23,42,.08);
+    overflow: hidden;
+    scroll-margin-top: 128px;
+  }
+  .sec-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    background: #f8fafc;
+  }
+  .sec-head .kind {
+    font-size: 10px; font-weight: 800; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .sec-head h2 { margin: 0; font-size: 18px; }
+  .sec-head .ped {
+    font-size: 22px; font-weight: 800; color: var(--bmc); letter-spacing: -.03em;
+  }
+  .sec-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 44px; padding: 8px 12px; border-radius: 9px;
+    font-weight: 800; font-size: 13px; text-decoration: none;
+    border: 0;
+  }
+  .btn-tel { background: var(--bmc); color: #fff; }
+  .btn-maps { background: var(--ok); color: #fff; }
+  .btn-ghost { background: #eef2ff; color: var(--bmc); }
+  .btn-next { background: var(--ink); color: #fff; }
+  .faltatel { background: var(--warn); color: #111; min-height: 44px; padding: 8px 12px; border-radius: 9px; font-weight: 800; display: inline-flex; align-items: center; }
+
+  .sec-body { padding: 12px; }
+  .do {
+    font-size: 16px; font-weight: 800; margin: 0 0 8px;
+    padding: 10px 12px; border-radius: 10px;
+  }
+  .do.depo { background: #e0f2fe; color: #075985; }
+  .do.obra { background: #dcfce7; color: #166534; }
+  .do.pick { background: #ffedd5; color: #9a3412; }
+  .do.warn { background: #fef3c7; color: #92400e; }
+  .where, .what { margin: 0 0 8px; color: #334155; font-size: 14px; }
+  .where b, .what b { color: var(--ink); }
+  .peek {
+    display: block;
+    margin: 12px 12px 14px;
+    padding: 12px;
+    background: #0f172a;
+    color: #fff;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  /* Hoja */
+  .map-bleed { position: relative; height: 150px; background: #0f172a; }
+  .map-bleed img { width: 100%; height: 100%; object-fit: cover; object-position: center 42%; display: block; }
+  .map-overlay {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 22px 12px 10px;
+    background: linear-gradient(transparent, rgba(11,61,145,.94) 50%);
+    color: #fff; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px;
+  }
+  .map-overlay h1 { margin: 0; font-size: 10px; letter-spacing: .08em; opacity: .9; }
+  .map-overlay .env { font-size: 20px; font-weight: 800; margin: 2px 0 6px; }
+  .map-overlay .name { font-size: 20px; font-weight: 800; }
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 2px solid var(--bmc); }
+  .kpi { padding: 8px 4px; text-align: center; border-right: 1px solid var(--line); }
+  .kpi:last-child { border-right: 0; }
+  .kpi b { display: block; font-size: 8px; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
+  .kpi span { display: block; font-size: 14px; font-weight: 800; color: var(--bmc); }
+  .kpi .sub { font-size: 9px; font-weight: 650; color: #475569; }
+  .alert { background: #fff7ed; border-bottom: 2px solid var(--warn); color: #9a3412; padding: 8px 12px; font-weight: 650; font-size: 12px; }
+  .note { margin: 10px 12px; background: #eff6ff; border-left: 3px solid var(--bmc); padding: 8px 10px; border-radius: 0 8px 8px 0; font-size: 12px; color: #1e3a5f; }
+  .print-toc { display: none; padding: 8px 12px; gap: 6px; flex-wrap: wrap; }
+  .print-toc a { font-size: 11px; font-weight: 800; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; text-decoration: none; color: var(--bmc); }
+
+  .vuelta-h { display: flex; align-items: center; gap: 8px; padding: 4px 12px 2px; }
+  .vuelta-h .n { width: 22px; height: 22px; border-radius: 6px; background: var(--bmc); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 11px; }
+  .vuelta-h h3 { margin: 0; font-size: 14px; }
+  .vuelta-h .time { margin-left: auto; font-weight: 800; color: var(--bmc); }
+
+  .stop {
+    display: grid;
+    grid-template-columns: 96px 1fr auto;
+    gap: 6px 8px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 0 12px 6px;
+    padding: 7px 8px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .stop.levante { border-left: 4px solid var(--pick); }
+  .stop.entrega { border-left: 4px solid var(--ok); }
+  .stop.depo { border-left: 4px solid var(--depo); }
+  .stop.warn { border-color: var(--warn); background: #fffbeb; }
+  .pedido .tipo { display: block; font-size: 8px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .pedido a.num {
+    display: block; font-size: 15px; font-weight: 800; color: var(--bmc);
+    text-decoration: none; white-space: nowrap; letter-spacing: -.03em;
+  }
+  .who { margin: 0; font-size: 13px; font-weight: 800; }
+  .meta { font-size: 11px; color: #334155; }
+  .acts { display: flex; flex-direction: column; gap: 4px; min-width: 92px; }
+  .acts a {
+    text-align: center; text-decoration: none; font-weight: 800; font-size: 12px;
+    padding: 7px 8px; border-radius: 7px; min-height: 36px; display: grid; place-items: center;
+  }
+  .acts .tel { background: var(--bmc); color: #fff; }
+  .acts .maps { background: var(--ok); color: #fff; }
+  .acts .rem { background: #eef2ff; color: var(--bmc); }
+  .acts .plan { background: #0f172a; color: #fff; }
+  .acts .d3 { background: #7c3aed; color: #fff; }
+  .jump-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    grid-column: 1 / -1;
+    margin-top: 6px;
+  }
+  .jump-row a {
+    flex: 1;
+    min-width: 120px;
+    min-height: 40px;
+    display: grid;
+    place-items: center;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+  .jump-row .plan { background: #0f172a; color: #fff; }
+  .jump-row .d3 { background: #7c3aed; color: #fff; }
+  .btn-plan { background: #0f172a; color: #fff; }
+  .btn-3d { background: #7c3aed; color: #fff; }
+  .chip { display: inline-block; background: var(--warn); color: #111; font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 999px; }
+  .goods { grid-column: 1 / -1; margin-top: 2px; }
+  table.bom {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin: 6px 0 0;
+  }
+  table.bom th {
+    background: #0B3D91;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 5px 7px;
+  }
+  table.bom th:last-child, table.bom td:last-child { text-align: right; }
+  table.bom td {
+    padding: 5px 7px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  table.bom tbody tr:last-child td { border-bottom: 0; }
+  table.bom .prod { font-weight: 800; }
+  .remito-h {
+    margin: 10px 0 4px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--bmc);
+  }
+  .stop table.bom { font-size: 11px; }
+  .stop table.bom th { padding: 4px 6px; }
+
+  .plan-step {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .plan-step .n {
+    width: 36px; height: 36px; border-radius: 10px; background: var(--bmc); color: #fff;
+    display: grid; place-items: center; font-weight: 800;
+  }
+  .plan-step h3 { margin: 0; font-size: 15px; }
+  .plan-step p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+  .still { width: 100%; border-radius: 10px; display: block; }
+  .cap { font-size: 11px; color: var(--muted); margin: 6px 0 14px; }
+  .docs { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 12px 14px; }
+  .docs a { font-size: 11px; font-weight: 700; padding: 6px 8px; border-radius: 7px; background: #f1f5f9; text-decoration: none; color: var(--bmc); }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .nav-bar { display: none !important; }
+    .print-toc { display: flex; }
+    section.pack-sec {
+      box-shadow: none; border-radius: 0; margin: 0;
+      break-before: page; break-inside: avoid;
+      max-width: none;
+    }
+    section#hoja { break-before: auto; }
+    .peek { break-inside: avoid; }
+    .btn, .acts a { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<nav class="nav-bar" aria-label="Navegación del pack">
+  <div class="nav-top">
+    <span class="env">ENV-260821-001 · Fernando</span>
+    <span class="prog" id="prog">1 / 11</span>
+  </div>
+  <div class="nav-chips" id="chips">
+    <a href="#hoja" data-i="0">Hoja</a>
+    <a href="#r-55434" data-i="1">1</a>
+    <a href="#r-1346143" data-i="2">2</a>
+    <a href="#r-1345381" data-i="3">3</a>
+    <a href="#r-1346148" data-i="4">4</a>
+    <a href="#r-montfrio" data-i="5">5</a>
+    <a href="#r-26087177" data-i="6">6</a>
+    <a href="#r-26086076" data-i="7">7</a>
+    <a href="#r-26087171" data-i="8">8</a>
+    <a href="#plan" data-i="9">Plan</a>
+    <a href="#vista-3d" data-i="10">3D</a>
+    <a class="maps" href="https://www.google.com/maps/dir/-34.81516,-56.02435/-34.8714606,-55.1240164/Montfr%C3%ADo,+Uruguay/-34.88607,-55.03947/-34.9087,-54.9583/-34.9132,-54.9632/-34.9053458,-54.928693" target="_blank" rel="noopener">Maps</a>
+    <span class="arrows">
+      <button type="button" id="prev" aria-label="Anterior">←</button>
+      <button type="button" id="next" aria-label="Siguiente">→</button>
+    </span>
+  </div>
+</nav>
+
+<section class="pack-sec" id="hoja">
+  <div class="map-bleed">
+    <img src="logistica-route-map.png" alt="Ruta del día" />
+    <div class="map-overlay">
+      <div>
+        <h1>BMC URUGUAY · PACK CHOFER</h1>
+        <div class="env">ENV-260821-001</div>
+        <a class="btn btn-maps" style="min-height:36px;padding:6px 10px;font-size:12px"
+           href="https://www.google.com/maps/dir/-34.81516,-56.02435/-34.8714606,-55.1240164/Montfr%C3%ADo,+Uruguay/-34.88607,-55.03947/-34.9087,-54.9583/-34.9132,-54.9632/-34.9053458,-54.928693"
+           target="_blank" rel="noopener">Ruta completa · Maps</a>
+      </div>
+      <div><div style="font-size:9px;opacity:.85">PARA</div><div class="name">Fernando</div></div>
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><b>Fecha</b><span>21/08</span><span class="sub">Vie</span></div>
+    <div class="kpi"><b>Inicio</b><span>09:00</span><span class="sub">Kingspan</span></div>
+    <div class="kpi"><b>Km</b><span>~94</span><span class="sub">cotizable</span></div>
+    <div class="kpi"><b>Drops</b><span>6</span><span class="sub">obra/depo</span></div>
+    <div class="kpi"><b>Picks</b><span>2</span><span class="sub">fábricas</span></div>
+  </div>
+  <div class="alert"><strong>HITL — no enviado.</strong> Falta calle y teléfono de <b>Javier Plada</b>. Confirmar patente.</div>
+  <div class="print-toc">
+    <a href="#r-55434">1 Kingspan</a><a href="#r-1346143">2 Darío</a><a href="#r-1345381">3 Álvaro</a>
+    <a href="#r-1346148">4 ALEDMA</a><a href="#r-montfrio">5 Montfrío</a><a href="#r-26087177">6 Abril</a>
+    <a href="#r-26086076">7 Javier</a><a href="#r-26087171">8 Daniel</a><a href="#plan">Plan</a><a href="#vista-3d">3D</a>
+  </div>
+  <p class="note">Cotización desde <b>Kingspan</b>. <b>Álvaro</b> y <b>ALEDMA</b> se descargan en el <b>depósito BMC</b>, no en la dirección del cliente. Camión <b>12 m</b>. Tocá el <b>pedido</b> para abrir el remito.</p>
+
+  <div class="vuelta-h"><div class="n">1</div><h3>Vuelta Kingspan</h3><div class="time">09:00</div></div>
+  <div class="stop levante">
+    <div class="pedido"><span class="tipo">Pick</span><a class="num" href="#r-55434">55434</a></div>
+    <div><p class="who">Kingspan</p><div class="meta">Camino San Juan · 3 pedidos</div></div>
+    <div class="acts">
+      <a class="tel" href="tel:091958537">091 958 537</a>
+      <a class="rem" href="#r-55434">Remito</a>
+    </div>
+    <div class="goods">
+      <table class="bom">
+        <thead><tr><th>Pedido</th><th>Producto</th><th>Uds</th></tr></thead>
+        <tbody>
+          <tr><td>#1346143</td><td class="prod">IsoRoof 30 mm</td><td>según PDF</td></tr>
+          <tr><td>#1345381</td><td class="prod">ISODEC 100 mm · 7×10,30 + 3×9,80</td><td>10 paneles</td></tr>
+          <tr><td>#1346148</td><td class="prod">Gotero frontal 100 mm</td><td>3</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="jump-row">
+      <a class="plan" href="#plan">Plan de carga</a>
+      <a class="d3" href="#vista-3d">Vista 3D</a>
+    </div>
+  </div>
+  <div class="stop entrega">
+    <div class="pedido"><span class="tipo">Drop</span><a class="num" href="#r-1346143">#1346143</a></div>
+    <div><p class="who">Darío de León</p><div class="meta">Costa de Oro · obra</div></div>
+    <div class="acts">
+      <a class="tel" href="tel:099148920">099 148 920</a>
+      <a class="rem" href="#r-1346143">Remito</a>
+    </div>
+    <div class="goods">
+      <table class="bom">
+        <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+        <tbody>
+          <tr><td class="prod">IsoRoof</td><td>30 mm</td><td>—</td><td>según PDF</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="stop depo">
+    <div class="pedido"><span class="tipo">Depo</span><a class="num" href="#r-1345381">#1345381</a></div>
+    <div><p class="who">Álvaro Gonzalez</p><div class="meta">Descargar en depósito BMC</div></div>
+    <div class="acts">
+      <a class="tel" href="tel:094650240">094 650 240</a>
+      <a class="rem" href="#r-1345381">Remito</a>
+    </div>
+    <div class="goods">
+      <table class="bom">
+        <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+        <tbody>
+          <tr><td class="prod">ISODEC</td><td>100 mm</td><td>10,30 m</td><td>7</td></tr>
+          <tr><td class="prod">ISODEC</td><td>100 mm</td><td>9,80 m</td><td>3</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="stop depo">
+    <div class="pedido"><span class="tipo">Depo</span><a class="num" href="#r-1346148">#1346148</a></div>
+    <div><p class="who">ALEDMA S.A.</p><div class="meta">Descargar en depósito BMC</div></div>
+    <div class="acts">
+      <a class="tel" href="tel:94051542">94 051 542</a>
+      <a class="rem" href="#r-1346148">Remito</a>
+    </div>
+    <div class="goods">
+      <table class="bom">
+        <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+        <tbody>
+          <tr><td class="prod">Gotero frontal</td><td>100 mm</td><td>—</td><td>3</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="vuelta-h"><div class="n">2</div><h3>Vuelta Montfrío</h3></div>
+  <div class="stop levante">
+    <div class="pedido"><span class="tipo">Pick</span><a class="num" href="#r-montfrio">Montfrío</a></div>
+    <div><p class="who">Montfrío</p><div class="meta">3 pedidos</div></div>
+    <div class="acts"><a class="rem" href="#r-montfrio">Remito</a></div>
+    <div class="goods">
+      <table class="bom">
+        <thead><tr><th>Pedido</th><th>Producto</th><th>Uds</th></tr></thead>
+        <tbody>
+          <tr><td>#26087177</td><td class="prod">Abril · según PDF Montfrío</td><td>—</td></tr>
+          <tr><td>#26086076</td><td class="prod">Javier · PU37 10×5,4 + goteros</td><td>4 goteros</td></tr>
+          <tr><td>#26087171</td><td class="prod">Daniel · Isopanel 50 mm</td><td>según PDF</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="jump-row">
+      <a class="plan" href="#plan">Plan de carga</a>
+      <a class="d3" href="#vista-3d">Vista 3D</a>
+    </div>
+  </div>
+  <div class="stop entrega">
+    <div class="pedido"><span class="tipo">Drop</span><a class="num" href="#r-26087177">#26087177</a></div>
+    <div><p class="who">Abril Rodríguez</p><div class="meta">Chacras del Pinar · obra</div></div>
+    <div class="acts">
+      <a class="tel" href="tel:098467199">098 467 199</a>
+      <a class="rem" href="#r-26087177">Remito</a>
+    </div>
+    <div class="goods">
+      <table class="bom">
+        <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+        <tbody>
+          <tr><td class="prod">Pedido Montfrío</td><td>—</td><td>—</td><td>según PDF</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="stop warn entrega">
+    <div class="pedido"><span class="tipo">Drop</span><a class="num" href="#r-26086076">#26086076</a></div>
+    <div><p class="who">Javier Plada <span class="chip">FALTA calle</span></p><div class="meta">Barrio 4H · pin ciudad</div></div>
+    <div class="acts"><a class="rem" href="#r-26086076">Remito</a></div>
+    <div class="goods">
+      <table class="bom">
+        <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+        <tbody>
+          <tr><td class="prod">PU37</td><td>—</td><td>cubierta 10 × 5,4 m</td><td>—</td></tr>
+          <tr><td class="prod">Goteros</td><td>—</td><td>—</td><td>4</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="stop entrega">
+    <div class="pedido"><span class="tipo">Drop</span><a class="num" href="#r-26087171">#26087171</a></div>
+    <div><p class="who">Daniel Franco</p><div class="meta">Calle Cuba · obra</div></div>
+    <div class="acts">
+      <a class="tel" href="tel:098905764">098 905 764</a>
+      <a class="rem" href="#r-26087171">Remito</a>
+    </div>
+    <div class="goods">
+      <table class="bom">
+        <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+        <tbody>
+          <tr><td class="prod">Isopanel</td><td>50 mm</td><td>—</td><td>según PDF</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="docs">
+    <a href="#plan">Plan de carga</a>
+    <a href="#vista-3d">Vista 3D</a>
+    <a href="https://www.dropbox.com/scl/fi/bd41p1kwmzc0e4xgs5qzw/Cotizaci-n-20072026-Dario-De-Leone-Isoroof-30-mm-Ocean-Park-LO.pdf" target="_blank" rel="noopener">PDF Darío</a>
+    <a href="https://drive.google.com/file/d/1SPwE80c1aQ6HsqR1fMPAAvcuVsk0YhQv/view" target="_blank" rel="noopener">PDF Álvaro</a>
+    <a href="https://www.dropbox.com/scl/fi/qlgotocfn299iyx4rhvp1/Cotizaci-n-17082026-ALEDMA-SA-Isodec-EPS-100-mm-Mvdeo-WA.pdf" target="_blank" rel="noopener">PDF ALEDMA</a>
+    <a href="https://www.dropbox.com/scl/fi/7kd15dsi0qytdvbu1uc7z/BMC-2026-0017_2026-07-22_Abril-Rodriguez.pdf" target="_blank" rel="noopener">PDF Abril</a>
+    <a href="https://www.dropbox.com/scl/fi/wn5s12xtfgwu443o8arzk/Cotizacion-Javier-Plada-Montfrio-10x5.4-PU37-4goteros-2026-08-05-1.pdf" target="_blank" rel="noopener">PDF Javier</a>
+    <a href="https://www.dropbox.com/scl/fi/esounrjqyassfvkbjm2lu/Cotizaci-n-29072026-Daniel-Isopanel-50-mm-Maldonado-WA.pdf" target="_blank" rel="noopener">PDF Daniel</a>
+  </div>
+  <a class="peek" href="#r-55434">Empezar · 1 Kingspan →</a>
+</section>
+
+<section class="pack-sec" id="r-55434">
+  <div class="sec-head">
+    <div><div class="kind">Pick 1 · Vuelta Kingspan</div><div class="ped">55434</div><h2>Kingspan (Bromyros)</h2></div>
+    <div class="sec-acts">
+      <a class="btn btn-tel" href="tel:091958537">Llamar Florencia</a>
+      <a class="btn btn-maps" href="https://www.google.com/maps/search/?api=1&amp;query=-34.81516,-56.02435" target="_blank" rel="noopener">Maps</a>
+      <a class="btn btn-plan" href="#plan">Plan de carga</a>
+      <a class="btn btn-3d" href="#vista-3d">3D</a>
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <p class="do pick">Levantar carga · llegada 09:00</p>
+    <p class="where"><b>Dónde.</b> Camino San Juan S/N, Colonia Nicolich. Retiro n° 55434.</p>
+    <p class="what"><b>Contacto.</b> Florencia Méndez · 091 958 537</p>
+    <h3 class="remito-h">Remito · mercadería a cargar</h3>
+    <table class="bom">
+      <thead><tr><th>Pedido</th><th>Cliente</th><th>Producto</th><th>Uds</th></tr></thead>
+      <tbody>
+        <tr><td>#1346143</td><td>Darío</td><td class="prod">IsoRoof 30 mm</td><td>según PDF</td></tr>
+        <tr><td>#1345381</td><td>Álvaro</td><td class="prod">ISODEC 100 mm · 7×10,30 m + 3×9,80 m</td><td>10 paneles</td></tr>
+        <tr><td>#1346148</td><td>ALEDMA</td><td class="prod">Gotero frontal 100 mm</td><td>3</td></tr>
+      </tbody>
+    </table>
+    <div class="jump-row">
+      <a class="plan" href="#plan">Plan de carga</a>
+      <a class="d3" href="#vista-3d">Vista 3D</a>
+    </div>
+  </div>
+  <a class="peek" href="#r-1346143">Siguiente · Darío #1346143 →</a>
+</section>
+
+<section class="pack-sec" id="r-1346143">
+  <div class="sec-head">
+    <div><div class="kind">Drop 2 · Obra</div><div class="ped">#1346143</div><h2>Darío de León</h2></div>
+    <div class="sec-acts">
+      <a class="btn btn-tel" href="tel:099148920">099 148 920</a>
+      <a class="btn btn-maps" href="https://www.google.com/maps/search/?api=1&amp;query=-34.8714606,-55.1240164" target="_blank" rel="noopener">Maps</a>
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <p class="do obra">Entregar en obra (Costa de Oro)</p>
+    <p class="where"><b>Dónde.</b> Costa de Oro — usar pin Maps (no hay nro de puerta en el pedido).</p>
+    <h3 class="remito-h">Remito · mercadería</h3>
+    <table class="bom">
+      <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+      <tbody>
+        <tr><td class="prod">IsoRoof</td><td>30 mm</td><td>—</td><td>según PDF</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <a class="peek" href="#r-1345381">Siguiente · Álvaro #1345381 →</a>
+</section>
+
+<section class="pack-sec" id="r-1345381">
+  <div class="sec-head">
+    <div><div class="kind">Drop 3 · Depósito BMC</div><div class="ped">#1345381</div><h2>Álvaro Gonzalez</h2></div>
+    <div class="sec-acts">
+      <a class="btn btn-tel" href="tel:094650240">094 650 240</a>
+      <a class="btn btn-maps" href="https://maps.app.goo.gl/H4JrCnTgmke7ZRReA" target="_blank" rel="noopener">Maps depo</a>
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <p class="do depo">Descargar en depósito BMC · Liber Seregni y Paravís</p>
+    <p class="where"><b>Dónde.</b> Depósito BMC Uruguay. Maps abre el pin del depo, no la obra del cliente.</p>
+    <p class="what"><b>No ir</b> a la obra en Maldonado.</p>
+    <h3 class="remito-h">Remito · mercadería</h3>
+    <table class="bom">
+      <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+      <tbody>
+        <tr><td class="prod">ISODEC</td><td>100 mm</td><td>10,30 m</td><td>7</td></tr>
+        <tr><td class="prod">ISODEC</td><td>100 mm</td><td>9,80 m</td><td>3</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <a class="peek" href="#r-1346148">Siguiente · ALEDMA #1346148 →</a>
+</section>
+
+<section class="pack-sec" id="r-1346148">
+  <div class="sec-head">
+    <div><div class="kind">Drop 4 · Depósito BMC</div><div class="ped">#1346148</div><h2>ALEDMA S.A.</h2></div>
+    <div class="sec-acts">
+      <a class="btn btn-tel" href="tel:94051542">94 051 542</a>
+      <a class="btn btn-maps" href="https://maps.app.goo.gl/H4JrCnTgmke7ZRReA" target="_blank" rel="noopener">Maps depo</a>
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <p class="do depo">Descargar en depósito BMC · Liber Seregni y Paravís</p>
+    <p class="where"><b>Dónde.</b> Mismo depo BMC. No entregar en Paullier.</p>
+    <p class="what"><b>El cliente no retira</b> en planta ni en Paullier.</p>
+    <h3 class="remito-h">Remito · mercadería</h3>
+    <table class="bom">
+      <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+      <tbody>
+        <tr><td class="prod">Perf. Ch. Gotero Frontal</td><td>100 mm</td><td>—</td><td>3</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <a class="peek" href="#r-montfrio">Siguiente · Montfrío pick →</a>
+</section>
+
+<section class="pack-sec" id="r-montfrio">
+  <div class="sec-head">
+    <div><div class="kind">Pick 5 · Vuelta Montfrío</div><div class="ped">Montfrío</div><h2>Levante Montfrío</h2></div>
+    <div class="sec-acts">
+      <a class="btn btn-maps" href="https://www.google.com/maps/search/?api=1&amp;query=Montfr%C3%ADo%2C+Uruguay" target="_blank" rel="noopener">Maps</a>
+      <a class="btn btn-plan" href="#plan">Plan de carga</a>
+      <a class="btn btn-3d" href="#vista-3d">3D</a>
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <p class="do pick">Levantar carga Abril + Javier + Daniel</p>
+    <p class="where"><b>Dónde.</b> Planta Montfrío (abrir Maps por nombre).</p>
+    <h3 class="remito-h">Remito · mercadería a cargar</h3>
+    <table class="bom">
+      <thead><tr><th>Pedido</th><th>Cliente</th><th>Producto</th><th>Uds</th></tr></thead>
+      <tbody>
+        <tr><td>#26087177</td><td>Abril</td><td class="prod">Pedido Montfrío</td><td>según PDF</td></tr>
+        <tr><td>#26086076</td><td>Javier</td><td class="prod">PU37 10×5,4 + goteros</td><td>4 goteros</td></tr>
+        <tr><td>#26087171</td><td>Daniel</td><td class="prod">Isopanel 50 mm</td><td>según PDF</td></tr>
+      </tbody>
+    </table>
+    <div class="jump-row">
+      <a class="plan" href="#plan">Plan de carga</a>
+      <a class="d3" href="#vista-3d">Vista 3D</a>
+    </div>
+  </div>
+  <a class="peek" href="#r-26087177">Siguiente · Abril #26087177 →</a>
+</section>
+
+<section class="pack-sec" id="r-26087177">
+  <div class="sec-head">
+    <div><div class="kind">Drop 6 · Obra</div><div class="ped">#26087177</div><h2>Abril Rodríguez</h2></div>
+    <div class="sec-acts">
+      <a class="btn btn-tel" href="tel:098467199">098 467 199</a>
+      <a class="btn btn-maps" href="https://www.google.com/maps/search/?api=1&amp;query=-34.88607,-55.03947" target="_blank" rel="noopener">Maps</a>
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <p class="do obra">Entregar en obra</p>
+    <p class="where"><b>Dónde.</b> Chacras del Pinar · Av. Antonio Lussich, Punta Ballena.</p>
+    <h3 class="remito-h">Remito · mercadería</h3>
+    <table class="bom">
+      <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+      <tbody>
+        <tr><td class="prod">Pedido Montfrío</td><td>—</td><td>—</td><td>según PDF</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <a class="peek" href="#r-26086076">Siguiente · Javier #26086076 →</a>
+</section>
+
+<section class="pack-sec" id="r-26086076">
+  <div class="sec-head">
+    <div><div class="kind">Drop 7 · Obra · FALTA DATOS</div><div class="ped">#26086076</div><h2>Javier Plada</h2></div>
+    <div class="sec-acts">
+      <span class="faltatel">FALTA TEL</span>
+      <a class="btn btn-maps" href="https://www.google.com/maps/search/?api=1&amp;query=-34.9087,-54.9583" target="_blank" rel="noopener">Maps ciudad</a>
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <p class="do warn">No completar hasta tener calle y teléfono — HITL</p>
+    <p class="where"><b>Dónde (provisorio).</b> Barrio 4H, Maldonado. El pin es de ciudad, no de puerta.</p>
+    <h3 class="remito-h">Remito · mercadería</h3>
+    <table class="bom">
+      <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+      <tbody>
+        <tr><td class="prod">PU37</td><td>—</td><td>cubierta 10 × 5,4 m</td><td>—</td></tr>
+        <tr><td class="prod">Goteros</td><td>—</td><td>—</td><td>4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <a class="peek" href="#r-26087171">Siguiente · Daniel #26087171 →</a>
+</section>
+
+<section class="pack-sec" id="r-26087171">
+  <div class="sec-head">
+    <div><div class="kind">Drop 8 · Obra</div><div class="ped">#26087171</div><h2>Daniel Franco</h2></div>
+    <div class="sec-acts">
+      <a class="btn btn-tel" href="tel:098905764">098 905 764</a>
+      <a class="btn btn-maps" href="https://www.google.com/maps/search/?api=1&amp;query=-34.9132,-54.9632" target="_blank" rel="noopener">Maps</a>
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <p class="do obra">Entregar en obra</p>
+    <p class="where"><b>Dónde.</b> Calle Cuba entre Av España y Honduras (casa Delirio), Maldonado.</p>
+    <h3 class="remito-h">Remito · mercadería</h3>
+    <table class="bom">
+      <thead><tr><th>Producto</th><th>Espesor</th><th>Medida</th><th>Uds</th></tr></thead>
+      <tbody>
+        <tr><td class="prod">Isopanel</td><td>50 mm</td><td>—</td><td>según PDF</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <a class="peek" href="#plan">Siguiente · Plan de carga →</a>
+</section>
+
+<section class="pack-sec" id="plan">
+  <div class="sec-head">
+    <div><div class="kind">Cama 12 m · orden de descarga</div><h2>Plan de carga</h2></div>
+    <div class="sec-acts">
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+      <a class="btn btn-next" href="#vista-3d">Ver 3D →</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <p class="what">Puerta / cola primero. Tocá un paso para ir al remito. Álvaro y ALEDMA salen en el <b>depo BMC</b>, no en obra.</p>
+    <a class="plan-step" href="#r-1346143"><span class="n">1</span><div><h3>Darío · #1346143</h3><p>IsoRoof 30 · Costa de Oro · primera baja de vuelta 1</p></div></a>
+    <a class="plan-step" href="#r-1345381"><span class="n">2</span><div><h3>Álvaro · #1345381</h3><p>ISODEC 100 · depósito BMC</p></div></a>
+    <a class="plan-step" href="#r-1346148"><span class="n">3</span><div><h3>ALEDMA · #1346148</h3><p>Goteros · depósito BMC</p></div></a>
+    <a class="plan-step" href="#r-26087177"><span class="n">4</span><div><h3>Abril · #26087177</h3><p>Tras levante Montfrío · Punta Ballena</p></div></a>
+    <a class="plan-step" href="#r-26086076"><span class="n">5</span><div><h3>Javier · #26086076</h3><p>FALTA calle/tel · no confirmar baja a ciegas</p></div></a>
+    <a class="plan-step" href="#r-26087171"><span class="n">6</span><div><h3>Daniel · #26087171</h3><p>Isopanel 50 · Calle Cuba</p></div></a>
+  </div>
+  <a class="peek" href="#vista-3d">Siguiente · Vista 3D →</a>
+</section>
+
+<section class="pack-sec" id="vista-3d">
+  <div class="sec-head">
+    <div><div class="kind">Foto 3D · no es modelo vivo</div><h2>Patio / dump</h2></div>
+    <div class="sec-acts">
+      <a class="btn btn-ghost" href="#plan">← Plan</a>
+      <a class="btn btn-ghost" href="#hoja">↑ Hoja</a>
+    </div>
+  </div>
+  <div class="sec-body">
+    <img class="still" src="still-3d-patio.png" alt="Patio 3D — bultos Álvaro y ALEDMA junto al camión" />
+    <p class="cap">Álvaro (izq.) y ALEDMA (der.) en patio. Referencia visual — el chofer usa el remito + Maps, no este visor.</p>
+    <p class="what">Pack HITL — no enviado. Fin del documento. <a href="#hoja">Volver a la hoja</a>.</p>
+  </div>
+</section>
+
+<script>
+(function () {
+  const secs = [...document.querySelectorAll("section.pack-sec")];
+  const chips = [...document.querySelectorAll("#chips a[data-i]")];
+  const prog = document.getElementById("prog");
+  let idx = 0;
+  function go(i) {
+    idx = Math.max(0, Math.min(secs.length - 1, i));
+    secs[idx].scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function paint(i) {
+    idx = i;
+    prog.textContent = (i + 1) + " / " + secs.length;
+    chips.forEach((c) => c.classList.toggle("on", Number(c.dataset.i) === i));
+  }
+  document.getElementById("prev").onclick = () => go(idx - 1);
+  document.getElementById("next").onclick = () => go(idx + 1);
+  chips.forEach((c) => {
+    c.addEventListener("click", () => paint(Number(c.dataset.i)));
+  });
+  window.addEventListener("hashchange", () => {
+    const i = secs.findIndex((s) => "#" + s.id === location.hash);
+    if (i >= 0) paint(i);
+  });
+  const io = new IntersectionObserver((ents) => {
+    const vis = ents
+      .filter((e) => e.isIntersecting && e.intersectionRatio > 0.35)
+      .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+    if (!vis) return;
+    const i = secs.indexOf(vis.target);
+    if (i >= 0) paint(i);
+  }, { rootMargin: "-25% 0px -45% 0px", threshold: [0.35, 0.55, 0.8] });
+  secs.forEach((s) => io.observe(s));
+  paint(0);
+})();
+</script>
+</body>
+</html>
