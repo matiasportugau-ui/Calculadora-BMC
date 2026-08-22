@@ -1,0 +1,18 @@
+C4Context
+  title System Context — Hostinger (public)
+  Person(customer, "Customer", "Buys and manages hosting, domains, email, AI builders")
+  Person(developer, "Developer", "Uses VPS, API, MCP, Docker apps")
+  Person(agency, "Agency partner", "Multi-site, client access, referrals")
+  System(hostinger, "Hostinger Platform", "Managed hosting, VPS, domains, email, AI tools")
+  System_Ext(dns, "Public DNS", "Nameserver delegation")
+  System_Ext(payments, "Payment gateway", "Checkout and renewals")
+  System_Ext(llm, "LLM providers", "Via AI Router — model vendors")
+  System_Ext(stripe, "Stripe etc.", "Horizons merchant payments")
+
+  Rel(customer, hostinger, "Browse, purchase, hPanel")
+  Rel(developer, hostinger, "API bearer token, SSH, Kodee terminal")
+  Rel(agency, hostinger, "Agency hosting, shared access")
+  Rel(hostinger, dns, "DNS zones, nameservers")
+  Rel(hostinger, payments, "Prepaid subscriptions")
+  Rel(hostinger, llm, "Kodee, Horizons, Reach, Router")
+  Rel(hostinger, stripe, "Ecommerce in Horizons/sites")

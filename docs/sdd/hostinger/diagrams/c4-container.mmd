@@ -1,0 +1,43 @@
+C4Container
+  title Container View — Hostinger (public / inferred)
+  Person(user, "User", "Customer or developer")
+
+  Container_Boundary(edge, "Public edge") {
+    Container(web, "Marketing site", "Web", "hostinger.com — plans, checkout handoff")
+    Container(hpanel, "hPanel", "Web app", "hpanel.hostinger.com — control plane")
+    Container(horizons, "Horizons", "Web app", "horizons.hostinger.com — AI builder")
+    Container(reach, "Reach", "Web app", "reach.hostinger.com — email marketing")
+    Container(agents, "AI Agents", "Web app", "agents.hostinger.com — OpenClaw/Hermes/n8n")
+  }
+
+  Container_Boundary(api, "Programmatic") {
+    Container(publicApi, "Hostinger API", "REST OpenAPI", "billing, domains, dns, mail, hosting, vps")
+    Container(mcp, "MCP server", "MCP", "IDE + Kodee VPS terminal bridge")
+  }
+
+  Container_Boundary(compute, "Customer workloads") {
+    Container(shared, "Shared/Cloud hosting", "LiteSpeed + NVMe", "WP, Node, Builder sites")
+    Container(vps, "VPS KVM", "Linux VMs", "Root, Docker, 1-click apps")
+    Container(mail, "Email service", "SMTP/IMAP", "Branded mailboxes")
+  }
+
+  Container_Boundary(ai, "AI layer") {
+    Container(kodee, "Kodee", "Agent", "Support, hPanel ops, VPS terminal")
+    Container(router, "AI Router", "Gateway", "Multi-vendor LLM credits")
+    Container(horizonsAi, "Horizons engine", "Codegen", "NL to web app — internals UNKNOWN")
+  }
+
+  Rel(user, web, "HTTPS")
+  Rel(user, hpanel, "HTTPS")
+  Rel(user, horizons, "HTTPS")
+  Rel(user, publicApi, "Bearer token")
+  Rel(hpanel, shared, "Provision/manage")
+  Rel(hpanel, vps, "Provision/manage")
+  Rel(hpanel, mail, "Provision/manage")
+  Rel(hpanel, kodee, "Chat, memory")
+  Rel(horizons, horizonsAi, "Prompts")
+  Rel(horizons, shared, "Deploy")
+  Rel(kodee, router, "INFERRED")
+  Rel(mcp, publicApi, "Tool calls")
+  Rel(publicApi, vps, "Lifecycle")
+  Rel(publicApi, mail, "Mailbox CRUD")

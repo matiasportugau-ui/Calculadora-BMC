@@ -4,6 +4,8 @@ import PanelinDevPanel from "./PanelinDevPanel.jsx";
 import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
 import TrustBlock from "./panelin/TrustBlock.jsx";
 import { useDictation } from "../hooks/useDictation.js";
+import { speakApple, cancelAppleTts, setAppleTtsAuthTokenProvider } from "../hooks/appleTts.js";
+import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import PanelinCharacter from "./PanelinCharacter.jsx";
 import { useScreenCoWork } from "../hooks/useScreenCoWork.js";
 import { useTabShares } from "../hooks/useTabShares.js";
@@ -281,6 +283,13 @@ export default function PanelinChatPanel({
 }) {
   const [isSkinMenuOpen, setIsSkinMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  // /api/agent/speak* requires auth; appleTts.js is a plain module, so bridge
+  // the identity token into it here (single registration covers VoicePanel
+  // and useHandsFreeVoice too — they all speak through the same module).
+  const { accessToken: bmcAccessToken } = useBmcAuth();
+  useEffect(() => {
+    setAppleTtsAuthTokenProvider(() => bmcAccessToken);
+  }, [bmcAccessToken]);
   /** Resolved Realtime model for voice session (Phase 2). */
   const realtimeModel = useMemo(
     () => resolveRealtimeModel(aiProvider, aiModel),
@@ -404,20 +413,9 @@ export default function PanelinChatPanel({
   }, [ttsSpeed]);
 
   const speakWithReaction = useCallback((text) => {
-    if (typeof window === "undefined" || !window.speechSynthesis || !text) return;
+    if (!text) return;
     setIsTtsSpeaking(true);
-    const speak = () => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = ttsSpeed;
-      utterance.lang = "es-UY";
-      utterance.onend = () => setIsTtsSpeaking(false);
-      utterance.onerror = () => setIsTtsSpeaking(false);
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    };
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) speak();
-    else window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
+    speakApple(text, { rate: ttsSpeed }).finally(() => setIsTtsSpeaking(false));
   }, [ttsSpeed]);
 
   // 2.2 — Focus trap: keep Tab/Shift+Tab inside drawer (skip in embedded sidebar)
@@ -1082,7 +1080,7 @@ export default function PanelinChatPanel({
               setVoiceMode((v) => {
                 const next = !v;
                 if (next) {
-                  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+                  try { cancelAppleTts(); } catch { /* ignore */ }
                   setTtsEnabled(false);
                 }
                 return next;

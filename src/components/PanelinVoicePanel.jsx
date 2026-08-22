@@ -22,6 +22,15 @@ import { useHandsFreeVoice } from "../hooks/useHandsFreeVoice.js";
 import { useDictation } from "../hooks/useDictation.js";
 import { isHandsFreeSupported, canUseWhisperVoice } from "../hooks/voiceSupport.js";
 import {
+  speakApple,
+  cancelAppleTts,
+  listLatamSpeechVoices,
+  loadAppleTtsVoiceName,
+  saveAppleTtsVoiceName,
+  requestArgentinaVoiceInstall,
+  fetchArgentinaVoiceStatus,
+} from "../hooks/appleTts.js";
+import {
   PANELIN_AI_EVENT,
   resolveEffectiveAiPick,
   formatAiChatModelLabel,
@@ -85,21 +94,7 @@ function TranscriptLine({ role, text, primary }) {
 }
 
 function speakAssistant(text) {
-  if (typeof window === "undefined" || !window.speechSynthesis || !text) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "es-UY";
-    utterance.rate = 1.0;
-    const voices = window.speechSynthesis.getVoices();
-    const esVoice = voices.find((v) => v.lang.startsWith("es"));
-    if (esVoice) utterance.voice = esVoice;
-    utterance.onend = () => resolve();
-    utterance.onerror = () => resolve();
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  });
+  return speakApple(text);
 }
 
 /** Push-to-talk Whisper path for browsers without Web Speech (e.g. Firefox). */
@@ -269,7 +264,7 @@ function WhisperVoicePanel({
         <button
           type="button"
           onClick={() => {
-            window.speechSynthesis?.cancel();
+            cancelAppleTts();
             reset();
             onSwitchToText?.();
           }}
@@ -306,6 +301,9 @@ export default function PanelinVoicePanel({
 }) {
   const PRIMARY = skinTokens?.primary || "#0071e3";
   const [voiceError, setVoiceError] = useState(null);
+  const [voiceName, setVoiceName] = useState(() => loadAppleTtsVoiceName());
+  const [voiceOptions, setVoiceOptions] = useState(listLatamSpeechVoices([]));
+  const [arInstalled, setArInstalled] = useState(null);
   const transcriptEndRef = useRef(null);
   // Keep label in sync with header selector (props can lag; storage is SoT with send()).
   const [storedPick, setStoredPick] = useState(() => loadPanelinAiSelection());
@@ -331,6 +329,19 @@ export default function PanelinVoicePanel({
   const chatModelLabel = formatAiChatModelLabel(pick.aiProvider, pick.aiModel);
 
   const handleError = useCallback((msg) => setVoiceError(msg), []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return undefined;
+    const refresh = () => {
+      setVoiceOptions(listLatamSpeechVoices(window.speechSynthesis.getVoices() || []));
+    };
+    refresh();
+    window.speechSynthesis.addEventListener("voiceschanged", refresh);
+    fetchArgentinaVoiceStatus()
+      .then((s) => setArInstalled(!!s.argentina_installed))
+      .catch(() => setArInstalled(false));
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", refresh);
+  }, []);
 
   const handsFreeOk = isHandsFreeSupported();
   const whisperOk = canUseWhisperVoice();
@@ -504,6 +515,84 @@ export default function PanelinVoicePanel({
         }}
       >
         <p style={{ fontSize: 12, color: "#6e6e73", margin: 0 }}>{statusLabel}</p>
+
+        <label style={{ fontSize: 11, color: "#6e6e73", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+          Voz
+          <select
+            aria-label="Voz de lectura Español Argentina"
+            value={voiceName}
+            onChange={(e) => {
+              const v = e.target.value;
+              setVoiceName(v);
+              saveAppleTtsVoiceName(v);
+            }}
+            style={{
+              fontFamily: FONT,
+              fontSize: 11,
+              maxWidth: 230,
+              borderRadius: 8,
+              border: "1px solid #e5e5ea",
+              padding: "4px 6px",
+            }}
+          >
+            {voiceOptions.map((v) => (
+              <option key={`${v.name}-${v.lang}`} value={v.name}>
+                {v.name} ({v.lang})
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() =>
+              speakApple("Che, ¿cómo andás? Soy Diego. Cotizamos el techo cuando quieras.", {
+                voiceName,
+                onNeedsDownload: (msg) => setVoiceError(msg),
+              })
+            }
+            style={{
+              fontFamily: FONT,
+              fontSize: 11,
+              border: "1px solid #e5e5ea",
+              borderRadius: 8,
+              background: "#fff",
+              padding: "4px 8px",
+              cursor: "pointer",
+            }}
+          >
+            Probar
+          </button>
+        </label>
+        {arInstalled === false && (
+          <button
+            type="button"
+            onClick={() => {
+              requestArgentinaVoiceInstall()
+                .then((r) => {
+                  if (!r.ok) {
+                    setVoiceError(
+                      "Abrí Ajustes → Accesibilidad → Contenido leído → Voces → Español (Argentina) → Diego.",
+                    );
+                  }
+                })
+                .catch(() =>
+                  setVoiceError(
+                    "Abrí Ajustes → Accesibilidad → Contenido leído → Voces → Español (Argentina) → Diego.",
+                  ),
+                );
+            }}
+            style={{
+              fontFamily: FONT,
+              fontSize: 11,
+              border: "none",
+              background: "transparent",
+              color: PRIMARY,
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+          >
+            Instalar voz Español (Argentina)
+          </button>
+        )}
 
         {/* Mic button + VU ring */}
         <div style={{ position: "relative", width: MIC_SIZE, height: MIC_SIZE }}>

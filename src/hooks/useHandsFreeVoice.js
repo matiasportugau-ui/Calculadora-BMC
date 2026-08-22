@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { speakApple, cancelAppleTts } from "./appleTts.js";
 
 const PHASE_LISTENING = "Escuchando…";
 
@@ -95,35 +96,8 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
   }, []);
 
   const speakText = useCallback((text) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return Promise.resolve();
-
-    return new Promise((resolve) => {
-      const speak = () => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "es-UY";
-        utterance.rate = 1.0;
-        const voices = window.speechSynthesis.getVoices();
-        const esVoice = voices.find((v) => v.lang.startsWith("es"));
-        if (esVoice) utterance.voice = esVoice;
-
-        utterance.onend = () => {
-          setIsSpeaking(false);
-          resolve();
-        };
-        utterance.onerror = () => {
-          setIsSpeaking(false);
-          resolve();
-        };
-
-        setIsSpeaking(true);
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
-      };
-
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) speak();
-      else window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
-    });
+    setIsSpeaking(true);
+    return speakApple(text).finally(() => setIsSpeaking(false));
   }, []);
 
   const startQueryListening = useCallback(() => {
@@ -303,7 +277,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                   const trans = event.results[i][0].transcript;
                   if (hasWake(trans)) {
-                    window.speechSynthesis.cancel();
+                    cancelAppleTts();
                     SR.current.abort();
                     playBeep();
                     setPhase(PHASE_LISTENING);
@@ -343,7 +317,7 @@ export function useHandsFreeVoice({ onError, send, messages = [] }) {
     wakeRestartAttemptRef.current = 0;
     if (SR.current) SR.current.abort();
     if (bargeInRecRef.current) bargeInRecRef.current.abort();
-    window.speechSynthesis?.cancel();
+    cancelAppleTts();
     clearTimeout(thinkingTimeoutRef.current);
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((t) => t.stop());
