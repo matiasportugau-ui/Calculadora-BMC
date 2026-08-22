@@ -100,15 +100,43 @@ export function lookupUyGazetteer(text) {
 }
 
 /**
- * City-only / placeholder addresses that still need a street.
+ * UY mobile/landline: at least 8 digits (099 148 920 → 9).
+ * @param {string} tel
+ */
+export function isUyPhoneOk(tel) {
+  const digits = String(tel || "").replace(/\D/g, "");
+  return digits.length >= 8;
+}
+
+/**
+ * Ops gate: calle + número, or two streets (esquina / entre / “A y B”).
+ * Barrio or city alone is not enough.
+ * @param {string} direccion
+ */
+export function isPreciseAddress(direccion) {
+  const n = normalize(direccion);
+  if (!n) return false;
+  if (/falta calle|sin dir|sin direccion|pedir ubi|ubicacion pendiente/.test(n)) return false;
+  if (/^(ciudad de )?(maldonado|madonado|montevideo|canelones)$/.test(n)) return false;
+  const hasStreetWord = /\b(calle|av\.?|avenida|ruta|camino|pasaje|bulevar|blvd|esq\.?)\b/.test(n);
+  if (hasStreetWord && /\d/.test(n)) return true;
+  if (/\b(esq\.?|esquina|entre)\b/.test(n) && hasStreetWord) return true;
+  if (/\by\b/.test(n)) {
+    const parts = n.split(/\by\b/).map((s) => s.trim()).filter((s) => s.length >= 3);
+    if (parts.length >= 2) return true;
+  }
+  // "Juan Paullier 1625" / "Calle 123" — name then house number, not "4h maldonado"
+  if (/^(barrio|chacras|ciudad|deposito|deposito bmc)\b/.test(n) && !hasStreetWord) return false;
+  if (/^[a-záéíóúñ][a-záéíóúñ\s.'-]{2,}\s+\d{1,5}\b/.test(n) && !/^\d/.test(n)) return true;
+  return false;
+}
+
+/**
+ * Inverse of isPreciseAddress (kept for existing callers).
  * @param {string} direccion
  */
 export function isIncompleteStreet(direccion) {
-  const n = normalize(direccion);
-  if (!n) return true;
-  if (/falta calle|sin dir|sin direccion/.test(n)) return true;
-  if (/^ciudad de maldonado$|^ciudad de madonado$|^maldonado$|^montevideo$/.test(n)) return true;
-  return false;
+  return !isPreciseAddress(direccion);
 }
 
 /** Canonical depo drop: BMC URUGUAY (Google Place pin). */

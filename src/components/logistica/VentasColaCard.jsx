@@ -13,6 +13,7 @@ import {
   filterRowsByMonitor,
   listCoordinationExceptions,
   countMonitorLanes,
+  monitorRowFromStop,
 } from "../../utils/logistica/coordinationMonitor.js";
 
 /**
@@ -54,14 +55,18 @@ export default function VentasColaCard({
   places = [],
 }) {
   const [monitorFilter, setMonitorFilter] = useState("all");
+  const monitorSource = useMemo(() => {
+    if (results.length) return results;
+    return (stops || []).map(monitorRowFromStop);
+  }, [results, stops]);
   const filteredResults = useMemo(
     () => filterRowsByMonitor(results, monitorFilter),
     [results, monitorFilter],
   );
-  const laneCounts = useMemo(() => countMonitorLanes(results), [results]);
+  const laneCounts = useMemo(() => countMonitorLanes(monitorSource), [monitorSource]);
   const exceptionHits = useMemo(
-    () => listCoordinationExceptions(filteredResults),
-    [filteredResults],
+    () => listCoordinationExceptions(monitorSource),
+    [monitorSource],
   );
   const groups = useMemo(
     () => groupVentasRowsByFechaReparto(filteredResults),
@@ -110,7 +115,7 @@ export default function VentasColaCard({
             {results.length} operativos · {ventasRowCount} filas leídas
           </div>
         ) : null}
-        {results.length ? (
+        {monitorSource.length ? (
           <div
             className="envios-ventas-cola__jumps"
             role="toolbar"

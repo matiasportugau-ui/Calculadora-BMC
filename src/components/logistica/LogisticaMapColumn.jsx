@@ -17,10 +17,16 @@ const LogisticaCargoScene3d = lazy(() => import("./LogisticaCargoScene3d.jsx"));
 const TYPE_ES = { base: "Salida", pickup: "Levante", delivery: "Entrega" };
 const TYPE_COLOR = { base: "#1a3a5c", pickup: "#ff9f0a", delivery: "#0071e3" };
 
-function togglePanelHandle(handle) {
-  if (!handle) return;
-  if (typeof handle.isCollapsed === "function" && handle.isCollapsed()) handle.expand();
-  else handle.collapse();
+function usePaneToggle(startCollapsed = false) {
+  const ref = useRef(null);
+  const [collapsed, setCollapsed] = useState(startCollapsed);
+  const toggle = useCallback(() => {
+    const p = ref.current;
+    if (!p) return;
+    if (typeof p.isCollapsed === "function" && p.isCollapsed()) p.expand();
+    else p.collapse();
+  }, []);
+  return { ref, collapsed, setCollapsed, toggle };
 }
 
 function PaneTitle({ label, collapsed, onToggle, meta }) {
@@ -64,6 +70,7 @@ export default function LogisticaMapColumn({
   hideLegList = false,
   cargo = null,
   truckL = 12,
+  onPinMoved,
   children = null,
 }) {
   const legs = useMemo(() => route?.orderedLegs || [], [route?.orderedLegs]);
@@ -71,12 +78,9 @@ export default function LogisticaMapColumn({
   const mapsUrl = useMemo(() => safeHttpUrl(googleMapsDirectionsUrl(legs)) || "", [legs]);
   const [flash, setFlash] = useState("");
   const [selectedRefId, setSelectedRefId] = useState("");
-  const mapPanelRef = useRef(null);
-  const scenePanelRef = useRef(null);
-  const packPanelRef = useRef(null);
-  const [mapCollapsed, setMapCollapsed] = useState(false);
-  const [sceneCollapsed, setSceneCollapsed] = useState(false);
-  const [packCollapsed, setPackCollapsed] = useState(false);
+  const mapPane = usePaneToggle();
+  const scenePane = usePaneToggle(true);
+  const packPane = usePaneToggle();
 
   const kmLabel =
     route?.totalKm != null
@@ -107,19 +111,19 @@ export default function LogisticaMapColumn({
         className="envios-visual-split"
       >
         <Panel
-          ref={mapPanelRef}
+          ref={mapPane.ref}
           className="envios-visual-pane envios-visual-pane--map"
           defaultSize={42}
           minSize={12}
           collapsible
           collapsedSize={8}
-          onCollapse={() => setMapCollapsed(true)}
-          onExpand={() => setMapCollapsed(false)}
+          onCollapse={() => mapPane.setCollapsed(true)}
+          onExpand={() => mapPane.setCollapsed(false)}
         >
           <PaneTitle
             label="Ruta en mapa"
-            collapsed={mapCollapsed}
-            onToggle={() => togglePanelHandle(mapPanelRef.current)}
+            collapsed={mapPane.collapsed}
+            onToggle={mapPane.toggle}
             meta={
               legs.length
                 ? `${legs.length} paradas · ${geoCount} con pin${kmLabel}`
@@ -145,6 +149,7 @@ export default function LogisticaMapColumn({
                 geometry={route?.geometry || ""}
                 selectedRefId={selectedRefId}
                 onSelect={(leg) => setSelectedRefId(String(leg?.refId || ""))}
+                onPinMoved={onPinMoved}
               />
             </div>
             <div className="envios-mapcol__actions">
@@ -164,50 +169,57 @@ export default function LogisticaMapColumn({
         <PanelResizeHandle className="bmc-sash bmc-sash--vertical" />
 
         <Panel
-          ref={scenePanelRef}
+          ref={scenePane.ref}
           className="envios-visual-pane envios-visual-pane--3d"
-          defaultSize={34}
-          minSize={10}
+          defaultSize={10}
+          minSize={8}
           collapsible
+          defaultCollapsed
           collapsedSize={8}
-          onCollapse={() => setSceneCollapsed(true)}
-          onExpand={() => setSceneCollapsed(false)}
+          onCollapse={() => scenePane.setCollapsed(true)}
+          onExpand={() => scenePane.setCollapsed(false)}
         >
           <PaneTitle
             label="Diagrama 3D"
-            collapsed={sceneCollapsed}
-            onToggle={() => togglePanelHandle(scenePanelRef.current)}
-            meta="orbitá · misma carga del viaje"
+            collapsed={scenePane.collapsed}
+            onToggle={scenePane.toggle}
+            meta="cerrado · abrí si hace falta (WebGL)"
           />
           <div className="envios-visual-pane__body envios-visual-pane__body--3d">
-            <Suspense
-              fallback={
-                <div className="envios-visual-pane__fallback" style={{ color: T.muted }}>
-                  Cargando 3D…
-                </div>
-              }
-            >
-              <DockedCargo3d cargo={cargo} truckL={truckL} />
-            </Suspense>
+            {scenePane.collapsed ? (
+              <div className="envios-visual-pane__fallback" style={{ color: T.muted, padding: 8 }}>
+                3D apagado para no cargar la GPU. Abrí el panel para orbitar.
+              </div>
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="envios-visual-pane__fallback" style={{ color: T.muted }}>
+                    Cargando 3D…
+                  </div>
+                }
+              >
+                <DockedCargo3d cargo={cargo} truckL={truckL} />
+              </Suspense>
+            )}
           </div>
         </Panel>
 
         <PanelResizeHandle className="bmc-sash bmc-sash--vertical" />
 
         <Panel
-          ref={packPanelRef}
+          ref={packPane.ref}
           className="envios-visual-pane envios-visual-pane--pack"
           defaultSize={24}
           minSize={10}
           collapsible
           collapsedSize={8}
-          onCollapse={() => setPackCollapsed(true)}
-          onExpand={() => setPackCollapsed(false)}
+          onCollapse={() => packPane.setCollapsed(true)}
+          onExpand={() => packPane.setCollapsed(false)}
         >
           <PaneTitle
             label="Itinerario y croquis"
-            collapsed={packCollapsed}
-            onToggle={() => togglePanelHandle(packPanelRef.current)}
+            collapsed={packPane.collapsed}
+            onToggle={packPane.toggle}
             meta={legs.length ? `${legs.length} tramos` : ""}
           />
           <div className="envios-visual-pane__body envios-visual-pane__body--pack">

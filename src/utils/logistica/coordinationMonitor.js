@@ -31,10 +31,30 @@ export function hasClockTime(text) {
  * @returns {boolean}
  */
 export function isKingspanPickup(row = {}) {
-  const id = String(row.pickupId || "").trim();
+  const id = String(row.pickupId || row.pickupPointId || "").trim();
   if (id === KINGSPAN_PICKUP_ID) return true;
-  const blob = normalizeSearchText(`${row.pickupId || ""} ${row.estadoText || ""} ${row.rawSheetText || ""}`);
+  const blob = normalizeSearchText(
+    `${row.pickupId || ""} ${row.pickupPointId || ""} ${row.estadoText || ""} ${row.rawSheetText || ""}`,
+  );
   return /\bkingspan\b|\bbromyros\b/.test(blob);
+}
+
+/**
+ * Wizard stop (seed ENV / mesa) → monitor row shape.
+ * @param {object} stop
+ */
+export function monitorRowFromStop(stop = {}) {
+  return {
+    nombre: stop.cliente || stop.nombre || "",
+    orderId: stop.orderId || "",
+    pdf: String(stop.pdf || stop.pdfLink || "").trim(),
+    pickupId: String(stop.pickupPointId || stop.pickupId || "").trim(),
+    pickupPointId: String(stop.pickupPointId || "").trim(),
+    estadoText: stop.estado || stop.estadoText || "",
+    horarioEntrega: stop.horarioEntrega || "",
+    rawSheetText: [stop.observacionesLogistica, stop.zona, stop.horarioEntrega].filter(Boolean).join("\n"),
+    fechaEntrega: stop.fechaEntrega || "",
+  };
 }
 
 /**
@@ -72,10 +92,11 @@ export function filterRowsByMonitor(rows, filter = "all") {
  */
 export function exceptionsForRow(row = {}) {
   const out = [];
-  if (!String(row.pdf || "").trim()) {
+  if (!String(row.pdf || row.pdfLink || "").trim()) {
     out.push({ code: "pdf_vacio", label: "PDF vacío" });
   }
-  if (isKingspanPickup(row) && !hasClockTime(`${row.estadoText || ""} ${row.rawSheetText || ""}`)) {
+  const clockBlob = `${row.estadoText || ""} ${row.rawSheetText || ""} ${row.horarioEntrega || ""}`;
+  if (isKingspanPickup(row) && !hasClockTime(clockBlob)) {
     out.push({ code: "kingspan_sin_hora", label: "Kingspan sin hora" });
   }
   return out;

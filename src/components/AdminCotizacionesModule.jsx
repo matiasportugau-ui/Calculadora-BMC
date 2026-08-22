@@ -167,28 +167,6 @@ function ModuleInner() {
         onOpenLegacy={() => { window.location.assign("/hub/admin?legacy=1"); }}
       />
 
-      {/* Quick access to interactive tutorial for this module (when Tutorial Mode is on) */}
-      <div style={{ padding: '0 16px', marginTop: 8 }}>
-        <button
-          type="button"
-          onClick={() => {
-            // This will be picked up by the global tutorial system
-            window.dispatchEvent(new CustomEvent('start-admin-cot-tutorial'));
-          }}
-          style={{
-            fontSize: 12,
-            padding: '4px 10px',
-            borderRadius: 6,
-            border: '1px solid #2563eb',
-            background: '#eff6ff',
-            color: '#1e40af',
-            cursor: 'pointer',
-          }}
-        >
-          🎓 Iniciar tutorial guiado de este módulo
-        </button>
-      </div>
-
       <main className="adminCot__shell">
         {!cot.token && cot.tokenLoadError && (
           <div className="adminCot__card" style={{ borderColor: "var(--ac-warn)", marginTop: 16 }}>

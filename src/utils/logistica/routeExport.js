@@ -4,6 +4,7 @@
  */
 
 import { isValidLatLng, parseLatLng } from "./geocode.js";
+import { billableRoute } from "./quoteWindow.js";
 
 const TYPE_ES = {
   base: "Salida",
@@ -196,8 +197,9 @@ export function googleMapsDirectionsUrl(legs, opts = {}) {
  * @returns {string}
  */
 export function routeToShareText(route, opts = {}) {
-  const legs = route?.orderedLegs || [];
   const info = opts.info || {};
+  const billed = billableRoute(route, { info });
+  const legs = billed.orderedLegs || [];
   const title = opts.title || "🚚 Ruta BMC Envíos";
   const lines = [title];
   if (info.numero || info.fecha || info.transportista) {
@@ -209,15 +211,19 @@ export function routeToShareText(route, opts = {}) {
     ].filter(Boolean);
     if (meta.length) lines.push(meta.join(" · "));
   }
+  if (billed.quoteStart === "factory") {
+    lines.push("Cotización tercerizado: desde llegada a fábrica. No se cobra depósito → planta.");
+  }
   lines.push("");
   lines.push("Itinerario:");
   legs.forEach((leg, i) => {
     const kind = TYPE_ES[leg?.type] || leg?.type || "Parada";
     const label = String(leg?.label || leg?.refId || `P${i + 1}`).trim();
     lines.push(`${i + 1}. ${kind}: ${label}`);
+    if (leg?.quoteAnchor) lines.push("   ⏱ Inicio de cotización (llegada a fábrica)");
     if (leg?.addressText) lines.push(`   📍 ${leg.addressText}`);
     if (leg?.telefono) lines.push(`   📞 ${leg.telefono}`);
-    if (leg?.legKmFromPrev != null && Number.isFinite(leg.legKmFromPrev)) {
+    if (leg?.legKmFromPrev != null && Number.isFinite(leg.legKmFromPrev) && Number(leg.legKmFromPrev) > 0) {
       lines.push(`   ↳ +${Number(leg.legKmFromPrev).toFixed(1)} km desde anterior`);
     }
     if (leg?.geo && isValidLatLng(Number(leg.geo.lat), Number(leg.geo.lng))) {
@@ -225,10 +231,10 @@ export function routeToShareText(route, opts = {}) {
     }
     if (leg?.mapUrl) lines.push(`   🗺️ ${leg.mapUrl}`);
   });
-  if (route?.totalKm != null && Number.isFinite(route.totalKm)) {
+  if (billed.totalKm != null && Number.isFinite(billed.totalKm)) {
     lines.push("");
     lines.push(
-      `Total ~${Number(route.totalKm).toFixed(0)} km (${route.suggestionSource === "haversine" ? "aire" : route.suggestionSource || "estimado"})`,
+      `Total cotizable ~${Number(billed.totalKm).toFixed(0)} km (${route?.suggestionSource === "haversine" ? "aire" : route?.suggestionSource || "estimado"})`,
     );
   }
   const maps = googleMapsDirectionsUrl(legs);

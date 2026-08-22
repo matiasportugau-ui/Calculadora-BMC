@@ -192,13 +192,18 @@ export function toStopGeo(hit, opts = {}) {
   const lng = Number(hit?.lng);
   if (!isValidLatLng(lat, lng)) return null;
   const now = opts.now || (() => new Date().toISOString());
-  return {
+  const geo = {
     lat,
     lng,
     label: String(hit.label || "").trim() || null,
     source: String(hit.source || "nominatim"),
     at: now(),
   };
+  if (hit?.isManuallyAdjusted === true || String(hit?.source || "") === "manual") {
+    geo.isManuallyAdjusted = true;
+    geo.source = geo.source || "manual";
+  }
+  return geo;
 }
 
 /**

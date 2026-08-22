@@ -88,6 +88,16 @@ export default function StepFlota({
         />
         Mandar WhatsApp al chofer (si no, solo copiamos el enlace)
       </label>
+      <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, cursor: "pointer" }}>
+        <input
+          type="checkbox"
+          checked={info.tercerizado === true}
+          onChange={(e) => onChangeInfo?.("tercerizado", e.target.checked)}
+        />
+        <span>
+          Tercerizado · cotizar desde <b>llegada a fábrica</b> (no se cobra el tramo depósito → planta)
+        </span>
+      </label>
       <div>
         <label style={lbl}>Base / zona de salida</label>
         <select

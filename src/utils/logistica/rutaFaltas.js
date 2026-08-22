@@ -1,7 +1,13 @@
 /**
  * Actionable "faltas" queue for the Ruta dispatch desk (pure).
  */
-import { isIncompleteStreet, isOffTruckDelivery } from "./uyGazetteer.js";
+import {
+  isIncompleteStreet,
+  isOffTruckDelivery,
+  isPlantPickupStop,
+  isDepotPickupStop,
+  isUyPhoneOk,
+} from "./uyGazetteer.js";
 import { partitionLevantes } from "./wizardState.js";
 
 function tripRegion(stop) {
@@ -62,12 +68,33 @@ export function buildRutaFaltas(ctx = {}) {
 
   for (const s of stops) {
     const name = String(s.cliente || s.orderId || "Parada").trim();
-    if (isOffTruckDelivery(s)) continue;
+    if (isPlantPickupStop(s)) {
+      if (!isUyPhoneOk(s.telefono)) {
+        faltas.push({
+          id: `tel-${s.id}`,
+          severity: "warn",
+          label: `${name}: falta teléfono (retiran en planta)`,
+          stopId: s.id,
+          action: "ask_phone",
+        });
+      }
+      continue;
+    }
+    if (!isUyPhoneOk(s.telefono)) {
+      faltas.push({
+        id: `tel-${s.id}`,
+        severity: "block",
+        label: `${name}: falta teléfono`,
+        stopId: s.id,
+        action: "ask_phone",
+      });
+    }
+    if (isDepotPickupStop(s)) continue;
     if (isIncompleteStreet(s.direccion)) {
       faltas.push({
         id: `street-${s.id}`,
         severity: "block",
-        label: `${name}: falta calle/nro`,
+        label: `${name}: dirección (calle y nro, o 2 calles)`,
         stopId: s.id,
         action: "ask_street",
       });

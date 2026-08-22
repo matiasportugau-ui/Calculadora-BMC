@@ -5857,6 +5857,43 @@ export default function BmcLogisticaApp() {
               hideLegList={deskOpen}
               cargo={cargo}
               truckL={truckL}
+              onPinMoved={(leg, lat, lng) => {
+                const stopId = leg?.stopId;
+                if (!stopId) return;
+                setStops((prev) =>
+                  prev.map((s) =>
+                    s.id === stopId
+                      ? applyGeocodeToStop(s, {
+                          lat,
+                          lng,
+                          label: s.cliente || s.direccion || "",
+                          source: "manual",
+                          isManuallyAdjusted: true,
+                        })
+                      : s,
+                  ),
+                );
+                setTripRoute((prev) => ({
+                  ...(prev || {}),
+                  geometry: null,
+                  suggestionSource: "haversine",
+                  orderedLegs: (prev?.orderedLegs || []).map((l) =>
+                    l.stopId === stopId || l.refId === leg.refId
+                      ? {
+                          ...l,
+                          geo: {
+                            lat,
+                            lng,
+                            source: "manual",
+                            isManuallyAdjusted: true,
+                            label: l.label,
+                          },
+                        }
+                      : l,
+                  ),
+                }));
+                setWizardUi((p) => createWizardUi({ ...p, routeStale: true }));
+              }}
             >
               {isCompactSplit && wizardUi.enabled ? null : (
                 <LogisticaTruckerAgent

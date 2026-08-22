@@ -18,9 +18,16 @@ const TYPE_COLOR = {
  *   geometry?: string | null,
  *   selectedRefId?: string,
  *   onSelect?: (leg: object, index: number) => void,
+ *   onPinMoved?: (leg: object, lat: number, lng: number) => void,
  * }} props
  */
-export default function RouteLeafletMap({ legs = [], geometry = "", selectedRefId = "", onSelect }) {
+export default function RouteLeafletMap({
+  legs = [],
+  geometry = "",
+  selectedRefId = "",
+  onSelect,
+  onPinMoved,
+}) {
   const hostRef = useRef(null);
   const mapRef = useRef(null);
   const layerRef = useRef(null);
@@ -63,20 +70,36 @@ export default function RouteLeafletMap({ legs = [], geometry = "", selectedRefI
       const road = decodePolyline(geometry);
       if (road.length >= 2) {
         L.polyline(road, { color: "#1a3a5c", weight: 4, opacity: 0.9 }).addTo(group);
+      } else if (latlngs.length >= 2) {
+        L.polyline(latlngs, { color: "#1a3a5c", weight: 3, opacity: 0.45, dashArray: "8 8" }).addTo(group);
       }
       withGeo.forEach((leg) => {
         const i = (legs || []).indexOf(leg);
         const color = TYPE_COLOR[leg.type] || "#0071e3";
         const selected = selectedRefId && String(leg.refId) === String(selectedRefId);
+        const canDrag = (leg.type === "delivery" || leg.type === "depot") && typeof onPinMoved === "function";
         const icon = L.divIcon({
           className: "ruta-pin",
           html: `<div style="width:${selected ? 32 : 26}px;height:${selected ? 32 : 26}px;border-radius:99px;background:${color};color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25)">${i + 1}</div>`,
           iconSize: [selected ? 32 : 26, selected ? 32 : 26],
           iconAnchor: [selected ? 16 : 13, selected ? 16 : 13],
         });
-        const m = L.marker([Number(leg.geo.lat), Number(leg.geo.lng)], { icon }).addTo(group);
-        m.bindTooltip(`${i + 1}. ${leg.label || ""}`, { direction: "top" });
+        const m = L.marker([Number(leg.geo.lat), Number(leg.geo.lng)], {
+          icon,
+          draggable: canDrag,
+          autoPan: canDrag,
+        }).addTo(group);
+        const moved = leg.geo?.isManuallyAdjusted || leg.geo?.source === "manual";
+        m.bindTooltip(`${i + 1}. ${leg.label || ""}${moved ? " · pin aprox. (movido)" : ""}`, {
+          direction: "top",
+        });
         m.on("click", () => onSelect?.(leg, i));
+        if (canDrag) {
+          m.on("dragend", () => {
+            const ll = m.getLatLng();
+            onPinMoved?.(leg, ll.lat, ll.lng);
+          });
+        }
       });
       const boundsPts = road.length >= 2 ? road : latlngs;
       if (boundsPts.length === 1) {

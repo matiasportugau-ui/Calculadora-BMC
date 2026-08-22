@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ENV_T as T } from "../../../utils/enviosTheme.js";
 import { googleMapsDirectionsUrl, routeToShareText, legsWithGeo } from "../../../utils/logistica/routeExport.js";
+import { billableRoute } from "../../../utils/logistica/quoteWindow.js";
 import { safeHttpUrl } from "../../../utils/logistica/safeExternalUrl.js";
 import { buildRutaFaltas } from "../../../utils/logistica/rutaFaltas.js";
 import {
@@ -15,6 +16,10 @@ import {
   BMC_DEPO,
 } from "../../../utils/logistica/uyGazetteer.js";
 import { pickupIdForStop } from "../../../utils/logistica/wizardState.js";
+import {
+  listCoordinationExceptions,
+  monitorRowFromStop,
+} from "../../../utils/logistica/coordinationMonitor.js";
 import { reorderRouteLegs } from "../../../utils/logistica/routeSuggest.js";
 import RouteLeafletMap from "./RouteLeafletMap.jsx";
 import "../../../styles/ruta-desk.css";
@@ -23,9 +28,9 @@ const TYPE_ES = { base: "Salida", pickup: "Levante", delivery: "Entrega", depot:
 const TYPE_COLOR = { base: "#1a3a5c", pickup: "#ff9f0a", delivery: "#0071e3", depot: "#0f766e" };
 
 const ENTREGA_MODO_OPTIONS = [
-  { id: "obra", label: "Entrega en destino" },
   { id: "planta", label: "Retiran en planta" },
-  { id: "depo", label: "Viene a depo" },
+  { id: "depo", label: "A depósito" },
+  { id: "obra", label: "Entrega destino" },
 ];
 
 export default function RouteDesk({
@@ -128,21 +133,36 @@ export default function RouteDesk({
     };
   }, [endPointerDrag]);
 
-  const mapsUrl = useMemo(() => safeHttpUrl(googleMapsDirectionsUrl(legs)) || "", [legs]);
+  const billed = useMemo(() => billableRoute(route, { info }), [route, info]);
+  const mapsUrl = useMemo(
+    () => safeHttpUrl(googleMapsDirectionsUrl(info.tercerizado ? billed.orderedLegs : legs)) || "",
+    [info.tercerizado, billed.orderedLegs, legs],
+  );
   const geoCount = useMemo(() => legsWithGeo(legs).length, [legs]);
   const shareText = useMemo(
     () =>
       legs.length
         ? routeToShareText(route, {
             title: "Ruta BMC Envíos",
-            info: { numero: info.numero, fecha: info.fecha, transportista: info.transportista, patente: info.patente },
+            info: {
+              numero: info.numero,
+              fecha: info.fecha,
+              transportista: info.transportista,
+              patente: info.patente,
+              tercerizado: info.tercerizado,
+              quoteStart: info.quoteStart,
+            },
           })
         : "",
-    [route, legs.length, info.numero, info.fecha, info.transportista, info.patente],
+    [route, legs.length, info.numero, info.fecha, info.transportista, info.patente, info.tercerizado, info.quoteStart],
   );
   const faltas = useMemo(
     () => buildRutaFaltas({ stops, info, route, wizard: { ...wizard, routeStale } }),
     [stops, info, route, wizard, routeStale],
+  );
+  const coordExceptions = useMemo(
+    () => listCoordinationExceptions(stops.map(monitorRowFromStop)),
+    [stops],
   );
 
   const openMaps = () => mapsUrl && window.open(mapsUrl, "_blank", "noopener,noreferrer");
@@ -166,6 +186,11 @@ export default function RouteDesk({
                 ? ` · ~${Number(route.totalKm).toFixed(0)} km ${route?.suggestionSource === "osrm" ? "ruta" : "aire"}`
                 : ""}
             </span>
+            {info.tercerizado && billed.totalKm != null ? (
+              <span>
+                Cotizable {info.transportista || "tercerizado"} ~{Number(billed.totalKm).toFixed(0)} km desde fábrica
+              </span>
+            ) : null}
           </div>
         </div>
         <div className="ruta-desk-actions">
@@ -183,6 +208,53 @@ export default function RouteDesk({
           </button>
         </div>
       </div>
+
+      {coordExceptions.length ? (
+        <div
+          className="ruta-desk-coord-ex"
+          data-testid="coord-monitor-exceptions"
+          style={{
+            fontSize: 12,
+            lineHeight: 1.4,
+            color: "#9a3412",
+            background: "#fff7ed",
+            border: "1px solid #fdba74",
+            borderRadius: 8,
+            padding: "8px 10px",
+            margin: "0 0 8px",
+          }}
+        >
+          Coordinación · {info.numero || "ENV"} · excepciones ({coordExceptions.length}):{" "}
+          {coordExceptions
+            .slice(0, 8)
+            .map((h) => {
+              const name = h.row.nombre || h.row.orderId || "parada";
+              return `${name} · ${h.exceptions.map((e) => e.label).join(", ")}`;
+            })
+            .join(" · ")}
+        </div>
+      ) : (
+        <div data-testid="coord-monitor-exceptions" hidden />
+      )}
+
+      {faltas.length ? (
+        <div className="ruta-faltas" data-testid="ruta-faltantes" style={{ margin: "0 0 8px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: T.muted }}>
+            {faltas.filter((f) => f.severity === "block").length
+              ? `${faltas.filter((f) => f.severity === "block").length} faltantes — no está listo`
+              : "Avisos"}
+          </div>
+          {faltas.map((f) => (
+            <div key={`top-${f.id}`} className={`ruta-falta${f.severity === "block" ? " is-block" : ""}`}>
+              <span>{f.label}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div data-testid="ruta-faltantes-ok" style={{ margin: "0 0 8px", fontSize: 12, color: "#166534" }}>
+          Sin faltantes de tel/dir.
+        </div>
+      )}
 
       {moreOpen ? (
         <div style={{ fontSize: 12, color: T.muted }}>
@@ -228,7 +300,7 @@ export default function RouteDesk({
                   Viene a depo
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>{BMC_DEPO.label}</div>
-                <div style={{ fontSize: 11, color: T.muted }}>{stop.cliente} retira acá</div>
+                <div style={{ fontSize: 11, color: T.muted }}>{stop.cliente} · va al depósito</div>
                 <DepoMapsLink />
                 <EntregaModoToggle stop={stop} onEntregaModo={onEntregaModo} />
               </div>
@@ -442,26 +514,35 @@ function DepotClients({ stops }) {
 function EntregaModoToggle({ stop, onEntregaModo }) {
   if (!stop) return null;
   const modo = normalizeEntregaModo(stop);
+  const hint =
+    modo === "planta"
+      ? "No viaja — retiran en el levante"
+      : modo === "depo"
+        ? `Va al depósito ${BMC_DEPO.label}`
+        : `Se entrega en ${stop.direccion || "destino"}`;
   return (
-    <div className="ruta-toggle" role="group" aria-label="Cómo se entrega">
-      {ENTREGA_MODO_OPTIONS.map((opt) => {
-        const on = modo === opt.id;
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            className={on ? "is-on" : "is-off"}
-            aria-pressed={on}
-            data-testid={`entrega-modo-${opt.id}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!on) onEntregaModo?.(stop.id, opt.id);
-            }}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
+    <div>
+      <div className="ruta-toggle" role="group" aria-label="Cómo se entrega">
+        {ENTREGA_MODO_OPTIONS.map((opt) => {
+          const on = modo === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              className={on ? "is-on" : "is-off"}
+              aria-pressed={on}
+              data-testid={`entrega-modo-${opt.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!on) onEntregaModo?.(stop.id, opt.id);
+              }}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>{hint}</div>
     </div>
   );
 }

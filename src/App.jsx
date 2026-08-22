@@ -16,13 +16,6 @@ import ActivityTracker from "./components/activity/ActivityTracker.jsx";
 import RouteErrorBoundary from "./components/RouteErrorBoundary.jsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// Tutorial interactivo (nuevo sistema) — gated for safety
-const TUTORIAL_ENABLED = import.meta.env.VITE_FEATURE_TUTORIAL_MODE !== "false";
-
-import { TutorialProvider } from "./components/tutorial/TutorialProvider.jsx";
-import TutorialOverlay from "./components/tutorial/TutorialOverlay.jsx";
-import FloatingTutorialButton from "./components/tutorial/FloatingTutorialButton.jsx";
-import BmcChatPanel from "./components/BmcChatPanel.jsx";
 import DesignPreviewGate from "./components/preview/DesignPreviewGate.jsx";
 import ConductorLegacyRedirect from "./components/driver/ConductorLegacyRedirect.jsx";
 
@@ -126,8 +119,6 @@ function Shell({ children }) {
       >
         {children}
       </div>
-      {TUTORIAL_ENABLED && <FloatingTutorialButton />}
-      <BmcChatPanel />
     </div>
   );
 }
@@ -195,11 +186,9 @@ export default function App() {
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <DesignPreviewGate>
       <BmcAuthProvider>
-      <TutorialProvider>
       <ActivityTracker />
       <LegacyAppQueryRedirect />
       <AuthGateModal />
-      <TutorialOverlay />
       <RoutedErrorBoundary>
       <Routes>
         <Route
@@ -602,7 +591,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </RoutedErrorBoundary>
-      </TutorialProvider>
       </BmcAuthProvider>
       </DesignPreviewGate>
     </BrowserRouter>
