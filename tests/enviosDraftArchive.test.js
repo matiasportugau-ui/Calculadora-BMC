@@ -137,4 +137,31 @@ console.log("enviosDraftArchive");
   ok("autosave empty does not clobber richer archive");
 }
 
+{
+  // Critical: autosave with more stops but no route must not drop archived legs.
+  const st = memStorage();
+  writeDraftArchive(st, {
+    info: { numero: "ENV-260821-MERGE" },
+    stops: [{ id: "a" }],
+    route: { orderedLegs: [{ type: "pickup" }, { type: "delivery" }] },
+    ui: { wizard: { enabled: true, activeStep: "ruta" } },
+    savedAt: "2026-08-21T03:00:00Z",
+  });
+  const w = writeDraftArchive(st, {
+    info: { numero: "ENV-260821-MERGE" },
+    stops: [{ id: "a" }, { id: "b" }],
+    route: null,
+    ui: { wizard: { enabled: true, activeStep: "pedidos" } },
+    savedAt: "2026-08-21T04:00:00Z",
+  });
+  assert.equal(w.ok, true);
+  assert.equal(w.merged, true);
+  const read = readDraftArchive(st, "ENV-260821-MERGE");
+  assert.equal(read.stops.length, 2);
+  assert.equal(routeLegCount(read), 2);
+  assert.equal(read.route.orderedLegs[0].type, "pickup");
+  assert.equal(read.route.orderedLegs[1].type, "delivery");
+  ok("merge write keeps archived legs when incoming has more stops but no route");
+}
+
 console.log(`enviosDraftArchive ${passed} ok`);
