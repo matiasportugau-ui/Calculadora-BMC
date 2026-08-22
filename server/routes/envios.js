@@ -1,6 +1,7 @@
 /**
  * BMC Envíos P2/P5 — API under /api
  * - POST /api/envios/geocode  (Nominatim proxy, Uruguay-biased)
+ * - POST /api/envios/route    (OSRM public driving polyline; haversine fallback)
  * - GET/PUT /api/envios/drafts[/:id]
  * - GET /api/envios/health
  */
@@ -53,8 +54,32 @@ function requireCrmAuth(config) {
 }
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
+const OSRM_ROUTE_BASE =
+  process.env.OSRM_ROUTE_URL || "https://router.project-osrm.org/route/v1/driving";
 /** Simple process-level rate gate for Nominatim courtesy (1 req / ~1.1s). */
 let lastNominatimAt = 0;
+let lastOsrmAt = 0;
+const osrmRouteCache = new Map();
+const OSRM_CACHE_MAX = 48;
+const OSRM_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function osrmCacheGet(key) {
+  const hit = osrmRouteCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > OSRM_CACHE_TTL_MS) {
+    osrmRouteCache.delete(key);
+    return null;
+  }
+  return hit.payload;
+}
+
+function osrmCacheSet(key, payload) {
+  osrmRouteCache.set(key, { at: Date.now(), payload });
+  while (osrmRouteCache.size > OSRM_CACHE_MAX) {
+    const first = osrmRouteCache.keys().next().value;
+    osrmRouteCache.delete(first);
+  }
+}
 
 /** F11 — short-lived Ventas CSV cache (server-side gviz proxy). */
 const ventasCsvCache = new Map();
@@ -91,6 +116,7 @@ export default function createEnviosRouter(config, logger) {
         ok: true,
         module: "envios",
         geocode: true,
+        route: true,
         draftsDb: Boolean(pool),
       };
       if (pool) {
@@ -247,6 +273,91 @@ export default function createEnviosRouter(config, logger) {
       }
 
       res.json({ ok: true, geo: results[0], results, query: q });
+    }),
+  );
+
+  /**
+   * POST /api/envios/route
+   * body: { coordinates: [[lng, lat], ...] } in visit order (no TSP).
+   * OSRM public driving; on failure returns provider=haversine_fallback (no invented polyline).
+   */
+  router.post(
+    "/envios/route",
+    auth,
+    asyncHandler(async (req, res) => {
+      const raw = req.body?.coordinates;
+      if (!Array.isArray(raw) || raw.length < 2) {
+        return res.status(400).json({ ok: false, error: "coordinates_required" });
+      }
+      if (raw.length > 25) {
+        return res.status(400).json({ ok: false, error: "too_many_points" });
+      }
+      const coords = [];
+      for (const pair of raw) {
+        const lng = Number(Array.isArray(pair) ? pair[0] : pair?.lng);
+        const lat = Number(Array.isArray(pair) ? pair[1] : pair?.lat);
+        if (!isValidLatLng(lat, lng)) {
+          return res.status(400).json({ ok: false, error: "invalid_lat_lng" });
+        }
+        coords.push([lng, lat]);
+      }
+      const cacheKey = coords.map(([lng, lat]) => `${lng.toFixed(5)},${lat.toFixed(5)}`).join(";");
+      const cached = osrmCacheGet(cacheKey);
+      if (cached) {
+        return res.json({ ...cached, cached: true });
+      }
+
+      const wait = Math.max(0, 1100 - (Date.now() - lastOsrmAt));
+      if (wait > 0) {
+        await new Promise((r) => setTimeout(r, wait));
+      }
+      lastOsrmAt = Date.now();
+
+      const path = coords.map(([lng, lat]) => `${lng},${lat}`).join(";");
+      const base = String(OSRM_ROUTE_BASE).replace(/\/$/, "");
+      const url = `${base}/${path}?overview=full&geometries=polyline`;
+
+      let upstream;
+      try {
+        upstream = await fetch(url, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(8000),
+        });
+      } catch (err) {
+        log.warn?.({ err: err instanceof Error ? err.message : String(err) }, "[envios] osrm fetch failed");
+        return res.json({ ok: true, provider: "haversine_fallback", error: "osrm_upstream_failed" });
+      }
+
+      if (!upstream.ok) {
+        return res.json({
+          ok: true,
+          provider: "haversine_fallback",
+          error: "osrm_status",
+          status: upstream.status,
+        });
+      }
+
+      const data = await upstream.json().catch(() => ({}));
+      const route = data?.routes?.[0];
+      if (data?.code !== "Ok" || !route?.geometry) {
+        return res.json({ ok: true, provider: "haversine_fallback", error: "osrm_no_route" });
+      }
+
+      const payload = {
+        ok: true,
+        provider: "osrm",
+        geometry: String(route.geometry),
+        totalKm: Math.round((Number(route.distance) / 1000) * 10) / 10,
+        totalDurationS: Number(route.duration) || null,
+        legs: Array.isArray(route.legs)
+          ? route.legs.map((leg) => ({
+              distanceM: Number(leg.distance) || 0,
+              durationS: Number(leg.duration) || 0,
+            }))
+          : [],
+      };
+      osrmCacheSet(cacheKey, payload);
+      return res.json(payload);
     }),
   );
 

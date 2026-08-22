@@ -704,14 +704,6 @@ function MobileBottomBar({
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
             <button type="button" onClick={onWhatsApp} data-tutorial-id="calc-wa-export" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
             <button type="button" onClick={onClientePdf} disabled={!pdfReady} title={pdfReady ? undefined : pdfBlockedTitle} data-tutorial-id="calc-generate-pdf" style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: pdfReady ? "pointer" : "not-allowed", opacity: pdfReady ? 1 : 0.45 }}>PDF</button>
-            <button 
-              type="button" 
-              onClick={() => window.dispatchEvent(new CustomEvent('start-calculator-tutorial'))}
-              style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.4)", background: "transparent", color: "#fff", fontSize: 11, cursor: "pointer" }}
-              title="Iniciar tutorial guiado de la calculadora"
-            >
-              🎓 Tutorial
-            </button>
             <button type="button" aria-label="Más acciones" onClick={() => setSheetOpen(true)} style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.35)", background: "transparent", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <MoreHorizontal size={22} strokeWidth={2.25} />
             </button>

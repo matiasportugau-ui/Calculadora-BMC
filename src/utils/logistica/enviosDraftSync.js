@@ -45,6 +45,7 @@ export function fingerprintDraft(state) {
       pdfLink: s.pdfLink,
       checks: s.checks,
       pickupPointId: s.pickupPointId,
+      entregaModo: s.entregaModo || "",
     })),
     route: p.route || null,
     ui: p.ui || {},

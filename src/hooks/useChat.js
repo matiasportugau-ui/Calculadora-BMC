@@ -12,14 +12,14 @@ const STORAGE_CONV_ID = "panelin-conversation-id";
 const ALLOWED_AI_PROVIDERS = new Set(["claude", "openai", "grok", "gemini"]);
 const MAX_STORED = 40; // keep last 40 messages in localStorage
 
-function loadConversationId() {
+function loadConversationId(key = STORAGE_CONV_ID) {
   try {
-    return sessionStorage.getItem(STORAGE_CONV_ID) || null;
+    return sessionStorage.getItem(key) || null;
   } catch { return null; }
 }
 
-function saveConversationId(id) {
-  try { sessionStorage.setItem(STORAGE_CONV_ID, id); } catch { /* ignore */ }
+function saveConversationId(id, key = STORAGE_CONV_ID) {
+  try { sessionStorage.setItem(key, id); } catch { /* ignore */ }
 }
 
 function fallbackUuidV4() {
@@ -33,11 +33,11 @@ function fallbackUuidV4() {
   return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
 }
 
-function freshConversationId() {
+function freshConversationId(key = STORAGE_CONV_ID) {
   let id;
   try { id = globalThis.crypto?.randomUUID?.(); } catch { id = null; }
   if (!id) id = fallbackUuidV4();
-  saveConversationId(id);
+  saveConversationId(id, key);
   return id;
 }
 
@@ -164,6 +164,7 @@ export function buildAgentChatRequestBody(opts = {}) {
  *   devAuthToken?: string,
  *   operatorAccessToken?: string,
  *   persistHistory?: boolean,
+ *   conversationIdKey?: string,
  * }} opts
  * When the API sets `PANELIN_RELAX_DEV_AUTH`, GET /capabilities returns `panelin_relax_dev_auth: true`
  * and dev routes accept requests without API_AUTH_TOKEN (local dev only).
@@ -177,11 +178,13 @@ export function useChat({
   devAuthToken = "",
   operatorAccessToken = "",
   persistHistory = false,
+  conversationIdKey = STORAGE_CONV_ID,
 }) {
+  const convKey = conversationIdKey || STORAGE_CONV_ID;
   const [messages, setMessages] = useState(() => (persistHistory ? loadHistory() : []));
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
-  const [conversationId, setConversationId] = useState(() => loadConversationId() || freshConversationId());
+  const [conversationId, setConversationId] = useState(() => loadConversationId(convKey) || freshConversationId(convKey));
   const [devMeta, setDevMeta] = useState({
     kbMatches: 0,
     calcValidation: null,
@@ -840,10 +843,12 @@ export function useChat({
     lastUserTextRef.current = "";
     lastSendOptsRef.current = {};
     devAutoLoadedRef.current = false;
-    const newId = freshConversationId();
+    const newId = freshConversationId(convKey);
     setConversationId(newId);
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
-  }, []);
+    if (persistHistory) {
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    }
+  }, [persistHistory, convKey]);
 
   /** Hide quick-reply chips on an assistant bubble after the user taps one */
   const clearSuggestionsForMessage = useCallback((messageId) => {

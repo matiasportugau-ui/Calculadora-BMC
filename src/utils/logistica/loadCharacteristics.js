@@ -2,11 +2,13 @@
  * Estimación operativa de m², volumen y peso para solicitudes a transportistas.
  * Heurística: no sustituye pesada real ni certificación de carga.
  *
- * Canonical source (moved here from prototype for reuse by main BmcLogisticaApp
- * and any server-side needs). The prototype may re-export or import from here.
+ * Material m² uses catalog ancho útil (ISODEC 1.12, …) — not truck ROW_W 1.2.
+ * Bed cuboid occupancy stays L×ROW_W×H_pack in packageDims / remitoPackageMetrics.
  */
 
-export const ROW_W = 1.2; // nominal useful width per row of panels (matches prototype cargoEngine ROW_W)
+import { panelMaterialMetrics } from "./panelAnchoUtil.js";
+
+export const ROW_W = 1.2; // truck row occupancy (half of 2.4 m bed) — not covering AU
 
 /** kg/m² aproximado según espesor (panel sandwich metálico EPS/PIR — orden de magnitud). */
 export function kgPerM2ForEspesor(espMm) {
@@ -16,20 +18,18 @@ export function kgPerM2ForEspesor(espMm) {
 }
 
 /**
+ * Covering m² + foam m³ (AU × L × qty × thickness). Not bed cuboid.
  * @param {{ tipo?: string, espesor?: number, longitud?: number, cantidad?: number }} p
  */
 export function estimatePanelLinePhysical(p) {
-  const cant = Math.max(0, Math.floor(Number(p.cantidad) || 0));
-  const L = Math.max(0, Number(p.longitud) || 0);
-  const espMm = Math.max(0, Number(p.espesor) || 0);
-  const m2 = cant * L * ROW_W;
-  const volumeM3 = m2 * (espMm / 1000);
-  const estWeightKg = m2 * kgPerM2ForEspesor(espMm);
+  const mat = panelMaterialMetrics(p);
+  const estWeightKg = mat.m2 * kgPerM2ForEspesor(mat.espesorMm);
   return {
-    m2,
-    volumeM3,
+    m2: mat.m2,
+    volumeM3: mat.volumeM3,
     estWeightKg,
-    label: `${p.tipo || "PANEL"} ${espMm}mm × ${L}m × ${cant}`,
+    au: mat.au,
+    label: `${p.tipo || "PANEL"} ${mat.espesorMm}mm × ${mat.longitud}m × ${mat.cantidad}`,
   };
 }
 
