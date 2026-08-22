@@ -149,6 +149,14 @@ Twelve agent definitions in **`.claude/agents/`**:
 - **Contribut mode** — two-phase input refinement: agent returns a structured draft first, executes only after `ACEPTO BORRADOR`. Invoke with `/contribut` or type `CONTRIBUT ON`. Protocol: `.claude/commands/contribut.md`.
 - **Project slash commands** in `.claude/commands/`: `/nxt` (workspace snapshot & next steps), `/bmc-claude-workspace` (multi-terminal Claude workspace), `/live-devtools-narrative-mcp`, `/live-devtools-transcript-action-plan`, `/note-lm-video-tutorial`.
 
+## Working agreement with Matías (operator)
+
+These override default agent behavior when working interactively with Matías:
+
+1. **Explain the full plan before touching anything.** State what you'll do, in what order, and why; wait for explicit OK before executing. No silent fan-out into multiple PRs/commits.
+2. **Never merge with admin bypass without explicit OK.** If a PR is blocked by branch protection / CODEOWNER review (Matías is the sole code owner, so he cannot self-approve), surface the blocker and let him decide — approve, authorize the bypass, or hold. Do not force the merge on your own.
+3. **Keep noise low.** Prefer one well-scoped change over many; don't re-ask questions already answered.
+
 ## Non-obvious caveats
 
 - **Disk precheck pre-hook:** `npm run dev` and `npm run build` both run `disk:precheck` via `predev`/`prebuild`. On cloud/CI with unusual filesystems it can false-fail — set `BMC_DISK_PRECHECK_SKIP=1` (also `BMC_DISK_MIN_FREE_MIB`, `BMC_DISK_PRECHECK_MODE=warn`).
