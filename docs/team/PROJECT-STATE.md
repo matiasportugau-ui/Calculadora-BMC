@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (BMC Driver Loop — join REP→trip + 5 visual specs)
+**Última actualización:** 2026-08-22 (test — Driver Loop POD/phone/projection + adjuntoInfer wire)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-22 (test — Driver Loop gates + adjuntoInfer):** Complementary `#1078` coverage: POD `hasEvidenceForStop`, chofer phone aliases (`telefono_chofer` / `assigned_phone_e164`), factory event projects `coordinado→en_curso`, whitespace cliente does not mint `/seguimiento`, FSM `coordinado→en_curso→cerrado`. Wired orphan `tests/adjuntoInfer.test.js`. Did not pin `location_ping` (`#1081`) or per-stop delivery close (`#1080`). Complementary to open `#1082`.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 
