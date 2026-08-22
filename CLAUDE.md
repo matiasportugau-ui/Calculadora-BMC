@@ -12,7 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Frontend:** React 18 + **Vite 7** (dev server **:5173**)
 - **API:** **Express 5** on **Node.js** (`engines.node = "24.x"`; ES modules via `"type": "module"`) — **:3001**
-- **Data:** **PostgreSQL** (`pg`) for Transportista, **WA Cockpit**, and **TraKtiMe** (time tracking) flows (`DATABASE_URL`); **pgvector + provider-agnostic embeddings** power Panelin RAG retrieval; Google Sheets via service-account JSON for CRM/Finanzas; integrations for MercadoLibre OAuth, WhatsApp Cloud API, GCS, OpenAI/Anthropic.
+- **Data:** **PostgreSQL** (`pg`) for Transportista, **WA Cockpit**, **TraKtiMe** (time tracking), and **agent telemetry** flows (`DATABASE_URL`); **pgvector + provider-agnostic embeddings** power Panelin RAG retrieval; Google Sheets via service-account JSON for CRM/Finanzas; integrations for MercadoLibre OAuth, WhatsApp Cloud API, GCS, OpenAI/Anthropic/xAI Grok.
+- **Voice:** **Dual-engine voice system** — **OpenAI Realtime** (default) + **Grok Voice Agent** (xAI) with ephemeral WebRTC tokens; browser-initiated SDP peer connections to provider APIs.
 - **Modules:** **ES modules only** (`import` / `export`) — no `require()`.
 
 ## Key commands
@@ -35,6 +36,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `npm run transportista:migrate` | Apply Postgres migrations under `transportista-cursor-package/migrations/`. |
 | `npm run wa:migrate` | Apply WA Cockpit Postgres migrations under `wa-package/migrations/`. |
 | `npm run traktime:migrate` | Apply TraKtiMe Postgres migrations. |
+| `npm run omni:migrate` | Apply Omni/Channels Postgres migrations. |
+| `npm run agent:migrate` | Apply agent telemetry (agent_tool_calls) Postgres migrations. |
 
 Running a single test: each file in `tests/` is a standalone Node script — run it directly, e.g. `node tests/validation.js` or `node tests/calcLoopbackClient.test.js`.
 
@@ -63,7 +66,7 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 
 - `server/index.js` — app entry; mounts routes; exposes `GET /health` and `GET /capabilities`.
 - `server/config.js` — env + feature flags (always read sheet IDs/tokens from here, never hardcode).
-- `server/routes/` — one file per surface: `calc.js`, `agentChat.js` (SSE), `bmcDashboard.js` (Sheets-backed `/api/*`), `pdf.js`, `wa.js`, `mlSearch.js`, `transportista.js`, `wolfboard.js`, `superAgent.js`, `quotes.js` + `quoteExport.js` (quote CRUD/export), `tasks.js` + `tasksOAuth.js` (Google Tasks), `identityMe.js` + `identityAdmin.js` (user mgmt), `traktime.js` (time tracking), `marketing.js`, etc.
+- `server/routes/` — one file per surface: `calc.js`, `agentChat.js` (SSE text chat), `agentVoice.js` (voice session minting + action relay), `bmcDashboard.js` (Sheets-backed `/api/*`), `pdf.js`, `wa.js`, `mlSearch.js`, `transportista.js`, `wolfboard.js`, `superAgent.js`, `quotes.js` + `quoteExport.js` (quote CRUD/export), `tasks.js` + `tasksOAuth.js` (Google Tasks), `identityMe.js` + `identityAdmin.js` (user mgmt), `traktime.js` (time tracking), `marketing.js` (competitor intel + Meta Ads `/api/marketing/ads/by-line`), `emailAgentChat.js` (email drafting), etc.
 - `server/lib/calcLoopbackClient.js` — agent tools call calc via loopback HTTP to `127.0.0.1:${config.port}/calc/*` (provenance `source: "ae_agent"`). See `docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md`.
 
 ### PDF system
@@ -84,16 +87,28 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 
 ### AI / Agent system
 
-- **agentCore.js** — shared brain for all channels (chat, ML, WA); provider chain (Anthropic Claude + OpenAI fallback).
-- **agentTools.js** — Anthropic `tool_use` definitions; live calc access via loopback HTTP.
+- **assistantRegistry.js** — centralized control plane for all AI assistants (chat, email, WA, ML, Canales, Wolfboard); defines fallback line, health checks, and enable/disable gates. Terminal fallback is `seam` (shared `agentCore`).
+- **agentCore.js** — shared brain for all channels (chat, ML, WA); provider chain (Anthropic Claude → Grok xAI → Gemini → OpenAI).
+- **agentTools.js** — Anthropic `tool_use` definitions; 55+ tools for calc, Sheets, CRM, WhatsApp, tasks, KB, telemetry; live calc access via loopback HTTP.
 - **RAG:** `server/lib/rag.js` + `embeddings.js` — pgvector cosine search over training KB.
 - **Auto-learn:** `server/lib/autoLearnExtractor.js` — extracts new KB entries from conversations.
 - **Training KB:** `server/lib/trainingKB.js` + `kbSurface.js` + `kbAnalytics.js`.
+- **Telemetry:** `server/lib/costTelemetry.js` logs provider/model/latency/cost per turn; `recordToolCall` persists to `agent_tool_calls` table (when `DATABASE_URL` set).
+
+### Voice integration
+
+- **Dual-engine voice:** `server/routes/agentVoice.js` mints ephemeral Realtime tokens (OpenAI or Grok/xAI) for browser WebRTC peer connections.
+- **Engine selection:** `voiceProvider` parameter can be `"openai"` (default) or `"grok"`. Resolves from `aiProvider` (e.g., `aiProvider="grok"` → voice is Grok Voice Agent).
+- **OpenAI Realtime:** HTTPS WebRTC to `https://api.openai.com/v1/realtime` with OpenAI-minted client secrets.
+- **Grok Voice Agent (xAI):** Realtime-compatible; WebRTC to `https://api.x.ai/v1/realtime` with Grok models `grok-voice-latest`, `grok-voice-think-fast-1.0` (see `voiceRealtimeProviders.js`).
+- **Health & readiness:** `GET /api/agent/providers/status` reports key availability and model readiness for UI selector; `providerReadiness.js` probes provider health.
+- **Error logging & metrics:** `server/lib/voiceErrorLog.js` (error events), `voiceMetrics.js` (usage/latency), `voiceErrorLog/voiceMetrics` dual-write on every session.
 
 ### Market intelligence
 
-- ETL pipeline for competitor price monitoring: `server/lib/marketIntel/` (scraper, deduplication, delta, alerts, scheduler).
-- Triggered via `server/routes/mlEtlRun.js`.
+- **Competitor monitoring:** ETL pipeline for competitor price monitoring: `server/lib/marketIntel/` (scraper, deduplication, delta, alerts, scheduler). Triggered via `server/routes/mlEtlRun.js`.
+- **Meta Ads Intelligence:** `GET /api/marketing/ads/by-line` rolls up current Meta campaigns by service line (Big 4: Rendimiento/Pilar 1, Instalación/Pilar 2, Tráfico Web, Remarketing). `server/lib/marketIntel/paidMediaCampaignMap.js` enriches reports; UI shows cards with KPI breakdown, AI insights via Panelin chat (grounded in `by_line` data).
+- **Paid media routing:** `SERVICE_LINES` enum used across `metaAdsReport.js`, `metaAdsInsights.js`, `metaAdsHealth.js` for consistent Big 4 classification.
 
 ### Pricing model
 
@@ -113,16 +128,17 @@ All prices are **without IVA**; 22% IVA is applied once at the total via `calcTo
 
 1. `docs/team/PROJECT-STATE.md` — **canonical** live state, recent changes, pending items.
 2. `AGENTS.md` — full command catalogue and operational procedures.
-3. **`docs/sdd/calculadora-bmc/SDD.md`** — as-built architecture SoT (C4, ADRs, AI, deploy, risks). Product backlog: `docs/sdd/calculadora-bmc/audit/ARCHITECT-IMPROVEMENTS.md`. Progressive: only load sections needed for the task.
-4. `docs/team/knowledge/<role>.md` if your task maps to a defined agent role.
-5. `docs/google-sheets-module/README.md` for any Sheets/CRM change (mapping canon in `MAPPER-PRECISO-PLANILLAS-CODIGO.md`).
+3. **`docs/sdd/calculadora-bmc/SDD.md`** — as-built architecture v0.2 (SoT: C4, ADRs, AI system, voice, deploy, risks, SCORECARD 94/100). Product backlog: `docs/sdd/calculadora-bmc/audit/ARCHITECT-IMPROVEMENTS.md` (A1–A6). Progressive: load sections by task.
+4. **`docs/sdd/panelin-ai-agent-platform/SDD.md`** — for any agent/voice/tool/provider work. Assistant registry, provider failover, voice dual-engine, telemetry, 55 tools documented.
+5. `docs/team/knowledge/<role>.md` if your task maps to a defined agent role.
+6. `docs/google-sheets-module/README.md` for any Sheets/CRM change (mapping canon in `MAPPER-PRECISO-PLANILLAS-CODIGO.md`).
 
 When you finish a task that changes behavior, append a line under "Cambios recientes" in `docs/team/PROJECT-STATE.md`. If the change alters topology, ADRs, or external interfaces, patch the SDD (or note a gap) in the same session.
 
 ## Deployment
 
 - **Frontend:** Vercel — https://calculadora-bmc.vercel.app (config in `vercel.json`).
-- **API:** Google **Cloud Run** — service `panelin-calc`, region `us-central1`. Sheets credentials are mounted from Secret Manager (`./scripts/cloud-run-matriz-sheets-secret.sh`).
+- **API:** Google **Cloud Run** — service `panelin-calc`, region `us-central1`. **PAOS** (Panelin Assistant Operating System) enabled: config flags `PAOS_ENABLED`, `PAOS_PROMOTE`, `PAOS_CANARY_PCT`, `PAOS_LEDGER_RETENTION_DAYS`. Sheets credentials mounted from Secret Manager (`./scripts/cloud-run-matriz-sheets-secret.sh`).
 - **CI:** `.github/workflows/ci.yml` runs lint, tests, build, env-drift, smoke (push to `main`), `channels_pipeline`, `voice_health`, `knowledge_antenna`.
 
 ## Agent ecosystem (Claude Code)
@@ -156,3 +172,5 @@ Twelve agent definitions in **`.claude/agents/`**:
 - **Node 24.x is required** — `engines.node = "24.x"` (aligns Vercel with `@sparticuz/chromium >=22.17.0`). The README badge still says Node 20; trust `package.json`.
 - **`npm audit fix --force` is forbidden** without explicit approval — it has broken Vite in this repo before.
 - **`/health` without credentials:** `hasSheets` and `hasTokens` will be `false` until `.env` is populated with Google service-account JSON and ML OAuth keys. Most calc/UI code paths work without them; CRM, Finanzas, ML, and AI suggestions do not.
+- **Voice authentication:** `POST /api/agent/voice/session` requires auth (API_AUTH_TOKEN or identity JWT with `calc:write` grant). Grok Voice requires `GROK_API_KEY` or `XAI_API_KEY`; OpenAI Realtime requires `OPENAI_API_KEY`. If a key is missing, that engine is unavailable; the UI shows readiness via `GET /api/agent/providers/status`.
+- **Provider failover chain:** AI calls degrade through `assistantRegistry` fallback line (requested assistant → enabled assistants in priority order → terminal `seam`). The `seam` always has at least one LLM provider. If an assistant is unhealthy (DB down, config missing), the next in line takes over — never silent failure.
