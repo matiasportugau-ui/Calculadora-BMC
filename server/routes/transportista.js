@@ -711,7 +711,8 @@ const FACTORY_TYPES = new Set([
   "factory_departed",
 ]);
 
-async function projectRepartoFromDriverEvent(pool, tripId, type) {
+/** Exported for offline tests — factory types flip coordinado→en_curso. */
+export async function projectRepartoFromDriverEvent(pool, tripId, type) {
   const { rows } = await pool.query(`select plan_snapshot from trips where trip_id = $1::uuid`, [tripId]);
   const repartoId = rows[0]?.plan_snapshot?.reparto_id;
   if (!repartoId) return;
