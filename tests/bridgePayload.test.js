@@ -160,6 +160,16 @@ const panels = [
 }
 
 {
+  const live = [{ tipo: "ISODEC", espesor: 100, longitud: 10.15, cantidad: 10 }];
+  const payload = buildBridgePayload({ destino: "Maldonado", panels: live });
+  const { stops } = bridgePayloadToStops(payload, { uid: () => "id-1" });
+  assert.equal(stops[0].paneles[0].longitud, 10.15);
+  const merged = mergeBridgeIntoStops([], stops);
+  assert.equal(merged[0].paneles[0].longitud, 10.15);
+  ok("bridge keeps recovered 10.15 m length (not collapsed to 6)");
+}
+
+{
   const fp = bridgePanelsFingerprint([
     { tipo: "B", espesor: 80, longitud: 5, cantidad: 2 },
     { tipo: "A", espesor: 100, longitud: 6, cantidad: 8 },

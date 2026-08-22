@@ -1,4 +1,10 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import LogisticaTruckerAgent from "./logistica/LogisticaTruckerAgent.jsx";
+import LogisticaMapColumn from "./logistica/LogisticaMapColumn.jsx";
+import { isLogisticaCompactLayoutWidth } from "../constants/viewportBreakpoints.js";
+import { panelinPanelGroupStorage } from "../utils/panelinChatLayoutStorage.js";
+import { applyTruckerAction } from "../utils/logistica/truckerAgent.js";
 import { parseLogisticaFromAdjuntoText } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
 import { extractTextFromPdfArrayBuffer } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/pdfTextExtract.js";
 import { MAX_H, MANUAL_LAYOUT_VERSION } from "../utils/bmcLogisticaCargo.js";
@@ -34,6 +40,7 @@ import {
   mergeBridgeIntoStops,
 } from "../utils/logistica/bridgePayload.js";
 import { searchMappedVentasRows, withCoordinationChip } from "../utils/logistica/ventasSearch.js";
+import { sortVentasRowsChronological } from "../utils/logistica/ventasFechaGroups.js";
 import {
   reorderStops,
   renumberStops,
@@ -100,6 +107,8 @@ import {
   applyDefaultPickupToStops,
 } from "../utils/logistica/wizardState.js";
 import { suggestRoute } from "../utils/logistica/routeSuggest.js";
+import { attachOsrmToRoute, osrmCoordinatesFromLegs } from "../utils/logistica/osrmPolyline.js";
+import { lookupUyGazetteer } from "../utils/logistica/uyGazetteer.js";
 import EnvioWizardShell from "./logistica/wizard/EnvioWizardShell.jsx";
 import StepPedidos from "./logistica/wizard/StepPedidos.jsx";
 import StepFlota from "./logistica/wizard/StepFlota.jsx";
@@ -128,6 +137,13 @@ import {
   draftIdFromEnvNo,
 } from "../utils/logistica/enviosDraft.js";
 import {
+  writeDraftArchive,
+  readDraftArchive,
+  mergeKeepRouteWork,
+  draftStopCount,
+  routeLegCount,
+} from "../utils/logistica/enviosDraftArchive.js";
+import {
   fingerprintDraft,
   shouldAutosave,
   parsePutDraftResponse,
@@ -146,6 +162,9 @@ import {
 import { resolveSafeBtnHref, safeHttpUrl, safeTelUrl } from "../utils/logistica/safeExternalUrl.js";
 import PackageLayoutList from "./logistica/PackageLayoutList.jsx";
 import EnviosDraftBrowser from "./logistica/EnviosDraftBrowser.jsx";
+import OpsToolsStrip from "./logistica/OpsToolsStrip.jsx";
+import FactoryPickupBlock from "./logistica/FactoryPickupBlock.jsx";
+import VentasColaCard from "./logistica/VentasColaCard.jsx";
 import {
   mapVentasRowV2,
   indexVentasCsvDataRows,
@@ -156,7 +175,9 @@ import { inferCargoFromEncargoAndSheet } from "../utils/logistica/cargoFromEncar
 import {
   matchAdminQuotes,
   normalizeAdminQuoteRow,
+  extractPanelsFromAdminQuote,
 } from "../utils/logistica/adminQuoteMatch.js";
+import { estimateRouteLoadPhysical } from "../utils/logistica/loadCharacteristics.js";
 import {
   applyAiVerifyProposal,
   isStopIncompleteForAi,
@@ -479,7 +500,7 @@ function generatePickupEmailSubject(stops) {
   return `Metalog - Coordinación Retiro Pedidos ${labels.map((id) => `(${id})`).join(" ")}`;
 }
 
-function generatePickupEmailBody(stops, cargo, info) {
+function generatePickupEmailBody(stops, cargo, info, truckL) {
   const fecha = info.fecha || "—";
   const ids = stops.map(orderDisplayId);
   if (ids.length === 0) return "Agregá al menos una parada.";
@@ -487,14 +508,24 @@ function generatePickupEmailBody(stops, cargo, info) {
   if (ids.length === 1) {
     body += `Quiero que el día ${fecha} se retirara el siguiente pedido: ${ids[0]}.`;
   } else {
-    body += `Quiero que el día ${fecha} se retiraran los siguientes pedidos: ${ids.join(", ")}.\n\n`;
-    body += "Dado el orden de descargas y ruta de este viaje sugerimos que la carga sea de la siguiente forma:\n\n";
-    const sorted = [...(cargo.stopUnloadOrder || [])].sort((a, b) => a.firstRank - b.firstRank);
-    const loadOrder = [...sorted].reverse();
+    body += `Quiero que el día ${fecha} se retiraran los siguientes pedidos: ${ids.join(", ")}.`;
+  }
+  body += "\n\nDado el orden de descargas y ruta de este viaje sugerimos que la carga sea de la siguiente forma (cargar primero lo que descarga último):\n\n";
+  const sorted = [...(cargo?.stopUnloadOrder || [])].sort((a, b) => a.firstRank - b.firstRank);
+  const loadOrder = [...sorted].reverse();
+  if (loadOrder.length) {
     loadOrder.forEach((entry, i) => {
-      body += `${i + 1}. ${orderDisplayId(entry.stop)}\n`;
+      const nPkgs = Array.isArray(entry.pkgs) ? entry.pkgs.length : 0;
+      body += `${i + 1}. ${orderDisplayId(entry.stop)}${nPkgs ? ` · ${nPkgs} bultos` : ""}\n`;
+    });
+  } else {
+    ids.forEach((id, i) => {
+      body += `${i + 1}. ${id}\n`;
     });
   }
+  if (truckL) body += `\nCamión ${truckL}m.`;
+  const notas = String(info?.notas || "").trim();
+  if (notas) body += `\nNotas de remito: ${notas}`;
   return body.trim();
 }
 
@@ -511,15 +542,8 @@ async function copyToClipboard(text) {
   }
 }
 
-const PANEL_WIDTH_M_EST = 1.2;
-
 function estimateM2ForStops(stops) {
-  return stops.reduce(
-    (acc, s) =>
-      acc +
-      (s.paneles || []).reduce((a2, p) => a2 + safeNum(p.longitud) * PANEL_WIDTH_M_EST * safeNum(p.cantidad), 0),
-    0
-  );
+  return estimateRouteLoadPhysical(stops).m2;
 }
 
 function buildDefaultManualOrderKeys(stops) {
@@ -1807,6 +1831,7 @@ export default function BmcLogisticaApp() {
   const [truckL, setTruckL] = useState(8);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
+  const [addingStopKeys, setAddingStopKeys] = useState([]);
   const [ventasCache, setVentasCache] = useState({ headers: [], rows: [] });
   const [loadSh, setLoadSh] = useState(false);
   const [shErr, setShErr] = useState("");
@@ -1825,6 +1850,7 @@ export default function BmcLogisticaApp() {
   const [activeReparto, setActiveReparto] = useState(null);
   const [repartoBusy, setRepartoBusy] = useState(false);
   const [repartoHistoryOpen, setRepartoHistoryOpen] = useState(false);
+  const [opsTool, setOpsTool] = useState(null);
   const [repartoHistory, setRepartoHistory] = useState([]);
   const [confirmCoordOpen, setConfirmCoordOpen] = useState(false);
   const [autoLoadMsg, setAutoLoadMsg] = useState("");
@@ -1866,11 +1892,41 @@ export default function BmcLogisticaApp() {
   /** Setup wizard (SDD-ENVIO-WIZARD) */
   const [catalogPlaces, setCatalogPlaces] = useState(() => loadCatalogFromStorage());
   const [wizardUi, setWizardUi] = useState(() => createWizardUi({ enabled: false }));
+  const [isCompactSplit, setIsCompactSplit] = useState(() =>
+    typeof window !== "undefined" ? isLogisticaCompactLayoutWidth(window.innerWidth) : false,
+  );
+  const [rutaBusy, setRutaBusy] = useState(false);
+  const autoRutaRef = useRef(false);
   const [tripRoute, setTripRoute] = useState(null);
   const [newBaseLabel, setNewBaseLabel] = useState("");
   const [newBaseUrl, setNewBaseUrl] = useState("");
   const [newPickupLabel, setNewPickupLabel] = useState("");
   const [newPickupUrl, setNewPickupUrl] = useState("");
+  const draftQueryLoaded = useRef(false);
+  const autoLoadedVentas = useRef(false);
+  const truckerStateRef = useRef({ info, stops, truckL, wizard: wizardUi, route: tripRoute });
+  truckerStateRef.current = { info, stops, truckL, wizard: wizardUi, route: tripRoute };
+  const persistRef = useRef(null);
+  persistRef.current = {
+    info,
+    stops,
+    truckL,
+    view,
+    distributionMode,
+    accProfiles,
+    cargoLayoutMode,
+    manualPkgOrderKeys,
+    rowOverrides,
+    freeDragEnabled,
+    freePositions,
+    loadWarnings,
+    transportistas,
+    camionesCat,
+    priceHistory,
+    tripCostLog,
+    route: tripRoute,
+    ui: { collapsedStopIds, wizard: wizardUi },
+  };
 
   useEffect(() => {
     let restoredStops = [];
@@ -2027,6 +2083,12 @@ export default function BmcLogisticaApp() {
   }, []);
 
   useEffect(() => {
+    if (!hydrated || autoLoadedVentas.current) return;
+    autoLoadedVentas.current = true;
+    void cargarActuales();
+  }, [hydrated]);
+
+  useEffect(() => {
     if (!hydrated) return;
     try {
       localStorage.setItem(
@@ -2055,6 +2117,27 @@ export default function BmcLogisticaApp() {
           ui: { collapsedStopIds, wizard: wizardUi },
         })
       );
+      const built = buildEnviosDraft({
+        info,
+        stops,
+        truckL,
+        view,
+        distributionMode,
+        accProfiles,
+        cargoLayoutMode,
+        manualPkgOrderKeys,
+        rowOverrides,
+        freeDragEnabled,
+        freePositions,
+        loadWarnings,
+        transportistas,
+        camionesCat,
+        priceHistory,
+        tripCostLog,
+        route: tripRoute,
+        ui: { collapsedStopIds, wizard: wizardUi },
+      });
+      if (built.ok) writeDraftArchive(window.localStorage, built.payload);
     } catch {
       // ignore storage quota errors
     }
@@ -2080,6 +2163,29 @@ export default function BmcLogisticaApp() {
     wizardUi,
     tripRoute,
   ]);
+
+  useEffect(() => {
+    if (!hydrated) return undefined;
+    const flush = () => {
+      try {
+        const state = persistRef.current;
+        if (!state) return;
+        const built = buildEnviosDraft(state);
+        if (!built.ok) return;
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(built.payload));
+        writeDraftArchive(window.localStorage, built.payload);
+      } catch {
+        /* quota */
+      }
+    };
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", flush);
+      flush();
+    };
+  }, [hydrated]);
 
   useEffect(() => {
     if (cargoLayoutMode !== "manual") return;
@@ -2374,6 +2480,18 @@ export default function BmcLogisticaApp() {
   /** Apply a parsed envíos draft payload into React state. */
   function applyDraftPayload(p, meta = {}) {
     if (!p || typeof p !== "object") return;
+    let next = p;
+    if (meta.keepLocalWork !== false) {
+      const envId = draftIdFromEnvNo(p.info?.numero || meta.id || "");
+      const archived = envId ? readDraftArchive(window.localStorage, envId) : null;
+      const liveBuilt = persistRef.current ? buildEnviosDraft(persistRef.current) : { ok: false };
+      const live = liveBuilt.ok ? liveBuilt.payload : null;
+      const sameEnv =
+        draftIdFromEnvNo(live?.info?.numero) &&
+        draftIdFromEnvNo(live?.info?.numero) === envId;
+      next = mergeKeepRouteWork(archived || (sameEnv ? live : null), p) || p;
+    }
+    p = next;
     if (p.info) setInfo((prevI) => ({ ...prevI, ...p.info }));
     if (Array.isArray(p.stops)) {
       setStops(
@@ -2411,52 +2529,73 @@ export default function BmcLogisticaApp() {
     if (meta.reparto) setActiveReparto(meta.reparto);
   }
 
+  /** Primary operator save: this Mac. Never opens Google OAuth. */
+  function saveDraftToThisMac() {
+    const built = buildEnviosDraft(currentDraftState());
+    if (!built.ok) return { ok: false, error: built.error, built: null };
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(built.payload));
+    } catch {
+      /* quota */
+    }
+    const archived = writeDraftArchive(window.localStorage, built.payload);
+    if (!archived.ok) return { ok: false, error: archived.error, built };
+    return { ok: true, built, id: archived.id };
+  }
+
   /**
-   * Operator Save: cloud draft + Drive .bmc-envios.json (resumable from Calculadora).
+   * Operator Save: this Mac first. Postgres is optional. Drive only if toDrive.
    */
-  async function saveCoordination({ completed = false } = {}) {
-    const cloud = await saveDraftToCloud({ silent: true });
-    if (!gdriveIsConfigured()) {
+  async function saveCoordination({ completed = false, toDrive = false } = {}) {
+    const local = saveDraftToThisMac();
+    if (!local.ok) {
+      setAutoLoadMsg(
+        local.error === "missing_env_no"
+          ? "Asigná un Nº Envío (ENV-…) antes de guardar."
+          : `Este Mac: no se pudo guardar (${local.error || "error"})`,
+      );
+      return local;
+    }
+    const envNo = local.built.envNo;
+    const n = local.built.stopCount;
+    let cloud = null;
+    if (enviosAuthToken()) {
+      cloud = await saveDraftToCloud({ silent: true });
+    }
+    if (!toDrive) {
       setAutoLoadMsg(
         cloud?.ok
-          ? "Guardado en nube · Drive no configurado (VITE_GOOGLE_CLIENT_ID)"
-          : cloud?.error === "missing_env_no"
-            ? "Asigná un Nº Envío (ENV-…) antes de guardar."
-            : `Nube: ${cloud?.error || "error"} · Drive no configurado`,
+          ? `Este Mac + nube: ${envNo} · ${n} parada(s)`
+          : `Este Mac: guardado ${envNo} · ${n} parada(s)`,
       );
-      return cloud;
+      return { ok: true, local, cloud };
     }
-    const built = buildEnviosDraft(currentDraftState());
-    if (!built.ok) {
-      setAutoLoadMsg("Asigná un Nº Envío (ENV-…) antes de guardar.");
-      return { ok: false, error: built.error };
+    if (!gdriveIsConfigured()) {
+      setAutoLoadMsg(`Este Mac: ${envNo} · Drive no configurado`);
+      return { ok: true, local, cloud };
     }
     const status =
       completed || activeReparto?.status === "coordinado" ? "completed" : "saved";
     setDriveSaveBusy(true);
     try {
       if (!gdriveIsAuth()) await gdriveSignIn();
-      const document = buildEnviosDriveDocument(built.payload, {
+      const document = buildEnviosDriveDocument(local.built.payload, {
         status,
         repartoNo: activeReparto?.repartoNo || null,
-        label: built.envNo,
+        label: envNo,
       });
       const drive = await saveEnviosCoordination({
-        envNo: built.envNo,
+        envNo,
         document,
         status,
       });
       setAutoLoadMsg(
-        `✓ Guardado ${built.envNo} · ${status === "completed" ? "Completada" : "Guardada"} · Drive + nube · ${built.stopCount} parada(s)`,
+        `Este Mac + Drive: ${envNo} · ${status === "completed" ? "Completada" : "Guardada"} · ${n} parada(s)`,
       );
-      return { ok: true, cloud, drive };
+      return { ok: true, local, cloud, drive };
     } catch (e) {
-      setAutoLoadMsg(
-        cloud?.ok
-          ? `Nube OK · Drive error: ${e.message}`
-          : `Error al guardar: ${e.message}`,
-      );
-      return { ok: false, error: e.message, cloud };
+      setAutoLoadMsg(`Este Mac OK · Drive: ${e.message}`);
+      return { ok: true, local, cloud, error: e.message };
     } finally {
       setDriveSaveBusy(false);
     }
@@ -2465,6 +2604,17 @@ export default function BmcLogisticaApp() {
   async function openCoordinationSelection(sel) {
     setDraftBrowserOpen(false);
     if (!sel?.id && !sel?.doc) return;
+    if (sel.source === "local") {
+      const raw = readDraftArchive(window.localStorage, sel.id);
+      const parsed = parseEnviosDraftPayload(raw);
+      if (!parsed.ok) {
+        setAutoLoadMsg(`Este Mac: no está ${sel.id}`);
+        return;
+      }
+      applyDraftPayload(parsed.payload, { keepLocalWork: false, id: sel.id });
+      setAutoLoadMsg(`Este Mac: ${sel.id} · ${parsed.payload.stops?.length || 0} parada(s)`);
+      return;
+    }
     if (sel.source === "drive" && sel.doc) {
       const parsed = parseEnviosDraftPayload(sel.doc);
       if (!parsed.ok) {
@@ -2592,11 +2742,13 @@ export default function BmcLogisticaApp() {
     lastPushedFp,
     cloudSyncBusy,
     lastPushAt,
+    tripRoute,
+    wizardUi,
   ]);
 
   /** P5: pull draft from server into app state (+ localStorage via hydrate persist). */
-  async function loadDraftFromCloud() {
-    const id = draftIdFromEnvNo(info.numero);
+  async function loadDraftFromCloud(idOverride) {
+    const id = draftIdFromEnvNo(idOverride || info.numero);
     if (!id) {
       setAutoLoadMsg("Nube: poné el Nº Envío del draft a cargar.");
       return;
@@ -2690,6 +2842,207 @@ export default function BmcLogisticaApp() {
       setCloudSyncBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!hydrated || draftQueryLoaded.current) return;
+    let id = "";
+    let seed = "";
+    try {
+      const q = new URLSearchParams(window.location.search);
+      id = String(q.get("draft") || "").trim();
+      seed = String(q.get("seed") || "").trim();
+    } catch {
+      id = "";
+      seed = "";
+    }
+    const seedId = draftIdFromEnvNo(seed || (import.meta.env.DEV ? id : ""));
+    const queryId = draftIdFromEnvNo(id || seedId);
+    const archivedHit = queryId ? readDraftArchive(window.localStorage, queryId) : null;
+    const archiveHasWork =
+      archivedHit && (draftStopCount(archivedHit) > 0 || routeLegCount(archivedHit) > 0);
+    if (queryId && archiveHasWork) {
+      draftQueryLoaded.current = true;
+      const archived = archivedHit;
+      const parsed = parseEnviosDraftPayload(archived);
+      if (parsed.ok) {
+        applyDraftPayload(parsed.payload, { keepLocalWork: false, id: queryId });
+        setWizardUi(
+          createWizardUi({
+            ...(parsed.payload.ui?.wizard || {}),
+            enabled: true,
+          }),
+        );
+        setAutoLoadMsg(
+          `Este Mac: ${queryId} · ${parsed.payload.stops?.length || 0} parada(s) · ruta guardada`,
+        );
+        return;
+      }
+    }
+    if (import.meta.env.DEV && seedId) {
+      draftQueryLoaded.current = true;
+      void (async () => {
+        try {
+          const res = await fetch(`/envios-local/${encodeURIComponent(seedId)}.json`, { cache: "no-store" });
+          if (!res.ok) {
+            if (id) {
+              void loadDraftFromCloud(id);
+            } else {
+              setAutoLoadMsg(`Local: no hay seed ${seedId}.json en public/envios-local/`);
+            }
+            return;
+          }
+          const raw = await res.json();
+          const parsed = parseEnviosDraftPayload(raw);
+          if (!parsed.ok) {
+            setAutoLoadMsg(`Local: seed inválido (${parsed.error})`);
+            return;
+          }
+          applyDraftPayload(parsed.payload);
+          if (!parsed.payload.ui?.wizard) {
+            setWizardUi(
+              createWizardUi({
+                enabled: true,
+                activeStep: "ruta",
+                defaultPickupPointId: "pickup-kingspan-bromyros",
+                singlePickup: true,
+                done: { pedidos: true, flota: false, levantes: true, ruta: false, carga: false },
+              }),
+            );
+          }
+          setAutoLoadMsg(`Local: seed ${seedId} · mesa de ruta · ${parsed.payload.stops?.length || 0} parada(s)`);
+        } catch (e) {
+          setAutoLoadMsg(`Local: error al leer seed — ${e.message}`);
+        }
+      })();
+      return;
+    }
+    if (!id) return;
+    draftQueryLoaded.current = true;
+    void loadDraftFromCloud(id);
+  }, [hydrated]);
+
+  async function generateRoute(opts = {}) {
+    setRutaBusy(true);
+    try {
+      let placesForRoute = mergeCatalogPlaces(catalogPlaces);
+      setCatalogPlaces(placesForRoute);
+      saveCatalogToStorage(placesForRoute);
+      let stopsForRoute =
+        opts.stops ||
+        (wizardUi.singlePickup === true
+          ? applyDefaultPickupToStops(stops, wizardUi.defaultPickupPointId)
+          : stops);
+
+      placesForRoute = placesForRoute.map((p) => {
+        if (p.geo && Number.isFinite(Number(p.geo.lat))) return p;
+        const gaz = lookupUyGazetteer([p.addressText, p.label].filter(Boolean).join(" "));
+        if (!gaz) return p;
+        return { ...p, geo: { lat: gaz.lat, lng: gaz.lng, source: gaz.source } };
+      });
+      setCatalogPlaces(placesForRoute);
+      saveCatalogToStorage(placesForRoute);
+
+      stopsForRoute = stopsForRoute.map((s) => {
+        if (s.geo && Number.isFinite(s.geo.lat)) return s;
+        const parsed = parseLatLng(s.mapLink) || parseLatLng(s.direccion);
+        if (parsed) {
+          return applyGeocodeToStop(s, { ...parsed, label: s.direccion || s.cliente || "", source: "parsed" });
+        }
+        const gaz = lookupUyGazetteer([s.direccion, s.cliente].filter(Boolean).join(" "));
+        if (gaz) {
+          return applyGeocodeToStop(s, {
+            lat: gaz.lat,
+            lng: gaz.lng,
+            label: gaz.label || s.direccion || s.cliente || "",
+            source: gaz.source,
+          });
+        }
+        return s;
+      });
+      setStops((prev) =>
+        prev.map((s) => {
+          const next = stopsForRoute.find((x) => x.id === s.id);
+          if (!next) return s;
+          return {
+            ...s,
+            geo: next.geo || s.geo,
+            mapLink: next.mapLink || s.mapLink,
+            entregaModo: s.entregaModo || next.entregaModo,
+          };
+        }),
+      );
+
+      const token = enviosAuthToken();
+      const baseApi = getCalcApiBase();
+      if (token && baseApi !== undefined) {
+        const needGeo = stopsForRoute.filter((s) => !s.geo && String(s.direccion || "").trim()).slice(0, 5);
+        for (const s of needGeo) {
+          try {
+            const res = await fetch(`${baseApi}/api/envios/geocode`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ address: s.direccion }),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (res.ok && j.geo) {
+              const enriched = applyGeocodeToStop(s, j.geo);
+              stopsForRoute = stopsForRoute.map((x) => (x.id === s.id ? enriched : x));
+              setStops((prev) => prev.map((x) => (x.id === s.id ? enriched : x)));
+            }
+          } catch {
+            /* gazetteer already applied */
+          }
+        }
+      }
+
+      const r = suggestRoute({
+        basePointId: info.basePointId,
+        places: placesForRoute,
+        stops: stopsForRoute,
+        defaultPickupPointId: wizardUi.defaultPickupPointId,
+      });
+      let routed = r;
+      const coordinates = osrmCoordinatesFromLegs(r.orderedLegs);
+      if (token && baseApi !== undefined && coordinates.length >= 2) {
+        try {
+          const osrmRes = await fetch(`${baseApi}/api/envios/route`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ coordinates }),
+          });
+          const osrmJson = await osrmRes.json().catch(() => ({}));
+          if (osrmRes.ok) routed = attachOsrmToRoute(r, osrmJson);
+        } catch {
+          routed = attachOsrmToRoute(r, { provider: "haversine_fallback" });
+        }
+      }
+      setTripRoute(routed);
+      setWizardUi((p) => createWizardUi({ ...p, routeStale: false, done: { ...p.done, ruta: true } }));
+      const withGeo = (routed.orderedLegs || []).filter((l) => l.geo).length;
+      const kmBit = routed.totalKm != null ? ` · ~${Number(routed.totalKm).toFixed(0)} km` : "";
+      const how = routed.suggestionSource === "osrm" ? " calles" : routed.totalKm != null ? " aire" : "";
+      setAutoLoadMsg(`Ruta: ${routed.orderedLegs.length} tramos · ${withGeo} con pin${kmBit}${how}`);
+    } finally {
+      setRutaBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    const onResize = () => setIsCompactSplit(isLogisticaCompactLayoutWidth(window.innerWidth));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (!wizardUi.enabled || wizardUi.activeStep !== "ruta") {
+      autoRutaRef.current = false;
+      return;
+    }
+    if (autoRutaRef.current && !wizardUi.routeStale) return;
+    autoRutaRef.current = true;
+    void generateRoute();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizardUi.enabled, wizardUi.activeStep]);
 
   function reorderPackages(keys) {
     commitManualLayout(keys, rowOverrides, "Layout manual: orden de bultos actualizado (lista DnD)");
@@ -2949,7 +3302,7 @@ export default function BmcLogisticaApp() {
       const mapped = filterVentasLogisticaCandidates(
         indexed.map(({ row, sheetRow1Based }) => mapVentasRow(headers, row, sheetRow1Based)),
       );
-      const found = searchMappedVentasRows(mapped, search);
+      const found = sortVentasRowsChronological(searchMappedVentasRows(mapped, search));
       if (!found.length) setShErr(`Sin resultados operativos para "${search}"`);
       else setResults(found);
     } catch (e) {
@@ -2978,13 +3331,13 @@ export default function BmcLogisticaApp() {
       const mapped = filterVentasLogisticaCandidates(
         indexed.map(({ row, sheetRow1Based }) => mapVentasRow(headers, row, sheetRow1Based)),
       );
-      const found = mapped.map((r) => withCoordinationChip(r));
+      const found = sortVentasRowsChronological(mapped.map((r) => withCoordinationChip(r)));
       if (!found.length) setShErr("No hay filas operativas (con cliente o pedido real) en esta pestaña.");
       else {
         setResults(found);
         setShErr("");
         setAutoLoadMsg(
-          `Ventas: ${found.length} filas operativas (de ${dataRows.length} leídas; basura/encabezados filtrados).`,
+          `Ventas: ${found.length} filas operativas agrupadas por fecha de entrega (de ${dataRows.length} leídas).`,
         );
       }
     } catch (e) {
@@ -3322,6 +3675,15 @@ export default function BmcLogisticaApp() {
   }
 
   async function agregarStop(r) {
+    const already = (stops || []).some(
+      (s) =>
+        (r.orderId && String(s.orderId) === String(r.orderId)) ||
+        (r.nombre && String(s.cliente || "").toLowerCase() === String(r.nombre || "").toLowerCase()),
+    );
+    if (already) return;
+    const addKey = String(r.orderId || r.nombre || "").trim();
+    if (addKey) setAddingStopKeys((p) => (p.includes(addKey) ? p : [...p, addKey]));
+    try {
     await ensureActiveReparto((stops?.length || 0) + 1);
     const label = labelVentasCandidate(r);
     let pdfLink = r.pdf || "";
@@ -3369,6 +3731,19 @@ export default function BmcLogisticaApp() {
     let enrichedStop = baseStop;
     if (hasInferSource) {
       const inferred = await inferStopCargo(baseStop);
+      const adminPanels = extractPanelsFromAdminQuote(admin.best?.quote);
+      if (adminPanels.length) {
+        const pdfHasRealL = (inferred.paneles || []).some(
+          (p) => !p.lengthDefaulted || p.lengthInferredFromM2,
+        );
+        if (!pdfHasRealL || adminPanels.length > (inferred.paneles || []).length) {
+          inferred.paneles = adminPanels.map((p) => ({ id: uid(), ...p }));
+          inferred.warnings = [
+            ...(inferred.warnings || []),
+            "Paneles tomados de Admin cotización (largos de zona).",
+          ];
+        }
+      }
       const adminSuffix = admin.matchNote ? ` · ${admin.matchNote}` : "";
       const adjuntoMeta = {
         source: inferred.source || "unknown",
@@ -3408,9 +3783,9 @@ export default function BmcLogisticaApp() {
       setAutoLoadMsg(`Parada ${label}: ${admin.matchNote}`);
     }
     setStops((p) => [...p, enrichedStop]);
-    setResults([]);
-    setSearch("");
-    setView("form");
+    } finally {
+      if (addKey) setAddingStopKeys((p) => p.filter((k) => k !== addKey));
+    }
   }
 
   async function runAiVerifyForStop(stop) {
@@ -3614,8 +3989,28 @@ export default function BmcLogisticaApp() {
     return { stop: null, pkg: null };
   }
 
+  const handleTruckerAction = useCallback((action) => {
+    const out = applyTruckerAction(truckerStateRef.current, action);
+    if (!out.ok) {
+      const extra = Array.isArray(out.missing) && out.missing.length ? ` · ${out.missing.join(", ")}` : "";
+      setAutoLoadMsg(`Panelin: ${out.error || "no aplicado"}${extra}`);
+      return;
+    }
+    setInfo(out.state.info);
+    setStops(out.state.stops);
+    setTruckL(out.state.truckL);
+    setWizardUi(out.state.wizard);
+    const a = out.applied || {};
+    if (a.field) setAutoLoadMsg(`Panelin: ${a.field} → ${a.value || ""}`);
+    else if (a.truckL) setAutoLoadMsg(`Panelin: camión ${a.truckL} m`);
+    else if (a.step) setAutoLoadMsg(`Panelin: wizard ${a.step}`);
+    else setAutoLoadMsg(`Panelin: ${a.type || "ok"}`);
+  }, []);
+
+  const deskOpen = wizardUi.enabled && wizardUi.activeStep === "ruta";
+
   return (
-    <div className="envios-app">
+    <div className={`envios-app envios-app--split${isCompactSplit ? " is-compact" : ""}`}>
       <style>{`@media print{.np{display:none!important}}`}</style>
 
       <header className="envios-header envios-chrome np">
@@ -3633,6 +4028,20 @@ export default function BmcLogisticaApp() {
         <div key={i} className="envios-alert-danger" style={{ marginBottom: 8 }}>⚠️ {w}</div>
       ))}
 
+      <PanelGroup
+        direction={isCompactSplit ? "vertical" : "horizontal"}
+        autoSaveId={isCompactSplit ? "logistica-main-split-compact-v2" : "logistica-main-split-v2"}
+        storage={panelinPanelGroupStorage}
+        className="envios-split"
+      >
+        <Panel
+          className="envios-split-pane envios-split-pane--config"
+          defaultSize={50}
+          minSize={isCompactSplit ? 30 : 28}
+          style={{ minWidth: 0, minHeight: 0, display: "flex" }}
+        >
+          <div className="envios-col">
+
       {wizardUi.enabled ? (
         <div className="np" style={{ marginBottom: 12 }}>
           <EnvioWizardShell
@@ -3640,7 +4049,7 @@ export default function BmcLogisticaApp() {
             onWizardChange={(w) => {
               if (w.activeStep === "carga") setView("form");
               // when completing levantes single mode, apply default pickup
-              if (w.done?.levantes && w.singlePickup !== false && w.defaultPickupPointId) {
+              if (w.done?.levantes && w.singlePickup === true && w.defaultPickupPointId) {
                 setStops((prev) => applyDefaultPickupToStops(prev, w.defaultPickupPointId));
               }
               setWizardUi(w);
@@ -3666,7 +4075,7 @@ export default function BmcLogisticaApp() {
                     borderRadius: 8,
                     border: `1px solid ${T.border}`,
                     background: "#fff",
-                    minHeight: 40,
+                    minHeight: 44,
                     fontWeight: 600,
                     maxWidth: 200,
                   }}
@@ -3689,14 +4098,16 @@ export default function BmcLogisticaApp() {
                     background: "#2563eb",
                     color: "#fff",
                     cursor: cloudSyncBusy || driveSaveBusy ? "wait" : "pointer",
-                    minHeight: 40,
+                    minHeight: 44,
                     fontWeight: 700,
                   }}
                 >
-                  {driveSaveBusy || cloudSyncBusy ? "Guardando…" : "☁ Guardar"}
+                  {driveSaveBusy || cloudSyncBusy ? "Guardando…" : "Guardar"}
                 </button>
               </>
             )}
+            onCargarActuales={cargarActuales}
+            loadSh={loadSh}
             onClassic={() => {
               setWizardUi((p) => createWizardUi({ ...p, enabled: false }));
               setView("form");
@@ -3705,6 +4116,8 @@ export default function BmcLogisticaApp() {
               pedidos: (
                 <StepPedidos
                   stops={stops}
+                  wizard={wizardUi}
+                  places={catalogPlaces}
                   search={search}
                   onSearchChange={setSearch}
                   onBuscar={buscarSheet}
@@ -3715,6 +4128,7 @@ export default function BmcLogisticaApp() {
                   ventasRowCount={ventasCache.rows.length}
                   results={results}
                   onAddResult={agregarStop}
+                  addingKeys={addingStopKeys}
                   activeReparto={activeReparto}
                   onRemoveStop={(id) => {
                     setStops((p) => renumberStops(p.filter((s) => s.id !== id), { colors: COLORS }));
@@ -3763,10 +4177,18 @@ export default function BmcLogisticaApp() {
                   stops={stops}
                   wizard={wizardUi}
                   places={catalogPlaces}
-                  onWizardPatch={(patch) => setWizardUi((p) => createWizardUi({ ...p, ...patch, routeStale: true }))}
+                  onWizardPatch={(patch) => {
+                    const next = createWizardUi({ ...wizardUi, ...patch, routeStale: true });
+                    if (patch.singlePickup === true && next.defaultPickupPointId) {
+                      setStops((prev) => applyDefaultPickupToStops(prev, next.defaultPickupPointId));
+                    }
+                    setWizardUi(next);
+                  }}
                   onStopPickup={(sid, pid) => {
                     setStops((p) => p.map((s) => (s.id === sid ? { ...s, pickupPointId: pid } : s)));
-                    setWizardUi((p) => createWizardUi({ ...p, routeStale: true }));
+                    setWizardUi((p) =>
+                      createWizardUi({ ...p, routeStale: true, unassignedPickupApproved: false }),
+                    );
                   }}
                   newLabel={newPickupLabel}
                   setNewLabel={setNewPickupLabel}
@@ -3802,102 +4224,30 @@ export default function BmcLogisticaApp() {
                   route={tripRoute}
                   routeStale={wizardUi.routeStale}
                   info={info}
-                  onRecalcular={async () => {
-                    // Best-effort: parse lat,lng from map links; Nominatim for addresses without geo
-                    // Re-merge seed so Kingspan etc. pick up seed geo/address even if LS was stale
-                    let placesForRoute = mergeCatalogPlaces(catalogPlaces);
-                    setCatalogPlaces(placesForRoute);
-                    saveCatalogToStorage(placesForRoute);
-                    let stopsForRoute =
-                      wizardUi.singlePickup !== false
-                        ? applyDefaultPickupToStops(stops, wizardUi.defaultPickupPointId)
-                        : stops;
-
-                    // Parse coords from mapLink/mapUrl into stop.geo when possible
-                    stopsForRoute = stopsForRoute.map((s) => {
-                      if (s.geo && Number.isFinite(s.geo.lat)) return s;
-                      const parsed = parseLatLng(s.mapLink) || parseLatLng(s.direccion);
-                      if (!parsed) return s;
-                      return applyGeocodeToStop(s, { ...parsed, label: s.direccion || s.cliente || "", source: "parsed" });
-                    });
-                    setStops((prev) =>
-                      prev.map((s) => {
-                        const next = stopsForRoute.find((x) => x.id === s.id);
-                        return next?.geo && !s.geo ? next : s;
-                      }),
-                    );
-
-                    // Geocode missing delivery addresses (max 5) via API if token present
-                    const token = enviosAuthToken();
-                    const baseApi = getCalcApiBase();
-                    if (token && baseApi) {
-                      const needGeo = stopsForRoute.filter((s) => !s.geo && String(s.direccion || "").trim()).slice(0, 5);
-                      for (const s of needGeo) {
-                        try {
-                          const res = await fetch(`${baseApi}/api/envios/geocode`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({ address: s.direccion }),
-                          });
-                          const j = await res.json().catch(() => ({}));
-                          if (res.ok && j.geo) {
-                            const enriched = applyGeocodeToStop(s, j.geo);
-                            stopsForRoute = stopsForRoute.map((x) => (x.id === s.id ? enriched : x));
-                            setStops((prev) => prev.map((x) => (x.id === s.id ? enriched : x)));
-                          }
-                        } catch {
-                          /* skip */
-                        }
-                      }
-                      // Geocode base place label if missing geo
-                      const basePlace = placesForRoute.find((p) => p.id === info.basePointId);
-                      if (basePlace && !basePlace.geo) {
-                        const q = basePlace.addressText || basePlace.label;
-                        if (q) {
-                          try {
-                            const res = await fetch(`${baseApi}/api/envios/geocode`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                              body: JSON.stringify({ address: q }),
-                            });
-                            const j = await res.json().catch(() => ({}));
-                            if (res.ok && j.geo) {
-                              placesForRoute = placesForRoute.map((p) =>
-                                p.id === basePlace.id
-                                  ? {
-                                      ...p,
-                                      geo: {
-                                        lat: Number(j.geo.lat),
-                                        lng: Number(j.geo.lng),
-                                        source: "nominatim",
-                                      },
-                                      addressText: p.addressText || j.geo.label || p.label,
-                                    }
-                                  : p,
-                              );
-                              setCatalogPlaces(placesForRoute);
-                              saveCatalogToStorage(placesForRoute);
-                            }
-                          } catch {
-                            /* skip */
-                          }
-                        }
-                      }
-                    }
-
-                    const r = suggestRoute({
-                      basePointId: info.basePointId,
-                      places: placesForRoute,
-                      stops: stopsForRoute,
-                      defaultPickupPointId: wizardUi.defaultPickupPointId,
-                    });
-                    setTripRoute(r);
-                    setWizardUi((p) => createWizardUi({ ...p, routeStale: false, done: { ...p.done, ruta: true } }));
-                    const withGeo = (r.orderedLegs || []).filter((l) => l.geo).length;
-                    setAutoLoadMsg(
-                      `Ruta: ${r.orderedLegs.length} tramos · ${withGeo} con geo${r.totalKm != null ? ` · ~${r.totalKm.toFixed(0)} km` : ""} — Maps/WA listos`,
-                    );
+                  stops={stops}
+                  wizard={wizardUi}
+                  truckL={truckL}
+                  recalculating={rutaBusy}
+                  onRecalcular={() => generateRoute()}
+                  onReorderRoute={(nextLegs) => {
+                    setTripRoute((prev) => ({
+                      ...(prev || {}),
+                      orderedLegs: nextLegs,
+                      suggestionSource: "manual",
+                      geometry: null,
+                      updatedAt: new Date().toISOString(),
+                    }));
+                    setWizardUi((p) => createWizardUi({ ...p, routeStale: true }));
                   }}
+                  onEntregaModo={(stopId, modo) => {
+                    const next = stops.map((s) => (s.id === stopId ? { ...s, entregaModo: modo } : s));
+                    setStops(next);
+                    setWizardUi((p) => createWizardUi({ ...p, routeStale: true }));
+                    void generateRoute({ stops: next });
+                  }}
+                  onGotoStep={(step) => setWizardUi((p) => createWizardUi({ ...p, activeStep: step }))}
+                  hideMap
+                  places={catalogPlaces}
                 />
               ),
               carga: (
@@ -3943,7 +4293,7 @@ export default function BmcLogisticaApp() {
                 createWizardUi({
                   ...p,
                   enabled: true,
-                  activeStep: "pedidos",
+                  activeStep: stops.length ? "ruta" : "pedidos",
                 }),
               )
             }
@@ -3966,7 +4316,7 @@ export default function BmcLogisticaApp() {
         </div>
       )}
 
-      <div className="envios-tabbar np">
+      {!deskOpen ? <div className="envios-tabbar np">
         {[["form", "📋 Detalle Completo"], ["remito", "📄 Remito"], ["carga", "🚛 Diagrama 3D"]].map(([v, l]) => (
           <button
             key={v}
@@ -4048,7 +4398,7 @@ export default function BmcLogisticaApp() {
           </Btn>
         </div>
         <Btn onClick={sendWA} color="#25D366">📲 WhatsApp</Btn>
-      </div>
+      </div> : null}
 
       {pendingLengthConfirm ? (
         <div
@@ -4211,9 +4561,9 @@ export default function BmcLogisticaApp() {
         </div>
       ) : null}
 
-      {view === "remito" ? <RemitoView info={info} stops={stops} cargo={cargo} truckL={truckL} sendWA={sendWA} /> : null}
+      {!deskOpen && view === "remito" ? <RemitoView info={info} stops={stops} cargo={cargo} truckL={truckL} sendWA={sendWA} /> : null}
 
-      {view === "carga" ? (
+      {!deskOpen && view === "carga" ? (
         <div>
           <DiagramPanel
             cargo={cargo}
@@ -4453,9 +4803,8 @@ export default function BmcLogisticaApp() {
         </div>
       ) : null}
 
-      {view === "form" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1.3fr .9fr", gap: 12 }}>
-          <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
+      {!deskOpen && view === "form" ? (
+        <div>
             <RepartoBar
               reparto={
                 activeReparto ||
@@ -4480,17 +4829,214 @@ export default function BmcLogisticaApp() {
               busy={repartoBusy}
               onRetry={retryDriverLink}
             />
-            <div style={{ ...css.card, padding: 16, background: "#e8f1fb", borderColor: "#bfdbfe" }}>
-              <h3 style={css.sectionTitle}>🔍 Buscar cliente en Ventas</h3>
-              <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <input id="log-search" name="log-search" aria-label="Buscar cliente" style={{ ...css.inp, flex: 1, minWidth: 160 }} placeholder="Nombre, pedido, tel, dirección..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && buscarSheet()} />
-                <Btn onClick={buscarSheet} disabled={loadSh}>{loadSh ? "⏳" : "Buscar"}</Btn>
-                <Btn onClick={cargarActuales} disabled={loadSh} outline>Cargar actuales</Btn>
+            {!wizardUi.enabled ? (
+              <div style={{ marginBottom: 12 }}>
+                <VentasColaCard
+                  search={search}
+                  onSearchChange={setSearch}
+                  onBuscar={buscarSheet}
+                  onCargarActuales={cargarActuales}
+                  loadSh={loadSh}
+                  shErr={shErr}
+                  autoLoadMsg={autoLoadMsg}
+                  ventasRowCount={ventasCache.rows.length}
+                  results={results}
+                  stops={stops}
+                  activeReparto={activeReparto}
+                  onAddResult={agregarStop}
+                  addingKeys={addingStopKeys}
+                  onRemoveStop={(id) => {
+                    setStops((p) => renumberStops(p.filter((s) => s.id !== id), { colors: COLORS }));
+                  }}
+                />
               </div>
-              {ventasCache.rows.length ? <div style={{ fontSize: 11, color: T.muted, marginBottom: 8 }}>Última lectura: {ventasCache.rows.length} filas en pestaña actual.</div> : null}
-              {shErr ? <div style={{ color: "#b42318", fontSize: 12, padding: "7px 10px", background: "#ffeceb", borderRadius: 8, marginBottom: 8 }}>{shErr}</div> : null}
-              {autoLoadMsg ? <div style={{ color: T.brand, fontSize: 12, padding: "7px 10px", background: "#ffffff", borderRadius: 8, marginBottom: 8, border: "1px solid #bfdbfe" }}>{autoLoadMsg}</div> : null}
-              {aiVerifyModal ? (
+            ) : null}
+            <OpsToolsStrip
+              active={opsTool}
+              onToggle={(id) => setOpsTool((cur) => (cur === id ? null : id))}
+              notesHint={Boolean(String(info.notas || "").trim())}
+              costHint={tripCostLog.length > 0 || Boolean(info.transportista)}
+            >
+              {opsTool === "notes" ? (
+                <div style={{ ...css.card, padding: 16 }}>
+                  <div style={{ fontWeight: 800, color: T.brand, marginBottom: 6 }}>Notas del remito</div>
+                  <p style={{ margin: "0 0 8px", fontSize: 12, color: T.muted, lineHeight: 1.4 }}>
+                    Cuaderno del viaje. Se imprimen en el remito y se agregan al mail de fábrica.
+                  </p>
+                  <textarea
+                    id="log-notas-notebook"
+                    aria-label="Notas del remito"
+                    style={{ ...css.inp, resize: "vertical", minHeight: 120 }}
+                    value={info.notas}
+                    onChange={(e) => updInfo("notas", e.target.value)}
+                    placeholder="Accesos, horarios, mezclar carga, retiro sin cargo…"
+                  />
+                </div>
+              ) : null}
+              {opsTool === "carrier" ? (
+                <div style={{ ...css.card, padding: 16 }}>
+                  <div style={{ fontWeight: 800, color: T.brand, marginBottom: 8 }}>Transportista y costeo</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                    <div>
+                      <label htmlFor="log-transportista" style={css.lbl}>Transportista</label>
+                      <input id="log-transportista" name="log-transportista" style={css.inp} list="bmc-transportistas-list" value={info.transportista} onChange={(e) => updInfo("transportista", e.target.value)} placeholder="Nombre o elegí de la lista" />
+                      <datalist id="bmc-transportistas-list">
+                        {transportistas.map((t) => <option key={t.id} value={t.nombre} />)}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label htmlFor="log-patente" style={css.lbl}>Patente</label>
+                      <input id="log-patente" name="log-patente" style={css.inp} value={info.patente} onChange={(e) => updInfo("patente", e.target.value)} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
+                    <input id="log-new-carrier" name="log-new-carrier" aria-label="Nuevo transportista" style={{ ...css.inp, flex: 1, minWidth: 140 }} placeholder="Nuevo transportista" value={newCarrierName} onChange={(e) => setNewCarrierName(e.target.value)} />
+                    <Btn
+                      onClick={() => {
+                        const nombre = newCarrierName.trim();
+                        if (!nombre) return;
+                        const id = uid();
+                        setTransportistas((p) => [...p, { id, nombre, createdAt: Date.now() }]);
+                        setNewCarrierName("");
+                        setInfo((prev) => ({ ...prev, transportista: nombre, transportistaId: id }));
+                      }}
+                      outline
+                      small
+                    >
+                      Guardar transportista
+                    </Btn>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, marginBottom: 10, alignItems: "end" }}>
+                    <div>
+                      <label htmlFor="log-trip-price" style={css.lbl}>Precio viaje (UYU)</label>
+                      <input id="log-trip-price" name="log-trip-price" style={css.inp} type="number" min={0} step="1" value={tripPriceInput} onChange={(e) => setTripPriceInput(e.target.value)} placeholder="Opcional" />
+                    </div>
+                    <Btn
+                      onClick={() => {
+                        const precio = safeNum(tripPriceInput, NaN);
+                        if (!Number.isFinite(precio) || precio <= 0) return;
+                        const m2 = estimateM2ForStops(stops);
+                        const entry = {
+                          id: uid(),
+                          ts: Date.now(),
+                          envioNumero: info.numero,
+                          fecha: info.fecha,
+                          transportista: info.transportista,
+                          transportistaId: info.transportistaId,
+                          truckL,
+                          precio,
+                          stopsCount: stops.length,
+                          m2Estimado: m2,
+                          zonas: stops.map((s) => s.zona).filter(Boolean),
+                          orderIds: stops.map((s) => (s.orderId || s.cotizacionId || "").trim()).filter(Boolean),
+                        };
+                        setTripCostLog((p) => [entry, ...p].slice(0, 200));
+                        setPriceHistory((p) =>
+                          [
+                            {
+                              id: uid(),
+                              ts: Date.now(),
+                              transportistaId: info.transportistaId,
+                              transportista: info.transportista,
+                              largoM: truckL,
+                              precio,
+                              envioNumero: info.numero,
+                            },
+                            ...p,
+                          ].slice(0, 500)
+                        );
+                        setTripPriceInput("");
+                      }}
+                      color={T.success}
+                      small
+                    >
+                      Registrar costo
+                    </Btn>
+                  </div>
+                  <div style={{ fontSize: 11, color: T.muted, marginBottom: 8 }}>
+                    m² estimado: {estimateM2ForStops(stops).toFixed(1)} · {tripCostLog.length} viajes
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Costeo local</div>
+                  <div style={{ maxHeight: 120, overflow: "auto", fontSize: 11, fontFamily: "ui-monospace, monospace", marginBottom: 10 }}>
+                    {tripCostLog.slice(0, 15).map((line) => (
+                      <div key={line.id} style={{ borderBottom: `1px solid ${T.border}`, padding: "4px 0" }}>
+                        {line.fecha} · {line.envioNumero} · {line.truckL}m · ${line.precio} · {line.stopsCount} paradas · m²≈{line.m2Estimado?.toFixed?.(1) ?? line.m2Estimado}
+                      </div>
+                    ))}
+                    {!tripCostLog.length ? <span style={{ color: T.muted }}>Sin registros aún.</span> : null}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Historial precios</div>
+                  <div style={{ maxHeight: 100, overflow: "auto", fontSize: 11, color: T.muted }}>
+                    {priceHistory.slice(0, 20).map((p) => (
+                      <div key={p.id}>{new Date(p.ts).toLocaleDateString()} · {p.transportista || "—"} · {p.largoM}m · ${p.precio}</div>
+                    ))}
+                    {!priceHistory.length ? "Sin registros." : null}
+                  </div>
+                </div>
+              ) : null}
+              {opsTool === "cloud" ? (
+                <div style={{ ...css.card, padding: 16 }}>
+                  <div style={{ fontWeight: 800, color: T.brand, marginBottom: 8 }}>Nube y borradores</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
+                    <Btn onClick={() => saveCoordination()} disabled={cloudSyncBusy || driveSaveBusy} color={T.brand} small>
+                      {cloudSyncBusy ? "⏳ Guardando…" : "Guardar (este Mac)"}
+                    </Btn>
+                    <Btn outline small onClick={() => saveCoordination({ toDrive: true })} disabled={cloudSyncBusy || driveSaveBusy}>
+                      {driveSaveBusy ? "⏳ Drive…" : "Subir a Drive"}
+                    </Btn>
+                    <Btn outline small onClick={() => { setDraftBrowserTab("saved"); setDraftBrowserOpen(true); }}>Abrir guardadas</Btn>
+                    <Btn outline small onClick={() => { setDraftBrowserTab("completed"); setDraftBrowserOpen(true); }}>Completadas</Btn>
+                    <Btn onClick={loadDraftFromCloud} disabled={cloudSyncBusy} outline small>☁ Cargar Nº actual</Btn>
+                    <label style={{ fontSize: 11, color: T.muted, display: "flex", alignItems: "center", gap: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={autosaveEnabled}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setAutosaveEnabled(on);
+                          try {
+                            localStorage.setItem("bmc-envios-autosave", on ? "1" : "0");
+                          } catch {
+                            /* ignore */
+                          }
+                        }}
+                      />
+                      Autosave nube
+                    </label>
+                  </div>
+                  {cloudMeta?.revision != null ? (
+                    <div style={{ fontSize: 11, color: cloudMeta.status === "conflict" ? T.danger : T.muted, marginBottom: 8 }}>
+                      Cloud rev {cloudMeta.revision}
+                      {cloudMeta.status === "saved" ? " · ✓" : ""}
+                      {cloudMeta.status === "conflict" ? " · ⚠ conflicto" : ""}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 11, color: T.muted, marginBottom: 8 }}>localStorage offline · P5b</div>
+                  )}
+                  {tripDistance.geocodedCount >= 2 ? (
+                    <div style={{ fontSize: 11, fontWeight: 700, color: T.brand }}>
+                      ≈ {tripDistance.totalKm} km aire ({tripDistance.legs.length} tramos)
+                    </div>
+                  ) : null}
+                  {cloudConflict ? (
+                    <div style={{ marginTop: 10, padding: 10, borderRadius: 10, background: "#fff7ed", border: "1px solid #fdba74", fontSize: 12 }}>
+                      <b>Conflicto de nube</b> (rev remota {cloudConflict.revision}).
+                      <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                        <Btn small color={T.brand} onClick={async () => { await saveDraftToCloud({ force: true, silent: false }); setCloudConflict(null); }}>Mantener el mío</Btn>
+                        <Btn small outline onClick={async () => { setCloudConflict(null); await loadDraftFromCloud(); }}>Usar nube</Btn>
+                        <Btn small outline onClick={() => setCloudConflict(null)}>Cerrar</Btn>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </OpsToolsStrip>
+            {autoLoadMsg ? (
+              <div style={{ color: T.brand, fontSize: 12, padding: "7px 10px", background: "#e8f1fb", borderRadius: 8, margin: "0 0 12px", border: "1px solid #bfdbfe" }}>
+                {autoLoadMsg}
+              </div>
+            ) : null}
+            {aiVerifyModal ? (
                 <div
                   role="dialog"
                   aria-modal="true"
@@ -4614,317 +5160,22 @@ export default function BmcLogisticaApp() {
                   </div>
                 </div>
               ) : null}
-              {results.map((r, i) => {
-                const inReparto = stops.some(
-                  (s) =>
-                    (r.orderId && String(s.orderId) === String(r.orderId)) ||
-                    (r.nombre && String(s.cliente || "").toLowerCase() === String(r.nombre || "").toLowerCase()),
-                );
-                const chipColor =
-                  inReparto || activeReparto?.status === "en_coordinacion" && inReparto
-                    ? "#c2410c"
-                    : r.coordination?.status === "enviado"
-                    ? "#16a34a"
-                    : r.coordination?.status === "coordinado"
-                      ? r.coordinationColor || "#2563eb"
-                      : "#94a3b8";
-                const chipBg =
-                  inReparto
-                    ? "#fff7ed"
-                    : r.coordination?.status === "enviado"
-                    ? "#dcfce7"
-                    : r.coordination?.status === "coordinado"
-                      ? "#eff6ff"
-                      : "#f1f5f9";
-                return (
-                <div
-                  key={`${r.orderId || r.nombre || "r"}-${r.ventasSheetRow1Based || i}`}
-                  onClick={() => agregarStop(r)}
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: T.surface, border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 12px", cursor: "pointer", marginBottom: 6, transition: "background .15s", gap: 8 }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#dbeafe"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = T.surface; }}
-                >
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                      <div style={{ fontWeight: 700, color: T.brand, fontSize: 13 }}>{r.nombre || "—"}</div>
-                      {r.orderId || r.cotizacionId ? (
-                        <span style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>#{r.orderId || r.cotizacionId}</span>
-                      ) : null}
-                      <span
-                        title={r.estadoText || r.coordinationCaption || ""}
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: "0.02em",
-                          textTransform: "uppercase",
-                          color: chipColor,
-                          background: chipBg,
-                          border: `1.5px solid ${chipColor}`,
-                          borderRadius: 999,
-                          padding: "2px 8px",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {inReparto
-                          ? "En este reparto"
-                          : activeReparto?.status === "en_coordinacion" && stops.length
-                            ? "Por coordinar"
-                            : r.coordinationCaption || r.coordination?.label || "Por coordinar"}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 11, color: T.muted }}>📍{r.dir || "—"} · 📞{r.tel || "—"}</div>
-                  </div>
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    {(() => {
-                      const pdfSafe = safeHttpUrl(r.pdf);
-                      return pdfSafe ? (
-                        <Btn href={pdfSafe} target="_blank" outline small>📄 PDF</Btn>
-                      ) : null;
-                    })()}
-                    <Btn color={T.success} small>+ Parada</Btn>
-                  </div>
-                </div>
-                );
-              })}
-            </div>
 
-            <div style={{ ...css.card, padding: 16 }}>
-              <h3 style={css.sectionTitle}>Datos del Envío</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-                <div><label htmlFor="log-numero" style={css.lbl}>Nº Envío</label><input id="log-numero" name="log-numero" style={css.inp} value={info.numero} onChange={(e) => updInfo("numero", e.target.value)} /></div>
-                <div><label htmlFor="log-fecha" style={css.lbl}>Fecha</label><input id="log-fecha" name="log-fecha" style={css.inp} type="date" value={info.fecha} onChange={(e) => updInfo("fecha", e.target.value)} /></div>
-                <div>
-                  <label htmlFor="log-transportista" style={css.lbl}>Transportista</label>
-                  <input id="log-transportista" name="log-transportista" style={css.inp} list="bmc-transportistas-list" value={info.transportista} onChange={(e) => updInfo("transportista", e.target.value)} placeholder="Nombre o elegí de la lista" />
-                  <datalist id="bmc-transportistas-list">
-                    {transportistas.map((t) => <option key={t.id} value={t.nombre} />)}
-                  </datalist>
-                </div>
-                <div><label htmlFor="log-patente" style={css.lbl}>Patente</label><input id="log-patente" name="log-patente" style={css.inp} value={info.patente} onChange={(e) => updInfo("patente", e.target.value)} /></div>
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
-                <Btn
-                  onClick={() => saveCoordination()}
-                  disabled={cloudSyncBusy || driveSaveBusy}
-                  color={T.brand}
-                  small
-                >
-                  {driveSaveBusy || cloudSyncBusy ? "⏳ Guardando…" : "☁ Guardar (nube + Drive)"}
-                </Btn>
-                <Btn
-                  onClick={() => {
-                    setDraftBrowserTab("saved");
-                    setDraftBrowserOpen(true);
-                  }}
-                  outline
-                  small
-                >
-                  Abrir guardadas
-                </Btn>
-                <Btn
-                  onClick={() => {
-                    setDraftBrowserTab("completed");
-                    setDraftBrowserOpen(true);
-                  }}
-                  outline
-                  small
-                >
-                  Completadas
-                </Btn>
-                <Btn onClick={loadDraftFromCloud} disabled={cloudSyncBusy} outline small>
-                  ☁ Cargar Nº actual
-                </Btn>
-                <label style={{ fontSize: 11, color: T.muted, display: "flex", alignItems: "center", gap: 4 }}>
-                  <input
-                    type="checkbox"
-                    checked={autosaveEnabled}
-                    onChange={(e) => {
-                      const on = e.target.checked;
-                      setAutosaveEnabled(on);
-                      try {
-                        localStorage.setItem("bmc-envios-autosave", on ? "1" : "0");
-                      } catch {
-                        /* ignore */
-                      }
-                    }}
-                  />
-                  Autosave nube
-                </label>
-                {cloudMeta?.revision != null ? (
-                  <span style={{ fontSize: 11, color: cloudMeta.status === "conflict" ? T.danger : T.muted }}>
-                    Cloud rev {cloudMeta.revision}
-                    {cloudMeta.status === "saved" ? " · ✓" : ""}
-                    {cloudMeta.status === "conflict" ? " · ⚠ conflicto" : ""}
-                    {cloudMeta.updatedAt ? ` · ${new Date(cloudMeta.updatedAt).toLocaleString()}` : ""}
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 11, color: T.muted }}>
-                    P5b multi-device · localStorage offline
-                  </span>
-                )}
-                {tripDistance.geocodedCount >= 2 ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: T.brand }}>
-                    ≈ {tripDistance.totalKm} km aire ({tripDistance.legs.length} tramos · {tripDistance.geocodedCount} geo)
-                  </span>
-                ) : tripDistance.geocodedCount === 1 ? (
-                  <span style={{ fontSize: 11, color: T.muted }}>1 parada geocodificada · geocodificá otra para km</span>
-                ) : null}
-              </div>
-              {cloudConflict ? (
-                <div
-                  style={{
-                    marginBottom: 10,
-                    padding: 10,
-                    borderRadius: 10,
-                    background: "#fff7ed",
-                    border: "1px solid #fdba74",
-                    fontSize: 12,
-                  }}
-                >
-                  <b>Conflicto de nube</b> (rev remota {cloudConflict.revision}). Otro dispositivo guardó antes.
-                  <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    <Btn
-                      small
-                      color={T.brand}
-                      onClick={async () => {
-                        await saveDraftToCloud({ force: true, silent: false });
-                        setCloudConflict(null);
-                      }}
-                    >
-                      Mantener el mío (forzar)
-                    </Btn>
-                    <Btn
-                      small
-                      outline
-                      onClick={async () => {
-                        setCloudConflict(null);
-                        await loadDraftFromCloud();
-                      }}
-                    >
-                      Usar versión de la nube
-                    </Btn>
-                    <Btn small outline onClick={() => setCloudConflict(null)}>
-                      Cerrar
-                    </Btn>
-                  </div>
-                </div>
-              ) : null}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
-                <input id="log-new-carrier" name="log-new-carrier" aria-label="Nuevo transportista" style={{ ...css.inp, flex: 1, minWidth: 140 }} placeholder="Nuevo transportista" value={newCarrierName} onChange={(e) => setNewCarrierName(e.target.value)} />
-                <Btn
-                  onClick={() => {
-                    const nombre = newCarrierName.trim();
-                    if (!nombre) return;
-                    const id = uid();
-                    setTransportistas((p) => [...p, { id, nombre, createdAt: Date.now() }]);
-                    setNewCarrierName("");
-                    setInfo((prev) => ({ ...prev, transportista: nombre, transportistaId: id }));
-                  }}
-                  outline
-                  small
-                >
-                  Guardar transportista
-                </Btn>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-                <div><label htmlFor="log-trip-price" style={css.lbl}>Precio viaje (UYU)</label><input id="log-trip-price" name="log-trip-price" style={css.inp} type="number" min={0} step="1" value={tripPriceInput} onChange={(e) => setTripPriceInput(e.target.value)} placeholder="Opcional" /></div>
-                <div style={{ display: "flex", alignItems: "flex-end" }}>
-                  <Btn
-                    onClick={() => {
-                      const precio = safeNum(tripPriceInput, NaN);
-                      if (!Number.isFinite(precio) || precio <= 0) return;
-                      const m2 = estimateM2ForStops(stops);
-                      const entry = {
-                        id: uid(),
-                        ts: Date.now(),
-                        envioNumero: info.numero,
-                        fecha: info.fecha,
-                        transportista: info.transportista,
-                        transportistaId: info.transportistaId,
-                        truckL,
-                        precio,
-                        stopsCount: stops.length,
-                        m2Estimado: m2,
-                        zonas: stops.map((s) => s.zona).filter(Boolean),
-                        orderIds: stops.map((s) => (s.orderId || s.cotizacionId || "").trim()).filter(Boolean),
-                      };
-                      setTripCostLog((p) => [entry, ...p].slice(0, 200));
-                      setPriceHistory((p) =>
-                        [
-                          {
-                            id: uid(),
-                            ts: Date.now(),
-                            transportistaId: info.transportistaId,
-                            transportista: info.transportista,
-                            largoM: truckL,
-                            precio,
-                            envioNumero: info.numero,
-                          },
-                          ...p,
-                        ].slice(0, 500)
-                      );
-                      setTripPriceInput("");
-                    }}
-                    color={T.success}
-                    small
-                  >
-                    Registrar costo viaje
-                  </Btn>
-                </div>
-                <div style={{ fontSize: 11, color: T.muted, alignSelf: "flex-end" }}>
-                  m² estimado: {estimateM2ForStops(stops).toFixed(1)} · historial: {tripCostLog.length}
-                </div>
-              </div>
-              <label style={css.lbl}>Notas</label>
-              <textarea style={{ ...css.inp, resize: "vertical", minHeight: 36 }} value={info.notas} onChange={(e) => updInfo("notas", e.target.value)} placeholder="Accesos, horarios..." />
-            </div>
-
-            <div style={{ ...css.card, padding: 16 }}>
-              <h3 style={css.sectionTitle}>Email coordinación retiro (fábrica)</h3>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                <Btn onClick={() => copyToClipboard(generatePickupEmailSubject(stops))} outline small>Copiar asunto</Btn>
-                <Btn onClick={() => copyToClipboard(generatePickupEmailBody(stops, cargo, info))} small>Copiar cuerpo</Btn>
-                <Btn
-                  onClick={() => copyToClipboard(`${generatePickupEmailSubject(stops)}\n\n${generatePickupEmailBody(stops, cargo, info)}`)}
-                  outline
-                  small
-                >
-                  Copiar todo
-                </Btn>
-              </div>
-              <div style={{ fontSize: 12, color: T.muted, whiteSpace: "pre-wrap", background: T.surfaceAlt, borderRadius: 10, padding: 10, border: `1px solid ${T.border}` }}>
-                <strong>{generatePickupEmailSubject(stops)}</strong>
-                {"\n\n"}
-                {generatePickupEmailBody(stops, cargo, info)}
-              </div>
-            </div>
-
-            <div style={{ ...css.card, padding: 16 }}>
-              <h3 style={css.sectionTitle}>Costeo (registro local)</h3>
-              <div style={{ fontSize: 12, color: T.muted, marginBottom: 8 }}>Últimos viajes registrados · exportable para análisis futuro.</div>
-              <div style={{ maxHeight: 160, overflow: "auto", fontSize: 11, fontFamily: "ui-monospace, monospace" }}>
-                {tripCostLog.slice(0, 15).map((line) => (
-                  <div key={line.id} style={{ borderBottom: `1px solid ${T.border}`, padding: "4px 0" }}>
-                    {line.fecha} · {line.envioNumero} · {line.truckL}m · ${line.precio} · {line.stopsCount} paradas · m²≈{line.m2Estimado?.toFixed?.(1) ?? line.m2Estimado}
-                  </div>
-                ))}
-                {!tripCostLog.length ? <span style={{ color: T.muted }}>Sin registros aún.</span> : null}
-              </div>
-            </div>
-
-            <div style={{ ...css.card, padding: 16 }}>
-              <h3 style={css.sectionTitle}>Historial precios transporte</h3>
-              <div style={{ maxHeight: 120, overflow: "auto", fontSize: 11, color: T.muted }}>
-                {priceHistory.slice(0, 20).map((p) => (
-                  <div key={p.id}>{new Date(p.ts).toLocaleDateString()} · {p.transportista || "—"} · {p.largoM}m · ${p.precio}</div>
-                ))}
-                {!priceHistory.length ? "Sin registros." : null}
-              </div>
-            </div>
-
+            <div style={{ display: "grid", gridTemplateColumns: "1.3fr .9fr", gap: 12 }}>
+          <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
             {!stops.length ? (
               <div style={{ ...css.card, padding: 20, textAlign: "center", color: T.muted, fontSize: 14 }}>
-                No hay paradas. Usá <strong>Buscar</strong> o <strong>Cargar actuales</strong> en Ventas, o <strong>+ Agregar Parada</strong> para empezar vacío.
+                No hay paradas. Agregá pedidos en <strong>Configuración del envío → Pedidos</strong> o usá <strong>+ Agregar Parada</strong>.
+                <div style={{ marginTop: 10 }}>
+                  <Btn
+                    small
+                    onClick={() =>
+                      setWizardUi(createWizardUi({ enabled: true, activeStep: "pedidos" }))
+                    }
+                  >
+                    Abrir Pedidos
+                  </Btn>
+                </div>
               </div>
             ) : null}
 
@@ -5561,16 +5812,104 @@ export default function BmcLogisticaApp() {
             </div>
           </div>
         </div>
+        <FactoryPickupBlock
+          subject={generatePickupEmailSubject(stops)}
+          body={generatePickupEmailBody(stops, cargo, info, truckL)}
+          cargo={cargo}
+          truckL={truckL}
+          stops={stops}
+          onCopySubject={() => copyToClipboard(generatePickupEmailSubject(stops))}
+          onCopyBody={() => copyToClipboard(generatePickupEmailBody(stops, cargo, info, truckL))}
+          onCopyAll={() =>
+            copyToClipboard(
+              `${generatePickupEmailSubject(stops)}\n\n${generatePickupEmailBody(stops, cargo, info, truckL)}`,
+            )
+          }
+        />
+        </div>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginTop: 12 }} className="np">
+      {!deskOpen ? <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginTop: 12 }} className="np">
         {[["Camión", `${truckL}m`], ["Fila A", `${(cargo.rowH[0] * 100).toFixed(0)}cm / ${(MAX_H * 100).toFixed(0)}cm`], ["Fila B", `${(cargo.rowH[1] * 100).toFixed(0)}cm / ${(MAX_H * 100).toFixed(0)}cm`]].map(([k, v]) => (
           <div key={k} style={{ ...css.card, padding: "10px 14px" }}>
             <div style={{ ...css.lbl, marginBottom: 3 }}>{k}</div>
             <div style={{ fontWeight: 700, color: T.brand, fontSize: 15 }}>{v}</div>
           </div>
         ))}
-      </div>
+      </div> : null}
+
+          </div>
+        </Panel>
+        <PanelResizeHandle className={`bmc-sash${isCompactSplit ? " bmc-sash--vertical" : ""}`} />
+        <Panel
+          className="envios-split-pane envios-split-pane--map"
+          defaultSize={50}
+          minSize={isCompactSplit ? 24 : 32}
+          style={{ minWidth: 0, minHeight: 0, display: "flex" }}
+        >
+          <div className="envios-col envios-col--map">
+            <LogisticaMapColumn
+              route={tripRoute}
+              routeStale={wizardUi.routeStale}
+              recalculating={rutaBusy}
+              onRecalcular={() => generateRoute()}
+              hideGenerateButton={deskOpen}
+              hideLegList={deskOpen}
+              cargo={cargo}
+              truckL={truckL}
+              onPinMoved={(leg, lat, lng) => {
+                const stopId = leg?.stopId;
+                if (!stopId) return;
+                setStops((prev) =>
+                  prev.map((s) =>
+                    s.id === stopId
+                      ? applyGeocodeToStop(s, {
+                          lat,
+                          lng,
+                          label: s.cliente || s.direccion || "",
+                          source: "manual",
+                          isManuallyAdjusted: true,
+                        })
+                      : s,
+                  ),
+                );
+                setTripRoute((prev) => ({
+                  ...(prev || {}),
+                  geometry: null,
+                  suggestionSource: "haversine",
+                  orderedLegs: (prev?.orderedLegs || []).map((l) =>
+                    l.stopId === stopId || l.refId === leg.refId
+                      ? {
+                          ...l,
+                          geo: {
+                            lat,
+                            lng,
+                            source: "manual",
+                            isManuallyAdjusted: true,
+                            label: l.label,
+                          },
+                        }
+                      : l,
+                  ),
+                }));
+                setWizardUi((p) => createWizardUi({ ...p, routeStale: true }));
+              }}
+            >
+              {isCompactSplit && wizardUi.enabled ? null : (
+                <LogisticaTruckerAgent
+                  docked
+                  info={info}
+                  stops={stops}
+                  truckL={truckL}
+                  wizard={wizardUi}
+                  route={tripRoute}
+                  onApplyState={handleTruckerAction}
+                />
+              )}
+            </LogisticaMapColumn>
+          </div>
+        </Panel>
+      </PanelGroup>
 
       <EnviosDraftBrowser
         open={draftBrowserOpen}

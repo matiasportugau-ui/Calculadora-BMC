@@ -4,6 +4,7 @@
  */
 
 import { safeHttpUrl } from "./safeExternalUrl.js";
+import { BMC_DEPO } from "./uyGazetteer.js";
 
 export const CATALOG_STORAGE_KEY = "bmc-envios-catalog-v1";
 export const CATALOG_SCHEMA = "bmc-envios-catalog-v1";
@@ -15,10 +16,10 @@ export const SEED_PICKUPS = Object.freeze([
     kind: "pickup",
     label: "Kingspan (Bromyros)",
     mapUrl: "https://share.google/hB23bPU3TqKfwWqgj",
-    // Pedro Cosio / Malvín area (approx plant) — share.google short links have no lat/lng
-    addressText: "Pedro Cosio, Malvín, Montevideo, Uruguay",
-    geo: { lat: -34.8776, lng: -56.1033, source: "seed-approx" },
-    aliases: ["kingspan", "bromyros", "bromi"],
+    // Plant from Kingspan logística mail (retiro 55434): Camino San Juan S/N — not Malvín office.
+    addressText: "Camino San Juan S/N, Colonia Nicolich",
+    geo: { lat: -34.81516, lng: -56.02435, source: "gazetteer-approx" },
+    aliases: ["kingspan", "bromyros", "bromi", "san juan"],
     transportistaId: null,
     source: "seed",
     active: true,
@@ -43,6 +44,18 @@ export const SEED_PICKUPS = Object.freeze([
     addressText: "Ecopaneles, Uruguay",
     geo: null,
     aliases: ["ecopaneles", "eco panel"],
+    transportistaId: null,
+    source: "seed",
+    active: true,
+  },
+  {
+    id: BMC_DEPO.catalogId,
+    kind: "base",
+    label: BMC_DEPO.label,
+    mapUrl: BMC_DEPO.mapUrl,
+    addressText: BMC_DEPO.addressText,
+    geo: { lat: BMC_DEPO.lat, lng: BMC_DEPO.lng, source: "maps-place" },
+    aliases: ["bmc uruguay", "deposito bmc", "depósito bmc", "depo"],
     transportistaId: null,
     source: "seed",
     active: true,

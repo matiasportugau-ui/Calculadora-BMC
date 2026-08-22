@@ -16,6 +16,15 @@ export const VIEWPORT = {
   DESKTOP_MIN_PX: 1024,
   /** Matches @media (max-width: 759px) — .bmc-pdf-modal-compact + PDFPreviewModal compact mode. */
   PDF_COMPACT_MODAL_MAX_PX: 759,
+  /**
+   * /logistica only (not the calculator). Compact master 390×844.
+   * CSS: ruta-desk.css + bmc-envios-glass.css @media (max-width: 767px).
+   */
+  LOGISTICA_COMPACT_MAX_PX: 767,
+  /** /logistica tablet lower bound — map + itinerary coexist. */
+  LOGISTICA_REGULAR_MIN_PX: 768,
+  /** /logistica wide — persistent 50/50 split. */
+  LOGISTICA_WIDE_MIN_PX: 1024,
 };
 
 /** Media query string for PDF preview full-screen / compact layout (same threshold as CSS). */
@@ -34,4 +43,14 @@ export function isTabletViewportWidth(widthPx) {
 /** True when the main calculator should use compact/mobile+tablet layout (≤1023px). */
 export function isCompactMainLayoutWidth(widthPx) {
   return widthPx <= VIEWPORT.MOBILE_LAYOUT_MAX_PX;
+}
+
+/** /logistica compact (phone) — stack + thumb CTAs. Not the calculator 1023 shell. */
+export function isLogisticaCompactLayoutWidth(widthPx) {
+  return widthPx <= VIEWPORT.LOGISTICA_COMPACT_MAX_PX;
+}
+
+/** /logistica tablet band (768–1023). */
+export function isLogisticaRegularLayoutWidth(widthPx) {
+  return widthPx >= VIEWPORT.LOGISTICA_REGULAR_MIN_PX && widthPx < VIEWPORT.LOGISTICA_WIDE_MIN_PX;
 }

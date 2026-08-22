@@ -5,6 +5,11 @@
 
 import { ESPS, LENS, TIPOS } from "./cargoEngine.js";
 import { parseTsvRows } from "./sheetPaste.js";
+import {
+  extractCoveringM2,
+  recoverPanelLengthFromM2,
+  lengthSourceWarnings,
+} from "../../../../src/utils/logistica/recoverPanelLengthFromM2.js";
 
 const ESP_SET = new Set(ESPS.map(Number));
 const LENS_NUM = LENS.map(Number);
@@ -214,8 +219,11 @@ export function parsePanelLineHeuristic(line) {
   let cantidad;
 
   let lengthDefaulted = false;
+  let coveringM2 = null;
+  let lengthInferredFromM2 = false;
   if (qtyFromPhrase != null || qtyLead != null) {
     // Modern BMC PDF: "ISODEC 100mm · 10 paneles" — default L unless explicit meters.
+    // If the line has covering m², recover L = m² / (qty × AU) instead of silent 6 m.
     cantidad = qtyLead != null ? qtyLead : qtyFromPhrase;
     const explicitLen =
       raw.match(/\b(?:largo|longitud)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:m(?![mM²2]))?(?!\w)/i) ||
@@ -226,6 +234,12 @@ export function parsePanelLineHeuristic(line) {
     } else {
       longitud = 6;
       lengthDefaulted = true;
+      coveringM2 = extractCoveringM2(raw);
+      const recovered = recoverPanelLengthFromM2({ m2: coveringM2, cantidad, tipo });
+      if (recovered != null) {
+        longitud = recovered;
+        lengthInferredFromM2 = true;
+      }
     }
   } else if (classic) {
     longitud = classic.longitud;
@@ -241,6 +255,8 @@ export function parsePanelLineHeuristic(line) {
     longitud,
     cantidad: Math.max(1, cantidad),
     ...(lengthDefaulted ? { lengthDefaulted: true } : {}),
+    ...(lengthInferredFromM2 ? { lengthInferredFromM2: true } : {}),
+    ...(coveringM2 != null ? { coveringM2 } : {}),
   };
 }
 
@@ -265,6 +281,9 @@ function collapseDefaultLengthPanelEchoes(paneles) {
       espesor: p.espesor,
       longitud: p.longitud,
       cantidad: p.cantidad,
+      ...(p.lengthDefaulted ? { lengthDefaulted: true } : {}),
+      ...(p.lengthInferredFromM2 ? { lengthInferredFromM2: true } : {}),
+      ...(p.coveringM2 != null ? { coveringM2: p.coveringM2 } : {}),
     });
   }
   return out;
@@ -447,8 +466,12 @@ export function parseLogisticaFromAdjuntoText(text) {
     if (acc) accesorios.push(acc);
   }
 
-  const collapsedPaneles = collapseDefaultLengthPanelEchoes(paneles);
+  const collapsedPaneles = applyDocumentM2Fallback(
+    collapseDefaultLengthPanelEchoes(paneles),
+    raw,
+  );
   const collapsedAccesorios = collapseAccessoryEchoes(accesorios);
+  warnings.push(...lengthSourceWarnings(collapsedPaneles, raw));
 
   if (!collapsedPaneles.length && !collapsedAccesorios.length) {
     warnings.push(
@@ -456,6 +479,33 @@ export function parseLogisticaFromAdjuntoText(text) {
     );
   }
   return { paneles: collapsedPaneles, accesorios: collapsedAccesorios, warnings };
+}
+
+/**
+ * When a modern line defaulted L=6 and the covering m² is on another line
+ * (Alcance `113.7 m² · 10 paneles`), recover length from the document area.
+ * @param {object[]} paneles
+ * @param {string} raw
+ */
+function applyDocumentM2Fallback(paneles, raw) {
+  const list = Array.isArray(paneles) ? paneles : [];
+  const pending = list.filter((p) => p.lengthDefaulted && !p.lengthInferredFromM2);
+  if (!pending.length) return list;
+  const m2 = extractCoveringM2(raw);
+  if (m2 == null) return list;
+  if (pending.length !== 1) return list;
+  const target = pending[0];
+  const recovered = recoverPanelLengthFromM2({
+    m2,
+    cantidad: target.cantidad,
+    tipo: target.tipo,
+  });
+  if (recovered == null) return list;
+  return list.map((p) =>
+    p === target
+      ? { ...p, longitud: recovered, lengthInferredFromM2: true, coveringM2: m2 }
+      : p,
+  );
 }
 
 /**

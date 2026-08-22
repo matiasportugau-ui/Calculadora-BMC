@@ -18,13 +18,410 @@
   box-sizing: border-box;
 }
 
+.bmc-app-shell--fill {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.envios-app.envios-app--split {
+  height: calc(100dvh - 52px);
+  min-height: 0;
+  max-height: calc(100dvh - 52px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px 12px 8px;
+}
+
+.bmc-app-shell--fill .envios-app.envios-app--split {
+  height: auto;
+  max-height: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.envios-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.envios-col {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 6px;
+}
+
+.envios-col--map {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-right: 0;
+  background: #fff;
+  border: 1px solid var(--g-border, #e5e7eb);
+  border-radius: 14px;
+}
+
+.envios-app--split .ruta-desk {
+  min-height: 0;
+  height: auto;
+  grid-template-rows: auto auto auto;
+}
+
+.envios-mapcol {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.envios-visual-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.envios-visual-pane {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.envios-visual-pane__title {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid var(--g-border, #e5e7eb);
+  background: #f8fafc;
+  padding: 8px 12px;
+  min-height: 36px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 13px;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.envios-visual-pane__title.is-collapsed {
+  border-bottom: none;
+}
+
+.envios-visual-pane__meta {
+  font-weight: 500;
+  font-size: 11px;
+  color: #64748b;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.envios-visual-pane__chevron {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.envios-visual-pane__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.envios-visual-pane__body--map {
+  overflow: hidden;
+}
+
+.envios-visual-pane__body--3d {
+  padding: 0;
+  overflow: hidden;
+  background: #0b1c2c;
+}
+
+.envios-visual-pane__fallback {
+  padding: 16px;
+  font-size: 12px;
+}
+
+.envios-mapcol__sketch {
+  flex-shrink: 0;
+}
+
+.envios-mapcol__sketch svg {
+  max-width: 100%;
+}
+
+.envios-mapcol__bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.envios-mapcol__bar strong {
+  font-size: 14px;
+}
+
+.envios-mapcol__meta,
+.envios-mapcol__hint,
+.envios-mapcol__foot {
+  font-size: 11px;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.envios-mapcol__btn,
+.envios-mapcol__actions button {
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.envios-mapcol__actions button:disabled,
+.envios-mapcol__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.envios-mapcol__stale {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.envios-mapcol__canvas {
+  flex: 1 1 auto;
+  min-height: 120px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--g-border, #e5e7eb);
+  background: #e8eef5;
+  touch-action: auto;
+}
+
+.envios-mapcol__canvas .ruta-desk-map {
+  height: 100%;
+  min-height: 120px;
+}
+
+.envios-mapcol__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.envios-mapcol__legs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.envios-mapcol__leg {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+.envios-mapcol__leg.is-selected {
+  background: #f0f7ff;
+  border-color: #bfdbfe;
+}
+
+.envios-mapcol__leg-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 99px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.envios-mapcol__leg-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.envios-mapcol__leg-type {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.envios-mapcol__leg-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.envios-mapcol__leg-addr {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* /logistica compact ≤767 (not calculator 1023). See VIEWPORT.LOGISTICA_COMPACT_MAX_PX */
+@media (max-width: 767px) {
+  .bmc-app-shell--fill {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .bmc-app-shell--fill .envios-app.envios-app--split {
+    flex: 0 0 auto;
+  }
+
+  .envios-app.envios-app--split {
+    height: auto;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: visible;
+    min-height: 100dvh;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    max-width: 100%;
+  }
+
+  .envios-split {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .envios-split > [data-panel] {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .envios-split-pane--map {
+    order: -1;
+  }
+
+  .envios-split > [data-resize-handle] {
+    display: none !important;
+  }
+
+  .envios-col {
+    overflow: visible;
+    height: auto;
+  }
+
+  .envios-col--map {
+    overflow: hidden;
+    height: auto;
+    max-height: none;
+    min-height: 70vh;
+  }
+
+  .envios-mapcol {
+    max-height: none;
+    min-height: 70vh;
+    padding: 0;
+  }
+
+  .envios-mapcol__canvas {
+    flex: 1 1 auto;
+    height: 36vh;
+    min-height: 180px;
+  }
+
+  .envios-mapcol__legs {
+    display: none;
+  }
+
+  .envios-mapcol__foot {
+    display: none;
+  }
+
+  .envios-header {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .envios-header__title {
+    font-size: 16px;
+  }
+
+  .envios-header__sub {
+    font-size: 11px;
+  }
+
+  .envios-header__meta {
+    text-align: left;
+    font-size: 11px;
+  }
+
+  .envios-ventas-cola__cargar {
+    display: none;
+  }
+
+  .envios-ventas-cola__groups {
+    max-height: min(42vh, 480px);
+  }
+
+  .envios-ventas-row__cta {
+    min-height: 44px;
+  }
+}
+
 .envios-app *,
 .envios-app *::before,
 .envios-app *::after {
   box-sizing: border-box;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .envios-app {
     padding: 12px;
   }
@@ -407,6 +804,354 @@
 
 [data-appearance="night"] .envios-header__title {
   color: rgb(var(--g-brand, 226, 232, 240));
+}
+
+/* ── Ventas cola by fecha de reparo ─────────────────────────── */
+
+.envios-ventas-cola {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  background: #e8f1fb;
+  border: 1px solid #bfdbfe;
+}
+
+.envios-ventas-cola__toolbar {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 2px;
+}
+
+.envios-ventas-cola__title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--g-brand, #1e3a5f);
+  letter-spacing: 0.01em;
+}
+
+.envios-ventas-cola__search {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.envios-ventas-cola__search input {
+  flex: 1 1 160px;
+  min-width: 0;
+  min-height: 48px;
+  font-size: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #bfdbfe;
+  font-family: inherit;
+  background: #fff;
+}
+
+.envios-ventas-cola__search button {
+  min-height: 48px;
+  touch-action: manipulation;
+}
+
+.envios-ventas-cola__meta {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.envios-ventas-cola__jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.envios-ventas-jump {
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+}
+
+.envios-ventas-jump b {
+  font-variant-numeric: tabular-nums;
+}
+
+.envios-ventas-jump.is-off {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.envios-ventas-jump--overdue {
+  border-color: #fdba74;
+  color: #c2410c;
+  background: #fff7ed;
+}
+
+.envios-ventas-jump--today {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.envios-ventas-cola__err {
+  color: #b42318;
+  font-size: 12px;
+  padding: 7px 10px;
+  background: #ffeceb;
+  border-radius: 8px;
+}
+
+.envios-ventas-cola__ok {
+  color: var(--g-brand, #1e3a5f);
+  font-size: 12px;
+  padding: 7px 10px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+}
+
+.envios-ventas-cola__empty {
+  font-size: 12px;
+  color: #64748b;
+  padding: 8px 2px 4px;
+}
+
+.envios-ventas-cola__groups {
+  display: grid;
+  gap: 10px;
+  max-height: min(56vh, 720px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+}
+
+.envios-fecha-group__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #dbe7f5;
+  font-size: 12px;
+  font-weight: 800;
+  color: #1e3a5f;
+}
+
+.envios-fecha-group.is-overdue .envios-fecha-group__head {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.envios-fecha-group.is-today .envios-fecha-group__head {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.envios-fecha-group__count {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.envios-fecha-group__rows {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.envios-ventas-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 48px;
+  touch-action: manipulation;
+}
+
+.envios-ventas-row.is-in {
+  border-color: #fb923c;
+  background: #fff7ed;
+  box-shadow: inset 3px 0 0 #c2410c;
+}
+
+.envios-ventas-row.is-adding {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.envios-envio-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.envios-envio-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #fff;
+  font-size: 12px;
+}
+
+.envios-envio-chip__x {
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+}
+
+.envios-ventas-row__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.envios-ventas-row__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--g-brand, #1e3a5f);
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.envios-ventas-row__id,
+.envios-ventas-row__date,
+.envios-ventas-row__meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.envios-ventas-row__chip {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border: 1.5px solid;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.envios-ventas-row__cta {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #16a34a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.envios-ventas-row__cta.is-on {
+  background: #c2410c;
+}
+
+.envios-ventas-row__cta.is-adding {
+  background: #64748b;
+}
+
+.envios-origen-chip {
+  font-size: 10px;
+  font-weight: 700;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  padding: 2px 8px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.envios-origen-chip.is-missing {
+  color: #9a3412;
+  background: #ffedd5;
+  border-color: #fdba74;
+}
+
+.envios-levante-group {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1.5px solid #86efac;
+  border-left: 5px solid #16a34a;
+  border-radius: 10px;
+  background: #f0fdf4;
+}
+
+.envios-levante-group.is-missing {
+  border-color: #fbbf24;
+  border-left-color: #d97706;
+  background: #fffbeb;
+}
+
+.envios-levante-group__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.envios-levante-group__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.envios-levante-client {
+  display: grid;
+  gap: 6px;
+}
+
+.envios-levante-client__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.envios-levante-client__id {
+  font-weight: 600;
+  color: #64748b;
+  font-size: 11px;
 }
 
 /* Print: solid only, hide sticky chrome chrome effects */
