@@ -1533,8 +1533,8 @@ const k100 = kgPerM2ForEspesor(100);
 assert("kgPerM2ForEspesor 100mm in range", k100 >= 8 && k100 <= 20, k100, "8–20");
 
 const pl = estimatePanelLinePhysical({ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 10 });
-assert("estimatePanelLinePhysical m2 = cant×largo×1.2", approx(pl.m2, 72, 0.01), pl.m2, "72");
-assert("estimatePanelLinePhysical volume = m2×esp", approx(pl.volumeM3, 7.2, 0.01), pl.volumeM3, "7.2");
+assert("estimatePanelLinePhysical m2 = cant×largo×anchoÚtil (ISODEC 1.12)", approx(pl.m2, 67.2, 0.01), pl.m2, "67.2");
+assert("estimatePanelLinePhysical volume = m2×esp", approx(pl.volumeM3, 6.72, 0.01), pl.volumeM3, "6.72");
 
 const route = estimateRouteLoadPhysical([
   {

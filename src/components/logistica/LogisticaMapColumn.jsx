@@ -26,7 +26,7 @@ function usePaneToggle(startCollapsed = false) {
     if (typeof p.isCollapsed === "function" && p.isCollapsed()) p.expand();
     else p.collapse();
   }, []);
-  return { ref, collapsed, setCollapsed, toggle };
+  return [ref, collapsed, setCollapsed, toggle];
 }
 
 function PaneTitle({ label, collapsed, onToggle, meta }) {
@@ -78,9 +78,9 @@ export default function LogisticaMapColumn({
   const mapsUrl = useMemo(() => safeHttpUrl(googleMapsDirectionsUrl(legs)) || "", [legs]);
   const [flash, setFlash] = useState("");
   const [selectedRefId, setSelectedRefId] = useState("");
-  const mapPane = usePaneToggle();
-  const scenePane = usePaneToggle(true);
-  const packPane = usePaneToggle();
+  const [mapPaneRef, mapCollapsed, setMapCollapsed, toggleMapPane] = usePaneToggle();
+  const [scenePaneRef, sceneCollapsed, setSceneCollapsed, toggleScenePane] = usePaneToggle(true);
+  const [packPaneRef, packCollapsed, setPackCollapsed, togglePackPane] = usePaneToggle();
 
   const kmLabel =
     route?.totalKm != null
@@ -111,19 +111,19 @@ export default function LogisticaMapColumn({
         className="envios-visual-split"
       >
         <Panel
-          ref={mapPane.ref}
+          ref={mapPaneRef}
           className="envios-visual-pane envios-visual-pane--map"
           defaultSize={42}
           minSize={12}
           collapsible
           collapsedSize={8}
-          onCollapse={() => mapPane.setCollapsed(true)}
-          onExpand={() => mapPane.setCollapsed(false)}
+          onCollapse={() => setMapCollapsed(true)}
+          onExpand={() => setMapCollapsed(false)}
         >
           <PaneTitle
             label="Ruta en mapa"
-            collapsed={mapPane.collapsed}
-            onToggle={mapPane.toggle}
+            collapsed={mapCollapsed}
+            onToggle={toggleMapPane}
             meta={
               legs.length
                 ? `${legs.length} paradas · ${geoCount} con pin${kmLabel}`
@@ -169,24 +169,24 @@ export default function LogisticaMapColumn({
         <PanelResizeHandle className="bmc-sash bmc-sash--vertical" />
 
         <Panel
-          ref={scenePane.ref}
+          ref={scenePaneRef}
           className="envios-visual-pane envios-visual-pane--3d"
           defaultSize={10}
           minSize={8}
           collapsible
           defaultCollapsed
           collapsedSize={8}
-          onCollapse={() => scenePane.setCollapsed(true)}
-          onExpand={() => scenePane.setCollapsed(false)}
+          onCollapse={() => setSceneCollapsed(true)}
+          onExpand={() => setSceneCollapsed(false)}
         >
           <PaneTitle
             label="Diagrama 3D"
-            collapsed={scenePane.collapsed}
-            onToggle={scenePane.toggle}
+            collapsed={sceneCollapsed}
+            onToggle={toggleScenePane}
             meta="cerrado · abrí si hace falta (WebGL)"
           />
           <div className="envios-visual-pane__body envios-visual-pane__body--3d">
-            {scenePane.collapsed ? (
+            {sceneCollapsed ? (
               <div className="envios-visual-pane__fallback" style={{ color: T.muted, padding: 8 }}>
                 3D apagado para no cargar la GPU. Abrí el panel para orbitar.
               </div>
@@ -207,19 +207,19 @@ export default function LogisticaMapColumn({
         <PanelResizeHandle className="bmc-sash bmc-sash--vertical" />
 
         <Panel
-          ref={packPane.ref}
+          ref={packPaneRef}
           className="envios-visual-pane envios-visual-pane--pack"
           defaultSize={24}
           minSize={10}
           collapsible
           collapsedSize={8}
-          onCollapse={() => packPane.setCollapsed(true)}
-          onExpand={() => packPane.setCollapsed(false)}
+          onCollapse={() => setPackCollapsed(true)}
+          onExpand={() => setPackCollapsed(false)}
         >
           <PaneTitle
             label="Itinerario y croquis"
-            collapsed={packPane.collapsed}
-            onToggle={packPane.toggle}
+            collapsed={packCollapsed}
+            onToggle={togglePackPane}
             meta={legs.length ? `${legs.length} tramos` : ""}
           />
           <div className="envios-visual-pane__body envios-visual-pane__body--pack">
