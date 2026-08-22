@@ -4,6 +4,10 @@
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 import { decodePolyline } from "../../../utils/logistica/osrmPolyline.js";
+import {
+  createLeafletTextTooltip,
+  routePinTooltipText,
+} from "../../../utils/logistica/routeMapTooltip.js";
 
 const TYPE_COLOR = {
   base: "#1a3a5c",
@@ -89,8 +93,8 @@ export default function RouteLeafletMap({
           draggable: canDrag,
           autoPan: canDrag,
         }).addTo(group);
-        const moved = leg.geo?.isManuallyAdjusted || leg.geo?.source === "manual";
-        m.bindTooltip(`${i + 1}. ${leg.label || ""}${moved ? " · pin aprox. (movido)" : ""}`, {
+        // Leaflet string tooltips use innerHTML — pass a text node (cliente/label is sheet-controlled).
+        m.bindTooltip(createLeafletTextTooltip(routePinTooltipText(leg, i)), {
           direction: "top",
         });
         m.on("click", () => onSelect?.(leg, i));

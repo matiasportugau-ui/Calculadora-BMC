@@ -28,6 +28,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-22 (fix — Leaflet pin tooltip XSS):** `RouteLeafletMap` passed `leg.label` (cliente / sheet) to Leaflet `bindTooltip(string)` which writes `innerHTML`. Now uses `createLeafletTextTooltip` + `textContent`. Tests `routeMapTooltip`.
+
 **2026-08-22 (docs — pack chofer ENV-260821-001 HITL):** Hoja + remito con mercadería + plan de carga + still 3D. Static `public/driver-pack/ENV-260821-001/` (`index.html` + PDF). Preview path `/driver-pack/ENV-260821-001/`. **No WhatsApp.** Javier Plada FALTA calle/tel. No mezclar #1051.
 
 **2026-08-21 (feat — logistica cargo P0 sólidos + patio):** Worktree `logistica-mesa-depo` (#1077). Free-drag ya no atraviesa: AABB + 50 % apoyo (`cargoSolidBodies.js`). Patio = carriles de piso por pedido, placa con nombre, Sacar/Cargar/Quitar patio. Estudio industria en `docs/team/LOGISTICA-AGENT-STUDY-PACK.md` §8. Tests `cargoSolidBodies` + `yardLayout`. **No push** hasta “dale”. No mezclar #1051.
