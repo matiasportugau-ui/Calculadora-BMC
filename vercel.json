@@ -25,6 +25,14 @@
       "destination": "https://panelin-calc-q74zutv7dq-uc.a.run.app/ml/:path*"
     },
     {
+      "source": "/driver-pack/ENV-260821-001",
+      "destination": "/driver-pack/ENV-260821-001/index.html"
+    },
+    {
+      "source": "/driver-pack/ENV-260821-001/",
+      "destination": "/driver-pack/ENV-260821-001/index.html"
+    },
+    {
       "source": "/logistica",
       "destination": "/index.html"
     },
