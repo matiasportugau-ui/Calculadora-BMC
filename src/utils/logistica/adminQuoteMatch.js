@@ -219,3 +219,33 @@ export function normalizeAdminQuoteRow(row) {
     raw: row,
   };
 }
+
+/**
+ * Pull zona panel lines with real cut length from an Admin/quote row when present.
+ * Sheets-only rows (nombre/pdf) return [].
+ * @param {object|null} quoteLike normalizeAdminQuoteRow result or raw quote
+ * @returns {Array<{ tipo: string, espesor: number, longitud: number, cantidad: number }>}
+ */
+export function extractPanelsFromAdminQuote(quoteLike) {
+  if (!quoteLike || typeof quoteLike !== "object") return [];
+  const raw = quoteLike.raw && typeof quoteLike.raw === "object" ? quoteLike.raw : quoteLike;
+  const techo = raw.techo || raw.calc?.techo || raw.payload?.techo || raw.quote?.techo || {};
+  const zonas = Array.isArray(techo.zonas)
+    ? techo.zonas
+    : Array.isArray(raw.zonas)
+      ? raw.zonas
+      : [];
+  const tipo = String(techo.familia || techo.tipo || raw.tipo || "ISODEC");
+  const techoEsp = Number(techo.espesor || 0) || 0;
+  const loads = [];
+  for (const z of zonas) {
+    if (!z || typeof z !== "object") continue;
+    const cant = Math.max(0, Math.floor(Number(z.cantPaneles ?? z.panelesAncho) || 0));
+    const largo = Math.max(0, Number(z.largo ?? z.largoPanel) || 0);
+    const esp = Math.max(0, Number(z.espesor ?? techoEsp) || 0);
+    if (cant > 0 && largo > 0 && esp > 0) {
+      loads.push({ tipo, espesor: esp, longitud: largo, cantidad: cant });
+    }
+  }
+  return loads;
+}

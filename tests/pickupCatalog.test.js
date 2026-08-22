@@ -22,11 +22,12 @@ console.log("pickupCatalog");
 
 {
   const seeds = buildSeedPlaces();
-  assert.equal(seeds.length, 3);
-  assert.ok(seeds.every((p) => p.source === "seed" && p.kind === "pickup"));
-  assert.ok(seeds.find((p) => p.id === "pickup-kingspan-bromyros"));
+  assert.equal(seeds.length, 4);
+  assert.ok(seeds.every((p) => p.source === "seed"));
+  assert.ok(seeds.find((p) => p.id === "pickup-kingspan-bromyros" && p.kind === "pickup"));
+  assert.ok(seeds.find((p) => p.id === "base-deposito-bmc" && p.kind === "base" && p.label === "BMC URUGUAY"));
   assert.ok(seeds.find((p) => p.mapUrl.includes("share.google")));
-  ok("seed 3 pickups");
+  ok("seed 3 pickups + BMC URUGUAY base");
 }
 
 {
@@ -39,7 +40,7 @@ console.log("pickupCatalog");
     active: true,
   };
   const merged = mergeCatalogPlaces([custom]);
-  assert.equal(merged.length, 4);
+  assert.equal(merged.length, 5);
   assert.ok(getPlaceById(merged, "pickup-user-x"));
   assert.ok(getPlaceById(merged, "pickup-montfrio"));
   ok("merge seed + user custom");
@@ -70,7 +71,8 @@ console.log("pickupCatalog");
 }
 
 {
-  assert.equal(SEED_PICKUPS.length, 3);
+  assert.equal(SEED_PICKUPS.length, 4);
+  assert.ok(SEED_PICKUPS.some((p) => p.id === "base-deposito-bmc" && p.label === "BMC URUGUAY"));
   ok("SEED_PICKUPS constant");
 }
 

@@ -1,8 +1,7 @@
 /**
- * Envío Setup Wizard shell — accordion stages (SDD-ENVIO-WIZARD).
- * Pure presentation + callbacks; no packing logic.
+ * Envío Setup Wizard shell — chip stages (SDD-ENVIO-WIZARD).
+ * Compact: one open step + thumb Continuar. Ruta keeps Mesa de ruta.
  */
-import { ENV_T as T } from "../../../utils/enviosTheme.js";
 import {
   WIZARD_STEPS,
   isStepComplete,
@@ -11,6 +10,7 @@ import {
   tryCompleteStep,
   createWizardUi,
 } from "../../../utils/logistica/wizardState.js";
+import "../../../styles/ruta-desk.css";
 
 const STEP_LABELS = {
   pedidos: "1 · Pedidos",
@@ -31,9 +31,12 @@ export default function EnvioWizardShell({
   onClassic,
   childrenByStep,
   headerActions = null,
+  onCargarActuales = null,
+  loadSh = false,
 }) {
   const w = createWizardUi(wizard || {});
   const active = w.activeStep;
+  const desk = active === "ruta";
 
   const openStep = (step) => {
     onWizardChange?.(createWizardUi({ ...w, activeStep: step }));
@@ -42,7 +45,6 @@ export default function EnvioWizardShell({
   const onContinuar = () => {
     const result = tryCompleteStep(active, w, ctx);
     if (!result.ok) return result;
-    // apply levantes default when completing levantes
     onWizardChange?.(result.wizard);
     return result;
   };
@@ -53,169 +55,110 @@ export default function EnvioWizardShell({
   };
 
   const missing = stepMissingHints(active, ctx);
+  const summary = stepSummary(active, ctx, places);
+  const canContinue = missing.length === 0 || active === "carga";
 
   return (
     <div
-      className="envios-wizard"
-      style={{
-        marginBottom: 16,
-        border: `1px solid ${T.border}`,
-        borderRadius: 14,
-        background: T.surface || "#fff",
-        overflow: "hidden",
-        boxShadow: "0 1px 3px rgba(0,0,0,.06)",
-      }}
+      className={`envios-wizard envios-wizard--desk${desk ? "" : " envios-wizard--setup"}`}
+      data-testid="envios-wizard-shell"
+      data-active-step={active}
     >
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          padding: "12px 14px",
-          borderBottom: `1px solid ${T.border}`,
-          background: "linear-gradient(180deg,#f8fafc,#fff)",
-        }}
-      >
-        <div style={{ minWidth: 0, flex: "1 1 160px" }}>
-          <div style={{ fontWeight: 800, fontSize: 15, color: T.brand || "#1e3a5f" }}>
-            Configuración del envío
-          </div>
-          <div style={{ fontSize: 11, color: T.muted }}>
-            Completá cada etapa · se resume al avanzar (como la calculadora)
-          </div>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
-          {headerActions}
-          {typeof onClassic === "function" ? (
-            <button
-              type="button"
-              onClick={onClassic}
-              style={{
-                fontSize: 12,
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: `1px solid ${T.border}`,
-                background: "#fff",
-                cursor: "pointer",
-                minHeight: 40,
-                fontWeight: 600,
-              }}
-            >
-              Detalle Completo
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <div style={{ padding: 10, display: "grid", gap: 8 }}>
+      <div className="envios-wizard-steps-compact">
         {WIZARD_STEPS.map((step) => {
           const done = w.done?.[step] || isStepComplete(step, ctx);
-          const open = active === step;
-          const summary = stepSummary(step, ctx, places);
           return (
-            <div
+            <button
               key={step}
-              style={{
-                border: open ? `1.5px solid ${T.primary || "#2563eb"}` : `1px solid ${T.border}`,
-                borderRadius: 12,
-                background: open ? "#f8fafc" : done ? "#f0fdf4" : "#fff",
-              }}
+              type="button"
+              className={step === active ? "is-on" : ""}
+              onClick={() => openStep(step)}
             >
-              <button
-                type="button"
-                onClick={() => openStep(step)}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  border: "none",
-                  background: "transparent",
-                  padding: "12px 14px",
-                  cursor: "pointer",
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "center",
-                  minHeight: 48,
-                }}
-              >
-                <span style={{ fontSize: 16, width: 22 }}>{done && !open ? "✓" : open ? "▼" : "○"}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: T.text }}>{STEP_LABELS[step]}</div>
-                  {!open ? (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: T.muted,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {summary || "Pendiente"}
-                    </div>
-                  ) : null}
-                </div>
-              </button>
-              {open ? (
-                <div style={{ padding: "0 14px 14px", borderTop: `1px solid ${T.border}` }}>
-                  <div style={{ paddingTop: 12 }}>{childrenByStep?.[step] || null}</div>
-                  {missing.length ? (
-                    <div
-                      style={{
-                        marginTop: 10,
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        background: "#fff7ed",
-                        border: "1px solid #fed7aa",
-                        fontSize: 12,
-                        color: "#9a3412",
-                      }}
-                    >
-                      Falta: {missing.join(" · ")}
-                    </div>
-                  ) : null}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      marginTop: 12,
-                      flexWrap: "wrap",
-                      justifyContent: "space-between",
-                      position: "sticky",
-                      bottom: 0,
-                      paddingTop: 8,
-                      background: "linear-gradient(transparent, #f8fafc 30%)",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={onAtras}
-                      disabled={step === "pedidos"}
-                      style={btnSecondary}
-                    >
-                      ← Atrás
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const r = onContinuar();
-                        if (r && !r.ok) return;
-                      }}
-                      disabled={missing.length > 0 && step !== "carga"}
-                      style={{
-                        ...btnPrimary,
-                        opacity: missing.length > 0 && step !== "carga" ? 0.5 : 1,
-                      }}
-                    >
-                      {step === "carga" ? "Listo" : "Continuar →"}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
+              {done && step !== active ? "✓ " : ""}
+              {STEP_LABELS[step]}
+            </button>
           );
         })}
+        {typeof onClassic === "function" ? (
+          <button type="button" onClick={onClassic} style={{ marginLeft: "auto" }}>
+            Detalle Completo
+          </button>
+        ) : null}
+      </div>
+
+      {!desk ? (
+        <div className="envios-wizard-setup-head">
+          <div className="envios-wizard-setup-head__copy">
+            <div className="envios-wizard-setup-head__title">{STEP_LABELS[active] || "Configuración"}</div>
+            <div className="envios-wizard-setup-head__sub">{summary || "Completá esta etapa"}</div>
+          </div>
+          <div className="envios-wizard-setup-head__actions">{headerActions}</div>
+        </div>
+      ) : null}
+
+      <div className={desk ? "envios-wizard-desk-body" : "envios-wizard-setup-body"}>
+        {childrenByStep?.[active] || null}
+        {!desk && missing.length ? (
+          <div className="envios-wizard-missing" data-testid="envios-wizard-missing">
+            Falta: {missing.join(" · ")}
+          </div>
+        ) : null}
+      </div>
+
+      {!desk ? (
+        <div className="ruta-desk-thumb envios-wizard-thumb" data-testid="envios-wizard-thumb">
+          <button
+            type="button"
+            className="ruta-desk-thumb__secondary"
+            onClick={onAtras}
+            disabled={active === "pedidos"}
+          >
+            Atrás
+          </button>
+          {active === "pedidos" && typeof onCargarActuales === "function" ? (
+            <button
+              type="button"
+              className="ruta-desk-thumb__secondary"
+              onClick={onCargarActuales}
+              disabled={loadSh}
+            >
+              {loadSh ? "…" : "Cargar"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ruta-desk-thumb__primary"
+            onClick={() => {
+              const r = onContinuar();
+              if (r && !r.ok) return;
+            }}
+            disabled={!canContinue}
+          >
+            {active === "carga" ? "Listo" : "Continuar"}
+          </button>
+        </div>
+      ) : null}
+
+      <div className="envios-wizard-inline-nav" data-testid="envios-wizard-inline-nav">
+        <button type="button" onClick={onAtras} disabled={active === "pedidos"} style={btnSecondary}>
+          ← Atrás
+        </button>
+        {active === "pedidos" && typeof onCargarActuales === "function" ? (
+          <button type="button" onClick={onCargarActuales} disabled={loadSh} style={btnSecondary}>
+            {loadSh ? "Cargando…" : "Cargar actuales"}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => {
+            const r = onContinuar();
+            if (r && !r.ok) return;
+          }}
+          disabled={!canContinue}
+          style={{ ...btnPrimary, opacity: canContinue ? 1 : 0.5 }}
+        >
+          {active === "carga" ? "Listo" : "Continuar →"}
+        </button>
       </div>
     </div>
   );
@@ -231,6 +174,7 @@ const btnPrimary = {
   fontSize: 13,
   cursor: "pointer",
   minHeight: 44,
+  touchAction: "manipulation",
 };
 const btnSecondary = {
   padding: "10px 16px",
@@ -241,4 +185,5 @@ const btnSecondary = {
   fontSize: 13,
   cursor: "pointer",
   minHeight: 44,
+  touchAction: "manipulation",
 };

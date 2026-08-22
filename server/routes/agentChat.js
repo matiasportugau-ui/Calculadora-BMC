@@ -19,7 +19,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
 import { checkDevModeAuthorization } from "../lib/devModeAuth.js";
 import { peekIdentityClaims } from "../lib/identityAuth.js";
-import { buildSystemPrompt } from "../lib/chatPrompts.js";
+import { buildSystemPrompt, isLogisticaCalcState } from "../lib/chatPrompts.js";
 import {
   calcParedCompleto,
   calcTechoCompleto,
@@ -478,6 +478,9 @@ const VALID_ACTION_TYPES = new Set([
   "setPared", "setCamara", "setFlete", "setProyecto",
   "setWizardStep", "advanceWizard",
   "buildQuote",
+  "setStopField", "setEnviosInfo", "setEnviosTruck",
+  "setLogisticaWizard", "advanceLogisticaWizard",
+  "addTruckerCorrection", "setTruckerLook", "setTruckerArt",
 ]);
 
 // 0.1 — Rate limiting: 10/min public, 30/min devMode
@@ -648,6 +651,8 @@ router.post("/agent/chat", async (req, res) => {
     surface: rawSurface,
     operatorContext: rawOperatorContext = null,
   } = req.body || {};
+  const logisticaTurn = isLogisticaCalcState(calcState);
+  const chatTools = logisticaTurn ? [] : AGENT_TOOLS;
   // Canonical brand surface (lib/surface.js) + KB training surface (lib/kbSurface.js).
   // Body accepts `surface` and/or legacy `channel`; `surface` string wins when non-empty.
   const brandHints =
@@ -918,7 +923,9 @@ router.post("/agent/chat", async (req, res) => {
   // Multi-canal (Brief §6.5): resolve the per-surface answer for each match
   // BEFORE handing them to buildSystemPrompt, so the rendering layer (which
   // serializes entry.goodAnswer) doesn't need to know about surfaces.
-  const rawTrainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
+  const rawTrainingExamples = logisticaTurn
+    ? []
+    : findRelevantExamples(lastUserMessage, { limit: 5 });
   const trainingExamples = rawTrainingExamples.map((entry) => ({
     ...entry,
     goodAnswer: resolveTrainingAnswer(entry, surface) || entry.goodAnswer || "",
@@ -932,7 +939,7 @@ router.post("/agent/chat", async (req, res) => {
   // embedding service caído), se loggea y se continúa SIN RAG — el chat no se rompe.
   // IMP-10: optional RAG_HYBRID fuses embedding hits with Training KB keyword boost.
   let ragContextBlock = "";
-  if (config.ragEnabled) {
+  if (config.ragEnabled && !logisticaTurn) {
     try {
       const ragQuotes = await retrieveSimilarQuotes(
         lastUserMessage,
@@ -1221,8 +1228,7 @@ router.post("/agent/chat", async (req, res) => {
           max_tokens: thinkingMode ? (isOpus47 ? 8192 : 4096) : CHAT_MAX_TOKENS,
           system: [{ type: "text", text: effectiveSystemPrompt, cache_control: { type: "ephemeral" } }],
           messages: claudeMsgs,
-          tools: AGENT_TOOLS,
-          tool_choice: { type: "auto" },
+          ...(chatTools.length ? { tools: chatTools, tool_choice: { type: "auto" } } : {}),
         };
 
         if (thinkingMode) {
@@ -1342,7 +1348,7 @@ router.post("/agent/chat", async (req, res) => {
         const geminiModel = genAI.getGenerativeModel({
           model,
           systemInstruction: effectiveSystemPrompt,
-          tools: toGeminiTools(AGENT_TOOLS),
+          ...(chatTools.length ? { tools: toGeminiTools(chatTools) } : {}),
           // gemini-2.5-flash enables "thinking" by default, and empirically that
           // makes it role-play tool calls in TEXT (the exact bug we're fixing)
           // instead of emitting real functionCall parts. Disabling the thinking

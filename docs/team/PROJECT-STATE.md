@@ -1,6 +1,20 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (BMC Driver Loop — join REP→trip + 5 visual specs)
+**Última actualización:** 2026-08-22 (fix — EV archive merge no borra ruta)
+
+**2026-08-22 (fix — EV archive merge write):** `writeDraftArchive` ya no trata `decideDraftLoad === "merge"` como overwrite ciego. Autosave con más paradas pero sin `orderedLegs` ahora llama `mergeKeepRouteWork` y conserva el itinerario archivado. Test en `enviosDraftArchive`. Into #1077 tip (AU asserts ya en 8bccc3fb).
+
+**2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA). PWA Outdoor Night. Customer `/seguimiento/:token` parked. Merged #1078.
+
+**2026-08-21 (ux — Viene a depo = BMC URUGUAY):** Identidad fija **BMC URUGUAY**. Destino Maps `https://maps.app.goo.gl/H4JrCnTgmke7ZRReA` (pin −34.9053458, −54.928693). Catálogo `base-deposito-bmc`. Tests `uyGazetteer` + `routeSuggest` + `pickupCatalog`.
+
+**2026-08-21 (ux — mesa de ruta, modo de entrega):** Tres chips compactos: **Entrega en destino** (default), **Retiran en planta**, **Viene a depo**. Depo no entrega a obra; el itinerario suma un tramo BMC URUGUAY.
+
+**2026-08-21 (ux — origen/clientes):** Chip de levante por pedido; Levantes agrupa bajo planta; faltas **sin origen** → Levantes. Autosave vacío no pisa archive. Fixture `ENV-260821-001`.
+
+**2026-08-20 (feat — mesa /logistica paneles + OSRM):** 2 col + sash + Leaflet. Trazo por **calles** `POST /api/envios/route`; fallback km aire. Tests `osrmPolyline`.
+
+**2026-08-20 (fix — Guardar en /logistica es este Mac):** Draft local; Drive = **Subir a Drive**.
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +27,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-22 (fix — Leaflet pin tooltip XSS):** `RouteLeafletMap` passed `leg.label` (cliente / sheet) to Leaflet `bindTooltip(string)` which writes `innerHTML`. Now uses `createLeafletTextTooltip` + `textContent`. Tests `routeMapTooltip`.
+
+**2026-08-22 (docs — pack chofer ENV-260821-001 HITL):** Hoja + remito con mercadería + plan de carga + still 3D. Static `public/driver-pack/ENV-260821-001/` (`index.html` + PDF). Preview path `/driver-pack/ENV-260821-001/`. **No WhatsApp.** Javier Plada FALTA calle/tel. No mezclar #1051.
+
+**2026-08-21 (feat — logistica cargo P0 sólidos + patio):** Worktree `logistica-mesa-depo` (#1077). Free-drag ya no atraviesa: AABB + 50 % apoyo (`cargoSolidBodies.js`). Patio = carriles de piso por pedido, placa con nombre, Sacar/Cargar/Quitar patio. Estudio industria en `docs/team/LOGISTICA-AGENT-STUDY-PACK.md` §8. Tests `cargoSolidBodies` + `yardLayout`. **No push** hasta “dale”. No mezclar #1051.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 

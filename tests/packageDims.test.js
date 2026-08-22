@@ -19,12 +19,15 @@ function ok(name) {
 console.log("packageDims");
 
 {
-  const panel = { kind: "panel", tipo: "ISODEC", len: 7, h: 0.36 };
+  const panel = { kind: "panel", tipo: "ISODEC", len: 7, h: 0.36, n: 3, esp: 100 };
   const d = packagePhysicalDims(panel);
   assert.equal(d.W, ROW_W);
   assert.equal(d.L, 7);
   assert.equal(d.isAccessory, false);
-  ok("panel uses ROW_W");
+  const label = formatPackageDimsLabel(panel, { includeVol: true });
+  assert.match(label, /ocupa/);
+  assert.match(label, /material/);
+  ok("panel uses ROW_W occupancy + material volume in label");
 }
 
 {

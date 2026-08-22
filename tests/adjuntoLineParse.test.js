@@ -25,8 +25,9 @@ console.log("adjuntoLineParse");
   assert.equal(p.tipo, "ISODEC");
   assert.equal(p.espesor, 100);
   assert.equal(p.cantidad, 10, "10 paneles is qty, not length");
-  assert.equal(p.longitud, 6, "default length when PDF has no panel length");
-  ok("Alvaro product line: qty 10, esp 100, default length");
+  assert.equal(p.longitud, 10.15, "L = 113.68 m² / (10 × AU 1.12), not default 6");
+  assert.equal(p.lengthInferredFromM2, true);
+  ok("Alvaro product line: qty 10, esp 100, L from m²");
 }
 
 {
@@ -51,12 +52,17 @@ Subtotal sin IVA USD 4,677.93`;
   const main = r.paneles.find((p) => p.cantidad === 10 && p.espesor === 100);
   assert.ok(main, `expected ISODEC 100×10, got ${JSON.stringify(r.paneles)}`);
   assert.equal(main.tipo, "ISODEC");
+  assert.equal(main.longitud, 10.15, `Alvaro L from 113.68 m², got ${main.longitud}`);
+  assert.ok(
+    (r.warnings || []).some((w) => /inferido desde m²/i.test(w)),
+    `expected m² length warning, got ${JSON.stringify(r.warnings)}`,
+  );
   assert.equal(
     r.paneles.filter((p) => p.tipo === "ISODEC").length,
     1,
     `expected single ISODEC line, got ${JSON.stringify(r.paneles)}`,
   );
-  ok("full Alvaro PDF text → single ISODEC 100mm × 10");
+  ok("full Alvaro PDF text → single ISODEC 100mm × 10 @ L=10.15");
 }
 
 {
@@ -165,12 +171,24 @@ Isodec EPS 100 mm 4,00 10 37,00 370,00`,
 }
 
 {
-  // Modern-only (no classic) still keeps default L=6.
+  // Modern-only with covering m² recovers L (not silent 6).
   const modernOnly = parseLogisticaFromAdjuntoText("ISODEC EPS 100mm · 10 paneles 113.68 m² 41.15 4,677.93");
   assert.equal(modernOnly.paneles.length, 1);
-  assert.equal(modernOnly.paneles[0].longitud, 6);
+  assert.equal(modernOnly.paneles[0].longitud, 10.15);
   assert.equal(modernOnly.paneles[0].cantidad, 10);
-  ok("modern-only still defaults length to 6");
+  ok("modern-only recovers length from m²");
+}
+
+{
+  // No m² and no meters → still default 6, with operator warning.
+  const noArea = parseLogisticaFromAdjuntoText("ISODEC EPS 100mm · 10 paneles");
+  assert.equal(noArea.paneles.length, 1);
+  assert.equal(noArea.paneles[0].longitud, 6);
+  assert.ok(
+    (noArea.warnings || []).some((w) => /default 6 m/i.test(w)),
+    `expected default-6 warning, got ${JSON.stringify(noArea.warnings)}`,
+  );
+  ok("modern-only without m² still defaults length to 6 with warning");
 }
 
 {
@@ -224,6 +242,7 @@ Perf. Ch. Gotero Frontal Izquierdo 30 mm   3,03   2   7,15`,
   const r = parseLogisticaFromAdjuntoText(alvaroCollapsed);
   const main = r.paneles.find((p) => p.cantidad === 10 && p.espesor === 100 && p.tipo === "ISODEC");
   assert.ok(main, `expected ISODEC×10 from collapsed Alvaro, got ${JSON.stringify(r.paneles)}`);
+  assert.equal(main.longitud, 10.15, `collapsed Alvaro L from m², got ${main.longitud}`);
   assert.equal(
     r.paneles.filter((p) => p.tipo === "ISODEC" && p.cantidad === 10).length,
     1,
