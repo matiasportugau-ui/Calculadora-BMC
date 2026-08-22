@@ -1,6 +1,8 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-22 (pack chofer ENV-260821-001 HITL)
+**Última actualización:** 2026-08-22 (fix — EV archive merge no borra ruta)
+
+**2026-08-22 (fix — EV archive merge write):** `writeDraftArchive` ya no trata `decideDraftLoad === "merge"` como overwrite ciego. Autosave con más paradas pero sin `orderedLegs` ahora llama `mergeKeepRouteWork` y conserva el itinerario archivado. Test en `enviosDraftArchive`. Suite 29 validation alineada a AU 1.12 (no ROW_W 1.2). Prefer into #1077.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA). PWA Outdoor Night. Customer `/seguimiento/:token` parked. Merged #1078.
 

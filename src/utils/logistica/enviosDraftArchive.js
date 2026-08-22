@@ -132,19 +132,30 @@ export function writeDraftArchive(storage, payload) {
   const id = draftIdFromEnvNo(payload?.info?.numero);
   if (!id || !storage?.setItem) return { ok: false, error: "missing_env_no" };
   const key = archiveItemKey(id);
+  /** @type {object} */
+  let toWrite = payload;
   try {
     const existingRaw = storage.getItem?.(key);
     if (existingRaw) {
       const existing = JSON.parse(existingRaw);
-      if (existing && decideDraftLoad(existing, payload) === "keep") {
-        return { ok: true, id, skipped: true };
+      if (existing) {
+        const decision = decideDraftLoad(existing, payload);
+        // Thinner / empty autosave must not wipe a richer archive.
+        if (decision === "keep") {
+          return { ok: true, id, skipped: true };
+        }
+        // More stops but no itinerary: keep worked legs/wizard, take incoming stops.
+        // Without this, "merge" fell through to a blind overwrite and dropped orderedLegs.
+        if (decision === "merge") {
+          toWrite = mergeKeepRouteWork(existing, payload) || payload;
+        }
       }
     }
   } catch {
     /* ignore corrupt existing */
   }
-  const savedAt = payload.savedAt || new Date().toISOString();
-  const blob = { ...payload, savedAt };
+  const savedAt = toWrite.savedAt || payload.savedAt || new Date().toISOString();
+  const blob = { ...toWrite, savedAt };
   try {
     storage.setItem(key, JSON.stringify(blob));
     const index = upsertArchiveIndex(parseArchiveIndex(storage.getItem?.(ARCHIVE_INDEX_KEY)), {
@@ -162,7 +173,7 @@ export function writeDraftArchive(storage, payload) {
         /* ignore */
       }
     }
-    return { ok: true, id };
+    return { ok: true, id, merged: toWrite !== payload };
   } catch (e) {
     return { ok: false, error: e?.message || "quota" };
   }
