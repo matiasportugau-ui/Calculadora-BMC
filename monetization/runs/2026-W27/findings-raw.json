@@ -1,0 +1,123 @@
+{
+  "run_id": "2026-W27",
+  "run_date": "2026-07-03",
+  "stage": "1-scout",
+  "executed_by": "inline (constellation agents not present in ~/.claude/agents/ — hecho confirmado)",
+  "environment_notes": {
+    "scan_root_planned": "/Users/matias",
+    "scan_root_actual": "/home/user",
+    "reason": "Run executed in a remote Claude Code container; /Users/matias does not exist here (hecho confirmado). Only the Calculadora-BMC clone is on disk.",
+    "github_inventory": "DEGRADED: gh CLI absent; list_repos unavailable for this session type; GitHub access scoped to matiasportugau-ui/Calculadora-BMC only. Other repos of the account were NOT inventoried this run (duda abierta: full account inventory requires a local run or widened session scope).",
+    "prior_state": "none found locally or on branch claude/monetization-weekly-discovery-xvc1sx (identical to main) — baseline run (hecho confirmado)",
+    "repo_audit_scanner.sh": "not found on disk (find across /home/user, /root) — inline equivalent used (hecho confirmado)"
+  },
+  "root_detection": {
+    "markers_used": [".git", "package.json", "requirements.txt", "pyproject.toml", "go.mod", "Cargo.toml", "composer.json", "Dockerfile", "*.xcodeproj"],
+    "exclusions": ["node_modules", ".Trash", "Library", ".cache", "venv", ".venv", "dist", "build"],
+    "marker_directories_post_dedup": 4,
+    "note": "Per-directory marker dedup: Calculadora-BMC root carries .git+package.json+Dockerfile = ONE entry. Three nested marker directories (server/, shop-chat-agent/, src-tauri/) are listed as distinct entries with nested_within set — they carry their own markers but live inside the parent git repo."
+  },
+  "golf_sweep": {
+    "content_grep": {
+      "command": "grep -ril 'golf' (exclusions applied) under /home/user/Calculadora-BMC",
+      "hits": [
+        {
+          "file": "scripts/seed-full-competitors.mjs",
+          "line": 225,
+          "verbatim": "location: 'City Golf, Atlántida Norte + Progreso (Canelones)',"
+        }
+      ],
+      "interpretation": "hecho confirmado: the only 'golf' occurrence is a Uruguayan neighborhood name (City Golf, Canelones) inside competitor seed data for the market-intel module. It is NOT a software module. The 'Golf modules' reference is resolved as a false lead in this repo; if it refers to something on the local Mac, it remains duda abierta until a local run."
+    },
+    "name_path_find": {
+      "command": "find /home/user /root -iname '*golf*' (exclusions applied)",
+      "hits": [],
+      "result": "no matches"
+    }
+  },
+  "findings": [
+    {
+      "id": "root-calculadora-bmc",
+      "name": "Calculadora-BMC (Panelin v3.1.5)",
+      "path": "/home/user/Calculadora-BMC",
+      "markers": [".git", "package.json", "Dockerfile"],
+      "nested_within": null,
+      "languages": ["JavaScript (ESM)", "JSX", "SQL", "Bash"],
+      "frameworks": ["React 18", "Vite 7", "Express 5", "Node 24.x", "PostgreSQL/pgvector", "Supabase", "Tauri 2 (nested)"],
+      "loc_approx": {"src": 81289, "server": 54088, "scripts": 26045, "tests": 21854, "docs": 132995},
+      "last_commit": "2026-07-03 (7b0d3a2)",
+      "remote": "github.com/matiasportugau-ui/Calculadora-BMC",
+      "readme_head": "Calculadora BMC — Panelin v3.1.5. Cotizador profesional de paneles de aislamiento térmico y acústico para BMC Uruguay (METALOG SAS). License: UNLICENSED.",
+      "status": "LIVE PRODUCTION (Vercel frontend + Cloud Run API panelin-calc) — read-only handling enforced this run",
+      "notable_modules": [
+        {"module": "Quotation engine", "evidence": "src/utils/calculations.js (pure engine, techo/pared), src/data/constants.js (422-SKU catalogue, venta/web price lists), calcTotalesSinIVA()", "note": "hecho confirmado: pure, data-driven, fully unit-tested (tests/validation.js)"},
+        {"module": "PDF template system", "evidence": "src/pdf-templates/ (7 layouts + buildQuotationModel() dispatcher), src/utils/pdfGenerator.js, server/routes/pdf.js (server-side Chromium, html2pdf.js fallback)"},
+        {"module": "Panelin AI agent", "evidence": "server/lib/agentCore.js (Anthropic+OpenAI provider chain), agentTools.js (tool_use + calc loopback), server/routes/agentChat.js (SSE), autoLearnExtractor.js, trainingKB.js"},
+        {"module": "RAG / KB stack", "evidence": "server/lib/rag.js + embeddings.js (provider-agnostic, pgvector cosine), kb-package/migrations, kbSurface.js, kbAnalytics.js"},
+        {"module": "Market-intel ETL", "evidence": "server/lib/marketIntel/ (scraper, deduplication, delta, alerts, scheduler), server/routes/mlEtlRun.js, scripts/seed-full-competitors.mjs (competitor seeds incl. Canelones locations)"},
+        {"module": "WA Cockpit", "evidence": "wa-package/migrations, server/routes/wa.js, npm run wa:migrate, /hub/wa route", "note": "WhatsApp Cloud API team cockpit, Postgres-backed"},
+        {"module": "TraKtiMe time tracking", "evidence": "traktime-package/migrations, server/routes/traktime.js, /hub/traktime/* routes, src-tauri (desktop timer)"},
+        {"module": "Transportista logistics", "evidence": "transportista-cursor-package/ (AGENTS.md, migrations, prompts, src), server/routes/transportista.js, /logistica /conductor /inspector routes"},
+        {"module": "Omni orchestration layer", "evidence": "server/routes/omni.js, aiWorker job queue, automation rules, omni_deals — issues #409 (WAVE 3 hardening) and #420 (model/pricing registry, USD 50/day budget)", "note": "inferencia: omnichannel AI CRM layer in active build-out, flag-gated"},
+        {"module": "Panelin MCP surface", "evidence": ".claude/agents/bmc-panelin-mcp definition: 22 tools (calc, catalog, state, PDF, CRM, WhatsApp, telemetry) over MCP for external clients"},
+        {"module": "Identity/RBAC", "evidence": "server/lib/identityAuth.js (JWT), authGoogle.js, authMfa.js + mfaTotp.js (TOTP 2FA), requireGrant.js (module-scoped grants)"},
+        {"module": "2D roof-plan SVG dimensioning", "evidence": "calculo-especialist agent domain: buildPanelLayout, roofPlanGeometry, PanelChainDimensions, ISO 129 dimensioning, plano-BOM verification badge"},
+        {"module": "Telegram bot", "evidence": "telegram-bot/ (graph, lib, tests)"},
+        {"module": "Evals harness", "evidence": "evals/golden-cases + evals/promptfoo, promptfoo skill"},
+        {"module": "ML Manager (MercadoLibre)", "evidence": "server/routes/mlSearch.js, mlEtlRun.js, OAuth token in gs://bmc-ml-tokens (issue #419)"}
+      ],
+      "docs_mined_unshipped": [
+        "Omni WAVE deferred hardening items (issue #409) — inferencia: omni layer not yet fully productized",
+        "GO-LIVE-DASHBOARD-CHECKLIST open rows (issue #417) — dashboard go-live incomplete",
+        "Issue #358: ISODEC lateral-cámara price inversion pending Matriz decision (data quality signal for any catalog-derived product)"
+      ]
+    },
+    {
+      "id": "root-server-dockerfile",
+      "name": "server/ (API deploy image)",
+      "path": "/home/user/Calculadora-BMC/server",
+      "markers": ["Dockerfile"],
+      "nested_within": "root-calculadora-bmc",
+      "languages": ["JavaScript (ESM)"],
+      "frameworks": ["Express 5", "Node 24.x"],
+      "loc_approx": {"server": 54088},
+      "last_commit": "2026-06-29 (Dockerfile path)",
+      "remote": "github.com/matiasportugau-ui/Calculadora-BMC",
+      "readme_head": null,
+      "status": "deploy artifact of parent (Cloud Run service panelin-calc) — not an independent product root (hecho confirmado)",
+      "notable_modules": []
+    },
+    {
+      "id": "root-shop-chat-agent",
+      "name": "shop-chat-agent",
+      "path": "/home/user/Calculadora-BMC/shop-chat-agent",
+      "markers": ["package.json", "Dockerfile"],
+      "nested_within": "root-calculadora-bmc",
+      "languages": ["JavaScript/TypeScript"],
+      "frameworks": ["React Router 7", "Prisma 6", "Shopify App / theme extension", "MCP (Storefront MCP client)"],
+      "loc_approx": {"total": 3409},
+      "last_commit": "2026-06-29",
+      "remote": "github.com/matiasportugau-ui/Calculadora-BMC (embedded copy)",
+      "readme_head": "Build an AI Agent for Your Storefront — Shopify template app embedding an AI chat widget on a storefront; speaks MCP to Shopify APIs (product search, cart, checkout, orders).",
+      "status": "inferencia: customization of Shopify's OPEN template (shopify.dev/docs/apps/build/storefront-mcp) — the base is freely available, limiting standalone monetization",
+      "notable_modules": [
+        {"module": "MCP client wiring", "evidence": "shop-chat-agent/app/mcp-client.js — initializes all Shopify Storefront MCP tools"}
+      ]
+    },
+    {
+      "id": "root-src-tauri",
+      "name": "bmc-traktime (Tauri desktop timer)",
+      "path": "/home/user/Calculadora-BMC/src-tauri",
+      "markers": ["Cargo.toml"],
+      "nested_within": "root-calculadora-bmc",
+      "languages": ["Rust"],
+      "frameworks": ["Tauri 2 (tray-icon, global-shortcut plugins)"],
+      "loc_approx": {"total": 104},
+      "last_commit": "2026-06-29",
+      "remote": "github.com/matiasportugau-ui/Calculadora-BMC",
+      "readme_head": "Cargo.toml description: 'BMC TraKtiMe desktop timer — always-on-top mini window'. Lib structured for future mobile entry points.",
+      "status": "companion desktop shell for the TraKtiMe module (hecho confirmado from Cargo.toml)",
+      "notable_modules": []
+    }
+  ]
+}
