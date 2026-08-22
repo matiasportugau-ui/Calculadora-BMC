@@ -42,6 +42,42 @@ function log(msg, obj) {
   console.log(line);
 }
 
+function loadState() {
+  try {
+    return JSON.parse(fs.readFileSync(STATE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function getOpenPr(branch) {
+  if (!hasGh() || !branch) return null;
+  try {
+    const raw = runSync(
+      `gh pr list --head ${branch} --json number,state,mergedAt,statusCheckRollup,reviewDecision,url --jq '.[0]'`
+    );
+    return JSON.parse(raw || "null");
+  } catch {
+    return null;
+  }
+}
+
+/** Returns { blocked, prUrl } | { merged } | { waiting } | null */
+function describePrGate(pr) {
+  if (!pr) return null;
+  if (pr.state === "MERGED") return { merged: true, prUrl: pr.url };
+  if (pr.state !== "OPEN") return { blocked: `PR ${pr.state}`, prUrl: pr.url };
+  const checks = pr.statusCheckRollup || [];
+  const pending = checks.filter((c) => ["IN_PROGRESS", "QUEUED", "PENDING"].includes(c.status));
+  if (pending.length > 0) return { waiting: pending.length, prUrl: pr.url };
+  const reasons = [];
+  const failed = checks.filter((c) => c.conclusion === "FAILURE" || c.conclusion === "CANCELLED");
+  if (failed.length) reasons.push(failed.map((c) => c.name).join(", "));
+  if (pr.reviewDecision === "CHANGES_REQUESTED") reasons.push("review CHANGES_REQUESTED");
+  if (reasons.length) return { blocked: reasons.join("; "), prUrl: pr.url };
+  return { ready: true, prUrl: pr.url };
+}
+
 function saveState(patch) {
   fs.mkdirSync(RUNTIME, { recursive: true });
   let prev = {};
@@ -157,7 +193,18 @@ async function step2_push() {
       runSync(`git checkout ${shipBranch}`);
     }
   }
-  await pushBranch(shipBranch);
+
+  let skipPush = false;
+  try {
+    const remoteSha = runSync(`git rev-parse origin/${shipBranch}`);
+    if (remoteSha === sha) {
+      skipPush = true;
+      log("STEP 2 — branch unchanged on origin; skip push (avoids re-triggering CI)");
+    }
+  } catch {
+    /* first push */
+  }
+  if (!skipPush) await pushBranch(shipBranch);
 
   let prUrl = "";
   if (hasGh()) {
@@ -215,22 +262,29 @@ async function waitForWorkflow(workflowName, sha) {
 
 async function waitForPrMerged(branch, maxMs = MAX_WAIT_MS) {
   if (!hasGh() || !branch) return { skipped: true };
+
+  const pr0 = getOpenPr(branch);
+  const gate0 = describePrGate(pr0);
+  if (gate0?.merged) return { merged: true, mergedAt: pr0.mergedAt };
+  if (gate0?.blocked) {
+    throw new Error(
+      `HUMAN GATE — merge PR manually (${gate0.prUrl || ""}): ${gate0.blocked}`
+    );
+  }
+
   const start = Date.now();
   while (Date.now() - start < maxMs) {
     try {
-      const state = runSync(
-        `gh pr list --head ${branch} --json state,mergedAt,statusCheckRollup --jq '.[0]'`
-      );
-      const pr = JSON.parse(state || "null");
+      const pr = getOpenPr(branch);
       if (!pr) return { merged: true, note: "no open PR" };
-      const checks = pr.statusCheckRollup || [];
-      const pending = checks.filter((c) => c.status === "IN_PROGRESS" || c.status === "QUEUED");
-      log("PR POLL", { state: pr.state, pendingChecks: pending.length, mergedAt: pr.mergedAt });
-      if (pr.state === "MERGED") return { merged: true, mergedAt: pr.mergedAt };
+      const gate = describePrGate(pr);
+      log("PR POLL", { state: pr.state, gate: gate?.waiting ? `waiting:${gate.waiting}` : gate?.blocked || "ok", mergedAt: pr.mergedAt });
+      if (gate?.merged || pr.state === "MERGED") return { merged: true, mergedAt: pr.mergedAt };
       if (pr.state === "CLOSED" && !pr.mergedAt) throw new Error("PR closed without merge");
-      const failed = checks.filter((c) => c.conclusion === "FAILURE");
-      if (failed.length) throw new Error(`PR checks failed: ${failed.map((c) => c.name).join(", ")}`);
-      if (pr.state === "OPEN" && pending.length === 0 && checks.length > 0) {
+      if (gate?.blocked) {
+        throw new Error(`HUMAN GATE — merge PR manually (${gate.prUrl || ""}): ${gate.blocked}`);
+      }
+      if (gate?.ready && pr.state === "OPEN") {
         try {
           runSync(`gh pr merge ${branch} --squash --admin 2>/dev/null || gh pr merge ${branch} --squash`);
           log("STEP 2b — PR merged");
@@ -321,20 +375,46 @@ async function step3_verify(sha, pushMeta = {}) {
 
 async function main() {
   fs.mkdirSync(RUNTIME, { recursive: true });
-  fs.writeFileSync(LOG, `\n=== bug-reports-ship-goal started ${ts()} ===\n`);
+  fs.appendFileSync(LOG, `\n=== bug-reports-ship-goal started ${ts()} ===\n`);
+  const prev = loadState();
   saveState({ status: "running", startedAt: ts() });
 
   try {
     await step1_setupSheet();
+
+    const resumeBranch = prev.branch || `ship/bug-reports-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+    const prResume = getOpenPr(resumeBranch);
+    const gateResume = describePrGate(prResume);
+    if (gateResume?.merged) {
+      log("RESUME — PR already merged; jumping to step 3", { prUrl: gateResume.prUrl });
+      let sha = runSync("git rev-parse origin/main");
+      await step3_verify(sha, { via: "pr", branch: resumeBranch, merged: true });
+      saveState({ status: "completed", completedAt: ts() });
+      log("GOAL COMPLETE — bug-reports shipped and verified");
+      process.exit(0);
+    }
+    if (gateResume?.blocked) {
+      throw new Error(
+        `HUMAN GATE — stop re-running until merged: ${gateResume.blocked}. ${gateResume.prUrl || prev.prUrl || ""}`
+      );
+    }
+
     const pushMeta = await step2_push();
     await step3_verify(pushMeta.sha, pushMeta);
     saveState({ status: "completed", completedAt: ts() });
     log("GOAL COMPLETE — bug-reports shipped and verified");
     process.exit(0);
   } catch (e) {
-    saveState({ status: "failed", error: e.message, failedAt: ts() });
-    log("GOAL FAILED", { error: e.message });
-    process.exit(1);
+    const msg = e.message || String(e);
+    const paused = /HUMAN GATE|PR checks failed|approval required|Timeout waiting for PR merge/i.test(msg);
+    saveState({
+      status: paused ? "paused" : "failed",
+      error: msg,
+      failedAt: ts(),
+      resume: "npm run bug-reports:ship",
+    });
+    log(paused ? "GOAL PAUSED" : "GOAL FAILED", { error: msg });
+    process.exit(paused ? 2 : 1);
   }
 }
 
