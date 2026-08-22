@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (BMC Driver Loop — join REP→trip + 5 visual specs)
+**Última actualización:** 2026-08-22 (fix — Driver evidence path escape EZ)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-22 (fix — Bug EZ Driver evidence path escape):** `POST /api/driver/evidence/upload-b64` built `relativePath` from unsanitized `kind`; `path.join` + `../` wrote outside `data/transportista-evidence/` (authenticated driver / stolen trip link). Sanitize kind + resolve-under-root guard; commit path must stay under trip/kind. Tests `transportistaEvidencePath`.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 

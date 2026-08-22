@@ -5,7 +5,12 @@ import { Router } from "express";
 import { getTransportistaPool } from "../lib/transportistaDb.js";
 import { generateOpaqueToken, sha256Hex } from "../lib/driverToken.js";
 import { isAllowedDriverEventType, hasEvidenceForStop } from "../lib/transportistaFsm.js";
-import { createGcsV4UploadUrl, writeLocalDevEvidence } from "../lib/transportistaEvidence.js";
+import {
+  createGcsV4UploadUrl,
+  writeLocalDevEvidence,
+  sanitizeEvidenceKind,
+  isAllowedEvidenceObjectPath,
+} from "../lib/transportistaEvidence.js";
 import { conductorPublicUrl } from "../../src/utils/conductorUrl.js";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -576,11 +581,15 @@ export default function createTransportistaRouter(config, logger) {
     requireDriver,
     asyncHandler(async (req, res) => {
       const s = req.transportistaSession;
-      const { idempotency_key, trip_id, stop_id = null, kind, mime, size_bytes = 0 } = req.body || {};
-      if (!idempotency_key || !trip_id || !kind || !mime) {
+      const { idempotency_key, trip_id, stop_id = null, kind: kindRaw, mime, size_bytes = 0 } = req.body || {};
+      if (!idempotency_key || !trip_id || !kindRaw || !mime) {
         return res.status(400).json({ ok: false, error: "idempotency_key, trip_id, kind, mime required" });
       }
       if (trip_id !== s.trip_id) return res.status(403).json({ ok: false, error: "trip_id mismatch" });
+      const kind = sanitizeEvidenceKind(kindRaw);
+      if (!kind) {
+        return res.status(400).json({ ok: false, error: "invalid_kind" });
+      }
 
       const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
       const objectPath = `trips/${trip_id}/${kind}/${randomFileSuffix()}.${ext}`;
@@ -614,12 +623,24 @@ export default function createTransportistaRouter(config, logger) {
     requireDriver,
     asyncHandler(async (req, res) => {
       const s = req.transportistaSession;
-      const { idempotency_key, trip_id, stop_id = null, kind, path: objectPath, sha256 = null, mime = null, size_bytes = null } =
-        req.body || {};
-      if (!idempotency_key || !trip_id || !kind || !objectPath) {
+      const {
+        idempotency_key,
+        trip_id,
+        stop_id = null,
+        kind: kindRaw,
+        path: objectPath,
+        sha256 = null,
+        mime = null,
+        size_bytes = null,
+      } = req.body || {};
+      if (!idempotency_key || !trip_id || !kindRaw || !objectPath) {
         return res.status(400).json({ ok: false, error: "idempotency_key, trip_id, kind, path required" });
       }
       if (trip_id !== s.trip_id) return res.status(403).json({ ok: false, error: "trip_id mismatch" });
+      const kind = sanitizeEvidenceKind(kindRaw);
+      if (!kind || !isAllowedEvidenceObjectPath(trip_id, kind, objectPath)) {
+        return res.status(400).json({ ok: false, error: "invalid_kind_or_path" });
+      }
 
       try {
         await pool.query(
@@ -651,14 +672,18 @@ export default function createTransportistaRouter(config, logger) {
         idempotency_key,
         trip_id,
         stop_id = null,
-        kind,
+        kind: kindRaw,
         mime = "image/jpeg",
         data_base64,
       } = req.body || {};
-      if (!idempotency_key || !trip_id || !kind || !data_base64) {
+      if (!idempotency_key || !trip_id || !kindRaw || !data_base64) {
         return res.status(400).json({ ok: false, error: "idempotency_key, trip_id, kind, data_base64 required" });
       }
       if (trip_id !== s.trip_id) return res.status(403).json({ ok: false, error: "trip_id mismatch" });
+      const kind = sanitizeEvidenceKind(kindRaw);
+      if (!kind) {
+        return res.status(400).json({ ok: false, error: "invalid_kind" });
+      }
 
       let buf;
       try {
@@ -675,7 +700,14 @@ export default function createTransportistaRouter(config, logger) {
       const ext = mime.includes("png") ? "png" : "jpg";
       const rel = `${trip_id}/${kind}/${randomFileSuffix()}.${ext}`;
       const rootDir = path.join(process.cwd(), "data", "transportista-evidence");
-      await writeLocalDevEvidence({ rootDir, relativePath: rel, buffer: buf });
+      try {
+        await writeLocalDevEvidence({ rootDir, relativePath: rel, buffer: buf });
+      } catch (err) {
+        if (err?.code === "path_escape") {
+          return res.status(400).json({ ok: false, error: "invalid_path" });
+        }
+        throw err;
+      }
 
       try {
         await pool.query(
