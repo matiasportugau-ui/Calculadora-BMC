@@ -14,6 +14,9 @@ import {
   trackingPublicUrl,
   buildPublicTrackPayload,
   sanitizeSnapshot,
+  clampCustomerTrackTtlDays,
+  isPublicTrackTokenShape,
+  canIssueCustomerTrack,
 } from "../lib/customerTrack.js";
 
 function asyncHandler(fn) {
@@ -48,13 +51,13 @@ export default function createCustomerTrackRouter(config, logger) {
       await ensureCustomerTrackTable(pool);
       const body = req.body || {};
       const snapshot = sanitizeSnapshot(body);
-      if (!snapshot.quote_ref && !snapshot.customer_display_name) {
+      if (!canIssueCustomerTrack(snapshot)) {
         return res.status(400).json({
           ok: false,
           error: "quote_ref or customer_display_name required",
         });
       }
-      const ttlDays = Math.min(60, Math.max(1, Number(body.ttl_days) || 21));
+      const ttlDays = clampCustomerTrackTtlDays(body.ttl_days);
       const expires = new Date(Date.now() + ttlDays * 86400_000);
       const { token, tokenHash } = mintTrackToken();
       const tripId = body.trip_id || null;
@@ -92,7 +95,7 @@ export default function createCustomerTrackRouter(config, logger) {
     asyncHandler(async (req, res) => {
       await ensureCustomerTrackTable(pool);
       const token = String(req.params.token || "");
-      if (token.length < 16) {
+      if (!isPublicTrackTokenShape(token)) {
         return res.status(404).json({ ok: false, error: "not_found" });
       }
       const tokenHash = sha256Hex(token);

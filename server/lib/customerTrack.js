@@ -19,6 +19,28 @@ export async function ensureCustomerTrackTable(pool) {
   await pool.query(ENSURE_CUSTOMER_TRACK_SQL);
 }
 
+export const CUSTOMER_TRACK_TTL_DEFAULT_DAYS = 21;
+export const CUSTOMER_TRACK_TTL_MIN_DAYS = 1;
+export const CUSTOMER_TRACK_TTL_MAX_DAYS = 60;
+export const PUBLIC_TRACK_TOKEN_MIN_LEN = 16;
+
+/** Same formula the issue route used inline: Number(raw) || 21, then clamp 1..60. */
+export function clampCustomerTrackTtlDays(raw) {
+  return Math.min(
+    CUSTOMER_TRACK_TTL_MAX_DAYS,
+    Math.max(CUSTOMER_TRACK_TTL_MIN_DAYS, Number(raw) || CUSTOMER_TRACK_TTL_DEFAULT_DAYS),
+  );
+}
+
+export function isPublicTrackTokenShape(token) {
+  return String(token || "").length >= PUBLIC_TRACK_TOKEN_MIN_LEN;
+}
+
+/** After sanitizeSnapshot: need quote_ref or customer_display_name (empty string is not enough). */
+export function canIssueCustomerTrack(snapshot) {
+  return Boolean(snapshot?.quote_ref || snapshot?.customer_display_name);
+}
+
 export function mintTrackToken() {
   const token = generateOpaqueToken(32);
   return { token, tokenHash: sha256Hex(token) };

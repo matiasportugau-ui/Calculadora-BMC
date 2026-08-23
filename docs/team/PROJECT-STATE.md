@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-23 (test — MATRIZ SKU path + customer-track issue gates):** Pins `normalizeSku` / `getPathForMatrizSku` for PA5852, Colonial-vs-FOIL, dotted MATRIZ SKUs, and #1054 bake SKUs (`tests/matrizSkuPath.test.js`). Extracts `clampCustomerTrackTtlDays` / `isPublicTrackTokenShape` / `canIssueCustomerTrack` (behavior unchanged) and pins TTL 1..60, short-token 404 shape, whitespace identity refuse (`tests/customerTrackIssue.test.js`). Wired into `test:core`. Does not duplicate open coverage drafts `#1047`–`#1085`.
+
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 
 **2026-08-15 (chore — precios MATRIZ horneados en constants.js):** Bake del CSV vivo (`/api/actualizar-precios-calculadora`) → `src/data/constants.js`. Suben AC38G venta 0.70→2, APHG38 0.13→0.24, SN300B web 4.20→7.11, PGLC250 32.22/37.59/26.85→37.30/43.51/31.08, PU250MM 17.68/20.62/14.73→21.25/24.79/17.71, PA5852 web 64.19→74.89 (venta local 64.19). Data version `90e7168e36`. Catalog-diff vs MATRIZ: 0 S1. GLDCAM100 y CD100 no vienen en el CSV de 111 paths (quedan).
