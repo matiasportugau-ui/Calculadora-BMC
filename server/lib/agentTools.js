@@ -41,6 +41,7 @@ import {
 import { searchCrmClients } from "./crmSearch.js";
 import { readCrmRowTaxonomy, writeCrmRowTaxonomy } from "./crmTaxonomy.js";
 import { sendWhatsAppText } from "./whatsappOutbound.js";
+import { resolveWaCredentials } from "./wa/waCredentials.js";
 import {
   loadStore as loadFollowupStore,
   saveStore as saveFollowupStore,
@@ -2036,7 +2037,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       const to = String(input?.to || "").trim();
       if (!to) return JSON.stringify({ ok: false, error: "to (teléfono del cliente) es requerido" });
-      if (!config.whatsappAccessToken || !config.whatsappPhoneNumberId) {
+      const waCreds = await resolveWaCredentials({ config });
+      if (!waCreds.accessToken || !waCreds.phoneNumberId) {
         return JSON.stringify({ ok: false, error: "WhatsApp no configurado (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)" });
       }
       // Compose default message if `text` not provided
@@ -2054,8 +2056,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         const data = await sendWhatsAppText({
           to,
           text,
-          accessToken: config.whatsappAccessToken,
-          phoneNumberId: config.whatsappPhoneNumberId,
+          accessToken: waCreds.accessToken,
+          phoneNumberId: waCreds.phoneNumberId,
         });
         const messageId = data?.messages?.[0]?.id || null;
         return JSON.stringify({

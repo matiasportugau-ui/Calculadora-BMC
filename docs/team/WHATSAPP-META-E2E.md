@@ -10,6 +10,8 @@ donde `PUBLIC_BASE_URL` es la misma base pública del API (Cloud Run / ngrok). N
 
 **Migración de número en Meta:** si aparece *“El número de teléfono ya está en uso”*, completá en Meta/WhatsApp Manager el flujo **migrar** o **desconectar** el número de la app de teléfono; luego reintentá. El código del repo no migra números: solo consume `WHATSAPP_*` una vez el número está en la WABA.
 
+**Onboarding self-service (coexistencia):** para conectar un número desde `/hub/wa` por Embedded Signup (Meta oficial, sin copiar tokens a mano), ver [`runbooks/wa-coexistence-onboarding.md`](runbooks/wa-coexistence-onboarding.md). Detrás del flag `WA_COEXISTENCE_ENABLED` (default OFF).
+
 **URL base canónica del API (alineada con `npm run smoke:prod` / `scripts/smoke-prod-api.mjs`):**  
 `https://panelin-calc-642127786762.us-central1.run.app`
 

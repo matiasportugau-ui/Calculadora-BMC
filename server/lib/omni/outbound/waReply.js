@@ -5,14 +5,14 @@
  * reply route expects.
  */
 import { postWhatsAppMessage } from "../../whatsappOutbound.js";
+import { resolveWaCredentials } from "../../wa/waCredentials.js";
 
 /**
  * @param {{ config: object; toPhone: string; text: string }} args
  * @returns {Promise<{ ok: boolean, data?: object, error?: string, status?: number }>}
  */
 export async function sendWaReply({ config, toPhone, text }) {
-  const accessToken = config.whatsappAccessToken;
-  const phoneNumberId = config.whatsappPhoneNumberId;
+  const { accessToken, phoneNumberId } = await resolveWaCredentials({ config });
   if (!accessToken || !phoneNumberId) {
     return { ok: false, error: "whatsapp_not_configured" };
   }
