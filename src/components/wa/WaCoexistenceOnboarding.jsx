@@ -93,7 +93,10 @@ export default function WaCoexistenceOnboarding({ token, apiBase }) {
   // Captura el resultado de Embedded Signup (phone_number_id, waba_id).
   useEffect(() => {
     function onMessage(event) {
-      if (typeof event.origin !== "string" || !/facebook\.com$/.test(new URL(event.origin).hostname || "")) return;
+      // Origin allowlist: solo facebook.com y subdominios exactos (evita evilfacebook.com).
+      let host = "";
+      try { host = new URL(event.origin).hostname; } catch { return; }
+      if (host !== "facebook.com" && !host.endsWith(".facebook.com")) return;
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         if (data?.type === "WA_EMBEDDED_SIGNUP") {

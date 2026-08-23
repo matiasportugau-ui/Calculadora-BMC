@@ -32,7 +32,8 @@ function requireWaAuth(config) {
     }
     const auth = String(req.headers.authorization || "");
     const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-    const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
+    // Header-only auth: no ?key= query fallback (credentials in URLs leak via logs/referrers).
+    const xKey = String(req.headers["x-api-key"] || "");
     if (bearer === token || xKey === token) {
       req.waOperatorId = String(req.headers["x-operator-id"] || "").slice(0, 64).trim() || null;
       return next();

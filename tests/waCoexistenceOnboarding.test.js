@@ -68,7 +68,7 @@ assert("oauth exchange called with client_id + code", fetchImpl.calls.some(c => 
 assert("subscribed_apps called for the WABA", fetchImpl.calls.some(c => /WABA1\/subscribed_apps/.test(c.url) && c.opts?.method === "POST"));
 assert("register called for the phone", fetchImpl.calls.some(c => /PHONE1\/register/.test(c.url)));
 assert("number details fetched", fetchImpl.calls.some(c => /PHONE1\?fields=/.test(c.url)));
-assert("uses configured graph version", fetchImpl.calls.every(c => /graph\.facebook\.com\/v21\.0\//.test(c.url)));
+assert("uses configured graph version", fetchImpl.calls.every(c => /^https:\/\/graph\.facebook\.com\/v21\.0\//.test(c.url)));
 
 assert("returns public connection", conn.phoneNumberId === "PHONE1" && conn.displayNumber === "+598 91 234 567" && conn.subscribed === true);
 assert("public connection carries NO token", !("accessToken" in conn) && !("access_token_enc" in conn));
