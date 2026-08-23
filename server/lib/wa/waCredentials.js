@@ -7,18 +7,25 @@
  * actual (config.whatsappAccessToken / config.whatsappPhoneNumberId). Cero regresión:
  * sin números conectados, todos los callers siguen usando el env como hoy.
  *
- * Cachea el lookup por defecto (sin phoneNumberId) con TTL corto para no pegarle a la
- * DB en cada envío. `pool` es inyectable para tests offline.
+ * Cachea solo hits positivos (conexión activa) con TTL corto. Misses no se cachean:
+ * si no, el primer resolve antes de conectar fijaría env por 60s y el saliente
+ * ignoraría el número recién onboarded. Writers (upsert/disable) invalidan vía
+ * waCredentialsCache.
  */
 import { getWaPool } from "../waDb.js";
 import { getActiveConnection } from "./waConnectionStore.js";
+import {
+  getWaCredentialsCacheTtlMs,
+  invalidateWaCredentialsCache,
+  readWaCredentialsCache,
+  writeWaCredentialsCache,
+} from "./waCredentialsCache.js";
 
-const TTL_MS = 60000;
-let cache = null; // { at:number, value:{accessToken,phoneNumberId}|null }
+export { invalidateWaCredentialsCache };
 
-/** Solo tests. */
+/** @deprecated alias — tests / callers antiguos. */
 export function _clearWaCredentialsCache() {
-  cache = null;
+  invalidateWaCredentialsCache();
 }
 
 /**
@@ -40,8 +47,9 @@ export async function resolveWaCredentials({ config, phoneNumberId, pool } = {})
   if (!p) return envCreds;
 
   const now = Date.now();
-  if (!phoneNumberId && cache && now - cache.at < TTL_MS) {
-    return cache.value || envCreds;
+  const hit = !phoneNumberId ? readWaCredentialsCache() : null;
+  if (hit && now - hit.at < getWaCredentialsCacheTtlMs()) {
+    return hit.value;
   }
   try {
     const active = await getActiveConnection(p, {
@@ -52,7 +60,8 @@ export async function resolveWaCredentials({ config, phoneNumberId, pool } = {})
       active?.accessToken && active?.phoneNumberId
         ? { accessToken: active.accessToken, phoneNumberId: active.phoneNumberId }
         : null;
-    if (!phoneNumberId) cache = { at: now, value };
+    // Only cache positive hits — a miss must not block a later onboard for TTL_MS.
+    if (!phoneNumberId && value) writeWaCredentialsCache(value);
     return value || envCreds;
   } catch {
     return envCreds;

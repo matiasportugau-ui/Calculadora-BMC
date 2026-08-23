@@ -10,6 +10,7 @@
  * fakePool offline, igual que server/lib/wa/waCrmSyncJob.js.
  */
 import { encryptString, decryptString } from "../secretBox.js";
+import { invalidateWaCredentialsCache } from "./waCredentialsCache.js";
 
 /** Columnas seguras (sin el token) para respuestas de API. */
 const PUBLIC_COLUMNS =
@@ -68,6 +69,8 @@ export async function upsertConnection(pool, conn, { encryptionKey } = {}) {
      returning ${PUBLIC_COLUMNS}`,
     [phoneNumberId, wabaId, displayNumber, verifiedName, qualityRating, tokenEnc, subscribed, connectedBy],
   );
+  // Drop outbound credential cache so the new number is used immediately.
+  invalidateWaCredentialsCache();
   return toPublic(rows[0]);
 }
 
@@ -115,5 +118,6 @@ export async function disableConnection(pool, phoneNumberId) {
       where phone_number_id = $1 and status = 'active'`,
     [phoneNumberId],
   );
+  if (rowCount > 0) invalidateWaCredentialsCache();
   return rowCount > 0;
 }
