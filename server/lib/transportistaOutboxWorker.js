@@ -14,6 +14,7 @@
  * transportista migrations do not spam every 15s.
  */
 import { sendWhatsAppText } from "./whatsappOutbound.js";
+import { resolveWaCredentials } from "./wa/waCredentials.js";
 
 function backoffSeconds(attempt) {
   const base = Math.min(3600, Math.pow(2, attempt) * 5);
@@ -112,6 +113,9 @@ export function startTransportistaOutboxWorker({ config, logger, pool }) {
       );
       claimed = rows.length;
 
+      // Resolve WA credentials once per batch (connected number if any, else env).
+      const waCreds = await resolveWaCredentials({ config });
+
       for (const row of rows) {
         if (ac.signal.aborted) break;
 
@@ -136,8 +140,8 @@ export function startTransportistaOutboxWorker({ config, logger, pool }) {
           const wa = await sendWhatsAppText({
             to: digits,
             text,
-            accessToken: config.whatsappAccessToken,
-            phoneNumberId: config.whatsappPhoneNumberId,
+            accessToken: waCreds.accessToken,
+            phoneNumberId: waCreds.phoneNumberId,
             signal: ac.signal,
           });
           const messageId = wa?.messages?.[0]?.id || null;

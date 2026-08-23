@@ -39,6 +39,7 @@ import createCustomerTrackRouter from "./routes/customerTrack.js";
 import createEnviosRouter from "./routes/envios.js";
 import createRepartosRouter from "./routes/repartos.js";
 import createWaRouter from "./routes/wa.js";
+import createWaOnboardingRouter from "./routes/waOnboarding.js";
 import createTraktimeRouter from "./routes/traktime.js";
 import createBancoRouter from "./routes/banco.js";
 import createWorkspaceRouter from "./routes/workspace.js";
@@ -1070,6 +1071,7 @@ app.use("/api", createCustomerTrackRouter(config, logger));
 app.use("/api", createEnviosRouter(config, logger));
 app.use("/api", createRepartosRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
+app.use("/api", createWaOnboardingRouter(config, logger));
 app.use(createTraktimeRouter(config, logger));
 app.use(createBancoRouter(config, logger));
 // Panelin Workspace domain (BMC-as-platform, ADR-008) — additive only
