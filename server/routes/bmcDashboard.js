@@ -21,6 +21,7 @@ import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 import { normalizeSurface, SURFACES } from "../lib/surface.js";
 import { writeCrmRowTaxonomy } from "../lib/crmTaxonomy.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
+import { resolveWaCredentials } from "../lib/wa/waCredentials.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
@@ -3795,7 +3796,8 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       }
 
       if (/WA/i.test(origen) || /WhatsApp/i.test(origen)) {
-        if (!config.whatsappAccessToken || !config.whatsappPhoneNumberId) {
+        const waCreds = await resolveWaCredentials({ config });
+        if (!waCreds.accessToken || !waCreds.phoneNumberId) {
           return res.status(503).json({ ok: false, error: "WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID not set" });
         }
         const to = parsed.telefono;
@@ -3805,8 +3807,8 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           wa = await sendWhatsAppTextImpl({
             to,
             text,
-            accessToken: config.whatsappAccessToken,
-            phoneNumberId: config.whatsappPhoneNumberId,
+            accessToken: waCreds.accessToken,
+            phoneNumberId: waCreds.phoneNumberId,
           });
         } catch (e) {
           return res.status(502).json({ ok: false, error: "WhatsApp send failed", detail: e.message });

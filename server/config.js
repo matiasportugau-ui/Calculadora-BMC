@@ -229,6 +229,22 @@ export const config = {
   /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
   /**
+   * WhatsApp Coexistence onboarding (Embedded Signup / Facebook Login for Business).
+   * Self-service "conectar número" desde /hub/wa. Default OFF: con el flag apagado
+   * las rutas /api/wa/onboarding/* responden 404 y nada cambia. Ver
+   * docs/team/runbooks/wa-coexistence-onboarding.md.
+   *   metaAppId       — client_id del intercambio code→token (no secreto).
+   *   metaEsConfigId  — configuración de Embedded Signup (config_id) de coexistencia.
+   *   graphApiVersion — versión de Graph para onboarding + outbound (matchea v21.0 hardcoded).
+   * client_secret reusa whatsappAppSecret/META_APP_SECRET; el token persistido se cifra
+   * con TOKEN_ENCRYPTION_KEY (mismo esquema AES-256-GCM que tokenStore.js).
+   */
+  waCoexistenceEnabled: bool(process.env.WA_COEXISTENCE_ENABLED, false),
+  metaAppId: process.env.META_APP_ID || "",
+  metaAppSecret: process.env.META_APP_SECRET || "",
+  metaEsConfigId: process.env.META_ES_CONFIG_ID || "",
+  graphApiVersion: process.env.GRAPH_API_VERSION || "v21.0",
+  /**
    * Email reply (CRM cockpit, origen=Email) — fallback casilla id used when the
    * receiving casilla is unknown for a row. Per-casilla SMTP is resolved from the
    * sibling repo's config/accounts.json (`smtp` block, reusing EMAIL_<CASILLA>_PASS).

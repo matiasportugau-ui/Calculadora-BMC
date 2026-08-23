@@ -19,8 +19,10 @@ import {
   Plus,
   RefreshCw,
   AlertCircle,
-  Calendar
+  Calendar,
+  Smartphone
 } from "lucide-react";
+import WaCoexistenceOnboarding from "./wa/WaCoexistenceOnboarding.jsx";
 
 // --- Styles (following Geist/Apple style from BmcWaCockpit) ---
 const styles = {
@@ -174,6 +176,7 @@ const styles = {
 
 const SECTIONS = [
   { id: "flags", label: "Feature Flags", icon: Flag },
+  { id: "conexion", label: "Conexión / Números", icon: Smartphone },
   { id: "general", label: "General", icon: Settings },
   { id: "ai", label: "AI por tarea", icon: Cpu },
   { id: "quote", label: "Auto-cotización", icon: Calculator },
@@ -304,6 +307,7 @@ export default function BmcWaSettingsPanel({ token, apiBase }) {
       <div style={styles.main}>
         {statusBanner}
         {activeSection === "flags" && <FlagsSection config={config} onToggle={handleToggleFlag} />}
+        {activeSection === "conexion" && <WaCoexistenceOnboarding token={token} apiBase={apiBase} />}
         {activeSection === "general" && <GeneralSection config={config} onUpdate={handleUpdateSetting} />}
         {activeSection === "ai" && <AiSection config={config} onUpdate={handleUpdateSetting} apiBase={apiBase} token={token} />}
         {activeSection === "quote" && <QuoteSection config={config} onUpdate={handleUpdateSetting} />}

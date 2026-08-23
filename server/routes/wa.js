@@ -15,6 +15,7 @@ import { shadowWriteWaExtensionBatch } from "../lib/omni/adapters/waExtension.js
 import { classifyIntent, generateSuggestions } from "../lib/waEnricher.js";
 import { runWaQuote } from "../lib/waQuoteRunner.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
+import { resolveWaCredentials } from "../lib/wa/waCredentials.js";
 import { getConfig as getWaCfg, getFlag as getWaFlag } from "../lib/waConfig.js";
 import { emitWaWebhook } from "../lib/waWebhooks.js";
 import { applyRoutingRules } from "../lib/waRoutingRules.js";
@@ -1508,7 +1509,8 @@ export default function createWaRouter(config, logger) {
             message: "Last inbound message is older than 24 h. Use an approved template to re-engage (WhatsApp Business Policy).",
           });
         }
-        if (!config.whatsappAccessToken || !config.whatsappPhoneNumberId) {
+        const waCreds = await resolveWaCredentials({ config });
+        if (!waCreds.accessToken || !waCreds.phoneNumberId) {
           return res.status(503).json({ ok: false, error: "WhatsApp Cloud API not configured" });
         }
         const phone = row.phone;
@@ -1517,8 +1519,8 @@ export default function createWaRouter(config, logger) {
           const wa = await sendWhatsAppText({
             to: phone,
             text,
-            accessToken: config.whatsappAccessToken,
-            phoneNumberId: config.whatsappPhoneNumberId,
+            accessToken: waCreds.accessToken,
+            phoneNumberId: waCreds.phoneNumberId,
           });
           const msgId = wa?.messages?.[0]?.id || `cloud_${Date.now()}`;
           await pool.query(
