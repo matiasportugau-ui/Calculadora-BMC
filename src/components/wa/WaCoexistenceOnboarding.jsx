@@ -92,11 +92,11 @@ export default function WaCoexistenceOnboarding({ token, apiBase }) {
 
   // Captura el resultado de Embedded Signup (phone_number_id, waba_id).
   useEffect(() => {
+    // Embedded Signup postMessage llega SIEMPRE de www.facebook.com / web.facebook.com
+    // (patrón documentado por Meta). Chequeo directo de event.origin contra allowlist exacta.
+    const FB_ORIGINS = ["https://www.facebook.com", "https://web.facebook.com"];
     function onMessage(event) {
-      // Origin allowlist: solo facebook.com y subdominios exactos (evita evilfacebook.com).
-      let host = "";
-      try { host = new URL(event.origin).hostname; } catch { return; }
-      if (host !== "facebook.com" && !host.endsWith(".facebook.com")) return;
+      if (!FB_ORIGINS.includes(event.origin)) return;
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         if (data?.type === "WA_EMBEDDED_SIGNUP") {
