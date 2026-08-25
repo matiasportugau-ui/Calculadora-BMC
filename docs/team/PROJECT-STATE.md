@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (BMC Driver Loop — join REP→trip + 5 visual specs)
+**Última actualización:** 2026-08-25 (test — flete FX + IVA dirty totals)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-25 (test — flete FX + IVA dirty totals):** Pins `getBrouUsdSellRate` inject/cache/stale/session fallback, `uyuToUsdInteger` invalid rates, `quoteFreight` `needs_fx` + Costa 2-fila 0.9 factor, and `cotizacionSinFleteFromGroups` `/flete/` exclusion. Dedicated `calcTotalesSinIVA` 22% rounding + dirty-line zeros. Tests `brouFxFreight` + `calcTotalesIva` in `test:core`.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 
