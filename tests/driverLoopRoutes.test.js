@@ -69,4 +69,27 @@ function routeBlock(src, pathLiteral) {
   console.log("  ✓ five chofer screens exist");
 }
 
+{
+  const indexJs = readFileSync(join(root, "server/index.js"), "utf8");
+  assert.ok(
+    indexJs.includes('/api/driver/evidence/upload-b64') && indexJs.includes('limit: "8mb"'),
+    "upload-b64 must use 8mb JSON limit (phone remitos exceed global 1mb)",
+  );
+  console.log("  ✓ upload-b64 JSON body limit is 8mb");
+}
+
+{
+  const sess = readFileSync(join(root, "src/components/driver/useDriverSession.js"), "utf8");
+  assert.ok(
+    sess.includes("void syncOutbox()") && sess.includes("[online, token, syncOutbox]"),
+    "outbox must auto-sync when online returns",
+  );
+  assert.ok(
+    sess.includes("/api/driver/evidence/upload-url") && sess.includes("/api/driver/evidence/commit"),
+    "evidence upload must prefer GCS signed URL + commit",
+  );
+  assert.ok(sess.includes("/api/driver/evidence/upload-b64"), "b64 remains as no-GCS fallback");
+  console.log("  ✓ outbox auto-sync + GCS-first evidence upload");
+}
+
 console.log("driverLoopRoutes OK");

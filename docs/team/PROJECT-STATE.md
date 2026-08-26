@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (BMC Driver Loop — join REP→trip + 5 visual specs)
+**Última actualización:** 2026-08-26 (Driver Loop remitos JSON limit + outbox auto-sync)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-26 (fix — Driver Loop remitos + outbox):** (1) `express.json` 8mb for `POST /api/driver/evidence/upload-b64` so phone JPEGs are not 413'd by global 1mb. (2) Outdoor Night PWA prefers GCS `upload-url`→PUT→`commit`, falls back to b64. (3) Outbox auto-`syncOutbox` when `online` returns (not Home Sync-only).
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 
