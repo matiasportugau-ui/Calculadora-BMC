@@ -14,6 +14,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-26 (feat — Voice Mode generar_pdf):** El flotante Grok Live incluye `generar_pdf` (tras “dame el PDF”). Dos variantes = dos llamadas. Instrucciones: nunca decir que no hay herramienta de PDF.
+
+
+
 **2026-08-26 (feat — Voice Mode flotante = cerebro Panelin BMC):** El mic del chat ya no es solo Hands-free→chat. Path principal: Grok Realtime + Voice Brain Pack (instrucciones consola + tools AGENT_TOOLS/MCP allowlist ejecutadas server-side + `aplicar_estado_calc` al form + `brainKB` si el flag está on). Código: `server/lib/voiceBrainPack.js`, `PanelinVoicePanel.jsx`. Fallback Hands-free/Whisper si no hay mic+WebSocket.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.

@@ -36,6 +36,12 @@ const names = (pack.tools || []).map((t) => t.name || t.type);
 assert.ok(names.includes("web_search"), "web_search attached");
 assert.ok(names.includes("calcular_cotizacion"), "calcular_cotizacion attached");
 assert.ok(names.includes("aplicar_estado_calc"), "aplicar_estado_calc attached");
+assert.ok(names.includes("generar_pdf"), "generar_pdf attached");
+assert.ok(pack.instructions.includes("generar_pdf"), "instructions tell model to call generar_pdf");
+assert.ok(
+  pack.instructions.includes("NEVER say you cannot generate PDFs"),
+  "instructions forbid claiming PDF tool is missing",
+);
 assert.ok(names.includes("setTecho"), "form function setTecho attached");
 for (const n of VOICE_BRAIN_TOOL_ALLOWLIST) {
   assert.ok(names.includes(n), `allowlist tool present: ${n}`);

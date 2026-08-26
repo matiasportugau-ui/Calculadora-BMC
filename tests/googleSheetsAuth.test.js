@@ -16,7 +16,7 @@ const leaked = redactGoogleError('The file at {\n  "type": "service_account",\n 
 assert.ok(!/SECRET|BEGIN PRIVATE/.test(leaked));
 assert.ok(/credenciales/i.test(leaked));
 
-for (const n of ["sheets_get_pending_admin", "sheets_list_tabs", "sheets_read_range", "sheets_find"]) {
+for (const n of ["sheets_get_pending_admin", "sheets_list_tabs", "sheets_read_range", "sheets_find", "generar_pdf"]) {
   assert.ok(VOICE_BRAIN_TOOL_ALLOWLIST.includes(n), n);
 }
 

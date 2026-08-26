@@ -11,7 +11,7 @@
 
 1. **Speech / console** — `server/lib/voice/panelinBmcInstructions.js` (mirror of console Instructions).
 2. **Shared IAlfred ↔ Panelin lessons** — `brainKB.js` / `gs://bmc-ml-tokens/bmc-brain/lessons.json` when `VITE_FEATURE_BRAIN=true`. Personal `~/.ialfred/` is **not** dumped into voice.
-3. **Tools** — same AGENT_TOOLS allowlist as Paneli MCP, executed **server-side** via `POST /api/agent/voice/action` (no `PANELI_MCP_SECRET` in the browser). Form functions (`setTecho`, `aplicar_estado_calc`, …) update the calculator UI.
+3. **Tools** — AGENT_TOOLS allowlist (calc + Admin sheets + `generar_pdf`) executed **server-side** via `POST /api/agent/voice/action` (no `PANELI_MCP_SECRET` in the browser). Form functions (`setTecho`, `aplicar_estado_calc`, …) update the calculator UI.
 
 ## MCP (console only)
 
