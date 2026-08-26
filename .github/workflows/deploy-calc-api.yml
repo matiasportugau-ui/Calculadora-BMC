@@ -222,6 +222,7 @@ jobs:
             PEA_PROJECT_LABEL=${{ vars.PEA_PROJECT_LABEL }}
             PEA_DB_LABEL=${{ vars.PEA_DB_LABEL }}
             FINANZAS_UNLOCK_TTL_HOURS=12
+            PANELI_MCP_ALLOW_WRITES=1
           flags: |
             --service-account=${{ secrets.GCP_RUNTIME_SA_EMAIL }}
             --allow-unauthenticated
