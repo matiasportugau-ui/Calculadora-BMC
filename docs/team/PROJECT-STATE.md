@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-26 (fix — voice/action auth gate):** Tras #1108/#1110, `POST /api/agent/voice/action` ejecutaba Sheets/CRM/registry y `generar_pdf` **sin** auth. Mismo gate que session mint: `requireServiceOrUser({ module: "calc", minLevel: "write" })`. Supersedes draft #1109.
+
 **2026-08-26 (feat — Voice Mode generar_pdf):** El flotante Grok Live incluye `generar_pdf` (tras “dame el PDF”). Dos variantes = dos llamadas. Instrucciones: nunca decir que no hay herramienta de PDF.
 
 
