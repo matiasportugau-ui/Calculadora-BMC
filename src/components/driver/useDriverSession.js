@@ -195,9 +195,11 @@ export default function useDriverSession() {
         if (!res.ok || !data.ok) throw new Error(data.error || "Error");
         if (type !== "location_ping") await loadTrip();
       } catch {
+        // Ephemeral GPS: never poison the durable outbox (rejected/stale pings).
+        if (type === "location_ping") return;
         await outboxAdd(body);
         await refreshOutbox();
-        if (type !== "location_ping") setStatus(`Sin conexión: evento en cola (${type}).`);
+        setStatus(`Sin conexión: evento en cola (${type}).`);
       }
     },
     [token, trip, authHeader, loadTrip, refreshOutbox],

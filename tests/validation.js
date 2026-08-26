@@ -2249,6 +2249,7 @@ assert(
 );
 
 assert("isAllowedDriverEventType stop_arrived", isAllowedDriverEventType("stop_arrived"), true, true);
+assert("isAllowedDriverEventType location_ping", isAllowedDriverEventType("location_ping"), true, true);
 assert("isAllowedDriverEventType rejects unknown", !isAllowedDriverEventType("not_an_event"), true, true);
 
 // ═══════════════════════════════════════════════════════════════════════════
