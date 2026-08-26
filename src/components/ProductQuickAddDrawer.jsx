@@ -230,7 +230,8 @@ const ProductThumb = memo(function ProductThumb({ row, already = 0, visual }) {
   );
 });
 
-export default function ProductQuickAddDrawer({
+/** Search + category chips + photo rows. Used in the slide-out drawer and inline for productos sueltos. */
+export function ProductCatalogPicker({
   catalogIndex = [],
   currentQty = { perfilQty: {}, fijQty: {}, sellQty: {} },
   onAddPerfil,
@@ -238,89 +239,24 @@ export default function ProductQuickAddDrawer({
   onAddSellador,
   onAddPanel,
   listaPrecios = "web",
-  open: openProp,
-  onOpenChange,
+  variant = "drawer",
+  autoFocusSearch = false,
 }) {
-  const [internalOpen, setInternalOpen] = useState(readStoredOpen);
-  const controlled = typeof openProp === "boolean";
-  const open = controlled ? openProp : internalOpen;
-  const setOpen = useCallback(
-    (updater) => {
-      const prev = controlled ? openProp : internalOpen;
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      if (!controlled) setInternalOpen(next);
-      onOpenChange?.(next);
-    },
-    [controlled, openProp, internalOpen, onOpenChange],
-  );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-    let last = window.scrollY || 0;
-    const onScroll = () => {
-      const y = window.scrollY || 0;
-      document.documentElement.classList.toggle("bmc-fabs-hide", y > last && y > 20);
-      last = y;
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("ALL");
   const [qtyDraft, setQtyDraft] = useState({});
   const [flash, setFlash] = useState(null);
 
   const searchRef = useRef(null);
-  const fabRef = useRef(null);
   const flashTimerRef = useRef(null);
-  const prevOpenRef = useRef(open);
 
-  // Persist open state
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, open ? "true" : "false");
-    } catch {
-      /* ignore */
-    }
-  }, [open]);
-
-  // Escape, body scroll lock, focus restore
-  useEffect(() => {
-    if (!open) {
-      if (prevOpenRef.current && fabRef.current) {
-        try {
-          fabRef.current.focus({ preventScroll: true });
-        } catch {
-          /* ignore */
-        }
-      }
-      prevOpenRef.current = open;
-      return undefined;
-    }
-    prevOpenRef.current = open;
-
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        setOpen(false);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-
-    // Focus search after paint
+    if (!autoFocusSearch) return undefined;
     const t = requestAnimationFrame(() => {
       searchRef.current?.focus({ preventScroll: true });
     });
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.removeEventListener("keydown", onKey);
-      cancelAnimationFrame(t);
-    };
-  }, [open, setOpen]);
+    return () => cancelAnimationFrame(t);
+  }, [autoFocusSearch]);
 
   // Clear flash timer on unmount
   useEffect(
@@ -420,6 +356,227 @@ export default function ProductQuickAddDrawer({
       ? null
       : CATEGORIES.find((c) => c.id === category)?.label || category;
 
+  const inner = (
+    <>
+      <div className="bmc-qa__controls">
+        <input
+          ref={searchRef}
+          type="search"
+          className="bmc-qa__search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por nombre o SKU…"
+          autoComplete="off"
+          enterKeyHint="search"
+        />
+        <div className="bmc-qa__chips" role="tablist" aria-label="Categoría">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              role="tab"
+              aria-selected={category === c.id}
+              className={`bmc-qa__chip${category === c.id ? " bmc-qa__chip--active" : ""}`}
+              onClick={() => setCategory(c.id)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <div className="bmc-qa__meta" aria-live="polite">
+          {filtered.length} resultado{filtered.length === 1 ? "" : "s"}
+          {categoryLabel ? ` · ${categoryLabel}` : ""}
+          {addedCount > 0 ? ` · ${addedCount} en el presupuesto` : ""}
+        </div>
+      </div>
+
+      <div className="bmc-qa__list" role="list">
+        {filtered.length === 0 && (
+          <p className="bmc-qa__empty">
+            Sin coincidencias. Probá otro término o categoría.
+          </p>
+        )}
+        {filtered.map(({ row, visual, labels, price }) => {
+          const already = inQuoteQty(row);
+          const isPanel = row.addBy === "panelLine";
+          const unit = row.unidad || (isPanel ? "m²" : "unid");
+
+          return (
+            <article
+              key={row.id}
+              className={`bmc-qa__row${flash === row.id ? " bmc-qa__row--flash" : ""}`}
+              role="listitem"
+            >
+              <ProductThumb row={row} already={already} visual={visual} />
+
+              <div className="bmc-qa__info">
+                <div className="bmc-qa__primary" title={row.label}>
+                  {labels.primary || row.label}
+                </div>
+                {labels.secondary ? (
+                  <div className="bmc-qa__secondary" title={labels.secondary}>
+                    {labels.secondary}
+                  </div>
+                ) : row.sku ? (
+                  <div className="bmc-qa__secondary">SKU {row.sku}</div>
+                ) : null}
+                <div className="bmc-qa__price-line">
+                  {fmtUsd(price)}{" "}
+                  <span>
+                    / {unit}
+                    {isPanel ? " · cantidad en m²" : ""}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bmc-qa__actions">
+                <div className="bmc-qa__stepper">
+                  <button
+                    type="button"
+                    aria-label="Menos"
+                    onClick={() =>
+                      setQty(row.id, qtyOf(row.id) - (isPanel ? 0.5 : 1), isPanel)
+                    }
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={isPanel ? 0.1 : 1}
+                    step={isPanel ? 0.5 : 1}
+                    value={qtyOf(row.id)}
+                    onChange={(e) => setQty(row.id, e.target.value, isPanel)}
+                    aria-label={`Cantidad de ${row.label}${isPanel ? " en m²" : ""}`}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Más"
+                    onClick={() =>
+                      setQty(row.id, qtyOf(row.id) + (isPanel ? 0.5 : 1), isPanel)
+                    }
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="bmc-qa__add"
+                  onClick={() => handleAdd(row)}
+                >
+                  Agregar
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  if (variant === "inline") {
+    return <div className="bmc-qa bmc-qa--inline">{inner}</div>;
+  }
+  return inner;
+}
+
+export default function ProductQuickAddDrawer({
+  catalogIndex = [],
+  currentQty = { perfilQty: {}, fijQty: {}, sellQty: {} },
+  onAddPerfil,
+  onAddFijacion,
+  onAddSellador,
+  onAddPanel,
+  listaPrecios = "web",
+  open: openProp,
+  onOpenChange,
+}) {
+  const [internalOpen, setInternalOpen] = useState(readStoredOpen);
+  const controlled = typeof openProp === "boolean";
+  const open = controlled ? openProp : internalOpen;
+  const setOpen = useCallback(
+    (updater) => {
+      const prev = controlled ? openProp : internalOpen;
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (!controlled) setInternalOpen(next);
+      onOpenChange?.(next);
+    },
+    [controlled, openProp, internalOpen, onOpenChange],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    let last = window.scrollY || 0;
+    const onScroll = () => {
+      const y = window.scrollY || 0;
+      document.documentElement.classList.toggle("bmc-fabs-hide", y > last && y > 20);
+      last = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const fabRef = useRef(null);
+  const prevOpenRef = useRef(open);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, open ? "true" : "false");
+    } catch {
+      /* ignore */
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      if (prevOpenRef.current && fabRef.current) {
+        try {
+          fabRef.current.focus({ preventScroll: true });
+        } catch {
+          /* ignore */
+        }
+      }
+      prevOpenRef.current = open;
+      return undefined;
+    }
+    prevOpenRef.current = open;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, setOpen]);
+
+  const addedCount = useMemo(() => {
+    const count = (m) => Object.values(m || {}).filter((v) => Number(v) > 0).length;
+    return (
+      count(currentQty.perfilQty) +
+      count(currentQty.fijQty) +
+      count(currentQty.sellQty)
+    );
+  }, [currentQty]);
+
+  const pickerProps = {
+    catalogIndex,
+    currentQty,
+    onAddPerfil,
+    onAddFijacion,
+    onAddSellador,
+    onAddPanel,
+    listaPrecios,
+    autoFocusSearch: true,
+  };
+
   return (
     <div className="bmc-qa">
       <button
@@ -473,119 +630,7 @@ export default function ProductQuickAddDrawer({
                 ✕
               </button>
             </header>
-
-            <div className="bmc-qa__controls">
-              <input
-                ref={searchRef}
-                type="search"
-                className="bmc-qa__search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por nombre o SKU…"
-                autoComplete="off"
-                enterKeyHint="search"
-              />
-              <div className="bmc-qa__chips" role="tablist" aria-label="Categoría">
-                {CATEGORIES.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={category === c.id}
-                    className={`bmc-qa__chip${category === c.id ? " bmc-qa__chip--active" : ""}`}
-                    onClick={() => setCategory(c.id)}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-              <div className="bmc-qa__meta" aria-live="polite">
-                {filtered.length} resultado{filtered.length === 1 ? "" : "s"}
-                {categoryLabel ? ` · ${categoryLabel}` : ""}
-                {addedCount > 0 ? ` · ${addedCount} en el presupuesto` : ""}
-              </div>
-            </div>
-
-            <div className="bmc-qa__list" role="list">
-              {filtered.length === 0 && (
-                <p className="bmc-qa__empty">
-                  Sin coincidencias. Probá otro término o categoría.
-                </p>
-              )}
-              {filtered.map(({ row, visual, labels, price }) => {
-                const already = inQuoteQty(row);
-                const isPanel = row.addBy === "panelLine";
-                const unit = row.unidad || (isPanel ? "m²" : "unid");
-
-                return (
-                  <article
-                    key={row.id}
-                    className={`bmc-qa__row${flash === row.id ? " bmc-qa__row--flash" : ""}`}
-                    role="listitem"
-                  >
-                    <ProductThumb row={row} already={already} visual={visual} />
-
-                    <div className="bmc-qa__info">
-                      <div className="bmc-qa__primary" title={row.label}>
-                        {labels.primary || row.label}
-                      </div>
-                      {labels.secondary ? (
-                        <div className="bmc-qa__secondary" title={labels.secondary}>
-                          {labels.secondary}
-                        </div>
-                      ) : row.sku ? (
-                        <div className="bmc-qa__secondary">SKU {row.sku}</div>
-                      ) : null}
-                      <div className="bmc-qa__price-line">
-                        {fmtUsd(price)}{" "}
-                        <span>
-                          / {unit}
-                          {isPanel ? " · cantidad en m²" : ""}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="bmc-qa__actions">
-                      <div className="bmc-qa__stepper">
-                        <button
-                          type="button"
-                          aria-label="Menos"
-                          onClick={() =>
-                            setQty(row.id, qtyOf(row.id) - (isPanel ? 0.5 : 1), isPanel)
-                          }
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          min={isPanel ? 0.1 : 1}
-                          step={isPanel ? 0.5 : 1}
-                          value={qtyOf(row.id)}
-                          onChange={(e) => setQty(row.id, e.target.value, isPanel)}
-                          aria-label={`Cantidad de ${row.label}${isPanel ? " en m²" : ""}`}
-                        />
-                        <button
-                          type="button"
-                          aria-label="Más"
-                          onClick={() =>
-                            setQty(row.id, qtyOf(row.id) + (isPanel ? 0.5 : 1), isPanel)
-                          }
-                        >
-                          +
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        className="bmc-qa__add"
-                        onClick={() => handleAdd(row)}
-                      >
-                        Agregar
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+            <ProductCatalogPicker {...pickerProps} />
           </aside>
         </>
       )}

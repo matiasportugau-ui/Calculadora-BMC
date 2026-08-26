@@ -663,3 +663,29 @@
     border-color: rgba(0, 0, 0, 0.06);
   }
 }
+
+/* Inline catalog (productos sueltos in presupuesto libre) */
+.bmc-qa--inline {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0 0 14px;
+  padding: 10px 10px 8px;
+  border-radius: var(--qa-radius);
+  background: var(--qa-stage, #f0f0f5);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.bmc-qa--inline .bmc-qa__controls {
+  padding: 0 4px 8px;
+}
+
+.bmc-qa--inline .bmc-qa__list {
+  flex: none;
+  max-height: min(560px, 70vh);
+  padding: 0 4px 8px;
+}
+
+.bmc-qa--inline .bmc-qa__search {
+  background: var(--qa-solid, #fff);
+}

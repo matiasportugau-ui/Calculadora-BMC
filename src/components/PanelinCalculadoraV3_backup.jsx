@@ -26,7 +26,6 @@ import {
   C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
   setListaPrecios,
   PANELS_TECHO, PANELS_PARED, SERVICIOS,
-  FIJACIONES, HERRAMIENTAS, SELLADORES,
   PERFIL_TECHO, PERFIL_PARED,
   SCENARIOS_DEF, OBRA_PRESETS, BORDER_OPTIONS,
   CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
@@ -126,7 +125,7 @@ import PlanUploadModal from "./PlanUploadModal.jsx";
 import PlanInlineDropZone from "./PlanInlineDropZone.jsx";
 import InteractionLogPanel from "./InteractionLogPanel.jsx";
 import ConfigPanel from "./ConfigPanel.jsx";
-import ProductQuickAddDrawer from "./ProductQuickAddDrawer.jsx";
+import ProductQuickAddDrawer, { ProductCatalogPicker } from "./ProductQuickAddDrawer.jsx";
 import FloorPlanEditor from "./FloorPlanEditor.jsx";
 import RoofPreview, { RoofPreviewMetricsSidebar } from "./RoofPreview.jsx";
 
@@ -3498,19 +3497,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     return flattenPerfilesLibre(pet, pep);
   }, [libreCatalog]);
   const librePerfilById = useMemo(() => new Map(librePerfilList.map((r) => [r.id, r])), [librePerfilList]);
-  const librePerfilFiltered = useMemo(() => {
-    const q = (librePerfilFilter || "").trim().toLowerCase();
-    if (!q) return librePerfilList;
-    return librePerfilList.filter((r) => r.label.toLowerCase().includes(q) || (r.sku && r.sku.toLowerCase().includes(q)));
-  }, [librePerfilList, librePerfilFilter]);
-
-  const libreTornilleriaKeys = useMemo(() => {
-    const F = libreCatalog?.FIJACIONES || FIJACIONES;
-    const H = libreCatalog?.HERRAMIENTAS || HERRAMIENTAS;
-    return [...Object.keys(F), ...Object.keys(H || {})].sort();
-  }, [libreCatalog]);
-
-  const libreSelladorKeys = useMemo(() => Object.keys(libreCatalog?.SELLADORES || SELLADORES), [libreCatalog]);
 
   // ── Índice unificado del catálogo para el drawer "Agregar producto" ──
   // Escribe en el mismo estado libre (librePerfilQty/libreFijQty/libreSellQty/
@@ -7718,13 +7704,23 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
             onToggle={(e) => setManualLibreOpen(e.currentTarget.open)}
           >
             <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none", display: "flex", alignItems: "center", gap: 8 }}>
-              {scenarioDef?.isLibre ? "PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA" : "AGREGAR PRODUCTOS MANUALES (PRESUPUESTO LIBRE)"}
+              {scenarioDef?.isLibre ? "PRESUPUESTO LIBRE — PRODUCTOS SUELTOS" : "AGREGAR PRODUCTOS MANUALES (PRESUPUESTO LIBRE)"}
             </summary>
             <div style={{ padding: "0 20px 20px" }}>
             <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>
-              Productos de matriz: usá <b>Agregar producto</b> (buscador) o las categorías de abajo. Si no está en catálogo, cargalo en <b>Producto fuera de lista</b>. Confirmá cada partida para sumarla al presupuesto.
+              Productos sueltos: buscá y agregá del catálogo (foto, cantidad, Agregar). Paneles por medidas más abajo. Si no está en matriz, cargalo en <b>Producto fuera de lista</b>.
             </div>
-            <LibreAccordionBar title="Paneles" open={libreAcc.paneles} onToggle={() => toggleLibreAcc("paneles")}>
+            <ProductCatalogPicker
+              variant="inline"
+              catalogIndex={quickAddCatalogIndex}
+              currentQty={{ perfilQty: librePerfilQty, fijQty: libreFijQty, sellQty: libreSellQty }}
+              onAddPerfil={quickAddPerfil}
+              onAddFijacion={quickAddFijacion}
+              onAddSellador={quickAddSellador}
+              onAddPanel={quickAddPanel}
+              listaPrecios={listaPrecios}
+            />
+            <LibreAccordionBar title="Paneles por medidas" open={libreAcc.paneles} onToggle={() => toggleLibreAcc("paneles")}>
               {librePanelLines.map((line, idx) => {
                 const pt = libreCatalog?.PANELS_TECHO || PANELS_TECHO;
                 const pp = libreCatalog?.PANELS_PARED || PANELS_PARED;
@@ -7874,52 +7870,6 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
               <button type="button" onClick={addLibrePanelLine} style={{ marginTop: 4, padding: "8px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 13, cursor: "pointer", color: C.primary, fontWeight: 500 }}>+ Agregar panel</button>
             </LibreAccordionBar>
 
-            <LibreAccordionBar title="Perfilería" open={libreAcc.perfileria} onToggle={() => toggleLibreAcc("perfileria")}>
-              <input style={{ ...inputS, marginBottom: 12 }} value={librePerfilFilter} onChange={(e) => setLibrePerfilFilter(e.target.value)} placeholder="Filtrar por nombre o SKU…" />
-              <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-                {librePerfilFiltered.map((row) => (
-                  <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
-                    <span style={{ flex: "1 1 200px", fontSize: 12, color: C.tp }}>{row.label}</span>
-                    <StepperInput label="Cant. barras" value={librePerfilQty[row.id] || 0} onChange={(v) => setLibrePerfilQty((q) => ({ ...q, [row.id]: v }))} min={0} max={9999} step={1} decimals={0} />
-                  </div>
-                ))}
-              </div>
-            </LibreAccordionBar>
-
-            <LibreAccordionBar title="Tornillería y herrajes" open={libreAcc.tornilleria} onToggle={() => toggleLibreAcc("tornilleria")}>
-              <div style={{ maxHeight: 280, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-                {libreTornilleriaKeys.map((key) => {
-                  const F = libreCatalog?.FIJACIONES || FIJACIONES;
-                  const H = libreCatalog?.HERRAMIENTAS || HERRAMIENTAS;
-                  const row = F[key] || H[key];
-                  if (!row) return null;
-                  return (
-                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
-                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{row.label}</span>
-                      <span style={{ fontSize: 11, color: C.tt }}>{row.unidad || "unid"}</span>
-                      <StepperInput label="Cant." value={libreFijQty[key] || 0} onChange={(v) => setLibreFijQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
-                    </div>
-                  );
-                })}
-              </div>
-            </LibreAccordionBar>
-
-            <LibreAccordionBar title="Selladores" open={libreAcc.selladores} onToggle={() => toggleLibreAcc("selladores")}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {libreSelladorKeys.map((key) => {
-                  const S = libreCatalog?.SELLADORES || SELLADORES;
-                  const s = S[key];
-                  if (!s) return null;
-                  return (
-                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
-                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{s.label}</span>
-                      <span style={{ fontSize: 11, color: C.tt }}>{s.unidad || "unid"}</span>
-                      <StepperInput label="Cant." value={libreSellQty[key] || 0} onChange={(v) => setLibreSellQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
-                    </div>
-                  );
-                })}
-              </div>
-            </LibreAccordionBar>
             {scenarioDef?.isLibre && (
             <LibreAccordionBar title="Servicios" open={libreAcc.servicios} onToggle={() => toggleLibreAcc("servicios")}>
               <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
