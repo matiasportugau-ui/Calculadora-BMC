@@ -16,6 +16,7 @@ import { createPaneliMcpServer, listPaneliMcpToolNames } from "../server/mcp/pan
 import {
   getCalcState,
   setCalcState,
+  safeAssignCalcState,
   _resetConversationStateForTests,
 } from "../server/mcp/conversationState.js";
 
@@ -70,6 +71,63 @@ console.log("ok denyList");
   assert.ok(parsed.bom_groups?.[0]?.title === "PANELES");
   assert.ok(parsed.textoWhatsApp.length < 2000);
 
+  // Live executeTool("calcular_cotizacion") returns FLAT money fields — must not
+  // collapse to totals:null (ElevenLabs would invent or omit USD amounts).
+  const liveCalc = JSON.parse(
+    shapeToolResult(
+      "calcular_cotizacion",
+      JSON.stringify({
+        scenario: "solo_techo",
+        listaPrecios: "web",
+        subtotalSinIVA: 1011.93,
+        totalConIVA: 1234.56,
+        iva22: 222.63,
+        area_m2: 80,
+        cant_paneles: 10,
+        warnings: [],
+      }),
+    ),
+  );
+  assert.equal(liveCalc.totals.totalConIVA, 1234.56);
+  assert.equal(liveCalc.totals.subtotalSinIVA, 1011.93);
+  assert.equal(liveCalc.lista, "web");
+  assert.equal(liveCalc.totals.cant_paneles, 10);
+
+  const comparar = JSON.parse(
+    shapeToolResult(
+      "comparar_listas",
+      JSON.stringify({
+        ok: true,
+        scenario: "solo_techo",
+        web: { totalConIVA: 1500 },
+        venta: { totalConIVA: 1200 },
+        delta_usd: 300,
+        delta_pct: 20,
+      }),
+    ),
+  );
+  assert.equal(comparar.web.totalConIVA, 1500);
+  assert.equal(comparar.delta_usd, 300);
+
+  const escenarios = JSON.parse(
+    shapeToolResult(
+      "comparar_escenarios",
+      JSON.stringify({
+        ok: true,
+        listaPrecios: "web",
+        a: { scenario: "solo_techo", subtotalSinIVA: 1000, totalConIVA: 1220 },
+        b: { scenario: "techo_y_paredes", subtotalSinIVA: 1800, totalConIVA: 2196 },
+        delta_usd: 976,
+        delta_pct: 80,
+        nota: "techo_y_paredes es USD 976 (80%) más caro que solo_techo.",
+      }),
+    ),
+  );
+  assert.equal(escenarios.a.totalConIVA, 1220);
+  assert.equal(escenarios.b.totalConIVA, 2196);
+  assert.equal(escenarios.delta_usd, 976);
+  assert.match(String(escenarios.nota), /más caro/);
+
   const informe = JSON.parse(
     shapeToolResult("obtener_informe_completo", JSON.stringify({ lista: "web", asesoria: { a: 1, b: 2 } })),
   );
@@ -105,6 +163,32 @@ console.log("ok denyList");
   assert.equal(getCalcState("t1").scenario, "solo_techo");
   setCalcState("t1", { listaPrecios: "web" });
   assert.equal(getCalcState("t1").listaPrecios, "web");
+
+  // Isolation: distinct keys must not share state
+  setCalcState("t2", { scenario: "solo_fachada" });
+  assert.equal(getCalcState("t1").scenario, "solo_techo");
+  assert.equal(getCalcState("t2").scenario, "solo_fachada");
+
+  // Empty key must throw (no silent "default" bucket)
+  assert.throws(() => getCalcState(""), /sessionKey is required/);
+  assert.throws(() => setCalcState(undefined, { a: 1 }), /sessionKey is required/);
+
+  // Remote property injection: __proto__ / constructor must not land on state
+  const victim = Object.create(null);
+  safeAssignCalcState(victim, JSON.parse('{"__proto__":{"polluted":true},"constructor":{"prototype":{"x":1}},"scenario":"ok"}'));
+  assert.equal(victim.scenario, "ok");
+  assert.equal(Object.prototype.hasOwnProperty.call(victim, "__proto__"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(victim, "constructor"), false);
+  assert.equal({}.polluted, undefined);
+
+  setCalcState("t-proto", JSON.parse('{"__proto__":{"pwned":true},"techo":{"largo":12}}'), {
+    replace: true,
+  });
+  const after = getCalcState("t-proto");
+  assert.equal(after.techo.largo, 12);
+  assert.equal(Object.prototype.hasOwnProperty.call(after, "__proto__"), false);
+  assert.equal({}.pwned, undefined);
+
   console.log("ok conversationState");
 }
 
@@ -206,6 +290,7 @@ console.log("ok auth");
 await withEnv(
   { PANELI_MCP_SECRET: "init-secret-xyz", API_AUTH_TOKEN: "", API_KEY: "" },
   async () => {
+    _resetConversationStateForTests();
     const app = express();
     app.use(express.json({ limit: "2mb" }));
     app.use("/mcp", createMcpRouter());
@@ -220,29 +305,33 @@ await withEnv(
       Accept: "application/json, text/event-stream",
     };
 
-    const initRes = await fetch(`${base}/mcp`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {
-          protocolVersion: "2024-11-05",
-          capabilities: {},
-          clientInfo: { name: "unit", version: "0" },
-        },
-      }),
-    });
-    assert.equal(initRes.status, 200, await initRes.clone().text());
-    const sessionId = initRes.headers.get("mcp-session-id");
-    assert.ok(sessionId, "expected Mcp-Session-Id header");
+    async function initializeSession() {
+      const initRes = await fetch(`${base}/mcp`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2024-11-05",
+            capabilities: {},
+            clientInfo: { name: "unit", version: "0" },
+          },
+        }),
+      });
+      assert.equal(initRes.status, 200, await initRes.clone().text());
+      const sessionId = initRes.headers.get("mcp-session-id");
+      assert.ok(sessionId, "expected Mcp-Session-Id header");
+      await fetch(`${base}/mcp`, {
+        method: "POST",
+        headers: { ...headers, "Mcp-Session-Id": sessionId },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+      });
+      return sessionId;
+    }
 
-    await fetch(`${base}/mcp`, {
-      method: "POST",
-      headers: { ...headers, "Mcp-Session-Id": sessionId },
-      body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
-    });
+    const sessionId = await initializeSession();
 
     const listRes = await fetch(`${base}/mcp`, {
       method: "POST",
@@ -274,9 +363,104 @@ await withEnv(
     const callBody = await callRes.json();
     assert.ok(callBody?.result?.content?.[0]?.text);
 
+    // Two concurrent initializes without X-Conversation-Id must NOT share calcState
+    const sidA = await initializeSession();
+    const sidB = await initializeSession();
+    assert.notEqual(sidA, sidB);
+
+    await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: { ...headers, "Mcp-Session-Id": sidA },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 10,
+        method: "tools/call",
+        params: {
+          name: "aplicar_estado_calc",
+          arguments: { scenario: "solo_techo", techo: { largo: 99, ancho: 8 } },
+        },
+      }),
+    });
+    await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: { ...headers, "Mcp-Session-Id": sidB },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 11,
+        method: "tools/call",
+        params: {
+          name: "aplicar_estado_calc",
+          arguments: { scenario: "solo_fachada", pared: { alto: 3 } },
+        },
+      }),
+    });
+
+    // Hitchhiking via client X-Conversation-Id must not merge stores:
+    // a third session claiming the same conversation header still gets its own key.
+    const initC = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: { ...headers, "X-Conversation-Id": "shared-client-id" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 20,
+        method: "initialize",
+        params: {
+          protocolVersion: "2024-11-05",
+          capabilities: {},
+          clientInfo: { name: "c", version: "0" },
+        },
+      }),
+    });
+    assert.equal(initC.status, 200);
+    const sidC = initC.headers.get("mcp-session-id");
+    const initD = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: { ...headers, "X-Conversation-Id": "shared-client-id" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 21,
+        method: "initialize",
+        params: {
+          protocolVersion: "2024-11-05",
+          capabilities: {},
+          clientInfo: { name: "d", version: "0" },
+        },
+      }),
+    });
+    assert.equal(initD.status, 200);
+    const sidD = initD.headers.get("mcp-session-id");
+    assert.notEqual(sidC, sidD);
+
     await new Promise((r) => server.close(r));
   },
 );
-console.log("ok initialize+tools/list+call");
+console.log("ok initialize+tools/list+call+sessionIsolation");
+
+// ── prod auth: no API_AUTH_TOKEN fallback ──────────────────────────────────
+await withEnv(
+  {
+    PANELI_MCP_SECRET: undefined,
+    API_AUTH_TOKEN: "shared-api-token",
+    API_KEY: "",
+    NODE_ENV: "production",
+    K_SERVICE: "panelin-calc",
+  },
+  () => {
+    assert.equal(getPaneliMcpSecret(), "");
+  },
+);
+await withEnv(
+  {
+    PANELI_MCP_SECRET: undefined,
+    API_AUTH_TOKEN: "shared-api-token",
+    API_KEY: "",
+    NODE_ENV: "development",
+    K_SERVICE: undefined,
+  },
+  () => {
+    assert.equal(getPaneliMcpSecret(), "shared-api-token");
+  },
+);
+console.log("ok auth prod isolation");
 
 console.log("\nAll paneliMcp tests passed.");

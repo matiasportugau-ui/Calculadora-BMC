@@ -19,12 +19,12 @@ Public via Cloud Run `panelin-calc` and Vercel rewrite `/mcp` → Cloud Run.
 
 | Key | Where |
 |-----|--------|
-| `PANELI_MCP_SECRET` | Preferred — Doppler `bmc-backend/prd` + GCP Secret Manager on Cloud Run |
-| Fallback | `API_AUTH_TOKEN` (already on Cloud Run) if `PANELI_MCP_SECRET` unset |
+| `PANELI_MCP_SECRET` | Doppler `bmc-backend/prd` + GCP Secret Manager / Cloud Run env |
+| Fallback (local/dev only) | `API_AUTH_TOKEN` if `PANELI_MCP_SECRET` unset **and** not Cloud Run / `NODE_ENV=production` |
 
 ElevenLabs dashboard → **Secret Token** = same value (sent as `Authorization: Bearer …`).
 
-Never put the secret in the Server URL query string.
+Never put the secret in the Server URL query string. In production / Cloud Run, missing `PANELI_MCP_SECRET` → MCP returns 503 (no shared-token fallback).
 
 ### One-shot: create dedicated secret + attach to Cloud Run
 
@@ -53,7 +53,7 @@ gcloud run services update panelin-calc \
 rm -f "$SECRET_FILE"
 ```
 
-Until that script runs, Paneli MCP accepts **`API_AUTH_TOKEN`** as the Bearer secret.
+Until that script runs, Cloud Run MCP stays **503** (fail closed). Local/dev can still use `API_AUTH_TOKEN` as Bearer when `PANELI_MCP_SECRET` is unset.
 
 ## Writes policy
 
@@ -83,7 +83,7 @@ In ElevenLabs, prefer **Fine-Grained Tool Approval**: auto-approve calc reads; r
 ```bash
 cd ~/calculadora-bmc
 # API running (doppler run -- npm run start:api  OR  npm run dev)
-export PANELI_MCP_SECRET=dev-secret   # or rely on API_AUTH_TOKEN
+export PANELI_MCP_SECRET=dev-secret   # or rely on API_AUTH_TOKEN (local only)
 npm run smoke:paneli-mcp
 ```
 
@@ -102,6 +102,7 @@ node tests/paneliMcp.test.js
 
 ## Notes
 
-- Conversation `calcState` is in-memory per `X-Conversation-Id` / `Mcp-Session-Id` (best-effort on multi-instance Cloud Run).
+- Conversation `calcState` is in-memory per **server-generated** UUID at MCP `initialize` (not client `X-Conversation-Id` — that header is metadata only). Best-effort on multi-instance Cloud Run.
 - Large dumps (`obtener_informe_completo`, HTML PDF) are compacted for TTS.
+- Voice compacting **keeps** flat `totalConIVA` / `subtotalSinIVA` from `calcular_cotizacion` (and `comparar_listas` deltas) — never strip money fields.
 - Pricing always comes from the live calc engine — Paneli must not invent USD amounts.
