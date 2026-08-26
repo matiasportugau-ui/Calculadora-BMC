@@ -17,19 +17,49 @@ function truncateString(s, max = MAX_CHARS) {
   return `${s.slice(0, max)}\n…[truncated ${s.length - max} chars for voice]`;
 }
 
+/**
+ * Build a totals bag for voice. Live `calcular_cotizacion` returns flat
+ * totalConIVA / subtotalSinIVA (not nested under totals/totales) — dropping
+ * those would leave ElevenLabs with totals:null and invite price hallucination.
+ */
+function resolveTotals(parsed) {
+  if (parsed.totals && typeof parsed.totals === "object") return parsed.totals;
+  if (parsed.totales && typeof parsed.totales === "object") return parsed.totales;
+  const hasFlat =
+    parsed.totalConIVA != null ||
+    parsed.subtotalSinIVA != null ||
+    parsed.iva22 != null;
+  if (!hasFlat) return null;
+  const bag = {};
+  if (parsed.subtotalSinIVA != null) bag.subtotalSinIVA = parsed.subtotalSinIVA;
+  if (parsed.totalConIVA != null) bag.totalConIVA = parsed.totalConIVA;
+  if (parsed.iva22 != null) bag.iva22 = parsed.iva22;
+  if (parsed.area_m2 != null) bag.area_m2 = parsed.area_m2;
+  if (parsed.cant_paneles != null) bag.cant_paneles = parsed.cant_paneles;
+  return bag;
+}
+
 function compactCotizacion(parsed) {
   if (!parsed || typeof parsed !== "object") return parsed;
   const out = {
-    ok: parsed.ok !== false,
+    ok: parsed.ok !== false && !parsed.error,
     scenario: parsed.scenario,
     lista: parsed.lista || parsed.listaPrecios,
-    totals: parsed.totals || parsed.totales || null,
+    totals: resolveTotals(parsed),
     summary: parsed.summary || parsed.resumen || null,
-    warnings: parsed.warnings || [],
+    warnings: parsed.warnings || parsed.advertencias || [],
     autoportancia: parsed.autoportancia || null,
     pdf_url: parsed.pdf_url || parsed.pdfUrl || null,
     code: parsed.code || parsed.quote_code || null,
   };
+  // comparar_listas — keep delta + both lista totals (not covered by resolveTotals alone)
+  if (parsed.web != null || parsed.venta != null) {
+    if (parsed.web != null) out.web = parsed.web;
+    if (parsed.venta != null) out.venta = parsed.venta;
+    if (parsed.delta_usd != null) out.delta_usd = parsed.delta_usd;
+    if (parsed.delta_pct != null) out.delta_pct = parsed.delta_pct;
+  }
+  if (parsed.error) out.error = parsed.error;
   if (Array.isArray(parsed.bom)) {
     out.bom_groups = parsed.bom.map((g) => ({
       title: g.title,
@@ -50,7 +80,6 @@ function compactCotizacion(parsed) {
   }
   if (parsed.textoWhatsApp) out.textoWhatsApp = truncateString(parsed.textoWhatsApp, 800);
   if (parsed.textoResumen) out.textoResumen = truncateString(parsed.textoResumen, 800);
-  if (parsed.error) out.error = parsed.error;
   return out;
 }
 
