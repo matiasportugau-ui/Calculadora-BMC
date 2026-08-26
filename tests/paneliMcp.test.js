@@ -55,6 +55,7 @@ console.log("ok denyList");
 
 // ── voice shape ────────────────────────────────────────────────────────────
 {
+  // Nested totals bag (legacy / alternate shapes) still preserved
   const compact = shapeToolResult(
     "calcular_cotizacion",
     JSON.stringify({
@@ -69,6 +70,44 @@ console.log("ok denyList");
   assert.equal(parsed.totals.totalFinal, 1234);
   assert.ok(parsed.bom_groups?.[0]?.title === "PANELES");
   assert.ok(parsed.textoWhatsApp.length < 2000);
+
+  // Live executeTool("calcular_cotizacion") returns FLAT money fields — must not
+  // collapse to totals:null (ElevenLabs would invent or omit USD amounts).
+  const liveCalc = JSON.parse(
+    shapeToolResult(
+      "calcular_cotizacion",
+      JSON.stringify({
+        scenario: "solo_techo",
+        listaPrecios: "web",
+        subtotalSinIVA: 1011.93,
+        totalConIVA: 1234.56,
+        iva22: 222.63,
+        area_m2: 80,
+        cant_paneles: 10,
+        warnings: [],
+      }),
+    ),
+  );
+  assert.equal(liveCalc.totals.totalConIVA, 1234.56);
+  assert.equal(liveCalc.totals.subtotalSinIVA, 1011.93);
+  assert.equal(liveCalc.lista, "web");
+  assert.equal(liveCalc.totals.cant_paneles, 10);
+
+  const comparar = JSON.parse(
+    shapeToolResult(
+      "comparar_listas",
+      JSON.stringify({
+        ok: true,
+        scenario: "solo_techo",
+        web: { totalConIVA: 1500 },
+        venta: { totalConIVA: 1200 },
+        delta_usd: 300,
+        delta_pct: 20,
+      }),
+    ),
+  );
+  assert.equal(comparar.web.totalConIVA, 1500);
+  assert.equal(comparar.delta_usd, 300);
 
   const informe = JSON.parse(
     shapeToolResult("obtener_informe_completo", JSON.stringify({ lista: "web", asesoria: { a: 1, b: 2 } })),

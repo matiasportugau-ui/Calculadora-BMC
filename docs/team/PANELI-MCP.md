@@ -104,4 +104,5 @@ node tests/paneliMcp.test.js
 
 - Conversation `calcState` is in-memory per `X-Conversation-Id` / `Mcp-Session-Id` (best-effort on multi-instance Cloud Run).
 - Large dumps (`obtener_informe_completo`, HTML PDF) are compacted for TTS.
+- Voice compacting **keeps** flat `totalConIVA` / `subtotalSinIVA` from `calcular_cotizacion` (and `comparar_listas` deltas) — never strip money fields.
 - Pricing always comes from the live calc engine — Paneli must not invent USD amounts.
