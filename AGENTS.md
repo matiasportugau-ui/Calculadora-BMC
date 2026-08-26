@@ -17,7 +17,7 @@ Single Vite SPA (React 18) + Express 5 API + Postgres. State: `docs/team/PROJECT
 | `npm run smoke:paneli-mcp` | ElevenLabs Paneli MCP (`/mcp`) health + tools/list smoke |
 | `npm run mcp:panelin` | Stdio MCP for Cursor/Claude (proxies `/api/agent/exec-tool`) |
 
-**Paneli voice MCP (ElevenLabs):** Streamable HTTP at `/mcp` (Bearer `PANELI_MCP_SECRET`). Docs: `docs/team/PANELI-MCP.md`. Wraps `AGENT_TOOLS`; writes denied by default (`PANELI_MCP_ALLOW_WRITES=1` to unlock).
+**Paneli voice MCP (ElevenLabs):** Streamable HTTP at `/mcp` (Bearer `PANELI_MCP_SECRET`; required in prod/Cloud Run). Docs: `docs/team/PANELI-MCP.md`. Wraps `AGENT_TOOLS`; writes denied by default (`PANELI_MCP_ALLOW_WRITES=1` to unlock). Calc state keyed by server UUID per initialize (not client conversation headers).
 
 ## Rules (failure-earned — see `docs/team/harness/RULE-PROVENANCE.md`)
 

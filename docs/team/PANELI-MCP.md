@@ -20,11 +20,11 @@ Public via Cloud Run `panelin-calc` and Vercel rewrite `/mcp` → Cloud Run.
 | Key | Where |
 |-----|--------|
 | `PANELI_MCP_SECRET` | Doppler `bmc-backend/prd` + GCP Secret Manager / Cloud Run env |
-| Fallback (dev) | `API_AUTH_TOKEN` if `PANELI_MCP_SECRET` unset |
+| Fallback (local/dev only) | `API_AUTH_TOKEN` if `PANELI_MCP_SECRET` unset **and** not Cloud Run / `NODE_ENV=production` |
 
 ElevenLabs dashboard → **Secret Token** = same value (sent as `Authorization: Bearer …`).
 
-Never put the secret in the Server URL query string.
+Never put the secret in the Server URL query string. In production, missing `PANELI_MCP_SECRET` → MCP returns 503 (no shared-token fallback).
 
 ## Writes policy
 
@@ -73,6 +73,6 @@ node tests/paneliMcp.test.js
 
 ## Notes
 
-- Conversation `calcState` is in-memory per `X-Conversation-Id` / `Mcp-Session-Id` (best-effort on multi-instance Cloud Run).
+- Conversation `calcState` is in-memory per **server-generated** UUID at MCP `initialize` (not client `X-Conversation-Id` — that header is metadata only). Best-effort on multi-instance Cloud Run.
 - Large dumps (`obtener_informe_completo`, HTML PDF) are compacted for TTS.
 - Pricing always comes from the live calc engine — Paneli must not invent USD amounts.
