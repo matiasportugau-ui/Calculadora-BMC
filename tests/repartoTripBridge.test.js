@@ -4,7 +4,7 @@ import {
   shouldInsertDriverOutbox,
   joinRepartoToTrip,
 } from "../server/lib/repartoTripBridge.js";
-import { isPickupStop } from "../server/lib/driverId.js";
+import { isPickupStop, deliveryStopIdsFromPlan } from "../server/lib/driverId.js";
 import { withStopUuids, isUuid } from "../src/utils/logistica/stopUuid.js";
 import { conductorPublicUrl } from "../src/utils/conductorUrl.js";
 
@@ -31,6 +31,16 @@ console.log("repartoTripBridge");
   assert.equal(shouldInsertDriverOutbox(true, ""), false);
   assert.equal(isPickupStop({ kind: "levante" }), true);
   console.log("  ✓ prepareJoinContext + outbox gate");
+}
+
+{
+  const ids = deliveryStopIdsFromPlan([
+    { id: "p1", kind: "levante", cliente: "Planta" },
+    { id: "d1", cliente: "Silva" },
+    { id: "d2", tipo: "entrega", cliente: "Perez" },
+  ]);
+  assert.deepEqual(ids, ["d1", "d2"]);
+  console.log("  ✓ deliveryStopIdsFromPlan skips pickup");
 }
 
 {
