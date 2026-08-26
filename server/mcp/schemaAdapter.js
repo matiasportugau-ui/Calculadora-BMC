@@ -73,18 +73,50 @@ export function anthropicSchemaToZodShape(inputSchema) {
  * Merge top-level tool args with optional nested `input` (stdio MCP compat).
  * @param {Record<string, unknown>} args
  */
+function normalizeTechoAliases(techo) {
+  if (!techo || typeof techo !== "object" || Array.isArray(techo)) return techo;
+  const t = { ...techo };
+  // Voice agents often say "estructura: metal" / "a metal" — schema field is tipoEst.
+  if (t.tipoEst == null) {
+    const raw = t.estructura ?? t.tipoEstructura ?? t.structure ?? t.est;
+    if (raw != null) {
+      const s = String(raw)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/^a\s+/, "")
+        .trim();
+      if (s.includes("hormig") || s.includes("concrete")) t.tipoEst = "hormigon";
+      else if (s.includes("madera") || s.includes("wood")) t.tipoEst = "madera";
+      else if (s.includes("combin")) t.tipoEst = "combinada";
+      else if (s.includes("metal") || s.includes("acero") || s.includes("steel")) t.tipoEst = "metal";
+    }
+  }
+  delete t.estructura;
+  delete t.tipoEstructura;
+  delete t.structure;
+  delete t.est;
+  // "completo" is UI slang for full perimeter borders — leave borders object if already set.
+  if (t.completo === true && (t.borders == null || typeof t.borders !== "object")) {
+    t.borders = { frente: "gotero", fondo: "gotero", latIzq: "gotero", latDer: "gotero" };
+  }
+  delete t.completo;
+  return t;
+}
+
 export function normalizeToolArgs(args) {
   const a = args && typeof args === "object" ? { ...args } : {};
   const nested = a.input;
   delete a.input;
   delete a._args;
+  let merged = a;
   if (nested && typeof nested === "object" && !Array.isArray(nested)) {
-    return { ...a, ...nested };
+    merged = { ...a, ...nested };
+  } else if (a._args && typeof a._args === "object") {
+    merged = { ...a._args, ...a };
   }
-  if (a._args && typeof a._args === "object") {
-    return { ...a._args, ...a };
-  }
-  return a;
+  if (merged.techo) merged = { ...merged, techo: normalizeTechoAliases(merged.techo) };
+  return merged;
 }
 
 /**

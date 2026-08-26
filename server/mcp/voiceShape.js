@@ -19,12 +19,48 @@ function truncateString(s, max = MAX_CHARS) {
 
 function compactCotizacion(parsed) {
   if (!parsed || typeof parsed !== "object") return parsed;
+
+  // calcular_cotizacion returns flat money fields (subtotalSinIVA / totalConIVA / …),
+  // not { totals, summary }. Map both shapes so voice clients never see nulls when
+  // the motor already computed numbers (2026-08-26 Panelin BMC transcript bug).
+  const totals =
+    parsed.totals ||
+    parsed.totales ||
+    (parsed.subtotalSinIVA != null || parsed.totalConIVA != null
+      ? {
+          subtotal_sin_iva: parsed.subtotalSinIVA ?? null,
+          iva_22: parsed.iva22 ?? null,
+          total_con_iva: parsed.totalConIVA ?? null,
+          area_m2: parsed.area_m2 ?? null,
+          cant_paneles: parsed.cant_paneles ?? null,
+        }
+      : null);
+
+  const summary =
+    parsed.summary ||
+    parsed.resumen ||
+    (parsed.subtotalSinIVA != null || parsed.totalConIVA != null
+      ? {
+          subtotal_usd: parsed.subtotalSinIVA ?? null,
+          iva_usd: parsed.iva22 ?? null,
+          total_usd: parsed.totalConIVA ?? null,
+          area_m2: parsed.area_m2 ?? null,
+          cant_paneles: parsed.cant_paneles ?? null,
+        }
+      : null);
+
   const out = {
     ok: parsed.ok !== false,
     scenario: parsed.scenario,
     lista: parsed.lista || parsed.listaPrecios,
-    totals: parsed.totals || parsed.totales || null,
-    summary: parsed.summary || parsed.resumen || null,
+    totals,
+    summary,
+    // Keep flat aliases too (some clients already read these)
+    subtotalSinIVA: parsed.subtotalSinIVA ?? summary?.subtotal_usd ?? null,
+    totalConIVA: parsed.totalConIVA ?? summary?.total_usd ?? null,
+    iva22: parsed.iva22 ?? summary?.iva_usd ?? null,
+    area_m2: parsed.area_m2 ?? summary?.area_m2 ?? null,
+    cant_paneles: parsed.cant_paneles ?? summary?.cant_paneles ?? null,
     warnings: parsed.warnings || [],
     autoportancia: parsed.autoportancia || null,
     pdf_url: parsed.pdf_url || parsed.pdfUrl || null,

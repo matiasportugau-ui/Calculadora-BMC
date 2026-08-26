@@ -70,6 +70,27 @@ console.log("ok denyList");
   assert.ok(parsed.bom_groups?.[0]?.title === "PANELES");
   assert.ok(parsed.textoWhatsApp.length < 2000);
 
+  // Flat money fields from executeTool calcular_cotizacion (not {totals,summary})
+  const flat = JSON.parse(
+    shapeToolResult(
+      "calcular_cotizacion",
+      JSON.stringify({
+        scenario: "solo_techo",
+        listaPrecios: "web",
+        subtotalSinIVA: 1000,
+        totalConIVA: 1220,
+        iva22: 220,
+        area_m2: 24,
+        cant_paneles: 24,
+        warnings: [],
+      }),
+    ),
+  );
+  assert.equal(flat.totals.total_con_iva, 1220);
+  assert.equal(flat.summary.total_usd, 1220);
+  assert.equal(flat.totalConIVA, 1220);
+  assert.equal(flat.subtotalSinIVA, 1000);
+
   const informe = JSON.parse(
     shapeToolResult("obtener_informe_completo", JSON.stringify({ lista: "web", asesoria: { a: 1, b: 2 } })),
   );
@@ -93,6 +114,13 @@ console.log("ok denyList");
   const merged = normalizeToolArgs({ scenario: "solo_techo", input: { flete: 10 } });
   assert.equal(merged.scenario, "solo_techo");
   assert.equal(merged.flete, 10);
+  const techoAlias = normalizeToolArgs({
+    scenario: "solo_techo",
+    techo: { familia: "ISOROOF_3G", espesor: 30, zonas: [{ largo: 6, ancho: 4 }], estructura: "a metal", completo: true },
+  });
+  assert.equal(techoAlias.techo.tipoEst, "metal");
+  assert.ok(techoAlias.techo.borders?.frente);
+  assert.equal(techoAlias.techo.estructura, undefined);
   assert.ok(schemaSummary({ properties: { a: {}, b: {} }, required: ["a"] }).includes("a*"));
   console.log("ok schemaAdapter");
 }
