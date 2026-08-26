@@ -308,10 +308,14 @@
   "discovery": {
     "capabilities_url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/capabilities",
     "health_url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/health",
+    "mcp_url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/mcp",
+    "mcp_health_url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/mcp/health",
+    "mcp_docs": "docs/team/PANELI-MCP.md",
     "docs": {
       "agent_ui_vs_api": "docs/AGENT-UI-VS-API.md",
       "static_capabilities_json": "docs/api/AGENT-CAPABILITIES.json",
-      "openapi_calc_file": "docs/openapi-calc.yaml"
+      "openapi_calc_file": "docs/openapi-calc.yaml",
+      "paneli_mcp": "docs/team/PANELI-MCP.md"
     }
   }
 }
