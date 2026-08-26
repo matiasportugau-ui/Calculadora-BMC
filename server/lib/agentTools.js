@@ -98,7 +98,11 @@ export const AGENT_TOOLS = [
             espesor: { type: "number", description: "Espesor en mm" },
             tipoAguas: { type: "string", enum: ["una_agua", "dos_aguas"] },
             pendiente: { type: "number", description: "Pendiente en grados" },
-            tipoEst: { type: "string", enum: ["metal", "hormigon", "madera", "combinada"] },
+            tipoEst: {
+              type: "string",
+              enum: ["metal", "hormigon", "madera", "combinada"],
+              description: "Estructura de apoyo. Alias aceptados vía MCP: estructura / 'a metal'.",
+            },
             color: { type: "string" },
             zonas: {
               type: "array",
