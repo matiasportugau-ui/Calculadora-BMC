@@ -37,6 +37,7 @@ export const VOICE_BRAIN_TOOL_ALLOWLIST = Object.freeze([
   "sheets_read_range",
   "sheets_find",
   "aplicar_estado_calc",
+  "generar_pdf",
 ]);
 
 export const VOICE_BRAIN_TOOL_SET = new Set(VOICE_BRAIN_TOOL_ALLOWLIST);
