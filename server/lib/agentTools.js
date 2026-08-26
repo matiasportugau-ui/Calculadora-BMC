@@ -57,6 +57,8 @@ import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "./rag.js
 import * as coworkSheets from "./coworkSheets.js";
 import { classifyEmailSignal } from "./sharedWorkspace.js";
 import { redactGoogleError } from "./googleSheetsAuth.js";
+import { writeAdminPdfLinks } from "./adminQuoteLinks.js";
+import { archivePdfsFromUrls } from "./driveUpload.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -1181,6 +1183,49 @@ export const AGENT_TOOLS = [
     input_schema: {
       type: "object",
       properties: {},
+    },
+  },
+  {
+    name: "admin_cargar_pdfs_fila",
+    description:
+      "Escribe los PDFs de cotización en la planilla Admin 2.0 columna M (iconos 🧾 / 🧾1 🧾2). " +
+      "Usar cuando el operador dice cargalos a la planilla, pegá los PDF en Admin, o similar " +
+      "(ASR a veces dice parrilla/sonrilla = planilla). REQUIERE confirmación. " +
+      "Pasá row (fila 1-based) y pdfs: URLs https de GCS (bmc-cotizaciones).",
+    input_schema: {
+      type: "object",
+      properties: {
+        row: { type: "number", description: "Fila Admin 1-based (ej. 21)" },
+        pdfs: {
+          type: "array",
+          description: "URLs https de PDF (GCS bmc-cotizaciones)",
+          items: { type: "string" },
+        },
+        estado: { type: "string", description: "Opcional: texto corto para col L (ej. Listo aprobación)" },
+        user_confirmed: { type: "boolean" },
+      },
+      required: ["row", "pdfs"],
+    },
+  },
+  {
+    name: "archivar_pdfs_drive",
+    description:
+      "Sube PDFs de cotización (URLs GCS bmc-cotizaciones) a la carpeta Drive de presupuestos BMC " +
+      "(OAuth de usuario, no service account). Usar cuando el operador dice guardalos en Drive. " +
+      "REQUIERE confirmación.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pdfs: {
+          type: "array",
+          description: "URLs https de PDF (GCS bmc-cotizaciones)",
+          items: { type: "string" },
+        },
+        cliente: { type: "string" },
+        quotationCode: { type: "string" },
+        user_confirmed: { type: "boolean" },
+      },
+      required: ["pdfs"],
     },
   },
   {
@@ -2658,6 +2703,36 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     if (name === "sheets_get_pending_admin") {
       const r = await coworkSheets.getPendingAdmin(opts?.logger);
       return JSON.stringify(r);
+    }
+    if (name === "admin_cargar_pdfs_fila") {
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+      try {
+        const r = await writeAdminPdfLinks({
+          row: input?.row ?? input?.rowNum,
+          pdfs: input?.pdfs || input?.urls,
+          estado: input?.estado,
+        });
+        return JSON.stringify(r);
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: redactGoogleError(err.message) });
+      }
+    }
+    if (name === "archivar_pdfs_drive") {
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+      try {
+        const r = await archivePdfsFromUrls({
+          pdfs: input?.pdfs || input?.urls,
+          cliente: input?.cliente,
+          quotationCode: input?.quotationCode || input?.codigo,
+        });
+        return JSON.stringify(r);
+      } catch (err) {
+        return JSON.stringify({
+          ok: false,
+          error: redactGoogleError(err.message),
+          code: err.code || null,
+        });
+      }
     }
     if (name === "sheets_propose_write") {
       const r = coworkSheets.proposeWrite({

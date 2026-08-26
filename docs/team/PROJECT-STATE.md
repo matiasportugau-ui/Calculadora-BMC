@@ -14,6 +14,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-26 (feat — Voice: planilla Admin + Drive tras PDF):** Tools `admin_cargar_pdfs_fila` (col M 🧾) y `archivar_pdfs_drive` (carpeta Drive OAuth). ASR planilla/parrilla/sonrilla. Voice auto-confirma esas writes.
+
+
+
 **2026-08-26 (feat — Voice Mode generar_pdf):** El flotante Grok Live incluye `generar_pdf` (tras “dame el PDF”). Dos variantes = dos llamadas. Instrucciones: nunca decir que no hay herramienta de PDF.
 
 

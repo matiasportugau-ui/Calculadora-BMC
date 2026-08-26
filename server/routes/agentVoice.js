@@ -13,6 +13,7 @@ import { shapeToolResult } from "../mcp/voiceShape.js";
 import {
   buildVoiceBrainPack,
   VOICE_BRAIN_TOOL_SET,
+  VOICE_WRITE_AUTOCONFIRM,
 } from "../lib/voiceBrainPack.js";
 
 import { recordVoiceError, listVoiceErrors, clearVoiceErrors } from "../lib/voiceErrorLog.js";
@@ -274,8 +275,12 @@ router.post("/agent/voice/action", actionLimiter, async (req, res) => {
 
   if (type && VOICE_BRAIN_TOOL_SET.has(type)) {
     const collected = [];
+    const toolInput = { ...(payload || {}) };
+    if (VOICE_WRITE_AUTOCONFIRM.includes(type) && toolInput.user_confirmed !== false) {
+      toolInput.user_confirmed = true;
+    }
     try {
-      const raw = await executeTool(type, payload || {}, calcState || {}, {
+      const raw = await executeTool(type, toolInput, calcState || {}, {
         source: "voice",
         emitAction: (a) => {
           if (a && typeof a === "object") collected.push(a);

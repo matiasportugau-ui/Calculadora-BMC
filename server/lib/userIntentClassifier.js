@@ -123,6 +123,13 @@ export const INTENT_HINTS = {
   wolfboard_marcar_enviado: ["marcá como enviada", "ya la envié"],
   wolfboard_quote_batch: ["generá las respuestas con IA", "cotizá todas las pendientes"],
   sheets_write_range: ["escribilo en la planilla", "pegá en Admin", "confirmá la escritura", "guardalo en la planilla"],
+  admin_cargar_pdfs_fila: [
+    "cargalos a la planilla",
+    "pegá los pdf",
+    "ponelos en el admin",
+    "cargalo en la fila",
+  ],
+  archivar_pdfs_drive: ["guardalos en drive", "subilos a drive", "cargalos a drive"],
   escribir_crm_taxonomia: ["clasificá la fila en CRM", "guardá la taxonomía en CRM", "marcá como proveedor en CRM"],
   email_enviar: ["enviá el correo", "mandá el mail", "sí envialo", "confirmá el envío"],
   wa_lead_to_admin: ["cargalo al Admin", "creá la consulta", "guardalo en Admin"],
