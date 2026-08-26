@@ -4,6 +4,8 @@
  */
 import { config } from "../config.js";
 import { getSheetsClient } from "./googleSheetsAuth.js";
+import { isAllowedQuotePdfUrl } from "./driveUpload.js";
+import { sanitizeCellValue } from "./sheetsCsvGuard.js";
 
 const LINK_STYLE = {
   foregroundColorStyle: { rgbColor: { red: 0.1, green: 0.35, blue: 0.85 } },
@@ -33,7 +35,8 @@ export function multiLinkCell(segments, sep = "  ") {
 export function buildPdfLinkCell(variants) {
   const segs = (variants || [])
     .map((v) => ({ label: v.label, url: String(v.pdfUrl || v.url || "").trim() }))
-    .filter((v) => /^https:\/\//i.test(v.url));
+    // Same allowlist as Drive archive — block phishing / non-GCS links in Admin M.
+    .filter((v) => isAllowedQuotePdfUrl(v.url));
   if (!segs.length) return null;
   if (segs.length === 1) return multiLinkCell([{ label: "🧾", url: segs[0].url }]);
   return multiLinkCell(segs.map((s, i) => ({ label: `🧾${i + 1}`, url: s.url })));
@@ -112,13 +115,15 @@ export async function writeAdminPdfLinks({ row, pdfs, estado } = {}) {
   }
   const variants = normalizePdfVariants(pdfs);
   const pdfCell = buildPdfLinkCell(variants);
-  if (!pdfCell) return { ok: false, error: "pdfs: pasá al menos una URL https" };
+  if (!pdfCell) {
+    return { ok: false, error: "pdfs: pasá al menos una URL https de GCS bmc-cotizaciones" };
+  }
 
   const cells = [{ row: rowNum, col: ADMIN_COL.M, ...pdfCell }];
   const written = await writeRichLinkCells(cells);
 
   let estadoWritten = false;
-  const estadoTxt = String(estado || "").trim();
+  const estadoTxt = String(estado || "").trim().slice(0, 80);
   if (estadoTxt) {
     const sheets = await getSheetsClient();
     const tab = config.wolfbAdminTab || "Admin.";
@@ -126,7 +131,8 @@ export async function writeAdminPdfLinks({ row, pdfs, estado } = {}) {
       spreadsheetId: config.wolfbAdminSheetId,
       range: `'${tab}'!L${rowNum}`,
       valueInputOption: "USER_ENTERED",
-      requestBody: { values: [[estadoTxt.slice(0, 80)]] },
+      // Formula-injection guard — estado is model/operator-controlled (#S7).
+      requestBody: { values: [[sanitizeCellValue(estadoTxt)]] },
     });
     estadoWritten = true;
   }

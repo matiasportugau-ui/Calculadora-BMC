@@ -17,6 +17,7 @@ import {
 } from "../lib/voiceBrainPack.js";
 
 import { recordVoiceError, listVoiceErrors, clearVoiceErrors } from "../lib/voiceErrorLog.js";
+import { redactGoogleError } from "../lib/googleSheetsAuth.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import {
@@ -257,14 +258,21 @@ router.post(
 /**
  * POST /api/agent/voice/action
  *
- * Body: { action: { type, payload }, conversationId?: string }
- * Returns: { ok, action } — the validated (possibly enriched) action.
+ * Body: { action: { type, payload }, calcState?, conversationId?: string }
+ * Returns: { ok, action } for form relays, or { ok, kind:"tool", result, actions }
+ * for Voice Brain Pack tools (sheets/CRM/calc/PDF/Drive) executed via executeTool.
  *
- * The browser receives the validated action, applies it via the existing
- * handleChatAction pipeline, then sends the result back to OpenAI via
- * the WebRTC data channel to let the voice agent continue.
+ * Auth: same gate as session mint (API_AUTH_TOKEN OR identity JWT with
+ * calc:write). Required because #1108/#1110/#1113 made this path execute
+ * server-side tools that read Admin sheets / quotation registry and can
+ * write Admin col M, archive to Drive, or burn Chromium/GCS — unauthenticated
+ * callers must not reach them.
  */
-router.post("/agent/voice/action", actionLimiter, async (req, res) => {
+router.post(
+  "/agent/voice/action",
+  actionLimiter,
+  requireServiceOrUser({ module: "calc", minLevel: "write" }),
+  async (req, res) => {
   const { action, calcState = {} } = req.body || {};
 
   if (!action || typeof action !== "object") {
@@ -298,7 +306,10 @@ router.post("/agent/voice/action", actionLimiter, async (req, res) => {
       return res.json({
         ok: true,
         kind: "tool",
-        result: JSON.stringify({ ok: false, error: err?.message || "tool failed" }),
+        result: JSON.stringify({
+          ok: false,
+          error: redactGoogleError(err?.message || "tool failed"),
+        }),
         actions: collected,
       });
     }

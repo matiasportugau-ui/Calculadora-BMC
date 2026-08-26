@@ -203,10 +203,18 @@ const server = await new Promise((resolve, reject) => {
 });
 const port = server.address().port;
 const base = `http://127.0.0.1:${port}`;
+const voiceAuth = { Authorization: `Bearer ${process.env.API_AUTH_TOKEN}` };
+
+const actionUnauth = await fetch(`${base}/api/agent/voice/action`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ action: { type: "setScenario", payload: { scenario: "techo" } } }),
+});
+ok(actionUnauth.status === 401, "voice/action without auth → 401");
 
 const actionOk = await fetch(`${base}/api/agent/voice/action`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", ...voiceAuth },
   body: JSON.stringify({ action: { type: "setScenario", payload: { scenario: "techo" } } }),
 });
 const actionJson = await actionOk.json();
@@ -215,14 +223,14 @@ ok(actionJson.action?.type === "setScenario", "voice/action echoes validated act
 
 const actionBad = await fetch(`${base}/api/agent/voice/action`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", ...voiceAuth },
   body: JSON.stringify({ action: { type: "dropDatabase", payload: {} } }),
 });
 ok(actionBad.status === 400, "voice/action rejects unknown action type");
 
 const toolOk = await fetch(`${base}/api/agent/voice/action`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", ...voiceAuth },
   body: JSON.stringify({
     action: { type: "get_calc_state", payload: {} },
     calcState: { scenario: "solo_techo", listaPrecios: "web" },
