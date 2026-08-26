@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-26 (productos sueltos = catálogo Agregar producto)
+**Última actualización:** 2026-08-26 (fix panel catálogo inputModo m²)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-26 (fix — Panel catálogo = inputModo m²):** Tras #1115, Agregar producto / productos sueltos escribían paneles sin `inputModo:"m2"`; la UI de *Paneles por medidas* mostraba dimensiones (default opuesto al motor) y al cambiar el modo reescribía el m² cotizado. Fix: `quickAddPanel` setea `inputModo:"m2"` + `resolveLibrePanelInputModo` compartido UI/motor.
 
 **2026-08-26 (feat — Productos sueltos = catálogo Agregar producto):** Presupuesto libre / productos manuales usa el mismo picker del drawer (búsqueda, chips, fotos, qty, Agregar) en vez de las listas texto de Perfilería/Tornillería/Selladores. Paneles por medidas y Producto fuera de lista siguen. `ProductCatalogPicker` extraído de `ProductQuickAddDrawer`.
 
