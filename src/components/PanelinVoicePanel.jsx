@@ -2,8 +2,9 @@
  * PanelinVoicePanel — hands-free voice conversation UI (embedded chat).
  *
  * Renders when voice mode is active inside PanelinChatPanel.
- * Uses useHandsFreeVoice (Web Speech API + browser TTS + wake word "Panelin").
- * OpenAI Realtime / WebRTC lives on /panelin/live via useVoiceSession — not here.
+ * Primary path: Grok Speech-to-Speech via useVoiceSession (same brain pack as
+ * the xAI console agent + shared IAlfred↔Panelin lessons + form tools).
+ * Fallback: useHandsFreeVoice (Web Speech API) or Whisper push-to-talk.
  *
  * Fallback (Firefox / no Web Speech): push-to-talk → POST /api/agent/transcribe
  * (Whisper) via useDictation, then send() + browser TTS for the reply.
@@ -19,8 +20,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { useHandsFreeVoice } from "../hooks/useHandsFreeVoice.js";
+import { useVoiceSession } from "../hooks/useVoiceSession.js";
 import { useDictation } from "../hooks/useDictation.js";
-import { isHandsFreeSupported, canUseWhisperVoice } from "../hooks/voiceSupport.js";
+import {
+  isHandsFreeSupported,
+  canUseWhisperVoice,
+  isGrokRealtimeSupported,
+} from "../hooks/voiceSupport.js";
 import {
   PANELIN_AI_EVENT,
   resolveEffectiveAiPick,
@@ -290,24 +296,249 @@ function WhisperVoicePanel({
   );
 }
 
-export default function PanelinVoicePanel({
+function RealtimeVoicePanel({
   calcState,
   onAction,
   onSwitchToText,
   skinTokens,
-  devMode = false,
+  PRIMARY,
+  devMode,
   authHeader,
-  voiceMode = true,
-  send,
-  messages = [],
-  aiProvider = "auto",
-  aiModel = "",
-  realtimeModel = "",
+  voiceMode,
+  realtimeModel,
+  onPhase,
 }) {
-  const PRIMARY = skinTokens?.primary || "#0071e3";
+  const [voiceError, setVoiceError] = useState(null);
+  const [transcript, setTranscript] = useState([]);
+  const transcriptEndRef = useRef(null);
+  const assistantBufRef = useRef("");
+
+  const handleError = useCallback((msg) => setVoiceError(msg), []);
+
+  const onTranscriptDelta = useCallback((evt) => {
+    if (evt?.role === "user" && evt.transcript) {
+      assistantBufRef.current = "";
+      setTranscript((prev) => [...prev, { role: "user", text: String(evt.transcript) }]);
+      return;
+    }
+    if (evt?.role === "assistant" && evt.delta) {
+      assistantBufRef.current += evt.delta;
+      const text = assistantBufRef.current;
+      setTranscript((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last?.role === "assistant") {
+          next[next.length - 1] = { ...last, text };
+          return next;
+        }
+        next.push({ role: "assistant", text });
+        return next;
+      });
+    }
+  }, []);
+
+  const {
+    status,
+    isSpeaking,
+    isListening,
+    vuLevel,
+    start,
+    stop,
+  } = useVoiceSession({
+    onAction,
+    onTranscriptDelta,
+    onError: handleError,
+    devMode,
+    authHeader,
+    realtimeModel: realtimeModel || null,
+    voiceProvider: "grok",
+    aiProvider: "grok",
+  });
+
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [transcript]);
+
+  useEffect(() => {
+    if (!voiceMode && status !== "idle") stop();
+  }, [voiceMode, status, stop]);
+
+  useEffect(() => {
+    const phase =
+      status === "connecting" ? "Conectando cerebro Live…"
+        : status === "active" && isSpeaking ? "Hablando…"
+          : status === "active" && isListening ? "Escuchando…"
+            : status === "active" ? "En vivo"
+              : status === "error" ? "Error de voz"
+                : "Toca para hablar";
+    onPhase?.(phase);
+  }, [status, isSpeaking, isListening, onPhase]);
+
+  const handleMicButton = useCallback(() => {
+    if (status === "idle" || status === "error") {
+      setVoiceError(null);
+      assistantBufRef.current = "";
+      start(calcState);
+    } else {
+      stop();
+    }
+  }, [status, start, stop, calcState]);
+
+  const MIC_SIZE = 80;
+  const isActive = status === "active";
+  const isConnecting = status === "connecting";
+  const micBg = isActive
+    ? isSpeaking
+      ? "#ef4444"
+      : isListening
+        ? PRIMARY
+        : "#6b7280"
+    : PRIMARY;
+  const statusLabel =
+    status === "connecting" ? "Conectando cerebro Live…"
+      : status === "error" ? (voiceError || "Error de voz")
+        : isActive
+          ? (isSpeaking ? "Hablando…" : isListening ? "Escuchando…" : "En vivo — hablá")
+          : "Toca para hablar con Panelin";
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        fontFamily: FONT,
+      }}
+    >
+      <style>{`@keyframes panelin-mic-pulse{0%,100%{box-shadow:0 0 0 4px rgba(0,113,227,0.2)}50%{box-shadow:0 0 0 10px rgba(0,113,227,0.05)}}`}</style>
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "16px 14px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        <p
+          style={{
+            color: "#6e6e73",
+            fontSize: 11,
+            textAlign: "center",
+            margin: "0 0 8px",
+            lineHeight: 1.35,
+          }}
+        >
+          Cerebro <strong>Panelin BMC</strong> · Grok Live + calc + lecciones IAlfred
+        </p>
+        {transcript.length === 0 && (
+          <p style={{ color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 16 }}>
+            La transcripción aparecerá aquí mientras hablás.
+          </p>
+        )}
+        {transcript.map((line, i) => (
+          <TranscriptLine key={i} role={line.role} text={line.text} primary={PRIMARY} />
+        ))}
+        <div ref={transcriptEndRef} />
+      </div>
+      {voiceError && (
+        <div
+          style={{
+            background: "#fef2f2",
+            color: "#dc2626",
+            fontSize: 12,
+            padding: "8px 14px",
+            borderTop: "1px solid #fecaca",
+            flexShrink: 0,
+          }}
+        >
+          {voiceError}
+        </div>
+      )}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 12,
+          padding: "20px 14px",
+          borderTop: "1px solid #e5e5ea",
+          flexShrink: 0,
+          background: skinTokens?.drawerBg || "#fff",
+        }}
+      >
+        <p style={{ fontSize: 12, color: "#6e6e73", margin: 0 }}>{statusLabel}</p>
+        <div style={{ position: "relative", width: MIC_SIZE, height: MIC_SIZE }}>
+          {isActive && (
+            <VuRing
+              level={vuLevel}
+              isSpeaking={isSpeaking}
+              isListening={isListening}
+              primary={PRIMARY}
+              size={MIC_SIZE}
+            />
+          )}
+          <button
+            type="button"
+            onClick={handleMicButton}
+            disabled={isConnecting}
+            aria-label={isActive ? "Detener voz" : "Iniciar voz Live"}
+            style={{
+              width: MIC_SIZE,
+              height: MIC_SIZE,
+              borderRadius: "50%",
+              border: "none",
+              background: isConnecting ? "#d1d5db" : micBg,
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: isConnecting ? "default" : "pointer",
+              transition: "background 200ms ease",
+              boxShadow: isActive ? `0 0 0 4px ${micBg}22` : "0 2px 8px rgba(0,0,0,0.15)",
+              animation: isListening ? "panelin-mic-pulse 1.5s infinite" : "none",
+            }}
+          >
+            {isActive || isConnecting ? <PhoneOff size={28} /> : <Mic size={28} />}
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={() => { stop(); onSwitchToText?.(); }}
+          style={{
+            border: "none",
+            background: "transparent",
+            color: "#9ca3af",
+            fontSize: 12,
+            cursor: "pointer",
+            fontFamily: FONT,
+            textDecoration: "underline",
+          }}
+        >
+          Pasar a texto
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function HandsFreeEmbeddedPanel({
+  calcState,
+  onAction,
+  onSwitchToText,
+  skinTokens,
+  PRIMARY,
+  voiceMode,
+  send,
+  messages,
+  aiProvider,
+  aiModel,
+  realtimeModel,
+}) {
   const [voiceError, setVoiceError] = useState(null);
   const transcriptEndRef = useRef(null);
-  // Keep label in sync with header selector (props can lag; storage is SoT with send()).
   const [storedPick, setStoredPick] = useState(() => loadPanelinAiSelection());
   useEffect(() => {
     const sync = () => setStoredPick(loadPanelinAiSelection());
@@ -323,7 +554,6 @@ export default function PanelinVoicePanel({
     aiProvider && aiProvider !== "auto" ? aiProvider : storedPick.aiProvider,
     aiProvider && aiProvider !== "auto" ? aiModel : storedPick.aiModel,
   );
-  // Props win when parent passes an explicit non-auto provider
   const pick =
     aiProvider && aiProvider !== "auto"
       ? { aiProvider, aiModel: aiModel || "" }
@@ -331,9 +561,6 @@ export default function PanelinVoicePanel({
   const chatModelLabel = formatAiChatModelLabel(pick.aiProvider, pick.aiModel);
 
   const handleError = useCallback((msg) => setVoiceError(msg), []);
-
-  const handsFreeOk = isHandsFreeSupported();
-  const whisperOk = canUseWhisperVoice();
 
   const { status, phase, transcript, isSpeaking, isListening, vuLevel, start, stop } = useHandsFreeVoice({
     onAction,
@@ -360,57 +587,6 @@ export default function PanelinVoicePanel({
       stop();
     }
   }, [status, start, stop, calcState]);
-
-  if (!handsFreeOk && whisperOk) {
-    return (
-      <WhisperVoicePanel
-        send={send}
-        messages={messages}
-        onSwitchToText={onSwitchToText}
-        skinTokens={skinTokens}
-        PRIMARY={PRIMARY}
-      />
-    );
-  }
-
-  if (!handsFreeOk) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 16,
-          padding: 24,
-          fontFamily: FONT,
-          textAlign: "center",
-        }}
-      >
-        <MicOff size={40} color="#9ca3af" />
-        <p style={{ fontSize: 14, color: "#6e6e73", margin: 0 }}>
-          Tu navegador no soporta reconocimiento de voz ni captura de micrófono. Probá Chrome, Edge o Safari actualizado.
-        </p>
-        <button
-          type="button"
-          onClick={onSwitchToText}
-          style={{
-            border: "none",
-            background: PRIMARY,
-            color: "#fff",
-            borderRadius: 8,
-            padding: "8px 16px",
-            fontSize: 13,
-            cursor: "pointer",
-            fontFamily: FONT,
-          }}
-        >
-          Usar modo texto
-        </button>
-      </div>
-    );
-  }
 
   const MIC_SIZE = 80;
   const isActive = status === "active";
@@ -565,5 +741,107 @@ export default function PanelinVoicePanel({
         </button>
       </div>
     </div>
+  );
+}
+
+function UnsupportedVoicePanel({ onSwitchToText, PRIMARY }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 16,
+        padding: 24,
+        fontFamily: FONT,
+        textAlign: "center",
+      }}
+    >
+      <MicOff size={40} color="#9ca3af" />
+      <p style={{ fontSize: 14, color: "#6e6e73", margin: 0 }}>
+        Tu navegador no soporta reconocimiento de voz ni captura de micrófono. Probá Chrome, Edge o Safari actualizado.
+      </p>
+      <button
+        type="button"
+        onClick={onSwitchToText}
+        style={{
+          border: "none",
+          background: PRIMARY,
+          color: "#fff",
+          borderRadius: 8,
+          padding: "8px 16px",
+          fontSize: 13,
+          cursor: "pointer",
+          fontFamily: FONT,
+        }}
+      >
+        Usar modo texto
+      </button>
+    </div>
+  );
+}
+
+export default function PanelinVoicePanel({
+  calcState,
+  onAction,
+  onSwitchToText,
+  skinTokens,
+  devMode = false,
+  authHeader,
+  voiceMode = true,
+  send,
+  messages = [],
+  aiProvider = "auto",
+  aiModel = "",
+  realtimeModel = "",
+  onPhase,
+}) {
+  const PRIMARY = skinTokens?.primary || "#0071e3";
+  if (isGrokRealtimeSupported()) {
+    return (
+      <RealtimeVoicePanel
+        calcState={calcState}
+        onAction={onAction}
+        onSwitchToText={onSwitchToText}
+        skinTokens={skinTokens}
+        PRIMARY={PRIMARY}
+        devMode={devMode}
+        authHeader={authHeader}
+        voiceMode={voiceMode}
+        realtimeModel={realtimeModel}
+        onPhase={onPhase}
+      />
+    );
+  }
+  if (canUseWhisperVoice()) {
+    return (
+      <WhisperVoicePanel
+        send={send}
+        messages={messages}
+        onSwitchToText={onSwitchToText}
+        skinTokens={skinTokens}
+        PRIMARY={PRIMARY}
+      />
+    );
+  }
+  if (!isHandsFreeSupported()) {
+    return <UnsupportedVoicePanel onSwitchToText={onSwitchToText} PRIMARY={PRIMARY} />;
+  }
+  return (
+    <HandsFreeEmbeddedPanel
+      calcState={calcState}
+      onAction={onAction}
+      onSwitchToText={onSwitchToText}
+      skinTokens={skinTokens}
+      PRIMARY={PRIMARY}
+      voiceMode={voiceMode}
+      send={send}
+      messages={messages}
+      aiProvider={aiProvider}
+      aiModel={aiModel}
+      realtimeModel={realtimeModel}
+    />
   );
 }

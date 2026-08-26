@@ -8,7 +8,12 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
-import { buildVoiceSystemPrompt } from "../lib/chatPrompts.js";
+import { executeTool } from "../lib/agentTools.js";
+import { shapeToolResult } from "../mcp/voiceShape.js";
+import {
+  buildVoiceBrainPack,
+  VOICE_BRAIN_TOOL_SET,
+} from "../lib/voiceBrainPack.js";
 
 import { recordVoiceError, listVoiceErrors, clearVoiceErrors } from "../lib/voiceErrorLog.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -123,7 +128,8 @@ router.post(
 
   // Whitelist the lead-context fields we accept from the client (launched from
   // the CRM sheet hyperlink). sanitizeForPrompt inside buildVoiceSystemPrompt
-  // handles length-capping + injection neutralization of the values themselves.
+  // handles length-capping + injection neutralization of the values themselves
+  // (buildVoiceDynamicContext inside the Voice Brain Pack).
   const safeLeadContext =
     leadContext && typeof leadContext === "object"
       ? {
@@ -133,80 +139,12 @@ router.post(
         }
       : null;
 
-  const systemPrompt = buildVoiceSystemPrompt(calcState, { devMode, leadContext: safeLeadContext });
-
-  // Tool definitions mirroring the text-mode action set
-  const tools = [
-    {
-      type: "function",
-      name: "setScenario",
-      description: "Establece el escenario de la calculadora",
-      parameters: { type: "object", properties: { scenario: { type: "string" } }, required: ["scenario"] },
-    },
-    {
-      type: "function",
-      name: "setLP",
-      description: "Establece la lista de precios (web o venta)",
-      parameters: { type: "object", properties: { listaPrecios: { type: "string" } }, required: ["listaPrecios"] },
-    },
-    {
-      type: "function",
-      name: "setTecho",
-      description: "Configura los parámetros del techo",
-      parameters: {
-        type: "object",
-        properties: {
-          familia: { type: "string" },
-          espesor: { type: "string" },
-          color: { type: "string" },
-          tipoAguas: { type: "string" },
-          pendiente: { type: "number" },
-          tipoEst: { type: "string" },
-          zonas: { type: "array", items: { type: "object" } },
-        },
-      },
-    },
-    {
-      type: "function",
-      name: "setPared",
-      description: "Configura los parámetros de la pared/fachada",
-      parameters: {
-        type: "object",
-        properties: {
-          familia: { type: "string" },
-          espesor: { type: "string" },
-          alto: { type: "number" },
-          perimetro: { type: "number" },
-        },
-      },
-    },
-    {
-      type: "function",
-      name: "setCamara",
-      description: "Configura las dimensiones de la cámara frigorífica",
-      parameters: {
-        type: "object",
-        properties: {
-          largo_int: { type: "number" },
-          ancho_int: { type: "number" },
-          alto_int: { type: "number" },
-        },
-        required: ["largo_int", "ancho_int", "alto_int"],
-      },
-    },
-    {
-      type: "function",
-      name: "setFlete",
-      description: "Establece el costo de flete en USD",
-      parameters: { type: "object", properties: { flete: { type: "number" } }, required: ["flete"] },
-    },
-    {
-      type: "function",
-      name: "setProyecto",
-      description: "Establece datos del proyecto (nombre, RUT, etc.)",
-      parameters: { type: "object", properties: { nombre: { type: "string" }, rut: { type: "string" } } },
-    },
-  ];
+  const brainPack = buildVoiceBrainPack(calcState, { devMode, leadContext: safeLeadContext });
+  const systemPrompt = brainPack.instructions;
+  // OpenAI Realtime mint only accepts function tools; xAI also takes web_search.
+  const tools = voiceProvider === "grok"
+    ? brainPack.tools
+    : (brainPack.tools || []).filter((t) => t.type === "function");
 
   let sessionData;
   try {
@@ -293,8 +231,12 @@ router.post(
     voiceProvider === "grok"
       ? {
           instructions: systemPrompt,
-          tools,
-          tool_choice: "auto",
+          tools: brainPack.tools,
+          tool_choice: brainPack.tool_choice || "auto",
+          voice: brainPack.voice || "eve",
+          language_hint: brainPack.language_hint,
+          keyterms: brainPack.keyterms,
+          replace: brainPack.replace,
         }
       : null;
 
@@ -322,13 +264,40 @@ router.post(
  * the WebRTC data channel to let the voice agent continue.
  */
 router.post("/agent/voice/action", actionLimiter, async (req, res) => {
-  const { action } = req.body || {};
+  const { action, calcState = {} } = req.body || {};
 
   if (!action || typeof action !== "object") {
     return res.status(400).json({ ok: false, error: "action object required" });
   }
 
   const { type, payload } = action;
+
+  if (type && VOICE_BRAIN_TOOL_SET.has(type)) {
+    const collected = [];
+    try {
+      const raw = await executeTool(type, payload || {}, calcState || {}, {
+        source: "voice",
+        emitAction: (a) => {
+          if (a && typeof a === "object") collected.push(a);
+        },
+      });
+      const result = shapeToolResult(type, raw);
+      return res.json({
+        ok: true,
+        kind: "tool",
+        result,
+        actions: collected,
+      });
+    } catch (err) {
+      req.log?.warn?.({ err, type }, "voice tool execute failed");
+      return res.json({
+        ok: true,
+        kind: "tool",
+        result: JSON.stringify({ ok: false, error: err?.message || "tool failed" }),
+        actions: collected,
+      });
+    }
+  }
 
   if (!type || !VALID_ACTION_TYPES.has(type)) {
     return res.status(400).json({ ok: false, error: `Unknown action type: ${type}` });

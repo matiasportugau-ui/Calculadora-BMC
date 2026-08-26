@@ -1097,7 +1097,7 @@ export default function PanelinChatPanel({
               ...ghostBtn,
               background: voiceMode ? "rgba(255,255,255,0.24)" : "transparent",
             }}
-            aria-label={voiceMode ? "Detener voz local" : "Hablar con Panelin (voz local Apple)"}
+            aria-label={voiceMode ? "Detener voz Live" : "Hablar con Panelin (cerebro Live)"}
           >
             <Radio size={15} />
           </button>

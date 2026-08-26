@@ -56,6 +56,7 @@ import { INTENT_HINTS } from "./userIntentClassifier.js";
 import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "./rag.js";
 import * as coworkSheets from "./coworkSheets.js";
 import { classifyEmailSignal } from "./sharedWorkspace.js";
+import { redactGoogleError } from "./googleSheetsAuth.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -2692,7 +2693,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
 
     return JSON.stringify({ error: `Tool "${name}" no implementada` });
   } catch (err) {
-    return JSON.stringify({ error: err.message });
+    return JSON.stringify({ error: redactGoogleError(err.message) });
   }
 }
 

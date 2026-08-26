@@ -1,17 +1,9 @@
-import { google } from "googleapis";
 import { sanitizeCellValue } from "./sheetsCsvGuard.js";
+import { getSheetsClient } from "./googleSheetsAuth.js";
 
 const CHAT_TAB = "_BMC_ChatState";
 const COL_I = 9;
 const COL_M = 13;
-
-async function getSheetsClient() {
-  const auth = new google.auth.GoogleAuth({
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
-  const client = await auth.getClient();
-  return google.sheets({ version: "v4", auth: client });
-}
 
 function adminSheetId(config) {
   return config.wolfbAdminSheetId;

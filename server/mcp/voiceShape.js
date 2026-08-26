@@ -23,7 +23,15 @@ function compactCotizacion(parsed) {
     ok: parsed.ok !== false,
     scenario: parsed.scenario,
     lista: parsed.lista || parsed.listaPrecios,
-    totals: parsed.totals || parsed.totales || null,
+    totals: parsed.totals || parsed.totales || (
+      parsed.subtotalSinIVA != null || parsed.totalConIVA != null
+        ? {
+          subtotalSinIVA: parsed.subtotalSinIVA,
+          iva: parsed.iva ?? parsed.IVA ?? null,
+          totalConIVA: parsed.totalConIVA,
+        }
+        : null
+    ),
     summary: parsed.summary || parsed.resumen || null,
     warnings: parsed.warnings || [],
     autoportancia: parsed.autoportancia || null,

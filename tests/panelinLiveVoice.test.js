@@ -213,6 +213,21 @@ assert(
   "Grok response includes session_bootstrap (instructions + tools)",
 );
 assert(
+  grokSess.json.session_bootstrap.instructions.includes("Panelin") &&
+    grokSess.json.session_bootstrap.instructions.includes("aplicar_estado_calc"),
+  "Grok bootstrap uses Panelin BMC voice brain (form fill)",
+);
+{
+  const bootNames = (grokSess.json.session_bootstrap.tools || []).map((t) => t.name || t.type);
+  assert(bootNames.includes("calcular_cotizacion"), "Grok bootstrap includes calcular_cotizacion");
+  assert(bootNames.includes("web_search"), "Grok bootstrap includes web_search");
+}
+assert(
+  !/"authorization"\s*:/i.test(JSON.stringify(grokSess.json.session_bootstrap)) &&
+    !/PANELI_MCP_SECRET/i.test(JSON.stringify(grokSess.json.session_bootstrap)),
+  "Grok session_bootstrap has no MCP secret",
+);
+assert(
   String(lastMintUrl || "").includes("api.x.ai"),
   "Grok mint hits api.x.ai client_secrets",
 );
