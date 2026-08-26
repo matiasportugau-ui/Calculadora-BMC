@@ -200,11 +200,6 @@ app.use((req, res, next) => {
     ["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"].includes(req.path) &&
     req.method === "POST"
   ) return next();
-  // Driver remito/POD photos arrive as base64 JSON; phone JPEGs routinely exceed
-  // the global 1mb cap (~750KB binary ≈ >1mb base64). Route still enforces 6MB decoded.
-  if (req.path === "/api/driver/evidence/upload-b64" && req.method === "POST") {
-    return express.json({ limit: "8mb" })(req, res, next);
-  }
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(cookieParser());

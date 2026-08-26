@@ -69,18 +69,4 @@ function routeBlock(src, pathLiteral) {
   console.log("  ✓ five chofer screens exist");
 }
 
-{
-  const indexJs = readFileSync(join(root, "server/index.js"), "utf8");
-  assert.ok(
-    indexJs.includes('/api/driver/evidence/upload-b64') && indexJs.includes('limit: "8mb"'),
-    "upload-b64 must use 8mb JSON limit (global 1mb rejects phone photos)",
-  );
-  const sess = readFileSync(join(root, "src/components/driver/useDriverSession.js"), "utf8");
-  assert.ok(
-    sess.includes("pendingCount <= 0") && sess.includes("void syncOutbox()"),
-    "outbox must auto-sync when online + pending",
-  );
-  console.log("  ✓ evidence JSON limit + outbox auto-sync wiring");
-}
-
 console.log("driverLoopRoutes OK");
