@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-26 (productos sueltos = catálogo Agregar producto)
+**Última actualización:** 2026-08-26 (voice/action auth + Admin PDF harden)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-26 (fix — voice/action auth + Admin PDF harden):** Tras #1108/#1110/#1113, `POST /api/agent/voice/action` ejecutaba Sheets/CRM/`generar_pdf`/`admin_cargar_pdfs_fila`/`archivar_pdfs_drive` **sin** auth (prod confirmed: unauth Admin col M write). Gate = session mint (`calc:write`). Also: Admin col M only GCS `bmc-cotizaciones` URLs; col L `estado` via `sanitizeCellValue`. Supersedes conflicted #1114 and drafts #1111/#1109.
 
 **2026-08-26 (feat — Productos sueltos = catálogo Agregar producto):** Presupuesto libre / productos manuales usa el mismo picker del drawer (búsqueda, chips, fotos, qty, Agregar) en vez de las listas texto de Perfilería/Tornillería/Selladores. Paneles por medidas y Producto fuera de lista siguen. `ProductCatalogPicker` extraído de `ProductQuickAddDrawer`.
 
