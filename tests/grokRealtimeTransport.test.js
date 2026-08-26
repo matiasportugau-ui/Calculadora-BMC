@@ -80,4 +80,14 @@ assert.equal(upd.session.audio.input.format.rate, GROK_VOICE_SAMPLE_RATE);
 assert.equal(upd.session.tools.length, 1);
 assert.equal(upd.session.turn_detection.type, "server_vad");
 
+const updEs = buildGrokSessionUpdate({
+  instructions: "hola",
+  language_hint: "es-ES",
+  keyterms: ["IsoDec"],
+  replace: { IsoDec: "Iso-dec" },
+});
+assert.equal(updEs.session.audio.input.transcription.language_hint, "es-ES");
+assert.deepEqual(updEs.session.audio.input.transcription.keyterms, ["IsoDec"]);
+assert.equal(updEs.session.replace.IsoDec, "Iso-dec");
+
 console.log("  ✅ all grokRealtimeTransport asserts passed\n");

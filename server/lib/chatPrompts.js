@@ -501,12 +501,22 @@ Usá esta consulta solo como contexto para dar más información sobre esta coti
  * @param {object} calcState
  * @param {{ devMode?: boolean, leadContext?: {quoteId?: string, cliente?: string, consulta?: string}|null }} options
  */
-export function buildVoiceSystemPrompt(calcState = {}, options = {}) {
+/**
+ * Calc state + lead + optional dev rules (no identity). Used by Voice Brain Pack
+ * so console instructions are not duplicated with IDENTITY.
+ */
+export function buildVoiceDynamicContext(calcState = {}, options = {}) {
   const { devMode = false, leadContext = null } = options;
   const devModeRules = devMode
     ? "## MODO DESARROLLADOR\nPriorizá precisión; si falta un dato, preguntá antes de afirmar números."
     : "";
-  return [IDENTITY, VOICE_REALTIME_RULES, buildCalcStateBlock(calcState), buildLeadContextBlock(leadContext), devModeRules]
+  return [buildCalcStateBlock(calcState), buildLeadContextBlock(leadContext), devModeRules]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function buildVoiceSystemPrompt(calcState = {}, options = {}) {
+  return [IDENTITY, VOICE_REALTIME_RULES, buildVoiceDynamicContext(calcState, options)]
     .filter(Boolean)
     .join("\n\n");
 }

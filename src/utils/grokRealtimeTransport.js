@@ -142,6 +142,16 @@ export function buildGrokSessionUpdate(boot = {}) {
       output: { format: { type: "audio/pcm", rate: GROK_VOICE_SAMPLE_RATE } },
     },
   };
+  if (boot.language_hint || (Array.isArray(boot.keyterms) && boot.keyterms.length)) {
+    session.audio.input.transcription = {};
+    if (boot.language_hint) session.audio.input.transcription.language_hint = boot.language_hint;
+    if (Array.isArray(boot.keyterms) && boot.keyterms.length) {
+      session.audio.input.transcription.keyterms = boot.keyterms;
+    }
+  }
+  if (boot.replace && typeof boot.replace === "object") {
+    session.replace = boot.replace;
+  }
   if (Array.isArray(boot.tools) && boot.tools.length) {
     session.tools = boot.tools;
     session.tool_choice = boot.tool_choice || "auto";

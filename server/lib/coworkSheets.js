@@ -3,10 +3,10 @@
  * Spec: docs/team/SDD-PANELIN-COWORK.md
  */
 
-import { google } from "googleapis";
 import { config } from "../config.js";
 import { sanitizeCellValue } from "./sheetsCsvGuard.js";
 import { getBmcChatInquiries } from "./bmcChatSheets.js";
+import { getSheetsClient, redactGoogleError } from "./googleSheetsAuth.js";
 
 /**
  * @returns {Record<string, string>} alias → spreadsheetId
@@ -46,14 +46,6 @@ export function resolveWorkbook(workbook) {
     error: "spreadsheet_not_allowlisted",
     hint: `Usá workbook "admin" o "crm". Permitidos: ${Object.keys(allow).join(", ") || "(ninguno configurado)"}`,
   };
-}
-
-async function getSheetsClient() {
-  const auth = new google.auth.GoogleAuth({
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
-  const client = await auth.getClient();
-  return google.sheets({ version: "v4", auth: client });
 }
 
 /**
@@ -163,7 +155,7 @@ export async function getPendingAdmin(logger) {
     const rows = await getBmcChatInquiries(config, logger);
     return { ok: true, count: rows.length, inquiries: rows };
   } catch (err) {
-    return { ok: false, error: err.message || "pending_admin_failed" };
+    return { ok: false, error: redactGoogleError(err.message || "pending_admin_failed") };
   }
 }
 

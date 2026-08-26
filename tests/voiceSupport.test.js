@@ -32,6 +32,7 @@ assert.equal(canUseWhisperVoice({ hasMic: false, hasSpeechRecognition: false }),
 const vs = fs.readFileSync(path.join(ROOT, "src/hooks/voiceSupport.js"), "utf8");
 assert.match(vs, /export function isHandsFreeSupported/);
 assert.match(vs, /export function canUseWhisperVoice/);
+assert.match(vs, /export function isGrokRealtimeSupported/);
 assert.match(vs, /SpeechRecognition|webkitSpeechRecognition/);
 
 const dict = fs.readFileSync(path.join(ROOT, "src/hooks/useDictation.js"), "utf8");

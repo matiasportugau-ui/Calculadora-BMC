@@ -79,6 +79,7 @@ export function useVoiceSession({
   const sessionBootstrapRef = useRef(null);
   const voiceProviderRef = useRef("openai");
   const stoppedRef = useRef(false);
+  const calcStateRef = useRef({});
 
   const stopVu = useCallback(() => {
     if (vuRafRef.current) {
@@ -252,16 +253,40 @@ export function useVoiceSession({
         }
 
         let validatedAction = { type: fnName, payload: args };
+        let toolOutput = JSON.stringify({ ok: true });
         try {
           const headers = { "Content-Type": "application/json" };
           if (authHeader) headers.Authorization = authHeader;
           const relayRes = await fetch(`${API_BASE}/api/agent/voice/action`, {
             method: "POST",
             headers,
-            body: JSON.stringify({ action: { type: fnName, payload: args } }),
+            body: JSON.stringify({
+              action: { type: fnName, payload: args },
+              calcState: calcStateRef.current || {},
+            }),
           });
           if (relayRes.ok) {
             const relayData = await relayRes.json();
+            if (relayData.kind === "tool" || relayData.result != null) {
+              toolOutput = typeof relayData.result === "string"
+                ? relayData.result
+                : JSON.stringify(relayData.result ?? { ok: true });
+              if (Array.isArray(relayData.actions)) {
+                for (const a of relayData.actions) {
+                  if (a?.type) onAction?.(a);
+                }
+              }
+              sendEvent({
+                type: "conversation.item.create",
+                item: {
+                  type: "function_call_output",
+                  call_id: callId,
+                  output: toolOutput,
+                },
+              });
+              sendEvent({ type: "response.create" });
+              return;
+            }
             if (relayData.ok && relayData.action) {
               validatedAction = relayData.action;
             } else if (relayData.rejected) {
@@ -291,7 +316,7 @@ export function useVoiceSession({
           item: {
             type: "function_call_output",
             call_id: callId,
-            output: JSON.stringify({ ok: true }),
+            output: toolOutput,
           },
         });
         sendEvent({ type: "response.create" });
@@ -568,6 +593,7 @@ export function useVoiceSession({
     async (calcState = {}) => {
       if (status === "connecting" || status === "active") return;
       stoppedRef.current = false;
+      calcStateRef.current = calcState || {};
       setStatus("connecting");
 
       try {

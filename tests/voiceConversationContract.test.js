@@ -177,6 +177,9 @@ const chatPanel = fs.readFileSync(path.join(root, "src/components/PanelinChatPan
 ok(chatPanel.includes("send={send}"), "chat voice panel receives send()");
 ok(chatPanel.includes("aiProvider={aiProvider}"), "chat voice panel receives aiProvider");
 ok(chatPanel.includes("PanelinVoicePanel"), "chat embeds PanelinVoicePanel");
+const voicePanelSrc = fs.readFileSync(path.join(root, "src/components/PanelinVoicePanel.jsx"), "utf8");
+ok(voicePanelSrc.includes("useVoiceSession"), "floating Voice Mode uses useVoiceSession (Grok brain)");
+ok(voicePanelSrc.includes("isGrokRealtimeSupported"), "floating Voice Mode gates on Grok realtime");
 
 const livePage = fs.readFileSync(path.join(root, "src/components/PanelinLivePage.jsx"), "utf8");
 ok(livePage.includes("aiProvider: aiSel.aiProvider"), "Live page passes aiProvider to voice hook");
@@ -216,6 +219,18 @@ const actionBad = await fetch(`${base}/api/agent/voice/action`, {
   body: JSON.stringify({ action: { type: "dropDatabase", payload: {} } }),
 });
 ok(actionBad.status === 400, "voice/action rejects unknown action type");
+
+const toolOk = await fetch(`${base}/api/agent/voice/action`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: { type: "get_calc_state", payload: {} },
+    calcState: { scenario: "solo_techo", listaPrecios: "web" },
+  }),
+});
+const toolJson = await toolOk.json();
+ok(toolOk.status === 200 && toolJson.kind === "tool", "voice/action executes get_calc_state as tool");
+ok(typeof toolJson.result === "string" && toolJson.result.includes("solo_techo"), "get_calc_state result includes scenario");
 
 server.close();
 

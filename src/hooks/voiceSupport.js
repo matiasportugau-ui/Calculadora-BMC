@@ -27,6 +27,15 @@ export function isHandsFreeSupported() {
 }
 
 /**
+ * In-app Grok Speech-to-Speech (WebSocket PCM). Works without WebRTC SDP
+ * (Safari included) as long as mic + WebSocket exist.
+ */
+export function isGrokRealtimeSupported() {
+  if (typeof window === "undefined") return false;
+  return typeof WebSocket === "function" && canUseMic();
+}
+
+/**
  * Firefox (and other browsers without Web Speech): push-to-talk via
  * POST /api/agent/transcribe (Whisper) when a mic is available.
  */
