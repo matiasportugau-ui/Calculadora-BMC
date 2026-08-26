@@ -38,9 +38,18 @@ export const VOICE_BRAIN_TOOL_ALLOWLIST = Object.freeze([
   "sheets_find",
   "aplicar_estado_calc",
   "generar_pdf",
+  "admin_cargar_pdfs_fila",
+  "archivar_pdfs_drive",
 ]);
 
 export const VOICE_BRAIN_TOOL_SET = new Set(VOICE_BRAIN_TOOL_ALLOWLIST);
+
+/** Writes that voice HITL already confirmed by speaking — stamp user_confirmed. */
+export const VOICE_WRITE_AUTOCONFIRM = Object.freeze([
+  "generar_pdf",
+  "admin_cargar_pdfs_fila",
+  "archivar_pdfs_drive",
+]);
 
 /** UI actions the existing /panelin/live path already understands. */
 export const VOICE_FORM_FUNCTION_TOOLS = Object.freeze([

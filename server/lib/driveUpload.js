@@ -323,3 +323,116 @@ export async function saveQuotationBundleToDrive({
     pdfUrl: pdfFile.webViewLink || null,
   };
 }
+
+const ALLOWED_PDF_HOSTS = new Set(["storage.googleapis.com"]);
+
+export function isAllowedQuotePdfUrl(raw) {
+  try {
+    const u = new URL(String(raw || "").trim());
+    if (u.protocol !== "https:") return false;
+    if (ALLOWED_PDF_HOSTS.has(u.hostname) && u.pathname.startsWith("/bmc-cotizaciones/")) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetch public GCS quote PDFs and archive them under DRIVE_QUOTE_FOLDER_ID (user OAuth).
+ */
+export async function archivePdfsFromUrls({
+  pdfs = [],
+  cliente = "",
+  quotationCode = "",
+} = {}) {
+  const rootFolderId = process.env.DRIVE_QUOTE_FOLDER_ID || "";
+  if (!rootFolderId) {
+    const err = new Error("DRIVE_QUOTE_FOLDER_ID no configurado");
+    err.code = "drive_unavailable";
+    throw err;
+  }
+  if (!userOAuthAvailable()) {
+    const err = new Error("Drive OAuth de usuario no configurado (GOOGLE_DRIVE_REFRESH_TOKEN)");
+    err.code = "drive_unavailable";
+    throw err;
+  }
+
+  const list = (Array.isArray(pdfs) ? pdfs : [pdfs])
+    .map((item) => {
+      if (typeof item === "string") return { url: item.trim() };
+      if (item && typeof item === "object") {
+        return {
+          url: String(item.url || item.pdfUrl || "").trim(),
+          fileName: item.fileName || item.name,
+        };
+      }
+      return null;
+    })
+    .filter((x) => x?.url);
+
+  if (!list.length) {
+    const err = new Error("pdfs: pasá al menos una URL");
+    err.code = "bad_request";
+    throw err;
+  }
+
+  const fetched = [];
+  for (const item of list) {
+    if (!isAllowedQuotePdfUrl(item.url)) {
+      const err = new Error(`URL de PDF no permitida: ${item.url.slice(0, 80)}`);
+      err.code = "bad_request";
+      throw err;
+    }
+    const res = await fetch(item.url, { signal: AbortSignal.timeout(25000) });
+    if (!res.ok) {
+      const err = new Error(`No pude bajar el PDF (${res.status})`);
+      err.code = "fetch_failed";
+      throw err;
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (!buf.length || buf.length > 12 * 1024 * 1024) {
+      const err = new Error("PDF vacío o demasiado grande");
+      err.code = "bad_request";
+      throw err;
+    }
+    const fromUrl = decodeURIComponent(item.url.split("/").pop() || "cotizacion.pdf");
+    fetched.push({
+      buffer: buf,
+      fileName: String(item.fileName || fromUrl).replace(/[^\w.\-() ]+/g, "_").slice(0, 180),
+    });
+  }
+
+  const drive = await getDriveClient();
+  const code = String(quotationCode || fetched[0]?.fileName || "BMC").replace(/\.pdf$/i, "").slice(0, 80) || "BMC";
+  const { quoteFolderId } = await ensureQuotationFolderPath(
+    drive,
+    rootFolderId,
+    code,
+    { nombre: cliente },
+  );
+
+  const uploaded = [];
+  for (const f of fetched) {
+    const existing = await findFileInFolder(drive, quoteFolderId, f.fileName);
+    const file = await uploadBinaryFile(drive, {
+      buffer: f.buffer,
+      filename: f.fileName,
+      mimeType: PDF_MIME,
+      folderId: quoteFolderId,
+      existingFileId: existing?.id || null,
+      appProperties: { source: "voice_archive", quotationCode: code.slice(0, 40) },
+    });
+    uploaded.push({
+      fileName: f.fileName,
+      fileId: file.id,
+      url: file.webViewLink || null,
+    });
+  }
+
+  return {
+    ok: true,
+    folderId: quoteFolderId,
+    folderUrl: `https://drive.google.com/drive/folders/${quoteFolderId}`,
+    files: uploaded,
+  };
+}
