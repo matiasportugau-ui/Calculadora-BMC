@@ -12,7 +12,6 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { requirePaneliMcpAuth } from "../mcp/auth.js";
 import { createPaneliMcpServer, listPaneliMcpToolNames } from "../mcp/paneliMcpServer.js";
 import { resolveDenyList } from "../mcp/denyList.js";
-import { sessionKeyFromReq } from "../mcp/conversationState.js";
 
 /** @type {Map<string, { transport: StreamableHTTPServerTransport, sessionKey: string }>} */
 const sessions = new Map();
@@ -86,7 +85,11 @@ function createMcpRouter() {
       }
 
       if (!existingId && isInitializeRequest(req.body)) {
-        const convKey = sessionKeyFromReq(req, undefined);
+        // Server-owned calcState key per initialize. Never key by client
+        // X-Conversation-Id / Mcp-Session-Id — shared bearer + client-chosen
+        // ids would merge concurrent ElevenLabs conversations onto one state
+        // (or allow hitchhiking). Legacy "default" fallback removed.
+        const convKey = randomUUID();
         const { server } = createPaneliMcpServer({
           sessionKey: convKey,
           logger: req.log || console,
