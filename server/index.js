@@ -200,6 +200,11 @@ app.use((req, res, next) => {
     ["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"].includes(req.path) &&
     req.method === "POST"
   ) return next();
+  // Driver remito/POD phone JPEGs: upload-b64 allows 6MB decoded (~8MB base64 JSON).
+  // Global 1mb would 413 before the route (Outdoor Night PWA Remitos path).
+  if (req.path === "/api/driver/evidence/upload-b64" && req.method === "POST") {
+    return express.json({ limit: "8mb" })(req, res, next);
+  }
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(cookieParser());

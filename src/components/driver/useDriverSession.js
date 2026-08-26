@@ -172,6 +172,12 @@ export default function useDriverSession() {
     await loadTrip();
   }, [token, authHeader, loadTrip, refreshOutbox]);
 
+  // Flush IndexedDB outbox when connectivity returns (Sync CTA is Home-only).
+  useEffect(() => {
+    if (!online || !token) return;
+    void syncOutbox();
+  }, [online, token, syncOutbox]);
+
   const sendEvent = useCallback(
     async (type, extra = {}, geo = null, stopId = null) => {
       if (!token || !trip) return;
@@ -254,6 +260,50 @@ export default function useDriverSession() {
 
   const uploadB64 = async (kind, file, stopId = null) => {
     if (!token || !trip || !file) return;
+    const mime = file.type || "image/jpeg";
+    const idempotency_key = `evi:${trip.trip_id}:${kind}:${Date.now()}`;
+
+    // Prefer GCS signed URL (prod) — avoids 1mb JSON body + ephemeral local_dev disk.
+    const urlRes = await fetch("/api/driver/evidence/upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeader },
+      body: JSON.stringify({
+        idempotency_key,
+        trip_id: trip.trip_id,
+        stop_id: stopId,
+        kind,
+        mime,
+        size_bytes: file.size || 0,
+      }),
+    });
+    const urlData = await urlRes.json().catch(() => ({}));
+    if (urlRes.ok && urlData?.ok && urlData.upload_url && urlData.path) {
+      const put = await fetch(urlData.upload_url, {
+        method: "PUT",
+        headers: { "Content-Type": mime },
+        body: file,
+      });
+      if (!put.ok) throw new Error(`GCS upload failed (${put.status})`);
+      const commitRes = await fetch("/api/driver/evidence/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({
+          idempotency_key,
+          trip_id: trip.trip_id,
+          stop_id: stopId,
+          kind,
+          path: urlData.path,
+          mime,
+          size_bytes: file.size || 0,
+        }),
+      });
+      const commitData = await commitRes.json().catch(() => ({}));
+      if (!commitRes.ok || !commitData.ok) throw new Error(commitData.error || "Commit failed");
+      await loadTrip();
+      return;
+    }
+
+    // Dev / no TRANSPORTISTA_GCS_BUCKET: base64 to API (needs 8mb JSON limit).
     const data_base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -271,12 +321,18 @@ export default function useDriverSession() {
         trip_id: trip.trip_id,
         stop_id: stopId,
         kind,
-        mime: file.type || "image/jpeg",
+        mime,
         data_base64,
       }),
     });
-    const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data.error || "Upload failed");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      const msg =
+        res.status === 413
+          ? "Foto demasiado grande para el servidor (máx. ~6MB)"
+          : data.error || "Upload failed";
+      throw new Error(msg);
+    }
     await loadTrip();
   };
 
