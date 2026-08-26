@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-26 (fix — Paneli MCP harden + Driver evidence/outbox):** Post-#1095: voice shaping keeps flat `totalConIVA` / `comparar_listas` / `comparar_escenarios` deltas; MCP calcState keyed by server UUID; prod requires `PANELI_MCP_SECRET` (no `API_AUTH_TOKEN` fallback); safe calcState assign. Driver: `/api/driver/evidence/upload-b64` uses 8mb JSON parser (was blocked by global 1mb); outbox auto-syncs on reconnect. Supersedes draft #1100 for MCP slice.
+**2026-08-26 (fix — Paneli MCP harden post-#1095):** Voice shaping keeps flat `totalConIVA` / `comparar_listas` / `comparar_escenarios` deltas; MCP calcState keyed by server UUID; prod requires `PANELI_MCP_SECRET` (no `API_AUTH_TOKEN` fallback); safe calcState assign. Supersedes draft #1100 (+ escenarios gap). Driver evidence/outbox → prefer #1104.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 
