@@ -1,0 +1,64 @@
+/**
+ * Bearer auth for Paneli MCP (ElevenLabs → /mcp).
+ * Prefer PANELI_MCP_SECRET; fall back to API_AUTH_TOKEN for local/dev.
+ */
+import { timingSafeEqual } from "node:crypto";
+
+export function getPaneliMcpSecret() {
+  return String(
+    process.env.PANELI_MCP_SECRET ||
+      process.env.API_AUTH_TOKEN ||
+      process.env.API_KEY ||
+      "",
+  ).trim();
+}
+
+function safeEqual(a, b) {
+  const aa = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (aa.length !== bb.length) return false;
+  try {
+    return timingSafeEqual(aa, bb);
+  } catch {
+    return false;
+  }
+}
+
+/** Extract Bearer token from Authorization header, or "". */
+export function bearerFromReq(req) {
+  const auth = String(req?.headers?.authorization || "");
+  if (auth.startsWith("Bearer ")) return auth.slice(7).trim();
+  return "";
+}
+
+/**
+ * Express middleware: require Bearer PANELI_MCP_SECRET (or API_AUTH_TOKEN fallback).
+ * Skips paths ending with /health.
+ */
+export function requirePaneliMcpAuth(req, res, next) {
+  const path = String(req.path || req.url || "");
+  if (path === "/health" || path.endsWith("/health")) return next();
+
+  const secret = getPaneliMcpSecret();
+  if (!secret) {
+    return res.status(503).json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32000,
+        message: "PANELI_MCP_SECRET (or API_AUTH_TOKEN) not configured",
+      },
+      id: null,
+    });
+  }
+
+  const bearer = bearerFromReq(req);
+  const xKey = String(req.headers["x-api-key"] || "").trim();
+  if (!safeEqual(bearer, secret) && !safeEqual(xKey, secret)) {
+    return res.status(401).json({
+      jsonrpc: "2.0",
+      error: { code: -32001, message: "Unauthorized" },
+      id: null,
+    });
+  }
+  return next();
+}

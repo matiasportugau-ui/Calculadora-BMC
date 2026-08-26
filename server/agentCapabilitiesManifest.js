@@ -106,10 +106,14 @@ export function buildAgentCapabilitiesManifest(config) {
   const discovery = {
     capabilities_url: `${base}/capabilities`,
     health_url: `${base}/health`,
+    mcp_url: `${base}/mcp`,
+    mcp_health_url: `${base}/mcp/health`,
+    mcp_docs: "docs/team/PANELI-MCP.md",
     docs: {
       agent_ui_vs_api: "docs/AGENT-UI-VS-API.md",
       static_capabilities_json: "docs/api/AGENT-CAPABILITIES.json",
       openapi_calc_file: "docs/openapi-calc.yaml",
+      paneli_mcp: "docs/team/PANELI-MCP.md",
     },
   };
 

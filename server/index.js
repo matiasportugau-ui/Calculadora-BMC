@@ -16,6 +16,7 @@ import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
+import { createMcpRouter } from "./routes/mcp.js";
 import deepResearchRouter from "./routes/deepResearch.js";
 import agentChatRouter from "./routes/agentChat.js";
 import agentTrainingRouter from "./routes/agentTraining.js";
@@ -1006,6 +1007,9 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 }));
 
 app.use("/calc", calcRouter);
+// Paneli MCP (ElevenLabs voice) — Streamable HTTP; Bearer PANELI_MCP_SECRET
+app.use("/mcp", createMcpRouter());
+app.use("/api/mcp", createMcpRouter());
 // Asistente "equipo" (OpenAI) — /api/team-assist/* (antes del dashboard para no colisionar)
 app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", authGoogleRouter);

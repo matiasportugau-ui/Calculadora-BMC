@@ -14,6 +14,10 @@ Single Vite SPA (React 18) + Express 5 API + Postgres. State: `docs/team/PROJECT
 | `npm run pre-release` | full gate + fitness + goldens + score |
 | `npm run harness:score` | HCS composite (need ≥90 for expert complete) |
 | `npm run test:contracts` | Live API contracts (API must be up) |
+| `npm run smoke:paneli-mcp` | ElevenLabs Paneli MCP (`/mcp`) health + tools/list smoke |
+| `npm run mcp:panelin` | Stdio MCP for Cursor/Claude (proxies `/api/agent/exec-tool`) |
+
+**Paneli voice MCP (ElevenLabs):** Streamable HTTP at `/mcp` (Bearer `PANELI_MCP_SECRET`). Docs: `docs/team/PANELI-MCP.md`. Wraps `AGENT_TOOLS`; writes denied by default (`PANELI_MCP_ALLOW_WRITES=1` to unlock).
 
 ## Rules (failure-earned — see `docs/team/harness/RULE-PROVENANCE.md`)
 
