@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (BMC Driver Loop — join REP→trip + 5 visual specs)
+**Última actualización:** 2026-08-26 (Paneli MCP session isolation + CodeQL harden)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-26 (fix — Paneli MCP session isolation + auth):** Concurrent `/mcp` initializes no longer share calcState via `"default"` / client `X-Conversation-Id` (server UUID per session). `setCalcState` blocks `__proto__`/`constructor` property injection (CodeQL). Prod/Cloud Run requires `PANELI_MCP_SECRET` (no `API_AUTH_TOKEN` fallback). Env docs: `PANELI_MCP_*` in `.env.example`.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.
 

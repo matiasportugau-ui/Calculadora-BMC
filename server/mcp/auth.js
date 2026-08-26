@@ -1,15 +1,24 @@
 /**
  * Bearer auth for Paneli MCP (ElevenLabs → /mcp).
- * Prefer PANELI_MCP_SECRET; fall back to API_AUTH_TOKEN for local/dev.
+ * Prefer PANELI_MCP_SECRET. API_AUTH_TOKEN / API_KEY fallback is local/dev only
+ * (never on Cloud Run / NODE_ENV=production) to avoid secret-confusion blast radius.
  */
 import { timingSafeEqual } from "node:crypto";
 
+function isProdLikeRuntime() {
+  return (
+    process.env.NODE_ENV === "production" ||
+    Boolean(String(process.env.K_SERVICE || "").trim())
+  );
+}
+
 export function getPaneliMcpSecret() {
+  const dedicated = String(process.env.PANELI_MCP_SECRET || "").trim();
+  if (dedicated) return dedicated;
+  // Prod / Cloud Run: require dedicated secret (no API_AUTH_TOKEN fallback).
+  if (isProdLikeRuntime()) return "";
   return String(
-    process.env.PANELI_MCP_SECRET ||
-      process.env.API_AUTH_TOKEN ||
-      process.env.API_KEY ||
-      "",
+    process.env.API_AUTH_TOKEN || process.env.API_KEY || "",
   ).trim();
 }
 
@@ -32,7 +41,8 @@ export function bearerFromReq(req) {
 }
 
 /**
- * Express middleware: require Bearer PANELI_MCP_SECRET (or API_AUTH_TOKEN fallback).
+ * Express middleware: require Bearer PANELI_MCP_SECRET
+ * (API_AUTH_TOKEN fallback only outside prod/Cloud Run).
  * Skips paths ending with /health.
  */
 export function requirePaneliMcpAuth(req, res, next) {
@@ -45,7 +55,7 @@ export function requirePaneliMcpAuth(req, res, next) {
       jsonrpc: "2.0",
       error: {
         code: -32000,
-        message: "PANELI_MCP_SECRET (or API_AUTH_TOKEN) not configured",
+        message: "PANELI_MCP_SECRET not configured",
       },
       id: null,
     });
