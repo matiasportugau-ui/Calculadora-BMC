@@ -193,6 +193,10 @@ ok(csp.includes("media-src"), "CSP sets media-src for Realtime audio");
 process.env.API_AUTH_TOKEN = process.env.API_AUTH_TOKEN || "voice-contract-token";
 process.env.PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || "http://localhost:3001";
 const { default: agentVoiceRouter } = await import("../server/routes/agentVoice.js");
+const { config: voiceActionConfig } = await import("../server/config.js");
+// Earlier imports may have cached config before API_AUTH_TOKEN was set.
+voiceActionConfig.apiAuthToken = process.env.API_AUTH_TOKEN;
+const VOICE_ACTION_AUTH = { Authorization: `Bearer ${process.env.API_AUTH_TOKEN}` };
 const app = express();
 app.use(express.json());
 app.use("/api", agentVoiceRouter);
@@ -204,9 +208,55 @@ const server = await new Promise((resolve, reject) => {
 const port = server.address().port;
 const base = `http://127.0.0.1:${port}`;
 
-const actionOk = await fetch(`${base}/api/agent/voice/action`, {
+const actionUnauth = await fetch(`${base}/api/agent/voice/action`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: { type: "sheets_get_pending_admin", payload: {} },
+  }),
+});
+ok(actionUnauth.status === 401, "voice/action without auth → 401 (blocks Sheets tools)");
+
+const pdfUnauth = await fetch(`${base}/api/agent/voice/action`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: { type: "generar_pdf", payload: { scenario: "solo_techo", listaPrecios: "web" } },
+  }),
+});
+ok(pdfUnauth.status === 401, "voice/action generar_pdf without auth → 401");
+
+const adminPdfUnauth = await fetch(`${base}/api/agent/voice/action`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: {
+      type: "admin_cargar_pdfs_fila",
+      payload: {
+        row: 21,
+        pdfs: ["https://storage.googleapis.com/bmc-cotizaciones/quotes/pdf/x.pdf"],
+        estado: "=HYPERLINK(\"https://evil.example\")",
+      },
+    },
+  }),
+});
+ok(adminPdfUnauth.status === 401, "voice/action admin_cargar_pdfs_fila without auth → 401");
+
+const driveUnauth = await fetch(`${base}/api/agent/voice/action`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: {
+      type: "archivar_pdfs_drive",
+      payload: { pdfs: ["https://storage.googleapis.com/bmc-cotizaciones/quotes/pdf/x.pdf"] },
+    },
+  }),
+});
+ok(driveUnauth.status === 401, "voice/action archivar_pdfs_drive without auth → 401");
+
+const actionOk = await fetch(`${base}/api/agent/voice/action`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json", ...VOICE_ACTION_AUTH },
   body: JSON.stringify({ action: { type: "setScenario", payload: { scenario: "techo" } } }),
 });
 const actionJson = await actionOk.json();
@@ -215,14 +265,14 @@ ok(actionJson.action?.type === "setScenario", "voice/action echoes validated act
 
 const actionBad = await fetch(`${base}/api/agent/voice/action`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", ...VOICE_ACTION_AUTH },
   body: JSON.stringify({ action: { type: "dropDatabase", payload: {} } }),
 });
 ok(actionBad.status === 400, "voice/action rejects unknown action type");
 
 const toolOk = await fetch(`${base}/api/agent/voice/action`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", ...VOICE_ACTION_AUTH },
   body: JSON.stringify({
     action: { type: "get_calc_state", payload: {} },
     calcState: { scenario: "solo_techo", listaPrecios: "web" },

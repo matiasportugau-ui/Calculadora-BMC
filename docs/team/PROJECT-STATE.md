@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-26 (fix — voice/action auth + Admin PDF harden):** Tras #1108/#1110/#1113, `POST /api/agent/voice/action` ejecutaba Sheets/CRM/`generar_pdf`/`admin_cargar_pdfs_fila`/`archivar_pdfs_drive` **sin** auth (prod confirmed). Gate = session mint (`calc:write`). Also: Admin col M only GCS `bmc-cotizaciones` URLs; col L `estado` via `sanitizeCellValue`. Supersedes draft #1111/#1109.
+
 **2026-08-26 (feat — Voice: planilla Admin + Drive tras PDF):** Tools `admin_cargar_pdfs_fila` (col M 🧾) y `archivar_pdfs_drive` (carpeta Drive OAuth). ASR planilla/parrilla/sonrilla. Voice auto-confirma esas writes.
 
 
