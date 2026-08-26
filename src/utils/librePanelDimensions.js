@@ -42,13 +42,24 @@ export function resolveLibrePanelCatalogEntry(familia, espesor, catalog = {}) {
 }
 
 /**
+ * Resolve editor/engine mode for a libre panel line.
+ * Missing or unknown `inputModo` → `"m2"` (catalog / Agregar producto path).
+ * Only explicit `"dimensiones"` uses largo × ancho / paneles.
+ * @param {object} [line]
+ * @returns {"m2"|"dimensiones"}
+ */
+export function resolveLibrePanelInputModo(line) {
+  return line?.inputModo === "dimensiones" ? "dimensiones" : "m2";
+}
+
+/**
  * Métricas de una línea libre (m² directo o largo × ancho/paneles, con varios largos).
  * @param {object} line
  * @param {object} [catalog]
  */
 export function computeLibrePanelLineMetrics(line, catalog = {}) {
-  const modo = line?.inputModo === "m2" ? "m2" : line?.inputModo === "dimensiones" ? "dimensiones" : "m2";
-  if (modo === "m2" || !line?.inputModo) {
+  const modo = resolveLibrePanelInputModo(line);
+  if (modo === "m2") {
     const m2 = Number(line?.m2) || 0;
     return { m2, totalPaneles: null, tramosDetail: [], mode: "m2", au: null };
   }

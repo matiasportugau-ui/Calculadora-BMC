@@ -50,6 +50,7 @@ import {
   defaultLibrePanelLine,
   defaultLibrePanelTramo,
   normalizeLibrePanelLine,
+  resolveLibrePanelInputModo,
 } from "../utils/librePanelDimensions.js";
 import {
   calcTotalesSinIVA,
@@ -3519,7 +3520,19 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
   );
   const quickAddPanel = useCallback(
     ({ familia, espesor, color, m2 }) =>
-      setLibrePanelLines((l) => [...l, { familia, espesor, color: color || "Blanco", m2: Number(m2) > 0 ? Number(m2) : 1 }]),
+      setLibrePanelLines((l) => [
+        ...l,
+        {
+          familia,
+          espesor,
+          color: color || "Blanco",
+          m2: Number(m2) > 0 ? Number(m2) : 1,
+          // Catalog / Agregar producto always quotes m² — must match engine default
+          // (resolveLibrePanelInputModo) so "Paneles por medidas" does not show
+          // dimensiones and silently rewrite the area on mode toggle.
+          inputModo: "m2",
+        },
+      ]),
     [],
   );
 
@@ -7727,7 +7740,7 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
                 const all = { ...pt, ...pp };
                 const pd = line.familia ? all[line.familia] : null;
                 const espOpts = pd ? Object.keys(pd.esp).map((e) => ({ value: Number(e), label: `${e} mm`, badge: pd.esp[e].ap ? `AP ${pd.esp[e].ap}m` : undefined })) : [];
-                const inputModo = line.inputModo === "m2" ? "m2" : "dimensiones";
+                const inputModo = resolveLibrePanelInputModo(line);
                 const anchoModo = line.anchoModo === "metros" ? "metros" : "paneles";
                 const tramos = line.tramos?.length ? line.tramos : [{ largo: 6 }];
                 const metrics = computeLibrePanelLineMetrics(line, libreCatalog || {});
