@@ -162,6 +162,8 @@ group("AGENT_TOOLS surface", () => {
     "sheets_propose_write",
     "sheets_write_range",
     "pea_explain_gap",
+    "admin_cargar_pdfs_fila",
+    "archivar_pdfs_drive",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);

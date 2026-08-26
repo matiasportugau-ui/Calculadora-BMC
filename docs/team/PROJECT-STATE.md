@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (BMC Driver Loop — join REP→trip + 5 visual specs)
+**Última actualización:** 2026-08-26 (productos sueltos = catálogo Agregar producto)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-26 (feat — Productos sueltos = catálogo Agregar producto):** Presupuesto libre / productos manuales usa el mismo picker del drawer (búsqueda, chips, fotos, qty, Agregar) en vez de las listas texto de Perfilería/Tornillería/Selladores. Paneles por medidas y Producto fuera de lista siguen. `ProductCatalogPicker` extraído de `ProductQuickAddDrawer`.
 
 **2026-08-26 (feat — Voice: planilla Admin + Drive tras PDF):** Tools `admin_cargar_pdfs_fila` (col M 🧾) y `archivar_pdfs_drive` (carpeta Drive OAuth). ASR planilla/parrilla/sonrilla. Voice auto-confirma esas writes.
 
