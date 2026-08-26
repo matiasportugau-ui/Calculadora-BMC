@@ -97,17 +97,6 @@ export default function useDriverSession() {
     setSearchParams({}, { replace: true });
   }, [tokenFromUrl, setSearchParams]);
 
-  useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
-    return () => {
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
-    };
-  }, []);
-
   const authHeader = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
 
   const loadTrip = useCallback(async () => {
@@ -171,6 +160,21 @@ export default function useDriverSession() {
     await refreshOutbox();
     await loadTrip();
   }, [token, authHeader, loadTrip, refreshOutbox]);
+
+  // Auto-flush IndexedDB outbox when connectivity returns (manual Sync CTA still available on Home).
+  useEffect(() => {
+    const on = () => {
+      setOnline(true);
+      void syncOutbox();
+    };
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, [syncOutbox]);
 
   const sendEvent = useCallback(
     async (type, extra = {}, geo = null, stopId = null) => {
@@ -254,6 +258,58 @@ export default function useDriverSession() {
 
   const uploadB64 = async (kind, file, stopId = null) => {
     if (!token || !trip || !file) return;
+    const mime = file.type || "image/jpeg";
+    const idempotency_key = `evi:${trip.trip_id}:${kind}:${Date.now()}`;
+
+    // Prefer signed GCS upload when bucket is configured (prod). Fall back to
+    // upload-b64 only when the server says GCS is unavailable (503) or the
+    // request fails at the network layer before a clear auth/trip error.
+    const urlRes = await fetch("/api/driver/evidence/upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeader },
+      body: JSON.stringify({
+        idempotency_key: `${idempotency_key}:url`,
+        trip_id: trip.trip_id,
+        stop_id: stopId,
+        kind,
+        mime,
+        size_bytes: file.size || 0,
+      }),
+    });
+    const urlData = await urlRes.json().catch(() => ({}));
+
+    if (urlRes.ok && urlData.ok && urlData.upload_url && urlData.path) {
+      const put = await fetch(urlData.upload_url, {
+        method: "PUT",
+        headers: { "Content-Type": mime },
+        body: file,
+      });
+      if (!put.ok) throw new Error(`GCS upload failed (${put.status})`);
+      const commitRes = await fetch("/api/driver/evidence/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({
+          idempotency_key: `${idempotency_key}:commit`,
+          trip_id: trip.trip_id,
+          stop_id: stopId,
+          kind,
+          path: urlData.path,
+          mime,
+          size_bytes: file.size || 0,
+        }),
+      });
+      const commitData = await commitRes.json().catch(() => ({}));
+      if (!commitRes.ok || !commitData.ok) {
+        throw new Error(commitData.error || "Evidence commit failed");
+      }
+      await loadTrip();
+      return;
+    }
+
+    if (urlRes.status === 401 || urlRes.status === 403) {
+      throw new Error(urlData.error || "No autorizado para subir evidencia");
+    }
+
     const data_base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -267,15 +323,23 @@ export default function useDriverSession() {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeader },
       body: JSON.stringify({
-        idempotency_key: `evi:b64:${trip.trip_id}:${kind}:${Date.now()}`,
+        idempotency_key: `${idempotency_key}:b64`,
         trip_id: trip.trip_id,
         stop_id: stopId,
         kind,
-        mime: file.type || "image/jpeg",
+        mime,
         data_base64,
       }),
     });
-    const data = await res.json();
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+      if (res.status === 413) {
+        throw new Error("Foto demasiado grande para subir sin GCS (máx ~6MB).");
+      }
+      throw new Error(`Upload failed (${res.status})`);
+    }
     if (!res.ok || !data.ok) throw new Error(data.error || "Upload failed");
     await loadTrip();
   };

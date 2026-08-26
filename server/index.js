@@ -47,6 +47,7 @@ import createPaosRouter from "./routes/paos.js";
 import createPeaRouter from "./routes/pea.js";
 import createEnvironmentRouter from "./routes/environment.js";
 import createCsrfProtection from "./middleware/csrfProtection.js";
+import { jsonBodyLimitForPath } from "./lib/jsonBodyLimit.js";
 import createActivityRouter from "./routes/activity.js";
 import { createQuotesRouter } from "./routes/quotes.js";
 import { createQuoteDriveArchiveRouter } from "./routes/quoteDriveArchive.js";
@@ -200,7 +201,9 @@ app.use((req, res, next) => {
     ["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"].includes(req.path) &&
     req.method === "POST"
   ) return next();
-  return express.json({ limit: "1mb" })(req, res, next);
+  // Per-path limits: upload-b64 allows 6MB binary (base64 ≈ 8mb); pdf HTML can exceed 1mb.
+  // Route-level express.json after this middleware cannot raise the limit.
+  return express.json({ limit: jsonBodyLimitForPath(req.method, req.path) })(req, res, next);
 });
 app.use(cookieParser());
 // CSRF (CWE-352): verificación de procedencia para métodos inseguros con
