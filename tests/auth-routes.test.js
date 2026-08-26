@@ -114,6 +114,53 @@ async function run() {
       401
     );
 
+    // ── POST /api/agent/voice/action (Sheets/CRM/PDF tools after #1108/#1110) ─
+    r = await fetch(`${base}/api/agent/voice/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: { type: "sheets_get_pending_admin", payload: {} },
+      }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/agent/voice/action without auth → 401",
+      r.status === 401 && body.ok === false,
+      { status: r.status, ok: body.ok },
+      { status: 401, ok: false }
+    );
+
+    r = await fetch(`${base}/api/agent/voice/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: { type: "generar_pdf", payload: { scenario: "solo_techo", listaPrecios: "web" } },
+      }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/agent/voice/action generar_pdf without auth → 401",
+      r.status === 401 && body.ok === false,
+      { status: r.status, ok: body.ok },
+      { status: 401, ok: false }
+    );
+
+    r = await fetch(`${base}/api/agent/voice/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({
+        action: { type: "get_calc_state", payload: {} },
+        calcState: { scenario: "solo_techo" },
+      }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/agent/voice/action with token → 200 tool",
+      r.status === 200 && body.kind === "tool",
+      { status: r.status, kind: body.kind },
+      { status: 200, kind: "tool" }
+    );
+
     // ── Legacy routers must fail closed if service token is not configured ──
     const previousToken = config.apiAuthToken;
     config.apiAuthToken = "";
