@@ -56,20 +56,30 @@ export function createPaneliMcpServer(opts = {}) {
               logger,
               source: "paneli_mcp",
             });
-            // Persist state mutations from aplicar_estado_calc when present
+            // Persist allowlisted calc fields from aplicar_estado_calc
             if (tool.name === "aplicar_estado_calc") {
               try {
                 const parsed = JSON.parse(raw);
-                if (parsed?.ok && parsed?.state) {
-                  setCalcState(sessionKey, parsed.state, { replace: true });
-                } else if (parsed?.ok) {
+                if (parsed?.ok) {
+                  // Only fixed keys — never Object.assign raw tool/user bags
+                  // (avoids remote property injection into calcState).
+                  const fromTool =
+                    parsed.state &&
+                    typeof parsed.state === "object" &&
+                    !Array.isArray(parsed.state)
+                      ? parsed.state
+                      : null;
                   setCalcState(sessionKey, {
-                    scenario: input.scenario ?? calcState.scenario,
-                    listaPrecios: input.listaPrecios ?? calcState.listaPrecios,
-                    techo: input.techo ?? calcState.techo,
-                    pared: input.pared ?? calcState.pared,
-                    camara: input.camara ?? calcState.camara,
-                    flete: input.flete ?? calcState.flete,
+                    scenario:
+                      fromTool?.scenario ?? input.scenario ?? calcState.scenario,
+                    listaPrecios:
+                      fromTool?.listaPrecios ??
+                      input.listaPrecios ??
+                      calcState.listaPrecios,
+                    techo: fromTool?.techo ?? input.techo ?? calcState.techo,
+                    pared: fromTool?.pared ?? input.pared ?? calcState.pared,
+                    camara: fromTool?.camara ?? input.camara ?? calcState.camara,
+                    flete: fromTool?.flete ?? input.flete ?? calcState.flete,
                   });
                 }
               } catch {
