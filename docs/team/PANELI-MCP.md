@@ -19,12 +19,41 @@ Public via Cloud Run `panelin-calc` and Vercel rewrite `/mcp` → Cloud Run.
 
 | Key | Where |
 |-----|--------|
-| `PANELI_MCP_SECRET` | Doppler `bmc-backend/prd` + GCP Secret Manager / Cloud Run env |
-| Fallback (dev) | `API_AUTH_TOKEN` if `PANELI_MCP_SECRET` unset |
+| `PANELI_MCP_SECRET` | Preferred — Doppler `bmc-backend/prd` + GCP Secret Manager on Cloud Run |
+| Fallback | `API_AUTH_TOKEN` (already on Cloud Run) if `PANELI_MCP_SECRET` unset |
 
 ElevenLabs dashboard → **Secret Token** = same value (sent as `Authorization: Bearer …`).
 
 Never put the secret in the Server URL query string.
+
+### One-shot: create dedicated secret + attach to Cloud Run
+
+```bash
+# run from any machine with doppler + gcloud auth
+SECRET_FILE=$(mktemp) && chmod 600 "$SECRET_FILE"
+openssl rand -hex 32 | tr -d '\n' > "$SECRET_FILE"
+
+doppler secrets set PANELI_MCP_SECRET --project=bmc-backend --config=prd < "$SECRET_FILE"
+
+gcloud secrets create PANELI_MCP_SECRET --replication-policy=automatic --project=chatbot-bmc-live || true
+gcloud secrets versions add PANELI_MCP_SECRET --data-file="$SECRET_FILE" --project=chatbot-bmc-live
+
+RUNTIME_SA=$(gcloud run services describe panelin-calc --region=us-central1 --project=chatbot-bmc-live --format='value(spec.template.spec.serviceAccountName)')
+gcloud secrets add-iam-policy-binding PANELI_MCP_SECRET \
+  --project=chatbot-bmc-live \
+  --member="serviceAccount:${RUNTIME_SA}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud run services update panelin-calc \
+  --region=us-central1 --project=chatbot-bmc-live \
+  --update-secrets=PANELI_MCP_SECRET=PANELI_MCP_SECRET:latest
+
+# optional: also add PANELI_MCP_SECRET=PANELI_MCP_SECRET:latest to
+# .github/workflows/deploy-calc-api.yml --set-secrets so future deploys keep it
+rm -f "$SECRET_FILE"
+```
+
+Until that script runs, Paneli MCP accepts **`API_AUTH_TOKEN`** as the Bearer secret.
 
 ## Writes policy
 
