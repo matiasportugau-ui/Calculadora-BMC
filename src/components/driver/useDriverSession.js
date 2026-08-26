@@ -172,6 +172,12 @@ export default function useDriverSession() {
     await loadTrip();
   }, [token, authHeader, loadTrip, refreshOutbox]);
 
+  // Auto-flush IndexedDB outbox when connectivity returns (Sync button is Home-only).
+  useEffect(() => {
+    if (!online || !token || pendingCount <= 0) return;
+    void syncOutbox();
+  }, [online, token, pendingCount, syncOutbox]);
+
   const sendEvent = useCallback(
     async (type, extra = {}, geo = null, stopId = null) => {
       if (!token || !trip) return;
