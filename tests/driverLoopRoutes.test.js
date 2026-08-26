@@ -69,4 +69,23 @@ function routeBlock(src, pathLiteral) {
   console.log("  ✓ five chofer screens exist");
 }
 
+{
+  const sess = readFileSync(join(root, "src/components/driver/useDriverSession.js"), "utf8");
+  assert.ok(sess.includes('addEventListener("online"'), "must listen for online");
+  assert.ok(sess.includes("void syncOutbox()"), "online must auto-flush outbox");
+  assert.ok(sess.includes("/api/driver/evidence/upload-url"), "must prefer GCS signed URL");
+  assert.ok(sess.includes("/api/driver/evidence/commit"), "must commit after GCS PUT");
+  assert.ok(sess.includes("/api/driver/evidence/upload-b64"), "must keep b64 fallback for local/dev");
+  console.log("  ✓ evidence prefers GCS; online auto-syncs outbox");
+}
+
+{
+  const index = readFileSync(join(root, "server/index.js"), "utf8");
+  assert.ok(index.includes("jsonBodyLimitForPath"), "global JSON parser must use per-path limits");
+  const limitMod = readFileSync(join(root, "server/lib/jsonBodyLimit.js"), "utf8");
+  assert.ok(limitMod.includes("/api/driver/evidence/upload-b64"));
+  assert.ok(limitMod.includes("8mb"));
+  console.log("  ✓ global JSON limit raised for upload-b64");
+}
+
 console.log("driverLoopRoutes OK");
