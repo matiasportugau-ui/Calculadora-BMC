@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-26 (test — Voice/MCP allowlist + session isolation):** Pins `#1108` voice/action write-tool deny (CRM/WA/Sheets/email never `kind:tool`), lead-context extra-field strip, `#1095` MCP session isolation/`x-api-key`/missing-secret 503, and voice-shape flat totals + PDF HTML omit. `tests/voiceActionAllowlist.test.js` + extras in `paneliMcp` / `voiceBrainPack` / `panelinLiveVoice`. Does not land open auth-gate `#1109`/`#1111` or MCP harden `#1096`–`#1107`.
+
 **2026-08-26 (feat — Voice Mode flotante = cerebro Panelin BMC):** El mic del chat ya no es solo Hands-free→chat. Path principal: Grok Realtime + Voice Brain Pack (instrucciones consola + tools AGENT_TOOLS/MCP allowlist ejecutadas server-side + `aplicar_estado_calc` al form + `brainKB` si el flag está on). Código: `server/lib/voiceBrainPack.js`, `PanelinVoicePanel.jsx`. Fallback Hands-free/Whisper si no hay mic+WebSocket.
 
 **2026-08-21 (feat — BMC Driver Loop):** Join `POST /api/repartos/:id/confirm` → transportista `trip` + URL `/conductor?t=` (SPA, not `/calculadora/conductor`). PWA Outdoor Night: login, home, carga (FSM), listo, perfil (`docs/sdd/bmc-driver-loop/`). Customer `/seguimiento/:token` parked. Flota: celular chofer. Branch `feat/logistica-driver-loop` worktree `~/calculadora-bmc-driver-loop`. Do not mix with paid white-label.

@@ -16,6 +16,7 @@ import { createPaneliMcpServer, listPaneliMcpToolNames } from "../server/mcp/pan
 import {
   getCalcState,
   setCalcState,
+  sessionKeyFromReq,
   _resetConversationStateForTests,
 } from "../server/mcp/conversationState.js";
 
@@ -74,6 +75,49 @@ console.log("ok denyList");
     shapeToolResult("obtener_informe_completo", JSON.stringify({ lista: "web", asesoria: { a: 1, b: 2 } })),
   );
   assert.ok(informe.note);
+
+  const flat = JSON.parse(
+    shapeToolResult(
+      "calcular_cotizacion",
+      JSON.stringify({
+        ok: true,
+        scenario: "solo_techo",
+        subtotalSinIVA: 100,
+        iva: 22,
+        totalConIVA: 122,
+      }),
+    ),
+  );
+  assert.equal(flat.totals?.subtotalSinIVA, 100, "flat subtotalSinIVA nested into totals");
+  assert.equal(flat.totals?.totalConIVA, 122);
+  assert.equal(flat.totals?.iva, 22);
+
+  const compare = JSON.parse(
+    shapeToolResult("comparar_listas", JSON.stringify({ ok: true, subtotalSinIVA: 50, totalConIVA: 61 })),
+  );
+  assert.equal(compare.totals?.subtotalSinIVA, 50, "comparar_listas uses quote compact");
+
+  const pdf = JSON.parse(
+    shapeToolResult("obtener_pdf_html", { ok: true, pdf_id: "p1", html: "<html>SECRET-MARKUP</html>" }),
+  );
+  assert.equal(pdf.pdf_id, "p1");
+  assert.ok(!JSON.stringify(pdf).includes("SECRET-MARKUP"), "voice shape omits raw PDF HTML");
+  assert.ok(pdf.html_chars > 0);
+
+  const catalogo = JSON.parse(
+    shapeToolResult("obtener_catalogo", {
+      lista: "web",
+      techo: { ISODEC: { label: "IsoDec", espesores: { 50: {}, 80: {} } } },
+    }),
+  );
+  assert.equal(catalogo.lista, "web");
+  assert.equal(catalogo.techo_familias?.[0]?.id, "ISODEC");
+  assert.ok(catalogo.note);
+
+  const rawLong = `not-json ${"x".repeat(13000)}`;
+  const truncated = shapeToolResult("calcular_cotizacion", rawLong);
+  assert.ok(truncated.includes("[truncated"), "invalid JSON over cap is truncated as text");
+  assert.ok(!truncated.includes("x".repeat(13000)));
   console.log("ok voiceShape");
 }
 
@@ -105,6 +149,29 @@ console.log("ok denyList");
   assert.equal(getCalcState("t1").scenario, "solo_techo");
   setCalcState("t1", { listaPrecios: "web" });
   assert.equal(getCalcState("t1").listaPrecios, "web");
+
+  getCalcState("conv-a").scenario = "solo_techo";
+  assert.equal(getCalcState("conv-b").scenario, undefined, "sessions do not share calcState");
+  setCalcState("conv-b", { scenario: "solo_fachada" });
+  assert.equal(getCalcState("conv-a").scenario, "solo_techo");
+
+  setCalcState("conv-a", { listaPrecios: "venta" });
+  assert.equal(getCalcState("conv-a").scenario, "solo_techo", "setCalcState merges by default");
+  setCalcState("conv-a", { listaPrecios: "web" }, { replace: true });
+  assert.equal(getCalcState("conv-a").scenario, undefined, "replace drops prior keys");
+  assert.equal(getCalcState("conv-a").listaPrecios, "web");
+
+  assert.equal(
+    sessionKeyFromReq({ headers: { "x-conversation-id": "c1", "mcp-session-id": "m1" } }, "t1"),
+    "c1",
+    "x-conversation-id wins over mcp-session-id",
+  );
+  assert.equal(
+    sessionKeyFromReq({ headers: { "x-elevenlabs-conversation-id": "el1" } }),
+    "el1",
+  );
+  assert.equal(sessionKeyFromReq({ headers: {} }, "transport-9"), "transport-9");
+  assert.equal(sessionKeyFromReq({ headers: {} }), "default");
   console.log("ok conversationState");
 }
 
@@ -159,10 +226,54 @@ await withEnv(
     });
     assert.equal(ok.status, 200);
 
+    const viaKey = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": "test-secret-abc",
+      },
+      body: "{}",
+    });
+    assert.equal(viaKey.status, 200, "x-api-key accepted as Bearer equivalent");
+
+    const wrongKey = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": "not-the-secret",
+      },
+      body: "{}",
+    });
+    assert.equal(wrongKey.status, 401);
+
     await new Promise((r) => server.close(r));
   },
 );
 console.log("ok auth");
+
+await withEnv(
+  { PANELI_MCP_SECRET: "", API_AUTH_TOKEN: "", API_KEY: "" },
+  async () => {
+    const req = { path: "/mcp", headers: { authorization: "Bearer anything" } };
+    let status = 0;
+    let body = null;
+    requirePaneliMcpAuth(
+      req,
+      {
+        status(code) {
+          status = code;
+          return { json: (j) => { body = j; } };
+        },
+      },
+      () => {
+        throw new Error("next must not run without secret");
+      },
+    );
+    assert.equal(status, 503, "missing PANELI_MCP_SECRET → 503");
+    assert.equal(body?.error?.code, -32000);
+  },
+);
+console.log("ok auth missing secret");
 
 // ── router /mcp/health (no secret) ─────────────────────────────────────────
 {
