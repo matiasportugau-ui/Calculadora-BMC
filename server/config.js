@@ -304,10 +304,13 @@ export const config = {
         : [
             "https://bmcuruguay.com.uy",
             "https://www.bmcuruguay.com.uy",
+            "https://xj4rir-qz.myshopify.com",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
             "http://localhost:3001",
             "http://127.0.0.1:3001",
+            "http://127.0.0.1:9292",
+            "http://localhost:9292",
           ]
     ),
     String(publicBaseUrl || "").replace(/\/$/, ""),
@@ -337,6 +340,9 @@ export const config = {
     ),
     "https://bmcuruguay.com.uy",
     "https://www.bmcuruguay.com.uy",
+    "https://xj4rir-qz.myshopify.com",
+    "http://127.0.0.1:9292",
+    "http://localhost:9292",
   ].filter((v, i, a) => v && a.indexOf(v) === i),
   /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */
   identityJwtSecret: process.env.IDENTITY_JWT_SECRET || "",

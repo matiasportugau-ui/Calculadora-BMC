@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (storefront Panelin voice = rex)
+**Última actualización:** 2026-08-27 (Panelin Front: insist-quote + PDF + no flete)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-27 (feat — Panelin Front CS pipeline):** Public agent classify→assess→green. Quote only if shopper insists (learning disclaimer) via `calcular_cotizacion` + `generar_pdf` lista **web**. Never quote flete. Complete lead in Admin 2.0 (`origen=VW`, PDF in col K). Config SoT `storefrontAgentConfig.js`. SDD `docs/sdd/storefront-voice-agent/SDD.md`.
+
+**2026-08-27 (feat — Panelin Front text+avatar on storefront):** Shopify widget matches the simple tenant drawer: Panelin image, chips, text-to-text (`POST /api/public/voice/chat`, grok-3-mini, same public allowlist), voice still on the mic. CORS includes `127.0.0.1:9292` + `xj4rir-qz.myshopify.com`. Avatar `/storefront-voice/panelin.png`. Operator chat unchanged.
 
 **2026-08-27 (feat — Storefront Voice shop wiring):** Widget searches Shopify catalog, navigates product/collection, add_to_cart, share links; greeting no longer duplicated. **Carrito** + `add_to_cart` dispatch Horizon `cart:update` and `Shopify.actions.openCart()` (drawer, not a dead `/cart` reload). Custom techos still quote+WA. Storefront TTS voice is **rex** (calm male); operator Voice Mode stays **eve**.
 

@@ -559,7 +559,7 @@ export function createWolfboardRouter(config) {
   // toolbar for channels that don't auto-ingest: CL (cliente físico), LL
   // (llamada), LO (local), FB / IG (residual).
   //
-  // Body: { telefono, cliente, origen, zona, consulta }
+  // Body: { telefono, cliente, origen, zona, consulta, notas?, link? }
   //   - consulta (string, required, non-empty after trim)
   //   - origen (string, optional — UI restricts to CL/LL/LO/FB/IG)
   //   - telefono / cliente / zona (strings, optional — sanitized for Sheets)
@@ -600,7 +600,7 @@ export function createWolfboardRouter(config) {
       sanitizeCellValue(String(body.zona ?? "")),
       sanitizeCellValue(consulta),
       sanitizeCellValue(String(body.notas ?? "")),
-      "",
+      sanitizeCellValue(String(body.link ?? body.linkDrive ?? "")),
       "Pendiente",
       "",
     ];
