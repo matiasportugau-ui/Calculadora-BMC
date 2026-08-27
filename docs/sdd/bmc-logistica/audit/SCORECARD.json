@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-08-27T18:00:00Z",
+  "system_slug": "bmc-logistica",
+  "sdd_path": "docs/sdd/bmc-logistica/SDD.md",
+  "auditor": "sdd-quality-auditor",
+  "loop": "development-glory-g4-logistica-driver-final",
+  "iteration": 2,
+  "composite": 94,
+  "min_pass": 90,
+  "pass": true,
+  "label": "Pass — Final SDD v1.1: mesa ops CONFIRMED on main (OSRM, Tetris, Transportador Voice, assign chofer)",
+  "dimensions": {
+    "schema_completeness": {
+      "weight": 15,
+      "score_0_100": 97,
+      "notes": ["§1–12 present; v1.1 status Final; G-MESA CONFIRMED"]
+    },
+    "c4_fidelity": {
+      "weight": 15,
+      "score_0_100": 95,
+      "notes": ["C4Context OSRM on main; actors op/drv/cli; confirm→driver_url"]
+    },
+    "recreation_sufficiency": {
+      "weight": 20,
+      "score_0_100": 95,
+      "notes": ["RECREATION D1–D5 + O6–O10 cited on main; test commands include tetris/driverAssign/voice"]
+    },
+    "evidence_grounding": {
+      "weight": 15,
+      "score_0_100": 94,
+      "notes": ["Mesa no longer worktree-only; ADR merge closed; GPS still TARGET"]
+    },
+    "ai_architecture_depth": {
+      "weight": 10,
+      "score_0_100": 92,
+      "notes": ["§6 verify + Transportador HITL + Grok Voice surface=logistica; packing not LLM"]
+    },
+    "crosscutting_wa": {
+      "weight": 10,
+      "score_0_100": 91,
+      "notes": ["§9 tokens, 409 confirm, OSRM fail-open, HITL WA"]
+    },
+    "adr_quality": {
+      "weight": 10,
+      "score_0_100": 93,
+      "notes": ["ADR-L01–L05 plus production-port of mesa to main"]
+    },
+    "evolution_readiness": {
+      "weight": 5,
+      "score_0_100": 94,
+      "notes": ["v1.1 Final; residuals GPS + voice secret verify"]
+    }
+  }
+}

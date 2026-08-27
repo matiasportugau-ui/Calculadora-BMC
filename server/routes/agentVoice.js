@@ -27,12 +27,18 @@ import {
   isVoiceMintFallbackError,
   getVoiceProviderConfig,
 } from "../lib/voiceRealtimeProviders.js";
+import {
+  buildLogisticaVoiceBootstrap,
+  isLogisticaVoiceSurface,
+} from "../lib/voice/logisticaTruckerInstructions.js";
 
 const router = Router();
 
 const VALID_ACTION_TYPES = new Set([
   "setScenario", "setLP", "setTecho", "setPared", "setCamara",
   "setFlete", "setProyecto", "setWizardStep", "setTechoZonas", "advanceWizard", "buildQuote",
+  "setStopField", "setEnviosInfo", "setEnviosTruck", "setLogisticaWizard",
+  "advanceLogisticaWizard", "proposeTripPlan", "applyTripPlan",
 ]);
 
 // 3 session mints per minute per IP (ephemeral tokens cost ~1 API call each)
@@ -93,6 +99,7 @@ router.post(
     aiProvider = "auto",
     aiModel = "",
     voiceProvider: rawVoiceProvider = null,
+    surface: rawSurface = "",
   } = req.body || {};
 
   let voiceProvider = resolveVoiceProvider(aiProvider, rawVoiceProvider);
@@ -140,12 +147,16 @@ router.post(
         }
       : null;
 
-  const brainPack = buildVoiceBrainPack(calcState, { devMode, leadContext: safeLeadContext });
-  const systemPrompt = brainPack.instructions;
+  const logisticaPack = isLogisticaVoiceSurface(rawSurface, calcState)
+    ? buildLogisticaVoiceBootstrap(calcState)
+    : null;
+  const brainPack = logisticaPack || buildVoiceBrainPack(calcState, { devMode, leadContext: safeLeadContext });
+  const systemPrompt = logisticaPack ? logisticaPack.instructions : brainPack.instructions;
   // OpenAI Realtime mint only accepts function tools; xAI also takes web_search.
+  const packTools = logisticaPack ? logisticaPack.tools : (brainPack.tools || []);
   const tools = voiceProvider === "grok"
-    ? brainPack.tools
-    : (brainPack.tools || []).filter((t) => t.type === "function");
+    ? packTools
+    : packTools.filter((t) => t.type === "function");
 
   let sessionData;
   try {
@@ -232,9 +243,9 @@ router.post(
     voiceProvider === "grok"
       ? {
           instructions: systemPrompt,
-          tools: brainPack.tools,
+          tools: logisticaPack ? logisticaPack.tools : brainPack.tools,
           tool_choice: brainPack.tool_choice || "auto",
-          voice: brainPack.voice || "eve",
+          voice: logisticaPack?.voice || brainPack.voice || "eve",
           language_hint: brainPack.language_hint,
           keyterms: brainPack.keyterms,
           replace: brainPack.replace,

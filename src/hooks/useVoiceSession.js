@@ -50,6 +50,8 @@ export function useVoiceSession({
   aiModel = "",
   /** Optional override: "openai" | "grok" */
   voiceProvider = null,
+  /** "logistica" mints El Transportador pack (no calc tools). */
+  surface = "",
 }) {
   const [status, setStatus] = useState("idle"); // idle | connecting | active | error
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -610,6 +612,7 @@ export function useVoiceSession({
             aiProvider,
             aiModel,
             voiceProvider: voiceProvider || undefined,
+            surface: surface || undefined,
           }),
         });
         if (!sessRes.ok) {
@@ -670,6 +673,7 @@ export function useVoiceSession({
       aiProvider,
       aiModel,
       voiceProvider,
+      surface,
       startGrokWebSocket,
       startOpenAiWebRtc,
       stopVu,

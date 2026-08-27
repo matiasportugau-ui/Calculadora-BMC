@@ -16,6 +16,7 @@ import {
   applyDefaultPickupToStops,
   createWizardUi,
   adjacentStep,
+  levanteIncompleteMessage,
 } from "../src/utils/logistica/wizardState.js";
 
 let passed = 0;
@@ -43,13 +44,25 @@ console.log("wizardState");
 
 {
   const stops = [{ pickupPointId: "p1" }, { pickupPointId: "p1" }];
-  assert.equal(isLevantesComplete(stops, { singlePickup: true, defaultPickupPointId: "p1" }), true);
+  assert.equal(
+    isLevantesComplete(stops, {
+      singlePickup: true,
+      defaultPickupPointId: "p1",
+      pickupDate: "2026-08-27",
+      pickupTime: "09:00",
+    }),
+    true,
+  );
+  assert.equal(
+    isLevantesComplete(stops, { singlePickup: true, defaultPickupPointId: "p1" }),
+    false,
+  );
   assert.equal(isLevantesComplete([{ a: 1 }], { singlePickup: true, defaultPickupPointId: "" }), false);
   assert.equal(
     isLevantesComplete([{ pickupPointId: "a" }, { pickupPointId: "" }], { singlePickup: false }),
     false,
   );
-  ok("levantes complete single/multi");
+  ok("levantes complete single/multi + appointment");
 }
 
 {
@@ -63,7 +76,12 @@ console.log("wizardState");
     stops: [{ cliente: "X" }],
     info: { transportista: "T", basePointId: "b" },
     truckL: 8,
-    wizard: createWizardUi({ singlePickup: true, defaultPickupPointId: "p1" }),
+    wizard: createWizardUi({
+      singlePickup: true,
+      defaultPickupPointId: "p1",
+      pickupDate: "2026-08-27",
+      pickupTime: "08:30",
+    }),
     route: null,
   };
   assert.equal(firstIncompleteStep(ctx), "ruta");
@@ -109,6 +127,23 @@ console.log("wizardState");
   assert.equal(adjacentStep("pedidos", "next"), "flota");
   assert.equal(adjacentStep("flota", "prev"), "pedidos");
   ok("adjacentStep");
+}
+
+{
+  const places = [{ id: "pickup-kingspan-bromyros", label: "Kingspan (Bromyros)" }];
+  const msg = levanteIncompleteMessage(
+    { defaultPickupPointId: "pickup-kingspan-bromyros" },
+    places,
+  );
+  assert.equal(msg, "Levante Kingspan incompleto: falta fecha y hora.");
+  assert.equal(
+    levanteIncompleteMessage(
+      { defaultPickupPointId: "pickup-kingspan-bromyros", pickupDate: "2026-08-27", pickupTime: "10:00" },
+      places,
+    ),
+    "",
+  );
+  ok("levanteIncompleteMessage Kingspan");
 }
 
 {
