@@ -31,6 +31,12 @@ function routeBlock(src, pathLiteral) {
 }
 
 {
+  assert.ok(app.includes('path="/torre"'));
+  assert.ok(app.includes("/logistica?vista=torre"));
+  console.log("  ✓ /torre aliases logistica torre vista");
+}
+
+{
   const seg = routeBlock(app, "/seguimiento/:token");
   assert.ok(seg.includes("CustomerTrackPage"));
   assert.ok(!seg.includes("<Shell>"), "/seguimiento/:token must not wrap in Shell");

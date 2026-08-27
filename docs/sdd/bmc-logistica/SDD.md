@@ -12,6 +12,7 @@ related:
   - docs/sdd/bmc-envios/SDD.md
   - docs/sdd/bmc-driver-loop/SDD.md
   - docs/sdd/bmc-driver-loop/TARGET.md
+  - docs/sdd/bmc-control-tower/SDD.md
   - docs/sdd/bmc-envios/SDD-GEO-MAPS.md
   - docs/sdd/bmc-logistica/TARGET.md
   - docs/sdd/bmc-logistica/SDD-EL-TRANSPORTADOR-VOICE.md
