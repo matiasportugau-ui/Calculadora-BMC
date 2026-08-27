@@ -337,4 +337,18 @@ gate:local:   pendiente correr al final de la sesión
 
 ---
 
+## 2026-08-27 N — Torre de Control Fase 1 (live board)
+
+**Contexto:** Coordinaciones confirmadas no tenían vista live. `location_ping` del chofer era 400 (FSM).
+
+**Acciones:** Tab Plan|Torre en `/logistica` (alias `/torre`). `GET /api/torre/live`. FSM acepta `location_ping` + `presence`. GPS off si trip `closed`. SDD `docs/sdd/bmc-control-tower/`. Roster/Order ID/IA Torre quedan TARGET T5–T8.
+
+**Verificación:** `node tests/torreLiveView.test.js` + `driverLoopRoutes`. Local UI muestra mapa; `/api/torre/live` en Cloud Run aún no hasta este deploy.
+
+**Próximo paso:** Push + CI + smoke prod `/api/torre/health` y `/logistica?vista=torre`. Fase 2 roster.
+
+**Refs:** docs/sdd/bmc-control-tower/SDD.md · PROJECT-STATE Cambios recientes 2026-08-27 Torre
+
+---
+
 

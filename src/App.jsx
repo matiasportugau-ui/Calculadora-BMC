@@ -472,6 +472,7 @@ export default function App() {
             </Shell>
           }
         />
+        <Route path="/torre" element={<Navigate to="/logistica?vista=torre" replace />} />
         <Route
           path="/calculadora/conductor"
           element={<ConductorLegacyRedirect />}

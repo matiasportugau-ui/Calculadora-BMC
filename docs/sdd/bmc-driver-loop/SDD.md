@@ -2,7 +2,7 @@
 title: System Design Document — BMC Driver Loop
 version: 0.2
 date: 2026-08-21
-status: Draft
+status: As-Built Draft
 author: sdd-architect
 system_slug: bmc-driver-loop
 target_path: calculadora-bmc
@@ -23,7 +23,7 @@ Visual specs (login, profile, trip phases, trips admin, trip done) are integrate
 
 ### 1.1 Problem Statement
 
-`/logistica` plans REP batches. Transportista `trips` + `/conductor` exist in prod but never join. The chofer UI is a debugger (UUIDs, operator Shell). Five Outdoor Night mockups define the phone product. Customer `/seguimiento` was local-only. This bounded context wires **confirm → trip → those five screens → customer GPS**.
+`/logistica` plans REP batches. **As-built:** `POST /api/repartos/:id/confirm` runs `joinRepartoToTrip` and returns `driver_url` on the SPA (`/conductor?t=`). `/conductor` is a PWA island (no operator Shell). Five Outdoor Night screens exist as files; pixel-match vs mockups remains TARGET. Customer `/seguimiento/:token` is public. Sibling **Torre** (`bmc-control-tower`) reads the same `trip_events` for live ops.
 
 ### 1.2 Goals
 
@@ -118,7 +118,8 @@ C4Container
 
 ## 6. AI Architecture — Component View
 
-**N/A** — no LLM in Driver Loop. Panelin camionero remains operator-only on `/logistica`.
+**N/A** — no LLM in Driver Loop.  
+**Evidence:** `rg -i 'llm|openai|agent' src/components/driver` is empty. El Transportador / Torre AI stay on `/logistica`.
 
 ## 7. Data Flow
 
@@ -159,7 +160,7 @@ Hashed driver + customer tokens. Login form does not create Hub users. Strip `?t
 If trip insert fails after coordinado: `driver_loop: failed` + `POST /api/repartos/:id/driver-link` retry. Offline: IndexedDB outbox (already).
 
 ### 9.3 Performance
-GPS throttle 40s. Customer poll 20s.
+GPS throttle 40s while `shouldWatchGps(trip)` (not `closed`). Customer poll 20s. Customer GPS max age 30 min (`GPS_MAX_AGE_MS`).
 
 ### 9.4 Observability
 pino `reparto_no`, `trip_id`, `driver_loop`.
@@ -194,10 +195,13 @@ One SPA chunk for driver island; no native binary.
 **Status**: Accepted  
 **Decision**: Always return `driver_url`. Outbox only if `notify_driver === true`.
 
-### ADR-005: `driver_id` = UUID from phone
+### ADR-005: `driver_id` = UUID from phone (v1)
 
-**Status**: Accepted  
-**Decision**: Deterministic UUID from E.164. Roster deferred. `info.chofer_phone` on Flota.
+**Status**: Accepted (roster = TARGET Fase 2 Torre)  
+**Context**: No driver table in v1.  
+**Decision**: Deterministic UUID from E.164. `info.chofer_phone` on Flota.  
+**Consequences**: + zero onboarding for terceros. − mock profile (licencia/mail) is chrome.  
+**Alternatives**: `identity.users` rol chofer (hybrid, Torre T5); HR roster table.
 
 ### ADR-006: Customer tokens per delivery stop at confirm
 
@@ -220,18 +224,19 @@ One SPA chunk for driver island; no native binary.
 **Decision**: `--drv-*` tokens only on `/conductor`.  
 **Consequences**: + matches specs. − two design systems in one SPA (isolated CSS).
 
-### ADR-010: Login spec is chrome; session is still the trip token
+### ADR-010: Login — trip token now; hybrid accounts TARGET
+
+**Status**: Accepted (hybrid Proposed with Torre CT-02)  
+**Context**: Mock shows Usuario/Contraseña. v1 security is opaque `?t=` from assign.  
+**Decision**: v1 Usuario = display name. Contraseña = paste token. `?t=` auto-login. No password hash store yet.  
+**TARGET**: hybrid — flota BMC registered (mail or phone + password + OTP reset); tercero keeps `?t=`. Trip token remains the grant for *that* trip.  
+**Alternatives**: Google Hub login (rejected: bad in the yard). Password-only with no magic link (rejected: Saturday third-party).
+
+### ADR-011: Home is the assigned session trip (inbox when registered)
 
 **Status**: Accepted  
-**Context**: Mock shows Usuario/Contraseña. Security model is opaque `?t=` from assign.  
-**Decision**: Usuario = display name. Contraseña = paste token. `?t=` auto-login. No password hash store.  
-**Alternatives**: Google login (rejected: operator identity, bad in the yard). True password roster (deferred).
-
-### ADR-011: Home “trips admin” is the assigned session trip
-
-**Status**: Accepted  
-**Context**: Mock shows a list/history; API scopes one trip per token.  
-**Decision**: v1 home = that trip + timeline as actividad. Multi-trip inbox later.
+**Context**: Mock shows history; v1 API scopes one trip per token.  
+**Decision**: v1 home = that trip + timeline. Inbox of assigned trips is TARGET when hybrid identity ships (Torre T6).
 
 ## 11. Risks & Technical Debt
 

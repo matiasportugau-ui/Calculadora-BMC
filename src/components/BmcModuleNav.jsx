@@ -52,7 +52,7 @@ export default function BmcModuleNav() {
     pathname.startsWith("/hub/admin") ||
     pathname.startsWith("/hub/agent-admin");
   const marketingActive = pathname.startsWith("/hub/marketing");
-  const logiActive = pathname.endsWith("/logistica");
+  const logiActive = pathname.endsWith("/logistica") || pathname.endsWith("/torre");
   const calcActive = pathname === "/" || pathname.endsWith("/calculadora");
   const traktimeActive = pathname.startsWith("/hub/traktime");
   const tareasActive = pathname.startsWith("/hub/tareas");

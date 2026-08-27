@@ -9,6 +9,8 @@ const DRIVER_EVENT_TYPES = new Set([
   "delivery_partial",
   "delivery_failed",
   "incident_reported",
+  "location_ping",
+  "presence",
 ]);
 
 export function isAllowedDriverEventType(type) {
