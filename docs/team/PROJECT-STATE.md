@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — Torre #1129 follow-up: GPS history bomb + closed writes + tooltip XSS):** After accepting `location_ping`/`presence`, `GET /api/torre/live` loaded *all* `trip_events` (~90 rows/h/driver) on every 20s poll → API memory/timeout risk. Now DISTINCT ON last ping + last meaningful + evidence counts. Also: reject driver events on closed trips; exclude heartbeats from chofer timeline + customer-track history window; no IndexedDB outbox for pings; Leaflet Torre tooltip is text-only.
+
 **2026-08-27 (feat — Torre de Control Fase 1):** Live ops tab `/logistica?vista=torre` (alias `/torre`). `GET /api/torre/live` projects open trips + last GPS (phone tail only). FSM now accepts `location_ping` + `presence`. PWA stops `watchPosition` when trip is `closed`. Spec `docs/sdd/bmc-control-tower/`. Roster/AI/Order-ID still TARGET T5–T8. Tests `torreLiveView.test.js`.
 
 **2026-08-27 (feat — Logística mesa port + SDD Final v1.1):** Ops `/logistica` on `main` now includes Leaflet/OSRM (`POST /api/envios/route`), Tetris load (`tetrisPack.js` + Cargar Tetris), Asignar a chofer (`driverAssign.js` HITL WA + `driver_url`), El Transportador + Grok Voice `surface=logistica`. SDD kit `docs/sdd/bmc-logistica` v1.1 SCORECARD 94. Worktree mesa-depo is lab-only.
