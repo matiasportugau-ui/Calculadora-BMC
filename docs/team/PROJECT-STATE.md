@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — Storefront Voice nav resume / hang):** Idle Carrito no longer forces voice resume+mic; failed `navigate`/`open_url` still gets `response.create` so the call does not hang after #1134.
+
 **2026-08-27 (feat — Storefront Voice shop wiring):** Widget searches Shopify catalog, navigates product/collection/cart, add_to_cart, share links; greeting no longer duplicated. Custom techos still quote+WA.
 
 **2026-08-27 (feat — Storefront Voice on bmcuruguay.com.uy):** Public Grok S2S widget (Panelin buyer agent). `POST /api/public/voice/session|action`, flag `PUBLIC_STOREFRONT_VOICE=1` on Cloud Run deploy, widget at `/storefront-voice/widget.js`. Lista web only, consent lead `origen=VW`, WhatsApp `59892663245`. Operator Voice Mode unchanged.
