@@ -14,6 +14,16 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — Live restart: sticky chrome + noise + reset):** Controles (selector, mutes, Empezar de nuevo) fijos arriba; el chat scrollea solo. Filtro `shh`/TV inglés. `POST /api/kernel/reset` vuelve a Panelin y borra el log. Restaura últimas 40 líneas al abrir Live. Sims: `tests/voiceRoundSimulation.test.js`.
+
+**2026-08-27 (feat — mute del mic en Live):** Chip **Mic on/mute** junto al botón grande. La llamada sigue; no se manda PCM ni a Kernel. Track `enabled=false` + `input_audio_buffer.clear`.
+
+**2026-08-27 (feat — mute/unmute por agente en Live):** En Grok Live, chips **Agente on/mute** y **Kernel on/mute**. Default: agente se oye, Kernel mute (sigue oyendo). Oír uno silencia al otro para que no se mezclen. Wake de Kernel ya no destapa el audio solo: muestra “Kernel pidió la palabra”.
+
+**2026-08-27 (fix — voz: una frase, una burbuja):** Grok manda varios `transcription.completed` por un solo “hola” (prefijos que crecen + el final 2–3 veces + ASR de Kernel). El chat coalescea la burbuja del operador; el store fusiona el mismo turno si llega en <4s. Tests `voiceTranscriptCoalesce` + kernelFactory merge.
+
+**2026-08-26 (feat — Kernel factory de agentes de voz):** Un agente nuevo no se pega en console.x.ai. `POST /api/kernel/agents` registra `agent_id` + playbook vivo; Live Grok abre sesión del agente (tools de Calculadora) y Kernel mudo en paralelo (`kernelRole`, `idle_timeout_ms: null`, tools de interior). Bus: `/api/kernel/events` + `/api/kernel/tool`. `apply_playbook_patch` recarga el playbook via `session.update`. `apply_code_change` queda staged salvo `KERNEL_ALLOW_CODE_APPLY=1`. UI Live: selector + **Nuevo agente** + toggle Kernel. Tests `tests/kernelFactory.test.js`. Store local `.kernel/` (FS efímero en Cloud Run).
+
 **2026-08-26 (feat — Productos sueltos = catálogo Agregar producto):** Presupuesto libre / productos manuales usa el mismo picker del drawer (búsqueda, chips, fotos, qty, Agregar) en vez de las listas texto de Perfilería/Tornillería/Selladores. Paneles por medidas y Producto fuera de lista siguen. `ProductCatalogPicker` extraído de `ProductQuickAddDrawer`.
 
 **2026-08-26 (feat — Voice: planilla Admin + Drive tras PDF):** Tools `admin_cargar_pdfs_fila` (col M 🧾) y `archivar_pdfs_drive` (carpeta Drive OAuth). ASR planilla/parrilla/sonrilla. Voice auto-confirma esas writes.

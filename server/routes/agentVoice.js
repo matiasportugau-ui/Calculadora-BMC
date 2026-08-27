@@ -27,12 +27,21 @@ import {
   isVoiceMintFallbackError,
   getVoiceProviderConfig,
 } from "../lib/voiceRealtimeProviders.js";
+import { buildKernelSessionBootstrap } from "../lib/kernel/kernelSessionConfig.js";
+import { loadStore, saveStore, getAgent, setActiveAgent } from "../lib/kernel/store.js";
+import { seedPanelin } from "../lib/kernel/provision.js";
+import {
+  buildLogisticaVoiceBootstrap,
+  isLogisticaVoiceSurface,
+} from "../lib/voice/logisticaTruckerInstructions.js";
 
 const router = Router();
 
 const VALID_ACTION_TYPES = new Set([
   "setScenario", "setLP", "setTecho", "setPared", "setCamara",
   "setFlete", "setProyecto", "setWizardStep", "setTechoZonas", "advanceWizard", "buildQuote",
+  "setStopField", "setEnviosInfo", "setEnviosTruck", "setLogisticaWizard",
+  "advanceLogisticaWizard", "proposeTripPlan", "applyTripPlan",
 ]);
 
 // 3 session mints per minute per IP (ephemeral tokens cost ~1 API call each)
@@ -46,7 +55,8 @@ function voiceSessionKey(req) {
 
 const sessionLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: config.appEnv === "development" ? 30 : 3,
+  // Dual Kernel+agent mint needs two tokens at connect; 6/min prod burst.
+  max: config.appEnv === "development" ? 30 : 6,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: voiceSessionKey,
@@ -93,9 +103,29 @@ router.post(
     aiProvider = "auto",
     aiModel = "",
     voiceProvider: rawVoiceProvider = null,
+    kernelRole: rawKernelRole = "agent",
+    agentId: rawAgentId = null,
+    surface: rawSurface = "",
   } = req.body || {};
 
+  const kernelRole = String(rawKernelRole || "agent").toLowerCase() === "kernel"
+    ? "kernel"
+    : "agent";
+
+  const kernelStore = loadStore();
+  seedPanelin(kernelStore);
+  const requestedAgentId = String(rawAgentId || kernelStore.activeAgentId || "panelin").trim();
+  const supervised = getAgent(kernelStore, requestedAgentId);
+  const agentId = supervised?.agent_id || "panelin";
+  if (kernelRole === "agent" && supervised) {
+    setActiveAgent(kernelStore, agentId);
+    saveStore(kernelStore);
+  }
+
   let voiceProvider = resolveVoiceProvider(aiProvider, rawVoiceProvider);
+  if (kernelRole === "kernel") {
+    voiceProvider = "grok";
+  }
 
   let sessionModel;
   try {
@@ -140,12 +170,30 @@ router.post(
         }
       : null;
 
-  const brainPack = buildVoiceBrainPack(calcState, { devMode, leadContext: safeLeadContext });
-  const systemPrompt = brainPack.instructions;
+  const logisticaPack = isLogisticaVoiceSurface(rawSurface, calcState)
+    ? buildLogisticaVoiceBootstrap(calcState)
+    : null;
+  const brainPack = logisticaPack || buildVoiceBrainPack(calcState, { devMode, leadContext: safeLeadContext });
+  const kernelBoot = kernelRole === "kernel" ? buildKernelSessionBootstrap(agentId) : null;
+  let systemPrompt = brainPack.instructions;
+  if (logisticaPack) {
+    systemPrompt = logisticaPack.instructions;
+  } else if (kernelRole === "kernel") {
+    systemPrompt = kernelBoot.instructions;
+  } else if (supervised && supervised.agent_id !== "panelin") {
+    systemPrompt = supervised.playbook;
+  } else if (supervised && Number(supervised.version) > 1) {
+    systemPrompt = `${brainPack.instructions}\n\n# Living playbook patches\n${supervised.playbook}`;
+  }
   // OpenAI Realtime mint only accepts function tools; xAI also takes web_search.
+  const packTools = logisticaPack
+    ? logisticaPack.tools
+    : kernelRole === "kernel"
+      ? (kernelBoot.tools || [])
+      : (brainPack.tools || []);
   const tools = voiceProvider === "grok"
-    ? brainPack.tools
-    : (brainPack.tools || []).filter((t) => t.type === "function");
+    ? packTools
+    : packTools.filter((t) => t.type === "function");
 
   let sessionData;
   try {
@@ -228,18 +276,22 @@ router.post(
   }
 
   // Grok client_secrets does not embed session config — client must session.update after connect.
-  const session_bootstrap =
-    voiceProvider === "grok"
-      ? {
-          instructions: systemPrompt,
-          tools: brainPack.tools,
-          tool_choice: brainPack.tool_choice || "auto",
-          voice: brainPack.voice || "eve",
-          language_hint: brainPack.language_hint,
-          keyterms: brainPack.keyterms,
-          replace: brainPack.replace,
-        }
-      : null;
+  let session_bootstrap = null;
+  if (voiceProvider === "grok") {
+    if (kernelRole === "kernel") {
+      session_bootstrap = kernelBoot;
+    } else {
+      session_bootstrap = {
+        instructions: systemPrompt,
+        tools: logisticaPack ? logisticaPack.tools : brainPack.tools,
+        tool_choice: brainPack.tool_choice || "auto",
+        voice: brainPack.voice || "eve",
+        language_hint: brainPack.language_hint,
+        keyterms: brainPack.keyterms,
+        replace: brainPack.replace,
+      };
+    }
+  }
 
   return res.json({
     ok: true,
@@ -251,6 +303,8 @@ router.post(
     voice_provider: sessionData.voiceProvider,
     realtime_base: sessionData.realtime_base,
     session_bootstrap,
+    kernel_role: kernelRole,
+    agent_id: agentId,
   });
 });
 

@@ -41,6 +41,8 @@ export function useVoiceSession({
   onAction,
   onTranscriptDelta,
   onError,
+  onToolResult,
+  onInputAudio,
   devMode = false,
   authHeader,
   leadContext = null,
@@ -50,6 +52,20 @@ export function useVoiceSession({
   aiModel = "",
   /** Optional override: "openai" | "grok" */
   voiceProvider = null,
+  /** Supervised factory agent id (panelin default). */
+  agentId = null,
+  /** "agent" (talk) | "kernel" (mute observer). */
+  kernelRole = "agent",
+  /** "logistica" mints El Transportador pack (no calc tools). */
+  surface = "",
+  /** When false, do not capture mic (Kernel session is fed PCM). */
+  captureMic = true,
+  /** When true, keep the session but do not send mic PCM (operator mute). */
+  micMuted = false,
+  /** When false, skip playback of output PCM (Kernel silent unless wake). */
+  playOutput = true,
+  /** "voice" → /api/agent/voice/action ; "kernel" → /api/kernel/tool */
+  relayKind = "voice",
 }) {
   const [status, setStatus] = useState("idle"); // idle | connecting | active | error
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -80,6 +96,22 @@ export function useVoiceSession({
   const voiceProviderRef = useRef("openai");
   const stoppedRef = useRef(false);
   const calcStateRef = useRef({});
+  const playOutputRef = useRef(playOutput);
+  playOutputRef.current = playOutput;
+  const onInputAudioRef = useRef(onInputAudio);
+  onInputAudioRef.current = onInputAudio;
+  const onToolResultRef = useRef(onToolResult);
+  onToolResultRef.current = onToolResult;
+  const agentIdRef = useRef(agentId);
+  agentIdRef.current = agentId;
+  const kernelRoleRef = useRef(kernelRole);
+  kernelRoleRef.current = kernelRole;
+  const relayKindRef = useRef(relayKind);
+  relayKindRef.current = relayKind;
+  const captureMicRef = useRef(captureMic);
+  captureMicRef.current = captureMic;
+  const micMutedRef = useRef(micMuted);
+  micMutedRef.current = micMuted;
 
   const stopVu = useCallback(() => {
     if (vuRafRef.current) {
@@ -204,7 +236,7 @@ export function useVoiceSession({
         type === "response.output_audio.delta"
       ) {
         setIsSpeaking(true);
-        if (msg.delta) playPcm16Base64(msg.delta);
+        if (msg.delta && playOutputRef.current) playPcm16Base64(msg.delta);
       }
       if (
         type === "response.audio.done" ||
@@ -257,13 +289,20 @@ export function useVoiceSession({
         try {
           const headers = { "Content-Type": "application/json" };
           if (authHeader) headers.Authorization = authHeader;
-          const relayRes = await fetch(`${API_BASE}/api/agent/voice/action`, {
+          const kernelRelay = relayKindRef.current === "kernel";
+          const relayUrl = kernelRelay
+            ? `${API_BASE}/api/kernel/tool`
+            : `${API_BASE}/api/agent/voice/action`;
+          const relayBody = kernelRelay
+            ? { name: fnName, arguments: args }
+            : {
+                action: { type: fnName, payload: args },
+                calcState: calcStateRef.current || {},
+              };
+          const relayRes = await fetch(relayUrl, {
             method: "POST",
             headers,
-            body: JSON.stringify({
-              action: { type: fnName, payload: args },
-              calcState: calcStateRef.current || {},
-            }),
+            body: JSON.stringify(relayBody),
           });
           if (relayRes.ok) {
             const relayData = await relayRes.json();
@@ -271,6 +310,7 @@ export function useVoiceSession({
               toolOutput = typeof relayData.result === "string"
                 ? relayData.result
                 : JSON.stringify(relayData.result ?? { ok: true });
+              onToolResultRef.current?.(fnName, relayData.result ?? relayData);
               if (Array.isArray(relayData.actions)) {
                 for (const a of relayData.actions) {
                   if (a?.type) onAction?.(a);
@@ -372,19 +412,22 @@ export function useVoiceSession({
       });
       const protocols = buildGrokWsProtocols(ephemeralKey);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          channelCount: 1,
-        },
-      });
-      if (stoppedRef.current) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
+      let stream = null;
+      if (captureMicRef.current) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            channelCount: 1,
+          },
+        });
+        if (stoppedRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        micStreamRef.current = stream;
+        startVu(stream);
       }
-      micStreamRef.current = stream;
-      startVu(stream);
 
       await new Promise((resolve, reject) => {
         let settled = false;
@@ -453,39 +496,44 @@ export function useVoiceSession({
           sessionBootstrapRef.current = boot;
           applySessionBootstrap(transportSend);
 
-          // Mic → PCM16 append at 24 kHz
-          try {
-            const ctx = new AudioContext();
-            // Prefer native rate; resample to Grok rate on each chunk
-            const src = ctx.createMediaStreamSource(stream);
-            micSourceRef.current = src;
-            const bufferSize = 4096;
-            const processor = ctx.createScriptProcessor(bufferSize, 1, 1);
-            micProcessorRef.current = processor;
-            processor.onaudioprocess = (ev) => {
-              if (ws.readyState !== WebSocket.OPEN || stoppedRef.current) return;
-              const input = ev.inputBuffer.getChannelData(0);
-              const resampled = resampleFloat32Linear(
-                input,
-                ctx.sampleRate,
-                GROK_VOICE_SAMPLE_RATE,
-              );
-              const b64 = float32ToBase64Pcm16(resampled);
-              transportSend({
-                type: "input_audio_buffer.append",
-                audio: b64,
-              });
-            };
-            src.connect(processor);
-            // Keep processor alive (mute destination)
-            const mute = ctx.createGain();
-            mute.gain.value = 0;
-            processor.connect(mute);
-            mute.connect(ctx.destination);
-            if (!audioCtxRef.current) audioCtxRef.current = ctx;
-          } catch (err) {
-            fail(err);
-            return;
+          // Mic → PCM16 append at 24 kHz (agent session only)
+          if (stream) {
+            try {
+              const ctx = new AudioContext();
+              // Prefer native rate; resample to Grok rate on each chunk
+              const src = ctx.createMediaStreamSource(stream);
+              micSourceRef.current = src;
+              const bufferSize = 4096;
+              const processor = ctx.createScriptProcessor(bufferSize, 1, 1);
+              micProcessorRef.current = processor;
+              processor.onaudioprocess = (ev) => {
+                if (stoppedRef.current || micMutedRef.current) return;
+                const input = ev.inputBuffer.getChannelData(0);
+                const resampled = resampleFloat32Linear(
+                  input,
+                  ctx.sampleRate,
+                  GROK_VOICE_SAMPLE_RATE,
+                );
+                const b64 = float32ToBase64Pcm16(resampled);
+                onInputAudioRef.current?.(b64);
+                if (ws.readyState === WebSocket.OPEN) {
+                  transportSend({
+                    type: "input_audio_buffer.append",
+                    audio: b64,
+                  });
+                }
+              };
+              src.connect(processor);
+              // Keep processor alive (mute destination)
+              const mute = ctx.createGain();
+              mute.gain.value = 0;
+              processor.connect(mute);
+              mute.connect(ctx.destination);
+              if (!audioCtxRef.current) audioCtxRef.current = ctx;
+            } catch (err) {
+              fail(err);
+              return;
+            }
           }
 
           setStatus("active");
@@ -610,6 +658,9 @@ export function useVoiceSession({
             aiProvider,
             aiModel,
             voiceProvider: voiceProvider || undefined,
+            kernelRole: kernelRoleRef.current || "agent",
+            agentId: agentIdRef.current || undefined,
+            surface: surface || undefined,
           }),
         });
         if (!sessRes.ok) {
@@ -729,12 +780,74 @@ export function useVoiceSession({
     setIsListening(false);
   }, [stopVu, stopRemoteVu, stopMicCapture]);
 
+  const applyMicMute = useCallback((muted) => {
+    const stream = micStreamRef.current;
+    if (stream) {
+      stream.getAudioTracks().forEach((t) => {
+        t.enabled = !muted;
+      });
+    }
+    if (muted) {
+      setVuLevel(0);
+      sendEvent({ type: "input_audio_buffer.clear" });
+    }
+  }, [sendEvent]);
+
+  useEffect(() => {
+    applyMicMute(!!micMuted);
+  }, [micMuted, applyMicMute]);
+
   const interrupt = useCallback(() => {
     sendEvent({ type: "response.cancel" });
     setIsSpeaking(false);
   }, [sendEvent]);
 
+  const stopPlayback = useCallback(() => {
+    sendEvent({ type: "response.cancel" });
+    setIsSpeaking(false);
+    setRemoteVuLevel(0);
+    if (playCtxRef.current) {
+      playCtxRef.current.close().catch(() => {});
+      playCtxRef.current = null;
+    }
+    playTimeRef.current = 0;
+  }, [sendEvent]);
+
+  useEffect(() => {
+    if (playOutput) return undefined;
+    stopPlayback();
+    return undefined;
+  }, [playOutput, stopPlayback]);
+
+  const feedAudio = useCallback((b64) => {
+    if (!b64 || stoppedRef.current) return;
+    sendEvent({ type: "input_audio_buffer.append", audio: b64 });
+  }, [sendEvent]);
+
+  const updateInstructions = useCallback((instructions, extra = {}) => {
+    const boot = {
+      ...(sessionBootstrapRef.current || {}),
+      ...extra,
+      instructions,
+    };
+    sessionBootstrapRef.current = boot;
+    applySessionBootstrap(sendEvent);
+  }, [applySessionBootstrap, sendEvent]);
+
   useEffect(() => () => stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { status, isSpeaking, isListening, vuLevel, remoteVuLevel, start, stop, interrupt };
+  return {
+    status,
+    isSpeaking,
+    isListening,
+    vuLevel,
+    remoteVuLevel,
+    start,
+    stop,
+    interrupt,
+    feedAudio,
+    updateInstructions,
+    sendEvent,
+    stopPlayback,
+  };
 }

@@ -18,7 +18,7 @@
  *  - Unsupported-browser banner when neither Hands-free nor Whisper mic works
  */
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, MicOff, PhoneOff } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from "lucide-react";
 import { useHandsFreeVoice } from "../hooks/useHandsFreeVoice.js";
 import { useVoiceSession } from "../hooks/useVoiceSession.js";
 import { useDictation } from "../hooks/useDictation.js";
@@ -27,6 +27,15 @@ import {
   canUseWhisperVoice,
   isGrokRealtimeSupported,
 } from "../hooks/voiceSupport.js";
+import {
+  KERNEL_WAKE_RE,
+  addressedToFromText,
+  ingestTurn,
+  postSnapshot,
+  kernelFetch,
+} from "../utils/kernelBus.js";
+import { coalesceUserTranscript } from "../utils/voiceTranscriptCoalesce.js";
+import { isNoiseUtterance } from "../utils/voiceNoiseFilter.js";
 import {
   PANELIN_AI_EVENT,
   resolveEffectiveAiPick,
@@ -70,14 +79,46 @@ function VuRing({ level, isSpeaking, isListening, primary, size = 80 }) {
   );
 }
 
+function MuteChip({ label, muted, speaking, onMute, onUnmute, kind = "speaker" }) {
+  const IconOn = kind === "mic" ? Mic : Volume2;
+  const IconOff = kind === "mic" ? MicOff : VolumeX;
+  return (
+    <button
+      type="button"
+      onClick={muted ? onUnmute : onMute}
+      title={muted ? (kind === "mic" ? "Activar micrófono" : `Oír ${label}`) : (kind === "mic" ? "Silenciar micrófono" : `Silenciar ${label}`)}
+      aria-pressed={muted}
+      aria-label={muted ? `Unmute ${label}` : `Mute ${label}`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        fontSize: 11,
+        padding: "4px 8px",
+        borderRadius: 6,
+        border: muted ? "1px solid #e5e5ea" : "1px solid #111827",
+        background: muted ? "#fff" : speaking ? "#111827" : "#f3f4f6",
+        color: muted ? "#6e6e73" : speaking ? "#fff" : "#111827",
+        cursor: "pointer",
+        fontFamily: FONT,
+      }}
+    >
+      {muted ? <IconOff size={12} /> : <IconOn size={12} />}
+      {muted ? `${label} mute` : `${label} on`}
+    </button>
+  );
+}
+
 function TranscriptLine({ role, text, primary }) {
+  const isUser = role === "user";
+  const isKernel = role === "kernel";
   return (
     <div
       style={{
-        alignSelf: role === "user" ? "flex-end" : "flex-start",
-        background: role === "user" ? primary : "#f3f4f6",
-        color: role === "user" ? "#fff" : "#1d1d1f",
-        borderRadius: role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+        alignSelf: isUser ? "flex-end" : "flex-start",
+        background: isUser ? primary : isKernel ? "#111827" : "#f3f4f6",
+        color: isUser || isKernel ? "#fff" : "#1d1d1f",
+        borderRadius: isUser ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
         padding: "7px 12px",
         fontSize: 13,
         maxWidth: "85%",
@@ -310,15 +351,118 @@ function RealtimeVoicePanel({
 }) {
   const [voiceError, setVoiceError] = useState(null);
   const [transcript, setTranscript] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [agentId, setAgentId] = useState(() => {
+    try {
+      return localStorage.getItem("bmc.voice.agentId") || "panelin";
+    } catch {
+      return "panelin";
+    }
+  });
+  const [kernelOn, setKernelOn] = useState(true);
+  const [kernelMode, setKernelMode] = useState("observe");
+  const [provisionBusy, setProvisionBusy] = useState(false);
+  const [agentMuted, setAgentMuted] = useState(false);
+  const [kernelMuted, setKernelMuted] = useState(true);
+  const [kernelHailing, setKernelHailing] = useState(false);
+  const [micMuted, setMicMuted] = useState(false);
   const transcriptEndRef = useRef(null);
+  const transcriptPaneRef = useRef(null);
+  const stickBottomRef = useRef(true);
   const assistantBufRef = useRef("");
+  const lastWakeAtRef = useRef(0);
+  const kernelFeedRef = useRef(null);
+  const kernelSendRef = useRef(null);
+  const agentUpdateRef = useRef(null);
+  const agentIdRef = useRef(agentId);
+  agentIdRef.current = agentId;
 
   const handleError = useCallback((msg) => setVoiceError(msg), []);
 
+  const refreshAgents = useCallback(async () => {
+    try {
+      const data = await kernelFetch("/api/kernel/agents", { authHeader });
+      setAgents(data.agents || []);
+      if (data.mode) setKernelMode(data.mode);
+      const ids = (data.agents || []).map((a) => a.agent_id);
+      let saved = null;
+      try {
+        saved = localStorage.getItem("bmc.voice.agentId");
+      } catch {
+        saved = null;
+      }
+      if (saved && ids.includes(saved)) setAgentId(saved);
+      else if (data.activeAgentId && ids.includes(data.activeAgentId)) setAgentId(data.activeAgentId);
+    } catch {
+      /* store may 401 in anonymous preview — keep defaults */
+    }
+  }, [authHeader]);
+
+  useEffect(() => {
+    refreshAgents();
+  }, [refreshAgents]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await kernelFetch("/api/kernel/conversation?limit=40", { authHeader });
+        if (cancelled) return;
+        const mapped = (data.turns || []).map((t) => ({
+          role:
+            t.role === "kernel" || t.speaker === "kernel"
+              ? "kernel"
+              : t.role === "operator"
+                ? "user"
+                : "assistant",
+          text: t.text,
+          at: Date.parse(t.timestamp) || Date.now(),
+        }));
+        if (mapped.length) setTranscript(mapped);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authHeader]);
+
   const onTranscriptDelta = useCallback((evt) => {
     if (evt?.role === "user" && evt.transcript) {
+      const text = String(evt.transcript);
+      if (isNoiseUtterance(text)) return;
+      if (assistantBufRef.current) {
+        const prior = assistantBufRef.current;
+        ingestTurn({
+          authHeader,
+          speaker: `agent:${agentIdRef.current}`,
+          role: "other_agent",
+          text: prior,
+          addressed_to: "room",
+        });
+        kernelSendRef.current?.({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: `[agent:${agentIdRef.current}] ${prior}` }],
+          },
+        });
+      }
       assistantBufRef.current = "";
-      setTranscript((prev) => [...prev, { role: "user", text: String(evt.transcript) }]);
+      if (KERNEL_WAKE_RE.test(text)) {
+        lastWakeAtRef.current = Date.now();
+        setKernelHailing(true);
+      }
+      setTranscript((prev) => coalesceUserTranscript(prev, text));
+      ingestTurn({
+        authHeader,
+        speaker: "operator",
+        role: "operator",
+        text,
+        addressed_to: addressedToFromText(text),
+      });
       return;
     }
     if (evt?.role === "assistant" && evt.delta) {
@@ -335,7 +479,34 @@ function RealtimeVoicePanel({
         return next;
       });
     }
+  }, [authHeader]);
+
+  const onKernelTranscript = useCallback((evt) => {
+    if (evt?.role === "assistant" && evt.delta) {
+      setTranscript((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last?.role === "kernel") {
+          next[next.length - 1] = { ...last, text: (last.text || "") + evt.delta };
+          return next;
+        }
+        next.push({ role: "kernel", text: evt.delta });
+        return next;
+      });
+    }
   }, []);
+
+  const reloadAgentPlaybook = useCallback(async (id) => {
+    try {
+      const data = await kernelFetch(`/api/kernel/reload/${id}`, {
+        method: "POST",
+        authHeader,
+      });
+      if (data.instructions) agentUpdateRef.current?.(data.instructions);
+    } catch {
+      /* ignore */
+    }
+  }, [authHeader]);
 
   const {
     status,
@@ -344,24 +515,112 @@ function RealtimeVoicePanel({
     vuLevel,
     start,
     stop,
+    updateInstructions,
   } = useVoiceSession({
     onAction,
     onTranscriptDelta,
     onError: handleError,
+    onInputAudio: (b64) => kernelFeedRef.current?.(b64),
     devMode,
     authHeader,
     realtimeModel: realtimeModel || null,
     voiceProvider: "grok",
     aiProvider: "grok",
+    agentId,
+    kernelRole: "agent",
+    playOutput: !agentMuted,
+    micMuted,
   });
 
+  agentUpdateRef.current = updateInstructions;
+
+  const {
+    status: kernelStatus,
+    isSpeaking: kernelSpeaking,
+    start: startKernel,
+    stop: stopKernel,
+    feedAudio: feedKernel,
+    sendEvent: sendKernelEvent,
+  } = useVoiceSession({
+    onAction: undefined,
+    onTranscriptDelta: onKernelTranscript,
+    onError: handleError,
+    onToolResult: (name, result) => {
+      if (name === "set_mode" && result?.mode) setKernelMode(result.mode);
+      if (name === "apply_playbook_patch" && result?.reload && result?.agent_id) {
+        reloadAgentPlaybook(result.agent_id);
+      }
+    },
+    devMode,
+    authHeader,
+    realtimeModel: realtimeModel || null,
+    voiceProvider: "grok",
+    aiProvider: "grok",
+    agentId,
+    kernelRole: "kernel",
+    captureMic: false,
+    playOutput: kernelOn && !kernelMuted,
+    relayKind: "kernel",
+  });
+
+  kernelFeedRef.current = feedKernel;
+  kernelSendRef.current = sendKernelEvent;
+
   useEffect(() => {
+    if (!stickBottomRef.current) return;
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
   useEffect(() => {
-    if (!voiceMode && status !== "idle") stop();
-  }, [voiceMode, status, stop]);
+    if (!voiceMode) {
+      if (status !== "idle") stop();
+      if (kernelStatus !== "idle") stopKernel();
+    }
+  }, [voiceMode, status, stop, kernelStatus, stopKernel]);
+
+  useEffect(() => {
+    if (!kernelHailing) return undefined;
+    const t = setTimeout(() => setKernelHailing(false), 20_000);
+    return () => clearTimeout(t);
+  }, [kernelHailing]);
+
+  const hearAgent = useCallback(() => {
+    setAgentMuted(false);
+    setKernelMuted(true);
+    setKernelHailing(false);
+  }, []);
+
+  const hearKernel = useCallback(() => {
+    setKernelMuted(false);
+    setAgentMuted(true);
+    setKernelHailing(false);
+  }, []);
+
+  const muteAgent = useCallback(() => setAgentMuted(true), []);
+  const muteKernel = useCallback(() => setKernelMuted(true), []);
+
+  const handleResetSession = useCallback(async () => {
+    if (status === "active" || status === "connecting") {
+      stop();
+      stopKernel();
+    }
+    try {
+      await kernelFetch("/api/kernel/reset", { method: "POST", authHeader });
+    } catch (err) {
+      setVoiceError(err.message || "No se pudo reiniciar la sesión");
+      return;
+    }
+    setTranscript([]);
+    setAgentId("panelin");
+    setKernelMuted(true);
+    setAgentMuted(false);
+    setMicMuted(false);
+    setKernelHailing(false);
+    try {
+      localStorage.setItem("bmc.voice.agentId", "panelin");
+    } catch { /* ignore */ }
+    refreshAgents();
+  }, [authHeader, status, stop, stopKernel, refreshAgents]);
 
   useEffect(() => {
     const phase =
@@ -377,28 +636,95 @@ function RealtimeVoicePanel({
   const handleMicButton = useCallback(() => {
     if (status === "idle" || status === "error") {
       setVoiceError(null);
+      setMicMuted(false);
       assistantBufRef.current = "";
+      postSnapshot({
+        authHeader,
+        snapshot: {
+          route: typeof window !== "undefined" ? window.location.pathname : "",
+          openView: "voice",
+          kernelMode,
+          agentId,
+          calcState: calcState
+            ? {
+                scenario: calcState.scenario,
+                listaPrecios: calcState.listaPrecios,
+              }
+            : null,
+        },
+      });
       start(calcState);
+      if (kernelOn) startKernel(calcState);
     } else {
       stop();
+      stopKernel();
     }
-  }, [status, start, stop, calcState]);
+  }, [status, start, stop, calcState, kernelOn, startKernel, stopKernel, authHeader, kernelMode, agentId]);
+
+  const handleNewAgent = useCallback(async () => {
+    const name = typeof window !== "undefined"
+      ? window.prompt("Nombre del nuevo agente:", "Calc Assistant")
+      : "";
+    if (!name) return;
+    const role = typeof window !== "undefined"
+      ? window.prompt("Rol (una frase):", "ayudar al operador a usar Calculadora")
+      : "";
+    if (!role) return;
+    setProvisionBusy(true);
+    try {
+      const created = await kernelFetch("/api/kernel/agents", {
+        method: "POST",
+        authHeader,
+        body: { name, role, language: "es" },
+      });
+      await refreshAgents();
+      if (created.agent_id) {
+        setAgentId(created.agent_id);
+        try {
+          localStorage.setItem("bmc.voice.agentId", created.agent_id);
+        } catch { /* ignore */ }
+      }
+    } catch (err) {
+      setVoiceError(err.message || "No se pudo crear el agente");
+    } finally {
+      setProvisionBusy(false);
+    }
+  }, [authHeader, refreshAgents]);
+
+  const handleSelectAgent = useCallback(async (id) => {
+    setAgentId(id);
+    try {
+      localStorage.setItem("bmc.voice.agentId", id);
+    } catch { /* ignore */ }
+    try {
+      await kernelFetch(`/api/kernel/agents/${id}/select`, {
+        method: "POST",
+        authHeader,
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [authHeader]);
 
   const MIC_SIZE = 80;
   const isActive = status === "active";
   const isConnecting = status === "connecting";
   const micBg = isActive
-    ? isSpeaking
-      ? "#ef4444"
-      : isListening
-        ? PRIMARY
-        : "#6b7280"
+    ? micMuted
+      ? "#6b7280"
+      : isSpeaking
+        ? "#ef4444"
+        : isListening
+          ? PRIMARY
+          : "#6b7280"
     : PRIMARY;
   const statusLabel =
     status === "connecting" ? "Conectando cerebro Live…"
       : status === "error" ? (voiceError || "Error de voz")
         : isActive
-          ? (isSpeaking ? "Hablando…" : isListening ? "Escuchando…" : "En vivo — hablá")
+          ? (micMuted
+            ? "Mic mute — no entra ruido"
+            : isSpeaking ? "Hablando…" : isListening ? "Escuchando…" : "En vivo — hablá")
           : "Toca para hablar con Panelin";
 
   return (
@@ -414,12 +740,10 @@ function RealtimeVoicePanel({
       <style>{`@keyframes panelin-mic-pulse{0%,100%{box-shadow:0 0 0 4px rgba(0,113,227,0.2)}50%{box-shadow:0 0 0 10px rgba(0,113,227,0.05)}}`}</style>
       <div
         style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "16px 14px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
+          flexShrink: 0,
+          padding: "10px 12px 8px",
+          borderBottom: "1px solid #e5e5ea",
+          background: skinTokens?.drawerBg || "#fff",
         }}
       >
         <p
@@ -431,11 +755,155 @@ function RealtimeVoicePanel({
             lineHeight: 1.35,
           }}
         >
-          Cerebro <strong>Panelin BMC</strong> · Grok Live + calc + lecciones IAlfred
+          Cerebro <strong>{agents.find((a) => a.agent_id === agentId)?.name || "Panelin BMC"}</strong>
+          {" "}· Grok Live
+          {kernelOn ? ` · Kernel ${kernelMode}` : ""}
         </p>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
+          <select
+            value={agentId}
+            onChange={(e) => handleSelectAgent(e.target.value)}
+            disabled={isActive || isConnecting}
+            aria-label="Agente supervisado"
+            style={{
+              fontSize: 11,
+              padding: "4px 6px",
+              borderRadius: 6,
+              border: "1px solid #e5e5ea",
+              fontFamily: FONT,
+              maxWidth: 160,
+            }}
+          >
+            {(agents.length ? agents : [{ agent_id: "panelin", name: "Panelin BMC" }]).map((a) => (
+              <option key={a.agent_id} value={a.agent_id}>
+                {a.name || a.agent_id}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleNewAgent}
+            disabled={provisionBusy || isActive}
+            style={{
+              fontSize: 11,
+              padding: "4px 8px",
+              borderRadius: 6,
+              border: "1px solid #e5e5ea",
+              background: "#fff",
+              cursor: provisionBusy ? "default" : "pointer",
+              fontFamily: FONT,
+            }}
+          >
+            {provisionBusy ? "Creando…" : "Nuevo agente"}
+          </button>
+          <button
+            type="button"
+            onClick={handleResetSession}
+            disabled={provisionBusy}
+            title="Borra el log de esta sesión y vuelve a Panelin"
+            style={{
+              fontSize: 11,
+              padding: "4px 8px",
+              borderRadius: 6,
+              border: "1px solid #e5e5ea",
+              background: "#fff",
+              cursor: "pointer",
+              fontFamily: FONT,
+            }}
+          >
+            Empezar de nuevo
+          </button>
+          <label
+            style={{
+              fontSize: 11,
+              color: "#6e6e73",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={kernelOn}
+              disabled={isActive}
+              onChange={(e) => setKernelOn(e.target.checked)}
+            />
+            Kernel conectado
+          </label>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <MuteChip
+            label={agents.find((a) => a.agent_id === agentId)?.name || "Agente"}
+            muted={agentMuted}
+            speaking={isSpeaking && !agentMuted}
+            onMute={muteAgent}
+            onUnmute={hearAgent}
+          />
+          {kernelOn && (
+            <MuteChip
+              label="Kernel"
+              muted={kernelMuted}
+              speaking={kernelSpeaking && !kernelMuted}
+              onMute={muteKernel}
+              onUnmute={hearKernel}
+            />
+          )}
+          {kernelHailing && kernelMuted && (
+            <span style={{ fontSize: 11, color: "#b45309", fontWeight: 600 }}>
+              Kernel pidió la palabra — tocá Kernel mute
+            </span>
+          )}
+          <span
+            style={{
+              fontSize: 10,
+              color: kernelStatus === "active" ? "#059669" : "#9ca3af",
+            }}
+          >
+            {kernelOn
+              ? (kernelStatus === "active"
+                ? (kernelMuted ? "Kernel oye (mute)" : kernelSpeaking ? "Kernel habla" : "Kernel on")
+                : kernelStatus === "connecting" ? "Kernel…" : "Kernel off")
+              : ""}
+          </span>
+        </div>
+      </div>
+      <div
+        ref={transcriptPaneRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          stickBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 56;
+        }}
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "16px 14px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          minHeight: 0,
+        }}
+      >
         {transcript.length === 0 && (
           <p style={{ color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 16 }}>
-            La transcripción aparecerá aquí mientras hablás.
+            Sesión limpia. Hablá cuando quieras.
           </p>
         )}
         {transcript.map((line, i) => (
@@ -504,9 +972,19 @@ function RealtimeVoicePanel({
             {isActive || isConnecting ? <PhoneOff size={28} /> : <Mic size={28} />}
           </button>
         </div>
+        {isActive && (
+          <MuteChip
+            label="Mic"
+            kind="mic"
+            muted={micMuted}
+            speaking={false}
+            onMute={() => setMicMuted(true)}
+            onUnmute={() => setMicMuted(false)}
+          />
+        )}
         <button
           type="button"
-          onClick={() => { stop(); onSwitchToText?.(); }}
+          onClick={() => { stop(); stopKernel(); onSwitchToText?.(); }}
           style={{
             border: "none",
             background: "transparent",

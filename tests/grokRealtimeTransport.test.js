@@ -90,4 +90,24 @@ assert.equal(updEs.session.audio.input.transcription.language_hint, "es-ES");
 assert.deepEqual(updEs.session.audio.input.transcription.keyterms, ["IsoDec"]);
 assert.equal(updEs.session.replace.IsoDec, "Iso-dec");
 
+const updKernel = buildGrokSessionUpdate({
+  instructions: "Kernel",
+  voice: "rigel",
+  turn_detection: {
+    type: "server_vad",
+    threshold: 0.88,
+    silence_duration_ms: 1400,
+    prefix_padding_ms: 400,
+    idle_timeout_ms: null,
+  },
+  reasoning: { effort: "high" },
+  resumption: { enabled: true },
+  audio: { output: { speed: 1.05 } },
+});
+assert.equal(updKernel.session.voice, "rigel");
+assert.equal(updKernel.session.turn_detection.idle_timeout_ms, null);
+assert.equal(updKernel.session.turn_detection.threshold, 0.88);
+assert.equal(updKernel.session.reasoning.effort, "high");
+assert.equal(updKernel.session.audio.output.speed, 1.05);
+
 console.log("  ✅ all grokRealtimeTransport asserts passed\n");

@@ -125,23 +125,44 @@ export function resampleFloat32Linear(input, fromRate, toRate) {
 
 /**
  * Build session.update payload for Grok after WS open.
- * @param {{ instructions?: string, tools?: unknown[], tool_choice?: string, voice?: string }} boot
+ * @param {{
+ *   instructions?: string,
+ *   tools?: unknown[],
+ *   tool_choice?: string,
+ *   voice?: string,
+ *   language_hint?: string,
+ *   keyterms?: string[],
+ *   replace?: object,
+ *   turn_detection?: object,
+ *   reasoning?: object,
+ *   resumption?: object,
+ *   audio?: object,
+ * }} boot
  */
 export function buildGrokSessionUpdate(boot = {}) {
+  const td = boot.turn_detection && typeof boot.turn_detection === "object"
+    ? boot.turn_detection
+    : {};
   const session = {
     instructions: boot.instructions || "",
     voice: boot.voice || "eve",
     turn_detection: {
-      type: "server_vad",
-      threshold: 0.5,
-      prefix_padding_ms: 300,
-      silence_duration_ms: 800,
+      type: td.type || "server_vad",
+      threshold: td.threshold != null ? td.threshold : 0.5,
+      prefix_padding_ms: td.prefix_padding_ms != null ? td.prefix_padding_ms : 300,
+      silence_duration_ms: td.silence_duration_ms != null ? td.silence_duration_ms : 800,
     },
     audio: {
       input: { format: { type: "audio/pcm", rate: GROK_VOICE_SAMPLE_RATE } },
       output: { format: { type: "audio/pcm", rate: GROK_VOICE_SAMPLE_RATE } },
     },
   };
+  if (Object.prototype.hasOwnProperty.call(td, "idle_timeout_ms")) {
+    session.turn_detection.idle_timeout_ms = td.idle_timeout_ms;
+  }
+  if (boot.audio?.output?.speed != null) {
+    session.audio.output.speed = boot.audio.output.speed;
+  }
   if (boot.language_hint || (Array.isArray(boot.keyterms) && boot.keyterms.length)) {
     session.audio.input.transcription = {};
     if (boot.language_hint) session.audio.input.transcription.language_hint = boot.language_hint;
@@ -151,6 +172,12 @@ export function buildGrokSessionUpdate(boot = {}) {
   }
   if (boot.replace && typeof boot.replace === "object") {
     session.replace = boot.replace;
+  }
+  if (boot.reasoning && typeof boot.reasoning === "object") {
+    session.reasoning = boot.reasoning;
+  }
+  if (boot.resumption && typeof boot.resumption === "object") {
+    session.resumption = boot.resumption;
   }
   if (Array.isArray(boot.tools) && boot.tools.length) {
     session.tools = boot.tools;
