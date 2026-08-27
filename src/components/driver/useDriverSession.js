@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { shouldWatchGps } from "../../utils/logistica/torreLiveView.js";
 
 const TOKEN_KEY = "transportista_driver_token";
 const PROFILE_KEY = "bmc-driver-profile-v1";
@@ -193,18 +194,22 @@ export default function useDriverSession() {
         });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || "Error");
-        if (type !== "location_ping") await loadTrip();
+        if (type !== "location_ping" && type !== "presence") await loadTrip();
       } catch {
-        await outboxAdd(body);
-        await refreshOutbox();
-        if (type !== "location_ping") setStatus(`Sin conexión: evento en cola (${type}).`);
+        if (type !== "presence") {
+          await outboxAdd(body);
+          await refreshOutbox();
+        }
+        if (type !== "location_ping" && type !== "presence") setStatus(`Sin conexión: evento en cola (${type}).`);
       }
     },
     [token, trip, authHeader, loadTrip, refreshOutbox],
   );
 
   useEffect(() => {
-    if (!token || !trip || typeof navigator === "undefined" || !navigator.geolocation) return undefined;
+    if (!token || !shouldWatchGps(trip) || typeof navigator === "undefined" || !navigator.geolocation) {
+      return undefined;
+    }
     let lastSent = 0;
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -220,6 +225,14 @@ export default function useDriverSession() {
       { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 },
     );
     return () => navigator.geolocation.clearWatch(watchId);
+  }, [token, trip, sendEvent]);
+
+  useEffect(() => {
+    if (!token || !shouldWatchGps(trip)) return undefined;
+    const beat = () => sendEvent("presence", { online: typeof navigator === "undefined" ? true : navigator.onLine });
+    beat();
+    const id = setInterval(beat, 60_000);
+    return () => clearInterval(id);
   }, [token, trip, sendEvent]);
 
   const loginWithToken = (plain, name) => {

@@ -78,6 +78,7 @@ import { buildYardDump, clearYardPositions, countYardPackages } from "../utils/l
 import ViewerChrome from "./logistica/ViewerChrome.jsx";
 import RepartoBar from "./logistica/RepartoBar.jsx";
 import DriverLoopPanel from "./logistica/DriverLoopPanel.jsx";
+import TorreLiveBoard from "./logistica/TorreLiveBoard.jsx";
 import LogisticaTruckerAgent from "./logistica/LogisticaTruckerAgent.jsx";
 import { applyTruckerAction } from "../utils/logistica/truckerAgent.js";
 import { tetrisPlaceCargo, tetrisToFreePositions } from "../utils/logistica/tetrisPack.js";
@@ -1886,6 +1887,13 @@ export default function BmcLogisticaApp() {
   /** Setup wizard (SDD-ENVIO-WIZARD) */
   const [catalogPlaces, setCatalogPlaces] = useState(() => loadCatalogFromStorage());
   const [wizardUi, setWizardUi] = useState(() => createWizardUi({ enabled: false }));
+  const [torreVista, setTorreVista] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("vista") === "torre";
+    } catch {
+      return false;
+    }
+  });
   const [tripRoute, setTripRoute] = useState(null);
   const [newBaseLabel, setNewBaseLabel] = useState("");
   const [newBaseUrl, setNewBaseUrl] = useState("");
@@ -3706,6 +3714,32 @@ export default function BmcLogisticaApp() {
         <div>
           <h1 className="envios-header__title">BMC Uruguay — Logística de Carga</h1>
           <div className="envios-header__sub">{`2 filas máx · altura ${MAX_H}m · saliente 2m · pedidos no se mezclan`}</div>
+          <div style={{ marginTop: 8, display: "flex", gap: 8 }} className="np">
+            <Btn small outline={torreVista} onClick={() => {
+              setTorreVista(false);
+              try {
+                const u = new URL(window.location.href);
+                u.searchParams.delete("vista");
+                window.history.replaceState({}, "", `${u.pathname}${u.search}`);
+              } catch {
+                /* ignore */
+              }
+            }}>
+              Plan
+            </Btn>
+            <Btn small outline={!torreVista} onClick={() => {
+              setTorreVista(true);
+              try {
+                const u = new URL(window.location.href);
+                u.searchParams.set("vista", "torre");
+                window.history.replaceState({}, "", `${u.pathname}${u.search}`);
+              } catch {
+                /* ignore */
+              }
+            }}>
+              Torre
+            </Btn>
+          </div>
         </div>
         <div className="envios-header__meta">
           <div className="envios-header__meta-strong">{info.numero} · {info.fecha}</div>
@@ -3722,11 +3756,17 @@ export default function BmcLogisticaApp() {
         />
       </header>
 
-      {cargo.warns.map((w, i) => (
+      {torreVista ? (
+        <div className="np" style={{ margin: "12px 16px 32px" }}>
+          <TorreLiveBoard />
+        </div>
+      ) : null}
+
+      {torreVista ? null : cargo.warns.map((w, i) => (
         <div key={i} className="envios-alert-danger" style={{ marginBottom: 8 }}>⚠️ {w}</div>
       ))}
 
-      {wizardUi.enabled ? (
+      {torreVista ? null : wizardUi.enabled ? (
         <div className="np" style={{ marginBottom: 12 }}>
           <EnvioWizardShell
             wizard={wizardUi}
@@ -4081,6 +4121,7 @@ export default function BmcLogisticaApp() {
         </div>
       )}
 
+      <div hidden={torreVista}>
       <div className="envios-tabbar np">
         {[["form", "📋 Detalle Completo"], ["remito", "📄 Remito"], ["carga", "🚛 Diagrama 3D"]].map(([v, l]) => (
           <button
@@ -5691,6 +5732,8 @@ export default function BmcLogisticaApp() {
             <div style={{ fontWeight: 700, color: T.brand, fontSize: 15 }}>{v}</div>
           </div>
         ))}
+      </div>
+
       </div>
 
       <EnviosDraftBrowser
