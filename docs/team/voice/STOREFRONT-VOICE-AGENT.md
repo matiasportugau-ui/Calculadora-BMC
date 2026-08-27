@@ -25,6 +25,8 @@ Architecture SoT: `docs/sdd/storefront-voice-agent/SDD.md`. Policy: classify →
 
 Cloud Run also needs `PUBLIC_STOREFRONT_VOICE=1` and CORS already includes `https://bmcuruguay.com.uy`.
 
+**Docker:** `server/Dockerfile` copies `public/video/panelin-lista-loop.mp4` into `/storefront-voice/`. `.dockerignore` must keep `!public/video` + `!public/video/panelin-lista-loop.mp4` (otherwise the Cloud Run build fails — 2026-08-27).
+
 ## Safety
 
 Public allowlist: catalog/calc lista **web**, `generar_pdf` (insist path, flete=0), `capture_lead` (consent → Admin `origen=VW`, PDF in col K), `handoff_whatsapp`. Browser shop tools (same origin): `shop_search`, `shop_product`, `get_cart`, `add_to_cart`, `navigate`, `open_url`, `share_link`. Does **not** call `/api/agent/voice/action`. Never quote flete. Catalog SKUs can go to the Shopify cart.

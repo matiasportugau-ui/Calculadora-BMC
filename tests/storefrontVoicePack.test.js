@@ -189,6 +189,11 @@ assert.ok(
   fs.existsSync(path.join(ROOT, "public/video/panelin-lista-loop.mp4")),
   "source loop in calculator public/",
 );
+const dockerignore = fs.readFileSync(path.join(ROOT, ".dockerignore"), "utf8");
+assert.ok(
+  dockerignore.includes("!public/video/panelin-lista-loop.mp4"),
+  "Cloud Run COPY needs dockerignore exception for the loop mp4",
+);
 assert.ok(!widget.includes("/api/agent/voice/action"), "widget must not hit operator action");
 assert.ok(widget.includes("force_message"), "greeting via force_message");
 assert.ok(widget.includes("/cart/add.js"), "Shopify cart add");

@@ -10,6 +10,8 @@ npm-debug.log
 public
 !public/bmc-pdf
 !public/bmc-pdf/**
+!public/video
+!public/video/panelin-lista-loop.mp4
 tests
 # Exclude most of docs/, then re-include only what production images need.
 # Docker requires un-excluding parent directories before nested paths.

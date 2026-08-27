@@ -1,6 +1,6 @@
 ---
 title: System Design Document — Panelin Front (Website Panelin Agent)
-version: 2.0
+version: 2.0.1
 date: 2026-08-27
 status: As-Built
 author: sdd-architect (from live widget + Cloud Run public API)
@@ -335,7 +335,7 @@ No email column — email goes in consulta/notas.
 
 **Status:** Accepted  
 **Decision:** Serve `public/video/panelin-lista-loop.mp4` from Cloud Run `/storefront-voice/`.  
-**Consequences:** ~32 MB on the API image; poster PNG fallback; `prefers-reduced-motion` pauses video.
+**Consequences:** ~32 MB on the API image; poster PNG fallback; `prefers-reduced-motion` pauses video. `.dockerignore` must keep `!public/video` + `!public/video/panelin-lista-loop.mp4` — without that, `COPY` in `server/Dockerfile` fails the Cloud Run build (2026-08-27).
 
 ---
 
@@ -345,6 +345,7 @@ No email column — email goes in consulta/notas.
 |------|--------|------------|
 | LLM quotes flete | High | Instructions + `forceListaWeb` flete=0 + widget copy |
 | Widget not deployed | High | Theme already loads Cloud Run `widget.js`; needs `deploy-calc-api` |
+| Loop mp4 excluded by `.dockerignore` | High | Allowlist `!public/video/panelin-lista-loop.mp4`; test in `storefrontVoicePack` |
 | Identify 404 on old API | Medium | Restart / Cloud Run revision |
 | Sheets 503 | Medium | Unlock chat still; show error; retry log |
 | Auto-nav drops chat | Medium | persistResume + restore caps |

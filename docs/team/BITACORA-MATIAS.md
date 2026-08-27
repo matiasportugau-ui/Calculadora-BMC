@@ -365,4 +365,18 @@ gate:local:   pendiente correr al final de la sesión
 
 ---
 
+## 2026-08-27 N — Panelin Front Cloud Run dockerignore (loop mp4)
+
+**Contexto:** PR #1149 merged; `deploy-calc-api` failed because `.dockerignore` excludes `public/` except `bmc-pdf`, so `COPY public/video/panelin-lista-loop.mp4` was missing from the Docker context.
+
+**Acciones:** Allowlist `!public/video` + `!public/video/panelin-lista-loop.mp4`. Assert in `tests/storefrontVoicePack.test.js`. SDD ADR-008 note.
+
+**Verificación:** `node tests/storefrontVoicePack.test.js` (dockerignore exception). Shop still needs a green `deploy-calc-api`.
+
+**Próximo paso:** Merge hotfix → Cloud Run revision → looping orb + ¿Necesitás ayuda? on bmcuruguay.com.uy.
+
+**Refs:** `.dockerignore` · `server/Dockerfile` COPY loop mp4 · SDD v2.0.1
+
+---
+
 
