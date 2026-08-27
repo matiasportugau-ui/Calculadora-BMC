@@ -14,6 +14,8 @@ import {
   normalizeStorefrontPhone,
   buildWhatsAppHandoff,
   stripInternalPrices,
+  mintStorefrontRowProof,
+  verifyStorefrontRowProof,
   STOREFRONT_READ_TOOLS,
   STOREFRONT_VOICE_GREETING_TEXT,
   STOREFRONT_LEAD_ORIGEN,
@@ -130,6 +132,24 @@ assert.match(idOk.lead.consulta, /Chat tienda Panelin/);
 const namedPack = buildStorefrontVoicePack({ shopperName: "Ana" });
 assert.ok(namedPack.instructions.includes("Already identified as Ana"));
 
+{
+  const secret = "test-storefront-row-secret";
+  const phone = normalizeStorefrontPhone("099123456");
+  const proof = mintStorefrontRowProof(42, phone, secret, 1_700_000_000_000);
+  assert.ok(proof, "mint rowProof");
+  assert.equal(verifyStorefrontRowProof(proof, 42, phone, secret, 1_700_000_000_000), true, "valid proof");
+  assert.equal(verifyStorefrontRowProof(proof, 43, phone, secret, 1_700_000_000_000), false, "wrong row rejected");
+  assert.equal(verifyStorefrontRowProof(proof, 42, "59891111111", secret, 1_700_000_000_000), false, "wrong phone rejected");
+  assert.equal(verifyStorefrontRowProof(proof, 42, phone, "other-secret", 1_700_000_000_000), false, "wrong secret rejected");
+  assert.equal(
+    verifyStorefrontRowProof(proof, 42, phone, secret, 1_700_000_000_000 + 13 * 60 * 60 * 1000),
+    false,
+    "expired proof rejected",
+  );
+  assert.equal(verifyStorefrontRowProof(null, 42, phone, secret), false, "missing proof rejected");
+  assert.equal(mintStorefrontRowProof(42, phone, ""), null, "empty secret → no proof");
+}
+
 assert.equal(STOREFRONT_AGENT_CONFIG.quote.mode, "insist-only");
 assert.deepEqual([...STOREFRONT_AGENT_CONFIG.lead.required], ["nombre", "telefono"]);
 assert.equal(STOREFRONT_AGENT_CONFIG.quote.pdf, true);
@@ -174,6 +194,8 @@ assert.ok(widget.includes("/api/public/voice/session"), "widget mints public ses
 assert.ok(widget.includes("/api/public/voice/chat"), "widget text-to-text");
 assert.ok(widget.includes("/api/public/voice/identify"), "name+phone gate");
 assert.ok(widget.includes("/api/public/voice/log"), "chat log to Admin 2.0");
+assert.ok(widget.includes("rowProof"), "Admin row ownership proof");
+assert.ok(widget.includes("leadPayload"), "lead ownership on action/chat");
 assert.ok(widget.includes("¡Dale, chateamos!"), "friendly identify CTA");
 assert.ok(widget.includes("if (!state.identified) return"), "chat locked until identified");
 assert.ok(widget.includes('id="bmc-in"'), "text input");

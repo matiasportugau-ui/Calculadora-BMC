@@ -461,6 +461,7 @@
     cliente: "",
     telefono: "",
     adminRow: null,
+    rowProof: null,
     logTimer: null,
   };
 
@@ -492,6 +493,7 @@
         cliente: state.cliente,
         telefono: state.telefono,
         adminRow: state.adminRow,
+        rowProof: state.rowProof,
       }));
     } catch { /* ignore */ }
   }
@@ -501,9 +503,20 @@
     state.cliente = String(info?.cliente || "").trim();
     state.telefono = String(info?.telefono || "").trim();
     const row = Number(info?.adminRow);
-    state.adminRow = Number.isFinite(row) && row >= 2 ? row : info?.adminRow || null;
+    state.adminRow = Number.isFinite(row) && row >= 2 ? row : null;
+    state.rowProof = info?.rowProof ? String(info.rowProof) : null;
     root.classList.add("identified");
     persistIdentity();
+  }
+
+  function leadPayload() {
+    if (!state.adminRow || !state.rowProof) return undefined;
+    return {
+      adminRow: state.adminRow,
+      rowProof: state.rowProof,
+      cliente: state.cliente,
+      telefono: state.telefono,
+    };
   }
 
   function transcriptText() {
@@ -516,7 +529,7 @@
   }
 
   function scheduleLog() {
-    if (!state.identified || !state.adminRow) return;
+    if (!state.identified || !state.adminRow || !state.rowProof) return;
     if (state.logTimer) clearTimeout(state.logTimer);
     state.logTimer = setTimeout(() => {
       flushLog();
@@ -528,7 +541,7 @@
       clearTimeout(state.logTimer);
       state.logTimer = null;
     }
-    if (!state.identified || !state.adminRow) return;
+    if (!state.identified || !state.adminRow || !state.rowProof) return;
     const transcript = transcriptText();
     if (!transcript) return;
     try {
@@ -537,6 +550,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           adminRow: state.adminRow,
+          rowProof: state.rowProof,
           telefono: state.telefono,
           cliente: state.cliente,
           transcript,
@@ -926,7 +940,7 @@
       body: JSON.stringify({
         action: { type: name, payload: args || {} },
         pageUrl: window.location.href,
-        lead: state.adminRow ? { adminRow: state.adminRow, cliente: state.cliente, telefono: state.telefono } : undefined,
+        lead: leadPayload(),
         shopperName: state.cliente || undefined,
       }),
     });
@@ -1165,6 +1179,7 @@
       history: prior,
       pageUrl: window.location.href,
       shopperName: state.cliente,
+      lead: leadPayload(),
     };
     try {
       for (let hop = 0; hop < 4; hop++) {
@@ -1188,6 +1203,7 @@
           history: state.chatHistory,
           pageUrl: window.location.href,
           shopperName: state.cliente,
+          lead: leadPayload(),
         };
       }
     } catch (err) {
@@ -1265,6 +1281,7 @@
         cliente: data.cliente || cliente,
         telefono: data.telefono || telefono,
         adminRow: data.adminRow,
+        rowProof: data.rowProof,
       });
       startCall();
     } catch (err) {
