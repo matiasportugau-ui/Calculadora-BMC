@@ -38,6 +38,16 @@ process.env.GROK_API_KEY = config.grokApiKey;
 
 let passed = 0;
 let failed = 0;
+
+function confirmAsOperator(text = "sí, dale") {
+  return executeKernelTool("ingest_conversation_turn", {
+    speaker: "operator",
+    role: "operator",
+    text,
+    addressed_to: "kernel",
+    timestamp: new Date().toISOString(),
+  });
+}
 function ok(cond, label) {
   if (cond) {
     passed += 1;
@@ -171,13 +181,16 @@ try {
     reason: "forgot price list",
   });
   ok(blocked.ok === false, "observe mode cannot apply_playbook_patch");
-  const modePatch = executeKernelTool("set_mode", { mode: "patch", user_confirmed: true });
-  ok(modePatch.ok && modePatch.mode === "patch", "set_mode patch with confirm");
+  const fakeConfirm = executeKernelTool("set_mode", { mode: "patch", user_confirmed: true });
+  ok(fakeConfirm.ok === false, "LLM-invented user_confirmed alone cannot enter patch");
+  confirmAsOperator();
+  const modePatch = executeKernelTool("set_mode", { mode: "patch" });
+  ok(modePatch.ok && modePatch.mode === "patch", "set_mode patch with operator confirm");
+  confirmAsOperator();
   const patched = executeKernelTool("apply_playbook_patch", {
     agent_id: "calc-assistant",
     patch: "ALWAYS say the lista de precios before the total.",
     reason: "forgot price list",
-    user_confirmed: true,
   });
   ok(patched.ok && patched.reload === true && patched.version >= 2, "apply_playbook_patch bumps version");
   const after = executeKernelTool("read_playbook", { agent_id: "current" });
@@ -212,10 +225,11 @@ try {
     reason: "test",
   });
   ok(prop.ok && prop.proposal_id, "propose_code_change stages");
-  executeKernelTool("set_mode", { mode: "patch", user_confirmed: true });
+  confirmAsOperator();
+  executeKernelTool("set_mode", { mode: "patch" });
+  confirmAsOperator();
   const applied = executeKernelTool("apply_code_change", {
     proposal_id: prop.proposal_id,
-    user_confirmed: true,
   });
   ok(applied.ok === false && applied.staged === true, "apply_code_change refused without env");
 }
@@ -236,6 +250,43 @@ ok(normalizeRepoPath("node_modules/foo.js") == null, "deny node_modules");
   ok(hits.ok && hits.hits.length >= 1, "search_code finds transport helper");
   const literal = searchCode({ query: "(a+)+$", path_glob: "src/**/*.js" });
   ok(literal.ok, "search_code treats nested quantifiers as literal");
+}
+
+{
+  const { getAgent, setActiveAgent, applyPlaybookPatch, isSafeAgentId } = await import(
+    "../server/lib/kernel/store.js"
+  );
+  const store = loadStore();
+  ok(isSafeAgentId("__proto__") === false, "isSafeAgentId rejects __proto__");
+  ok(isSafeAgentId("constructor") === false, "isSafeAgentId rejects constructor");
+  ok(getAgent(store, "__proto__") === null, "getAgent(__proto__) is null");
+  ok(getAgent(store, "constructor") === null, "getAgent(constructor) is null");
+  ok(setActiveAgent(store, "__proto__") === null, "setActiveAgent(__proto__) refused");
+  try {
+    applyPlaybookPatch(store, {
+      agent_id: "__proto__",
+      patch: "SHOULD_NOT_LAND_ON_OBJECT_PROTOTYPE",
+      reason: "regression",
+    });
+    ok(false, "apply_playbook_patch(__proto__) should throw");
+  } catch (err) {
+    ok(err.status === 404, "apply_playbook_patch(__proto__) → 404");
+  }
+  ok(
+    !String(Object.prototype.playbook || "").includes("SHOULD_NOT_LAND_ON_OBJECT_PROTOTYPE"),
+    "Object.prototype.playbook not polluted",
+  );
+  executeKernelTool("set_mode", { mode: "observe" });
+  const toolDenied = executeKernelTool("apply_playbook_patch", {
+    agent_id: "__proto__",
+    patch: "TOOL_SHOULD_NOT_POLLUTE",
+    reason: "regression",
+  });
+  ok(toolDenied.ok === false, "kernel tool refuses apply_playbook_patch(__proto__)");
+  ok(
+    !String(Object.prototype.playbook || "").includes("TOOL_SHOULD_NOT_POLLUTE"),
+    "tool path does not pollute Object.prototype",
+  );
 }
 
 {
@@ -302,6 +353,17 @@ async function req(pathname, opts = {}) {
 }
 
 {
+  const unauthAction = await fetch(`${base}/api/agent/voice/action`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: { type: "sheets_get_pending_admin", payload: {} },
+    }),
+  });
+  ok(unauthAction.status === 401, "POST voice/action without auth → 401");
+}
+
+{
   const list = await req("/api/kernel/agents");
   ok(list.status === 200 && list.json.ok, "GET /api/kernel/agents");
   ok(list.json.agents.some((a) => a.agent_id === "calc-assistant"), "list includes factory agent");
@@ -365,12 +427,13 @@ async function req(pathname, opts = {}) {
 }
 
 {
-  executeKernelTool("set_mode", { mode: "patch", user_confirmed: true });
+  confirmAsOperator();
+  executeKernelTool("set_mode", { mode: "patch" });
+  confirmAsOperator();
   executeKernelTool("apply_playbook_patch", {
     agent_id: "panelin",
     patch: "KERNEL-RESET-MARKER",
     reason: "test reset",
-    user_confirmed: true,
   });
   ok(Number(loadStore().agents.panelin.version) > 1, "panelin version bumped");
   const store = loadStore();

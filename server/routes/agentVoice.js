@@ -312,14 +312,18 @@ router.post(
 /**
  * POST /api/agent/voice/action
  *
- * Body: { action: { type, payload }, conversationId?: string }
- * Returns: { ok, action } — the validated (possibly enriched) action.
+ * Body: { action: { type, payload }, calcState?, conversationId?: string }
+ * Returns: { ok, action } for form relays, or { ok, kind:"tool", result, actions }
+ * for Voice Brain Pack tools (sheets/CRM/calc/PDF/Drive) executed via executeTool.
  *
- * The browser receives the validated action, applies it via the existing
- * handleChatAction pipeline, then sends the result back to OpenAI via
- * the WebRTC data channel to let the voice agent continue.
+ * Auth: same gate as session mint (API_AUTH_TOKEN OR identity JWT with
+ * calc:write). Required because voice tools can write Admin sheets / Drive.
  */
-router.post("/agent/voice/action", actionLimiter, async (req, res) => {
+router.post(
+  "/agent/voice/action",
+  actionLimiter,
+  requireServiceOrUser({ module: "calc", minLevel: "write" }),
+  async (req, res) => {
   const { action, calcState = {} } = req.body || {};
 
   if (!action || typeof action !== "object") {
@@ -387,7 +391,8 @@ router.post("/agent/voice/action", actionLimiter, async (req, res) => {
   }
 
   return res.json({ ok: true, action });
-});
+  },
+);
 
 /**
  * GET /api/agent/voice/errors
