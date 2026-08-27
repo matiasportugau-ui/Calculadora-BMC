@@ -2294,6 +2294,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const consulta = String(input?.consulta ?? "").trim();
       if (!consulta) return JSON.stringify({ ok: false, error: "consulta requerida" });
       const notas = buildWaLeadAdminNotas(input, opts?.operatorContext);
+      const link = String(input?.link || input?.linkDrive || input?.pdf_url || "").trim();
       const body = {
         consulta,
         telefono: input?.telefono != null ? String(input.telefono) : "",
@@ -2301,6 +2302,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         origen: input?.origen != null ? String(input.origen) : "WA",
         zona: input?.zona != null ? String(input.zona) : "",
         ...(notas ? { notas } : {}),
+        ...(link ? { link } : {}),
       };
       return await wolfboardForward("/api/wolfboard/row-create", { method: "POST", body }, name);
     }

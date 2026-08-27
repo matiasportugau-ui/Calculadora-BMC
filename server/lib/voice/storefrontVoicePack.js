@@ -8,6 +8,7 @@ import {
   STOREFRONT_VOICE_GREETING,
   STOREFRONT_VOICE_INSTRUCTIONS,
 } from "./storefrontVoiceInstructions.js";
+import { STOREFRONT_AGENT_CONFIG } from "./storefrontAgentConfig.js";
 
 export const STOREFRONT_VOICE_GREETING_TEXT = STOREFRONT_VOICE_GREETING;
 
@@ -20,7 +21,7 @@ export const STOREFRONT_READ_TOOLS = Object.freeze([
   "obtener_escenarios",
 ]);
 
-export const STOREFRONT_WRITE_TOOLS = Object.freeze(["capture_lead"]);
+export const STOREFRONT_WRITE_TOOLS = Object.freeze(["capture_lead", "generar_pdf"]);
 
 export const STOREFRONT_CLIENT_TOOLS = Object.freeze([
   "handoff_whatsapp",
@@ -39,7 +40,7 @@ export const STOREFRONT_TOOL_SET = new Set([
   ...STOREFRONT_CLIENT_TOOLS,
 ]);
 
-export const STOREFRONT_LEAD_ORIGEN = "VW";
+export const STOREFRONT_LEAD_ORIGEN = STOREFRONT_AGENT_CONFIG.lead.origen;
 
 export const STOREFRONT_WA_NUMBER_DEFAULT = "59892663245";
 
@@ -51,6 +52,8 @@ export const STOREFRONT_WEB_SEARCH_TOOL = Object.freeze({
 export const STOREFRONT_KEYTERMS = Object.freeze([
   "Panelin",
   "IsoDec",
+  "luz",
+  "flete",
   "IsoRoof",
   "IsoFrig",
   "IsoPanel",
@@ -104,6 +107,11 @@ const CAPTURE_LEAD_TOOL = Object.freeze({
         description: "true solo si el comprador aceptó que BMC lo contacte por WhatsApp",
       },
       campos_faltantes: { type: "string" },
+      quote_orientacion: {
+        type: "string",
+        description: "Si cotizaste: totales lista web + flete no cotizado (misma cifra que el PDF)",
+      },
+      pdf_url: { type: "string", description: "URL del PDF de aproximación, si generar_pdf ya corrió" },
     },
     required: ["cliente", "telefono", "consulta", "consent"],
   },
@@ -250,8 +258,9 @@ export function forceListaWeb(name, payload = {}) {
   ) {
     p.lista = "web";
   }
-  if (n === "calcular_cotizacion") {
+  if (n === "calcular_cotizacion" || n === "generar_pdf") {
     p.listaPrecios = "web";
+    p.flete = 0;
   }
   return p;
 }
@@ -295,6 +304,8 @@ export function assertCaptureLead(payload = {}) {
       origen: STOREFRONT_LEAD_ORIGEN,
       campos_faltantes: String(payload.campos_faltantes || "").trim(),
       consent: true,
+      quote_orientacion: String(payload.quote_orientacion || "").trim(),
+      pdf_url: String(payload.pdf_url || payload.pdfUrl || "").trim(),
     },
   };
 }
@@ -305,7 +316,7 @@ export function stripInternalPrices(value) {
   if (!value || typeof value !== "object") return value;
   const out = {};
   for (const [k, v] of Object.entries(value)) {
-    if (/venta|costo|cost_usd|precio_costo/i.test(k)) continue;
+    if (/venta|costo|cost_usd|precio_costo|^flete|flete_usd|shipping|precio_flete/i.test(k)) continue;
     out[k] = stripInternalPrices(v);
   }
   return out;
@@ -344,6 +355,7 @@ export function buildStorefrontVoicePack(options = {}) {
     NAVIGATE_TOOL,
     OPEN_URL_TOOL,
     SHARE_LINK_TOOL,
+    ...AGENT_TOOLS.filter((t) => t.name === "generar_pdf").map(agentToolToRealtimeFunction),
     CAPTURE_LEAD_TOOL,
     HANDOFF_WHATSAPP_TOOL,
   ];
@@ -352,8 +364,8 @@ export function buildStorefrontVoicePack(options = {}) {
     instructions: STOREFRONT_VOICE_INSTRUCTIONS + extra,
     tools,
     tool_choice: "auto",
-    voice: "rex",
-    language_hint: "es-MX",
+    voice: STOREFRONT_AGENT_CONFIG.voice,
+    language_hint: STOREFRONT_AGENT_CONFIG.languageHint,
     keyterms: [...STOREFRONT_KEYTERMS],
     replace: { ...STOREFRONT_PRONUNCIATION_REPLACE },
     turn_detection: { ...STOREFRONT_TURN_DETECTION },

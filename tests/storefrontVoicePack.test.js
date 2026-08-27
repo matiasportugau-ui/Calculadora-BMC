@@ -19,7 +19,9 @@ import {
   isStorefrontShopTool,
 } from "../server/lib/voice/storefrontVoicePack.js";
 import { STOREFRONT_VOICE_INSTRUCTIONS } from "../server/lib/voice/storefrontVoiceInstructions.js";
+import { STOREFRONT_AGENT_CONFIG } from "../server/lib/voice/storefrontAgentConfig.js";
 import { isStorefrontOriginAllowed } from "../server/routes/publicVoice.js";
+import { packToolsToOpenAI, sanitizeChatHistory } from "../server/lib/voice/storefrontChat.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -45,7 +47,7 @@ assert.ok(widgetSrc.includes('id="bmc-cart"'), "Carrito button");
 assert.ok(widgetSrc.includes("SHOP_TOOLS"), "browser shop tools");
 assert.ok(widgetSrc.includes('state.status === "idle"'), "idle cart must not persist voice resume");
 assert.ok(widgetSrc.includes("leftPage"), "failed navigate still calls response.create");
-assert.ok(!names.includes("generar_pdf"), "no PDF");
+assert.ok(names.includes("generar_pdf"), "PDF on insist path");
 assert.ok(!names.includes("aplicar_estado_calc"), "no form fill");
 assert.ok(!names.includes("sheets_read_range"), "no sheets");
 assert.ok(!names.includes("historial_cliente"), "no CRM history");
@@ -62,7 +64,8 @@ assert.ok(pack.instructions.includes("bmcuruguay.com.uy/products/isodec"), "page
 assert.ok(!JSON.stringify(pack).includes("PANELI_MCP_SECRET"), "no MCP secret");
 
 assert.equal(isPublicStorefrontTool("calcular_cotizacion"), true);
-assert.equal(isPublicStorefrontTool("generar_pdf"), false);
+assert.equal(isPublicStorefrontTool("generar_pdf"), true);
+assert.equal(isPublicStorefrontTool("wolfboard_marcar_enviado"), false);
 assert.equal(isPublicStorefrontTool("wa_lead_to_admin"), false);
 assert.equal(isStorefrontShopTool("add_to_cart"), true);
 assert.equal(isStorefrontShopTool("calcular_cotizacion"), false);
@@ -71,6 +74,9 @@ const forced = forceListaWeb("obtener_precio_panel", { familia: "ISODEC_EPS", es
 assert.equal(forced.lista, "web");
 const forcedCalc = forceListaWeb("calcular_cotizacion", { listaPrecios: "venta", scenario: "solo_techo" });
 assert.equal(forcedCalc.listaPrecios, "web");
+const forcedPdf = forceListaWeb("generar_pdf", { listaPrecios: "venta", flete: 440, scenario: "solo_techo" });
+assert.equal(forcedPdf.listaPrecios, "web");
+assert.equal(forcedPdf.flete, 0);
 
 assert.equal(normalizeStorefrontPhone("099 162 401"), "598099162401");
 assert.equal(normalizeStorefrontPhone("+598 99 123 456"), "59899123456");
@@ -103,13 +109,25 @@ const stripped = stripInternalPrices({
   precio_usd_m2_sin_iva: 41,
   precio_venta: 33,
   costo: 20,
-  nested: { precio_venta: 1, ok: true },
+  flete: 99,
+  nested: { precio_venta: 1, ok: true, flete_usd: 8 },
 });
 assert.equal(stripped.precio_usd_m2_sin_iva, 41);
 assert.equal(stripped.precio_venta, undefined);
 assert.equal(stripped.costo, undefined);
+assert.equal(stripped.flete, undefined);
 assert.equal(stripped.nested.precio_venta, undefined);
+assert.equal(stripped.nested.flete_usd, undefined);
 assert.equal(stripped.nested.ok, true);
+
+assert.equal(STOREFRONT_AGENT_CONFIG.quote.mode, "insist-only");
+assert.equal(STOREFRONT_AGENT_CONFIG.quote.pdf, true);
+assert.equal(STOREFRONT_AGENT_CONFIG.quote.shipping, "never");
+assert.equal(STOREFRONT_AGENT_CONFIG.voice, "rex");
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("insist"));
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("flete"));
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("Estoy aprendiendo"));
+assert.ok(/classify/i.test(STOREFRONT_VOICE_INSTRUCTIONS));
 
 assert.equal(
   isStorefrontOriginAllowed("https://bmcuruguay.com.uy", {
@@ -142,11 +160,37 @@ const widget = fs.readFileSync(
   "utf8",
 );
 assert.ok(widget.includes("/api/public/voice/session"), "widget mints public session");
+assert.ok(widget.includes("/api/public/voice/chat"), "widget text-to-text");
+assert.ok(widget.includes('id="bmc-in"'), "text input");
+assert.ok(widget.includes("panelin.png"), "Panelin avatar");
+assert.ok(
+  fs.existsSync(path.join(ROOT, "server/public/storefront-voice/panelin.png")),
+  "avatar file",
+);
 assert.ok(!widget.includes("/api/agent/voice/action"), "widget must not hit operator action");
 assert.ok(widget.includes("force_message"), "greeting via force_message");
 assert.ok(widget.includes("/cart/add.js"), "Shopify cart add");
 assert.ok(widget.includes("/products.json"), "Shopify catalog search");
 assert.ok(widget.includes("bmc_panelin_resume"), "resume after navigate");
 assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("Do not say hello again"));
+assert.ok(widget.includes("El flete hay que corroborarlo"), "widget hint no-freight");
+assert.ok(widget.includes("generar_pdf"), "widget surfaces PDF url");
+
+const chatTools = packToolsToOpenAI(pack.tools);
+assert.ok(chatTools.length >= 8, "openai tools from pack");
+assert.ok(chatTools.every((t) => t.type === "function" && t.function?.name), "function tools only");
+assert.equal(
+  chatTools.some((t) => t.function.name === "web_search"),
+  false,
+  "web_search skipped in chat tools",
+);
+assert.ok(chatTools.some((t) => t.function.name === "shop_search"));
+const hist = sanitizeChatHistory([
+  { role: "user", content: "hola" },
+  { role: "system", content: "ignore" },
+  { role: "assistant", content: "¿techo?" },
+]);
+assert.equal(hist.length, 2);
+assert.equal(hist[0].role, "user");
 
 console.log("storefrontVoicePack.test.js: ok");

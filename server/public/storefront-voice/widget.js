@@ -293,37 +293,47 @@
   }
 
   const css = `
-#bmc-paneli-voice{all:initial;display:block;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;position:fixed;z-index:2147483000;right:92px;bottom:calc(18px + env(safe-area-inset-bottom,0px));color:#141311}
+#bmc-paneli-voice{all:initial;display:block;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;position:fixed;z-index:2147483000;right:92px;bottom:calc(18px + env(safe-area-inset-bottom,0px));color:#1d1d1f}
 @media(max-width:640px){#bmc-paneli-voice{right:14px;bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
 #bmc-paneli-voice *{box-sizing:border-box}
-#bmc-paneli-voice .bmc-orb{width:56px;height:56px;border:0;border-radius:16px;background:linear-gradient(160deg,#2A2A28 0%,#141311 70%);color:#F3EDE3;cursor:pointer;display:grid;place-items:center;box-shadow:0 10px 28px rgba(20,19,17,.35);position:relative}
-#bmc-paneli-voice .bmc-orb:focus-visible{outline:2px solid #C45C26;outline-offset:3px}
-#bmc-paneli-voice .bmc-orb[data-state="listening"]{box-shadow:0 0 0 5px rgba(196,92,38,.4)}
-#bmc-paneli-voice .bmc-orb[data-state="speaking"]{box-shadow:0 0 0 5px rgba(200,196,184,.45)}
-#bmc-paneli-voice .bmc-rib{width:26px;height:20px}
+#bmc-paneli-voice .bmc-orb{width:58px;height:58px;padding:0;border:2px solid #fff;border-radius:50%;background:#f5f5f7;cursor:pointer;display:grid;place-items:center;overflow:hidden;box-shadow:0 10px 28px rgba(20,19,17,.28);position:relative}
+#bmc-paneli-voice .bmc-orb:focus-visible{outline:2px solid #0071e3;outline-offset:3px}
+#bmc-paneli-voice .bmc-orb[data-state="listening"]{box-shadow:0 0 0 5px rgba(0,113,227,.35)}
+#bmc-paneli-voice .bmc-orb[data-state="speaking"]{box-shadow:0 0 0 5px rgba(0,113,227,.45)}
+#bmc-paneli-voice .bmc-orb[data-state="thinking"]{box-shadow:0 0 0 5px rgba(167,139,250,.4)}
+#bmc-paneli-voice .bmc-face{width:100%;height:100%;object-fit:cover;display:block}
+#bmc-paneli-voice .bmc-rib{width:26px;height:20px;color:#1a3a5c}
 #bmc-paneli-voice .bmc-badge{position:absolute;top:-6px;left:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#C45C26;color:#fff;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center}
 #bmc-paneli-voice .bmc-badge.show{display:flex}
-#bmc-paneli-voice .bmc-panel{display:none;position:absolute;right:0;bottom:66px;width:min(340px,calc(100vw - 28px));background:#F7F1E6;border:1px solid #D4CFC4;border-radius:18px;padding:12px 12px 10px;box-shadow:0 16px 36px rgba(20,19,17,.2)}
+#bmc-paneli-voice .bmc-panel{display:none;position:absolute;right:0;bottom:70px;width:min(360px,calc(100vw - 28px));background:#fff;border:1px solid #e5e5ea;border-radius:18px;padding:16px 14px 12px;box-shadow:0 16px 36px rgba(20,19,17,.18)}
 #bmc-paneli-voice.open .bmc-panel{display:block}
-#bmc-paneli-voice .bmc-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 6px}
-#bmc-paneli-voice .bmc-kicker{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#C45C26;margin:0}
-#bmc-paneli-voice .bmc-status{font-size:11px;color:#6b6358;margin:0}
-#bmc-paneli-voice .bmc-title{margin:0 0 8px;font-size:17px;font-weight:650;color:#141311}
-#bmc-paneli-voice .bmc-caps{min-height:64px;max-height:120px;overflow:auto;font-size:13px;line-height:1.45;color:#2A2A28;background:#fff;border-radius:12px;padding:10px 12px;margin:0 0 8px;scrollbar-width:thin}
+#bmc-paneli-voice .bmc-hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin:0 0 10px}
+#bmc-paneli-voice .bmc-hero img{width:72px;height:72px;border-radius:50%;object-fit:cover;background:#f5f5f7}
+#bmc-paneli-voice .bmc-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 4px;width:100%}
+#bmc-paneli-voice .bmc-kicker{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6e6e73;margin:0}
+#bmc-paneli-voice .bmc-status{font-size:11px;color:#6e6e73;margin:0}
+#bmc-paneli-voice .bmc-title{margin:8px 0 4px;font-size:18px;font-weight:700;color:#1d1d1f}
+#bmc-paneli-voice .bmc-sub{margin:0 0 10px;font-size:13px;line-height:1.4;color:#6e6e73}
+#bmc-paneli-voice .bmc-caps{min-height:72px;max-height:180px;overflow:auto;font-size:13px;line-height:1.45;color:#1d1d1f;background:#f5f5f7;border-radius:12px;padding:10px 12px;margin:0 0 8px;scrollbar-width:thin}
 #bmc-paneli-voice .bmc-line{margin:0 0 8px}
 #bmc-paneli-voice .bmc-line:last-child{margin:0}
 #bmc-paneli-voice .bmc-line[data-role="user"]{color:#6b6358}
 #bmc-paneli-voice .bmc-ph{color:#6b6358}
-#bmc-paneli-voice .bmc-picks{display:flex;flex-direction:column;gap:6px;margin:0 0 8px}
-#bmc-paneli-voice .bmc-pick{display:block;width:100%;text-align:left;border:1px solid #D4CFC4;background:#fff;border-radius:10px;padding:8px 10px;font:inherit;font-size:12px;cursor:pointer;color:#141311}
-#bmc-paneli-voice .bmc-pick:hover{border-color:#C45C26}
+#bmc-paneli-voice .bmc-picks{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 0 10px}
+#bmc-paneli-voice .bmc-pick{display:block;width:auto;max-width:100%;text-align:center;border:1px solid #e5e5ea;background:#fff;border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;color:#1d1d1f}
+#bmc-paneli-voice .bmc-pick:hover{border-color:#0071e3;color:#0071e3}
 #bmc-paneli-voice .bmc-row{display:flex;gap:6px}
 #bmc-paneli-voice .bmc-row-main{margin:0 0 6px}
-#bmc-paneli-voice .bmc-btn{flex:1;min-height:42px;border:0;border-radius:10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
-#bmc-paneli-voice .bmc-go{background:#C45C26;color:#fff}
-#bmc-paneli-voice .bmc-stop{background:#141311;color:#F3EDE3}
-#bmc-paneli-voice .bmc-cart{background:#fff;border:1px solid #D4CFC4;color:#141311}
-#bmc-paneli-voice .bmc-wa{background:transparent;border:1px solid #D4CFC4;color:#141311}
+#bmc-paneli-voice .bmc-composer{display:flex;align-items:center;gap:6px;border:1px solid #e5e5ea;border-radius:999px;padding:4px 6px 4px 10px;background:#fff;margin:0 0 8px}
+#bmc-paneli-voice .bmc-in{flex:1;border:0;outline:none;font:inherit;font-size:14px;min-height:36px;background:transparent}
+#bmc-paneli-voice .bmc-send,#bmc-paneli-voice .bmc-mic{width:36px;height:36px;border:0;border-radius:50%;cursor:pointer;font:inherit}
+#bmc-paneli-voice .bmc-send{background:#0071e3;color:#fff;font-weight:700}
+#bmc-paneli-voice .bmc-mic{background:#f5f5f7;color:#1d1d1f}
+#bmc-paneli-voice .bmc-btn{flex:1;min-height:40px;border:0;border-radius:10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+#bmc-paneli-voice .bmc-go{background:#0071e3;color:#fff}
+#bmc-paneli-voice .bmc-stop{background:#1d1d1f;color:#fff}
+#bmc-paneli-voice .bmc-cart{background:#fff;border:1px solid #e5e5ea;color:#1d1d1f}
+#bmc-paneli-voice .bmc-wa{background:transparent;border:1px solid #e5e5ea;color:#1d1d1f}
 #bmc-paneli-voice .bmc-err{color:#8b2e12;font-size:12px;margin:6px 0 0}
 #bmc-paneli-voice .bmc-hint{margin:6px 0 0;font-size:11px;color:#6b6358}
 @media(prefers-reduced-motion:reduce){#bmc-paneli-voice .bmc-orb{box-shadow:0 10px 28px rgba(20,19,17,.35)!important}}
@@ -333,32 +343,40 @@
   root.id = "bmc-paneli-voice";
   root.innerHTML = `
     <style>${css}</style>
-    <div class="bmc-panel" role="dialog" aria-label="Hablar con Panelin">
-      <div class="bmc-head">
-        <p class="bmc-kicker">BMC Uruguay</p>
-        <p class="bmc-status" id="bmc-status">Listo</p>
+    <div class="bmc-panel" role="dialog" aria-label="Panelin">
+      <div class="bmc-hero">
+        <img src="${API}/storefront-voice/panelin.png" alt="" width="72" height="72" />
+        <div class="bmc-head">
+          <p class="bmc-kicker">BMC Uruguay</p>
+          <p class="bmc-status" id="bmc-status">Listo</p>
+        </div>
+        <p class="bmc-title">¡Hola! Soy Panelin</p>
+        <p class="bmc-sub">Te ayudo a cotizar paneles para tu obra. Escribime o hablame.</p>
       </div>
-      <p class="bmc-title">Panelin</p>
       <div class="bmc-caps" id="bmc-caps" aria-live="polite">
-        <p class="bmc-line bmc-ph">Tocá Hablar y pedime un techo, un panel o accesorios.</p>
+        <p class="bmc-line bmc-ph">Escribí tu consulta o tocá un atajo.</p>
       </div>
-      <div class="bmc-picks" id="bmc-picks" hidden></div>
-      <div class="bmc-row bmc-row-main">
-        <button type="button" class="bmc-btn bmc-go" id="bmc-go">Hablar</button>
-        <button type="button" class="bmc-btn bmc-stop" id="bmc-stop" hidden>Cortar</button>
+      <div class="bmc-picks" id="bmc-picks">
+        <button type="button" class="bmc-pick" data-send="Quiero cotizar un techo">Quiero cotizar un techo</button>
+        <button type="button" class="bmc-pick" data-send="¿Qué panel me recomendás?">¿Qué panel me recomendás?</button>
+        <button type="button" class="bmc-pick" data-send="Necesito una fachada">Necesito una fachada</button>
       </div>
+      <form class="bmc-composer" id="bmc-form">
+        <input class="bmc-in" id="bmc-in" type="text" maxlength="2000" autocomplete="off" placeholder="Escribí tu consulta…" />
+        <button type="button" class="bmc-mic" id="bmc-go" aria-label="Hablar">🎤</button>
+        <button type="submit" class="bmc-send" id="bmc-send" aria-label="Enviar">↑</button>
+      </form>
+      <button type="button" class="bmc-btn bmc-stop" id="bmc-stop" hidden>Cortar voz</button>
       <div class="bmc-row">
         <button type="button" class="bmc-btn bmc-cart" id="bmc-cart">Carrito</button>
         <button type="button" class="bmc-btn bmc-wa" id="bmc-wa">WhatsApp</button>
       </div>
-      <p class="bmc-hint">Puedo llevarte a un producto, armar el carrito o cotizar un techo.</p>
+      <p class="bmc-hint">Puedo ayudarte en la tienda y dejar tu consulta a BMC. Un asesor confirma precios. El flete hay que corroborarlo.</p>
       <p class="bmc-err" id="bmc-err" hidden></p>
     </div>
-    <button type="button" class="bmc-orb" id="bmc-orb" aria-label="Hablar con Panelin" data-state="idle">
+    <button type="button" class="bmc-orb" id="bmc-orb" aria-label="Abrir Panelin" data-state="idle">
       <span class="bmc-badge" id="bmc-badge">0</span>
-      <svg class="bmc-rib" viewBox="0 0 28 22" aria-hidden="true">
-        <path fill="currentColor" d="M1 16 L6 4 H10 L15 16 H19 L24 4 H27 V18 H1 Z"/>
-      </svg>
+      <img class="bmc-face" src="${API}/storefront-voice/panelin.png" alt="" width="58" height="58" />
     </button>
   `;
   document.body.appendChild(root);
@@ -388,6 +406,8 @@
     maxTimer: null,
     conversationId: null,
     lastWa: `https://wa.me/59892663245?text=${encodeURIComponent("Hola, vengo del sitio de BMC.")}`,
+    chatHistory: [],
+    chatBusy: false,
   };
 
   function setErr(msg) {
@@ -445,9 +465,10 @@
     const talking = s === "connecting" || s === "active" || s === "listening" || s === "speaking";
     go.hidden = talking;
     stopBtn.hidden = !talking;
-    go.textContent = s === "connecting" ? "Conectando…" : "Hablar";
+    go.setAttribute("aria-label", s === "connecting" ? "Conectando" : "Hablar");
     const labels = {
       idle: "Listo",
+      thinking: "Pensando",
       connecting: "Conectando",
       active: "En llamada",
       listening: "Te escucho",
@@ -658,13 +679,21 @@
       }),
     });
     const data = await res.json().catch(() => ({}));
+    const resultStr = typeof data.result === "string" ? data.result : JSON.stringify(data.result || data);
     if (name === "handoff_whatsapp") {
       try {
-        const parsed = JSON.parse(data.result || "{}");
+        const parsed = JSON.parse(resultStr || "{}");
         if (parsed.url) state.lastWa = parsed.url;
       } catch { /* ignore */ }
     }
-    return typeof data.result === "string" ? data.result : JSON.stringify(data.result || data);
+    if (name === "generar_pdf") {
+      try {
+        const parsed = JSON.parse(resultStr || "{}");
+        const url = parsed.pdf_url || parsed.pdf_file_url || parsed.gcs_url;
+        if (url) addCap("assistant", `PDF: ${url}`);
+      } catch { /* ignore */ }
+    }
+    return resultStr;
   }
 
   async function onWsEvent(raw) {
@@ -837,10 +866,84 @@
     }
   }
 
+  async function postChat(body) {
+    const res = await fetch(`${API}/api/public/voice/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo responder");
+    return data;
+  }
+
+  async function sendText(raw) {
+    const text = String(raw || "").trim();
+    if (!text || state.chatBusy) return;
+    if (state.status !== "idle") teardown();
+    state.chatBusy = true;
+    setErr("");
+    root.classList.add("open");
+    addCap("user", text);
+    const ph = caps.querySelector(".bmc-ph");
+    if (ph) ph.remove();
+    setStatus("thinking");
+    let body = {
+      message: text,
+      history: state.chatHistory,
+      pageUrl: window.location.href,
+    };
+    try {
+      for (let hop = 0; hop < 4; hop++) {
+        const data = await postChat(body);
+        if (data.history) state.chatHistory = data.history;
+        if (data.text) addCap("assistant", data.text);
+        const actions = data.client_actions || [];
+        if (!actions.length) break;
+        const tool_results = [];
+        for (const a of actions) {
+          const result = await relayTool(a.name, a.payload || {});
+          tool_results.push({
+            id: a.id,
+            tool_call_id: a.id,
+            name: a.name,
+            result,
+          });
+        }
+        body = {
+          tool_results,
+          history: state.chatHistory,
+          pageUrl: window.location.href,
+        };
+      }
+    } catch (err) {
+      setErr(err?.message || "No se pudo enviar.");
+    } finally {
+      state.chatBusy = false;
+      if (state.status === "thinking") setStatus("idle");
+    }
+  }
+
   orb.addEventListener("click", () => {
     root.classList.toggle("open");
   });
-  go.addEventListener("click", startCall);
+  go.addEventListener("click", (e) => {
+    e.preventDefault();
+    startCall();
+  });
+  const form = root.querySelector("#bmc-form");
+  const input = root.querySelector("#bmc-in");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = input.value;
+    input.value = "";
+    sendText(v);
+  });
+  picks.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-send]");
+    if (!btn) return;
+    sendText(btn.getAttribute("data-send"));
+  });
   stopBtn.addEventListener("click", () => {
     teardown();
     addCap("assistant", "Listo, cortamos.");
