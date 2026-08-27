@@ -55,7 +55,10 @@ export default function TorreLiveMap({ trips = [], selectedId = "", onSelect }) 
           fillColor: color,
           fillOpacity: 0.85,
         }).addTo(group);
-        m.bindTooltip(String(t.reparto_no || t.trip_id || "viaje"), { permanent: false });
+        // Leaflet treats string tooltips as HTML (innerHTML). Use a text node.
+        const tip = document.createElement("span");
+        tip.textContent = String(t.reparto_no || t.trip_id || "viaje");
+        m.bindTooltip(tip, { permanent: false });
         m.on("click", () => {
           if (typeof onSelect === "function") onSelect(t);
         });

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (Torre schema self-heal + T5–T8 HITL)
+**Última actualización:** 2026-08-27 (Torre bound GPS loads after #1144)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-27 (fix — Torre bound GPS after #1144):** `GET /api/torre/live` again uses DISTINCT ON last ping + last meaningful + evidence counts (unbounded `trip_events` after #1129 / still present post-#1144). Customer track + Order ID lookup bound `location_ping` to 45m. Closed trips reject driver events; heartbeats stay out of chofer timeline / IndexedDB outbox; map tooltip is text-only. Unauthenticated `/torre/health` no longer runs DDL (ensure stays on authenticated live). Assign missing trip returns `trip_not_found`.
 
 **2026-08-27 (feat — Torre T5–T8 + schema self-heal):** Idempotent `ensureTransportistaSchema` on `/api/torre/live` and `/health` (trips, events, sessions, outbox, track tokens, chofer roster). HITL alta chofer (email/phone + password) + assign → inbox. Public Order ID at `GET /api/track/by-order/:orderId` and `/seguimiento`. Distinct Torre HITL agent is propose-only (no auto-WA, disjoint from El Transportador). Tests `torreSchema`, `choferRoster`, `torreAgent`. Prod live already returns `ok:true` `trips:[]` after Doppler DDL.
 

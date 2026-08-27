@@ -127,10 +127,18 @@ export default function createCustomerTrackRouter(config, logger) {
       if (row.trip_id) {
         const trips = await pool.query(`select status from trips where trip_id = $1::uuid`, [row.trip_id]);
         tripStatus = trips.rows[0]?.status || null;
+        // Keep stage events + recent GPS only — full location_ping history grows ~90/h after #1129.
         const ev = await pool.query(
           `select event_type, at_server, geo_lat, geo_lng, stop_id
            from trip_events
            where trip_id = $1::uuid
+             and (
+               event_type not in ('location_ping', 'presence')
+               or (
+                 event_type = 'location_ping'
+                 and at_server > now() - interval '45 minutes'
+               )
+             )
            order by at_server asc`,
           [row.trip_id],
         );

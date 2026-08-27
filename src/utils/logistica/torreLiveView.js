@@ -13,7 +13,8 @@ export function isLiveTripStatus(status) {
 
 export function shouldWatchGps(trip) {
   if (!trip || typeof trip !== "object") return false;
-  return String(trip.status || "") !== "closed";
+  // Only live open trips — not merely "not closed" (avoids GPS on unknown/empty status).
+  return isLiveTripStatus(trip.status);
 }
 
 export function lastLocationPing(events, { now = Date.now() } = {}) {
