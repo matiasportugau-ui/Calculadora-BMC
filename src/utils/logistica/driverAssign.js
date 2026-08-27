@@ -12,6 +12,17 @@ export function uyWhatsAppDigits(phone) {
 }
 
 /**
+ * Prefer a freshly fetched driver URL over a React-state snapshot.
+ * Never invent a tokenless /conductor link (drivers cannot join without ?t=).
+ * @param {{ cachedUrl?: string, fetchedUrl?: string|null }} opts
+ */
+export function resolveDriverUrlForAssign(opts = {}) {
+  const fetched = String(opts.fetchedUrl || "").trim();
+  if (fetched) return fetched;
+  return String(opts.cachedUrl || "").trim();
+}
+
+/**
  * @param {{ phone?: string, driverUrl?: string, tripLabel?: string }} opts
  */
 export function driverAssignWhatsAppUrl(opts = {}) {

@@ -81,8 +81,8 @@ import DriverLoopPanel from "./logistica/DriverLoopPanel.jsx";
 import LogisticaTruckerAgent from "./logistica/LogisticaTruckerAgent.jsx";
 import { applyTruckerAction } from "../utils/logistica/truckerAgent.js";
 import { tetrisPlaceCargo, tetrisToFreePositions } from "../utils/logistica/tetrisPack.js";
-import { openDriverAssign } from "../utils/logistica/driverAssign.js";
-import { conductorPublicUrl } from "../utils/conductorUrl.js";
+import { openDriverAssign, resolveDriverUrlForAssign } from "../utils/logistica/driverAssign.js";
+import { isLogisticaAgentWindow } from "../utils/logistica/openLogisticaAgentWindow.js";
 import { canPlaceOnTop } from "../utils/logistica/stackConstraints.js";
 import { allocateRepartoNo, repartoDateKey } from "../utils/logistica/repartoNumber.js";
 import {
@@ -3291,7 +3291,7 @@ export default function BmcLogisticaApp() {
 
   async function retryDriverLink() {
     const id = driverLoopResult?.repartoId || activeReparto?.id;
-    if (!id || !enviosAuthToken()) return;
+    if (!id || !enviosAuthToken()) return null;
     setRepartoBusy(true);
     try {
       const base = getCalcApiBase();
@@ -3308,16 +3308,21 @@ export default function BmcLogisticaApp() {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.ok === false) throw new Error(j.message || j.error || res.statusText);
+      const driverUrl = j.driver_url || null;
       setDriverLoopResult({
         driver_loop: j.driver_loop,
-        driver_url: j.driver_url || null,
+        driver_url: driverUrl,
         customer_links: j.customer_links || [],
         error: j.error,
         repartoId: id,
       });
-      setAutoLoadMsg(j.driver_url ? "✓ Enlace chofer reemitido" : "Reintento sin URL");
+      setAutoLoadMsg(driverUrl ? "✓ Enlace chofer reemitido" : "Reintento sin URL");
+      // Return URL directly — callers must not read driverLoopResult right after await
+      // (React state is still the previous render).
+      return driverUrl;
     } catch (e) {
       setAutoLoadMsg(`Reintentar link: ${e.message}`);
+      return null;
     } finally {
       setRepartoBusy(false);
     }
@@ -3331,15 +3336,18 @@ export default function BmcLogisticaApp() {
     let url = driverLoopResult?.driver_url || activeReparto?.driverUrl || "";
     if (!url && activeReparto && !activeReparto.local && enviosAuthToken()) {
       if (activeReparto.status !== "coordinado") {
-        url = (await confirmRepartoCoordination()) || url;
+        url = resolveDriverUrlForAssign({
+          cachedUrl: url,
+          fetchedUrl: await confirmRepartoCoordination(),
+        });
       } else {
-        await retryDriverLink();
-        url = driverLoopResult?.driver_url || url;
+        url = resolveDriverUrlForAssign({
+          cachedUrl: url,
+          fetchedUrl: await retryDriverLink(),
+        });
       }
     }
-    if (!url && typeof window !== "undefined") {
-      url = conductorPublicUrl(window.location.origin, "");
-    }
+    // Never invent a tokenless /conductor URL — drivers cannot join without ?t=.
     openDriverAssign({
       driverUrl: url,
       phone: info.chofer_phone,
@@ -3696,6 +3704,25 @@ export default function BmcLogisticaApp() {
       if (found) return { stop: s, pkg: found };
     }
     return { stop: null, pkg: null };
+  }
+
+  // Detached PiP/popup (`?agentWindow=1`) must mount the full chat+mic panel.
+  // faceOnly in the main header only opens this window — without this branch the
+  // popup re-renders another avatar and El Transportador stays unreachable.
+  if (isLogisticaAgentWindow()) {
+    return (
+      <div className="envios-app envios-app--agent-window" data-testid="logistica-agent-window">
+        <LogisticaTruckerAgent
+          fill
+          info={info}
+          stops={stops}
+          truckL={truckL}
+          wizard={wizardUi}
+          route={tripRoute}
+          onApplyState={handleTruckerAction}
+        />
+      </div>
+    );
   }
 
   return (
