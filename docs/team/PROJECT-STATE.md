@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — Kernel proto pollution + voice/action auth + HITL):** `getAgent("__proto__"|"constructor")` resolved inherited Object keys so `apply_playbook_patch` could write onto `Object.prototype` (reproduced). Agents map is null-prototype + `isSafeAgentId` + hasOwn. `POST /api/agent/voice/action` requires same `calc:write` gate as session mint (Admin/Drive write path). Kernel mutate gates ignore LLM-invented `user_confirmed`; only recent operator utterance counts. Supersedes stale #1123 on tip `cad25d70`.
+
 **2026-08-27 (fix — Kernel Live review #1118):** Merge de `main` (#1120) para que `logisticaTruckerInstructions.js` exista. Reload de playbook devuelve el Voice Brain Pack (no solo el store). Tools `apply_playbook_patch` / `apply_code_change` solo en modo patch + confirmación. `/api/kernel/tool` fallido no se reporta `{ok:true}`. Store in-memory para dual-session. Reset deja `panelin.version = 1`. `search_code` trata la query como literal. Mute también limpia el buffer de Kernel.
 
 **2026-08-27 (feat — Logística mesa port + SDD Final v1.1):** Ops `/logistica` on `main` now includes Leaflet/OSRM (`POST /api/envios/route`), Tetris load (`tetrisPack.js` + Cargar Tetris), Asignar a chofer (`driverAssign.js` HITL WA + `driver_url`), El Transportador + Grok Voice `surface=logistica`. SDD kit `docs/sdd/bmc-logistica` v1.1 SCORECARD 94. Worktree mesa-depo is lab-only.

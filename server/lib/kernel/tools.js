@@ -151,8 +151,13 @@ function operatorConfirmedRecently(store, { maxAgeMs = 45_000 } = {}) {
   return false;
 }
 
-function allowMutate(store, args) {
-  return args?.user_confirmed === true || operatorConfirmedRecently(store);
+/**
+ * Mutating Kernel tools must not trust LLM-invented `user_confirmed` in tool
+ * args (schemas omit it, but models often invent extras). Only an operator
+ * utterance in the conversation log counts as confirmation.
+ */
+function allowMutate(store) {
+  return operatorConfirmedRecently(store);
 }
 
 function applyStagedProposal(store, proposal) {
@@ -222,7 +227,7 @@ export function executeKernelTool(name, args = {}) {
       return { ok: true, items: readImprovementLog(store, args) };
     case "set_mode": {
       const target = String(args.mode || "").trim();
-      if ((target === "patch" || target === "intervene") && !allowMutate(store, args)) {
+      if ((target === "patch" || target === "intervene") && !allowMutate(store)) {
         return { ok: false, error: "operator confirmation required for this mode" };
       }
       const mode = setMode(store, args.mode);
@@ -238,7 +243,7 @@ export function executeKernelTool(name, args = {}) {
       if (store.mode !== "patch") {
         return { ok: false, error: "set mode to patch before applying playbook changes" };
       }
-      if (!allowMutate(store, args)) {
+      if (!allowMutate(store)) {
         return { ok: false, error: "operator confirmation required" };
       }
       const result = applyPlaybookPatch(store, args);
@@ -254,7 +259,7 @@ export function executeKernelTool(name, args = {}) {
       if (store.mode !== "patch") {
         return { ok: false, error: "set mode to patch before applying code changes" };
       }
-      if (!allowMutate(store, args)) {
+      if (!allowMutate(store)) {
         return { ok: false, error: "operator confirmation required" };
       }
       const proposal = findProposal(store, args.proposal_id);
