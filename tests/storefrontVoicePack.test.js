@@ -54,7 +54,7 @@ for (const n of STOREFRONT_READ_TOOLS) {
   assert.ok(names.includes(n), `read tool ${n}`);
 }
 
-assert.equal(pack.voice, "ara");
+assert.equal(pack.voice, "rex");
 assert.equal(pack.language_hint, "es-MX");
 assert.equal(pack.turn_detection.silence_duration_ms, 900);
 assert.equal(pack.greeting, STOREFRONT_VOICE_GREETING_TEXT);
