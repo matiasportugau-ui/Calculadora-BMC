@@ -483,6 +483,11 @@ function RealtimeVoicePanel({
         return next;
       });
       appendTurn?.({ role: "assistant", content: text, source: "voice" });
+      return;
+    }
+    if (evt?.role === "assistant" && evt.done) {
+      assistantBufRef.current = "";
+      appendTurn?.({ role: "assistant", finalize: true, source: "voice" });
     }
   }, [authHeader, appendTurn]);
 

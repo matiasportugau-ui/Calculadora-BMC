@@ -852,7 +852,7 @@ export function useChat({
   const appendTurn = useCallback((turn) => {
     const role = turn?.role === "assistant" ? "assistant" : "user";
     const content = String(turn?.content ?? turn?.text ?? "").trim();
-    if (!content) return;
+    if (!content && !turn?.finalize) return;
     const source = turn?.source || "voice";
     let id;
     try { id = globalThis.crypto?.randomUUID?.(); } catch { id = null; }
@@ -883,14 +883,22 @@ export function useChat({
       }
 
       const last = prev[prev.length - 1];
-      if (last?.role === "assistant" && last.source === "voice") {
+      if (turn?.finalize) {
+        if (last?.role === "assistant" && last.source === "voice") {
+          return prev.map((m, i) =>
+            i === prev.length - 1 ? { ...m, pending: false, source: "voice" } : m
+          );
+        }
+        return prev;
+      }
+      if (last?.role === "assistant" && last.source === "voice" && last.pending) {
         return prev.map((m, i) =>
           i === prev.length - 1
-            ? { ...m, content, pending: false, source: "voice" }
+            ? { ...m, content, pending: true, source: "voice" }
             : m
         );
       }
-      return [...prev, { id, role: "assistant", content, source, pending: false }];
+      return [...prev, { id, role: "assistant", content, source, pending: true }];
     });
   }, []);
 

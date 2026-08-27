@@ -31,6 +31,7 @@ import { buildKernelSessionBootstrap } from "../lib/kernel/kernelSessionConfig.j
 import { loadStore, saveStore, getAgent, setActiveAgent } from "../lib/kernel/store.js";
 import { seedPanelin } from "../lib/kernel/provision.js";
 import { buildSupervisedAgentPrompt } from "../lib/kernel/agentInstructions.js";
+import { classifyIntents } from "../lib/userIntentClassifier.js";
 import {
   buildLogisticaVoiceBootstrap,
   isLogisticaVoiceSurface,
@@ -312,7 +313,7 @@ router.post(
 /**
  * POST /api/agent/voice/action
  *
- * Body: { action: { type, payload }, conversationId?: string }
+ * Body: { action: { type, payload }, conversationId?: string, userText?: string }
  * Returns: { ok, action } — the validated (possibly enriched) action.
  *
  * The browser receives the validated action, applies it via the existing
@@ -320,7 +321,12 @@ router.post(
  * the WebRTC data channel to let the voice agent continue.
  */
 router.post("/agent/voice/action", actionLimiter, async (req, res) => {
-  const { action, calcState = {} } = req.body || {};
+  const {
+    action,
+    calcState = {},
+    conversationId = null,
+    userText = "",
+  } = req.body || {};
 
   if (!action || typeof action !== "object") {
     return res.status(400).json({ ok: false, error: "action object required" });
@@ -331,12 +337,16 @@ router.post("/agent/voice/action", actionLimiter, async (req, res) => {
   if (type && VOICE_BRAIN_TOOL_SET.has(type)) {
     const collected = [];
     const toolInput = { ...(payload || {}) };
+    const approvedActions = classifyIntents(String(userText || ""));
     if (VOICE_WRITE_AUTOCONFIRM.includes(type) && toolInput.user_confirmed !== false) {
       toolInput.user_confirmed = true;
+      approvedActions.add(type);
     }
     try {
       const raw = await executeTool(type, toolInput, calcState || {}, {
         source: "voice",
+        conversationId: conversationId || undefined,
+        approvedActions,
         emitAction: (a) => {
           if (a && typeof a === "object") collected.push(a);
         },
