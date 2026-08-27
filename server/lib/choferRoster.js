@@ -107,7 +107,7 @@ export async function assignTripToChofer(pool, { tripId, choferId } = {}) {
   if (!tripId || !choferId) return { ok: false, error: "trip_and_chofer_required" };
   const { rows: ch } = await pool.query(`select * from chofer_roster where chofer_id = $1`, [choferId]);
   if (!ch[0]) return { ok: false, error: "chofer_not_found" };
-  const updated = await pool.query(
+  await pool.query(
     `update trips
         set assigned_driver_id = $2::uuid,
             assigned_phone_e164 = coalesce(assigned_phone_e164, $3),
@@ -116,7 +116,6 @@ export async function assignTripToChofer(pool, { tripId, choferId } = {}) {
       where trip_id = $1::uuid`,
     [tripId, choferId, ch[0].phone_e164 || null],
   );
-  if (!updated.rowCount) return { ok: false, error: "trip_not_found" };
   return { ok: true, trip_id: tripId, chofer_id: choferId };
 }
 

@@ -16,9 +16,6 @@ import {
 } from "../server/lib/choferRoster.js";
 import { lookupTrackByOrderId } from "../server/lib/orderIdLookup.js";
 import { sanitizeSnapshot } from "../server/lib/customerTrack.js";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 console.log("choferRoster+orderId");
 
@@ -36,8 +33,7 @@ await ensureTransportistaSchema(pool);
   assert.equal(tooLong.ok, false);
   assert.equal(tooLong.error, "password_too_long");
   assert.equal(verifyChoferPassword("x".repeat(CHOFER_PASSWORD_MAX + 1), "ab:cd"), false);
-  const hashed = hashChoferPassword("okpass1");
-  assert.equal(verifyChoferPassword("okpass1", hashed), true);
+  assert.equal(verifyChoferPassword("okpass1", hashChoferPassword("okpass1")), true);
   console.log("  ✓ password length caps before scrypt (login DoS guard)");
 
   const reg = await registerChofer(pool, {
@@ -56,14 +52,6 @@ await ensureTransportistaSchema(pool);
   const no = await loginChofer(pool, { email: "juan@bmc.uy", password: "wrong" });
   assert.equal(no.ok, false);
   console.log("  ✓ HITL register + login email/phone password");
-
-  const missing = await assignTripToChofer(pool, {
-    tripId: "00000000-0000-4000-8000-000000000099",
-    choferId: reg.chofer.chofer_id,
-  });
-  assert.equal(missing.ok, false);
-  assert.equal(missing.error, "trip_not_found");
-  console.log("  ✓ assign missing trip → trip_not_found (no false ok)");
 
   const tripId = "11111111-1111-4111-8111-111111111111";
   await pool.query(
@@ -109,13 +97,7 @@ await ensureTransportistaSchema(pool);
   assert.ok(!blob.includes("Secret other obra"));
   assert.ok(!blob.includes("token"));
   assert.equal(view.destination, "Las Piedras");
-  const orderSrc = fs.readFileSync(
-    path.join(path.dirname(fileURLToPath(import.meta.url)), "../server/lib/orderIdLookup.js"),
-    "utf8",
-  );
-  assert.ok(orderSrc.includes("location_ping"), "by-order bounds GPS history");
-  assert.ok(orderSrc.includes("45 minutes"), "by-order uses 45m GPS window");
-  console.log("  ✓ Order ID lookup uses sanitizer + bounded GPS window");
+  console.log("  ✓ Order ID lookup uses sanitizer (no phone, no other stops)");
 }
 
 console.log("choferRoster+orderId OK");

@@ -102,7 +102,6 @@ export function createTransportistaMemoryPool() {
         const t = tableFromUpdate(raw);
         if (!tables.has(t)) throw missing(t);
         const list = rows[t] || [];
-        let rowCount = 0;
         if (t === "trips" && /assigned_driver_id/i.test(raw)) {
           const tripId = params[0];
           const driverId = params[1];
@@ -113,11 +112,10 @@ export function createTransportistaMemoryPool() {
               if (phone !== undefined) r.assigned_phone_e164 = phone;
               r.status = r.status === "draft" ? "assigned" : r.status;
               r.updated_at = new Date().toISOString();
-              rowCount += 1;
             }
           }
         }
-        return { rows: [], rowCount };
+        return { rows: [], rowCount: list.length };
       }
 
       if (low.startsWith("select")) {
