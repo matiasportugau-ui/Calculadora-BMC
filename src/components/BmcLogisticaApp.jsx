@@ -78,6 +78,11 @@ import { buildYardDump, clearYardPositions, countYardPackages } from "../utils/l
 import ViewerChrome from "./logistica/ViewerChrome.jsx";
 import RepartoBar from "./logistica/RepartoBar.jsx";
 import DriverLoopPanel from "./logistica/DriverLoopPanel.jsx";
+import LogisticaTruckerAgent from "./logistica/LogisticaTruckerAgent.jsx";
+import { applyTruckerAction } from "../utils/logistica/truckerAgent.js";
+import { tetrisPlaceCargo, tetrisToFreePositions } from "../utils/logistica/tetrisPack.js";
+import { openDriverAssign } from "../utils/logistica/driverAssign.js";
+import { conductorPublicUrl } from "../utils/conductorUrl.js";
 import { canPlaceOnTop } from "../utils/logistica/stackConstraints.js";
 import { allocateRepartoNo, repartoDateKey } from "../utils/logistica/repartoNumber.js";
 import {
@@ -895,6 +900,7 @@ function DiagramPanel({
   onMultiSelectChange = null,
   onBlocked = null,
   onUnloadTruck = null,
+  onLoadTetris = null,
   yardMode = false,
   loadWarnings = [],
 }) {
@@ -1039,6 +1045,20 @@ function DiagramPanel({
               title="Baja todos los pedidos a pilas separadas alrededor del camión"
             >
               {yardMode ? "Yard activo" : "Descargar camión"}
+            </Btn>
+          ) : null}
+          {typeof onLoadTetris === "function" ? (
+            <Btn
+              small
+              variant="onDark"
+              color="#0f766e"
+              onClick={() => {
+                if (diagramView !== "webgl") setDiagramView("webgl");
+                onLoadTetris();
+              }}
+              title="Estiba 3D tipo Tetris: última entrega en la puerta, huecos rellenos"
+            >
+              Cargar Tetris (ruta)
             </Btn>
           ) : null}
           <Btn
@@ -3210,7 +3230,7 @@ export default function BmcLogisticaApp() {
         `✓ Coordinación confirmada ${activeReparto.repartoNo} · ${stops.length} parada(s) · registro local · sin enlace chofer (no hay API)`,
       );
       void saveCoordination({ completed: true });
-      return;
+      return null;
     }
     setRepartoBusy(true);
     try {
@@ -3260,8 +3280,10 @@ export default function BmcLogisticaApp() {
         void navigator.clipboard.writeText(j.driver_url).catch(() => {});
       }
       void saveCoordination({ completed: true });
+      return j.driver_url || null;
     } catch (e) {
       setAutoLoadMsg(`Confirmar falló: ${e.message}`);
+      return null;
     } finally {
       setRepartoBusy(false);
     }
@@ -3300,6 +3322,68 @@ export default function BmcLogisticaApp() {
       setRepartoBusy(false);
     }
   }
+
+  async function assignAndOpenDriver() {
+    if (!stops.length) {
+      setAutoLoadMsg("Asignar a chofer: agregá al menos un pedido.");
+      return;
+    }
+    let url = driverLoopResult?.driver_url || activeReparto?.driverUrl || "";
+    if (!url && activeReparto && !activeReparto.local && enviosAuthToken()) {
+      if (activeReparto.status !== "coordinado") {
+        url = (await confirmRepartoCoordination()) || url;
+      } else {
+        await retryDriverLink();
+        url = driverLoopResult?.driver_url || url;
+      }
+    }
+    if (!url && typeof window !== "undefined") {
+      url = conductorPublicUrl(window.location.origin, "");
+    }
+    openDriverAssign({
+      driverUrl: url,
+      phone: info.chofer_phone,
+      tripLabel: info.numero || activeReparto?.repartoNo || "ruta",
+      open: (u, t, f) => {
+        if (typeof window !== "undefined") window.open(u, t, f);
+      },
+      copy: (t) => {
+        if (typeof navigator !== "undefined") void navigator.clipboard?.writeText(t).catch(() => {});
+      },
+    });
+    setAutoLoadMsg(
+      url
+        ? `Chofer: se abrió BMC Driver y WhatsApp${info.chofer_phone ? "" : " (elegí contacto)"}.`
+        : "Chofer: WhatsApp abierto. Confirmá coordinación para el link de viaje.",
+    );
+  }
+
+  function handleTruckerAction(action) {
+    const r = applyTruckerAction(
+      { info, stops, truckL, wizard: wizardUi, route: tripRoute },
+      action,
+    );
+    if (!r.ok) {
+      setAutoLoadMsg(`Transportador: ${r.error || "no aplicado"}`);
+      return;
+    }
+    if (r.state.info) setInfo(r.state.info);
+    if (Array.isArray(r.state.stops)) setStops(r.state.stops);
+    if (r.state.truckL) setTruckL(r.state.truckL);
+    if (r.state.wizard) setWizardUi(createWizardUi(r.state.wizard));
+  }
+
+  const handleLoadTruckTetris = () => {
+    const packed = tetrisPlaceCargo(stops, truckL, tripRoute);
+    setFreePositions(tetrisToFreePositions(packed));
+    setYardMode(false);
+    setFreeDragEnabled(true);
+    setCargoLayoutMode("manual");
+    setDistributionMode("compact");
+    setAutoLoadMsg(
+      `Carga Tetris: ${packed.placed.length} bultos · última entrega en puerta · ${packed.tetrisMoved || 0} hueco(s)`,
+    );
+  };
 
   async function loadRepartoHistory() {
     setRepartoHistoryOpen(true);
@@ -3627,6 +3711,15 @@ export default function BmcLogisticaApp() {
           <div className="envios-header__meta-strong">{info.numero} · {info.fecha}</div>
           <div style={{ marginTop: 4 }}>{totPan} paneles · {cargo.placed.length} pkgs · {stops.length} paradas</div>
         </div>
+        <LogisticaTruckerAgent
+          faceOnly
+          info={info}
+          stops={stops}
+          truckL={truckL}
+          wizard={wizardUi}
+          route={tripRoute}
+          onApplyState={handleTruckerAction}
+        />
       </header>
 
       {cargo.warns.map((w, i) => (
@@ -3679,6 +3772,24 @@ export default function BmcLogisticaApp() {
                 </select>
                 <button
                   type="button"
+                  disabled={repartoBusy || !stops.length}
+                  onClick={() => void assignAndOpenDriver()}
+                  style={{
+                    fontSize: 12,
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#0f766e",
+                    color: "#fff",
+                    cursor: "pointer",
+                    minHeight: 40,
+                    fontWeight: 700,
+                  }}
+                >
+                  Asignar a chofer
+                </button>
+                <button
+                  type="button"
                   disabled={cloudSyncBusy || driveSaveBusy}
                   onClick={() => saveCoordination()}
                   style={{
@@ -3716,6 +3827,10 @@ export default function BmcLogisticaApp() {
                   results={results}
                   onAddResult={agregarStop}
                   activeReparto={activeReparto}
+                  onAiVerify={runAiVerifyForStop}
+                  onGeocode={geocodeStop}
+                  geocodingStopId={geocodingStopId}
+                  aiVerifyModal={aiVerifyModal}
                   onRemoveStop={(id) => {
                     setStops((p) => renumberStops(p.filter((s) => s.id !== id), { colors: COLORS }));
                   }}
@@ -4234,6 +4349,7 @@ export default function BmcLogisticaApp() {
             onMultiSelectChange={setMultiSelectKeys}
             onBlocked={(msg) => setAutoLoadMsg(msg || BURIED_TOAST_ES)}
             onUnloadTruck={handleUnloadTruckToYard}
+            onLoadTetris={handleLoadTruckTetris}
             yardMode={yardMode}
             loadWarnings={loadWarnings}
           />
@@ -4467,6 +4583,7 @@ export default function BmcLogisticaApp() {
               truckL={truckL}
               busy={repartoBusy}
               onConfirm={() => setConfirmCoordOpen(true)}
+              onAssignDriver={() => void assignAndOpenDriver()}
               onSaveDraft={saveRepartoDraft}
               onOpenHistory={loadRepartoHistory}
               onNewReparto={() => {
@@ -4479,6 +4596,9 @@ export default function BmcLogisticaApp() {
               result={driverLoopResult}
               busy={repartoBusy}
               onRetry={retryDriverLink}
+              onAssign={() => void assignAndOpenDriver()}
+              choferPhone={info.chofer_phone}
+              tripLabel={info.numero || activeReparto?.repartoNo}
             />
             <div style={{ ...css.card, padding: 16, background: "#e8f1fb", borderColor: "#bfdbfe" }}>
               <h3 style={css.sectionTitle}>🔍 Buscar cliente en Ventas</h3>
@@ -5436,6 +5556,7 @@ export default function BmcLogisticaApp() {
               onMultiSelectChange={setMultiSelectKeys}
               onBlocked={(msg) => setAutoLoadMsg(msg || BURIED_TOAST_ES)}
               onUnloadTruck={handleUnloadTruckToYard}
+              onLoadTetris={handleLoadTruckTetris}
               yardMode={yardMode}
               loadWarnings={loadWarnings}
               stops={stops}

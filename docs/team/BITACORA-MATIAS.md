@@ -303,3 +303,38 @@ gate:local:   pendiente correr al final de la sesión
 
 ---
 
+## 2026-08-27 N — Logística mesa → main + SDD Final v1.1
+
+**Contexto:** Unificar mapa OSRM, Tetris, El Transportador (Grok Voice), Asignar a chofer y SDD en producción.
+
+**Acciones:**
+- Port módulos mesa a `~/calculadora-bmc` (`tetrisPack`, `driverAssign`, `osrmPolyline`, `RouteLeafletMap`, `LogisticaTruckerAgent`, voice pack `surface=logistica`).
+- UI: **Cargar Tetris (ruta)**, **Asignar a chofer**, visor El Transportador.
+- Dep `leaflet@^1.9.4`. `POST /api/envios/route` en `envios.js`.
+- SDD kit v1.1 SCORECARD 94 (`docs/sdd/bmc-logistica`).
+
+**Verificación:** units `tetrisPack` `driverAssign` `logisticaVoiceBootstrap` `sddLogisticaScorecard` (run after this entry).
+
+**Próximo paso:** `gate:local` + push `main` → Vercel + Cloud Run; verificar `/logistica` prod.
+
+**Refs:** docs/sdd/bmc-logistica/SDD.md · TARGET.md · SDD-EL-TRANSPORTADOR-VOICE.md
+
+---
+
+## 2026-08-27 N — Kernel voice factory closeout (local save)
+
+**Contexto:** Factory de agentes Grok Live + Kernel mudo, mutes, reset de sesión; no mezclar con logística.
+
+**Acciones:**
+- Commits locales en `feat/voice-xia-thread`: `ed704ec2` factory/mutes/reset; `7daf77f7` hilo chat↔Live (`appendTurn` + seed historial).
+- No push. Logística mesa queda uncommitted aparte.
+
+**Verificación:** tests kernelFactory / coalesce / noise / round sims / voiceHistoryBridge.
+
+**Próximo paso:** Live local Panelin BMC; PR de voz sin archivos de logística; opcional drawer Kernel.
+
+**Refs:** docs/team/HANDOFF-2026-08-27-0029.md
+
+---
+
+

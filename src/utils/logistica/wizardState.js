@@ -18,6 +18,10 @@ export const DEFAULT_WIZARD_UI = Object.freeze({
   }),
   singlePickup: true,
   defaultPickupPointId: "pickup-kingspan-bromyros",
+  /** YYYY-MM-DD — required for Kingspan (and any) levante appointment */
+  pickupDate: "",
+  /** HH:MM 24h */
+  pickupTime: "",
   routeStale: false,
 });
 
@@ -38,8 +42,32 @@ export function createWizardUi(partial = {}) {
       partial.defaultPickupPointId != null
         ? String(partial.defaultPickupPointId)
         : DEFAULT_WIZARD_UI.defaultPickupPointId,
+    pickupDate: String(partial.pickupDate || "").trim(),
+    pickupTime: String(partial.pickupTime || "").trim(),
     routeStale: partial.routeStale === true,
   };
+}
+
+/** @param {object} [wizard] */
+export function pickupAppointmentMissing(wizard = {}) {
+  const date = String(wizard.pickupDate || "").trim();
+  const time = String(wizard.pickupTime || "").trim();
+  const parts = [];
+  if (!date) parts.push("fecha");
+  if (!time) parts.push("hora");
+  return parts;
+}
+
+/**
+ * Operator banner when levante place is set but appointment is not.
+ * Example: "Levante Kingspan incompleto: falta fecha y hora."
+ */
+export function levanteIncompleteMessage(wizard = {}, places = []) {
+  const missing = pickupAppointmentMissing(wizard);
+  if (!missing.length) return "";
+  const raw = getLabel(places, wizard.defaultPickupPointId) || "levante";
+  const short = String(raw).split("(")[0].trim() || raw;
+  return `Levante ${short} incompleto: falta ${missing.join(" y ")}.`;
 }
 
 /**
@@ -69,7 +97,7 @@ export function isFlotaComplete(info, truckL) {
  * @param {object[]} stops
  * @param {{ singlePickup?: boolean, defaultPickupPointId?: string }} wizard
  */
-export function isLevantesComplete(stops, wizard = {}) {
+function stopsHavePickup(stops, wizard = {}) {
   if (!Array.isArray(stops) || !stops.length) return false;
   const single = wizard.singlePickup !== false;
   const def = String(wizard.defaultPickupPointId || "").trim();
@@ -78,6 +106,11 @@ export function isLevantesComplete(stops, wizard = {}) {
     return stops.every((s) => String(s?.pickupPointId || def).trim());
   }
   return stops.every((s) => String(s?.pickupPointId || "").trim());
+}
+
+export function isLevantesComplete(stops, wizard = {}) {
+  if (!stopsHavePickup(stops, wizard)) return false;
+  return pickupAppointmentMissing(wizard).length === 0;
 }
 
 /**
@@ -184,9 +217,12 @@ export function stepMissingHints(step, ctx = {}) {
   if (step === "levantes") {
     if (wizard.singlePickup !== false) {
       if (!String(wizard.defaultPickupPointId || "").trim()) hints.push("Elegí lugar de levante");
-    } else if (!isLevantesComplete(ctx.stops, wizard)) {
+    } else if (!stopsHavePickup(ctx.stops, wizard)) {
       hints.push("Confirmá levante en cada pedido");
     }
+    const appt = pickupAppointmentMissing(wizard);
+    if (appt.includes("fecha")) hints.push("Fecha de levante");
+    if (appt.includes("hora")) hints.push("Hora de levante");
   }
   if (step === "ruta") {
     if (wizard.routeStale) hints.push("Recalculá la ruta (datos desactualizados)");
@@ -231,10 +267,10 @@ export function stepSummary(step, ctx = {}, places = []) {
   }
   if (step === "ruta") {
     const n = ctx.route?.orderedLegs?.length || 0;
-    if (wizard.routeStale) return `⚠ Ruta desactualizada · ${n} tramos`;
+    if (wizard.routeStale) return `⚠ Ruta desactualizada · ${n} paradas`;
     if (n < 2) return "Sin ruta";
     const km = ctx.route?.totalKm;
-    return `${n} tramos${Number.isFinite(km) ? ` · ~${km.toFixed(0)} km` : ""}`;
+    return `${n} parada${n === 1 ? "" : "s"}${Number.isFinite(km) ? ` · ~${km.toFixed(0)} km` : ""}`;
   }
   if (step === "carga") {
     return "Packing · remito · 3D";

@@ -39,6 +39,7 @@ function MiniBtn({ children, onClick, disabled, primary, color }) {
  *   truckL?: number,
  *   busy?: boolean,
  *   onConfirm?: () => void,
+ *   onAssignDriver?: () => void,
  *   onSaveDraft?: () => void,
  *   onOpenHistory?: () => void,
  *   onNewReparto?: () => void,
@@ -50,6 +51,7 @@ export default function RepartoBar({
   truckL = 8,
   busy = false,
   onConfirm,
+  onAssignDriver,
   onSaveDraft,
   onOpenHistory,
   onNewReparto,
@@ -109,6 +111,11 @@ export default function RepartoBar({
         {canConfirm ? (
           <MiniBtn primary color="#059669" onClick={onConfirm} disabled={busy}>
             Confirmar coordinación
+          </MiniBtn>
+        ) : null}
+        {typeof onAssignDriver === "function" && stopCount > 0 ? (
+          <MiniBtn primary color="#0f766e" onClick={onAssignDriver} disabled={busy}>
+            Asignar a chofer
           </MiniBtn>
         ) : null}
         {status === "coordinado" && typeof onNewReparto === "function" ? (
