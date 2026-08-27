@@ -1,5 +1,6 @@
 import { ENV_T as T } from "../../utils/enviosTheme.js";
 import { btnStyle } from "../../utils/logistica/btnStyle.js";
+import { openDriverAssign } from "../../utils/logistica/driverAssign.js";
 
 function copy(text) {
   if (!text || typeof navigator === "undefined") return;
@@ -9,7 +10,7 @@ function copy(text) {
 /**
  * Operator panel after confirm: chofer URL + customer links.
  */
-export default function DriverLoopPanel({ result, onRetry, busy }) {
+export default function DriverLoopPanel({ result, onRetry, onAssign, busy, choferPhone, tripLabel }) {
   if (!result) return null;
   const failed = result.driver_loop === "failed" || result.local;
   return (
@@ -42,6 +43,24 @@ export default function DriverLoopPanel({ result, onRetry, busy }) {
               onClick={() => copy(result.driver_url)}
             >
               Copiar enlace chofer
+            </button>
+            <button
+              type="button"
+              style={btnStyle({ small: true, color: "#0f766e", style: { marginTop: 6, marginLeft: 8 } })}
+              onClick={() => {
+                if (typeof onAssign === "function") onAssign();
+                else {
+                  openDriverAssign({
+                    driverUrl: result.driver_url,
+                    phone: choferPhone,
+                    tripLabel,
+                    open: (u, t, f) => window.open(u, t, f),
+                    copy: (t) => copy(t),
+                  });
+                }
+              }}
+            >
+              Mandar a Driver
             </button>
           </div>
         </div>

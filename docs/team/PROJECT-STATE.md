@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-26 (productos sueltos = catálogo Agregar producto)
+**Última actualización:** 2026-08-27 (logística mesa → main + SDD Final v1.1)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-27 (feat — Logística mesa port + SDD Final v1.1):** Ops `/logistica` on `main` now includes Leaflet/OSRM (`POST /api/envios/route`), Tetris load (`tetrisPack.js` + Cargar Tetris), Asignar a chofer (`driverAssign.js` HITL WA + `driver_url`), El Transportador + Grok Voice `surface=logistica`. SDD kit `docs/sdd/bmc-logistica` v1.1 SCORECARD 94. Worktree mesa-depo is lab-only.
 
 **2026-08-27 (fix — Live restart: sticky chrome + noise + reset):** Controles (selector, mutes, Empezar de nuevo) fijos arriba; el chat scrollea solo. Filtro `shh`/TV inglés. `POST /api/kernel/reset` vuelve a Panelin y borra el log. Restaura últimas 40 líneas al abrir Live. Sims: `tests/voiceRoundSimulation.test.js`.
 

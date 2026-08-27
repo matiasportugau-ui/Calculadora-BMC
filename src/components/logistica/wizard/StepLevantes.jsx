@@ -95,6 +95,34 @@ export default function StepLevantes({
           ))}
         </div>
       )}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div>
+          <label style={lbl} htmlFor="wizard-pickup-date">
+            Fecha de levante
+          </label>
+          <input
+            id="wizard-pickup-date"
+            name="pickupDate"
+            type="date"
+            style={inp}
+            value={wizard.pickupDate || ""}
+            onChange={(e) => onWizardPatch?.({ pickupDate: e.target.value })}
+          />
+        </div>
+        <div>
+          <label style={lbl} htmlFor="wizard-pickup-time">
+            Hora
+          </label>
+          <input
+            id="wizard-pickup-time"
+            name="pickupTime"
+            type="time"
+            style={inp}
+            value={wizard.pickupTime || ""}
+            onChange={(e) => onWizardPatch?.({ pickupTime: e.target.value })}
+          />
+        </div>
+      </div>
       <div style={{ padding: 10, borderRadius: 10, background: "#f8fafc", border: `1px solid ${T.border}` }}>
         <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>+ Nuevo punto de levante</div>
         <div style={{ display: "grid", gap: 8 }}>

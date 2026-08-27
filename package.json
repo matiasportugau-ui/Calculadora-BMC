@@ -317,6 +317,7 @@
     "html2pdf.js": "^0.14.0",
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.263.1",
     "mcp-remote": "^0.1.38",
     "multer": "^2.1.1",

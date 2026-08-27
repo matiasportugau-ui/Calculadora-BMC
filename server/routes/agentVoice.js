@@ -285,7 +285,7 @@ router.post(
         instructions: systemPrompt,
         tools: logisticaPack ? logisticaPack.tools : brainPack.tools,
         tool_choice: brainPack.tool_choice || "auto",
-        voice: brainPack.voice || "eve",
+        voice: logisticaPack?.voice || brainPack.voice || "eve",
         language_hint: brainPack.language_hint,
         keyterms: brainPack.keyterms,
         replace: brainPack.replace,

@@ -12,6 +12,7 @@ import {
 } from "../../../utils/logistica/routeExport.js";
 import { safeHttpUrl } from "../../../utils/logistica/safeExternalUrl.js";
 import RouteMapVisualizer from "./RouteMapVisualizer.jsx";
+import RouteLeafletMap from "./RouteLeafletMap.jsx";
 
 export default function StepRuta({ route, onRecalcular, routeStale, info = {}, recalculating = false }) {
   const legs = route?.orderedLegs || [];
@@ -153,7 +154,11 @@ export default function StepRuta({ route, onRecalcular, routeStale, info = {}, r
 
       {legs.length ? (
         <>
-          <RouteMapVisualizer route={route} height={210} />
+          <RouteLeafletMap
+            legs={legs}
+            geometry={route?.geometry || route?.osrmGeometry || ""}
+          />
+          <RouteMapVisualizer route={route} height={160} />
 
           <div
             style={{

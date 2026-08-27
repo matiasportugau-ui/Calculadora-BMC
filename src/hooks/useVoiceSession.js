@@ -721,6 +721,7 @@ export function useVoiceSession({
       aiProvider,
       aiModel,
       voiceProvider,
+      surface,
       startGrokWebSocket,
       startOpenAiWebRtc,
       stopVu,

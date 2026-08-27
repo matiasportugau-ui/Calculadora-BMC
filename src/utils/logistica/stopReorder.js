@@ -43,6 +43,31 @@ export function renumberStops(stops = [], opts = {}) {
 }
 
 /**
+ * Reorder stops to match `ids` (unknown/missing ids stay at the end).
+ * @param {object[]} stops
+ * @param {string[]} ids
+ * @param {{ colors?: string[] }} [opts]
+ */
+export function orderStopsByIds(stops = [], ids = [], opts = {}) {
+  const list = Array.isArray(stops) ? [...stops] : [];
+  const byId = new Map(list.filter((s) => s?.id).map((s) => [s.id, s]));
+  const seen = new Set();
+  const out = [];
+  for (const id of Array.isArray(ids) ? ids : []) {
+    const s = byId.get(id);
+    if (!s || seen.has(s.id)) continue;
+    seen.add(s.id);
+    out.push(s);
+  }
+  for (const s of list) {
+    if (!s?.id || seen.has(s.id)) continue;
+    seen.add(s.id);
+    out.push(s);
+  }
+  return renumberStops(out, opts);
+}
+
+/**
  * Default collapsed ids when many stops (keep first expanded).
  * @param {object[]} stops
  * @param {number} [threshold=3]

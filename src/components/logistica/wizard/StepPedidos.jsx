@@ -1,5 +1,6 @@
 /** Step 1 — load pedidos from Ventas + list in this trip. */
 import { ENV_T as T } from "../../../utils/enviosTheme.js";
+import { isStopIncompleteForAi } from "../../../utils/logistica/aiVerifyStop.js";
 
 /**
  * @param {{
@@ -16,6 +17,10 @@ import { ENV_T as T } from "../../../utils/enviosTheme.js";
  *   results?: object[],
  *   onAddResult?: (row: object) => void,
  *   activeReparto?: object|null,
+ *   onAiVerify?: (stop: object) => void,
+ *   onGeocode?: (stopId: string) => void,
+ *   geocodingStopId?: string|null,
+ *   aiVerifyModal?: { loading?: boolean, stopId?: string }|null,
  * }} props
  */
 export default function StepPedidos({
@@ -32,6 +37,10 @@ export default function StepPedidos({
   results = [],
   onAddResult,
   activeReparto = null,
+  onAiVerify,
+  onGeocode,
+  geocodingStopId = null,
+  aiVerifyModal = null,
 }) {
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -208,10 +217,37 @@ export default function StepPedidos({
                   fontSize: 13,
                 }}
               >
-                <div style={{ minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <b>{s.cliente || "Sin nombre"}</b>
                   <div style={{ fontSize: 11, color: T.muted }}>
                     #{s.orderId || s.cotizacionId || "—"} · {s.paneles?.length || 0} líneas panel
+                    {s.geo ? " · geo ✓" : ""}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                    {typeof onGeocode === "function" ? (
+                      <button
+                        type="button"
+                        onClick={() => onGeocode(s.id)}
+                        disabled={geocodingStopId === s.id}
+                        style={btnChip}
+                      >
+                        {geocodingStopId === s.id ? "⏳ Geo…" : s.geo ? "↻ Re-geo" : "📍 Geocodificar"}
+                      </button>
+                    ) : null}
+                    {typeof onAiVerify === "function" &&
+                    (isStopIncompleteForAi(s) || s.pdfLink || s.rawSheetText) ? (
+                      <button
+                        type="button"
+                        onClick={() => onAiVerify(s)}
+                        disabled={aiVerifyModal?.loading && aiVerifyModal?.stopId === s.id}
+                        style={btnChipAi}
+                        title="IA propone completar parada — vos confirmás"
+                      >
+                        {aiVerifyModal?.loading && aiVerifyModal?.stopId === s.id
+                          ? "⏳ IA…"
+                          : "✨ Verificar con IA"}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
                 {typeof onRemoveStop === "function" ? (
@@ -224,6 +260,7 @@ export default function StepPedidos({
                       color: "#dc2626",
                       cursor: "pointer",
                       fontSize: 12,
+                      alignSelf: "flex-start",
                     }}
                   >
                     Quitar
@@ -262,6 +299,23 @@ const btnPrimary = {
   minHeight: 40,
 };
 
+const btnChip = {
+  fontSize: 11,
+  fontWeight: 700,
+  padding: "6px 10px",
+  borderRadius: 8,
+  border: "1px solid #bfdbfe",
+  background: "#fff",
+  color: "#1e3a5f",
+  cursor: "pointer",
+  minHeight: 36,
+};
+const btnChipAi = {
+  ...btnChip,
+  border: "1px solid #c4b5fd",
+  background: "#f5f3ff",
+  color: "#5b21b6",
+};
 const btnOutline = {
   padding: "8px 14px",
   borderRadius: 8,

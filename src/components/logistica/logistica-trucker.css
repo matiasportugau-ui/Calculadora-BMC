@@ -1,0 +1,290 @@
+.logi-trucker-page {
+  height: 100%;
+  min-height: 100vh;
+  margin: 0;
+  background: #111;
+}
+
+.logi-trucker-page .logi-trucker__panel--fill {
+  height: 100vh;
+  width: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+.logi-trucker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.logi-trucker--docked {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  z-index: 2;
+  width: 100%;
+  padding: 4px 0 0;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.logi-trucker--nav,
+.logi-trucker--header {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 30;
+  padding: 0;
+  gap: 0;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.logi-trucker--nav .logi-trucker__fab,
+.logi-trucker--header .logi-trucker__fab {
+  width: 74px;
+  height: 74px;
+  border-radius: 10px;
+  border-width: 2px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.18);
+}
+
+.logi-trucker__panel--fill {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.logi-trucker__fab,
+.logi-trucker__panel {
+  pointer-events: auto;
+}
+
+.logi-trucker__fab {
+  width: 74px;
+  height: 74px;
+  padding: 0;
+  border: 3px solid #7f1d1d;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #111;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  position: relative;
+}
+
+.logi-trucker__fab img,
+.logi-trucker__fab video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.logi-trucker__fab-tip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #111;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.logi-trucker--docked .logi-trucker__panel {
+  width: 100%;
+  height: min(280px, 38vh);
+}
+
+.logi-trucker--docked .logi-trucker__fab-tip {
+  left: auto;
+  right: calc(100% + 8px);
+}
+
+.logi-trucker__panel {
+  width: min(380px, calc(100vw - 24px));
+  height: min(520px, calc(100vh - 120px));
+  background: #fff;
+  border: 1px solid #7f1d1d;
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.logi-trucker__head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  background: linear-gradient(90deg, #7f1d1d, #111);
+  color: #fff;
+}
+
+.logi-trucker__face {
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 140px;
+  height: auto;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 2px solid #fca5a5;
+  display: block;
+  pointer-events: none;
+  background: #111;
+}
+
+.logi-trucker__who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.logi-trucker__who strong {
+  font-size: 14px;
+}
+
+.logi-trucker__who span {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.logi-trucker__x {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.logi-trucker__list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+}
+
+.logi-trucker__bubble {
+  max-width: 92%;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.logi-trucker__bubble.is-ai {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  color: #111827;
+}
+
+.logi-trucker__bubble.is-me {
+  align-self: flex-end;
+  background: #7f1d1d;
+  color: #fff;
+}
+
+.logi-trucker__chip {
+  display: inline-block;
+  margin: 6px 6px 0 0;
+  border: 1px solid #7f1d1d;
+  background: #fff;
+  color: #7f1d1d;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logi-trucker__err {
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.logi-trucker__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.logi-trucker__form input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.logi-trucker__form button[type="submit"] {
+  border: 0;
+  background: #7f1d1d;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logi-trucker__form button[type="submit"]:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.logi-trucker__mic {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  width: 36px;
+  cursor: pointer;
+}
+
+.logi-trucker__mic.is-on {
+  background: #7f1d1d;
+  color: #fff;
+  border-color: #7f1d1d;
+}
+
+@media (max-width: 767px) {
+  .logi-trucker:not(.logi-trucker--header) {
+    left: 8px;
+    bottom: 56px;
+  }
+
+  .logi-trucker--header .logi-trucker__fab {
+    width: 48px;
+    height: 48px;
+  }
+}

@@ -10,6 +10,7 @@ import {
   stepMissingHints,
   tryCompleteStep,
   createWizardUi,
+  levanteIncompleteMessage,
 } from "../../../utils/logistica/wizardState.js";
 
 const STEP_LABELS = {
@@ -53,6 +54,7 @@ export default function EnvioWizardShell({
   };
 
   const missing = stepMissingHints(active, ctx);
+  const levanteBanner = levanteIncompleteMessage(w, places);
 
   return (
     <div
@@ -108,6 +110,25 @@ export default function EnvioWizardShell({
           ) : null}
         </div>
       </div>
+
+      {levanteBanner ? (
+        <div
+          role="status"
+          style={{
+            margin: "10px 10px 0",
+            padding: "10px 12px",
+            borderRadius: 10,
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            color: "#1e40af",
+            fontSize: 13,
+            fontWeight: 600,
+            lineHeight: 1.4,
+          }}
+        >
+          {levanteBanner}
+        </div>
+      ) : null}
 
       <div style={{ padding: 10, display: "grid", gap: 8 }}>
         {WIZARD_STEPS.map((step) => {
