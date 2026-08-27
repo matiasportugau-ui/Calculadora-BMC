@@ -4,6 +4,15 @@
 import { Router } from "express";
 import { getTransportistaPool } from "../lib/transportistaDb.js";
 import { loadTorreLive } from "../lib/torreLive.js";
+import { ensureTransportistaSchema } from "../lib/transportistaSchema.js";
+import {
+  registerChofer,
+  loginChofer,
+  assignTripToChofer,
+  listChoferInbox,
+} from "../lib/choferRoster.js";
+import { applyTowerAction } from "../../src/utils/logistica/torreAgent.js";
+import { sha256Hex } from "../lib/driverToken.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -53,9 +62,91 @@ export default function createTorreRouter(config, logger) {
     }),
   );
 
-  router.get("/torre/health", (_req, res) => {
-    res.json({ ok: true, module: "torre", db: Boolean(pool) });
-  });
+  router.get(
+    "/torre/health",
+    asyncHandler(async (_req, res) => {
+      if (!pool) {
+        return res.json({ ok: true, module: "torre", db: false });
+      }
+      try {
+        await ensureTransportistaSchema(pool);
+        res.json({ ok: true, module: "torre", db: true, schema: true });
+      } catch (err) {
+        res.status(503).json({
+          ok: false,
+          module: "torre",
+          db: true,
+          schema: false,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }),
+  );
+
+  router.post(
+    "/torre/chofer",
+    auth,
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const out = await registerChofer(pool, req.body || {});
+      if (!out.ok) return res.status(400).json(out);
+      res.json(out);
+    }),
+  );
+
+  router.post(
+    "/torre/chofer/login",
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const out = await loginChofer(pool, req.body || {});
+      if (!out.ok) return res.status(401).json(out);
+      res.json(out);
+    }),
+  );
+
+  router.post(
+    "/torre/assign",
+    auth,
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const out = await assignTripToChofer(pool, {
+        tripId: req.body?.trip_id,
+        choferId: req.body?.chofer_id,
+      });
+      if (!out.ok) return res.status(400).json(out);
+      res.json(out);
+    }),
+  );
+
+  router.get(
+    "/torre/inbox",
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const authH = String(req.headers.authorization || "");
+      const bearer = authH.startsWith("Bearer ") ? authH.slice(7).trim() : "";
+      if (!bearer) return res.status(401).json({ ok: false, error: "Unauthorized" });
+      await ensureTransportistaSchema(pool);
+      const { rows } = await pool.query(
+        `select * from chofer_sessions
+          where token_hash = $1 and revoked_at is null and expires_at > now()
+          limit 1`,
+        [sha256Hex(bearer)],
+      );
+      const sess = rows[0];
+      if (!sess) return res.status(401).json({ ok: false, error: "Unauthorized" });
+      const out = await listChoferInbox(pool, sess.chofer_id);
+      res.json(out);
+    }),
+  );
+
+  router.post(
+    "/torre/propose",
+    auth,
+    asyncHandler(async (req, res) => {
+      const out = applyTowerAction({}, req.body || {});
+      res.json(out);
+    }),
+  );
 
   return router;
 }

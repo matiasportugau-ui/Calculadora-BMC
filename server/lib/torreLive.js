@@ -1,4 +1,5 @@
 import { projectLiveBoard } from "../../src/utils/logistica/torreLiveView.js";
+import { ensureTransportistaSchema } from "./transportistaSchema.js";
 
 const LIVE_SQL = `
 select trip_id, status, plan_snapshot, assigned_phone_e164, assigned_driver_id, updated_at, closed_at
@@ -24,8 +25,22 @@ export async function loadTorreLive(pool, opts = {}) {
   if (!pool) {
     return { ok: false, error: "no_pool" };
   }
+  try {
+    await ensureTransportistaSchema(pool);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: msg };
+  }
   const now = opts.now ?? Date.now();
-  const { rows: trips } = await pool.query(LIVE_SQL);
+  let tripRows;
+  try {
+    const q = await pool.query(LIVE_SQL);
+    tripRows = q.rows;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: msg };
+  }
+  const trips = tripRows || [];
   const ids = trips.map((t) => t.trip_id).filter(Boolean);
   const eventsByTrip = {};
   if (ids.length) {
