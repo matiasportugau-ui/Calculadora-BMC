@@ -71,6 +71,9 @@ docs/team/panelsim/reports/ml-corpus/exports/
 # Follow-up tracker (local JSON; opcional FOLLOWUP_STORE_PATH)
 .followup/
 
+# Kernel voice factory (living playbooks + logs; opcional KERNEL_STORE_PATH)
+.kernel/
+
 # Email snapshot ingest dedupe (npm run email:ingest-snapshot)
 .email-ingest/
 
