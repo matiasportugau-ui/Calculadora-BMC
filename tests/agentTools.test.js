@@ -481,6 +481,46 @@ await group("generar_pdf — prefers real rendered PDF", async () => {
   resetFetch();
 });
 
+await group("generar_pdf — storefront-voice source (no shared Drive provenance)", async () => {
+  setFetch(async (url, init) => {
+    const body = init?.body ? JSON.parse(init.body) : {};
+    assert(body.source === "storefront-voice", "storefront opts → body.source storefront-voice");
+    return {
+      ok: true,
+      pdf_id: "sf-1",
+      pdf_url: "https://gcs/sf.html",
+      gcs_url: "https://gcs/sf.html",
+      resumen: { total_usd: 100 },
+    };
+  });
+  const { parsed } = await run(
+    "generar_pdf",
+    {
+      scenario: "solo_techo",
+      techo: { familia: "ISODEC_EPS", espesor: 100, zonas: [{ largo: 10, ancho: 5 }] },
+    },
+    {},
+    { source: "storefront-voice" },
+  );
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.pdf_id === "sf-1", "pdf_id present");
+  resetFetch();
+});
+
+await group("generar_pdf — default source remains ae_agent", async () => {
+  setFetch(async (url, init) => {
+    const body = init?.body ? JSON.parse(init.body) : {};
+    assert(body.source === "ae_agent", "operator path keeps ae_agent");
+    return { ok: true, pdf_id: "op-1", pdf_url: "https://gcs/op.html", resumen: {} };
+  });
+  const { parsed } = await run("generar_pdf", {
+    scenario: "solo_techo",
+    techo: { familia: "ISODEC_EPS", espesor: 100, zonas: [{ largo: 8, ancho: 4 }] },
+  });
+  assert(parsed.ok === true, "ok true");
+  resetFetch();
+});
+
 await group("comparar_listas", async () => {
   const { parsed } = await run("comparar_listas", {
     scenario: "solo_techo",
