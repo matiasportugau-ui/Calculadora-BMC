@@ -10,6 +10,9 @@ import {
   loginChofer,
   assignTripToChofer,
   listChoferInbox,
+  verifyChoferPassword,
+  hashChoferPassword,
+  CHOFER_PASSWORD_MAX,
 } from "../server/lib/choferRoster.js";
 import { lookupTrackByOrderId } from "../server/lib/orderIdLookup.js";
 import { sanitizeSnapshot } from "../server/lib/customerTrack.js";
@@ -22,6 +25,17 @@ await ensureTransportistaSchema(pool);
 {
   const bad = await registerChofer(pool, { name: "X", password: "123" });
   assert.equal(bad.ok, false);
+  const tooLong = await registerChofer(pool, {
+    name: "X",
+    email: "long@bmc.uy",
+    password: "x".repeat(CHOFER_PASSWORD_MAX + 1),
+  });
+  assert.equal(tooLong.ok, false);
+  assert.equal(tooLong.error, "password_too_long");
+  assert.equal(verifyChoferPassword("x".repeat(CHOFER_PASSWORD_MAX + 1), "ab:cd"), false);
+  assert.equal(verifyChoferPassword("okpass1", hashChoferPassword("okpass1")), true);
+  console.log("  ✓ password length caps before scrypt (login DoS guard)");
+
   const reg = await registerChofer(pool, {
     name: "Juan Pérez",
     email: "juan@bmc.uy",

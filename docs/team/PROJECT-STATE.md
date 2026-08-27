@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — chofer login scrypt DoS after #1144):** Cap chofer passwords at 128 chars before `scryptSync` so unauthenticated `POST /api/torre/chofer/login` cannot stall the Node event loop with a multi-MB password. (GPS/assign/health hardenings live in sibling #1145.)
+
 **2026-08-27 (feat — Torre T5–T8 + schema self-heal):** Idempotent `ensureTransportistaSchema` on `/api/torre/live` and `/health` (trips, events, sessions, outbox, track tokens, chofer roster). HITL alta chofer (email/phone + password) + assign → inbox. Public Order ID at `GET /api/track/by-order/:orderId` and `/seguimiento`. Distinct Torre HITL agent is propose-only (no auto-WA, disjoint from El Transportador). Tests `torreSchema`, `choferRoster`, `torreAgent`. Prod live already returns `ok:true` `trips:[]` after Doppler DDL.
 
 **2026-08-27 (feat — Panelin Front CS pipeline):** Public agent classify→assess→green. Quote only if shopper insists (learning disclaimer) via `calcular_cotizacion` + `generar_pdf` lista **web**. Never quote flete. Complete lead in Admin 2.0 (`origen=VW`, PDF in col K). Config SoT `storefrontAgentConfig.js`. SDD `docs/sdd/storefront-voice-agent/SDD.md`.
