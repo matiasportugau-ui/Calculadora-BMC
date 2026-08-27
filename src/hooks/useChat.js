@@ -6,6 +6,9 @@ import {
   loadPanelinAiSelection,
   savePanelinAiSelection,
 } from "../utils/panelinAiSelection.js";
+import {
+  coalesceUserTranscript,
+} from "../utils/voiceTranscriptCoalesce.js";
 
 const STORAGE_KEY = "panelin-chat-history";
 const STORAGE_CONV_ID = "panelin-conversation-id";
@@ -845,6 +848,60 @@ export function useChat({
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
+  /** Voice (or other) turn into the same store as text chat — does not call /agent/chat. */
+  const appendTurn = useCallback((turn) => {
+    const role = turn?.role === "assistant" ? "assistant" : "user";
+    const content = String(turn?.content ?? turn?.text ?? "").trim();
+    if (!content && !turn?.finalize) return;
+    const source = turn?.source || "voice";
+    let id;
+    try { id = globalThis.crypto?.randomUUID?.(); } catch { id = null; }
+    if (!id) id = fallbackUuidV4();
+
+    setMessages((prev) => {
+      if (role === "user") {
+        const asLines = prev.map((m) => ({
+          role: m.role,
+          text: m.content,
+          at: m.at,
+        }));
+        const coalesced = coalesceUserTranscript(asLines, content);
+        const lastLine = coalesced[coalesced.length - 1];
+        const lastPrev = prev[prev.length - 1];
+        if (
+          lastPrev?.role === "user" &&
+          coalesced.length === prev.length &&
+          lastLine?.text
+        ) {
+          return prev.map((m, i) =>
+            i === prev.length - 1
+              ? { ...m, content: lastLine.text, at: lastLine.at, source: m.source || source }
+              : m
+          );
+        }
+        return [...prev, { id, role: "user", content, source, at: lastLine?.at || Date.now() }];
+      }
+
+      const last = prev[prev.length - 1];
+      if (turn?.finalize) {
+        if (last?.role === "assistant" && last.source === "voice") {
+          return prev.map((m, i) =>
+            i === prev.length - 1 ? { ...m, pending: false, source: "voice" } : m
+          );
+        }
+        return prev;
+      }
+      if (last?.role === "assistant" && last.source === "voice" && last.pending) {
+        return prev.map((m, i) =>
+          i === prev.length - 1
+            ? { ...m, content, pending: true, source: "voice" }
+            : m
+        );
+      }
+      return [...prev, { id, role: "assistant", content, source, pending: true }];
+    });
+  }, []);
+
   /** Hide quick-reply chips on an assistant bubble after the user taps one */
   const clearSuggestionsForMessage = useCallback((messageId) => {
     setMessages((prev) =>
@@ -887,6 +944,7 @@ export function useChat({
     loadConversationList,
     loadConversationAnalysis,
     conversationId,
+    appendTurn,
     sendFeedback,
     clearSuggestionsForMessage,
   };

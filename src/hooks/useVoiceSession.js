@@ -33,6 +33,7 @@ import {
   resampleFloat32Linear,
   buildGrokSessionUpdate,
 } from "../utils/grokRealtimeTransport.js";
+import { buildHistoryItemCreates, lastUserText } from "../utils/voiceHistoryBridge.js";
 
 const API_BASE = getCalcApiBase();
 const DEFAULT_REALTIME_BASE = DEFAULT_REALTIME_SDP_BASE;
@@ -66,6 +67,9 @@ export function useVoiceSession({
   playOutput = true,
   /** "voice" → /api/agent/voice/action ; "kernel" → /api/kernel/tool */
   relayKind = "voice",
+  /** Chat turns to seed into a new Realtime session (agent role only). */
+  historyMessages = [],
+  conversationId = null,
 }) {
   const [status, setStatus] = useState("idle"); // idle | connecting | active | error
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -112,6 +116,12 @@ export function useVoiceSession({
   captureMicRef.current = captureMic;
   const micMutedRef = useRef(micMuted);
   micMutedRef.current = micMuted;
+  const historyMessagesRef = useRef(historyMessages);
+  historyMessagesRef.current = historyMessages;
+  const conversationIdRef = useRef(conversationId);
+  conversationIdRef.current = conversationId;
+  const lastSpokenUserTextRef = useRef("");
+  const historySeededRef = useRef(false);
 
   const stopVu = useCallback(() => {
     if (vuRafRef.current) {
@@ -245,6 +255,9 @@ export function useVoiceSession({
       ) {
         setIsSpeaking(false);
         setRemoteVuLevel(0);
+        if (type === "response.done") {
+          onTranscriptDelta?.({ role: "assistant", done: true });
+        }
       }
       if (type === "input_audio_buffer.speech_started") {
         setIsListening(true);
@@ -260,6 +273,8 @@ export function useVoiceSession({
         onTranscriptDelta?.({ role: "assistant", delta: msg.delta || "" });
       }
       if (type === "conversation.item.input_audio_transcription.completed") {
+        const spoken = String(msg.transcript || "").trim();
+        if (spoken) lastSpokenUserTextRef.current = spoken;
         onTranscriptDelta?.({ role: "user", transcript: msg.transcript || "" });
       }
 
@@ -298,6 +313,10 @@ export function useVoiceSession({
             : {
                 action: { type: fnName, payload: args },
                 calcState: calcStateRef.current || {},
+                conversationId: conversationIdRef.current || undefined,
+                userText:
+                  lastSpokenUserTextRef.current
+                  || lastUserText(historyMessagesRef.current),
               };
           const relayRes = await fetch(relayUrl, {
             method: "POST",
@@ -401,16 +420,31 @@ export function useVoiceSession({
   );
 
   const applySessionBootstrap = useCallback(
-    (transportSend) => {
+    (transportSend, { seedHistory = false } = {}) => {
       const boot = sessionBootstrapRef.current;
       if (!boot || typeof transportSend !== "function") return;
       try {
-        const payload = buildGrokSessionUpdate(boot);
+        const payload = buildGrokSessionUpdate({
+          ...boot,
+          resumption: boot.resumption || { enabled: true },
+        });
         transportSend(payload);
+        if (
+          seedHistory
+          && !historySeededRef.current
+          && kernelRoleRef.current !== "kernel"
+        ) {
+          historySeededRef.current = true;
+          const creates = buildHistoryItemCreates(historyMessagesRef.current);
+          for (const ev of creates) transportSend(ev);
+          if (creates.at(-1)?.item?.role === "user") {
+            transportSend({ type: "response.create" });
+          }
+        }
         if (devMode) {
           console.info(
             `[voice] session.update applied for ${voiceProviderRef.current}`,
-            { tools: (boot.tools || []).length, transport: "ws-or-dc" },
+            { tools: (boot.tools || []).length, transport: "ws-or-dc", seedHistory },
           );
         }
       } catch (err) {
@@ -529,7 +563,7 @@ export function useVoiceSession({
             tools: [],
           };
           sessionBootstrapRef.current = boot;
-          applySessionBootstrap(transportSend);
+          applySessionBootstrap(transportSend, { seedHistory: true });
 
           // Mic → PCM16 append at 24 kHz (agent session only)
           if (stream) {
@@ -621,7 +655,7 @@ export function useVoiceSession({
       dc.onopen = () => {
         // OpenAI usually embeds session config at mint; bootstrap only if present
         if (sessionBootstrapRef.current) {
-          applySessionBootstrap(sendEventRef.current);
+          applySessionBootstrap(sendEventRef.current, { seedHistory: true });
         }
         setStatus("active");
       };
@@ -676,6 +710,8 @@ export function useVoiceSession({
     async (calcState = {}) => {
       if (status === "connecting" || status === "active") return;
       stoppedRef.current = false;
+      historySeededRef.current = false;
+      lastSpokenUserTextRef.current = lastUserText(historyMessagesRef.current);
       calcStateRef.current = calcState || {};
       setStatus("connecting");
 
@@ -768,6 +804,7 @@ export function useVoiceSession({
 
   const stop = useCallback(() => {
     stoppedRef.current = true;
+    historySeededRef.current = false;
     stopVu();
     stopRemoteVu();
     stopMicCapture();

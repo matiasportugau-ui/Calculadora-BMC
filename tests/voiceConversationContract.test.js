@@ -232,6 +232,22 @@ const toolJson = await toolOk.json();
 ok(toolOk.status === 200 && toolJson.kind === "tool", "voice/action executes get_calc_state as tool");
 ok(typeof toolJson.result === "string" && toolJson.result.includes("solo_techo"), "get_calc_state result includes scenario");
 
+const hitlDenied = await fetch(`${base}/api/agent/voice/action`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: { type: "admin_cargar_pdfs_fila", payload: { user_confirmed: false } },
+    userText: "cuanto sale el techo",
+    conversationId: "voice-hitl-test",
+  }),
+});
+const hitlJson = await hitlDenied.json();
+ok(hitlDenied.status === 200 && hitlJson.kind === "tool", "voice/action HITL write still returns tool kind");
+ok(
+  String(hitlJson.result || "").includes("confirme"),
+  "voice/action HITL uses spoken userText, not model user_confirmed",
+);
+
 server.close();
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
