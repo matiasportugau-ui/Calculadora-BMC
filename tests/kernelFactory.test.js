@@ -221,6 +221,48 @@ ok(normalizeRepoPath("node_modules/foo.js") == null, "deny node_modules");
 {
   const hits = searchCode({ query: "buildGrokSessionUpdate", path_glob: "src/**/*.js" });
   ok(hits.ok && hits.hits.length >= 1, "search_code finds transport helper");
+  const evil = searchCode({ query: "(a+)+$", path_glob: "src/**/*.js" });
+  ok(evil.ok === true && Array.isArray(evil.hits), "search_code treats regex metachars as literal");
+}
+
+{
+  const { getAgent, setActiveAgent, applyPlaybookPatch, isSafeAgentId } = await import(
+    "../server/lib/kernel/store.js"
+  );
+  const store = loadStore();
+  ok(isSafeAgentId("__proto__") === false, "isSafeAgentId rejects __proto__");
+  ok(isSafeAgentId("constructor") === false, "isSafeAgentId rejects constructor");
+  ok(getAgent(store, "__proto__") === null, "getAgent(__proto__) is null");
+  ok(getAgent(store, "constructor") === null, "getAgent(constructor) is null");
+  ok(setActiveAgent(store, "__proto__") === null, "setActiveAgent(__proto__) refused");
+  try {
+    applyPlaybookPatch(store, {
+      agent_id: "__proto__",
+      patch: "SHOULD_NOT_LAND_ON_OBJECT_PROTOTYPE",
+      reason: "regression",
+    });
+    ok(false, "apply_playbook_patch(__proto__) should throw");
+  } catch (err) {
+    ok(err.status === 404, "apply_playbook_patch(__proto__) → 404");
+  }
+  ok(
+    !String(Object.prototype.playbook || "").includes("SHOULD_NOT_LAND_ON_OBJECT_PROTOTYPE"),
+    "Object.prototype.playbook not polluted",
+  );
+  try {
+    executeKernelTool("apply_playbook_patch", {
+      agent_id: "__proto__",
+      patch: "TOOL_SHOULD_NOT_POLLUTE",
+      reason: "regression",
+    });
+    ok(false, "kernel tool apply_playbook_patch(__proto__) should throw");
+  } catch (err) {
+    ok(err.status === 404, "kernel tool apply_playbook_patch(__proto__) → 404");
+  }
+  ok(
+    !String(Object.prototype.playbook || "").includes("TOOL_SHOULD_NOT_POLLUTE"),
+    "tool path does not pollute Object.prototype",
+  );
 }
 
 {
@@ -276,6 +318,17 @@ async function req(pathname, opts = {}) {
 {
   const unauth = await fetch(`${base}/api/kernel/agents`);
   ok(unauth.status === 401, "GET agents without auth → 401");
+}
+
+{
+  const unauthAction = await fetch(`${base}/api/agent/voice/action`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: { type: "sheets_get_pending_admin", payload: {} },
+    }),
+  });
+  ok(unauthAction.status === 401, "POST voice/action without auth → 401");
 }
 
 {

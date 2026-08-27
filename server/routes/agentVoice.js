@@ -30,10 +30,6 @@ import {
 import { buildKernelSessionBootstrap } from "../lib/kernel/kernelSessionConfig.js";
 import { loadStore, saveStore, getAgent, setActiveAgent } from "../lib/kernel/store.js";
 import { seedPanelin } from "../lib/kernel/provision.js";
-import {
-  buildLogisticaVoiceBootstrap,
-  isLogisticaVoiceSurface,
-} from "../lib/voice/logisticaTruckerInstructions.js";
 
 const router = Router();
 
@@ -105,7 +101,6 @@ router.post(
     voiceProvider: rawVoiceProvider = null,
     kernelRole: rawKernelRole = "agent",
     agentId: rawAgentId = null,
-    surface: rawSurface = "",
   } = req.body || {};
 
   const kernelRole = String(rawKernelRole || "agent").toLowerCase() === "kernel"
@@ -170,15 +165,10 @@ router.post(
         }
       : null;
 
-  const logisticaPack = isLogisticaVoiceSurface(rawSurface, calcState)
-    ? buildLogisticaVoiceBootstrap(calcState)
-    : null;
-  const brainPack = logisticaPack || buildVoiceBrainPack(calcState, { devMode, leadContext: safeLeadContext });
+  const brainPack = buildVoiceBrainPack(calcState, { devMode, leadContext: safeLeadContext });
   const kernelBoot = kernelRole === "kernel" ? buildKernelSessionBootstrap(agentId) : null;
   let systemPrompt = brainPack.instructions;
-  if (logisticaPack) {
-    systemPrompt = logisticaPack.instructions;
-  } else if (kernelRole === "kernel") {
+  if (kernelRole === "kernel") {
     systemPrompt = kernelBoot.instructions;
   } else if (supervised && supervised.agent_id !== "panelin") {
     systemPrompt = supervised.playbook;
@@ -186,11 +176,9 @@ router.post(
     systemPrompt = `${brainPack.instructions}\n\n# Living playbook patches\n${supervised.playbook}`;
   }
   // OpenAI Realtime mint only accepts function tools; xAI also takes web_search.
-  const packTools = logisticaPack
-    ? logisticaPack.tools
-    : kernelRole === "kernel"
-      ? (kernelBoot.tools || [])
-      : (brainPack.tools || []);
+  const packTools = kernelRole === "kernel"
+    ? (kernelBoot.tools || [])
+    : (brainPack.tools || []);
   const tools = voiceProvider === "grok"
     ? packTools
     : packTools.filter((t) => t.type === "function");
@@ -283,7 +271,7 @@ router.post(
     } else {
       session_bootstrap = {
         instructions: systemPrompt,
-        tools: logisticaPack ? logisticaPack.tools : brainPack.tools,
+        tools: brainPack.tools,
         tool_choice: brainPack.tool_choice || "auto",
         voice: brainPack.voice || "eve",
         language_hint: brainPack.language_hint,
@@ -311,14 +299,18 @@ router.post(
 /**
  * POST /api/agent/voice/action
  *
- * Body: { action: { type, payload }, conversationId?: string }
- * Returns: { ok, action } — the validated (possibly enriched) action.
+ * Body: { action: { type, payload }, calcState?, conversationId?: string }
+ * Returns: { ok, action } for form relays, or { ok, kind:"tool", result, actions }
+ * for Voice Brain Pack tools (sheets/CRM/calc/PDF/Drive) executed via executeTool.
  *
- * The browser receives the validated action, applies it via the existing
- * handleChatAction pipeline, then sends the result back to OpenAI via
- * the WebRTC data channel to let the voice agent continue.
+ * Auth: same gate as session mint (API_AUTH_TOKEN OR identity JWT with
+ * calc:write). Required because voice tools can write Admin sheets / Drive.
  */
-router.post("/agent/voice/action", actionLimiter, async (req, res) => {
+router.post(
+  "/agent/voice/action",
+  actionLimiter,
+  requireServiceOrUser({ module: "calc", minLevel: "write" }),
+  async (req, res) => {
   const { action, calcState = {} } = req.body || {};
 
   if (!action || typeof action !== "object") {

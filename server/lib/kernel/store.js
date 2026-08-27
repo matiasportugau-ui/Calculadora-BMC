@@ -28,12 +28,36 @@ function ensureDir(filePath) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
+/** Reject prototype-chain keys so store.agents[id] never resolves to Object.prototype. */
+const FORBIDDEN_AGENT_IDS = new Set(["__proto__", "constructor", "prototype"]);
+
+export function isSafeAgentId(agentId) {
+  const id = String(agentId || "").trim();
+  if (!id || FORBIDDEN_AGENT_IDS.has(id)) return false;
+  return true;
+}
+
+function emptyAgentsMap() {
+  return Object.create(null);
+}
+
+function copyAgentsMap(raw) {
+  const out = emptyAgentsMap();
+  if (!raw || typeof raw !== "object") return out;
+  for (const [key, value] of Object.entries(raw)) {
+    if (!isSafeAgentId(key)) continue;
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
 function emptyStore() {
   return {
     version: 1,
     mode: "observe",
     activeAgentId: "panelin",
-    agents: {},
+    agents: emptyAgentsMap(),
     conversation: [],
     events: [],
     improvements: [],
@@ -73,7 +97,7 @@ export function loadStore(storePath = defaultStorePath()) {
     return {
       ...emptyStore(),
       ...data,
-      agents: data.agents && typeof data.agents === "object" ? data.agents : {},
+      agents: copyAgentsMap(data.agents),
       conversation: Array.isArray(data.conversation) ? data.conversation : [],
       events: Array.isArray(data.events) ? data.events : [],
       improvements: Array.isArray(data.improvements) ? data.improvements : [],
@@ -110,7 +134,7 @@ export function resetStore(storePath = defaultStorePath()) {
 
 /** Fresh Live session: keep agents, wipe logs. Default voice = panelin. */
 export function resetLiveSession(store = loadStore()) {
-  const agents = store.agents && typeof store.agents === "object" ? store.agents : {};
+  const agents = copyAgentsMap(store.agents);
   store.conversation = [];
   store.events = [];
   store.improvements = [];
@@ -146,9 +170,20 @@ export function hashTurn({ speaker, role, text, timestamp }) {
 
 export function registerAgent(store, agent) {
   const agent_id = String(agent.agent_id || "").trim();
-  if (!agent_id) throw new Error("agent_id required");
+  if (!isSafeAgentId(agent_id)) {
+    const err = new Error("invalid agent_id");
+    err.status = 400;
+    throw err;
+  }
+  if (!store.agents || typeof store.agents !== "object") {
+    store.agents = emptyAgentsMap();
+  } else if (Object.getPrototypeOf(store.agents) !== null) {
+    store.agents = copyAgentsMap(store.agents);
+  }
   const now = new Date().toISOString();
-  const prev = store.agents[agent_id];
+  const prev = Object.prototype.hasOwnProperty.call(store.agents, agent_id)
+    ? store.agents[agent_id]
+    : null;
   store.agents[agent_id] = {
     agent_id,
     name: agent.name || agent_id,
@@ -173,11 +208,14 @@ export function listAgents(store) {
 
 export function getAgent(store, agentId) {
   const id = agentId === "current" || !agentId ? store.activeAgentId : agentId;
+  if (!isSafeAgentId(id)) return null;
+  if (!store.agents || !Object.prototype.hasOwnProperty.call(store.agents, id)) return null;
   return store.agents[id] || null;
 }
 
 export function setActiveAgent(store, agentId) {
-  if (!store.agents[agentId]) return null;
+  if (!isSafeAgentId(agentId)) return null;
+  if (!store.agents || !Object.prototype.hasOwnProperty.call(store.agents, agentId)) return null;
   store.activeAgentId = agentId;
   return store.agents[agentId];
 }

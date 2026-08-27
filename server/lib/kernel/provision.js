@@ -12,6 +12,7 @@ import {
   registerAgent,
   getAgent,
   listAgents,
+  isSafeAgentId,
 } from "./store.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -91,7 +92,12 @@ export function provisionAgent(input = {}) {
   const store = loadStore();
   seedPanelin(store);
   const agent_id = slugAgentId(name);
-  if (store.agents[agent_id]) {
+  if (!isSafeAgentId(agent_id)) {
+    const err = new Error("invalid agent name (reserved id)");
+    err.status = 400;
+    throw err;
+  }
+  if (Object.prototype.hasOwnProperty.call(store.agents || {}, agent_id)) {
     const err = new Error(`agent_id already registered: ${agent_id}`);
     err.status = 409;
     throw err;
