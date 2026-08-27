@@ -90,4 +90,15 @@ assert.equal(updEs.session.audio.input.transcription.language_hint, "es-ES");
 assert.deepEqual(updEs.session.audio.input.transcription.keyterms, ["IsoDec"]);
 assert.equal(updEs.session.replace.IsoDec, "Iso-dec");
 
+const updStore = buildGrokSessionUpdate({
+  instructions: "hola",
+  turn_detection: { threshold: 0.75, idle_timeout_ms: 20000 },
+  reasoning: { effort: "high" },
+  resumption: { enabled: true },
+});
+assert.equal(updStore.session.turn_detection.threshold, 0.75);
+assert.equal(updStore.session.turn_detection.idle_timeout_ms, 20000);
+assert.equal(updStore.session.reasoning.effort, "high");
+assert.equal(updStore.session.resumption.enabled, true);
+
 console.log("  ✅ all grokRealtimeTransport asserts passed\n");

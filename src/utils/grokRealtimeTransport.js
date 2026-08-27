@@ -152,6 +152,15 @@ export function buildGrokSessionUpdate(boot = {}) {
   if (boot.replace && typeof boot.replace === "object") {
     session.replace = boot.replace;
   }
+  if (boot.turn_detection && typeof boot.turn_detection === "object") {
+    session.turn_detection = { ...session.turn_detection, ...boot.turn_detection };
+  }
+  if (boot.reasoning && typeof boot.reasoning === "object") {
+    session.reasoning = boot.reasoning;
+  }
+  if (boot.resumption && typeof boot.resumption === "object") {
+    session.resumption = boot.resumption;
+  }
   if (Array.isArray(boot.tools) && boot.tools.length) {
     session.tools = boot.tools;
     session.tool_choice = boot.tool_choice || "auto";
