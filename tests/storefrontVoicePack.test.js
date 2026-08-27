@@ -57,8 +57,13 @@ assert.equal(forced.lista, "web");
 const forcedCalc = forceListaWeb("calcular_cotizacion", { listaPrecios: "venta", scenario: "solo_techo" });
 assert.equal(forcedCalc.listaPrecios, "web");
 
-assert.equal(normalizeStorefrontPhone("099 162 401"), "598099162401");
+// Trunk 0 must be dropped (099… → 59899…), matching normalizePhoneE164UY.
+assert.equal(normalizeStorefrontPhone("099 162 401"), "59899162401");
+assert.equal(normalizeStorefrontPhone("099123456"), "59899123456");
+assert.equal(normalizeStorefrontPhone("+598 099 123 456"), "59899123456");
+assert.equal(normalizeStorefrontPhone("598099123456"), "59899123456");
 assert.equal(normalizeStorefrontPhone("+598 99 123 456"), "59899123456");
+assert.equal(normalizeStorefrontPhone("99123456"), "59899123456");
 
 const noConsent = assertCaptureLead({
   cliente: "Juan",

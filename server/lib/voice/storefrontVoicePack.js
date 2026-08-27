@@ -3,6 +3,7 @@
  * Customer-safe: lista web + lead capture + WhatsApp handoff. No operator tools.
  */
 import { AGENT_TOOLS } from "../agentTools.js";
+import { normalizePhoneE164UY } from "../clientes/normalize.js";
 import { agentToolToRealtimeFunction, sanitizeBootstrapForClient } from "../voiceBrainPack.js";
 import {
   STOREFRONT_VOICE_GREETING,
@@ -141,17 +142,13 @@ export function forceListaWeb(name, payload = {}) {
   return p;
 }
 
-/** Digit-only UY-friendly phone (598…). */
+/**
+ * Digit-only UY E.164 without '+'.
+ * Must drop the national trunk 0 (099… → 59899…), same as normalizePhoneE164UY —
+ * otherwise Admin/WhatsApp get undialable 5980… numbers from voice leads.
+ */
 export function normalizeStorefrontPhone(raw) {
-  const digits = String(raw || "").replace(/[^0-9]/g, "");
-  if (!digits) return "";
-  if ((digits.length === 8 || digits.length === 9) && !digits.startsWith("598")) {
-    return `598${digits}`;
-  }
-  if (digits.length === 11 && digits.startsWith("0") === false && digits.startsWith("598")) {
-    return digits;
-  }
-  return digits;
+  return normalizePhoneE164UY(raw) || "";
 }
 
 /**

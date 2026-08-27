@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — Storefront voice lead phone E.164):** `normalizeStorefrontPhone` now uses `normalizePhoneE164UY` so `099…` / `5980…` become dialable `59899…` before `capture_lead` → Admin. Regression locked in `storefrontVoicePack.test.js`.
+
 **2026-08-27 (feat — Storefront Voice on bmcuruguay.com.uy):** Public Grok S2S widget (Panelin buyer agent). `POST /api/public/voice/session|action`, flag `PUBLIC_STOREFRONT_VOICE=1` on Cloud Run deploy, widget at `/storefront-voice/widget.js`. Lista web only, consent lead `origen=VW`, WhatsApp `59892663245`. Operator Voice Mode unchanged.
 
 **2026-08-27 (feat — Torre de Control Fase 1):** Live ops tab `/logistica?vista=torre` (alias `/torre`). `GET /api/torre/live` projects open trips + last GPS (phone tail only). FSM now accepts `location_ping` + `presence`. PWA stops `watchPosition` when trip is `closed`. Spec `docs/sdd/bmc-control-tower/`. Roster/AI/Order-ID still TARGET T5–T8. Tests `torreLiveView.test.js`.
