@@ -43,6 +43,8 @@ assert.ok(widgetSrc.includes("cart:update"), "Horizon cart:update after add");
 assert.ok(widgetSrc.includes("openCart"), "open Shopify cart drawer");
 assert.ok(widgetSrc.includes('id="bmc-cart"'), "Carrito button");
 assert.ok(widgetSrc.includes("SHOP_TOOLS"), "browser shop tools");
+assert.ok(widgetSrc.includes('state.status === "idle"'), "idle cart must not persist voice resume");
+assert.ok(widgetSrc.includes("leftPage"), "failed navigate still calls response.create");
 assert.ok(!names.includes("generar_pdf"), "no PDF");
 assert.ok(!names.includes("aplicar_estado_calc"), "no form fill");
 assert.ok(!names.includes("sheets_read_range"), "no sheets");
