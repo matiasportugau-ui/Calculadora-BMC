@@ -21,4 +21,4 @@ Cloud Run also needs `PUBLIC_STOREFRONT_VOICE=1` and CORS already includes `http
 
 ## Safety
 
-Public allowlist only: catalog/calc lista **web**, `capture_lead` (consent required → Admin 2.0 `origen=VW`), `handoff_whatsapp`. Does **not** call `/api/agent/voice/action`.
+Public allowlist: catalog/calc lista **web**, `capture_lead` (consent → Admin `origen=VW`), `handoff_whatsapp`. Browser shop tools (same origin): `shop_search`, `shop_product`, `get_cart`, `add_to_cart`, `navigate`, `open_url`, `share_link`. Does **not** call `/api/agent/voice/action`. Made-to-measure techos stay quote+WA; catalog SKUs can go to the Shopify cart.

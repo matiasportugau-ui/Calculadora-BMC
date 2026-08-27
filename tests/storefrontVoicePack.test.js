@@ -16,6 +16,7 @@ import {
   STOREFRONT_READ_TOOLS,
   STOREFRONT_VOICE_GREETING_TEXT,
   STOREFRONT_LEAD_ORIGEN,
+  isStorefrontShopTool,
 } from "../server/lib/voice/storefrontVoicePack.js";
 import { STOREFRONT_VOICE_INSTRUCTIONS } from "../server/lib/voice/storefrontVoiceInstructions.js";
 import { isStorefrontOriginAllowed } from "../server/routes/publicVoice.js";
@@ -32,6 +33,10 @@ assert.ok(names.includes("web_search"), "web_search");
 assert.ok(names.includes("calcular_cotizacion"), "calc");
 assert.ok(names.includes("capture_lead"), "capture_lead");
 assert.ok(names.includes("handoff_whatsapp"), "handoff");
+assert.ok(names.includes("shop_search"), "shop_search");
+assert.ok(names.includes("add_to_cart"), "add_to_cart");
+assert.ok(names.includes("navigate"), "navigate");
+assert.ok(names.includes("get_cart"), "get_cart");
 assert.ok(!names.includes("generar_pdf"), "no PDF");
 assert.ok(!names.includes("aplicar_estado_calc"), "no form fill");
 assert.ok(!names.includes("sheets_read_range"), "no sheets");
@@ -51,6 +56,8 @@ assert.ok(!JSON.stringify(pack).includes("PANELI_MCP_SECRET"), "no MCP secret");
 assert.equal(isPublicStorefrontTool("calcular_cotizacion"), true);
 assert.equal(isPublicStorefrontTool("generar_pdf"), false);
 assert.equal(isPublicStorefrontTool("wa_lead_to_admin"), false);
+assert.equal(isStorefrontShopTool("add_to_cart"), true);
+assert.equal(isStorefrontShopTool("calcular_cotizacion"), false);
 
 const forced = forceListaWeb("obtener_precio_panel", { familia: "ISODEC_EPS", espesor: 100, lista: "venta" });
 assert.equal(forced.lista, "web");
@@ -129,5 +136,9 @@ const widget = fs.readFileSync(
 assert.ok(widget.includes("/api/public/voice/session"), "widget mints public session");
 assert.ok(!widget.includes("/api/agent/voice/action"), "widget must not hit operator action");
 assert.ok(widget.includes("force_message"), "greeting via force_message");
+assert.ok(widget.includes("/cart/add.js"), "Shopify cart add");
+assert.ok(widget.includes("/products.json"), "Shopify catalog search");
+assert.ok(widget.includes("bmc_panelin_resume"), "resume after navigate");
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("Do not say hello again"));
 
 console.log("storefrontVoicePack.test.js: ok");
