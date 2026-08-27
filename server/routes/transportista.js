@@ -493,8 +493,12 @@ export default function createTransportistaRouter(config, logger) {
       }
       const { rows } = await pool.query(`select * from trips where trip_id = $1::uuid`, [s.trip_id]);
       if (rows.length === 0) return res.status(404).json({ ok: false, error: "Not found" });
+      // Exclude GPS/presence heartbeats — they flood the chofer timeline after #1129.
       const { rows: events } = await pool.query(
-        `select event_type, at_server, payload, stop_id from trip_events where trip_id = $1::uuid order by at_server asc`,
+        `select event_type, at_server, payload, stop_id from trip_events
+          where trip_id = $1::uuid
+            and event_type not in ('location_ping', 'presence')
+          order by at_server asc`,
         [s.trip_id],
       );
       res.json({ ok: true, trip: rows[0], timeline: events });
@@ -525,6 +529,18 @@ export default function createTransportistaRouter(config, logger) {
       }
       if (!isAllowedDriverEventType(type)) {
         return res.status(400).json({ ok: false, error: `Unsupported event type: ${type}` });
+      }
+
+      const { rows: tripRows } = await pool.query(
+        `select status, closed_at from trips where trip_id = $1::uuid`,
+        [trip_id],
+      );
+      const tripRow = tripRows[0];
+      if (!tripRow) {
+        return res.status(404).json({ ok: false, error: "Trip not found" });
+      }
+      if (tripRow.closed_at || String(tripRow.status || "") === "closed") {
+        return res.status(409).json({ ok: false, error: "Trip is closed — events no longer accepted" });
       }
 
       if (type === "delivery_completed" && config.transportistaStrictPod && stop_id) {
@@ -559,7 +575,8 @@ export default function createTransportistaRouter(config, logger) {
         }
         throw e;
       }
-      if (type !== "location_ping") {
+      // Heartbeats must not trigger reparto projection (extra SELECT every 40–60s).
+      if (type !== "location_ping" && type !== "presence") {
         try {
           await projectRepartoFromDriverEvent(pool, trip_id, type);
         } catch {

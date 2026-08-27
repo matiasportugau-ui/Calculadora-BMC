@@ -196,7 +196,9 @@ export default function useDriverSession() {
         if (!res.ok || !data.ok) throw new Error(data.error || "Error");
         if (type !== "location_ping" && type !== "presence") await loadTrip();
       } catch {
-        if (type !== "presence") {
+        // Heartbeats are ephemeral — never park them in IndexedDB (pre-#1129 400s
+        // already queued floods; closed-trip 409s would never drain).
+        if (type !== "presence" && type !== "location_ping") {
           await outboxAdd(body);
           await refreshOutbox();
         }
