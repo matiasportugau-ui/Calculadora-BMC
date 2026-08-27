@@ -23,6 +23,7 @@ import {
   STOREFRONT_READ_TOOLS,
   STOREFRONT_LEAD_ORIGEN,
   stripInternalPrices,
+  isStorefrontShopTool,
 } from "../lib/voice/storefrontVoicePack.js";
 
 const SESSION_WINDOW_MS = 5 * 60 * 1000;
@@ -164,6 +165,14 @@ export default function createPublicVoiceRouter() {
 
     if (!isPublicStorefrontTool(type)) {
       return res.status(400).json({ ok: false, error: `Tool no permitida: ${type || "(vacío)"}` });
+    }
+
+    if (isStorefrontShopTool(type)) {
+      return res.json({
+        ok: true,
+        kind: "tool",
+        result: JSON.stringify({ ok: false, error: "Esta acción corre en el navegador de la tienda." }),
+      });
     }
 
     if (type === "handoff_whatsapp") {

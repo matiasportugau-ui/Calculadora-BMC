@@ -22,7 +22,16 @@ export const STOREFRONT_READ_TOOLS = Object.freeze([
 
 export const STOREFRONT_WRITE_TOOLS = Object.freeze(["capture_lead"]);
 
-export const STOREFRONT_CLIENT_TOOLS = Object.freeze(["handoff_whatsapp"]);
+export const STOREFRONT_CLIENT_TOOLS = Object.freeze([
+  "handoff_whatsapp",
+  "shop_search",
+  "shop_product",
+  "get_cart",
+  "add_to_cart",
+  "navigate",
+  "open_url",
+  "share_link",
+]);
 
 export const STOREFRONT_TOOL_SET = new Set([
   ...STOREFRONT_READ_TOOLS,
@@ -114,8 +123,114 @@ const HANDOFF_WHATSAPP_TOOL = Object.freeze({
   },
 });
 
+const SHOP_SEARCH_TOOL = Object.freeze({
+  type: "function",
+  name: "shop_search",
+  description:
+    "Busca productos en la tienda Shopify (IsoDec, IsoRoof, tornillos, galpones, accesorios). " +
+    "Devuelve title, handle, url, variant_id y precio para recomendar, navegar o agregar al carrito.",
+  parameters: {
+    type: "object",
+    properties: {
+      query: { type: "string", description: "Texto de búsqueda, ej. IsoDec PIR, galpón, tornillo" },
+    },
+    required: ["query"],
+  },
+});
+
+const SHOP_PRODUCT_TOOL = Object.freeze({
+  type: "function",
+  name: "shop_product",
+  description: "Carga un producto por handle de Shopify (variantes, colores, variant_id).",
+  parameters: {
+    type: "object",
+    properties: {
+      handle: { type: "string", description: "Handle del producto, ej. isodec-pir" },
+    },
+    required: ["handle"],
+  },
+});
+
+const GET_CART_TOOL = Object.freeze({
+  type: "function",
+  name: "get_cart",
+  description: "Lee el carrito de compra actual (ítems, cantidades, total).",
+  parameters: { type: "object", properties: {} },
+});
+
+const ADD_TO_CART_TOOL = Object.freeze({
+  type: "function",
+  name: "add_to_cart",
+  description:
+    "Agrega un SKU de catálogo al carrito Shopify. Usar variant_id de shop_search o shop_product. " +
+    "No uses esto para techos a medida; esos van por cotización + WhatsApp.",
+  parameters: {
+    type: "object",
+    properties: {
+      variant_id: { type: "number", description: "ID de variante Shopify" },
+      quantity: { type: "number", description: "Cantidad, default 1" },
+    },
+    required: ["variant_id"],
+  },
+});
+
+const NAVIGATE_TOOL = Object.freeze({
+  type: "function",
+  name: "navigate",
+  description:
+    "Navega al shopper a una ruta del mismo sitio: /products/HANDLE, /collections/isodec, /cart, /pages/…",
+  parameters: {
+    type: "object",
+    properties: {
+      path: { type: "string", description: "Ruta o URL del sitio BMC, empieza con / o bmcuruguay.com.uy" },
+    },
+    required: ["path"],
+  },
+});
+
+const OPEN_URL_TOOL = Object.freeze({
+  type: "function",
+  name: "open_url",
+  description: "Abre un link de producto o colección BMC en esta pestaña (solo el mismo sitio).",
+  parameters: {
+    type: "object",
+    properties: {
+      url: { type: "string" },
+    },
+    required: ["url"],
+  },
+});
+
+const SHARE_LINK_TOOL = Object.freeze({
+  type: "function",
+  name: "share_link",
+  description: "Comparte o copia un link del sitio BMC (producto, colección, carrito).",
+  parameters: {
+    type: "object",
+    properties: {
+      url: { type: "string" },
+      title: { type: "string" },
+    },
+    required: ["url"],
+  },
+});
+
+export const STOREFRONT_SHOP_TOOLS = Object.freeze([
+  "shop_search",
+  "shop_product",
+  "get_cart",
+  "add_to_cart",
+  "navigate",
+  "open_url",
+  "share_link",
+]);
+
 export function isPublicStorefrontTool(name) {
   return STOREFRONT_TOOL_SET.has(String(name || ""));
+}
+
+export function isStorefrontShopTool(name) {
+  return STOREFRONT_SHOP_TOOLS.includes(String(name || ""));
 }
 
 /**
@@ -222,6 +337,13 @@ export function buildStorefrontVoicePack(options = {}) {
   const tools = [
     STOREFRONT_WEB_SEARCH_TOOL,
     ...buildReadFunctionTools(),
+    SHOP_SEARCH_TOOL,
+    SHOP_PRODUCT_TOOL,
+    GET_CART_TOOL,
+    ADD_TO_CART_TOOL,
+    NAVIGATE_TOOL,
+    OPEN_URL_TOOL,
+    SHARE_LINK_TOOL,
     CAPTURE_LEAD_TOOL,
     HANDOFF_WHATSAPP_TOOL,
   ];
