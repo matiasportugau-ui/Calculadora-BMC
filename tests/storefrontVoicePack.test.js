@@ -37,6 +37,12 @@ assert.ok(names.includes("shop_search"), "shop_search");
 assert.ok(names.includes("add_to_cart"), "add_to_cart");
 assert.ok(names.includes("navigate"), "navigate");
 assert.ok(names.includes("get_cart"), "get_cart");
+
+const widgetSrc = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
+assert.ok(widgetSrc.includes("cart:update"), "Horizon cart:update after add");
+assert.ok(widgetSrc.includes("openCart"), "open Shopify cart drawer");
+assert.ok(widgetSrc.includes('id="bmc-cart"'), "Carrito button");
+assert.ok(widgetSrc.includes("SHOP_TOOLS"), "browser shop tools");
 assert.ok(!names.includes("generar_pdf"), "no PDF");
 assert.ok(!names.includes("aplicar_estado_calc"), "no form fill");
 assert.ok(!names.includes("sheets_read_range"), "no sheets");

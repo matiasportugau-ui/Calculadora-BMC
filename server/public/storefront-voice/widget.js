@@ -242,14 +242,44 @@
     };
   }
 
+  function cartSectionIds() {
+    return [...document.querySelectorAll("cart-items-component")]
+      .map((el) => el.dataset.sectionId)
+      .filter(Boolean);
+  }
+
+  function notifyThemeCart(cart, sections) {
+    const itemCount = Number(cart?.item_count) || 0;
+    try {
+      document.dispatchEvent(new CustomEvent("cart:update", {
+        bubbles: true,
+        detail: {
+          resource: cart || {},
+          sourceId: "bmc-panelin",
+          data: {
+            itemCount,
+            source: "bmc-panelin",
+            sections: sections || {},
+          },
+        },
+      }));
+    } catch { /* ignore */ }
+  }
+
   async function addToCart(variantId, quantity) {
     const id = Number(variantId);
     const qty = Math.max(1, Number(quantity) || 1);
     if (!id) return { ok: false, error: "Falta variant_id" };
+    const payload = { items: [{ id, quantity: qty }] };
+    const sectionIds = cartSectionIds();
+    if (sectionIds.length) {
+      payload.sections = sectionIds.join(",");
+      payload.sections_url = location.pathname;
+    }
     const r = await fetch("/cart/add.js", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ items: [{ id, quantity: qty }] }),
+      body: JSON.stringify(payload),
     });
     const raw = await r.text();
     let data = {};
@@ -258,6 +288,7 @@
       return { ok: false, error: data.description || data.message || "No se pudo agregar" };
     }
     const cart = await getCart();
+    if (cart.ok) notifyThemeCart(cart, data.sections);
     return { ok: true, added: data.title || data.items?.[0]?.title || "ítem", cart };
   }
 
@@ -282,10 +313,12 @@
 #bmc-paneli-voice .bmc-line{margin:0 0 8px}
 #bmc-paneli-voice .bmc-line:last-child{margin:0}
 #bmc-paneli-voice .bmc-line[data-role="user"]{color:#6b6358}
+#bmc-paneli-voice .bmc-ph{color:#6b6358}
 #bmc-paneli-voice .bmc-picks{display:flex;flex-direction:column;gap:6px;margin:0 0 8px}
 #bmc-paneli-voice .bmc-pick{display:block;width:100%;text-align:left;border:1px solid #D4CFC4;background:#fff;border-radius:10px;padding:8px 10px;font:inherit;font-size:12px;cursor:pointer;color:#141311}
 #bmc-paneli-voice .bmc-pick:hover{border-color:#C45C26}
 #bmc-paneli-voice .bmc-row{display:flex;gap:6px}
+#bmc-paneli-voice .bmc-row-main{margin:0 0 6px}
 #bmc-paneli-voice .bmc-btn{flex:1;min-height:42px;border:0;border-radius:10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
 #bmc-paneli-voice .bmc-go{background:#C45C26;color:#fff}
 #bmc-paneli-voice .bmc-stop{background:#141311;color:#F3EDE3}
@@ -306,11 +339,15 @@
         <p class="bmc-status" id="bmc-status">Listo</p>
       </div>
       <p class="bmc-title">Panelin</p>
-      <div class="bmc-caps" id="bmc-caps" aria-live="polite"></div>
+      <div class="bmc-caps" id="bmc-caps" aria-live="polite">
+        <p class="bmc-line bmc-ph">Tocá Hablar y pedime un techo, un panel o accesorios.</p>
+      </div>
       <div class="bmc-picks" id="bmc-picks" hidden></div>
-      <div class="bmc-row">
+      <div class="bmc-row bmc-row-main">
         <button type="button" class="bmc-btn bmc-go" id="bmc-go">Hablar</button>
         <button type="button" class="bmc-btn bmc-stop" id="bmc-stop" hidden>Cortar</button>
+      </div>
+      <div class="bmc-row">
         <button type="button" class="bmc-btn bmc-cart" id="bmc-cart">Carrito</button>
         <button type="button" class="bmc-btn bmc-wa" id="bmc-wa">WhatsApp</button>
       </div>
@@ -450,15 +487,57 @@
     } catch { /* shop only */ }
   }
 
-  function goTo(pathOrUrl) {
-    const path = shopUrl(pathOrUrl);
-    if (!path) return { ok: false, error: "Link fuera de la tienda BMC" };
+  function persistResume() {
+    if (!state.conversationId) return;
     try {
       sessionStorage.setItem(SS_RESUME, JSON.stringify({
         conversationId: state.conversationId,
         open: true,
       }));
     } catch { /* ignore */ }
+  }
+
+  function isCartPath(path) {
+    const p = String(path || "").split("?")[0].replace(/\/+$/, "") || "/";
+    return p === "/cart";
+  }
+
+  function openCartUi() {
+    root.classList.remove("open");
+    try {
+      if (window.Shopify?.actions?.openCart) {
+        Promise.resolve(window.Shopify.actions.openCart()).catch(() => {});
+        return { ok: true, opened: "shopify-action" };
+      }
+    } catch { /* ignore */ }
+    const drawer = document.querySelector("cart-drawer-component");
+    if (drawer && typeof drawer.open === "function") {
+      try {
+        drawer.open();
+        return { ok: true, opened: "drawer" };
+      } catch { /* ignore */ }
+    }
+    persistResume();
+    location.assign("/cart");
+    return { ok: true, path: "/cart" };
+  }
+
+  async function loadCart() {
+    let cart = { ok: false };
+    try {
+      cart = await getCart();
+    } catch { /* ignore */ }
+    if (cart.ok) setCartCount(cart.item_count);
+    notifyThemeCart(cart.ok ? cart : { item_count: 0 });
+    const opened = openCartUi();
+    return { ok: true, ...opened, item_count: cart.item_count || 0 };
+  }
+
+  function goTo(pathOrUrl) {
+    const path = shopUrl(pathOrUrl);
+    if (!path) return { ok: false, error: "Link fuera de la tienda BMC" };
+    if (isCartPath(path)) return loadCart();
+    persistResume();
     location.assign(path);
     return { ok: true, path };
   }
@@ -499,7 +578,10 @@
     }
     if (name === "add_to_cart") {
       const out = await addToCart(args.variant_id, args.quantity);
-      if (out.ok && out.cart) setCartCount(out.cart.item_count);
+      if (out.ok && out.cart) {
+        setCartCount(out.cart.item_count);
+        openCartUi();
+      }
       return out;
     }
     if (name === "navigate" || name === "open_url") {
@@ -760,7 +842,7 @@
     window.open(state.lastWa, "_blank", "noopener");
   });
   cartBtn.addEventListener("click", () => {
-    goTo("/cart");
+    loadCart();
   });
 
   refreshCartBadge();
@@ -769,8 +851,10 @@
     if (saved && saved.open) {
       sessionStorage.removeItem(SS_RESUME);
       root.classList.add("open");
-      if (saved.conversationId) state.conversationId = saved.conversationId;
-      startCall();
+      if (saved.conversationId) {
+        state.conversationId = saved.conversationId;
+        startCall();
+      }
     }
   } catch { /* ignore */ }
 })();
