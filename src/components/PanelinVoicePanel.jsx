@@ -501,12 +501,13 @@ function RealtimeVoicePanel({
       const data = await kernelFetch(`/api/kernel/reload/${id}`, {
         method: "POST",
         authHeader,
+        body: { calcState: calcState || {} },
       });
       if (data.instructions) agentUpdateRef.current?.(data.instructions);
     } catch {
       /* ignore */
     }
-  }, [authHeader]);
+  }, [authHeader, calcState]);
 
   const {
     status,
@@ -561,6 +562,7 @@ function RealtimeVoicePanel({
     captureMic: false,
     playOutput: kernelOn && !kernelMuted,
     relayKind: "kernel",
+    micMuted,
   });
 
   kernelFeedRef.current = feedKernel;

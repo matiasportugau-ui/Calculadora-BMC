@@ -30,6 +30,7 @@ import {
 import { buildKernelSessionBootstrap } from "../lib/kernel/kernelSessionConfig.js";
 import { loadStore, saveStore, getAgent, setActiveAgent } from "../lib/kernel/store.js";
 import { seedPanelin } from "../lib/kernel/provision.js";
+import { buildSupervisedAgentPrompt } from "../lib/kernel/agentInstructions.js";
 import {
   buildLogisticaVoiceBootstrap,
   isLogisticaVoiceSurface,
@@ -174,16 +175,16 @@ router.post(
     ? buildLogisticaVoiceBootstrap(calcState)
     : null;
   const brainPack = logisticaPack || buildVoiceBrainPack(calcState, { devMode, leadContext: safeLeadContext });
-  const kernelBoot = kernelRole === "kernel" ? buildKernelSessionBootstrap(agentId) : null;
+  const kernelBoot = kernelRole === "kernel"
+    ? buildKernelSessionBootstrap(agentId, { mode: kernelStore.mode })
+    : null;
   let systemPrompt = brainPack.instructions;
   if (logisticaPack) {
     systemPrompt = logisticaPack.instructions;
   } else if (kernelRole === "kernel") {
     systemPrompt = kernelBoot.instructions;
-  } else if (supervised && supervised.agent_id !== "panelin") {
-    systemPrompt = supervised.playbook;
-  } else if (supervised && Number(supervised.version) > 1) {
-    systemPrompt = `${brainPack.instructions}\n\n# Living playbook patches\n${supervised.playbook}`;
+  } else {
+    systemPrompt = buildSupervisedAgentPrompt(supervised, brainPack);
   }
   // OpenAI Realtime mint only accepts function tools; xAI also takes web_search.
   const packTools = logisticaPack

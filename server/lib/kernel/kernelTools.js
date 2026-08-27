@@ -175,8 +175,16 @@ export const KERNEL_TOOL_NAMES = Object.freeze(
   KERNEL_TOOL_DEFS.map((t) => t.name),
 );
 
-export function kernelToolDefsForSession() {
-  const tools = KERNEL_TOOL_DEFS.slice();
+export const KERNEL_PATCH_ONLY_TOOLS = Object.freeze([
+  "apply_playbook_patch",
+  "apply_code_change",
+]);
+
+export function kernelToolDefsForSession(mode = "observe") {
+  let tools = KERNEL_TOOL_DEFS.slice();
+  if (mode !== "patch") {
+    tools = tools.filter((t) => !KERNEL_PATCH_ONLY_TOOLS.includes(t.name));
+  }
   const collectionId = String(process.env.KERNEL_COLLECTION_ID || process.env.XAI_COLLECTION_ID || "").trim();
   if (collectionId) {
     tools.unshift({

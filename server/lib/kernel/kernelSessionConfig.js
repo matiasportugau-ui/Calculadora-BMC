@@ -42,7 +42,7 @@ export function kernelInstructionsFor(agentId) {
   return loadKernelInstructions().replaceAll("{{agent_id}}", id);
 }
 
-export function buildKernelSessionBootstrap(agentId) {
+export function buildKernelSessionBootstrap(agentId, { mode = "observe" } = {}) {
   return {
     instructions: kernelInstructionsFor(agentId),
     voice: KERNEL_VOICE,
@@ -58,7 +58,7 @@ export function buildKernelSessionBootstrap(agentId) {
     language_hint: KERNEL_LANGUAGE_HINT,
     keyterms: [...KERNEL_KEYTERMS],
     replace: { ...KERNEL_REPLACE },
-    tools: kernelToolDefsForSession(),
+    tools: kernelToolDefsForSession(mode),
     tool_choice: "auto",
     audio: {
       input: {

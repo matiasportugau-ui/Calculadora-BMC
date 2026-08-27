@@ -108,12 +108,7 @@ function walkAllowlisted(root, globRe, hits, queryRe) {
 export function searchCode({ query, path_glob } = {}) {
   const q = String(query || "").trim();
   if (!q) return { ok: false, error: "query required", hits: [] };
-  let queryRe;
-  try {
-    queryRe = new RegExp(q, "i");
-  } catch {
-    queryRe = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-  }
+  const queryRe = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
   const globRe = globToRegExp(path_glob);
   const hits = [];
   walkAllowlisted(REPO_ROOT, globRe, hits, queryRe);
@@ -140,6 +135,24 @@ export function readSourceFile(relPath) {
 
 function codeApplyAllowed() {
   return String(process.env.KERNEL_ALLOW_CODE_APPLY || "") === "1";
+}
+
+const CONFIRM_RE = /\b(s[ií]|ok+|dale|aplic[aoá]|confirmad[oa]|yes|de acuerdo)\b/i;
+
+function operatorConfirmedRecently(store, { maxAgeMs = 45_000 } = {}) {
+  const rows = store.conversation || [];
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const t = rows[i];
+    if (t.role !== "operator" && t.speaker !== "operator") continue;
+    const ts = Date.parse(t.timestamp || 0);
+    if (Number.isFinite(ts) && Date.now() - ts > maxAgeMs) return false;
+    return CONFIRM_RE.test(String(t.text || ""));
+  }
+  return false;
+}
+
+function allowMutate(store, args) {
+  return args?.user_confirmed === true || operatorConfirmedRecently(store);
 }
 
 function applyStagedProposal(store, proposal) {
@@ -208,6 +221,10 @@ export function executeKernelTool(name, args = {}) {
     case "read_improvement_log":
       return { ok: true, items: readImprovementLog(store, args) };
     case "set_mode": {
+      const target = String(args.mode || "").trim();
+      if ((target === "patch" || target === "intervene") && !allowMutate(store, args)) {
+        return { ok: false, error: "operator confirmation required for this mode" };
+      }
       const mode = setMode(store, args.mode);
       save();
       return { ok: true, mode };
@@ -218,6 +235,12 @@ export function executeKernelTool(name, args = {}) {
       return { ok: true, improvement: row };
     }
     case "apply_playbook_patch": {
+      if (store.mode !== "patch") {
+        return { ok: false, error: "set mode to patch before applying playbook changes" };
+      }
+      if (!allowMutate(store, args)) {
+        return { ok: false, error: "operator confirmation required" };
+      }
       const result = applyPlaybookPatch(store, args);
       save();
       return result;
@@ -228,6 +251,12 @@ export function executeKernelTool(name, args = {}) {
       return { ok: true, proposal_id: row.id, status: row.status };
     }
     case "apply_code_change": {
+      if (store.mode !== "patch") {
+        return { ok: false, error: "set mode to patch before applying code changes" };
+      }
+      if (!allowMutate(store, args)) {
+        return { ok: false, error: "operator confirmation required" };
+      }
       const proposal = findProposal(store, args.proposal_id);
       if (!proposal) return { ok: false, error: "proposal not found" };
       if (!codeApplyAllowed()) {

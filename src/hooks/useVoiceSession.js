@@ -304,8 +304,31 @@ export function useVoiceSession({
             headers,
             body: JSON.stringify(relayBody),
           });
+          const relayData = await relayRes.json().catch(() => ({}));
+          if (kernelRelay) {
+            const result = relayRes.ok
+              ? (relayData.result ?? relayData)
+              : (relayData.result ?? {
+                ok: false,
+                status: relayRes.status,
+                error: relayData.error || "kernel tool failed",
+              });
+            toolOutput = typeof result === "string"
+              ? result
+              : JSON.stringify(result ?? { ok: false });
+            onToolResultRef.current?.(fnName, result);
+            sendEvent({
+              type: "conversation.item.create",
+              item: {
+                type: "function_call_output",
+                call_id: callId,
+                output: toolOutput,
+              },
+            });
+            sendEvent({ type: "response.create" });
+            return;
+          }
           if (relayRes.ok) {
-            const relayData = await relayRes.json();
             if (relayData.kind === "tool" || relayData.result != null) {
               toolOutput = typeof relayData.result === "string"
                 ? relayData.result
@@ -343,6 +366,18 @@ export function useVoiceSession({
             }
           }
         } catch (err) {
+          if (relayKindRef.current === "kernel") {
+            sendEvent({
+              type: "conversation.item.create",
+              item: {
+                type: "function_call_output",
+                call_id: callId,
+                output: JSON.stringify({ ok: false, error: err?.message || "kernel tool failed" }),
+              },
+            });
+            sendEvent({ type: "response.create" });
+            return;
+          }
           console.warn(
             `[voice] action relay failed for ${fnName}, applying raw payload`,
             err?.message,

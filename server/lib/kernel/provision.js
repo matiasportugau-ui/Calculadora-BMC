@@ -61,6 +61,8 @@ export function refreshPanelinPlaybook(store = loadStore()) {
   seedPanelin(store);
   if (!store.agents.panelin) return null;
   store.agents.panelin.playbook = PANELIN_PLAYBOOK;
+  store.agents.panelin.version = 1;
+  store.agents.panelin.reloadRequested = false;
   store.agents.panelin.updatedAt = new Date().toISOString();
   return store.agents.panelin;
 }

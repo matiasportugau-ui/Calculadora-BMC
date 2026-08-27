@@ -32,6 +32,7 @@ import {
 } from "../lib/kernel/store.js";
 import { executeKernelTool, hostSetSnapshot, isKernelTool } from "../lib/kernel/tools.js";
 import { buildKernelSessionBootstrap } from "../lib/kernel/kernelSessionConfig.js";
+import { buildAgentReloadPayload } from "../lib/kernel/agentInstructions.js";
 
 const router = Router();
 
@@ -123,12 +124,12 @@ router.post("/kernel/reload/:id", auth, (req, res) => {
   if (!agent) return res.status(404).json({ ok: false, error: "agent not found" });
   markReloaded(store, agent.agent_id);
   saveStore(store);
+  const calcState = req.body?.calcState && typeof req.body.calcState === "object"
+    ? req.body.calcState
+    : {};
   return res.json({
     ok: true,
-    agent_id: agent.agent_id,
-    version: agent.version,
-    playbook: agent.playbook,
-    instructions: agent.playbook,
+    ...buildAgentReloadPayload(agent, calcState),
   });
 });
 
@@ -190,7 +191,7 @@ router.get("/kernel/session-bootstrap", auth, (req, res) => {
   const store = loadStore();
   seedPanelin(store);
   const agentId = String(req.query.agent_id || store.activeAgentId || "panelin");
-  const boot = buildKernelSessionBootstrap(agentId);
+  const boot = buildKernelSessionBootstrap(agentId, { mode: store.mode });
   return res.json({
     ok: true,
     agent_id: agentId,

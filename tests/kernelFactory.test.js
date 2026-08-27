@@ -16,8 +16,8 @@ delete process.env.KERNEL_ALLOW_CODE_APPLY;
 delete process.env.KERNEL_COLLECTION_ID;
 delete process.env.XAI_COLLECTION_ID;
 
-const { slugAgentId, resetStore, loadStore } = await import("../server/lib/kernel/store.js");
-const { provisionAgent, seedPanelin, listSupervisedAgents } = await import(
+const { slugAgentId, resetStore, loadStore, saveStore } = await import("../server/lib/kernel/store.js");
+const { provisionAgent, seedPanelin, listSupervisedAgents, refreshPanelinPlaybook } = await import(
   "../server/lib/kernel/provision.js"
 );
 const { executeKernelTool, searchCode, readSourceFile, normalizeRepoPath } = await import(
@@ -165,10 +165,19 @@ try {
 {
   const pb = executeKernelTool("read_playbook", { agent_id: "calc-assistant" });
   ok(pb.ok && pb.playbook.includes("Calc Assistant"), "read_playbook");
+  const blocked = executeKernelTool("apply_playbook_patch", {
+    agent_id: "calc-assistant",
+    patch: "ALWAYS say the lista de precios before the total.",
+    reason: "forgot price list",
+  });
+  ok(blocked.ok === false, "observe mode cannot apply_playbook_patch");
+  const modePatch = executeKernelTool("set_mode", { mode: "patch", user_confirmed: true });
+  ok(modePatch.ok && modePatch.mode === "patch", "set_mode patch with confirm");
   const patched = executeKernelTool("apply_playbook_patch", {
     agent_id: "calc-assistant",
     patch: "ALWAYS say the lista de precios before the total.",
     reason: "forgot price list",
+    user_confirmed: true,
   });
   ok(patched.ok && patched.reload === true && patched.version >= 2, "apply_playbook_patch bumps version");
   const after = executeKernelTool("read_playbook", { agent_id: "current" });
@@ -192,7 +201,7 @@ try {
 
 {
   const mode = executeKernelTool("set_mode", { mode: "report" });
-  ok(mode.ok && mode.mode === "report", "set_mode report");
+  ok(mode.ok && mode.mode === "report", "set_mode report without confirm");
 }
 
 {
@@ -203,7 +212,11 @@ try {
     reason: "test",
   });
   ok(prop.ok && prop.proposal_id, "propose_code_change stages");
-  const applied = executeKernelTool("apply_code_change", { proposal_id: prop.proposal_id });
+  executeKernelTool("set_mode", { mode: "patch", user_confirmed: true });
+  const applied = executeKernelTool("apply_code_change", {
+    proposal_id: prop.proposal_id,
+    user_confirmed: true,
+  });
   ok(applied.ok === false && applied.staged === true, "apply_code_change refused without env");
 }
 
@@ -221,6 +234,8 @@ ok(normalizeRepoPath("node_modules/foo.js") == null, "deny node_modules");
 {
   const hits = searchCode({ query: "buildGrokSessionUpdate", path_glob: "src/**/*.js" });
   ok(hits.ok && hits.hits.length >= 1, "search_code finds transport helper");
+  const literal = searchCode({ query: "(a+)+$", path_glob: "src/**/*.js" });
+  ok(literal.ok, "search_code treats nested quantifiers as literal");
 }
 
 {
@@ -238,6 +253,14 @@ ok(KERNEL_TOOL_NAMES.includes("apply_playbook_patch"), "tool name list");
 ok(
   kernelToolDefsForSession().every((t) => t.type === "function"),
   "session tools are functions without collection",
+);
+ok(
+  !kernelToolDefsForSession().some((t) => t.name === "apply_playbook_patch"),
+  "observe session hides apply_playbook_patch",
+);
+ok(
+  kernelToolDefsForSession("patch").some((t) => t.name === "apply_playbook_patch"),
+  "patch session attaches apply_playbook_patch",
 );
 
 {
@@ -339,6 +362,43 @@ async function req(pathname, opts = {}) {
 {
   const reload = await req("/api/kernel/reload/calc-assistant", { method: "POST" });
   ok(reload.json.ok && reload.json.instructions.includes("lista de precios"), "reload returns patched playbook");
+}
+
+{
+  executeKernelTool("set_mode", { mode: "patch", user_confirmed: true });
+  executeKernelTool("apply_playbook_patch", {
+    agent_id: "panelin",
+    patch: "KERNEL-RESET-MARKER",
+    reason: "test reset",
+    user_confirmed: true,
+  });
+  ok(Number(loadStore().agents.panelin.version) > 1, "panelin version bumped");
+  const store = loadStore();
+  refreshPanelinPlaybook(store);
+  saveStore(store);
+  ok(Number(store.agents.panelin.version) === 1, "reset restores panelin version 1");
+  ok(!String(store.agents.panelin.playbook).includes("KERNEL-RESET-MARKER"), "reset restores seed playbook");
+  const panelinReload = await req("/api/kernel/reload/panelin", { method: "POST" });
+  ok(
+    panelinReload.json.ok
+      && String(panelinReload.json.instructions).includes("You are Panelin, a friendly"),
+    "panelin reload returns Voice Brain Pack",
+  );
+  ok(
+    !String(panelinReload.json.instructions).includes("KERNEL-RESET-MARKER"),
+    "reset panelin reload has no living patches",
+  );
+}
+
+{
+  const a = loadStore();
+  const b = loadStore();
+  ok(a === b, "loadStore returns in-process singleton");
+  a.activeAgentId = "calc-assistant";
+  b.conversation.push({ id: "overlap", speaker: "operator", role: "operator", text: "x", timestamp: new Date().toISOString() });
+  saveStore(a);
+  const again = loadStore();
+  ok(again.activeAgentId === "calc-assistant" && again.conversation.some((t) => t.id === "overlap"), "overlapping writers share memory");
 }
 
 // Dual mint bootstrap (mocked xAI)

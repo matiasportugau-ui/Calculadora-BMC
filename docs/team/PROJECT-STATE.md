@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — Kernel Live review #1118):** Merge de `main` (#1120) para que `logisticaTruckerInstructions.js` exista. Reload de playbook devuelve el Voice Brain Pack (no solo el store). Tools `apply_playbook_patch` / `apply_code_change` solo en modo patch + confirmación. `/api/kernel/tool` fallido no se reporta `{ok:true}`. Store in-memory para dual-session. Reset deja `panelin.version = 1`. `search_code` trata la query como literal. Mute también limpia el buffer de Kernel.
+
 **2026-08-27 (feat — Logística mesa port + SDD Final v1.1):** Ops `/logistica` on `main` now includes Leaflet/OSRM (`POST /api/envios/route`), Tetris load (`tetrisPack.js` + Cargar Tetris), Asignar a chofer (`driverAssign.js` HITL WA + `driver_url`), El Transportador + Grok Voice `surface=logistica`. SDD kit `docs/sdd/bmc-logistica` v1.1 SCORECARD 94. Worktree mesa-depo is lab-only.
 
 **2026-08-27 (fix — Live restart: sticky chrome + noise + reset):** Controles (selector, mutes, Empezar de nuevo) fijos arriba; el chat scrollea solo. Filtro `shh`/TV inglés. `POST /api/kernel/reset` vuelve a Panelin y borra el log. Restaura últimas 40 líneas al abrir Live. Sims: `tests/voiceRoundSimulation.test.js`.

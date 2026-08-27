@@ -57,32 +57,50 @@ function stripPath(data) {
   return rest;
 }
 
+/** In-process singleton so overlapping HTTP handlers share one object. */
+let cachedStore = null;
+
+function hydrateStore(storePath, data) {
+  return {
+    ...emptyStore(),
+    ...(data && typeof data === "object" ? data : {}),
+    agents: data?.agents && typeof data.agents === "object" ? data.agents : {},
+    conversation: Array.isArray(data?.conversation) ? data.conversation : [],
+    events: Array.isArray(data?.events) ? data.events : [],
+    improvements: Array.isArray(data?.improvements) ? data.improvements : [],
+    proposals: Array.isArray(data?.proposals) ? data.proposals : [],
+    reports: Array.isArray(data?.reports) ? data.reports : [],
+    _path: storePath,
+  };
+}
+
+function adoptCache(storePath, next) {
+  if (cachedStore && cachedStore._path === storePath) {
+    for (const key of Object.keys(cachedStore)) {
+      if (!(key in next) && key !== "_path") delete cachedStore[key];
+    }
+    Object.assign(cachedStore, next);
+    return cachedStore;
+  }
+  cachedStore = next;
+  return cachedStore;
+}
+
 export function getStorePath() {
   return defaultStorePath();
 }
 
 export function loadStore(storePath = defaultStorePath()) {
+  if (cachedStore && cachedStore._path === storePath) return cachedStore;
   try {
     if (!fs.existsSync(storePath)) {
-      const fresh = emptyStore();
-      return { ...fresh, _path: storePath };
+      return adoptCache(storePath, hydrateStore(storePath, null));
     }
     const raw = fs.readFileSync(storePath, "utf8");
     const data = JSON.parse(raw);
-    if (!data || typeof data !== "object") return { ...emptyStore(), _path: storePath };
-    return {
-      ...emptyStore(),
-      ...data,
-      agents: data.agents && typeof data.agents === "object" ? data.agents : {},
-      conversation: Array.isArray(data.conversation) ? data.conversation : [],
-      events: Array.isArray(data.events) ? data.events : [],
-      improvements: Array.isArray(data.improvements) ? data.improvements : [],
-      proposals: Array.isArray(data.proposals) ? data.proposals : [],
-      reports: Array.isArray(data.reports) ? data.reports : [],
-      _path: storePath,
-    };
+    return adoptCache(storePath, hydrateStore(storePath, data));
   } catch {
-    return { ...emptyStore(), _path: storePath };
+    return adoptCache(storePath, hydrateStore(storePath, null));
   }
 }
 
@@ -100,10 +118,11 @@ export function saveStore(data) {
   const tmp = `${storePath}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(payload, null, 2), "utf8");
   fs.renameSync(tmp, storePath);
-  return { ...payload, _path: storePath };
+  return adoptCache(storePath, { ...payload, _path: storePath });
 }
 
 export function resetStore(storePath = defaultStorePath()) {
+  cachedStore = null;
   const next = { ...emptyStore(), _path: storePath };
   return saveStore(next);
 }
