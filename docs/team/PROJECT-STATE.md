@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (Torre schema self-heal + T5–T8 HITL)
+**Última actualización:** 2026-08-27 (Torre T6: chofer login → /api/driver/trips)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-27 (fix — Torre T6 chofer login reaches BMC Driver):** HITL alta+assign now mints `driver_sessions` and `GET /api/driver/trips` accepts `chofer_sessions` (same entry BMC Driver already calls). PWA login posts `POST /api/torre/chofer/login` with email/phone + password; magic-link `?t=` still works for terceros. Test: `loginChofer` bearer lists the assigned `trip_id` via `listTripsForDriverAuth`.
 
 **2026-08-27 (feat — Torre T5–T8 + schema self-heal):** Idempotent `ensureTransportistaSchema` on `/api/torre/live` and `/health` (trips, events, sessions, outbox, track tokens, chofer roster). HITL alta chofer (email/phone + password) + assign → inbox. Public Order ID at `GET /api/track/by-order/:orderId` and `/seguimiento`. Distinct Torre HITL agent is propose-only (no auto-WA, disjoint from El Transportador). Tests `torreSchema`, `choferRoster`, `torreAgent`. Prod live already returns `ok:true` `trips:[]` after Doppler DDL.
 

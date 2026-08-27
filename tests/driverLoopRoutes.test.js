@@ -72,7 +72,16 @@ function routeBlock(src, pathLiteral) {
   for (const f of screens) {
     readFileSync(join(root, "src/components/driver", f));
   }
+  const sess = readFileSync(join(root, "src/components/driver/useDriverSession.js"), "utf8");
+  assert.ok(sess.includes('fetch("/api/driver/trips"'));
+  assert.ok(sess.includes('fetch("/api/torre/chofer/login"'));
+  const login = readFileSync(join(root, "src/components/driver/DriverLogin.jsx"), "utf8");
+  assert.ok(login.includes("Email o celular"));
+  const routes = readFileSync(join(root, "server/routes/transportista.js"), "utf8");
+  assert.ok(routes.includes("listTripsForDriverAuth"));
+  assert.ok(routes.includes("resolveDriverAuth"));
   console.log("  ✓ five chofer screens exist");
+  console.log("  ✓ PWA login hits /api/torre/chofer/login then lists /api/driver/trips");
 }
 
 console.log("driverLoopRoutes OK");

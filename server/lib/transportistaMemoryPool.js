@@ -82,6 +82,7 @@ export function createTransportistaMemoryPool() {
         if (t === "trips" && !rec.trip_id) rec.trip_id = uuid();
         if (t === "chofer_roster" && !rec.chofer_id) rec.chofer_id = uuid();
         if (t === "chofer_sessions" && !rec.session_id) rec.session_id = uuid();
+        if (t === "driver_sessions" && !rec.session_id) rec.session_id = uuid();
         if (t === "customer_track_tokens" && !rec.token_id) rec.token_id = uuid();
         if (t === "trips") {
           rec.status = rec.status || "draft";
@@ -112,6 +113,17 @@ export function createTransportistaMemoryPool() {
               if (phone !== undefined) r.assigned_phone_e164 = phone;
               r.status = r.status === "draft" ? "assigned" : r.status;
               r.updated_at = new Date().toISOString();
+            }
+          }
+        }
+        if (t === "driver_sessions" && /revoked_at/i.test(raw)) {
+          for (const r of list) {
+            if (
+              String(r.trip_id) === String(params[0]) &&
+              String(r.driver_id) === String(params[1]) &&
+              !r.revoked_at
+            ) {
+              r.revoked_at = new Date().toISOString();
             }
           }
         }
@@ -153,6 +165,14 @@ export function createTransportistaMemoryPool() {
           }
           return { rows: list };
         }
+        if (t === "trips" && /assigned_driver_id/i.test(raw) && /trip_id = \$/i.test(raw)) {
+          return {
+            rows: list.filter(
+              (r) =>
+                String(r.trip_id) === String(params[0]) && String(r.assigned_driver_id) === String(params[1]),
+            ),
+          };
+        }
         if (t === "trips" && /assigned_driver_id/i.test(raw) && !/closed_at is null/i.test(raw)) {
           return { rows: list.filter((r) => String(r.assigned_driver_id) === String(params[0])) };
         }
@@ -172,6 +192,9 @@ export function createTransportistaMemoryPool() {
           }
         }
         if (t === "chofer_sessions" && /token_hash/i.test(raw)) {
+          return { rows: list.filter((r) => r.token_hash === params[0] && !r.revoked_at) };
+        }
+        if (t === "driver_sessions" && /token_hash/i.test(raw)) {
           return { rows: list.filter((r) => r.token_hash === params[0] && !r.revoked_at) };
         }
         return { rows: list };
