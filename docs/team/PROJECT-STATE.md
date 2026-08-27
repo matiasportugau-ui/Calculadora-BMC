@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (Torre T6: chofer login → /api/driver/trips)
+**Última actualización:** 2026-08-27 (fix — #1147 magic-link login + assign revoke)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-27 (fix — #1147 follow-up critical):** BMC Driver `loginWithIdentity` treated any email/phone identity as chofer password login and never fell through to magic-link tokens — terceros who put celular + token del enlace got `invalid_credentials`. Also: `assignTripToChofer` returns `trip_not_found`, revokes **all** `driver_sessions` for the trip on reassignment (prior magic-link could keep writing), drops discarded token mint, and `resolveDriverAuth` no longer runs schema DDL on the GPS hot path.
 
 **2026-08-27 (fix — Torre T6 chofer login reaches BMC Driver):** HITL alta+assign now mints `driver_sessions` and `GET /api/driver/trips` accepts `chofer_sessions` (same entry BMC Driver already calls). PWA login posts `POST /api/torre/chofer/login` with email/phone + password; magic-link `?t=` still works for terceros. Test: `loginChofer` bearer lists the assigned `trip_id` via `listTripsForDriverAuth`.
 

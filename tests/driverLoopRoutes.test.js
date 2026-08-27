@@ -75,13 +75,20 @@ function routeBlock(src, pathLiteral) {
   const sess = readFileSync(join(root, "src/components/driver/useDriverSession.js"), "utf8");
   assert.ok(sess.includes('fetch("/api/driver/trips"'));
   assert.ok(sess.includes('fetch("/api/torre/chofer/login"'));
+  assert.ok(sess.includes("resolveDriverLoginIntent"));
   const login = readFileSync(join(root, "src/components/driver/DriverLogin.jsx"), "utf8");
   assert.ok(login.includes("Email o celular"));
   const routes = readFileSync(join(root, "server/routes/transportista.js"), "utf8");
   assert.ok(routes.includes("listTripsForDriverAuth"));
   assert.ok(routes.includes("resolveDriverAuth"));
+  const auth = readFileSync(join(root, "server/lib/driverAuth.js"), "utf8");
+  assert.ok(
+    !/await\s+ensureTransportistaSchema\s*\(/.test(auth),
+    "driver auth must not DDL on GPS hot path",
+  );
   console.log("  ✓ five chofer screens exist");
   console.log("  ✓ PWA login hits /api/torre/chofer/login then lists /api/driver/trips");
+  console.log("  ✓ resolveDriverAuth stays off schema DDL hot path");
 }
 
 console.log("driverLoopRoutes OK");
