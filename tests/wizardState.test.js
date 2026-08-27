@@ -172,6 +172,11 @@ console.log("wizardState");
   });
   assert.equal(pickupIdForStop({ pickupPointId: "" }, wizard), "pickup-kingspan-bromyros");
   assert.equal(pickupIdForStop({ pickupPointId: "p-own" }, wizard), "p-own");
+  // Un-normalized wizard (e.g. draft/raw {}) must still apply default levante.
+  assert.equal(
+    pickupIdForStop({ pickupPointId: "" }, { defaultPickupPointId: "pickup-kingspan-bromyros" }),
+    "pickup-kingspan-bromyros",
+  );
   const multi = createWizardUi({ singlePickup: false });
   assert.equal(pickupIdForStop({ pickupPointId: "" }, multi), "");
   const { assigned, missing } = partitionLevantes(
@@ -184,6 +189,11 @@ console.log("wizardState");
   assert.equal(
     originLabelForStop({ pickupPointId: "p2" }, multi, [{ id: "p2", label: "Depo" }]),
     "Depo",
+  );
+  assert.equal(
+    typeof originLabelForStop,
+    "function",
+    "VentasColaCard imports originLabelForStop — must be exported",
   );
   ok("pickupIdForStop + partitionLevantes + originLabelForStop");
 }
