@@ -11,6 +11,7 @@
   const SECRET_PREFIX = "xai-client-secret.";
   const MAX_MS = 8 * 60 * 1000;
   const SS_RESUME = "bmc_panelin_resume";
+  const SS_IDENTITY = "bmc_panelin_identity";
   const SHOP_HOSTS = ["bmcuruguay.com.uy", "www.bmcuruguay.com.uy", "xj4rir-qz.myshopify.com"];
   const GREETING = "Hola, soy Panelin de BMC Uruguay. ¿Buscás un techo, una pared, o una cámara?";
   const COL_HINTS = {
@@ -204,7 +205,12 @@
     } catch (err) {
       return { ok: false, error: err.message || "search failed" };
     }
-    return { ok: true, products: products.map(summarizeProduct) };
+    const colHandle = col ? COL_HINTS[col] : null;
+    return {
+      ok: true,
+      products: products.map(summarizeProduct),
+      collection: colHandle ? `/collections/${colHandle}` : null,
+    };
   }
 
   async function shopProduct(handle) {
@@ -293,50 +299,69 @@
   }
 
   const css = `
-#bmc-paneli-voice{all:initial;display:block;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;position:fixed;z-index:2147483000;right:92px;bottom:calc(18px + env(safe-area-inset-bottom,0px));color:#1d1d1f}
-@media(max-width:640px){#bmc-paneli-voice{right:14px;bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
+#bmc-paneli-voice{all:initial;display:block;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Helvetica,Arial,sans-serif;position:fixed;z-index:2147483000;right:92px;bottom:calc(18px + env(safe-area-inset-bottom,0px));color:#1d1d1f}
+@media(max-width:640px){#bmc-paneli-voice{right:16px;left:16px;bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
 #bmc-paneli-voice *{box-sizing:border-box}
-#bmc-paneli-voice .bmc-orb{width:58px;height:58px;padding:0;border:2px solid #fff;border-radius:50%;background:#f5f5f7;cursor:pointer;display:grid;place-items:center;overflow:hidden;box-shadow:0 10px 28px rgba(20,19,17,.28);position:relative}
+#bmc-paneli-voice .bmc-launch{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto}
+#bmc-paneli-voice .bmc-ask{max-width:11.5em;background:rgba(15,23,42,.92);color:#fff;font-size:13px;font-weight:600;line-height:1.25;padding:8px 12px;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.22);cursor:pointer}
+#bmc-paneli-voice.open .bmc-ask{display:none}
+#bmc-paneli-voice .bmc-orb{width:76px;height:76px;padding:0;border:2px solid #fff;border-radius:50%;background:#1a3a5c;cursor:pointer;display:grid;place-items:center;overflow:hidden;box-shadow:0 10px 28px rgba(20,19,17,.28);position:relative;flex:none;animation:bmc-orb-breathe 3.6s ease-in-out infinite}
 #bmc-paneli-voice .bmc-orb:focus-visible{outline:2px solid #0071e3;outline-offset:3px}
-#bmc-paneli-voice .bmc-orb[data-state="listening"]{box-shadow:0 0 0 5px rgba(0,113,227,.35)}
-#bmc-paneli-voice .bmc-orb[data-state="speaking"]{box-shadow:0 0 0 5px rgba(0,113,227,.45)}
-#bmc-paneli-voice .bmc-orb[data-state="thinking"]{box-shadow:0 0 0 5px rgba(167,139,250,.4)}
-#bmc-paneli-voice .bmc-face{width:100%;height:100%;object-fit:cover;display:block}
-#bmc-paneli-voice .bmc-rib{width:26px;height:20px;color:#1a3a5c}
+#bmc-paneli-voice .bmc-orb[data-state="listening"]{box-shadow:0 0 0 5px rgba(0,113,227,.35);animation:none}
+#bmc-paneli-voice .bmc-orb[data-state="speaking"]{box-shadow:0 0 0 5px rgba(0,113,227,.45);animation:none}
+#bmc-paneli-voice .bmc-orb[data-state="thinking"]{box-shadow:0 0 0 5px rgba(167,139,250,.4);animation:none}
+#bmc-paneli-voice .bmc-face{width:100%;height:100%;object-fit:cover;display:block;background:#1a3a5c}
 #bmc-paneli-voice .bmc-badge{position:absolute;top:-6px;left:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#C45C26;color:#fff;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center}
 #bmc-paneli-voice .bmc-badge.show{display:flex}
-#bmc-paneli-voice .bmc-panel{display:none;position:absolute;right:0;bottom:70px;width:min(360px,calc(100vw - 28px));background:#fff;border:1px solid #e5e5ea;border-radius:18px;padding:16px 14px 12px;box-shadow:0 16px 36px rgba(20,19,17,.18)}
-#bmc-paneli-voice.open .bmc-panel{display:block}
-#bmc-paneli-voice .bmc-hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin:0 0 10px}
-#bmc-paneli-voice .bmc-hero img{width:72px;height:72px;border-radius:50%;object-fit:cover;background:#f5f5f7}
-#bmc-paneli-voice .bmc-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 4px;width:100%}
-#bmc-paneli-voice .bmc-kicker{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6e6e73;margin:0}
-#bmc-paneli-voice .bmc-status{font-size:11px;color:#6e6e73;margin:0}
-#bmc-paneli-voice .bmc-title{margin:8px 0 4px;font-size:18px;font-weight:700;color:#1d1d1f}
-#bmc-paneli-voice .bmc-sub{margin:0 0 10px;font-size:13px;line-height:1.4;color:#6e6e73}
-#bmc-paneli-voice .bmc-caps{min-height:72px;max-height:180px;overflow:auto;font-size:13px;line-height:1.45;color:#1d1d1f;background:#f5f5f7;border-radius:12px;padding:10px 12px;margin:0 0 8px;scrollbar-width:thin}
-#bmc-paneli-voice .bmc-line{margin:0 0 8px}
-#bmc-paneli-voice .bmc-line:last-child{margin:0}
-#bmc-paneli-voice .bmc-line[data-role="user"]{color:#6b6358}
-#bmc-paneli-voice .bmc-ph{color:#6b6358}
-#bmc-paneli-voice .bmc-picks{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 0 10px}
-#bmc-paneli-voice .bmc-pick{display:block;width:auto;max-width:100%;text-align:center;border:1px solid #e5e5ea;background:#fff;border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;color:#1d1d1f}
+@keyframes bmc-orb-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+#bmc-paneli-voice .bmc-panel{display:none;position:absolute;right:0;bottom:88px;width:min(380px,calc(100vw - 32px));max-height:min(72dvh,560px);background:#fff;border:1px solid #e5e5ea;border-radius:22px;padding:14px 14px 12px;box-shadow:0 16px 36px rgba(20,19,17,.18);overflow:auto}
+@media(max-width:640px){#bmc-paneli-voice .bmc-panel{width:100%;right:0;left:0}}
+#bmc-paneli-voice.open .bmc-panel{display:flex;flex-direction:column}
+#bmc-paneli-voice .bmc-x{position:absolute;top:8px;right:8px;width:44px;height:44px;border:0;background:transparent;color:#6e6e73;font-size:22px;cursor:pointer;line-height:1}
+#bmc-paneli-voice .bmc-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 8px 16px;gap:10px}
+#bmc-paneli-voice.has-chat .bmc-empty{display:none}
+#bmc-paneli-voice .bmc-empty .bmc-hero-face{width:64px;height:64px;border-radius:50%;object-fit:cover;background:#1a3a5c;border:2px solid #fff}
+#bmc-paneli-voice .bmc-title{margin:0;font-size:15px;font-weight:600;color:#1d1d1f}
+#bmc-paneli-voice .bmc-sub{margin:0;font-size:13px;line-height:1.5;color:#6e6e73;max-width:16em}
+#bmc-paneli-voice .bmc-picks{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:4px 0 0}
+#bmc-paneli-voice .bmc-pick{border:1px solid #e5e5ea;background:#f5f5f7;border-radius:20px;padding:8px 12px;min-height:44px;font:inherit;font-size:12px;cursor:pointer;color:#1d1d1f}
 #bmc-paneli-voice .bmc-pick:hover{border-color:#0071e3;color:#0071e3}
-#bmc-paneli-voice .bmc-row{display:flex;gap:6px}
-#bmc-paneli-voice .bmc-row-main{margin:0 0 6px}
-#bmc-paneli-voice .bmc-composer{display:flex;align-items:center;gap:6px;border:1px solid #e5e5ea;border-radius:999px;padding:4px 6px 4px 10px;background:#fff;margin:0 0 8px}
-#bmc-paneli-voice .bmc-in{flex:1;border:0;outline:none;font:inherit;font-size:14px;min-height:36px;background:transparent}
-#bmc-paneli-voice .bmc-send,#bmc-paneli-voice .bmc-mic{width:36px;height:36px;border:0;border-radius:50%;cursor:pointer;font:inherit}
-#bmc-paneli-voice .bmc-send{background:#0071e3;color:#fff;font-weight:700}
-#bmc-paneli-voice .bmc-mic{background:#f5f5f7;color:#1d1d1f}
-#bmc-paneli-voice .bmc-btn{flex:1;min-height:40px;border:0;border-radius:10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
-#bmc-paneli-voice .bmc-go{background:#0071e3;color:#fff}
-#bmc-paneli-voice .bmc-stop{background:#1d1d1f;color:#fff}
-#bmc-paneli-voice .bmc-cart{background:#fff;border:1px solid #e5e5ea;color:#1d1d1f}
-#bmc-paneli-voice .bmc-wa{background:transparent;border:1px solid #e5e5ea;color:#1d1d1f}
+#bmc-paneli-voice .bmc-caps{display:none;flex:1;min-height:96px;max-height:220px;overflow:auto;font-size:13px;line-height:1.45;color:#1d1d1f;padding:4px 2px 10px;scrollbar-width:thin}
+#bmc-paneli-voice.has-chat .bmc-caps{display:block}
+#bmc-paneli-voice .bmc-line{margin:0 0 8px;overflow-wrap:anywhere}
+#bmc-paneli-voice .bmc-line:last-child{margin:0}
+#bmc-paneli-voice .bmc-line[data-role="user"]{color:#6e6e73}
+#bmc-paneli-voice .bmc-link{color:#0071e3;font-weight:600;text-decoration:underline;text-underline-offset:2px}
+#bmc-paneli-voice .bmc-quote{display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:10px 12px;border:1px solid #e5e5ea;border-radius:14px;background:#f5f5f7;color:#1d1d1f;text-decoration:none;min-height:52px}
+#bmc-paneli-voice .bmc-quote:hover{border-color:#0071e3}
+#bmc-paneli-voice .bmc-quote-icon{width:36px;height:36px;border-radius:8px;background:#0071e3;color:#fff;display:grid;place-items:center;flex:none}
+#bmc-paneli-voice .bmc-quote-title{display:block;font-size:13px;font-weight:700}
+#bmc-paneli-voice .bmc-quote-sub{display:block;font-size:11px;color:#6e6e73;margin-top:2px}
+#bmc-paneli-voice .bmc-shop-picks{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+#bmc-paneli-voice .bmc-shop-picks[hidden]{display:none}
+#bmc-paneli-voice .bmc-status{margin:0 0 6px;font-size:11px;color:#6e6e73;min-height:1em}
+#bmc-paneli-voice .bmc-composer{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+#bmc-paneli-voice .bmc-inwrap{flex:1;display:flex;align-items:center;border:1px solid #e5e5ea;border-radius:999px;background:#f5f5f7;padding:4px 6px 4px 14px;min-height:48px}
+#bmc-paneli-voice .bmc-in{flex:1;border:0;outline:none;font:inherit;font-size:16px;min-height:40px;background:transparent;color:#1d1d1f}
+#bmc-paneli-voice .bmc-send,#bmc-paneli-voice .bmc-mic{width:44px;height:44px;flex:none;border:0;border-radius:50%;cursor:pointer;display:grid;place-items:center;padding:0}
+#bmc-paneli-voice .bmc-send{background:#0071e3;color:#fff}
+#bmc-paneli-voice .bmc-mic{background:transparent;color:#6e6e73}
+#bmc-paneli-voice .bmc-mic[data-state="listening"],#bmc-paneli-voice .bmc-mic[data-state="speaking"]{background:#ff3b30;color:#fff}
+#bmc-paneli-voice .bmc-mic[data-state="connecting"],#bmc-paneli-voice .bmc-mic[data-state="active"]{background:#0071e3;color:#fff}
+#bmc-paneli-voice .bmc-row{display:flex;gap:8px}
+#bmc-paneli-voice .bmc-btn{flex:1;min-height:44px;border:1px solid #e5e5ea;border-radius:12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#1d1d1f}
+#bmc-paneli-voice .bmc-stop{width:100%;margin:0 0 8px;background:#1d1d1f;color:#fff;border:0}
 #bmc-paneli-voice .bmc-err{color:#8b2e12;font-size:12px;margin:6px 0 0}
-#bmc-paneli-voice .bmc-hint{margin:6px 0 0;font-size:11px;color:#6b6358}
-@media(prefers-reduced-motion:reduce){#bmc-paneli-voice .bmc-orb{box-shadow:0 10px 28px rgba(20,19,17,.35)!important}}
+#bmc-paneli-voice .bmc-hint{margin:8px 0 0;font-size:11px;color:#6e6e73;line-height:1.35}
+#bmc-paneli-voice .bmc-id{display:flex;flex-direction:column;gap:8px;width:100%;margin:4px 0 0;text-align:left}
+#bmc-paneli-voice.identified .bmc-id{display:none}
+#bmc-paneli-voice:not(.identified) .bmc-sub{display:none}
+#bmc-paneli-voice:not(.identified) #bmc-form,
+#bmc-paneli-voice:not(.identified) #bmc-picks{display:none}
+#bmc-paneli-voice .bmc-id-ask{margin:0;font-size:14px;line-height:1.45;color:#1d1d1f;text-align:center}
+#bmc-paneli-voice .bmc-id input{width:100%;min-height:48px;border:1px solid #e5e5ea;border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;background:#f5f5f7;color:#1d1d1f}
+#bmc-paneli-voice .bmc-id-go{width:100%;min-height:48px;border:0;border-radius:12px;background:#0071e3;color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+@media(prefers-reduced-motion:reduce){#bmc-paneli-voice .bmc-orb{box-shadow:0 10px 28px rgba(20,19,17,.35)!important;animation:none}}
 `;
 
   const root = document.createElement("div");
@@ -344,50 +369,72 @@
   root.innerHTML = `
     <style>${css}</style>
     <div class="bmc-panel" role="dialog" aria-label="Panelin">
-      <div class="bmc-hero">
-        <img src="${API}/storefront-voice/panelin.png" alt="" width="72" height="72" />
-        <div class="bmc-head">
-          <p class="bmc-kicker">BMC Uruguay</p>
-          <p class="bmc-status" id="bmc-status">Listo</p>
-        </div>
+      <button type="button" class="bmc-x" id="bmc-x" aria-label="Cerrar">×</button>
+      <div class="bmc-empty" id="bmc-empty">
+        <video class="bmc-hero-face" src="${API}/storefront-voice/panelin-lista-loop.mp4" poster="${API}/storefront-voice/panelin.png" autoplay muted loop playsinline></video>
         <p class="bmc-title">¡Hola! Soy Panelin</p>
-        <p class="bmc-sub">Te ayudo a cotizar paneles para tu obra. Escribime o hablame.</p>
+        <p class="bmc-sub">Te ayudo a cotizar paneles para tu obra. Contame qué necesitás.</p>
+        <form class="bmc-id" id="bmc-id">
+          <p class="bmc-id-ask">¡Qué bueno que estés acá! Para ayudarte de verdad y dejarle tu consulta al equipo BMC, ¿me decís tu nombre y un celular? ¡Con eso ya podemos chatear!</p>
+          <input id="bmc-name" type="text" name="name" autocomplete="name" maxlength="80" required placeholder="Tu nombre" />
+          <input id="bmc-phone" type="tel" name="tel" autocomplete="tel" inputmode="tel" maxlength="20" required placeholder="Celular 099…" />
+          <button type="submit" class="bmc-id-go">¡Dale, chateamos!</button>
+        </form>
+        <div class="bmc-picks" id="bmc-picks">
+          <button type="button" class="bmc-pick" data-send="Quiero cotizar un techo">Quiero cotizar un techo</button>
+          <button type="button" class="bmc-pick" data-send="¿Qué panel me recomendás?">¿Qué panel me recomendás?</button>
+          <button type="button" class="bmc-pick" data-send="Necesito una fachada">Necesito una fachada</button>
+        </div>
       </div>
-      <div class="bmc-caps" id="bmc-caps" aria-live="polite">
-        <p class="bmc-line bmc-ph">Escribí tu consulta o tocá un atajo.</p>
-      </div>
-      <div class="bmc-picks" id="bmc-picks">
-        <button type="button" class="bmc-pick" data-send="Quiero cotizar un techo">Quiero cotizar un techo</button>
-        <button type="button" class="bmc-pick" data-send="¿Qué panel me recomendás?">¿Qué panel me recomendás?</button>
-        <button type="button" class="bmc-pick" data-send="Necesito una fachada">Necesito una fachada</button>
-      </div>
+      <div class="bmc-caps" id="bmc-caps" aria-live="polite"></div>
+      <div class="bmc-shop-picks" id="bmc-shop-picks" hidden></div>
+      <p class="bmc-status" id="bmc-status"></p>
       <form class="bmc-composer" id="bmc-form">
-        <input class="bmc-in" id="bmc-in" type="text" maxlength="2000" autocomplete="off" placeholder="Escribí tu consulta…" />
-        <button type="button" class="bmc-mic" id="bmc-go" aria-label="Hablar">🎤</button>
-        <button type="submit" class="bmc-send" id="bmc-send" aria-label="Enviar">↑</button>
+        <button type="button" class="bmc-mic" id="bmc-go" aria-label="Hablar" aria-pressed="false">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </button>
+        <div class="bmc-inwrap">
+          <input class="bmc-in" id="bmc-in" type="text" maxlength="2000" autocomplete="off" placeholder="Escribí tu consulta…" />
+          <button type="submit" class="bmc-send" id="bmc-send" aria-label="Enviar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+          </button>
+        </div>
       </form>
       <button type="button" class="bmc-btn bmc-stop" id="bmc-stop" hidden>Cortar voz</button>
       <div class="bmc-row">
         <button type="button" class="bmc-btn bmc-cart" id="bmc-cart">Carrito</button>
         <button type="button" class="bmc-btn bmc-wa" id="bmc-wa">WhatsApp</button>
       </div>
-      <p class="bmc-hint">Puedo ayudarte en la tienda y dejar tu consulta a BMC. Un asesor confirma precios. El flete hay que corroborarlo.</p>
+      <p class="bmc-hint">Con tu nombre y celular dejo la consulta en BMC. El flete hay que corroborarlo.</p>
       <p class="bmc-err" id="bmc-err" hidden></p>
     </div>
-    <button type="button" class="bmc-orb" id="bmc-orb" aria-label="Abrir Panelin" data-state="idle">
-      <span class="bmc-badge" id="bmc-badge">0</span>
-      <img class="bmc-face" src="${API}/storefront-voice/panelin.png" alt="" width="58" height="58" />
-    </button>
+    <div class="bmc-launch">
+      <span class="bmc-ask">¿Necesitás ayuda?</span>
+      <button type="button" class="bmc-orb" id="bmc-orb" aria-label="¿Necesitás ayuda? Abrir Panelin" data-state="idle">
+        <span class="bmc-badge" id="bmc-badge">0</span>
+        <video class="bmc-face" src="${API}/storefront-voice/panelin-lista-loop.mp4" poster="${API}/storefront-voice/panelin.png" autoplay muted loop playsinline></video>
+      </button>
+    </div>
   `;
   document.body.appendChild(root);
 
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    root.querySelectorAll("video").forEach((v) => {
+      v.removeAttribute("autoplay");
+      v.pause();
+    });
+  }
+
   const orb = root.querySelector("#bmc-orb");
+  const ask = root.querySelector(".bmc-ask");
   const go = root.querySelector("#bmc-go");
   const stopBtn = root.querySelector("#bmc-stop");
   const waBtn = root.querySelector("#bmc-wa");
   const cartBtn = root.querySelector("#bmc-cart");
+  const closeBtn = root.querySelector("#bmc-x");
   const caps = root.querySelector("#bmc-caps");
   const picks = root.querySelector("#bmc-picks");
+  const shopPicks = root.querySelector("#bmc-shop-picks");
   const errEl = root.querySelector("#bmc-err");
   const statusEl = root.querySelector("#bmc-status");
   const badge = root.querySelector("#bmc-badge");
@@ -408,7 +455,95 @@
     lastWa: `https://wa.me/59892663245?text=${encodeURIComponent("Hola, vengo del sitio de BMC.")}`,
     chatHistory: [],
     chatBusy: false,
+    voiceDenied: false,
+    voiceWanted: true,
+    identified: false,
+    cliente: "",
+    telefono: "",
+    adminRow: null,
+    logTimer: null,
   };
+
+  function hasChat() {
+    return root.classList.contains("has-chat");
+  }
+
+  function markChat() {
+    root.classList.add("has-chat");
+  }
+
+  function remember(role, content) {
+    const t = String(content || "").trim();
+    if (!t) return;
+    const last = state.chatHistory[state.chatHistory.length - 1];
+    if (last && last.role === role && last.content === t) return;
+    state.chatHistory.push({ role, content: t.slice(0, 4000) });
+    if (state.chatHistory.length > 20) state.chatHistory = state.chatHistory.slice(-20);
+  }
+
+  function voiceLive() {
+    return state.status === "connecting" || state.status === "active" || state.status === "listening" || state.status === "speaking";
+  }
+
+  function persistIdentity() {
+    if (!state.identified) return;
+    try {
+      sessionStorage.setItem(SS_IDENTITY, JSON.stringify({
+        cliente: state.cliente,
+        telefono: state.telefono,
+        adminRow: state.adminRow,
+      }));
+    } catch { /* ignore */ }
+  }
+
+  function applyIdentified(info) {
+    state.identified = true;
+    state.cliente = String(info?.cliente || "").trim();
+    state.telefono = String(info?.telefono || "").trim();
+    const row = Number(info?.adminRow);
+    state.adminRow = Number.isFinite(row) && row >= 2 ? row : info?.adminRow || null;
+    root.classList.add("identified");
+    persistIdentity();
+  }
+
+  function transcriptText() {
+    const lines = [...caps.querySelectorAll(".bmc-line")].map((el) => el.textContent.trim()).filter(Boolean);
+    const head = [
+      `Chat Panelin (VW) · ${state.cliente} · ${state.telefono}`,
+      "flete: no cotizado / a corroborar",
+    ];
+    return [...head, ...lines].join("\n").slice(0, 8000);
+  }
+
+  function scheduleLog() {
+    if (!state.identified || !state.adminRow) return;
+    if (state.logTimer) clearTimeout(state.logTimer);
+    state.logTimer = setTimeout(() => {
+      flushLog();
+    }, 2500);
+  }
+
+  async function flushLog() {
+    if (state.logTimer) {
+      clearTimeout(state.logTimer);
+      state.logTimer = null;
+    }
+    if (!state.identified || !state.adminRow) return;
+    const transcript = transcriptText();
+    if (!transcript) return;
+    try {
+      await fetch(`${API}/api/public/voice/log`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminRow: state.adminRow,
+          telefono: state.telefono,
+          cliente: state.cliente,
+          transcript,
+        }),
+      });
+    } catch { /* ignore */ }
+  }
 
   function setErr(msg) {
     if (!msg) {
@@ -420,27 +555,125 @@
     errEl.textContent = msg;
   }
 
+  function isSafeHref(href) {
+    const s = String(href || "").trim();
+    if (!s) return false;
+    if (s.startsWith("/") && !s.startsWith("//")) return true;
+    try {
+      const u = new URL(s, location.origin);
+      if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+      const host = u.hostname.replace(/^www\./, "").toLowerCase();
+      const here = location.hostname.replace(/^www\./, "").toLowerCase();
+      if (host === here) return true;
+      if (SHOP_HOSTS.some((h) => h.replace(/^www\./, "") === host)) return true;
+      if (host === "wa.me" || host.endsWith("whatsapp.com")) return true;
+      if (host.endsWith("run.app") || host.endsWith("googleapis.com") || host.endsWith("googleusercontent.com")) return true;
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  function fillRichText(el, text) {
+    el.textContent = "";
+    const src = String(text || "");
+    const re = /(https?:\/\/[^\s<>"'）)]+|\/(?:products|collections|pages|cart)[^\s<>"']*)/gi;
+    let last = 0;
+    let m;
+    while ((m = re.exec(src))) {
+      if (m.index > last) el.appendChild(document.createTextNode(src.slice(last, m.index)));
+      let raw = m[0].replace(/[),.;]+$/g, "");
+      if (isSafeHref(raw)) {
+        const a = document.createElement("a");
+        a.className = "bmc-link";
+        a.href = raw.startsWith("/") ? raw : raw;
+        const isShop = raw.startsWith("/") || SHOP_HOSTS.some((h) => raw.includes(h));
+        a.textContent = isShop ? (raw.startsWith("http") ? new URL(raw).pathname : raw) : "abrir enlace";
+        if (isShop) {
+          a.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            goTo(raw);
+          });
+        } else {
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+        }
+        el.appendChild(a);
+      } else {
+        el.appendChild(document.createTextNode(raw));
+      }
+      last = m.index + m[0].length;
+    }
+    if (last < src.length) el.appendChild(document.createTextNode(src.slice(last)));
+  }
+
+  function addQuoteCard(url, code) {
+    const href = String(url || "").trim();
+    if (!href || !isSafeHref(href)) return;
+    markChat();
+    const fromUrl = String(href).match(/\/calc\/pdf\/([^/?#]+)/i);
+    const id = String(code || fromUrl?.[1] || "").replace(/^BMC-?/i, "").replace(/-/g, "").slice(0, 12) || "nuevo";
+    const label = `Presupuesto ${id}`;
+    const a = document.createElement("a");
+    a.className = "bmc-quote";
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.setAttribute("aria-label", `${label}. Abrir PDF`);
+    const icon = document.createElement("span");
+    icon.className = "bmc-quote-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>';
+    const meta = document.createElement("span");
+    const titleEl = document.createElement("span");
+    titleEl.className = "bmc-quote-title";
+    titleEl.textContent = label;
+    const subEl = document.createElement("span");
+    subEl.className = "bmc-quote-sub";
+    subEl.textContent = "Tocá para abrir el PDF";
+    meta.appendChild(titleEl);
+    meta.appendChild(subEl);
+    a.appendChild(icon);
+    a.appendChild(meta);
+    caps.appendChild(a);
+    caps.scrollTop = caps.scrollHeight;
+    remember("assistant", `${label} ${href}`);
+    scheduleLog();
+  }
+
   function addCap(role, text) {
     const t = String(text || "").trim();
     if (!t) return;
+    const pdfOnly = t.match(/^PDF:\s*(\S+)/i);
+    if (role !== "user" && pdfOnly) {
+      addQuoteCard(pdfOnly[1]);
+      return;
+    }
+    if (role === "user") markChat();
+    if (role !== "user" && !hasChat()) return;
     const last = caps.querySelector(".bmc-line:last-child");
     const prefix = role === "user" ? "Vos: " : "";
     const next = prefix + t;
     if (last && last.textContent.trim() === next.trim()) return;
     if (last && role !== "user" && last.dataset.role === "assistant" && t.startsWith((last.textContent || "").replace(/^Panelin:\s*/, "").trim().slice(0, 40))) {
-      last.textContent = t;
+      fillRichText(last, next);
       last.dataset.live = "0";
+      remember("assistant", t);
+      scheduleLog();
       return;
     }
     const p = document.createElement("p");
     p.className = "bmc-line";
     p.dataset.role = role;
-    p.textContent = next;
+    fillRichText(p, next);
     caps.appendChild(p);
     caps.scrollTop = caps.scrollHeight;
+    remember(role === "user" ? "user" : "assistant", t);
+    scheduleLog();
   }
 
   function appendLive(delta) {
+    if (!hasChat()) return;
     let last = caps.querySelector(".bmc-line[data-role='assistant'][data-live='1']");
     if (!last) {
       last = document.createElement("p");
@@ -456,42 +689,49 @@
 
   function endLive() {
     const last = caps.querySelector(".bmc-line[data-live='1']");
-    if (last) last.dataset.live = "0";
+    if (last) {
+      last.dataset.live = "0";
+      const t = last.textContent || "";
+      fillRichText(last, t);
+      remember("assistant", t);
+      scheduleLog();
+    }
   }
 
   function setStatus(s) {
     state.status = s;
     orb.dataset.state = s;
-    const talking = s === "connecting" || s === "active" || s === "listening" || s === "speaking";
-    go.hidden = talking;
-    stopBtn.hidden = !talking;
-    go.setAttribute("aria-label", s === "connecting" ? "Conectando" : "Hablar");
+    go.dataset.state = s;
+    const talking = voiceLive();
+    stopBtn.hidden = true;
+    go.setAttribute("aria-pressed", talking ? "true" : "false");
+    go.setAttribute("aria-label", talking ? "Cortar voz" : "Hablar");
     const labels = {
-      idle: "Listo",
-      thinking: "Pensando",
-      connecting: "Conectando",
-      active: "En llamada",
+      idle: "",
+      thinking: "Pensando…",
+      connecting: "Conectando voz…",
+      active: "Te escucho",
       listening: "Te escucho",
-      speaking: "Hablando",
+      speaking: "Hablando…",
     };
-    statusEl.textContent = labels[s] || s;
+    statusEl.textContent = labels[s] || "";
   }
 
   function renderPicks(products) {
-    picks.innerHTML = "";
+    shopPicks.innerHTML = "";
     const list = (products || []).slice(0, 3);
     if (!list.length) {
-      picks.hidden = true;
+      shopPicks.hidden = true;
       return;
     }
-    picks.hidden = false;
+    shopPicks.hidden = false;
     list.forEach((p) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "bmc-pick";
       b.textContent = p.title;
       b.addEventListener("click", () => goTo(p.url));
-      picks.appendChild(b);
+      shopPicks.appendChild(b);
     });
   }
 
@@ -509,11 +749,11 @@
   }
 
   function persistResume() {
-    if (!state.conversationId || state.status === "idle") return;
     try {
       sessionStorage.setItem(SS_RESUME, JSON.stringify({
         conversationId: state.conversationId,
         open: true,
+        chatHistory: state.chatHistory.slice(-20),
       }));
     } catch { /* ignore */ }
   }
@@ -558,6 +798,9 @@
     const path = shopUrl(pathOrUrl);
     if (!path) return { ok: false, error: "Link fuera de la tienda BMC" };
     if (isCartPath(path)) return loadCart();
+    const destPath = String(path).split("?")[0].replace(/\/+$/, "") || "/";
+    const here = (location.pathname || "/").replace(/\/+$/, "") || "/";
+    if (destPath === here) return { ok: true, path, already: true };
     persistResume();
     location.assign(path);
     return { ok: true, path };
@@ -584,12 +827,19 @@
   async function runShopTool(name, args) {
     if (name === "shop_search") {
       const out = await shopSearch(args.query);
-      if (out.ok) renderPicks(out.products);
+      if (out.ok) {
+        renderPicks(out.products);
+        const dest = out.collection || out.products?.[0]?.url;
+        if (dest) out.navigated = goTo(dest);
+      }
       return out;
     }
     if (name === "shop_product") {
       const out = await shopProduct(args.handle);
-      if (out.ok && out.product) renderPicks([out.product]);
+      if (out.ok && out.product) {
+        renderPicks([out.product]);
+        if (out.product.url) out.navigated = goTo(out.product.url);
+      }
       return out;
     }
     if (name === "get_cart") {
@@ -676,6 +926,8 @@
       body: JSON.stringify({
         action: { type: name, payload: args || {} },
         pageUrl: window.location.href,
+        lead: state.adminRow ? { adminRow: state.adminRow, cliente: state.cliente, telefono: state.telefono } : undefined,
+        shopperName: state.cliente || undefined,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -690,7 +942,8 @@
       try {
         const parsed = JSON.parse(resultStr || "{}");
         const url = parsed.pdf_url || parsed.pdf_file_url || parsed.gcs_url;
-        if (url) addCap("assistant", `PDF: ${url}`);
+        const code = parsed.code || parsed.quote_code || (parsed.pdf_id ? String(parsed.pdf_id).replace(/-/g, "").slice(0, 8) : "");
+        if (url) addQuoteCard(url, code);
       } catch { /* ignore */ }
     }
     return resultStr;
@@ -776,11 +1029,11 @@
   }
 
   async function startCall() {
+    if (!state.identified) return;
     if (state.status !== "idle") return;
+    if (state.voiceDenied) return;
     setErr("");
     setStatus("connecting");
-    caps.innerHTML = "";
-    picks.hidden = true;
     root.classList.add("open");
 
     let resumeId = state.conversationId;
@@ -797,7 +1050,7 @@
       const sessP = fetch(`${API}/api/public/voice/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pageUrl: window.location.href }),
+        body: JSON.stringify({ pageUrl: window.location.href, shopperName: state.cliente }),
       }).then(async (r) => {
         const j = await r.json().catch(() => ({}));
         if (!r.ok || !j.ok) throw new Error(j.error || "No se pudo iniciar la sesión");
@@ -858,12 +1111,28 @@
       if (stream) stream.getTracks().forEach((t) => t.stop());
       teardown();
       const denied = /NotAllowedError|PermissionDenied/i.test(err?.name || "") || /permission/i.test(err?.message || "");
+      if (denied) state.voiceDenied = true;
       setErr(
         denied
-          ? "Necesitamos el micrófono. Si no, usá WhatsApp."
-          : err?.message || "No se pudo iniciar la voz.",
+          ? "Activá el mic para hablar. Mientras, escribí abajo — no se pierde el chat."
+          : err?.message || "No se pudo iniciar la voz. Podés escribir.",
       );
     }
+  }
+
+  function sendVoiceText(text) {
+    addCap("user", text);
+    if (!state.send) return false;
+    state.send({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text }],
+      },
+    });
+    state.send({ type: "response.create" });
+    return true;
   }
 
   async function postChat(body) {
@@ -879,19 +1148,23 @@
 
   async function sendText(raw) {
     const text = String(raw || "").trim();
+    if (!state.identified) return;
     if (!text || state.chatBusy) return;
-    if (state.status !== "idle") teardown();
-    state.chatBusy = true;
     setErr("");
     root.classList.add("open");
+    if (voiceLive() && state.send) {
+      sendVoiceText(text);
+      return;
+    }
+    state.chatBusy = true;
     addCap("user", text);
-    const ph = caps.querySelector(".bmc-ph");
-    if (ph) ph.remove();
+    const prior = state.chatHistory.slice(0, -1);
     setStatus("thinking");
     let body = {
       message: text,
-      history: state.chatHistory,
+      history: prior,
       pageUrl: window.location.href,
+      shopperName: state.cliente,
     };
     try {
       for (let hop = 0; hop < 4; hop++) {
@@ -914,6 +1187,7 @@
           tool_results,
           history: state.chatHistory,
           pageUrl: window.location.href,
+          shopperName: state.cliente,
         };
       }
     } catch (err) {
@@ -924,20 +1198,80 @@
     }
   }
 
+  function openPanel() {
+    root.classList.add("open");
+    if (state.identified && state.status === "idle" && state.voiceWanted && !state.voiceDenied) startCall();
+  }
+
+  function closePanel() {
+    root.classList.remove("open");
+    flushLog();
+    if (voiceLive()) teardown();
+  }
+
   orb.addEventListener("click", () => {
-    root.classList.toggle("open");
+    if (root.classList.contains("open")) closePanel();
+    else openPanel();
+  });
+  ask.addEventListener("click", () => {
+    if (!root.classList.contains("open")) openPanel();
+  });
+  closeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    closePanel();
   });
   go.addEventListener("click", (e) => {
     e.preventDefault();
-    startCall();
+    if (!state.identified) return;
+    if (voiceLive()) teardown();
+    else startCall();
   });
   const form = root.querySelector("#bmc-form");
   const input = root.querySelector("#bmc-in");
+  const idForm = root.querySelector("#bmc-id");
+  const nameIn = root.querySelector("#bmc-name");
+  const phoneIn = root.querySelector("#bmc-phone");
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const v = input.value;
     input.value = "";
     sendText(v);
+  });
+  idForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const cliente = String(nameIn.value || "").trim();
+    const telefono = String(phoneIn.value || "").trim();
+    if (cliente.length < 2 || telefono.replace(/[^0-9]/g, "").length < 8) {
+      setErr("Necesito tu nombre y un celular para chatear.");
+      return;
+    }
+    setErr("");
+    const goBtn = idForm.querySelector(".bmc-id-go");
+    if (goBtn) goBtn.disabled = true;
+    try {
+      const res = await fetch(`${API}/api/public/voice/identify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cliente,
+          telefono,
+          consent: true,
+          pageUrl: window.location.href,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo guardar en Admin.");
+      applyIdentified({
+        cliente: data.cliente || cliente,
+        telefono: data.telefono || telefono,
+        adminRow: data.adminRow,
+      });
+      startCall();
+    } catch (err) {
+      setErr(err?.message || "No se pudo iniciar el chat.");
+    } finally {
+      if (goBtn) goBtn.disabled = false;
+    }
   });
   picks.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-send]");
@@ -957,10 +1291,27 @@
 
   refreshCartBadge();
   try {
+    const ident = JSON.parse(sessionStorage.getItem(SS_IDENTITY) || "null");
+    if (ident && ident.cliente && ident.telefono) applyIdentified(ident);
+  } catch { /* ignore */ }
+  try {
     const saved = JSON.parse(sessionStorage.getItem(SS_RESUME) || "null");
     if (saved && saved.open) {
       sessionStorage.removeItem(SS_RESUME);
       root.classList.add("open");
+      if (Array.isArray(saved.chatHistory) && saved.chatHistory.length) {
+        state.chatHistory = saved.chatHistory;
+        markChat();
+        saved.chatHistory.forEach((m) => {
+          if (m.role !== "user" && m.role !== "assistant") return;
+          const p = document.createElement("p");
+          p.className = "bmc-line";
+          p.dataset.role = m.role;
+          const body = m.role === "user" ? `Vos: ${m.content || ""}` : String(m.content || "");
+          fillRichText(p, body);
+          caps.appendChild(p);
+        });
+      }
       if (saved.conversationId) {
         state.conversationId = saved.conversationId;
         startCall();

@@ -20,12 +20,14 @@ import {
   forceListaWeb,
   isPublicStorefrontTool,
   assertCaptureLead,
+  assertIdentifyLead,
   buildWhatsAppHandoff,
   STOREFRONT_READ_TOOLS,
   STOREFRONT_WRITE_TOOLS,
   STOREFRONT_LEAD_ORIGEN,
   stripInternalPrices,
   isStorefrontShopTool,
+  normalizeStorefrontPhone,
 } from "../lib/voice/storefrontVoicePack.js";
 import { STOREFRONT_FLETE_NOTE } from "../lib/voice/storefrontAgentConfig.js";
 import { runStorefrontTextTurn } from "../lib/voice/storefrontChat.js";
@@ -116,7 +118,8 @@ export default function createPublicVoiceRouter() {
 
   router.post("/session", sessionLimiter, async (req, res) => {
     const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
-    const pack = buildStorefrontVoicePack({ pageUrl });
+    const shopperName = String(req.body?.shopperName || req.body?.nombre || "").trim().slice(0, 80);
+    const pack = buildStorefrontVoicePack({ pageUrl, shopperName });
 
     let sessionData;
     try {
@@ -173,6 +176,7 @@ export default function createPublicVoiceRouter() {
     if (type === "capture_lead") {
       const checked = assertCaptureLead(payload);
       if (!checked.ok) return JSON.stringify({ ok: false, error: checked.error });
+      const adminRow = Number(payload.adminRow);
       const notasBits = [
         "origen voz web (VW)",
         pageUrl ? `página ${pageUrl}` : "",
@@ -181,6 +185,25 @@ export default function createPublicVoiceRouter() {
         STOREFRONT_FLETE_NOTE,
       ].filter(Boolean);
       try {
+        if (Number.isFinite(adminRow) && adminRow >= 2) {
+          const raw = await executeTool(
+            "wolfboard_actualizar_fila",
+            {
+              rowNum: adminRow,
+              respuesta: notasBits.join(" · ").slice(0, 8000),
+              ...(checked.lead.pdf_url ? { linkDrive: checked.lead.pdf_url } : {}),
+              user_confirmed: true,
+            },
+            {},
+            { source: "storefront-voice" },
+          );
+          recordVoiceEvent({
+            kind: "storefront_lead_update",
+            surface: "storefront",
+            detail: String(adminRow),
+          });
+          return shapeToolResult("wolfboard_actualizar_fila", raw);
+        }
         const raw = await executeTool(
           "wa_lead_to_admin",
           {
@@ -238,8 +261,81 @@ export default function createPublicVoiceRouter() {
       return res.status(400).json({ ok: false, error: `Tool no permitida: ${type || "(vacío)"}` });
     }
     const pageUrl = sanitizePageUrl(req.body?.pageUrl);
+    const leadMeta = req.body?.lead && typeof req.body.lead === "object" ? req.body.lead : {};
+    if (type === "capture_lead" && Number(leadMeta.adminRow) >= 2) {
+      payload.adminRow = Number(leadMeta.adminRow);
+    }
     const result = await runPublicStorefrontTool(type, payload, pageUrl, req.log);
     return res.json({ ok: true, kind: "tool", result });
+  });
+
+  router.post("/identify", actionLimiter, async (req, res) => {
+    const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
+    const checked = assertIdentifyLead({
+      cliente: req.body?.cliente || req.body?.nombre,
+      telefono: req.body?.telefono,
+      zona: req.body?.zona,
+      consent: req.body?.consent,
+    });
+    if (!checked.ok) return res.status(400).json({ ok: false, error: checked.error });
+    const result = await runPublicStorefrontTool(
+      "capture_lead",
+      { ...checked.lead, consent: true },
+      pageUrl,
+      req.log,
+    );
+    let parsed = {};
+    try {
+      parsed = JSON.parse(result);
+    } catch {
+      parsed = { ok: false, error: result };
+    }
+    if (parsed.ok === false) {
+      return res.status(502).json({ ok: false, error: parsed.error || "No se pudo guardar en Admin 2.0." });
+    }
+    recordVoiceEvent({ kind: "storefront_identify", surface: "storefront", detail: "gate" });
+    return res.json({
+      ok: true,
+      adminRow: parsed.adminRow || parsed.id || null,
+      id: parsed.id || null,
+      cliente: checked.lead.cliente,
+      telefono: checked.lead.telefono,
+    });
+  });
+
+  router.post("/log", actionLimiter, async (req, res) => {
+    const adminRow = Number(req.body?.adminRow);
+    const telefono = normalizeStorefrontPhone(req.body?.telefono);
+    const transcript = String(req.body?.transcript || "").trim().slice(0, 8000);
+    if (!Number.isFinite(adminRow) || adminRow < 2) {
+      return res.status(400).json({ ok: false, error: "adminRow requerido." });
+    }
+    if (telefono.length < 8) {
+      return res.status(400).json({ ok: false, error: "Teléfono requerido para loguear el chat." });
+    }
+    if (!transcript) return res.json({ ok: true, skipped: true });
+    try {
+      const raw = await executeTool(
+        "wolfboard_actualizar_fila",
+        { rowNum: adminRow, respuesta: transcript, user_confirmed: true },
+        {},
+        { source: "storefront-voice" },
+      );
+      let parsed = {};
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = { ok: false };
+      }
+      if (parsed.ok === false) {
+        return res.status(502).json({ ok: false, error: parsed.error || "No se pudo guardar el chat." });
+      }
+      recordVoiceEvent({ kind: "storefront_chat_log", surface: "storefront", detail: String(adminRow) });
+      return res.json({ ok: true, adminRow });
+    } catch (err) {
+      req.log?.warn?.({ err }, "storefront chat log failed");
+      return res.status(502).json({ ok: false, error: err?.message || "No se pudo guardar el chat." });
+    }
   });
 
   const chatLimiter = rateLimit({
@@ -254,7 +350,8 @@ export default function createPublicVoiceRouter() {
 
   router.post("/chat", chatLimiter, async (req, res) => {
     const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
-    const pack = buildStorefrontVoicePack({ pageUrl });
+    const shopperName = String(req.body?.shopperName || req.body?.nombre || "").trim().slice(0, 80);
+    const pack = buildStorefrontVoicePack({ pageUrl, shopperName });
     try {
       const out = await runStorefrontTextTurn({
         message: req.body?.message,

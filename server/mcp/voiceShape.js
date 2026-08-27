@@ -35,8 +35,10 @@ function compactCotizacion(parsed) {
     summary: parsed.summary || parsed.resumen || null,
     warnings: parsed.warnings || [],
     autoportancia: parsed.autoportancia || null,
-    pdf_url: parsed.pdf_url || parsed.pdfUrl || null,
-    code: parsed.code || parsed.quote_code || null,
+    pdf_url: parsed.pdf_url || parsed.pdfUrl || parsed.pdf_file_url || null,
+    pdf_file_url: parsed.pdf_file_url || null,
+    pdf_id: parsed.pdf_id || null,
+    code: parsed.code || parsed.quote_code || (parsed.pdf_id ? String(parsed.pdf_id).replace(/-/g, "").slice(0, 8) : null),
   };
   if (Array.isArray(parsed.bom)) {
     out.bom_groups = parsed.bom.map((g) => ({

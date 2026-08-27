@@ -1762,6 +1762,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       return JSON.stringify({
         ok: true,
         pdf_id: data.pdf_id,
+        code: data.code || (data.pdf_id ? String(data.pdf_id).replace(/-/g, "").slice(0, 8) : null),
         // Prefer the real rendered PDF when the server produced one; the raw
         // pdf_url (printable HTML) remains the fallback on degraded platforms.
         pdf_url: data.pdf_file_url || data.pdf_url,
@@ -2326,7 +2327,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       if (!Number.isFinite(rowNum) || rowNum < 2) {
         return JSON.stringify({ ok: false, error: "rowNum (>=2) requerido" });
       }
-      const body = { rowNum };
+      const body = { rowNum, adminRow: rowNum };
       if (input?.respuesta != null) body.respuesta = String(input.respuesta);
       if (input?.linkDrive != null) body.linkDrive = String(input.linkDrive);
       if (input?.estado != null) body.estado = String(input.estado);
