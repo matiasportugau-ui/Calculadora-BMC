@@ -108,12 +108,9 @@ function walkAllowlisted(root, globRe, hits, queryRe) {
 export function searchCode({ query, path_glob } = {}) {
   const q = String(query || "").trim();
   if (!q) return { ok: false, error: "query required", hits: [] };
-  let queryRe;
-  try {
-    queryRe = new RegExp(q, "i");
-  } catch {
-    queryRe = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-  }
+  // Always treat query as a literal substring — never compile user input as RegExp
+  // (ReDoS / regex injection). Case-insensitive via escaped pattern only.
+  const queryRe = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
   const globRe = globToRegExp(path_glob);
   const hits = [];
   walkAllowlisted(REPO_ROOT, globRe, hits, queryRe);
