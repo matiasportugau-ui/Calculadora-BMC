@@ -23,6 +23,8 @@ export const DEFAULT_WIZARD_UI = Object.freeze({
   /** HH:MM 24h */
   pickupTime: "",
   routeStale: false,
+  /** Operator explicitly allows some loads without pickup origin. */
+  unassignedPickupApproved: false,
 });
 
 /**
@@ -45,29 +47,8 @@ export function createWizardUi(partial = {}) {
     pickupDate: String(partial.pickupDate || "").trim(),
     pickupTime: String(partial.pickupTime || "").trim(),
     routeStale: partial.routeStale === true,
+    unassignedPickupApproved: partial.unassignedPickupApproved === true,
   };
-}
-
-/** @param {object} [wizard] */
-export function pickupAppointmentMissing(wizard = {}) {
-  const date = String(wizard.pickupDate || "").trim();
-  const time = String(wizard.pickupTime || "").trim();
-  const parts = [];
-  if (!date) parts.push("fecha");
-  if (!time) parts.push("hora");
-  return parts;
-}
-
-/**
- * Operator banner when levante place is set but appointment is not.
- * Example: "Levante Kingspan incompleto: falta fecha y hora."
- */
-export function levanteIncompleteMessage(wizard = {}, places = []) {
-  const missing = pickupAppointmentMissing(wizard);
-  if (!missing.length) return "";
-  const raw = getLabel(places, wizard.defaultPickupPointId) || "levante";
-  const short = String(raw).split("(")[0].trim() || raw;
-  return `Levante ${short} incompleto: falta ${missing.join(" y ")}.`;
 }
 
 /**
@@ -77,7 +58,8 @@ export function levanteIncompleteMessage(wizard = {}, places = []) {
  */
 export function pickupIdForStop(stop, wizard = {}) {
   const own = String(stop?.pickupPointId || "").trim();
-  if (wizard.singlePickup === true) {
+  // Match stopsHavePickup / createWizardUi: singlePickup defaults to true.
+  if (wizard.singlePickup !== false) {
     return String(own || wizard.defaultPickupPointId || "").trim();
   }
   return own;
@@ -97,6 +79,51 @@ export function partitionLevantes(stops, wizard = {}) {
     else missing.push(s);
   }
   return { assigned, missing };
+}
+
+/**
+ * Group assigned stops by origin for the levantes summary.
+ * @param {object[]} stops
+ * @param {object} [wizard]
+ * @param {object[]} [places]
+ */
+export function consolidateLevantes(stops, wizard = {}, places = []) {
+  const { assigned, missing } = partitionLevantes(stops, wizard);
+  const groups = [];
+  const indexById = new Map();
+  for (const s of assigned) {
+    const id = pickupIdForStop(s, wizard);
+    let g = indexById.get(id);
+    if (!g) {
+      g = { id, label: placeLabel(places, id) || id, stops: [] };
+      indexById.set(id, g);
+      groups.push(g);
+    }
+    g.stops.push(s);
+  }
+  return { groups, missing };
+}
+
+/** @param {object} [wizard] */
+export function pickupAppointmentMissing(wizard = {}) {
+  const date = String(wizard.pickupDate || "").trim();
+  const time = String(wizard.pickupTime || "").trim();
+  const parts = [];
+  if (!date) parts.push("fecha");
+  if (!time) parts.push("hora");
+  return parts;
+}
+
+/**
+ * Operator banner when levante place is set but appointment is not.
+ * Example: "Levante Kingspan incompleto: falta fecha y hora."
+ */
+export function levanteIncompleteMessage(wizard = {}, places = []) {
+  const missing = pickupAppointmentMissing(wizard);
+  if (!missing.length) return "";
+  const raw = placeLabel(places, wizard.defaultPickupPointId) || "levante";
+  const short = String(raw).split("(")[0].trim() || raw;
+  return `Levante ${short} incompleto: falta ${missing.join(" y ")}.`;
 }
 
 /**
@@ -278,12 +305,12 @@ export function stepSummary(step, ctx = {}, places = []) {
   if (step === "flota") {
     const t = ctx.info?.transportista || "—";
     const L = ctx.truckL ? `${ctx.truckL} m` : "—";
-    const base = getLabel(places, ctx.info?.basePointId) || "sin base";
+    const base = placeLabel(places, ctx.info?.basePointId) || "sin base";
     return `${t} · camión ${L} · ${base}`;
   }
   if (step === "levantes") {
     if (wizard.singlePickup !== false) {
-      return `Un levante · ${getLabel(places, wizard.defaultPickupPointId) || "—"}`;
+      return `Un levante · ${placeLabel(places, wizard.defaultPickupPointId) || "—"}`;
     }
     const counts = {};
     for (const s of stops) {
@@ -291,7 +318,7 @@ export function stepSummary(step, ctx = {}, places = []) {
       counts[id] = (counts[id] || 0) + 1;
     }
     return Object.entries(counts)
-      .map(([id, n]) => `${getLabel(places, id) || id} (×${n})`)
+      .map(([id, n]) => `${placeLabel(places, id) || id} (×${n})`)
       .join(" · ");
   }
   if (step === "ruta") {
@@ -307,10 +334,22 @@ export function stepSummary(step, ctx = {}, places = []) {
   return "";
 }
 
-function getLabel(places, id) {
+/**
+ * Catalog label for a place id.
+ */
+export function placeLabel(places, id) {
   if (!id) return "";
   const p = (places || []).find((x) => x.id === id);
   return p?.label || "";
+}
+
+/**
+ * Catalog label for a stop's effective pickup origin (empty if none).
+ */
+export function originLabelForStop(stop, wizard = {}, places = []) {
+  const id = pickupIdForStop(stop, wizard);
+  if (!id) return "";
+  return placeLabel(places, id) || id;
 }
 
 /**

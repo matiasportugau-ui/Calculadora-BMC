@@ -43,28 +43,39 @@ export function renumberStops(stops = [], opts = {}) {
 }
 
 /**
- * Reorder stops to match `ids` (unknown/missing ids stay at the end).
+ * Reorder stops to match `orderedIds` (unknown/missing ids stay at the end).
+ * Ids are string-coerced so number/string stop ids from plans still match.
  * @param {object[]} stops
- * @param {string[]} ids
+ * @param {Array<string|number>} orderedIds
  * @param {{ colors?: string[] }} [opts]
  */
-export function orderStopsByIds(stops = [], ids = [], opts = {}) {
+export function orderStopsByIds(stops = [], orderedIds = [], opts = {}) {
   const list = Array.isArray(stops) ? [...stops] : [];
-  const byId = new Map(list.filter((s) => s?.id).map((s) => [s.id, s]));
+  const ids = Array.isArray(orderedIds) ? orderedIds.map((id) => String(id)) : [];
+  if (!ids.length) return renumberStops(list, opts);
+
+  const byId = new Map();
+  for (const s of list) {
+    const id = s?.id != null ? String(s.id) : "";
+    if (id && !byId.has(id)) byId.set(id, s);
+  }
+
+  const ordered = [];
   const seen = new Set();
-  const out = [];
-  for (const id of Array.isArray(ids) ? ids : []) {
+  for (const id of ids) {
+    if (seen.has(id)) continue;
     const s = byId.get(id);
-    if (!s || seen.has(s.id)) continue;
-    seen.add(s.id);
-    out.push(s);
+    if (!s) continue;
+    ordered.push(s);
+    seen.add(id);
   }
   for (const s of list) {
-    if (!s?.id || seen.has(s.id)) continue;
-    seen.add(s.id);
-    out.push(s);
+    const id = s?.id != null ? String(s.id) : "";
+    if (!id || seen.has(id)) continue;
+    ordered.push(s);
+    seen.add(id);
   }
-  return renumberStops(out, opts);
+  return renumberStops(ordered, opts);
 }
 
 /**

@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   reorderStops,
   renumberStops,
+  orderStopsByIds,
   defaultCollapsedStopIds,
   toggleCollapsedStopId,
 } from "../src/utils/logistica/stopReorder.js";
@@ -62,6 +63,27 @@ const base = [
   assert.equal(n[0].orden, 1);
   assert.equal(n[1].orden, 2);
   ok("renumberStops");
+}
+
+{
+  const next = orderStopsByIds(base, ["s3", "s1", "s2"], { colors });
+  assert.equal(next.map((s) => s.id).join(","), "s3,s1,s2");
+  assert.equal(next[0].orden, 1);
+  assert.equal(next[2].orden, 3);
+  const withExtra = orderStopsByIds(base, ["s2"], { colors });
+  assert.equal(withExtra.map((s) => s.id).join(","), "s2,s1,s3");
+  const ignoreUnknown = orderStopsByIds(base, ["nope", "s1", "s1"], { colors });
+  assert.equal(ignoreUnknown.map((s) => s.id).join(","), "s1,s2,s3");
+  const numericIds = orderStopsByIds(
+    [
+      { id: 1, orden: 1, cliente: "A" },
+      { id: 2, orden: 2, cliente: "B" },
+      { id: 3, orden: 3, cliente: "C" },
+    ],
+    ["3", "1"],
+  );
+  assert.equal(numericIds.map((s) => String(s.id)).join(","), "3,1,2");
+  ok("orderStopsByIds");
 }
 
 {

@@ -17,6 +17,9 @@ import {
   createWizardUi,
   adjacentStep,
   levanteIncompleteMessage,
+  pickupIdForStop,
+  partitionLevantes,
+  originLabelForStop,
 } from "../src/utils/logistica/wizardState.js";
 
 let passed = 0;
@@ -160,6 +163,29 @@ console.log("wizardState");
   };
   assert.equal(isStepComplete("ruta", ctx), false);
   ok("ruta incomplete when stale");
+}
+
+{
+  const wizard = createWizardUi({
+    singlePickup: true,
+    defaultPickupPointId: "pickup-kingspan-bromyros",
+  });
+  assert.equal(pickupIdForStop({ pickupPointId: "" }, wizard), "pickup-kingspan-bromyros");
+  assert.equal(pickupIdForStop({ pickupPointId: "p-own" }, wizard), "p-own");
+  const multi = createWizardUi({ singlePickup: false });
+  assert.equal(pickupIdForStop({ pickupPointId: "" }, multi), "");
+  const { assigned, missing } = partitionLevantes(
+    [{ id: "1", pickupPointId: "" }, { id: "2", pickupPointId: "p2" }],
+    multi,
+  );
+  assert.equal(assigned.length, 1);
+  assert.equal(missing.length, 1);
+  assert.equal(missing[0].id, "1");
+  assert.equal(
+    originLabelForStop({ pickupPointId: "p2" }, multi, [{ id: "p2", label: "Depo" }]),
+    "Depo",
+  );
+  ok("pickupIdForStop + partitionLevantes + originLabelForStop");
 }
 
 console.log(`wizardState: ${passed} passed`);
