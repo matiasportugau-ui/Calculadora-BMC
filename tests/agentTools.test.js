@@ -895,6 +895,40 @@ await group("wa_lead_to_admin — requires user_confirmed", async () => {
   assert(parsed.ok === false, "must reject without user_confirmed");
 });
 
+await group("admin_cargar_pdfs_fila — requires user_confirmed + row", async () => {
+  const { parsed: denied } = await run("admin_cargar_pdfs_fila", {
+    row: 21,
+    pdfs: ["https://storage.googleapis.com/bmc-cotizaciones/quotes/pdf/a.pdf"],
+  });
+  assert(denied.ok === false, "ok false without user_confirmed");
+  assert(
+    typeof denied.error === "string" && denied.error.includes("user_confirmed"),
+    "error mentions user_confirmed",
+  );
+
+  const { parsed: badRow } = await run(
+    "admin_cargar_pdfs_fila",
+    {
+      row: 1,
+      pdfs: ["https://storage.googleapis.com/bmc-cotizaciones/quotes/pdf/a.pdf"],
+      user_confirmed: true,
+    },
+  );
+  assert(badRow.ok === false, "confirmed but row < 2 still refused");
+  assert(typeof badRow.error === "string" && /row/i.test(badRow.error), "row validation surfaces");
+});
+
+await group("archivar_pdfs_drive — requires user_confirmed", async () => {
+  const { parsed } = await run("archivar_pdfs_drive", {
+    pdfs: ["https://storage.googleapis.com/bmc-cotizaciones/quotes/pdf/a.pdf"],
+  });
+  assert(parsed.ok === false, "ok false without user_confirmed");
+  assert(
+    typeof parsed.error === "string" && parsed.error.includes("user_confirmed"),
+    "error mentions user_confirmed",
+  );
+});
+
 await group("email_borrador_saliente — hechos required", async () => {
   const { parsed } = await run("email_borrador_saliente", { hechos: "ab" });
   assert(parsed.ok === false, "short hechos rejected");

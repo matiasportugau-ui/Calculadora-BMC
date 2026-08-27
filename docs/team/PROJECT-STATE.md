@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (test — storefront public voice + Admin PDF HITL + torre live load):** Offline pins for `POST /api/public/voice/{session,action}` (flag/origin, operator-tool deny, shop tools stay in-browser, consent lead, lista web + strip venta/costo), `admin_cargar_pdfs_fila` / `archivar_pdfs_drive` `user_confirmed` + row/https fail-closed, `loadTorreLive` mock-pool + `/api/torre/live` 401/503. Tests `publicVoiceRoutes` (`test:agent`), `torreLiveLoad` (`test:core`).
+
 **2026-08-27 (feat — Storefront Voice shop wiring):** Widget searches Shopify catalog, navigates product/collection, add_to_cart, share links; greeting no longer duplicated. **Carrito** + `add_to_cart` dispatch Horizon `cart:update` and `Shopify.actions.openCart()` (drawer, not a dead `/cart` reload). Custom techos still quote+WA. Storefront TTS voice is **rex** (calm male); operator Voice Mode stays **eve**.
 
 **2026-08-27 (feat — Storefront Voice on bmcuruguay.com.uy):** Public Grok S2S widget (Panelin buyer agent). `POST /api/public/voice/session|action`, flag `PUBLIC_STOREFRONT_VOICE=1` on Cloud Run deploy, widget at `/storefront-voice/widget.js`. Lista web only, consent lead `origen=VW`, WhatsApp `59892663245`. Operator Voice Mode unchanged.

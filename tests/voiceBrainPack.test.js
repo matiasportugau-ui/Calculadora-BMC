@@ -12,6 +12,7 @@ const {
   buildVoiceBrainPack,
   sanitizeBootstrapForClient,
   VOICE_BRAIN_TOOL_ALLOWLIST,
+  VOICE_WRITE_AUTOCONFIRM,
   agentToolToRealtimeFunction,
 } = await import("../server/lib/voiceBrainPack.js");
 const { PANELIN_BMC_VOICE_INSTRUCTIONS } = await import(
@@ -46,6 +47,11 @@ assert.ok(names.includes("setTecho"), "form function setTecho attached");
 for (const n of VOICE_BRAIN_TOOL_ALLOWLIST) {
   assert.ok(names.includes(n), `allowlist tool present: ${n}`);
 }
+assert.deepEqual(
+  [...VOICE_WRITE_AUTOCONFIRM],
+  ["generar_pdf", "admin_cargar_pdfs_fila", "archivar_pdfs_drive"],
+  "voice auto-confirm is PDF/Admin/Drive only",
+);
 
 const serialized = JSON.stringify(pack);
 assert.ok(!/"authorization"\s*:/i.test(serialized), "bootstrap has no authorization field");
