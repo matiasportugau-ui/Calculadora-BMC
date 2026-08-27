@@ -633,7 +633,15 @@ export async function buildCotizacionHtml({ escenario, lista = "web", techo, par
   return { ok: true, html, gptResp, templateUsed };
 }
 
-function canWriteSharedQuoteDrive(req) {
+/**
+ * Shared Drive quote folder is for authenticated operator/agent paths only.
+ * Public storefront voice/chat calls generar_pdf via service-token loopback
+ * (req.user becomes the service principal) — that must NOT open Drive writes.
+ * @param {{ user?: unknown }} req
+ * @param {unknown} [sourceRaw] body.source before registry normalization
+ */
+export function canWriteSharedQuoteDrive(req, sourceRaw) {
+  if (String(sourceRaw || "") === "storefront-voice") return false;
   return !!(config.driveQuoteFolderId && req.user);
 }
 
@@ -643,6 +651,7 @@ router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req
     // Provenance marker — distinguishes agent-generated quotes from human-driven ones
     // in the registry. Defaults to "calculator"; agent path passes "ae_agent".
     const source = sourceRaw === "ae_agent" ? "ae_agent" : "calculator";
+    const allowSharedDrive = canWriteSharedQuoteDrive(req, sourceRaw);
 
     // Optional body.template selects a src/pdf-templates layout (default:
     // "simple", the refined production template). Anything non-string is ignored.
@@ -665,7 +674,7 @@ router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req
       config.gcsQuotesBucket
         ? uploadQuoteToGcs(html, filename, config.gcsQuotesBucket)
         : Promise.resolve(null),
-      canWriteSharedQuoteDrive(req)
+      allowSharedDrive
         ? uploadQuoteToDrive(html, filename, config.driveQuoteFolderId)
         : Promise.resolve(null),
     ]);
@@ -691,7 +700,7 @@ router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req
           config.gcsQuotesBucket
             ? uploadPdfToGcs(pdfBuffer, pdfFilename, config.gcsQuotesBucket)
             : Promise.resolve(null),
-          canWriteSharedQuoteDrive(req)
+          allowSharedDrive
             ? saveQuotationBundleToDrive({
                 rootFolderId: config.driveQuoteFolderId,
                 quotationCode: code,

@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — storefront PDF no escribe Drive compartido):** Tras #1141, `generar_pdf` público iba por loopback con Bearer de servicio → `req.user` service → `canWriteSharedQuoteDrive` true. Ahora `source: storefront-voice` propaga y `/calc/cotizar/pdf` no sube al folder Drive compartido.
+
 **2026-08-27 (feat — Panelin Front CS pipeline):** Public agent classify→assess→green. Quote only if shopper insists (learning disclaimer) via `calcular_cotizacion` + `generar_pdf` lista **web**. Never quote flete. Complete lead in Admin 2.0 (`origen=VW`, PDF in col K). Config SoT `storefrontAgentConfig.js`. SDD `docs/sdd/storefront-voice-agent/SDD.md`.
 
 **2026-08-27 (feat — Panelin Front text+avatar on storefront):** Shopify widget matches the simple tenant drawer: Panelin image, chips, text-to-text (`POST /api/public/voice/chat`, grok-3-mini, same public allowlist), voice still on the mic. CORS includes `127.0.0.1:9292` + `xj4rir-qz.myshopify.com`. Avatar `/storefront-voice/panelin.png`. Operator chat unchanged.

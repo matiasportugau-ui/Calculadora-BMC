@@ -70,6 +70,23 @@ assert.equal(isPublicStorefrontTool("wa_lead_to_admin"), false);
 assert.equal(isStorefrontShopTool("add_to_cart"), true);
 assert.equal(isStorefrontShopTool("calcular_cotizacion"), false);
 
+// Public action calls executeTool(..., { source: "storefront-voice" }) so
+// generar_pdf tags the cotizar/pdf body and calc skips shared Drive writes.
+{
+  const pub = fs.readFileSync(path.join(ROOT, "server/routes/publicVoice.js"), "utf8");
+  assert.ok(pub.includes('source: "storefront-voice"'), "public action tags storefront-voice");
+  const tools = fs.readFileSync(path.join(ROOT, "server/lib/agentTools.js"), "utf8");
+  assert.ok(
+    tools.includes('opts?.source === "storefront-voice"'),
+    "generar_pdf propagates storefront-voice source",
+  );
+  const calc = fs.readFileSync(path.join(ROOT, "server/routes/calc.js"), "utf8");
+  assert.ok(
+    calc.includes('sourceRaw || "") === "storefront-voice"'),
+    "cotizar/pdf blocks Drive for storefront-voice",
+  );
+}
+
 const forced = forceListaWeb("obtener_precio_panel", { familia: "ISODEC_EPS", espesor: 100, lista: "venta" });
 assert.equal(forced.lista, "web");
 const forcedCalc = forceListaWeb("calcular_cotizacion", { listaPrecios: "venta", scenario: "solo_techo" });

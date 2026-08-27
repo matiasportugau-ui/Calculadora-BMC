@@ -1712,15 +1712,17 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const t0 = Date.now();
       const { scenario, listaPrecios = "web", techo, pared, camara, flete = 0, cliente = {} } = input;
 
-      // Map tool input to /calc/cotizar/pdf body format. `source: "ae_agent"`
-      // marks the registry entry as agent-generated for downstream audit
-      // (listar_cotizaciones_recientes / historial_cliente surface this field).
+      // Map tool input to /calc/cotizar/pdf body format. Operator AE uses
+      // `ae_agent`; public storefront must pass `storefront-voice` so
+      // /calc/cotizar/pdf skips shared Drive writes (service-token loopback
+      // would otherwise set req.user and reopen anonymous Drive pollution).
+      const quoteSource = opts?.source === "storefront-voice" ? "storefront-voice" : "ae_agent";
       const body = {
         lista: listaPrecios,
         escenario: scenario,
         flete,
         cliente,
-        source: "ae_agent",
+        source: quoteSource,
         ...(techo && {
           techo: {
             ...techo,
@@ -1752,6 +1754,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         tool: "generar_pdf",
         scenario,
         lista: listaPrecios,
+        source: quoteSource,
         duration_ms: Date.now() - t0,
         ok: result.ok,
         pdf_id: data.pdf_id || null,
