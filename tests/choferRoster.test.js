@@ -62,6 +62,39 @@ await ensureTransportistaSchema(pool);
   assert.equal(listed.trips[0].trip_id, tripId);
   console.log("  ✓ assign confirmed trip → chofer inbox");
   console.log("  ✓ loginChofer bearer lists assigned trip on /api/driver/trips path");
+
+  const missing = await assignTripToChofer(pool, {
+    tripId: "99999999-9999-4999-8999-999999999999",
+    choferId: reg.chofer.chofer_id,
+  });
+  assert.equal(missing.ok, false);
+  assert.equal(missing.error, "trip_not_found");
+  console.log("  ✓ assign missing trip → trip_not_found");
+
+  const { generateOpaqueToken, sha256Hex } = await import("../server/lib/driverToken.js");
+  const { driverAuthOwnsTrip } = await import("../server/lib/driverAuth.js");
+  const priorPlain = generateOpaqueToken();
+  const priorDriver = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  await pool.query(
+    `insert into driver_sessions (trip_id, driver_id, token_hash, expires_at)
+     values ($1, $2, $3, $4)`,
+    [tripId, priorDriver, sha256Hex(priorPlain), new Date(Date.now() + 86400_000).toISOString()],
+  );
+  const priorAuth = await resolveDriverAuth(pool, priorPlain);
+  assert.equal(priorAuth.ok, true);
+  assert.equal(await driverAuthOwnsTrip(pool, priorAuth, tripId), true);
+
+  const reg2 = await registerChofer(pool, {
+    name: "Otro",
+    email: "otro@bmc.uy",
+    phone: "099999999",
+    password: "secreto2",
+  });
+  const reasg = await assignTripToChofer(pool, { tripId, choferId: reg2.chofer.chofer_id });
+  assert.equal(reasg.ok, true);
+  const priorAfter = await resolveDriverAuth(pool, priorPlain);
+  assert.equal(priorAfter.ok, false, "prior magic-link must be revoked on reassignment");
+  console.log("  ✓ reassignment revokes prior driver_sessions for the trip");
 }
 
 {

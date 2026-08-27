@@ -1,9 +1,11 @@
 /**
  * Driver PWA auth. Magic-link driver_sessions and HITL chofer_sessions
  * both unlock GET /api/driver/trips (the path BMC Driver already calls).
+ *
+ * Intentionally does NOT run ensureTransportistaSchema — this sits on the
+ * GPS/presence hot path (requireDriver). Schema is ensured at login/assign.
  */
 import { sha256Hex } from "./driverToken.js";
-import { ensureTransportistaSchema } from "./transportistaSchema.js";
 
 /**
  * @param {{ query: Function }} pool
@@ -13,7 +15,6 @@ export async function resolveDriverAuth(pool, bearer) {
   if (!pool) return { ok: false, error: "no_pool" };
   const token = String(bearer || "").trim();
   if (!token) return { ok: false, error: "Missing Bearer token" };
-  await ensureTransportistaSchema(pool);
   const tokenHash = sha256Hex(token);
 
   const ds = await pool.query(

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { shouldWatchGps } from "../../utils/logistica/torreLiveView.js";
+import { resolveDriverLoginIntent } from "../../utils/logistica/driverLoginIntent.js";
 
 const TOKEN_KEY = "transportista_driver_token";
 const PROFILE_KEY = "bmc-driver-profile-v1";
@@ -253,14 +254,15 @@ export default function useDriverSession() {
   };
 
   const loginWithIdentity = async (identity, password) => {
-    const id = String(identity || "").trim();
+    const intent = resolveDriverLoginIntent(identity, password);
+    const id = intent.identity;
     const pw = String(password || "").trim();
-    const looksEmail = id.includes("@");
-    const digits = id.replace(/\D/g, "");
-    const looksPhone = digits.length >= 8;
-    if (looksEmail || looksPhone) {
+    // #1147 regression: phone/email in the identity field + magic-link token in password
+    // must NOT call chofer/login (that always returned invalid_credentials and blocked terceros).
+    if (intent.mode === "chofer_password") {
       setStatus("Ingresando…");
       try {
+        const looksEmail = id.includes("@");
         const res = await fetch("/api/torre/chofer/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -281,7 +283,7 @@ export default function useDriverSession() {
       }
       return;
     }
-    loginWithToken(pw || id, id);
+    loginWithToken(intent.tokenCandidate, id);
   };
 
   const logout = () => {

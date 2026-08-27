@@ -95,7 +95,7 @@ export async function assignTripToChofer(pool, { tripId, choferId } = {}) {
   if (!tripId || !choferId) return { ok: false, error: "trip_and_chofer_required" };
   const { rows: ch } = await pool.query(`select * from chofer_roster where chofer_id = $1`, [choferId]);
   if (!ch[0]) return { ok: false, error: "chofer_not_found" };
-  await pool.query(
+  const upd = await pool.query(
     `update trips
         set assigned_driver_id = $2::uuid,
             assigned_phone_e164 = coalesce(assigned_phone_e164, $3),
@@ -104,18 +104,14 @@ export async function assignTripToChofer(pool, { tripId, choferId } = {}) {
       where trip_id = $1::uuid`,
     [tripId, choferId, ch[0].phone_e164 || null],
   );
+  if (!upd.rowCount) return { ok: false, error: "trip_not_found" };
+  // Revoke every magic-link session on this trip (prior tercero/chofer cannot keep writing).
   await pool.query(
     `update driver_sessions set revoked_at = now()
-      where trip_id = $1::uuid and driver_id = $2::uuid and revoked_at is null`,
-    [tripId, choferId],
+      where trip_id = $1::uuid and revoked_at is null`,
+    [tripId],
   );
-  const plain = generateOpaqueToken();
-  const expires = new Date(Date.now() + 24 * 3600 * 1000);
-  await pool.query(
-    `insert into driver_sessions (trip_id, driver_id, token_hash, expires_at)
-     values ($1::uuid, $2::uuid, $3, $4)`,
-    [tripId, choferId, sha256Hex(plain), expires.toISOString()],
-  );
+  // Chofer PWA authenticates via loginChofer → chofer_sessions; do not mint a discarded driver token.
   return { ok: true, trip_id: tripId, chofer_id: choferId };
 }
 
