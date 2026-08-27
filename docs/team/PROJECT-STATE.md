@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — Kernel store prototype pollution + voice boot):** `getAgent("__proto__"|"constructor")` resolved inherited Object keys and `apply_playbook_patch` could write onto `Object.prototype`. Agents map is now null-prototype + `isSafeAgentId` + hasOwn checks. `search_code` always escapes the query as a literal (no user RegExp / ReDoS). Also removed dangling import of unstaged `logisticaTruckerInstructions.js` from `agentVoice.js` (API failed to boot). Tests in `kernelFactory.test.js`.
+
 **2026-08-27 (fix — Live restart: sticky chrome + noise + reset):** Controles (selector, mutes, Empezar de nuevo) fijos arriba; el chat scrollea solo. Filtro `shh`/TV inglés. `POST /api/kernel/reset` vuelve a Panelin y borra el log. Restaura últimas 40 líneas al abrir Live. Sims: `tests/voiceRoundSimulation.test.js`.
 
 **2026-08-27 (feat — mute del mic en Live):** Chip **Mic on/mute** junto al botón grande. La llamada sigue; no se manda PCM ni a Kernel. Track `enabled=false` + `input_audio_buffer.clear`.
