@@ -71,6 +71,35 @@ export function levanteIncompleteMessage(wizard = {}, places = []) {
 }
 
 /**
+ * Effective pickup id for a stop (single-mode default fills empty per-stop ids).
+ * @param {object} stop
+ * @param {{ singlePickup?: boolean, defaultPickupPointId?: string }} [wizard]
+ */
+export function pickupIdForStop(stop, wizard = {}) {
+  const own = String(stop?.pickupPointId || "").trim();
+  if (wizard.singlePickup === true) {
+    return String(own || wizard.defaultPickupPointId || "").trim();
+  }
+  return own;
+}
+
+/**
+ * @param {object[]} stops
+ * @param {object} [wizard]
+ * @returns {{ assigned: object[], missing: object[] }}
+ */
+export function partitionLevantes(stops, wizard = {}) {
+  const list = Array.isArray(stops) ? stops : [];
+  const assigned = [];
+  const missing = [];
+  for (const s of list) {
+    if (pickupIdForStop(s, wizard)) assigned.push(s);
+    else missing.push(s);
+  }
+  return { assigned, missing };
+}
+
+/**
  * @param {object[]} stops
  */
 export function isPedidosComplete(stops) {
