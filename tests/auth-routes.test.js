@@ -114,6 +114,66 @@ async function run() {
       401
     );
 
+    // ── POST /api/agent/voice/action (Sheets/CRM/PDF/Drive after #1108/#1110/#1113) ─
+    r = await fetch(`${base}/api/agent/voice/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: { type: "sheets_get_pending_admin", payload: {} },
+      }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/agent/voice/action without auth → 401",
+      r.status === 401 && body.ok === false,
+      { status: r.status, ok: body.ok },
+      { status: 401, ok: false }
+    );
+
+    r = await fetch(`${base}/api/agent/voice/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: { type: "generar_pdf", payload: { scenario: "solo_techo", listaPrecios: "web" } },
+      }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/agent/voice/action generar_pdf without auth → 401",
+      r.status === 401 && body.ok === false,
+      { status: r.status, ok: body.ok },
+      { status: 401, ok: false }
+    );
+
+    r = await fetch(`${base}/api/agent/voice/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": "wrong-token" },
+      body: JSON.stringify({
+        action: { type: "admin_cargar_pdfs_fila", payload: { row: 2, pdfs: [] } },
+      }),
+    });
+    assert(
+      "POST /api/agent/voice/action with wrong token → 401",
+      r.status === 401,
+      r.status,
+      401
+    );
+
+    r = await fetch(`${base}/api/agent/voice/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({
+        action: { type: "setScenario", payload: { scenario: "techo" } },
+      }),
+    });
+    body = await r.json().catch(() => ({}));
+    assert(
+      "POST /api/agent/voice/action with Bearer → 200 for form relay",
+      r.status === 200 && body.ok === true && body.action?.type === "setScenario",
+      { status: r.status, ok: body.ok, type: body.action?.type },
+      { status: 200, ok: true, type: "setScenario" }
+    );
+
     // ── Legacy routers must fail closed if service token is not configured ──
     const previousToken = config.apiAuthToken;
     config.apiAuthToken = "";
@@ -138,6 +198,21 @@ async function run() {
         r.status === 503 && body.error === "API_AUTH_TOKEN not configured",
         { status: r.status, error: body.error },
         { status: 503, error: "API_AUTH_TOKEN not configured" }
+      );
+
+      r = await fetch(`${base}/api/agent/voice/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: { type: "sheets_get_pending_admin", payload: {} },
+        }),
+      });
+      body = await r.json().catch(() => ({}));
+      assert(
+        "POST /api/agent/voice/action with missing API_AUTH_TOKEN → 401 (JWT or token required)",
+        r.status === 401 && (body.error === "missing_credentials" || body.ok === false),
+        { status: r.status, error: body.error, ok: body.ok },
+        { status: 401, error: "missing_credentials" }
       );
     } finally {
       config.apiAuthToken = previousToken;

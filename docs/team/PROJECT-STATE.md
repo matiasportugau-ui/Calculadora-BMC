@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (logística mesa → main + SDD Final v1.1)
+**Última actualización:** 2026-08-27 (voice/action auth gate + Admin PDF harden)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-27 (fix — voice/action auth + Admin PDF harden):** `POST /api/agent/voice/action` still executed Sheets/CRM/`generar_pdf`/`admin_cargar_pdfs_fila`/`archivar_pdfs_drive` **without** auth on main (same class as #1117; that PR conflicted after #1120/#1129). Gate = session mint (`calc:write`). Admin col M only GCS `bmc-cotizaciones` URLs; col L `estado` via `sanitizeCellValue`.
 
 **2026-08-27 (feat — Torre de Control Fase 1):** Live ops tab `/logistica?vista=torre` (alias `/torre`). `GET /api/torre/live` projects open trips + last GPS (phone tail only). FSM now accepts `location_ping` + `presence`. PWA stops `watchPosition` when trip is `closed`. Spec `docs/sdd/bmc-control-tower/`. Roster/AI/Order-ID still TARGET T5–T8. Tests `torreLiveView.test.js`.
 
