@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (storefront Panelin ↔ Shopify cart drawer)
+**Última actualización:** 2026-08-27 (storefront cart drawer leftPage hang fix)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-27 (fix — Storefront Voice cart drawer leftPage hang):** After #1136, `navigate`/`open_url` to `/cart` opened the Horizon drawer in-tab but still skipped `response.create` (treated as page leave) → silent hung call. Tools now return explicit `leftPage`; skip follow-up only when true. Idle `persistResume` also gated on `status !== idle` (supersedes incomplete #1135 `ok===true` heuristic).
 
 **2026-08-27 (feat — Storefront Voice shop wiring):** Widget searches Shopify catalog, navigates product/collection, add_to_cart, share links; greeting no longer duplicated. **Carrito** + `add_to_cart` dispatch Horizon `cart:update` and `Shopify.actions.openCart()` (drawer, not a dead `/cart` reload). Custom techos still quote+WA.
 
