@@ -43,6 +43,44 @@ export function renumberStops(stops = [], opts = {}) {
 }
 
 /**
+ * Reorder stops to match an id sequence (trip plan / route suggestion).
+ * Unknown ids are skipped; stops not listed are appended in prior order.
+ *
+ * @param {object[]} stops
+ * @param {string[]} orderedIds
+ * @param {{ colors?: string[] }} [opts]
+ * @returns {object[]}
+ */
+export function orderStopsByIds(stops = [], orderedIds = [], opts = {}) {
+  const list = Array.isArray(stops) ? [...stops] : [];
+  const ids = Array.isArray(orderedIds) ? orderedIds.map((id) => String(id)) : [];
+  if (!ids.length) return renumberStops(list, opts);
+
+  const byId = new Map();
+  for (const s of list) {
+    const id = s?.id != null ? String(s.id) : "";
+    if (id && !byId.has(id)) byId.set(id, s);
+  }
+
+  const ordered = [];
+  const seen = new Set();
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    const s = byId.get(id);
+    if (!s) continue;
+    ordered.push(s);
+    seen.add(id);
+  }
+  for (const s of list) {
+    const id = s?.id != null ? String(s.id) : "";
+    if (!id || seen.has(id)) continue;
+    ordered.push(s);
+    seen.add(id);
+  }
+  return renumberStops(ordered, opts);
+}
+
+/**
  * Default collapsed ids when many stops (keep first expanded).
  * @param {object[]} stops
  * @param {number} [threshold=3]
