@@ -252,6 +252,38 @@ export default function useDriverSession() {
     navigate("/conductor", { replace: true });
   };
 
+  const loginWithIdentity = async (identity, password) => {
+    const id = String(identity || "").trim();
+    const pw = String(password || "").trim();
+    const looksEmail = id.includes("@");
+    const digits = id.replace(/\D/g, "");
+    const looksPhone = digits.length >= 8;
+    if (looksEmail || looksPhone) {
+      setStatus("Ingresando…");
+      try {
+        const res = await fetch("/api/torre/chofer/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(looksEmail ? { email: id, password: pw } : { phone: id, password: pw }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (j.ok && j.token) {
+          loginWithToken(j.token, j.chofer?.name || id);
+          return;
+        }
+        setStatus(
+          j.error === "invalid_credentials"
+            ? "Email/celular o contraseña incorrectos."
+            : j.error || "No se pudo ingresar",
+        );
+      } catch (e) {
+        setStatus(e instanceof Error ? e.message : String(e));
+      }
+      return;
+    }
+    loginWithToken(pw || id, id);
+  };
+
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken("");
@@ -323,6 +355,7 @@ export default function useDriverSession() {
     syncOutbox,
     sendEvent,
     loginWithToken,
+    loginWithIdentity,
     logout,
     saveProfile,
     uploadB64,

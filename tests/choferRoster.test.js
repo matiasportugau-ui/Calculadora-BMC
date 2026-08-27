@@ -11,6 +11,7 @@ import {
   assignTripToChofer,
   listChoferInbox,
 } from "../server/lib/choferRoster.js";
+import { resolveDriverAuth, listTripsForDriverAuth } from "../server/lib/driverAuth.js";
 import { lookupTrackByOrderId } from "../server/lib/orderIdLookup.js";
 import { sanitizeSnapshot } from "../server/lib/customerTrack.js";
 
@@ -51,7 +52,16 @@ await ensureTransportistaSchema(pool);
   assert.equal(inbox.ok, true);
   assert.equal(inbox.trips.length, 1);
   assert.equal(inbox.trips[0].trip_id, tripId);
+
+  const authz = await resolveDriverAuth(pool, login.token);
+  assert.equal(authz.ok, true);
+  assert.equal(authz.kind, "chofer_session");
+  const listed = await listTripsForDriverAuth(pool, authz);
+  assert.equal(listed.ok, true);
+  assert.equal(listed.trips.length, 1);
+  assert.equal(listed.trips[0].trip_id, tripId);
   console.log("  ✓ assign confirmed trip → chofer inbox");
+  console.log("  ✓ loginChofer bearer lists assigned trip on /api/driver/trips path");
 }
 
 {

@@ -4,6 +4,7 @@
 import { Router } from "express";
 import { getTransportistaPool } from "../lib/transportistaDb.js";
 import { generateOpaqueToken, sha256Hex } from "../lib/driverToken.js";
+import { resolveDriverAuth, listTripsForDriverAuth, driverAuthOwnsTrip } from "../lib/driverAuth.js";
 import { isAllowedDriverEventType, hasEvidenceForStop } from "../lib/transportistaFsm.js";
 import { createGcsV4UploadUrl, writeLocalDevEvidence } from "../lib/transportistaEvidence.js";
 import { conductorPublicUrl } from "../../src/utils/conductorUrl.js";
@@ -54,18 +55,17 @@ export default function createTransportistaRouter(config, logger) {
     if (!bearer) {
       return res.status(401).json({ ok: false, error: "Missing Bearer token" });
     }
-    const tokenHash = sha256Hex(bearer);
-    const { rows } = await pool.query(
-      `select * from driver_sessions
-       where token_hash = $1 and revoked_at is null and expires_at > now()
-       limit 1`,
-      [tokenHash],
-    );
-    const session = rows[0];
-    if (!session) {
-      return res.status(401).json({ ok: false, error: "Invalid or expired session" });
+    const authz = await resolveDriverAuth(pool, bearer);
+    if (!authz.ok) {
+      return res.status(401).json({ ok: false, error: authz.error || "Invalid or expired session" });
     }
-    req.transportistaSession = session;
+    req.transportistaAuth = authz;
+    req.transportistaSession = {
+      trip_id: authz.trip_id,
+      driver_id: authz.driver_id,
+      chofer_id: authz.chofer_id,
+      kind: authz.kind,
+    };
     req.transportistaTokenPlain = bearer;
     next();
   });
@@ -476,9 +476,8 @@ export default function createTransportistaRouter(config, logger) {
     requireDb,
     requireDriver,
     asyncHandler(async (req, res) => {
-      const s = req.transportistaSession;
-      const { rows } = await pool.query(`select * from trips where trip_id = $1::uuid`, [s.trip_id]);
-      res.json({ ok: true, trips: rows });
+      const out = await listTripsForDriverAuth(pool, req.transportistaAuth);
+      res.json(out);
     }),
   );
 
@@ -487,15 +486,15 @@ export default function createTransportistaRouter(config, logger) {
     requireDb,
     requireDriver,
     asyncHandler(async (req, res) => {
-      const s = req.transportistaSession;
-      if (req.params.trip_id !== s.trip_id) {
+      const owns = await driverAuthOwnsTrip(pool, req.transportistaAuth, req.params.trip_id);
+      if (!owns) {
         return res.status(403).json({ ok: false, error: "Trip not in session scope" });
       }
-      const { rows } = await pool.query(`select * from trips where trip_id = $1::uuid`, [s.trip_id]);
+      const { rows } = await pool.query(`select * from trips where trip_id = $1::uuid`, [req.params.trip_id]);
       if (rows.length === 0) return res.status(404).json({ ok: false, error: "Not found" });
       const { rows: events } = await pool.query(
         `select event_type, at_server, payload, stop_id from trip_events where trip_id = $1::uuid order by at_server asc`,
-        [s.trip_id],
+        [req.params.trip_id],
       );
       res.json({ ok: true, trip: rows[0], timeline: events });
     }),
@@ -520,7 +519,7 @@ export default function createTransportistaRouter(config, logger) {
       if (!idempotency_key || !trip_id || !type) {
         return res.status(400).json({ ok: false, error: "idempotency_key, trip_id, type required" });
       }
-      if (trip_id !== s.trip_id) {
+      if (!(await driverAuthOwnsTrip(pool, req.transportistaAuth, trip_id))) {
         return res.status(403).json({ ok: false, error: "trip_id mismatch" });
       }
       if (!isAllowedDriverEventType(type)) {
@@ -580,7 +579,9 @@ export default function createTransportistaRouter(config, logger) {
       if (!idempotency_key || !trip_id || !kind || !mime) {
         return res.status(400).json({ ok: false, error: "idempotency_key, trip_id, kind, mime required" });
       }
-      if (trip_id !== s.trip_id) return res.status(403).json({ ok: false, error: "trip_id mismatch" });
+      if (!(await driverAuthOwnsTrip(pool, req.transportistaAuth, trip_id))) {
+        return res.status(403).json({ ok: false, error: "trip_id mismatch" });
+      }
 
       const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
       const objectPath = `trips/${trip_id}/${kind}/${randomFileSuffix()}.${ext}`;
@@ -619,7 +620,9 @@ export default function createTransportistaRouter(config, logger) {
       if (!idempotency_key || !trip_id || !kind || !objectPath) {
         return res.status(400).json({ ok: false, error: "idempotency_key, trip_id, kind, path required" });
       }
-      if (trip_id !== s.trip_id) return res.status(403).json({ ok: false, error: "trip_id mismatch" });
+      if (!(await driverAuthOwnsTrip(pool, req.transportistaAuth, trip_id))) {
+        return res.status(403).json({ ok: false, error: "trip_id mismatch" });
+      }
 
       try {
         await pool.query(
@@ -658,7 +661,9 @@ export default function createTransportistaRouter(config, logger) {
       if (!idempotency_key || !trip_id || !kind || !data_base64) {
         return res.status(400).json({ ok: false, error: "idempotency_key, trip_id, kind, data_base64 required" });
       }
-      if (trip_id !== s.trip_id) return res.status(403).json({ ok: false, error: "trip_id mismatch" });
+      if (!(await driverAuthOwnsTrip(pool, req.transportistaAuth, trip_id))) {
+        return res.status(403).json({ ok: false, error: "trip_id mismatch" });
+      }
 
       let buf;
       try {

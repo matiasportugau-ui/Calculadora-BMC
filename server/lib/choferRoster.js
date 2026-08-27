@@ -104,6 +104,18 @@ export async function assignTripToChofer(pool, { tripId, choferId } = {}) {
       where trip_id = $1::uuid`,
     [tripId, choferId, ch[0].phone_e164 || null],
   );
+  await pool.query(
+    `update driver_sessions set revoked_at = now()
+      where trip_id = $1::uuid and driver_id = $2::uuid and revoked_at is null`,
+    [tripId, choferId],
+  );
+  const plain = generateOpaqueToken();
+  const expires = new Date(Date.now() + 24 * 3600 * 1000);
+  await pool.query(
+    `insert into driver_sessions (trip_id, driver_id, token_hash, expires_at)
+     values ($1::uuid, $2::uuid, $3, $4)`,
+    [tripId, choferId, sha256Hex(plain), expires.toISOString()],
+  );
   return { ok: true, trip_id: tripId, chofer_id: choferId };
 }
 

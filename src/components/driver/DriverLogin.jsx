@@ -12,13 +12,13 @@ export default function DriverLogin({ onLogin, status, offlineHint }) {
         <p className="drv-sub">Iniciá sesión para continuar</p>
       </div>
       <div className="drv-card">
-        <label className="drv-label">Usuario</label>
+        <label className="drv-label">Email o celular</label>
         <input
           className="drv-input"
           autoComplete="username"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Tu nombre"
+          placeholder="juan@bmc.uy o 099…"
         />
         <label className="drv-label">Contraseña</label>
         <input
@@ -27,19 +27,19 @@ export default function DriverLogin({ onLogin, status, offlineHint }) {
           autoComplete="current-password"
           value={secret}
           onChange={(e) => setSecret(e.target.value)}
-          placeholder="Token del enlace WhatsApp"
+          placeholder="Contraseña o token del enlace"
         />
         <p className="drv-muted">
-          El operador te manda un enlace. Si lo abriste, ya estás adentro. Si no, pegá el token acá.
+          Chofer de flota: email/celular + contraseña. Tercero: abrí el enlace o pegá el token.
         </p>
         {status ? <p className="drv-danger">{status}</p> : null}
-        <button type="button" className="drv-cta drv-cta--orange" onClick={() => onLogin(secret, name)}>
+        <button type="button" className="drv-cta drv-cta--orange" onClick={() => onLogin(name, secret)}>
           Ingresar
         </button>
         <button
           type="button"
           className="drv-cta drv-cta--navy"
-          onClick={() => onLogin(secret || localStorage.getItem("transportista_driver_token"), name)}
+          onClick={() => onLogin(name, secret || localStorage.getItem("transportista_driver_token"))}
         >
           Trabajá sin conexión
         </button>

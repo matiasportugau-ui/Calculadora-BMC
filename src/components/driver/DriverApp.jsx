@@ -29,7 +29,7 @@ export default function DriverApp() {
   if (!sess.token) {
     return (
       <div className="drv-app">
-        <DriverLogin onLogin={sess.loginWithToken} status={sess.status} />
+        <DriverLogin onLogin={sess.loginWithIdentity} status={sess.status} />
       </div>
     );
   }
