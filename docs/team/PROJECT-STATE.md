@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (Panelin Front website agent SDD v2 + shop widget)
+**Última actualización:** 2026-08-27 (Panelin Front dockerignore loop mp4)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-27 (fix — Panelin Front Cloud Run COPY loop mp4):** `.dockerignore` had `public` with only `bmc-pdf` excepted, so `deploy-calc-api` failed: `COPY public/video/panelin-lista-loop.mp4` not found. Allowlist `!public/video` + `!public/video/panelin-lista-loop.mp4`. Test asserts the exception. Shop widget on bmcuruguay.com.uy still waits on this Cloud Run revision.
 
 **2026-08-27 (feat — Panelin Front website agent SDD v2 + shop widget):** As-built SDD `docs/sdd/storefront-voice-agent/SDD.md` v2. Identity gate (name+phone) → Admin 2.0 `origen=VW` + col J transcript. Calculator-body float, looping `panelin-lista-loop.mp4` orb + «¿Necesitás ayuda?». Auto-nav to product/collection. Clickable chat links. **Presupuesto {n}** PDF card. Lista web, never flete. Public brain ≠ operator.
 
