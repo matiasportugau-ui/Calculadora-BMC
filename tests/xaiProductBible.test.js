@@ -19,6 +19,7 @@ import {
   formatDryPlan,
   parseArgs,
   requireManagementKey,
+  apiKeyCandidates,
   buildCreateCollectionRequest,
   buildSearchRequest,
   buildListCollectionsRequest,
@@ -109,6 +110,14 @@ group("requireManagementKey — missing / empty / whitespace", () => {
   }
   assert(threw, "throws when key whitespace");
   assert(requireManagementKey({ XAI_MANAGEMENT_API_KEY: "mgk_test" }) === "mgk_test", "returns trimmed key");
+});
+
+group("apiKeyCandidates", () => {
+  assert(JSON.stringify(apiKeyCandidates({})) === "[]", "empty");
+  assert(apiKeyCandidates({ XAI_API_KEY: "a" }).join(",") === "a", "xai only");
+  assert(apiKeyCandidates({ GROK_API_KEY: "g" }).join(",") === "g", "grok only");
+  assert(apiKeyCandidates({ XAI_API_KEY: "a", GROK_API_KEY: "g" }).join(",") === "a,g", "both unique");
+  assert(apiKeyCandidates({ XAI_API_KEY: "same", GROK_API_KEY: "same" }).join(",") === "same", "dedupe");
 });
 
 group("forbidden uploads", () => {

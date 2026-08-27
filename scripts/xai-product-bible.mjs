@@ -77,6 +77,38 @@ export function readApiKey(env = process.env) {
   return String(env.XAI_API_KEY || env.GROK_API_KEY || "").trim();
 }
 
+export function apiKeyCandidates(env = process.env) {
+  const xai = String(env.XAI_API_KEY || "").trim();
+  const grok = String(env.GROK_API_KEY || "").trim();
+  const out = [];
+  if (xai) out.push(xai);
+  if (grok && grok !== xai) out.push(grok);
+  return out;
+}
+
+export async function resolveWorkingApiKey(env = process.env, fetchImpl = globalThis.fetch, log = () => {}) {
+  const keys = apiKeyCandidates(env);
+  if (!keys.length) {
+    const err = new Error(MISSING_API_KEY_MESSAGE);
+    err.code = "MISSING_API_KEY";
+    err.exitCode = 2;
+    throw err;
+  }
+  if (keys.length === 1) return keys[0];
+  for (const key of keys) {
+    try {
+      const res = await fetchImpl(`${SEARCH_API_ORIGIN}/v1/models`, {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      if (res.ok) return key;
+      log(`[xai-product-bible] api key candidate rejected (${res.status}), trying next`);
+    } catch (err) {
+      log(`[xai-product-bible] api key probe failed: ${redactSecrets(err.message || err)}`);
+    }
+  }
+  return keys[keys.length - 1];
+}
+
 export function requireManagementKey(env = process.env) {
   const key = readManagementKey(env);
   if (!key) {
@@ -163,7 +195,16 @@ export function buildCreateCollectionRequest(collectionName = COLLECTION_NAME) {
       collection_name: collectionName,
       collection_description:
         "BMC product bible (LINES.md + SELL-RULES.md). Live prices stay in constants.js / catalog tools.",
-      chunk_configuration: { inject_name_into_chunks: true },
+      index_configuration: { model_name: "grok-embedding-small" },
+      chunk_configuration: {
+        tokens_configuration: {
+          max_chunk_size_tokens: 1024,
+          chunk_overlap_tokens: 200,
+          encoding_name: "o200k_base",
+        },
+        strip_whitespace: true,
+        inject_name_into_chunks: true,
+      },
       field_definitions: [
         { key: "doc_type", required: false },
         { key: "title", inject_into_chunk: true },
@@ -471,13 +512,7 @@ export async function runLive(opts = {}) {
   });
 
   const managementKey = requireManagementKey(env);
-  const apiKey = readApiKey(env);
-  if (!apiKey) {
-    const err = new Error(MISSING_API_KEY_MESSAGE);
-    err.code = "MISSING_API_KEY";
-    err.exitCode = 2;
-    throw err;
-  }
+  const apiKey = await resolveWorkingApiKey(env, fetchImpl, log);
 
   const collectionId = await ensureCollection({ plan, managementKey, fetchImpl });
   log(`[xai-product-bible] collection_id=${collectionId}`);
