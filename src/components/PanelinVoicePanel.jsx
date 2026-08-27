@@ -348,6 +348,9 @@ function RealtimeVoicePanel({
   voiceMode,
   realtimeModel,
   onPhase,
+  appendTurn = null,
+  conversationId = null,
+  messages = [],
 }) {
   const [voiceError, setVoiceError] = useState(null);
   const [transcript, setTranscript] = useState([]);
@@ -456,6 +459,7 @@ function RealtimeVoicePanel({
         setKernelHailing(true);
       }
       setTranscript((prev) => coalesceUserTranscript(prev, text));
+      appendTurn?.({ role: "user", content: text, source: "voice" });
       ingestTurn({
         authHeader,
         speaker: "operator",
@@ -478,8 +482,9 @@ function RealtimeVoicePanel({
         next.push({ role: "assistant", text });
         return next;
       });
+      appendTurn?.({ role: "assistant", content: text, source: "voice" });
     }
-  }, [authHeader]);
+  }, [authHeader, appendTurn]);
 
   const onKernelTranscript = useCallback((evt) => {
     if (evt?.role === "assistant" && evt.delta) {
@@ -531,6 +536,8 @@ function RealtimeVoicePanel({
     kernelRole: "agent",
     playOutput: !agentMuted,
     micMuted,
+    historyMessages: messages,
+    conversationId,
   });
 
   agentUpdateRef.current = updateInstructions;
@@ -1277,6 +1284,8 @@ export default function PanelinVoicePanel({
   aiModel = "",
   realtimeModel = "",
   onPhase,
+  appendTurn = null,
+  conversationId = null,
 }) {
   const PRIMARY = skinTokens?.primary || "#0071e3";
   if (isGrokRealtimeSupported()) {
@@ -1292,6 +1301,9 @@ export default function PanelinVoicePanel({
         voiceMode={voiceMode}
         realtimeModel={realtimeModel}
         onPhase={onPhase}
+        appendTurn={appendTurn}
+        conversationId={conversationId}
+        messages={messages}
       />
     );
   }

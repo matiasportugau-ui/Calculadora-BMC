@@ -33,6 +33,7 @@ import {
   resampleFloat32Linear,
   buildGrokSessionUpdate,
 } from "../utils/grokRealtimeTransport.js";
+import { buildHistoryItemCreates, lastUserText } from "../utils/voiceHistoryBridge.js";
 
 const API_BASE = getCalcApiBase();
 const DEFAULT_REALTIME_BASE = DEFAULT_REALTIME_SDP_BASE;
@@ -66,6 +67,9 @@ export function useVoiceSession({
   playOutput = true,
   /** "voice" → /api/agent/voice/action ; "kernel" → /api/kernel/tool */
   relayKind = "voice",
+  /** Chat turns to seed into a new Realtime session (agent role only). */
+  historyMessages = [],
+  conversationId = null,
 }) {
   const [status, setStatus] = useState("idle"); // idle | connecting | active | error
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -112,6 +116,10 @@ export function useVoiceSession({
   captureMicRef.current = captureMic;
   const micMutedRef = useRef(micMuted);
   micMutedRef.current = micMuted;
+  const historyMessagesRef = useRef(historyMessages);
+  historyMessagesRef.current = historyMessages;
+  const conversationIdRef = useRef(conversationId);
+  conversationIdRef.current = conversationId;
 
   const stopVu = useCallback(() => {
     if (vuRafRef.current) {
@@ -298,6 +306,8 @@ export function useVoiceSession({
             : {
                 action: { type: fnName, payload: args },
                 calcState: calcStateRef.current || {},
+                conversationId: conversationIdRef.current || undefined,
+                userText: lastUserText(historyMessagesRef.current),
               };
           const relayRes = await fetch(relayUrl, {
             method: "POST",
@@ -405,8 +415,15 @@ export function useVoiceSession({
       const boot = sessionBootstrapRef.current;
       if (!boot || typeof transportSend !== "function") return;
       try {
-        const payload = buildGrokSessionUpdate(boot);
+        const payload = buildGrokSessionUpdate({
+          ...boot,
+          resumption: boot.resumption || { enabled: true },
+        });
         transportSend(payload);
+        if (kernelRoleRef.current !== "kernel") {
+          const creates = buildHistoryItemCreates(historyMessagesRef.current);
+          for (const ev of creates) transportSend(ev);
+        }
         if (devMode) {
           console.info(
             `[voice] session.update applied for ${voiceProviderRef.current}`,

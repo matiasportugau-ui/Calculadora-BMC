@@ -278,6 +278,8 @@ export default function PanelinChatPanel({
   aiOptions = null,
   aiOptionsError = null,
   setAiPick = null,
+  appendTurn = null,
+  conversationId = null,
 }) {
   const [isSkinMenuOpen, setIsSkinMenuOpen] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
@@ -1218,6 +1220,8 @@ export default function PanelinChatPanel({
             send={send}
             messages={messages}
             isStreaming={isStreaming}
+            appendTurn={appendTurn}
+            conversationId={conversationId}
             onPhase={setVoicePhase}
             aiProvider={aiProvider}
             aiModel={aiModel}
