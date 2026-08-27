@@ -230,6 +230,8 @@ export default function PanelinCoWorkPage() {
           messages={chat.messages}
           isStreaming={chat.isStreaming}
           send={chat.send}
+          appendTurn={chat.appendTurn}
+          conversationId={chat.conversationId}
           clearSuggestionsForMessage={chat.clearSuggestionsForMessage}
           stop={chat.stop}
           retry={chat.retry}
