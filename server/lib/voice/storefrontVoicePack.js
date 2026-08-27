@@ -352,7 +352,7 @@ export function buildStorefrontVoicePack(options = {}) {
     instructions: STOREFRONT_VOICE_INSTRUCTIONS + extra,
     tools,
     tool_choice: "auto",
-    voice: "ara",
+    voice: "rex",
     language_hint: "es-MX",
     keyterms: [...STOREFRONT_KEYTERMS],
     replace: { ...STOREFRONT_PRONUNCIATION_REPLACE },

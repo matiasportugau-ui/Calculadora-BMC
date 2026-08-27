@@ -122,7 +122,7 @@
   function buildSessionUpdate(boot) {
     const session = {
       instructions: boot.instructions || "",
-      voice: boot.voice || "ara",
+      voice: boot.voice || "rex",
       tool_choice: boot.tool_choice || "auto",
       turn_detection: boot.turn_detection || {
         type: "server_vad",

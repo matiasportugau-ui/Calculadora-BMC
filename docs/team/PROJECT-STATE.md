@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (storefront Panelin ↔ Shopify cart drawer)
+**Última actualización:** 2026-08-27 (storefront Panelin voice = rex)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-08-27 (feat — Storefront Voice shop wiring):** Widget searches Shopify catalog, navigates product/collection, add_to_cart, share links; greeting no longer duplicated. **Carrito** + `add_to_cart` dispatch Horizon `cart:update` and `Shopify.actions.openCart()` (drawer, not a dead `/cart` reload). Custom techos still quote+WA.
+**2026-08-27 (feat — Storefront Voice shop wiring):** Widget searches Shopify catalog, navigates product/collection, add_to_cart, share links; greeting no longer duplicated. **Carrito** + `add_to_cart` dispatch Horizon `cart:update` and `Shopify.actions.openCart()` (drawer, not a dead `/cart` reload). Custom techos still quote+WA. Storefront TTS voice is **rex** (calm male); operator Voice Mode stays **eve**.
 
 **2026-08-27 (feat — Storefront Voice on bmcuruguay.com.uy):** Public Grok S2S widget (Panelin buyer agent). `POST /api/public/voice/session|action`, flag `PUBLIC_STOREFRONT_VOICE=1` on Cloud Run deploy, widget at `/storefront-voice/widget.js`. Lista web only, consent lead `origen=VW`, WhatsApp `59892663245`. Operator Voice Mode unchanged.
 
