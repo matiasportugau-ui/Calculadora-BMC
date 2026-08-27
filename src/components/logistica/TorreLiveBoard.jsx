@@ -17,6 +17,169 @@ function when(iso) {
   return d.toLocaleString("es-UY", { dateStyle: "short", timeStyle: "short" });
 }
 
+const fieldStyle = {
+  width: "100%",
+  fontSize: 13,
+  padding: "6px 8px",
+  marginBottom: 6,
+  borderRadius: 8,
+  border: `1px solid ${T.border || "#e2e8f0"}`,
+  boxSizing: "border-box",
+};
+
+function authHeaders(token) {
+  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+}
+
+/** HITL alta + assign. Magic-link `?t=` stays for unregistered terceros. */
+function ChoferHitlForm({ token, trips = [], onDone }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [choferId, setChoferId] = useState("");
+  const [tripId, setTripId] = useState("");
+  const [directive, setDirective] = useState("");
+  const [msg, setMsg] = useState("");
+  const [proposal, setProposal] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const postJson = async (path, body) => {
+    const res = await fetch(`${getCalcApiBase()}${path}`, {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(body),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j.ok === false) {
+      throw new Error(j.error || res.statusText || "request_failed");
+    }
+    return j;
+  };
+
+  const alta = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setMsg("");
+    try {
+      const j = await postJson("/api/torre/chofer", { name, email, phone, password });
+      setChoferId(j.chofer?.chofer_id || "");
+      setPassword("");
+      setMsg(`Alta HITL · ${j.chofer?.email || j.chofer?.phone_e164 || j.chofer?.chofer_id}`);
+      onDone?.();
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const assign = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setMsg("");
+    try {
+      await postJson("/api/torre/assign", { trip_id: tripId, chofer_id: choferId });
+      setMsg("Viaje asignado · aparece en el inbox del chofer");
+      onDone?.();
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const propose = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setMsg("");
+    setProposal(null);
+    try {
+      const j = await postJson("/api/torre/propose", {
+        type: "draftDriverDirective",
+        payload: { trip_id: tripId || undefined, text: directive },
+      });
+      setProposal(j.proposal || j);
+      setMsg(j.applied ? "aplicado" : "Propuesta HITL — no se envió WhatsApp");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.border || "#e2e8f0"}` }}>
+      <strong style={{ fontSize: 13, display: "block", marginBottom: 6 }}>HITL · chofer</strong>
+      <form onSubmit={alta}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" style={fieldStyle} />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" style={fieldStyle} />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Celular" style={fieldStyle} />
+        <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Contraseña (mín. 6)"
+          type="password"
+          autoComplete="new-password"
+          style={fieldStyle}
+        />
+        <button type="submit" style={btnStyle({ small: true })} disabled={busy || !token || (!email && !phone) || password.length < 6}>
+          Dar de alta
+        </button>
+      </form>
+      <form onSubmit={assign} style={{ marginTop: 10 }}>
+        <div style={{ fontSize: 12, color: T.muted, marginBottom: 4 }}>Asignar viaje → inbox</div>
+        {trips.length ? (
+          <select value={tripId} onChange={(e) => setTripId(e.target.value)} style={fieldStyle}>
+            <option value="">Viaje…</option>
+            {trips.map((t) => (
+              <option key={t.trip_id} value={t.trip_id}>
+                {t.reparto_no || t.trip_id}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            value={tripId}
+            onChange={(e) => setTripId(e.target.value)}
+            placeholder="trip_id"
+            style={fieldStyle}
+          />
+        )}
+        <input
+          value={choferId}
+          onChange={(e) => setChoferId(e.target.value)}
+          placeholder="chofer_id"
+          style={fieldStyle}
+        />
+        <button type="submit" style={btnStyle({ small: true, outline: true })} disabled={busy || !token || !tripId || !choferId}>
+          Asignar
+        </button>
+      </form>
+      <form onSubmit={propose} style={{ marginTop: 10 }}>
+        <div style={{ fontSize: 12, color: T.muted, marginBottom: 4 }}>Torre propone · humano aplica</div>
+        <input
+          value={directive}
+          onChange={(e) => setDirective(e.target.value)}
+          placeholder="Directiva al chofer (no se envía WA)"
+          style={fieldStyle}
+        />
+        <button type="submit" style={btnStyle({ small: true, outline: true })} disabled={busy || !token || !directive.trim()}>
+          Proponer
+        </button>
+      </form>
+      {msg ? (
+        <div style={{ fontSize: 12, marginTop: 8, color: /error|required|failed|Unauthorized/i.test(msg) ? "#b42318" : T.muted }}>
+          {msg}
+        </div>
+      ) : null}
+      {proposal ? (
+        <pre style={{ fontSize: 11, marginTop: 6, whiteSpace: "pre-wrap" }}>{JSON.stringify(proposal, null, 2)}</pre>
+      ) : null}
+    </div>
+  );
+}
+
 export default function TorreLiveBoard() {
   const [trips, setTrips] = useState([]);
   const [err, setErr] = useState("");
@@ -123,11 +286,9 @@ export default function TorreLiveBoard() {
             <div><strong>Estado</strong> {selected.status}</div>
             <div><strong>Paradas</strong> {selected.stop_count}</div>
             <div><strong>Último GPS</strong> {selected.geo ? when(selected.geo.at) : "sin ping"}</div>
-            <div style={{ marginTop: 6, color: T.muted }}>
-              Roster y asignación a usuario de app: Fase 2. IA Torre: Fase 4 (HITL).
-            </div>
           </div>
         ) : null}
+        <ChoferHitlForm token={authToken()} trips={trips} onDone={() => void load()} />
       </div>
       <div style={{ minHeight: 320, borderRadius: 12, overflow: "hidden", border: `1px solid ${T.border || "#e2e8f0"}` }}>
         <TorreLiveMap trips={trips} selectedId={selectedId} onSelect={(t) => setSelectedId(t.trip_id)} />

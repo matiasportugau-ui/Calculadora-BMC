@@ -15,6 +15,7 @@ import {
   buildPublicTrackPayload,
   sanitizeSnapshot,
 } from "../lib/customerTrack.js";
+import { lookupTrackByOrderId } from "../lib/orderIdLookup.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -82,6 +83,20 @@ export default function createCustomerTrackRouter(config, logger) {
         token,
         expires_at: expires.toISOString(),
       });
+    }),
+  );
+
+  router.get(
+    "/track/by-order/:orderId",
+    requireDb,
+    getLimiter,
+    asyncHandler(async (req, res) => {
+      const out = await lookupTrackByOrderId(pool, req.params.orderId);
+      if (!out.ok) {
+        const code = out.error === "not_found" || out.error === "missing_order_id" ? 404 : 503;
+        return res.status(code).json(out);
+      }
+      res.json(out);
     }),
   );
 

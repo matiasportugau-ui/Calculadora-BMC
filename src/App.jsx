@@ -45,6 +45,7 @@ const LandingPage = lazy(() => import("./components/LandingPage.jsx"));
 const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
 const DriverApp = lazy(() => import("./components/driver/DriverApp.jsx"));
 const CustomerTrackPage = lazy(() => import("./components/CustomerTrackPage.jsx"));
+const CustomerTrackLookupPage = lazy(() => import("./components/CustomerTrackLookupPage.jsx"));
 const CustomerTrackIssuePage = lazy(() => import("./components/CustomerTrackIssuePage.jsx"));
 const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSandbox.jsx"));
 const BidPresentation = lazy(() => import("./components/BidPresentation.jsx"));
@@ -482,6 +483,14 @@ export default function App() {
           element={
             <Suspense fallback={suspenseFallback}>
               <DriverApp />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/seguimiento"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <CustomerTrackLookupPage />
             </Suspense>
           }
         />
