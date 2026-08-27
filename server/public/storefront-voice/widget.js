@@ -453,12 +453,16 @@
   function goTo(pathOrUrl) {
     const path = shopUrl(pathOrUrl);
     if (!path) return { ok: false, error: "Link fuera de la tienda BMC" };
-    try {
-      sessionStorage.setItem(SS_RESUME, JSON.stringify({
-        conversationId: state.conversationId,
-        open: true,
-      }));
-    } catch { /* ignore */ }
+    // Only auto-resume voice after in-call navigation. Idle Carrito / picks
+    // must not mint a session or prompt for the mic on the next page.
+    if (state.status !== "idle") {
+      try {
+        sessionStorage.setItem(SS_RESUME, JSON.stringify({
+          conversationId: state.conversationId,
+          open: true,
+        }));
+      } catch { /* ignore */ }
+    }
     location.assign(path);
     return { ok: true, path };
   }
@@ -650,7 +654,15 @@
       state.pendingTools -= 1;
       if (state.pendingTools <= 0) {
         await waitPlayback();
-        if (fnName !== "navigate" && fnName !== "open_url") {
+        // Skip follow-up only when navigate/open_url actually left the page.
+        // Failed same-site checks must still get response.create or the call hangs.
+        let leftPage = false;
+        if (fnName === "navigate" || fnName === "open_url") {
+          try {
+            leftPage = JSON.parse(output)?.ok === true;
+          } catch { /* ignore */ }
+        }
+        if (!leftPage) {
           state.send?.({ type: "response.create" });
         }
       }
