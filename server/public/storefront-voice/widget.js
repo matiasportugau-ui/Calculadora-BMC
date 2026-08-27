@@ -505,21 +505,22 @@
   function openCartUi() {
     root.classList.remove("open");
     try {
-      if (window.Shopify?.actions?.openCart) {
+      // Horizon / OS 2.0 storefront action.
+      if (typeof window.Shopify?.actions?.openCart === "function") {
         Promise.resolve(window.Shopify.actions.openCart()).catch(() => {});
-        return { ok: true, opened: "shopify-action" };
+        return { ok: true, opened: "shopify-action", leftPage: false };
       }
     } catch { /* ignore */ }
     const drawer = document.querySelector("cart-drawer-component");
     if (drawer && typeof drawer.open === "function") {
       try {
         drawer.open();
-        return { ok: true, opened: "drawer" };
+        return { ok: true, opened: "drawer", leftPage: false };
       } catch { /* ignore */ }
     }
     persistResume();
     location.assign("/cart");
-    return { ok: true, path: "/cart" };
+    return { ok: true, path: "/cart", leftPage: true };
   }
 
   async function loadCart() {
@@ -535,11 +536,11 @@
 
   function goTo(pathOrUrl) {
     const path = shopUrl(pathOrUrl);
-    if (!path) return { ok: false, error: "Link fuera de la tienda BMC" };
+    if (!path) return { ok: false, error: "Link fuera de la tienda BMC", leftPage: false };
     if (isCartPath(path)) return loadCart();
     persistResume();
     location.assign(path);
-    return { ok: true, path };
+    return { ok: true, path, leftPage: true };
   }
 
   async function shareLink(url, title) {
@@ -733,10 +734,11 @@
       if (state.pendingTools <= 0) {
         await waitPlayback();
         // Skip follow-up only when navigate/open_url actually left the page.
+        // Drawer cart (/cart) and failed same-site checks must still response.create.
         let leftPage = false;
         if (fnName === "navigate" || fnName === "open_url") {
           try {
-            leftPage = JSON.parse(output)?.ok === true;
+            leftPage = JSON.parse(output)?.leftPage === true;
           } catch { /* ignore */ }
         }
         if (!leftPage) {
