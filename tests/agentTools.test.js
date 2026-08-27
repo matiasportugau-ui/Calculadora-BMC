@@ -732,7 +732,7 @@ await group("wolfboard_actualizar_fila — happy path", async () => {
     assert(url.endsWith("/api/wolfboard/row"), "hits row endpoint");
     assert(init.method === "POST", "POST");
     const body = JSON.parse(init.body);
-    assert(body.rowNum === 5 && body.respuesta === "Texto OK", "rowNum + respuesta in body");
+    assert(body.rowNum === 5 && body.adminRow === 5 && body.respuesta === "Texto OK", "rowNum + adminRow + respuesta in body");
     return { ok: true, rowNum: 5 };
   });
   const { parsed } = await run("wolfboard_actualizar_fila", {

@@ -13,10 +13,12 @@ export const STOREFRONT_AGENT_CONFIG = Object.freeze({
   reasoning: { effort: "high" },
   lead: {
     origen: "VW",
-    required: Object.freeze(["nombre", "telefono", "consulta", "consent"]),
+    required: Object.freeze(["nombre", "telefono"]),
     optional: Object.freeze(["zona", "email"]),
+    gate: "nombre+telefono before chat",
+    startConsulta: "Chat tienda Panelin — inicio",
   },
-  intakeOrder: Object.freeze(["tipo", "medidas", "luz", "zona", "nombre", "telefono", "consent"]),
+  intakeOrder: Object.freeze(["nombre", "telefono", "tipo", "medidas", "luz", "zona"]),
   quote: {
     mode: "insist-only",
     lista: "web",

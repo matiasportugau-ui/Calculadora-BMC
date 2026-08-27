@@ -781,6 +781,7 @@ router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req
     return res.json({
       ok: true,
       pdf_id: pdfId,
+      code,
       // Frozen semantics: pdf_url/gcs_url are the printable HTML (the sheet
       // pipeline fetches pdf_url as text). Real PDF lives in pdf_file_url.
       pdf_url: gcsUrl || pdfUrl,

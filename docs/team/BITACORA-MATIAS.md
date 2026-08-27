@@ -351,4 +351,18 @@ gate:local:   pendiente correr al final de la sesión
 
 ---
 
+## 2026-08-27 N — Panelin Front website agent (SDD + shop widget)
+
+**Contexto:** Spec + ship of public shop Panelin so bmcuruguay.com.uy gets identity gate, VW log, auto-nav, clickable links, Presupuesto PDF card, looping orb.
+
+**Acciones:** SDD v2 `docs/sdd/storefront-voice-agent/SDD.md`. Widget + `publicVoice` identify/log. Isolated branch from main (not Torre T6).
+
+**Verificación:** `node tests/storefrontVoicePack.test.js`. Playwright: auto-nav `/collections/isodec`, `a.bmc-link`, `a.bmc-quote`.
+
+**Próximo paso:** CI → `deploy-calc-api` → confirm Cloud Run `widget.js` on the shop.
+
+**Refs:** docs/sdd/storefront-voice-agent/SDD.md · docs/team/voice/STOREFRONT-VOICE-AGENT.md
+
+---
+
 

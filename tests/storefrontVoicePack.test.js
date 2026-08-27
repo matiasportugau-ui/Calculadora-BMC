@@ -10,6 +10,7 @@ import {
   forceListaWeb,
   isPublicStorefrontTool,
   assertCaptureLead,
+  assertIdentifyLead,
   normalizeStorefrontPhone,
   buildWhatsAppHandoff,
   stripInternalPrices,
@@ -120,7 +121,17 @@ assert.equal(stripped.nested.precio_venta, undefined);
 assert.equal(stripped.nested.flete_usd, undefined);
 assert.equal(stripped.nested.ok, true);
 
+const idFail = assertIdentifyLead({ cliente: "Ana", telefono: "099", consent: true });
+assert.equal(idFail.ok, false);
+const idOk = assertIdentifyLead({ cliente: "Ana", telefono: "099123456", consent: true });
+assert.equal(idOk.ok, true);
+assert.equal(idOk.lead.cliente, "Ana");
+assert.match(idOk.lead.consulta, /Chat tienda Panelin/);
+const namedPack = buildStorefrontVoicePack({ shopperName: "Ana" });
+assert.ok(namedPack.instructions.includes("Already identified as Ana"));
+
 assert.equal(STOREFRONT_AGENT_CONFIG.quote.mode, "insist-only");
+assert.deepEqual([...STOREFRONT_AGENT_CONFIG.lead.required], ["nombre", "telefono"]);
 assert.equal(STOREFRONT_AGENT_CONFIG.quote.pdf, true);
 assert.equal(STOREFRONT_AGENT_CONFIG.quote.shipping, "never");
 assert.equal(STOREFRONT_AGENT_CONFIG.voice, "rex");
@@ -161,11 +172,22 @@ const widget = fs.readFileSync(
 );
 assert.ok(widget.includes("/api/public/voice/session"), "widget mints public session");
 assert.ok(widget.includes("/api/public/voice/chat"), "widget text-to-text");
+assert.ok(widget.includes("/api/public/voice/identify"), "name+phone gate");
+assert.ok(widget.includes("/api/public/voice/log"), "chat log to Admin 2.0");
+assert.ok(widget.includes("¡Dale, chateamos!"), "friendly identify CTA");
+assert.ok(widget.includes("if (!state.identified) return"), "chat locked until identified");
 assert.ok(widget.includes('id="bmc-in"'), "text input");
-assert.ok(widget.includes("panelin.png"), "Panelin avatar");
+assert.ok(widget.includes("panelin.png"), "Panelin poster");
+assert.ok(widget.includes("panelin-lista-loop.mp4"), "calculator Panelin loop");
+assert.ok(widget.includes("<video"), "orb is video");
+assert.ok(widget.includes("¿Necesitás ayuda?"), "help label on bubble");
 assert.ok(
   fs.existsSync(path.join(ROOT, "server/public/storefront-voice/panelin.png")),
-  "avatar file",
+  "avatar poster",
+);
+assert.ok(
+  fs.existsSync(path.join(ROOT, "public/video/panelin-lista-loop.mp4")),
+  "source loop in calculator public/",
 );
 assert.ok(!widget.includes("/api/agent/voice/action"), "widget must not hit operator action");
 assert.ok(widget.includes("force_message"), "greeting via force_message");
@@ -175,6 +197,22 @@ assert.ok(widget.includes("bmc_panelin_resume"), "resume after navigate");
 assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("Do not say hello again"));
 assert.ok(widget.includes("El flete hay que corroborarlo"), "widget hint no-freight");
 assert.ok(widget.includes("generar_pdf"), "widget surfaces PDF url");
+assert.ok(widget.includes("addQuoteCard"), "presupuesto PDF card");
+assert.ok(widget.includes("Presupuesto"), "presupuesto title");
+assert.ok(widget.includes("fillRichText"), "chat links clickable");
+assert.ok(widget.includes("out.navigated"), "auto-open product/collection page");
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("opens that page"), "instructions: navigate to product");
+assert.ok(widget.includes("Contame qué necesitás"), "calculator empty-state copy");
+assert.ok(widget.includes("Quiero cotizar un techo"), "chip techo");
+assert.ok(widget.includes("function openPanel"), "voice default on open");
+assert.ok(widget.includes("startCall()"), "startCall on open");
+assert.ok(widget.includes("sendVoiceText"), "typed text stays on voice thread");
+assert.ok(!widget.includes("Volver a sidebar"), "no operator sidebar chrome");
+assert.ok(!widget.includes(">DEV<") && !widget.includes("Developer mode"), "no DEV");
+assert.ok(!widget.includes("Fijar"), "no Fijar");
+assert.ok(!widget.includes("AgentModelSelector") && !widget.includes("Modelo"), "no model picker");
+assert.ok(!/>Hablar</.test(widget), "no Hablar hero button");
+assert.ok(widget.includes("Activá el mic para hablar"), "mic-denied stays on text");
 
 const chatTools = packToolsToOpenAI(pack.tools);
 assert.ok(chatTools.length >= 8, "openai tools from pack");

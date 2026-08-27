@@ -45,6 +45,8 @@ COPY src/pdf-templates/ ./src/pdf-templates/
 # as a data: URL (puppeteer setContent has no web origin for absolute paths).
 # Only the logo is needed today; the dir is small.
 COPY public/bmc-pdf ./public/bmc-pdf
+# Storefront orb uses the same Panelin loop as the calculator header.
+COPY public/video/panelin-lista-loop.mp4 ./server/public/storefront-voice/panelin-lista-loop.mp4
 
 # server/routes/panelin.js statically imports publishForSku from this script (PIM
 # publish worker); it only depends on server/ + node builtins, so it must ship in
