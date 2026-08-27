@@ -12,6 +12,7 @@
 1. **Speech / console** — `server/lib/voice/panelinBmcInstructions.js` (mirror of console Instructions).
 2. **Shared IAlfred ↔ Panelin lessons** — `brainKB.js` / `gs://bmc-ml-tokens/bmc-brain/lessons.json` when `VITE_FEATURE_BRAIN=true`. Personal `~/.ialfred/` is **not** dumped into voice.
 3. **Tools** — AGENT_TOOLS allowlist (calc + Admin sheets + `generar_pdf`) executed **server-side** via `POST /api/agent/voice/action` (no `PANELI_MCP_SECRET` in the browser). Form functions (`setTecho`, `aplicar_estado_calc`, …) update the calculator UI.
+4. **Product bible** — Grok Voice server-side `file_search` on collection `bmc-product-bible` (`XAI_COLLECTION_BMC_PRODUCT_BIBLE` / default `collection_b214352f-e88a-4b21-8536-9719088a7299`). Rules (AU, lmin/lmax, ISOFRIG vs ISODEC) only. **Prices stay `obtener_precio_panel`.** Sync after LINES/SELL-RULES edits: `doppler run --project=bmc-backend --config=prd -- node scripts/xai-product-bible.mjs`.
 
 ## MCP (console only)
 

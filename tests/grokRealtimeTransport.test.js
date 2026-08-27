@@ -71,13 +71,18 @@ assert.ok(out24.length >= 230 && out24.length <= 250, `resample len=${out24.leng
 // Session update shape
 const upd = buildGrokSessionUpdate({
   instructions: "hola",
-  tools: [{ type: "function", name: "setScenario" }],
+  tools: [
+    { type: "file_search", vector_store_ids: ["collection_abc"], max_num_results: 10 },
+    { type: "function", name: "setScenario" },
+  ],
   tool_choice: "auto",
 });
 assert.equal(upd.type, "session.update");
 assert.equal(upd.session.instructions, "hola");
 assert.equal(upd.session.audio.input.format.rate, GROK_VOICE_SAMPLE_RATE);
-assert.equal(upd.session.tools.length, 1);
+assert.equal(upd.session.tools.length, 2);
+assert.equal(upd.session.tools[0].type, "file_search");
+assert.equal(upd.session.tools[0].vector_store_ids[0], "collection_abc");
 assert.equal(upd.session.turn_detection.type, "server_vad");
 
 const updEs = buildGrokSessionUpdate({
@@ -89,5 +94,16 @@ const updEs = buildGrokSessionUpdate({
 assert.equal(updEs.session.audio.input.transcription.language_hint, "es-ES");
 assert.deepEqual(updEs.session.audio.input.transcription.keyterms, ["IsoDec"]);
 assert.equal(updEs.session.replace.IsoDec, "Iso-dec");
+
+const updStore = buildGrokSessionUpdate({
+  instructions: "hola",
+  turn_detection: { threshold: 0.75, idle_timeout_ms: 20000 },
+  reasoning: { effort: "high" },
+  resumption: { enabled: true },
+});
+assert.equal(updStore.session.turn_detection.threshold, 0.75);
+assert.equal(updStore.session.turn_detection.idle_timeout_ms, 20000);
+assert.equal(updStore.session.reasoning.effort, "high");
+assert.equal(updStore.session.resumption.enabled, true);
 
 console.log("  ✅ all grokRealtimeTransport asserts passed\n");

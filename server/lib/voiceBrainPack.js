@@ -129,6 +129,26 @@ export const VOICE_WEB_SEARCH_TOOL = Object.freeze({
   allowed_domains: ["bmcuruguay.com.uy"],
 });
 
+/** Default xAI collection id for LINES.md + SELL-RULES.md (not a secret). */
+export const DEFAULT_XAI_COLLECTION_BMC_PRODUCT_BIBLE =
+  "collection_b214352f-e88a-4b21-8536-9719088a7299";
+
+/**
+ * Server-side Grok Voice `file_search` over the product bible collection.
+ * xAI executes it; prices still come from obtener_precio_panel.
+ * @param {string} collectionId
+ * @returns {object|null}
+ */
+export function buildVoiceFileSearchTool(collectionId) {
+  const id = String(collectionId || "").trim();
+  if (!id) return null;
+  return Object.freeze({
+    type: "file_search",
+    vector_store_ids: [id],
+    max_num_results: 10,
+  });
+}
+
 export const VOICE_KEYTERMS = Object.freeze([
   "Panelin",
   "IsoDec",
@@ -217,6 +237,10 @@ export function buildVoiceBrainPack(calcState = {}, options = {}) {
   const { devMode = false, leadContext = null } = options;
   const brainStr = config.brainEnabled ? brainBlock(options.userText || "") : "";
   const liveContext = buildVoiceDynamicContext(calcState, { devMode, leadContext });
+  const collectionId = options.collectionId !== undefined
+    ? options.collectionId
+    : (config.xaiCollectionBmcProductBible || DEFAULT_XAI_COLLECTION_BMC_PRODUCT_BIBLE);
+  const fileSearch = buildVoiceFileSearchTool(collectionId);
   const instructions = [
     PANELIN_BMC_VOICE_INSTRUCTIONS,
     brainStr,
@@ -225,6 +249,7 @@ export function buildVoiceBrainPack(calcState = {}, options = {}) {
 
   const tools = [
     VOICE_WEB_SEARCH_TOOL,
+    ...(fileSearch ? [fileSearch] : []),
     ...buildVoiceAgentFunctionTools(),
     ...VOICE_FORM_FUNCTION_TOOLS,
   ];

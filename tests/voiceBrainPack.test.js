@@ -13,6 +13,8 @@ const {
   sanitizeBootstrapForClient,
   VOICE_BRAIN_TOOL_ALLOWLIST,
   agentToolToRealtimeFunction,
+  buildVoiceFileSearchTool,
+  DEFAULT_XAI_COLLECTION_BMC_PRODUCT_BIBLE,
 } = await import("../server/lib/voiceBrainPack.js");
 const { PANELIN_BMC_VOICE_INSTRUCTIONS } = await import(
   "../server/lib/voice/panelinBmcInstructions.js"
@@ -34,6 +36,19 @@ assert.ok(!pack.instructions.includes("end_call_2") || pack.instructions.include
 
 const names = (pack.tools || []).map((t) => t.name || t.type);
 assert.ok(names.includes("web_search"), "web_search attached");
+const fileSearch = (pack.tools || []).find((t) => t.type === "file_search");
+assert.ok(fileSearch, "file_search attached for product bible");
+assert.ok(
+  fileSearch.vector_store_ids.includes(DEFAULT_XAI_COLLECTION_BMC_PRODUCT_BIBLE),
+  "file_search uses bmc-product-bible collection",
+);
+assert.ok(pack.instructions.includes("file_search"), "instructions tell model to use file_search");
+assert.ok(
+  pack.instructions.includes("Never treat those hits as prices")
+    || pack.instructions.includes("NEVER use file_search results as USD"),
+  "instructions keep prices off the collection",
+);
+assert.ok(names.includes("obtener_precio_panel"), "obtener_precio_panel still attached");
 assert.ok(names.includes("calcular_cotizacion"), "calcular_cotizacion attached");
 assert.ok(names.includes("aplicar_estado_calc"), "aplicar_estado_calc attached");
 assert.ok(names.includes("generar_pdf"), "generar_pdf attached");
@@ -74,8 +89,21 @@ assert.throws(
   /leaked a secret/,
 );
 
+assert.equal(buildVoiceFileSearchTool(""), null);
+assert.equal(buildVoiceFileSearchTool("   "), null);
+assert.equal(
+  buildVoiceFileSearchTool("collection_abc").vector_store_ids[0],
+  "collection_abc",
+);
+const noBible = buildVoiceBrainPack({}, { collectionId: "" });
+assert.ok(
+  !(noBible.tools || []).some((t) => t.type === "file_search"),
+  "empty collectionId omits file_search",
+);
+
 assert.ok(PANELIN_BMC_VOICE_INSTRUCTIONS.includes("Role & Persona"));
 assert.ok(PANELIN_BMC_VOICE_INSTRUCTIONS.includes("CRITICAL INSTRUCTIONS"));
+assert.ok(PANELIN_BMC_VOICE_INSTRUCTIONS.includes("file_search"));
 
 const panel = fs.readFileSync(path.join(ROOT, "src/components/PanelinVoicePanel.jsx"), "utf8");
 assert.ok(panel.includes("useVoiceSession"), "floating Voice Mode uses useVoiceSession");

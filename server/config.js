@@ -139,6 +139,11 @@ export const config = {
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.5-flash", // 2.0-flash retired by Google 2026-06 (404 "no longer available"); 2.5-flash is the live model. Used by the SSE chat streaming path (agentChat.js) + visionExtract.
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
+  // xAI Collections — product bible (LINES.md + SELL-RULES.md) for Grok Voice file_search.
+  // Not a secret. Empty string disables the tool.
+  xaiCollectionBmcProductBible:
+    process.env.XAI_COLLECTION_BMC_PRODUCT_BIBLE ||
+    "collection_b214352f-e88a-4b21-8536-9719088a7299",
   // OpenRouter — terminal open-source-model fallback. Aggregates open-weights
   // models (Llama, Mistral, DeepSeek, Qwen) behind an OpenAI-compatible API, with
   // free tiers. Tried LAST so the seam never runs out of AI even if all four
