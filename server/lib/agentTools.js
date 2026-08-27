@@ -2329,7 +2329,12 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       }
       const body = { rowNum, adminRow: rowNum };
       if (input?.respuesta != null) body.respuesta = String(input.respuesta);
-      if (input?.linkDrive != null) body.linkDrive = String(input.linkDrive);
+      // Wolfboard POST /row reads `link` (col K); accept linkDrive as alias from tools.
+      const linkVal = input?.link ?? input?.linkDrive;
+      if (linkVal != null) {
+        body.link = String(linkVal);
+        body.linkDrive = String(linkVal);
+      }
       if (input?.estado != null) body.estado = String(input.estado);
       if (input?.replaySnapshotUrl != null) body.replaySnapshotUrl = String(input.replaySnapshotUrl);
       return await wolfboardForward("/api/wolfboard/row", { method: "POST", body }, name);

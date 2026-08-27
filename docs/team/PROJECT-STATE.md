@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — storefront Admin row ownership + PDF link):** Public `/api/public/voice/log` and `capture_lead` row updates require HMAC `rowProof` from `/identify` (binds adminRow+phone). Stops arbitrary Admin 2.0 col J / CRM AF overwrites with guessed row numbers. `wolfboard_actualizar_fila` now sends `link` (not only `linkDrive`) so quote PDFs land in Admin col K.
+
 **2026-08-27 (feat — Panelin Front website agent SDD v2 + shop widget):** As-built SDD `docs/sdd/storefront-voice-agent/SDD.md` v2. Identity gate (name+phone) → Admin 2.0 `origen=VW` + col J transcript. Calculator-body float, looping `panelin-lista-loop.mp4` orb + «¿Necesitás ayuda?». Auto-nav to product/collection. Clickable chat links. **Presupuesto {n}** PDF card. Lista web, never flete. Public brain ≠ operator.
 
 **2026-08-27 (fix — Torre T6 chofer login reaches BMC Driver):** HITL alta+assign now mints `driver_sessions` and `GET /api/driver/trips` accepts `chofer_sessions` (same entry BMC Driver already calls). PWA login posts `POST /api/torre/chofer/login` with email/phone + password; magic-link `?t=` still works for terceros. Test: `loginChofer` bearer lists the assigned `trip_id` via `listTripsForDriverAuth`.

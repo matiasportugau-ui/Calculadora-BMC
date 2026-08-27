@@ -475,7 +475,9 @@ export function createWolfboardRouter(config) {
   router.post("/row", requireWolfboardWrite, async (req, res) => {
     logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
-    const { adminRow, respuesta, link, aprobado, replaySnapshotUrl } = req.body || {};
+    const { adminRow, respuesta, aprobado, replaySnapshotUrl } = req.body || {};
+    // Tools historically send linkDrive; row-create already accepts both.
+    const link = req.body?.link ?? req.body?.linkDrive;
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
 
     const adminSheetId = config.wolfbAdminSheetId;
@@ -493,7 +495,7 @@ export function createWolfboardRouter(config) {
     // a formula. Operator-supplied respuesta/link and the M-column snapshot
     // URL are all attacker-controllable in principle.
     const safeRespuesta = respuesta !== undefined ? sanitizeCellValue(respuesta) : undefined;
-    const safeLink = link !== undefined ? sanitizeCellValue(link) : undefined;
+    const safeLink = link !== undefined && link !== null ? sanitizeCellValue(link) : undefined;
     const safeReplay = replaySnapshotUrl !== undefined ? sanitizeCellValue(replaySnapshotUrl) : undefined;
 
     const adminUpdates = [];

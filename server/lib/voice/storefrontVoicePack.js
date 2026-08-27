@@ -2,6 +2,7 @@
  * Public storefront Voice Brain Pack (bmcuruguay.com.uy).
  * Customer-safe: lista web + lead capture + WhatsApp handoff. No operator tools.
  */
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { AGENT_TOOLS } from "../agentTools.js";
 import { agentToolToRealtimeFunction, sanitizeBootstrapForClient } from "../voiceBrainPack.js";
 import {
@@ -281,6 +282,50 @@ export function normalizeStorefrontPhone(raw) {
     return digits;
   }
   return digits;
+}
+
+/** Shop session binding Admin row ↔ phone (public /log + capture_lead update). */
+export const STOREFRONT_ROW_PROOF_TTL_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * HMAC proof so public callers cannot overwrite arbitrary Admin 2.0 rows.
+ * Format: `{adminRow}.{phone}.{expMs}.{sig}` (sig = HMAC-SHA256 base64url of the first three fields).
+ */
+export function mintStorefrontRowProof(adminRow, telefono, secret, now = Date.now()) {
+  const row = Number(adminRow);
+  const phone = normalizeStorefrontPhone(telefono);
+  if (!Number.isFinite(row) || row < 2 || phone.length < 8 || !secret) return null;
+  const exp = now + STOREFRONT_ROW_PROOF_TTL_MS;
+  const payload = `${row}.${phone}.${exp}`;
+  const sig = createHmac("sha256", String(secret)).update(payload).digest("base64url");
+  return `${payload}.${sig}`;
+}
+
+export function verifyStorefrontRowProof(proof, adminRow, telefono, secret, now = Date.now()) {
+  if (!secret || !proof) return false;
+  const raw = String(proof);
+  const lastDot = raw.lastIndexOf(".");
+  if (lastDot <= 0) return false;
+  const payload = raw.slice(0, lastDot);
+  const sig = raw.slice(lastDot + 1);
+  const parts = payload.split(".");
+  if (parts.length !== 3) return false;
+  const [rowStr, phoneStr, expStr] = parts;
+  const row = Number(rowStr);
+  const exp = Number(expStr);
+  const phone = normalizeStorefrontPhone(telefono);
+  if (!Number.isFinite(row) || row !== Number(adminRow)) return false;
+  if (phoneStr !== phone) return false;
+  if (!Number.isFinite(exp) || now > exp) return false;
+  const expected = createHmac("sha256", String(secret)).update(payload).digest("base64url");
+  try {
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 /**

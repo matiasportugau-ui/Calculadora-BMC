@@ -743,6 +743,21 @@ await group("wolfboard_actualizar_fila — happy path", async () => {
   assert(parsed.ok === true, "ok true");
 });
 
+await group("wolfboard_actualizar_fila — linkDrive maps to link", async () => {
+  setFetch(async (url, init) => {
+    const body = JSON.parse(init.body);
+    assert(body.link === "https://example.com/q.pdf", "link set for wolfboard /row");
+    assert(body.linkDrive === "https://example.com/q.pdf", "linkDrive kept for callers");
+    return { ok: true, adminRow: 9 };
+  });
+  const { parsed } = await run("wolfboard_actualizar_fila", {
+    rowNum: 9,
+    linkDrive: "https://example.com/q.pdf",
+    user_confirmed: true,
+  });
+  assert(parsed.ok === true, "ok true with linkDrive");
+});
+
 await group("wolfboard_actualizar_fila — invalid rowNum", async () => {
   const { parsed } = await run("wolfboard_actualizar_fila", { rowNum: 1, user_confirmed: true });
   assert(parsed.ok === false, "ok false with rowNum<2");

@@ -28,6 +28,8 @@ import {
   stripInternalPrices,
   isStorefrontShopTool,
   normalizeStorefrontPhone,
+  mintStorefrontRowProof,
+  verifyStorefrontRowProof,
 } from "../lib/voice/storefrontVoicePack.js";
 import { STOREFRONT_FLETE_NOTE } from "../lib/voice/storefrontAgentConfig.js";
 import { runStorefrontTextTurn } from "../lib/voice/storefrontChat.js";
@@ -35,6 +37,30 @@ import { runStorefrontTextTurn } from "../lib/voice/storefrontChat.js";
 const SESSION_WINDOW_MS = 5 * 60 * 1000;
 const SESSION_MAX = config.appEnv === "development" ? 30 : 3;
 const ACTION_MAX = 120;
+
+/** Signing key for Admin row ownership proofs (public storefront). */
+function storefrontRowProofSecret() {
+  return config.apiAuthToken || config.identityJwtSecret || "";
+}
+
+/**
+ * Bind capture_lead updates to the shopper's identified Admin row.
+ * Never trust model-supplied adminRow alone — require HMAC rowProof from /identify.
+ */
+function applyLeadOwnership(payload, leadMeta = {}) {
+  const out = { ...(payload && typeof payload === "object" ? payload : {}) };
+  delete out.adminRow;
+  delete out.rowProof;
+  const row = Number(leadMeta.adminRow);
+  const proof = leadMeta.rowProof != null ? String(leadMeta.rowProof) : "";
+  if (Number.isFinite(row) && row >= 2 && proof) {
+    out.adminRow = row;
+    out.rowProof = proof;
+    if (leadMeta.telefono) out.telefono = leadMeta.telefono;
+    if (leadMeta.cliente) out.cliente = leadMeta.cliente;
+  }
+  return out;
+}
 
 function clientIp(req) {
   return (
@@ -177,6 +203,19 @@ export default function createPublicVoiceRouter() {
       const checked = assertCaptureLead(payload);
       if (!checked.ok) return JSON.stringify({ ok: false, error: checked.error });
       const adminRow = Number(payload.adminRow);
+      const wantsUpdate = Number.isFinite(adminRow) && adminRow >= 2;
+      if (wantsUpdate) {
+        const secret = storefrontRowProofSecret();
+        if (
+          !secret ||
+          !verifyStorefrontRowProof(payload.rowProof, adminRow, checked.lead.telefono, secret)
+        ) {
+          return JSON.stringify({
+            ok: false,
+            error: "Sesión de fila inválida. Volvé a identificarte para actualizar Admin 2.0.",
+          });
+        }
+      }
       const notasBits = [
         "origen voz web (VW)",
         pageUrl ? `página ${pageUrl}` : "",
@@ -185,7 +224,7 @@ export default function createPublicVoiceRouter() {
         STOREFRONT_FLETE_NOTE,
       ].filter(Boolean);
       try {
-        if (Number.isFinite(adminRow) && adminRow >= 2) {
+        if (wantsUpdate) {
           const raw = await executeTool(
             "wolfboard_actualizar_fila",
             {
@@ -256,14 +295,14 @@ export default function createPublicVoiceRouter() {
       return res.status(400).json({ ok: false, error: "action object required" });
     }
     const type = String(action.type || action.name || "");
-    const payload = action.payload && typeof action.payload === "object" ? action.payload : {};
+    let payload = action.payload && typeof action.payload === "object" ? action.payload : {};
     if (!isPublicStorefrontTool(type)) {
       return res.status(400).json({ ok: false, error: `Tool no permitida: ${type || "(vacío)"}` });
     }
     const pageUrl = sanitizePageUrl(req.body?.pageUrl);
     const leadMeta = req.body?.lead && typeof req.body.lead === "object" ? req.body.lead : {};
-    if (type === "capture_lead" && Number(leadMeta.adminRow) >= 2) {
-      payload.adminRow = Number(leadMeta.adminRow);
+    if (type === "capture_lead") {
+      payload = applyLeadOwnership(payload, leadMeta);
     }
     const result = await runPublicStorefrontTool(type, payload, pageUrl, req.log);
     return res.json({ ok: true, kind: "tool", result });
@@ -293,11 +332,21 @@ export default function createPublicVoiceRouter() {
     if (parsed.ok === false) {
       return res.status(502).json({ ok: false, error: parsed.error || "No se pudo guardar en Admin 2.0." });
     }
+    const adminRow = Number(parsed.adminRow);
+    const secret = storefrontRowProofSecret();
+    const rowProof =
+      Number.isFinite(adminRow) && adminRow >= 2 && secret
+        ? mintStorefrontRowProof(adminRow, checked.lead.telefono, secret)
+        : null;
+    if (Number.isFinite(adminRow) && adminRow >= 2 && !rowProof) {
+      req.log?.warn?.("storefront identify: missing API_AUTH_TOKEN/IDENTITY_JWT_SECRET for rowProof");
+    }
     recordVoiceEvent({ kind: "storefront_identify", surface: "storefront", detail: "gate" });
     return res.json({
       ok: true,
-      adminRow: parsed.adminRow || parsed.id || null,
+      adminRow: Number.isFinite(adminRow) && adminRow >= 2 ? adminRow : null,
       id: parsed.id || null,
+      rowProof,
       cliente: checked.lead.cliente,
       telefono: checked.lead.telefono,
     });
@@ -307,11 +356,19 @@ export default function createPublicVoiceRouter() {
     const adminRow = Number(req.body?.adminRow);
     const telefono = normalizeStorefrontPhone(req.body?.telefono);
     const transcript = String(req.body?.transcript || "").trim().slice(0, 8000);
+    const rowProof = req.body?.rowProof;
     if (!Number.isFinite(adminRow) || adminRow < 2) {
       return res.status(400).json({ ok: false, error: "adminRow requerido." });
     }
     if (telefono.length < 8) {
       return res.status(400).json({ ok: false, error: "Teléfono requerido para loguear el chat." });
+    }
+    const secret = storefrontRowProofSecret();
+    if (!secret || !verifyStorefrontRowProof(rowProof, adminRow, telefono, secret)) {
+      return res.status(403).json({
+        ok: false,
+        error: "Sesión de fila inválida. Volvé a identificarte para loguear el chat.",
+      });
     }
     if (!transcript) return res.json({ ok: true, skipped: true });
     try {
@@ -352,6 +409,7 @@ export default function createPublicVoiceRouter() {
     const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
     const shopperName = String(req.body?.shopperName || req.body?.nombre || "").trim().slice(0, 80);
     const pack = buildStorefrontVoicePack({ pageUrl, shopperName });
+    const leadMeta = req.body?.lead && typeof req.body.lead === "object" ? req.body.lead : {};
     try {
       const out = await runStorefrontTextTurn({
         message: req.body?.message,
@@ -359,7 +417,11 @@ export default function createPublicVoiceRouter() {
         pageUrl,
         toolResults: req.body?.tool_results,
         pack,
-        runServerTool: (name, args) => runPublicStorefrontTool(name, args || {}, pageUrl, req.log),
+        runServerTool: (name, args) => {
+          const payload =
+            name === "capture_lead" ? applyLeadOwnership(args || {}, leadMeta) : args || {};
+          return runPublicStorefrontTool(name, payload, pageUrl, req.log);
+        },
       });
       recordVoiceEvent({ kind: "storefront_chat", surface: "storefront", detail: "text" });
       return res.json(out);
