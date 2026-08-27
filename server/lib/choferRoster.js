@@ -5,21 +5,32 @@ import crypto from "node:crypto";
 import { ensureTransportistaSchema } from "./transportistaSchema.js";
 import { generateOpaqueToken, sha256Hex } from "./driverToken.js";
 
+/** Reject oversized passwords before scrypt — login is unauthenticated. */
+export const CHOFER_PASSWORD_MIN = 6;
+export const CHOFER_PASSWORD_MAX = 128;
+
 export function digitsPhone(raw) {
   const d = String(raw || "").replace(/\D/g, "");
   return d.length >= 8 ? d : "";
 }
 
 export function hashChoferPassword(plain) {
+  const pw = String(plain || "");
+  if (pw.length > CHOFER_PASSWORD_MAX) {
+    throw new Error("password_too_long");
+  }
   const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.scryptSync(String(plain || ""), salt, 32).toString("hex");
+  const hash = crypto.scryptSync(pw, salt, 32).toString("hex");
   return `${salt}:${hash}`;
 }
 
 export function verifyChoferPassword(plain, stored) {
+  const pw = String(plain || "");
+  // Cap before scrypt so unauthenticated /torre/chofer/login cannot stall the event loop.
+  if (pw.length > CHOFER_PASSWORD_MAX) return false;
   const [salt, hash] = String(stored || "").split(":");
   if (!salt || !hash) return false;
-  const check = crypto.scryptSync(String(plain || ""), salt, 32).toString("hex");
+  const check = crypto.scryptSync(pw, salt, 32).toString("hex");
   if (hash.length !== check.length) return false;
   return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(check, "hex"));
 }
@@ -27,7 +38,8 @@ export function verifyChoferPassword(plain, stored) {
 export async function registerChofer(pool, { name, email, phone, password } = {}) {
   await ensureTransportistaSchema(pool);
   const pw = String(password || "");
-  if (pw.length < 6) return { ok: false, error: "password_too_short" };
+  if (pw.length < CHOFER_PASSWORD_MIN) return { ok: false, error: "password_too_short" };
+  if (pw.length > CHOFER_PASSWORD_MAX) return { ok: false, error: "password_too_long" };
   const phone_e164 = digitsPhone(phone);
   const mail = String(email || "").trim().toLowerCase() || null;
   if (!mail && !phone_e164) return { ok: false, error: "email_or_phone_required" };
@@ -95,7 +107,7 @@ export async function assignTripToChofer(pool, { tripId, choferId } = {}) {
   if (!tripId || !choferId) return { ok: false, error: "trip_and_chofer_required" };
   const { rows: ch } = await pool.query(`select * from chofer_roster where chofer_id = $1`, [choferId]);
   if (!ch[0]) return { ok: false, error: "chofer_not_found" };
-  await pool.query(
+  const updated = await pool.query(
     `update trips
         set assigned_driver_id = $2::uuid,
             assigned_phone_e164 = coalesce(assigned_phone_e164, $3),
@@ -104,6 +116,7 @@ export async function assignTripToChofer(pool, { tripId, choferId } = {}) {
       where trip_id = $1::uuid`,
     [tripId, choferId, ch[0].phone_e164 || null],
   );
+  if (!updated.rowCount) return { ok: false, error: "trip_not_found" };
   return { ok: true, trip_id: tripId, chofer_id: choferId };
 }
 
