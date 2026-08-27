@@ -90,9 +90,11 @@ export default function RouteLeafletMap({
           autoPan: canDrag,
         }).addTo(group);
         const moved = leg.geo?.isManuallyAdjusted || leg.geo?.source === "manual";
-        m.bindTooltip(`${i + 1}. ${leg.label || ""}${moved ? " · pin aprox. (movido)" : ""}`, {
-          direction: "top",
-        });
+        // Leaflet treats string tooltips as HTML (innerHTML). Customer names from
+        // Ventas/CRM must stay text-only — pass a text node, never interpolate HTML.
+        const tip = document.createElement("span");
+        tip.textContent = `${i + 1}. ${leg.label || ""}${moved ? " · pin aprox. (movido)" : ""}`;
+        m.bindTooltip(tip, { direction: "top" });
         m.on("click", () => onSelect?.(leg, i));
         if (canDrag) {
           m.on("dragend", () => {

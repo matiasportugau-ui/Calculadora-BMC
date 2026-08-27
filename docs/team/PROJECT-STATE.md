@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — logística critical: driver URL + XSS + agent window):** On `#1120` tip: (1) `Asignar a chofer` after `driver-link` retry used stale React state and WhatsApp'd a tokenless `/conductor`; now returns/uses fetched `driver_url` via `resolveDriverUrlForAssign`. (2) Leaflet `bindTooltip` used HTML for CRM client names — text node only. (3) `?agentWindow=1` always remounted `faceOnly` avatar; now mounts full El Transportador chat.
+
 **2026-08-27 (feat — Logística mesa port + SDD Final v1.1):** Ops `/logistica` on `main` now includes Leaflet/OSRM (`POST /api/envios/route`), Tetris load (`tetrisPack.js` + Cargar Tetris), Asignar a chofer (`driverAssign.js` HITL WA + `driver_url`), El Transportador + Grok Voice `surface=logistica`. SDD kit `docs/sdd/bmc-logistica` v1.1 SCORECARD 94. Worktree mesa-depo is lab-only.
 
 **2026-08-26 (feat — Productos sueltos = catálogo Agregar producto):** Presupuesto libre / productos manuales usa el mismo picker del drawer (búsqueda, chips, fotos, qty, Agregar) en vez de las listas texto de Perfilería/Tornillería/Selladores. Paneles por medidas y Producto fuera de lista siguen. `ProductCatalogPicker` extraído de `ProductQuickAddDrawer`.
