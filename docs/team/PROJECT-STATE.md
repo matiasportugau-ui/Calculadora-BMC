@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (fix — Logística build after #1120 merge: originLabelForStop + id coerce):** Merged `#1120` still broke Vite prod: `VentasColaCard` imports `originLabelForStop` (never exported), `pickupIdForStop` used `singlePickup === true` (default levante ignored on un-normalized wizard), and `orderStopsByIds` failed number vs string ids so `applyTripPlan` silently kept wrong order. Restored helpers + coerce; `/logistica` builds again.
+
 **2026-08-27 (feat — Logística mesa port + SDD Final v1.1):** Ops `/logistica` on `main` now includes Leaflet/OSRM (`POST /api/envios/route`), Tetris load (`tetrisPack.js` + Cargar Tetris), Asignar a chofer (`driverAssign.js` HITL WA + `driver_url`), El Transportador + Grok Voice `surface=logistica`. SDD kit `docs/sdd/bmc-logistica` v1.1 SCORECARD 94. Worktree mesa-depo is lab-only.
 
 **2026-08-26 (feat — Productos sueltos = catálogo Agregar producto):** Presupuesto libre / productos manuales usa el mismo picker del drawer (búsqueda, chips, fotos, qty, Agregar) en vez de las listas texto de Perfilería/Tornillería/Selladores. Paneles por medidas y Producto fuera de lista siguen. `ProductCatalogPicker` extraído de `ProductQuickAddDrawer`.
