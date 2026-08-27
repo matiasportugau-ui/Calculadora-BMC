@@ -52,6 +52,14 @@ await ensureTransportistaSchema(pool);
   assert.equal(inbox.trips.length, 1);
   assert.equal(inbox.trips[0].trip_id, tripId);
   console.log("  ✓ assign confirmed trip → chofer inbox");
+
+  const missing = await assignTripToChofer(pool, {
+    tripId: "99999999-9999-4999-8999-999999999999",
+    choferId: reg.chofer.chofer_id,
+  });
+  assert.equal(missing.ok, false);
+  assert.equal(missing.error, "trip_not_found");
+  console.log("  ✓ assign missing trip fails closed");
 }
 
 {

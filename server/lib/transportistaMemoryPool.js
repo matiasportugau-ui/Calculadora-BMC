@@ -106,16 +106,19 @@ export function createTransportistaMemoryPool() {
           const tripId = params[0];
           const driverId = params[1];
           const phone = params[2];
+          let matched = 0;
           for (const r of list) {
             if (String(r.trip_id) === String(tripId)) {
               r.assigned_driver_id = driverId;
               if (phone !== undefined) r.assigned_phone_e164 = phone;
               r.status = r.status === "draft" ? "assigned" : r.status;
               r.updated_at = new Date().toISOString();
+              matched += 1;
             }
           }
+          return { rows: [], rowCount: matched };
         }
-        return { rows: [], rowCount: list.length };
+        return { rows: [], rowCount: 0 };
       }
 
       if (low.startsWith("select")) {

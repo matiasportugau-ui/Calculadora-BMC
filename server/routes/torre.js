@@ -62,26 +62,10 @@ export default function createTorreRouter(config, logger) {
     }),
   );
 
-  router.get(
-    "/torre/health",
-    asyncHandler(async (_req, res) => {
-      if (!pool) {
-        return res.json({ ok: true, module: "torre", db: false });
-      }
-      try {
-        await ensureTransportistaSchema(pool);
-        res.json({ ok: true, module: "torre", db: true, schema: true });
-      } catch (err) {
-        res.status(503).json({
-          ok: false,
-          module: "torre",
-          db: true,
-          schema: false,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }),
-  );
+  // Public probe only — never run DDL here (ensure runs on authenticated /torre/live).
+  router.get("/torre/health", (_req, res) => {
+    res.json({ ok: true, module: "torre", db: Boolean(pool) });
+  });
 
   router.post(
     "/torre/chofer",
