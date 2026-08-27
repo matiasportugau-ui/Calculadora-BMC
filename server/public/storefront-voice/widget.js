@@ -488,7 +488,7 @@
   }
 
   function persistResume() {
-    if (!state.conversationId) return;
+    if (!state.conversationId || state.status === "idle") return;
     try {
       sessionStorage.setItem(SS_RESUME, JSON.stringify({
         conversationId: state.conversationId,
@@ -732,7 +732,14 @@
       state.pendingTools -= 1;
       if (state.pendingTools <= 0) {
         await waitPlayback();
-        if (fnName !== "navigate" && fnName !== "open_url") {
+        // Skip follow-up only when navigate/open_url actually left the page.
+        let leftPage = false;
+        if (fnName === "navigate" || fnName === "open_url") {
+          try {
+            leftPage = JSON.parse(output)?.ok === true;
+          } catch { /* ignore */ }
+        }
+        if (!leftPage) {
           state.send?.({ type: "response.create" });
         }
       }
