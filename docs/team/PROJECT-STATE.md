@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-27 (feat — Storefront Voice on bmcuruguay.com.uy):** Public Grok S2S widget (Panelin buyer agent). `POST /api/public/voice/session|action`, flag `PUBLIC_STOREFRONT_VOICE=1` on Cloud Run deploy, widget at `/storefront-voice/widget.js`. Lista web only, consent lead `origen=VW`, WhatsApp `59892663245`. Operator Voice Mode unchanged.
+
 **2026-08-27 (feat — Torre de Control Fase 1):** Live ops tab `/logistica?vista=torre` (alias `/torre`). `GET /api/torre/live` projects open trips + last GPS (phone tail only). FSM now accepts `location_ping` + `presence`. PWA stops `watchPosition` when trip is `closed`. Spec `docs/sdd/bmc-control-tower/`. Roster/AI/Order-ID still TARGET T5–T8. Tests `torreLiveView.test.js`.
 
 **2026-08-27 (feat — Logística mesa port + SDD Final v1.1):** Ops `/logistica` on `main` now includes Leaflet/OSRM (`POST /api/envios/route`), Tetris load (`tetrisPack.js` + Cargar Tetris), Asignar a chofer (`driverAssign.js` HITL WA + `driver_url`), El Transportador + Grok Voice `surface=logistica`. SDD kit `docs/sdd/bmc-logistica` v1.1 SCORECARD 94. Worktree mesa-depo is lab-only.

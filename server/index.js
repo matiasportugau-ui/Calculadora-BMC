@@ -22,6 +22,7 @@ import agentChatRouter from "./routes/agentChat.js";
 import agentTrainingRouter from "./routes/agentTraining.js";
 import agentConversationsRouter from "./routes/agentConversations.js";
 import agentVoiceRouter from "./routes/agentVoice.js";
+import createPublicVoiceRouter from "./routes/publicVoice.js";
 import createProviderStatusRouter from "./routes/providerStatus.js";
 import agentTranscribeRouter from "./routes/agentTranscribe.js";
 import agentFeedbackRouter from "./routes/agentFeedback.js";
@@ -1064,6 +1065,7 @@ app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);
 app.use("/api", agentFeedbackRouter);
 app.use("/api", agentVoiceRouter);
+app.use("/api/public/voice", createPublicVoiceRouter());
 app.use("/api", createProviderStatusRouter());
 app.use("/api", agentTranscribeRouter);
 app.use("/api", aiAnalyticsRouter);
@@ -1176,6 +1178,18 @@ app.use("/chat", createBmcChatRouter(config, logger));
 const dashboardDir = path.join(__dirname, "../docs/bmc-dashboard-modernization/dashboard");
 const hasFinanzasDashboard = fs.existsSync(path.join(dashboardDir, "index.html"));
 const isDev = config.appEnv === "development";
+
+const storefrontVoiceDir = path.join(__dirname, "public/storefront-voice");
+app.use(
+  "/storefront-voice",
+  (req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    if (isDev) res.setHeader("Cache-Control", "no-store");
+    next();
+  },
+  express.static(storefrontVoiceDir, { index: "demo.html" }),
+);
 if (isDev) {
   app.get("/api/dev/dashboard-mtime", (req, res) => {
     try {

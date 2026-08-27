@@ -296,23 +296,48 @@ export const config = {
   cotizarPdfRenderEnabled: process.env.COTIZAR_PDF_RENDER !== "0",
   /** Drive folder for uploaded quote HTML files (server/lib/driveUpload.js) */
   driveQuoteFolderId: process.env.DRIVE_QUOTE_FOLDER_ID || "",
+  /** Shopify storefront — always appended to CORS so the public voice widget can mint. */
+  storefrontVoiceOrigins: [
+    ...(
+      process.env.STOREFRONT_VOICE_ORIGINS
+        ? process.env.STOREFRONT_VOICE_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
+        : [
+            "https://bmcuruguay.com.uy",
+            "https://www.bmcuruguay.com.uy",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+          ]
+    ),
+    String(publicBaseUrl || "").replace(/\/$/, ""),
+    String(frontendBaseUrl || "").replace(/\/$/, ""),
+  ].filter((v, i, a) => v && a.indexOf(v) === i),
+  /** Off in production unless PUBLIC_STOREFRONT_VOICE=1. On by default in development. */
+  storefrontVoiceEnabled: bool(process.env.PUBLIC_STOREFRONT_VOICE, appEnv === "development"),
+  /** Store WhatsApp (same as bmcuruguay.com.uy float). Digits only. */
+  storefrontWaNumber: String(process.env.STOREFRONT_WA_NUMBER || "59892663245").replace(/[^0-9]/g, "") || "59892663245",
   /** Allowed CORS origins — comma-separated. Defaults to Vercel prod + local dev. */
-  corsOrigins: (
-    process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
-      : [
-          "https://calculadora-bmc.vercel.app",
-          "https://panelin-workspace.vercel.app",
-          "http://localhost:5173",
-          "http://127.0.0.1:5173",
-          "http://localhost:3001",
-          "http://127.0.0.1:3001",
-          "http://localhost:3000", // panelin-workspace Next UI (ADR-008)
-          "http://localhost:3002", // panelin-workspace when :3000 taken
-          "http://localhost:3100", // panelin-workspace e2e / alternate Next port
-          "http://127.0.0.1:3100",
-        ]
-  ),
+  corsOrigins: [
+    ...(
+      process.env.CORS_ORIGIN
+        ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
+        : [
+            "https://calculadora-bmc.vercel.app",
+            "https://panelin-workspace.vercel.app",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+            "http://localhost:3000", // panelin-workspace Next UI (ADR-008)
+            "http://localhost:3002", // panelin-workspace when :3000 taken
+            "http://localhost:3100", // panelin-workspace e2e / alternate Next port
+            "http://127.0.0.1:3100",
+          ]
+    ),
+    "https://bmcuruguay.com.uy",
+    "https://www.bmcuruguay.com.uy",
+  ].filter((v, i, a) => v && a.indexOf(v) === i),
   /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */
   identityJwtSecret: process.env.IDENTITY_JWT_SECRET || "",
   identityCookieDomain: process.env.IDENTITY_COOKIE_DOMAIN || "",
