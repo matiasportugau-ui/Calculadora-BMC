@@ -488,7 +488,9 @@
   }
 
   function persistResume() {
-    if (!state.conversationId) return;
+    // Only auto-resume voice after in-call navigation. Idle Carrito / picks
+    // must not mint a session or prompt for the mic on the next page.
+    if (!state.conversationId || state.status === "idle") return;
     try {
       sessionStorage.setItem(SS_RESUME, JSON.stringify({
         conversationId: state.conversationId,
@@ -505,21 +507,22 @@
   function openCartUi() {
     root.classList.remove("open");
     try {
-      if (window.Shopify?.actions?.openCart) {
+      // Standard storefront action (Horizon / OS 2.0). Guard must match the call.
+      if (typeof window.Shopify?.actions?.openCart === "function") {
         Promise.resolve(window.Shopify.actions.openCart()).catch(() => {});
-        return { ok: true, opened: "shopify-action" };
+        return { ok: true, opened: "shopify-action", leftPage: false };
       }
     } catch { /* ignore */ }
     const drawer = document.querySelector("cart-drawer-component");
     if (drawer && typeof drawer.open === "function") {
       try {
         drawer.open();
-        return { ok: true, opened: "drawer" };
+        return { ok: true, opened: "drawer", leftPage: false };
       } catch { /* ignore */ }
     }
     persistResume();
     location.assign("/cart");
-    return { ok: true, path: "/cart" };
+    return { ok: true, path: "/cart", leftPage: true };
   }
 
   async function loadCart() {
@@ -535,11 +538,11 @@
 
   function goTo(pathOrUrl) {
     const path = shopUrl(pathOrUrl);
-    if (!path) return { ok: false, error: "Link fuera de la tienda BMC" };
+    if (!path) return { ok: false, error: "Link fuera de la tienda BMC", leftPage: false };
     if (isCartPath(path)) return loadCart();
     persistResume();
     location.assign(path);
-    return { ok: true, path };
+    return { ok: true, path, leftPage: true };
   }
 
   async function shareLink(url, title) {
@@ -732,7 +735,15 @@
       state.pendingTools -= 1;
       if (state.pendingTools <= 0) {
         await waitPlayback();
-        if (fnName !== "navigate" && fnName !== "open_url") {
+        // Skip follow-up only when navigate/open_url actually left the page.
+        // Drawer cart (/cart) and failed same-site checks must still response.create.
+        let leftPage = false;
+        if (fnName === "navigate" || fnName === "open_url") {
+          try {
+            leftPage = JSON.parse(output)?.leftPage === true;
+          } catch { /* ignore */ }
+        }
+        if (!leftPage) {
           state.send?.({ type: "response.create" });
         }
       }

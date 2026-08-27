@@ -145,6 +145,18 @@ assert.ok(widget.includes("force_message"), "greeting via force_message");
 assert.ok(widget.includes("/cart/add.js"), "Shopify cart add");
 assert.ok(widget.includes("/products.json"), "Shopify catalog search");
 assert.ok(widget.includes("bmc_panelin_resume"), "resume after navigate");
+assert.ok(
+  /state\.status\s*===\s*["']idle["']/.test(widget) && widget.includes("persistResume"),
+  "resume sessionStorage only while voice call is active",
+);
+assert.ok(
+  widget.includes("leftPage") && widget.includes("JSON.parse(output)"),
+  "drawer cart navigate must still response.create (leftPage gate)",
+);
+assert.ok(
+  /leftPage:\s*false/.test(widget) && /opened:\s*["']drawer["']/.test(widget),
+  "same-tab cart drawer reports leftPage:false",
+);
 assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("Do not say hello again"));
 
 console.log("storefrontVoicePack.test.js: ok");
