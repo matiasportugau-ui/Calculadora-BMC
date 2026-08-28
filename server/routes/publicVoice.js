@@ -1,6 +1,7 @@
 /**
  * Public storefront voice — shoppers on bmcuruguay.com.uy.
  *
+ * GET  /status   — { bubble } so the shop hides the orb when xAI credits are dead
  * POST /session  — mint Grok ephemeral token (no operator auth)
  * POST /action   — allowlisted tools only (lista web + capture_lead + handoff)
  * POST /chat     — text-to-text Panelin Front (same allowlist)
@@ -31,11 +32,19 @@ import {
 } from "../lib/voice/storefrontVoicePack.js";
 import { STOREFRONT_FLETE_NOTE } from "../lib/voice/storefrontAgentConfig.js";
 import { runStorefrontTextTurn } from "../lib/voice/storefrontChat.js";
+import { appendStorefrontTurn } from "../lib/voice/storefrontConversationLog.js";
 import {
   pingLiveSession,
   addLiveTurn,
   shopperLiveState,
 } from "../lib/voice/storefrontLive.js";
+import {
+  markStorefrontCreditsDead,
+  markStorefrontCreditsLive,
+  storefrontVoiceBubbleOn,
+  storefrontVoiceStatus,
+  storefrontCreditsDenyBody,
+} from "../lib/voice/storefrontVoiceCredits.js";
 
 export const STOREFRONT_SESSION_WINDOW_MS = 5 * 60 * 1000;
 const ACTION_MAX = 120;
@@ -52,7 +61,8 @@ export function skipStorefrontSessionLimit(req, appEnv = config.appEnv) {
 
 /** Log payload for /action 200 and 4xx. */
 export function storefrontActionLogPayload(type, httpStatus) {
-  return { actionType: String(type || ""), status: Number(httpStatus) || 0 };
+  const actionType = String(type || "");
+  return { "action.type": actionType, actionType, status: Number(httpStatus) || 0 };
 }
 
 export function shouldAttemptAdminColJ(adminRow) {
@@ -197,7 +207,15 @@ export default function createPublicVoiceRouter() {
     message: { ok: false, error: "Demasiadas acciones de voz. Esperá un momento." },
   });
 
+  router.get("/status", (req, res) => {
+    return res.json(storefrontVoiceStatus());
+  });
+
   router.post("/session", sessionLimiter, async (req, res) => {
+    if (!storefrontVoiceBubbleOn()) {
+      return res.status(403).json(storefrontCreditsDenyBody());
+    }
+
     const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
     const shopperName = String(req.body?.shopperName || req.body?.nombre || "").trim().slice(0, 80);
     const pack = buildStorefrontVoicePack({ pageUrl, shopperName });
@@ -221,9 +239,13 @@ export default function createPublicVoiceRouter() {
         detail: String(err?.body || "").slice(0, 200) || null,
       });
       req.log?.warn?.({ err }, "storefront voice mint failed");
+      if (markStorefrontCreditsDead(err)) {
+        return res.status(403).json(storefrontCreditsDenyBody());
+      }
       return res.status(502).json({ ok: false, error: "No se pudo iniciar la voz. Probá de nuevo." });
     }
 
+    markStorefrontCreditsLive();
     recordVoiceEvent({
       kind: "storefront_session",
       surface: "storefront",
@@ -378,6 +400,13 @@ export default function createPublicVoiceRouter() {
       req.log,
     );
     const ev = evaluateStorefrontLead(result);
+    appendStorefrontTurn({
+      kind: ev.ok ? "identify" : "identify_failed",
+      adminRow: ev.adminRow,
+      telefono: checked.lead.telefono,
+      pageUrl,
+      transcript: checked.lead.consulta,
+    });
     if (!ev.ok) {
       req.log?.warn?.({ err: ev.error }, "storefront identify missing adminRow");
       return res.status(ev.httpStatus).json({
@@ -436,6 +465,13 @@ export default function createPublicVoiceRouter() {
       return res.status(400).json({ ok: false, error: "Teléfono requerido para loguear el chat." });
     }
     if (!transcript) return res.json({ ok: true, skipped: true });
+    appendStorefrontTurn({
+      kind: "log",
+      adminRow: shouldAttemptAdminColJ(adminRow) ? adminRow : null,
+      telefono,
+      pageUrl,
+      transcript,
+    });
     if (!shouldAttemptAdminColJ(adminRow)) {
       return res.status(400).json({ ok: false, error: "adminRow requerido." });
     }

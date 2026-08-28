@@ -99,6 +99,9 @@ data/training-sessions/
 # Shadow training harness — cotizaciones históricas normalizadas (PII clientes reales)
 data/training/
 
+# Storefront conversation JSONL (hashed phone; still not for git)
+data/storefront-turns/
+
 # UX — sesiones de vídeo locales (pesadas / posible PII; ver docs/team/ux-feedback/sessions/README.md)
 docs/team/ux-feedback/sessions/**/*.mp4
 docs/team/ux-feedback/sessions/**/*.mov

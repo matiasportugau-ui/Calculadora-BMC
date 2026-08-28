@@ -919,8 +919,9 @@ await group("internalApiBase prefers loopback over PUBLIC_BASE_URL", async () =>
   config.port = 8080;
   config.selfBaseUrl = "";
   try {
-    assert.equal(internalApiBase(), "http://127.0.0.1:8080");
-    assert.ok(!internalApiBase().includes("panelin-calc.example"), "never hairpin PUBLIC_BASE_URL");
+    const base = internalApiBase();
+    assert(base === "http://127.0.0.1:8080", "loopback host:port");
+    assert(!base.includes("panelin-calc.example"), "never hairpin PUBLIC_BASE_URL");
   } finally {
     config.publicBaseUrl = prevPublic;
     config.port = prevPort;
