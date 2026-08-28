@@ -23,6 +23,11 @@ import { STOREFRONT_VOICE_INSTRUCTIONS } from "../server/lib/voice/storefrontVoi
 import { STOREFRONT_AGENT_CONFIG } from "../server/lib/voice/storefrontAgentConfig.js";
 import { isStorefrontOriginAllowed } from "../server/routes/publicVoice.js";
 import { packToolsToOpenAI, sanitizeChatHistory } from "../server/lib/voice/storefrontChat.js";
+import {
+  loadKnowledgeDocs,
+  loadPublicKnowledgeDocs,
+  redactKnowledgeForStorefront,
+} from "../server/lib/knowledgeLoader.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -32,7 +37,7 @@ const names = (pack.tools || []).map((t) => t.name || t.type);
 assert.ok(pack.instructions.includes("shoppers"), "buyer-facing, not sales team");
 assert.ok(!pack.instructions.includes("sales team only"), "must not reuse operator persona");
 assert.ok(pack.instructions.includes("lista-web") || pack.instructions.includes("lista **web**") || pack.instructions.includes("web"), "web list");
-assert.ok(names.includes("web_search"), "web_search");
+assert.ok(!names.includes("web_search"), "no billed web_search on voice pack");
 assert.ok(names.includes("calcular_cotizacion"), "calc");
 assert.ok(names.includes("capture_lead"), "capture_lead");
 assert.ok(names.includes("handoff_whatsapp"), "handoff");
@@ -61,7 +66,7 @@ assert.equal(pack.voice, "rex");
 assert.equal(pack.language_hint, "es-MX");
 assert.equal(pack.turn_detection.silence_duration_ms, 900);
 assert.equal(pack.turn_detection.threshold, 0.5);
-assert.equal(pack.turn_detection.idle_timeout_ms, 30000);
+assert.equal(pack.turn_detection.idle_timeout_ms, 10000);
 assert.equal(pack.greeting, STOREFRONT_VOICE_GREETING_TEXT);
 assert.ok(pack.instructions.includes("bmcuruguay.com.uy/products/isodec"), "page url as context");
 assert.ok(!JSON.stringify(pack).includes("PANELI_MCP_SECRET"), "no MCP secret");
@@ -215,8 +220,17 @@ assert.ok(widget.includes("out.navigated"), "auto-open product/collection page")
 assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("opens that page"), "instructions: navigate to product");
 assert.ok(!widget.includes("Quiero cotizar un techo"), "no hardcoded techo chip as agent reply");
 assert.equal(pack.greeting, "");
-assert.ok(widget.includes("function openPanel"), "voice default on open");
-assert.ok(widget.includes("startCall()"), "startCall on open");
+assert.ok(widget.includes("function openPanel"), "panel open");
+{
+  const openFn = widget.match(/function openPanel\(\) \{[\s\S]*?\n  \}/);
+  assert.ok(openFn && !openFn[0].includes("startCall"), "text-first: open does not mint voice");
+}
+assert.ok(widget.includes("startCall()"), "Hablar still starts voice");
+assert.ok(widget.includes("/api/public/voice/status"), "credits probe before orb");
+assert.ok(widget.includes("function hideBubble"), "unmount orb when credits dead");
+assert.ok(widget.includes("PCM_SILENCE_PEAK"), "do not append silent PCM");
+assert.ok(widget.includes("SILENCE_CUT_MS = 10"), "10s client silence cut");
+assert.ok(!/applyIdentified\([\s\S]{0,280}startCall\(\)/.test(widget), "identify stays on text");
 assert.ok(widget.includes("sendVoiceText"), "typed text stays on voice thread");
 assert.ok(widget.includes("grok-transcribe"), "input ASR model so voice becomes chat text");
 assert.ok(widget.includes("input_audio_transcription.updated"), "live user captions while speaking");
@@ -253,5 +267,40 @@ const hist = sanitizeChatHistory([
 ]);
 assert.equal(hist.length, 2);
 assert.equal(hist[0].role, "user");
+
+const operatorKb = loadKnowledgeDocs();
+const publicKb = loadPublicKnowledgeDocs();
+assert.ok(operatorKb.includes("USD 240") || operatorKb.includes("USD 252"), "operator KB still has flete defaults");
+assert.ok(/lista venta/i.test(operatorKb), "operator KB still has lista venta");
+assert.ok(publicKb.includes("Shared product knowledge"), "public KB guard");
+assert.ok(publicKb.includes("poliisocianurato") || publicKb.includes("ISODEC EPS"), "shared fichas reach shoppers");
+assert.ok(publicKb.includes("10 años"), "warranty FAQ reaches shoppers");
+assert.ok(!publicKb.includes("USD 240"), "no flete USD 240 on shop KB");
+assert.ok(!publicKb.includes("USD 252"), "no flete USD 252 on shop KB");
+assert.ok(!/valor base en la calculadora/i.test(publicKb), "no calculator flete base");
+assert.ok(!/google drive/i.test(publicKb), "no operator Drive");
+
+assert.ok(pack.instructions.includes("Shared product knowledge"), "voice pack injects public KB");
+assert.ok(
+  pack.instructions.includes("poliisocianurato") || pack.instructions.includes("ISODEC EPS"),
+  "shipped pack includes product facts from data/knowledge",
+);
+assert.ok(pack.instructions.includes("10 años"), "warranty from markdown KB is in the pack");
+assert.ok(!pack.instructions.includes("USD 240"), "shipped pack must not speak flete USD 240");
+assert.ok(!pack.instructions.includes("USD 252"), "shipped pack must not speak flete USD 252");
+assert.ok(!/google drive/i.test(pack.instructions), "shipped pack has no Google Drive");
+
+const redacted = redactKnowledgeForStorefront(
+  "**P: ¿El flete está incluido?**\nR: No. USD 240 lista venta o USD 252 lista web.\n\n**P: ¿PIR o EPS?**\nR: PIR aísla más (λ=0,022).",
+);
+assert.ok(!redacted.includes("USD 240"), "drop freight Q&A");
+assert.ok(redacted.includes("PIR aísla"), "keep product Q&A");
+
+const dockerfile = fs.readFileSync(path.join(ROOT, "server/Dockerfile"), "utf8");
+assert.ok(dockerfile.includes("COPY data/knowledge"), "Cloud Run ships data/knowledge");
+assert.ok(
+  dockerignore.includes("!data/knowledge"),
+  "dockerignore must allow data/knowledge markdown",
+);
 
 console.log("storefrontVoicePack.test.js: ok");

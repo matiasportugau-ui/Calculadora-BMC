@@ -31,3 +31,6 @@ docs/walkthrough/admin-cot/*
 *.md
 !package.json
 !package-lock.json
+!data/knowledge
+!data/knowledge/**
+!data/knowledge/*.md

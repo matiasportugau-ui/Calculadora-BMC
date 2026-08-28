@@ -35,6 +35,8 @@ COPY --from=deps /app/package.json ./package.json
 COPY server/ ./server/
 COPY src/utils/ ./src/utils/
 COPY src/data/ ./src/data/
+# Shared operator/storefront markdown KB (Panelin Front loads a customer-redacted copy).
+COPY data/knowledge ./data/knowledge
 # Quote PDF templates — buildCotizacionHtml (server/routes/calc.js) renders the
 # refined client template server-side; without this COPY the API crashes at boot.
 COPY src/pdf-templates/ ./src/pdf-templates/

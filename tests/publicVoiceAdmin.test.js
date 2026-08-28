@@ -67,15 +67,20 @@ assert.equal(okLead.adminRow, 31);
 assert.equal(okLead.httpStatus, 200);
 assert.equal(shouldRecordStorefrontLeadMetrics(okLead), true);
 
-assert.deepEqual(storefrontActionLogPayload("shop_search", 400), { actionType: "shop_search", status: 400 });
-assert.deepEqual(storefrontActionLogPayload("calcular_cotizacion", 200), {
-  actionType: "calcular_cotizacion",
-  status: 200,
-});
+const log400 = storefrontActionLogPayload("shop_search", 400);
+assert.equal(log400["action.type"], "shop_search");
+assert.equal(log400.actionType, "shop_search");
+assert.equal(log400.status, 400);
+const log200 = storefrontActionLogPayload("calcular_cotizacion", 200);
+assert.equal(log200["action.type"], "calcular_cotizacion");
+assert.equal(log200.status, 200);
 
 const actionSrc = fs.readFileSync(path.join(ROOT, "server/routes/publicVoice.js"), "utf8");
 assert.match(actionSrc, /storefrontActionLogPayload\(type, 400\)/, "400 path logs action.type");
 assert.match(actionSrc, /storefrontActionLogPayload\(type, 200\)/, "200 path logs action.type");
+assert.match(actionSrc, /appendStorefrontTurn/, "identify and /log write conversation copy");
+assert.match(actionSrc, /router\.get\("\/status"/, "GET /status hides orb when credits dead");
+assert.match(actionSrc, /markStorefrontCreditsDead/, "mint credits errors cache bubble:false");
 
 assert.ok(storefrontSessionMax("production") > 3, "prod session cap must exceed 3/5min");
 assert.equal(skipStorefrontSessionLimit({ method: "OPTIONS" }, "production"), true);
