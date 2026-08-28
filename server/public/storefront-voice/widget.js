@@ -1433,26 +1433,24 @@
     }
 
     let stream;
-    /** Settled in catch even when Promise.all rejects before `stream = mic`. */
-    let micP;
     try {
-      micP = openMic();
-      const sessP = fetch(`${API}/api/public/voice/session`, {
+      // Mint before getUserMedia: a failed /session (incl. credits 403) must never leave the mic open.
+      // Parallel Promise.all orphaned the MediaStream on sess failure because `stream` was only
+      // assigned after both promises settled — and #1170 hideBubble then removed Cortar voz.
+      const sessRes = await fetch(`${API}/api/public/voice/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pageUrl: window.location.href, shopperName: state.cliente }),
-      }).then(async (r) => {
-        const j = await r.json().catch(() => ({}));
-        if (j.bubble === false || j.code === "credits") {
-          const err = new Error("credits");
-          err.code = "credits";
-          throw err;
-        }
-        if (!r.ok || j.ok === false) throw new Error(j.error || "No se pudo iniciar la sesión");
-        return j;
       });
-      const [mic, sess] = await Promise.all([micP, sessP]);
-      stream = mic;
+      const sess = await sessRes.json().catch(() => ({}));
+      if (sess.bubble === false || sess.code === "credits") {
+        const err = new Error("credits");
+        err.code = "credits";
+        throw err;
+      }
+      if (!sessRes.ok || sess.ok === false) throw new Error(sess.error || "No se pudo iniciar la sesión");
+
+      stream = await openMic();
       state.stream = stream;
       stream.getAudioTracks().forEach((t) => {
         t.enabled = true;
@@ -1494,15 +1492,6 @@
         };
       });
     } catch (err) {
-      // Promise.all drops the mic MediaStream when sess mint fails first — settle and stop
-      // so hideBubble (credits) cannot leave the tab recording with no UI to Cortar voz.
-      if (!stream && micP) {
-        try {
-          stream = await micP;
-        } catch {
-          /* mic denied / failed */
-        }
-      }
       if (stream) {
         try {
           stream.getTracks().forEach((t) => t.stop());
@@ -1510,13 +1499,6 @@
           /* ignore */
         }
         stream = null;
-      }
-      if (state.stream) {
-        try {
-          state.stream.getTracks().forEach((t) => t.stop());
-        } catch {
-          /* ignore */
-        }
         state.stream = null;
       }
       if (err?.code === "credits") {

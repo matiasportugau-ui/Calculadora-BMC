@@ -69,18 +69,32 @@ assert.match(widget, /j\.bubble === false/, "status.bubble false skips the orb")
 assert.match(widget, /err\?\.code === "credits"/, "live mint 403 unmounts");
 assert.ok(!widget.includes("document.body.appendChild(root);"), "do not append before status");
 
-// #1170 hideBubble on credits used to return before stopping the mic from Promise.all —
-// openMic can resolve while /session 403s, leaving the tab recording with no Cortar voz UI.
+// #1170 hideBubble on credits + parallel openMic orphaned MediaStream (no Cortar voz UI).
+// Mint /session first; only then getUserMedia.
 {
-  const startCall = widget.match(/async function startCall\(\) \{[\s\S]*?\n  \}/);
-  assert.ok(startCall, "startCall present");
-  const body = startCall[0];
-  assert.match(body, /let micP/, "micP outlives Promise.all for catch cleanup");
-  assert.match(body, /if \(!stream && micP\)/, "settle openMic after failed mint");
-  assert.match(body, /stream\.getTracks\(\)\.forEach/, "stop orphaned mic tracks");
-  const creditsIdx = body.indexOf('err?.code === "credits"');
-  const settleIdx = body.indexOf("if (!stream && micP)");
-  assert.ok(creditsIdx > 0 && settleIdx > 0 && settleIdx < creditsIdx, "stop mic before hideBubble on credits");
+  const startCallIdx = widget.indexOf("async function startCall()");
+  assert.ok(startCallIdx >= 0, "startCall present");
+  const startCallChunk = widget.slice(startCallIdx, startCallIdx + 3600);
+  const sessFetchIdx = startCallChunk.search(/fetch\(`\$\{API\}\/api\/public\/voice\/session`/);
+  const openMicIdx = startCallChunk.indexOf("await openMic()");
+  assert.ok(sessFetchIdx >= 0, "startCall mints /session");
+  assert.ok(openMicIdx >= 0, "startCall opens mic");
+  assert.ok(
+    sessFetchIdx < openMicIdx,
+    "session mint before openMic — failed /session must not leave mic tracks live",
+  );
+  assert.ok(
+    !/Promise\.all\(\[micP,\s*sessP\]\)/.test(startCallChunk),
+    "no parallel mic+session (orphans MediaStream on reject)",
+  );
+  assert.match(
+    startCallChunk,
+    /if \(stream\) \{[\s\S]*getTracks\(\)\.forEach/,
+    "error path stops mic if opened after a successful mint",
+  );
+  const creditsIdx = startCallChunk.indexOf('err?.code === "credits"');
+  const stopIdx = startCallChunk.search(/if \(stream\) \{/);
+  assert.ok(creditsIdx > 0 && stopIdx > 0 && stopIdx < creditsIdx, "stop mic before hideBubble on credits");
 }
 
 console.log("storefrontVoiceCredits.test.js ok");
