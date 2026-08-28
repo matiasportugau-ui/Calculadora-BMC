@@ -69,4 +69,18 @@ assert.match(widget, /j\.bubble === false/, "status.bubble false skips the orb")
 assert.match(widget, /err\?\.code === "credits"/, "live mint 403 unmounts");
 assert.ok(!widget.includes("document.body.appendChild(root);"), "do not append before status");
 
+// #1170 hideBubble on credits used to return before stopping the mic from Promise.all —
+// openMic can resolve while /session 403s, leaving the tab recording with no Cortar voz UI.
+{
+  const startCall = widget.match(/async function startCall\(\) \{[\s\S]*?\n  \}/);
+  assert.ok(startCall, "startCall present");
+  const body = startCall[0];
+  assert.match(body, /let micP/, "micP outlives Promise.all for catch cleanup");
+  assert.match(body, /if \(!stream && micP\)/, "settle openMic after failed mint");
+  assert.match(body, /stream\.getTracks\(\)\.forEach/, "stop orphaned mic tracks");
+  const creditsIdx = body.indexOf('err?.code === "credits"');
+  const settleIdx = body.indexOf("if (!stream && micP)");
+  assert.ok(creditsIdx > 0 && settleIdx > 0 && settleIdx < creditsIdx, "stop mic before hideBubble on credits");
+}
+
 console.log("storefrontVoiceCredits.test.js ok");

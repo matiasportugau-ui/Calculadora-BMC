@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-28 (fix — hide storefront orb when xAI credits dead)
+**Última actualización:** 2026-08-28 (fix — stop orphaned mic after credits mint fail)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-28 (fix — stop orphaned mic after #1170 credits mint fail):** `startCall` ran `openMic()` in parallel with `POST /session`. When mint returned `code=credits`, `Promise.all` rejected before `state.stream = mic`, and the credits path called `hideBubble()` without stopping tracks — tab kept the mic live with no Cortar voz UI. Catch now settles `micP` and stops tracks before hide/teardown. Test ratchet in `storefrontVoiceCredits.test.js`.
 
 **2026-08-28 (fix — hide storefront orb when xAI credits dead):** Shop orb hid a 502 while xAI was dry. `#1166` imported `storefrontVoiceCredits.js` without the file (`01091-cjm` exit 1); `#1169` dropped the import so Cloud Run boots. This ships the helper + `GET /api/public/voice/status` `{bubble:false}` so the widget never mounts the Panelin orb (no error copy). Text-first (Hablar mints voice); silent PCM skipped; 10s silence-cut. Tests `storefrontVoiceCredits` + import-exists ratchet.
 

@@ -1433,8 +1433,10 @@
     }
 
     let stream;
+    /** Settled in catch even when Promise.all rejects before `stream = mic`. */
+    let micP;
     try {
-      const micP = openMic();
+      micP = openMic();
       const sessP = fetch(`${API}/api/public/voice/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1492,11 +1494,35 @@
         };
       });
     } catch (err) {
+      // Promise.all drops the mic MediaStream when sess mint fails first — settle and stop
+      // so hideBubble (credits) cannot leave the tab recording with no UI to Cortar voz.
+      if (!stream && micP) {
+        try {
+          stream = await micP;
+        } catch {
+          /* mic denied / failed */
+        }
+      }
+      if (stream) {
+        try {
+          stream.getTracks().forEach((t) => t.stop());
+        } catch {
+          /* ignore */
+        }
+        stream = null;
+      }
+      if (state.stream) {
+        try {
+          state.stream.getTracks().forEach((t) => t.stop());
+        } catch {
+          /* ignore */
+        }
+        state.stream = null;
+      }
       if (err?.code === "credits") {
         hideBubble();
         return;
       }
-      if (stream) stream.getTracks().forEach((t) => t.stop());
       teardown();
       const denied = /NotAllowedError|PermissionDenied/i.test(err?.name || "") || /permission/i.test(err?.message || "");
       if (denied) state.voiceDenied = true;
