@@ -1,5 +1,7 @@
 # Storefront Voice Agent — Panelin on bmcuruguay.com.uy
 
+**Continue work:** `/panelin-web` (skill + next file `PANELIN-WEB-NEXT.md`). Branch `feat/panelin-front`.
+
 Buyer-facing **Panelin Front**: floating calculator-body chat (avatar + chips + composer) plus Grok Speech-to-Speech **on open**. No operator chrome (sidebar / DEV / model). Text and mic share the same thread. Separate from operator Panelin BMC (`panelinBmcInstructions.js`).
 
 Architecture SoT: `docs/sdd/storefront-voice-agent/SDD.md`. Policy: classify → assess → green; quote only on insist; lista web + PDF; never flete; Admin 2.0 `origen=VW`.
