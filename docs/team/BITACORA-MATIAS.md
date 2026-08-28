@@ -393,4 +393,18 @@ gate:local:   pendiente correr al final de la sesión
 
 ---
 
+## 2026-08-28 N — Hide storefront orb when xAI credits dead
+
+**Contexto:** Voz 502 en tienda (créditos xAI). `#1166` importó un helper que no estaba en la imagen; `#1169` lo sacó para que Cloud Run arranque.
+
+**Acciones:** Ship `storefrontVoiceCredits.js` + `GET /status` `{bubble:false}`; widget no monta el globo; texto-primero; PCM silencio off; corte 10s; `.env.example` TTL.
+
+**Verificación:** `node tests/storefrontVoiceCredits.test.js` + pack + publicVoiceAdmin (imports on disk).
+
+**Próximo paso:** `/panelin-web shop` tras `deploy-calc-api` verde.
+
+**Refs:** `server/lib/voice/storefrontVoiceCredits.js` · `server/public/storefront-voice/widget.js` · PR hide-orb
+
+---
+
 

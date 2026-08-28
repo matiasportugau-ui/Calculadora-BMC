@@ -87,7 +87,7 @@ export const STOREFRONT_TURN_DETECTION = Object.freeze({
   threshold: 0.5,
   prefix_padding_ms: 333,
   silence_duration_ms: 900,
-  idle_timeout_ms: 30000,
+  idle_timeout_ms: 10000,
 });
 
 const CAPTURE_LEAD_TOOL = Object.freeze({
@@ -377,7 +377,6 @@ export function buildStorefrontVoicePack(options = {}) {
   ].join("");
 
   const tools = [
-    STOREFRONT_WEB_SEARCH_TOOL,
     ...buildReadFunctionTools(),
     SHOP_SEARCH_TOOL,
     SHOP_PRODUCT_TOOL,
