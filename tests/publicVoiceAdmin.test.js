@@ -79,11 +79,9 @@ const actionSrc = fs.readFileSync(path.join(ROOT, "server/routes/publicVoice.js"
 assert.match(actionSrc, /storefrontActionLogPayload\(type, 400\)/, "400 path logs action.type");
 assert.match(actionSrc, /storefrontActionLogPayload\(type, 200\)/, "200 path logs action.type");
 assert.match(actionSrc, /appendStorefrontTurn/, "identify and /log write conversation copy");
-assert.doesNotMatch(
-  actionSrc,
-  /storefrontVoiceCredits/,
-  "do not import storefrontVoiceCredits.js until that module ships (Cloud Run #1166 boot crash)",
-);
+assert.match(actionSrc, /router\.get\("\/status"/, "GET /status hides orb when credits dead");
+assert.match(actionSrc, /markStorefrontCreditsDead/, "mint credits errors cache bubble:false");
+assert.match(actionSrc, /storefrontVoiceCredits/, "credits helper ships with the import");
 const publicVoicePath = path.join(ROOT, "server/routes/publicVoice.js");
 for (const m of actionSrc.matchAll(/from\s+"(\.\.?\/[^"]+)"/g)) {
   const resolved = path.resolve(path.dirname(publicVoicePath), m[1]);

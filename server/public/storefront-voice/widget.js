@@ -11,7 +11,9 @@
   const SECRET_PREFIX = "xai-client-secret.";
   const MAX_MS = 8 * 60 * 1000;
   /** Wall-clock idle after last speech/turn: stop mic + WS so silence is not billed. */
-  const SILENCE_CUT_MS = 30 * 1000;
+  const SILENCE_CUT_MS = 10 * 1000;
+  /** Skip PCM append below this peak — xAI bills silence the same as speech. */
+  const PCM_SILENCE_PEAK = 0.008;
   const SS_RESUME = "bmc_panelin_resume";
   const SS_IDENTITY = "bmc_panelin_identity";
   const SS_LIVE = "bmc_panelin_live";
@@ -454,7 +456,17 @@
       </button>
     </div>
   `;
-  document.body.appendChild(root);
+
+  function attachBubble() {
+    if (!root.parentNode) {
+      (document.body || document.documentElement).appendChild(root);
+    }
+  }
+
+  function hideBubble() {
+    try { teardown(); } catch { /* ignore */ }
+    if (root.parentNode) root.parentNode.removeChild(root);
+  }
 
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     root.querySelectorAll("video").forEach((v) => {
@@ -1122,6 +1134,7 @@
     state.micPeak = Math.max(state.micPeak || 0, peak);
     publishMic(ctx);
     if (!send || !state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+    if (peak < PCM_SILENCE_PEAK) return;
     const resampled = resample(input, ctx.sampleRate || SAMPLE_RATE, SAMPLE_RATE);
     send({ type: "input_audio_buffer.append", audio: float32ToB64Pcm16(resampled) });
   }
@@ -1322,7 +1335,7 @@
       if (isLocalEval()) {
         if (frames < 8) {
           reason = `El mic no está enviando audio (${ctxState} · ${label}). Tocá el mic y hablá de nuevo.`;
-        } else if (peak < 0.008) {
+        } else if (peak < PCM_SILENCE_PEAK) {
           reason = `Chrome abre ${label} pero el audio llega en silencio (pico ${peak.toFixed(3)}). Cerrá y reabrí el chat; si sigue, Ajustes → Sonido → Entrada (volumen) y Privacidad → Micrófono → Google Chrome.`;
         }
       }
@@ -1351,7 +1364,12 @@
       touchVoice();
     }
     if (type === "error") {
-      setErr(msg.error?.message || msg.message || "Error de voz");
+      const em = msg.error?.message || msg.message || "Error de voz";
+      if (/used all available credits|spending limit|insufficient credits/i.test(em)) {
+        hideBubble();
+        return;
+      }
+      setErr(em);
     }
     if (type === "response.function_call_arguments.done") {
       const callId = msg.call_id;
@@ -1423,7 +1441,12 @@
         body: JSON.stringify({ pageUrl: window.location.href, shopperName: state.cliente }),
       }).then(async (r) => {
         const j = await r.json().catch(() => ({}));
-        if (!r.ok || !j.ok) throw new Error(j.error || "No se pudo iniciar la sesión");
+        if (j.bubble === false || j.code === "credits") {
+          const err = new Error("credits");
+          err.code = "credits";
+          throw err;
+        }
+        if (!r.ok || j.ok === false) throw new Error(j.error || "No se pudo iniciar la sesión");
         return j;
       });
       const [mic, sess] = await Promise.all([micP, sessP]);
@@ -1469,6 +1492,10 @@
         };
       });
     } catch (err) {
+      if (err?.code === "credits") {
+        hideBubble();
+        return;
+      }
       if (stream) stream.getTracks().forEach((t) => t.stop());
       teardown();
       const denied = /NotAllowedError|PermissionDenied/i.test(err?.name || "") || /permission/i.test(err?.message || "");
@@ -1504,6 +1531,11 @@
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
+    if (data.bubble === false || data.code === "credits") {
+      const err = new Error("credits");
+      err.code = "credits";
+      throw err;
+    }
     if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo responder");
     return data;
   }
@@ -1557,6 +1589,10 @@
         };
       }
     } catch (err) {
+      if (err?.code === "credits") {
+        hideBubble();
+        return;
+      }
       setErr(err?.message || "No se pudo enviar.");
     } finally {
       state.chatBusy = false;
@@ -1566,7 +1602,6 @@
 
   function openPanel() {
     root.classList.add("open");
-    if (state.identified && state.status === "idle" && state.voiceWanted && !state.voiceDenied && !state.agentMode) startCall();
   }
 
   function closePanel() {
@@ -1644,7 +1679,6 @@
         telefono: data.telefono || telefono,
         adminRow: data.adminRow,
       });
-      startCall();
     } catch (err) {
       setErr(err?.message || "No se pudo iniciar el chat.");
     } finally {
@@ -1668,32 +1702,45 @@
   });
 
   refreshCartBadge();
-  try {
-    const ident = JSON.parse(sessionStorage.getItem(SS_IDENTITY) || "null");
-    if (ident && ident.cliente && ident.telefono) applyIdentified(ident);
-  } catch { /* ignore */ }
-  try {
-    const saved = JSON.parse(sessionStorage.getItem(SS_RESUME) || "null");
-    if (saved && saved.open) {
-      sessionStorage.removeItem(SS_RESUME);
-      root.classList.add("open");
-      if (Array.isArray(saved.chatHistory) && saved.chatHistory.length) {
-        state.chatHistory = saved.chatHistory;
-        markChat();
-        saved.chatHistory.forEach((m) => {
-          if (m.role !== "user" && m.role !== "assistant") return;
-          const p = document.createElement("p");
-          p.className = "bmc-line";
-          p.dataset.role = m.role;
-          const body = m.role === "user" ? `Vos: ${m.content || ""}` : String(m.content || "");
-          fillRichText(p, body);
-          caps.appendChild(p);
-        });
+
+  function restoreSession() {
+    try {
+      const ident = JSON.parse(sessionStorage.getItem(SS_IDENTITY) || "null");
+      if (ident && ident.cliente && ident.telefono) applyIdentified(ident);
+    } catch { /* ignore */ }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SS_RESUME) || "null");
+      if (saved && saved.open) {
+        sessionStorage.removeItem(SS_RESUME);
+        root.classList.add("open");
+        if (Array.isArray(saved.chatHistory) && saved.chatHistory.length) {
+          state.chatHistory = saved.chatHistory;
+          markChat();
+          saved.chatHistory.forEach((m) => {
+            if (m.role !== "user" && m.role !== "assistant") return;
+            const p = document.createElement("p");
+            p.className = "bmc-line";
+            p.dataset.role = m.role;
+            const body = m.role === "user" ? `Vos: ${m.content || ""}` : String(m.content || "");
+            fillRichText(p, body);
+            caps.appendChild(p);
+          });
+        }
+        if (saved.conversationId) {
+          state.conversationId = saved.conversationId;
+          startCall();
+        }
       }
-      if (saved.conversationId) {
-        state.conversationId = saved.conversationId;
-        startCall();
-      }
-    }
-  } catch { /* ignore */ }
+    } catch { /* ignore */ }
+  }
+
+  (async function boot() {
+    try {
+      const r = await fetch(`${API}/api/public/voice/status`);
+      const j = await r.json().catch(() => ({}));
+      if (j.bubble === false) return;
+    } catch { /* fail open */ }
+    attachBubble();
+    restoreSession();
+  })();
 })();

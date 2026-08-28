@@ -1,6 +1,7 @@
 /**
  * Public storefront voice — shoppers on bmcuruguay.com.uy.
  *
+ * GET  /status   — { bubble } so the shop hides the orb when xAI credits are dead
  * POST /session  — mint Grok ephemeral token (no operator auth)
  * POST /action   — allowlisted tools only (lista web + capture_lead + handoff)
  * POST /chat     — text-to-text Panelin Front (same allowlist)
@@ -37,6 +38,13 @@ import {
   addLiveTurn,
   shopperLiveState,
 } from "../lib/voice/storefrontLive.js";
+import {
+  markStorefrontCreditsDead,
+  markStorefrontCreditsLive,
+  storefrontVoiceBubbleOn,
+  storefrontVoiceStatus,
+  storefrontCreditsDenyBody,
+} from "../lib/voice/storefrontVoiceCredits.js";
 
 export const STOREFRONT_SESSION_WINDOW_MS = 5 * 60 * 1000;
 const ACTION_MAX = 120;
@@ -199,7 +207,15 @@ export default function createPublicVoiceRouter() {
     message: { ok: false, error: "Demasiadas acciones de voz. Esperá un momento." },
   });
 
+  router.get("/status", (req, res) => {
+    return res.json(storefrontVoiceStatus());
+  });
+
   router.post("/session", sessionLimiter, async (req, res) => {
+    if (!storefrontVoiceBubbleOn()) {
+      return res.status(403).json(storefrontCreditsDenyBody());
+    }
+
     const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
     const shopperName = String(req.body?.shopperName || req.body?.nombre || "").trim().slice(0, 80);
     const pack = buildStorefrontVoicePack({ pageUrl, shopperName });
@@ -223,9 +239,13 @@ export default function createPublicVoiceRouter() {
         detail: String(err?.body || "").slice(0, 200) || null,
       });
       req.log?.warn?.({ err }, "storefront voice mint failed");
+      if (markStorefrontCreditsDead(err)) {
+        return res.status(403).json(storefrontCreditsDenyBody());
+      }
       return res.status(502).json({ ok: false, error: "No se pudo iniciar la voz. Probá de nuevo." });
     }
 
+    markStorefrontCreditsLive();
     recordVoiceEvent({
       kind: "storefront_session",
       surface: "storefront",
@@ -507,6 +527,9 @@ export default function createPublicVoiceRouter() {
         message: err?.message || "chat failed",
         status,
       });
+      if (markStorefrontCreditsDead(err)) {
+        return res.status(403).json(storefrontCreditsDenyBody());
+      }
       return res.status(status >= 400 && status < 600 ? status : 500).json({
         ok: false,
         error: err?.message || "No se pudo responder.",

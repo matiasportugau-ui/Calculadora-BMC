@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-28 (feat — Hub nav for Panelin web live board)
+**Última actualización:** 2026-08-28 (fix — hide storefront orb when xAI credits dead)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-28 (fix — hide storefront orb when xAI credits dead):** Shop orb hid a 502 while xAI was dry. `#1166` imported `storefrontVoiceCredits.js` without the file (`01091-cjm` exit 1); `#1169` dropped the import so Cloud Run boots. This ships the helper + `GET /api/public/voice/status` `{bubble:false}` so the widget never mounts the Panelin orb (no error copy). Text-first (Hablar mints voice); silent PCM skipped; 10s silence-cut. Tests `storefrontVoiceCredits` + import-exists ratchet.
 
 **2026-08-28 (feat — Hub: Panelin web live board in module nav):** `/hub/panelin-web` was a dead route unless you knew the URL. Admin tab **Panelin web** in `BmcModuleNav` (live-count badge), Wolfboard banner + first grid card, `WEB` shortcut in Estado de consultas. Branch `feat/panelin-web-hub-nav`. Frontend-only (Vercel); live API already in #1163, Cloud Run boot in #1169.
 

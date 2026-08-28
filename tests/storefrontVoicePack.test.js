@@ -37,7 +37,7 @@ const names = (pack.tools || []).map((t) => t.name || t.type);
 assert.ok(pack.instructions.includes("shoppers"), "buyer-facing, not sales team");
 assert.ok(!pack.instructions.includes("sales team only"), "must not reuse operator persona");
 assert.ok(pack.instructions.includes("lista-web") || pack.instructions.includes("lista **web**") || pack.instructions.includes("web"), "web list");
-assert.ok(names.includes("web_search"), "web_search");
+assert.ok(!names.includes("web_search"), "no billed web_search on voice pack");
 assert.ok(names.includes("calcular_cotizacion"), "calc");
 assert.ok(names.includes("capture_lead"), "capture_lead");
 assert.ok(names.includes("handoff_whatsapp"), "handoff");
@@ -66,7 +66,7 @@ assert.equal(pack.voice, "rex");
 assert.equal(pack.language_hint, "es-MX");
 assert.equal(pack.turn_detection.silence_duration_ms, 900);
 assert.equal(pack.turn_detection.threshold, 0.5);
-assert.equal(pack.turn_detection.idle_timeout_ms, 30000);
+assert.equal(pack.turn_detection.idle_timeout_ms, 10000);
 assert.equal(pack.greeting, STOREFRONT_VOICE_GREETING_TEXT);
 assert.ok(pack.instructions.includes("bmcuruguay.com.uy/products/isodec"), "page url as context");
 assert.ok(!JSON.stringify(pack).includes("PANELI_MCP_SECRET"), "no MCP secret");
@@ -220,8 +220,20 @@ assert.ok(widget.includes("out.navigated"), "auto-open product/collection page")
 assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("opens that page"), "instructions: navigate to product");
 assert.ok(!widget.includes("Quiero cotizar un techo"), "no hardcoded techo chip as agent reply");
 assert.equal(pack.greeting, "");
-assert.ok(widget.includes("function openPanel"), "voice default on open");
-assert.ok(widget.includes("startCall()"), "startCall on open");
+assert.ok(widget.includes("function openPanel"), "panel open");
+{
+  const openFn = widget.match(/function openPanel\(\) \{[\s\S]*?\n  \}/);
+  assert.ok(openFn && !openFn[0].includes("startCall"), "text-first: open does not mint voice");
+}
+assert.ok(widget.includes("startCall()"), "Hablar still starts voice");
+assert.ok(widget.includes("/api/public/voice/status"), "credits probe before orb");
+assert.ok(widget.includes("function hideBubble"), "unmount orb when credits dead");
+assert.ok(widget.includes("PCM_SILENCE_PEAK"), "do not append silent PCM");
+assert.ok(widget.includes("SILENCE_CUT_MS = 10"), "10s client silence cut");
+{
+  const idSubmit = widget.match(/idForm\.addEventListener\("submit"[\s\S]*?picks\.addEventListener/);
+  assert.ok(idSubmit && !idSubmit[0].includes("startCall"), "identify stays on text");
+}
 assert.ok(widget.includes("sendVoiceText"), "typed text stays on voice thread");
 assert.ok(widget.includes("grok-transcribe"), "input ASR model so voice becomes chat text");
 assert.ok(widget.includes("input_audio_transcription.updated"), "live user captions while speaking");

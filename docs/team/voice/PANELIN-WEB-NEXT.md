@@ -2,15 +2,15 @@
 
 SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 
-**Última:** 2026-08-28 (shipping Hub nav)  
-**Branch:** `feat/panelin-web-hub-nav`  
-**Local:** http://localhost:5173/hub/panelin-web  
-**Shop:** Cloud Run boot fix #1169 on `main`. Widget traffic still `#1163` until `deploy-calc-api` of that merge.
+**Última:** 2026-08-28 (ship: hide orb when credits dead)  
+**Branch:** `feat/storefront-voice-cost`  
+**Local:** http://127.0.0.1:3001/storefront-voice/  
+**Shop:** widget from Cloud Run after this `deploy-calc-api`.
 
 ## Estado
 
-- Tablero `/hub/panelin-web` en Hub: tab admin **Panelin web** (badge), banner Wolfboard, card primera, chip `WEB`.
-- SPA only (Vercel). `#1169` already dropped the missing credits import.
+- Helper `storefrontVoiceCredits.js` + `GET /status` `{ bubble: false }`. Widget **no monta** el globo. Mint/chat 403 `code=credits` lo saca.
+- Texto primero: solo Hablar mintea voz. PCM silencio no se manda. Corte 10s. Sin `web_search` en voz.
 
 ## Próximo prompt
 
@@ -18,9 +18,9 @@ SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 /panelin-web shop
 ```
 
-Tras este merge: https://calculadora-bmc.vercel.app/hub → tab Panelin web (admin).
+Hard-refresh tienda. Sin créditos xAI → no hay globo. Con créditos → chat texto; mic para voz.
 
 ## No hacer ahora
 
-- Mezclar Driver QR / keywords / logística / hide-orb.
+- Mezclar Driver QR / keywords / logística.
 - Mostrar error de créditos al comprador.
