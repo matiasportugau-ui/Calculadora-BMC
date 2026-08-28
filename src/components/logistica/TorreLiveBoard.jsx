@@ -81,6 +81,8 @@ function ChoferHitlForm({ token, trips = [], onDone }) {
     e.preventDefault();
     setBusy(true);
     setMsg("");
+    // Drop prior QR immediately — a failed re-assign must not leave the old trip token visible.
+    setRouteUrl("");
     try {
       const j = await postJson("/api/torre/assign", { trip_id: tripId, chofer_id: choferId });
       setRouteUrl(j.driver_url || "");
@@ -134,7 +136,14 @@ function ChoferHitlForm({ token, trips = [], onDone }) {
       <form onSubmit={assign} style={{ marginTop: 10 }}>
         <div style={{ fontSize: 12, color: T.muted, marginBottom: 4 }}>Asignar viaje → inbox</div>
         {trips.length ? (
-          <select value={tripId} onChange={(e) => setTripId(e.target.value)} style={fieldStyle}>
+          <select
+            value={tripId}
+            onChange={(e) => {
+              setTripId(e.target.value);
+              setRouteUrl("");
+            }}
+            style={fieldStyle}
+          >
             <option value="">Viaje…</option>
             {trips.map((t) => (
               <option key={t.trip_id} value={t.trip_id}>
@@ -145,14 +154,20 @@ function ChoferHitlForm({ token, trips = [], onDone }) {
         ) : (
           <input
             value={tripId}
-            onChange={(e) => setTripId(e.target.value)}
+            onChange={(e) => {
+              setTripId(e.target.value);
+              setRouteUrl("");
+            }}
             placeholder="trip_id"
             style={fieldStyle}
           />
         )}
         <input
           value={choferId}
-          onChange={(e) => setChoferId(e.target.value)}
+          onChange={(e) => {
+            setChoferId(e.target.value);
+            setRouteUrl("");
+          }}
           placeholder="chofer_id"
           style={fieldStyle}
         />
