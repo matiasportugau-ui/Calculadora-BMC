@@ -61,6 +61,10 @@ export function loadKnowledgeDocs() {
 export function isUnsafeStorefrontKnowledgeLine(line) {
   const s = String(line || "");
   if (/lista\s*venta/i.test(s)) return true;
+  // Accessory tables / fichas still say "precio venta USD …" (lista venta). Those
+  // diverge from lista web (e.g. CUMROOFCOL 97.86 in KB vs web ~115) and must not
+  // reach the shop voice pack — prices only from tools.
+  if (/precio\s*venta/i.test(s)) return true;
   if (/precio\s*bmc/i.test(s)) return true;
   if (/google\s*drive/i.test(s)) return true;
   if (/google\s*sheets/i.test(s)) return true;
@@ -71,6 +75,8 @@ export function isUnsafeStorefrontKnowledgeLine(line) {
   if (/\bcosto\b/i.test(s) && /usd|precio|lista/i.test(s)) return true;
   if (/\bflete\b/i.test(s) && /(\$|usd\s*\d|\d[\d.,]*\s*usd)/i.test(s)) return true;
   if (/USD\s*240|USD\s*252/i.test(s)) return true;
+  // Any dollar amount in knowledge (tables, bullets). Shop prices come only from tools.
+  if (/USD\s*\d/i.test(s) || /\$\s*\d/.test(s)) return true;
   return false;
 }
 
