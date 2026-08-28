@@ -48,6 +48,7 @@ await ensureTransportistaSchema(pool);
   );
   const asg = await assignTripToChofer(pool, { tripId, choferId: reg.chofer.chofer_id });
   assert.equal(asg.ok, true);
+  assert.ok(String(asg.driver_url).includes("/conductor?t="));
   const inbox = await listChoferInbox(pool, reg.chofer.chofer_id);
   assert.equal(inbox.ok, true);
   assert.equal(inbox.trips.length, 1);

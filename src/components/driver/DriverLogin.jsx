@@ -32,6 +32,10 @@ export default function DriverLogin({ onLogin, status, offlineHint }) {
         <p className="drv-muted">
           Chofer de flota: email/celular + contraseña. Tercero: abrí el enlace o pegá el token.
         </p>
+        <p className="drv-muted" style={{ marginTop: 10 }}>
+          Para instalar BMC Driver: iPhone → Compartir → <strong>Agregar a inicio</strong>. Android → menú Chrome →{" "}
+          <strong>Agregar a pantalla de inicio</strong>.
+        </p>
         {status ? <p className="drv-danger">{status}</p> : null}
         <button type="button" className="drv-cta drv-cta--orange" onClick={() => onLogin(name, secret)}>
           Ingresar

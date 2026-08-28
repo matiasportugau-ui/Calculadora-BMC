@@ -4,6 +4,7 @@
 import crypto from "node:crypto";
 import { ensureTransportistaSchema } from "./transportistaSchema.js";
 import { generateOpaqueToken, sha256Hex } from "./driverToken.js";
+import { conductorPublicUrl } from "../../src/utils/conductorUrl.js";
 
 export function digitsPhone(raw) {
   const d = String(raw || "").replace(/\D/g, "");
@@ -90,7 +91,7 @@ export async function loginChofer(pool, { email, phone, password } = {}) {
   };
 }
 
-export async function assignTripToChofer(pool, { tripId, choferId } = {}) {
+export async function assignTripToChofer(pool, { tripId, choferId, frontendBaseUrl } = {}) {
   await ensureTransportistaSchema(pool);
   if (!tripId || !choferId) return { ok: false, error: "trip_and_chofer_required" };
   const { rows: ch } = await pool.query(`select * from chofer_roster where chofer_id = $1`, [choferId]);
@@ -116,7 +117,12 @@ export async function assignTripToChofer(pool, { tripId, choferId } = {}) {
      values ($1::uuid, $2::uuid, $3, $4)`,
     [tripId, choferId, sha256Hex(plain), expires.toISOString()],
   );
-  return { ok: true, trip_id: tripId, chofer_id: choferId };
+  return {
+    ok: true,
+    trip_id: tripId,
+    chofer_id: choferId,
+    driver_url: conductorPublicUrl(frontendBaseUrl, plain),
+  };
 }
 
 export async function listChoferInbox(pool, choferId) {

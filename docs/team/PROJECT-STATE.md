@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (Panelin Front dockerignore loop mp4)
+**Última actualización:** 2026-08-27 (BMC Driver QR install + assign)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-27 (feat — BMC Driver QR install + assign):** Operator shows a QR: install = `/conductor` (`public/driver.webmanifest` start_url, not the calculator PWA). Route = existing `driver_url` (`/conductor?t=`). Cards on `DriverLoopPanel` after confirm and Torre HITL assign (`assignTripToChofer` now returns `driver_url`). iOS: Compartir → Agregar a inicio. No auto-WA. Tests `conductorUrl` + `driverLoopRoutes`.
 
 **2026-08-27 (fix — Panelin Front Cloud Run COPY loop mp4):** `.dockerignore` had `public` with only `bmc-pdf` excepted, so `deploy-calc-api` failed: `COPY public/video/panelin-lista-loop.mp4` not found. Allowlist `!public/video` + `!public/video/panelin-lista-loop.mp4`. Test asserts the exception. Shop widget on bmcuruguay.com.uy still waits on this Cloud Run revision.
 

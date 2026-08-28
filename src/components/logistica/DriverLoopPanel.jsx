@@ -1,6 +1,8 @@
 import { ENV_T as T } from "../../utils/enviosTheme.js";
 import { btnStyle } from "../../utils/logistica/btnStyle.js";
 import { openDriverAssign } from "../../utils/logistica/driverAssign.js";
+import { driverInstallUrl, spaOrigin } from "../../utils/logistica/driverQr.js";
+import DriverQrCard from "./DriverQrCard.jsx";
 
 function copy(text) {
   if (!text || typeof navigator === "undefined") return;
@@ -32,8 +34,10 @@ export default function DriverLoopPanel({ result, onRetry, onAssign, busy, chofe
           reparto nuevo, o usá Reintentar link cuando haya token.
         </p>
       ) : null}
+      <DriverQrCard url={driverInstallUrl(spaOrigin())} caption="Instalar BMC Driver" size={220} />
       {result.driver_url ? (
         <div style={{ marginTop: 8 }}>
+          <DriverQrCard url={result.driver_url} caption={tripLabel ? `Ruta ${tripLabel}` : "Asignar ruta"} size={240} />
           <div style={{ fontSize: 12, color: T.muted }}>Enlace chofer</div>
           <code style={{ fontSize: 12, wordBreak: "break-all" }}>{result.driver_url}</code>
           <div>

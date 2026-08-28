@@ -112,6 +112,7 @@ export default function createTorreRouter(config, logger) {
       const out = await assignTripToChofer(pool, {
         tripId: req.body?.trip_id,
         choferId: req.body?.chofer_id,
+        frontendBaseUrl: config.frontendBaseUrl,
       });
       if (!out.ok) return res.status(400).json(out);
       res.json(out);
