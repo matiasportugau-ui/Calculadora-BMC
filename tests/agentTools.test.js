@@ -711,14 +711,27 @@ await group("wolfboard_pendientes — happy path with auth", async () => {
   const { config } = await import("../server/config.js");
   // Manually inject the token since config is cached by import.
   config.apiAuthToken = "test-wolfb-token";
-  setFetch(async (url, init) => {
-    assert(url.includes("/api/wolfboard/pendientes"), "hits pendientes endpoint");
-    assert(init?.headers?.Authorization === "Bearer test-wolfb-token", "Bearer auth forwarded");
-    return { ok: true, scope: "consulta", count: 2, data: [{ rowNum: 2 }, { rowNum: 3 }] };
-  });
-  const { parsed } = await run("wolfboard_pendientes", { scope: "consulta" });
-  assert(parsed.ok === true, "ok true");
-  assert(parsed.count === 2, "count carried");
+  const prevPublic = config.publicBaseUrl;
+  const prevPort = config.port;
+  const prevSelf = config.selfBaseUrl;
+  config.publicBaseUrl = "https://panelin-calc.example.run.app";
+  config.port = 8080;
+  config.selfBaseUrl = "";
+  try {
+    setFetch(async (url, init) => {
+      assert(url.startsWith("http://127.0.0.1:8080/"), `loopback not public URL (${url})`);
+      assert(url.includes("/api/wolfboard/pendientes"), "hits pendientes endpoint");
+      assert(init?.headers?.Authorization === "Bearer test-wolfb-token", "Bearer auth forwarded");
+      return { ok: true, scope: "consulta", count: 2, data: [{ rowNum: 2 }, { rowNum: 3 }] };
+    });
+    const { parsed } = await run("wolfboard_pendientes", { scope: "consulta" });
+    assert(parsed.ok === true, "ok true");
+    assert(parsed.count === 2, "count carried");
+  } finally {
+    config.publicBaseUrl = prevPublic;
+    config.port = prevPort;
+    config.selfBaseUrl = prevSelf;
+  }
 });
 
 await group("wolfboard_sync — requires user_confirmed", async () => {
@@ -887,12 +900,55 @@ await group("chat path — wolfboard_quote_batch without intent rejected", async
 
 await group("unknown tool", async () => {
   const { parsed } = await run("does_not_exist", {});
+  assert(parsed.ok === false, "ok false on unknown tool");
   assert(parsed.error && parsed.error.includes("no implementada"), "unknown tool returns no-implementada error");
 });
 
 await group("wa_lead_to_admin — requires user_confirmed", async () => {
   const { parsed } = await run("wa_lead_to_admin", { consulta: "Babeta galpon" });
   assert(parsed.ok === false, "must reject without user_confirmed");
+});
+
+await group("internalApiBase prefers loopback over PUBLIC_BASE_URL", async () => {
+  const { internalApiBase } = await import("../server/lib/agentTools.js");
+  const { config } = await import("../server/config.js");
+  const prevPublic = config.publicBaseUrl;
+  const prevPort = config.port;
+  const prevSelf = config.selfBaseUrl;
+  config.publicBaseUrl = "https://panelin-calc.example.run.app";
+  config.port = 8080;
+  config.selfBaseUrl = "";
+  try {
+    assert.equal(internalApiBase(), "http://127.0.0.1:8080");
+    assert.ok(!internalApiBase().includes("panelin-calc.example"), "never hairpin PUBLIC_BASE_URL");
+  } finally {
+    config.publicBaseUrl = prevPublic;
+    config.port = prevPort;
+    config.selfBaseUrl = prevSelf;
+  }
+});
+
+await group("wa_lead_to_admin — loopback row-create returns adminRow", async () => {
+  const { config } = await import("../server/config.js");
+  config.apiAuthToken = "test-wolfb-token";
+  setFetch(async (url, init) => {
+    assert(url.includes("/api/wolfboard/row-create"), "hits row-create");
+    assert(String(url).includes("127.0.0.1"), "loopback host");
+    const body = JSON.parse(init.body);
+    assert(body.origen === "VW", "storefront origen");
+    assert(String(body.notas || "").includes("origen voz web"), "storefront notas reach col J");
+    return { ok: true, id: "MAN-1", fecha: "28/08/2026", adminRow: 31 };
+  });
+  const { parsed } = await run("wa_lead_to_admin", {
+    consulta: "Chat tienda Panelin — inicio",
+    cliente: "Test",
+    telefono: "59899111222",
+    origen: "VW",
+    notas: "origen voz web (VW) · flete: no cotizado / a corroborar",
+    user_confirmed: true,
+  });
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.adminRow === 31, "adminRow from Sheets append");
 });
 
 await group("email_borrador_saliente — hechos required", async () => {

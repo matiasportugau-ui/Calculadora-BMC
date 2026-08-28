@@ -31,10 +31,30 @@ import {
 } from "../lib/voice/storefrontVoicePack.js";
 import { STOREFRONT_FLETE_NOTE } from "../lib/voice/storefrontAgentConfig.js";
 import { runStorefrontTextTurn } from "../lib/voice/storefrontChat.js";
+import { appendStorefrontTurn } from "../lib/voice/storefrontConversationLog.js";
 
-const SESSION_WINDOW_MS = 5 * 60 * 1000;
-const SESSION_MAX = config.appEnv === "development" ? 30 : 3;
+export const STOREFRONT_SESSION_WINDOW_MS = 5 * 60 * 1000;
 const ACTION_MAX = 120;
+
+export function storefrontSessionMax(appEnv = config.appEnv) {
+  return appEnv === "development" ? 30 : 12;
+}
+
+export function skipStorefrontSessionLimit(req, appEnv = config.appEnv) {
+  if (appEnv === "development") return true;
+  if (String(req?.method || "").toUpperCase() === "OPTIONS") return true;
+  return false;
+}
+
+/** Log payload for /action 200 and 4xx. */
+export function storefrontActionLogPayload(type, httpStatus) {
+  return { actionType: String(type || ""), status: Number(httpStatus) || 0 };
+}
+
+export function shouldAttemptAdminColJ(adminRow) {
+  const n = Number(adminRow);
+  return Number.isFinite(n) && n >= 2;
+}
 
 function clientIp(req) {
   return (
@@ -66,7 +86,7 @@ function originGuard(req, res, next) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
   }
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
@@ -91,6 +111,54 @@ function sanitizePageUrl(raw) {
   }
 }
 
+/** `{ error }` without `ok: false` used to look like identify success. */
+export function parseStorefrontToolJson(raw) {
+  let parsed = {};
+  try {
+    parsed = typeof raw === "string" ? JSON.parse(raw) : (raw && typeof raw === "object" ? raw : {});
+  } catch {
+    return { ok: false, error: String(raw || "invalid tool result").slice(0, 300) };
+  }
+  if (parsed && parsed.ok === true) return parsed;
+  return {
+    ok: false,
+    error: parsed?.error || "No se pudo guardar en Admin 2.0.",
+  };
+}
+
+/** Admin 2.0 data rows start at 2. Reject MAN-* ids used as a fake row. */
+export function storefrontAdminRow(parsed) {
+  const n = Number(parsed?.adminRow);
+  return Number.isFinite(n) && n >= 2 ? n : null;
+}
+
+/** Identify / capture_lead: `{error}` or missing row is 502-class failure. */
+export function evaluateStorefrontLead(raw) {
+  const parsed = parseStorefrontToolJson(raw);
+  const adminRow = storefrontAdminRow(parsed);
+  if (!parsed.ok || !adminRow) {
+    return {
+      ok: false,
+      adminRow: null,
+      error: parsed.error || "Admin 2.0 no devolvió el número de fila.",
+      httpStatus: 502,
+      recordMetrics: false,
+    };
+  }
+  return {
+    ok: true,
+    adminRow,
+    id: parsed.id || null,
+    parsed,
+    httpStatus: 200,
+    recordMetrics: true,
+  };
+}
+
+export function shouldRecordStorefrontLeadMetrics(ev) {
+  return Boolean(ev?.ok && ev?.recordMetrics && Number(ev.adminRow) >= 2);
+}
+
 export default function createPublicVoiceRouter() {
   const router = Router();
 
@@ -98,12 +166,12 @@ export default function createPublicVoiceRouter() {
   router.use(originGuard);
 
   const sessionLimiter = rateLimit({
-    windowMs: SESSION_WINDOW_MS,
-    max: SESSION_MAX,
+    windowMs: STOREFRONT_SESSION_WINDOW_MS,
+    max: storefrontSessionMax(config.appEnv),
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: clientIp,
-    skip: () => config.appEnv === "development",
+    skip: (req) => skipStorefrontSessionLimit(req, config.appEnv),
     message: { ok: false, error: "Demasiadas sesiones de voz. Esperá un momento." },
   });
 
@@ -197,12 +265,14 @@ export default function createPublicVoiceRouter() {
             {},
             { source: "storefront-voice" },
           );
+          const parsed = parseStorefrontToolJson(raw);
+          if (!parsed.ok) return JSON.stringify(parsed);
           recordVoiceEvent({
             kind: "storefront_lead_update",
             surface: "storefront",
             detail: String(adminRow),
           });
-          return shapeToolResult("wolfboard_actualizar_fila", raw);
+          return JSON.stringify({ ...parsed, ok: true, adminRow });
         }
         const raw = await executeTool(
           "wa_lead_to_admin",
@@ -219,12 +289,18 @@ export default function createPublicVoiceRouter() {
           {},
           { source: "storefront-voice" },
         );
-        recordVoiceEvent({
-          kind: "storefront_lead",
-          surface: "storefront",
-          detail: checked.lead.zona || "lead",
-        });
-        return shapeToolResult("wa_lead_to_admin", raw);
+        const ev = evaluateStorefrontLead(raw);
+        if (!ev.ok) {
+          return JSON.stringify({ ok: false, error: ev.error });
+        }
+        if (shouldRecordStorefrontLeadMetrics(ev)) {
+          recordVoiceEvent({
+            kind: "storefront_lead",
+            surface: "storefront",
+            detail: String(ev.adminRow),
+          });
+        }
+        return JSON.stringify({ ...ev.parsed, ok: true, adminRow: ev.adminRow });
       } catch (err) {
         log?.warn?.({ err }, "storefront capture_lead failed");
         return JSON.stringify({ ok: false, error: err?.message || "No se pudo guardar la consulta." });
@@ -253,11 +329,14 @@ export default function createPublicVoiceRouter() {
   router.post("/action", actionLimiter, async (req, res) => {
     const { action } = req.body || {};
     if (!action || typeof action !== "object") {
+      const type = "";
+      req.log?.info?.(storefrontActionLogPayload(type, 400), "storefront action");
       return res.status(400).json({ ok: false, error: "action object required" });
     }
     const type = String(action.type || action.name || "");
     const payload = action.payload && typeof action.payload === "object" ? action.payload : {};
     if (!isPublicStorefrontTool(type)) {
+      req.log?.info?.(storefrontActionLogPayload(type, 400), "storefront action");
       return res.status(400).json({ ok: false, error: `Tool no permitida: ${type || "(vacío)"}` });
     }
     const pageUrl = sanitizePageUrl(req.body?.pageUrl);
@@ -266,6 +345,7 @@ export default function createPublicVoiceRouter() {
       payload.adminRow = Number(leadMeta.adminRow);
     }
     const result = await runPublicStorefrontTool(type, payload, pageUrl, req.log);
+    req.log?.info?.(storefrontActionLogPayload(type, 200), "storefront action");
     return res.json({ ok: true, kind: "tool", result });
   });
 
@@ -284,20 +364,28 @@ export default function createPublicVoiceRouter() {
       pageUrl,
       req.log,
     );
-    let parsed = {};
-    try {
-      parsed = JSON.parse(result);
-    } catch {
-      parsed = { ok: false, error: result };
+    const ev = evaluateStorefrontLead(result);
+    appendStorefrontTurn({
+      kind: ev.ok ? "identify" : "identify_failed",
+      adminRow: ev.adminRow,
+      telefono: checked.lead.telefono,
+      pageUrl,
+      transcript: checked.lead.consulta,
+    });
+    if (!ev.ok) {
+      req.log?.warn?.({ err: ev.error }, "storefront identify missing adminRow");
+      return res.status(ev.httpStatus).json({
+        ok: false,
+        error: ev.error,
+      });
     }
-    if (parsed.ok === false) {
-      return res.status(502).json({ ok: false, error: parsed.error || "No se pudo guardar en Admin 2.0." });
+    if (shouldRecordStorefrontLeadMetrics(ev)) {
+      recordVoiceEvent({ kind: "storefront_identify", surface: "storefront", detail: String(ev.adminRow) });
     }
-    recordVoiceEvent({ kind: "storefront_identify", surface: "storefront", detail: "gate" });
     return res.json({
       ok: true,
-      adminRow: parsed.adminRow || parsed.id || null,
-      id: parsed.id || null,
+      adminRow: ev.adminRow,
+      id: ev.id || null,
       cliente: checked.lead.cliente,
       telefono: checked.lead.telefono,
     });
@@ -307,13 +395,21 @@ export default function createPublicVoiceRouter() {
     const adminRow = Number(req.body?.adminRow);
     const telefono = normalizeStorefrontPhone(req.body?.telefono);
     const transcript = String(req.body?.transcript || "").trim().slice(0, 8000);
-    if (!Number.isFinite(adminRow) || adminRow < 2) {
-      return res.status(400).json({ ok: false, error: "adminRow requerido." });
-    }
+    const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
     if (telefono.length < 8) {
       return res.status(400).json({ ok: false, error: "Teléfono requerido para loguear el chat." });
     }
     if (!transcript) return res.json({ ok: true, skipped: true });
+    appendStorefrontTurn({
+      kind: "log",
+      adminRow: shouldAttemptAdminColJ(adminRow) ? adminRow : null,
+      telefono,
+      pageUrl,
+      transcript,
+    });
+    if (!shouldAttemptAdminColJ(adminRow)) {
+      return res.status(400).json({ ok: false, error: "adminRow requerido." });
+    }
     try {
       const raw = await executeTool(
         "wolfboard_actualizar_fila",
@@ -321,13 +417,8 @@ export default function createPublicVoiceRouter() {
         {},
         { source: "storefront-voice" },
       );
-      let parsed = {};
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        parsed = { ok: false };
-      }
-      if (parsed.ok === false) {
+      const parsed = parseStorefrontToolJson(raw);
+      if (parsed.ok !== true) {
         return res.status(502).json({ ok: false, error: parsed.error || "No se pudo guardar el chat." });
       }
       recordVoiceEvent({ kind: "storefront_chat_log", surface: "storefront", detail: String(adminRow) });

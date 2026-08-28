@@ -64,6 +64,13 @@ function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
 }
 
+/** In-process HTTP (Cloud Run hairpin to PUBLIC_BASE_URL drops wolfboard writes). */
+export function internalApiBase() {
+  const self = String(config.selfBaseUrl || "").replace(/\/$/, "");
+  if (self) return self;
+  return `http://127.0.0.1:${config.port || 3001}`;
+}
+
 async function fetchJson(pathSuffix, init = {}) {
   const url = `${apiBase()}${pathSuffix}`;
   const resp = await fetch(url, init);
@@ -1513,6 +1520,26 @@ export function buildAplicarActions(input = {}, operatorContext = null) {
 }
 
 /**
+ * Extra text for Admin col J on wa_lead_to_admin.
+ * Storefront passes `notas` (VW + página + flete). Operator Co-Work adds lista/aguas.
+ */
+export function buildWaLeadAdminNotas(input = {}, operatorContext = null) {
+  const d = operatorContext?.defaults && typeof operatorContext.defaults === "object"
+    ? operatorContext.defaults
+    : {};
+  const parts = [];
+  if (input?.notas) parts.push(String(input.notas).trim());
+  if (d.listaPrecios) parts.push(`lista=${d.listaPrecios}`);
+  if (d.aguasTecho != null) parts.push(`aguas_techo=${d.aguasTecho}`);
+  if (d.crmFaltaInfoPrefix && input?.campos_faltantes) {
+    parts.push(`${d.crmFaltaInfoPrefix} ${String(input.campos_faltantes).trim()}`);
+  } else if (input?.campos_faltantes) {
+    parts.push(String(input.campos_faltantes).trim());
+  }
+  return parts.filter(Boolean).join(" · ");
+}
+
+/**
  * Execute a tool call and return the result string. Public entry point —
  * wraps the impl with telemetry (latency, ok/error, error class) so the
  * dev panel can surface per-tool health without log scraping.
@@ -1553,7 +1580,7 @@ export async function executeTool(name, input, calcState = {}, opts = {}) {
   } catch (err) {
     ok = false;
     errorClass = "internal:throw";
-    raw = JSON.stringify({ error: err?.message || "Error desconocido" });
+    raw = JSON.stringify({ ok: false, error: err?.message || "Error desconocido" });
   } finally {
     const latencyMs = Date.now() - t0;
     recordToolCall({ tool: name, ok, latencyMs, errorClass });
@@ -2769,9 +2796,9 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       return JSON.stringify(result);
     }
 
-    return JSON.stringify({ error: `Tool "${name}" no implementada` });
+    return JSON.stringify({ ok: false, error: `Tool "${name}" no implementada` });
   } catch (err) {
-    return JSON.stringify({ error: redactGoogleError(err.message) });
+    return JSON.stringify({ ok: false, error: redactGoogleError(err.message) });
   }
 }
 
@@ -2802,8 +2829,17 @@ async function wolfboardForward(path, { method = "GET", body } = {}, toolName = 
     headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(body || {});
   }
-  const url = `${apiBase()}${path}`;
-  const resp = await fetch(url, init);
+  const url = `${internalApiBase()}${path}`;
+  let resp;
+  try {
+    resp = await fetch(url, init);
+  } catch (err) {
+    return JSON.stringify({
+      ok: false,
+      error: `Wolfboard loopback falló: ${err?.message || "fetch failed"}`,
+      tool: toolName,
+    });
+  }
   const ct = resp.headers.get("content-type") || "";
   if (ct.includes("application/json")) {
     const data = await resp.json().catch(() => null);
