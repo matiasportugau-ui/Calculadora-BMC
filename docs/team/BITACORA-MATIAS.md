@@ -379,4 +379,18 @@ gate:local:   pendiente correr al final de la sesión
 
 ---
 
+## 2026-08-28 N — Panelin Front identify → Admin 2.0 VW
+
+**Contexto:** 48 h de widget en tienda, 0 filas `origen=VW`. Identify prod 200 en ~12 ms sin `row-create`.
+
+**Acciones:** Definir `buildWaLeadAdminNotas`; identify/log 502 sin `adminRow≥2`; wolfboard loopback `127.0.0.1:PORT`; eventos de métricas solo si el write salió.
+
+**Verificación:** `node tests/publicVoiceAdmin.test.js` + `agentTools` 389/0 + `storefrontVoicePack`. Prod: fila VW tras `deploy-calc-api`.
+
+**Próximo paso:** `/panelin-web shop` — identify de prueba en bmcuruguay.com.uy.
+
+**Refs:** docs/team/reports/PANELIN-WEB-CONVERSATION-REPORT-2026-08-28.md · `server/routes/publicVoice.js` · `server/lib/agentTools.js`
+
+---
+
 

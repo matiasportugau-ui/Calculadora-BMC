@@ -2,27 +2,24 @@
 
 SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 
-**Última:** 2026-08-28  
-**Branch:** `feat/panelin-front` (`541b8b08`)  
+**Última:** 2026-08-28 (Admin VW persist — shipping)  
+**Branch:** `fix/storefront-admin-vw`  
 **Local:** http://127.0.0.1:3001/storefront-voice/  
-**Shop:** still old widget until Cloud Run picks up this branch
+**Shop:** silence-cut already on Cloud Run (`#1156`). VW write lands after this PR’s `deploy-calc-api`.
 
 ## Estado
 
-- Rama aislada de Driver QR. Commit local: saludo abierto, captions `grok-transcribe`, corte de mic+WS a 30 s.
-- Matias verificó en local: saludo abierto + silencio ~30 s corta el mic.
-- `npm run gate:local` verde (2026-08-28, lint warnings preexistentes, 0 errors).
-- Shop (bmcuruguay.com.uy) **no** tiene este widget todavía.
+- Identify vacío: `buildWaLeadAdminNotas` no existía → 200 falso. Fixed: helper + 502 unless `adminRow≥2` + wolfboard loopback.
+- Informe: `docs/team/reports/PANELIN-WEB-CONVERSATION-REPORT-2026-08-28.md`
 
 ## Próximo prompt
 
 ```
-/panelin-web ship
+/panelin-web shop
 ```
 
-Abrir PR a `main` (HITL: esperar `ship` / `sí`). Merge → `deploy-calc-api` → el script de Shopify toma el widget nuevo. Luego `/panelin-web shop` en la tienda real.
+Tras Cloud Run: identify de prueba → fila `VW` visible en Admin 2.0 y `/log` en col J. Hard-refresh la tienda.
 
 ## No hacer ahora
 
-- Más features de voz antes de shippear el corte de silencio.
-- Mezclar Driver QR / keywords / logística en esta rama.
+- Mezclar Driver QR / KB injection / logística en este PR.
