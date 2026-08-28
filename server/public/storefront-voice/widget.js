@@ -808,7 +808,10 @@
   }
 
   function endLive() {
-    const last = caps.querySelector(".bmc-line[data-live='1']");
+    // Only finalize assistant live lines. User ASR uses data-live too (setUserLive);
+    // a bare [data-live='1'] match would attribute "Vos: …" to the assistant and
+    // corrupt chatHistory / Admin transcript when response.done races transcription.
+    const last = caps.querySelector(".bmc-line[data-role='assistant'][data-live='1']");
     if (last) {
       last.dataset.live = "0";
       const t = last.textContent || "";
@@ -1219,6 +1222,17 @@
       touchVoice();
     }
     if (type === "input_audio_buffer.timeout_triggered") {
+      // Grok idle_timeout can fire while a tool round is still in flight (response.done
+      // already happened). Tearing down here drops function_call_output and kills quotes.
+      if (
+        state.pendingTools > 0
+        || state.status === "connecting"
+        || state.status === "speaking"
+        || state.status === "listening"
+      ) {
+        touchVoice();
+        return;
+      }
       const frames = state.micFrames || 0;
       const peak = state.micPeak || 0;
       const ctxState = state.audioCtx?.state || "none";
