@@ -268,6 +268,9 @@ assert.ok(publicKb.includes("poliisocianurato") || publicKb.includes("ISODEC EPS
 assert.ok(publicKb.includes("10 años"), "warranty FAQ reaches shoppers");
 assert.ok(!publicKb.includes("USD 240"), "no flete USD 240 on shop KB");
 assert.ok(!publicKb.includes("USD 252"), "no flete USD 252 on shop KB");
+assert.ok(!/precio\s*venta/i.test(publicKb), "no lista-venta accessory prices on shop KB");
+assert.ok(!publicKb.includes("97.86"), "no stale CUMROOFCOL venta price (web differs)");
+assert.ok(!publicKb.includes("20.71"), "no membrana venta unit price");
 assert.ok(!/valor base en la calculadora/i.test(publicKb), "no calculator flete base");
 assert.ok(!/google drive/i.test(publicKb), "no operator Drive");
 
@@ -279,6 +282,9 @@ assert.ok(
 assert.ok(pack.instructions.includes("10 años"), "warranty from markdown KB is in the pack");
 assert.ok(!pack.instructions.includes("USD 240"), "shipped pack must not speak flete USD 240");
 assert.ok(!pack.instructions.includes("USD 252"), "shipped pack must not speak flete USD 252");
+assert.ok(!/precio\s*venta/i.test(pack.instructions), "shipped pack has no precio venta");
+assert.ok(!pack.instructions.includes("97.86"), "shipped pack has no CUMROOFCOL venta USD");
+assert.ok(!/USD\s*\d/.test(pack.instructions), "shipped pack has no USD amounts from markdown KB");
 assert.ok(!/google drive/i.test(pack.instructions), "shipped pack has no Google Drive");
 
 const redacted = redactKnowledgeForStorefront(
@@ -286,6 +292,14 @@ const redacted = redactKnowledgeForStorefront(
 );
 assert.ok(!redacted.includes("USD 240"), "drop freight Q&A");
 assert.ok(redacted.includes("PIR aísla"), "keep product Q&A");
+
+const accessoryRedacted = redactKnowledgeForStorefront(
+  "- Perfil **cumbrera COLONIAL** 2,20 m (SKU `CUMROOFCOL`, precio venta USD 97.86) — solo para ISOROOF COLONIAL.\n- Precio venta: USD 8.59/barra.\n| `membrana` | Membrana autoadhesiva 30cm×10m | 1 rollo = 10 ML | USD 20.71 |",
+);
+assert.ok(!/precio\s*venta/i.test(accessoryRedacted), "drop precio venta lines");
+assert.ok(!accessoryRedacted.includes("97.86"), "drop CUMROOFCOL venta amount");
+assert.ok(!accessoryRedacted.includes("20.71"), "drop membrana venta amount");
+assert.ok(accessoryRedacted.includes("ISOROOF COLONIAL") || accessoryRedacted.length === 0, "product context may remain without USD");
 
 const dockerfile = fs.readFileSync(path.join(ROOT, "server/Dockerfile"), "utf8");
 assert.ok(dockerfile.includes("COPY data/knowledge"), "Cloud Run ships data/knowledge");
