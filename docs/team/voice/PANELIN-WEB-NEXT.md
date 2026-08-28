@@ -11,6 +11,7 @@ SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 
 - Rama aislada de Driver QR. Commit local: saludo abierto, captions `grok-transcribe`, corte de mic+WS a 30 s.
 - Matias verificó en local: saludo abierto + silencio ~30 s corta el mic.
+- `npm run gate:local` verde (2026-08-28, lint warnings preexistentes, 0 errors).
 - Shop (bmcuruguay.com.uy) **no** tiene este widget todavía.
 
 ## Próximo prompt
