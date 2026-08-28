@@ -79,8 +79,16 @@ const actionSrc = fs.readFileSync(path.join(ROOT, "server/routes/publicVoice.js"
 assert.match(actionSrc, /storefrontActionLogPayload\(type, 400\)/, "400 path logs action.type");
 assert.match(actionSrc, /storefrontActionLogPayload\(type, 200\)/, "200 path logs action.type");
 assert.match(actionSrc, /appendStorefrontTurn/, "identify and /log write conversation copy");
-assert.match(actionSrc, /router\.get\("\/status"/, "GET /status hides orb when credits dead");
-assert.match(actionSrc, /markStorefrontCreditsDead/, "mint credits errors cache bubble:false");
+assert.doesNotMatch(
+  actionSrc,
+  /storefrontVoiceCredits/,
+  "do not import storefrontVoiceCredits.js until that module ships (Cloud Run #1166 boot crash)",
+);
+const publicVoicePath = path.join(ROOT, "server/routes/publicVoice.js");
+for (const m of actionSrc.matchAll(/from\s+"(\.\.?\/[^"]+)"/g)) {
+  const resolved = path.resolve(path.dirname(publicVoicePath), m[1]);
+  assert.ok(fs.existsSync(resolved), `publicVoice imports missing file: ${m[1]} (Cloud Run exit 1)`);
+}
 
 assert.ok(storefrontSessionMax("production") > 3, "prod session cap must exceed 3/5min");
 assert.equal(skipStorefrontSessionLimit({ method: "OPTIONS" }, "production"), true);

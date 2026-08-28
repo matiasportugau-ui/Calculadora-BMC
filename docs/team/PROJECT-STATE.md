@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-28 (fix — storefront identify persists VW to Admin 2.0)
+**Última actualización:** 2026-08-28 (fix — storefront Cloud Run boot: drop missing credits import)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-28 (fix — Panelin Front Cloud Run boots after #1166):** `#1166` (KB + JSONL turns) never served: `publicVoice.js` imported `storefrontVoiceCredits.js` which is not in the image (`ERR_MODULE_NOT_FOUND`, revision `panelin-calc-01091-cjm` exit 1). Same class as #1162. Drop the import / GET `/status` / mint 403 until hide-orb ships with its module. Restore `web_search` + 30s idle (widget still 30s). Test asserts every relative import in `publicVoice.js` exists on disk.
 
 **2026-08-28 (fix — Panelin Front identify writes Admin 2.0 `origen=VW`):** Shop identify returned HTTP 200 in ~12 ms with no row: `wa_lead_to_admin` called missing `buildWaLeadAdminNotas`, `executeTool` returned `{error}` without `ok:false`, and identify treated that as success so `/log` never got a numeric `adminRow`. Helper added (keeps storefront `notas`). Identify/capture_lead/log now 502 unless `adminRow≥2`. Wolfboard tools loopback to `127.0.0.1:PORT` (no Cloud Run hairpin). Metrics events only after a real write. Tests `publicVoiceAdmin` + `wa_lead_to_admin` row-create.
 
