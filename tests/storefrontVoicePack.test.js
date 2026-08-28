@@ -221,6 +221,14 @@ assert.ok(widget.includes("sendVoiceText"), "typed text stays on voice thread");
 assert.ok(widget.includes("grok-transcribe"), "input ASR model so voice becomes chat text");
 assert.ok(widget.includes("input_audio_transcription.updated"), "live user captions while speaking");
 assert.ok(widget.includes("setUserLive"), "user voice line in caps");
+assert.ok(
+  /function endLive\(\)[\s\S]*?querySelector\(\s*"\.bmc-line\[data-role='assistant'\]\[data-live='1'\]"/.test(widget),
+  "endLive must only finalize assistant live lines (user ASR also uses data-live)",
+);
+assert.ok(
+  /timeout_triggered[\s\S]*?pendingTools\s*>\s*0/.test(widget),
+  "VAD idle cut must not teardown while tool rounds are in flight",
+);
 assert.ok(widget.includes("function armMic"), "arm mic before websocket so Chrome does not end the track");
 assert.ok(widget.includes("playsinline"), "muted audio element keeps the MediaStream alive");
 assert.ok(widget.includes("echoCancellation: false"), "disable AEC so TTS speakers do not zero the mic");

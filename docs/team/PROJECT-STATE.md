@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-28 (fix — storefront voice endLive + idle cut during tools):** After #1156 live user captions, `endLive()` matched any `[data-live=1]` and could attribute shopper ASR (`Vos:…`) to the assistant in `chatHistory`/Admin log when `response.done` raced transcription. Also `timeout_triggered` tore down mid-tool and dropped `function_call_output`. Fix: assistant-scoped `endLive`; skip silence cut while `pendingTools`/speaking/listening/connecting.
+
 **2026-08-28 (feat — Panelin Front local eval + silence-cut, branch `feat/panelin-front`):** Isolated from Driver QR. Open greeting (no techo/pared/cámara script). `grok-transcribe` user+assistant lines in `#bmc-caps`. 30s idle teardown of mic+WS (`SILENCE_CUT_MS` + VAD `idle_timeout_ms`) so silence is not billed. Demo mic tester. Local: `doppler run -- npm run dev:api` → http://127.0.0.1:3001/storefront-voice/. Not shipped to shop yet.
 
 **2026-08-27 (feat — BMC Driver QR install + assign):** Operator shows a QR: install = `/conductor` (`public/driver.webmanifest` start_url, not the calculator PWA). Route = existing `driver_url` (`/conductor?t=`). Cards on `DriverLoopPanel` after confirm and Torre HITL assign (`assignTripToChofer` now returns `driver_url`). iOS: Compartir → Agregar a inicio. No auto-WA. Tests `conductorUrl` + `driverLoopRoutes`.
