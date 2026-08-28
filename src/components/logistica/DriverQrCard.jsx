@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { btnStyle } from "../../utils/logistica/btnStyle.js";
 import { ENV_T as T } from "../../utils/enviosTheme.js";
+import { buildDriverQrPrintHtml } from "../../utils/logistica/driverQr.js";
 
 function copy(text) {
   if (!text || typeof navigator === "undefined") return;
@@ -42,14 +43,11 @@ export default function DriverQrCard({ url, caption, size = 240 }) {
 
   const printQr = () => {
     if (!src || typeof window === "undefined") return;
+    const html = buildDriverQrPrintHtml({ caption, href, src, size });
+    if (!html) return;
     const w = window.open("", "_blank", "noopener,noreferrer,width=420,height=560");
     if (!w) return;
-    w.document.write(
-      `<!doctype html><title>${caption || "BMC Driver"}</title><body style="font-family:system-ui;text-align:center;padding:24px">
-       <h1 style="font-size:18px">${caption || "BMC Driver"}</h1>
-       <img src="${src}" width="${size}" height="${size}" alt="QR" />
-       <p style="font-size:12px;word-break:break-all">${href}</p></body>`,
-    );
+    w.document.write(html);
     w.document.close();
     w.focus();
     w.print();

@@ -60,6 +60,14 @@ function routeBlock(src, pathLiteral) {
   assert.ok(panel.includes("customer_links"));
   assert.ok(logistica.includes("DriverLoopPanel"));
   assert.ok(logistica.includes("setDriverLoopResult"));
+  const torre = readFileSync(join(root, "src/components/logistica/TorreLiveBoard.jsx"), "utf8");
+  assert.ok(torre.includes('setRouteUrl("")'), "clear stale route QR on assign/selection change");
+  const qrUtil = readFileSync(join(root, "src/utils/logistica/driverQr.js"), "utf8");
+  assert.ok(qrUtil.includes("escapeHtml"));
+  assert.ok(qrUtil.includes("buildDriverQrPrintHtml"));
+  const qrCard = readFileSync(join(root, "src/components/logistica/DriverQrCard.jsx"), "utf8");
+  assert.ok(qrCard.includes("buildDriverQrPrintHtml"));
+  assert.ok(!/`<!doctype html><title>\$\{caption/.test(qrCard), "no raw caption interpolation in print");
   console.log("  ✓ confirm surfaces copyable driver URL + customer links");
 }
 
