@@ -31,7 +31,6 @@ import {
 } from "../lib/voice/storefrontVoicePack.js";
 import { STOREFRONT_FLETE_NOTE } from "../lib/voice/storefrontAgentConfig.js";
 import { runStorefrontTextTurn } from "../lib/voice/storefrontChat.js";
-import { appendStorefrontTurn } from "../lib/voice/storefrontConversationLog.js";
 
 export const STOREFRONT_SESSION_WINDOW_MS = 5 * 60 * 1000;
 const ACTION_MAX = 120;
@@ -365,13 +364,6 @@ export default function createPublicVoiceRouter() {
       req.log,
     );
     const ev = evaluateStorefrontLead(result);
-    appendStorefrontTurn({
-      kind: ev.ok ? "identify" : "identify_failed",
-      adminRow: ev.adminRow,
-      telefono: checked.lead.telefono,
-      pageUrl,
-      transcript: checked.lead.consulta,
-    });
     if (!ev.ok) {
       req.log?.warn?.({ err: ev.error }, "storefront identify missing adminRow");
       return res.status(ev.httpStatus).json({
@@ -400,13 +392,6 @@ export default function createPublicVoiceRouter() {
       return res.status(400).json({ ok: false, error: "Teléfono requerido para loguear el chat." });
     }
     if (!transcript) return res.json({ ok: true, skipped: true });
-    appendStorefrontTurn({
-      kind: "log",
-      adminRow: shouldAttemptAdminColJ(adminRow) ? adminRow : null,
-      telefono,
-      pageUrl,
-      transcript,
-    });
     if (!shouldAttemptAdminColJ(adminRow)) {
       return res.status(400).json({ ok: false, error: "adminRow requerido." });
     }
