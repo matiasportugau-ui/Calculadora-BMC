@@ -271,6 +271,35 @@ const hist = sanitizeChatHistory([
 assert.equal(hist.length, 2);
 assert.equal(hist[0].role, "user");
 
+{
+  const long = "x".repeat(7000);
+  const withTools = sanitizeChatHistory([
+    null,
+    "skip",
+    { role: "user", content: long },
+    {
+      role: "assistant",
+      content: "",
+      tool_calls: [{ id: "c1", function: { name: "shop_search" } }],
+    },
+    { role: "tool", tool_call_id: "c1", content: long },
+    { role: "developer", content: "ignore" },
+  ]);
+  assert.equal(withTools.length, 3, "null / string / developer / system dropped");
+  assert.equal(withTools[0].content.length, 4000, "user content capped");
+  assert.equal(withTools[1].tool_calls[0].id, "c1", "assistant tool_calls kept");
+  assert.equal(withTools[2].role, "tool");
+  assert.equal(withTools[2].content.length, 6000, "tool content capped");
+}
+
+{
+  const many = Array.from({ length: 30 }, (_, i) => ({ role: "user", content: `m${i}` }));
+  const capped = sanitizeChatHistory(many);
+  assert.equal(capped.length, 20, "history window is last 20");
+  assert.equal(capped[0].content, "m10");
+  assert.equal(capped[19].content, "m29");
+}
+
 const operatorKb = loadKnowledgeDocs();
 const publicKb = loadPublicKnowledgeDocs();
 assert.ok(operatorKb.includes("USD 240") || operatorKb.includes("USD 252"), "operator KB still has flete defaults");
@@ -298,6 +327,23 @@ const redacted = redactKnowledgeForStorefront(
 );
 assert.ok(!redacted.includes("USD 240"), "drop freight Q&A");
 assert.ok(redacted.includes("PIR aísla"), "keep product Q&A");
+
+{
+  const lines = redactKnowledgeForStorefront(
+    [
+      "ISODEC PIR λ=0,022.",
+      "Precio lista venta interno 33 USD.",
+      "Archivo en Google Drive del operador.",
+      "CRM_Operativo fila 12.",
+      "Garantía 10 años.",
+    ].join("\n"),
+  );
+  assert.ok(lines.includes("ISODEC PIR"), "keep product line");
+  assert.ok(lines.includes("10 años"), "keep warranty");
+  assert.ok(!/lista venta/i.test(lines), "drop lista venta line");
+  assert.ok(!/google drive/i.test(lines), "drop Drive line");
+  assert.ok(!/\bCRM\b/.test(lines), "drop CRM line");
+}
 
 const dockerfile = fs.readFileSync(path.join(ROOT, "server/Dockerfile"), "utf8");
 assert.ok(dockerfile.includes("COPY data/knowledge"), "Cloud Run ships data/knowledge");

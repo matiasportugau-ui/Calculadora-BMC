@@ -14,6 +14,7 @@ import {
   storefrontSessionMax,
   skipStorefrontSessionLimit,
   shouldAttemptAdminColJ,
+  sanitizeStorefrontPublicError,
 } from "../server/routes/publicVoice.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -96,5 +97,20 @@ assert.equal(skipStorefrontSessionLimit({ method: "POST" }, "development"), true
 assert.equal(shouldAttemptAdminColJ(31), true);
 assert.equal(shouldAttemptAdminColJ(1), false);
 assert.equal(shouldAttemptAdminColJ("MAN-1"), false);
+
+assert.equal(
+  sanitizeStorefrontPublicError("-----BEGIN PRIVATE KEY-----\nMIIE"),
+  "No se pudo guardar en Admin 2.0 (Sheets auth).",
+  "private key material never reaches the shopper",
+);
+assert.equal(
+  sanitizeStorefrontPublicError('{"type":"service_account","private_key":"x"}'),
+  "No se pudo guardar en Admin 2.0 (Sheets auth).",
+);
+assert.match(
+  sanitizeStorefrontPublicError("fila bloqueada por validación"),
+  /fila bloqueada/,
+  "ordinary errors stay readable",
+);
 
 console.log("publicVoiceAdmin.test.js ok");

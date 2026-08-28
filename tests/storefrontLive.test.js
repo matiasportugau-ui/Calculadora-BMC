@@ -36,6 +36,17 @@ await addLiveTurn({ sessionId: "live-test-1", role: "assistant", text: "¿Qué m
 
 const listed = await listLiveSessions();
 assert.ok(listed.some((s) => s.id === "live-test-1" && s.cliente === "Ana"));
+const listedItem = listed.find((s) => s.id === "live-test-1");
+assert.equal("phoneHash" in listedItem, false, "operator list drops phoneHash");
+assert.ok(!JSON.stringify(listedItem).includes("099111222"), "raw phone absent from list");
+assert.equal(__testLive__.get("live-test-1").phoneHash.length, 16, "memory keeps hash only");
+
+{
+  const emptyInj = await injectLiveMessage("live-test-1", "   ");
+  assert.equal(emptyInj.ok, false);
+  const badRole = await addLiveTurn({ sessionId: "live-test-1", role: "admin", text: "x" });
+  assert.equal(badRole.ok, false);
+}
 
 const taken = await takeoverLiveSession("live-test-1");
 assert.equal(taken.status, "takeover");
