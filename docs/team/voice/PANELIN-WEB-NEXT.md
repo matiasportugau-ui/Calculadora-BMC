@@ -2,16 +2,15 @@
 
 SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 
-**Última:** 2026-08-28 (Cloud Run boot — drop missing credits import)  
-**Branch:** `fix/storefront-credits-import`  
-**Local:** http://127.0.0.1:3001/storefront-voice/  
-**Shop:** still `01090-dx9` / widget Last-Modified Fri, 28 Aug 2026 08:17:43 GMT (#1163). `#1166` image never listened on 8080.
+**Última:** 2026-08-28 (shipping Hub nav)  
+**Branch:** `feat/panelin-web-hub-nav`  
+**Local:** http://localhost:5173/hub/panelin-web  
+**Shop:** Cloud Run boot fix #1169 on `main`. Widget traffic still `#1163` until `deploy-calc-api` of that merge.
 
 ## Estado
 
-- `#1166` merged (`e85e1f3d`) but revision `panelin-calc-01091-cjm` crashed: `Cannot find module storefrontVoiceCredits.js` imported from `publicVoice.js` (hide-orb WIP leaked into the squash).
-- Fix: strip that import + GET `/status`. Keep KB JSONL / identify 502 / loopback. Restore `web_search` + 30s idle to match the shop widget. Test: every `publicVoice.js` relative import must exist on disk.
-- Do not mix `feat/storefront-voice-cost` or hub-nav into this PR.
+- Tablero `/hub/panelin-web` en Hub: tab admin **Panelin web** (badge), banner Wolfboard, card primera, chip `WEB`.
+- SPA only (Vercel). `#1169` already dropped the missing credits import.
 
 ## Próximo prompt
 
@@ -19,9 +18,9 @@ SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 /panelin-web shop
 ```
 
-Tras merge + Cloud Run ready: hard-refresh bmcuruguay.com.uy. Identify must create Admin VW row. Pack has product facts, no USD 240.
+Tras este merge: https://calculadora-bmc.vercel.app/hub → tab Panelin web (admin).
 
 ## No hacer ahora
 
-- Mezclar Driver QR / keywords / logística / hide-orb / hub-nav.
+- Mezclar Driver QR / keywords / logística / hide-orb.
 - Mostrar error de créditos al comprador.
