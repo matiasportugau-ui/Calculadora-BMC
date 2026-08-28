@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-28 (fix — storefront live multi-instance takeover):** After #1163, handoff/injects lived only in process memory while list/get used Postgres. On Cloud Run (multi-instance or cold start) shopper `live/ping` hydrated as a blank `live` session and clobbered `takeover` in DB; `live/state` never saw handoff/agent messages. Fix: hydrate from DB, durable injects table, atomic notify/handoff claims, status merge that never downgrades takeover→live. Tests in `storefrontLive.test.js` (pg shim).
+
 **2026-08-28 (fix — Panelin Front identify writes Admin 2.0 `origen=VW`):** Shop identify returned HTTP 200 in ~12 ms with no row: `wa_lead_to_admin` called missing `buildWaLeadAdminNotas`, `executeTool` returned `{error}` without `ok:false`, and identify treated that as success so `/log` never got a numeric `adminRow`. Helper added (keeps storefront `notas`). Identify/capture_lead/log now 502 unless `adminRow≥2`. Wolfboard tools loopback to `127.0.0.1:PORT` (no Cloud Run hairpin). Metrics events only after a real write. Tests `publicVoiceAdmin` + `wa_lead_to_admin` row-create.
 
 **2026-08-28 (feat — Panelin Front local eval + silence-cut, branch `feat/panelin-front`):** Isolated from Driver QR. Open greeting (no techo/pared/cámara script). `grok-transcribe` user+assistant lines in `#bmc-caps`. 30s idle teardown of mic+WS (`SILENCE_CUT_MS` + VAD `idle_timeout_ms`) so silence is not billed. Demo mic tester. Local: `doppler run -- npm run dev:api` → http://127.0.0.1:3001/storefront-voice/. Not shipped to shop yet.
