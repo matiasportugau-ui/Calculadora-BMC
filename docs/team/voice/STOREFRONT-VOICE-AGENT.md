@@ -13,6 +13,7 @@ Architecture SoT: `docs/sdd/storefront-voice-agent/SDD.md`. Policy: classify →
 | Identify | `POST /api/public/voice/identify` (name + phone → Admin 2.0 row) |
 | Chat log | `POST /api/public/voice/log` (transcript → col J) |
 | Text chat | `POST /api/public/voice/chat` |
+| Voice captions | Session `audio.input.transcription.model = grok-transcribe`. User + assistant lines land in `#bmc-caps`. Local demo also fills `window.__bmcVoiceEvents`. |
 | Tools | `POST /api/public/voice/action` |
 | Flag | `PUBLIC_STOREFRONT_VOICE` (on in development; off in production unless `1`) |
 | WhatsApp | `STOREFRONT_WA_NUMBER` default `59892663245` (store float) |
