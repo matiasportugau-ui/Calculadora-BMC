@@ -86,4 +86,11 @@ assert.equal(shouldAttemptAdminColJ(31), true);
 assert.equal(shouldAttemptAdminColJ(1), false);
 assert.equal(shouldAttemptAdminColJ("MAN-1"), false);
 
+const { appendStorefrontTurn, STOREFRONT_CONV_DIR } = await import(
+  "../server/lib/voice/storefrontConversationLog.js"
+);
+assert.equal(typeof appendStorefrontTurn, "function", "appendStorefrontTurn exported");
+assert.ok(String(STOREFRONT_CONV_DIR).includes("conversations"), "conv dir under data/conversations");
+appendStorefrontTurn({ kind: "test", adminRow: 2, telefono: "59899000000", transcript: "ping" });
+
 console.log("publicVoiceAdmin.test.js ok");

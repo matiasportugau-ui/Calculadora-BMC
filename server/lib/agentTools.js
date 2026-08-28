@@ -2356,7 +2356,11 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       }
       const body = { rowNum, adminRow: rowNum };
       if (input?.respuesta != null) body.respuesta = String(input.respuesta);
-      if (input?.linkDrive != null) body.linkDrive = String(input.linkDrive);
+      // POST /api/wolfboard/row reads `link` (col K). Tool schema uses linkDrive —
+      // sending only linkDrive silently dropped PDF URLs after storefront identify
+      // started returning a real adminRow (update path instead of row-create).
+      const linkVal = input?.link ?? input?.linkDrive ?? input?.pdf_url;
+      if (linkVal != null && String(linkVal).trim()) body.link = String(linkVal).trim();
       if (input?.estado != null) body.estado = String(input.estado);
       if (input?.replaySnapshotUrl != null) body.replaySnapshotUrl = String(input.replaySnapshotUrl);
       return await wolfboardForward("/api/wolfboard/row", { method: "POST", body }, name);

@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-28 (fix — #1158 boot + storefront PDF col K):** PR #1158 imported missing `server/lib/voice/storefrontConversationLog.js`, so `server/index.js` could not load (`ERR_MODULE_NOT_FOUND`) and the whole API failed to start. Added best-effort `appendStorefrontTurn` JSONL logger. Also: after identify returns a real `adminRow`, `capture_lead` updates via `wolfboard_actualizar_fila` with tool field `linkDrive`, but `POST /api/wolfboard/row` only read `link` — col K PDF URLs were silently dropped. Map `linkDrive`/`link`/`pdf_url` → `link` in the forwarder; `/row` also accepts `linkDrive`.
+
 **2026-08-28 (fix — Panelin Front identify writes Admin 2.0 `origen=VW`):** Shop identify returned HTTP 200 in ~12 ms with no row: `wa_lead_to_admin` called missing `buildWaLeadAdminNotas`, `executeTool` returned `{error}` without `ok:false`, and identify treated that as success so `/log` never got a numeric `adminRow`. Helper added (keeps storefront `notas`). Identify/capture_lead/log now 502 unless `adminRow≥2`. Wolfboard tools loopback to `127.0.0.1:PORT` (no Cloud Run hairpin). Metrics events only after a real write. Tests `publicVoiceAdmin` + `wa_lead_to_admin` row-create.
 
 **2026-08-28 (feat — Panelin Front local eval + silence-cut, branch `feat/panelin-front`):** Isolated from Driver QR. Open greeting (no techo/pared/cámara script). `grok-transcribe` user+assistant lines in `#bmc-caps`. 30s idle teardown of mic+WS (`SILENCE_CUT_MS` + VAD `idle_timeout_ms`) so silence is not billed. Demo mic tester. Local: `doppler run -- npm run dev:api` → http://127.0.0.1:3001/storefront-voice/. Not shipped to shop yet.

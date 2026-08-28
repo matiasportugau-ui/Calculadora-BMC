@@ -475,7 +475,7 @@ export function createWolfboardRouter(config) {
   router.post("/row", requireWolfboardWrite, async (req, res) => {
     logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
-    const { adminRow, respuesta, link, aprobado, replaySnapshotUrl } = req.body || {};
+    const { adminRow, respuesta, link, linkDrive, aprobado, replaySnapshotUrl } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
 
     const adminSheetId = config.wolfbAdminSheetId;
@@ -492,8 +492,10 @@ export function createWolfboardRouter(config) {
     // writes use USER_ENTERED so any leading =/+/-/@/tab/CR is interpreted as
     // a formula. Operator-supplied respuesta/link and the M-column snapshot
     // URL are all attacker-controllable in principle.
+    // `linkDrive` is the agentTools field name; `link` is the HTTP body key — accept both.
+    const linkRaw = link !== undefined ? link : linkDrive;
     const safeRespuesta = respuesta !== undefined ? sanitizeCellValue(respuesta) : undefined;
-    const safeLink = link !== undefined ? sanitizeCellValue(link) : undefined;
+    const safeLink = linkRaw !== undefined ? sanitizeCellValue(linkRaw) : undefined;
     const safeReplay = replaySnapshotUrl !== undefined ? sanitizeCellValue(replaySnapshotUrl) : undefined;
 
     const adminUpdates = [];

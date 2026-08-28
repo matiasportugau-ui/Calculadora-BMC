@@ -756,6 +756,24 @@ await group("wolfboard_actualizar_fila — happy path", async () => {
   assert(parsed.ok === true, "ok true");
 });
 
+await group("wolfboard_actualizar_fila — linkDrive maps to link (col K)", async () => {
+  setFetch(async (url, init) => {
+    assert(url.includes("/api/wolfboard/row"), "hits row endpoint");
+    const body = JSON.parse(init.body);
+    assert(body.link === "https://example.com/quote.pdf", "HTTP /row expects link, not linkDrive");
+    assert(body.linkDrive === undefined, "must not send only linkDrive (silently ignored by /row)");
+    assert(body.adminRow === 31, "adminRow in body");
+    return { ok: true, adminRow: 31 };
+  });
+  const { parsed } = await run("wolfboard_actualizar_fila", {
+    rowNum: 31,
+    respuesta: "origen voz web (VW)",
+    linkDrive: "https://example.com/quote.pdf",
+    user_confirmed: true,
+  });
+  assert(parsed.ok === true, "ok true");
+});
+
 await group("wolfboard_actualizar_fila — invalid rowNum", async () => {
   const { parsed } = await run("wolfboard_actualizar_fila", { rowNum: 1, user_confirmed: true });
   assert(parsed.ok === false, "ok false with rowNum<2");
@@ -919,8 +937,8 @@ await group("internalApiBase prefers loopback over PUBLIC_BASE_URL", async () =>
   config.port = 8080;
   config.selfBaseUrl = "";
   try {
-    assert.equal(internalApiBase(), "http://127.0.0.1:8080");
-    assert.ok(!internalApiBase().includes("panelin-calc.example"), "never hairpin PUBLIC_BASE_URL");
+    assert(internalApiBase() === "http://127.0.0.1:8080", "loopback host:port");
+    assert(!internalApiBase().includes("panelin-calc.example"), "never hairpin PUBLIC_BASE_URL");
   } finally {
     config.publicBaseUrl = prevPublic;
     config.port = prevPort;
