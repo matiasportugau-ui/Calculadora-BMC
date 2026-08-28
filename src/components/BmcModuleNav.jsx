@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
+import { useStorefrontLiveCount } from "../hooks/useStorefrontLiveCount.js";
 import { openBugReport } from "../lib/bugReportBus.js";
 import { isDesignPreviewEnabled } from "../lib/designPreviewMode.js";
 
@@ -35,6 +36,9 @@ const btn = (active) => ({
   color: active ? "#fff" : "#1d1d1f",
   background: active ? "#0071e3" : "transparent",
   border: active ? "none" : "1.5px solid #e5e5ea",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
 });
 
 export default function BmcModuleNav() {
@@ -42,8 +46,12 @@ export default function BmcModuleNav() {
   const previewNav = isDesignPreviewEnabled();
   const auth = useBmcAuth();
   const isAdmin = auth?.role === "admin" || auth?.role === "superadmin";
+  const liveCount = useStorefrontLiveCount({
+    enabled: isAdmin && auth?.status === "authenticated",
+  });
   const finanzasActive =
     pathname.startsWith("/hub/finanzas") || pathname.startsWith("/hub/banco");
+  const panelinWebActive = pathname.startsWith("/hub/panelin-web");
   const hubActive =
     pathname === "/hub" ||
     pathname.startsWith("/hub/ml") ||
@@ -73,6 +81,32 @@ export default function BmcModuleNav() {
       <Link to="/hub" style={btn(hubActive)}>
         Wolfboard
       </Link>
+      {isAdmin ? (
+        <Link
+          to="/hub/panelin-web"
+          style={btn(panelinWebActive)}
+          title="Chats en vivo de Panelin en la tienda"
+        >
+          Panelin web
+          {liveCount > 0 ? (
+            <span
+              style={{
+                minWidth: 18,
+                height: 18,
+                padding: "0 6px",
+                borderRadius: 999,
+                background: panelinWebActive ? "#fff" : "#cf222e",
+                color: panelinWebActive ? "#cf222e" : "#fff",
+                fontSize: 11,
+                lineHeight: "18px",
+                textAlign: "center",
+              }}
+            >
+              {liveCount}
+            </span>
+          ) : null}
+        </Link>
+      ) : null}
       <Link to="/" style={btn(calcActive)}>
         Calculadora
       </Link>

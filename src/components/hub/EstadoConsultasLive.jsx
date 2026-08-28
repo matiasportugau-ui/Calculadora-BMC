@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useBmcAuth } from "../../hooks/useBmcAuth.js";
+import { useStorefrontLiveCount } from "../../hooks/useStorefrontLiveCount.js";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -22,7 +23,11 @@ const THRESHOLD_ALARM = 15; // backlog that triggers alarm
 const POLL_MS = 15000;
 
 export default function EstadoConsultasLive() {
-  const { token } = useBmcAuth();
+  const { token, role, status } = useBmcAuth();
+  const isAdmin = role === "admin" || role === "superadmin";
+  const liveWeb = useStorefrontLiveCount({
+    enabled: isAdmin && status === "authenticated",
+  });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -317,6 +322,22 @@ export default function EstadoConsultasLive() {
             {ch}: {channels[ch]}
           </div>
         ))}
+        {isAdmin ? (
+          <Link
+            to="/hub/panelin-web"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: liveWeb > 0 ? "#e8f1ff" : "#f8f8fa",
+              padding: "2px 8px",
+              borderRadius: 6,
+              color: "#0071e3",
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            WEB{liveWeb > 0 ? `: ${liveWeb}` : ""} →
+          </Link>
+        ) : null}
       </div>
 
       {recentNew > 0 && (
@@ -341,6 +362,11 @@ export default function EstadoConsultasLive() {
             <Link to="/hub/ml-manager" style={{ fontSize: 12, color: "#0071e3", textDecoration: "none" }}>
               ML Manager →
             </Link>
+            {isAdmin ? (
+              <Link to="/hub/panelin-web" style={{ fontSize: 12, color: "#0071e3", textDecoration: "none" }}>
+                Panelin web · chats en vivo →
+              </Link>
+            ) : null}
           </div>
 
           <div style={{ fontSize: 11, color: "#666" }}>

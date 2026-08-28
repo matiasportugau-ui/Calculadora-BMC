@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import BmcModuleNav from "./BmcModuleNav.jsx";
 import OperatorOverview from "./hub/OperatorOverview.jsx";
 import EstadoConsultasLive from "./hub/EstadoConsultasLive.jsx";
+import { useStorefrontLiveCount } from "../hooks/useStorefrontLiveCount.js";
+import { useBmcAuth } from "../hooks/useBmcAuth.js";
 
 const wrap = {
   minHeight: "100vh",
@@ -69,6 +71,45 @@ const cta = {
   textDecoration: "none",
 };
 
+function PanelinWebHubBanner() {
+  const auth = useBmcAuth();
+  const isAdmin = auth?.role === "admin" || auth?.role === "superadmin";
+  const n = useStorefrontLiveCount({
+    enabled: isAdmin && auth?.status === "authenticated",
+  });
+  if (!isAdmin) return null;
+  return (
+    <Link
+      to="/hub/panelin-web"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        marginBottom: 16,
+        padding: "12px 16px",
+        background: n > 0 ? "#e8f1ff" : "#fff",
+        border: n > 0 ? "1.5px solid #0071e3" : "1px solid #e5e5ea",
+        borderRadius: 10,
+        textDecoration: "none",
+        color: "inherit",
+        fontFamily: h1.fontFamily,
+        boxShadow: "0 1px 3px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.05)",
+      }}
+    >
+      <span>
+        <strong style={{ color: "#1a3a5c", fontSize: 14 }}>Panelin web · chats en vivo</strong>
+        <span style={{ display: "block", fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
+          {n > 0
+            ? `${n} ${n === 1 ? "chat" : "chats"} en la tienda ahora. Mirar captions o entrar: Panelin pausa y avisa que un agente de ventas se suma.`
+            : "Avisos cuando hay un chat en la tienda. Default: solo mirar. Entrar pausa a Panelin."}
+        </span>
+      </span>
+      <span style={{ ...cta, marginTop: 0 }}>{n > 0 ? "Abrir ahora" : "Abrir chats"}</span>
+    </Link>
+  );
+}
+
 export default function BmcWolfboardHub() {
   const adminFlagOn = import.meta.env.VITE_FEATURE_ADMIN_COT_V2 === "true";
   const adminTitle = adminFlagOn ? "Administrador de Cotizaciones" : "Admin · Consultas y Cotizaciones";
@@ -83,9 +124,20 @@ export default function BmcWolfboardHub() {
         {/* Aditivo: resúmenes de Control Operativo (IA + Finanzas) */}
         <OperatorOverview />
 
+        <PanelinWebHubBanner />
+
         <EstadoConsultasLive />
 
         <div style={grid}>
+          <div style={card}>
+            <h2 style={cardTitle}>Panelin web · en vivo</h2>
+            <p style={cardDesc}>
+              Aviso cuando hay un chat en la tienda. Mirar captions, o entrar: Panelin pausa y avisa que un agente de ventas se suma.
+            </p>
+            <Link to="/hub/panelin-web" style={{ ...cta, background: "#0071e3" }}>
+              Abrir chats en vivo
+            </Link>
+          </div>
           <div style={card}>
             <h2 style={cardTitle}>BMC Uruguay · Calculadora</h2>
             <p style={cardDesc}>Cotizaciones, BOM, PDF y presupuestos.</p>
@@ -162,15 +214,6 @@ export default function BmcWolfboardHub() {
             </p>
             <Link to="/hub/admin-ingreso" style={{ ...cta, background: "#188038" }}>
               Abrir interpretación
-            </Link>
-          </div>
-          <div style={card}>
-            <h2 style={cardTitle}>Panelin web · en vivo</h2>
-            <p style={cardDesc}>
-              Aviso cuando hay un chat en la tienda. Mirar captions, o entrar: Panelin pausa y avisa que un agente de ventas se suma.
-            </p>
-            <Link to="/hub/panelin-web" style={{ ...cta, background: "#0071e3" }}>
-              Abrir chats en vivo
             </Link>
           </div>
           <div style={card}>
