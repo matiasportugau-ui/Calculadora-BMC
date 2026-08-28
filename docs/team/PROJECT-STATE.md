@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-28 (fix — storefront mic leak on /session fail):** `startCall` used `Promise.all([openMic(), /session])` and only assigned `stream` after both settled. When mint failed (502 / credits / network), the resolved `MediaStream` was orphaned — browser mic indicator stayed on. Mint session first, then `getUserMedia`; always stop tracks on error. Test `storefrontVoiceMicOrder.test.js`.
+
 **2026-08-28 (feat — Hub: Panelin web live board in module nav):** `/hub/panelin-web` was a dead route unless you knew the URL. Admin tab **Panelin web** in `BmcModuleNav` (live-count badge), Wolfboard banner + first grid card, `WEB` shortcut in Estado de consultas. Branch `feat/panelin-web-hub-nav`. Frontend-only (Vercel); live API already in #1163, Cloud Run boot in #1169.
 
 **2026-08-28 (fix — Panelin Front Cloud Run boots after #1166):** `#1166` (KB + JSONL turns) never served: `publicVoice.js` imported `storefrontVoiceCredits.js` which is not in the image (`ERR_MODULE_NOT_FOUND`, revision `panelin-calc-01091-cjm` exit 1). Same class as #1162. Drop the import / GET `/status` / mint 403 until hide-orb ships with its module. Restore `web_search` + 30s idle (widget still 30s). Test asserts every relative import in `publicVoice.js` exists on disk.

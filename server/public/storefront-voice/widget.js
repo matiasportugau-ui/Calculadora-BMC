@@ -1416,18 +1416,18 @@
 
     let stream;
     try {
-      const micP = openMic();
-      const sessP = fetch(`${API}/api/public/voice/session`, {
+      // Mint before getUserMedia: a failed /session must never leave the mic open.
+      // Parallel Promise.all orphaned the MediaStream on sess failure because
+      // `stream` was only assigned after both promises settled.
+      const sessRes = await fetch(`${API}/api/public/voice/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pageUrl: window.location.href, shopperName: state.cliente }),
-      }).then(async (r) => {
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok || !j.ok) throw new Error(j.error || "No se pudo iniciar la sesión");
-        return j;
       });
-      const [mic, sess] = await Promise.all([micP, sessP]);
-      stream = mic;
+      const sess = await sessRes.json().catch(() => ({}));
+      if (!sessRes.ok || !sess.ok) throw new Error(sess.error || "No se pudo iniciar la sesión");
+
+      stream = await openMic();
       state.stream = stream;
       stream.getAudioTracks().forEach((t) => {
         t.enabled = true;
@@ -1469,7 +1469,11 @@
         };
       });
     } catch (err) {
-      if (stream) stream.getTracks().forEach((t) => t.stop());
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        stream = null;
+        state.stream = null;
+      }
       teardown();
       const denied = /NotAllowedError|PermissionDenied/i.test(err?.name || "") || /permission/i.test(err?.message || "");
       if (denied) state.voiceDenied = true;
