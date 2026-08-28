@@ -14,6 +14,8 @@
   const SILENCE_CUT_MS = 30 * 1000;
   const SS_RESUME = "bmc_panelin_resume";
   const SS_IDENTITY = "bmc_panelin_identity";
+  const SS_LIVE = "bmc_panelin_live";
+  const LIVE_HANDOFF = "Un agente de ventas de BMC se suma a la conversación.";
   const SHOP_HOSTS = ["bmcuruguay.com.uy", "www.bmcuruguay.com.uy", "xj4rir-qz.myshopify.com"];
   const COL_HINTS = {
     isodec: "isodec",
@@ -368,6 +370,7 @@
 #bmc-paneli-voice .bmc-line{margin:0 0 8px;overflow-wrap:anywhere}
 #bmc-paneli-voice .bmc-line:last-child{margin:0}
 #bmc-paneli-voice .bmc-line[data-role="user"]{color:#6e6e73}
+#bmc-paneli-voice .bmc-line[data-role="agent"]{color:#1a3a5c;font-weight:600}
 #bmc-paneli-voice .bmc-link{color:#0071e3;font-weight:600;text-decoration:underline;text-underline-offset:2px}
 #bmc-paneli-voice .bmc-quote{display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:10px 12px;border:1px solid #e5e5ea;border-radius:14px;background:#f5f5f7;color:#1d1d1f;text-decoration:none;min-height:52px}
 #bmc-paneli-voice .bmc-quote:hover{border-color:#0071e3}
@@ -498,6 +501,10 @@
     adminRow: null,
     logTimer: null,
     silenceTimer: null,
+    liveId: null,
+    livePing: null,
+    livePoll: null,
+    agentMode: false,
   };
 
   function markChat() {
@@ -529,6 +536,7 @@
     if (last && last.role === role && last.content === t) return;
     state.chatHistory.push({ role, content: t.slice(0, 4000) });
     if (state.chatHistory.length > 20) state.chatHistory = state.chatHistory.slice(-20);
+    if (role !== "agent") postLiveTurn(role === "user" ? "user" : "assistant", t);
   }
 
   function voiceLive() {
@@ -558,7 +566,7 @@
   }
 
   function cutMicForSilence(reason) {
-    if (state.status === "idle") return;
+    if (state.status === "idle" || state.agentMode) return;
     teardown();
     setErr(reason || "Corté el mic por silencio. Tocá Hablar para seguir.");
   }
@@ -582,6 +590,93 @@
     state.adminRow = Number.isFinite(row) && row >= 2 ? row : info?.adminRow || null;
     root.classList.add("identified");
     persistIdentity();
+    ensureLiveId();
+    startLiveLoop();
+  }
+
+  function ensureLiveId() {
+    if (state.liveId) return state.liveId;
+    try {
+      const saved = sessionStorage.getItem(SS_LIVE);
+      if (saved) state.liveId = saved;
+    } catch { /* ignore */ }
+    if (!state.liveId) {
+      state.liveId = (crypto.randomUUID && crypto.randomUUID()) || `live-${Date.now()}`;
+    }
+    try { sessionStorage.setItem(SS_LIVE, state.liveId); } catch { /* ignore */ }
+    return state.liveId;
+  }
+
+  function liveBody() {
+    return {
+      id: ensureLiveId(),
+      conversationId: state.conversationId,
+      cliente: state.cliente,
+      telefono: state.telefono,
+      adminRow: state.adminRow,
+      pageUrl: window.location.href,
+    };
+  }
+
+  function postLive(path, body) {
+    fetch(`${API}/api/public/voice/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).catch(() => {});
+  }
+
+  function postLiveTurn(role, text) {
+    if (!state.identified) return;
+    const t = String(text || "").trim();
+    if (!t) return;
+    postLive("live/turn", { ...liveBody(), role, text: t });
+  }
+
+  function pingLive(status) {
+    if (!state.identified) return;
+    postLive("live/ping", { ...liveBody(), status: status || (state.agentMode ? "takeover" : undefined) });
+  }
+
+  function stopLiveLoop() {
+    if (state.livePing) { clearInterval(state.livePing); state.livePing = null; }
+    if (state.livePoll) { clearInterval(state.livePoll); state.livePoll = null; }
+  }
+
+  async function pollLiveState() {
+    if (!state.identified || !state.liveId) return;
+    try {
+      const res = await fetch(`${API}/api/public/voice/live/state?id=${encodeURIComponent(state.liveId)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!data || data.ok === false) return;
+      if (data.handoff && !state.agentMode) await enterAgentMode();
+      (data.injects || []).forEach((row) => { if (row && row.text) addCap("agent", row.text); });
+    } catch { /* ignore */ }
+  }
+
+  async function enterAgentMode() {
+    if (state.agentMode) return;
+    state.agentMode = true;
+    addCap("assistant", LIVE_HANDOFF);
+    if (state.send) {
+      try {
+        state.send({
+          type: "response.create",
+          response: { instructions: `Say exactly this in Spanish, then stop: ${LIVE_HANDOFF}` },
+        });
+      } catch { /* ignore */ }
+      await new Promise((r) => setTimeout(r, 2800));
+    }
+    if (state.status !== "idle") teardown();
+    setErr("Un agente de BMC está en el chat. Podés seguir escribiendo.");
+  }
+
+  function startLiveLoop() {
+    if (!state.identified) return;
+    ensureLiveId();
+    pingLive();
+    if (!state.livePing) state.livePing = setInterval(() => pingLive(), 10000);
+    if (!state.livePoll) state.livePoll = setInterval(() => pollLiveState(), 2000);
   }
 
   function transcriptText() {
@@ -735,7 +830,7 @@
     }
     markChat();
     const last = caps.querySelector(".bmc-line:last-child");
-    const prefix = role === "user" ? "Vos: " : "";
+    const prefix = role === "user" ? "Vos: " : role === "agent" ? "BMC · ventas: " : "";
     const next = prefix + t;
     if (last && last.textContent.trim() === next.trim()) return;
     if (last && role !== "user" && last.dataset.role === "assistant" && t.startsWith((last.textContent || "").replace(/^Panelin:\s*/, "").trim().slice(0, 40))) {
@@ -751,7 +846,7 @@
     fillRichText(p, next);
     caps.appendChild(p);
     caps.scrollTop = caps.scrollHeight;
-    remember(role === "user" ? "user" : "assistant", t);
+    remember(role === "user" ? "user" : role === "agent" ? "agent" : "assistant", t);
     scheduleLog();
   }
 
@@ -1364,6 +1459,7 @@
           if (resumeId) state.greeted = true;
           send(buildSessionUpdate(boot));
           setStatus("active");
+          startLiveLoop();
           touchVoice();
           state.maxTimer = setTimeout(() => {
             addCap("assistant", "Llegamos al tope de esta llamada. Si querés, abrimos WhatsApp.");
@@ -1418,6 +1514,10 @@
     if (!text || state.chatBusy) return;
     setErr("");
     root.classList.add("open");
+    if (state.agentMode) {
+      addCap("user", text);
+      return;
+    }
     if (voiceLive() && state.send) {
       sendVoiceText(text);
       return;
@@ -1466,13 +1566,17 @@
 
   function openPanel() {
     root.classList.add("open");
-    if (state.identified && state.status === "idle" && state.voiceWanted && !state.voiceDenied) startCall();
+    if (state.identified && state.status === "idle" && state.voiceWanted && !state.voiceDenied && !state.agentMode) startCall();
   }
 
   function closePanel() {
     root.classList.remove("open");
     flushLog();
     if (voiceLive()) teardown();
+    if (!state.agentMode) {
+      pingLive("ended");
+      stopLiveLoop();
+    }
   }
 
   root.addEventListener("pointerdown", () => {
@@ -1493,6 +1597,7 @@
   go.addEventListener("click", (e) => {
     e.preventDefault();
     if (!state.identified) return;
+    if (state.agentMode) return;
     if (voiceLive()) teardown();
     else startCall();
   });
