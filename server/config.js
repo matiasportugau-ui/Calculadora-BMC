@@ -320,6 +320,7 @@ export const config = {
   storefrontVoiceEnabled: bool(process.env.PUBLIC_STOREFRONT_VOICE, appEnv === "development"),
   /** Store WhatsApp (same as bmcuruguay.com.uy float). Digits only. */
   storefrontWaNumber: String(process.env.STOREFRONT_WA_NUMBER || "59892663245").replace(/[^0-9]/g, "") || "59892663245",
+  storefrontLiveNotifyWa: String(process.env.STOREFRONT_LIVE_NOTIFY_WA || "").replace(/[^0-9]/g, ""),
   /** Allowed CORS origins — comma-separated. Defaults to Vercel prod + local dev. */
   corsOrigins: [
     ...(

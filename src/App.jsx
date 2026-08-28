@@ -59,6 +59,7 @@ const BmcCanalesUnificadosModule = lazy(() => import("./components/hub/canales/C
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
 const AdminIngresoModule = lazy(() => import("./components/AdminIngresoModule.jsx"));
+const PanelinWebLiveBoard = lazy(() => import("./components/PanelinWebLiveBoard.jsx"));
 const BugReportsList = lazy(() => import("./components/BugReportsList.jsx"));
 const BmcPlanosModule = lazy(() => import("./components/BmcPlanosModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
@@ -340,6 +341,18 @@ export default function App() {
               <Shell>
                 <Suspense fallback={suspenseFallback}>
                   <AdminIngresoModule />
+                </Suspense>
+              </Shell>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/panelin-web"
+          element={
+            <RequireGrant role="admin">
+              <Shell>
+                <Suspense fallback={suspenseFallback}>
+                  <PanelinWebLiveBoard />
                 </Suspense>
               </Shell>
             </RequireGrant>

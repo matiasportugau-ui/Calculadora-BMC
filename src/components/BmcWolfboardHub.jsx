@@ -165,6 +165,15 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
+            <h2 style={cardTitle}>Panelin web · en vivo</h2>
+            <p style={cardDesc}>
+              Aviso cuando hay un chat en la tienda. Mirar captions, o entrar: Panelin pausa y avisa que un agente de ventas se suma.
+            </p>
+            <Link to="/hub/panelin-web" style={{ ...cta, background: "#0071e3" }}>
+              Abrir chats en vivo
+            </Link>
+          </div>
+          <div style={card}>
             <h2 style={cardTitle}>Planos</h2>
             <p style={cardDesc}>
               Croquis a mano, plano del cliente o medidas → plano profesional acotado (DXF/SVG editable) y presupuesto. Mismo motor: exportá y cotizá lo que cargues.

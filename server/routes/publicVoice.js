@@ -31,6 +31,11 @@ import {
 } from "../lib/voice/storefrontVoicePack.js";
 import { STOREFRONT_FLETE_NOTE } from "../lib/voice/storefrontAgentConfig.js";
 import { runStorefrontTextTurn } from "../lib/voice/storefrontChat.js";
+import {
+  pingLiveSession,
+  addLiveTurn,
+  shopperLiveState,
+} from "../lib/voice/storefrontLive.js";
 
 export const STOREFRONT_SESSION_WINDOW_MS = 5 * 60 * 1000;
 const ACTION_MAX = 120;
@@ -110,18 +115,27 @@ function sanitizePageUrl(raw) {
   }
 }
 
+/** Never send service-account JSON / private keys to the shopper. */
+export function sanitizeStorefrontPublicError(err) {
+  const s = String(err || "");
+  if (/BEGIN PRIVATE KEY|service_account|private_key/i.test(s)) {
+    return "No se pudo guardar en Admin 2.0 (Sheets auth).";
+  }
+  return s.slice(0, 300) || "No se pudo guardar en Admin 2.0.";
+}
+
 /** `{ error }` without `ok: false` used to look like identify success. */
 export function parseStorefrontToolJson(raw) {
   let parsed = {};
   try {
     parsed = typeof raw === "string" ? JSON.parse(raw) : (raw && typeof raw === "object" ? raw : {});
   } catch {
-    return { ok: false, error: String(raw || "invalid tool result").slice(0, 300) };
+    return { ok: false, error: sanitizeStorefrontPublicError(raw || "invalid tool result") };
   }
   if (parsed && parsed.ok === true) return parsed;
   return {
     ok: false,
-    error: parsed?.error || "No se pudo guardar en Admin 2.0.",
+    error: sanitizeStorefrontPublicError(parsed?.error || "No se pudo guardar en Admin 2.0."),
   };
 }
 
@@ -381,6 +395,36 @@ export default function createPublicVoiceRouter() {
       cliente: checked.lead.cliente,
       telefono: checked.lead.telefono,
     });
+  });
+
+  router.post("/live/ping", actionLimiter, async (req, res) => {
+    const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
+    const out = await pingLiveSession({
+      id: req.body?.id || req.body?.liveId,
+      conversationId: req.body?.conversationId,
+      cliente: req.body?.cliente,
+      telefono: req.body?.telefono,
+      adminRow: req.body?.adminRow,
+      pageUrl,
+      status: req.body?.status,
+    });
+    return res.json(out);
+  });
+
+  router.post("/live/turn", actionLimiter, async (req, res) => {
+    const out = await addLiveTurn({
+      sessionId: req.body?.id || req.body?.liveId,
+      role: req.body?.role,
+      text: req.body?.text,
+    });
+    if (!out.ok) return res.status(400).json(out);
+    return res.json(out);
+  });
+
+  router.get("/live/state", actionLimiter, async (req, res) => {
+    const id = String(req.query?.id || req.query?.liveId || "").trim();
+    if (!id) return res.status(400).json({ ok: false, error: "id requerido" });
+    return res.json(await shopperLiveState(id));
   });
 
   router.post("/log", actionLimiter, async (req, res) => {
