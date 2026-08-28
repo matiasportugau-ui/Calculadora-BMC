@@ -10,10 +10,11 @@
   const SAMPLE_RATE = 24000;
   const SECRET_PREFIX = "xai-client-secret.";
   const MAX_MS = 8 * 60 * 1000;
+  /** Wall-clock idle after last speech/turn: stop mic + WS so silence is not billed. */
+  const SILENCE_CUT_MS = 30 * 1000;
   const SS_RESUME = "bmc_panelin_resume";
   const SS_IDENTITY = "bmc_panelin_identity";
   const SHOP_HOSTS = ["bmcuruguay.com.uy", "www.bmcuruguay.com.uy", "xj4rir-qz.myshopify.com"];
-  const GREETING = "Hola, soy Panelin de BMC Uruguay. ¿Buscás un techo, una pared, o una cámara?";
   const COL_HINTS = {
     isodec: "isodec",
     "isodec pir": "isodec-pir",
@@ -54,6 +55,41 @@
   }
 
   const API = apiBase();
+
+  function micScore(label) {
+    const l = String(label || "");
+    if (/aggregate|agregado|virtual|blackhole|soundflower|loopback/i.test(l)) return -100;
+    if (/iphone|continuity|airpods/i.test(l)) return 1;
+    if (/macbook|built-in|built in|interno/i.test(l)) return 50;
+    return 5;
+  }
+
+  async function openMic() {
+    const loose = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: true,
+    };
+    const first = await navigator.mediaDevices.getUserMedia({ audio: loose });
+    const label = first.getAudioTracks()[0]?.label || "";
+    if (!/aggregate|agregado|virtual|blackhole|soundflower|loopback/i.test(label)) {
+      return first;
+    }
+    let best = null;
+    try {
+      const inputs = (await navigator.mediaDevices.enumerateDevices())
+        .filter((d) => d.kind === "audioinput" && d.deviceId && d.deviceId !== "default" && d.deviceId !== "communications");
+      best = inputs.slice().sort((a, b) => micScore(b.label) - micScore(a.label))[0];
+    } catch { /* ignore */ }
+    first.getTracks().forEach((t) => t.stop());
+    await new Promise((r) => setTimeout(r, 400));
+    if (best && micScore(best.label) > 0) {
+      return navigator.mediaDevices.getUserMedia({
+        audio: { ...loose, deviceId: { ideal: best.deviceId } },
+      });
+    }
+    return navigator.mediaDevices.getUserMedia({ audio: loose });
+  }
 
   function b64Encode(bytes) {
     let binary = "";
@@ -127,15 +163,16 @@
       tool_choice: boot.tool_choice || "auto",
       turn_detection: boot.turn_detection || {
         type: "server_vad",
-        threshold: 0.75,
+        threshold: 0.5,
         prefix_padding_ms: 333,
         silence_duration_ms: 900,
-        idle_timeout_ms: 20000,
+        idle_timeout_ms: SILENCE_CUT_MS,
       },
       audio: {
         input: {
           format: { type: "audio/pcm", rate: SAMPLE_RATE },
           transcription: {
+            model: boot.transcription_model || "grok-transcribe",
             language_hint: boot.language_hint || "es-MX",
             keyterms: boot.keyterms || [],
           },
@@ -340,6 +377,7 @@
 #bmc-paneli-voice .bmc-shop-picks{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 #bmc-paneli-voice .bmc-shop-picks[hidden]{display:none}
 #bmc-paneli-voice .bmc-status{margin:0 0 6px;font-size:11px;color:#6e6e73;min-height:1em}
+#bmc-paneli-voice .bmc-vu{margin:0 0 6px;font-size:11px;color:#6e6e73;font-variant-numeric:tabular-nums}
 #bmc-paneli-voice .bmc-composer{display:flex;align-items:center;gap:8px;margin:0 0 8px}
 #bmc-paneli-voice .bmc-inwrap{flex:1;display:flex;align-items:center;border:1px solid #e5e5ea;border-radius:999px;background:#f5f5f7;padding:4px 6px 4px 14px;min-height:48px}
 #bmc-paneli-voice .bmc-in{flex:1;border:0;outline:none;font:inherit;font-size:16px;min-height:40px;background:transparent;color:#1d1d1f}
@@ -373,22 +411,19 @@
       <div class="bmc-empty" id="bmc-empty">
         <video class="bmc-hero-face" src="${API}/storefront-voice/panelin-lista-loop.mp4" poster="${API}/storefront-voice/panelin.png" autoplay muted loop playsinline></video>
         <p class="bmc-title">¡Hola! Soy Panelin</p>
-        <p class="bmc-sub">Te ayudo a cotizar paneles para tu obra. Contame qué necesitás.</p>
+        <p class="bmc-sub">Cuando quieras, hablamos.</p>
         <form class="bmc-id" id="bmc-id">
           <p class="bmc-id-ask">¡Qué bueno que estés acá! Para ayudarte de verdad y dejarle tu consulta al equipo BMC, ¿me decís tu nombre y un celular? ¡Con eso ya podemos chatear!</p>
           <input id="bmc-name" type="text" name="name" autocomplete="name" maxlength="80" required placeholder="Tu nombre" />
           <input id="bmc-phone" type="tel" name="tel" autocomplete="tel" inputmode="tel" maxlength="20" required placeholder="Celular 099…" />
           <button type="submit" class="bmc-id-go">¡Dale, chateamos!</button>
         </form>
-        <div class="bmc-picks" id="bmc-picks">
-          <button type="button" class="bmc-pick" data-send="Quiero cotizar un techo">Quiero cotizar un techo</button>
-          <button type="button" class="bmc-pick" data-send="¿Qué panel me recomendás?">¿Qué panel me recomendás?</button>
-          <button type="button" class="bmc-pick" data-send="Necesito una fachada">Necesito una fachada</button>
-        </div>
+        <div class="bmc-picks" id="bmc-picks" hidden></div>
       </div>
       <div class="bmc-caps" id="bmc-caps" aria-live="polite"></div>
       <div class="bmc-shop-picks" id="bmc-shop-picks" hidden></div>
       <p class="bmc-status" id="bmc-status"></p>
+      <p class="bmc-vu" id="bmc-vu" hidden></p>
       <form class="bmc-composer" id="bmc-form">
         <button type="button" class="bmc-mic" id="bmc-go" aria-label="Hablar" aria-pressed="false">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
@@ -462,14 +497,29 @@
     telefono: "",
     adminRow: null,
     logTimer: null,
+    silenceTimer: null,
   };
-
-  function hasChat() {
-    return root.classList.contains("has-chat");
-  }
 
   function markChat() {
     root.classList.add("has-chat");
+  }
+
+  function isLocalEval() {
+    return /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  }
+
+  function logVoiceEvent(msg) {
+    if (!isLocalEval() || !msg || !msg.type) return;
+    const row = {
+      t: Date.now(),
+      type: msg.type,
+      status: msg.status || undefined,
+      transcript: typeof msg.transcript === "string" ? msg.transcript : undefined,
+      delta: typeof msg.delta === "string" ? msg.delta.slice(0, 160) : undefined,
+    };
+    window.__bmcVoiceEvents = window.__bmcVoiceEvents || [];
+    window.__bmcVoiceEvents.push(row);
+    if (window.__bmcVoiceEvents.length > 300) window.__bmcVoiceEvents = window.__bmcVoiceEvents.slice(-300);
   }
 
   function remember(role, content) {
@@ -483,6 +533,34 @@
 
   function voiceLive() {
     return state.status === "connecting" || state.status === "active" || state.status === "listening" || state.status === "speaking";
+  }
+
+  function clearSilenceCut() {
+    if (state.silenceTimer) {
+      clearTimeout(state.silenceTimer);
+      state.silenceTimer = null;
+    }
+  }
+
+  function touchVoice() {
+    if (!voiceLive()) return;
+    clearSilenceCut();
+    state.silenceTimer = setTimeout(onSilenceWatchdog, SILENCE_CUT_MS);
+  }
+
+  function onSilenceWatchdog() {
+    if (!voiceLive()) return;
+    if (state.status === "connecting" || state.status === "speaking" || state.status === "listening" || state.pendingTools > 0) {
+      touchVoice();
+      return;
+    }
+    cutMicForSilence();
+  }
+
+  function cutMicForSilence(reason) {
+    if (state.status === "idle") return;
+    teardown();
+    setErr(reason || "Corté el mic por silencio. Tocá Hablar para seguir.");
   }
 
   function persistIdentity() {
@@ -641,16 +719,21 @@
     scheduleLog();
   }
 
+  function isCannedGreeting(t) {
+    return /Hola,\s*soy Panelin de BMC Uruguay/i.test(String(t || ""))
+      || /^Hola,\s*soy Panelin/i.test(String(t || "").trim());
+  }
+
   function addCap(role, text) {
     const t = String(text || "").trim();
     if (!t) return;
+    if (role !== "user" && isCannedGreeting(t) && (root.classList.contains("has-chat") || (state.chatHistory || []).length)) return;
     const pdfOnly = t.match(/^PDF:\s*(\S+)/i);
     if (role !== "user" && pdfOnly) {
       addQuoteCard(pdfOnly[1]);
       return;
     }
-    if (role === "user") markChat();
-    if (role !== "user" && !hasChat()) return;
+    markChat();
     const last = caps.querySelector(".bmc-line:last-child");
     const prefix = role === "user" ? "Vos: " : "";
     const next = prefix + t;
@@ -672,8 +755,45 @@
     scheduleLog();
   }
 
+  function setUserLive(text) {
+    const t = String(text || "").trim();
+    if (!t) return;
+    markChat();
+    let last = caps.querySelector(".bmc-line[data-role='user'][data-live='1']");
+    if (!last) {
+      last = document.createElement("p");
+      last.className = "bmc-line";
+      last.dataset.role = "user";
+      last.dataset.live = "1";
+      caps.appendChild(last);
+    }
+    last.textContent = "Vos: " + t;
+    caps.scrollTop = caps.scrollHeight;
+  }
+
+  function endUserLive(finalText) {
+    const last = caps.querySelector(".bmc-line[data-role='user'][data-live='1']");
+    const t = String(finalText || (last && String(last.textContent || "").replace(/^Vos:\s*/, "")) || "").trim();
+    if (last) {
+      last.dataset.live = "0";
+      if (t) last.textContent = "Vos: " + t;
+      remember("user", t);
+      scheduleLog();
+      return;
+    }
+    if (t) addCap("user", t);
+  }
+
   function appendLive(delta) {
-    if (!hasChat()) return;
+    const chunk = String(delta || "");
+    if (!chunk) return;
+    const live = caps.querySelector(".bmc-line[data-role='assistant'][data-live='1']");
+    const soFar = `${(live && live.textContent) || ""}${chunk}`;
+    if (isCannedGreeting(soFar) || isCannedGreeting(chunk)) {
+      if (live) live.remove();
+      return;
+    }
+    markChat();
     let last = caps.querySelector(".bmc-line[data-role='assistant'][data-live='1']");
     if (!last) {
       last = document.createElement("p");
@@ -864,25 +984,134 @@
     return { ok: false, error: "tool desconocida" };
   }
 
+  async function ensureCaptureContext() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let ctx = state.audioCtx;
+    if (!ctx || ctx.state === "closed") {
+      ctx = new AC();
+      state.audioCtx = ctx;
+    }
+    if (ctx.state === "suspended") {
+      try { await ctx.resume(); } catch { /* ignore */ }
+    }
+    return ctx;
+  }
+
+  function publishMic(ctx) {
+    if (!isLocalEval()) return;
+    const track = state.stream?.getAudioTracks()?.[0];
+    const info = {
+      frames: state.micFrames || 0,
+      peak: Number((state.micPeak || 0).toFixed(4)),
+      sampleRate: ctx?.sampleRate || 0,
+      track: track?.label || "",
+      ready: track?.readyState || "",
+      muted: !!track?.muted,
+    };
+    window.__bmcMic = info;
+    const vu = root.querySelector("#bmc-vu");
+    if (vu) {
+      vu.hidden = false;
+      vu.textContent = `mic ${info.ready || "?"} · pico ${info.peak} · ${info.track || "sin track"}`;
+    }
+  }
+
+  function onMicChunk(send, ctx, input) {
+    if (!input || !input.length) return;
+    let peak = 0;
+    for (let i = 0; i < input.length; i++) {
+      const a = Math.abs(input[i]);
+      if (a > peak) peak = a;
+    }
+    state.micFrames = (state.micFrames || 0) + 1;
+    state.micPeak = Math.max(state.micPeak || 0, peak);
+    publishMic(ctx);
+    if (!send || !state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+    const resampled = resample(input, ctx.sampleRate || SAMPLE_RATE, SAMPLE_RATE);
+    send({ type: "input_audio_buffer.append", audio: float32ToB64Pcm16(resampled) });
+  }
+
+  async function armMic(stream) {
+    if (!state.micEl) {
+      const el = document.createElement("audio");
+      el.setAttribute("playsinline", "");
+      el.muted = true;
+      el.autoplay = true;
+      el.srcObject = stream;
+      el.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none";
+      document.documentElement.appendChild(el);
+      state.micEl = el;
+    } else {
+      state.micEl.srcObject = stream;
+    }
+    try { await state.micEl.play(); } catch { /* ignore */ }
+
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let ctx = state.audioCtx;
+    if (!ctx || ctx.state === "closed") {
+      ctx = new AC();
+      state.audioCtx = ctx;
+    }
+    if (ctx.state === "suspended") {
+      try { await ctx.resume(); } catch { /* ignore */ }
+    }
+    try { state.processor?.disconnect(); } catch { /* ignore */ }
+    state.micFrames = 0;
+    state.micPeak = 0;
+    const src = ctx.createMediaStreamSource(stream);
+    const processor = ctx.createScriptProcessor(4096, 1, 1);
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    processor.onaudioprocess = (ev) => {
+      onMicChunk(state.send, ctx, ev.inputBuffer.getChannelData(0));
+    };
+    src.connect(processor);
+    processor.connect(gain);
+    gain.connect(ctx.destination);
+    state.processor = processor;
+    publishMic(ctx);
+    const track = stream.getAudioTracks()[0];
+    if (track) {
+      track.onended = () => {
+        if (state.status === "idle") return;
+        setErr("El mic se cortó. Tocá el botón azul para reconectar.");
+      };
+    }
+    return ctx;
+  }
+
   function teardown() {
+    clearSilenceCut();
     if (state.maxTimer) {
       clearTimeout(state.maxTimer);
       state.maxTimer = null;
     }
+    if (state.micTimer) {
+      clearInterval(state.micTimer);
+      state.micTimer = null;
+    }
+    state.micAnalyser = null;
     try { state.processor?.disconnect(); } catch { /* ignore */ }
     state.processor = null;
     try { state.audioCtx?.close(); } catch { /* ignore */ }
     state.audioCtx = null;
+    if (state.micEl) {
+      try { state.micEl.pause(); } catch { /* ignore */ }
+      state.micEl.srcObject = null;
+      state.micEl.remove();
+      state.micEl = null;
+    }
     if (state.stream) {
       state.stream.getTracks().forEach((t) => t.stop());
       state.stream = null;
     }
     state.send = null;
     if (state.ws) {
-      try { state.ws.close(); } catch { /* ignore */ }
+      const ws = state.ws;
       state.ws = null;
+      try { ws.close(); } catch { /* ignore */ }
     }
-    state.greeted = false;
+    if (!root.classList.contains("has-chat")) state.greeted = false;
     setStatus("idle");
   }
 
@@ -957,36 +1186,74 @@
       return;
     }
     const type = msg.type;
+    logVoiceEvent(msg);
     if (type === "conversation.created" && msg.conversation?.id) {
       state.conversationId = msg.conversation.id;
     }
-    if (type === "session.updated" && !state.greeted) {
-      state.greeted = true;
-      state.send?.({
-        type: "conversation.item.create",
-        item: {
-          type: "force_message",
-          role: "assistant",
-          interruptible: true,
-          content: [{ type: "output_text", text: GREETING }],
-        },
-      });
+    if (type === "session.updated") {
+      const alreadyTalking = root.classList.contains("has-chat") || (state.chatHistory || []).length > 0;
+      if (alreadyTalking) {
+        state.greeted = true;
+      } else if (!state.greeted) {
+        state.greeted = true;
+        state.send?.({ type: "response.create" });
+      }
+      touchVoice();
     }
     if (type === "response.output_audio.delta" || type === "response.audio.delta") {
       setStatus("speaking");
+      touchVoice();
       if (msg.delta) playPcm(msg.delta);
     }
     if (type === "response.done" || type === "response.output_audio.done") {
       endLive();
       if (state.status !== "idle") setStatus("active");
+      touchVoice();
     }
-    if (type === "input_audio_buffer.speech_started") setStatus("listening");
-    if (type === "input_audio_buffer.speech_stopped" && state.status === "listening") setStatus("active");
-    if (type === "response.output_audio_transcript.delta" || type === "response.audio_transcript.delta") {
+    if (type === "input_audio_buffer.speech_started") {
+      setStatus("listening");
+      touchVoice();
+    }
+    if (type === "input_audio_buffer.speech_stopped" && state.status === "listening") {
+      setStatus("active");
+      touchVoice();
+    }
+    if (type === "input_audio_buffer.timeout_triggered") {
+      const frames = state.micFrames || 0;
+      const peak = state.micPeak || 0;
+      const ctxState = state.audioCtx?.state || "none";
+      const label = (state.stream && state.stream.getAudioTracks()[0]?.label) || "sin-track";
+      let reason = "Corté el mic por silencio. Tocá Hablar para seguir.";
+      if (isLocalEval()) {
+        if (frames < 8) {
+          reason = `El mic no está enviando audio (${ctxState} · ${label}). Tocá el mic y hablá de nuevo.`;
+        } else if (peak < 0.008) {
+          reason = `Chrome abre ${label} pero el audio llega en silencio (pico ${peak.toFixed(3)}). Cerrá y reabrí el chat; si sigue, Ajustes → Sonido → Entrada (volumen) y Privacidad → Micrófono → Google Chrome.`;
+        }
+      }
+      cutMicForSilence(reason);
+    }
+    if (
+      type === "response.output_audio_transcript.delta"
+      || type === "response.audio_transcript.delta"
+      || type === "response.output_text.delta"
+    ) {
       if (msg.delta) appendLive(msg.delta);
     }
+    if (type === "response.output_audio_transcript.done" || type === "response.audio_transcript.done") {
+      const live = caps.querySelector(".bmc-line[data-role='assistant'][data-live='1']");
+      if (!live && msg.transcript) addCap("assistant", msg.transcript);
+      else endLive();
+    }
+    if (type === "conversation.item.input_audio_transcription.updated") {
+      setUserLive(msg.transcript || "");
+      touchVoice();
+    }
     if (type === "conversation.item.input_audio_transcription.completed") {
-      addCap("user", msg.transcript || "");
+      const spoken = msg.transcript || "";
+      if (msg.status === "in_progress") setUserLive(spoken);
+      else endUserLive(spoken);
+      touchVoice();
     }
     if (type === "error") {
       setErr(msg.error?.message || msg.message || "Error de voz");
@@ -1001,6 +1268,7 @@
         args = {};
       }
       state.pendingTools += 1;
+      touchVoice();
       let output = JSON.stringify({ ok: false, error: "tool failed" });
       try {
         output = await relayTool(fnName, args);
@@ -1029,6 +1297,10 @@
   }
 
   async function startCall() {
+    if (window.__bmcMicTestActive) {
+      setErr("Pará primero la prueba de mic (botón azul del recuadro negro).");
+      return;
+    }
     if (!state.identified) return;
     if (state.status !== "idle") return;
     if (state.voiceDenied) return;
@@ -1037,16 +1309,19 @@
     root.classList.add("open");
 
     let resumeId = state.conversationId;
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(SS_RESUME) || "null");
-      if (saved && saved.conversationId) resumeId = saved.conversationId;
-    } catch { /* ignore */ }
+    if (isLocalEval()) {
+      resumeId = null;
+      try { sessionStorage.removeItem(SS_RESUME); } catch { /* ignore */ }
+    } else {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(SS_RESUME) || "null");
+        if (saved && saved.conversationId) resumeId = saved.conversationId;
+      } catch { /* ignore */ }
+    }
 
     let stream;
     try {
-      const micP = navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
-      });
+      const micP = openMic();
       const sessP = fetch(`${API}/api/public/voice/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1059,6 +1334,10 @@
       const [mic, sess] = await Promise.all([micP, sessP]);
       stream = mic;
       state.stream = stream;
+      stream.getAudioTracks().forEach((t) => {
+        t.enabled = true;
+      });
+      await armMic(stream);
       const token = sess.client_secret?.value;
       if (!token) throw new Error("Sin token de voz");
       const wsUrl = grokWsUrl(sess.realtime_base, sess.model, resumeId);
@@ -1068,6 +1347,7 @@
         const fail = (e) => reject(e instanceof Error ? e : new Error(String(e)));
         ws.onerror = () => fail(new Error("No se pudo conectar con la voz"));
         ws.onclose = () => {
+          if (state.ws !== ws) return;
           if (state.status !== "idle") teardown();
         };
         ws.onmessage = (ev) => {
@@ -1083,23 +1363,8 @@
           const boot = sess.session_bootstrap || {};
           if (resumeId) state.greeted = true;
           send(buildSessionUpdate(boot));
-          const ctx = new AudioContext();
-          state.audioCtx = ctx;
-          const src = ctx.createMediaStreamSource(stream);
-          const processor = ctx.createScriptProcessor(4096, 1, 1);
-          state.processor = processor;
-          processor.onaudioprocess = (ev) => {
-            if (ws.readyState !== WebSocket.OPEN) return;
-            const input = ev.inputBuffer.getChannelData(0);
-            const resampled = resample(input, ctx.sampleRate, SAMPLE_RATE);
-            send({ type: "input_audio_buffer.append", audio: float32ToB64Pcm16(resampled) });
-          };
-          const mute = ctx.createGain();
-          mute.gain.value = 0;
-          src.connect(processor);
-          processor.connect(mute);
-          mute.connect(ctx.destination);
           setStatus("active");
+          touchVoice();
           state.maxTimer = setTimeout(() => {
             addCap("assistant", "Llegamos al tope de esta llamada. Si querés, abrimos WhatsApp.");
             teardown();
@@ -1122,6 +1387,7 @@
 
   function sendVoiceText(text) {
     addCap("user", text);
+    touchVoice();
     if (!state.send) return false;
     state.send({
       type: "conversation.item.create",
@@ -1209,6 +1475,10 @@
     if (voiceLive()) teardown();
   }
 
+  root.addEventListener("pointerdown", () => {
+    ensureCaptureContext();
+    if (state.playCtx?.state === "suspended") state.playCtx.resume().catch(() => {});
+  });
   orb.addEventListener("click", () => {
     if (root.classList.contains("open")) closePanel();
     else openPanel();
@@ -1236,6 +1506,9 @@
     const v = input.value;
     input.value = "";
     sendText(v);
+  });
+  input.addEventListener("input", () => {
+    if (voiceLive()) touchVoice();
   });
   idForm.addEventListener("submit", async (e) => {
     e.preventDefault();

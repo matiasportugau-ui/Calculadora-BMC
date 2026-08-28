@@ -1,5 +1,7 @@
 # Storefront Voice Agent — Panelin on bmcuruguay.com.uy
 
+**Continue work:** `/panelin-web` (skill + next file `PANELIN-WEB-NEXT.md`). Branch `feat/panelin-front`.
+
 Buyer-facing **Panelin Front**: floating calculator-body chat (avatar + chips + composer) plus Grok Speech-to-Speech **on open**. No operator chrome (sidebar / DEV / model). Text and mic share the same thread. Separate from operator Panelin BMC (`panelinBmcInstructions.js`).
 
 Architecture SoT: `docs/sdd/storefront-voice-agent/SDD.md`. Policy: classify → assess → green; quote only on insist; lista web + PDF; never flete; Admin 2.0 `origen=VW`.
@@ -13,6 +15,7 @@ Architecture SoT: `docs/sdd/storefront-voice-agent/SDD.md`. Policy: classify →
 | Identify | `POST /api/public/voice/identify` (name + phone → Admin 2.0 row) |
 | Chat log | `POST /api/public/voice/log` (transcript → col J) |
 | Text chat | `POST /api/public/voice/chat` |
+| Voice captions | Session `audio.input.transcription.model = grok-transcribe`. User + assistant lines land in `#bmc-caps`. Local demo also fills `window.__bmcVoiceEvents`. |
 | Tools | `POST /api/public/voice/action` |
 | Flag | `PUBLIC_STOREFRONT_VOICE` (on in development; off in production unless `1`) |
 | WhatsApp | `STOREFRONT_WA_NUMBER` default `59892663245` (store float) |

@@ -83,10 +83,10 @@ export const STOREFRONT_PRONUNCIATION_REPLACE = Object.freeze({
 
 export const STOREFRONT_TURN_DETECTION = Object.freeze({
   type: "server_vad",
-  threshold: 0.75,
+  threshold: 0.5,
   prefix_padding_ms: 333,
   silence_duration_ms: 900,
-  idle_timeout_ms: 20000,
+  idle_timeout_ms: 30000,
 });
 
 const CAPTURE_LEAD_TOOL = Object.freeze({

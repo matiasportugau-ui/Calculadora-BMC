@@ -43,6 +43,39 @@
         box-shadow: 0 8px 20px rgba(0,0,0,.2);
         z-index: 10;
       }
+      .mic-box {
+        margin: 0 22px 16px;
+        padding: 16px;
+        background: #1d1d1f;
+        color: #f5f5f7;
+        border-radius: 14px;
+        max-width: 42rem;
+      }
+      .mic-box h2 { font-size: 1rem; margin: 0 0 8px; }
+      .mic-box button {
+        min-height: 48px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 12px;
+        background: #0071e3;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .mic-read { margin: 10px 0 8px; font-size: 15px; }
+      .mic-bar {
+        height: 18px;
+        background: #3a3a3c;
+        border-radius: 9px;
+        overflow: hidden;
+      }
+      .mic-bar > span {
+        display: block;
+        height: 100%;
+        width: 0%;
+        background: #30d158;
+      }
     </style>
   </head>
   <body>
@@ -50,6 +83,13 @@
       <h1>Demo — Panelin Front</h1>
       <p>Simula el sitio BMC. Flotante = cuerpo del chat de la calculadora (sin sidebar, DEV ni modelo). Al abrir, voz por defecto; también se puede escribir. El botón verde es WhatsApp.</p>
     </header>
+    <div class="mic-box">
+      <h2>Prueba de mic (local)</h2>
+      <p>No uses la Terminal. Tocá el botón, permití el mic y hablá. La barra tiene que moverse.</p>
+      <button type="button" id="mic-test">Probar micrófono</button>
+      <p class="mic-read" id="mic-read">Mic apagado</p>
+      <div class="mic-bar" aria-hidden="true"><span id="mic-fill"></span></div>
+    </div>
     <div class="sheet">
       <p>Probá: “¿Qué diferencia hay entre IsoDec y IsoRoof?”, “Llevame a IsoDec”, “Agregá al carrito”, “Techo 10 por 8 IsoDec 100”.</p>
       <p>API: <code id="origin"></code></p>
@@ -57,6 +97,60 @@
     <a class="wa-fake" href="https://wa.me/59892663245" target="_blank" rel="noopener" aria-label="WhatsApp BMC">WA</a>
     <script>
       document.getElementById("origin").textContent = location.origin;
+      (function () {
+        const btn = document.getElementById("mic-test");
+        const read = document.getElementById("mic-read");
+        const fill = document.getElementById("mic-fill");
+        let stream;
+        let timer;
+        btn.addEventListener("click", async () => {
+          try {
+            if (stream) {
+              stream.getTracks().forEach((t) => t.stop());
+              stream = null;
+              clearInterval(timer);
+              window.__bmcMicTestActive = false;
+              read.textContent = "Mic apagado";
+              fill.style.width = "0%";
+              btn.textContent = "Probar micrófono";
+              return;
+            }
+            window.__bmcMicTestActive = true;
+            const x = document.getElementById("bmc-x");
+            if (x) x.click();
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true },
+            });
+            const track = stream.getAudioTracks()[0];
+            const ctx = new AudioContext();
+            if (ctx.state === "suspended") await ctx.resume();
+            const src = ctx.createMediaStreamSource(stream);
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 2048;
+            const gain = ctx.createGain();
+            gain.gain.value = 0.0001;
+            src.connect(analyser);
+            analyser.connect(gain);
+            gain.connect(ctx.destination);
+            const buf = new Float32Array(analyser.fftSize);
+            btn.textContent = "Parar prueba";
+            timer = setInterval(() => {
+              analyser.getFloatTimeDomainData(buf);
+              let peak = 0;
+              for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i]));
+              const pct = Math.min(100, Math.round(peak * 400));
+              fill.style.width = pct + "%";
+              read.textContent = (track.readyState || "?") + " · pico " + peak.toFixed(3) + " · " + (track.label || "mic");
+              if (track.readyState === "ended") {
+                read.textContent = "ENDED — Chrome cortó el mic";
+                fill.style.background = "#ff453a";
+              }
+            }, 80);
+          } catch (err) {
+            read.textContent = "Error: " + (err && err.message ? err.message : err);
+          }
+        });
+      })();
     </script>
     <script src="/storefront-voice/widget.js" defer></script>
   </body>

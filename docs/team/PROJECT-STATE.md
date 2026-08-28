@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (BMC Driver QR install + assign)
+**Última actualización:** 2026-08-28 (Panelin Front local eval + silence-cut · feat/panelin-front)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-28 (feat — Panelin Front local eval + silence-cut, branch `feat/panelin-front`):** Isolated from Driver QR. Open greeting (no techo/pared/cámara script). `grok-transcribe` user+assistant lines in `#bmc-caps`. 30s idle teardown of mic+WS (`SILENCE_CUT_MS` + VAD `idle_timeout_ms`) so silence is not billed. Demo mic tester. Local: `doppler run -- npm run dev:api` → http://127.0.0.1:3001/storefront-voice/. Not shipped to shop yet.
 
 **2026-08-27 (feat — BMC Driver QR install + assign):** Operator shows a QR: install = `/conductor` (`public/driver.webmanifest` start_url, not the calculator PWA). Route = existing `driver_url` (`/conductor?t=`). Cards on `DriverLoopPanel` after confirm and Torre HITL assign (`assignTripToChofer` now returns `driver_url`). iOS: Compartir → Agregar a inicio. No auto-WA. Tests `conductorUrl` + `driverLoopRoutes`.
 
