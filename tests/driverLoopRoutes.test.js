@@ -55,6 +55,8 @@ function routeBlock(src, pathLiteral) {
 {
   assert.ok(panel.includes("Copiar enlace chofer"));
   assert.ok(panel.includes("result.driver_url"));
+  assert.ok(panel.includes("DriverQrCard"));
+  assert.ok(panel.includes("driverInstallUrl"));
   assert.ok(panel.includes("customer_links"));
   assert.ok(logistica.includes("DriverLoopPanel"));
   assert.ok(logistica.includes("setDriverLoopResult"));
@@ -75,7 +77,13 @@ function routeBlock(src, pathLiteral) {
   const sess = readFileSync(join(root, "src/components/driver/useDriverSession.js"), "utf8");
   assert.ok(sess.includes('fetch("/api/driver/trips"'));
   assert.ok(sess.includes('fetch("/api/torre/chofer/login"'));
+  const app = readFileSync(join(root, "src/components/driver/DriverApp.jsx"), "utf8");
+  assert.ok(app.includes("useDriverManifest"));
+  const man = JSON.parse(readFileSync(join(root, "public/driver.webmanifest"), "utf8"));
+  assert.equal(man.start_url, "/conductor");
+  assert.equal(man.short_name, "Driver");
   const login = readFileSync(join(root, "src/components/driver/DriverLogin.jsx"), "utf8");
+  assert.ok(login.includes("Agregar a inicio"));
   assert.ok(login.includes("Email o celular"));
   const routes = readFileSync(join(root, "server/routes/transportista.js"), "utf8");
   assert.ok(routes.includes("listTripsForDriverAuth"));

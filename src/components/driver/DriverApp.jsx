@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import useDriverSession from "./useDriverSession.js";
+import useDriverManifest from "../../hooks/useDriverManifest.js";
 import DriverLogin from "./DriverLogin.jsx";
 import DriverHome from "./DriverHome.jsx";
 import DriverLoadSequence from "./DriverLoadSequence.jsx";
@@ -23,6 +24,7 @@ function Tabs() {
 }
 
 export default function DriverApp() {
+  useDriverManifest();
   const sess = useDriverSession();
   const navigate = useNavigate();
 

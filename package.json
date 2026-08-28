@@ -329,6 +329,7 @@
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",
     "puppeteer-core": "^24.42.0",
+    "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-resizable-panels": "^2.1.9",

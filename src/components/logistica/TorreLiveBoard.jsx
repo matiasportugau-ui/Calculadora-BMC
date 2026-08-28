@@ -3,6 +3,8 @@ import { ENV_T as T } from "../../utils/enviosTheme.js";
 import { btnStyle } from "../../utils/logistica/btnStyle.js";
 import { getCalcApiBase } from "../../utils/calcApiBase.js";
 import TorreLiveMap from "./TorreLiveMap.jsx";
+import DriverQrCard from "./DriverQrCard.jsx";
+import { driverInstallUrl, spaOrigin } from "../../utils/logistica/driverQr.js";
 
 function authToken() {
   return typeof import.meta !== "undefined"
@@ -42,6 +44,7 @@ function ChoferHitlForm({ token, trips = [], onDone }) {
   const [directive, setDirective] = useState("");
   const [msg, setMsg] = useState("");
   const [proposal, setProposal] = useState(null);
+  const [routeUrl, setRouteUrl] = useState("");
   const [busy, setBusy] = useState(false);
 
   const postJson = async (path, body) => {
@@ -79,8 +82,9 @@ function ChoferHitlForm({ token, trips = [], onDone }) {
     setBusy(true);
     setMsg("");
     try {
-      await postJson("/api/torre/assign", { trip_id: tripId, chofer_id: choferId });
-      setMsg("Viaje asignado · aparece en el inbox del chofer");
+      const j = await postJson("/api/torre/assign", { trip_id: tripId, chofer_id: choferId });
+      setRouteUrl(j.driver_url || "");
+      setMsg("Viaje asignado · escaneá el QR de ruta o inbox del chofer");
       onDone?.();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : String(err));
@@ -176,6 +180,7 @@ function ChoferHitlForm({ token, trips = [], onDone }) {
       {proposal ? (
         <pre style={{ fontSize: 11, marginTop: 6, whiteSpace: "pre-wrap" }}>{JSON.stringify(proposal, null, 2)}</pre>
       ) : null}
+      {routeUrl ? <DriverQrCard url={routeUrl} caption="Asignar ruta" size={220} /> : null}
     </div>
   );
 }
@@ -288,6 +293,7 @@ export default function TorreLiveBoard() {
             <div><strong>Último GPS</strong> {selected.geo ? when(selected.geo.at) : "sin ping"}</div>
           </div>
         ) : null}
+        <DriverQrCard url={driverInstallUrl(spaOrigin())} caption="Instalar BMC Driver" size={200} />
         <ChoferHitlForm token={authToken()} trips={trips} onDone={() => void load()} />
       </div>
       <div style={{ minHeight: 320, borderRadius: 12, overflow: "hidden", border: `1px solid ${T.border || "#e2e8f0"}` }}>
