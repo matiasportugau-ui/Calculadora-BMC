@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-27 (BMC Driver QR install + assign)
+**Última actualización:** 2026-08-28 (fix — Driver QR Imprimir window.open noopener)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-28 (fix — #1152 Imprimir QR no-op via window.open noopener):** `DriverQrCard` passed `noopener,noreferrer` in `window.open` features; HTML requires that to return `null`, so `document.write`/`print` never ran — Imprimir QR silently did nothing. Open without those features (set `opener=null` after). Also escape print HTML (same class as #1153 XSS). Torre stale `routeUrl` remains in open #1153.
 
 **2026-08-27 (feat — BMC Driver QR install + assign):** Operator shows a QR: install = `/conductor` (`public/driver.webmanifest` start_url, not the calculator PWA). Route = existing `driver_url` (`/conductor?t=`). Cards on `DriverLoopPanel` after confirm and Torre HITL assign (`assignTripToChofer` now returns `driver_url`). iOS: Compartir → Agregar a inicio. No auto-WA. Tests `conductorUrl` + `driverLoopRoutes`.
 
