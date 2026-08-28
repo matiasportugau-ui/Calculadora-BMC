@@ -11,7 +11,7 @@ import {
   assignTripToChofer,
   listChoferInbox,
 } from "../server/lib/choferRoster.js";
-import { resolveDriverAuth, listTripsForDriverAuth } from "../server/lib/driverAuth.js";
+import { resolveDriverAuth, listTripsForDriverAuth, driverAuthOwnsTrip } from "../server/lib/driverAuth.js";
 import { lookupTrackByOrderId } from "../server/lib/orderIdLookup.js";
 import { sanitizeSnapshot } from "../server/lib/customerTrack.js";
 
@@ -61,8 +61,16 @@ await ensureTransportistaSchema(pool);
   assert.equal(listed.ok, true);
   assert.equal(listed.trips.length, 1);
   assert.equal(listed.trips[0].trip_id, tripId);
+  assert.equal(await driverAuthOwnsTrip(pool, authz, tripId), true, "chofer owns assigned trip");
+  assert.equal(
+    await driverAuthOwnsTrip(pool, authz, "33333333-3333-4333-8333-333333333333"),
+    false,
+    "chofer does not own a stranger trip",
+  );
+  assert.equal(await driverAuthOwnsTrip(pool, { ok: false }, tripId), false);
   console.log("  ✓ assign confirmed trip → chofer inbox");
   console.log("  ✓ loginChofer bearer lists assigned trip on /api/driver/trips path");
+  console.log("  ✓ driverAuthOwnsTrip is assigned-only");
 }
 
 {
@@ -95,6 +103,17 @@ await ensureTransportistaSchema(pool);
   assert.ok(!blob.includes("token"));
   assert.equal(view.destination, "Las Piedras");
   console.log("  ✓ Order ID lookup uses sanitizer (no phone, no other stops)");
+
+  const noPool = await lookupTrackByOrderId(null, "BMC-2026-1048");
+  assert.equal(noPool.ok, false);
+  assert.equal(noPool.error, "no_pool");
+  const missing = await lookupTrackByOrderId(pool, "   ");
+  assert.equal(missing.ok, false);
+  assert.equal(missing.error, "missing_order_id");
+  const unknown = await lookupTrackByOrderId(pool, "BMC-NO-SUCH");
+  assert.equal(unknown.ok, false);
+  assert.equal(unknown.error, "not_found");
+  console.log("  ✓ Order ID lookup fail-closed on missing pool / blank / unknown");
 }
 
 console.log("choferRoster+orderId OK");

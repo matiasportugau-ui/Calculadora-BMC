@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-28 (test — storefront live auth + shopper HTTP gates):** Coverage for `#1163` operator board (`/api/storefront-live` 401 anon, `?key=` reject, list/detail drop phoneHash) and shopper endpoints added after `#1142` (`/status` origin+credits, `/identify` 400 without consent/phone, empty `/chat` 400, `/log` no Sheets without adminRow, `javascript:` pageUrl strip on `/live/ping`). Pins `sanitizeStorefrontPublicError`, chat-history caps, Order ID fail-closed, `driverAuthOwnsTrip`. Wired `test:agent`. Does not re-land `#1142` `/action` suite.
+
 **2026-08-28 (test — Logística internal E2E, no Playwright):** In-process walk of wizard → packing → `joinRepartoToTrip` → driver `GET /api/driver/trips` → GPS ping / Torre live → Order ID sanitizer → install vs route QR → HITL chofer login. Memory pool `connect()`/`BEGIN` so join can run without Postgres. `node tests/logisticaE2e.test.js` on `test:core`. No auto-WA. Isolated from storefront-voice.
 
 **2026-08-28 (fix — hide storefront orb when xAI credits dead):** Shop orb hid a 502 while xAI was dry. `#1166` imported `storefrontVoiceCredits.js` without the file (`01091-cjm` exit 1); `#1169` dropped the import so Cloud Run boots. This ships the helper + `GET /api/public/voice/status` `{bubble:false}` so the widget never mounts the Panelin orb (no error copy). Text-first (Hablar mints voice); silent PCM skipped; 10s silence-cut. Tests `storefrontVoiceCredits` + import-exists ratchet.
