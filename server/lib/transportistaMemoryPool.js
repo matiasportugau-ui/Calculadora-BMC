@@ -52,14 +52,21 @@ export function createTransportistaMemoryPool() {
     chofer_sessions: [],
   };
 
-  return {
+  const pool = {
     tables,
     rows,
+    async connect() {
+      return {
+        query: (sql, params) => pool.query(sql, params),
+        release() {},
+      };
+    },
     async query(sql, params = []) {
       const raw = String(sql);
       const n = raw.replace(/\s+/g, " ").trim();
       const low = n.toLowerCase();
 
+      if (low === "begin" || low === "commit" || low === "rollback") return { rows: [] };
       if (low.startsWith("create extension")) return { rows: [] };
       if (low.startsWith("create unique index") || low.startsWith("create index")) return { rows: [] };
       if (low.startsWith("create or replace view") || low.startsWith("create view")) return { rows: [] };
@@ -83,7 +90,16 @@ export function createTransportistaMemoryPool() {
         if (t === "chofer_roster" && !rec.chofer_id) rec.chofer_id = uuid();
         if (t === "chofer_sessions" && !rec.session_id) rec.session_id = uuid();
         if (t === "driver_sessions" && !rec.session_id) rec.session_id = uuid();
+        if (t === "trip_events" && !rec.event_id) rec.event_id = uuid();
         if (t === "customer_track_tokens" && !rec.token_id) rec.token_id = uuid();
+        if (t === "trip_events" && typeof rec.payload === "string") {
+          try {
+            rec.payload = JSON.parse(rec.payload);
+          } catch {
+            /* keep */
+          }
+        }
+        if (t === "trip_events" && !rec.at_server) rec.at_server = new Date().toISOString();
         if (t === "trips") {
           rec.status = rec.status || "draft";
           rec.plan_snapshot =
@@ -113,6 +129,11 @@ export function createTransportistaMemoryPool() {
               if (phone !== undefined) r.assigned_phone_e164 = phone;
               r.status = r.status === "draft" ? "assigned" : r.status;
               r.updated_at = new Date().toISOString();
+              if (params[3] != null) {
+                r.plan_snapshot =
+                  typeof params[3] === "string" ? JSON.parse(params[3]) : params[3];
+              }
+              r.confirmed_at = r.confirmed_at || new Date().toISOString();
             }
           }
         }
@@ -135,6 +156,12 @@ export function createTransportistaMemoryPool() {
         if (t && !tables.has(t)) throw missing(t);
         const list = (t && rows[t]) || [];
 
+        if (t === "trips" && /plan_snapshot->>'reparto_id'/i.test(raw)) {
+          const rid = String(params[0] || "");
+          return {
+            rows: list.filter((r) => String(r.plan_snapshot?.reparto_id || "") === rid),
+          };
+        }
         if (t === "trips" && /closed_at is null/i.test(raw)) {
           return {
             rows: list.filter(
@@ -203,4 +230,5 @@ export function createTransportistaMemoryPool() {
       return { rows: [] };
     },
   };
+  return pool;
 }
