@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-28 (test — Logística internal E2E, no Playwright)
+**Última actualización:** 2026-08-29 (test — chofer password, shop KB redact, lista web catalog)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-29 (test — chofer password, shop KB redact, lista web catalog):** Pins HITL `hashChoferPassword`/`verifyChoferPassword` + phone login; shop `isUnsafeStorefrontKnowledgeLine` / Q&A drop-list; `forceListaWeb` on catalog tools (not only calc/PDF); MCP `sessionKeyFromReq` header precedence; customer-track GPS rejects out-of-range coords. New files on `test:core` / `test:agent`. Did not re-land open `#1142` / `#1177` HTTP suites.
 
 **2026-08-28 (test — Logística internal E2E, no Playwright):** In-process walk of wizard → packing → `joinRepartoToTrip` → driver `GET /api/driver/trips` → GPS ping / Torre live → Order ID sanitizer → install vs route QR → HITL chofer login. Memory pool `connect()`/`BEGIN` so join can run without Postgres. `node tests/logisticaE2e.test.js` on `test:core`. No auto-WA. Isolated from storefront-voice.
 
