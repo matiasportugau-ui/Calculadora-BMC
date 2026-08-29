@@ -38,7 +38,7 @@ Por qué Sandra y no Matias o Ramiro:
 
 ## 4. La pantalla
 
-URL: `/clientes`
+URL: `/hub/clientes`
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -139,7 +139,7 @@ El MVP está **DONE** cuando:
 - [ ] Seed script corre y crea ≥ 30 customers reales con eventos
 - [ ] `GET /api/clientes/customers` responde JSON válido en < 500ms
 - [ ] `/clientes` carga en producción con react-query, sin errores de consola
-- [ ] Sandra tiene `level='write'` para `module='clientes'` en `identity.module_grants` (con `clientes` registrado en `identity.modules`)
+- [ ] Sandra tiene `clientes.write` grant en `identity.role_grants`
 - [ ] Sandra abre `/clientes` y marca al menos 3 clientes como contactados (= recibió onboarding de 5 min)
 - [ ] Métricas instrumentadas (query semanal documentada en `MVP-METRICS.md`)
 
@@ -166,7 +166,7 @@ A los **30 días** post-deploy del MVP:
 | Rankings (7 obligatorios + 10 evaluables) | Ídem |
 | Ficha individual con timeline 3-columnas | Una tabla alcanza para validar |
 | 11 agentes Cloud Run Jobs | Seed manual alcanza |
-| `agent-resolver` en runtime (el módulo se implementa después del MVP; en MVP basta con normalización/seed simple) | Sin sync continuo, no necesita correr cada 5 min |
+| `agent-resolver` en runtime (el código YA existe en repo, solo se usa en el seed) | Sin sync continuo, no necesita correr cada 5 min |
 | NBA con Claude API | Caro y no probado |
 | 9 cards de dashboard | Una tabla alcanza |
 | Vistas por rol (admin/operator/field) | Sandra es la única usuaria |
@@ -199,7 +199,7 @@ A los **30 días** post-deploy del MVP:
 Antes de Día 1:
 
 1. **¿Aprobás este alcance?** (Sí / "agregar X" / "cambiar Y" / no)
-2. **Email de Sandra** — ✅ confirmado internamente (valor real omitido en este repo).
+2. **Email de Sandra** — resolver vía `identity.users` (fuente de verdad). No embeber direcciones reales en docs públicos.
 3. **¿Aplico migration en branch Supabase, o creás un proyecto Supabase separado para staging?**
 4. **¿Mergeo PR #188 como draft → ready, o lo cierro y rehago en chunks más chicos?**
 
@@ -219,7 +219,7 @@ No se construye nada que no tenga métrica. Punto.
 - `docs/clientes-360/EXISTING-CRM-MAPPING.md` — qué reusar de lo existente
 - `supabase/migrations/20260508000001_clientes_360_init.sql` — schema
 - `supabase/migrations/20260508000001_clientes_360_init_rollback.sql` — kill switch SQL
-- `server/lib/clientes/customerResolver.js` — algoritmo de resolución (a crear en Phase 2; MVP usa seed/manual matching)
+- `server/lib/clientes/customerResolver.js` — algoritmo de resolución (ya en repo, usado en el seed del MVP)
 
 ---
 
@@ -227,14 +227,16 @@ No se construye nada que no tenga métrica. Punto.
 
 Fuente: `docs/bmc-dashboard-modernization/Code.gs` — tab `EQUIPOS` del workbook CRM.
 
-| Nombre | Email | Rol | Departamento | Grant Phase 1 (MVP) | Grant Phase 2 |
-|---|---|---|---|---|---|
-| Matías | `<ceo-email-interno>` | CEO | Dirección | `clientes.admin` (vía superadmin) | — |
-| **Sandra** | **`<admin-email-interno>`** | **Admin** | **Administración** | **`clientes.write`** | — |
-| Ramiro | `<sales1-email-interno>` | Vendedor | Ventas | — | `clientes.read` (mobile-first) |
-| Martin | `<sales2-email-interno>` | Vendedor | Ventas | — | `clientes.read` (oficina) |
+_Identidades reales viven en `identity.users`; aquí solo roles para evitar PII en git._
+
+| Persona | Rol | Departamento | Grant Phase 1 (MVP) | Grant Phase 2 |
+|---|---|---|---|---|
+| CEO | superadmin | Dirección | `clientes.admin` (vía superadmin) | — |
+| **Admin operativa** | **admin** | **Administración** | **`clientes.write`** | — |
+| Vendedor mobile-first | operator | Ventas | — | `clientes.read` |
+| Vendedor oficina | operator | Ventas | — | `clientes.read` |
 
 Notas:
-- Identity superadmin puede usar un email distinto al corporativo visible. Definir una sola identidad canónica antes de otorgar grants productivos.
-- Sandra Sánchez aparece en `docs/google-sheets-module/FULL-SHEETS-AUDIT-RAW.json` con su nombre completo.
+- Superadmin canónico definido en env `INTERNAL_SUPERADMIN_EMAILS` (no embeber acá). Si el login Google del CEO usa un dominio distinto al del env, decidir cuál es la identidad canónica antes del rollout.
+- Nombres completos del equipo viven en `identity.users` — no embeber en docs públicos.
 - En Phase 2, antes de dar grant a Martin/Ramiro, **entrevistar 15 min cada uno** para confirmar que el panel les sirve. No asumir.
