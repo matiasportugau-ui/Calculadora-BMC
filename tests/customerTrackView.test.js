@@ -41,7 +41,22 @@ console.log("customerTrackView");
     { now, maxAgeMs: GPS_MAX_AGE_MS },
   );
   assert.equal(stale, null);
-  console.log("  ✓ GPS only when fresh");
+  const badLat = lastFreshGeo(
+    [{ geo_lat: 91, geo_lng: -56.16, at_server: "2026-08-16T14:50:00.000Z" }],
+    { now },
+  );
+  assert.equal(badLat, null);
+  const badLng = lastFreshGeo(
+    [{ geo_lat: -34.9, geo_lng: -181, at_server: "2026-08-16T14:50:00.000Z" }],
+    { now },
+  );
+  assert.equal(badLng, null);
+  const nan = lastFreshGeo(
+    [{ geo_lat: "x", geo_lng: "y", at_server: "2026-08-16T14:50:00.000Z" }],
+    { now },
+  );
+  assert.equal(nan, null);
+  console.log("  ✓ GPS only when fresh and in-range");
 }
 
 {
