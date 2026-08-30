@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-28 (test — Logística internal E2E, no Playwright)
+**Última actualización:** 2026-08-30 (test — quote window, trip chooser, shop pageUrl)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-30 (test — quote window + trip chooser + shop pageUrl):** Pins `quoteStartForTrip`/`billableRoute` (tercerizado factory start drops depot km), `deliveryCluster` + geo-mix soft-block + `scoreTripPlan` cargo reject, and exported `sanitizePageUrl` (javascript:/data: never reach live board). Also encode driver/track tokens. Wired `test:core` / `test:agent`.
 
 **2026-08-28 (test — Logística internal E2E, no Playwright):** In-process walk of wizard → packing → `joinRepartoToTrip` → driver `GET /api/driver/trips` → GPS ping / Torre live → Order ID sanitizer → install vs route QR → HITL chofer login. Memory pool `connect()`/`BEGIN` so join can run without Postgres. `node tests/logisticaE2e.test.js` on `test:core`. No auto-WA. Isolated from storefront-voice.
 

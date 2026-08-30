@@ -10,6 +10,12 @@ assert.equal(
   "https://calculadora-bmc.vercel.app/conductor?t=tok",
 );
 assert.ok(!conductorPublicUrl("https://x.com", "a").includes("/calculadora/conductor"));
+assert.ok(
+  conductorPublicUrl("https://calculadora-bmc.vercel.app", "tok&next=https://evil").includes(
+    "t=tok%26next%3Dhttps%3A%2F%2Fevil",
+  ),
+  "magic-link token is query-encoded",
+);
 
 {
   const install = driverInstallUrl("https://calculadora-bmc.vercel.app");
