@@ -10,7 +10,9 @@ console.log("customerTrackLib");
 {
   const url = trackingPublicUrl("https://calculadora-bmc.vercel.app", "abcToken");
   assert.equal(url, "https://calculadora-bmc.vercel.app/seguimiento/abcToken");
-  console.log("  ✓ public URL uses frontend host");
+  const encoded = trackingPublicUrl("https://calculadora-bmc.vercel.app/", "../admin?x=1");
+  assert.equal(encoded, "https://calculadora-bmc.vercel.app/seguimiento/..%2Fadmin%3Fx%3D1");
+  console.log("  ✓ public URL uses frontend host and encodes token");
 }
 
 {
