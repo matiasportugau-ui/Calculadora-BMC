@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-08-31 (test — Ruta faltas + UY address gates + trip-plan copy):** Dedicated CI pins for `#1120` mesa helpers that were only on orphan `uyGazetteer` (not in `test:core`). `buildRutaFaltas` obra phone = block / plant phone = warn; east+west live mix = desk **block**; plant/depo skip street + geo-mix; `unassignedPickupApproved` clears sin-origen; stale + missing pin warn. `isUyPhoneOk` ≥8 digits; `isPreciseAddress` street/esquina vs barrio/city; `entregaModo` aliases. `formatTripPlanPreview` blocked vs ok legs/km/strategy. New files `rutaFaltas` / `uyAddressGate` / `tripPlanFormat` on `test:core`. Complementary to open `#1180` tripPlanChooser (do not re-land).
+
 **2026-08-31 (docs — install sequence increment, no catalog mix):** Append-only `INCREMENTO 2026-08-31` on `data/knowledge/proceso-constructivo.md` (+ encuentros, fichas, FAQ). Shared dry-mount **order of work**; AU/SKU/spacing stay the quoted family's ficha. Injectable lessons already on GCS `bmc-brain/lessons.json`. Original KB text not overwritten.
 
 **2026-08-28 (test — Logística internal E2E, no Playwright):** In-process walk of wizard → packing → `joinRepartoToTrip` → driver `GET /api/driver/trips` → GPS ping / Torre live → Order ID sanitizer → install vs route QR → HITL chofer login. Memory pool `connect()`/`BEGIN` so join can run without Postgres. `node tests/logisticaE2e.test.js` on `test:core`. No auto-WA. Isolated from storefront-voice.
