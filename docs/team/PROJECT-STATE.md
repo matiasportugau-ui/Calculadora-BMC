@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-28 (test — Logística internal E2E, no Playwright)
+**Última actualización:** 2026-08-31 (docs — Panelin install sequence increment)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-08-31 (docs — install sequence increment, no catalog mix):** Append-only `INCREMENTO 2026-08-31` on `data/knowledge/proceso-constructivo.md` (+ encuentros, fichas, FAQ). Shared dry-mount **order of work**; AU/SKU/spacing stay the quoted family's ficha. Injectable lessons already on GCS `bmc-brain/lessons.json`. Original KB text not overwritten.
 
 **2026-08-28 (test — Logística internal E2E, no Playwright):** In-process walk of wizard → packing → `joinRepartoToTrip` → driver `GET /api/driver/trips` → GPS ping / Torre live → Order ID sanitizer → install vs route QR → HITL chofer login. Memory pool `connect()`/`BEGIN` so join can run without Postgres. `node tests/logisticaE2e.test.js` on `test:core`. No auto-WA. Isolated from storefront-voice.
 
