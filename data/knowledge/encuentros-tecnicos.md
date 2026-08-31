@@ -158,3 +158,11 @@ R: Sí para los perfiles perimetrales (goteros, babeta, cumbrera, canalón) cuan
 
 **P: ¿Cuánta silicona necesito para una fachada de 40 m de perímetro?**
 R: Por regla del motor: `ceil(perimetro × 2 / 8)` cartuchos = ceil(80/8) = 10 cartuchos de 300 ml para las juntas verticales principales. Agregar 20% para aberturas y esquinas.
+
+---
+
+## INCREMENTO 2026-08-31 — catálogo no se cruza
+
+Los **tipos** de encuentro de este documento (junta, U, babeta, gotero, varilla, caballete) coinciden con la secuencia común de montaje en seco.
+
+SKU, largos de barra, precios y pasos de fijación **de las secciones de arriba = catálogo BMC / motor**. No interpolar otro fabricante. Orden de obra adicional: `proceso-constructivo.md` § incremento 2026-08-31.

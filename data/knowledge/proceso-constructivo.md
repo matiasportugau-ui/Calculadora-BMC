@@ -158,3 +158,47 @@
 - **15%** — estándar residencial.
 - **25%** — pendiente pronunciada (verificar autoportancia).
 - Para pendientes mayores a 30°: consultar ingeniería estructural.
+
+---
+
+## INCREMENTO 2026-08-31 — secuencia común (no pisa lo anterior)
+
+> Extraído de videos de montaje en seco + esta guía. **Suma orden de obra.** No reemplaza fases 1–5 ni tablas de este archivo.
+> **No mezclar catálogos:** AU, espesores, λ, autoportancia, SKU, espaciado de anclajes y receta de junta salen **solo** de la ficha + motor de **la familia cotizada**. Un video de otro fabricante aporta pasos, no números.
+
+### Clases de fijación (la familia cotizada declara una; no combinar en el mismo paño)
+
+| Clase | Uso | Piezas = motor de ESA familia |
+|-------|-----|-------------------------------|
+| **A — varilla pasante** | Cubierta autoportante a correa / ángulo / losa | Varilla + tuercas + arandelas + capuchón si la ficha lo incluye + taco si H° |
+| **B — caballete / arandela de cresta + tornillo** | Cubierta trapezoidal | Caballetes + tornillos (aguja o mecha según sustrato de ficha) |
+| **C — U de base + anclaje a platea** | Muros / fachada | U del espesor, anclajes a H°, tornillos a estructura, remaches |
+
+Cierre longitudinal: macho-hembra + sello de **esa** ficha (butilo / silicona y/o tratamiento de aleta de fábrica). No sustituir el cierre de otra marca.
+
+### Orden extra (vivienda / obra completa)
+
+1. Recibir y acopiar (ya en Fase 1). Film hasta colocar ese panel.
+2. U en platea **antes** de parar muros; sello U–hormigón; paso de anclaje = motor de esa familia.
+3. Muros: empezar en **esquina exterior**; panel **dentro de la U**; plomo; canalización en el paño **mientras** se coloca.
+4. Vanos: U de jamba preferible **antes** de cerrar paños; o corte de antepecho/dintel y fijar a contiguos.
+5. Cubierta **después** de muros si el techo descarga en ellos. Si hay correas independientes: **gotero frontal primero** (ya en §2.1).
+6. Cortes de cubierta **en el suelo** si hace falta.
+7. Sanitaria / eléctrica / yeso / aplacado: **no** van al BOM de paneles salvo pedido explícito. No calar de extremo a extremo.
+
+### Cotización (no cambia reglas previas)
+
+- N paneles × L sin “completo” → solo eso.
+- “Completo” → kit de **materiales** de esa familia (fijaciones + remates + selladores del motor), no jornal.
+- BMC no instala (FAQ). Procedimiento sí; números de otro catálogo no.
+
+### Mapa BMC (este vendedor; no exportar a otro fabricante)
+
+| Cliente dice | Familia BMC | Clase |
+|--------------|-------------|-------|
+| isopanel + pared/fachada | ISOPANEL_EPS (o ISOWALL/ISOFRIG si lo pide) | C |
+| isopanel + techo/cubierta | ISODEC_EPS (confirmar PIR) | A |
+| isodec | ISODEC_EPS o ISODEC_PIR | A |
+| isoroof / 3G | ISOROOF_* | B |
+
+Cantidades y AU: `constants.js` + CALC-TECHO / CALC-PARED. Este incremento no las duplica.

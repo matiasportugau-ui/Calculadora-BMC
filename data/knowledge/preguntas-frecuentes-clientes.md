@@ -134,3 +134,16 @@ R: Los productos Kingspan cuentan con declaraciones ambientales de producto (DAP
 
 **P: ¿El EPS es perjudicial para la salud?**
 R: El EPS instalado y encapsulado entre chapas no libera partículas. No contiene CFC ni HCFC. El PIR tampoco libera sustancias nocivas en condiciones normales de uso.
+
+---
+
+## INCREMENTO 2026-08-31 — procedimiento vs cotización
+
+**P: ¿El procedimiento de montaje es el mismo si el panel es de otro fabricante?**
+R: El **orden de obra** es común (acopio → U en platea → muros desde esquina → vanos → cubierta → remates). AU, SKU, anclajes y junta son de **la familia cotizada**. No copiar números de otro catálogo ni de un video.
+
+**P: Si pido “completo”, ¿incluye colocación?**
+R: No. BMC no instala (ver FAQ de arriba). “Completo” = kit de **materiales** de esa familia (fijaciones + remates + selladores del motor), no jornal.
+
+**P: ¿Sanitaria, eléctrica o yeso van en el presupuesto de paneles?**
+R: No, salvo que el cliente pida esos ítems. No calar paneles de extremo a extremo. Prever instalaciones en proyecto.

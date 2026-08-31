@@ -204,3 +204,11 @@ U = λ / espesor (m). Cuanto menor, mejor aislación.
 | ISOWALL PIR | 100mm | 0,22 |
 
 > Para cálculos de certificación energética, usar valores certificados del fabricante. Estos son orientativos.
+
+---
+
+## INCREMENTO 2026-08-31 — no cruzar fichas
+
+Las tablas de **arriba** son de este catálogo (Kingspan / Bromyros vía BMC). AU, λ, autoportancia y espesores **no** se mezclan con otro fabricante.
+
+Montaje (orden de pasos, suma): `proceso-constructivo.md` § incremento 2026-08-31. Encuentros/SKU BMC: `encuentros-tecnicos.md`.
