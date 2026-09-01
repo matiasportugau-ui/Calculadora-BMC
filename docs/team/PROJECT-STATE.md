@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-09-01 (test — shop error redact, live PII, tetris door order):** Dedicated files (not orphan wires): `storefrontPublicError` (PEM / service_account never reach the shopper), `storefrontLivePii` (list/detail drop phoneHash; memory-only), `tetrisLoadOrder` (last delivery at the door; complementary to unwired `tetrisPack`), `osrmGeoGate` (out-of-range lat/lng + NaN km keep haversine), `logisticaAgentUrl` (draft stays in query). Wired `test:agent` / `test:core`. No production change.
+
 **2026-08-31 (docs — install sequence increment, no catalog mix):** Append-only `INCREMENTO 2026-08-31` on `data/knowledge/proceso-constructivo.md` (+ encuentros, fichas, FAQ). Shared dry-mount **order of work**; AU/SKU/spacing stay the quoted family's ficha. Injectable lessons already on GCS `bmc-brain/lessons.json`. Original KB text not overwritten.
 
 **2026-08-28 (test — Logística internal E2E, no Playwright):** In-process walk of wizard → packing → `joinRepartoToTrip` → driver `GET /api/driver/trips` → GPS ping / Torre live → Order ID sanitizer → install vs route QR → HITL chofer login. Memory pool `connect()`/`BEGIN` so join can run without Postgres. `node tests/logisticaE2e.test.js` on `test:core`. No auto-WA. Isolated from storefront-voice.
