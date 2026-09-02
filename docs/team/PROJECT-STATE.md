@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-31 (docs — Panelin install sequence increment)
+**Última actualización:** 2026-09-02 (test — shop chat sanitize + driver WA/order-id gates)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-02 (test — shop chat sanitize, chofer WA digits, driver/order-id fail-closed):** Coverage pins for storefront `/chat` history (drop system/developer, content caps, last 20), HITL `uyWhatsAppDigits` + `wa.me` encoding, capture/identify/lista-web edges, and driver auth + Order ID lookup fail-closed. Files: `storefrontChatSanitize`, `storefrontLeadGate` (`test:agent`); `driverAssignWa`, `driverPublicGates` (`test:core`). Complementary to open `#1183`/`#1182`/`#1180`/`#1179`/`#1177`. No production behavior change.
 
 **2026-08-31 (docs — install sequence increment, no catalog mix):** Append-only `INCREMENTO 2026-08-31` on `data/knowledge/proceso-constructivo.md` (+ encuentros, fichas, FAQ). Shared dry-mount **order of work**; AU/SKU/spacing stay the quoted family's ficha. Injectable lessons already on GCS `bmc-brain/lessons.json`. Original KB text not overwritten.
 
