@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-09-03 (test — driver event deny, pickup kind, live takeover, MCP calc isolation):** Dedicated pins for `isAllowedDriverEventType` (remito `evidence_committed` + trip FSM types stay off the generic driver POST), `isPickupStop` aliases vs cliente-name false positives, storefront live takeover/ended that shopper ping cannot reset + unknown turn roles + 2k inject cap, and MCP `setCalcState` session isolation / replace / blank-key→`default`. New files on `test:core` / `test:agent`. Complementary to open `#1185`/`#1183`/`#1179` — do not re-land those.
+
 **2026-08-31 (docs — install sequence increment, no catalog mix):** Append-only `INCREMENTO 2026-08-31` on `data/knowledge/proceso-constructivo.md` (+ encuentros, fichas, FAQ). Shared dry-mount **order of work**; AU/SKU/spacing stay the quoted family's ficha. Injectable lessons already on GCS `bmc-brain/lessons.json`. Original KB text not overwritten.
 
 **2026-08-28 (test — Logística internal E2E, no Playwright):** In-process walk of wizard → packing → `joinRepartoToTrip` → driver `GET /api/driver/trips` → GPS ping / Torre live → Order ID sanitizer → install vs route QR → HITL chofer login. Memory pool `connect()`/`BEGIN` so join can run without Postgres. `node tests/logisticaE2e.test.js` on `test:core`. No auto-WA. Isolated from storefront-voice.
