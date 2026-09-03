@@ -4,6 +4,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense, Fragment } from "react";
+// ── Capa game-like (rama claude/liquid-glass-quoter) ─────────────────────────
+// Solo activa en design preview (Vercel Preview / VITE_BMC_DESIGN_PREVIEW / ?designPreview=1).
+// En producción isDesignPreviewEnabled() es false: estos módulos NUNCA se cargan.
+import { isDesignPreviewEnabled } from "../lib/designPreviewMode.js";
+const LGScenarioCards = lazy(() => import("./liquid-glass/ScenarioCards.jsx"));
+const LGPriceHUD = lazy(() => import("./liquid-glass/PriceHUD.jsx"));
+const LG_QUOTER_ON = isDesignPreviewEnabled();
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
@@ -133,7 +140,6 @@ const RoofPanelRealisticScene = lazy(() => import("./RoofPanelRealisticScene.jsx
 import { PanelFamilyShowcase } from "./PanelFamilyShowcase.jsx";
 import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
 import Roof3DSection from "./roof3d/Roof3DSection.jsx";
-import { isDesignPreviewEnabled } from "../lib/designPreviewMode.js";
 import ScenarioStepIcon from "./ScenarioStepIcon.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
@@ -2533,6 +2539,17 @@ export default function PanelinCalculadoraV3() {
   // ── State ──
   const [modoVendedor, setModoVendedor] = useState(true);
   const [wizardStep, setWizardStep] = useState(0);
+  // Capa game-like (preview only): overlay inicial de selección de escenario.
+  // sessionStorage (no localStorage): el overlay no reaparece en cada remount
+  // (ida a /hub y vuelta) pero sí en una sesión nueva de navegador.
+  const [lgShowScenarios, setLgShowScenarios] = useState(() => {
+    if (!LG_QUOTER_ON) return false;
+    try { return sessionStorage.getItem("bmc.lgq.seen") !== "1"; } catch { return true; }
+  });
+  const lgDismissScenarios = useCallback(() => {
+    try { sessionStorage.setItem("bmc.lgq.seen", "1"); } catch { /* storage lleno/bloqueado: overlay volverá al remontar */ }
+    setLgShowScenarios(false);
+  }, []);
   /** Máximo paso alcanzado — controla cuáles pasos están desbloqueados para navegación directa. */
   const [maxReachedStep, setMaxReachedStep] = useState(0);
   /** Zona seleccionada en planta 2D: sincroniza SVG (visor) y métricas en columna izquierda (paso Estructura). */
@@ -5416,8 +5433,30 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     setCurrentBudgetCode(null);
   }, []);
 
+  // Capa game-like: overlay de escenarios a pantalla completa al entrar (solo preview mode)
+  if (LG_QUOTER_ON && lgShowScenarios) {
+    return (
+      <Suspense fallback={null}>
+        <LGScenarioCards
+          scenario={scenario}
+          onSelect={(id) => {
+            setScenario(id);
+            lgDismissScenarios();
+            if (id === "solo_techo") advanceWizardStep();
+          }}
+          onSkip={lgDismissScenarios}
+        />
+      </Suspense>
+    );
+  }
+
   return (
     <div data-tutorial-id="calc-main" style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
+      {LG_QUOTER_ON && (
+        <Suspense fallback={null}>
+          <LGPriceHUD totals={grandTotal} groups={groups} onWhatsApp={handleCopyWA} />
+        </Suspense>
+      )}
       {/* HEADER */}
       <div style={{ background: C.brand, color: "#fff", padding: isPhone ? "12px 14px" : "16px 24px", display: "flex", alignItems: isCompactLayout ? "stretch" : "center", flexDirection: isCompactLayout ? "column" : "row", justifyContent: "space-between", gap: isCompactLayout ? 10 : 16, position: "sticky", top: 0, zIndex: 40 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
