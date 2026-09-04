@@ -50,6 +50,10 @@ import {
   storefrontCreditsDenyBody,
   shopperSafeChatError,
 } from "../lib/voice/storefrontVoiceCredits.js";
+import {
+  mintStorefrontAdminToken,
+  resolveBoundAdminRow,
+} from "../lib/voice/storefrontAdminBinding.js";
 
 export const STOREFRONT_SESSION_WINDOW_MS = 5 * 60 * 1000;
 const ACTION_MAX = 120;
@@ -118,6 +122,22 @@ export async function persistStorefrontAdminTranscript(adminRow, transcript) {
     return { ok: false, error: parsed.error || "No se pudo guardar el chat." };
   }
   return { ok: true, adminRow: Number(adminRow) };
+}
+
+/**
+ * Admin col J writes only for the identify-bound row (HMAC adminToken).
+ * Never use a raw client adminRow — that was an IDOR into Admin/CRM.
+ */
+export function boundAdminRowFromRequest(body = {}, cfg = config) {
+  const bound = resolveBoundAdminRow(
+    {
+      adminToken: body?.adminToken,
+      telefono: body?.telefono,
+    },
+    cfg,
+  );
+  if (!bound.ok) return null;
+  return bound.adminRow;
 }
 
 function clientIp(req) {
@@ -348,7 +368,14 @@ export default function createPublicVoiceRouter() {
     if (type === "capture_lead") {
       const checked = assertCaptureLead(payload);
       if (!checked.ok) return JSON.stringify({ ok: false, error: checked.error });
-      const adminRow = Number(payload.adminRow);
+      const bound = resolveBoundAdminRow(
+        {
+          adminToken: payload.adminToken,
+          telefono: checked.lead.telefono,
+        },
+        config,
+      );
+      const adminRow = bound.ok ? bound.adminRow : null;
       const notasBits = [
         "origen voz web (VW)",
         pageUrl ? `página ${pageUrl}` : "",
@@ -357,7 +384,7 @@ export default function createPublicVoiceRouter() {
         STOREFRONT_FLETE_NOTE,
       ].filter(Boolean);
       try {
-        if (Number.isFinite(adminRow) && adminRow >= 2) {
+        if (shouldAttemptAdminColJ(adminRow)) {
           const raw = await executeTool(
             "wolfboard_actualizar_fila",
             {
@@ -448,8 +475,11 @@ export default function createPublicVoiceRouter() {
     }
     const pageUrl = sanitizePageUrl(req.body?.pageUrl);
     const leadMeta = req.body?.lead && typeof req.body.lead === "object" ? req.body.lead : {};
-    if (type === "capture_lead" && Number(leadMeta.adminRow) >= 2) {
-      payload.adminRow = Number(leadMeta.adminRow);
+    if (type === "capture_lead") {
+      const token = String(leadMeta.adminToken || payload.adminToken || req.body?.adminToken || "").trim();
+      if (token) payload.adminToken = token;
+      // Never copy raw leadMeta.adminRow — updates require a verified adminToken.
+      delete payload.adminRow;
     }
     const result = await runPublicStorefrontTool(type, payload, pageUrl, req.log);
     req.log?.info?.(storefrontActionLogPayload(type, 200), "storefront action");
@@ -489,9 +519,17 @@ export default function createPublicVoiceRouter() {
     if (shouldRecordStorefrontLeadMetrics(ev)) {
       recordVoiceEvent({ kind: "storefront_identify", surface: "storefront", detail: String(ev.adminRow) });
     }
+    const adminToken = mintStorefrontAdminToken({
+      adminRow: ev.adminRow,
+      telefono: checked.lead.telefono,
+    });
+    if (!adminToken) {
+      req.log?.warn?.("storefront identify: IDENTITY_JWT_SECRET missing; Admin writes unbound");
+    }
     return res.json({
       ok: true,
       adminRow: ev.adminRow,
+      adminToken: adminToken || null,
       id: ev.id || null,
       cliente: checked.lead.cliente,
       telefono: checked.lead.telefono,
@@ -529,7 +567,6 @@ export default function createPublicVoiceRouter() {
   });
 
   router.post("/log", actionLimiter, async (req, res) => {
-    const adminRow = Number(req.body?.adminRow);
     const telefono = normalizeStorefrontPhone(req.body?.telefono);
     const transcript = String(req.body?.transcript || "").trim().slice(0, 8000);
     const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
@@ -537,6 +574,7 @@ export default function createPublicVoiceRouter() {
       return res.status(400).json({ ok: false, error: "Teléfono requerido para loguear el chat." });
     }
     if (!transcript) return res.json({ ok: true, skipped: true });
+    const adminRow = boundAdminRowFromRequest({ ...req.body, telefono }, config);
     appendStorefrontTurn({
       kind: "log",
       adminRow: shouldAttemptAdminColJ(adminRow) ? adminRow : null,
@@ -545,7 +583,10 @@ export default function createPublicVoiceRouter() {
       transcript,
     });
     if (!shouldAttemptAdminColJ(adminRow)) {
-      return res.status(400).json({ ok: false, error: "adminRow requerido." });
+      return res.status(400).json({
+        ok: false,
+        error: "adminToken requerido (identificá de nuevo para guardar en Admin).",
+      });
     }
     try {
       const saved = await persistStorefrontAdminTranscript(adminRow, transcript);
@@ -585,11 +626,20 @@ export default function createPublicVoiceRouter() {
         pageUrl,
         toolResults: req.body?.tool_results,
         pack,
-        runServerTool: (name, args) => runPublicStorefrontTool(name, args || {}, pageUrl, req.log),
+        runServerTool: (name, args) => {
+          const base = args && typeof args === "object" ? { ...args } : {};
+          if (name === "capture_lead") {
+            const token = String(req.body?.adminToken || "").trim();
+            if (token) base.adminToken = token;
+            if (!base.telefono && req.body?.telefono) base.telefono = req.body.telefono;
+            delete base.adminRow;
+          }
+          return runPublicStorefrontTool(name, base, pageUrl, req.log);
+        },
       });
       recordVoiceEvent({ kind: "storefront_chat", surface: "storefront", detail: "text" });
-      const adminRow = Number(req.body?.adminRow);
       const telefono = normalizeStorefrontPhone(req.body?.telefono);
+      const adminRow = boundAdminRowFromRequest({ ...req.body, telefono }, config);
       const cliente = String(req.body?.cliente || shopperName || "").trim();
       const transcript = formatStorefrontAdminTranscript({
         cliente,
