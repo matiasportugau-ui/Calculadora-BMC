@@ -651,6 +651,8 @@
     chatBusy: false,
     voiceDenied: false,
     voiceWanted: VOICE_MODE === "realtime",
+    /** false when /status reports bubble:false (Grok credits TTL). */
+    realtimeAvailable: true,
     voiceMode: VOICE_MODE,
     lastInputWasVoice: false,
     rec: null,
@@ -1801,6 +1803,10 @@
 
   async function startCall() {
     if (state.voiceMode !== "realtime") return;
+    if (state.realtimeAvailable === false) {
+      setErr("Voz realtime sin crédito. Seguí por texto o dictado (STT) — el chat no se cierra.");
+      return;
+    }
     if (window.__bmcMicTestActive) {
       setErr("Pará primero la prueba de mic (botón azul del recuadro negro).");
       return;
@@ -2178,8 +2184,17 @@
     try {
       const r = await fetch(`${API}/api/public/voice/status`);
       const j = await r.json().catch(() => ({}));
-      if (j.bubble === false && !LOCAL_HOST) return;
-    } catch { /* fail open */ }
+      // bubble:false = Grok realtime dry. Still mount text/pipeline — /chat falls
+      // back to Gemini/OpenAI. Pre-#1198 hide-orb made sense for realtime-only.
+      if (j.bubble === false) {
+        state.realtimeAvailable = false;
+        if (state.voiceMode === "realtime") {
+          state.voiceMode = "pipeline";
+          state.voiceWanted = false;
+          applyVoiceMode();
+        }
+      }
+    } catch { /* fail open — mount anyway */ }
     attachBubble();
     restoreSession();
     try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch { /* ignore */ }

@@ -86,11 +86,22 @@ assert.match(publicVoice, /code: "credits"|storefrontCreditsDenyBody/, "widget c
 
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.match(widget, /\/api\/public\/voice\/status/, "probe before mount");
-assert.match(widget, /function hideBubble/, "unmount orb when dry");
-assert.match(widget, /j\.bubble === false/, "status.bubble false skips the orb");
+assert.match(widget, /function hideBubble/, "hideBubble helper retained");
+assert.match(widget, /j\.bubble === false/, "status.bubble false is detected");
+assert.ok(
+  !/j\.bubble === false && !LOCAL_HOST\) return/.test(widget),
+  "must not skip attachBubble when Grok credits are dead (pipeline/text still work)",
+);
+assert.match(
+  widget,
+  /voiceMode = "pipeline"/,
+  "realtime mode downgrades to pipeline when bubble is false",
+);
+assert.match(widget, /realtimeAvailable = false/, "marks realtime unavailable when dry");
 assert.match(widget, /err\?\.code === "credits"/, "live mint 403 is handled");
 assert.match(widget, /el chat no se cierra|El chat sigue/, "credits must not unmount an open chat");
 assert.match(widget, /open \.bmc-launch\{visibility:hidden;pointer-events:none\}/, "open panel ignores orb clicks without collapsing the chat");
 assert.ok(!widget.includes("document.body.appendChild(root);"), "do not append before status");
+assert.match(widget, /attachBubble\(\)/, "boot always mounts after status probe");
 
 console.log("storefrontVoiceCredits.test.js ok");
