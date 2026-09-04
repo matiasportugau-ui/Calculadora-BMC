@@ -73,6 +73,52 @@ export function ensureBrainInit() {
   return _initPromise;
 }
 
+/** Snapshot of cached lessons (read-only). Callers must not mutate. */
+export function getBrainLessons() {
+  return _cache.lessons;
+}
+
+/**
+ * Rank active lessons: confidence·0.6 + overlap·0.4. Same formula as the pipeline.
+ * @param {object[]} lessons
+ * @param {string} [query]
+ * @param {number} [n]
+ */
+export function rankLessons(lessons, query = "", n = config.brainInjectCap) {
+  const active = (lessons || []).filter((l) => l && l.status === "active");
+  if (!active.length) return [];
+  const cap = Math.max(1, Number(n) || config.brainInjectCap);
+  return active
+    .map((l) => {
+      const rel = Math.max(_overlap(query, l.trigger), _overlap(query, l.rule) * 0.7);
+      return { l, score: (l.confidence ?? 0.7) * 0.6 + rel * 0.4 };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, cap);
+}
+
+/**
+ * Sync hydrate from local lesson files when the cache is empty (dev / storefront).
+ * Does not replace a warm GCS/local cache. Source label stays "local" (no paths).
+ */
+export function tryHydrateBrainFromLocalFiles(paths = []) {
+  if (_cache.lessons.length) {
+    return { ok: true, source: _cache.source, count: _cache.lessons.length };
+  }
+  for (const p of paths) {
+    try {
+      if (!p || !fs.existsSync(p)) continue;
+      const lessons = _parseLessons(fs.readFileSync(p, "utf8"));
+      if (!Array.isArray(lessons) || !lessons.length) continue;
+      _cache = { lessons, loadedAt: Date.now(), source: "local" };
+      return { ok: true, source: "local", count: lessons.length };
+    } catch {
+      // next path
+    }
+  }
+  return { ok: false, source: _cache.source, count: _cache.lessons.length };
+}
+
 /**
  * The injectable brain block for a query — SYNC, read-only, fail-soft. Returns "" when disabled/empty.
  * Lessons are POLICIES (not retrieval): rank by confidence·0.6 + overlap·0.4 and inject the top-N always.
@@ -80,17 +126,19 @@ export function ensureBrainInit() {
  * @param {number} [n]    cap (defaults to config.brainInjectCap).
  */
 export function brainBlock(query = "", n = config.brainInjectCap) {
-  const active = _cache.lessons.filter((l) => l && l.status === "active");
-  if (!active.length) return "";
-  const ranked = active
-    .map((l) => {
-      const rel = Math.max(_overlap(query, l.trigger), _overlap(query, l.rule) * 0.7);
-      return { l, score: (l.confidence ?? 0.7) * 0.6 + rel * 0.4 };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, n);
+  const ranked = rankLessons(_cache.lessons, query, n);
+  if (!ranked.length) return "";
   const lines = ranked.map(({ l }) => `- ${l.rule}`).join("\n");
   return `## CONOCIMIENTO ACUMULADO (reglas aprendidas de correcciones previas — aplicalas SIEMPRE que correspondan, tienen prioridad sobre los defaults)\n${lines}`;
+}
+
+/** Tests only. */
+export function __setBrainCacheForTests(lessons, source = "test") {
+  _cache = {
+    lessons: Array.isArray(lessons) ? lessons : [],
+    loadedAt: Date.now(),
+    source,
+  };
 }
 
 /** Snapshot for diagnostics / health. */

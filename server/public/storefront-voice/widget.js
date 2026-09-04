@@ -38,6 +38,8 @@
     navigate: 1,
     open_url: 1,
     share_link: 1,
+    present_choices: 1,
+    add_quote_to_cart: 1,
   };
 
   function scriptEl() {
@@ -59,6 +61,22 @@
   }
 
   const API = apiBase();
+  const LOCAL_HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  const VOICE_MODES = { text: 1, pipeline: 1, realtime: 1 };
+
+  function readVoiceMode() {
+    try {
+      const q = String(new URLSearchParams(location.search).get("voice") || "").trim();
+      if (VOICE_MODES[q]) return q;
+    } catch { /* ignore */ }
+    const el = scriptEl();
+    const d = String((el && (el.getAttribute("data-bmc-voice-mode") || el.dataset.bmcVoiceMode)) || "").trim();
+    if (VOICE_MODES[d]) return d;
+    return "pipeline";
+  }
+
+  const VOICE_MODE = readVoiceMode();
+  window.__bmcVoiceMode = VOICE_MODE;
 
   function micScore(label) {
     const l = String(label || "");
@@ -339,6 +357,124 @@
     return { ok: true, added: data.title || data.items?.[0]?.title || "ítem", cart };
   }
 
+  function mmInTitle(title, mm) {
+    if (!mm) return true;
+    const t = String(title || "").toLowerCase().replace(/\s+/g, "");
+    const n = String(mm).replace(/\D/g, "");
+    return t.includes(`${n}mm`) || t.includes(n);
+  }
+
+  function colorInTitle(title, color) {
+    if (!color) return true;
+    return String(title || "").toLowerCase().includes(String(color).toLowerCase());
+  }
+
+  function pickVariant(product, line) {
+    const vs = (product && product.variants) || [];
+    if (!vs.length) return null;
+    const mm = String(line.espesor || "").replace(/\D/g, "");
+    const color = String(line.color || "Blanco");
+    const scored = vs.map((v) => {
+      const title = `${v.title || ""} ${v.option1 || ""} ${v.option2 || ""} ${v.option3 || ""}`;
+      let score = 0;
+      if (mm && mmInTitle(title, mm)) score += 4;
+      if (colorInTitle(title, color)) score += 2;
+      if (v.available !== false) score += 1;
+      return { v, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    const best = scored[0];
+    if (!best) return null;
+    if (mm && best.score < 4 && vs.length > 1) {
+      const anyMm = scored.find((s) => s.score >= 4);
+      if (anyMm) return anyMm.v;
+    }
+    return best.v;
+  }
+
+  function cartQtyFromLine(line, shopPrice) {
+    let q = Math.max(1, Math.round(Number(line.quantity) || 1));
+    const pu = Number(line.pu_usd) || 0;
+    const sp = Number(shopPrice) || 0;
+    const cant = Number(line.cant) || q;
+    if (pu > 0 && sp > pu * 4) {
+      q = Math.max(1, Math.round((cant * pu) / sp));
+    }
+    return Math.min(500, q);
+  }
+
+  async function addQuoteLinesToCart(lines, meta = {}) {
+    const list = Array.isArray(lines) ? lines : [];
+    if (meta.pdf_url) addQuoteCard(meta.pdf_url, meta.code);
+    if (!list.length) return { ok: false, error: "sin líneas" };
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+      addCap("assistant", "En la tienda (bmcuruguay.com.uy) estos ítems se agregan al carrito para comprar online. Acá en local no hay carrito Shopify.");
+      return { ok: true, skipped: "local", n: list.length };
+    }
+    const items = [];
+    const skipped = [];
+    for (const line of list.slice(0, 24)) {
+      const handle = String(line.handle || "").trim();
+      if (!handle) {
+        skipped.push(line.title || line.sku);
+        continue;
+      }
+      try {
+        const r = await fetch(`/products/${encodeURIComponent(handle)}.json`);
+        if (!r.ok) {
+          skipped.push(line.title || handle);
+          continue;
+        }
+        const d = await r.json();
+        const product = d.product || d;
+        const v = pickVariant(product, line);
+        if (!v || !v.id) {
+          skipped.push(line.title || handle);
+          continue;
+        }
+        items.push({
+          id: Number(v.id),
+          quantity: cartQtyFromLine(line, v.price),
+        });
+      } catch {
+        skipped.push(line.title || handle);
+      }
+    }
+    if (!items.length) {
+      return { ok: false, error: "No encontré esos productos en la tienda", skipped };
+    }
+    const payload = { items };
+    const sectionIds = cartSectionIds();
+    if (sectionIds.length) {
+      payload.sections = sectionIds.join(",");
+      payload.sections_url = location.pathname;
+    }
+    const r = await fetch("/cart/add.js", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const raw = await r.text();
+    let data = {};
+    try { data = JSON.parse(raw); } catch { /* ignore */ }
+    if (!r.ok) {
+      return { ok: false, error: data.description || data.message || "No se pudo cargar el carrito", skipped };
+    }
+    const cart = await getCart();
+    if (cart.ok) {
+      setCartCount(cart.item_count);
+      notifyThemeCart(cart, data.sections);
+    }
+    persistResume();
+    openCartUi();
+    return {
+      ok: true,
+      added: items.length,
+      skipped,
+      item_count: cart.ok ? cart.item_count : items.length,
+    };
+  }
+
   const css = `
 #bmc-paneli-voice{all:initial;display:block;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Helvetica,Arial,sans-serif;position:fixed;z-index:2147483000;right:92px;bottom:calc(18px + env(safe-area-inset-bottom,0px));color:#1d1d1f}
 @media(max-width:640px){#bmc-paneli-voice{right:16px;left:16px;bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
@@ -346,6 +482,7 @@
 #bmc-paneli-voice .bmc-launch{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto}
 #bmc-paneli-voice .bmc-ask{max-width:11.5em;background:rgba(15,23,42,.92);color:#fff;font-size:13px;font-weight:600;line-height:1.25;padding:8px 12px;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.22);cursor:pointer}
 #bmc-paneli-voice.open .bmc-ask{display:none}
+#bmc-paneli-voice.open .bmc-launch{visibility:hidden;pointer-events:none}
 #bmc-paneli-voice .bmc-orb{width:76px;height:76px;padding:0;border:2px solid #fff;border-radius:50%;background:#1a3a5c;cursor:pointer;display:grid;place-items:center;overflow:hidden;box-shadow:0 10px 28px rgba(20,19,17,.28);position:relative;flex:none;animation:bmc-orb-breathe 3.6s ease-in-out infinite}
 #bmc-paneli-voice .bmc-orb:focus-visible{outline:2px solid #0071e3;outline-offset:3px}
 #bmc-paneli-voice .bmc-orb[data-state="listening"]{box-shadow:0 0 0 5px rgba(0,113,227,.35);animation:none}
@@ -381,6 +518,7 @@
 #bmc-paneli-voice .bmc-quote-sub{display:block;font-size:11px;color:#6e6e73;margin-top:2px}
 #bmc-paneli-voice .bmc-shop-picks{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 #bmc-paneli-voice .bmc-shop-picks[hidden]{display:none}
+#bmc-paneli-voice .bmc-shop-picks .bmc-pick{min-height:44px}
 #bmc-paneli-voice .bmc-status{margin:0 0 6px;font-size:11px;color:#6e6e73;min-height:1em}
 #bmc-paneli-voice .bmc-vu{margin:0 0 6px;font-size:11px;color:#6e6e73;font-variant-numeric:tabular-nums}
 #bmc-paneli-voice .bmc-composer{display:flex;align-items:center;gap:8px;margin:0 0 8px}
@@ -404,6 +542,9 @@
 #bmc-paneli-voice .bmc-id-ask{margin:0;font-size:14px;line-height:1.45;color:#1d1d1f;text-align:center}
 #bmc-paneli-voice .bmc-id input{width:100%;min-height:48px;border:1px solid #e5e5ea;border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;background:#f5f5f7;color:#1d1d1f}
 #bmc-paneli-voice .bmc-id-go{width:100%;min-height:48px;border:0;border-radius:12px;background:#0071e3;color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+#bmc-paneli-voice[data-voice-mode="text"] .bmc-mic{display:none}
+#bmc-paneli-voice .bmc-mode-chip{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.02em;color:#6e6e73}
+#bmc-paneli-voice:not(.local-eval) .bmc-mode-chip{display:none}
 @media(prefers-reduced-motion:reduce){#bmc-paneli-voice .bmc-orb{box-shadow:0 10px 28px rgba(20,19,17,.35)!important;animation:none}}
 `;
 
@@ -416,6 +557,7 @@
       <div class="bmc-empty" id="bmc-empty">
         <video class="bmc-hero-face" src="${API}/storefront-voice/panelin-lista-loop.mp4" poster="${API}/storefront-voice/panelin.png" autoplay muted loop playsinline></video>
         <p class="bmc-title">¡Hola! Soy Panelin</p>
+        <p class="bmc-mode-chip" id="bmc-mode-chip" hidden></p>
         <p class="bmc-sub">Cuando quieras, hablamos.</p>
         <form class="bmc-id" id="bmc-id">
           <p class="bmc-id-ask">¡Qué bueno que estés acá! Para ayudarte de verdad y dejarle tu consulta al equipo BMC, ¿me decís tu nombre y un celular? ¡Con eso ya podemos chatear!</p>
@@ -426,7 +568,7 @@
         <div class="bmc-picks" id="bmc-picks" hidden></div>
       </div>
       <div class="bmc-caps" id="bmc-caps" aria-live="polite"></div>
-      <div class="bmc-shop-picks" id="bmc-shop-picks" hidden></div>
+      <div class="bmc-shop-picks" id="bmc-shop-picks" hidden role="group" aria-label="Opciones rápidas"></div>
       <p class="bmc-status" id="bmc-status"></p>
       <p class="bmc-vu" id="bmc-vu" hidden></p>
       <form class="bmc-composer" id="bmc-form">
@@ -488,6 +630,8 @@
   const errEl = root.querySelector("#bmc-err");
   const statusEl = root.querySelector("#bmc-status");
   const badge = root.querySelector("#bmc-badge");
+  const hintEl = root.querySelector(".bmc-hint");
+  const modeChip = root.querySelector("#bmc-mode-chip");
 
   const state = {
     status: "idle",
@@ -506,7 +650,10 @@
     chatHistory: [],
     chatBusy: false,
     voiceDenied: false,
-    voiceWanted: true,
+    voiceWanted: VOICE_MODE === "realtime",
+    voiceMode: VOICE_MODE,
+    lastInputWasVoice: false,
+    rec: null,
     identified: false,
     cliente: "",
     telefono: "",
@@ -524,8 +671,170 @@
   }
 
   function isLocalEval() {
-    return /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    return LOCAL_HOST;
   }
+
+  function applyVoiceMode() {
+    root.dataset.voiceMode = state.voiceMode;
+    if (LOCAL_HOST) root.classList.add("local-eval");
+    const chips = {
+      text: "Modo texto — solo escribir",
+      pipeline: "Modo STT + TTS — sin agente de voz realtime",
+      realtime: "Modo voz realtime — Grok cobra el minuto",
+    };
+    if (modeChip) {
+      modeChip.hidden = !LOCAL_HOST;
+      modeChip.textContent = chips[state.voiceMode] || "";
+    }
+    if (hintEl) {
+      const hints = {
+        text: "Escribí abajo. Con tu nombre y celular dejo la consulta en BMC. El flete hay que corroborarlo.",
+        pipeline: "Mic = dictado (STT). Panelin puede leerte la respuesta (TTS). No hay llamada realtime. El flete hay que corroborarlo.",
+        realtime: "Tocá Hablar para la voz realtime (cobra por minuto de sesión). El flete hay que corroborarlo.",
+      };
+      hintEl.textContent = hints[state.voiceMode] || hints.pipeline;
+    }
+    if (state.voiceMode === "text") go.setAttribute("hidden", "");
+    else go.removeAttribute("hidden");
+  }
+
+  function speakable(text) {
+    return String(text || "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/[#*_`>]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 600);
+  }
+
+  function pickSttLang() {
+    return "es-UY";
+  }
+
+  function pickTtsVoice() {
+    const voices = (window.speechSynthesis && window.speechSynthesis.getVoices()) || [];
+    const rank = (v) => {
+      const blob = `${v.lang} ${v.name}`.toLowerCase();
+      if (/es-uy/.test(blob)) return 50;
+      if (/es-ar/.test(blob)) return 40;
+      if (/es-mx/.test(blob)) return 30;
+      if (/es-es/.test(blob)) return 20;
+      if (/\bes[-_]/.test(blob) || /spanish|español/.test(blob)) return 10;
+      return 0;
+    };
+    return voices.slice().sort((a, b) => rank(b) - rank(a))[0] || null;
+  }
+
+  function stopPipelineListen() {
+    const rec = state.rec;
+    state.rec = null;
+    if (rec) {
+      try { rec.stop(); } catch { /* ignore */ }
+      try { rec.abort(); } catch { /* ignore */ }
+    }
+    if (state.voiceMode === "pipeline" && state.status === "listening") setStatus("idle");
+  }
+
+  function stopPipelineSpeak() {
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch { /* ignore */ }
+    if (state.voiceMode === "pipeline" && state.status === "speaking") setStatus("idle");
+  }
+
+  function speakPipeline(text) {
+    if (state.voiceMode !== "pipeline") return;
+    const t = speakable(text);
+    if (!t || !window.speechSynthesis) return;
+    stopPipelineListen();
+    stopPipelineSpeak();
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = (pickTtsVoice() && pickTtsVoice().lang) || "es-AR";
+    const voice = pickTtsVoice();
+    if (voice) u.voice = voice;
+    u.rate = 1.02;
+    u.onstart = () => {
+      if (state.voiceMode === "pipeline") setStatus("speaking");
+    };
+    u.onend = () => {
+      if (state.voiceMode === "pipeline" && state.status === "speaking") setStatus("idle");
+    };
+    u.onerror = () => {
+      if (state.voiceMode === "pipeline" && state.status === "speaking") setStatus("idle");
+    };
+    const kick = () => {
+      try { window.speechSynthesis.speak(u); } catch { /* ignore */ }
+    };
+    if (window.speechSynthesis.getVoices().length) kick();
+    else window.speechSynthesis.addEventListener("voiceschanged", kick, { once: true });
+  }
+
+  function startPipelineListen() {
+    if (!state.identified) return;
+    if (state.chatBusy) return;
+    const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Rec) {
+      setErr("Este navegador no dicta. Usá Chrome o el modo texto.");
+      return;
+    }
+    stopPipelineSpeak();
+    stopPipelineListen();
+    const rec = new Rec();
+    rec.lang = pickSttLang();
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (ev) => {
+      let interim = "";
+      let finalTxt = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) finalTxt += t;
+        else interim += t;
+      }
+      if (finalTxt) {
+        endUserLive(finalTxt);
+        stopPipelineListen();
+        state.lastInputWasVoice = true;
+        sendText(finalTxt);
+      } else if (interim) {
+        setUserLive(interim);
+      }
+    };
+    rec.onerror = (ev) => {
+      const err = String(ev.error || "");
+      if (err === "aborted") return;
+      if (err === "not-allowed") setErr("Activá el mic para dictar. Mientras, escribí abajo.");
+      else if (err === "no-speech") setErr("No te escuché. Tocá Hablar y repetí.");
+      else setErr("No pude dictar. Probá Chrome o escribí.");
+      stopPipelineListen();
+    };
+    rec.onend = () => {
+      if (state.rec === rec) {
+        state.rec = null;
+        if (state.status === "listening") setStatus("idle");
+      }
+    };
+    state.rec = rec;
+    setErr("");
+    setStatus("listening");
+    try {
+      rec.start();
+    } catch (err) {
+      state.rec = null;
+      setStatus("idle");
+      setErr(err?.message || "No pude arrancar el dictado.");
+    }
+  }
+
+  function togglePipelineListen() {
+    if (state.rec || state.status === "listening") {
+      stopPipelineListen();
+      return;
+    }
+    startPipelineListen();
+  }
+
+  applyVoiceMode();
 
   function logVoiceEvent(msg) {
     if (!isLocalEval() || !msg || !msg.type) return;
@@ -552,6 +861,7 @@
   }
 
   function voiceLive() {
+    if (state.voiceMode !== "realtime") return false;
     return state.status === "connecting" || state.status === "active" || state.status === "listening" || state.status === "speaking";
   }
 
@@ -725,6 +1035,7 @@
           telefono: state.telefono,
           cliente: state.cliente,
           transcript,
+          pageUrl: window.location.href,
         }),
       });
     } catch { /* ignore */ }
@@ -860,6 +1171,7 @@
     caps.scrollTop = caps.scrollHeight;
     remember(role === "user" ? "user" : role === "agent" ? "agent" : "assistant", t);
     scheduleLog();
+    if (role !== "user" && shopPicks.hidden) renderChoiceChips(parseReplyChoices(t));
   }
 
   function setUserLive(text) {
@@ -922,6 +1234,7 @@
       fillRichText(last, t);
       remember("assistant", t);
       scheduleLog();
+      if (shopPicks.hidden) renderChoiceChips(parseReplyChoices(t));
     }
   }
 
@@ -929,7 +1242,9 @@
     state.status = s;
     orb.dataset.state = s;
     go.dataset.state = s;
-    const talking = voiceLive();
+    const pipelineTalking =
+      state.voiceMode === "pipeline" && (s === "listening" || s === "speaking");
+    const talking = voiceLive() || pipelineTalking;
     stopBtn.hidden = true;
     go.setAttribute("aria-pressed", talking ? "true" : "false");
     go.setAttribute("aria-label", talking ? "Cortar voz" : "Hablar");
@@ -944,22 +1259,83 @@
     statusEl.textContent = labels[s] || "";
   }
 
-  function renderPicks(products) {
+  function normalizeChoiceOptions(raw) {
+    const arr = Array.isArray(raw) ? raw : [];
+    const out = [];
+    const seen = new Set();
+    for (const item of arr) {
+      if (out.length >= 4) break;
+      let label = "";
+      let send = "";
+      if (typeof item === "string") {
+        label = item;
+        send = item;
+      } else if (item && typeof item === "object") {
+        label = item.label || item.text || item.send || item.title || "";
+        send = item.send || item.value || item.label || item.title || "";
+      }
+      label = String(label || "").replace(/\s+/g, " ").trim().slice(0, 32);
+      send = String(send || label).replace(/\s+/g, " ").trim().slice(0, 120);
+      if (label.length < 1 || send.length < 1) continue;
+      const key = send.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ label, send });
+    }
+    return out;
+  }
+
+  function parseReplyChoices(text) {
+    const src = String(text || "");
+    const t = src.replace(/\s+/g, " ").trim();
+    if (!t || t.length > 400) return [];
+    const listed = [];
+    src.split(/\n/).forEach((line) => {
+      const m = String(line || "").trim().match(/^(?:[-*•]|\d+[.)]|[A-Da-d][.)])\s+(.{2,40})$/);
+      if (!m) return;
+      const label = m[1].replace(/[?.!]+$/g, "").trim();
+      if (label.length >= 2) listed.push({ label, send: label });
+    });
+    const fromList = normalizeChoiceOptions(listed);
+    if (fromList.length >= 2) return fromList;
+    const or = t.match(
+      /([A-Za-zÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9 +/%.-]{0,28}[A-Za-zÁÉÍÓÚÑ0-9])\s+o\s+([A-Za-zÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9 +/%.-]{0,28}[A-Za-zÁÉÍÓÚÑ0-9])\??/i,
+    );
+    if (or && !/\b(día|días|hora|horas|minutos)\b/i.test(or[0])) {
+      return normalizeChoiceOptions([or[1], or[2]]);
+    }
+    return [];
+  }
+
+  function renderChoiceChips(options) {
     shopPicks.innerHTML = "";
-    const list = (products || []).slice(0, 3);
+    const list = normalizeChoiceOptions(options);
     if (!list.length) {
       shopPicks.hidden = true;
-      return;
+      return false;
     }
     shopPicks.hidden = false;
-    list.forEach((p) => {
+    list.forEach((opt) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "bmc-pick";
-      b.textContent = p.title;
-      b.addEventListener("click", () => goTo(p.url));
+      b.setAttribute("data-send", opt.send);
+      b.textContent = opt.label;
       shopPicks.appendChild(b);
     });
+    return true;
+  }
+
+  function renderPicks(products) {
+    const list = (products || []).slice(0, 4).map((p) => ({
+      label: String(p.title || p.handle || "").slice(0, 32),
+      send: String(p.title || p.handle || "").slice(0, 120),
+    }));
+    renderChoiceChips(list);
+  }
+
+  if (LOCAL_HOST) {
+    window.__bmcShowChoices = (opts) => renderChoiceChips(opts);
   }
 
   function setCartCount(n) {
@@ -1087,6 +1463,16 @@
     }
     if (name === "share_link") {
       return shareLink(args.url, args.title);
+    }
+    if (name === "present_choices") {
+      const n = renderChoiceChips(args.options || args.choices || []);
+      return { ok: true, shown: n };
+    }
+    if (name === "add_quote_to_cart") {
+      return addQuoteLinesToCart(args.lines || args.cart_lines || [], {
+        pdf_url: args.pdf_url,
+        code: args.code,
+      });
     }
     return { ok: false, error: "tool desconocida" };
   }
@@ -1281,6 +1667,9 @@
         const url = parsed.pdf_url || parsed.pdf_file_url || parsed.gcs_url;
         const code = parsed.code || parsed.quote_code || (parsed.pdf_id ? String(parsed.pdf_id).replace(/-/g, "").slice(0, 8) : "");
         if (url) addQuoteCard(url, code);
+        if (Array.isArray(parsed.cart_lines) && parsed.cart_lines.length) {
+          await addQuoteLinesToCart(parsed.cart_lines, { pdf_url: "", code });
+        }
       } catch { /* ignore */ }
     }
     return resultStr;
@@ -1366,7 +1755,8 @@
     if (type === "error") {
       const em = msg.error?.message || msg.message || "Error de voz";
       if (/used all available credits|spending limit|insufficient credits/i.test(em)) {
-        hideBubble();
+        teardown();
+        setErr("Voz realtime sin crédito. Seguí por texto o modo voz barata — el chat no se cierra.");
         return;
       }
       setErr(em);
@@ -1410,6 +1800,7 @@
   }
 
   async function startCall() {
+    if (state.voiceMode !== "realtime") return;
     if (window.__bmcMicTestActive) {
       setErr("Pará primero la prueba de mic (botón azul del recuadro negro).");
       return;
@@ -1493,7 +1884,9 @@
       });
     } catch (err) {
       if (err?.code === "credits") {
-        hideBubble();
+        if (stream) stream.getTracks().forEach((t) => t.stop());
+        teardown();
+        setErr("Voz realtime sin crédito. Seguí por texto o modo voz barata — el chat no se cierra.");
         return;
       }
       if (stream) stream.getTracks().forEach((t) => t.stop());
@@ -1544,6 +1937,8 @@
     const text = String(raw || "").trim();
     if (!state.identified) return;
     if (!text || state.chatBusy) return;
+    shopPicks.hidden = true;
+    shopPicks.innerHTML = "";
     setErr("");
     root.classList.add("open");
     if (state.agentMode) {
@@ -1563,12 +1958,19 @@
       history: prior,
       pageUrl: window.location.href,
       shopperName: state.cliente,
+      cliente: state.cliente,
+      telefono: state.telefono,
+      adminRow: state.adminRow,
     };
+    let lastSpeak = "";
     try {
       for (let hop = 0; hop < 4; hop++) {
         const data = await postChat(body);
         if (data.history) state.chatHistory = data.history;
-        if (data.text) addCap("assistant", data.text);
+        if (data.text) {
+          addCap("assistant", data.text);
+          lastSpeak = data.text;
+        }
         const actions = data.client_actions || [];
         if (!actions.length) break;
         const tool_results = [];
@@ -1586,17 +1988,24 @@
           history: state.chatHistory,
           pageUrl: window.location.href,
           shopperName: state.cliente,
+          cliente: state.cliente,
+          telefono: state.telefono,
+          adminRow: state.adminRow,
         };
+      }
+      if (state.voiceMode === "pipeline" && lastSpeak && state.lastInputWasVoice) {
+        speakPipeline(lastSpeak);
       }
     } catch (err) {
       if (err?.code === "credits") {
-        hideBubble();
+        setErr("Sin crédito de voz. El chat sigue: escribí o usá dictado (voz barata).");
         return;
       }
       setErr(err?.message || "No se pudo enviar.");
     } finally {
       state.chatBusy = false;
       if (state.status === "thinking") setStatus("idle");
+      flushLog();
     }
   }
 
@@ -1604,9 +2013,15 @@
     root.classList.add("open");
   }
 
+  root.querySelector(".bmc-panel").addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
   function closePanel() {
     root.classList.remove("open");
     flushLog();
+    stopPipelineListen();
+    stopPipelineSpeak();
     if (voiceLive()) teardown();
     if (!state.agentMode) {
       pingLive("ended");
@@ -1618,7 +2033,8 @@
     ensureCaptureContext();
     if (state.playCtx?.state === "suspended") state.playCtx.resume().catch(() => {});
   });
-  orb.addEventListener("click", () => {
+  orb.addEventListener("click", (e) => {
+    e.stopPropagation();
     if (root.classList.contains("open")) closePanel();
     else openPanel();
   });
@@ -1631,8 +2047,14 @@
   });
   go.addEventListener("click", (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!state.identified) return;
     if (state.agentMode) return;
+    if (state.voiceMode === "text") return;
+    if (state.voiceMode === "pipeline") {
+      togglePipelineListen();
+      return;
+    }
     if (voiceLive()) teardown();
     else startCall();
   });
@@ -1645,6 +2067,7 @@
     e.preventDefault();
     const v = input.value;
     input.value = "";
+    state.lastInputWasVoice = false;
     sendText(v);
   });
   input.addEventListener("input", () => {
@@ -1690,6 +2113,16 @@
     if (!btn) return;
     sendText(btn.getAttribute("data-send"));
   });
+  shopPicks.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-send]");
+    if (!btn) return;
+    e.preventDefault();
+    const send = btn.getAttribute("data-send");
+    shopPicks.hidden = true;
+    shopPicks.innerHTML = "";
+    state.lastInputWasVoice = false;
+    sendText(send);
+  });
   stopBtn.addEventListener("click", () => {
     teardown();
     addCap("assistant", "Listo, cortamos.");
@@ -1726,7 +2159,7 @@
             caps.appendChild(p);
           });
         }
-        if (saved.conversationId) {
+        if (saved.conversationId && state.voiceMode === "realtime") {
           state.conversationId = saved.conversationId;
           startCall();
         }
@@ -1734,13 +2167,21 @@
     } catch { /* ignore */ }
   }
 
+  window.addEventListener("pagehide", () => {
+    flushLog();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) flushLog();
+  });
+
   (async function boot() {
     try {
       const r = await fetch(`${API}/api/public/voice/status`);
       const j = await r.json().catch(() => ({}));
-      if (j.bubble === false) return;
+      if (j.bubble === false && !LOCAL_HOST) return;
     } catch { /* fail open */ }
     attachBubble();
     restoreSession();
+    try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch { /* ignore */ }
   })();
 })();

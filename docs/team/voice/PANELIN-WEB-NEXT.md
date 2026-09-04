@@ -2,25 +2,23 @@
 
 SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 
-**Última:** 2026-08-28 (ship: hide orb when credits dead)  
-**Branch:** `feat/storefront-voice-cost`  
+**Última:** 2026-09-04 (SHIP to live — Matias OK)  
+**Branch:** `feat/storefront-voice-modes-demo`  
 **Local:** http://127.0.0.1:3001/storefront-voice/  
-**Shop:** widget from Cloud Run after this `deploy-calc-api`.
+**Shop:** shipping Cloud Run `panelin-calc`; theme script already points at prod `widget.js`.
 
 ## Estado
 
-- Helper `storefrontVoiceCredits.js` + `GET /status` `{ bubble: false }`. Widget **no monta** el globo. Mint/chat 403 `code=credits` lo saca.
-- Texto primero: solo Hablar mintea voz. PCM silencio no se manda. Corte 10s. Sin `web_search` en voz.
+Each shop chat is a row in Admin 2.0 (`WOLFB_ADMIN_SHEET_ID` = planilla 1Ie0KCpg… gid 0, tab `Admin.`, origen `VW`). Identify creates the row; every `/chat` turn + `/log` writes the transcript to col J.
 
 ## Próximo prompt
 
 ```
-/panelin-web shop
+chatear en http://127.0.0.1:3001/storefront-voice/ y abrir la planilla Admin 2.0: fila VW nueva + col J con el chat
 ```
-
-Hard-refresh tienda. Sin créditos xAI → no hay globo. Con créditos → chat texto; mic para voz.
 
 ## No hacer ahora
 
+- Pegar el pipeline a la tienda.
 - Mezclar Driver QR / keywords / logística.
-- Mostrar error de créditos al comprador.
+- `git stash pop` del wip mixed 2026-09-04 encima de esta branch.

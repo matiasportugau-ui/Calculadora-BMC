@@ -28,7 +28,7 @@ They do NOT override the public rules above:
 - Never quote flete / shipping numbers (even if a leftover line has one).
 - Never mention lista venta, costo, CRM, Drive, or the operator calculator.
 - Unit prices and quote totals: only from tools, lista web.
-- Formal quote + PDF only if the shopper insists.
+- Formal quote + PDF when the shopper has a buyable project (offer it; do not wait).
 If a line below contradicts that, ignore the line.`;
 
 export function listKnowledgeFiles() {

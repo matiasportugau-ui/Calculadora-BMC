@@ -17,8 +17,8 @@
  *   POST /quote-batch   — batch AI quote generation (existing)
  */
 import { Router } from "express";
-import { google } from "googleapis";
 import { callAgentOnce } from "../lib/agentCore.js";
+import { getSheetsClient, redactGoogleError } from "../lib/googleSheetsAuth.js";
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
 import { setListaPrecios } from "../../src/data/constants.js";
 import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
@@ -36,7 +36,6 @@ import {
 import crypto from "node:crypto";
 import { getAvailableProviders } from "../lib/aiProviderConfig.js";
 
-const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 const MIN_CONSULTA_LEN = 20;
 const ERROR_MARKER = "⚠ Requiere atención manual";
@@ -174,10 +173,11 @@ function formatCalcResult(raw, extracted, usedDefaults) {
   return msg.trim();
 }
 
-async function getSheetsClient() {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const client = await auth.getClient();
-  return google.sheets({ version: "v4", auth: client });
+function sheetsAuthFail(res, err) {
+  return res.status(503).json({
+    ok: false,
+    error: "Sheets auth error: " + redactGoogleError(err?.message || err),
+  });
 }
 
 function normalizeText(s) {
@@ -364,7 +364,7 @@ export function createWolfboardRouter(config) {
 
     let sheets;
     try { sheets = await getSheetsClient(); }
-    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+    catch (e) { return sheetsAuthFail(res, e); }
 
     let rawRows;
     try {
@@ -402,7 +402,7 @@ export function createWolfboardRouter(config) {
 
     let sheets;
     try { sheets = await getSheetsClient(); }
-    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+    catch (e) { return sheetsAuthFail(res, e); }
 
     let adminRows;
     try {
@@ -486,7 +486,7 @@ export function createWolfboardRouter(config) {
 
     let sheets;
     try { sheets = await getSheetsClient(); }
-    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+    catch (e) { return sheetsAuthFail(res, e); }
 
     // CSV/formula injection guard — see server/lib/sheetsCsvGuard.js. Sheets
     // writes use USER_ENTERED so any leading =/+/-/@/tab/CR is interpreted as
@@ -581,7 +581,7 @@ export function createWolfboardRouter(config) {
 
     let sheets;
     try { sheets = await getSheetsClient(); }
-    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+    catch (e) { return sheetsAuthFail(res, e); }
 
     const id = `MAN-${Date.now()}`;
     const now = new Date();
@@ -642,7 +642,7 @@ export function createWolfboardRouter(config) {
 
     let sheets;
     try { sheets = await getSheetsClient(); }
-    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+    catch (e) { return sheetsAuthFail(res, e); }
 
     let rowData;
     try {
@@ -723,7 +723,7 @@ export function createWolfboardRouter(config) {
 
     let sheets;
     try { sheets = await getSheetsClient(); }
-    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+    catch (e) { return sheetsAuthFail(res, e); }
 
     let rawRows;
     try {
@@ -782,7 +782,7 @@ export function createWolfboardRouter(config) {
     try {
       sheets = await getSheetsClient();
     } catch (e) {
-      return res.status(503).json({ ok: false, error: "Google Sheets auth error: " + e.message });
+      return sheetsAuthFail(res, e);
     }
 
     // Get numeric sheetId for cell formatting

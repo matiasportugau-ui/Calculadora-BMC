@@ -22,7 +22,12 @@ import {
 import { STOREFRONT_VOICE_INSTRUCTIONS } from "../server/lib/voice/storefrontVoiceInstructions.js";
 import { STOREFRONT_AGENT_CONFIG } from "../server/lib/voice/storefrontAgentConfig.js";
 import { isStorefrontOriginAllowed } from "../server/routes/publicVoice.js";
-import { packToolsToOpenAI, sanitizeChatHistory } from "../server/lib/voice/storefrontChat.js";
+import {
+  packToolsToOpenAI,
+  sanitizeChatHistory,
+  listStorefrontChatBackends,
+  GEMINI_OPENAI_BASE,
+} from "../server/lib/voice/storefrontChat.js";
 import {
   loadKnowledgeDocs,
   loadPublicKnowledgeDocs,
@@ -45,6 +50,8 @@ assert.ok(names.includes("shop_search"), "shop_search");
 assert.ok(names.includes("add_to_cart"), "add_to_cart");
 assert.ok(names.includes("navigate"), "navigate");
 assert.ok(names.includes("get_cart"), "get_cart");
+assert.ok(names.includes("present_choices"), "tap-to-reply chips");
+assert.equal(isStorefrontShopTool("present_choices"), true);
 
 const widgetSrc = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.ok(widgetSrc.includes("cart:update"), "Horizon cart:update after add");
@@ -53,7 +60,7 @@ assert.ok(widgetSrc.includes('id="bmc-cart"'), "Carrito button");
 assert.ok(widgetSrc.includes("SHOP_TOOLS"), "browser shop tools");
 assert.ok(widgetSrc.includes('state.status === "idle"'), "idle cart must not persist voice resume");
 assert.ok(widgetSrc.includes("leftPage"), "failed navigate still calls response.create");
-assert.ok(names.includes("generar_pdf"), "PDF on insist path");
+assert.ok(names.includes("generar_pdf"), "PDF on quote path");
 assert.ok(!names.includes("aplicar_estado_calc"), "no form fill");
 assert.ok(!names.includes("sheets_read_range"), "no sheets");
 assert.ok(!names.includes("historial_cliente"), "no CRM history");
@@ -63,7 +70,7 @@ for (const n of STOREFRONT_READ_TOOLS) {
 }
 
 assert.equal(pack.voice, "rex");
-assert.equal(pack.language_hint, "es-MX");
+assert.equal(pack.language_hint, "es-UY");
 assert.equal(pack.turn_detection.silence_duration_ms, 900);
 assert.equal(pack.turn_detection.threshold, 0.5);
 assert.equal(pack.turn_detection.idle_timeout_ms, 10000);
@@ -137,12 +144,20 @@ assert.match(idOk.lead.consulta, /Chat tienda Panelin/);
 const namedPack = buildStorefrontVoicePack({ shopperName: "Ana" });
 assert.ok(namedPack.instructions.includes("Already identified as Ana"));
 
-assert.equal(STOREFRONT_AGENT_CONFIG.quote.mode, "insist-only");
+assert.equal(STOREFRONT_AGENT_CONFIG.quote.mode, "offer");
 assert.deepEqual([...STOREFRONT_AGENT_CONFIG.lead.required], ["nombre", "telefono"]);
 assert.equal(STOREFRONT_AGENT_CONFIG.quote.pdf, true);
 assert.equal(STOREFRONT_AGENT_CONFIG.quote.shipping, "never");
 assert.equal(STOREFRONT_AGENT_CONFIG.voice, "rex");
-assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("insist"));
+assert.equal(STOREFRONT_AGENT_CONFIG.channel.mic, "stt");
+assert.equal(STOREFRONT_AGENT_CONFIG.channel.speak, "tts");
+assert.equal(STOREFRONT_AGENT_CONFIG.channel.realtime, false);
+assert.equal(STOREFRONT_AGENT_CONFIG.channel.defaultMode, "pipeline");
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("Sell loop"));
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("Do not wait"));
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("CTA"));
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("Never a tool call with empty speech"));
+assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("add_to_cart"));
 assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("flete"));
 assert.ok(STOREFRONT_VOICE_INSTRUCTIONS.includes("Estoy aprendiendo"));
 assert.ok(/classify/i.test(STOREFRONT_VOICE_INSTRUCTIONS));
@@ -225,8 +240,24 @@ assert.ok(widget.includes("function openPanel"), "panel open");
   const openFn = widget.match(/function openPanel\(\) \{[\s\S]*?\n  \}/);
   assert.ok(openFn && !openFn[0].includes("startCall"), "text-first: open does not mint voice");
 }
-assert.ok(widget.includes("startCall()"), "Hablar still starts voice");
+assert.ok(widget.includes('return "pipeline"'), "default mic is STT+TTS not S2S");
+assert.ok(widget.includes("startCall()"), "realtime opt-in still has S2S mint");
 assert.ok(widget.includes("/api/public/voice/status"), "credits probe before orb");
+assert.ok(widget.includes("data-bmc-voice-mode"), "local demo can pin voice mode");
+assert.ok(widget.includes("webkitSpeechRecognition"), "cheap voice uses browser STT");
+assert.ok(widget.includes("speechSynthesis"), "cheap voice uses browser TTS");
+assert.ok(widget.includes("togglePipelineListen"), "pipeline mic is push-to-talk STT");
+assert.ok(widget.includes('state.voiceMode !== "realtime"'), "pipeline/text never mint S2S");
+{
+  const demo = fs.readFileSync(
+    path.join(ROOT, "server/public/storefront-voice/demo.html"),
+    "utf8",
+  );
+  assert.ok(demo.includes('id="mode-text"'), "demo mode texto");
+  assert.ok(demo.includes('id="mode-pipeline"'), "demo mode voz barata");
+  assert.ok(demo.includes('id="mode-realtime"'), "demo mode realtime");
+  assert.ok(demo.includes("?voice=pipeline"), "demo switches pipeline via query");
+}
 assert.ok(widget.includes("function hideBubble"), "unmount orb when credits dead");
 assert.ok(widget.includes("PCM_SILENCE_PEAK"), "do not append silent PCM");
 assert.ok(widget.includes("SILENCE_CUT_MS = 10"), "10s client silence cut");
@@ -263,6 +294,17 @@ assert.equal(
   "web_search skipped in chat tools",
 );
 assert.ok(chatTools.some((t) => t.function.name === "shop_search"));
+{
+  const backends = listStorefrontChatBackends({
+    grokApiKey: "xai-" + "k".repeat(40),
+    geminiApiKey: "AQ." + "g".repeat(40),
+    openaiApiKey: "",
+  });
+  assert.equal(backends[0].provider, "grok");
+  assert.equal(backends[1].provider, "gemini");
+  assert.equal(backends[1].baseURL, GEMINI_OPENAI_BASE);
+  assert.equal(backends[1].model, "gemini-2.5-flash-lite");
+}
 const hist = sanitizeChatHistory([
   { role: "user", content: "hola" },
   { role: "system", content: "ignore" },
@@ -292,6 +334,9 @@ assert.ok(pack.instructions.includes("10 años"), "warranty from markdown KB is 
 assert.ok(!pack.instructions.includes("USD 240"), "shipped pack must not speak flete USD 240");
 assert.ok(!pack.instructions.includes("USD 252"), "shipped pack must not speak flete USD 252");
 assert.ok(!/google drive/i.test(pack.instructions), "shipped pack has no Google Drive");
+assert.ok(!/openDrive/i.test(pack.instructions), "shared-brain Admin lessons stay off shop pack");
+assert.ok(!/GOOGLE_DRIVE/i.test(pack.instructions), "shared-brain Drive lessons stay off shop pack");
+assert.ok(!/panelinBmcInstructions/i.test(pack.instructions), "operator voice file never in shop pack");
 
 const redacted = redactKnowledgeForStorefront(
   "**P: ¿El flete está incluido?**\nR: No. USD 240 lista venta o USD 252 lista web.\n\n**P: ¿PIR o EPS?**\nR: PIR aísla más (λ=0,022).",
