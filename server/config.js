@@ -159,6 +159,27 @@ export const config = {
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+  // Meta Graph API version for /{PHONE_NUMBER_ID}/messages (v24.0+ drops `conversation`
+  // from status webhooks; v21.0 sunsets 2027-01). Override per deploy, never hardcode.
+  whatsappGraphApiVersion: process.env.WHATSAPP_GRAPH_API_VERSION || "v24.0",
+  // Default (and, unless WHATSAPP_SEND_ALLOW_ANY=1, the only) recipient for POST /whatsapp/send.
+  whatsappTestRecipient: String(process.env.WHATSAPP_TEST_RECIPIENT || "").replace(/\D/g, ""),
+  whatsappSendAllowAny: bool(process.env.WHATSAPP_SEND_ALLOW_ANY, false),
+  // Auto-reply to inbound texts inside the 24h service window (webhook → Graph send).
+  whatsappAutoReplyEnabled: bool(process.env.WHATSAPP_AUTO_REPLY_ENABLED, false),
+  whatsappAutoReplyMode: process.env.WHATSAPP_AUTO_REPLY_MODE === "agent" ? "agent" : "ack",
+  whatsappAutoReplyText:
+    process.env.WHATSAPP_AUTO_REPLY_TEXT ||
+    "¡Hola! Recibimos tu mensaje, en breve te respondemos. — BMC Uruguay",
+  // null → 1h in ack mode, 0 in agent mode (see server/lib/wa/cloudWebhook.js)
+  whatsappAutoReplyCooldownMs:
+    process.env.WHATSAPP_AUTO_REPLY_COOLDOWN_MS === undefined || process.env.WHATSAPP_AUTO_REPLY_COOLDOWN_MS === ""
+      ? null
+      : Number(process.env.WHATSAPP_AUTO_REPLY_COOLDOWN_MS),
+  whatsappAutoReplyAgentTimeoutMs: Number(process.env.WHATSAPP_AUTO_REPLY_AGENT_TIMEOUT_MS || 20000),
+  // Approved template sent when Meta answers 131047 (outside the 24h window).
+  whatsappFallbackTemplateName: process.env.WHATSAPP_FALLBACK_TEMPLATE_NAME || "",
+  whatsappFallbackTemplateLang: process.env.WHATSAPP_FALLBACK_TEMPLATE_LANG || "en_US",
   // Meta Instagram DM / Facebook Messenger — dormant until cm-0 app review closes.
   omniIgEnabled: bool(process.env.OMNI_IG_ENABLED, false),
   omniFbEnabled: bool(process.env.OMNI_FB_ENABLED, false),
@@ -226,8 +247,8 @@ export const config = {
   googleCalendarDefaultDurationMin: Number(
     process.env.GOOGLE_CALENDAR_DEFAULT_DURATION_MIN || 30,
   ),
-  /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
-  whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
+  /** Meta App Secret — HMAC para POST /webhooks/whatsapp y /whatsapp/webhook (obligatorio prod; acepta META_APP_SECRET) */
+  whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET || "",
   /**
    * Email reply (CRM cockpit, origen=Email) — fallback casilla id used when the
    * receiving casilla is unknown for a row. Per-casilla SMTP is resolved from the

@@ -100,7 +100,17 @@ import { getTraktimePool } from "./lib/traktimeDb.js";
 import { startTraktimeMirrorWorker } from "./lib/traktimeMirrorWorker.js";
 import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
-import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
+import {
+  contactNameFor,
+  createAutoReplier,
+  createSignatureGuard,
+  createVerifyHandler,
+  flattenWebhook,
+  logWebhookEvents,
+  messageText,
+} from "./lib/wa/cloudWebhook.js";
+import { markWhatsAppRead, sendWhatsAppText } from "./lib/whatsappOutbound.js";
+import { createWhatsAppCloudRouter } from "./routes/whatsappCloud.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
 import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
@@ -191,18 +201,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// WhatsApp Cloud API webhook: Meta is registered on /webhooks/whatsapp; /whatsapp/webhook is
+// the canonical alias (README-whatsapp.md). Both paths share the same handlers.
+const WA_WEBHOOK_PATHS = ["/webhooks/whatsapp", "/whatsapp/webhook"];
+const META_RAW_BODY_PATHS = [...WA_WEBHOOK_PATHS, "/webhooks/instagram", "/webhooks/messenger"];
+
 // Meta (WhatsApp/IG/FB) + Shopify webhooks need raw body (HMAC / signature verification)
-app.use(["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"], (req, res, next) => {
+app.use(META_RAW_BODY_PATHS, (req, res, next) => {
   if (req.method !== "POST") return next();
   return express.raw({ type: "application/json", limit: "20mb" })(req, res, next);
 });
 app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
 app.use((req, res, next) => {
   if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
-  if (
-    ["/webhooks/whatsapp", "/webhooks/instagram", "/webhooks/messenger"].includes(req.path) &&
-    req.method === "POST"
-  ) return next();
+  if (META_RAW_BODY_PATHS.includes(req.path) && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(cookieParser());
@@ -669,16 +681,31 @@ setInterval(() => {
   }
 }, 60*60*1000);
 
-// GET — verificación Meta
-app.get("/webhooks/whatsapp", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
-  if (mode === "subscribe" && token === config.whatsappVerifyToken) {
-    res.set("Content-Type", "text/plain");
-    return res.status(200).send(String(challenge ?? ""));
-  }
-  res.status(403).send("Forbidden");
+// GET — verificación Meta (hub.mode / hub.verify_token / hub.challenge) en ambos paths
+app.get(WA_WEBHOOK_PATHS, createVerifyHandler(config));
+
+// Auto-reply (ack | Panelin agent) inside the 24h customer-service window. Gated by
+// WHATSAPP_AUTO_REPLY_ENABLED; dedupe comes from the wa_messages mirror insert below.
+const waAutoReply = createAutoReplier({
+  config,
+  logger,
+  callAgentOnce,
+  sendText: ({ to, text, contextMessageId }) =>
+    sendWhatsAppText({
+      to,
+      text,
+      contextMessageId,
+      accessToken: config.whatsappAccessToken,
+      phoneNumberId: config.whatsappPhoneNumberId,
+      logger,
+    }),
+  markRead: ({ messageId }) =>
+    markWhatsAppRead({
+      messageId,
+      accessToken: config.whatsappAccessToken,
+      phoneNumberId: config.whatsappPhoneNumberId,
+      logger,
+    }),
 });
 
 function metaWebhookClientKey(req) {
@@ -819,197 +846,190 @@ setInterval(() => {
   }
 }, 60 * 1000); // revisar cada 1 minuto
 
-app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
-  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-  const sig = req.headers["x-hub-signature-256"];
-  const verified = verifyWhatsAppSignature({
-    appSecret: config.whatsappAppSecret,
-    rawBodyBuffer: raw,
-    signatureHeader: sig,
-  });
-  if (!verified.skipped && !verified.ok) {
-    return res.status(401).json({ ok: false, error: "invalid webhook signature" });
-  }
-  if (verified.reason === "secret_not_configured") {
-    logger.error("WHATSAPP_APP_SECRET is not configured — rejecting webhook for security");
-    return res.status(503).json({ ok: false, error: "Webhook security not configured" });
-  }
+// POST — inbound messages + delivery statuses. createSignatureGuard rejects a missing or
+// invalid X-Hub-Signature-256 with 403 (never skipped in prod) and exposes req.waBody.
+app.post(WA_WEBHOOK_PATHS, createSignatureGuard(config, logger), asyncHandler(async (req, res) => {
+  const body = req.waBody || {};
 
-  let body = {};
-  try {
-    if (raw.length) body = JSON.parse(raw.toString("utf8"));
-  } catch {
-    return res.status(200).json({ ok: true });
-  }
-
+  // Ack first (Meta expects 200 fast); everything below is post-ack processing.
   res.status(200).json({ ok: true });
 
-  const entry = body?.entry?.[0];
-  const changes = entry?.changes?.[0];
-  const value = changes?.value;
+  const flat = flattenWebhook(body);
+  logWebhookEvents(logger, flat, { path: req.path });
 
-  // ── Delivery status updates (delivered / read / failed) ──────────────────
-  // WhatsApp sends `statuses` in the same payload as messages.
-  // Wire status updates into wa_messages.status for the cockpit.
-  if (value?.statuses?.length) {
-    const waPoolForStatus = getWaPool(config.databaseUrl);
-    if (waPoolForStatus) {
-      const VALID_STATUSES = new Set(["sent", "delivered", "read", "failed"]);
-      for (const statusUpdate of value.statuses) {
-        const msgId = statusUpdate.id;
-        const newStatus = statusUpdate.status;
-        if (!msgId || !newStatus || !VALID_STATUSES.has(newStatus)) continue;
-        const statusMeta = {
-          status_ts: statusUpdate.timestamp
-            ? new Date(Number(statusUpdate.timestamp) * 1000).toISOString()
-            : new Date().toISOString(),
-        };
-        if (newStatus === "failed" && statusUpdate.errors) {
-          statusMeta.wa_errors = statusUpdate.errors;
+  for (const change of flat) {
+    const value = change.value;
+
+    // ── Delivery status updates (delivered / read / failed) ──────────────────
+    // WhatsApp sends `statuses` in the same payload as messages.
+    // Wire status updates into wa_messages.status for the cockpit.
+    if (value?.statuses?.length) {
+      const waPoolForStatus = getWaPool(config.databaseUrl);
+      if (waPoolForStatus) {
+        const VALID_STATUSES = new Set(["sent", "delivered", "read", "failed"]);
+        for (const statusUpdate of value.statuses) {
+          const msgId = statusUpdate.id;
+          const newStatus = statusUpdate.status;
+          if (!msgId || !newStatus || !VALID_STATUSES.has(newStatus)) continue;
+          const statusMeta = {
+            status_ts: statusUpdate.timestamp
+              ? new Date(Number(statusUpdate.timestamp) * 1000).toISOString()
+              : new Date().toISOString(),
+          };
+          if (newStatus === "failed" && statusUpdate.errors) {
+            statusMeta.wa_errors = statusUpdate.errors;
+          }
+          try {
+            // Prevent status regression (e.g. don't move from 'read' back to 'delivered').
+            // WhatsApp delivers statuses out-of-order and retries on failures.
+            // Rank: sent=1 < delivered=2 < read=3 < failed=4
+            await waPoolForStatus.query(
+              `update wa_messages
+                  set status = $1,
+                      meta = coalesce(meta, '{}'::jsonb) || $2::jsonb
+                where msg_id = $3
+                  and (
+                    case status
+                      when 'sent'      then 1
+                      when 'delivered' then 2
+                      when 'read'      then 3
+                      when 'failed'    then 4
+                      else 0
+                    end
+                  ) < (
+                    case $1
+                      when 'sent'      then 1
+                      when 'delivered' then 2
+                      when 'read'      then 3
+                      when 'failed'    then 4
+                      else 0
+                    end
+                  )`,
+              [newStatus, JSON.stringify(statusMeta), String(msgId)],
+            );
+          } catch (e) {
+            logger.warn({ err: e?.message, msg_id: msgId, status: newStatus }, "WA status-update DB write failed");
+          }
         }
-        try {
-          // Prevent status regression (e.g. don't move from 'read' back to 'delivered').
-          // WhatsApp delivers statuses out-of-order and retries on failures.
-          // Rank: sent=1 < delivered=2 < read=3 < failed=4
-          await waPoolForStatus.query(
-            `update wa_messages
-                set status = $1,
-                    meta = coalesce(meta, '{}'::jsonb) || $2::jsonb
-              where msg_id = $3
-                and (
-                  case status
-                    when 'sent'      then 1
-                    when 'delivered' then 2
-                    when 'read'      then 3
-                    when 'failed'    then 4
-                    else 0
-                  end
-                ) < (
-                  case $1
-                    when 'sent'      then 1
-                    when 'delivered' then 2
-                    when 'read'      then 3
-                    when 'failed'    then 4
-                    else 0
-                  end
-                )`,
-            [newStatus, JSON.stringify(statusMeta), String(msgId)],
-          );
-        } catch (e) {
-          logger.warn({ err: e?.message, msg_id: msgId, status: newStatus }, "WA status-update DB write failed");
+      }
+    }
+
+    if (!value?.messages?.length) continue;
+
+    const waMode = chooseWaIngestMode(config);
+
+    for (const msg of value.messages) {
+      const chatId = msg.from; // número del cliente
+      const contactName = contactNameFor(value, msg);
+      const text = messageText(msg);
+      if (!text) continue;
+
+      // Legacy in-memory accumulation (drives the 5-min timer + 🚀 trigger) — OFF only.
+      let conv = null;
+      if (waMode === "legacy") {
+        if (!waConversations.has(chatId)) {
+          waConversations.set(chatId, { messages: [], contactName, lastUpdate: Date.now() });
         }
+        conv = waConversations.get(chatId);
+        conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
+        conv.lastUpdate = Date.now();
+        logger.info({ contact: contactName, chat_id: chatId, total: conv.messages.length }, "[WA] Message from contact");
       }
-    }
-  }
 
-  if (!value?.messages) return;
-
-  const waMode = chooseWaIngestMode(config);
-
-  for (const msg of value.messages) {
-    const chatId = msg.from; // número del cliente
-    const contactName = value.contacts?.[0]?.profile?.name || msg.from;
-    const text = msg.text?.body || msg.caption || "";
-    if (!text) continue;
-
-    // Legacy in-memory accumulation (drives the 5-min timer + 🚀 trigger) — OFF only.
-    let conv = null;
-    if (waMode === "legacy") {
-      if (!waConversations.has(chatId)) {
-        waConversations.set(chatId, { messages: [], contactName, lastUpdate: Date.now() });
-      }
-      conv = waConversations.get(chatId);
-      conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
-      conv.lastUpdate = Date.now();
-      logger.info({ contact: contactName, chat_id: chatId, total: conv.messages.length }, "[WA] Message from contact");
-    }
-
-    // F4 — espejar inbound Cloud API en Postgres wa_messages para que el cockpit
-    // SPA tenga vista unificada con los mensajes scrapeados via extensión.
-    try {
-      const waPoolForWebhook = getWaPool(config.databaseUrl);
-      if (waPoolForWebhook) {
-        const phoneDigits = String(chatId || "").replace(/\D/g, "").slice(0, 32);
-        await waPoolForWebhook.query(
-          `insert into wa_conversations (chat_id, phone, contact_name)
-           values ($1, $2, $3)
-           on conflict (chat_id) do update
-             set phone = coalesce(wa_conversations.phone, excluded.phone),
-                 contact_name = coalesce(wa_conversations.contact_name, excluded.contact_name),
-                 updated_at = now()`,
-          [chatId, phoneDigits || null, contactName],
-        );
-        const tsIso = new Date(Number(msg.timestamp ? Number(msg.timestamp) * 1000 : Date.now())).toISOString();
-        await waPoolForWebhook.query(
-          `insert into wa_messages
-             (msg_id, chat_id, ts, direction, type, text, source, raw, meta)
-           values ($1, $2, $3::timestamptz, 'in', $4, $5, 'cloud_api', $6::jsonb, $7::jsonb)
-           on conflict (msg_id) do nothing`,
-          [
-            String(msg.id || `cloud_in_${chatId}_${Date.now()}`),
-            chatId,
-            tsIso,
-            String(msg.type || "text"),
-            text,
-            JSON.stringify(msg),
-            JSON.stringify({ webhook: true }),
-          ],
-        );
-        await waPoolForWebhook.query(
-          `update wa_conversations
-             set last_msg_at = greatest(coalesce(last_msg_at, '1970-01-01'::timestamptz), $2::timestamptz),
-                 last_msg_in_at = greatest(coalesce(last_msg_in_at, '1970-01-01'::timestamptz), $2::timestamptz),
-                 updated_at = now()
-           where chat_id = $1`,
-          [chatId, tsIso],
-        );
-      }
-    } catch (e) {
-      logger.warn({ err: e?.message, chat_id: chatId }, "WA webhook → wa_messages mirror failed");
-    }
-
-    if (waMode === "canonical") {
-      // Omni is the single source of truth: real (awaited) ingest → message.ingested
-      // → classify/suggest + the per-conversation-coalesced wa_crm_sync job.
+      // F4 — espejar inbound Cloud API en Postgres wa_messages para que el cockpit
+      // SPA tenga vista unificada con los mensajes scrapeados via extensión.
+      let mirrorInserted = null; // rowCount of the wa_messages insert (0 = already seen)
       try {
-        const persisted = await normalizeAndPersist(
-          waWebhookToOmniEvent({ msg, chatId, contactName }),
-          { databaseUrl: config.databaseUrl, logger },
-        );
-        if (text.includes("🚀")) {
-          const manual = await triggerWaCrmSyncNow(
-            getOmniPool(config.databaseUrl),
-            persisted,
+        const waPoolForWebhook = getWaPool(config.databaseUrl);
+        if (waPoolForWebhook) {
+          const phoneDigits = String(chatId || "").replace(/\D/g, "").slice(0, 32);
+          await waPoolForWebhook.query(
+            `insert into wa_conversations (chat_id, phone, contact_name)
+             values ($1, $2, $3)
+             on conflict (chat_id) do update
+               set phone = coalesce(wa_conversations.phone, excluded.phone),
+                   contact_name = coalesce(wa_conversations.contact_name, excluded.contact_name),
+                   updated_at = now()`,
+            [chatId, phoneDigits || null, contactName],
           );
-          logger.info(
-            {
-              chat_id: chatId,
-              conversation_id: persisted.conversation_id,
-              job_id: manual.jobId,
-              mode: manual.mode,
-            },
-            "[WA] 🚀 manual trigger (canonical)",
+          const tsIso = new Date(Number(msg.timestamp ? Number(msg.timestamp) * 1000 : Date.now())).toISOString();
+          const mirrorRes = await waPoolForWebhook.query(
+            `insert into wa_messages
+               (msg_id, chat_id, ts, direction, type, text, source, raw, meta)
+             values ($1, $2, $3::timestamptz, 'in', $4, $5, 'cloud_api', $6::jsonb, $7::jsonb)
+             on conflict (msg_id) do nothing`,
+            [
+              String(msg.id || `cloud_in_${chatId}_${Date.now()}`),
+              chatId,
+              tsIso,
+              String(msg.type || "text"),
+              text,
+              JSON.stringify(msg),
+              JSON.stringify({ webhook: true }),
+            ],
+          );
+          mirrorInserted = Number.isFinite(mirrorRes?.rowCount) ? mirrorRes.rowCount : null;
+          await waPoolForWebhook.query(
+            `update wa_conversations
+               set last_msg_at = greatest(coalesce(last_msg_at, '1970-01-01'::timestamptz), $2::timestamptz),
+                   last_msg_in_at = greatest(coalesce(last_msg_in_at, '1970-01-01'::timestamptz), $2::timestamptz),
+                   updated_at = now()
+             where chat_id = $1`,
+            [chatId, tsIso],
           );
         }
       } catch (e) {
-        // 200 was already sent to Meta (line above); a failure here only loses this
-        // message's enrichment, never the webhook ack.
-        logger.warn({ err: e?.message, chat_id: chatId }, "WA canonical ingest failed");
+        logger.warn({ err: e?.message, chat_id: chatId }, "WA webhook → wa_messages mirror failed");
       }
-    } else {
-      // Legacy: Omni shadow dual-write + in-memory 5-min/🚀 processing.
-      void shadowWriteWaWebhook({ config, logger, msg, chatId, contactName });
 
-      // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
-      if (text.includes("🚀")) {
-        logger.info({ chat_id: chatId }, "[WA] 🚀 manual trigger");
-        processWaConversation(chatId, conv);
-      }
+      // Auto-reply inside the 24h window (fire-and-forget; the ack already went out).
+      // A Meta redelivery hits `on conflict do nothing` → rowCount 0 → no second reply.
+      void waAutoReply(msg, value, { isDuplicate: mirrorInserted === 0 });
+
+      if (waMode === "canonical") {
+        // Omni is the single source of truth: real (awaited) ingest → message.ingested
+        // → classify/suggest + the per-conversation-coalesced wa_crm_sync job.
+        try {
+          const persisted = await normalizeAndPersist(
+            waWebhookToOmniEvent({ msg, chatId, contactName }),
+            { databaseUrl: config.databaseUrl, logger },
+          );
+          if (text.includes("🚀")) {
+            const manual = await triggerWaCrmSyncNow(
+              getOmniPool(config.databaseUrl),
+              persisted,
+            );
+            logger.info(
+              {
+                chat_id: chatId,
+                conversation_id: persisted.conversation_id,
+                job_id: manual.jobId,
+                mode: manual.mode,
+              },
+              "[WA] 🚀 manual trigger (canonical)",
+            );
+          }
+        } catch (e) {
+          // 200 was already sent to Meta (line above); a failure here only loses this
+          // message's enrichment, never the webhook ack.
+          logger.warn({ err: e?.message, chat_id: chatId }, "WA canonical ingest failed");
+        }
+      } else {
+        // Legacy: Omni shadow dual-write + in-memory 5-min/🚀 processing.
+        void shadowWriteWaWebhook({ config, logger, msg, chatId, contactName });
+
+        // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
+        if (text.includes("🚀")) {
+          logger.info({ chat_id: chatId }, "[WA] 🚀 manual trigger");
+          processWaConversation(chatId, conv);
+        }
     }
+  }
   }
 }));
 
 app.use("/calc", calcRouter);
+app.use("/whatsapp", createWhatsAppCloudRouter(config, logger));
 // Paneli MCP (ElevenLabs voice) — Streamable HTTP; Bearer PANELI_MCP_SECRET
 app.use("/mcp", createMcpRouter());
 app.use("/api/mcp", createMcpRouter());
