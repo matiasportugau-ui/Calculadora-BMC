@@ -12,6 +12,8 @@ donde `PUBLIC_BASE_URL` es la misma base pública del API (Cloud Run / ngrok). N
 
 **Onboarding self-service (coexistencia):** para conectar un número desde `/hub/wa` por Embedded Signup (Meta oficial, sin copiar tokens a mano), ver [`runbooks/wa-coexistence-onboarding.md`](runbooks/wa-coexistence-onboarding.md). Detrás del flag `WA_COEXISTENCE_ENABLED` (default OFF).
 
+**Conectar + verificar por terminal:** guía dos-columnas (portal ↔ terminal) para conectar un número por coexistencia y verificar/enviar con `scripts/wa-check.sh` + `scripts/wa-send-template.sh`: [`runbooks/wa-connect-numero-coexistencia.md`](runbooks/wa-connect-numero-coexistencia.md).
+
 **URL base canónica del API (alineada con `npm run smoke:prod` / `scripts/smoke-prod-api.mjs`):**  
 `https://panelin-calc-642127786762.us-central1.run.app`
 

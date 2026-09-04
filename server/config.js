@@ -159,6 +159,8 @@ export const config = {
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+  // WhatsApp Business Account id — used by wa-check.sh / onboarding diagnostics.
+  whatsappWabaId: process.env.WABA_ID || process.env.WHATSAPP_WABA_ID || "",
   // Meta Instagram DM / Facebook Messenger — dormant until cm-0 app review closes.
   omniIgEnabled: bool(process.env.OMNI_IG_ENABLED, false),
   omniFbEnabled: bool(process.env.OMNI_FB_ENABLED, false),
