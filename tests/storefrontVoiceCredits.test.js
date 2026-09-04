@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   isGrokCreditsError,
   isStorefrontTextQuotaError,
+  isStorefrontBackendFailoverError,
   shopperSafeChatError,
   markStorefrontCreditsDead,
   markStorefrontCreditsLive,
@@ -52,6 +53,30 @@ assert.equal(isStorefrontTextQuotaError({ status: 429, message: "429 status code
   assert.ok(!/no body/i.test(safe.message));
 }
 
+assert.equal(
+  isStorefrontBackendFailoverError({ status: 502, message: "Bad Gateway" }),
+  true,
+  "Grok 5xx must failover to Gemini/OpenAI",
+);
+assert.equal(
+  isStorefrontBackendFailoverError({ status: 0, message: "fetch failed" }),
+  true,
+  "network blip must failover",
+);
+assert.equal(
+  isStorefrontBackendFailoverError({ status: 400, message: "invalid_request_error" }),
+  false,
+  "client 4xx must not mask bad payloads",
+);
+assert.equal(
+  isStorefrontBackendFailoverError({
+    status: 403,
+    body: "Your team has used all available credits or reached monthly spending limit",
+  }),
+  true,
+  "credits still failover",
+);
+
 assert.equal(storefrontVoiceBubbleOn(), true);
 assert.equal(storefrontVoiceStatus().bubble, true);
 
@@ -83,6 +108,18 @@ assert.match(publicVoice, /storefrontVoiceStatus/, "status uses credits cache");
 assert.match(publicVoice, /storefrontBrainStatus/, "status reports public-safe shared brain");
 assert.match(publicVoice, /markStorefrontCreditsDead/, "mint maps credits → cache");
 assert.match(publicVoice, /code: "credits"|storefrontCreditsDenyBody/, "widget can hide on 403 credits");
+
+const chatSrc = fs.readFileSync(path.join(ROOT, "server/lib/voice/storefrontChat.js"), "utf8");
+assert.match(
+  chatSrc,
+  /isStorefrontBackendFailoverError/,
+  "completeStorefrontTurn must failover on 5xx/network, not only quota",
+);
+assert.match(
+  chatSrc,
+  /lockedClient = null/,
+  "mid-turn Grok death unlocks so Gemini/OpenAI can finish tool rounds",
+);
 
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.match(widget, /\/api\/public\/voice\/status/, "probe before mount");
