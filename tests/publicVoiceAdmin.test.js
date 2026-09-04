@@ -15,7 +15,11 @@ import {
   skipStorefrontSessionLimit,
   shouldAttemptAdminColJ,
   formatStorefrontAdminTranscript,
+  boundAdminRowFromRequest,
 } from "../server/routes/publicVoice.js";
+import {
+  mintStorefrontAdminToken,
+} from "../server/lib/voice/storefrontAdminBinding.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -111,9 +115,18 @@ assert.match(transcript, /Vos: IsoDec 100/);
 assert.match(transcript, /Te armo la aproximación/);
 assert.match(actionSrc, /persistStorefrontAdminTranscript/, "every /chat writes Admin col J");
 assert.match(actionSrc, /formatStorefrontAdminTranscript/, "chat transcript for the sheet");
+assert.match(actionSrc, /boundAdminRowFromRequest|resolveBoundAdminRow/, "Admin writes require bound token");
+assert.match(actionSrc, /mintStorefrontAdminToken/, "identify mints adminToken");
+assert.match(actionSrc, /delete payload\.adminRow/, "action must not copy raw adminRow");
+
+const bindCfg = { identityJwtSecret: "public-voice-admin-test-secret-ok" };
+const minted = mintStorefrontAdminToken({ adminRow: 42, telefono: "099888777" }, bindCfg);
+assert.equal(boundAdminRowFromRequest({ adminRow: 2 }, bindCfg), null, "IDOR: raw row rejected");
+assert.equal(boundAdminRowFromRequest({ adminToken: minted, telefono: "099888777" }, bindCfg), 42);
 
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
-assert.match(widget, /adminRow: state\.adminRow/, "widget sends adminRow on /chat");
+assert.match(widget, /adminToken: state\.adminToken/, "widget sends adminToken on /chat");
+assert.match(widget, /adminToken: data\.adminToken/, "widget stores identify adminToken");
 assert.match(widget, /pagehide/, "flush transcript on leave");
 
 console.log("publicVoiceAdmin.test.js ok");
