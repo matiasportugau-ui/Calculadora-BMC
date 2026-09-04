@@ -7,6 +7,7 @@ import { config } from "../../config.js";
 import { isUsableApiKey } from "../apiKeyUtils.js";
 import { isStorefrontShopTool } from "./storefrontVoicePack.js";
 import {
+  isStorefrontBackendFailoverError,
   isStorefrontTextQuotaError,
   markStorefrontCreditsDead,
   markStorefrontCreditsLive,
@@ -169,12 +170,15 @@ async function completeStorefrontTurn(messages, tools) {
     } catch (err) {
       lastErr = err;
       if (backend.provider === "grok") markStorefrontCreditsDead(err);
-      if (isStorefrontTextQuotaError(err)) continue;
+      // Credits/429 and Grok 5xx/network must not strand /chat when Gemini/OpenAI exist.
+      if (isStorefrontBackendFailoverError(err)) continue;
       throw err;
     }
   }
   const fail = lastErr || new Error("No se pudo responder.");
-  if (!fail.status) fail.status = isStorefrontTextQuotaError(fail) ? 403 : 502;
+  if (!fail.status) {
+    fail.status = isStorefrontTextQuotaError(fail) ? 403 : 502;
+  }
   throw fail;
 }
 
@@ -210,12 +214,23 @@ export async function runStorefrontTextTurn(opts) {
   for (let round = 0; round < MAX_ROUNDS; round++) {
     let completion;
     if (lockedClient) {
-      completion = await createCompletion(
-        lockedClient.client,
-        lockedClient.backend,
-        messages,
-        tools,
-      );
+      try {
+        completion = await createCompletion(
+          lockedClient.client,
+          lockedClient.backend,
+          messages,
+          tools,
+        );
+      } catch (err) {
+        if (lockedClient.backend.provider === "grok") markStorefrontCreditsDead(err);
+        if (!isStorefrontBackendFailoverError(err)) throw err;
+        // Drop the dead lock and re-pick (skips Grok when bubble cache is dry).
+        lockedClient = null;
+        const picked = await completeStorefrontTurn(messages, tools);
+        lockedClient = picked;
+        used = { provider: picked.backend.provider, model: picked.backend.model };
+        completion = picked.completion;
+      }
     } else {
       const picked = await completeStorefrontTurn(messages, tools);
       lockedClient = picked;

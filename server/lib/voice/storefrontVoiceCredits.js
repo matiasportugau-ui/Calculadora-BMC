@@ -35,6 +35,20 @@ export function isStorefrontTextQuotaError(err) {
   return /credit|quota|billing|rate limit|too many requests|no body/.test(blob);
 }
 
+/**
+ * Transient upstream failure — try the next chat backend (Gemini/OpenAI).
+ * 4xx (except quota/credits) stay hard fails so bad payloads are not masked.
+ */
+export function isStorefrontBackendFailoverError(err) {
+  if (isStorefrontTextQuotaError(err)) return true;
+  const info = normalizeLlmError(err);
+  if (info.status >= 500 && info.status < 600) return true;
+  const blob = `${info.message} ${info.body} ${info.code || ""}`.toLowerCase();
+  return /econnreset|econnrefused|enotfound|etimedout|fetch failed|network|socket|timeout|overloaded|unavailable/i.test(
+    blob,
+  );
+}
+
 /** Never leak SDK strings like "429 status code (no body)" to the shopper. */
 export function shopperSafeChatError(err) {
   const info = normalizeLlmError(err);

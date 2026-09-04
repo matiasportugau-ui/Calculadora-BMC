@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-31 (docs — Panelin install sequence increment)
+**Última actualización:** 2026-09-04 (fix — storefront /chat Grok 5xx failover)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-04 (fix — storefront /chat failover on Grok 5xx/network):** After #1198, Gemini/OpenAI fallback only ran on credits/429. A Grok 502/`fetch failed` aborted the whole pipeline turn even when fallback keys were set — live shop text outage. `isStorefrontBackendFailoverError` continues the backend chain; locked mid-tool rounds unlock and re-pick. Tests: `storefrontVoiceCredits`.
 
 **2026-09-04 (feat — Panelin Front live: STT+TTS, sell loop, Admin log, quote→cart):** Public shop agent default is **pipeline** (browser STT + `/chat` + optional TTS), not Grok S2S. Shared IAlfred↔Panelin lessons via public-safe `storefrontBrain.js`. Sell loop offers ficha/cart/PDF (not insist-only). Tap chips (`present_choices`). PDF also maps BOM to Shopify cart lines. Every `/chat` writes Admin 2.0 col J (`origen=VW`). Gemini fallback if Grok dry. Sheets identify accepts inline SA JSON. Shop widget already loads Cloud Run `widget.js` — this ships the API revision. Tests: `storefrontVoicePack`, `storefrontBrain`, `storefrontChoices`, `storefrontQuoteCart`, `publicVoiceAdmin`, `googleSheetsAuth`.
 
