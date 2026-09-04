@@ -16,6 +16,7 @@
 
 import { QUOTE_TERMS } from '../utils/helpers.js';
 import { WHITELABEL_BRAND, WHITELABEL_BRANDS, mergeBranding } from '../config/whitelabel.js';
+import { BC_LOGO_DATA_URL, bcLogoImg, isBcLogoDataUrl } from '../branding/bcLogo.js';
 import { lamLogoSvg } from '../branding/lamLogo.js';
 import { smartbuildingLogoImg } from '../branding/smartbuildingLogo.js';
 
@@ -43,7 +44,7 @@ const nl2br = s => esc(s).replace(/\n/g, '<br>');
 const GOLD_DEEP = '#C6A02A';
 const GOLD_SOFT = '#DCC384';
 
-/** Logo BC vectorial: nítido a cualquier tamaño y sin pedir un asset externo. */
+/** Fallback vectorial si el PNG oficial no está en el bundle. */
 function logoSvg(height) {
   return `<svg viewBox="0 0 880 560" height="${height}" role="img" aria-label="BC"
   xmlns="http://www.w3.org/2000/svg" style="display:block">
@@ -110,7 +111,7 @@ body{
 .bc-tag{font-family:Charter,'Bitstream Charter',Georgia,serif;
   font-size:7.4pt;color:var(--ink-soft);letter-spacing:.13em;text-transform:uppercase;
   border-left:1pt solid var(--gold-soft);padding-left:4mm;line-height:1.5}
-.bc-logo-img{display:block;max-height:16mm;max-width:52mm;object-fit:contain}
+.bc-logo-img{display:block;max-height:18mm;max-width:58mm;width:auto;height:auto;object-fit:contain;background:transparent}
 .bc-doc-kind{font-family:Charter,'Bitstream Charter',Georgia,serif;
   font-size:15pt;font-weight:700;color:var(--gold-deep);letter-spacing:.06em;line-height:1}
 .bc-doc-ref{font-size:8pt;color:var(--ink-soft);margin-top:1.4mm;font-variant-numeric:tabular-nums}
@@ -255,19 +256,16 @@ export function render(q) {
   const cl = q.bmcExtra?.client ?? {};
   const brand = mergeBranding(WHITELABEL_BRAND || WHITELABEL_BRANDS.bc, q.branding);
 
-  // Sólo se acepta un data: URL de imagen rasterizada. El logo llega del
-  // branding cargado por el socio; una URL remota filtraría el render a un
-  // tercero y un esquema raro (javascript:, data:text/html) no tiene por qué
-  // entrar en el documento. Si no valida, cae al logo vectorial.
-  const logoOk = typeof brand.logoDataUrl === 'string'
-    && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(brand.logoDataUrl);
+  // Socio override: sólo data: de imagen. URL remota / javascript: se rechazan
+  // y caen al logo oficial BC (PNG con fondo transparente), no a un tercero.
+  const logoOk = isBcLogoDataUrl(brand.logoDataUrl);
   const logo = logoOk
     ? `<img class="bc-logo-img" src="${esc(brand.logoDataUrl)}" alt="${esc(brand.marca)}">`
     : (brand.marca === 'LAM'
       ? lamLogoSvg(62)
       : (brand.layout === 'smartbuilding' || brand.marca === 'SMARTBUILDING'
         ? smartbuildingLogoImg(62)
-        : logoSvg(62)));
+        : (isBcLogoDataUrl(BC_LOGO_DATA_URL) ? bcLogoImg(62) : logoSvg(62))));
 
   const kpi = [
     q.areaTotalM2 > 0 ? ['Área total', `${Number(q.areaTotalM2).toFixed(2)} m²`] : null,

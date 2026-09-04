@@ -119,9 +119,11 @@ test('white-label bc: un único layout y es el default', () => {
 test('white-label bc: pedir otro layout cae igual en el de la marca', () => {
   // Un 'bmc.pdfLayout' viejo en localStorage o un body.template a mano no
   // pueden hacer salir un PDF con branding BMC desde la calculadora del socio.
+  // Un layout por proceso: el PNG oficial infla el JSON y 4 copias juntas
+  // cortan stdout.
   const intentos = ['simple', 'classic', 'bmc-pdf', 'no-existe'];
-  const r = probe({ whitelabel: 'bc', layouts: intentos });
   for (const id of intentos) {
+    const r = probe({ whitelabel: 'bc', layouts: [id] });
     assert.doesNotMatch(r.html[id], /BMC URUGUAY/, `layout "${id}" filtró branding BMC`);
     assert.match(r.html[id], /PRESUPUESTO/);
   }
@@ -129,8 +131,11 @@ test('white-label bc: pedir otro layout cae igual en el de la marca', () => {
 
 test('white-label bc: el PDF no menciona a BMC por ningún lado', () => {
   const { html } = probe({ whitelabel: 'bc', layouts: ['bc'] });
+  // El PNG en base64 puede contener "BMC" como coincidencia de alfabeto;
+  // el leak se busca en el HTML visible, no en el data URL.
+  const visible = html.bc.replace(/data:image\/[a-zA-Z0-9+/=;,]+/g, '');
   for (const token of ['BMC', 'Metalog', 'METALOG', 'bmcuruguay', '120403430012']) {
-    assert.ok(!html.bc.includes(token), `el PDF del socio filtró "${token}"`);
+    assert.ok(!visible.includes(token), `el PDF del socio filtró "${token}"`);
   }
   // La condición comercial que nombra a BMC sale con la marca del socio.
   assert.match(html.bc, /BC no asume responsabilidad/);
@@ -163,6 +168,14 @@ test('white-label bc: el branding no puede romper un atributo HTML', () => {
   assert.match(html.bc, /O&#39;Brien &amp; &lt;hijos&gt;/);
 });
 
+test('white-label bc: el PDF usa el logo oficial PNG (fondo transparente)', () => {
+  const { html } = probe({ whitelabel: 'bc', layouts: ['bc'] });
+  assert.match(html.bc, /<img class="bc-logo-img"/);
+  assert.match(html.bc, /data:image\/png;base64,/);
+  // El vector aproximado ya no es el default del encabezado.
+  assert.ok(!html.bc.includes('M60,60 H235 C300,60'), 'no debe caer al SVG de respaldo');
+});
+
 test('white-label bc: sólo se acepta un logo data: de imagen', () => {
   const casos = [
     ['javascript:alert(1)', false],
@@ -176,10 +189,13 @@ test('white-label bc: sólo se acepta un logo data: de imagen', () => {
       layouts: ['bc'],
       quote: { ...QUOTE, branding: { logoDataUrl } },
     });
-    const usaImg = html.bc.includes('<img class="bc-logo-img"');
-    assert.equal(usaImg, deberiaUsarse, `logo "${logoDataUrl.slice(0, 32)}" mal resuelto`);
-    // Si se rechaza, cae al logo vectorial y nunca entra la URL al documento.
-    if (!deberiaUsarse) assert.ok(!html.bc.includes(logoDataUrl));
+    assert.match(html.bc, /<img class="bc-logo-img"/, 'siempre hay un logo img (oficial o override)');
+    if (deberiaUsarse) {
+      assert.ok(html.bc.includes(logoDataUrl), `override "${logoDataUrl.slice(0, 32)}" no se usó`);
+    } else {
+      assert.ok(!html.bc.includes(logoDataUrl), `URL rechazada "${logoDataUrl.slice(0, 32)}" filtró al HTML`);
+      assert.match(html.bc, /data:image\/png;base64,/, 'cae al logo oficial BC');
+    }
   }
 });
 

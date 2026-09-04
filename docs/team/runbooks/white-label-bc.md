@@ -41,7 +41,8 @@ modelo, se suma un snapshot interno sin tocar el PDF del cliente.
 | Archivo | Rol |
 |---|---|
 | `src/config/whitelabel.js` | Lee el env en Vite **y** en Node; define el perfil de marca |
-| `src/pdf-templates/bc.js` | El template (logo vectorial, paleta, secciones) |
+| `src/pdf-templates/bc.js` | El template (logo oficial PNG transparente, paleta, secciones) |
+| `src/branding/bcLogo.js` | Mark oficial BC (fondo de papel recortado) para el PDF |
 | `src/pdf-templates/index.js` | Filtra el selector, fija el default, fuerza el layout |
 | `tests/whitelabel-bc-pdf.test.js` | Fija el contrato (corre en `npm run test:api`) |
 
