@@ -3,6 +3,9 @@
 // distinct error contracts.
 import { postWhatsAppMessage, sendWhatsAppText } from "../server/lib/whatsappOutbound.js";
 import { sendWaReply } from "../server/lib/omni/outbound/waReply.js";
+import { config as serverConfig } from "../server/config.js";
+
+const GRAPH_VERSION = serverConfig.whatsappGraphApiVersion;
 
 let passed = 0;
 let failed = 0;
@@ -27,7 +30,7 @@ try {
   // ── postWhatsAppMessage: single Graph POST shape ──
   stubFetch({ ok: true });
   const core = await postWhatsAppMessage({ to: "+598 91 234 567", text: "hola", ...CREDS });
-  assert("core URL targets /v21.0/{pnid}/messages", lastCall.url === "https://graph.facebook.com/v21.0/PNID/messages");
+  assert("core URL targets /{WHATSAPP_GRAPH_API_VERSION}/{pnid}/messages", lastCall.url === `https://graph.facebook.com/${GRAPH_VERSION}/PNID/messages`);
   assert("core normalizes to digits", lastCall.body.to === "59891234567");
   assert("core body is whatsapp text", lastCall.body.messaging_product === "whatsapp" && lastCall.body.type === "text");
   assert("core returns {ok,status,data}", core.ok === true && core.status === 200 && !!core.data);

@@ -1,5 +1,11 @@
 # WhatsApp Cloud API — checklist E2E (Meta + teléfono + Cloud Run)
 
+> **2026-09:** guía consolidada en [`README-whatsapp.md`](../../README-whatsapp.md) (clics exactos del portal,
+> `POST /whatsapp/send`, auto-respuesta, códigos 131030/131047/190, `npm run wa:smoke`).
+> El webhook vive en `/whatsapp/webhook` con alias legado `/webhooks/whatsapp` (mismo handler);
+> una firma `X-Hub-Signature-256` ausente o inválida responde **403** (antes 401/503).
+
+
 **Objetivo:** que un mensaje del cliente llegue al webhook, se acumule en memoria y, tras **5 minutos sin mensajes** (o al mandar **🚀** en el texto), se ejecute `processWaConversation` → `POST /api/crm/parse-conversation` → filas en **Form responses 1** y **CRM_Operativo** (Google Sheets).
 
 **URL del webhook (Phase C/D):** debe ser exactamente  
