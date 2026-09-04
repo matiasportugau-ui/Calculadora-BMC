@@ -658,6 +658,7 @@
     cliente: "",
     telefono: "",
     adminRow: null,
+    adminToken: null,
     logTimer: null,
     silenceTimer: null,
     liveId: null,
@@ -900,6 +901,7 @@
         cliente: state.cliente,
         telefono: state.telefono,
         adminRow: state.adminRow,
+        adminToken: state.adminToken,
       }));
     } catch { /* ignore */ }
   }
@@ -910,6 +912,7 @@
     state.telefono = String(info?.telefono || "").trim();
     const row = Number(info?.adminRow);
     state.adminRow = Number.isFinite(row) && row >= 2 ? row : info?.adminRow || null;
+    state.adminToken = String(info?.adminToken || "").trim() || null;
     root.classList.add("identified");
     persistIdentity();
     ensureLiveId();
@@ -1011,7 +1014,7 @@
   }
 
   function scheduleLog() {
-    if (!state.identified || !state.adminRow) return;
+    if (!state.identified || !state.adminToken) return;
     if (state.logTimer) clearTimeout(state.logTimer);
     state.logTimer = setTimeout(() => {
       flushLog();
@@ -1023,7 +1026,7 @@
       clearTimeout(state.logTimer);
       state.logTimer = null;
     }
-    if (!state.identified || !state.adminRow) return;
+    if (!state.identified || !state.adminToken) return;
     const transcript = transcriptText();
     if (!transcript) return;
     try {
@@ -1031,7 +1034,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          adminRow: state.adminRow,
+          adminToken: state.adminToken,
           telefono: state.telefono,
           cliente: state.cliente,
           transcript,
@@ -1649,7 +1652,9 @@
       body: JSON.stringify({
         action: { type: name, payload: args || {} },
         pageUrl: window.location.href,
-        lead: state.adminRow ? { adminRow: state.adminRow, cliente: state.cliente, telefono: state.telefono } : undefined,
+        lead: state.adminToken
+          ? { adminToken: state.adminToken, cliente: state.cliente, telefono: state.telefono }
+          : undefined,
         shopperName: state.cliente || undefined,
       }),
     });
@@ -1960,7 +1965,7 @@
       shopperName: state.cliente,
       cliente: state.cliente,
       telefono: state.telefono,
-      adminRow: state.adminRow,
+      adminToken: state.adminToken,
     };
     let lastSpeak = "";
     try {
@@ -1990,7 +1995,7 @@
           shopperName: state.cliente,
           cliente: state.cliente,
           telefono: state.telefono,
-          adminRow: state.adminRow,
+          adminToken: state.adminToken,
         };
       }
       if (state.voiceMode === "pipeline" && lastSpeak && state.lastInputWasVoice) {
@@ -2101,6 +2106,7 @@
         cliente: data.cliente || cliente,
         telefono: data.telefono || telefono,
         adminRow: data.adminRow,
+        adminToken: data.adminToken,
       });
     } catch (err) {
       setErr(err?.message || "No se pudo iniciar el chat.");

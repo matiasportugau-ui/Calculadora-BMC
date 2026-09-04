@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-09-04 (fix — storefront Admin IDOR: bind row writes to identify HMAC):** Public `/chat`, `/log`, and `capture_lead` updates no longer trust client `adminRow`. Identify mints `adminToken` (HMAC over row+phone, `IDENTITY_JWT_SECRET`); writes resolve the row only from a verified token. Widget sends `adminToken`. Blocks overwrite of Admin col J / CRM AF from spoofed Origin + guessed row. Tests: `storefrontAdminBinding`, `publicVoiceAdmin`.
+
 **2026-09-04 (feat — Panelin Front live: STT+TTS, sell loop, Admin log, quote→cart):** Public shop agent default is **pipeline** (browser STT + `/chat` + optional TTS), not Grok S2S. Shared IAlfred↔Panelin lessons via public-safe `storefrontBrain.js`. Sell loop offers ficha/cart/PDF (not insist-only). Tap chips (`present_choices`). PDF also maps BOM to Shopify cart lines. Every `/chat` writes Admin 2.0 col J (`origen=VW`). Gemini fallback if Grok dry. Sheets identify accepts inline SA JSON. Shop widget already loads Cloud Run `widget.js` — this ships the API revision. Tests: `storefrontVoicePack`, `storefrontBrain`, `storefrontChoices`, `storefrontQuoteCart`, `publicVoiceAdmin`, `googleSheetsAuth`.
 
 **2026-08-31 (docs — install sequence increment, no catalog mix):** Append-only `INCREMENTO 2026-08-31` on `data/knowledge/proceso-constructivo.md` (+ encuentros, fichas, FAQ). Shared dry-mount **order of work**; AU/SKU/spacing stay the quoted family's ficha. Injectable lessons already on GCS `bmc-brain/lessons.json`. Original KB text not overwritten.
