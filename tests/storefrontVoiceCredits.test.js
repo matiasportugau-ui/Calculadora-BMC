@@ -7,6 +7,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   isGrokCreditsError,
+  isStorefrontTextQuotaError,
+  shopperSafeChatError,
   markStorefrontCreditsDead,
   markStorefrontCreditsLive,
   storefrontVoiceBubbleOn,
@@ -28,8 +30,27 @@ assert.equal(
   true,
 );
 assert.equal(isGrokCreditsError({ status: 402, body: "payment required" }), true);
+assert.equal(
+  isGrokCreditsError({
+    status: 403,
+    error: { message: "Your team has used all available credits or reached monthly spending limit" },
+  }),
+  true,
+  "OpenAI SDK nested error.message",
+);
 assert.equal(isGrokCreditsError({ status: 502, message: "mint failed" }), false);
 assert.equal(isGrokCreditsError({ status: 503, message: "API key not configured" }), false);
+assert.equal(
+  isStorefrontTextQuotaError({ status: 429, message: "You have no credits remaining. Add credits to continue" }),
+  true,
+);
+assert.equal(isStorefrontTextQuotaError({ status: 429, message: "429 status code (no body)" }), true);
+{
+  const safe = shopperSafeChatError({ status: 429, message: "429 status code (no body)" });
+  assert.equal(safe.status, 429);
+  assert.match(safe.message, /ocupado/i);
+  assert.ok(!/no body/i.test(safe.message));
+}
 
 assert.equal(storefrontVoiceBubbleOn(), true);
 assert.equal(storefrontVoiceStatus().bubble, true);
@@ -59,6 +80,7 @@ __resetStorefrontVoiceCredits();
 const publicVoice = fs.readFileSync(path.join(ROOT, "server/routes/publicVoice.js"), "utf8");
 assert.match(publicVoice, /router\.get\("\/status"/, "GET /status for the widget probe");
 assert.match(publicVoice, /storefrontVoiceStatus/, "status uses credits cache");
+assert.match(publicVoice, /storefrontBrainStatus/, "status reports public-safe shared brain");
 assert.match(publicVoice, /markStorefrontCreditsDead/, "mint maps credits → cache");
 assert.match(publicVoice, /code: "credits"|storefrontCreditsDenyBody/, "widget can hide on 403 credits");
 
@@ -66,7 +88,9 @@ const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/w
 assert.match(widget, /\/api\/public\/voice\/status/, "probe before mount");
 assert.match(widget, /function hideBubble/, "unmount orb when dry");
 assert.match(widget, /j\.bubble === false/, "status.bubble false skips the orb");
-assert.match(widget, /err\?\.code === "credits"/, "live mint 403 unmounts");
+assert.match(widget, /err\?\.code === "credits"/, "live mint 403 is handled");
+assert.match(widget, /el chat no se cierra|El chat sigue/, "credits must not unmount an open chat");
+assert.match(widget, /open \.bmc-launch\{visibility:hidden;pointer-events:none\}/, "open panel ignores orb clicks without collapsing the chat");
 assert.ok(!widget.includes("document.body.appendChild(root);"), "do not append before status");
 
 console.log("storefrontVoiceCredits.test.js ok");

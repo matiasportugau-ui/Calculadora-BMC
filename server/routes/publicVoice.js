@@ -1,7 +1,8 @@
 /**
  * Public storefront voice — shoppers on bmcuruguay.com.uy.
  *
- * GET  /status   — { bubble } so the shop hides the orb when xAI credits are dead
+ * GET  /status   — { bubble, brain } so the shop hides the orb when xAI credits are dead;
+ *                  brain is the public-safe IAlfred↔Panelin lesson count (no rule text)
  * POST /session  — mint Grok ephemeral token (no operator auth)
  * POST /action   — allowlisted tools only (lista web + capture_lead + handoff)
  * POST /chat     — text-to-text Panelin Front (same allowlist)
@@ -32,6 +33,9 @@ import {
 } from "../lib/voice/storefrontVoicePack.js";
 import { STOREFRONT_FLETE_NOTE } from "../lib/voice/storefrontAgentConfig.js";
 import { runStorefrontTextTurn } from "../lib/voice/storefrontChat.js";
+import { shopperTextForBrain, storefrontBrainStatus } from "../lib/voice/storefrontBrain.js";
+import { postCotizar } from "../lib/calcLoopbackClient.js";
+import { bomToCartLines, quotePayloadToCotizarBody } from "../lib/voice/storefrontQuoteCart.js";
 import { appendStorefrontTurn } from "../lib/voice/storefrontConversationLog.js";
 import {
   pingLiveSession,
@@ -44,6 +48,7 @@ import {
   storefrontVoiceBubbleOn,
   storefrontVoiceStatus,
   storefrontCreditsDenyBody,
+  shopperSafeChatError,
 } from "../lib/voice/storefrontVoiceCredits.js";
 
 export const STOREFRONT_SESSION_WINDOW_MS = 5 * 60 * 1000;
@@ -68,6 +73,51 @@ export function storefrontActionLogPayload(type, httpStatus) {
 export function shouldAttemptAdminColJ(adminRow) {
   const n = Number(adminRow);
   return Number.isFinite(n) && n >= 2;
+}
+
+/** Rolling chat text for Admin 2.0 col J (tab Admin. of WOLFB_ADMIN_SHEET_ID). */
+export function formatStorefrontAdminTranscript({
+  cliente = "",
+  telefono = "",
+  history = [],
+  message = "",
+  reply = "",
+} = {}) {
+  const lines = [
+    `Chat Panelin (VW) · ${String(cliente || "").trim()} · ${String(telefono || "").trim()}`,
+    "flete: no cotizado / a corroborar",
+  ];
+  const hist = Array.isArray(history) ? history : [];
+  for (const m of hist) {
+    if (!m || typeof m !== "object") continue;
+    const c = String(m.content || "").trim();
+    if (!c) continue;
+    if (m.role === "user") lines.push(`Vos: ${c}`);
+    else if (m.role === "assistant") lines.push(c);
+  }
+  const msg = String(message || "").trim();
+  const lastUser = [...hist].reverse().find((m) => m && m.role === "user");
+  if (msg && String(lastUser?.content || "").trim() !== msg) lines.push(`Vos: ${msg}`);
+  const r = String(reply || "").trim();
+  if (r) lines.push(r);
+  return lines.join("\n").slice(0, 8000);
+}
+
+export async function persistStorefrontAdminTranscript(adminRow, transcript) {
+  if (!shouldAttemptAdminColJ(adminRow)) return { ok: false, skipped: true };
+  const text = String(transcript || "").trim();
+  if (!text) return { ok: false, skipped: true };
+  const raw = await executeTool(
+    "wolfboard_actualizar_fila",
+    { rowNum: Number(adminRow), respuesta: text, user_confirmed: true },
+    {},
+    { source: "storefront-voice" },
+  );
+  const parsed = parseStorefrontToolJson(raw);
+  if (parsed.ok !== true) {
+    return { ok: false, error: parsed.error || "No se pudo guardar el chat." };
+  }
+  return { ok: true, adminRow: Number(adminRow) };
 }
 
 function clientIp(req) {
@@ -208,7 +258,7 @@ export default function createPublicVoiceRouter() {
   });
 
   router.get("/status", (req, res) => {
-    return res.json(storefrontVoiceStatus());
+    return res.json({ ...storefrontVoiceStatus(), brain: storefrontBrainStatus() });
   });
 
   router.post("/session", sessionLimiter, async (req, res) => {
@@ -265,6 +315,25 @@ export default function createPublicVoiceRouter() {
       max_session_ms: 8 * 60 * 1000,
     });
   });
+
+  async function attachStorefrontCartLines(toolInput, resultStr) {
+    let parsed;
+    try {
+      parsed = JSON.parse(resultStr);
+    } catch {
+      return resultStr;
+    }
+    if (!parsed || parsed.ok === false || parsed.error) return resultStr;
+    try {
+      const body = quotePayloadToCotizarBody(toolInput);
+      if (!body.escenario) return resultStr;
+      const cot = await postCotizar(body);
+      parsed.cart_lines = bomToCartLines(cot.body?.bom, toolInput);
+    } catch {
+      parsed.cart_lines = Array.isArray(parsed.cart_lines) ? parsed.cart_lines : [];
+    }
+    return JSON.stringify(parsed);
+  }
 
   async function runPublicStorefrontTool(type, payload, pageUrl, log) {
     if (!isPublicStorefrontTool(type)) {
@@ -353,6 +422,9 @@ export default function createPublicVoiceRouter() {
         result = JSON.stringify(stripInternalPrices(JSON.parse(result)));
       } catch {
         /* keep shaped string */
+      }
+      if (type === "generar_pdf") {
+        result = await attachStorefrontCartLines(toolInput, result);
       }
       return result;
     } catch (err) {
@@ -476,15 +548,9 @@ export default function createPublicVoiceRouter() {
       return res.status(400).json({ ok: false, error: "adminRow requerido." });
     }
     try {
-      const raw = await executeTool(
-        "wolfboard_actualizar_fila",
-        { rowNum: adminRow, respuesta: transcript, user_confirmed: true },
-        {},
-        { source: "storefront-voice" },
-      );
-      const parsed = parseStorefrontToolJson(raw);
-      if (parsed.ok !== true) {
-        return res.status(502).json({ ok: false, error: parsed.error || "No se pudo guardar el chat." });
+      const saved = await persistStorefrontAdminTranscript(adminRow, transcript);
+      if (!saved.ok) {
+        return res.status(502).json({ ok: false, error: saved.error || "No se pudo guardar el chat." });
       }
       recordVoiceEvent({ kind: "storefront_chat_log", surface: "storefront", detail: String(adminRow) });
       return res.json({ ok: true, adminRow });
@@ -507,7 +573,11 @@ export default function createPublicVoiceRouter() {
   router.post("/chat", chatLimiter, async (req, res) => {
     const pageUrl = sanitizePageUrl(req.body?.pageUrl || req.body?.page_url);
     const shopperName = String(req.body?.shopperName || req.body?.nombre || "").trim().slice(0, 80);
-    const pack = buildStorefrontVoicePack({ pageUrl, shopperName });
+    const pack = buildStorefrontVoicePack({
+      pageUrl,
+      shopperName,
+      userText: shopperTextForBrain(req.body || {}),
+    });
     try {
       const out = await runStorefrontTextTurn({
         message: req.body?.message,
@@ -518,6 +588,39 @@ export default function createPublicVoiceRouter() {
         runServerTool: (name, args) => runPublicStorefrontTool(name, args || {}, pageUrl, req.log),
       });
       recordVoiceEvent({ kind: "storefront_chat", surface: "storefront", detail: "text" });
+      const adminRow = Number(req.body?.adminRow);
+      const telefono = normalizeStorefrontPhone(req.body?.telefono);
+      const cliente = String(req.body?.cliente || shopperName || "").trim();
+      const transcript = formatStorefrontAdminTranscript({
+        cliente,
+        telefono,
+        history: req.body?.history,
+        message: req.body?.message,
+        reply: out.text,
+      });
+      appendStorefrontTurn({
+        kind: "chat",
+        adminRow: shouldAttemptAdminColJ(adminRow) ? adminRow : null,
+        telefono,
+        pageUrl,
+        transcript,
+      });
+      if (shouldAttemptAdminColJ(adminRow)) {
+        try {
+          const saved = await persistStorefrontAdminTranscript(adminRow, transcript);
+          if (saved.ok) {
+            recordVoiceEvent({
+              kind: "storefront_chat_log",
+              surface: "storefront",
+              detail: String(adminRow),
+            });
+          } else {
+            req.log?.warn?.({ err: saved.error, adminRow }, "storefront chat admin persist skipped");
+          }
+        } catch (err) {
+          req.log?.warn?.({ err, adminRow }, "storefront chat admin persist failed");
+        }
+      }
       return res.json(out);
     } catch (err) {
       const status = Number(err?.status) || 500;
@@ -530,9 +633,10 @@ export default function createPublicVoiceRouter() {
       if (markStorefrontCreditsDead(err)) {
         return res.status(403).json(storefrontCreditsDenyBody());
       }
-      return res.status(status >= 400 && status < 600 ? status : 500).json({
+      const safe = shopperSafeChatError(err);
+      return res.status(safe.status >= 400 && safe.status < 600 ? safe.status : 500).json({
         ok: false,
-        error: err?.message || "No se pudo responder.",
+        error: safe.message,
       });
     }
   });

@@ -4,6 +4,7 @@
  */
 import { AGENT_TOOLS } from "../agentTools.js";
 import { loadPublicKnowledgeDocs } from "../knowledgeLoader.js";
+import { storefrontBrainBlock } from "./storefrontBrain.js";
 import { agentToolToRealtimeFunction, sanitizeBootstrapForClient } from "../voiceBrainPack.js";
 import {
   STOREFRONT_VOICE_GREETING,
@@ -33,6 +34,7 @@ export const STOREFRONT_CLIENT_TOOLS = Object.freeze([
   "navigate",
   "open_url",
   "share_link",
+  "present_choices",
 ]);
 
 export const STOREFRONT_TOOL_SET = new Set([
@@ -175,7 +177,7 @@ const ADD_TO_CART_TOOL = Object.freeze({
   name: "add_to_cart",
   description:
     "Agrega un SKU de catálogo al carrito Shopify. Usar variant_id de shop_search o shop_product. " +
-    "No uses esto para techos a medida; esos van por cotización + WhatsApp.",
+    "Techos a medida: generar_pdf también carga el carrito; no dupliques a mano salvo un SKU suelto.",
   parameters: {
     type: "object",
     properties: {
@@ -215,6 +217,33 @@ const OPEN_URL_TOOL = Object.freeze({
   },
 });
 
+const PRESENT_CHOICES_TOOL = Object.freeze({
+  type: "function",
+  name: "present_choices",
+  description:
+    "Muestra 2–4 botones clicables bajo tu mensaje para que el comprador toque en vez de escribir. " +
+    "Usala SIEMPRE que pidas elegir (familia, espesor, sí/no a la aproximación, agregar al carrito, medidas típicas). " +
+    "label = texto corto del botón. send = respuesta completa que llega como mensaje del usuario.",
+  parameters: {
+    type: "object",
+    properties: {
+      options: {
+        type: "array",
+        description: "2 a 4 opciones",
+        items: {
+          type: "object",
+          properties: {
+            label: { type: "string", description: "Texto del botón, máx ~24 caracteres" },
+            send: { type: "string", description: "Mensaje que se envía al tocar" },
+          },
+          required: ["label"],
+        },
+      },
+    },
+    required: ["options"],
+  },
+});
+
 const SHARE_LINK_TOOL = Object.freeze({
   type: "function",
   name: "share_link",
@@ -237,6 +266,7 @@ export const STOREFRONT_SHOP_TOOLS = Object.freeze([
   "navigate",
   "open_url",
   "share_link",
+  "present_choices",
 ]);
 
 export function isPublicStorefrontTool(name) {
@@ -385,6 +415,7 @@ export function buildStorefrontVoicePack(options = {}) {
     NAVIGATE_TOOL,
     OPEN_URL_TOOL,
     SHARE_LINK_TOOL,
+    PRESENT_CHOICES_TOOL,
     ...AGENT_TOOLS.filter((t) => t.name === "generar_pdf").map(agentToolToRealtimeFunction),
     CAPTURE_LEAD_TOOL,
     HANDOFF_WHATSAPP_TOOL,
@@ -392,9 +423,11 @@ export function buildStorefrontVoicePack(options = {}) {
 
   const kb = loadPublicKnowledgeDocs();
   const kbBlock = kb ? `\n\n${kb}` : "";
+  const brain = storefrontBrainBlock(options.userText || "");
+  const brainBlock = brain ? `\n\n${brain}` : "";
 
   return sanitizeBootstrapForClient({
-    instructions: STOREFRONT_VOICE_INSTRUCTIONS + extra + kbBlock,
+    instructions: STOREFRONT_VOICE_INSTRUCTIONS + extra + kbBlock + brainBlock,
     tools,
     tool_choice: "auto",
     voice: STOREFRONT_AGENT_CONFIG.voice,

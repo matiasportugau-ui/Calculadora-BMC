@@ -14,6 +14,7 @@ import {
   storefrontSessionMax,
   skipStorefrontSessionLimit,
   shouldAttemptAdminColJ,
+  formatStorefrontAdminTranscript,
 } from "../server/routes/publicVoice.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -96,5 +97,23 @@ assert.equal(skipStorefrontSessionLimit({ method: "POST" }, "development"), true
 assert.equal(shouldAttemptAdminColJ(31), true);
 assert.equal(shouldAttemptAdminColJ(1), false);
 assert.equal(shouldAttemptAdminColJ("MAN-1"), false);
+
+const transcript = formatStorefrontAdminTranscript({
+  cliente: "Ana",
+  telefono: "59899123456",
+  history: [{ role: "user", content: "quiero techo" }],
+  message: "IsoDec 100",
+  reply: "Te armo la aproximación.",
+});
+assert.match(transcript, /Chat Panelin \(VW\) · Ana/);
+assert.match(transcript, /Vos: quiero techo/);
+assert.match(transcript, /Vos: IsoDec 100/);
+assert.match(transcript, /Te armo la aproximación/);
+assert.match(actionSrc, /persistStorefrontAdminTranscript/, "every /chat writes Admin col J");
+assert.match(actionSrc, /formatStorefrontAdminTranscript/, "chat transcript for the sheet");
+
+const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
+assert.match(widget, /adminRow: state\.adminRow/, "widget sends adminRow on /chat");
+assert.match(widget, /pagehide/, "flush transcript on leave");
 
 console.log("publicVoiceAdmin.test.js ok");

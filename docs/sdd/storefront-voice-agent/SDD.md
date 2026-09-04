@@ -13,7 +13,7 @@ local_demo: http://127.0.0.1:3001/storefront-voice/
 
 # System Design Document: Panelin Front
 
-Public customer-support + insist-quote agent on **bmcuruguay.com.uy**.  
+Public seller + quote agent on **bmcuruguay.com.uy**.  
 **Not** operator Panelin BMC (`panelinBmcInstructions.js` / `/api/agent/voice`).
 
 ---
@@ -24,15 +24,15 @@ Public customer-support + insist-quote agent on **bmcuruguay.com.uy**.
 
 BMC Uruguay (METALOG SAS) sells sandwich panels from a Shopify store. Shoppers need product help, cart cost, and an occasional formal quote without talking to a sales desk first. Operator Panelin inside the calculator exposes lista venta, CRM, and model pickers — that brain must never run in the public shop.
 
-Panelin Front is a floating chat on the store: voice-default, text optional, calculator + PDF when they **insist**, never freight, every conversation a complete Admin 2.0 lead.
+Panelin Front is a floating chat on the store: STT+TTS default, text optional, calculator + PDF when the project is **buyable** (agent offers it), never freight, every conversation a complete Admin 2.0 lead.
 
 ### 1.2 Goals
 
 | ID | Goal | Evidence |
 |----|------|----------|
-| G1 | Classify → assess → green every turn | `storefrontVoiceInstructions.js` |
+| G1 | Sell loop every turn (name buy → ficha/cart or quote) | `storefrontVoiceInstructions.js` |
 | G2 | Guide website + Shopify cart for **product** cost | `widget.js` shop tools (`shop_search`, `add_to_cart`, `navigate`) |
-| G3 | Quote only if they insist; lista **web**; downloadable PDF | `calcular_cotizacion` + `generar_pdf`, `flete=0` |
+| G3 | Offer quote when the project is buyable; lista **web**; downloadable PDF | `calcular_cotizacion` + `generar_pdf`, `flete=0` |
 | G4 | Never quote shipping | Config `shipping: never`; spoken “hay que corroborarlo” |
 | G5 | Name + phone **before chat**; log every turn in Admin 2.0 `origen=VW` | `POST /identify`, `POST /log` |
 | G6 | Voice default + Leila STT + text, same thread | Grok S2S `rex` + `POST /chat` |
@@ -54,7 +54,7 @@ C4Context
   title Panelin Front
   Person(shopper, "Shopper", "bmcuruguay.com.uy")
   Person(ops, "BMC agent", "Admin 2.0")
-  System(front, "Panelin Front", "CS + insist-quote")
+  System(front, "Panelin Front", "seller + quote")
   System_Ext(shopify, "Shopify", "Theme + Ajax cart")
   System_Ext(cr, "Cloud Run panelin-calc", "Public API")
   System_Ext(xai, "xAI Grok", "Voice S2S + grok-3-mini")
@@ -129,7 +129,7 @@ C4Container
 |-----------|----------------|--------|
 | Config SoT | Voice, lista web, disclaimer, lead gate | `storefrontAgentConfig.js` |
 | Voice pack | Tool allowlist, greeting, turn detection | `storefrontVoicePack.js` |
-| Instructions | Classify/assess/green, insist-quote, no flete | `storefrontVoiceInstructions.js` |
+| Instructions | Sell loop, offer-quote, no flete | `storefrontVoiceInstructions.js` |
 | Text runtime | grok-3-mini + same tools | `storefrontChat.js` |
 | Public HTTP | session / chat / action / identify / log | `server/routes/publicVoice.js` |
 | Widget | UI, identity, voice, cart, nav, PDF card | `server/public/storefront-voice/widget.js` |
@@ -307,11 +307,11 @@ No email column — email goes in consulta/notas.
 **Decision:** `forceListaWeb` on every quote/PDF.  
 **Consequences:** Public prices may differ from operator lista venta.
 
-### ADR-004: Quote insist-only; never flete
+### ADR-004: Offer quote when buyable; never flete
 
-**Status:** Accepted  
-**Decision:** Default cart/site; PDF after insist; shipping always “corroborar”.  
-**Consequences:** Ops must confirm freight; shopper never sees a fake flete line.
+**Status:** Superseded 2026-09-04 (was insist-only)  
+**Decision:** Listed SKUs → cart. Custom obra → agent **offers** lista web aproximación + PDF as soon as inputs are complete (does not wait for “cotizame”). Shipping always “corroborar”.  
+**Consequences:** Ops must confirm freight; shopper never sees a fake flete line. More PDFs/leads from the shop chat.
 
 ### ADR-005: Leads in Admin 2.0 VW, not a side sheet
 

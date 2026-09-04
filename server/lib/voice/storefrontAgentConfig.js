@@ -5,8 +5,15 @@
 export const STOREFRONT_AGENT_CONFIG = Object.freeze({
   name: "Panelin Front",
   voice: "rex",
-  languageHint: "es-MX",
+  languageHint: "es-UY",
   sttLabel: "Leila",
+  /** Mic = STT, replies may TTS. No Grok realtime S2S (token economy). */
+  channel: Object.freeze({
+    mic: "stt",
+    speak: "tts",
+    realtime: false,
+    defaultMode: "pipeline",
+  }),
   maxSessionMs: 8 * 60 * 1000,
   chatModelEnv: "STOREFRONT_CHAT_MODEL",
   chatModelDefault: "grok-3-mini",
@@ -20,7 +27,7 @@ export const STOREFRONT_AGENT_CONFIG = Object.freeze({
   },
   intakeOrder: Object.freeze(["nombre", "telefono", "tipo", "medidas", "luz", "zona"]),
   quote: {
-    mode: "insist-only",
+    mode: "offer",
     lista: "web",
     pdf: true,
     attachToLead: true,

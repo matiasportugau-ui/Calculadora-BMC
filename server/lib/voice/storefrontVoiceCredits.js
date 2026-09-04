@@ -11,13 +11,51 @@ export function grokCreditsTtlMs() {
   return Number.isFinite(n) && n >= 1000 ? n : DEFAULT_TTL_MS;
 }
 
+export function normalizeLlmError(err) {
+  const status = Number(err?.status || err?.statusCode || 0);
+  const message = String(err?.error?.message || err?.body || err?.message || "");
+  return { status, body: message, message, code: err?.code };
+}
+
 export function isGrokCreditsError(err) {
-  const status = Number(err?.status) || 0;
-  const blob = `${status} ${err?.body || ""} ${err?.message || ""} ${err?.code || ""}`.toLowerCase();
-  if (status === 402) return true;
+  const info = normalizeLlmError(err);
+  const blob = `${info.status} ${info.body} ${info.message} ${info.code || ""}`.toLowerCase();
+  if (info.status === 402) return true;
   return /used all available credits|monthly spending limit|insufficient credits|credit.?limit|out of credits|quota exceeded|spending_limit/.test(
     blob,
   );
+}
+
+/** Quota/credits/rate-limit on any text provider — skip to the next backend. */
+export function isStorefrontTextQuotaError(err) {
+  if (isGrokCreditsError(err)) return true;
+  const info = normalizeLlmError(err);
+  const blob = `${info.status} ${info.body} ${info.message}`.toLowerCase();
+  if (info.status === 429 || /\b429\b/.test(blob)) return true;
+  return /credit|quota|billing|rate limit|too many requests|no body/.test(blob);
+}
+
+/** Never leak SDK strings like "429 status code (no body)" to the shopper. */
+export function shopperSafeChatError(err) {
+  const info = normalizeLlmError(err);
+  if (info.status === 429 || /\b429\b/.test(`${info.message} ${info.body}`)) {
+    const e = new Error("El asistente está ocupado. Esperá unos segundos y mandá de nuevo.");
+    e.status = 429;
+    return e;
+  }
+  if (isGrokCreditsError(err)) {
+    const e = new Error("No se pudo responder ahora. Probá de nuevo en un momento.");
+    e.status = 403;
+    return e;
+  }
+  if (/no body|status code|ECONNRESET|fetch failed|network/i.test(info.message)) {
+    const e = new Error("No se pudo responder. Probá de nuevo.");
+    e.status = info.status >= 400 && info.status < 600 ? info.status : 502;
+    return e;
+  }
+  const e = new Error("No se pudo responder. Probá de nuevo.");
+  e.status = info.status >= 400 && info.status < 600 ? info.status : 502;
+  return e;
 }
 
 export function markStorefrontCreditsDead(err) {

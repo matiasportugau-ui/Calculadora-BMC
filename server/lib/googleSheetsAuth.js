@@ -50,16 +50,17 @@ export function googleCredsEnvRaw() {
   );
 }
 
+/** Args for `new google.auth.GoogleAuth(...)` from parseGoogleCreds. */
+export function googleAuthOptionsFromParsed(parsed, scopes) {
+  const scopeList = Array.isArray(scopes) ? scopes : [scopes];
+  if (parsed?.mode === "json") return { credentials: parsed.credentials, scopes: scopeList };
+  if (parsed?.mode === "file") return { keyFile: parsed.keyFile, scopes: scopeList };
+  return { scopes: scopeList };
+}
+
 export async function getSheetsClient(scopes = [SCOPE]) {
   const parsed = parseGoogleCreds(googleCredsEnvRaw());
-  let auth;
-  if (parsed.mode === "json") {
-    auth = new google.auth.GoogleAuth({ credentials: parsed.credentials, scopes });
-  } else if (parsed.mode === "file") {
-    auth = new google.auth.GoogleAuth({ keyFile: parsed.keyFile, scopes });
-  } else {
-    auth = new google.auth.GoogleAuth({ scopes });
-  }
+  const auth = new google.auth.GoogleAuth(googleAuthOptionsFromParsed(parsed, scopes));
   const client = await auth.getClient();
   return google.sheets({ version: "v4", auth: client });
 }

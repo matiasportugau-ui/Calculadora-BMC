@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Panelin voz — demo storefront</title>
+    <title>Panelin voz — demo 3 modos</title>
     <style>
       :root { color-scheme: light; }
       body {
@@ -15,17 +15,47 @@
       }
       header {
         padding: 28px 22px 8px;
-        max-width: 42rem;
+        max-width: 44rem;
       }
       h1 { font-size: 1.4rem; margin: 0 0 6px; }
       p { margin: 0 0 10px; line-height: 1.45; color: #3a3832; }
+      .modes {
+        display: grid;
+        gap: 10px;
+        margin: 12px 22px 16px;
+        max-width: 44rem;
+      }
+      @media (min-width: 720px) {
+        .modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+      .mode {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 44px;
+        padding: 14px;
+        border: 1px solid #c8c4b8;
+        border-radius: 14px;
+        background: #f3ede3;
+        color: inherit;
+        text-decoration: none;
+      }
+      .mode:hover { border-color: #0071e3; }
+      .mode[aria-current="page"] {
+        border-color: #0071e3;
+        background: #fff;
+        box-shadow: 0 0 0 2px #0071e3;
+      }
+      .mode strong { font-size: 15px; }
+      .mode span { font-size: 13px; line-height: 1.4; color: #3a3832; }
+      .mode em { font-size: 11px; font-style: normal; color: #6e6e73; }
       .sheet {
         margin: 12px 22px 120px;
         padding: 16px;
         background: #f3ede3;
         border: 1px solid #c8c4b8;
         border-radius: 12px;
-        max-width: 42rem;
+        max-width: 44rem;
       }
       code { font-size: 0.85em; }
       .wa-fake {
@@ -49,7 +79,7 @@
         background: #1d1d1f;
         color: #f5f5f7;
         border-radius: 14px;
-        max-width: 42rem;
+        max-width: 44rem;
       }
       .mic-box h2 { font-size: 1rem; margin: 0 0 8px; }
       .mic-box button {
@@ -80,9 +110,26 @@
   </head>
   <body>
     <header>
-      <h1>Demo — Panelin Front</h1>
-      <p>Simula el sitio BMC. Flotante = cuerpo del chat de la calculadora (sin sidebar, DEV ni modelo). Al abrir, voz por defecto; también se puede escribir. El botón verde es WhatsApp.</p>
+      <h1>Demo local — 3 modos de Panelin Front</h1>
+      <p>Elegí un modo, identificáte (nombre + celular) y probá. La tienda no cambia: esto es solo <code>127.0.0.1</code>.</p>
     </header>
+    <nav class="modes" aria-label="Modos de voz">
+      <a class="mode" id="mode-text" href="?voice=text">
+        <strong>1. Texto</strong>
+        <span>Escribís, grok-3-mini responde. Sin mic, sin minutos de voz.</span>
+        <em>Más barato · el cerebro ya existe</em>
+      </a>
+      <a class="mode" id="mode-pipeline" href="?voice=pipeline">
+        <strong>2. Voz barata</strong>
+        <span>Hablás → dictado del browser → mismo chat → el sistema te habla. Parece agente de voz.</span>
+        <em>Chrome: el dictado va a Google, no a xAI. Después lo pasamos a STT/TTS de xAI.</em>
+      </a>
+      <a class="mode" id="mode-realtime" href="?voice=realtime">
+        <strong>3. Voz realtime</strong>
+        <span>Grok Speech-to-Speech como en la tienda. Cobra ~USD 0.05 por minuto de sesión.</span>
+        <em>Caro · full duplex · hoy el team xAI puede estar seco</em>
+      </a>
+    </nav>
     <div class="mic-box">
       <h2>Prueba de mic (local)</h2>
       <p>No uses la Terminal. Tocá el botón, permití el mic y hablá. La barra tiene que moverse.</p>
@@ -91,12 +138,34 @@
       <div class="mic-bar" aria-hidden="true"><span id="mic-fill"></span></div>
     </div>
     <div class="sheet">
-      <p>Probá: “¿Qué diferencia hay entre IsoDec y IsoRoof?”, “Llevame a IsoDec”, “Agregá al carrito”, “Techo 10 por 8 IsoDec 100”.</p>
-      <p>API: <code id="origin"></code></p>
+      <p id="mode-help">Elegí un modo arriba. Después: “¿Qué diferencia hay entre IsoDec y IsoRoof?”, “Llevame a IsoDec”.</p>
+      <p>API: <code id="origin"></code> · modo: <code id="mode-now">—</code></p>
     </div>
     <a class="wa-fake" href="https://wa.me/59892663245" target="_blank" rel="noopener" aria-label="WhatsApp BMC">WA</a>
     <script>
       document.getElementById("origin").textContent = location.origin;
+      (function () {
+        const mode = String(new URLSearchParams(location.search).get("voice") || "").trim();
+        const known = { text: 1, pipeline: 1, realtime: 1 };
+        const now = document.getElementById("mode-now");
+        const help = document.getElementById("mode-help");
+        now.textContent = known[mode] ? mode : "(elegí uno)";
+        const labels = {
+          text: "Modo texto: abrí el orb, nombre + celular, escribí.",
+          pipeline: "Modo voz barata: orb → identificar → mic. Hablá y escuchá la respuesta. En Chrome el dictado usa Google.",
+          realtime: "Modo realtime: orb → identificar → Hablar. Sesión Grok S2S (cobra el minuto, incluido silencio).",
+        };
+        if (known[mode]) help.textContent = labels[mode];
+        const active = document.getElementById("mode-" + mode);
+        if (active) active.setAttribute("aria-current", "page");
+        if (known[mode]) {
+          const s = document.createElement("script");
+          s.src = "/storefront-voice/widget.js";
+          s.defer = true;
+          s.setAttribute("data-bmc-voice-mode", mode);
+          document.body.appendChild(s);
+        }
+      })();
       (function () {
         const btn = document.getElementById("mic-test");
         const read = document.getElementById("mic-read");
@@ -152,6 +221,5 @@
         });
       })();
     </script>
-    <script src="/storefront-voice/widget.js" defer></script>
   </body>
 </html>
