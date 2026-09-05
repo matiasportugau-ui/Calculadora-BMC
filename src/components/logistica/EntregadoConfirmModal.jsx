@@ -1,7 +1,7 @@
 /**
  * Confirm Entregado / Enviado: comments + optional signed remito upload.
  */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function EntregadoConfirmModal({
   open,
@@ -15,6 +15,15 @@ export default function EntregadoConfirmModal({
   const [comment, setComment] = useState("");
   const [file, setFile] = useState(null);
   const [err, setErr] = useState("");
+
+  // Reset form when opening for a new sale — avoid carrying remito/comment across clients.
+  useEffect(() => {
+    if (open) {
+      setComment("");
+      setFile(null);
+      setErr("");
+    }
+  }, [open, clientLabel, mode]);
 
   if (!open) return null;
 

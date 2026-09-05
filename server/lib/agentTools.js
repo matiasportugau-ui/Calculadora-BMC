@@ -2218,10 +2218,14 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     if (name === "logistica_buscar_ventas") {
       const query = String(input?.query || "").trim();
       if (!query) return JSON.stringify({ ok: false, error: "query requerido", tool: name });
-      const sheetId =
-        config.bmcVentasSheetId ||
-        process.env.BMC_VENTAS_SHEET_ID ||
-        "1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA";
+      const sheetId = config.bmcVentasSheetId || process.env.BMC_VENTAS_SHEET_ID || "";
+      if (!sheetId) {
+        return JSON.stringify({
+          ok: false,
+          error: "BMC_VENTAS_SHEET_ID no configurado",
+          tool: name,
+        });
+      }
       const gid = String(input?.gid || "926747636");
       const limit = Math.min(40, Math.max(1, Number(input?.limit) || 15));
       const activeOnly = input?.activeOnly !== false;
