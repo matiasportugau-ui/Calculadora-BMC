@@ -1237,7 +1237,35 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
  * Update sale logistics state on a Ventas row (estado F + fecha H + optional camión marker).
  * body: { gid, row1Based, status, fechaEntrega?, camion?, transportista?, comment?, estadoText? }
  */
-async function handleVentasLogisticaEstado(ventasSheetId, body) {
+function stripLogisticaMarkers(existingEstado) {
+  // Linear scan — avoids nested-quantifier ReDoS on crafted "[LOGISTICA:" spam.
+  const raw = String(existingEstado || "");
+  const lower = raw.toLowerCase();
+  let out = "";
+  let i = 0;
+  while (i < raw.length) {
+    const open = lower.indexOf("[logistica:", i);
+    if (open === -1) {
+      out += raw.slice(i);
+      break;
+    }
+    let start = open;
+    while (start > i && /\s/.test(raw[start - 1])) start -= 1;
+    out += raw.slice(i, start);
+    const close = raw.indexOf("]", open + 1);
+    if (close === -1) break;
+    i = close + 1;
+  }
+  return out.replace(/\s+/g, " ").trim();
+}
+
+function sanitizeVentasUserEnteredCell(value) {
+  const s = String(value ?? "");
+  if (/^[=+\-@]/.test(s)) return `'${s}`;
+  return s;
+}
+
+async function handleVentasLogisticaEstado(ventasSheetId, body, opts = {}) {
   const gid = body?.gid;
   const row1Based = Number(body?.row1Based);
   if (!ventasSheetId) throw new Error("Ventas sheet no configurado (BMC_VENTAS_SHEET_ID)");
@@ -1245,8 +1273,22 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
   if (!Number.isFinite(row1Based) || row1Based < 2) throw new Error("row1Based inválido (mín. 2)");
 
   const status = String(body?.status || "").trim().toLowerCase();
-  const allowed = new Set(["por_coordinar", "coordinado", "con_pendientes", "entregado", "enviado"]);
+  const allowArchiveStatuses = opts.allowArchiveStatuses === true;
+  // Public /logistica-estado: only operational statuses. Archive statuses must
+  // go through logistica-entregado (confirm + move). Internal archive path sets allowArchiveStatuses.
+  const allowed = allowArchiveStatuses
+    ? new Set(["por_coordinar", "coordinado", "con_pendientes", "entregado", "enviado"])
+    : new Set(["por_coordinar", "coordinado", "con_pendientes"]);
+  if (!allowArchiveStatuses && (status === "entregado" || status === "enviado")) {
+    throw new Error("Usá /api/ventas/logistica-entregado con confirm=true para Entregado/Enviado");
+  }
   if (!allowed.has(status)) throw new Error("status inválido");
+  if (status === "coordinado") {
+    const iso = String(body?.fechaEntrega || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+      throw new Error("fechaEntrega YYYY-MM-DD requerida para coordinado");
+    }
+  }
 
   const tabTitle = await getSheetTabTitleByGid(ventasSheetId, gid);
   if (!tabTitle) throw new Error("No se encontró la pestaña para ese gid");
@@ -1272,43 +1314,42 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
   // Inline marker builder (mirrors saleState.buildEstadoSheetValue — keep in sync)
   const fechaIso =
     body?.fechaEntrega === "" || body?.fechaEntrega == null
-      ? status === "por_coordinar"
-        ? ""
-        : ""
+      ? ""
       : String(body.fechaEntrega).trim();
   const fechaVal =
     !fechaIso || status === "por_coordinar" ? "" : formatIsoDateToDdMmYyyy(fechaIso);
-  const camion =
+  const camionRaw =
     body?.camion != null && body.camion !== ""
       ? Math.floor(Number(body.camion))
       : null;
+  const camion =
+    camionRaw != null && Number.isFinite(camionRaw) && camionRaw >= 1 && camionRaw <= 12
+      ? camionRaw
+      : null;
+  if (body?.camion != null && body.camion !== "" && camion == null) {
+    throw new Error("camion inválido (1..12)");
+  }
   const tte = body?.transportista ? String(body.transportista).slice(0, 40) : "";
-  const comment = body?.comment ? String(body.comment).replace(/[\[\]]/g, "").slice(0, 120) : "";
+  const comment = body?.comment ? String(body.comment).replace(/[[\]]/g, "").slice(0, 120) : "";
 
-  const base = existingEstado
-    .replace(/\s*\[LOGISTICA:[^\]]*\]/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const base = stripLogisticaMarkers(existingEstado);
   const parts = [`LOGISTICA:${status.toUpperCase()}`];
   if (fechaVal) parts.push(`FECHA=${fechaVal}`);
-  if (camion && Number.isFinite(camion) && camion >= 1) parts.push(`CAMION=${camion}`);
+  if (camion) parts.push(`CAMION=${camion}`);
   if (tte) parts.push(`TTE=${tte}`);
   if (comment) parts.push(`NOTA=${comment}`);
   const marker = `[${parts.join(" ")}]`;
-  const estadoVal = body?.estadoText != null && String(body.estadoText).includes("[LOGISTICA:")
-    ? String(body.estadoText)
-    : base
-      ? `${base} ${marker}`
-      : marker;
+  // Always rebuild server-side — never trust client estadoText (formula injection).
+  const estadoVal = base ? `${base} ${marker}` : marker;
 
   const data = [
     {
       range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.estadoText}${row1Based}`,
-      values: [[estadoVal]],
+      values: [[sanitizeVentasUserEnteredCell(estadoVal)]],
     },
     {
       range: `'${safeTab}'!${VENTAS_LOGISTICA_COL.fechaEntrega}${row1Based}`,
-      values: [[fechaVal]],
+      values: [[sanitizeVentasUserEnteredCell(fechaVal)]],
     },
   ];
 
@@ -1328,7 +1369,7 @@ async function handleVentasLogisticaEstado(ventasSheetId, body) {
     tab: tabTitle,
     estadoText: estadoVal,
     fechaEntrega: fechaVal,
-    camion: camion && Number.isFinite(camion) ? camion : null,
+    camion,
   };
 }
 
@@ -1356,6 +1397,16 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const safeTab = String(tabTitle).replace(/'/g, "''");
 
+  // Resolve archive tab BEFORE mutating the source row — if missing, fail closed
+  // without marking the sale as entregado/enviado (which would hide it from active list).
+  const archiveTitle = await resolveVentasArchiveTabTitle(sheets, ventasSheetId);
+  if (!archiveTitle) {
+    throw new Error(
+      "No se encontró pestaña de archivo (Enviados / Ventas Realizadas y Entegadas) en el workbook"
+    );
+  }
+  const safeArchive = String(archiveTitle).replace(/'/g, "''");
+
   // Read full row for archive append
   const rowRes = await sheets.spreadsheets.values.get({
     spreadsheetId: ventasSheetId,
@@ -1365,16 +1416,20 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
   const rowData = rowRes.data.values?.[0] || [];
   if (!rowData.length) throw new Error("Fila vacía o no encontrada");
 
-  // Update estado marker on source row first (before move)
-  await handleVentasLogisticaEstado(ventasSheetId, {
-    gid,
-    row1Based,
-    status: mode,
-    fechaEntrega: body?.fechaEntrega || "",
-    comment: body?.comment || "",
-    transportista: body?.transportista || "",
-    camion: body?.camion,
-  });
+  // Update estado marker on source row (internal path allows archive statuses)
+  await handleVentasLogisticaEstado(
+    ventasSheetId,
+    {
+      gid,
+      row1Based,
+      status: mode,
+      fechaEntrega: body?.fechaEntrega || "",
+      comment: body?.comment || "",
+      transportista: body?.transportista || "",
+      camion: body?.camion,
+    },
+    { allowArchiveStatuses: true }
+  );
 
   // Re-read row after estado write
   const rowRes2 = await sheets.spreadsheets.values.get({
@@ -1402,14 +1457,6 @@ async function handleVentasLogisticaEntregado(ventasSheetId, body, config = {}) 
       remito = { ok: false, error: err?.message || String(err) };
     }
   }
-
-  const archiveTitle = await resolveVentasArchiveTabTitle(sheets, ventasSheetId);
-  if (!archiveTitle) {
-    throw new Error(
-      "No se encontró pestaña de archivo (Enviados / Ventas Realizadas y Entegadas) en el workbook"
-    );
-  }
-  const safeArchive = String(archiveTitle).replace(/'/g, "''");
 
   // Append to archive
   const safeRow = rowToArchive.map((c) => {

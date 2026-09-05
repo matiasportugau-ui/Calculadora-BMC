@@ -32,6 +32,7 @@ import {
   buildLogisticaEstadoPayload,
   transportistaForCamion,
   SALE_STATUS_LABELS,
+  shiftVentasRowsAfterDelete,
 } from "../utils/logistica/saleState.js";
 import SaleStateEditor from "./logistica/SaleStateEditor.jsx";
 import EntregadoConfirmModal from "./logistica/EntregadoConfirmModal.jsx";
@@ -1808,17 +1809,24 @@ export default function BmcLogisticaApp() {
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
 
-      // Remove from results + stops (archived off active list)
+      // Remove archived row, then shift sheet row indexes for rows below the
+      // deleted one (Sheets deleteDimension shifts everything up by 1).
       setResults((prev) =>
-        prev.filter(
-          (r) =>
-            !(r.ventasSheetRow1Based === row1 && String(r.ventasTabGid || SH_GID) === String(gid))
+        shiftVentasRowsAfterDelete(
+          prev.filter(
+            (r) =>
+              !(r.ventasSheetRow1Based === row1 && String(r.ventasTabGid || SH_GID) === String(gid))
+          ),
+          { deletedRow1Based: row1, gid, defaultGid: SH_GID }
         )
       );
       setStops((prev) =>
-        prev.filter(
-          (s) =>
-            !(s.ventasSheetRow1Based === row1 && String(s.ventasTabGid || SH_GID) === String(gid))
+        shiftVentasRowsAfterDelete(
+          prev.filter(
+            (s) =>
+              !(s.ventasSheetRow1Based === row1 && String(s.ventasTabGid || SH_GID) === String(gid))
+          ),
+          { deletedRow1Based: row1, gid, defaultGid: SH_GID }
         )
       );
       const remitoNote =

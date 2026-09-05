@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-05
+**Última actualización:** 2026-09-05
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-05 (fix — Ventas logistica archive wrong-row):** After Entregado/Enviado deletes a Sheets row, `/logistica` now shifts `ventasSheetRow1Based` for remaining results/stops (`shiftVentasRowsAfterDelete`). Also: resolve archive tab before mutating estado; reject `entregado|enviado` on `/logistica-estado` (force confirm endpoint); rebuild estado server-side (no client `estadoText` trust); fail closed when `BMC_VENTAS_SHEET_ID` unset in agent search tool; reset Entregado modal form on open.
 
 **2026-08-05 (close — Workspace store + Envíos verification FULL PASS · PERSISTED):** End-to-end verify closed and on main via [#875](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/875) (`6537cae0`). **Logística L1–L7 dual e2e PASS** (`scripts/e2e-prod-logistica-dual.mjs`, `?e2e=1` → real `moveStopBefore`/`reorderStops`). **Store SPA S0–S6 PASS** against live API+Postgres (`scripts/e2e-store-spa-local.mjs`). Checklist Overall **PASS**: [`VERIFY-MANUAL-RUN-2026-08-05_054026.md`](./VERIFY-MANUAL-RUN-2026-08-05_054026.md). Procedure: [`VERIFY-workspace-envios-store-2026-08-05.md`](./VERIFY-workspace-envios-store-2026-08-05.md). npm: `verify:workspace-envios`, `verify:logistica-dual`, `verify:store-spa-local`. CORS: `:3100` + `panelin-workspace.vercel.app`. Prior ships: store API #831, Envíos #832, FSM #857, SPA #4. Handoff: [`HANDOFF-2026-08-05-verify-workspace-envios-complete.md`](./HANDOFF-2026-08-05-verify-workspace-envios-complete.md). **No pending on this track.** Optional: Vercel `NEXT_PUBLIC_BMC_API_BASE` for cloud SPA CRUD.
 
