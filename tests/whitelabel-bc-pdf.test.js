@@ -137,8 +137,59 @@ test('white-label bc: el PDF no menciona a BMC por ningún lado', () => {
   for (const token of ['BMC', 'Metalog', 'METALOG', 'bmcuruguay', '120403430012']) {
     assert.ok(!visible.includes(token), `el PDF del socio filtró "${token}"`);
   }
-  // La condición comercial que nombra a BMC sale con la marca del socio.
-  assert.match(html.bc, /BC no asume responsabilidad/);
+});
+
+test('white-label bc: nota de venta de material (default) y bancos Jenerik', () => {
+  const { html } = probe({ whitelabel: 'bc', layouts: ['bc'] });
+  assert.match(html.bc, /Nota — venta de material/);
+  assert.match(html.bc, /50% para la producción/);
+  assert.match(html.bc, /Impuestos 22%/);
+  assert.match(html.bc, /Tasación de dólar sujeta al día de pago/);
+  assert.match(html.bc, /uso técnico/);
+  assert.match(html.bc, /BC no asume responsabilidad por la instalación/);
+  assert.match(html.bc, /no aceptamos devolución/);
+  assert.match(html.bc, /Sujeto a cambios según fábrica/);
+  assert.ok(!html.bc.includes('Garantía 3 años'), 'garantía es solo con instalación');
+  assert.ok(!html.bc.includes('aportes por industria y comercio'), 'mano de obra es solo con instalación');
+  assert.match(html.bc, /BROU/);
+  assert.match(html.bc, /001559594-00001/);
+  assert.match(html.bc, /ITAÚ/);
+  assert.match(html.bc, /2166144/);
+  assert.ok(!html.bc.includes('A completar'), 'ya no faltan cuentas');
+  assert.ok(!html.bc.includes('Seña del 60%'), 'no debe quedar el set BMC');
+  assert.ok(!html.bc.includes('Mercado Pago'), 'no debe quedar el set BMC');
+});
+
+test('white-label bc: nota con instalación si el BOM o el flag lo dicen', () => {
+  const { html } = probe({
+    whitelabel: 'bc',
+    layouts: ['bc'],
+    quote: { ...QUOTE, incluyeInstalacion: true },
+  });
+  assert.match(html.bc, /Nota — con instalación/);
+  assert.match(html.bc, /Garantía 3 años/);
+  assert.match(html.bc, /mano de obra y aportes por industria y comercio/);
+  assert.match(html.bc, /Mano de obra se liquida una vez terminado el trabajo/);
+  assert.match(html.bc, /trabajos húmedos, electricidad ni calefacción/);
+  assert.match(html.bc, /50% para la producción/);
+  assert.ok(!html.bc.includes('no aceptamos devolución'), 'pack material no entra con instalación');
+  assert.ok(!html.bc.includes('BC no asume responsabilidad por la instalación'));
+});
+
+test('white-label bc: una línea de instalación en el BOM enciende el pack', () => {
+  const { html } = probe({
+    whitelabel: 'bc',
+    layouts: ['bc'],
+    quote: {
+      ...QUOTE,
+      bomDetailGroups: [
+        ...QUOTE.bomDetailGroups,
+        { groupName: 'SERVICIOS', groupTotal: 800, items: [{ desc: 'Instalación de cubierta', qty: 1, unit: 'glb', pu: 800, total: 800 }] },
+      ],
+    },
+  });
+  assert.match(html.bc, /Nota — con instalación/);
+  assert.match(html.bc, /Garantía 3 años/);
 });
 
 test('white-label bc: la razón social y el RUT van sólo en el pie legal', () => {

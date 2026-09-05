@@ -55,13 +55,14 @@ marca         BC                     ← lo que se ve arriba
 razonSocial   Jenerik Bentancor      ← sólo pie legal
 rut           150633750010           ← pie legal + datos bancarios
 direccion     Florencio Sánchez y Ruta 5 vieja, Progreso
-banco         (vacío → "A completar")
-telefono      (vacío → "A completar")
+banco         BROU USD 001559594-00002 · ITAÚ USD 2166144
+banks         BROU + ITAÚ (UYU y USD), titular Jenerik Bentancor
+telefono      (vacío — no figura en las hojas oficiales)
+terms         12 cláusulas de `src/branding/bcTerms.js` (no el set BMC)
 ```
 
-**Pendiente de completar con el socio:** cuenta bancaria y teléfono de consultas.
-Mientras estén vacíos, el PDF los muestra como `A completar` en rojo — no se
-inventan datos financieros.
+Cuentas transcritas de las hojas **DATOS BANCARIOS BC**. Teléfono de consultas
+sigue vacío: no estaba en esas hojas, no se inventa. LAM/Smart no usan este set.
 
 El modelo de cotización puede traer un `branding` que pisa estos campos uno por
 uno (`mergeBranding`), para cuando el socio cargue lo suyo desde la app. Un

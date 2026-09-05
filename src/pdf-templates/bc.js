@@ -15,6 +15,7 @@
 // se declaran en @page y el pie legal es un elemento fijo que repite por página.
 
 import { QUOTE_TERMS } from '../utils/helpers.js';
+import { BC_TERMS_CLOSING, BC_BANKS, quoteIncludesInstalacion, resolveBcQuoteTerms } from '../branding/bcTerms.js';
 import { WHITELABEL_BRAND, WHITELABEL_BRANDS, mergeBranding } from '../config/whitelabel.js';
 import { BC_LOGO_DATA_URL, bcLogoImg, isBcLogoDataUrl } from '../branding/bcLogo.js';
 import { lamLogoSvg } from '../branding/lamLogo.js';
@@ -161,7 +162,7 @@ body{
 .bc-paneles{color:var(--gold-deep);font-weight:700;white-space:nowrap}
 
 /* ── Totales ────────────────────────────────────────────────── */
-.bc-totals{display:flex;justify-content:flex-end;margin-bottom:5mm;break-inside:avoid}
+.bc-totals{display:flex;justify-content:flex-end;margin-bottom:5mm;break-inside:avoid;break-before:avoid}
 .bc-tbox{width:76mm}
 .bc-trow{display:flex;justify-content:space-between;padding:1.3mm 0;
   color:var(--ink-soft);font-variant-numeric:tabular-nums}
@@ -173,23 +174,32 @@ body{
 .bc-t-val{font-family:Charter,'Bitstream Charter',Georgia,serif;
   font-size:14pt;font-weight:700;font-variant-numeric:tabular-nums}
 
+/* ── Cierre (bases + banco + firmas): página propia en el PDF BC ─ */
+.bc-closing-page{break-inside:avoid}
+
 /* ── Condiciones ────────────────────────────────────────────── */
 .bc-terms{background:var(--wash);padding:3.2mm 4mm;margin-bottom:4mm;
-  border-radius:2px;break-inside:avoid}
+  border-radius:2px}
 .bc-terms ol{counter-reset:t;font-size:7.4pt;line-height:1.42;
   column-count:2;column-gap:6mm}
-.bc-terms li{counter-increment:t;padding-left:5.2mm;margin-bottom:1mm;
+.bc-terms.bc-terms-official ol{column-count:1;column-gap:0;font-size:7.5pt}
+.bc-terms li{counter-increment:t;padding-left:5.2mm;margin-bottom:1.15mm;
   position:relative;break-inside:avoid}
 /* Va después del reset de li::before de arriba, misma especificidad ⇒ gana. */
 .bc-terms li::before{content:counter(t);position:absolute;left:0;top:0;
   font-size:6.4pt;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
 .bc-terms .bl{font-weight:700;color:var(--ink)}
-.bc-terms .hl{font-weight:700;color:#9A3412}
+.bc-terms .hl{font-weight:700;color:#9A3412;text-decoration:underline;text-underline-offset:2px}
+.bc-terms-close{margin-top:2.4mm;font-size:7.5pt;font-style:italic;color:var(--ink-soft)}
 
 /* ── Banco / firmas ─────────────────────────────────────────── */
 .bc-bank{border:.7pt solid var(--gold-soft);border-radius:2px;
   padding:3mm 4mm;margin-bottom:4mm;break-inside:avoid}
 .bc-bank-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.6mm 8mm;font-size:7.6pt}
+.bc-banks{display:grid;grid-template-columns:1fr 1fr;gap:3mm 6mm}
+.bc-bank-card .bc-bank-name{font-family:Charter,'Bitstream Charter',Georgia,serif;
+  font-size:8.2pt;font-weight:700;color:var(--gold-deep);letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:1.4mm}
 .bc-todo{color:#9A3412;font-weight:700}
 .bc-sign{display:grid;grid-template-columns:1fr 1fr;gap:14mm;margin-top:6mm;break-inside:avoid}
 .bc-sign div{border-top:.7pt solid var(--ink-soft);padding-top:1.6mm;
@@ -237,19 +247,62 @@ function renderBom(groups) {
   }).join('');
 }
 
-function renderTerms(marca) {
-  const items = QUOTE_TERMS.map(t => {
+function isBcBrand(brand) {
+  return brand?.layout === 'bc' || brand?.marca === 'BC';
+}
+
+function renderTerms(brand, q) {
+  const official = isBcBrand(brand);
+  const install = official && quoteIncludesInstalacion(q);
+  const terms = official
+    ? resolveBcQuoteTerms(q)
+    : QUOTE_TERMS.map(t => ({
+      ...t,
+      // LAM / Smart siguen el set BMC reescrito con su marca. Bromyros queda.
+      text: t.text.replace(/\bBMC\b/g, brand.marca),
+    }));
+  const items = terms.map(t => {
     const cls = t.highlight ? 'hl' : (t.bold ? 'bl' : '');
-    // Las condiciones son compartidas y nombran a BMC ("BMC no asume
-    // responsabilidad…"). En el PDF del socio eso es una fuga de marca: va la
-    // suya. `Bromyros` queda como está, es la planta real de retiro.
-    const text = t.text.replace(/\bBMC\b/g, marca);
-    return `<li${cls ? ` class="${cls}"` : ''}>${esc(text)}</li>`;
+    return `<li${cls ? ` class="${cls}"` : ''}>${esc(t.text)}</li>`;
   }).join('');
-  return `<div class="bc-terms">
-  <div class="bc-lbl plain">Condiciones comerciales</div>
+  const title = official
+    ? (install ? 'Nota — con instalación' : 'Nota — venta de material')
+    : 'Condiciones comerciales';
+  const close = official && BC_TERMS_CLOSING
+    ? `<p class="bc-terms-close">${esc(BC_TERMS_CLOSING)}</p>`
+    : '';
+  return `<div class="bc-terms${official ? ' bc-terms-official' : ''}">
+  <div class="bc-lbl plain">${title}</div>
   <ol>${items}</ol>
+  ${close}
 </div>`;
+}
+
+function renderBank(brand) {
+  const banks = Array.isArray(brand.banks) && brand.banks.length
+    ? brand.banks
+    : (isBcBrand(brand) ? BC_BANKS : null);
+  if (banks?.length) {
+    const cards = banks.map(b => `<div class="bc-bank-card">
+      <div class="bc-bank-name">${esc(b.banco)}</div>
+      <div><span class="bc-k">Titular</span><span class="bc-v">${esc(b.titular || brand.razonSocial)}</span></div>
+      <div><span class="bc-k">Cuenta en $ (pesos uruguayos)</span><span class="bc-v">${esc(b.uyu)}</span></div>
+      <div><span class="bc-k">Cuenta en U$S (dólares)</span><span class="bc-v">${esc(b.usd)}</span></div>
+    </div>`).join('');
+    return `<div class="bc-bank">
+    <div class="bc-lbl plain">Datos bancarios BC — para transferencias</div>
+    <div class="bc-banks">${cards}</div>
+  </div>`;
+  }
+  return `<div class="bc-bank">
+    <div class="bc-lbl plain">Datos para depósito bancario</div>
+    <div class="bc-bank-grid">
+      <div><span class="bc-k">Titular</span><span class="bc-v">${esc(brand.razonSocial)}</span></div>
+      <div><span class="bc-k">RUT</span><span class="bc-v">${esc(brand.rut)}</span></div>
+      <div><span class="bc-k">Cuenta USD</span><span class="bc-v${brand.banco ? '' : ' bc-todo'}">${esc(brand.banco || 'A completar')}</span></div>
+      <div><span class="bc-k">Consultas</span><span class="bc-v${brand.telefono ? '' : ' bc-todo'}">${esc(brand.telefono || 'A completar')}</span></div>
+    </div>
+  </div>`;
 }
 
 export function render(q) {
@@ -341,21 +394,15 @@ export function render(q) {
     <div class="bc-trow bc-grand"><span class="bc-t-lbl">Total USD</span><span class="bc-t-val">${fmt(q.totalConIva)}</span></div>
   </div></div>
 
-  ${renderTerms(brand.marca)}
+  <div class="bc-closing${isBcBrand(brand) ? ' bc-closing-page' : ''}">
+  ${renderTerms(brand, q)}
 
-  <div class="bc-bank">
-    <div class="bc-lbl plain">Datos para depósito bancario</div>
-    <div class="bc-bank-grid">
-      <div><span class="bc-k">Titular</span><span class="bc-v">${esc(brand.razonSocial)}</span></div>
-      <div><span class="bc-k">RUT</span><span class="bc-v">${esc(brand.rut)}</span></div>
-      <div><span class="bc-k">Cuenta USD</span><span class="bc-v${brand.banco ? '' : ' bc-todo'}">${esc(brand.banco || 'A completar')}</span></div>
-      <div><span class="bc-k">Consultas</span><span class="bc-v${brand.telefono ? '' : ' bc-todo'}">${esc(brand.telefono || 'A completar')}</span></div>
-    </div>
-  </div>
+  ${renderBank(brand)}
 
   <div class="bc-sign">
     <div>Firma y aclaración — Cliente</div>
     <div>Firma — ${esc(brand.marca)}</div>
+  </div>
   </div>
 
   <div class="bc-legal">${legal}</div>

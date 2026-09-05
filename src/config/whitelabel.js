@@ -48,8 +48,12 @@ export const WHITELABEL_BRANDS = {
     razonSocial: 'Jenerik Bentancor',
     rut: '150633750010',
     direccion: 'Florencio Sánchez y Ruta 5 vieja, Progreso',
-    banco: '',
+    banco: 'BROU 001559594-00002 · ITAÚ 2166144',
     telefono: '',
+    banks: [
+      { banco: 'BROU', titular: 'Jenerik Bentancor', uyu: '001559594-00001', usd: '001559594-00002' },
+      { banco: 'ITAÚ', titular: 'Jenerik Bentancor', uyu: '2166136', usd: '2166144' },
+    ],
     logoDataUrl: null,
     site: 'https://calculadora-bc.vercel.app',
     ident: {

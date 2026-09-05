@@ -1,3 +1,4 @@
+- **2026-09-04** — Ship PDF BC layout A + nota dual (venta de material vs instalación) + BROU/ITAÚ a **calculadora-bc** only. Tests whitelabel-bc-pdf 14/14. No merge BMC.
 - **2026-09-04** — Logo oficial BC en PDF (PNG transparente, papel recortado). Worktree `~/calculadora-bmc-jenerik` `feat/jenerik-bc-tenant`. Tests whitelabel-bc-pdf 11/11. Deploy **solo** `calculadora-bc` (no merge BMC, no rebuild calculadora-bmc). Sample `docs/team/samples/bc-pdf-sample.pdf`.
 - **2026-08-20** — Draft PR #1071 (do not merge BMC). API silo: tenant from Origin; uninvited quote save 401/403. Telemetry 202 already live on 3 Vercel apps.
 - **2026-08-20** — Ident cinema AFTER Google grant (popup no tapa el lock). Sting primado en el click. Deploy 3 tenants, no BMC.

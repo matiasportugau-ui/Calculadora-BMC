@@ -30,6 +30,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-09-04 (feat — nota BC dual: material vs instalación):** El PDF editorial (A) arma la nota según el presupuesto. **Venta de material** (default de la calculadora): 50/50 + IVA 22% + tasación de dólar, más 8 cláusulas técnicas (uso, plazos, no asume instalación, recotización, colores, revisión, no devolución, fábrica). **Con instalación** (`incluyeInstalacion` o ítem de montaje/mano de obra en el BOM): la nota EcoPlast (garantía 3 años, incluye MO y aportes, MO al terminar, no húmedos/electricidad/calefacción) + las 3 comunes. LAM/Smart y BMC no cambian.
+
 **2026-09-04 (fix — logo oficial BC en PDF, fondo recortado):** El presupuesto de `calculadora-bc` usa el mark oficial (B+C con techo) en vez del SVG aproximado. JPEG → PNG con el blanco de papel knock-out + trim. Data URL en `src/branding/bcLogo.dataurl.js`; archivo `public/branding/bc-logo.png`. No merge BMC.
 
 **2026-08-20 (fix — API local bind loopback):** `server/index.js` ya no escucha en `*:3001` en local. `resolveListenHost()` (`server/lib/listenHost.js`) usa `127.0.0.1` salvo `K_SERVICE` (Cloud Run sigue en todas las interfaces). Test: `tests/listenHost.test.js`.
