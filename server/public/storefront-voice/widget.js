@@ -357,11 +357,15 @@
     return { ok: true, added: data.title || data.items?.[0]?.title || "ítem", cart };
   }
 
+  // Thickness matching SoT: server/lib/voice/storefrontCartVariant.js (keep in sync).
   function mmInTitle(title, mm) {
     if (!mm) return true;
     const t = String(title || "").toLowerCase().replace(/\s+/g, "");
     const n = String(mm).replace(/\D/g, "");
-    return t.includes(`${n}mm`) || t.includes(n);
+    if (!n) return true;
+    if (new RegExp(`(?:^|[^0-9])${n}mm(?:[^0-9]|$)`).test(t)) return true;
+    if (/\dmm/.test(t)) return false;
+    return new RegExp(`(?:^|[^0-9])${n}(?:[^0-9]|$)`).test(t);
   }
 
   function colorInTitle(title, color) {
@@ -385,10 +389,8 @@
     scored.sort((a, b) => b.score - a.score);
     const best = scored[0];
     if (!best) return null;
-    if (mm && best.score < 4 && vs.length > 1) {
-      const anyMm = scored.find((s) => s.score >= 4);
-      if (anyMm) return anyMm.v;
-    }
+    // Never silently substitute a different thickness (e.g. 100mm for a 50mm quote).
+    if (mm && best.score < 4) return null;
     return best.v;
   }
 
