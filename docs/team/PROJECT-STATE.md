@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-31 (docs — Panelin install sequence increment)
+**Última actualización:** 2026-09-05 (fix — storefront quote→cart thickness match)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-05 (fix — storefront quote→cart wrong thickness):** After #1198, `mmInTitle` used `t.includes(n)` so a **50mm** quote could score **150mm** equally and add the wrong Shopify variant (variants listed thicker-first). Also substituted any available variant when no mm matched. Digit-safe thickness match + refuse non-matching espesor. Lib `storefrontCartVariant.js` (SoT) kept in sync with `widget.js`. Test: `storefrontCartVariant`.
 
 **2026-09-04 (feat — Panelin Front live: STT+TTS, sell loop, Admin log, quote→cart):** Public shop agent default is **pipeline** (browser STT + `/chat` + optional TTS), not Grok S2S. Shared IAlfred↔Panelin lessons via public-safe `storefrontBrain.js`. Sell loop offers ficha/cart/PDF (not insist-only). Tap chips (`present_choices`). PDF also maps BOM to Shopify cart lines. Every `/chat` writes Admin 2.0 col J (`origen=VW`). Gemini fallback if Grok dry. Sheets identify accepts inline SA JSON. Shop widget already loads Cloud Run `widget.js` — this ships the API revision. Tests: `storefrontVoicePack`, `storefrontBrain`, `storefrontChoices`, `storefrontQuoteCart`, `publicVoiceAdmin`, `googleSheetsAuth`.
 
