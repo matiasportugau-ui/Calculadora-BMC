@@ -243,10 +243,57 @@ export function buildEstadoSheetValue(existingEstado, opts) {
   }
   if (opts.camion) parts.push(`CAMION=${opts.camion}`);
   if (opts.transportista) parts.push(`TTE=${String(opts.transportista).slice(0, 40)}`);
-  if (opts.comment) parts.push(`NOTA=${String(opts.comment).replace(/[\[\]]/g, "").slice(0, 120)}`);
+  if (opts.comment) parts.push(`NOTA=${String(opts.comment).replace(/[[\]]/g, "").slice(0, 120)}`);
 
   const marker = `[${parts.join(" ")}]`;
   return base ? `${base} ${marker}` : marker;
+}
+
+/**
+ * After Sheets deletes a source row, every lower row shifts up by one.
+ * Call this on in-memory Ventas results/stops so subsequent writes hit the
+ * correct `ventasSheetRow1Based` (avoids wrong-row estado / archive).
+ *
+ * @template T
+ * @param {T[]} items
+ * @param {{
+ *   deletedRow1Based: number,
+ *   gid?: string|number|null,
+ *   rowKey?: string,
+ *   gidKey?: string,
+ *   defaultGid?: string|number|null,
+ * }} opts
+ * @returns {T[]}
+ */
+export function shiftVentasRowsAfterDelete(items, opts = {}) {
+  const list = Array.isArray(items) ? items : [];
+  const deleted = Number(opts.deletedRow1Based);
+  if (!Number.isFinite(deleted) || deleted < 2) return list;
+  const rowKey = opts.rowKey || "ventasSheetRow1Based";
+  const gidKey = opts.gidKey || "ventasTabGid";
+  const defaultGid = opts.defaultGid;
+  const targetGid =
+    opts.gid == null || String(opts.gid).trim() === ""
+      ? null
+      : String(opts.gid);
+
+  return list.map((item) => {
+    if (!item || typeof item !== "object") return item;
+    const row = Number(item[rowKey]);
+    if (!Number.isFinite(row) || row <= deleted) return item;
+    if (targetGid != null) {
+      const itemGid = String(item[gidKey] ?? defaultGid ?? "");
+      if (itemGid !== targetGid) return item;
+    }
+    return { ...item, [rowKey]: row - 1 };
+  });
+}
+
+/** Guard Sheets USER_ENTERED formula injection on free-text cells. */
+export function sanitizeSheetUserEnteredCell(value) {
+  const s = String(value ?? "");
+  if (/^[=+\-@]/.test(s)) return `'${s}`;
+  return s;
 }
 
 /**

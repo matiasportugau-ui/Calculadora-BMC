@@ -12,6 +12,8 @@ import {
   saleStatusChipCaption,
   formatIsoToDdMm,
   transportistaForCamion,
+  shiftVentasRowsAfterDelete,
+  sanitizeSheetUserEnteredCell,
 } from "../src/utils/logistica/saleState.js";
 import { isJunkVentasRow, mapVentasRowV2, parsePlanillaFechaToIso } from "../src/utils/logistica/ventasSheetMap.js";
 import { filterOperationalVentasRows } from "../src/utils/logistica/ventasSearch.js";
@@ -169,6 +171,24 @@ console.log("saleState");
 {
   assert.equal(parsePlanillaFechaToIso("22/05/2026"), "2026-05-22");
   ok("fecha still parses");
+}
+
+{
+  const gid = "926747636";
+  const rows = [
+    { nombre: "A", ventasSheetRow1Based: 5, ventasTabGid: gid },
+    { nombre: "B", ventasSheetRow1Based: 10, ventasTabGid: gid },
+    { nombre: "C", ventasSheetRow1Based: 15, ventasTabGid: gid },
+    { nombre: "OtherTab", ventasSheetRow1Based: 12, ventasTabGid: "999" },
+  ];
+  const shifted = shiftVentasRowsAfterDelete(rows, { deletedRow1Based: 5, gid });
+  assert.equal(shifted[0].ventasSheetRow1Based, 5); // equal to deleted: unchanged (caller filters it)
+  assert.equal(shifted[1].ventasSheetRow1Based, 9);
+  assert.equal(shifted[2].ventasSheetRow1Based, 14);
+  assert.equal(shifted[3].ventasSheetRow1Based, 12); // other gid untouched
+  assert.equal(sanitizeSheetUserEnteredCell('=HYPERLINK("x")'), "'=HYPERLINK(\"x\")");
+  assert.equal(sanitizeSheetUserEnteredCell("Pago ok"), "Pago ok");
+  ok("shiftVentasRowsAfterDelete + sanitize");
 }
 
 console.log(`saleState: ${passed} passed`);
