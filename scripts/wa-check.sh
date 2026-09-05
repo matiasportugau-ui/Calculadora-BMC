@@ -30,13 +30,28 @@ if [[ ! -f .env ]]; then
   echo "ERROR: no existe .env (copiá .env.example y completá los valores)." >&2
   exit 1
 fi
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
+# Lee una variable de .env de forma segura (sin ejecutar el archivo — .env puede
+# tener valores con espacios/JSON/paréntesis que romperían `source`). Precedencia:
+# variable ya exportada en el entorno > .env.
+readenv() {
+  local key="$1" val
+  if [[ -n "${!key:-}" ]]; then printf '%s' "${!key}"; return 0; fi
+  val="$(grep -E "^[[:space:]]*${key}=" .env | tail -n1 || true)"
+  [[ -z "$val" ]] && return 0
+  val="${val#*=}"; val="${val%$'\r'}"
+  case "$val" in
+    \"*\") val="${val#\"}"; val="${val%\"}" ;;
+    \'*\') val="${val#\'}"; val="${val%\'}" ;;
+  esac
+  printf '%s' "$val"
+}
 
-# Acepta WABA_ID o su alias WHATSAPP_WABA_ID.
-WABA_ID="${WABA_ID:-${WHATSAPP_WABA_ID:-}}"
+WHATSAPP_ACCESS_TOKEN="$(readenv WHATSAPP_ACCESS_TOKEN)"
+WHATSAPP_PHONE_NUMBER_ID="$(readenv WHATSAPP_PHONE_NUMBER_ID)"
+META_APP_ID="$(readenv META_APP_ID)"
+WHATSAPP_APP_SECRET="$(readenv WHATSAPP_APP_SECRET)"
+WABA_ID="$(readenv WABA_ID)"
+[[ -n "$WABA_ID" ]] || WABA_ID="$(readenv WHATSAPP_WABA_ID)"
 
 miss=()
 [[ -n "${WHATSAPP_ACCESS_TOKEN:-}" ]] || miss+=("WHATSAPP_ACCESS_TOKEN")
@@ -46,7 +61,7 @@ miss=()
 [[ -n "${WHATSAPP_APP_SECRET:-}" ]] || miss+=("WHATSAPP_APP_SECRET")
 if (( ${#miss[@]} )); then
   echo "ERROR: faltan variables en .env: ${miss[*]}" >&2
-  echo "  Plantilla: .env.example — runbook: docs/team/runbooks/wa-connect-092663245-coexistencia.md" >&2
+  echo "  Plantilla: .env.example — runbook: docs/team/runbooks/wa-connect-numero-coexistencia.md" >&2
   exit 1
 fi
 

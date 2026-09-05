@@ -36,10 +36,23 @@ TO="$(printf '%s' "$RECIPIENT_RAW" | tr -cd '0-9')"
 if [[ ! -f .env ]]; then
   echo "ERROR: no existe .env." >&2; exit 1
 fi
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
+# Lee una variable de .env de forma segura (sin ejecutar el archivo). Precedencia:
+# variable ya exportada en el entorno > .env.
+readenv() {
+  local key="$1" val
+  if [[ -n "${!key:-}" ]]; then printf '%s' "${!key}"; return 0; fi
+  val="$(grep -E "^[[:space:]]*${key}=" .env | tail -n1 || true)"
+  [[ -z "$val" ]] && return 0
+  val="${val#*=}"; val="${val%$'\r'}"
+  case "$val" in
+    \"*\") val="${val#\"}"; val="${val%\"}" ;;
+    \'*\') val="${val#\'}"; val="${val%\'}" ;;
+  esac
+  printf '%s' "$val"
+}
+
+WHATSAPP_ACCESS_TOKEN="$(readenv WHATSAPP_ACCESS_TOKEN)"
+WHATSAPP_PHONE_NUMBER_ID="$(readenv WHATSAPP_PHONE_NUMBER_ID)"
 
 TEMPLATE="${2:-${TEMPLATE_NAME:-hello_world}}"
 LANG_CODE="${3:-${TEMPLATE_LANG:-en_US}}"
