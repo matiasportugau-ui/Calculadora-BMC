@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-06 (feat — Driver PWA binds logística feed + Outdoor Night Figma)
+**Última actualización:** 2026-09-06 (fix — driver event idempotent replay still closes trips)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-06 (fix — driver event idempotent replay still closes trips):** `POST /api/driver/events` used to `return` on unique `idempotency_key` (23505) *before* `projectRepartoFromDriverEvent`, and swallowed projection errors after a successful insert. Mobile timeout / Cloud Run kill after insert left deliveries recorded but REP never `cerrado` / trip never `closed`; outbox replay could not recover. Now always runs projection after insert-or-23505; `delivery_completed` projection failures surface so the client retries. Lib `driverEventProjection.js` + test.
 
 **2026-09-06 (feat — BMC Driver consumes `/logistica` route feed):** `/conductor` binds `GET /api/driver/trips` + `plan_snapshot` (`driverTripFeed.js`). Carga CTA = current factory event (`cargaFactoryStep.js`, N de 4). Tabs Inicio/Carga/Listo/Perfil. SVG kit visual SoT; TARGET D7. Figma file `iGZDe5LeC2ZDOdjbB3uH9q` nodes 21:12–21:24 Outdoor Night 390×844. Tests `cargaFactoryStep` + extended `logisticaE2e`. Branch `feat/logistica-driver-figma-loop`. Torre T5–T8 still TARGET.
 

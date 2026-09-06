@@ -7,6 +7,7 @@ import { generateOpaqueToken, sha256Hex } from "../lib/driverToken.js";
 import { resolveDriverAuth, listTripsForDriverAuth, driverAuthOwnsTrip } from "../lib/driverAuth.js";
 import { isAllowedDriverEventType, hasEvidenceForStop } from "../lib/transportistaFsm.js";
 import { createGcsV4UploadUrl, writeLocalDevEvidence } from "../lib/transportistaEvidence.js";
+import { afterDriverEventRecorded } from "../lib/driverEventProjection.js";
 import { conductorPublicUrl } from "../../src/utils/conductorUrl.js";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -536,6 +537,7 @@ export default function createTransportistaRouter(config, logger) {
       const lat = geo?.lat != null ? Number(geo.lat) : null;
       const lng = geo?.lng != null ? Number(geo.lng) : null;
 
+      let idempotent = false;
       try {
         await pool.query(
           `insert into trip_events (trip_id, stop_id, event_type, actor_type, actor_id, idempotency_key, at_client_ms, geo_lat, geo_lng, payload)
@@ -554,18 +556,15 @@ export default function createTransportistaRouter(config, logger) {
         );
       } catch (e) {
         if (e.code === "23505") {
-          return res.json({ ok: true, idempotent: true });
-        }
-        throw e;
-      }
-      if (type !== "location_ping") {
-        try {
-          await projectRepartoFromDriverEvent(pool, trip_id, type);
-        } catch {
-          /* projection is best-effort */
+          // Unique hit: still project — first request may have inserted then died
+          // before projection (Cloud Run kill / timeout), or projection failed.
+          idempotent = true;
+        } else {
+          throw e;
         }
       }
-      res.json({ ok: true });
+      await afterDriverEventRecorded(pool, trip_id, type);
+      res.json({ ok: true, ...(idempotent ? { idempotent: true } : {}) });
     }),
   );
 
@@ -709,45 +708,3 @@ function randomFileSuffix() {
   return `${Date.now()}-${crypto.randomBytes(6).toString("hex")}`;
 }
 
-const FACTORY_TYPES = new Set([
-  "factory_arrived",
-  "load_started",
-  "load_completed",
-  "factory_departed",
-]);
-
-async function projectRepartoFromDriverEvent(pool, tripId, type) {
-  const { rows } = await pool.query(`select plan_snapshot from trips where trip_id = $1::uuid`, [tripId]);
-  const repartoId = rows[0]?.plan_snapshot?.reparto_id;
-  if (!repartoId) return;
-  if (FACTORY_TYPES.has(type)) {
-    await pool.query(
-      `update repartos set status = 'en_curso', updated_at = now()
-        where id = $1 and status = 'coordinado'`,
-      [String(repartoId)],
-    );
-  }
-  if (type === "delivery_completed") {
-    const ev = await pool.query(
-      `select stop_id from trip_events
-        where trip_id = $1::uuid and event_type = 'delivery_completed'`,
-      [tripId],
-    );
-    const stops = rows[0]?.plan_snapshot?.stops;
-    const needed = Array.isArray(stops) ? stops.filter((s) => s && s.id).map((s) => String(s.id)) : [];
-    const got = new Set(ev.rows.map((r) => String(r.stop_id || "")));
-    const all = needed.length > 0 && needed.every((id) => got.has(id));
-    if (all) {
-      await pool.query(
-        `update repartos set status = 'cerrado', updated_at = now()
-          where id = $1 and status in ('coordinado', 'en_curso')`,
-        [String(repartoId)],
-      );
-      await pool.query(
-        `update trips set status = 'closed', closed_at = now(), updated_at = now()
-          where trip_id = $1::uuid`,
-        [tripId],
-      );
-    }
-  }
-}
